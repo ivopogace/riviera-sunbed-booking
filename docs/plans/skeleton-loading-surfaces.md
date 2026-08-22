@@ -82,8 +82,12 @@ standing in for `feature/skeleton-loading-surfaces` (`riviera-sdlc` § Remote/cl
       `requests-tab.a11y.spec.ts`, `payouts-tab.a11y.spec.ts`.
 - [x] **AC-8:** Given a held API response in Chromium, when the response is released on
       each of the two grid surfaces, then the beach-map frame is present **both** before
-      and after, and its top edge moves by less than the tolerance the spec states.
+      and after, and its top edge **never rises** — it settles downward, by at most the
+      height of the header content a skeleton cannot predict.
       *Pinned by:* `frontend/e2e/loading-skeletons.e2e.ts`.
+      *(Delivered stronger than drafted — the original "less than the tolerance the spec
+      states" is a symmetric band, and a symmetric band passes with F-1's 61px up-jump in
+      place. See the verification table.)*
 
 ## Non-goals
 
@@ -117,13 +121,13 @@ The replaced surface is the centred one-line loading paragraph on four templates
 
 ## Risk register
 
-| # | Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|---|
-| R-1 | A focusable node inside `aria-hidden="true"` (axe `aria-hidden-focus`) — the Daily view's loaded canvas sets `[viewportTabindex]="0"` | Medium | High (a11y regression) | The skeleton canvas passes no `viewportTabindex`; AC-7 runs axe on the loading state of all four. |
-| R-2 | The skeleton misses the loaded layout badly enough that the jump it was meant to remove stays | Medium | Medium | AC-8 measures the frame's box either side of a held response in a real browser. |
-| R-3 | Touching four templates breaks the #741 announcer specs, hiding an announcement regression behind a styling change | Low | High | AC-6: those four specs must pass **unmodified**; the testids are preserved for exactly this. |
-| R-4 | The new `appSkeletonBlock` becomes a second spelling of a recipe three surfaces already inline | Low | Low | The directive's host classes are byte-identical to the inlined recipe, so the rendered DOM has one spelling; the Non-goals fix where it does and does not apply. |
-| R-5 | An added multi-line `.html` comment fails `check-inline-comments.mjs` | Medium | Low | Every comment this diff adds is one line; the guard runs as a `PostToolUse` hook and in CI. |
+| # | Risk | Likelihood | Impact | Mitigation | Outcome |
+|---|---|---|---|---|---|
+| R-1 | A focusable node inside `aria-hidden="true"` (axe `aria-hidden-focus`) — the Daily view's loaded canvas sets `[viewportTabindex]="0"` | Medium | High (a11y regression) | The skeleton canvas passes no `viewportTabindex`; AC-7 runs axe on the loading state of all four. | **Closed — and the mitigation was insufficient.** It happened by a route the risk did not name: an overflowing scroll container is focusable in Chromium with *no* `tabindex`, so neither the mitigation nor axe saw it (G-3). Fixed with `inert` on all five skeleton containers, proven by a browser tab-walk that fails without it. |
+| R-2 | The skeleton misses the loaded layout badly enough that the jump it was meant to remove stays | Medium | Medium | AC-8 measures the frame's box either side of a held response in a real browser. | **Closed, after two rounds.** The first measurement ran one fixture at one viewport and missed both a 61px up-jump and a 43px phone shift (F-1, F-2). The matrix is now 3 venue shapes × 2 viewports, and the guarantee is directional: the frame settles, never rises. |
+| R-3 | Touching four templates breaks the #741 announcer specs, hiding an announcement regression behind a styling change | Low | High | AC-6: those four specs must pass **unmodified**; the testids are preserved for exactly this. | **Closed — held.** Those four spec files carry additions only; no line was removed from any of them. |
+| R-4 | The new `appSkeletonBlock` becomes a second spelling of a recipe three surfaces already inline | Low | Low | The directive's host classes are byte-identical to the inlined recipe, so the rendered DOM has one spelling; the Non-goals fix where it does and does not apply. | **Closed, differently than planned.** G-2 forced the fill *out* of the directive, so the host classes are no longer byte-identical — the directive is the motion pair, the call site owns the fill. Two of the four inlined sites adopted it (F-5); the spelling is one because the utilities are the same, not because the directive emits them all. |
+| R-5 | An added multi-line `.html` comment fails `check-inline-comments.mjs` | Medium | Low | Every comment this diff adds is one line; the guard runs as a `PostToolUse` hook and in CI. | **Closed — fired three times** (`skeleton-block.ts`, then two spec comments in the fix rounds), caught locally each time before the push. |
 
 ## Open questions / Assumptions
 
@@ -196,12 +200,19 @@ N/A — no contract change. No request, response shape, or endpoint is touched.
 
 ## Execution status
 
-**Stage pointer:** `review gate — 4th pass done; awaiting CI + Sonar on the phase-7 diff`
+**Stage pointer:** `DONE — merged via PR #748`
 
-**Next action:** let CI + Sonar re-run, then the merge close-out. Four review passes have
-run (F, G, H, I); the loop has converged in the sense that matters — the 4th pass found no
-new *class* of defect, only four more instances of the one A-3 names, and the last of those
-is now either fixed or written down as a limit the design cannot remove. Then the merge close-out: finalize
+**Next action:** none. Deferred findings live on issue #749; the substrate-doc sweep is
+recorded below.
+
+**Docs-freshness (close-out step 5):** **ran** over `origin/main...HEAD` — **0 findings**.
+The diff renames and removes nothing (six added files, no `R`/`D` entries), so the
+rename/removal grep had nothing to chase; the counting sweep found no substrate sentence
+this slice falsifies — no doc cites the deleted loading copy or the `*-loading` testids, and
+RV-FE-10's own text covers "the skeleton **or** visible copy", so it stayed true. One
+**note, not a finding**: `riviera-tailwind` rule 3 states the unbundling rule for radius and
+padding; G-2 made *fill* a third instance of it. That is an addition, not a contradiction,
+so this skill left it alone — worth folding in when that skill is next edited. Then the merge close-out: finalize
 this section with `merged via PR #748` in the PR's own last commit.
 
 **Review gate:** **run** — `/code-review` at **high** effort over `origin/main...HEAD`
@@ -236,7 +247,8 @@ issue list to work through, so nothing re-enters at Implement from it.
 | 4 — review-gate findings F-1…F-5 | ✅ | `89156eb` |
 | 5 — re-review findings G-1…G-3 | ✅ | `0f91234` |
 | 6 — 3rd-review findings H-1, H-2 | ✅ | `ebb212d` |
-| 7 — 4th-review findings I-1…I-4 | ✅ | |
+| 7 — 4th-review findings I-1…I-4 | ✅ | `3fbc659` |
+| 8 — close-out (docs-freshness, plan final state) | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -356,10 +368,17 @@ Skill-routing gate for what the fix touches *before* editing).
 | AC-5 | `skeleton-block.spec.ts` (3 cases) + the four per-surface "…decorative and motion-reduce safe (#744)" specs | ✅ |
 | AC-6 | the four #741 announcer specs — byte-unchanged in the diff | ✅ |
 | AC-7 | the loading-state axe case in each of the four `*.a11y.spec.ts` | ✅ |
-| AC-8 | `e2e/loading-skeletons.e2e.ts` — measured shift 10.2px (tourist map), 0.75px (Daily view); tolerance 32px | ✅ |
+| AC-8 | `e2e/loading-skeletons.e2e.ts` — 13 specs: 3 venue shapes × 2 viewports on the tourist map, 2 viewports + a zero-layout case on the Daily view, 2 tab-walks, 2 axe runs. Measured settle 11.1–155.3px, **rise 0 everywhere**; `MAX_RISE_PX` 4 | ✅ |
 
-Full frontend suite: 1632 tests / 178 files green; `npm run lint`, `npm run format:check`
-and `npm run build` clean; the two new mocked-suite e2e specs green in Chromium.
+Final verification on `3fbc659`: **1634 unit tests / 178 files** green; **248 mocked e2e**
+green in Chromium; `npm run lint`, `npm run format:check`, `npm run build` clean; all four
+diff-scoped hygiene guards clean.
+
+**AC-8's wording moved with the evidence.** It was written as "the top edge moves by less
+than the tolerance the spec states" and is delivered as a *directional* guarantee — the
+frame settles downward, never rises — because the header's conditional blocks span ~65px
+that no fixed skeleton can predict (A-3). The weaker symmetric-tolerance form would have
+passed with the F-1 defect still in place.
 
 ## Self-review checklist (before merge / PR)
 
