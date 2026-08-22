@@ -82,7 +82,12 @@ This skill states only the few decisions and traps the *code can't show you*.
 5. **Idiom quick-reference** (match the exemplars, don't reinvent):
    - `text-[14px]`, **not** `text-sm` — named sizes bundle a `line-height` and drift.
    - Arbitrary variants for what utilities/plugins don't cover (no plugins — locked stack):
-     `[scrollbar-width:none]`, `[&::-webkit-scrollbar]:hidden`, `[&.premium]:bg-[#…]`.
+     `[&.premium]:bg-[#…]`, `[scrollbar-width:none]` — but **scrollbars are first-party since
+     v4.3**: `scrollbar-none|thin|auto`, `scrollbar-thumb-*`/`scrollbar-track-*`,
+     `scrollbar-gutter-*`. Use those, not the old `[scrollbar-width:none]
+     [&::-webkit-scrollbar]:hidden` pair (retired from `beach-map-canvas.html` at #742).
+     They set `scrollbar-width` only, so they ask rather than guarantee — Safari paints its
+     own bar before 18.2.
    - `[transition:background_0.15s_ease,transform_0.12s_ease]` to keep **per-property**
      durations exact (plain `transition` forces one duration + Tailwind's easing ≠ `ease`).
    - `hover:` already compiles under `@media (hover:hover)` in v4; `motion-reduce:` replaces

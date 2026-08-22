@@ -137,14 +137,21 @@ export class BeachMapCanvas {
   protected readonly vScrollHint = signal(false);
 
   /**
-   * Scrollbar chrome for the pan viewport. A drag-pan surface hides the bar — the drag IS the
-   * affordance, and the hint below the map names it. A surface that opted out of drag-pan has no
-   * pointer gesture left, so it shows a slim themed bar instead: without one, a plain mouse could
-   * only reach off-screen columns through shift+wheel, which nothing on screen advertises.
+   * Scrollbar chrome for both scrollers — the horizontal pan viewport and the vertical wash. A
+   * drag-pan surface asks for no bar on each: the drag IS the affordance, and the hint below the map
+   * names it. A surface that opted out of drag-pan has no pointer gesture left, so both show a slim
+   * themed bar instead: without one, a plain mouse could only reach off-screen tiles through
+   * shift+wheel, which nothing on screen advertises.
    *
-   * <p>No `scrollbar-gutter`: this viewport is `overflow-y: hidden`, so a stable gutter reserves an
-   * inline-end strip for a vertical bar that can never appear — measured at 10px of grid width — and
-   * reserves nothing for the horizontal bar it was meant to stabilise.
+   * <p>Asks, not guarantees: `scrollbar-none` sets only `scrollbar-width`, so an engine without it
+   * (Safari before 18.2) paints its native bar on a drag-pan surface regardless.
+   *
+   * <p>Both axes, not just the pan viewport: the hint fires on either overflow, so a wash that
+   * scrolls behind a hidden bar would have it naming an affordance that surface does not have.
+   *
+   * <p>No `scrollbar-gutter`: the pan viewport is `overflow-y: hidden`, so a stable gutter reserves
+   * an inline-end strip for a vertical bar that can never appear — measured at 10px of grid width —
+   * and reserves nothing for the horizontal bar it was meant to stabilise.
    */
   protected readonly scrollbarChrome = computed(() =>
     this.dragPan()

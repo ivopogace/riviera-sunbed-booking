@@ -509,7 +509,7 @@ test('the paint grid, which cannot be drag-panned, still offers a pointer route 
   await expect(viewport).toHaveCSS('scrollbar-color', 'rgb(8, 90, 110) rgba(0, 0, 0, 0)');
   await expect(viewport).toHaveCSS('scrollbar-gutter', 'auto');
   await expect(page.getByTestId('scroll-hint')).toHaveText(
-    'Scroll, or drag the bar below, to see the whole beach.',
+    'Scroll, or drag the scrollbar, to see the whole beach.',
   );
 
   // The reserved-gutter variant silently narrowed the grid; the tile row must still fit its box.

@@ -420,13 +420,14 @@ describe('BeachMapCanvas (#672)', () => {
     detect();
     // #674 F-3 suppressed this outright; the wording, not the hint, was what named the wrong gesture.
     expect(host.querySelector('[data-testid="scroll-hint"]')?.textContent?.trim()).toBe(
-      'Scroll, or drag the bar below, to see the whole beach.',
+      'Scroll, or drag the scrollbar, to see the whole beach.',
     );
   });
 
-  it('shows the pan hint on vertical-only overflow, in both surfaces’ wording', async () => {
+  it('shows the pan hint on vertical-only overflow, over a wash that has the bar it names', async () => {
     const { host, component, detect, fixture } = render();
-    seedVerticalOverflow(washScroller(host));
+    const wash = washScroller(host);
+    seedVerticalOverflow(wash);
     component.rows.set([...ROWS]);
     detect();
     await fixture.whenStable();
@@ -436,8 +437,11 @@ describe('BeachMapCanvas (#672)', () => {
     component.dragPan.set(false);
     detect();
     expect(host.querySelector('[data-testid="scroll-hint"]')?.textContent?.trim()).toBe(
-      'Scroll, or drag the bar below, to see the whole beach.',
+      'Scroll, or drag the scrollbar, to see the whole beach.',
     );
+    // The wash is the scroller that overflows here, so it is the one that must carry the bar.
+    expect(wash.className).toContain('scrollbar-thin');
+    expect(wash.classList.contains('scrollbar-none')).toBe(false);
   });
 
   it('re-measures the pan overflow when the viewport resizes (#700)', async () => {

@@ -7,7 +7,8 @@
     <!-- The sea→sand wash: aqua at the sea banner fading to warm sand at the promenade, fixed to the viewport of the vertical scroller so "the water is up there" reads at any scroll depth. -->
     <div
       #washScroller
-      class="overflow-y-auto overflow-x-hidden max-h-[532px] scrollbar-none -mx-[18px] px-[18px] -mt-3.5 pt-3.5 pb-3 bg-[linear-gradient(180deg,var(--riv-map-sea)_0%,#e7f5f1_55%,#f6eedb_100%)]"
+      class="overflow-y-auto overflow-x-hidden max-h-[532px] -mx-[18px] px-[18px] -mt-3.5 pt-3.5 pb-3 bg-[linear-gradient(180deg,var(--riv-map-sea)_0%,#e7f5f1_55%,#f6eedb_100%)]"
+      [class]="scrollbarChrome()"
       data-riv-scroller
     >
       <div class="flex items-start gap-2.5" [style.--riv-map-cols]="mapCols()">
@@ -85,7 +86,7 @@
         {{
           dragPan()
             ? 'Drag or swipe to see the whole beach.'
-            : 'Scroll, or drag the bar below, to see the whole beach.'
+            : 'Scroll, or drag the scrollbar, to see the whole beach.'
         }}
       </p>
     }
