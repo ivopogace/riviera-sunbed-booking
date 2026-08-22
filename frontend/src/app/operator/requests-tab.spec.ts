@@ -122,6 +122,40 @@ describe('RequestsTab (#176)', () => {
     expect(announcer.textContent?.trim()).toBe('Requests loaded.');
   });
 
+  it('renders skeleton request cards while the read is in flight (#744)', () => {
+    configure();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const loading = el.querySelector('[data-testid="requests-loading"]')!;
+    expect(loading.querySelectorAll('[data-testid="request-skeleton-card"]').length).toBe(3);
+    // The sentence the skeleton replaces; a mirrored shape says it without a reflow (#744).
+    expect(loading.textContent).not.toContain('Loading requests');
+
+    flushLoad([]);
+
+    expect(el.querySelector('[data-testid="requests-loading"]')).toBeNull();
+    expect(el.querySelector('[data-testid="request-skeleton-card"]')).toBeNull();
+  });
+
+  it('the requests skeleton is decorative and motion-reduce safe (#744)', () => {
+    configure();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const loading = el.querySelector('[data-testid="requests-loading"]')!;
+    expect(loading.getAttribute('aria-hidden')).toBe('true');
+    expect(loading.getAttribute('aria-live')).toBeNull();
+    expect(loading.querySelector('[tabindex]')).toBeNull();
+    expect(loading.hasAttribute('inert')).toBe(true);
+
+    const blocks = loading.querySelectorAll('.animate-pulse');
+    expect(blocks.length).toBeGreaterThan(0);
+    for (const block of blocks) {
+      expect(block.classList.contains('motion-reduce:animate-none')).toBe(true);
+    }
+
+    flushLoad([]);
+  });
+
   function byId(id: string): HTMLElement | null {
     return host.querySelector<HTMLElement>(`[data-testid="${id}"]`);
   }

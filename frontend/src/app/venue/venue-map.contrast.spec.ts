@@ -17,10 +17,12 @@ import {
   PORCELAIN_CARD_GLASS,
   PORCELAIN_CHIP,
   PORCELAIN_HEADER_GLASS,
+  PORCELAIN_PANEL_TRACK,
   PORCELAIN_STOPS,
   RIVIERA_CARD_GLASS,
   RIVIERA_CHIP,
   RIVIERA_HEADER_GLASS,
+  RIVIERA_PANEL_TRACK,
   RIVIERA_STOPS,
   WASH_STOPS,
   WHITE,
@@ -240,6 +242,34 @@ describe('Beach-map theme-independent contrast (issue #136)', () => {
   it('the CTA button ("Try again", "Back to Discover") meets AA over both CTA stops', () => {
     for (const stop of CTA_STOPS) {
       expect(contrastRatio('#ffffff', stop), `over stop ${stop}`).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
+  /**
+   * A skeleton block is aria-hidden decoration, so WCAG sets it no bar. This one is derived
+   * instead: `--riv-card-track` on the light card glass measures 1.26:1, and that is the
+   * placeholder contrast the whole app already ships (Discover, My bookings, the set editor). So
+   * the floor sits just under the app's own norm — low enough to assert nothing new, high enough
+   * to have caught the defect that prompted it: the same card tint on the DARK panel glass, where
+   * it measured 1.02:1 and the loading state was an empty panel.
+   */
+  const SKELETON_VISIBLE = 1.2;
+
+  it('the loading skeleton reads as blocks on both themes, never a blank panel (#744)', () => {
+    // The threshold's derivation is on SKELETON_VISIBLE above.
+    const cases = [
+      { glass: RIVIERA_HEADER_GLASS, track: RIVIERA_PANEL_TRACK, stops: RIVIERA_STOPS },
+      { glass: PORCELAIN_HEADER_GLASS, track: PORCELAIN_PANEL_TRACK, stops: PORCELAIN_STOPS },
+    ];
+    for (const { glass, track, stops } of cases) {
+      for (const stop of stops) {
+        const panel = surfaceOver(glass, stop);
+        const block = composite(track.color, track.alpha, panel);
+        expect(
+          contrastRatio(rgbToHex(block), rgbToHex(panel)),
+          `over stop ${rgbToHex(stop)}`,
+        ).toBeGreaterThanOrEqual(SKELETON_VISIBLE);
+      }
     }
   });
 

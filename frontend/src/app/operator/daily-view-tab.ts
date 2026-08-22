@@ -25,6 +25,8 @@ import {
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { LoadAnnouncer } from '../shared/load-announcer';
+import { MAP_SKELETON_ROWS, MAP_SKELETON_TILES } from '../shared/map-skeleton';
+import { SkeletonBlock } from '../shared/skeleton-block';
 import { StatusChip } from '../shared/status-chip';
 import { formatMoney, formatMoneyRange, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
@@ -122,6 +124,7 @@ interface CheckInNotice {
     LoadAnnouncer,
     BeachMapCanvas,
     BeachMapRowDef,
+    SkeletonBlock,
     StatusChip,
     BusyAction,
     TouchTarget,
@@ -147,6 +150,12 @@ export class DailyViewTab {
   protected readonly loaded = signal(false);
   /** True when the initial venue read failed — shows an error (not a false "no sets" state). */
   protected readonly loadError = signal(false);
+
+  /** The in-flight skeleton's grid, shared with every other beach-map surface (#744). */
+  protected readonly skeletonTiles = MAP_SKELETON_TILES;
+  protected readonly skeletonRows = MAP_SKELETON_ROWS;
+  /** The arrivals placeholder rows — its own constant, so the map's geometry cannot move them. */
+  protected readonly skeletonArrivals = [1, 2, 3, 4] as const;
   /** A transient notice (e.g. a set was just taken by the other channel, or a write failed). */
   protected readonly notice = signal<string | undefined>(undefined);
 

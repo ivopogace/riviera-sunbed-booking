@@ -9,6 +9,7 @@ import { formatBookingDate } from '../shared/booking-date-label';
 import { amountLabelFor, metaFor } from '../shared/booking-status';
 import { CardGlass } from '../shared/card-glass';
 import { LoadAnnouncer } from '../shared/load-announcer';
+import { SkeletonBlock } from '../shared/skeleton-block';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { StatusChip } from '../shared/status-chip';
@@ -167,8 +168,7 @@ function isNotFound(error: unknown): boolean {
 /** The card-glass row chrome (v4 translate utilities animate `translate`, so the transition lists it). */
 const ROW =
   'flex w-full items-center gap-3.5 rounded-[22px] px-[18px] py-4 shadow-[0_10px_30px_rgba(7,42,58,0.22),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[24px] backdrop-saturate-[1.7] [transition:translate_0.15s_ease,box-shadow_0.15s_ease] hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(7,42,58,0.3),inset_0_1px_0_rgba(255,255,255,0.9)] motion-reduce:transition-none motion-reduce:hover:translate-y-0';
-const SKELETON =
-  'skeleton block animate-pulse rounded-[6px] bg-(--riv-card-track) motion-reduce:animate-none';
+const SKELETON = 'skeleton block rounded-[6px] bg-(--riv-card-track)';
 const EMPTY_CARD =
   'rounded-[28px] px-[30px] py-10 text-center shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[1.7]';
 
@@ -187,7 +187,15 @@ const CLS = {
 
 @Component({
   selector: 'app-my-bookings',
-  imports: [RouterLink, CardGlass, LoadAnnouncer, StatusChip, BookingQr, TouchTarget],
+  imports: [
+    RouterLink,
+    CardGlass,
+    LoadAnnouncer,
+    SkeletonBlock,
+    StatusChip,
+    BookingQr,
+    TouchTarget,
+  ],
   template: `
     <section class="mx-auto w-full max-w-[560px] px-5 pt-6 pb-20" aria-labelledby="mb-title">
       <a
@@ -212,8 +220,8 @@ const CLS = {
         <div aria-hidden="true" data-testid="my-bookings-loading">
           <div [class]="cls.rowPlaceholder" appCardGlass>
             <span [class]="cls.rowMain">
-              <span [class]="cls.skeletonLine"></span>
-              <span [class]="cls.skeletonLineShort"></span>
+              <span appSkeletonBlock [class]="cls.skeletonLine"></span>
+              <span appSkeletonBlock [class]="cls.skeletonLineShort"></span>
             </span>
           </div>
         </div>
@@ -321,8 +329,8 @@ const CLS = {
                     data-testid="booking-row-loading"
                   >
                     <span [class]="cls.rowMain">
-                      <span [class]="cls.skeletonLine"></span>
-                      <span [class]="cls.skeletonLineShort"></span>
+                      <span appSkeletonBlock [class]="cls.skeletonLine"></span>
+                      <span appSkeletonBlock [class]="cls.skeletonLineShort"></span>
                     </span>
                   </div>
                 }

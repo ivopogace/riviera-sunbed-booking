@@ -185,6 +185,44 @@ describe('VenueMap', () => {
     expect(announcer.textContent?.trim()).toBe('Beach map loaded.');
   });
 
+  it('renders a skeleton mirroring the loaded map while the read is in flight (#744)', () => {
+    fixture.detectChanges();
+
+    const loading = el().querySelector('[data-testid="map-loading"]')!;
+    expect(loading.querySelector('[data-testid="map-skeleton-header"]')).not.toBeNull();
+    expect(loading.querySelector('[data-testid="map-skeleton-overview"]')).not.toBeNull();
+    expect(loading.querySelectorAll('[data-testid="map-skeleton-tile"]').length).toBeGreaterThan(0);
+    // The sentence the skeleton replaces; a mirrored shape says it without a reflow (#744).
+    expect(loading.textContent).not.toContain('Loading the beach map');
+
+    flushVenue();
+    fixture.detectChanges();
+
+    expect(el().querySelector('[data-testid="map-loading"]')).toBeNull();
+    expect(el().querySelector('[data-testid="map-skeleton-tile"]')).toBeNull();
+  });
+
+  it('the map skeleton is decorative and motion-reduce safe (#744)', () => {
+    fixture.detectChanges();
+
+    const loading = el().querySelector('[data-testid="map-loading"]')!;
+    expect(loading.getAttribute('aria-hidden')).toBe('true');
+    expect(loading.getAttribute('aria-live')).toBeNull();
+    // A focusable node inside aria-hidden is an axe violation, so the skeleton canvas takes none.
+    expect(loading.querySelector('[tabindex]')).toBeNull();
+    // `inert` too: an overflowing scroller is focusable in Chromium with no tabindex at all.
+    expect(loading.hasAttribute('inert')).toBe(true);
+
+    const blocks = loading.querySelectorAll('[appSkeletonBlock], .animate-pulse');
+    expect(blocks.length).toBeGreaterThan(0);
+    for (const block of blocks) {
+      expect(block.classList.contains('animate-pulse')).toBe(true);
+      expect(block.classList.contains('motion-reduce:animate-none')).toBe(true);
+    }
+
+    flushVenue(); // settle the read for the suite's http.verify()
+  });
+
   it('requests the venue from the route id', () => {
     flushVenue();
     expect(fixture.componentInstance).toBeTruthy();

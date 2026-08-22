@@ -41,6 +41,11 @@ export const FIELD_FILL_ALPHA = 0.55;
 /** `--riv-field-border` alpha (a `CARD_INK` tint) over the field fill — the WCAG 1.4.11 boundary. */
 export const FIELD_BORDER_ALPHA = 0.55;
 
+/** `--riv-track-bg` per theme — the placeholder/track tint for the INK-coloured panel glass,
+ *  the counterpart of `--riv-card-track` on the light card glass. */
+export const RIVIERA_PANEL_TRACK = { color: WHITE, alpha: 0.25 };
+export const PORCELAIN_PANEL_TRACK = { color: CARD_INK, alpha: 0.12 };
+
 /** `--riv-chip-bg` per theme (over-glass tint). */
 export const RIVIERA_CHIP = { color: WHITE, alpha: 0.16 };
 export const PORCELAIN_CHIP = { color: CARD_INK, alpha: 0.05 };
