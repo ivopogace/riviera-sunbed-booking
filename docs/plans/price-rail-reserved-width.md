@@ -200,12 +200,13 @@ N/A — no contract change.
 
 **Stage pointer:** `implement`
 
-**Next action:** phase 1 — `venue-map.html` opts both canvases into `capped-phrases`.
+**Next action:** phase 2 — the e2e viewport-stability matrix (AC-3…AC-5), red first against
+`origin/main`'s canvas.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the price rail learns its vocabulary | ✅ | pending |
-| 1 — the tourist map opts in | | |
+| 0 — the price rail learns its vocabulary | ✅ | `301cf7f` |
+| 1 — the tourist map opts in | ✅ | pending |
 | 2 — measured in a real browser | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -227,6 +228,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/shared/beach-map-canvas.html` — the reservation on the price column
 - `frontend/src/app/shared/beach-map-canvas.spec.ts` — AC-1, AC-2
 - `frontend/src/app/venue/venue-map.html` — `priceChips="capped-phrases"` on both canvases
+- `frontend/src/app/venue/venue-map.spec.ts` — the surface-level proof that BOTH canvases carry it
 - `frontend/e2e/loading-skeletons.e2e.ts` — AC-3, AC-4
 - `frontend/e2e/venue-map-pan.e2e.ts` — AC-5
 
@@ -254,10 +256,11 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Modify `frontend/src/app/venue/venue-map.html` · Test
 `frontend/src/app/venue/venue-map.spec.ts`
 
-- [ ] **Step 1–4:** set `priceChips="capped-phrases"` on **both** canvases (skeleton and
+- [x] **Step 1–4:** set `priceChips="capped-phrases"` on **both** canvases (skeleton and
       loaded — a reservation on one alone just reverses the direction of the settle, #749 G-1);
-      run the surface's own spec.
-- [ ] **Step 5–7:** audit, commit, status.
+      the surface's own spec grew the assertion that both carry it (68 passed), and the three
+      operator surfaces' specs re-ran unchanged (126 passed) as AC-2's other half.
+- [x] **Step 5–7:** audit (nothing new — phase 0's population is closed), commit, status.
 
 ## Phase 2 — measured in a real browser
 
