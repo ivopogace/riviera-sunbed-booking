@@ -7,6 +7,7 @@ import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { LoadAnnouncer } from '../shared/load-announcer';
+import { SkeletonBlock } from '../shared/skeleton-block';
 import { formatDeadline, isUrgent, timeLeftLabel } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
@@ -56,7 +57,7 @@ interface RequestRow {
  */
 @Component({
   selector: 'app-requests-tab',
-  imports: [CardGlass, LoadAnnouncer, BusyAction, TouchTarget],
+  imports: [CardGlass, LoadAnnouncer, SkeletonBlock, BusyAction, TouchTarget],
   templateUrl: './requests-tab.html',
 })
 export class RequestsTab {
@@ -81,6 +82,9 @@ export class RequestsTab {
   protected readonly loadError = signal(false);
   /** A transient action notice (accept/decline outcome, or a non-race failure). */
   protected readonly notice = signal<string | undefined>(undefined);
+
+  /** The in-flight skeleton's placeholder cards — a queue long enough to read as a list (#744). */
+  protected readonly skeletonCards = [1, 2, 3] as const;
 
   /** "Now" for the urgency window — refreshed at load, on every reconcile, and on the poll (never an
    *  ambient clock in the template) so the amber chips don't freeze on this long-open surface. */

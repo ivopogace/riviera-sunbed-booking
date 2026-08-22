@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { SkeletonBlock } from '../shared/skeleton-block';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { focusMover } from '../shared/focus-after-render';
 import { formatMoney } from '../shared/money';
@@ -39,7 +40,7 @@ import { PayoutStatement } from './payout-statement';
  */
 @Component({
   selector: 'app-payouts-tab',
-  imports: [CardGlass, LoadAnnouncer, PayoutStatement, BusyAction, TouchTarget],
+  imports: [CardGlass, LoadAnnouncer, SkeletonBlock, PayoutStatement, BusyAction, TouchTarget],
   templateUrl: './payouts-tab.html',
 })
 export class PayoutsTab {
@@ -59,6 +60,9 @@ export class PayoutsTab {
   protected readonly loaded = signal(false);
   /** The load-error message (owner / session / generic), or undefined when the read succeeded. */
   protected readonly loadErrorMsg = signal<string | undefined>(undefined);
+
+  /** The in-flight skeleton's placeholder ledger rows — enough to read as a table (#744). */
+  protected readonly skeletonRows = [1, 2, 3, 4] as const;
 
   /** The washed-out day a weather refund targets (ISO YYYY-MM-DD); defaults to today Europe/Tirane
    *  (invariant #6). The refund is per-DATE (whole-day, invariant #10) — the design's per-row buttons
