@@ -204,12 +204,20 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — 2nd pass fixes (H-1…H-3) pushed; awaiting CI + Sonar`
+**Stage pointer:** `DONE — merged via PR #752`
 
-**Next action:** let CI and Sonar re-run on the fix head, then merge. The 2nd pass found no
-defect in the production change — all three findings were in what the slice *claims*: an
+**Next action:** none.
+
+**Review gate:** run **twice**. The 1st pass found G-1…G-4; the 2nd, after those fixes,
+found H-1…H-3 — none in the production change, all three in what the slice *claims*: an
 unpinned boundary, a ledger row contradicting its own AC, and a fixture not rendering the
 vocabulary its docstring named.
+
+**Docs-freshness (close-out step 5):** **ran** over `origin/main...HEAD` — **0 findings**.
+Nothing is renamed or removed; the only substrate mention of `beach-map-canvas` is
+`riviera-tailwind`'s historical note on #742's scrollbar retirement, which stays true. The
+counting sweep found no doc enumerating the canvas's inputs or stating a fits-whole column
+count, so the second reserved rail falsifies no sentence.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
