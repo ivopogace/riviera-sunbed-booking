@@ -100,14 +100,14 @@ session addendum); the literal `feature/…` branch is deliberately not created.
 | Map-header mode chip renders `v.modeLabel` as a block `<p>` above the title | preserved | same element, same `inline-block … mb-[13px]` |
 | Map-header New chip carries `aria-label="No reviews yet"` + `data-testid="new-chip"` | preserved | both attributes untouched; `discovery-flow.e2e.ts:275` still passes |
 | Both map-header chips are AA via `--riv-chip-bg` composited over the panel glass over each gradient stop, per theme | **changed → simplified** | an opaque fill removes the composite and the theme term; the per-theme proof in `venue-map.contrast.spec.ts` **moves** to `semantic-chip.contrast.spec.ts` (it is not dropped — AC-1 is its stronger successor) |
-| `home.contrast.spec.ts` proves `--riv-accent-ink` on `--riv-mode-chip-glass` over any photo at **AA_NORMAL** | preserved → **repointed** | Discover's own slideshow step chips (`home.html:280,294`) wear exactly that pair; the assertion is byte-identical and keeps the 4.5:1 bar that `photo-slideshow.contrast.spec.ts` only holds at 3:1 — the test is renamed to name its real subject, not deleted |
+| `home.contrast.spec.ts` proves `--riv-accent-ink` on `--riv-mode-chip-glass` over any photo at **AA_NORMAL** | **dropped** | first repointed at Discover's own step chips, then removed outright at the review gate (F-4). Those glyphs are `aria-hidden` decoration, which this file's header already excludes, and `photo-slideshow.contrast.spec.ts` proves the identical pair at the 3:1 bar WCAG 1.4.11 actually asks — worst case 5.51:1, ample headroom. Holding decoration to 4.5:1 invented a constraint the design never owed, so no coverage is lost by dropping it |
 | Amenity / to-water chip rows on both surfaces | preserved | not touched; they are separate elements from all four semantic chips |
 
 ## Risk register
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A contrast proof loses its subject and is silently deleted rather than moved, weakening the a11y net | med | high | the ledger above names both at-risk assertions and their successors; each spec keeps a comment pointing at the new home | claude | closed — `home.contrast.spec.ts` repointed to the step chips at the same AA_NORMAL bar, `venue-map.contrast.spec.ts` carries a moved-to comment |
+| R-1 | A contrast proof loses its subject and is silently deleted rather than moved, weakening the a11y net | med | high | the ledger above names both at-risk assertions and their successors; each spec keeps a comment pointing at the new home | claude | **materialised, then closed.** The mitigation worked for `venue-map.contrast.spec.ts` (moved, with a pointer) but mis-fired on `home.contrast.spec.ts`: repointing preserved the *assertion* while losing the question of whether its new subject deserved that bar. The review gate caught it (F-4); the assertion is now dropped with the reasoning recorded in place, and the coverage it claimed is verified to live in `photo-slideshow.contrast.spec.ts` at 5.51:1 |
 | R-2 | Adding display/padding utilities in the directive shifts a chip's box (AC-3/AC-6 regression) | med | med | the directive carries **no** `display`, `padding` or `text-*`; all four call sites already have a 1px border, so swapping only its colour keeps widths identical | claude | closed — pinned by `semantic-chip.spec.ts` "carries no geometry" |
 | R-3 | The saturated accent pill reads as a **button** and invites a tap that does nothing | low | med | no shadow, no hover/`cursor` change, `rounded-full` at chip scale; the CTA is a large gradient button — a different object at a different size. Revisit if the e2e a11y run or a later critique flags affordance | claude | open → F-5; raised in the PR body for the maintainer, who sees it rendered. Not closable from a diff |
 | R-4 | On the dark map-header glass a dark fill reads as *receding* next to the pale amenity pills, inverting the hierarchy | med | med | the pill takes a **lighter** accent rim (`#2f7d92`) so its shape reads as a solid object on the dark panel; AC-2 states the family separation as a ratio against both descriptive fills | claude | closed — 6.4:1 vs the neutral fill, 6.0:1 vs the to-water fill |
@@ -171,7 +171,16 @@ views; only their presentation changes.
 
 **Stage pointer:** `merge close-out` — merged via PR #755
 
-**Next action:** none — the slice is done. Review gate run at high effort (4 findings, all fixed; 1 judgement call raised to the maintainer), CI and Sonar green, merged via PR #755.
+**Next action:** none — the slice is done.
+
+**Gate record.** The review gate ran **twice** at high effort, both rounds via rung 1 of the
+invocation ladder: once on the slice (4 findings, F-1..F-4, all fixed) and once on the fix round
+itself, per the re-entry rule (6 findings, G-1..G-6 — five stale or self-contradicting records left
+by the first fix round, plus the overclaim in `chip-fills.ts`; all fixed). That second round is the
+argument for re-reviewing fixes: every one of its findings was created *by* the first round, and
+none of them existed when the slice was reviewed. Merging via PR #755 was gated on CI + CodeQL +
+SonarCloud green **on this head** and the Sonar reported-issue list being empty — verified before
+the merge, not assumed from the first push's green.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -191,7 +200,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-2 | review gate | `testing/glass-tokens.ts:73` still named the Discover mode chip as a `MODE_CHIP_GLASS` consumer — the `styles.scss` twin was corrected, this mirror (the one the specs import) was not | fixed |
 | F-3 | review gate | `semantic-chip.contrast.spec.ts`'s `DESCRIPTIVE_FILLS` was a hand-copy, so a third amenity variant would silently escape the AC-2 family check the comment promised it could not | fixed — extracted `testing/chip-fills.ts`, read by both chip contrast specs, so one list feeds both proofs |
 | F-4 | review gate | the repointed `home.contrast.spec.ts` assertion held an `aria-hidden` decorative glyph to 4.5:1, duplicating `photo-slideshow.contrast.spec.ts` at the correct 3:1 bar and contradicting the file's own exclusions | fixed — assertion removed (not repointed); the comment records that its subject moved and why repointing was the wrong repair |
-| F-5 | review gate | R-3 (does the accent pill read as a tappable button?) is a rendered-page judgement the diff cannot settle | open — raised in the PR body for the maintainer; redirecting the accent is one line in the directive, no call site changes |
+| F-5 | review gate (round 1) | R-3 (does the accent pill read as a tappable button?) is a rendered-page judgement the diff cannot settle | deferred → **issue #756**, which records both invariants any replacement fill must keep |
+| G-1 | review gate (round 2) | the close-out declared the PR merged and its gates green while #755 was open and its checks still running | fixed — the gate record above states what was actually verified and when |
+| G-2 | review gate (round 2) | four places still said the `home.contrast.spec.ts` proof was "repointed", contradicting F-4's deletion in the same commit; R-1 was marked closed by the very outcome it predicted | fixed — ledger, risk row, file structure and phase step all corrected; R-1 now reads *materialised, then closed* |
+| G-3 | review gate (round 2) | `chip-fills.ts` claimed to stop a third amenity variant escaping, but the list is itself a hand-copy of the directive — the F-3 gap moved one level rather than closing | fixed — `amenity-chip.spec.ts` now asserts the directive emits exactly the shared list's hexes, so the mirror is tied to the code; the doc claims only what that buys |
+| G-4 | review gate (round 2) | `styles.scss`'s new comment said "the two specs that mirror it" — the same commit had just reduced that to one (a counting-sweep miss by the docs-freshness run in that very commit) | fixed |
+| G-5 | review gate (round 2) | `home.contrast.spec.ts`'s `WORST_PHOTOS` explainer still justified the pure-black stop by "the white chip glass under dark text", deleted three lines below | fixed |
+| G-6 | review gate (round 2) | F-5/R-3 left `open` with no issue number while the doc ticked "no stale open rows" | fixed — issue #756 |
 
 ---
 
@@ -204,7 +219,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/pages/home/home.ts` — import the directive
 - `frontend/src/app/pages/home/home.html` — Discover mode chip + New chip
 - `frontend/src/app/pages/home/home.spec.ts` — assert the marker on both Discover chips
-- `frontend/src/app/pages/home/home.contrast.spec.ts` — repoint the `MODE_CHIP_GLASS` assertion to Discover's step chips
+- `frontend/src/app/pages/home/home.contrast.spec.ts` — drop the `MODE_CHIP_GLASS` assertion (F-4) and its now-stale `WORST_PHOTOS` explainer
 - `frontend/src/app/venue/venue-map.ts` — import the directive
 - `frontend/src/app/venue/venue-map.html` — map-header mode chip + New chip
 - `frontend/src/app/venue/venue-map.spec.ts` — assert the marker on both header chips
@@ -213,6 +228,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/discovery-flow.e2e.ts` — computed-style no-drift pin across both surfaces
 - `frontend/src/testing/chip-fills.ts` — the one test-side mirror of both chip families' recipes (F-3)
 - `frontend/src/app/shared/amenities.contrast.spec.ts` — reads the descriptive family from that mirror (F-3)
+- `frontend/src/app/shared/amenity-chip.spec.ts` — ties the mirror to what the directive renders, and pins the variant count (G-3)
 - `frontend/src/testing/glass-tokens.ts` — correct `MODE_CHIP_GLASS`'s consumer comment (F-2)
 - `docs/design/riviera-sunbeds-liquid-glass-v3.dc.html` — `as-built diverges` pointers on the two mode-chip lines (F-1)
 
@@ -240,7 +256,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **Step 1:** Assert the marker on both Discover chips (red).
 - [x] **Step 2:** Apply `appSemanticChip`, drop the replaced colour/glass/blur/radius/border
       utilities, keep every geometry class.
-- [x] **Step 3:** Repoint the `MODE_CHIP_GLASS` assertion to Discover's step chips.
+- [x] **Step 3:** Repoint the `MODE_CHIP_GLASS` assertion to Discover's step chips — **superseded by F-4**, which dropped it instead.
 - [x] **Step 4:** the Discover specs → PASS. Commit + status.
 
 ## Phase 2 — Apply on the beach-map header, move the displaced proof

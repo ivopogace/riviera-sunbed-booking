@@ -96,7 +96,8 @@
       Named for the Discover mode chip, which no longer wears it: #705 gave the mode chip an
       opaque fill (shared/semantic-chip.ts), which needs no backing at all. The token stays for
       the slideshow step chips on both hosts, which is now its whole population — rename it only
-      together with those call sites and the two specs that mirror it. */
+      together with those call sites and the one spec that still mirrors it,
+      shared/photo-slideshow.contrast.spec.ts. */
   --riv-mode-chip-glass: rgba(255, 255, 255, 0.85);
 }
 

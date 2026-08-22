@@ -8,8 +8,14 @@
  * fill; `shared/semantic-chip.contrast.spec.ts` proves the semantic fill is a different family
  * from EVERY descriptive one. With the descriptive list hand-copied into the second spec, a third
  * amenity variant would be added to the first and silently escape the second — which is precisely
- * the check the second spec exists to make. One list, imported twice, is what makes the promise
- * real rather than aspirational (review finding on PR #755).
+ * the check the second spec exists to make.
+ *
+ * <p>Be precise about what one shared list buys, because the first attempt at this fix
+ * overclaimed. A list is still only a list: on its own it moves the hand-copy one level up rather
+ * than removing it. What ties it to the code is `shared/amenity-chip.spec.ts`, which asserts the
+ * directive RENDERS exactly these hexes and that the list has an entry per variant — so a value
+ * that drifts in either place fails there, loudly, instead of quietly weakening a proof two files
+ * away. The list is the single source; that spec is the thing that makes it true.
  */
 
 /** A chip recipe: the ink, and the opaque fill it sits on. Values mirror the directives' host classes. */
