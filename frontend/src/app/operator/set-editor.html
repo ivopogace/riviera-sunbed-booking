@@ -260,7 +260,7 @@
                   [title]="cell.label"
                   (click)="onCell(cell.gridX, cell.gridY, cell.setId)"
                   data-testid="set-cell"
-                  class="h-full min-w-0 rounded-[8px] border [transition:scale_0.1s_ease] hover:scale-[1.04]"
+                  class="h-full min-w-0 rounded-[8px] border [transition:scale_0.1s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100"
                   [class.outline]="cell.selected"
                   [class.outline-2]="cell.selected"
                   [class.outline-offset-2]="cell.selected"

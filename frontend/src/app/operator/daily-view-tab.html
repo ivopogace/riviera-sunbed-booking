@@ -94,7 +94,7 @@
                   [attr.aria-label]="tileLabel(set)"
                   [disabled]="isPending(set)"
                   (click)="onTile(set)"
-                  class="flex h-full w-full items-center justify-center gap-1 rounded-[6px] border text-[10.5px] font-semibold [transition:scale_0.1s_ease] hover:scale-[1.04] disabled:opacity-60 motion-reduce:transition-none"
+                  class="flex h-full w-full items-center justify-center gap-1 rounded-[6px] border text-[10.5px] font-semibold [transition:scale_0.1s_ease] hover:scale-[1.04] disabled:opacity-60 motion-reduce:transition-none motion-reduce:hover:scale-100"
                   [class]="tileClass(set)"
                 >
                   @if (stateGlyph(set); as glyph) {
