@@ -30,7 +30,9 @@ below, and confirmed no Flyway number is claimed) · `riviera-plan-doc` (this te
 forced the module-ownership table that fixed where `free = total − taken` lives) · `tdd`
 (each phase red-first: SPI IT → catalog IT → controller IT) · `riviera-review-overlay`
 (review gate — due at ready-for-review; this line is updated when it runs) ·
-`riviera-docs-freshness` (due at close-out over the slice's merge range) · `riviera-modulith` (SPI-not-`api/` for the fourth method;
+`riviera-docs-freshness` (**ran** over `origin/main..HEAD` — 5 findings, all patched: three
+"both/two reads" counts falsified by the third tourist read, the `availability` Job's
+spi-answers enumeration, and the `venue` Job's missing calendar entry) · `riviera-modulith` (SPI-not-`api/` for the fourth method;
 confirmed via `VenueApiRoleSplitTests` that evolving the tourist reads on `VenueCatalog`
 is sanctioned) · `riviera-java-conventions` (typed-outcome-free `Optional` port return,
 text-block SQL, package-private adapter, edge validation via
@@ -224,9 +226,9 @@ touched. `MoneyView` does not appear on the new surface.
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — SPI range read (`takenCountsBetween` + JDBC impl) | ✅ | `842ebc2` |
-| 1 — `VenueCatalog.availabilityBetween` + `DailyAvailability` | ✅ | see commit below |
-| 2 — public endpoint + window validation | ✅ | see commit below |
-| 3 — close-out (docs freshness, plan finalization) | | |
+| 1 — `VenueCatalog.availabilityBetween` + `DailyAvailability` | ✅ | `b1b8f4d` |
+| 2 — public endpoint + window validation | ✅ | `2234ca5` |
+| 3 — close-out (docs freshness, plan finalization) | ⏳ | docs-freshness patched; plan finalized at the merge |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -237,6 +239,18 @@ Skill-routing gate for what the fix touches *before* editing).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | *(none yet — the review and Sonar gates have not run)* | | | |
+
+**Docs-freshness run** (close-out step 5, run pre-merge as the cheapest moment):
+`origin/main..HEAD`, **5 findings, all patched in `<this phase's commit>`** —
+`venue/api/VenueCatalog.java:21` "Both reads fence" → all three;
+`venue/adapter/in/VenueReadController.java:26` "Two reads:" → three;
+`RESPONSIBILITIES.md` §`venue` standing rule "both `VenueCatalog` reads" → all three;
+`RESPONSIBILITIES.md` §`availability` Job, whose spi-answers enumeration listed two → three;
+and `RESPONSIBILITIES.md` §`venue` Job, which now records the calendar read and where its
+arithmetic lives. The post-fix re-run is clean: the three remaining "both reads" hits are
+about photo views, `VenuePhotos`, and `payout`'s `operator::api` reads, all still true.
+`CONTEXT.md` needed nothing — the calendar is a new read, not a new domain concept, and its
+**Availability** entry stays accurate.
 
 ---
 

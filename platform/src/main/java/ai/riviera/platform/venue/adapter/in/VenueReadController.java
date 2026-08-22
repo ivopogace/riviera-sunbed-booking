@@ -23,7 +23,7 @@ import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 
 /**
  * Public tourist read endpoints for venues (invariant #11 — depends only on the {@code venue.api}
- * port). Two reads: the discovery <strong>list</strong> ({@code GET /api/venues?beach=&region=&date=})
+ * port). Three reads: the discovery <strong>list</strong> ({@code GET /api/venues?beach=&region=&date=})
  * and a single venue + its beach <strong>map</strong> ({@code GET /api/venues/{id}},
  * date-aware — 200 with the map, or 404 for an unknown id).
  *

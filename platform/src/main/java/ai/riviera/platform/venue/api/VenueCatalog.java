@@ -18,9 +18,10 @@ import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
  * {@link SetBookingFacts}, rate configuration on {@link VenueRates} — do not add
  * sibling-facing methods here ({@code VenueApiRoleSplitTests} enforces this).
  *
- * <p>Both reads fence tourist visibility: a venue whose owning operator is not {@code ACTIVE}
- * is absent from the list and empty on the map read, indistinguishable from a venue that does
- * not exist (the rule's one home: {@code operator.api.VenueVisibility}).
+ * <p>All three reads fence tourist visibility: a venue whose owning operator is not
+ * {@code ACTIVE} is absent from the list and empty on the map and calendar reads,
+ * indistinguishable from a venue that does not exist (the rule's one home:
+ * {@code operator.api.VenueVisibility}).
  */
 public interface VenueCatalog {
 
