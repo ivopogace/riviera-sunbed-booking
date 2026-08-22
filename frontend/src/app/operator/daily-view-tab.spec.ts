@@ -127,6 +127,44 @@ describe('DailyViewTab (#175)', () => {
     expect(announcer.textContent?.trim()).toBe('Daily view loaded.');
   });
 
+  it('renders a skeleton mirroring the loaded day while the read is in flight (#744)', () => {
+    configure();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const loading = el.querySelector('[data-testid="daily-loading"]')!;
+    expect(loading.querySelector('[data-testid="daily-skeleton-head"]')).not.toBeNull();
+    expect(loading.querySelectorAll('[data-testid="daily-skeleton-tile"]').length).toBeGreaterThan(
+      0,
+    );
+    expect(loading.querySelector('[data-testid="daily-skeleton-arrivals"]')).not.toBeNull();
+    // The sentence the skeleton replaces; a mirrored shape says it without a reflow (#744).
+    expect(loading.textContent).not.toContain('Loading the daily view');
+
+    flushLoad(SEED, BOOKINGS, STATES);
+
+    expect(el.querySelector('[data-testid="daily-loading"]')).toBeNull();
+    expect(el.querySelector('[data-testid="daily-skeleton-tile"]')).toBeNull();
+  });
+
+  it('the daily skeleton is decorative and motion-reduce safe (#744)', () => {
+    configure();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const loading = el.querySelector('[data-testid="daily-loading"]')!;
+    expect(loading.getAttribute('aria-hidden')).toBe('true');
+    expect(loading.getAttribute('aria-live')).toBeNull();
+    // The loaded grid is a tab stop; a focusable node inside aria-hidden is an axe violation.
+    expect(loading.querySelector('[tabindex]')).toBeNull();
+
+    const blocks = loading.querySelectorAll('.animate-pulse');
+    expect(blocks.length).toBeGreaterThan(0);
+    for (const block of blocks) {
+      expect(block.classList.contains('motion-reduce:animate-none')).toBe(true);
+    }
+
+    flushLoad(SEED, BOOKINGS, STATES);
+  });
+
   function byId(id: string): HTMLElement {
     return host.querySelector<HTMLElement>(`[data-testid="${id}"]`)!;
   }

@@ -27,6 +27,12 @@ describe('DailyViewTab a11y (#175)', () => {
     bookings: { setId: number; code: string }[],
     states: { setId: number; state: string }[] = [],
   ): void {
+    mount();
+    settle(sets, bookings, states);
+  }
+
+  /** Mount the tab and settle only the session read, so the tab is left mid-load. */
+  function mount(): void {
     TestBed.configureTestingModule({
       imports: [DailyViewTab],
       providers: [
@@ -52,6 +58,14 @@ describe('DailyViewTab a11y (#175)', () => {
     http
       .expectOne((r) => r.url.includes('/api/auth/me'))
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+  }
+
+  /** Flush the tab's three load GETs, moving it from skeleton to content. */
+  function settle(
+    sets: SetView[],
+    bookings: { setId: number; code: string }[],
+    states: { setId: number; state: string }[],
+  ): void {
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/bookings'))
       .flush(bookings);
@@ -100,6 +114,18 @@ describe('DailyViewTab a11y (#175)', () => {
   it('has no axe violations on a venue with no sets (#718)', async () => {
     render([], []);
     await expectNoAxeViolations(host());
+  });
+
+  it('has no axe violations while the read is in flight — the skeleton hides no tab stop (#744)', async () => {
+    mount();
+
+    const loading = host().querySelector('[data-testid="daily-loading"]')!;
+    expect(loading.querySelectorAll('[data-testid="daily-skeleton-tile"]').length).toBeGreaterThan(
+      0,
+    );
+    await expectNoAxeViolations(host());
+
+    settle([seat(1, 'A', 1, 'STANDARD', 'WALK_IN', 'FREE')], [], []);
   });
 });
 

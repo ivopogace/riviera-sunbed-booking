@@ -182,15 +182,15 @@ N/A — no contract change. No request, response shape, or endpoint is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** red specs for the tourist map's and the Daily view's skeleton branches.
+**Next action:** red specs for the Requests and Payouts skeleton branches.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the shared skeleton primitives | ✅ | |
-| 1 — the two grid surfaces | ⏳ | |
-| 2 — the two list surfaces | | |
+| 1 — the two grid surfaces | ✅ | |
+| 2 — the two list surfaces | ⏳ | |
 | 3 — mocked e2e for the grid surfaces | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

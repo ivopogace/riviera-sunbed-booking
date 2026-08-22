@@ -122,10 +122,14 @@ describe('VenueMap accessibility (axe)', () => {
     await expectNoAxeViolations(host());
   });
 
-  it('has no violations in the loading state', async () => {
-    const req = expectVenueRequest(); // pending → component shows the loading message
+  it('has no violations in the loading state — the skeleton hides no focusable node (#744)', async () => {
+    const req = expectVenueRequest(); // pending → the component shows its skeleton
     await fixtureRef.whenStable();
+
+    const loading = host().querySelector('[data-testid="map-loading"]')!;
+    expect(loading.querySelectorAll('[data-testid="map-skeleton-tile"]').length).toBeGreaterThan(0);
     await expectNoAxeViolations(host());
+
     req.flush(fixture()); // settle the request so httpMock.verify() is clean
   });
 

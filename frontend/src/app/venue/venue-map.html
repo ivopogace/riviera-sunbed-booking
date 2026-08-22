@@ -266,15 +266,65 @@
       <app-retry-button testId="map-retry" (retry)="retry()" />
     </div>
   } @else {
-    <!-- Visible copy only; the announcer below owns the announcement (#741). -->
-    <p
-      class="mt-6 px-5 py-12 rounded-[26px] text-center text-[15px] text-(--riv-ink-soft)"
-      appPanelGlass
-      aria-hidden="true"
-      data-testid="map-loading"
-    >
-      Loading the beach map…
-    </p>
+    <!-- Mirrors the loaded article so nothing jumps when it lands; the announcer below owns the words (#744). -->
+    <div aria-hidden="true" data-testid="map-loading">
+      <div
+        class="map-head px-[22px] py-5 rounded-[26px] shadow-[0_14px_44px_rgba(7,42,58,0.26),inset_0_1px_0_rgba(255,255,255,0.25)]"
+        appPanelGlass
+        data-testid="map-skeleton-header"
+      >
+        <span appSkeletonBlock class="mb-[13px] block h-[25px] w-[124px] rounded-full"></span>
+        <span
+          appSkeletonBlock
+          class="mb-[7px] block h-[clamp(33px,5.1vw,49px)] w-4/5 rounded-[10px]"
+        ></span>
+        <span appSkeletonBlock class="mb-[5px] block h-[22px] w-3/5 rounded-[6px]"></span>
+        <span appSkeletonBlock class="block h-[21px] w-2/5 rounded-[6px]"></span>
+        <span appSkeletonBlock class="mt-[9px] block h-[22px] w-full rounded-[6px]"></span>
+        <span class="mt-[14px] flex flex-wrap gap-[7px]">
+          @for (chip of skeletonTiles; track chip) {
+            <span appSkeletonBlock class="block h-[26px] w-[84px] rounded-full"></span>
+          }
+        </span>
+        <span class="mt-4 flex max-w-[210px] flex-col gap-[7px]">
+          <span appSkeletonBlock class="block h-[17px] w-[52px] rounded-[6px]"></span>
+          <span appSkeletonBlock class="block h-11 w-full rounded-[14px]"></span>
+        </span>
+        <span appSkeletonBlock class="mt-2 block h-[18px] w-[62%] rounded-[6px]"></span>
+      </div>
+
+      <div
+        class="mt-5 backdrop-blur-[26px] backdrop-saturate-[1.7] rounded-[28px] shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)] p-4"
+        appCardGlass
+        data-testid="map-skeleton-overview"
+      >
+        <div class="pt-1 px-0.5 pb-[14px]">
+          <span appSkeletonBlock class="mb-2 block h-[28px] w-3/5 rounded-[6px]"></span>
+          <span appSkeletonBlock class="block h-2 w-full rounded-full"></span>
+        </div>
+        <span appSkeletonBlock class="block h-[150px] w-full rounded-[20px]"></span>
+      </div>
+
+      <!-- The same canvas, and the same 1100px breakout, so the frame does not move when the map lands. -->
+      <app-beach-map-canvas
+        class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
+        viewportTestid="map-skeleton-grid"
+      >
+        <ng-template [appBeachMapRow]="skeletonRows">
+          <div
+            class="grid h-full grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
+          >
+            @for (tile of skeletonTiles; track tile) {
+              <span
+                appSkeletonBlock
+                class="h-full min-w-0 rounded-[10px]"
+                data-testid="map-skeleton-tile"
+              ></span>
+            }
+          </div>
+        </ng-template>
+      </app-beach-map-canvas>
+    </div>
   }
 
   <!-- Outside the @if on purpose: a live region must outlive the branch it describes (#741). -->
