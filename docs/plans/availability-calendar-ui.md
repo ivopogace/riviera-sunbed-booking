@@ -270,15 +270,15 @@ a grid of buttons, not a field. Deviation from the `@angular/aria` recommendatio
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** add `DailyAvailability` to `shared/venue-views.ts` and the typed
-`VenueService.availabilityCalendar` read, test-first.
+**Next action:** build `venue/day-availability.ts` — the tint states, class record and
+accessible-name builder — test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Month arithmetic in `shared/booking-date.ts` | ✅ | see phase-0 commit |
-| 1 — `DailyAvailability` + `VenueService.availabilityCalendar` | | |
+| 1 — `DailyAvailability` + `VenueService.availabilityCalendar` | ✅ | see phase-1 commit |
 | 2 — Day-availability vocabulary (tints, counts, accessible names) | | |
 | 3 — The calendar component: grid, month nav, fetch, degradation | | |
 | 4 — Keyboard, roving tabindex, focus trap and restore | | |

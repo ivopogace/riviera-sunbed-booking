@@ -86,6 +86,21 @@ export interface AvailabilitySummary {
 }
 
 /**
+ * One day of a venue's availability calendar (`GET /api/venues/{id}/availability-calendar`,
+ * mirrors the backend `DailyAvailabilityView`): the civil day as an ISO `YYYY-MM-DD` string in
+ * `Europe/Tirane` (invariant #6), and how many of the venue's sets are free on it.
+ *
+ * <p>`total` spans **both** pools, so the pair is a "how busy is this day" signal and not a count
+ * of online-bookable sets. It is a **snapshot, never a hold** — a day showing free capacity can be
+ * full by the time a set is claimed, and only the claim decides (invariant #2).
+ */
+export interface DailyAvailability {
+  readonly date: string;
+  readonly free: number;
+  readonly total: number;
+}
+
+/**
  * Typed view of the discovery list API (`GET /api/venues`). Mirrors the backend
  * `VenueSummaryView` exactly — money as integer minor units + currency (invariant #5), rating as
  * tenths (no float on the wire). `fromPrice` is `null` for a venue with no sets.
