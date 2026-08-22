@@ -488,3 +488,48 @@ test('a stale-tab save is rejected 409, keeps the painted grid, and Reload recov
   await page.getByTestId('layout-save').click();
   await expect(page.getByTestId('layout-saved')).toBeVisible();
 });
+
+test('the paint grid, which cannot be drag-panned, still offers a pointer route to its off-screen columns', async ({
+  page,
+}) => {
+  await mockEditor(page);
+  await page.goto('/operator/1');
+  await signIn(page);
+
+  // 20 columns overflow the console viewport: over half the layout starts off-screen.
+  await page.getByTestId('layout-gen-rows').fill('2');
+  await page.getByTestId('layout-gen-cols').fill('20');
+  await page.getByTestId('layout-generate').click();
+  await expect(page.getByTestId('layout-cell')).toHaveCount(40);
+  const viewport = page.getByTestId('layout-grid');
+  await expect.poll(() => viewport.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+
+  // Drag pans nothing here (the gesture paints), so the scrollbar is the affordance that remains.
+  await expect(viewport).toHaveCSS('scrollbar-width', 'thin');
+  await expect(viewport).toHaveCSS('scrollbar-color', 'rgb(8, 90, 110) rgba(0, 0, 0, 0)');
+  await expect(viewport).toHaveCSS('scrollbar-gutter', 'auto');
+  await expect(page.getByTestId('scroll-hint')).toHaveText(
+    'Scroll, or drag the scrollbar, to see the whole beach.',
+  );
+
+  // The reserved-gutter variant silently narrowed the grid; the tile row must still fit its box.
+  expect(
+    await viewport.evaluate((el) => {
+      const row = el.querySelector('[data-map-row]')!;
+      return row.getBoundingClientRect().bottom <= el.getBoundingClientRect().bottom;
+    }),
+  ).toBe(true);
+});
+
+test('a drag-pannable map keeps its hidden scrollbar and its own hint wording', async ({
+  page,
+}) => {
+  await mockEditor(page, false, SEEDED_SETS);
+  await page.goto('/operator/1');
+  await signIn(page);
+  await page.getByTestId('layout-mode-sets').click();
+  const viewport = page.getByTestId('set-grid');
+  await expect(viewport).toBeVisible();
+  await expect(viewport).toHaveCSS('scrollbar-width', 'none');
+  await expect(viewport).toHaveCSS('cursor', 'grab');
+});
