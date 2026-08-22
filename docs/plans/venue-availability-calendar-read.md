@@ -287,6 +287,12 @@ about photo views, `VenuePhotos`, and `payout`'s `operator::api` reads, all stil
 - `platform/src/test/java/ai/riviera/platform/VenueAvailabilityCalendarControllerTest.java` — new: AC-3, AC-4, AC-6 (web slice, root package like every other web-slice test)
 - `docs/plans/venue-availability-calendar-read.md` — this plan
 - `RESPONSIBILITIES.md` — the `venue`/`availability` contract lines the slice changes
+- `.claude/skills/riviera-sdlc/references/pr-gates.md` — **not slice code.** A tooling-doc
+  correction made at the maintainer's request mid-slice: the §1 `gh` substitution table was
+  wrong about `gh pr view` (field-dependent, not blocked outright), missed `gh pr checks`,
+  and did not record that job logs fail at the agent proxy rather than the GitHub gateway.
+  All three were established by probe during this slice's CI rounds. Separable from #760 if
+  a reviewer would rather it landed on its own.
 
 ---
 

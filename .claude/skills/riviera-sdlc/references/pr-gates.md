@@ -67,12 +67,24 @@ restating it.
    > pinned set of PR-review GraphQL operations, so some of the plugin workflow's `gh`
    > calls need their REST equivalent (the proxy's 403 message says exactly this):
    > `gh pr diff N` and `gh api repos/{owner}/{repo}/...` **work**;
-   > `gh pr view` / `gh pr list` / `gh search` **403** → use
-   > `gh api repos/O/R/pulls/N`, `gh api "repos/O/R/pulls?state=open"`, and
+   > `gh pr list` / `gh pr checks` / `gh search` **403** → use
+   > `gh api "repos/O/R/pulls?state=open"`, `gh api repos/O/R/commits/{sha}/check-runs`, and
    > `gh api -X GET search/issues -f q=...` (the `-X GET` is load-bearing — a bare `-f`
    > flips `gh api` to POST); post the final review comment with
    > `gh api -X POST repos/O/R/issues/N/comments -f body='...'` (verified served). The
    > GitHub MCP tools remain the substitute if `gh` is missing.
+   >
+   > **`gh pr view` is field-dependent, not simply blocked** (re-probed 2026-08-22):
+   > `gh pr view N --json number,draft,…` is served, while `--json comments` 403s — the pin
+   > is per GraphQL *query*, so judge it by the field set you ask for, not by the
+   > subcommand. `gh api repos/O/R/pulls/N` sidesteps the question entirely.
+   >
+   > **Job logs are the one REST call that still fails, and not at the gateway:**
+   > `gh api repos/O/R/actions/jobs/{id}/logs` answers a redirect to
+   > `productionresultssa19.blob.core.windows.net`, which the **agent proxy** denies
+   > (`connect_rejected`, visible in `curl -sS "$HTTPS_PROXY/__agentproxy/status"`). Read a
+   > failed job's log with the GitHub MCP `get_job_logs` (`return_content: true` plus a
+   > `tail_lines`), and grep the saved file rather than pulling it all into context.
    >
    > **Fallback, only under the ladder's rung-3 conditions: `/review <PR>`** — a plain skill
    > that runs inline against the same banks. It is weaker than
