@@ -571,15 +571,13 @@ for (const [prices, venue] of [
 
       const rail = await priceRailBeside(page, 'map-pan');
       const after = await rightEdgeOf(page, 'map-pan');
-      // The reservation itself, because the arithmetic below cannot see it on a narrow-chip
-      // venue: there the rail measures 92 either way, and `allowed` derives from the rail.
+      // The reservation itself: on a narrow-chip venue the arithmetic below reads only 0 == 0.
       expect(
         rail,
         `at ${prices}, ${size} the loaded rail is at least the reservation`,
       ).toBeGreaterThan(PRICE_RAIL_RESERVE_PX - 1);
 
-      // Signed, and an equality rather than a ceiling: a ceiling over an unsigned movement
-      // passes both when the measurement reads zero and when the viewport WIDENS on load.
+      // Signed, and an equality: an unsigned ceiling passes a zero reading and a widening alike.
       const narrowed = before - after;
       const allowed = Math.max(0, rail - PRICE_RAIL_RESERVE_PX);
       expect(
