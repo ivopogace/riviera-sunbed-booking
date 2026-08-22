@@ -21,6 +21,7 @@ import {
   MAX_ROWS,
 } from './beach-cell';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
+import { MAP_SKELETON_ROWS, MAP_SKELETON_TILES } from '../shared/map-skeleton';
 import { SetWriteErrorCode, SetWriteRequest } from './operator-console.model';
 import { OperatorConsoleService, setWriteErrorOf } from './operator-console.service';
 
@@ -318,23 +319,9 @@ export class SetEditor {
     return cell === undefined ? '' : `Row ${gridRowLabel(cell.gridY - 1)} · position ${cell.gridX}`;
   });
 
-  /** One skeleton row's placeholder tiles; the count also drives each row's `tileCount`. */
-  protected readonly skeletonTiles = [1, 2, 3, 4, 5, 6] as const;
-
-  /**
-   * The in-flight skeleton's geometry, on the canvas's own row contract — the bulk generator's 4 × 6
-   * default, so the shape a venue usually lands with is already on screen. It renders through
-   * {@link BeachMapCanvas} rather than beside it, because the tile size is the canvas's own
-   * `--riv-tile` and a copy of that literal would drift.
-   */
-  protected readonly skeletonRows: readonly BeachMapCanvasRow[] = ['A', 'B', 'C', 'D'].map(
-    (code) => ({
-      code,
-      priceLabel: null,
-      zoneStart: true,
-      tileCount: this.skeletonTiles.length,
-    }),
-  );
+  /** The in-flight skeleton's geometry, shared with every other beach-map surface (#744). */
+  protected readonly skeletonTiles = MAP_SKELETON_TILES;
+  protected readonly skeletonRows = MAP_SKELETON_ROWS;
 
   protected readonly tiers: readonly { key: Tier; label: string }[] = [
     { key: 'PREMIUM', label: 'Front row · premium' },
