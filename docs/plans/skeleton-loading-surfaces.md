@@ -52,35 +52,35 @@ standing in for `feature/skeleton-loading-surfaces` (`riviera-sdlc` § Remote/cl
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the beach-map read is in flight, when the tourist map renders, then
+- [x] **AC-1:** Given the beach-map read is in flight, when the tourist map renders, then
       it shows a skeleton header panel, overview card and `BeachMapCanvas` tile grid — and
       no `Loading the beach map…` sentence. *Pinned by:* `venue-map.spec.ts` › "renders a
       skeleton mirroring the loaded map while the read is in flight (#744)".
-- [ ] **AC-2:** Given the Daily-view read is in flight, when the tab renders, then it shows
+- [x] **AC-2:** Given the Daily-view read is in flight, when the tab renders, then it shows
       a skeleton date/summary card, `BeachMapCanvas` tile grid and arrivals card.
       *Pinned by:* `daily-view-tab.spec.ts` › "renders a skeleton mirroring the loaded day
       while the read is in flight (#744)".
-- [ ] **AC-3:** Given the Requests read is in flight, when the tab renders, then it shows
+- [x] **AC-3:** Given the Requests read is in flight, when the tab renders, then it shows
       three skeleton request cards. *Pinned by:* `requests-tab.spec.ts` › "renders skeleton
       request cards while the read is in flight (#744)".
-- [ ] **AC-4:** Given the Payouts read is in flight, when the tab renders, then it shows a
+- [x] **AC-4:** Given the Payouts read is in flight, when the tab renders, then it shows a
       skeleton hero plus skeleton ledger rows. *Pinned by:* `payouts-tab.spec.ts` ›
       "renders a skeleton hero and ledger rows while the read is in flight (#744)".
-- [ ] **AC-5:** Given any element carrying `appSkeletonBlock`, when it renders, then its
+- [x] **AC-5:** Given any element carrying `appSkeletonBlock`, when it renders, then its
       class list contains both `animate-pulse` and `motion-reduce:animate-none`.
       *Pinned by:* `skeleton-block.spec.ts` › "pulses, and stops pulsing under
       reduced motion"; re-asserted per surface over every rendered block by each surface's
       "…skeleton is decorative and motion-reduce safe (#744)" spec.
-- [ ] **AC-6:** Given a loading surface, when it renders, then the skeleton container is
+- [x] **AC-6:** Given a loading surface, when it renders, then the skeleton container is
       `aria-hidden="true"` and carries no `aria-live`, and the `#741` announcer specs on
       all four surfaces pass **unmodified**. *Pinned by:* the four existing "announces
       through one region that survives loading → loaded (#741)" specs, untouched by this diff.
-- [ ] **AC-7:** Given a loading surface, when axe runs over it, then there are no
+- [x] **AC-7:** Given a loading surface, when axe runs over it, then there are no
       violations — in particular no `aria-hidden-focus` (no focusable node inside the
       skeleton). *Pinned by:* a "has no axe violations while the read is in flight (#744)"
       case in each of `venue-map.a11y.spec.ts`, `daily-view-tab.a11y.spec.ts`,
       `requests-tab.a11y.spec.ts`, `payouts-tab.a11y.spec.ts`.
-- [ ] **AC-8:** Given a held API response in Chromium, when the response is released on
+- [x] **AC-8:** Given a held API response in Chromium, when the response is released on
       each of the two grid surfaces, then the beach-map frame is present **both** before
       and after, and its top edge moves by less than the tolerance the spec states.
       *Pinned by:* `frontend/e2e/loading-skeletons.e2e.ts`.
@@ -182,16 +182,17 @@ N/A — no contract change. No request, response shape, or endpoint is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement — complete; awaiting the PR + review/Sonar gates`
 
-**Next action:** write the mocked-suite anti-jump e2e for the two grid surfaces.
+**Next action:** open the draft PR for `claude/issue-744-51n4oe` so CI runs, then the
+review gate (`/code-review`) at ready-for-review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the shared skeleton primitives | ✅ | |
 | 1 — the two grid surfaces | ✅ | |
 | 2 — the two list surfaces | ✅ | |
-| 3 — mocked e2e for the grid surfaces | ⏳ | |
+| 3 — mocked e2e for the grid surfaces | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -212,7 +213,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/shared/map-skeleton.ts` — the shared 4 × 6 placeholder geometry · `map-skeleton.spec.ts`
 - `frontend/src/app/venue/venue-map.html` — skeleton replaces the centred line
 - `frontend/src/app/venue/venue-map.ts` — the placeholder rows the skeleton renders
-- `frontend/src/app/venue/venue-map.spec.ts` · `.a11y.spec.ts` — AC-1, AC-5, AC-7
+- `frontend/src/app/venue/venue-map.spec.ts` · `frontend/src/app/venue/venue-map.a11y.spec.ts` — AC-1, AC-5, AC-7
 - `frontend/src/app/operator/daily-view-tab.html` · `.ts` · `.spec.ts` · `.a11y.spec.ts` — AC-2, AC-5, AC-7
 - `frontend/src/app/operator/requests-tab.html` · `.ts` · `.spec.ts` · `.a11y.spec.ts` — AC-3, AC-5, AC-7
 - `frontend/src/app/operator/payouts-tab.html` · `.ts` · `.spec.ts` · `.a11y.spec.ts` — AC-4, AC-5, AC-7
@@ -280,14 +281,24 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | AC | Verified by | Result |
 |---|---|---|
-| AC-1 … AC-8 | see each AC's pin | filled at the end of Phase 3 |
+| AC-1 | `venue-map.spec.ts` › "renders a skeleton mirroring the loaded map…" | ✅ |
+| AC-2 | `daily-view-tab.spec.ts` › "renders a skeleton mirroring the loaded day…" | ✅ |
+| AC-3 | `requests-tab.spec.ts` › "renders skeleton request cards…" | ✅ |
+| AC-4 | `payouts-tab.spec.ts` › "renders a skeleton hero and ledger rows…" | ✅ |
+| AC-5 | `skeleton-block.spec.ts` (3 cases) + the four per-surface "…decorative and motion-reduce safe (#744)" specs | ✅ |
+| AC-6 | the four #741 announcer specs — byte-unchanged in the diff | ✅ |
+| AC-7 | the loading-state axe case in each of the four `*.a11y.spec.ts` | ✅ |
+| AC-8 | `e2e/loading-skeletons.e2e.ts` — measured shift 10.2px (tourist map), 0.75px (Daily view); tolerance 32px | ✅ |
+
+Full frontend suite: 1632 tests / 178 files green; `npm run lint`, `npm run format:check`
+and `npm run build` clean; the two new mocked-suite e2e specs green in Chromium.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC ticked, with its pin naming a test that exists
-- [ ] The four #741 announcer specs are byte-unchanged in the diff
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` clean (plan doc staged)
-- [ ] `node scripts/check-inline-comments.mjs`, `check-touch-target.mjs`, `check-focus-posture.mjs` clean
-- [ ] `npm run lint` + `npm run format:check` clean
-- [ ] No fresh `.scss`; no `@apply`
-- [ ] Open questions empty or each citing a follow-up issue
+- [x] Every AC ticked, with its pin naming a test that exists
+- [x] The four #741 announcer specs are byte-unchanged in the diff
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` clean (plan doc staged)
+- [x] `node scripts/check-inline-comments.mjs`, `check-touch-target.mjs`, `check-focus-posture.mjs` clean
+- [x] `npm run lint` + `npm run format:check` clean
+- [x] No fresh `.scss`; no `@apply`
+- [x] Open questions empty or each citing a follow-up issue
