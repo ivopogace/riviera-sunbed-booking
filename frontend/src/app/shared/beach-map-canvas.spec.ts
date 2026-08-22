@@ -150,7 +150,7 @@ describe('BeachMapCanvas (#672)', () => {
     return el!;
   }
 
-  /** The left rail's column — the element whose width slides the tile grid when it changes. */
+  /** The price rail's column — the element whose width pulls the tile viewport's right edge in. */
   function priceColumn(host: HTMLElement): HTMLElement {
     const column = host.querySelector<HTMLElement>(
       '[data-testid="price-col"], [data-testid="price-col-placeholder"]',
@@ -159,6 +159,7 @@ describe('BeachMapCanvas (#672)', () => {
     return column!;
   }
 
+  /** The left rail's column — the element whose width slides the tile grid when it changes. */
   function railColumn(host: HTMLElement): HTMLElement {
     const chip = host.querySelector<HTMLElement>(
       '[data-testid="row-code"], [data-testid="row-code-placeholder"]',

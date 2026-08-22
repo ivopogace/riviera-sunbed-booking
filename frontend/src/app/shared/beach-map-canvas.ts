@@ -125,11 +125,15 @@ export class BeachMapCanvas {
   readonly railCodes = input<'letters' | 'labels' | 'capped-labels'>('letters');
   /** What the price rail's chips are — and therefore how much width THAT rail reserves, in both
    *  the loading and the loaded state (#751). `amounts` is a formatted amount or a min–max span
-   *  (every operator surface): the cell's own 52px floor already covers one, so the rail reserves
-   *  nothing beyond it. `capped-phrases` is a price plus what it buys (#702, narrowed by #724 —
-   *  the tourist map alone): the rail reserves the 92px phone cap. Distinct from {@link railCodes}
-   *  on purpose — the two rails' vocabularies are separate questions, and the Daily view already
-   *  answers them differently (whole labels, bare amounts). */
+   *  (every operator surface): the rail reserves nothing beyond the cell's own 52px floor, which
+   *  an amount fits at 41px. A span does not — `€125–€9,995` measures 96.58px — so this
+   *  vocabulary keeps a bounded residual **by choice**: reserving for the worst span would spend
+   *  40px of every operator grid on a chip that is 41px wide in the ordinary venue.
+   *  `capped-phrases` is a price plus what it buys (#702, narrowed by #724 — the tourist map
+   *  alone), where the qualifier makes the wide case the ordinary one: that rail reserves the
+   *  92px phone cap. Distinct from {@link railCodes} on purpose — the two rails' vocabularies are
+   *  separate questions, and the Daily view already answers them differently (whole labels, bare
+   *  amounts). */
   readonly priceChips = input<'amounts' | 'capped-phrases'>('amounts');
   /** Draw a placeholder grid, not a map: the rails reserve their columns but state nothing, and
    *  every cue that invites a gesture is withheld (#749). A surface renders its skeleton THROUGH
