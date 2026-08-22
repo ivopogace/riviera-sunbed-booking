@@ -620,17 +620,32 @@ describe('SetEditor (#600)', () => {
     expect(byId('set-panel-empty').textContent).toContain('Pick a set on the map');
   });
 
-  it('skeletons are decorative: aria-hidden, announced sr-only, and motion-reduce safe (#721)', () => {
+  it('skeletons are wholly decorative, and motion-reduce safe (#721, #741)', () => {
     render([], false);
 
     const loading = byId('set-loading');
-    expect(loading.getAttribute('aria-live')).toBe('polite');
-    expect(loading.textContent).toContain('Loading this venue’s sets');
+    // It used to be the live region itself — born holding its text, so never announced (#741).
+    expect(loading.getAttribute('aria-live')).toBeNull();
+    expect(loading.getAttribute('aria-hidden')).toBe('true');
     expect(byId('set-skeleton').getAttribute('aria-hidden')).toBe('true');
     for (const pulsing of [skeletonTiles()[0], byId('set-skeleton-panel')]) {
       expect(pulsing.classList.contains('animate-pulse')).toBe(true);
       expect(pulsing.classList.contains('motion-reduce:animate-none')).toBe(true);
     }
+  });
+
+  it('announces through one region that survives loading → loaded (#741)', () => {
+    render([], false);
+    const host = fixture.nativeElement as HTMLElement;
+    const announcer = host.querySelector('[data-testid="load-announcer"]')!;
+    expect(announcer.textContent?.trim()).toBe('Loading this venue’s sets…');
+
+    fixture.componentRef.setInput('loaded', true);
+    fixture.detectChanges();
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(host.querySelector('[data-testid="load-announcer"]')).toBe(announcer);
+    expect(announcer.textContent?.trim()).toBe('Sets loaded.');
   });
 
   it('points a set-less venue at the bulk generator, and still adds into the one empty spot (#718)', () => {

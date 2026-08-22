@@ -90,6 +90,23 @@ describe('PayoutsTab (#173) — ledger', () => {
 
   afterEach(() => http.verify());
 
+  it('announces through one region that survives loading → loaded (#741)', () => {
+    configure();
+    const el = fixture.nativeElement as HTMLElement;
+    const announcer = el.querySelector('[data-testid="load-announcer"]')!;
+    expect(announcer.textContent?.trim()).toBe('Loading payouts…');
+    // The visible copy is decoration; the announcer alone carries the words.
+    expect(el.querySelector('[data-testid="payouts-loading"]')!.getAttribute('aria-hidden')).toBe(
+      'true',
+    );
+
+    flushLedger(ledger());
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(el.querySelector('[data-testid="load-announcer"]')).toBe(announcer);
+    expect(announcer.textContent?.trim()).toBe('Payouts loaded.');
+  });
+
   function byId(id: string): HTMLElement | null {
     return host.querySelector<HTMLElement>(`[data-testid="${id}"]`);
   }

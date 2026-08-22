@@ -1,4 +1,12 @@
 <section class="mx-auto w-full max-w-[1100px]" data-testid="set-editor">
+  <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
+  <app-load-announcer
+    [loading]="!loaded()"
+    [ready]="loaded()"
+    loadingLabel="Loading this venue’s sets…"
+    readyLabel="Sets loaded."
+  />
+
   @if (loaded()) {
     <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[300px_1fr]">
       <!-- The panel leads on every viewport: it is the stable place the selection is confirmed and edited. -->
@@ -289,9 +297,8 @@
       </div>
     </div>
   } @else {
-    <!-- The read has not settled, so an empty `sets` states nothing: mirror the shape instead of claiming a venue with no sets. -->
-    <div data-testid="set-loading" aria-live="polite">
-      <p class="sr-only">Loading this venue’s sets…</p>
+    <!-- The read has not settled, so an empty `sets` states nothing: mirror the shape instead of claiming a venue with no sets. Wholly decorative — the announcer owns the words (#741). -->
+    <div data-testid="set-loading" aria-hidden="true">
       <div
         class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[300px_1fr]"
         aria-hidden="true"

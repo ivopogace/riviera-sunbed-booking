@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { LoadAnnouncer } from '../shared/load-announcer';
 import { focusMover } from '../shared/focus-after-render';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
@@ -38,7 +39,7 @@ import { PayoutStatement } from './payout-statement';
  */
 @Component({
   selector: 'app-payouts-tab',
-  imports: [CardGlass, PayoutStatement, BusyAction, TouchTarget],
+  imports: [CardGlass, LoadAnnouncer, PayoutStatement, BusyAction, TouchTarget],
   templateUrl: './payouts-tab.html',
 })
 export class PayoutsTab {

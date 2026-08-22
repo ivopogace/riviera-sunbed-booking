@@ -1,4 +1,4 @@
-import { Component, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { EMPTY, Observable, catchError, defer, from, mergeMap, tap } from 'rxjs';
@@ -8,6 +8,7 @@ import { DeviceLocalBookings } from '../core/device-local-bookings';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { amountLabelFor, metaFor } from '../shared/booking-status';
 import { CardGlass } from '../shared/card-glass';
+import { LoadAnnouncer } from '../shared/load-announcer';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { StatusChip } from '../shared/status-chip';
@@ -186,7 +187,7 @@ const CLS = {
 
 @Component({
   selector: 'app-my-bookings',
-  imports: [RouterLink, CardGlass, StatusChip, BookingQr, TouchTarget],
+  imports: [RouterLink, CardGlass, LoadAnnouncer, StatusChip, BookingQr, TouchTarget],
   template: `
     <section class="mx-auto w-full max-w-[560px] px-5 pt-6 pb-20" aria-labelledby="mb-title">
       <a
@@ -198,11 +199,18 @@ const CLS = {
         Your bookings
       </h1>
 
-      @if (loading()) {
-        <!-- Announced sr-only line + decorative skeleton — the Discover/set-editor posture (#739). -->
-        <div aria-live="polite" data-testid="my-bookings-loading">
-          <p class="sr-only">Loading your bookings…</p>
-          <div [class]="cls.rowPlaceholder" appCardGlass aria-hidden="true">
+      <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
+      <app-load-announcer
+        [loading]="showSkeleton()"
+        [ready]="announceReady()"
+        loadingLabel="Loading your bookings…"
+        readyLabel="Your bookings loaded."
+      />
+
+      @if (showSkeleton()) {
+        <!-- Wholly decorative skeleton — the announcer above owns the words (#741). -->
+        <div aria-hidden="true" data-testid="my-bookings-loading">
+          <div [class]="cls.rowPlaceholder" appCardGlass>
             <span [class]="cls.rowMain">
               <span [class]="cls.skeletonLine"></span>
               <span [class]="cls.skeletonLineShort"></span>
@@ -338,14 +346,58 @@ export class MyBookings {
   protected readonly rows = signal<readonly Row[]>([]);
   /**
    * True until the initial list is decided (the session restore has settled AND the first rows are
-   * set). Gates the empty card so a signed-in account fetch in flight never flashes "No booking yet".
+   * set). It is cleared as soon as the DEVICE rows render, so it cannot gate the empty card on its
+   * own; {@link showSkeleton} is what does, by keeping the skeleton up while a signed-in account
+   * fetch is still out and there is nothing else to draw.
    */
-  protected readonly loading = signal(true);
+  private readonly loading = signal(true);
   /**
    * The account list (signed-in) failed to load — surface a Retry rather than silently hiding the
    * account bookings behind the device-local ones.
    */
   protected readonly accountError = signal(false);
+
+  /**
+   * The account list is out. Distinct from {@link loading}, which the device rows clear the moment
+   * they render — so without this there is a window where nothing is "loading" and nothing has
+   * failed yet, and the announcer would call that loaded. Never true for a guest:
+   * {@link loadAccount} is the only writer. Read by {@link showSkeleton} and
+   * {@link announceReady}, never by the template.
+   */
+  private readonly accountPending = signal(false);
+
+  /**
+   * Nothing to draw yet, so the page-level skeleton stands in — and the same signal is the
+   * announcer's `loading`, so what is drawn and what is announced cannot disagree. Deliberately
+   * NOT just {@link loading}: that is cleared the moment the device rows render, which for a
+   * signed-in customer whose bookings all live on the server leaves zero rows and no skeleton
+   * for the whole account round trip.
+   *
+   * <p>Per-code rows resolving behind their own row skeletons are NOT this signal's business —
+   * the page has something to draw then. {@link announceReady} is what withholds the
+   * announcement until they settle.
+   */
+  protected readonly showSkeleton = computed(
+    () => this.loading() || (this.accountPending() && this.rows().length === 0),
+  );
+
+  /**
+   * Every page-level read has settled **and produced a booking, or none**. Rows must be `'loaded'`,
+   * not merely "not loading": a `'failed'` row renders a "Couldn't load this booking" retry card,
+   * and announcing success over it is the same lie the `ready` polarity exists to prevent.
+   *
+   * <p>That is also what keeps the announcement single. A per-row Retry sends its row back to
+   * `'loading'`, which would take this false and true again — but the button only exists inside
+   * the `'failed'` case, and a failed row means the page never announced in the first place. So
+   * the sequence a guest hears is silence → "loaded", never "loaded" → silence → "loaded".
+   */
+  protected readonly announceReady = computed(
+    () =>
+      !this.loading() &&
+      !this.accountPending() &&
+      !this.accountError() &&
+      this.rows().every((row) => row.state === 'loaded'),
+  );
   /**
    * Codes the account list has already answered for. Consulted when a queued per-code lookup
    * is DEQUEUED — never as a barrier, so device rows are still issued immediately.
@@ -414,6 +466,7 @@ export class MyBookings {
    */
   private loadAccount(): void {
     this.accountError.set(false);
+    this.accountPending.set(true);
     this.bookings
       .myBookings()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -428,8 +481,12 @@ export class MyBookings {
               bookingDate: b.bookingDate,
             })),
           );
+          this.accountPending.set(false);
         },
-        error: () => this.accountError.set(true),
+        error: () => {
+          this.accountError.set(true);
+          this.accountPending.set(false);
+        },
       });
   }
 

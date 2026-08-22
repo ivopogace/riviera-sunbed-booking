@@ -521,15 +521,14 @@ describe('Home (venue discovery)', () => {
     req.flush(venues()); // settle for httpMock.verify()
   });
 
-  it('renders pulsing skeleton cards (decorative) with a text announcement while loading', async () => {
+  it('renders pulsing skeleton cards, wholly decorative — the announcer carries the words', async () => {
     const req = listRequest(); // pending
     await fixture.whenStable();
 
     const loading = el().querySelector('[data-testid="loading"]')!;
-    // The announcement is real text for AT; the skeleton grid is decoration.
-    expect(loading.getAttribute('aria-live')).toBe('polite');
-    expect(loading.textContent).toContain('Loading venues…');
-    expect(loading.querySelector('ul')?.getAttribute('aria-hidden')).toBe('true');
+    // Decoration only: it used to BE the live region, born holding its text (#741).
+    expect(loading.getAttribute('aria-live')).toBeNull();
+    expect(loading.getAttribute('aria-hidden')).toBe('true');
     const skeletons = loading.querySelectorAll('[data-testid="skeleton-card"]');
     expect(skeletons.length).toBe(6);
     expect(skeletons[0].classList.contains('animate-pulse')).toBe(true);
@@ -537,5 +536,21 @@ describe('Home (venue discovery)', () => {
     req.flush(venues());
     await fixture.whenStable();
     expect(el().querySelector('[data-testid="skeleton-card"]')).toBeNull();
+  });
+
+  it('announces through one region that survives loading → loaded (#741)', async () => {
+    const req = listRequest(); // pending
+    await fixture.whenStable();
+
+    const announcer = el().querySelector('[data-testid="load-announcer"]')!;
+    expect(announcer.textContent?.trim()).toBe('Loading venues…');
+
+    req.flush(venues());
+    await fixture.whenStable();
+
+    // The SAME node, still mounted: that identity is what makes the change an announcement.
+    expect(el().querySelector('[data-testid="load-announcer"]')).toBe(announcer);
+    // Empty on purpose: the persistent results-count region already speaks the outcome.
+    expect(announcer.textContent?.trim()).toBe('');
   });
 });

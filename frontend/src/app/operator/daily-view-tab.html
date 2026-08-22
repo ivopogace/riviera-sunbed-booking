@@ -1,5 +1,18 @@
+<!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
+<app-load-announcer
+  [loading]="!loaded()"
+  [ready]="loaded() && !loadError()"
+  loadingLabel="Loading the daily view…"
+  readyLabel="Daily view loaded."
+/>
+
 @if (!loaded()) {
-  <p class="px-5 py-10 text-center text-[13px] text-(--riv-card-ink-soft)" aria-live="polite">
+  <!-- Visible copy only; the announcer above owns the announcement (#741). -->
+  <p
+    class="px-5 py-10 text-center text-[13px] text-(--riv-card-ink-soft)"
+    aria-hidden="true"
+    data-testid="daily-loading"
+  >
     Loading the daily view…
   </p>
 } @else if (loadError()) {

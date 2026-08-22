@@ -168,6 +168,23 @@ describe('VenueMap', () => {
     return [...swatch.classList].filter((token) => !geometry.has(token));
   }
 
+  it('announces through one region that survives loading → loaded (#741)', () => {
+    fixture.detectChanges();
+    const announcer = el().querySelector('[data-testid="load-announcer"]')!;
+    expect(announcer.textContent?.trim()).toBe('Loading the beach map…');
+    // The visible copy is decoration; the announcer alone carries the words.
+    expect(el().querySelector('[data-testid="map-loading"]')!.getAttribute('aria-hidden')).toBe(
+      'true',
+    );
+
+    flushVenue();
+    fixture.detectChanges();
+
+    // Same node, mutated text. The availability count region is rebuilt, so it cannot do this.
+    expect(el().querySelector('[data-testid="load-announcer"]')).toBe(announcer);
+    expect(announcer.textContent?.trim()).toBe('Beach map loaded.');
+  });
+
   it('requests the venue from the route id', () => {
     flushVenue();
     expect(fixture.componentInstance).toBeTruthy();
@@ -756,6 +773,13 @@ describe('VenueMap', () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     el().querySelector<HTMLButtonElement>('[data-testid="map-back-home"]')!.click();
     expect(navigate).toHaveBeenCalledWith(['/']);
+  });
+
+  it('says nothing over the not-available panel — a 404 is not a loaded map (#741 review)', async () => {
+    venueRequest().flush('gone', { status: 404, statusText: 'Not Found' });
+    await fixture.whenStable();
+
+    expect(el().querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
   });
 
   /** #693 review F-1: a hidden-while-browsing venue must not keep serving the stale map. */

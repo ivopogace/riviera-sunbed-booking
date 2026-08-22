@@ -8,6 +8,7 @@ import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '.
 import { AmenityChip } from '../shared/amenity-chip';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { CardGlass } from '../shared/card-glass';
+import { LoadAnnouncer } from '../shared/load-announcer';
 import { CutoffNote } from '../shared/cutoff-note';
 import { FAILURE_DIRECTIVES } from '../shared/failure-panel';
 import { MAP_TILE_LEGEND, MAP_TILE_MEANING, MapTile, MapTileState, mapTileState } from './map-tile';
@@ -99,6 +100,7 @@ interface VenueHeader {
     PanelGlass,
     PhotoSlideshow,
     CardGlass,
+    LoadAnnouncer,
     CutoffNote,
     AmenityChip,
     TouchTarget,
@@ -127,6 +129,14 @@ export class VenueMap {
   protected readonly failed = signal(false);
   /** 404: the venue does not exist or is not tourist-visible (#693) — no retry can succeed. */
   protected readonly notFound = signal(false);
+
+  /**
+   * In flight: no venue, no 404, no failure. Named here rather than derived in the template so the
+   * announcer's phase is one reviewable expression (and cannot drift from the `@if` chain).
+   */
+  protected readonly loading = computed(
+    () => !this.failed() && !this.notFound() && !this.venueView(),
+  );
 
   /** Earliest bookable day (tomorrow, Europe/Tirane): today is not offered (invariant #4, display).
    *  Re-derived from a fresh clock on every route reset — the instance outlives

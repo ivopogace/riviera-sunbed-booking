@@ -7,10 +7,19 @@
     </p>
   </header>
 
+  <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
+  <app-load-announcer
+    [loading]="!loaded()"
+    [ready]="loaded() && loadErrorMsg() === undefined"
+    loadingLabel="Loading payouts…"
+    readyLabel="Payouts loaded."
+  />
+
   @if (!loaded()) {
+    <!-- Visible copy only; the announcer above owns the announcement (#741). -->
     <p
       class="px-5 py-10 text-center text-[13px] text-(--riv-card-ink-soft)"
-      aria-live="polite"
+      aria-hidden="true"
       data-testid="payouts-loading"
     >
       Loading payouts…

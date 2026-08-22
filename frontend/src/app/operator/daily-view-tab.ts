@@ -24,6 +24,7 @@ import {
 } from '../shared/availability-grid';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { LoadAnnouncer } from '../shared/load-announcer';
 import { StatusChip } from '../shared/status-chip';
 import { formatMoney, formatMoneyRange, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
@@ -118,6 +119,7 @@ interface CheckInNotice {
   selector: 'app-daily-view-tab',
   imports: [
     CardGlass,
+    LoadAnnouncer,
     BeachMapCanvas,
     BeachMapRowDef,
     StatusChip,

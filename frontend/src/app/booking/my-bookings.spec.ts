@@ -324,7 +324,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
     }
   });
 
-  it('page-level loading is decorative and announced — the Discover posture (#739)', async () => {
+  it('page-level loading is wholly decorative — the announcer owns the words (#739, #741)', async () => {
     const restoring = {
       restoring: signal(true),
       signedIn: signal(false),
@@ -333,13 +333,31 @@ describe('MyBookings (device-local list, issue #139)', () => {
     const host = fixture.nativeElement as HTMLElement;
 
     const loading = host.querySelector('[data-testid="my-bookings-loading"]')!;
-    // The announcement is real text for AT; the skeleton row is decoration.
-    expect(loading.getAttribute('aria-live')).toBe('polite');
-    expect(loading.textContent).toContain('Loading your bookings…');
-    const skeleton = loading.querySelector('[aria-hidden="true"]');
-    expect(skeleton).not.toBeNull();
-    expect(skeleton!.querySelectorAll('.skeleton')).toHaveLength(2);
+    // Decoration now: it used to be the live region, born holding its text (#741).
+    expect(loading.getAttribute('aria-live')).toBeNull();
+    expect(loading.getAttribute('aria-hidden')).toBe('true');
+    expect(loading.querySelectorAll('.skeleton')).toHaveLength(2);
     await expectNoAxeViolations(host);
+  });
+
+  it('announces through one region that survives loading → loaded (#741)', async () => {
+    const restoring = {
+      restoring: signal(true),
+      signedIn: signal(false),
+    } as unknown as CustomerAuth;
+    const fixture = await render(stubService({}), restoring);
+    const host = fixture.nativeElement as HTMLElement;
+
+    const announcer = host.querySelector('[data-testid="load-announcer"]')!;
+    expect(announcer.textContent?.trim()).toBe('Loading your bookings…');
+
+    restoring.restoring.set(false);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(host.querySelector('[data-testid="load-announcer"]')).toBe(announcer);
+    expect(announcer.textContent?.trim()).toBe('Your bookings loaded.');
   });
 
   describe('fetch fan-out (#164)', () => {
@@ -478,6 +496,133 @@ describe('MyBookings (device-local list, issue #139)', () => {
       // …and the failed account list is surfaced with a retry, not hidden.
       expect(host.querySelector('[data-testid="account-error"]')).not.toBeNull();
       expect(host.querySelector('[data-testid="account-retry"]')).not.toBeNull();
+      // Silent: bookings made elsewhere may be missing, so "loaded" overstates it (#741 review).
+      expect(host.querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
+    });
+
+    it('stays silent while the account read is still in flight (#741 re-review)', async () => {
+      // The device rows clear `loading` while the account list is still out (the gap #741's re-review found).
+      seedCodes(['DEVONLY1']);
+      const reads: Subject<MyBookingSummary[]>[] = [];
+      const service = {
+        ...stubService({ DEVONLY1: detail('DEVONLY1', 'CONFIRMED') }),
+        myBookings: () => {
+          const read = new Subject<MyBookingSummary[]>();
+          reads.push(read);
+          return read.asObservable();
+        },
+      };
+      const fixture = await render(service, authStub(true));
+      const host = fixture.nativeElement as HTMLElement;
+      const announcer = host.querySelector('[data-testid="load-announcer"]')!;
+
+      expect(announcer.textContent?.trim()).toBe('');
+
+      reads[0].error({ status: 500 });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(announcer.textContent?.trim()).toBe('');
+      expect(host.querySelector('[data-testid="account-error"]')).not.toBeNull();
+
+      // Retry clears accountError at dispatch, reopening the same window.
+      host.querySelector<HTMLButtonElement>('[data-testid="account-retry"]')!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(announcer.textContent?.trim()).toBe('');
+
+      reads[1].next([]);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(announcer.textContent?.trim()).toBe('Your bookings loaded.');
+    });
+
+    it('stays silent while device rows are still resolving behind their skeletons', async () => {
+      // A guest never touches the account list, so this window is the common path, not the rare one.
+      seedCodes(['DEVONLY1']);
+      const lookup = new Subject<BookingDetail>();
+      const service = { ...stubService({}), getByCode: () => lookup.asObservable() };
+      const fixture = await render(service);
+      const host = fixture.nativeElement as HTMLElement;
+      const announcer = host.querySelector('[data-testid="load-announcer"]')!;
+
+      expect(announcer.textContent?.trim()).toBe('');
+
+      lookup.next(detail('DEVONLY1', 'CONFIRMED'));
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(announcer.textContent?.trim()).toBe('Your bookings loaded.');
+    });
+
+    it('never flashes the empty card while a signed-in account read is in flight', async () => {
+      // No device codes, so `loading` clears with zero rows — exactly when the card would flash.
+      const account = new Subject<MyBookingSummary[]>();
+      const service = { ...stubService({}), myBookings: () => account.asObservable() };
+      const fixture = await render(service, authStub(true));
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(host.querySelector('[data-testid="my-bookings-empty"]')).toBeNull();
+      // Absence is not the contract — asserting only that would have passed over a blank page.
+      expect(host.querySelector('[data-testid="my-bookings-loading"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe(
+        'Loading your bookings…',
+      );
+
+      account.next([]);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="my-bookings-empty"]')).not.toBeNull();
+    });
+
+    it('says nothing when a device row failed — a retry card is not a loaded booking', async () => {
+      seedCodes(['DEVONLY1']);
+      const service = stubService({ DEVONLY1: { error: { status: 500 } } });
+      const fixture = await render(service);
+      const host = fixture.nativeElement as HTMLElement;
+
+      // Silence only counts as right if the retry card is what stands there instead.
+      expect(host.querySelector('[data-testid="booking-row-failed"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="row-retry"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
+    });
+
+    it('announces once, after a row retry succeeds — never while it is still in flight', async () => {
+      // The order is the contract: silence → "loaded", never "loaded" → silence → "loaded".
+      seedCodes(['DEVONLY1']);
+      const second = new Subject<BookingDetail>();
+      let attempt = 0;
+      const service: Partial<BookingService> = {
+        getByCode: () => {
+          attempt += 1;
+          return attempt === 1 ? throwError(() => ({ status: 500 })) : second;
+        },
+      };
+      const fixture = await render(service);
+      const host = fixture.nativeElement as HTMLElement;
+      const announcer = host.querySelector('[data-testid="load-announcer"]')!;
+      expect(announcer.textContent?.trim()).toBe('');
+
+      host.querySelector<HTMLButtonElement>('[data-testid="row-retry"]')!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // The window the ordering claim lives in — a real one, because the retry is still open.
+      expect(host.querySelector('[data-testid="booking-row-loading"]')).not.toBeNull();
+      expect(announcer.textContent?.trim()).toBe('');
+
+      second.next(detail('DEVONLY1', 'CONFIRMED'));
+      second.complete();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // "loaded" is vacuously true for an empty list, so pin what the retry actually produced.
+      expect(host.querySelector('[data-testid="booking-row-failed"]')).toBeNull();
+      expect(host.querySelector('[data-testid="booking-row"]')?.textContent).toContain('DEVONLY1');
+      expect(announcer.textContent?.trim()).toBe('Your bookings loaded.');
     });
 
     it('shows the account list when the device has no remembered codes', async () => {

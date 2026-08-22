@@ -123,6 +123,9 @@
     class="mx-[2px] mt-3 rounded-full px-[15px] py-2 text-[13px] text-(--riv-card-ink-soft) backdrop-blur-[20px] backdrop-saturate-[1.7] [&_svg]:size-[15px]"
   ></p>
 
+  <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
+  <app-load-announcer [loading]="loading()" loadingLabel="Loading venues…" />
+
   @if (failed()) {
     <!-- Designed load-failure panel: the alert role and error test id preserve accessible semantics so assistive tech announces it; the warning glyph is decorative — the heading carries the meaning. -->
     <div appFailurePanel role="alert" data-testid="error">
@@ -298,13 +301,9 @@
       </ul>
     }
   } @else {
-    <!-- Pulsing skeleton cards mirror the loaded grid so the layout doesn't jump when results land; the visually-hidden line keeps the loading announcement for AT (the skeletons are decorative). -->
-    <div data-testid="loading" aria-live="polite">
-      <p class="sr-only">Loading venues…</p>
-      <ul
-        class="venue-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(264px,1fr))] gap-5"
-        aria-hidden="true"
-      >
+    <!-- Skeletons mirror the grid so the layout doesn't jump; the announcer owns the words (#741). -->
+    <div data-testid="loading" aria-hidden="true">
+      <ul class="venue-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(264px,1fr))] gap-5">
         @for (slot of skeletons; track slot) {
           <li>
             <span

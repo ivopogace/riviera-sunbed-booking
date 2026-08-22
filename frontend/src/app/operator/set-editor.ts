@@ -5,6 +5,7 @@ import { firstValueFrom, Observable } from 'rxjs';
 import { OperatorAuth } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { LoadAnnouncer } from '../shared/load-announcer';
 import { ConfirmPanel } from '../shared/confirm-panel';
 import { focusMover } from '../shared/focus-after-render';
 import { eurosToMinorUnits, formatMoney, minorUnitsToEuros } from '../shared/money';
@@ -103,6 +104,7 @@ function draftForNewCell(gridY: number): SetDraft {
     ConfirmPanel,
     FormField,
     BusyAction,
+    LoadAnnouncer,
     TouchTarget,
   ],
   templateUrl: './set-editor.html',

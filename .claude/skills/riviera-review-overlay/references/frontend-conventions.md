@@ -363,3 +363,64 @@ server error). Not a finding at all for a BUSY-1 shape — CI already failed it 
   three the guard is blind to: does this component already move focus somewhere *else* (so FOCUS-1
   exempts it), is anything torn down here that isn't a confirm branch at all, and does any disabled
   field start its own write?"
+
+---
+
+### RV-FE-10. A live region outlives the content it announces (#741)
+**Gate:** Does every `aria-live` / `role="status"` / `<output>` region the diff writes **already
+exist in the DOM before the text it announces changes**?
+- [ ] the region is **outside** the `@if`/`@switch` branch it describes — a region created together
+      with its message announces nothing on most screen-reader/browser combinations
+- [ ] only the **content** branches; the element does not
+- [ ] a *loading* surface uses `shared/load-announcer.ts` (`app-load-announcer`) rather than a
+      hand-rolled region — one shape, one place to fix
+- [ ] the surface has exactly **one** source for a given sentence: the skeleton or visible
+      "Loading…" copy beside an announcer is `aria-hidden="true"`, and a `readyLabel` is empty
+      wherever a persistent count region already speaks the outcome
+- [ ] `readyLabel` is a **static** sentence, not a live count — a count re-announces on every later
+      mutation (a date change, an accepted request)
+- [ ] the "loaded" signal is **fail-safe**: the call site says when it *reached its loaded branch*
+      (`[ready]`), never when it failed. A "did it fail?" flag makes silence conditional on
+      remembering every non-success exit, and the exits are always more numerous than they look —
+      a 404, a partial read, a signed-out visitor, a post-erasure state. Enumerate the branches of
+      the surface's `@if` chain and check the binding is true in exactly one of them
+- [ ] the spec asserts **element identity across the transition**, not the presence of text
+
+> **The trap this item exists for:** the text is always there, so a spec that reads it passes either
+> way, and both the assertion and the comment beside it end up claiming an announcement nobody
+> proved. #741 shipped that shape on **eight** surfaces at once — three of them named in the ticket,
+> five found only by enumerating the mechanism (`grep -rn 'aria-live\|role="status"\|<output>'
+> frontend/src`). `booking/booking-pay.ts`'s `pay-status` region and the #717/#718 count regions had
+> the rule right the whole time; the loading surfaces never adopted it. angular.dev says the same
+> thing under `@defer` › *Keep accessibility in mind*.
+>
+> **The fail-open trap, paid for once already.** PR #743's own review gate caught the `[ready]`
+> rule above the hard way: the first cut took a `[failed]` flag, and three of eight call sites had
+> a non-success exit nobody had thought to bind — the beach map's 404, My bookings' failed account
+> read, the account page's signed-out visitor — each announcing "…loaded." over a panel saying the
+> opposite. Announcing the failure itself is a *different* item: the house pattern is
+> `role="alert"` on the failure panel, insertion being the one case a live region is reliably
+> announced without a prior mutation. **Read the branch; never assume the panels handle it** — and
+> read what kind of region it is, because two shapes announce nothing: a `role="status"` panel born
+> holding its text, and no role at all. Read the *right* branch, too: an `alert` elsewhere in the
+> file may belong to a submit or a delete flow, not to the load. Where the load's non-success
+> branch is silent, `role="alert"` on the panel already in the diff is usually the right fix.
+> What is **not** is a live region **per row** of a list — assertive, one interruption per failure,
+> and re-announced when a re-sort moves the node; PR #743 shipped that for one round and reverted
+> it. This item deliberately records **no inventory of which panels carry a role today** — that
+> decays between reviews. Count when you review.
+>
+> **Ask whether the spec was mutation-checked.** Moving the region back inside its branch must fail
+> it, and so must widening `[ready]` past the loaded branch — a passing assertion that cannot fail
+> is the same false comfort in a new place (worked examples, all mutation-checked in PR #743:
+> `requests-tab.spec.ts`, `e2e/loading-announcements.e2e.ts`, and the three `[ready]` specs in
+> `venue-map.spec.ts` / `my-bookings.spec.ts` / `set-password.spec.ts`).
+
+**Default severity:** **Major** — a loading state that says nothing is a WCAG AA failure on a shipped
+surface, and it is invisible to every automated check including axe. **Blocker** when the region is
+the *only* signal a state changed (a status a sighted user also cannot see). **Minor** where a
+persistent sibling region already announces the same outcome and the new one is merely redundant.
+**Skill framing:**
+- Peer-review: "For each live region in this diff: is the element still there before and after the
+  change it announces, or is it created along with its message? Which single region owns each
+  sentence on that surface — and does anything else repeat it? What does it say when the load fails?"

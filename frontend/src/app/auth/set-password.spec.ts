@@ -91,9 +91,33 @@ function text(fixture: ComponentFixture<SetPassword>, testid: string): string {
 }
 
 describe('SetPassword', () => {
+  it('announces through one region that survives loading → loaded (#741)', async () => {
+    // signedIn defaults true — the only restore path that reaches the form.
+    const auth = authStub({ restoring: true });
+    const fixture = await render(auth);
+    const host = fixture.nativeElement as HTMLElement;
+
+    const announcer = host.querySelector('[data-testid="load-announcer"]')!;
+    expect(announcer.textContent?.trim()).toBe('Loading…');
+    // The visible copy is decoration; the announcer alone carries the words.
+    expect(host.querySelector('[data-testid="setpw-loading"]')!.getAttribute('aria-hidden')).toBe(
+      'true',
+    );
+
+    (auth.restoring as unknown as { set(v: boolean): void }).set(false);
+    fixture.detectChanges();
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(host.querySelector('[data-testid="load-announcer"]')).toBe(announcer);
+    expect(announcer.textContent?.trim()).toBe('Account loaded.');
+  });
+
   it('prompts to sign in when signed out', async () => {
     const fixture = await render(authStub({ signedIn: false }));
     expect(text(fixture, 'setpw-signed-out')).toContain('Sign in to manage your account');
+    // Not restoring is not signed in, so the announcer says nothing (#741 review).
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
   });
 
   it('sets the first password for an SSO-only account (no current password sent)', async () => {
