@@ -55,4 +55,8 @@ describe('My bookings — solid-fill controls (WCAG AA, issue #139)', () => {
   it('the Retry outline ink meets AA on its solid #f4f6f7 fill', () => {
     expect(contrastRatio('#0a4f5e', '#f4f6f7')).toBeGreaterThanOrEqual(AA_NORMAL);
   });
+
+  it('the rows-failed alert ink (#a3160e, #745) meets AA on its solid #f6e8e7 fill', () => {
+    expect(contrastRatio('#a3160e', '#f6e8e7')).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
 });

@@ -65,6 +65,21 @@ describe('CustomerAuth', () => {
     expect(auth.restoring()).toBe(false);
   });
 
+  it('a 401 startup restore is signed-out, not a restore failure', async () => {
+    const auth = await create('signed-out');
+    expect(auth.signedIn()).toBe(false);
+    expect(auth.restoreFailed()).toBe(false);
+  });
+
+  it('a non-401 startup restore is a restore failure, distinct from signed-out (#745)', async () => {
+    const auth = TestBed.inject(CustomerAuth);
+    http.expectOne(`${AUTH_API}/me`).flush({}, { status: 500, statusText: 'Error' });
+    await tick();
+
+    expect(auth.signedIn()).toBe(false);
+    expect(auth.restoreFailed()).toBe(true);
+  });
+
   it('signs in and adopts the principal', async () => {
     const auth = await create('signed-out');
     const result = auth.signIn('ana@example.com', 'password123');

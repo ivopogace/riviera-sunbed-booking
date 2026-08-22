@@ -67,6 +67,11 @@ const RESEND_NOTICES = {
         } @else if (auth.restoring()) {
           <!-- Visible copy only; the announcer above owns the announcement (#741). -->
           <p class="auth-intro" aria-hidden="true" data-testid="setpw-loading">Loading…</p>
+        } @else if (!auth.signedIn() && auth.restoreFailed()) {
+          <!-- A failed restore is not "signed out" — needed its own branch, not an attribute (#745). -->
+          <p class="auth-error" role="alert" data-testid="setpw-restore-failed">
+            We couldn't check whether you're signed in. Refresh the page and try again.
+          </p>
         } @else if (!auth.signedIn()) {
           <p class="auth-intro" data-testid="setpw-signed-out">Sign in to manage your account.</p>
           <p class="auth-alt">

@@ -9,6 +9,7 @@ import { SetPassword } from './set-password';
 interface Overrides {
   readonly signedIn?: boolean;
   readonly restoring?: boolean;
+  readonly restoreFailed?: boolean;
   readonly emailVerified?: boolean | undefined;
   readonly setPassword?: SetPasswordResult;
   readonly requestVerification?: 'sent' | 'withheld' | 'error';
@@ -22,6 +23,7 @@ function authStub(o: Overrides = {}): Partial<CustomerAuth> & {
 } {
   return {
     restoring: signal(o.restoring ?? false),
+    restoreFailed: signal(o.restoreFailed ?? false),
     signedIn: signal(o.signedIn ?? true),
     email: signal('ana@example.com'),
     emailVerified: signal<boolean | undefined>(o.emailVerified),
@@ -118,6 +120,17 @@ describe('SetPassword', () => {
     // Not restoring is not signed in, so the announcer says nothing (#741 review).
     const host = fixture.nativeElement as HTMLElement;
     expect(host.querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
+  });
+
+  it('distinguishes a failed session restore from actually being signed out (#745)', async () => {
+    const fixture = await render(authStub({ signedIn: false, restoreFailed: true }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    // Pin the mechanism (a distinct `alert` element), not just text — either branch has some.
+    expect(host.querySelector('[data-testid="setpw-signed-out"]')).toBeNull();
+    const panel = byId(fixture, 'setpw-restore-failed')!;
+    expect(panel).not.toBeNull();
+    expect(panel.getAttribute('role')).toBe('alert');
   });
 
   it('sets the first password for an SSO-only account (no current password sent)', async () => {
