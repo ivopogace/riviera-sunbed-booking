@@ -81,10 +81,9 @@ export class BeachMapRowDef<R extends BeachMapCanvasRow = BeachMapCanvasRow> {
  * the canvas shares the chrome, never the behavior.
  *
  * <p>While {@link BeachMapCanvas#loading} the same chrome draws a placeholder: the rail chips carry
- * no text, the grab cursor is withheld and the pan hint renders `invisible` (an `inert` skeleton can
- * honour neither cue, but the hint's line stays reserved so the card does not grow by it on load),
- * and the decorative testids are renamed so a spec cannot query a placeholder as the real thing. The
- * measured `.pannable` edge fade stays — it reports a fact rather than inviting an action (#749).
+ * no text, and the pan hint and grab cursor are withheld — an `inert` skeleton can honour neither.
+ * The decorative testids are renamed so a spec cannot query a placeholder as the real thing. The
+ * measured `.pannable` edge fade stays: it reports a fact rather than inviting an action (#749).
  *
  * <p>A drag past the 6px threshold on either axis is a pan: the canvas swallows the one
  * pointer click that ends it (capture phase, consume-once) so a pan release never activates

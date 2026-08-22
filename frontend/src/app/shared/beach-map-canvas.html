@@ -89,12 +89,11 @@
     </div>
 
     <!-- Named per surface: on a paint surface "drag" would name the gesture that paints instead. -->
-    <!-- While loading the same sentence renders `invisible`: hidden from sight and from the a11y tree, but still occupying its line, so the card does not grow by it when the map lands — reserving the hint is the same argument as reserving the rail (#749). -->
-    @if (scrollHint() || vScrollHint()) {
+    <!-- Withheld while loading, and its line deliberately NOT reserved: the rail's width is predictable from the vocabulary, this line's need is not — it depends on whether the map that lands overflows, which the placeholder's own overflow does not answer (a 4 × 6 placeholder overflows a phone that the real map may fit). Reserving it can therefore be wrong in the one direction #744 rules out: the card would SHRINK on load and lift everything below it. Not reserving is only ever wrong downward, which is the direction that slice chose (#749). -->
+    @if (!loading() && (scrollHint() || vScrollHint())) {
       <p
         class="text-center text-[12px] font-semibold text-(--riv-accent-ink) mt-3"
-        [class.invisible]="loading()"
-        [attr.data-testid]="loading() ? 'scroll-hint-placeholder' : 'scroll-hint'"
+        data-testid="scroll-hint"
       >
         {{
           dragPan()

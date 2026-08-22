@@ -596,10 +596,8 @@ describe('BeachMapCanvas (#672)', () => {
 
     // Both overflow axes are real here; the instruction to act on them is what a skeleton cannot mean.
     expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
-    // ...but its line is still reserved, or the card would grow by it when the map lands.
-    const reserved = host.querySelector('[data-testid="scroll-hint-placeholder"]')!;
-    expect(reserved).toBeTruthy();
-    expect(reserved.classList.contains('invisible')).toBe(true);
+    // Its line is not reserved either: whether the LOADED map needs one is what a placeholder cannot know.
+    expect(host.querySelector('[data-testid="scroll-hint-placeholder"]')).toBeNull();
     expect(viewport(host).classList.contains('cursor-grab')).toBe(false);
     // The edge fade reports a measured fact rather than inviting an action, so it stays.
     expect(viewport(host).classList.contains('pannable')).toBe(true);

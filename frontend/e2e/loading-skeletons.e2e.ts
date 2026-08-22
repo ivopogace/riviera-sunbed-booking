@@ -344,17 +344,6 @@ async function leftEdgeOf(page: Page, testid: string): Promise<number> {
   return box!.x;
 }
 
-/** A hint line's full vertical footprint, its own margin included — what the card grows by. */
-function lineHeightOf(page: Page, testid: string): Promise<number> {
-  return page
-    .getByTestId(testid)
-    .evaluate(
-      (el) =>
-        el.getBoundingClientRect().height +
-        (Number.parseFloat(getComputedStyle(el).marginTop) || 0),
-    );
-}
-
 /** Whether the pan viewport really overflows — a hint assertion is vacuous on a grid that fits. */
 function overflowsHorizontally(page: Page, testid: string): Promise<boolean> {
   return page.getByTestId(testid).evaluate((el) => el.scrollWidth > el.clientWidth + 1);
@@ -380,18 +369,25 @@ async function expectSlideIsWhatTheReservationAllows(
   ).toBeLessThan(1);
 }
 
-/** The other extreme of the rail's own vocabulary: names at the length the schema allows. */
+/**
+ * The other extreme of the rail's own vocabulary: both names exactly 40 characters, the limit
+ * `V43__set_position_row_label_length.sql` and the editor's `maxlength` allow. The uncapped
+ * operator rail's worst case is a real number, not an adjective, and it belongs in the matrix.
+ */
 const LONG_LABEL_VENUE = {
   ...RICH_VENUE,
   sets: sets().map((s) => ({
     ...s,
-    rowLabel: s.rowLabel === 'Front row' ? 'Front row · Sea view · Cabanas' : 'Row 2 · Promenade',
+    rowLabel:
+      s.rowLabel === 'Front row'
+        ? 'Front row · Sea view · Cabanas & parasol'
+        : 'Row 2 · Promenade side · Shaded strips r',
   })),
 };
 
 for (const [labels, venue] of [
   ['short row names', RICH_VENUE],
-  ['row names at the length the editor allows', LONG_LABEL_VENUE],
+  ['row names at the 40-character limit', LONG_LABEL_VENUE],
 ] as const) {
   for (const [size, viewport] of [
     ['desktop', DESKTOP],
@@ -448,7 +444,7 @@ test('the tourist beach map’s phone rail does not move at all (#749)', async (
   const after = await leftEdgeOf(page, 'map-pan');
   expect(
     Math.abs(after - before),
-    `the longest allowed label truncates to the reservation, so nothing moved (${before} → ${after})`,
+    `a 40-character label truncates to the reservation, so nothing moved (${before} → ${after})`,
   ).toBeLessThan(1);
 });
 
@@ -481,8 +477,6 @@ for (const [surface, tileTestid, gridTestid, open] of [
     ).toBe(true);
     await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
     await expect(page.getByTestId(gridTestid)).not.toHaveClass(/cursor-grab/);
-    // The sentence is withheld, its LINE is not — else the card grows by it when the map lands.
-    const reserved = await lineHeightOf(page, 'scroll-hint-placeholder');
 
     release();
     await expect(
@@ -490,9 +484,6 @@ for (const [surface, tileTestid, gridTestid, open] of [
     ).toBeVisible();
     // The loaded map overflows the same phone, so the hint the skeleton withheld is now honest.
     await expect(page.getByTestId('scroll-hint')).toHaveCount(1);
-    expect(
-      Math.abs(reserved - (await lineHeightOf(page, 'scroll-hint'))),
-      'the reserved line is exactly the line the hint goes on to need',
-    ).toBeLessThan(1);
+    // The card grows by that line here: a settle DOWNWARD, which is the direction #744 chose.
   });
 }

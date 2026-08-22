@@ -88,10 +88,10 @@ without sliding the tiles; out of scope, Non-goals.
       contains any text (both rails keep their columns under placeholder testids). *Pinned by:* `beach-map-canvas.spec.ts` › "a loading canvas states
       no row name, no price rail and no pan hint".
 - [ ] **AC-2:** Given a canvas in `loading` mode whose grid overflows its viewport, when the
-      overflow is measured, then the pan hint carries no text a reader can act on and the
-      viewport carries no `cursor-grab` — while `.pannable` (the measured edge fade) still
-      applies and the hint's own line stays reserved. *Pinned by:* `beach-map-canvas.spec.ts` ›
-      "offers no gesture its inert container cannot accept while loading (#749)".
+      overflow is measured, then neither the pan hint nor a reserved line for it is rendered and
+      the viewport carries no `cursor-grab` — while `.pannable` (the measured edge fade) still
+      applies. *Pinned by:* `beach-map-canvas.spec.ts` › "offers no gesture its inert container
+      cannot accept while loading (#749)".
 - [ ] **AC-3:** Given either label vocabulary, when the rail renders, then its column reserves
       `min-w-[54px]` in both the loading and the loaded state, and the loading chip fills exactly
       that reservation. *Pinned by:* `beach-map-canvas.spec.ts` › "reserves the same rail width
@@ -140,7 +140,7 @@ is not supposed to move except where the plan says it does.
 | Rail column width is content-derived everywhere | **changed** | `letters` keeps it (editors unchanged, AC-4); `labels`/`capped-labels` reserve a width so the grid stops sliding (the ticket's item 4) |
 | Tourist chip truncates at 48px / 96px of text | **preserved** | untouched; the reservation sits under the cap as a floor, it does not replace it |
 | Operator chips render whole labels (#724) | **preserved** | `labels` reserves a **minimum**; a longer label still widens the rail and renders whole |
-| Pan hint appears whenever either axis overflows | **changed** | unchanged when loaded; while loading the same sentence renders `invisible` — out of sight and out of the a11y tree, but still holding its line, so the card does not grow by it when the map lands (I-2, and review finding F-3) |
+| Pan hint appears whenever either axis overflows | **changed** | unchanged when loaded; withheld while loading, where the container is `inert` and the gesture is unfollowable (I-2). Its line is deliberately **not** reserved — see G-1 |
 | Viewport shows `cursor-grab` when `dragPan` | **changed** | suppressed while loading, for the same reason as the hint — same false-affordance class |
 | `.pannable` (edge fade, `px-4`, `scroll-pl-4`) is applied from a live measurement | **preserved** | still measured in both states; it is the one piece of pan chrome that reports a fact rather than inviting an action |
 | `scroll-hint` / `row-code` / `price-col` testids exist while loading | **dropped** | they named live chrome; the loading rail carries `row-code-placeholder` instead, so a spec can still find it |
@@ -199,10 +199,10 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, re-review due`
+**Stage pointer:** `sonar gate`
 
-**Next action:** re-run the review gate over the fix commit, then the Sonar list, then merge
-close-out.
+**Next action:** pull the SonarCloud new-issue + duplication list for PR #750 and clear it,
+then the merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
