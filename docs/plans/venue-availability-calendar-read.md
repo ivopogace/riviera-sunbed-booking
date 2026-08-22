@@ -58,35 +58,35 @@ created.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a venue with 4 sets, 2 of them held on one day of a 5-day window and 1
+- [x] **AC-1:** Given a venue with 4 sets, 2 of them held on one day of a 5-day window and 1
   on another, when the calendar read runs, then it returns 5 ascending entries reading
   `4/4, 2/4, 4/4, 3/4, 4/4` — days with no availability rows included at `free == total`.
   *Pinned by:* `VenueAvailabilityCalendarIT.countsEveryDayInTheWindowIncludingUntouchedOnes`
-- [ ] **AC-2:** Given any day in the window, when the calendar read and `findVenueMap` are
+- [x] **AC-2:** Given any day in the window, when the calendar read and `findVenueMap` are
   both asked about that day, then their free counts agree — one source of truth, no second
   derivation (invariant #2).
   *Pinned by:* `VenueAvailabilityCalendarIT.agreesWithTheSingleDayMapRead`
-- [ ] **AC-3:** Given a window wider than 62 days, or `to` before `from`, when the read is
+- [x] **AC-3:** Given a window wider than 62 days, or `to` before `from`, when the read is
   requested, then it is rejected `400` with an `INVALID_REQUEST` `ApiProblem` body and no
   query is issued.
   *Pinned by:* `VenueAvailabilityCalendarControllerTest.rejectsAnOverwideWindow`,
   `…rejectsAnInvertedWindow`, `…acceptsTheWidestLegalWindow`
-- [ ] **AC-4:** Given `from` and `to` are omitted, when the read is requested with the clock
+- [x] **AC-4:** Given `from` and `to` are omitted, when the read is requested with the clock
   fixed at 2026-11-01T23:30Z — late enough that UTC still reads the 1st while Tirane has
   rolled to the 2nd — then the window is `[2026-11-03, 2026-11-16]` — tomorrow in
   `Europe/Tirane` through `from + 13` (invariant #6), derived from the injected `Clock`.
   *Pinned by:* `VenueAvailabilityCalendarControllerTest.defaultsToTomorrowInTiraneForTwoWeeks`
-- [ ] **AC-5:** Given an unknown venue id, or a venue whose owning operator is not `ACTIVE`,
+- [x] **AC-5:** Given an unknown venue id, or a venue whose owning operator is not `ACTIVE`,
   when the read is requested, then the response is `404` — indistinguishable from each other
   (#693 fence).
   *Pinned by:* `VenueAvailabilityCalendarControllerTest.absentVenueIs404` (the edge half — both
   causes reach it as an empty `Optional`) and `VenueCatalogVisibilityIT.calendarReadIsEmptyForHiddenVenue`
   (the fence half, over the operator lifecycle)
-- [ ] **AC-6:** Given the new endpoint path, when an anonymous client requests it, then it
+- [x] **AC-6:** Given the new endpoint path, when an anonymous client requests it, then it
   is publicly reachable, **and** the operator-only `GET /api/venues/{id}/availability` read
   remains `401`/`403` for that same anonymous client.
   *Pinned by:* `VenueAvailabilityCalendarControllerTest.isPublicAndDoesNotUngateTheOperatorRead`
-- [ ] **AC-7:** Given the slice's structural change, when the structural net runs, then
+- [x] **AC-7:** Given the slice's structural change, when the structural net runs, then
   `ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`,
   `PublishedSurfacePlacementArchitectureTests` and `VenueApiRoleSplitTests` all pass — the
   SPI method adds no module edge and no published-surface misplacement.
@@ -114,12 +114,12 @@ removed or re-pointed; every change is additive.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | **Path collision:** `GET /api/venues/*/availability` is already the operator-only daily availability-states read (`VenueAdminController:136`, gated at `SecurityConfig:313`). Reusing it would either leak the hold split publicly or silently operator-gate the tourist read — a security regression either way. | med | high | Use a distinct literal segment: **`GET /api/venues/{venueId}/availability-calendar`**. It cannot match the single-`*` operator pattern, so it falls through to the existing `GET /api/venues/**` → `permitAll` at `SecurityConfig:345` with **no SecurityConfig change**. AC-6 pins both halves. | claude | resolved at plan time (caught by the intake grill) |
-| R-2 | Unbounded window → a caller asks for 10 years and the server materializes ~3,650 rows per request. | med | med | Hard cap of **62 days**, validated at the edge before any query, rejected `400 INVALID_REQUEST` via `InvalidApiRequestException` (§6b — no per-controller `@ExceptionHandler`). AC-3. | claude | mitigated in phase 2 |
-| R-3 | Per-day N+1 — calling `takenOn` once per day in the window (up to 62 round-trips). | med | med | One `GROUP BY booking_date` query over the whole window; the SPI method takes the range, not a day. Reviewed against `postgres` query-patterns. AC-1's IT exercises a 5-day window through the single query. | claude | mitigated in phase 0 |
-| R-4 | The calendar count and the map count disagree (two derivations of "free"). | low | high | The calendar never re-derives: the same `set_position` total and the same `set_availability` table feed both, and AC-2 asserts agreement directly rather than trusting it. Invariant #2. | claude | mitigated in phase 1 |
-| R-5 | Timezone drift — defaulting `from` off the JVM default zone rather than `Europe/Tirane` (invariant #6). | low | med | Reuse `VenueReadController`'s existing `tomorrowInTirane()` idiom off the injected UTC `Clock`; AC-4 asserts it with a **fixed** clock, not wall time. | claude | mitigated in phase 2 |
-| R-6 | Visibility fence forgotten — a venue whose owner is not `ACTIVE` answers on the new read while being absent from the other two (#693). | med | high | The fence lives in `JdbcVenueCatalog`, consulted first, exactly as `findVenueMap` does. AC-5. | claude | mitigated in phase 1 |
-| R-7 | Adding a method to `VenueCatalog` re-grows the god-port that #94 split. | low | med | `VenueApiRoleSplitTests` is a dependency-direction assertion, not a method freeze, and its own Javadoc states "legitimate evolution of the tourist reads stays free". This read has exactly one consumer — the `venue` module's own REST adapter — i.e. the same tourist-read role. AC-7. | claude | accepted at plan time |
+| R-2 | Unbounded window → a caller asks for 10 years and the server materializes ~3,650 rows per request. | med | med | Hard cap of **62 days**, validated at the edge before any query, rejected `400 INVALID_REQUEST` via `InvalidApiRequestException` (§6b — no per-controller `@ExceptionHandler`). AC-3. | claude | closed — `MAX_WINDOW_DAYS = 62`, rejected before any query; `rejectsAnOverwideWindow` + `acceptsTheWidestLegalWindow` |
+| R-3 | Per-day N+1 — calling `takenOn` once per day in the window (up to 62 round-trips). | med | med | One `GROUP BY booking_date` query over the whole window; the SPI method takes the range, not a day. Reviewed against `postgres` query-patterns. AC-1's IT exercises a 5-day window through the single query. | claude | closed — one `GROUP BY`; the bug-scan reviewer independently confirmed no N+1 |
+| R-4 | The calendar count and the map count disagree (two derivations of "free"). | low | high | The calendar never re-derives: the same `set_position` total and the same `set_availability` table feed both, and AC-2 asserts agreement directly rather than trusting it. Invariant #2. | claude | closed — AC-2 asserts agreement directly; the reviewer confirmed `taken` cannot exceed `total` |
+| R-5 | Timezone drift — defaulting `from` off the JVM default zone rather than `Europe/Tirane` (invariant #6). | low | med | Reuse `VenueReadController`'s existing `tomorrowInTirane()` idiom off the injected UTC `Clock`; AC-4 asserts it with a **fixed** clock, not wall time. | claude | closed — fixed clock at 23:30Z on 1 Nov, where UTC and Tirane disagree |
+| R-6 | Visibility fence forgotten — a venue whose owner is not `ACTIVE` answers on the new read while being absent from the other two (#693). | med | high | The fence lives in `JdbcVenueCatalog`, consulted first, exactly as `findVenueMap` does. AC-5. | claude | closed — fence consulted first; pinned by `VenueCatalogVisibilityIT.calendarReadIsEmptyForHiddenVenue`. **F-6 showed the paired existence probe was dead** and removed it |
+| R-7 | Adding a method to `VenueCatalog` re-grows the god-port that #94 split. | low | med | `VenueApiRoleSplitTests` is a dependency-direction assertion, not a method freeze, and its own Javadoc states "legitimate evolution of the tourist reads stays free". This read has exactly one consumer — the `venue` module's own REST adapter — i.e. the same tourist-read role. AC-7. | claude | closed — `VenueApiRoleSplitTests` green; the CLAUDE.md reviewer independently confirmed same-role evolution |
 | R-8 | No Flyway migration in scope, so no `V<n>` to claim. In-flight check: only Dependabot PRs are open; no feature branch touches `db/migration`. | — | — | Nothing to renumber. | claude | n/a |
 
 ## Open questions / Assumptions
@@ -226,13 +226,22 @@ touched. `MoneyView` does not appear on the new surface.
 
 ## Execution status
 
-**Stage pointer:** `CI gate — F-4 fixed and pushed; awaiting the re-run, then the Sonar gate`
+**Stage pointer:** `merge close-out — all three gates passed; merging`
 
-**Next action:** wait for CI on the F-4 fix. **The Sonar gate has not run for this slice
-yet** — the `sonar` job `needs: [backend, frontend]`, so the red backend left it
-`skipped`, which per `pr-gates.md` §2 means *unanalyzed*, not *clean*. Once CI is green,
-pull the issue + measures list (confirming `measures` is populated and the analysis
-check itself concluded `success`, with a cache-bust) and clear every entry.
+**Next action:** merge PR #762, then the GitHub-only close-out items (confirm #760 closed,
+tick the epic #706 sub-issue, unsubscribe). No repo commit remains after this one.
+
+**Gate evidence.**
+- **CI** — green on `9d3b933`: backend, frontend, repo hygiene, both CodeQL analyses.
+- **Review** — the **full `/code-review` five-agent fan-out**, with `riviera-review-overlay`
+  layered on. Three findings (F-6, F-7, F-8), all fixed. The earlier degraded single-reviewer
+  pass is superseded and its declaration withdrawn on the PR.
+- **Sonar** — green **and the reported list verified empty**, not inferred from the gate
+  conclusion: `api/issues/search` → `total: 0`, `api/hotspots/search` → 0, and `measures`
+  populated (`new_lines: 186`, `new_coverage: 100.0`, `new_duplicated_lines_density: 0.0`)
+  which is what distinguishes a genuinely clean PR from an unanalyzed one. Both
+  `SonarCloud scan` and `SonarCloud Code Analysis` concluded `success` — the three prior
+  rounds left them `skipped`/`cancelled`, i.e. *unanalyzed*.
 
 > **Review-gate degradation, declared rather than substituted silently.** The
 > `code-review` plugin's procedure is a parallel subagent fan-out, and this session is
@@ -248,7 +257,7 @@ check itself concluded `success`, with a cache-bust) and clear every entry.
 | 0 — SPI range read (`takenCountsBetween` + JDBC impl) | ✅ | `842ebc2` |
 | 1 — `VenueCatalog.availabilityBetween` + `DailyAvailability` | ✅ | `b1b8f4d` |
 | 2 — public endpoint + window validation | ✅ | `2234ca5` |
-| 3 — close-out (docs freshness, plan finalization) | ⏳ | `b770a31` (docs-freshness); plan finalized in the PR's last commit |
+| 3 — close-out (docs freshness, plan finalization) | ✅ | `b770a31` (docs-freshness sweep), `9d3b933` (review-fan-out fixes), this commit (final state) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -398,32 +407,33 @@ GROUP BY booking_date
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `gradle --no-daemon --console=plain test --tests "*VenueAvailabilityCalendarIT*"` → PASS.
-- [ ] **AC-2:** Same run, `agreesWithTheSingleDayMapRead` → PASS.
-- [ ] **AC-3:** Run `gradle --no-daemon --console=plain test --tests "*VenueAvailabilityCalendarControllerTest*"` → PASS.
-- [ ] **AC-4:** Same run, `defaultsToTomorrowInTiraneForTwoWeeks` → PASS.
-- [ ] **AC-5:** Same run, both 404 cases → PASS.
-- [ ] **AC-6:** Same run, `isPublicAndDoesNotUngateTheOperatorRead` → PASS.
-- [ ] **AC-7:** Structural-net batch (`*ModularityTests*`, `*JdbcOnlyArchitectureTests*`, `*PackageShapeArchitectureTests*`, `*PublishedSurfacePlacementArchitectureTests*`, `*VenueApiRoleSplitTests*`) → PASS.
+- [x] **AC-1:** `VenueAvailabilityCalendarIT.countsEveryDayInTheWindowIncludingUntouchedOnes` → PASS (green in CI on `9d3b933`).
+- [x] **AC-2:** `…agreesWithTheSingleDayMapRead` → PASS.
+- [x] **AC-3:** `VenueAvailabilityCalendarControllerTest.rejectsAnOverwideWindow`, `…rejectsAnInvertedWindow`, `…acceptsTheWidestLegalWindow` → PASS.
+- [x] **AC-4:** `…defaultsToTomorrowInTiraneForTwoWeeks` → PASS (fixed clock at 23:30Z on 1 Nov, where a UTC-derived default would fail).
+- [x] **AC-5:** `…absentVenueIs404` (edge half) + `VenueCatalogVisibilityIT.calendarReadIsEmptyForHiddenVenue` (fence half, over the operator lifecycle) → PASS.
+- [x] **AC-6:** `…isPublicAndDoesNotUngateTheOperatorRead` → PASS, and `EndpointRoleGateCoverageTest` (F-4) now declares the endpoint with its reason.
+- [x] **AC-7:** `ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` → PASS; the full backend suite is green in CI (1816 tests).
 
-If any AC isn't verified by a passing test, write the test or admit it's not done.
+Two ACs beyond the original set were added by review findings and also pass:
+`widestWindowIsCountedWithoutOverflowing` and `anInvertedWindowIsACallerBug` (F-1, F-2).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled; read-only slice, justified in place (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — both explicitly unchanged, stated on the port Javadoc.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no events (invariant #11).
-- [ ] **Payment/payout** N/A — no money on the surface (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone correct: UTC `Clock`, `Europe/Tirane` for the date default (invariant #6).
-- [ ] Booking codes not involved (invariant #7).
-- [ ] No schema change, so no Flyway migration is due (invariant #12).
-- [ ] **Frontend** N/A — backend-only slice.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR** — this doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` plus `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled; read-only slice, justified in place (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — both explicitly unchanged, stated on the port Javadoc.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no events (invariant #11).
+- [x] **Payment/payout** N/A — no money on the surface (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone correct: UTC `Clock`, `Europe/Tirane` for the date default (invariant #6).
+- [x] Booking codes not involved (invariant #7).
+- [x] No schema change, so no Flyway migration is due (invariant #12).
+- [x] **Frontend** N/A — backend-only slice.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — this doc's final state is committed here, citing `merged via PR #762`.
+- [x] **The review gate ran in full** — `/code-review` plus `riviera-review-overlay`.
