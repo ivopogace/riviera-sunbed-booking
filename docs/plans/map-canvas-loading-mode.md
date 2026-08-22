@@ -63,7 +63,7 @@ without sliding the tiles; out of scope, Non-goals.
 
 - [ ] **AC-1:** Given a canvas in `loading` mode, when it renders rows, then no element
       carries `data-testid="row-code"`, `price-col`, or `scroll-hint`, and no rail chip
-      contains any text. *Pinned by:* `beach-map-canvas.spec.ts` › "a loading canvas states
+      contains any text (both rails keep their columns under placeholder testids). *Pinned by:* `beach-map-canvas.spec.ts` › "a loading canvas states
       no row name, no price rail and no pan hint".
 - [ ] **AC-2:** Given a canvas in `loading` mode whose grid overflows its viewport, when the
       overflow is measured, then the pan hint is absent and the viewport carries no
@@ -176,14 +176,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** write the phase-0 red specs in `beach-map-canvas.spec.ts` (AC-1, AC-2).
+**Next action:** write the phase-1 red specs (AC-3, AC-4) — `railCodes` replaces
+`truncateRailCodes` and the rail column reserves its width.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the canvas learns it is loading | ⏳ | |
-| 1 — the rail reserves its width | | |
+| 0 — the canvas learns it is loading | ✅ | `827d634` |
+| 1 — the rail reserves its width | ⏳ | |
 | 2 — the three surfaces adopt the modes | | |
 | 3 — measured in a real browser | | |
 

@@ -80,6 +80,11 @@ export class BeachMapRowDef<R extends BeachMapCanvasRow = BeachMapCanvasRow> {
  * {@link BeachMapRowDef}, so each surface keeps its own tile vocabulary and interaction —
  * the canvas shares the chrome, never the behavior.
  *
+ * <p>While {@link BeachMapCanvas#loading} the same chrome draws a placeholder: the rail chips carry
+ * no text, the pan hint and the grab cursor are withheld (an `inert` skeleton can honour neither),
+ * and the decorative testids are renamed so a spec cannot query a placeholder as the real thing. The
+ * measured `.pannable` edge fade stays — it reports a fact rather than inviting an action (#749).
+ *
  * <p>A drag past the 6px threshold on either axis is a pan: the canvas swallows the one
  * pointer click that ends it (capture phase, consume-once) so a pan release never activates
  * a tile, while a keyboard activation (`detail === 0`) is never swallowed. A surface whose
@@ -116,6 +121,11 @@ export class BeachMapCanvas {
    *  mobile cap is the #724 product call's balance (short real names render whole; ~2.6 tile
    *  columns stay visible on a 390px phone). */
   readonly truncateRailCodes = input<boolean>(false);
+  /** Draw a placeholder grid, not a map: the rails reserve their columns but state nothing, and
+   *  every cue that invites a gesture is withheld (#749). A surface renders its skeleton THROUGH
+   *  the canvas to inherit `--riv-tile` and the frame geometry, which also inherits this chrome —
+   *  so the canvas, not the surface, is what has to know the difference. */
+  readonly loading = input<boolean>(false);
 
   protected readonly rowDef = contentChild.required<BeachMapRowDef>(BeachMapRowDef);
   protected readonly rows = computed<readonly BeachMapCanvasRow[]>(() =>

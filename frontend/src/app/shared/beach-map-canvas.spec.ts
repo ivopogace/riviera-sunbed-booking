@@ -36,6 +36,7 @@ const ROWS: readonly TestRow[] = [
       viewportLabel="Beach map"
       [dragPan]="dragPan()"
       [truncateRailCodes]="truncate()"
+      [loading]="loading()"
     >
       <ng-template [appBeachMapRow]="rows()" let-row let-i="index">
         <ul class="set-row" [attr.data-row]="row.code">
@@ -58,6 +59,7 @@ class CanvasHost {
   readonly rows = signal<readonly TestRow[]>(ROWS);
   readonly dragPan = signal(true);
   readonly truncate = signal(false);
+  readonly loading = signal(false);
   readonly taps: string[] = [];
 }
 
@@ -508,6 +510,46 @@ describe('BeachMapCanvas (#672)', () => {
     expect(observer.disconnected).toBe(false);
     fixture.destroy();
     expect(observer.disconnected).toBe(true);
+  });
+
+  it('states no row name, no price and no pan hint while loading (#749)', () => {
+    const { host, component, detect } = render();
+    component.loading.set(true);
+    detect();
+
+    // The three testids named live chrome; a placeholder that leaks them is queryable as the real thing.
+    expect(host.querySelectorAll('[data-testid="row-code"]').length).toBe(0);
+    expect(host.querySelector('[data-testid="price-col"]')).toBeNull();
+    expect(host.querySelector('[data-testid="row-price"]')).toBeNull();
+
+    // Both rails still render — it is their CONTENT that is fabricated, never their column.
+    const placeholders = Array.from(host.querySelectorAll('[data-testid="row-code-placeholder"]'));
+    expect(placeholders.length).toBe(ROWS.length);
+    for (const chip of placeholders) {
+      expect(chip.textContent?.trim()).toBe('');
+    }
+    expect(host.querySelector('[data-testid="price-col-placeholder"]')?.children.length).toBe(
+      ROWS.length,
+    );
+  });
+
+  it('offers no gesture its inert container cannot accept while loading (#749)', async () => {
+    const { host, component, detect, fixture } = render();
+    component.loading.set(true);
+    detect();
+    seedGridWidth(host, 500);
+    Object.defineProperty(viewport(host), 'clientWidth', { value: 100, configurable: true });
+    seedVerticalOverflow(washScroller(host));
+    component.rows.set([...ROWS]);
+    detect();
+    await fixture.whenStable();
+    detect();
+
+    // Both overflow axes are real here; the instruction to act on them is what a skeleton cannot mean.
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
+    expect(viewport(host).classList.contains('cursor-grab')).toBe(false);
+    // The edge fade reports a measured fact rather than inviting an action, so it stays.
+    expect(viewport(host).classList.contains('pannable')).toBe(true);
   });
 
   it('projects the footer slot below the viewport and hides it with the grid when empty', () => {

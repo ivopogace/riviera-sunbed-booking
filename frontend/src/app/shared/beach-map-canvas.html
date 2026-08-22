@@ -12,20 +12,28 @@
       data-riv-scroller
     >
       <div class="flex items-start gap-2.5" [style.--riv-map-cols]="mapCols()">
-        <!-- Left rail: row codes (aria-hidden; each surface's tile names already carry the row). -->
+        <!-- Left rail: row codes (aria-hidden; each surface's tile names already carry the row). While loading the chip carries no text: the placeholder reserves the rail, it never states a row name nobody has fetched (#749, F-3). -->
         <div class="flex flex-col gap-1.5 shrink-0" aria-hidden="true">
           @for (row of rows(); track row.code; let i = $index) {
             <span
               class="h-[var(--riv-tile)] flex items-center justify-start"
               [class.mt-3]="row.zoneStart && i > 0"
-              ><span
-                class="inline-flex items-center justify-center min-w-6 h-6 px-[3px] rounded-lg bg-white/60 text-[10.5px] font-bold text-[#0a4f5e]"
-                data-testid="row-code"
-                ><span [class]="truncateRailCodes() ? 'max-w-12 sm:max-w-[96px] truncate' : ''">{{
-                  row.code
-                }}</span></span
-              ></span
             >
+              @if (loading()) {
+                <span
+                  class="inline-flex min-w-6 h-6 rounded-lg bg-white/60"
+                  data-testid="row-code-placeholder"
+                ></span>
+              } @else {
+                <span
+                  class="inline-flex items-center justify-center min-w-6 h-6 px-[3px] rounded-lg bg-white/60 text-[10.5px] font-bold text-[#0a4f5e]"
+                  data-testid="row-code"
+                  ><span [class]="truncateRailCodes() ? 'max-w-12 sm:max-w-[96px] truncate' : ''">{{
+                    row.code
+                  }}</span></span
+                >
+              }
+            </span>
           }
         </div>
 
@@ -37,7 +45,7 @@
           [attr.data-testid]="viewportTestid()"
           data-riv-scroller
           [class.pannable]="scrollHint()"
-          [class.cursor-grab]="dragPan()"
+          [class.cursor-grab]="dragPan() && !loading()"
           [attr.tabindex]="viewportTabindex()"
           [attr.aria-label]="viewportLabel() || null"
           [attr.role]="viewportLabel() ? 'region' : null"
@@ -58,13 +66,17 @@
         </div>
 
         <!-- Right rail: the chip, once per zone (aria-hidden; surfaces carry price in tile names where it matters). The tourist map's chip carries what the price buys beside its price — since #724 only the tier or the channel, the two facts the left rail's row name cannot state (#702's venue-words qualifier retired with the derived codes) — so the cell is capped and the chip ellipsizes: past the cap a longer phrase costs the tile viewport (flex-1 min-w-0 — it is what gives, not the shrink-0 rail) nothing. The cap is the design canvas's own rail width, 128px, narrowed below sm where 390px has none to spare. Operator rails render a bare formatMoney string, far under either cap, so they are unchanged. -->
-        <div class="flex flex-col gap-1.5 shrink-0" data-testid="price-col" aria-hidden="true">
+        <div
+          class="flex flex-col gap-1.5 shrink-0"
+          [attr.data-testid]="loading() ? 'price-col-placeholder' : 'price-col'"
+          aria-hidden="true"
+        >
           @for (row of rows(); track row.code; let i = $index) {
             <span
               class="h-[var(--riv-tile)] flex items-center justify-end min-w-[52px] max-w-[92px] sm:max-w-[128px]"
               [class.mt-3]="row.zoneStart && i > 0"
             >
-              @if (row.zoneStart && row.priceLabel; as price) {
+              @if (!loading() && row.zoneStart && row.priceLabel; as price) {
                 <span
                   class="rounded-full bg-white/80 border border-[#cfe3df] px-2 py-[3px] text-[11px] font-bold text-[#0a4f5e] shadow-[0_1px_4px_rgba(7,42,58,0.10)] min-w-0 max-w-full truncate"
                   data-testid="row-price"
@@ -78,7 +90,7 @@
     </div>
 
     <!-- Named per surface: on a paint surface "drag" would name the gesture that paints instead. -->
-    @if (scrollHint() || vScrollHint()) {
+    @if (!loading() && (scrollHint() || vScrollHint())) {
       <p
         class="text-center text-[12px] font-semibold text-(--riv-accent-ink) mt-3"
         data-testid="scroll-hint"
