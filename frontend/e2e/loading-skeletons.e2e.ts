@@ -297,3 +297,129 @@ test('the operator Daily view’s loading state is axe-clean (#744)', async ({ p
   release();
   await expect(page.getByTestId('daily-tile').first()).toBeVisible();
 });
+
+/**
+ * The horizontal half of the anti-jump contract (#749): the tile grid must not slide sideways
+ * when the read lands, either.
+ *
+ * <p>The rail that carries the row names was as wide as its widest chip, so it was as wide as
+ * whatever the read returned: a placeholder `A` measured 24px, `Front row` 63.14px, and the whole
+ * grid moved 39px right on load. That is not a skeleton defect — it is a **loaded-map** defect the
+ * skeleton merely made visible on every load, which is why the rail reserves its width in both
+ * states rather than only sizing the placeholder. Sizing only the placeholder is strictly worse: a
+ * venue whose rows are named `A` would then slide the grid the other way.
+ *
+ * <p><strong>The reservation is a minimum, and the residual is the price of that.</strong> Pinning
+ * the rail at the #724 cap would end the slide outright, and the desktop map cannot afford it: the
+ * fits-whole guarantee (`venue-map-pan.e2e.ts`, #700) clears its viewport by ~31px on a 14-column
+ * venue, and a cap-sized rail spends 39px of it — measured, as a pan the map is not supposed to
+ * need. So the rail reserves the 54px mobile cap, and a label wider than that still widens it.
+ *
+ * <p>Measured either side of the release: **0.00px** (tourist, phone — the one case the #724 cap
+ * closes completely, since no label can exceed the reservation there) and **9.14px** on the other
+ * three, down from 30.00 / 39.14 / 39.14 / 39.14px before. What the rail SAYS while loading is the
+ * unit specs' claim; what it MEASURES is only knowable here.
+ */
+const MAX_RAIL_SLIDE_PX = 1;
+const MAX_LABEL_RAIL_SLIDE_PX = 12;
+
+/** The tile viewport's left edge — the pixel a widening rail pushes. */
+async function leftEdgeOf(page: Page, testid: string): Promise<number> {
+  const box = await page.getByTestId(testid).boundingBox();
+  expect(box, `${testid} has a rendered box`).not.toBeNull();
+  return box!.x;
+}
+
+/** Whether the pan viewport really overflows — a hint assertion is vacuous on a grid that fits. */
+function overflowsHorizontally(page: Page, testid: string): Promise<boolean> {
+  return page.getByTestId(testid).evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+}
+
+for (const [size, viewport] of [
+  ['desktop', DESKTOP],
+  ['a phone', PHONE],
+] as const) {
+  test(`the tourist beach map’s rail holds its width across the load — ${size} (#749)`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    const release = await holdVenueRead(page, RICH_VENUE);
+
+    await page.goto('/venues/1');
+    await expect(page.getByTestId('map-skeleton-tile').first()).toBeVisible();
+    const before = await leftEdgeOf(page, 'map-skeleton-grid');
+
+    release();
+    await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+    const after = await leftEdgeOf(page, 'map-pan');
+    // A phone caps every label at the reservation, so this is the case that reaches zero.
+    const bound = size === 'a phone' ? MAX_RAIL_SLIDE_PX : MAX_LABEL_RAIL_SLIDE_PX;
+    expect(
+      Math.abs(after - before),
+      `the tile grid barely moved when the map landed at ${size} (${before} → ${after})`,
+    ).toBeLessThan(bound);
+  });
+
+  test(`the Daily view’s rail holds its width across the load — ${size} (#749)`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await mockWholeConsole(page);
+    const release = await holdVenueRead(page, RICH_VENUE);
+
+    await page.goto('/operator/1/daily');
+    await signInAsOperator(page);
+    await expect(page.getByTestId('daily-skeleton-tile').first()).toBeVisible();
+    const before = await leftEdgeOf(page, 'daily-skeleton-grid');
+
+    release();
+    await expect(page.getByTestId('daily-tile').first()).toBeVisible();
+
+    const after = await leftEdgeOf(page, 'daily-grid');
+    // Never zero here: #724 keeps operator labels whole, so the reservation can only be a minimum.
+    expect(
+      Math.abs(after - before),
+      `the tile grid barely moved when the day landed at ${size} (${before} → ${after})`,
+    ).toBeLessThan(MAX_LABEL_RAIL_SLIDE_PX);
+  });
+}
+
+for (const [surface, tileTestid, gridTestid, open] of [
+  ['the tourist beach map', 'map-skeleton-tile', 'map-skeleton-grid', 'tourist'],
+  ['the Daily view', 'daily-skeleton-tile', 'daily-skeleton-grid', 'operator'],
+] as const) {
+  test(`${surface}’s skeleton instructs no gesture its inert container can accept (#749)`, async ({
+    page,
+  }) => {
+    // 390px is where the 4 × 6 placeholder grid overflows, which is what used to emit the hint.
+    await page.setViewportSize(PHONE);
+    if (open === 'operator') {
+      await mockWholeConsole(page);
+    }
+    const release = await holdVenueRead(page, RICH_VENUE);
+
+    await page.goto(open === 'operator' ? '/operator/1/daily' : '/venues/1');
+    if (open === 'operator') {
+      await signInAsOperator(page);
+    }
+    await expect(page.getByTestId(tileTestid).first()).toBeVisible();
+    // What the rail says is the unit specs' claim (AC-1); what it MEASURES is only knowable here.
+    await expect(page.getByTestId('row-code')).toHaveCount(0);
+    await expect(page.getByTestId('row-code-placeholder').first()).toHaveText('');
+
+    expect(
+      await overflowsHorizontally(page, gridTestid),
+      'the placeholder grid really does overflow, so the suppressed hint is the live case',
+    ).toBe(true);
+    await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
+    await expect(page.getByTestId(gridTestid)).not.toHaveClass(/cursor-grab/);
+
+    release();
+    await expect(
+      page.getByTestId(open === 'operator' ? 'daily-tile' : 'set-tile').first(),
+    ).toBeVisible();
+    // The loaded map overflows the same phone, so the hint the skeleton withheld is now honest.
+    await expect(page.getByTestId('scroll-hint')).toHaveCount(1);
+  });
+}

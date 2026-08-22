@@ -53,6 +53,16 @@ left edge — what a reader sees slide.
 | Daily view | 1280 | 24.00 | 63.14 | **+39.14px** | no |
 | Daily view | 390 | 24.00 | 63.14 | **+39.14px** | **yes** |
 
+**And one thing the fix itself had to be measured against.** Reserving the #724 cap outright
+(102px from `sm`) does end the slide, and it costs 39px of tile viewport — which the desktop map
+does not have. `venue-map-pan.e2e.ts`'s fits-whole guarantee (#700) clears its viewport by ~31px on
+a 14-column venue, so the cap-sized rail put that map into a pan; CI caught it on the phase-1/2
+commit, and the local mocked suite had caught it a few minutes earlier. The reservation is
+therefore the **54px mobile cap as a minimum**: it holds the phone rail exactly where it lands
+today, leaves ~13px of the fits-whole margin, and cuts the slide to 9.14px where a label is wider
+than the reservation. Zero everywhere is only buyable with the #724 caps themselves, which is a
+product call and a Non-goal.
+
 Two things the issue did not state, both found here: the tourist rail's mobile jump stops
 at 54px because the #724 cap truncates `Front row` (48px of text + 6px of chip padding) —
 so on that surface a *fixed* rail is exactly today's worst case, not a new one. And the
@@ -70,22 +80,23 @@ without sliding the tiles; out of scope, Non-goals.
       `cursor-grab` — while `.pannable` (the measured edge fade) still applies.
       *Pinned by:* `beach-map-canvas.spec.ts` › "a loading canvas offers no gesture it cannot
       accept".
-- [ ] **AC-3:** Given `railCodes="capped-labels"`, when the rail renders, then its column
-      width is fixed (`w-[54px] sm:w-[102px]`) in both the loading and the loaded state, and
-      the chip ellipsizes inside it. *Pinned by:* `beach-map-canvas.spec.ts` › "a
-      capped-label rail reserves the same width loading and loaded".
+- [ ] **AC-3:** Given either label vocabulary, when the rail renders, then its column reserves
+      `min-w-[54px]` in both the loading and the loaded state, and the loading chip fills exactly
+      that reservation. *Pinned by:* `beach-map-canvas.spec.ts` › "reserves the same rail width
+      loading and loaded, for either label vocabulary (#749)".
 - [ ] **AC-4:** Given `railCodes="letters"` (the default — the two editor surfaces), when the
       rail renders in either state, then it reserves nothing beyond the chip's own `min-w-6`,
       so a placeholder letter chip and a real letter chip are the same width. *Pinned by:*
       `beach-map-canvas.spec.ts` › "a letters rail reserves nothing, so the editors are
       unchanged".
-- [ ] **AC-5:** Given the tourist beach map at 1280 and at 390, when the venue read lands,
-      then the tile viewport's left edge has not moved (≤1px). *Pinned by:*
-      `loading-skeletons.e2e.ts` › "the tourist beach map's rail holds its width across the
-      load (#749)".
-- [ ] **AC-6:** Given the operator Daily view at 1280, when the read lands, then the tile
-      viewport's left edge has not moved (≤1px); at 390 it moves by at most the residual the
-      whole-label rule allows (≤12px, was 39.14px). *Pinned by:* `loading-skeletons.e2e.ts` ›
+- [ ] **AC-5:** Given the tourist beach map at 390, when the venue read lands, then the tile
+      viewport's left edge has not moved at all (≤1px — the #724 cap is the reservation there,
+      so no label can exceed it); at 1280 it moves by at most the residual a wider label leaves
+      (≤12px, was 39.14px). *Pinned by:* `loading-skeletons.e2e.ts` › "the tourist beach map's
+      rail holds its width across the load (#749)".
+- [ ] **AC-6:** Given the operator Daily view at either viewport, when the read lands, then the
+      tile viewport's left edge moves by at most that same residual (≤12px, was 39.14px) — never
+      zero, because #724 keeps operator labels whole. *Pinned by:* `loading-skeletons.e2e.ts` ›
       "the Daily view's rail holds its width across the load (#749)".
 - [ ] **AC-7:** Given the tourist map and the Daily view while loading at 390, when the
       placeholder grid overflows, then no `scroll-hint` is on the page. *Pinned by:*
@@ -115,7 +126,7 @@ is not supposed to move except where the plan says it does.
 |---|---|---|
 | Rail chip prints `row.code` on every surface | **changed** | unchanged when loaded; in `loading` mode the chip renders empty — a placeholder states shape, never content (F-3) |
 | Rail column width is content-derived everywhere | **changed** | `letters` keeps it (editors unchanged, AC-4); `labels`/`capped-labels` reserve a width so the grid stops sliding (the ticket's item 4) |
-| Tourist chip truncates at 48px / 96px of text | **preserved** | the cap moves from the text span's `max-w-12 sm:max-w-[96px]` to `max-w-full` inside a column fixed at exactly those values + the chip's 6px padding — same rendered cap, now also a floor |
+| Tourist chip truncates at 48px / 96px of text | **preserved** | untouched; the reservation sits under the cap as a floor, it does not replace it |
 | Operator chips render whole labels (#724) | **preserved** | `labels` reserves a **minimum**; a longer label still widens the rail and renders whole |
 | Pan hint appears whenever either axis overflows | **changed** | unchanged when loaded; suppressed while loading, where the container is `inert` and the gesture is unfollowable (I-2) |
 | Viewport shows `cursor-grab` when `dragPan` | **changed** | suppressed while loading, for the same reason as the hint — same false-affordance class |
@@ -128,7 +139,7 @@ is not supposed to move except where the plan says it does.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The reservation trades a horizontal jump for a permanently narrower tile viewport (the G-1 failure mode, in reverse) | med | med | reserve exactly the #724 cap, so the tourist worst case is unchanged; measure the viewport width either side of the load at both viewports and record it in the e2e's header | claude | open |
+| R-1 | The reservation trades a horizontal jump for a permanently narrower tile viewport (the G-1 failure mode, in reverse) | med | med | **materialized** — the cap-sized reservation cost the 14-column desktop map its fits-whole guarantee (`venue-map-pan.e2e.ts`, #700). Re-sized to the 54px mobile cap as a minimum, which leaves ~13px of that margin | claude | fixed in phase 3 |
 | R-2 | Suppressing the hint makes the map card *grow* on load (the hint is inside the frame), moving content below it | high | low | the #744 contract is the frame's **top** edge, which the hint cannot move; the existing matrix still asserts it. Accepted and stated in the e2e | claude | open |
 | R-3 | Class strings computed in TS are invisible to a naive Tailwind content scan | low | high | v4 scans the whole source tree; `scrollbarChrome` is the in-repo precedent. Proven by the browser measurement, not by reading the class list (RV-FE / rule 4) | claude | open |
 | R-4 | Replacing `truncateRailCodes` breaks a consumer or spec silently | low | med | it has exactly two references outside the canvas (`venue-map.html`, `beach-map-canvas.spec.ts`); the compiler rejects an unknown input on a signal-input component | claude | open |
@@ -136,14 +147,14 @@ is not supposed to move except where the plan says it does.
 
 ## Open questions / Assumptions
 
-- **Assumption:** reserving the rail in the **loaded** state as well is in scope, not a
-  separate ticket. The issue leaves it open ("worth deciding at the same time"); the design
-  forces it — a fixed-width placeholder in front of a content-derived rail slides the grid
-  *left* on a short-labelled venue, which is G-1 again. — *Owner:* claude · *Resolves by:*
-  phase 1 (the e2e measures it either way).
-- **Assumption:** `54px` / `102px` (from `sm`) is the right reservation, because it is the
-  #724 cap plus the chip's own 6px of padding — i.e. the width the tourist rail can already
-  reach today. — *Owner:* claude · *Resolves by:* phase 1.
+### Resolved
+
+- **Assumption (resolved, phase 3):** the reservation is the #724 cap plus padding, at both
+  tiers. **Wrong at `sm`** — measured, the desktop map has ~31px of fits-whole margin and the
+  102px rail spends 39px of it. Settled at a single-tier `min-w-[54px]`: zero slide on the
+  tourist phone, 9.14px elsewhere, and no loaded layout moves.
+- **Assumption (resolved, phase 1):** reserving in the loaded state is in scope. It is — a
+  fixed-width placeholder in front of a content-derived rail slides the grid the other way.
 
 ## Availability & concurrency (invariant #2)
 
@@ -176,17 +187,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `CI gate — phase 3 pushed`
 
-**Next action:** write the phase-3 e2e (AC-5…AC-7) — rail width and viewport x either
-side of the held read, both surfaces, both viewports.
+**Next action:** confirm the frontend job is green on the phase-3 head, then mark PR #750
+ready for review and run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the canvas learns it is loading | ✅ | `827d634` |
 | 1 — the rail reserves its width | ✅ | `0faec54` |
 | 2 — the three surfaces adopt the modes | ✅ | `0faec54` (with phase 1 — see below) |
-| 3 — measured in a real browser | ⏳ | |
+| 3 — measured in a real browser | ✅ | `6a9a201` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -200,7 +211,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| C-1 | CI (frontend job, `09d67b6`) — and the local mocked suite, minutes earlier | The cap-sized rail reservation (`sm:w-[102px]`) spent 39px of tile viewport, tipping the 14-column desktop map out of its #700 fits-whole guarantee: `venue-map-pan.e2e.ts` × 2 red | fixed-in-`6a9a201` — reservation re-sized to a single-tier `min-w-[54px]`; risk R-1 closed with the measured margin |
 
 ---
 

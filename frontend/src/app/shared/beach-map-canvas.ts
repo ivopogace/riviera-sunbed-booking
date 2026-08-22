@@ -120,8 +120,8 @@ export class BeachMapCanvas {
    *  surfaces): chips are one or two characters, so the rail reserves nothing beyond the chip's
    *  own `min-w-6`. `labels` is the stored per-venue row name (#724): the rail reserves a
    *  MINIMUM, so a longer name still widens it and renders whole — the operator rule. The
-   *  tourist map's `capped-labels` ellipsizes instead, so its rail is a fixed width: the one
-   *  vocabulary whose rail can never move. */
+   *  tourist map's `capped-labels` ellipsizes on top of that reservation (#724), which is what
+   *  makes its phone rail the one that cannot move at all. */
   readonly railCodes = input<'letters' | 'labels' | 'capped-labels'>('letters');
   /** Draw a placeholder grid, not a map: the rails reserve their columns but state nothing, and
    *  every cue that invites a gesture is withheld (#749). A surface renders its skeleton THROUGH
@@ -138,34 +138,27 @@ export class BeachMapCanvas {
    * direction — a venue whose rows are named `A` would then slide the grid LEFT — so the
    * reservation belongs to the vocabulary, not to the loading flag, and applies in both states.
    *
-   * <p>The two values are the #724 caps (48px, 96px from `sm`) plus the chip's own 6px of
-   * padding, so a capped rail reserves exactly the width it could already reach today — the
-   * tourist map's worst case becomes its only case rather than a new one.
+   * <p><strong>A minimum, and 54px of one, because the rail is spending the tile grid's width.</strong>
+   * Reserving the #724 cap outright (102px from `sm`) would pin the rail at its worst case and end
+   * the slide entirely — but measured against the fits-whole guarantee it costs 39px the desktop
+   * map does not have: a 14-column venue clears its viewport by ~31px, and the cap-sized rail put
+   * it into a pan. 54px is the mobile cap (48px of text + the chip's 6px), which leaves ~13px of
+   * that margin, holds the phone rail exactly where it lands today, and cuts the slide from
+   * 39.14px to 9.14px everywhere else. The residual is a label wider than the reservation, which
+   * only a measurement of the loaded map could predict.
    */
-  protected readonly railColumnClass = computed(() => {
-    switch (this.railCodes()) {
-      case 'capped-labels':
-        return 'w-[54px] sm:w-[102px]';
-      case 'labels':
-        return 'min-w-[54px] sm:min-w-[102px]';
-      default:
-        return '';
-    }
-  });
-
-  /** A capped chip ellipsizes against the column's reservation rather than carrying its own cap. */
-  protected readonly railChipClass = computed(() =>
-    this.railCodes() === 'capped-labels' ? 'max-w-full' : '',
+  protected readonly railColumnClass = computed(() =>
+    this.railCodes() === 'letters' ? '' : 'min-w-[54px]',
   );
 
-  /** Ellipsize against the column's reservation; an uncapped rail's chip stays whole (#724). */
+  /** The #724 ellipsis, on the tourist rail only: two tiers, 48px of text and 96px from `sm`. */
   protected readonly railCodeTextClass = computed(() =>
-    this.railCodes() === 'capped-labels' ? 'max-w-full truncate' : '',
+    this.railCodes() === 'capped-labels' ? 'max-w-12 sm:max-w-[96px] truncate' : '',
   );
 
   /** The loading chip fills whatever the rail reserves, so the placeholder is the rail, not a pill in it. */
   protected readonly railPlaceholderClass = computed(() =>
-    this.railCodes() === 'letters' ? 'min-w-6' : 'w-[54px] sm:w-[102px]',
+    this.railCodes() === 'letters' ? 'min-w-6' : 'w-[54px]',
   );
 
   protected readonly rowDef = contentChild.required<BeachMapRowDef>(BeachMapRowDef);

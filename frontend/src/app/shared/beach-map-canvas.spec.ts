@@ -228,37 +228,35 @@ describe('BeachMapCanvas (#672)', () => {
     detect();
     const inner = host.querySelector('[data-testid="row-code"] .truncate')!;
     expect(inner).toBeTruthy();
-    // The cap is the column's now, so the chip ellipsizes against it instead of carrying its own.
-    expect(inner.classList.contains('max-w-full')).toBe(true);
+    expect(inner.classList.contains('max-w-12')).toBe(true);
+    expect(inner.classList.contains('sm:max-w-[96px]')).toBe(true);
     expect(inner.textContent).toBe('A');
   });
 
-  it('reserves the capped rail width identically loading and loaded (#749)', () => {
+  it('reserves the same rail width loading and loaded, for either label vocabulary (#749)', () => {
     const { component, host, detect } = render();
-    component.railCodes.set('capped-labels');
-    detect();
-    const loaded = railColumn(host).className;
-    // 48px + 96px of #724 cap, plus the chip's own 6px of padding: today's worst case, made the only case.
-    expect(loaded).toContain('w-[54px]');
-    expect(loaded).toContain('sm:w-[102px]');
+    for (const codes of ['labels', 'capped-labels'] as const) {
+      component.railCodes.set(codes);
+      component.loading.set(false);
+      detect();
+      // A minimum, not the #724 cap: the cap-sized rail costs the desktop map its fits-whole margin.
+      const loaded = railColumn(host).className;
+      expect(loaded, codes).toContain('min-w-[54px]');
 
-    component.loading.set(true);
-    detect();
-    expect(railColumn(host).className).toBe(loaded);
-    const chip = host.querySelector('[data-testid="row-code-placeholder"]')!;
-    expect(chip.classList.contains('w-[54px]')).toBe(true);
-    expect(chip.classList.contains('sm:w-[102px]')).toBe(true);
+      component.loading.set(true);
+      detect();
+      expect(railColumn(host).className, codes).toBe(loaded);
+      const chip = host.querySelector('[data-testid="row-code-placeholder"]')!;
+      expect(chip.classList.contains('w-[54px]'), codes).toBe(true);
+    }
   });
 
-  it('reserves a minimum for whole labels, without capping them (#724, #749)', () => {
+  it('caps only the tourist rail, so operator labels stay whole (#724, #749)', () => {
     const { component, host, detect } = render();
     component.railCodes.set('labels');
     detect();
-    const column = railColumn(host).className;
-    expect(column).toContain('min-w-[54px]');
-    expect(column).toContain('sm:min-w-[102px]');
-    // A minimum, so a label longer than the reservation still widens the rail and renders whole.
     expect(host.querySelector('[data-testid="row-code"] .truncate')).toBeNull();
+    expect(railColumn(host).className).toContain('min-w-[54px]');
   });
 
   it('reserves nothing for a letters rail, so the editor surfaces are unchanged (#749)', () => {
