@@ -182,11 +182,20 @@ N/A — no contract change. No request, response shape, or endpoint is touched.
 
 ## Execution status
 
-**Stage pointer:** `CI gate — draft PR #748 open`
+**Stage pointer:** `CI gate ✅ + Sonar gate ✅ on PR #748 — held at draft, awaiting the review gate`
 
-**Next action:** watch PR #748's CI to green, then mark it ready for review, which is
-what makes the review gate (`/code-review` + `riviera-review-overlay`) and the Sonar
-gate due.
+**Next action:** mark PR #748 ready for review and run the review gate (`/code-review`
+per the `pr-gates.md` §1 ladder, with `riviera-review-overlay` layered on). Then the merge
+close-out: finalize this section with `merged via PR #748` in the PR's own last commit.
+
+**CI gate (head `db8be91`):** all 8 checks green — Backend (build + test), Frontend
+(lint + test + build), Repo hygiene (diff-scoped), SonarCloud scan + Code Analysis, CodeQL
+and both analyzers.
+
+**Sonar gate:** passed against the repo's stricter merge bar, read from the API rather than
+the badge (`api/issues/search` → `total: 0`; `api/measures/component` → `new_violations 0`,
+`new_security_hotspots 0`, `new_coverage 100.0`, `new_duplicated_lines_density 0.0`). No
+issue list to work through, so nothing re-enters at Implement from it.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
