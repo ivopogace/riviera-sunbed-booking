@@ -248,6 +248,7 @@
     <div style="margin:24px 0 6px;font-size:16px;color:{{ ink }};"><strong style="font-size:19px;font-weight:700;">{{ freeCount }}</strong> of {{ totalCount }} sets free on {{ dateLabel }}</div>
     <div style="height:8px;border-radius:999px;background:{{ trackBg }};overflow:hidden;"><span style="display:block;height:100%;width:{{ freePct }}%;background:{{ barGrad }};"></span></div>
 
+    <!-- as-built diverges — see #704 (the band moved above the count into the glass header, grew to 264px on desktop, and its sun's stops went opaque); design record left as drawn, docs/design/README.md -->
     <div style="position:relative;margin-top:20px;height:210px;border-radius:24px;overflow:hidden;background:{{ photoGrad }};border:1px solid rgba(255,255,255,0.4);box-shadow:0 12px 40px rgba(7,42,58,0.3);">
       <span style="position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:74px;height:74px;border-radius:50%;background:radial-gradient(circle at 34% 30%, rgba(255,236,180,0.95), rgba(240,170,46,0.5) 72%);filter:blur(0.5px);opacity:.85;pointer-events:none;"></span>
       <span style="position:absolute;left:0;right:0;bottom:44px;text-align:center;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.85);pointer-events:none;">Venue photos coming soon</span>

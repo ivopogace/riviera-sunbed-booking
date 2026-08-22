@@ -45,6 +45,18 @@ describe('PhotoSlideshow', () => {
     expect(el().querySelectorAll('[data-testid="map-banner-dots"] span').length).toBe(3);
   });
 
+  it('backs the dots with the chrome rail and edges the step chips, so both survive any photo (#704)', () => {
+    create({ photos: PHOTOS, testId: 'map-banner', ownControls: true });
+
+    // The arithmetic picking their alphas is photo-slideshow.contrast.spec.ts; this pins that the markup wears them.
+    const dots = el().querySelector('[data-testid="map-banner-dots"]')!;
+    expect(dots.className).toContain('bg-(--riv-photo-chrome)');
+    for (const hook of ['map-banner-prev', 'map-banner-next']) {
+      const chip = el().querySelector(`[data-testid="${hook}"] span`)!;
+      expect(chip.className).toContain('border-(--riv-photo-chrome-edge)');
+    }
+  });
+
   it('renders nothing for an empty photo list', () => {
     create({ photos: [] });
     expect(el().querySelector('img')).toBeNull();

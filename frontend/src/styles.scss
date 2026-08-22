@@ -82,6 +82,15 @@
     rgba(13, 40, 40, 0.8) 100%
   );
   --riv-photo-ink: #ffffff;
+  /** Slideshow chrome over an ARBITRARY uploaded photo (#704). The step chips and the dot rail
+      sit above the scrim, so they cannot borrow its backing — they carry their own, and both are
+      proven at 3:1 (WCAG 1.4.11) over the worst case any photo can present (pure white AND pure
+      black) by shared/photo-slideshow.contrast.spec.ts. --riv-photo-chrome backs the dot rail
+      (a white dot on a pure-white photo is 1:1 without it); --riv-photo-chrome-edge draws the
+      step chip's boundary, which the earlier white --riv-card-border could not do over a light
+      photo. Theme-invariant on purpose: a photo is not themed. */
+  --riv-photo-chrome: rgba(13, 40, 40, 0.7);
+  --riv-photo-chrome-edge: rgba(12, 42, 51, 0.6);
   /** 0.85 (design: 0.7): the chip backs the accent ink over ANY cover photo — a dark
       photo under a 0.7 white glass leaves the accent below AA; 0.85 clears it even over black. */
   --riv-mode-chip-glass: rgba(255, 255, 255, 0.85);

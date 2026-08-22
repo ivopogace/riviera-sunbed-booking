@@ -17,6 +17,10 @@ import { TouchTarget } from './touch-target';
  * - external (the Discover card, whose whole card is an `<a>`): leave `ownControls` unset and
  *   drive {@link prev}/{@link next} from buttons OUTSIDE the link via a template reference.
  *
+ * The chrome (dot rail, step chips) carries its OWN backing rather than leaning on a host's
+ * scrim — it paints above that scrim, and an uploaded photo can be any colour; the alphas are
+ * proven at 3:1 over the worst case in `photo-slideshow.contrast.spec.ts` (#704).
+ *
  * `testId` prefixes the test hooks: `{testId}-img` (first slide), `{testId}-slide-img` (rest),
  * `{testId}-dots`, and — with own controls — `{testId}-prev` / `{testId}-next`. `name` gives the
  * control labels their subject ("Next photo, Miramar Beach Club").
@@ -39,14 +43,15 @@ import { TouchTarget } from './touch-target';
         />
       }
       @if (photos().length > 1) {
+        <!-- The rail is the dots' backing, not decoration: they paint ABOVE the host's scrim, so over a pale photo a bare white dot is invisible (#704). Proven at 3:1 in photo-slideshow.contrast.spec.ts. -->
         <span
-          class="absolute right-[15px] bottom-[13px] z-[1] flex gap-[6px]"
+          class="absolute right-[13px] bottom-[11px] z-[1] flex items-center gap-[7px] rounded-full bg-(--riv-photo-chrome) px-[7px] py-[5px]"
           [attr.data-testid]="testId() + '-dots'"
         >
           @for (photo of photos(); track $index; let i = $index) {
             <span
-              class="size-[6px] rounded-full [transition:background_0.15s_ease]"
-              [class]="i === index() ? 'bg-white' : 'bg-white/45'"
+              class="size-[8px] rounded-full [transition:background_0.15s_ease]"
+              [class]="i === index() ? 'bg-white' : 'bg-white/65'"
             ></span>
           }
         </span>
@@ -63,7 +68,7 @@ import { TouchTarget } from './touch-target';
       >
         <span
           aria-hidden="true"
-          class="inline-flex size-[30px] items-center justify-center rounded-full border border-(--riv-card-border) bg-(--riv-mode-chip-glass) pb-[2px] text-[18px] leading-none text-(--riv-accent-ink) backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
+          class="inline-flex size-[30px] items-center justify-center rounded-full border border-(--riv-photo-chrome-edge) bg-(--riv-mode-chip-glass) pb-[2px] text-[18px] leading-none text-(--riv-accent-ink) backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
           >‹</span
         >
       </button>
@@ -77,7 +82,7 @@ import { TouchTarget } from './touch-target';
       >
         <span
           aria-hidden="true"
-          class="inline-flex size-[30px] items-center justify-center rounded-full border border-(--riv-card-border) bg-(--riv-mode-chip-glass) pb-[2px] text-[18px] leading-none text-(--riv-accent-ink) backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
+          class="inline-flex size-[30px] items-center justify-center rounded-full border border-(--riv-photo-chrome-edge) bg-(--riv-mode-chip-glass) pb-[2px] text-[18px] leading-none text-(--riv-accent-ink) backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
           >›</span
         >
       </button>
