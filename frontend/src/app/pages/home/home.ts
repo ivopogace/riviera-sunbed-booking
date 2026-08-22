@@ -21,6 +21,7 @@ import { PhotoSlideshow } from '../../shared/photo-slideshow';
 import { slideshowPhotos } from '../../shared/photo-url';
 import { isRated, ratingScore } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
+import { SemanticChip } from '../../shared/semantic-chip';
 import { defaultBookingDate } from '../../shared/booking-date';
 import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
@@ -74,6 +75,7 @@ interface VenueCard {
     CardGlass,
     CutoffNote,
     AmenityChip,
+    SemanticChip,
     FieldGlass,
     LoadAnnouncer,
     TouchTarget,

@@ -417,6 +417,23 @@ describe('Home (venue discovery)', () => {
     expect(secondChips?.textContent?.trim()).toBe('');
   });
 
+  it('splits the card chips into a semantic family and a descriptive one (#705)', async () => {
+    const [rated] = venues();
+    listRequest().flush([{ ...rated, ratingTenths: 0, reviewsCount: 0 }]);
+    await fixture.whenStable();
+
+    const card = el().querySelector('[data-testid="venue-card"]')!;
+    // The two chips that make a platform claim: how booking works, and that nobody has rated this venue yet.
+    expect(card.querySelector('.mode-chip')?.classList.contains('semantic-chip')).toBe(true);
+    expect(
+      card.querySelector('[data-testid="new-chip"]')?.classList.contains('semantic-chip'),
+    ).toBe(true);
+    // Everything the venue says about itself stays in the descriptive family.
+    const descriptive = [...card.querySelectorAll('[data-testid="card-chips"] .amenity-chip')];
+    expect(descriptive.length).toBeGreaterThan(0);
+    expect(descriptive.some((chip) => chip.classList.contains('semantic-chip'))).toBe(false);
+  });
+
   it('shows a distinct empty state when no venues match', async () => {
     listRequest().flush([]);
     await fixture.whenStable();

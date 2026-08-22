@@ -36,9 +36,8 @@
           <span aria-hidden="true" class="absolute inset-0 bg-(image:--riv-photo-scrim)"></span>
         </div>
 
-        <p
-          class="inline-block rounded-full bg-(--riv-chip-bg) border border-(--riv-chip-border) text-(--riv-ink) font-bold text-[0.78rem] px-3 py-[5px] mb-[13px]"
-        >
+        <!-- The SEMANTIC pair (#705): this chip and the "New" chip below wear the same inverted accent pill they wear on the Discover cards, which is what makes the family readable across both surfaces. Its opaque fill replaces the --riv-chip-bg tint that had to be composited over this panel's glass, per theme. -->
+        <p appSemanticChip class="inline-block text-[0.78rem] px-3 py-[5px] mb-[13px]">
           {{ v.modeLabel }}
         </p>
         <h1
@@ -59,7 +58,8 @@
             {{ v.reviewsCount }} reviews
           } @else {
             <span
-              class="inline-block rounded-full bg-(--riv-chip-bg) border border-(--riv-chip-border) text-(--riv-ink) font-bold text-[0.78rem] px-3 py-[3px]"
+              appSemanticChip
+              class="inline-block text-[0.78rem] px-3 py-[3px]"
               aria-label="No reviews yet"
               data-testid="new-chip"
               >New</span

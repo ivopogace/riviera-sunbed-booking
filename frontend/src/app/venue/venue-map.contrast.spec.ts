@@ -15,12 +15,10 @@ import {
   Glass,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
-  PORCELAIN_CHIP,
   PORCELAIN_HEADER_GLASS,
   PORCELAIN_PANEL_TRACK,
   PORCELAIN_STOPS,
   RIVIERA_CARD_GLASS,
-  RIVIERA_CHIP,
   RIVIERA_HEADER_GLASS,
   RIVIERA_PANEL_TRACK,
   RIVIERA_STOPS,
@@ -106,7 +104,6 @@ interface Theme {
   readonly name: string;
   readonly stops: readonly Rgb[];
   readonly headerGlass: Glass;
-  readonly chip: Glass;
   readonly cardGlass: Glass;
   readonly headInk: Rgb; // --riv-ink
   readonly headInkSoftAlpha: number; // --riv-ink-soft
@@ -118,7 +115,6 @@ const THEMES: readonly Theme[] = [
     name: 'riviera',
     stops: RIVIERA_STOPS,
     headerGlass: RIVIERA_HEADER_GLASS,
-    chip: RIVIERA_CHIP,
     cardGlass: RIVIERA_CARD_GLASS,
     headInk: WHITE,
     headInkSoftAlpha: 0.86,
@@ -128,7 +124,6 @@ const THEMES: readonly Theme[] = [
     name: 'porcelain',
     stops: PORCELAIN_STOPS,
     headerGlass: PORCELAIN_HEADER_GLASS,
-    chip: PORCELAIN_CHIP,
     cardGlass: PORCELAIN_CARD_GLASS,
     headInk: INK_DARK,
     headInkSoftAlpha: 0.7,
@@ -149,16 +144,7 @@ describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue 
     expectAaOverStops(theme.headInk, theme.headInkFaintAlpha, theme.headerGlass, theme.stops);
   });
 
-  it('mode-pill text meets AA on the chip tint over the header panel glass', () => {
-    for (const stop of theme.stops) {
-      const panel = surfaceOver(theme.headerGlass, stop);
-      const chip = composite(theme.chip.color, theme.chip.alpha, panel);
-      expect(
-        contrastRatio(rgbToHex(theme.headInk), rgbToHex(chip)),
-        `over stop ${rgbToHex(stop)}`,
-      ).toBeGreaterThanOrEqual(AA_NORMAL);
-    }
-  });
+  // The mode-pill / "New"-pill proof that stood here MOVED to shared/semantic-chip.contrast.spec.ts (#705). It composited --riv-chip-bg over this panel's glass over every background stop, once per theme; the pills now wear an opaque solid fill, so a single ink/fill pair proves them on every surface and in both themes at once. Moved rather than dropped — and the successor is the stronger claim, because it cannot be invalidated by a change to the panel beneath.
 
   it('date field text (dark ink) meets AA on the near-opaque field over the header glass', () => {
     for (const stop of theme.stops) {

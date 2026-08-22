@@ -189,7 +189,8 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
 describe('Discover photo-area contrast (theme-independent, issue #135; real photos since #142)', () => {
   // `WORST_PHOTOS` (testing/glass-tokens.ts): the placeholder gradient's stops plus pure white (the dark scrim under white text) and pure black (the white chip glass under dark text) — shared since #704 with the slideshow-chrome spec.
 
-  it('mode chip text (accent) meets AA on the chip glass over the gradient AND any photo', () => {
+  // Repointed, not retired (#705): this assertion was written for the mode chip, which now wears an OPAQUE fill and is proven by shared/semantic-chip.contrast.spec.ts instead. The same accent-on-glass pair still ships on the card's own step chips (home.html), and this is the only place it is held to AA_NORMAL — shared/photo-slideshow.contrast.spec.ts holds the 1.4.11 bar of 3:1 — so the subject changes and the bar does not.
+  it('step chip glyph (accent) meets AA on the chip glass over the gradient AND any photo', () => {
     for (const stop of WORST_PHOTOS) {
       const chip = composite(MODE_CHIP_GLASS.color, MODE_CHIP_GLASS.alpha, stop);
       expect(

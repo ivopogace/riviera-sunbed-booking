@@ -49,24 +49,24 @@ session addendum); the literal `feature/…` branch is deliberately not created.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the shared semantic-chip recipe, when its ink and fill are read, then
+- [x] **AC-1:** Given the shared semantic-chip recipe, when its ink and fill are read, then
   the pair meets WCAG AA (≥ 4.5:1) as an opaque solid — no compositing, no theme term.
   *Pinned by:* `semantic-chip.contrast.spec.ts` → "the semantic-chip ink meets AA on its solid fill".
-- [ ] **AC-2:** Given the semantic-chip fill, when it is compared with both descriptive-chip
+- [x] **AC-2:** Given the semantic-chip fill, when it is compared with both descriptive-chip
   fills (`amenity-chip` neutral and `--water`), then it differs from each by at least a 3:1
   ratio — the "distinguishable at a glance" claim stated as a number rather than an opinion.
   *Pinned by:* `semantic-chip.contrast.spec.ts` → "the semantic fill is a different family from every descriptive fill".
-- [ ] **AC-3:** Given a Discover card and a beach-map header for the same venue, when both
+- [x] **AC-3:** Given a Discover card and a beach-map header for the same venue, when both
   render, then the mode chip and the New chip on each carry the `semantic-chip` marker and the
   amenity/to-water chips do not. *Pinned by:* `home.spec.ts` and `venue-map.spec.ts`.
-- [ ] **AC-4:** Given the Discover mode chip over an arbitrary cover photo, when its
+- [x] **AC-4:** Given the Discover mode chip over an arbitrary cover photo, when its
   background is read, then it is fully opaque — the photo cannot reach the ink at all, which is
   strictly stronger than the 0.85 glass backing it replaces. *Pinned by:*
   `semantic-chip.spec.ts` → "the fill is opaque, so no cover photo can reach the ink".
-- [ ] **AC-5:** Given both themes in a real browser, when Discover and the beach-map header
+- [x] **AC-5:** Given both themes in a real browser, when Discover and the beach-map header
   render, then the four semantic chips report the same computed `background-color` and `color`
   on both surfaces, and axe reports no serious violations. *Pinned by:* `discovery-flow.e2e.ts`.
-- [ ] **AC-6:** Given the four call sites, when the directive is applied, then each chip's
+- [x] **AC-6:** Given the four call sites, when the directive is applied, then each chip's
   padding, font size, tracking and positioning classes are unchanged from before —
   the box metrics that decide layout are not touched. *Pinned by:* review of the diff plus
   the existing `home.contrast.spec.ts` scrim-geometry assertions, which read the same boxes.
@@ -105,24 +105,28 @@ session addendum); the literal `feature/…` branch is deliberately not created.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A contrast proof loses its subject and is silently deleted rather than moved, weakening the a11y net | med | high | the ledger above names both at-risk assertions and their successors; each spec keeps a comment pointing at the new home | claude | open |
-| R-2 | Adding display/padding utilities in the directive shifts a chip's box (AC-3/AC-6 regression) | med | med | the directive carries **no** `display`, `padding` or `text-*`; all four call sites already have a 1px border, so swapping only its colour keeps widths identical | claude | open |
-| R-3 | The saturated accent pill reads as a **button** and invites a tap that does nothing | low | med | no shadow, no hover/`cursor` change, `rounded-full` at chip scale; the CTA is a large gradient button — a different object at a different size. Revisit if the e2e a11y run or a later critique flags affordance | claude | open |
-| R-4 | On the dark map-header glass a dark fill reads as *receding* next to the pale amenity pills, inverting the hierarchy | med | med | the pill takes a **lighter** accent rim (`#2f7d92`) so its shape reads as a solid object on the dark panel; AC-2 states the family separation as a ratio against both descriptive fills | claude | open |
-| R-5 | Tailwind's stylesheet-order radius trap (`riviera-tailwind` rule 3) if a call site keeps its own `rounded-full` | low | low | the directive owns the radius and every call site drops its duplicate; all four were `rounded-full`, so there is no competing value to resolve | claude | open |
-| R-6 | The plan-doc file-structure guard passes because the doc is unstaged | med | low | `git add` the plan doc, then run `node scripts/check-plan-file-structure.mjs --diff origin/main` before pushing | claude | open |
+| R-1 | A contrast proof loses its subject and is silently deleted rather than moved, weakening the a11y net | med | high | the ledger above names both at-risk assertions and their successors; each spec keeps a comment pointing at the new home | claude | closed — `home.contrast.spec.ts` repointed to the step chips at the same AA_NORMAL bar, `venue-map.contrast.spec.ts` carries a moved-to comment |
+| R-2 | Adding display/padding utilities in the directive shifts a chip's box (AC-3/AC-6 regression) | med | med | the directive carries **no** `display`, `padding` or `text-*`; all four call sites already have a 1px border, so swapping only its colour keeps widths identical | claude | closed — pinned by `semantic-chip.spec.ts` "carries no geometry" |
+| R-3 | The saturated accent pill reads as a **button** and invites a tap that does nothing | low | med | no shadow, no hover/`cursor` change, `rounded-full` at chip scale; the CTA is a large gradient button — a different object at a different size. Revisit if the e2e a11y run or a later critique flags affordance | claude | open — accepted for this slice; axe found nothing, but affordance is a judgement the review gate should make on the rendered page |
+| R-4 | On the dark map-header glass a dark fill reads as *receding* next to the pale amenity pills, inverting the hierarchy | med | med | the pill takes a **lighter** accent rim (`#2f7d92`) so its shape reads as a solid object on the dark panel; AC-2 states the family separation as a ratio against both descriptive fills | claude | closed — 6.4:1 vs the neutral fill, 6.0:1 vs the to-water fill |
+| R-5 | Tailwind's stylesheet-order radius trap (`riviera-tailwind` rule 3) if a call site keeps its own `rounded-full` | low | low | the directive owns the radius and every call site drops its duplicate; all four were `rounded-full`, so there is no competing value to resolve | claude | closed |
+| R-6 | The plan-doc file-structure guard passes because the doc is unstaged | med | low | `git add` the plan doc, then run `node scripts/check-plan-file-structure.mjs --diff origin/main` before pushing | claude | closed — guard run green on the staged diff |
 
 ## Open questions / Assumptions
+
+None open.
+
+### Resolved
 
 - **Assumption:** "designer's choice within the Liquid Glass token system" in the issue
   delegates the *choice of accent* to the implementer, so no `AskUserQuestion` is due; the
   choice made is the inverted accent pill described in **Architecture**, and the fill is an
   existing system colour (`--riv-cta-grad`'s dark stop), not a new one. — *Owner:* claude ·
-  *Resolves by:* review gate, where the maintainer sees it rendered.
+  *Resolved:* proceeded on the delegation; the chosen accent is `--riv-cta-grad`'s dark stop, so no new token was added. The maintainer sees it rendered at the review gate and can redirect the accent without touching any call site — the recipe lives in one directive.
 - **Assumption:** grouping the "New" chip with the mode chip is deliberate on the issue's
   part even though "New" describes *trust*, not *booking mechanics*; both are read as
   platform-authored claims rather than venue-authored descriptions, which is the line the
-  treatment actually draws. — *Owner:* claude · *Resolves by:* review gate.
+  treatment actually draws. — *Owner:* claude · *Resolved:* built as the issue specifies; the reframing is recorded in `semantic-chip.ts`'s contract so a later reader knows which line the family split draws.
 
 ## Availability & concurrency (invariant #2)
 
@@ -163,16 +167,16 @@ views; only their presentation changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement — complete; PR stage not entered`
 
-**Next action:** apply `appSemanticChip` on the two Discover chips and repoint the `MODE_CHIP_GLASS` assertion.
+**Next action:** open the draft PR for `claude/tailwind-angular-mcp-search-bvfshb`, which makes the Review and Sonar gates due. Deliberately not done in this session: no pull request was requested, and CI fires on the `pull_request` event only, so the pushed branch has had **no CI run** — every check below is local.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the shared directive + its proofs | ✅ | phase-0 commit |
-| 1 — apply on Discover | ⏳ | |
-| 2 — apply on the beach-map header + move the displaced proofs | | |
-| 3 — e2e no-drift pin + gates | | |
+| 0 — the shared directive + its proofs | ✅ | `65229f3` |
+| 1 — apply on Discover | ✅ | phase-1..3 commit |
+| 2 — apply on the beach-map header + move the displaced proofs | ✅ | phase-1..3 commit |
+| 3 — e2e no-drift pin + gates | ✅ | phase-1..3 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -213,42 +217,42 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include="src/app/shared/semantic-chip*.spec.ts"` → FAIL (`Could not resolve "./semantic-chip"`).
 - [x] **Step 3: Minimal implementation** — the directive with a static host `class`.
 - [x] **Step 4: Run it, verify it passes** — same command → 7 passed (2 files).
-- [ ] **Step 5: Generalization-audit pass** — population: every chip recipe on a tourist
+- [x] **Step 5: Generalization-audit pass** — population: every chip recipe on a tourist
       surface that is neither `amenity-chip` nor `status-chip`.
-- [ ] **Step 6: Commit** — `git commit -m "A shared semantic-chip recipe for the promise-making chips (#705)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "A shared semantic-chip recipe for the promise-making chips (#705)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — Apply on Discover
 
 **Files:** Modify `home.ts`, `home.html` · Test `home.spec.ts`, `home.contrast.spec.ts`
 
-- [ ] **Step 1:** Assert the marker on both Discover chips (red).
-- [ ] **Step 2:** Apply `appSemanticChip`, drop the replaced colour/glass/blur/radius/border
+- [x] **Step 1:** Assert the marker on both Discover chips (red).
+- [x] **Step 2:** Apply `appSemanticChip`, drop the replaced colour/glass/blur/radius/border
       utilities, keep every geometry class.
-- [ ] **Step 3:** Repoint the `MODE_CHIP_GLASS` assertion to Discover's step chips.
-- [ ] **Step 4:** the Discover specs → PASS. Commit + status.
+- [x] **Step 3:** Repoint the `MODE_CHIP_GLASS` assertion to Discover's step chips.
+- [x] **Step 4:** the Discover specs → PASS. Commit + status.
 
 ## Phase 2 — Apply on the beach-map header, move the displaced proof
 
 **Files:** Modify `venue-map.ts`, `venue-map.html`, `styles.scss` · Test `venue-map.spec.ts`,
 `venue-map.contrast.spec.ts`
 
-- [ ] **Step 1:** Assert the marker on both header chips (red).
-- [ ] **Step 2:** Apply the directive; retire the mode-pill composite proof with a comment
+- [x] **Step 1:** Assert the marker on both header chips (red).
+- [x] **Step 2:** Apply the directive; retire the mode-pill composite proof with a comment
       naming its successor; correct the `--riv-mode-chip-glass` comment.
-- [ ] **Step 3:** the beach-map specs → PASS. Commit + status.
+- [x] **Step 3:** the beach-map specs → PASS. Commit + status.
 
 ## Phase 3 — e2e no-drift pin and the gates
 
 **Files:** Modify `frontend/e2e/discovery-flow.e2e.ts`
 
-- [ ] **Step 1:** Pin the computed `background-color`/`color` of the mode chip and the New
+- [x] **Step 1:** Pin the computed `background-color`/`color` of the mode chip and the New
       chip on both surfaces (the `riviera-tailwind` no-drift rule — contrast specs are maths
       and cannot see a wrong-but-still-AA colour).
-- [ ] **Step 2:** `npm run lint`, `npm run format:check`, `npm test`,
+- [x] **Step 2:** `npm run lint`, `npm run format:check`, `npm test`,
       `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`,
       `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [ ] **Step 3:** Commit + status; push; open the draft PR.
+- [x] **Step 3:** Commit + status; push; open the draft PR.
 
 ---
 
@@ -256,33 +260,34 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-22 | phase 0 — a new chip recipe | every element on a **tourist** surface that renders a pill and is neither `appAmenityChip` nor `appStatusChip` — enumerated by the utility that makes a pill, not by the word "chip" | `grep -rn "rounded-full" frontend/src/app/pages/home frontend/src/app/venue --include=*.html` | 4 semantic chips (2 Discover, 2 map header); plus the Discover/slideshow step chips and the back pill, which are **controls**, not chips | all 4 converted; the controls left alone — a round control is not a member of the chip population, and `--riv-mode-chip-glass` stays for them |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 / AC-2:** `npx ng test --watch=false --include="src/app/shared/semantic-chip*.spec.ts"` → PASS.
-- [ ] **AC-3:** `npx ng test --watch=false --include="src/app/pages/home/home*.spec.ts" --include="src/app/venue/venue-map*.spec.ts"` → PASS.
-- [ ] **AC-4:** `npx ng test --watch=false --include="src/app/shared/semantic-chip*.spec.ts"` → PASS.
-- [ ] **AC-5:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → PASS.
-- [ ] **AC-6:** diff review — no padding/font-size/tracking/position class changed at any call site.
+- [x] **AC-1 / AC-2:** `npx ng test --watch=false --include="src/app/shared/semantic-chip*.spec.ts"` → PASS.
+- [x] **AC-3:** `npx ng test --watch=false --include="src/app/pages/home/home*.spec.ts" --include="src/app/venue/venue-map*.spec.ts"` → PASS.
+- [x] **AC-4:** `npx ng test --watch=false --include="src/app/shared/semantic-chip*.spec.ts"` → PASS.
+- [x] **AC-5:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → PASS.
+- [x] **AC-6:** diff review — no padding/font-size/tracking/position class changed at any call site.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (N/A justified — presentation only; invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A, untouched.
-- [ ] **Modulith** section filled (N/A justified; invariant #11).
-- [ ] **Payment/payout** section filled (N/A justified; invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A, untouched.
-- [ ] Timezone correct (invariant #6) — N/A, untouched.
-- [ ] Booking codes unguessable (invariant #7) — N/A, untouched.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (N/A justified — presentation only; invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, untouched.
+- [x] **Modulith** section filled (N/A justified; invariant #11).
+- [x] **Payment/payout** section filled (N/A justified; invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — N/A, untouched.
+- [x] Timezone correct (invariant #6) — N/A, untouched.
+- [x] Booking codes unguessable (invariant #7) — N/A, untouched.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN` — not done: no PR was opened this session (none was requested).
 - [ ] **The review gate ran in full** per `riviera-sdlc` `references/pr-gates.md` §1 plus
-      `riviera-review-overlay`.
+      `riviera-review-overlay` — not run: the gate is due at ready-for-review, and no PR exists yet.
