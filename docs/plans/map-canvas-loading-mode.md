@@ -119,7 +119,8 @@ without sliding the tiles; out of scope, Non-goals.
 
 - **The price (right) rail's own 52 → 92/128px widening.** It is real (measured above) but it
   shrinks the viewport from the trailing edge; it never slides a tile. Sizing it is the same
-  ticket's shape and deserves its own, if anyone wants it.
+  ticket's shape and deserves its own, if anyone wants it — it got one: #751 reserves that rail's
+  92px phone cap on the tourist vocabulary alone (`docs/plans/price-rail-reserved-width.md`).
 - **Capping the operator rails.** #724 settled that operator surfaces render whole labels; a
   reservation is a *minimum*, so that stays true — which is exactly why the Daily view keeps a
   bounded residual on a phone rather than reaching zero.

@@ -143,11 +143,11 @@ is supposed to move.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The reservation trades the settle for a permanently narrower tile viewport — the same trap #749's own R-1 named, and the reason its cap-sized rail was reverted | med | med | measured, not assumed: 92px leaves 34px of the #700 fits-whole margin on the venue that actually pays (all-standard, 14 columns), and 13px on the premium fixture, which does not pay at all. AC-5 pins the paying case so a later widening cannot pass silently | claude | |
-| R-2 | Reserving on all four surfaces would cost the operator grids 40px for a 41px chip | med | med | the reservation is scoped to a vocabulary, not applied to the component — `amounts` is the default, so a surface pays only by opting in (AC-2) | claude | |
-| R-3 | Two inputs that must agree (`railCodes` and `priceChips`) is the defect #749's ledger warned about when it folded `truncateRailCodes` away | low | med | they are not the same question: one names the left rail's chips, the other the right rail's, and a surface can legitimately differ on them (the Daily view already does — whole labels, bare amounts). Each is independently defaulted and independently tested | claude | |
-| R-4 | A class string computed in TS is invisible to a naive Tailwind content scan | low | high | the same seam #749 proved: the e2e measures the rendered rail, so a class that did not compile shows up as a wrong number, not a passing class-list read | claude | |
-| R-5 | A phone venue whose grid fits today starts panning because the rail took 40px | low | low | accepted and bounded: only a venue with ≤5 columns fits a 390px viewport at all, and the hint it would gain is honest — it is measured on the loaded map, never the placeholder (#749) | claude | |
+| R-1 | The reservation trades the settle for a permanently narrower tile viewport — the same trap #749's own R-1 named, and the reason its cap-sized rail was reverted | med | med | measured, not assumed: 92px leaves 34px of the #700 fits-whole margin on the venue that actually pays (all-standard, 14 columns), and 13px on the premium fixture, which does not pay at all. AC-5 pins the paying case so a later widening cannot pass silently | claude | closed — `7b6a293` pins the paying venue |
+| R-2 | Reserving on all four surfaces would cost the operator grids 40px for a 41px chip | med | med | the reservation is scoped to a vocabulary, not applied to the component — `amounts` is the default, so a surface pays only by opting in (AC-2) | claude | closed — `dedb2c4` |
+| R-3 | Two inputs that must agree (`railCodes` and `priceChips`) is the defect #749's ledger warned about when it folded `truncateRailCodes` away | low | med | they are not the same question: one names the left rail's chips, the other the right rail's, and a surface can legitimately differ on them (the Daily view already does — whole labels, bare amounts). Each is independently defaulted and independently tested | claude | closed — `301cf7f` |
+| R-4 | A class string computed in TS is invisible to a naive Tailwind content scan | low | high | the same seam #749 proved: the e2e measures the rendered rail, so a class that did not compile shows up as a wrong number, not a passing class-list read | claude | closed — `npm run build`'s bundle carries `.min-w-\[92px\]`, which the dev-server e2e could not have proved |
+| R-5 | A phone venue whose grid fits today starts panning because the rail took 40px | low | low | accepted and bounded: only a venue with ≤5 columns fits a 390px viewport at all, and the hint it would gain is honest — it is measured on the loaded map, never the placeholder (#749) | claude | accepted |
 
 ## Open questions / Assumptions
 
@@ -198,10 +198,10 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `CI gate`
+**Stage pointer:** `review gate` — ran; findings register below
 
-**Next action:** the full frontend gate locally (lint · format · unit · mocked e2e · the
-diff-scoped hygiene scripts), then the PR — see the note under the phase table.
+**Next action:** open the draft PR, so the CI and Sonar gates can run — see *The gates that
+could not run here*, below.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -211,12 +211,29 @@ diff-scoped hygiene scripts), then the PR — see the note under the phase table
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
+**The local gate, run in full** (`riviera-local-debug`'s recipes): `npm run lint` clean ·
+`npm run format:check` clean · `npm test` 1642 passed / 178 files · `npm run test:e2e:a11y`
+264 passed (the whole mocked suite, not only the touched specs) · `npm run build` clean, and
+its bundle greps for `.min-w-\[92px\]`, which is what actually closes R-4 — the e2e runs
+against `npm start`, so a dev-only content scan would have measured green there · the five
+hygiene scripts (`check-inline-comments`, `check-plan-file-structure`, `check-focus-posture`,
+`check-touch-target`, `check-cloud-node-pin`) all clean over `--diff origin/main`.
+
+**The gates that could not run here.** This session is configured without the subagent tool
+`/code-review` fans out with, and without standing authority to open a PR — so two of the
+loop's gates are **not** discharged by this branch as it stands, and neither is claimed below:
+
+| Gate | State | What stands in, and what does not |
+|---|---|---|
+| Review | **degraded** | `riviera-review-overlay`'s frontend bank was walked item by item against the diff by hand (RV-FE-1, 7, E2E, 8, 9, 10, RV-STYLE-1/2, RV-PROC-1; RV-FE-2…6 N/A — no availability, money-rendering, payment or form surface is in the diff). It found F-1. A hand walk is **not** the fan-out: `riviera-sdlc` `references/pr-gates.md` §1 calls this a degraded rung, to be declared rather than substituted silently |
+| CI + Sonar | **not run** | CI fires on the `pull_request` event only, so a branch with no PR gets no run at all (#417), and Sonar analyzes PRs and `main` only. The local gate above is the closest honest substitute and is not the same thing |
+
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding. Every fix
 re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate (RV-FE-E2E, over the slice's own diff) | AC-3/AC-4's assertion was one-sided — `movement − allowed < 1` passes just as well when the measurement reads zero, so a broken harness would have looked like a fixed rail. The #749 matrix it was modelled on has the same shape, where the looseness is deliberate; here the exact number is knowable | fixed — tightened to `abs(movement − allowed) < 1`, still green at all four cells. The red proof already ruled the harness live, but that proof does not travel with the test |
 
 ---
 
@@ -231,6 +248,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/venue/venue-map.spec.ts` — the surface-level proof that BOTH canvases carry it
 - `frontend/e2e/loading-skeletons.e2e.ts` — AC-3, AC-4
 - `frontend/e2e/venue-map-pan.e2e.ts` — AC-5
+- `docs/plans/map-canvas-loading-mode.md` — the docs-freshness patch: #749's open Non-goal now
+  names the ticket that answered it
 
 ---
 
@@ -304,21 +323,22 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (justified N/A) (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled (N/A, frontend-only) (invariant #11).
-- [ ] **Payment/payout** section filled (justified N/A) (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — untouched.
-- [ ] Booking codes unguessable (invariant #7) — untouched.
-- [ ] Flyway migration present for schema changes (invariant #12) — none.
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing its merge PR.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (justified N/A) (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled (N/A, frontend-only) (invariant #11).
+- [x] **Payment/payout** section filled (justified N/A) (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — untouched.
+- [x] Booking codes unguessable (invariant #7) — untouched.
+- [x] Flyway migration present for schema changes (invariant #12) — none.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [ ] **Close-out written in THIS PR**, citing its merge PR — pending the PR.
 - [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`. **Left unticked
+      deliberately:** the overlay ran, the fan-out could not. See the gate table above.

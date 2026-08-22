@@ -572,10 +572,11 @@ for (const [prices, venue] of [
       const rail = await priceRailBeside(page, 'map-pan');
       const after = await rightEdgeOf(page, 'map-pan');
       const allowed = Math.max(0, rail - PRICE_RAIL_RESERVE_PX);
+      // Equality, not a ceiling: a ceiling passes just as well when the measurement reads zero.
       expect(
-        Math.abs(after - before) - allowed,
-        `at ${prices}, ${size} the viewport lost only what a ${rail}px rail leaves over the ` +
-          `reservation (${before} → ${after}; ${allowed}px allowed, ${rail - 52}px before the fix)`,
+        Math.abs(Math.abs(after - before) - allowed),
+        `at ${prices}, ${size} the viewport lost exactly what a ${rail}px rail leaves over the ` +
+          `reservation (${before} → ${after}; ${allowed}px expected, ${rail - 52}px before the fix)`,
       ).toBeLessThan(1);
     });
   }
