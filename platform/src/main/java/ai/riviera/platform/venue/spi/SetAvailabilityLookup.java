@@ -71,4 +71,25 @@ public interface SetAvailabilityLookup {
 	 *         an empty result without touching the database
 	 */
 	Map<SetId, String> statesOn(Collection<SetId> setIds, LocalDate date);
+
+	/**
+	 * How many of {@code setIds} are taken on each day in {@code [from, to]}, keyed by day. A day
+	 * with no hold is <strong>absent</strong> from the map rather than present at zero, so the
+	 * caller — which alone knows how many sets a venue has — fills the gaps while computing
+	 * {@code free = total − taken}. "Taken" means the same here as in {@link #takenOn}: any
+	 * availability row, whatever its state.
+	 *
+	 * <p>A snapshot, never a hold: a day reporting free capacity may be full by the time a claim
+	 * is attempted, and {@code AvailabilityClaim} remains the only thing that decides (invariant
+	 * #2). Both pools are counted, matching what a free/total count already means on the discovery
+	 * card; the online-pool restriction (invariant #3) applies later, at the map/claim.
+	 *
+	 * @param setIds the set positions to count (typically one venue's map)
+	 * @param from   the first day, inclusive, a {@code LocalDate} in {@code Europe/Tirane}
+	 *               (invariant #6)
+	 * @param to     the last day, inclusive
+	 * @return taken count by day for the days that have one; never {@code null}; an empty input
+	 *         yields an empty result without touching the database
+	 */
+	Map<LocalDate, Integer> takenCountsBetween(Collection<SetId> setIds, LocalDate from, LocalDate to);
 }

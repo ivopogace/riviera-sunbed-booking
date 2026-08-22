@@ -1151,6 +1151,12 @@ class VenueAdminServiceTest {
 		public java.util.Map<SetId, String> statesOn(Collection<SetId> setIds, java.time.LocalDate date) {
 			return java.util.Map.of();
 		}
+
+		@Override
+		public java.util.Map<java.time.LocalDate, Integer> takenCountsBetween(
+				Collection<SetId> setIds, java.time.LocalDate from, java.time.LocalDate to) {
+			return java.util.Map.of();
+		}
 	}
 
 	/**

@@ -214,14 +214,14 @@ touched. `MoneyView` does not appear on the new surface.
 
 ## Execution status
 
-**Stage pointer:** `plan — plan doc authored, about to commit and open the draft PR`
+**Stage pointer:** `implement — phase 0 done, phase 1 next`
 
-**Next action:** commit this plan doc on `claude/sldc-706-3apmfc`, open the draft PR (CI
-fires on the `pull_request` event only), then start phase 0 red-first.
+**Next action:** phase 1 — write `VenueAvailabilityCalendarIT` red-first against
+`VenueCatalog.availabilityBetween`, then implement it in `JdbcVenueCatalog`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — SPI range read (`takenCountsBetween` + JDBC impl) | | |
+| 0 — SPI range read (`takenCountsBetween` + JDBC impl) | ✅ | see commit below |
 | 1 — `VenueCatalog.availabilityBetween` + `DailyAvailability` | | |
 | 2 — public endpoint + window validation | | |
 | 3 — close-out (docs freshness, plan finalization) | | |
@@ -248,6 +248,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/DailyAvailabilityView.java` — new: the flat wire record
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueReadController.java` — the new endpoint + window validation
 - `platform/src/test/java/ai/riviera/platform/availability/AvailabilityLookupIT.java` — SPI range cases
+- `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java` — its `SetAvailabilityLookup` fake implements the new method
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAvailabilityCalendarIT.java` — new: AC-1, AC-2
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAvailabilityCalendarControllerIT.java` — new: AC-3 … AC-6
 - `docs/plans/venue-availability-calendar-read.md` — this plan
@@ -328,6 +329,8 @@ GROUP BY booking_date
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-22 | Phase 0 | Every `SetAvailabilityLookup` method that builds an `IN (:ids)` list — the mechanism that must short-circuit on empty input rather than emit `IN ()`. | `grep -n "IN (:ids)" platform/src/main/java/ai/riviera/platform/availability/adapter/out/JdbcSetAvailabilityLookup.java` | 4 (`takenOn`, `anyClaimsFrom`, `statesOn`, the new `takenCountsBetween`) | All four short-circuit; the new one follows the existing three. No pre-existing gap. |
+| 2026-08-22 | Phase 0 (test cross-contamination bug) | Every method whose SQL date predicate is **not** a single-day equality — the mechanism that makes its IT sensitive to rows a *sibling* test left in the shared Testcontainers DB, not just to its own seed. Found by grepping the date predicates rather than by looking at tests that resembled the one that failed. | `grep -n "booking_date" platform/src/main/java/ai/riviera/platform/availability/adapter/out/JdbcSetAvailabilityLookup.java` | 2 (`anyClaimsFrom` → `>= :from`; the new `takenCountsBetween` → `BETWEEN`). The other two (`takenOn`, `statesOn`) are `= :date` and are immune. | **Both fixed.** The new range tests seed a dedicated set trio (`calendarSets()`, `OFFSET 3`); `anyClaimsFromCountsOnlyHoldsOnOrAfterTheCutoff` was passing only because nothing yet marked its shared set on a later day — it now takes its own set (`claimProbeSet()`, `OFFSET 6`), so the next test to seed a late date cannot silently decide its result. |
 
 ---
 
