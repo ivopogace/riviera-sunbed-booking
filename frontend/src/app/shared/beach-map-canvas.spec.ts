@@ -35,7 +35,8 @@ const ROWS: readonly TestRow[] = [
       [viewportTabindex]="0"
       viewportLabel="Beach map"
       [dragPan]="dragPan()"
-      [truncateRailCodes]="truncate()"
+      [railCodes]="railCodes()"
+      [loading]="loading()"
     >
       <ng-template [appBeachMapRow]="rows()" let-row let-i="index">
         <ul class="set-row" [attr.data-row]="row.code">
@@ -57,7 +58,8 @@ const ROWS: readonly TestRow[] = [
 class CanvasHost {
   readonly rows = signal<readonly TestRow[]>(ROWS);
   readonly dragPan = signal(true);
-  readonly truncate = signal(false);
+  readonly railCodes = signal<'letters' | 'labels' | 'capped-labels'>('letters');
+  readonly loading = signal(false);
   readonly taps: string[] = [];
 }
 
@@ -146,6 +148,15 @@ describe('BeachMapCanvas (#672)', () => {
     return el!;
   }
 
+  /** The left rail's column — the element whose width slides the tile grid when it changes. */
+  function railColumn(host: HTMLElement): HTMLElement {
+    const chip = host.querySelector<HTMLElement>(
+      '[data-testid="row-code"], [data-testid="row-code-placeholder"]',
+    );
+    expect(chip).toBeTruthy();
+    return chip!.parentElement!.parentElement!;
+  }
+
   function rowGrid(host: HTMLElement): HTMLElement {
     const el = viewport(host).querySelector<HTMLElement>('[data-map-grid]');
     expect(el).toBeTruthy();
@@ -212,14 +223,54 @@ describe('BeachMapCanvas (#672)', () => {
   });
 
   it('caps rail labels with an ellipsis when the surface opts in (#724)', () => {
-    const { fixture, host, detect } = render();
-    fixture.componentInstance.truncate.set(true);
+    const { component, host, detect } = render();
+    component.railCodes.set('capped-labels');
     detect();
     const inner = host.querySelector('[data-testid="row-code"] .truncate')!;
     expect(inner).toBeTruthy();
     expect(inner.classList.contains('max-w-12')).toBe(true);
     expect(inner.classList.contains('sm:max-w-[96px]')).toBe(true);
     expect(inner.textContent).toBe('A');
+  });
+
+  it('reserves the same rail width loading and loaded, for either label vocabulary (#749)', () => {
+    const { component, host, detect } = render();
+    for (const codes of ['labels', 'capped-labels'] as const) {
+      component.railCodes.set(codes);
+      component.loading.set(false);
+      detect();
+      // A minimum, not the #724 cap: the cap-sized rail costs the desktop map its fits-whole margin.
+      const loaded = railColumn(host).className;
+      expect(loaded, codes).toContain('min-w-[54px]');
+
+      component.loading.set(true);
+      detect();
+      expect(railColumn(host).className, codes).toBe(loaded);
+      const chip = host.querySelector('[data-testid="row-code-placeholder"]')!;
+      expect(chip.classList.contains('w-[54px]'), codes).toBe(true);
+    }
+  });
+
+  it('caps only the tourist rail, so operator labels stay whole (#724, #749)', () => {
+    const { component, host, detect } = render();
+    component.railCodes.set('labels');
+    detect();
+    expect(host.querySelector('[data-testid="row-code"] .truncate')).toBeNull();
+    expect(railColumn(host).className).toContain('min-w-[54px]');
+  });
+
+  it('reserves nothing for a letters rail, so the editor surfaces are unchanged (#749)', () => {
+    const { component, host, detect } = render();
+    const loaded = railColumn(host).className;
+    expect(loaded).not.toContain('w-[');
+
+    component.loading.set(true);
+    detect();
+    expect(railColumn(host).className).toBe(loaded);
+    const chip = host.querySelector('[data-testid="row-code-placeholder"]')!;
+    // The letter chip's own min-w-6 — a grid letter's placeholder matches its real chip exactly.
+    expect(chip.classList.contains('min-w-6')).toBe(true);
+    expect(chip.className).not.toContain('w-[');
   });
 
   it('sizes every row wrapper and rail cell from the identical fixed --riv-tile height (#685)', () => {
@@ -508,6 +559,48 @@ describe('BeachMapCanvas (#672)', () => {
     expect(observer.disconnected).toBe(false);
     fixture.destroy();
     expect(observer.disconnected).toBe(true);
+  });
+
+  it('states no row name, no price and no pan hint while loading (#749)', () => {
+    const { host, component, detect } = render();
+    component.loading.set(true);
+    detect();
+
+    // The three testids named live chrome; a placeholder that leaks them is queryable as the real thing.
+    expect(host.querySelectorAll('[data-testid="row-code"]').length).toBe(0);
+    expect(host.querySelector('[data-testid="price-col"]')).toBeNull();
+    expect(host.querySelector('[data-testid="row-price"]')).toBeNull();
+
+    // Both rails still render — it is their CONTENT that is fabricated, never their column.
+    const placeholders = Array.from(host.querySelectorAll('[data-testid="row-code-placeholder"]'));
+    expect(placeholders.length).toBe(ROWS.length);
+    for (const chip of placeholders) {
+      expect(chip.textContent?.trim()).toBe('');
+    }
+    expect(host.querySelector('[data-testid="price-col-placeholder"]')?.children.length).toBe(
+      ROWS.length,
+    );
+  });
+
+  it('offers no gesture its inert container cannot accept while loading (#749)', async () => {
+    const { host, component, detect, fixture } = render();
+    component.loading.set(true);
+    detect();
+    seedGridWidth(host, 500);
+    Object.defineProperty(viewport(host), 'clientWidth', { value: 100, configurable: true });
+    seedVerticalOverflow(washScroller(host));
+    component.rows.set([...ROWS]);
+    detect();
+    await fixture.whenStable();
+    detect();
+
+    // Both overflow axes are real here; the instruction to act on them is what a skeleton cannot mean.
+    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
+    // Its line is not reserved either: whether the LOADED map needs one is what a placeholder cannot know.
+    expect(host.querySelector('[data-testid="scroll-hint-placeholder"]')).toBeNull();
+    expect(viewport(host).classList.contains('cursor-grab')).toBe(false);
+    // The edge fade reports a measured fact rather than inviting an action, so it stays.
+    expect(viewport(host).classList.contains('pannable')).toBe(true);
   });
 
   it('projects the footer slot below the viewport and hides it with the grid when empty', () => {

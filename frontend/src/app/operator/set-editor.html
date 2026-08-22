@@ -315,7 +315,11 @@
         </section>
 
         <div class="flex min-w-0 flex-col gap-2">
-          <app-beach-map-canvas frameTestid="set-skeleton-frame" viewportTestid="set-skeleton-grid">
+          <app-beach-map-canvas
+            frameTestid="set-skeleton-frame"
+            viewportTestid="set-skeleton-grid"
+            [loading]="true"
+          >
             <ng-template [appBeachMapRow]="skeletonRows">
               <div
                 class="grid h-full grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"

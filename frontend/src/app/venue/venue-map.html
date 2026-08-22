@@ -151,7 +151,7 @@
       <app-beach-map-canvas
         class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
         label="Beach map — {{ v.name }}"
-        [truncateRailCodes]="true"
+        railCodes="capped-labels"
       >
         <!-- The legend leads the card (#701): the tourist decodes the colours BEFORE reading the tiles, so it is projected above the grid rather than trailing it. Swatches wear the SAME appMapTile appearance as the tiles they stand for AND sit on the wash's own first stop, so a translucent swatch composites over the same ground its tiles do — matching computed styles is not the same as looking alike. The canvas owns the band's vertical spacing. -->
         <ul
@@ -324,10 +324,12 @@
       </div>
 
       <!-- Description and amenity chips are deliberately absent: both are conditional in the loaded header, so mirroring them makes the frame jump UP on a venue that carries neither (#744). -->
-      <!-- The same canvas, and the same 1100px breakout, so the frame does not move when the map lands. -->
+      <!-- The same canvas, and the same 1100px breakout, so the frame does not move when the map lands. The same railCodes too: the rail reserves the loaded map's width, so the grid does not slide sideways either (#749). -->
       <app-beach-map-canvas
         class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
         viewportTestid="map-skeleton-grid"
+        railCodes="capped-labels"
+        [loading]="true"
       >
         <ng-template [appBeachMapRow]="skeletonRows">
           <div

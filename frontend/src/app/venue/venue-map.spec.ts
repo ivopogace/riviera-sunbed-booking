@@ -451,6 +451,9 @@ describe('VenueMap', () => {
     expect(inner.classList.contains('max-w-12')).toBe(true);
     expect(inner.classList.contains('sm:max-w-[96px]')).toBe(true);
     expect(inner.textContent?.trim()).toBe('Front row · Sea view');
+    // Below the cap the rail still reserves what the skeleton drew, so a short-labelled venue does not slide either (#749).
+    const column = inner.closest('[data-testid="row-code"]')!.parentElement!.parentElement!;
+    expect(column.classList.contains('min-w-[54px]')).toBe(true);
   });
 
   it("renders the price once per zone, carrying the row's meaning (#672, #702)", async () => {
