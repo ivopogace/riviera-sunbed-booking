@@ -27,9 +27,9 @@ band's *scrim* geometry, not just the band, moves with it, and that `.photo-band
 by an e2e spatial-order test) · `riviera-plan-doc` (this template — forced the behavior-parity
 ledger that surfaced the loading-skeleton mirror, which the issue never mentions) · `tdd`
 (each phase writes the failing spec first) · `riviera-review-overlay` (review gate — run at
-ready-for-review) · `riviera-docs-freshness` (`N/A — no substrate doc states the band's
-position or the slideshow's chrome; `docs/design/` artboards are immutable records per #736,
-and the divergence is recorded in the code comments the way every other a11y deviation is`) ·
+ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD`, 1 finding — the v3
+artboard draws the band *below* the count line with a translucent sun, which this slice
+diverges from; pointer added per `docs/design/README.md`, artboard left as drawn) ·
 `riviera-tailwind` (arbitrary `min-[1024px]:` media variant over rem-based `lg:` — the repo's
 px-query convention; token-first colours instead of literal rgba in the component;
 `bg-(image:--riv-photo-grad)` stays an *image* utility) · `riviera-frontend` (placement: the
@@ -105,9 +105,9 @@ session started; that commit is kept, not rebased away.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | `overflow-hidden` on the header (needed to clip the full-bleed band to the 26px radius) clips a focus ring — the date input's `focus-visible:outline-offset-2` | low | med | the input sits 22px inside the panel's padding, well clear of the clip edge; the mocked e2e focuses it and asserts the outline is painted | this slice | closed — the assertion was missing when the review ran (F-2) and now exists in `discover-photos.e2e.ts` |
-| R-2 | The dark dot rail lands on Discover's cards too (shared component) and reads as unwanted chrome there | med | low | deliberate — it is the same 1.4.11 defect; the rail is small, rounded and only renders with >1 photo. Computed-style diff in the e2e keeps the rest of the card unchanged | this slice | open |
-| R-3 | Moving the band changes the LCP element/position; a mis-sized band causes CLS on the venue page | low | med | the band's height is fixed per breakpoint (no intrinsic-size dependency) and the loading skeleton mirrors it exactly, so the frame does not move when the map lands | this slice | open |
-| R-4 | Contrast thresholds pass in the spec's arithmetic but the shipped CSS uses a different alpha (spec/CSS drift) | med | high | the tokens live in `styles.scss`; the spec mirrors them beside the other token mirrors in `testing/glass-tokens.ts`, and the e2e reads the **computed** background of the rail so a token edit that misses the spec still fails | this slice | open |
+| R-2 | The dark dot rail lands on Discover's cards too (shared component) and reads as unwanted chrome there | med | low | deliberate — it is the same 1.4.11 defect; the rail is small, rounded and only renders with >1 photo. Computed-style diff in the e2e keeps the rest of the card unchanged | this slice | closed — accepted as shipped; the *layout* consequence it did not anticipate (the rail overrunning the location line) surfaced at the review gate as F-1 and is fixed |
+| R-3 | Moving the band changes the LCP element/position; a mis-sized band causes CLS on the venue page | low | med | the band's height is fixed per breakpoint (no intrinsic-size dependency) and the loading skeleton mirrors it exactly, so the frame does not move when the map lands | this slice | closed — skeleton parity asserted by `venue-map.spec.ts`; no CLS mechanism remains |
+| R-4 | Contrast thresholds pass in the spec's arithmetic but the shipped CSS uses a different alpha (spec/CSS drift) | med | high | the tokens live in `styles.scss`; the spec mirrors them beside the other token mirrors in `testing/glass-tokens.ts`, and the e2e reads the **computed** background of the rail so a token edit that misses the spec still fails | this slice | closed — the e2e reads the computed rail background and chip border, so spec/CSS drift fails a test |
 
 ## Open questions / Assumptions
 
@@ -121,7 +121,10 @@ session started; that commit is kept, not rebased away.
 
 ### Resolved
 
-- (none yet)
+- **Assumption (identity zone → inside the header):** held. The band ships as the header's
+  full-bleed first child; AC-1 pins it with `band.closest('header')`. — `cbf313c`
+- **Assumption (264px clears the ~260px floor):** held. The e2e measures ≥260px at the
+  desktop viewport and exactly 150px at 390px. — `8dd7e14`
 
 ## Availability & concurrency (invariant #2)
 
@@ -157,9 +160,10 @@ today.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, re-verifying`
+**Stage pointer:** `merge close-out — plan doc finalized, awaiting merge`
 
-**Next action:** push the F-1/F-2 fixes, confirm CI green on the new head, then the Sonar gate.
+**Next action:** merge via PR #754, then tick nothing else in the repo — the only remaining
+close-out items are GitHub-only (no parent epic here, no deferred findings to propagate).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -167,7 +171,17 @@ today.
 | 1 — The band becomes a media header | ✅ | `cbf313c` |
 | 2 — The warm empty state | ✅ | `cbf313c` (same template, one commit) |
 | 3 — e2e geometry + placement | ✅ | `8dd7e14` |
-| 4 — review-gate findings F-1, F-2 | ✅ | see git log |
+| 4 — review-gate findings F-1, F-2 | ✅ | `9fae29c` |
+| 5 — close-out (docs-freshness pointer, plan final state) | ✅ | this commit |
+
+**Merged via PR #754.**
+
+**Gates:** CI green on `9fae29c` (all 8 checks). Review gate **ran** — `/code-review` over
+`origin/main...HEAD` with `riviera-review-overlay` layered on; 2 findings, both fixed in
+`9fae29c` (see the findings register). Sonar gate green **and its reported list pulled and
+empty**: `new_lines` 76, 0 new bugs / vulnerabilities / code smells / hotspots, 0.0%
+duplication, 100.0% new-code coverage — the non-empty `measures` response rules out the
+false-clean read on an unanalyzed PR.
 
 **Local verification at `8dd7e14`:** `npm run lint`, `npm run format:check`, `npm test`
 (1651 unit tests), `npm run build`, and the full mocked Playwright suite
@@ -199,12 +213,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/venue/venue-map.spec.ts` — placement + empty-state assertions
 - `frontend/e2e/discover-photos.e2e.ts` — measured band geometry and placement
 
-Carried in from the branch's pre-existing commit `f4b222a` (#736/#753), **not** part of this
-slice — listed because the branch's diff against `origin/main` contains them:
+- `docs/design/riviera-sunbeds-liquid-glass-v3.dc.html` — the close-out divergence pointer (the
+  artboard's drawing is left untouched)
+
+Carried in from the branch's pre-existing commit `f4b222a` (#736/#753), **not** authored by this
+slice — listed because the branch's diff against `origin/main` contains them (the artboard above
+appears in both: `f4b222a` added its earlier pointers, this slice adds the #704 one):
 
 - `.claude/skills/riviera-docs-freshness/SKILL.md`
 - `docs/design/README.md`
-- `docs/design/riviera-sunbeds-liquid-glass-v3.dc.html`
 
 ---
 
@@ -303,5 +320,6 @@ slice — listed because the branch's diff against `origin/main` contains them:
 - [x] **Frontend** standards met; Tailwind-first; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register rows carry mitigations; Open Questions carry owners and resolve-by phases.
-- [ ] **Close-out written in THIS PR** — pending the merge; cite `merged via PR #NN`.
-- [ ] **The review gate ran in full** — pending ready-for-review.
+- [x] **Close-out written in THIS PR** — final state committed here, citing `merged via PR #754`.
+- [x] **The review gate ran in full** — `/code-review` (invocation ladder rung 1, the Skill
+      probe succeeded) plus `riviera-review-overlay`; both findings fixed, none deferred.
