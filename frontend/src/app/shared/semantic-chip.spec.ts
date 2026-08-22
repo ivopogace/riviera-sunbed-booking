@@ -28,7 +28,7 @@ describe('SemanticChip', () => {
   }
 
   it('emits exactly the inverted accent recipe — the whole class list, not a subset', () => {
-    // Set equality rather than `contains` checks: it is what makes the next test's opaque claim airtight, since a second, translucent `bg-[rgba(...)]` alongside the opaque one would satisfy any number of `contains` assertions while shipping the very fill #705 forbids.
+    // Set equality rather than `contains` checks, so an EXTRA class is a failure too — including a second, translucent background beside the opaque one. It subsumes the class-level halves of the tests below; those are kept because each still carries something this one does not: why the fill must be opaque, why no geometry may appear, and the two equalities that tie the shared mirror to what renders.
     expect([...chip().classList].sort()).toEqual(
       [
         'semantic-chip',
@@ -46,6 +46,7 @@ describe('SemanticChip', () => {
     // The Discover mode chip sits over an arbitrary uploaded photo. An rgba fill would put that photo back into the contrast argument the opaque fill exists to end (#705).
     const backgrounds = [...chip().classList].filter((name) => name.startsWith('bg-'));
     expect(backgrounds).toEqual([`bg-[${SEMANTIC_CHIP.fill}]`]);
+    // A six-digit hex has no alpha channel; `bg-[rgba(…)]` or a `/60` opacity modifier would fail the line above, this one, or both.
     expect(SEMANTIC_CHIP.fill).toMatch(/^#[0-9a-f]{6}$/);
   });
 

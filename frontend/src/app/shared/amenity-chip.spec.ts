@@ -47,11 +47,11 @@ describe('AmenityChip', () => {
   });
 
   it('renders exactly the fills the shared descriptive list records — no more, no fewer', () => {
-    // Set equality, not a count: it catches a list entry no variant renders AND a rendered fill the list omits, which a length check cannot. What it still cannot see is a variant this spec never renders — `water` is the only axis today and it is boolean, so a third one means a new input, and rendering it here is part of adding it.
+    // Set equality, not a count: it catches a list entry no variant renders AND a rendered fill the list omits, which a length check cannot. The filter is `bg-` rather than `bg-[` on purpose — a `bg-white/60` beside the opaque fill is exactly the translucency amenities.contrast.spec.ts assumes away, and a bracket-only filter would not see it. What no spec here can see is a variant it never renders: `water` is the only axis today and it is boolean, so a third one means a new input, and rendering it here is part of adding it.
     const { plain, water } = chips();
     const rendered = [plain, water]
       .flatMap((element) => [...element.classList])
-      .filter((name) => name.startsWith('bg-['))
+      .filter((name) => name.startsWith('bg-'))
       .sort();
     expect(rendered).toEqual(DESCRIPTIVE_CHIPS.map((chip) => `bg-[${chip.fill}]`).sort());
   });

@@ -9,7 +9,13 @@ import { expectNoSeriousAxeViolations } from './support/axe';
  * is mocked (`page.route`), so the test is self-contained and runs in CI (`npm run test:e2e:a11y`).
  */
 
-/** The semantic chips' rendered pair (`shared/semantic-chip.ts`) — opaque, so theme- and surface-invariant. */
+/**
+ * The semantic chips' rendered pair as `getComputedStyle` reports it — opaque, so theme- and
+ * surface-invariant. Deliberately a second copy of `src/testing/chip-fills.ts`'s hexes rather than
+ * an import: this suite drives the built app as a black box and takes nothing from app source, so
+ * a value that drifted here would still be caught, by this suite going red against the real page.
+ * Change both together — `#0a5f74` / `#ffffff` there are these two triples.
+ */
 const SEMANTIC_FILL = 'rgb(10, 95, 116)';
 const SEMANTIC_INK = 'rgb(255, 255, 255)';
 

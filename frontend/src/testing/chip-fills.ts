@@ -1,7 +1,13 @@
 /**
- * The ONE test-side mirror of the chip directives' OPAQUE SOLID recipes — the same role
+ * The unit suite's ONE mirror of the chip directives' OPAQUE SOLID recipes — the same role
  * `testing/glass-tokens.ts` plays for the `styles.scss` glass tokens, and for the same reason:
  * a per-spec hand-copy of a "keep in sync" constant goes stale silently.
+ *
+ * <p>One copy lives outside that reach on purpose: `e2e/discovery-flow.e2e.ts` repeats the same
+ * pair as `rgb()` triples, because the mocked Playwright suite drives the built app as a black box
+ * and imports nothing from app source. That copy is self-policing in a way these are not — it is
+ * compared against the real rendered page, so a drift turns the suite red rather than passing
+ * quietly. Change it together with this file.
  *
  * <p>Here that reason is sharper than usual, because two specs make claims about EACH OTHER'S
  * values. `shared/amenities.contrast.spec.ts` proves every descriptive ink reads AA on its own
