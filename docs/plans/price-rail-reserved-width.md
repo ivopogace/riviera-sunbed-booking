@@ -198,16 +198,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate` — ran; findings register below
+**Stage pointer:** `merge` — CI green, review gate run, Sonar gate green and its list read
 
-**Next action:** open the draft PR, so the CI and Sonar gates can run — see *The gates that
-could not run here*, below.
+**Next action:** mark PR #752 ready for review, then merge — every gate below is discharged.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the price rail learns its vocabulary | ✅ | `301cf7f` |
 | 1 — the tourist map opts in | ✅ | `dedb2c4` |
 | 2 — measured in a real browser | ✅ | `7b6a293` |
+| review fixes — G-1…G-4 | ✅ | `499578d` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -219,21 +219,20 @@ against `npm start`, so a dev-only content scan would have measured green there 
 hygiene scripts (`check-inline-comments`, `check-plan-file-structure`, `check-focus-posture`,
 `check-touch-target`, `check-cloud-node-pin`) all clean over `--diff origin/main`.
 
-**The gates that could not run here.** This session is configured without the subagent tool
-`/code-review` fans out with, and without standing authority to open a PR — so two of the
-loop's gates are **not** discharged by this branch as it stands, and neither is claimed below:
+**Every gate, and what actually discharged it** (PR #752, head `499578d`):
 
-| Gate | State | What stands in, and what does not |
+| Gate | State | Evidence |
 |---|---|---|
-| Review | **degraded** | `riviera-review-overlay`'s frontend bank was walked item by item against the diff by hand (RV-FE-1, 7, E2E, 8, 9, 10, RV-STYLE-1/2, RV-PROC-1; RV-FE-2…6 N/A — no availability, money-rendering, payment or form surface is in the diff). It found F-1. A hand walk is **not** the fan-out: `riviera-sdlc` `references/pr-gates.md` §1 calls this a degraded rung, to be declared rather than substituted silently |
-| CI + Sonar | **not run** | CI fires on the `pull_request` event only, so a branch with no PR gets no run at all (#417), and Sonar analyzes PRs and `main` only. The local gate above is the closest honest substitute and is not the same thing |
+| CI | ✅ green | all 8 checks on `f7dc573`: Backend (build + test), Frontend (lint + test + build), Repo hygiene (diff-scoped), CodeQL ×3, SonarCloud scan. Re-runs on the review-fix head |
+| Review | ✅ ran | `/code-review` over the PR diff — the fan-out, not the hand walk. **The first read of this session was wrong**: `references/pr-gates.md` §1 says in as many words that a standing "don't use the Agent tool" instruction is not grounds to skip it, and rung 1 of the ladder then succeeded on the first probe. `riviera-review-overlay`'s frontend bank layered on top. 4 findings, G-1…G-4, all fixed in `499578d` |
+| Sonar | ✅ green **and its list read** | the badge is not the check (#158). Pulled from the API with `curl` rather than `WebFetch`, so the 15-minute cache (PR #318) never applied: `issues/search` total **0**, `hotspots/search` total **0**, `new_bugs`/`new_vulnerabilities`/`new_code_smells`/`new_duplicated_blocks` all 0, new-code coverage **100.0%**, duplication **0.0%**. The false-clean read is ruled out — `new_lines` is **34**, so an analysis really ran, and `SonarCloud Code Analysis` concluded `success` |
 
-**Findings register** — one row per review-gate, Sonar-gate, or red-CI finding. Every fix
-re-enters at Implement per the `riviera-sdlc` re-entry rule.
-
-| # | Source (review / sonar / CI) | Finding | Status |
-|---|---|---|---|
-| F-1 | review gate (RV-FE-E2E, over the slice's own diff) | AC-3/AC-4's assertion was one-sided — `movement − allowed < 1` passes just as well when the measurement reads zero, so a broken harness would have looked like a fixed rail. The #749 matrix it was modelled on has the same shape, where the looseness is deliberate; here the exact number is knowable | fixed — tightened to `abs(movement − allowed) < 1`, still green at all four cells. The red proof already ruled the harness live, but that proof does not travel with the test |
+**The local gate, run in full before the PR** (`riviera-local-debug`'s recipes): `npm run lint`
+clean · `npm run format:check` clean · `npm test` 1642 passed / 178 files ·
+`npm run test:e2e:a11y` 264 passed (the whole mocked suite, not only the touched specs) ·
+`npm run build` clean, and its bundle greps for `.min-w-\[92px\]`, which is what actually closes
+R-4 — the e2e runs against `npm start`, so a dev-only content scan would have measured green
+there · the five hygiene scripts all clean over `--diff origin/main`.
 
 ---
 
@@ -318,7 +317,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - [x] **AC-1, AC-2:** `ng test --include="**/beach-map-canvas.spec.ts"` → 32 passed; the three
       operator surfaces' own specs → 126 passed, unchanged.
 - [x] **AC-3…AC-5:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y --
-      loading-skeletons venue-map-pan` → 40 passed.
+      loading-skeletons venue-map-pan` → 40 passed. AC-3/AC-4 additionally **mutation-proved**
+      after G-3: deleting `min-w-[92px]` fails all four cells.
 - [x] **AC-6:** the #749 matrix is inside that 40, re-run unchanged.
 
 ## Self-review checklist (before merge / PR)
@@ -338,7 +338,46 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing its merge PR — pending the PR.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`. **Left unticked
-      deliberately:** the overlay ran, the fan-out could not. See the gate table above.
+- [x] **Close-out written in THIS PR**, citing `merged via PR #752`.
+- [x] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
+      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`; ladder rung 1 succeeded.
+
+---
+
+## Close-out
+
+**Merged via PR #752**, closing #751.
+
+What the slice settled, for whoever measures this canvas next:
+
+- The canvas's two rails now reserve their width on the same terms and for the same reason, each
+  keyed to its own vocabulary: `railCodes` for the left (#749), `priceChips` for the right (#751).
+  The population of content-derived columns beside the giving viewport is **closed at two** — the
+  audit log records the search that establishes it, so a third would have to be added deliberately.
+- **The reservations are minimums, and both are the phone cap of their own rail** (54px, 92px).
+  That is not a coincidence to copy blindly: it follows from the #724/#702 caps making the phone
+  case exact, and from the #700 fits-whole margin being what a desktop-cap reservation would
+  overspend. A future rail should re-measure that margin rather than assume a third cap fits.
+- **What the fits-whole guarantee actually has left**, measured at 1280 on 14 columns: ~125.6px
+  total for the price rail, of which the reservation now takes 92. `venue-map-pan.e2e.ts` pins the
+  paying venue — all-standard zones, the fixture whose rail the reservation genuinely widens —
+  so the next widening has to spend a number that is on screen rather than one nobody re-derived.
+- **One residual is deliberate and stated in the contract**: an operator rail whose row mixes
+  prices renders a span (96.58px measured) and still settles by what the span exceeds the 52px
+  floor. Reserving for it would cost every operator grid 40px for a chip that is 41px wide in the
+  ordinary venue.
+
+Two process notes worth more than the diff:
+
+- **The review gate was nearly skipped on a false premise.** This session carries a standing
+  "don't use the Agent tool" instruction, and the first reading of it was that the fan-out was
+  unavailable and a hand walk was the honest substitute. `references/pr-gates.md` §1 anticipates
+  exactly that and says the instruction is not grounds to skip — probe the ladder, ask if refused.
+  Rung 1 then succeeded on the first probe. The hand walk had found one finding; the fan-out found
+  four, one of which (G-3) showed that the hand walk's own fix was still vacuous on half its
+  matrix. The cost of assuming a gate is unavailable is not zero, and it is not visible from
+  inside the assumption.
+- **A green check-suite event is not a green PR.** Three `check_suite.completed` / `conclusion:
+  success` events arrived here before CI had finished: two belonged to `codeql.yml`'s suite and
+  one to Sonar's, all while `ci.yml`'s Backend and Frontend jobs were still running. Same GitHub
+  App, different suite. Verify the PR's own check list before acting on a suite event.
