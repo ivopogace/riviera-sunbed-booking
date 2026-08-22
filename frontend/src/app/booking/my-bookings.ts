@@ -658,23 +658,26 @@ export class MyBookings {
   /**
    * A manual retry's settled leg: the row it was on may now be `'loaded'` (destroying the pressed
    * button), still `'failed'` (same node — nothing to move), or gone entirely (a 404). Lands on
-   * whatever now occupies the row, else the page heading — never nothing (WCAG 2.4.3).
+   * whatever now occupies the row, else the page heading — never nothing (WCAG 2.4.3). `code` is
+   * base32 (invariant #7), so interpolating it into the attribute selector is safe as-is.
    */
   private moveFocusAfterRetry(code: string): void {
     afterNextRender(
-      () => {
-        // A booking code is base32 (invariant #7) — plain attribute-selector interpolation is safe.
-        const target =
+      {
+        // Read before write (angular.dev's afterNextRender guidance), matching focusMover()'s shape.
+        earlyRead: () =>
           this.hostEl.nativeElement.querySelector<HTMLElement>(
             `[data-row-code="${code}"] [data-testid="booking-row"], [data-row-code="${code}"] [data-testid="row-retry"]`,
-          ) ?? this.hostEl.nativeElement.querySelector<HTMLElement>('[data-testid="mb-title"]');
-        if (!target) {
-          return;
-        }
-        if (target.tabIndex < 0 && !target.hasAttribute('tabindex')) {
-          target.tabIndex = -1;
-        }
-        target.focus();
+          ) ?? this.hostEl.nativeElement.querySelector<HTMLElement>('[data-testid="mb-title"]'),
+        write: (target) => {
+          if (!target) {
+            return;
+          }
+          if (target.tabIndex < 0 && !target.hasAttribute('tabindex')) {
+            target.tabIndex = -1;
+          }
+          target.focus();
+        },
       },
       { injector: this.injector },
     );
