@@ -154,6 +154,8 @@ export class DailyViewTab {
   /** The in-flight skeleton's grid, shared with every other beach-map surface (#744). */
   protected readonly skeletonTiles = MAP_SKELETON_TILES;
   protected readonly skeletonRows = MAP_SKELETON_ROWS;
+  /** The arrivals placeholder rows — its own constant, so the map's geometry cannot move them. */
+  protected readonly skeletonArrivals = [1, 2, 3, 4] as const;
   /** A transient notice (e.g. a set was just taken by the other channel, or a write failed). */
   protected readonly notice = signal<string | undefined>(undefined);
 

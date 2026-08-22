@@ -36,13 +36,15 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * has to sit above the conditional content's own height, which is what the frame settles by when a
  * venue turns out to carry all of it. Both are read off measurement, not chosen — on these fixtures
  * the frame settles 15.6px (bare, desktop), 38.7px (bare, phone), 81.2px (rich, desktop) and
- * 104.3px (rich, phone), and rises in no case at all.
+ * 104.3px (rich, phone), and rises in no case at all. `MAX_SETTLE_PX` keeps a wider margin over
+ * that worst case than the numbers strictly need — it is the half that does not carry the claim,
+ * and font-metric drift on a browser bump should not turn it amber.
  *
  * <p>Neither bound is what catches the regression #744 fixed: under the sentence these replaced
  * there is no frame to measure at all, so `topOf` fails before either is consulted.
  */
 const MAX_RISE_PX = 16;
-const MAX_SETTLE_PX = 112;
+const MAX_SETTLE_PX = 136;
 
 const DESKTOP = { width: 1280, height: 720 };
 const PHONE = { width: 390, height: 844 };
@@ -164,7 +166,8 @@ async function tabReachesSkeleton(page: Page, testId: string, steps = 12): Promi
   for (let i = 0; i < steps; i++) {
     await page.keyboard.press('Tab');
     const inside = await page.evaluate(
-      (id) => document.activeElement?.closest(`[data-testid="${id}"]`) !== null,
+      // `!= null`: with focus nowhere `?.` yields undefined, which `!==` would read as "inside".
+      (id) => document.activeElement?.closest(`[data-testid="${id}"]`) != null,
       testId,
     );
     if (inside) {

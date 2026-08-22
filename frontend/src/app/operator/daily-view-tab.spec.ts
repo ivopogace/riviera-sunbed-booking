@@ -136,7 +136,9 @@ describe('DailyViewTab (#175)', () => {
     expect(loading.querySelectorAll('[data-testid="daily-skeleton-tile"]').length).toBeGreaterThan(
       0,
     );
-    expect(loading.querySelector('[data-testid="daily-skeleton-arrivals"]')).not.toBeNull();
+    const arrivals = loading.querySelector('[data-testid="daily-skeleton-arrivals"]')!;
+    // Four rows from the tab's own constant — not from the map's grid geometry, which is unrelated.
+    expect(arrivals.querySelectorAll('.animate-pulse[class*="h-[42px]"]')).toHaveLength(4);
     // The sentence the skeleton replaces; a mirrored shape says it without a reflow (#744).
     expect(loading.textContent).not.toContain('Loading the daily view');
 

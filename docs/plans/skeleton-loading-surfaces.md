@@ -190,10 +190,11 @@ N/A — no contract change. No request, response shape, or endpoint is touched.
 
 ## Execution status
 
-**Stage pointer:** `review gate — re-run; fixing findings G-1…G-3 (phase 5)`
+**Stage pointer:** `review gate — 3rd pass; fixing findings H-1, H-2 (phase 6)`
 
-**Next action:** push the G-1…G-3 fixes, let CI + Sonar re-run, then re-review the
-changed surface once more per the re-entry rule. Then the merge close-out: finalize
+**Next action:** push the H-1/H-2 fixes and let CI + Sonar re-run. The 3rd pass found two
+minor issues and no new class of defect, so the loop is converging; one more pass over the
+phase-6 diff, then the merge close-out. Then the merge close-out: finalize
 this section with `merged via PR #748` in the PR's own last commit.
 
 **Review gate:** **run** — `/code-review` at **high** effort over `origin/main...HEAD`
@@ -226,7 +227,8 @@ issue list to work through, so nothing re-enters at Implement from it.
 | 3 — mocked e2e for the grid surfaces | ✅ | |
 | — post-implement: drop the copied `.map-head` marker | ✅ | `425733f` |
 | 4 — review-gate findings F-1…F-5 | ✅ | `89156eb` |
-| 5 — re-review findings G-1…G-3 | ✅ | |
+| 5 — re-review findings G-1…G-3 | ✅ | `0f91234` |
+| 6 — 3rd-review findings H-1, H-2 | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -243,6 +245,8 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-5 | review (`/code-review`, high) | `SkeletonBlock` exists to stop hand-copying `animate-pulse` + `motion-reduce:animate-none`, yet four sites still carry the literal pair. | fixed-in-`<phase-4>` for the two that are *filled* blocks (`set-editor.html`'s tile, `my-bookings.ts`'s lines); the two pulsing-but-**unfilled** containers stay, per Non-goals. One detail of the finding was inaccurate: `set-editor.html` was **not** edited by this PR before this fix — only `set-editor.ts` was |
 | G-1 | re-review (`/code-review`, high) | F-3's own fix: `codeLabel: ''` suppressed the rail chip, collapsing the left rail 0 → 63px on load and sliding the tile grid sideways. The new e2e measures only the frame's `y`, so it could not see it. | fixed-in-`<phase-5>` — F-3 reverted wholesale; the rail nit goes to a follow-up issue |
 | G-2 | re-review (`/code-review`, high) | The tourist skeleton painted `--riv-card-track` (a dark tint for **light** card glass) onto the dark `appPanelGlass`: 1.02:1 in the Riviera theme — the loading state was a blank panel. | fixed-in-`<phase-5>` — the directive no longer sets a fill at all (the surface decides, exactly as it already decides radius); the header uses `--riv-track-bg`, the app's own ink-surface track token, now 1.81:1. Pinned by a new `venue-map.contrast.spec.ts` case |
+| H-1 | 3rd review (`/code-review`, high) | The tab-walk's focus probe used `!== null` against an optional-chained `closest()`, so "focus is nowhere" read as "focus is inside the skeleton" — a **false failure**, and it invalidated the non-vacuity check run against it. | fixed-in-`<phase-6>` — `!= null`; the without-`inert` experiment re-run against the corrected operator and confirmed |
+| H-2 | 3rd review (`/code-review`, high) | The Daily view's arrivals placeholder rows iterated `MAP_SKELETON_ROWS`, so the beach map's grid geometry silently decided how many arrival rows were drawn — F-4's coupling, in a second place. | fixed-in-`<phase-6>` — a local `skeletonArrivals` constant (the `payouts-tab.ts` form), now pinned by a count assertion |
 | G-3 | re-review (`/code-review`, high) | An overflowing scroll container is keyboard-focusable in Chromium with **no** `tabindex`, so both grid skeletons put a tab stop inside `aria-hidden="true"`. Neither the `[tabindex]` unit assertion nor axe's `aria-hidden-focus` rule can see it. | fixed-in-`<phase-5>` — `inert` on all five skeleton containers (`set-editor`'s pre-existing one included, same mechanism). Pinned in a browser: the e2e tabs through and asserts focus never enters, and fails without `inert` |
 
 ---
@@ -325,6 +329,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | G-4 | F-1 was a skeleton mirroring a block the loaded surface renders **conditionally** | Population = every `@if`-gated or `empty:hidden` block inside a surface whose loading branch this slice wrote — read the four loaded branches against their new skeletons | Only the tourist header has any: `@if (v.description)` and the `empty:hidden` chip row. The Daily view, Requests and Payouts skeletons mirror unconditional blocks only, which is why their measured shift is sub-pixel to 40px rather than 61px. |
 | G-5 | F-2 was a proof that ran at one viewport | Population = every measurement-based assertion in the new e2e — the file is the whole population, 2 surfaces | Both are now run per viewport; the tourist one also per venue shape, since its header is the only one with conditional content. |
 | G-6 | G-1: fixing a cosmetic finding (F-3) shipped a 63px layout regression, because the fix was reasoned about and not measured | Population = every phase-4 fix — 5 findings | F-1/F-2 were measured (the e2e matrix); F-3/F-4/F-5 were not. Both unmeasured *structural* ones (F-3, F-4) were the ones that went wrong or were dropped. Every phase-5 fix now carries a measurement: G-2 a contrast case computed from the tokens, G-3 a browser tab-walk verified to fail without the fix. |
+| H-3 | H-1: a proof whose own operator was wrong, whose non-vacuity check was then run against that wrong operator and read as confirmation | Population = every assertion this slice added whose failure mode is "reports the wrong thing" rather than "misses a thing" — the `page.evaluate` probes, 2 of them | Only the tab-walk had a hand-written predicate; the frame measurements compare numbers. Re-verifying it against the corrected operator is what actually established the `inert` claim — the first check had proved nothing. |
 | G-7 | G-3's mechanism (an overflowing scroller is focusable with no tabindex) | Population = every skeleton container wrapping a `BeachMapCanvas` — `grep -rln 'appBeachMapRow' frontend/src/app` then read each surface's loading branch | Three: the tourist map, the Daily view, and `set-editor`'s pre-existing skeleton. All three got `inert`; the two non-canvas skeletons (Requests, Payouts) took it too, so the rule is "every skeleton container", not "the ones that happen to scroll". |
 
 ## Acceptance-criteria verification (final)
