@@ -60,6 +60,25 @@ export const PORCELAIN_STOPS: readonly Rgb[] = ['ffffff', 'eef6f8', 'cfeaf2', 'd
   hexToRgb,
 );
 
+/** `--riv-photo-grad` stops — the photo band's placeholder gradient (theme-invariant). */
+export const PHOTO_STOPS: readonly Rgb[] = ['2bb8d4', '0e8aa8'].map(hexToRgb);
+
+/**
+ * Every backdrop an overlay on a photo band must survive: the placeholder gradient's own stops
+ * plus the two extremes a real uploaded photo can present — pure white and pure black. Since #142
+ * the bands back real images, so "worst case" stopped meaning "the gradient's lightest stop".
+ */
+export const WORST_PHOTOS: readonly Rgb[] = [...PHOTO_STOPS, WHITE, hexToRgb('000000')];
+
+/** `--riv-mode-chip-glass` — the white glass under the Discover mode chip and the step chips. */
+export const MODE_CHIP_GLASS: Glass = { color: WHITE, alpha: 0.85 };
+
+/** `--riv-photo-chrome` — the dot rail's dark backing over a photo (#704). */
+export const PHOTO_CHROME: Glass = { color: hexToRgb('0d2828'), alpha: 0.7 };
+
+/** `--riv-photo-chrome-edge` alpha (a `CARD_INK` tint) — the step chip's 1.4.11 boundary (#704). */
+export const PHOTO_CHROME_EDGE_ALPHA = 0.6;
+
 /** Effective surface of a glass layer over an opaque stop. */
 export function surfaceOver(glass: Glass, stop: Rgb): Rgb {
   return composite(glass.color, glass.alpha, stop);

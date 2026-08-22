@@ -15,6 +15,7 @@ import {
   FIELD_FILL_ALPHA,
   Glass,
   INK_DARK,
+  MODE_CHIP_GLASS,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_CHIP,
   PORCELAIN_HEADER_GLASS,
@@ -24,6 +25,7 @@ import {
   RIVIERA_HEADER_GLASS,
   RIVIERA_STOPS,
   WHITE,
+  WORST_PHOTOS,
   expectAaOverStops,
   surfaceOver,
 } from '../../../testing/glass-tokens';
@@ -65,12 +67,6 @@ const ACCENT = '#085a6e'; // --riv-accent-ink
  * are pinned because the text sits over the whole gradient (worst case is the lighter stop).
  */
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
-
-// styles.scss card-surface tokens (theme-invariant ones live in the :root block)
-const MODE_CHIP_GLASS: Glass = { color: WHITE, alpha: 0.85 }; // --riv-mode-chip-glass (0.85: AA over any photo)
-
-// --riv-photo-grad stops (same in both themes; from the design's CTA hexes).
-const PHOTO_STOPS = ['2bb8d4', '0e8aa8'].map(hexToRgb);
 
 interface Theme {
   readonly name: string;
@@ -191,11 +187,7 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
 });
 
 describe('Discover photo-area contrast (theme-independent, issue #135; real photos since #142)', () => {
-  // Since #142 the photo band backs a REAL uploaded image, so every overlay ink is proven over
-  // the worst case ANY photo can present — pure white (for the dark scrim under white text) and
-  // pure black (for the white chip glass under dark text) — plus the gradient placeholder stops
-  // the empty state still renders.
-  const WORST_PHOTOS = [...PHOTO_STOPS, hexToRgb('ffffff'), hexToRgb('000000')];
+  // `WORST_PHOTOS` (testing/glass-tokens.ts): the placeholder gradient's stops plus pure white (the dark scrim under white text) and pure black (the white chip glass under dark text) — shared since #704 with the slideshow-chrome spec.
 
   it('mode chip text (accent) meets AA on the chip glass over the gradient AND any photo', () => {
     for (const stop of WORST_PHOTOS) {
