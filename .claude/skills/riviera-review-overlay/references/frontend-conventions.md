@@ -398,14 +398,16 @@ exist in the DOM before the text it announces changes**?
 > rule above the hard way: the first cut took a `[failed]` flag, and three of eight call sites had
 > a non-success exit nobody had thought to bind — the beach map's 404, My bookings' failed account
 > read, the account page's signed-out visitor — each announcing "…loaded." over a panel saying the
-> opposite. Announcing the failure itself is a *different* item: the failure panels carry
-> `role="alert"`, the one live-region case reliably announced on insertion — the house pattern,
-> on 7 of #741's 8 surfaces. **Check the branch, don't assume it**, and check what kind of region
-> it is: `role="status"` born holding its text announces nothing (`my-bookings`' `account-error`),
-> and neither does no role at all (its `booking-row-failed`). Where one is missing, `role="alert"`
-> on the panel in the diff is usually the right fix. What is *not* is a live region **per row** of
-> a list: assertive, one interruption per failure, and re-announced when a re-sort moves the node —
-> PR #743 shipped that for one round and reverted it.
+> opposite. Announcing the failure itself is a *different* item: the house pattern is
+> `role="alert"` on the failure panel, insertion being the one case a live region is reliably
+> announced without a prior mutation. **Read the branch; never assume the panels handle it** — and
+> read what kind of region it is, because two shapes announce nothing: a `role="status"` panel born
+> holding its text, and no role at all. Read the *right* branch, too: an `alert` elsewhere in the
+> file may belong to a submit or a delete flow, not to the load. Where the load's non-success
+> branch is silent, `role="alert"` on the panel already in the diff is usually the right fix.
+> What is **not** is a live region **per row** of a list — assertive, one interruption per failure,
+> and re-announced when a re-sort moves the node; PR #743 shipped that for one round and reverted
+> it. (Counts go stale: this item deliberately states no inventory. Count when you review.)
 >
 > **Ask whether the spec was mutation-checked.** Moving the region back inside its branch must fail
 > it, and so must widening `[ready]` past the loaded branch — a passing assertion that cannot fail

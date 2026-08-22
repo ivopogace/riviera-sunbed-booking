@@ -4,10 +4,10 @@ import { Component, computed, input } from '@angular/core';
  * The one announcement a loading surface makes to assistive tech, as a region that **outlives the
  * transition it announces**.
  *
- * <p>A live region generally announces only content that MUTATES after the region is already in the
- * DOM. A container that enters the DOM already holding its "Loading…" line and is removed wholesale
- * when the content lands does the opposite, so the line reads as silence — and a spec that asserts
- * the text passes either way.
+ * <p>A live region generally announces only content that MUTATES after the region is already in
+ * the DOM. A container that enters the DOM already holding its "Loading…" line and is removed
+ * wholesale when the content lands does the opposite, so the line reads as silence — and a spec
+ * that asserts the text passes either way.
  * angular.dev says the same thing about `@defer`: screen readers "may not announce changes when the
  * deferred content loads", and the fix is a live region that wraps the transition. Its example puts
  * the region around the content with `aria-atomic`; that shape suits a small profile card, not a
@@ -27,10 +27,11 @@ import { Component, computed, input } from '@angular/core';
  * described is silent, and silence is the recoverable failure; a lie is not.
  *
  * <p>Announcing the failure **itself** is deliberately not this component's job. That belongs to
- * the call site's failure branch, as `role="alert"` — announced on insertion, the one live-region
- * case with good support. This component's contract on that side is only that it must never
- * *contradict* such a panel, which is what `ready` buys. Check the branch rather than assume it:
- * a `role="status"` panel born holding its text announces nothing, and so does no role at all.
+ * the call site's failure branch, as `role="alert"`: inserting an alert is the one case a live
+ * region is announced reliably *without* a prior mutation. This component's contract on that side
+ * is only that it must never *contradict* such a panel, which is what `ready` buys. Read the
+ * branch rather than assume it — a `role="status"` panel born holding its text announces nothing,
+ * and neither does no role at all.
  *
  * <p>`loading` wins over `ready` if a call site somehow asserts both: in flight is the safer read of
  * a contradiction.

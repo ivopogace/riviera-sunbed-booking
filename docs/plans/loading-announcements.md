@@ -97,19 +97,23 @@ change-detection timing cannot) · `riviera-local-debug` (scoped test runs; clou
 
 ## Non-goals
 
-- **Failure announcements.** Settled at round 7, after two rounds got the inventory wrong in
-  opposite directions. Ground truth: `role="alert"` is the house pattern — 56 occurrences across
-  the app, and **7 of these 8 surfaces** already carry one on their failure branch (`home`,
-  `set-editor`, `venue-map` ×2, `set-password`, and the `daily-view-tab` / `requests-tab` /
-  `payouts-tab` error paragraphs, each inside `@else if (loadError())`, i.e. inserted on the
-  transition — the reliably-announced case). `shared/failure-panel.ts` carries no role of its own;
-  its three call sites add one by hand. So failures are covered, and this slice's job on that side
-  is only to keep the announcer from *contradicting* a panel. **The one exception is
-  `my-bookings`**, both of whose failure cards are genuinely silent: `booking-row-failed` has no
-  role (round 4 gave it `role="alert"`, round 5 reverted that — a per-row assertive region is the
-  wrong shape, F-25), and `account-error` has `role="status"` but is born holding its text inside
-  `@if (accountError())`, the very defect this slice removes elsewhere. Those two → follow-up issue
-  at close-out. No other surface belongs in it.
+- **Failure announcements.** Settled at round 8, after three rounds miscounted this in both
+  directions. The house pattern is `role="alert"` on the failure panel, and the check that matters
+  is per-surface and per-*branch* — an `alert` elsewhere in a file often belongs to a submit or
+  delete flow, not to the load. Read branch by branch, this slice's eight surfaces come out:
+  **covered** — `home` (`home.html:131`), `venue-map` (×2), and the `daily-view-tab` /
+  `requests-tab` / `payouts-tab` error paragraphs, each an `alert` inserted on the load-error
+  branch (`@else if (loadError())`, and `@else if (loadErrorMsg(); as msg)` on payouts);
+  **no load-failure branch of its own** — `set-editor`, whose `loaded` is an `input.required` and
+  whose one `alert` is a *save* error; the load failure it belongs to is the parent
+  `layout-editor.html`. **Silent, and the whole of the follow-up scope:** `my-bookings`'
+  `booking-row-failed` (no role — round 4 gave it `role="alert"`, round 5 reverted that as a
+  per-row assertive region, F-25) and its `account-error` (`role="status"`, but born holding its
+  text inside `@if (accountError())`); and `set-password`'s `@else if (!auth.signedIn())` branch,
+  whose three `alert`s all belong to the password-submit and erase flows. That last one needs
+  design, not an attribute: `session-auth` folds a failed restore into the same signed-out
+  principal, so "Sign in to manage your account." is what a 500 renders too — a panel to announce
+  has to exist before it can carry a role. No app-wide count is recorded here on purpose (G-8).
 - **The result/notice regions** (`<output>` elements, admin notices, `booking-view`'s
   withdraw/cancel results). Some share the born-with-text shape, but they are result
   announcements, not loading ones, and several are already correct. Out of scope.
@@ -249,9 +253,9 @@ N/A — no request or response shape changes.
 
 ## Execution status
 
-**Stage pointer:** `review gate — round 7 fixes pushed, re-review due`.
+**Stage pointer:** `review gate — round 8 fixes pushed, re-review due`.
 
-**Next action:** Re-review the round-7 diff. If it comes back clean, confirm CI green on the
+**Next action:** Re-review the round-8 diff. If it comes back clean, confirm CI green on the
 final head, pull Sonar's new-issue + duplication list from the API for that head (a green gate
 is not the check), then run the merge close-out in `riviera-sdlc` `references/pr-gates.md` §3.
 
@@ -269,7 +273,8 @@ is not the check), then run the merge close-out in `riviera-sdlc` `references/pr
 | 9 — Fourth-round findings F-17…F-24 | ✅ | |
 | 10 — Fifth-round findings F-25…F-31 (F-17 reverted; F-29…F-31 deferred) | ✅ | |
 | 11 — Sixth-round findings F-32…F-39 (F-27 reversed; F-29…F-31 carried to the checklist) | ✅ | |
-| 12 — Seventh-round findings F-40…F-45 (round 6's inventory corrected; population now 2) | ✅ | |
+| 12 — Seventh-round findings F-40…F-45 (round 6's inventory corrected) | ✅ | |
+| 13 — Eighth-round findings F-46…F-48 (census removed from durable docs; scope corrected) | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -324,6 +329,9 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-43 | seventh review round (noted, not reported) | de-issue-numbering the e2e header pushed line 6 to 113 chars; Prettier does not rewrap comment prose, so `format:check` cannot see it — F-39's defect, reintroduced in the same commit that fixed it | fixed — re-wrapped |
 | F-44 | seventh review round | RV-FE-10's new text told reviewers a silent failure branch is "a finding for the backlog, not something to fix inline" — generalising a scope call made for *this* PR's per-row alert into a standing ban on fixing a one-attribute a11y gap in the diff under review | fixed — the item now says `role="alert"` on the panel in the diff is usually the right fix, and scopes the prohibition to what actually earned it: a live region **per row** of a list |
 | F-45 | seventh review round (noted, not reported) | F-32's row said the vacuous spec "still cleared `announceReady()`" — the inverted verb; it *satisfied* it, which is why the announcement fired | fixed |
+| F-46 | **eighth review round** (re-review of the round-7 diff) | **The census was wrong a third time, so it is gone rather than corrected again.** Round 7's "7 of 8 surfaces covered / 56 occurrences" counted `set-password` and `set-editor` as covered on the strength of `role="alert"` elements that belong to their *submit* and *erase* flows — `set-password`'s actual load non-success branch (`@else if (!auth.signedIn())`) has no role at all, and `set-editor` has no load-failure branch of its own. The quoted 56 does not reproduce from the command G-8 states (raw grep: 68) | fixed — **no count in either durable doc.** RV-FE-10 and `load-announcer.ts` now carry the rule plus the check ("read the branch, and read the *right* branch — an alert elsewhere in the file may be a submit flow's"); the dated per-surface finding stays in this plan. G-8 rewritten around the three-round arc |
+| F-47 | eighth review round | flowing from F-46: `set-password`'s silent branch was missing from the follow-up scope, and the checklist said "do not widen it" — an instruction that would have told the next agent not to add it | fixed — it is in scope, with the note that it needs design rather than an attribute: `session-auth` folds a failed restore into the same signed-out principal, so there is no failure panel to carry a role yet. The "do not widen" instruction is replaced by "re-check rather than assume" |
+| F-48 | eighth review round (noted, not reported) | three small doc errors in the round-7 text: `payouts-tab`'s branch is `@else if (loadErrorMsg(); as msg)`, not `loadError()`; the population was described as "two surfaces" when it is two cards on **one** surface; and `load-announcer.ts` gained two 101–102-char lines against `printWidth: 100`, which Prettier cannot rewrap | fixed — all three. The file now carries fewer over-width comment lines than before this slice touched it |
 
 
 **Considered and rejected in round 4** (recorded so the next reader does not re-derive them):
@@ -364,6 +372,12 @@ Skill-routing gate for what the fix touches *before* editing).
   answer: zero rows is the state that spec exists to cover. The rule F-32 settled is narrower than
   "never assert loaded without rows": a spec asserting a **transition produced something** must
   assert what it produced.
+
+- *"`role="alert"` is 'the one live-region case with good support' undercuts this very component,
+  whose own region is a polite `role="status"`."* — Fair as written, so the sentence was scoped
+  rather than the claim rejected: it is the one case announced reliably **without a prior
+  mutation**. Polite mutation announcements are exactly what this component relies on, and they
+  are well supported; insertion-without-mutation is the case that is not.
 
 ---
 
@@ -457,7 +471,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | G-5 | Review findings F-1/F-2/F-3 | **The audit that missed them (G-3) is the lesson.** G-3 enumerated "surfaces with an explicit error signal" — resemblance, not mechanism. The mechanism is "a branch of the surface's `@if` chain that is neither loading nor loaded", which also covers a 404, a partial read and a signed-out visitor. Re-enumerated by reading all eight `@if` chains, not by grepping for error-shaped names | 3 more exits on 3 surfaces | Fixed by inverting the input to `ready` so the population no longer has to be enumerated correctly — an exit nobody described is silent by construction. RV-FE-10 states the rule |
 | G-6 | Re-review findings F-8, F-10, F-13 | **The same mechanism, a third time.** "A signal that leaves the loading state before every read behind it has settled." Enumerated by reading each `set(false)`/`set(true)` on every phase signal in the eight components and asking what is still in flight at that line | `my-bookings` only — the other seven set their phase signal once, at the point their single read settles | Fixed by hoisting the announcement conditions into one named `announceReady()` computed. F-13 then showed the surface answers **two** questions, not one — *what is drawn* (`showSkeleton()`) and *what is announced* (`announceReady()`) — so there are two computeds by design, each with its own contract; what must never split again is either question across several inline conditions |
 | G-7 | Review round 3 | "a clause added to guard a state the template cannot reach" — asked of each condition in `announceReady` by tracing back to the control that produces it | 1: the latch written for the per-row-Retry re-announcement | **Removed.** `row-retry` renders only inside the `'failed'` case, and a failed row already blocks the announcement, so the latch guarded an unreachable state — and the mutation check proved it: deleting it failed no test. A clause no test can distinguish is not defence in depth, it is a claim the code does not have to keep |
-| G-8 | Review round 7 | **"a count asserted in a durable doc."** Round 6 wrote "three panels carry `role="alert"`, the rest are silent" into RV-FE-10 *and* `load-announcer.ts` — inherited from a review finding, never counted. Enumerated by actually running `grep -rn 'role="alert"' frontend/src` and then checking each of the eight surfaces' failure branch | 56 occurrences; 7 of the 8 surfaces covered, 1 not | **Both docs corrected (F-40).** The rule this leaves behind: a number or inventory that goes into a skill reference or a shared component's TSDoc gets counted at the moment it is written, and re-counted when it is edited — it outlives the PR that wrote it, and a review finding is a hypothesis, not a census |
+| G-8 | Review rounds 6–8 | **"a census asserted in a durable doc."** Round 6 wrote an inventory of other components' markup into RV-FE-10 *and* `load-announcer.ts`, inherited from a review finding and never counted. Round 7 corrected the inventory — and wrote a *new* count into the same two durable docs. Round 8 found that one wrong too: a raw `grep -rn 'role="alert"' frontend/src` gives 68, not the 56 quoted, and two of the surfaces it counted as covered carry their `alert` on a **submit** branch, not a load one | every count written into a durable doc so far has been wrong, in both directions | **The census is gone from both durable docs (F-46), not corrected a third time.** A skill reference and a shared component's TSDoc outlive the PR by design, so they now carry the rule and the check — *read the branch, and read the right branch* — with no number to decay. Dated, per-surface findings live here in the plan, where they are scoped to this PR. A review finding is a hypothesis, not a census; so is the previous round's fix |
 
 ---
 
@@ -484,10 +498,12 @@ Skill-routing gate for what the fix touches *before* editing).
 - [x] Open questions empty; the two assumptions held and are recorded as decisions.
 - [ ] Findings register current; every finding re-entered at Implement.
 - [x] No spec claims an announcement it does not prove (R-5) — titles and comments rewritten on all three surfaces that carried the claim.
-- [ ] Follow-up issue filed for the two silent failure surfaces (Non-goals) — scope is exactly
-      `my-bookings`' `booking-row-failed` card (no role) and its `account-error` card
-      (`role="status"`, born with its text). Every other surface already carries `role="alert"`;
-      do not widen it, and do not presume `appFailurePanel` is the mechanism (F-25, F-40, F-41).
+- [ ] Follow-up issue filed for the silent failure branches (Non-goals) — `my-bookings`'
+      `booking-row-failed` card (no role) and its `account-error` card (`role="status"`, born with
+      its text), plus `set-password`'s signed-out branch, where a failed restore is
+      indistinguishable from signed-out and there is no panel to announce yet. The other surfaces
+      were each checked branch-by-branch and are covered; re-check rather than assume, and do not
+      presume `appFailurePanel` is the mechanism (F-25, F-40, F-41, F-46).
 - [ ] Follow-up issue filed for the two Retry controls' accessibility (F-29, F-30): both
       `row-retry` and `account-retry` destroy the focused button with no `focusMover()`
       (RV-FE-9 / WCAG 2.4.3), and the account retry shows no busy state for its round trip.
