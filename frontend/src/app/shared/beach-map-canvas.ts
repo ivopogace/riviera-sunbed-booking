@@ -136,6 +136,22 @@ export class BeachMapCanvas {
   /** True when the rows outgrow the wash scroller's height cap (drag hint only — no fade/snap). */
   protected readonly vScrollHint = signal(false);
 
+  /**
+   * Scrollbar chrome for the pan viewport. A drag-pan surface hides the bar — the drag IS the
+   * affordance, and the hint below the map names it. A surface that opted out of drag-pan has no
+   * pointer gesture left, so it shows a slim themed bar instead: without one, a plain mouse could
+   * only reach off-screen columns through shift+wheel, which nothing on screen advertises.
+   *
+   * <p>No `scrollbar-gutter`: this viewport is `overflow-y: hidden`, so a stable gutter reserves an
+   * inline-end strip for a vertical bar that can never appear — measured at 10px of grid width — and
+   * reserves nothing for the horizontal bar it was meant to stabilise.
+   */
+  protected readonly scrollbarChrome = computed(() =>
+    this.dragPan()
+      ? 'scrollbar-none'
+      : 'scrollbar-thin scrollbar-thumb-(--riv-accent-ink) scrollbar-track-transparent',
+  );
+
   // --- pan gesture state (imperative; not rendered) ---
   private panPointerDown = false;
   private panStartX = 0;

@@ -7,7 +7,7 @@
     <!-- The sea→sand wash: aqua at the sea banner fading to warm sand at the promenade, fixed to the viewport of the vertical scroller so "the water is up there" reads at any scroll depth. -->
     <div
       #washScroller
-      class="overflow-y-auto overflow-x-hidden max-h-[532px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-[18px] px-[18px] -mt-3.5 pt-3.5 pb-3 bg-[linear-gradient(180deg,var(--riv-map-sea)_0%,#e7f5f1_55%,#f6eedb_100%)]"
+      class="overflow-y-auto overflow-x-hidden max-h-[532px] scrollbar-none -mx-[18px] px-[18px] -mt-3.5 pt-3.5 pb-3 bg-[linear-gradient(180deg,var(--riv-map-sea)_0%,#e7f5f1_55%,#f6eedb_100%)]"
       data-riv-scroller
     >
       <div class="flex items-start gap-2.5" [style.--riv-map-cols]="mapCols()">
@@ -31,7 +31,8 @@
         <!-- Center: the pannable tile grid (2D mouse drag — vertical rides the wash scroller when it overflows; touch scrolls natively). The edge fade + inner padding + scroll-pl apply only while the grid actually overflows horizontally (.pannable ← scrollHint()), so a non-overflowing map never fades tile column 1 and a snapped tile rests past the 16px fade, not inside it. -->
         <div
           #canvasViewport
-          class="group overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch] flex-1 min-w-0 select-none snap-x snap-proximity [&.pannable]:scroll-pl-4 [&.pannable]:[mask-image:linear-gradient(90deg,transparent,black_16px,black_calc(100%-16px),transparent)]"
+          class="group overflow-x-auto overflow-y-hidden [-webkit-overflow-scrolling:touch] flex-1 min-w-0 select-none snap-x snap-proximity [&.pannable]:scroll-pl-4 [&.pannable]:[mask-image:linear-gradient(90deg,transparent,black_16px,black_calc(100%-16px),transparent)]"
+          [class]="scrollbarChrome()"
           [attr.data-testid]="viewportTestid()"
           data-riv-scroller
           [class.pannable]="scrollHint()"
@@ -75,12 +76,17 @@
       </div>
     </div>
 
-    @if ((scrollHint() || vScrollHint()) && dragPan()) {
+    <!-- Named per surface: on a paint surface "drag" would name the gesture that paints instead. -->
+    @if (scrollHint() || vScrollHint()) {
       <p
         class="text-center text-[12px] font-semibold text-(--riv-accent-ink) mt-3"
         data-testid="scroll-hint"
       >
-        Drag or swipe to see the whole beach.
+        {{
+          dragPan()
+            ? 'Drag or swipe to see the whole beach.'
+            : 'Scroll, or drag the bar below, to see the whole beach.'
+        }}
       </p>
     }
     <ng-content select="[canvasFooter]" />

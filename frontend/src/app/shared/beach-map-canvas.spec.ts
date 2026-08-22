@@ -348,6 +348,21 @@ describe('BeachMapCanvas (#672)', () => {
     expect(component.taps).toEqual(['A1']);
   });
 
+  it('gives a dragPan-off viewport a themed scrollbar, the only pointer route left to off-screen columns', () => {
+    const { host, component, detect } = render();
+    const vp = viewport(host);
+    expect(vp.classList.contains('scrollbar-none')).toBe(true);
+
+    component.dragPan.set(false);
+    detect();
+    expect(vp.classList.contains('scrollbar-none')).toBe(false);
+    expect(vp.className).toContain('scrollbar-thin');
+    expect(vp.className).toContain('scrollbar-thumb-(--riv-accent-ink)');
+    expect(vp.className).toContain('scrollbar-track-transparent');
+    // A stable gutter would reserve an inline-end strip this overflow-y-hidden box can never use.
+    expect(vp.className).not.toContain('scrollbar-gutter');
+  });
+
   it('with dragPan off, a drag neither pans nor suppresses the following click', () => {
     const { host, component, detect } = render();
     component.dragPan.set(false);
@@ -387,7 +402,7 @@ describe('BeachMapCanvas (#672)', () => {
     expect(hint.querySelector('[aria-hidden="true"]')).toBeNull();
   });
 
-  it('shows the pan hint only where drag actually pans (never on a dragPan-off surface)', async () => {
+  it('names the overflow gesture per surface, never instructing the paint drag', async () => {
     const { host, component, detect, fixture } = render();
     // jsdom measures 0 — give the viewport a real overflow through the DOM measurement seam.
     const vp = viewport(host);
@@ -397,15 +412,19 @@ describe('BeachMapCanvas (#672)', () => {
     detect();
     await fixture.whenStable();
     detect();
-    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeTruthy();
+    expect(host.querySelector('[data-testid="scroll-hint"]')?.textContent?.trim()).toBe(
+      'Drag or swipe to see the whole beach.',
+    );
 
     component.dragPan.set(false);
     detect();
-    // "Drag … to pan" would instruct the wrong (paint) gesture on a dragPan-off surface (#674 F-3).
-    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
+    // #674 F-3 suppressed this outright; the wording, not the hint, was what named the wrong gesture.
+    expect(host.querySelector('[data-testid="scroll-hint"]')?.textContent?.trim()).toBe(
+      'Scroll, or drag the bar below, to see the whole beach.',
+    );
   });
 
-  it('shows the pan hint on vertical-only overflow, and never with dragPan off', async () => {
+  it('shows the pan hint on vertical-only overflow, in both surfaces’ wording', async () => {
     const { host, component, detect, fixture } = render();
     seedVerticalOverflow(washScroller(host));
     component.rows.set([...ROWS]);
@@ -416,7 +435,9 @@ describe('BeachMapCanvas (#672)', () => {
 
     component.dragPan.set(false);
     detect();
-    expect(host.querySelector('[data-testid="scroll-hint"]')).toBeNull();
+    expect(host.querySelector('[data-testid="scroll-hint"]')?.textContent?.trim()).toBe(
+      'Scroll, or drag the bar below, to see the whole beach.',
+    );
   });
 
   it('re-measures the pan overflow when the viewport resizes (#700)', async () => {
