@@ -35,7 +35,7 @@ const ROWS: readonly TestRow[] = [
       [viewportTabindex]="0"
       viewportLabel="Beach map"
       [dragPan]="dragPan()"
-      [truncateRailCodes]="truncate()"
+      [railCodes]="railCodes()"
       [loading]="loading()"
     >
       <ng-template [appBeachMapRow]="rows()" let-row let-i="index">
@@ -58,7 +58,7 @@ const ROWS: readonly TestRow[] = [
 class CanvasHost {
   readonly rows = signal<readonly TestRow[]>(ROWS);
   readonly dragPan = signal(true);
-  readonly truncate = signal(false);
+  readonly railCodes = signal<'letters' | 'labels' | 'capped-labels'>('letters');
   readonly loading = signal(false);
   readonly taps: string[] = [];
 }
@@ -148,6 +148,15 @@ describe('BeachMapCanvas (#672)', () => {
     return el!;
   }
 
+  /** The left rail's column — the element whose width slides the tile grid when it changes. */
+  function railColumn(host: HTMLElement): HTMLElement {
+    const chip = host.querySelector<HTMLElement>(
+      '[data-testid="row-code"], [data-testid="row-code-placeholder"]',
+    );
+    expect(chip).toBeTruthy();
+    return chip!.parentElement!.parentElement!;
+  }
+
   function rowGrid(host: HTMLElement): HTMLElement {
     const el = viewport(host).querySelector<HTMLElement>('[data-map-grid]');
     expect(el).toBeTruthy();
@@ -214,14 +223,56 @@ describe('BeachMapCanvas (#672)', () => {
   });
 
   it('caps rail labels with an ellipsis when the surface opts in (#724)', () => {
-    const { fixture, host, detect } = render();
-    fixture.componentInstance.truncate.set(true);
+    const { component, host, detect } = render();
+    component.railCodes.set('capped-labels');
     detect();
     const inner = host.querySelector('[data-testid="row-code"] .truncate')!;
     expect(inner).toBeTruthy();
-    expect(inner.classList.contains('max-w-12')).toBe(true);
-    expect(inner.classList.contains('sm:max-w-[96px]')).toBe(true);
+    // The cap is the column's now, so the chip ellipsizes against it instead of carrying its own.
+    expect(inner.classList.contains('max-w-full')).toBe(true);
     expect(inner.textContent).toBe('A');
+  });
+
+  it('reserves the capped rail width identically loading and loaded (#749)', () => {
+    const { component, host, detect } = render();
+    component.railCodes.set('capped-labels');
+    detect();
+    const loaded = railColumn(host).className;
+    // 48px + 96px of #724 cap, plus the chip's own 6px of padding: today's worst case, made the only case.
+    expect(loaded).toContain('w-[54px]');
+    expect(loaded).toContain('sm:w-[102px]');
+
+    component.loading.set(true);
+    detect();
+    expect(railColumn(host).className).toBe(loaded);
+    const chip = host.querySelector('[data-testid="row-code-placeholder"]')!;
+    expect(chip.classList.contains('w-[54px]')).toBe(true);
+    expect(chip.classList.contains('sm:w-[102px]')).toBe(true);
+  });
+
+  it('reserves a minimum for whole labels, without capping them (#724, #749)', () => {
+    const { component, host, detect } = render();
+    component.railCodes.set('labels');
+    detect();
+    const column = railColumn(host).className;
+    expect(column).toContain('min-w-[54px]');
+    expect(column).toContain('sm:min-w-[102px]');
+    // A minimum, so a label longer than the reservation still widens the rail and renders whole.
+    expect(host.querySelector('[data-testid="row-code"] .truncate')).toBeNull();
+  });
+
+  it('reserves nothing for a letters rail, so the editor surfaces are unchanged (#749)', () => {
+    const { component, host, detect } = render();
+    const loaded = railColumn(host).className;
+    expect(loaded).not.toContain('w-[');
+
+    component.loading.set(true);
+    detect();
+    expect(railColumn(host).className).toBe(loaded);
+    const chip = host.querySelector('[data-testid="row-code-placeholder"]')!;
+    // The letter chip's own min-w-6 — a grid letter's placeholder matches its real chip exactly.
+    expect(chip.classList.contains('min-w-6')).toBe(true);
+    expect(chip.className).not.toContain('w-[');
   });
 
   it('sizes every row wrapper and rail cell from the identical fixed --riv-tile height (#685)', () => {

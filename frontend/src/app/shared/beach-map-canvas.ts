@@ -115,17 +115,58 @@ export class BeachMapCanvas {
   readonly viewportLabel = input<string>('');
   /** Mouse drag-to-pan; a surface whose drag gesture is its own (paint) switches it off. */
   readonly dragPan = input<boolean>(true);
-  /** Cap rail chips with an ellipsis — the tourist map's opt-in (#724): its tile names carry
-   *  the full row label, while operator surfaces keep whole-label chips. Two tiers like the
-   *  price rail's own mobile/`sm:` split, with its own values: 48px, 96px from `sm:` — the
-   *  mobile cap is the #724 product call's balance (short real names render whole; ~2.6 tile
-   *  columns stay visible on a 390px phone). */
-  readonly truncateRailCodes = input<boolean>(false);
+  /** What the rail's chips are — and therefore how much width the rail reserves, in BOTH the
+   *  loading and the loaded state (#749). `letters` is a grid being painted (the two editor
+   *  surfaces): chips are one or two characters, so the rail reserves nothing beyond the chip's
+   *  own `min-w-6`. `labels` is the stored per-venue row name (#724): the rail reserves a
+   *  MINIMUM, so a longer name still widens it and renders whole — the operator rule. The
+   *  tourist map's `capped-labels` ellipsizes instead, so its rail is a fixed width: the one
+   *  vocabulary whose rail can never move. */
+  readonly railCodes = input<'letters' | 'labels' | 'capped-labels'>('letters');
   /** Draw a placeholder grid, not a map: the rails reserve their columns but state nothing, and
    *  every cue that invites a gesture is withheld (#749). A surface renders its skeleton THROUGH
    *  the canvas to inherit `--riv-tile` and the frame geometry, which also inherits this chrome —
    *  so the canvas, not the surface, is what has to know the difference. */
   readonly loading = input<boolean>(false);
+
+  /**
+   * The rail's width, reserved rather than derived from whatever the read happened to return.
+   *
+   * <p>A content-derived rail is a horizontal version of the vertical jump the skeletons removed:
+   * the placeholder's chip is one width, the real label another, and the whole tile grid slides on
+   * load (measured at 24 → 63.14px, #749). Reserving in the loading state alone only reverses the
+   * direction — a venue whose rows are named `A` would then slide the grid LEFT — so the
+   * reservation belongs to the vocabulary, not to the loading flag, and applies in both states.
+   *
+   * <p>The two values are the #724 caps (48px, 96px from `sm`) plus the chip's own 6px of
+   * padding, so a capped rail reserves exactly the width it could already reach today — the
+   * tourist map's worst case becomes its only case rather than a new one.
+   */
+  protected readonly railColumnClass = computed(() => {
+    switch (this.railCodes()) {
+      case 'capped-labels':
+        return 'w-[54px] sm:w-[102px]';
+      case 'labels':
+        return 'min-w-[54px] sm:min-w-[102px]';
+      default:
+        return '';
+    }
+  });
+
+  /** A capped chip ellipsizes against the column's reservation rather than carrying its own cap. */
+  protected readonly railChipClass = computed(() =>
+    this.railCodes() === 'capped-labels' ? 'max-w-full' : '',
+  );
+
+  /** Ellipsize against the column's reservation; an uncapped rail's chip stays whole (#724). */
+  protected readonly railCodeTextClass = computed(() =>
+    this.railCodes() === 'capped-labels' ? 'max-w-full truncate' : '',
+  );
+
+  /** The loading chip fills whatever the rail reserves, so the placeholder is the rail, not a pill in it. */
+  protected readonly railPlaceholderClass = computed(() =>
+    this.railCodes() === 'letters' ? 'min-w-6' : 'w-[54px] sm:w-[102px]',
+  );
 
   protected readonly rowDef = contentChild.required<BeachMapRowDef>(BeachMapRowDef);
   protected readonly rows = computed<readonly BeachMapCanvasRow[]>(() =>

@@ -13,7 +13,7 @@
     >
       <div class="flex items-start gap-2.5" [style.--riv-map-cols]="mapCols()">
         <!-- Left rail: row codes (aria-hidden; each surface's tile names already carry the row). While loading the chip carries no text: the placeholder reserves the rail, it never states a row name nobody has fetched (#749, F-3). -->
-        <div class="flex flex-col gap-1.5 shrink-0" aria-hidden="true">
+        <div class="flex flex-col gap-1.5 shrink-0" [class]="railColumnClass()" aria-hidden="true">
           @for (row of rows(); track row.code; let i = $index) {
             <span
               class="h-[var(--riv-tile)] flex items-center justify-start"
@@ -21,16 +21,16 @@
             >
               @if (loading()) {
                 <span
-                  class="inline-flex min-w-6 h-6 rounded-lg bg-white/60"
+                  class="inline-flex h-6 rounded-lg bg-white/60"
+                  [class]="railPlaceholderClass()"
                   data-testid="row-code-placeholder"
                 ></span>
               } @else {
                 <span
                   class="inline-flex items-center justify-center min-w-6 h-6 px-[3px] rounded-lg bg-white/60 text-[10.5px] font-bold text-[#0a4f5e]"
+                  [class]="railChipClass()"
                   data-testid="row-code"
-                  ><span [class]="truncateRailCodes() ? 'max-w-12 sm:max-w-[96px] truncate' : ''">{{
-                    row.code
-                  }}</span></span
+                  ><span [class]="railCodeTextClass()">{{ row.code }}</span></span
                 >
               }
             </span>

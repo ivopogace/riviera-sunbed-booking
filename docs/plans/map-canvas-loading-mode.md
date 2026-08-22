@@ -176,19 +176,24 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** write the phase-1 red specs (AC-3, AC-4) — `railCodes` replaces
-`truncateRailCodes` and the rail column reserves its width.
+**Next action:** write the phase-3 e2e (AC-5…AC-7) — rail width and viewport x either
+side of the held read, both surfaces, both viewports.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the canvas learns it is loading | ✅ | `827d634` |
-| 1 — the rail reserves its width | ⏳ | |
-| 2 — the three surfaces adopt the modes | | |
-| 3 — measured in a real browser | | |
+| 1 — the rail reserves its width | ✅ | `0faec54` |
+| 2 — the three surfaces adopt the modes | ✅ | `0faec54` (with phase 1 — see below) |
+| 3 — measured in a real browser | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+Phases 1 and 2 landed in one commit on purpose: `railCodes` replaces `truncateRailCodes`,
+so the tree does not compile between the canvas change and the consumers' adoption. The
+red step still ran first (the canvas specs failed on the unknown input), and the surfaces'
+own specs are the green step.
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding. Every fix
 re-enters at Implement per the `riviera-sdlc` re-entry rule.
@@ -214,6 +219,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/operator/daily-view-tab.html` — `railCodes="labels"` on both, `loading`
   on the skeleton
 - `frontend/src/app/operator/set-editor.html` — `loading` on the skeleton (letters is the default)
+- `frontend/src/app/venue/venue-map.spec.ts` — the #724 cap assertion moves to the column
 - `frontend/e2e/loading-skeletons.e2e.ts` — AC-5…AC-7, the rail-stability matrix
 
 ---

@@ -448,9 +448,12 @@ describe('VenueMap', () => {
     flushVenue();
     await fixture.whenStable();
     const inner = el().querySelector('[data-testid="row-code"] .truncate')!;
-    expect(inner.classList.contains('max-w-12')).toBe(true);
-    expect(inner.classList.contains('sm:max-w-[96px]')).toBe(true);
+    expect(inner.classList.contains('max-w-full')).toBe(true);
     expect(inner.textContent?.trim()).toBe('Front row · Sea view');
+    // The cap is the rail column's, which is also what the skeleton reserves — so nothing slides on load (#749).
+    const column = inner.closest('[data-testid="row-code"]')!.parentElement!.parentElement!;
+    expect(column.classList.contains('w-[54px]')).toBe(true);
+    expect(column.classList.contains('sm:w-[102px]')).toBe(true);
   });
 
   it("renders the price once per zone, carrying the row's meaning (#672, #702)", async () => {
