@@ -96,8 +96,7 @@ class EndpointRoleGateCoverageTest {
 			"GET /api/venues",
 			"GET /api/venues/{venueId}",
 			"GET /api/venues/{venueId}/photos/{hash}",
-			// permitAll — the tourist date calendar: the same public availability the map read
-			// already answers, for a window of days instead of one (#760).
+			// permitAll — the map read's public availability, for a window of days (#760).
 			"GET /api/venues/{venueId}/availability-calendar",
 			// permitAll — guest checkout is deliberately session-free; the booking code authorizes
 			// the read, the cancel and the request-withdraw (invariant #7).
