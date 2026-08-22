@@ -26,8 +26,8 @@ the ticket's item (4) is not an optional half) · `riviera-plan-doc` (this templ
 the behavior-parity ledger, which is where the "the loaded rail may only *widen*" residual
 got written down instead of discovered at review) · `tdd` (each phase red-first: canvas
 unit specs before the template change, the e2e rail-stability matrix before the surfaces
-were re-pointed) · `riviera-review-overlay` (review gate — due when the PR is marked ready) ·
-`riviera-docs-freshness` (due at close-out over `adc40d9..HEAD`) · `riviera-frontend` (placement: the change is wholly inside
+were re-pointed) · `riviera-review-overlay` (review gate — ran twice on PR #750, over the slice and again over the fix range; 6 findings, F-1…F-3 and G-1…G-3) ·
+`riviera-docs-freshness` (**ran** over `adc40d9..HEAD`, 0 findings: no substrate doc names the canvas's inputs or testids, and the slice adds no Nth-of-anything for the counting sweep) · `riviera-frontend` (placement: the change is wholly inside
 `shared/` + its three consumers; no new file, no new cross-feature edge) ·
 `riviera-tailwind` (the width tokens are arbitrary-value utilities computed in TS beside
 `scrollbarChrome`, not `@apply`; kept the `data-testid` markers specs query) ·
@@ -83,34 +83,34 @@ without sliding the tiles; out of scope, Non-goals.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a canvas in `loading` mode, when it renders rows, then no element
+- [x] **AC-1:** Given a canvas in `loading` mode, when it renders rows, then no element
       carries `data-testid="row-code"`, `price-col`, or `scroll-hint`, and no rail chip
       contains any text (both rails keep their columns under placeholder testids). *Pinned by:* `beach-map-canvas.spec.ts` › "a loading canvas states
       no row name, no price rail and no pan hint".
-- [ ] **AC-2:** Given a canvas in `loading` mode whose grid overflows its viewport, when the
+- [x] **AC-2:** Given a canvas in `loading` mode whose grid overflows its viewport, when the
       overflow is measured, then neither the pan hint nor a reserved line for it is rendered and
       the viewport carries no `cursor-grab` — while `.pannable` (the measured edge fade) still
       applies. *Pinned by:* `beach-map-canvas.spec.ts` › "offers no gesture its inert container
       cannot accept while loading (#749)".
-- [ ] **AC-3:** Given either label vocabulary, when the rail renders, then its column reserves
+- [x] **AC-3:** Given either label vocabulary, when the rail renders, then its column reserves
       `min-w-[54px]` in both the loading and the loaded state, and the loading chip fills exactly
       that reservation. *Pinned by:* `beach-map-canvas.spec.ts` › "reserves the same rail width
       loading and loaded, for either label vocabulary (#749)".
-- [ ] **AC-4:** Given `railCodes="letters"` (the default — the two editor surfaces), when the
+- [x] **AC-4:** Given `railCodes="letters"` (the default — the two editor surfaces), when the
       rail renders in either state, then it reserves nothing beyond the chip's own `min-w-6`,
       so a placeholder letter chip and a real letter chip are the same width. *Pinned by:*
       `beach-map-canvas.spec.ts` › "a letters rail reserves nothing, so the editors are
       unchanged".
-- [ ] **AC-5:** Given either surface, either viewport, and row names at either extreme of the
+- [x] **AC-5:** Given either surface, either viewport, and row names at either extreme of the
       length the editor allows, when the read lands, then the tile grid slides by exactly
       `max(0, loadedRailWidth − 54)` — 30px less than it did, whatever the venue. *Pinned by:*
       `loading-skeletons.e2e.ts` › "…rail holds its width across the load (#749)" ×8, each
       computing the expectation from the rail that actually rendered.
-- [ ] **AC-6:** Given the tourist beach map at 390 and the longest row name the editor allows,
+- [x] **AC-6:** Given the tourist beach map at 390 and the longest row name the editor allows,
       when the read lands, then the tile grid does not move at all (≤1px) — the one case the
       #724 cap closes outright. *Pinned by:* `loading-skeletons.e2e.ts` › "the tourist beach
       map's phone rail does not move at all (#749)".
-- [ ] **AC-7:** Given the tourist map and the Daily view while loading at 390, when the
+- [x] **AC-7:** Given the tourist map and the Daily view while loading at 390, when the
       placeholder grid overflows, then no `scroll-hint` is on the page. *Pinned by:*
       `loading-skeletons.e2e.ts` › "no skeleton instructs a gesture its inert container
       cannot accept (#749)".
@@ -152,10 +152,10 @@ is not supposed to move except where the plan says it does.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | The reservation trades a horizontal jump for a permanently narrower tile viewport (the G-1 failure mode, in reverse) | med | med | **materialized** — the cap-sized reservation cost the 14-column desktop map its fits-whole guarantee (`venue-map-pan.e2e.ts`, #700). Re-sized to the 54px mobile cap as a minimum, which leaves ~13px of that margin | claude | fixed in phase 3 |
-| R-2 | Suppressing the hint makes the map card *grow* on load (the hint is inside the frame), moving content below it | high | low | the #744 contract is the frame's **top** edge, which the hint cannot move; the existing matrix still asserts it. Accepted and stated in the e2e | claude | open |
-| R-3 | Class strings computed in TS are invisible to a naive Tailwind content scan | low | high | v4 scans the whole source tree; `scrollbarChrome` is the in-repo precedent. Proven by the browser measurement, not by reading the class list (RV-FE / rule 4) | claude | open |
-| R-4 | Replacing `truncateRailCodes` breaks a consumer or spec silently | low | med | it has exactly two references outside the canvas (`venue-map.html`, `beach-map-canvas.spec.ts`); the compiler rejects an unknown input on a signal-input component | claude | open |
-| R-5 | A future surface renders a skeleton through the canvas and forgets `loading` | med | low | the placeholder path is a canvas concern now, so the mistake shows as fabricated row names in that surface's own spec; noted in the canvas class doc | claude | open |
+| R-2 | Suppressing the hint makes the map card *grow* on load (the hint is inside the frame), moving content below it | high | low | **accepted, and now argued rather than assumed** (G-1): reserving the line instead keys it to the placeholder's overflow, which does not predict the loaded map's, so it can make the card SHRINK — the direction #744 ruled out. Growth is the settle-down direction; stated beside the `@if` and in the e2e | claude | closed — `b83e79e` |
+| R-3 | Class strings computed in TS are invisible to a naive Tailwind content scan | low | high | did not materialize — the browser measurements show the reservation actually rendering (54px, 63.14px, 102px), which is the proof a class-list read could not give | claude | closed — `d60219c` |
+| R-4 | Replacing `truncateRailCodes` breaks a consumer or spec silently | low | med | did not materialize — the template compiler rejected every stale binding by name, which is how phases 1 and 2 became one commit | claude | closed — `09d67b6` |
+| R-5 | A future surface renders a skeleton through the canvas and forgets `loading` | med | low | open by design — the canvas class doc names the trap, and a surface that forgets it renders fabricated row names its own spec would show. No further mitigation without a lint | claude | accepted — documented in `beach-map-canvas.ts` |
 
 ## Open questions / Assumptions
 
@@ -164,9 +164,15 @@ is not supposed to move except where the plan says it does.
 - **Assumption (resolved, phase 3):** the reservation is the #724 cap plus padding, at both
   tiers. **Wrong at `sm`** — measured, the desktop map has ~31px of fits-whole margin and the
   102px rail spends 39px of it. Settled at a single-tier `min-w-[54px]`: zero slide on the
-  tourist phone, 9.14px elsewhere, and no loaded layout moves.
+  tourist phone, and elsewhere a residual of exactly `max(0, loadedRail − 54)` — a flat 30px
+  less than before, on every venue.
 - **Assumption (resolved, phase 1):** reserving in the loaded state is in scope. It is — a
   fixed-width placeholder in front of a content-derived rail slides the grid the other way.
+- **Assumption (resolved, phase 5 / G-1):** what goes for the rail goes for the pan hint's
+  line. **It does not.** The rail's width follows from the vocabulary, which is known before
+  the read; the hint's need follows from the loaded map's overflow, which is not — and the
+  placeholder's own overflow does not stand in for it. An unpredictable reservation can only
+  be wrong upward, the direction #744 ruled out, so the line stays unreserved.
 
 ## Availability & concurrency (invariant #2)
 
@@ -199,10 +205,10 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `sonar gate`
+**Stage pointer:** `merge close-out`
 
-**Next action:** pull the SonarCloud new-issue + duplication list for PR #750 and clear it,
-then the merge close-out.
+**Next action:** none once PR #750 merges — the close-out's remaining items are GitHub-only
+(confirm #749 closed, unsubscribe).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -252,46 +258,46 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Modify `frontend/src/app/shared/beach-map-canvas.ts|.html` · Test
 `frontend/src/app/shared/beach-map-canvas.spec.ts`
 
-- [ ] **Step 1: Write the failing specs** — AC-1 and AC-2 against a `loading` host.
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- beach-map-canvas` → FAIL
+- [x] **Step 1: Write the failing specs** — AC-1 and AC-2 against a `loading` host.
+- [x] **Step 2: Run them, verify they fail** — `npm test -- beach-map-canvas` → FAIL
       (`row-code` present, hint rendered).
-- [ ] **Step 3: Minimal implementation** — the `loading` input; the placeholder branch in the
+- [x] **Step 3: Minimal implementation** — the `loading` input; the placeholder branch in the
       rail; `!loading()` on the hint, the grab cursor, and the price-rail testid.
-- [ ] **Step 4: Run them, verify they pass.**
-- [ ] **Step 5: Generalization-audit pass** — population: every surface that renders a
+- [x] **Step 4: Run them, verify they pass.**
+- [x] **Step 5: Generalization-audit pass** — population: every surface that renders a
       skeleton *through* a shared component that also draws live chrome.
-- [ ] **Step 6: Commit.**
-- [ ] **Step 7: Update the plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit.**
+- [x] **Step 7: Update the plan-doc execution status** in the same commit window.
 
 ## Phase 1 — the rail reserves its width
 
 **Files:** Modify `beach-map-canvas.ts|.html` · Test `beach-map-canvas.spec.ts`
 
-- [ ] **Step 1: Write the failing specs** — AC-3, AC-4.
-- [ ] **Step 2: Run, verify fail.**
-- [ ] **Step 3:** `railCodes` replaces `truncateRailCodes`; the column/chip/placeholder class
+- [x] **Step 1: Write the failing specs** — AC-3, AC-4.
+- [x] **Step 2: Run, verify fail.**
+- [x] **Step 3:** `railCodes` replaces `truncateRailCodes`; the column/chip/placeholder class
       computeds.
-- [ ] **Step 4: Run, verify pass.**
-- [ ] **Step 5–7:** audit, commit, status.
+- [x] **Step 4: Run, verify pass.**
+- [x] **Step 5–7:** audit, commit, status.
 
 ## Phase 2 — the three surfaces adopt the modes
 
 **Files:** Modify `venue-map.html`, `daily-view-tab.html`, `set-editor.html`,
 `map-skeleton.ts|.spec.ts` · Test the three surfaces' existing specs
 
-- [ ] **Step 1–4:** re-point each canvas; run each surface's unit spec.
-- [ ] **Step 5–7:** audit, commit, status.
+- [x] **Step 1–4:** re-point each canvas; run each surface's unit spec.
+- [x] **Step 5–7:** audit, commit, status.
 
 ## Phase 3 — measured in a real browser
 
 **Files:** Modify `frontend/e2e/loading-skeletons.e2e.ts`
 
-- [ ] **Step 1: Write the failing e2e** — AC-5…AC-7 (rail width + viewport x either side of
+- [x] **Step 1: Write the failing e2e** — AC-5…AC-7 (rail width + viewport x either side of
       the held read, both viewports, both surfaces).
-- [ ] **Step 2: Verify it fails on `origin/main`'s canvas** — the pre-fix numbers in the table
+- [x] **Step 2: Verify it fails on `origin/main`'s canvas** — the pre-fix numbers in the table
       above are that failure, recorded.
-- [ ] **Step 3–4:** run it green against the new canvas.
-- [ ] **Step 5–7:** audit, commit, status.
+- [x] **Step 3–4:** run it green against the new canvas.
+- [x] **Step 5–7:** audit, commit, status.
 
 ---
 
@@ -306,26 +312,26 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1…AC-4:** `npm test -- beach-map-canvas` → PASS.
-- [ ] **AC-5…AC-7:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- loading-skeletons` → PASS.
+- [x] **AC-1…AC-4:** `npm test -- beach-map-canvas` → PASS.
+- [x] **AC-5…AC-7:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- loading-skeletons` → PASS.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (justified N/A) (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled (N/A, frontend-only) (invariant #11).
-- [ ] **Payment/payout** section filled (N/A) (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — untouched.
-- [ ] Booking codes unguessable (invariant #7) — untouched.
-- [ ] Flyway migration present for schema changes (invariant #12) — none.
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (justified N/A) (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled (N/A, frontend-only) (invariant #11).
+- [x] **Payment/payout** section filled (N/A) (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — untouched.
+- [x] Booking codes unguessable (invariant #7) — untouched.
+- [x] Flyway migration present for schema changes (invariant #12) — none.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #750`.
+- [x] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
