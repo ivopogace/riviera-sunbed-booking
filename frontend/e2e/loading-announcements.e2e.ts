@@ -3,8 +3,8 @@ import { expect, test } from '@playwright/test';
 import { expectNoSeriousAxeViolations } from './support/axe';
 
 /**
- * The loading-announcement contract in a real browser: a loading surface announces through a live region that is
- * **already in the DOM when its text changes**.
+ * The loading-announcement contract in a real browser: a loading surface announces through a live
+ * region that is **already in the DOM when its text changes**.
  *
  * <p>The unit specs assert the same mechanism in jsdom, where change detection is driven by hand.
  * This one holds the announcer's element handle across a genuine network round trip in Chromium —

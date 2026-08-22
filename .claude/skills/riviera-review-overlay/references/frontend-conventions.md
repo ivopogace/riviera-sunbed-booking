@@ -398,13 +398,14 @@ exist in the DOM before the text it announces changes**?
 > rule above the hard way: the first cut took a `[failed]` flag, and three of eight call sites had
 > a non-success exit nobody had thought to bind — the beach map's 404, My bookings' failed account
 > read, the account page's signed-out visitor — each announcing "…loaded." over a panel saying the
-> opposite. Announcing the failure itself is a *different* item — and an **open** one: only
-> `role="alert"` is reliably announced on insertion, and just three panels in the app use it
-> (`home`, the two on `venue-map`). The rest carry `role="status"` born with its text, or no role,
-> and are silent. So never wave a call site's failure branch through on the grounds that "the
-> panels handle it" — PR #743 did exactly that and had to revert a per-row `alert` it reached for
-> instead (assertive, one per row, re-announced on re-sort). Check the branch; if it is silent,
-> that is a finding for the failure-announcement backlog, not something to fix inline.
+> opposite. Announcing the failure itself is a *different* item: the failure panels carry
+> `role="alert"`, the one live-region case reliably announced on insertion — the house pattern,
+> on 7 of #741's 8 surfaces. **Check the branch, don't assume it**, and check what kind of region
+> it is: `role="status"` born holding its text announces nothing (`my-bookings`' `account-error`),
+> and neither does no role at all (its `booking-row-failed`). Where one is missing, `role="alert"`
+> on the panel in the diff is usually the right fix. What is *not* is a live region **per row** of
+> a list: assertive, one interruption per failure, and re-announced when a re-sort moves the node —
+> PR #743 shipped that for one round and reverted it.
 >
 > **Ask whether the spec was mutation-checked.** Moving the region back inside its branch must fail
 > it, and so must widening `[ready]` past the loaded branch — a passing assertion that cannot fail
