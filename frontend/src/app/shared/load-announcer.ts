@@ -30,8 +30,9 @@ import { Component, computed, input } from '@angular/core';
  * the call site's failure branch, as `role="alert"`: inserting an alert is the one case a live
  * region is announced reliably *without* a prior mutation. This component's contract on that side
  * is only that it must never *contradict* such a panel, which is what `ready` buys. Read the
- * branch rather than assume it — a `role="status"` panel born holding its text announces nothing,
- * and neither does no role at all.
+ * branch rather than assume it, and read the *right* one: an alert elsewhere in the file often
+ * belongs to a submit or delete flow. Two shapes announce nothing — a `role="status"` panel born
+ * holding its text, and no role at all.
  *
  * <p>`loading` wins over `ready` if a call site somehow asserts both: in flight is the safer read of
  * a contradiction.

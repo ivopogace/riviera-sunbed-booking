@@ -97,23 +97,23 @@ change-detection timing cannot) · `riviera-local-debug` (scoped test runs; clou
 
 ## Non-goals
 
-- **Failure announcements.** Settled at round 8, after three rounds miscounted this in both
-  directions. The house pattern is `role="alert"` on the failure panel, and the check that matters
-  is per-surface and per-*branch* — an `alert` elsewhere in a file often belongs to a submit or
-  delete flow, not to the load. Read branch by branch, this slice's eight surfaces come out:
-  **covered** — `home` (`home.html:131`), `venue-map` (×2), and the `daily-view-tab` /
-  `requests-tab` / `payouts-tab` error paragraphs, each an `alert` inserted on the load-error
-  branch (`@else if (loadError())`, and `@else if (loadErrorMsg(); as msg)` on payouts);
-  **no load-failure branch of its own** — `set-editor`, whose `loaded` is an `input.required` and
-  whose one `alert` is a *save* error; the load failure it belongs to is the parent
-  `layout-editor.html`. **Silent, and the whole of the follow-up scope:** `my-bookings`'
-  `booking-row-failed` (no role — round 4 gave it `role="alert"`, round 5 reverted that as a
-  per-row assertive region, F-25) and its `account-error` (`role="status"`, but born holding its
-  text inside `@if (accountError())`); and `set-password`'s `@else if (!auth.signedIn())` branch,
-  whose three `alert`s all belong to the password-submit and erase flows. That last one needs
-  design, not an attribute: `session-auth` folds a failed restore into the same signed-out
-  principal, so "Sign in to manage your account." is what a 500 renders too — a panel to announce
-  has to exist before it can carry a role. No app-wide count is recorded here on purpose (G-8).
+- **Failure announcements.** Settled at round 8, after three rounds miscounted it in both
+  directions. The house pattern is `role="alert"` on the failure panel; what matters is that the
+  check is **per branch**, because an `alert` elsewhere in a file often belongs to a submit or
+  delete flow rather than to the load. Read that way, this slice's eight surfaces fall in three
+  groups. **Covered** — `home` (`error`), `venue-map` (`map-not-found`, `map-error`) and the
+  `daily-view-tab` / `requests-tab` / `payouts-tab` error paragraphs, each an `alert` inserted on
+  its own load-failure branch. **Covered from its parent** — `set-editor`, whose `loaded` is an
+  `input.required` and whose only `alert` is a *save* error; its load failure is
+  `layout-editor`'s `layout-load-failed` panel, so re-check it there, not here. **Silent — and the
+  whole of the follow-up scope:** `my-bookings`' `booking-row-failed` (no role at all; round 4 gave
+  it `role="alert"` and round 5 reverted that as a per-row assertive region, F-25) and its
+  `account-error` (`role="status"`, but born holding its text inside its `@if`); plus
+  `set-password`'s signed-out branch (`setpw-signed-out`), whose three `alert`s all belong to the
+  password-submit and erase flows. That last one needs design, not an attribute: `session-auth`
+  folds a failed restore into the same signed-out principal, so "Sign in to manage your account."
+  is what a 500 renders too, and a panel has to exist before it can carry a role. Surfaces are
+  named by `data-testid`, and no app-wide count is recorded, both on purpose (G-8).
 - **The result/notice regions** (`<output>` elements, admin notices, `booking-view`'s
   withdraw/cancel results). Some share the born-with-text shape, but they are result
   announcements, not loading ones, and several are already correct. Out of scope.
@@ -253,9 +253,9 @@ N/A — no request or response shape changes.
 
 ## Execution status
 
-**Stage pointer:** `review gate — round 8 fixes pushed, re-review due`.
+**Stage pointer:** `review gate — round 9 fixes pushed, re-review due`.
 
-**Next action:** Re-review the round-8 diff. If it comes back clean, confirm CI green on the
+**Next action:** Re-review the round-9 diff. If it comes back clean, confirm CI green on the
 final head, pull Sonar's new-issue + duplication list from the API for that head (a green gate
 is not the check), then run the merge close-out in `riviera-sdlc` `references/pr-gates.md` §3.
 
@@ -275,6 +275,7 @@ is not the check), then run the merge close-out in `riviera-sdlc` `references/pr
 | 11 — Sixth-round findings F-32…F-39 (F-27 reversed; F-29…F-31 carried to the checklist) | ✅ | |
 | 12 — Seventh-round findings F-40…F-45 (round 6's inventory corrected) | ✅ | |
 | 13 — Eighth-round findings F-46…F-48 (census removed from durable docs; scope corrected) | ✅ | |
+| 14 — Ninth-round findings F-49…F-53 (all documentation; code unchanged since round 6) | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -323,15 +324,20 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-37 | sixth review round | phase 10 was ticked ✅ while F-29/F-30/F-31 stayed open, and the merge checklist named only "silent failure panels" — so the two accessibility findings round 5 "recorded rather than dropped" had nothing carrying them into a filed issue | fixed — the checklist now has a second, explicit follow-up line for the Retry controls, and the failure-panel line carries its full population |
 | F-38 | sixth review round | F-26 enforced "TSDoc carries no issue numbers, no decision history" on `my-bookings.ts` only, while the two files this slice **authored** — `load-announcer.ts` and `loading-announcements.e2e.ts` — kept both, the former with a full changelog paragraph about a `failed` flag "tried first". A rule enforced on one file and ignored on the slice's own is unciteable next review | fixed — both cleaned. `load-announcer.ts`'s `ready` paragraph now argues the polarity from the contract rather than from this PR's history |
 | F-39 | sixth review round (noted, not reported) | the rewritten Non-goals bullet left a 113-char line in a ~100-col document that no formatter covers (`docs/` is outside `format:check`) | fixed — re-wrapped |
-| F-40 | **seventh review round** (re-review of the round-6 diff) | **Round 6's correction was itself the error, and it went into two durable docs.** RV-FE-10 and `load-announcer.ts` were rewritten to say only three panels carry `role="alert"` and "the rest are silent". Ground truth, counted this round: **56** occurrences across the app, and **7 of these 8 surfaces** already have one on their failure branch. The original sentence round 6 replaced was substantially right | fixed — both restored to the true statement, with the real exception (`my-bookings`, both cards) named instead of an invented one. Lesson logged as G-8: a *count* asserted in a durable doc gets counted, not inherited from a review finding |
-| F-41 | seventh review round | flowing from F-40: the `daily-view-tab`, `requests-tab` and `payouts-tab` error paragraphs had been in the follow-up scope since F-7, but all three carry `role="alert"` **inside `@else if (loadError())`** — inserted on the transition, the reliably-announced case. The issue would have asked for roles already there: the exact defect F-28 named and F-33 thought it had fixed | fixed — the follow-up population is now exactly two, both on `my-bookings`. The Non-goals bullet and the merge checklist say so, and say not to widen it |
+| F-40 | **seventh review round** (re-review of the round-6 diff) | ⚠️ **Its diagnosis stands; its own replacement count was refuted in round 8 — see F-46.** **Round 6's correction was itself the error, and it went into two durable docs.** RV-FE-10 and `load-announcer.ts` were rewritten to say only three panels carry `role="alert"` and "the rest are silent". Ground truth, counted this round: **56** occurrences across the app, and **7 of these 8 surfaces** already have one on their failure branch. The original sentence round 6 replaced was substantially right | fixed — both restored to the true statement, with the real exception (`my-bookings`, both cards) named instead of an invented one. Lesson logged as G-8: a *count* asserted in a durable doc gets counted, not inherited from a review finding |
+| F-41 | seventh review round | ⚠️ **Partly superseded by F-46/F-47:** the three tabs really are covered, but the "population is exactly two, do not widen" conclusion was wrong — `set-password` belongs in it. Flowing from F-40: the `daily-view-tab`, `requests-tab` and `payouts-tab` error paragraphs had been in the follow-up scope since F-7, but all three carry `role="alert"` **inside `@else if (loadError())`** — inserted on the transition, the reliably-announced case. The issue would have asked for roles already there: the exact defect F-28 named and F-33 thought it had fixed | fixed — the follow-up population is now exactly two, both on `my-bookings`. The Non-goals bullet and the merge checklist say so, and say not to widen it |
 | F-42 | seventh review round | the F-38 rewrite of `load-announcer.ts` swapped one TSDoc-rule violation for another: it removed the issue numbers but added a cross-file inventory of three other components' markup (state of other files, not this component's contract — and already stale, per F-40) and kept the "used to do the opposite … specs stayed green" changelog | fixed — the paragraph now argues the contract: what a live region announces, what `ready` buys, and to check the call site's failure branch rather than assume it |
 | F-43 | seventh review round (noted, not reported) | de-issue-numbering the e2e header pushed line 6 to 113 chars; Prettier does not rewrap comment prose, so `format:check` cannot see it — F-39's defect, reintroduced in the same commit that fixed it | fixed — re-wrapped |
 | F-44 | seventh review round | RV-FE-10's new text told reviewers a silent failure branch is "a finding for the backlog, not something to fix inline" — generalising a scope call made for *this* PR's per-row alert into a standing ban on fixing a one-attribute a11y gap in the diff under review | fixed — the item now says `role="alert"` on the panel in the diff is usually the right fix, and scopes the prohibition to what actually earned it: a live region **per row** of a list |
 | F-45 | seventh review round (noted, not reported) | F-32's row said the vacuous spec "still cleared `announceReady()`" — the inverted verb; it *satisfied* it, which is why the announcement fired | fixed |
 | F-46 | **eighth review round** (re-review of the round-7 diff) | **The census was wrong a third time, so it is gone rather than corrected again.** Round 7's "7 of 8 surfaces covered / 56 occurrences" counted `set-password` and `set-editor` as covered on the strength of `role="alert"` elements that belong to their *submit* and *erase* flows — `set-password`'s actual load non-success branch (`@else if (!auth.signedIn())`) has no role at all, and `set-editor` has no load-failure branch of its own. The quoted 56 does not reproduce from the command G-8 states (raw grep: 68) | fixed — **no count in either durable doc.** RV-FE-10 and `load-announcer.ts` now carry the rule plus the check ("read the branch, and read the *right* branch — an alert elsewhere in the file may be a submit flow's"); the dated per-surface finding stays in this plan. G-8 rewritten around the three-round arc |
 | F-47 | eighth review round | flowing from F-46: `set-password`'s silent branch was missing from the follow-up scope, and the checklist said "do not widen it" — an instruction that would have told the next agent not to add it | fixed — it is in scope, with the note that it needs design rather than an attribute: `session-auth` folds a failed restore into the same signed-out principal, so there is no failure panel to carry a role yet. The "do not widen" instruction is replaced by "re-check rather than assume" |
-| F-48 | eighth review round (noted, not reported) | three small doc errors in the round-7 text: `payouts-tab`'s branch is `@else if (loadErrorMsg(); as msg)`, not `loadError()`; the population was described as "two surfaces" when it is two cards on **one** surface; and `load-announcer.ts` gained two 101–102-char lines against `printWidth: 100`, which Prettier cannot rewrap | fixed — all three. The file now carries fewer over-width comment lines than before this slice touched it |
+| F-48 | eighth review round (noted, not reported) | three small doc errors in the round-7 text: `payouts-tab`'s branch is `@else if (loadErrorMsg(); as msg)`, not `loadError()`; the population was described as "two surfaces" when it is two cards on **one** surface; and `load-announcer.ts` looked to have gained over-width comment lines | the first two fixed. **The width part was wrong and is withdrawn (F-49):** it was measured in bytes, so an em-dash or `…` counted twice; the two lines "fixed" were exactly 100 characters, and the file's three genuinely 101-char lines — present since it was created — were never touched |
+| F-49 | **ninth review round** (re-review of the round-8 diff) | F-48's width claim was measured with `awk length`, which counts **bytes**: the two lines it rewrapped were exactly 100 characters (102 bytes, thanks to `…`), and the three lines actually over `printWidth: 100` — untouched, and present since the file was created — are still there. The register recorded a fix that fixed nothing and a comparison ("fewer than before this slice") against a file this slice created | fixed — F-48's row corrected and the claim withdrawn. The three 101-char lines are left alone deliberately: `format:check` passes (Prettier does not rewrap comment prose), they predate this round, and `my-bookings.ts` carries 21 of the same kind. Chasing one character is not worth a diff |
+| F-50 | ninth review round | F-46 and G-8 both said *both* durable docs now carry the "read the **right** branch" check; only RV-FE-10 had it. The doc a developer actually reads at the call site — `load-announcer.ts`'s TSDoc — was missing the exact check whose absence made round 7's census wrong | fixed — the clause added there too, so the claim is now true |
+| F-51 | ninth review round | the Non-goals bullet attributed `@else if (loadError())` to all five covered surfaces; `home` is `@if (failed())` and `venue-map` is `@else if (notFound())` / `@else if (failed())`. Three of five wrong, in the sentence announcing branch-by-branch rigour — and it pinned `home.html:131`, a bare line number, as its one citation | fixed — the bullet no longer asserts branch **syntax** at all, and names surfaces by `data-testid`, which does not drift when lines move |
+| F-52 | ninth review round | RV-FE-10's new parenthetical claimed the item "deliberately states no inventory" while the same item still says #741 shipped the shape "on **eight** surfaces" — and F-46 claimed "no count in either durable doc" | fixed — the parenthetical now distinguishes the two: no *current* inventory of who carries a role (that decays), while the dated #741 history stays |
+| F-53 | ninth review round (noted, not reported) | three register/checklist errors: F-40 and F-41 stood unmarked though F-46/F-47 overturn them (this table's convention is to annotate a reversal inline, as F-17 does); round 8's rejection was filed under round 7's heading; and the checklist collapsed `set-editor` into "covered" when the Non-goals bullet makes it a third category, while citing F-40/F-41/F-46 for an `appFailurePanel` point that only F-34 evidences | fixed — all three |
 
 
 **Considered and rejected in round 4** (recorded so the next reader does not re-derive them):
@@ -372,6 +378,8 @@ Skill-routing gate for what the fix touches *before* editing).
   answer: zero rows is the state that spec exists to cover. The rule F-32 settled is narrower than
   "never assert loaded without rows": a spec asserting a **transition produced something** must
   assert what it produced.
+
+**Considered and rejected in round 8:**
 
 - *"`role="alert"` is 'the one live-region case with good support' undercuts this very component,
   whose own region is a polite `role="status"`."* — Fair as written, so the sentence was scoped
@@ -501,9 +509,11 @@ Skill-routing gate for what the fix touches *before* editing).
 - [ ] Follow-up issue filed for the silent failure branches (Non-goals) — `my-bookings`'
       `booking-row-failed` card (no role) and its `account-error` card (`role="status"`, born with
       its text), plus `set-password`'s signed-out branch, where a failed restore is
-      indistinguishable from signed-out and there is no panel to announce yet. The other surfaces
-      were each checked branch-by-branch and are covered; re-check rather than assume, and do not
-      presume `appFailurePanel` is the mechanism (F-25, F-40, F-41, F-46).
+      indistinguishable from signed-out and there is no panel to announce yet. The other six were
+      checked branch-by-branch: five carry their own `alert`, and `set-editor`'s lives in its
+      **parent** `layout-editor` — so re-check that one there rather than reading it as covered
+      in place. Re-check rather than assume, and do not presume `appFailurePanel` is the mechanism
+      (F-34 has the evidence; F-25, F-46, F-47 the scope).
 - [ ] Follow-up issue filed for the two Retry controls' accessibility (F-29, F-30): both
       `row-retry` and `account-retry` destroy the focused button with no `focusMover()`
       (RV-FE-9 / WCAG 2.4.3), and the account retry shows no busy state for its round trip.
