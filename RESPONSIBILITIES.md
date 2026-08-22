@@ -83,10 +83,10 @@ layout, set positions, the online-vs-walk-in pool assignment for each set, prici
 booking mode (Instant / Request), venue photos, and the commission rate over time. The
 standing rules:
 
-- **The tourist catalogue reads are visibility-fenced** (#693): both `VenueCatalog` reads
-  (list + map) consult `operator.api.VenueVisibility` inside the adapter, so a venue whose
-  owning operator is not `ACTIVE` is absent from the list and 404 on the map —
-  indistinguishable from nonexistent. `SetBookingFacts` is deliberately **unfenced**: its
+- **The tourist catalogue reads are visibility-fenced** (#693): all three `VenueCatalog`
+  reads (list + map + availability calendar) consult `operator.api.VenueVisibility` inside the
+  adapter, so a venue whose owning operator is not `ACTIVE` is absent from the list and 404 on
+  the map and the calendar — indistinguishable from nonexistent. `SetBookingFacts` is deliberately **unfenced**: its
   consumers include sold-booking paths (cancel, view, mails, staff marks) that must keep
   answering for a hidden venue's sets; the reserve path applies the fence itself in
   `booking`. The anonymous content-hash photo read stays unfenced (accepted, #693 intake).
@@ -169,6 +169,15 @@ standing rules:
   date reprices and no ledger entry is touched (invariant #9). The asymmetry it preserves:
   the *owner's* profile PATCH still cannot write the rate at all (O8 #177) — a venue does
   not set its own commission.
+- **The tourist availability calendar** (`GET /api/venues/{venueId}/availability-calendar?from=&to=`,
+  #760; public, window-capped at the edge): I own the set total and therefore
+  `free = total − taken` and the gap fill for days nobody has touched; `availability` answers
+  the taken count per day through my `spi` (`SetAvailabilityLookup#takenCountsBetween`). The
+  path deliberately does not reuse the `/availability` segment above — that one is the
+  operator-only per-set state read, and sharing it would either publish the hold split or
+  operator-gate the tourist read. The counts are a snapshot, never a hold: the claim still
+  decides (invariant #2), and the read answers past days too, because it reports availability,
+  not bookability.
 - **The signed-in operator's own-venues read model** (`GET /api/venues/mine`, S9 #277): I
   ask `operator::api` for the ownership set and join the names, because naming venues is
   my job and `operator → venue` would cycle.
@@ -197,9 +206,11 @@ standing rules:
 **Job:** Own the single source-of-truth state per `(set, date)` — free / booked-online /
 staff-marked. Be the **only writer** of that table. Claim a set atomically so it can
 never be double-sold. Answer the read-side facts through `venue::spi`
-(`SetAvailabilityLookup`): the state-agnostic taken-set overlay for the public map (#44)
-and, since #207, the per-set **state tokens** (`statesOn`) behind the owner's daily
-availability read — `venue` composes; I answer state.
+(`SetAvailabilityLookup`): the state-agnostic taken-set overlay for the public map (#44);
+since #207 the per-set **state tokens** (`statesOn`) behind the owner's daily availability
+read; and since #760 the **taken count per day** over a window (`takenCountsBetween`) behind
+the tourist date calendar — I answer how many are held, never how many exist, because the set
+total is `venue`'s. Throughout: `venue` composes; I answer state.
 
 **Not My Job:**
 - The venue layout, which sets exist, or their positions → **`venue`** (I reference

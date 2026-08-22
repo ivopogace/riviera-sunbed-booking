@@ -67,6 +67,12 @@ model in `docs/architecture/domain-model.md`.
 - **Availability** — the live state of one set on one date: `FREE`,
   `BOOKED_ONLINE`, or `STAFF_MARKED` (walk-in). The single source of truth that the
   beach map renders. Keyed by `(set, date)`.
+- **Availability calendar** — how many of a venue's sets are free on each day across a
+  window of dates, as counts rather than per-set state. A different question from
+  **Availability** above, which is one set on one date: the calendar answers *which days
+  are worth choosing*, so a tourist picks a date already knowing the answer instead of
+  learning it after the map redraws. **A snapshot, never a hold** — a day showing free
+  capacity can be full by the time a set is claimed; only the claim decides.
 - **Booking** — a tourist's reservation of a specific set for a specific date, with
   a status, a price paid, a booking code, and a cancellation deadline.
 - **Booking status** — the lifecycle state of a booking. Canonical set (mirrored 1:1

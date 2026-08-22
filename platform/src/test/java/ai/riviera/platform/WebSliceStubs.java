@@ -650,6 +650,12 @@ class WebSliceStubs {
 			public List<VenueSummaryView> listVenues(VenueFilter filter, LocalDate date) {
 				return List.of();
 			}
+
+			@Override
+			public Optional<List<ai.riviera.platform.venue.vocabulary.DailyAvailability>> availabilityBetween(
+					VenueId id, LocalDate from, LocalDate to) {
+				return Optional.empty();
+			}
 		};
 	}
 

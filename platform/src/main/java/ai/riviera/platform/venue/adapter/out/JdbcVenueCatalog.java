@@ -1,6 +1,7 @@
 package ai.riviera.platform.venue.adapter.out;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -13,6 +14,7 @@ import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -25,6 +27,7 @@ import ai.riviera.platform.venue.vocabulary.AvailabilitySummary;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
 import ai.riviera.platform.venue.vocabulary.CoverPhotoView;
+import ai.riviera.platform.venue.vocabulary.DailyAvailability;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.PhotoSurface;
@@ -436,5 +439,37 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 
 	/** One (venue, amenity) pair from the join table, bucketed by venue for the list read. */
 	private record AmenityRow(long venueId, Amenity amenity) {
+	}
+
+	@Override
+	public Optional<List<DailyAvailability>> availabilityBetween(VenueId id, LocalDate from, LocalDate to) {
+		if (to.isBefore(from)) {
+			throw new IllegalArgumentException("availabilityBetween: 'to' precedes 'from'");
+		}
+		// The #693 fence is fail-closed for an unowned venue, and a nonexistent one is always unowned.
+		if (!visibility.isVisible(new VenueRef(id.value()))) {
+			return Optional.empty();
+		}
+		// Ids only — the calendar needs how many sets there are, not how they render or price.
+		List<SetId> sets = jdbc.sql("""
+				SELECT id
+				FROM set_position
+				WHERE venue_id = :id
+				""")
+				.param("id", id.value())
+				.query(Long.class)
+				.list().stream()
+				.map(SetId::new)
+				.toList();
+
+		int total = sets.size();
+		Map<LocalDate, Integer> taken = availability.takenCountsBetween(sets, from, to);
+		// Counted forward from `from`; an exclusive `to + 1` would throw at LocalDate.MAX.
+		long days = ChronoUnit.DAYS.between(from, to) + 1;
+		return Optional.of(LongStream.range(0, days)
+				.mapToObj(from::plusDays)
+				.map(day -> new DailyAvailability(day,
+						new AvailabilitySummary(total - taken.getOrDefault(day, 0), total)))
+				.toList());
 	}
 }

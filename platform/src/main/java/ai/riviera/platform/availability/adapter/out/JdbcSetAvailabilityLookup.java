@@ -96,4 +96,28 @@ class JdbcSetAvailabilityLookup implements SetAvailabilityLookup {
 				.stream()
 				.collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
 	}
+
+	@Override
+	public Map<LocalDate, Integer> takenCountsBetween(Collection<SetId> setIds, LocalDate from, LocalDate to) {
+		if (setIds.isEmpty()) {
+			return Map.of(); // no IN-list — avoid an empty "IN ()" and a needless round-trip
+		}
+		List<Long> ids = setIds.stream().map(SetId::value).toList();
+		// One grouped read for the whole window — a per-day takenOn would be an N+1 of up to 62.
+		return jdbc.sql("""
+				SELECT booking_date, COUNT(*) AS taken
+				FROM set_availability
+				WHERE set_id IN (:ids)
+				  AND booking_date BETWEEN :from AND :to
+				GROUP BY booking_date
+				""")
+				.param("ids", ids)
+				.param("from", from)
+				.param("to", to)
+				.query((rs, rowNum) -> Map.entry(
+						rs.getObject("booking_date", LocalDate.class), rs.getInt("taken")))
+				.list()
+				.stream()
+				.collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue));
+	}
 }
