@@ -36,6 +36,7 @@ const ROWS: readonly TestRow[] = [
       viewportLabel="Beach map"
       [dragPan]="dragPan()"
       [railCodes]="railCodes()"
+      [priceChips]="priceChips()"
       [loading]="loading()"
     >
       <ng-template [appBeachMapRow]="rows()" let-row let-i="index">
@@ -59,6 +60,7 @@ class CanvasHost {
   readonly rows = signal<readonly TestRow[]>(ROWS);
   readonly dragPan = signal(true);
   readonly railCodes = signal<'letters' | 'labels' | 'capped-labels'>('letters');
+  readonly priceChips = signal<'amounts' | 'capped-phrases'>('amounts');
   readonly loading = signal(false);
   readonly taps: string[] = [];
 }
@@ -149,6 +151,14 @@ describe('BeachMapCanvas (#672)', () => {
   }
 
   /** The left rail's column — the element whose width slides the tile grid when it changes. */
+  function priceColumn(host: HTMLElement): HTMLElement {
+    const column = host.querySelector<HTMLElement>(
+      '[data-testid="price-col"], [data-testid="price-col-placeholder"]',
+    );
+    expect(column).toBeTruthy();
+    return column!;
+  }
+
   function railColumn(host: HTMLElement): HTMLElement {
     const chip = host.querySelector<HTMLElement>(
       '[data-testid="row-code"], [data-testid="row-code-placeholder"]',
@@ -271,6 +281,31 @@ describe('BeachMapCanvas (#672)', () => {
     // The letter chip's own min-w-6 — a grid letter's placeholder matches its real chip exactly.
     expect(chip.classList.contains('min-w-6')).toBe(true);
     expect(chip.className).not.toContain('w-[');
+  });
+
+  it('reserves the same price-rail width loading and loaded (#751)', () => {
+    const { component, host, detect } = render();
+    component.priceChips.set('capped-phrases');
+    detect();
+    // The 92px phone cap as a MINIMUM: a desktop chip still widens past it, a bare price does not.
+    const loaded = priceColumn(host).className;
+    expect(loaded).toContain('min-w-[92px]');
+
+    component.loading.set(true);
+    detect();
+    expect(priceColumn(host).className).toBe(loaded);
+  });
+
+  it('an amounts price rail reserves nothing, so the operator surfaces are unchanged (#751)', () => {
+    const { component, host, detect } = render();
+    const loaded = priceColumn(host).className;
+    expect(loaded).not.toContain('w-[');
+
+    component.loading.set(true);
+    detect();
+    expect(priceColumn(host).className).toBe(loaded);
+    // The cell's own floor is what sizes this rail, and it is untouched by the reservation.
+    expect(priceColumn(host).firstElementChild!.className).toContain('min-w-[52px]');
   });
 
   it('sizes every row wrapper and rail cell from the identical fixed --riv-tile height (#685)', () => {

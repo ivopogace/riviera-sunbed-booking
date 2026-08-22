@@ -198,13 +198,13 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan`
+**Stage pointer:** `implement`
 
-**Next action:** phase 0, step 1 — the failing canvas unit specs (AC-1, AC-2).
+**Next action:** phase 1 — `venue-map.html` opts both canvases into `capped-phrases`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the price rail learns its vocabulary | | |
+| 0 — the price rail learns its vocabulary | ✅ | pending |
 | 1 — the tourist map opts in | | |
 | 2 — measured in a real browser | | |
 
@@ -237,17 +237,17 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Modify `frontend/src/app/shared/beach-map-canvas.ts|.html` · Test
 `frontend/src/app/shared/beach-map-canvas.spec.ts`
 
-- [ ] **Step 1: Write the failing specs** — AC-1 and AC-2 against a host that drives
+- [x] **Step 1: Write the failing specs** — AC-1 and AC-2 against a host that drives
       `priceChips`, asserting the price column's class string in both loading states.
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- beach-map-canvas` → FAIL
-      (unknown input `priceChips`).
-- [ ] **Step 3: Minimal implementation** — the `priceChips` input, the `priceColumnClass`
+- [x] **Step 2: Run them, verify they fail** — `ng test --include="**/beach-map-canvas.spec.ts"` →
+      FAIL (`NG8002: Can't bind to 'priceChips'`).
+- [x] **Step 3: Minimal implementation** — the `priceChips` input, the `priceColumnClass`
       computed, and its `[class]` binding on the price column.
-- [ ] **Step 4: Run them, verify they pass.**
-- [ ] **Step 5: Generalization-audit pass** — population: every rail column on the canvas whose
-      width is content-derived, enumerated from the template rather than from memory.
-- [ ] **Step 6: Commit.**
-- [ ] **Step 7: Update the plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run them, verify they pass** — 32 passed.
+- [x] **Step 5: Generalization-audit pass** — logged; the population is 2 and both members are
+      now reserved.
+- [x] **Step 6: Commit.**
+- [x] **Step 7: Update the plan-doc execution status** in the same commit window.
 
 ## Phase 1 — the tourist map opts in
 
@@ -276,6 +276,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-22 | phase 0 | Every column whose width is whatever its content measures **while sitting beside a scroller that gives** — the mechanism a load-time width change needs, not "things that look like rails". A `shrink-0` sibling of a `flex-1 min-w-0` overflow container is the whole population, and the canvas is the only place the app builds that shape | `grep -rn "flex-1 min-w-0" --include=*.html --include=*.ts src/app` (one match, `beach-map-canvas.html:42`; its `shrink-0` siblings read off the template) | 2 — the left rail and the price rail; the viewport itself is the one that gives, so it is not a member | Left rail reserved by #749; the price rail is this slice. Population closed — a third rail would have to be added to the canvas to reopen it |
 
 ---
 
