@@ -287,6 +287,12 @@ about photo views, `VenuePhotos`, and `payout`'s `operator::api` reads, all stil
 - `platform/src/test/java/ai/riviera/platform/VenueAvailabilityCalendarControllerTest.java` — new: AC-3, AC-4, AC-6 (web slice, root package like every other web-slice test)
 - `docs/plans/venue-availability-calendar-read.md` — this plan
 - `RESPONSIBILITIES.md` — the `venue`/`availability` contract lines the slice changes
+- `.claude/settings.json` — **not slice code.** Maintainer-requested allowlist entries so the
+  review gate's subagents and its `gh` REST calls stop prompting: `Bash(gh api *)`,
+  `Bash(gh pr diff *)`, `Bash(gh pr view *)`, `Task`. Note `gh api` is write-capable (the
+  review plugin posts its comment with `gh api -X POST …/comments`), and `Task` silences the
+  permission prompt only — it does not satisfy a session instruction to ask before spawning
+  subagents. Separable from #760.
 - `.claude/skills/riviera-sdlc/references/pr-gates.md` — **not slice code.** A tooling-doc
   correction made at the maintainer's request mid-slice: the §1 `gh` substitution table was
   wrong about `gh pr view` (field-dependent, not blocked outright), missed `gh pr checks`,
