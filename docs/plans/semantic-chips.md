@@ -169,18 +169,22 @@ views; only their presentation changes.
 
 ## Execution status
 
-**Stage pointer:** `merge close-out` — merged via PR #755
+**Stage pointer:** `merge close-out` — merging via PR #755
 
 **Next action:** none — the slice is done.
 
 **Gate record.** The review gate ran **twice** at high effort, both rounds via rung 1 of the
 invocation ladder: once on the slice (4 findings, F-1..F-4, all fixed) and once on the fix round
-itself, per the re-entry rule (6 findings, G-1..G-6 — five stale or self-contradicting records left
-by the first fix round, plus the overclaim in `chip-fills.ts`; all fixed). That second round is the
-argument for re-reviewing fixes: every one of its findings was created *by* the first round, and
-none of them existed when the slice was reviewed. Merging via PR #755 was gated on CI + CodeQL +
-SonarCloud green **on this head** and the Sonar reported-issue list being empty — verified before
-the merge, not assumed from the first push's green.
+itself, per the re-entry rule (6 findings, G-1..G-6), and a third time on *that* round (4 findings,
+H-1..H-4). Each round's findings were created by the round before it and none existed when the slice
+was reviewed — which is the whole argument for re-reviewing fixes rather than trusting them. The
+pattern is worth naming: rounds 2 and 3 were dominated not by code defects but by **records written
+ahead of reality** — a close-out declaring a merge that had not happened, a risk row marked closed by
+the very outcome it predicted, a comment counting two mirrors one commit after reducing them to one.
+
+**Merge precondition.** This is the PR's last commit, so the gates run on *this* head: the merge is
+gated on CI + CodeQL + SonarCloud green here **and** the Sonar reported-issue list being empty — not
+inherited from an earlier push's green. That check is the last action before the merge button.
 
 | Phase | Status | Commits |
 |-------|--------|---------|

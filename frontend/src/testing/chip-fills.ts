@@ -12,10 +12,15 @@
  *
  * <p>Be precise about what one shared list buys, because the first attempt at this fix
  * overclaimed. A list is still only a list: on its own it moves the hand-copy one level up rather
- * than removing it. What ties it to the code is `shared/amenity-chip.spec.ts`, which asserts the
- * directive RENDERS exactly these hexes and that the list has an entry per variant — so a value
- * that drifts in either place fails there, loudly, instead of quietly weakening a proof two files
- * away. The list is the single source; that spec is the thing that makes it true.
+ * than removing it. What ties it to the code is a directive spec per recipe —
+ * `shared/amenity-chip.spec.ts` asserts the rendered fills are exactly {@link DESCRIPTIVE_CHIPS}
+ * as a SET (so an entry no variant renders and a rendered fill the list omits both fail), and
+ * `shared/semantic-chip.spec.ts` does the same for {@link SEMANTIC_CHIP}. A value that drifts in
+ * either place fails there, loudly, instead of quietly weakening a proof two files away.
+ *
+ * <p>The one escape neither spec can close: a variant it never renders. `water` is the amenity
+ * chip's only axis and it is boolean, so a third variant means a new input — and rendering it in
+ * that spec is part of adding it, not a step this file can enforce.
  */
 
 /** A chip recipe: the ink, and the opaque fill it sits on. Values mirror the directives' host classes. */

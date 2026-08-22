@@ -46,8 +46,13 @@ describe('AmenityChip', () => {
     expect(water.classList.contains(`bg-[${NEUTRAL.fill}]`)).toBe(false);
   });
 
-  it('is fully enumerated by the shared descriptive list, which the contrast specs read', () => {
-    // Two is complete because `water` is the only variant axis and it is boolean, so a third variant means a new input — and this line is what makes you extend the shared list at the same time.
-    expect(DESCRIPTIVE_CHIPS).toHaveLength(2);
+  it('renders exactly the fills the shared descriptive list records — no more, no fewer', () => {
+    // Set equality, not a count: it catches a list entry no variant renders AND a rendered fill the list omits, which a length check cannot. What it still cannot see is a variant this spec never renders — `water` is the only axis today and it is boolean, so a third one means a new input, and rendering it here is part of adding it.
+    const { plain, water } = chips();
+    const rendered = [plain, water]
+      .flatMap((element) => [...element.classList])
+      .filter((name) => name.startsWith('bg-['))
+      .sort();
+    expect(rendered).toEqual(DESCRIPTIVE_CHIPS.map((chip) => `bg-[${chip.fill}]`).sort());
   });
 });

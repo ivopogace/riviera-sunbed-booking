@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
+import { SEMANTIC_CHIP } from '../../testing/chip-fills';
 import { SemanticChip } from './semantic-chip';
 
 @Component({
@@ -29,15 +30,17 @@ describe('SemanticChip', () => {
   it('emits the .semantic-chip marker and the inverted accent recipe', () => {
     const element = chip();
     expect(element.classList.contains('semantic-chip')).toBe(true);
-    expect(element.classList.contains('bg-[#0a5f74]')).toBe(true);
-    expect(element.classList.contains('text-white')).toBe(true);
+    expect(element.classList.contains(`bg-[${SEMANTIC_CHIP.fill}]`)).toBe(true);
     expect(element.classList.contains('font-bold')).toBe(true);
+    // The ink is Tailwind's named `text-white`, so the mirror is tied to it by this equality rather than by class interpolation — without it, changing the recipe's ink would leave both contrast proofs asserting a colour that no longer ships.
+    expect(element.classList.contains('text-white')).toBe(true);
+    expect(SEMANTIC_CHIP.ink).toBe('#ffffff');
   });
 
   it('the fill is opaque, so no cover photo can reach the ink', () => {
     // The Discover mode chip sits over an arbitrary uploaded photo. An rgba fill would put that photo back into the contrast argument the opaque fill exists to end (#705).
     const fill = [...chip().classList].find((name) => name.startsWith('bg-['));
-    expect(fill).toBe('bg-[#0a5f74]');
+    expect(fill).toBe(`bg-[${SEMANTIC_CHIP.fill}]`);
   });
 
   it('carries no geometry, so each call site keeps its own box', () => {
