@@ -183,10 +183,10 @@
                   class="mode-chip absolute top-[14px] left-[14px] inline-flex items-center rounded-full border border-(--riv-card-border) bg-(--riv-mode-chip-glass) px-[11px] py-[5px] text-[11px] font-bold tracking-[0.03em] text-(--riv-accent-ink) backdrop-blur-[10px]"
                   >{{ card.modeLabel }}</span
                 >
-                <!-- With dots sharing the bottom band, the location yields their corner (right inset + truncate); the explicit 15px line box is the scrim geometry home.contrast.spec.ts pins. -->
+                <!-- The location yields the dot rail's corner: 72px = the rail at its widest (3 dots: 13px inset + 14px padding + 24px dots + 14px gaps = 65px) plus 7px clearance — it must be re-derived whenever the rail's metrics change (#704). The explicit 15px line box is the scrim geometry home.contrast.spec.ts pins. -->
                 <span
                   class="photo-location absolute bottom-[13px] left-[15px] text-[12.5px] leading-[15px] font-semibold text-(--riv-photo-ink) [text-shadow:0_1px_6px_rgba(0,0,0,0.4)]"
-                  [class]="card.photos.length > 1 ? 'right-[52px] truncate' : ''"
+                  [class]="card.photos.length > 1 ? 'right-[72px] truncate' : ''"
                   >{{ card.beach }} · {{ card.region }}</span
                 >
               </span>

@@ -159,6 +159,11 @@ test('the venue banner is a media header — ≥260px on desktop, 150px on mobil
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect((await band.boundingBox())!.height).toBe(150);
+
+  // The header clips the full-bleed band to its radius, so prove the clip costs no focus ring.
+  const date = page.getByTestId('map-date');
+  await date.focus();
+  await expect(date).toHaveCSS('outline-width', '3px');
 });
 
 test('the slideshow chrome carries its own backing over the photo, in both themes (#704)', async ({
@@ -193,7 +198,13 @@ test('the Discover card slideshow crossfades through all three slots via the ste
     '[data-testid="card-photo-img"], [data-testid="card-photo-slide-img"]',
   );
   await expect(slides).toHaveCount(3);
-  await expect(item.getByTestId('card-photo-dots').locator('span')).toHaveCount(3);
+  const dots = item.getByTestId('card-photo-dots');
+  await expect(dots.locator('span')).toHaveCount(3);
+
+  // Measured, because the location's reservation is a literal that cannot follow a rail retune (#704).
+  const rail = (await dots.boundingBox())!;
+  const location = (await item.locator('.photo-location').boundingBox())!;
+  expect(location.x + location.width).toBeLessThanOrEqual(rail.x);
 
   // First slide up (cover), the others faded out of the stack.
   await expect(slides.nth(0)).toHaveCSS('opacity', '1');

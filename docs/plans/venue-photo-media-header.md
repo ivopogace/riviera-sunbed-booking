@@ -104,7 +104,7 @@ session started; that commit is kept, not rebased away.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `overflow-hidden` on the header (needed to clip the full-bleed band to the 26px radius) clips a focus ring — the date input's `focus-visible:outline-offset-2` | low | med | the input sits 22px inside the panel's padding, well clear of the clip edge; the mocked e2e focuses it and asserts the outline is painted | this slice | open |
+| R-1 | `overflow-hidden` on the header (needed to clip the full-bleed band to the 26px radius) clips a focus ring — the date input's `focus-visible:outline-offset-2` | low | med | the input sits 22px inside the panel's padding, well clear of the clip edge; the mocked e2e focuses it and asserts the outline is painted | this slice | closed — the assertion was missing when the review ran (F-2) and now exists in `discover-photos.e2e.ts` |
 | R-2 | The dark dot rail lands on Discover's cards too (shared component) and reads as unwanted chrome there | med | low | deliberate — it is the same 1.4.11 defect; the rail is small, rounded and only renders with >1 photo. Computed-style diff in the e2e keeps the rest of the card unchanged | this slice | open |
 | R-3 | Moving the band changes the LCP element/position; a mis-sized band causes CLS on the venue page | low | med | the band's height is fixed per breakpoint (no intrinsic-size dependency) and the loading skeleton mirrors it exactly, so the frame does not move when the map lands | this slice | open |
 | R-4 | Contrast thresholds pass in the spec's arithmetic but the shipped CSS uses a different alpha (spec/CSS drift) | med | high | the tokens live in `styles.scss`; the spec mirrors them beside the other token mirrors in `testing/glass-tokens.ts`, and the e2e reads the **computed** background of the rail so a token edit that misses the spec still fails | this slice | open |
@@ -157,10 +157,9 @@ today.
 
 ## Execution status
 
-**Stage pointer:** `implement — all phases complete, pushed; PR not yet opened`
+**Stage pointer:** `review gate — findings fixed, re-verifying`
 
-**Next action:** open the draft PR for `claude/tailwind-angular-mcp-docs-g6ygn0` so CI fires
-(a branch with no PR gets no CI at all, #417), then run the review and Sonar gates.
+**Next action:** push the F-1/F-2 fixes, confirm CI green on the new head, then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -168,6 +167,7 @@ today.
 | 1 — The band becomes a media header | ✅ | `cbf313c` |
 | 2 — The warm empty state | ✅ | `cbf313c` (same template, one commit) |
 | 3 — e2e geometry + placement | ✅ | `8dd7e14` |
+| 4 — review-gate findings F-1, F-2 | ✅ | see git log |
 
 **Local verification at `8dd7e14`:** `npm run lint`, `npm run format:check`, `npm test`
 (1651 unit tests), `npm run build`, and the full mocked Playwright suite
@@ -180,7 +180,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate (`/code-review`) | The widened dot rail (52px at 3 photos, inset 13px) overlaps Discover's `.photo-location`, whose `right-[52px]` reservation was sized for the old 30px rail — a 13px overlap, and the rail's `z-[1]` paints its dark pill over the beach·region text on every 3-photo card | fixed — reservation re-derived to `right-[72px]` (65px rail + 7px clearance, the clearance the old geometry had), and a **measured** non-overlap assertion added to `discover-photos.e2e.ts`; confirmed the guard fails at `right-[52px]` before passing at 72 |
+| F-2 | review gate (`/code-review`, process note) | Risk R-1 claimed its mitigation was an e2e focus-ring assertion that was never written — the ledger claimed coverage that did not exist | fixed — the assertion now exists (`map-date` focused, `outline-width` 3px) rather than the claim being softened |
 
 ---
 
