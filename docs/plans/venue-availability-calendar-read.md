@@ -218,17 +218,17 @@ touched. `MoneyView` does not appear on the new surface.
 
 ## Execution status
 
-**Stage pointer:** `PR — marking ready for review, then the review + Sonar gates`
+**Stage pointer:** `review gate — PR #762 marked ready for review`
 
-**Next action:** mark PR #762 ready for review, then run the review gate
-(`/code-review` + `riviera-review-overlay`), then the Sonar issue list.
+**Next action:** run `/code-review` with `riviera-review-overlay` layered on, register any
+findings below, then pull the Sonar new-issue list and clear it.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — SPI range read (`takenCountsBetween` + JDBC impl) | ✅ | `842ebc2` |
 | 1 — `VenueCatalog.availabilityBetween` + `DailyAvailability` | ✅ | `b1b8f4d` |
 | 2 — public endpoint + window validation | ✅ | `2234ca5` |
-| 3 — close-out (docs freshness, plan finalization) | ⏳ | docs-freshness patched; plan finalized at the merge |
+| 3 — close-out (docs freshness, plan finalization) | ⏳ | `b770a31` (docs-freshness); plan finalized in the PR's last commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -241,7 +241,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | *(none yet — the review and Sonar gates have not run)* | | | |
 
 **Docs-freshness run** (close-out step 5, run pre-merge as the cheapest moment):
-`origin/main..HEAD`, **5 findings, all patched in `<this phase's commit>`** —
+`origin/main..HEAD`, **5 findings, all patched in `b770a31`** —
 `venue/api/VenueCatalog.java:21` "Both reads fence" → all three;
 `venue/adapter/in/VenueReadController.java:26` "Two reads:" → three;
 `RESPONSIBILITIES.md` §`venue` standing rule "both `VenueCatalog` reads" → all three;
