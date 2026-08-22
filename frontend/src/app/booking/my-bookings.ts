@@ -242,7 +242,7 @@ const CLS = {
         </section>
       } @else {
         @if (accountError()) {
-          <section [class]="cls.emptyCard" appCardGlass role="status" data-testid="account-error">
+          <section [class]="cls.emptyCard" appCardGlass role="alert" data-testid="account-error">
             <p [class]="cls.emptyLead">
               We couldn’t load your account bookings just now — any made on other devices may be
               missing.
@@ -257,6 +257,16 @@ const CLS = {
               Retry
             </button>
           </section>
+        }
+        @if (anyRowFailed()) {
+          <!-- Page-level, once — never per row: role="alert" announces on insertion (#745). -->
+          <p
+            class="mb-3 rounded-xl bg-[#f6e8e7] px-3.5 py-[11px] text-[13px] font-semibold text-[#a3160e]"
+            role="alert"
+            data-testid="rows-failed-alert"
+          >
+            Some bookings couldn’t load. Retry the ones marked below.
+          </p>
         }
         <ul class="flex flex-col gap-3" role="list">
           @for (row of rows(); track row.code) {
@@ -406,6 +416,14 @@ export class MyBookings {
       !this.accountError() &&
       this.rows().every((row) => row.state === 'loaded'),
   );
+  /**
+   * At least one row failed a per-code lookup — the page-level `role="alert"` panel's gate. Kept
+   * separate from a per-row alert (reverted in PR #743: assertive, one interruption per failure,
+   * and `@for … track`'s detach+insert re-sort re-announces an unchanged one) so a failure is
+   * announced exactly once, by an element the row re-sort never touches.
+   */
+  protected readonly anyRowFailed = computed(() => this.rows().some((r) => r.state === 'failed'));
+
   /**
    * Codes the account list has already answered for. Consulted when a queued per-code lookup
    * is DEQUEUED — never as a barrier, so device rows are still issued immediately.

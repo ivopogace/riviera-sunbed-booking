@@ -273,6 +273,37 @@ describe('MyBookings (device-local list, issue #139)', () => {
     expect(host.querySelector('[data-testid="booking-row"]')?.textContent).toContain('TRAN5678');
   });
 
+  it('announces a per-code failure once, page-level — not a live region per row (#745)', async () => {
+    seedCodes(['FAIL0001', 'FAIL0002']);
+    const service: Partial<BookingService> = {
+      getByCode: () => throwError(() => ({ status: 500 })),
+    };
+    const fixture = await render(service);
+    const host = fixture.nativeElement as HTMLElement;
+
+    // Pin the mechanism (an `alert`), and ONE element for two failed rows — never one per row.
+    const panels = host.querySelectorAll('[data-testid="rows-failed-alert"]');
+    expect(panels).toHaveLength(1);
+    expect(panels[0].getAttribute('role')).toBe('alert');
+
+    const alert = panels[0];
+    host.querySelector<HTMLButtonElement>('[data-testid="row-retry"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Retry re-fails too, so the panel stays — same node, not re-inserted by the re-sort.
+    expect(host.querySelector('[data-testid="rows-failed-alert"]')).toBe(alert);
+  });
+
+  it('has no rows-failed alert while nothing has failed', async () => {
+    seedCodes(['OK000001']);
+    const fixture = await render(stubService({ OK000001: detail('OK000001', 'CONFIRMED') }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="rows-failed-alert"]')).toBeNull();
+  });
+
   it('shows the empty state with Browse beaches and no find-by-code button (T8 deferred)', async () => {
     seedCodes([]);
     const fixture = await render(stubService({}));
@@ -493,8 +524,10 @@ describe('MyBookings (device-local list, issue #139)', () => {
       const rows = host.querySelectorAll('[data-testid="booking-row"]');
       expect(rows).toHaveLength(1);
       expect(rows[0].textContent).toContain('DEVONLY1');
-      // …and the failed account list is surfaced with a retry, not hidden.
-      expect(host.querySelector('[data-testid="account-error"]')).not.toBeNull();
+      // …surfaced with a retry as an `alert`, not hidden — a `status` there announces nothing (#745).
+      const accountError = host.querySelector('[data-testid="account-error"]')!;
+      expect(accountError).not.toBeNull();
+      expect(accountError.getAttribute('role')).toBe('alert');
       expect(host.querySelector('[data-testid="account-retry"]')).not.toBeNull();
       // Silent: bookings made elsewhere may be missing, so "loaded" overstates it (#741 review).
       expect(host.querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
