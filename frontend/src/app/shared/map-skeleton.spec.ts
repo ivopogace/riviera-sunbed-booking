@@ -21,10 +21,4 @@ describe('map skeleton geometry (#744)', () => {
       expect(row.priceLabel).toBeNull();
     }
   });
-
-  it('states no row name either — the codes are track keys, not content (#744)', () => {
-    for (const row of MAP_SKELETON_ROWS) {
-      expect(row.codeLabel).toBe('');
-    }
-  });
 });

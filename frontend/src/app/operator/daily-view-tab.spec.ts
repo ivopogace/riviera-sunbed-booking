@@ -155,6 +155,8 @@ describe('DailyViewTab (#175)', () => {
     expect(loading.getAttribute('aria-live')).toBeNull();
     // The loaded grid is a tab stop; a focusable node inside aria-hidden is an axe violation.
     expect(loading.querySelector('[tabindex]')).toBeNull();
+    // `inert` covers what that cannot: an overflowing scroller is focusable with no tabindex at all.
+    expect(loading.hasAttribute('inert')).toBe(true);
 
     const blocks = loading.querySelectorAll('.animate-pulse');
     expect(blocks.length).toBeGreaterThan(0);

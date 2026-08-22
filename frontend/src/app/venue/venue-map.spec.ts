@@ -210,6 +210,8 @@ describe('VenueMap', () => {
     expect(loading.getAttribute('aria-live')).toBeNull();
     // A focusable node inside aria-hidden is an axe violation, so the skeleton canvas takes none.
     expect(loading.querySelector('[tabindex]')).toBeNull();
+    // `inert` too: an overflowing scroller is focusable in Chromium with no tabindex at all.
+    expect(loading.hasAttribute('inert')).toBe(true);
 
     const blocks = loading.querySelectorAll('[appSkeletonBlock], .animate-pulse');
     expect(blocks.length).toBeGreaterThan(0);

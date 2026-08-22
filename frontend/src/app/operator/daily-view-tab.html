@@ -11,6 +11,7 @@
   <section
     class="mx-auto w-full max-w-[1100px] px-5 py-4"
     aria-hidden="true"
+    inert
     data-testid="daily-loading"
   >
     <div
@@ -20,10 +21,19 @@
     >
       <div class="flex flex-wrap items-end justify-between gap-3">
         <span class="flex flex-col gap-1.5">
-          <span appSkeletonBlock class="block h-[15px] w-[42px] rounded-[6px]"></span>
-          <span appSkeletonBlock class="block h-11 w-[168px] rounded-[12px]"></span>
+          <span
+            appSkeletonBlock
+            class="bg-(--riv-card-track) block h-[15px] w-[42px] rounded-[6px]"
+          ></span>
+          <span
+            appSkeletonBlock
+            class="bg-(--riv-card-track) block h-11 w-[168px] rounded-[12px]"
+          ></span>
         </span>
-        <span appSkeletonBlock class="block h-[19px] w-[240px] max-w-full rounded-[6px]"></span>
+        <span
+          appSkeletonBlock
+          class="bg-(--riv-card-track) block h-[19px] w-[240px] max-w-full rounded-[6px]"
+        ></span>
       </div>
     </div>
 
@@ -34,7 +44,7 @@
           @for (tile of skeletonTiles; track tile) {
             <span
               appSkeletonBlock
-              class="h-full min-w-0 rounded-[6px]"
+              class="bg-(--riv-card-track) h-full min-w-0 rounded-[6px]"
               data-testid="daily-skeleton-tile"
             ></span>
           }
@@ -43,9 +53,18 @@
     </app-beach-map-canvas>
 
     <span class="mx-0.5 mt-3.5 flex flex-wrap gap-4">
-      <span appSkeletonBlock class="block h-[19px] w-[128px] rounded-[6px]"></span>
-      <span appSkeletonBlock class="block h-[19px] w-[108px] rounded-[6px]"></span>
-      <span appSkeletonBlock class="block h-[19px] w-[152px] rounded-[6px]"></span>
+      <span
+        appSkeletonBlock
+        class="bg-(--riv-card-track) block h-[19px] w-[128px] rounded-[6px]"
+      ></span>
+      <span
+        appSkeletonBlock
+        class="bg-(--riv-card-track) block h-[19px] w-[108px] rounded-[6px]"
+      ></span>
+      <span
+        appSkeletonBlock
+        class="bg-(--riv-card-track) block h-[19px] w-[152px] rounded-[6px]"
+      ></span>
     </span>
 
     <div
@@ -53,16 +72,34 @@
       class="mt-4 rounded-[20px] px-[18px] py-4"
       data-testid="daily-skeleton-arrivals"
     >
-      <span appSkeletonBlock class="block h-[22px] w-[92px] rounded-[6px]"></span>
-      <span appSkeletonBlock class="mt-1 mb-3 block h-[19px] w-[68%] rounded-[6px]"></span>
+      <span
+        appSkeletonBlock
+        class="bg-(--riv-card-track) block h-[22px] w-[92px] rounded-[6px]"
+      ></span>
+      <span
+        appSkeletonBlock
+        class="bg-(--riv-card-track) mt-1 mb-3 block h-[19px] w-[68%] rounded-[6px]"
+      ></span>
       <span class="mb-3 flex flex-wrap gap-2">
-        <span appSkeletonBlock class="block h-11 w-[112px] rounded-[12px]"></span>
-        <span appSkeletonBlock class="block h-11 w-[170px] rounded-[12px]"></span>
-        <span appSkeletonBlock class="block h-11 w-[104px] rounded-[12px]"></span>
+        <span
+          appSkeletonBlock
+          class="bg-(--riv-card-track) block h-11 w-[112px] rounded-[12px]"
+        ></span>
+        <span
+          appSkeletonBlock
+          class="bg-(--riv-card-track) block h-11 w-[170px] rounded-[12px]"
+        ></span>
+        <span
+          appSkeletonBlock
+          class="bg-(--riv-card-track) block h-11 w-[104px] rounded-[12px]"
+        ></span>
       </span>
       <span class="flex flex-col gap-1.5">
         @for (row of skeletonRows; track row.code) {
-          <span appSkeletonBlock class="block h-[42px] w-full rounded-[12px]"></span>
+          <span
+            appSkeletonBlock
+            class="bg-(--riv-card-track) block h-[42px] w-full rounded-[12px]"
+          ></span>
         }
       </span>
     </div>

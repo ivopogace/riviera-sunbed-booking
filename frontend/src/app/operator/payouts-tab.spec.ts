@@ -133,6 +133,7 @@ describe('PayoutsTab (#173) — ledger', () => {
     expect(loading.getAttribute('aria-hidden')).toBe('true');
     expect(loading.getAttribute('aria-live')).toBeNull();
     expect(loading.querySelector('[tabindex]')).toBeNull();
+    expect(loading.hasAttribute('inert')).toBe(true);
 
     const blocks = loading.querySelectorAll('.animate-pulse');
     expect(blocks.length).toBeGreaterThan(0);

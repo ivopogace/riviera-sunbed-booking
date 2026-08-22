@@ -130,6 +130,11 @@ The replaced surface is the centred one-line loading paragraph on four templates
 - **A-1:** "Mirrors its loaded layout" is read per surface as *the blocks the loaded branch
   renders, at their real sizes* — not a pixel replica of content nobody has fetched yet.
   The parity ledger and AC-1…AC-4 fix what that means for each of the four.
+- **A-3:** The tourist skeleton deliberately mirrors only the header blocks that are
+  *unconditional*. Its two conditional ones (description, amenity chips) span ~65px that no
+  skeleton can predict, so mirroring them buys a symmetric ±33px error, while omitting them
+  buys a guarantee instead: the frame settles downward as content lands and never rises.
+  Recorded from review finding F-1.
 - **A-2:** Payouts' skeleton mirrors the **hero + ledger rows**, not only rows as #744's
   one-line scope sketch says. The hero is the tallest block in the loaded branch and the
   one that reflows hardest; leaving it out would reproduce the jump the issue is about.
@@ -185,10 +190,10 @@ N/A — no contract change. No request, response shape, or endpoint is touched.
 
 ## Execution status
 
-**Stage pointer:** `review gate — run; fixing findings F-1…F-5 (phase 4)`
+**Stage pointer:** `review gate — re-run; fixing findings G-1…G-3 (phase 5)`
 
-**Next action:** push the F-1…F-5 fixes, let CI + Sonar re-run on the new diff, then
-re-review the changed surface per the re-entry rule. Then the merge close-out: finalize
+**Next action:** push the G-1…G-3 fixes, let CI + Sonar re-run, then re-review the
+changed surface once more per the re-entry rule. Then the merge close-out: finalize
 this section with `merged via PR #748` in the PR's own last commit.
 
 **Review gate:** **run** — `/code-review` at **high** effort over `origin/main...HEAD`
@@ -197,6 +202,12 @@ this section with `merged via PR #748` in the PR's own last commit.
 phase 4; see the findings register. Effort was high rather than medium because the slice
 is new user-facing markup with an a11y contract (`aria-hidden` + no focusable node inside
 it), not a move/retype.
+
+**Re-review (re-entry rule):** `/code-review` re-run at high effort over the phase-4 diff —
+three further findings, G-1…G-3, one of them a regression introduced by F-3's own fix. All
+three fixed in phase 5. The lesson is recorded as G-6 in the generalization-audit log: a
+fix for a *cosmetic* finding is still a change, and it needs the same measurement the
+original defect got.
 
 **CI gate (head `db8be91`):** all 8 checks green — Backend (build + test), Frontend
 (lint + test + build), Repo hygiene (diff-scoped), SonarCloud scan + Code Analysis, CodeQL
@@ -214,7 +225,8 @@ issue list to work through, so nothing re-enters at Implement from it.
 | 2 — the two list surfaces | ✅ | |
 | 3 — mocked e2e for the grid surfaces | ✅ | |
 | — post-implement: drop the copied `.map-head` marker | ✅ | `425733f` |
-| 4 — review-gate findings F-1…F-5 | ⏳ | |
+| 4 — review-gate findings F-1…F-5 | ✅ | `89156eb` |
+| 5 — re-review findings G-1…G-3 | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -226,9 +238,12 @@ Skill-routing gate for what the fix touches *before* editing).
 |---|---|---|---|
 | F-1 | review (`/code-review`, high) | The tourist skeleton drew a description line + amenity chips unconditionally, though both are `@if`-gated in the loaded header — a venue with neither made the frame jump **up** 61px, the very regression #744 targets. The e2e fixture always supplied both, so AC-8 could not see it. | fixed-in-`<phase-4>` — the skeleton now mirrors only what the header *always* renders, so the frame can settle downward but never rise |
 | F-2 | review (`/code-review`, high) | The only anti-jump proof ran at one desktop viewport; the same body at 390×844 measured a 43.25px shift, over the file's own bar. | fixed-in-`<phase-4>` — the tourist case is now a 2 × 2 matrix (rich/bare venue × desktop/phone) |
-| F-3 | review (`/code-review`, high) | `MAP_SKELETON_ROWS`' `A`–`D` codes render as **visible** rail text, then swap to "Front row"/"Row 2" — fabricated content, not shape, on the two surfaces newly reusing them. | fixed-in-`<phase-4>` — `BeachMapCanvasRow.codeLabel: ''` renders no chip, the symmetry of `priceLabel: null` |
+| F-3 | review (`/code-review`, high) | `MAP_SKELETON_ROWS`' `A`–`D` codes render as **visible** rail text, then swap to "Front row"/"Row 2" — fabricated content, not shape, on the two surfaces newly reusing them. | **reverted, deferred → issue #749.** The fix (a `codeLabel: ''` rendering no chip) collapsed the rail to 0px and slid the whole tile grid 63px sideways on load — a worse instance of the defect class this slice exists to remove (G-1). Every other mechanism needs the shared canvas to grow a skeleton-rail concept, which is out of this slice's scope |
 | F-4 | review (`/code-review`, high) | The header's amenity-chip placeholders were counted by `MAP_SKELETON_TILES`, the map's **column** count — retuning the grid silently moved the header. | fixed-in-`<phase-4>` — the chip row is gone with F-1, so the coupling is gone with it |
 | F-5 | review (`/code-review`, high) | `SkeletonBlock` exists to stop hand-copying `animate-pulse` + `motion-reduce:animate-none`, yet four sites still carry the literal pair. | fixed-in-`<phase-4>` for the two that are *filled* blocks (`set-editor.html`'s tile, `my-bookings.ts`'s lines); the two pulsing-but-**unfilled** containers stay, per Non-goals. One detail of the finding was inaccurate: `set-editor.html` was **not** edited by this PR before this fix — only `set-editor.ts` was |
+| G-1 | re-review (`/code-review`, high) | F-3's own fix: `codeLabel: ''` suppressed the rail chip, collapsing the left rail 0 → 63px on load and sliding the tile grid sideways. The new e2e measures only the frame's `y`, so it could not see it. | fixed-in-`<phase-5>` — F-3 reverted wholesale; the rail nit goes to a follow-up issue |
+| G-2 | re-review (`/code-review`, high) | The tourist skeleton painted `--riv-card-track` (a dark tint for **light** card glass) onto the dark `appPanelGlass`: 1.02:1 in the Riviera theme — the loading state was a blank panel. | fixed-in-`<phase-5>` — the directive no longer sets a fill at all (the surface decides, exactly as it already decides radius); the header uses `--riv-track-bg`, the app's own ink-surface track token, now 1.81:1. Pinned by a new `venue-map.contrast.spec.ts` case |
+| G-3 | re-review (`/code-review`, high) | An overflowing scroll container is keyboard-focusable in Chromium with **no** `tabindex`, so both grid skeletons put a tab stop inside `aria-hidden="true"`. Neither the `[tabindex]` unit assertion nor axe's `aria-hidden-focus` rule can see it. | fixed-in-`<phase-5>` — `inert` on all five skeleton containers (`set-editor`'s pre-existing one included, same mechanism). Pinned in a browser: the e2e tabs through and asserts focus never enters, and fails without `inert` |
 
 ---
 
@@ -237,9 +252,11 @@ Skill-routing gate for what the fix touches *before* editing).
 - `docs/plans/skeleton-loading-surfaces.md` — this plan
 - `frontend/src/app/shared/skeleton-block.ts` — the `appSkeletonBlock` directive · `skeleton-block.spec.ts`
 - `frontend/src/app/shared/map-skeleton.ts` — the shared 4 × 6 placeholder geometry · `map-skeleton.spec.ts`
-- `frontend/src/app/shared/beach-map-canvas.ts` · `.html` · `beach-map-canvas.spec.ts` — the `codeLabel` rail contract (F-3)
 - `frontend/src/app/booking/my-bookings.ts` — adopts `appSkeletonBlock` (F-5)
-- `frontend/src/app/operator/set-editor.html` — adopts `appSkeletonBlock` on its skeleton tile (F-5)
+- `frontend/src/app/operator/set-editor.html` — adopts `appSkeletonBlock` + `inert` (F-5, G-3)
+- `frontend/src/testing/glass-tokens.ts` — the `--riv-track-bg` per-theme mirror (G-2)
+- `frontend/src/app/shared/beach-map-canvas.html` — touched and reverted with F-3; no net change
+- `frontend/src/app/venue/venue-map.contrast.spec.ts` — the skeleton-visibility proof (G-2)
 - `frontend/src/app/venue/venue-map.html` — skeleton replaces the centred line
 - `frontend/src/app/venue/venue-map.ts` — the placeholder rows the skeleton renders
 - `frontend/src/app/venue/venue-map.spec.ts` · `frontend/src/app/venue/venue-map.a11y.spec.ts` — AC-1, AC-5, AC-7
@@ -307,6 +324,8 @@ Skill-routing gate for what the fix touches *before* editing).
 | G-3 | `set-editor.ts` owns a 4 × 6 placeholder geometry this slice needs twice more | Population = every reference to `BeachMapCanvasRow` outside the canvas — `grep -rln 'BeachMapCanvasRow' frontend/src/app` | Promoted to `shared/map-skeleton.ts`; four consumers, one definition. |
 | G-4 | F-1 was a skeleton mirroring a block the loaded surface renders **conditionally** | Population = every `@if`-gated or `empty:hidden` block inside a surface whose loading branch this slice wrote — read the four loaded branches against their new skeletons | Only the tourist header has any: `@if (v.description)` and the `empty:hidden` chip row. The Daily view, Requests and Payouts skeletons mirror unconditional blocks only, which is why their measured shift is sub-pixel to 40px rather than 61px. |
 | G-5 | F-2 was a proof that ran at one viewport | Population = every measurement-based assertion in the new e2e — the file is the whole population, 2 surfaces | Both are now run per viewport; the tourist one also per venue shape, since its header is the only one with conditional content. |
+| G-6 | G-1: fixing a cosmetic finding (F-3) shipped a 63px layout regression, because the fix was reasoned about and not measured | Population = every phase-4 fix — 5 findings | F-1/F-2 were measured (the e2e matrix); F-3/F-4/F-5 were not. Both unmeasured *structural* ones (F-3, F-4) were the ones that went wrong or were dropped. Every phase-5 fix now carries a measurement: G-2 a contrast case computed from the tokens, G-3 a browser tab-walk verified to fail without the fix. |
+| G-7 | G-3's mechanism (an overflowing scroller is focusable with no tabindex) | Population = every skeleton container wrapping a `BeachMapCanvas` — `grep -rln 'appBeachMapRow' frontend/src/app` then read each surface's loading branch | Three: the tourist map, the Daily view, and `set-editor`'s pre-existing skeleton. All three got `inert`; the two non-canvas skeletons (Requests, Payouts) took it too, so the rule is "every skeleton container", not "the ones that happen to scroll". |
 
 ## Acceptance-criteria verification (final)
 

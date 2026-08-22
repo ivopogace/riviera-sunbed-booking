@@ -18,11 +18,15 @@ describe('SkeletonBlock', () => {
     )!;
   }
 
-  it('fills the block on the card-track token and pulses', () => {
-    const el = host();
-    for (const cls of ['animate-pulse', 'bg-(--riv-card-track)']) {
-      expect(el.classList.contains(cls)).toBe(true);
-    }
+  it('pulses', () => {
+    expect(host().classList.contains('animate-pulse')).toBe(true);
+  });
+
+  it('sets no fill: the track colour depends on the surface under the block (#744)', () => {
+    const own = [...host().classList].filter(
+      (cls) => !['h-3', 'w-1/2', 'rounded-[6px]'].includes(cls),
+    );
+    expect(own.some((cls) => cls.startsWith('bg-'))).toBe(false);
   });
 
   it('stops pulsing under reduced motion (#744 — the pairing is why this is a directive)', () => {

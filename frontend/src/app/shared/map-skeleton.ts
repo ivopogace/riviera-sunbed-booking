@@ -11,7 +11,6 @@ export const MAP_SKELETON_TILES: readonly number[] = [1, 2, 3, 4, 5, 6];
  */
 export const MAP_SKELETON_ROWS: readonly BeachMapCanvasRow[] = ['A', 'B', 'C', 'D'].map((code) => ({
   code,
-  codeLabel: '',
   priceLabel: null,
   zoneStart: true,
   tileCount: MAP_SKELETON_TILES.length,

@@ -138,8 +138,6 @@ for (const [shape, venue] of [
       await expect(page.getByTestId('map-skeleton-tile').first()).toBeVisible();
       // The sentence this replaced; the announcer, not the skeleton, carries the words (#741).
       await expect(loading).not.toContainText('Loading the beach map');
-      // No fabricated row name in the rail: the skeleton states shapes, never content (#744).
-      await expect(loading.getByTestId('row-code')).toHaveCount(0);
 
       const frame = page.getByTestId('beach-grid');
       const before = await topOf(frame);
@@ -152,6 +150,57 @@ for (const [shape, venue] of [
     });
   }
 }
+
+/**
+ * Tab through the page and report whether focus ever lands inside the skeleton.
+ *
+ * <p>The unit specs assert the `inert` attribute is present; only a browser can say it works. This
+ * is the case that needs it: an overflowing scroll container is keyboard-focusable in Chromium with
+ * no `tabindex` at all, so a skeleton carrying only `aria-hidden` puts a tab stop inside content
+ * hidden from assistive tech — and axe's `aria-hidden-focus` rule does not see implicit scroller
+ * focusability either.
+ */
+async function tabReachesSkeleton(page: Page, testId: string, steps = 12): Promise<boolean> {
+  for (let i = 0; i < steps; i++) {
+    await page.keyboard.press('Tab');
+    const inside = await page.evaluate(
+      (id) => document.activeElement?.closest(`[data-testid="${id}"]`) !== null,
+      testId,
+    );
+    if (inside) {
+      return true;
+    }
+  }
+  return false;
+}
+
+test('no tab stop hides inside the tourist skeleton (#744)', async ({ page }) => {
+  // The phone width is where the tile grid overflows, which is what makes the viewport focusable.
+  await page.setViewportSize(PHONE);
+  const release = await holdVenueRead(page, RICH_VENUE);
+  await page.goto('/venues/1');
+  await expect(page.getByTestId('map-skeleton-tile').first()).toBeVisible();
+
+  expect(await tabReachesSkeleton(page, 'map-loading')).toBe(false);
+
+  release();
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+});
+
+test('no tab stop hides inside the Daily view skeleton (#744)', async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  await mockWholeConsole(page);
+  const release = await holdVenueRead(page, RICH_VENUE);
+
+  await page.goto('/operator/1/daily');
+  await signInAsOperator(page);
+  await expect(page.getByTestId('daily-skeleton-tile').first()).toBeVisible();
+
+  expect(await tabReachesSkeleton(page, 'daily-loading')).toBe(false);
+
+  release();
+  await expect(page.getByTestId('daily-tile').first()).toBeVisible();
+});
 
 test('the tourist beach map’s loading state is axe-clean (#744)', async ({ page }) => {
   const release = await holdVenueRead(page, RICH_VENUE);
@@ -183,7 +232,6 @@ for (const [size, viewport] of [
     await expect(loading).toHaveAttribute('aria-hidden', 'true');
     await expect(page.getByTestId('daily-skeleton-tile').first()).toBeVisible();
     await expect(loading).not.toContainText('Loading the daily view');
-    await expect(loading.getByTestId('row-code')).toHaveCount(0);
 
     const frame = page.getByTestId('daily-grid-frame');
     const before = await topOf(frame);

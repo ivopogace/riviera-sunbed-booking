@@ -18,17 +18,14 @@
             <span
               class="h-[var(--riv-tile)] flex items-center justify-start"
               [class.mt-3]="row.zoneStart && i > 0"
+              ><span
+                class="inline-flex items-center justify-center min-w-6 h-6 px-[3px] rounded-lg bg-white/60 text-[10.5px] font-bold text-[#0a4f5e]"
+                data-testid="row-code"
+                ><span [class]="truncateRailCodes() ? 'max-w-12 sm:max-w-[96px] truncate' : ''">{{
+                  row.code
+                }}</span></span
+              ></span
             >
-              @if (railCode(row); as label) {
-                <span
-                  class="inline-flex items-center justify-center min-w-6 h-6 px-[3px] rounded-lg bg-white/60 text-[10.5px] font-bold text-[#0a4f5e]"
-                  data-testid="row-code"
-                  ><span [class]="truncateRailCodes() ? 'max-w-12 sm:max-w-[96px] truncate' : ''">{{
-                    label
-                  }}</span></span
-                >
-              }
-            </span>
           }
         </div>
 

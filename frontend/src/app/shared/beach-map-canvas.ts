@@ -26,11 +26,6 @@ export interface BeachMapCanvasRow {
    *  its own: the tourist map and the Daily view pass the stored `rowLabel` (#724; uniqueness
    *  from grouping rows by it), the layout editor its grid letters (a grid being painted). */
   readonly code: string;
-  /** The rail chip's text when it should differ from {@link code} — an empty string renders no
-   *  chip at all, the symmetry of {@link priceLabel}'s `null`. A placeholder row uses it: `code`
-   *  stays unique because the rails track by it, while the rail states no row name the read has
-   *  not returned yet. Omitted, the chip shows `code`. */
-  readonly codeLabel?: string;
   /** The zone chip's text; `null` renders no chip even on a zone start. The rail caps the chip's
    *  width and ellipsizes what does not fit (92px below `sm`, 128px above), so this may be a
    *  phrase — a price plus what it buys — and not only an amount. */
@@ -126,11 +121,6 @@ export class BeachMapCanvas {
   protected readonly rows = computed<readonly BeachMapCanvasRow[]>(() =>
     this.rowDef().appBeachMapRow(),
   );
-
-  /** What the left rail prints for a row — its own label when it carries one, else its code. */
-  protected railCode(row: BeachMapCanvasRow): string {
-    return row.codeLabel ?? row.code;
-  }
 
   /** Uniform column count so every row's grid aligns with the rails. */
   protected readonly mapCols = computed(() => Math.max(1, ...this.rows().map((r) => r.tileCount)));
