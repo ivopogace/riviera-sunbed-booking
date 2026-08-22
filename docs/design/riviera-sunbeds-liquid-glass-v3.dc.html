@@ -154,6 +154,7 @@
         <span style="display:block;font-size:12px;color:rgba(12,42,51,0.55);margin-top:5px;">{{ resultNoun }} &middot; {{ dateLabel }}</span>
       </div>
     </div>
+    <!-- as-built diverges — see #736 (retired by #733/PR #734); design record left as drawn, docs/design/README.md -->
     <p style="display:flex;align-items:center;gap:8px;margin:12px 2px 0;font-size:13px;color:{{ inkSoft }};"><span style="font-size:15px;">&#9200;</span> Bookings close the evening before &mdash; book by 6&nbsp;PM the day before. Today isn&rsquo;t available.</p>
 
     <sc-if value="{{ failDiscover }}" hint-placeholder-val="{{ false }}">
@@ -229,6 +230,7 @@
       <label style="display:flex;flex-direction:column;gap:7px;">
         <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:{{ inkFaint }};">Date</span>
         <input type="date" value="{{ selectedDate }}" min="{{ minDate }}" onChange="{{ onDateChange }}" style="font:inherit;font-size:15px;color:#0a2a33;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.7);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:14px;padding:10px 12px;cursor:pointer;"/>
+        <!-- as-built diverges — see #736 (retired by #703); design record left as drawn, docs/design/README.md -->
         <span style="font-size:11.5px;color:{{ inkFaint }};max-width:190px;line-height:1.35;">&#9200; Book by 6&nbsp;PM the day before &mdash; today isn&rsquo;t bookable.</span>
       </label>
     </div>
