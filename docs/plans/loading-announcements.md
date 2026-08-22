@@ -63,33 +63,33 @@ change-detection timing cannot) · `riviera-local-debug` (scoped test runs; clou
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given `app-load-announcer` with `loading` true, when `loading` flips to false,
+- [x] **AC-1:** Given `app-load-announcer` with `loading` true, when `loading` flips to false,
   then **the same DOM element** carries the text (identity preserved across the transition —
   asserted by holding an element reference across change detection, not by re-querying), its
   text becomes `readyLabel`, and it is `sr-only` + `role="status"` + `aria-live="polite"`.
   *Pinned by:* `shared/load-announcer.spec.ts`.
-- [ ] **AC-2:** Given `app-load-announcer` outside both `loading` and `ready`, when it renders,
+- [x] **AC-2:** Given `app-load-announcer` outside both `loading` and `ready`, when it renders,
   then its text is empty — any exit the call site did not call ready is silent, and `loading`
   wins over `ready` if both are asserted. *Pinned by:* `shared/load-announcer.spec.ts` (two specs).
-- [ ] **AC-8:** Given each surface's non-success exits — the beach map's 404, My bookings' failed
+- [x] **AC-8:** Given each surface's non-success exits — the beach map's 404, My bookings' failed
   account read, the account page's signed-out visitor — when they render, then the announcer says
   nothing. *Pinned by:* `venue-map.spec.ts`, `my-bookings.spec.ts`, `set-password.spec.ts`; all
   three mutation-checked.
-- [ ] **AC-3:** Given each of the eight surfaces below, when the component renders in its
+- [x] **AC-3:** Given each of the eight surfaces below, when the component renders in its
   **loaded** state, then an `app-load-announcer` region is present in the DOM (it is not
   scoped to the loading branch), and no loading container carries `aria-live` any more.
   *Pinned by:* one assertion per surface in that surface's existing spec.
-- [ ] **AC-4:** Given each of the eight surfaces, when it transitions loading→loaded, then the
+- [x] **AC-4:** Given each of the eight surfaces, when it transitions loading→loaded, then the
   announcer element captured while loading is the **same node** after loading, with mutated
   text. *Pinned by:* the same eight specs.
-- [ ] **AC-5:** Given every loading surface, when it is loading, then the visible skeleton or
+- [x] **AC-5:** Given every loading surface, when it is loading, then the visible skeleton or
   visible "Loading…" paragraph is `aria-hidden="true"` — the announcer is the single source of
   the announcement. *Pinned by:* the eight specs.
-- [ ] **AC-6:** Given Discover in a real browser with a delayed venues response, when the list
+- [x] **AC-6:** Given Discover in a real browser with a delayed venues response, when the list
   lands, then `[data-testid="load-announcer"]` was present both before and after, and its text
   changed from "Loading venues…". *Pinned by:* `frontend/e2e/loading-announcements.e2e.ts`
   (mocked suite, CI-run).
-- [ ] **AC-7:** Given the whole change, when `npm run lint`, `npm run format:check`,
+- [x] **AC-7:** Given the whole change, when `npm run lint`, `npm run format:check`,
   `npm test` and `npm run test:e2e:a11y` run, then all pass, and every pre-existing spec passes
   **unmodified** except the announcement assertions this slice deliberately changes.
 
@@ -254,24 +254,37 @@ N/A — no request or response shape changes.
 
 ## Execution status
 
-**Stage pointer:** `review gate — CONVERGED after ten rounds; Sonar gate next`.
+**Stage pointer:** `DONE — merged via PR #743`.
 
-**Next action:** Pull Sonar's new-issue + duplication list from the API for the final head (a
-green gate is not the check), clear every entry, then run the merge close-out in `riviera-sdlc`
-`references/pr-gates.md` §3 — including the two follow-up issues the checklist names.
+**Next action:** none. The slice is complete; its two deferrals are live as **#745** (the three
+silent failure branches) and **#746** (the two Retry controls' focus and busy state).
 
-**Why the review gate is closed.** Ten `/code-review` rounds ran; the re-entry rule was honoured
-every time. The **last behavioural finding was round 6's F-32** (a spec that could not fail).
-Rounds 7–10 changed no behaviour: their diffs are documentation, plus comment-only edits to
-`load-announcer.ts`. Their findings were real and were fixed, but every one was a defect *in the
-previous round's prose* — and round 10 identified why that was self-sustaining (F-54/G-8): one
-rule copied into five documents, so each correction reached some copies and missed others. That
-is now fixed at the root rather than restated, which is the point at which another round stops
-buying correctness in the product and starts reviewing a document about the review. Code frozen
-since round 6, CI green on every head since, both mutation checks re-verified. Anything further
-belongs to the two follow-up issues, not to this PR. If it comes back clean, confirm CI green on the
-final head, pull Sonar's new-issue + duplication list from the API for that head (a green gate
-is not the check), then run the merge close-out in `riviera-sdlc` `references/pr-gates.md` §3.
+**Gates.** CI green on the final head — all eight checks: backend, frontend, repo hygiene,
+CodeQL, both Analyze jobs, SonarCloud scan + Code Analysis. Review gate: **ten `/code-review`
+rounds**, F-1…F-57, every fix re-entered at Implement. **Sonar gate:** the reported list pulled
+from the API for the final head, not the gate conclusion — `issues/search` total **0**, and
+`new_bugs` 0, `new_vulnerabilities` 0, `new_code_smells` 0, `new_duplicated_blocks` 0,
+`new_duplicated_lines_density` 0.0, `new_coverage` **100.0%** on `new_lines` 248. All three
+false-clean guards checked: measures populated, `SonarCloud Code Analysis` concluded `success`,
+and the read was cache-busted. (The duplication the review raised twice — the retry spec against
+its 340-lines-up sibling — is 0 blocks; F-36 records why the residual overlap is deliberate.)
+`riviera-docs-freshness` run twice — at implementation (one finding, RV-FE-10 added) and as the
+pre-merge smoke (zero findings).
+
+**Why the review gate closed where it did.** The **last behavioural finding was round 6's F-32**
+(a spec that could not fail). Rounds 7–10 changed no behaviour: their diffs are documentation plus
+comment-only edits to `load-announcer.ts`. Their findings were real and were fixed, but each was a
+defect in the *previous round's prose* — and round 10 identified why that was self-sustaining
+(F-54 / G-8): one rule copied into five documents, so every correction reached some copies and
+missed others. That is fixed at the root — RV-FE-10 is the rule's single owner — rather than
+restated a fifth time. Past that point a further round reviews a document about the review, not
+the product. Code frozen since round 6, CI green on every head since, both mutation checks
+re-verified at the final head.
+
+**What this slice leaves behind.** Beyond the eight fixed surfaces: `shared/load-announcer.ts` as
+the one shape for a loading announcement, **RV-FE-10** so the rule is enforced on future slices
+rather than re-derived, and **G-8** — a rule gets one home, and a doc that outlives its PR states
+rules, never censuses.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -440,48 +453,48 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Create `docs/plans/loading-announcements.md`
 
-- [ ] Commit the plan doc, push `claude/sdlc-741-4966yh`, open the **draft** PR referencing #741.
-- [ ] Confirm the first CI run starts (CI fires on the `pull_request` event only).
+- [x] Commit the plan doc, push `claude/sdlc-741-4966yh`, open the **draft** PR referencing #741.
+- [x] Confirm the first CI run starts (CI fires on the `pull_request` event only).
 
 ## Phase 1 — The `load-announcer` primitive (TDD)
 
 **Files:** Create `frontend/src/app/shared/load-announcer.ts` · Test `frontend/src/app/shared/load-announcer.spec.ts`
 
-- [ ] **Step 1: Write the failing spec** — element identity preserved across loading→loaded
+- [x] **Step 1: Write the failing spec** — element identity preserved across loading→loaded
   (AC-1); empty text when `failed` (AC-2); `sr-only`/`role`/`aria-live` attributes.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- load-announcer` → FAIL (module not found).
-- [ ] **Step 3: Minimal implementation** — the component above.
-- [ ] **Step 4: Green** — `npm test -- load-announcer`.
+- [x] **Step 2: Run it, verify it fails** — `npm test -- load-announcer` → FAIL (module not found).
+- [x] **Step 3: Minimal implementation** — the component above.
+- [x] **Step 4: Green** — `npm test -- load-announcer`.
 
 ## Phase 2 — Adopt on the three surfaces #741 names
 
 **Files:** Modify `home.ts|.html`, `set-editor.ts|.html`, `my-bookings.ts` · Test their three specs
 
-- [ ] Per surface, red first: assert the announcer is present in the **loaded** state (fails
+- [x] Per surface, red first: assert the announcer is present in the **loaded** state (fails
   today — the region only exists while loading).
-- [ ] Hoist the announcer out of the `@if`; drop `aria-live` from the loading container; move
+- [x] Hoist the announcer out of the `@if`; drop `aria-live` from the loading container; move
   `aria-hidden="true"` onto it; delete the now-duplicated `sr-only` line.
-- [ ] Rewrite the three specs' announcement assertions so they stop asserting an announcement
+- [x] Rewrite the three specs' announcement assertions so they stop asserting an announcement
   that was never proven (R-5) and assert the mechanism instead.
-- [ ] Green: `npm test -- home my-bookings set-editor`.
+- [x] Green: `npm test -- home my-bookings set-editor`.
 
 ## Phase 3 — Adopt on the five surfaces the grill swept up
 
 **Files:** Modify `daily-view-tab.ts|.html`, `requests-tab.ts|.html`, `payouts-tab.ts|.html`, `venue-map.ts|.html`, `set-password.ts` · Test their five specs
 
-- [ ] Same red-green shape per surface; the visible "Loading…" paragraph keeps its text and
+- [x] Same red-green shape per surface; the visible "Loading…" paragraph keeps its text and
   becomes `aria-hidden="true"`, losing `aria-live`/`role="status"`.
-- [ ] Green: `npm test -- daily-view requests-tab payouts-tab venue-map set-password`.
+- [x] Green: `npm test -- daily-view requests-tab payouts-tab venue-map set-password`.
 
 ## Phase 4 — e2e, docs freshness, close-out
 
 **Files:** Create `frontend/e2e/loading-announcements.e2e.ts` · Modify `.claude/skills/riviera-review-overlay/references/frontend-conventions.md`
 
-- [ ] Mocked-suite spec: delay the venues response, assert the announcer node exists before and
+- [x] Mocked-suite spec: delay the venues response, assert the announcer node exists before and
   after and that its text changed (AC-6).
-- [ ] Add **RV-FE-10** to the review overlay's FE conventions.
-- [ ] `npm run lint`, `npm run format:check`, full `npm test`, `npm run test:e2e:a11y`.
-- [ ] Mark the PR ready for review → Review gate, Sonar gate, merge close-out.
+- [x] Add **RV-FE-10** to the review overlay's FE conventions.
+- [x] `npm run lint`, `npm run format:check`, full `npm test`, `npm run test:e2e:a11y`.
+- [x] Mark the PR ready for review → Review gate, Sonar gate, merge close-out.
 
 ---
 
@@ -520,12 +533,12 @@ Skill-routing gate for what the fix touches *before* editing).
 ## Self-review checklist (before merge / PR)
 
 - [x] All ACs verified above, with real results (not "should pass").
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` clean (plan doc staged first).
-- [ ] `node scripts/check-touch-target.mjs --files <touched>` clean (no new interactive controls, but the touched templates are in scope).
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` clean (plan doc staged first) — plus `check-inline-comments`, `check-focus-posture` and `check-touch-target`, run before every push.
+- [x] `node scripts/check-touch-target.mjs --files <touched>` clean (no new interactive controls, but the touched templates are in scope).
 - [x] Open questions empty; the two assumptions held and are recorded as decisions.
-- [ ] Findings register current; every finding re-entered at Implement.
+- [x] Findings register current (F-1…F-57 across ten review rounds); every finding re-entered at Implement.
 - [x] No spec claims an announcement it does not prove (R-5) — titles and comments rewritten on all three surfaces that carried the claim.
-- [ ] Follow-up issue filed for the silent failure branches (Non-goals) — `my-bookings`'
+- [x] Follow-up issue filed for the silent failure branches (Non-goals) — **#745**. `my-bookings`'
       `booking-row-failed` card (no role) and its `account-error` card (`role="status"`, born with
       its text), plus `set-password`'s signed-out branch, where a failed restore is
       indistinguishable from signed-out and there is no panel to announce yet. The other six were
@@ -533,7 +546,11 @@ Skill-routing gate for what the fix touches *before* editing).
       **parent** `layout-editor` — so re-check that one there rather than reading it as covered
       in place. Re-check rather than assume, and do not presume `appFailurePanel` is the mechanism
       (F-34 has the evidence; F-25, F-46, F-47 the scope).
-- [ ] Follow-up issue filed for the two Retry controls' accessibility (F-29, F-30): both
+- [x] Follow-up issue filed for the two Retry controls' accessibility — **#746** (F-29, F-30): both
       `row-retry` and `account-retry` destroy the focused button with no `focusMover()`
       (RV-FE-9 / WCAG 2.4.3), and the account retry shows no busy state for its round trip.
-- [x] `riviera-docs-freshness` run over the slice's diff — one finding, fixed here: no substrate doc stated a live-region rule, so RV-FE-10 was added to the review overlay (+ its SKILL.md index).
+- [x] `riviera-docs-freshness` run twice — at implementation, one finding, fixed here: no substrate doc stated a live-region rule, so RV-FE-10 was added to the review overlay (+ its SKILL.md index). Re-run as the
+      **pre-merge smoke** over `origin/main...HEAD` at close-out: **zero findings** — the slice
+      only adds files, no substrate doc outside the overlay states an `aria-live` fact, RV-FE-10
+      is correctly indexed beside RV-FE-8/9, and the one "#741 shipped that on eight surfaces"
+      note is accurate dated history.
