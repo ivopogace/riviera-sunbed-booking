@@ -97,7 +97,10 @@ standing in for `feature/skeleton-loading-surfaces` (`riviera-sdlc` § Remote/cl
 - **No new design token.** Skeletons fill on the existing `--riv-card-track`.
 - **`appSkeletonBlock` is not retrofitted onto the pulsing-but-unfilled containers**
   (`home.html`'s card, `set-editor.html`'s panel): the directive means *filled* block, and
-  widening it to mean "anything that pulses" would make it two things.
+  widening it to mean "anything that pulses" would make it two things. Review finding F-5
+  narrowed this: the two sites that *are* filled blocks (`set-editor.html`'s skeleton tile,
+  `my-bookings.ts`'s skeleton lines) **did** adopt it, so the hazard the directive exists to
+  remove is now live in only the two places where the directive does not apply.
 
 ## Behavior-parity ledger (retirement / replacement slices only)
 
@@ -182,11 +185,18 @@ N/A — no contract change. No request, response shape, or endpoint is touched.
 
 ## Execution status
 
-**Stage pointer:** `CI gate ✅ + Sonar gate ✅ on PR #748 — held at draft, awaiting the review gate`
+**Stage pointer:** `review gate — run; fixing findings F-1…F-5 (phase 4)`
 
-**Next action:** mark PR #748 ready for review and run the review gate (`/code-review`
-per the `pr-gates.md` §1 ladder, with `riviera-review-overlay` layered on). Then the merge
-close-out: finalize this section with `merged via PR #748` in the PR's own last commit.
+**Next action:** push the F-1…F-5 fixes, let CI + Sonar re-run on the new diff, then
+re-review the changed surface per the re-entry rule. Then the merge close-out: finalize
+this section with `merged via PR #748` in the PR's own last commit.
+
+**Review gate:** **run** — `/code-review` at **high** effort over `origin/main...HEAD`
+(invocation ladder rung 1: `Skill("code-review")` was accepted), with
+`riviera-review-overlay` loaded on top. Five findings, all legitimate, all fixed in
+phase 4; see the findings register. Effort was high rather than medium because the slice
+is new user-facing markup with an a11y contract (`aria-hidden` + no focusable node inside
+it), not a move/retype.
 
 **CI gate (head `db8be91`):** all 8 checks green — Backend (build + test), Frontend
 (lint + test + build), Repo hygiene (diff-scoped), SonarCloud scan + Code Analysis, CodeQL
@@ -204,6 +214,7 @@ issue list to work through, so nothing re-enters at Implement from it.
 | 2 — the two list surfaces | ✅ | |
 | 3 — mocked e2e for the grid surfaces | ✅ | |
 | — post-implement: drop the copied `.map-head` marker | ✅ | `425733f` |
+| 4 — review-gate findings F-1…F-5 | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -213,7 +224,11 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none raised | — |
+| F-1 | review (`/code-review`, high) | The tourist skeleton drew a description line + amenity chips unconditionally, though both are `@if`-gated in the loaded header — a venue with neither made the frame jump **up** 61px, the very regression #744 targets. The e2e fixture always supplied both, so AC-8 could not see it. | fixed-in-`<phase-4>` — the skeleton now mirrors only what the header *always* renders, so the frame can settle downward but never rise |
+| F-2 | review (`/code-review`, high) | The only anti-jump proof ran at one desktop viewport; the same body at 390×844 measured a 43.25px shift, over the file's own bar. | fixed-in-`<phase-4>` — the tourist case is now a 2 × 2 matrix (rich/bare venue × desktop/phone) |
+| F-3 | review (`/code-review`, high) | `MAP_SKELETON_ROWS`' `A`–`D` codes render as **visible** rail text, then swap to "Front row"/"Row 2" — fabricated content, not shape, on the two surfaces newly reusing them. | fixed-in-`<phase-4>` — `BeachMapCanvasRow.codeLabel: ''` renders no chip, the symmetry of `priceLabel: null` |
+| F-4 | review (`/code-review`, high) | The header's amenity-chip placeholders were counted by `MAP_SKELETON_TILES`, the map's **column** count — retuning the grid silently moved the header. | fixed-in-`<phase-4>` — the chip row is gone with F-1, so the coupling is gone with it |
+| F-5 | review (`/code-review`, high) | `SkeletonBlock` exists to stop hand-copying `animate-pulse` + `motion-reduce:animate-none`, yet four sites still carry the literal pair. | fixed-in-`<phase-4>` for the two that are *filled* blocks (`set-editor.html`'s tile, `my-bookings.ts`'s lines); the two pulsing-but-**unfilled** containers stay, per Non-goals. One detail of the finding was inaccurate: `set-editor.html` was **not** edited by this PR before this fix — only `set-editor.ts` was |
 
 ---
 
@@ -222,6 +237,9 @@ Skill-routing gate for what the fix touches *before* editing).
 - `docs/plans/skeleton-loading-surfaces.md` — this plan
 - `frontend/src/app/shared/skeleton-block.ts` — the `appSkeletonBlock` directive · `skeleton-block.spec.ts`
 - `frontend/src/app/shared/map-skeleton.ts` — the shared 4 × 6 placeholder geometry · `map-skeleton.spec.ts`
+- `frontend/src/app/shared/beach-map-canvas.ts` · `.html` · `beach-map-canvas.spec.ts` — the `codeLabel` rail contract (F-3)
+- `frontend/src/app/booking/my-bookings.ts` — adopts `appSkeletonBlock` (F-5)
+- `frontend/src/app/operator/set-editor.html` — adopts `appSkeletonBlock` on its skeleton tile (F-5)
 - `frontend/src/app/venue/venue-map.html` — skeleton replaces the centred line
 - `frontend/src/app/venue/venue-map.ts` — the placeholder rows the skeleton renders
 - `frontend/src/app/venue/venue-map.spec.ts` · `frontend/src/app/venue/venue-map.a11y.spec.ts` — AC-1, AC-5, AC-7
@@ -287,6 +305,8 @@ Skill-routing gate for what the fix touches *before* editing).
 | G-1 | #744 itself is a generalization: three surfaces had a skeleton, five did not | Population = every template branch whose only content is a centred loading sentence — `grep -rn 'Loading' frontend/src/app --include=*.html --include=*.ts \| grep -i 'testid=.*loading'` | Five found; four in scope, `set-password.ts` excluded by the issue with a stated reason. |
 | G-2 | The pulse recipe is inlined per element | Population = every element carrying `animate-pulse` — `grep -rn 'animate-pulse' frontend/src/app` | The four surfaces in scope take the directive; the three reference surfaces keep their inlined recipe (Non-goals) — the directive's host classes render byte-identically, so the DOM has one spelling either way. |
 | G-3 | `set-editor.ts` owns a 4 × 6 placeholder geometry this slice needs twice more | Population = every reference to `BeachMapCanvasRow` outside the canvas — `grep -rln 'BeachMapCanvasRow' frontend/src/app` | Promoted to `shared/map-skeleton.ts`; four consumers, one definition. |
+| G-4 | F-1 was a skeleton mirroring a block the loaded surface renders **conditionally** | Population = every `@if`-gated or `empty:hidden` block inside a surface whose loading branch this slice wrote — read the four loaded branches against their new skeletons | Only the tourist header has any: `@if (v.description)` and the `empty:hidden` chip row. The Daily view, Requests and Payouts skeletons mirror unconditional blocks only, which is why their measured shift is sub-pixel to 40px rather than 61px. |
+| G-5 | F-2 was a proof that ran at one viewport | Population = every measurement-based assertion in the new e2e — the file is the whole population, 2 surfaces | Both are now run per viewport; the tourist one also per venue shape, since its header is the only one with conditional content. |
 
 ## Acceptance-criteria verification (final)
 

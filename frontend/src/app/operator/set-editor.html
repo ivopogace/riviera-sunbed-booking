@@ -322,7 +322,8 @@
               >
                 @for (tile of skeletonTiles; track tile) {
                   <span
-                    class="h-full min-w-0 animate-pulse rounded-[8px] bg-(--riv-card-track) motion-reduce:animate-none"
+                    appSkeletonBlock
+                    class="h-full min-w-0 rounded-[8px]"
                     data-testid="set-skeleton-tile"
                   ></span>
                 }

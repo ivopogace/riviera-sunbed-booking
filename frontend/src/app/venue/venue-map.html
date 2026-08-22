@@ -274,18 +274,13 @@
         data-testid="map-skeleton-header"
       >
         <span appSkeletonBlock class="mb-[13px] block h-[25px] w-[124px] rounded-full"></span>
+        <!-- Two lines below sm: at a phone width the venue name itself wraps, and a one-line stand-in under-reads the header by a whole line. -->
         <span
           appSkeletonBlock
-          class="mb-[7px] block h-[clamp(33px,5.1vw,49px)] w-4/5 rounded-[10px]"
+          class="mb-[7px] block h-[76px] w-4/5 rounded-[10px] sm:h-[clamp(33px,5.1vw,49px)]"
         ></span>
         <span appSkeletonBlock class="mb-[5px] block h-[22px] w-3/5 rounded-[6px]"></span>
         <span appSkeletonBlock class="block h-[21px] w-2/5 rounded-[6px]"></span>
-        <span appSkeletonBlock class="mt-[9px] block h-[22px] w-full rounded-[6px]"></span>
-        <span class="mt-[14px] flex flex-wrap gap-[7px]">
-          @for (chip of skeletonTiles; track chip) {
-            <span appSkeletonBlock class="block h-[26px] w-[84px] rounded-full"></span>
-          }
-        </span>
         <span class="mt-4 flex max-w-[210px] flex-col gap-[7px]">
           <span appSkeletonBlock class="block h-[17px] w-[52px] rounded-[6px]"></span>
           <span appSkeletonBlock class="block h-11 w-full rounded-[14px]"></span>
@@ -305,6 +300,7 @@
         <span appSkeletonBlock class="block h-[150px] w-full rounded-[20px]"></span>
       </div>
 
+      <!-- Description and amenity chips are deliberately absent: both are conditional in the loaded header, so mirroring them makes the frame jump UP on a venue that carries neither (#744). -->
       <!-- The same canvas, and the same 1100px breakout, so the frame does not move when the map lands. -->
       <app-beach-map-canvas
         class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"

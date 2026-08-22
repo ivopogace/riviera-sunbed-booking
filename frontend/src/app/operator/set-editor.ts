@@ -22,6 +22,7 @@ import {
 } from './beach-cell';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { MAP_SKELETON_ROWS, MAP_SKELETON_TILES } from '../shared/map-skeleton';
+import { SkeletonBlock } from '../shared/skeleton-block';
 import { SetWriteErrorCode, SetWriteRequest } from './operator-console.model';
 import { OperatorConsoleService, setWriteErrorOf } from './operator-console.service';
 
@@ -101,6 +102,7 @@ function draftForNewCell(gridY: number): SetDraft {
     CardGlass,
     BeachMapCanvas,
     BeachMapRowDef,
+    SkeletonBlock,
     BeachCell,
     ConfirmPanel,
     FormField,

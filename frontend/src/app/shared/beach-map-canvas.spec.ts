@@ -206,6 +206,24 @@ describe('BeachMapCanvas (#672)', () => {
     expect(viewport(host).querySelector('[data-testid="row-code"]')).toBeNull();
   });
 
+  it('prints a row’s own codeLabel over its code, and no chip at all for an empty one (#744)', () => {
+    const { host, component, detect } = render();
+
+    component.rows.set([
+      { ...ROWS[0], codeLabel: 'Front row' },
+      { ...ROWS[1], codeLabel: '' },
+    ]);
+    detect();
+
+    const codes = Array.from(host.querySelectorAll('[data-testid="row-code"]')).map((e) =>
+      e.textContent?.trim(),
+    );
+    // One chip, not two: an empty label states no row name, the symmetry of a null priceLabel.
+    expect(codes).toEqual(['Front row']);
+    // The rail cell itself stays, so dropping the chip cannot shorten the row it aligns with.
+    expect(host.querySelectorAll('[data-testid="price-col"] > span').length).toBe(2);
+  });
+
   it('leaves rail labels uncapped by default — operator surfaces render them whole (#724)', () => {
     const { host } = render();
     expect(host.querySelector('[data-testid="row-code"] .truncate')).toBeNull();

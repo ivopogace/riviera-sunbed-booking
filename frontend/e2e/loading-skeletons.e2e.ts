@@ -13,18 +13,56 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * state uses, so the frame is one element across the transition — which is what makes its top edge
  * measurable either side of the release.
  *
- * <p>The tolerance is not "close enough": a skeleton mirrors block *shapes*, never the exact glyphs
- * nobody has fetched yet, so a real venue name that wraps to two lines legitimately moves the frame
- * a line. What the tolerance rules out is the regression this issue is about — a centred one-liner
- * standing in for a whole article, which moved the frame by hundreds of pixels because the frame did
- * not exist at all.
+ * <p><strong>The fixtures are the point.</strong> A skeleton mirrors block shapes, so its error is
+ * whatever the shapes cannot predict: the tourist header's description and amenity chips are both
+ * conditional, and a phone wraps rows a desktop keeps on one line. So the tourist case runs over
+ * both extremes of that content (a venue with both, a venue with neither) at both a desktop and a
+ * phone viewport — measuring only the rich desktop case is how a skeleton tuned to one fixture
+ * passes while jumping for everyone else.
  */
 
-/** Beyond this, the content below the fold has visibly re-flowed rather than settled. Measured
- *  shifts on these fixtures are ~10px (tourist map) and <1px (Daily view). */
-const MAX_FRAME_SHIFT_PX = 32;
+/**
+ * The bound is **directional, and that is the contract** — not a tolerance picked for comfort.
+ *
+ * <p>The tourist header carries two conditional blocks (a description, an amenity row) worth ~65px
+ * together, and no fixed skeleton can know whether a venue has them: mirroring both makes the frame
+ * jump UP by that much on a venue with neither, mirroring neither makes it settle DOWN by that much
+ * on a venue with both. So the skeleton mirrors only what the header *always* renders, which buys a
+ * guarantee worth more than a symmetric ±33px band: the frame never rises, it only ever settles
+ * downward as real content lands.
+ *
+ * <p>`MAX_RISE_PX` is therefore tight — it is the whole claim, and a skeleton that starts
+ * overshooting a minimal header trips it immediately. `MAX_SETTLE_PX` is the loose half: it only
+ * has to sit above the conditional content's own height, which is what the frame settles by when a
+ * venue turns out to carry all of it. Both are read off measurement, not chosen — on these fixtures
+ * the frame settles 15.6px (bare, desktop), 38.7px (bare, phone), 81.2px (rich, desktop) and
+ * 104.3px (rich, phone), and rises in no case at all.
+ *
+ * <p>Neither bound is what catches the regression #744 fixed: under the sentence these replaced
+ * there is no frame to measure at all, so `topOf` fails before either is consulted.
+ */
+const MAX_RISE_PX = 16;
+const MAX_SETTLE_PX = 112;
 
-const VENUE = {
+const DESKTOP = { width: 1280, height: 720 };
+const PHONE = { width: 390, height: 844 };
+
+function sets() {
+  return Array.from({ length: 24 }, (_, i) => ({
+    id: i + 1,
+    rowLabel: i < 12 ? 'Front row' : 'Row 2',
+    positionNo: (i % 12) + 1,
+    tier: i < 12 ? 'PREMIUM' : 'STANDARD',
+    pool: 'ONLINE',
+    price: { minorUnits: i < 12 ? 4500 : 3500, currency: 'EUR' },
+    gridX: (i % 12) + 1,
+    gridY: i < 12 ? 1 : 2,
+    availability: 'FREE',
+  }));
+}
+
+/** Everything the header can optionally carry: a description AND an amenity row. */
+const RICH_VENUE = {
   id: 1,
   name: 'Miramar Beach Club',
   beach: 'Ksamil',
@@ -36,17 +74,17 @@ const VENUE = {
   fromPrice: { minorUnits: 2500, currency: 'EUR' },
   amenities: ['WIFI', 'SHOWERS'],
   distanceToWaterM: 20,
-  sets: Array.from({ length: 24 }, (_, i) => ({
-    id: i + 1,
-    rowLabel: i < 12 ? 'Front row' : 'Row 2',
-    positionNo: (i % 12) + 1,
-    tier: i < 12 ? 'PREMIUM' : 'STANDARD',
-    pool: 'ONLINE',
-    price: { minorUnits: i < 12 ? 4500 : 3500, currency: 'EUR' },
-    gridX: (i % 12) + 1,
-    gridY: i < 12 ? 1 : 2,
-    availability: 'FREE',
-  })),
+  sets: sets(),
+};
+
+/** The other extreme: no description, no amenities, no distance-to-water chip, never rated. */
+const BARE_VENUE = {
+  ...RICH_VENUE,
+  description: null,
+  amenities: [],
+  distanceToWaterM: null,
+  ratingTenths: null,
+  reviewsCount: 0,
 };
 
 /** The viewport-relative top edge of a frame, which is what a layout jump moves. */
@@ -56,68 +94,118 @@ async function topOf(frame: Locator): Promise<number> {
   return box!.y;
 }
 
-async function expectFrameHeldItsPlace(page: Page, frame: Locator, before: number): Promise<void> {
+async function expectFrameHeldItsPlace(frame: Locator, before: number, at: string): Promise<void> {
   const after = await topOf(frame);
+  const shift = after - before;
   expect(
-    Math.abs(after - before),
-    `the map frame stayed put across the load (${before} → ${after})`,
-  ).toBeLessThan(MAX_FRAME_SHIFT_PX);
+    shift,
+    `the map frame did not rise when content landed at ${at} (${before} → ${after})`,
+  ).toBeGreaterThan(-MAX_RISE_PX);
+  expect(shift, `the map frame settled only slightly at ${at} (${before} → ${after})`).toBeLessThan(
+    MAX_SETTLE_PX,
+  );
 }
 
-test('the tourist beach map holds its frame across the load (#744)', async ({ page }) => {
-  // Hold the response open so the loading state is observable rather than raced past.
+/** Hold a route open, handing back the release. */
+async function holdVenueRead(page: Page, json: object): Promise<() => void> {
   let release!: () => void;
   const held = new Promise<void>((resolve) => (release = resolve));
   await page.route(/\/api\/venues\/1(\?.*)?$/, async (route) => {
     await held;
-    await route.fulfill({ json: VENUE });
+    await route.fulfill({ json });
   });
+  return release;
+}
 
+for (const [shape, venue] of [
+  ['a venue carrying every optional header block', RICH_VENUE],
+  ['a venue carrying none of them', BARE_VENUE],
+] as const) {
+  for (const [size, viewport] of [
+    ['desktop', DESKTOP],
+    ['a phone', PHONE],
+  ] as const) {
+    test(`the tourist beach map holds its frame across the load — ${shape}, ${size} (#744)`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      const release = await holdVenueRead(page, venue);
+
+      await page.goto('/venues/1');
+
+      const loading = page.getByTestId('map-loading');
+      await expect(loading).toHaveAttribute('aria-hidden', 'true');
+      await expect(page.getByTestId('map-skeleton-tile').first()).toBeVisible();
+      // The sentence this replaced; the announcer, not the skeleton, carries the words (#741).
+      await expect(loading).not.toContainText('Loading the beach map');
+      // No fabricated row name in the rail: the skeleton states shapes, never content (#744).
+      await expect(loading.getByTestId('row-code')).toHaveCount(0);
+
+      const frame = page.getByTestId('beach-grid');
+      const before = await topOf(frame);
+
+      release();
+      await expect(page.getByTestId('set-tile').first()).toBeVisible();
+      await expect(page.getByTestId('map-loading')).toHaveCount(0);
+
+      await expectFrameHeldItsPlace(frame, before, `${shape}, ${size}`);
+    });
+  }
+}
+
+test('the tourist beach map’s loading state is axe-clean (#744)', async ({ page }) => {
+  const release = await holdVenueRead(page, RICH_VENUE);
   await page.goto('/venues/1');
 
-  const loading = page.getByTestId('map-loading');
-  await expect(loading).toHaveAttribute('aria-hidden', 'true');
   await expect(page.getByTestId('map-skeleton-tile').first()).toBeVisible();
-  // The sentence this replaced; the announcer, not the skeleton, carries the words (#741).
-  await expect(loading).not.toContainText('Loading the beach map');
   await expectNoSeriousAxeViolations(page, 'Beach map, loading');
-
-  const frame = page.getByTestId('beach-grid');
-  const before = await topOf(frame);
 
   release();
   await expect(page.getByTestId('set-tile').first()).toBeVisible();
-  await expect(page.getByTestId('map-loading')).toHaveCount(0);
-
-  await expectFrameHeldItsPlace(page, frame, before);
 });
 
-test('the operator Daily view holds its grid frame across the load (#744)', async ({ page }) => {
-  await mockWholeConsole(page);
+for (const [size, viewport] of [
+  ['desktop', DESKTOP],
+  ['a phone', PHONE],
+] as const) {
+  test(`the operator Daily view holds its grid frame across the load — ${size} (#744)`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(viewport);
+    await mockWholeConsole(page);
+    // Registered last, so it wins over the whole-console venue read and can be held open.
+    const release = await holdVenueRead(page, RICH_VENUE);
 
-  // Registered last, so it wins over the whole-console venue read and can be held open.
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => (release = resolve));
-  await page.route(/\/api\/venues\/1(\?.*)?$/, async (route) => {
-    await held;
-    await route.fulfill({ json: VENUE });
+    await page.goto('/operator/1/daily');
+    await signInAsOperator(page);
+
+    const loading = page.getByTestId('daily-loading');
+    await expect(loading).toHaveAttribute('aria-hidden', 'true');
+    await expect(page.getByTestId('daily-skeleton-tile').first()).toBeVisible();
+    await expect(loading).not.toContainText('Loading the daily view');
+    await expect(loading.getByTestId('row-code')).toHaveCount(0);
+
+    const frame = page.getByTestId('daily-grid-frame');
+    const before = await topOf(frame);
+
+    release();
+    await expect(page.getByTestId('daily-tile').first()).toBeVisible();
+    await expect(page.getByTestId('daily-loading')).toHaveCount(0);
+
+    await expectFrameHeldItsPlace(frame, before, size);
   });
+}
+
+test('the operator Daily view’s loading state is axe-clean (#744)', async ({ page }) => {
+  await mockWholeConsole(page);
+  const release = await holdVenueRead(page, RICH_VENUE);
 
   await page.goto('/operator/1/daily');
   await signInAsOperator(page);
 
-  const loading = page.getByTestId('daily-loading');
-  await expect(loading).toHaveAttribute('aria-hidden', 'true');
   await expect(page.getByTestId('daily-skeleton-tile').first()).toBeVisible();
-  await expect(loading).not.toContainText('Loading the daily view');
   await expectNoSeriousAxeViolations(page, 'Daily view, loading');
-
-  const frame = page.getByTestId('daily-grid-frame');
-  const before = await topOf(frame);
 
   release();
   await expect(page.getByTestId('daily-tile').first()).toBeVisible();
-  await expect(page.getByTestId('daily-loading')).toHaveCount(0);
-
-  await expectFrameHeldItsPlace(page, frame, before);
 });
