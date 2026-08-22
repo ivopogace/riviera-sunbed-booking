@@ -538,19 +538,27 @@ const BARE_PRICE_VENUE = {
   })),
 };
 
-/** The other extreme: a four-digit span plus a qualifier, which ellipsizes at either cap. */
+/**
+ * The other extreme: a four-digit min–max span plus a qualifier, which ellipsizes at either cap.
+ *
+ * <p>The prices alternate WITHIN each row on purpose. Priced uniformly per row — which is what
+ * this fixture used to do — `rowPriceLabel` renders one amount and the span never appears, so the
+ * widest chip the rail can carry went unexercised while the docstring claimed it. Alternating
+ * makes the row's sets differ, which is `formatMoneyRange`'s own condition for a span: the chip
+ * renders `€125–€9,995 · Front row` and measures the full 128px desktop cap.
+ */
 const WIDE_PRICE_VENUE = {
   ...RICH_VENUE,
   sets: sets().map((s, i) => ({
     ...s,
     tier: 'PREMIUM',
-    price: { minorUnits: i < 12 ? 12500 : 999500, currency: 'EUR' },
+    price: { minorUnits: i % 2 === 0 ? 12500 : 999500, currency: 'EUR' },
   })),
 };
 
-for (const [prices, venue] of [
-  ['bare amounts, under the reservation', BARE_PRICE_VENUE],
-  ['price phrases past the cap', WIDE_PRICE_VENUE],
+for (const [prices, venue, chip] of [
+  ['bare amounts, under the reservation', BARE_PRICE_VENUE, /^€30$/],
+  ['price phrases past the cap', WIDE_PRICE_VENUE, /^€125–€9,995 · Front row$/],
 ] as const) {
   for (const [size, viewport] of [
     ['desktop', DESKTOP],
@@ -568,6 +576,9 @@ for (const [prices, venue] of [
 
       release();
       await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+      // The fixture renders the vocabulary it claims; a docstring cannot notice when it stops.
+      await expect(page.getByTestId('row-price').first()).toHaveText(chip);
 
       const rail = await priceRailBeside(page, 'map-pan');
       const after = await rightEdgeOf(page, 'map-pan');

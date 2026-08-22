@@ -107,6 +107,12 @@ left, and an all-standard 14-column venue rails at 52px with 74px of slack left.
   the load, then it still slides by only what #749's left-rail reservation allows — this slice
   moves the trailing edge, never the leading one. *Pinned by:* the existing #749 matrix in
   `loading-skeletons.e2e.ts`, re-run unchanged.
+- **AC-7:** Given a **15**-column bare-amount venue at 1280 — one column past AC-5 — then it
+  pans, and its rail renders at the 92px reservation rather than its 52px floor. The boundary is
+  where the reservation puts it, and it is the same boundary a chip rail already had.
+  *Pinned by:* `venue-map-pan.e2e.ts` › "15 columns is the fits-whole boundary, for a bare price
+  rail as much as a chip (#751)". Added by H-1: AC-5 measured only the side of the boundary that
+  passes.
 
 ## Non-goals
 
@@ -137,13 +143,13 @@ is supposed to move.
 | No chip renders while loading | **preserved** | still nothing — the column reserves the width, it states no price nobody has fetched (#749, F-3) |
 | `price-col` / `price-col-placeholder` testids | **preserved** | untouched; the specs that query them keep working |
 | Zone-gap `mt-3` on the price column's cells | **preserved** | untouched — the cells keep their own classes; only the column gains a floor |
-| Tourist tile viewport is 936px while loading, 866px loaded (1280) | **changed** | 896px in both states on that fixture — the settle is what this slice removes, and the loaded state is unchanged wherever the chip already exceeds the reservation |
+| Tourist tile viewport is 936px while loading, 866px loaded (1280) | **changed** | 896px in both states **wherever the chip is at or under the reservation** — the bare-amount venue, which is what 92px is sized for. A wider chip keeps a bounded residual rather than the old full settle: the viewport narrows by `chip − 92` on load, which is exactly what AC-3 asserts. The earlier wording here said "896px in both states" without that condition, which contradicted AC-3 on the very fixture it named |
 
 ## Risk register
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The reservation trades the settle for a permanently narrower tile viewport — the same trap #749's own R-1 named, and the reason its cap-sized rail was reverted | med | med | measured, not assumed: 92px leaves 34px of the #700 fits-whole margin on the venue that actually pays (all-standard, 14 columns), and 13px on the premium fixture, which does not pay at all. AC-5 pins the paying case so a later widening cannot pass silently | claude | closed — `7b6a293` pins the paying venue |
+| R-1 | The reservation trades the settle for a permanently narrower tile viewport — the same trap #749's own R-1 named, and the reason its cap-sized rail was reverted | med | med | measured, not assumed: 92px leaves 34px of the #700 fits-whole margin on the venue that actually pays (all-standard, 14 columns), and 13px on the premium fixture, which does not pay at all. AC-5 pins the paying case so a later widening cannot pass silently | claude | closed — `7b6a293` pins the paying venue. **Re-opened and re-closed with the cost stated (H-1):** the margin figures were right, but 14 columns was the only width measured, and the boundary sits between 14 and 15. A bare-price venue at 1280 goes from **+12px (fits) to −28px (pans)** at 15 columns, so the reservation costs that venue class one column. It costs the premium fixture none: 15 already panned there before this slice (−49px, measured on `origin/main` and on this branch alike). The trade is therefore **one fits-whole boundary instead of two** — before, where a map stopped fitting depended on whether it happened to have a premium row. Pinned by `venue-map-pan.e2e.ts` › "15 columns is the fits-whole boundary…" |
 | R-2 | Reserving on all four surfaces would cost the operator grids 40px for a 41px chip | med | med | the reservation is scoped to a vocabulary, not applied to the component — `amounts` is the default, so a surface pays only by opting in (AC-2) | claude | closed — `dedb2c4` |
 | R-3 | Two inputs that must agree (`railCodes` and `priceChips`) is the defect #749's ledger warned about when it folded `truncateRailCodes` away | low | med | they are not the same question: one names the left rail's chips, the other the right rail's, and a surface can legitimately differ on them (the Daily view already does — whole labels, bare amounts). Each is independently defaulted and independently tested | claude | closed — `301cf7f` |
 | R-4 | A class string computed in TS is invisible to a naive Tailwind content scan | low | high | the same seam #749 proved: the e2e measures the rendered rail, so a class that did not compile shows up as a wrong number, not a passing class-list read | claude | closed — `npm run build`'s bundle carries `.min-w-\[92px\]`, which the dev-server e2e could not have proved |
@@ -198,9 +204,12 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `merge` — CI green, review gate run, Sonar gate green and its list read
+**Stage pointer:** `review gate — 2nd pass fixes (H-1…H-3) pushed; awaiting CI + Sonar`
 
-**Next action:** mark PR #752 ready for review, then merge — every gate below is discharged.
+**Next action:** let CI and Sonar re-run on the fix head, then merge. The 2nd pass found no
+defect in the production change — all three findings were in what the slice *claims*: an
+unpinned boundary, a ledger row contradicting its own AC, and a fixture not rendering the
+vocabulary its docstring named.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -208,7 +217,8 @@ N/A — no contract change.
 | 1 — the tourist map opts in | ✅ | `dedb2c4` |
 | 2 — measured in a real browser | ✅ | `7b6a293` |
 | review fixes — G-1…G-4 | ✅ | `499578d` |
-| CI fix — C-1, and the D-1 doc repair | ✅ | `5ac0401`, this commit |
+| CI fix — C-1, and the D-1 doc repair | ✅ | `5ac0401`, `cb488e9` |
+| review fixes — H-1…H-3 (2nd pass) | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -238,6 +248,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | G-3 | review gate | `allowed` derives from the rail the test measures, so on a narrow-chip venue it read `0 == 0` and the two bare-amount cells **survived the reservation being deleted** — half of AC-3's matrix guarded nothing | fixed — `499578d` asserts the reservation directly. Proved by mutation: with `min-w-[92px]` removed all **four** cells fail, where before only two did |
 | G-4 | review gate | The same comparison was unsigned, so a cell could not tell narrowing from widening | fixed — `499578d`. **The finding's stated consequence was wrong** and is recorded as such: it claimed the loading-only inversion "still passes", but the bare cells' allowance is 0, so a widening fails there and the matrix as a whole did catch it. Signing it is still right — each cell now carries the direction instead of relying on a sibling |
 | C-1 | CI (Repo hygiene, `2491dcb`) | RV-STYLE-1: both inline comments the G-3/G-4 fix wrote ran to two lines. The guard had run clean **before** the PR and was not re-run after the review fixes — the re-entry rule says a fix re-enters at Implement, and the guards are part of that. The `PostToolUse` hook that catches this while typing did not fire either: the file was edited through a `python3` heredoc, not the edit tools | fixed — `5ac0401`; both comments are one line and all five guards re-run clean |
+| H-1 | review gate, 2nd pass (`/code-review`, PR #752) | The 92px floor moves the #700 fits-whole boundary for bare-price venues from 15 columns to 14, and only 14 was pinned — so nothing caught it, and `venue-map-pan.e2e.ts`'s "16 is the first width that pans" was false. | fixed — this commit. Reproduced independently before acting (13/14/15/16 columns, both branches). **The finding's framing needed correcting:** that comment was *already* false for its own premium fixture on `main`, which panned at 15 too — so the slice makes the boundary uniform rather than inconsistent. Comment corrected against measurement, boundary pinned, R-1 restated |
+| H-2 | review gate, 2nd pass | The behavior-parity ledger claimed "896px in both states on that fixture", which contradicts AC-3 wherever the chip exceeds 92px — the row's own trailing clause admitted as much | fixed — this commit; the row now carries the condition |
+| H-3 | review gate, 2nd pass | `WIDE_PRICE_VENUE` was documented as "a four-digit span plus a qualifier", but each row was uniformly priced, so `formatMoneyRange` returned a single amount and the min–max span — the widest chip the rail carries, and the case this plan measured at 96.58px — was never rendered | fixed — this commit; prices alternate **within** each row, and the chip's exact text is now asserted per fixture rather than described in a docstring |
 | D-1 | self-review of the close-out commit | The close-out's own edit replaced a text range that reached past the gate note into the **Findings register**, deleting F-1 and G-1…G-4 and leaving a duplicated local-gate paragraph. Caught by reading the file back rather than trusting the edit | fixed — this commit; register restored from `f7dc573` and the duplicate dropped |
 
 
