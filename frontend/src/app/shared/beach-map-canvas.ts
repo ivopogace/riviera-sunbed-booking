@@ -123,6 +123,18 @@ export class BeachMapCanvas {
    *  tourist map's `capped-labels` ellipsizes on top of that reservation (#724), which is what
    *  makes its phone rail the one that cannot move at all. */
   readonly railCodes = input<'letters' | 'labels' | 'capped-labels'>('letters');
+  /** What the price rail's chips are — and therefore how much width THAT rail reserves, in both
+   *  the loading and the loaded state (#751). `amounts` is a formatted amount or a min–max span
+   *  (every operator surface): the rail reserves nothing beyond the cell's own 52px floor, which
+   *  an amount fits at 41px. A span does not — `€125–€9,995` measures 96.58px — so this
+   *  vocabulary keeps a bounded residual **by choice**: reserving for the worst span would spend
+   *  40px of every operator grid on a chip that is 41px wide in the ordinary venue.
+   *  `capped-phrases` is a price plus what it buys (#702, narrowed by #724 — the tourist map
+   *  alone), where the qualifier makes the wide case the ordinary one: that rail reserves the
+   *  92px phone cap. Distinct from {@link railCodes} on purpose — the two rails' vocabularies are
+   *  separate questions, and the Daily view already answers them differently (whole labels, bare
+   *  amounts). */
+  readonly priceChips = input<'amounts' | 'capped-phrases'>('amounts');
   /** Draw a placeholder grid, not a map: the rails reserve their columns but state nothing, and
    *  every cue that invites a gesture is withheld (#749). A surface renders its skeleton THROUGH
    *  the canvas to inherit `--riv-tile` and the frame geometry, which also inherits this chrome —
@@ -149,6 +161,27 @@ export class BeachMapCanvas {
    */
   protected readonly railColumnClass = computed(() =>
     this.railCodes() === 'letters' ? '' : 'min-w-[54px]',
+  );
+
+  /**
+   * The price rail's width, reserved on the same terms and for the same defect as
+   * {@link railColumnClass} — this is that defect's trailing-edge half.
+   *
+   * <p>A bare amount (40.97px) already fits the cell's `min-w-[52px]`, so what varies is only the
+   * qualifier or a four-digit price: the rail measures 52px while loading and up to its 92/128px
+   * cap once the read lands, and the tile viewport narrows from the right by the difference. No
+   * tile moves — the rail is at the trailing edge — but a map that showed six columns finishes
+   * showing five.
+   *
+   * <p><strong>92px, and a minimum, because the fits-whole guarantee is what pays for it.</strong>
+   * A 14-column venue at 1280 leaves this rail ~125.6px before that map has to pan, and 92px is
+   * the phone cap: so on a phone the rail cannot move at all (cap and reservation are one number),
+   * on a desktop the residual is at most `chip − 92`, and the venue that actually pays — bare
+   * amounts, 14 columns — keeps 34px of that margin. The cap itself is untouched; this sits under
+   * it as a floor.
+   */
+  protected readonly priceColumnClass = computed(() =>
+    this.priceChips() === 'amounts' ? '' : 'min-w-[92px]',
   );
 
   /** The #724 ellipsis, on the tourist rail only: two tiers, 48px of text and 96px from `sm`. */

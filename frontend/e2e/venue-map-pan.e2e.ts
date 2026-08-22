@@ -77,9 +77,15 @@ function wideVenue() {
 }
 
 /**
- * A venue that FITS the #700 desktop breakout: 14 columns is the width the issue names, and
- * the 1100px card renders it whole with room to spare (16 is the first width that pans). Five
- * rows keeps it under the wash scroller's 532px cap, so "no hint" means no hint on either axis.
+ * A venue that FITS the #700 desktop breakout: 14 columns is the width the issue names, and the
+ * 1100px card renders it whole — 15 is the first width that pans, measured at 1280 (14 clears by
+ * 13px, 15 misses by 49px). Five rows keeps it under the wash scroller's 532px cap, so "no hint"
+ * means no hint on either axis.
+ *
+ * <p>That boundary is now the SAME for every price vocabulary, which is what {@link bareFitVenue}
+ * pins. It did not use to be: before #751 a bare-amount rail measured 52px rather than this
+ * fixture's 112.66px chip, so such a venue fit at 15 and panned only at 16 while this one already
+ * panned at 15. The reservation costs the bare venue that extra column and buys one boundary.
  */
 function fitVenue() {
   const sets: MapSet[] = [];
@@ -152,6 +158,83 @@ function labelledVenue(id: number, name: string, frontRowLabel: string) {
   };
 }
 
+/**
+ * The fits-whole venue that actually PAYS for the price rail's 92px reservation (#751): 14
+ * columns, and every zone a bare amount, so its rail is the reservation rather than a chip. The
+ * premium front row of {@link fitVenue} rails at 112.66px and is therefore already wider than the
+ * floor — it would pass this test without the reservation ever being spent, which is exactly the
+ * fixture-shaped blind spot that lets a widened rail land unnoticed.
+ */
+function bareFitVenue() {
+  const sets: MapSet[] = [];
+  let id = 0;
+  for (let r = 1; r <= 5; r++) {
+    for (let p = 1; p <= 14; p++) {
+      id += 1;
+      sets.push({
+        id,
+        rowLabel: `Row ${r}`,
+        positionNo: p,
+        tier: 'STANDARD',
+        pool: 'ONLINE',
+        price: { minorUnits: 3000, currency: 'EUR' },
+        gridX: p,
+        gridY: r,
+        availability: 'FREE',
+      });
+    }
+  }
+  return {
+    id: 6,
+    name: 'Plain Cove',
+    beach: 'Qeparo',
+    region: 'Albanian Riviera',
+    description: 'A beach that fits a desktop screen whole, and prices every row the same.',
+    ratingTenths: 44,
+    reviewsCount: 18,
+    bookingMode: 'INSTANT',
+    fromPrice: { minorUnits: 3000, currency: 'EUR' },
+    sets,
+  };
+}
+
+/**
+ * One column past {@link bareFitVenue}: the width at which a bare-amount rail stops fitting since
+ * #751. Same shape otherwise, so the only variable between the two tests is the column count.
+ */
+function barePanVenue() {
+  const sets: MapSet[] = [];
+  let id = 0;
+  for (let r = 1; r <= 5; r++) {
+    for (let p = 1; p <= 15; p++) {
+      id += 1;
+      sets.push({
+        id,
+        rowLabel: `Row ${r}`,
+        positionNo: p,
+        tier: 'STANDARD',
+        pool: 'ONLINE',
+        price: { minorUnits: 3000, currency: 'EUR' },
+        gridX: p,
+        gridY: r,
+        availability: 'FREE',
+      });
+    }
+  }
+  return {
+    id: 7,
+    name: 'Wide Plain',
+    beach: 'Qeparo',
+    region: 'Albanian Riviera',
+    description: 'A beach one column past what a desktop screen shows whole.',
+    ratingTenths: 43,
+    reviewsCount: 11,
+    bookingMode: 'INSTANT',
+    fromPrice: { minorUnits: 3000, currency: 'EUR' },
+    sets,
+  };
+}
+
 /** The pan viewport's overflow state and the three affordances gated on it. */
 async function panState(page: Page) {
   return page.getByTestId('map-pan').evaluate((el) => {
@@ -214,6 +297,8 @@ test.beforeEach(async ({ page }) => {
       ),
     }),
   );
+  await page.route(/\/api\/venues\/6(\?.*)?$/, (route) => route.fulfill({ json: bareFitVenue() }));
+  await page.route(/\/api\/venues\/7(\?.*)?$/, (route) => route.fulfill({ json: barePanVenue() }));
 });
 
 test('a plain click on a free tile opens the booking dialog (and the map is accessible)', async ({
@@ -441,6 +526,54 @@ test('a 14-column map fits whole at a desktop viewport — no pan, no hint (#700
     .first()
     .click();
   await expect(page.getByRole('dialog')).toBeVisible();
+});
+
+test('a 14-column map fits whole even when its price rail is the reservation, not a chip (#751)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/venues/6');
+  await expect(page.getByRole('heading', { name: 'Plain Cove' })).toBeVisible();
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+  // The #700 guarantee, on the venue whose rail the reservation actually widens (52 → 92px).
+  expect((await panState(page)).overflows).toBe(false);
+  await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
+
+  // And it clears by a margin, not by a pixel — the number a future widening has to spend.
+  const slack = await page.getByTestId('map-pan').evaluate((el) => {
+    const grid = el.querySelector<HTMLElement>('[data-map-grid]')!;
+    const style = getComputedStyle(grid);
+    const content =
+      grid.scrollWidth -
+      (Number.parseFloat(style.paddingLeft) || 0) -
+      (Number.parseFloat(style.paddingRight) || 0);
+    return el.clientWidth - content;
+  });
+  expect(
+    slack,
+    `the fits-whole margin left after the 92px reservation (${slack}px)`,
+  ).toBeGreaterThan(24);
+});
+
+test('15 columns is the fits-whole boundary, for a bare price rail as much as a chip (#751)', async ({
+  page,
+}) => {
+  // The column the reservation costs: AC-5 measures 14, the side of the boundary that passes.
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/venues/7');
+  await expect(page.getByRole('heading', { name: 'Wide Plain' })).toBeVisible();
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+  expect((await panState(page)).overflows).toBe(true);
+  await expect(page.getByTestId('scroll-hint')).toBeVisible();
+
+  // The point of the reservation: the bare rail and the chip rail now agree on where that is.
+  const railWidth = (await page.getByTestId('price-col').boundingBox())!.width;
+  expect(railWidth, 'the bare rail renders at the reservation, not its 52px floor').toBeCloseTo(
+    92,
+    0,
+  );
 });
 
 test('a venue too wide for the breakout still pans at a desktop viewport (#700)', async ({

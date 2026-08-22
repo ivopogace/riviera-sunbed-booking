@@ -202,6 +202,21 @@ describe('VenueMap', () => {
     expect(el().querySelector('[data-testid="map-skeleton-tile"]')).toBeNull();
   });
 
+  it('reserves the price rail on both canvases, so the tile viewport holds its width (#751)', async () => {
+    fixture.detectChanges();
+
+    const placeholder = el().querySelector('[data-testid="price-col-placeholder"]')!;
+    expect(placeholder.classList.contains('min-w-[92px]')).toBe(true);
+
+    flushVenue();
+    await fixture.whenStable();
+
+    // Both canvases carry the vocabulary: a reservation on one alone would just reverse the slide.
+    expect(
+      el().querySelector('[data-testid="price-col"]')!.classList.contains('min-w-[92px]'),
+    ).toBe(true);
+  });
+
   it('the map skeleton is decorative and motion-reduce safe (#744)', () => {
     fixture.detectChanges();
 
