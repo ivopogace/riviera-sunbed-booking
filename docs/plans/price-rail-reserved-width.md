@@ -208,22 +208,15 @@ N/A — no contract change.
 | 1 — the tourist map opts in | ✅ | `dedb2c4` |
 | 2 — measured in a real browser | ✅ | `7b6a293` |
 | review fixes — G-1…G-4 | ✅ | `499578d` |
+| CI fix — C-1, and the D-1 doc repair | ✅ | `5ac0401`, this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
-**The local gate, run in full** (`riviera-local-debug`'s recipes): `npm run lint` clean ·
-`npm run format:check` clean · `npm test` 1642 passed / 178 files · `npm run test:e2e:a11y`
-264 passed (the whole mocked suite, not only the touched specs) · `npm run build` clean, and
-its bundle greps for `.min-w-\[92px\]`, which is what actually closes R-4 — the e2e runs
-against `npm start`, so a dev-only content scan would have measured green there · the five
-hygiene scripts (`check-inline-comments`, `check-plan-file-structure`, `check-focus-posture`,
-`check-touch-target`, `check-cloud-node-pin`) all clean over `--diff origin/main`.
-
-**Every gate, and what actually discharged it** (PR #752, head `499578d`):
+**Every gate, and what actually discharged it** (PR #752):
 
 | Gate | State | Evidence |
 |---|---|---|
-| CI | ✅ green | all 8 checks on `f7dc573`: Backend (build + test), Frontend (lint + test + build), Repo hygiene (diff-scoped), CodeQL ×3, SonarCloud scan. Re-runs on the review-fix head |
+| CI | ✅ green on `f7dc573`, then red, then fixed | all 8 checks passed on `f7dc573`. The review-fix head `2491dcb` went **red** on Repo hygiene (finding C-1, RV-STYLE-1) — fixed in `5ac0401`, awaiting that head's run |
 | Review | ✅ ran | `/code-review` over the PR diff — the fan-out, not the hand walk. **The first read of this session was wrong**: `references/pr-gates.md` §1 says in as many words that a standing "don't use the Agent tool" instruction is not grounds to skip it, and rung 1 of the ladder then succeeded on the first probe. `riviera-review-overlay`'s frontend bank layered on top. 4 findings, G-1…G-4, all fixed in `499578d` |
 | Sonar | ✅ green **and its list read** | the badge is not the check (#158). Pulled from the API with `curl` rather than `WebFetch`, so the 15-minute cache (PR #318) never applied: `issues/search` total **0**, `hotspots/search` total **0**, `new_bugs`/`new_vulnerabilities`/`new_code_smells`/`new_duplicated_blocks` all 0, new-code coverage **100.0%**, duplication **0.0%**. The false-clean read is ruled out — `new_lines` is **34**, so an analysis really ran, and `SonarCloud Code Analysis` concluded `success` |
 
@@ -233,6 +226,20 @@ clean · `npm run format:check` clean · `npm test` 1642 passed / 178 files ·
 `npm run build` clean, and its bundle greps for `.min-w-\[92px\]`, which is what actually closes
 R-4 — the e2e runs against `npm start`, so a dev-only content scan would have measured green
 there · the five hygiene scripts all clean over `--diff origin/main`.
+
+**Findings register** — one row per review-gate, Sonar-gate, or red-CI finding. Every fix
+re-enters at Implement per the `riviera-sdlc` re-entry rule.
+
+| # | Source (review / sonar / CI) | Finding | Status |
+|---|---|---|---|
+| F-1 | self-review against the overlay bank, pre-PR | AC-3/AC-4's assertion was one-sided — `movement − allowed < 1` passes just as well when the measurement reads zero | fixed in `f7dc573` — tightened to an equality. **Insufficient**: G-3 below shows the equality was still vacuous on half the matrix, which is the gap a hand walk left and the fan-out found |
+| G-1 | review gate (`/code-review`, PR #752) | The new `priceColumn` spec helper was inserted **under** `railColumn`'s doc comment, so the right rail's helper claimed to be the left one's and `railColumn` had none | fixed — `499578d` |
+| G-2 | review gate | The `priceChips` doc said the 52px floor covers an `amounts` chip. It covers an *amount* (41px); a min–max span measures 96.58px, which this plan measured and the docstring denied — a contract comment contradicting its own slice's evidence | fixed — `499578d`; the doc now states the residual and why it is a choice |
+| G-3 | review gate | `allowed` derives from the rail the test measures, so on a narrow-chip venue it read `0 == 0` and the two bare-amount cells **survived the reservation being deleted** — half of AC-3's matrix guarded nothing | fixed — `499578d` asserts the reservation directly. Proved by mutation: with `min-w-[92px]` removed all **four** cells fail, where before only two did |
+| G-4 | review gate | The same comparison was unsigned, so a cell could not tell narrowing from widening | fixed — `499578d`. **The finding's stated consequence was wrong** and is recorded as such: it claimed the loading-only inversion "still passes", but the bare cells' allowance is 0, so a widening fails there and the matrix as a whole did catch it. Signing it is still right — each cell now carries the direction instead of relying on a sibling |
+| C-1 | CI (Repo hygiene, `2491dcb`) | RV-STYLE-1: both inline comments the G-3/G-4 fix wrote ran to two lines. The guard had run clean **before** the PR and was not re-run after the review fixes — the re-entry rule says a fix re-enters at Implement, and the guards are part of that. The `PostToolUse` hook that catches this while typing did not fire either: the file was edited through a `python3` heredoc, not the edit tools | fixed — `5ac0401`; both comments are one line and all five guards re-run clean |
+| D-1 | self-review of the close-out commit | The close-out's own edit replaced a text range that reached past the gate note into the **Findings register**, deleting F-1 and G-1…G-4 and leaving a duplicated local-gate paragraph. Caught by reading the file back rather than trusting the edit | fixed — this commit; register restored from `f7dc573` and the duplicate dropped |
+
 
 ---
 
