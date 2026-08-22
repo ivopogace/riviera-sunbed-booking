@@ -407,8 +407,8 @@ exist in the DOM before the text it announces changes**?
 > branch is silent, `role="alert"` on the panel already in the diff is usually the right fix.
 > What is **not** is a live region **per row** of a list — assertive, one interruption per failure,
 > and re-announced when a re-sort moves the node; PR #743 shipped that for one round and reverted
-> it. (No *current* inventory of who carries a role lives here — that decays. The "#741 shipped
-> this on eight surfaces" note above is history, dated to its PR, and stays. Count when you review.)
+> it. This item deliberately records **no inventory of which panels carry a role today** — that
+> decays between reviews. Count when you review.
 >
 > **Ask whether the spec was mutation-checked.** Moving the region back inside its branch must fail
 > it, and so must widening `[ready]` past the loaded branch — a passing assertion that cannot fail
