@@ -270,14 +270,14 @@ a grid of buttons, not a field. Deviation from the `@angular/aria` recommendatio
 
 ## Execution status
 
-**Stage pointer:** `plan — authored, pending commit`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** commit this plan doc, open the draft PR so CI has a vehicle, then start phase 0
-(`shared/booking-date.ts` month arithmetic, test-first).
+**Next action:** add `DailyAvailability` to `shared/venue-views.ts` and the typed
+`VenueService.availabilityCalendar` read, test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Month arithmetic in `shared/booking-date.ts` | | |
+| 0 — Month arithmetic in `shared/booking-date.ts` | ✅ | see phase-0 commit |
 | 1 — `DailyAvailability` + `VenueService.availabilityCalendar` | | |
 | 2 — Day-availability vocabulary (tints, counts, accessible names) | | |
 | 3 — The calendar component: grid, month nav, fetch, degradation | | |
@@ -462,6 +462,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-22 | phase 0 — introduced ISO civil-day month arithmetic | every site that does civil-day arithmetic on a `Date` by hand, rather than through `shared/booking-date.ts` | `grep -rn "setUTCDate\|setUTCMonth\|setUTCFullYear\|toISOString()" src/app src/testing e2e --include=*.ts` | 3 outside the module: `e2e/discovery-flow.e2e.ts:176-177` (civil day via `toISOString().slice(0,10)`), `e2e/operator-requests.e2e.ts:21` (a full instant, correct usage), and the module's own docs | none — both live sites are **mocked-e2e fixtures**, which drive the built app as a black box and import nothing from `src/` on purpose (`testing/chip-fills.ts` header states the rule). No app-source site rolls its own day arithmetic, so the new helpers have no existing duplicate to absorb. |
 
 ---
 
