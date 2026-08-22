@@ -198,16 +198,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement`
+**Stage pointer:** `CI gate`
 
-**Next action:** phase 2 — the e2e viewport-stability matrix (AC-3…AC-5), red first against
-`origin/main`'s canvas.
+**Next action:** the full frontend gate locally (lint · format · unit · mocked e2e · the
+diff-scoped hygiene scripts), then the PR — see the note under the phase table.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the price rail learns its vocabulary | ✅ | `301cf7f` |
-| 1 — the tourist map opts in | ✅ | pending |
-| 2 — measured in a real browser | | |
+| 1 — the tourist map opts in | ✅ | `dedb2c4` |
+| 2 — measured in a real browser | ✅ | `7b6a293` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -266,12 +266,23 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `frontend/e2e/loading-skeletons.e2e.ts`, `frontend/e2e/venue-map-pan.e2e.ts`
 
-- [ ] **Step 1: Write the failing e2e** — AC-3/AC-4 (the tile viewport's width either side of the
-      held read, both viewports, both chip extremes) and AC-5 (the all-amounts 14-column venue).
-- [ ] **Step 2: Verify AC-3/AC-4 fail on `origin/main`'s canvas** — the pre-fix numbers in the
-      table above are that failure, recorded.
-- [ ] **Step 3–4:** run them green against the new canvas, plus the whole mocked map suite.
-- [ ] **Step 5–7:** audit, commit, status.
+- [x] **Step 1: Write the failing e2e** — AC-3/AC-4 (the tile viewport's **right edge** either
+      side of the held read, both viewports, both chip extremes) and AC-5 (the all-amounts
+      14-column venue).
+- [x] **Step 2: Verify AC-3/AC-4 fail on `origin/main`'s canvas** — committed first, then proved
+      red against that ref and restored (the #749 F-4 rule: a proof run against another ref owns
+      whatever is unstaged). Two of the four fail there, and they are the two that must:
+
+      | Case | On `origin/main` | What it proves |
+      |---|---|---|
+      | price phrases past the cap, desktop | **FAIL** — lost 76px, 36 allowed | the settle this slice removes |
+      | price phrases past the cap, a phone | **FAIL** — lost 40px, 0 allowed | the same, and that 390 closes outright |
+      | bare amounts, desktop | pass | the reverse jump (#749 G-1): reserving only while loading would push the right edge back OUT by 40px here, and this is what would catch it |
+      | bare amounts, a phone | pass | as above |
+
+- [x] **Step 3–4:** green against the new canvas — 40 passed across `loading-skeletons` +
+      `venue-map-pan`, which re-runs the whole #749 matrix and both #700 fits-whole tests.
+- [x] **Step 5–7:** audit (population unchanged), commit, status.
 
 ---
 
@@ -285,9 +296,11 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1, AC-2:** `npm test -- beach-map-canvas`.
-- [ ] **AC-3…AC-5:** the mocked Playwright suite over `loading-skeletons` + `venue-map-pan`.
-- [ ] **AC-6:** the existing #749 matrix, re-run unchanged.
+- [x] **AC-1, AC-2:** `ng test --include="**/beach-map-canvas.spec.ts"` → 32 passed; the three
+      operator surfaces' own specs → 126 passed, unchanged.
+- [x] **AC-3…AC-5:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y --
+      loading-skeletons venue-map-pan` → 40 passed.
+- [x] **AC-6:** the #749 matrix is inside that 40, re-run unchanged.
 
 ## Self-review checklist (before merge / PR)
 
