@@ -182,10 +182,11 @@ N/A — no contract change. No request, response shape, or endpoint is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement — complete; awaiting the PR + review/Sonar gates`
+**Stage pointer:** `CI gate — draft PR #748 open`
 
-**Next action:** open the draft PR for `claude/issue-744-51n4oe` so CI runs, then the
-review gate (`/code-review`) at ready-for-review.
+**Next action:** watch PR #748's CI to green, then mark it ready for review, which is
+what makes the review gate (`/code-review` + `riviera-review-overlay`) and the Sonar
+gate due.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -193,6 +194,7 @@ review gate (`/code-review`) at ready-for-review.
 | 1 — the two grid surfaces | ✅ | |
 | 2 — the two list surfaces | ✅ | |
 | 3 — mocked e2e for the grid surfaces | ✅ | |
+| — post-implement: drop the copied `.map-head` marker | ✅ | `425733f` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
