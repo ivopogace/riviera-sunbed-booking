@@ -234,8 +234,7 @@ counts only.
 | FE-4 | `venue/venue-map.ts` + `.html` | existing | routed component | adds `pickerOpen` signal + a stored trigger `ElementRef`; `selectedDate` stays the single writer | none |
 | FE-5 | `shared/venue-views.ts` | existing | published API-view vocabulary | none | none |
 | FE-6 | `shared/booking-date.ts` | existing | pure date math | none | none |
-| FE-7 | `src/styles.scss` | existing | design tokens | none | none |
-| FE-8 | `src/testing/calendar-tints.ts` | new | test-side mirror of the tint recipes | none | none |
+| FE-7 | `src/testing/calendar-tints.ts` | new | test-side mirror of the tint recipes | none | none |
 
 **Placement rationale (`riviera-frontend`):** the popover lives in `venue/` because #761 scopes out
 every other date field, so it has exactly one consumer and promoting it to `shared/` would be
@@ -270,16 +269,16 @@ a grid of buttons, not a field. Deviation from the `@angular/aria` recommendatio
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** build `venue/day-availability.ts` — the tint states, class record and
-accessible-name builder — test-first.
+**Next action:** build `venue/availability-calendar.ts` + `.html` — the grid, month navigation,
+the guarded fetch and the counts-failed degradation — test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Month arithmetic in `shared/booking-date.ts` | ✅ | see phase-0 commit |
 | 1 — `DailyAvailability` + `VenueService.availabilityCalendar` | ✅ | see phase-1 commit |
-| 2 — Day-availability vocabulary (tints, counts, accessible names) | | |
+| 2 — Day-availability vocabulary (tints, counts, accessible names) | ✅ | see phase-2 commit |
 | 3 — The calendar component: grid, month nav, fetch, degradation | | |
 | 4 — Keyboard, roving tabindex, focus trap and restore | | |
 | 5 — Wire into `venue-map`, retire the native input | | |
@@ -310,7 +309,6 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/venue/venue-map.ts|.html|.spec.ts` — the swap and the new close legs
 - `frontend/src/app/venue/venue-map.a11y.spec.ts` — header audit with the new trigger
 - `frontend/src/app/venue/venue-map-switch.spec.ts` — popover reset on in-place route change
-- `frontend/src/styles.scss` — the tint / bar / focus-ring tokens
 - `frontend/src/testing/calendar-tints.ts` — the one test-side mirror of the tint recipes
 - `frontend/e2e/availability-calendar.e2e.ts` — the CI-run mocked flow
 
@@ -429,10 +427,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [ ] **Step 1: Write the failing tests** — AC-10 (day ink AA on each tint; bar fill ≥ 3:1 vs
   track; focus ring ≥ 3:1 vs each tint), AC-11 (axe over the open popover).
 - [ ] **Step 2: Run it, verify it fails.**
-- [ ] **Step 3: Minimal implementation** — tint tokens declared **once** in the `:root,
-  [data-riv-theme='riviera']` block, overridden in porcelain only where the value must differ;
-  opaque solid tint fills so the proof needs no compositing and no per-theme case; the capacity bar
-  reusing `--riv-bar-grad` over `--riv-card-track`.
+- [ ] **Step 3: Minimal implementation** — **decided at phase 2:** the tints are literal opaque
+  hex in `day-availability.ts`'s class record and **not** `styles.scss` tokens, following
+  `venue/map-tile.ts` — the nearest exemplar, which does exactly this — because the palette belongs
+  to one component rather than crossing components, and the drift guard the repo prescribes is the
+  test-side mirror (`src/testing/calendar-tints.ts`) plus a set-equality spec, which is now in
+  place. `styles.scss` is therefore untouched by this slice. The capacity bar carries its own
+  opaque track rather than the translucent `--riv-card-track`, so its 1.4.11 proof needs no
+  compositing either.
 - [ ] **Step 4: Run it, verify it passes** — `npm run test:a11y` and
   `node scripts/check-touch-target.mjs --diff origin/main`.
 - [ ] **Step 5: Generalization-audit pass.**
