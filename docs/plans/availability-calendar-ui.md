@@ -77,7 +77,9 @@ addendum*). Branched from `origin/main` at `7d93a3f`.
   *Pinned by:* `availability-calendar.spec.ts` › the `keyboard` describe (one case per key).
 - [ ] **AC-6:** Given the picker is open, when the user Tabs past the last focusable control, then
   focus wraps inside the popover and never reaches the page behind it.
-  *Pinned by:* `availability-calendar.spec.ts` › `traps focus while open`.
+  *Pinned by:* `availability-calendar.spec.ts` › `traps focus inside the popover, wrapping past the
+  last control` + `wraps backwards from the first control on Shift+Tab`, and
+  `shared/focus-trap.spec.ts` › the `around a roving tabindex` describe.
 - [ ] **AC-7:** Given the month label changes, then it is rendered inside an `aria-live="polite"`
   region so the change is announced.
   *Pinned by:* `availability-calendar.spec.ts` › `announces the month change`.
@@ -143,7 +145,7 @@ addendum*). Branched from `origin/main` at `7d93a3f`.
 | R-3 | Popover open when a date change 404s: the header carrying the trigger is torn down, so Escape/close restores focus to a detached node and strands it on `<body>` (WCAG 2.4.3 — the repo's most-repeated bug class, RV-FE-9) | med | high | `venue-map` closes the popover on the `notFound`/`failed` transition and lets its existing `moveFocus('map-not-found' / 'map-error')` own focus; the popover restores to the trigger only on its own ordinary close legs (Escape, backdrop, selection). Pinned by a spec asserting focus lands on the error panel, not `<body>`. | claude | open |
 | R-4 | A month grid request exceeds the server's 62-day cap → `400` and an empty calendar | low | med | Requests are the month's own inclusive bounds (28–31 days); the grid's leading/trailing cells are blank, never foreign-month days. Pinned by AC-13, which asserts the requested span for a 31-day month and for February. | claude | open |
 | R-5 | `httpMock.verify()` in `venue-map.spec.ts`'s `afterEach` fails every existing test that opens the picker but never flushes the calendar read | high | low | The calendar only fetches when open, and the picker starts closed, so existing specs are unaffected; the specs that do open it flush explicitly, following the suite's existing `flushVenue(); // settle the read` idiom. | claude | open |
-| R-6 | Roving tabindex vs `shared/focus-trap.ts`: `FOCUSABLE` excludes `[tabindex="-1"]`, so 41 of 42 cells are invisible to the trap | med | med | The trap still sees the month-prev/next buttons and the one `tabindex="0"` cell, so wrapping is well-defined. Pinned by AC-6, which Tabs from the last control and asserts the wrap target. | claude | open |
+| R-6 | Roving tabindex vs `shared/focus-trap.ts` | med | med | **Materialised, and worse than predicted — fixed at phase 4.** The plan assumed `FOCUSABLE` excluded `[tabindex="-1"]`; it did not. Its `button:not([disabled])` clause matched the parked day cells by tag, so the trap's "last focusable" was a cell Tab never reaches and Tab from the real last control escaped the dialog. Fixed in the shared helper (every clause now also excludes `[tabindex="-1"]`, and disabled `select`/`textarea` are excluded for the same reason), with three cases added to `focus-trap.spec.ts`. All three existing modal consumers stay green — none has a parked focusable, so the fix is a no-op for them and closes a latent leak for any future roving widget. | claude | fixed in the phases-3-4 commit |
 | R-7 | 42 cells × the 44 px floor needs ≥ 308 px of grid width; the mocked e2e runs a 390 px viewport | med | med | Popover sized against that budget (44 px cells, ≤ 40 px total horizontal chrome) and measured by the existing `frontend/e2e/touch-targets*.e2e.ts` sweep, which is the only thing that proves a rendered box. | claude | open |
 | R-8 | New colour tokens drift between `styles.scss` and their test-side hand-copy | low | med | The tint fills live in one test-side mirror (`src/testing/calendar-tints.ts`, the `testing/chip-fills.ts` role) and the component spec pins the rendered class list as a **set**, so a value that drifts in either place fails loudly. | claude | open |
 | R-9 | `venue-map`'s in-place route change (`routeKey()` effect, `venue-map.ts:236-248`) leaves the popover holding another venue's month cache | med | med | The popover is destroyed and re-created via `@if (pickerOpen())`, and `resetForVenue` closes it; the cache is component state, so it cannot outlive the reset. Pinned by extending `venue-map-switch.spec.ts`. | claude | open |
@@ -269,18 +271,18 @@ a grid of buttons, not a field. Deviation from the `@angular/aria` recommendatio
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 5)`
 
-**Next action:** build `venue/availability-calendar.ts` + `.html` — the grid, month navigation,
-the guarded fetch and the counts-failed degradation — test-first.
+**Next action:** wire the popover into `venue-map`, retire the native date input, and update the
+two existing `onDateChange` call sites to the new signature.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Month arithmetic in `shared/booking-date.ts` | ✅ | see phase-0 commit |
 | 1 — `DailyAvailability` + `VenueService.availabilityCalendar` | ✅ | see phase-1 commit |
 | 2 — Day-availability vocabulary (tints, counts, accessible names) | ✅ | see phase-2 commit |
-| 3 — The calendar component: grid, month nav, fetch, degradation | | |
-| 4 — Keyboard, roving tabindex, focus trap and restore | | |
+| 3 — The calendar component: grid, month nav, fetch, degradation | ✅ | landed with phase 4 |
+| 4 — Keyboard, roving tabindex, focus trap and restore | ✅ | see phases-3-4 commit |
 | 5 — Wire into `venue-map`, retire the native input | | |
 | 6 — Tokens, contrast spec, a11y spec, touch-target guard | | |
 | 7 — Mocked Playwright e2e | | |
@@ -304,6 +306,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/venue/venue.service.spec.ts` — its spec (new file; the service had none)
 - `frontend/src/app/venue/day-availability.ts|.spec.ts` — tint states, classes, accessible names
 - `frontend/src/app/venue/availability-calendar.ts|.html|.spec.ts` — the popover
+- `frontend/src/app/shared/focus-trap.ts|.spec.ts` — the trap fix a roving tabindex forced
 - `frontend/src/app/venue/availability-calendar.a11y.spec.ts` — jsdom axe audit of the open popover
 - `frontend/src/app/venue/availability-calendar.contrast.spec.ts` — WCAG token maths
 - `frontend/src/app/venue/venue-map.ts|.html|.spec.ts` — the swap and the new close legs
@@ -464,6 +467,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-22 | phase 4 — fixed the focus trap's focusable selector | every site that enumerates focusable elements by selector, which is the mechanism the defect lives in (a clause matching an element the browser will not tab to) | `grep -rn 'a\[href\]\|tabindex="-1"\]\|:not(\[disabled\])' src/app src/testing e2e --include=*.ts` | 1 — `shared/focus-trap.ts` is the only such site | fixed there, so all four consumers (`booking-dialog`, `find-booking`, `payout-statement`, `availability-calendar`) get it; the three pre-existing modals' specs re-run green, since none parks a focusable. Also swept the sibling defect in the same selector — `select`/`textarea` were matched even when `disabled` — and fixed it in the same line. |
 | 2026-08-22 | phase 0 — introduced ISO civil-day month arithmetic | every site that does civil-day arithmetic on a `Date` by hand, rather than through `shared/booking-date.ts` | `grep -rn "setUTCDate\|setUTCMonth\|setUTCFullYear\|toISOString()" src/app src/testing e2e --include=*.ts` | 3 outside the module: `e2e/discovery-flow.e2e.ts:176-177` (civil day via `toISOString().slice(0,10)`), `e2e/operator-requests.e2e.ts:21` (a full instant, correct usage), and the module's own docs | none — both live sites are **mocked-e2e fixtures**, which drive the built app as a black box and import nothing from `src/` on purpose (`testing/chip-fills.ts` header states the rule). No app-source site rolls its own day arithmetic, so the new helpers have no existing duplicate to absorb. |
 
 ---

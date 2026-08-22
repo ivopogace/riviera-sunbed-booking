@@ -4,16 +4,30 @@
  * app's modals (the booking dialog, find-booking) — extracted so the a11y-critical logic lives
  * in ONE place and can't drift between copies.
  *
- * The selector excludes disabled controls; it deliberately does NOT filter on `offsetParent` — that
- * is null for a position:fixed subtree (the modal backdrop) and unavailable under jsdom, which would
- * silently disable the trap. The modals have no hidden focusables, so the selector is enough.
+ * The selector excludes what the browser will not tab to: disabled controls, and anything held at
+ * `tabindex="-1"`. The second exclusion is what makes the trap safe around a **roving tabindex** —
+ * a grid or toolbar parks its inactive members at `-1`, and a selector matching them by tag would
+ * make the trap's "last focusable" an element Tab never reaches, so Tab from the real last one
+ * would escape the dialog instead of wrapping.
+ *
+ * <p>It deliberately does NOT filter on `offsetParent` — that is null for a position:fixed subtree
+ * (the modal backdrop) and unavailable under jsdom, which would silently disable the trap. The
+ * modals have no hidden focusables, so the selector is enough.
  *
  * @param container the modal panel/host whose focusable descendants form the trap
  * @param event     the keydown event (its default is prevented only when focus wraps)
  * @param backwards true for Shift+Tab (wrap first→last), false for Tab (wrap last→first)
  */
-const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]',
+]
+  .map((candidate) => `${candidate}:not([tabindex="-1"])`)
+  .join(', ');
 
 export function trapFocusWithin(container: HTMLElement, event: Event, backwards: boolean): void {
   const focusable = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE));
