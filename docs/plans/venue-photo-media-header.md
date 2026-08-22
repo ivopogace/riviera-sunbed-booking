@@ -157,16 +157,22 @@ today.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3 complete)`
+**Stage pointer:** `implement — all phases complete, pushed; PR not yet opened`
 
-**Next action:** open the draft PR so CI fires, then run the review gate.
+**Next action:** open the draft PR for `claude/tailwind-angular-mcp-docs-g6ygn0` so CI fires
+(a branch with no PR gets no CI at all, #417), then run the review and Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Slideshow chrome: tokens + 3:1 proofs | ✅ | see git log |
-| 1 — The band becomes a media header | ✅ | see git log |
-| 2 — The warm empty state | ✅ | see git log |
-| 3 — e2e geometry + placement | ✅ | see git log |
+| 0 — Slideshow chrome: tokens + 3:1 proofs | ✅ | `b149c0f` |
+| 1 — The band becomes a media header | ✅ | `cbf313c` |
+| 2 — The warm empty state | ✅ | `cbf313c` (same template, one commit) |
+| 3 — e2e geometry + placement | ✅ | `8dd7e14` |
+
+**Local verification at `8dd7e14`:** `npm run lint`, `npm run format:check`, `npm test`
+(1651 unit tests), `npm run build`, and the full mocked Playwright suite
+(`npm run test:e2e:a11y`, 267 tests) all green, plus the five `scripts/check-*.mjs`
+hygiene guards. CI itself has not run — it fires on the `pull_request` event only.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -279,7 +285,8 @@ slice — listed because the branch's diff against `origin/main` contains them:
 - [x] **AC-2:** `npm run test:e2e:a11y -- discover-photos` → the measured-geometry case passes.
 - [x] **AC-3:** `npm test -- venue-map.spec` → the empty-state case passes.
 - [x] **AC-4:** `npm test -- photo-slideshow` → all three 1.4.11 cases pass.
-- [x] **AC-5:** `npm test` (unit) + `npm run test:e2e:a11y` (axe on both themes) → green.
+- [x] **AC-5:** `npm test` (unit) + `npm run test:e2e:a11y` (axe on both themes) → green;
+      the touch-target sweep re-measured the enlarged step controls.
 
 ## Self-review checklist (before merge / PR)
 
