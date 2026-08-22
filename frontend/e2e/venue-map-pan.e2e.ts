@@ -152,6 +152,46 @@ function labelledVenue(id: number, name: string, frontRowLabel: string) {
   };
 }
 
+/**
+ * The fits-whole venue that actually PAYS for the price rail's 92px reservation (#751): 14
+ * columns, and every zone a bare amount, so its rail is the reservation rather than a chip. The
+ * premium front row of {@link fitVenue} rails at 112.66px and is therefore already wider than the
+ * floor — it would pass this test without the reservation ever being spent, which is exactly the
+ * fixture-shaped blind spot that lets a widened rail land unnoticed.
+ */
+function bareFitVenue() {
+  const sets: MapSet[] = [];
+  let id = 0;
+  for (let r = 1; r <= 5; r++) {
+    for (let p = 1; p <= 14; p++) {
+      id += 1;
+      sets.push({
+        id,
+        rowLabel: `Row ${r}`,
+        positionNo: p,
+        tier: 'STANDARD',
+        pool: 'ONLINE',
+        price: { minorUnits: 3000, currency: 'EUR' },
+        gridX: p,
+        gridY: r,
+        availability: 'FREE',
+      });
+    }
+  }
+  return {
+    id: 6,
+    name: 'Plain Cove',
+    beach: 'Qeparo',
+    region: 'Albanian Riviera',
+    description: 'A beach that fits a desktop screen whole, and prices every row the same.',
+    ratingTenths: 44,
+    reviewsCount: 18,
+    bookingMode: 'INSTANT',
+    fromPrice: { minorUnits: 3000, currency: 'EUR' },
+    sets,
+  };
+}
+
 /** The pan viewport's overflow state and the three affordances gated on it. */
 async function panState(page: Page) {
   return page.getByTestId('map-pan').evaluate((el) => {
@@ -214,6 +254,7 @@ test.beforeEach(async ({ page }) => {
       ),
     }),
   );
+  await page.route(/\/api\/venues\/6(\?.*)?$/, (route) => route.fulfill({ json: bareFitVenue() }));
 });
 
 test('a plain click on a free tile opens the booking dialog (and the map is accessible)', async ({
@@ -441,6 +482,34 @@ test('a 14-column map fits whole at a desktop viewport — no pan, no hint (#700
     .first()
     .click();
   await expect(page.getByRole('dialog')).toBeVisible();
+});
+
+test('a 14-column map fits whole even when its price rail is the reservation, not a chip (#751)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/venues/6');
+  await expect(page.getByRole('heading', { name: 'Plain Cove' })).toBeVisible();
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+  // The #700 guarantee, on the venue whose rail the reservation actually widens (52 → 92px).
+  expect((await panState(page)).overflows).toBe(false);
+  await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
+
+  // And it clears by a margin, not by a pixel — the number a future widening has to spend.
+  const slack = await page.getByTestId('map-pan').evaluate((el) => {
+    const grid = el.querySelector<HTMLElement>('[data-map-grid]')!;
+    const style = getComputedStyle(grid);
+    const content =
+      grid.scrollWidth -
+      (Number.parseFloat(style.paddingLeft) || 0) -
+      (Number.parseFloat(style.paddingRight) || 0);
+    return el.clientWidth - content;
+  });
+  expect(
+    slack,
+    `the fits-whole margin left after the 92px reservation (${slack}px)`,
+  ).toBeGreaterThan(24);
 });
 
 test('a venue too wide for the breakout still pans at a desktop viewport (#700)', async ({
