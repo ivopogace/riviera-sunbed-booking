@@ -44,7 +44,7 @@ class VenueReadController {
 
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
-	/** Days in the calendar window when the caller names neither bound. */
+	/** Days in the calendar window when the caller does not name {@code to}. */
 	private static final int DEFAULT_WINDOW_DAYS = 14;
 
 	/** The widest window served, so one request cannot ask for years of days. */

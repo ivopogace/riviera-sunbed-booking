@@ -38,7 +38,16 @@ is sanctioned) · `riviera-java-conventions` (typed-outcome-free `Optional` port
 text-block SQL, package-private adapter, edge validation via
 `InvalidApiRequestException`) · `postgres` (one `GROUP BY booking_date` instead of a
 per-day N+1; confirmed no new index is warranted) · `riviera-local-debug` (cloud recipe:
-`gradle --no-daemon`, JDK-25 toolchain, scoped test runs only).
+`gradle --no-daemon`, JDK-25 toolchain, scoped test runs only) · `codebase-design`
+(**loaded late — RV-PROC-1, F-8**: confirmed the range read joins the existing
+`venue↔availability` seam rather than earning a fifth port, since all four methods answer
+one purposeful conversation; and its **deletion test** is what condemned the redundant
+`venueExists` query in F-6 — deleting it made no complexity reappear at any caller) ·
+`domain-modeling` (**loaded late — RV-PROC-1, F-8**: added the **Availability calendar**
+term to `CONTEXT.md`, because "availability" had come to mean two different questions —
+one set on one date, versus counts per day across a window; judged **no ADR warranted**
+against the three-part bar, the decision being additive and reversible with its rationale
+already in `RESPONSIBILITIES.md` §`venue`).
 
 **Branch:** `claude/sldc-706-3apmfc` — **cloud-session substitution** for
 `feature/venue-availability-calendar-read`, per `riviera-sdlc` §Remote/cloud session
@@ -253,6 +262,9 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-2 | review gate | The port documented "`to` must not precede `from`" but only enforced it incidentally, via `datesUntil`'s own throw — which the F-1 fix would have silently removed, leaving an inverted window answering an empty list instead of failing. | fixed — the precondition is now an explicit `IllegalArgumentException`, pinned by `…anInvertedWindowIsACallerBug` |
 | F-5 | CI (repo hygiene) | RV-STYLE-1: the reason I wrote on F-4's `DECLARED_REACHABLE` line ran to two lines, and an inline comment is one line or it is not written. **The local guard did not catch it because it never ran** — the verification command chained `check-plan-file-structure && check-inline-comments; echo "guards ok"`, the first guard failed, `&&` short-circuited the second, and the unconditional `echo` printed success anyway. | fixed — comment shortened to one line; and the verification habit corrected: each guard is now run separately with its own exit code reported, never `&&`-chained behind another and never followed by an unconditional success echo |
 | F-4 | CI (backend) | `EndpointRoleGateCoverageTest.everyMappedEndpointIsGatedOrDeclaredReachable` failed: it enumerates every mapped endpoint and requires each to be either gated in `SecurityConfig` or named in `DECLARED_REACHABLE`. The new public endpoint was neither — it relies on the `GET /api/venues/**` `permitAll` fall-through, which is exactly what that guard refuses to accept silently. **A full-suite-only failure**: every scoped batch was green, which is the blind spot `riviera-local-debug` documents. | fixed — declared in `DECLARED_REACHABLE` with its reason, the deliberate reviewable act the test asks for; reproduced red locally before the fix and green after |
+| F-8 | review gate (fan-out: prior-PR reviewer) | **RV-PROC-1** — *Skills consulted* omitted `codebase-design` and `domain-modeling`, though the routing table's backend row requires both alongside `riviera-modulith` for a new `api`/`spi` port, JDBC adapter, or controller. Evidenced as the repo's recurring miss (#447, #459, #516, #541). | fixed — both skills **loaded and applied**, not merely named: `codebase-design` re-vetted the seam and supplied the deletion-test argument behind F-6; `domain-modeling` added the **Availability calendar** glossary term and ruled out an ADR with a stated reason |
+| F-7 | review gate (fan-out: Javadoc reviewer) | `DEFAULT_WINDOW_DAYS`'s Javadoc said it applied "when the caller names neither bound", but the code uses it whenever `to` alone is omitted — a case my own `anOmittedEndDefaultsToThirteenDaysAfterTheGivenStart` test exercises, so the comment was falsified by the suite that shipped with it. | fixed — reworded to "when the caller does not name `to`" |
+| F-6 | review gate (fan-out: Javadoc reviewer) | `venueExists` was dead code. `operator_venue.venue_id` is `PRIMARY KEY REFERENCES venue(id)` and `hasActiveOwner` requires such a row, so `isVisible` true ⇒ the venue exists; short-circuit `\|\|` means the check is only ever reached when it must return `true`. It cost a round-trip per successful request and could never change the outcome. **My own single-reviewer pass had considered and kept it**, on a "makes the 404 a property of this method" argument I never verified against the fence's actual semantics. | fixed — removed; the 404 stays pinned by `unknownVenueIsEmpty`, and the fail-closed rule it now leans on is pinned by `VenueCatalogVisibilityIT.unownedVenueIsHiddenFailClosed` |
 | F-3 | review gate | Two doc/hygiene slips: the `DailyAvailability` import sat out of alphabetical order in `JdbcVenueCatalog`, and the plan's AC-1 still described a 24-set venue while the shipped fixture seeds 4. | fixed — import reordered; AC-1 rewritten to the shipped fixture |
 
 **Docs-freshness run** (close-out step 5, run pre-merge as the cheapest moment):
@@ -287,6 +299,7 @@ about photo views, `VenuePhotos`, and `payout`'s `operator::api` reads, all stil
 - `platform/src/test/java/ai/riviera/platform/VenueAvailabilityCalendarControllerTest.java` — new: AC-3, AC-4, AC-6 (web slice, root package like every other web-slice test)
 - `docs/plans/venue-availability-calendar-read.md` — this plan
 - `RESPONSIBILITIES.md` — the `venue`/`availability` contract lines the slice changes
+- `CONTEXT.md` — the **Availability calendar** glossary term (`domain-modeling`, F-8): "availability" had come to mean two different questions
 - `.claude/settings.json` — **not slice code.** Maintainer-requested allowlist entries so the
   review gate's subagents and its `gh` REST calls stop prompting: `Bash(gh api *)`,
   `Bash(gh pr diff *)`, `Bash(gh pr view *)`, `Task`. Note `gh api` is write-capable (the

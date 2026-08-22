@@ -446,8 +446,8 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		if (to.isBefore(from)) {
 			throw new IllegalArgumentException("availabilityBetween: 'to' precedes 'from'");
 		}
-		// Existence is asked separately, not inferred from the fence answering no for an unowned venue.
-		if (!visibility.isVisible(new VenueRef(id.value())) || !venueExists(id)) {
+		// The #693 fence is fail-closed for an unowned venue, and a nonexistent one is always unowned.
+		if (!visibility.isVisible(new VenueRef(id.value()))) {
 			return Optional.empty();
 		}
 		// Ids only — the calendar needs how many sets there are, not how they render or price.
@@ -471,12 +471,5 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				.map(day -> new DailyAvailability(day,
 						new AvailabilitySummary(total - taken.getOrDefault(day, 0), total)))
 				.toList());
-	}
-
-	private boolean venueExists(VenueId id) {
-		return Boolean.TRUE.equals(jdbc.sql("SELECT EXISTS(SELECT 1 FROM venue WHERE id = :id)")
-				.param("id", id.value())
-				.query(Boolean.class)
-				.single());
 	}
 }
