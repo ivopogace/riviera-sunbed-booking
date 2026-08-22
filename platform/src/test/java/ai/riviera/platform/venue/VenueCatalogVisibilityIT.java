@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The #693 catalogue fence at the {@link VenueCatalog} seam (Testcontainers Postgres): both
+ * The #693 catalogue fence at the {@link VenueCatalog} seam (Testcontainers Postgres): all three
  * tourist reads exclude a venue whose owning operator is not {@code ACTIVE}, and the operator's
  * lifecycle transitions alone flip visibility — no venue-side action anywhere in these tests.
  */
@@ -125,6 +125,18 @@ class VenueCatalogVisibilityIT {
 		lifecycle.reinstate(owner);
 		assertTrue(listedByName("viscat season venue"));
 		assertTrue(catalog.findVenueMap(venue, tomorrow()).isPresent());
+	}
+
+	@Test
+	void calendarReadIsEmptyForHiddenVenue() {
+		OperatorId owner = insertOperator("viscat-calendar", "PENDING");
+		VenueId venue = ownedVenue("viscat calendar venue", owner);
+
+		assertTrue(catalog.availabilityBetween(venue, tomorrow(), tomorrow().plusDays(6)).isEmpty());
+
+		lifecycle.approve(owner);
+
+		assertTrue(catalog.availabilityBetween(venue, tomorrow(), tomorrow().plusDays(6)).isPresent());
 	}
 
 	@Test

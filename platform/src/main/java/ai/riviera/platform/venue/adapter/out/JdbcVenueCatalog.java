@@ -24,6 +24,7 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.AvailabilitySummary;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
+import ai.riviera.platform.venue.vocabulary.DailyAvailability;
 import ai.riviera.platform.venue.vocabulary.CoverPhotoView;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
@@ -436,5 +437,38 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 
 	/** One (venue, amenity) pair from the join table, bucketed by venue for the list read. */
 	private record AmenityRow(long venueId, Amenity amenity) {
+	}
+
+	@Override
+	public Optional<List<DailyAvailability>> availabilityBetween(VenueId id, LocalDate from, LocalDate to) {
+		// The #693 fence, then existence: a hidden venue and an unknown one answer identically.
+		if (!visibility.isVisible(new VenueRef(id.value())) || !venueExists(id)) {
+			return Optional.empty();
+		}
+		// Ids only — the calendar needs how many sets there are, not how they render or price.
+		List<SetId> sets = jdbc.sql("""
+				SELECT id
+				FROM set_position
+				WHERE venue_id = :id
+				""")
+				.param("id", id.value())
+				.query(Long.class)
+				.list().stream()
+				.map(SetId::new)
+				.toList();
+
+		int total = sets.size();
+		Map<LocalDate, Integer> taken = availability.takenCountsBetween(sets, from, to);
+		return Optional.of(from.datesUntil(to.plusDays(1))
+				.map(day -> new DailyAvailability(day,
+						new AvailabilitySummary(total - taken.getOrDefault(day, 0), total)))
+				.toList());
+	}
+
+	private boolean venueExists(VenueId id) {
+		return Boolean.TRUE.equals(jdbc.sql("SELECT EXISTS(SELECT 1 FROM venue WHERE id = :id)")
+				.param("id", id.value())
+				.query(Boolean.class)
+				.single());
 	}
 }

@@ -214,15 +214,15 @@ touched. `MoneyView` does not appear on the new surface.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, phase 1 next`
+**Stage pointer:** `implement — phase 1 done, phase 2 next`
 
-**Next action:** phase 1 — write `VenueAvailabilityCalendarIT` red-first against
-`VenueCatalog.availabilityBetween`, then implement it in `JdbcVenueCatalog`.
+**Next action:** phase 2 — write `VenueAvailabilityCalendarControllerIT` red-first
+(AC-3 … AC-6), then add the endpoint + the 62-day window guard to `VenueReadController`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — SPI range read (`takenCountsBetween` + JDBC impl) | ✅ | see commit below |
-| 1 — `VenueCatalog.availabilityBetween` + `DailyAvailability` | | |
+| 0 — SPI range read (`takenCountsBetween` + JDBC impl) | ✅ | `842ebc2` |
+| 1 — `VenueCatalog.availabilityBetween` + `DailyAvailability` | ✅ | see commit below |
 | 2 — public endpoint + window validation | | |
 | 3 — close-out (docs freshness, plan finalization) | | |
 
@@ -249,6 +249,8 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueReadController.java` — the new endpoint + window validation
 - `platform/src/test/java/ai/riviera/platform/availability/AvailabilityLookupIT.java` — SPI range cases
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java` — its `SetAvailabilityLookup` fake implements the new method
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — its `VenueCatalog` stub implements the new method
+- `platform/src/test/java/ai/riviera/platform/venue/VenueCatalogVisibilityIT.java` — the #693 fence, extended to the new read
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAvailabilityCalendarIT.java` — new: AC-1, AC-2
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAvailabilityCalendarControllerIT.java` — new: AC-3 … AC-6
 - `docs/plans/venue-availability-calendar-read.md` — this plan
@@ -262,13 +264,13 @@ Skill-routing gate for what the fix touches *before* editing).
 `availability/adapter/out/JdbcSetAvailabilityLookup.java` · Test
 `platform/src/test/java/ai/riviera/platform/availability/AvailabilityLookupIT.java`
 
-- [ ] **Step 1: Write the failing test** — add to `AvailabilityLookupIT`: three sets, two
+- [x] **Step 1: Write the failing test** — add to `AvailabilityLookupIT`: three sets, two
   held on one date and one on another inside a five-day window, assert
   `takenCountsBetween` returns exactly the two dates with counts `2` and `1` (untouched
   days absent, not zero-valued), that a set held outside the window is excluded, and that
   an empty input returns an empty map without a query.
-- [ ] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*AvailabilityLookupIT*"` → FAIL (method does not exist / compile error).
-- [ ] **Step 3: Minimal implementation** — the interface method plus one grouped query:
+- [x] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*AvailabilityLookupIT*"` → FAIL (method does not exist / compile error).
+- [x] **Step 3: Minimal implementation** — the interface method plus one grouped query:
 
 ```sql
 SELECT booking_date, COUNT(*) AS taken
@@ -278,10 +280,10 @@ WHERE set_id IN (:ids)
 GROUP BY booking_date
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — see the log below.
-- [ ] **Step 6: Commit**
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 5: Generalization-audit pass** — see the log below.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -291,17 +293,17 @@ GROUP BY booking_date
 `venue/api/VenueCatalog.java` · Modify `venue/adapter/out/JdbcVenueCatalog.java` · Test
 `platform/src/test/java/ai/riviera/platform/venue/VenueAvailabilityCalendarIT.java`
 
-- [ ] **Step 1: Write the failing test** — `VenueAvailabilityCalendarIT` covering AC-1
+- [x] **Step 1: Write the failing test** — `VenueAvailabilityCalendarIT` covering AC-1
   (every day present, gaps filled at `free == total`) and AC-2 (agreement with
   `findVenueMap` for the same day), plus the #693 fence returning `Optional.empty()`.
-- [ ] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*VenueAvailabilityCalendarIT*"` → FAIL.
-- [ ] **Step 3: Minimal implementation** — visibility fence first, then an **id-only** set
+- [x] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*VenueAvailabilityCalendarIT*"` → FAIL.
+- [x] **Step 3: Minimal implementation** — visibility fence first, then an **id-only** set
   query, then one `takenCountsBetween` call, then `from..to` iterated with
   `taken.getOrDefault(day, 0)`.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — see the log below.
-- [ ] **Step 6: Commit**
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 5: Generalization-audit pass** — see the log below.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -330,6 +332,7 @@ GROUP BY booking_date
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-22 | Phase 0 | Every `SetAvailabilityLookup` method that builds an `IN (:ids)` list — the mechanism that must short-circuit on empty input rather than emit `IN ()`. | `grep -n "IN (:ids)" platform/src/main/java/ai/riviera/platform/availability/adapter/out/JdbcSetAvailabilityLookup.java` | 4 (`takenOn`, `anyClaimsFrom`, `statesOn`, the new `takenCountsBetween`) | All four short-circuit; the new one follows the existing three. No pre-existing gap. |
+| 2026-08-22 | Phase 1 | Every public method on `JdbcVenueCatalog` — the mechanism that must consult the #693 visibility fence before answering a tourist about one venue. Enumerated from the class's own method list, not from the reads that resembled the new one. | `grep -n "public .*(" …/JdbcVenueCatalog.java` then `grep -n "visibility\.\|onlyVisible" …/JdbcVenueCatalog.java` | 9 methods: 3 tourist-catalogue reads (`findVenueMap`, `listVenues`, the new `availabilityBetween`) — all three fence; 6 sibling-role reads on `VenueRates`/`SetBookingFacts` — none fence. | Correct as found. The 6 are booking/payout-time reads, and `booking` fences its own reserve paths (CLAUDE.md §`operator`) — fencing them here would hide a set from the claim path when a venue is suspended mid-booking. **One real gap closed:** `VenueCatalogVisibilityIT` is the fence's test home and covered only the two older reads, so the new one was fenced but unpinned; it now has a case there, and the class doc says "all three" rather than "both". |
 | 2026-08-22 | Phase 0 (test cross-contamination bug) | Every method whose SQL date predicate is **not** a single-day equality — the mechanism that makes its IT sensitive to rows a *sibling* test left in the shared Testcontainers DB, not just to its own seed. Found by grepping the date predicates rather than by looking at tests that resembled the one that failed. | `grep -n "booking_date" platform/src/main/java/ai/riviera/platform/availability/adapter/out/JdbcSetAvailabilityLookup.java` | 2 (`anyClaimsFrom` → `>= :from`; the new `takenCountsBetween` → `BETWEEN`). The other two (`takenOn`, `statesOn`) are `= :date` and are immune. | **Both fixed.** The new range tests seed a dedicated set trio (`calendarSets()`, `OFFSET 3`); `anyClaimsFromCountsOnlyHoldsOnOrAfterTheCutoff` was passing only because nothing yet marked its shared set on a later day — it now takes its own set (`claimProbeSet()`, `OFFSET 6`), so the next test to seed a late date cannot silently decide its result. |
 
 ---

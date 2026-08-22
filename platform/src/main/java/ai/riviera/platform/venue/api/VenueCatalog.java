@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import ai.riviera.platform.venue.vocabulary.DailyAvailability;
 import ai.riviera.platform.venue.vocabulary.VenueFilter;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueMapView;
@@ -50,4 +51,28 @@ public interface VenueCatalog {
 	 *               {@code Europe/Tirane} (invariant #6)
 	 */
 	List<VenueSummaryView> listVenues(VenueFilter filter, LocalDate date);
+
+	/**
+	 * The venue's free/total set count for <em>each</em> day in {@code [from, to]} — the calendar
+	 * read behind picking a date — or empty if no venue has that id or its owner is not
+	 * {@code ACTIVE}. Every day in the inclusive window is present, ascending; a day nobody has
+	 * touched reads {@code free == total}.
+	 *
+	 * <p>Counts come from the same {@code set_availability} state {@link #findVenueMap} overlays
+	 * (invariant #2), so the calendar and the map cannot disagree about a day. Like the discovery
+	 * card's count, {@code total} spans both pools; the online-pool restriction (invariant #3)
+	 * applies later, at the map/claim.
+	 *
+	 * <p><strong>A snapshot, never a hold.</strong> A day reporting free capacity may be full by
+	 * the time a claim is attempted — the claim decides, not this read — and it answers past days
+	 * as readily as future ones: it reports availability, not bookability. The booking cutoff
+	 * (invariant #4) stays enforced where it already is.
+	 *
+	 * @param id   the venue
+	 * @param from the first day, inclusive, a {@code LocalDate} in {@code Europe/Tirane}
+	 *             (invariant #6)
+	 * @param to   the last day, inclusive; must not precede {@code from} (the caller bounds the
+	 *             window — the REST edge caps it and rejects an inverted one)
+	 */
+	Optional<List<DailyAvailability>> availabilityBetween(VenueId id, LocalDate from, LocalDate to);
 }
