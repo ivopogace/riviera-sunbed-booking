@@ -32,19 +32,29 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * downward as real content lands.
  *
  * <p>`MAX_RISE_PX` is therefore tight — it is the whole claim, and a skeleton that starts
- * overshooting a minimal header trips it immediately. `MAX_SETTLE_PX` is the loose half: it only
+ * overshooting the minimal header trips it immediately. `MAX_SETTLE_PX` is the loose half: it only
  * has to sit above the conditional content's own height, which is what the frame settles by when a
- * venue turns out to carry all of it. Both are read off measurement, not chosen — on these fixtures
- * the frame settles 15.6px (bare, desktop), 38.7px (bare, phone), 81.2px (rich, desktop) and
- * 104.3px (rich, phone), and rises in no case at all. `MAX_SETTLE_PX` keeps a wider margin over
- * that worst case than the numbers strictly need — it is the half that does not carry the claim,
- * and font-metric drift on a browser bump should not turn it amber.
+ * venue turns out to carry all of it, and it keeps a wide margin so font-metric drift on a browser
+ * bump cannot turn the half that carries no claim amber.
+ *
+ * <p><strong>The guarantee covers the frame's own top edge, and deliberately stops there.</strong>
+ * What sits *below* the map card moves with the map's real size, and that is unknowable before the
+ * read: the placeholder grid is four rows because that is what the bulk generator makes, so a
+ * two-row venue lifts the Daily view's arrivals card ~114px, and a venue with no layout at all
+ * renders an empty-state panel instead of a grid. Both were measured; neither is a defect a
+ * skeleton can design away, and asserting otherwise would encode a promise this cannot keep.
+ *
+ * <p>The three venue shapes are chosen to bracket the conditional content rather than to sample it:
+ * one carrying every optional block, one carrying none, and one whose owner has drawn no layout at
+ * all — the last is what catches a skeleton that reserves height for the availability bar or the
+ * grid, both of which that venue's loaded page does not render. Measured settle, no rise anywhere:
+ * 89.2 / 155.3px (rich, desktop / phone), 23.6 / 89.7px (bare), 11.1 / 53.2px (no layout).
  *
  * <p>Neither bound is what catches the regression #744 fixed: under the sentence these replaced
  * there is no frame to measure at all, so `topOf` fails before either is consulted.
  */
-const MAX_RISE_PX = 16;
-const MAX_SETTLE_PX = 136;
+const MAX_RISE_PX = 4;
+const MAX_SETTLE_PX = 180;
 
 const DESKTOP = { width: 1280, height: 720 };
 const PHONE = { width: 390, height: 844 };
@@ -89,6 +99,14 @@ const BARE_VENUE = {
   reviewsCount: 0,
 };
 
+/**
+ * The third shape, and the one that catches an over-reserving skeleton: a venue whose owner has
+ * not drawn a layout yet (#717). Its overview card drops the availability bar and its map card
+ * drops the grid for the empty-state slot, so any placeholder the skeleton draws for either is
+ * height the frame loses on load.
+ */
+const EMPTY_VENUE = { ...BARE_VENUE, sets: [], fromPrice: null };
+
 /** The viewport-relative top edge of a frame, which is what a layout jump moves. */
 async function topOf(frame: Locator): Promise<number> {
   const box = await frame.boundingBox();
@@ -119,9 +137,10 @@ async function holdVenueRead(page: Page, json: object): Promise<() => void> {
   return release;
 }
 
-for (const [shape, venue] of [
-  ['a venue carrying every optional header block', RICH_VENUE],
-  ['a venue carrying none of them', BARE_VENUE],
+for (const [shape, venue, settled] of [
+  ['a venue carrying every optional header block', RICH_VENUE, 'set-tile'],
+  ['a venue carrying none of them', BARE_VENUE, 'set-tile'],
+  ['a venue with no layout drawn yet', EMPTY_VENUE, 'map-empty'],
 ] as const) {
   for (const [size, viewport] of [
     ['desktop', DESKTOP],
@@ -145,7 +164,7 @@ for (const [shape, venue] of [
       const before = await topOf(frame);
 
       release();
-      await expect(page.getByTestId('set-tile').first()).toBeVisible();
+      await expect(page.getByTestId(settled).first()).toBeVisible();
       await expect(page.getByTestId('map-loading')).toHaveCount(0);
 
       await expectFrameHeldItsPlace(frame, before, `${shape}, ${size}`);
@@ -238,7 +257,6 @@ for (const [size, viewport] of [
 
     const frame = page.getByTestId('daily-grid-frame');
     const before = await topOf(frame);
-
     release();
     await expect(page.getByTestId('daily-tile').first()).toBeVisible();
     await expect(page.getByTestId('daily-loading')).toHaveCount(0);
@@ -246,6 +264,25 @@ for (const [size, viewport] of [
     await expectFrameHeldItsPlace(frame, before, size);
   });
 }
+
+test('the Daily view’s grid frame holds for a venue with no mapped sets (#744)', async ({
+  page,
+}) => {
+  await mockWholeConsole(page);
+  const release = await holdVenueRead(page, EMPTY_VENUE);
+
+  await page.goto('/operator/1/daily');
+  await signInAsOperator(page);
+  await expect(page.getByTestId('daily-skeleton-tile').first()).toBeVisible();
+
+  const frame = page.getByTestId('daily-grid-frame');
+  const before = await topOf(frame);
+
+  release();
+  await expect(page.getByTestId('daily-map-empty')).toBeVisible();
+
+  await expectFrameHeldItsPlace(frame, before, 'no mapped sets');
+});
 
 test('the operator Daily view’s loading state is axe-clean (#744)', async ({ page }) => {
   await mockWholeConsole(page);

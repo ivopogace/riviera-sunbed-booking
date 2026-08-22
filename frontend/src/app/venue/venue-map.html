@@ -277,10 +277,9 @@
           appSkeletonBlock
           class="bg-(--riv-track-bg) mb-[13px] block h-[25px] w-[124px] rounded-full"
         ></span>
-        <!-- Two lines below sm: at a phone width the venue name itself wraps, and a one-line stand-in under-reads the header by a whole line. -->
         <span
           appSkeletonBlock
-          class="bg-(--riv-track-bg) mb-[7px] block h-[76px] w-4/5 rounded-[10px] sm:h-[clamp(33px,5.1vw,49px)]"
+          class="bg-(--riv-track-bg) mb-[7px] block h-[clamp(33px,5.1vw,49px)] w-4/5 rounded-[10px]"
         ></span>
         <span
           appSkeletonBlock
@@ -311,12 +310,12 @@
         appCardGlass
         data-testid="map-skeleton-overview"
       >
+        <!-- No availability bar: the loaded card gates it on totalCount(), so a stand-in makes the frame RISE on a venue with no layout yet (#717). -->
         <div class="pt-1 px-0.5 pb-[14px]">
           <span
             appSkeletonBlock
             class="bg-(--riv-card-track) mb-2 block h-[28px] w-3/5 rounded-[6px]"
           ></span>
-          <span appSkeletonBlock class="bg-(--riv-card-track) block h-2 w-full rounded-full"></span>
         </div>
         <span
           appSkeletonBlock
