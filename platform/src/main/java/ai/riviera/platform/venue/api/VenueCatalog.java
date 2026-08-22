@@ -72,8 +72,9 @@ public interface VenueCatalog {
 	 * @param id   the venue
 	 * @param from the first day, inclusive, a {@code LocalDate} in {@code Europe/Tirane}
 	 *             (invariant #6)
-	 * @param to   the last day, inclusive; must not precede {@code from} (the caller bounds the
-	 *             window — the REST edge caps it and rejects an inverted one)
+	 * @param to   the last day, inclusive; must not precede {@code from} — an inverted window is a
+	 *             caller bug and throws {@link IllegalArgumentException}. Bounding the window is
+	 *             the caller's job; the REST edge caps it and rejects an inverted one as a 400.
 	 */
 	Optional<List<DailyAvailability>> availabilityBetween(VenueId id, LocalDate from, LocalDate to);
 }

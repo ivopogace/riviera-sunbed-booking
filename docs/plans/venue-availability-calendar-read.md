@@ -49,10 +49,9 @@ created.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a venue with 24 sets and 3 of them held on 2026-11-02 and 1 on
-  2026-11-04, when the calendar read is asked for `[2026-11-01, 2026-11-05]`, then it
-  returns 5 ascending entries whose `free`/`total` are `24/24, 21/24, 24/24, 23/24, 24/24`
-  — days with no availability rows included at `free == total`.
+- [ ] **AC-1:** Given a venue with 4 sets, 2 of them held on one day of a 5-day window and 1
+  on another, when the calendar read runs, then it returns 5 ascending entries reading
+  `4/4, 2/4, 4/4, 3/4, 4/4` — days with no availability rows included at `free == total`.
   *Pinned by:* `VenueAvailabilityCalendarIT.countsEveryDayInTheWindowIncludingUntouchedOnes`
 - [ ] **AC-2:** Given any day in the window, when the calendar read and `findVenueMap` are
   both asked about that day, then their free counts agree — one source of truth, no second
@@ -218,10 +217,19 @@ touched. `MoneyView` does not appear on the new surface.
 
 ## Execution status
 
-**Stage pointer:** `review gate — PR #762 marked ready for review`
+**Stage pointer:** `review gate — run (degraded, declared); findings F-1..F-3 fixed; Sonar gate next`
 
-**Next action:** run `/code-review` with `riviera-review-overlay` layered on, register any
-findings below, then pull the Sonar new-issue list and clear it.
+**Next action:** pull the SonarCloud new-issue + duplication list for PR #762 and clear
+every entry, then finalize this doc and merge.
+
+> **Review-gate degradation, declared rather than substituted silently.** The
+> `code-review` plugin's procedure is a parallel subagent fan-out, and this session is
+> operating under an instruction not to spawn subagents. The bank was therefore walked by
+> a single reviewer (this session) against `riviera-review-overlay`'s
+> `backend-conventions.md` + `fe-be-contract.md`, item by item, rather than by the
+> plugin's five independent agents. That is a real review — it produced F-1..F-3 — but it
+> is **not** the plugin's fan-out, so per `riviera-sdlc` `references/pr-gates.md` §1 the
+> PR's review-gate checkbox stays **unticked** and the degradation is stated in the PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -238,7 +246,9 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| *(none yet — the review and Sonar gates have not run)* | | | |
+| F-1 | review gate | `availabilityBetween` built its day list with `from.datesUntil(to.plusDays(1))`. At `from == to == LocalDate.MAX` the window passes the edge's 62-day cap, then the exclusive `to + 1` throws `DateTimeException` — a crafted request turning a 400-class input into a 500. | fixed — counts forward with `LongStream.range(0, days)`, which cannot overflow; pinned by `VenueAvailabilityCalendarIT.widestWindowIsCountedWithoutOverflowing` |
+| F-2 | review gate | The port documented "`to` must not precede `from`" but only enforced it incidentally, via `datesUntil`'s own throw — which the F-1 fix would have silently removed, leaving an inverted window answering an empty list instead of failing. | fixed — the precondition is now an explicit `IllegalArgumentException`, pinned by `…anInvertedWindowIsACallerBug` |
+| F-3 | review gate | Two doc/hygiene slips: the `DailyAvailability` import sat out of alphabetical order in `JdbcVenueCatalog`, and the plan's AC-1 still described a 24-set venue while the shipped fixture seeds 4. | fixed — import reordered; AC-1 rewritten to the shipped fixture |
 
 **Docs-freshness run** (close-out step 5, run pre-merge as the cheapest moment):
 `origin/main..HEAD`, **5 findings, all patched in `b770a31`** —

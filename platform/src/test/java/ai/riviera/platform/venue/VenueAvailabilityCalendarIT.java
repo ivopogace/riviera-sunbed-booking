@@ -20,6 +20,7 @@ import ai.riviera.platform.venue.vocabulary.SetView;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -139,6 +140,26 @@ class VenueAvailabilityCalendarIT {
 		assertEquals(List.of(new DailyAvailability(day, new AvailabilitySummary(TOTAL_SETS, TOTAL_SETS))),
 				catalog.availabilityBetween(venue, day, day).orElseThrow(),
 				"from == to is a legal one-day window, not an empty one");
+	}
+
+	@Test
+	void widestWindowIsCountedWithoutOverflowing() {
+		LocalDate from = LocalDate.of(2027, 7, 1);
+
+		List<DailyAvailability> days = catalog.availabilityBetween(venue, from, from.plusDays(61))
+				.orElseThrow();
+
+		assertEquals(62, days.size(), "the edge's widest legal window is served whole");
+		assertEquals(from.plusDays(61), days.getLast().date());
+	}
+
+	@Test
+	void anInvertedWindowIsACallerBug() {
+		LocalDate day = LocalDate.of(2027, 8, 1);
+
+		assertThrows(IllegalArgumentException.class,
+				() -> catalog.availabilityBetween(venue, day, day.minusDays(1)),
+				"the port states the precondition; it must not answer an impossible window");
 	}
 
 	@Test

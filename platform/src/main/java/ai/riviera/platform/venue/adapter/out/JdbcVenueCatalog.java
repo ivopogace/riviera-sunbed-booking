@@ -1,6 +1,7 @@
 package ai.riviera.platform.venue.adapter.out;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -13,6 +14,7 @@ import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -24,8 +26,8 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.AvailabilitySummary;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
-import ai.riviera.platform.venue.vocabulary.DailyAvailability;
 import ai.riviera.platform.venue.vocabulary.CoverPhotoView;
+import ai.riviera.platform.venue.vocabulary.DailyAvailability;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.PhotoSurface;
@@ -441,7 +443,10 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 
 	@Override
 	public Optional<List<DailyAvailability>> availabilityBetween(VenueId id, LocalDate from, LocalDate to) {
-		// The #693 fence, then existence: a hidden venue and an unknown one answer identically.
+		if (to.isBefore(from)) {
+			throw new IllegalArgumentException("availabilityBetween: 'to' precedes 'from'");
+		}
+		// Existence is asked separately, not inferred from the fence answering no for an unowned venue.
 		if (!visibility.isVisible(new VenueRef(id.value())) || !venueExists(id)) {
 			return Optional.empty();
 		}
@@ -459,7 +464,10 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 
 		int total = sets.size();
 		Map<LocalDate, Integer> taken = availability.takenCountsBetween(sets, from, to);
-		return Optional.of(from.datesUntil(to.plusDays(1))
+		// Counted forward from `from`; an exclusive `to + 1` would throw at LocalDate.MAX.
+		long days = ChronoUnit.DAYS.between(from, to) + 1;
+		return Optional.of(LongStream.range(0, days)
+				.mapToObj(from::plusDays)
 				.map(day -> new DailyAvailability(day,
 						new AvailabilitySummary(total - taken.getOrDefault(day, 0), total)))
 				.toList());
