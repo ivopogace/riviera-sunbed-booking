@@ -309,19 +309,33 @@ test('the operator Daily view’s loading state is axe-clean (#744)', async ({ p
  * states rather than only sizing the placeholder. Sizing only the placeholder is strictly worse: a
  * venue whose rows are named `A` would then slide the grid the other way.
  *
- * <p><strong>The reservation is a minimum, and the residual is the price of that.</strong> Pinning
- * the rail at the #724 cap would end the slide outright, and the desktop map cannot afford it: the
- * fits-whole guarantee (`venue-map-pan.e2e.ts`, #700) clears its viewport by ~31px on a 14-column
- * venue, and a cap-sized rail spends 39px of it — measured, as a pan the map is not supposed to
- * need. So the rail reserves the 54px mobile cap, and a label wider than that still widens it.
+ * <p><strong>These assert the mechanism, not a fixture.</strong> The reservation is a 54px
+ * MINIMUM, so the residual slide is exactly `max(0, loadedRailWidth − 54)` — computed here from
+ * the rail actually rendered rather than compared against a bound tuned to one venue, which is the
+ * trap this file's own #744 header warns about. Before the fix the same quantity was
+ * `loadedRailWidth − 24`, so the reservation removes 30px of slide from every venue on every
+ * surface, and removes all of it wherever the loaded rail fits the reservation.
  *
- * <p>Measured either side of the release: **0.00px** (tourist, phone — the one case the #724 cap
- * closes completely, since no label can exceed the reservation there) and **9.14px** on the other
- * three, down from 30.00 / 39.14 / 39.14 / 39.14px before. What the rail SAYS while loading is the
- * unit specs' claim; what it MEASURES is only knowable here.
+ * <p><strong>Why a minimum and not the cap.</strong> Pinning the rail at the #724 cap would end
+ * the slide outright, and the desktop map cannot afford it: the fits-whole guarantee
+ * (`venue-map-pan.e2e.ts`, #700) clears its viewport by ~31px on a 14-column venue, and a
+ * cap-sized rail spends 39px of it — measured, as a pan that map is not supposed to need. So the
+ * residual survives, and these tests state its size rather than hide it: 0.00px wherever the rail
+ * fits the reservation (every tourist phone case, since #724 caps the label there), 9.14px on the
+ * `Front row` fixture, and as much as the label is wide on an operator rail, which renders labels
+ * whole by that same #724 decision.
+ *
+ * <p>What the rail SAYS while loading is the unit specs' claim; what it MEASURES is only knowable
+ * here.
  */
-const MAX_RAIL_SLIDE_PX = 1;
-const MAX_LABEL_RAIL_SLIDE_PX = 12;
+const RAIL_RESERVE_PX = 54;
+
+/** The rail column the tile viewport sits beside — the element whose width moves the grid. */
+function railWidthBeside(page: Page, viewportTestid: string): Promise<number> {
+  return page
+    .getByTestId(viewportTestid)
+    .evaluate((el) => el.parentElement!.firstElementChild!.getBoundingClientRect().width);
+}
 
 /** The tile viewport's left edge — the pixel a widening rail pushes. */
 async function leftEdgeOf(page: Page, testid: string): Promise<number> {
@@ -335,55 +349,97 @@ function overflowsHorizontally(page: Page, testid: string): Promise<boolean> {
   return page.getByTestId(testid).evaluate((el) => el.scrollWidth > el.clientWidth + 1);
 }
 
-for (const [size, viewport] of [
-  ['desktop', DESKTOP],
-  ['a phone', PHONE],
-] as const) {
-  test(`the tourist beach map’s rail holds its width across the load — ${size} (#749)`, async ({
-    page,
-  }) => {
-    await page.setViewportSize(viewport);
-    const release = await holdVenueRead(page, RICH_VENUE);
-
-    await page.goto('/venues/1');
-    await expect(page.getByTestId('map-skeleton-tile').first()).toBeVisible();
-    const before = await leftEdgeOf(page, 'map-skeleton-grid');
-
-    release();
-    await expect(page.getByTestId('set-tile').first()).toBeVisible();
-
-    const after = await leftEdgeOf(page, 'map-pan');
-    // A phone caps every label at the reservation, so this is the case that reaches zero.
-    const bound = size === 'a phone' ? MAX_RAIL_SLIDE_PX : MAX_LABEL_RAIL_SLIDE_PX;
-    expect(
-      Math.abs(after - before),
-      `the tile grid barely moved when the map landed at ${size} (${before} → ${after})`,
-    ).toBeLessThan(bound);
-  });
-
-  test(`the Daily view’s rail holds its width across the load — ${size} (#749)`, async ({
-    page,
-  }) => {
-    await page.setViewportSize(viewport);
-    await mockWholeConsole(page);
-    const release = await holdVenueRead(page, RICH_VENUE);
-
-    await page.goto('/operator/1/daily');
-    await signInAsOperator(page);
-    await expect(page.getByTestId('daily-skeleton-tile').first()).toBeVisible();
-    const before = await leftEdgeOf(page, 'daily-skeleton-grid');
-
-    release();
-    await expect(page.getByTestId('daily-tile').first()).toBeVisible();
-
-    const after = await leftEdgeOf(page, 'daily-grid');
-    // Never zero here: #724 keeps operator labels whole, so the reservation can only be a minimum.
-    expect(
-      Math.abs(after - before),
-      `the tile grid barely moved when the day landed at ${size} (${before} → ${after})`,
-    ).toBeLessThan(MAX_LABEL_RAIL_SLIDE_PX);
-  });
+/**
+ * The slide the reservation still allows, and the one it removed — both read off the rail that
+ * actually rendered, so a longer row name changes the expectation instead of breaking the test.
+ */
+async function expectSlideIsWhatTheReservationAllows(
+  page: Page,
+  before: number,
+  loadedViewportTestid: string,
+  at: string,
+): Promise<void> {
+  const rail = await railWidthBeside(page, loadedViewportTestid);
+  const after = await leftEdgeOf(page, loadedViewportTestid);
+  const allowed = Math.max(0, rail - RAIL_RESERVE_PX);
+  expect(
+    Math.abs(after - before) - allowed,
+    `at ${at} the grid slid only what a ${rail}px rail leaves over the reservation ` +
+      `(${before} → ${after}; ${allowed}px allowed, ${rail - 24}px before the fix)`,
+  ).toBeLessThan(1);
 }
+
+/** The other extreme of the rail's own vocabulary: names at the length the schema allows. */
+const LONG_LABEL_VENUE = {
+  ...RICH_VENUE,
+  sets: sets().map((s) => ({
+    ...s,
+    rowLabel: s.rowLabel === 'Front row' ? 'Front row · Sea view · Cabanas' : 'Row 2 · Promenade',
+  })),
+};
+
+for (const [labels, venue] of [
+  ['short row names', RICH_VENUE],
+  ['row names at the length the editor allows', LONG_LABEL_VENUE],
+] as const) {
+  for (const [size, viewport] of [
+    ['desktop', DESKTOP],
+    ['a phone', PHONE],
+  ] as const) {
+    test(`the tourist beach map’s rail holds its width across the load — ${labels}, ${size} (#749)`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      const release = await holdVenueRead(page, venue);
+
+      await page.goto('/venues/1');
+      await expect(page.getByTestId('map-skeleton-tile').first()).toBeVisible();
+      const before = await leftEdgeOf(page, 'map-skeleton-grid');
+
+      release();
+      await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+      await expectSlideIsWhatTheReservationAllows(page, before, 'map-pan', `${labels}, ${size}`);
+    });
+
+    test(`the Daily view’s rail holds its width across the load — ${labels}, ${size} (#749)`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await mockWholeConsole(page);
+      const release = await holdVenueRead(page, venue);
+
+      await page.goto('/operator/1/daily');
+      await signInAsOperator(page);
+      await expect(page.getByTestId('daily-skeleton-tile').first()).toBeVisible();
+      const before = await leftEdgeOf(page, 'daily-skeleton-grid');
+
+      release();
+      await expect(page.getByTestId('daily-tile').first()).toBeVisible();
+
+      await expectSlideIsWhatTheReservationAllows(page, before, 'daily-grid', `${labels}, ${size}`);
+    });
+  }
+}
+
+/** The one case the #724 cap closes outright: a phone, where no label can exceed the reservation. */
+test('the tourist beach map’s phone rail does not move at all (#749)', async ({ page }) => {
+  await page.setViewportSize(PHONE);
+  const release = await holdVenueRead(page, LONG_LABEL_VENUE);
+
+  await page.goto('/venues/1');
+  await expect(page.getByTestId('map-skeleton-tile').first()).toBeVisible();
+  const before = await leftEdgeOf(page, 'map-skeleton-grid');
+
+  release();
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+  const after = await leftEdgeOf(page, 'map-pan');
+  expect(
+    Math.abs(after - before),
+    `the longest allowed label truncates to the reservation, so nothing moved (${before} → ${after})`,
+  ).toBeLessThan(1);
+});
 
 for (const [surface, tileTestid, gridTestid, open] of [
   ['the tourist beach map', 'map-skeleton-tile', 'map-skeleton-grid', 'tourist'],

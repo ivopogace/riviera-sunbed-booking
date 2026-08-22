@@ -59,9 +59,21 @@ does not have. `venue-map-pan.e2e.ts`'s fits-whole guarantee (#700) clears its v
 a 14-column venue, so the cap-sized rail put that map into a pan; CI caught it on the phase-1/2
 commit, and the local mocked suite had caught it a few minutes earlier. The reservation is
 therefore the **54px mobile cap as a minimum**: it holds the phone rail exactly where it lands
-today, leaves ~13px of the fits-whole margin, and cuts the slide to 9.14px where a label is wider
-than the reservation. Zero everywhere is only buyable with the #724 caps themselves, which is a
-product call and a Non-goal.
+today and leaves ~13px of the fits-whole margin. Being a minimum, it removes a **flat 30px** of
+slide (the placeholder chip's 24px becomes 54px) rather than all of it — measured across both
+label extremes:
+
+| Surface / viewport | Row names | Loaded rail | Slide before → after |
+|---|---|---|---|
+| Tourist, 1280 | `Front row` | 63.14px | 39.14 → **9.14px** |
+| Tourist, 390 | `Front row` | 54.00px (capped) | 30.00 → **0.00px** |
+| Tourist, 1280 | 30 chars | 102.00px (capped) | 78.00 → **48.00px** |
+| Tourist, 390 | 30 chars | 54.00px (capped) | 30.00 → **0.00px** |
+| Daily, 1280 | `Front row` | 63.14px | 39.14 → **9.14px** |
+| Daily, 1280 | 30 chars | 188.64px (whole) | 164.64 → **134.64px** |
+
+Zero everywhere is only buyable with the #724 caps themselves, which is a product call and a
+Non-goal — and on the operator rails not even then, since #724 renders their labels whole.
 
 Two things the issue did not state, both found here: the tourist rail's mobile jump stops
 at 54px because the #724 cap truncates `Front row` (48px of text + 6px of chip padding) —
@@ -76,10 +88,10 @@ without sliding the tiles; out of scope, Non-goals.
       contains any text (both rails keep their columns under placeholder testids). *Pinned by:* `beach-map-canvas.spec.ts` › "a loading canvas states
       no row name, no price rail and no pan hint".
 - [ ] **AC-2:** Given a canvas in `loading` mode whose grid overflows its viewport, when the
-      overflow is measured, then the pan hint is absent and the viewport carries no
-      `cursor-grab` — while `.pannable` (the measured edge fade) still applies.
-      *Pinned by:* `beach-map-canvas.spec.ts` › "a loading canvas offers no gesture it cannot
-      accept".
+      overflow is measured, then the pan hint carries no text a reader can act on and the
+      viewport carries no `cursor-grab` — while `.pannable` (the measured edge fade) still
+      applies and the hint's own line stays reserved. *Pinned by:* `beach-map-canvas.spec.ts` ›
+      "offers no gesture its inert container cannot accept while loading (#749)".
 - [ ] **AC-3:** Given either label vocabulary, when the rail renders, then its column reserves
       `min-w-[54px]` in both the loading and the loaded state, and the loading chip fills exactly
       that reservation. *Pinned by:* `beach-map-canvas.spec.ts` › "reserves the same rail width
@@ -89,15 +101,15 @@ without sliding the tiles; out of scope, Non-goals.
       so a placeholder letter chip and a real letter chip are the same width. *Pinned by:*
       `beach-map-canvas.spec.ts` › "a letters rail reserves nothing, so the editors are
       unchanged".
-- [ ] **AC-5:** Given the tourist beach map at 390, when the venue read lands, then the tile
-      viewport's left edge has not moved at all (≤1px — the #724 cap is the reservation there,
-      so no label can exceed it); at 1280 it moves by at most the residual a wider label leaves
-      (≤12px, was 39.14px). *Pinned by:* `loading-skeletons.e2e.ts` › "the tourist beach map's
-      rail holds its width across the load (#749)".
-- [ ] **AC-6:** Given the operator Daily view at either viewport, when the read lands, then the
-      tile viewport's left edge moves by at most that same residual (≤12px, was 39.14px) — never
-      zero, because #724 keeps operator labels whole. *Pinned by:* `loading-skeletons.e2e.ts` ›
-      "the Daily view's rail holds its width across the load (#749)".
+- [ ] **AC-5:** Given either surface, either viewport, and row names at either extreme of the
+      length the editor allows, when the read lands, then the tile grid slides by exactly
+      `max(0, loadedRailWidth − 54)` — 30px less than it did, whatever the venue. *Pinned by:*
+      `loading-skeletons.e2e.ts` › "…rail holds its width across the load (#749)" ×8, each
+      computing the expectation from the rail that actually rendered.
+- [ ] **AC-6:** Given the tourist beach map at 390 and the longest row name the editor allows,
+      when the read lands, then the tile grid does not move at all (≤1px) — the one case the
+      #724 cap closes outright. *Pinned by:* `loading-skeletons.e2e.ts` › "the tourist beach
+      map's phone rail does not move at all (#749)".
 - [ ] **AC-7:** Given the tourist map and the Daily view while loading at 390, when the
       placeholder grid overflows, then no `scroll-hint` is on the page. *Pinned by:*
       `loading-skeletons.e2e.ts` › "no skeleton instructs a gesture its inert container
@@ -128,7 +140,7 @@ is not supposed to move except where the plan says it does.
 | Rail column width is content-derived everywhere | **changed** | `letters` keeps it (editors unchanged, AC-4); `labels`/`capped-labels` reserve a width so the grid stops sliding (the ticket's item 4) |
 | Tourist chip truncates at 48px / 96px of text | **preserved** | untouched; the reservation sits under the cap as a floor, it does not replace it |
 | Operator chips render whole labels (#724) | **preserved** | `labels` reserves a **minimum**; a longer label still widens the rail and renders whole |
-| Pan hint appears whenever either axis overflows | **changed** | unchanged when loaded; suppressed while loading, where the container is `inert` and the gesture is unfollowable (I-2) |
+| Pan hint appears whenever either axis overflows | **changed** | unchanged when loaded; while loading the same sentence renders `invisible` — out of sight and out of the a11y tree, but still holding its line, so the card does not grow by it when the map lands (I-2, and review finding F-3) |
 | Viewport shows `cursor-grab` when `dragPan` | **changed** | suppressed while loading, for the same reason as the hint — same false-affordance class |
 | `.pannable` (edge fade, `px-4`, `scroll-pl-4`) is applied from a live measurement | **preserved** | still measured in both states; it is the one piece of pan chrome that reports a fact rather than inviting an action |
 | `scroll-hint` / `row-code` / `price-col` testids exist while loading | **dropped** | they named live chrome; the loading rail carries `row-code-placeholder` instead, so a spec can still find it |
@@ -187,10 +199,10 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `CI gate — phase 3 pushed`
+**Stage pointer:** `review gate — findings fixed, re-review due`
 
-**Next action:** confirm the frontend job is green on the phase-3 head, then mark PR #750
-ready for review and run the review gate.
+**Next action:** re-run the review gate over the fix commit, then the Sonar list, then merge
+close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
