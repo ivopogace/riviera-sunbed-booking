@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { settle } from './support/booking-dialog';
 
 /**
  * Real-render CI-safe e2e for the tourist cover-photo display: the Discover card
@@ -138,6 +139,49 @@ test('the Discover card shows the cover photo (scrim kept), the photo-less card 
   await expect(bannerSlides.nth(0)).toHaveCSS('opacity', '0');
   await expect(page.getByText('coming soon')).toBeHidden();
   await expectNoSeriousAxeViolations(page, 'beach map with its banner slideshow');
+});
+
+test('the venue banner is a media header — ≥260px on desktop, 150px on mobile, above the status card (#704)', async ({
+  page,
+}) => {
+  await page.goto('/venues/1');
+
+  const band = page.locator('.photo-band');
+  await expect(band).toBeVisible();
+  // The identity zone, not the availability card: exactly one band, inside the venue header.
+  await expect(page.locator('header .photo-band')).toHaveCount(1);
+
+  // Measured boxes, never class lists — a responsive height is a rendered fact.
+  const desktop = (await band.boundingBox())!;
+  expect(desktop.height).toBeGreaterThanOrEqual(260);
+  const status = (await page.getByTestId('availability').boundingBox())!;
+  expect(desktop.y + desktop.height).toBeLessThanOrEqual(status.y);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect((await band.boundingBox())!.height).toBe(150);
+});
+
+test('the slideshow chrome carries its own backing over the photo, in both themes (#704)', async ({
+  page,
+}) => {
+  await page.goto('/venues/1');
+
+  // The ratios are proven in photo-slideshow.contrast.spec.ts; that the paint ships is proven here.
+  const rail = page.getByTestId('map-banner-dots');
+  await expect(rail).toHaveCSS('background-color', 'rgba(13, 40, 40, 0.7)');
+  const chip = page.getByTestId('map-banner-next').locator('span');
+  await expect(chip).toHaveCSS('border-top-color', 'rgba(12, 42, 51, 0.6)');
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'venue media header (default theme)');
+
+  await page.getByTestId('theme-toggle').click();
+  await page.getByTestId('theme-option-porcelain').click();
+  await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
+  // Theme-invariant on purpose: a photo is not themed, so the chrome must not move with the theme.
+  await expect(rail).toHaveCSS('background-color', 'rgba(13, 40, 40, 0.7)');
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'venue media header (porcelain)');
 });
 
 test('the Discover card slideshow crossfades through all three slots via the step controls (dots track, wrap both ways, + axe)', async ({
