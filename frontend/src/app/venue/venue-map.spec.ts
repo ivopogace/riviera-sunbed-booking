@@ -255,6 +255,47 @@ describe('VenueMap', () => {
     expectCellsFillCanvasRow(el(), '[data-testid="set-tile"]');
   });
 
+  it('renders the photo band in the venue header, leaving the overview card as count + bar (#704)', async () => {
+    flushVenue();
+    await fixture.whenStable();
+
+    const band = el().querySelector('.photo-band')!;
+    expect(band.closest('header')).not.toBeNull();
+    expect(band.className).toContain('h-[150px]');
+    expect(band.className).toContain('min-[1024px]:h-[264px]');
+
+    // The card the count lives on holds nothing else — the trust content moved out of the status card.
+    const card = el().querySelector('[data-testid="availability"]')!.closest('[appCardGlass]')!;
+    expect(card.querySelector('.photo-band')).toBeNull();
+    expect(card.querySelector('app-photo-slideshow')).toBeNull();
+  });
+
+  it('mirrors the band in the loading skeleton so the frame does not jump (#704)', () => {
+    fixture.detectChanges();
+
+    const header = el().querySelector('[data-testid="map-skeleton-header"]')!;
+    const stand = header.querySelector('[data-testid="map-skeleton-band"]')!;
+    expect(stand.className).toContain('h-[150px]');
+    expect(stand.className).toContain('min-[1024px]:h-[264px]');
+    expect(el().querySelector('[data-testid="map-skeleton-overview"]')!.innerHTML).not.toContain(
+      'h-[150px]',
+    );
+
+    flushVenue();
+  });
+
+  it('paints the no-photo empty state as an opaque warm sun (#704)', async () => {
+    flushVenue(); // the fixture has no photos
+    await fixture.whenStable();
+
+    const sun = el().querySelector('[data-testid="map-banner-empty"]')!;
+    const fill = /bg-\[radial-gradient\(([^\]]*)\)\]/.exec(sun.className)?.[1];
+    // Every stop opaque: an alpha stop composites against the cyan band and reads pale green.
+    expect(fill).toBeDefined();
+    expect(fill).not.toContain('rgba');
+    expect(sun.className).toContain('min-[1024px]:size-[96px]');
+  });
+
   it('renders the cover banner photo when present, keeping the scrim; no "coming soon" pill either way (#142)', async () => {
     venueRequest().flush({
       ...miramar(),
