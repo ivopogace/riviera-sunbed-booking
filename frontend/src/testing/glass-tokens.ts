@@ -70,7 +70,9 @@ export const PHOTO_STOPS: readonly Rgb[] = ['2bb8d4', '0e8aa8'].map(hexToRgb);
  */
 export const WORST_PHOTOS: readonly Rgb[] = [...PHOTO_STOPS, WHITE, hexToRgb('000000')];
 
-/** `--riv-mode-chip-glass` — the white glass under the Discover mode chip and the step chips. */
+/** `--riv-mode-chip-glass` — the white glass under the step chips, on both slideshow hosts.
+ *  Named for the Discover mode chip, which stopped wearing it at #705 (it took an opaque fill,
+ *  which needs no backing); the step chips are now the token's whole population. */
 export const MODE_CHIP_GLASS: Glass = { color: WHITE, alpha: 0.85 };
 
 /** `--riv-photo-chrome` — the dot rail's dark backing over a photo (#704). */

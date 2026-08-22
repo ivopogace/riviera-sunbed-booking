@@ -29,9 +29,11 @@ context: the "Beach Map Refinement" design canvas linked from the issue.
 metrics) · `riviera-plan-doc` (this template — forced the behaviour-parity ledger that pinned
 the two contrast proofs about to lose their subject) · `tdd` (each phase writes the failing
 contrast/unit spec before the directive exists) · `riviera-review-overlay` (review gate — runs at
-ready-for-review) · `riviera-docs-freshness` (`N/A — no substrate doc states the chip treatment;
-the `--riv-mode-chip-glass` token comment in `styles.scss` does, and is corrected in phase 2 as
-part of the diff`) · `riviera-frontend` (placement: a stateless presentational primitive → `shared/`,
+ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD` at the review gate, 3 findings, all
+patched: two diverged artboard lines in `docs/design/riviera-sunbeds-liquid-glass-v3.dc.html` got
+`as-built diverges — see #705` pointers per `docs/design/README.md`, and `testing/glass-tokens.ts`'s
+`--riv-mode-chip-glass` comment still named the mode chip as a consumer. The plan's original
+`N/A` was wrong — the artboard is substrate, and a treatment IS a stated fact) · `riviera-frontend` (placement: a stateless presentational primitive → `shared/`,
 never a feature folder; both consumers already reach `shared/` legally) · `riviera-tailwind`
 (rule 1 forced a **directive** over any `@apply`; rule 2 kept `.mode-chip` / `.new-chip` /
 `semantic-chip` as inert markers; rule 3's radius-order trap is why the directive owns
@@ -55,7 +57,7 @@ session addendum); the literal `feature/…` branch is deliberately not created.
 - [x] **AC-2:** Given the semantic-chip fill, when it is compared with both descriptive-chip
   fills (`amenity-chip` neutral and `--water`), then it differs from each by at least a 3:1
   ratio — the "distinguishable at a glance" claim stated as a number rather than an opinion.
-  *Pinned by:* `semantic-chip.contrast.spec.ts` → "the semantic fill is a different family from every descriptive fill".
+  *Pinned by:* `semantic-chip.contrast.spec.ts` → "the semantic fill is a different family from the $name fill".
 - [x] **AC-3:** Given a Discover card and a beach-map header for the same venue, when both
   render, then the mode chip and the New chip on each carry the `semantic-chip` marker and the
   amenity/to-water chips do not. *Pinned by:* `home.spec.ts` and `venue-map.spec.ts`.
@@ -107,7 +109,7 @@ session addendum); the literal `feature/…` branch is deliberately not created.
 |---|---|---|---|---|---|---|
 | R-1 | A contrast proof loses its subject and is silently deleted rather than moved, weakening the a11y net | med | high | the ledger above names both at-risk assertions and their successors; each spec keeps a comment pointing at the new home | claude | closed — `home.contrast.spec.ts` repointed to the step chips at the same AA_NORMAL bar, `venue-map.contrast.spec.ts` carries a moved-to comment |
 | R-2 | Adding display/padding utilities in the directive shifts a chip's box (AC-3/AC-6 regression) | med | med | the directive carries **no** `display`, `padding` or `text-*`; all four call sites already have a 1px border, so swapping only its colour keeps widths identical | claude | closed — pinned by `semantic-chip.spec.ts` "carries no geometry" |
-| R-3 | The saturated accent pill reads as a **button** and invites a tap that does nothing | low | med | no shadow, no hover/`cursor` change, `rounded-full` at chip scale; the CTA is a large gradient button — a different object at a different size. Revisit if the e2e a11y run or a later critique flags affordance | claude | open — accepted for this slice; axe found nothing, but affordance is a judgement the review gate should make on the rendered page |
+| R-3 | The saturated accent pill reads as a **button** and invites a tap that does nothing | low | med | no shadow, no hover/`cursor` change, `rounded-full` at chip scale; the CTA is a large gradient button — a different object at a different size. Revisit if the e2e a11y run or a later critique flags affordance | claude | open → F-5; raised in the PR body for the maintainer, who sees it rendered. Not closable from a diff |
 | R-4 | On the dark map-header glass a dark fill reads as *receding* next to the pale amenity pills, inverting the hierarchy | med | med | the pill takes a **lighter** accent rim (`#2f7d92`) so its shape reads as a solid object on the dark panel; AC-2 states the family separation as a ratio against both descriptive fills | claude | closed — 6.4:1 vs the neutral fill, 6.0:1 vs the to-water fill |
 | R-5 | Tailwind's stylesheet-order radius trap (`riviera-tailwind` rule 3) if a call site keeps its own `rounded-full` | low | low | the directive owns the radius and every call site drops its duplicate; all four were `rounded-full`, so there is no competing value to resolve | claude | closed |
 | R-6 | The plan-doc file-structure guard passes because the doc is unstaged | med | low | `git add` the plan doc, then run `node scripts/check-plan-file-structure.mjs --diff origin/main` before pushing | claude | closed — guard run green on the staged diff |
@@ -167,9 +169,9 @@ views; only their presentation changes.
 
 ## Execution status
 
-**Stage pointer:** `implement — complete; PR stage not entered`
+**Stage pointer:** `merge close-out` — merged via PR #755
 
-**Next action:** open the draft PR for `claude/tailwind-angular-mcp-search-bvfshb`, which makes the Review and Sonar gates due. Deliberately not done in this session: no pull request was requested, and CI fires on the `pull_request` event only, so the pushed branch has had **no CI run** — every check below is local.
+**Next action:** none — the slice is done. Review gate run at high effort (4 findings, all fixed; 1 judgement call raised to the maintainer), CI and Sonar green, merged via PR #755.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -177,6 +179,7 @@ views; only their presentation changes.
 | 1 — apply on Discover | ✅ | phase-1..3 commit |
 | 2 — apply on the beach-map header + move the displaced proofs | ✅ | phase-1..3 commit |
 | 3 — e2e no-drift pin + gates | ✅ | phase-1..3 commit |
+| 4 — review-gate findings F-1..F-4 | ✅ | review-fix commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -184,7 +187,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate (`/code-review`, high) | `docs/design/…v3.dc.html:181,218` depict the replaced pale-glass mode chip with no divergence pointer; the plan's `riviera-docs-freshness: N/A` was factually wrong | fixed — two pointers added, `riviera-docs-freshness` actually run, Skills-consulted line corrected |
+| F-2 | review gate | `testing/glass-tokens.ts:73` still named the Discover mode chip as a `MODE_CHIP_GLASS` consumer — the `styles.scss` twin was corrected, this mirror (the one the specs import) was not | fixed |
+| F-3 | review gate | `semantic-chip.contrast.spec.ts`'s `DESCRIPTIVE_FILLS` was a hand-copy, so a third amenity variant would silently escape the AC-2 family check the comment promised it could not | fixed — extracted `testing/chip-fills.ts`, read by both chip contrast specs, so one list feeds both proofs |
+| F-4 | review gate | the repointed `home.contrast.spec.ts` assertion held an `aria-hidden` decorative glyph to 4.5:1, duplicating `photo-slideshow.contrast.spec.ts` at the correct 3:1 bar and contradicting the file's own exclusions | fixed — assertion removed (not repointed); the comment records that its subject moved and why repointing was the wrong repair |
+| F-5 | review gate | R-3 (does the accent pill read as a tappable button?) is a rendered-page judgement the diff cannot settle | open — raised in the PR body for the maintainer; redirecting the accent is one line in the directive, no call site changes |
 
 ---
 
@@ -204,6 +211,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/venue/venue-map.contrast.spec.ts` — retire the mode-pill composite proof, pointing at its successor
 - `frontend/src/styles.scss` — correct the now-stale "Discover mode chip" sentence in the `--riv-mode-chip-glass` comment
 - `frontend/e2e/discovery-flow.e2e.ts` — computed-style no-drift pin across both surfaces
+- `frontend/src/testing/chip-fills.ts` — the one test-side mirror of both chip families' recipes (F-3)
+- `frontend/src/app/shared/amenities.contrast.spec.ts` — reads the descriptive family from that mirror (F-3)
+- `frontend/src/testing/glass-tokens.ts` — correct `MODE_CHIP_GLASS`'s consumer comment (F-2)
+- `docs/design/riviera-sunbeds-liquid-glass-v3.dc.html` — `as-built diverges` pointers on the two mode-chip lines (F-1)
 
 ---
 
@@ -288,6 +299,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN` — not done: no PR was opened this session (none was requested).
-- [ ] **The review gate ran in full** per `riviera-sdlc` `references/pr-gates.md` §1 plus
-      `riviera-review-overlay` — not run: the gate is due at ready-for-review, and no PR exists yet.
+- [x] **Close-out written in THIS PR**, citing `merged via PR #755`.
+- [x] **The review gate ran in full** per `riviera-sdlc` `references/pr-gates.md` §1 plus
+      `riviera-review-overlay` — rung 1 of the ladder succeeded (`/code-review`, high effort, the
+      risk class being a11y-adjacent); 4 findings fixed, 1 judgement call raised.
