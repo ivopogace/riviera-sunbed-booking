@@ -59,21 +59,23 @@ created.
 - [ ] **AC-3:** Given a window wider than 62 days, or `to` before `from`, when the read is
   requested, then it is rejected `400` with an `INVALID_REQUEST` `ApiProblem` body and no
   query is issued.
-  *Pinned by:* `VenueAvailabilityCalendarControllerIT.rejectsAnOverwideWindow`,
-  `…rejectsAnInvertedWindow`
+  *Pinned by:* `VenueAvailabilityCalendarControllerTest.rejectsAnOverwideWindow`,
+  `…rejectsAnInvertedWindow`, `…acceptsTheWidestLegalWindow`
 - [ ] **AC-4:** Given `from` and `to` are omitted, when the read is requested with the clock
-  fixed at 2026-11-01T22:30Z, then the window is `[2026-11-02, 2026-11-15]` — tomorrow in
+  fixed at 2026-11-01T23:30Z — late enough that UTC still reads the 1st while Tirane has
+  rolled to the 2nd — then the window is `[2026-11-03, 2026-11-16]` — tomorrow in
   `Europe/Tirane` through `from + 13` (invariant #6), derived from the injected `Clock`.
-  *Pinned by:* `VenueAvailabilityCalendarControllerIT.defaultsToTomorrowInTiraneForTwoWeeks`
+  *Pinned by:* `VenueAvailabilityCalendarControllerTest.defaultsToTomorrowInTiraneForTwoWeeks`
 - [ ] **AC-5:** Given an unknown venue id, or a venue whose owning operator is not `ACTIVE`,
   when the read is requested, then the response is `404` — indistinguishable from each other
   (#693 fence).
-  *Pinned by:* `VenueAvailabilityCalendarControllerIT.unknownVenueIs404`,
-  `…venueWithoutAnActiveOwnerIs404`
+  *Pinned by:* `VenueAvailabilityCalendarControllerTest.absentVenueIs404` (the edge half — both
+  causes reach it as an empty `Optional`) and `VenueCatalogVisibilityIT.calendarReadIsEmptyForHiddenVenue`
+  (the fence half, over the operator lifecycle)
 - [ ] **AC-6:** Given the new endpoint path, when an anonymous client requests it, then it
   is publicly reachable, **and** the operator-only `GET /api/venues/{id}/availability` read
   remains `401`/`403` for that same anonymous client.
-  *Pinned by:* `VenueAvailabilityCalendarControllerIT.isPublicAndDoesNotUngateTheOperatorRead`
+  *Pinned by:* `VenueAvailabilityCalendarControllerTest.isPublicAndDoesNotUngateTheOperatorRead`
 - [ ] **AC-7:** Given the slice's structural change, when the structural net runs, then
   `ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`,
   `PublishedSurfacePlacementArchitectureTests` and `VenueApiRoleSplitTests` all pass — the
@@ -214,16 +216,16 @@ touched. `MoneyView` does not appear on the new surface.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1 done, phase 2 next`
+**Stage pointer:** `PR — marking ready for review, then the review + Sonar gates`
 
-**Next action:** phase 2 — write `VenueAvailabilityCalendarControllerIT` red-first
-(AC-3 … AC-6), then add the endpoint + the 62-day window guard to `VenueReadController`.
+**Next action:** mark PR #762 ready for review, then run the review gate
+(`/code-review` + `riviera-review-overlay`), then the Sonar issue list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — SPI range read (`takenCountsBetween` + JDBC impl) | ✅ | `842ebc2` |
 | 1 — `VenueCatalog.availabilityBetween` + `DailyAvailability` | ✅ | see commit below |
-| 2 — public endpoint + window validation | | |
+| 2 — public endpoint + window validation | ✅ | see commit below |
 | 3 — close-out (docs freshness, plan finalization) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -252,7 +254,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — its `VenueCatalog` stub implements the new method
 - `platform/src/test/java/ai/riviera/platform/venue/VenueCatalogVisibilityIT.java` — the #693 fence, extended to the new read
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAvailabilityCalendarIT.java` — new: AC-1, AC-2
-- `platform/src/test/java/ai/riviera/platform/venue/VenueAvailabilityCalendarControllerIT.java` — new: AC-3 … AC-6
+- `platform/src/test/java/ai/riviera/platform/VenueAvailabilityCalendarControllerTest.java` — new: AC-3, AC-4, AC-6 (web slice, root package like every other web-slice test)
 - `docs/plans/venue-availability-calendar-read.md` — this plan
 - `RESPONSIBILITIES.md` — the `venue`/`availability` contract lines the slice changes
 
@@ -311,19 +313,19 @@ GROUP BY booking_date
 
 **Files:** Create `venue/adapter/in/DailyAvailabilityView.java` · Modify
 `venue/adapter/in/VenueReadController.java` · Test
-`platform/src/test/java/ai/riviera/platform/venue/VenueAvailabilityCalendarControllerIT.java`
+`platform/src/test/java/ai/riviera/platform/venue/VenueAvailabilityCalendarControllerTest.java`
 
-- [ ] **Step 1: Write the failing test** — `VenueAvailabilityCalendarControllerIT` covering
+- [x] **Step 1: Write the failing test** — `VenueAvailabilityCalendarControllerTest` covering
   AC-3 (over-wide + inverted → `400 INVALID_REQUEST`), AC-4 (fixed-clock defaults), AC-5
   (unknown and non-visible → `404`), AC-6 (public, and the operator read stays gated).
-- [ ] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*VenueAvailabilityCalendarControllerIT*"` → FAIL (404, no mapping).
-- [ ] **Step 3: Minimal implementation** — the `@GetMapping`, the
+- [x] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*VenueAvailabilityCalendarControllerTest*"` → FAIL (404, no mapping).
+- [x] **Step 3: Minimal implementation** — the `@GetMapping`, the
   `MAX_WINDOW_DAYS = 62` guard throwing `InvalidApiRequestException` **before** any query,
   and the flat view mapping.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS; then the structural net.
-- [ ] **Step 5: Generalization-audit pass** — see the log below.
-- [ ] **Step 6: Commit**
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS; then the structural net.
+- [x] **Step 5: Generalization-audit pass** — see the log below.
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -332,6 +334,7 @@ GROUP BY booking_date
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-22 | Phase 0 | Every `SetAvailabilityLookup` method that builds an `IN (:ids)` list — the mechanism that must short-circuit on empty input rather than emit `IN ()`. | `grep -n "IN (:ids)" platform/src/main/java/ai/riviera/platform/availability/adapter/out/JdbcSetAvailabilityLookup.java` | 4 (`takenOn`, `anyClaimsFrom`, `statesOn`, the new `takenCountsBetween`) | All four short-circuit; the new one follows the existing three. No pre-existing gap. |
+| 2026-08-22 | Phase 2 | Every place in production code that turns the injected `Clock` into a civil date — the mechanism that must name a zone rather than inherit the JVM default (invariant #6). Enumerated across the whole backend, not just the controller being edited. | `git grep -n "LocalDate.ofInstant\|LocalDate.now(" -- platform/src/main/java` (and `LocalDate.now()` with no argument, separately) | 11 sites across `availability`, `booking`, `customer`, `payout`, `venue`; zero zone-less `LocalDate.now()`. | Clean as found — all 11 name `TIRANE` explicitly. The new handler adds no twelfth derivation: it reuses `VenueReadController`'s single `tomorrowInTirane()` helper, which is site 9. |
 | 2026-08-22 | Phase 1 | Every public method on `JdbcVenueCatalog` — the mechanism that must consult the #693 visibility fence before answering a tourist about one venue. Enumerated from the class's own method list, not from the reads that resembled the new one. | `grep -n "public .*(" …/JdbcVenueCatalog.java` then `grep -n "visibility\.\|onlyVisible" …/JdbcVenueCatalog.java` | 9 methods: 3 tourist-catalogue reads (`findVenueMap`, `listVenues`, the new `availabilityBetween`) — all three fence; 6 sibling-role reads on `VenueRates`/`SetBookingFacts` — none fence. | Correct as found. The 6 are booking/payout-time reads, and `booking` fences its own reserve paths (CLAUDE.md §`operator`) — fencing them here would hide a set from the claim path when a venue is suspended mid-booking. **One real gap closed:** `VenueCatalogVisibilityIT` is the fence's test home and covered only the two older reads, so the new one was fenced but unpinned; it now has a case there, and the class doc says "all three" rather than "both". |
 | 2026-08-22 | Phase 0 (test cross-contamination bug) | Every method whose SQL date predicate is **not** a single-day equality — the mechanism that makes its IT sensitive to rows a *sibling* test left in the shared Testcontainers DB, not just to its own seed. Found by grepping the date predicates rather than by looking at tests that resembled the one that failed. | `grep -n "booking_date" platform/src/main/java/ai/riviera/platform/availability/adapter/out/JdbcSetAvailabilityLookup.java` | 2 (`anyClaimsFrom` → `>= :from`; the new `takenCountsBetween` → `BETWEEN`). The other two (`takenOn`, `statesOn`) are `= :date` and are immune. | **Both fixed.** The new range tests seed a dedicated set trio (`calendarSets()`, `OFFSET 3`); `anyClaimsFromCountsOnlyHoldsOnOrAfterTheCutoff` was passing only because nothing yet marked its shared set on a later day — it now takes its own set (`claimProbeSet()`, `OFFSET 6`), so the next test to seed a late date cannot silently decide its result. |
 
@@ -341,7 +344,7 @@ GROUP BY booking_date
 
 - [ ] **AC-1:** Run `gradle --no-daemon --console=plain test --tests "*VenueAvailabilityCalendarIT*"` → PASS.
 - [ ] **AC-2:** Same run, `agreesWithTheSingleDayMapRead` → PASS.
-- [ ] **AC-3:** Run `gradle --no-daemon --console=plain test --tests "*VenueAvailabilityCalendarControllerIT*"` → PASS.
+- [ ] **AC-3:** Run `gradle --no-daemon --console=plain test --tests "*VenueAvailabilityCalendarControllerTest*"` → PASS.
 - [ ] **AC-4:** Same run, `defaultsToTomorrowInTiraneForTwoWeeks` → PASS.
 - [ ] **AC-5:** Same run, both 404 cases → PASS.
 - [ ] **AC-6:** Same run, `isPublicAndDoesNotUngateTheOperatorRead` → PASS.
