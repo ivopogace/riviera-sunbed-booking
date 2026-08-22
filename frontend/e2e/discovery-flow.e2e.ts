@@ -9,6 +9,16 @@ import { expectNoSeriousAxeViolations } from './support/axe';
  * is mocked (`page.route`), so the test is self-contained and runs in CI (`npm run test:e2e:a11y`).
  */
 
+/**
+ * The semantic chips' rendered pair as `getComputedStyle` reports it — opaque, so theme- and
+ * surface-invariant. Deliberately a second copy of `src/testing/chip-fills.ts`'s hexes rather than
+ * an import: this suite drives the built app as a black box and takes nothing from app source, so
+ * a value that drifted here would still be caught, by this suite going red against the real page.
+ * Change both together — `#0a5f74` / `#ffffff` there are these two triples.
+ */
+const SEMANTIC_FILL = 'rgb(10, 95, 116)';
+const SEMANTIC_INK = 'rgb(255, 255, 255)';
+
 const VENUES = [
   {
     id: 1,
@@ -267,6 +277,12 @@ test('an unrated venue shows a "New" state (no ★ 0.0) on the card and map, acc
   await expect(card).not.toContainText('0 reviews');
   await expectNoSeriousAxeViolations(page, 'discovery list (unrated venue)');
 
+  // #705: both semantic chips wear the inverted accent pill. A contrast spec is pure maths and cannot see a colour that is wrong but still AA, so the rendered pair is pinned here.
+  await expect(card.locator('.mode-chip')).toHaveCSS('background-color', SEMANTIC_FILL);
+  await expect(card.locator('.mode-chip')).toHaveCSS('color', SEMANTIC_INK);
+  await expect(card.getByTestId('new-chip')).toHaveCSS('background-color', SEMANTIC_FILL);
+  await expect(card.getByTestId('new-chip')).toHaveCSS('color', SEMANTIC_INK);
+
   // The map header carries the same "New" treatment with a descriptive accessible name.
   await card.click();
   await expect(page).toHaveURL(/\/venues\/2/);
@@ -275,6 +291,22 @@ test('an unrated venue shows a "New" state (no ★ 0.0) on the card and map, acc
   await expect(mapHeader.getByTestId('new-chip')).toHaveAttribute('aria-label', 'No reviews yet');
   await expect(mapHeader).not.toContainText('0.0');
   await expectNoSeriousAxeViolations(page, 'venue map (unrated venue)');
+
+  // The same pill on the second surface — "the same treatment on Discover cards and the beach-map header" is the whole point of #705, and identical computed values are what makes it checkable.
+  const headerSemantic = mapHeader.locator('.semantic-chip');
+  await expect(headerSemantic).toHaveCount(2);
+  await expect(headerSemantic.first()).toHaveText('Instant Book');
+  await expect(headerSemantic.first()).toHaveCSS('background-color', SEMANTIC_FILL);
+  await expect(headerSemantic.last()).toHaveCSS('background-color', SEMANTIC_FILL);
+  await expect(headerSemantic.last()).toHaveCSS('color', SEMANTIC_INK);
+
+  // Theme-invariant on purpose: the fill is an opaque literal, not a --riv-* token, so a theme flip must not move it.
+  await page.getByTestId('theme-toggle').click();
+  await page.getByTestId('theme-option-porcelain').click();
+  await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
+  await expect(headerSemantic.first()).toHaveCSS('background-color', SEMANTIC_FILL);
+  await expect(headerSemantic.first()).toHaveCSS('color', SEMANTIC_INK);
+  await expectNoSeriousAxeViolations(page, 'venue map (unrated venue, porcelain)');
 });
 
 test('discovery shows an accessible empty state when no venues match', async ({ page }) => {

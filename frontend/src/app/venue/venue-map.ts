@@ -6,6 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { BookingDialog } from '../booking/booking-dialog';
 import { Amenity, amenityLabel, distanceToWaterLabel, orderedAmenities } from '../shared/amenities';
 import { AmenityChip } from '../shared/amenity-chip';
+import { SemanticChip } from '../shared/semantic-chip';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { CardGlass } from '../shared/card-glass';
 import { MAP_SKELETON_ROWS, MAP_SKELETON_TILES } from '../shared/map-skeleton';
@@ -105,6 +106,7 @@ interface VenueHeader {
     LoadAnnouncer,
     CutoffNote,
     AmenityChip,
+    SemanticChip,
     TouchTarget,
     BeachMapCanvas,
     BeachMapRowDef,

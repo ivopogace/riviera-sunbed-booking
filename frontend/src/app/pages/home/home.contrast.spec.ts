@@ -15,7 +15,6 @@ import {
   FIELD_FILL_ALPHA,
   Glass,
   INK_DARK,
-  MODE_CHIP_GLASS,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_CHIP,
   PORCELAIN_HEADER_GLASS,
@@ -187,17 +186,9 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
 });
 
 describe('Discover photo-area contrast (theme-independent, issue #135; real photos since #142)', () => {
-  // `WORST_PHOTOS` (testing/glass-tokens.ts): the placeholder gradient's stops plus pure white (the dark scrim under white text) and pure black (the white chip glass under dark text) — shared since #704 with the slideshow-chrome spec.
+  // `WORST_PHOTOS` (testing/glass-tokens.ts): the placeholder gradient's stops plus pure white and pure black — shared since #704 with the slideshow-chrome spec. Since #705 this file's only consumer is the location overlay, so the case that earns the set here is pure white (the dark scrim under white text); pure black earns its place in the specs that back light chrome on a photo.
 
-  it('mode chip text (accent) meets AA on the chip glass over the gradient AND any photo', () => {
-    for (const stop of WORST_PHOTOS) {
-      const chip = composite(MODE_CHIP_GLASS.color, MODE_CHIP_GLASS.alpha, stop);
-      expect(
-        contrastRatio(ACCENT, rgbToHex(chip)),
-        `over stop ${rgbToHex(stop)}`,
-      ).toBeGreaterThanOrEqual(AA_NORMAL);
-    }
-  });
+  // The mode-chip-on-glass assertion that stood here is GONE, not moved (#705). Its subject, the mode chip, now wears an opaque fill and is proven by shared/semantic-chip.contrast.spec.ts. Repointing it at the card's step chips was the wrong repair: those glyphs are aria-hidden decoration, which this file's own header excludes, and shared/photo-slideshow.contrast.spec.ts already proves the identical pair at the 3:1 bar WCAG 1.4.11 actually asks of them. Holding decoration to 4.5:1 here only invented a constraint the design never owed.
 
   it('the failure-panel "Try again" button (white) meets AA over both CTA-gradient stops', () => {
     for (const stop of CTA_STOPS) {

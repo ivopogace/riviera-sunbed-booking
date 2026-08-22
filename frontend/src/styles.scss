@@ -92,7 +92,13 @@
   --riv-photo-chrome: rgba(13, 40, 40, 0.7);
   --riv-photo-chrome-edge: rgba(12, 42, 51, 0.6);
   /** 0.85 (design: 0.7): the chip backs the accent ink over ANY cover photo — a dark
-      photo under a 0.7 white glass leaves the accent below AA; 0.85 clears it even over black. */
+      photo under a 0.7 white glass leaves the accent below AA; 0.85 clears it even over black.
+      Named for the Discover mode chip, which no longer wears it: #705 gave the mode chip an
+      opaque fill (shared/semantic-chip.ts), which needs no backing at all. The token stays for
+      the slideshow step chips on both hosts, which is now its whole population — rename it only
+      together with those call sites and its test-side mirror, testing/glass-tokens.ts, which is
+      where the value is copied (shared/photo-slideshow.contrast.spec.ts imports it from there,
+      and is the one spec left doing so). */
   --riv-mode-chip-glass: rgba(255, 255, 255, 0.85);
 }
 

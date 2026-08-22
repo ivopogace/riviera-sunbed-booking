@@ -179,8 +179,10 @@
                   ></span>
                 }
                 <span class="photo-scrim absolute inset-0 bg-(image:--riv-photo-scrim)"></span>
+                <!-- A SEMANTIC chip (#705): it promises how booking works, so it wears the inverted accent pill rather than the descriptive chips' pale one. Its opaque fill also retires the glass backing this chip used to need over an arbitrary cover photo — see shared/semantic-chip.ts. -->
                 <span
-                  class="mode-chip absolute top-[14px] left-[14px] inline-flex items-center rounded-full border border-(--riv-card-border) bg-(--riv-mode-chip-glass) px-[11px] py-[5px] text-[11px] font-bold tracking-[0.03em] text-(--riv-accent-ink) backdrop-blur-[10px]"
+                  appSemanticChip
+                  class="mode-chip absolute top-[14px] left-[14px] inline-flex items-center px-[11px] py-[5px] text-[11px] tracking-[0.03em]"
                   >{{ card.modeLabel }}</span
                 >
                 <!-- The location yields the dot rail's corner: 72px = the rail at its widest (3 dots: 13px inset + 14px padding + 24px dots + 14px gaps = 65px) plus 7px clearance — it must be re-derived whenever the rail's metrics change (#704). The explicit 15px line box is the scrim geometry home.contrast.spec.ts pins. -->
@@ -210,10 +212,8 @@
                     <span class="dot text-[rgba(12,42,51,0.3)]">·</span>
                     {{ card.reviewsCount }} reviews
                   } @else {
-                    <!-- "New" / unrated state: a bordered pill; text in the already-AA-proven card ink. -->
-                    <span
-                      class="new-chip rounded-full border border-(--riv-card-border) px-[9px] py-px font-bold text-(--riv-card-ink)"
-                      data-testid="new-chip"
+                    <!-- "New" / unrated state — the second SEMANTIC chip (#705): like the mode chip it is a platform claim, not a venue self-description, so it takes the same inverted accent pill. Padding stays here; the row's 13.5px is inherited. -->
+                    <span appSemanticChip class="new-chip px-[9px] py-px" data-testid="new-chip"
                       >New</span
                     >
                   }

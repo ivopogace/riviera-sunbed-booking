@@ -491,6 +491,22 @@ describe('VenueMap', () => {
     expect(header.textContent).not.toContain('0 reviews');
   });
 
+  it('splits the header chips into a semantic family and a descriptive one (#705)', async () => {
+    venueRequest().flush({ ...miramar(), ratingTenths: 0, reviewsCount: 0 });
+    await fixture.whenStable();
+
+    const header = el().querySelector('header')!;
+    // The same two platform claims as the Discover card, wearing the same pill — that parity is the point of #705.
+    const semantic = [...header.querySelectorAll('.semantic-chip')].map((chip) =>
+      chip.textContent?.trim(),
+    );
+    expect(semantic).toEqual(['Instant Book', 'New']);
+    // The venue's own descriptions keep the pale pill.
+    const descriptive = [...header.querySelectorAll('[data-testid="venue-chips"] .amenity-chip')];
+    expect(descriptive.length).toBeGreaterThan(0);
+    expect(descriptive.some((chip) => chip.classList.contains('semantic-chip'))).toBe(false);
+  });
+
   it('renders the stored row labels on the rail, in insertion order (#724)', async () => {
     flushVenue();
     await fixture.whenStable();
