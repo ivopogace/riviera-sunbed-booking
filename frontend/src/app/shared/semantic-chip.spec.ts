@@ -27,20 +27,32 @@ describe('SemanticChip', () => {
     return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testId}"]`)!;
   }
 
-  it('emits the .semantic-chip marker and the inverted accent recipe', () => {
-    const element = chip();
-    expect(element.classList.contains('semantic-chip')).toBe(true);
-    expect(element.classList.contains(`bg-[${SEMANTIC_CHIP.fill}]`)).toBe(true);
-    expect(element.classList.contains('font-bold')).toBe(true);
-    // The ink is Tailwind's named `text-white`, so the mirror is tied to it by this equality rather than by class interpolation — without it, changing the recipe's ink would leave both contrast proofs asserting a colour that no longer ships.
-    expect(element.classList.contains('text-white')).toBe(true);
-    expect(SEMANTIC_CHIP.ink).toBe('#ffffff');
+  it('emits exactly the inverted accent recipe — the whole class list, not a subset', () => {
+    // Set equality rather than `contains` checks: it is what makes the next test's opaque claim airtight, since a second, translucent `bg-[rgba(...)]` alongside the opaque one would satisfy any number of `contains` assertions while shipping the very fill #705 forbids.
+    expect([...chip().classList].sort()).toEqual(
+      [
+        'semantic-chip',
+        'rounded-full',
+        'border',
+        'font-bold',
+        `bg-[${SEMANTIC_CHIP.fill}]`,
+        'border-[#2f7d92]',
+        'text-white',
+      ].sort(),
+    );
   });
 
   it('the fill is opaque, so no cover photo can reach the ink', () => {
     // The Discover mode chip sits over an arbitrary uploaded photo. An rgba fill would put that photo back into the contrast argument the opaque fill exists to end (#705).
-    const fill = [...chip().classList].find((name) => name.startsWith('bg-['));
-    expect(fill).toBe(`bg-[${SEMANTIC_CHIP.fill}]`);
+    const backgrounds = [...chip().classList].filter((name) => name.startsWith('bg-'));
+    expect(backgrounds).toEqual([`bg-[${SEMANTIC_CHIP.fill}]`]);
+    expect(SEMANTIC_CHIP.fill).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it('the mirror records the ink the recipe actually renders', () => {
+    // `text-white` is a named utility, so the mirror cannot be tied to it by interpolation the way the fill is; this equality is the tie. Without it, changing the ink would leave semantic-chip.contrast.spec.ts proving a pair that no longer ships.
+    expect(chip().classList.contains('text-white')).toBe(true);
+    expect(SEMANTIC_CHIP.ink).toBe('#ffffff');
   });
 
   it('carries no geometry, so each call site keeps its own box', () => {

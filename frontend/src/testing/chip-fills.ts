@@ -12,15 +12,19 @@
  *
  * <p>Be precise about what one shared list buys, because the first attempt at this fix
  * overclaimed. A list is still only a list: on its own it moves the hand-copy one level up rather
- * than removing it. What ties it to the code is a directive spec per recipe —
- * `shared/amenity-chip.spec.ts` asserts the rendered fills are exactly {@link DESCRIPTIVE_CHIPS}
- * as a SET (so an entry no variant renders and a rendered fill the list omits both fail), and
- * `shared/semantic-chip.spec.ts` does the same for {@link SEMANTIC_CHIP}. A value that drifts in
- * either place fails there, loudly, instead of quietly weakening a proof two files away.
+ * than removing it. What ties it to the code is a directive spec per recipe, each asserting a SET
+ * rather than a subset — `shared/amenity-chip.spec.ts` pins the rendered fills as exactly
+ * {@link DESCRIPTIVE_CHIPS} (so an entry no variant renders, and a rendered fill the list omits,
+ * both fail), and `shared/semantic-chip.spec.ts` pins {@link SEMANTIC_CHIP}'s whole class list.
+ * A value that drifts in either place fails there, loudly, instead of quietly weakening a proof
+ * two files away. Set equality is the load-bearing part: `contains` assertions would pass while a
+ * second, translucent fill shipped beside the opaque one.
  *
- * <p>The one escape neither spec can close: a variant it never renders. `water` is the amenity
- * chip's only axis and it is boolean, so a third variant means a new input — and rendering it in
- * that spec is part of adding it, not a step this file can enforce.
+ * <p>Two ties are weaker than the rest, and saying so is cheaper than discovering it. The semantic
+ * ink is Tailwind's named `text-white`, which cannot be interpolated from a hex, so its spec pins
+ * the mirror with a literal equality instead. And no spec can see a variant it never renders:
+ * `water` is the amenity chip's only axis and it is boolean, so a third variant means a new input —
+ * rendering it in that spec is part of adding it, not a step this file can enforce.
  */
 
 /** A chip recipe: the ink, and the opaque fill it sits on. Values mirror the directives' host classes. */

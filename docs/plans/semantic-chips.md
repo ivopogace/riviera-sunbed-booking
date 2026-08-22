@@ -171,16 +171,23 @@ views; only their presentation changes.
 
 **Stage pointer:** `merge close-out` — merging via PR #755
 
-**Next action:** none — the slice is done.
+**Next action:** verify CI + CodeQL + SonarCloud are green **on this head** and the Sonar reported-issue list is empty, then merge PR #755. Nothing else is outstanding.
 
-**Gate record.** The review gate ran **twice** at high effort, both rounds via rung 1 of the
-invocation ladder: once on the slice (4 findings, F-1..F-4, all fixed) and once on the fix round
-itself, per the re-entry rule (6 findings, G-1..G-6), and a third time on *that* round (4 findings,
-H-1..H-4). Each round's findings were created by the round before it and none existed when the slice
-was reviewed — which is the whole argument for re-reviewing fixes rather than trusting them. The
-pattern is worth naming: rounds 2 and 3 were dominated not by code defects but by **records written
-ahead of reality** — a close-out declaring a merge that had not happened, a risk row marked closed by
-the very outcome it predicted, a comment counting two mirrors one commit after reducing them to one.
+**Gate record.** The review gate ran at high effort via rung 1 of the invocation ladder on the
+slice, and then again on **each** fix round per the re-entry rule — every round's findings were
+created by the round before it, and none existed when the slice was first reviewed. Per-round
+counts and every finding are in the register below (F-* the slice, then G-*, H-*, J-*); the
+register is the record, so this paragraph deliberately states no total that a further round would
+falsify.
+
+The pattern is worth naming, because it is the real lesson of this slice. After round 1, the
+findings were dominated not by code defects but by **records written ahead of reality** — a
+close-out declaring a merge that had not happened, a risk row marked closed by the very outcome it
+predicted, a comment counting two mirrors one commit after reducing them to one, a fix's own
+description outliving the fix. That category is partly self-generating: a round's fixes need
+recording, and the recording is then a round behind. The response was to make each record state
+what is *checkable at the time it is written* (a precondition rather than a past-tense claim) and
+to keep the enumeration in one register rather than restated in prose.
 
 **Merge precondition.** This is the PR's last commit, so the gates run on *this* head: the merge is
 gated on CI + CodeQL + SonarCloud green here **and** the Sonar reported-issue list being empty — not
@@ -192,7 +199,8 @@ inherited from an earlier push's green. That check is the last action before the
 | 1 — apply on Discover | ✅ | phase-1..3 commit |
 | 2 — apply on the beach-map header + move the displaced proofs | ✅ | phase-1..3 commit |
 | 3 — e2e no-drift pin + gates | ✅ | phase-1..3 commit |
-| 4 — review-gate findings F-1..F-4 | ✅ | review-fix commit |
+| 4 — review-gate findings F-1..F-4 | ✅ | `72f84e7` |
+| 5 — re-review rounds 2–4 (G-*, H-*, J-*) | ✅ | `e04bfe6`, `84bf867`, final commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -211,6 +219,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | G-4 | review gate (round 2) | `styles.scss`'s new comment said "the two specs that mirror it" — the same commit had just reduced that to one (a counting-sweep miss by the docs-freshness run in that very commit) | fixed |
 | G-5 | review gate (round 2) | `home.contrast.spec.ts`'s `WORST_PHOTOS` explainer still justified the pure-black stop by "the white chip glass under dark text", deleted three lines below | fixed |
 | G-6 | review gate (round 2) | F-5/R-3 left `open` with no issue number while the doc ticked "no stale open rows" | fixed — issue #756 |
+| H-1 | review gate (round 3) | the gate record still described the merge as done, and the `chip-fills.ts` claim covered both recipes while only the descriptive one was tied to a directive | fixed — merge stated as a precondition; the doc now names exactly what each tie buys |
+| H-2 | review gate (round 3) | the descriptive-list "fully enumerated" test asserted only `toHaveLength(2)`, so a third directive variant still escaped both contrast proofs — the very gap G-3 claimed to close | fixed — the spec now compares rendered fills to the list as a **set** |
+| H-3 | review gate (round 3) | `semantic-chip.spec.ts` hard-coded the hex the shared mirror was meant to own | fixed — reads `SEMANTIC_CHIP` |
+| H-4 | review gate (round 3) | the `styles.scss` pointer named the *importing* spec as the mirror; the mirror is `testing/glass-tokens.ts` — a renamer following it would have reproduced F-2 | fixed |
+| J-1 | review gate (round 4) | `semantic-chip.spec.ts`'s opaque guard used first-match `find`, so a second translucent `bg-[rgba(…)]` beside the opaque one would have passed — the weakness its sibling spec had just outgrown | fixed — whole class list pinned as a set |
+| J-2 | review gate (round 4) | `chip-fills.ts` said the semantic spec "does the same" set-equality tie when it did not, and a comment miscounted "both contrast proofs" reading the ink | fixed — both claims now match what the specs do |
+| J-3 | review gate (round 4) | gate-record prose asserted a round count the same sentence contradicted; H-* had no register rows; "Next action: none" contradicted the merge precondition | fixed — prose no longer states a total, register extended, next action names the check |
 
 ---
 
