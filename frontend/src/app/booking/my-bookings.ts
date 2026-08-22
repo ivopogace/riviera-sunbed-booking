@@ -185,6 +185,11 @@ const SKELETON = 'skeleton block rounded-[6px] bg-(--riv-card-track)';
 const EMPTY_CARD =
   'rounded-[28px] px-[30px] py-10 text-center shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[1.7]';
 
+/** The `[appBusy]` control's own aria-disabled skin (`shared/busy-action.ts`), shared by both retry buttons. */
+const BUSY_SKIN = 'aria-disabled:cursor-not-allowed aria-disabled:opacity-60';
+const CTA =
+  'inline-flex min-h-11 cursor-pointer items-center rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) px-[26px] py-[13px] text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white';
+
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
   row: `${ROW} focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)`,
@@ -195,12 +200,9 @@ const CLS = {
   skeletonLineShort: `${SKELETON} mt-2 h-[10px] w-[35%]`,
   emptyCard: EMPTY_CARD,
   emptyLead: 'mb-5 text-[14.5px] leading-[1.5] text-(--riv-card-ink-soft)',
-  cta: 'inline-flex min-h-11 cursor-pointer items-center rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) px-[26px] py-[13px] text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white',
-  /** {@link CLS.cta}, plus the `[appBusy]` control's own aria-disabled skin (`shared/busy-action.ts`). */
-  ctaBusy:
-    'inline-flex min-h-11 cursor-pointer items-center rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) px-[26px] py-[13px] text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60',
-  rowRetry:
-    'shrink-0 cursor-pointer rounded-[14px] border-[1.5px] border-[rgba(255,255,255,0.7)] bg-[#f4f6f7] px-3.5 py-2 text-[13px] font-semibold text-[#0a4f5e] [transition:background_0.15s_ease] hover:bg-[#e7ebec] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) motion-reduce:transition-none aria-disabled:cursor-not-allowed aria-disabled:opacity-60',
+  cta: CTA,
+  ctaBusy: `${CTA} ${BUSY_SKIN}`,
+  rowRetry: `shrink-0 cursor-pointer rounded-[14px] border-[1.5px] border-[rgba(255,255,255,0.7)] bg-[#f4f6f7] px-3.5 py-2 text-[13px] font-semibold text-[#0a4f5e] [transition:background_0.15s_ease] hover:bg-[#e7ebec] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) motion-reduce:transition-none ${BUSY_SKIN}`,
 } as const;
 
 @Component({
