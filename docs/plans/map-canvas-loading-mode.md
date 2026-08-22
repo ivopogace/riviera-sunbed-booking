@@ -224,9 +224,10 @@ so the tree does not compile between the canvas change and the consumers' adopti
 red step still ran first (the canvas specs failed on the unknown input), and the surfaces'
 own specs are the green step.
 
-**Sonar gate (PR #750).** Pulled from the API, not the badge: `new_lines` 92 (so an analysis
-really ran — the false-clean read is ruled out), `issues/search` total **0**, `new_bugs` /
-`new_vulnerabilities` / `new_code_smells` / `new_duplicated_blocks` all 0, new-code coverage
+**Sonar gate (PR #750).** Pulled from the API, not the badge, and re-read cache-busted on the
+final head: `new_lines` non-empty (90 there, 92 on the head before it), so an analysis really
+ran and the false-clean read is ruled out. `issues/search` total **0**; `new_bugs` /
+`new_vulnerabilities` / `new_code_smells` / `new_duplicated_blocks` all 0; new-code coverage
 **100.0%**, duplication **0.0%**. Nothing to clear.
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding. Every fix
