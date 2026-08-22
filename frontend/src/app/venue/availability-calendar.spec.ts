@@ -119,6 +119,8 @@ describe('AvailabilityCalendar', () => {
       const june = dom().querySelectorAll('button[data-date^="2026-06-"]');
       expect(june).toHaveLength(30);
       expect(dayButton('2026-06-21')!.className).toContain('bg-[#dff0e4]');
+      // The chosen day wears the accent instead of a tint (aria-selected lives on its gridcell).
+      expect(dayButton('2026-06-20')!.className).toContain('bg-[#085a6e]');
       expect(
         dayButton('2026-06-21')!.querySelector<HTMLElement>('[data-testid="day-bar"]')!.style.width,
       ).toBe('50%');

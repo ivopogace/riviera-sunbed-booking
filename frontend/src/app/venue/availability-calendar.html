@@ -73,12 +73,11 @@
                 <button
                   appTouchTarget
                   type="button"
-                  class="flex w-full cursor-pointer flex-col items-center justify-center gap-[3px] rounded-[10px] border border-transparent px-0 py-1 text-[14px] font-semibold text-[#0a2a33] focus-visible:outline-[3px] focus-visible:outline-[#0a3f4e] focus-visible:outline-offset-[-1px] aria-disabled:cursor-default aria-disabled:text-[rgba(12,42,51,0.4)] aria-selected:bg-[#085a6e] aria-selected:text-white"
-                  [class]="cell.selected ? '' : cell.tint"
+                  class="flex w-full cursor-pointer flex-col items-center justify-center gap-[3px] rounded-[10px] border border-transparent px-0 py-1 text-[14px] font-semibold text-[#0a2a33] focus-visible:outline-[3px] focus-visible:outline-offset-[-1px] aria-disabled:cursor-default aria-disabled:text-[rgba(12,42,51,0.4)]"
+                  [class]="cell.tint"
                   [attr.data-date]="cell.iso"
                   [attr.data-state]="cell.state"
                   [attr.aria-label]="cell.name"
-                  [attr.aria-selected]="cell.selected"
                   [attr.aria-disabled]="cell.selectable ? null : 'true'"
                   [attr.tabindex]="cell.focused ? 0 : -1"
                   (click)="choose(cell)"

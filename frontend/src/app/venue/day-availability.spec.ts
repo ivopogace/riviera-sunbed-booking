@@ -1,12 +1,13 @@
 import {
   DAY_AVAILABILITY_STATES,
   DAY_MEANING,
+  DAY_SELECTED_CLASS,
   DAY_TINT_CLASS,
   dayAccessibleName,
   dayAvailabilityState,
   freeFraction,
 } from './day-availability';
-import { CALENDAR_TINTS } from '../../testing/calendar-tints';
+import { CALENDAR_SELECTED, CALENDAR_TINTS } from '../../testing/calendar-tints';
 
 /**
  * Pins the calendar day's vocabulary: which tint a day's counts resolve to, and what a screen
@@ -97,10 +98,17 @@ describe('the day vocabulary', () => {
 describe('the tint mirror', () => {
   it('renders exactly the fills testing/calendar-tints.ts proves', () => {
     const rendered = DAY_AVAILABILITY_STATES.map((state) => DAY_TINT_CLASS[state]);
-    const mirrored = CALENDAR_TINTS.map(({ fill }) =>
-      fill === '#ffffff' ? 'bg-white' : `bg-[${fill}]`,
+    const mirrored = CALENDAR_TINTS.map(
+      ({ fill, ring }) =>
+        `${fill === '#ffffff' ? 'bg-white' : `bg-[${fill}]`} focus-visible:outline-[${ring}]`,
     );
 
     expect(new Set(rendered)).toEqual(new Set(mirrored));
+  });
+
+  it('renders exactly the selected-day pair the mirror proves', () => {
+    expect(DAY_SELECTED_CLASS).toBe(
+      `bg-[${CALENDAR_SELECTED.fill}] text-white focus-visible:outline-white`,
+    );
   });
 });

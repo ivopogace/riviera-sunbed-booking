@@ -116,6 +116,33 @@ describe('VenueMap accessibility (axe)', () => {
     await expectNoAxeViolations(host());
   });
 
+  it('has no violations with the availability calendar open (#761)', async () => {
+    expectVenueRequest().flush(fixture());
+    await fixtureRef.whenStable();
+    fixtureRef.detectChanges();
+
+    host().querySelector<HTMLButtonElement>('[data-testid="map-date"]')!.click();
+    fixtureRef.detectChanges();
+    await fixtureRef.whenStable();
+
+    const calendar = httpMock.expectOne((req) => req.url.endsWith('/availability-calendar'));
+    const from = calendar.request.params.get('from')!;
+    const to = calendar.request.params.get('to')!;
+    const days = [];
+    for (let day = new Date(`${from}T00:00:00Z`); ; day.setUTCDate(day.getUTCDate() + 1)) {
+      const iso = day.toISOString().slice(0, 10);
+      days.push({ date: iso, free: days.length % 4, total: 30 });
+      if (iso === to) break;
+    }
+    calendar.flush(days);
+    fixtureRef.detectChanges();
+    await fixtureRef.whenStable();
+
+    // Every tint state is on screen at once (the `% 4` fixture), so the audit sees them all.
+    expect(host().querySelector('[data-testid="availability-calendar"]')).not.toBeNull();
+    await expectNoAxeViolations(host());
+  });
+
   it('has no violations on a venue with no sets (#717)', async () => {
     expectVenueRequest().flush({ ...fixture(), sets: [], fromPrice: null });
     await fixtureRef.whenStable();

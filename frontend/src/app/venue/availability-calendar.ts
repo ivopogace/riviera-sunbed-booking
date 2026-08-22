@@ -26,6 +26,7 @@ import { TouchTarget } from '../shared/touch-target';
 import { trapFocusWithin } from '../shared/focus-trap';
 import {
   DAY_MEANING,
+  DAY_SELECTED_CLASS,
   DAY_TINT_CLASS,
   DayAvailabilityState,
   dayAccessibleName,
@@ -137,7 +138,7 @@ export class AvailabilityCalendar {
           iso,
           dayOfMonth: Number(iso.slice(8)),
           state,
-          tint: DAY_TINT_CLASS[state],
+          tint: iso === selected ? DAY_SELECTED_CLASS : DAY_TINT_CLASS[state],
           barPercent: `${Math.round(freeFraction(selectable ? day : undefined) * 100)}%`,
           name: dayAccessibleName(iso, day, selectable),
           selectable,

@@ -89,23 +89,37 @@
           }
         </div>
 
-        <p class="flex flex-col gap-[7px] mt-4 max-w-[210px]">
-          <label
-            class="text-[11px] font-bold tracking-[0.1em] uppercase text-(--riv-ink-faint)"
-            for="map-date"
-            >Date</label
+        <p class="mt-4 flex max-w-[210px] flex-col gap-[7px]">
+          <span
+            class="text-[11px] font-bold tracking-[0.1em] text-(--riv-ink-faint) uppercase"
+            id="map-date-label"
+            >Date</span
           >
-          <input
+          <button
             appTouchTarget
+            type="button"
+            class="cursor-pointer rounded-[14px] border border-(--riv-field-border) bg-[rgba(255,255,255,0.9)] px-3 py-2.5 text-left text-[15px] text-(--riv-card-ink) focus-visible:outline-[3px] focus-visible:outline-white focus-visible:outline-offset-2"
             id="map-date"
-            type="date"
-            class="scheme-light text-[15px] text-(--riv-card-ink) bg-[rgba(255,255,255,0.9)] border border-(--riv-field-border) rounded-[14px] px-3 py-2.5 cursor-pointer focus-visible:outline-[3px] focus-visible:outline-white focus-visible:outline-offset-2"
             data-testid="map-date"
-            [value]="selectedDate()"
-            [min]="minDate()"
-            (change)="onDateChange($event)"
-          />
+            aria-haspopup="dialog"
+            aria-labelledby="map-date-label map-date"
+            [attr.aria-expanded]="pickerOpen()"
+            [attr.data-date]="selectedDate()"
+            (click)="openPicker()"
+          >
+            {{ triggerLabel() }}
+          </button>
         </p>
+
+        @if (pickerOpen()) {
+          <app-availability-calendar
+            [venueId]="v.id"
+            [selectedDate]="selectedDate()"
+            [minDate]="minDate()"
+            (chosen)="onDateChosen($event)"
+            (dismissed)="closePicker()"
+          />
+        }
         <p appCutoffNote class="mt-2 text-[11.5px] text-(--riv-ink-faint)"></p>
       </header>
 

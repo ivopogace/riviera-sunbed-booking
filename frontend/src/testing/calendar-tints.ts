@@ -15,19 +15,27 @@
  * proof a plain pair that holds on both themes by construction.
  */
 
-/** A calendar recipe: the ink, and the opaque fill it sits on. Values mirror the class records. */
+/**
+ * A calendar recipe: the ink, the opaque fill it sits on, and the focus ring drawn over that fill.
+ * The ring travels WITH the fill rather than being one shared colour, because the chosen day's
+ * accent is dark and the tints are pale — one ring cannot read on both (it measured 1.47:1 on the
+ * accent). It also means exactly one `outline-color` utility reaches each element: Tailwind
+ * resolves two competing ones by stylesheet order, not class order, so a base ring plus an
+ * override would be a coin flip.
+ */
 export interface CalendarTint {
   readonly name: string;
   readonly ink: string;
   readonly fill: string;
+  readonly ring: string;
 }
 
 /** `venue/day-availability.ts` — the per-day availability tints, in `DAY_AVAILABILITY_STATES` order. */
 export const CALENDAR_TINTS: readonly CalendarTint[] = [
-  { name: 'free (plenty free)', ink: '#0a2a33', fill: '#dff0e4' },
-  { name: 'low (few left)', ink: '#0a2a33', fill: '#fdeecc' },
-  { name: 'full (fully booked)', ink: '#0a2a33', fill: '#fae9e9' },
-  { name: 'unknown (counts unavailable)', ink: '#0a2a33', fill: '#ffffff' },
+  { name: 'free (plenty free)', ink: '#0a2a33', fill: '#dff0e4', ring: '#0a3f4e' },
+  { name: 'low (few left)', ink: '#0a2a33', fill: '#fdeecc', ring: '#0a3f4e' },
+  { name: 'full (fully booked)', ink: '#0a2a33', fill: '#fae9e9', ring: '#0a3f4e' },
+  { name: 'unknown (counts unavailable)', ink: '#0a2a33', fill: '#ffffff', ring: '#0a3f4e' },
 ];
 
 /**
@@ -40,12 +48,10 @@ export const CALENDAR_BAR = {
   track: '#6f8a91',
 } as const;
 
-/** The day cell's focus ring, which must read against every tint a focused day can wear. */
-export const CALENDAR_FOCUS_RING = '#0a3f4e';
-
-/** The chosen day's inverted treatment: white ink on the accent, the one non-tinted day. */
+/** The chosen day's inverted treatment: white ink and a white ring on the accent. */
 export const CALENDAR_SELECTED: CalendarTint = {
   name: 'selected day',
   ink: '#ffffff',
   fill: '#085a6e',
+  ring: '#ffffff',
 };

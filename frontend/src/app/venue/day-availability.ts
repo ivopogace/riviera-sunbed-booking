@@ -18,6 +18,12 @@ const LOW_FRACTION = 0.25;
  * The opaque fill each state wears, in the `map-tile.ts` shape and for the same reason: one home
  * for what a day looks like, so no second hand-copied set of literals can drift from it.
  *
+ * <p>Each entry carries its own focus-ring colour. The ring cannot be one shared value on the
+ * base class: the chosen day's accent is dark and the tints are pale, so no single ring reads on
+ * both, and two competing `outline-color` utilities on one element resolve by stylesheet order
+ * rather than class order. One ring per fill, on the fill's own class, is the only arrangement
+ * that is deterministic.
+ *
  * <p>The fills are **solid, not translucent** — deliberately. A calendar day composited over a
  * theme-dependent glass would need its contrast proved once per theme and once per surface; an
  * opaque fill makes the proof a plain ink/fill pair that holds on both themes by construction
@@ -25,11 +31,19 @@ const LOW_FRACTION = 0.25;
  * `src/testing/calendar-tints.ts`.
  */
 export const DAY_TINT_CLASS: Record<DayAvailabilityState, string> = {
-  free: 'bg-[#dff0e4]',
-  low: 'bg-[#fdeecc]',
-  full: 'bg-[#fae9e9]',
-  unknown: 'bg-white',
+  free: 'bg-[#dff0e4] focus-visible:outline-[#0a3f4e]',
+  low: 'bg-[#fdeecc] focus-visible:outline-[#0a3f4e]',
+  full: 'bg-[#fae9e9] focus-visible:outline-[#0a3f4e]',
+  unknown: 'bg-white focus-visible:outline-[#0a3f4e]',
 };
+
+/**
+ * The chosen day's inverted treatment — the one day that wears no tint. It is a composed class
+ * rather than an `aria-selected:` Tailwind variant because `aria-selected` is not a permitted
+ * attribute on `role="button"` (axe `aria-allowed-attr`); the grid states the selection on the
+ * `gridcell` that owns it, so the button has nothing to key a variant off.
+ */
+export const DAY_SELECTED_CLASS = 'bg-[#085a6e] text-white focus-visible:outline-white';
 
 /**
  * What each state means in words, kept beside the tint it explains (the `map-tile.ts`
