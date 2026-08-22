@@ -217,10 +217,13 @@ touched. `MoneyView` does not appear on the new surface.
 
 ## Execution status
 
-**Stage pointer:** `review gate — run (degraded, declared); findings F-1..F-3 fixed; Sonar gate next`
+**Stage pointer:** `CI gate — F-4 fixed and pushed; awaiting the re-run, then the Sonar gate`
 
-**Next action:** pull the SonarCloud new-issue + duplication list for PR #762 and clear
-every entry, then finalize this doc and merge.
+**Next action:** wait for CI on the F-4 fix. **The Sonar gate has not run for this slice
+yet** — the `sonar` job `needs: [backend, frontend]`, so the red backend left it
+`skipped`, which per `pr-gates.md` §2 means *unanalyzed*, not *clean*. Once CI is green,
+pull the issue + measures list (confirming `measures` is populated and the analysis
+check itself concluded `success`, with a cache-bust) and clear every entry.
 
 > **Review-gate degradation, declared rather than substituted silently.** The
 > `code-review` plugin's procedure is a parallel subagent fan-out, and this session is
@@ -248,6 +251,7 @@ Skill-routing gate for what the fix touches *before* editing).
 |---|---|---|---|
 | F-1 | review gate | `availabilityBetween` built its day list with `from.datesUntil(to.plusDays(1))`. At `from == to == LocalDate.MAX` the window passes the edge's 62-day cap, then the exclusive `to + 1` throws `DateTimeException` — a crafted request turning a 400-class input into a 500. | fixed — counts forward with `LongStream.range(0, days)`, which cannot overflow; pinned by `VenueAvailabilityCalendarIT.widestWindowIsCountedWithoutOverflowing` |
 | F-2 | review gate | The port documented "`to` must not precede `from`" but only enforced it incidentally, via `datesUntil`'s own throw — which the F-1 fix would have silently removed, leaving an inverted window answering an empty list instead of failing. | fixed — the precondition is now an explicit `IllegalArgumentException`, pinned by `…anInvertedWindowIsACallerBug` |
+| F-4 | CI (backend) | `EndpointRoleGateCoverageTest.everyMappedEndpointIsGatedOrDeclaredReachable` failed: it enumerates every mapped endpoint and requires each to be either gated in `SecurityConfig` or named in `DECLARED_REACHABLE`. The new public endpoint was neither — it relies on the `GET /api/venues/**` `permitAll` fall-through, which is exactly what that guard refuses to accept silently. **A full-suite-only failure**: every scoped batch was green, which is the blind spot `riviera-local-debug` documents. | fixed — declared in `DECLARED_REACHABLE` with its reason, the deliberate reviewable act the test asks for; reproduced red locally before the fix and green after |
 | F-3 | review gate | Two doc/hygiene slips: the `DailyAvailability` import sat out of alphabetical order in `JdbcVenueCatalog`, and the plan's AC-1 still described a 24-set venue while the shipped fixture seeds 4. | fixed — import reordered; AC-1 rewritten to the shipped fixture |
 
 **Docs-freshness run** (close-out step 5, run pre-merge as the cheapest moment):
@@ -276,6 +280,7 @@ about photo views, `VenuePhotos`, and `payout`'s `operator::api` reads, all stil
 - `platform/src/test/java/ai/riviera/platform/availability/AvailabilityLookupIT.java` — SPI range cases
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java` — its `SetAvailabilityLookup` fake implements the new method
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — its `VenueCatalog` stub implements the new method
+- `platform/src/test/java/ai/riviera/platform/EndpointRoleGateCoverageTest.java` — declares the new public endpoint as reachable, with its reason
 - `platform/src/test/java/ai/riviera/platform/venue/VenueCatalogVisibilityIT.java` — the #693 fence, extended to the new read
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAvailabilityCalendarIT.java` — new: AC-1, AC-2
 - `platform/src/test/java/ai/riviera/platform/VenueAvailabilityCalendarControllerTest.java` — new: AC-3, AC-4, AC-6 (web slice, root package like every other web-slice test)
@@ -358,6 +363,7 @@ GROUP BY booking_date
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-22 | Phase 0 | Every `SetAvailabilityLookup` method that builds an `IN (:ids)` list — the mechanism that must short-circuit on empty input rather than emit `IN ()`. | `grep -n "IN (:ids)" platform/src/main/java/ai/riviera/platform/availability/adapter/out/JdbcSetAvailabilityLookup.java` | 4 (`takenOn`, `anyClaimsFrom`, `statesOn`, the new `takenCountsBetween`) | All four short-circuit; the new one follows the existing three. No pre-existing gap. |
+| 2026-08-22 | F-4 (CI fix) | Every test that enumerates Spring's mapped endpoints — the mechanism that makes a test break when *any* endpoint is added, whether or not it resembles the one that failed. | `git grep -ln "RequestMappingHandlerMapping" -- platform/src/test` | 3 files: `EndpointRoleGateCoverageTest`, `AdminSurfaceRoleGateTest`, and their shared `EndpointProbes` helper. | Only the first needed a change. `AdminSurfaceRoleGateTest` filters to the `/api/admin/` namespace, so a `/api/venues/**` endpoint is out of its scope by construction — checked rather than assumed, since it carries a near-identical allowlist that looks like it would need the same entry. |
 | 2026-08-22 | Phase 2 | Every place in production code that turns the injected `Clock` into a civil date — the mechanism that must name a zone rather than inherit the JVM default (invariant #6). Enumerated across the whole backend, not just the controller being edited. | `git grep -n "LocalDate.ofInstant\|LocalDate.now(" -- platform/src/main/java` (and `LocalDate.now()` with no argument, separately) | 11 sites across `availability`, `booking`, `customer`, `payout`, `venue`; zero zone-less `LocalDate.now()`. | Clean as found — all 11 name `TIRANE` explicitly. The new handler adds no twelfth derivation: it reuses `VenueReadController`'s single `tomorrowInTirane()` helper, which is site 9. |
 | 2026-08-22 | Phase 1 | Every public method on `JdbcVenueCatalog` — the mechanism that must consult the #693 visibility fence before answering a tourist about one venue. Enumerated from the class's own method list, not from the reads that resembled the new one. | `grep -n "public .*(" …/JdbcVenueCatalog.java` then `grep -n "visibility\.\|onlyVisible" …/JdbcVenueCatalog.java` | 9 methods: 3 tourist-catalogue reads (`findVenueMap`, `listVenues`, the new `availabilityBetween`) — all three fence; 6 sibling-role reads on `VenueRates`/`SetBookingFacts` — none fence. | Correct as found. The 6 are booking/payout-time reads, and `booking` fences its own reserve paths (CLAUDE.md §`operator`) — fencing them here would hide a set from the claim path when a venue is suspended mid-booking. **One real gap closed:** `VenueCatalogVisibilityIT` is the fence's test home and covered only the two older reads, so the new one was fenced but unpinned; it now has a case there, and the class doc says "all three" rather than "both". |
 | 2026-08-22 | Phase 0 (test cross-contamination bug) | Every method whose SQL date predicate is **not** a single-day equality — the mechanism that makes its IT sensitive to rows a *sibling* test left in the shared Testcontainers DB, not just to its own seed. Found by grepping the date predicates rather than by looking at tests that resembled the one that failed. | `grep -n "booking_date" platform/src/main/java/ai/riviera/platform/availability/adapter/out/JdbcSetAvailabilityLookup.java` | 2 (`anyClaimsFrom` → `>= :from`; the new `takenCountsBetween` → `BETWEEN`). The other two (`takenOn`, `statesOn`) are `= :date` and are immune. | **Both fixed.** The new range tests seed a dedicated set trio (`calendarSets()`, `OFFSET 3`); `anyClaimsFromCountsOnlyHoldsOnOrAfterTheCutoff` was passing only because nothing yet marked its shared set on a later day — it now takes its own set (`claimProbeSet()`, `OFFSET 6`), so the next test to seed a late date cannot silently decide its result. |
