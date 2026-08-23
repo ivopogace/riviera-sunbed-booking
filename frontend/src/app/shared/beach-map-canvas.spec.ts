@@ -45,6 +45,7 @@ const ROWS: readonly TestRow[] = [
       [colHeaderInteractive]="colHeaderInteractive()"
       [colHeaderLabel]="colHeaderLabel()"
       (colHeaderFill)="colFills.push($event)"
+      [zoomControl]="zoomControl()"
     >
       <ng-template [appBeachMapRow]="rows()" let-row let-i="index">
         <ul class="set-row" [attr.data-row]="row.code">
@@ -81,6 +82,7 @@ class CanvasHost {
     (i: number) => `Fill column ${i}`,
   );
   readonly colFills: number[] = [];
+  readonly zoomControl = signal(false);
 }
 
 /**
@@ -854,6 +856,51 @@ describe('BeachMapCanvas (#672)', () => {
     );
     document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
     expect(component.colFills).toEqual([0, 0, 1]);
+  });
+
+  it('renders no Fit/100% toggle by default — every other consumer is unchanged (#713)', () => {
+    const { host } = render();
+    expect(host.querySelector('[data-testid="zoom-fit"]')).toBeNull();
+    expect(host.querySelector('[data-testid="zoom-100"]')).toBeNull();
+  });
+
+  it('renders the Fit/100% toggle, Fit active by default, when zoomControl is on (#713)', () => {
+    const { host, component, detect } = render();
+    component.zoomControl.set(true);
+    detect();
+    expect(host.querySelector('[data-testid="zoom-fit"]')?.getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    expect(host.querySelector('[data-testid="zoom-100"]')?.getAttribute('aria-pressed')).toBe(
+      'false',
+    );
+  });
+
+  it('pins the tile size to the 56px ceiling at 100%, regardless of the measured fit (#713)', async () => {
+    const { host, component, detect, fixture } = render();
+    component.zoomControl.set(true);
+    component.fitWidth.set(true);
+    // A narrow viewport would fit tiles down toward the 44px floor…
+    Object.defineProperty(viewport(host), 'clientWidth', { value: 100, configurable: true });
+    component.rows.set([row('A', null, true, ['1', '2', '3', '4'])]);
+    detect();
+    await fixture.whenStable();
+    detect();
+    const canvas = host.querySelector<HTMLElement>('app-beach-map-canvas')!;
+    expect(canvas.style.getPropertyValue('--riv-tile').trim()).toBe('44px');
+
+    // …but 100% pins it to the native ceiling instead, overflowing rather than shrinking.
+    host.querySelector<HTMLButtonElement>('[data-testid="zoom-100"]')!.click();
+    detect();
+    expect(canvas.style.getPropertyValue('--riv-tile').trim()).toBe('56px');
+    expect(host.querySelector('[data-testid="zoom-100"]')?.getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+
+    // Fit returns to the measured value.
+    host.querySelector<HTMLButtonElement>('[data-testid="zoom-fit"]')!.click();
+    detect();
+    expect(canvas.style.getPropertyValue('--riv-tile').trim()).toBe('44px');
   });
 
   it('collapses the legend band for a host that projects none — the operator surfaces (#701)', () => {

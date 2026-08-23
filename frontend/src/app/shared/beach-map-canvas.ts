@@ -190,6 +190,13 @@ export class BeachMapCanvas {
   /** Emitted on a column-header fill button's click, or swept the same way as {@link rowRailFill}. */
   readonly colHeaderFill = output<number>();
 
+  /** Shows the Fit/100% pill pair (#713) — off by default, so no other consumer renders it. */
+  readonly zoomControl = input<boolean>(false);
+  /** Fit is the existing measured-to-width sizing (#709, unchanged); 100% pins tiles to
+   *  {@link FIT_MAX_TILE_PX} — the ceiling Fit itself never exceeds — and lets the grid overflow
+   *  instead of shrinking further. Internal: no consumer needs to read or drive this from outside. */
+  protected readonly zoomMode = signal<'fit' | 'full'>('fit');
+
   /**
    * The rail's width, reserved rather than derived from whatever the read happened to return.
    *
@@ -277,9 +284,17 @@ export class BeachMapCanvas {
    *  measured, the original viewport-relative clamp otherwise (tourist map, Daily view, and the
    *  fitted surfaces' own first frame, before a measurement has landed). */
   protected readonly tileSizeStyle = computed(() => {
+    if (this.zoomControl() && this.zoomMode() === 'full') {
+      return `${BeachMapCanvas.FIT_MAX_TILE_PX}px`;
+    }
     const fitted = this.fittedTilePx();
     return this.fitWidth() && fitted !== null ? `${fitted}px` : BeachMapCanvas.DEFAULT_TILE;
   });
+
+  /** Arms the Fit/100% pill pair (#713). */
+  protected setZoom(mode: 'fit' | 'full'): void {
+    this.zoomMode.set(mode);
+  }
 
   /**
    * Scrollbar chrome for both scrollers — the horizontal pan viewport and the vertical wash. A

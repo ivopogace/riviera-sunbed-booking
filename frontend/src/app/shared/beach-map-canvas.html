@@ -4,6 +4,43 @@
     <div class="-mx-[18px] -mt-3.5 mb-3.5 empty:hidden" data-testid="legend-band">
       <ng-content select="[canvasLegend]" />
     </div>
+    <!-- Fit/100% zoom toggle (#713): absent unless a consumer opts in, floating over the wash's top-right corner per the design artboard. -->
+    @if (zoomControl()) {
+      <div class="relative z-20">
+        <div class="absolute top-2 right-3 flex gap-1">
+          <button
+            appTouchTarget
+            type="button"
+            data-testid="zoom-fit"
+            [attr.aria-pressed]="zoomMode() === 'fit'"
+            (click)="setZoom('fit')"
+            class="rounded-full px-2.5 py-1 text-[10.5px] font-bold"
+            [class]="
+              zoomMode() === 'fit'
+                ? 'bg-[rgba(14,122,137,0.12)] border-[1.5px] border-[#0e7a89] text-[#0a2a33]'
+                : 'bg-white/70 border border-[rgba(12,42,51,0.14)] text-[rgba(12,42,51,0.66)]'
+            "
+          >
+            Fit
+          </button>
+          <button
+            appTouchTarget
+            type="button"
+            data-testid="zoom-100"
+            [attr.aria-pressed]="zoomMode() === 'full'"
+            (click)="setZoom('full')"
+            class="rounded-full px-2.5 py-1 text-[10.5px] font-bold"
+            [class]="
+              zoomMode() === 'full'
+                ? 'bg-[rgba(14,122,137,0.12)] border-[1.5px] border-[#0e7a89] text-[#0a2a33]'
+                : 'bg-white/70 border border-[rgba(12,42,51,0.14)] text-[rgba(12,42,51,0.66)]'
+            "
+          >
+            100%
+          </button>
+        </div>
+      </div>
+    }
     <!-- The sea→sand wash: aqua at the sea banner fading to warm sand at the promenade, fixed to the viewport of the vertical scroller so "the water is up there" reads at any scroll depth. -->
     <div
       #washScroller
