@@ -498,14 +498,15 @@ test('a 14-column map fits whole at a desktop viewport — no pan, no hint (#700
   expect((await panState(page)).overflows).toBe(false);
   await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
 
-  // Only the map card breaks out; since #701 the legend is inside it, full-bleed like the banner.
+  // The header now matches the map's 1100px breakout too (#765) — both widen together.
   const card = (await page.getByTestId('beach-grid').boundingBox())!;
   const head = (await page.locator('.map-head').boundingBox())!;
   const banner = (await page.locator('.sea-banner').boundingBox())!;
   const legend = (await page.getByRole('list', { name: 'Legend' }).boundingBox())!;
-  expect(card.width).toBeGreaterThan(head.width);
+  expect(card.width).toBeCloseTo(head.width, 0);
   expect(legend.width).toBeCloseTo(banner.width, 0);
-  expect(legend.width).toBeGreaterThan(head.width);
+  // Within a couple px, not exact — the legend carries its own border the plain header box doesn't.
+  expect(Math.abs(legend.width - head.width)).toBeLessThan(3);
   // The design canvas's number, pinned — the margin derives from it, so a shell edit can't drift it.
   expect(card.width).toBeCloseTo(1100, 0);
 

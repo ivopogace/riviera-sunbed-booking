@@ -342,36 +342,47 @@
           class="bg-(--riv-track-bg) -mx-[22px] -mt-5 mb-[18px] block h-[150px] min-[1024px]:h-[264px]"
           data-testid="map-skeleton-band"
         ></span>
-        <span
-          appSkeletonBlock
-          class="bg-(--riv-track-bg) mb-[13px] block h-[25px] w-[124px] rounded-full"
-        ></span>
-        <span
-          appSkeletonBlock
-          class="bg-(--riv-track-bg) mb-[7px] block h-[clamp(33px,5.1vw,49px)] w-4/5 rounded-[10px]"
-        ></span>
-        <span
-          appSkeletonBlock
-          class="bg-(--riv-track-bg) mb-[5px] block h-[22px] w-3/5 rounded-[6px]"
-        ></span>
-        <span
-          appSkeletonBlock
-          class="bg-(--riv-track-bg) block h-[21px] w-2/5 rounded-[6px]"
-        ></span>
-        <span class="mt-4 flex max-w-[210px] flex-col gap-[7px]">
-          <span
-            appSkeletonBlock
-            class="bg-(--riv-track-bg) block h-[17px] w-[52px] rounded-[6px]"
-          ></span>
-          <span
-            appSkeletonBlock
-            class="bg-(--riv-track-bg) block h-11 w-full rounded-[14px]"
-          ></span>
-        </span>
-        <span
-          appSkeletonBlock
-          class="bg-(--riv-track-bg) mt-2 block h-[18px] w-[62%] rounded-[6px]"
-        ></span>
+        <!-- Two-column at 1280px+ (#700), unconditionally — mirrors the loaded header's shape (#744). -->
+        <div
+          class="min-[1280px]:grid min-[1280px]:grid-cols-[1fr_260px] min-[1280px]:items-start min-[1280px]:gap-10"
+        >
+          <div>
+            <span
+              appSkeletonBlock
+              class="bg-(--riv-track-bg) mb-[13px] block h-[25px] w-[124px] rounded-full"
+            ></span>
+            <span
+              appSkeletonBlock
+              class="bg-(--riv-track-bg) mb-[7px] block h-[clamp(33px,5.1vw,49px)] w-4/5 rounded-[10px]"
+            ></span>
+            <span
+              appSkeletonBlock
+              class="bg-(--riv-track-bg) mb-[5px] block h-[22px] w-3/5 rounded-[6px]"
+            ></span>
+            <span
+              appSkeletonBlock
+              class="bg-(--riv-track-bg) block h-[21px] w-2/5 rounded-[6px]"
+            ></span>
+          </div>
+          <div>
+            <span
+              class="mt-4 flex max-w-[210px] flex-col gap-[7px] min-[1280px]:mt-0 min-[1280px]:max-w-none"
+            >
+              <span
+                appSkeletonBlock
+                class="bg-(--riv-track-bg) block h-[17px] w-[52px] rounded-[6px]"
+              ></span>
+              <span
+                appSkeletonBlock
+                class="bg-(--riv-track-bg) block h-11 w-full rounded-[14px]"
+              ></span>
+            </span>
+            <span
+              appSkeletonBlock
+              class="bg-(--riv-track-bg) mt-2 block h-[18px] w-[62%] rounded-[6px]"
+            ></span>
+          </div>
+        </div>
       </div>
 
       <div
