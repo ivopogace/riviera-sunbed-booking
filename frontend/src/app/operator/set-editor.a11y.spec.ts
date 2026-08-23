@@ -43,7 +43,11 @@ describe('SetEditor a11y (#600)', () => {
     },
   ];
 
-  function render(sets: readonly SetView[] = SETS, loaded = true): void {
+  function render(
+    sets: readonly SetView[] = SETS,
+    loaded = true,
+    expectedVersion: number | null = 5,
+  ): void {
     TestBed.configureTestingModule({
       imports: [SetEditor],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
@@ -53,6 +57,7 @@ describe('SetEditor a11y (#600)', () => {
     fixture.componentRef.setInput('venueId', 1);
     fixture.componentRef.setInput('sets', sets);
     fixture.componentRef.setInput('loaded', loaded);
+    fixture.componentRef.setInput('expectedVersion', expectedVersion);
     fixture.detectChanges();
     http
       .expectOne((r) => r.url.includes('/api/auth/me'))
@@ -122,6 +127,18 @@ describe('SetEditor a11y (#600)', () => {
     click(byId('set-remove'));
 
     expect(byId('set-remove-confirm')).toBeTruthy();
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no axe violations with a batch selection open (#714)', async () => {
+    render();
+    const cells = host().querySelectorAll<HTMLButtonElement>('[data-testid="set-cell"]');
+    cells[0].dispatchEvent(new MouseEvent('mousedown', { button: 0, buttons: 1 }));
+    cells[1].dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    fixture.detectChanges();
+
+    expect(byId('batch-panel')).toBeTruthy();
     await expectNoAxeViolations(host());
   });
 

@@ -64,7 +64,11 @@ describe('SetEditor (#600)', () => {
     set({ id: 13, rowLabel: 'B', positionNo: 2, gridX: 2, gridY: 2, pool: 'WALK_IN' }),
   ];
 
-  function render(sets: readonly SetView[] = SETS, loaded = true): void {
+  function render(
+    sets: readonly SetView[] = SETS,
+    loaded = true,
+    expectedVersion: number | null = 5,
+  ): void {
     TestBed.configureTestingModule({
       imports: [SetEditor],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
@@ -75,6 +79,7 @@ describe('SetEditor (#600)', () => {
     fixture.componentRef.setInput('venueId', 1);
     fixture.componentRef.setInput('sets', sets);
     fixture.componentRef.setInput('loaded', loaded);
+    fixture.componentRef.setInput('expectedVersion', expectedVersion);
     fixture.componentInstance.changed.subscribe(() => (changed += 1));
     fixture.detectChanges();
     // OperatorAuth restores the session on construction — settle it as signed-out.
@@ -120,6 +125,13 @@ describe('SetEditor (#600)', () => {
 
   function typePrice(value: string): void {
     const input = byId('set-price') as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+  }
+
+  function typeBatchPrice(value: string): void {
+    const input = byId('batch-price') as HTMLInputElement;
     input.value = value;
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
@@ -772,5 +784,158 @@ describe('SetEditor (#600)', () => {
 
     expect(byId('set-panel-no-sets')).toBeFalsy();
     expect(byId('set-panel-empty').textContent).toContain('Pick a set on the map');
+  });
+
+  // ---- Batch select (#714) ----
+
+  /**
+   * Mimics a real browser's own gesture: mousedown → mouseenter → mouseup. A genuine cross-cell
+   * drag fires NO `click` at all in a real browser (mousedown/mouseup on different elements never
+   * synthesize one) — only a there-and-back release onto the SAME cell as the mousedown does, and
+   * that is what {@link SetEditor}'s one-shot suppression guards against.
+   */
+  function dragSweep(fromGridX: number, fromGridY: number, toGridX: number, toGridY: number): void {
+    const from = cellForGrid(fromGridX, fromGridY);
+    const to = cellForGrid(toGridX, toGridY);
+    from.dispatchEvent(new MouseEvent('mousedown', { button: 0, buttons: 1 }));
+    to.dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    if (to === from) {
+      to.click();
+    }
+    fixture.detectChanges();
+  }
+
+  interface LayoutPutCell {
+    rowLabel: string;
+    positionNo: number;
+    tier: string;
+    pool: string;
+    price: { minorUnits: number; currency: string };
+  }
+
+  interface LayoutPutBody {
+    sets: LayoutPutCell[];
+    expectedVersion: number;
+  }
+
+  function expectLayoutPut(): TestRequest {
+    return http.expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/beach-map'));
+  }
+
+  function layoutPutBody(req: TestRequest): LayoutPutBody {
+    return req.request.body as LayoutPutBody;
+  }
+
+  it('sweeps a rectangular block of sets on a multi-cell drag', () => {
+    render();
+    dragSweep(1, 1, 1, 2); // column 1, rows A and B: sets 10 and 12
+
+    expect(byId('batch-panel')).toBeTruthy();
+    expect(byId('batch-count').textContent).toContain('2 sets selected');
+    expect(byId('batch-range').textContent).toMatch(/Rows A–B/);
+    expect(cellForSet(10).getAttribute('aria-pressed')).toBe('true');
+    expect(cellForSet(12).getAttribute('aria-pressed')).toBe('true');
+    expect(cellForSet(11).getAttribute('aria-pressed')).toBe('false');
+    expect(byId('set-sweep-announce').textContent).toContain('2 sets selected');
+  });
+
+  it('a single-cell drag is an ordinary tap, not a sweep (AC-6)', () => {
+    render();
+    cellForGrid(1, 2).dispatchEvent(new MouseEvent('mousedown', { button: 0, buttons: 1 }));
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    fixture.detectChanges();
+    click(cellForGrid(1, 2));
+
+    expect(byId('batch-panel')).toBeFalsy();
+    expect(byId('set-panel')).toBeTruthy();
+    expect(byId('set-selected').textContent).toMatch(/Row B · position 1/);
+  });
+
+  it('applies only the touched field, per field (AC-2)', async () => {
+    render();
+    dragSweep(1, 1, 2, 1); // row A: sets 10 and 11, both PREMIUM/ONLINE/€35
+
+    typeBatchPrice('40');
+    click(byId('batch-apply'));
+
+    const req = expectLayoutPut();
+    const body = layoutPutBody(req);
+    expect(body.expectedVersion).toBe(5);
+    const sets = body.sets;
+    const touched = sets.filter((s) => s.rowLabel === 'A');
+    const untouched = sets.filter((s) => s.rowLabel === 'B');
+    expect(touched.every((s) => s.price.minorUnits === 4000)).toBe(true);
+    expect(touched.every((s) => s.tier === 'PREMIUM' && s.pool === 'ONLINE')).toBe(true); // untouched fields kept
+    expect(untouched.every((s) => s.price.minorUnits === 2000)).toBe(true); // sets outside the sweep are untouched
+
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(byId('batch-saved')).toBeTruthy();
+    expect(changed).toBe(1);
+  });
+
+  it('applies only tier for a tier-only touch, leaving pool and price alone', () => {
+    render();
+    dragSweep(1, 2, 2, 2); // row B: sets 12 (ONLINE) and 13 (WALK_IN)
+
+    click(byId('batch-tier-PREMIUM'));
+    click(byId('batch-apply'));
+
+    const sets = layoutPutBody(expectLayoutPut()).sets;
+    const set12 = sets.find((s) => s.rowLabel === 'B' && s.positionNo === 1)!;
+    const set13 = sets.find((s) => s.rowLabel === 'B' && s.positionNo === 2)!;
+    expect(set12.tier).toBe('PREMIUM');
+    expect(set12.pool).toBe('ONLINE'); // untouched field kept
+    expect(set13.tier).toBe('PREMIUM');
+    expect(set13.pool).toBe('WALK_IN'); // each set's own untouched pool survives independently
+  });
+
+  it('a STALE_WRITE batch apply keeps the selection and offers Reload (AC-4)', async () => {
+    render();
+    let staleEmitted = 0;
+    fixture.componentInstance.staleWrite.subscribe(() => (staleEmitted += 1));
+    dragSweep(1, 1, 1, 2);
+    click(byId('batch-tier-STANDARD'));
+    click(byId('batch-apply'));
+
+    expectLayoutPut().flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(staleEmitted).toBe(1);
+    expect(byId('batch-panel')).toBeTruthy(); // the sweep survives the conflict
+    expect(byId('batch-count').textContent).toContain('2 sets selected');
+    expect(byId('batch-error')).toBeFalsy(); // the parent's reload banner owns this, not an inline message
+  });
+
+  it('Escape and Clear both empty the sweep and move focus back to the canvas (AC-5)', async () => {
+    render();
+    dragSweep(1, 1, 1, 2);
+    expect(byId('batch-panel')).toBeTruthy();
+
+    host.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(byId('batch-panel')).toBeFalsy();
+    expect(document.activeElement).toBe(cellForGrid(1, 1));
+
+    dragSweep(1, 1, 1, 2);
+    click(byId('batch-clear'));
+    await fixture.whenStable();
+    expect(byId('batch-panel')).toBeFalsy();
+    expect(document.activeElement).toBe(cellForGrid(1, 1));
+  });
+
+  it('a plain single tap always supersedes a standing sweep', () => {
+    render();
+    dragSweep(1, 1, 1, 2);
+    expect(byId('batch-panel')).toBeTruthy();
+
+    selectSet(11);
+
+    expect(byId('batch-panel')).toBeFalsy();
+    expect(byId('set-selected').textContent).toMatch(/Row A · position 2/);
   });
 });

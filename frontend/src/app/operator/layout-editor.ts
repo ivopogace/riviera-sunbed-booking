@@ -421,6 +421,12 @@ export class LayoutEditor {
     this.loadExisting(venueId);
   }
 
+  /** The batch editor's bulk PUT lost the optimistic-concurrency race — reuse the same
+   *  reload-and-recover banner the bulk paint grid's own STALE_WRITE already drives (#714). */
+  protected onBatchStaleWrite(): void {
+    this.errorCode.set('STALE_WRITE');
+  }
+
   // ---- Generate ----
 
   protected setRows(value: string): void {

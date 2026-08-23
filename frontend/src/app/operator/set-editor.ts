@@ -20,7 +20,7 @@ import { CardGlass } from '../shared/card-glass';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { ConfirmPanel } from '../shared/confirm-panel';
 import { focusMover } from '../shared/focus-after-render';
-import { eurosToMinorUnits, formatMoney, minorUnitsToEuros } from '../shared/money';
+import { eurosToMinorUnits, formatMoney, minorUnitsToEuros, MoneyView } from '../shared/money';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import {
   BeachCell,
@@ -35,8 +35,13 @@ import {
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { MAP_SKELETON_ROWS, MAP_SKELETON_TILES } from '../shared/map-skeleton';
 import { SkeletonBlock } from '../shared/skeleton-block';
-import { SetWriteErrorCode, SetWriteRequest } from './operator-console.model';
-import { OperatorConsoleService, setWriteErrorOf } from './operator-console.service';
+import {
+  LayoutCellRequest,
+  LayoutErrorCode,
+  SetWriteErrorCode,
+  SetWriteRequest,
+} from './operator-console.model';
+import { layoutErrorOf, OperatorConsoleService, setWriteErrorOf } from './operator-console.service';
 
 import { TouchTarget } from '../shared/touch-target';
 
@@ -58,6 +63,36 @@ type Selection =
   | { readonly kind: 'set'; readonly setId: number }
   | { readonly kind: 'cell'; readonly gridX: number; readonly gridY: number }
   | null;
+
+/** A drag-sweep's grid bounding box, inclusive on every edge. */
+interface SweepRect {
+  readonly minX: number;
+  readonly maxX: number;
+  readonly minY: number;
+  readonly maxY: number;
+}
+
+/**
+ * The batch editor's draft: `null`/`''` means the operator has not touched that field, so it
+ * is left off the apply entirely (invariant per #714: untouched fields keep each set's own
+ * value). Distinct from {@link SetDraft}, whose fields are always fully seeded — a batch draft
+ * starts, and can return to, "nothing chosen yet".
+ */
+interface BatchDraft {
+  readonly tier: Tier | null;
+  readonly pool: Pool | null;
+  readonly priceEur: string;
+}
+
+const EMPTY_BATCH_DRAFT: BatchDraft = { tier: null, pool: null, priceEur: '' };
+
+/** Every saved set whose grid position falls inside `rect`, inclusive. */
+function setsInRect(sets: readonly SetView[], rect: SweepRect): readonly SetView[] {
+  return sets.filter(
+    (s) =>
+      s.gridX >= rect.minX && s.gridX <= rect.maxX && s.gridY >= rect.minY && s.gridY <= rect.maxY,
+  );
+}
 
 /**
  * Which per-set write was attempted. `SET_IN_USE` answers two guards of different breadth — an edit
@@ -125,6 +160,7 @@ function draftForNewCell(gridY: number): SetDraft {
   templateUrl: './set-editor.html',
   host: {
     '(keydown.escape)': 'onEscape()',
+    '(document:mouseup)': 'onSweepEnd()',
   },
 })
 export class SetEditor {
@@ -144,8 +180,20 @@ export class SetEditor {
    * it is false the surface renders a skeleton instead of a 1×1 grid and the no-sets copy.
    */
   readonly loaded = input.required<boolean>();
+  /**
+   * The optimistic-concurrency token loaded with the map (`setVersion`) — required so a batch
+   * apply can never fire without it, exactly the same guard {@link LayoutEditor}'s own bulk save
+   * enforces. `null` while the parent's initial read hasn't landed or has failed.
+   */
+  readonly expectedVersion = input.required<number | null>();
   /** A write landed: the parent drops the shared console snapshot and re-reads the map. */
   readonly changed = output<void>();
+  /**
+   * A batch apply lost the optimistic-concurrency race (`409 STALE_WRITE`) — the parent renders
+   * its existing reload-recovery banner and drives {@link LayoutEditor.reloadAfterStale}; this
+   * component keeps the sweep selection and draft untouched until that Reload lands (AC-4).
+   */
+  readonly staleWrite = output<void>();
 
   /** True while a per-set write is in flight — the panel's actions are disabled, so no double submit. */
   protected readonly busy = signal(false);
@@ -196,12 +244,94 @@ export class SetEditor {
   });
 
   /**
+   * The batch-selected set ids from a drag sweep (#714) — mutually exclusive with
+   * {@link selection}; either every `onCell` tap or a new sweep clears the other. The same
+   * "account for previous state" `linkedSignal` shape as {@link selection}: a re-read that drops
+   * one of the selected ids (another tab removed it) empties the whole sweep rather than leaving
+   * it half-valid, since the batch panel's "N sets" count would otherwise silently go stale.
+   */
+  protected readonly sweepIds = linkedSignal<readonly SetView[], ReadonlySet<number> | null>({
+    source: this.sets,
+    computation: (sets, previous) => {
+      const chosen = previous?.value;
+      if (chosen === null || chosen === undefined) {
+        return null;
+      }
+      const ids = new Set(sets.map((s) => s.id));
+      return [...chosen].every((id) => ids.has(id)) ? chosen : null;
+    },
+  });
+
+  /** The sets a live sweep currently covers — the batch panel's own rows. */
+  protected readonly sweptSets = computed(() => {
+    const ids = this.sweepIds();
+    return ids === null ? [] : this.sets().filter((s) => ids.has(s.id));
+  });
+
+  /** "Row A–B · positions 1–2" (or a single row/position when the sweep covers only one). */
+  protected readonly sweepRangeLabel = computed(() => {
+    const swept = this.sweptSets();
+    if (swept.length === 0) {
+      return '';
+    }
+    const minY = Math.min(...swept.map((s) => s.gridY));
+    const maxY = Math.max(...swept.map((s) => s.gridY));
+    const minX = Math.min(...swept.map((s) => s.gridX));
+    const maxX = Math.max(...swept.map((s) => s.gridX));
+    const rows =
+      minY === maxY
+        ? `Row ${gridRowLabel(minY - 1)}`
+        : `Rows ${gridRowLabel(minY - 1)}–${gridRowLabel(maxY - 1)}`;
+    const positions = minX === maxX ? `position ${minX}` : `positions ${minX}–${maxX}`;
+    return `${rows} · ${positions}`;
+  });
+
+  /** What AT hears when the sweep changes size — empty while nothing is swept (#714). */
+  protected readonly sweepAnnouncement = computed(() => {
+    const count = this.sweptSets().length;
+    return count === 0 ? '' : `${count} set${count === 1 ? '' : 's'} selected`;
+  });
+
+  /** The batch draft, re-seeded blank whenever the sweep changes (a new sweep, a clear, or a
+   *  successful apply re-reading the sets the sweep is keyed on). */
+  protected readonly batchDraft = linkedSignal<ReadonlySet<number> | null, BatchDraft>({
+    source: this.sweepIds,
+    computation: () => EMPTY_BATCH_DRAFT,
+  });
+
+  /** True while the batch PUT is in flight — the panel's controls are disabled. */
+  protected readonly batchBusy = signal(false);
+  /** Set after a successful batch apply, cleared on the next sweep/apply. */
+  protected readonly batchSaved = signal(false);
+  /** The last batch-apply failure, mapped to operator-facing copy, or undefined. */
+  protected readonly batchErrorCode = signal<LayoutErrorCode | undefined>(undefined);
+
+  /**
    * Where the inspector last stood, kept even after {@link selection} collapses. `selection` can
    * drop to `null` on its own — a re-read that no longer carries the picked set, e.g. from another
    * tab or operator — with no `closeSelection()` call to carry the focus move, so the constructor's
    * effect below uses this to reclaim focus a silent collapse would otherwise strand on `<body>`.
    */
   private readonly lastCoords = signal<{ gridX: number; gridY: number } | undefined>(undefined);
+
+  // --- drag-sweep gesture (#714; imperative, not rendered — mirrors LayoutEditor's own drag-paint) ---
+
+  /** True from a primary-button press on a cell until the matching `document:mouseup`. */
+  private sweeping = false;
+  /** Every `(gridX, gridY)` the pointer has entered this gesture, keyed `"x,y"`. */
+  private sweptCoords = new Set<string>();
+  /** The gesture's starting cell — a browser fires `click` only when the release lands back on
+   *  this same cell; any other release fires no click on either endpoint at all. */
+  private sweepStartKey = '';
+  /** The most recently entered cell — compared against {@link sweepStartKey} on release. */
+  private sweepLastKey = '';
+  /** True once {@link sweptCoords} has grown past the starting cell — the click/drag fork. */
+  private sweepDidDrag = false;
+  /** Set when a committed sweep's release lands back on its own starting cell, so the click that
+   *  follows doesn't also single-select that tile. A release on any OTHER cell fires no click at
+   *  all (mousedown/mouseup on different elements never synthesize one), so this is never armed
+   *  for the ordinary cross-cell drag. */
+  private suppressNextClick = false;
 
   /** afterRenderEffect, not effect: the DOM read below must run after the panel is actually gone. */
   constructor() {
@@ -293,6 +423,7 @@ export class SetEditor {
     const selectedId = this.selectedSet()?.id;
     const cell = this.selectedCell();
     const moving = this.armed();
+    const swept = this.sweepIds();
     return Array.from({ length: this.rowCount() }, (_, y) => {
       const cells = Array.from({ length: this.colCount() }, (_, x) => {
         const gridX = x + 1;
@@ -300,12 +431,15 @@ export class SetEditor {
         const set = bySlot.get(slot(gridX, gridY));
         const state: CellState = set === undefined ? 'gap' : cellStateOf(set);
         const empty = set === undefined;
+        const selected = empty
+          ? cell?.gridX === gridX && cell?.gridY === gridY
+          : set.id === selectedId || (swept?.has(set.id) ?? false);
         return {
           gridX,
           gridY,
           setId: set?.id ?? null,
           state,
-          selected: empty ? cell?.gridX === gridX && cell?.gridY === gridY : set.id === selectedId,
+          selected,
           // While a move is armed only empty cells are targets, so an occupied one offers nothing.
           disabled: moving && !empty,
           label: `Row ${gridRowLabel(y)} position ${gridX}, ${
@@ -376,6 +510,11 @@ export class SetEditor {
    * has (growing the grid and re-tapping a just-picked cell is a routine flow, not a request to close).
    */
   protected onCell(gridX: number, gridY: number, setId: number | null): void {
+    if (this.suppressNextClick) {
+      // A sweep just committed on mouseup — its own click mustn't re-select the released tile.
+      this.suppressNextClick = false;
+      return;
+    }
     if (this.armed()) {
       if (setId === null) {
         void this.onMoveTo(gridX, gridY);
@@ -389,9 +528,193 @@ export class SetEditor {
     this.errorCode.set(undefined);
     this.confirmRemove.set(false);
     this.moving.set(false);
+    this.sweepIds.set(null); // a single tap always supersedes any standing batch sweep (AC-6)
     if (opening) {
       // A brand-new inspector appeared — move focus into it so AT users notice its arrival.
       this.focusAfterRender('set-panel');
+    }
+  }
+
+  /**
+   * A cell's primary-button press: arms the drag-sweep gesture (#714) unless a move is armed or a
+   * remove confirmation is open, in which case a drag has no meaning and this is a no-op — the
+   * subsequent `click` still drives {@link onCell}'s existing move/no-op handling.
+   */
+  protected onCellMouseDown(gridX: number, gridY: number, event: MouseEvent): void {
+    if (event.button !== 0 || this.armed() || this.confirmRemove()) {
+      return;
+    }
+    this.sweeping = true;
+    this.sweepDidDrag = false;
+    this.sweepStartKey = slot(gridX, gridY);
+    this.sweepLastKey = this.sweepStartKey;
+    this.sweptCoords = new Set([this.sweepStartKey]);
+  }
+
+  /** A cell re-entered mid-drag: extend the sweep, or disarm on a stale flag (off-window release). */
+  protected onCellMouseEnter(gridX: number, gridY: number, event: MouseEvent): void {
+    if (!this.sweeping) {
+      return;
+    }
+    if ((event.buttons & 1) === 0) {
+      this.sweeping = false;
+      return;
+    }
+    this.sweepLastKey = slot(gridX, gridY);
+    this.sweptCoords.add(this.sweepLastKey);
+    if (this.sweptCoords.size > 1) {
+      this.sweepDidDrag = true;
+    }
+  }
+
+  /**
+   * The gesture's end (`document:mouseup`, so an off-tile release still lands it). A single-cell
+   * "drag" is really just a click and is left entirely to {@link onCell}; only a genuine multi-cell
+   * drag commits a sweep. Suppression is armed only when the release lands back on the starting
+   * cell — the one case a click actually follows; any other release fires no click at all.
+   */
+  protected onSweepEnd(): void {
+    if (this.sweeping && this.sweepDidDrag) {
+      this.commitSweep();
+      this.suppressNextClick = this.sweepLastKey === this.sweepStartKey;
+    }
+    this.sweeping = false;
+    this.sweptCoords.clear();
+  }
+
+  /** Turn the swept coordinates into a batch selection: every saved set inside their bounding box. */
+  private commitSweep(): void {
+    const rect = boundingRect(this.sweptCoords);
+    const ids = new Set(setsInRect(this.sets(), rect).map((s) => s.id));
+    if (ids.size === 0) {
+      return; // an all-empty rectangle has nothing to batch-edit
+    }
+    this.selection.set(null);
+    this.moving.set(false);
+    this.confirmRemove.set(false);
+    this.saved.set(false);
+    this.errorCode.set(undefined);
+    this.sweepIds.set(ids);
+    this.batchSaved.set(false);
+    this.batchErrorCode.set(undefined);
+    this.focusAfterRender('batch-panel');
+  }
+
+  /** Empty the sweep (Clear or Escape) and return focus to the canvas (AC-5), never `<body>`. */
+  protected clearSweep(): void {
+    const swept = this.sweptSets();
+    this.sweepIds.set(null);
+    this.batchErrorCode.set(undefined);
+    this.batchSaved.set(false);
+    const anchor = swept[0];
+    if (anchor !== undefined) {
+      this.focusCell(anchor.gridX, anchor.gridY);
+    } else {
+      this.focusAfterRender('set-grid-frame');
+    }
+  }
+
+  protected chooseBatchTier(tier: Tier): void {
+    this.batchDraft.update((draft) => ({ ...draft, tier }));
+  }
+
+  protected chooseBatchPool(pool: Pool): void {
+    this.batchDraft.update((draft) => ({ ...draft, pool }));
+  }
+
+  protected onBatchPriceInput(value: string): void {
+    this.batchDraft.update((draft) => ({ ...draft, priceEur: value }));
+  }
+
+  /** Whether the batch draft has at least one touched field — Apply is inert until it does. */
+  protected readonly batchHasChanges = computed(() => {
+    const draft = this.batchDraft();
+    return draft.tier !== null || draft.pool !== null || draft.priceEur.trim() !== '';
+  });
+
+  /**
+   * Apply the batch draft's touched fields to every swept set, via the SAME bulk `PUT
+   * …/beach-map` {@link LayoutEditor.onSave} drives (AC-3) — one write, `expectedVersion`-guarded,
+   * built from every one of this venue's OWN sets ({@link sets}, the parent's last read) so an
+   * untouched field on an untouched set is never even re-sent as anything but its own value
+   * (AC-2). A touched-but-empty price is a no-op for that field, matching the single-set panel's
+   * "cleared field reads as no change" convention — not a validation error.
+   */
+  protected async applyBatch(): Promise<void> {
+    const venueId = this.venueId();
+    const ids = this.sweepIds();
+    const expectedVersion = this.expectedVersion();
+    if (ids === null || ids.size === 0 || this.batchBusy() || expectedVersion === null) {
+      return;
+    }
+    const draft = this.batchDraft();
+    const touchedPrice = draft.priceEur.trim() === '' ? null : eurosToMinorUnits(draft.priceEur);
+    if (draft.priceEur.trim() !== '' && touchedPrice === null) {
+      this.batchErrorCode.set('INVALID_REQUEST');
+      return;
+    }
+    const requestSets: LayoutCellRequest[] = this.sets().map((s) => {
+      const touched = ids.has(s.id);
+      const price: MoneyView =
+        touched && touchedPrice !== null
+          ? { minorUnits: touchedPrice, currency: s.price.currency }
+          : s.price;
+      return {
+        rowLabel: s.rowLabel,
+        positionNo: s.positionNo,
+        tier: touched && draft.tier !== null ? draft.tier : s.tier,
+        pool: touched && draft.pool !== null ? draft.pool : s.pool,
+        price,
+        gridX: s.gridX,
+        gridY: s.gridY,
+      };
+    });
+    this.batchBusy.set(true);
+    this.batchSaved.set(false);
+    this.batchErrorCode.set(undefined);
+    try {
+      await firstValueFrom(
+        this.console.replaceLayout(venueId, { sets: requestSets, expectedVersion }),
+      );
+      if (this.venueId() !== venueId) {
+        return; // a venue switch superseded this apply; batchBusy still clears in finally
+      }
+      this.batchSaved.set(true);
+      this.batchDraft.set(EMPTY_BATCH_DRAFT);
+      this.changed.emit();
+    } catch (error) {
+      if (this.venueId() !== venueId) {
+        return;
+      }
+      const code = layoutErrorOf(error);
+      this.batchErrorCode.set(code);
+      if (code === 'STALE_WRITE') {
+        this.staleWrite.emit(); // the parent's reload banner owns recovery; the sweep is kept (AC-4)
+      } else if (code === 'UNAUTHORIZED') {
+        this.operator.sessionLost();
+      }
+    } finally {
+      this.batchBusy.set(false);
+    }
+  }
+
+  /** The operator-facing message for the current batch-apply failure, or undefined. */
+  protected batchErrorMessage(): string | undefined {
+    switch (this.batchErrorCode()) {
+      case undefined:
+        return undefined;
+      case 'STALE_WRITE':
+        return undefined; // rendered by the parent's stale-write banner instead
+      case 'LAYOUT_IN_USE':
+        return 'This venue has been booked at least once, or some of its sets are still held, so a batch apply is locked. Change price, tier or pool one set at a time instead.';
+      case 'INVALID_REQUEST':
+        return 'That price is not valid. Enter an amount of €0 or more, or leave it blank to leave prices unchanged.';
+      case 'NO_SUCH_VENUE':
+        return 'This venue could not be found.';
+      case 'UNAUTHORIZED':
+        return 'Your session has expired. Please sign in again.';
+      default:
+        return 'Something went wrong applying the change. Please try again.';
     }
   }
 
@@ -410,6 +733,10 @@ export class SetEditor {
    * is cancelled first, since either would otherwise silently survive the close.
    */
   protected onEscape(): void {
+    if (this.sweepIds() !== null) {
+      this.clearSweep();
+      return;
+    }
     if (this.confirmRemove()) {
       this.cancelRemove();
       return;
@@ -699,6 +1026,23 @@ export class SetEditor {
 
 function slot(gridX: number, gridY: number): string {
   return `${gridX},${gridY}`;
+}
+
+/** The smallest rectangle containing every swept coordinate (each an {@link slot} key). */
+function boundingRect(coords: ReadonlySet<string>): SweepRect {
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (const key of coords) {
+    const [x, y] = key.split(',').map(Number);
+    xs.push(x);
+    ys.push(y);
+  }
+  return {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
+  };
 }
 
 /**

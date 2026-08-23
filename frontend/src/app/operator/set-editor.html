@@ -7,10 +7,15 @@
     readyLabel="Sets loaded."
   />
 
+  <!-- Above every branch on purpose, mirroring app-load-announcer (#741): its text mutates in place. -->
+  <output aria-live="polite" class="sr-only" data-testid="set-sweep-announce">{{
+    sweepAnnouncement()
+  }}</output>
+
   @if (loaded()) {
     <div
       class="grid grid-cols-1 items-start gap-[18px]"
-      [class]="hasSelection() ? 'lg:grid-cols-[1fr_320px]' : ''"
+      [class]="hasSelection() || sweepIds() ? 'lg:grid-cols-[1fr_320px]' : ''"
     >
       <!-- The map leads on every viewport; min-w-0 so the 1fr column scrolls instead of blowing out. -->
       <div class="flex min-w-0 flex-col gap-2">
@@ -18,6 +23,7 @@
           frameTestid="set-grid-frame"
           viewportTestid="set-grid"
           [fitWidth]="true"
+          [dragPan]="false"
         >
           <ng-template [appBeachMapRow]="rows()" let-row>
             <div
@@ -36,6 +42,8 @@
                   [attr.aria-pressed]="cell.selected"
                   [attr.aria-label]="cell.label"
                   [title]="cell.label"
+                  (mousedown)="onCellMouseDown(cell.gridX, cell.gridY, $event)"
+                  (mouseenter)="onCellMouseEnter(cell.gridX, cell.gridY, $event)"
                   (click)="onCell(cell.gridX, cell.gridY, cell.setId)"
                   data-testid="set-cell"
                   class="h-full min-w-0 flex items-center justify-center rounded-[8px] border text-[12.5px] font-bold text-[#0c2a33] [transition:scale_0.1s_ease,box-shadow_0.12s_ease,translate_0.12s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:hover:translate-y-0"
@@ -100,8 +108,148 @@
         }
       </div>
 
-      <!-- Docks right of the canvas on desktop, only while something is selected. -->
-      @if (hasSelection()) {
+      <!-- Docks right of the canvas on desktop: a batch editor for a sweep, else the single-set panel. -->
+      @if (sweepIds(); as ids) {
+        <section
+          appCardGlass
+          class="rounded-[20px] px-[18px] py-4"
+          tabindex="-1"
+          data-testid="batch-panel"
+        >
+          <div class="flex items-start justify-between gap-2">
+            <h2 class="text-[15px] font-bold text-(--riv-card-ink)" data-testid="batch-count">
+              {{ ids.size }} set{{ ids.size === 1 ? '' : 's' }} selected
+            </h2>
+            <button
+              appTouchTarget
+              type="button"
+              (click)="clearSweep()"
+              aria-label="Clear selection"
+              data-testid="batch-clear"
+              class="shrink-0 rounded-[10px] text-[13px] font-semibold text-(--riv-card-ink-soft) hover:text-(--riv-card-ink)"
+            >
+              ✕
+            </button>
+          </div>
+
+          <p
+            class="mt-1 text-[12.5px] font-semibold text-(--riv-card-ink)"
+            data-testid="batch-range"
+          >
+            {{ sweepRangeLabel() }}
+          </p>
+          <p class="mt-0.5 mb-3 text-[11.5px] leading-[1.45] text-(--riv-card-ink-soft)">
+            Only the fields you change below apply to every selected set — leave the rest alone to
+            keep each set’s own tier, pool or price.
+          </p>
+
+          <fieldset class="mt-3 border-0 p-0">
+            <legend
+              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+            >
+              Tier
+            </legend>
+            <div class="mt-1.5 flex flex-wrap gap-2">
+              @for (tier of tiers; track tier.key) {
+                <button
+                  appTouchTarget
+                  type="button"
+                  [attr.aria-pressed]="batchDraft().tier === tier.key"
+                  [appBusy]="batchBusy()"
+                  (click)="chooseBatchTier(tier.key)"
+                  [attr.data-testid]="'batch-tier-' + tier.key"
+                  class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-50"
+                  [class]="
+                    batchDraft().tier === tier.key
+                      ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
+                      : 'border border-(--riv-card-border) bg-white/45'
+                  "
+                >
+                  {{ tier.label }}
+                </button>
+              }
+            </div>
+          </fieldset>
+
+          <fieldset class="mt-3 border-0 p-0">
+            <legend
+              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+            >
+              Pool
+            </legend>
+            <div class="mt-1.5 flex flex-wrap gap-2">
+              @for (pool of pools; track pool.key) {
+                <button
+                  appTouchTarget
+                  type="button"
+                  [attr.aria-pressed]="batchDraft().pool === pool.key"
+                  [appBusy]="batchBusy()"
+                  (click)="chooseBatchPool(pool.key)"
+                  [attr.data-testid]="'batch-pool-' + pool.key"
+                  class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-50"
+                  [class]="
+                    batchDraft().pool === pool.key
+                      ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
+                      : 'border border-(--riv-card-border) bg-white/45'
+                  "
+                >
+                  {{ pool.label }}
+                </button>
+              }
+            </div>
+          </fieldset>
+
+          <label class="mt-3 flex flex-col gap-1.5">
+            <span
+              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+            >
+              Full-day price (EUR) — leave blank to keep each set’s own price
+            </span>
+            <input
+              appTouchTarget
+              type="number"
+              step="0.5"
+              [value]="batchDraft().priceEur"
+              (input)="onBatchPriceInput($any($event.target).value)"
+              [appBusy]="batchBusy()"
+              data-testid="batch-price"
+              class="w-full rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[15px] text-(--riv-card-ink)"
+            />
+          </label>
+
+          <div class="mt-3.5 flex flex-wrap gap-2">
+            <button
+              appTouchTarget
+              type="button"
+              (click)="applyBatch()"
+              [disabled]="!batchHasChanges()"
+              [appBusy]="batchBusy()"
+              data-testid="batch-apply"
+              class="flex-1 rounded-[14px] bg-(image:--riv-cta-grad) px-4 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
+            >
+              {{ batchBusy() ? 'Applying…' : 'Apply to ' + ids.size + ' sets' }}
+            </button>
+          </div>
+
+          @if (batchSaved()) {
+            <output
+              class="mt-2.5 block text-[12.5px] font-semibold text-[#0a6e85]"
+              data-testid="batch-saved"
+            >
+              Saved. The public beach map reflects your change.
+            </output>
+          }
+          @if (batchErrorMessage(); as message) {
+            <p
+              class="mt-2.5 text-[12.5px] font-semibold leading-[1.45] text-[#a3160e]"
+              role="alert"
+              data-testid="batch-error"
+            >
+              {{ message }}
+            </p>
+          }
+        </section>
+      } @else if (hasSelection()) {
         <section
           appCardGlass
           class="rounded-[20px] px-[18px] py-4"
