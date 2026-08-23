@@ -608,6 +608,35 @@ export class LayoutEditor {
     this.lastChange.set(`Row ${gridRowLabel(r)} · position ${c + 1} → ${TOOL_LABEL[tool]}`);
   }
 
+  /**
+   * Fill a whole row with the active brush in one gesture (#713) — the row-rail's fill button,
+   * generalizing {@link paintCell} from one cell to every cell in row `r`. Reachable only while a
+   * brush is armed: arming Select switches the tab to {@link SetEditor} entirely (S2), so the fill
+   * rail this drives is never even rendered while Select is armed.
+   */
+  protected fillRow(r: number): void {
+    const tool = this.activeBrush();
+    this.grid.update((g) => g.map((row, ri) => (ri !== r ? row : row.map(() => tool))));
+    this.savedNotice.set(false);
+    this.lastChange.set(`Row ${gridRowLabel(r)} → ${TOOL_LABEL[tool]}`);
+  }
+
+  /** {@link fillRow}'s column counterpart — the column-header's fill button. */
+  protected fillColumn(c: number): void {
+    const tool = this.activeBrush();
+    this.grid.update((g) => g.map((row) => row.map((cell, ci) => (ci !== c ? cell : tool))));
+    this.savedNotice.set(false);
+    this.lastChange.set(`Column ${c + 1} → ${TOOL_LABEL[tool]}`);
+  }
+
+  /** The row-rail fill button's accessible name — tracks whichever brush is currently armed. */
+  protected readonly rowFillLabel = (r: number): string =>
+    `Fill row ${gridRowLabel(r)} with ${TOOL_LABEL[this.activeBrush()]}`;
+
+  /** The column-header fill button's accessible name. */
+  protected readonly colFillLabel = (c: number): string =>
+    `Fill column ${c + 1} with ${TOOL_LABEL[this.activeBrush()]}`;
+
   protected onCellDown(r: number, c: number, event: MouseEvent): void {
     // Paint is a primary-button gesture, arming and disarming alike.
     if (event.button !== 0) {
