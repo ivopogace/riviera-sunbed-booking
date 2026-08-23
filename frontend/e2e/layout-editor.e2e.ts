@@ -375,6 +375,95 @@ test('drag-painting across cells paints them and never pans the overflowing grid
   expect(await page.getByTestId('layout-grid').evaluate((el) => el.scrollLeft)).toBe(0);
 });
 
+test('fills a row via a drag-sweep across rail chips in one PUT (#713)', async ({ page }) => {
+  const { puts } = await mockEditor(page);
+  await page.goto('/operator/1');
+  await signIn(page);
+
+  await page.getByTestId('layout-gen-rows').fill('3');
+  await page.getByTestId('layout-gen-cols').fill('2');
+  await page.getByTestId('layout-generate').click();
+  await expect(page.getByTestId('layout-cell')).toHaveCount(6);
+
+  await page.getByTestId('layout-tool-gap').click();
+  const rails = page.getByTestId('row-code-fill');
+  await expect(rails).toHaveCount(3);
+  await rails.nth(0).evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  const from = (await rails.nth(0).boundingBox())!;
+  const to = (await rails.nth(1).boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 4 });
+  await page.mouse.up();
+
+  // Rows A and B (the swept band) are gap; row C (not swept) keeps its generated tier.
+  for (const i of [0, 1, 2, 3]) {
+    await expect(page.getByTestId('layout-cell').nth(i)).toHaveAttribute('data-state', 'gap');
+  }
+  await expect(page.getByTestId('layout-cell').nth(4)).toHaveAttribute('data-state', 'standard');
+
+  await page.getByTestId('layout-save').click();
+  await expect(page.getByTestId('layout-saved')).toBeVisible();
+  expect(puts).toHaveLength(1); // one bulk PUT for the whole swept fill
+});
+
+test('at 100% zoom, a plain drag paints and never pans; Space-drag pans and never paints (#713)', async ({
+  page,
+}) => {
+  await mockEditor(page);
+  await page.goto('/operator/1');
+  await signIn(page);
+
+  await page.getByTestId('layout-gen-rows').fill('1');
+  await page.getByTestId('layout-gen-cols').fill('20');
+  await page.getByTestId('layout-generate').click();
+  await expect(page.getByTestId('layout-cell')).toHaveCount(20);
+  await page.getByTestId('zoom-100').click();
+  await expect
+    .poll(() => page.getByTestId('layout-grid').evaluate((el) => el.scrollWidth > el.clientWidth))
+    .toBe(true);
+
+  await page.getByTestId('layout-tool-walkin').click();
+  await page
+    .getByTestId('layout-cell')
+    .nth(0)
+    .evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  const from = (await page.getByTestId('layout-cell').nth(0).boundingBox())!;
+  const to = (await page.getByTestId('layout-cell').nth(2).boundingBox())!;
+
+  // A plain drag still paints, never pans, at 100% zoom too.
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+  await page.mouse.up();
+  for (const i of [0, 1, 2]) {
+    await expect(page.getByTestId('layout-cell').nth(i)).toHaveAttribute('data-state', 'walkin');
+  }
+  expect(await page.getByTestId('layout-grid').evaluate((el) => el.scrollLeft)).toBe(0);
+
+  // Blur the button the prior click focused — R-3 only withholds Space while focus sits on a control.
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page
+    .getByTestId('layout-cell')
+    .nth(5)
+    .evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  const from2 = (await page.getByTestId('layout-cell').nth(5).boundingBox())!;
+  const to2 = (await page.getByTestId('layout-cell').nth(3).boundingBox())!;
+  await page.keyboard.down('Space');
+  await page.mouse.move(from2.x + from2.width / 2, from2.y + from2.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to2.x + to2.width / 2, to2.y + to2.height / 2, { steps: 8 });
+  await page.mouse.up();
+  await page.keyboard.up('Space');
+
+  await expect
+    .poll(() => page.getByTestId('layout-grid').evaluate((el) => el.scrollLeft))
+    .toBeGreaterThan(0);
+  // Neither cell the pan swept over painted — row A (single-row generate) is all premium.
+  await expect(page.getByTestId('layout-cell').nth(5)).toHaveAttribute('data-state', 'premium');
+  await expect(page.getByTestId('layout-cell').nth(3)).toHaveAttribute('data-state', 'premium');
+});
+
 test('regenerating over a grid confirms first and moves focus with the confirmation (#604, + axe)', async ({
   page,
 }) => {
