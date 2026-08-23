@@ -77,12 +77,23 @@ describe('Availability calendar contrast (WCAG AA) — venue/day-availability.ts
       expect(contrastRatio(CALENDAR_BAR.fill, CALENDAR_BAR.track)).toBeGreaterThanOrEqual(AA_LARGE);
     });
 
-    it.each(CALENDAR_TINTS.filter((tint) => tint.name.startsWith('unknown') === false))(
+    it.each(CALENDAR_TINTS.filter((tint) => !tint.name.startsWith('unknown')))(
       'the track reads against the $name fill it is drawn on',
       ({ fill }) => {
         expect(contrastRatio(CALENDAR_BAR.track, fill)).toBeGreaterThanOrEqual(AA_LARGE);
       },
     );
+
+    /**
+     * The bar's colours cannot read on the chosen day's dark accent — the arithmetic below is why,
+     * and it is asserted rather than described so the day the accent changes, this fails loudly
+     * instead of the bar quietly becoming legible-looking. The component draws no bar there
+     * (`availability-calendar.spec.ts` pins that), which is what keeps this from being a violation.
+     */
+    it('could not read on the chosen day, which is why no bar is drawn there', () => {
+      expect(contrastRatio(CALENDAR_BAR.track, CALENDAR_SELECTED.fill)).toBeLessThan(AA_LARGE);
+      expect(contrastRatio(CALENDAR_BAR.fill, CALENDAR_SELECTED.fill)).toBeLessThan(AA_LARGE);
+    });
   });
 
   describe.each(THEMES)('the popover chrome over the %s background', (_theme, stops) => {

@@ -110,16 +110,6 @@
             {{ triggerLabel() }}
           </button>
         </p>
-
-        @if (pickerOpen()) {
-          <app-availability-calendar
-            [venueId]="v.id"
-            [selectedDate]="selectedDate()"
-            [minDate]="minDate()"
-            (chosen)="onDateChosen($event)"
-            (dismissed)="closePicker()"
-          />
-        }
         <p appCutoffNote class="mt-2 text-[11.5px] text-(--riv-ink-faint)"></p>
       </header>
 
@@ -248,6 +238,17 @@
         </div>
       </app-beach-map-canvas>
     </article>
+
+    <!-- Outside the glass header: its backdrop-filter would contain, and its overflow clip, a fixed child (#134). -->
+    @if (pickerOpen()) {
+      <app-availability-calendar
+        [venueId]="v.id"
+        [selectedDate]="selectedDate()"
+        [minDate]="minDate()"
+        (chosen)="onDateChosen($event)"
+        (dismissed)="closePicker()"
+      />
+    }
 
     @if (selectedSet(); as set) {
       <app-booking-dialog

@@ -138,6 +138,33 @@ test('opens on the map’s day, tints the month, and is clean to axe', async ({ 
   await expectNoSeriousAxeViolations(page, 'venue map with the availability calendar open');
 });
 
+/**
+ * The popover is `position: fixed`, and the venue header it is triggered from carries
+ * `backdrop-filter` + `overflow: hidden` — which would make that header its containing block and
+ * clip it (Filter Effects L2). The repo has shipped this bug once already, in #134, where the same
+ * property on the site header trapped the shell menus' fixed backdrops. So the pin is a measurement,
+ * not a class check: the overlay must cover the viewport, and a click on the map far below the
+ * header must reach the backdrop and dismiss.
+ */
+test('the overlay escapes the glass header — it covers the viewport and dismisses from anywhere', async ({
+  page,
+}) => {
+  await openCalendar(page);
+
+  const box = (await page.locator('app-availability-calendar').boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(box.x).toBe(0);
+  expect(box.y).toBe(0);
+  expect(box.width).toBe(viewport.width);
+  expect(box.height).toBe(viewport.height);
+
+  // Bottom-left of the viewport is well outside the header; the backdrop has to own that point.
+  await page.mouse.click(8, viewport.height - 8);
+  await expect(page.getByTestId('availability-calendar')).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(trigger(page)).toBeFocused();
+});
+
 test('navigating a month refetches, and every window stays inside the 62-day cap', async ({
   page,
 }) => {
@@ -179,6 +206,24 @@ test('choosing a day closes the calendar and re-fetches the map for it', async (
   await expect(trigger(page)).toHaveAttribute('data-date', chosen);
   await expect(trigger(page)).toHaveAttribute('aria-expanded', 'false');
   await expect(trigger(page)).toBeFocused();
+});
+
+test('keeps focus on the month-nav button so a second press steps a second month', async ({
+  page,
+}) => {
+  await openCalendar(page);
+  const next = page.getByTestId('calendar-next');
+  await next.focus();
+  const first = (await page.getByTestId('calendar-month').textContent())!;
+
+  await next.press('Enter');
+  await expect.poll(() => page.getByTestId('calendar-month').textContent()).not.toBe(first);
+  await expect(next).toBeFocused();
+
+  const second = (await page.getByTestId('calendar-month').textContent())!;
+  await next.press('Enter');
+  await expect.poll(() => page.getByTestId('calendar-month').textContent()).not.toBe(second);
+  await expect(next).toBeFocused();
 });
 
 test('is fully operable from the keyboard, and Escape returns focus to the trigger', async ({

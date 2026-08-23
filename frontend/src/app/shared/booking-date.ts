@@ -133,11 +133,6 @@ export function endOfWeek(isoDate: string): string {
   return addDays(isoDate, 6 - mondayIndex(isoDate));
 }
 
-/** Whether two ISO `YYYY-MM-DD` civil days fall in the same calendar month of the same year. */
-export function isSameMonth(isoDate: string, other: string): boolean {
-  return isoDate.slice(0, 7) === other.slice(0, 7);
-}
-
 /**
  * The month containing `isoDate` laid out as calendar weeks — Monday-first rows of exactly seven
  * cells, where a cell is that day's ISO string or `undefined` for a position outside the month.

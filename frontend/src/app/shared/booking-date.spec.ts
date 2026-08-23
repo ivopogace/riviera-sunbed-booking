@@ -8,7 +8,6 @@ import {
   formatIsoDate,
   formatMonthLabel,
   isIsoDate,
-  isSameMonth,
   monthWeeks,
   parseIsoDate,
   startOfMonth,
@@ -242,13 +241,5 @@ describe('formatMonthLabel', () => {
   it('reads the civil day itself, not the viewer zone', () => {
     // Midnight UTC on the 1st: a local-zone read west of UTC would render the previous month.
     expect(formatMonthLabel('2026-09-01')).toBe('September 2026');
-  });
-});
-
-describe('isSameMonth', () => {
-  it('is true only within one calendar month of one year', () => {
-    expect(isSameMonth('2026-08-01', '2026-08-31')).toBe(true);
-    expect(isSameMonth('2026-08-31', '2026-09-01')).toBe(false);
-    expect(isSameMonth('2026-08-15', '2027-08-15')).toBe(false);
   });
 });

@@ -9,6 +9,7 @@ import {
   linkedSignal,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 
 import {
@@ -46,6 +47,8 @@ export interface CalendarCell {
   readonly selectable: boolean;
   readonly selected: boolean;
   readonly focused: boolean;
+  /** Whether the capacity bar is drawn — see {@link AvailabilityCalendar.weeks}. */
+  readonly showsBar: boolean;
 }
 
 /** Monday-first column headers: the abbreviation shown, and the day it stands for. */
@@ -71,6 +74,11 @@ const WEEKDAYS: readonly { readonly short: string; readonly long: string }[] = [
  * <p>Today and every past day render but cannot be chosen (invariant #4, display only — the server
  * stays authoritative for the real cutoff). The endpoint answers them, because it reports
  * availability rather than bookability, so the exclusion is entirely this component's job.
+ *
+ * <p>The chosen day draws no capacity bar. It wears the accent rather than a tint, and the bar's
+ * two colours are proved against the pale tints only — on the accent they fall to 2.1:1 and 1.5:1.
+ * Nothing is lost: that day's free count is what the page behind the popover is already showing in
+ * full, and the day's accessible name still speaks it.
  *
  * <p>Focus, not selection, drives the visible month: {@link focusedDate} is the roving-tabindex
  * position and the month is computed from it, so an arrow key that crosses a month boundary and a
@@ -109,6 +117,14 @@ export class AvailabilityCalendar {
     this.selectedDate() < this.minDate() ? this.minDate() : this.selectedDate(),
   );
 
+  /**
+   * Bumped whenever focus should follow {@link focusedDate} into the grid. Month navigation by
+   * BUTTON deliberately does not bump it: the day cells re-render, but focus stays on the nav
+   * button so a second press steps a second month (the APG date-picker behaviour). Keyboard moves
+   * from inside the grid do bump it, because there the cell is where focus already was.
+   */
+  private readonly focusRequest = signal(1);
+
   private readonly counts = signal<ReadonlyMap<string, DailyAvailability>>(new Map());
   protected readonly countsFailed = signal(false);
   private epoch = 0;
@@ -134,16 +150,18 @@ export class AvailabilityCalendar {
         const day = counts.get(iso);
         const selectable = iso >= minDate;
         const state = selectable ? dayAvailabilityState(day) : 'unknown';
+        const isSelected = iso === selected;
         return {
           iso,
           dayOfMonth: Number(iso.slice(8)),
           state,
-          tint: iso === selected ? DAY_SELECTED_CLASS : DAY_TINT_CLASS[state],
+          tint: isSelected ? DAY_SELECTED_CLASS : DAY_TINT_CLASS[state],
           barPercent: `${Math.round(freeFraction(selectable ? day : undefined) * 100)}%`,
           name: dayAccessibleName(iso, day, selectable),
           selectable,
-          selected: iso === selected,
+          selected: isSelected,
           focused: iso === focused,
+          showsBar: selectable && state !== 'unknown' && !isSelected,
         };
       }),
     );
@@ -153,7 +171,8 @@ export class AvailabilityCalendar {
     effect(() => this.fetchMonth(this.venueId(), this.visibleMonth()));
     afterRenderEffect({
       write: () => {
-        const focused = this.focusedDate();
+        this.focusRequest();
+        const focused = untracked(() => this.focusedDate());
         this.hostRef.nativeElement
           .querySelector<HTMLElement>(`button[data-date="${focused}"]`)
           ?.focus();
@@ -206,7 +225,13 @@ export class AvailabilityCalendar {
         return;
     }
     event.preventDefault();
-    this.focusedDate.set(next);
+    this.moveFocusTo(next);
+  }
+
+  /** Move the roving position AND carry focus with it — the keyboard's move, not the buttons'. */
+  private moveFocusTo(date: string): void {
+    this.focusedDate.set(date);
+    this.focusRequest.update((request) => request + 1);
   }
 
   /** Commit a day, ignoring one that cannot be booked — the aria-disabled cells still take clicks. */

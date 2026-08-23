@@ -271,10 +271,10 @@ a grid of buttons, not a field. Deviation from the `@angular/aria` recommendatio
 
 ## Execution status
 
-**Stage pointer:** `PR — marking ready for review`
+**Stage pointer:** `review gate — fixing findings (round 1 applied; fan-out still reporting)`
 
-**Next action:** merge the latest `origin/main`, mark PR #763 ready for review, then run the
-review gate (`/code-review` subagent fan-out per `pr-gates.md` §1) and the Sonar gate.
+**Next action:** collect the remaining fan-out lenses, apply any surviving findings, then pull the
+Sonar new-issue list for the PR and clear it.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -293,7 +293,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (`/code-review`) | **Blocker.** The `fixed inset-0` overlay was rendered inside `<header appPanelGlass>`, whose `backdrop-filter` makes it the containing block for fixed descendants and whose `overflow:hidden` clips them — the exact bug #134 already shipped and fixed once. Measured: at a 1280×720 viewport the overlay was 730×594 at x=275, so the backdrop covered neither the map nor the viewport. | fixed — moved beside `app-booking-dialog`, outside the glass panel; pinned by an e2e that **measures** the overlay against the viewport and clicks the bottom-left corner to dismiss |
+| F-2 | review (`/code-review`) | The `afterRenderEffect` re-focused the roving day cell on every `focusedDate` change, so clicking "next month" threw focus into the grid and a keyboard user had to re-tab per month (APG keeps focus on the nav button). | fixed — a `focusRequest` counter that only keyboard moves bump; pinned in both the unit spec and the e2e |
+| F-3 | review (`/code-review`) | The capacity bar also painted on the **selected** day, where its track and fill sit on the accent at ≈2.1:1 and ≈1.5:1 — under the 3:1 the contrast spec enforces everywhere else, and untested because the spec never checked `CALENDAR_SELECTED` for the bar. | fixed — no bar on the chosen day (its count is on the page behind and in its accessible name); the contrast spec now **asserts** the ratios are too low, so a future accent change fails loudly |
+| F-4 | review (`/code-review`) | `discover-photos.e2e.ts`'s focus-ring assertion now targets a `<button>` after a programmatic `.focus()`; `:focus-visible` may not match as it did for the old `<input>`. | **not a defect** — the assertion is non-vacuous by construction (`toHaveCSS('outline-width','3px')` fails at `0px` if the ring is absent) and it passes both locally and in CI on the pushed head. No change. |
+| F-5 | review (`/code-review`) | `isSameMonth` was exported from `shared/booking-date.ts` with no caller outside its own spec. | fixed — removed, with its spec |
 
 ---
 
@@ -468,6 +472,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-23 | review F-1 — a `position: fixed` overlay inside a `backdrop-filter` ancestor | every fixed-position overlay in the app, and every ancestor that can contain or clip one (`backdrop-filter`, `filter`, `transform`, `contain`, `will-change`, `overflow`) — enumerated by **measuring the rendered box against the viewport**, not by reading class lists, since the containing block is a computed fact | a Playwright probe walking `hostEl.parentElement` for a non-`none` `backdropFilter`/`filter`/`transform` or a non-`visible` `overflow`, then comparing `getBoundingClientRect()` to `innerWidth/innerHeight` | 1 — the calendar overlay; the three existing modals (`booking-dialog`, `find-booking`, `payout-statement`) are already rendered outside the glass panels, which is *why* they were | fixed the one site, and turned the probe into a permanent e2e assertion so the next overlay cannot regress it silently |
 | 2026-08-23 | phase 7 — a strict-mode violation on `button[data-date="…"]` | every selector that can match a day cell, which is the mechanism: the trigger carries `data-date` as its own test hook and precedes the popover in the document, so an unscoped query returns the trigger whenever the two dates coincide | `grep -rn 'data-date' src/app e2e --include=*.ts --include=*.html \| grep -v 'attr.data-date'` | 8 query sites: 3 in `venue-map.spec.ts`, 4 in the new e2e, 1 in the component | **two of the unit sites were false-greens** — `venue-map.spec.ts`'s floor assertions read `aria-disabled` off the *trigger* (which has none) and so passed for the wrong reason. All eight scoped to the popover; the component's own query was already scoped to its host and needed nothing. |
 | 2026-08-22 | phase 6 — gave each fill its own focus-ring colour | every element that can end up with two competing `outline-color` utilities, which resolve by stylesheet order rather than class order (`riviera-tailwind` rule 3) | `grep -rn 'focus-visible:outline-\[' frontend/src/app --include=*.html --include=*.ts` | the calendar day cell was the only element where a base ring and a state ring would have met; every other site sets exactly one | fixed by moving the ring onto the per-state class, so exactly one reaches each element by construction rather than by luck |
 | 2026-08-22 | phase 4 — fixed the focus trap's focusable selector | every site that enumerates focusable elements by selector, which is the mechanism the defect lives in (a clause matching an element the browser will not tab to) | `grep -rn 'a\[href\]\|tabindex="-1"\]\|:not(\[disabled\])' src/app src/testing e2e --include=*.ts` | 1 — `shared/focus-trap.ts` is the only such site | fixed there, so all four consumers (`booking-dialog`, `find-booking`, `payout-statement`, `availability-calendar`) get it; the three pre-existing modals' specs re-run green, since none parks a focusable. Also swept the sibling defect in the same selector — `select`/`textarea` were matched even when `disabled` — and fixed it in the same line. |

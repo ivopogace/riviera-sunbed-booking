@@ -126,6 +126,25 @@ describe('AvailabilityCalendar', () => {
       ).toBe('50%');
     });
 
+    it('draws no capacity bar on the chosen day, whose accent its colours cannot read on', async () => {
+      await flushCalendar(15, 30);
+
+      const bar = (iso: string) =>
+        dayButton(iso)!.querySelector<HTMLElement>('[data-testid="day-bar"]')!.parentElement!;
+
+      expect(bar('2026-06-20').classList.contains('invisible')).toBe(true);
+      expect(bar('2026-06-21').classList.contains('invisible')).toBe(false);
+    });
+
+    it('draws no capacity bar on a day it cannot read or cannot book', async () => {
+      await flushCalendar(15, 30);
+
+      const bar = (iso: string) =>
+        dayButton(iso)!.querySelector<HTMLElement>('[data-testid="day-bar"]')!.parentElement!;
+
+      expect(bar('2026-06-01').classList.contains('invisible')).toBe(true);
+    });
+
     it('opens on the month of the selected day', async () => {
       await flushCalendar();
 
@@ -319,6 +338,27 @@ describe('AvailabilityCalendar', () => {
 
       press('2026-06-15', 'End');
       expect(focused()).toBe('2026-06-21');
+    });
+
+    it('leaves focus on the month-nav button so a second press steps a second month', async () => {
+      await flushCalendar();
+      const next = control('calendar-next');
+      next.focus();
+
+      next.click();
+      fixture.detectChanges();
+      await flush(calendarRequest());
+
+      // APG: the nav button keeps focus; throwing it into the grid would cost a re-tab per month.
+      expect(dom().ownerDocument.activeElement).toBe(next);
+      expect(monthLabel()).toContain('July 2026');
+
+      next.click();
+      fixture.detectChanges();
+      await flush(calendarRequest());
+
+      expect(dom().ownerDocument.activeElement).toBe(next);
+      expect(monthLabel()).toContain('August 2026');
     });
 
     it('moves by a month with PageUp and PageDown, refetching each time', async () => {

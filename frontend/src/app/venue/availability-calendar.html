@@ -86,7 +86,7 @@
                   {{ cell.dayOfMonth }}
                   <span
                     class="block h-[3px] w-[22px] overflow-hidden rounded-full bg-[#6f8a91]"
-                    [class.invisible]="!cell.selectable || cell.state === 'unknown'"
+                    [class.invisible]="!cell.showsBar"
                     aria-hidden="true"
                   >
                     <span
