@@ -146,7 +146,7 @@ addendum*). Branched from `origin/main` at `7d93a3f`.
 | R-4 | **Held.** A month grid request exceeds the server's 62-day cap → `400` and an empty calendar | low | med | Requests are the month's own inclusive bounds (28–31 days); the grid's leading/trailing cells are blank, never foreign-month days. Pinned by AC-13. | claude | closed in the phases-3-4 commit |
 | R-5 | **Materialised as predicted, and one step further.** `httpMock.verify()` in `venue-map.spec.ts`'s `afterEach` fails every existing test that opens the picker but never flushes the calendar read | high | low | The calendar only fetches when open, and the picker starts closed, so existing specs are unaffected; the specs that do open it flush explicitly, following the suite's existing `flushVenue(); // settle the read` idiom — hoisted into one `flushCalendar()` helper matching any venue id, since an in-place venue switch fires the calendar read for the NEW id. | claude | closed in the phases-5-6 commit |
 | R-6 | Roving tabindex vs `shared/focus-trap.ts` | med | med | **Materialised, and worse than predicted — fixed at phase 4.** The plan assumed `FOCUSABLE` excluded `[tabindex="-1"]`; it did not. Its `button:not([disabled])` clause matched the parked day cells by tag, so the trap's "last focusable" was a cell Tab never reaches and Tab from the real last control escaped the dialog. Fixed in the shared helper (every clause now also excludes `[tabindex="-1"]`, and disabled `select`/`textarea` are excluded for the same reason), with three cases added to `focus-trap.spec.ts`. All three existing modal consumers stay green — none has a parked focusable, so the fix is a no-op for them and closes a latent leak for any future roving widget. | claude | fixed in the phases-3-4 commit |
-| R-7 | 42 cells × the 44 px floor needs ≥ 308 px of grid width; the mocked e2e runs a 390 px viewport | med | med | Popover sized against that budget (44 px cells, ≤ 40 px total horizontal chrome) and measured by the existing `frontend/e2e/touch-targets*.e2e.ts` sweep, which is the only thing that proves a rendered box. | claude | open |
+| R-7 | **Held, and measured.** 42 cells × the 44 px floor needs ≥ 308 px of grid width; the mocked e2e runs a 390 px viewport | med | med | Popover sized against that budget (44 px cells, ≤ 40 px total horizontal chrome) and measured by the existing `frontend/e2e/touch-targets*.e2e.ts` sweep, which is the only thing that proves a rendered box. `availability-calendar.e2e.ts` measures every day cell at 390 px and asserts the page gains no horizontal overflow; the standing `touch-targets.e2e.ts` sweep passes unchanged. | claude | closed in the phase-7 commit |
 | R-8 | **Held, via the mirror rather than tokens.** New colour values drift between `styles.scss` and their test-side hand-copy | low | med | The tint fills live in one test-side mirror (`src/testing/calendar-tints.ts`, the `testing/chip-fills.ts` role) and the component spec pins the rendered class list as a **set**, so a value that drifts in either place fails loudly. The mirror also grew a `ring` per fill after the contrast spec caught a real defect (below). | claude | closed in the phases-5-6 commit |
 | R-9 | **Held.** `venue-map`'s in-place route change (`routeKey()` effect, `venue-map.ts:236-248`) leaves the popover holding another venue's month cache | med | med | The popover is destroyed and re-created via `@if (pickerOpen())`, and `resetForVenue` closes it; the cache is component state, so it cannot outlive the reset. `resetForVenue` closes it, and the existing in-place-switch specs exercise the path. | claude | closed in the phases-5-6 commit |
 
@@ -271,10 +271,10 @@ a grid of buttons, not a field. Deviation from the `@angular/aria` recommendatio
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 7)`
+**Stage pointer:** `PR — marking ready for review`
 
-**Next action:** load `playwright-cli`, then author `frontend/e2e/availability-calendar.e2e.ts`
-and update the two existing e2e sites that drove the retired native input.
+**Next action:** merge the latest `origin/main`, mark PR #763 ready for review, then run the
+review gate (`/code-review` subagent fan-out per `pr-gates.md` §1) and the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -285,7 +285,7 @@ and update the two existing e2e sites that drove the retired native input.
 | 4 — Keyboard, roving tabindex, focus trap and restore | ✅ | see phases-3-4 commit |
 | 5 — Wire into `venue-map`, retire the native input | ✅ | see phases-5-6 commit |
 | 6 — Tokens, contrast spec, a11y spec, touch-target guard | ✅ | see phases-5-6 commit |
-| 7 — Mocked Playwright e2e | | |
+| 7 — Mocked Playwright e2e | ✅ | see phase-7 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -314,6 +314,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/venue/venue-map-switch.spec.ts` — popover reset on in-place route change
 - `frontend/src/testing/calendar-tints.ts` — the one test-side mirror of the tint recipes
 - `frontend/e2e/availability-calendar.e2e.ts` — the CI-run mocked flow
+- `frontend/e2e/discovery-flow.e2e.ts` — the carried-`?date=` assertion, re-expressed for the trigger
 
 ---
 
@@ -467,6 +468,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-23 | phase 7 — a strict-mode violation on `button[data-date="…"]` | every selector that can match a day cell, which is the mechanism: the trigger carries `data-date` as its own test hook and precedes the popover in the document, so an unscoped query returns the trigger whenever the two dates coincide | `grep -rn 'data-date' src/app e2e --include=*.ts --include=*.html \| grep -v 'attr.data-date'` | 8 query sites: 3 in `venue-map.spec.ts`, 4 in the new e2e, 1 in the component | **two of the unit sites were false-greens** — `venue-map.spec.ts`'s floor assertions read `aria-disabled` off the *trigger* (which has none) and so passed for the wrong reason. All eight scoped to the popover; the component's own query was already scoped to its host and needed nothing. |
 | 2026-08-22 | phase 6 — gave each fill its own focus-ring colour | every element that can end up with two competing `outline-color` utilities, which resolve by stylesheet order rather than class order (`riviera-tailwind` rule 3) | `grep -rn 'focus-visible:outline-\[' frontend/src/app --include=*.html --include=*.ts` | the calendar day cell was the only element where a base ring and a state ring would have met; every other site sets exactly one | fixed by moving the ring onto the per-state class, so exactly one reaches each element by construction rather than by luck |
 | 2026-08-22 | phase 4 — fixed the focus trap's focusable selector | every site that enumerates focusable elements by selector, which is the mechanism the defect lives in (a clause matching an element the browser will not tab to) | `grep -rn 'a\[href\]\|tabindex="-1"\]\|:not(\[disabled\])' src/app src/testing e2e --include=*.ts` | 1 — `shared/focus-trap.ts` is the only such site | fixed there, so all four consumers (`booking-dialog`, `find-booking`, `payout-statement`, `availability-calendar`) get it; the three pre-existing modals' specs re-run green, since none parks a focusable. Also swept the sibling defect in the same selector — `select`/`textarea` were matched even when `disabled` — and fixed it in the same line. |
 | 2026-08-22 | phase 0 — introduced ISO civil-day month arithmetic | every site that does civil-day arithmetic on a `Date` by hand, rather than through `shared/booking-date.ts` | `grep -rn "setUTCDate\|setUTCMonth\|setUTCFullYear\|toISOString()" src/app src/testing e2e --include=*.ts` | 3 outside the module: `e2e/discovery-flow.e2e.ts:176-177` (civil day via `toISOString().slice(0,10)`), `e2e/operator-requests.e2e.ts:21` (a full instant, correct usage), and the module's own docs | none — both live sites are **mocked-e2e fixtures**, which drive the built app as a black box and import nothing from `src/` on purpose (`testing/chip-fills.ts` header states the rule). No app-source site rolls its own day arithmetic, so the new helpers have no existing duplicate to absorb. |

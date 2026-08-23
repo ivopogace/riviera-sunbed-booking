@@ -1,0 +1,269 @@
+import { expect, type Page, test } from '@playwright/test';
+
+import { expectNoSeriousAxeViolations } from './support/axe';
+import { settle } from './support/booking-dialog';
+
+/**
+ * Real-render audit of the availability calendar (#761) — the custom date picker that replaced the
+ * venue page's native `<input type="date">`. The API is mocked via `page.route`, so this belongs to
+ * the CI-safe suite (`playwright.a11y.config.ts`) alongside `venue-map-pan.e2e.ts`.
+ *
+ * <p>What only a real browser can prove, and so is what this spec is for: that the popover's
+ * keyboard contract works against a real focus model (jsdom has none), that the day cells actually
+ * measure 44px (a class list is not a box — `riviera-tailwind` rule 4), that the tints paint as
+ * computed styles rather than as class names, and that axe is clean over the rendered surface once
+ * its entrance animation has settled.
+ */
+
+const VENUE_ID = 4;
+
+function venue(setCount = 12) {
+  const sets = Array.from({ length: setCount }, (_unused, index) => ({
+    id: index + 1,
+    rowLabel: 'Row 1',
+    positionNo: index + 1,
+    tier: 'STANDARD',
+    pool: 'ONLINE',
+    price: { minorUnits: 3000, currency: 'EUR' },
+    gridX: index + 1,
+    gridY: 1,
+    availability: 'FREE',
+  }));
+  return {
+    id: VENUE_ID,
+    name: 'Calendar Cove',
+    beach: 'Dhërmi',
+    region: 'Albanian Riviera',
+    description: 'A venue whose days differ, so the calendar has something to say.',
+    ratingTenths: 45,
+    reviewsCount: 88,
+    bookingMode: 'INSTANT',
+    fromPrice: { minorUnits: 3000, currency: 'EUR' },
+    sets,
+  };
+}
+
+/**
+ * Every day of the requested window, cycling free → low → full so all three tints and the
+ * capacity bar's whole range are on screen in one month.
+ */
+function calendarDays(from: string, to: string) {
+  const days: { date: string; free: number; total: number }[] = [];
+  const cycle = [30, 4, 0];
+  for (let day = new Date(`${from}T00:00:00Z`); ; day.setUTCDate(day.getUTCDate() + 1)) {
+    const iso = day.toISOString().slice(0, 10);
+    days.push({ date: iso, free: cycle[days.length % cycle.length], total: 30 });
+    if (iso === to) break;
+  }
+  return days;
+}
+
+/** Every calendar window the page asked for, newest last — the re-fetch proof. */
+const windows: string[] = [];
+
+test.beforeEach(async ({ page }) => {
+  windows.length = 0;
+  await page.route(/\/api\/venues\/\d+\/availability-calendar\?.*$/, (route) => {
+    const url = new URL(route.request().url());
+    const from = url.searchParams.get('from')!;
+    const to = url.searchParams.get('to')!;
+    windows.push(`${from}..${to}`);
+    return route.fulfill({ json: calendarDays(from, to) });
+  });
+  await page.route(/\/api\/venues\/\d+(\?.*)?$/, (route) => route.fulfill({ json: venue() }));
+});
+
+/** The picker trigger, and the day cell the roving tabindex currently sits on. */
+function trigger(page: Page) {
+  return page.getByTestId('map-date');
+}
+
+/**
+ * Day cells, scoped to the popover on purpose: the trigger carries a `data-date` too, so an
+ * unscoped `button[data-date="…"]` is a strict-mode violation whenever the two dates coincide.
+ */
+function dayCells(page: Page) {
+  return page.locator('[data-testid="availability-calendar"] button[data-date]');
+}
+
+async function focusedDay(page: Page): Promise<string | null> {
+  return dayCells(page).and(page.locator('[tabindex="0"]')).getAttribute('data-date');
+}
+
+async function openCalendar(page: Page) {
+  await page.goto(`/venues/${VENUE_ID}`);
+  await expect(page.getByRole('heading', { name: 'Calendar Cove' })).toBeVisible();
+  await trigger(page).click();
+  const dialog = page.getByTestId('availability-calendar');
+  await expect(dialog).toBeVisible();
+  await settle(page);
+  return dialog;
+}
+
+test('opens on the map’s day, tints the month, and is clean to axe', async ({ page }) => {
+  const dialog = await openCalendar(page);
+
+  await expect(trigger(page)).toHaveAttribute('aria-expanded', 'true');
+  await expect(dialog).toHaveAttribute('role', 'dialog');
+  await expect(dialog).toHaveAttribute('aria-modal', 'true');
+
+  // The counts reach the accessible name as integers, which is what a screen reader gets (#761).
+  await expect(page.locator('button[data-state="free"]').first()).toHaveAttribute(
+    'aria-label',
+    /, 30 of 30 sets free$/,
+  );
+  await expect(page.locator('button[data-state="low"]').first()).toHaveAttribute(
+    'aria-label',
+    /, 4 of 30 sets free$/,
+  );
+  await expect(page.locator('button[data-state="full"]').first()).toHaveAttribute(
+    'aria-label',
+    /, no sets free$/,
+  );
+
+  // Computed styles, not class lists — the tints must actually paint, and differ from each other.
+  const fills = await Promise.all(
+    ['free', 'low', 'full'].map((state) =>
+      page
+        .locator(`button[data-state="${state}"]`)
+        .first()
+        .evaluate((el) => getComputedStyle(el).backgroundColor),
+    ),
+  );
+  expect(new Set(fills).size).toBe(3);
+  for (const fill of fills) {
+    expect(fill).not.toBe('rgba(0, 0, 0, 0)');
+  }
+
+  await expectNoSeriousAxeViolations(page, 'venue map with the availability calendar open');
+});
+
+test('navigating a month refetches, and every window stays inside the 62-day cap', async ({
+  page,
+}) => {
+  await openCalendar(page);
+  const opened = windows.length;
+
+  await page.getByTestId('calendar-next').click();
+  await expect.poll(() => windows.length).toBe(opened + 1);
+
+  await page.getByTestId('calendar-prev').click();
+  await expect.poll(() => windows.length).toBe(opened + 2);
+
+  for (const window of windows) {
+    const [from, to] = window.split('..');
+    const span = (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000 + 1;
+    expect(span).toBeGreaterThan(0);
+    expect(span).toBeLessThanOrEqual(62);
+  }
+});
+
+test('choosing a day closes the calendar and re-fetches the map for it', async ({ page }) => {
+  await openCalendar(page);
+  await page.getByTestId('calendar-next').click();
+  await expect
+    .poll(async () => (await focusedDay(page))?.slice(0, 7))
+    .not.toBe((await trigger(page).getAttribute('data-date'))?.slice(0, 7));
+
+  const chosen = (await focusedDay(page))!;
+  const mapRequest = page.waitForRequest(
+    (request) =>
+      request.url().includes(`/api/venues/${VENUE_ID}?`) && request.url().includes(chosen),
+  );
+  await dayCells(page)
+    .and(page.locator(`[data-date="${chosen}"]`))
+    .click();
+
+  await mapRequest;
+  await expect(page.getByTestId('availability-calendar')).toHaveCount(0);
+  await expect(trigger(page)).toHaveAttribute('data-date', chosen);
+  await expect(trigger(page)).toHaveAttribute('aria-expanded', 'false');
+  await expect(trigger(page)).toBeFocused();
+});
+
+test('is fully operable from the keyboard, and Escape returns focus to the trigger', async ({
+  page,
+}) => {
+  await openCalendar(page);
+  const start = (await focusedDay(page))!;
+
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => focusedDay(page)).toBe(shift(start, 1));
+
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(() => focusedDay(page)).toBe(shift(start, 8));
+
+  await page.keyboard.press('Home');
+  await expect
+    .poll(async () => new Date(`${await focusedDay(page)}T00:00:00Z`).getUTCDay())
+    .toBe(1); // Monday, the week's first day
+
+  const beforePageDown = (await focusedDay(page))!;
+  await page.keyboard.press('PageDown');
+  await expect
+    .poll(async () => (await focusedDay(page))!.slice(0, 7))
+    .not.toBe(beforePageDown.slice(0, 7));
+
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('availability-calendar')).toHaveCount(0);
+  await expect(trigger(page)).toBeFocused();
+});
+
+test('keeps focus inside the popover when Tab reaches its end', async ({ page }) => {
+  await openCalendar(page);
+
+  for (let press = 0; press < 6; press++) {
+    await page.keyboard.press('Tab');
+    await expect(page.getByTestId('availability-calendar')).toContainText(/\d/);
+    const inside = await page.evaluate(
+      () => document.activeElement?.closest('[data-testid="availability-calendar"]') !== null,
+    );
+    expect(inside, `focus escaped the dialog after ${press + 1} Tab press(es)`).toBe(true);
+  }
+});
+
+test('every day cell meets the 44px touch-target floor at a phone width', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openCalendar(page);
+
+  const cells = dayCells(page);
+  const count = await cells.count();
+  expect(count).toBeGreaterThan(27);
+
+  for (let index = 0; index < count; index++) {
+    const box = (await cells.nth(index).boundingBox())!;
+    expect(box.width, `day cell ${index} is too narrow`).toBeGreaterThanOrEqual(44);
+    expect(box.height, `day cell ${index} is too short`).toBeGreaterThanOrEqual(44);
+  }
+
+  // The popover must not force the page to scroll sideways on a phone.
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test('stays a usable picker when the counts cannot be loaded', async ({ page }) => {
+  await page.route(/\/api\/venues\/\d+\/availability-calendar\?.*$/, (route) =>
+    route.fulfill({ status: 500, body: 'boom' }),
+  );
+  await page.goto(`/venues/${VENUE_ID}`);
+  await expect(page.getByRole('heading', { name: 'Calendar Cove' })).toBeVisible();
+  await trigger(page).click();
+
+  await expect(page.getByTestId('calendar-counts-failed')).toBeVisible();
+  const chosen = (await focusedDay(page))!;
+  await dayCells(page)
+    .and(page.locator(`[data-date="${chosen}"]`))
+    .click();
+
+  await expect(page.getByTestId('availability-calendar')).toHaveCount(0);
+  await expect(trigger(page)).toHaveAttribute('data-date', chosen);
+});
+
+/** Shift an ISO civil day by `days`, mirroring `shared/booking-date.ts` without importing it. */
+function shift(isoDate: string, days: number): string {
+  const day = new Date(`${isoDate}T00:00:00Z`);
+  day.setUTCDate(day.getUTCDate() + days);
+  return day.toISOString().slice(0, 10);
+}

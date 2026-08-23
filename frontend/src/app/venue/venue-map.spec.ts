@@ -191,9 +191,21 @@ describe('VenueMap', () => {
     fixture.detectChanges();
   }
 
+  /**
+   * One day cell of the OPEN calendar. Scoped to the popover on purpose: the trigger carries a
+   * `data-date` too, and it precedes the popover in the document, so an unscoped query silently
+   * returns the trigger whenever the two dates coincide — which is exactly the case a floor
+   * assertion tests.
+   */
+  function calendarDay(iso: string): HTMLButtonElement {
+    return el().querySelector<HTMLButtonElement>(
+      `[data-testid="availability-calendar"] button[data-date="${iso}"]`,
+    )!;
+  }
+
   /** Choose `iso` from the open calendar (the picker closes and the map re-fetches). */
   function pickDay(iso: string): void {
-    el().querySelector<HTMLButtonElement>(`button[data-date="${iso}"]`)!.click();
+    calendarDay(iso).click();
     fixture.detectChanges();
   }
 
@@ -1200,11 +1212,7 @@ describe('VenueMap', () => {
       await fixture.whenStable();
       fixture.detectChanges();
       await openPicker();
-      expect(
-        el()
-          .querySelector(`button[data-date="${defaultBookingDate(new Date())}"]`)!
-          .getAttribute('aria-disabled'),
-      ).toBeNull();
+      expect(calendarDay(defaultBookingDate(new Date())).getAttribute('aria-disabled')).toBeNull();
     } finally {
       vi.setSystemTime(frozen);
     }
