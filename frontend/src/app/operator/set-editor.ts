@@ -1,4 +1,16 @@
-import { Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
+import {
+  afterNextRender,
+  afterRenderEffect,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  input,
+  Injector,
+  linkedSignal,
+  output,
+  signal,
+} from '@angular/core';
 import { disabled, form, FormField } from '@angular/forms/signals';
 import { firstValueFrom, Observable } from 'rxjs';
 
@@ -111,10 +123,15 @@ function draftForNewCell(gridY: number): SetDraft {
     TouchTarget,
   ],
   templateUrl: './set-editor.html',
+  host: {
+    '(keydown.escape)': 'onEscape()',
+  },
 })
 export class SetEditor {
   private readonly console = inject(OperatorConsoleService);
   private readonly focusAfterRender = focusMover();
+  private readonly hostEl = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
   protected readonly operator = inject(OperatorAuth);
 
   /** The venue whose map is being edited — owner-asserted server-side on every write (invariant #13). */
@@ -177,6 +194,23 @@ export class SetEditor {
       return occupied ? null : chosen;
     },
   });
+
+  /**
+   * Where the inspector last stood, kept even after {@link selection} collapses. `selection` can
+   * drop to `null` on its own — a re-read that no longer carries the picked set, e.g. from another
+   * tab or operator — with no `closeSelection()` call to carry the focus move, so the constructor's
+   * effect below uses this to reclaim focus a silent collapse would otherwise strand on `<body>`.
+   */
+  private readonly lastCoords = signal<{ gridX: number; gridY: number } | undefined>(undefined);
+
+  /** afterRenderEffect, not effect: the DOM read below must run after the panel is actually gone. */
+  constructor() {
+    afterRenderEffect(() => {
+      if (!this.hasSelection()) {
+        this.reclaimStrandedFocus();
+      }
+    });
+  }
 
   /** The selected set's server state, or undefined when nothing or an empty cell is selected. */
   protected readonly selectedSet = computed(() => {
@@ -337,7 +371,9 @@ export class SetEditor {
 
   /**
    * A grid cell was activated. While a move is armed an empty cell is the destination; otherwise a
-   * cell selects its set, or offers to add one where there is none.
+   * cell selects its set, opens the docked inspector, or offers to add one where there is none.
+   * Re-clicking the already-selected tile is a no-op — it re-affirms the selection, the way it always
+   * has (growing the grid and re-tapping a just-picked cell is a routine flow, not a request to close).
    */
   protected onCell(gridX: number, gridY: number, setId: number | null): void {
     if (this.armed()) {
@@ -346,11 +382,105 @@ export class SetEditor {
       }
       return;
     }
+    const opening = this.selection() === null;
     this.selection.set(setId === null ? { kind: 'cell', gridX, gridY } : { kind: 'set', setId });
+    this.lastCoords.set({ gridX, gridY });
     this.saved.set(false);
     this.errorCode.set(undefined);
     this.confirmRemove.set(false);
     this.moving.set(false);
+    if (opening) {
+      // A brand-new inspector appeared — move focus into it so AT users notice its arrival.
+      this.focusAfterRender('set-panel');
+    }
+  }
+
+  /** Close the docked inspector via its own Close control — the mouse counterpart to Escape. */
+  protected closeInspector(): void {
+    const coords = this.selectionCoords();
+    if (coords !== undefined) {
+      this.closeSelection(coords.gridX, coords.gridY);
+    }
+  }
+
+  /**
+   * Escape closes the docked inspector — the keyboard counterpart to {@link closeInspector}. Bound on
+   * the component host, not `document`, so it only fires while focus is inside this surface (the
+   * `find-booking.ts` precedent for a scoped dismiss key). A move or a remove-confirmation in progress
+   * is cancelled first, since either would otherwise silently survive the close.
+   */
+  protected onEscape(): void {
+    if (this.confirmRemove()) {
+      this.cancelRemove();
+      return;
+    }
+    if (this.armed()) {
+      this.cancelMove();
+      return;
+    }
+    const coords = this.selectionCoords();
+    if (coords !== undefined) {
+      this.closeSelection(coords.gridX, coords.gridY);
+    }
+  }
+
+  /** The grid position the current selection occupies, or undefined for no selection. */
+  private selectionCoords(): { gridX: number; gridY: number } | undefined {
+    const chosen = this.selection();
+    if (chosen === null) {
+      return undefined;
+    }
+    if (chosen.kind === 'cell') {
+      return chosen;
+    }
+    const selected = this.selectedSet();
+    return selected === undefined ? undefined : { gridX: selected.gridX, gridY: selected.gridY };
+  }
+
+  /** Close the inspector and return focus to the tile it was open for (WCAG 2.4.3) — the panel
+   *  itself is destroyed by every path that reaches here. */
+  private closeSelection(gridX: number, gridY: number): void {
+    this.selection.set(null);
+    this.moving.set(false);
+    this.confirmRemove.set(false);
+    this.focusCell(gridX, gridY);
+  }
+
+  /**
+   * Focus one grid tile once the next render has committed. The shared `focusMover()` targets a
+   * fixed `data-testid` landmark; this targets a specific tile chosen at runtime, so it repeats that
+   * utility's `afterNextRender`-based idiom directly rather than forcing a per-instance testid onto
+   * every cell (which every bulk selector in the specs/e2e assumes share one `data-testid`).
+   */
+  private focusCell(gridX: number, gridY: number): void {
+    afterNextRender(
+      {
+        earlyRead: () =>
+          this.hostEl.nativeElement.querySelector<HTMLElement>(
+            `[data-testid="set-cell"][data-grid-x="${gridX}"][data-grid-y="${gridY}"]`,
+          ),
+        write: (target) => target?.focus(),
+      },
+      { injector: this.injector },
+    );
+  }
+
+  /**
+   * A safety net for a selection that collapses on its own — {@link selection}'s `linkedSignal`
+   * drops it to `null` the moment a re-read no longer carries the picked set, with no
+   * {@link closeSelection} call to move focus along. If that left focus outside this component's own
+   * host (the panel it was in is already gone), redirect it to the last tile the inspector was open
+   * for; a user-driven close already parked focus on that tile, so this is then a no-op.
+   */
+  private reclaimStrandedFocus(): void {
+    const coords = this.lastCoords();
+    const active = document.activeElement;
+    // A removed element leaves focus on <body> in a real browser, detached (unreset) in jsdom.
+    const stranded =
+      coords !== undefined && (active === null || active === document.body || !active.isConnected);
+    if (stranded) {
+      this.focusCell(coords.gridX, coords.gridY);
+    }
   }
 
   protected addRow(): void {
@@ -409,7 +539,10 @@ export class SetEditor {
           pool: draft.pool,
           price: { minorUnits, currency: draft.currency },
         }),
-      (created) => this.selection.set({ kind: 'set', setId: created.id }),
+      (created) => {
+        this.selection.set({ kind: 'set', setId: created.id });
+        this.lastCoords.set({ gridX: cell.gridX, gridY: cell.gridY });
+      },
     );
   }
 
@@ -475,12 +608,8 @@ export class SetEditor {
     await this.write(
       'remove',
       () => this.console.removeSet(this.venueId(), selected.id),
-      () => {
-        this.selection.set(null);
-        this.moving.set(false);
-        // Both the confirm and the Remove button are gone with the selection, so focus parks on the panel.
-        this.focusAfterRender('set-panel');
-      },
+      // The inspector is gone with the selection, so focus parks on the now-empty tile.
+      () => this.closeSelection(selected.gridX, selected.gridY),
     );
   }
 
