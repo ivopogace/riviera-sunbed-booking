@@ -65,9 +65,12 @@ invariants).
   a position-number span per non-gap cell, container widened to `max-w-[1260px]`.
 - `frontend/src/app/operator/layout-editor.contrast.spec.ts` — new AA test for the tile-number
   ink against every `beach-cell.ts` fill.
-- `frontend/src/app/operator/set-editor.html` — `[fitWidth]="true"` on the per-set canvas, a
-  position-number span per non-gap cell, the selection ring+lift replacing the outline, container
-  widened to `max-w-[1260px]`.
+- `frontend/src/app/operator/set-editor.html` — `[fitWidth]="true"` on both the per-set canvas
+  and its loading skeleton (the skeleton fix, so loading never slides the grid — review-gate
+  finding), a position-number span per non-gap cell, the selection ring+lift replacing the
+  outline, container widened to `max-w-[1260px]`.
+- `frontend/src/app/operator/set-editor.spec.ts` — regression test that the skeleton canvas
+  carries `fitWidth` too.
 - `frontend/src/app/operator/set-editor.contrast.spec.ts` — the selection-ring 3:1 test updated
   for the new colour and extended to every tile fill, not just the wash.
 - `frontend/src/app/operator/operator-console.html` — `oc-main`'s width cap raised from
