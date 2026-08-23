@@ -1,4 +1,4 @@
-<section class="mx-auto w-full max-w-[1100px]" data-testid="set-editor">
+<section class="mx-auto w-full max-w-[1260px]" data-testid="set-editor">
   <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
   <app-load-announcer
     [loading]="!loaded()"
@@ -240,7 +240,11 @@
 
       <!-- The map on the shared canvas; min-w-0 so the 1fr grid column scrolls instead of blowing out. -->
       <div class="flex min-w-0 flex-col gap-2">
-        <app-beach-map-canvas frameTestid="set-grid-frame" viewportTestid="set-grid">
+        <app-beach-map-canvas
+          frameTestid="set-grid-frame"
+          viewportTestid="set-grid"
+          [fitWidth]="true"
+        >
           <ng-template [appBeachMapRow]="rows()" let-row>
             <div
               class="grid h-full grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
@@ -260,12 +264,17 @@
                   [title]="cell.label"
                   (click)="onCell(cell.gridX, cell.gridY, cell.setId)"
                   data-testid="set-cell"
-                  class="h-full min-w-0 rounded-[8px] border [transition:scale_0.1s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100"
-                  [class.outline]="cell.selected"
-                  [class.outline-2]="cell.selected"
-                  [class.outline-offset-2]="cell.selected"
-                  [class.outline-[#0e8aa8]]="cell.selected"
-                ></button>
+                  class="h-full min-w-0 flex items-center justify-center rounded-[8px] border text-[12.5px] font-bold text-[#0c2a33] [transition:scale_0.1s_ease,box-shadow_0.12s_ease,translate_0.12s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:hover:translate-y-0"
+                  [class]="
+                    cell.selected
+                      ? 'selected -translate-y-1 ring-2 ring-offset-2 ring-[#0a5f74] shadow-[0_6px_14px_rgba(10,95,116,0.4)]'
+                      : ''
+                  "
+                >
+                  @if (cell.state !== 'gap') {
+                    <span aria-hidden="true">{{ cell.gridX }}</span>
+                  }
+                </button>
               }
             </div>
           </ng-template>
@@ -319,6 +328,7 @@
             frameTestid="set-skeleton-frame"
             viewportTestid="set-skeleton-grid"
             [loading]="true"
+            [fitWidth]="true"
           >
             <ng-template [appBeachMapRow]="skeletonRows">
               <div

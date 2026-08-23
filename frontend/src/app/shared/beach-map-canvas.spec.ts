@@ -38,6 +38,7 @@ const ROWS: readonly TestRow[] = [
       [railCodes]="railCodes()"
       [priceChips]="priceChips()"
       [loading]="loading()"
+      [fitWidth]="fitWidth()"
     >
       <ng-template [appBeachMapRow]="rows()" let-row let-i="index">
         <ul class="set-row" [attr.data-row]="row.code">
@@ -62,6 +63,7 @@ class CanvasHost {
   readonly railCodes = signal<'letters' | 'labels' | 'capped-labels'>('letters');
   readonly priceChips = signal<'amounts' | 'capped-phrases'>('amounts');
   readonly loading = signal(false);
+  readonly fitWidth = signal(false);
   readonly taps: string[] = [];
 }
 
@@ -689,6 +691,62 @@ describe('BeachMapCanvas (#672)', () => {
     expect(canvas.style.getPropertyValue('--riv-map-sea').trim()).toBe('#cfeef6');
     // Projected content sits on the same ground only while the wash reads the property, not a copy.
     expect(washScroller(host).className).toContain('var(--riv-map-sea)');
+  });
+
+  it('leaves --riv-tile at the default viewport-relative clamp when fitWidth is off (#709)', async () => {
+    const { host, component, detect, fixture } = render();
+    Object.defineProperty(viewport(host), 'clientWidth', { value: 200, configurable: true });
+    component.rows.set([...ROWS]);
+    detect();
+    await fixture.whenStable();
+    detect();
+    const canvas = host.querySelector<HTMLElement>('app-beach-map-canvas')!;
+    expect(canvas.style.getPropertyValue('--riv-tile').trim()).toBe('clamp(47px, 11vw, 56px)');
+  });
+
+  it('fits the tile size to the measured viewport width when fitWidth is on (#709)', async () => {
+    const { host, component, detect, fixture } = render();
+    component.fitWidth.set(true);
+    // 4 tiles, 3 gaps of 6px: (312 - 18) / 4 = 73.5 → floored to 73, clamped to the 56px ceiling.
+    Object.defineProperty(viewport(host), 'clientWidth', { value: 312, configurable: true });
+    component.rows.set([row('A', null, true, ['1', '2', '3', '4'])]);
+    detect();
+    await fixture.whenStable();
+    detect();
+    const canvas = host.querySelector<HTMLElement>('app-beach-map-canvas')!;
+    expect(canvas.style.getPropertyValue('--riv-tile').trim()).toBe('56px');
+  });
+
+  it('never fits a tile below the 44px touch-target floor, however tight the viewport (#709)', async () => {
+    const { host, component, detect, fixture } = render();
+    component.fitWidth.set(true);
+    // 4 tiles, 3 gaps: (100 - 18) / 4 ≈ 20.5 — well under the floor.
+    Object.defineProperty(viewport(host), 'clientWidth', { value: 100, configurable: true });
+    component.rows.set([row('A', null, true, ['1', '2', '3', '4'])]);
+    detect();
+    await fixture.whenStable();
+    detect();
+    const canvas = host.querySelector<HTMLElement>('app-beach-map-canvas')!;
+    expect(canvas.style.getPropertyValue('--riv-tile').trim()).toBe('44px');
+  });
+
+  it('re-fits the tile size on resize, converging with the overflow re-measure (#709)', async () => {
+    const { host, component, detect, fixture } = render();
+    component.fitWidth.set(true);
+    Object.defineProperty(viewport(host), 'clientWidth', { value: 312, configurable: true });
+    component.rows.set([row('A', null, true, ['1', '2', '3', '4'])]);
+    detect();
+    await fixture.whenStable();
+    detect();
+    const canvas = host.querySelector<HTMLElement>('app-beach-map-canvas')!;
+    expect(canvas.style.getPropertyValue('--riv-tile').trim()).toBe('56px');
+
+    const observer = StubResizeObserver.instances.at(-1)!;
+    Object.defineProperty(viewport(host), 'clientWidth', { value: 156, configurable: true });
+    observer.fire();
+    detect();
+    // (156 - 18) / 4 = 34.5 → floored to 34, clamped up to the 44px floor.
+    expect(canvas.style.getPropertyValue('--riv-tile').trim()).toBe('44px');
   });
 
   it('collapses the legend band for a host that projects none — the operator surfaces (#701)', () => {

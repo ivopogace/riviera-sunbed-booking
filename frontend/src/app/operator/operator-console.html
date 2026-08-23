@@ -75,7 +75,8 @@
       }
     </nav>
 
-    <main class="oc-main mx-auto w-full max-w-[1120px] flex-1 px-6 pt-5 pb-10">
+    <!-- Wider than the 1120px header/tabs/footer so the beach-map tab's grid can fit-to-width (#709); every other tab's own narrower section max-width keeps it visually unchanged. -->
+    <main class="oc-main mx-auto w-full max-w-[1300px] flex-1 px-6 pt-5 pb-10">
       <app-pending-approval-banner />
       <router-outlet />
     </main>

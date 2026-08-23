@@ -1,4 +1,4 @@
-<section class="mx-auto w-full max-w-[1100px] px-5 py-4" data-testid="layout-editor">
+<section class="mx-auto w-full max-w-[1260px] px-5 py-4" data-testid="layout-editor">
   <!-- Which surface can work is decided by the venue's lifecycle, so the choice is explicit, not hidden. -->
   <fieldset class="mb-4 border-0 p-0" data-testid="layout-mode">
     <legend class="sr-only">Beach map editing mode</legend>
@@ -255,6 +255,7 @@
         frameTestid="layout-grid-frame"
         viewportTestid="layout-grid"
         [dragPan]="false"
+        [fitWidth]="true"
       >
         <ng-template [appBeachMapRow]="displayRows()" let-row let-ri="index">
           <div
@@ -272,8 +273,12 @@
                 [title]="cell.label"
                 [attr.aria-label]="cell.label"
                 data-testid="layout-cell"
-                class="h-full min-w-0 rounded-[6px] border [transition:scale_0.1s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100"
-              ></button>
+                class="h-full min-w-0 flex items-center justify-center rounded-[6px] border text-[12.5px] font-bold text-[#0c2a33] [transition:scale_0.1s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100"
+              >
+                @if (cell.state !== 'gap') {
+                  <span aria-hidden="true">{{ ci + 1 }}</span>
+                }
+              </button>
             }
           </div>
         </ng-template>

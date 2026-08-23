@@ -97,11 +97,26 @@ export class BeachMapRowDef<R extends BeachMapCanvasRow = BeachMapCanvasRow> {
   selector: 'app-beach-map-canvas',
   imports: [BeachGridFrame, NgTemplateOutlet],
   templateUrl: './beach-map-canvas.html',
-  host: { class: 'block', style: '--riv-tile: clamp(47px, 11vw, 56px); --riv-map-sea: #cfeef6' },
+  host: {
+    class: 'block',
+    style: '--riv-map-sea: #cfeef6',
+    '[style.--riv-tile]': 'tileSizeStyle()',
+  },
 })
 export class BeachMapCanvas {
   /** A drag that travels beyond this many pixels is a pan, not a tap. */
   private static readonly PAN_THRESHOLD_PX = 6;
+  /** The default (non-fit) tile size — unchanged for the tourist map and Daily view (#709). */
+  private static readonly DEFAULT_TILE = 'clamp(47px, 11vw, 56px)';
+  /** {@link fitWidth}'s floor: the touch-target minimum (invariant carried by `[appTouchTarget]`
+   *  on every tile button), never crossed however tight the viewport gets. */
+  private static readonly FIT_MIN_TILE_PX = 44;
+  /** {@link fitWidth}'s ceiling — the default clamp's own max, so a fitted grid never grows past
+   *  what an unfitted one would render at. */
+  private static readonly FIT_MAX_TILE_PX = 56;
+  /** The row/column gap every surface paints its grid with (`gap-1.5`) — needed to solve for the
+   *  per-tile width a column count actually has room for. */
+  private static readonly TILE_GAP_PX = 6;
 
   /** Accessible name for the frame section (e.g. "Beach map — Miramar"). */
   readonly label = input<string>('');
@@ -140,6 +155,15 @@ export class BeachMapCanvas {
    *  the canvas to inherit `--riv-tile` and the frame geometry, which also inherits this chrome —
    *  so the canvas, not the surface, is what has to know the difference. */
   readonly loading = input<boolean>(false);
+  /**
+   * Size tiles to the viewport's actual width instead of the default viewport-relative clamp
+   * (#709) — the two operator editor surfaces (bulk paint + per-set) opt in, so a typical venue
+   * renders whole at desktop widths with no drag-panning; the tourist map and the Daily view keep
+   * the original clamp untouched. Tiles shrink as low as the {@link FIT_MIN_TILE_PX} touch-target
+   * floor before the grid genuinely overflows and panning resumes — same posture as the default
+   * mode, just measured instead of guessed from viewport width.
+   */
+  readonly fitWidth = input<boolean>(false);
 
   /**
    * The rail's width, reserved rather than derived from whatever the read happened to return.
@@ -212,6 +236,16 @@ export class BeachMapCanvas {
   protected readonly scrollHint = signal(false);
   /** True when the rows outgrow the wash scroller's height cap (drag hint only — no fade/snap). */
   protected readonly vScrollHint = signal(false);
+  /** {@link fitWidth}'s measured tile size in px, or `null` before the first measurement / when
+   *  {@link fitWidth} is off — {@link tileSizeStyle} falls back to {@link DEFAULT_TILE} either way. */
+  private readonly fittedTilePx = signal<number | null>(null);
+  /** The `--riv-tile` value actually painted: the fitted px while {@link fitWidth} is on and
+   *  measured, the original viewport-relative clamp otherwise (tourist map, Daily view, and the
+   *  fitted surfaces' own first frame, before a measurement has landed). */
+  protected readonly tileSizeStyle = computed(() => {
+    const fitted = this.fittedTilePx();
+    return this.fitWidth() && fitted !== null ? `${fitted}px` : BeachMapCanvas.DEFAULT_TILE;
+  });
 
   /**
    * Scrollbar chrome for both scrollers — the horizontal pan viewport and the vertical wash. A
@@ -262,12 +296,36 @@ export class BeachMapCanvas {
     );
   }
 
+  /**
+   * A {@link fitWidth} surface's ideal tile size: the viewport's own width (independent of tile
+   * size — `flex-1 min-w-0` sizes it from its siblings, not its content, so this converges in one
+   * extra render rather than feeding back into itself) divided across {@link mapCols} tiles and
+   * their gaps, clamped to the fit range. `null` while {@link fitWidth} is off or unmeasured.
+   */
+  private measureFittedTile(): number | null {
+    if (!this.fitWidth()) {
+      return null;
+    }
+    const el = this.panViewport()?.nativeElement;
+    const cols = this.mapCols();
+    if (!el || cols < 1) {
+      return null;
+    }
+    const available = el.clientWidth - (cols - 1) * BeachMapCanvas.TILE_GAP_PX;
+    const ideal = Math.floor(available / cols);
+    return Math.min(
+      BeachMapCanvas.FIT_MAX_TILE_PX,
+      Math.max(BeachMapCanvas.FIT_MIN_TILE_PX, ideal),
+    );
+  }
+
   /** Read both overflow axes from the live DOM; every piece of pan chrome is gated on this. */
   private measureOverflow(): void {
     const el = this.panViewport()?.nativeElement;
     const grid = this.rowGrid()?.nativeElement;
     this.scrollHint.set(!!el && !!grid && BeachMapCanvas.contentWidth(grid) > el.clientWidth + 1);
     this.vScrollHint.set(BeachMapCanvas.overflowsVertically(this.washScroller()?.nativeElement));
+    this.fittedTilePx.set(this.measureFittedTile());
   }
 
   constructor() {

@@ -5,9 +5,11 @@ import {
   TestRequest,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
+import { BeachMapCanvas } from '../shared/beach-map-canvas';
 import { SetView } from '../shared/venue-views';
 import { SetEditor } from './set-editor';
 
@@ -605,6 +607,14 @@ describe('SetEditor (#600)', () => {
     expect(cells()).toHaveLength(0);
     expect(byId('set-panel-no-sets')).toBeFalsy();
     expect(byId('set-panel-empty')).toBeFalsy();
+  });
+
+  it('fits the skeleton to the same width the real grid will use, so loading never slides the grid (#709, #749)', () => {
+    render([], false);
+
+    const canvases = fixture.debugElement.queryAll(By.directive(BeachMapCanvas));
+    expect(canvases).toHaveLength(1); // only the skeleton canvas renders while unloaded
+    expect((canvases[0].componentInstance as BeachMapCanvas).fitWidth()).toBe(true);
   });
 
   it('replaces the skeleton with the venue’s real sets when the read lands (#721)', () => {
