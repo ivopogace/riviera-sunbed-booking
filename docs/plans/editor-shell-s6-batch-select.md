@@ -184,6 +184,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   param; a batch-panel axe state added.
 - `frontend/e2e/operator-set-editing.e2e.ts` — rewrites the superseded pan-drag test into a
   sweep test; adds a batch-apply-in-one-PUT e2e + a STALE_WRITE-keeps-selection e2e.
+- `frontend/e2e/layout-editor.e2e.ts` — rewrites the superseded drag-pannable-scrollbar test for
+  the per-set canvas (`[dragPan]="false"` now applies there too).
 - `docs/plans/editor-shell-s6-batch-select.md` — this plan doc.
 
 ---
