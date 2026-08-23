@@ -268,12 +268,13 @@ export class SetEditor {
     return ids === null ? [] : this.sets().filter((s) => ids.has(s.id));
   });
 
-  /** "Row A–B · positions 1–2" (or a single row/position when the sweep covers only one). */
+  /**
+   * "Row A–B · positions 1–2" (or a single row/position when the sweep covers only one). Only
+   * ever read from the template inside the sweep-active branch, where {@link sweptSets} is never
+   * empty — {@link sweepIds}'s own invariant guarantees every id in it still has a backing set.
+   */
   protected readonly sweepRangeLabel = computed(() => {
     const swept = this.sweptSets();
-    if (swept.length === 0) {
-      return '';
-    }
     const minY = Math.min(...swept.map((s) => s.gridY));
     const maxY = Math.max(...swept.map((s) => s.gridY));
     const minX = Math.min(...swept.map((s) => s.gridX));
@@ -289,7 +290,11 @@ export class SetEditor {
   /** What AT hears when the sweep changes size — empty while nothing is swept (#714). */
   protected readonly sweepAnnouncement = computed(() => {
     const count = this.sweptSets().length;
-    return count === 0 ? '' : `${count} set${count === 1 ? '' : 's'} selected`;
+    if (count === 0) {
+      return '';
+    }
+    const noun = count === 1 ? 'set' : 'sets';
+    return `${count} ${noun} selected`;
   });
 
   /** The batch draft, re-seeded blank whenever the sweep changes (a new sweep, a clear, or a
@@ -600,18 +605,17 @@ export class SetEditor {
     this.focusAfterRender('batch-panel');
   }
 
-  /** Empty the sweep (Clear or Escape) and return focus to the canvas (AC-5), never `<body>`. */
+  /**
+   * Empty the sweep (Clear or Escape) and return focus to the canvas (AC-5), never `<body>`. Only
+   * ever called while a sweep is active, so {@link sweptSets} is never empty — the same invariant
+   * {@link sweepRangeLabel} relies on.
+   */
   protected clearSweep(): void {
-    const swept = this.sweptSets();
+    const anchor = this.sweptSets()[0];
     this.sweepIds.set(null);
     this.batchErrorCode.set(undefined);
     this.batchSaved.set(false);
-    const anchor = swept[0];
-    if (anchor !== undefined) {
-      this.focusCell(anchor.gridX, anchor.gridY);
-    } else {
-      this.focusAfterRender('set-grid-frame');
-    }
+    this.focusCell(anchor.gridX, anchor.gridY);
   }
 
   protected chooseBatchTier(tier: Tier): void {

@@ -9,6 +9,7 @@ import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
+import { OperatorAuth } from '../core/operator-auth';
 import { BeachMapCanvas } from '../shared/beach-map-canvas';
 import { SetView } from '../shared/venue-views';
 import { SetEditor } from './set-editor';
@@ -937,5 +938,167 @@ describe('SetEditor (#600)', () => {
 
     expect(byId('batch-panel')).toBeFalsy();
     expect(byId('set-selected').textContent).toMatch(/Row A · position 2/);
+  });
+
+  it('drops the whole sweep, not just the removed id, when a re-read no longer carries one of its sets', () => {
+    render();
+    dragSweep(1, 1, 1, 2); // sets 10 and 12
+
+    fixture.componentRef.setInput(
+      'sets',
+      SETS.filter((s) => s.id !== 12),
+    );
+    fixture.detectChanges();
+
+    expect(byId('batch-panel')).toBeFalsy();
+  });
+
+  it('a sweep that releases back on its own starting cell suppresses only that one click', () => {
+    render();
+    const start = cellForGrid(2, 1);
+    const other = cellForGrid(1, 1);
+    start.dispatchEvent(new MouseEvent('mousedown', { button: 0, buttons: 1 }));
+    other.dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
+    start.dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    start.click();
+    fixture.detectChanges();
+
+    // The sweep committed (ids 10 and 11), and the click the release fired was swallowed.
+    expect(byId('batch-panel')).toBeTruthy();
+    expect(byId('batch-count').textContent).toContain('2 sets selected');
+  });
+
+  it('a mousedown ignores a non-primary button, an armed move, and an open remove confirmation', () => {
+    render();
+    // Non-primary button: no sweep arms, so a later mouseenter is inert and a plain click still selects.
+    cellForGrid(1, 1).dispatchEvent(new MouseEvent('mousedown', { button: 1, buttons: 4 }));
+    cellForGrid(1, 2).dispatchEvent(new MouseEvent('mouseenter', { buttons: 4 }));
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    fixture.detectChanges();
+    expect(byId('batch-panel')).toBeFalsy();
+
+    // A move armed on a selected set: mousedown on another cell must not start a sweep either.
+    selectSet(12);
+    click(byId('set-add-col'));
+    click(byId('set-move'));
+    emptyCell(3, 1).dispatchEvent(new MouseEvent('mousedown', { button: 0, buttons: 1 }));
+    emptyCell(3, 2).dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    fixture.detectChanges();
+    expect(byId('batch-panel')).toBeFalsy();
+    expect(byId('set-move-armed')).toBeTruthy(); // the move is still armed, untouched by the drag
+  });
+
+  it('a mouseenter with no matching mousedown is a no-op', () => {
+    render();
+    cellForGrid(1, 2).dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    fixture.detectChanges();
+
+    expect(byId('batch-panel')).toBeFalsy();
+    expect(byId('set-panel')).toBeFalsy();
+  });
+
+  it('an off-window release (no button held) disarms the sweep without committing it', () => {
+    render();
+    cellForGrid(1, 1).dispatchEvent(new MouseEvent('mousedown', { button: 0, buttons: 1 }));
+    cellForGrid(1, 2).dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
+    cellForGrid(1, 2).dispatchEvent(new MouseEvent('mouseenter', { buttons: 0 }));
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    fixture.detectChanges();
+
+    expect(byId('batch-panel')).toBeFalsy();
+  });
+
+  it('a sweep over an all-gap rectangle opens no batch panel', () => {
+    render();
+    click(byId('set-add-col')); // a fresh empty column: gridX 3, both rows
+
+    emptyCell(3, 1).dispatchEvent(new MouseEvent('mousedown', { button: 0, buttons: 1 }));
+    emptyCell(3, 2).dispatchEvent(new MouseEvent('mouseenter', { buttons: 1 }));
+    document.dispatchEvent(new MouseEvent('mouseup'));
+    fixture.detectChanges();
+
+    expect(byId('batch-panel')).toBeFalsy();
+  });
+
+  it('touching only pool applies it to every swept set, leaving tier and price alone', () => {
+    render();
+    dragSweep(1, 2, 2, 2); // row B: sets 12 (ONLINE) and 13 (WALK_IN)
+
+    click(byId('batch-pool-WALK_IN'));
+    click(byId('batch-apply'));
+
+    const sets = layoutPutBody(expectLayoutPut()).sets;
+    const set12 = sets.find((s) => s.rowLabel === 'B' && s.positionNo === 1)!;
+    const set13 = sets.find((s) => s.rowLabel === 'B' && s.positionNo === 2)!;
+    expect(set12.pool).toBe('WALK_IN');
+    expect(set12.tier).toBe('STANDARD'); // untouched field kept
+    expect(set13.pool).toBe('WALK_IN');
+    expect(set13.price.minorUnits).toBe(2000); // untouched field kept
+  });
+
+  it('never applies without the expectedVersion token (no map read has settled)', () => {
+    render(SETS, true, null);
+    dragSweep(1, 1, 1, 2);
+    click(byId('batch-tier-PREMIUM'));
+    click(byId('batch-apply'));
+
+    http.expectNone((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/beach-map'));
+    expect(byId('batch-panel')).toBeTruthy(); // the sweep is untouched, not silently dropped
+  });
+
+  it('refuses an unparsable price rather than sending it, without touching the map', () => {
+    render();
+    dragSweep(1, 1, 1, 2);
+    // A number input sanitizes an invalid string to '' at the DOM level, so bypass the setter.
+    fixture.debugElement
+      .query(By.css('[data-testid="batch-price"]'))
+      .triggerEventHandler('input', { target: { value: '1e1000' } });
+    fixture.detectChanges();
+    click(byId('batch-apply'));
+
+    http.expectNone((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/beach-map'));
+    expect(byId('batch-error').textContent).toMatch(/not valid/i);
+  });
+
+  async function applyAndFail(code: string, status: number): Promise<string> {
+    render();
+    dragSweep(1, 1, 1, 2);
+    click(byId('batch-tier-PREMIUM'));
+    click(byId('batch-apply'));
+    expectLayoutPut().flush({ code }, { status, statusText: 'error' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return byId('batch-error').textContent ?? '';
+  }
+
+  it('explains a LAYOUT_IN_USE batch-apply refusal', async () => {
+    expect(await applyAndFail('LAYOUT_IN_USE', 409)).toMatch(/locked/i);
+  });
+
+  it('explains a NO_SUCH_VENUE batch-apply refusal', async () => {
+    expect(await applyAndFail('NO_SUCH_VENUE', 404)).toMatch(/could not be found/i);
+  });
+
+  it('falls back to a generic message for an unmapped batch-apply failure code', async () => {
+    expect(await applyAndFail('SOMETHING_UNMAPPED', 500)).toMatch(/went wrong/i);
+  });
+
+  it('ends the session on a 401, same as every other write on this surface', async () => {
+    render();
+    const operator = fixture.debugElement.injector.get(OperatorAuth);
+    const sessionLost = vi.spyOn(operator, 'sessionLost');
+    dragSweep(1, 1, 1, 2);
+    click(byId('batch-tier-PREMIUM'));
+    click(byId('batch-apply'));
+
+    expectLayoutPut().flush({ code: 'UNAUTHORIZED' }, { status: 401, statusText: 'Unauthorized' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(sessionLost).toHaveBeenCalled();
+    expect(byId('batch-error').textContent).toMatch(/session has expired/i);
   });
 });
