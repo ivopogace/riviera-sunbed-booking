@@ -55,6 +55,9 @@
           [class]="railColumnClass()"
           [attr.aria-hidden]="rowRailInteractive() ? null : true"
         >
+          @if (colHeaderInteractive()) {
+            <div class="pb-1.5" aria-hidden="true"><div class="h-11"></div></div>
+          }
           @for (row of rows(); track row.code; let i = $index) {
             <span
               class="h-[var(--riv-tile)] flex items-center justify-start"
@@ -148,6 +151,9 @@
           [attr.data-testid]="loading() ? 'price-col-placeholder' : 'price-col'"
           aria-hidden="true"
         >
+          @if (colHeaderInteractive()) {
+            <div class="pb-1.5" aria-hidden="true"><div class="h-11"></div></div>
+          }
           @for (row of rows(); track row.code; let i = $index) {
             <span
               class="h-[var(--riv-tile)] flex items-center justify-end min-w-[52px] max-w-[92px] sm:max-w-[128px]"
