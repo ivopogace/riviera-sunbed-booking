@@ -610,7 +610,12 @@ test('the paint grid, which cannot be drag-panned, still offers a pointer route 
   ).toBe(true);
 });
 
-test('a drag-pannable map keeps its hidden scrollbar and its own hint wording', async ({
+/**
+ * Supersedes the pre-#714 "a drag-pannable map keeps its hidden scrollbar" test: Select's own
+ * drag gesture is now the batch-select rectangle sweep (#714), so its canvas — like the bulk
+ * paint grid's — is no longer drag-pannable and shows the same slim scrollbar affordance instead.
+ */
+test('Select’s own drag gesture (the sweep) leaves its grid not drag-pannable either', async ({
   page,
 }) => {
   await mockEditor(page, false, SEEDED_SETS);
@@ -619,6 +624,7 @@ test('a drag-pannable map keeps its hidden scrollbar and its own hint wording', 
   await page.getByTestId('layout-tool-select').click();
   const viewport = page.getByTestId('set-grid');
   await expect(viewport).toBeVisible();
-  await expect(viewport).toHaveCSS('scrollbar-width', 'none');
-  await expect(viewport).toHaveCSS('cursor', 'grab');
+  await expect(viewport).toHaveCSS('scrollbar-width', 'thin');
+  await expect(viewport).toHaveCSS('scrollbar-color', 'rgb(8, 90, 110) rgba(0, 0, 0, 0)');
+  await expect(viewport).toHaveCSS('cursor', 'auto');
 });

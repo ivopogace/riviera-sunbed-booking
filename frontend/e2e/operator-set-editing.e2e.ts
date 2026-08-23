@@ -85,10 +85,16 @@ test.use({ colorScheme: 'dark' });
  * replaces one in place, DELETE drops one — except against {@link CLAIMED_SET_ID}, whose repool,
  * reposition and removal are refused `409 SET_IN_USE` exactly as the server's claim guard would.
  */
-async function mockConsole(page: Page, seed = seedSets()): Promise<{ sets: () => MockSet[] }> {
+interface MockConsole {
+  sets: () => MockSet[];
+  setVersion: () => number;
+}
+
+async function mockConsole(page: Page, seed = seedSets()): Promise<MockConsole> {
   let sessionLive = false;
   let sets = seed;
   let nextId = 20;
+  let setVersion = 0;
 
   await page.route(/\/api\/auth\/me$/, (route) =>
     sessionLive
@@ -138,6 +144,38 @@ async function mockConsole(page: Page, seed = seedSets()): Promise<{ sets: () =>
     return route.fallback();
   });
 
+  interface LayoutCellBody {
+    rowLabel: string;
+    positionNo: number;
+    tier: 'PREMIUM' | 'STANDARD';
+    pool: 'ONLINE' | 'WALK_IN';
+    price: { minorUnits: number; currency: string };
+    gridX: number;
+    gridY: number;
+  }
+
+  // The batch editor's own PUT — the same expectedVersion-guarded snapshot write as bulk save (#714).
+  await page.route(/\/api\/venues\/1\/beach-map$/, (route) => {
+    if (route.request().method() !== 'PUT') return route.fallback();
+    const body = route.request().postDataJSON() as {
+      sets: readonly LayoutCellBody[];
+      expectedVersion: number;
+    };
+    if (body.expectedVersion !== setVersion) {
+      return route.fulfill({
+        status: 409,
+        contentType: 'application/problem+json',
+        json: { code: 'STALE_WRITE', detail: 'stale' },
+      });
+    }
+    sets = sets.map((s) => {
+      const match = body.sets.find((c) => c.gridX === s.gridX && c.gridY === s.gridY);
+      return match ? { ...s, tier: match.tier, pool: match.pool, price: match.price } : s;
+    });
+    setVersion += 1;
+    return route.fulfill({ status: 204, body: '' });
+  });
+
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
     route.request().method() === 'GET'
       ? route.fulfill({
@@ -152,7 +190,7 @@ async function mockConsole(page: Page, seed = seedSets()): Promise<{ sets: () =>
             bookingMode: 'INSTANT',
             fromPrice: null,
             sets,
-            setVersion: 0,
+            setVersion,
           },
         })
       : route.fallback(),
@@ -175,7 +213,7 @@ async function mockConsole(page: Page, seed = seedSets()): Promise<{ sets: () =>
     route.fulfill({ json: [] }),
   );
 
-  return { sets: () => sets };
+  return { sets: () => sets, setVersion: () => setVersion };
 }
 
 async function signIn(page: Page): Promise<void> {
@@ -283,7 +321,12 @@ test('grows the grid to add a lounger, moves it, then removes it', async ({ page
   expect(mock.sets().find((s) => s.id === added.id)).toBeUndefined();
 });
 
-test('a mostly-vertical drag pans the map but never selects the set-cell under the release (#676)', async ({
+/**
+ * Supersedes the pre-#714 "a mostly-vertical drag pans the map" test: Select's own drag gesture
+ * is now the batch-select rectangle sweep (dragPan is off while it is armed, mirroring the bulk
+ * paint grid), so a vertical drag sweeps a column of sets instead of panning.
+ */
+test('a mostly-vertical drag sweeps a column of sets instead of panning the map (#714)', async ({
   page,
 }) => {
   await mockConsole(page);
@@ -332,27 +375,107 @@ test('a mostly-vertical drag pans the map but never selects the set-cell under t
   const wash = page.locator('[data-riv-scroller]').first();
   await expect.poll(() => wash.evaluate((el) => el.scrollHeight > el.clientHeight + 1)).toBe(true);
 
-  // Raw mouse primitives don't auto-scroll and the console header is sticky — center the anchor.
-  const anchor = cell(page, 1, 6);
-  await anchor.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  const from = cell(page, 1, 6);
+  await from.evaluate((el) => el.scrollIntoView({ block: 'center' }));
   const scrollBefore = await wash.evaluate((el) => el.scrollTop);
-  const box = (await anchor.boundingBox())!;
-  const x = box.x + box.width / 2;
-  const startY = box.y + box.height / 2;
-  await page.mouse.move(x, startY);
+  const fromBox = (await from.boundingBox())!;
+  const toBox = (await cell(page, 1, 4).boundingBox())!;
+  await page.mouse.move(fromBox.x + fromBox.width / 2, fromBox.y + fromBox.height / 2);
   await page.mouse.down();
-  await page.mouse.move(x, startY - 40, { steps: 6 });
-  await page.mouse.move(x, startY - 100, { steps: 10 });
+  await page.mouse.move(toBox.x + toBox.width / 2, toBox.y + toBox.height / 2, { steps: 10 });
   await page.mouse.up();
 
-  // The map panned vertically, and the release selected nothing — the panel stays empty.
-  expect(await wash.evaluate((el) => el.scrollTop)).toBeGreaterThan(scrollBefore);
-  await expect(page.getByTestId('set-panel-empty')).toBeVisible();
-  await expect(page.getByTestId('set-selected')).toHaveCount(0);
+  // dragPan is off while Select is armed — the drag swept instead of scrolling.
+  expect(await wash.evaluate((el) => el.scrollTop)).toBe(scrollBefore);
+  await expect(page.getByTestId('batch-panel')).toBeVisible();
+  await expect(page.getByTestId('batch-count')).toHaveText(/3 sets selected/);
+  await expect(page.getByTestId('batch-range')).toHaveText(/Rows D–F/);
 
-  // A genuine click afterwards still selects (the suppression is one-shot).
+  // A genuine tap elsewhere still selects one set, unchanged (AC-6).
   await cell(page, 1, 1).click();
   await expect(page.getByTestId('set-selected')).toHaveText(/Row A · position 1/);
+});
+
+test('sweeps a block, applies a price change to all of them in one PUT (#714)', async ({
+  page,
+}) => {
+  const mock = await mockConsole(page);
+  await page.goto('/operator/1');
+  await signIn(page);
+  await expect(page.getByTestId('set-editor')).toBeVisible();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'batch select');
+
+  const from = cell(page, 1, 1);
+  const to = cell(page, 2, 1); // row A: sets 10 and 11
+  const fromBox = (await from.boundingBox())!;
+  const toBox = (await to.boundingBox())!;
+  await page.mouse.move(fromBox.x + fromBox.width / 2, fromBox.y + fromBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(toBox.x + toBox.width / 2, toBox.y + toBox.height / 2, { steps: 5 });
+  await page.mouse.up();
+
+  await expect(page.getByTestId('batch-count')).toHaveText(/2 sets selected/);
+
+  let putCount = 0;
+  page.on('request', (request) => {
+    if (request.method() === 'PUT' && request.url().includes('/beach-map')) {
+      putCount += 1;
+    }
+  });
+
+  await page.getByTestId('batch-price').fill('40');
+  await page.getByTestId('batch-apply').click();
+
+  await expect(page.getByTestId('batch-saved')).toBeVisible();
+  expect(putCount).toBe(1);
+  const set10 = mock.sets().find((s) => s.id === 10)!;
+  const set11 = mock.sets().find((s) => s.id === 11)!;
+  const set12 = mock.sets().find((s) => s.id === 12)!;
+  expect(set10.price.minorUnits).toBe(4000);
+  expect(set11.price.minorUnits).toBe(4000);
+  expect(set10.tier).toBe('PREMIUM'); // untouched field kept, per set (AC-2)
+  expect(set12.price.minorUnits).toBe(2000); // outside the sweep — never touched
+});
+
+test('a STALE_WRITE batch apply keeps the selection and Reload recovers it (#714)', async ({
+  page,
+}) => {
+  await mockConsole(page);
+  await page.goto('/operator/1');
+  await signIn(page);
+
+  const from = cell(page, 1, 1);
+  const to = cell(page, 1, 2);
+  const fromBox = (await from.boundingBox())!;
+  const toBox = (await to.boundingBox())!;
+  await page.mouse.move(fromBox.x + fromBox.width / 2, fromBox.y + fromBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(toBox.x + toBox.width / 2, toBox.y + toBox.height / 2, { steps: 5 });
+  await page.mouse.up();
+
+  // A second tab's PUT lands first: the version this tab loaded no longer matches.
+  await page.route(
+    /\/api\/venues\/1\/beach-map$/,
+    (route) =>
+      route.fulfill({
+        status: 409,
+        contentType: 'application/problem+json',
+        json: { code: 'STALE_WRITE', detail: 'stale' },
+      }),
+    { times: 1 },
+  );
+
+  await page.getByTestId('batch-tier-STANDARD').click();
+  await page.getByTestId('batch-apply').click();
+
+  await expect(page.getByTestId('layout-stale-banner')).toBeVisible();
+  // The selection survives the conflict — the operator doesn't have to re-sweep to retry.
+  await expect(page.getByTestId('batch-panel')).toBeVisible();
+  await expect(page.getByTestId('batch-count')).toHaveText(/2 sets selected/);
+
+  await page.getByTestId('layout-stale-reload').click();
+  await expect(page.getByTestId('layout-stale-banner')).toHaveCount(0);
 });
 
 test('the locked bulk save points at per-set editing instead of claiming it is impossible', async ({

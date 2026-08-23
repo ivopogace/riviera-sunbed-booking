@@ -218,8 +218,35 @@
               [venueId]="id"
               [sets]="loadedSets()"
               [loaded]="mapLoaded()"
+              [expectedVersion]="loadedSetVersion()"
               (changed)="onSetsChanged()"
+              (staleWrite)="onBatchStaleWrite()"
             />
+            <!-- A batch apply's own 409 STALE_WRITE reuses the bulk save's recovery banner (#714). -->
+            @if (errorCode() === 'STALE_WRITE') {
+              <app-stale-write-banner
+                class="mt-3 block"
+                data-testid="layout-stale-banner"
+                reloadTestId="layout-stale-reload"
+                [reloading]="reloading()"
+                (reload)="reloadAfterStale()"
+              >
+                This layout was changed somewhere else since you opened it. Your selection is kept —
+                reload the latest layout, then apply again.
+                <ng-container ngProjectAs="[bannerFooter]">
+                  @if (reloadFailed()) {
+                    <span
+                      class="text-[12px] font-semibold text-[#a3160e]"
+                      role="alert"
+                      data-testid="layout-reload-failed"
+                    >
+                      Couldn’t reload — your selection is still here. Check your connection and try
+                      again.
+                    </span>
+                  }
+                </ng-container>
+              </app-stale-write-banner>
+            }
           }
         }
       } @else {
