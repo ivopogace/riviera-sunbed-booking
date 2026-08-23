@@ -185,18 +185,18 @@ N/A — no contract change. `toRequest()`'s `LayoutCellRequest[]` shape, `replac
 
 ## Execution status
 
-**Stage pointer:** review gate — ran, one finding fixed; PR #769 open, waiting on CI +
-Sonar gate + merge.
+**Stage pointer:** merge close-out — DONE. CI green (Frontend, Backend, CodeQL x2, Repo
+hygiene, SonarCloud all `success`), Sonar quality gate passed (0 new issues, 0
+duplication, 100% new-code coverage), review gate ran with one finding fixed. Merging
+via PR #769.
 
-**Next action:** watch PR #769's CI; once green (and Sonar gate clean), finalize this
-doc's close-out (tick "Close-out written in THIS PR", cite `merged via PR #769`) in the
-PR's last commit before merge.
+**Next action:** none — merged via PR #769.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Merge tool rail (signals + template) | ✅ | (this slice's commit) |
-| 1 — Port e2e to the tool-rail selectors | ✅ | (this slice's commit) |
-| 2 — Local verification (lint/format/test/a11y/e2e) + close-out | ✅ | (this slice's commit) |
+| 0 — Merge tool rail (signals + template) | ✅ | `851e881` |
+| 1 — Port e2e to the tool-rail selectors | ✅ | `851e881` |
+| 2 — Local verification (lint/format/test/a11y/e2e) + close-out | ✅ | `851e881`, `3996235`, `d4ab693` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -313,7 +313,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
       `operator-set-editing.e2e.ts`, `touch-targets.e2e.ts` — 29/29 green; the full
       `operator*`/`layout*`/`set-editor*` e2e sweep — 53/53 green). `npm run lint` and
       `npm run format:check` clean, re-verified after the F-1 TSDoc fix (commit
-      `3996235`). Not yet verified: PR #769's own CI run.
+      `3996235`). PR #769's own CI confirmed green at `d4ab693`: Frontend
+      (lint+test+build), Backend (build+test), Repo hygiene, CodeQL (x2), and
+      SonarCloud scan all `success`.
 
 ## Self-review checklist (before merge / PR)
 
@@ -332,15 +334,20 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **Frontend** standards met (see Angular section above).
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR.** — PR #769 is open; this box ticks in the PR's
-      final commit before merge, per the template's rule (never a docs-only follow-up).
-- [x] **The review gate ran in full.** — `/code-review` (5 parallel Sonner agents:
+- [x] **Close-out written in THIS PR.** — final state committed here, in PR #769's last
+      commit before merge, citing `merged via PR #769` (below) — no docs-only follow-up
+      PR needed.
+- [x] **The review gate ran in full.** — `/code-review` (5 parallel Sonnet agents:
       CLAUDE.md compliance, shallow bug scan, git-history regression check, prior-PR
       comment carryover, code-comment contradiction check) plus `riviera-review-overlay`'s
       FE bank (RV-FE-1/7/8/9/10/E2E, RV-STYLE-1) ran over the diff. One finding (F-1,
       confidence 100/100) — TSDoc embedding issue numbers, violating
       `riviera-java-conventions` §6d — fixed in commit `3996235`; posted as a PR comment.
-      No other findings survived. Sonar gate still pending (runs on the PR).
+      No other findings survived. **Sonar gate: passed** — 0 new issues, 0 accepted
+      issues, 0 security hotspots, 0.0% duplication on new code, 100.0% coverage on new
+      code (SonarCloud bot comment on PR #769, 2026-08-23T15:02Z).
+
+**Merged via PR #769.**
 
 One box remains open pending the merge stage — recorded here rather than silently
 claimed. Everything else in this session (Phases 0–2, review gate) is done and verified.
