@@ -103,6 +103,12 @@ describe('SetEditor (#600)', () => {
     return cells().find((c) => c.dataset['setId'] === String(setId))!;
   }
 
+  function cellForGrid(gridX: number, gridY: number): HTMLButtonElement {
+    return cells().find(
+      (c) => c.dataset['gridX'] === String(gridX) && c.dataset['gridY'] === String(gridY),
+    )!;
+  }
+
   function click(element: HTMLElement): void {
     element.click();
     fixture.detectChanges();
@@ -178,6 +184,66 @@ describe('SetEditor (#600)', () => {
     expect(byId('set-panel-empty')).toBeTruthy();
     selectSet(12);
     expect(byId('set-panel-empty')).toBeFalsy();
+    expect(byId('set-panel').textContent).toContain('Row B');
+  });
+
+  it('docks the inspector beside the canvas, absent until a set is selected (#712)', () => {
+    render();
+
+    expect(byId('set-panel')).toBeFalsy();
+    const columns = byId('set-editor').querySelector<HTMLElement>('.grid')!;
+    expect(columns.className).not.toContain('lg:grid-cols-[1fr_320px]');
+
+    selectSet(12);
+
+    expect(byId('set-panel')).toBeTruthy();
+    expect(columns.className).toContain('lg:grid-cols-[1fr_320px]');
+  });
+
+  it('moves focus into the inspector when it first opens (#712)', async () => {
+    render();
+    selectSet(12);
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(byId('set-panel'));
+  });
+
+  it('closes the inspector and refocuses the tile when the selected tile is re-clicked (#712)', async () => {
+    render();
+    selectSet(12);
+    await fixture.whenStable();
+
+    selectSet(12);
+    await fixture.whenStable();
+
+    expect(byId('set-panel')).toBeFalsy();
+    expect(document.activeElement).toBe(cellForGrid(1, 2));
+  });
+
+  it('closes the inspector and refocuses the tile on Escape (#712)', async () => {
+    render();
+    selectSet(12);
+    await fixture.whenStable();
+
+    host.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(byId('set-panel')).toBeFalsy();
+    expect(document.activeElement).toBe(cellForGrid(1, 2));
+  });
+
+  it('switching selections leaves the inspector in place without re-triggering the open focus move (#712)', async () => {
+    render();
+    selectSet(12);
+    await fixture.whenStable();
+    byId('set-panel').blur();
+
+    selectSet(13);
+    fixture.detectChanges();
+
+    // No open-transition fired (null → selection didn't happen), so focus was never redirected.
+    expect(document.activeElement).not.toBe(byId('set-panel'));
     expect(byId('set-panel').textContent).toContain('Row B');
   });
 
@@ -321,8 +387,9 @@ describe('SetEditor (#600)', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    // The Remove button it was on is gone with the selection, so focus parks on the panel itself.
-    expect(document.activeElement).toBe(byId('set-panel'));
+    // The panel is gone with the selection, so focus parks on the now-empty tile.
+    expect(byId('set-panel')).toBeFalsy();
+    expect(document.activeElement).toBe(cellForGrid(1, 2));
   });
 
   it('explainsARefusedRemove: a booked set stays on the map with the reason (AC-4)', async () => {

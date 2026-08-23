@@ -264,60 +264,99 @@
           </p>
         </app-beach-map-canvas>
 
-        <!-- Save + notices -->
-        <div class="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            appTouchTarget
-            type="button"
-            (click)="onSave()"
-            [disabled]="!hasLayout()"
-            [appBusy]="saving() || renamingRow() !== null"
-            data-testid="layout-save"
-            class="rounded-[14px] bg-(image:--riv-cta-grad) px-5 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
+        <!-- Persistent save bar: pinned to the viewport bottom so it's reachable without scrolling. -->
+        <div class="sticky bottom-3 z-10 mt-4" data-testid="layout-save-bar">
+          <div
+            appCardGlass
+            class="flex flex-col gap-2.5 rounded-[16px] px-4 py-3 shadow-[0_10px_30px_rgba(12,42,51,0.25)] sm:flex-row sm:items-center sm:justify-between"
           >
-            {{ saving() ? 'Saving…' : 'Save layout' }}
-          </button>
-          @if (savedNotice()) {
-            <output class="text-[13px] font-semibold text-[#0a6e85]" data-testid="layout-saved">
-              Saved. The public beach map reflects your changes.
-            </output>
-          }
-          @if (errorMessage(); as message) {
-            <span
-              class="text-[13px] font-semibold text-[#a3160e]"
-              role="alert"
-              data-testid="layout-error"
+            <div class="flex min-w-0 flex-col gap-0.5 text-[12px] text-(--riv-card-ink-soft)">
+              <span
+                class="text-[13px] font-bold text-(--riv-card-ink)"
+                data-testid="layout-dirty-count"
+              >
+                @if (isDirty()) {
+                  {{ dirtyCount() }} unsaved change{{ dirtyCount() === 1 ? '' : 's' }}
+                } @else {
+                  No unsaved changes
+                }
+              </span>
+              @if (lastChange(); as change) {
+                <span data-testid="layout-last-change">{{ change }}</span>
+              }
+              <span data-testid="layout-last-saved">{{ lastSavedLabel() }}</span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2.5">
+              <button
+                appTouchTarget
+                type="button"
+                (click)="discard()"
+                [disabled]="!isDirty()"
+                [appBusy]="saving()"
+                data-testid="layout-discard"
+                class="rounded-[14px] border border-(--riv-card-border) bg-white/45 px-4 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) disabled:opacity-50 aria-disabled:opacity-50"
+              >
+                Discard
+              </button>
+              <button
+                appTouchTarget
+                type="button"
+                (click)="onSave()"
+                [disabled]="!hasLayout()"
+                [appBusy]="saving() || renamingRow() !== null"
+                data-testid="layout-save"
+                class="rounded-[14px] bg-(image:--riv-cta-grad) px-5 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
+              >
+                {{ saving() ? 'Saving…' : 'Save layout' }}
+              </button>
+            </div>
+
+            @if (savedNotice()) {
+              <output
+                class="text-[13px] font-semibold text-[#0a6e85] sm:basis-full"
+                data-testid="layout-saved"
+              >
+                Saved. The public beach map reflects your changes.
+              </output>
+            }
+            @if (errorMessage(); as message) {
+              <span
+                class="text-[13px] font-semibold text-[#a3160e] sm:basis-full"
+                role="alert"
+                data-testid="layout-error"
+              >
+                {{ message }}
+              </span>
+            }
+          </div>
+
+          <!-- A stale-write 409 is a recoverable conflict, not a plain error — keep the grid, explain, offer a Reload (never a silent discard). -->
+          @if (errorCode() === 'STALE_WRITE') {
+            <app-stale-write-banner
+              class="mt-2 block"
+              data-testid="layout-stale-banner"
+              reloadTestId="layout-stale-reload"
+              [reloading]="reloading()"
+              (reload)="reloadAfterStale()"
             >
-              {{ message }}
-            </span>
+              This layout was changed somewhere else since you opened it. Your painted grid is kept
+              — reload the latest layout, re-apply your changes, then Save again.
+              <ng-container ngProjectAs="[bannerFooter]">
+                @if (reloadFailed()) {
+                  <span
+                    class="text-[12px] font-semibold text-[#a3160e]"
+                    role="alert"
+                    data-testid="layout-reload-failed"
+                  >
+                    Couldn’t reload — your changes are still here. Check your connection and try
+                    again.
+                  </span>
+                }
+              </ng-container>
+            </app-stale-write-banner>
           }
         </div>
-
-        <!-- A stale-write 409 is a recoverable conflict, not a plain error — keep the grid, explain, offer a Reload (never a silent discard). -->
-        @if (errorCode() === 'STALE_WRITE') {
-          <app-stale-write-banner
-            class="mt-3"
-            data-testid="layout-stale-banner"
-            reloadTestId="layout-stale-reload"
-            [reloading]="reloading()"
-            (reload)="reloadAfterStale()"
-          >
-            This layout was changed somewhere else since you opened it. Your painted grid is kept —
-            reload the latest layout, re-apply your changes, then Save again.
-            <ng-container ngProjectAs="[bannerFooter]">
-              @if (reloadFailed()) {
-                <span
-                  class="text-[12px] font-semibold text-[#a3160e]"
-                  role="alert"
-                  data-testid="layout-reload-failed"
-                >
-                  Couldn’t reload — your changes are still here. Check your connection and try
-                  again.
-                </span>
-              }
-            </ng-container>
-          </app-stale-write-banner>
-        }
       }
     </div>
   </div>

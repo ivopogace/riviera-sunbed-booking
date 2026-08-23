@@ -389,6 +389,69 @@ describe('LayoutEditor (#172)', () => {
     expect(byId('layout-saved')).toBeTruthy();
   });
 
+  it('tracks the unsaved-change count and the latest-change description across paint/generate/save (#712)', async () => {
+    render();
+    expect(byId('layout-dirty-count').textContent).toContain('No unsaved changes');
+    expect(byId('layout-last-saved').textContent).toContain('Not saved yet');
+
+    generate('1', '2');
+    expect(byId('layout-dirty-count').textContent).toContain('2 unsaved changes');
+    expect(byId('layout-last-change').textContent).toContain('Generated a 1×2 grid');
+
+    byId('layout-tool-gap').click();
+    fixture.detectChanges();
+    cells()[1].click();
+    fixture.detectChanges();
+    // Painting the second cell back to 'gap' matches the empty baseline there, so only cell 1 stays dirty.
+    expect(byId('layout-dirty-count').textContent).toContain('1 unsaved change');
+    expect(byId('layout-last-change').textContent).toContain('Row A · position 2 → Gap');
+
+    byId('layout-save').click();
+    const req = http.expectOne(
+      (r) => r.method === 'PUT' && r.url.includes('/api/venues/1/beach-map'),
+    );
+    req.flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byId('layout-dirty-count').textContent).toContain('No unsaved changes');
+    expect(host.querySelector('[data-testid="layout-last-change"]')).toBeNull();
+    expect(byId('layout-last-saved').textContent).toContain('Last saved');
+  });
+
+  it('discard restores the last-saved grid and clears the dirty count (#712)', () => {
+    render();
+    generate('1', '2');
+    expect(byId('layout-dirty-count').textContent).toContain('2 unsaved changes');
+    expect(byId('layout-discard').getAttribute('disabled')).toBeNull();
+
+    byId('layout-discard').click();
+    fixture.detectChanges();
+
+    expect(byId('layout-dirty-count').textContent).toContain('No unsaved changes');
+    expect(host.querySelector('[data-testid="layout-last-change"]')).toBeNull();
+    expect(cells()).toHaveLength(0);
+    expect(byId('layout-discard').getAttribute('disabled')).toBe('');
+  });
+
+  it('surfaces LAYOUT_IN_USE and STALE_WRITE through the persistent save bar (#712)', async () => {
+    render();
+    generate('1', '1');
+
+    byId('layout-save').click();
+    http
+      .expectOne((r) => r.method === 'PUT')
+      .flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(
+      byId('layout-save-bar').querySelector('[data-testid="layout-stale-banner"]'),
+    ).toBeTruthy();
+    // The painted grid survives a stale rejection — the dirty count still reflects it.
+    expect(byId('layout-dirty-count').textContent).toContain('1 unsaved change');
+  });
+
   function rowNameInputs(): HTMLInputElement[] {
     return Array.from(host.querySelectorAll<HTMLInputElement>('[data-testid="layout-row-name"]'));
   }

@@ -1,4 +1,15 @@
-import { Component, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  input,
+  Injector,
+  linkedSignal,
+  output,
+  signal,
+} from '@angular/core';
 import { disabled, form, FormField } from '@angular/forms/signals';
 import { firstValueFrom, Observable } from 'rxjs';
 
@@ -111,10 +122,15 @@ function draftForNewCell(gridY: number): SetDraft {
     TouchTarget,
   ],
   templateUrl: './set-editor.html',
+  host: {
+    '(keydown.escape)': 'onEscape()',
+  },
 })
 export class SetEditor {
   private readonly console = inject(OperatorConsoleService);
   private readonly focusAfterRender = focusMover();
+  private readonly hostEl = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
   protected readonly operator = inject(OperatorAuth);
 
   /** The venue whose map is being edited — owner-asserted server-side on every write (invariant #13). */
@@ -337,7 +353,9 @@ export class SetEditor {
 
   /**
    * A grid cell was activated. While a move is armed an empty cell is the destination; otherwise a
-   * cell selects its set, or offers to add one where there is none.
+   * cell selects its set, opens the docked inspector, or offers to add one where there is none — or,
+   * re-clicking the tile that is already selected, closes the inspector (the mouse-only counterpart
+   * to Escape).
    */
   protected onCell(gridX: number, gridY: number, setId: number | null): void {
     if (this.armed()) {
@@ -346,11 +364,89 @@ export class SetEditor {
       }
       return;
     }
+    const chosen = this.selection();
+    const sameTile =
+      (chosen?.kind === 'set' && setId !== null && chosen.setId === setId) ||
+      (chosen?.kind === 'cell' &&
+        setId === null &&
+        chosen.gridX === gridX &&
+        chosen.gridY === gridY);
+    if (sameTile) {
+      this.closeSelection(gridX, gridY);
+      return;
+    }
+    const opening = chosen === null;
     this.selection.set(setId === null ? { kind: 'cell', gridX, gridY } : { kind: 'set', setId });
     this.saved.set(false);
     this.errorCode.set(undefined);
     this.confirmRemove.set(false);
     this.moving.set(false);
+    if (opening) {
+      // A brand-new inspector appeared — move focus into it so AT users notice its arrival.
+      this.focusAfterRender('set-panel');
+    }
+  }
+
+  /**
+   * Escape closes the docked inspector — the keyboard counterpart to re-clicking the selected tile.
+   * Bound on the component host, not `document`, so it only fires while focus is inside this surface
+   * (the `find-booking.ts` precedent for a scoped dismiss key). A move or a remove-confirmation in
+   * progress is cancelled first, since either would otherwise silently survive the close.
+   */
+  protected onEscape(): void {
+    if (this.confirmRemove()) {
+      this.cancelRemove();
+      return;
+    }
+    if (this.armed()) {
+      this.cancelMove();
+      return;
+    }
+    const coords = this.selectionCoords();
+    if (coords !== undefined) {
+      this.closeSelection(coords.gridX, coords.gridY);
+    }
+  }
+
+  /** The grid position the current selection occupies, or undefined for no selection. */
+  private selectionCoords(): { gridX: number; gridY: number } | undefined {
+    const chosen = this.selection();
+    if (chosen === null) {
+      return undefined;
+    }
+    if (chosen.kind === 'cell') {
+      return chosen;
+    }
+    const selected = this.selectedSet();
+    return selected === undefined ? undefined : { gridX: selected.gridX, gridY: selected.gridY };
+  }
+
+  /** Close the inspector and return focus to the tile it was open for (WCAG 2.4.3) — the panel
+   *  itself is destroyed by every path that reaches here. */
+  private closeSelection(gridX: number, gridY: number): void {
+    this.selection.set(null);
+    this.moving.set(false);
+    this.confirmRemove.set(false);
+    this.focusCell(gridX, gridY);
+  }
+
+  /**
+   * Focus one grid tile once the next render has committed. The shared `focusMover()` targets a
+   * fixed `data-testid` landmark; this targets a specific tile chosen at runtime, so it repeats that
+   * utility's `afterNextRender`-based idiom directly rather than forcing a per-instance testid onto
+   * every cell (which every bulk selector in the specs/e2e assumes share one `data-testid`).
+   */
+  private focusCell(gridX: number, gridY: number): void {
+    afterNextRender(
+      {
+        earlyRead: () =>
+          this.hostEl.nativeElement.querySelector<HTMLElement>(
+            `[data-testid="set-cell"][data-grid-x="${gridX}"][data-grid-y="${gridY}"]`,
+          ),
+        write: (target) => target?.focus(),
+      },
+      { injector: this.injector },
+    );
   }
 
   protected addRow(): void {
@@ -475,12 +571,8 @@ export class SetEditor {
     await this.write(
       'remove',
       () => this.console.removeSet(this.venueId(), selected.id),
-      () => {
-        this.selection.set(null);
-        this.moving.set(false);
-        // Both the confirm and the Remove button are gone with the selection, so focus parks on the panel.
-        this.focusAfterRender('set-panel');
-      },
+      // The inspector is gone with the selection, so focus parks on the now-empty tile.
+      () => this.closeSelection(selected.gridX, selected.gridY),
     );
   }
 

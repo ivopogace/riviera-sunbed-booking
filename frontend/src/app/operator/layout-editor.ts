@@ -162,6 +162,17 @@ export class LayoutEditor {
    *  switching back to painting resumes on the last brush rather than resetting to premium. */
   protected readonly activeBrush = signal<CellState>('premium');
 
+  /** The grid as last loaded, reloaded or successfully saved — what {@link dirtyCount} diffs
+   *  {@link grid} against, and what {@link discard} restores. */
+  private readonly baselineGrid = signal<CellState[][]>([]);
+  /** {@link rowNames} as last loaded, reloaded or successfully saved — {@link discard}'s other half. */
+  private readonly baselineRowNames = signal<readonly string[]>([]);
+  /** A one-line description of the latest paint/generate action, cleared by a successful save or a
+   *  discard — the save bar's "what changed" line. */
+  protected readonly lastChange = signal<string | null>(null);
+  /** When the bulk grid was last saved successfully, or null if never. */
+  protected readonly lastSavedAt = signal<Date | null>(null);
+
   /** True while the save PUT is in flight (button disabled, no double submit). */
   protected readonly saving = signal(false);
   /** Set after a successful save; cleared on the next edit. */
@@ -242,6 +253,33 @@ export class LayoutEditor {
   protected readonly genTotal = computed(
     () => clampGrid(this.genRows(), 1, MAX_ROWS) * clampGrid(this.genCols(), 1, MAX_COLS),
   );
+
+  /** How many cells differ from {@link baselineGrid} — the save bar's unsaved-change count. A grid
+   *  that grew (add row/col, regenerate) counts every new cell too: it genuinely is unsaved surface. */
+  protected readonly dirtyCount = computed(() => {
+    const current = this.grid();
+    const base = this.baselineGrid();
+    const rows = Math.max(current.length, base.length);
+    let count = 0;
+    for (let y = 0; y < rows; y++) {
+      const currentRow = current[y] ?? [];
+      const baseRow = base[y] ?? [];
+      const cols = Math.max(currentRow.length, baseRow.length);
+      for (let x = 0; x < cols; x++) {
+        if ((currentRow[x] ?? 'gap') !== (baseRow[x] ?? 'gap')) {
+          count++;
+        }
+      }
+    }
+    return count;
+  });
+  protected readonly isDirty = computed(() => this.dirtyCount() > 0);
+
+  /** The save bar's last-saved line: the clock time in Tirane, or a not-yet-saved notice. */
+  protected readonly lastSavedLabel = computed(() => {
+    const at = this.lastSavedAt();
+    return at === null ? 'Not saved yet' : `Last saved ${formatClockTime(at)}`;
+  });
 
   /** Drag state — a plain field (not reactive; only the pointer handlers read it). */
   private painting = false;
@@ -335,6 +373,10 @@ export class LayoutEditor {
     this.reloadFailed.set(false);
     this.loadFailed.set(false);
     this.mapLoaded.set(false);
+    this.baselineGrid.set([]);
+    this.baselineRowNames.set([]);
+    this.lastChange.set(null);
+    this.lastSavedAt.set(null);
     this.clearRenameNotices();
     this.renamingRow.set(null);
     this.loadExisting(venueId);
@@ -433,6 +475,9 @@ export class LayoutEditor {
     this.savedNotice.set(false);
     this.errorCode.set(undefined);
     this.clearRenameNotices();
+    // A regenerate replaces the whole grid, so every cell is unsaved surface against an empty baseline.
+    this.baselineGrid.set([]);
+    this.lastChange.set(`Generated a ${rows}×${cols} grid`);
   }
 
   /** The derived grid letter for row {@code y} — the row-name input's default and visual anchor. */
@@ -556,6 +601,7 @@ export class LayoutEditor {
       g.map((row, ri) => (ri !== r ? row : row.map((cell, ci) => (ci !== c ? cell : tool)))),
     );
     this.savedNotice.set(false);
+    this.lastChange.set(`Row ${gridRowLabel(r)} · position ${c + 1} → ${TOOL_LABEL[tool]}`);
   }
 
   protected onCellDown(r: number, c: number, event: MouseEvent): void {
@@ -636,6 +682,11 @@ export class LayoutEditor {
       this.venueMap.reset();
       // The conditional write bumped set_version by one; advance the token so a second save isn't stale.
       this.loadedSetVersion.set(expectedVersion + 1);
+      // The grid just saved becomes the new baseline: nothing pending until the next paint/generate.
+      this.baselineGrid.set(cloneGrid(this.grid()));
+      this.baselineRowNames.set(this.effectiveRowNames());
+      this.lastChange.set(null);
+      this.lastSavedAt.set(new Date());
     } catch (error) {
       if (this.epoch !== epoch) {
         return; // a venue switch superseded this save (#180)
@@ -702,6 +753,9 @@ export class LayoutEditor {
         // Success: NOW replace the in-progress grid with the server's latest layout + token, clear the banner.
         this.priceByCoord.clear();
         this.grid.set([]); // hasLayout() → false, so seedFrom re-seeds (or leaves the empty state)
+        this.baselineGrid.set([]);
+        this.baselineRowNames.set([]);
+        this.lastChange.set(null);
         this.loadedSetVersion.set(venue.setVersion ?? null);
         this.loadFailed.set(false);
         this.mapLoaded.set(true);
@@ -802,16 +856,33 @@ export class LayoutEditor {
       this.priceByCoord.set(coordKey(s.gridX, s.gridY), s.price); // preserve prices for a lossless save
     }
     this.grid.set(grid);
+    this.baselineGrid.set(cloneGrid(grid)); // a freshly-loaded grid is, by definition, all saved
     // One pass for both arrays: two independent scans could drift, and the layout can be 1040 sets.
     const storedByRow = new Map<number, string>();
     for (const s of sets) {
       storedByRow.set(s.gridY - 1, s.rowLabel);
     }
     // Preserve each row's loaded label for a lossless save (#723); an all-gap row takes its letter.
-    this.rowNames.set(grid.map((_, y) => storedByRow.get(y) ?? gridRowLabel(y)));
+    const names = grid.map((_, y) => storedByRow.get(y) ?? gridRowLabel(y));
+    this.rowNames.set(names);
+    this.baselineRowNames.set(names);
     this.storedRowNames.set(grid.map((_, y) => storedByRow.get(y)));
     this.genRows.set(clampGrid(maxY, 1, MAX_ROWS));
     this.genCols.set(clampGrid(maxX, 1, MAX_COLS));
+  }
+
+  /** Discard the unsaved draft, restoring the grid and row names to {@link baselineGrid} /
+   *  {@link baselineRowNames} — a no-op while nothing is dirty or a save is already in flight. */
+  protected discard(): void {
+    if (!this.isDirty() || this.saving()) {
+      return;
+    }
+    this.grid.set(cloneGrid(this.baselineGrid()));
+    this.rowNames.set([...this.baselineRowNames()]);
+    this.lastChange.set(null);
+    this.savedNotice.set(false);
+    this.errorCode.set(undefined);
+    this.clearRenameNotices();
   }
 
   /** The per-row price string: the price the row's first set would save with (preserved or tier default). */
@@ -830,4 +901,18 @@ export class LayoutEditor {
 
 function coordKey(gridX: number, gridY: number): string {
   return `${gridX},${gridY}`;
+}
+
+/** A deep copy, so mutating the clone (or the source, via `grid.update`) never aliases the other. */
+function cloneGrid(grid: readonly CellState[][]): CellState[][] {
+  return grid.map((row) => [...row]);
+}
+
+/** The save bar's last-saved clock time, in Europe/Tirane — a display convenience, not a booking date. */
+function formatClockTime(date: Date): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Tirane',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
 }

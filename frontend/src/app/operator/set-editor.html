@@ -8,19 +8,110 @@
   />
 
   @if (loaded()) {
-    <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[300px_1fr]">
-      <!-- The panel leads on every viewport: it is the stable place the selection is confirmed and edited. -->
-      <section
-        appCardGlass
-        class="rounded-[20px] px-[18px] py-4"
-        tabindex="-1"
-        data-testid="set-panel"
-      >
-        <h2 class="text-[15px] font-bold text-(--riv-card-ink)">
-          {{ selectedCell() ? 'Add a set' : 'Edit one set' }}
-        </h2>
+    <div
+      class="grid grid-cols-1 items-start gap-[18px]"
+      [class]="hasSelection() ? 'lg:grid-cols-[1fr_320px]' : ''"
+    >
+      <!-- The map leads on every viewport; min-w-0 so the 1fr column scrolls instead of blowing out. -->
+      <div class="flex min-w-0 flex-col gap-2">
+        <app-beach-map-canvas
+          frameTestid="set-grid-frame"
+          viewportTestid="set-grid"
+          [fitWidth]="true"
+        >
+          <ng-template [appBeachMapRow]="rows()" let-row>
+            <div
+              class="grid h-full grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
+            >
+              @for (cell of row.cells; track cell.gridX) {
+                <button
+                  appTouchTarget
+                  type="button"
+                  appBeachCell
+                  [state]="cell.state"
+                  [disabled]="cell.disabled"
+                  [attr.data-set-id]="cell.setId"
+                  [attr.data-grid-x]="cell.gridX"
+                  [attr.data-grid-y]="cell.gridY"
+                  [attr.aria-pressed]="cell.selected"
+                  [attr.aria-label]="cell.label"
+                  [title]="cell.label"
+                  (click)="onCell(cell.gridX, cell.gridY, cell.setId)"
+                  data-testid="set-cell"
+                  class="h-full min-w-0 flex items-center justify-center rounded-[8px] border text-[12.5px] font-bold text-[#0c2a33] [transition:scale_0.1s_ease,box-shadow_0.12s_ease,translate_0.12s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:hover:translate-y-0"
+                  [class]="
+                    cell.selected
+                      ? 'selected -translate-y-1 ring-2 ring-offset-2 ring-[#0a5f74] shadow-[0_6px_14px_rgba(10,95,116,0.4)]'
+                      : ''
+                  "
+                >
+                  @if (cell.state !== 'gap') {
+                    <span aria-hidden="true">{{ cell.gridX }}</span>
+                  }
+                </button>
+              }
+            </div>
+          </ng-template>
+        </app-beach-map-canvas>
 
-        @if (hasSelection()) {
+        <!-- A full grid has nowhere to add a set, so the map itself has to be growable. -->
+        <div class="flex flex-wrap gap-2">
+          <button
+            appTouchTarget
+            type="button"
+            (click)="addRow()"
+            [disabled]="!canAddRow()"
+            data-testid="set-add-row"
+            class="flex-1 rounded-[13px] border border-(--riv-card-border) bg-white/45 px-4 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) disabled:opacity-50 sm:flex-none"
+          >
+            + Add a row
+          </button>
+          <button
+            appTouchTarget
+            type="button"
+            (click)="addCol()"
+            [disabled]="!canAddCol()"
+            data-testid="set-add-col"
+            class="flex-1 rounded-[13px] border border-(--riv-card-border) bg-white/45 px-4 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) disabled:opacity-50 sm:flex-none"
+          >
+            + Add a position
+          </button>
+        </div>
+
+        @if (!hasSelection()) {
+          @if (sets().length) {
+            <p
+              class="text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)"
+              data-testid="set-panel-empty"
+            >
+              Pick a set on the map to change its tier, pool or price. Editing one set at a time
+              works even when the venue has bookings.
+            </p>
+          } @else {
+            <!-- No set to pick (#718): the grid still renders one empty spot, and a brush sits on the rail. -->
+            <p
+              class="text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)"
+              data-testid="set-panel-no-sets"
+            >
+              This venue has no sets yet. Tap the empty spot on the map to add the first one — or
+              arm a brush on the tool rail to generate the whole grid at once.
+            </p>
+          }
+        }
+      </div>
+
+      <!-- Docks right of the canvas on desktop, only while something is selected. -->
+      @if (hasSelection()) {
+        <section
+          appCardGlass
+          class="rounded-[20px] px-[18px] py-4"
+          tabindex="-1"
+          data-testid="set-panel"
+        >
+          <h2 class="text-[15px] font-bold text-(--riv-card-ink)">
+            {{ selectedCell() ? 'Add a set' : 'Edit one set' }}
+          </h2>
+
           <p
             class="mt-1 text-[12.5px] font-semibold text-(--riv-card-ink)"
             data-testid="set-selected"
@@ -218,92 +309,8 @@
               {{ message }}
             </p>
           }
-        } @else if (sets().length) {
-          <p
-            class="mt-1 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)"
-            data-testid="set-panel-empty"
-          >
-            Pick a set on the map to change its tier, pool or price. Editing one set at a time works
-            even when the venue has bookings.
-          </p>
-        } @else {
-          <!-- No set to pick (#718): the grid still renders one empty spot, and a brush sits on the rail. -->
-          <p
-            class="mt-1 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)"
-            data-testid="set-panel-no-sets"
-          >
-            This venue has no sets yet. Tap the empty spot on the map to add the first one — or arm
-            a brush on the tool rail to generate the whole grid at once.
-          </p>
-        }
-      </section>
-
-      <!-- The map on the shared canvas; min-w-0 so the 1fr grid column scrolls instead of blowing out. -->
-      <div class="flex min-w-0 flex-col gap-2">
-        <app-beach-map-canvas
-          frameTestid="set-grid-frame"
-          viewportTestid="set-grid"
-          [fitWidth]="true"
-        >
-          <ng-template [appBeachMapRow]="rows()" let-row>
-            <div
-              class="grid h-full grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
-            >
-              @for (cell of row.cells; track cell.gridX) {
-                <button
-                  appTouchTarget
-                  type="button"
-                  appBeachCell
-                  [state]="cell.state"
-                  [disabled]="cell.disabled"
-                  [attr.data-set-id]="cell.setId"
-                  [attr.data-grid-x]="cell.gridX"
-                  [attr.data-grid-y]="cell.gridY"
-                  [attr.aria-pressed]="cell.selected"
-                  [attr.aria-label]="cell.label"
-                  [title]="cell.label"
-                  (click)="onCell(cell.gridX, cell.gridY, cell.setId)"
-                  data-testid="set-cell"
-                  class="h-full min-w-0 flex items-center justify-center rounded-[8px] border text-[12.5px] font-bold text-[#0c2a33] [transition:scale_0.1s_ease,box-shadow_0.12s_ease,translate_0.12s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:hover:translate-y-0"
-                  [class]="
-                    cell.selected
-                      ? 'selected -translate-y-1 ring-2 ring-offset-2 ring-[#0a5f74] shadow-[0_6px_14px_rgba(10,95,116,0.4)]'
-                      : ''
-                  "
-                >
-                  @if (cell.state !== 'gap') {
-                    <span aria-hidden="true">{{ cell.gridX }}</span>
-                  }
-                </button>
-              }
-            </div>
-          </ng-template>
-        </app-beach-map-canvas>
-
-        <!-- A full grid has nowhere to add a set, so the map itself has to be growable. -->
-        <div class="flex flex-wrap gap-2">
-          <button
-            appTouchTarget
-            type="button"
-            (click)="addRow()"
-            [disabled]="!canAddRow()"
-            data-testid="set-add-row"
-            class="flex-1 rounded-[13px] border border-(--riv-card-border) bg-white/45 px-4 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) disabled:opacity-50 sm:flex-none"
-          >
-            + Add a row
-          </button>
-          <button
-            appTouchTarget
-            type="button"
-            (click)="addCol()"
-            [disabled]="!canAddCol()"
-            data-testid="set-add-col"
-            class="flex-1 rounded-[13px] border border-(--riv-card-border) bg-white/45 px-4 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) disabled:opacity-50 sm:flex-none"
-          >
-            + Add a position
-          </button>
-        </div>
-      </div>
+        </section>
+      }
     </div>
   } @else {
     <!-- The read has not settled, so an empty `sets` states nothing: mirror the shape instead of claiming a venue with no sets. Wholly decorative — the announcer owns the words (#741). -->
