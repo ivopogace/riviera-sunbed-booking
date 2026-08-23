@@ -50,15 +50,16 @@
     <app-console-stats-strip [venueId]="venueId()!" [venue]="venue()" />
 
     <nav
-      class="oc-tabs mx-auto flex w-full max-w-[1120px] flex-wrap gap-2 px-6 pt-3.5 pb-1"
+      class="oc-tabs mx-auto flex w-full max-w-[1120px] flex-nowrap items-center gap-2 overflow-x-auto scroll-px-6 scroll-smooth px-6 pt-3.5 pb-1 [mask-image:linear-gradient(to_right,transparent,black_24px,black_calc(100%_-_24px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_24px,black_calc(100%_-_24px),transparent)] scrollbar-none"
       data-testid="oc-tabs"
       aria-label="Operator console sections"
     >
       @for (tab of tabs; track tab.path) {
         <!-- Active pill: opaque white + dark ink (css:S7924-safe solid fill), via the marker's arbitrary variants — a competing utility in the routerLinkActive string would resolve by stylesheet order. -->
         <a
+          #tabLink
           appTouchTarget
-          class="oc-tab inline-flex items-center gap-[7px] rounded-full border border-transparent px-[15px] py-2 text-[13.5px] font-semibold text-(--riv-ink-soft) no-underline hover:text-(--riv-ink) [&.oc-tab--active]:border-[rgba(12,42,51,0.1)] [&.oc-tab--active]:bg-white [&.oc-tab--active]:text-(--riv-ink) [&.oc-tab--active]:shadow-[0_2px_8px_rgba(7,42,58,0.1)]"
+          class="oc-tab inline-flex shrink-0 items-center gap-[7px] rounded-full border border-transparent px-[15px] py-2 text-[13.5px] font-semibold text-(--riv-ink-soft) no-underline hover:text-(--riv-ink) [&.oc-tab--active]:border-[rgba(12,42,51,0.1)] [&.oc-tab--active]:bg-white [&.oc-tab--active]:text-(--riv-ink) [&.oc-tab--active]:shadow-[0_2px_8px_rgba(7,42,58,0.1)]"
           [routerLink]="['/operator', venueId(), tab.path]"
           routerLinkActive="oc-tab--active"
           ariaCurrentWhenActive="page"
