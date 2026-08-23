@@ -108,9 +108,21 @@
           tabindex="-1"
           data-testid="set-panel"
         >
-          <h2 class="text-[15px] font-bold text-(--riv-card-ink)">
-            {{ selectedCell() ? 'Add a set' : 'Edit one set' }}
-          </h2>
+          <div class="flex items-start justify-between gap-2">
+            <h2 class="text-[15px] font-bold text-(--riv-card-ink)">
+              {{ selectedCell() ? 'Add a set' : 'Edit one set' }}
+            </h2>
+            <button
+              appTouchTarget
+              type="button"
+              (click)="closeInspector()"
+              aria-label="Close"
+              data-testid="set-panel-close"
+              class="shrink-0 rounded-[10px] text-[13px] font-semibold text-(--riv-card-ink-soft) hover:text-(--riv-card-ink)"
+            >
+              ✕
+            </button>
+          </div>
 
           <p
             class="mt-1 text-[12.5px] font-semibold text-(--riv-card-ink)"

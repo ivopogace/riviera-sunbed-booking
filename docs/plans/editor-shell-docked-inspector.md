@@ -20,14 +20,18 @@ touching the bulk PUT payload, the per-set endpoints, or `expectedVersion`/
    and the panel becomes `@if (hasSelection())`-gated instead of always-rendered. The
    two "nothing selected" captions (`set-panel-empty`, `set-panel-no-sets`) move out of
    the panel to sit beside the canvas, since the panel they used to live in is now
-   absent in that state. Clicking the already-selected tile, or Escape (scoped via a
-   host `(keydown.escape)` binding, not a document listener — the S2 precedent for a
+   absent in that state. A new Close control in the panel header, or Escape (scoped via
+   a host `(keydown.escape)` binding, not a document listener — the S2 precedent for a
    scoped key handler is `find-booking.ts`), closes the panel; a small local
    `afterNextRender`-based `focusCell(gridX, gridY)` (same idiom as
    `shared/focus-after-render.ts`, but keyed by grid coordinates rather than a fixed
    testid, since the target is a specific tile chosen at runtime, not a stable
    landmark) returns focus to the tile that was open. Opening (null → a selection)
    still uses the shared `focusMover()` into `'set-panel'`, unchanged from today.
+   Re-clicking the already-selected tile stays a no-op (re-affirms the selection) —
+   `operator-set-editing.e2e.ts`'s "grows the grid... moves it" flow re-taps a
+   just-picked cell mid-workflow, so a click-to-toggle-close would have broken a
+   routine, already-covered flow; Close/Escape are the only dismiss paths.
 2. `LayoutEditor` gains a small "baseline" pair (`baselineGrid`, `baselineRowNames`)
    captured on every load/reload/save, a `dirtyCount` computed diffing `grid()` against
    the baseline cell-by-cell, and a `lastChange`/`lastSavedAt` pair updated by
@@ -76,10 +80,11 @@ current with `main`.
 - [ ] **AC-1:** Given the Beach-map tab with Select armed, when the operator clicks a
       set (or an empty cell), then the inspector docks beside the canvas — right column
       on desktop (`lg:grid-cols-[1fr_320px]`), below the canvas on narrow viewports —
-      and focus lands on the panel; clicking the same tile again, or pressing Escape,
-      closes it and returns focus to that tile. *Pinned by:* `SetEditor.spec.ts` —
-      "docks the inspector beside the canvas on selection" / "closes on re-click" /
-      "closes on Escape and restores focus to the tile".
+      and focus lands on the panel; using its Close control, or pressing Escape, closes
+      it and returns focus to that tile — re-clicking the same tile re-affirms the
+      selection rather than closing it. *Pinned by:* `SetEditor.spec.ts` — "docks the
+      inspector beside the canvas on selection" / "closes on Escape and restores focus
+      to the tile" / "closes via its Close control" / "re-clicking re-affirms".
 - [ ] **AC-2:** Given a selection is open, when the operator uses Save set / Move /
       Remove, then each still calls the same `OperatorConsoleService` method with the
       same request shape as today, and a `SET_IN_USE` refusal renders the same copy.
@@ -124,7 +129,7 @@ current with `main`.
 | `SetEditor` panel always rendered, far-left column | changed | Panel renders only while `hasSelection()`, docked right of the canvas on desktop |
 | "Pick a set" / "no sets yet" captions live inside the panel | changed (relocated) | Same copy, same testids (`set-panel-empty`/`set-panel-no-sets`), now beside the canvas instead of inside the (now absent) panel |
 | Selecting a set/cell just swaps panel content, no focus move | changed | Opening (null → selection) moves focus into the panel via the shared `focusMover()`, unchanged target (`'set-panel'`) |
-| No way to close a selection except picking another one | added | Re-clicking the selected tile, or Escape, closes it |
+| No way to close a selection except picking another one | added | A new Close control in the panel header, or Escape, closes it; re-clicking the same tile stays the existing no-op |
 | `onRemove()` success re-focuses `'set-panel'` (always present) | changed | Re-focuses the removed set's own tile via `focusCell`, since the panel itself is now gone once the selection clears |
 | Plain inline "Save layout" button + `savedNotice`/`errorMessage`/`StaleWriteBanner` below the grid | changed (relocated) | Same button/testid/notices, moved into a `sticky` bar; no behavior change to what triggers them |
 | No dirty/last-changed/last-saved indication | added | New bar fields, computed from a new baseline-vs-current diff |
@@ -135,7 +140,7 @@ current with `main`.
 |---|---|---|---|---|---|---|
 | R-1 | The docked panel's `@if (hasSelection())` gating silently changes what `SetEditor.spec.ts`'s existing write-path specs query (`byId('set-panel')` returning null when no test selects first) | low | med | Every write-path spec already selects a set/cell before asserting on the panel; audit each for an implicit assumption that the panel exists pre-selection | this session | resolved — verified passing |
 | R-2 | `dirtyCount`'s cell-by-cell diff mis-detects a size change (add row/col) as fully dirty when only the new cells matter, inflating the count and confusing the operator | med | low | Documented as intended: a grown grid genuinely has more unsaved surface than before, and the count is advisory copy, not a gate on Save | this session | resolved — accepted as designed |
-| R-3 | The `sticky bottom-*` save bar overlaps the last grid row on a short viewport, hiding cells behind it | low | med | Bar sits in normal flow below the canvas (`mt-4`) and only becomes sticky once the page scrolls past it — verified visually via `playwright-cli` at a mobile width | this session | resolved — verified |
+| R-3 | The `sticky bottom-*` save bar overlaps the last grid row on a short viewport, hiding cells behind it | low | med | Bar sits in normal flow below the canvas (`mt-4`) and only becomes sticky once the page scrolls past it; the `touch-targets.e2e.ts` "beach map, bulk paint mode" test already runs at the project's 390×780 phone viewport with the bar rendered and its no-clipped-cells + touch-target sweeps both pass | this session | resolved — verified via existing e2e coverage, no dedicated overlap assertion added |
 | R-4 | The new host `(keydown.escape)` binding on `SetEditor` fires while focus is inside a nested control (e.g. the price `<input>`), discarding an in-progress un-submitted price edit the operator didn't mean to abandon | low | low | Accepted: Escape-to-close is a standard dismiss idiom (`find-booking.ts` precedent) and the draft is never partially saved either way — no `onSave()` call happens on close | this session | resolved — accepted as designed |
 
 ## Open questions / Assumptions
@@ -195,17 +200,16 @@ AC-4).
 
 ## Execution status
 
-**Stage pointer:** implement — Phase 2 next (e2e).
+**Stage pointer:** implement done, CI/review/Sonar gates pending on PR #770.
 
-**Next action:** port `layout-editor.e2e.ts` / `operator-set-editing.e2e.ts` /
-`touch-targets.e2e.ts` to the docked-panel/save-bar selectors.
+**Next action:** await CI, run the review gate (`/code-review`), then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Dock the set-editor inspector (close-on-escape/re-click, focus legs) | ✅ | |
-| 1 — Persistent save bar (dirty count, change description, last-saved, Discard) | ✅ | |
-| 2 — Port e2e to the docked-panel/save-bar selectors | ⏳ | |
-| 3 — Local verification + close-out | | |
+| 0 — Dock the set-editor inspector (close control + Escape, focus legs) | ✅ | `f3931e1` |
+| 1 — Persistent save bar (dirty count, change description, last-saved, Discard) | ✅ | `f3931e1` |
+| 2 — Port e2e to the docked-panel/save-bar selectors | ✅ | (no e2e edits needed — every existing testid was kept; the one behavior conflict found (re-click-to-close vs. the existing re-affirm-click flow in `operator-set-editing.e2e.ts`) was fixed by adding a dedicated Close control instead of changing the e2e) |
+| 3 — Local verification + close-out | ✅ | lint/format/full unit (1808)/a11y (392)/mocked e2e (104) all green; touch-target/focus-posture/inline-comment/plan-file-structure guards clean |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -297,13 +301,25 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** `frontend/e2e/layout-editor.e2e.ts`, `frontend/e2e/operator-set-editing.e2e.ts`,
 `frontend/e2e/touch-targets.e2e.ts`
 
-- [ ] **Step 1:** Update every set-panel/Save-button selector; keep the PUT-payload,
-      `LAYOUT_IN_USE`, `STALE_WRITE`, drag-paint, and row-naming assertions unweakened.
-- [ ] **Step 2:** Extend the touch-target sweep to the new Discard button.
-- [ ] **Step 3:** `npm run test:e2e:a11y -- layout-editor` /
-      `-- operator-set-editing` / `-- touch-targets` → PASS, axe clean.
-- [ ] **Step 4: Commit.**
-- [ ] **Step 5: Update plan-doc execution status.**
+- [x] **Step 1:** Ran the existing suites unmodified first (every testid this slice
+      kept — `layout-save`/`layout-saved`/`layout-error`/`layout-stale-banner`/
+      `layout-stale-reload`/`set-panel`/`set-cell` — meant no selector edits were
+      structurally required). `operator-set-editing.e2e.ts`'s "grows the grid... moves
+      it" flow failed (a real behavior conflict: re-clicking an already-selected tile
+      used to be a no-op, and the first cut of AC-1's close made it a toggle-close) —
+      fixed by adding a dedicated Close control instead of weakening the e2e (see the
+      Architecture section's correction).
+- [x] **Step 2:** `expectTouchTargets`'s sweep is generic over every visible control
+      on the surface — the new Discard button is covered without a dedicated addition;
+      confirmed by the "beach map, bulk paint mode" touch-target test passing with the
+      bar rendered.
+- [x] **Step 3:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test
+      --config=playwright.a11y.config.ts` for `layout-editor.e2e.ts` (10/10),
+      `operator-set-editing.e2e.ts` (8/8), `touch-targets.e2e.ts` (19/19 incl. other
+      surfaces), then the full mocked suite (104/104) — all PASS, axe clean.
+- [x] **Step 4: Commit** — folded into `f3931e1` (no separate e2e-only commit; the
+      fix landed as part of the same phase-0/1 commit before push).
+- [x] **Step 5: Update plan-doc execution status.**
 
 ---
 
@@ -311,10 +327,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** none (verification only)
 
-- [ ] **Step 1:** `npm run lint`, `npm run format:check`, `npm test`, `npm run
-      test:a11y` (from `frontend/`) — all green.
-- [ ] **Step 2:** `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [ ] **Step 3: Commit + update plan-doc execution status** (final close-out).
+- [x] **Step 1:** `npm run lint` (clean), `npm run format:check` (clean), `npm test`
+      (1808/1808), `npm run test:a11y` (392/392) — all green.
+- [x] **Step 2:** `node scripts/check-plan-file-structure.mjs --diff origin/main` —
+      clean. Also ran `scripts/check-touch-target.mjs`, `scripts/check-focus-posture.mjs`
+      and `scripts/check-inline-comments.mjs` over every changed file — clean.
+- [x] **Step 3: Commit + update plan-doc execution status** (this commit).
 
 ---
 
@@ -327,26 +345,32 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] AC-1..AC-6: to be verified at Phase 3 close-out.
+- [x] **AC-1..AC-6:** verified — `npm test -- --watch=false` (1808/1808, incl. the new
+      `SetEditor.spec.ts`/`LayoutEditor.spec.ts` specs for the dock, Close/Escape,
+      focus-to-tile, dirty count, latest-change description, last-saved, discard, and
+      notices-in-bar), `npm run test:a11y` (392/392), and the mocked Playwright suite
+      (`layout-editor.e2e.ts` 10/10, `operator-set-editing.e2e.ts` 8/8,
+      `touch-targets.e2e.ts` 19/19, full suite 104/104) — all green, axe clean. `npm run
+      lint` and `npm run format:check` clean.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced — N/A, no backend touched.
-- [ ] **Availability** section filled (N/A, justified).
-- [ ] Pool + cutoff rules honored — N/A, unaffected.
-- [ ] **Modulith** section filled (N/A, frontend-only).
-- [ ] **Payment/payout** section filled (N/A).
-- [ ] Refund policy — N/A.
-- [ ] Timezone — N/A, unaffected (the last-saved clock label is a display convenience,
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced — N/A, no backend touched.
+- [x] **Availability** section filled (N/A, justified).
+- [x] Pool + cutoff rules honored — N/A, unaffected.
+- [x] **Modulith** section filled (N/A, frontend-only).
+- [x] **Payment/payout** section filled (N/A).
+- [x] Refund policy — N/A.
+- [x] Timezone — N/A, unaffected (the last-saved clock label is a display convenience,
       not a booking-date computation).
-- [ ] Booking codes — N/A.
-- [ ] Flyway — N/A.
-- [ ] **Frontend** standards met (see Angular section above).
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an
+- [x] Booking codes — N/A.
+- [x] Flyway — N/A.
+- [x] **Frontend** standards met (see Angular section above).
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an
       issue #).
-- [ ] **Close-out written in THIS PR.**
-- [ ] **The review gate ran in full.**
+- [ ] **Close-out written in THIS PR.** — pending: merge close-out not yet run.
+- [ ] **The review gate ran in full.** — pending: `/code-review` not yet run.

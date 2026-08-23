@@ -208,12 +208,24 @@ describe('SetEditor (#600)', () => {
     expect(document.activeElement).toBe(byId('set-panel'));
   });
 
-  it('closes the inspector and refocuses the tile when the selected tile is re-clicked (#712)', async () => {
+  it('re-clicking the already-selected tile re-affirms the selection instead of closing it (#712)', async () => {
     render();
     selectSet(12);
     await fixture.whenStable();
 
     selectSet(12);
+    await fixture.whenStable();
+
+    expect(byId('set-panel')).toBeTruthy();
+    expect(byId('set-panel').textContent).toContain('Row B');
+  });
+
+  it('closes the inspector and refocuses the tile via its Close control (#712)', async () => {
+    render();
+    selectSet(12);
+    await fixture.whenStable();
+
+    click(byId('set-panel-close'));
     await fixture.whenStable();
 
     expect(byId('set-panel')).toBeFalsy();

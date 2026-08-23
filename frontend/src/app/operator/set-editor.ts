@@ -353,9 +353,9 @@ export class SetEditor {
 
   /**
    * A grid cell was activated. While a move is armed an empty cell is the destination; otherwise a
-   * cell selects its set, opens the docked inspector, or offers to add one where there is none — or,
-   * re-clicking the tile that is already selected, closes the inspector (the mouse-only counterpart
-   * to Escape).
+   * cell selects its set, opens the docked inspector, or offers to add one where there is none.
+   * Re-clicking the already-selected tile is a no-op — it re-affirms the selection, the way it always
+   * has (growing the grid and re-tapping a just-picked cell is a routine flow, not a request to close).
    */
   protected onCell(gridX: number, gridY: number, setId: number | null): void {
     if (this.armed()) {
@@ -364,18 +364,7 @@ export class SetEditor {
       }
       return;
     }
-    const chosen = this.selection();
-    const sameTile =
-      (chosen?.kind === 'set' && setId !== null && chosen.setId === setId) ||
-      (chosen?.kind === 'cell' &&
-        setId === null &&
-        chosen.gridX === gridX &&
-        chosen.gridY === gridY);
-    if (sameTile) {
-      this.closeSelection(gridX, gridY);
-      return;
-    }
-    const opening = chosen === null;
+    const opening = this.selection() === null;
     this.selection.set(setId === null ? { kind: 'cell', gridX, gridY } : { kind: 'set', setId });
     this.saved.set(false);
     this.errorCode.set(undefined);
@@ -387,11 +376,19 @@ export class SetEditor {
     }
   }
 
+  /** Close the docked inspector via its own Close control — the mouse counterpart to Escape. */
+  protected closeInspector(): void {
+    const coords = this.selectionCoords();
+    if (coords !== undefined) {
+      this.closeSelection(coords.gridX, coords.gridY);
+    }
+  }
+
   /**
-   * Escape closes the docked inspector — the keyboard counterpart to re-clicking the selected tile.
-   * Bound on the component host, not `document`, so it only fires while focus is inside this surface
-   * (the `find-booking.ts` precedent for a scoped dismiss key). A move or a remove-confirmation in
-   * progress is cancelled first, since either would otherwise silently survive the close.
+   * Escape closes the docked inspector — the keyboard counterpart to {@link closeInspector}. Bound on
+   * the component host, not `document`, so it only fires while focus is inside this surface (the
+   * `find-booking.ts` precedent for a scoped dismiss key). A move or a remove-confirmation in progress
+   * is cancelled first, since either would otherwise silently survive the close.
    */
   protected onEscape(): void {
     if (this.confirmRemove()) {
