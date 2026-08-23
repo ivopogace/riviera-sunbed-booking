@@ -1,5 +1,15 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  ElementRef,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+  viewChildren,
+} from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
@@ -54,6 +64,9 @@ interface ToolRow {
 
 const PREMIUM_PRICE: MoneyView = { minorUnits: 3500, currency: 'EUR' };
 const STANDARD_PRICE: MoneyView = { minorUnits: 2000, currency: 'EUR' };
+
+/** The tool rail's fixed design order — Select first, then the four paint brushes. */
+const TOOL_ORDER: readonly EditorTool[] = ['select', 'premium', 'standard', 'walkin', 'gap'];
 
 const TOOL_LABEL: Record<CellState, string> = {
   premium: 'Front row · premium',
@@ -115,6 +128,9 @@ const SWATCH_CLASS: Record<CellState, string> = {
   host: {
     '(document:mouseup)': 'onPaintEnd()',
     '(document:mousedown)': 'onDocumentMouseDown($event)',
+    '(document:touchmove)': 'onDocumentTouchMove($event)',
+    '(document:touchend)': 'onPaintEnd()',
+    '(document:touchcancel)': 'onPaintEnd()',
   },
 })
 export class LayoutEditor {
@@ -127,6 +143,9 @@ export class LayoutEditor {
   /** The bulk grid's canvas — read only for {@link BeachMapCanvas.panGestureActive} (#713), so a
    *  Space-drag pan at 100% zoom never also paints the cell it starts on. */
   private readonly canvas = viewChild(BeachMapCanvas);
+  /** The tool-rail chips, in rail order — scrolled into view on arm so the armed tool is visible
+   *  without the operator having to scroll the mobile chip strip manually (#715, mirrors #710). */
+  private readonly toolChips = viewChildren<ElementRef<HTMLButtonElement>>('toolChip');
 
   /** The venue this editor manages, from the parent `/operator/:venueId` route (undefined if
    *  invalid) — reactive to in-place venue switches, which reuse this instance. */
@@ -354,6 +373,14 @@ export class LayoutEditor {
       if (id !== undefined) {
         untracked(() => this.resetForVenue(id));
       }
+    });
+
+    // Scroll the armed chip into view on load/switch — the mobile rail scrolls, not wraps (#715).
+    effect(() => {
+      const index = TOOL_ORDER.indexOf(this.resolvedTool());
+      const chips = this.toolChips();
+      // Optional-called: jsdom doesn't implement it, and it's not worth failing a test over.
+      chips[index]?.nativeElement.scrollIntoView?.({ inline: 'nearest', block: 'nearest' });
     });
   }
 
@@ -678,6 +705,38 @@ export class LayoutEditor {
     if (!onCell) {
       this.painting = false;
     }
+  }
+
+  /** A touch landed on a cell: paint it and arm the gesture — the touch counterpart to
+   *  {@link onCellDown}. Each cell is `touch-none` (its own template class), so the browser never
+   *  turns this touch into a page scroll instead. */
+  protected onCellTouchStart(r: number, c: number): void {
+    this.painting = true;
+    this.paintCell(r, c);
+  }
+
+  /** The touch counterpart to {@link onCellEnter}: find the cell under the finger's current
+   *  position and paint it, mid-gesture. Document-level so it fires wherever the finger has moved,
+   *  not just while still over the cell that started the touch. */
+  protected onDocumentTouchMove(event: TouchEvent): void {
+    if (!this.painting) {
+      return;
+    }
+    const touch = event.touches[0];
+    if (touch === undefined) {
+      return;
+    }
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    const cell = target instanceof Element ? target.closest('[data-testid="layout-cell"]') : null;
+    if (!(cell instanceof HTMLElement)) {
+      return;
+    }
+    const r = Number(cell.dataset['gridRow']);
+    const c = Number(cell.dataset['gridCol']);
+    if (Number.isNaN(r) || Number.isNaN(c)) {
+      return;
+    }
+    this.paintCell(r, c);
   }
 
   protected onPaintEnd(): void {

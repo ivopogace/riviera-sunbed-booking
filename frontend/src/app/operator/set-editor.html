@@ -46,7 +46,7 @@
                   (mouseenter)="onCellMouseEnter(cell.gridX, cell.gridY, $event)"
                   (click)="onCell(cell.gridX, cell.gridY, cell.setId)"
                   data-testid="set-cell"
-                  class="h-full min-w-0 flex items-center justify-center rounded-[8px] border text-[12.5px] font-bold text-[#0c2a33] [transition:scale_0.1s_ease,box-shadow_0.12s_ease,translate_0.12s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:hover:translate-y-0"
+                  class="h-full min-w-0 flex items-center justify-center scroll-mb-[35vh] rounded-[8px] border text-[12.5px] font-bold text-[#0c2a33] [transition:scale_0.1s_ease,box-shadow_0.12s_ease,translate_0.12s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:hover:translate-y-0 lg:scroll-mb-0"
                   [class]="
                     cell.selected
                       ? 'selected -translate-y-1 ring-2 ring-offset-2 ring-[#0a5f74] shadow-[0_6px_14px_rgba(10,95,116,0.4)]'
@@ -108,14 +108,32 @@
         }
       </div>
 
-      <!-- Docks right of the canvas on desktop: a batch editor for a sweep, else the single-set panel. -->
+      <!-- Docks right of the canvas on desktop; on a phone it's a bottom sheet instead (#715). -->
+      @if (hasSelection() || sweepIds()) {
+        <div
+          class="fixed inset-0 z-20 bg-[#0c2a33]/45 lg:hidden"
+          data-testid="sheet-backdrop"
+          aria-hidden="true"
+          (click)="dismissSheet()"
+        ></div>
+      }
       @if (sweepIds(); as ids) {
         <section
           appCardGlass
-          class="rounded-[20px] px-[18px] py-4"
+          class="fixed inset-x-0 bottom-0 z-30 max-h-[35vh] touch-pan-y overflow-y-auto rounded-t-[20px] px-[18px] pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(12,42,51,0.3)] [transition:transform_0.2s_ease] lg:static lg:max-h-none lg:touch-auto lg:overflow-visible lg:rounded-[20px] lg:py-4 lg:pb-4 lg:shadow-none lg:[transition:none]"
+          [style.transform]="'translateY(' + sheetDragDeltaY() + 'px)'"
           tabindex="-1"
           data-testid="batch-panel"
         >
+          <div
+            class="mx-auto mb-2 h-[5px] w-10 shrink-0 touch-none rounded-full bg-(--riv-card-border) lg:hidden"
+            aria-hidden="true"
+            data-testid="sheet-handle"
+            (pointerdown)="onSheetDragStart($event)"
+            (pointermove)="onSheetDragMove($event)"
+            (pointerup)="onSheetDragEnd($event)"
+            (pointercancel)="onSheetDragEnd($event)"
+          ></div>
           <div class="flex items-start justify-between gap-2">
             <h2 class="text-[15px] font-bold text-(--riv-card-ink)" data-testid="batch-count">
               {{ ids.size }} set{{ ids.size === 1 ? '' : 's' }} selected
@@ -252,10 +270,20 @@
       } @else if (hasSelection()) {
         <section
           appCardGlass
-          class="rounded-[20px] px-[18px] py-4"
+          class="fixed inset-x-0 bottom-0 z-30 max-h-[35vh] touch-pan-y overflow-y-auto rounded-t-[20px] px-[18px] pt-2 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(12,42,51,0.3)] [transition:transform_0.2s_ease] lg:static lg:max-h-none lg:touch-auto lg:overflow-visible lg:rounded-[20px] lg:py-4 lg:pb-4 lg:shadow-none lg:[transition:none]"
+          [style.transform]="'translateY(' + sheetDragDeltaY() + 'px)'"
           tabindex="-1"
           data-testid="set-panel"
         >
+          <div
+            class="mx-auto mb-2 h-[5px] w-10 shrink-0 touch-none rounded-full bg-(--riv-card-border) lg:hidden"
+            aria-hidden="true"
+            data-testid="sheet-handle"
+            (pointerdown)="onSheetDragStart($event)"
+            (pointermove)="onSheetDragMove($event)"
+            (pointerup)="onSheetDragEnd($event)"
+            (pointercancel)="onSheetDragEnd($event)"
+          ></div>
           <div class="flex items-start justify-between gap-2">
             <h2 class="text-[15px] font-bold text-(--riv-card-ink)">
               {{ selectedCell() ? 'Add a set' : 'Edit one set' }}

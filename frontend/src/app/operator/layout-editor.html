@@ -20,15 +20,19 @@
           Arm Select to pick a set on the map, or a brush to paint tier, pool and aisles by click or
           drag.
         </p>
-        <div class="flex flex-col gap-2" aria-label="Tools">
+        <div
+          class="flex gap-2 overflow-x-auto scroll-px-1 pb-1 [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%_-_16px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%_-_16px),transparent)] scrollbar-none lg:flex-col lg:overflow-visible lg:pb-0 lg:[mask-image:none] lg:[-webkit-mask-image:none]"
+          aria-label="Tools"
+        >
           @for (tool of tools(); track tool.key) {
             <button
+              #toolChip
               appTouchTarget
               type="button"
               [attr.aria-pressed]="tool.active"
               (click)="armTool(tool.key)"
               [attr.data-testid]="'layout-tool-' + tool.key"
-              class="flex w-full items-center gap-2.5 rounded-[13px] px-3 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink)"
+              class="flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-[13px] px-3 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) lg:w-full lg:shrink"
               [class]="
                 tool.active
                   ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
@@ -276,11 +280,14 @@
                   [state]="cell.state"
                   (mousedown)="onCellDown(ri, ci, $event)"
                   (mouseenter)="onCellEnter(ri, ci, $event)"
+                  (touchstart)="onCellTouchStart(ri, ci)"
                   (click)="paintCell(ri, ci)"
                   [title]="cell.label"
                   [attr.aria-label]="cell.label"
+                  [attr.data-grid-row]="ri"
+                  [attr.data-grid-col]="ci"
                   data-testid="layout-cell"
-                  class="h-full min-w-0 flex items-center justify-center rounded-[6px] border text-[12.5px] font-bold text-[#0c2a33] [transition:scale_0.1s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100"
+                  class="h-full min-w-0 flex items-center justify-center touch-none rounded-[6px] border text-[12.5px] font-bold text-[#0c2a33] [transition:scale_0.1s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100"
                 >
                   @if (cell.state !== 'gap') {
                     <span aria-hidden="true">{{ ci + 1 }}</span>

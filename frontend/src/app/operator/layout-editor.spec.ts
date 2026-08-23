@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
+import { vi } from 'vitest';
 
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
 import { todayBookingDate } from '../shared/booking-date';
@@ -275,6 +276,50 @@ describe('LayoutEditor (#172)', () => {
     expect(cells()[1].getAttribute('data-state')).toBe('gap');
     expect(cells()[2].getAttribute('data-state')).toBe('gap');
     expect(cells()[3].getAttribute('data-state')).toBe('premium'); // not dragged over (row A = premium)
+  });
+
+  it('drag-paints across a run of cells by touch, ending on document touchend (#715)', () => {
+    render();
+    generate('1', '4');
+    byId('layout-tool-gap').click();
+    fixture.detectChanges();
+
+    // jsdom doesn't define elementFromPoint at all — stub it to answer by cell index.
+    (document as unknown as { elementFromPoint: (x: number) => Element }).elementFromPoint = (
+      x: number,
+    ) => cells()[x];
+
+    cells()[0].dispatchEvent(new Event('touchstart', { bubbles: true }));
+    for (const x of [1, 2]) {
+      const touchmove = new Event('touchmove', { bubbles: true });
+      Object.defineProperty(touchmove, 'touches', { value: [{ clientX: x, clientY: 0 }] });
+      document.dispatchEvent(touchmove);
+    }
+    document.dispatchEvent(new Event('touchend'));
+    fixture.detectChanges();
+
+    expect(cells()[0].getAttribute('data-state')).toBe('gap');
+    expect(cells()[1].getAttribute('data-state')).toBe('gap');
+    expect(cells()[2].getAttribute('data-state')).toBe('gap');
+    expect(cells()[3].getAttribute('data-state')).toBe('premium'); // not dragged over
+
+    // touchend disarmed painting: a stray later touchmove paints nothing.
+    const touchmove = new Event('touchmove', { bubbles: true });
+    Object.defineProperty(touchmove, 'touches', { value: [{ clientX: 3, clientY: 0 }] });
+    document.dispatchEvent(touchmove);
+    fixture.detectChanges();
+    expect(cells()[3].getAttribute('data-state')).toBe('premium');
+
+    delete (document as unknown as { elementFromPoint?: unknown }).elementFromPoint;
+  });
+
+  it('every bulk-paint cell declares touch-action: none, so a paint drag never scrolls the page (#715)', () => {
+    render();
+    generate('1', '2');
+
+    for (const cell of cells()) {
+      expect(cell.className).toContain('touch-none');
+    }
   });
 
   it('disarms painting when the mouse re-enters with no button held (off-window release)', () => {

@@ -86,6 +86,9 @@ interface BatchDraft {
 
 const EMPTY_BATCH_DRAFT: BatchDraft = { tier: null, pool: null, priceEur: '' };
 
+/** How far (px) a swipe-down on the mobile bottom sheet's handle must travel before release closes it. */
+const SHEET_DISMISS_THRESHOLD_PX = 80;
+
 /** Every saved set whose grid position falls inside `rect`, inclusive. */
 function setsInRect(sets: readonly SetView[], rect: SweepRect): readonly SetView[] {
   return sets.filter(
@@ -478,6 +481,11 @@ export class SetEditor {
     () => this.selectedSet() !== undefined || this.selectedCell() !== undefined,
   );
 
+  /** The mobile bottom sheet's live drag offset (px, never negative) — 0 while not being dragged. */
+  protected readonly sheetDragDeltaY = signal(0);
+  /** The pointer's Y at the drag's start, or null while no drag is in progress. */
+  private sheetDragStartY: number | null = null;
+
   /** The remove confirmation's warning, naming the set the operator picked. */
   protected readonly removeMessage = computed(
     () =>
@@ -535,6 +543,8 @@ export class SetEditor {
     this.moving.set(false);
     this.sweepIds.set(null); // a single tap always supersedes any standing batch sweep (AC-6)
     if (opening) {
+      // The mobile bottom sheet can cover the lower viewport — keep the tapped tile above it (#715).
+      this.scrollCellIntoView(gridX, gridY);
       // A brand-new inspector appeared — move focus into it so AT users notice its arrival.
       this.focusAfterRender('set-panel');
     }
@@ -590,7 +600,8 @@ export class SetEditor {
   /** Turn the swept coordinates into a batch selection: every saved set inside their bounding box. */
   private commitSweep(): void {
     const rect = boundingRect(this.sweptCoords);
-    const ids = new Set(setsInRect(this.sets(), rect).map((s) => s.id));
+    const swept = setsInRect(this.sets(), rect);
+    const ids = new Set(swept.map((s) => s.id));
     if (ids.size === 0) {
       return; // an all-empty rectangle has nothing to batch-edit
     }
@@ -602,6 +613,8 @@ export class SetEditor {
     this.sweepIds.set(ids);
     this.batchSaved.set(false);
     this.batchErrorCode.set(undefined);
+    // Keep the swept anchor above the mobile bottom sheet too (#715), same reasoning as onCell.
+    this.scrollCellIntoView(swept[0].gridX, swept[0].gridY);
     this.focusAfterRender('batch-panel');
   }
 
@@ -735,6 +748,43 @@ export class SetEditor {
     }
   }
 
+  /** Dismiss whichever sheet is open (a mobile-sheet backdrop tap or swipe-down) — the batch panel
+   *  clears its sweep, the single-set panel closes exactly like {@link closeInspector}. */
+  protected dismissSheet(): void {
+    if (this.sweepIds() !== null) {
+      this.clearSweep();
+      return;
+    }
+    this.closeInspector();
+  }
+
+  /** A drag on the sheet's handle started (mobile bottom sheet only) — pointer capture keeps every
+   *  later move/up routed here even once the finger leaves the small handle. */
+  protected onSheetDragStart(event: PointerEvent): void {
+    this.sheetDragStartY = event.clientY;
+    (event.target as HTMLElement).setPointerCapture(event.pointerId);
+  }
+
+  /** Track the drag distance so the sheet visibly follows the finger; never negative — the sheet
+   *  only slides toward dismissal, not up past its resting position. */
+  protected onSheetDragMove(event: PointerEvent): void {
+    if (this.sheetDragStartY === null) {
+      return;
+    }
+    this.sheetDragDeltaY.set(Math.max(0, event.clientY - this.sheetDragStartY));
+  }
+
+  /** Past the dismiss threshold, releasing closes the sheet; short of it, it springs back. */
+  protected onSheetDragEnd(event: PointerEvent): void {
+    const delta = this.sheetDragDeltaY();
+    this.sheetDragStartY = null;
+    this.sheetDragDeltaY.set(0);
+    (event.target as HTMLElement).releasePointerCapture(event.pointerId);
+    if (delta > SHEET_DISMISS_THRESHOLD_PX) {
+      this.dismissSheet();
+    }
+  }
+
   /**
    * Escape closes the docked inspector — the keyboard counterpart to {@link closeInspector}. Bound on
    * the component host, not `document`, so it only fires while focus is inside this surface (the
@@ -796,6 +846,35 @@ export class SetEditor {
             `[data-testid="set-cell"][data-grid-x="${gridX}"][data-grid-y="${gridY}"]`,
           ),
         write: (target) => target?.focus(),
+      },
+      { injector: this.injector },
+    );
+  }
+
+  /**
+   * Scroll the page (only the page — never `scrollIntoView`, which would also nudge the map's own
+   * internal overflow-hidden viewport and risk clipping an unrelated row) so one grid tile clears
+   * its own `scroll-margin-bottom` (the mobile bottom sheet's height). The read-only counterpart to
+   * {@link focusCell}, called instead of it wherever the tile itself, not the panel, must stay visible.
+   */
+  private scrollCellIntoView(gridX: number, gridY: number): void {
+    afterNextRender(
+      {
+        earlyRead: () =>
+          this.hostEl.nativeElement.querySelector<HTMLElement>(
+            `[data-testid="set-cell"][data-grid-x="${gridX}"][data-grid-y="${gridY}"]`,
+          ),
+        write: (target) => {
+          if (target === null) {
+            return;
+          }
+          const box = target.getBoundingClientRect();
+          const marginBottom = Number.parseFloat(getComputedStyle(target).scrollMarginBottom) || 0;
+          const overflow = box.bottom + marginBottom - window.innerHeight;
+          if (overflow > 0) {
+            window.scrollBy({ top: overflow });
+          }
+        },
       },
       { injector: this.injector },
     );

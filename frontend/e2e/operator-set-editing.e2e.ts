@@ -528,6 +528,61 @@ test('stays inside its own scroll at a phone width, with tappable controls (+ ax
   await expectNoSeriousAxeViolations(page, 'per-set beach map editor at 390px');
 });
 
+/** #715: the docked panel becomes a bottom sheet at phone widths, overlapping the lower canvas
+ *  instead of pushing it off-screen, so the tapped tile and the sheet are on screen together. */
+test('opens the inspector as a bottom sheet on mobile, tile still visible, dismissible three ways (#715)', async ({
+  page,
+}) => {
+  await mockConsole(page);
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto('/operator/1');
+  await signIn(page);
+
+  const tile = cell(page, 1, 1);
+  await tile.click();
+  const sheet = page.getByTestId('set-panel');
+  await expect(sheet).toBeVisible();
+  await expect(sheet).toBeFocused();
+
+  // scrollCellIntoView moved the tile clear of the sheet's own room — its bottom lands at/above the sheet's top.
+  expect(await sheet.evaluate((el) => getComputedStyle(el).position)).toBe('fixed');
+  const tileBox = (await tile.boundingBox())!;
+  const sheetBox = (await sheet.boundingBox())!;
+  expect(tileBox.y + tileBox.height).toBeLessThanOrEqual(sheetBox.y);
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'per-set bottom sheet open at 390px');
+
+  // Dismiss 1: the backdrop.
+  await page.getByTestId('sheet-backdrop').click();
+  await expect(sheet).toBeHidden();
+  await expect(tile).toBeFocused();
+
+  // Dismiss 2: Escape, scoped to the surface.
+  await tile.click();
+  await expect(sheet).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(sheet).toBeHidden();
+  await expect(tile).toBeFocused();
+
+  // Dismiss 3: a swipe-down past the threshold on the sheet's own handle.
+  await tile.click();
+  await expect(sheet).toBeVisible();
+  const handle = page.getByTestId('sheet-handle');
+  const handleBox = (await handle.boundingBox())!;
+  const startX = handleBox.x + handleBox.width / 2;
+  const startY = handleBox.y + handleBox.height / 2;
+  await handle.dispatchEvent('pointerdown', { pointerId: 1, clientX: startX, clientY: startY });
+  await handle.dispatchEvent('pointermove', {
+    pointerId: 1,
+    clientX: startX,
+    clientY: startY + 120,
+  });
+  await handle.dispatchEvent('pointerup', { pointerId: 1, clientX: startX, clientY: startY + 120 });
+  await expect(sheet).toBeHidden();
+  await expect(tile).toBeFocused();
+});
+
 /**
  * The busy posture swapped `[disabled]` for `aria-disabled` so a busy control keeps focus. That is
  * a rename of the styling variant, not a restyle, and the project's no-drift rule says a class-list
