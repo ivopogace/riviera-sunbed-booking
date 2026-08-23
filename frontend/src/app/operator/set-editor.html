@@ -114,8 +114,9 @@
         <div
           class="fixed inset-0 z-20 bg-[#0c2a33]/45 lg:hidden"
           data-testid="sheet-backdrop"
-          aria-hidden="true"
           (click)="dismissSheet()"
+          (keydown.escape)="dismissSheet()"
+          aria-hidden="true"
         ></div>
       }
       @if (sweepIds(); as ids) {
