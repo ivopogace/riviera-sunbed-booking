@@ -236,18 +236,25 @@ N/A — no contract change. `toRequest()`'s `LayoutCellRequest[]` shape and `rep
 
 ## Execution status
 
-**Stage pointer:** implement — phases 0–2 done, starting phase 3.
+**Stage pointer:** implementation done — ready for the review gate.
 
-**Next action:** Phase 3 — Fit/100% zoom toggle on `BeachMapCanvas`.
+**Next action:** run `/code-review`, address findings, check the Sonar gate once CI is green,
+then merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Interactive row rail (fill target + drag-sweep) on `BeachMapCanvas` | ✅ | `ac8f44c` |
 | 1 — Column header strip (fill target + drag-sweep) on `BeachMapCanvas` | ✅ | `ac8f44c` |
 | 2 — Wire `LayoutEditor`'s `fillRow`/`fillColumn` | ✅ | `ac4e67c` |
-| 3 — Fit/100% zoom toggle on `BeachMapCanvas` | ⏳ | |
-| 4 — Space-drag (desktop) + two-finger (touch) pan gesture at 100% zoom | | |
-| 5 — e2e coverage + local verification + close-out | | |
+| 3 — Fit/100% zoom toggle on `BeachMapCanvas` | ✅ | `399d13e` |
+| 4 — Space-drag (desktop) + two-finger (touch) pan gesture at 100% zoom | ✅ | `d1b1289` |
+| 5 — e2e coverage + local verification + close-out | ✅ | `4175a0c` |
+
+Local verification: `npm run lint`/`format:check` clean; full unit suite 1831/1831; a11y/contrast
+suite 392/392; mocked e2e — `layout-editor.e2e.ts` 12/12, `touch-targets.e2e.ts` 11/11, full suite
+278/280 (2 unrelated flakes — `customer-password.e2e.ts`, `operator-venue.e2e.ts`, neither touched
+by this diff, both green on an isolated re-run). Touch-target/focus-posture/inline-comment/
+plan-file-structure guards clean on every changed file.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
