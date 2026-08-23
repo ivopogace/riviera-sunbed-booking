@@ -39,6 +39,12 @@ const ROWS: readonly TestRow[] = [
       [priceChips]="priceChips()"
       [loading]="loading()"
       [fitWidth]="fitWidth()"
+      [rowRailInteractive]="rowRailInteractive()"
+      [rowRailLabel]="rowRailLabel()"
+      (rowRailFill)="rowFills.push($event)"
+      [colHeaderInteractive]="colHeaderInteractive()"
+      [colHeaderLabel]="colHeaderLabel()"
+      (colHeaderFill)="colFills.push($event)"
     >
       <ng-template [appBeachMapRow]="rows()" let-row let-i="index">
         <ul class="set-row" [attr.data-row]="row.code">
@@ -65,6 +71,16 @@ class CanvasHost {
   readonly loading = signal(false);
   readonly fitWidth = signal(false);
   readonly taps: string[] = [];
+  readonly rowRailInteractive = signal(false);
+  readonly rowRailLabel = signal<((index: number) => string) | null>(
+    (i: number) => `Fill row ${i}`,
+  );
+  readonly rowFills: number[] = [];
+  readonly colHeaderInteractive = signal(false);
+  readonly colHeaderLabel = signal<((index: number) => string) | null>(
+    (i: number) => `Fill column ${i}`,
+  );
+  readonly colFills: number[] = [];
 }
 
 /**
@@ -747,6 +763,97 @@ describe('BeachMapCanvas (#672)', () => {
     detect();
     // (156 - 18) / 4 = 34.5 → floored to 34, clamped up to the 44px floor.
     expect(canvas.style.getPropertyValue('--riv-tile').trim()).toBe('44px');
+  });
+
+  it('leaves the row rail decorative by default — every other consumer is unchanged (#713)', () => {
+    const { host } = render();
+    expect(host.querySelector('[data-testid="row-code-fill"]')).toBeNull();
+    expect(host.querySelector('[data-testid="row-code"]')).toBeTruthy();
+  });
+
+  it('renders the row rail as a labelled fill button when rowRailInteractive is on (#713)', () => {
+    const { host, component, detect } = render();
+    component.rowRailInteractive.set(true);
+    detect();
+    expect(host.querySelector('[data-testid="row-code"]')).toBeNull();
+    const buttons = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('[data-testid="row-code-fill"]'),
+    );
+    expect(buttons.length).toBe(4);
+    expect(buttons[2].getAttribute('aria-label')).toBe('Fill row 2');
+    expect(buttons[2].classList.contains('min-h-11')).toBe(true);
+    expect(buttons[2].classList.contains('min-w-11')).toBe(true);
+  });
+
+  it('emits rowRailFill on click, and reserves the 44px column width for the button (#713)', () => {
+    const { host, component, detect } = render();
+    component.rowRailInteractive.set(true);
+    detect();
+    const button = host.querySelectorAll<HTMLButtonElement>('[data-testid="row-code-fill"]')[1];
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(component.rowFills).toEqual([1]);
+    expect(button.parentElement!.parentElement!.className).toContain('min-w-11');
+  });
+
+  it('sweeps a row-rail drag: mousedown then mouseenter fills every entered index (#713)', () => {
+    const { host, component, detect } = render();
+    component.rowRailInteractive.set(true);
+    detect();
+    const buttons = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('[data-testid="row-code-fill"]'),
+    );
+    buttons[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, buttons: 1 }));
+    buttons[1].dispatchEvent(
+      new MouseEvent('mouseenter', { bubbles: true, button: 0, buttons: 1 }),
+    );
+    buttons[2].dispatchEvent(
+      new MouseEvent('mouseenter', { bubbles: true, button: 0, buttons: 1 }),
+    );
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    expect(component.rowFills).toEqual([0, 1, 2]);
+
+    // The sweep has ended: a further mouseenter with no button held fills nothing more.
+    buttons[3].dispatchEvent(
+      new MouseEvent('mouseenter', { bubbles: true, button: 0, buttons: 0 }),
+    );
+    expect(component.rowFills).toEqual([0, 1, 2]);
+  });
+
+  it('leaves the column header absent by default — every other consumer is unchanged (#713)', () => {
+    const { host } = render();
+    expect(host.querySelector('[data-testid="col-header-fill"]')).toBeNull();
+  });
+
+  it('renders a labelled fill button per column when colHeaderInteractive is on (#713)', () => {
+    const { host, component, detect } = render();
+    component.colHeaderInteractive.set(true);
+    detect();
+    // mapCols() is the widest row — row B has 3 seats.
+    const buttons = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('[data-testid="col-header-fill"]'),
+    );
+    expect(buttons.length).toBe(3);
+    expect(buttons[1].getAttribute('aria-label')).toBe('Fill column 1');
+    expect(buttons[1].classList.contains('min-h-11')).toBe(true);
+    expect(buttons[1].classList.contains('min-w-11')).toBe(true);
+  });
+
+  it('emits colHeaderFill on click and sweeps a drag across headers (#713)', () => {
+    const { host, component, detect } = render();
+    component.colHeaderInteractive.set(true);
+    detect();
+    const buttons = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('[data-testid="col-header-fill"]'),
+    );
+    buttons[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(component.colFills).toEqual([0]);
+
+    buttons[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, buttons: 1 }));
+    buttons[1].dispatchEvent(
+      new MouseEvent('mouseenter', { bubbles: true, button: 0, buttons: 1 }),
+    );
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    expect(component.colFills).toEqual([0, 0, 1]);
   });
 
   it('collapses the legend band for a host that projects none — the operator surfaces (#701)', () => {

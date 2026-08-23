@@ -9,12 +9,14 @@ import {
   ElementRef,
   inject,
   input,
+  output,
   signal,
   TemplateRef,
   viewChild,
 } from '@angular/core';
 
 import { BeachGridFrame } from './beach-grid-frame';
+import { TouchTarget } from './touch-target';
 
 /**
  * The canvas's per-row contract: what the shared chrome needs to know about a row.
@@ -95,12 +97,13 @@ export class BeachMapRowDef<R extends BeachMapCanvasRow = BeachMapCanvasRow> {
  */
 @Component({
   selector: 'app-beach-map-canvas',
-  imports: [BeachGridFrame, NgTemplateOutlet],
+  imports: [BeachGridFrame, NgTemplateOutlet, TouchTarget],
   templateUrl: './beach-map-canvas.html',
   host: {
     class: 'block',
     style: '--riv-map-sea: #cfeef6',
     '[style.--riv-tile]': 'tileSizeStyle()',
+    '(document:mouseup)': 'onRailSweepEnd()',
   },
 })
 export class BeachMapCanvas {
@@ -166,6 +169,28 @@ export class BeachMapCanvas {
   readonly fitWidth = input<boolean>(false);
 
   /**
+   * Turns the row-code rail (#713) from a decorative `aria-hidden` chip into a real,
+   * individually-labelled fill button per row — a whole-row accelerator for the layout
+   * editor's paint brushes. Off by default, so the tourist map, Daily view, and the
+   * per-set editor keep today's decorative rail byte-for-byte.
+   */
+  readonly rowRailInteractive = input<boolean>(false);
+  /** The accessible name for row {@code index}'s fill button — required whenever
+   *  {@link rowRailInteractive} is true; read live so it tracks whichever tool is armed. */
+  readonly rowRailLabel = input<((index: number) => string) | null>(null);
+  /** Emitted on a row-rail fill button's click, or on each row entered during a
+   *  mousedown→mouseenter drag-sweep across several. */
+  readonly rowRailFill = output<number>();
+
+  /** The column-header strip's counterpart to {@link rowRailInteractive} — nothing
+   *  renders here at all unless a consumer opts in (#713); no existing surface has one. */
+  readonly colHeaderInteractive = input<boolean>(false);
+  /** The accessible name for column {@code index}'s fill button. */
+  readonly colHeaderLabel = input<((index: number) => string) | null>(null);
+  /** Emitted on a column-header fill button's click, or swept the same way as {@link rowRailFill}. */
+  readonly colHeaderFill = output<number>();
+
+  /**
    * The rail's width, reserved rather than derived from whatever the read happened to return.
    *
    * <p>A content-derived rail is a horizontal version of the vertical jump the skeletons removed:
@@ -183,9 +208,13 @@ export class BeachMapCanvas {
    * 39.14px to 9.14px everywhere else. The residual is a label wider than the reservation, which
    * only a measurement of the loaded map could predict.
    */
-  protected readonly railColumnClass = computed(() =>
-    this.railCodes() === 'letters' ? '' : 'min-w-[54px]',
-  );
+  protected readonly railColumnClass = computed(() => {
+    // A fill button needs the 44px floor in both axes, not just the chip's min-w-6 (#713).
+    if (this.rowRailInteractive()) {
+      return 'min-w-11';
+    }
+    return this.railCodes() === 'letters' ? '' : 'min-w-[54px]';
+  });
 
   /**
    * The price rail's width, reserved on the same terms and for the same defect as
@@ -225,6 +254,11 @@ export class BeachMapCanvas {
 
   /** Uniform column count so every row's grid aligns with the rails. */
   protected readonly mapCols = computed(() => Math.max(1, ...this.rows().map((r) => r.tileCount)));
+
+  /** 0-based column indexes for the header strip (#713) — one fill button per {@link mapCols}. */
+  protected readonly colIndexes = computed(() =>
+    Array.from({ length: this.mapCols() }, (_, i) => i),
+  );
 
   /** The horizontal pan viewport, present only while rows render. */
   private readonly panViewport = viewChild<ElementRef<HTMLElement>>('canvasViewport');
@@ -403,5 +437,49 @@ export class BeachMapCanvas {
 
   protected onViewportMouseUp(): void {
     this.panPointerDown = false;
+  }
+
+  // --- fill-rail drag-sweep (#713; imperative, not rendered) ---
+
+  /** True while a primary-button press is down on a row-rail or column-header button. */
+  private railSweeping = false;
+
+  /** A rail fill button's mousedown: arms the sweep and fills the pressed index. */
+  protected onRailDown(kind: 'row' | 'col', index: number, event: MouseEvent): void {
+    if (event.button !== 0) {
+      return;
+    }
+    this.railSweeping = true;
+    this.emitRailFill(kind, index);
+  }
+
+  /** A rail fill button re-entered mid-drag: fill it too, or disarm on a stale flag. */
+  protected onRailEnter(kind: 'row' | 'col', index: number, event: MouseEvent): void {
+    if (!this.railSweeping) {
+      return;
+    }
+    if ((event.buttons & 1) === 0) {
+      this.railSweeping = false;
+      return;
+    }
+    this.emitRailFill(kind, index);
+  }
+
+  /** A plain click (keyboard activation, or a press-and-release with no drag) fills once. */
+  protected onRailClick(kind: 'row' | 'col', index: number): void {
+    this.emitRailFill(kind, index);
+  }
+
+  /** Ends any in-progress rail sweep — bound to a document-level mouseup in the template. */
+  protected onRailSweepEnd(): void {
+    this.railSweeping = false;
+  }
+
+  private emitRailFill(kind: 'row' | 'col', index: number): void {
+    if (kind === 'row') {
+      this.rowRailFill.emit(index);
+    } else {
+      this.colHeaderFill.emit(index);
+    }
   }
 }
