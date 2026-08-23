@@ -15,10 +15,11 @@ import { TouchTarget } from './touch-target';
 /**
  * A modal, larger-scale view of a venue's photos, opened by tapping a thumbnail in either the
  * gallery grid or the single-photo band. Delegates the crossfade/stepping to {@link PhotoSlideshow}
- * (own controls, seeded at the tapped photo via `startIndex`) and adds the modal's own chrome: a
- * close button, a dismissing backdrop, Escape, and a focus trap — the fifth modal in this shape,
- * alongside the booking dialog, find-booking, the payout statement and the availability calendar
- * (`shared/focus-trap.ts`).
+ * (own controls, seeded at the tapped photo via `startIndex`, letterboxed via `contain` rather than
+ * the bands' crop — this box is roomier and closer to square, so a portrait photo fits whole) and
+ * adds the modal's own chrome: a close button, a dismissing backdrop, Escape, and a focus trap — the
+ * fifth modal in this shape, alongside the booking dialog, find-booking, the payout statement and
+ * the availability calendar (`shared/focus-trap.ts`).
  *
  * The caller owns returning focus to the thumbnail that opened it (RV-FE-9) — this component only
  * emits {@link dismissed}.
@@ -49,6 +50,7 @@ import { TouchTarget } from './touch-target';
         [name]="name()"
         testId="lightbox"
         ownControls
+        contain
       />
       <button
         type="button"

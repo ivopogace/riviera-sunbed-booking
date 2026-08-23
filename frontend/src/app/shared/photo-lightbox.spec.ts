@@ -41,6 +41,13 @@ describe('PhotoLightbox', () => {
     expect(slides[1].classList.contains('opacity-0')).toBe(false);
   });
 
+  it('letterboxes rather than crops, so a portrait photo shows whole (contain, not cover)', () => {
+    create({ photos: PHOTOS });
+    const first = el().querySelector<HTMLImageElement>('[data-testid="lightbox-img"]')!;
+    expect(first.classList.contains('object-contain')).toBe(true);
+    expect(first.classList.contains('object-cover')).toBe(false);
+  });
+
   it('emits dismissed on Escape, on a backdrop click, and on the close button', () => {
     create({ photos: PHOTOS });
     const dismissed = vi.fn();

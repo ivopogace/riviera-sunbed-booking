@@ -36,7 +36,9 @@ import { TouchTarget } from './touch-target';
         <img
           [ngSrc]="photo"
           fill
-          class="object-cover [transition:opacity_0.45s_ease] motion-reduce:transition-none"
+          class="[transition:opacity_0.45s_ease] motion-reduce:transition-none"
+          [class.object-contain]="contain()"
+          [class.object-cover]="!contain()"
           [class.opacity-0]="i !== index()"
           alt=""
           [attr.data-testid]="i === 0 ? testId() + '-img' : testId() + '-slide-img'"
@@ -97,6 +99,10 @@ export class PhotoSlideshow {
   readonly testId = input('photo');
   /** Render the component's own step buttons — only for hosts NOT inside a link/aria-hidden tree. */
   readonly ownControls = input(false, { transform: booleanAttribute });
+
+  /** Letterbox instead of crop — the lightbox's roomier, closer-to-square box can afford to
+   *  show a portrait photo whole; the header/card bands stay cropped (the default). */
+  readonly contain = input(false, { transform: booleanAttribute });
 
   /** The slide shown on mount (0-based) — the lightbox opens on whichever photo was tapped;
    *  every other host leaves this at the default first slide. */

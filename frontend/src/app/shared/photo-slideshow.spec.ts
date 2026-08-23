@@ -17,6 +17,7 @@ describe('PhotoSlideshow', () => {
     testId?: string;
     name?: string;
     startIndex?: number;
+    contain?: boolean;
   }): void {
     fixture = TestBed.createComponent(PhotoSlideshow);
     fixture.componentRef.setInput('photos', inputs.photos);
@@ -31,6 +32,9 @@ describe('PhotoSlideshow', () => {
     }
     if (inputs.startIndex !== undefined) {
       fixture.componentRef.setInput('startIndex', inputs.startIndex);
+    }
+    if (inputs.contain !== undefined) {
+      fixture.componentRef.setInput('contain', inputs.contain);
     }
     fixture.detectChanges();
   }
@@ -128,6 +132,18 @@ describe('PhotoSlideshow', () => {
     );
     expect(slides[2].classList.contains('opacity-0')).toBe(false);
     expect(slides[0].classList.contains('opacity-0')).toBe(true);
+  });
+
+  it('crops by default and letterboxes instead when contain is set', () => {
+    create({ photos: PHOTOS });
+    const cropped = el().querySelector<HTMLImageElement>('[data-testid="photo-img"]')!;
+    expect(cropped.classList.contains('object-cover')).toBe(true);
+    expect(cropped.classList.contains('object-contain')).toBe(false);
+
+    create({ photos: PHOTOS, contain: true });
+    const letterboxed = el().querySelector<HTMLImageElement>('[data-testid="photo-img"]')!;
+    expect(letterboxed.classList.contains('object-contain')).toBe(true);
+    expect(letterboxed.classList.contains('object-cover')).toBe(false);
   });
 
   it('steps via the public prev()/next() API (the external-controls placement)', () => {
