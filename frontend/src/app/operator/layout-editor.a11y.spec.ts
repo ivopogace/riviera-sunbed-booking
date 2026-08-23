@@ -103,7 +103,7 @@ describe('LayoutEditor a11y (#172)', () => {
         available: true,
       },
     ]);
-    byId('layout-mode-bulk').click();
+    byId('layout-tool-premium').click();
     fixture.detectChanges();
 
     expect(byId('layout-row-name-save')).toBeTruthy();
@@ -112,7 +112,7 @@ describe('LayoutEditor a11y (#172)', () => {
 
   it('has no axe violations in Edit-sets mode with no sets (#718)', async () => {
     render();
-    byId('layout-mode-sets').click();
+    byId('layout-tool-select').click();
     fixture.detectChanges();
 
     await expectNoAxeViolations(host());
@@ -124,7 +124,7 @@ describe('LayoutEditor a11y (#172)', () => {
     expect(byId('layout-load-failed')).toBeTruthy();
     await expectNoAxeViolations(host());
 
-    byId('layout-mode-sets').click();
+    byId('layout-tool-select').click();
     fixture.detectChanges();
 
     await expectNoAxeViolations(host());

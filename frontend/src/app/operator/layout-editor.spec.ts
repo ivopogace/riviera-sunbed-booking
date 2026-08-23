@@ -102,12 +102,13 @@ describe('LayoutEditor (#172)', () => {
   }
 
   /**
-   * Show the bulk generate/paint surface. Needed wherever a test seeds a venue that already has sets:
-   * since #600 such a venue opens in per-set mode, because that is the only mode that keeps working
-   * once it is trading (AC-6). The bulk behaviours below are unchanged — only their default is.
+   * Arm the default brush, showing the bulk generate/paint surface. Needed wherever a test seeds a
+   * venue that already has sets: since #600 such a venue opens in per-set mode, because that is the
+   * only mode that keeps working once it is trading (AC-6). The bulk behaviours below are unchanged
+   * — only their default is.
    */
   function useBulkMode(): void {
-    byId('layout-mode-bulk').click();
+    byId('layout-tool-premium').click();
     fixture.detectChanges();
   }
 
@@ -139,6 +140,56 @@ describe('LayoutEditor (#172)', () => {
     expect(cells()[3].getAttribute('data-state')).toBe('standard');
     // The Generate button shows the live total.
     expect(byId('layout-generate').textContent).toContain('6');
+  });
+
+  it('renders the merged tool rail with five rows and no mode pills (#711)', () => {
+    render();
+
+    expect(host.querySelector('[data-testid="layout-mode-bulk"]')).toBeNull();
+    expect(host.querySelector('[data-testid="layout-mode-sets"]')).toBeNull();
+    expect(byId('layout-tool-rail')).toBeTruthy();
+    expect(byId('layout-tool-select')).toBeTruthy();
+    expect(byId('layout-tool-premium')).toBeTruthy();
+    expect(byId('layout-tool-standard')).toBeTruthy();
+    expect(byId('layout-tool-walkin')).toBeTruthy();
+    expect(byId('layout-tool-gap')).toBeTruthy();
+    // The default brush is armed on an empty venue; Select carries no live count.
+    expect(byId('layout-tool-premium').getAttribute('aria-pressed')).toBe('true');
+    expect(host.querySelector('[data-testid="layout-count-select"]')).toBeNull();
+  });
+
+  it('arming Select switches to the set-editor surface and never paints (#711)', () => {
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)]);
+
+    // The venue has sets, so Select opens armed already (AC-6 default).
+    expect(byId('layout-tool-select').getAttribute('aria-pressed')).toBe('true');
+    expect(byId('set-editor')).toBeTruthy();
+    expect(host.querySelector('[data-testid="layout-cell"]')).toBeNull();
+
+    byId('set-cell').click();
+    fixture.detectChanges();
+    expect(byId('set-selected')).toBeTruthy(); // S1's selection state, not a paint
+  });
+
+  it('Generate lives beneath the tool rail and keeps the regenerate confirm step (#711)', () => {
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)]);
+
+    // Reachable with Select armed — Generate is a rail action, not gated by the armed tool.
+    expect(byId('layout-tool-select').getAttribute('aria-pressed')).toBe('true');
+    expect(byId('layout-generate')).toBeTruthy();
+
+    setInput('layout-gen-rows', '1');
+    setInput('layout-gen-cols', '1');
+    byId('layout-generate').click();
+    fixture.detectChanges();
+    expect(byId('layout-confirm-regen')).toBeTruthy(); // the venue already has a layout — confirm first
+
+    byId('layout-confirm-yes').click();
+    fixture.detectChanges();
+
+    // A fresh grid needs the paint surface: generating rearms the active brush.
+    expect(byId('layout-tool-premium').getAttribute('aria-pressed')).toBe('true');
+    expect(cells()).toHaveLength(1);
   });
 
   it('fills the canvas-owned row height with bulk cells, never a height mechanism of its own (#685)', () => {
@@ -849,16 +900,17 @@ describe('LayoutEditor (#172)', () => {
 
     expect(byId('layout-load-failed')).toBeTruthy();
 
-    byId('layout-mode-sets').click();
+    byId('layout-tool-select').click();
     fixture.detectChanges();
 
     // An unknown map is not an empty one: no editor claiming no sets, and no skeleton pulsing on.
     expect(byId('layout-load-failed')).toBeTruthy();
     expect(byId('set-editor')).toBeFalsy();
     expect(host.querySelector('[data-testid="set-skeleton-tile"]')).toBeNull();
-    // Nor a silent fall-back to the bulk surface under a pressed "Edit sets".
-    expect(byId('layout-mode-sets').getAttribute('aria-pressed')).toBe('true');
-    expect(byId('layout-generate')).toBeFalsy();
+    // Nor a silent fall-back to the bulk surface under a pressed Select.
+    expect(byId('layout-tool-select').getAttribute('aria-pressed')).toBe('true');
+    // Generate lives on the rail regardless of the armed tool (#711).
+    expect(byId('layout-generate')).toBeTruthy();
   });
 
   it('keeps the per-set editor on the last-known sets when a LATER re-read fails (#721)', async () => {
@@ -948,7 +1000,7 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
 
     const message = byId('layout-error').textContent ?? '';
-    expect(message).toMatch(/edit sets/i);
+    expect(message).toMatch(/select/i);
     expect(message).not.toMatch(/not possible/i);
     // A terminal booking on one set locks the layout AND refuses that set's per-set remove.
     expect(message).not.toMatch(/or remove sets/i);
@@ -1064,24 +1116,25 @@ describe('LayoutEditor (#172)', () => {
   it('defaultsToTheModeTheVenueNeeds: per-set editing for a live map, bulk for an empty one (AC-6)', () => {
     render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)]);
 
-    // A venue that already has sets opens in Edit sets — the only mode that works once it is trading.
+    // A venue that already has sets opens armed on Select — the only tool that works once it is trading.
     expect(byId('set-editor')).toBeTruthy();
-    expect(byId('layout-generate')).toBeFalsy();
-    expect(byId('layout-mode-sets').getAttribute('aria-pressed')).toBe('true');
+    // Generate lives on the rail regardless of the armed tool (#711).
+    expect(byId('layout-generate')).toBeTruthy();
+    expect(byId('layout-tool-select').getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('opens an empty venue in bulk mode, where Generate is the operator’s next step (AC-6)', () => {
+  it('opens an empty venue with the default brush armed, where Generate is the operator’s next step (AC-6)', () => {
     render([]);
 
     expect(byId('layout-generate')).toBeTruthy();
     expect(byId('set-editor')).toBeFalsy();
-    expect(byId('layout-mode-bulk').getAttribute('aria-pressed')).toBe('true');
+    expect(byId('layout-tool-premium').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('lets the operator override the default, and keeps their choice across a re-read', () => {
     render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)]);
 
-    byId('layout-mode-bulk').click();
+    byId('layout-tool-premium').click();
     fixture.detectChanges();
     expect(byId('layout-generate')).toBeTruthy();
     expect(byId('set-editor')).toBeFalsy();
