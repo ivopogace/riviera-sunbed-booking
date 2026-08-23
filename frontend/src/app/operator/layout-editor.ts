@@ -543,6 +543,10 @@ export class LayoutEditor {
         return; // a venue switch superseded this rename (#180)
       }
       this.storedRowNames.update((names) => names.map((name, i) => (i === y ? to : name)));
+      // A rename saves independently of the bulk save, so a later Discard mustn't revert it too.
+      this.baselineRowNames.update((names) =>
+        names.length > y ? names.map((name, i) => (i === y ? to : name)) : names,
+      );
       this.loadedSets.update((sets) =>
         sets.map((set) => (set.gridY === y + 1 ? { ...set, rowLabel: to } : set)),
       );

@@ -259,6 +259,22 @@ describe('SetEditor (#600)', () => {
     expect(byId('set-panel').textContent).toContain('Row B');
   });
 
+  it('reclaims focus stranded on <body> when the selected set drops out of a re-read (#712 review)', async () => {
+    render();
+    selectSet(12);
+    await fixture.whenStable();
+    // A re-read from elsewhere drops the selected set with no `closeSelection()` call.
+    fixture.componentRef.setInput(
+      'sets',
+      SETS.filter((s) => s.id !== 12),
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(byId('set-panel')).toBeFalsy();
+    expect(document.activeElement).toBe(cellForGrid(1, 2));
+  });
+
   it('patchesTheWholeSetBodyOnSave: one PATCH carrying every field, then a re-read (AC-1)', async () => {
     render();
     selectSet(12);

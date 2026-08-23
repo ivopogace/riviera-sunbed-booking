@@ -1,5 +1,6 @@
 import {
   afterNextRender,
+  afterRenderEffect,
   Component,
   computed,
   ElementRef,
@@ -194,6 +195,23 @@ export class SetEditor {
     },
   });
 
+  /**
+   * Where the inspector last stood, kept even after {@link selection} collapses. `selection` can
+   * drop to `null` on its own — a re-read that no longer carries the picked set, e.g. from another
+   * tab or operator — with no `closeSelection()` call to carry the focus move, so the constructor's
+   * effect below uses this to reclaim focus a silent collapse would otherwise strand on `<body>`.
+   */
+  private readonly lastCoords = signal<{ gridX: number; gridY: number } | undefined>(undefined);
+
+  /** afterRenderEffect, not effect: the DOM read below must run after the panel is actually gone. */
+  constructor() {
+    afterRenderEffect(() => {
+      if (!this.hasSelection()) {
+        this.reclaimStrandedFocus();
+      }
+    });
+  }
+
   /** The selected set's server state, or undefined when nothing or an empty cell is selected. */
   protected readonly selectedSet = computed(() => {
     const chosen = this.selection();
@@ -366,6 +384,7 @@ export class SetEditor {
     }
     const opening = this.selection() === null;
     this.selection.set(setId === null ? { kind: 'cell', gridX, gridY } : { kind: 'set', setId });
+    this.lastCoords.set({ gridX, gridY });
     this.saved.set(false);
     this.errorCode.set(undefined);
     this.confirmRemove.set(false);
@@ -446,6 +465,24 @@ export class SetEditor {
     );
   }
 
+  /**
+   * A safety net for a selection that collapses on its own — {@link selection}'s `linkedSignal`
+   * drops it to `null` the moment a re-read no longer carries the picked set, with no
+   * {@link closeSelection} call to move focus along. If that left focus outside this component's own
+   * host (the panel it was in is already gone), redirect it to the last tile the inspector was open
+   * for; a user-driven close already parked focus on that tile, so this is then a no-op.
+   */
+  private reclaimStrandedFocus(): void {
+    const coords = this.lastCoords();
+    const active = document.activeElement;
+    // A removed element leaves focus on <body> in a real browser, detached (unreset) in jsdom.
+    const stranded =
+      coords !== undefined && (active === null || active === document.body || !active.isConnected);
+    if (stranded) {
+      this.focusCell(coords.gridX, coords.gridY);
+    }
+  }
+
   protected addRow(): void {
     this.extraRows.update((extra) => extra + 1);
   }
@@ -502,7 +539,10 @@ export class SetEditor {
           pool: draft.pool,
           price: { minorUnits, currency: draft.currency },
         }),
-      (created) => this.selection.set({ kind: 'set', setId: created.id }),
+      (created) => {
+        this.selection.set({ kind: 'set', setId: created.id });
+        this.lastCoords.set({ gridX: cell.gridX, gridY: cell.gridY });
+      },
     );
   }
 

@@ -452,6 +452,30 @@ describe('LayoutEditor (#172)', () => {
     expect(byId('layout-dirty-count').textContent).toContain('1 unsaved change');
   });
 
+  it('discard never reverts a row rename that already saved on its own PUT (#712 review)', async () => {
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1, 'A'), seat(2, 'STANDARD', 'ONLINE', 1, 2, 'B')], 3);
+    useBulkMode();
+
+    // Paint an unrelated cell dirty — row B, currently 'standard', to the default 'premium' brush.
+    cells()[1].click();
+    fixture.detectChanges();
+    expect(byId('layout-dirty-count').textContent).not.toContain('No unsaved changes');
+
+    setRowName(1, 'Back row');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush(null);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    byId('layout-discard').click();
+    fixture.detectChanges();
+
+    // The unrelated paint is undone, but the already-saved rename is not.
+    expect(rowNameInputs()[1].value).toBe('Back row');
+  });
+
   function rowNameInputs(): HTMLInputElement[] {
     return Array.from(host.querySelectorAll<HTMLInputElement>('[data-testid="layout-row-name"]'));
   }

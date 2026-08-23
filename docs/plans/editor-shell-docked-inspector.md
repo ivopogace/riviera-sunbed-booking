@@ -57,11 +57,16 @@ doc) · `tdd` (specs extended per behavior before each template/class edit) ·
 (`N/A — no substrate doc states the panel's left-column placement or the plain Save
 button; CLAUDE.md/RESPONSIBILITIES.md don't describe layout-editor UI shape`) ·
 `riviera-frontend` (no new folder — same feature files in `operator/`, no new
-cross-feature import) · `angular-developer` + angular-cli MCP (`list_projects`
-confirmed Angular 22; `get_best_practices` re-read before writing — signals/computed,
-`inject()`, no `ngClass`/`ngStyle`; `search_documentation` checked `linkedSignal`
-"accounting for previous state" against the existing `SetEditor.selection`
-`linkedSignal`, confirmed the closing-transition doesn't need a new reactive primitive)
+cross-feature import) · `angular-developer` + angular-cli MCP, consulted **before and
+after** implementing (`list_projects` confirmed Angular 22; `get_best_practices`
+re-read both before writing and again after, at the review-fix pass — signals/computed,
+`inject()`, no `ngClass`/`ngStyle`, host bindings in the `host` object not
+`@HostListener`; `search_documentation` checked `linkedSignal` "accounting for previous
+state" against the existing `SetEditor.selection` `linkedSignal` before writing, and —
+**after** a review finding showed a bare `effect()` reading `document.activeElement`
+before Angular had actually removed the closed panel from the DOM — re-checked
+`afterRenderEffect`'s render-phase ordering, which is what fixed it: `effect()` fires on
+signal recompute, before the DOM patches; `afterRenderEffect` fires after)
 · `riviera-tailwind` (docked panel and save bar styled with the existing
 `appCardGlass`/rail-button/touch-target idioms already in `set-editor.html`/
 `layout-editor.html`; `sticky` positioning is a plain utility, no new directive needed)
@@ -200,9 +205,10 @@ AC-4).
 
 ## Execution status
 
-**Stage pointer:** implement done, CI/review/Sonar gates pending on PR #770.
+**Stage pointer:** review gate ran, 3 findings fixed (F-1..F-3). Sonar gate + CI
+pending on PR #770.
 
-**Next action:** await CI, run the review gate (`/code-review`), then the Sonar gate.
+**Next action:** await CI, pull the Sonar issue list, then the merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -217,6 +223,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (`/code-review origin/main...HEAD`) | Re-clicking an already-selected tile toggled the inspector closed, breaking `operator-set-editing.e2e.ts`'s existing re-affirm-click flow ("grows the grid... moves it") | fixed — dropped the toggle, added a dedicated Close control instead |
+| F-2 | review (`/code-review origin/main...HEAD`) | The docked panel can be silently torn down (WCAG 2.4.3 stranded focus) when `selection` collapses on its own — e.g. another tab/operator's re-read drops the selected set — with no `closeSelection()` call to carry the focus move | fixed — `lastCoords` + an `afterRenderEffect` reclaim `SetEditor.spec.ts` "reclaims focus stranded on \<body\>..." |
+| F-3 | review (`/code-review origin/main...HEAD`) | `discard()` reverted `rowNames` to the stale `baselineRowNames`, silently undoing a row rename already saved via its own independent PUT | fixed — `onRenameRow`'s success path now advances `baselineRowNames` too; `LayoutEditor.spec.ts` "discard never reverts a row rename..." |
 
 ---
 
