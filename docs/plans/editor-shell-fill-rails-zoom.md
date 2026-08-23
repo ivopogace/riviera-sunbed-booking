@@ -236,10 +236,11 @@ N/A — no contract change. `toRequest()`'s `LayoutCellRequest[]` shape and `rep
 
 ## Execution status
 
-**Stage pointer:** implementation done — ready for the review gate.
+**Stage pointer:** review gate ran, findings fixed, Sonar gate green — ready to merge.
 
-**Next action:** run `/code-review`, address findings, check the Sonar gate once CI is green,
-then merge close-out.
+**Next action:** none pending from this session — merge is a maintainer/human decision (a merge
+to `main` triggers `deploy.yml`'s production deploy per ADR-0004, treated as a confirm-first
+action per this session's operating rules). PR #771 is green and ready.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -431,21 +432,31 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced — N/A, no backend touched.
-- [ ] **Availability** section filled (N/A, justified).
-- [ ] Pool + cutoff rules honored — N/A, unaffected.
-- [ ] **Modulith** section filled (N/A, frontend-only).
-- [ ] **Payment/payout** section filled (N/A).
-- [ ] Refund policy — N/A.
-- [ ] Timezone — N/A, unaffected.
-- [ ] Booking codes — N/A.
-- [ ] Flyway — N/A.
-- [ ] **Frontend** standards met (see Angular section above).
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an
-      issue #).
-- [ ] **Close-out written in THIS PR.**
-- [ ] **The review gate ran in full.**
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced — N/A, no backend touched.
+- [x] **Availability** section filled (N/A, justified).
+- [x] Pool + cutoff rules honored — N/A, unaffected.
+- [x] **Modulith** section filled (N/A, frontend-only).
+- [x] **Payment/payout** section filled (N/A).
+- [x] Refund policy — N/A.
+- [x] Timezone — N/A, unaffected.
+- [x] Booking codes — N/A.
+- [x] Flyway — N/A.
+- [x] **Frontend** standards met (see Angular section above).
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register — R-1/R-2 verified via the green full suite above; R-3/R-4 resolved with
+      the stated coverage split; R-5 accepted as designed. Open Questions all resolved above.
+- [x] **Close-out written in THIS PR** — this commit, citing `PR #771` (not a merge SHA, per
+      the plan-doc convention — knowable pre-merge).
+- [x] **The review gate ran in full** — `/code-review origin/main...HEAD`. F-1/F-2 fixed and
+      re-verified (full unit 1833/1833, a11y 392/392, mocked e2e green); F-3 recorded as a
+      false positive with rationale. **Sonar gate: passed** — 0 new issues, 0 accepted issues,
+      0 security hotspots, 0.0% duplication, 94.2%/94.23% new-code coverage — verified against
+      the SonarCloud API directly (`new_lines: 316`, confirming a real, non-stale analysis),
+      not just the badge.
+
+**Not yet done:** the actual merge — left to the repo maintainer/human, since merging to `main`
+triggers `deploy.yml`'s production deploy (ADR-0004) and this session treats that as a
+confirm-first action. Everything gate-side is green and the PR is ready.
