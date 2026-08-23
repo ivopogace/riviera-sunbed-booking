@@ -132,9 +132,9 @@ test.describe('44px touch targets at a phone width', () => {
     page,
   }) => {
     await openConsoleTab(page, 'beach-map');
+    // Row A's own tile lifts on selection; cellLiftHeadroomPx now reserves the clip room (#715).
     await expect(page.getByTestId('set-cell').first()).toBeVisible();
-    // Row B, not row A — row A sits flush against the frame's own clipping edge (unrelated, pre-existing).
-    await page.getByTestId('set-cell').nth(13).click();
+    await page.getByTestId('set-cell').first().click();
     await expect(page.getByTestId('set-panel')).toBeVisible();
 
     await expectTouchTargets(page, 'operator beach map (bottom sheet open)');

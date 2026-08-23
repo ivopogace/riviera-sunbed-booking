@@ -95,6 +95,7 @@
           #canvasViewport
           class="group overflow-x-auto overflow-y-hidden [-webkit-overflow-scrolling:touch] flex-1 min-w-0 select-none snap-x snap-proximity [&.pannable]:scroll-pl-4 [&.pannable]:[mask-image:linear-gradient(90deg,transparent,black_16px,black_calc(100%-16px),transparent)]"
           [class]="scrollbarChrome()"
+          [style.padding-top.px]="cellLiftHeadroomPx()"
           [attr.data-testid]="viewportTestid()"
           data-riv-scroller
           [class.pannable]="scrollHint()"
