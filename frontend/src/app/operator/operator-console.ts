@@ -109,7 +109,7 @@ export class OperatorConsole {
   private epoch = 0;
 
   /** The pill anchors, in tab order — used to scroll the active one into the scrolling row's
-   *  viewport (#710) so it's visible without the operator having to scroll manually. */
+   *  viewport so it's visible without the operator having to scroll manually. */
   private readonly tabLinks = viewChildren<ElementRef<HTMLAnchorElement>>('tabLink');
   /** The active child route's path, reactive to navigation — the tab-nav counterpart of
    *  `routerLinkActive`, read here to drive the scroll-into-view rather than a CSS class. */
