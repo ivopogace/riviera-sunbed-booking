@@ -72,8 +72,8 @@ const SWATCH_CLASS: Record<CellState, string> = {
 };
 
 /**
- * The Beach-map tab — one canvas, one tool rail (#711), because the venue's own lifecycle decides
- * which of two editing surfaces can work.
+ * The Beach-map tab — one canvas, one tool rail, because the venue's own lifecycle decides which
+ * of two editing surfaces can work.
  *
  * <p>Arming a paint brush on the rail shows <strong>the bulk paint grid</strong>: an R×C grid
  * generated in one action (row A faces the sea, auto-priced front-row premium), tier/pool/gap
@@ -87,8 +87,8 @@ const SWATCH_CLASS: Record<CellState, string> = {
  * on whichever tool the venue needs — Select once it has saved sets, the default brush while it is
  * empty — and the operator can override that; a per-set write makes this tab re-read the map and
  * drop the shared console snapshot, since the other tabs would otherwise render a set that no longer
- * exists. Select's own panel keeps its current placement — the docked-inspector merge is epic #708's
- * S3, not this slice.
+ * exists. Select's own panel keeps its current placement — the docked-inspector merge is a later
+ * slice, not this one.
  *
  * <p>Reads `:venueId` from the parent route (child routes don't inherit it). Cells are
  * real, individually-labelled `<button>`s so the grid is fully keyboard + AT operable (Enter/Space
