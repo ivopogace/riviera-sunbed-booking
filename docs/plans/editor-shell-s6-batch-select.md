@@ -106,15 +106,19 @@ branch stands in for `feature/editor-shell-s6-batch-select`).
 
 ## Open questions / Assumptions
 
+None outstanding — see Resolved below.
+
+### Resolved
+
 - **Assumption:** the batch selection persists (rather than auto-clearing) after a
   successful apply, mirroring the single-set inspector's own post-save behavior (the
   operator stays in the panel to make another change). The issue's ACs don't require
-  auto-clear either way. — *Owner:* agent · *Resolves by:* this phase; revisit if review
-  disagrees.
+  auto-clear either way. — held; `/code-review` raised the related stale-apply race
+  (fixed at `e136455`) but did not object to the persistence choice itself.
 - **Assumption:** "row/position range" in the batch heading is derived from the swept
   rectangle's grid bounds (`Row A–B · positions 1–2`), not from the individual selected
-  sets' own row labels, since a sweep can cross renamed rows. — *Owner:* agent · *Resolves
-  by:* this phase.
+  sets' own row labels, since a sweep can cross renamed rows. — held, unchallenged by
+  review.
 
 ## Availability & concurrency (invariant #2)
 
@@ -150,14 +154,16 @@ own `sets` input instead of the bulk paint grid.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0 done) — ready for CI + review gate
+**Stage pointer:** DONE — merged via PR #772.
 
-**Next action:** commit, push to the designated branch, open the PR (draft), watch CI, then
-run the review gate per `riviera-sdlc` `references/pr-gates.md` §1.
+**Next action:** none — the slice is complete.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Sweep gesture + batch apply + tests | ✅ | (this session's commit) |
+| 0 — Sweep gesture + batch apply + tests | ✅ | d457aec |
+| 0a — CI fix: superseded drag-pannable-canvas test | ✅ | 658ab37 |
+| 0b — Sonar gate: coverage + code-smell fixes | ✅ | adf8ff5 |
+| 0c — Review gate: stale-apply race fix | ✅ | e136455 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -227,11 +233,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1..AC-7:** verified by the specs/e2e named above. Locally: `npx ng test
-  --watch=false` (1841/1841 passed, incl. the new `SetEditor (#714)` unit specs and the
-  batch-panel axe spec) and `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright
-  test -c playwright.a11y.config.ts operator-set-editing` (10/10 passed, incl. the two new
-  batch-apply/STALE_WRITE e2e specs and the rewritten sweep e2e). CI re-runs both on the PR.
+- [x] **AC-1..AC-7:** verified by the specs/e2e named above, final run at commit `e136455`:
+  `npx ng test --watch=false` (1855/1855 passed) and
+  `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c
+  playwright.a11y.config.ts operator-set-editing layout-editor.e2e.ts` (22/22 passed). CI
+  green on the same commit (build/test/lint ×2, CodeQL ×2, repo hygiene, SonarCloud).
 
 ## Self-review checklist (before merge / PR)
 
@@ -246,8 +252,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] Frontend standards met; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions resolved or explicitly assumed.
-- [ ] Close-out written in THIS PR — pending merge; the PR's own last commit finalizes this.
-- [ ] The review gate ran in full per the invocation ladder — pending: runs at PR
-      ready-for-review per `riviera-sdlc` `references/pr-gates.md` §1.
+- [x] Close-out written in THIS PR — merged via PR #772.
+- [x] The review gate ran in full per the invocation ladder — `/code-review
+      origin/main...HEAD` ran (single-pass, no subagent fan-out available this session),
+      `riviera-review-overlay` loaded; both findings resolved (F-3 fixed, F-4 deferred with
+      rationale — see Findings register).
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
