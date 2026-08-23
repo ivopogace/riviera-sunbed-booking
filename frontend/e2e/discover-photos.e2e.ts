@@ -124,26 +124,24 @@ test('the Discover card shows the cover photo (scrim kept), the photo-less card 
   await expect(page.getByText('coming soon')).toBeHidden();
   await expectNoSeriousAxeViolations(page, 'discovery with cover photos');
 
-  // The beach map's band is the same slideshow, banner-sized, with its own step controls.
+  // The beach map's photo lead is the gallery grid once 2+ photos are set (#765).
   await cards.first().click();
   await expect(page).toHaveURL(/\/venues\/1/);
-  const banner = page.getByTestId('map-banner-img');
-  await expect(banner).toBeVisible();
-  await expect(banner).toHaveAttribute('src', /\/api\/venues\/1\/photos\/bb02$/);
-  const bannerSlides = page.locator(
-    '[data-testid="map-banner-img"], [data-testid="map-banner-slide-img"]',
-  );
-  await expect(bannerSlides).toHaveCount(3);
-  await page.getByTestId('map-banner-next').click();
-  await expect(bannerSlides.nth(1)).toHaveCSS('opacity', '1');
-  await expect(bannerSlides.nth(0)).toHaveCSS('opacity', '0');
+  const hero = page.getByTestId('gallery-hero');
+  await expect(hero).toBeVisible();
+  await expect(hero).toHaveAttribute('src', /\/api\/venues\/1\/photos\/bb02$/);
+  await expect(page.getByTestId('gallery-tile')).toHaveCount(2);
   await expect(page.getByText('coming soon')).toBeHidden();
-  await expectNoSeriousAxeViolations(page, 'beach map with its banner slideshow');
+  await expectNoSeriousAxeViolations(page, 'beach map with its gallery grid');
 });
 
 test('the venue banner is a media header — ≥260px on desktop, 150px on mobile, above the status card (#704)', async ({
   page,
 }) => {
+  // Below 2 photos so the header keeps its single-photo band, not the gallery grid (#765).
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+    route.fulfill({ json: { ...VENUE_MAP, photos: [COVER.banner] } }),
+  );
   await page.goto('/venues/1');
 
   const band = page.locator('.photo-band');
@@ -169,24 +167,28 @@ test('the venue banner is a media header — ≥260px on desktop, 150px on mobil
 test('the slideshow chrome carries its own backing over the photo, in both themes (#704)', async ({
   page,
 }) => {
+  // Multi-photo step chrome now only ever renders inside the lightbox (#765, gallery grid at 2+).
   await page.goto('/venues/1');
+  await page.getByTestId('gallery-photo-0').click();
 
   // The ratios are proven in photo-slideshow.contrast.spec.ts; that the paint ships is proven here.
-  const rail = page.getByTestId('map-banner-dots');
+  const rail = page.getByTestId('lightbox-dots');
   await expect(rail).toHaveCSS('background-color', 'rgba(13, 40, 40, 0.7)');
-  const chip = page.getByTestId('map-banner-next').locator('span');
+  const chip = page.getByTestId('lightbox-next').locator('span');
   await expect(chip).toHaveCSS('border-top-color', 'rgba(12, 42, 51, 0.6)');
 
   await settle(page);
-  await expectNoSeriousAxeViolations(page, 'venue media header (default theme)');
+  await expectNoSeriousAxeViolations(page, 'photo lightbox (default theme)');
+  await page.getByTestId('lightbox-close').click();
 
   await page.getByTestId('theme-toggle').click();
   await page.getByTestId('theme-option-porcelain').click();
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
+  await page.getByTestId('gallery-photo-0').click();
   // Theme-invariant on purpose: a photo is not themed, so the chrome must not move with the theme.
   await expect(rail).toHaveCSS('background-color', 'rgba(13, 40, 40, 0.7)');
   await settle(page);
-  await expectNoSeriousAxeViolations(page, 'venue media header (porcelain)');
+  await expectNoSeriousAxeViolations(page, 'photo lightbox (porcelain)');
 });
 
 test('the Discover card slideshow crossfades through all three slots via the step controls (dots track, wrap both ways, + axe)', async ({

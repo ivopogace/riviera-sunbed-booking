@@ -353,6 +353,9 @@ describe('VenueMap', () => {
     // The scrim stays layered over the photo band, and the retired pill never renders.
     expect(el().querySelector('.photo-band')?.innerHTML).toContain('riv-photo-scrim');
     expect(el().textContent).not.toContain('coming soon');
+    // Letterboxed, not cropped — a portrait photo stays whole against the band's own gradient.
+    expect(img?.classList.contains('object-contain')).toBe(true);
+    expect(img?.classList.contains('object-cover')).toBe(false);
   });
 
   it('falls back to the bare gradient band without the pill when there is no cover photo (#142)', async () => {
@@ -364,7 +367,30 @@ describe('VenueMap', () => {
     expect(el().textContent).not.toContain('coming soon');
   });
 
-  it('cycles the banner slideshow through every occupied slot with its own controls', async () => {
+  it('cycles the banner slideshow through its own controls when only one photo is set', async () => {
+    venueRequest().flush({
+      ...miramar(),
+      photos: ['/api/venues/1/photos/bb02'],
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const band = el().querySelector('.photo-band')!;
+    const slides = band.querySelectorAll<HTMLImageElement>(
+      '[data-testid="map-banner-img"], [data-testid="map-banner-slide-img"]',
+    );
+    expect(slides.length).toBe(1);
+    // The service resolves each wire path against the API origin.
+    expect(slides[0].getAttribute('src')).toBe(
+      `${environment.apiBaseUrl}/api/venues/1/photos/bb02`,
+    );
+
+    // A single photo has nothing to step through — no controls, no dots.
+    expect(band.querySelector('[data-testid="map-banner-next"]')).toBeNull();
+    expect(band.querySelectorAll('[data-testid="map-banner-dots"] span').length).toBe(0);
+  });
+
+  it('renders the wide gallery grid instead of the header band once 2+ photos are set', async () => {
     venueRequest().flush({
       ...miramar(),
       photos: [
@@ -376,26 +402,99 @@ describe('VenueMap', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const band = el().querySelector('.photo-band')!;
-    const slides = band.querySelectorAll<HTMLImageElement>(
-      '[data-testid="map-banner-img"], [data-testid="map-banner-slide-img"]',
-    );
-    expect(slides.length).toBe(3);
-    // The service resolves each wire path against the API origin.
-    expect(slides[0].getAttribute('src')).toBe(
-      `${environment.apiBaseUrl}/api/venues/1/photos/bb02`,
-    );
-    expect(band.querySelectorAll('[data-testid="map-banner-dots"] span').length).toBe(3);
+    // The header keeps its narrower shell — no in-header photo band once the grid takes over.
+    expect(el().querySelector('.photo-band')).toBeNull();
 
-    // The band hosts its own labelled controls (it is no link), outside the aria-hidden imagery.
-    const next = band.querySelector<HTMLButtonElement>('[data-testid="map-banner-next"]')!;
-    expect(next.getAttribute('aria-label')).toBe('Next photo, Miramar Beach Club');
-    expect(next.closest('[aria-hidden="true"]')).toBeNull();
+    const hero = el().querySelector<HTMLImageElement>('[data-testid="gallery-hero"]')!;
+    const tiles = el().querySelectorAll<HTMLImageElement>('[data-testid="gallery-tile"]');
+    expect(hero.getAttribute('src')).toBe(`${environment.apiBaseUrl}/api/venues/1/photos/bb02`);
+    expect(tiles.length).toBe(2);
+    expect(tiles[0].getAttribute('src')).toBe(`${environment.apiBaseUrl}/api/venues/1/photos/cc03`);
+    expect(tiles[1].getAttribute('src')).toBe(`${environment.apiBaseUrl}/api/venues/1/photos/dd04`);
+  });
 
-    next.click();
+  it('opens the lightbox from the single-photo band and returns focus to it on dismiss (#765)', async () => {
+    venueRequest().flush({ ...miramar(), photos: ['/api/venues/1/photos/bb02'] });
+    await fixture.whenStable();
     fixture.detectChanges();
-    expect(slides[0].classList.contains('opacity-0')).toBe(true);
-    expect(slides[1].classList.contains('opacity-0')).toBe(false);
+
+    const trigger = el().querySelector<HTMLButtonElement>('[data-testid="photo-band-view"]')!;
+    trigger.click();
+    fixture.detectChanges();
+    expect(el().querySelector('app-photo-lightbox[role="dialog"]')).not.toBeNull();
+
+    el()
+      .querySelector<HTMLElement>('app-photo-lightbox')!
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+    expect(el().querySelector('app-photo-lightbox')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('does not offer a photo lightbox trigger when the venue has no photos', async () => {
+    flushVenue(); // the fixture has no photos
+    await fixture.whenStable();
+    expect(el().querySelector('[data-testid="photo-band-view"]')).toBeNull();
+  });
+
+  it('opens the lightbox from a gallery tile, seeded at that photo, and returns focus on dismiss', async () => {
+    venueRequest().flush({
+      ...miramar(),
+      photos: [
+        '/api/venues/1/photos/bb02',
+        '/api/venues/1/photos/cc03',
+        '/api/venues/1/photos/dd04',
+      ],
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const tile = el().querySelector<HTMLButtonElement>('[data-testid="gallery-photo-2"]')!;
+    tile.click();
+    fixture.detectChanges();
+
+    const slides = el().querySelectorAll<HTMLImageElement>(
+      '[data-testid="lightbox-img"], [data-testid="lightbox-slide-img"]',
+    );
+    expect(slides[2].classList.contains('opacity-0')).toBe(false);
+
+    el().querySelector<HTMLButtonElement>('[data-testid="lightbox-close"]')!.click();
+    fixture.detectChanges();
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+    expect(el().querySelector('app-photo-lightbox')).toBeNull();
+    expect(document.activeElement).toBe(tile);
+  });
+
+  it('closes the lightbox on an in-place venue switch, instead of reopening on the new venue', async () => {
+    venueRequest().flush({ ...miramar(), photos: ['/api/venues/1/photos/bb02'] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    el().querySelector<HTMLButtonElement>('[data-testid="photo-band-view"]')!.click();
+    fixture.detectChanges();
+    expect(el().querySelector('app-photo-lightbox')).not.toBeNull();
+
+    params$.next(convertToParamMap({ id: '2' }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Torn down with the rest of venue 1's state, not carried over as stale index.
+    expect(el().querySelector('app-photo-lightbox')).toBeNull();
+
+    venueRequest(2).flush({
+      ...miramar(),
+      id: 2,
+      name: 'Riviera Blue',
+      photos: ['/api/venues/1/photos/aa01', '/api/venues/1/photos/cc03'],
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The new venue's gallery grid renders closed — the stale index must not reopen it.
+    expect(el().querySelector('[data-testid="gallery-photo-0"]')).not.toBeNull();
+    expect(el().querySelector('app-photo-lightbox')).toBeNull();
   });
 
   it('marks the premium front row and the taken sets distinctly', async () => {

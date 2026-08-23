@@ -20,6 +20,8 @@ import { formatMoney, MoneyView } from '../shared/money';
 import { focusMover } from '../shared/focus-after-render';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
+import { PhotoGalleryGrid } from '../shared/photo-gallery-grid';
+import { PhotoLightbox } from '../shared/photo-lightbox';
 import { PhotoSlideshow } from '../shared/photo-slideshow';
 import { slideshowPhotos } from '../shared/photo-url';
 import { isRated, ratingScore } from '../shared/rating';
@@ -103,6 +105,8 @@ interface VenueHeader {
     BookingDialog,
     RetryButton,
     PanelGlass,
+    PhotoGalleryGrid,
+    PhotoLightbox,
     PhotoSlideshow,
     CardGlass,
     LoadAnnouncer,
@@ -180,6 +184,11 @@ export class VenueMap {
   protected readonly selectedSet = signal<SetView | undefined>(undefined);
   /** Id of the tile that opened the dialog, so focus can return to it on close. */
   private lastTriggerId: number | undefined;
+
+  /** Index of the photo the lightbox opened on, or undefined when it's closed. */
+  protected readonly lightboxIndex = signal<number | undefined>(undefined);
+  /** The `data-testid` of whichever thumbnail opened the lightbox, so focus can return to it. */
+  private lightboxTriggerTestId = 'photo-band-view';
 
   protected readonly freeCount = computed(
     () => this.venue()?.sets.filter((s) => s.availability === 'FREE').length ?? 0,
@@ -271,10 +280,11 @@ export class VenueMap {
     this.epoch++;
     this.venue.set(undefined);
     this.selectedSet.set(undefined);
-    // The reset takes the focus-trapped picker AND the trigger, so move focus deliberately (RV-FE-9).
-    const pickerWasOpen = this.pickerOpen();
+    // The reset takes any focus-trapped modal AND its trigger, so move focus deliberately (RV-FE-9).
+    const modalWasOpen = this.pickerOpen() || this.lightboxIndex() !== undefined;
     this.pickerOpen.set(false);
-    if (pickerWasOpen) {
+    this.lightboxIndex.set(undefined);
+    if (modalWasOpen) {
       this.moveFocus('map-loading');
     }
     this.lastTriggerId = undefined;
@@ -324,6 +334,7 @@ export class VenueMap {
         this.venue.set(undefined);
         // The teardown takes the header, and with it the trigger — close without chasing it.
         this.pickerOpen.set(false);
+        this.lightboxIndex.set(undefined);
         // 404 is a distinct state: the venue is gone or hidden (#693); retrying cannot succeed.
         if (error instanceof HttpErrorResponse && error.status === 404) {
           this.notFound.set(true);
@@ -403,6 +414,18 @@ export class VenueMap {
   protected select(set: SetView): void {
     this.lastTriggerId = set.id;
     this.selectedSet.set(set);
+  }
+
+  /** Open the lightbox on `index`, remembering `triggerTestId` so closing returns focus there. */
+  protected openLightbox(index: number, triggerTestId: string): void {
+    this.lightboxTriggerTestId = triggerTestId;
+    this.lightboxIndex.set(index);
+  }
+
+  /** Close the lightbox and hand focus back to the thumbnail that opened it (modal a11y, RV-FE-9). */
+  protected closeLightbox(): void {
+    this.lightboxIndex.set(undefined);
+    this.moveFocus(this.lightboxTriggerTestId);
   }
 
   protected onDialogClose(): void {

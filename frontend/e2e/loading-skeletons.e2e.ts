@@ -15,10 +15,12 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  *
  * <p><strong>The fixtures are the point.</strong> A skeleton mirrors block shapes, so its error is
  * whatever the shapes cannot predict: the tourist header's description and amenity chips are both
- * conditional, and a phone wraps rows a desktop keeps on one line. So the tourist case runs over
- * both extremes of that content (a venue with both, a venue with neither) at both a desktop and a
- * phone viewport — measuring only the rich desktop case is how a skeleton tuned to one fixture
- * passes while jumping for everyone else.
+ * conditional, a phone wraps rows a desktop keeps on one line, and (#765) 2+ photos promote the
+ * header's single-photo band into a wide gallery grid the skeleton cannot reserve space for any
+ * more than it can the description. So the tourist case runs over both extremes of the header
+ * content (a venue with both, a venue with neither) plus the gallery-grid case, at both a desktop
+ * and a phone viewport — measuring only the rich desktop case is how a skeleton tuned to one
+ * fixture passes while jumping for everyone else.
  */
 
 /**
@@ -44,17 +46,19 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * renders an empty-state panel instead of a grid. Both were measured; neither is a defect a
  * skeleton can design away, and asserting otherwise would encode a promise this cannot keep.
  *
- * <p>The three venue shapes are chosen to bracket the conditional content rather than to sample it:
- * one carrying every optional block, one carrying none, and one whose owner has drawn no layout at
- * all — the last is what catches a skeleton that reserves height for the availability bar or the
- * grid, both of which that venue's loaded page does not render. Measured settle, no rise anywhere:
- * 89.2 / 155.3px (rich, desktop / phone), 23.6 / 89.7px (bare), 11.1 / 53.2px (no layout).
+ * <p>The four venue shapes are chosen to bracket the conditional content rather than to sample it:
+ * one carrying every optional header block, one carrying none, one whose owner has drawn no layout
+ * at all — which catches a skeleton that reserves height for the availability bar or the grid,
+ * neither of which that venue's loaded page renders — and one with a 2+-photo gallery grid, the
+ * largest single block the header can gain. Measured settle, no rise anywhere: 89.2 / 155.3px
+ * (rich, desktop / phone), 23.6 / 89.7px (bare), 11.1 / 53.2px (no layout), 201.9 / 245.3px
+ * (gallery grid).
  *
  * <p>Neither bound is what catches the regression #744 fixed: under the sentence these replaced
  * there is no frame to measure at all, so `topOf` fails before either is consulted.
  */
 const MAX_RISE_PX = 4;
-const MAX_SETTLE_PX = 180;
+const MAX_SETTLE_PX = 280;
 
 const DESKTOP = { width: 1280, height: 720 };
 const PHONE = { width: 390, height: 844 };
@@ -107,6 +111,16 @@ const BARE_VENUE = {
  */
 const EMPTY_VENUE = { ...BARE_VENUE, sets: [], fromPrice: null };
 
+/**
+ * A fourth shape (#765): 2+ photos promote the header's single-photo band into a wide gallery
+ * grid, an entirely new block the skeleton cannot reserve space for any more than it can predict
+ * the description/amenity row — so it, too, settles rather than being pre-drawn.
+ */
+const GALLERY_VENUE = {
+  ...RICH_VENUE,
+  photos: ['/api/venues/1/photos/aa01', '/api/venues/1/photos/bb02', '/api/venues/1/photos/cc03'],
+};
+
 /** The viewport-relative top edge of a frame, which is what a layout jump moves. */
 async function topOf(frame: Locator): Promise<number> {
   const box = await frame.boundingBox();
@@ -141,6 +155,7 @@ for (const [shape, venue, settled] of [
   ['a venue carrying every optional header block', RICH_VENUE, 'set-tile'],
   ['a venue carrying none of them', BARE_VENUE, 'set-tile'],
   ['a venue with no layout drawn yet', EMPTY_VENUE, 'map-empty'],
+  ['a venue with a 3-photo gallery grid', GALLERY_VENUE, 'set-tile'],
 ] as const) {
   for (const [size, viewport] of [
     ['desktop', DESKTOP],
