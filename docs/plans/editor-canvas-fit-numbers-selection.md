@@ -54,6 +54,26 @@ invariants).
 
 ---
 
+## File structure
+
+- `frontend/src/app/shared/beach-map-canvas.ts` — new `fitWidth` input, the fitted-tile-size
+  measurement (reusing the existing overflow `afterRenderEffect`/`ResizeObserver`), and the
+  `--riv-tile` host style moved from a static string to a `[style.--riv-tile]` binding.
+- `frontend/src/app/shared/beach-map-canvas.spec.ts` — specs for `fitWidth` off (unchanged
+  default), on (measured fit + 44px floor), and re-fit on resize.
+- `frontend/src/app/operator/layout-editor.html` — `[fitWidth]="true"` on the bulk paint canvas,
+  a position-number span per non-gap cell, container widened to `max-w-[1260px]`.
+- `frontend/src/app/operator/layout-editor.contrast.spec.ts` — new AA test for the tile-number
+  ink against every `beach-cell.ts` fill.
+- `frontend/src/app/operator/set-editor.html` — `[fitWidth]="true"` on the per-set canvas, a
+  position-number span per non-gap cell, the selection ring+lift replacing the outline, container
+  widened to `max-w-[1260px]`.
+- `frontend/src/app/operator/set-editor.contrast.spec.ts` — the selection-ring 3:1 test updated
+  for the new colour and extended to every tile fill, not just the wash.
+- `frontend/src/app/operator/operator-console.html` — `oc-main`'s width cap raised from
+  `max-w-[1120px]` to `max-w-[1300px]` (shared shell wrapper; every other tab's own narrower
+  section width keeps it visually unchanged).
+
 ## Acceptance criteria (testable)
 
 - [x] **AC-1:** Given a 14-column venue and a ≥1280px viewport, the Bulk layout and
