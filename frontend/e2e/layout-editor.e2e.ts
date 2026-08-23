@@ -628,3 +628,45 @@ test('Select’s own drag gesture (the sweep) leaves its grid not drag-pannable 
   await expect(viewport).toHaveCSS('scrollbar-color', 'rgb(8, 90, 110) rgba(0, 0, 0, 0)');
   await expect(viewport).toHaveCSS('cursor', 'auto');
 });
+
+test('at a phone width the tool rail is one scrolling row, the armed chip stays in view (#715)', async ({
+  page,
+}) => {
+  await mockEditor(page);
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto('/operator/1');
+  await signIn(page);
+  await expect(page.getByTestId('layout-tool-select')).toBeVisible();
+
+  // Every chip shares one `top` (one row) and the rail overflows horizontally — it scrolls, not wraps.
+  const rail = page.getByLabel('Tools');
+  const chips = rail.getByRole('button');
+  const tops = await chips.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
+  expect(new Set(tops.map((t) => Math.round(t))).size).toBe(1);
+  const [scrollWidth, clientWidth] = await rail.evaluate((el) => [el.scrollWidth, el.clientWidth]);
+  expect(scrollWidth).toBeGreaterThan(clientWidth);
+
+  // Arming the last chip (off the initial scroll) brings it into view automatically.
+  const gap = page.getByTestId('layout-tool-gap');
+  await gap.click();
+  await expect(gap).toBeInViewport();
+});
+
+test('every paint cell declares touch-action: none, so a paint drag never fights page scroll (#715)', async ({
+  page,
+}) => {
+  await mockEditor(page);
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto('/operator/1');
+  await signIn(page);
+
+  await page.getByTestId('layout-gen-rows').fill('1');
+  await page.getByTestId('layout-gen-cols').fill('3');
+  await page.getByTestId('layout-generate').click();
+  await expect(page.getByTestId('layout-cell')).toHaveCount(3);
+
+  const cells = page.getByTestId('layout-cell');
+  for (let i = 0; i < 3; i++) {
+    await expect(cells.nth(i)).toHaveCSS('touch-action', 'none');
+  }
+});

@@ -258,6 +258,94 @@ describe('SetEditor (#600)', () => {
     expect(document.activeElement).toBe(cellForGrid(1, 2));
   });
 
+  it('dismisses the inspector via the mobile sheet backdrop, refocusing the tile (#715)', async () => {
+    render();
+    selectSet(12);
+    await fixture.whenStable();
+
+    click(byId('sheet-backdrop'));
+    await fixture.whenStable();
+
+    expect(byId('set-panel')).toBeFalsy();
+    expect(document.activeElement).toBe(cellForGrid(1, 2));
+  });
+
+  it('dismisses a standing sweep via the mobile sheet backdrop (#715)', () => {
+    render();
+    dragSweep(1, 1, 1, 2);
+    expect(byId('batch-panel')).toBeTruthy();
+
+    click(byId('sheet-backdrop'));
+
+    expect(byId('batch-panel')).toBeFalsy();
+  });
+
+  /** jsdom doesn't implement pointer capture; stubbing it is the standard test workaround. */
+  function stubPointerCapture(element: HTMLElement): void {
+    element.setPointerCapture = () => undefined;
+    element.releasePointerCapture = () => undefined;
+  }
+
+  it('a swipe-down past the threshold on the sheet handle dismisses it, refocusing the tile (#715)', async () => {
+    render();
+    selectSet(12);
+    await fixture.whenStable();
+    const handle = byId('sheet-handle');
+    stubPointerCapture(handle);
+
+    handle.dispatchEvent(new PointerEvent('pointerdown', { clientY: 0, pointerId: 1 }));
+    handle.dispatchEvent(new PointerEvent('pointermove', { clientY: 120, pointerId: 1 }));
+    handle.dispatchEvent(new PointerEvent('pointerup', { clientY: 120, pointerId: 1 }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(byId('set-panel')).toBeFalsy();
+    expect(document.activeElement).toBe(cellForGrid(1, 2));
+  });
+
+  it('a swipe-down short of the threshold springs the sheet back instead of dismissing it (#715)', () => {
+    render();
+    selectSet(12);
+    const handle = byId('sheet-handle');
+    stubPointerCapture(handle);
+
+    handle.dispatchEvent(new PointerEvent('pointerdown', { clientY: 0, pointerId: 1 }));
+    handle.dispatchEvent(new PointerEvent('pointermove', { clientY: 30, pointerId: 1 }));
+    fixture.detectChanges();
+    expect(byId('set-panel').style.transform).toBe('translateY(30px)');
+
+    handle.dispatchEvent(new PointerEvent('pointerup', { clientY: 30, pointerId: 1 }));
+    fixture.detectChanges();
+
+    expect(byId('set-panel')).toBeTruthy();
+    expect(byId('set-panel').style.transform).toBe('translateY(0px)');
+  });
+
+  it('scrolls the page so a newly selected tile clears the mobile bottom sheet (#715)', async () => {
+    render();
+    const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => undefined);
+    const tile = cellForGrid(1, 2);
+    tile.getBoundingClientRect = () =>
+      ({
+        bottom: 2000,
+        top: 1950,
+        left: 0,
+        right: 40,
+        width: 40,
+        height: 50,
+        x: 0,
+        y: 1950,
+      }) as DOMRect;
+
+    click(tile);
+    await fixture.whenStable();
+
+    expect(scrollBy).toHaveBeenCalledTimes(1);
+    const arg = scrollBy.mock.calls[0][0] as unknown as { top: number };
+    expect(arg.top).toBeGreaterThan(0);
+    scrollBy.mockRestore();
+  });
+
   it('switching selections leaves the inspector in place without re-triggering the open focus move (#712)', async () => {
     render();
     selectSet(12);

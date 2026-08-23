@@ -194,6 +194,13 @@ export class BeachMapCanvas {
 
   /** Shows the Fit/100% pill pair (#713) — off by default, so no other consumer renders it. */
   readonly zoomControl = input<boolean>(false);
+  /**
+   * Reserves this much top padding inside the pannable viewport (`overflow-y: hidden`), so a cell
+   * that visually lifts on selection — the per-set editor's `-translate-y-1` — has somewhere to go
+   * that isn't clipped. 0 by default: only the per-set editor's cells ever transform on select, so
+   * every other consumer keeps today's flush-to-the-top row A byte-for-byte.
+   */
+  readonly cellLiftHeadroomPx = input<number>(0);
   /** Fit is the existing measured-to-width sizing (#709, unchanged); 100% pins tiles to
    *  {@link FIT_MAX_TILE_PX} — the ceiling Fit itself never exceeds — and lets the grid overflow
    *  instead of shrinking further. Internal: no consumer needs to read or drive this from outside. */

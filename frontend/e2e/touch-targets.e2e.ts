@@ -127,6 +127,19 @@ test.describe('44px touch targets at a phone width', () => {
     await expectTouchTargets(page, 'operator beach map (per-set)');
   });
 
+  // #715: a sweep of the resting per-set surface can't see the mobile bottom sheet's own controls.
+  test('operator console — beach map, per-set mode with the bottom sheet open', async ({
+    page,
+  }) => {
+    await openConsoleTab(page, 'beach-map');
+    // Row A's own tile lifts on selection; cellLiftHeadroomPx now reserves the clip room (#715).
+    await expect(page.getByTestId('set-cell').first()).toBeVisible();
+    await page.getByTestId('set-cell').first().click();
+    await expect(page.getByTestId('set-panel')).toBeVisible();
+
+    await expectTouchTargets(page, 'operator beach map (bottom sheet open)');
+  });
+
   test('operator console — beach map, bulk paint mode', async ({ page }) => {
     await openConsoleTab(page, 'beach-map');
     await expect(page.getByTestId('layout-tool-premium')).toBeVisible();
