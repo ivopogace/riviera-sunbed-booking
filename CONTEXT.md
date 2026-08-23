@@ -46,7 +46,8 @@ model in `docs/architecture/domain-model.md`.
   outliving its removal in caches.
 - **Venue visibility** — whether tourists can discover and book a venue: a venue is
   **visible iff its owning operator is `ACTIVE`** (#693) — derived, never a flag. Hidden
-  means absent from the tourist list, 404 on the map read, and both booking paths refused;
+  means absent from the tourist list, 404 on the map and availability-calendar reads, and both
+  booking paths refused;
   an unowned venue is hidden (fail-closed). Bookings sold while visible keep working.
 - **Beach map** — a venue's visual layout: rows and individual set positions.
 - **Set position** — one spot on the beach map (e.g. Row A, position 3), flagged

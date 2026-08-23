@@ -285,8 +285,10 @@ Skill-routing gate for what the fix touches *before* editing).
 and `RESPONSIBILITIES.md` §`venue` Job, which now records the calendar read and where its
 arithmetic lives. The post-fix re-run is clean: the three remaining "both reads" hits are
 about photo views, `VenuePhotos`, and `payout`'s `operator::api` reads, all still true.
-`CONTEXT.md` needed nothing — the calendar is a new read, not a new domain concept, and its
-**Availability** entry stays accurate.
+`CONTEXT.md` gained the **Availability calendar** term via F-8 (`domain-modeling`); the
+pre-existing **Availability** entry stays accurate. (This paragraph said "`CONTEXT.md` needed
+nothing" until #761's epic close-out: it was written before the F-8 round and never re-run — the
+skill's own "re-run the sweep after the fix round" lesson, caught one slice later.)
 
 ---
 

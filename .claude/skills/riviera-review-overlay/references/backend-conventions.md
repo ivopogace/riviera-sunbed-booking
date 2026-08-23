@@ -138,9 +138,12 @@ is the only thing that catches it — api-vs-spi is semantic, not mechanically d
 *Check when the published surface or domain tagging changes.* Complements RV-BE-3b
 (api/spi). A typed id / value record or a published event must not be added to a
 ports `api/` surface; events belong in the events named interface, vocabulary in
-the vocabulary surface. A new method piled onto the `VenueCatalog` god-port
-(instead of the role-named `SetBookingFacts`/`VenueRates` split) is a finding.
-Default **Major**. This is enforced by `PublishedSurfacePlacementArchitectureTests`
+the vocabulary surface. A new **sibling-facing** method piled onto the `VenueCatalog`
+god-port (instead of the role-named `SetBookingFacts`/`VenueRates` split) is a
+finding, default **Major** — but a further **tourist read** is not: the rule asserts
+dependency direction, not a frozen method list, and `VenueApiRoleSplitTests`'s Javadoc
+states that distinction outright. Raising it on a tourist read is a false positive
+(#760's `availabilityBetween` is the first live counterexample). This is enforced by `PublishedSurfacePlacementArchitectureTests`
 (landed with issue #95: api/spi = non-sealed interfaces only, events = records
 only, vocabulary = no plain interfaces, cross-module listener params in the owner's
 events surface) — verify that rule passes and judge the cases it can't (is a new

@@ -355,6 +355,32 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/availability-calendar.e2e.ts` — the CI-run mocked flow
 - `frontend/e2e/discovery-flow.e2e.ts` — the carried-`?date=` assertion, re-expressed for the trigger
 
+**Epic close-out (#706), added after the merge of PR #763** — the `riviera-docs-freshness` sweep
+over the epic's full merge span `67dea36..c3b09e9` (both slices) found nine stale statements that
+the per-slice sweep could not see, because each lives in a file neither slice touched:
+
+- `CONTEXT.md` — Venue visibility named one fenced read; the calendar read 404s too
+- `RESPONSIBILITIES.md` — the `/availability` cross-reference pointed "above" at a bullet below it
+- `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueReadController.java` — "Three
+  reads:" then enumerated two
+- `platform/src/main/java/ai/riviera/platform/venue/vocabulary/AvailabilitySummary.java` — claimed
+  one carrier; now has two
+- `platform/src/main/java/ai/riviera/platform/venue/spi/package-info.java` — named one of the
+  SPI's three consumers
+- `platform/src/test/java/ai/riviera/platform/availability/AvailabilityLookupIT.java` — stated a
+  date-only isolation
+  contract that #760's own ranged tests deliberately broke (they isolate by set)
+- `frontend/src/app/shared/booking-date.ts` — `parseIsoDate` named two consumers; now the whole module
+- `docs/plans/venue-availability-calendar-read.md` — its freshness note said `CONTEXT.md` needed
+  nothing, while the same PR added the **Availability calendar** term in its own fix round
+- `.claude/skills/riviera-modulith/SKILL.md` · `references/case-history.md` ·
+  `.claude/skills/riviera-review-overlay/references/backend-conventions.md` — all three forbade
+  piling methods onto `VenueCatalog` in blanket terms, which #760's `availabilityBetween` does.
+  The machine rule disagrees with them: `VenueApiRoleSplitTests`'s own Javadoc calls itself "a
+  **dependency-direction** assertion, not a method-list freeze", and says a *sibling-facing* method
+  is what fails. Left as written, a reviewer would raise a Major on correct code. All three now
+  say **sibling-facing**, with the tourist read named as legitimate evolution.
+
 ---
 
 ## Phase 0 — Month arithmetic in `shared/booking-date.ts`

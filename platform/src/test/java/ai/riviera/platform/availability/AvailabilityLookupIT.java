@@ -21,12 +21,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Verifies the date-aware availability lookup behind the live beach map: a set with
+ * Verifies the date-aware availability lookup behind the beach map, the owner's daily view and the
+ * tourist availability calendar: a set with
  * a {@code set_availability} row for a date is taken on that date and free on another; a set
  * with no row is free; any state ({@code BOOKED_ONLINE} / {@code STAFF_MARKED}) counts as taken;
  * an empty input is handled without a query. This is the read side of the dependency-inverted
  * {@link SetAvailabilityLookup} port (declared in {@code venue.spi}, implemented by
- * {@code availability}). Real Postgres + seed via Testcontainers. Each test uses a distinct date
+ * {@code availability}). Real Postgres + seed via Testcontainers. Each test isolates on a distinct
+ * date — or, for the ranged reads whose result depends on days they did not seed, a distinct set —
  * so methods stay independent (the context/DB is shared).
  */
 @EnabledIfDockerAvailable

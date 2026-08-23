@@ -31,8 +31,8 @@ export function todayBookingDate(now: Date): string {
 
 /**
  * Parse an ISO `YYYY-MM-DD` string to a UTC-anchored `Date` (midnight UTC of that civil day).
- * Anchoring in UTC keeps day arithmetic and re-formatting free of local-zone/DST shifts. Shared
- * so the map's `dateLabel` and `addOneDay` parse dates the one way.
+ * Anchoring in UTC keeps day arithmetic and re-formatting free of local-zone/DST shifts. Shared so
+ * every civil-day helper in this file parses dates the one way.
  */
 export function parseIsoDate(isoDate: string): Date {
   const [year, month, day] = isoDate.split('-').map(Number);

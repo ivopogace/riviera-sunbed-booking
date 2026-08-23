@@ -173,7 +173,7 @@ standing rules:
   #760; public, window-capped at the edge): I own the set total and therefore
   `free = total − taken` and the gap fill for days nobody has touched; `availability` answers
   the taken count per day through my `spi` (`SetAvailabilityLookup#takenCountsBetween`). The
-  path deliberately does not reuse the `/availability` segment above — that one is the
+  path deliberately does not reuse the `/availability` segment below — that one is the
   operator-only per-set state read, and sharing it would either publish the hold split or
   operator-gate the tourist read. The counts are a snapshot, never a hold: the claim still
   decides (invariant #2), and the read answers past days too, because it reports availability,
