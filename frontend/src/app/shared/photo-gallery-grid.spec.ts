@@ -48,4 +48,16 @@ describe('PhotoGalleryGrid', () => {
     const hero = el().querySelector('[data-testid="gallery-photo-0"]')!;
     expect(hero.getAttribute('aria-label')).toBe('View photo 1 of 2');
   });
+
+  it('letterboxes every tile over the placeholder gradient instead of cropping (an odd-aspect upload stays whole)', () => {
+    create(PHOTOS);
+    const hero = el().querySelector<HTMLButtonElement>('[data-testid="gallery-photo-0"]')!;
+    const tile = el().querySelector<HTMLButtonElement>('[data-testid="gallery-photo-1"]')!;
+    for (const button of [hero, tile]) {
+      expect(button.className).toContain('bg-(image:--riv-photo-grad)');
+      const img = button.querySelector('img')!;
+      expect(img.classList.contains('object-contain')).toBe(true);
+      expect(img.classList.contains('object-cover')).toBe(false);
+    }
+  });
 });
