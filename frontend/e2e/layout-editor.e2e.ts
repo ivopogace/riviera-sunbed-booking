@@ -181,8 +181,8 @@ test('generates a grid, paints a walk-in set, and saves the whole layout in one 
   await expect(page.getByTestId('layout-cell').first()).toHaveAttribute('data-state', 'walkin');
   await expect(page.getByTestId('layout-count-walkin')).toHaveText('1');
 
-  // #701's legend slot is empty here, so `:empty` must give its band no box at all.
-  await expect(page.getByRole('list', { name: 'Legend' })).toHaveCount(1); // the editor's own
+  // The tool rail's swatches are the legend now (#711); the canvas's tourist-only slot stays empty.
+  await expect(page.getByRole('list', { name: 'Legend' })).toHaveCount(0);
   const bandDisplay = await page
     .getByTestId('legend-band')
     .evaluate((el) => getComputedStyle(el).display);
@@ -282,14 +282,14 @@ test('holds both surfaces until the map read settles (#721)', async ({ page }) =
   holdMap();
   await tabs.getByRole('link', { name: 'Beach map' }).click();
 
-  // Bulk is the mode the tab opens in during the window, so Generate is one click from the layout.
+  // Generate lives on the rail regardless of the armed tool, so it's already visible during the window.
   const generate = page.getByTestId('layout-generate');
   // aria-disabled, never [disabled] — a disabled button blurs to <body> the instant it flips (#616).
   await expect(generate).toHaveAttribute('aria-disabled', 'true');
   expect(await generate.evaluate((el) => (el as HTMLButtonElement).disabled)).toBe(false);
   await expect(generate).toHaveText(/Loading the current layout/);
 
-  await page.getByTestId('layout-mode-sets').click();
+  await page.getByTestId('layout-tool-select').click();
   // The words live in the persistent announcer now; the skeleton beside it is decoration (#741).
   await expect(page.getByTestId('load-announcer')).toHaveText('Loading this venue’s sets…');
   await expect(page.getByTestId('set-loading')).toHaveAttribute('aria-hidden', 'true');
@@ -305,7 +305,7 @@ test('holds both surfaces until the map read settles (#721)', async ({ page }) =
   await expect(page.getByTestId('set-loading')).toHaveCount(0);
 
   // And the destructive path the window bypassed now asks first.
-  await page.getByTestId('layout-mode-bulk').click();
+  await page.getByTestId('layout-tool-premium').click();
   await expect(generate).not.toHaveAttribute('aria-disabled', 'true');
   await generate.click();
   await expect(page.getByTestId('layout-confirm-regen')).toBeVisible();
@@ -316,8 +316,8 @@ test('renames a row on a venue whose bulk save is locked (#726)', async ({ page 
   await page.goto('/operator/1');
   await signIn(page);
 
-  // A saved venue opens in per-set mode; reaching the bulk surface is free, only its SAVE is refused.
-  await page.getByTestId('layout-mode-bulk').click();
+  // A saved venue opens armed on Select; reaching the bulk surface is free, only its SAVE is refused.
+  await page.getByTestId('layout-tool-premium').click();
   await expect(page.getByTestId('layout-row-name')).toHaveCount(2);
 
   // The whole-layout save really is locked, which is the situation #726 exists for.
@@ -527,7 +527,7 @@ test('a drag-pannable map keeps its hidden scrollbar and its own hint wording', 
   await mockEditor(page, false, SEEDED_SETS);
   await page.goto('/operator/1');
   await signIn(page);
-  await page.getByTestId('layout-mode-sets').click();
+  await page.getByTestId('layout-tool-select').click();
   const viewport = page.getByTestId('set-grid');
   await expect(viewport).toBeVisible();
   await expect(viewport).toHaveCSS('scrollbar-width', 'none');

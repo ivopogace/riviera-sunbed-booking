@@ -198,7 +198,7 @@ test('a venue with sets opens in per-set editing, and one set’s pool + price s
 
   await expect(page).toHaveURL(/\/operator\/1\/beach-map/);
   await expect(page.getByTestId('set-editor')).toBeVisible();
-  await expect(page.getByTestId('layout-mode-sets')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('layout-tool-select')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('set-panel-empty')).toBeVisible();
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'per-set beach map editor');
@@ -369,11 +369,11 @@ test('the locked bulk save points at per-set editing instead of claiming it is i
   await page.goto('/operator/1');
   await signIn(page);
 
-  await page.getByTestId('layout-mode-bulk').click();
+  await page.getByTestId('layout-tool-premium').click();
   await page.getByTestId('layout-save').click();
 
   const message = page.getByTestId('layout-error');
-  await expect(message).toContainText(/Edit sets/i);
+  await expect(message).toContainText(/Select/i);
   await expect(message).not.toContainText(/not possible/i);
   // The advice must not offer a per-set remove that the same lock can itself refuse.
   await expect(message).not.toContainText(/or remove sets/i);
@@ -457,8 +457,8 @@ test('a set-less venue is pointed at the bulk generator, and adds its first set 
   await signIn(page);
 
   await expect(page).toHaveURL(/\/operator\/1\/beach-map/);
-  await expect(page.getByTestId('layout-mode-bulk')).toHaveAttribute('aria-pressed', 'true');
-  await page.getByTestId('layout-mode-sets').click();
+  await expect(page.getByTestId('layout-tool-premium')).toHaveAttribute('aria-pressed', 'true');
+  await page.getByTestId('layout-tool-select').click();
 
   await expect(page.getByTestId('set-panel-no-sets')).toBeVisible();
   await expect(page.getByTestId('set-panel-empty')).toHaveCount(0);

@@ -35,9 +35,21 @@ import { TouchTarget } from '../shared/touch-target';
 /** Which editing surface the tab is showing: the whole-map replace, or one set at a time. */
 type EditorMode = 'bulk' | 'sets';
 
+/** A tool-rail row: Select (arms {@link EditorMode} `'sets'`) or one of the four paint brushes
+ *  (arms `'bulk'` with that brush active). */
+type EditorTool = 'select' | CellState;
+
 /** One paint-grid row on the shared canvas's row contract, plus the cells the editor paints. */
 interface LayoutRow extends BeachMapCanvasRow {
   readonly cells: readonly { readonly state: CellState; readonly label: string }[];
+}
+
+/** One tool-rail row: Select carries no count, a brush carries its live cell count. */
+interface ToolRow {
+  readonly key: EditorTool;
+  readonly label: string;
+  readonly count: number | null;
+  readonly active: boolean;
 }
 
 const PREMIUM_PRICE: MoneyView = { minorUnits: 3500, currency: 'EUR' };
@@ -60,27 +72,30 @@ const SWATCH_CLASS: Record<CellState, string> = {
 };
 
 /**
- * The Beach-map tab — two editing surfaces behind one toggle, because the venue's own lifecycle
- * decides which one can work.
+ * The Beach-map tab — one canvas, one tool rail (#711), because the venue's own lifecycle decides
+ * which of two editing surfaces can work.
  *
- * <p><strong>Bulk layout</strong> is the original generate-grid + paint editor: an R×C grid in one
- * action (row A faces the sea, auto-priced front-row premium), tier/pool/gap painted per cell by
- * click or drag, saved through one owner-asserted `PUT …/beach-map`. That write is
- * reject-unless-unclaimed, so it works only while the venue has never been booked and carries no hold
- * dated today or later. A venue that has ever sold online answers `LAYOUT_IN_USE` permanently; a
- * walk-in-only venue whose marks are all history becomes replaceable again.
+ * <p>Arming a paint brush on the rail shows <strong>the bulk paint grid</strong>: an R×C grid
+ * generated in one action (row A faces the sea, auto-priced front-row premium), tier/pool/gap
+ * painted per cell by click or drag, saved through one owner-asserted `PUT …/beach-map`. That write
+ * is reject-unless-unclaimed, so it works only while the venue has never been booked and carries no
+ * hold dated today or later. A venue that has ever sold online answers `LAYOUT_IN_USE`
+ * permanently; a walk-in-only venue whose marks are all history becomes replaceable again.
  *
- * <p><strong>Edit sets</strong> ({@link SetEditor}) is what a live venue uses: the per-set U7
- * endpoints, which carry set-scoped claim guards instead of a venue-wide lock. The tab opens
- * in whichever mode the venue needs — per-set once it has saved sets, bulk while it is empty — and
- * the operator can override that; a per-set write makes this tab re-read the map and drop the shared
- * console snapshot, since the other tabs would otherwise render a set that no longer exists.
+ * <p>Arming Select shows <strong>{@link SetEditor}</strong> — what a live venue uses: the per-set U7
+ * endpoints, which carry set-scoped claim guards instead of a venue-wide lock. The rail opens armed
+ * on whichever tool the venue needs — Select once it has saved sets, the default brush while it is
+ * empty — and the operator can override that; a per-set write makes this tab re-read the map and
+ * drop the shared console snapshot, since the other tabs would otherwise render a set that no longer
+ * exists. Select's own panel keeps its current placement — the docked-inspector merge is epic #708's
+ * S3, not this slice.
  *
  * <p>Reads `:venueId` from the parent route (child routes don't inherit it). Cells are
  * real, individually-labelled `<button>`s so the grid is fully keyboard + AT operable (Enter/Space
- * paints with the active tool); drag-paint is the mouse affordance on top. Always porcelain (inherited
- * from the console shell); glass via {@link CardGlass}; money via {@link formatMoney} (invariant #5 —
- * the default prices are integer minor-unit EUR constants, editable later in the Pricing tab).
+ * paints with the active brush); drag-paint is the mouse affordance on top. Always porcelain
+ * (inherited from the console shell); glass via {@link CardGlass}; money via {@link formatMoney}
+ * (invariant #5 — the default prices are integer minor-unit EUR constants, editable later in the
+ * Pricing tab).
  */
 @Component({
   selector: 'app-layout-editor',
@@ -141,10 +156,11 @@ export class LayoutEditor {
   protected readonly renamedRow = signal<number | null>(null);
   /** The last per-row rename failure. `STALE_WRITE` never lands here — the reload banner owns it. */
   protected readonly rowNameError = signal<{ y: number; code: RowNameErrorCode } | null>(null);
-  /** The operator's explicit mode choice, or null while the venue's own state decides. */
-  private readonly chosenMode = signal<EditorMode | null>(null);
-  /** The active paint tool. */
-  protected readonly activeTool = signal<CellState>('premium');
+  /** The operator's explicit tool-rail choice, or null while the venue's own state decides. */
+  private readonly armedTool = signal<EditorTool | null>(null);
+  /** The brush painting will use once a brush is (re-)armed — survives arming Select, so
+   *  switching back to painting resumes on the last brush rather than resetting to premium. */
+  protected readonly activeBrush = signal<CellState>('premium');
 
   /** True while the save PUT is in flight (button disabled, no double submit). */
   protected readonly saving = signal(false);
@@ -183,11 +199,17 @@ export class LayoutEditor {
   protected readonly reading = signal(false);
 
   /**
-   * The mode actually shown: the operator's choice once made, otherwise the one the venue needs — a
-   * venue with saved sets can only be edited per-set, an empty one has nothing to edit yet.
+   * The tool actually armed on the rail: the operator's choice once made, otherwise the one the
+   * venue needs — a venue with saved sets opens on Select (nothing to paint yet is misleading),
+   * an empty one opens on the active brush.
    */
-  protected readonly mode = computed<EditorMode>(
-    () => this.chosenMode() ?? (this.loadedSets().length > 0 ? 'sets' : 'bulk'),
+  protected readonly resolvedTool = computed<EditorTool>(
+    () => this.armedTool() ?? (this.loadedSets().length > 0 ? 'select' : this.activeBrush()),
+  );
+
+  /** The surface the armed tool implies: Select opens the set-editor, any brush opens the paint grid. */
+  protected readonly mode = computed<EditorMode>(() =>
+    this.resolvedTool() === 'select' ? 'sets' : 'bulk',
   );
 
   /** Whether a grid exists (drives the empty-state vs the grid + save button). */
@@ -255,15 +277,23 @@ export class LayoutEditor {
     })),
   );
 
-  /** The four paint tools with live cell counts (design order). */
-  protected readonly tools = computed(() => {
+  /** The tool rail: Select first, then the four paint brushes with live cell counts (design order). */
+  protected readonly tools = computed<readonly ToolRow[]>(() => {
     const counts = this.counts();
-    return (['premium', 'standard', 'walkin', 'gap'] as const).map((key) => ({
+    const resolved = this.resolvedTool();
+    const select: ToolRow = {
+      key: 'select',
+      label: 'Select',
+      count: null,
+      active: resolved === 'select',
+    };
+    const brushes: ToolRow[] = (['premium', 'standard', 'walkin', 'gap'] as const).map((key) => ({
       key,
       label: TOOL_LABEL[key],
       count: counts[key],
-      active: this.activeTool() === key,
+      active: resolved === key,
     }));
+    return [select, ...brushes];
   });
 
   private readonly counts = computed(() => {
@@ -293,9 +323,9 @@ export class LayoutEditor {
     this.rowNames.set([]);
     this.storedRowNames.set([]);
     this.loadedSets.set([]);
-    this.chosenMode.set(null);
+    this.armedTool.set(null);
     this.priceByCoord.clear();
-    this.activeTool.set('premium');
+    this.activeBrush.set('premium');
     this.saving.set(false);
     this.savedNotice.set(false);
     this.errorCode.set(undefined);
@@ -310,10 +340,15 @@ export class LayoutEditor {
     this.loadExisting(venueId);
   }
 
-  // ---- Mode ----
+  // ---- Tool rail ----
 
-  protected chooseMode(mode: EditorMode): void {
-    this.chosenMode.set(mode);
+  /** Arm a rail row: Select switches to the set-editor surface; a brush arms painting and
+   *  switches to the paint grid, remembering itself as {@link activeBrush}. */
+  protected armTool(tool: EditorTool): void {
+    this.armedTool.set(tool);
+    if (tool !== 'select') {
+      this.activeBrush.set(tool);
+    }
   }
 
   /**
@@ -324,7 +359,7 @@ export class LayoutEditor {
    * <p><strong>Clearing the bulk draft is the load-bearing part.</strong> {@link seedFrom} refuses to
    * overwrite a grid that already has content, so without this the bulk grid would stay frozen at the
    * map as it was when the tab opened. Per-set writes do not bump `set_version`, so the token stays
-   * valid — and switching to Bulk layout would then offer a Save that the server accepts and that
+   * valid — and arming a brush would then offer a Save that the server accepts and that
    * silently reverts the operator's own per-set edits. An unsaved paint is a draft; a per-set write is
    * already committed, so the committed state wins.
    */
@@ -380,6 +415,7 @@ export class LayoutEditor {
   }
 
   private generateNow(): void {
+    this.armTool(this.activeBrush()); // a freshly generated grid needs the paint surface, not Select
     this.priceByCoord.clear(); // a fresh grid → tier-default prices, no carried-over set prices
     const rows = clampGrid(this.genRows(), 1, MAX_ROWS);
     const cols = clampGrid(this.genCols(), 1, MAX_COLS);
@@ -508,18 +544,14 @@ export class LayoutEditor {
 
   // ---- Paint (click + drag; keyboard via the button's native click) ----
 
-  protected selectTool(tool: CellState): void {
-    this.activeTool.set(tool);
-  }
-
   /** The Tailwind background classes for a paint-tool swatch. */
   protected swatchClass(tool: CellState): string {
     return SWATCH_CLASS[tool];
   }
 
-  /** Paint one cell with the active tool — the keyboard/click path (Enter/Space fire the button click). */
+  /** Paint one cell with the active brush — the keyboard/click path (Enter/Space fire the button click). */
   protected paintCell(r: number, c: number): void {
-    const tool = this.activeTool();
+    const tool = this.activeBrush();
     this.grid.update((g) =>
       g.map((row, ri) => (ri !== r ? row : row.map((cell, ci) => (ci !== c ? cell : tool)))),
     );
@@ -624,7 +656,7 @@ export class LayoutEditor {
       case undefined:
         return undefined;
       case 'LAYOUT_IN_USE':
-        return 'This venue has been booked at least once, or some of its sets are still held, so replacing the whole layout is locked. Switch to Edit sets to add and change sets one at a time — though any set that is held or has ever been booked can’t be removed there either.';
+        return 'This venue has been booked at least once, or some of its sets are still held, so replacing the whole layout is locked. Arm Select on the tool rail to add and change sets one at a time — though any set that is held or has ever been booked can’t be removed there either.';
       case 'EMPTY_LAYOUT':
         return 'Add at least one set before saving.';
       case 'LAYOUT_TOO_LARGE':

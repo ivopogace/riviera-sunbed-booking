@@ -129,8 +129,8 @@ test.describe('44px touch targets at a phone width', () => {
 
   test('operator console — beach map, bulk paint mode', async ({ page }) => {
     await openConsoleTab(page, 'beach-map');
-    await expect(page.getByTestId('layout-mode-bulk')).toBeVisible();
-    await page.getByTestId('layout-mode-bulk').click();
+    await expect(page.getByTestId('layout-tool-premium')).toBeVisible();
+    await page.getByTestId('layout-tool-premium').click();
 
     // Without a scroller the frame clips the far columns, which a size sweep alone cannot see.
     await expectNoClippedCells(page, 'layout-grid');

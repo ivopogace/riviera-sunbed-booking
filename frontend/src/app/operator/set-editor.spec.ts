@@ -663,7 +663,7 @@ describe('SetEditor (#600)', () => {
 
     expect(skeletonTiles()).toHaveLength(0); // a settled read: emptiness is now a fact, not a default
     expect(byId('set-panel-empty')).toBeFalsy();
-    expect(byId('set-panel-no-sets').textContent).toContain('Bulk layout');
+    expect(byId('set-panel-no-sets').textContent).toContain('tool rail');
     // The grid never empties here (rowCount/colCount clamp to at least 1x1), so the map IS the way in.
     expect(cells()).toHaveLength(1);
 
