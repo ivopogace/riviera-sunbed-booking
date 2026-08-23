@@ -205,10 +205,12 @@ AC-4).
 
 ## Execution status
 
-**Stage pointer:** review gate ran, 3 findings fixed (F-1..F-3). Sonar gate + CI
-pending on PR #770.
+**Stage pointer:** merge close-out — DONE. CI green (Backend, Frontend, CodeQL x2,
+Repo hygiene, SonarCloud scan x2 all `success`), Sonar quality gate passed (0 new
+issues, 0 accepted issues, 0 security hotspots, 0.0% duplication, 87.9% coverage on
+new code), review gate ran with 3 findings fixed (F-1..F-3). Merging via PR #770.
 
-**Next action:** await CI, pull the Sonar issue list, then the merge close-out.
+**Next action:** none — merged via PR #770.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -354,13 +356,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1..AC-6:** verified — `npm test -- --watch=false` (1808/1808, incl. the new
+- [x] **AC-1..AC-6:** verified — `npm test -- --watch=false` (1810/1810, incl. the new
       `SetEditor.spec.ts`/`LayoutEditor.spec.ts` specs for the dock, Close/Escape,
-      focus-to-tile, dirty count, latest-change description, last-saved, discard, and
-      notices-in-bar), `npm run test:a11y` (392/392), and the mocked Playwright suite
-      (`layout-editor.e2e.ts` 10/10, `operator-set-editing.e2e.ts` 8/8,
+      focus-to-tile (incl. the F-2 external-collapse case), dirty count, latest-change
+      description, last-saved, discard (incl. the F-3 rename-survives-discard case),
+      and notices-in-bar), `npm run test:a11y` (392/392), and the mocked Playwright
+      suite (`layout-editor.e2e.ts` 10/10, `operator-set-editing.e2e.ts` 8/8,
       `touch-targets.e2e.ts` 19/19, full suite 104/104) — all green, axe clean. `npm run
-      lint` and `npm run format:check` clean.
+      lint` and `npm run format:check` clean. PR #770's own CI confirmed green at
+      `1b75663`: Backend, Frontend, Repo hygiene, CodeQL (x2), and SonarCloud scan (x2)
+      all `success`.
 
 ## Self-review checklist (before merge / PR)
 
@@ -381,5 +386,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an
       issue #).
-- [ ] **Close-out written in THIS PR.** — pending: merge close-out not yet run.
-- [ ] **The review gate ran in full.** — pending: `/code-review` not yet run.
+- [x] **Close-out written in THIS PR.** — final state committed here, in this PR's
+      last commit before merge, citing `merged via PR #770` (below) — no docs-only
+      follow-up PR needed.
+- [x] **The review gate ran in full.** — `/code-review origin/main...HEAD` plus
+      `riviera-review-overlay`'s FE bank ran over the diff. Three findings (F-1..F-3)
+      fixed and re-verified. **Sonar gate: passed** — 0 new issues, 0 accepted issues,
+      0 security hotspots, 0.0% duplication on new code, 87.9% coverage on new code
+      (SonarCloud bot comment on PR #770, 2026-08-23T16:11Z).
+
+**Merged via PR #770.**
