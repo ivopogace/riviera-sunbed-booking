@@ -93,7 +93,7 @@ branch stands in for `feature/editor-shell-s6-batch-select`).
 
 | Old-surface behavior | Verdict | How the new surface does it, or why it's gone |
 |---|---|---|
-| A mouse drag on the per-set grid pans the map (`dragPan` default `true`; #676) | **changed** | Select's own drag gesture is now the rectangle sweep, exactly the precedent `LayoutEditor`'s paint brush already set (`[dragPan]="false"` there too, #672). Panning by mouse-drag is no longer available while Select is armed; native touch/trackpad scrolling and the canvas's own horizontal scrollbar (shown whenever `dragPan` is off, per `BeachMapCanvas.scrollbarChrome`) remain. The superseded e2e (`a mostly-vertical drag pans the map but never selects the set-cell under the release (#676)`) is rewritten to assert the sweep instead. |
+| A mouse drag on the per-set grid pans the map (`dragPan` default `true`; #676) | **changed** | Select's own drag gesture is now the rectangle sweep, exactly the precedent `LayoutEditor`'s paint brush already set (`[dragPan]="false"` there too, #672). Panning by mouse-drag is no longer available while Select is armed; native touch/trackpad scrolling and the canvas's own slim scrollbar (shown whenever `dragPan` is off, per `BeachMapCanvas.scrollbarChrome`) remain. Two superseded e2e specs are rewritten to assert the new behavior instead: `operator-set-editing.e2e.ts`'s drag-pans test (now a sweep test) and `layout-editor.e2e.ts`'s `a drag-pannable map keeps its hidden scrollbar and its own hint wording` (now asserts the same `scrollbar-width: thin` + `cursor: auto` chrome the bulk paint grid already carries) — the latter was caught only by CI (#772), not the local scoped run, since it lived in a sibling spec file the initial change didn't touch. |
 
 ## Risk register
 
@@ -216,6 +216,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-23 | Phase 0 | Every spec that renders `SetEditor` and must now supply the new required `expectedVersion` input | `git grep -n "function render(" frontend/src/app/operator/set-editor*.spec.ts` | 2 (`set-editor.spec.ts`, `set-editor.a11y.spec.ts`) | both fixed in this phase's commit |
+| 2026-08-23 | PR #772 CI (`layout-editor.e2e.ts:613` failed: expected `scrollbar-width: none`, got `thin`) | Every e2e assertion on the per-set canvas (`data-testid="set-grid"`) that still asserts the OLD `dragPan=true` chrome (hidden scrollbar / grab cursor), now that Select's canvas is `[dragPan]="false"` | `grep -rn "set-grid'" frontend/e2e frontend/src` then manually checked each hit for a scrollbar/cursor assertion | 1 (`layout-editor.e2e.ts`'s `a drag-pannable map keeps its hidden scrollbar…` test; the two other `set-grid` hits — `touch-targets.e2e.ts`, `set-editor.spec.ts` — assert only visibility/cell-count, not chrome) | rewritten to assert the new `scrollbar-width: thin` / `cursor: auto` chrome; verified locally (`layout-editor.e2e.ts` 12/12, `touch-targets*.e2e.ts` 32/32) before push |
 
 ---
 
