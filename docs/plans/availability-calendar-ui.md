@@ -271,10 +271,10 @@ a grid of buttons, not a field. Deviation from the `@angular/aria` recommendatio
 
 ## Execution status
 
-**Stage pointer:** `review gate — fixing findings (round 1 applied; fan-out still reporting)`
+**Stage pointer:** `sonar gate — round 1 fixed, awaiting re-analysis`
 
-**Next action:** collect the remaining fan-out lenses, apply any surviving findings, then pull the
-Sonar new-issue list for the PR and clear it.
+**Next action:** re-pull the Sonar list on the new head and confirm it is empty; collect the
+remaining fan-out lenses and apply any surviving findings.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -298,6 +298,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-3 | review (`/code-review`) | The capacity bar also painted on the **selected** day, where its track and fill sit on the accent at ≈2.1:1 and ≈1.5:1 — under the 3:1 the contrast spec enforces everywhere else, and untested because the spec never checked `CALENDAR_SELECTED` for the bar. | fixed — no bar on the chosen day (its count is on the page behind and in its accessible name); the contrast spec now **asserts** the ratios are too low, so a future accent change fails loudly |
 | F-4 | review (`/code-review`) | `discover-photos.e2e.ts`'s focus-ring assertion now targets a `<button>` after a programmatic `.focus()`; `:focus-visible` may not match as it did for the old `<input>`. | **not a defect** — the assertion is non-vacuous by construction (`toHaveCSS('outline-width','3px')` fails at `0px` if the ring is absent) and it passes both locally and in CI on the pushed head. No change. |
 | F-5 | review (`/code-review`) | `isSameMonth` was exported from `shared/booking-date.ts` with no caller outside its own spec. | fixed — removed, with its spec |
+| F-6 | sonar (`Web:S6819`, MAJOR) | `role="dialog"` on a `<div>` — the rule asks for the native element. | fixed — the panel is a real `<dialog open tabindex="-1">`. **Not** `showModal()`: jsdom 29 implements neither it nor the top layer, so the 193 unit specs would be testing a fiction; the app's own `trapFocusWithin` still runs, exactly as in the three sibling modals. A deliberate divergence from those three (they are `<div role="dialog">`), and a precedent for migrating them. |
+| F-7 | sonar (`Web:S6819`, MAJOR) | `role="status"` on a `<p>` — the rule asks for `<output>`, which carries that role implicitly. | fixed — `<output class="block">`. |
+| F-8 | sonar (`typescript:S7766`, MINOR) | "Prefer `Math.max()`" on the opening-focus ternary. The suggestion is literally wrong for ISO **strings** (`Math.max` coerces to `NaN`), but the shape it flags was a max hiding a domain rule. | fixed by expressing the rule instead: an `isBookable(iso)` predicate now names invariant #4's display side and is reused by the grid computation, which had inlined the same comparison. |
 
 ---
 

@@ -1,6 +1,9 @@
-<div
-  class="riv-calendar-pop mt-2 w-full max-w-[352px] animate-[riv-pop_0.2s_ease] rounded-[22px] border border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.97)] p-4 text-[#0a2a33] shadow-[0_24px_58px_rgba(6,30,40,0.42),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none"
-  role="dialog"
+<!-- A real <dialog>, opened declaratively: showModal() would give a native trap and the top layer,
+     but jsdom has neither, so the unit suite would be testing a fiction. The app's own trap runs. -->
+<dialog
+  open
+  tabindex="-1"
+  class="riv-calendar-pop m-0 w-full max-w-[352px] animate-[riv-pop_0.2s_ease] rounded-[22px] border border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.97)] p-4 text-[#0a2a33] shadow-[0_24px_58px_rgba(6,30,40,0.42),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none"
   aria-modal="true"
   aria-label="Choose a booking date"
   data-testid="availability-calendar"
@@ -105,17 +108,16 @@
   </table>
 
   @if (countsFailed()) {
-    <p
-      class="mt-2 text-[11.5px] leading-[1.4] text-[rgba(12,42,51,0.78)]"
+    <output
+      class="mt-2 block text-[11.5px] leading-[1.4] text-[rgba(12,42,51,0.78)]"
       data-testid="calendar-counts-failed"
-      role="status"
     >
       How busy each day is could not be loaded — you can still pick any day.
-    </p>
+    </output>
   } @else {
     <p class="mt-2 text-[11.5px] leading-[1.4] text-[rgba(12,42,51,0.78)]">
       The bar under each day is how many sets were free when this was read — a picture of the day,
       not a hold. A set is yours only once you book it.
     </p>
   }
-</div>
+</dialog>

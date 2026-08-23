@@ -112,10 +112,15 @@ export class AvailabilityCalendar {
   private readonly venues = inject(VenueService);
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  /** The roving-tabindex position. Arrow keys move it; only Enter/Space/click commits a choice. */
-  private readonly focusedDate = linkedSignal(() =>
-    this.selectedDate() < this.minDate() ? this.minDate() : this.selectedDate(),
-  );
+  /**
+   * The roving-tabindex position. Arrow keys move it; only Enter/Space/click commits a choice.
+   * It opens on the chosen day, or on the floor when that day can no longer be booked — a carried
+   * `?date=` is already clamped upstream, so this is the guard rather than the usual path.
+   */
+  private readonly focusedDate = linkedSignal(() => {
+    const selected = this.selectedDate();
+    return this.isBookable(selected) ? selected : this.minDate();
+  });
 
   /**
    * Bumped whenever focus should follow {@link focusedDate} into the grid. Month navigation by
@@ -137,9 +142,13 @@ export class AvailabilityCalendar {
     () => this.visibleMonth() <= startOfMonth(this.minDate()),
   );
 
+  /** Whether `iso` is a day this venue can still be booked for (invariant #4, display side). */
+  private isBookable(iso: string): boolean {
+    return iso >= this.minDate();
+  }
+
   protected readonly weeks = computed<readonly (CalendarCell | undefined)[][]>(() => {
     const counts = this.counts();
-    const minDate = this.minDate();
     const selected = this.selectedDate();
     const focused = this.focusedDate();
     return monthWeeks(this.visibleMonth()).map((week) =>
@@ -148,7 +157,7 @@ export class AvailabilityCalendar {
           return undefined;
         }
         const day = counts.get(iso);
-        const selectable = iso >= minDate;
+        const selectable = this.isBookable(iso);
         const state = selectable ? dayAvailabilityState(day) : 'unknown';
         const isSelected = iso === selected;
         return {

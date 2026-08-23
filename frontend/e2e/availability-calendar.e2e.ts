@@ -104,7 +104,9 @@ test('opens on the map’s day, tints the month, and is clean to axe', async ({ 
   const dialog = await openCalendar(page);
 
   await expect(trigger(page)).toHaveAttribute('aria-expanded', 'true');
-  await expect(dialog).toHaveAttribute('role', 'dialog');
+  // A native <dialog> carries the role implicitly; assert through the role, not the attribute.
+  await expect(dialog).toHaveJSProperty('tagName', 'DIALOG');
+  await expect(page.getByRole('dialog')).toBeVisible();
   await expect(dialog).toHaveAttribute('aria-modal', 'true');
 
   // The counts reach the accessible name as integers, which is what a screen reader gets (#761).
