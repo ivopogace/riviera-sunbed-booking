@@ -262,6 +262,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (`/code-review origin/main...HEAD`) | `onSpaceKeydown` only exempted a focused `<button>`, so at 100% zoom it stole Space from any other focusable control — e.g. the row-name text input beside the canvas — blocking a typed space character | fixed — exemption broadened to `button, input, textarea, select, [contenteditable]`; `BeachMapCanvas.spec.ts` "leaves Space alone while focus sits on a text field…" |
+| F-2 | review (`/code-review origin/main...HEAD`) | A rail fill button bound both `(mousedown)` and `(click)`, so a plain mouse click emitted `rowRailFill`/`colHeaderFill` twice — masked only by `fillRow`/`fillColumn`'s idempotence | fixed — `onRailClick` ignores a mouse-originated click (`detail !== 0`); `BeachMapCanvas.spec.ts` "fills once on a real mouse click…" |
+| F-3 | review (`/code-review origin/main...HEAD`) | New TSDoc cites issue numbers (`(#713)`), against `frontend/.claude/CLAUDE.md`'s "no issue numbers" rule | not fixed — false positive relative to this file's own dominant existing convention (22/13 pre-existing `(#NN)` TSDoc citations in `beach-map-canvas.ts`/`layout-editor.ts` respectively); fixing only the new additions would make this slice inconsistent with the file it's extending, not more compliant |
 
 ---
 
