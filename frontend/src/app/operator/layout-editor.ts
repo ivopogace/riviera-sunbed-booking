@@ -144,7 +144,7 @@ export class LayoutEditor {
    *  Space-drag pan at 100% zoom never also paints the cell it starts on. */
   private readonly canvas = viewChild(BeachMapCanvas);
   /** The tool-rail chips, in rail order — scrolled into view on arm so the armed tool is visible
-   *  without the operator having to scroll the mobile chip strip manually (#715, mirrors #710). */
+   *  without the operator having to scroll the mobile chip strip manually. */
   private readonly toolChips = viewChildren<ElementRef<HTMLButtonElement>>('toolChip');
 
   /** The venue this editor manages, from the parent `/operator/:venueId` route (undefined if

@@ -129,6 +129,7 @@
           <div
             class="mx-auto mb-2 h-[5px] w-10 shrink-0 touch-none rounded-full bg-(--riv-card-border) lg:hidden"
             aria-hidden="true"
+            data-touch-exempt="a supplementary swipe affordance, not the only way to dismiss — the sheet also closes via the full-size Close button, the backdrop, and Escape"
             data-testid="sheet-handle"
             (pointerdown)="onSheetDragStart($event)"
             (pointermove)="onSheetDragMove($event)"
@@ -279,6 +280,7 @@
           <div
             class="mx-auto mb-2 h-[5px] w-10 shrink-0 touch-none rounded-full bg-(--riv-card-border) lg:hidden"
             aria-hidden="true"
+            data-touch-exempt="a supplementary swipe affordance, not the only way to dismiss — the sheet also closes via the full-size Close button, the backdrop, and Escape"
             data-testid="sheet-handle"
             (pointerdown)="onSheetDragStart($event)"
             (pointermove)="onSheetDragMove($event)"

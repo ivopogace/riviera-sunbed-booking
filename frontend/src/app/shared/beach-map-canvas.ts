@@ -198,7 +198,7 @@ export class BeachMapCanvas {
    * Reserves this much top padding inside the pannable viewport (`overflow-y: hidden`), so a cell
    * that visually lifts on selection — the per-set editor's `-translate-y-1` — has somewhere to go
    * that isn't clipped. 0 by default: only the per-set editor's cells ever transform on select, so
-   * every other consumer keeps today's flush-to-the-top row A byte-for-byte (#715).
+   * every other consumer keeps today's flush-to-the-top row A byte-for-byte.
    */
   readonly cellLiftHeadroomPx = input<number>(0);
   /** Fit is the existing measured-to-width sizing (#709, unchanged); 100% pins tiles to
