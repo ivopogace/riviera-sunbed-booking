@@ -364,7 +364,30 @@ describe('VenueMap', () => {
     expect(el().textContent).not.toContain('coming soon');
   });
 
-  it('cycles the banner slideshow through every occupied slot with its own controls', async () => {
+  it('cycles the banner slideshow through its own controls when only one photo is set', async () => {
+    venueRequest().flush({
+      ...miramar(),
+      photos: ['/api/venues/1/photos/bb02'],
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const band = el().querySelector('.photo-band')!;
+    const slides = band.querySelectorAll<HTMLImageElement>(
+      '[data-testid="map-banner-img"], [data-testid="map-banner-slide-img"]',
+    );
+    expect(slides.length).toBe(1);
+    // The service resolves each wire path against the API origin.
+    expect(slides[0].getAttribute('src')).toBe(
+      `${environment.apiBaseUrl}/api/venues/1/photos/bb02`,
+    );
+
+    // A single photo has nothing to step through — no controls, no dots.
+    expect(band.querySelector('[data-testid="map-banner-next"]')).toBeNull();
+    expect(band.querySelectorAll('[data-testid="map-banner-dots"] span').length).toBe(0);
+  });
+
+  it('renders the wide gallery grid instead of the header band once 2+ photos are set', async () => {
     venueRequest().flush({
       ...miramar(),
       photos: [
@@ -376,26 +399,15 @@ describe('VenueMap', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const band = el().querySelector('.photo-band')!;
-    const slides = band.querySelectorAll<HTMLImageElement>(
-      '[data-testid="map-banner-img"], [data-testid="map-banner-slide-img"]',
-    );
-    expect(slides.length).toBe(3);
-    // The service resolves each wire path against the API origin.
-    expect(slides[0].getAttribute('src')).toBe(
-      `${environment.apiBaseUrl}/api/venues/1/photos/bb02`,
-    );
-    expect(band.querySelectorAll('[data-testid="map-banner-dots"] span').length).toBe(3);
+    // The header keeps its narrower shell — no in-header photo band once the grid takes over.
+    expect(el().querySelector('.photo-band')).toBeNull();
 
-    // The band hosts its own labelled controls (it is no link), outside the aria-hidden imagery.
-    const next = band.querySelector<HTMLButtonElement>('[data-testid="map-banner-next"]')!;
-    expect(next.getAttribute('aria-label')).toBe('Next photo, Miramar Beach Club');
-    expect(next.closest('[aria-hidden="true"]')).toBeNull();
-
-    next.click();
-    fixture.detectChanges();
-    expect(slides[0].classList.contains('opacity-0')).toBe(true);
-    expect(slides[1].classList.contains('opacity-0')).toBe(false);
+    const hero = el().querySelector<HTMLImageElement>('[data-testid="gallery-hero"]')!;
+    const tiles = el().querySelectorAll<HTMLImageElement>('[data-testid="gallery-tile"]');
+    expect(hero.getAttribute('src')).toBe(`${environment.apiBaseUrl}/api/venues/1/photos/bb02`);
+    expect(tiles.length).toBe(2);
+    expect(tiles[0].getAttribute('src')).toBe(`${environment.apiBaseUrl}/api/venues/1/photos/cc03`);
+    expect(tiles[1].getAttribute('src')).toBe(`${environment.apiBaseUrl}/api/venues/1/photos/dd04`);
   });
 
   it('marks the premium front row and the taken sets distinctly', async () => {

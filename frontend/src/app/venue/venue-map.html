@@ -3,6 +3,11 @@
     type="button"
     appTouchTarget
     class="back-pill inline-flex items-center gap-2 text-(--riv-ink) text-[14px] font-semibold cursor-pointer px-3.5 py-2 rounded-full mb-4 [transition:filter_0.15s_ease] hover:brightness-[0.96] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-white focus-visible:outline-offset-2"
+    [class]="
+      (venueView()?.photos?.length ?? 0) >= 2
+        ? 'min-[1280px]:[margin-inline-start:calc((100%_-_1100px)/2)]'
+        : ''
+    "
     appPanelGlass
     (click)="onBack()"
   >
@@ -11,111 +16,139 @@
 
   @if (venueView(); as v) {
     <article aria-labelledby="venue-name">
+      @if (v.photos.length >= 2) {
+        <!-- Same 1100px breakout as the beach map (#700), only once 2+ photos can fill it. -->
+        <app-photo-gallery-grid
+          [photos]="v.photos"
+          class="mb-[18px] block min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
+        />
+      }
       <header
         class="map-head text-(--riv-ink) px-[22px] py-5 rounded-[26px] overflow-hidden shadow-[0_14px_44px_rgba(7,42,58,0.26),inset_0_1px_0_rgba(255,255,255,0.25)]"
+        [class]="v.photos.length >= 2 ? 'min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]' : ''"
         appPanelGlass
       >
-        <!-- The photos LEAD the identity card (#704): what the beach looks like is this product's strongest booking motivator, so the band is a media header — full-bleed to the panel's edges (negative margins against its own padding, top corners clipped by its radius) — instead of a strip nested inside the availability card, which mixed trust content with status and undersized the trust half. It still sits ABOVE the grid card's "Facing the sea" banner, keeping the v3 design's spatial order: sea ↑ / promenade ↓. The imagery is decorative (the slideshow hides it from AT); only the step buttons are exposed, so the band itself is NOT aria-hidden. -->
-        <div
-          class="photo-band relative -mx-[22px] -mt-5 mb-[18px] h-[150px] min-[1024px]:h-[264px] overflow-hidden bg-(image:--riv-photo-grad)"
-        >
-          <app-photo-slideshow
-            [photos]="v.photos"
-            [name]="v.name"
-            testId="map-banner"
-            ownControls
-          />
-          @if (v.photos.length === 0) {
-            <!-- A deliberate warm sun over the sea gradient, its stops OPAQUE on purpose: the earlier translucent disc composited against the cyan beneath it and landed as a flat pale-green blob (#704). The glow stays translucent — a halo is meant to take the sea's colour. -->
-            <span
-              aria-hidden="true"
-              data-testid="map-banner-empty"
-              class="absolute top-[42%] left-1/2 size-[68px] min-[1024px]:size-[96px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_38%_30%,#fff6da_0%,#ffd97a_42%,#f6b23f_76%,#e89a26_100%)] shadow-[0_0_44px_14px_rgba(255,199,105,0.4)]"
-            ></span>
-          }
-          <span aria-hidden="true" class="absolute inset-0 bg-(image:--riv-photo-scrim)"></span>
-        </div>
-
-        <!-- The SEMANTIC pair (#705): this chip and the "New" chip below wear the same inverted accent pill they wear on the Discover cards, which is what makes the family readable across both surfaces. Its opaque fill replaces the --riv-chip-bg tint that had to be composited over this panel's glass, per theme. -->
-        <p appSemanticChip class="inline-block text-[0.78rem] px-3 py-[5px] mb-[13px]">
-          {{ v.modeLabel }}
-        </p>
-        <h1
-          id="venue-name"
-          class="font-bold text-[clamp(32px,5vw,48px)] leading-[1.02] tracking-[-0.02em] mb-[7px] [text-shadow:var(--riv-hero-shadow)]"
-        >
-          {{ v.name }}
-        </h1>
-        <p class="mb-[5px] text-(--riv-ink-soft) text-[15px]">{{ v.beach }} · {{ v.region }}</p>
-
-        <p class="flex items-center flex-wrap gap-[7px] text-[14px] text-(--riv-ink-soft)">
-          @if (v.isRated) {
-            <span class="text-[#ffd16b]" aria-hidden="true">★</span>
-            <span class="font-bold text-(--riv-ink)" aria-label="Rated {{ v.rating }} out of 5">{{
-              v.rating
-            }}</span>
-            <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span>
-            {{ v.reviewsCount }} reviews
-          } @else {
-            <span
-              appSemanticChip
-              class="inline-block text-[0.78rem] px-3 py-[3px]"
-              aria-label="No reviews yet"
-              data-testid="new-chip"
-              >New</span
-            >
-          }
-          @if (v.priceLabel; as price) {
-            <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span> from
-            <strong class="font-bold text-(--riv-ink)">{{ price }}</strong> / set
-          }
-        </p>
-
-        @if (v.description) {
-          <p
-            class="description mt-[9px] max-w-[540px] text-(--riv-ink-soft) text-[14.5px] leading-[1.5] text-pretty"
+        @if (v.photos.length < 2) {
+          <!-- The photos LEAD the identity card (#704): what the beach looks like is this product's strongest booking motivator, so the band is a media header — full-bleed to the panel's edges (negative margins against its own padding, top corners clipped by its radius) — instead of a strip nested inside the availability card, which mixed trust content with status and undersized the trust half. It still sits ABOVE the grid card's "Facing the sea" banner, keeping the v3 design's spatial order: sea ↑ / promenade ↓. The imagery is decorative (the slideshow hides it from AT); only the step buttons are exposed, so the band itself is NOT aria-hidden. -->
+          <div
+            class="photo-band relative -mx-[22px] -mt-5 mb-[18px] h-[150px] min-[1024px]:h-[264px] overflow-hidden bg-(image:--riv-photo-grad)"
           >
-            {{ v.description }}
-          </p>
+            <app-photo-slideshow
+              [photos]="v.photos"
+              [name]="v.name"
+              testId="map-banner"
+              ownControls
+            />
+            @if (v.photos.length === 0) {
+              <!-- A deliberate warm sun over the sea gradient, its stops OPAQUE on purpose: the earlier translucent disc composited against the cyan beneath it and landed as a flat pale-green blob (#704). The glow stays translucent — a halo is meant to take the sea's colour. -->
+              <span
+                aria-hidden="true"
+                data-testid="map-banner-empty"
+                class="absolute top-[42%] left-1/2 size-[68px] min-[1024px]:size-[96px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_38%_30%,#fff6da_0%,#ffd97a_42%,#f6b23f_76%,#e89a26_100%)] shadow-[0_0_44px_14px_rgba(255,199,105,0.4)]"
+              ></span>
+            }
+            <span aria-hidden="true" class="absolute inset-0 bg-(image:--riv-photo-scrim)"></span>
+          </div>
         }
 
-        <!-- To-water chip first, then the FULL amenity row in catalogue order. The header is real (not aria-hidden) content, so the chip text is read directly; the slot collapses (:empty) when the venue states neither. -->
-        <div class="flex flex-wrap gap-[7px] mt-[14px] empty:hidden" data-testid="venue-chips">
-          @if (v.water; as water) {
-            <span appAmenityChip water>{{ water }}</span>
-          }
-          @for (amenity of v.amenities; track amenity.code) {
-            <span appAmenityChip>{{ amenity.label }}</span>
-          }
-        </div>
+        <!-- 1100px header (2+ photos, #700) goes two-column so the date field fills the width. -->
+        <div
+          [class]="
+            v.photos.length >= 2
+              ? 'min-[1280px]:grid min-[1280px]:grid-cols-[1fr_260px] min-[1280px]:items-start min-[1280px]:gap-10'
+              : ''
+          "
+        >
+          <div>
+            <!-- The SEMANTIC pair (#705): this chip and the "New" chip below wear the same inverted accent pill they wear on the Discover cards, which is what makes the family readable across both surfaces. Its opaque fill replaces the --riv-chip-bg tint that had to be composited over this panel's glass, per theme. -->
+            <p appSemanticChip class="inline-block text-[0.78rem] px-3 py-[5px] mb-[13px]">
+              {{ v.modeLabel }}
+            </p>
+            <h1
+              id="venue-name"
+              class="font-bold text-[clamp(32px,5vw,48px)] leading-[1.02] tracking-[-0.02em] mb-[7px] [text-shadow:var(--riv-hero-shadow)]"
+            >
+              {{ v.name }}
+            </h1>
+            <p class="mb-[5px] text-(--riv-ink-soft) text-[15px]">{{ v.beach }} · {{ v.region }}</p>
 
-        <p class="mt-4 flex max-w-[210px] flex-col gap-[7px]">
-          <span
-            class="text-[11px] font-bold tracking-[0.1em] text-(--riv-ink-faint) uppercase"
-            id="map-date-label"
-            >Date</span
-          >
-          <button
-            appTouchTarget
-            type="button"
-            class="cursor-pointer rounded-[14px] border border-(--riv-field-border) bg-[rgba(255,255,255,0.9)] px-3 py-2.5 text-left text-[15px] text-(--riv-card-ink) focus-visible:outline-[3px] focus-visible:outline-white focus-visible:outline-offset-2"
-            id="map-date"
-            data-testid="map-date"
-            aria-haspopup="dialog"
-            aria-labelledby="map-date-label map-date"
-            [attr.aria-expanded]="pickerOpen()"
-            [attr.data-date]="selectedDate()"
-            (click)="openPicker()"
-          >
-            {{ triggerLabel() }}
-          </button>
-        </p>
-        <p appCutoffNote class="mt-2 text-[11.5px] text-(--riv-ink-faint)"></p>
+            <p class="flex items-center flex-wrap gap-[7px] text-[14px] text-(--riv-ink-soft)">
+              @if (v.isRated) {
+                <span class="text-[#ffd16b]" aria-hidden="true">★</span>
+                <span
+                  class="font-bold text-(--riv-ink)"
+                  aria-label="Rated {{ v.rating }} out of 5"
+                  >{{ v.rating }}</span
+                >
+                <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span>
+                {{ v.reviewsCount }} reviews
+              } @else {
+                <span
+                  appSemanticChip
+                  class="inline-block text-[0.78rem] px-3 py-[3px]"
+                  aria-label="No reviews yet"
+                  data-testid="new-chip"
+                  >New</span
+                >
+              }
+              @if (v.priceLabel; as price) {
+                <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span> from
+                <strong class="font-bold text-(--riv-ink)">{{ price }}</strong> / set
+              }
+            </p>
+
+            @if (v.description) {
+              <p
+                class="description mt-[9px] max-w-[540px] text-(--riv-ink-soft) text-[14.5px] leading-[1.5] text-pretty"
+              >
+                {{ v.description }}
+              </p>
+            }
+
+            <!-- To-water chip first, then the FULL amenity row in catalogue order. The header is real (not aria-hidden) content, so the chip text is read directly; the slot collapses (:empty) when the venue states neither. -->
+            <div class="flex flex-wrap gap-[7px] mt-[14px] empty:hidden" data-testid="venue-chips">
+              @if (v.water; as water) {
+                <span appAmenityChip water>{{ water }}</span>
+              }
+              @for (amenity of v.amenities; track amenity.code) {
+                <span appAmenityChip>{{ amenity.label }}</span>
+              }
+            </div>
+          </div>
+
+          <div>
+            <p
+              class="mt-4 flex max-w-[210px] flex-col gap-[7px] min-[1280px]:mt-0 min-[1280px]:max-w-none"
+            >
+              <span
+                class="text-[11px] font-bold tracking-[0.1em] text-(--riv-ink-faint) uppercase"
+                id="map-date-label"
+                >Date</span
+              >
+              <button
+                appTouchTarget
+                type="button"
+                class="cursor-pointer rounded-[14px] border border-(--riv-field-border) bg-[rgba(255,255,255,0.9)] px-3 py-2.5 text-left text-[15px] text-(--riv-card-ink) focus-visible:outline-[3px] focus-visible:outline-white focus-visible:outline-offset-2"
+                id="map-date"
+                data-testid="map-date"
+                aria-haspopup="dialog"
+                aria-labelledby="map-date-label map-date"
+                [attr.aria-expanded]="pickerOpen()"
+                [attr.data-date]="selectedDate()"
+                (click)="openPicker()"
+              >
+                {{ triggerLabel() }}
+              </button>
+            </p>
+            <p appCutoffNote class="mt-2 text-[11.5px] text-(--riv-ink-faint)"></p>
+          </div>
+        </div>
       </header>
 
       <!-- Overview card: pure status — the free count and its bar, nothing else (#704). Kept on its own card glass so the dark count stays AA on both themes (the v3 design places it on the bare gradient, which fails AA on the riviera theme — the same reason the header sits on glass). -->
       <div
         class="mt-5 backdrop-blur-[26px] backdrop-saturate-[1.7] rounded-[28px] shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)] p-4"
+        [class]="v.photos.length >= 2 ? 'min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]' : ''"
         appCardGlass
       >
         <!-- No bottom padding: the gap under the bar existed only to separate it from the photo band that used to follow it here. -->

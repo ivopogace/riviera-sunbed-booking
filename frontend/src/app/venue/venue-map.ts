@@ -20,6 +20,7 @@ import { formatMoney, MoneyView } from '../shared/money';
 import { focusMover } from '../shared/focus-after-render';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { PanelGlass } from '../shared/panel-glass';
+import { PhotoGalleryGrid } from '../shared/photo-gallery-grid';
 import { PhotoSlideshow } from '../shared/photo-slideshow';
 import { slideshowPhotos } from '../shared/photo-url';
 import { isRated, ratingScore } from '../shared/rating';
@@ -103,6 +104,7 @@ interface VenueHeader {
     BookingDialog,
     RetryButton,
     PanelGlass,
+    PhotoGalleryGrid,
     PhotoSlideshow,
     CardGlass,
     LoadAnnouncer,
