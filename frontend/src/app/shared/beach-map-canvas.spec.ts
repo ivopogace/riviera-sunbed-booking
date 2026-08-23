@@ -39,6 +39,13 @@ const ROWS: readonly TestRow[] = [
       [priceChips]="priceChips()"
       [loading]="loading()"
       [fitWidth]="fitWidth()"
+      [rowRailInteractive]="rowRailInteractive()"
+      [rowRailLabel]="rowRailLabel()"
+      (rowRailFill)="rowFills.push($event)"
+      [colHeaderInteractive]="colHeaderInteractive()"
+      [colHeaderLabel]="colHeaderLabel()"
+      (colHeaderFill)="colFills.push($event)"
+      [zoomControl]="zoomControl()"
     >
       <ng-template [appBeachMapRow]="rows()" let-row let-i="index">
         <ul class="set-row" [attr.data-row]="row.code">
@@ -65,6 +72,17 @@ class CanvasHost {
   readonly loading = signal(false);
   readonly fitWidth = signal(false);
   readonly taps: string[] = [];
+  readonly rowRailInteractive = signal(false);
+  readonly rowRailLabel = signal<((index: number) => string) | null>(
+    (i: number) => `Fill row ${i}`,
+  );
+  readonly rowFills: number[] = [];
+  readonly colHeaderInteractive = signal(false);
+  readonly colHeaderLabel = signal<((index: number) => string) | null>(
+    (i: number) => `Fill column ${i}`,
+  );
+  readonly colFills: number[] = [];
+  readonly zoomControl = signal(false);
 }
 
 /**
@@ -747,6 +765,310 @@ describe('BeachMapCanvas (#672)', () => {
     detect();
     // (156 - 18) / 4 = 34.5 → floored to 34, clamped up to the 44px floor.
     expect(canvas.style.getPropertyValue('--riv-tile').trim()).toBe('44px');
+  });
+
+  it('leaves the row rail decorative by default — every other consumer is unchanged (#713)', () => {
+    const { host } = render();
+    expect(host.querySelector('[data-testid="row-code-fill"]')).toBeNull();
+    expect(host.querySelector('[data-testid="row-code"]')).toBeTruthy();
+  });
+
+  it('renders the row rail as a labelled fill button when rowRailInteractive is on (#713)', () => {
+    const { host, component, detect } = render();
+    component.rowRailInteractive.set(true);
+    detect();
+    expect(host.querySelector('[data-testid="row-code"]')).toBeNull();
+    const buttons = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('[data-testid="row-code-fill"]'),
+    );
+    expect(buttons.length).toBe(4);
+    expect(buttons[2].getAttribute('aria-label')).toBe('Fill row 2');
+    expect(buttons[2].classList.contains('min-h-11')).toBe(true);
+    expect(buttons[2].classList.contains('min-w-11')).toBe(true);
+  });
+
+  it('emits rowRailFill on click, and reserves the 44px column width for the button (#713)', () => {
+    const { host, component, detect } = render();
+    component.rowRailInteractive.set(true);
+    detect();
+    const button = host.querySelectorAll<HTMLButtonElement>('[data-testid="row-code-fill"]')[1];
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(component.rowFills).toEqual([1]);
+    expect(button.parentElement!.parentElement!.className).toContain('min-w-11');
+  });
+
+  it('fills once on a real mouse click, never twice for the same mousedown+click pair (#713)', () => {
+    const { host, component, detect } = render();
+    component.rowRailInteractive.set(true);
+    detect();
+    const button = host.querySelectorAll<HTMLButtonElement>('[data-testid="row-code-fill"]')[0];
+    // A real click fires mousedown, mouseup, then click(detail=1) — the trailing click must be a no-op.
+    button.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, buttons: 1 }));
+    button.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+    expect(component.rowFills).toEqual([0]);
+  });
+
+  it('sweeps a row-rail drag: mousedown then mouseenter fills every entered index (#713)', () => {
+    const { host, component, detect } = render();
+    component.rowRailInteractive.set(true);
+    detect();
+    const buttons = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('[data-testid="row-code-fill"]'),
+    );
+    buttons[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, buttons: 1 }));
+    buttons[1].dispatchEvent(
+      new MouseEvent('mouseenter', { bubbles: true, button: 0, buttons: 1 }),
+    );
+    buttons[2].dispatchEvent(
+      new MouseEvent('mouseenter', { bubbles: true, button: 0, buttons: 1 }),
+    );
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    expect(component.rowFills).toEqual([0, 1, 2]);
+
+    // The sweep has ended: a further mouseenter with no button held fills nothing more.
+    buttons[3].dispatchEvent(
+      new MouseEvent('mouseenter', { bubbles: true, button: 0, buttons: 0 }),
+    );
+    expect(component.rowFills).toEqual([0, 1, 2]);
+  });
+
+  it('leaves the column header absent by default — every other consumer is unchanged (#713)', () => {
+    const { host } = render();
+    expect(host.querySelector('[data-testid="col-header-fill"]')).toBeNull();
+  });
+
+  it('renders a labelled fill button per column when colHeaderInteractive is on (#713)', () => {
+    const { host, component, detect } = render();
+    component.colHeaderInteractive.set(true);
+    detect();
+    // mapCols() is the widest row — row B has 3 seats.
+    const buttons = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('[data-testid="col-header-fill"]'),
+    );
+    expect(buttons.length).toBe(3);
+    expect(buttons[1].getAttribute('aria-label')).toBe('Fill column 1');
+    expect(buttons[1].classList.contains('min-h-11')).toBe(true);
+    expect(buttons[1].classList.contains('min-w-11')).toBe(true);
+  });
+
+  it('emits colHeaderFill on click and sweeps a drag across headers (#713)', () => {
+    const { host, component, detect } = render();
+    component.colHeaderInteractive.set(true);
+    detect();
+    const buttons = Array.from(
+      host.querySelectorAll<HTMLButtonElement>('[data-testid="col-header-fill"]'),
+    );
+    buttons[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(component.colFills).toEqual([0]);
+
+    buttons[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, buttons: 1 }));
+    buttons[1].dispatchEvent(
+      new MouseEvent('mouseenter', { bubbles: true, button: 0, buttons: 1 }),
+    );
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    expect(component.colFills).toEqual([0, 0, 1]);
+  });
+
+  it('renders no Fit/100% toggle by default — every other consumer is unchanged (#713)', () => {
+    const { host } = render();
+    expect(host.querySelector('[data-testid="zoom-fit"]')).toBeNull();
+    expect(host.querySelector('[data-testid="zoom-100"]')).toBeNull();
+  });
+
+  it('renders the Fit/100% toggle, Fit active by default, when zoomControl is on (#713)', () => {
+    const { host, component, detect } = render();
+    component.zoomControl.set(true);
+    detect();
+    expect(host.querySelector('[data-testid="zoom-fit"]')?.getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    expect(host.querySelector('[data-testid="zoom-100"]')?.getAttribute('aria-pressed')).toBe(
+      'false',
+    );
+  });
+
+  it('pins the tile size to the 56px ceiling at 100%, regardless of the measured fit (#713)', async () => {
+    const { host, component, detect, fixture } = render();
+    component.zoomControl.set(true);
+    component.fitWidth.set(true);
+    // A narrow viewport would fit tiles down toward the 44px floor…
+    Object.defineProperty(viewport(host), 'clientWidth', { value: 100, configurable: true });
+    component.rows.set([row('A', null, true, ['1', '2', '3', '4'])]);
+    detect();
+    await fixture.whenStable();
+    detect();
+    const canvas = host.querySelector<HTMLElement>('app-beach-map-canvas')!;
+    expect(canvas.style.getPropertyValue('--riv-tile').trim()).toBe('44px');
+
+    // …but 100% pins it to the native ceiling instead, overflowing rather than shrinking.
+    host.querySelector<HTMLButtonElement>('[data-testid="zoom-100"]')!.click();
+    detect();
+    expect(canvas.style.getPropertyValue('--riv-tile').trim()).toBe('56px');
+    expect(host.querySelector('[data-testid="zoom-100"]')?.getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+
+    // Fit returns to the measured value.
+    host.querySelector<HTMLButtonElement>('[data-testid="zoom-fit"]')!.click();
+    detect();
+    expect(canvas.style.getPropertyValue('--riv-tile').trim()).toBe('44px');
+  });
+
+  it('never arms the pan gesture unless zoomControl is on and 100% is active (#713)', () => {
+    const { host, component, detect } = render();
+    const vp = viewport(host);
+
+    // dragPan is on but zoomControl is off — the ordinary dragPan path, unaffected by Space.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+    vp.scrollLeft = 50;
+    vp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100 }));
+    vp.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 60 }));
+    expect(vp.scrollLeft).toBe(90); // the ordinary dragPan path, unaffected by Space
+    vp.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space' }));
+
+    component.zoomControl.set(true);
+    detect();
+    // zoomControl is on, but Fit (not 100%) is active — the dedicated gesture still doesn't arm.
+    component.dragPan.set(false);
+    detect();
+    vp.scrollLeft = 50;
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+    vp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100 }));
+    vp.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 60 }));
+    expect(vp.scrollLeft).toBe(50); // dragPan is off and the gesture isn't armed at Fit
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space' }));
+  });
+
+  it('arms a dedicated Space-drag pan at 100% zoom, independent of dragPan (#713)', () => {
+    const { host, component, detect } = render();
+    component.zoomControl.set(true);
+    component.dragPan.set(false); // the editor's own posture: no free drag-to-pan
+    detect();
+    host.querySelector<HTMLButtonElement>('[data-testid="zoom-100"]')!.click();
+    detect();
+
+    const vp = viewport(host);
+    vp.scrollLeft = 50;
+
+    // A plain drag with no Space held still doesn't pan.
+    vp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100 }));
+    vp.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 60 }));
+    expect(vp.scrollLeft).toBe(50);
+    vp.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+    // Holding Space arms it.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+    vp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100 }));
+    vp.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 60 }));
+    expect(vp.scrollLeft).toBe(90);
+    vp.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space' }));
+  });
+
+  it('leaves Space alone while focus sits on a button — native activation, never the pan gesture (#713 R-3)', () => {
+    const { host, component, detect } = render();
+    component.zoomControl.set(true);
+    detect();
+    host.querySelector<HTMLButtonElement>('[data-testid="zoom-100"]')!.click();
+    detect();
+
+    const button = viewport(host).querySelector<HTMLButtonElement>('button')!;
+    button.focus();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+
+    const vp = viewport(host);
+    vp.scrollLeft = 50;
+    vp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100 }));
+    vp.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 60 }));
+    // Space over a focused button never armed the gesture — no pan.
+    expect(vp.scrollLeft).toBe(50);
+    vp.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space' }));
+  });
+
+  it('leaves Space alone while focus sits on a text field — never arms the gesture, never blocks typing (#713)', () => {
+    const { host, component, detect } = render();
+    component.zoomControl.set(true);
+    detect();
+    host.querySelector<HTMLButtonElement>('[data-testid="zoom-100"]')!.click();
+    detect();
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    try {
+      const prevented = !window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: ' ', code: 'Space', cancelable: true }),
+      );
+      expect(prevented).toBe(false); // preventDefault was never called — the space types normally
+
+      const vp = viewport(host);
+      vp.scrollLeft = 50;
+      vp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100 }));
+      vp.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 60 }));
+      expect(vp.scrollLeft).toBe(50); // the gesture never armed
+    } finally {
+      input.remove();
+    }
+  });
+
+  it('pans on a two-finger touch drag at 100% zoom, only when zoomControl+full are both on (#713)', () => {
+    const { host, component, detect } = render();
+    component.zoomControl.set(true);
+    detect();
+    host.querySelector<HTMLButtonElement>('[data-testid="zoom-100"]')!.click();
+    detect();
+
+    const vp = viewport(host);
+    vp.scrollLeft = 50;
+    const touches = (x: number): Touch[] =>
+      [
+        { clientX: x, clientY: 200, identifier: 0 },
+        { clientX: x + 40, clientY: 200, identifier: 1 },
+      ] as unknown as Touch[];
+    vp.dispatchEvent(
+      new TouchEvent('touchstart', { bubbles: true, touches: touches(100), cancelable: true }),
+    );
+    vp.dispatchEvent(
+      new TouchEvent('touchmove', { bubbles: true, touches: touches(60), cancelable: true }),
+    );
+    expect(vp.scrollLeft).toBe(90);
+    vp.dispatchEvent(new TouchEvent('touchend', { bubbles: true, touches: [] }));
+
+    // A single-finger touch is left alone (unchanged — native scrolling, no drag-pan via touch).
+    vp.scrollLeft = 50;
+    vp.dispatchEvent(
+      new TouchEvent('touchstart', {
+        bubbles: true,
+        touches: [{ clientX: 100, clientY: 200, identifier: 0 } as unknown as Touch],
+      }),
+    );
+    vp.dispatchEvent(
+      new TouchEvent('touchmove', {
+        bubbles: true,
+        touches: [{ clientX: 60, clientY: 200, identifier: 0 } as unknown as Touch],
+      }),
+    );
+    expect(vp.scrollLeft).toBe(50);
+  });
+
+  it('exposes panGestureActive so a consumer can suppress its own drag gesture during the pan (#713)', () => {
+    const { host, component, detect, fixture } = render();
+    component.zoomControl.set(true);
+    detect();
+    host.querySelector<HTMLButtonElement>('[data-testid="zoom-100"]')!.click();
+    detect();
+
+    const canvasDebugEl = fixture.debugElement.query((n) => n.name === 'app-beach-map-canvas');
+    const instance = canvasDebugEl.componentInstance as BeachMapCanvas;
+    expect(instance.panGestureActive()).toBe(false);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+    expect(instance.panGestureActive()).toBe(true);
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space' }));
+    expect(instance.panGestureActive()).toBe(false);
   });
 
   it('collapses the legend band for a host that projects none — the operator surfaces (#701)', () => {

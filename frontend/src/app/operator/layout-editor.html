@@ -229,6 +229,13 @@
           viewportTestid="layout-grid"
           [dragPan]="false"
           [fitWidth]="true"
+          [rowRailInteractive]="true"
+          [rowRailLabel]="rowFillLabel"
+          (rowRailFill)="fillRow($event)"
+          [colHeaderInteractive]="true"
+          [colHeaderLabel]="colFillLabel"
+          (colHeaderFill)="fillColumn($event)"
+          [zoomControl]="true"
         >
           <ng-template [appBeachMapRow]="displayRows()" let-row let-ri="index">
             <div

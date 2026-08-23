@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
@@ -124,6 +124,9 @@ export class LayoutEditor {
   private readonly console = inject(OperatorConsoleService);
   private readonly focusAfterRender = focusMover();
   protected readonly operator = inject(OperatorAuth);
+  /** The bulk grid's canvas — read only for {@link BeachMapCanvas.panGestureActive} (#713), so a
+   *  Space-drag pan at 100% zoom never also paints the cell it starts on. */
+  private readonly canvas = viewChild(BeachMapCanvas);
 
   /** The venue this editor manages, from the parent `/operator/:venueId` route (undefined if
    *  invalid) — reactive to in-place venue switches, which reuse this instance. */
@@ -600,6 +603,9 @@ export class LayoutEditor {
 
   /** Paint one cell with the active brush — the keyboard/click path (Enter/Space fire the button click). */
   protected paintCell(r: number, c: number): void {
+    if (this.canvas()?.panGestureActive()) {
+      return; // Space-drag pans at 100% zoom (#713); it never also paints
+    }
     const tool = this.activeBrush();
     this.grid.update((g) =>
       g.map((row, ri) => (ri !== r ? row : row.map((cell, ci) => (ci !== c ? cell : tool)))),
@@ -607,6 +613,35 @@ export class LayoutEditor {
     this.savedNotice.set(false);
     this.lastChange.set(`Row ${gridRowLabel(r)} · position ${c + 1} → ${TOOL_LABEL[tool]}`);
   }
+
+  /**
+   * Fill a whole row with the active brush in one gesture (#713) — the row-rail's fill button,
+   * generalizing {@link paintCell} from one cell to every cell in row `r`. Reachable only while a
+   * brush is armed: arming Select switches the tab to {@link SetEditor} entirely (S2), so the fill
+   * rail this drives is never even rendered while Select is armed.
+   */
+  protected fillRow(r: number): void {
+    const tool = this.activeBrush();
+    this.grid.update((g) => g.map((row, ri) => (ri !== r ? row : row.map(() => tool))));
+    this.savedNotice.set(false);
+    this.lastChange.set(`Row ${gridRowLabel(r)} → ${TOOL_LABEL[tool]}`);
+  }
+
+  /** {@link fillRow}'s column counterpart — the column-header's fill button. */
+  protected fillColumn(c: number): void {
+    const tool = this.activeBrush();
+    this.grid.update((g) => g.map((row) => row.map((cell, ci) => (ci !== c ? cell : tool))));
+    this.savedNotice.set(false);
+    this.lastChange.set(`Column ${c + 1} → ${TOOL_LABEL[tool]}`);
+  }
+
+  /** The row-rail fill button's accessible name — tracks whichever brush is currently armed. */
+  protected readonly rowFillLabel = (r: number): string =>
+    `Fill row ${gridRowLabel(r)} with ${TOOL_LABEL[this.activeBrush()]}`;
+
+  /** The column-header fill button's accessible name. */
+  protected readonly colFillLabel = (c: number): string =>
+    `Fill column ${c + 1} with ${TOOL_LABEL[this.activeBrush()]}`;
 
   protected onCellDown(r: number, c: number, event: MouseEvent): void {
     // Paint is a primary-button gesture, arming and disarming alike.

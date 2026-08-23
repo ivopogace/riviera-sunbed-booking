@@ -4,6 +4,43 @@
     <div class="-mx-[18px] -mt-3.5 mb-3.5 empty:hidden" data-testid="legend-band">
       <ng-content select="[canvasLegend]" />
     </div>
+    <!-- Fit/100% zoom toggle (#713): absent unless a consumer opts in, floating over the wash's top-right corner per the design artboard. -->
+    @if (zoomControl()) {
+      <div class="relative z-20">
+        <div class="absolute top-2 right-3 flex gap-1">
+          <button
+            appTouchTarget
+            type="button"
+            data-testid="zoom-fit"
+            [attr.aria-pressed]="zoomMode() === 'fit'"
+            (click)="setZoom('fit')"
+            class="rounded-full px-2.5 py-1 text-[10.5px] font-bold"
+            [class]="
+              zoomMode() === 'fit'
+                ? 'bg-[rgba(14,122,137,0.12)] border-[1.5px] border-[#0e7a89] text-[#0a2a33]'
+                : 'bg-white/70 border border-[rgba(12,42,51,0.14)] text-[rgba(12,42,51,0.66)]'
+            "
+          >
+            Fit
+          </button>
+          <button
+            appTouchTarget
+            type="button"
+            data-testid="zoom-100"
+            [attr.aria-pressed]="zoomMode() === 'full'"
+            (click)="setZoom('full')"
+            class="rounded-full px-2.5 py-1 text-[10.5px] font-bold"
+            [class]="
+              zoomMode() === 'full'
+                ? 'bg-[rgba(14,122,137,0.12)] border-[1.5px] border-[#0e7a89] text-[#0a2a33]'
+                : 'bg-white/70 border border-[rgba(12,42,51,0.14)] text-[rgba(12,42,51,0.66)]'
+            "
+          >
+            100%
+          </button>
+        </div>
+      </div>
+    }
     <!-- The sea→sand wash: aqua at the sea banner fading to warm sand at the promenade, fixed to the viewport of the vertical scroller so "the water is up there" reads at any scroll depth. -->
     <div
       #washScroller
@@ -12,8 +49,12 @@
       data-riv-scroller
     >
       <div class="flex items-start gap-2.5" [style.--riv-map-cols]="mapCols()">
-        <!-- Left rail: row codes (aria-hidden; each surface's tile names already carry the row). While loading the chip carries no text: the placeholder reserves the rail, it never states a row name nobody has fetched (#749, F-3). -->
-        <div class="flex flex-col gap-1.5 shrink-0" [class]="railColumnClass()" aria-hidden="true">
+        <!-- Left rail: row codes. Decorative (aria-hidden) unless the consumer opts into fill buttons (#713); each surface's tile names already carry the row otherwise. While loading the chip carries no text: the placeholder reserves the rail, it never states a row name nobody has fetched (#749, F-3). -->
+        <div
+          class="flex flex-col gap-1.5 shrink-0"
+          [class]="railColumnClass()"
+          [attr.aria-hidden]="rowRailInteractive() ? null : true"
+        >
           @for (row of rows(); track row.code; let i = $index) {
             <span
               class="h-[var(--riv-tile)] flex items-center justify-start"
@@ -25,6 +66,19 @@
                   [class]="railPlaceholderClass()"
                   data-testid="row-code-placeholder"
                 ></span>
+              } @else if (rowRailInteractive()) {
+                <button
+                  appTouchTarget
+                  type="button"
+                  data-testid="row-code-fill"
+                  [attr.aria-label]="rowRailLabel()?.(i) ?? null"
+                  (mousedown)="onRailDown('row', i, $event)"
+                  (mouseenter)="onRailEnter('row', i, $event)"
+                  (click)="onRailClick('row', i, $event)"
+                  class="inline-flex h-full w-full items-center justify-center rounded-lg bg-white/60 text-[10.5px] font-bold text-[#0a4f5e]"
+                >
+                  <span [class]="railCodeTextClass()">{{ row.code }}</span>
+                </button>
               } @else {
                 <span
                   class="inline-flex items-center justify-center min-w-6 h-6 px-[3px] rounded-lg bg-white/60 text-[10.5px] font-bold text-[#0a4f5e]"
@@ -52,8 +106,30 @@
           (mousemove)="onViewportMouseMove($event)"
           (mouseup)="onViewportMouseUp()"
           (mouseleave)="onViewportMouseUp()"
+          (touchstart)="onViewportTouchStart($event)"
+          (touchmove)="onViewportTouchMove($event)"
+          (touchend)="onViewportTouchEnd()"
         >
           <div #rowGrid data-map-grid class="flex flex-col gap-1.5 w-max group-[.pannable]:px-4">
+            <!-- Column-header fill strip (#713): absent unless a consumer opts in; scrolls with the columns beneath it (same horizontal scroll parent) and stays pinned against the vertical wash scroll. -->
+            @if (colHeaderInteractive()) {
+              <div class="sticky top-0 z-10 flex gap-1.5 bg-[#cfeef6]/95 pb-1.5">
+                @for (n of colIndexes(); track n) {
+                  <button
+                    appTouchTarget
+                    type="button"
+                    data-testid="col-header-fill"
+                    [attr.aria-label]="colHeaderLabel()?.(n) ?? null"
+                    (mousedown)="onRailDown('col', n, $event)"
+                    (mouseenter)="onRailEnter('col', n, $event)"
+                    (click)="onRailClick('col', n, $event)"
+                    class="h-11 w-[var(--riv-tile)] flex-shrink-0 rounded-lg bg-white/60 text-[10px] font-bold text-[#0a4f5e]"
+                  >
+                    {{ n + 1 }}
+                  </button>
+                }
+              </div>
+            }
             @for (row of rows(); track row.code; let i = $index) {
               <div data-map-row class="h-[var(--riv-tile)]" [class.mt-3]="row.zoneStart && i > 0">
                 <ng-container

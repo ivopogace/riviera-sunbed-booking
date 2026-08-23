@@ -6,6 +6,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
 import { todayBookingDate } from '../shared/booking-date';
+import { BeachMapCanvas } from '../shared/beach-map-canvas';
 import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutEditor } from './layout-editor';
@@ -323,6 +324,114 @@ describe('LayoutEditor (#172)', () => {
 
     expect(cells()[1].getAttribute('data-state')).toBe('premium');
     expect(cells()[2].getAttribute('data-state')).toBe('premium');
+  });
+
+  function rowFillButtons(): HTMLButtonElement[] {
+    return Array.from(host.querySelectorAll<HTMLButtonElement>('[data-testid="row-code-fill"]'));
+  }
+
+  function colFillButtons(): HTMLButtonElement[] {
+    return Array.from(host.querySelectorAll<HTMLButtonElement>('[data-testid="col-header-fill"]'));
+  }
+
+  it('fills a whole row with the active brush on one click, updating counts and dirty state (#713)', () => {
+    render();
+    generate('2', '3');
+    byId('layout-tool-walkin').click();
+    fixture.detectChanges();
+
+    rowFillButtons()[1].click(); // row B, all standard by default
+    fixture.detectChanges();
+
+    const rowBCells = cells().slice(3, 6);
+    expect(rowBCells.every((c) => c.getAttribute('data-state') === 'walkin')).toBe(true);
+    expect(cells()[0].getAttribute('data-state')).toBe('premium'); // row A untouched
+    expect(byId('layout-count-walkin').textContent?.trim()).toBe('3');
+    expect(byId('layout-last-change').textContent).toContain('Row B');
+    expect(byId('layout-last-change').textContent).toContain('Walk-in pool');
+    expect(byId('layout-dirty-count').textContent).toContain('6 unsaved changes'); // whole grid, freshly generated
+  });
+
+  it('fills a whole column with the active brush on one click (#713)', () => {
+    render();
+    generate('2', '3');
+    byId('layout-tool-gap').click();
+    fixture.detectChanges();
+
+    colFillButtons()[2].click(); // column 3
+    fixture.detectChanges();
+
+    expect(cells()[2].getAttribute('data-state')).toBe('gap');
+    expect(cells()[5].getAttribute('data-state')).toBe('gap');
+    expect(cells()[0].getAttribute('data-state')).toBe('premium');
+    expect(byId('layout-last-change').textContent).toContain('Column 3');
+  });
+
+  it('sweeps a fill drag across several row chips, one dirty-state update covering the band (#713)', () => {
+    render();
+    generate('3', '2');
+    byId('layout-tool-gap').click();
+    fixture.detectChanges();
+
+    const rails = rowFillButtons();
+    rails[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, buttons: 1 }));
+    rails[1].dispatchEvent(new MouseEvent('mouseenter', { bubbles: true, button: 0, buttons: 1 }));
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    fixture.detectChanges();
+
+    expect(
+      cells()
+        .slice(0, 4)
+        .every((c) => c.getAttribute('data-state') === 'gap'),
+    ).toBe(true);
+    expect(cells()[4].getAttribute('data-state')).toBe('standard'); // row C, not swept
+  });
+
+  it('renders no fill rail while Select is armed — the bulk canvas is not on screen (#713)', () => {
+    render([seat(1, 'PREMIUM', 'ONLINE', 1, 1)]);
+    fixture.detectChanges();
+    expect(rowFillButtons()).toHaveLength(0);
+    expect(colFillButtons()).toHaveLength(0);
+  });
+
+  it('never paints while the canvas reports a pan gesture active at 100% zoom (#713)', () => {
+    render();
+    generate('1', '3');
+    byId('layout-tool-walkin').click();
+    fixture.detectChanges();
+
+    byId('zoom-100').click();
+    fixture.detectChanges();
+    const canvasDebugEl = fixture.debugElement.query((n) => n.name === 'app-beach-map-canvas');
+    const canvas = canvasDebugEl.componentInstance as BeachMapCanvas;
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+    fixture.detectChanges();
+    expect(canvas.panGestureActive()).toBe(true);
+
+    cells()[0].click();
+    fixture.detectChanges();
+    expect(cells()[0].getAttribute('data-state')).toBe('premium'); // unpainted — the drag was a pan
+
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space' }));
+    fixture.detectChanges();
+    cells()[0].click();
+    fixture.detectChanges();
+    expect(cells()[0].getAttribute('data-state')).toBe('walkin'); // Space released — painting resumes
+  });
+
+  it('discard reverts a row/column fill exactly like a single-cell paint (#713)', () => {
+    render();
+    generate('2', '2');
+    byId('layout-tool-gap').click();
+    fixture.detectChanges();
+
+    rowFillButtons()[0].click();
+    fixture.detectChanges();
+    expect(cells()[0].getAttribute('data-state')).toBe('gap');
+
+    byId('layout-discard').click();
+    fixture.detectChanges();
+    expect(cells()).toHaveLength(0); // discard restores the baseline — empty before Generate was saved
   });
 
   it('marks every row a zone of its own: per-row price chips, no reflow while painting (#674 F-2)', () => {

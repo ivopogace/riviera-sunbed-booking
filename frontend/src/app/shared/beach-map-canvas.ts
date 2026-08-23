@@ -9,12 +9,14 @@ import {
   ElementRef,
   inject,
   input,
+  output,
   signal,
   TemplateRef,
   viewChild,
 } from '@angular/core';
 
 import { BeachGridFrame } from './beach-grid-frame';
+import { TouchTarget } from './touch-target';
 
 /**
  * The canvas's per-row contract: what the shared chrome needs to know about a row.
@@ -95,12 +97,15 @@ export class BeachMapRowDef<R extends BeachMapCanvasRow = BeachMapCanvasRow> {
  */
 @Component({
   selector: 'app-beach-map-canvas',
-  imports: [BeachGridFrame, NgTemplateOutlet],
+  imports: [BeachGridFrame, NgTemplateOutlet, TouchTarget],
   templateUrl: './beach-map-canvas.html',
   host: {
     class: 'block',
     style: '--riv-map-sea: #cfeef6',
     '[style.--riv-tile]': 'tileSizeStyle()',
+    '(document:mouseup)': 'onRailSweepEnd()',
+    '(window:keydown.space)': 'onSpaceKeydown($event)',
+    '(window:keyup.space)': 'onSpaceKeyup()',
   },
 })
 export class BeachMapCanvas {
@@ -166,6 +171,68 @@ export class BeachMapCanvas {
   readonly fitWidth = input<boolean>(false);
 
   /**
+   * Turns the row-code rail (#713) from a decorative `aria-hidden` chip into a real,
+   * individually-labelled fill button per row — a whole-row accelerator for the layout
+   * editor's paint brushes. Off by default, so the tourist map, Daily view, and the
+   * per-set editor keep today's decorative rail byte-for-byte.
+   */
+  readonly rowRailInteractive = input<boolean>(false);
+  /** The accessible name for row {@code index}'s fill button — required whenever
+   *  {@link rowRailInteractive} is true; read live so it tracks whichever tool is armed. */
+  readonly rowRailLabel = input<((index: number) => string) | null>(null);
+  /** Emitted on a row-rail fill button's click, or on each row entered during a
+   *  mousedown→mouseenter drag-sweep across several. */
+  readonly rowRailFill = output<number>();
+
+  /** The column-header strip's counterpart to {@link rowRailInteractive} — nothing
+   *  renders here at all unless a consumer opts in (#713); no existing surface has one. */
+  readonly colHeaderInteractive = input<boolean>(false);
+  /** The accessible name for column {@code index}'s fill button. */
+  readonly colHeaderLabel = input<((index: number) => string) | null>(null);
+  /** Emitted on a column-header fill button's click, or swept the same way as {@link rowRailFill}. */
+  readonly colHeaderFill = output<number>();
+
+  /** Shows the Fit/100% pill pair (#713) — off by default, so no other consumer renders it. */
+  readonly zoomControl = input<boolean>(false);
+  /** Fit is the existing measured-to-width sizing (#709, unchanged); 100% pins tiles to
+   *  {@link FIT_MAX_TILE_PX} — the ceiling Fit itself never exceeds — and lets the grid overflow
+   *  instead of shrinking further. Internal: no consumer needs to read or drive this from outside. */
+  protected readonly zoomMode = signal<'fit' | 'full'>('fit');
+
+  /** True while Space is held with a focusable control NOT focused, and 100% zoom is active — the
+   *  dedicated pan gesture (#713), independent of {@link dragPan}. Public so a consumer whose own
+   *  drag gesture means something else (the layout editor's paint) can suppress it while this is
+   *  true — {@link LayoutEditor}'s `paintCell` reads it via a `viewChild`. */
+  private readonly spaceHeld = signal(false);
+  readonly panGestureActive = computed(
+    () => this.zoomControl() && this.zoomMode() === 'full' && this.spaceHeld(),
+  );
+
+  /** Any element whose own native keyboard handling of Space this must not steal — a button's
+   *  activation, but just as much a text field's ordinary typed space. */
+  private static readonly SPACE_OWNING_CONTROLS =
+    'button, input, textarea, select, [contenteditable=""], [contenteditable="true"]';
+
+  /** Arms the gesture on Space — unless focus sits on a control with its own meaning for Space
+   *  (a button's activation, a field's typed character), which this must never steal. */
+  protected onSpaceKeydown(event: Event): void {
+    if (
+      document.activeElement instanceof HTMLElement &&
+      document.activeElement.matches(BeachMapCanvas.SPACE_OWNING_CONTROLS)
+    ) {
+      return;
+    }
+    if (this.zoomControl() && this.zoomMode() === 'full') {
+      event.preventDefault(); // stop the page from scrolling on Space once the gesture is live
+    }
+    this.spaceHeld.set(true);
+  }
+
+  protected onSpaceKeyup(): void {
+    this.spaceHeld.set(false);
+  }
+
+  /**
    * The rail's width, reserved rather than derived from whatever the read happened to return.
    *
    * <p>A content-derived rail is a horizontal version of the vertical jump the skeletons removed:
@@ -183,9 +250,13 @@ export class BeachMapCanvas {
    * 39.14px to 9.14px everywhere else. The residual is a label wider than the reservation, which
    * only a measurement of the loaded map could predict.
    */
-  protected readonly railColumnClass = computed(() =>
-    this.railCodes() === 'letters' ? '' : 'min-w-[54px]',
-  );
+  protected readonly railColumnClass = computed(() => {
+    // A fill button needs the 44px floor in both axes, not just the chip's min-w-6 (#713).
+    if (this.rowRailInteractive()) {
+      return 'min-w-11';
+    }
+    return this.railCodes() === 'letters' ? '' : 'min-w-[54px]';
+  });
 
   /**
    * The price rail's width, reserved on the same terms and for the same defect as
@@ -226,6 +297,11 @@ export class BeachMapCanvas {
   /** Uniform column count so every row's grid aligns with the rails. */
   protected readonly mapCols = computed(() => Math.max(1, ...this.rows().map((r) => r.tileCount)));
 
+  /** 0-based column indexes for the header strip (#713) — one fill button per {@link mapCols}. */
+  protected readonly colIndexes = computed(() =>
+    Array.from({ length: this.mapCols() }, (_, i) => i),
+  );
+
   /** The horizontal pan viewport, present only while rows render. */
   private readonly panViewport = viewChild<ElementRef<HTMLElement>>('canvasViewport');
   /** The vertical wash scroller wrapping the rails and the viewport; the 2D pan's y-axis target. */
@@ -243,9 +319,17 @@ export class BeachMapCanvas {
    *  measured, the original viewport-relative clamp otherwise (tourist map, Daily view, and the
    *  fitted surfaces' own first frame, before a measurement has landed). */
   protected readonly tileSizeStyle = computed(() => {
+    if (this.zoomControl() && this.zoomMode() === 'full') {
+      return `${BeachMapCanvas.FIT_MAX_TILE_PX}px`;
+    }
     const fitted = this.fittedTilePx();
     return this.fitWidth() && fitted !== null ? `${fitted}px` : BeachMapCanvas.DEFAULT_TILE;
   });
+
+  /** Arms the Fit/100% pill pair (#713). */
+  protected setZoom(mode: 'fit' | 'full'): void {
+    this.zoomMode.set(mode);
+  }
 
   /**
    * Scrollbar chrome for both scrollers — the horizontal pan viewport and the vertical wash. A
@@ -370,9 +454,18 @@ export class BeachMapCanvas {
 
   // --- drag-to-pan (mouse only; touch uses native overflow scrolling) ---
 
+  /** Whether a mouse-drag on the viewport may start a pan right now — the ordinary {@link dragPan}
+   *  gate everywhere {@link zoomControl} is off, or the {@link panGestureActive} gate once a
+   *  consumer opts into 100% zoom (independent of {@link dragPan}, #713). */
+  private mouseDragPanAllowed(): boolean {
+    return this.zoomControl() && this.zoomMode() === 'full'
+      ? this.panGestureActive()
+      : this.dragPan();
+  }
+
   protected onViewportMouseDown(event: MouseEvent): void {
     const el = this.panViewport()?.nativeElement;
-    if (!el || !this.dragPan()) {
+    if (!el || !this.mouseDragPanAllowed()) {
       return;
     }
     const wash = this.washScroller()?.nativeElement;
@@ -403,5 +496,102 @@ export class BeachMapCanvas {
 
   protected onViewportMouseUp(): void {
     this.panPointerDown = false;
+  }
+
+  // --- two-finger touch pan at 100% zoom (#713; the mouse pan stays mouse-only, unchanged) ---
+
+  /** Two touch points' midpoint — the pan gesture's reference, so either finger lifting alone
+   *  doesn't jump the anchor. */
+  private static touchMidpoint(touches: TouchList): { x: number; y: number } {
+    const a = touches[0];
+    const b = touches[1];
+    return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+  }
+
+  protected onViewportTouchStart(event: TouchEvent): void {
+    const el = this.panViewport()?.nativeElement;
+    // Two fingers is its own gesture trigger — unlike the mouse path, it needs no Space held.
+    const gestureAvailable = this.zoomControl() && this.zoomMode() === 'full';
+    if (!el || !gestureAvailable || event.touches.length < 2) {
+      return;
+    }
+    const wash = this.washScroller()?.nativeElement;
+    this.panPointerDown = true;
+    this.panned = false;
+    const mid = BeachMapCanvas.touchMidpoint(event.touches);
+    this.panStartX = mid.x;
+    this.panStartY = mid.y;
+    this.panStartScroll = el.scrollLeft;
+    this.panWash = BeachMapCanvas.overflowsVertically(wash) ? wash : null;
+    this.panStartScrollTop = this.panWash?.scrollTop ?? 0;
+  }
+
+  protected onViewportTouchMove(event: TouchEvent): void {
+    const el = this.panViewport()?.nativeElement;
+    if (!this.panPointerDown || !el || event.touches.length < 2) {
+      return;
+    }
+    const mid = BeachMapCanvas.touchMidpoint(event.touches);
+    const dx = mid.x - this.panStartX;
+    const dy = this.panWash ? mid.y - this.panStartY : 0;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) > BeachMapCanvas.PAN_THRESHOLD_PX) {
+      this.panned = true;
+    }
+    el.scrollLeft = this.panStartScroll - dx;
+    if (this.panWash) {
+      this.panWash.scrollTop = this.panStartScrollTop - dy;
+    }
+  }
+
+  protected onViewportTouchEnd(): void {
+    this.panPointerDown = false;
+  }
+
+  // --- fill-rail drag-sweep (#713; imperative, not rendered) ---
+
+  /** True while a primary-button press is down on a row-rail or column-header button. */
+  private railSweeping = false;
+
+  /** A rail fill button's mousedown: arms the sweep and fills the pressed index. */
+  protected onRailDown(kind: 'row' | 'col', index: number, event: MouseEvent): void {
+    if (event.button !== 0) {
+      return;
+    }
+    this.railSweeping = true;
+    this.emitRailFill(kind, index);
+  }
+
+  /** A rail fill button re-entered mid-drag: fill it too, or disarm on a stale flag. */
+  protected onRailEnter(kind: 'row' | 'col', index: number, event: MouseEvent): void {
+    if (!this.railSweeping) {
+      return;
+    }
+    if ((event.buttons & 1) === 0) {
+      this.railSweeping = false;
+      return;
+    }
+    this.emitRailFill(kind, index);
+  }
+
+  /** A keyboard activation (Enter/Space, `detail === 0`) fills once — a mouse click already filled
+   *  via {@link onRailDown}, so this ignores it rather than double-firing. */
+  protected onRailClick(kind: 'row' | 'col', index: number, event: MouseEvent): void {
+    if (event.detail !== 0) {
+      return;
+    }
+    this.emitRailFill(kind, index);
+  }
+
+  /** Ends any in-progress rail sweep — bound to a document-level mouseup in the template. */
+  protected onRailSweepEnd(): void {
+    this.railSweeping = false;
+  }
+
+  private emitRailFill(kind: 'row' | 'col', index: number): void {
+    if (kind === 'row') {
+      this.rowRailFill.emit(index);
+    } else {
+      this.colHeaderFill.emit(index);
+    }
   }
 }
