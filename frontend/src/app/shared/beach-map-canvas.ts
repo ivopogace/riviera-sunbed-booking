@@ -104,6 +104,8 @@ export class BeachMapRowDef<R extends BeachMapCanvasRow = BeachMapCanvasRow> {
     style: '--riv-map-sea: #cfeef6',
     '[style.--riv-tile]': 'tileSizeStyle()',
     '(document:mouseup)': 'onRailSweepEnd()',
+    '(window:keydown.space)': 'onSpaceKeydown($event)',
+    '(window:keyup.space)': 'onSpaceKeyup()',
   },
 })
 export class BeachMapCanvas {
@@ -196,6 +198,31 @@ export class BeachMapCanvas {
    *  {@link FIT_MAX_TILE_PX} — the ceiling Fit itself never exceeds — and lets the grid overflow
    *  instead of shrinking further. Internal: no consumer needs to read or drive this from outside. */
   protected readonly zoomMode = signal<'fit' | 'full'>('fit');
+
+  /** True while Space is held with a focusable control NOT focused, and 100% zoom is active — the
+   *  dedicated pan gesture (#713), independent of {@link dragPan}. Public so a consumer whose own
+   *  drag gesture means something else (the layout editor's paint) can suppress it while this is
+   *  true — {@link LayoutEditor}'s `paintCell` reads it via a `viewChild`. */
+  private readonly spaceHeld = signal(false);
+  readonly panGestureActive = computed(
+    () => this.zoomControl() && this.zoomMode() === 'full' && this.spaceHeld(),
+  );
+
+  /** Arms the gesture on Space — unless focus sits on a button, whose native Space-activate this
+   *  must not steal (#713 R-3). */
+  protected onSpaceKeydown(event: Event): void {
+    if (document.activeElement instanceof HTMLButtonElement) {
+      return;
+    }
+    if (this.zoomControl() && this.zoomMode() === 'full') {
+      event.preventDefault(); // stop the page from scrolling on Space once the gesture is live
+    }
+    this.spaceHeld.set(true);
+  }
+
+  protected onSpaceKeyup(): void {
+    this.spaceHeld.set(false);
+  }
 
   /**
    * The rail's width, reserved rather than derived from whatever the read happened to return.
@@ -419,9 +446,18 @@ export class BeachMapCanvas {
 
   // --- drag-to-pan (mouse only; touch uses native overflow scrolling) ---
 
+  /** Whether a mouse-drag on the viewport may start a pan right now — the ordinary {@link dragPan}
+   *  gate everywhere {@link zoomControl} is off, or the {@link panGestureActive} gate once a
+   *  consumer opts into 100% zoom (independent of {@link dragPan}, #713). */
+  private mouseDragPanAllowed(): boolean {
+    return this.zoomControl() && this.zoomMode() === 'full'
+      ? this.panGestureActive()
+      : this.dragPan();
+  }
+
   protected onViewportMouseDown(event: MouseEvent): void {
     const el = this.panViewport()?.nativeElement;
-    if (!el || !this.dragPan()) {
+    if (!el || !this.mouseDragPanAllowed()) {
       return;
     }
     const wash = this.washScroller()?.nativeElement;
@@ -451,6 +487,55 @@ export class BeachMapCanvas {
   }
 
   protected onViewportMouseUp(): void {
+    this.panPointerDown = false;
+  }
+
+  // --- two-finger touch pan at 100% zoom (#713; the mouse pan stays mouse-only, unchanged) ---
+
+  /** Two touch points' midpoint — the pan gesture's reference, so either finger lifting alone
+   *  doesn't jump the anchor. */
+  private static touchMidpoint(touches: TouchList): { x: number; y: number } {
+    const a = touches[0];
+    const b = touches[1];
+    return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+  }
+
+  protected onViewportTouchStart(event: TouchEvent): void {
+    const el = this.panViewport()?.nativeElement;
+    // Two fingers is its own gesture trigger — unlike the mouse path, it needs no Space held.
+    const gestureAvailable = this.zoomControl() && this.zoomMode() === 'full';
+    if (!el || !gestureAvailable || event.touches.length < 2) {
+      return;
+    }
+    const wash = this.washScroller()?.nativeElement;
+    this.panPointerDown = true;
+    this.panned = false;
+    const mid = BeachMapCanvas.touchMidpoint(event.touches);
+    this.panStartX = mid.x;
+    this.panStartY = mid.y;
+    this.panStartScroll = el.scrollLeft;
+    this.panWash = BeachMapCanvas.overflowsVertically(wash) ? wash : null;
+    this.panStartScrollTop = this.panWash?.scrollTop ?? 0;
+  }
+
+  protected onViewportTouchMove(event: TouchEvent): void {
+    const el = this.panViewport()?.nativeElement;
+    if (!this.panPointerDown || !el || event.touches.length < 2) {
+      return;
+    }
+    const mid = BeachMapCanvas.touchMidpoint(event.touches);
+    const dx = mid.x - this.panStartX;
+    const dy = this.panWash ? mid.y - this.panStartY : 0;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) > BeachMapCanvas.PAN_THRESHOLD_PX) {
+      this.panned = true;
+    }
+    el.scrollLeft = this.panStartScroll - dx;
+    if (this.panWash) {
+      this.panWash.scrollTop = this.panStartScrollTop - dy;
+    }
+  }
+
+  protected onViewportTouchEnd(): void {
     this.panPointerDown = false;
   }
 

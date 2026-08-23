@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
@@ -124,6 +124,9 @@ export class LayoutEditor {
   private readonly console = inject(OperatorConsoleService);
   private readonly focusAfterRender = focusMover();
   protected readonly operator = inject(OperatorAuth);
+  /** The bulk grid's canvas — read only for {@link BeachMapCanvas.panGestureActive} (#713), so a
+   *  Space-drag pan at 100% zoom never also paints the cell it starts on. */
+  private readonly canvas = viewChild(BeachMapCanvas);
 
   /** The venue this editor manages, from the parent `/operator/:venueId` route (undefined if
    *  invalid) — reactive to in-place venue switches, which reuse this instance. */
@@ -600,6 +603,9 @@ export class LayoutEditor {
 
   /** Paint one cell with the active brush — the keyboard/click path (Enter/Space fire the button click). */
   protected paintCell(r: number, c: number): void {
+    if (this.canvas()?.panGestureActive()) {
+      return; // Space-drag pans at 100% zoom (#713); it never also paints
+    }
     const tool = this.activeBrush();
     this.grid.update((g) =>
       g.map((row, ri) => (ri !== r ? row : row.map((cell, ci) => (ci !== c ? cell : tool)))),

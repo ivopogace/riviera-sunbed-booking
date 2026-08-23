@@ -106,6 +106,9 @@
           (mousemove)="onViewportMouseMove($event)"
           (mouseup)="onViewportMouseUp()"
           (mouseleave)="onViewportMouseUp()"
+          (touchstart)="onViewportTouchStart($event)"
+          (touchmove)="onViewportTouchMove($event)"
+          (touchend)="onViewportTouchEnd()"
         >
           <div #rowGrid data-map-grid class="flex flex-col gap-1.5 w-max group-[.pannable]:px-4">
             <!-- Column-header fill strip (#713): absent unless a consumer opts in; scrolls with the columns beneath it (same horizontal scroll parent) and stays pinned against the vertical wash scroll. -->

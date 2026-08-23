@@ -6,6 +6,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
 import { todayBookingDate } from '../shared/booking-date';
+import { BeachMapCanvas } from '../shared/beach-map-canvas';
 import { SetView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
 import { LayoutEditor } from './layout-editor';
@@ -391,6 +392,31 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
     expect(rowFillButtons()).toHaveLength(0);
     expect(colFillButtons()).toHaveLength(0);
+  });
+
+  it('never paints while the canvas reports a pan gesture active at 100% zoom (#713)', () => {
+    render();
+    generate('1', '3');
+    byId('layout-tool-walkin').click();
+    fixture.detectChanges();
+
+    byId('zoom-100').click();
+    fixture.detectChanges();
+    const canvasDebugEl = fixture.debugElement.query((n) => n.name === 'app-beach-map-canvas');
+    const canvas = canvasDebugEl.componentInstance as BeachMapCanvas;
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+    fixture.detectChanges();
+    expect(canvas.panGestureActive()).toBe(true);
+
+    cells()[0].click();
+    fixture.detectChanges();
+    expect(cells()[0].getAttribute('data-state')).toBe('premium'); // unpainted — the drag was a pan
+
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space' }));
+    fixture.detectChanges();
+    cells()[0].click();
+    fixture.detectChanges();
+    expect(cells()[0].getAttribute('data-state')).toBe('walkin'); // Space released — painting resumes
   });
 
   it('discard reverts a row/column fill exactly like a single-cell paint (#713)', () => {

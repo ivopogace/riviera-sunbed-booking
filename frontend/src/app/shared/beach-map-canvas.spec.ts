@@ -903,6 +903,136 @@ describe('BeachMapCanvas (#672)', () => {
     expect(canvas.style.getPropertyValue('--riv-tile').trim()).toBe('44px');
   });
 
+  it('never arms the pan gesture unless zoomControl is on and 100% is active (#713)', () => {
+    const { host, component, detect } = render();
+    const vp = viewport(host);
+
+    // dragPan is on but zoomControl is off — the ordinary dragPan path, unaffected by Space.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+    vp.scrollLeft = 50;
+    vp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100 }));
+    vp.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 60 }));
+    expect(vp.scrollLeft).toBe(90); // the ordinary dragPan path, unaffected by Space
+    vp.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space' }));
+
+    component.zoomControl.set(true);
+    detect();
+    // zoomControl is on, but Fit (not 100%) is active — the dedicated gesture still doesn't arm.
+    component.dragPan.set(false);
+    detect();
+    vp.scrollLeft = 50;
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+    vp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100 }));
+    vp.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 60 }));
+    expect(vp.scrollLeft).toBe(50); // dragPan is off and the gesture isn't armed at Fit
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space' }));
+  });
+
+  it('arms a dedicated Space-drag pan at 100% zoom, independent of dragPan (#713)', () => {
+    const { host, component, detect } = render();
+    component.zoomControl.set(true);
+    component.dragPan.set(false); // the editor's own posture: no free drag-to-pan
+    detect();
+    host.querySelector<HTMLButtonElement>('[data-testid="zoom-100"]')!.click();
+    detect();
+
+    const vp = viewport(host);
+    vp.scrollLeft = 50;
+
+    // A plain drag with no Space held still doesn't pan.
+    vp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100 }));
+    vp.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 60 }));
+    expect(vp.scrollLeft).toBe(50);
+    vp.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+
+    // Holding Space arms it.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+    vp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100 }));
+    vp.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 60 }));
+    expect(vp.scrollLeft).toBe(90);
+    vp.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space' }));
+  });
+
+  it('leaves Space alone while focus sits on a button — native activation, never the pan gesture (#713 R-3)', () => {
+    const { host, component, detect } = render();
+    component.zoomControl.set(true);
+    detect();
+    host.querySelector<HTMLButtonElement>('[data-testid="zoom-100"]')!.click();
+    detect();
+
+    const button = viewport(host).querySelector<HTMLButtonElement>('button')!;
+    button.focus();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+
+    const vp = viewport(host);
+    vp.scrollLeft = 50;
+    vp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100 }));
+    vp.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 60 }));
+    // Space over a focused button never armed the gesture — no pan.
+    expect(vp.scrollLeft).toBe(50);
+    vp.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space' }));
+  });
+
+  it('pans on a two-finger touch drag at 100% zoom, only when zoomControl+full are both on (#713)', () => {
+    const { host, component, detect } = render();
+    component.zoomControl.set(true);
+    detect();
+    host.querySelector<HTMLButtonElement>('[data-testid="zoom-100"]')!.click();
+    detect();
+
+    const vp = viewport(host);
+    vp.scrollLeft = 50;
+    const touches = (x: number): Touch[] =>
+      [
+        { clientX: x, clientY: 200, identifier: 0 },
+        { clientX: x + 40, clientY: 200, identifier: 1 },
+      ] as unknown as Touch[];
+    vp.dispatchEvent(
+      new TouchEvent('touchstart', { bubbles: true, touches: touches(100), cancelable: true }),
+    );
+    vp.dispatchEvent(
+      new TouchEvent('touchmove', { bubbles: true, touches: touches(60), cancelable: true }),
+    );
+    expect(vp.scrollLeft).toBe(90);
+    vp.dispatchEvent(new TouchEvent('touchend', { bubbles: true, touches: [] }));
+
+    // A single-finger touch is left alone (unchanged — native scrolling, no drag-pan via touch).
+    vp.scrollLeft = 50;
+    vp.dispatchEvent(
+      new TouchEvent('touchstart', {
+        bubbles: true,
+        touches: [{ clientX: 100, clientY: 200, identifier: 0 } as unknown as Touch],
+      }),
+    );
+    vp.dispatchEvent(
+      new TouchEvent('touchmove', {
+        bubbles: true,
+        touches: [{ clientX: 60, clientY: 200, identifier: 0 } as unknown as Touch],
+      }),
+    );
+    expect(vp.scrollLeft).toBe(50);
+  });
+
+  it('exposes panGestureActive so a consumer can suppress its own drag gesture during the pan (#713)', () => {
+    const { host, component, detect, fixture } = render();
+    component.zoomControl.set(true);
+    detect();
+    host.querySelector<HTMLButtonElement>('[data-testid="zoom-100"]')!.click();
+    detect();
+
+    const canvasDebugEl = fixture.debugElement.query((n) => n.name === 'app-beach-map-canvas');
+    const instance = canvasDebugEl.componentInstance as BeachMapCanvas;
+    expect(instance.panGestureActive()).toBe(false);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space' }));
+    expect(instance.panGestureActive()).toBe(true);
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space' }));
+    expect(instance.panGestureActive()).toBe(false);
+  });
+
   it('collapses the legend band for a host that projects none — the operator surfaces (#701)', () => {
     const fixture = TestBed.createComponent(LegendlessCanvasHost);
     fixture.detectChanges();
