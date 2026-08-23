@@ -181,7 +181,8 @@ test('the date chosen on discovery carries into the venue map (#294)', async ({ 
   // Open the first venue → the map opens on the carried date (URL + picker), not tomorrow.
   await page.getByTestId('venue-card').first().click();
   await expect(page).toHaveURL(new RegExp(`/venues/1\\?date=${chosen}`));
-  await expect(page.getByTestId('map-date')).toHaveValue(chosen);
+  // Since #761 the map's date field is the calendar's trigger, not a native input.
+  await expect(page.getByTestId('map-date')).toHaveAttribute('data-date', chosen);
   await expectNoSeriousAxeViolations(page, 'venue map (date carried from discovery)');
 });
 

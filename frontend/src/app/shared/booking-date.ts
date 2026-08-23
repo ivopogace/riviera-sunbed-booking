@@ -78,7 +78,98 @@ export function formatCivilDate(isoDate: string): string {
 
 /** Add one calendar day to an ISO `YYYY-MM-DD` string, returning the same format. */
 function addOneDay(isoDate: string): string {
-  const next = parseIsoDate(isoDate);
-  next.setUTCDate(next.getUTCDate() + 1);
-  return formatIsoDate(next);
+  return addDays(isoDate, 1);
+}
+
+/**
+ * Shift an ISO `YYYY-MM-DD` civil day by `days` (negative moves back), returning the same format.
+ * Arithmetic happens on the UTC-anchored {@link parseIsoDate} instant, so it is free of the
+ * viewer's zone and of DST.
+ */
+export function addDays(isoDate: string, days: number): string {
+  const shifted = parseIsoDate(isoDate);
+  shifted.setUTCDate(shifted.getUTCDate() + days);
+  return formatIsoDate(shifted);
+}
+
+/**
+ * Shift an ISO `YYYY-MM-DD` civil day by whole calendar `months` (negative moves back).
+ *
+ * <p>The day of the month is **clamped** to the target month's length rather than allowed to
+ * overflow: 31 January plus one month is 28 (or 29) February, never 3 March. Overflow is what a
+ * naive `setUTCMonth` does, and in a month-navigating calendar it skips February entirely.
+ */
+export function addMonths(isoDate: string, months: number): string {
+  const source = parseIsoDate(isoDate);
+  const targetYear = source.getUTCFullYear();
+  const targetMonth = source.getUTCMonth() + months;
+  const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+  const day = Math.min(source.getUTCDate(), lastDay);
+  return formatIsoDate(new Date(Date.UTC(targetYear, targetMonth, day)));
+}
+
+/** The first civil day of the month containing `isoDate`, as an ISO `YYYY-MM-DD` string. */
+export function startOfMonth(isoDate: string): string {
+  const source = parseIsoDate(isoDate);
+  return formatIsoDate(new Date(Date.UTC(source.getUTCFullYear(), source.getUTCMonth(), 1)));
+}
+
+/** The last civil day of the month containing `isoDate`, as an ISO `YYYY-MM-DD` string. */
+export function endOfMonth(isoDate: string): string {
+  const source = parseIsoDate(isoDate);
+  return formatIsoDate(new Date(Date.UTC(source.getUTCFullYear(), source.getUTCMonth() + 1, 0)));
+}
+
+/**
+ * The **Monday** that opens the week containing `isoDate`. Monday-first because the app's civil
+ * dates are pinned to `en-IE` and the venues are Albanian — both Monday-first conventions.
+ */
+export function startOfWeek(isoDate: string): string {
+  return addDays(isoDate, -mondayIndex(isoDate));
+}
+
+/** The **Sunday** that closes the week containing `isoDate`. */
+export function endOfWeek(isoDate: string): string {
+  return addDays(isoDate, 6 - mondayIndex(isoDate));
+}
+
+/**
+ * The month containing `isoDate` laid out as calendar weeks — Monday-first rows of exactly seven
+ * cells, where a cell is that day's ISO string or `undefined` for a position outside the month.
+ *
+ * <p>Days outside the month are **blank rather than borrowed from the neighbouring month**, which
+ * is what keeps one grid answerable by one request: the calendar read is asked for this month's
+ * own bounds, so it can never approach the server's 62-day window cap.
+ */
+export function monthWeeks(isoDate: string): readonly (string | undefined)[][] {
+  const first = startOfMonth(isoDate);
+  const length = parseIsoDate(endOfMonth(isoDate)).getUTCDate();
+  const cells: (string | undefined)[] = Array.from({ length: mondayIndex(first) });
+  for (let day = 0; day < length; day++) {
+    cells.push(addDays(first, day));
+  }
+  while (cells.length % 7 !== 0) {
+    cells.push(undefined);
+  }
+  return Array.from({ length: cells.length / 7 }, (_unused, week) =>
+    cells.slice(week * 7, week * 7 + 7),
+  );
+}
+
+/**
+ * Render the month of an ISO `YYYY-MM-DD` civil day as a heading like `"August 2026"`. Formatted in
+ * UTC for the same reason {@link formatCivilDate} is — the day is anchored at midnight UTC, so the
+ * label is the civil month itself rather than the viewer's reading of it.
+ */
+export function formatMonthLabel(isoDate: string): string {
+  return new Intl.DateTimeFormat('en-IE', {
+    timeZone: 'UTC',
+    month: 'long',
+    year: 'numeric',
+  }).format(parseIsoDate(isoDate));
+}
+
+/** How many days `isoDate` sits past the Monday of its week (Monday 0 … Sunday 6). */
+function mondayIndex(isoDate: string): number {
+  return (parseIsoDate(isoDate).getUTCDay() + 6) % 7;
 }

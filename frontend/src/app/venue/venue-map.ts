@@ -24,10 +24,11 @@ import { PhotoSlideshow } from '../shared/photo-slideshow';
 import { slideshowPhotos } from '../shared/photo-url';
 import { isRated, ratingScore } from '../shared/rating';
 import { RetryButton } from '../shared/retry-button';
-import { defaultBookingDate, isIsoDate } from '../shared/booking-date';
+import { defaultBookingDate, formatCivilDate, isIsoDate } from '../shared/booking-date';
 import { routeIdParam } from '../shared/parent-venue-id';
 import { spotLabel, tierSentenceLabel } from '../shared/set-label';
 import { SetView, VenueMapView } from '../shared/venue-views';
+import { AvailabilityCalendar } from './availability-calendar';
 import { VenueService } from './venue.service';
 
 import { TouchTarget } from '../shared/touch-target';
@@ -61,6 +62,7 @@ interface MapRow extends BeachMapCanvasRow {
  * raw for the booking dialog and the mode-aware map footer; `modeLabel` is its display string.
  */
 interface VenueHeader {
+  readonly id: number;
   readonly name: string;
   readonly beach: string;
   readonly region: string;
@@ -112,6 +114,7 @@ interface VenueHeader {
     BeachMapRowDef,
     SkeletonBlock,
     MapTile,
+    AvailabilityCalendar,
     ...FAILURE_DIRECTIVES,
   ],
   templateUrl: './venue-map.html',
@@ -170,6 +173,9 @@ export class VenueMap {
    *  instead. */
   private epoch = 0;
 
+  /** Whether the availability calendar is open over the header's date field. */
+  protected readonly pickerOpen = signal(false);
+
   /** The set whose booking dialog is open, or undefined when closed. */
   protected readonly selectedSet = signal<SetView | undefined>(undefined);
   /** Id of the tile that opened the dialog, so focus can return to it on close. */
@@ -191,6 +197,7 @@ export class VenueMap {
       return undefined;
     }
     return {
+      id: v.id,
       name: v.name,
       beach: v.beach,
       region: v.region,
@@ -264,6 +271,12 @@ export class VenueMap {
     this.epoch++;
     this.venue.set(undefined);
     this.selectedSet.set(undefined);
+    // The reset takes the focus-trapped picker AND the trigger, so move focus deliberately (RV-FE-9).
+    const pickerWasOpen = this.pickerOpen();
+    this.pickerOpen.set(false);
+    if (pickerWasOpen) {
+      this.moveFocus('map-loading');
+    }
     this.lastTriggerId = undefined;
     const floor = defaultBookingDate(new Date());
     this.minDate.set(floor);
@@ -309,6 +322,8 @@ export class VenueMap {
         // A stale map under a new date header misleads — the panel must win over the old view.
         const toreDownMap = this.venue() !== undefined;
         this.venue.set(undefined);
+        // The teardown takes the header, and with it the trigger — close without chasing it.
+        this.pickerOpen.set(false);
         // 404 is a distinct state: the venue is gone or hidden (#693); retrying cannot succeed.
         if (error instanceof HttpErrorResponse && error.status === 404) {
           this.notFound.set(true);
@@ -336,14 +351,42 @@ export class VenueMap {
   }
 
   /** Re-fetch availability for a newly chosen date (closing any open dialog first). */
-  protected onDateChange(event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
+  protected onDateChange(value: string): void {
     if (!value || value === this.selectedDate()) {
       return;
     }
     this.selectedSet.set(undefined);
     this.selectedDate.set(value);
     this.load();
+  }
+
+  protected openPicker(): void {
+    this.pickerOpen.set(true);
+  }
+
+  /**
+   * Close the calendar and hand focus back to the trigger (modal a11y, RV-FE-9) — the calendar's
+   * own contract: it dismisses, the opener restores. Via `focusMover`, whose `afterNextRender`
+   * write phase lands after the DOM has caught up, so the trigger announces the date it is now
+   * showing rather than the one it was showing when the click arrived.
+   */
+  protected closePicker(): void {
+    this.pickerOpen.set(false);
+    this.moveFocus('map-date');
+  }
+
+  /**
+   * Commit the calendar's chosen day. The date is written FIRST so the restore lands on a trigger
+   * that already reads the new day — closing first announces the day the tourist just left.
+   */
+  protected onDateChosen(value: string): void {
+    this.onDateChange(value);
+    this.closePicker();
+  }
+
+  /** The selected date on the picker trigger (e.g. "Tue 30 Jun 2026"). */
+  protected triggerLabel(): string {
+    return formatCivilDate(this.selectedDate());
   }
 
   /** The selected date rendered for display (e.g. "Tue 30 Jun 2026"). */

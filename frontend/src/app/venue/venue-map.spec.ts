@@ -16,9 +16,10 @@ import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
+import { uniformDays } from '../../testing/calendar-days';
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
 import { formatBookingDate } from '../shared/booking-date-label';
-import { defaultBookingDate } from '../shared/booking-date';
+import { defaultBookingDate, formatCivilDate, todayBookingDate } from '../shared/booking-date';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueMap } from './venue-map';
 
@@ -159,6 +160,48 @@ describe('VenueMap', () => {
 
   function el(): HTMLElement {
     return fixture.nativeElement as HTMLElement;
+  }
+
+  /** The calendar popover's trigger — a button since #761, not the old native date input. */
+  function dateTrigger(): HTMLButtonElement {
+    return el().querySelector<HTMLButtonElement>('[data-testid="map-date"]')!;
+  }
+
+  /** Answer whatever calendar window the popover asked for, so `httpMock.verify()` stays happy. */
+  function flushCalendar(request?: TestRequest): void {
+    const pending =
+      request ?? httpMock.expectOne((req) => req.url.endsWith('/availability-calendar'));
+    pending.flush(
+      uniformDays(pending.request.params.get('from')!, pending.request.params.get('to')!),
+    );
+  }
+
+  /** Open the calendar and settle its month read. */
+  async function openPicker(): Promise<void> {
+    fixture.detectChanges();
+    dateTrigger().click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    flushCalendar();
+    fixture.detectChanges();
+  }
+
+  /**
+   * One day cell of the OPEN calendar. Scoped to the popover on purpose: the trigger carries a
+   * `data-date` too, and it precedes the popover in the document, so an unscoped query silently
+   * returns the trigger whenever the two dates coincide — which is exactly the case a floor
+   * assertion tests.
+   */
+  function calendarDay(iso: string): HTMLButtonElement {
+    return el().querySelector<HTMLButtonElement>(
+      `[data-testid="availability-calendar"] button[data-date="${iso}"]`,
+    )!;
+  }
+
+  /** Choose `iso` from the open calendar (the picker closes and the map re-fetches). */
+  function pickDay(iso: string): void {
+    calendarDay(iso).click();
+    fixture.detectChanges();
   }
 
   /** The colour classes the directive gives a state, read off the legend swatch wearing it. */
@@ -791,16 +834,20 @@ describe('VenueMap', () => {
     expect(note.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
     // Class pin (jsdom computes no Tailwind): the map keeps the bare header-glass ink.
     expect(note.classList.contains('text-(--riv-ink-faint)')).toBe(true);
-    const input = el().querySelector<HTMLInputElement>('[data-testid="map-date"]')!;
-    expect(input.getAttribute('min')).toBe(defaultBookingDate(new Date())); // tomorrow, Europe/Tirane
+    // The floor the note explains, as the picker now expresses it: tomorrow is offered, today is not.
+    await openPicker();
+    const floor = defaultBookingDate(new Date());
+    expect(calendarDay(floor).getAttribute('aria-disabled')).toBeNull();
+    expect(calendarDay(todayBookingDate(new Date())).getAttribute('aria-disabled')).toBe('true');
   });
 
-  it('keeps the white date field light-scheme under the dark riviera document (#675)', async () => {
+  it('keeps the date field a light surface under the dark riviera document (#675)', async () => {
     flushVenue();
     await fixture.whenStable();
-    const input = el().querySelector<HTMLInputElement>('[data-testid="map-date"]')!;
-    // Class pin (jsdom computes no Tailwind CSS); the computed proof is theme-shell.e2e.ts AC-2.
-    expect(input.classList.contains('scheme-light')).toBe(true);
+    fixture.detectChanges();
+    // #675's opt-out had a native widget to opt out; #761 leaves the light field itself.
+    expect(dateTrigger().classList.contains('bg-[rgba(255,255,255,0.9)]')).toBe(true);
+    expect(dateTrigger().classList.contains('text-(--riv-card-ink)')).toBe(true);
   });
 
   it('opens the booking dialog when a free set is activated, and closes it on dismiss', async () => {
@@ -900,9 +947,9 @@ describe('VenueMap', () => {
     flushVenue();
     await fixture.whenStable();
 
-    const c = fixture.componentInstance as unknown as { onDateChange(e: Event): void };
+    const c = fixture.componentInstance as unknown as { onDateChange(value: string): void };
     const dateB = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-    c.onDateChange({ target: { value: dateB } } as unknown as Event);
+    c.onDateChange(dateB);
     venueRequest().flush('gone', { status: 404, statusText: 'Not Found' });
     await fixture.whenStable();
     fixture.detectChanges();
@@ -912,6 +959,104 @@ describe('VenueMap', () => {
     expect(panel).not.toBeNull();
     // The teardown destroyed the subtree focus may sit in — the move is deliberate (RV-FE-9).
     expect(document.activeElement).toBe(panel);
+  });
+
+  describe('the availability calendar', () => {
+    it('replaces the native date input with a labelled calendar trigger', async () => {
+      flushVenue();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(el().querySelector('input[type="date"]')).toBeNull();
+      expect(dateTrigger().tagName).toBe('BUTTON');
+      expect(dateTrigger().getAttribute('aria-haspopup')).toBe('dialog');
+      expect(dateTrigger().getAttribute('aria-expanded')).toBe('false');
+      expect(el().querySelector('[data-testid="availability-calendar"]')).toBeNull();
+    });
+
+    it('opens the calendar for the venue and the day the map is showing', async () => {
+      flushVenue();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      fixture.detectChanges();
+      dateTrigger().click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const request = httpMock.expectOne((req) =>
+        req.url.endsWith('/api/venues/1/availability-calendar'),
+      );
+      expect(request.request.params.get('from')).toBe(
+        `${defaultBookingDate(new Date()).slice(0, 7)}-01`,
+      );
+      expect(dateTrigger().getAttribute('aria-expanded')).toBe('true');
+      flushCalendar(request);
+      fixture.detectChanges();
+      expect(el().querySelector('[data-testid="availability-calendar"]')).not.toBeNull();
+    });
+
+    it("drives the map re-fetch and the dialog's seeded date from the chosen day", async () => {
+      flushVenue();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      await openPicker();
+      const chosen = defaultBookingDate(new Date(Date.now() + 6 * 24 * 60 * 60 * 1000));
+
+      pickDay(chosen);
+
+      const request = venueRequest();
+      expect(request.request.params.get('date')).toBe(chosen);
+      request.flush(miramar());
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Closed, and the map and the dialog now agree on the one date the component holds.
+      expect(el().querySelector('[data-testid="availability-calendar"]')).toBeNull();
+      expect(dateTrigger().getAttribute('data-date')).toBe(chosen);
+      el().querySelector<HTMLButtonElement>('[data-testid="set-tile"] button')!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // The RENDERED date: `date` is a signal input, so a reflected-attribute read is a tautology.
+      expect(
+        el().querySelector('app-booking-dialog [data-testid="dialog-date"]')!.textContent,
+      ).toContain(formatBookingDate(chosen));
+    });
+
+    it('returns focus to the trigger when the calendar is dismissed', async () => {
+      flushVenue();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      await openPicker();
+
+      el()
+        .querySelector<HTMLElement>('app-availability-calendar')!
+        .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      fixture.detectChanges();
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+      expect(el().querySelector('[data-testid="availability-calendar"]')).toBeNull();
+      expect(document.activeElement).toBe(dateTrigger());
+    });
+
+    it('closes the calendar without chasing a trigger the failure destroyed (RV-FE-9)', async () => {
+      flushVenue();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      await openPicker();
+      const chosen = defaultBookingDate(new Date(Date.now() + 6 * 24 * 60 * 60 * 1000));
+
+      pickDay(chosen);
+      venueRequest().flush('gone', { status: 404, statusText: 'Not Found' });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const panel = el().querySelector('[data-testid="map-not-found"]');
+      expect(el().querySelector('[data-testid="availability-calendar"]')).toBeNull();
+      expect(el().querySelector('[data-testid="map-date"]')).toBeNull();
+      expect(document.activeElement).toBe(panel);
+    });
   });
 
   it('navigates back to discovery when the back pill is pressed', async () => {
@@ -958,9 +1103,8 @@ describe('VenueMap', () => {
     // a hardcoded date that happens to equal "tomorrow" fires no change event (the 2026-07-14
     // flake). Derived like the component derives its own default, a week out.
     const chosen = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-    const input = el().querySelector<HTMLInputElement>('[data-testid="map-date"]')!;
-    input.value = chosen;
-    input.dispatchEvent(new Event('change'));
+    await openPicker();
+    pickDay(chosen);
     await fixture.whenStable();
 
     const req = venueRequest();
@@ -1026,11 +1170,11 @@ describe('VenueMap', () => {
     const first = venueRequest(); // the initial date-A load, never settled before the round trip
     await fixture.whenStable();
 
-    const c = fixture.componentInstance as unknown as { onDateChange(e: Event): void };
+    const c = fixture.componentInstance as unknown as { onDateChange(value: string): void };
     const dateB = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-    c.onDateChange({ target: { value: dateB } } as unknown as Event);
+    c.onDateChange(dateB);
     const detour = venueRequest();
-    c.onDateChange({ target: { value: defaultBookingDate(new Date()) } } as unknown as Event);
+    c.onDateChange(defaultBookingDate(new Date()));
     const fresh = venueRequest();
 
     fresh.error(new ProgressEvent('error'));
@@ -1059,8 +1203,8 @@ describe('VenueMap', () => {
       req.flush({ ...miramar(), id: 2 });
       await fixture.whenStable();
       fixture.detectChanges();
-      const input = el().querySelector<HTMLInputElement>('[data-testid="map-date"]')!;
-      expect(input.getAttribute('min')).toBe(defaultBookingDate(new Date()));
+      await openPicker();
+      expect(calendarDay(defaultBookingDate(new Date())).getAttribute('aria-disabled')).toBeNull();
     } finally {
       vi.setSystemTime(frozen);
     }
@@ -1079,8 +1223,7 @@ describe('VenueMap', () => {
     req.flush(miramar());
     await fixture.whenStable();
     fixture.detectChanges();
-    const input = el().querySelector<HTMLInputElement>('[data-testid="map-date"]')!;
-    expect(input.value).toBe(carried);
+    expect(dateTrigger().getAttribute('data-date')).toBe(carried);
   });
 
   it('clamps an in-place ?date below the booking floor back to it (#499, invariant #4)', async () => {
@@ -1123,9 +1266,8 @@ describe('VenueMap', () => {
     // Derived a week out, never hardcoded — a date equal to the component's default (tomorrow)
     // fires no change event and no re-fetch (the 2026-07-14 flake class).
     const chosen = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-    const input = el().querySelector<HTMLInputElement>('[data-testid="map-date"]')!;
-    input.value = chosen;
-    input.dispatchEvent(new Event('change'));
+    await openPicker();
+    pickDay(chosen);
     await fixture.whenStable();
     venueRequest().flush(miramar()); // settle the re-fetch
 
@@ -1189,10 +1331,12 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
     req.flush(miramar());
     await fixture.whenStable();
 
-    const input = (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>(
+    const trigger = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
       '[data-testid="map-date"]',
     )!;
-    expect(input.value).toBe(chosen); // the picker shows the carried date, not the default
+    // The picker's trigger shows the carried date, not the default.
+    expect(trigger.getAttribute('data-date')).toBe(chosen);
+    expect(trigger.textContent).toContain(formatCivilDate(chosen));
   });
 
   it('clamps a past ?date= param up to the earliest bookable day (invariant #4)', async () => {

@@ -6,6 +6,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { expectNoAxeViolations } from '../../testing/axe';
+import { calendarDays } from '../../testing/calendar-days';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueMap } from './venue-map';
 
@@ -113,6 +114,39 @@ describe('VenueMap accessibility (axe)', () => {
   it('has no critical/serious violations when the map is loaded', async () => {
     expectVenueRequest().flush(fixture());
     await fixtureRef.whenStable();
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no violations with the availability calendar open (#761)', async () => {
+    expectVenueRequest().flush(fixture());
+    await fixtureRef.whenStable();
+    fixtureRef.detectChanges();
+
+    host().querySelector<HTMLButtonElement>('[data-testid="map-date"]')!.click();
+    fixtureRef.detectChanges();
+    await fixtureRef.whenStable();
+
+    const calendar = httpMock.expectOne((req) => req.url.endsWith('/availability-calendar'));
+    // `free` needs over a quarter of the sets, so a naive `% 4` of 30 never reaches that tint.
+    const spread = [
+      { free: 0, total: 30 },
+      { free: 4, total: 30 },
+      { free: 30, total: 30 },
+    ];
+    calendar.flush(
+      calendarDays(
+        calendar.request.params.get('from')!,
+        calendar.request.params.get('to')!,
+        (index) => spread[index % spread.length],
+      ),
+    );
+    fixtureRef.detectChanges();
+    await fixtureRef.whenStable();
+
+    expect(host().querySelector('[data-testid="availability-calendar"]')).not.toBeNull();
+    for (const state of ['free', 'low', 'full']) {
+      expect(host().querySelector(`button[data-state="${state}"]`)).not.toBeNull();
+    }
     await expectNoAxeViolations(host());
   });
 
