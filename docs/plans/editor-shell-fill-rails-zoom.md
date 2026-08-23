@@ -236,16 +236,16 @@ N/A — no contract change. `toRequest()`'s `LayoutCellRequest[]` shape and `rep
 
 ## Execution status
 
-**Stage pointer:** plan committed — implementation starting.
+**Stage pointer:** implement — phases 0–2 done, starting phase 3.
 
-**Next action:** Phase 0 — interactive row rail on `BeachMapCanvas`.
+**Next action:** Phase 3 — Fit/100% zoom toggle on `BeachMapCanvas`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Interactive row rail (fill target + drag-sweep) on `BeachMapCanvas` | | |
-| 1 — Column header strip (fill target + drag-sweep) on `BeachMapCanvas` | | |
-| 2 — Wire `LayoutEditor`'s `fillRow`/`fillColumn` | | |
-| 3 — Fit/100% zoom toggle on `BeachMapCanvas` | | |
+| 0 — Interactive row rail (fill target + drag-sweep) on `BeachMapCanvas` | ✅ | `ac8f44c` |
+| 1 — Column header strip (fill target + drag-sweep) on `BeachMapCanvas` | ✅ | `ac8f44c` |
+| 2 — Wire `LayoutEditor`'s `fillRow`/`fillColumn` | ✅ | `ac4e67c` |
+| 3 — Fit/100% zoom toggle on `BeachMapCanvas` | ⏳ | |
 | 4 — Space-drag (desktop) + two-finger (touch) pan gesture at 100% zoom | | |
 | 5 — e2e coverage + local verification + close-out | | |
 
