@@ -185,10 +185,12 @@ N/A — no contract change. `toRequest()`'s `LayoutCellRequest[]` shape, `replac
 
 ## Execution status
 
-**Stage pointer:** implement — done, ready to commit and open the PR.
+**Stage pointer:** review gate — ran, one finding fixed; PR #769 open, waiting on CI +
+Sonar gate + merge.
 
-**Next action:** commit, push to the designated branch, open the PR as a draft, run the
-review gate.
+**Next action:** watch PR #769's CI; once green (and Sonar gate clean), finalize this
+doc's close-out (tick "Close-out written in THIS PR", cite `merged via PR #769`) in the
+PR's last commit before merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -202,6 +204,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (`/code-review` + `riviera-review-overlay`) | `LayoutEditor`'s class TSDoc embedded issue/epic numbers (#711, epic #708's S3), violating `riviera-java-conventions` §6d — repeat of a pattern flagged on this file before (PR #719, #725) | fixed-in-`3996235` |
 
 ---
 
@@ -309,7 +312,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
       (392/392 green), and the mocked Playwright suite (`layout-editor.e2e.ts`,
       `operator-set-editing.e2e.ts`, `touch-targets.e2e.ts` — 29/29 green; the full
       `operator*`/`layout*`/`set-editor*` e2e sweep — 53/53 green). `npm run lint` and
-      `npm run format:check` clean. Not yet verified: CI's own run (pending push/PR).
+      `npm run format:check` clean, re-verified after the F-1 TSDoc fix (commit
+      `3996235`). Not yet verified: PR #769's own CI run.
 
 ## Self-review checklist (before merge / PR)
 
@@ -328,11 +332,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **Frontend** standards met (see Angular section above).
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR.** — no PR opened yet (not requested this
-      session); this box ticks when one is opened and this doc's close-out is its final
-      commit, per the template's rule.
-- [ ] **The review gate ran in full.** — pending; `/code-review` (or the invocation
-      ladder's fallback) has not yet run over this diff.
+- [ ] **Close-out written in THIS PR.** — PR #769 is open; this box ticks in the PR's
+      final commit before merge, per the template's rule (never a docs-only follow-up).
+- [x] **The review gate ran in full.** — `/code-review` (5 parallel Sonner agents:
+      CLAUDE.md compliance, shallow bug scan, git-history regression check, prior-PR
+      comment carryover, code-comment contradiction check) plus `riviera-review-overlay`'s
+      FE bank (RV-FE-1/7/8/9/10/E2E, RV-STYLE-1) ran over the diff. One finding (F-1,
+      confidence 100/100) — TSDoc embedding issue numbers, violating
+      `riviera-java-conventions` §6d — fixed in commit `3996235`; posted as a PR comment.
+      No other findings survived. Sonar gate still pending (runs on the PR).
 
-Two boxes remain open pending the PR/review stage — recorded here rather than silently
-claimed. Everything implementable in this session (Phases 0–2) is done and verified.
+One box remains open pending the merge stage — recorded here rather than silently
+claimed. Everything else in this session (Phases 0–2, review gate) is done and verified.
