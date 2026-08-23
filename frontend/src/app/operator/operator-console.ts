@@ -135,7 +135,8 @@ export class OperatorConsole {
       const path = this.currentTabPath();
       const links = this.tabLinks();
       const index = this.tabs.findIndex((tab) => tab.path === path);
-      links[index]?.nativeElement.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+      // Optional-called: jsdom doesn't implement it, and it's not worth failing a test over.
+      links[index]?.nativeElement.scrollIntoView?.({ inline: 'nearest', block: 'nearest' });
     });
   }
 
