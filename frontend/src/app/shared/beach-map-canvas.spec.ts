@@ -797,6 +797,18 @@ describe('BeachMapCanvas (#672)', () => {
     expect(button.parentElement!.parentElement!.className).toContain('min-w-11');
   });
 
+  it('fills once on a real mouse click, never twice for the same mousedown+click pair (#713)', () => {
+    const { host, component, detect } = render();
+    component.rowRailInteractive.set(true);
+    detect();
+    const button = host.querySelectorAll<HTMLButtonElement>('[data-testid="row-code-fill"]')[0];
+    // A real click fires mousedown, mouseup, then click(detail=1) — the trailing click must be a no-op.
+    button.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, buttons: 1 }));
+    button.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+    expect(component.rowFills).toEqual([0]);
+  });
+
   it('sweeps a row-rail drag: mousedown then mouseenter fills every entered index (#713)', () => {
     const { host, component, detect } = render();
     component.rowRailInteractive.set(true);
@@ -974,6 +986,32 @@ describe('BeachMapCanvas (#672)', () => {
     expect(vp.scrollLeft).toBe(50);
     vp.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
     window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', code: 'Space' }));
+  });
+
+  it('leaves Space alone while focus sits on a text field — never arms the gesture, never blocks typing (#713)', () => {
+    const { host, component, detect } = render();
+    component.zoomControl.set(true);
+    detect();
+    host.querySelector<HTMLButtonElement>('[data-testid="zoom-100"]')!.click();
+    detect();
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    try {
+      const prevented = !window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: ' ', code: 'Space', cancelable: true }),
+      );
+      expect(prevented).toBe(false); // preventDefault was never called — the space types normally
+
+      const vp = viewport(host);
+      vp.scrollLeft = 50;
+      vp.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100 }));
+      vp.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 60 }));
+      expect(vp.scrollLeft).toBe(50); // the gesture never armed
+    } finally {
+      input.remove();
+    }
   });
 
   it('pans on a two-finger touch drag at 100% zoom, only when zoomControl+full are both on (#713)', () => {

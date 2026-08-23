@@ -208,10 +208,18 @@ export class BeachMapCanvas {
     () => this.zoomControl() && this.zoomMode() === 'full' && this.spaceHeld(),
   );
 
-  /** Arms the gesture on Space — unless focus sits on a button, whose native Space-activate this
-   *  must not steal (#713 R-3). */
+  /** Any element whose own native keyboard handling of Space this must not steal — a button's
+   *  activation, but just as much a text field's ordinary typed space. */
+  private static readonly SPACE_OWNING_CONTROLS =
+    'button, input, textarea, select, [contenteditable=""], [contenteditable="true"]';
+
+  /** Arms the gesture on Space — unless focus sits on a control with its own meaning for Space
+   *  (a button's activation, a field's typed character), which this must never steal. */
   protected onSpaceKeydown(event: Event): void {
-    if (document.activeElement instanceof HTMLButtonElement) {
+    if (
+      document.activeElement instanceof HTMLElement &&
+      document.activeElement.matches(BeachMapCanvas.SPACE_OWNING_CONTROLS)
+    ) {
       return;
     }
     if (this.zoomControl() && this.zoomMode() === 'full') {
@@ -565,8 +573,12 @@ export class BeachMapCanvas {
     this.emitRailFill(kind, index);
   }
 
-  /** A plain click (keyboard activation, or a press-and-release with no drag) fills once. */
-  protected onRailClick(kind: 'row' | 'col', index: number): void {
+  /** A keyboard activation (Enter/Space, `detail === 0`) fills once — a mouse click already filled
+   *  via {@link onRailDown}, so this ignores it rather than double-firing. */
+  protected onRailClick(kind: 'row' | 'col', index: number, event: MouseEvent): void {
+    if (event.detail !== 0) {
+      return;
+    }
     this.emitRailFill(kind, index);
   }
 

@@ -74,7 +74,7 @@
                   [attr.aria-label]="rowRailLabel()?.(i) ?? null"
                   (mousedown)="onRailDown('row', i, $event)"
                   (mouseenter)="onRailEnter('row', i, $event)"
-                  (click)="onRailClick('row', i)"
+                  (click)="onRailClick('row', i, $event)"
                   class="inline-flex h-full w-full items-center justify-center rounded-lg bg-white/60 text-[10.5px] font-bold text-[#0a4f5e]"
                 >
                   <span [class]="railCodeTextClass()">{{ row.code }}</span>
@@ -122,7 +122,7 @@
                     [attr.aria-label]="colHeaderLabel()?.(n) ?? null"
                     (mousedown)="onRailDown('col', n, $event)"
                     (mouseenter)="onRailEnter('col', n, $event)"
-                    (click)="onRailClick('col', n)"
+                    (click)="onRailClick('col', n, $event)"
                     class="h-11 w-[var(--riv-tile)] flex-shrink-0 rounded-lg bg-white/60 text-[10px] font-bold text-[#0a4f5e]"
                   >
                     {{ n + 1 }}
