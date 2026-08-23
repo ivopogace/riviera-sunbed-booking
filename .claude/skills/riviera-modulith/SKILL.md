@@ -145,7 +145,10 @@ expansion a listener needs to name its own executor, #383):
 
 - **`api/`** — **ports only**, plain interfaces others call (`venue.api.VenueCatalog`,
   `payment.api.CheckoutPort`). A wide port **splits by consumer role** (#94 — case history): don't
-  pile methods onto `VenueCatalog`; add to `SetBookingFacts`/`VenueRates` (`VenueApiRoleSplitTests`).
+  pile **sibling-facing** methods onto `VenueCatalog`; add to `SetBookingFacts`/`VenueRates`. A
+  further **tourist read** on `VenueCatalog` is legitimate evolution, not a breach — the rule is a
+  dependency-direction assertion, not a method-list freeze, and `VenueApiRoleSplitTests`'s own
+  contract says so (#760's `availabilityBetween` is the worked example).
 - **`vocabulary/`** — typed ids, value records, enums, sealed outcomes, exceptions
   (`venue.vocabulary.SetId`, `payment.vocabulary.Money`, `RefundResult`).
 - **`events/`** — domain-event **records** only, id-based payloads (`booking.events.BookingConfirmed`).

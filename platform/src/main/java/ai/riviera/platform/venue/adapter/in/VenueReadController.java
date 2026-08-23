@@ -23,9 +23,10 @@ import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 
 /**
  * Public tourist read endpoints for venues (invariant #11 — depends only on the {@code venue.api}
- * port). Three reads: the discovery <strong>list</strong> ({@code GET /api/venues?beach=&region=&date=})
- * and a single venue + its beach <strong>map</strong> ({@code GET /api/venues/{id}},
- * date-aware — 200 with the map, or 404 for an unknown id).
+ * port). Two of them are the originals: the discovery <strong>list</strong>
+ * ({@code GET /api/venues?beach=&region=&date=}) and a single venue + its beach
+ * <strong>map</strong> ({@code GET /api/venues/{id}}, date-aware — 200 with the map, or 404 for an
+ * unknown id).
  *
  * <p>A third read, {@code GET /api/venues/{id}/availability-calendar?from=&to=}, answers the same
  * availability question for a <em>window</em> of days at once, so a date picker can show which days
