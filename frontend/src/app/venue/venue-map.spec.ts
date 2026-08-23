@@ -353,6 +353,9 @@ describe('VenueMap', () => {
     // The scrim stays layered over the photo band, and the retired pill never renders.
     expect(el().querySelector('.photo-band')?.innerHTML).toContain('riv-photo-scrim');
     expect(el().textContent).not.toContain('coming soon');
+    // Letterboxed, not cropped — a portrait photo stays whole against the band's own gradient.
+    expect(img?.classList.contains('object-contain')).toBe(true);
+    expect(img?.classList.contains('object-cover')).toBe(false);
   });
 
   it('falls back to the bare gradient band without the pill when there is no cover photo (#142)', async () => {
