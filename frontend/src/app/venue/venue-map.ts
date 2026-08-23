@@ -280,10 +280,11 @@ export class VenueMap {
     this.epoch++;
     this.venue.set(undefined);
     this.selectedSet.set(undefined);
-    // The reset takes the focus-trapped picker AND the trigger, so move focus deliberately (RV-FE-9).
-    const pickerWasOpen = this.pickerOpen();
+    // The reset takes any focus-trapped modal AND its trigger, so move focus deliberately (RV-FE-9).
+    const modalWasOpen = this.pickerOpen() || this.lightboxIndex() !== undefined;
     this.pickerOpen.set(false);
-    if (pickerWasOpen) {
+    this.lightboxIndex.set(undefined);
+    if (modalWasOpen) {
       this.moveFocus('map-loading');
     }
     this.lastTriggerId = undefined;
@@ -333,6 +334,7 @@ export class VenueMap {
         this.venue.set(undefined);
         // The teardown takes the header, and with it the trigger — close without chasing it.
         this.pickerOpen.set(false);
+        this.lightboxIndex.set(undefined);
         // 404 is a distinct state: the venue is gone or hidden (#693); retrying cannot succeed.
         if (error instanceof HttpErrorResponse && error.status === 404) {
           this.notFound.set(true);

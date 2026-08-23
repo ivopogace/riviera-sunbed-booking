@@ -468,6 +468,35 @@ describe('VenueMap', () => {
     expect(document.activeElement).toBe(tile);
   });
 
+  it('closes the lightbox on an in-place venue switch, instead of reopening on the new venue', async () => {
+    venueRequest().flush({ ...miramar(), photos: ['/api/venues/1/photos/bb02'] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    el().querySelector<HTMLButtonElement>('[data-testid="photo-band-view"]')!.click();
+    fixture.detectChanges();
+    expect(el().querySelector('app-photo-lightbox')).not.toBeNull();
+
+    params$.next(convertToParamMap({ id: '2' }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Torn down with the rest of venue 1's state, not carried over as stale index.
+    expect(el().querySelector('app-photo-lightbox')).toBeNull();
+
+    venueRequest(2).flush({
+      ...miramar(),
+      id: 2,
+      name: 'Riviera Blue',
+      photos: ['/api/venues/1/photos/aa01', '/api/venues/1/photos/cc03'],
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The new venue's gallery grid renders closed — the stale index must not reopen it.
+    expect(el().querySelector('[data-testid="gallery-photo-0"]')).not.toBeNull();
+    expect(el().querySelector('app-photo-lightbox')).toBeNull();
+  });
+
   it('marks the premium front row and the taken sets distinctly', async () => {
     flushVenue();
     await fixture.whenStable();
