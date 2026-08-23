@@ -16,6 +16,7 @@ describe('PhotoSlideshow', () => {
     ownControls?: boolean;
     testId?: string;
     name?: string;
+    startIndex?: number;
   }): void {
     fixture = TestBed.createComponent(PhotoSlideshow);
     fixture.componentRef.setInput('photos', inputs.photos);
@@ -27,6 +28,9 @@ describe('PhotoSlideshow', () => {
     }
     if (inputs.name !== undefined) {
       fixture.componentRef.setInput('name', inputs.name);
+    }
+    if (inputs.startIndex !== undefined) {
+      fixture.componentRef.setInput('startIndex', inputs.startIndex);
     }
     fixture.detectChanges();
   }
@@ -115,6 +119,15 @@ describe('PhotoSlideshow', () => {
     fixture.detectChanges();
     const only = el().querySelector<HTMLImageElement>('[data-testid="photo-img"]')!;
     expect(only.classList.contains('opacity-0')).toBe(false);
+  });
+
+  it('opens on startIndex instead of the first slide (the lightbox seeding case)', () => {
+    create({ photos: PHOTOS, startIndex: 2 });
+    const slides = el().querySelectorAll<HTMLImageElement>(
+      '[data-testid="photo-img"], [data-testid="photo-slide-img"]',
+    );
+    expect(slides[2].classList.contains('opacity-0')).toBe(false);
+    expect(slides[0].classList.contains('opacity-0')).toBe(true);
   });
 
   it('steps via the public prev()/next() API (the external-controls placement)', () => {

@@ -98,6 +98,10 @@ export class PhotoSlideshow {
   /** Render the component's own step buttons — only for hosts NOT inside a link/aria-hidden tree. */
   readonly ownControls = input(false, { transform: booleanAttribute });
 
+  /** The slide shown on mount (0-based) — the lightbox opens on whichever photo was tapped;
+   *  every other host leaves this at the default first slide. */
+  readonly startIndex = input(0);
+
   /**
    * The photo currently shown (0-based). Linked to `photos` so a changed input (the host
    * survived a reload — e.g. the beach map's date change) resets to the first slide instead of
@@ -105,7 +109,7 @@ export class PhotoSlideshow {
    */
   protected readonly index = linkedSignal({
     source: this.photos,
-    computation: () => 0,
+    computation: () => this.startIndex(),
   });
 
   /** Step forward, wrapping past the last photo. */

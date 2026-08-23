@@ -1,5 +1,7 @@
 import { NgOptimizedImage } from '@angular/common';
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
+
+import { TouchTarget } from './touch-target';
 
 /**
  * The venue detail page's wide photo lead: a large cover tile beside up to two smaller
@@ -9,17 +11,25 @@ import { Component, input } from '@angular/core';
  * keeps the existing single-photo band inside the header, so this component is never asked to
  * render fewer than 2 photos.
  *
- * Purely decorative, like the slideshow band it sits above: `alt=""` throughout, no controls.
- * A future click-to-expand gallery is a separate change.
+ * Each tile is a labelled button — tapping one emits {@link opened} with that photo's index, so
+ * the caller can mount a {@link PhotoLightbox} seeded at the tapped photo; the image itself stays
+ * `alt=""` since the button's own label already names the action.
  */
 @Component({
   selector: 'app-photo-gallery-grid',
-  imports: [NgOptimizedImage],
+  imports: [NgOptimizedImage, TouchTarget],
   template: `
     <div
       class="grid h-[220px] grid-cols-3 grid-rows-2 gap-2 overflow-hidden rounded-[26px] min-[1024px]:h-[360px]"
     >
-      <div class="relative col-span-2 row-span-2">
+      <button
+        type="button"
+        appTouchTarget
+        class="relative col-span-2 row-span-2 block h-full w-full cursor-zoom-in"
+        data-testid="gallery-photo-0"
+        [attr.aria-label]="tileLabel(0)"
+        (click)="opened.emit(0)"
+      >
         <img
           [ngSrc]="photos()[0]"
           fill
@@ -28,17 +38,32 @@ import { Component, input } from '@angular/core';
           alt=""
           data-testid="gallery-hero"
         />
-      </div>
+      </button>
       @if (photos()[1]; as second) {
         <!-- Exactly 2 photos: fill the whole right column instead of leaving row 2 empty. -->
-        <div class="relative col-start-3 row-start-1" [class.row-span-2]="!photos()[2]">
+        <button
+          type="button"
+          appTouchTarget
+          class="relative col-start-3 row-start-1 block h-full w-full cursor-zoom-in"
+          [class.row-span-2]="!photos()[2]"
+          data-testid="gallery-photo-1"
+          [attr.aria-label]="tileLabel(1)"
+          (click)="opened.emit(1)"
+        >
           <img [ngSrc]="second" fill class="object-cover" alt="" data-testid="gallery-tile" />
-        </div>
+        </button>
       }
       @if (photos()[2]; as third) {
-        <div class="relative col-start-3 row-start-2">
+        <button
+          type="button"
+          appTouchTarget
+          class="relative col-start-3 row-start-2 block h-full w-full cursor-zoom-in"
+          data-testid="gallery-photo-2"
+          [attr.aria-label]="tileLabel(2)"
+          (click)="opened.emit(2)"
+        >
           <img [ngSrc]="third" fill class="object-cover" alt="" data-testid="gallery-tile" />
-        </div>
+        </button>
       }
     </div>
   `,
@@ -46,4 +71,13 @@ import { Component, input } from '@angular/core';
 export class PhotoGalleryGrid {
   /** Caller guarantees length >= 2 — see the class doc. */
   readonly photos = input.required<readonly string[]>();
+  /** The subject named in each tile's accessible label. */
+  readonly name = input('');
+  /** The tapped tile's photo index, for the caller to seed a lightbox. */
+  readonly opened = output<number>();
+
+  protected tileLabel(index: number): string {
+    const subject = this.name() ? ` of ${this.name()}` : '';
+    return `View photo ${index + 1} of ${this.photos().length}${subject}`;
+  }
 }

@@ -20,6 +20,8 @@
         <!-- Same 1100px breakout as the beach map (#700), only once 2+ photos can fill it. -->
         <app-photo-gallery-grid
           [photos]="v.photos"
+          [name]="v.name"
+          (opened)="openLightbox($event, 'gallery-photo-' + $event)"
           class="mb-[18px] block min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
         />
       }
@@ -48,6 +50,18 @@
               ></span>
             }
             <span aria-hidden="true" class="absolute inset-0 bg-(image:--riv-photo-scrim)"></span>
+            @if (v.photos.length > 0) {
+              <button
+                type="button"
+                appTouchTarget
+                class="absolute inset-0 cursor-zoom-in focus-visible:outline-[3px] focus-visible:-outline-offset-[3px] focus-visible:outline-white"
+                data-testid="photo-band-view"
+                [attr.aria-label]="
+                  'View larger photo' + (v.photos.length > 1 ? 's' : '') + ' of ' + v.name
+                "
+                (click)="openLightbox(0, 'photo-band-view')"
+              ></button>
+            }
           </div>
         }
 
@@ -280,6 +294,15 @@
         [minDate]="minDate()"
         (chosen)="onDateChosen($event)"
         (dismissed)="closePicker()"
+      />
+    }
+
+    @if (lightboxIndex() !== undefined) {
+      <app-photo-lightbox
+        [photos]="v.photos"
+        [startIndex]="lightboxIndex()!"
+        [name]="v.name"
+        (dismissed)="closeLightbox()"
       />
     }
 

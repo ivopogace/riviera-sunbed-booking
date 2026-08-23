@@ -410,6 +410,61 @@ describe('VenueMap', () => {
     expect(tiles[1].getAttribute('src')).toBe(`${environment.apiBaseUrl}/api/venues/1/photos/dd04`);
   });
 
+  it('opens the lightbox from the single-photo band and returns focus to it on dismiss (#765)', async () => {
+    venueRequest().flush({ ...miramar(), photos: ['/api/venues/1/photos/bb02'] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const trigger = el().querySelector<HTMLButtonElement>('[data-testid="photo-band-view"]')!;
+    trigger.click();
+    fixture.detectChanges();
+    expect(el().querySelector('app-photo-lightbox[role="dialog"]')).not.toBeNull();
+
+    el()
+      .querySelector<HTMLElement>('app-photo-lightbox')!
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+    expect(el().querySelector('app-photo-lightbox')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('does not offer a photo lightbox trigger when the venue has no photos', async () => {
+    flushVenue(); // the fixture has no photos
+    await fixture.whenStable();
+    expect(el().querySelector('[data-testid="photo-band-view"]')).toBeNull();
+  });
+
+  it('opens the lightbox from a gallery tile, seeded at that photo, and returns focus on dismiss', async () => {
+    venueRequest().flush({
+      ...miramar(),
+      photos: [
+        '/api/venues/1/photos/bb02',
+        '/api/venues/1/photos/cc03',
+        '/api/venues/1/photos/dd04',
+      ],
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const tile = el().querySelector<HTMLButtonElement>('[data-testid="gallery-photo-2"]')!;
+    tile.click();
+    fixture.detectChanges();
+
+    const slides = el().querySelectorAll<HTMLImageElement>(
+      '[data-testid="lightbox-img"], [data-testid="lightbox-slide-img"]',
+    );
+    expect(slides[2].classList.contains('opacity-0')).toBe(false);
+
+    el().querySelector<HTMLButtonElement>('[data-testid="lightbox-close"]')!.click();
+    fixture.detectChanges();
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+
+    expect(el().querySelector('app-photo-lightbox')).toBeNull();
+    expect(document.activeElement).toBe(tile);
+  });
+
   it('marks the premium front row and the taken sets distinctly', async () => {
     flushVenue();
     await fixture.whenStable();
