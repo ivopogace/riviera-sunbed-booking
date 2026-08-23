@@ -108,12 +108,16 @@ invariants).
 ## Execution status
 
 Done. All ACs verified against a running dev build (Playwright, manual) and the test
-suites below; full frontend suite (1795 tests), lint, format, and production build all
-green.
+suites below; full frontend suite (1796 tests), lint, format, and production build all
+green. Review gate (`/code-review` fan-out) run — one finding fixed: the set-editor
+loading skeleton didn't carry `fitWidth`, so it rendered at the default clamp while the
+loaded grid rendered at the measured fit, reintroducing the "slide on load" class of
+defect #749 fixed for the rail width. Fixed by adding `[fitWidth]="true"` to the
+skeleton canvas too (same file, same PR); regression-tested (`set-editor.spec.ts`).
 
 ## Testing performed
 
-- `npx ng test --watch=false` (full suite): 187 files / 1795 tests passed.
+- `npx ng test --watch=false` (full suite): 187 files / 1796 tests passed.
 - `npm run lint`, `npm run format:check`: clean.
 - `npm run build`: succeeds (pre-existing CommonJS warnings for `qrcode`/`jsqr`,
   unrelated).
