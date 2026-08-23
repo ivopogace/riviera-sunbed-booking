@@ -311,6 +311,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-5 | review (`/code-review`) | `isSameMonth` was exported from `shared/booking-date.ts` with no caller outside its own spec. | fixed — removed, with its spec |
 | F-6 | sonar (`Web:S6819`, MAJOR) | `role="dialog"` on a `<div>` — the rule asks for the native element. | fixed — the panel is a real `<dialog open tabindex="-1">`. **Not** `showModal()`: jsdom 29 implements neither it nor the top layer, so the 193 unit specs would be testing a fiction; the app's own `trapFocusWithin` still runs, exactly as in the three sibling modals. A deliberate divergence from those three (they are `<div role="dialog">`), and a precedent for migrating them. |
 | F-7 | sonar (`Web:S6819`, MAJOR) | `role="status"` on a `<p>` — the rule asks for `<output>`, which carries that role implicitly. | fixed — `<output class="block">`. |
+| F-28 | sonar (`typescript:S4624`, MAJOR) | A nested template literal in the day view-model's class composition. | fixed — the two parts are joined rather than interpolated one inside the other |
 | F-9 | review fan-out (CSS lens) | **Major, introduced by F-6's own fix.** The UA stylesheet gives `<dialog>` `position:absolute; left:0`, so the panel left the host's flex centring and sat against the viewport's left edge (measured: x=7 at a 1280 viewport, where centred is x=471). The e2e passed because it measured the fixed **host**, not the panel. | fixed — `static` on the dialog; the e2e now measures the **panel** and asserts it is centred |
 | F-10 | review fan-out (a11y lens) | The counts land after the first render, so the focused day was announced "availability unknown" and nothing re-announced when the real numbers arrived. No live region existed for the load. | fixed — `app-load-announcer` mounted outside every branch, per the #741 rule |
 | F-11 | review fan-out (a11y lens) | The chosen day was never announced as chosen: `aria-selected` sat on the `gridcell`, but the **button** is what takes focus, and AT reports the focused object. | fixed — the selection is spoken in the day's own name (", selected") |
@@ -549,4 +550,4 @@ Modify `venue/venue-map.a11y.spec.ts`
 - [x] **The review gate ran in full** — a `/code-review` pass, then a five-lens subagent fan-out
       (a11y/ARIA, CSS-layout-stacking, logic-and-edge-cases, test-quality, conventions) explicitly
       requested by the maintainer, plus `riviera-review-overlay` and a `riviera-docs-freshness`
-      sweep. 21 findings; every one fixed or answered in the register below.
+      sweep. 22 findings; every one fixed or answered in the register below.

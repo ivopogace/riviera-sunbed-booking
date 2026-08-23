@@ -164,7 +164,7 @@ export class AvailabilityCalendar {
           iso,
           dayOfMonth: Number(iso.slice(8)),
           state,
-          tint: `${DAY_TINT_CLASS[state]}${isSelected ? ` ${DAY_SELECTED_CLASS}` : ''}`,
+          tint: [DAY_TINT_CLASS[state], isSelected ? DAY_SELECTED_CLASS : ''].join(' ').trim(),
           barPercent: `${Math.round(freeFraction(selectable ? day : undefined) * 100)}%`,
           name: dayAccessibleName(iso, day, selectable, isSelected),
           selectable,
