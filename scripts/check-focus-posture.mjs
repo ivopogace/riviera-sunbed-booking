@@ -15,8 +15,8 @@
  *   component is not enough, since those own the open leg only. Judged per **gating signal** (#624):
  *   moving focus for one surface used to excuse every other surface the component owned.
  *
- * Only ever reasons about lines a diff **added**: ~12 legitimate `[disabled]` bindings and 11
- * standing surfaces — 8 confirm + 3 focus-trapped modals, the count #626's widened trigger judges —
+ * Only ever reasons about lines a diff **added**: ~12 legitimate `[disabled]` bindings and 12
+ * standing surfaces — 8 confirm + 4 focus-trapped modals, the count #626's widened trigger judges —
  * must never fail the repo, and a guard that goes red on day one gets switched off
  * (issue #529). `--all` sweeps the whole tree for an audit instead.
  *

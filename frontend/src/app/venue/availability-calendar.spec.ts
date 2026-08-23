@@ -4,7 +4,8 @@ import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
-import { DailyAvailability } from '../shared/venue-views';
+import { CALENDAR_BAR } from '../../testing/calendar-tints';
+import { uniformDays } from '../../testing/calendar-days';
 import { AvailabilityCalendar } from './availability-calendar';
 
 /**
@@ -72,13 +73,7 @@ describe('AvailabilityCalendar', () => {
   ): Promise<void> {
     const from = request.request.params.get('from')!;
     const to = request.request.params.get('to')!;
-    const days: DailyAvailability[] = [];
-    for (let day = new Date(`${from}T00:00:00Z`); ; day.setUTCDate(day.getUTCDate() + 1)) {
-      const iso = day.toISOString().slice(0, 10);
-      days.push({ date: iso, free, total });
-      if (iso === to) break;
-    }
-    request.flush(days);
+    request.flush(uniformDays(from, to, free, total));
     fixture.detectChanges();
     await fixture.whenStable();
   }
@@ -86,6 +81,11 @@ describe('AvailabilityCalendar', () => {
   /** Claim and answer the one pending calendar request. */
   async function flushCalendar(free = 20, total = 30, venueId = 7): Promise<void> {
     await flush(calendarRequest(venueId), free, total);
+  }
+
+  /** The capacity bar's track — the element that carries the invisible flag. */
+  function barTrack(iso: string): HTMLElement {
+    return dayButton(iso)!.querySelector<HTMLElement>('[data-testid="day-bar"]')!.parentElement!;
   }
 
   function dayButton(iso: string): HTMLButtonElement | null {
@@ -119,30 +119,42 @@ describe('AvailabilityCalendar', () => {
       const june = dom().querySelectorAll('button[data-date^="2026-06-"]');
       expect(june).toHaveLength(30);
       expect(dayButton('2026-06-21')!.className).toContain('bg-[#dff0e4]');
-      // The chosen day wears the accent instead of a tint (aria-selected lives on its gridcell).
-      expect(dayButton('2026-06-20')!.className).toContain('bg-[#085a6e]');
+      // The chosen day keeps its tint and gains a ring: selection must not cost the signal.
+      expect(dayButton('2026-06-20')!.className).toContain('bg-[#dff0e4]');
+      expect(dayButton('2026-06-20')!.className).toContain('shadow-[inset_0_0_0_2px_#085a6e]');
       expect(
         dayButton('2026-06-21')!.querySelector<HTMLElement>('[data-testid="day-bar"]')!.style.width,
       ).toBe('50%');
     });
 
-    it('draws no capacity bar on the chosen day, whose accent its colours cannot read on', async () => {
+    it('draws the capacity bar on the chosen day too — a ring does not replace the tint', async () => {
       await flushCalendar(15, 30);
 
-      const bar = (iso: string) =>
-        dayButton(iso)!.querySelector<HTMLElement>('[data-testid="day-bar"]')!.parentElement!;
-
-      expect(bar('2026-06-20').classList.contains('invisible')).toBe(true);
-      expect(bar('2026-06-21').classList.contains('invisible')).toBe(false);
+      expect(barTrack('2026-06-20').classList.contains('invisible')).toBe(false);
+      expect(barTrack('2026-06-21').classList.contains('invisible')).toBe(false);
     });
 
-    it('draws no capacity bar on a day it cannot read or cannot book', async () => {
+    it('draws no capacity bar on a day it cannot book', async () => {
       await flushCalendar(15, 30);
 
-      const bar = (iso: string) =>
-        dayButton(iso)!.querySelector<HTMLElement>('[data-testid="day-bar"]')!.parentElement!;
+      expect(barTrack('2026-06-01').classList.contains('invisible')).toBe(true);
+    });
 
-      expect(bar('2026-06-01').classList.contains('invisible')).toBe(true);
+    it('draws no capacity bar on a bookable day whose counts it cannot read', async () => {
+      // A 0%-wide fill on a full track reads as "0 of N free" — a count this day refuses to state.
+      await flush(calendarRequest(), 4, 0);
+
+      expect(barTrack('2026-06-20').classList.contains('invisible')).toBe(true);
+      expect(dayButton('2026-06-20')!.getAttribute('aria-label')).toContain('availability unknown');
+    });
+
+    it('draws the capacity bar in exactly the colours the contrast spec proves', async () => {
+      await flushCalendar(15, 30);
+      const fill = dayButton('2026-06-21')!.querySelector<HTMLElement>('[data-testid="day-bar"]')!;
+
+      // Ties the rendered bar to the mirror, so the 1.4.11 proofs cannot outlive the template.
+      expect(fill.className).toContain(`bg-[${CALENDAR_BAR.fill}]`);
+      expect(fill.parentElement!.className).toContain(`bg-[${CALENDAR_BAR.track}]`);
     });
 
     it('opens on the month of the selected day', async () => {
@@ -159,7 +171,7 @@ describe('AvailabilityCalendar', () => {
       await flush(request);
     });
 
-    it('never requests a window wider than the server cap, in any month it can reach', async () => {
+    it('asks for one month, so a navigated month cannot approach the server cap either', async () => {
       await flushCalendar();
       press('2026-06-20', 'PageDown');
 
@@ -223,7 +235,10 @@ describe('AvailabilityCalendar', () => {
       await flushCalendar(12, 30);
 
       expect(dayButton('2026-06-20')!.getAttribute('aria-label')).toBe(
-        'Sat 20 Jun 2026, 12 of 30 sets free',
+        'Sat 20 Jun 2026, 12 of 30 sets free, selected',
+      );
+      expect(dayButton('2026-06-21')!.getAttribute('aria-label')).toBe(
+        'Sun 21 Jun 2026, 12 of 30 sets free',
       );
     });
 
@@ -264,7 +279,7 @@ describe('AvailabilityCalendar', () => {
 
       expect(dom().querySelector('[data-testid="calendar-counts-failed"]')).not.toBeNull();
       expect(dayButton('2026-06-20')!.getAttribute('aria-label')).toBe(
-        'Sat 20 Jun 2026, availability unknown',
+        'Sat 20 Jun 2026, availability unknown, selected',
       );
       expect(dayButton('2026-06-20')!.getAttribute('aria-disabled')).toBeNull();
 
@@ -411,6 +426,63 @@ describe('AvailabilityCalendar', () => {
 
       expect(event.defaultPrevented).toBe(false);
       expect(focused()).toBe('2026-06-20');
+    });
+
+    it('commits the focused day on Enter and on Space, the keys a booking is made with', async () => {
+      await flushCalendar();
+
+      press('2026-06-20', 'ArrowRight');
+      dayButton('2026-06-21')!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
+      );
+      dayButton('2026-06-21')!.click();
+
+      expect(host.chosen).toEqual(['2026-06-21']);
+    });
+
+    it('refuses Enter and Space on a day that cannot be booked', async () => {
+      await flushCalendar();
+
+      press('2026-06-20', 'Home');
+      dayButton('2026-06-15')!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: ' ', bubbles: true }),
+      );
+      dayButton('2026-06-15')!.click();
+
+      expect(host.chosen).toEqual([]);
+    });
+
+    it('leaves Enter and Space to the browser, so the button activates natively', async () => {
+      await flushCalendar();
+      const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+      const space = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+
+      dayButton('2026-06-20')!.dispatchEvent(enter);
+      dayButton('2026-06-20')!.dispatchEvent(space);
+
+      // preventDefault here would kill the native click a <button> fires for these two keys.
+      expect(enter.defaultPrevented).toBe(false);
+      expect(space.defaultPrevented).toBe(false);
+    });
+
+    it('carries real DOM focus with the roving tabindex, not just the attribute', async () => {
+      await flushCalendar();
+
+      press('2026-06-20', 'ArrowRight');
+
+      // Tabindex and focus move by separate mechanisms — assert both, or either can regress.
+      expect(focused()).toBe('2026-06-21');
+      expect(dom().ownerDocument.activeElement?.getAttribute('data-date')).toBe('2026-06-21');
+    });
+
+    it('refuses to walk past the earliest month the Previous control will reach', async () => {
+      await flushCalendar();
+
+      press('2026-06-20', 'PageUp');
+
+      // The Previous button announces itself unavailable here; an arrow must not contradict it.
+      expect(focused()).toBe('2026-06-01');
+      expect(monthLabel()).toContain('June 2026');
     });
 
     it('announces the month change from a live region', async () => {

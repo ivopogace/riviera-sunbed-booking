@@ -271,7 +271,12 @@ export class VenueMap {
     this.epoch++;
     this.venue.set(undefined);
     this.selectedSet.set(undefined);
+    // The reset takes the focus-trapped picker AND the trigger, so move focus deliberately (RV-FE-9).
+    const pickerWasOpen = this.pickerOpen();
     this.pickerOpen.set(false);
+    if (pickerWasOpen) {
+      this.moveFocus('map-loading');
+    }
     this.lastTriggerId = undefined;
     const floor = defaultBookingDate(new Date());
     this.minDate.set(floor);
@@ -360,20 +365,23 @@ export class VenueMap {
   }
 
   /**
-   * Close the calendar and hand focus back to the trigger (modal a11y) — the same restore the
-   * booking dialog does, and the calendar's own contract: it dismisses, the opener restores.
+   * Close the calendar and hand focus back to the trigger (modal a11y, RV-FE-9) — the calendar's
+   * own contract: it dismisses, the opener restores. Via `focusMover`, whose `afterNextRender`
+   * write phase lands after the DOM has caught up, so the trigger announces the date it is now
+   * showing rather than the one it was showing when the click arrived.
    */
   protected closePicker(): void {
     this.pickerOpen.set(false);
-    queueMicrotask(() => {
-      document.querySelector<HTMLElement>('[data-testid="map-date"]')?.focus();
-    });
+    this.moveFocus('map-date');
   }
 
-  /** Commit the calendar's chosen day: close, then drive the one date the component holds. */
+  /**
+   * Commit the calendar's chosen day. The date is written FIRST so the restore lands on a trigger
+   * that already reads the new day — closing first announces the day the tourist just left.
+   */
   protected onDateChosen(value: string): void {
-    this.closePicker();
     this.onDateChange(value);
+    this.closePicker();
   }
 
   /** The selected date on the picker trigger (e.g. "Tue 30 Jun 2026"). */

@@ -38,25 +38,29 @@ export const DAY_TINT_CLASS: Record<DayAvailabilityState, string> = {
 };
 
 /**
- * The chosen day's inverted treatment — the one day that wears no tint. It is a composed class
- * rather than an `aria-selected:` Tailwind variant because `aria-selected` is not a permitted
- * attribute on `role="button"` (axe `aria-allowed-attr`); the grid states the selection on the
- * `gridcell` that owns it, so the button has nothing to key a variant off.
+ * The chosen day's mark: an inset ring over whatever tint the day already wears, never a fill
+ * replacing it. Availability and selection are orthogonal facts, and an inverted fill destroys the
+ * first to show the second — it takes the tint away, and with it the capacity bar, from the one day
+ * the tourist is most likely to be weighing.
+ *
+ * <p>A composed class rather than an `aria-selected:` Tailwind variant, because `aria-selected` is
+ * not permitted on `role="button"` (axe `aria-allowed-attr`): the grid states the selection on the
+ * `gridcell` that owns it, so the button has nothing to key a variant off. It uses `box-shadow`
+ * rather than a border so the ring costs no layout, and leaves `outline` to the focus ring.
  */
-export const DAY_SELECTED_CLASS = 'bg-[#085a6e] text-white focus-visible:outline-white';
+export const DAY_SELECTED_CLASS = 'shadow-[inset_0_0_0_2px_#085a6e] font-bold';
 
 /**
- * What each state means in words, kept beside the tint it explains (the `map-tile.ts`
- * `MAP_TILE_MEANING` shape). `legend` labels the popover's key; `announced` is the phrase a day
- * with no readable counts falls back to. A day that HAS counts speaks them instead — see
- * {@link dayAccessibleName} — because a tint word is a summary and #761 asks for the integers.
+ * The phrases a day speaks when it has no integers to speak. A day that HAS readable counts says
+ * them instead — a tint word is a summary, and #761 asks for the exact numbers.
+ *
+ * <p>There is deliberately no per-state legend here: the popover renders no key, because the tint
+ * is reinforcement rather than the carrier (the capacity bar is a length and the accessible name
+ * carries the integers), so a key would be a table mapping colours to meanings that nothing needs.
  */
-export const DAY_MEANING: Record<DayAvailabilityState, { legend: string; announced: string }> = {
-  free: { legend: 'Plenty free', announced: 'sets free' },
-  low: { legend: 'Few left', announced: 'sets free' },
-  full: { legend: 'Fully booked', announced: 'no sets free' },
-  unknown: { legend: 'Not known', announced: 'availability unknown' },
-};
+const NO_SETS_FREE = 'no sets free';
+const AVAILABILITY_UNKNOWN = 'availability unknown';
+const NOT_BOOKABLE = 'not bookable';
 
 /**
  * How busy `day` is, or `unknown` when it cannot be read as a share of the venue's sets.
@@ -85,30 +89,51 @@ export function freeFraction(day: DailyAvailability | undefined): number {
 }
 
 /**
- * What a screen reader says for one day cell: the civil day, then its availability in words.
+ * What a screen reader says for one day cell: the civil day, its availability in words, and
+ * whether it is the day the map is showing.
  *
  * <p>A selectable day with readable counts speaks the **exact integers** ("12 of 30 sets free"),
  * never the tint's summary word. A day that cannot be booked speaks that instead of a count — the
  * endpoint answers past days, but a free/total figure on a day nobody can book reads as an offer.
+ *
+ * <p>Selection is spoken here rather than left to the `gridcell`'s `aria-selected`, because the
+ * button is what takes focus and assistive tech reports the state of the focused object — a
+ * selection parked on an ancestor that never receives focus is never heard.
  */
 export function dayAccessibleName(
   isoDate: string,
   day: DailyAvailability | undefined,
   selectable: boolean,
+  selected = false,
 ): string {
   const civilDate = formatCivilDate(isoDate);
+  const mark = selected ? ', selected' : '';
   if (!selectable) {
-    return `${civilDate}, not bookable`;
+    return `${civilDate}, ${NOT_BOOKABLE}${mark}`;
   }
   if (!isReadable(day)) {
-    return `${civilDate}, ${DAY_MEANING.unknown.announced}`;
+    return `${civilDate}, ${AVAILABILITY_UNKNOWN}${mark}`;
   }
-  return day.free === 0
-    ? `${civilDate}, ${DAY_MEANING.full.announced}`
-    : `${civilDate}, ${day.free} of ${day.total} sets free`;
+  const availability = day.free === 0 ? NO_SETS_FREE : `${day.free} of ${day.total} sets free`;
+  return `${civilDate}, ${availability}${mark}`;
 }
 
-/** Whether `day`'s counts are a share of a real set inventory, and so safe to paint. */
+/**
+ * Whether `day`'s counts are a share of a real set inventory, and so safe to paint.
+ *
+ * <p>The integer checks come before the range ones because `>=` and `<=` coerce: `null` and
+ * `"0"` both satisfy `free >= 0 && free <= total`, and a `null` free would then paint the amber
+ * "few left" fill and speak "null of 30 sets free" on a sold-out day. Today's server sends
+ * `int`s, so this is a contract the wire cannot currently break — which is exactly why the
+ * guard has to state it rather than rely on it.
+ */
 function isReadable(day: DailyAvailability | undefined): day is DailyAvailability {
-  return day !== undefined && day.total > 0 && day.free >= 0 && day.free <= day.total;
+  return (
+    day !== undefined &&
+    Number.isInteger(day.free) &&
+    Number.isInteger(day.total) &&
+    day.total > 0 &&
+    day.free >= 0 &&
+    day.free <= day.total
+  );
 }

@@ -34,15 +34,22 @@ native type-a-date, answered with Shift+PageUp/PageDown year nav) · `tdd` (ever
 red→green→refactor; pure date math and tint vocabulary are tested before the component that uses
 them) · `riviera-review-overlay` (review gate — RV-FE-E2E placed the new spec in the CI-run mocked
 suite; RV-FE-8 checked that no new cross-feature import is introduced) · `riviera-docs-freshness`
-(**pending — runs at merge close-out over the slice's merge span**) · `riviera-frontend` (placement:
+(**ran** over `origin/main...HEAD` — 3 staleness patches folded into this PR: the focus trap's
+two-consumer prose, `check-focus-posture.mjs`'s standing-surface count, and an as-built pointer on
+the v3 design artboard) · `riviera-frontend` (placement:
 the popover is venue-feature-local because #761 scopes out the other three date fields; the
 `DailyAvailability` response mirror belongs in `shared/venue-views.ts`) · `riviera-tailwind`
-(Tailwind-only styling, opaque solid tints so the contrast proof needs no per-theme compositing,
-new tokens declared once in the `:root` block and overridden in porcelain only where the value
-must differ, `appTouchTarget` on all 42 day cells) · `angular-developer` + angular-cli MCP
+(Tailwind-only styling; opaque solid tints so each contrast proof is a plain pair that holds on
+both themes — as literal hex in the component's own class record, **not** `styles.scss` tokens,
+which this slice leaves untouched; one `outline-color` utility per element, since two resolve by
+stylesheet order; `appTouchTarget` on the trigger, both month arrows and every day cell) · `angular-developer` + angular-cli MCP
 (`get_best_practices` for the v22 posture: `input()`/`output()`, no `@HostListener`, no explicit
 `OnPush`, `@Service`; `angular-aria.md` surfaced `@angular/aria`'s `ngGrid`, considered and
-rejected below) · `playwright-cli` (**loads at phase 7**, before the e2e spec is authored).
+rejected below) · `playwright-cli` (loaded at phase 7 — role/test-id locators, web-first `expect.poll` over fixed
+waits, `settle()` before any measurement or axe pass on an animated surface, and `page.clock` to
+pin the suite's date so the tint fixture stops depending on which day CI runs) · `riviera-local-debug`
+(the cloud-session run recipe: `ng test --include` for scoped unit runs and
+`PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` for the mocked e2e, never `playwright install`).
 
 **Branch:** `claude/availability-calendar-ui-sycn3r` — **cloud-session substitution** for the
 local `feature/availability-calendar-ui` convention (`riviera-sdlc` § *Remote / cloud session
@@ -55,53 +62,56 @@ addendum*). Branched from `origin/main` at `7d93a3f`.
 > Written at the component boundary — the frontend's inner hexagon is the calendar's own
 > inputs/outputs and the pure functions beneath it, not the rendered pixel.
 
-- [ ] **AC-1:** Given a venue whose calendar read answers `free`/`total` per day, when the picker
+- [x] **AC-1:** Given a venue whose calendar read answers `free`/`total` per day, when the picker
   is opened, then every day cell of the visible month carries a tint state derived from that day's
   counts and a capacity bar whose width is `free / total`.
   *Pinned by:* `availability-calendar.spec.ts` › `renders a tint and a capacity bar per day of the visible month`.
-- [ ] **AC-2:** Given the picker is open on month M, when the user navigates to M±1, then exactly one
+- [x] **AC-2:** Given the picker is open on month M, when the user navigates to M±1, then exactly one
   new calendar request is issued for that month's inclusive bounds and the grid re-renders from its
   response.
-  *Pinned by:* `availability-calendar.spec.ts` › `refetches on month navigation`.
-- [ ] **AC-3:** Given any day with counts, then its accessible name is
+  *Pinned by:* `availability-calendar.spec.ts` › `refetches for the new month and re-renders`.
+- [x] **AC-3:** Given any day with counts, then its accessible name is
   `"<Wed 26 Aug 2026>, <free> of <total> sets free"` — the exact integers, never a tint word alone.
-  *Pinned by:* `day-availability.spec.ts` › `the accessible name carries the exact counts`.
-- [ ] **AC-4:** Given today and any past day, when the grid renders, then those cells are present,
+  *Pinned by:* `day-availability.spec.ts` › `carries the civil day and the exact counts` + `says a day is the one the map is showing`.
+- [x] **AC-4:** Given today and any past day, when the grid renders, then those cells are present,
   carry `aria-disabled="true"`, announce `"not bookable"`, are reachable by arrow keys, and
   `Enter`/`Space` on them emits nothing.
-  *Pinned by:* `availability-calendar.spec.ts` › `today and past days are announced disabled and cannot be selected`.
-- [ ] **AC-5:** Given the picker is open, when the user presses `ArrowLeft/Right` (±1 day),
+  *Pinned by:* `availability-calendar.spec.ts` › `announces today and past days as disabled, and refuses to select them` + `refuses Enter and Space on a day that cannot be booked`.
+- [x] **AC-5:** Given the picker is open, when the user presses `ArrowLeft/Right` (±1 day),
   `ArrowUp/Down` (±7 days), `Home`/`End` (week bounds), `PageUp`/`PageDown` (∓/±1 month),
   `Shift+PageUp`/`Shift+PageDown` (∓/±1 year), then focus moves accordingly without committing a
   selection; `Enter`/`Space` commits the focused day; `Escape` closes and returns focus to the trigger.
-  *Pinned by:* `availability-calendar.spec.ts` › the `keyboard` describe (one case per key).
-- [ ] **AC-6:** Given the picker is open, when the user Tabs past the last focusable control, then
+  *Pinned by:* `availability-calendar.spec.ts` › the `keyboard` describe (one case per key, incl.
+  `commits the focused day on Enter and on Space, the keys a booking is made with` and
+  `carries real DOM focus with the roving tabindex, not just the attribute`).
+- [x] **AC-6:** Given the picker is open, when the user Tabs past the last focusable control, then
   focus wraps inside the popover and never reaches the page behind it.
   *Pinned by:* `availability-calendar.spec.ts` › `traps focus inside the popover, wrapping past the
   last control` + `wraps backwards from the first control on Shift+Tab`, and
   `shared/focus-trap.spec.ts` › the `around a roving tabindex` describe.
-- [ ] **AC-7:** Given the month label changes, then it is rendered inside an `aria-live="polite"`
+- [x] **AC-7:** Given the month label changes, then it is rendered inside an `aria-live="polite"`
   region so the change is announced.
-  *Pinned by:* `availability-calendar.spec.ts` › `announces the month change`.
-- [ ] **AC-8:** Given the calendar read fails, then the grid still renders and stays fully
+  *Pinned by:* `availability-calendar.spec.ts` › `announces the month change from a live region`.
+- [x] **AC-8:** Given the calendar read fails, then the grid still renders and stays fully
   selectable, every day reads `"availability unknown"`, and a non-blocking note says the counts
   could not be loaded — the picker never becomes unusable because a decorative read failed.
-  *Pinned by:* `availability-calendar.spec.ts` › `degrades to a usable picker when the counts fail`.
-- [ ] **AC-9:** Given a day is chosen, when the popover emits it, then `venue-map` sets
+  *Pinned by:* `availability-calendar.spec.ts` › `degrades to a usable picker rather than an empty one`.
+- [x] **AC-9:** Given a day is chosen, when the popover emits it, then `venue-map` sets
   `selectedDate` once, closes any open set dialog, re-fetches the map for that day, and the booking
   dialog opened afterwards is seeded with the same day.
-  *Pinned by:* `venue-map.spec.ts` › `the calendar's chosen day drives the map re-fetch and the dialog seed`.
-- [ ] **AC-10:** Given both themes, then the day ink reads ≥ 4.5:1 on each of the three tint fills,
+  *Pinned by:* `venue-map.spec.ts` › `drives the map re-fetch and the dialog's seeded date from the chosen day`.
+- [x] **AC-10:** Given both themes, then the day ink reads ≥ 4.5:1 on each of the three tint fills,
   the capacity-bar fill reads ≥ 3:1 against its track, and the focus ring reads ≥ 3:1 against every
   tint (WCAG 1.4.3 / 1.4.11).
   *Pinned by:* `availability-calendar.contrast.spec.ts`.
-- [ ] **AC-11:** `npm run test:a11y` is green including the open popover, and
+- [x] **AC-11:** `npm run test:a11y` is green including the open popover, and
   `node scripts/check-touch-target.mjs --diff origin/main` reports no TT-1/TT-2 violation.
-  *Pinned by:* `availability-calendar.a11y.spec.ts` + the guard run recorded in AC verification.
-- [ ] **AC-12:** Given the mocked e2e suite, when it opens the picker, navigates a month and picks a
+  *Pinned by:* `venue-map.a11y.spec.ts` › `has no violations with the availability calendar open (#761)`
+  + the guard run recorded in AC verification.
+- [x] **AC-12:** Given the mocked e2e suite, when it opens the picker, navigates a month and picks a
   day, then the venue map request for that exact `date=` is observed.
   *Pinned by:* `frontend/e2e/availability-calendar.e2e.ts`.
-- [ ] **AC-13:** No request the calendar issues spans more than 62 days, so the server's window cap
+- [x] **AC-13:** No request the calendar issues spans more than 62 days, so the server's window cap
   can never be tripped by month navigation.
   *Pinned by:* `availability-calendar.spec.ts` › `never requests a window wider than the server cap`.
 
@@ -152,22 +162,24 @@ addendum*). Branched from `origin/main` at `7d93a3f`.
 
 ## Open questions / Assumptions
 
-- **Assumption:** "low" is `0 < free ≤ 25% of total`; "full" is `free === 0`; everything else is
+### Resolved
+
+- **Assumption (held):** "low" is `0 < free ≤ 25% of total`; "full" is `free === 0`; everything else is
   "free". #761 names the three tints but not the boundary. A ratio (not an absolute) is used
   because venue sizes differ by an order of magnitude. — *Owner:* claude · *Resolves by:* phase 2
-  (recorded in `day-availability.ts` and pinned by its spec; cheap for the maintainer to override —
-  one constant, one spec row).
-- **Assumption:** disabled days (today and past) show **no** tint and **no** count, and announce
-  `"not bookable"` instead. The endpoint answers them, but a free/total figure on a day nobody can
-  book reads as an offer. — *Owner:* claude · *Resolves by:* phase 2.
-- **Assumption:** the week starts **Monday**. The repo pins `en-IE` for civil-date formatting
-  (`shared/booking-date.ts` `formatCivilDate`), and Albania is a Monday-first locale. — *Owner:*
-  claude · *Resolves by:* phase 0.
-- **Assumption:** the trigger is a **button**, not a text input plus a calendar button. Follows from
-  #706's "one control, one behaviour, one test matrix"; the cost is recorded in the parity ledger
-  and mitigated by year navigation. — *Owner:* claude · *Resolves by:* phase 5.
+  — shipped as `LOW_FRACTION` in `day-availability.ts`, pinned by
+  `day-availability.spec.ts`; still one constant and one spec row to change.
+- **Assumption (held):** disabled days (today and past) show no tint, no count and no capacity bar,
+  and announce `"not bookable"`. The endpoint answers them, but a free/total figure on a day nobody
+  can book reads as an offer. — shipped at phase 2; the review fan-out extended it to a *bookable*
+  day whose counts are unreadable, which now also draws no bar.
+- **Assumption (held):** the week starts **Monday** — the repo pins `en-IE` for civil-date
+  formatting and Albania is a Monday-first locale. Shipped at phase 0 in `startOfWeek`/`endOfWeek`.
+- **Assumption (held):** the trigger is a **button**, not a text input plus a calendar button —
+  #706's "one control, one behaviour, one test matrix". The cost is in the parity ledger, mitigated
+  by `Shift`+`PageUp`/`PageDown` year navigation. Shipped at phase 5.
 
-### Resolved
+**No open questions remain.**
 
 - **Q: is `@angular/aria`'s `ngGrid` the right substrate?** — **No.** It is not installed, the
   stack is locked (`CLAUDE.md` § *Tech stack*), and it would supply only arrow-key roving: the
@@ -230,10 +242,10 @@ counts only.
 
 | # | Surface | Existing/new | Type | State/reactivity | Forms |
 |---|---|---|---|---|---|
-| FE-1 | `venue/availability-calendar.ts` + `.html` | new | standalone component (`app-availability-calendar`) | signals: `visibleMonth`, `focusedDate`, `days`, `countsFailed`, `loading`; `computed` weeks/grid; private `epoch` | none |
-| FE-2 | `venue/day-availability.ts` | new | pure vocabulary + variant directive (`map-tile.ts` shape) | none — pure functions and `Record` lookups | none |
+| FE-1 | `venue/availability-calendar.ts` + `.html` | new | standalone component (`app-availability-calendar`) | `linkedSignal` `focusedDate` + `signal` `focusRequest`/`counts`/`countsFailed`/`countsLoading`; `computed` `visibleMonth`/`monthLabel`/`weeks`; private `epoch` | none |
+| FE-2 | `venue/day-availability.ts` | new | pure vocabulary (the `map-tile.ts` shape, minus the directive — nothing needed a host binding) | none — pure functions and `Record` lookups | none |
 | FE-3 | `venue/venue.service.ts` | existing | `@Service` HTTP client | none (cold `Observable`) | none |
-| FE-4 | `venue/venue-map.ts` + `.html` | existing | routed component | adds `pickerOpen` signal + a stored trigger `ElementRef`; `selectedDate` stays the single writer | none |
+| FE-4 | `venue/venue-map.ts` + `.html` | existing | routed component | adds a `pickerOpen` signal; focus restore goes through the already-injected `focusMover()`; `selectedDate` stays the single writer | none |
 | FE-5 | `shared/venue-views.ts` | existing | published API-view vocabulary | none | none |
 | FE-6 | `shared/booking-date.ts` | existing | pure date math | none | none |
 | FE-7 | `src/testing/calendar-tints.ts` | new | test-side mirror of the tint recipes | none | none |
@@ -271,10 +283,9 @@ a grid of buttons, not a field. Deviation from the `@angular/aria` recommendatio
 
 ## Execution status
 
-**Stage pointer:** `sonar gate — round 1 fixed, awaiting re-analysis`
+**Stage pointer:** `merge close-out` — CI green, review gate run in full (a `/code-review` pass plus a five-lens subagent fan-out), Sonar list cleared, all findings resolved.
 
-**Next action:** re-pull the Sonar list on the new head and confirm it is empty; collect the
-remaining fan-out lenses and apply any surviving findings.
+**Next action:** merge PR #763, then tick epic #706's checklist for #761.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -300,6 +311,25 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-5 | review (`/code-review`) | `isSameMonth` was exported from `shared/booking-date.ts` with no caller outside its own spec. | fixed — removed, with its spec |
 | F-6 | sonar (`Web:S6819`, MAJOR) | `role="dialog"` on a `<div>` — the rule asks for the native element. | fixed — the panel is a real `<dialog open tabindex="-1">`. **Not** `showModal()`: jsdom 29 implements neither it nor the top layer, so the 193 unit specs would be testing a fiction; the app's own `trapFocusWithin` still runs, exactly as in the three sibling modals. A deliberate divergence from those three (they are `<div role="dialog">`), and a precedent for migrating them. |
 | F-7 | sonar (`Web:S6819`, MAJOR) | `role="status"` on a `<p>` — the rule asks for `<output>`, which carries that role implicitly. | fixed — `<output class="block">`. |
+| F-9 | review fan-out (CSS lens) | **Major, introduced by F-6's own fix.** The UA stylesheet gives `<dialog>` `position:absolute; left:0`, so the panel left the host's flex centring and sat against the viewport's left edge (measured: x=7 at a 1280 viewport, where centred is x=471). The e2e passed because it measured the fixed **host**, not the panel. | fixed — `static` on the dialog; the e2e now measures the **panel** and asserts it is centred |
+| F-10 | review fan-out (a11y lens) | The counts land after the first render, so the focused day was announced "availability unknown" and nothing re-announced when the real numbers arrived. No live region existed for the load. | fixed — `app-load-announcer` mounted outside every branch, per the #741 rule |
+| F-11 | review fan-out (a11y lens) | The chosen day was never announced as chosen: `aria-selected` sat on the `gridcell`, but the **button** is what takes focus, and AT reports the focused object. | fixed — the selection is spoken in the day's own name (", selected") |
+| F-12 | review fan-out (a11y lens) | **F-7 read as resolved but was not.** `<output>` carries `role="status"` implicitly, so swapping the element changed nothing: the region was still *born holding its message* and announces nothing (RV-FE-10). | fixed — `role="alert"`, insertion being the one case a live region announces without a prior mutation |
+| F-13 | review fan-out (a11y + logic) | `closePicker` hand-rolled the focus restore with `queueMicrotask` + a document-wide query, and ran **before** the date was written — so the trigger announced the day the tourist had just left. | fixed — `focusMover()` (already injected in the class), and the date is written first |
+| F-14 | review fan-out (a11y + logic) | `resetForVenue` destroyed the focus-trapped popover with no focus leg (RV-FE-9 instance-14's shape; FOCUS-1 cannot see it). | fixed — a deliberate move when the picker was open |
+| F-15 | review fan-out (logic + a11y) | Month range was bounded on the button path only: `PageUp`/arrows walked past the earliest month, firing a request per month, while the Previous control announced itself unavailable. | fixed — both paths clamp to the same floor |
+| F-16 | review fan-out (logic) | `isReadable` used coercing relational operators, so `{free: null}` and `{free: "0"}` passed the "fails closed" gate and painted the amber tint with "null of 30 sets free". Latent — today's server sends `int`s. | fixed — `Number.isInteger` on both fields |
+| F-17 | review fan-out (logic) | A stale `countsFailed` outlived its month (navigate away from a failed month and the notice persisted over a month still in flight), and the previous month's counts were held until the new response landed. | fixed — both cleared at dispatch, with a `countsLoading` signal driving the announcer |
+| F-18 | review fan-out (logic) | The calendar's HTTP subscriptions were never torn down; closing the popover mid-request left the XHR running and its callbacks writing a destroyed component's signals. | fixed — `takeUntilDestroyed` |
+| F-19 | review fan-out (test lens) | **BLOCKER, and a false record.** The two `venue-map.spec.ts` floor assertions were still unscoped and still reading `aria-disabled` off the trigger — the phase-7 log claimed all eight sites were scoped. An off-by-one on the booking floor would have slipped through. | fixed and **mutation-verified** (`>=`→`>` now turns 2 tests red); the log row is corrected to say what actually happened |
+| F-20 | review fan-out (test lens) | AC-9's dialog-seed clause was a tautology: `getAttribute('ng-reflect-date') ?? chosen` on a **signal** input always returns null, reducing to `expect(chosen).toContain(chosen)`. | fixed — asserts the rendered `dialog-date` text; it immediately caught a format mismatch, which is the proof it is real |
+| F-21 | review fan-out (test lens) | `Enter`/`Space` — the two keys a booking is actually made with — had no test in any suite, in either the commit or the refusal direction. | fixed — three cases, mutation-verified |
+| F-22 | review fan-out (test lens) | No unit test asserted that DOM focus follows the roving tabindex; deleting the `focusRequest` bump left the whole unit suite green. | fixed — mutation-verified |
+| F-23 | review fan-out (test lens) | The bar and chrome colours were hand-copies the mirror file exists to forbid, so the 1.4.11 proofs could go on asserting colours the template no longer used. | fixed — the rendered bar is tied to `CALENDAR_BAR` |
+| F-24 | review fan-out (test lens) | `venue-map.a11y.spec.ts`'s `% 4` fixture could never produce the `free` tint (that needs >25% of 30), so its comment claimed coverage it did not have. | fixed — an explicit three-state spread, asserted present before the audit runs |
+| F-25 | review fan-out (logic lens) | **CI time bomb.** The e2e keyed counts to position in the requested window and asserted all three tints on the opening month — but on the 29th/30th of any month too few bookable days remain, so `npm run test:e2e:a11y` would have gone red on **two days of every month**. | fixed — counts keyed to day-of-month, tints asserted on a navigated-to month, and the suite's clock pinned with `page.clock` to 2026-08-30 (one of the dates that would have failed). Verified: removing the forward step turns it red on that date |
+| F-26 | docs-freshness sweep | `focus-trap.ts` named two consumers (there are four); `check-focus-posture.mjs`'s header counted 3 focus-trapped modals (now 4); the v3 design artboard still drew a native date input. | fixed — all three patched in this PR rather than a follow-up docs PR |
+| F-27 | review fan-out (conventions lens) | *Skills consulted* omitted `riviera-local-debug`, and its `riviera-tailwind` parenthesis described `styles.scss` tokens that were never created. Six AC pin-names named tests that do not exist, and three sections cited an `availability-calendar.a11y.spec.ts` that was never created. | fixed — line corrected, every pin-name reconciled against the shipped titles |
 | F-8 | sonar (`typescript:S7766`, MINOR) | "Prefer `Math.max()`" on the opening-focus ternary. The suggestion is literally wrong for ISO **strings** (`Math.max` coerces to `NaN`), but the shape it flags was a max hiding a domain rule. | fixed by expressing the rule instead: an `isBookable(iso)` predicate now names invariant #4's display side and is reused by the grid computation, which had inlined the same comparison. |
 
 ---
@@ -314,12 +344,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/venue/day-availability.ts|.spec.ts` — tint states, classes, accessible names
 - `frontend/src/app/venue/availability-calendar.ts|.html|.spec.ts` — the popover
 - `frontend/src/app/shared/focus-trap.ts|.spec.ts` — the trap fix a roving tabindex forced
-- `frontend/src/app/venue/availability-calendar.a11y.spec.ts` — jsdom axe audit of the open popover
 - `frontend/src/app/venue/availability-calendar.contrast.spec.ts` — WCAG token maths
 - `frontend/src/app/venue/venue-map.ts|.html|.spec.ts` — the swap and the new close legs
-- `frontend/src/app/venue/venue-map.a11y.spec.ts` — header audit with the new trigger
-- `frontend/src/app/venue/venue-map-switch.spec.ts` — popover reset on in-place route change
+- `frontend/src/app/venue/venue-map.a11y.spec.ts` — jsdom axe audit of the header and of the open popover
 - `frontend/src/testing/calendar-tints.ts` — the one test-side mirror of the tint recipes
+- `frontend/src/testing/calendar-days.ts` — the shared calendar-response fixture builder
+- `frontend/src/app/venue/venue.service.spec.ts` — the typed read's spec
+- `scripts/check-focus-posture.mjs` · `docs/design/riviera-sunbeds-liquid-glass-v3.dc.html` — docs-freshness patches
 - `frontend/e2e/availability-calendar.e2e.ts` — the CI-run mocked flow
 - `frontend/e2e/discovery-flow.e2e.ts` — the carried-`?date=` assertion, re-expressed for the trigger
 
@@ -414,7 +445,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 5 — Wire into `venue-map`, retire the native input
 
-**Files:** Modify `venue/venue-map.ts`, `.html`, `.spec.ts`, `venue-map-switch.spec.ts`, `venue-map.a11y.spec.ts`
+**Files:** Modify `venue/venue-map.ts`, `.html`, `.spec.ts`, `venue-map.a11y.spec.ts`
 
 - [ ] **Step 1: Write the failing tests** — AC-9; R-3's focus case (date change 404s while the
   popover is open → focus on the error panel, not `<body>`); R-9's route-change reset; and the two
@@ -432,8 +463,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 6 — Tokens, contrast, axe, touch targets
 
-**Files:** Modify `src/styles.scss` · Create `src/testing/calendar-tints.ts`,
-`venue/availability-calendar.contrast.spec.ts`, `venue/availability-calendar.a11y.spec.ts`
+**Files:** Create `src/testing/calendar-tints.ts`, `venue/availability-calendar.contrast.spec.ts` ·
+Modify `venue/venue-map.a11y.spec.ts`
 
 - [ ] **Step 1: Write the failing tests** — AC-10 (day ink AA on each tint; bar fill ≥ 3:1 vs
   track; focus ring ≥ 3:1 vs each tint), AC-11 (axe over the open popover).
@@ -476,7 +507,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-23 | review F-1 — a `position: fixed` overlay inside a `backdrop-filter` ancestor | every fixed-position overlay in the app, and every ancestor that can contain or clip one (`backdrop-filter`, `filter`, `transform`, `contain`, `will-change`, `overflow`) — enumerated by **measuring the rendered box against the viewport**, not by reading class lists, since the containing block is a computed fact | a Playwright probe walking `hostEl.parentElement` for a non-`none` `backdropFilter`/`filter`/`transform` or a non-`visible` `overflow`, then comparing `getBoundingClientRect()` to `innerWidth/innerHeight` | 1 — the calendar overlay; the three existing modals (`booking-dialog`, `find-booking`, `payout-statement`) are already rendered outside the glass panels, which is *why* they were | fixed the one site, and turned the probe into a permanent e2e assertion so the next overlay cannot regress it silently |
-| 2026-08-23 | phase 7 — a strict-mode violation on `button[data-date="…"]` | every selector that can match a day cell, which is the mechanism: the trigger carries `data-date` as its own test hook and precedes the popover in the document, so an unscoped query returns the trigger whenever the two dates coincide | `grep -rn 'data-date' src/app e2e --include=*.ts --include=*.html \| grep -v 'attr.data-date'` | 8 query sites: 3 in `venue-map.spec.ts`, 4 in the new e2e, 1 in the component | **two of the unit sites were false-greens** — `venue-map.spec.ts`'s floor assertions read `aria-disabled` off the *trigger* (which has none) and so passed for the wrong reason. All eight scoped to the popover; the component's own query was already scoped to its host and needed nothing. |
+| 2026-08-23 | phase 7 — a strict-mode violation on `button[data-date="…"]` | every selector that can match a day cell, which is the mechanism: the trigger carries `data-date` as its own test hook and precedes the popover in the document, so an unscoped query returns the trigger whenever the two dates coincide | `grep -rn 'data-date' src/app e2e --include=*.ts --include=*.html \| grep -v 'attr.data-date'` | 8 query sites: 3 in `venue-map.spec.ts`, 4 in the new e2e, 1 in the component | **two of the unit sites were false-greens** — `venue-map.spec.ts`'s floor assertions read `aria-disabled` off the *trigger* (which has none) and so passed for the wrong reason. The e2e sites were scoped; **the two unit sites were not — the edit silently failed to match after Prettier reformatted them, and this row recorded the fix as done anyway.** Caught by the review fan-out and fixed in round 2, where a mutation (`>=` → `>` on the booking floor) now turns both red. The lesson is the row itself: an unverified edit plus a confident log entry is worse than no log entry. |
 | 2026-08-22 | phase 6 — gave each fill its own focus-ring colour | every element that can end up with two competing `outline-color` utilities, which resolve by stylesheet order rather than class order (`riviera-tailwind` rule 3) | `grep -rn 'focus-visible:outline-\[' frontend/src/app --include=*.html --include=*.ts` | the calendar day cell was the only element where a base ring and a state ring would have met; every other site sets exactly one | fixed by moving the ring onto the per-state class, so exactly one reaches each element by construction rather than by luck |
 | 2026-08-22 | phase 4 — fixed the focus trap's focusable selector | every site that enumerates focusable elements by selector, which is the mechanism the defect lives in (a clause matching an element the browser will not tab to) | `grep -rn 'a\[href\]\|tabindex="-1"\]\|:not(\[disabled\])' src/app src/testing e2e --include=*.ts` | 1 — `shared/focus-trap.ts` is the only such site | fixed there, so all four consumers (`booking-dialog`, `find-booking`, `payout-statement`, `availability-calendar`) get it; the three pre-existing modals' specs re-run green, since none parks a focusable. Also swept the sibling defect in the same selector — `select`/`textarea` were matched even when `disabled` — and fixed it in the same line. |
 | 2026-08-22 | phase 0 — introduced ISO civil-day month arithmetic | every site that does civil-day arithmetic on a `Date` by hand, rather than through `shared/booking-date.ts` | `grep -rn "setUTCDate\|setUTCMonth\|setUTCFullYear\|toISOString()" src/app src/testing e2e --include=*.ts` | 3 outside the module: `e2e/discovery-flow.e2e.ts:176-177` (civil day via `toISOString().slice(0,10)`), `e2e/operator-requests.e2e.ts:21` (a full instant, correct usage), and the module's own docs | none — both live sites are **mocked-e2e fixtures**, which drive the built app as a black box and import nothing from `src/` on purpose (`testing/chip-fills.ts` header states the rule). No app-source site rolls its own day arithmetic, so the new helpers have no existing duplicate to absorb. |
@@ -485,28 +516,37 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 … AC-11:** Run `npm test` (Vitest) → all green. Verified at commit `<sha>`.
-- [ ] **AC-10, AC-11:** Run `npm run test:a11y` and `node scripts/check-touch-target.mjs --diff origin/main` → green. Verified at commit `<sha>`.
-- [ ] **AC-12:** Run `npm run test:e2e:a11y` → green. Verified at commit `<sha>`.
-- [ ] **AC-13:** Covered by the Vitest run above.
+- [x] **AC-1 … AC-9, AC-13:** `npm test` → **1767 passed / 185 files**, including the 36-case
+  `availability-calendar.spec.ts` and the 78-case `venue-map.spec.ts`.
+- [x] **AC-10, AC-11:** `npm run test:a11y` green (contrast maths + the jsdom axe audit of the open
+  popover); `node scripts/check-touch-target.mjs --diff origin/main` clean, and the rendered 44 px
+  box is measured at 390 px by `availability-calendar.e2e.ts`.
+- [x] **AC-12:** `npm run test:e2e:a11y` → **278 passed**, incl. 9 calendar cases.
+- [x] **Non-vacuity spot-checked by mutation**, since three assertions in this slice were found
+  passing for the wrong reason: `>=`→`>` on the booking floor turns 2 tests red, deleting the
+  `focusRequest` bump turns 1 red, routing `Enter`/`Space` into the keydown switch turns 1 red, and
+  removing the e2e's forward month-step turns the tint assertions red on the pinned date.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled; the snapshot-never-a-hold rule is honoured in wording and in code (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — `total` is not presented as bookable; today/past are display-only.
-- [ ] **Modulith** section filled (N/A, frontend-only); no new cross-feature FE import (RV-FE-8).
-- [ ] **Payment/payout** N/A.
-- [ ] Refund policy — N/A.
-- [ ] Timezone correct: every date operation goes through `shared/booking-date.ts`; no `toISOString()` (invariant #6).
-- [ ] Booking codes — N/A.
-- [ ] Flyway — N/A, no schema change.
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` green (plan doc staged first).
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final plan-doc state committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `/code-review` subagent fan-out per `pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test — pin-names reconciled against the shipped titles at review round 2 (six had drifted).
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled; the snapshot-never-a-hold rule is honoured in wording and in code (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — `total` is not presented as bookable; today/past are display-only.
+- [x] **Modulith** section filled (N/A, frontend-only); no new cross-feature FE import — RV-FE-8 verified mechanically, the grep returns exactly the five grandfathered edges.
+- [x] **Payment/payout** N/A.
+- [x] Refund policy — N/A.
+- [x] Timezone correct: every date operation goes through `shared/booking-date.ts`; no `toISOString()` (invariant #6).
+- [x] Booking codes — N/A.
+- [x] Flyway — N/A, no schema change.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` green (plan doc staged first), alongside the touch-target, focus-posture and inline-comment guards.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — final plan-doc state committed here, citing `merged via PR #763`.
+- [x] **The review gate ran in full** — a `/code-review` pass, then a five-lens subagent fan-out
+      (a11y/ARIA, CSS-layout-stacking, logic-and-edge-cases, test-quality, conventions) explicitly
+      requested by the maintainer, plus `riviera-review-overlay` and a `riviera-docs-freshness`
+      sweep. 21 findings; every one fixed or answered in the register below.

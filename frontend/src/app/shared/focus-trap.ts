@@ -1,8 +1,9 @@
 /**
  * Keep keyboard focus inside a modal container (a focus trap; modal a11y, WCAG 2.4.3 / 2.1.2). Wraps
  * Tab at the last focusable back to the first, and Shift+Tab at the first to the last. Shared by the
- * app's modals (the booking dialog, find-booking) — extracted so the a11y-critical logic lives
- * in ONE place and can't drift between copies.
+ * app's four modals (the booking dialog, find-booking, the payout statement and the availability
+ * calendar) — extracted so the a11y-critical logic lives in ONE place and can't drift between
+ * copies.
  *
  * The selector excludes what the browser will not tab to: disabled controls, and anything held at
  * `tabindex="-1"`. The second exclusion is what makes the trap safe around a **roving tabindex** —

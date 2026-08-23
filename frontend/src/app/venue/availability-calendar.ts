@@ -1,5 +1,6 @@
 import {
   Component,
+  DestroyRef,
   ElementRef,
   afterRenderEffect,
   computed,
@@ -12,6 +13,8 @@ import {
   untracked,
 } from '@angular/core';
 
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
 import {
   addDays,
   addMonths,
@@ -23,10 +26,10 @@ import {
   startOfWeek,
 } from '../shared/booking-date';
 import { DailyAvailability } from '../shared/venue-views';
+import { LoadAnnouncer } from '../shared/load-announcer';
 import { TouchTarget } from '../shared/touch-target';
 import { trapFocusWithin } from '../shared/focus-trap';
 import {
-  DAY_MEANING,
   DAY_SELECTED_CLASS,
   DAY_TINT_CLASS,
   DayAvailabilityState,
@@ -75,18 +78,13 @@ const WEEKDAYS: readonly { readonly short: string; readonly long: string }[] = [
  * stays authoritative for the real cutoff). The endpoint answers them, because it reports
  * availability rather than bookability, so the exclusion is entirely this component's job.
  *
- * <p>The chosen day draws no capacity bar. It wears the accent rather than a tint, and the bar's
- * two colours are proved against the pale tints only — on the accent they fall to 2.1:1 and 1.5:1.
- * Nothing is lost: that day's free count is what the page behind the popover is already showing in
- * full, and the day's accessible name still speaks it.
- *
  * <p>Focus, not selection, drives the visible month: {@link focusedDate} is the roving-tabindex
  * position and the month is computed from it, so an arrow key that crosses a month boundary and a
  * PageDown are the same operation with the same refetch.
  */
 @Component({
   selector: 'app-availability-calendar',
-  imports: [TouchTarget],
+  imports: [TouchTarget, LoadAnnouncer],
   templateUrl: './availability-calendar.html',
   host: {
     class:
@@ -132,6 +130,8 @@ export class AvailabilityCalendar {
 
   private readonly counts = signal<ReadonlyMap<string, DailyAvailability>>(new Map());
   protected readonly countsFailed = signal(false);
+  protected readonly countsLoading = signal(true);
+  private readonly destroyRef = inject(DestroyRef);
   private epoch = 0;
 
   protected readonly visibleMonth = computed(() => startOfMonth(this.focusedDate()));
@@ -164,13 +164,13 @@ export class AvailabilityCalendar {
           iso,
           dayOfMonth: Number(iso.slice(8)),
           state,
-          tint: isSelected ? DAY_SELECTED_CLASS : DAY_TINT_CLASS[state],
+          tint: `${DAY_TINT_CLASS[state]}${isSelected ? ` ${DAY_SELECTED_CLASS}` : ''}`,
           barPercent: `${Math.round(freeFraction(selectable ? day : undefined) * 100)}%`,
-          name: dayAccessibleName(iso, day, selectable),
+          name: dayAccessibleName(iso, day, selectable, isSelected),
           selectable,
           selected: isSelected,
           focused: iso === focused,
-          showsBar: selectable && state !== 'unknown' && !isSelected,
+          showsBar: selectable && state !== 'unknown',
         };
       }),
     );
@@ -194,7 +194,9 @@ export class AvailabilityCalendar {
     if (months < 0 && this.atEarliestMonth()) {
       return;
     }
-    this.focusedDate.set(addMonths(this.focusedDate(), months));
+    const target = addMonths(this.focusedDate(), months);
+    const floor = startOfMonth(this.minDate());
+    this.focusedDate.set(target < floor ? floor : target);
   }
 
   /**
@@ -237,9 +239,16 @@ export class AvailabilityCalendar {
     this.moveFocusTo(next);
   }
 
-  /** Move the roving position AND carry focus with it — the keyboard's move, not the buttons'. */
+  /**
+   * Move the roving position AND carry focus with it — the keyboard's move, not the buttons'.
+   *
+   * <p>Clamped to the earliest month the "Previous month" control will reach, so the two paths
+   * agree: a button that announces itself unavailable must not be contradicted by an arrow key
+   * that walks past it (and fires a request per month on the way).
+   */
   private moveFocusTo(date: string): void {
-    this.focusedDate.set(date);
+    const floor = startOfMonth(this.minDate());
+    this.focusedDate.set(date < floor ? floor : date);
     this.focusRequest.update((request) => request + 1);
   }
 
@@ -255,35 +264,38 @@ export class AvailabilityCalendar {
     trapFocusWithin(this.hostRef.nativeElement, event, backwards);
   }
 
-  /** The legend phrase for a state, so the tint is explained in words as well as colour. */
-  protected legend(state: DayAvailabilityState): string {
-    return DAY_MEANING[state].legend;
-  }
-
   /**
    * Read one month's counts. The window is the month's own inclusive bounds, so it is 31 days at
    * most and the server's 62-day cap is out of reach however far the user navigates.
    *
    * <p>Each dispatch carries a generation, and a response from a superseded one is dropped — month
-   * navigation races exactly as the map's date changes do (`venue-map.ts`'s `epoch` guard).
+   * navigation races exactly as the map's date changes do (`venue-map.ts`'s `epoch` guard). The
+   * previous month's counts and any previous failure are cleared at dispatch, so a slow month is
+   * never painted with the last one's numbers and a stale failure notice cannot outlive its month.
    */
   private fetchMonth(venueId: number, month: string): void {
     const generation = ++this.epoch;
-    this.venues.availabilityCalendar(venueId, month, endOfMonth(month)).subscribe({
-      next: (days) => {
-        if (this.epoch !== generation) {
-          return;
-        }
-        this.countsFailed.set(false);
-        this.counts.set(new Map(days.map((day) => [day.date, day])));
-      },
-      error: () => {
-        if (this.epoch !== generation) {
-          return;
-        }
-        this.countsFailed.set(true);
-        this.counts.set(new Map());
-      },
-    });
+    this.countsLoading.set(true);
+    this.countsFailed.set(false);
+    this.counts.set(new Map());
+    this.venues
+      .availabilityCalendar(venueId, month, endOfMonth(month))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (days) => {
+          if (this.epoch !== generation) {
+            return;
+          }
+          this.countsLoading.set(false);
+          this.counts.set(new Map(days.map((day) => [day.date, day])));
+        },
+        error: () => {
+          if (this.epoch !== generation) {
+            return;
+          }
+          this.countsLoading.set(false);
+          this.countsFailed.set(true);
+        },
+      });
   }
 }

@@ -6,6 +6,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { expectNoAxeViolations } from '../../testing/axe';
+import { calendarDays } from '../../testing/calendar-days';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueMap } from './venue-map';
 
@@ -126,20 +127,26 @@ describe('VenueMap accessibility (axe)', () => {
     await fixtureRef.whenStable();
 
     const calendar = httpMock.expectOne((req) => req.url.endsWith('/availability-calendar'));
-    const from = calendar.request.params.get('from')!;
-    const to = calendar.request.params.get('to')!;
-    const days = [];
-    for (let day = new Date(`${from}T00:00:00Z`); ; day.setUTCDate(day.getUTCDate() + 1)) {
-      const iso = day.toISOString().slice(0, 10);
-      days.push({ date: iso, free: days.length % 4, total: 30 });
-      if (iso === to) break;
-    }
-    calendar.flush(days);
+    // `free` needs over a quarter of the sets, so a naive `% 4` of 30 never reaches that tint.
+    const spread = [
+      { free: 0, total: 30 },
+      { free: 4, total: 30 },
+      { free: 30, total: 30 },
+    ];
+    calendar.flush(
+      calendarDays(
+        calendar.request.params.get('from')!,
+        calendar.request.params.get('to')!,
+        (index) => spread[index % spread.length],
+      ),
+    );
     fixtureRef.detectChanges();
     await fixtureRef.whenStable();
 
-    // Every tint state is on screen at once (the `% 4` fixture), so the audit sees them all.
     expect(host().querySelector('[data-testid="availability-calendar"]')).not.toBeNull();
+    for (const state of ['free', 'low', 'full']) {
+      expect(host().querySelector(`button[data-state="${state}"]`)).not.toBeNull();
+    }
     await expectNoAxeViolations(host());
   });
 

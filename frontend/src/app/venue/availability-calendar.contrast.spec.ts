@@ -52,18 +52,21 @@ describe('Availability calendar contrast (WCAG AA) — venue/day-availability.ts
       expect(contrastRatio(ink, fill)).toBeGreaterThanOrEqual(AA_NORMAL);
     });
 
-    it('the chosen day reads AA on its accent', () => {
-      expect(contrastRatio(CALENDAR_SELECTED.ink, CALENDAR_SELECTED.fill)).toBeGreaterThanOrEqual(
-        AA_NORMAL,
-      );
-    });
-
-    it.each([...CALENDAR_TINTS, CALENDAR_SELECTED])(
-      'the focus ring reads at the 1.4.11 bar on $name',
-      ({ fill, ring }) => {
-        expect(contrastRatio(ring, fill)).toBeGreaterThanOrEqual(AA_LARGE);
+    it.each(CALENDAR_TINTS)(
+      'the chosen-day ring reads at the 1.4.11 bar over the $name fill it is drawn on',
+      ({ fill }) => {
+        expect(contrastRatio(CALENDAR_SELECTED.ring, fill)).toBeGreaterThanOrEqual(AA_LARGE);
       },
     );
+
+    it.each(CALENDAR_TINTS)('the focus ring reads at the 1.4.11 bar on $name', ({ fill, ring }) => {
+      expect(contrastRatio(ring, fill)).toBeGreaterThanOrEqual(AA_LARGE);
+    });
+
+    it('the focus ring and the chosen-day ring stay distinguishable from each other', () => {
+      // They can appear on the same cell, one as outline and one as inset shadow.
+      expect(CALENDAR_SELECTED.ring).not.toBe(CALENDAR_TINTS[0].ring);
+    });
   });
 
   /**
@@ -85,14 +88,14 @@ describe('Availability calendar contrast (WCAG AA) — venue/day-availability.ts
     );
 
     /**
-     * The bar's colours cannot read on the chosen day's dark accent — the arithmetic below is why,
-     * and it is asserted rather than described so the day the accent changes, this fails loudly
-     * instead of the bar quietly becoming legible-looking. The component draws no bar there
-     * (`availability-calendar.spec.ts` pins that), which is what keeps this from being a violation.
+     * The chosen day keeps its tint, so the bar keeps the very fills proved above — which is the
+     * point of marking selection with a ring instead of an inverted fill. An accent fill would put
+     * the bar at 2.1:1 and 1.5:1 and force it to be hidden on the one day most worth reading.
      */
-    it('could not read on the chosen day, which is why no bar is drawn there', () => {
-      expect(contrastRatio(CALENDAR_BAR.track, CALENDAR_SELECTED.fill)).toBeLessThan(AA_LARGE);
-      expect(contrastRatio(CALENDAR_BAR.fill, CALENDAR_SELECTED.fill)).toBeLessThan(AA_LARGE);
+    it('is drawn on the chosen day too, because selection does not replace the tint', () => {
+      for (const { fill } of CALENDAR_TINTS.filter((tint) => !tint.name.startsWith('unknown'))) {
+        expect(contrastRatio(CALENDAR_BAR.track, fill)).toBeGreaterThanOrEqual(AA_LARGE);
+      }
     });
   });
 

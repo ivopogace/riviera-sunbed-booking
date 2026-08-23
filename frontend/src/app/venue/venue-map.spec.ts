@@ -16,6 +16,7 @@ import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
+import { uniformDays } from '../../testing/calendar-days';
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { defaultBookingDate, formatCivilDate, todayBookingDate } from '../shared/booking-date';
@@ -170,15 +171,9 @@ describe('VenueMap', () => {
   function flushCalendar(request?: TestRequest): void {
     const pending =
       request ?? httpMock.expectOne((req) => req.url.endsWith('/availability-calendar'));
-    const from = pending.request.params.get('from')!;
-    const to = pending.request.params.get('to')!;
-    const days = [];
-    for (let day = new Date(`${from}T00:00:00Z`); ; day.setUTCDate(day.getUTCDate() + 1)) {
-      const iso = day.toISOString().slice(0, 10);
-      days.push({ date: iso, free: 20, total: 30 });
-      if (iso === to) break;
-    }
-    pending.flush(days);
+    pending.flush(
+      uniformDays(pending.request.params.get('from')!, pending.request.params.get('to')!),
+    );
   }
 
   /** Open the calendar and settle its month read. */
@@ -842,21 +837,15 @@ describe('VenueMap', () => {
     // The floor the note explains, as the picker now expresses it: tomorrow is offered, today is not.
     await openPicker();
     const floor = defaultBookingDate(new Date());
-    expect(
-      el().querySelector(`button[data-date="${floor}"]`)!.getAttribute('aria-disabled'),
-    ).toBeNull();
-    expect(
-      el()
-        .querySelector(`button[data-date="${todayBookingDate(new Date())}"]`)!
-        .getAttribute('aria-disabled'),
-    ).toBe('true');
+    expect(calendarDay(floor).getAttribute('aria-disabled')).toBeNull();
+    expect(calendarDay(todayBookingDate(new Date())).getAttribute('aria-disabled')).toBe('true');
   });
 
   it('keeps the date field a light surface under the dark riviera document (#675)', async () => {
     flushVenue();
     await fixture.whenStable();
     fixture.detectChanges();
-    // #675's opt-out had a native widget; #761 leaves the light field (computed: discover-photos.e2e.ts).
+    // #675's opt-out had a native widget to opt out; #761 leaves the light field itself.
     expect(dateTrigger().classList.contains('bg-[rgba(255,255,255,0.9)]')).toBe(true);
     expect(dateTrigger().classList.contains('text-(--riv-card-ink)')).toBe(true);
   });
@@ -1026,10 +1015,13 @@ describe('VenueMap', () => {
       expect(el().querySelector('[data-testid="availability-calendar"]')).toBeNull();
       expect(dateTrigger().getAttribute('data-date')).toBe(chosen);
       el().querySelector<HTMLButtonElement>('[data-testid="set-tile"] button')!.click();
+      await fixture.whenStable();
       fixture.detectChanges();
+
+      // The RENDERED date: `date` is a signal input, so a reflected-attribute read is a tautology.
       expect(
-        el().querySelector('app-booking-dialog')?.getAttribute('ng-reflect-date') ?? chosen,
-      ).toContain(chosen);
+        el().querySelector('app-booking-dialog [data-testid="dialog-date"]')!.textContent,
+      ).toContain(formatBookingDate(chosen));
     });
 
     it('returns focus to the trigger when the calendar is dismissed', async () => {

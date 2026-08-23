@@ -44,15 +44,21 @@ function venue(setCount = 12) {
 }
 
 /**
- * Every day of the requested window, cycling free → low → full so all three tints and the
- * capacity bar's whole range are on screen in one month.
+ * Every day of the requested window, cycling free → low → full so all three tints are on screen.
+ *
+ * <p>The cycle is keyed to the **day of the month**, not to the day's position in the window, and
+ * the tint assertions run on a month the spec has navigated **forward** to — where every day is
+ * bookable. Keyed to window position and read on the opening month, the three states are only all
+ * reachable while three or more selectable days remain: on the 29th/30th of any month one residue
+ * has no bookable day left and the assertions fail. This suite runs on the real clock, so that is
+ * a red CI on two days of every month rather than a flake.
  */
 function calendarDays(from: string, to: string) {
-  const days: { date: string; free: number; total: number }[] = [];
   const cycle = [30, 4, 0];
+  const days: { date: string; free: number; total: number }[] = [];
   for (let day = new Date(`${from}T00:00:00Z`); ; day.setUTCDate(day.getUTCDate() + 1)) {
     const iso = day.toISOString().slice(0, 10);
-    days.push({ date: iso, free: cycle[days.length % cycle.length], total: 30 });
+    days.push({ date: iso, free: cycle[(day.getUTCDate() - 1) % cycle.length], total: 30 });
     if (iso === to) break;
   }
   return days;
@@ -63,6 +69,8 @@ const windows: string[] = [];
 
 test.beforeEach(async ({ page }) => {
   windows.length = 0;
+  // Pinned like the unit suite's clock, on the 30th — the shape that made this spec date-fragile.
+  await page.clock.setFixedTime(new Date('2026-08-30T10:00:00Z'));
   await page.route(/\/api\/venues\/\d+\/availability-calendar\?.*$/, (route) => {
     const url = new URL(route.request().url());
     const from = url.searchParams.get('from')!;
@@ -109,6 +117,11 @@ test('opens on the map’s day, tints the month, and is clean to axe', async ({ 
   await expect(page.getByRole('dialog')).toBeVisible();
   await expect(dialog).toHaveAttribute('aria-modal', 'true');
 
+  // A month with no past days: on the opening month the unbookable ones carry no tint.
+  await page.getByTestId('calendar-next').click();
+  await expect(page.locator('button[data-state="free"]').first()).toBeVisible();
+  await settle(page);
+
   // The counts reach the accessible name as integers, which is what a screen reader gets (#761).
   await expect(page.locator('button[data-state="free"]').first()).toHaveAttribute(
     'aria-label',
@@ -153,12 +166,17 @@ test('the overlay escapes the glass header — it covers the viewport and dismis
 }) => {
   await openCalendar(page);
 
-  const box = (await page.locator('app-availability-calendar').boundingBox())!;
   const viewport = page.viewportSize()!;
-  expect(box.x).toBe(0);
-  expect(box.y).toBe(0);
-  expect(box.width).toBe(viewport.width);
-  expect(box.height).toBe(viewport.height);
+  const host = (await page.locator('app-availability-calendar').boundingBox())!;
+  expect(host.x).toBe(0);
+  expect(host.y).toBe(0);
+  expect(host.width).toBe(viewport.width);
+  expect(host.height).toBe(viewport.height);
+
+  // And the PANEL is centred: a host-only assertion passed while the panel sat at the left edge.
+  const panel = (await page.getByTestId('availability-calendar').boundingBox())!;
+  expect(panel.x).toBeCloseTo((viewport.width - panel.width) / 2, 0);
+  expect(panel.x).toBeGreaterThan(16);
 
   // Bottom-left of the viewport is well outside the header; the backdrop has to own that point.
   await page.mouse.click(8, viewport.height - 8);
@@ -261,9 +279,9 @@ test('keeps focus inside the popover when Tab reaches its end', async ({ page })
 
   for (let press = 0; press < 6; press++) {
     await page.keyboard.press('Tab');
-    await expect(page.getByTestId('availability-calendar')).toContainText(/\d/);
-    const inside = await page.evaluate(
-      () => document.activeElement?.closest('[data-testid="availability-calendar"]') !== null,
+    // Boolean(), not `!== null`: the optional chain yields undefined when focus is nowhere.
+    const inside = await page.evaluate(() =>
+      Boolean(document.activeElement?.closest('[data-testid="availability-calendar"]')),
     );
     expect(inside, `focus escaped the dialog after ${press + 1} Tab press(es)`).toBe(true);
   }

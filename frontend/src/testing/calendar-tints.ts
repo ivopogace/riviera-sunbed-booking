@@ -48,10 +48,12 @@ export const CALENDAR_BAR = {
   track: '#6f8a91',
 } as const;
 
-/** The chosen day's inverted treatment: white ink and a white ring on the accent. */
-export const CALENDAR_SELECTED: CalendarTint = {
-  name: 'selected day',
-  ink: '#ffffff',
-  fill: '#085a6e',
-  ring: '#ffffff',
-};
+/**
+ * The chosen day's mark: an inset ring in the accent, drawn OVER whatever tint the day wears — so
+ * `fill` here is not a fill of its own, it is the pale tint the ring has to read against. The
+ * contrast spec checks the ring against every tint rather than against one fill.
+ */
+export const CALENDAR_SELECTED = {
+  name: 'selected-day ring',
+  ring: '#085a6e',
+} as const;

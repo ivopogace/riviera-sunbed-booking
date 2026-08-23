@@ -1,6 +1,5 @@
 import {
   DAY_AVAILABILITY_STATES,
-  DAY_MEANING,
   DAY_SELECTED_CLASS,
   DAY_TINT_CLASS,
   dayAccessibleName,
@@ -8,6 +7,7 @@ import {
   freeFraction,
 } from './day-availability';
 import { CALENDAR_SELECTED, CALENDAR_TINTS } from '../../testing/calendar-tints';
+import { DailyAvailability } from '../shared/venue-views';
 
 /**
  * Pins the calendar day's vocabulary: which tint a day's counts resolve to, and what a screen
@@ -36,6 +36,26 @@ describe('dayAvailabilityState', () => {
     expect(dayAvailabilityState({ date: '2026-08-01', free: -1, total: 30 })).toBe('unknown');
     expect(dayAvailabilityState({ date: '2026-08-01', free: 31, total: 30 })).toBe('unknown');
   });
+
+  it('fails closed on a non-integer count, which the relational checks would let through', () => {
+    // `null >= 0 && null <= 30` is true, so without the integer check a null free painted amber.
+    const malformed = [null, undefined, '0', Number.NaN, 1.5];
+
+    for (const free of malformed) {
+      const day = { date: '2026-08-01', free, total: 30 } as unknown as DailyAvailability;
+      expect(dayAvailabilityState(day)).toBe('unknown');
+      expect(dayAccessibleName('2026-08-01', day, true)).toBe(
+        'Sat 1 Aug 2026, availability unknown',
+      );
+    }
+    expect(
+      dayAvailabilityState({
+        date: '2026-08-01',
+        free: 4,
+        total: '30',
+      } as unknown as DailyAvailability),
+    ).toBe('unknown');
+  });
 });
 
 describe('freeFraction', () => {
@@ -52,6 +72,16 @@ describe('freeFraction', () => {
 });
 
 describe('dayAccessibleName', () => {
+  it('says a day is the one the map is showing', () => {
+    // The button takes focus, so the selection must be in ITS name, not on the gridcell above.
+    expect(
+      dayAccessibleName('2026-08-25', { date: '2026-08-25', free: 12, total: 30 }, true, true),
+    ).toBe('Tue 25 Aug 2026, 12 of 30 sets free, selected');
+    expect(dayAccessibleName('2026-06-15', undefined, false, true)).toBe(
+      'Mon 15 Jun 2026, not bookable, selected',
+    );
+  });
+
   it('carries the civil day and the exact counts', () => {
     expect(dayAccessibleName('2026-08-25', { date: '2026-08-25', free: 12, total: 30 }, true)).toBe(
       'Tue 25 Aug 2026, 12 of 30 sets free',
@@ -78,9 +108,8 @@ describe('dayAccessibleName', () => {
 });
 
 describe('the day vocabulary', () => {
-  it('gives every state a tint and a phrase, and nothing else', () => {
+  it('gives every state a tint, and nothing else', () => {
     expect(Object.keys(DAY_TINT_CLASS).sort()).toEqual([...DAY_AVAILABILITY_STATES].sort());
-    expect(Object.keys(DAY_MEANING).sort()).toEqual([...DAY_AVAILABILITY_STATES].sort());
   });
 
   it('gives each state its own tint, so two states never look alike', () => {
@@ -106,9 +135,9 @@ describe('the tint mirror', () => {
     expect(new Set(rendered)).toEqual(new Set(mirrored));
   });
 
-  it('renders exactly the selected-day pair the mirror proves', () => {
-    expect(DAY_SELECTED_CLASS).toBe(
-      `bg-[${CALENDAR_SELECTED.fill}] text-white focus-visible:outline-white`,
-    );
+  it('marks the chosen day with the ring the mirror proves, over whatever tint it wears', () => {
+    // A ring, not a fill: an inverted fill takes the tint and the bar off the chosen day.
+    expect(DAY_SELECTED_CLASS).toContain(`shadow-[inset_0_0_0_2px_${CALENDAR_SELECTED.ring}]`);
+    expect(DAY_SELECTED_CLASS).not.toContain('bg-');
   });
 });
