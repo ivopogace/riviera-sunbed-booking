@@ -911,6 +911,28 @@ describe('SetEditor (#600)', () => {
     expect(byId('batch-error')).toBeFalsy(); // the parent's reload banner owns this, not an inline message
   });
 
+  it('a stale apply resolving after the operator moved to a new sweep never touches the new one', async () => {
+    render();
+    dragSweep(1, 1, 1, 2); // sets 10 and 12
+    click(byId('batch-tier-STANDARD'));
+    click(byId('batch-apply')); // in flight, not yet flushed
+    const firstPut = expectLayoutPut();
+
+    // Clear and the sweep gesture aren't busy-gated, so this can happen mid-flight.
+    click(byId('batch-clear'));
+    dragSweep(2, 1, 2, 2); // a fresh sweep: sets 11 and 13
+    typeBatchPrice('45');
+
+    firstPut.flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The abandoned apply's success must not stomp the operator's new, still-unsaved sweep.
+    expect(byId('batch-count').textContent).toContain('2 sets selected');
+    expect((byId('batch-price') as HTMLInputElement).value).toBe('45');
+    expect(byId('batch-saved')).toBeFalsy();
+  });
+
   it('Escape and Clear both empty the sweep and move focus back to the canvas (AC-5)', async () => {
     render();
     dragSweep(1, 1, 1, 2);

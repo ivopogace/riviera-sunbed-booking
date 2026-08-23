@@ -680,14 +680,14 @@ export class SetEditor {
       await firstValueFrom(
         this.console.replaceLayout(venueId, { sets: requestSets, expectedVersion }),
       );
-      if (this.venueId() !== venueId) {
-        return; // a venue switch superseded this apply; batchBusy still clears in finally
+      if (this.venueId() !== venueId || this.sweepIds() !== ids) {
+        return; // a venue switch or a fresh sweep superseded this apply; batchBusy still clears in finally
       }
       this.batchSaved.set(true);
       this.batchDraft.set(EMPTY_BATCH_DRAFT);
       this.changed.emit();
     } catch (error) {
-      if (this.venueId() !== venueId) {
+      if (this.venueId() !== venueId || this.sweepIds() !== ids) {
         return;
       }
       const code = layoutErrorOf(error);
@@ -702,7 +702,12 @@ export class SetEditor {
     }
   }
 
-  /** The operator-facing message for the current batch-apply failure, or undefined. */
+  /**
+   * The operator-facing message for the current batch-apply failure, or undefined. Its own
+   * {@link LayoutErrorCode} switch, distinct from {@link LayoutEditor}'s `errorMessage()` — a
+   * `LAYOUT_IN_USE` here points the operator at editing one set at a time, which is what they are
+   * already doing, where the bulk save's own copy points them at arming Select instead.
+   */
   protected batchErrorMessage(): string | undefined {
     switch (this.batchErrorCode()) {
       case undefined:

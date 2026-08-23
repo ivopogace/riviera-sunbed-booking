@@ -165,7 +165,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| | | | |
+| F-1 | CI (`layout-editor.e2e.ts:613`) | Pre-existing test still asserted the per-set canvas was drag-pannable (hidden scrollbar + grab cursor); `[dragPan]="false"` now applies there too. | fixed-in-`658ab37` |
+| F-2 | Sonar (quality gate) | New-code coverage 79.6% (< 80% required) + one MAJOR code smell (nested ternary in `sweepAnnouncement`). | fixed-in-`adf8ff5` (extracted the ternary, removed two provably-dead branches, added ~14 unit specs covering the sweep guard clauses and every batch-error-message branch) |
+| F-3 | `/code-review` | `applyBatch()`'s completion handlers only guarded against a venue switch, not against the sweep having been cleared/replaced while the PUT was in flight — a stale response could stomp a newer, unsaved sweep. | fixed (added a `sweepIds() !== ids` check alongside the venue-switch guard on both the success and error paths; regression spec added) |
+| F-4 | `/code-review` | `batchErrorMessage()` re-implements `LayoutEditor.errorMessage()`'s code→copy mapping rather than sharing it. | deferred — the two switch statements share a code but deliberately diverge on copy (batch points at editing one set at a time; the bulk save points at arming Select), so a blanket extraction would need to take the differing strings as parameters without reducing real complexity. A TSDoc note on `batchErrorMessage()` records why it stays separate. |
 
 ---
 
