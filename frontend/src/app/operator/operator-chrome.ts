@@ -25,8 +25,9 @@ import { OperatorAuth } from '../core/operator-auth';
   selector: 'app-operator-chrome',
   imports: [OperatorActions, RouterLink, TouchTarget],
   template: `
+    <!-- translateZ(0): forces a compositing layer, working around a WebKit bug where sticky drops after an SPA route change. -->
     <header
-      class="sticky top-0 z-20 border-b border-(--riv-header-border) bg-(--riv-header-glass) backdrop-blur-[22px] backdrop-saturate-[1.7]"
+      class="sticky top-0 z-20 border-b border-(--riv-header-border) bg-(--riv-header-glass) backdrop-blur-[22px] backdrop-saturate-[1.7] [transform:translateZ(0)]"
       data-testid="opc-header"
     >
       <div class="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-x-4 px-6">
