@@ -197,12 +197,7 @@ describe('Discover photo-area contrast (theme-independent, issue #135; real phot
   });
 
   it('location overlay (white) meets AA over the weakest scrim under the text band, over any photo', () => {
-    // Geometry (kept true by home.html's utilities + styles.scss): the photo is 150px; the scrim
-    // reaches alpha 0.68 at its 75% stop (y = 112.5px); the overlay text (bottom: 13px,
-    // explicit 15px line box) occupies y ≈ 122–137px — entirely below the 0.68 stop, so
-    // 0.68 is a floor with margin. History: #135 review raised the design curve (~0.35 under
-    // the text) to 0.5 for the gradient's light stop; #142 raised it again to 0.68 because a
-    // real photo's worst case is pure white, where 0.5 composites below AA (~3.5:1).
+    // Worst case (home.html's aspect-[3/2] band at the grid's 264px min width, 176px tall): the text clears the 0.68 stop with 16px margin, more than the old fixed-150px band's 9.5px (#135, #142).
     const SCRIM = hexToRgb('0d2828');
     for (const stop of WORST_PHOTOS) {
       const backdrop = composite(SCRIM, 0.68, stop);
