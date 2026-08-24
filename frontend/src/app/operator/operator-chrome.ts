@@ -24,10 +24,11 @@ import { OperatorAuth } from '../core/operator-auth';
 @Component({
   selector: 'app-operator-chrome',
   imports: [OperatorActions, RouterLink, TouchTarget],
+  // contents: else this wrapper (exactly header-height tall) is the sticky header's containing block, leaving it no room to stick.
+  host: { class: 'contents' },
   template: `
-    <!-- translateZ(0): forces a compositing layer, working around a WebKit bug where sticky drops after an SPA route change. -->
     <header
-      class="sticky top-0 z-20 border-b border-(--riv-header-border) bg-(--riv-header-glass) backdrop-blur-[22px] backdrop-saturate-[1.7] [transform:translateZ(0)]"
+      class="sticky top-0 z-20 border-b border-(--riv-header-border) bg-(--riv-header-glass) backdrop-blur-[22px] backdrop-saturate-[1.7]"
       data-testid="opc-header"
     >
       <div class="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-x-4 px-6">
