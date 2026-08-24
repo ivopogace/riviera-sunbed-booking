@@ -13,8 +13,8 @@ import { OperatorPassword } from './operator-password';
  * notice (`role="status"`) and the failure message (`role="alert"`) — so auditing the initial render
  * alone would never see either.
  *
- * (Colour contrast is proven by `auth-page.contrast.spec.ts`, which covers the shared `auth.scss`
- * card tokens this page reuses; axe cannot measure contrast under jsdom.)
+ * (Colour contrast is proven by `auth-page.contrast.spec.ts`, which covers the shared card-glass
+ * tokens this page reuses; axe cannot measure contrast under jsdom.)
  */
 describe('OperatorPassword a11y (#326)', () => {
   let fixture: ComponentFixture<OperatorPassword>;

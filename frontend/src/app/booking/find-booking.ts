@@ -18,6 +18,23 @@ import { BookingService } from './booking.service';
 
 import { TouchTarget } from '../shared/touch-target';
 
+/** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
+const CLS = {
+  panel:
+    'relative w-full max-w-[390px] rounded-[30px] border border-(--riv-card-border) bg-[rgba(255,255,255,0.82)] px-6.5 pt-7 pb-6 text-(--riv-card-ink) shadow-[0_40px_90px_rgba(6,30,40,0.5),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-[34px] backdrop-saturate-[1.8] [animation:riv-pop_0.26s_cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:[animation:none]',
+  close:
+    'absolute top-4 right-4 flex size-[30px] cursor-pointer items-center justify-center rounded-full border border-(--riv-card-border) bg-[rgba(255,255,255,0.5)] text-[14px] leading-none text-(--riv-card-ink-soft) motion-safe:[transition:background_0.15s_ease] hover:bg-[rgba(255,255,255,0.75)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)',
+  title: 'm-0 mb-1.25 text-[23px] font-bold tracking-[-0.02em] text-(--riv-card-ink)',
+  intro: 'm-0 mb-4.5 text-[13.5px] leading-[1.5] text-(--riv-card-ink-soft)',
+  field: 'flex flex-col gap-1.5',
+  label: 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--riv-card-ink-soft)',
+  input:
+    'font-[inherit] text-[18px] font-bold tracking-[0.1em] uppercase text-(--riv-card-ink) bg-(--riv-field-fill) border border-(--riv-field-border) rounded-[14px] px-[15px] py-[13px] placeholder:font-semibold placeholder:text-(--riv-card-ink-soft) focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-(--riv-accent-ink)',
+  error: 'mt-2.5 text-[13px] font-semibold text-[#a3160e]',
+  submit:
+    'mt-4 w-full p-[13px] rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) text-white font-[inherit] font-bold text-[15px] cursor-pointer shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] motion-safe:[transition:filter_0.15s_ease] motion-reduce:transition-none aria-disabled:cursor-default aria-disabled:opacity-70 hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white',
+} as const;
+
 /**
  * "Find a booking" glass modal (design
  * `riviera-sunbeds-liquid-glass-v3.dc.html` → *Find booking*). A guest on a device that doesn't
@@ -36,13 +53,14 @@ import { TouchTarget } from '../shared/touch-target';
   selector: 'app-find-booking',
   imports: [FormField, BusyAction, TouchTarget],
   host: {
-    class: 'find-backdrop',
+    class:
+      'fixed inset-0 z-60 flex items-center justify-center bg-[rgba(6,30,40,0.45)] p-5 backdrop-blur-[6px]',
     '(click)': 'requestClose()',
     '(keydown.escape)': 'requestClose()',
   },
   template: `
     <div
-      class="find-panel"
+      [class]="cls.panel"
       role="dialog"
       aria-modal="true"
       aria-labelledby="find-title"
@@ -54,7 +72,7 @@ import { TouchTarget } from '../shared/touch-target';
       <button
         appTouchTarget
         type="button"
-        class="find-close"
+        [class]="cls.close"
         data-testid="find-close"
         aria-label="Close"
         (click)="requestClose()"
@@ -62,17 +80,19 @@ import { TouchTarget } from '../shared/touch-target';
         <span aria-hidden="true">✕</span>
       </button>
 
-      <h2 id="find-title" class="find-title">Find your booking</h2>
-      <p id="find-intro" class="find-intro">
+      <h2 id="find-title" [class]="cls.title">Find your booking</h2>
+      <p id="find-intro" [class]="cls.intro">
         Booked on another device or by a friend? Enter your booking code to open it here. It looks
-        like <strong>K4TQ7M9PX2</strong> and is on your confirmation email.
+        like <strong class="text-(--riv-card-ink)">K4TQ7M9PX2</strong> and is on your confirmation
+        email.
       </p>
 
       <form (submit)="onSubmit(); $event.preventDefault()" novalidate>
-        <label class="find-field">
-          <span class="find-label">Booking code</span>
+        <label [class]="cls.field">
+          <span [class]="cls.label">Booking code</span>
           <input
             appTouchTarget
+            [class]="cls.input"
             type="text"
             data-testid="find-code"
             [formField]="codeForm.code"
@@ -86,13 +106,13 @@ import { TouchTarget } from '../shared/touch-target';
         </label>
 
         @if (errorText(); as msg) {
-          <p class="find-error" role="alert" data-testid="find-error">{{ msg }}</p>
+          <p [class]="cls.error" role="alert" data-testid="find-error">{{ msg }}</p>
         }
 
         <button
           appTouchTarget
           type="submit"
-          class="find-submit"
+          [class]="cls.submit"
           data-testid="find-submit"
           [appBusy]="submitting()"
         >
@@ -101,7 +121,6 @@ import { TouchTarget } from '../shared/touch-target';
       </form>
     </div>
   `,
-  styleUrl: './find-booking.scss',
 })
 export class FindBooking {
   /** Emitted on a user dismiss (ESC / backdrop / close button); the shell restores focus + hides. */
@@ -111,6 +130,7 @@ export class FindBooking {
   private readonly router = inject(Router);
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
 
+  protected readonly cls = CLS;
   /** Field state announced only after the first submit (design; keeps the idle modal quiet). */
   protected readonly submitAttempted = signal(false);
   protected readonly submitting = signal(false);

@@ -17,6 +17,25 @@ import { CardGlass } from '../shared/card-glass';
 
 import { TouchTarget } from '../shared/touch-target';
 
+/** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
+const CLS = {
+  card: 'w-full max-w-[400px] rounded-[26px] px-[26px] pt-[30px] pb-6 shadow-[0_30px_70px_rgba(6,30,40,0.28),inset_0_1px_0_rgba(255,255,255,0.7)]',
+  title: 'm-0 mb-1.5 text-[24px] font-bold tracking-[-0.02em] text-(--riv-card-ink)',
+  intro: 'm-0 mb-5 text-[13.5px] leading-[1.5] text-(--riv-card-ink-soft)',
+  field: 'flex flex-col gap-1.5 mb-3.5',
+  label: 'text-[11px] font-bold tracking-[0.08em] uppercase text-(--riv-card-ink-soft)',
+  input:
+    'font-[inherit] text-[16px] text-(--riv-card-ink) bg-(--riv-field-fill) border border-(--riv-field-border) rounded-[14px] px-[14px] py-3 placeholder:text-(--riv-card-ink-soft) focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-(--riv-accent-ink)',
+  hint: '-mt-1.5 text-[12px] text-(--riv-card-ink-soft)',
+  // A live region stays in the DOM empty, so empty: zeroes its resting margin.
+  notice: 'm-0 mb-5 text-[13.5px] leading-[1.5] text-(--riv-card-ink-soft) empty:mb-0',
+  submitError: 'mt-3 text-[13px] font-semibold text-[#a3160e] empty:mt-0',
+  submit:
+    'mt-4.5 w-full p-[13px] rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) text-white font-[inherit] font-bold text-[15px] cursor-pointer shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] motion-safe:[transition:filter_0.15s_ease] motion-reduce:transition-none aria-disabled:cursor-default aria-disabled:opacity-70 hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white',
+  alt: 'mt-4.5 text-center text-[13.5px] text-(--riv-card-ink-soft)',
+  altLink: 'inline-flex items-center font-bold text-(--riv-accent-ink)',
+} as const;
+
 /**
  * The signed-in operator's password-change page. Deliberately a **separate** page from the
  * customer's `set-password`, not an audience toggle on it: that page is the customer *account* page and
@@ -33,21 +52,25 @@ import { TouchTarget } from '../shared/touch-target';
   selector: 'app-operator-password',
   imports: [FormField, RouterLink, CardGlass, BusyAction, TouchTarget],
   template: `
-    <section class="auth-wrap" aria-labelledby="oppw-title">
-      <div class="auth-card" appCardGlass>
-        <h1 id="oppw-title" class="auth-title">Change your password</h1>
-        <p class="auth-intro" data-testid="oppw-username">Signed in as {{ auth.username() }}.</p>
+    <section
+      class="flex min-h-[60vh] items-center justify-center px-5 py-8"
+      aria-labelledby="oppw-title"
+    >
+      <div [class]="cls.card" appCardGlass>
+        <h1 id="oppw-title" [class]="cls.title">Change your password</h1>
+        <p [class]="cls.intro" data-testid="oppw-username">Signed in as {{ auth.username() }}.</p>
 
         <!-- Present but empty: a live region inserted together with its text is often not announced. -->
-        <p class="auth-intro auth-live" role="status" tabindex="-1" data-testid="oppw-notice">
+        <p [class]="cls.notice" role="status" tabindex="-1" data-testid="oppw-notice">
           {{ notice() }}
         </p>
 
         <form (submit)="onSubmit(); $event.preventDefault()" novalidate>
-          <label class="auth-field">
-            <span class="auth-label">Current password</span>
+          <label [class]="cls.field">
+            <span [class]="cls.label">Current password</span>
             <input
               appTouchTarget
+              [class]="cls.input"
               type="password"
               data-testid="oppw-current"
               [formField]="changeForm.currentPassword"
@@ -55,10 +78,11 @@ import { TouchTarget } from '../shared/touch-target';
             />
           </label>
 
-          <label class="auth-field">
-            <span class="auth-label">New password</span>
+          <label [class]="cls.field">
+            <span [class]="cls.label">New password</span>
             <input
               appTouchTarget
+              [class]="cls.input"
               type="password"
               data-testid="oppw-new"
               [formField]="changeForm.newPassword"
@@ -66,18 +90,18 @@ import { TouchTarget } from '../shared/touch-target';
               aria-describedby="oppw-new-hint"
             />
           </label>
-          <p id="oppw-new-hint" class="auth-hint">
+          <p id="oppw-new-hint" [class]="cls.hint">
             8–72 characters. Changing it signs you out on every other device.
           </p>
 
-          <p class="auth-error auth-live" role="alert" tabindex="-1" data-testid="oppw-error">
+          <p [class]="cls.submitError" role="alert" tabindex="-1" data-testid="oppw-error">
             {{ error() }}
           </p>
 
           <button
             appTouchTarget
             type="submit"
-            class="auth-submit"
+            [class]="cls.submit"
             data-testid="oppw-submit"
             [appBusy]="submitting()"
           >
@@ -85,29 +109,27 @@ import { TouchTarget } from '../shared/touch-target';
           </button>
         </form>
 
-        <p class="auth-alt">
-          <a routerLink="/operator" data-testid="oppw-to-console">Back to your console</a>
+        <p [class]="cls.alt">
+          <a
+            appTouchTarget
+            [class]="cls.altLink"
+            routerLink="/operator"
+            data-testid="oppw-to-console"
+            >Back to your console</a
+          >
         </p>
       </div>
     </section>
   `,
-  styleUrl: './auth.scss',
   // The shell paints .riv-bg behind this page (operator chrome); no self-painted background needed.
-  styles: `
-    :host {
-      display: block;
-      min-height: 100%;
-    }
-    .auth-live:empty {
-      margin: 0;
-    }
-  `,
+  host: { class: 'block min-h-full' },
 })
 export class OperatorPassword {
   protected readonly auth = inject(OperatorAuth);
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
 
+  protected readonly cls = CLS;
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | undefined>(undefined);
   protected readonly notice = signal<string | undefined>(undefined);
