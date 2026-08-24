@@ -49,12 +49,21 @@ describe('PhotoGalleryGrid', () => {
     expect(hero.getAttribute('aria-label')).toBe('View photo 1 of 2');
   });
 
-  it('letterboxes every tile over the placeholder gradient instead of cropping (an odd-aspect upload stays whole)', () => {
+  it('letterboxes every tile over its own blurred backdrop instead of cropping (an odd-aspect upload stays whole)', () => {
     create(PHOTOS);
     const hero = el().querySelector<HTMLButtonElement>('[data-testid="gallery-photo-0"]')!;
     const tile = el().querySelector<HTMLButtonElement>('[data-testid="gallery-photo-1"]')!;
-    for (const button of [hero, tile]) {
+    for (const [button, photo] of [
+      [hero, PHOTOS[0]],
+      [tile, PHOTOS[1]],
+    ] as const) {
       expect(button.className).toContain('bg-(image:--riv-photo-grad)');
+
+      const backdrop = button.querySelector<HTMLElement>('[data-testid$="-backdrop"]')!;
+      expect(backdrop.getAttribute('aria-hidden')).toBe('true');
+      expect(backdrop.style.backgroundImage).toBe(`url("${photo}")`);
+      expect(backdrop.classList.contains('blur-2xl')).toBe(true);
+
       const img = button.querySelector('img')!;
       expect(img.classList.contains('object-contain')).toBe(true);
       expect(img.classList.contains('object-cover')).toBe(false);
