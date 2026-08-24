@@ -151,7 +151,7 @@
       <ul class="venue-grid mt-6 grid grid-cols-[repeat(auto-fill,minmax(264px,1fr))] gap-5">
         @for (card of list; track card.id) {
           <!-- Named group/card keys the hover lift on the li (the overlaid slideshow controls keep it) without tripping the controls' own unnamed group-hover chevron tint. -->
-          <li class="group/card relative [--photo-band:150px]">
+          <li class="group/card relative">
             <a
               class="card flex h-full flex-col overflow-hidden rounded-[28px] no-underline shadow-[0_12px_40px_rgba(7,42,58,0.26),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[1.7] motion-safe:[transition:transform_0.2s_ease,box-shadow_0.2s_ease,border-color_0.2s_ease] group-hover/card:border-[rgba(255,255,255,0.85)] group-hover/card:shadow-[0_26px_60px_rgba(7,42,58,0.4),inset_0_1px_0_rgba(255,255,255,0.9)] motion-safe:group-hover/card:[transform:translateY(-5px)] focus-visible:shadow-[0_0_0_7px_color-mix(in_srgb,var(--riv-accent-ink)_90%,transparent)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
               appCardGlass
@@ -164,7 +164,7 @@
                    is decorative to AT — the two inner blocks are aria-hidden. -->
               <!-- The uploaded photos as a crossfading slideshow stack (cover first); the gradient + sun placeholder as the empty state. The scrim ALWAYS layers over it — the location text's AA floor must hold over ANY photo (home.contrast.spec.ts computes the white-photo worst case). -->
               <span
-                class="card-photo relative block h-[var(--photo-band,150px)] bg-(image:--riv-photo-grad)"
+                class="card-photo relative block aspect-[3/2] bg-(image:--riv-photo-grad)"
                 aria-hidden="true"
               >
                 <app-photo-slideshow
@@ -265,36 +265,38 @@
                 </span>
               </span>
             </a>
-            <!-- Slideshow controls live OUTSIDE the card <a> (nested interactive controls are invalid + an axe failure), layered over its photo band via the li's positioning context. -->
+            <!-- Slideshow controls live OUTSIDE the card <a> (nested interactive controls are invalid + an axe failure); this anchor shares the band's width and aspect-[3/2] so the button centre never drifts from it. -->
             @if (card.photos.length > 1) {
-              <button
-                type="button"
-                appTouchTarget
-                class="group absolute top-[calc(var(--photo-band)/2)] left-[6px] z-10 inline-flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
-                data-testid="card-photo-prev"
-                [attr.aria-label]="'Previous photo, ' + card.name"
-                (click)="show.prev()"
-              >
-                <span
-                  aria-hidden="true"
-                  class="inline-flex size-[30px] items-center justify-center rounded-full border border-(--riv-photo-chrome-edge) bg-(--riv-mode-chip-glass) pb-[2px] text-[18px] leading-none text-(--riv-accent-ink) backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
-                  >‹</span
+              <span class="pointer-events-none absolute inset-x-0 top-0 aspect-[3/2]">
+                <button
+                  type="button"
+                  appTouchTarget
+                  class="group pointer-events-auto absolute top-1/2 left-[6px] z-10 inline-flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
+                  data-testid="card-photo-prev"
+                  [attr.aria-label]="'Previous photo, ' + card.name"
+                  (click)="show.prev()"
                 >
-              </button>
-              <button
-                type="button"
-                appTouchTarget
-                class="group absolute top-[calc(var(--photo-band)/2)] right-[6px] z-10 inline-flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
-                data-testid="card-photo-next"
-                [attr.aria-label]="'Next photo, ' + card.name"
-                (click)="show.next()"
-              >
-                <span
-                  aria-hidden="true"
-                  class="inline-flex size-[30px] items-center justify-center rounded-full border border-(--riv-photo-chrome-edge) bg-(--riv-mode-chip-glass) pb-[2px] text-[18px] leading-none text-(--riv-accent-ink) backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
-                  >›</span
+                  <span
+                    aria-hidden="true"
+                    class="inline-flex size-[30px] items-center justify-center rounded-full border border-(--riv-photo-chrome-edge) bg-(--riv-mode-chip-glass) pb-[2px] text-[18px] leading-none text-(--riv-accent-ink) backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
+                    >‹</span
+                  >
+                </button>
+                <button
+                  type="button"
+                  appTouchTarget
+                  class="group pointer-events-auto absolute top-1/2 right-[6px] z-10 inline-flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
+                  data-testid="card-photo-next"
+                  [attr.aria-label]="'Next photo, ' + card.name"
+                  (click)="show.next()"
                 >
-              </button>
+                  <span
+                    aria-hidden="true"
+                    class="inline-flex size-[30px] items-center justify-center rounded-full border border-(--riv-photo-chrome-edge) bg-(--riv-mode-chip-glass) pb-[2px] text-[18px] leading-none text-(--riv-accent-ink) backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
+                    >›</span
+                  >
+                </button>
+              </span>
             }
           </li>
         }
@@ -311,7 +313,7 @@
               class="flex h-full animate-pulse flex-col overflow-hidden rounded-[28px] motion-reduce:animate-none"
               data-testid="skeleton-card"
             >
-              <span class="block h-[150px] bg-(--riv-card-track)"></span>
+              <span class="block aspect-[3/2] bg-(--riv-card-track)"></span>
               <span class="flex flex-1 flex-col gap-[10px] p-[18px]">
                 <span class="h-[18px] w-3/4 rounded-[6px] bg-(--riv-card-track)"></span>
                 <span class="h-[10px] w-1/2 rounded-[6px] bg-(--riv-card-track)"></span>
