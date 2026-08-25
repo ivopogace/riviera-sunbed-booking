@@ -28,7 +28,7 @@ export const DARK_HEADER_GLASS: Glass = { color: hexToRgb('0f172a'), alpha: 0.72
  *  white glass with the shared dark-ink constants above. */
 export const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
 export const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
-export const DARK_CARD_GLASS: Glass = { color: hexToRgb('101a2e'), alpha: 0.72 };
+export const DARK_CARD_GLASS: Glass = { color: hexToRgb('101a2e'), alpha: 0.86 };
 
 /** Dark theme's light card-ink base — `--riv-card-ink` and the rgba(242, 247, 250, …) muted family. */
 export const DARK_CARD_INK: Rgb = hexToRgb('f2f7fa');
@@ -83,15 +83,23 @@ export const PORCELAIN_STOPS: readonly Rgb[] = ['ffffff', 'eef6f8', 'cfeaf2', 'd
 );
 export const DARK_STOPS: readonly Rgb[] = ['3b4a5f', '2a3648', '33415a', '0b1120'].map(hexToRgb);
 
-/** `--riv-photo-grad` stops — the photo band's placeholder gradient (theme-invariant). */
+/** `--riv-photo-grad` stops — the photo band's placeholder gradient (light themes; the dark
+ *  theme swaps in DARK_PHOTO_STOPS below). */
 export const PHOTO_STOPS: readonly Rgb[] = ['2bb8d4', '0e8aa8'].map(hexToRgb);
+/** The dark theme's `--riv-photo-grad` placeholder stops (light themes: PHOTO_STOPS). */
+export const DARK_PHOTO_STOPS: readonly Rgb[] = ['3b4a5f', '24314a', '1a2438'].map(hexToRgb);
 
 /**
- * Every backdrop an overlay on a photo band must survive: the placeholder gradient's own stops
+ * Every backdrop an overlay on a photo band must survive: both placeholder gradients' own stops
  * plus the two extremes a real uploaded photo can present — pure white and pure black. Since #142
  * the bands back real images, so "worst case" stopped meaning "the gradient's lightest stop".
  */
-export const WORST_PHOTOS: readonly Rgb[] = [...PHOTO_STOPS, WHITE, hexToRgb('000000')];
+export const WORST_PHOTOS: readonly Rgb[] = [
+  ...PHOTO_STOPS,
+  ...DARK_PHOTO_STOPS,
+  WHITE,
+  hexToRgb('000000'),
+];
 
 /** `--riv-mode-chip-glass` — the white glass under the step chips, on both slideshow hosts.
  *  Named for the Discover mode chip, which stopped wearing it at #705 (it took an opaque fill,

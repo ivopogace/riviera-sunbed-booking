@@ -115,5 +115,5 @@ test('shows an inline error for an unknown code and does not navigate (+ axe)', 
   await expect(page).not.toHaveURL(/\/booking\//);
   await expect(page.getByRole('dialog')).toBeVisible();
   await settle(page);
-  await expectNoSeriousAxeViolations(page, 'find modal error (riviera)');
+  await expectNoSeriousAxeViolations(page, 'find modal error (dark)');
 });

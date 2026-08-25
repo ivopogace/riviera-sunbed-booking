@@ -191,7 +191,9 @@
       white glass, the dark theme inverts the whole card family — dark slate glass, light inks,
       a light accent, dark fields with light borders, and the popover family below. Every pair
       is AA-proven by the DARK_* rows in testing/glass-tokens.ts + the per-page contrast specs. */
-  --riv-card-glass: rgba(16, 26, 46, 0.72);
+  /** 0.86, not airier: axe composites the translucent card over an ASSUMED white page (it cannot
+      resolve the gradient), so the card must stay dark even on that fiction (the S7924 posture). */
+  --riv-card-glass: rgba(16, 26, 46, 0.86);
   --riv-card-border: rgba(255, 255, 255, 0.16);
   --riv-card-ink: #f2f7fa;
   --riv-card-ink-soft: rgba(242, 247, 250, 0.78);
@@ -203,6 +205,9 @@
   --riv-field-solid: rgba(15, 23, 42, 0.92);
   --riv-error-ink: #ffa9a1;
   --riv-card-track: rgba(255, 255, 255, 0.18);
+
+  /* The no-photo placeholder follows the theme (the photo scrim/chrome stay photo-proof). */
+  --riv-photo-grad: linear-gradient(162deg, #3b4a5f 0%, #24314a 70%, #1a2438 100%);
 
   --riv-pop-surface: rgba(16, 26, 46, 0.96);
   --riv-pop-border: rgba(255, 255, 255, 0.16);

@@ -50,13 +50,19 @@ test.describe('per-theme color-scheme (#675)', () => {
   // Pin the OS scheme to dark so the boot theme is the dark theme (headless defaults to light).
   test.use({ colorScheme: 'dark' });
 
-  test('native-UI scheme follows the theme; light-styled fields opt out (AC-1, AC-2)', async ({
+  test('native-UI scheme follows the theme; the field scheme follows the field tokens (AC-1, AC-2)', async ({
     page,
   }) => {
     await page.goto('/');
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
     await expect(page.locator('html')).toHaveCSS('color-scheme', 'dark');
-    // The deliberately light filter-date field keeps dark-on-light native chrome (`scheme-light`).
+    // Dark theme fields are dark-styled, so their native chrome is dark too (--riv-field-scheme).
+    await expect(page.getByTestId('filter-date')).toHaveCSS('color-scheme', 'dark');
+
+    // Riviera keeps LIGHT fields under its dark document — the per-field token opts them out.
+    await page.getByTestId('theme-toggle').click();
+    await page.getByTestId('theme-option-riviera').click();
+    await expect(page.locator('html')).toHaveCSS('color-scheme', 'dark');
     await expect(page.getByTestId('filter-date')).toHaveCSS('color-scheme', 'light');
 
     await page.getByTestId('theme-toggle').click();
