@@ -509,7 +509,7 @@ describe('VenueMap', () => {
     flushVenue();
     await fixture.whenStable();
     // The unit host in `map-tile.spec.ts` cannot see this: it pins the directive against itself.
-    const paints = /^(bg-|text-\[#|border-\[#|border-dashed)/;
+    const paints = /^(bg-|text-\(--riv-tile|border-\(--riv-tile|border-dashed)/;
     for (const tile of el().querySelectorAll('.set-tile')) {
       const state = tile.getAttribute('data-state')!;
       const own = [...tile.classList].filter((token) => paints.test(token));

@@ -72,9 +72,12 @@ export const RIVIERA_CHIP = { color: WHITE, alpha: 0.16 };
 export const PORCELAIN_CHIP = { color: CARD_INK, alpha: 0.05 };
 export const DARK_CHIP = { color: WHITE, alpha: 0.16 };
 
-/** The shared beach-map canvas's sea→sand wash stops (`beach-map-canvas.html`, #672).
- *  The first is the canvas host's `--riv-map-sea`, which the tourist legend band also wears. */
+/** The shared beach-map canvas's sea→sand wash stops (`beach-map-canvas.html`, #672) — the
+ *  daylight `--riv-map-sea/mid/sand` values (light themes + porcelain-pinned operator surfaces).
+ *  The first is `--riv-map-sea`, which the tourist legend band also wears. */
 export const WASH_STOPS: readonly Rgb[] = ['cfeef6', 'e7f5f1', 'f6eedb'].map(hexToRgb);
+/** The night wash — the dark theme's `--riv-map-sea/mid/sand`. */
+export const DARK_WASH_STOPS: readonly Rgb[] = ['14303c', '1c2f33', '2b2a22'].map(hexToRgb);
 
 /** Worst-case background-gradient stops a glass surface can sit over, per theme. */
 export const RIVIERA_STOPS: readonly Rgb[] = ['93e6f2', 'ffe2b0', '38b6d2', '0a4f6e'].map(hexToRgb);

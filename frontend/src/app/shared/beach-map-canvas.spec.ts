@@ -703,12 +703,16 @@ describe('BeachMapCanvas (#672)', () => {
     expect(host.querySelector('[data-testid="legend-note"]')).toBeNull();
   });
 
-  it("publishes the wash's sea stop as --riv-map-sea, which the wash itself reads (#701)", () => {
+  it('paints the wash from the themed --riv-map-* tokens, sea stop first (#701)', () => {
     const { host } = render();
+    // The sea stop is a theme token now (styles.scss, per theme) — no inline host copy to drift.
     const canvas = host.querySelector<HTMLElement>('app-beach-map-canvas')!;
-    expect(canvas.style.getPropertyValue('--riv-map-sea').trim()).toBe('#cfeef6');
+    expect(canvas.style.getPropertyValue('--riv-map-sea')).toBe('');
     // Projected content sits on the same ground only while the wash reads the property, not a copy.
-    expect(washScroller(host).className).toContain('var(--riv-map-sea)');
+    const wash = washScroller(host).className;
+    expect(wash).toContain('var(--riv-map-sea)');
+    expect(wash).toContain('var(--riv-map-mid)');
+    expect(wash).toContain('var(--riv-map-sand)');
   });
 
   it('leaves --riv-tile at the default viewport-relative clamp when fitWidth is off (#709)', async () => {

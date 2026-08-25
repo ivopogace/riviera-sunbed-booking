@@ -35,7 +35,7 @@ import { CardGlass } from './card-glass';
       <ng-content />
 
       <p
-        class="promenade -mx-[18px] mt-3 border-t border-dashed border-[#0c2a33]/25 px-3 py-3 text-center text-[12px] font-bold uppercase tracking-[0.16em] text-(--riv-card-ink)"
+        class="promenade -mx-[18px] mt-3 border-t border-dashed border-(--riv-map-frame-border) px-3 py-3 text-center text-[12px] font-bold uppercase tracking-[0.16em] text-(--riv-card-ink)"
       >
         <span aria-hidden="true">▼</span>&nbsp;&nbsp;Promenade · Entrance
       </p>

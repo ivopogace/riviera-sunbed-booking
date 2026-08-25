@@ -72,9 +72,9 @@ export class BeachMapRowDef<R extends BeachMapCanvasRow = BeachMapCanvasRow> {
  * horizontal chrome gated on actual overflow via `.pannable`). Three content slots ride along:
  * `canvasLegend` above the grid, `canvasFooter` below it, and `canvasEmpty` in place of both —
  * all optional, because their content is per-surface (the tile legend is tourist-only, #701).
- * The wash's sea-end colour is published as `--riv-map-sea` on the host, so projected content —
- * the tourist legend band — can sit on the same ground the top tile row does without copying the
- * literal (custom properties inherit into projected content, as `--riv-tile` already relies on).
+ * The wash's colours are the `--riv-map-*` theme tokens (declared per theme in `styles.scss` —
+ * daylight in the light themes, night in dark), so projected content — the tourist legend band,
+ * on `--riv-map-sea` — sits on the same ground the top tile row does without copying a literal.
  * A drag pans horizontally via
  * the viewport's `scrollLeft` and — whenever the wash scroller actually overflows — vertically
  * via its `scrollTop`; on a short map the vertical axis stays inert, so a sloppy tap never
@@ -101,7 +101,6 @@ export class BeachMapRowDef<R extends BeachMapCanvasRow = BeachMapCanvasRow> {
   templateUrl: './beach-map-canvas.html',
   host: {
     class: 'block',
-    style: '--riv-map-sea: #cfeef6',
     '[style.--riv-tile]': 'tileSizeStyle()',
     '(document:mouseup)': 'onRailSweepEnd()',
     '(window:keydown.space)': 'onSpaceKeydown($event)',

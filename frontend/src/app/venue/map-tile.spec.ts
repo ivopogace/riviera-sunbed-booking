@@ -16,23 +16,26 @@ import {
  * arbitrary variants so the tile and its legend swatch cannot drift (#701) — the
  * `operator/beach-cell.ts` shape, one step later.
  *
- * `PRE_MOVE_TILE_CLASS` is the NO-DRIFT PIN: each string is the complete, byte-identical set of
- * appearance classes the template carried before the move, and the comparison below is an
- * EQUALITY, not a subset — an added stray utility fails it too. `walkin` is the one deliberate
- * departure and the point of the slice, so only its unchanged half is pinned here; what it gained
- * is asserted separately, and its retired fill is named nowhere (a Tailwind literal in any scanned
- * source file, spec files included, keeps emitting its rule into the shipped stylesheet).
+ * `TILE_TOKEN_CLASS` is the NO-DRIFT PIN: each string is the complete set of appearance classes
+ * per state, and the comparison below is an EQUALITY, not a subset — an added stray utility fails
+ * it too. The classes reference the `--riv-tile-*` theme tokens (day values in the light themes,
+ * night in dark — `styles.scss`); the colour VALUES are AA-proven per ink family in
+ * `venue-map.contrast.spec.ts`, so this file pins vocabulary identity, that one pins the maths.
+ * `walkin`'s hatch half is pinned separately, mirroring how it arrived.
  */
-const PRE_MOVE_TILE_CLASS: Record<MapTileState, string> = {
-  available: 'border-[#bfe3df] bg-white/75 text-[#0f7d8c]',
-  premium: 'bg-[#fbf1d9]/85 border-[#e6c483] text-[#875911]',
-  walkin: 'border-[#c8ab62] text-[#5f4d2a]',
-  taken: 'bg-white/20 border-dashed border-[#6b7d77] text-[#566560]',
+const TILE_TOKEN_CLASS: Record<MapTileState, string> = {
+  available:
+    'border-(--riv-tile-available-border) bg-(--riv-tile-available-fill) text-(--riv-tile-available-ink)',
+  premium:
+    'bg-(--riv-tile-premium-fill) border-(--riv-tile-premium-border) text-(--riv-tile-premium-ink)',
+  walkin: 'border-(--riv-tile-walkin-border) text-(--riv-tile-walkin-ink)',
+  taken:
+    'bg-(--riv-tile-taken-fill) border-dashed border-(--riv-tile-taken-border) text-(--riv-tile-taken-ink)',
 };
 
-/** What the walk-in tile gained: a lighter sand under a 135° hatch of its own ink. */
+/** The walk-in tile's second half: a lightened sand under a 135° hatch of its ink family. */
 const WALK_IN_DEPARTURE =
-  'bg-[#efe0bd]/60 bg-[repeating-linear-gradient(135deg,rgba(95,77,42,0.16)_0px,rgba(95,77,42,0.16)_3px,transparent_3px,transparent_8px)]';
+  'bg-(--riv-tile-walkin-fill) bg-[repeating-linear-gradient(135deg,var(--riv-tile-walkin-hatch)_0px,var(--riv-tile-walkin-hatch)_3px,transparent_3px,transparent_8px)]';
 
 /** The geometry + markers the consumer owns; the directive must add to them, never replace them. */
 const HOST_CLASS = 'set-tile rounded-[10px] border-[1.5px] font-bold text-[12.5px]';
@@ -85,8 +88,8 @@ describe('MapTile appearance (#701)', () => {
       detect();
       const expected =
         state === 'walkin'
-          ? `${PRE_MOVE_TILE_CLASS.walkin} ${WALK_IN_DEPARTURE}`
-          : PRE_MOVE_TILE_CLASS[state];
+          ? `${TILE_TOKEN_CLASS.walkin} ${WALK_IN_DEPARTURE}`
+          : TILE_TOKEN_CLASS[state];
       expect([...appearanceOf(tile)].sort(), `the ${state} tile`).toEqual(
         expected.split(' ').sort(),
       );
@@ -107,12 +110,12 @@ describe('MapTile appearance (#701)', () => {
     const { tile, component, detect } = render();
     component.state.set('premium');
     detect();
-    expect(tile.classList.contains('bg-[#fbf1d9]/85')).toBe(true);
+    expect(tile.classList.contains('bg-(--riv-tile-premium-fill)')).toBe(true);
 
     component.state.set('taken');
     detect();
-    expect(tile.classList.contains('bg-[#fbf1d9]/85')).toBe(false);
-    expect(tile.classList.contains('text-[#875911]')).toBe(false);
+    expect(tile.classList.contains('bg-(--riv-tile-premium-fill)')).toBe(false);
+    expect(tile.classList.contains('text-(--riv-tile-premium-ink)')).toBe(false);
   });
 
   it('exposes the state as an inert `data-state` hook, like the operator grid cells', () => {

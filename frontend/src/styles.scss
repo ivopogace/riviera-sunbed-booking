@@ -95,6 +95,34 @@
   --riv-inset-fill: rgba(255, 255, 255, 0.4);
   --riv-dialog-glass: rgba(255, 255, 255, 0.82);
   --riv-back-ink: #0a4f5e;
+
+  /** The beach-map daylight palette (shared/beach-map-canvas + venue/map-tile): the sea→sand
+      wash, the rail/price chips, and the per-state tile vocabulary. Daylight in the light themes
+      and on every porcelain-pinned operator surface; the dark theme swaps in the night values in
+      its block. AA proofs: venue-map.contrast.spec.ts, per ink family. */
+  --riv-map-sea: #cfeef6;
+  --riv-map-mid: #e7f5f1;
+  --riv-map-sand: #f6eedb;
+  --riv-map-rail-fill: rgba(255, 255, 255, 0.6);
+  --riv-map-rail-ink: #0a4f5e;
+  --riv-map-chip-fill: rgba(255, 255, 255, 0.8);
+  --riv-map-chip-border: #cfe3df;
+  --riv-map-frame-border: rgba(12, 42, 51, 0.25);
+  --riv-tile-available-fill: rgba(255, 255, 255, 0.75);
+  --riv-tile-available-border: #bfe3df;
+  --riv-tile-available-ink: #0f7d8c;
+  --riv-tile-premium-fill: rgba(251, 241, 217, 0.85);
+  --riv-tile-premium-border: #e6c483;
+  --riv-tile-premium-ink: #875911;
+  --riv-tile-walkin-fill: rgba(239, 224, 189, 0.6);
+  --riv-tile-walkin-hatch: rgba(95, 77, 42, 0.16);
+  --riv-tile-walkin-border: #c8ab62;
+  --riv-tile-walkin-ink: #5f4d2a;
+  --riv-tile-taken-fill: rgba(255, 255, 255, 0.2);
+  --riv-tile-taken-border: #6b7d77;
+  --riv-tile-taken-ink: #566560;
+  --riv-tile-hover: #e6f6f3;
+  --riv-tile-focus: #0f7d8c;
   --riv-photo-grad: linear-gradient(162deg, #2bb8d4 0%, #0e8aa8 70%, #0e8aa8 100%);
   /* The scrim reaches alpha 0.68 at its three-quarter stop (the design file has no scrim): the
      location overlay's text band, sitting in the lower tenth of the photo, needs a backing of at
@@ -224,6 +252,32 @@
   --riv-inset-fill: rgba(255, 255, 255, 0.08);
   --riv-dialog-glass: rgba(16, 26, 46, 0.94);
   --riv-back-ink: #b7dfe9;
+
+  /** The night beach map: dark sea→dusk sand, faint light tile glass with light inks. The
+      hatch runs at 0.14 (day: 0.16) — 0.16 drops the walk-in numeral to 4.33:1 on the stripe. */
+  --riv-map-sea: #14303c;
+  --riv-map-mid: #1c2f33;
+  --riv-map-sand: #2b2a22;
+  --riv-map-rail-fill: rgba(255, 255, 255, 0.1);
+  --riv-map-rail-ink: #9adde8;
+  --riv-map-chip-fill: rgba(255, 255, 255, 0.12);
+  --riv-map-chip-border: rgba(255, 255, 255, 0.25);
+  --riv-map-frame-border: rgba(255, 255, 255, 0.22);
+  --riv-tile-available-fill: rgba(255, 255, 255, 0.1);
+  --riv-tile-available-border: rgba(143, 214, 226, 0.45);
+  --riv-tile-available-ink: #8fd6e2;
+  --riv-tile-premium-fill: rgba(230, 196, 131, 0.18);
+  --riv-tile-premium-border: #c8ab62;
+  --riv-tile-premium-ink: #ecd09a;
+  --riv-tile-walkin-fill: rgba(239, 224, 189, 0.12);
+  --riv-tile-walkin-hatch: rgba(229, 211, 168, 0.14);
+  --riv-tile-walkin-border: #a08a50;
+  --riv-tile-walkin-ink: #e5d3a8;
+  --riv-tile-taken-fill: rgba(255, 255, 255, 0.05);
+  --riv-tile-taken-border: #7d8f89;
+  --riv-tile-taken-ink: #a7b5b0;
+  --riv-tile-hover: rgba(255, 255, 255, 0.14);
+  --riv-tile-focus: #8fd6e2;
 }
 
 html,

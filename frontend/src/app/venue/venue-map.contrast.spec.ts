@@ -18,6 +18,7 @@ import {
   DARK_HEADER_GLASS,
   DARK_PANEL_TRACK,
   DARK_STOPS,
+  DARK_WASH_STOPS,
   FIELD_BORDER_ALPHA,
   Glass,
   INK_DARK,
@@ -94,18 +95,66 @@ const DARK_DATE_FIELD: Glass = { color: hexToRgb('0f172a'), alpha: 0.92 };
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
 
 // Translucent tile/chip surfaces: ink on `fill`@`alpha`, composited over each wash stop.
-const TILE_SURFACES: readonly {
+interface TileSurface {
   readonly fg: string;
   readonly fill: Rgb;
   readonly alpha: number;
   readonly usage: string;
-}[] = [
+}
+const TILE_SURFACES: readonly TileSurface[] = [
   { fg: '#0f7d8c', fill: WHITE, alpha: 0.75, usage: 'available tile' },
   { fg: '#875911', fill: hexToRgb('fbf1d9'), alpha: 0.85, usage: 'premium (front-row) tile' },
   { fg: '#566560', fill: WHITE, alpha: 0.2, usage: 'ghost taken tile' },
   // css:S7924 stayed quiet on the translucent chips (PR #673); if it re-fires, solidify per failure-panel.
   { fg: '#0a4f5e', fill: WHITE, alpha: 0.6, usage: 'row-code chip' },
   { fg: '#0a4f5e', fill: WHITE, alpha: 0.8, usage: 'zone price chip' },
+];
+/** The night map's tile/chip surfaces — the dark `--riv-tile-*` / `--riv-map-*` values. */
+const DARK_TILE_SURFACES: readonly TileSurface[] = [
+  { fg: '#8fd6e2', fill: WHITE, alpha: 0.1, usage: 'available tile' },
+  { fg: '#ecd09a', fill: hexToRgb('e6c483'), alpha: 0.18, usage: 'premium (front-row) tile' },
+  { fg: '#a7b5b0', fill: WHITE, alpha: 0.05, usage: 'ghost taken tile' },
+  { fg: '#9adde8', fill: WHITE, alpha: 0.1, usage: 'row-code chip' },
+  { fg: '#9adde8', fill: WHITE, alpha: 0.12, usage: 'zone price chip' },
+];
+
+/** The two map ink families: daylight (porcelain, riviera, every porcelain-pinned operator
+ *  surface) and night (the dark theme). Wash stops + tile values + the walk-in/ghost pieces. */
+interface MapFamily {
+  readonly name: string;
+  readonly washStops: readonly Rgb[];
+  readonly tiles: readonly TileSurface[];
+  readonly legendInk: Rgb; // base of --riv-card-ink-soft on the sea band
+  readonly walkinInk: string;
+  readonly walkinFill: Glass;
+  readonly walkinHatch: Glass;
+  readonly ghostFill: Glass;
+  readonly ghostBorder: string;
+}
+const MAP_FAMILIES: readonly MapFamily[] = [
+  {
+    name: 'daylight',
+    washStops: WASH_STOPS,
+    tiles: TILE_SURFACES,
+    legendInk: CARD_INK,
+    walkinInk: '#5f4d2a',
+    walkinFill: { color: hexToRgb('efe0bd'), alpha: 0.6 },
+    walkinHatch: WALK_IN_HATCH,
+    ghostFill: { color: WHITE, alpha: 0.2 },
+    ghostBorder: '#6b7d77',
+  },
+  {
+    name: 'night',
+    washStops: DARK_WASH_STOPS,
+    tiles: DARK_TILE_SURFACES,
+    legendInk: DARK_CARD_INK,
+    walkinInk: '#e5d3a8',
+    walkinFill: { color: hexToRgb('efe0bd'), alpha: 0.12 },
+    // 0.14 (day: 0.16): 0.16 drops the numeral to 4.33:1 on the stripe band.
+    walkinHatch: { color: hexToRgb('e5d3a8'), alpha: 0.14 },
+    ghostFill: { color: WHITE, alpha: 0.05 },
+    ghostBorder: '#7d8f89',
+  },
 ];
 
 interface Theme {
@@ -219,10 +268,10 @@ describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue 
   });
 });
 
-describe('Beach-map theme-independent contrast (issue #136)', () => {
+describe.each(MAP_FAMILIES)('Beach-map contrast — $name family (issue #136)', (family) => {
   // The chips are aria-hidden decoration (tile names carry seat+price) but proven like the tiles.
-  it.each(TILE_SURFACES)('$usage ink meets AA composited over every wash stop ($fg)', (surface) => {
-    for (const stop of WASH_STOPS) {
+  it.each(family.tiles)('$usage ink meets AA composited over every wash stop ($fg)', (surface) => {
+    for (const stop of family.washStops) {
       const bg = composite(surface.fill, surface.alpha, stop);
       expect(
         contrastRatio(surface.fg, rgbToHex(bg)),
@@ -232,18 +281,18 @@ describe('Beach-map theme-independent contrast (issue #136)', () => {
   });
 
   it("legend ink meets AA on the band, which is the wash's own first stop (#701)", () => {
-    const band = WASH_STOPS[0];
-    const ink = composite(CARD_INK, CARD_INK_SOFT_ALPHA, band);
+    const band = family.washStops[0];
+    const ink = composite(family.legendInk, CARD_INK_SOFT_ALPHA, band);
     expect(contrastRatio(rgbToHex(ink), rgbToHex(band))).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
   it('the walk-in numeral meets AA on both hatch bands over every wash stop (#701)', () => {
-    for (const stop of WASH_STOPS) {
-      const gap = composite(hexToRgb('efe0bd'), 0.6, stop);
-      const stripe = composite(WALK_IN_HATCH.color, WALK_IN_HATCH.alpha, gap);
+    for (const stop of family.washStops) {
+      const gap = composite(family.walkinFill.color, family.walkinFill.alpha, stop);
+      const stripe = composite(family.walkinHatch.color, family.walkinHatch.alpha, gap);
       for (const band of [gap, stripe]) {
         expect(
-          contrastRatio('#5f4d2a', rgbToHex(band)),
+          contrastRatio(family.walkinInk, rgbToHex(band)),
           `over stop ${rgbToHex(stop)}, band ${rgbToHex(band)}`,
         ).toBeGreaterThanOrEqual(AA_NORMAL);
       }
@@ -251,15 +300,17 @@ describe('Beach-map theme-independent contrast (issue #136)', () => {
   });
 
   it('the ghost-taken dashed border marks "taken" at 3:1 against its tile fill (WCAG 1.4.11)', () => {
-    for (const stop of WASH_STOPS) {
-      const tile = composite(WHITE, 0.2, stop);
+    for (const stop of family.washStops) {
+      const tile = composite(family.ghostFill.color, family.ghostFill.alpha, stop);
       expect(
-        contrastRatio('#6b7d77', rgbToHex(tile)),
+        contrastRatio(family.ghostBorder, rgbToHex(tile)),
         `over stop ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_LARGE);
     }
   });
+});
 
+describe('Beach-map theme-independent contrast (issue #136)', () => {
   it('sea-banner white text meets AA on the lightest teal stop', () => {
     expect(contrastRatio('#ffffff', '#0e7a89')).toBeGreaterThanOrEqual(AA_NORMAL);
   });
