@@ -229,7 +229,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--ri
 
               @if (error(); as msg) {
                 <p
-                  class="m-0 text-[13px] font-semibold text-[#8c2b22]"
+                  class="m-0 text-[13px] font-semibold text-(--riv-error-ink)"
                   role="alert"
                   data-testid="auth-error"
                 >

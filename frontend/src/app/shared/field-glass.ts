@@ -11,14 +11,15 @@ import { Directive } from '@angular/core';
  * Carries NO border-radius and NO padding — two competing radius utilities resolve by stylesheet
  * order, not class order, so each consumer sets its own (riviera-tailwind rule 3).
  *
- * `scheme-light`: the field is light-styled in both themes, so its native chrome (autofill tint,
- * caret, selection) must not follow the riviera document's `color-scheme: dark`.
+ * `--riv-field-scheme` drives the native chrome (autofill tint, caret, selection): the field is
+ * light-styled in porcelain AND riviera (so it must not follow riviera's `color-scheme: dark`),
+ * but dark-styled in the dark theme — a per-theme token, not a hardcoded `scheme-light`.
  */
 @Directive({
   selector: '[appFieldGlass]',
   host: {
     class:
-      'scheme-light bg-(--riv-field-fill) border border-(--riv-field-border) text-(--riv-card-ink)',
+      '[color-scheme:var(--riv-field-scheme)] bg-(--riv-field-fill) border border-(--riv-field-border) text-(--riv-card-ink)',
   },
 })
 export class FieldGlass {}

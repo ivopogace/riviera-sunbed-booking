@@ -21,7 +21,7 @@ const CLS = {
   infoIcon: 'text-[16px] leading-[1.3]',
   infoText: 'm-0 text-[13px] leading-[1.5] text-(--riv-card-ink-soft)',
   codeCard:
-    'mb-4 rounded-[18px] border border-dashed border-(--riv-field-border) bg-[rgba(255,255,255,0.4)] p-3.5',
+    'mb-4 rounded-[18px] border border-dashed border-(--riv-field-border) bg-(--riv-inset-fill) p-3.5',
   codeLabel: 'block text-[11px] tracking-[0.16em] uppercase text-(--riv-card-ink-soft)',
   code: 'mt-1.25 text-[26px] font-bold tracking-[0.12em] text-(--riv-accent-ink)',
   status: 'm-0 mb-4.5 text-[13px] font-semibold text-(--riv-card-ink-soft)',

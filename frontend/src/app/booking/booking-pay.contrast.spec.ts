@@ -3,7 +3,9 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  DARK_ACCENT_INK,
   DARK_CARD_GLASS,
+  DARK_CARD_INK,
   DARK_HEADER_GLASS,
   DARK_STOPS,
   Glass,
@@ -40,6 +42,9 @@ interface Theme {
   readonly cardGlass: Glass;
   readonly headerGlass: Glass;
   readonly headInk: Rgb; // --riv-ink (cancel chip)
+  readonly cardInk: Rgb; // --riv-card-ink
+  readonly cardInkBase: Rgb; // base of the muted rgba ink family
+  readonly accent: Rgb; // --riv-accent-ink
 }
 const THEMES: readonly Theme[] = [
   {
@@ -48,6 +53,9 @@ const THEMES: readonly Theme[] = [
     cardGlass: RIVIERA_CARD_GLASS,
     headerGlass: RIVIERA_HEADER_GLASS,
     headInk: WHITE,
+    cardInk: INK_DARK,
+    cardInkBase: CARD_INK,
+    accent: hexToRgb(ACCENT.slice(1)),
   },
   {
     name: 'porcelain',
@@ -55,6 +63,9 @@ const THEMES: readonly Theme[] = [
     cardGlass: PORCELAIN_CARD_GLASS,
     headerGlass: PORCELAIN_HEADER_GLASS,
     headInk: INK_DARK,
+    cardInk: INK_DARK,
+    cardInkBase: CARD_INK,
+    accent: hexToRgb(ACCENT.slice(1)),
   },
   {
     name: 'dark',
@@ -62,6 +73,9 @@ const THEMES: readonly Theme[] = [
     cardGlass: DARK_CARD_GLASS,
     headerGlass: DARK_HEADER_GLASS,
     headInk: WHITE,
+    cardInk: DARK_CARD_INK,
+    cardInkBase: DARK_CARD_INK,
+    accent: DARK_ACCENT_INK,
   },
 ];
 
@@ -83,19 +97,19 @@ describe.each(THEMES)(
   'Payment page glass contrast — $name theme (WCAG AA, issue #137)',
   (theme) => {
     it('card ink (headings, summary values, code) meets AA on the card glass', () => {
-      expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
+      expectAaOverStops(theme.cardInk, 1, theme.cardGlass, theme.stops);
     });
 
     it('card ink-soft (lead, summary keys, status, labels) meets AA on the card glass', () => {
-      expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
+      expectAaOverStops(theme.cardInkBase, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
     });
 
     it('card ink-faint (trust line) meets AA on the card glass', () => {
-      expectAaOverStops(CARD_INK, CARD_INK_FAINT_ALPHA, theme.cardGlass, theme.stops);
+      expectAaOverStops(theme.cardInkBase, CARD_INK_FAINT_ALPHA, theme.cardGlass, theme.stops);
     });
 
     it('accent ink (total, big code, links) meets AA on the card glass', () => {
-      expectAaOverStops(hexToRgb(ACCENT), 1, theme.cardGlass, theme.stops);
+      expectAaOverStops(theme.accent, 1, theme.cardGlass, theme.stops);
     });
 
     it('cancel-chip ink meets AA on the dark header glass over every gradient stop', () => {

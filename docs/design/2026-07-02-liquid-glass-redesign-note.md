@@ -54,8 +54,10 @@ behavior stays with the backend contracts and the invariants in `CLAUDE.md`.
    were declared the final set. #143 closed not-planned.)* *(Re-amended —
    maintainer, 2026-08-25 theme restructure: the set is now three — porcelain
    as the light default, riviera as a switcher-only choice, and a neutral
-   dark-slate `dark` theme as the OS-dark default. The dark palette is
-   code-derived from riviera's token structure, not a design-file export.)*
+   dark-slate `dark` theme as the OS-dark default. Unlike riviera, whose cards
+   keep the white Liquid Glass, the dark theme inverts the whole surface family
+   (dark cards/dialogs/popovers/fields, light inks). The dark palette is
+   code-derived, not a design-file export.)*
 4. **Amenities + distance-to-water: fullstack slice** in the tourist epic
    (Flyway migration, `venue` module surface, editor input, discovery/map
    chips). The operator design's "Commodities" chip editor is the operator-side

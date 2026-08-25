@@ -11,7 +11,10 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  DARK_ACCENT_INK,
   DARK_CARD_GLASS,
+  DARK_CARD_INK,
+  DARK_FIELD_BORDER,
   DARK_HEADER_GLASS,
   DARK_PANEL_TRACK,
   DARK_STOPS,
@@ -83,8 +86,9 @@ const ACCENT = '#085a6e'; // --riv-accent-ink (availability count, scroll hint)
 /** The walk-in tile's hatch stripe (`map-tile.ts`): the tile's own ink, laid over its fill. */
 const WALK_IN_HATCH: Glass = { color: hexToRgb('5f4d2a'), alpha: 0.16 };
 
-/** NOT `--riv-field-fill`: a literal (`venue-map.html`) — on the DARK header glass a 0.55 fill fails AA. */
+/** `--riv-field-solid`, NOT `--riv-field-fill` — on the header glass a 0.55 fill fails AA. */
 const DATE_FIELD_FILL_ALPHA = 0.9;
+const DARK_DATE_FIELD: Glass = { color: hexToRgb('0f172a'), alpha: 0.92 };
 
 // --riv-cta-grad stops (theme-invariant) — the failure-panel "Try again" button's white text.
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
@@ -112,6 +116,11 @@ interface Theme {
   readonly headInk: Rgb; // --riv-ink
   readonly headInkSoftAlpha: number; // --riv-ink-soft
   readonly headInkFaintAlpha: number; // --riv-ink-faint
+  readonly cardInk: Rgb; // --riv-card-ink
+  readonly cardInkBase: Rgb; // base of the muted rgba ink family
+  readonly accent: Rgb; // --riv-accent-ink
+  readonly dateField: Glass; // --riv-field-solid over the header glass
+  readonly fieldBorder: Glass; // --riv-field-border over the date field
 }
 
 const THEMES: readonly Theme[] = [
@@ -123,6 +132,11 @@ const THEMES: readonly Theme[] = [
     headInk: WHITE,
     headInkSoftAlpha: 0.86,
     headInkFaintAlpha: 0.8,
+    cardInk: INK_DARK,
+    cardInkBase: CARD_INK,
+    accent: hexToRgb(ACCENT.slice(1)),
+    dateField: { color: WHITE, alpha: DATE_FIELD_FILL_ALPHA },
+    fieldBorder: { color: CARD_INK, alpha: FIELD_BORDER_ALPHA },
   },
   {
     name: 'porcelain',
@@ -132,6 +146,11 @@ const THEMES: readonly Theme[] = [
     headInk: INK_DARK,
     headInkSoftAlpha: 0.7,
     headInkFaintAlpha: 0.66,
+    cardInk: INK_DARK,
+    cardInkBase: CARD_INK,
+    accent: hexToRgb(ACCENT.slice(1)),
+    dateField: { color: WHITE, alpha: DATE_FIELD_FILL_ALPHA },
+    fieldBorder: { color: CARD_INK, alpha: FIELD_BORDER_ALPHA },
   },
   {
     name: 'dark',
@@ -141,6 +160,11 @@ const THEMES: readonly Theme[] = [
     headInk: WHITE,
     headInkSoftAlpha: 0.86,
     headInkFaintAlpha: 0.8,
+    cardInk: DARK_CARD_INK,
+    cardInkBase: DARK_CARD_INK,
+    accent: DARK_ACCENT_INK,
+    dateField: DARK_DATE_FIELD,
+    fieldBorder: DARK_FIELD_BORDER,
   },
 ];
 
@@ -162,34 +186,36 @@ describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue 
   it('date field text (dark ink) meets AA on the near-opaque field over the header glass', () => {
     for (const stop of theme.stops) {
       const panel = surfaceOver(theme.headerGlass, stop);
-      const field = composite(WHITE, DATE_FIELD_FILL_ALPHA, panel);
-      expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(field))).toBeGreaterThanOrEqual(AA_NORMAL);
+      const field = composite(theme.dateField.color, theme.dateField.alpha, panel);
+      expect(contrastRatio(rgbToHex(theme.cardInk), rgbToHex(field))).toBeGreaterThanOrEqual(
+        AA_NORMAL,
+      );
     }
   });
 
   it('date field border marks the input boundary at 3:1 against its fill (WCAG 1.4.11)', () => {
     for (const stop of theme.stops) {
       const panel = surfaceOver(theme.headerGlass, stop);
-      const field = composite(WHITE, DATE_FIELD_FILL_ALPHA, panel);
-      const border = composite(CARD_INK, FIELD_BORDER_ALPHA, field);
+      const field = composite(theme.dateField.color, theme.dateField.alpha, panel);
+      const border = composite(theme.fieldBorder.color, theme.fieldBorder.alpha, field);
       expect(contrastRatio(rgbToHex(border), rgbToHex(field))).toBeGreaterThanOrEqual(AA_LARGE);
     }
   });
 
   it('card ink (availability count, empty-map heading) meets AA on the map card glass', () => {
-    expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
+    expectAaOverStops(theme.cardInk, 1, theme.cardGlass, theme.stops);
   });
 
   it('card ink-soft (promenade, failure + empty-map copy) meets AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
+    expectAaOverStops(theme.cardInkBase, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
   });
 
   it('card ink-faint (tap hint) meets AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, CARD_INK_FAINT_ALPHA, theme.cardGlass, theme.stops);
+    expectAaOverStops(theme.cardInkBase, CARD_INK_FAINT_ALPHA, theme.cardGlass, theme.stops);
   });
 
   it('accent ink (free count, scroll hint) meets AA on the card glass', () => {
-    expectAaOverStops(hexToRgb(ACCENT), 1, theme.cardGlass, theme.stops);
+    expectAaOverStops(theme.accent, 1, theme.cardGlass, theme.stops);
   });
 });
 

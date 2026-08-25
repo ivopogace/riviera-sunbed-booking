@@ -52,7 +52,7 @@
 
   /** Card surfaces (consumed by the glass panels/cards). Declared in
       this base block, so they are theme-invariant unless a theme block overrides them
-      (riviera and dark override only --riv-card-glass).
+      (riviera overrides only --riv-card-glass; dark inverts the whole family — see its block).
       0.55 matches the design: porcelain's light stops let the dark card inks reach AA at the
       design's airier alpha — see home.contrast.spec.ts. */
   --riv-card-glass: rgba(255, 255, 255, 0.55);
@@ -66,7 +66,35 @@
   /* dark tint (design: white border): input boundary needs 3:1 (WCAG 1.4.11) */
   --riv-field-border: rgba(12, 42, 51, 0.55);
   --riv-field-fill: rgba(255, 255, 255, 0.55);
+  /* native form chrome (autofill, caret, calendar) per FIELD, not per document — dark themes the fields */
+  --riv-field-scheme: light;
+  /* the venue-map date field's near-opaque fill (deliberately not --riv-field-fill; see its spec) */
+  --riv-field-solid: rgba(255, 255, 255, 0.9);
+  --riv-error-ink: #a3160e;
   --riv-card-track: rgba(12, 42, 51, 0.12);
+
+  /** The near-opaque popover surface (theme picker, account menu, mobile sheet — app.ts POP)
+      and the segmented-control fills (shared/segmented-control.ts). Light values here; the
+      dark theme swaps the whole family so the shell chrome follows the theme. */
+  --riv-pop-surface: rgba(255, 255, 255, 0.92);
+  --riv-pop-border: rgba(255, 255, 255, 0.7);
+  --riv-pop-ink: #0a2a33;
+  --riv-pop-ink-soft: rgba(12, 42, 51, 0.7);
+  --riv-pop-accent: #0a6e85;
+  --riv-pop-hover: rgba(12, 42, 51, 0.06);
+  --riv-pop-divider: rgba(12, 42, 51, 0.1);
+  --riv-pop-shadow: 0 22px 54px rgba(6, 30, 40, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --riv-pill-fill: #ffffff;
+
+  /** Translucent white washes over glass (segmented option cards, dialog close chip, the
+      dialog Back button, the dashed code inset) + the near-opaque dialog panel itself.
+      The dark theme swaps them for faint light-on-slate washes. */
+  --riv-wash-fill: rgba(255, 255, 255, 0.5);
+  --riv-wash-border: rgba(255, 255, 255, 0.7);
+  --riv-wash-hover: rgba(255, 255, 255, 0.75);
+  --riv-inset-fill: rgba(255, 255, 255, 0.4);
+  --riv-dialog-glass: rgba(255, 255, 255, 0.82);
+  --riv-back-ink: #0a4f5e;
   --riv-photo-grad: linear-gradient(162deg, #2bb8d4 0%, #0e8aa8 70%, #0e8aa8 100%);
   /* The scrim reaches alpha 0.68 at its three-quarter stop (the design file has no scrim): the
      location overlay's text band, sitting in the lower tenth of the photo, needs a backing of at
@@ -103,7 +131,7 @@
 }
 
 [data-riv-theme='riviera'] {
-  /* Native UI follows the dark palette; light-styled fields opt back out via `scheme-light` */
+  /* Native UI follows the dark palette; the light-styled fields opt back out via --riv-field-scheme */
   color-scheme: dark;
 
   --riv-bg:
@@ -133,7 +161,7 @@
 }
 
 [data-riv-theme='dark'] {
-  /* Native UI follows the dark palette; light-styled fields opt back out via `scheme-light` */
+  /* Native UI and the fields are both dark here (--riv-field-scheme below stays dark) */
   color-scheme: dark;
 
   /** Neutral slate — no design-file counterpart: derived from riviera's token structure with the
@@ -159,9 +187,38 @@
   --riv-header-glass: rgba(15, 23, 42, 0.72);
   --riv-header-border: rgba(255, 255, 255, 0.22);
 
-  /** 0.82 (riviera: 0.78): #0b1120 is darker than any riviera stop — the faint card inks on the
-      auth option cards need the extra opacity for AA (auth-page.contrast.spec.ts, dark rows). */
-  --riv-card-glass: rgba(255, 255, 255, 0.82);
+  /** Fully dark surfaces (maintainer decision, 2026-08-25): unlike riviera, whose cards stay
+      white glass, the dark theme inverts the whole card family — dark slate glass, light inks,
+      a light accent, dark fields with light borders, and the popover family below. Every pair
+      is AA-proven by the DARK_* rows in testing/glass-tokens.ts + the per-page contrast specs. */
+  --riv-card-glass: rgba(16, 26, 46, 0.72);
+  --riv-card-border: rgba(255, 255, 255, 0.16);
+  --riv-card-ink: #f2f7fa;
+  --riv-card-ink-soft: rgba(242, 247, 250, 0.78);
+  --riv-card-ink-faint: rgba(242, 247, 250, 0.72);
+  --riv-accent-ink: #7cd7e8;
+  --riv-field-border: rgba(255, 255, 255, 0.5);
+  --riv-field-fill: rgba(2, 10, 22, 0.45);
+  --riv-field-scheme: dark;
+  --riv-field-solid: rgba(15, 23, 42, 0.92);
+  --riv-error-ink: #ffa9a1;
+  --riv-card-track: rgba(255, 255, 255, 0.18);
+
+  --riv-pop-surface: rgba(16, 26, 46, 0.96);
+  --riv-pop-border: rgba(255, 255, 255, 0.16);
+  --riv-pop-ink: #f2f7fa;
+  --riv-pop-ink-soft: rgba(242, 247, 250, 0.75);
+  --riv-pop-accent: #7cd7e8;
+  --riv-pop-hover: rgba(255, 255, 255, 0.08);
+  --riv-pop-divider: rgba(255, 255, 255, 0.14);
+  --riv-pop-shadow: 0 22px 54px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --riv-pill-fill: #101a2e;
+  --riv-wash-fill: rgba(255, 255, 255, 0.08);
+  --riv-wash-border: rgba(255, 255, 255, 0.28);
+  --riv-wash-hover: rgba(255, 255, 255, 0.16);
+  --riv-inset-fill: rgba(255, 255, 255, 0.08);
+  --riv-dialog-glass: rgba(16, 26, 46, 0.94);
+  --riv-back-ink: #b7dfe9;
 }
 
 html,

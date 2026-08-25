@@ -11,13 +11,14 @@ import { ThemeId, ThemeService } from './core/theme';
 import { OperatorChrome } from './operator/operator-chrome';
 import { TouchTarget } from './shared/touch-target';
 
-/** The near-opaque white popover surface (account menu, theme picker, mobile sheet). */
+/** The near-opaque popover surface (account menu, theme picker, mobile sheet) — themed via the
+ *  `--riv-pop-*` family: light in porcelain/riviera, slate in the dark theme. */
 const POP =
-  'absolute z-40 animate-[riv-pop_0.2s_ease] rounded-[18px] border border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.92)] text-[#0a2a33] shadow-[0_22px_54px_rgba(6,30,40,0.4),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none';
+  'absolute z-40 animate-[riv-pop_0.2s_ease] rounded-[18px] border border-(--riv-pop-border) bg-(--riv-pop-surface) text-(--riv-pop-ink) shadow-(--riv-pop-shadow) backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none';
 const POP_ITEM =
-  'block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-[#0a2a33] [transition:background_0.12s_ease] hover:bg-[rgba(12,42,51,0.06)]';
+  'block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-(--riv-pop-ink) [transition:background_0.12s_ease] hover:bg-(--riv-pop-hover)';
 const MOBILE_ITEM =
-  'block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-[#0a2a33] hover:bg-[rgba(12,42,51,0.06)]';
+  'block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-(--riv-pop-ink) hover:bg-(--riv-pop-hover)';
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {

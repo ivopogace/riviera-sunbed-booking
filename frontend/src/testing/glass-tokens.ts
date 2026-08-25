@@ -23,10 +23,28 @@ export const RIVIERA_HEADER_GLASS: Glass = { color: hexToRgb('0a2c3f'), alpha: 0
 export const PORCELAIN_HEADER_GLASS: Glass = { color: WHITE, alpha: 0.6 };
 export const DARK_HEADER_GLASS: Glass = { color: hexToRgb('0f172a'), alpha: 0.72 };
 
-/** `--riv-card-glass` per theme; every card spec imports these. */
+/** `--riv-card-glass` per theme; every card spec imports these. The dark theme inverts the whole
+ *  card family (dark glass, light inks — the DARK_* mirrors below); riviera/porcelain keep the
+ *  white glass with the shared dark-ink constants above. */
 export const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
 export const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
-export const DARK_CARD_GLASS: Glass = { color: WHITE, alpha: 0.82 };
+export const DARK_CARD_GLASS: Glass = { color: hexToRgb('101a2e'), alpha: 0.72 };
+
+/** Dark theme's light card-ink base — `--riv-card-ink` and the rgba(242, 247, 250, …) muted family. */
+export const DARK_CARD_INK: Rgb = hexToRgb('f2f7fa');
+/** Dark theme's `--riv-accent-ink` (light teal; light themes keep #085a6e). */
+export const DARK_ACCENT_INK: Rgb = hexToRgb('7cd7e8');
+/** `--riv-error-ink` per ink family (light themes: #a3160e). */
+export const DARK_ERROR_INK: Rgb = hexToRgb('ffa9a1');
+/** Dark `--riv-field-fill` / `--riv-field-border` (light themes: the FIELD_*_ALPHA constants). */
+export const DARK_FIELD_FILL: Glass = { color: hexToRgb('020a16'), alpha: 0.45 };
+export const DARK_FIELD_BORDER: Glass = { color: WHITE, alpha: 0.5 };
+/** Dark `--riv-card-track` (light themes: CARD_INK at CARD_TRACK_ALPHA). */
+export const DARK_CARD_TRACK: Glass = { color: WHITE, alpha: 0.18 };
+/** `--riv-dialog-glass` per ink family (light themes: white 0.82). */
+export const DARK_DIALOG_GLASS: Glass = { color: hexToRgb('101a2e'), alpha: 0.94 };
+/** Dark `--riv-wash-fill` / `--riv-inset-fill` (light themes: white 0.5 / 0.4). */
+export const DARK_WASH_FILL: Glass = { color: WHITE, alpha: 0.08 };
 /** `--riv-card-ink-soft` alpha over the card glass. */
 export const CARD_INK_SOFT_ALPHA = 0.78;
 /** `--riv-card-ink-faint` alpha over the card glass. */

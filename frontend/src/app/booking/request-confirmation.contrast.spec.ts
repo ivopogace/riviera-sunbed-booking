@@ -2,7 +2,9 @@ import { AA_NORMAL, Rgb, contrastRatio, hexToRgb } from '../../testing/contrast'
 import {
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
+  DARK_ACCENT_INK,
   DARK_CARD_GLASS,
+  DARK_CARD_INK,
   DARK_STOPS,
   Glass,
   INK_DARK,
@@ -28,11 +30,16 @@ interface Theme {
   readonly name: string;
   readonly stops: readonly Rgb[];
   readonly cardGlass: Glass;
+  readonly cardInk: Rgb; // --riv-card-ink
+  readonly cardInkBase: Rgb; // base of the muted rgba ink family
+  readonly accent: Rgb; // --riv-accent-ink
 }
+const LIGHT_INKS = { cardInk: INK_DARK, cardInkBase: CARD_INK, accent: hexToRgb(ACCENT.slice(1)) };
+const DARK_INKS = { cardInk: DARK_CARD_INK, cardInkBase: DARK_CARD_INK, accent: DARK_ACCENT_INK };
 const THEMES: readonly Theme[] = [
-  { name: 'riviera', stops: RIVIERA_STOPS, cardGlass: RIVIERA_CARD_GLASS },
-  { name: 'porcelain', stops: PORCELAIN_STOPS, cardGlass: PORCELAIN_CARD_GLASS },
-  { name: 'dark', stops: DARK_STOPS, cardGlass: DARK_CARD_GLASS },
+  { name: 'riviera', stops: RIVIERA_STOPS, cardGlass: RIVIERA_CARD_GLASS, ...LIGHT_INKS },
+  { name: 'porcelain', stops: PORCELAIN_STOPS, cardGlass: PORCELAIN_CARD_GLASS, ...LIGHT_INKS },
+  { name: 'dark', stops: DARK_STOPS, cardGlass: DARK_CARD_GLASS, ...DARK_INKS },
 ];
 
 describe('Request-sent card — theme-independent CTA (WCAG AA, issue #137)', () => {
@@ -47,15 +54,15 @@ describe.each(THEMES)(
   'Request-sent card glass contrast — $name theme (WCAG AA, issue #137)',
   (theme) => {
     it('card ink (heading, emphasis) meets AA on the card glass', () => {
-      expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
+      expectAaOverStops(theme.cardInk, 1, theme.cardGlass, theme.stops);
     });
 
     it('card ink-soft (lead, info box, code label, status) meets AA on the card glass', () => {
-      expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
+      expectAaOverStops(theme.cardInkBase, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
     });
 
     it('accent ink (big reference code) meets AA on the card glass', () => {
-      expectAaOverStops(hexToRgb(ACCENT), 1, theme.cardGlass, theme.stops);
+      expectAaOverStops(theme.accent, 1, theme.cardGlass, theme.stops);
     });
   },
 );

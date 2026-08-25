@@ -11,8 +11,12 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  DARK_ACCENT_INK,
   DARK_CARD_GLASS,
+  DARK_CARD_INK,
   DARK_CHIP,
+  DARK_FIELD_BORDER,
+  DARK_FIELD_FILL,
   DARK_HEADER_GLASS,
   DARK_STOPS,
   FIELD_BORDER_ALPHA,
@@ -61,7 +65,7 @@ import {
  * decorative card border.
  */
 
-const ACCENT = '#085a6e'; // --riv-accent-ink
+const ACCENT = '#085a6e'; // --riv-accent-ink (light themes; dark uses DARK_ACCENT_INK)
 
 /**
  * --riv-cta-grad stops (theme-invariant; consumed by the Discover failure-panel "Try again"
@@ -77,12 +81,20 @@ interface Theme {
   readonly headerGlass: Glass;
   readonly chip: Glass;
   readonly cardGlass: Glass;
+  readonly cardInk: Rgb; // --riv-card-ink (solid)
+  readonly cardInkBase: Rgb; // base of the muted rgba ink family
+  readonly accent: Rgb; // --riv-accent-ink
+  readonly fieldFill: Glass; // --riv-field-fill, composited over the card glass
+  readonly fieldBorder: Glass; // --riv-field-border, composited over the field fill
   readonly heroInk: Rgb;
   readonly heroInkSoftAlpha: number; // --riv-ink-soft
   /** Riviera backs the hero with a soft dark SCRIM (white ink AA over the gradient's light top
    *  stops); porcelain's hero is bare dark ink on the gradient (matches the design). null = bare. */
   readonly heroScrim: Glass | null;
 }
+
+const LIGHT_FIELD_FILL: Glass = { color: WHITE, alpha: FIELD_FILL_ALPHA };
+const LIGHT_FIELD_BORDER: Glass = { color: CARD_INK, alpha: FIELD_BORDER_ALPHA };
 
 const THEMES: readonly Theme[] = [
   {
@@ -91,6 +103,11 @@ const THEMES: readonly Theme[] = [
     headerGlass: RIVIERA_HEADER_GLASS,
     chip: RIVIERA_CHIP,
     cardGlass: RIVIERA_CARD_GLASS,
+    cardInk: INK_DARK,
+    cardInkBase: CARD_INK,
+    accent: hexToRgb(ACCENT.slice(1)),
+    fieldFill: LIGHT_FIELD_FILL,
+    fieldBorder: LIGHT_FIELD_BORDER,
     heroInk: WHITE,
     heroInkSoftAlpha: 0.86,
     // Riviera hero scrim (home.scss): rgba(8,38,52,0.72) = #082634 @ 0.72.
@@ -102,6 +119,11 @@ const THEMES: readonly Theme[] = [
     headerGlass: PORCELAIN_HEADER_GLASS,
     chip: PORCELAIN_CHIP,
     cardGlass: PORCELAIN_CARD_GLASS,
+    cardInk: INK_DARK,
+    cardInkBase: CARD_INK,
+    accent: hexToRgb(ACCENT.slice(1)),
+    fieldFill: LIGHT_FIELD_FILL,
+    fieldBorder: LIGHT_FIELD_BORDER,
     heroInk: INK_DARK,
     heroInkSoftAlpha: 0.7,
     heroScrim: null, // bare gradient
@@ -112,6 +134,11 @@ const THEMES: readonly Theme[] = [
     headerGlass: DARK_HEADER_GLASS,
     chip: DARK_CHIP,
     cardGlass: DARK_CARD_GLASS,
+    cardInk: DARK_CARD_INK,
+    cardInkBase: DARK_CARD_INK,
+    accent: DARK_ACCENT_INK,
+    fieldFill: DARK_FIELD_FILL,
+    fieldBorder: DARK_FIELD_BORDER,
     heroInk: WHITE,
     heroInkSoftAlpha: 0.86,
     // Bare gradient: every slate stop is dark enough for white ink AA — the scrim stays riviera-only.
@@ -167,34 +194,36 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
   });
 
   it('card ink (names, ratings, free count) meets AA on the card glass', () => {
-    expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
+    expectAaOverStops(theme.cardInk, 1, theme.cardGlass, theme.stops);
   });
 
   it('card ink-soft (reviews, price copy, footer) meets AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
+    expectAaOverStops(theme.cardInkBase, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
   });
 
   it('card ink-faint (field labels, count subline) meets AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, CARD_INK_FAINT_ALPHA, theme.cardGlass, theme.stops);
+    expectAaOverStops(theme.cardInkBase, CARD_INK_FAINT_ALPHA, theme.cardGlass, theme.stops);
   });
 
   it('accent ink (result count, from-price) meets AA on the card glass', () => {
-    expectAaOverStops(hexToRgb(ACCENT), 1, theme.cardGlass, theme.stops);
+    expectAaOverStops(theme.accent, 1, theme.cardGlass, theme.stops);
   });
 
   it('select/date text meets AA on the field fill over the card glass', () => {
     for (const stop of theme.stops) {
       const card = surfaceOver(theme.cardGlass, stop);
-      const field = composite(WHITE, FIELD_FILL_ALPHA, card);
-      expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(field))).toBeGreaterThanOrEqual(AA_NORMAL);
+      const field = composite(theme.fieldFill.color, theme.fieldFill.alpha, card);
+      expect(contrastRatio(rgbToHex(theme.cardInk), rgbToHex(field))).toBeGreaterThanOrEqual(
+        AA_NORMAL,
+      );
     }
   });
 
   it('field border marks the input boundary at 3:1 against its fill (WCAG 1.4.11)', () => {
     for (const stop of theme.stops) {
       const card = surfaceOver(theme.cardGlass, stop);
-      const field = composite(WHITE, FIELD_FILL_ALPHA, card);
-      const border = composite(CARD_INK, FIELD_BORDER_ALPHA, field);
+      const field = composite(theme.fieldFill.color, theme.fieldFill.alpha, card);
+      const border = composite(theme.fieldBorder.color, theme.fieldBorder.alpha, field);
       expect(contrastRatio(rgbToHex(border), rgbToHex(field))).toBeGreaterThanOrEqual(AA_LARGE);
     }
   });

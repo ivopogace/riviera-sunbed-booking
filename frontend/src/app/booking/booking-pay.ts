@@ -152,7 +152,7 @@ const CLS = {
         </dl>
 
         <p
-          class="my-[18px] rounded-[18px] border border-dashed border-(--riv-field-border) bg-[rgba(255,255,255,0.4)] p-[15px]"
+          class="my-[18px] rounded-[18px] border border-dashed border-(--riv-field-border) bg-(--riv-inset-fill) p-[15px]"
           data-testid="booking-code"
         >
           <span class="block text-[11px] tracking-[0.16em] uppercase text-(--riv-card-ink-soft)"

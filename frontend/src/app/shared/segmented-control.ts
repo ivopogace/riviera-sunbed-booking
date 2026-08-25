@@ -26,9 +26,9 @@ export interface SegmentedOption<T extends string> {
  * it is pinned once in `segmented-control.spec.ts` instead of per consumer.
  *
  * Styling is Tailwind on the host of each option (no `@apply` — sharing happens here, at the
- * component layer). Colours come from the `--riv-*` card tokens so the control is theme-agnostic;
- * the selected pill's solid white fill and the card variant's accent tint are the two literals, and
- * every ink/fill pair is composited in the consumer's `*.contrast.spec.ts`.
+ * component layer). Colours come from the `--riv-*` card/pill/option tokens so the control is
+ * theme-agnostic (the dark theme inverts them); the card variant's selected accent tint is the one
+ * literal, and every ink/fill pair is composited in the consumer's `*.contrast.spec.ts`.
  */
 @Component({
   imports: [TouchTarget],
@@ -154,7 +154,7 @@ export class SegmentedControl<T extends string> {
       return (
         `${base} rounded-[11px] border-0 py-[9px] text-[13.5px] ` +
         (selected
-          ? 'font-bold text-(--riv-accent-ink) bg-white shadow-[0_4px_12px_rgba(7,42,58,0.16)]'
+          ? 'font-bold text-(--riv-accent-ink) bg-(--riv-pill-fill) shadow-[0_4px_12px_rgba(7,42,58,0.16)]'
           : // ink-soft, not faint: the track tint drops 0.72 to 4.38:1 on the darkest riviera stop.
             'font-semibold text-(--riv-card-ink-soft) bg-transparent')
       );
@@ -164,7 +164,7 @@ export class SegmentedControl<T extends string> {
       `${base} rounded-[18px] border-[1.5px] px-[15px] py-3.5 text-left text-(--riv-card-ink) shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] ` +
       (selected
         ? 'bg-[rgba(43,184,212,0.16)] border-[rgba(14,138,168,0.75)]'
-        : 'bg-[rgba(255,255,255,0.5)] border-[rgba(255,255,255,0.7)]')
+        : 'bg-(--riv-wash-fill) border-(--riv-wash-border)')
     );
   }
 }
