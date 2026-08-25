@@ -13,7 +13,7 @@ const CLS = {
   card: 'w-full max-w-[400px] rounded-[26px] px-[26px] pt-[30px] pb-6 shadow-[0_30px_70px_rgba(6,30,40,0.28),inset_0_1px_0_rgba(255,255,255,0.7)]',
   title: 'm-0 mb-1.5 text-[24px] font-bold tracking-[-0.02em] text-(--riv-card-ink)',
   intro: 'm-0 mb-5 text-[13.5px] leading-[1.5] text-(--riv-card-ink-soft)',
-  error: 'mt-3 text-[13px] font-semibold text-[#a3160e]',
+  error: 'mt-3 text-[13px] font-semibold text-(--riv-error-ink)',
   alt: 'mt-4.5 text-center text-[13.5px] text-(--riv-card-ink-soft)',
   altLink: 'inline-flex items-center font-bold text-(--riv-accent-ink)',
 } as const;

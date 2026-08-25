@@ -83,14 +83,14 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(el.querySelector('router-outlet')).not.toBeNull();
   });
 
-  it('theme pill opens the picker listing both themes; picking one switches the document theme', () => {
+  it('theme pill opens the picker listing all three themes; picking one switches the document theme', () => {
     const { fixture, el } = shell();
 
     el.querySelector<HTMLButtonElement>('[data-testid="theme-toggle"]')!.click();
     fixture.detectChanges();
 
     const options = el.querySelectorAll('[data-testid^="theme-option-"]');
-    expect(options).toHaveLength(2);
+    expect(options).toHaveLength(3);
 
     el.querySelector<HTMLButtonElement>('[data-testid="theme-option-porcelain"]')!.click();
     fixture.detectChanges();

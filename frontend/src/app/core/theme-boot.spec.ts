@@ -11,7 +11,7 @@ import { ThemeService } from './theme';
  * that seeds `data-riv-theme` before first paint; `core/theme.ts` resolves the same value at
  * bootstrap. No shared constant is reachable from `index.html`, so this spec executes the REAL
  * inline script (extracted from `src/index.html`) and boots the REAL `ThemeService` against one
- * scenario table — if either side's resolution order (stored → OS light → riviera) drifts, a row
+ * scenario table — if either side's resolution order (stored → OS dark → porcelain) drifts, a row
  * disagrees and this file fails.
  */
 
@@ -20,60 +20,66 @@ interface Scenario {
   /** The raw stored value, `null` for unset, or a storage whose reads throw (private mode). */
   readonly stored: string | null;
   readonly storageBlocked?: boolean;
-  readonly prefersLight: boolean;
-  readonly expected: 'riviera' | 'porcelain';
+  readonly prefersDark: boolean;
+  readonly expected: 'riviera' | 'porcelain' | 'dark';
 }
 
 const SCENARIOS: readonly Scenario[] = [
   {
     name: 'stored porcelain beats a dark OS',
     stored: 'porcelain',
-    prefersLight: false,
+    prefersDark: true,
     expected: 'porcelain',
   },
   {
     name: 'stored riviera beats a light OS',
     stored: 'riviera',
-    prefersLight: true,
+    prefersDark: false,
     expected: 'riviera',
+  },
+  {
+    name: 'stored dark beats a light OS',
+    stored: 'dark',
+    prefersDark: false,
+    expected: 'dark',
   },
   {
     name: 'unknown stored value + light OS falls through to porcelain',
     stored: 'neon-zebra',
-    prefersLight: true,
+    prefersDark: false,
     expected: 'porcelain',
   },
   {
-    name: 'unknown stored value + dark OS falls through to riviera',
+    name: 'unknown stored value + dark OS falls through to the dark theme',
     stored: 'neon-zebra',
-    prefersLight: false,
-    expected: 'riviera',
+    prefersDark: true,
+    expected: 'dark',
   },
   {
     name: 'no stored choice + light OS resolves porcelain',
     stored: null,
-    prefersLight: true,
+    prefersDark: false,
     expected: 'porcelain',
   },
   {
-    name: 'no stored choice + dark OS resolves riviera',
+    name: 'no stored choice + dark OS resolves the dark theme',
     stored: null,
-    prefersLight: false,
-    expected: 'riviera',
+    prefersDark: true,
+    expected: 'dark',
   },
   {
     name: 'blocked storage + light OS degrades to porcelain',
     stored: null,
     storageBlocked: true,
-    prefersLight: true,
+    prefersDark: false,
     expected: 'porcelain',
   },
   {
-    name: 'blocked storage + dark OS degrades to riviera',
+    name: 'blocked storage + dark OS degrades to the dark theme',
     stored: null,
     storageBlocked: true,
-    prefersLight: false,
-    expected: 'riviera',
+    prefersDark: true,
+    expected: 'dark',
   },
 ];
 
@@ -105,7 +111,7 @@ function fakeLocalStorage(scenario: Scenario): Pick<Storage, 'getItem'> {
 
 function fakeMatchMedia(scenario: Scenario): (query: string) => { matches: boolean } {
   return (query: string) => ({
-    matches: scenario.prefersLight && query.includes('prefers-color-scheme: light'),
+    matches: scenario.prefersDark && query.includes('prefers-color-scheme: dark'),
   });
 }
 

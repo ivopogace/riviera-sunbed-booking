@@ -55,7 +55,7 @@ const TAKINGS = {
   date: '2026-07-08',
 };
 
-// Pin the OS scheme to dark so the tourist shell boots the riviera (dark) theme deterministically —
+// Pin the OS scheme to dark so the tourist shell boots the dark theme deterministically —
 // letting the porcelain-override assertion be meaningful (headless defaults to light → porcelain).
 test.use({ colorScheme: 'dark' });
 
@@ -201,18 +201,18 @@ test('renders porcelain over the tourist theme with a single scrolling tab row, 
 }) => {
   await mockConsole(page);
 
-  // Establish the dark riviera tourist theme first.
+  // Establish the dark tourist theme first.
   await page.goto('/');
-  await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
+  await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
 
   await page.setViewportSize({ width: 380, height: 800 });
   await page.goto('/operator/1');
   await signIn(page);
   await expect(page.getByTestId('oc-header')).toBeVisible();
 
-  // The console is always porcelain (scoped to its host); the document theme stays riviera.
+  // The console is always porcelain (scoped to its host); the document theme stays dark.
   await expect(page.locator('app-operator-console')).toHaveAttribute('data-riv-theme', 'porcelain');
-  await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
+  await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
 
   // The tab row scrolls within itself, never wraps or pushes the page wider.
   const pageOverflow = await page.evaluate(

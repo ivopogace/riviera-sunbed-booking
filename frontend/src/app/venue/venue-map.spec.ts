@@ -509,7 +509,7 @@ describe('VenueMap', () => {
     flushVenue();
     await fixture.whenStable();
     // The unit host in `map-tile.spec.ts` cannot see this: it pins the directive against itself.
-    const paints = /^(bg-|text-\[#|border-\[#|border-dashed)/;
+    const paints = /^(bg-|text-\(--riv-tile|border-\(--riv-tile|border-dashed)/;
     for (const tile of el().querySelectorAll('.set-tile')) {
       const state = tile.getAttribute('data-state')!;
       const own = [...tile.classList].filter((token) => paints.test(token));
@@ -940,12 +940,12 @@ describe('VenueMap', () => {
     expect(calendarDay(todayBookingDate(new Date())).getAttribute('aria-disabled')).toBe('true');
   });
 
-  it('keeps the date field a light surface under the dark riviera document (#675)', async () => {
+  it('paints the date field with the themed near-opaque field tokens (#675)', async () => {
     flushVenue();
     await fixture.whenStable();
     fixture.detectChanges();
-    // #675's opt-out had a native widget to opt out; #761 leaves the light field itself.
-    expect(dateTrigger().classList.contains('bg-[rgba(255,255,255,0.9)]')).toBe(true);
+    // Light in riviera/porcelain, slate in dark — --riv-field-solid decides per theme now.
+    expect(dateTrigger().classList.contains('bg-(--riv-field-solid)')).toBe(true);
     expect(dateTrigger().classList.contains('text-(--riv-card-ink)')).toBe(true);
   });
 

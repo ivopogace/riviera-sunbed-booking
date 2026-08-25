@@ -43,8 +43,7 @@ const DETAIL = {
   payment: null,
 };
 
-// Pin the OS scheme to dark so the shell boots the riviera theme deterministically (headless
-// defaults to light → porcelain via the prefers-color-scheme fallback).
+// Pin the OS scheme to dark so the boot theme is deterministic (headless defaults light → porcelain).
 test.use({ colorScheme: 'dark' });
 
 test.beforeEach(async ({ page }) => {
@@ -60,6 +59,9 @@ test('finds a booking by code and opens its detail view (+ axe, riviera)', async
   });
 
   await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
+  await page.getByTestId('theme-toggle').click();
+  await page.getByTestId('theme-option-riviera').click();
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
 
   // Open the modal from the desktop nav; the code input takes focus.
@@ -113,5 +115,5 @@ test('shows an inline error for an unknown code and does not navigate (+ axe)', 
   await expect(page).not.toHaveURL(/\/booking\//);
   await expect(page.getByRole('dialog')).toBeVisible();
   await settle(page);
-  await expectNoSeriousAxeViolations(page, 'find modal error (riviera)');
+  await expectNoSeriousAxeViolations(page, 'find modal error (dark)');
 });

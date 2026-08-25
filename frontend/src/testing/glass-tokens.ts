@@ -21,10 +21,30 @@ export const CARD_INK: Rgb = hexToRgb('0c2a33');
 
 export const RIVIERA_HEADER_GLASS: Glass = { color: hexToRgb('0a2c3f'), alpha: 0.72 };
 export const PORCELAIN_HEADER_GLASS: Glass = { color: WHITE, alpha: 0.6 };
+export const DARK_HEADER_GLASS: Glass = { color: hexToRgb('0f172a'), alpha: 0.72 };
 
-/** `--riv-card-glass` per theme; every card spec imports these. */
+/** `--riv-card-glass` per theme; every card spec imports these. The dark theme inverts the whole
+ *  card family (dark glass, light inks — the DARK_* mirrors below); riviera/porcelain keep the
+ *  white glass with the shared dark-ink constants above. */
 export const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
 export const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
+export const DARK_CARD_GLASS: Glass = { color: hexToRgb('101a2e'), alpha: 0.86 };
+
+/** Dark theme's light card-ink base — `--riv-card-ink` and the rgba(242, 247, 250, …) muted family. */
+export const DARK_CARD_INK: Rgb = hexToRgb('f2f7fa');
+/** Dark theme's `--riv-accent-ink` (light teal; light themes keep #085a6e). */
+export const DARK_ACCENT_INK: Rgb = hexToRgb('7cd7e8');
+/** `--riv-error-ink` per ink family (light themes: #a3160e). */
+export const DARK_ERROR_INK: Rgb = hexToRgb('ffa9a1');
+/** Dark `--riv-field-fill` / `--riv-field-border` (light themes: the FIELD_*_ALPHA constants). */
+export const DARK_FIELD_FILL: Glass = { color: hexToRgb('020a16'), alpha: 0.45 };
+export const DARK_FIELD_BORDER: Glass = { color: WHITE, alpha: 0.5 };
+/** Dark `--riv-card-track` (light themes: CARD_INK at CARD_TRACK_ALPHA). */
+export const DARK_CARD_TRACK: Glass = { color: WHITE, alpha: 0.18 };
+/** `--riv-dialog-glass` per ink family (light themes: white 0.82). */
+export const DARK_DIALOG_GLASS: Glass = { color: hexToRgb('101a2e'), alpha: 0.94 };
+/** Dark `--riv-wash-fill` / `--riv-inset-fill` (light themes: white 0.5 / 0.4). */
+export const DARK_WASH_FILL: Glass = { color: WHITE, alpha: 0.08 };
 /** `--riv-card-ink-soft` alpha over the card glass. */
 export const CARD_INK_SOFT_ALPHA = 0.78;
 /** `--riv-card-ink-faint` alpha over the card glass. */
@@ -45,30 +65,44 @@ export const FIELD_BORDER_ALPHA = 0.55;
  *  the counterpart of `--riv-card-track` on the light card glass. */
 export const RIVIERA_PANEL_TRACK = { color: WHITE, alpha: 0.25 };
 export const PORCELAIN_PANEL_TRACK = { color: CARD_INK, alpha: 0.12 };
+export const DARK_PANEL_TRACK = { color: WHITE, alpha: 0.25 };
 
 /** `--riv-chip-bg` per theme (over-glass tint). */
 export const RIVIERA_CHIP = { color: WHITE, alpha: 0.16 };
 export const PORCELAIN_CHIP = { color: CARD_INK, alpha: 0.05 };
+export const DARK_CHIP = { color: WHITE, alpha: 0.16 };
 
-/** The shared beach-map canvas's sea→sand wash stops (`beach-map-canvas.html`, #672).
- *  The first is the canvas host's `--riv-map-sea`, which the tourist legend band also wears. */
+/** The shared beach-map canvas's sea→sand wash stops (`beach-map-canvas.html`, #672) — the
+ *  daylight `--riv-map-sea/mid/sand` values (light themes + porcelain-pinned operator surfaces).
+ *  The first is `--riv-map-sea`, which the tourist legend band also wears. */
 export const WASH_STOPS: readonly Rgb[] = ['cfeef6', 'e7f5f1', 'f6eedb'].map(hexToRgb);
+/** The night wash — the dark theme's `--riv-map-sea/mid/sand`. */
+export const DARK_WASH_STOPS: readonly Rgb[] = ['14303c', '1c2f33', '2b2a22'].map(hexToRgb);
 
 /** Worst-case background-gradient stops a glass surface can sit over, per theme. */
 export const RIVIERA_STOPS: readonly Rgb[] = ['93e6f2', 'ffe2b0', '38b6d2', '0a4f6e'].map(hexToRgb);
 export const PORCELAIN_STOPS: readonly Rgb[] = ['ffffff', 'eef6f8', 'cfeaf2', 'dfeef2'].map(
   hexToRgb,
 );
+export const DARK_STOPS: readonly Rgb[] = ['3b4a5f', '2a3648', '33415a', '0b1120'].map(hexToRgb);
 
-/** `--riv-photo-grad` stops — the photo band's placeholder gradient (theme-invariant). */
+/** `--riv-photo-grad` stops — the photo band's placeholder gradient (light themes; the dark
+ *  theme swaps in DARK_PHOTO_STOPS below). */
 export const PHOTO_STOPS: readonly Rgb[] = ['2bb8d4', '0e8aa8'].map(hexToRgb);
+/** The dark theme's `--riv-photo-grad` placeholder stops (light themes: PHOTO_STOPS). */
+export const DARK_PHOTO_STOPS: readonly Rgb[] = ['3b4a5f', '24314a', '1a2438'].map(hexToRgb);
 
 /**
- * Every backdrop an overlay on a photo band must survive: the placeholder gradient's own stops
+ * Every backdrop an overlay on a photo band must survive: both placeholder gradients' own stops
  * plus the two extremes a real uploaded photo can present — pure white and pure black. Since #142
  * the bands back real images, so "worst case" stopped meaning "the gradient's lightest stop".
  */
-export const WORST_PHOTOS: readonly Rgb[] = [...PHOTO_STOPS, WHITE, hexToRgb('000000')];
+export const WORST_PHOTOS: readonly Rgb[] = [
+  ...PHOTO_STOPS,
+  ...DARK_PHOTO_STOPS,
+  WHITE,
+  hexToRgb('000000'),
+];
 
 /** `--riv-mode-chip-glass` — the white glass under the step chips, on both slideshow hosts.
  *  Named for the Discover mode chip, which stopped wearing it at #705 (it took an opaque fill,

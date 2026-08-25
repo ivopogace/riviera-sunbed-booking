@@ -144,9 +144,12 @@ The only place providers are wired:
   attribute stays `ThemeService`-only.
 - **The token registry lives in two places, and only two**: a palette change is
   one CSS block in `styles.scss` + one registry row in `core/theme.ts`, zero
-  component edits. The theme set is fixed at two — one dark, one light (#143
-  closed not-planned 2026-08-01). Restyle slices add page-surface tokens there (e.g. the T2
-  `--riv-card-*` card-glass set) so later slices reuse them.
+  component edits. The theme set is three — `porcelain` (light, the default and
+  the `:root` base block), `riviera` (branded dark teal, switcher-only), and
+  `dark` (neutral slate, the OS-dark resolution) — widened from the original
+  fixed-at-two decision (#143) by the theme restructure. Restyle slices add
+  page-surface tokens there (e.g. the T2 `--riv-card-*` card-glass set) so
+  later slices reuse them.
 - **HOW to consume the tokens** — token-first styling, the `:host-context`
   escape hatch, and the composited-contrast proofs (helpers in
   `src/testing/contrast.ts`) — is `riviera-tailwind`'s call.

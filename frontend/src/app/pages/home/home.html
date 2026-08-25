@@ -209,7 +209,7 @@
                     <!-- The star is decorative; the numeric rating carries the value. -->
                     <span class="star text-[#f4a939]">★</span>
                     <span class="rating font-bold text-(--riv-card-ink)">{{ card.rating }}</span>
-                    <span class="dot text-[rgba(12,42,51,0.3)]">·</span>
+                    <span class="dot text-(--riv-card-ink) opacity-30">·</span>
                     {{ card.reviewsCount }} reviews
                   } @else {
                     <!-- "New" / unrated state — the second SEMANTIC chip (#705): like the mode chip it is a platform claim, not a venue self-description, so it takes the same inverted accent pill. Padding stays here; the row's 13.5px is inherited. -->

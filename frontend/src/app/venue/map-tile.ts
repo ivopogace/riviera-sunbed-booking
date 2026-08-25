@@ -19,7 +19,8 @@ export type MapTileState = (typeof MAP_TILE_STATES)[number];
 /**
  * Fill, border colour and ink per state — the one home of what a tourist tile looks like, so
  * the grid and the map card's legend swatches render the identical vocabulary rather than two
- * hand-copied sets of literals.
+ * hand-copied sets of literals. The colours are the `--riv-tile-*` tokens (daylight in the light
+ * themes, night values in the dark theme — declared per theme in `styles.scss`).
  *
  * <p>It deliberately carries **no geometry** (the `operator/beach-cell.ts` split): the tile is
  * `--riv-tile` square with a 10px radius, the swatch is 18px with a 6px one, and both set their
@@ -29,11 +30,14 @@ export type MapTileState = (typeof MAP_TILE_STATES)[number];
  * Its ink stays AA on both bands of that hatch (`venue-map.contrast.spec.ts`).
  */
 const MAP_TILE_CLASS: Record<MapTileState, string> = {
-  available: 'border-[#bfe3df] bg-white/75 text-[#0f7d8c]',
-  premium: 'bg-[#fbf1d9]/85 border-[#e6c483] text-[#875911]',
+  available:
+    'border-(--riv-tile-available-border) bg-(--riv-tile-available-fill) text-(--riv-tile-available-ink)',
+  premium:
+    'bg-(--riv-tile-premium-fill) border-(--riv-tile-premium-border) text-(--riv-tile-premium-ink)',
   walkin:
-    'bg-[#efe0bd]/60 bg-[repeating-linear-gradient(135deg,rgba(95,77,42,0.16)_0px,rgba(95,77,42,0.16)_3px,transparent_3px,transparent_8px)] border-[#c8ab62] text-[#5f4d2a]',
-  taken: 'bg-white/20 border-dashed border-[#6b7d77] text-[#566560]',
+    'bg-(--riv-tile-walkin-fill) bg-[repeating-linear-gradient(135deg,var(--riv-tile-walkin-hatch)_0px,var(--riv-tile-walkin-hatch)_3px,transparent_3px,transparent_8px)] border-(--riv-tile-walkin-border) text-(--riv-tile-walkin-ink)',
+  taken:
+    'bg-(--riv-tile-taken-fill) border-dashed border-(--riv-tile-taken-border) text-(--riv-tile-taken-ink)',
 };
 
 /**

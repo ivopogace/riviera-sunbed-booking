@@ -44,7 +44,7 @@
     <!-- The sea→sand wash: aqua at the sea banner fading to warm sand at the promenade, fixed to the viewport of the vertical scroller so "the water is up there" reads at any scroll depth. -->
     <div
       #washScroller
-      class="overflow-y-auto overflow-x-hidden max-h-[532px] -mx-[18px] px-[18px] -mt-3.5 pt-3.5 pb-3 bg-[linear-gradient(180deg,var(--riv-map-sea)_0%,#e7f5f1_55%,#f6eedb_100%)]"
+      class="overflow-y-auto overflow-x-hidden max-h-[532px] -mx-[18px] px-[18px] -mt-3.5 pt-3.5 pb-3 bg-[linear-gradient(180deg,var(--riv-map-sea)_0%,var(--riv-map-mid)_55%,var(--riv-map-sand)_100%)]"
       [class]="scrollbarChrome()"
       data-riv-scroller
     >
@@ -65,7 +65,7 @@
             >
               @if (loading()) {
                 <span
-                  class="inline-flex h-6 rounded-lg bg-white/60"
+                  class="inline-flex h-6 rounded-lg bg-(--riv-map-rail-fill)"
                   [class]="railPlaceholderClass()"
                   data-testid="row-code-placeholder"
                 ></span>
@@ -78,13 +78,13 @@
                   (mousedown)="onRailDown('row', i, $event)"
                   (mouseenter)="onRailEnter('row', i, $event)"
                   (click)="onRailClick('row', i, $event)"
-                  class="inline-flex h-full w-full items-center justify-center rounded-lg bg-white/60 text-[10.5px] font-bold text-[#0a4f5e]"
+                  class="inline-flex h-full w-full items-center justify-center rounded-lg bg-(--riv-map-rail-fill) text-[10.5px] font-bold text-(--riv-map-rail-ink)"
                 >
                   <span [class]="railCodeTextClass()">{{ row.code }}</span>
                 </button>
               } @else {
                 <span
-                  class="inline-flex items-center justify-center min-w-6 h-6 px-[3px] rounded-lg bg-white/60 text-[10.5px] font-bold text-[#0a4f5e]"
+                  class="inline-flex items-center justify-center min-w-6 h-6 px-[3px] rounded-lg bg-(--riv-map-rail-fill) text-[10.5px] font-bold text-(--riv-map-rail-ink)"
                   data-testid="row-code"
                   ><span [class]="railCodeTextClass()">{{ row.code }}</span></span
                 >
@@ -117,7 +117,7 @@
           <div #rowGrid data-map-grid class="flex flex-col gap-1.5 w-max group-[.pannable]:px-4">
             <!-- Column-header fill strip (#713): absent unless a consumer opts in; scrolls with the columns beneath it (same horizontal scroll parent) and stays pinned against the vertical wash scroll. -->
             @if (colHeaderInteractive()) {
-              <div class="sticky top-0 z-10 flex gap-1.5 bg-[#cfeef6]/95 pb-1.5">
+              <div class="sticky top-0 z-10 flex gap-1.5 bg-(--riv-map-sea)/95 pb-1.5">
                 @for (n of colIndexes(); track n) {
                   <button
                     appTouchTarget
@@ -127,7 +127,7 @@
                     (mousedown)="onRailDown('col', n, $event)"
                     (mouseenter)="onRailEnter('col', n, $event)"
                     (click)="onRailClick('col', n, $event)"
-                    class="h-11 w-[var(--riv-tile)] flex-shrink-0 rounded-lg bg-white/60 text-[10px] font-bold text-[#0a4f5e]"
+                    class="h-11 w-[var(--riv-tile)] flex-shrink-0 rounded-lg bg-(--riv-map-rail-fill) text-[10px] font-bold text-(--riv-map-rail-ink)"
                   >
                     {{ n + 1 }}
                   </button>
@@ -161,7 +161,7 @@
             >
               @if (!loading() && row.zoneStart && row.priceLabel; as price) {
                 <span
-                  class="rounded-full bg-white/80 border border-[#cfe3df] px-2 py-[3px] text-[11px] font-bold text-[#0a4f5e] shadow-[0_1px_4px_rgba(7,42,58,0.10)] min-w-0 max-w-full truncate"
+                  class="rounded-full bg-(--riv-map-chip-fill) border border-(--riv-map-chip-border) px-2 py-[3px] text-[11px] font-bold text-(--riv-map-rail-ink) shadow-[0_1px_4px_rgba(7,42,58,0.10)] min-w-0 max-w-full truncate"
                   data-testid="row-price"
                   >{{ price }}</span
                 >

@@ -148,9 +148,10 @@ still covered.
 > sizing and `class` control, and re-applies `aria-hidden` at the host anyway — a build-config change
 > for one glyph. Revisit only if the app grows a real icon set.
 
-## Styling across the two themes
+## Styling across the themes
 
-The app has two themes — `riviera` (dark, white ink) and `porcelain` (light, dark ink).
+The app has three themes — `porcelain` (light, dark ink, the default), `riviera` (branded
+dark teal, white ink), and `dark` (neutral slate, white ink, the OS-dark default).
 Theme *ownership* (who writes `data-riv-theme`, the token registry, subtree pinning) is
 `riviera-frontend`'s call; this section owns only how a component styles across themes.
 Vary by theme in this order of preference:
@@ -162,8 +163,9 @@ Vary by theme in this order of preference:
 2. **`:host-context([data-riv-theme='riviera'])` is the escape hatch.** Only when a whole
    background *treatment* differs — not just a token value — does a component branch on the
    theme. The one precedent is the home-hero **scrim** (`home.scss`): a borderless feathered
-   dark wash in riviera, bare in porcelain. It's deliberately the hero **only** — every other
-   dark riviera surface keeps the `appPanelGlass` frosted panel, so don't spread the scrim by
+   dark wash in riviera, bare in porcelain AND in dark (the slate stops are dark enough for
+   white ink without a backing). It's deliberately the hero **only** — every other dark
+   riviera surface keeps the `appPanelGlass` frosted panel, so don't spread the scrim by
    reflex.
 
 **Keep content position identical across themes.** When a surface is treated-in-one-theme /

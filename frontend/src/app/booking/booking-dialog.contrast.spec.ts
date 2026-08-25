@@ -10,6 +10,14 @@ import {
 import {
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
+  DARK_ACCENT_INK,
+  DARK_CARD_INK,
+  DARK_DIALOG_GLASS,
+  DARK_ERROR_INK,
+  DARK_FIELD_BORDER,
+  DARK_FIELD_FILL,
+  DARK_STOPS,
+  DARK_WASH_FILL,
   FIELD_BORDER_ALPHA,
   FIELD_FILL_ALPHA,
   Glass,
@@ -40,13 +48,14 @@ import {
  * so static CSS contrast analysis computes their real colour; white on that chip still clears AA.
  */
 
-// styles.scss booking-dialog surfaces.
-const DIALOG_GLASS: Glass = { color: WHITE, alpha: 0.82 }; // .booking-panel
-const BACK_FILL_ALPHA = 0.5; // .btn-back glass over the panel
+// styles.scss booking-dialog surfaces (light values; the dark theme swaps the tokens).
+const DIALOG_GLASS: Glass = { color: WHITE, alpha: 0.82 }; // --riv-dialog-glass
+const BACK_FILL: Glass = { color: WHITE, alpha: 0.5 }; // --riv-wash-fill (.btn-back)
 const ACCENT = '#085a6e'; // --riv-accent-ink (price, total)
-const ERROR_RED = '#a3160e'; // .field-error (on the panel) + .form-error ink (on the solid fill below)
+const ERROR_RED = '#a3160e'; // --riv-error-ink (.field-error) + .form-error ink (solid fill below)
 const ERROR_FILL = '#f6e8e7'; // .form-error solid light-pink box (composite of the old rgba(163,22,14,.1) tint)
-const BACK_INK = '#0a4f5e'; // .btn-back text
+const BACK_INK = '#0a4f5e'; // --riv-back-ink (.btn-back text)
+const DARK_BACK_INK = '#b7dfe9';
 
 // The AA-safe dark-teal header gradient stops (= --riv-cta-grad), carrying solid white ink — used
 // by the header AND the primary CTA. Theme-independent (the header teal does not vary by theme).
@@ -55,10 +64,43 @@ const TEAL_STOPS = ['#0c7288', '#0a5f74'];
 interface Theme {
   readonly name: string;
   readonly stops: readonly Rgb[];
+  readonly panel: Glass; // --riv-dialog-glass
+  readonly ink: Rgb; // --riv-card-ink
+  readonly inkBase: Rgb; // base of the muted rgba ink family
+  readonly accent: Rgb; // --riv-accent-ink
+  readonly error: Rgb; // --riv-error-ink
+  readonly fieldFill: Glass; // --riv-field-fill over the panel
+  readonly fieldBorder: Glass; // --riv-field-border over the field
+  readonly backFill: Glass; // --riv-wash-fill under the Back button
+  readonly backInk: string; // --riv-back-ink
 }
+const LIGHT_SURFACES = {
+  panel: DIALOG_GLASS,
+  ink: INK_DARK,
+  inkBase: CARD_INK,
+  accent: hexToRgb(ACCENT.slice(1)),
+  error: hexToRgb(ERROR_RED.slice(1)),
+  fieldFill: { color: WHITE, alpha: FIELD_FILL_ALPHA },
+  fieldBorder: { color: CARD_INK, alpha: FIELD_BORDER_ALPHA },
+  backFill: BACK_FILL,
+  backInk: BACK_INK,
+};
 const THEMES: readonly Theme[] = [
-  { name: 'riviera', stops: RIVIERA_STOPS },
-  { name: 'porcelain', stops: PORCELAIN_STOPS },
+  { name: 'riviera', stops: RIVIERA_STOPS, ...LIGHT_SURFACES },
+  { name: 'porcelain', stops: PORCELAIN_STOPS, ...LIGHT_SURFACES },
+  {
+    name: 'dark',
+    stops: DARK_STOPS,
+    panel: DARK_DIALOG_GLASS,
+    ink: DARK_CARD_INK,
+    inkBase: DARK_CARD_INK,
+    accent: DARK_ACCENT_INK,
+    error: DARK_ERROR_INK,
+    fieldFill: DARK_FIELD_FILL,
+    fieldBorder: DARK_FIELD_BORDER,
+    backFill: DARK_WASH_FILL,
+    backInk: DARK_BACK_INK,
+  },
 ];
 
 describe('Booking dialog — theme-independent header + CTA (WCAG AA, issue #137)', () => {
@@ -86,27 +128,27 @@ describe.each(THEMES)(
   'Booking dialog panel contrast — $name theme (WCAG AA, issue #137)',
   (theme) => {
     it('card ink (title, summary values) meets AA on the panel glass', () => {
-      expectAaOverStops(INK_DARK, 1, DIALOG_GLASS, theme.stops);
+      expectAaOverStops(theme.ink, 1, theme.panel, theme.stops);
     });
 
     it('card ink-soft (keys, field labels, fine print, mode note) meets AA on the panel glass', () => {
-      expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, DIALOG_GLASS, theme.stops);
+      expectAaOverStops(theme.inkBase, CARD_INK_SOFT_ALPHA, theme.panel, theme.stops);
     });
 
     it('accent ink (price, total) meets AA on the panel glass', () => {
-      expectAaOverStops(hexToRgb(ACCENT), 1, DIALOG_GLASS, theme.stops);
+      expectAaOverStops(theme.accent, 1, theme.panel, theme.stops);
     });
 
     it('field-error red meets AA on the panel glass', () => {
       // .field-error sits directly on the panel (no fill of its own); .form-error is asserted theme-independently above.
-      expectAaOverStops(hexToRgb(ERROR_RED), 1, DIALOG_GLASS, theme.stops);
+      expectAaOverStops(theme.error, 1, theme.panel, theme.stops);
     });
 
     it('field text (dark ink) meets AA on the field fill over the panel', () => {
       for (const stop of theme.stops) {
-        const panel = surfaceOver(DIALOG_GLASS, stop);
-        const field = composite(WHITE, FIELD_FILL_ALPHA, panel);
-        expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(field))).toBeGreaterThanOrEqual(
+        const panel = surfaceOver(theme.panel, stop);
+        const field = composite(theme.fieldFill.color, theme.fieldFill.alpha, panel);
+        expect(contrastRatio(rgbToHex(theme.ink), rgbToHex(field))).toBeGreaterThanOrEqual(
           AA_NORMAL,
         );
       }
@@ -114,18 +156,18 @@ describe.each(THEMES)(
 
     it('field border marks the input boundary at 3:1 against its fill (WCAG 1.4.11)', () => {
       for (const stop of theme.stops) {
-        const panel = surfaceOver(DIALOG_GLASS, stop);
-        const field = composite(WHITE, FIELD_FILL_ALPHA, panel);
-        const border = composite(CARD_INK, FIELD_BORDER_ALPHA, field);
+        const panel = surfaceOver(theme.panel, stop);
+        const field = composite(theme.fieldFill.color, theme.fieldFill.alpha, panel);
+        const border = composite(theme.fieldBorder.color, theme.fieldBorder.alpha, field);
         expect(contrastRatio(rgbToHex(border), rgbToHex(field))).toBeGreaterThanOrEqual(AA_LARGE);
       }
     });
 
     it('Back button ink meets AA on its light-glass fill over the panel', () => {
       for (const stop of theme.stops) {
-        const panel = surfaceOver(DIALOG_GLASS, stop);
-        const back = composite(WHITE, BACK_FILL_ALPHA, panel);
-        expect(contrastRatio(BACK_INK, rgbToHex(back))).toBeGreaterThanOrEqual(AA_NORMAL);
+        const panel = surfaceOver(theme.panel, stop);
+        const back = composite(theme.backFill.color, theme.backFill.alpha, panel);
+        expect(contrastRatio(theme.backInk, rgbToHex(back))).toBeGreaterThanOrEqual(AA_NORMAL);
       }
     });
   },

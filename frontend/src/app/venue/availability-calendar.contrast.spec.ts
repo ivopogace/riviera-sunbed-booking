@@ -8,7 +8,12 @@ import {
   rgbToHex,
 } from '../../testing/contrast';
 import { CALENDAR_BAR, CALENDAR_SELECTED, CALENDAR_TINTS } from '../../testing/calendar-tints';
-import { PORCELAIN_STOPS, RIVIERA_STOPS, surfaceOver } from '../../testing/glass-tokens';
+import {
+  DARK_STOPS,
+  PORCELAIN_STOPS,
+  RIVIERA_STOPS,
+  surfaceOver,
+} from '../../testing/glass-tokens';
 
 /**
  * WCAG-AA contrast guard for the availability calendar (#761).
@@ -44,6 +49,7 @@ const CHROME_INKS: readonly [string, string, number][] = [
 const THEMES: readonly [string, readonly Rgb[]][] = [
   ['riviera', RIVIERA_STOPS],
   ['porcelain', PORCELAIN_STOPS],
+  ['dark', DARK_STOPS],
 ];
 
 describe('Availability calendar contrast (WCAG AA) — venue/day-availability.ts', () => {
