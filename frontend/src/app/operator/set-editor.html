@@ -71,7 +71,7 @@
             (click)="addRow()"
             [disabled]="!canAddRow()"
             data-testid="set-add-row"
-            class="flex-1 rounded-[13px] border border-(--riv-card-border) bg-white/45 px-4 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) disabled:opacity-50 sm:flex-none"
+            class="flex-1 rounded-[13px] border border-riv-card-border bg-white/45 px-4 py-2.5 text-[13px] font-semibold text-riv-card-ink disabled:opacity-50 sm:flex-none"
           >
             + Add a row
           </button>
@@ -81,7 +81,7 @@
             (click)="addCol()"
             [disabled]="!canAddCol()"
             data-testid="set-add-col"
-            class="flex-1 rounded-[13px] border border-(--riv-card-border) bg-white/45 px-4 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) disabled:opacity-50 sm:flex-none"
+            class="flex-1 rounded-[13px] border border-riv-card-border bg-white/45 px-4 py-2.5 text-[13px] font-semibold text-riv-card-ink disabled:opacity-50 sm:flex-none"
           >
             + Add a position
           </button>
@@ -90,7 +90,7 @@
         @if (!hasSelection()) {
           @if (sets().length) {
             <p
-              class="text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)"
+              class="text-[12.5px] leading-[1.45] text-riv-card-ink-soft"
               data-testid="set-panel-empty"
             >
               Pick a set on the map to change its tier, pool or price. Editing one set at a time
@@ -99,7 +99,7 @@
           } @else {
             <!-- No set to pick (#718): the grid still renders one empty spot, and a brush sits on the rail. -->
             <p
-              class="text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)"
+              class="text-[12.5px] leading-[1.45] text-riv-card-ink-soft"
               data-testid="set-panel-no-sets"
             >
               This venue has no sets yet. Tap the empty spot on the map to add the first one — or
@@ -128,7 +128,7 @@
           data-testid="batch-panel"
         >
           <div
-            class="mx-auto mb-2 h-[5px] w-10 shrink-0 touch-none rounded-full bg-(--riv-card-border) lg:hidden"
+            class="mx-auto mb-2 h-[5px] w-10 shrink-0 touch-none rounded-full bg-riv-card-border lg:hidden"
             aria-hidden="true"
             data-touch-exempt="a supplementary swipe affordance, not the only way to dismiss — the sheet also closes via the full-size Close button, the backdrop, and Escape"
             data-testid="sheet-handle"
@@ -138,7 +138,7 @@
             (pointercancel)="onSheetDragEnd($event)"
           ></div>
           <div class="flex items-start justify-between gap-2">
-            <h2 class="text-[15px] font-bold text-(--riv-card-ink)" data-testid="batch-count">
+            <h2 class="text-[15px] font-bold text-riv-card-ink" data-testid="batch-count">
               {{ ids.size }} set{{ ids.size === 1 ? '' : 's' }} selected
             </h2>
             <button
@@ -147,26 +147,23 @@
               (click)="clearSweep()"
               aria-label="Clear selection"
               data-testid="batch-clear"
-              class="shrink-0 rounded-[10px] text-[13px] font-semibold text-(--riv-card-ink-soft) hover:text-(--riv-card-ink)"
+              class="shrink-0 rounded-[10px] text-[13px] font-semibold text-riv-card-ink-soft hover:text-riv-card-ink"
             >
               ✕
             </button>
           </div>
 
-          <p
-            class="mt-1 text-[12.5px] font-semibold text-(--riv-card-ink)"
-            data-testid="batch-range"
-          >
+          <p class="mt-1 text-[12.5px] font-semibold text-riv-card-ink" data-testid="batch-range">
             {{ sweepRangeLabel() }}
           </p>
-          <p class="mt-0.5 mb-3 text-[11.5px] leading-[1.45] text-(--riv-card-ink-soft)">
+          <p class="mt-0.5 mb-3 text-[11.5px] leading-[1.45] text-riv-card-ink-soft">
             Only the fields you change below apply to every selected set — leave the rest alone to
             keep each set’s own tier, pool or price.
           </p>
 
           <fieldset class="mt-3 border-0 p-0">
             <legend
-              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
             >
               Tier
             </legend>
@@ -179,11 +176,11 @@
                   [appBusy]="batchBusy()"
                   (click)="chooseBatchTier(tier.key)"
                   [attr.data-testid]="'batch-tier-' + tier.key"
-                  class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-50"
+                  class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-50"
                   [class]="
                     batchDraft().tier === tier.key
                       ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
-                      : 'border border-(--riv-card-border) bg-white/45'
+                      : 'border border-riv-card-border bg-white/45'
                   "
                 >
                   {{ tier.label }}
@@ -194,7 +191,7 @@
 
           <fieldset class="mt-3 border-0 p-0">
             <legend
-              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
             >
               Pool
             </legend>
@@ -207,11 +204,11 @@
                   [appBusy]="batchBusy()"
                   (click)="chooseBatchPool(pool.key)"
                   [attr.data-testid]="'batch-pool-' + pool.key"
-                  class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-50"
+                  class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-50"
                   [class]="
                     batchDraft().pool === pool.key
                       ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
-                      : 'border border-(--riv-card-border) bg-white/45'
+                      : 'border border-riv-card-border bg-white/45'
                   "
                 >
                   {{ pool.label }}
@@ -222,7 +219,7 @@
 
           <label class="mt-3 flex flex-col gap-1.5">
             <span
-              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
             >
               Full-day price (EUR) — leave blank to keep each set’s own price
             </span>
@@ -234,7 +231,7 @@
               (input)="onBatchPriceInput($any($event.target).value)"
               [appBusy]="batchBusy()"
               data-testid="batch-price"
-              class="w-full rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[15px] text-(--riv-card-ink)"
+              class="w-full rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
             />
           </label>
 
@@ -279,7 +276,7 @@
           data-testid="set-panel"
         >
           <div
-            class="mx-auto mb-2 h-[5px] w-10 shrink-0 touch-none rounded-full bg-(--riv-card-border) lg:hidden"
+            class="mx-auto mb-2 h-[5px] w-10 shrink-0 touch-none rounded-full bg-riv-card-border lg:hidden"
             aria-hidden="true"
             data-touch-exempt="a supplementary swipe affordance, not the only way to dismiss — the sheet also closes via the full-size Close button, the backdrop, and Escape"
             data-testid="sheet-handle"
@@ -289,7 +286,7 @@
             (pointercancel)="onSheetDragEnd($event)"
           ></div>
           <div class="flex items-start justify-between gap-2">
-            <h2 class="text-[15px] font-bold text-(--riv-card-ink)">
+            <h2 class="text-[15px] font-bold text-riv-card-ink">
               {{ selectedCell() ? 'Add a set' : 'Edit one set' }}
             </h2>
             <button
@@ -298,25 +295,22 @@
               (click)="closeInspector()"
               aria-label="Close"
               data-testid="set-panel-close"
-              class="shrink-0 rounded-[10px] text-[13px] font-semibold text-(--riv-card-ink-soft) hover:text-(--riv-card-ink)"
+              class="shrink-0 rounded-[10px] text-[13px] font-semibold text-riv-card-ink-soft hover:text-riv-card-ink"
             >
               ✕
             </button>
           </div>
 
-          <p
-            class="mt-1 text-[12.5px] font-semibold text-(--riv-card-ink)"
-            data-testid="set-selected"
-          >
+          <p class="mt-1 text-[12.5px] font-semibold text-riv-card-ink" data-testid="set-selected">
             {{ selectedLabel() }}
           </p>
-          <p class="mt-0.5 mb-3 text-[11.5px] leading-[1.45] text-(--riv-card-ink-soft)">
+          <p class="mt-0.5 mb-3 text-[11.5px] leading-[1.45] text-riv-card-ink-soft">
             Row and position are what the guest is told, so they follow the spot on the map.
           </p>
 
           <fieldset class="mt-3 border-0 p-0">
             <legend
-              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
             >
               Tier
             </legend>
@@ -329,11 +323,11 @@
                   [appBusy]="busy()"
                   (click)="chooseTier(tier.key)"
                   [attr.data-testid]="'set-tier-' + tier.key"
-                  class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-50"
+                  class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-50"
                   [class]="
                     draft().tier === tier.key
                       ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
-                      : 'border border-(--riv-card-border) bg-white/45'
+                      : 'border border-riv-card-border bg-white/45'
                   "
                 >
                   {{ tier.label }}
@@ -344,7 +338,7 @@
 
           <fieldset class="mt-3 border-0 p-0">
             <legend
-              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
             >
               Pool
             </legend>
@@ -357,11 +351,11 @@
                   [appBusy]="busy()"
                   (click)="choosePool(pool.key)"
                   [attr.data-testid]="'set-pool-' + pool.key"
-                  class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-50"
+                  class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-50"
                   [class]="
                     draft().pool === pool.key
                       ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
-                      : 'border border-(--riv-card-border) bg-white/45'
+                      : 'border border-riv-card-border bg-white/45'
                   "
                 >
                   {{ pool.label }}
@@ -372,7 +366,7 @@
 
           <label class="mt-3 flex flex-col gap-1.5">
             <span
-              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
             >
               Full-day price ({{ draft().currency }})
             </span>
@@ -382,10 +376,10 @@
               step="0.5"
               [formField]="draftForm.priceEur"
               data-testid="set-price"
-              class="w-full rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[15px] text-(--riv-card-ink)"
+              class="w-full rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
             />
           </label>
-          <p class="mt-1 text-[11px] leading-[1.4] text-(--riv-card-ink-soft)">
+          <p class="mt-1 text-[11px] leading-[1.4] text-riv-card-ink-soft">
             Repricing this row in the Pricing tab overrides this set’s own price.
           </p>
 
@@ -421,7 +415,7 @@
                 [disabled]="dirty()"
                 [appBusy]="busy()"
                 data-testid="set-move"
-                class="rounded-[14px] border border-(--riv-card-border) bg-white/45 px-4 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) disabled:opacity-50 aria-disabled:opacity-50"
+                class="rounded-[14px] border border-riv-card-border bg-white/45 px-4 py-2.5 text-[13.5px] font-semibold text-riv-card-ink disabled:opacity-50 aria-disabled:opacity-50"
               >
                 Move
               </button>
@@ -439,7 +433,7 @@
 
             @if (dirty()) {
               <p
-                class="mt-2 text-[11.5px] leading-[1.4] text-(--riv-card-ink-soft)"
+                class="mt-2 text-[11.5px] leading-[1.4] text-riv-card-ink-soft"
                 data-testid="set-move-blocked"
               >
                 Save your changes before moving this set — a move sends the set as saved, so it
@@ -452,9 +446,7 @@
                 class="mt-3 rounded-[12px] border border-[#0e8aa8]/50 bg-[#2bb8d4]/12 px-3 py-2.5"
                 data-testid="set-move-armed"
               >
-                <output
-                  class="block text-[12.5px] font-semibold leading-[1.45] text-(--riv-card-ink)"
-                >
+                <output class="block text-[12.5px] font-semibold leading-[1.45] text-riv-card-ink">
                   Pick an empty spot on the map for {{ selectedLabel() }}. Its row and position
                   follow the new spot.
                 </output>
@@ -463,7 +455,7 @@
                   type="button"
                   (click)="cancelMove()"
                   data-testid="set-move-cancel"
-                  class="mt-2 rounded-[10px] border border-(--riv-card-border) px-4 py-1.5 text-[12.5px] font-semibold text-(--riv-card-ink)"
+                  class="mt-2 rounded-[10px] border border-riv-card-border px-4 py-1.5 text-[12.5px] font-semibold text-riv-card-ink"
                 >
                   Cancel move
                 </button>
@@ -517,9 +509,9 @@
           class="animate-pulse rounded-[20px] px-[18px] py-4 motion-reduce:animate-none"
           data-testid="set-skeleton-panel"
         >
-          <span class="block h-[18px] w-1/2 rounded-[6px] bg-(--riv-card-track)"></span>
-          <span class="mt-3.5 block h-[13px] w-4/5 rounded-[6px] bg-(--riv-card-track)"></span>
-          <span class="mt-2 block h-[13px] w-3/5 rounded-[6px] bg-(--riv-card-track)"></span>
+          <span class="block h-[18px] w-1/2 rounded-[6px] bg-riv-card-track"></span>
+          <span class="mt-3.5 block h-[13px] w-4/5 rounded-[6px] bg-riv-card-track"></span>
+          <span class="mt-2 block h-[13px] w-3/5 rounded-[6px] bg-riv-card-track"></span>
         </section>
 
         <div class="flex min-w-0 flex-col gap-2">
@@ -536,7 +528,7 @@
                 @for (tile of skeletonTiles; track tile) {
                   <span
                     appSkeletonBlock
-                    class="bg-(--riv-card-track) h-full min-w-0 rounded-[8px]"
+                    class="bg-riv-card-track h-full min-w-0 rounded-[8px]"
                     data-testid="set-skeleton-tile"
                   ></span>
                 }

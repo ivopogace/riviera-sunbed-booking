@@ -40,10 +40,10 @@ import { TouchTarget } from '../shared/touch-target';
       data-testid="admin-delivery-card"
       aria-labelledby="admin-delivery-heading"
     >
-      <h2 id="admin-delivery-heading" class="text-[16px] font-semibold text-(--riv-card-ink)">
+      <h2 id="admin-delivery-heading" class="text-[16px] font-semibold text-riv-card-ink">
         Booking confirmation delivery
       </h2>
-      <p id="admin-delivery-intro" class="mt-2 text-[15px] text-(--riv-card-ink)">
+      <p id="admin-delivery-intro" class="mt-2 text-[15px] text-riv-card-ink">
         Look up a tourist's bookings by the email address they booked with, and resend a
         confirmation that never arrived.
       </p>
@@ -54,7 +54,7 @@ import { TouchTarget } from '../shared/touch-target';
         novalidate
       >
         <label class="flex flex-col gap-1">
-          <span class="text-[13.5px] font-semibold text-(--riv-card-ink)">Email address</span>
+          <span class="text-[13.5px] font-semibold text-riv-card-ink">Email address</span>
           <input
             appTouchTarget
             type="email"
@@ -85,7 +85,7 @@ import { TouchTarget } from '../shared/touch-target';
       }
 
       @if (searched() && bookings().length === 0) {
-        <p class="mt-4 text-[15px] text-(--riv-card-ink)" data-testid="admin-delivery-empty">
+        <p class="mt-4 text-[15px] text-riv-card-ink" data-testid="admin-delivery-empty">
           No bookings for that address.
         </p>
       }
@@ -97,14 +97,14 @@ import { TouchTarget } from '../shared/touch-target';
               class="rounded-[12px] border border-white/70 bg-white/55 p-4"
               data-testid="admin-delivery-booking"
             >
-              <p class="text-[15px] font-semibold text-(--riv-card-ink)">
+              <p class="text-[15px] font-semibold text-riv-card-ink">
                 {{ booking.venueName }} · {{ formatDate(booking.bookingDate) }}
               </p>
 
               @if (booking.attempts.length > 0) {
                 <ul class="mt-2 flex flex-col gap-1" data-testid="admin-delivery-attempts">
                   @for (attempt of booking.attempts; track $index) {
-                    <li class="text-[14px] text-(--riv-card-ink)">
+                    <li class="text-[14px] text-riv-card-ink">
                       {{ describeSource(attempt) }} · {{ describeOutcome(attempt) }} ·
                       {{ formatMoment(attempt.attemptedAt) }}
                     </li>
@@ -112,16 +112,13 @@ import { TouchTarget } from '../shared/touch-target';
                 </ul>
               } @else if (booking.everConfirmed) {
                 <p
-                  class="mt-2 text-[14px] text-(--riv-card-ink)"
+                  class="mt-2 text-[14px] text-riv-card-ink"
                   data-testid="admin-delivery-no-record"
                 >
                   No delivery recorded for this booking.
                 </p>
               } @else {
-                <p
-                  class="mt-2 text-[14px] text-(--riv-card-ink)"
-                  data-testid="admin-delivery-not-due"
-                >
+                <p class="mt-2 text-[14px] text-riv-card-ink" data-testid="admin-delivery-not-due">
                   Never confirmed, so no confirmation email was due.
                 </p>
               }
@@ -142,7 +139,7 @@ import { TouchTarget } from '../shared/touch-target';
       }
 
       <p
-        class="mt-4 min-h-[1.5rem] text-[15px] text-(--riv-card-ink)"
+        class="mt-4 min-h-[1.5rem] text-[15px] text-riv-card-ink"
         role="status"
         aria-live="polite"
         data-testid="admin-delivery-notice"

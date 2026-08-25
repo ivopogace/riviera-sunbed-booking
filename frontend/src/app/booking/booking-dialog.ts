@@ -55,7 +55,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
   },
   template: `
     <div
-      class="booking-panel flex max-h-[calc(100vh-40px)] w-full max-w-[430px] flex-col overflow-hidden rounded-[30px] border border-(--riv-card-border) bg-(--riv-dialog-glass) text-(--riv-card-ink) shadow-[0_40px_90px_rgba(6,30,40,0.5),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-[34px] backdrop-saturate-[1.8] [animation:riv-pop_0.26s_cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:[animation:none]"
+      class="booking-panel flex max-h-[calc(100vh-40px)] w-full max-w-[430px] flex-col overflow-hidden rounded-[30px] border border-riv-card-border bg-riv-dialog-glass text-riv-card-ink shadow-[0_40px_90px_rgba(6,30,40,0.5),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-[34px] backdrop-saturate-[1.8] [animation:riv-pop_0.26s_cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:[animation:none]"
       role="dialog"
       aria-modal="true"
       [attr.aria-labelledby]="'booking-dialog-venue booking-dialog-title'"
@@ -120,19 +120,19 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
         <div class="dialog-body min-h-0 flex-1 overflow-y-auto px-6 pt-[15px] pb-2">
           @if (step() === 1) {
             <div
-              class="ro-row flex items-center justify-between border-b border-b-(--riv-card-track) py-[9px] text-[14.5px] first:pt-0"
+              class="ro-row flex items-center justify-between border-b border-b-riv-card-track py-[9px] text-[14.5px] first:pt-0"
             >
-              <span class="ro-key text-(--riv-card-ink-soft)">Date</span>
-              <strong class="ro-val text-(--riv-card-ink)" data-testid="dialog-date">{{
+              <span class="ro-key text-riv-card-ink-soft">Date</span>
+              <strong class="ro-val text-riv-card-ink" data-testid="dialog-date">{{
                 dateLabel()
               }}</strong>
             </div>
             <div
-              class="ro-row flex items-center justify-between border-b border-b-(--riv-card-track) py-[9px] text-[14.5px] first:pt-0"
+              class="ro-row flex items-center justify-between border-b border-b-riv-card-track py-[9px] text-[14.5px] first:pt-0"
             >
-              <span class="ro-key text-(--riv-card-ink-soft)">Price</span>
+              <span class="ro-key text-riv-card-ink-soft">Price</span>
               <strong
-                class="ro-val accent text-[16px] text-(--riv-accent-ink)"
+                class="ro-val accent text-[16px] text-riv-accent-ink"
                 data-testid="dialog-price"
                 >{{ price() }}</strong
               >
@@ -141,13 +141,13 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
             <div class="fields mt-3 flex flex-col gap-2.5">
               <label class="field flex flex-col gap-1.5">
                 <span
-                  class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-(--riv-card-ink-soft)"
+                  class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-soft"
                   >Full name</span
                 >
                 <input
                   appTouchTarget
                   appFieldGlass
-                  class="rounded-[14px] px-[13px] py-[11px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-(--riv-accent-ink)"
+                  class="rounded-[14px] px-[13px] py-[11px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink"
                   type="text"
                   autocomplete="name"
                   [formField]="bookingForm.fullName"
@@ -155,7 +155,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                 @if (submitAttempted() && bookingForm.fullName().errors().length) {
                   <!-- Dark brick red — AA on the light panel over the worst gradient stop. -->
                   <span
-                    class="field-error text-[12px] font-semibold text-(--riv-error-ink)"
+                    class="field-error text-[12px] font-semibold text-riv-error-ink"
                     role="alert"
                     >{{ bookingForm.fullName().errors()[0].message }}</span
                   >
@@ -163,20 +163,20 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               </label>
               <label class="field flex flex-col gap-1.5">
                 <span
-                  class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-(--riv-card-ink-soft)"
+                  class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-soft"
                   >Email</span
                 >
                 <input
                   appTouchTarget
                   appFieldGlass
-                  class="rounded-[14px] px-[13px] py-[11px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-(--riv-accent-ink)"
+                  class="rounded-[14px] px-[13px] py-[11px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink"
                   type="email"
                   autocomplete="email"
                   [formField]="bookingForm.email"
                 />
                 @if (submitAttempted() && bookingForm.email().errors().length) {
                   <span
-                    class="field-error text-[12px] font-semibold text-(--riv-error-ink)"
+                    class="field-error text-[12px] font-semibold text-riv-error-ink"
                     role="alert"
                     >{{ bookingForm.email().errors()[0].message }}</span
                   >
@@ -184,27 +184,27 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               </label>
               <label class="field flex flex-col gap-1.5">
                 <span
-                  class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-(--riv-card-ink-soft)"
+                  class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-soft"
                   >Phone</span
                 >
                 <input
                   appTouchTarget
                   appFieldGlass
-                  class="rounded-[14px] px-[13px] py-[11px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-(--riv-accent-ink)"
+                  class="rounded-[14px] px-[13px] py-[11px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink"
                   type="tel"
                   autocomplete="tel"
                   [formField]="bookingForm.phone"
                 />
                 @if (submitAttempted() && bookingForm.phone().errors().length) {
                   <span
-                    class="field-error text-[12px] font-semibold text-(--riv-error-ink)"
+                    class="field-error text-[12px] font-semibold text-riv-error-ink"
                     role="alert"
                     >{{ bookingForm.phone().errors()[0].message }}</span
                   >
                 }
               </label>
             </div>
-            <p class="fine mt-2.5 mb-1 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)">
+            <p class="fine mt-2.5 mb-1 text-[12.5px] leading-[1.45] text-riv-card-ink-soft">
               We only use these to send your booking code and reach you about this booking.
             </p>
           }
@@ -212,37 +212,37 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
           @if (step() === 2) {
             <dl class="review">
               <div
-                class="sum-row flex items-center justify-between gap-3 border-b border-b-(--riv-card-track) py-[11px] text-[14.5px] first:pt-0"
+                class="sum-row flex items-center justify-between gap-3 border-b border-b-riv-card-track py-[11px] text-[14.5px] first:pt-0"
               >
-                <dt class="text-(--riv-card-ink-soft)">Venue</dt>
-                <dd class="text-right font-bold text-(--riv-card-ink)">{{ venueName() }}</dd>
+                <dt class="text-riv-card-ink-soft">Venue</dt>
+                <dd class="text-right font-bold text-riv-card-ink">{{ venueName() }}</dd>
               </div>
               <div
-                class="sum-row flex items-center justify-between gap-3 border-b border-b-(--riv-card-track) py-[11px] text-[14.5px] first:pt-0"
+                class="sum-row flex items-center justify-between gap-3 border-b border-b-riv-card-track py-[11px] text-[14.5px] first:pt-0"
               >
-                <dt class="text-(--riv-card-ink-soft)">Set</dt>
-                <dd class="text-right font-bold text-(--riv-card-ink)">
+                <dt class="text-riv-card-ink-soft">Set</dt>
+                <dd class="text-right font-bold text-riv-card-ink">
                   {{ set().rowLabel }} · spot {{ set().positionNo }}
                 </dd>
               </div>
               <div
-                class="sum-row flex items-center justify-between gap-3 border-b border-b-(--riv-card-track) py-[11px] text-[14.5px] first:pt-0"
+                class="sum-row flex items-center justify-between gap-3 border-b border-b-riv-card-track py-[11px] text-[14.5px] first:pt-0"
               >
-                <dt class="text-(--riv-card-ink-soft)">Date</dt>
-                <dd class="text-right font-bold text-(--riv-card-ink)">{{ dateLabel() }}</dd>
+                <dt class="text-riv-card-ink-soft">Date</dt>
+                <dd class="text-right font-bold text-riv-card-ink">{{ dateLabel() }}</dd>
               </div>
               <div
-                class="sum-row flex items-center justify-between gap-3 border-b border-b-(--riv-card-track) py-[11px] text-[14.5px] first:pt-0"
+                class="sum-row flex items-center justify-between gap-3 border-b border-b-riv-card-track py-[11px] text-[14.5px] first:pt-0"
               >
-                <dt class="text-(--riv-card-ink-soft)">Guest</dt>
-                <dd class="text-right font-bold text-(--riv-card-ink)">{{ model().fullName }}</dd>
+                <dt class="text-riv-card-ink-soft">Guest</dt>
+                <dd class="text-right font-bold text-riv-card-ink">{{ model().fullName }}</dd>
               </div>
               <div
                 class="sum-row total flex items-center justify-between gap-3 pt-[14px] pb-[11px] text-[14.5px]"
               >
-                <dt class="text-[15px] text-(--riv-card-ink-soft)">Total</dt>
+                <dt class="text-[15px] text-riv-card-ink-soft">Total</dt>
                 <dd
-                  class="text-right text-[26px] font-bold tracking-[-0.02em] text-(--riv-accent-ink)"
+                  class="text-right text-[26px] font-bold tracking-[-0.02em] text-riv-accent-ink"
                   data-testid="review-total"
                 >
                   {{ price() }}
@@ -252,20 +252,20 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
 
             @if (isRequest()) {
               <p
-                class="mode-note request mt-[14px] mb-1 block rounded-2xl border border-[rgba(240,170,46,0.38)] bg-[rgba(240,170,46,0.12)] px-[15px] py-[13px] text-[12.8px] leading-[1.5] text-(--riv-card-ink-soft)"
+                class="mode-note request mt-[14px] mb-1 block rounded-2xl border border-[rgba(240,170,46,0.38)] bg-[rgba(240,170,46,0.12)] px-[15px] py-[13px] text-[12.8px] leading-[1.5] text-riv-card-ink-soft"
               >
-                <strong class="text-(--riv-card-ink)">Request to Book.</strong> This venue reviews
-                each request before payment. We’ll send your request now —
-                <strong class="text-(--riv-card-ink)">you won’t be charged yet</strong>. If the
-                venue accepts, you’ll get a link to pay {{ price() }} and lock in the set.
+                <strong class="text-riv-card-ink">Request to Book.</strong> This venue reviews each
+                request before payment. We’ll send your request now —
+                <strong class="text-riv-card-ink">you won’t be charged yet</strong>. If the venue
+                accepts, you’ll get a link to pay {{ price() }} and lock in the set.
               </p>
             } @else {
               <p
-                class="mode-note instant mt-[14px] mb-1 block rounded-2xl border border-[rgba(43,184,212,0.34)] bg-[rgba(43,184,212,0.12)] px-[15px] py-[13px] text-[12.8px] leading-[1.5] text-(--riv-card-ink-soft)"
+                class="mode-note instant mt-[14px] mb-1 block rounded-2xl border border-[rgba(43,184,212,0.34)] bg-[rgba(43,184,212,0.12)] px-[15px] py-[13px] text-[12.8px] leading-[1.5] text-riv-card-ink-soft"
               >
-                <strong class="text-(--riv-card-ink)">Instant Book.</strong> Next you’ll pay
-                securely to confirm this set right away. Free cancellation until the evening before
-                — your booking code arrives on-screen and by email.
+                <strong class="text-riv-card-ink">Instant Book.</strong> Next you’ll pay securely to
+                confirm this set right away. Free cancellation until the evening before — your
+                booking code arrives on-screen and by email.
               </p>
             }
 
@@ -273,7 +273,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
             <p
               appLegalConsent
               lead="By continuing"
-              class="fine mt-2.5 mb-1 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)"
+              class="fine mt-2.5 mb-1 text-[12.5px] leading-[1.45] text-riv-card-ink-soft"
             ></p>
           }
         </div>
@@ -290,13 +290,13 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
         }
 
         <div
-          class="dialog-actions flex shrink-0 gap-2.5 border-t border-t-(--riv-card-track) px-6 pt-[14px] pb-4"
+          class="dialog-actions flex shrink-0 gap-2.5 border-t border-t-riv-card-track px-6 pt-[14px] pb-4"
         >
           @if (step() === 2) {
             <button
               appTouchTarget
               type="button"
-              class="btn-back shrink-0 cursor-pointer rounded-2xl border-[1.5px] border-(--riv-card-border) bg-(--riv-wash-fill) px-5 py-[14px] text-[15px] font-semibold text-(--riv-back-ink) backdrop-blur-[8px] motion-safe:[transition:background_0.15s_ease,border-color_0.15s_ease,box-shadow_0.15s_ease] hover:border-[rgba(10,79,94,0.45)] hover:bg-(--riv-wash-hover) hover:shadow-[0_6px_16px_rgba(6,30,40,0.14)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
+              class="btn-back shrink-0 cursor-pointer rounded-2xl border-[1.5px] border-riv-card-border bg-riv-wash-fill px-5 py-[14px] text-[15px] font-semibold text-riv-back-ink backdrop-blur-[8px] motion-safe:[transition:background_0.15s_ease,border-color_0.15s_ease,box-shadow_0.15s_ease] hover:border-[rgba(10,79,94,0.45)] hover:bg-riv-wash-hover hover:shadow-[0_6px_16px_rgba(6,30,40,0.14)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
               data-testid="dialog-back"
               (click)="back()"
             >

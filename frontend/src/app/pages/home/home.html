@@ -1,11 +1,11 @@
 <section class="discover mx-auto max-w-[1080px] px-6 pt-10 pb-20" aria-labelledby="discover-title">
-  <!-- Hero padding is theme-SHARED so the headline never shifts; the riviera-only scrim (the home.scss holdout) px-anchors its fades to exactly this 34px/40px padding. -->
-  <div class="hero px-[26px] pt-[34px] pb-10 text-(--riv-ink)">
+  <!-- Hero padding is theme-SHARED so the headline never shifts; the riviera-only scrim (--riv-hero-scrim, none elsewhere) px-anchors its fades to exactly this 34px/40px padding. -->
+  <div class="hero bg-(image:--riv-hero-scrim) px-[26px] pt-[34px] pb-10 text-riv-ink">
     <p
-      class="hero-chip mb-[18px] inline-flex items-center gap-[9px] rounded-full border border-(--riv-chip-border) bg-(--riv-chip-bg) px-[14px] py-[7px] text-[12px] font-bold tracking-[0.16em] uppercase backdrop-blur-[10px]"
+      class="hero-chip mb-[18px] inline-flex items-center gap-[9px] rounded-full border border-riv-chip-border bg-riv-chip-bg px-[14px] py-[7px] text-[12px] font-bold tracking-[0.16em] uppercase backdrop-blur-[10px]"
     >
       <span
-        class="hero-chip-dash inline-block h-px w-[18px] bg-(--riv-ink-faint)"
+        class="hero-chip-dash inline-block h-px w-[18px] bg-riv-ink-faint"
         aria-hidden="true"
       ></span>
       Sunbeds by the sea
@@ -13,12 +13,12 @@
     <!-- The 680px cap keeps the headline breaking over two lines like the design (its hero was 680px wide). -->
     <h1
       id="discover-title"
-      class="hero-title mb-4 max-w-[680px] text-[clamp(40px,6vw,66px)] leading-[1.02] font-bold tracking-[-0.025em] [text-shadow:var(--riv-hero-shadow)]"
+      class="hero-title mb-4 max-w-[680px] text-[clamp(40px,6vw,66px)] leading-[1.02] font-bold tracking-[-0.025em] text-shadow-riv-hero"
     >
       Find your spot on the Riviera.
     </h1>
     <!-- Intro capped to a comfortable reading measure; the title uses the full width, the copy doesn't. -->
-    <p class="hero-intro max-w-[520px] text-[17px] leading-[1.5] text-(--riv-ink-soft)">
+    <p class="hero-intro max-w-[520px] text-[17px] leading-[1.5] text-riv-ink-soft">
       Pick a beach and a date, then choose your sunbed straight from the venue’s map — front row to
       promenade.
     </p>
@@ -31,14 +31,14 @@
   >
     <p class="field flex flex-col gap-[7px]">
       <label
-        class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-(--riv-card-ink-faint)"
+        class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-faint"
         for="filter-beach"
         >Beach</label
       >
       <select
         appTouchTarget
         appFieldGlass
-        class="min-w-[168px] cursor-pointer rounded-[14px] px-[13px] py-[10px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)"
+        class="min-w-[168px] cursor-pointer rounded-[14px] px-[13px] py-[10px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
         id="filter-beach"
         data-testid="filter-beach"
         [value]="beach()"
@@ -53,14 +53,14 @@
 
     <p class="field flex flex-col gap-[7px]">
       <label
-        class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-(--riv-card-ink-faint)"
+        class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-faint"
         for="filter-region"
         >Region</label
       >
       <select
         appTouchTarget
         appFieldGlass
-        class="min-w-[168px] cursor-pointer rounded-[14px] px-[13px] py-[10px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)"
+        class="min-w-[168px] cursor-pointer rounded-[14px] px-[13px] py-[10px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
         id="filter-region"
         data-testid="filter-region"
         [value]="region()"
@@ -75,14 +75,14 @@
 
     <p class="field flex flex-col gap-[7px]">
       <label
-        class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-(--riv-card-ink-faint)"
+        class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-faint"
         for="filter-date"
         >Date</label
       >
       <input
         appTouchTarget
         appFieldGlass
-        class="min-w-[168px] cursor-pointer rounded-[14px] px-[13px] py-[10px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)"
+        class="min-w-[168px] cursor-pointer rounded-[14px] px-[13px] py-[10px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
         id="filter-date"
         type="date"
         data-testid="filter-date"
@@ -105,11 +105,10 @@
         <!-- &ngsp; keeps a real space in the text content ("1 venue", not "1venue") for AT and
              text assertions — the compiler strips the inter-element whitespace otherwise. -->
         <strong
-          class="count-number text-[34px] leading-none font-bold tracking-[-0.02em] text-(--riv-accent-ink)"
+          class="count-number text-[34px] leading-none font-bold tracking-[-0.02em] text-riv-accent-ink"
           >{{ list.length }}</strong
         >&ngsp;
-        <span
-          class="count-sub mt-[5px] block text-[12px] leading-[14px] text-(--riv-card-ink-faint)"
+        <span class="count-sub mt-[5px] block text-[12px] leading-[14px] text-riv-card-ink-faint"
           >{{ list.length === 1 ? 'venue' : 'venues' }} · {{ dateLabel() }}</span
         >
       }
@@ -120,7 +119,7 @@
   <p
     appCutoffNote
     appCardGlass
-    class="mx-[2px] mt-3 rounded-full px-[15px] py-2 text-[13px] text-(--riv-card-ink-soft) backdrop-blur-[20px] backdrop-saturate-[1.7] [&_svg]:size-[15px]"
+    class="mx-[2px] mt-3 rounded-full px-[15px] py-2 text-[13px] text-riv-card-ink-soft backdrop-blur-[20px] backdrop-saturate-[1.7] [&_svg]:size-[15px]"
   ></p>
 
   <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
@@ -140,7 +139,7 @@
   } @else if (venuesView(); as list) {
     @if (isEmpty()) {
       <p
-        class="state mt-6 rounded-[26px] px-5 py-12 text-center text-[15px] text-(--riv-ink-soft)"
+        class="state mt-6 rounded-[26px] px-5 py-12 text-center text-[15px] text-riv-ink-soft"
         appPanelGlass
         data-testid="empty"
         aria-live="polite"
@@ -187,7 +186,7 @@
                 >
                 <!-- The location yields the dot rail's corner: 72px = the rail at its widest (3 dots: 13px inset + 14px padding + 24px dots + 14px gaps = 65px) plus 7px clearance — it must be re-derived whenever the rail's metrics change (#704). The explicit 15px line box is the scrim geometry home.contrast.spec.ts pins. -->
                 <span
-                  class="photo-location absolute bottom-[13px] left-[15px] text-[12.5px] leading-[15px] font-semibold text-(--riv-photo-ink) [text-shadow:0_1px_6px_rgba(0,0,0,0.4)]"
+                  class="photo-location absolute bottom-[13px] left-[15px] text-[12.5px] leading-[15px] font-semibold text-riv-photo-ink [text-shadow:0_1px_6px_rgba(0,0,0,0.4)]"
                   [class]="card.photos.length > 1 ? 'right-[72px] truncate' : ''"
                   >{{ card.beach }} · {{ card.region }}</span
                 >
@@ -198,18 +197,18 @@
                 aria-hidden="true"
               >
                 <span
-                  class="card-name text-[21px] leading-[1.08] font-bold tracking-[-0.01em] text-(--riv-card-ink)"
+                  class="card-name text-[21px] leading-[1.08] font-bold tracking-[-0.01em] text-riv-card-ink"
                   >{{ card.name }}</span
                 >
 
                 <span
-                  class="card-meta flex items-center gap-[7px] text-[13.5px] text-(--riv-card-ink-soft)"
+                  class="card-meta flex items-center gap-[7px] text-[13.5px] text-riv-card-ink-soft"
                 >
                   @if (card.isRated) {
                     <!-- The star is decorative; the numeric rating carries the value. -->
                     <span class="star text-[#f4a939]">★</span>
-                    <span class="rating font-bold text-(--riv-card-ink)">{{ card.rating }}</span>
-                    <span class="dot text-(--riv-card-ink) opacity-30">·</span>
+                    <span class="rating font-bold text-riv-card-ink">{{ card.rating }}</span>
+                    <span class="dot text-riv-card-ink opacity-30">·</span>
                     {{ card.reviewsCount }} reviews
                   } @else {
                     <!-- "New" / unrated state — the second SEMANTIC chip (#705): like the mode chip it is a platform claim, not a venue self-description, so it takes the same inverted accent pill. Padding stays here; the row's 13.5px is inherited. -->
@@ -233,7 +232,7 @@
                 </span>
 
                 <span
-                  class="avail-track mt-2.5 block h-1.5 overflow-hidden rounded-full bg-(--riv-card-track)"
+                  class="avail-track mt-2.5 block h-1.5 overflow-hidden rounded-full bg-riv-card-track"
                 >
                   <span
                     class="avail-fill block h-full bg-(image:--riv-bar-grad)"
@@ -245,21 +244,21 @@
                   class="card-footer mt-[3px] flex flex-wrap items-baseline justify-between gap-2"
                 >
                   @if (card.priceLabel; as price) {
-                    <span class="price text-[14px] text-(--riv-card-ink-soft)"
+                    <span class="price text-[14px] text-riv-card-ink-soft"
                       >from
-                      <strong class="text-[16px] font-extrabold text-(--riv-accent-ink)">{{
+                      <strong class="text-[16px] font-extrabold text-riv-accent-ink">{{
                         price
                       }}</strong>
                       / set</span
                     >
                   } @else {
-                    <span class="price text-[14px] text-(--riv-card-ink-soft)">No sets yet</span>
+                    <span class="price text-[14px] text-riv-card-ink-soft">No sets yet</span>
                   }
                   <span
-                    class="availability text-[12.5px] text-(--riv-card-ink-soft)"
+                    class="availability text-[12.5px] text-riv-card-ink-soft"
                     data-testid="card-availability"
                   >
-                    <strong class="text-(--riv-card-ink)">{{ card.free }}</strong> of
+                    <strong class="text-riv-card-ink">{{ card.free }}</strong> of
                     {{ card.total }} free
                   </span>
                 </span>
@@ -278,7 +277,7 @@
                 >
                   <span
                     aria-hidden="true"
-                    class="inline-flex size-[30px] items-center justify-center rounded-full border border-(--riv-photo-chrome-edge) bg-(--riv-mode-chip-glass) pb-[2px] text-[18px] leading-none text-(--riv-accent-ink) backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
+                    class="inline-flex size-[30px] items-center justify-center rounded-full border border-riv-photo-chrome-edge bg-riv-mode-chip-glass pb-[2px] text-[18px] leading-none text-riv-accent-ink backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
                     >‹</span
                   >
                 </button>
@@ -292,7 +291,7 @@
                 >
                   <span
                     aria-hidden="true"
-                    class="inline-flex size-[30px] items-center justify-center rounded-full border border-(--riv-photo-chrome-edge) bg-(--riv-mode-chip-glass) pb-[2px] text-[18px] leading-none text-(--riv-accent-ink) backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
+                    class="inline-flex size-[30px] items-center justify-center rounded-full border border-riv-photo-chrome-edge bg-riv-mode-chip-glass pb-[2px] text-[18px] leading-none text-riv-accent-ink backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
                     >›</span
                   >
                 </button>
@@ -313,15 +312,15 @@
               class="flex h-full animate-pulse flex-col overflow-hidden rounded-[28px] motion-reduce:animate-none"
               data-testid="skeleton-card"
             >
-              <span class="block aspect-[3/2] bg-(--riv-card-track)"></span>
+              <span class="block aspect-[3/2] bg-riv-card-track"></span>
               <span class="flex flex-1 flex-col gap-[10px] p-[18px]">
-                <span class="h-[18px] w-3/4 rounded-[6px] bg-(--riv-card-track)"></span>
-                <span class="h-[10px] w-1/2 rounded-[6px] bg-(--riv-card-track)"></span>
+                <span class="h-[18px] w-3/4 rounded-[6px] bg-riv-card-track"></span>
+                <span class="h-[10px] w-1/2 rounded-[6px] bg-riv-card-track"></span>
                 <span class="grid grid-cols-3 gap-[8px]">
-                  <span class="col-span-2 h-[10px] rounded-[6px] bg-(--riv-card-track)"></span>
-                  <span class="h-[10px] rounded-[6px] bg-(--riv-card-track)"></span>
+                  <span class="col-span-2 h-[10px] rounded-[6px] bg-riv-card-track"></span>
+                  <span class="h-[10px] rounded-[6px] bg-riv-card-track"></span>
                 </span>
-                <span class="mt-auto h-[6px] rounded-full bg-(--riv-card-track)"></span>
+                <span class="mt-auto h-[6px] rounded-full bg-riv-card-track"></span>
               </span>
             </span>
           </li>

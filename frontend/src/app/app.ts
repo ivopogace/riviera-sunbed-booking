@@ -14,11 +14,11 @@ import { TouchTarget } from './shared/touch-target';
 /** The near-opaque popover surface (account menu, theme picker, mobile sheet) — themed via the
  *  `--riv-pop-*` family: light in porcelain/riviera, slate in the dark theme. */
 const POP =
-  'absolute z-40 animate-[riv-pop_0.2s_ease] rounded-[18px] border border-(--riv-pop-border) bg-(--riv-pop-surface) text-(--riv-pop-ink) shadow-(--riv-pop-shadow) backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none';
+  'absolute z-40 animate-[riv-pop_0.2s_ease] rounded-[18px] border border-riv-pop-border bg-riv-pop-surface text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none';
 const POP_ITEM =
-  'block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-(--riv-pop-ink) [transition:background_0.12s_ease] hover:bg-(--riv-pop-hover)';
+  'block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-riv-pop-ink [transition:background_0.12s_ease] hover:bg-riv-pop-hover';
 const MOBILE_ITEM =
-  'block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-(--riv-pop-ink) hover:bg-(--riv-pop-hover)';
+  'block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-riv-pop-ink hover:bg-riv-pop-hover';
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
@@ -30,7 +30,7 @@ const CLS = {
   popBtn: `${POP_ITEM} cursor-pointer text-left`,
   mobileItem: MOBILE_ITEM,
   mobileBtn: `${MOBILE_ITEM} cursor-pointer`,
-  navLink: 'cursor-pointer hover:text-(--riv-ink)',
+  navLink: 'cursor-pointer hover:text-riv-ink',
 } as const;
 
 /**

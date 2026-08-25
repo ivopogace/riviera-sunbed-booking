@@ -17,7 +17,7 @@ Do not "fix" any of them without reading its entry first.
   multi-line `#` header prose as its documented convention — and **not** SQL `--`, which #522's
   finding F-6 declined by precedent, citing `V9__payout_ledger.sql`.
 - **Two exemptions beyond the doc-comment carve-out:** a block comment standing before any code is
-  the file's header (`styles.scss` opens with one), and only whole-line comments merge into a
+  the file's header (`tailwind.css` opens with one), and only whole-line comments merge into a
   block, so a trailing comment never pairs with the next line's.
 - **One deliberate false negative — do not "fix" it.** A violation must be something the diff
   *wrote*: it groups only **added** comment lines, and flags a block comment only when the diff

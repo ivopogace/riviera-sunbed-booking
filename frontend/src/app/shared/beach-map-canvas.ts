@@ -72,7 +72,7 @@ export class BeachMapRowDef<R extends BeachMapCanvasRow = BeachMapCanvasRow> {
  * horizontal chrome gated on actual overflow via `.pannable`). Three content slots ride along:
  * `canvasLegend` above the grid, `canvasFooter` below it, and `canvasEmpty` in place of both —
  * all optional, because their content is per-surface (the tile legend is tourist-only, #701).
- * The wash's colours are the `--riv-map-*` theme tokens (declared per theme in `styles.scss` —
+ * The wash's colours are the `--riv-map-*` theme tokens (declared per theme in `tailwind.css` —
  * daylight in the light themes, night in dark), so projected content — the tourist legend band,
  * on `--riv-map-sea` — sits on the same ground the top tile row does without copying a literal.
  * A drag pans horizontally via
@@ -357,7 +357,7 @@ export class BeachMapCanvas {
   protected readonly scrollbarChrome = computed(() =>
     this.dragPan()
       ? 'scrollbar-none'
-      : 'scrollbar-thin scrollbar-thumb-(--riv-accent-ink) scrollbar-track-transparent',
+      : 'scrollbar-thin scrollbar-thumb-riv-accent-ink scrollbar-track-transparent',
   );
 
   // --- pan gesture state (imperative; not rendered) ---

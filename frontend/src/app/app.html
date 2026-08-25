@@ -53,13 +53,13 @@
   @if (shellChrome() === 'tourist') {
     <!-- The glass lives on a pseudo-element: backdrop-filter on the header itself would make it the containing block for fixed descendants (Filter Effects L2). -->
     <header
-      class="riv-header sticky top-0 z-20 border-b border-(--riv-header-border) shadow-[0_8px_30px_rgba(6,38,52,0.14)] before:absolute before:inset-0 before:z-[-1] before:bg-(--riv-header-glass) before:backdrop-blur-[22px] before:backdrop-saturate-[1.7] before:content-['']"
+      class="riv-header sticky top-0 z-20 border-b border-riv-header-border shadow-[0_8px_30px_rgba(6,38,52,0.14)] before:absolute before:inset-0 before:z-[-1] before:bg-riv-header-glass before:backdrop-blur-[22px] before:backdrop-saturate-[1.7] before:content-['']"
     >
       <div
         class="relative mx-auto flex w-full max-w-[1080px] items-center justify-between gap-4 px-6 py-3.5"
       >
         <a
-          class="flex min-h-11 items-center gap-3 text-(--riv-ink)"
+          class="flex min-h-11 items-center gap-3 text-riv-ink"
           routerLink="/"
           data-testid="brand-home"
         >
@@ -69,14 +69,14 @@
           ></span>
           <span class="flex flex-col leading-none">
             <span class="text-[21px] font-bold tracking-[-0.01em]">Riviera</span>
-            <span class="mt-1 text-[10px] tracking-[0.24em] uppercase text-(--riv-ink-faint)"
+            <span class="mt-1 text-[10px] tracking-[0.24em] uppercase text-riv-ink-faint"
               >Albanian Coast</span
             >
           </span>
         </a>
 
         <nav
-          class="riv-nav-desktop hidden items-center gap-[22px] text-[13.5px] text-(--riv-ink-soft) sm:flex"
+          class="riv-nav-desktop hidden items-center gap-[22px] text-[13.5px] text-riv-ink-soft sm:flex"
           aria-label="Primary"
         >
           <a routerLink="/" [class]="cls.navLink">Beaches</a>
@@ -158,7 +158,7 @@
               appTouchTarget
               #themeButton
               type="button"
-              class="inline-flex cursor-pointer items-center gap-[9px] rounded-full border border-(--riv-chip-border) bg-(--riv-chip-bg) px-[13px] py-1.5 text-[13.5px] font-semibold text-(--riv-ink) shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-[10px] [transition:filter_0.15s_ease] hover:brightness-[0.96] motion-reduce:transition-none"
+              class="inline-flex cursor-pointer items-center gap-[9px] rounded-full border border-riv-chip-border bg-riv-chip-bg px-[13px] py-1.5 text-[13.5px] font-semibold text-riv-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-[10px] [transition:filter_0.15s_ease] hover:brightness-[0.96] motion-reduce:transition-none"
               data-testid="theme-toggle"
               [attr.aria-label]="'Color theme: ' + activeTheme().name"
               [attr.aria-expanded]="themeOpen()"
@@ -187,7 +187,7 @@
                   <button
                     appTouchTarget
                     type="button"
-                    class="flex w-full cursor-pointer items-center gap-[11px] rounded-xl bg-transparent px-2.5 py-[9px] text-left [transition:background_0.12s_ease] hover:bg-(--riv-pop-hover)"
+                    class="flex w-full cursor-pointer items-center gap-[11px] rounded-xl bg-transparent px-2.5 py-[9px] text-left [transition:background_0.12s_ease] hover:bg-riv-pop-hover"
                     [attr.aria-pressed]="option.id === themes.theme()"
                     [attr.data-testid]="'theme-option-' + option.id"
                     (click)="selectTheme(option.id)"
@@ -197,11 +197,11 @@
                       [style.background]="option.swatch"
                       aria-hidden="true"
                     ></span>
-                    <span class="flex-1 text-[14px] font-semibold text-(--riv-pop-ink)">{{
+                    <span class="flex-1 text-[14px] font-semibold text-riv-pop-ink">{{
                       option.name
                     }}</span>
                     @if (option.id === themes.theme()) {
-                      <span class="text-[15px] font-bold text-(--riv-pop-accent)" aria-hidden="true"
+                      <span class="text-[15px] font-bold text-riv-pop-accent" aria-hidden="true"
                         >&#10003;</span
                       >
                     }
@@ -216,15 +216,15 @@
           appTouchTarget
           #menuButton
           type="button"
-          class="flex h-11 w-11 cursor-pointer flex-col items-center justify-center gap-[4.5px] rounded-[14px] border border-(--riv-chip-border) bg-(--riv-chip-bg) backdrop-blur-[10px] [transition:filter_0.15s_ease] hover:brightness-[0.96] sm:hidden motion-reduce:transition-none"
+          class="flex h-11 w-11 cursor-pointer flex-col items-center justify-center gap-[4.5px] rounded-[14px] border border-riv-chip-border bg-riv-chip-bg backdrop-blur-[10px] [transition:filter_0.15s_ease] hover:brightness-[0.96] sm:hidden motion-reduce:transition-none"
           data-testid="menu-toggle"
           aria-label="Menu"
           [attr.aria-expanded]="menuOpen()"
           (click)="toggleMenu()"
         >
-          <span class="block h-0.5 w-[17px] rounded-[2px] bg-(--riv-ink)" aria-hidden="true"></span>
-          <span class="block h-0.5 w-[17px] rounded-[2px] bg-(--riv-ink)" aria-hidden="true"></span>
-          <span class="block h-0.5 w-[17px] rounded-[2px] bg-(--riv-ink)" aria-hidden="true"></span>
+          <span class="block h-0.5 w-[17px] rounded-[2px] bg-riv-ink" aria-hidden="true"></span>
+          <span class="block h-0.5 w-[17px] rounded-[2px] bg-riv-ink" aria-hidden="true"></span>
+          <span class="block h-0.5 w-[17px] rounded-[2px] bg-riv-ink" aria-hidden="true"></span>
         </button>
 
         @if (menuOpen()) {
@@ -255,7 +255,7 @@
               @if (customerAuth.signedIn()) {
                 <!-- Account group: flattened into the sheet, per the theme-block precedent below. -->
                 <span
-                  class="block px-3.5 py-[13px] text-[14px] font-semibold text-(--riv-pop-ink)"
+                  class="block px-3.5 py-[13px] text-[14px] font-semibold text-riv-pop-ink"
                   data-testid="nav-user-mobile"
                   >Signed in as {{ customerAuth.email() }}</span
                 >
@@ -293,10 +293,10 @@
                 >
               }
             }
-            <div class="mt-1 border-t border-(--riv-pop-divider) px-3.5 pt-2.5 pb-3">
+            <div class="mt-1 border-t border-riv-pop-divider px-3.5 pt-2.5 pb-3">
               <!-- Ink at 0.7 (design: 0.5): AA for 10.5px text on the popover. -->
               <span
-                class="text-[10.5px] font-bold tracking-[0.12em] uppercase text-(--riv-pop-ink-soft)"
+                class="text-[10.5px] font-bold tracking-[0.12em] uppercase text-riv-pop-ink-soft"
                 id="riv-mobile-theme-label"
                 >Color theme</span
               >
@@ -341,11 +341,11 @@
   <!-- Shared by the tourist and operator chromes (tokens re-scope under the porcelain pin). -->
   @if (shellChrome() !== 'none') {
     <footer
-      class="riv-footer border-t border-(--riv-header-border) bg-(--riv-header-glass) backdrop-blur-[22px] backdrop-saturate-[1.7]"
+      class="riv-footer border-t border-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7]"
     >
       <div
         appLegalFooter
-        class="riv-footer-inner mx-auto max-w-[1080px] px-6 py-4 text-[13px] text-(--riv-ink-soft)"
+        class="riv-footer-inner mx-auto max-w-[1080px] px-6 py-4 text-[13px] text-riv-ink-soft"
       ></div>
     </footer>
   }

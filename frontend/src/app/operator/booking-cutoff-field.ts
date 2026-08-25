@@ -17,7 +17,7 @@ import { TouchTarget } from '../shared/touch-target';
   imports: [FormField, TouchTarget],
   host: { class: 'contents' },
   template: `<label class="flex flex-col gap-1">
-    <span class="text-[12.5px] font-semibold text-(--riv-card-ink)"
+    <span class="text-[12.5px] font-semibold text-riv-card-ink"
       >Booking cutoff (Europe/Tirane)</span
     >
     <input
@@ -25,7 +25,7 @@ import { TouchTarget } from '../shared/touch-target';
       [formField]="field()"
       [attr.data-testid]="testId()"
       appTouchTarget
-      class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+      class="rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
     />
     @if (state().touched() && state().errors().length) {
       <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{

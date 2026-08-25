@@ -94,7 +94,7 @@ What it does **not** cover, which is what this item is still for:
   already available from the code.
 
 The guard is diff-scoped by construction, so it will never flag the pre-existing multi-line blocks
-in `SecurityConfig` or `styles.scss` — and neither should you.
+in `SecurityConfig` or `tailwind.css` — and neither should you.
 
 ## RV-STYLE-2 — formatting is `prettier --check`'s job, not the reviewer's
 

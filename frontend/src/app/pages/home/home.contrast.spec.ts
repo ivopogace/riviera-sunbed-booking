@@ -44,8 +44,8 @@ import {
  * alpha inks composited over that result (the `app.contrast.spec.ts` pattern).
  * Shared token mirrors + the AA-over-stops loop live in `testing/glass-tokens.ts`.
  *
- * This table mirrors every text-bearing colour in `styles.scss` + `home.html`'s utilities
- * (since #679 `home.scss` holds only the hero scrim); an edit there must re-pass here. Deviations from the design file, on purpose (the same
+ * This table mirrors every text-bearing colour in `tailwind.css` + `home.html`'s utilities
+ * (the hero scrim is the `--riv-hero-scrim` token there); an edit there must re-pass here. Deviations from the design file, on purpose (the same
  * class as the shell header's): the list-state panels (and, in the riviera theme, the hero) sit on
  * the AA-proven header glass instead of the bare gradient — the porcelain hero matches the
  * design (bare dark ink); the riviera card glass is 0.78 (design 0.55); the muted
@@ -110,7 +110,7 @@ const THEMES: readonly Theme[] = [
     fieldBorder: LIGHT_FIELD_BORDER,
     heroInk: WHITE,
     heroInkSoftAlpha: 0.86,
-    // Riviera hero scrim (home.scss): rgba(8,38,52,0.72) = #082634 @ 0.72.
+    // Riviera hero scrim (--riv-hero-scrim, tailwind.css): rgba(8,38,52,0.72) = #082634 @ 0.72.
     heroScrim: { color: hexToRgb('082634'), alpha: 0.72 },
   },
   {
@@ -149,7 +149,7 @@ const THEMES: readonly Theme[] = [
 describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #135)', (theme) => {
   // The hero backdrop is theme-conditional: a soft dark SCRIM in riviera (white ink needs a dark
   // backing to clear AA over the gradient's light top stops), the BARE gradient in porcelain, where
-  // the hero matches the design (dark ink, no backing). The px-anchored fade (home.scss) keeps the
+  // the hero matches the design (dark ink, no backing). The px-anchored fade (--riv-hero-scrim) keeps the
   // text on the solid scrim core, so the worst case is the full-strength scrim over each stop. The
   // loading/empty .state panels keep the header glass in BOTH themes (asserted separately below).
   const heroBackdrop = (stop: Rgb): Rgb =>

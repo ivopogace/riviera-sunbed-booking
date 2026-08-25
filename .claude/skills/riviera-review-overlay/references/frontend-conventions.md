@@ -42,8 +42,8 @@ reference `CLAUDE.md`.
 
 ### RV-FE-7. Styling is Tailwind, shared via directives, with no rendered drift (`riviera-tailwind`)
 **Gate:** Does new/changed styling follow the project's Tailwind conventions?
-- [ ] Tailwind utilities by default — new component styling isn't a fresh `.scss` **unless justified** (Tailwind-expressible → Tailwind; SCSS needs its stated why, per the `home.scss` scrim precedent)
-- [ ] **migrate-on-touch:** a component the diff touches that still carries legacy component SCSS had that styling migrated to Tailwind in this same slice — or the SCSS is a justified holdout (scrim-class), or the defer was **maintainer-approved** (asked via `AskUserQuestion`, recorded with a follow-up issue — never self-granted; `riviera-tailwind` owns the rule + checklist)
+- [ ] Tailwind utilities by default — new component styling isn't a fresh `.scss` **unless justified** (Tailwind-expressible → Tailwind; SCSS needs its stated why — the retired `home.scss` scrim is the historical precedent, none remain in-tree)
+- [ ] **migrate-on-touch:** a component the diff touches that still carries legacy component SCSS had that styling migrated to Tailwind in this same slice — or the SCSS is a justified holdout (with its stated why), or the defer was **maintainer-approved** (asked via `AskUserQuestion`, recorded with a follow-up issue — never self-granted; `riviera-tailwind` owns the rule + checklist)
 - [ ] a reused surface/element is a shared directive/component (`shared/*-glass.ts`, `retry-button.ts`), **not** `@apply`/`@utility`
 - [ ] a class a spec queries (`.set-tile.premium`, `.amenity-chip`, `.failure-title`, …) is retained as an inert marker after its styling moved to utilities
 - [ ] a restyle/migration proves **no rendered drift** with a computed-style diff, not just the class list (the `*.contrast.spec.ts` are pure maths and can't see it)

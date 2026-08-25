@@ -28,16 +28,16 @@ import { OperatorAuth } from '../core/operator-auth';
   host: { class: 'contents' },
   template: `
     <header
-      class="sticky top-0 z-20 border-b border-(--riv-header-border) bg-(--riv-header-glass) backdrop-blur-[22px] backdrop-saturate-[1.7]"
+      class="sticky top-0 z-20 border-b border-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7]"
       data-testid="opc-header"
     >
       <div class="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-x-4 px-6">
         <a
           routerLink="/operator"
           appTouchTarget
-          class="inline-flex items-center text-[19px] leading-[1.15] font-bold tracking-[-0.01em] text-(--riv-ink) no-underline"
+          class="inline-flex items-center text-[19px] leading-[1.15] font-bold tracking-[-0.01em] text-riv-ink no-underline"
           data-testid="opc-brand"
-          >Riviera <span class="font-medium text-(--riv-ink-soft)">Operator</span></a
+          >Riviera <span class="font-medium text-riv-ink-soft">Operator</span></a
         >
 
         @if (!operator.restoring()) {
@@ -47,7 +47,7 @@ import { OperatorAuth } from '../core/operator-auth';
             } @else {
               <a
                 appTouchTarget
-                class="inline-flex items-center text-[13px] font-semibold text-(--riv-ink) no-underline hover:underline"
+                class="inline-flex items-center text-[13px] font-semibold text-riv-ink no-underline hover:underline"
                 routerLink="/account/sign-in"
                 [queryParams]="signInParams()"
                 data-testid="opc-signin"

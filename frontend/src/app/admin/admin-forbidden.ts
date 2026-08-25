@@ -10,7 +10,7 @@ import { Component, input } from '@angular/core';
 @Component({
   selector: 'p[appAdminForbidden]',
   host: {
-    class: 'mt-4 text-[15px] text-(--riv-ink-soft)',
+    class: 'mt-4 text-[15px] text-riv-ink-soft',
     '[attr.data-testid]': 'testId()',
   },
   template: `You don't have access to this page.`,

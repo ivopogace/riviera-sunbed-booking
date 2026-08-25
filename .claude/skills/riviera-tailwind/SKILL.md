@@ -1,6 +1,6 @@
 ---
 name: riviera-tailwind
-description: The how-to-write-Tailwind authority for the riviera-sunbed-booking frontend (Tailwind v4, Angular 22). Load BEFORE styling ANYTHING under frontend/src — a new component or HTML template, a restyle, or an SCSS→Tailwind migration — whether or not Tailwind was the plan, because Tailwind is the DEFAULT: whenever Tailwind can express the styling, use it, not SCSS. SCSS is not obsolete — it stays legitimate for what Tailwind can't express cleanly (the home.scss scrim precedent), but that's a stated justification, and an unjustified fresh .scss is a review finding. Complements riviera-frontend (which folder a file goes in) and angular-developer (generic Angular+Tailwind technique); RV-FE-* checks the result.
+description: The how-to-write-Tailwind authority for the riviera-sunbed-booking frontend (Tailwind v4, Angular 22). Load BEFORE styling ANYTHING under frontend/src — a new component or HTML template, a restyle, or an SCSS→Tailwind migration — whether or not Tailwind was the plan, because Tailwind is the DEFAULT: whenever Tailwind can express the styling, use it, not SCSS. SCSS is not obsolete — it stays legitimate for what Tailwind can't express cleanly, but that's a stated justification (the retired home.scss scrim is the historical precedent; none remain in-tree), and an unjustified fresh .scss is a review finding. Complements riviera-frontend (which folder a file goes in) and angular-developer (generic Angular+Tailwind technique); RV-FE-* checks the result.
 ---
 
 # Riviera Tailwind conventions
@@ -156,17 +156,31 @@ Theme *ownership* (who writes `data-riv-theme`, the token registry, subtree pinn
 `riviera-frontend`'s call; this section owns only how a component styles across themes.
 Vary by theme in this order of preference:
 
-1. **Tokens do the switching (the norm).** Components consume `--riv-*` tokens
-   (`var(--riv-*)`, `bg-(--riv-*)`) and stay **theme-agnostic** — they never name a theme.
-   Reach for a token first; add one if none fits (where tokens are declared per theme is
-   `riviera-frontend`'s theming section).
+1. **Tokens do the switching (the norm).** Components consume `--riv-*` tokens and stay
+   **theme-agnostic** — they never name a theme. The tokens are registered in
+   `tailwind.css`'s `@theme inline` block, so a color/font/shadow position uses the
+   **named utility** (`text-riv-ink`, `bg-riv-card-glass`, `border-riv-field-border`,
+   `font-riv`); only image tokens (gradients/scrims, no theme namespace) keep the
+   arbitrary form `bg-(image:--riv-*)`, and a raw `var(--riv-*)` remains right inside a
+   composite arbitrary value (a `color-mix(…)` ring, a hand-built gradient). Reach for a
+   token first; add one if none fits — declared per theme AND mapped in `@theme inline`
+   (where tokens are declared per theme is `riviera-frontend`'s theming section). This is
+   Tailwind's own documented multi-theme pattern (docs: Colors § "Referencing other
+   variables" — plain vars per `:root`/attribute scope, mapped via `@theme inline`;
+   `inline` is what keeps the utility emitting `var(--riv-*)` so per-scope overrides and
+   the porcelain subtree pinning still resolve). The `dark:`-variant approach the dark-mode
+   docs page shows is deliberately NOT used here — it names a theme in the component,
+   which the theme-agnostic rule above forbids, and it cannot express three themes.
 2. **`:host-context([data-riv-theme='riviera'])` is the escape hatch.** Only when a whole
-   background *treatment* differs — not just a token value — does a component branch on the
-   theme. The one precedent is the home-hero **scrim** (`home.scss`): a borderless feathered
-   dark wash in riviera, bare in porcelain AND in dark (the slate stops are dark enough for
-   white ink without a backing). It's deliberately the hero **only** — every other dark
-   riviera surface keeps the `appPanelGlass` frosted panel, so don't spread the scrim by
-   reflex.
+   *treatment* differs AND no single property's value can carry it does a component branch
+   on the theme. Before reaching for it, check whether one property CAN carry the whole
+   treatment as a token — `treatment-off` themes hold `none`, like `--riv-hero-shadow` and
+   `--riv-hero-scrim` (the home-hero wash: a feathered dark gradient in riviera,
+   `background-image: none` in porcelain and dark, consumed unconditionally as
+   `bg-(image:--riv-hero-scrim)`). The scrim was tier 2's long-standing precedent until the
+   `@theme` token registry made it tier-1-expressible; today NO in-tree case needs the
+   hatch. The scrim stays the hero **only** — every other dark riviera surface keeps the
+   `appPanelGlass` frosted panel; don't spread it by reflex.
 
 **Keep content position identical across themes.** When a surface is treated-in-one-theme /
 bare-in-the-other, put the shared padding/layout on the **base** rule and make **only the
@@ -174,10 +188,13 @@ background** theme-conditional. Otherwise the same element sits at a different
 `getBoundingClientRect().top` per theme. Verify by measuring that anchor in both themes — it
 must match. This is *layout* drift; the colour-drift rule below can't see it.
 
-> A theme-conditional, multi-stop, px-anchored gradient behind `:host-context` is one of the
-> few things still cleaner as **SCSS** than as Tailwind arbitrary values — the scrim lives in
-> `home.scss` on purpose. "SCSS is retiring" is the default, not an absolute; don't mechanically
-> port a case like this.
+> "SCSS is retiring" is the default, not an absolute: SCSS stays legitimate for what Tailwind
+> can't express cleanly, with the justification stated. The long-standing worked example — the
+> `home.scss` hero scrim, kept at #679 because a theme-conditional px-anchored gradient behind
+> `:host-context` beat Tailwind *arbitrary values* — retired when the `@theme` token registry
+> opened a third option neither #679 alternative covered: the gradient as a per-theme token
+> (`--riv-hero-scrim`), consumed unconditionally. A holdout's justification is only as durable
+> as the alternatives it weighed; re-check one when the styling substrate shifts.
 
 ## No visual/colour drift (the hard rule)
 
@@ -192,17 +209,19 @@ byte-equal) — assert the snapped value, don't chase it as a regression.
 
 ## SCSS→Tailwind migration checklist
 
-**There is no shared SCSS left** (`shared/_glass.scss` retired at #477 with its last recipe,
-`status-chip`); what remains is 4 `.scss` files under `frontend/src/app`, 2 of them in
-`booking/` (the `home.scss` scrim stays SCSS on purpose — the blockquote above; since #679 it
-is the scrim rule alone, the rest of Discover and the whole booking dialog are utilities;
-the operator-console shell chrome migrated at #698, the app shell and the booking
-pay/confirmation/my-bookings trio at #739).
+**There is NO SCSS left anywhere under `frontend/src`** (`shared/_glass.scss` retired at
+#477 with its last recipe, `status-chip`; the operator-console shell chrome migrated at
+#698, the app shell and the booking pay/confirmation/my-bookings trio at #739, the last
+component SCSS at #780, then the global `styles.scss` token sheet folded into
+`tailwind.css`'s `@theme` layer and the final holdout — the `home.scss` scrim — became the
+`--riv-hero-scrim` token, per the blockquote above). A NEW justified holdout may still be
+written — the rule survives its example — but it needs its stated why.
 
 **Migrate on touch — the retirement mechanism.** A slice that touches a component still
 carrying legacy component SCSS (any of its `.ts`/`.html`/`.scss`) migrates that component's
 styling to Tailwind **in the same slice** — narrow scope is fine (the checklist's step 2),
-and a justified holdout (the scrim class) stays SCSS with its why. **Deferral is never
+and a justified holdout stays SCSS with its why (none exist in-tree today — the scrim was
+the last). **Deferral is never
 self-granted:** if migrating would genuinely swamp the slice (a one-line bug fix in a
 heavy-SCSS component), ask the maintainer via `AskUserQuestion` — *migrate now, or defer?*
 An approved defer means the slice ships just its own fix (the SCSS edit included), the

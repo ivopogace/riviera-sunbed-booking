@@ -2,7 +2,7 @@
   <button
     type="button"
     appTouchTarget
-    class="back-pill inline-flex items-center gap-2 text-(--riv-ink) text-[14px] font-semibold cursor-pointer px-3.5 py-2 rounded-full mb-4 min-[1280px]:[margin-inline-start:calc((100%_-_1100px)/2)] [transition:filter_0.15s_ease] hover:brightness-[0.96] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-white focus-visible:outline-offset-2"
+    class="back-pill inline-flex items-center gap-2 text-riv-ink text-[14px] font-semibold cursor-pointer px-3.5 py-2 rounded-full mb-4 min-[1280px]:[margin-inline-start:calc((100%_-_1100px)/2)] [transition:filter_0.15s_ease] hover:brightness-[0.96] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-white focus-visible:outline-offset-2"
     appPanelGlass
     (click)="onBack()"
   >
@@ -21,7 +21,7 @@
         />
       }
       <header
-        class="map-head text-(--riv-ink) px-[22px] py-5 rounded-[26px] overflow-hidden shadow-[0_14px_44px_rgba(7,42,58,0.26),inset_0_1px_0_rgba(255,255,255,0.25)] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
+        class="map-head text-riv-ink px-[22px] py-5 rounded-[26px] overflow-hidden shadow-[0_14px_44px_rgba(7,42,58,0.26),inset_0_1px_0_rgba(255,255,255,0.25)] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
         appPanelGlass
       >
         @if (v.photos.length < 2) {
@@ -71,21 +71,19 @@
             </p>
             <h1
               id="venue-name"
-              class="font-bold text-[clamp(32px,5vw,48px)] leading-[1.02] tracking-[-0.02em] mb-[7px] [text-shadow:var(--riv-hero-shadow)]"
+              class="font-bold text-[clamp(32px,5vw,48px)] leading-[1.02] tracking-[-0.02em] mb-[7px] text-shadow-riv-hero"
             >
               {{ v.name }}
             </h1>
-            <p class="mb-[5px] text-(--riv-ink-soft) text-[15px]">{{ v.beach }} · {{ v.region }}</p>
+            <p class="mb-[5px] text-riv-ink-soft text-[15px]">{{ v.beach }} · {{ v.region }}</p>
 
-            <p class="flex items-center flex-wrap gap-[7px] text-[14px] text-(--riv-ink-soft)">
+            <p class="flex items-center flex-wrap gap-[7px] text-[14px] text-riv-ink-soft">
               @if (v.isRated) {
                 <span class="text-[#ffd16b]" aria-hidden="true">★</span>
-                <span
-                  class="font-bold text-(--riv-ink)"
-                  aria-label="Rated {{ v.rating }} out of 5"
-                  >{{ v.rating }}</span
-                >
-                <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span>
+                <span class="font-bold text-riv-ink" aria-label="Rated {{ v.rating }} out of 5">{{
+                  v.rating
+                }}</span>
+                <span class="text-riv-ink-faint" aria-hidden="true">·</span>
                 {{ v.reviewsCount }} reviews
               } @else {
                 <span
@@ -97,14 +95,14 @@
                 >
               }
               @if (v.priceLabel; as price) {
-                <span class="text-(--riv-ink-faint)" aria-hidden="true">·</span> from
-                <strong class="font-bold text-(--riv-ink)">{{ price }}</strong> / set
+                <span class="text-riv-ink-faint" aria-hidden="true">·</span> from
+                <strong class="font-bold text-riv-ink">{{ price }}</strong> / set
               }
             </p>
 
             @if (v.description) {
               <p
-                class="description mt-[9px] max-w-[540px] text-(--riv-ink-soft) text-[14.5px] leading-[1.5] text-pretty"
+                class="description mt-[9px] max-w-[540px] text-riv-ink-soft text-[14.5px] leading-[1.5] text-pretty"
               >
                 {{ v.description }}
               </p>
@@ -126,14 +124,14 @@
               class="mt-4 flex max-w-[210px] flex-col gap-[7px] min-[1280px]:mt-0 min-[1280px]:max-w-none"
             >
               <span
-                class="text-[11px] font-bold tracking-[0.1em] text-(--riv-ink-faint) uppercase"
+                class="text-[11px] font-bold tracking-[0.1em] text-riv-ink-faint uppercase"
                 id="map-date-label"
                 >Date</span
               >
               <button
                 appTouchTarget
                 type="button"
-                class="cursor-pointer rounded-[14px] border border-(--riv-field-border) bg-(--riv-field-solid) px-3 py-2.5 text-left text-[15px] text-(--riv-card-ink) focus-visible:outline-[3px] focus-visible:outline-white focus-visible:outline-offset-2"
+                class="cursor-pointer rounded-[14px] border border-riv-field-border bg-riv-field-solid px-3 py-2.5 text-left text-[15px] text-riv-card-ink focus-visible:outline-[3px] focus-visible:outline-white focus-visible:outline-offset-2"
                 id="map-date"
                 data-testid="map-date"
                 aria-haspopup="dialog"
@@ -145,7 +143,7 @@
                 {{ triggerLabel() }}
               </button>
             </p>
-            <p appCutoffNote class="mt-2 text-[11.5px] text-(--riv-ink-faint)"></p>
+            <p appCutoffNote class="mt-2 text-[11.5px] text-riv-ink-faint"></p>
           </div>
         </div>
       </header>
@@ -159,14 +157,12 @@
         <div class="pt-1 px-0.5">
           <!-- aria-live: changing the date silently swaps the grid, so announce the new count. Only the CONTENT branches (#717) — swapping the element would rebuild the live region, which announces unreliably. -->
           <p
-            class="mb-2 text-[16px] text-(--riv-card-ink)"
+            class="mb-2 text-[16px] text-riv-card-ink"
             data-testid="availability"
             aria-live="polite"
           >
             @if (totalCount()) {
-              <strong class="text-[19px] font-bold text-(--riv-accent-ink)">{{
-                freeCount()
-              }}</strong>
+              <strong class="text-[19px] font-bold text-riv-accent-ink">{{ freeCount() }}</strong>
               of {{ totalCount() }} sets free on {{ dateLabel() }}
             } @else {
               <!-- No date: a set count comes from the venue's layout, so no other day reads differently. -->
@@ -176,7 +172,7 @@
           @if (totalCount()) {
             <!-- Decorative: the count above already conveys this to AT. -->
             <div
-              class="h-2 rounded-full bg-(--riv-card-track) overflow-hidden"
+              class="h-2 rounded-full bg-riv-card-track overflow-hidden"
               data-testid="availability-bar"
               aria-hidden="true"
             >
@@ -199,7 +195,7 @@
         <!-- The legend leads the card (#701): the tourist decodes the colours BEFORE reading the tiles, so it is projected above the grid rather than trailing it. Swatches wear the SAME appMapTile appearance as the tiles they stand for AND sit on the wash's own first stop, so a translucent swatch composites over the same ground its tiles do — matching computed styles is not the same as looking alike. The canvas owns the band's vertical spacing. -->
         <ul
           canvasLegend
-          class="flex list-none flex-wrap items-center justify-center gap-x-[22px] gap-y-2 bg-(--riv-map-sea) px-4 py-[9px] text-[12px] text-(--riv-card-ink-soft)"
+          class="flex list-none flex-wrap items-center justify-center gap-x-[22px] gap-y-2 bg-riv-map-sea px-4 py-[9px] text-[12px] text-riv-card-ink-soft"
           aria-label="Legend"
         >
           @for (entry of legend; track entry.state) {
@@ -234,7 +230,7 @@
                   <button
                     appTouchTarget
                     type="button"
-                    class="set-button w-full h-full flex items-center justify-center border-0 rounded-[inherit] bg-transparent text-inherit cursor-pointer [transition:background_0.15s_ease,translate_0.12s_ease] hover:bg-(--riv-tile-hover) hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-[3px] focus-visible:outline-(--riv-tile-focus) focus-visible:outline-offset-2"
+                    class="set-button w-full h-full flex items-center justify-center border-0 rounded-[inherit] bg-transparent text-inherit cursor-pointer [transition:background_0.15s_ease,translate_0.12s_ease] hover:bg-riv-tile-hover hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-[3px] focus-visible:outline-riv-tile-focus focus-visible:outline-offset-2"
                     [attr.data-set-id]="tile.set.id"
                     [attr.aria-label]="tile.bookName"
                     (click)="select(tile.set)"
@@ -251,7 +247,7 @@
         <!-- The footer states the venue's own deal where the tap happens (#703): a REQUEST venue's tourist otherwise first meets the no-charge-until-accepted flow inside the dialog, after committing to a spot. -->
         <p
           canvasFooter
-          class="text-center text-[12px] text-(--riv-card-ink-faint) mt-2.5 tracking-[0.02em]"
+          class="text-center text-[12px] text-riv-card-ink-faint mt-2.5 tracking-[0.02em]"
         >
           @if (v.bookingMode === 'REQUEST') {
             Pick a set to request it — you pay only once {{ v.name }} accepts.<br />
@@ -262,12 +258,10 @@
         </p>
         <!-- Zero sets (#717): the canvas drops the legend, grid and footer together, so this slot IS the card. The state is date-independent — sets come from the venue's layout — so the copy sends the tourist onward, not back to the picker. -->
         <div canvasEmpty class="px-3 py-9 text-center" data-testid="map-empty">
-          <h2 class="mb-[7px] text-[19px] font-bold tracking-[-0.01em] text-(--riv-card-ink)">
+          <h2 class="mb-[7px] text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink">
             No sunbeds mapped yet
           </h2>
-          <p
-            class="mx-auto mb-5 max-w-[380px] text-[14.5px] leading-normal text-(--riv-card-ink-soft)"
-          >
+          <p class="mx-auto mb-5 max-w-[380px] text-[14.5px] leading-normal text-riv-card-ink-soft">
             This beach is listed on Riviera, but its owner hasn’t drawn the sunbed layout yet — so
             there’s nothing to book here on any date. The map appears as soon as it’s published.
           </p>
@@ -339,7 +333,7 @@
         <!-- The band's stand-in moves with the band (#704): same full-bleed geometry, same two heights, so the frame does not jump when the map lands (#744). -->
         <span
           appSkeletonBlock
-          class="bg-(--riv-track-bg) -mx-[22px] -mt-5 mb-[18px] block h-[150px] min-[1024px]:h-[264px]"
+          class="bg-riv-track-bg -mx-[22px] -mt-5 mb-[18px] block h-[150px] min-[1024px]:h-[264px]"
           data-testid="map-skeleton-band"
         ></span>
         <!-- Two-column at 1280px+ (#700), unconditionally — mirrors the loaded header's shape (#744). -->
@@ -349,19 +343,19 @@
           <div>
             <span
               appSkeletonBlock
-              class="bg-(--riv-track-bg) mb-[13px] block h-[25px] w-[124px] rounded-full"
+              class="bg-riv-track-bg mb-[13px] block h-[25px] w-[124px] rounded-full"
             ></span>
             <span
               appSkeletonBlock
-              class="bg-(--riv-track-bg) mb-[7px] block h-[clamp(33px,5.1vw,49px)] w-4/5 rounded-[10px]"
+              class="bg-riv-track-bg mb-[7px] block h-[clamp(33px,5.1vw,49px)] w-4/5 rounded-[10px]"
             ></span>
             <span
               appSkeletonBlock
-              class="bg-(--riv-track-bg) mb-[5px] block h-[22px] w-3/5 rounded-[6px]"
+              class="bg-riv-track-bg mb-[5px] block h-[22px] w-3/5 rounded-[6px]"
             ></span>
             <span
               appSkeletonBlock
-              class="bg-(--riv-track-bg) block h-[21px] w-2/5 rounded-[6px]"
+              class="bg-riv-track-bg block h-[21px] w-2/5 rounded-[6px]"
             ></span>
           </div>
           <div>
@@ -370,16 +364,16 @@
             >
               <span
                 appSkeletonBlock
-                class="bg-(--riv-track-bg) block h-[17px] w-[52px] rounded-[6px]"
+                class="bg-riv-track-bg block h-[17px] w-[52px] rounded-[6px]"
               ></span>
               <span
                 appSkeletonBlock
-                class="bg-(--riv-track-bg) block h-11 w-full rounded-[14px]"
+                class="bg-riv-track-bg block h-11 w-full rounded-[14px]"
               ></span>
             </span>
             <span
               appSkeletonBlock
-              class="bg-(--riv-track-bg) mt-2 block h-[18px] w-[62%] rounded-[6px]"
+              class="bg-riv-track-bg mt-2 block h-[18px] w-[62%] rounded-[6px]"
             ></span>
           </div>
         </div>
@@ -394,7 +388,7 @@
         <div class="pt-1 px-0.5">
           <span
             appSkeletonBlock
-            class="bg-(--riv-card-track) mb-2 block h-[28px] w-3/5 rounded-[6px]"
+            class="bg-riv-card-track mb-2 block h-[28px] w-3/5 rounded-[6px]"
           ></span>
         </div>
       </div>
@@ -415,7 +409,7 @@
             @for (tile of skeletonTiles; track tile) {
               <span
                 appSkeletonBlock
-                class="bg-(--riv-card-track) h-full min-w-0 rounded-[10px]"
+                class="bg-riv-card-track h-full min-w-0 rounded-[10px]"
                 data-testid="map-skeleton-tile"
               ></span>
             }

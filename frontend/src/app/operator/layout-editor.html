@@ -15,8 +15,8 @@
     <!-- The tool rail is always visible; only the content beside it changes with the armed tool. -->
     <div class="flex flex-col gap-3.5">
       <section appCardGlass class="rounded-[20px] px-[18px] py-4" data-testid="layout-tool-rail">
-        <h2 class="text-[15px] font-bold text-(--riv-card-ink)">Tools</h2>
-        <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)">
+        <h2 class="text-[15px] font-bold text-riv-card-ink">Tools</h2>
+        <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-riv-card-ink-soft">
           Arm Select to pick a set on the map, or a brush to paint tier, pool and aisles by click or
           drag.
         </p>
@@ -32,11 +32,11 @@
               [attr.aria-pressed]="tool.active"
               (click)="armTool(tool.key)"
               [attr.data-testid]="'layout-tool-' + tool.key"
-              class="flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-[13px] px-3 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) lg:w-full lg:shrink"
+              class="flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-[13px] px-3 py-2.5 text-[13.5px] font-semibold text-riv-card-ink lg:w-full lg:shrink"
               [class]="
                 tool.active
                   ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
-                  : 'border border-(--riv-card-border) bg-white/45'
+                  : 'border border-riv-card-border bg-white/45'
               "
             >
               @if (tool.key === 'select') {
@@ -54,7 +54,7 @@
               <span class="flex-1 text-left">{{ tool.label }}</span>
               @if (tool.count !== null) {
                 <span
-                  class="text-[11.5px] text-(--riv-card-ink-soft)"
+                  class="text-[11.5px] text-riv-card-ink-soft"
                   [attr.data-testid]="'layout-count-' + tool.key"
                   >{{ tool.count }}</span
                 >
@@ -63,16 +63,16 @@
           }
         </div>
 
-        <div class="my-3.5 h-px bg-(--riv-card-border)" aria-hidden="true"></div>
+        <div class="my-3.5 h-px bg-riv-card-border" aria-hidden="true"></div>
 
-        <h2 class="text-[15px] font-bold text-(--riv-card-ink)">Generate layout</h2>
-        <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)">
+        <h2 class="text-[15px] font-bold text-riv-card-ink">Generate layout</h2>
+        <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-riv-card-ink-soft">
           Creates the full grid in one go. Rows are labelled A–…, row A faces the sea.
         </p>
         <div class="flex gap-2.5">
           <label class="flex flex-1 flex-col gap-1.5">
             <span
-              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
               >Rows</span
             >
             <input
@@ -83,12 +83,12 @@
               [value]="genRows()"
               (input)="setRows($any($event.target).value)"
               data-testid="layout-gen-rows"
-              class="w-full rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[15px] text-(--riv-card-ink)"
+              class="w-full rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
             />
           </label>
           <label class="flex flex-1 flex-col gap-1.5">
             <span
-              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
               >Positions</span
             >
             <input
@@ -99,7 +99,7 @@
               [value]="genCols()"
               (input)="setCols($any($event.target).value)"
               data-testid="layout-gen-cols"
-              class="w-full rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[15px] text-(--riv-card-ink)"
+              class="w-full rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
             />
           </label>
         </div>
@@ -117,7 +117,7 @@
             Generate {{ genTotal() }} sets
           }
         </button>
-        <p class="mt-2.5 text-[11.5px] leading-[1.4] text-(--riv-card-ink-soft)">
+        <p class="mt-2.5 text-[11.5px] leading-[1.4] text-riv-card-ink-soft">
           Regenerating replaces the current layout. Row A is priced as front row automatically.
         </p>
 
@@ -138,8 +138,8 @@
 
       @if (mode() === 'bulk' && hasLayout()) {
         <section appCardGlass class="rounded-[20px] px-[18px] py-4">
-          <h2 class="text-[15px] font-bold text-(--riv-card-ink)">Row names</h2>
-          <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)">
+          <h2 class="text-[15px] font-bold text-riv-card-ink">Row names</h2>
+          <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-riv-card-ink-soft">
             What a row’s price chip says on the public map — “Under the pines”, “Back row”. Leave
             the letter to keep the automatic label. Renaming a saved row takes effect on its own,
             even when saving the whole layout is locked — guests already booked into that row see
@@ -150,7 +150,7 @@
               <div class="flex items-center gap-2">
                 <label class="flex min-w-0 flex-1 items-center gap-2">
                   <span
-                    class="w-6 shrink-0 text-center text-[11px] font-bold uppercase text-(--riv-card-ink-faint)"
+                    class="w-6 shrink-0 text-center text-[11px] font-bold uppercase text-riv-card-ink-faint"
                     >{{ rowCode(y) }}</span
                   >
                   <input
@@ -161,7 +161,7 @@
                     (input)="onRowNameInput(y, $any($event.target).value)"
                     [attr.aria-label]="'Row ' + rowCode(y) + ' name'"
                     data-testid="layout-row-name"
-                    class="w-full min-w-0 rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[14px] text-(--riv-card-ink)"
+                    class="w-full min-w-0 rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[14px] text-riv-card-ink"
                   />
                 </label>
                 @if (storedRowName(y); as stored) {
@@ -172,7 +172,7 @@
                     (click)="onRenameRow(y)"
                     [attr.aria-label]="'Save the name for row ' + stored"
                     data-testid="layout-row-name-save"
-                    class="shrink-0 rounded-[12px] border border-(--riv-card-border) px-[13px] py-[9px] text-[13px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-60 hover:bg-white/50 [transition:background_0.15s_ease]"
+                    class="shrink-0 rounded-[12px] border border-riv-card-border px-[13px] py-[9px] text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-60 hover:bg-white/50 [transition:background_0.15s_ease]"
                   >
                     {{ renamingRow() === y ? 'Saving…' : 'Save name' }}
                   </button>
@@ -180,7 +180,7 @@
               </div>
               @if (renamedRow() === y) {
                 <output
-                  class="ml-8 block text-[12.5px] font-semibold text-(--riv-card-ink-soft)"
+                  class="ml-8 block text-[12.5px] font-semibold text-riv-card-ink-soft"
                   data-testid="layout-row-name-saved"
                 >
                   Row name saved.
@@ -298,7 +298,7 @@
           </ng-template>
           <p
             canvasEmpty
-            class="px-3 py-10 text-center text-[13px] text-(--riv-card-ink-soft)"
+            class="px-3 py-10 text-center text-[13px] text-riv-card-ink-soft"
             data-testid="layout-empty"
           >
             Generate a layout to begin, then paint tiers, walk-in sets and aisles.
@@ -311,9 +311,9 @@
             appCardGlass
             class="flex flex-col gap-2.5 rounded-[16px] px-4 py-3 shadow-[0_10px_30px_rgba(12,42,51,0.25)] sm:flex-row sm:items-center sm:justify-between"
           >
-            <div class="flex min-w-0 flex-col gap-0.5 text-[12px] text-(--riv-card-ink-soft)">
+            <div class="flex min-w-0 flex-col gap-0.5 text-[12px] text-riv-card-ink-soft">
               <span
-                class="text-[13px] font-bold text-(--riv-card-ink)"
+                class="text-[13px] font-bold text-riv-card-ink"
                 data-testid="layout-dirty-count"
               >
                 @if (isDirty()) {
@@ -336,7 +336,7 @@
                 [disabled]="!isDirty()"
                 [appBusy]="saving()"
                 data-testid="layout-discard"
-                class="rounded-[14px] border border-(--riv-card-border) bg-white/45 px-4 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) disabled:opacity-50 aria-disabled:opacity-50"
+                class="rounded-[14px] border border-riv-card-border bg-white/45 px-4 py-2.5 text-[13.5px] font-semibold text-riv-card-ink disabled:opacity-50 aria-disabled:opacity-50"
               >
                 Discard
               </button>

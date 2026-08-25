@@ -37,7 +37,7 @@ const CARD_SURFACE =
   'rounded-[28px] shadow-[0_18px_50px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[30px] backdrop-saturate-[1.8]';
 const SUM_ROW = 'flex items-baseline justify-between gap-3 text-[14px]';
 const LINK =
-  'text-[14px] font-semibold text-(--riv-accent-ink) focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)';
+  'text-[14px] font-semibold text-riv-accent-ink focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink';
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
@@ -45,13 +45,13 @@ const CLS = {
   card: `${CARD_SURFACE} min-h-[340px] px-[26px] pt-[26px] pb-6`,
   aside: `${CARD_SURFACE} px-[26px] pt-[26px] pb-6 min-[720px]:sticky min-[720px]:top-[88px]`,
   h1: 'mb-1 text-[23px] font-bold tracking-[-0.02em]',
-  lead: 'mb-[18px] text-[14px] leading-[1.5] text-(--riv-card-ink-soft)',
-  sumRow: `${SUM_ROW} border-b border-(--riv-card-track) py-[9px]`,
-  sumRowFirst: `${SUM_ROW} border-b border-(--riv-card-track) pt-0 pb-[9px]`,
+  lead: 'mb-[18px] text-[14px] leading-[1.5] text-riv-card-ink-soft',
+  sumRow: `${SUM_ROW} border-b border-riv-card-track py-[9px]`,
+  sumRowFirst: `${SUM_ROW} border-b border-riv-card-track pt-0 pb-[9px]`,
   sumRowTotal: `${SUM_ROW} pt-[13px] pb-[9px]`,
-  sumDt: 'text-(--riv-card-ink-soft)',
+  sumDt: 'text-riv-card-ink-soft',
   sumDd: 'text-right font-bold',
-  sumTotalDd: 'text-right text-[22px] font-bold tracking-[-0.02em] text-(--riv-accent-ink)',
+  sumTotalDd: 'text-right text-[22px] font-bold tracking-[-0.02em] text-riv-accent-ink',
   cardLink: `${LINK} mt-3 block min-h-11`,
   inlineLink: `${LINK} mt-3 inline-flex min-h-11 items-center`,
 } as const;
@@ -152,14 +152,14 @@ const CLS = {
         </dl>
 
         <p
-          class="my-[18px] rounded-[18px] border border-dashed border-(--riv-field-border) bg-(--riv-inset-fill) p-[15px]"
+          class="my-[18px] rounded-[18px] border border-dashed border-riv-field-border bg-riv-inset-fill p-[15px]"
           data-testid="booking-code"
         >
-          <span class="block text-[11px] tracking-[0.16em] uppercase text-(--riv-card-ink-soft)"
+          <span class="block text-[11px] tracking-[0.16em] uppercase text-riv-card-ink-soft"
             >Booking code</span
           >
           <strong
-            class="mt-[5px] block text-[26px] font-bold tracking-[0.12em] text-(--riv-accent-ink)"
+            class="mt-[5px] block text-[26px] font-bold tracking-[0.12em] text-riv-accent-ink"
             >{{ code }}</strong
           >
         </p>
@@ -180,7 +180,7 @@ const CLS = {
           <!-- Dark header-glass pill: white ink clears AA over any gradient stop (bare-gradient chips would not). -->
           <a
             routerLink="/"
-            class="mb-3.5 inline-flex min-h-11 items-center rounded-full px-4 py-2 text-[13px] font-semibold text-(--riv-ink) focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
+            class="mb-3.5 inline-flex min-h-11 items-center rounded-full px-4 py-2 text-[13px] font-semibold text-riv-ink focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
             appPanelGlass
             data-testid="pay-cancel"
             >Cancel</a
@@ -231,19 +231,19 @@ const CLS = {
                  iframe survives a retry; hidden (not removed) once the card step is done. -->
             <div
               #peHost
-              class="min-h-[120px] rounded-[18px] border border-(--riv-card-track) bg-[rgba(255,255,255,0.7)] p-4"
+              class="min-h-[120px] rounded-[18px] border border-riv-card-track bg-[rgba(255,255,255,0.7)] p-4"
               [hidden]="!showElement()"
               data-testid="pe-host"
             ></div>
 
             @if (showElement()) {
-              <p class="mt-3 flex items-center gap-1.5 text-[11.5px] text-(--riv-card-ink-faint)">
+              <p class="mt-3 flex items-center gap-1.5 text-[11.5px] text-riv-card-ink-faint">
                 <span aria-hidden="true">🔒</span> Encrypted &amp; PCI-compliant · powered by Stripe
               </p>
             }
 
             @if (state() === 'mounting') {
-              <p class="mt-3 text-[13.5px] text-(--riv-card-ink-soft)">
+              <p class="mt-3 text-[13.5px] text-riv-card-ink-soft">
                 Loading the secure payment form…
               </p>
             }
@@ -274,7 +274,7 @@ const CLS = {
 
           <aside [class]="cls.aside" appCardGlass>
             <span
-              class="mb-3 block text-[11px] font-bold tracking-[0.12em] uppercase text-(--riv-card-ink-soft)"
+              class="mb-3 block text-[11px] font-bold tracking-[0.12em] uppercase text-riv-card-ink-soft"
               >Order summary</span
             >
             <dl>
@@ -309,12 +309,12 @@ const CLS = {
               <p
                 appLegalConsent
                 lead="By paying"
-                class="mt-[10px] text-[12px] leading-[1.5] text-(--riv-card-ink-soft)"
+                class="mt-[10px] text-[12px] leading-[1.5] text-riv-card-ink-soft"
               ></p>
               <button
                 appTouchTarget
                 type="button"
-                class="mt-4 block w-full cursor-pointer rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-[15px] text-center text-[15px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) disabled:cursor-default disabled:opacity-70 motion-reduce:transition-none"
+                class="mt-4 block w-full cursor-pointer rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-[15px] text-center text-[15px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink disabled:cursor-default disabled:opacity-70 motion-reduce:transition-none"
                 (click)="pay()"
                 [appBusy]="paying()"
                 data-testid="pay-button"
@@ -324,7 +324,7 @@ const CLS = {
             }
             @if (state() === 'processing') {
               <p
-                class="mt-3.5 text-center text-[13px] font-semibold text-(--riv-accent-ink)"
+                class="mt-3.5 text-center text-[13px] font-semibold text-riv-accent-ink"
                 role="status"
               >
                 Finalising… hang tight.
@@ -335,7 +335,7 @@ const CLS = {
       </section>
     }
   `,
-  host: { class: 'block text-(--riv-card-ink)' },
+  host: { class: 'block text-riv-card-ink' },
 })
 export class BookingPay {
   protected readonly cls = CLS;

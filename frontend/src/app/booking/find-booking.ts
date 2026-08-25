@@ -21,16 +21,16 @@ import { TouchTarget } from '../shared/touch-target';
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
   panel:
-    'relative w-full max-w-[390px] rounded-[30px] border border-(--riv-card-border) bg-(--riv-dialog-glass) px-6.5 pt-7 pb-6 text-(--riv-card-ink) shadow-[0_40px_90px_rgba(6,30,40,0.5),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-[34px] backdrop-saturate-[1.8] [animation:riv-pop_0.26s_cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:[animation:none]',
+    'relative w-full max-w-[390px] rounded-[30px] border border-riv-card-border bg-riv-dialog-glass px-6.5 pt-7 pb-6 text-riv-card-ink shadow-[0_40px_90px_rgba(6,30,40,0.5),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-[34px] backdrop-saturate-[1.8] [animation:riv-pop_0.26s_cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:[animation:none]',
   close:
-    'absolute top-4 right-4 flex size-[30px] cursor-pointer items-center justify-center rounded-full border border-(--riv-card-border) bg-(--riv-wash-fill) text-[14px] leading-none text-(--riv-card-ink-soft) motion-safe:[transition:background_0.15s_ease] hover:bg-(--riv-wash-hover) focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)',
-  title: 'm-0 mb-1.25 text-[23px] font-bold tracking-[-0.02em] text-(--riv-card-ink)',
-  intro: 'm-0 mb-4.5 text-[13.5px] leading-[1.5] text-(--riv-card-ink-soft)',
+    'absolute top-4 right-4 flex size-[30px] cursor-pointer items-center justify-center rounded-full border border-riv-card-border bg-riv-wash-fill text-[14px] leading-none text-riv-card-ink-soft motion-safe:[transition:background_0.15s_ease] hover:bg-riv-wash-hover focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
+  title: 'm-0 mb-1.25 text-[23px] font-bold tracking-[-0.02em] text-riv-card-ink',
+  intro: 'm-0 mb-4.5 text-[13.5px] leading-[1.5] text-riv-card-ink-soft',
   field: 'flex flex-col gap-1.5',
-  label: 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--riv-card-ink-soft)',
+  label: 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-soft',
   input:
-    'font-[inherit] text-[18px] font-bold tracking-[0.1em] uppercase text-(--riv-card-ink) bg-(--riv-field-fill) border border-(--riv-field-border) rounded-[14px] px-[15px] py-[13px] placeholder:font-semibold placeholder:text-(--riv-card-ink-soft) focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-(--riv-accent-ink)',
-  error: 'mt-2.5 text-[13px] font-semibold text-(--riv-error-ink)',
+    'font-[inherit] text-[18px] font-bold tracking-[0.1em] uppercase text-riv-card-ink bg-riv-field-fill border border-riv-field-border rounded-[14px] px-[15px] py-[13px] placeholder:font-semibold placeholder:text-riv-card-ink-soft focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink',
+  error: 'mt-2.5 text-[13px] font-semibold text-riv-error-ink',
   submit:
     'mt-4 w-full p-[13px] rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) text-white font-[inherit] font-bold text-[15px] cursor-pointer shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] motion-safe:[transition:filter_0.15s_ease] motion-reduce:transition-none aria-disabled:cursor-default aria-disabled:opacity-70 hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white',
 } as const;
@@ -83,7 +83,7 @@ const CLS = {
       <h2 id="find-title" [class]="cls.title">Find your booking</h2>
       <p id="find-intro" [class]="cls.intro">
         Booked on another device or by a friend? Enter your booking code to open it here. It looks
-        like <strong class="text-(--riv-card-ink)">K4TQ7M9PX2</strong> and is on your confirmation
+        like <strong class="text-riv-card-ink">K4TQ7M9PX2</strong> and is on your confirmation
         email.
       </p>
 

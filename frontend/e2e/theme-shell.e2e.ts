@@ -46,6 +46,33 @@ test.describe('theme persistence', () => {
   });
 });
 
+test.describe('hero scrim token', () => {
+  test.use({ colorScheme: 'dark' });
+
+  // The real-browser half of home.contrast.spec.ts's scrim maths (--riv-hero-scrim, tailwind.css).
+  test('paints the hero in riviera only, none in porcelain and dark', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
+    const heroBg = () =>
+      page.locator('.hero').evaluate((hero) => getComputedStyle(hero).backgroundImage);
+
+    expect(await heroBg()).toBe('none');
+
+    await page.getByTestId('theme-toggle').click();
+    await page.getByTestId('theme-option-riviera').click();
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
+    const rivieraBg = await heroBg();
+    expect(rivieraBg).toContain('linear-gradient');
+    expect(rivieraBg).toContain('rgba(8, 38, 52, 0.72) 34px');
+    expect(rivieraBg).toContain('calc(100% - 40px)');
+
+    await page.getByTestId('theme-toggle').click();
+    await page.getByTestId('theme-option-porcelain').click();
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
+    expect(await heroBg()).toBe('none');
+  });
+});
+
 test.describe('per-theme color-scheme (#675)', () => {
   // Pin the OS scheme to dark so the boot theme is the dark theme (headless defaults to light).
   test.use({ colorScheme: 'dark' });

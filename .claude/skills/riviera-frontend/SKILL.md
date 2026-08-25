@@ -128,7 +128,7 @@ The only place providers are wired:
 ## Theming & design tokens (Liquid Glass, epic #133)
 
 - **Themes are CSS custom properties** (`--riv-*`) scoped by `data-riv-theme` on
-  `<html>`, declared per theme in `src/styles.scss`. At runtime the **document-level**
+  `<html>`, declared per theme in `src/tailwind.css`. At runtime the **document-level**
   attribute is written **only** by `core/theme.ts` (`ThemeService`: signal +
   localStorage + `prefers-color-scheme` fallback — followed live on OS flips when
   no choice is stored; the theme registry lives there as data). The one non-runtime
@@ -143,8 +143,10 @@ The only place providers are wired:
   choice is preserved. Local pinning like this is fine; writing the **document**
   attribute stays `ThemeService`-only.
 - **The token registry lives in two places, and only two**: a palette change is
-  one CSS block in `styles.scss` + one registry row in `core/theme.ts`, zero
-  component edits. The theme set is three — `porcelain` (light, the default and
+  one CSS block in `tailwind.css` + one registry row in `core/theme.ts`, zero
+  component edits. A **new** token additionally gets a `@theme inline` mapping in
+  the same `tailwind.css`, which is what makes it a first-class utility
+  (`bg-riv-…`/`text-riv-…`). The theme set is three — `porcelain` (light, the default and
   the `:root` base block), `riviera` (branded dark teal, switcher-only), and
   `dark` (neutral slate, the OS-dark resolution) — widened from the original
   fixed-at-two decision (#143) by the theme restructure. Restyle slices add

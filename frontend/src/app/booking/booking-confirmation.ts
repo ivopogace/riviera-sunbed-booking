@@ -13,7 +13,7 @@ import { BookingService } from './booking.service';
 const CLS = {
   card: 'mx-auto my-8 max-w-[400px] rounded-[30px] px-[30px] pt-9 pb-[30px] text-center shadow-[0_18px_50px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[30px] backdrop-saturate-[1.8]',
   h1: 'mb-2 text-[30px] font-bold tracking-[-0.02em]',
-  lead: 'mb-[18px] text-[15px] leading-[1.45] text-(--riv-card-ink-soft)',
+  lead: 'mb-[18px] text-[15px] leading-[1.45] text-riv-card-ink-soft',
 } as const;
 
 /**
@@ -52,33 +52,33 @@ const CLS = {
           class="mb-3.5 rounded-[18px] border border-[rgba(255,255,255,0.6)] bg-[rgba(255,255,255,0.4)] px-4 py-3.5 text-left"
         >
           <div class="flex items-center justify-between gap-3 py-[5px] text-[13.5px]">
-            <dt class="text-(--riv-card-ink-soft)">Includes</dt>
+            <dt class="text-riv-card-ink-soft">Includes</dt>
             <dd class="font-semibold">2 loungers + umbrella · full day</dd>
           </div>
           <div
-            class="mt-[5px] flex items-center justify-between gap-3 border-t border-(--riv-card-track) pt-[7px] pb-[5px] text-[13.5px]"
+            class="mt-[5px] flex items-center justify-between gap-3 border-t border-riv-card-track pt-[7px] pb-[5px] text-[13.5px]"
           >
-            <dt class="text-(--riv-card-ink-soft)">Paid</dt>
-            <dd class="text-[16px] font-bold text-(--riv-accent-ink)">
+            <dt class="text-riv-card-ink-soft">Paid</dt>
+            <dd class="text-[16px] font-bold text-riv-accent-ink">
               {{ formatMoney(c.amount) }}
             </dd>
           </div>
         </dl>
 
         <div
-          class="mb-5 rounded-[18px] border border-dashed border-(--riv-field-border) bg-(--riv-inset-fill) p-[15px]"
+          class="mb-5 rounded-[18px] border border-dashed border-riv-field-border bg-riv-inset-fill p-[15px]"
           data-testid="booking-code"
         >
-          <span class="block text-[11px] tracking-[0.16em] uppercase text-(--riv-card-ink-soft)"
+          <span class="block text-[11px] tracking-[0.16em] uppercase text-riv-card-ink-soft"
             >Booking code</span
           >
-          <div class="mt-[5px] text-[27px] font-bold tracking-[0.12em] text-(--riv-accent-ink)">
+          <div class="mt-[5px] text-[27px] font-bold tracking-[0.12em] text-riv-accent-ink">
             {{ c.code }}
           </div>
           <div class="mt-3 flex justify-center">
             <app-booking-qr [code]="c.code" />
           </div>
-          <p class="mt-2 text-[12px] leading-[1.4] text-(--riv-card-ink-soft)">
+          <p class="mt-2 text-[12px] leading-[1.4] text-riv-card-ink-soft">
             Show this code to staff when you arrive.
             @if (!c.emailWithheld) {
               <span>We’ve also emailed it to you.</span>
@@ -91,7 +91,7 @@ const CLS = {
 
         <a
           routerLink="/"
-          class="block w-full rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-3.5 text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)"
+          class="block w-full rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-3.5 text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
           >Back to the beach</a
         >
         <app-manage-booking-link [code]="c.code" variant="link" />
@@ -102,7 +102,7 @@ const CLS = {
         <p [class]="cls.lead">Your booking details aren’t available here anymore.</p>
         <a
           routerLink="/"
-          class="mt-3 inline-block text-[14.5px] font-semibold text-(--riv-accent-ink) focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)"
+          class="mt-3 inline-block text-[14.5px] font-semibold text-riv-accent-ink focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
           >Start a new booking</a
         >
       </section>

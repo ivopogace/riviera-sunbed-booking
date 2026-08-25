@@ -509,7 +509,7 @@ describe('VenueMap', () => {
     flushVenue();
     await fixture.whenStable();
     // The unit host in `map-tile.spec.ts` cannot see this: it pins the directive against itself.
-    const paints = /^(bg-|text-\(--riv-tile|border-\(--riv-tile|border-dashed)/;
+    const paints = /^(bg-|text-riv-tile|border-riv-tile|border-dashed)/;
     for (const tile of el().querySelectorAll('.set-tile')) {
       const state = tile.getAttribute('data-state')!;
       const own = [...tile.classList].filter((token) => paints.test(token));
@@ -932,7 +932,7 @@ describe('VenueMap', () => {
     expect(note.textContent).toContain('sales close at');
     expect(note.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
     // Class pin (jsdom computes no Tailwind): the map keeps the bare header-glass ink.
-    expect(note.classList.contains('text-(--riv-ink-faint)')).toBe(true);
+    expect(note.classList.contains('text-riv-ink-faint')).toBe(true);
     // The floor the note explains, as the picker now expresses it: tomorrow is offered, today is not.
     await openPicker();
     const floor = defaultBookingDate(new Date());
@@ -945,8 +945,8 @@ describe('VenueMap', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     // Light in riviera/porcelain, slate in dark — --riv-field-solid decides per theme now.
-    expect(dateTrigger().classList.contains('bg-(--riv-field-solid)')).toBe(true);
-    expect(dateTrigger().classList.contains('text-(--riv-card-ink)')).toBe(true);
+    expect(dateTrigger().classList.contains('bg-riv-field-solid')).toBe(true);
+    expect(dateTrigger().classList.contains('text-riv-card-ink')).toBe(true);
   });
 
   it('opens the booking dialog when a free set is activated, and closes it on dismiss', async () => {

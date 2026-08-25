@@ -29,7 +29,7 @@ import {
  * zero-set empty state introduces no colour: its heading is `--riv-card-ink` and its copy
  * `--riv-card-ink-soft`, both already proven on this card glass, and its link is white on the
  * `--riv-cta-grad` stops the sibling operator CTAs prove. Values
- * mirror the template + `styles.scss`; a token edit there must re-pass here.
+ * mirror the template + `tailwind.css`; a token edit there must re-pass here.
  */
 
 // The FREE tile fill (`bg-white/85`, daily-view-tab.ts tileClass).

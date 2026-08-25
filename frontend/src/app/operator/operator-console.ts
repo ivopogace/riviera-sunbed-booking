@@ -70,8 +70,7 @@ interface ConsoleTab {
   templateUrl: './operator-console.html',
   host: {
     'data-riv-theme': 'porcelain',
-    class:
-      'block min-h-full bg-(image:--riv-bg) text-(--riv-ink) [font-family:var(--riv-font),sans-serif]',
+    class: 'block min-h-full bg-(image:--riv-bg) text-riv-ink font-riv',
   },
 })
 export class OperatorConsole {

@@ -60,14 +60,14 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[860px] px-4 py-10" aria-labelledby="admin-photos-title">
-      <h1 id="admin-photos-title" class="text-[24px] font-semibold text-(--riv-ink)">Photos</h1>
+      <h1 id="admin-photos-title" class="text-[24px] font-semibold text-riv-ink">Photos</h1>
 
       @if (auth.restoring()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-photos-restoring">
+        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-photos-restoring">
           Loading…
         </p>
       } @else if (!auth.signedIn()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-photos-signed-out">
+        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-photos-signed-out">
           Sign in as an admin to moderate venue photos.
           <a
             routerLink="/account/sign-in"
@@ -81,7 +81,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
       } @else {
         <app-admin-console-tabs label="Admin console sections" />
 
-        <p class="mt-5 max-w-[62ch] text-[15px] text-(--riv-ink-soft)">
+        <p class="mt-5 max-w-[62ch] text-[15px] text-riv-ink-soft">
           Removing a photo is immediate and permanent — that slot's image and every stored size are
           deleted. It removes one <strong>slot</strong>, not one picture: the same image published
           in another slot keeps serving from there, so each published slot is its own removal.
@@ -90,7 +90,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
         <div class="mt-5">
           <label
             for="admin-photos-venue-select"
-            class="block text-[13.5px] font-semibold text-(--riv-ink)"
+            class="block text-[13.5px] font-semibold text-riv-ink"
             >Venue</label
           >
           <select
@@ -99,7 +99,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
             data-testid="admin-photos-venue"
             [value]="selectedVenueId() ?? ''"
             (change)="onVenuePicked($event)"
-            class="mt-1 w-full max-w-[420px] rounded-[10px] border border-(--riv-field-border) bg-white/70 px-3 py-2 text-[15px] text-(--riv-ink)"
+            class="mt-1 w-full max-w-[420px] rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[15px] text-riv-ink"
           >
             <option value="">Choose a venue…</option>
             @for (venue of venues(); track venue.id) {
@@ -109,7 +109,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
         </div>
 
         @if (loading()) {
-          <p class="mt-6 text-[15px] text-(--riv-ink-soft)" data-testid="admin-photos-loading">
+          <p class="mt-6 text-[15px] text-riv-ink-soft" data-testid="admin-photos-loading">
             Loading…
           </p>
         } @else if (loadError()) {
@@ -134,7 +134,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
                 tabindex="-1"
                 [attr.data-testid]="'admin-photo-slot-' + slot.slot"
               >
-                <h2 class="text-[15px] font-semibold text-(--riv-card-ink)">
+                <h2 class="text-[15px] font-semibold text-riv-card-ink">
                   {{ label(slot.slot) }}
                 </h2>
 
@@ -175,14 +175,14 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
                       [attr.data-testid]="'admin-photo-remove-' + slot.slot"
                       [appBusy]="busy()"
                       (click)="askToRemove(slot.slot)"
-                      class="mt-3 rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                      class="mt-3 rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
                     >
                       Remove {{ label(slot.slot) }} photo
                     </button>
                   }
                 } @else {
                   <p
-                    class="mt-2 flex aspect-[3/2] w-full items-center justify-center rounded-[10px] border border-dashed border-(--riv-field-border) text-[14px] text-(--riv-card-ink-soft)"
+                    class="mt-2 flex aspect-[3/2] w-full items-center justify-center rounded-[10px] border border-dashed border-riv-field-border text-[14px] text-riv-card-ink-soft"
                     [attr.data-testid]="'admin-photo-empty-' + slot.slot"
                   >
                     No photo
@@ -194,7 +194,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
         }
 
         <p
-          class="mt-4 min-h-[1.5rem] text-[15px] text-(--riv-ink-soft)"
+          class="mt-4 min-h-[1.5rem] text-[15px] text-riv-ink-soft"
           role="status"
           aria-live="polite"
           tabindex="-1"

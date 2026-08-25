@@ -81,9 +81,8 @@ interface VenueCard {
     TouchTarget,
     ...FAILURE_DIRECTIVES,
   ],
-  host: { class: 'block text-(--riv-card-ink)' },
+  host: { class: 'block text-riv-card-ink' },
   templateUrl: './home.html',
-  styleUrl: './home.scss',
 })
 export class Home {
   private readonly venueService = inject(VenueService);

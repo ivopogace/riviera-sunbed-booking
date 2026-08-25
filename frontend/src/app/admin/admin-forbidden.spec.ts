@@ -28,6 +28,6 @@ describe('AdminForbidden', () => {
     const p = note();
 
     expect(p.tagName).toBe('P');
-    expect(p.classList.contains('text-(--riv-ink-soft)')).toBe(true);
+    expect(p.classList.contains('text-riv-ink-soft')).toBe(true);
   });
 });
