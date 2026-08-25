@@ -26,7 +26,7 @@ import {
  * floats over a dark scrim + the theme background, so every pair is the EFFECTIVE colour: the panel
  * glass composited over the theme's worst-case gradient stops, then each ink composited over that
  * (the booking-dialog.contrast.spec.ts pattern). This table mirrors every text-bearing token in
- * find-booking.scss.
+ * find-booking.ts's `CLS` recipe.
  *
  * Deviations from the design file, on purpose (cloned from booking-dialog): the panel is
  * white 0.82 (design 0.78) so dark inks clear AA over the darkest stop; the input border is the dark

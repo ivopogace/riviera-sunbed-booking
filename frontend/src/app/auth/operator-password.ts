@@ -42,7 +42,8 @@ const CLS = {
  * only one of its five blocks concerns passwords — email verification, the SSO "leave blank" affordance
  * and right-to-erasure all fail to apply to an operator (an operator is a business counterparty with
  * payout records, not a data subject). Merging would have wrapped most of it in an audience conditional.
- * What is genuinely shared — `CardGlass`, `auth.scss`, the password-policy constants — is shared.
+ * What is genuinely shared — `CardGlass`, the auth-card Tailwind recipe, the password-policy
+ * constants — is shared.
  *
  * <p>No signed-out branch: `operatorSessionGuard` awaits the session restore and redirects
  * before this component renders. Both fields are always required — operators have no SSO, so there is no
