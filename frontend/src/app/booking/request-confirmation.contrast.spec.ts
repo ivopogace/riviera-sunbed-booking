@@ -14,7 +14,8 @@ import {
 /**
  * WCAG-AA contrast guard for the Liquid Glass "Request sent" card. A centered card-glass surface on the bare themed gradient — every pair is the EFFECTIVE
  * colour composited over the theme's worst-case stops (the venue-map pattern). Mirrors
- * request-confirmation.scss (the amber info box text is card ink-soft, covered below). The ✉ badge
+ * request-confirmation.ts's `CLS` recipe (the amber info box text is card ink-soft, covered
+ * below). The ✉ badge
  * is decorative (aria-hidden) — 1.4.11-exempt.
  */
 
