@@ -164,7 +164,13 @@ Vary by theme in this order of preference:
    arbitrary form `bg-(image:--riv-*)`, and a raw `var(--riv-*)` remains right inside a
    composite arbitrary value (a `color-mix(…)` ring, a hand-built gradient). Reach for a
    token first; add one if none fits — declared per theme AND mapped in `@theme inline`
-   (where tokens are declared per theme is `riviera-frontend`'s theming section).
+   (where tokens are declared per theme is `riviera-frontend`'s theming section). This is
+   Tailwind's own documented multi-theme pattern (docs: Colors § "Referencing other
+   variables" — plain vars per `:root`/attribute scope, mapped via `@theme inline`;
+   `inline` is what keeps the utility emitting `var(--riv-*)` so per-scope overrides and
+   the porcelain subtree pinning still resolve). The `dark:`-variant approach the dark-mode
+   docs page shows is deliberately NOT used here — it names a theme in the component,
+   which the theme-agnostic rule above forbids, and it cannot express three themes.
 2. **`:host-context([data-riv-theme='riviera'])` is the escape hatch.** Only when a whole
    background *treatment* differs — not just a token value — does a component branch on the
    theme. The one precedent is the home-hero **scrim** (`home.scss`): a borderless feathered
