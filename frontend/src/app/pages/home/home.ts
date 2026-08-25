@@ -83,7 +83,6 @@ interface VenueCard {
   ],
   host: { class: 'block text-riv-card-ink' },
   templateUrl: './home.html',
-  styleUrl: './home.scss',
 })
 export class Home {
   private readonly venueService = inject(VenueService);
