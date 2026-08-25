@@ -6,8 +6,9 @@
  * attribute is written only by core/theme.ts; the index.html inline seed pre-paints the same
  * value before Angular boots (drift-pinned by theme-boot.spec.ts). Components consume tokens,
  * never palette literals; a palette change is one block here + one row in core/theme.ts. The set
- * is fixed at these two — one dark, one light — the full set by deliberate decision, not planned
- * to grow.
+ * is three: porcelain (light, the default and the base block below), riviera (the branded dark
+ * teal), and dark (neutral slate, the OS-dark default) — widened from the original fixed-at-two
+ * decision (#143) by the theme restructure.
  *
  * Deviation from the design file, on purpose: the riviera header glass is a DARK tint
  * (design: white 0.13) because white ink on the gradient's light top stops fails WCAG AA;
@@ -15,47 +16,46 @@
  */
 
 :root,
-[data-riv-theme='riviera'] {
-  /* Native UI follows the dark palette; light-styled fields opt back out via `scheme-light` */
-  color-scheme: dark;
+[data-riv-theme='porcelain'] {
+  /* the attribute selector also matches porcelain-pinned subtree hosts, keeping them light */
+  color-scheme: light;
 
   --riv-font:
     -apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
 
   --riv-bg:
-    radial-gradient(110% 70% at 8% 2%, #93e6f2 0%, rgba(147, 230, 242, 0) 52%),
-    radial-gradient(100% 80% at 94% 0%, #ffe2b0 0%, rgba(255, 226, 176, 0) 44%),
-    radial-gradient(130% 120% at 80% 106%, #0a5e93 0%, rgba(10, 94, 147, 0) 58%),
-    linear-gradient(165deg, #38b6d2 0%, #0f7f94 46%, #0a4f6e 100%);
-  --riv-blob-1: radial-gradient(circle, #ffd896 0%, rgba(255, 216, 150, 0) 70%);
-  --riv-blob-2: radial-gradient(circle, #52d7ec 0%, rgba(82, 215, 236, 0) 70%);
+    radial-gradient(110% 70% at 8% 2%, #ffffff 0%, rgba(255, 255, 255, 0) 54%),
+    radial-gradient(100% 80% at 94% 0%, #eef6f8 0%, rgba(238, 246, 248, 0) 46%),
+    radial-gradient(130% 120% at 80% 106%, #cfeaf2 0%, rgba(207, 234, 242, 0) 60%),
+    linear-gradient(165deg, #fbfdfe 0%, #eef5f7 50%, #dfeef2 100%);
+  --riv-blob-1: radial-gradient(circle, #ffffff 0%, rgba(255, 255, 255, 0) 70%);
+  --riv-blob-2: radial-gradient(circle, #bfe6f0 0%, rgba(191, 230, 240, 0) 70%);
 
-  --riv-ink: #ffffff;
-  --riv-ink-soft: rgba(255, 255, 255, 0.86);
-  /* 0.8 (design: 0.72): worst-case header stop #ffe2b0 needs ≥4.5:1 (app.contrast.spec.ts) */
-  --riv-ink-faint: rgba(255, 255, 255, 0.8);
-  --riv-chip-bg: rgba(255, 255, 255, 0.16);
-  --riv-chip-border: rgba(255, 255, 255, 0.3);
-  --riv-hero-shadow: 0 2px 36px rgba(6, 40, 55, 0.32);
-  --riv-track-bg: rgba(255, 255, 255, 0.25);
+  --riv-ink: #0a2a33;
+  --riv-ink-soft: rgba(12, 42, 51, 0.7);
+  /* 0.66 (design: 0.5): AA on the porcelain header glass (app.contrast.spec.ts) */
+  --riv-ink-faint: rgba(12, 42, 51, 0.66);
+  --riv-chip-bg: rgba(12, 42, 51, 0.05);
+  --riv-chip-border: rgba(12, 42, 51, 0.14);
+  --riv-hero-shadow: none;
+  --riv-track-bg: rgba(12, 42, 51, 0.12);
 
-  /* dark glass (see header note above): #0a2c3f at 72% over the lightest bg stop still ≥ AA vs white ink */
-  --riv-header-glass: rgba(10, 44, 63, 0.72);
-  --riv-header-border: rgba(255, 255, 255, 0.22);
+  --riv-header-glass: rgba(255, 255, 255, 0.6);
+  --riv-header-border: rgba(255, 255, 255, 0.7);
 
-  /* CTA buttons carry white body-size text, so both stops must clear AA (4.5:1). The design's
-     brighter #2bb8d4→#0e8aa8 only reaches 2.4–4.0:1 white; darkened for AA (pinned by the
-     CTA_STOPS case in home.contrast.spec.ts). --riv-bar-grad stays bright — it's the availability
-     fill, decorative, text-free. */
+  /** CTA buttons carry white body-size text, so both stops must clear AA (4.5:1). The design's
+      brighter #2bb8d4→#0e8aa8 only reaches 2.4–4.0:1 white; darkened for AA (pinned by the
+      CTA_STOPS case in home.contrast.spec.ts). --riv-bar-grad stays bright — it's the availability
+      fill, decorative, text-free. Theme-invariant: the dark blocks below inherit both. */
   --riv-cta-grad: linear-gradient(180deg, #0c7288, #0a5f74);
   --riv-bar-grad: linear-gradient(90deg, #2bb8d4, #0e8aa8);
 
   /** Card surfaces (consumed by the glass panels/cards). Declared in
-      this :root block, so they are theme-invariant unless a theme block overrides them
-      (porcelain overrides only --riv-card-glass).
-      0.78 (design: 0.55): the darkest riviera stop needs the extra opacity for the dark
-      card inks to reach AA — see home.contrast.spec.ts. */
-  --riv-card-glass: rgba(255, 255, 255, 0.78);
+      this base block, so they are theme-invariant unless a theme block overrides them
+      (riviera and dark override only --riv-card-glass).
+      0.55 matches the design: porcelain's light stops let the dark card inks reach AA at the
+      design's airier alpha — see home.contrast.spec.ts. */
+  --riv-card-glass: rgba(255, 255, 255, 0.55);
   --riv-card-border: rgba(255, 255, 255, 0.6);
   --riv-card-ink: #0a2a33;
   /* 0.78 / 0.72 (tourist design: 0.7 / 0.55): AA over the composited card glass (home.contrast.spec.ts) */
@@ -102,39 +102,66 @@
   --riv-mode-chip-glass: rgba(255, 255, 255, 0.85);
 }
 
-[data-riv-theme='porcelain'] {
-  /* the attribute selector also matches porcelain-pinned subtree hosts, keeping them light */
-  color-scheme: light;
+[data-riv-theme='riviera'] {
+  /* Native UI follows the dark palette; light-styled fields opt back out via `scheme-light` */
+  color-scheme: dark;
 
   --riv-bg:
-    radial-gradient(110% 70% at 8% 2%, #ffffff 0%, rgba(255, 255, 255, 0) 54%),
-    radial-gradient(100% 80% at 94% 0%, #eef6f8 0%, rgba(238, 246, 248, 0) 46%),
-    radial-gradient(130% 120% at 80% 106%, #cfeaf2 0%, rgba(207, 234, 242, 0) 60%),
-    linear-gradient(165deg, #fbfdfe 0%, #eef5f7 50%, #dfeef2 100%);
-  --riv-blob-1: radial-gradient(circle, #ffffff 0%, rgba(255, 255, 255, 0) 70%);
-  --riv-blob-2: radial-gradient(circle, #bfe6f0 0%, rgba(191, 230, 240, 0) 70%);
+    radial-gradient(110% 70% at 8% 2%, #93e6f2 0%, rgba(147, 230, 242, 0) 52%),
+    radial-gradient(100% 80% at 94% 0%, #ffe2b0 0%, rgba(255, 226, 176, 0) 44%),
+    radial-gradient(130% 120% at 80% 106%, #0a5e93 0%, rgba(10, 94, 147, 0) 58%),
+    linear-gradient(165deg, #38b6d2 0%, #0f7f94 46%, #0a4f6e 100%);
+  --riv-blob-1: radial-gradient(circle, #ffd896 0%, rgba(255, 216, 150, 0) 70%);
+  --riv-blob-2: radial-gradient(circle, #52d7ec 0%, rgba(82, 215, 236, 0) 70%);
 
-  --riv-ink: #0a2a33;
-  --riv-ink-soft: rgba(12, 42, 51, 0.7);
-  /* 0.66 (design: 0.5): AA on the porcelain header glass (app.contrast.spec.ts) */
-  --riv-ink-faint: rgba(12, 42, 51, 0.66);
-  --riv-chip-bg: rgba(12, 42, 51, 0.05);
-  --riv-chip-border: rgba(12, 42, 51, 0.14);
-  --riv-hero-shadow: none;
-  --riv-track-bg: rgba(12, 42, 51, 0.12);
+  --riv-ink: #ffffff;
+  --riv-ink-soft: rgba(255, 255, 255, 0.86);
+  /* 0.8 (design: 0.72): worst-case header stop #ffe2b0 needs ≥4.5:1 (app.contrast.spec.ts) */
+  --riv-ink-faint: rgba(255, 255, 255, 0.8);
+  --riv-chip-bg: rgba(255, 255, 255, 0.16);
+  --riv-chip-border: rgba(255, 255, 255, 0.3);
+  --riv-hero-shadow: 0 2px 36px rgba(6, 40, 55, 0.32);
+  --riv-track-bg: rgba(255, 255, 255, 0.25);
 
-  --riv-header-glass: rgba(255, 255, 255, 0.6);
-  --riv-header-border: rgba(255, 255, 255, 0.7);
+  /* dark glass (see header note above): #0a2c3f at 72% over the lightest bg stop still ≥ AA vs white ink */
+  --riv-header-glass: rgba(10, 44, 63, 0.72);
+  --riv-header-border: rgba(255, 255, 255, 0.22);
 
-  /* AA-safe CTA gradient (see the riviera block note); porcelain uses the same stops. */
-  --riv-cta-grad: linear-gradient(180deg, #0c7288, #0a5f74);
-  --riv-bar-grad: linear-gradient(90deg, #2bb8d4, #0e8aa8);
+  /** 0.78 (design: 0.55): the darkest riviera stop needs the extra opacity for the dark
+      card inks to reach AA — see home.contrast.spec.ts. */
+  --riv-card-glass: rgba(255, 255, 255, 0.78);
+}
 
-  /** Card surfaces: only the glass alpha differs per theme — porcelain's
-      stops are light, so the design's airier 0.55 already clears AA (home.contrast.spec.ts).
-      The other card tokens inherit from the :root block above (a duplicated
-      block invites silent per-theme drift). */
-  --riv-card-glass: rgba(255, 255, 255, 0.55);
+[data-riv-theme='dark'] {
+  /* Native UI follows the dark palette; light-styled fields opt back out via `scheme-light` */
+  color-scheme: dark;
+
+  /** Neutral slate — no design-file counterpart: derived from riviera's token structure with the
+      teal gradient swapped for slate stops; every stop is dark enough that the white ink set
+      clears AA bare (no hero scrim needed — home.scss keeps the scrim riviera-only). AA proof:
+      the DARK_* rows in testing/glass-tokens.ts + the per-page contrast specs. */
+  --riv-bg:
+    radial-gradient(110% 70% at 8% 2%, #3b4a5f 0%, rgba(59, 74, 95, 0) 52%),
+    radial-gradient(100% 80% at 94% 0%, #2a3648 0%, rgba(42, 54, 72, 0) 44%),
+    radial-gradient(130% 120% at 80% 106%, #0b1120 0%, rgba(11, 17, 32, 0) 58%),
+    linear-gradient(165deg, #33415a 0%, #1e293b 46%, #0f172a 100%);
+  --riv-blob-1: radial-gradient(circle, #64748b 0%, rgba(100, 116, 139, 0) 70%);
+  --riv-blob-2: radial-gradient(circle, #475569 0%, rgba(71, 85, 105, 0) 70%);
+
+  --riv-ink: #ffffff;
+  --riv-ink-soft: rgba(255, 255, 255, 0.86);
+  --riv-ink-faint: rgba(255, 255, 255, 0.8);
+  --riv-chip-bg: rgba(255, 255, 255, 0.16);
+  --riv-chip-border: rgba(255, 255, 255, 0.3);
+  --riv-hero-shadow: 0 2px 36px rgba(2, 8, 20, 0.5);
+  --riv-track-bg: rgba(255, 255, 255, 0.25);
+
+  --riv-header-glass: rgba(15, 23, 42, 0.72);
+  --riv-header-border: rgba(255, 255, 255, 0.22);
+
+  /** 0.82 (riviera: 0.78): #0b1120 is darker than any riviera stop — the faint card inks on the
+      auth option cards need the extra opacity for AA (auth-page.contrast.spec.ts, dark rows). */
+  --riv-card-glass: rgba(255, 255, 255, 0.82);
 }
 
 html,

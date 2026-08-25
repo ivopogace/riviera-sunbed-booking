@@ -11,6 +11,10 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  DARK_CARD_GLASS,
+  DARK_HEADER_GLASS,
+  DARK_PANEL_TRACK,
+  DARK_STOPS,
   FIELD_BORDER_ALPHA,
   Glass,
   INK_DARK,
@@ -129,6 +133,15 @@ const THEMES: readonly Theme[] = [
     headInkSoftAlpha: 0.7,
     headInkFaintAlpha: 0.66,
   },
+  {
+    name: 'dark',
+    stops: DARK_STOPS,
+    headerGlass: DARK_HEADER_GLASS,
+    cardGlass: DARK_CARD_GLASS,
+    headInk: WHITE,
+    headInkSoftAlpha: 0.86,
+    headInkFaintAlpha: 0.8,
+  },
 ];
 
 describe.each(THEMES)('Beach-map glass contrast — $name theme (WCAG AA, issue #136)', (theme) => {
@@ -241,11 +254,12 @@ describe('Beach-map theme-independent contrast (issue #136)', () => {
    */
   const SKELETON_VISIBLE = 1.2;
 
-  it('the loading skeleton reads as blocks on both themes, never a blank panel (#744)', () => {
+  it('the loading skeleton reads as blocks on every theme, never a blank panel (#744)', () => {
     // The threshold's derivation is on SKELETON_VISIBLE above.
     const cases = [
       { glass: RIVIERA_HEADER_GLASS, track: RIVIERA_PANEL_TRACK, stops: RIVIERA_STOPS },
       { glass: PORCELAIN_HEADER_GLASS, track: PORCELAIN_PANEL_TRACK, stops: PORCELAIN_STOPS },
+      { glass: DARK_HEADER_GLASS, track: DARK_PANEL_TRACK, stops: DARK_STOPS },
     ];
     for (const { glass, track, stops } of cases) {
       for (const stop of stops) {

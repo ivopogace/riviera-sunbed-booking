@@ -2,6 +2,8 @@ import { AA_NORMAL, contrastRatio } from '../../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
+  DARK_CARD_GLASS,
+  DARK_STOPS,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
@@ -24,6 +26,7 @@ describe('Legal pages contrast (computed AA)', () => {
   for (const [theme, glass, stops] of [
     ['riviera', RIVIERA_CARD_GLASS, RIVIERA_STOPS],
     ['porcelain', PORCELAIN_CARD_GLASS, PORCELAIN_STOPS],
+    ['dark', DARK_CARD_GLASS, DARK_STOPS],
   ] as const) {
     it(`body ink meets AA on the ${theme} card glass over every stop`, () => {
       expectAaOverStops(INK_DARK, 1, glass, stops);

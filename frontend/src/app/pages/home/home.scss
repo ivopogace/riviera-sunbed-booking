@@ -4,8 +4,9 @@
  * px-anchored gradient behind `:host-context` is still cleaner as SCSS than as Tailwind
  * arbitrary values — "SCSS is retiring" is the default, not an absolute.
  *
- * Riviera only: a borderless soft dark wash — no card / rim / blur / shadow; porcelain stays
- * bare. The fades are PX-anchored (34px top / 40px bottom) to the hero's theme-shared padding
+ * Riviera only: a borderless soft dark wash — no card / rim / blur / shadow; porcelain and
+ * dark stay bare (dark's slate stops carry white ink AA without a backing).
+ * The fades are PX-anchored (34px top / 40px bottom) to the hero's theme-shared padding
  * (set in home.html), so the text always rests on the solid ~0.72 core at any content height
  * (2- vs 3-line title, mobile). White ink AA over the gradient's light top stops — pinned in
  * home.contrast.spec.ts. Deliberately the hero ONLY — every other dark riviera surface keeps

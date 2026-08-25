@@ -3,6 +3,9 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  DARK_CARD_GLASS,
+  DARK_HEADER_GLASS,
+  DARK_STOPS,
   Glass,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
@@ -52,6 +55,13 @@ const THEMES: readonly Theme[] = [
     cardGlass: PORCELAIN_CARD_GLASS,
     headerGlass: PORCELAIN_HEADER_GLASS,
     headInk: INK_DARK,
+  },
+  {
+    name: 'dark',
+    stops: DARK_STOPS,
+    cardGlass: DARK_CARD_GLASS,
+    headerGlass: DARK_HEADER_GLASS,
+    headInk: WHITE,
   },
 ];
 

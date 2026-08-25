@@ -1,5 +1,8 @@
 import { AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from '../testing/contrast';
 import {
+  DARK_CHIP,
+  DARK_HEADER_GLASS,
+  DARK_STOPS,
   INK_DARK,
   PORCELAIN_CHIP,
   PORCELAIN_HEADER_GLASS,
@@ -59,6 +62,27 @@ const PAIRS: readonly GlassPair[] = [
     stops: RIVIERA_STOPS,
   },
   {
+    usage: 'dark: ink (brand, chip text) on header glass',
+    ink: WHITE,
+    inkAlpha: 1,
+    glass: DARK_HEADER_GLASS,
+    stops: DARK_STOPS,
+  },
+  {
+    usage: 'dark: ink-soft (nav links, footer) on header glass',
+    ink: WHITE,
+    inkAlpha: 0.86,
+    glass: DARK_HEADER_GLASS,
+    stops: DARK_STOPS,
+  },
+  {
+    usage: 'dark: ink-faint (brand subtitle) on header glass',
+    ink: WHITE,
+    inkAlpha: 0.8,
+    glass: DARK_HEADER_GLASS,
+    stops: DARK_STOPS,
+  },
+  {
     usage: 'porcelain: ink on header glass',
     ink: INK_DARK,
     inkAlpha: 1,
@@ -94,6 +118,14 @@ describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
     }
   });
 
+  it('dark chip text (white) stays AA on the chip glass over the header glass', () => {
+    for (const stop of DARK_STOPS) {
+      const header = surfaceOver(DARK_HEADER_GLASS, stop);
+      const chip = composite(DARK_CHIP.color, DARK_CHIP.alpha, header);
+      expect(contrastRatio(rgbToHex(WHITE), rgbToHex(chip))).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
   it('porcelain chip text (ink) stays AA on the chip tint over the header glass', () => {
     for (const stop of PORCELAIN_STOPS) {
       const header = surfaceOver(PORCELAIN_HEADER_GLASS, stop);
@@ -102,14 +134,18 @@ describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
     }
   });
 
-  it('popover text meets AA over the darkest riviera stop (worst case for the white popover)', () => {
-    const darkest = hexToRgb('0a4f6e');
-    const popover = composite(POPOVER.color, POPOVER.alpha, darkest);
-    // menu links / theme names (#0a2a33), the 10.5px theme label (ink at 0.7), and the check (#0a6e85)
-    expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
-    const label = composite(INK_DARK, 0.7, popover);
-    expect(contrastRatio(rgbToHex(label), rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
-    expect(contrastRatio('#0a6e85', rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
+  it('popover text meets AA over the darkest theme stops (worst case for the white popover)', () => {
+    // The darkest riviera stop and the darkest dark-theme stop; porcelain's are lighter still.
+    for (const darkest of [hexToRgb('0a4f6e'), hexToRgb('0b1120')]) {
+      const popover = composite(POPOVER.color, POPOVER.alpha, darkest);
+      // menu links / theme names (#0a2a33), the 10.5px theme label (ink at 0.7), and the check (#0a6e85)
+      expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(popover))).toBeGreaterThanOrEqual(
+        AA_NORMAL,
+      );
+      const label = composite(INK_DARK, 0.7, popover);
+      expect(contrastRatio(rgbToHex(label), rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
+      expect(contrastRatio('#0a6e85', rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
   });
 
   it('legacy compat surface keeps the slate ink the pre-redesign pages assume', () => {

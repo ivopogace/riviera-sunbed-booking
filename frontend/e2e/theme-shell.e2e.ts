@@ -34,26 +34,27 @@ test.describe('theme persistence', () => {
 
   test('theme choice applies immediately and survives a reload (AC-2)', async ({ page }) => {
     await page.goto('/');
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
+
+    // Riviera is switcher-only now (never an OS resolution), so picking it proves persistence.
+    await page.getByTestId('theme-toggle').click();
+    await page.getByTestId('theme-option-riviera').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
 
-    await page.getByTestId('theme-toggle').click();
-    await page.getByTestId('theme-option-porcelain').click();
-    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
-
     await page.reload();
-    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
   });
 });
 
 test.describe('per-theme color-scheme (#675)', () => {
-  // Pin the OS scheme to dark so the boot theme is riviera (headless defaults to light).
+  // Pin the OS scheme to dark so the boot theme is the dark theme (headless defaults to light).
   test.use({ colorScheme: 'dark' });
 
   test('native-UI scheme follows the theme; light-styled fields opt out (AC-1, AC-2)', async ({
     page,
   }) => {
     await page.goto('/');
-    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
     await expect(page.locator('html')).toHaveCSS('color-scheme', 'dark');
     // The deliberately light filter-date field keeps dark-on-light native chrome (`scheme-light`).
     await expect(page.getByTestId('filter-date')).toHaveCSS('color-scheme', 'light');
@@ -66,7 +67,7 @@ test.describe('per-theme color-scheme (#675)', () => {
 });
 
 test.describe('pre-paint theme seeding (#675)', () => {
-  // A dark OS would boot riviera without the seed — exactly the FOUC the seed must beat.
+  // A dark OS would boot the dark theme without the seed — exactly the FOUC the seed must beat.
   test.use({ colorScheme: 'dark' });
 
   test('a stored porcelain choice is applied before Angular boots (AC-3)', async ({ page }) => {
@@ -81,16 +82,16 @@ test.describe('pre-paint theme seeding (#675)', () => {
 });
 
 test.describe('axe sweeps', () => {
-  // Without this, headless (light) boots porcelain and the "riviera" sweeps would silently
+  // Without this, headless (light) boots porcelain and the dark-theme sweep would silently
   // audit porcelain twice.
   test.use({ colorScheme: 'dark' });
 
-  test('axe passes on the shell in both themes, including the open theme picker (AC-4)', async ({
+  test('axe passes on the shell in all three themes, including the open theme picker (AC-4)', async ({
     page,
   }) => {
     await page.goto('/');
-    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
-    await expectNoSeriousAxeViolations(page, 'riviera shell');
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
+    await expectNoSeriousAxeViolations(page, 'dark shell');
 
     await page.getByTestId('theme-toggle').click();
     // Let the pop-in animation finish — axe samples computed colours, and mid-fade opacity
@@ -98,8 +99,13 @@ test.describe('axe sweeps', () => {
     await page
       .locator('.riv-theme-pop')
       .evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
-    await expectNoSeriousAxeViolations(page, 'riviera shell, theme picker open');
+    await expectNoSeriousAxeViolations(page, 'dark shell, theme picker open');
 
+    await page.getByTestId('theme-option-riviera').click();
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
+    await expectNoSeriousAxeViolations(page, 'riviera shell');
+
+    await page.getByTestId('theme-toggle').click();
     await page.getByTestId('theme-option-porcelain').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
     await expectNoSeriousAxeViolations(page, 'porcelain shell');

@@ -21,10 +21,12 @@ export const CARD_INK: Rgb = hexToRgb('0c2a33');
 
 export const RIVIERA_HEADER_GLASS: Glass = { color: hexToRgb('0a2c3f'), alpha: 0.72 };
 export const PORCELAIN_HEADER_GLASS: Glass = { color: WHITE, alpha: 0.6 };
+export const DARK_HEADER_GLASS: Glass = { color: hexToRgb('0f172a'), alpha: 0.72 };
 
 /** `--riv-card-glass` per theme; every card spec imports these. */
 export const RIVIERA_CARD_GLASS: Glass = { color: WHITE, alpha: 0.78 };
 export const PORCELAIN_CARD_GLASS: Glass = { color: WHITE, alpha: 0.55 };
+export const DARK_CARD_GLASS: Glass = { color: WHITE, alpha: 0.82 };
 /** `--riv-card-ink-soft` alpha over the card glass. */
 export const CARD_INK_SOFT_ALPHA = 0.78;
 /** `--riv-card-ink-faint` alpha over the card glass. */
@@ -45,10 +47,12 @@ export const FIELD_BORDER_ALPHA = 0.55;
  *  the counterpart of `--riv-card-track` on the light card glass. */
 export const RIVIERA_PANEL_TRACK = { color: WHITE, alpha: 0.25 };
 export const PORCELAIN_PANEL_TRACK = { color: CARD_INK, alpha: 0.12 };
+export const DARK_PANEL_TRACK = { color: WHITE, alpha: 0.25 };
 
 /** `--riv-chip-bg` per theme (over-glass tint). */
 export const RIVIERA_CHIP = { color: WHITE, alpha: 0.16 };
 export const PORCELAIN_CHIP = { color: CARD_INK, alpha: 0.05 };
+export const DARK_CHIP = { color: WHITE, alpha: 0.16 };
 
 /** The shared beach-map canvas's sea→sand wash stops (`beach-map-canvas.html`, #672).
  *  The first is the canvas host's `--riv-map-sea`, which the tourist legend band also wears. */
@@ -59,6 +63,7 @@ export const RIVIERA_STOPS: readonly Rgb[] = ['93e6f2', 'ffe2b0', '38b6d2', '0a4
 export const PORCELAIN_STOPS: readonly Rgb[] = ['ffffff', 'eef6f8', 'cfeaf2', 'dfeef2'].map(
   hexToRgb,
 );
+export const DARK_STOPS: readonly Rgb[] = ['3b4a5f', '2a3648', '33415a', '0b1120'].map(hexToRgb);
 
 /** `--riv-photo-grad` stops — the photo band's placeholder gradient (theme-invariant). */
 export const PHOTO_STOPS: readonly Rgb[] = ['2bb8d4', '0e8aa8'].map(hexToRgb);

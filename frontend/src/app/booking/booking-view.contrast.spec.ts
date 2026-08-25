@@ -2,6 +2,8 @@ import { AA_NORMAL, Rgb, contrastRatio, hexToRgb } from '../../testing/contrast'
 import {
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
+  DARK_CARD_GLASS,
+  DARK_STOPS,
   Glass,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
@@ -35,6 +37,7 @@ interface Theme {
 const THEMES: readonly Theme[] = [
   { name: 'riviera', stops: RIVIERA_STOPS, cardGlass: RIVIERA_CARD_GLASS },
   { name: 'porcelain', stops: PORCELAIN_STOPS, cardGlass: PORCELAIN_CARD_GLASS },
+  { name: 'dark', stops: DARK_STOPS, cardGlass: DARK_CARD_GLASS },
 ];
 
 describe.each(THEMES)('Booking view — card-glass text (WCAG AA, issue #138) — $name', (theme) => {

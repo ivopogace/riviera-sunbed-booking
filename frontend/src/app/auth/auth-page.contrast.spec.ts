@@ -11,6 +11,8 @@ import {
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
   CARD_TRACK_ALPHA,
+  DARK_CARD_GLASS,
+  DARK_STOPS,
   FIELD_BORDER_ALPHA,
   FIELD_FILL_ALPHA,
   Glass,
@@ -55,6 +57,7 @@ interface Theme {
 const THEMES: readonly Theme[] = [
   { name: 'riviera', stops: RIVIERA_STOPS, cardGlass: RIVIERA_CARD_GLASS },
   { name: 'porcelain', stops: PORCELAIN_STOPS, cardGlass: PORCELAIN_CARD_GLASS },
+  { name: 'dark', stops: DARK_STOPS, cardGlass: DARK_CARD_GLASS },
 ];
 
 describe.each(THEMES)('AuthPage contrast — $name', (theme: Theme) => {

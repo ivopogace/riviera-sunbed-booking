@@ -3,12 +3,12 @@ import { Service, signal } from '@angular/core';
 import { readStorage, writeStorage } from '../shared/safe-storage';
 
 /**
- * The two Liquid Glass themes — one dark, one light, the full set by deliberate decision —
- * not planned to grow. Palettes themselves are CSS custom properties under
- * `[data-riv-theme="…"]` in `styles.scss` — this registry only carries what the switcher UI
+ * The three Liquid Glass themes — porcelain (light, the default), riviera (branded dark teal),
+ * and dark (neutral slate, the OS-dark default). Palettes themselves are CSS custom properties
+ * under `[data-riv-theme="…"]` in `styles.scss` — this registry only carries what the switcher UI
  * needs; a palette change is a styles.scss block plus one row here.
  */
-export type ThemeId = 'riviera' | 'porcelain';
+export type ThemeId = 'riviera' | 'porcelain' | 'dark';
 
 export interface ThemeOption {
   readonly id: ThemeId;
@@ -21,21 +21,29 @@ export interface ThemeOption {
 
 export const THEME_OPTIONS: readonly ThemeOption[] = [
   {
+    id: 'porcelain',
+    name: 'Porcelain',
+    swatch: 'linear-gradient(135deg, #ffffff, #2bb8d4)',
+    light: true,
+  },
+  {
     id: 'riviera',
     name: 'Riviera',
     swatch: 'linear-gradient(135deg, #38b6d2, #0a4f6e)',
     light: false,
   },
   {
-    id: 'porcelain',
-    name: 'Porcelain',
-    swatch: 'linear-gradient(135deg, #ffffff, #2bb8d4)',
-    light: true,
+    id: 'dark',
+    name: 'Dark',
+    swatch: 'linear-gradient(135deg, #3b4a5f, #0f172a)',
+    light: false,
   },
 ];
 
 const STORAGE_KEY = 'riviera-theme';
-const DEFAULT_THEME: ThemeId = 'riviera';
+const DEFAULT_THEME: ThemeId = 'porcelain';
+/** What an OS dark preference resolves to; riviera is reachable only via the switcher. */
+const OS_DARK_THEME: ThemeId = 'dark';
 
 function isThemeId(value: string | null): value is ThemeId {
   return THEME_OPTIONS.some((option) => option.id === value);
@@ -45,7 +53,7 @@ function isThemeId(value: string | null): value is ThemeId {
  * The runtime single writer of the document's `data-riv-theme` attribute (the `index.html`
  * pre-paint seed writes the same value once, before Angular boots — drift-pinned by
  * `theme-boot.spec.ts`). Resolution order on boot: stored choice → OS
- * `prefers-color-scheme: light` (→ porcelain) → riviera. `select` persists, so the choice
+ * `prefers-color-scheme: dark` (→ dark) → porcelain. `select` persists, so the choice
  * survives reloads; storage access is guarded — a blocked storage (private mode) degrades to
  * session-only theming, never an error. With no stored choice, a mid-session OS scheme flip is
  * followed live; a stored choice always wins.
@@ -79,7 +87,7 @@ export class ThemeService {
     if (typeof globalThis.matchMedia !== 'function') {
       return;
     }
-    const query = globalThis.matchMedia('(prefers-color-scheme: light)');
+    const query = globalThis.matchMedia('(prefers-color-scheme: dark)');
     if (typeof query.addEventListener !== 'function') {
       return;
     }
@@ -99,16 +107,14 @@ function initialTheme(): ThemeId {
   if (isThemeId(stored)) {
     return stored;
   }
-  const prefersLight =
+  const prefersDark =
     typeof globalThis.matchMedia === 'function' &&
-    globalThis.matchMedia('(prefers-color-scheme: light)').matches;
-  return osTheme(prefersLight);
+    globalThis.matchMedia('(prefers-color-scheme: dark)').matches;
+  return osTheme(prefersDark);
 }
 
-function osTheme(prefersLight: boolean): ThemeId {
-  // Derived from the registry, not hardcoded, so the light default follows the data.
-  const lightDefault = THEME_OPTIONS.find((option) => option.light)?.id ?? DEFAULT_THEME;
-  return prefersLight ? lightDefault : DEFAULT_THEME;
+function osTheme(prefersDark: boolean): ThemeId {
+  return prefersDark ? OS_DARK_THEME : DEFAULT_THEME;
 }
 
 function applyToDocument(id: ThemeId): void {

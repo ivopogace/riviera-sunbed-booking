@@ -11,6 +11,10 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  DARK_CARD_GLASS,
+  DARK_CHIP,
+  DARK_HEADER_GLASS,
+  DARK_STOPS,
   FIELD_BORDER_ALPHA,
   FIELD_FILL_ALPHA,
   Glass,
@@ -101,6 +105,17 @@ const THEMES: readonly Theme[] = [
     heroInk: INK_DARK,
     heroInkSoftAlpha: 0.7,
     heroScrim: null, // bare gradient
+  },
+  {
+    name: 'dark',
+    stops: DARK_STOPS,
+    headerGlass: DARK_HEADER_GLASS,
+    chip: DARK_CHIP,
+    cardGlass: DARK_CARD_GLASS,
+    heroInk: WHITE,
+    heroInkSoftAlpha: 0.86,
+    // Bare gradient: every slate stop is dark enough for white ink AA — the scrim stays riviera-only.
+    heroScrim: null,
   },
 ];
 

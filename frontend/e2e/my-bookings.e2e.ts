@@ -127,13 +127,13 @@ test('a booking made here appears in My bookings, and a cancellation reflects th
   await expect(row).toContainText(CODE);
   await expect(row.getByTestId('row-status')).toHaveText('Confirmed');
   await settle(page);
-  await expectNoSeriousAxeViolations(page, 'my bookings list (riviera)');
-
-  // Both themes: switch to porcelain and re-audit the list.
-  await page.getByTestId('theme-toggle').click();
-  await page.getByTestId('theme-option-porcelain').click();
-  await settle(page);
   await expectNoSeriousAxeViolations(page, 'my bookings list (porcelain)');
+
+  // Second ink family: switch to riviera (white-ink theme) and re-audit the list.
+  await page.getByTestId('theme-toggle').click();
+  await page.getByTestId('theme-option-riviera').click();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'my bookings list (riviera)');
 
   // Open the row → the booking detail → cancel it.
   await row.click();

@@ -10,6 +10,7 @@ import {
 import {
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
+  DARK_STOPS,
   FIELD_BORDER_ALPHA,
   FIELD_FILL_ALPHA,
   Glass,
@@ -59,6 +60,7 @@ interface Theme {
 const THEMES: readonly Theme[] = [
   { name: 'riviera', stops: RIVIERA_STOPS },
   { name: 'porcelain', stops: PORCELAIN_STOPS },
+  { name: 'dark', stops: DARK_STOPS },
 ];
 
 describe('Booking dialog — theme-independent header + CTA (WCAG AA, issue #137)', () => {
