@@ -9,7 +9,7 @@ import { Directive } from '@angular/core';
 @Directive({
   selector: '[appCardGlass]',
   host: {
-    class: 'bg-(--riv-card-glass) border border-(--riv-card-border) text-(--riv-card-ink)',
+    class: 'bg-riv-card-glass border border-riv-card-border text-riv-card-ink',
   },
 })
 export class CardGlass {}

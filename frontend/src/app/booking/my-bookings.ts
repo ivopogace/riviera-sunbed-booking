@@ -181,7 +181,7 @@ function isNotFound(error: unknown): boolean {
 /** The card-glass row chrome (v4 translate utilities animate `translate`, so the transition lists it). */
 const ROW =
   'flex w-full items-center gap-3.5 rounded-[22px] px-[18px] py-4 shadow-[0_10px_30px_rgba(7,42,58,0.22),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[24px] backdrop-saturate-[1.7] [transition:translate_0.15s_ease,box-shadow_0.15s_ease] hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(7,42,58,0.3),inset_0_1px_0_rgba(255,255,255,0.9)] motion-reduce:transition-none motion-reduce:hover:translate-y-0';
-const SKELETON = 'skeleton block rounded-[6px] bg-(--riv-card-track)';
+const SKELETON = 'skeleton block rounded-[6px] bg-riv-card-track';
 const EMPTY_CARD =
   'rounded-[28px] px-[30px] py-10 text-center shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[1.7]';
 
@@ -192,17 +192,17 @@ const CTA =
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
-  row: `${ROW} focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)`,
+  row: `${ROW} focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink`,
   rowPlaceholder: `${ROW} justify-between`,
   rowMain: 'flex min-w-0 flex-1 flex-col gap-[3px]',
-  meta: 'text-[13px] text-(--riv-card-ink-soft)',
+  meta: 'text-[13px] text-riv-card-ink-soft',
   skeletonLine: `${SKELETON} h-[12px] w-3/5`,
   skeletonLineShort: `${SKELETON} mt-2 h-[10px] w-[35%]`,
   emptyCard: EMPTY_CARD,
-  emptyLead: 'mb-5 text-[14.5px] leading-[1.5] text-(--riv-card-ink-soft)',
+  emptyLead: 'mb-5 text-[14.5px] leading-[1.5] text-riv-card-ink-soft',
   cta: CTA,
   ctaBusy: `${CTA} ${BUSY_SKIN}`,
-  rowRetry: `shrink-0 cursor-pointer rounded-[14px] border-[1.5px] border-[rgba(255,255,255,0.7)] bg-[#f4f6f7] px-3.5 py-2 text-[13px] font-semibold text-[#0a4f5e] [transition:background_0.15s_ease] hover:bg-[#e7ebec] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) motion-reduce:transition-none ${BUSY_SKIN}`,
+  rowRetry: `shrink-0 cursor-pointer rounded-[14px] border-[1.5px] border-[rgba(255,255,255,0.7)] bg-[#f4f6f7] px-3.5 py-2 text-[13px] font-semibold text-[#0a4f5e] [transition:background_0.15s_ease] hover:bg-[#e7ebec] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink motion-reduce:transition-none ${BUSY_SKIN}`,
 } as const;
 
 @Component({
@@ -221,7 +221,7 @@ const CLS = {
     <section class="mx-auto w-full max-w-[560px] px-5 pt-6 pb-20" aria-labelledby="mb-title">
       <a
         routerLink="/"
-        class="mb-3.5 inline-flex min-h-11 items-center text-[14px] font-semibold text-(--riv-accent-ink) hover:underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)"
+        class="mb-3.5 inline-flex min-h-11 items-center text-[14px] font-semibold text-riv-accent-ink hover:underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
         >← All beaches</a
       >
       <h1
@@ -311,13 +311,13 @@ const CLS = {
                       <span [class]="cls.meta">{{ row.view.dateLabel }}</span>
                       @if (row.view.subLine) {
                         <span
-                          class="text-[12px] font-semibold text-(--riv-card-ink-soft)"
+                          class="text-[12px] font-semibold text-riv-card-ink-soft"
                           data-testid="row-subline"
                           >{{ row.view.subLine }}</span
                         >
                       }
                       <span
-                        class="code mt-[2px] text-[12px] font-bold tracking-[0.08em] text-(--riv-accent-ink)"
+                        class="code mt-[2px] text-[12px] font-bold tracking-[0.08em] text-riv-accent-ink"
                         >{{ row.view.code }}</span
                       >
                       @if (row.view.showQr) {
@@ -331,7 +331,7 @@ const CLS = {
                       }}</span>
                       <span class="flex flex-col items-end gap-[1px]">
                         <span
-                          class="text-[10px] font-bold tracking-[0.08em] uppercase text-(--riv-card-ink-soft)"
+                          class="text-[10px] font-bold tracking-[0.08em] uppercase text-riv-card-ink-soft"
                           data-testid="row-amount-label"
                           >{{ row.view.amountLabel }}</span
                         >
@@ -378,7 +378,7 @@ const CLS = {
       }
     </section>
   `,
-  host: { class: 'block text-(--riv-card-ink)' },
+  host: { class: 'block text-riv-card-ink' },
 })
 export class MyBookings {
   protected readonly cls = CLS;

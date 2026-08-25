@@ -44,7 +44,7 @@ import {
  * alpha inks composited over that result (the `app.contrast.spec.ts` pattern).
  * Shared token mirrors + the AA-over-stops loop live in `testing/glass-tokens.ts`.
  *
- * This table mirrors every text-bearing colour in `styles.scss` + `home.html`'s utilities
+ * This table mirrors every text-bearing colour in `tailwind.css` + `home.html`'s utilities
  * (since #679 `home.scss` holds only the hero scrim); an edit there must re-pass here. Deviations from the design file, on purpose (the same
  * class as the shell header's): the list-state panels (and, in the riviera theme, the hero) sit on
  * the AA-proven header glass instead of the bare gradient — the porcelain hero matches the

@@ -11,18 +11,18 @@ import { TouchTarget } from '../shared/touch-target';
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
   card: 'w-full max-w-[400px] rounded-[26px] px-[26px] pt-[30px] pb-6 shadow-[0_30px_70px_rgba(6,30,40,0.28),inset_0_1px_0_rgba(255,255,255,0.7)]',
-  title: 'm-0 mb-1.5 text-[24px] font-bold tracking-[-0.02em] text-(--riv-card-ink)',
-  intro: 'm-0 mb-5 text-[13.5px] leading-[1.5] text-(--riv-card-ink-soft)',
+  title: 'm-0 mb-1.5 text-[24px] font-bold tracking-[-0.02em] text-riv-card-ink',
+  intro: 'm-0 mb-5 text-[13.5px] leading-[1.5] text-riv-card-ink-soft',
   field: 'flex flex-col gap-1.5 mb-3.5',
-  label: 'text-[11px] font-bold tracking-[0.08em] uppercase text-(--riv-card-ink-soft)',
+  label: 'text-[11px] font-bold tracking-[0.08em] uppercase text-riv-card-ink-soft',
   input:
-    'font-[inherit] text-[16px] text-(--riv-card-ink) bg-(--riv-field-fill) border border-(--riv-field-border) rounded-[14px] px-[14px] py-3 placeholder:text-(--riv-card-ink-soft) focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-(--riv-accent-ink)',
-  hint: '-mt-1.5 text-[12px] text-(--riv-card-ink-soft)',
-  error: 'mt-3 text-[13px] font-semibold text-(--riv-error-ink)',
+    'font-[inherit] text-[16px] text-riv-card-ink bg-riv-field-fill border border-riv-field-border rounded-[14px] px-[14px] py-3 placeholder:text-riv-card-ink-soft focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink',
+  hint: '-mt-1.5 text-[12px] text-riv-card-ink-soft',
+  error: 'mt-3 text-[13px] font-semibold text-riv-error-ink',
   submit:
     'mt-4.5 w-full p-[13px] rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) text-white font-[inherit] font-bold text-[15px] cursor-pointer shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] motion-safe:[transition:filter_0.15s_ease] motion-reduce:transition-none aria-disabled:cursor-default aria-disabled:opacity-70 hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white',
-  alt: 'mt-4.5 text-center text-[13.5px] text-(--riv-card-ink-soft)',
-  altLink: 'inline-flex items-center font-bold text-(--riv-accent-ink)',
+  alt: 'mt-4.5 text-center text-[13.5px] text-riv-card-ink-soft',
+  altLink: 'inline-flex items-center font-bold text-riv-accent-ink',
 } as const;
 
 /**

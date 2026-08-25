@@ -43,9 +43,9 @@ test('maps each hunk to the line numbers it adds', () => {
     '+\t\t// Venue commission rates (A7 #348) — ADMIN only; the platform sets the commercial',
     '+\t\t// term, not the venue (rationale on the constants).',
     '+\t\t.requestMatchers(HttpMethod.GET, ADMIN_VENUE_COMMISSIONS_PATH).hasRole(ADMIN_ROLE)',
-    'diff --git a/frontend/src/styles.scss b/frontend/src/styles.scss',
-    '--- a/frontend/src/styles.scss',
-    '+++ b/frontend/src/styles.scss',
+    'diff --git a/frontend/src/app/pages/home/home.scss b/frontend/src/app/pages/home/home.scss',
+    '--- a/frontend/src/app/pages/home/home.scss',
+    '+++ b/frontend/src/app/pages/home/home.scss',
     '@@ -55,0 +56,1 @@',
     '+  --riv-chip-glass: rgba(255, 255, 255, 0.85);',
   ].join('\n');
@@ -56,7 +56,7 @@ test('maps each hunk to the line numbers it adds', () => {
     [...added.get('platform/src/main/java/ai/riviera/platform/SecurityConfig.java')],
     [419, 420, 421],
   );
-  assert.deepEqual([...added.get('frontend/src/styles.scss')], [56]);
+  assert.deepEqual([...added.get('frontend/src/app/pages/home/home.scss')], [56]);
 });
 
 test('skips a deleted file and keeps a renamed one', () => {

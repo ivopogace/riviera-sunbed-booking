@@ -351,7 +351,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
     for (const line of lines) {
       expect(line.classList.contains('animate-pulse')).toBe(true);
       expect(line.classList.contains('motion-reduce:animate-none')).toBe(true);
-      expect(line.classList.contains('bg-(--riv-card-track)')).toBe(true);
+      expect(line.classList.contains('bg-riv-card-track')).toBe(true);
     }
   });
 

@@ -19,7 +19,7 @@ import {
  * gap cell's identity is its dashed border alone, so that boundary is proven 3:1 (1.4.11)
  * composited over the wash's worst-case (sand) stop. Since #709 every non-gap cell also carries
  * its position number — proven 4.5:1 (normal text) against each tile kind's own worst fill,
- * `beach-cell.ts`'s `CELL_CLASS`. Values mirror the template + `beach-cell.ts` + `styles.scss`;
+ * `beach-cell.ts`'s `CELL_CLASS`. Values mirror the template + `beach-cell.ts` + `tailwind.css`;
  * an edit there must re-pass here.
  */
 

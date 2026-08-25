@@ -47,7 +47,7 @@ const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
       <button
         appTouchTarget
         type="button"
-        class="rounded-[10px] border border-(--riv-card-border) px-4 py-1.5 text-[12.5px] font-semibold text-(--riv-card-ink)"
+        class="rounded-[10px] border border-riv-card-border px-4 py-1.5 text-[12.5px] font-semibold text-riv-card-ink"
         [attr.data-testid]="cancelTestId()"
         (click)="cancelled.emit()"
       >

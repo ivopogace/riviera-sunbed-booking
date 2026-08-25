@@ -13,7 +13,7 @@ import {
  * Requests badge, buttons) uses OPAQUE SOLID fills instead of translucent ones — the `css:S7924`
  * treatment — so both the WCAG maths and the static analyzer compute contrast without gradient
  * compositing. These values mirror the Tailwind utilities in `operator-console.html`, the host
- * class in `operator-console.ts`, and the porcelain `--riv-*` tokens in `styles.scss`; a colour
+ * class in `operator-console.ts`, and the porcelain `--riv-*` tokens in `tailwind.css`; a colour
  * edit in any of the three must re-pass here.
  */
 

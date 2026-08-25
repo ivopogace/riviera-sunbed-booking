@@ -19,12 +19,12 @@ import { TouchTarget } from '../shared/touch-target';
   imports: [FormField, TouchTarget],
   host: { class: 'contents' },
   template: `<label class="flex flex-col gap-1">
-    <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Booking mode</span>
+    <span class="text-[12.5px] font-semibold text-riv-card-ink">Booking mode</span>
     <select
       [formField]="field()"
       [attr.data-testid]="testId()"
       appTouchTarget
-      class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+      class="rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
     >
       <option value="INSTANT">Instant Book</option>
       <option value="REQUEST">Request to Book</option>

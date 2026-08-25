@@ -47,7 +47,7 @@ import { TouchTarget } from './touch-target';
       @if (photos().length > 1) {
         <!-- The rail is the dots' backing, not decoration: they paint ABOVE the host's scrim, so over a pale photo a bare white dot is invisible (#704). Proven at 3:1 in photo-slideshow.contrast.spec.ts. -->
         <span
-          class="absolute right-[13px] bottom-[11px] z-[1] flex items-center gap-[7px] rounded-full bg-(--riv-photo-chrome) px-[7px] py-[5px]"
+          class="absolute right-[13px] bottom-[11px] z-[1] flex items-center gap-[7px] rounded-full bg-riv-photo-chrome px-[7px] py-[5px]"
           [attr.data-testid]="testId() + '-dots'"
         >
           @for (photo of photos(); track $index; let i = $index) {
@@ -70,7 +70,7 @@ import { TouchTarget } from './touch-target';
       >
         <span
           aria-hidden="true"
-          class="inline-flex size-[30px] items-center justify-center rounded-full border border-(--riv-photo-chrome-edge) bg-(--riv-mode-chip-glass) pb-[2px] text-[18px] leading-none text-(--riv-accent-ink) backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
+          class="inline-flex size-[30px] items-center justify-center rounded-full border border-riv-photo-chrome-edge bg-riv-mode-chip-glass pb-[2px] text-[18px] leading-none text-riv-accent-ink backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
           >‹</span
         >
       </button>
@@ -84,7 +84,7 @@ import { TouchTarget } from './touch-target';
       >
         <span
           aria-hidden="true"
-          class="inline-flex size-[30px] items-center justify-center rounded-full border border-(--riv-photo-chrome-edge) bg-(--riv-mode-chip-glass) pb-[2px] text-[18px] leading-none text-(--riv-accent-ink) backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
+          class="inline-flex size-[30px] items-center justify-center rounded-full border border-riv-photo-chrome-edge bg-riv-mode-chip-glass pb-[2px] text-[18px] leading-none text-riv-accent-ink backdrop-blur-[10px] [transition:background_0.15s_ease] group-hover:bg-white"
           >›</span
         >
       </button>

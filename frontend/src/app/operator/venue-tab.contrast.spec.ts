@@ -17,7 +17,7 @@ import {
  * `bg-white/50`, so `--riv-card-ink-soft` over the plain card glass is its worst case too. The
  * commission % + "Saved" notice use the AA-safe teal `#0a6e85`; the save/load error uses `#a3160e`;
  * the ACTIVE amenity chip's dark-teal ink `#0a4f5e` sits over a `#2bb8d4 @ 0.22` tint. Values mirror
- * the template + `styles.scss`; a token edit there must re-pass here.
+ * the template + `tailwind.css`; a token edit there must re-pass here.
  */
 
 /** The active amenity-chip tint (#2bb8d4 @ 0.22) from the design mock; its ink is #0a4f5e. */

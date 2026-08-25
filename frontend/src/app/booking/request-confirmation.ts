@@ -13,21 +13,21 @@ const CLS = {
   // The only badge rendered here is the amber "waiting" variant — the design's plain badge is unused.
   badge:
     'mx-auto mb-4.5 flex size-16 items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] bg-[#fcf0d9] text-[29px] text-[#8a5410] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]',
-  h1: 'm-0 mb-2 text-[27px] font-bold tracking-[-0.02em] text-(--riv-card-ink)',
-  lead: 'm-0 mb-4.5 text-[14.5px] leading-[1.5] text-(--riv-card-ink-soft)',
-  strong: 'text-(--riv-card-ink)',
+  h1: 'm-0 mb-2 text-[27px] font-bold tracking-[-0.02em] text-riv-card-ink',
+  lead: 'm-0 mb-4.5 text-[14.5px] leading-[1.5] text-riv-card-ink-soft',
+  strong: 'text-riv-card-ink',
   infoBox:
     'mb-3.5 flex items-start gap-2.5 rounded-[18px] border border-[rgba(43,184,212,0.3)] bg-[rgba(43,184,212,0.1)] px-4 py-3.5 text-left',
   infoIcon: 'text-[16px] leading-[1.3]',
-  infoText: 'm-0 text-[13px] leading-[1.5] text-(--riv-card-ink-soft)',
+  infoText: 'm-0 text-[13px] leading-[1.5] text-riv-card-ink-soft',
   codeCard:
-    'mb-4 rounded-[18px] border border-dashed border-(--riv-field-border) bg-(--riv-inset-fill) p-3.5',
-  codeLabel: 'block text-[11px] tracking-[0.16em] uppercase text-(--riv-card-ink-soft)',
-  code: 'mt-1.25 text-[26px] font-bold tracking-[0.12em] text-(--riv-accent-ink)',
-  status: 'm-0 mb-4.5 text-[13px] font-semibold text-(--riv-card-ink-soft)',
+    'mb-4 rounded-[18px] border border-dashed border-riv-field-border bg-riv-inset-fill p-3.5',
+  codeLabel: 'block text-[11px] tracking-[0.16em] uppercase text-riv-card-ink-soft',
+  code: 'mt-1.25 text-[26px] font-bold tracking-[0.12em] text-riv-accent-ink',
+  status: 'm-0 mb-4.5 text-[13px] font-semibold text-riv-card-ink-soft',
   primary:
-    'block w-full rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-3.5 text-[15px] font-bold text-white no-underline shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)',
-  link: 'mt-3 inline-block text-[14.5px] font-semibold text-(--riv-accent-ink) focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)',
+    'block w-full rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-3.5 text-[15px] font-bold text-white no-underline shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
+  link: 'mt-3 inline-block text-[14.5px] font-semibold text-riv-accent-ink focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
 } as const;
 
 /**

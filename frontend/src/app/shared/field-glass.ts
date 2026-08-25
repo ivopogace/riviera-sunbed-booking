@@ -19,7 +19,7 @@ import { Directive } from '@angular/core';
   selector: '[appFieldGlass]',
   host: {
     class:
-      '[color-scheme:var(--riv-field-scheme)] bg-(--riv-field-fill) border border-(--riv-field-border) text-(--riv-card-ink)',
+      '[color-scheme:var(--riv-field-scheme)] bg-riv-field-fill border border-riv-field-border text-riv-card-ink',
   },
 })
 export class FieldGlass {}

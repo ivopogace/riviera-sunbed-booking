@@ -48,7 +48,7 @@ import {
  * so static CSS contrast analysis computes their real colour; white on that chip still clears AA.
  */
 
-// styles.scss booking-dialog surfaces (light values; the dark theme swaps the tokens).
+// tailwind.css booking-dialog surfaces (light values; the dark theme swaps the tokens).
 const DIALOG_GLASS: Glass = { color: WHITE, alpha: 0.82 }; // --riv-dialog-glass
 const BACK_FILL: Glass = { color: WHITE, alpha: 0.5 }; // --riv-wash-fill (.btn-back)
 const ACCENT = '#085a6e'; // --riv-accent-ink (price, total)

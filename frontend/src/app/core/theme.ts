@@ -5,8 +5,8 @@ import { readStorage, writeStorage } from '../shared/safe-storage';
 /**
  * The three Liquid Glass themes — porcelain (light, the default), riviera (branded dark teal),
  * and dark (neutral slate, the OS-dark default). Palettes themselves are CSS custom properties
- * under `[data-riv-theme="…"]` in `styles.scss` — this registry only carries what the switcher UI
- * needs; a palette change is a styles.scss block plus one row here.
+ * under `[data-riv-theme="…"]` in `tailwind.css` — this registry only carries what the switcher UI
+ * needs; a palette change is a tailwind.css block plus one row here.
  */
 export type ThemeId = 'riviera' | 'porcelain' | 'dark';
 

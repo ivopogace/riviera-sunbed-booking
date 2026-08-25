@@ -49,14 +49,12 @@ import { TouchTarget } from '../shared/touch-target';
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[720px] px-4 py-10" aria-labelledby="admin-ops-title">
-      <h1 id="admin-ops-title" class="text-[24px] font-semibold text-(--riv-ink)">Operators</h1>
+      <h1 id="admin-ops-title" class="text-[24px] font-semibold text-riv-ink">Operators</h1>
 
       @if (auth.restoring()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-ops-restoring">
-          Loading…
-        </p>
+        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-ops-restoring">Loading…</p>
       } @else if (!auth.signedIn()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-ops-signed-out">
+        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-ops-signed-out">
           Sign in as an admin to review pending registrations.
           <a
             routerLink="/account/sign-in"
@@ -70,7 +68,7 @@ import { TouchTarget } from '../shared/touch-target';
       } @else {
         <app-admin-console-tabs label="Admin console sections" />
         <p
-          class="mt-4 text-[15px] text-(--riv-ink-soft) empty:hidden"
+          class="mt-4 text-[15px] text-riv-ink-soft empty:hidden"
           role="status"
           aria-live="polite"
           tabindex="-1"
@@ -85,9 +83,7 @@ import { TouchTarget } from '../shared/touch-target';
         />
 
         @if (loading()) {
-          <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-ops-loading">
-            Loading…
-          </p>
+          <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-ops-loading">Loading…</p>
         } @else if (loadError()) {
           <p class="mt-4 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-ops-error">
             Something went wrong loading operators.
@@ -101,12 +97,12 @@ import { TouchTarget } from '../shared/touch-target';
             </button>
           </p>
         } @else {
-          <h2 class="mt-8 text-[18px] font-semibold text-(--riv-ink)" id="admin-pending-title">
+          <h2 class="mt-8 text-[18px] font-semibold text-riv-ink" id="admin-pending-title">
             Awaiting approval
           </h2>
 
           @if (pending().length === 0) {
-            <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-ops-empty">
+            <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-ops-empty">
               No operators are awaiting approval.
             </p>
           } @else {
@@ -122,10 +118,10 @@ import { TouchTarget } from '../shared/touch-target';
                   data-testid="admin-op-row"
                 >
                   <div class="min-w-0">
-                    <p class="truncate text-[16px] font-semibold text-(--riv-card-ink)">
+                    <p class="truncate text-[16px] font-semibold text-riv-card-ink">
                       {{ op.username }}
                     </p>
-                    <p class="truncate text-[14px] text-(--riv-card-ink-soft)">
+                    <p class="truncate text-[14px] text-riv-card-ink-soft">
                       {{ op.contactEmail }}
                     </p>
                   </div>
@@ -146,7 +142,7 @@ import { TouchTarget } from '../shared/touch-target';
                       [attr.data-testid]="'admin-reject-' + op.id"
                       [appBusy]="actingId() !== undefined"
                       (click)="reject(op.id)"
-                      class="rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-60"
+                      class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:opacity-60"
                     >
                       Reject
                     </button>
@@ -156,16 +152,16 @@ import { TouchTarget } from '../shared/touch-target';
             </ul>
           }
 
-          <h2 class="mt-10 text-[18px] font-semibold text-(--riv-ink)" id="admin-accounts-title">
+          <h2 class="mt-10 text-[18px] font-semibold text-riv-ink" id="admin-accounts-title">
             Operator accounts
           </h2>
-          <p class="mt-1 text-[14px] text-(--riv-ink-soft)">
+          <p class="mt-1 text-[14px] text-riv-ink-soft">
             Suspending an operator signs it out on every device and blocks it from signing in again.
             Reinstating restores access, but not the old sessions.
           </p>
 
           @if (accounts().length === 0) {
-            <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-accounts-empty">
+            <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-accounts-empty">
               No operator accounts yet.
             </p>
           } @else {
@@ -181,11 +177,11 @@ import { TouchTarget } from '../shared/touch-target';
                   data-testid="admin-account-row"
                 >
                   <div class="min-w-0">
-                    <p class="truncate text-[16px] font-semibold text-(--riv-card-ink)">
+                    <p class="truncate text-[16px] font-semibold text-riv-card-ink">
                       {{ op.username }}
                       @if (op.admin) {
                         <span
-                          class="ml-2 rounded-[6px] border border-(--riv-field-border) px-1.5 py-0.5 text-[12px] font-medium text-(--riv-card-ink-soft)"
+                          class="ml-2 rounded-[6px] border border-riv-field-border px-1.5 py-0.5 text-[12px] font-medium text-riv-card-ink-soft"
                           >Admin</span
                         >
                       }
@@ -197,14 +193,14 @@ import { TouchTarget } from '../shared/touch-target';
                         >
                       }
                     </p>
-                    <p class="truncate text-[14px] text-(--riv-card-ink-soft)">
+                    <p class="truncate text-[14px] text-riv-card-ink-soft">
                       {{ op.contactEmail ?? '—' }}
                     </p>
                   </div>
 
                   @if (isSelf(op)) {
                     <p
-                      class="text-[14px] text-(--riv-card-ink-soft)"
+                      class="text-[14px] text-riv-card-ink-soft"
                       [attr.data-testid]="'admin-self-' + op.id"
                     >
                       This is you
@@ -216,7 +212,7 @@ import { TouchTarget } from '../shared/touch-target';
                       [attr.data-testid]="'admin-reinstate-' + op.id"
                       [appBusy]="actingId() !== undefined"
                       (click)="reinstate(op.id)"
-                      class="rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-60"
+                      class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:opacity-60"
                     >
                       Reinstate
                     </button>
@@ -244,7 +240,7 @@ import { TouchTarget } from '../shared/touch-target';
                       [attr.data-testid]="'admin-suspend-' + op.id"
                       [appBusy]="actingId() !== undefined"
                       (click)="askToSuspend(op.id)"
-                      class="rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-60"
+                      class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:opacity-60"
                     >
                       Suspend
                     </button>

@@ -3,9 +3,9 @@ import { expect } from 'vitest';
 import { AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from './contrast';
 
 /**
- * The ONE test-side mirror of the `styles.scss` glass tokens — per-spec hand-copies of these
+ * The ONE test-side mirror of the `tailwind.css` glass tokens — per-spec hand-copies of these
  * "keep in sync" constants go stale silently, so every glass spec imports these instead. When a
- * token is retuned in `styles.scss`, this file is the only place the spec suite needs the new value.
+ * token is retuned in `tailwind.css`, this file is the only place the spec suite needs the new value.
  */
 
 export interface Glass {

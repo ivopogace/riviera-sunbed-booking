@@ -156,10 +156,15 @@ Theme *ownership* (who writes `data-riv-theme`, the token registry, subtree pinn
 `riviera-frontend`'s call; this section owns only how a component styles across themes.
 Vary by theme in this order of preference:
 
-1. **Tokens do the switching (the norm).** Components consume `--riv-*` tokens
-   (`var(--riv-*)`, `bg-(--riv-*)`) and stay **theme-agnostic** — they never name a theme.
-   Reach for a token first; add one if none fits (where tokens are declared per theme is
-   `riviera-frontend`'s theming section).
+1. **Tokens do the switching (the norm).** Components consume `--riv-*` tokens and stay
+   **theme-agnostic** — they never name a theme. The tokens are registered in
+   `tailwind.css`'s `@theme inline` block, so a color/font/shadow position uses the
+   **named utility** (`text-riv-ink`, `bg-riv-card-glass`, `border-riv-field-border`,
+   `font-riv`); only image tokens (gradients/scrims, no theme namespace) keep the
+   arbitrary form `bg-(image:--riv-*)`, and a raw `var(--riv-*)` remains right inside a
+   composite arbitrary value (a `color-mix(…)` ring, a hand-built gradient). Reach for a
+   token first; add one if none fits — declared per theme AND mapped in `@theme inline`
+   (where tokens are declared per theme is `riviera-frontend`'s theming section).
 2. **`:host-context([data-riv-theme='riviera'])` is the escape hatch.** Only when a whole
    background *treatment* differs — not just a token value — does a component branch on the
    theme. The one precedent is the home-hero **scrim** (`home.scss`): a borderless feathered
@@ -193,11 +198,11 @@ byte-equal) — assert the snapped value, don't chase it as a regression.
 ## SCSS→Tailwind migration checklist
 
 **There is no shared SCSS left** (`shared/_glass.scss` retired at #477 with its last recipe,
-`status-chip`); what remains is 4 `.scss` files under `frontend/src/app`, 2 of them in
-`booking/` (the `home.scss` scrim stays SCSS on purpose — the blockquote above; since #679 it
-is the scrim rule alone, the rest of Discover and the whole booking dialog are utilities;
-the operator-console shell chrome migrated at #698, the app shell and the booking
-pay/confirmation/my-bookings trio at #739).
+`status-chip`); the ONE `.scss` remaining anywhere under `frontend/src` is the `home.scss`
+scrim, which stays SCSS on purpose — the blockquote above; since #679 it is the scrim rule
+alone (the operator-console shell chrome migrated at #698, the app shell and the booking
+pay/confirmation/my-bookings trio at #739, the last component SCSS at #780, and the global
+`styles.scss` token sheet folded into `tailwind.css`'s `@theme` layer thereafter).
 
 **Migrate on touch — the retirement mechanism.** A slice that touches a component still
 carrying legacy component SCSS (any of its `.ts`/`.html`/`.scss`) migrates that component's

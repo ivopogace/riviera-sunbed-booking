@@ -4,10 +4,8 @@
   aria-labelledby="venue-create-title"
   data-testid="venue-create-card"
 >
-  <h2 id="venue-create-title" class="m-0 text-[16px] font-bold text-(--riv-card-ink)">
-    Venue details
-  </h2>
-  <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-(--riv-card-ink-soft)">
+  <h2 id="venue-create-title" class="m-0 text-[16px] font-bold text-riv-card-ink">Venue details</h2>
+  <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
     What tourists see on your venue card. You’ll lay out the beach map right after.
   </p>
 
@@ -28,13 +26,13 @@
       novalidate
     >
       <label class="field flex flex-col gap-1">
-        <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Name</span>
+        <span class="text-[12.5px] font-semibold text-riv-card-ink">Name</span>
         <input
           type="text"
           [formField]="venueForm.name"
           data-testid="venue-create-name"
           appTouchTarget
-          class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+          class="rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
         />
         @if (venueForm.name().touched() && venueForm.name().errors().length) {
           <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
@@ -45,13 +43,13 @@
 
       <div class="grid grid-cols-2 gap-3">
         <label class="field flex flex-col gap-1">
-          <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Beach</span>
+          <span class="text-[12.5px] font-semibold text-riv-card-ink">Beach</span>
           <input
             type="text"
             [formField]="venueForm.beach"
             data-testid="venue-create-beach"
             appTouchTarget
-            class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+            class="rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
           />
           @if (venueForm.beach().touched() && venueForm.beach().errors().length) {
             <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
@@ -60,13 +58,13 @@
           }
         </label>
         <label class="field flex flex-col gap-1">
-          <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Region</span>
+          <span class="text-[12.5px] font-semibold text-riv-card-ink">Region</span>
           <input
             type="text"
             [formField]="venueForm.region"
             data-testid="venue-create-region"
             appTouchTarget
-            class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+            class="rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
           />
           @if (venueForm.region().touched() && venueForm.region().errors().length) {
             <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
@@ -77,13 +75,13 @@
       </div>
 
       <label class="field flex flex-col gap-1">
-        <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Description</span>
+        <span class="text-[12.5px] font-semibold text-riv-card-ink">Description</span>
         <input
           type="text"
           [formField]="venueForm.description"
           data-testid="venue-create-description"
           appTouchTarget
-          class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+          class="rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
         />
       </label>
 
@@ -93,7 +91,7 @@
           testId="venue-create-booking-mode"
         />
         <label class="field flex flex-col gap-1">
-          <span class="text-[12.5px] font-semibold text-(--riv-card-ink)"
+          <span class="text-[12.5px] font-semibold text-riv-card-ink"
             >Payout currency (ISO 4217)</span
           >
           <input
@@ -102,7 +100,7 @@
             [formField]="venueForm.payoutCurrency"
             data-testid="venue-create-currency"
             appTouchTarget
-            class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+            class="rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
           />
           @if (venueForm.payoutCurrency().touched() && venueForm.payoutCurrency().errors().length) {
             <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
@@ -118,7 +116,7 @@
 
       @if (platformDefaults(); as defaults) {
         <p
-          class="m-0 text-[12.5px] leading-[1.5] text-(--riv-card-ink-soft)"
+          class="m-0 text-[12.5px] leading-[1.5] text-riv-card-ink-soft"
           data-testid="venue-create-commission-note"
         >
           The platform commission is {{ commissionPercent(defaults.commissionBps) }} per booking.

@@ -26,10 +26,10 @@ const CARD_SURFACE =
 const BANNER =
   'mx-0 mt-[18px] mb-1 rounded-[20px] border px-[18px] py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]';
 const BTN =
-  'cursor-pointer rounded-[14px] px-[18px] py-[11px] text-[14px] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) aria-disabled:cursor-not-allowed aria-disabled:opacity-65';
+  'cursor-pointer rounded-[14px] px-[18px] py-[11px] text-[14px] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-65';
 const BTN_OUTLINE = `${BTN} border-[1.5px] bg-[#f4f6f7] font-semibold [transition:background_0.15s_ease] hover:bg-[#e7ebec]`;
 const LINK =
-  'text-[14.5px] font-semibold text-(--riv-accent-ink) underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)';
+  'text-[14.5px] font-semibold text-riv-accent-ink underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink';
 
 /** The neutral terminal-outcome treatment, shared by the expired and cancelled banners. */
 const BANNER_NEUTRAL = `${BANNER} border-[#dde1e3] bg-[#f0f2f3]`;
@@ -39,9 +39,9 @@ const EYEBROW_NEUTRAL = 'text-[#4f5f67]';
 const CLS = {
   card: `${CARD_SURFACE} mx-auto my-8 max-w-[560px] px-[26px] pt-[26px] pb-6`,
   stateCard: `${CARD_SURFACE} mx-auto my-8 max-w-[460px] px-[30px] py-10 text-center`,
-  title: 'm-0 text-[28px] font-bold tracking-[-0.02em] text-(--riv-card-ink)',
-  stateTitle: 'mx-0 mt-0 mb-2 text-[22px] font-bold tracking-[-0.02em] text-(--riv-card-ink)',
-  lead: 'mx-0 mt-0 mb-[18px] text-[14.5px] leading-[1.5] text-(--riv-card-ink-soft)',
+  title: 'm-0 text-[28px] font-bold tracking-[-0.02em] text-riv-card-ink',
+  stateTitle: 'mx-0 mt-0 mb-2 text-[22px] font-bold tracking-[-0.02em] text-riv-card-ink',
+  lead: 'mx-0 mt-0 mb-[18px] text-[14.5px] leading-[1.5] text-riv-card-ink-soft',
   link: `${LINK} inline-flex items-center`,
   linkBack: `${LINK} mt-[18px] inline-flex items-center`,
   bannerAwaiting: `${BANNER} border-[#bfe6ee] bg-[#ddf4f8]`,
@@ -60,15 +60,15 @@ const CLS = {
   eyebrowWithdrawn: 'text-[#5c5470]',
   eyebrowCancelled: EYEBROW_NEUTRAL,
   bannerBody: 'mx-0 mt-1.5 mb-0 text-[14px] leading-[1.5] text-[#334a52] [&_strong]:text-[#0a2a33]',
-  row: 'flex items-center justify-between gap-3 border-b border-(--riv-card-track) py-2.5 text-[14.5px] last:border-b-0',
-  rowLabel: 'text-(--riv-card-ink-soft)',
-  rowValue: 'm-0 text-right font-bold text-(--riv-card-ink)',
-  rowAmount: 'm-0 text-right font-bold text-(--riv-accent-ink)',
+  row: 'flex items-center justify-between gap-3 border-b border-riv-card-track py-2.5 text-[14.5px] last:border-b-0',
+  rowLabel: 'text-riv-card-ink-soft',
+  rowValue: 'm-0 text-right font-bold text-riv-card-ink',
+  rowAmount: 'm-0 text-right font-bold text-riv-accent-ink',
   // `empty:hidden` is the twin of the retired `.result:empty` — both regions render an empty <p>.
   // The outline shows a keyboard guest where a settled cancel/withdrawal parked their focus.
   result:
-    'mx-0 mt-4 mb-0 text-[13.5px] leading-[1.5] font-semibold text-(--riv-accent-ink) empty:hidden focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)',
-  confirmQ: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-(--riv-card-ink)',
+    'mx-0 mt-4 mb-0 text-[13.5px] leading-[1.5] font-semibold text-riv-accent-ink empty:hidden focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
+  confirmQ: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-riv-card-ink',
   confirmQOnBanner: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-[#334a52]',
   actions: 'flex flex-wrap gap-2.5',
   btnDanger: `${BTN} border border-[rgba(200,90,60,0.4)] bg-[linear-gradient(180deg,#c14a2c,#a83c25)] font-bold text-white shadow-[0_8px_20px_rgba(179,67,42,0.4)] [transition:filter_0.15s_ease] hover:brightness-[1.08]`,
@@ -333,13 +333,13 @@ const CLS = {
         }
 
         <div
-          class="mx-0 mt-[18px] mb-4 rounded-[18px] border border-dashed border-(--riv-field-border) bg-(--riv-inset-fill) p-[15px]"
+          class="mx-0 mt-[18px] mb-4 rounded-[18px] border border-dashed border-riv-field-border bg-riv-inset-fill p-[15px]"
           data-testid="booking-code"
         >
-          <span class="block text-[11px] tracking-[0.16em] text-(--riv-card-ink-soft) uppercase">
+          <span class="block text-[11px] tracking-[0.16em] text-riv-card-ink-soft uppercase">
             Booking code
           </span>
-          <div class="mt-[5px] text-[27px] font-bold tracking-[0.12em] text-(--riv-accent-ink)">
+          <div class="mt-[5px] text-[27px] font-bold tracking-[0.12em] text-riv-accent-ink">
             {{ b.code }}
           </div>
           @if (b.status === 'CONFIRMED') {
@@ -347,7 +347,7 @@ const CLS = {
               <app-booking-qr [code]="b.code" />
             </div>
           }
-          <p class="mx-0 mt-2 mb-0 text-[12px] leading-[1.4] text-(--riv-card-ink-soft)">
+          <p class="mx-0 mt-2 mb-0 text-[12px] leading-[1.4] text-riv-card-ink-soft">
             Show this code to staff when you arrive to claim your set.
           </p>
         </div>
@@ -418,17 +418,14 @@ const CLS = {
 
         @if (b.cancellable && !cancellation()) {
           <section
-            class="mt-5 border-t border-(--riv-card-track) pt-[18px]"
+            class="mt-5 border-t border-riv-card-track pt-[18px]"
             aria-labelledby="cancel-title"
           >
-            <h2
-              id="cancel-title"
-              class="mx-0 mt-0 mb-1.5 text-[16px] font-bold text-(--riv-card-ink)"
-            >
+            <h2 id="cancel-title" class="mx-0 mt-0 mb-1.5 text-[16px] font-bold text-riv-card-ink">
               Cancel this booking
             </h2>
             <p
-              class="mx-0 mt-0 mb-3.5 text-[13.5px] leading-[1.5] text-(--riv-card-ink-soft)"
+              class="mx-0 mt-0 mb-3.5 text-[13.5px] leading-[1.5] text-riv-card-ink-soft"
               data-testid="refund-terms"
             >
               {{ refundTerms(b) }}
@@ -480,7 +477,7 @@ const CLS = {
       </section>
     }
   `,
-  host: { class: 'block text-(--riv-card-ink)' },
+  host: { class: 'block text-riv-card-ink' },
 })
 export class BookingView {
   /** The repeated Tailwind recipes (see {@link CLS}), exposed to the template. */

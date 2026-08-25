@@ -13,7 +13,7 @@ import { Directive } from '@angular/core';
   selector: '[appFailurePanel]',
   host: {
     class:
-      'failure bg-(--riv-card-glass) border border-(--riv-card-border) text-(--riv-card-ink) mt-7 px-[26px] py-[52px] text-center backdrop-blur-[24px] backdrop-saturate-[1.7] rounded-[26px] shadow-[0_12px_40px_rgba(7,42,58,0.24),inset_0_1px_0_rgba(255,255,255,0.8)]',
+      'failure bg-riv-card-glass border border-riv-card-border text-riv-card-ink mt-7 px-[26px] py-[52px] text-center backdrop-blur-[24px] backdrop-saturate-[1.7] rounded-[26px] shadow-[0_12px_40px_rgba(7,42,58,0.24),inset_0_1px_0_rgba(255,255,255,0.8)]',
   },
 })
 export class FailurePanel {}
@@ -32,8 +32,7 @@ export class FailureIcon {}
 @Directive({
   selector: '[appFailureTitle]',
   host: {
-    class:
-      'failure-title m-0 mb-[7px] font-bold text-[21px] tracking-[-0.01em] text-(--riv-card-ink)',
+    class: 'failure-title m-0 mb-[7px] font-bold text-[21px] tracking-[-0.01em] text-riv-card-ink',
   },
 })
 export class FailureTitle {}
@@ -42,7 +41,7 @@ export class FailureTitle {}
   selector: '[appFailureText]',
   host: {
     class:
-      'failure-text mx-auto mb-5 max-w-[380px] text-[14.5px] leading-normal text-(--riv-card-ink-soft)',
+      'failure-text mx-auto mb-5 max-w-[380px] text-[14.5px] leading-normal text-riv-card-ink-soft',
   },
 })
 export class FailureText {}

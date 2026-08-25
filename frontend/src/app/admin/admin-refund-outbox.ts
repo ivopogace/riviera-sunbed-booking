@@ -34,14 +34,14 @@ import { TouchTarget } from '../shared/touch-target';
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[720px] px-4 py-10" aria-labelledby="admin-refunds-title">
-      <h1 id="admin-refunds-title" class="text-[24px] font-semibold text-(--riv-ink)">Refunds</h1>
+      <h1 id="admin-refunds-title" class="text-[24px] font-semibold text-riv-ink">Refunds</h1>
 
       @if (auth.restoring()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-refunds-restoring">
+        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-refunds-restoring">
           Loading…
         </p>
       } @else if (!auth.signedIn()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-refunds-signed-out">
+        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-refunds-signed-out">
           Sign in as an admin to review outstanding refunds.
           <a
             routerLink="/account/sign-in"
@@ -56,7 +56,7 @@ import { TouchTarget } from '../shared/touch-target';
         <app-admin-console-tabs label="Admin console sections" />
 
         @if (lever.loading()) {
-          <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-refunds-loading">
+          <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-refunds-loading">
             Loading…
           </p>
         } @else if (lever.loadError()) {
@@ -78,18 +78,18 @@ import { TouchTarget } from '../shared/touch-target';
             data-testid="admin-refunds-card"
             aria-labelledby="admin-refunds-heading"
           >
-            <h2 id="admin-refunds-heading" class="text-[16px] font-semibold text-(--riv-card-ink)">
+            <h2 id="admin-refunds-heading" class="text-[16px] font-semibold text-riv-card-ink">
               Refunds still owed
             </h2>
 
             @if (lever.status(); as outbox) {
               @if (outbox.outstanding === 0) {
-                <p class="mt-2 text-[15px] text-(--riv-card-ink)" data-testid="admin-refunds-empty">
+                <p class="mt-2 text-[15px] text-riv-card-ink" data-testid="admin-refunds-empty">
                   Nothing outstanding — no refund is waiting to be retried.
                 </p>
               } @else {
                 <p
-                  class="mt-2 text-[15px] text-(--riv-card-ink)"
+                  class="mt-2 text-[15px] text-riv-card-ink"
                   data-testid="admin-refunds-outstanding"
                 >
                   <strong>{{ outbox.outstanding }}</strong>
@@ -113,7 +113,7 @@ import { TouchTarget } from '../shared/touch-target';
           </div>
 
           <p
-            class="mt-4 min-h-[1.5rem] text-[15px] text-(--riv-ink-soft)"
+            class="mt-4 min-h-[1.5rem] text-[15px] text-riv-ink-soft"
             role="status"
             aria-live="polite"
             data-testid="admin-refunds-notice"

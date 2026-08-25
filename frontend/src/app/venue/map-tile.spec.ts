@@ -19,23 +19,22 @@ import {
  * `TILE_TOKEN_CLASS` is the NO-DRIFT PIN: each string is the complete set of appearance classes
  * per state, and the comparison below is an EQUALITY, not a subset — an added stray utility fails
  * it too. The classes reference the `--riv-tile-*` theme tokens (day values in the light themes,
- * night in dark — `styles.scss`); the colour VALUES are AA-proven per ink family in
+ * night in dark — `tailwind.css`); the colour VALUES are AA-proven per ink family in
  * `venue-map.contrast.spec.ts`, so this file pins vocabulary identity, that one pins the maths.
  * `walkin`'s hatch half is pinned separately, mirroring how it arrived.
  */
 const TILE_TOKEN_CLASS: Record<MapTileState, string> = {
   available:
-    'border-(--riv-tile-available-border) bg-(--riv-tile-available-fill) text-(--riv-tile-available-ink)',
-  premium:
-    'bg-(--riv-tile-premium-fill) border-(--riv-tile-premium-border) text-(--riv-tile-premium-ink)',
-  walkin: 'border-(--riv-tile-walkin-border) text-(--riv-tile-walkin-ink)',
+    'border-riv-tile-available-border bg-riv-tile-available-fill text-riv-tile-available-ink',
+  premium: 'bg-riv-tile-premium-fill border-riv-tile-premium-border text-riv-tile-premium-ink',
+  walkin: 'border-riv-tile-walkin-border text-riv-tile-walkin-ink',
   taken:
-    'bg-(--riv-tile-taken-fill) border-dashed border-(--riv-tile-taken-border) text-(--riv-tile-taken-ink)',
+    'bg-riv-tile-taken-fill border-dashed border-riv-tile-taken-border text-riv-tile-taken-ink',
 };
 
 /** The walk-in tile's second half: a lightened sand under a 135° hatch of its ink family. */
 const WALK_IN_DEPARTURE =
-  'bg-(--riv-tile-walkin-fill) bg-[repeating-linear-gradient(135deg,var(--riv-tile-walkin-hatch)_0px,var(--riv-tile-walkin-hatch)_3px,transparent_3px,transparent_8px)]';
+  'bg-riv-tile-walkin-fill bg-[repeating-linear-gradient(135deg,var(--riv-tile-walkin-hatch)_0px,var(--riv-tile-walkin-hatch)_3px,transparent_3px,transparent_8px)]';
 
 /** The geometry + markers the consumer owns; the directive must add to them, never replace them. */
 const HOST_CLASS = 'set-tile rounded-[10px] border-[1.5px] font-bold text-[12.5px]';
@@ -110,12 +109,12 @@ describe('MapTile appearance (#701)', () => {
     const { tile, component, detect } = render();
     component.state.set('premium');
     detect();
-    expect(tile.classList.contains('bg-(--riv-tile-premium-fill)')).toBe(true);
+    expect(tile.classList.contains('bg-riv-tile-premium-fill')).toBe(true);
 
     component.state.set('taken');
     detect();
-    expect(tile.classList.contains('bg-(--riv-tile-premium-fill)')).toBe(false);
-    expect(tile.classList.contains('text-(--riv-tile-premium-ink)')).toBe(false);
+    expect(tile.classList.contains('bg-riv-tile-premium-fill')).toBe(false);
+    expect(tile.classList.contains('text-riv-tile-premium-ink')).toBe(false);
   });
 
   it('exposes the state as an inert `data-state` hook, like the operator grid cells', () => {

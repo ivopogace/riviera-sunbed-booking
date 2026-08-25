@@ -55,14 +55,14 @@ import { TouchTarget } from '../shared/touch-target';
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[720px] px-4 py-10" aria-labelledby="admin-outbox-title">
-      <h1 id="admin-outbox-title" class="text-[24px] font-semibold text-(--riv-ink)">Email</h1>
+      <h1 id="admin-outbox-title" class="text-[24px] font-semibold text-riv-ink">Email</h1>
 
       @if (auth.restoring()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-outbox-restoring">
+        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-outbox-restoring">
           Loading…
         </p>
       } @else if (!auth.signedIn()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-outbox-signed-out">
+        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-outbox-signed-out">
           Sign in as an admin to review undelivered mail.
           <a
             routerLink="/account/sign-in"
@@ -77,7 +77,7 @@ import { TouchTarget } from '../shared/touch-target';
         <app-admin-console-tabs label="Admin console sections" />
 
         @if (lever.loading()) {
-          <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-outbox-loading">
+          <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-outbox-loading">
             Loading…
           </p>
         } @else if (lever.loadError()) {
@@ -99,18 +99,18 @@ import { TouchTarget } from '../shared/touch-target';
             data-testid="admin-outbox-card"
             aria-labelledby="admin-outbox-heading"
           >
-            <h2 id="admin-outbox-heading" class="text-[16px] font-semibold text-(--riv-card-ink)">
+            <h2 id="admin-outbox-heading" class="text-[16px] font-semibold text-riv-card-ink">
               Undelivered confirmation mail
             </h2>
 
             @if (lever.status(); as outbox) {
               @if (outbox.outstanding === 0) {
-                <p class="mt-2 text-[15px] text-(--riv-card-ink)" data-testid="admin-outbox-empty">
+                <p class="mt-2 text-[15px] text-riv-card-ink" data-testid="admin-outbox-empty">
                   Nothing outstanding — every confirmation mail has been handed over.
                 </p>
               } @else {
                 <p
-                  class="mt-2 text-[15px] text-(--riv-card-ink)"
+                  class="mt-2 text-[15px] text-riv-card-ink"
                   data-testid="admin-outbox-outstanding"
                 >
                   <strong>{{ outbox.outstanding }}</strong>
@@ -133,7 +133,7 @@ import { TouchTarget } from '../shared/touch-target';
           </div>
 
           <p
-            class="mt-4 min-h-[1.5rem] text-[15px] text-(--riv-ink-soft)"
+            class="mt-4 min-h-[1.5rem] text-[15px] text-riv-ink-soft"
             role="status"
             aria-live="polite"
             data-testid="admin-outbox-notice"

@@ -4,15 +4,15 @@
       class="oc-signin-card flex flex-col gap-3.5 rounded-[22px] border border-[rgba(12,42,51,0.1)] bg-white px-[26px] py-7 shadow-[0_20px_50px_rgba(7,42,58,0.14)]"
     >
       <h1
-        class="oc-signin-title text-[24px] font-bold tracking-[-0.02em] text-(--riv-ink)"
+        class="oc-signin-title text-[24px] font-bold tracking-[-0.02em] text-riv-ink"
         data-testid="oc-invalid-venue"
       >
         Venue not found
       </h1>
-      <p class="oc-signin-intro mb-1 text-[14px] leading-[1.55] text-(--riv-ink-soft)">
+      <p class="oc-signin-intro mb-1 text-[14px] leading-[1.55] text-riv-ink-soft">
         This operator console link isn’t valid. Check the address, or
         <a
-          class="oc-create-venue inline-flex min-h-11 items-center text-[13px] font-semibold text-(--riv-ink) no-underline hover:underline"
+          class="oc-create-venue inline-flex min-h-11 items-center text-[13px] font-semibold text-riv-ink no-underline hover:underline"
           routerLink="/operator"
           [queryParams]="{ create: '1' }"
           >create a venue</a
@@ -24,19 +24,19 @@
   <!-- No sign-in gate here: operatorSessionGuard owns it and awaits the session restore, so this shell only renders signed-in. -->
   <div class="oc-shell flex min-h-screen flex-col">
     <header
-      class="oc-header sticky top-0 z-20 border-b border-b-(--riv-header-border) bg-(--riv-header-glass) backdrop-blur-[22px] backdrop-saturate-[1.7]"
+      class="oc-header sticky top-0 z-20 border-b border-b-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7]"
       data-testid="oc-header"
     >
       <div
         class="oc-header-inner mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-4 px-6 py-3"
       >
         <div class="oc-brand flex flex-col leading-[1.15]">
-          <span class="oc-wordmark text-[19px] font-bold tracking-[-0.01em] text-(--riv-ink)"
+          <span class="oc-wordmark text-[19px] font-bold tracking-[-0.01em] text-riv-ink"
             >Riviera
-            <span class="oc-wordmark-op font-medium text-(--riv-ink-soft)">Operator</span></span
+            <span class="oc-wordmark-op font-medium text-riv-ink-soft">Operator</span></span
           >
           <span
-            class="oc-venue-title mt-1 text-[10px] font-semibold tracking-[0.2em] uppercase text-(--riv-ink-faint)"
+            class="oc-venue-title mt-1 text-[10px] font-semibold tracking-[0.2em] uppercase text-riv-ink-faint"
             data-testid="oc-venue-title"
             >{{ venueName() ?? 'Your venue' }}</span
           >
@@ -59,7 +59,7 @@
         <a
           #tabLink
           appTouchTarget
-          class="oc-tab inline-flex shrink-0 items-center gap-[7px] rounded-full border border-transparent px-[15px] py-2 text-[13.5px] font-semibold text-(--riv-ink-soft) no-underline hover:text-(--riv-ink) [&.oc-tab--active]:border-[rgba(12,42,51,0.1)] [&.oc-tab--active]:bg-white [&.oc-tab--active]:text-(--riv-ink) [&.oc-tab--active]:shadow-[0_2px_8px_rgba(7,42,58,0.1)]"
+          class="oc-tab inline-flex shrink-0 items-center gap-[7px] rounded-full border border-transparent px-[15px] py-2 text-[13.5px] font-semibold text-riv-ink-soft no-underline hover:text-riv-ink [&.oc-tab--active]:border-[rgba(12,42,51,0.1)] [&.oc-tab--active]:bg-white [&.oc-tab--active]:text-riv-ink [&.oc-tab--active]:shadow-[0_2px_8px_rgba(7,42,58,0.1)]"
           [routerLink]="['/operator', venueId(), tab.path]"
           routerLinkActive="oc-tab--active"
           ariaCurrentWhenActive="page"
@@ -83,12 +83,12 @@
     </main>
 
     <footer
-      class="border-t border-(--riv-header-border) bg-(--riv-header-glass) backdrop-blur-[22px] backdrop-saturate-[1.7]"
+      class="border-t border-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7]"
       data-testid="oc-footer"
     >
       <div
         appLegalFooter
-        class="mx-auto max-w-[1120px] px-6 py-4 text-[13px] text-(--riv-ink-soft)"
+        class="mx-auto max-w-[1120px] px-6 py-4 text-[13px] text-riv-ink-soft"
       ></div>
     </footer>
   </div>

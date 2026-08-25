@@ -34,12 +34,10 @@ import { TouchTarget } from './touch-target';
     class: 'block w-full',
   },
   template: `
-    <p class="text-[14px] text-(--riv-card-ink)" [attr.data-testid]="promptTestId()">
+    <p class="text-[14px] text-riv-card-ink" [attr.data-testid]="promptTestId()">
       {{ prompt() }}
     </p>
-    <label
-      [attr.for]="reasonId()"
-      class="mt-2 block text-[13.5px] font-semibold text-(--riv-card-ink)"
+    <label [attr.for]="reasonId()" class="mt-2 block text-[13.5px] font-semibold text-riv-card-ink"
       >Reason (optional)</label
     >
     <input
@@ -51,7 +49,7 @@ import { TouchTarget } from './touch-target';
       [value]="reason()"
       [placeholder]="reasonPlaceholder()"
       (input)="onTyped($event)"
-      class="mt-1 w-full rounded-[10px] border border-(--riv-field-border) bg-white/70 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+      class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[14px] text-riv-card-ink"
     />
     <div class="mt-2 flex flex-wrap items-center gap-2">
       <button
@@ -70,7 +68,7 @@ import { TouchTarget } from './touch-target';
         type="button"
         [attr.data-testid]="cancelTestId()"
         (click)="cancelled.emit()"
-        class="rounded-[10px] px-3 py-2 text-[14px] font-semibold text-(--riv-card-ink-soft)"
+        class="rounded-[10px] px-3 py-2 text-[14px] font-semibold text-riv-card-ink-soft"
       >
         {{ cancelLabel() }}
       </button>

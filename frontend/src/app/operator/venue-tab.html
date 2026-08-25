@@ -2,7 +2,7 @@
   @if (venueId() === undefined) {
     <p
       appCardGlass
-      class="rounded-[24px] px-[22px] py-10 text-center text-[13px] text-(--riv-card-ink-soft)"
+      class="rounded-[24px] px-[22px] py-10 text-center text-[13px] text-riv-card-ink-soft"
       role="alert"
       data-testid="venue-invalid"
     >
@@ -21,20 +21,20 @@
     <div class="grid gap-4 lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)]">
       <!-- Left: the venue-details form -->
       <section appCardGlass class="rounded-[24px] px-[22px] py-5">
-        <h2 class="text-[16px] font-bold text-(--riv-card-ink)">Venue details</h2>
-        <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-(--riv-card-ink-soft)">
+        <h2 class="text-[16px] font-bold text-riv-card-ink">Venue details</h2>
+        <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
           What tourists see on your venue card and beach-map page.
         </p>
 
         <form class="flex flex-col gap-3" (submit)="onSave(); $event.preventDefault()" novalidate>
           <label class="flex flex-col gap-1">
-            <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Name</span>
+            <span class="text-[12.5px] font-semibold text-riv-card-ink">Name</span>
             <input
               type="text"
               [formField]="detailsForm.name"
               data-testid="venue-name"
               appTouchTarget
-              class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+              class="rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
             />
             @if (detailsForm.name().touched() && detailsForm.name().errors().length) {
               <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
@@ -45,13 +45,13 @@
 
           <div class="grid grid-cols-2 gap-3">
             <label class="flex flex-col gap-1">
-              <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Beach</span>
+              <span class="text-[12.5px] font-semibold text-riv-card-ink">Beach</span>
               <input
                 type="text"
                 [formField]="detailsForm.beach"
                 data-testid="venue-beach"
                 appTouchTarget
-                class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+                class="rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
               />
               @if (detailsForm.beach().touched() && detailsForm.beach().errors().length) {
                 <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
@@ -60,13 +60,13 @@
               }
             </label>
             <label class="flex flex-col gap-1">
-              <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Region</span>
+              <span class="text-[12.5px] font-semibold text-riv-card-ink">Region</span>
               <input
                 type="text"
                 [formField]="detailsForm.region"
                 data-testid="venue-region"
                 appTouchTarget
-                class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+                class="rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
               />
               @if (detailsForm.region().touched() && detailsForm.region().errors().length) {
                 <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
@@ -77,13 +77,13 @@
           </div>
 
           <label class="flex flex-col gap-1">
-            <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Description</span>
+            <span class="text-[12.5px] font-semibold text-riv-card-ink">Description</span>
             <input
               type="text"
               [formField]="detailsForm.description"
               data-testid="venue-description"
               appTouchTarget
-              class="rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+              class="rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
             />
           </label>
 
@@ -95,22 +95,22 @@
           <!-- Read-only display fields: commission (the platform's cut) + payout currency. -->
           <div class="grid grid-cols-2 gap-3">
             <div class="flex flex-col gap-1">
-              <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Commission</span>
+              <span class="text-[12.5px] font-semibold text-riv-card-ink">Commission</span>
               <output
                 data-testid="venue-commission"
-                class="rounded-[11px] border border-dashed border-(--riv-card-border) bg-(--riv-chip-bg) px-3 py-2 text-[14px] font-semibold text-[#0a6e85]"
+                class="rounded-[11px] border border-dashed border-riv-card-border bg-riv-chip-bg px-3 py-2 text-[14px] font-semibold text-[#0a6e85]"
                 >{{ commissionPct() }}</output
               >
-              <span class="text-[11px] text-(--riv-card-ink-soft)">Set by Riviera.</span>
+              <span class="text-[11px] text-riv-card-ink-soft">Set by Riviera.</span>
             </div>
             <div class="flex flex-col gap-1">
-              <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">Payout currency</span>
+              <span class="text-[12.5px] font-semibold text-riv-card-ink">Payout currency</span>
               <output
                 data-testid="venue-payout-currency"
-                class="rounded-[11px] border border-dashed border-(--riv-card-border) bg-(--riv-chip-bg) px-3 py-2 text-[14px] font-semibold text-(--riv-card-ink)"
+                class="rounded-[11px] border border-dashed border-riv-card-border bg-riv-chip-bg px-3 py-2 text-[14px] font-semibold text-riv-card-ink"
                 >{{ payoutCurrency() }}</output
               >
-              <span class="text-[11px] text-(--riv-card-ink-soft)">Settled at payout time.</span>
+              <span class="text-[11px] text-riv-card-ink-soft">Settled at payout time.</span>
             </div>
           </div>
 
@@ -156,21 +156,19 @@
       <!-- Right rail: photo placeholders + commodities -->
       <div class="flex flex-col gap-4">
         <section appCardGlass class="rounded-[24px] px-[22px] py-5">
-          <h2 class="text-[16px] font-bold text-(--riv-card-ink)">Photos</h2>
-          <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-(--riv-card-ink-soft)">
+          <h2 class="text-[16px] font-bold text-riv-card-ink">Photos</h2>
+          <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
             Shown to tourists on your venue card and beach-map page.
           </p>
           <div class="flex flex-col gap-2.5">
             @for (slot of photoSlots; track slot.key) {
               <div
-                class="flex min-h-[64px] flex-col gap-2 rounded-[14px] border border-(--riv-card-border) bg-(--riv-chip-bg) px-4 py-3"
+                class="flex min-h-[64px] flex-col gap-2 rounded-[14px] border border-riv-card-border bg-riv-chip-bg px-4 py-3"
                 [class.border-dashed]="!slotUi()[slot.key].previewUrl"
                 data-testid="photo-slot"
                 [attr.data-slot]="slot.key"
               >
-                <span class="text-[12.5px] font-semibold text-(--riv-card-ink)">{{
-                  slot.label
-                }}</span>
+                <span class="text-[12.5px] font-semibold text-riv-card-ink">{{ slot.label }}</span>
 
                 @if (slotUi()[slot.key].previewUrl; as previewUrl) {
                   <!-- alt avoids the words image/photo (Web:S6851 — screen readers announce the
@@ -200,7 +198,7 @@
                   <button
                     type="button"
                     appTouchTarget
-                    class="rounded-[12px] border border-(--riv-card-border) bg-white/70 px-3.5 py-1.5 text-[12.5px] font-bold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white/90 aria-disabled:opacity-50"
+                    class="rounded-[12px] border border-riv-card-border bg-white/70 px-3.5 py-1.5 text-[12.5px] font-bold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-white/90 aria-disabled:opacity-50"
                     [attr.data-testid]="'photo-pick-' + slot.key"
                     [appBusy]="slotUi()[slot.key].busy"
                     (click)="photoInput.click()"
@@ -217,7 +215,7 @@
                     <button
                       type="button"
                       appTouchTarget
-                      class="rounded-[12px] border border-(--riv-card-border) bg-white/50 px-3.5 py-1.5 text-[12.5px] font-bold text-[#a3160e] [transition:background_0.15s_ease] hover:bg-white/80 aria-disabled:opacity-50"
+                      class="rounded-[12px] border border-riv-card-border bg-white/50 px-3.5 py-1.5 text-[12.5px] font-bold text-[#a3160e] [transition:background_0.15s_ease] hover:bg-white/80 aria-disabled:opacity-50"
                       [attr.data-testid]="'photo-remove-' + slot.key"
                       [appBusy]="slotUi()[slot.key].busy"
                       (click)="onPhotoRemove(slot.key)"
@@ -238,28 +236,26 @@
               </div>
             }
           </div>
-          <p class="mt-3 text-[11.5px] text-(--riv-card-ink-soft)">
+          <p class="mt-3 text-[11.5px] text-riv-card-ink-soft">
             Tourists see every uploaded photo in the slideshows on your venue card and beach-map
             page — the cover always comes first.
           </p>
         </section>
 
         <section appCardGlass class="rounded-[24px] px-[22px] py-5">
-          <h2 class="text-[16px] font-bold text-(--riv-card-ink)">Commodities</h2>
-          <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-(--riv-card-ink-soft)">
+          <h2 class="text-[16px] font-bold text-riv-card-ink">Commodities</h2>
+          <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
             Shown as tags on your venue card and beach-map page.
           </p>
 
           <fieldset class="border-0 p-0">
-            <legend class="mb-2 text-[12.5px] font-semibold text-(--riv-card-ink)">
-              Amenities
-            </legend>
+            <legend class="mb-2 text-[12.5px] font-semibold text-riv-card-ink">Amenities</legend>
             <div class="flex flex-wrap gap-2">
               @for (code of amenityCatalogue; track code) {
                 <button
                   type="button"
                   appTouchTarget
-                  class="amenity-chip rounded-full border px-[15px] py-2 text-[12.5px] font-semibold [transition:background_0.15s_ease,border-color_0.15s_ease] [&.active]:border-[#0e8aa8] [&.active]:bg-[#2bb8d4]/[0.22] [&.active]:text-[#0a4f5e] [&:not(.active)]:border-(--riv-card-border) [&:not(.active)]:bg-white/50 [&:not(.active)]:text-(--riv-card-ink-soft)"
+                  class="amenity-chip rounded-full border px-[15px] py-2 text-[12.5px] font-semibold [transition:background_0.15s_ease,border-color_0.15s_ease] [&.active]:border-[#0e8aa8] [&.active]:bg-[#2bb8d4]/[0.22] [&.active]:text-[#0a4f5e] [&:not(.active)]:border-riv-card-border [&:not(.active)]:bg-white/50 [&:not(.active)]:text-riv-card-ink-soft"
                   [class.active]="isAmenityActive(code)"
                   [attr.aria-pressed]="isAmenityActive(code)"
                   [attr.data-testid]="'amenity-toggle-' + code"
@@ -272,7 +268,7 @@
           </fieldset>
 
           <label class="mt-4 flex flex-col gap-1">
-            <span class="text-[12.5px] font-semibold text-(--riv-card-ink)"
+            <span class="text-[12.5px] font-semibold text-riv-card-ink"
               >Distance to water (metres)</span
             >
             <input
@@ -282,7 +278,7 @@
               [value]="distanceDraft()"
               (input)="onDistanceInput($any($event.target).value)"
               appTouchTarget
-              class="w-[140px] rounded-[11px] border border-(--riv-card-border) bg-white/60 px-3 py-2 text-[14px] text-(--riv-card-ink)"
+              class="w-[140px] rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
             />
             @if (distanceError()) {
               <span

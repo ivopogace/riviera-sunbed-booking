@@ -23,16 +23,16 @@
         <span class="flex flex-col gap-1.5">
           <span
             appSkeletonBlock
-            class="bg-(--riv-card-track) block h-[15px] w-[42px] rounded-[6px]"
+            class="bg-riv-card-track block h-[15px] w-[42px] rounded-[6px]"
           ></span>
           <span
             appSkeletonBlock
-            class="bg-(--riv-card-track) block h-11 w-[168px] rounded-[12px]"
+            class="bg-riv-card-track block h-11 w-[168px] rounded-[12px]"
           ></span>
         </span>
         <span
           appSkeletonBlock
-          class="bg-(--riv-card-track) block h-[19px] w-[240px] max-w-full rounded-[6px]"
+          class="bg-riv-card-track block h-[19px] w-[240px] max-w-full rounded-[6px]"
         ></span>
       </div>
     </div>
@@ -49,7 +49,7 @@
           @for (tile of skeletonTiles; track tile) {
             <span
               appSkeletonBlock
-              class="bg-(--riv-card-track) h-full min-w-0 rounded-[6px]"
+              class="bg-riv-card-track h-full min-w-0 rounded-[6px]"
               data-testid="daily-skeleton-tile"
             ></span>
           }
@@ -62,33 +62,21 @@
       class="mt-4 rounded-[20px] px-[18px] py-4"
       data-testid="daily-skeleton-arrivals"
     >
+      <span appSkeletonBlock class="bg-riv-card-track block h-[22px] w-[92px] rounded-[6px]"></span>
       <span
         appSkeletonBlock
-        class="bg-(--riv-card-track) block h-[22px] w-[92px] rounded-[6px]"
-      ></span>
-      <span
-        appSkeletonBlock
-        class="bg-(--riv-card-track) mt-1 mb-3 block h-[19px] w-[68%] rounded-[6px]"
+        class="bg-riv-card-track mt-1 mb-3 block h-[19px] w-[68%] rounded-[6px]"
       ></span>
       <span class="mb-3 flex flex-wrap gap-2">
-        <span
-          appSkeletonBlock
-          class="bg-(--riv-card-track) block h-11 w-[112px] rounded-[12px]"
-        ></span>
-        <span
-          appSkeletonBlock
-          class="bg-(--riv-card-track) block h-11 w-[170px] rounded-[12px]"
-        ></span>
-        <span
-          appSkeletonBlock
-          class="bg-(--riv-card-track) block h-11 w-[104px] rounded-[12px]"
-        ></span>
+        <span appSkeletonBlock class="bg-riv-card-track block h-11 w-[112px] rounded-[12px]"></span>
+        <span appSkeletonBlock class="bg-riv-card-track block h-11 w-[170px] rounded-[12px]"></span>
+        <span appSkeletonBlock class="bg-riv-card-track block h-11 w-[104px] rounded-[12px]"></span>
       </span>
       <span class="flex flex-col gap-1.5">
         @for (row of skeletonArrivals; track row) {
           <span
             appSkeletonBlock
-            class="bg-(--riv-card-track) block h-[42px] w-full rounded-[12px]"
+            class="bg-riv-card-track block h-[42px] w-full rounded-[12px]"
           ></span>
         }
       </span>
@@ -108,8 +96,7 @@
     <section appCardGlass class="mb-3.5 rounded-[20px] px-[18px] py-4">
       <div class="flex flex-wrap items-end justify-between gap-3">
         <label class="flex flex-col gap-1.5">
-          <span
-            class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+          <span class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
             >Date</span
           >
           <input
@@ -118,19 +105,19 @@
             [value]="selectedDate()"
             (change)="onDateChange($event)"
             appTouchTarget
-            class="rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[15px] text-(--riv-card-ink)"
+            class="rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
           />
         </label>
         <!-- Only the CONTENT branches (#718): swapping the element rebuilds the live region, which announces unreliably. -->
         <p
-          class="text-[13px] text-(--riv-card-ink-soft)"
+          class="text-[13px] text-riv-card-ink-soft"
           data-testid="daily-availability"
           aria-live="polite"
         >
           @if (totalCount()) {
-            <strong class="text-(--riv-card-ink)">{{ markedCount() }}</strong> walk-in marked ·
-            <strong class="text-(--riv-card-ink)">{{ freeCount() }}</strong> of
-            {{ totalCount() }} sets free on {{ dateLabel() }}
+            <strong class="text-riv-card-ink">{{ markedCount() }}</strong> walk-in marked ·
+            <strong class="text-riv-card-ink">{{ freeCount() }}</strong> of {{ totalCount() }} sets
+            free on {{ dateLabel() }}
           } @else {
             <!-- No date: the set count comes from the venue's layout, so no other day reads differently. -->
             No sets on the map yet
@@ -208,12 +195,10 @@
 
       <!-- Zero sets: the canvas drops the grid and both rails together, so this slot IS the card. Unlike the tourist map, the operator can fix the state, so the copy ends in the tab that fixes it. -->
       <div canvasEmpty class="px-3 py-9 text-center" data-testid="daily-map-empty">
-        <h2 class="mb-[7px] text-[19px] font-bold tracking-[-0.01em] text-(--riv-card-ink)">
+        <h2 class="mb-[7px] text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink">
           No beach map for this venue yet
         </h2>
-        <p
-          class="mx-auto mb-5 max-w-[380px] text-[14.5px] leading-normal text-(--riv-card-ink-soft)"
-        >
+        <p class="mx-auto mb-5 max-w-[380px] text-[14.5px] leading-normal text-riv-card-ink-soft">
           There is no set to mark, book or check in — on this date or any other. Generate the layout
           in the Beach map tab and every day's grid follows from it.
         </p>
@@ -232,7 +217,7 @@
     <!-- Legend — decodes tile states, so it goes with the tiles (#718). -->
     @if (totalCount()) {
       <ul
-        class="mx-0.5 mt-3.5 flex list-none flex-wrap gap-4 p-0 text-[12.5px] text-(--riv-card-ink)"
+        class="mx-0.5 mt-3.5 flex list-none flex-wrap gap-4 p-0 text-[12.5px] text-riv-card-ink"
         aria-label="Legend"
       >
         <li class="flex items-center gap-[7px]">
@@ -262,8 +247,8 @@
       class="mt-4 rounded-[20px] px-[18px] py-4"
       aria-labelledby="arrivals-title"
     >
-      <h2 id="arrivals-title" class="text-[15px] font-bold text-(--riv-card-ink)">Arrivals</h2>
-      <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)">
+      <h2 id="arrivals-title" class="text-[15px] font-bold text-riv-card-ink">Arrivals</h2>
+      <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-riv-card-ink-soft">
         Scan the guest's QR code — or type their booking code — to check them in.
       </p>
 
@@ -273,7 +258,7 @@
           <button
             type="button"
             appTouchTarget
-            class="cursor-pointer rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[14px] py-[9px] text-[13.5px] font-bold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white/85 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) aria-disabled:cursor-not-allowed aria-disabled:opacity-65"
+            class="cursor-pointer rounded-[12px] border border-riv-card-border bg-white/60 px-[14px] py-[9px] text-[13.5px] font-bold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-white/85 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-65"
             [appBusy]="checkInBusy()"
             (click)="toggleScan()"
             data-testid="checkin-scan-toggle"
@@ -289,14 +274,14 @@
             spellcheck="false"
             placeholder="Booking code"
             appTouchTarget
-            class="w-[170px] rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] font-mono text-[14px] tracking-[0.06em] text-(--riv-card-ink) uppercase placeholder:font-sans placeholder:normal-case"
+            class="w-[170px] rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] font-mono text-[14px] tracking-[0.06em] text-riv-card-ink uppercase placeholder:font-sans placeholder:normal-case"
             (keydown.enter)="submitCode(checkinCode)"
             data-testid="checkin-code-input"
           />
           <button
             type="button"
             appTouchTarget
-            class="cursor-pointer rounded-[12px] border border-transparent bg-(--riv-accent-ink) px-[14px] py-[9px] text-[13.5px] font-bold text-white [transition:filter_0.15s_ease] hover:brightness-110 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) aria-disabled:cursor-not-allowed aria-disabled:opacity-65"
+            class="cursor-pointer rounded-[12px] border border-transparent bg-riv-accent-ink px-[14px] py-[9px] text-[13.5px] font-bold text-white [transition:filter_0.15s_ease] hover:brightness-110 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-65"
             [appBusy]="checkInBusy()"
             (click)="submitCode(checkinCode)"
             data-testid="checkin-submit"
@@ -307,7 +292,7 @@
         @if (scanOpen()) {
           <video
             #scanVideo
-            class="w-full max-w-[320px] rounded-[14px] border border-(--riv-card-border) bg-black/80"
+            class="w-full max-w-[320px] rounded-[14px] border border-riv-card-border bg-black/80"
             muted
             playsinline
             aria-label="Camera preview — point at the guest's booking QR"
@@ -316,7 +301,7 @@
         }
         <output
           class="m-0 block text-[13px] leading-[1.45] font-semibold empty:hidden"
-          [class]="checkInNotice()?.tone === 'ok' ? 'text-(--riv-accent-ink)' : 'text-[#a3372a]'"
+          [class]="checkInNotice()?.tone === 'ok' ? 'text-riv-accent-ink' : 'text-[#a3372a]'"
           data-testid="checkin-result"
           >{{ checkInNotice()?.text }}</output
         >
@@ -325,17 +310,17 @@
         <ul class="flex list-none flex-col gap-1.5 p-0">
           @for (a of arrivals(); track a.setId) {
             <li
-              class="flex items-center justify-between rounded-[12px] border border-(--riv-card-border) bg-white/45 px-3 py-2"
+              class="flex items-center justify-between rounded-[12px] border border-riv-card-border bg-white/45 px-3 py-2"
               data-testid="daily-arrival-row"
             >
-              <span class="text-[13.5px] font-semibold text-(--riv-card-ink)">{{ a.label }}</span>
+              <span class="text-[13.5px] font-semibold text-riv-card-ink">{{ a.label }}</span>
               @if (a.chip; as chip) {
                 <span [appStatusChip]="chip.modifier" [attr.data-testid]="chip.testId">{{
                   chip.label
                 }}</span>
               }
               <code
-                class="rounded-[8px] bg-(--riv-chip-bg) px-2 py-1 font-mono text-[13px] font-bold tracking-[0.06em] text-(--riv-card-ink)"
+                class="rounded-[8px] bg-riv-chip-bg px-2 py-1 font-mono text-[13px] font-bold tracking-[0.06em] text-riv-card-ink"
                 data-testid="daily-arrival-code"
                 >{{ a.code }}</code
               >
@@ -343,7 +328,7 @@
           }
         </ul>
       } @else {
-        <p class="text-[13px] text-(--riv-card-ink-soft)" data-testid="daily-arrivals-empty">
+        <p class="text-[13px] text-riv-card-ink-soft" data-testid="daily-arrivals-empty">
           No online bookings for {{ dateLabel() }}.
         </p>
       }

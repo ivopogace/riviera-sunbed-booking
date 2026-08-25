@@ -464,7 +464,7 @@ describe('BeachMapCanvas (#672)', () => {
     detect();
     expect(vp.classList.contains('scrollbar-none')).toBe(false);
     expect(vp.className).toContain('scrollbar-thin');
-    expect(vp.className).toContain('scrollbar-thumb-(--riv-accent-ink)');
+    expect(vp.className).toContain('scrollbar-thumb-riv-accent-ink');
     expect(vp.className).toContain('scrollbar-track-transparent');
     // A stable gutter would reserve an inline-end strip this overflow-y-hidden box can never use.
     expect(vp.className).not.toContain('scrollbar-gutter');
@@ -705,7 +705,7 @@ describe('BeachMapCanvas (#672)', () => {
 
   it('paints the wash from the themed --riv-map-* tokens, sea stop first (#701)', () => {
     const { host } = render();
-    // The sea stop is a theme token now (styles.scss, per theme) — no inline host copy to drift.
+    // The sea stop is a theme token now (tailwind.css, per theme) — no inline host copy to drift.
     const canvas = host.querySelector<HTMLElement>('app-beach-map-canvas')!;
     expect(canvas.style.getPropertyValue('--riv-map-sea')).toBe('');
     // Projected content sits on the same ground only while the wash reads the property, not a copy.

@@ -124,7 +124,7 @@ interface VenueHeader {
   templateUrl: './venue-map.html',
   // --riv-tile (tile size + rail-cell heights) now lives on the shared canvas's host.
   host: {
-    class: 'block text-(--riv-card-ink)',
+    class: 'block text-riv-card-ink',
   },
 })
 export class VenueMap {

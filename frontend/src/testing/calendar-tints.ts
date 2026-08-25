@@ -1,7 +1,7 @@
 /**
  * The unit suite's ONE mirror of the availability calendar's OPAQUE SOLID recipe — the same role
  * `testing/chip-fills.ts` plays for the chip directives and `testing/glass-tokens.ts` for the
- * `styles.scss` glass tokens, and for the same reason: a per-spec hand-copy of a "keep in sync"
+ * `tailwind.css` glass tokens, and for the same reason: a per-spec hand-copy of a "keep in sync"
  * constant goes stale silently.
  *
  * <p>A list is only a list, so it is tied to the code at both ends. `venue/day-availability.spec.ts`

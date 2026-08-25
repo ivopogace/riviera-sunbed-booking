@@ -1,6 +1,6 @@
 /**
  * The unit suite's ONE mirror of the chip directives' OPAQUE SOLID recipes — the same role
- * `testing/glass-tokens.ts` plays for the `styles.scss` glass tokens, and for the same reason:
+ * `testing/glass-tokens.ts` plays for the `tailwind.css` glass tokens, and for the same reason:
  * a per-spec hand-copy of a "keep in sync" constant goes stale silently.
  *
  * <p>One copy lives outside that reach on purpose: `e2e/discovery-flow.e2e.ts` repeats the same

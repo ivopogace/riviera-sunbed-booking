@@ -36,14 +36,14 @@ import { AdminAuditEntryView } from './admin.model';
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section class="mx-auto max-w-[860px] px-4 py-10" aria-labelledby="admin-audit-title">
-      <h1 id="admin-audit-title" class="text-[24px] font-semibold text-(--riv-ink)">Audit</h1>
+      <h1 id="admin-audit-title" class="text-[24px] font-semibold text-riv-ink">Audit</h1>
 
       @if (auth.restoring()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-audit-restoring">
+        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-audit-restoring">
           Loading…
         </p>
       } @else if (!auth.signedIn()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-audit-signed-out">
+        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-audit-signed-out">
           Sign in as an admin to review recorded admin actions.
           <a
             routerLink="/account/sign-in"
@@ -58,7 +58,7 @@ import { AdminAuditEntryView } from './admin.model';
         <app-admin-console-tabs label="Admin console sections" />
 
         @if (loading()) {
-          <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-audit-loading">
+          <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-audit-loading">
             Loading…
           </p>
         } @else if (loadError()) {
@@ -82,23 +82,23 @@ import { AdminAuditEntryView } from './admin.model';
             aria-labelledby="admin-audit-heading"
             tabindex="-1"
           >
-            <h2 id="admin-audit-heading" class="text-[16px] font-semibold text-(--riv-card-ink)">
+            <h2 id="admin-audit-heading" class="text-[16px] font-semibold text-riv-card-ink">
               Latest admin actions
             </h2>
 
             @if (entries().length === 0) {
-              <p class="mt-2 text-[15px] text-(--riv-card-ink)" data-testid="admin-audit-empty">
+              <p class="mt-2 text-[15px] text-riv-card-ink" data-testid="admin-audit-empty">
                 No admin actions have been recorded yet.
               </p>
             } @else {
               <div class="mt-3 overflow-x-auto">
                 <table
-                  class="w-full text-left text-[14px] text-(--riv-card-ink)"
+                  class="w-full text-left text-[14px] text-riv-card-ink"
                   aria-labelledby="admin-audit-heading"
                   data-testid="admin-audit-table"
                 >
                   <thead>
-                    <tr class="text-[13px] text-(--riv-card-ink-soft)">
+                    <tr class="text-[13px] text-riv-card-ink-soft">
                       <th scope="col" class="py-1.5 pr-4 font-semibold">When</th>
                       <th scope="col" class="py-1.5 pr-4 font-semibold">Who</th>
                       <th scope="col" class="py-1.5 pr-4 font-semibold">Action</th>
@@ -109,7 +109,7 @@ import { AdminAuditEntryView } from './admin.model';
                   <tbody>
                     @for (entry of entries(); track entry.id) {
                       <tr
-                        class="border-t border-(--riv-field-border) align-top"
+                        class="border-t border-riv-field-border align-top"
                         [attr.data-testid]="'admin-audit-row-' + entry.id"
                       >
                         <td class="py-2 pr-4 whitespace-nowrap">
