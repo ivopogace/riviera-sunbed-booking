@@ -253,6 +253,30 @@
             }
           }
         }
+      } @else if (reading()) {
+        <!-- The read has not settled, so an empty grid states nothing: mirror the shape instead of claiming an empty venue (#744). Wholly decorative — the rail's own "Loading the current layout…" label owns the words. -->
+        <div data-testid="layout-skeleton" aria-hidden="true" inert>
+          <app-beach-map-canvas
+            frameTestid="layout-skeleton-frame"
+            viewportTestid="layout-skeleton-grid"
+            [loading]="true"
+            [fitWidth]="true"
+          >
+            <ng-template [appBeachMapRow]="skeletonRows">
+              <div
+                class="grid h-full grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
+              >
+                @for (tile of skeletonTiles; track tile) {
+                  <span
+                    appSkeletonBlock
+                    class="bg-riv-card-track h-full min-w-0 rounded-[6px]"
+                    data-testid="layout-skeleton-tile"
+                  ></span>
+                }
+              </div>
+            </ng-template>
+          </app-beach-map-canvas>
+        </div>
       } @else {
         <!-- The sea-facing grid on the shared canvas; the editor's own drag gesture is paint, so drag-pan is off. -->
         <app-beach-map-canvas

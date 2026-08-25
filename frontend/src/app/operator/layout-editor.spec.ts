@@ -128,6 +128,47 @@ describe('LayoutEditor (#172)', () => {
     fixture.detectChanges();
   }
 
+  it('renders a skeleton mirroring the loaded grid while the read is in flight (#744)', () => {
+    configure();
+    host = fixture.nativeElement as HTMLElement;
+
+    expect(byId('layout-skeleton')).toBeTruthy();
+    expect(host.querySelectorAll('[data-testid="layout-skeleton-tile"]').length).toBeGreaterThan(0);
+    expect(host.querySelector('[data-testid="layout-empty"]')).toBeNull();
+    expect(host.querySelector('[data-testid="layout-cell"]')).toBeNull();
+    expect(host.querySelector('[data-testid="layout-save-bar"]')).toBeNull();
+
+    // The sentence the skeleton replaces; a mirrored shape says it without a reflow (#744).
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ id: 1, name: 'V', sets: [], setVersion: 0 });
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="layout-skeleton"]')).toBeNull();
+    expect(byId('layout-empty')).toBeTruthy();
+  });
+
+  it('the layout skeleton is decorative and motion-reduce safe (#744)', () => {
+    configure();
+    host = fixture.nativeElement as HTMLElement;
+
+    expect(byId('layout-skeleton').getAttribute('aria-hidden')).toBe('true');
+    expect(byId('layout-skeleton').hasAttribute('inert')).toBe(true);
+    const tiles = Array.from(
+      host.querySelectorAll<HTMLElement>('[data-testid="layout-skeleton-tile"]'),
+    );
+    expect(tiles.length).toBeGreaterThan(0);
+    for (const tile of tiles) {
+      expect(tile.classList.contains('animate-pulse')).toBe(true);
+      expect(tile.classList.contains('motion-reduce:animate-none')).toBe(true);
+    }
+
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
+      .flush({ id: 1, name: 'V', sets: [], setVersion: 0 });
+    fixture.detectChanges();
+  });
+
   it('starts empty and generates an R×C grid with row A front-row premium', () => {
     render();
     expect(byId('layout-empty')).toBeTruthy();
