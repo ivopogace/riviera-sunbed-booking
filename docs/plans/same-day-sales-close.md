@@ -72,9 +72,18 @@ weather refund are date-agnostic — Phase 5 pins that instead of changing it) �
 `riviera-frontend` (every touched FE file stays in its stratum — the floor stays in
 `shared/booking-date.ts`, copy in `shared/cutoff-note.ts`, refusal copy in
 `booking/booking-dialog.ts`; **no new cross-feature edge** — RV-FE-8's frozen five stay five) ·
-`angular-developer` (signal-based `minDate` stays the pattern; no new form machinery — the native
-`min` + clamp shape is kept; the angular-cli MCP `get_best_practices` call is **due at the
-implement session** before the first FE edit) · `playwright-cli` (the two new journeys go in the
+`riviera-tailwind` (checked post-plan: the copy-only edits change no styling, but the new
+sentence must keep the clock-time an **NBSP-joined reviewable entity** — `4&nbsp;PM`, the
+`6&nbsp;PM` / #734 F-7 precedent, with the spec's NBSP pin updated; `data-testid="cutoff-note"`,
+the host classes, and the `clock-icon` glyph (+ its ICON-4 e2e size pin) stay; migrate-on-touch
+cannot trigger — no SCSS remains in-tree; no new/resized controls, so the touch-target floor is
+untouched) · `angular-developer` (signal-based `minDate` stays the pattern; no new form
+machinery — the native `min` + clamp shape is kept, compliant with v22's "Signal Forms for
+**new** forms" since none is added) · angular-cli MCP (`get_best_practices` on the v22
+workspace + `search_documentation`: `linkedSignal` and `input.required` — the calendar's
+existing mechanisms the floor change rides — confirmed current v22 APIs; the guide's "do not
+assume globals like `new Date()` in templates" pins that the dialog's today-branch computes in
+class code, never the template) · `playwright-cli` (the two new journeys go in the
 CI-safe mocked suite with `page.route` + `page.clock.setFixedTime` per the
 `availability-calendar.e2e.ts` precedent; suite placement per RV-FE-E2E).
 
@@ -679,11 +688,20 @@ ALTER TABLE venue
   (TSDoc: "today in Europe/Tirane — sales for a day now close on the day itself, server
   authoritative"); cutoff-note sentence (proposed, final wording at implement with a11y read):
   *"Book any day, today included — each day’s online sales close at the venue’s chosen time
-  that day (4 PM at most venues)."*; dialog `errorMessage()` gains the today branch (compare
-  the dialog's date to `todayBookingDate(new Date())` — pure, no new state);
+  that day (4&nbsp;PM at most venues)."* — the clock time stays an NBSP-joined entity per the
+  `6&nbsp;PM` precedent (#734 F-7), and the spec's NBSP pin moves with it; `data-testid`, host
+  classes, and the clock glyph unchanged; dialog `errorMessage()` gains the today branch
+  (compare the dialog's date to `todayBookingDate(new Date())` — **in class code, never the
+  template**, per the v22 guide's no-template-globals rule);
   `admin-commissions.ts` explainer + `terms-of-service.ts` sales sentence updated (free-cancel
   sentences untouched). Stale FE doc comments ("tomorrow", "invariant #4, display") updated in
-  the same pass. Run the angular-cli MCP `get_best_practices` before this phase's first edit.
+  the same pass. **Floor-staleness note:** `home.ts` computes `minDate` once at construction
+  (unlike `venue-map`, which re-derives per route reset) — with the floor at *today*, a page
+  left open past Tirane midnight lets yesterday be picked client-side (the server still refuses
+  `BOOKING_CLOSED`). Decide at implement: re-derive the floor in `onDateChange`/`reload`, or
+  accept the residual and say so in the component doc — either way the #155 spec is updated to
+  match. Re-run the angular-cli MCP `get_best_practices` before this phase's first edit
+  (plan-time run recorded in *Skills consulted*).
 - [ ] **Step 4: Verify green** — `npm test`, `npm run lint`, `npm run format:check`.
 - [ ] **Step 5: Generalization audit** — population: *every FE site encoding the old floor or
   sentence* (mechanism: literal "tomorrow"/"evening before"/`defaultBookingDate` semantics) →
