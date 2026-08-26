@@ -71,11 +71,11 @@ export const ADMIN_CONSOLE_TAB_ORDER = [
         <a
           #tabLink
           [routerLink]="tab.path"
-          routerLinkActive="riv-tab-active bg-white/85 text-[#0a4f5e] border-white/95 shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff]"
+          routerLinkActive
           [routerLinkActiveOptions]="{ exact: true }"
           ariaCurrentWhenActive="page"
           appTouchTarget
-          class="riv-tab inline-flex shrink-0 items-center gap-2 rounded-full border border-white/70 bg-white/45 px-[18px] py-[9px] text-[13.5px] font-semibold text-riv-ink-soft backdrop-blur-[10px] [transition:background_0.15s_ease] hover:bg-white/65"
+          class="riv-tab inline-flex shrink-0 items-center gap-2 rounded-full border border-white/70 bg-white/45 px-[18px] py-[9px] text-[13.5px] font-semibold text-riv-ink-soft backdrop-blur-[10px] [transition:background_0.15s_ease] hover:bg-white/65 aria-[current=page]:border-white/95 aria-[current=page]:bg-white/85 aria-[current=page]:text-[#0a4f5e] aria-[current=page]:shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff]"
           [attr.data-testid]="tab.testId"
           >{{ tab.label }}</a
         >
