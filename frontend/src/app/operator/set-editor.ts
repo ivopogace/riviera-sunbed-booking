@@ -33,8 +33,7 @@ import {
   MAX_ROWS,
 } from './beach-cell';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
-import { MAP_SKELETON_ROWS, MAP_SKELETON_TILES } from '../shared/map-skeleton';
-import { SkeletonBlock } from '../shared/skeleton-block';
+import { MapSkeletonGrid } from '../shared/map-skeleton-grid';
 import {
   LayoutCellRequest,
   LayoutErrorCode,
@@ -152,7 +151,7 @@ function draftForNewCell(gridY: number): SetDraft {
     CardGlass,
     BeachMapCanvas,
     BeachMapRowDef,
-    SkeletonBlock,
+    MapSkeletonGrid,
     BeachCell,
     ConfirmPanel,
     FormField,
@@ -501,10 +500,6 @@ export class SetEditor {
     const cell = this.selectedCell();
     return cell === undefined ? '' : `Row ${gridRowLabel(cell.gridY - 1)} · position ${cell.gridX}`;
   });
-
-  /** The in-flight skeleton's geometry, shared with every other beach-map surface (#744). */
-  protected readonly skeletonTiles = MAP_SKELETON_TILES;
-  protected readonly skeletonRows = MAP_SKELETON_ROWS;
 
   protected readonly tiers: readonly { key: Tier; label: string }[] = [
     { key: 'PREMIUM', label: 'Front row · premium' },

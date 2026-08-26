@@ -9,7 +9,7 @@ import { AmenityChip } from '../shared/amenity-chip';
 import { SemanticChip } from '../shared/semantic-chip';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { CardGlass } from '../shared/card-glass';
-import { MAP_SKELETON_ROWS, MAP_SKELETON_TILES } from '../shared/map-skeleton';
+import { MapSkeletonGrid } from '../shared/map-skeleton-grid';
 import { SkeletonBlock } from '../shared/skeleton-block';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { CutoffNote } from '../shared/cutoff-note';
@@ -117,6 +117,7 @@ interface VenueHeader {
     BeachMapCanvas,
     BeachMapRowDef,
     SkeletonBlock,
+    MapSkeletonGrid,
     MapTile,
     AvailabilityCalendar,
     ...FAILURE_DIRECTIVES,
@@ -130,10 +131,6 @@ interface VenueHeader {
 export class VenueMap {
   /** The legend's rows, in tile-state order — labelled beside the colours they explain. */
   protected readonly legend = MAP_TILE_LEGEND;
-
-  /** The in-flight skeleton's grid, shared with every other beach-map surface (#744). */
-  protected readonly skeletonTiles = MAP_SKELETON_TILES;
-  protected readonly skeletonRows = MAP_SKELETON_ROWS;
 
   private readonly route = inject(ActivatedRoute);
   private readonly venues = inject(VenueService);
