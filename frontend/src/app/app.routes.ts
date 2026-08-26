@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { Router, Routes } from '@angular/router';
 
+import type { AdminTabRouteData } from './admin/admin-console';
 import { operatorSessionGuard } from './core/operator-session.guard';
 
 /**
@@ -51,6 +52,129 @@ const consoleTabRoutes: Routes = [
     loadComponent: () => import('./operator/venue-tab').then((m) => m.VenueTab),
     title: 'Venue & commodities — Operator console',
     data: { tab: 'venue' },
+  },
+];
+
+/**
+ * The admin-console tab child routes. Operators lives at the console's own `''` path (it is the
+ * console's index tab, not a sub-path like the operator console's `beach-map`); every other tab
+ * is a literal segment. Each carries `data.adminTab` — the title, its `id`, the section's
+ * max-width, the sign-in copy, and the three gate test ids — which {@link AdminConsole} reads to
+ * render itself around whichever tab is active, with no per-tab branching of its own.
+ */
+const adminTabRoutes: Routes = [
+  {
+    path: '',
+    pathMatch: 'full',
+    loadComponent: () => import('./admin/admin-operators').then((m) => m.AdminOperators),
+    title: 'Operators — Riviera',
+    data: {
+      adminTab: {
+        title: 'Operators',
+        titleId: 'admin-ops-title',
+        maxWidthClass: 'max-w-[720px]',
+        signInCopy: 'Sign in as an admin to review pending registrations.',
+        restoringTestId: 'admin-ops-restoring',
+        signedOutTestId: 'admin-ops-signed-out',
+        forbiddenTestId: 'admin-ops-forbidden',
+      } satisfies AdminTabRouteData,
+    },
+  },
+  {
+    path: 'commissions',
+    loadComponent: () => import('./admin/admin-commissions').then((m) => m.AdminCommissions),
+    title: 'Commissions — Riviera',
+    data: {
+      adminTab: {
+        title: 'Commissions',
+        titleId: 'admin-commissions-title',
+        maxWidthClass: 'max-w-[860px]',
+        signInCopy: 'Sign in as an admin to review and change venue commission rates.',
+        restoringTestId: 'admin-commissions-restoring',
+        signedOutTestId: 'admin-commissions-signed-out',
+        forbiddenTestId: 'admin-commissions-forbidden',
+      } satisfies AdminTabRouteData,
+    },
+  },
+  {
+    path: 'email',
+    loadComponent: () => import('./admin/admin-mail-outbox').then((m) => m.AdminMailOutbox),
+    title: 'Email — Riviera',
+    data: {
+      adminTab: {
+        title: 'Email',
+        titleId: 'admin-outbox-title',
+        maxWidthClass: 'max-w-[720px]',
+        signInCopy: 'Sign in as an admin to review undelivered mail.',
+        restoringTestId: 'admin-outbox-restoring',
+        signedOutTestId: 'admin-outbox-signed-out',
+        forbiddenTestId: 'admin-outbox-forbidden',
+      } satisfies AdminTabRouteData,
+    },
+  },
+  {
+    path: 'refunds',
+    loadComponent: () => import('./admin/admin-refund-outbox').then((m) => m.AdminRefundOutbox),
+    title: 'Refunds — Riviera',
+    data: {
+      adminTab: {
+        title: 'Refunds',
+        titleId: 'admin-refunds-title',
+        maxWidthClass: 'max-w-[720px]',
+        signInCopy: 'Sign in as an admin to review outstanding refunds.',
+        restoringTestId: 'admin-refunds-restoring',
+        signedOutTestId: 'admin-refunds-signed-out',
+        forbiddenTestId: 'admin-refunds-forbidden',
+      } satisfies AdminTabRouteData,
+    },
+  },
+  {
+    path: 'photos',
+    loadComponent: () => import('./admin/admin-venue-photos').then((m) => m.AdminVenuePhotos),
+    title: 'Photos — Riviera',
+    data: {
+      adminTab: {
+        title: 'Photos',
+        titleId: 'admin-photos-title',
+        maxWidthClass: 'max-w-[860px]',
+        signInCopy: 'Sign in as an admin to moderate venue photos.',
+        restoringTestId: 'admin-photos-restoring',
+        signedOutTestId: 'admin-photos-signed-out',
+        forbiddenTestId: 'admin-photos-forbidden',
+      } satisfies AdminTabRouteData,
+    },
+  },
+  {
+    path: 'privacy',
+    loadComponent: () => import('./admin/admin-privacy').then((m) => m.AdminPrivacy),
+    title: 'Privacy — Riviera',
+    data: {
+      adminTab: {
+        title: 'Privacy',
+        titleId: 'admin-privacy-title',
+        maxWidthClass: 'max-w-[880px]',
+        signInCopy: 'Sign in as an admin to action a data-subject erasure request.',
+        restoringTestId: 'admin-privacy-restoring',
+        signedOutTestId: 'admin-privacy-signed-out',
+        forbiddenTestId: 'admin-privacy-forbidden',
+      } satisfies AdminTabRouteData,
+    },
+  },
+  {
+    path: 'audit',
+    loadComponent: () => import('./admin/admin-audit').then((m) => m.AdminAudit),
+    title: 'Audit — Riviera',
+    data: {
+      adminTab: {
+        title: 'Audit',
+        titleId: 'admin-audit-title',
+        maxWidthClass: 'max-w-[860px]',
+        signInCopy: 'Sign in as an admin to review recorded admin actions.',
+        restoringTestId: 'admin-audit-restoring',
+        signedOutTestId: 'admin-audit-signed-out',
+        forbiddenTestId: 'admin-audit-forbidden',
+      } satisfies AdminTabRouteData,
+    },
   },
 ];
 
@@ -158,60 +282,13 @@ export const routes: Routes = [
     data: { operatorChrome: true },
   },
   {
-    // Platform-admin surface: approval queue + suspend/reinstate; the /api/admin/** role gate is the authority.
+    // The AdminConsole shell owns the tab strip + auth gate; tabs are children.
     path: 'admin',
-    loadComponent: () => import('./admin/admin-operators').then((m) => m.AdminOperators),
-    title: 'Operators — Riviera',
+    loadComponent: () => import('./admin/admin-console').then((m) => m.AdminConsole),
+    title: 'Admin — Riviera',
     // Admin surface: the shared operator header/footer, never the tourist ones.
     data: { operatorChrome: true },
-  },
-  {
-    // Admin console Commissions tab — venue rates + the forward-only rate write.
-    path: 'admin/commissions',
-    loadComponent: () => import('./admin/admin-commissions').then((m) => m.AdminCommissions),
-    title: 'Commissions — Riviera',
-    // Admin surface: the shared operator header/footer, never the tourist ones.
-    data: { operatorChrome: true },
-  },
-  {
-    // Admin console Email tab — the outstanding-mail lever; ADMIN-gated server-side.
-    path: 'admin/email',
-    loadComponent: () => import('./admin/admin-mail-outbox').then((m) => m.AdminMailOutbox),
-    title: 'Email — Riviera',
-    // Admin surface: the shared operator header/footer, never the tourist ones.
-    data: { operatorChrome: true },
-  },
-  {
-    // Admin console Refunds tab — the refund-outbox lever; ADMIN-gated server-side.
-    path: 'admin/refunds',
-    loadComponent: () => import('./admin/admin-refund-outbox').then((m) => m.AdminRefundOutbox),
-    title: 'Refunds — Riviera',
-    // Admin surface: the shared operator header/footer, never the tourist ones.
-    data: { operatorChrome: true },
-  },
-  {
-    // Admin console Photos tab — venue-photo moderation; ADMIN-gated server-side.
-    path: 'admin/photos',
-    loadComponent: () => import('./admin/admin-venue-photos').then((m) => m.AdminVenuePhotos),
-    title: 'Photos — Riviera',
-    // Admin surface: the shared operator header/footer, never the tourist ones.
-    data: { operatorChrome: true },
-  },
-  {
-    // Admin console Privacy tab — data-subject erasure; ADMIN-gated server-side.
-    path: 'admin/privacy',
-    loadComponent: () => import('./admin/admin-privacy').then((m) => m.AdminPrivacy),
-    title: 'Privacy — Riviera',
-    // Admin surface: the shared operator header/footer, never the tourist ones.
-    data: { operatorChrome: true },
-  },
-  {
-    // Admin console Audit tab — the recorded admin actions; ADMIN-gated server-side.
-    path: 'admin/audit',
-    loadComponent: () => import('./admin/admin-audit').then((m) => m.AdminAudit),
-    title: 'Audit — Riviera',
-    // Admin surface: the shared operator header/footer, never the tourist ones.
-    data: { operatorChrome: true },
+    children: adminTabRoutes,
   },
   {
     // Chromeless operator console: the shell suppresses its own chrome via `data.operatorConsole`; tabs are children.

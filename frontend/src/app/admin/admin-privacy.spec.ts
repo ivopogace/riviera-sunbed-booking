@@ -1,10 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Mock, vi } from 'vitest';
 
-import { OperatorAuth } from '../core/operator-auth';
 import { AdminPrivacy } from './admin-privacy';
 import { AdminPrivacyService } from './admin-privacy.service';
 
@@ -18,21 +16,6 @@ import { AdminPrivacyService } from './admin-privacy.service';
  * (design D-8). The done-stage case therefore asserts the *absence* of any such distinction as
  * carefully as it asserts the presence of the sentence that explains why.
  */
-interface AuthState {
-  restoring?: boolean;
-  signedIn?: boolean;
-  isAdmin?: boolean;
-}
-
-function authStub(state: AuthState = {}): OperatorAuth {
-  return {
-    restoring: signal(state.restoring ?? false),
-    signedIn: signal(state.signedIn ?? true),
-    isAdmin: signal(state.isAdmin ?? true),
-    principalName: signal('admin-self'),
-  } as unknown as OperatorAuth;
-}
-
 const EMAIL = 'ana@example.com';
 
 function serviceStub(): { erase: Mock<AdminPrivacyService['erase']> } {
@@ -51,16 +34,11 @@ async function settle(fixture: ComponentFixture<AdminPrivacy>): Promise<void> {
 }
 
 async function render(
-  auth: OperatorAuth,
   service: ReturnType<typeof serviceStub>,
 ): Promise<ComponentFixture<AdminPrivacy>> {
   await TestBed.configureTestingModule({
     imports: [AdminPrivacy],
-    providers: [
-      provideRouter([]),
-      { provide: OperatorAuth, useValue: auth },
-      { provide: AdminPrivacyService, useValue: service },
-    ],
+    providers: [provideRouter([]), { provide: AdminPrivacyService, useValue: service }],
   }).compileComponents();
   const fixture = TestBed.createComponent(AdminPrivacy);
   fixture.detectChanges();
@@ -110,7 +88,7 @@ async function confirm(fixture: ComponentFixture<AdminPrivacy>): Promise<void> {
 
 describe('AdminPrivacy', () => {
   it('explains what an erasure erases and what it keeps', async () => {
-    const fixture = await render(authStub(), serviceStub());
+    const fixture = await render(serviceStub());
 
     const aside = text(fixture, 'admin-privacy-survives').toLowerCase();
     expect(aside).toContain('name, email, phone');
@@ -124,7 +102,7 @@ describe('AdminPrivacy', () => {
 
   it('refuses a malformed email without sending anything', async () => {
     const service = serviceStub();
-    const fixture = await render(authStub(), service);
+    const fixture = await render(service);
 
     await armConfirmation(fixture, 'not-an-email');
 
@@ -135,7 +113,7 @@ describe('AdminPrivacy', () => {
 
   it('refuses a blank email without sending anything', async () => {
     const service = serviceStub();
-    const fixture = await render(authStub(), service);
+    const fixture = await render(service);
 
     await armConfirmation(fixture, '   ');
 
@@ -146,7 +124,7 @@ describe('AdminPrivacy', () => {
 
   it('arms a confirmation that names the address, sending nothing', async () => {
     const service = serviceStub();
-    const fixture = await render(authStub(), service);
+    const fixture = await render(service);
 
     await armConfirmation(fixture);
 
@@ -159,7 +137,7 @@ describe('AdminPrivacy', () => {
 
   it('trims a pasted address before validating and sending', async () => {
     const service = serviceStub();
-    const fixture = await render(authStub(), service);
+    const fixture = await render(service);
 
     await armConfirmation(fixture, `  ${EMAIL}  `);
     await confirm(fixture);
@@ -169,7 +147,7 @@ describe('AdminPrivacy', () => {
 
   it('sends the address on confirm', async () => {
     const service = serviceStub();
-    const fixture = await render(authStub(), service);
+    const fixture = await render(service);
 
     await armConfirmation(fixture);
     await confirm(fixture);
@@ -182,7 +160,7 @@ describe('AdminPrivacy', () => {
   /** Grounds typed into the confirmation ride the request into the audit trail. */
   it('passes typed grounds to the erasure', async () => {
     const service = serviceStub();
-    const fixture = await render(authStub(), service);
+    const fixture = await render(service);
 
     await armConfirmation(fixture);
     await type(fixture, 'admin-privacy-reason', '  DSAR-2026-08-04  ');
@@ -193,7 +171,7 @@ describe('AdminPrivacy', () => {
 
   it('sends no grounds when the field is blank', async () => {
     const service = serviceStub();
-    const fixture = await render(authStub(), service);
+    const fixture = await render(service);
 
     await armConfirmation(fixture);
     await confirm(fixture);
@@ -208,7 +186,7 @@ describe('AdminPrivacy', () => {
    * confirmation as "yes, they were in the system".
    */
   it('states the non-enumeration property on the done stage', async () => {
-    const fixture = await render(authStub(), serviceStub());
+    const fixture = await render(serviceStub());
 
     await armConfirmation(fixture);
     await confirm(fixture);
@@ -224,7 +202,7 @@ describe('AdminPrivacy', () => {
 
   it("does not carry one request's address or grounds into the next", async () => {
     const service = serviceStub();
-    const fixture = await render(authStub(), service);
+    const fixture = await render(service);
 
     await armConfirmation(fixture);
     await type(fixture, 'admin-privacy-reason', 'first grounds');
@@ -244,7 +222,7 @@ describe('AdminPrivacy', () => {
   it('keeps the confirmation armed when the request fails', async () => {
     const service = serviceStub();
     service.erase.mockRejectedValueOnce(new Error('boom'));
-    const fixture = await render(authStub(), service);
+    const fixture = await render(service);
 
     await armConfirmation(fixture);
     await type(fixture, 'admin-privacy-reason', 'DSAR-2026-08-04');
@@ -262,7 +240,7 @@ describe('AdminPrivacy', () => {
   it('reports a rejected address distinctly from a transport failure', async () => {
     const service = serviceStub();
     service.erase.mockRejectedValueOnce(problem(400, 'INVALID_REQUEST'));
-    const fixture = await render(authStub(), service);
+    const fixture = await render(service);
 
     await armConfirmation(fixture);
     await confirm(fixture);
@@ -276,7 +254,7 @@ describe('AdminPrivacy', () => {
     service.erase.mockImplementation(
       () => new Promise<void>((resolve) => (resolveErase = resolve)),
     );
-    const fixture = await render(authStub(), service);
+    const fixture = await render(service);
 
     await armConfirmation(fixture);
     byTestId<HTMLButtonElement>(fixture, 'admin-privacy-confirm')!.click();
@@ -294,26 +272,6 @@ describe('AdminPrivacy', () => {
     expect(service.erase).toHaveBeenCalledTimes(1);
   });
 
-  it('self-gates on the admin session', async () => {
-    const service = serviceStub();
-    const fixture = await render(authStub({ isAdmin: false }), service);
-
-    expect(byTestId(fixture, 'admin-privacy-forbidden')).not.toBeNull();
-    expect(byTestId(fixture, 'admin-privacy-email')).toBeNull();
-    // A signed-out visitor is never told which admin surfaces exist.
-    expect(
-      (fixture.nativeElement as HTMLElement).querySelector('app-admin-console-tabs'),
-    ).toBeNull();
-    expect(service.erase).not.toHaveBeenCalled();
-  });
-
-  it('offers a sign-in link when the visitor has no session', async () => {
-    const fixture = await render(authStub({ signedIn: false }), serviceStub());
-
-    expect(byTestId(fixture, 'admin-privacy-signed-out')).not.toBeNull();
-    expect(byTestId(fixture, 'admin-privacy-email')).toBeNull();
-  });
-
   /**
    * WCAG 2.4.3 — the recurring stranded-focus class, which a sibling tab's review fan-out
    * hit three times in one PR. Each of the five transitions below destroys the control that was just
@@ -321,7 +279,7 @@ describe('AdminPrivacy', () => {
    * `focusAfterRender` call removed; that was verified rather than assumed.
    */
   it('moves focus onto the confirmation when it is armed', async () => {
-    const fixture = await render(authStub(), serviceStub());
+    const fixture = await render(serviceStub());
 
     await armConfirmation(fixture);
 
@@ -329,7 +287,7 @@ describe('AdminPrivacy', () => {
   });
 
   it('moves focus back to Review when the confirmation is dismissed', async () => {
-    const fixture = await render(authStub(), serviceStub());
+    const fixture = await render(serviceStub());
 
     await armConfirmation(fixture);
     byTestId<HTMLButtonElement>(fixture, 'admin-privacy-cancel')!.click();
@@ -340,7 +298,7 @@ describe('AdminPrivacy', () => {
   });
 
   it('moves focus onto the outcome when the erasure completes', async () => {
-    const fixture = await render(authStub(), serviceStub());
+    const fixture = await render(serviceStub());
 
     await armConfirmation(fixture);
     await confirm(fixture);
@@ -349,7 +307,7 @@ describe('AdminPrivacy', () => {
   });
 
   it('moves focus onto the email field when starting another erasure', async () => {
-    const fixture = await render(authStub(), serviceStub());
+    const fixture = await render(serviceStub());
 
     await armConfirmation(fixture);
     await confirm(fixture);
@@ -368,7 +326,7 @@ describe('AdminPrivacy', () => {
   it('returns focus to the confirm button when the erasure fails, rather than stranding it', async () => {
     const service = serviceStub();
     service.erase.mockRejectedValueOnce(new Error('boom'));
-    const fixture = await render(authStub(), service);
+    const fixture = await render(service);
 
     await armConfirmation(fixture);
     await confirm(fixture);

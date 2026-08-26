@@ -1,14 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
 
-import { AdminForbidden } from './admin-forbidden';
 import { email, FormField, form, required } from '@angular/forms/signals';
-import { RouterLink } from '@angular/router';
 
-import { OperatorAuth } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { focusMover } from '../shared/focus-after-render';
-import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminPrivacyService, erasureErrorOf } from './admin-privacy.service';
 
 import { TouchTarget } from '../shared/touch-target';
@@ -47,245 +43,210 @@ type ErasureStage = 'form' | 'confirm' | 'done';
  * that — not "your data is deleted", which would be both wrong and a promise the platform cannot
  * keep while it is legally required to retain the financial record.
  *
- * <p>Like every admin tab, the page self-gates on {@link OperatorAuth} for UX while the backend
- * `/api/admin/**` role gate does the enforcing. Porcelain-themed to match the operator console.
+ * <p>Like every admin tab, the surrounding {@code AdminConsole} shell self-gates on
+ * {@code OperatorAuth} for UX while the backend `/api/admin/**` role gate does the enforcing; this
+ * component only ever renders once both have passed — it has no data of its own to load, so it
+ * carries no gate of its own either.
  */
 @Component({
   selector: 'app-admin-privacy',
-  imports: [
-    AdminForbidden,
-    RouterLink,
-    FormField,
-    CardGlass,
-    AdminConsoleTabs,
-    BusyAction,
-    TouchTarget,
-  ],
-  host: { 'data-riv-theme': 'porcelain' },
+  imports: [FormField, CardGlass, BusyAction, TouchTarget],
   template: `
-    <section class="mx-auto max-w-[880px] px-4 py-10" aria-labelledby="admin-privacy-title">
-      <h1 id="admin-privacy-title" class="text-[24px] font-semibold text-riv-ink">Privacy</h1>
-
-      @if (auth.restoring()) {
-        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-privacy-restoring">
-          Loading…
+    <div class="mt-5 grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,320px)]">
+      <section
+        appCardGlass
+        class="rounded-[14px] p-5"
+        aria-labelledby="admin-privacy-erase-heading"
+      >
+        <h2 id="admin-privacy-erase-heading" class="text-[16px] font-semibold text-riv-card-ink">
+          Erase a data subject
+        </h2>
+        <p
+          id="admin-privacy-erase-intro"
+          class="mt-1 text-[13.5px] leading-relaxed text-riv-card-ink-soft"
+        >
+          For a guest with no account, or an account holder who cannot do it themselves. Contact
+          details are scrubbed in place; the financial records that must be retained stay, without
+          the person attached to them.
         </p>
-      } @else if (!auth.signedIn()) {
-        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-privacy-signed-out">
-          Sign in as an admin to action a data-subject erasure request.
-          <a
-            routerLink="/account/sign-in"
-            [queryParams]="{ audience: 'operator', returnUrl: '/admin/privacy' }"
-            class="font-semibold underline"
-            >Sign in</a
+
+        @if (stage() === 'form') {
+          <form
+            class="mt-4"
+            data-testid="admin-privacy-form"
+            novalidate
+            (submit)="review(); $event.preventDefault()"
           >
-        </p>
-      } @else if (!auth.isAdmin()) {
-        <p appAdminForbidden testId="admin-privacy-forbidden"></p>
-      } @else {
-        <app-admin-console-tabs label="Admin console sections" />
-
-        <div class="mt-5 grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,320px)]">
-          <section
-            appCardGlass
-            class="rounded-[14px] p-5"
-            aria-labelledby="admin-privacy-erase-heading"
-          >
-            <h2
-              id="admin-privacy-erase-heading"
-              class="text-[16px] font-semibold text-riv-card-ink"
+            <label
+              for="admin-privacy-email"
+              class="block text-[11px] font-bold tracking-[0.1em] text-riv-card-ink-soft uppercase"
+              >Email address</label
             >
-              Erase a data subject
-            </h2>
-            <p
-              id="admin-privacy-erase-intro"
-              class="mt-1 text-[13.5px] leading-relaxed text-riv-card-ink-soft"
-            >
-              For a guest with no account, or an account holder who cannot do it themselves. Contact
-              details are scrubbed in place; the financial records that must be retained stay,
-              without the person attached to them.
-            </p>
+            <input
+              appTouchTarget
+              id="admin-privacy-email"
+              type="email"
+              data-testid="admin-privacy-email"
+              [formField]="erasureForm.email"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="guest@example.com"
+              aria-describedby="admin-privacy-erase-intro"
+              class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[15px] text-riv-card-ink"
+            />
 
-            @if (stage() === 'form') {
-              <form
-                class="mt-4"
-                data-testid="admin-privacy-form"
-                novalidate
-                (submit)="review(); $event.preventDefault()"
+            @if (reviewAttempted() && erasureForm.email().errors().length) {
+              <p
+                class="mt-2 text-[13.5px] font-semibold text-[#b3261e]"
+                role="alert"
+                data-testid="admin-privacy-email-error"
               >
-                <label
-                  for="admin-privacy-email"
-                  class="block text-[11px] font-bold tracking-[0.1em] text-riv-card-ink-soft uppercase"
-                  >Email address</label
-                >
-                <input
-                  appTouchTarget
-                  id="admin-privacy-email"
-                  type="email"
-                  data-testid="admin-privacy-email"
-                  [formField]="erasureForm.email"
-                  autocomplete="off"
-                  autocapitalize="off"
-                  spellcheck="false"
-                  placeholder="guest@example.com"
-                  aria-describedby="admin-privacy-erase-intro"
-                  class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[15px] text-riv-card-ink"
-                />
-
-                @if (reviewAttempted() && erasureForm.email().errors().length) {
-                  <p
-                    class="mt-2 text-[13.5px] font-semibold text-[#b3261e]"
-                    role="alert"
-                    data-testid="admin-privacy-email-error"
-                  >
-                    {{ erasureForm.email().errors()[0].message }}
-                  </p>
-                }
-
-                <button
-                  appTouchTarget
-                  type="submit"
-                  data-testid="admin-privacy-review"
-                  class="mt-4 w-full rounded-[12px] border border-riv-field-border bg-white/70 px-4 py-3 text-[14.5px] font-bold text-riv-card-ink"
-                >
-                  Review erasure request
-                </button>
-              </form>
-            } @else if (stage() === 'confirm') {
-              <div
-                role="group"
-                tabindex="-1"
-                data-testid="admin-privacy-confirm-panel"
-                aria-labelledby="admin-privacy-confirm-heading"
-                class="mt-4 rounded-[14px] border border-[rgba(179,54,43,0.35)] bg-[rgba(179,54,43,0.06)] p-4 [animation:riv-pop_0.22s_ease] motion-reduce:[animation:none]"
-              >
-                <h3 id="admin-privacy-confirm-heading" class="text-[14px] font-bold text-[#8f2c22]">
-                  Erase everything linked to this email?
-                </h3>
-                <p class="mt-2 text-[13px] leading-relaxed text-riv-card-ink-soft">
-                  Name, email and phone become unrecoverable for
-                  <strong class="text-riv-card-ink">{{ submittedEmail() }}</strong
-                  >. Bookings and ledger entries remain as anonymous records. This cannot be undone.
-                </p>
-
-                <label
-                  for="admin-privacy-reason"
-                  class="mt-3 block text-[13.5px] font-semibold text-riv-card-ink"
-                  >Reason (optional)</label
-                >
-                <input
-                  appTouchTarget
-                  id="admin-privacy-reason"
-                  type="text"
-                  maxlength="500"
-                  data-testid="admin-privacy-reason"
-                  [value]="reason()"
-                  [disabled]="busy()"
-                  (input)="onReasonTyped($event)"
-                  placeholder="e.g. DSAR-2026-08-04"
-                  class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[14px] text-riv-card-ink"
-                />
-
-                <div class="mt-3 flex flex-wrap items-center gap-2">
-                  <button
-                    appTouchTarget
-                    type="button"
-                    data-testid="admin-privacy-confirm"
-                    [appBusy]="busy()"
-                    (click)="erase()"
-                    class="rounded-[12px] border border-[rgba(179,54,43,0.6)] bg-[rgba(179,54,43,0.1)] px-5 py-3 text-[13.5px] font-bold text-[#8f2c22] aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
-                  >
-                    {{ busy() ? 'Erasing…' : 'Erase permanently' }}
-                  </button>
-                  <button
-                    appTouchTarget
-                    type="button"
-                    data-testid="admin-privacy-cancel"
-                    [appBusy]="busy()"
-                    (click)="cancel()"
-                    class="rounded-[12px] border border-riv-field-border bg-white/70 px-5 py-3 text-[13.5px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
-                  >
-                    Cancel
-                  </button>
-                </div>
-
-                <p
-                  class="mt-2 min-h-[1.25rem] text-[13.5px] font-semibold text-[#b3261e]"
-                  role="alert"
-                  data-testid="admin-privacy-error"
-                >
-                  {{ erasureError() }}
-                </p>
-              </div>
-            } @else {
-              <div
-                role="group"
-                tabindex="-1"
-                data-testid="admin-privacy-done-panel"
-                aria-labelledby="admin-privacy-done-heading"
-                class="mt-4 rounded-[14px] border border-[rgba(14,138,168,0.35)] bg-[rgba(43,184,212,0.12)] p-4 [animation:riv-pop_0.22s_ease] motion-reduce:[animation:none]"
-              >
-                <h3 id="admin-privacy-done-heading" class="text-[14px] font-bold text-[#0a4f5e]">
-                  Request actioned
-                </h3>
-                <p class="mt-2 text-[13px] leading-relaxed text-riv-card-ink-soft">
-                  Anything held for
-                  <strong class="text-riv-card-ink">{{ submittedEmail() }}</strong> has been erased.
-                  The result is deliberately the same whether or not that email was known to us —
-                  this screen will never tell you which.
-                </p>
-                <button
-                  appTouchTarget
-                  type="button"
-                  data-testid="admin-privacy-another"
-                  (click)="another()"
-                  class="mt-3 rounded-[12px] border border-riv-field-border bg-white/70 px-5 py-3 text-[13.5px] font-semibold text-riv-card-ink"
-                >
-                  Erase another
-                </button>
-              </div>
+                {{ erasureForm.email().errors()[0].message }}
+              </p>
             }
-          </section>
 
-          <aside
-            appCardGlass
-            class="rounded-[14px] p-5"
-            data-testid="admin-privacy-survives"
-            aria-labelledby="admin-privacy-survives-heading"
+            <button
+              appTouchTarget
+              type="submit"
+              data-testid="admin-privacy-review"
+              class="mt-4 w-full rounded-[12px] border border-riv-field-border bg-white/70 px-4 py-3 text-[14.5px] font-bold text-riv-card-ink"
+            >
+              Review erasure request
+            </button>
+          </form>
+        } @else if (stage() === 'confirm') {
+          <div
+            role="group"
+            tabindex="-1"
+            data-testid="admin-privacy-confirm-panel"
+            aria-labelledby="admin-privacy-confirm-heading"
+            class="mt-4 rounded-[14px] border border-[rgba(179,54,43,0.35)] bg-[rgba(179,54,43,0.06)] p-4 [animation:riv-pop_0.22s_ease] motion-reduce:[animation:none]"
           >
-            <h2
-              id="admin-privacy-survives-heading"
-              class="text-[14.5px] font-semibold text-riv-card-ink"
-            >
-              What survives an erasure
-            </h2>
+            <h3 id="admin-privacy-confirm-heading" class="text-[14px] font-bold text-[#8f2c22]">
+              Erase everything linked to this email?
+            </h3>
+            <p class="mt-2 text-[13px] leading-relaxed text-riv-card-ink-soft">
+              Name, email and phone become unrecoverable for
+              <strong class="text-riv-card-ink">{{ submittedEmail() }}</strong
+              >. Bookings and ledger entries remain as anonymous records. This cannot be undone.
+            </p>
 
-            <dl
-              class="mt-3 grid grid-cols-[auto_1fr] gap-x-2 gap-y-2.5 text-[12.5px] leading-relaxed text-riv-card-ink-soft"
+            <label
+              for="admin-privacy-reason"
+              class="mt-3 block text-[13.5px] font-semibold text-riv-card-ink"
+              >Reason (optional)</label
             >
-              <dt class="font-bold text-[#b3261e]">Erased</dt>
-              <dd>Name, email, phone — overwritten in place, not deleted rows.</dd>
-              <dt class="font-bold text-[#0a5f73]">Kept</dt>
-              <dd>
-                Bookings, payments, payout ledger entries — the records we are legally required to
-                retain, now anonymous.
-              </dd>
-            </dl>
+            <input
+              appTouchTarget
+              id="admin-privacy-reason"
+              type="text"
+              maxlength="500"
+              data-testid="admin-privacy-reason"
+              [value]="reason()"
+              [disabled]="busy()"
+              (input)="onReasonTyped($event)"
+              placeholder="e.g. DSAR-2026-08-04"
+              class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[14px] text-riv-card-ink"
+            />
+
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                appTouchTarget
+                type="button"
+                data-testid="admin-privacy-confirm"
+                [appBusy]="busy()"
+                (click)="erase()"
+                class="rounded-[12px] border border-[rgba(179,54,43,0.6)] bg-[rgba(179,54,43,0.1)] px-5 py-3 text-[13.5px] font-bold text-[#8f2c22] aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+              >
+                {{ busy() ? 'Erasing…' : 'Erase permanently' }}
+              </button>
+              <button
+                appTouchTarget
+                type="button"
+                data-testid="admin-privacy-cancel"
+                [appBusy]="busy()"
+                (click)="cancel()"
+                class="rounded-[12px] border border-riv-field-border bg-white/70 px-5 py-3 text-[13.5px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+              >
+                Cancel
+              </button>
+            </div>
 
             <p
-              class="mt-3 border-t border-riv-card-border pt-3 text-[12.5px] leading-relaxed text-riv-card-ink-soft"
+              class="mt-2 min-h-[1.25rem] text-[13.5px] font-semibold text-[#b3261e]"
+              role="alert"
+              data-testid="admin-privacy-error"
             >
-              Account holders can erase themselves from their own account page. This screen exists
-              for the people who can't.
+              {{ erasureError() }}
             </p>
-          </aside>
-        </div>
-      }
-    </section>
+          </div>
+        } @else {
+          <div
+            role="group"
+            tabindex="-1"
+            data-testid="admin-privacy-done-panel"
+            aria-labelledby="admin-privacy-done-heading"
+            class="mt-4 rounded-[14px] border border-[rgba(14,138,168,0.35)] bg-[rgba(43,184,212,0.12)] p-4 [animation:riv-pop_0.22s_ease] motion-reduce:[animation:none]"
+          >
+            <h3 id="admin-privacy-done-heading" class="text-[14px] font-bold text-[#0a4f5e]">
+              Request actioned
+            </h3>
+            <p class="mt-2 text-[13px] leading-relaxed text-riv-card-ink-soft">
+              Anything held for
+              <strong class="text-riv-card-ink">{{ submittedEmail() }}</strong> has been erased. The
+              result is deliberately the same whether or not that email was known to us — this
+              screen will never tell you which.
+            </p>
+            <button
+              appTouchTarget
+              type="button"
+              data-testid="admin-privacy-another"
+              (click)="another()"
+              class="mt-3 rounded-[12px] border border-riv-field-border bg-white/70 px-5 py-3 text-[13.5px] font-semibold text-riv-card-ink"
+            >
+              Erase another
+            </button>
+          </div>
+        }
+      </section>
+
+      <aside
+        appCardGlass
+        class="rounded-[14px] p-5"
+        data-testid="admin-privacy-survives"
+        aria-labelledby="admin-privacy-survives-heading"
+      >
+        <h2
+          id="admin-privacy-survives-heading"
+          class="text-[14.5px] font-semibold text-riv-card-ink"
+        >
+          What survives an erasure
+        </h2>
+
+        <dl
+          class="mt-3 grid grid-cols-[auto_1fr] gap-x-2 gap-y-2.5 text-[12.5px] leading-relaxed text-riv-card-ink-soft"
+        >
+          <dt class="font-bold text-[#b3261e]">Erased</dt>
+          <dd>Name, email, phone — overwritten in place, not deleted rows.</dd>
+          <dt class="font-bold text-[#0a5f73]">Kept</dt>
+          <dd>
+            Bookings, payments, payout ledger entries — the records we are legally required to
+            retain, now anonymous.
+          </dd>
+        </dl>
+
+        <p
+          class="mt-3 border-t border-riv-card-border pt-3 text-[12.5px] leading-relaxed text-riv-card-ink-soft"
+        >
+          Account holders can erase themselves from their own account page. This screen exists for
+          the people who can't.
+        </p>
+      </aside>
+    </div>
   `,
 })
 export class AdminPrivacy {
-  protected readonly auth = inject(OperatorAuth);
   private readonly service = inject(AdminPrivacyService);
   private readonly focusAfterRender = focusMover();
 

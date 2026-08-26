@@ -36,9 +36,11 @@ export const ADMIN_CONSOLE_TAB_ORDER = [
  * (`docs/design/riviera-admin-console.dc.html`): porcelain glass pills, the active one lifted.
  *
  * <p><strong>Routed tabs, not local state.</strong> The canvas models tabs as a `tab` state field
- * because it is a single demo page; here each tab is its own lazy route, so it is deep-linkable,
- * back-button-correct, and only the tab you opened is downloaded — the operator console's shape
- * minus the layout component.
+ * because it is a single demo page; here each tab is its own child route of {@code AdminConsole},
+ * so it is deep-linkable, back-button-correct, and only the tab you opened is downloaded — the
+ * operator console's own shape (`riviera-frontend`: "the one nested child-route tree... follow
+ * that shape for further tabbed sub-apps"). Mounted once by the shell and kept alive across tab
+ * switches, so its scroll position is never lost or reset.
  *
  * <p><strong>Scrolls, doesn't wrap.</strong> Originally a flat wrapping strip (measured to stay
  * within 3 rows at 360px through 8 tabs, never scrolling sideways) — moved to a single scrolling
@@ -55,9 +57,9 @@ export const ADMIN_CONSOLE_TAB_ORDER = [
  * different job. The canvas's own five-tab strip predates four of the tabs that ship and is not the
  * target IA.
  *
- * <p>Rendered only inside each page's admin-authorized branch, so a signed-out visitor is never told
- * which admin surfaces exist. The active tab carries `aria-current="page"`, which is what makes the
- * lift visible to assistive tech rather than to sighted users alone.
+ * <p>Rendered only inside {@code AdminConsole}'s authorized branch, so a signed-out visitor is never
+ * told which admin surfaces exist. The active tab carries `aria-current="page"`, which is what makes
+ * the lift visible to assistive tech rather than to sighted users alone.
  */
 @Component({
   selector: 'app-admin-console-tabs',
@@ -115,7 +117,7 @@ export class AdminConsoleTabs {
       const url = this.currentUrl();
       const links = this.tabLinks();
       const index = this.tabs.findIndex((tab) => tab.path === url);
-      links[index]?.nativeElement.scrollIntoView?.({ inline: 'center', block: 'nearest' });
+      links[index]?.nativeElement.scrollIntoView?.({ inline: 'nearest', block: 'nearest' });
     });
   }
 }

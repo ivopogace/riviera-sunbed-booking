@@ -1,8 +1,6 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 
-import { AdminForbidden } from './admin-forbidden';
 import { NgOptimizedImage } from '@angular/common';
-import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
@@ -10,7 +8,6 @@ import { CardGlass } from '../shared/card-glass';
 import { ConfirmWithReason } from '../shared/confirm-with-reason';
 import { focusMover } from '../shared/focus-after-render';
 import { PhotoSlotKey } from '../shared/venue-views';
-import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminVenuePhotosService, ModerationVenue } from './admin-venue-photos.service';
 import { AdminPhotoSlotView } from './admin.model';
 
@@ -42,172 +39,135 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
  * focus-trap and the action stays where it was clicked. The confirmation also collects
  * optional grounds, which ride the `X-Audit-Reason` header into the platform's admin audit trail.
  *
- * <p>Like every admin tab, the page self-gates on {@link OperatorAuth} for UX while the backend
- * `/api/admin/**` role gate does the enforcing. Porcelain-themed to match the operator console.
+ * <p>Like every admin tab, the surrounding {@code AdminConsole} shell self-gates on
+ * {@link OperatorAuth} for UX while the backend `/api/admin/**` role gate does the enforcing; this
+ * component only ever renders once both have passed.
  */
 @Component({
   selector: 'app-admin-venue-photos',
-  imports: [
-    AdminForbidden,
-    RouterLink,
-    NgOptimizedImage,
-    CardGlass,
-    AdminConsoleTabs,
-    ConfirmWithReason,
-    BusyAction,
-    TouchTarget,
-  ],
-  host: { 'data-riv-theme': 'porcelain' },
+  imports: [NgOptimizedImage, CardGlass, ConfirmWithReason, BusyAction, TouchTarget],
   template: `
-    <section class="mx-auto max-w-[860px] px-4 py-10" aria-labelledby="admin-photos-title">
-      <h1 id="admin-photos-title" class="text-[24px] font-semibold text-riv-ink">Photos</h1>
+    <p class="mt-5 max-w-[62ch] text-[15px] text-riv-ink-soft">
+      Removing a photo is immediate and permanent — that slot's image and every stored size are
+      deleted. It removes one <strong>slot</strong>, not one picture: the same image published in
+      another slot keeps serving from there, so each published slot is its own removal.
+    </p>
 
-      @if (auth.restoring()) {
-        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-photos-restoring">
-          Loading…
-        </p>
-      } @else if (!auth.signedIn()) {
-        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-photos-signed-out">
-          Sign in as an admin to moderate venue photos.
-          <a
-            routerLink="/account/sign-in"
-            [queryParams]="{ audience: 'operator', returnUrl: '/admin/photos' }"
-            class="font-semibold underline"
-            >Sign in</a
-          >
-        </p>
-      } @else if (!auth.isAdmin()) {
-        <p appAdminForbidden testId="admin-photos-forbidden"></p>
-      } @else {
-        <app-admin-console-tabs label="Admin console sections" />
-
-        <p class="mt-5 max-w-[62ch] text-[15px] text-riv-ink-soft">
-          Removing a photo is immediate and permanent — that slot's image and every stored size are
-          deleted. It removes one <strong>slot</strong>, not one picture: the same image published
-          in another slot keeps serving from there, so each published slot is its own removal.
-        </p>
-
-        <div class="mt-5">
-          <label
-            for="admin-photos-venue-select"
-            class="block text-[13.5px] font-semibold text-riv-ink"
-            >Venue</label
-          >
-          <select
-            appTouchTarget
-            id="admin-photos-venue-select"
-            data-testid="admin-photos-venue"
-            [value]="selectedVenueId() ?? ''"
-            (change)="onVenuePicked($event)"
-            class="mt-1 w-full max-w-[420px] rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[15px] text-riv-ink"
-          >
-            <option value="">Choose a venue…</option>
-            @for (venue of venues(); track venue.id) {
-              <option [value]="venue.id">{{ venue.name }} — {{ venue.beach }}</option>
-            }
-          </select>
-        </div>
-
-        @if (loading()) {
-          <p class="mt-6 text-[15px] text-riv-ink-soft" data-testid="admin-photos-loading">
-            Loading…
-          </p>
-        } @else if (loadError()) {
-          <p class="mt-6 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-photos-error">
-            Something went wrong loading this venue's photos.
-            <button
-              type="button"
-              data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
-              class="font-semibold underline"
-              data-testid="admin-photos-retry"
-              (click)="loadSlots()"
-            >
-              Retry
-            </button>
-          </p>
-        } @else if (selectedVenue(); as venue) {
-          <ul role="list" class="mt-6 grid gap-4 sm:grid-cols-3">
-            @for (slot of slots(); track slot.slot) {
-              <li
-                appCardGlass
-                class="rounded-[14px] p-4"
-                tabindex="-1"
-                [attr.data-testid]="'admin-photo-slot-' + slot.slot"
-              >
-                <h2 class="text-[15px] font-semibold text-riv-card-ink">
-                  {{ label(slot.slot) }}
-                </h2>
-
-                @if (slot.previewUrl; as url) {
-                  <div class="relative mt-2 aspect-[3/2] w-full overflow-hidden rounded-[10px]">
-                    <img
-                      [ngSrc]="url"
-                      [alt]="'Current upload in the ' + slot.slot + ' slot of ' + venue.name"
-                      fill
-                      disableOptimizedSrcset
-                      class="object-cover"
-                      [attr.data-testid]="'admin-photo-preview-' + slot.slot"
-                    />
-                  </div>
-
-                  @if (confirming() === slot.slot) {
-                    <app-confirm-with-reason
-                      class="mt-3"
-                      label="Confirm photo removal"
-                      [prompt]="removalPrompt(slot.slot, venue.name)"
-                      [promptTestId]="'admin-photo-confirm-prompt-' + slot.slot"
-                      [reasonId]="'admin-photo-reason-' + slot.slot"
-                      reasonPlaceholder="e.g. reported by email — off-topic image"
-                      confirmLabel="Remove"
-                      cancelLabel="Keep it"
-                      [panelTestId]="'admin-photo-confirm-panel-' + slot.slot"
-                      [confirmTestId]="'admin-photo-confirm-' + slot.slot"
-                      [cancelTestId]="'admin-photo-cancel-' + slot.slot"
-                      [busy]="busy()"
-                      [(reason)]="reason"
-                      (confirmed)="remove(venue, slot.slot)"
-                      (cancelled)="keepIt(slot.slot)"
-                    />
-                  } @else {
-                    <button
-                      appTouchTarget
-                      type="button"
-                      [attr.data-testid]="'admin-photo-remove-' + slot.slot"
-                      [appBusy]="busy()"
-                      (click)="askToRemove(slot.slot)"
-                      class="mt-3 rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
-                    >
-                      Remove {{ label(slot.slot) }} photo
-                    </button>
-                  }
-                } @else {
-                  <p
-                    class="mt-2 flex aspect-[3/2] w-full items-center justify-center rounded-[10px] border border-dashed border-riv-field-border text-[14px] text-riv-card-ink-soft"
-                    [attr.data-testid]="'admin-photo-empty-' + slot.slot"
-                  >
-                    No photo
-                  </p>
-                }
-              </li>
-            }
-          </ul>
+    <div class="mt-5">
+      <label for="admin-photos-venue-select" class="block text-[13.5px] font-semibold text-riv-ink"
+        >Venue</label
+      >
+      <select
+        appTouchTarget
+        id="admin-photos-venue-select"
+        data-testid="admin-photos-venue"
+        [value]="selectedVenueId() ?? ''"
+        (change)="onVenuePicked($event)"
+        class="mt-1 w-full max-w-[420px] rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[15px] text-riv-ink"
+      >
+        <option value="">Choose a venue…</option>
+        @for (venue of venues(); track venue.id) {
+          <option [value]="venue.id">{{ venue.name }} — {{ venue.beach }}</option>
         }
+      </select>
+    </div>
 
-        <p
-          class="mt-4 min-h-[1.5rem] text-[15px] text-riv-ink-soft"
-          role="status"
-          aria-live="polite"
-          tabindex="-1"
-          data-testid="admin-photos-notice"
+    @if (loading()) {
+      <p class="mt-6 text-[15px] text-riv-ink-soft" data-testid="admin-photos-loading">Loading…</p>
+    } @else if (loadError()) {
+      <p class="mt-6 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-photos-error">
+        Something went wrong loading this venue's photos.
+        <button
+          type="button"
+          data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
+          class="font-semibold underline"
+          data-testid="admin-photos-retry"
+          (click)="loadSlots()"
         >
-          {{ notice() }}
-        </p>
-      }
-    </section>
+          Retry
+        </button>
+      </p>
+    } @else if (selectedVenue(); as venue) {
+      <ul role="list" class="mt-6 grid gap-4 sm:grid-cols-3">
+        @for (slot of slots(); track slot.slot) {
+          <li
+            appCardGlass
+            class="rounded-[14px] p-4"
+            tabindex="-1"
+            [attr.data-testid]="'admin-photo-slot-' + slot.slot"
+          >
+            <h2 class="text-[15px] font-semibold text-riv-card-ink">
+              {{ label(slot.slot) }}
+            </h2>
+
+            @if (slot.previewUrl; as url) {
+              <div class="relative mt-2 aspect-[3/2] w-full overflow-hidden rounded-[10px]">
+                <img
+                  [ngSrc]="url"
+                  [alt]="'Current upload in the ' + slot.slot + ' slot of ' + venue.name"
+                  fill
+                  disableOptimizedSrcset
+                  class="object-cover"
+                  [attr.data-testid]="'admin-photo-preview-' + slot.slot"
+                />
+              </div>
+
+              @if (confirming() === slot.slot) {
+                <app-confirm-with-reason
+                  class="mt-3"
+                  label="Confirm photo removal"
+                  [prompt]="removalPrompt(slot.slot, venue.name)"
+                  [promptTestId]="'admin-photo-confirm-prompt-' + slot.slot"
+                  [reasonId]="'admin-photo-reason-' + slot.slot"
+                  reasonPlaceholder="e.g. reported by email — off-topic image"
+                  confirmLabel="Remove"
+                  cancelLabel="Keep it"
+                  [panelTestId]="'admin-photo-confirm-panel-' + slot.slot"
+                  [confirmTestId]="'admin-photo-confirm-' + slot.slot"
+                  [cancelTestId]="'admin-photo-cancel-' + slot.slot"
+                  [busy]="busy()"
+                  [(reason)]="reason"
+                  (confirmed)="remove(venue, slot.slot)"
+                  (cancelled)="keepIt(slot.slot)"
+                />
+              } @else {
+                <button
+                  appTouchTarget
+                  type="button"
+                  [attr.data-testid]="'admin-photo-remove-' + slot.slot"
+                  [appBusy]="busy()"
+                  (click)="askToRemove(slot.slot)"
+                  class="mt-3 rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                >
+                  Remove {{ label(slot.slot) }} photo
+                </button>
+              }
+            } @else {
+              <p
+                class="mt-2 flex aspect-[3/2] w-full items-center justify-center rounded-[10px] border border-dashed border-riv-field-border text-[14px] text-riv-card-ink-soft"
+                [attr.data-testid]="'admin-photo-empty-' + slot.slot"
+              >
+                No photo
+              </p>
+            }
+          </li>
+        }
+      </ul>
+    }
+
+    <p
+      class="mt-4 min-h-[1.5rem] text-[15px] text-riv-ink-soft"
+      role="status"
+      aria-live="polite"
+      tabindex="-1"
+      data-testid="admin-photos-notice"
+    >
+      {{ notice() }}
+    </p>
   `,
 })
 export class AdminVenuePhotos {
-  protected readonly auth = inject(OperatorAuth);
+  private readonly auth = inject(OperatorAuth);
   private readonly service = inject(AdminVenuePhotosService);
   private readonly focusAfterRender = focusMover();
 
