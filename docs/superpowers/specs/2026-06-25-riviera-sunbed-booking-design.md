@@ -49,7 +49,7 @@ strong seasonal peak (summer) and a geographically concentrated launch.
 | Payment | **Pay in-app**, platform takes a **commission per booking** |
 | Platform (launch) | **Mobile-friendly web app**; native apps later if it grows |
 | Cancellation policy | Tiered (see §6) |
-| Booking lead time | **No same-day booking at launch** — bookings close the evening before |
+| Booking lead time | ~~**No same-day booking at launch** — bookings close the evening before~~ **Amended 2026-08-26:** sales for a day run until a **venue-controlled close time on the day itself** (default 16:00; the venue can choose 00:01 or 23:59) — the evening-before close is retired. See the Amendment (§13) |
 
 ---
 
@@ -125,6 +125,15 @@ platform acts as a payment intermediary.
 This cutoff also doubles as the booking lead-time cutoff (§7, Layer 2), so the two
 policies reinforce each other.
 
+> **Amended 2026-08-26 (§13):** the doubling is retired — sales for a day now run
+> until the venue's close time **on the day itself**, so the evening-before cutoff
+> keeps only its **cancellation** role: free cancellation until that moment,
+> tiered/none after, window closed once the service day opens (unchanged,
+> ADR-0005). A booking *created on the service day itself* is born inside the
+> closed cancellation window and is therefore **non-refundable from the moment it
+> is made**. That is disclosed before payment and repeated in the emails the
+> guest receives. The weather exception is unchanged.
+
 ---
 
 ## 7. Preventing the Walk-in vs Online Collision
@@ -154,6 +163,15 @@ synced), so the design attacks it in layers:
 
 Biggest single lever: **Layer 2 (evening-before cutoff)**, which costs nothing
 because it lines up with the cancellation policy.
+
+> **Amended 2026-08-26 (§13):** Layer 2 is retired as an absolute rule. Sales for
+> a day now run until a venue-controlled close time **on the day itself**
+> (default 16:00), so the live race exists by default — knowingly. The layer is
+> re-framed from "no same-day online booking" to "**the venue controls when the
+> live race ends**": a venue that cannot manage live same-day sales closes at
+> 00:01 (sales end when the day starts — the nearest equivalent of the old
+> rule), and Layers 1, 3, and 4 carry the residual risk — which is exactly the
+> risk profile the venue already manages for walk-ins.
 
 ---
 
@@ -225,7 +243,8 @@ tourist and a walk-in can never both hold the same set.
 - Half-day bookings, multi-day, dynamic/seasonal pricing.
 - Push notifications, weather-forecast auto-refund automation.
 
-**Explicitly out of scope for v1 (YAGNI):** native apps, same-day booking,
+**Explicitly out of scope for v1 (YAGNI):** native apps, ~~same-day booking~~
+(same-day booking pulled into scope by the 2026-08-26 amendment, §13),
 automated payout pipelines, half-day/hourly units, dynamic pricing,
 **weather-forecast auto-refund automation** (weather refunds are manual/admin in
 v1), anything outside the Phase 1 beaches.
@@ -251,3 +270,55 @@ v1), anything outside the Phase 1 beaches.
 - Exact cancellation cutoff time (6pm assumed) and partial-refund percentage.
 - Whether tourists need accounts or pure guest checkout suffices for v1.
 - Deposit vs full prepayment at booking.
+
+---
+
+## 13. Amendment (2026-08-26) — sales close on the day itself, venue-controlled
+
+The launch decision "**no same-day booking**" (§3) was the right way to kill the
+walk-in race with zero venues on real-time discipline. In operation it also
+turns away the platform's most motivated customer: the tourist already driving
+to the beach *today*. This amendment retires the evening-before sales close and
+replaces it with a **venue-controlled close time on the service day itself**.
+
+**The new rule:**
+
+- **One sales window per date.** Online sales for a date D run continuously from
+  when the venue's map is published until the venue's **sales close time on D
+  itself**, in `Europe/Tirane`. The evening-before close (18:00 the day prior)
+  is **retired as a sales rule**. Three fixed choices for the close time:
+  - **`00:01`** — sales end when the day starts (nothing is sold on the service
+    day itself — the nearest equivalent of the old rule);
+  - **`16:00`** — the **default**: the day stays bookable until mid-afternoon;
+  - **`23:59`** — the day stays bookable to the end.
+- **The venue decides on the day.** The setting is standing (it persists across
+  days) but is changeable at any moment from the operator console and takes
+  effect **immediately, including for the current day** — a venue that fills up
+  with walk-ins at noon flips today's sales off on the spot.
+- **Cancellation policy is decoupled, not changed.** The evening-before cutoff
+  (§6) keeps only its cancellation role: free cancellation until 18:00 the
+  evening before → full refund; after → the venue's late-cancel share; window
+  closed entirely once the service day opens (ADR-0005 as amended). It no
+  longer doubles as the sales close.
+- **Same-day ("today", last-minute) bookings are non-refundable.** A booking
+  created on its own service day is born inside the closed cancellation window,
+  so it can never be cancelled or refunded by the guest — by construction, not
+  by a new tier. This is **disclosed in the booking flow before payment** and
+  **repeated in the emails the guest receives**. The manual admin weather
+  refund (§6) still reaches them.
+- **Both booking modes participate.** Instant Book confirms same-day as usual;
+  Request-to-Book deadlines cap to the window: the venue must respond by the
+  sales close for that date, and an accepted guest pays within the pay window,
+  never past the end of the service day.
+
+**Why the venue controls it:** the collision risk Layer 2 used to eliminate (§7)
+is real, physical, and per-venue — only the venue knows whether its staff keep
+the map live enough to sell sets while guests are walking in. Making the close
+time a venue decision, with "off at day-open" a one-tap choice and mid-afternoon
+the default, prices that risk where the knowledge is.
+
+Implementation is tracked by the **same-day booking epic** (issue #790); the
+homepage/discover UI (today as a selectable date, per-venue open/closed state
+for today made visible), the operator console control, the sales-window
+enforcement, and the non-refundable disclosure (checkout + email) are its user
+stories.
