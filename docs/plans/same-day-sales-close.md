@@ -214,7 +214,7 @@ An implement session with a different designated branch records its substitution
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **The FREE-window trap:** redefining `closesAt` in place would extend free cancellation into the service day and move the view's pay fence (its `serviceDayOpen` rides `CancellationWindow == CLOSED`) | med | high | `closesAt` is renamed `freeCancellationEndsAt` and left arithmetically identical; the sales close is a **new** method; AC-8 pins the windows unmodified; `RefundPolicyTest`/`CancelBookingService` must show empty diffs | impl session | open |
+| R-1 | **The FREE-window trap:** redefining `closesAt` in place would extend free cancellation into the service day and move the view's pay fence (its `serviceDayOpen` rides `CancellationWindow == CLOSED`); adjacent trap: `SetBookingInfo` carries two bare `LocalTime`s, so a swapped argument compiles | med | high | `closesAt` is renamed `freeCancellationEndsAt` (rename-only in Phase 2, both call sites) and left arithmetically identical; the sales close is a **new** method whose semantic switch lands atomically with its call site (Phase 3); a typed `SalesClose` wrapper considered and declined (Phase 3 note); AC-8 pins the windows unmodified; `RefundPolicyTest`/`CancelBookingService` must show empty diffs | impl session | open |
 | R-2 | **Sweep kills same-day Instant bookings:** the `booking_date <= lastOpenedServiceDay` arm matches a same-day `AWAITING_PAYMENT` row immediately; sweep interval PT5M, checkout takes minutes — booking expired + PaymentIntent cancelled mid-payment | high (without fix) | high | Phase 4 born-before-service-day predicate in the sweep SQL; AC-6; grill finding recorded on issue #791 | impl session | open |
 | R-3 | **View withholds `clientSecret` for same-day bookings** (`payWindowClosed` = CLOSED window = true from birth): primary journey survives (the 202 carries the secret) but the resume-payment path dead-ends | high (without fix) | med | Phase 4 same predicate in `ViewBookingService`; `BookingRecord` gains `createdAt`; AC-7 | impl session | open |
 | R-4 | **Timezone/cutoff arithmetic** (invariants #4/#6): the new `salesCloseAt` must be Tirane-anchored; the sweep predicate puts `Europe/Tirane` into SQL for the first time (`booking_date::timestamp AT TIME ZONE 'Europe/Tirane'`) | med | high | Boundary unit tests under fixed clocks incl. DST-shoulder date (`BookingCutoffTest`); the SQL predicate is pinned by `AbandonedBookingSweepIT` against real Postgres; one-line comment ties the SQL zone literal to `BookingCutoff.TIRANE` | impl session | open |
@@ -470,9 +470,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 ```sql
 -- #791 (epic #790): per-venue sales close on the service day itself (design spec §13).
 -- Online sales for date D now run until D at this venue-local time (Europe/Tirane, invariant #6);
--- three fixed choices only, mirrored by the application's SALES_CLOSE tokens. DEFAULT backfills
--- every existing venue to 16:00 — the maintainer-settled epic decision: same-day sales on by
--- default, 00:01 the per-venue opt-out. Safe on existing rows (same argument as V22's DEFAULT).
+-- three fixed choices only. No application write path exists this slice (read-only setting;
+-- creates take the DEFAULT, PATCH excludes it), so the CHECK is the sole validator until the
+-- operator-control slice adds the mirroring edge validation. DEFAULT backfills every existing
+-- venue to 16:00 — the maintainer-settled epic decision: same-day sales on by default, 00:01
+-- the per-venue opt-out. Safe on existing rows (same argument as V22's DEFAULT).
 -- Verified by SalesCloseMigrationIT.
 ALTER TABLE venue
     ADD COLUMN sales_close TIME NOT NULL DEFAULT '16:00',
@@ -510,13 +512,57 @@ ALTER TABLE venue
   fix all. Log below.
 - [ ] **Step 6–7: Commit + status** — `"Expose venue sales close on profile read and SetBookingFacts (#791)"`.
 
-## Phase 2 — the window rule (`BookingCutoff`)
+## Phase 2 — the new boundary + the honest rename (`BookingCutoff`, additive only)
 
-**Files:** Modify `BookingCutoff.java`, `BookingCutoffTest.java`, `CancellationPolicy.java`
-(rename call site only).
+**Files:** Modify `BookingCutoff.java`, `BookingCutoffTest.java`, `CancellationPolicy.java` +
+`ReserveSetService.java` (rename call sites only — semantics untouched).
 
-- [ ] **Step 1: Failing tests** — the AC-3 cases, all via the existing `at(ZonedDateTime)`
-  fixed-clock helper, e.g.:
+> **Decomposition rule (structural-check finding):** this phase changes **no behavior**. It adds
+> `salesCloseAt` and renames `closesAt` → `freeCancellationEndsAt` at **both** existing call
+> sites (`cancellationWindow`, and `ReserveSetService`'s request-deadline cap — which keeps
+> passing `bookingCutoff` and keeps its evening-before meaning until Phase 3). `isBookable` is
+> **not** touched here: its semantic switch lands in Phase 3 atomically with the call site that
+> starts passing `salesClose` — otherwise the Phase 2 commit either doesn't compile (deleted
+> method still referenced) or ships a wrong, unpinned interim (bookable-until-18:00-on-D).
+> Every commit compiles and means what its tests pin.
+
+- [ ] **Step 1: Failing tests** — the `salesCloseAt` arithmetic cases via the existing
+  `at(ZonedDateTime)` fixed-clock helper: the close instant for each of the three values on a
+  fixed D, incl. a DST-shoulder date (R-4); rename-only edits to the cancellation-window tests.
+- [ ] **Step 2: Verify red** — `./gradlew test --tests "*BookingCutoffTest*"`.
+- [ ] **Step 3: Minimal implementation**
+
+```java
+	/** The instant online sales for {@code bookingDate} end: the venue's sales close on the day
+	 *  itself, {@code Europe/Tirane} (invariant #4). */
+	public Instant salesCloseAt(LocalTime salesClose, LocalDate bookingDate) {
+		return bookingDate.atTime(salesClose).atZone(TIRANE).toInstant();
+	}
+
+	/** The instant free cancellation ends: the venue's evening-before cutoff (ADR-0005; no sales role). */
+	public Instant freeCancellationEndsAt(LocalTime cutoff, LocalDate bookingDate) {
+		return bookingDate.minusDays(1).atTime(cutoff).atZone(TIRANE).toInstant();
+	}
+```
+
+  Class doc rewritten: the day now has **three** boundaries in one place — sales close (on D),
+  free-cancellation end (evening before), service day open (midnight).
+- [ ] **Step 4: Verify green** — `./gradlew test --tests "*BookingCutoffTest*" --tests "*RefundPolicyTest*"`;
+  `RefundPolicyTest` must pass **unmodified** (AC-8).
+- [ ] **Step 5: Generalization audit** — population: *callers of `closesAt`* (mechanism: the
+  renamed method) → `grep -rn "closesAt(" platform/src` → must return zero after the rename;
+  a leftover is a missed site. Log below.
+- [ ] **Step 6–7: Commit + status** — `"Name the day's three boundaries in BookingCutoff (#791)"`.
+
+## Phase 3 — the window switch + reserve paths
+
+**Files:** Modify `BookingCutoff.java` (`isBookable` rework), `ReserveSetService.java`,
+`BookingOutcome.java` (Javadoc), `BookingCutoffTest.java` (AC-3 window cases),
+`CreateBookingServiceTest.java`, `BookingControllerIT.java`.
+
+- [ ] **Step 0: `isBookable` switches semantics WITH its call site** (the Phase 2 blockquote):
+  re-implement it on `salesCloseAt` and, in the same commit, make `ReserveSetService` pass
+  `set.salesClose()`; the AC-3 `BookingCutoffTest` cases land here:
 
 ```java
 	@Test
@@ -537,49 +583,19 @@ ALTER TABLE venue
 ```
 
   plus `sameDayBookableUntilSalesClose` (15:59 true), `lateCloseSellsToElevenFiftyNine`,
-  `closedForPastDate`, and a DST-shoulder date case (R-4). The existing cancellation-window
-  tests are edited **only** where they call the renamed method; `closedForSameDay` (the old
-  same-day pin) is replaced by the new same-day cases, recorded in the Behavior-parity ledger.
-- [ ] **Step 2: Verify red** — `./gradlew test --tests "*BookingCutoffTest*"`.
-- [ ] **Step 3: Minimal implementation**
+  `closedForPastDate`; the old `closedForSameDay` pin is replaced by these (Behavior-parity
+  ledger). **Confusability note (structural check):** `SetBookingInfo` now carries two bare
+  `LocalTime`s (`bookingCutoff`, `salesClose`) and `BookingCutoff` takes either — a swapped
+  argument compiles. A typed `SalesClose` wrapper was **considered and declined** (`bookingCutoff`
+  is already bare on the same record; wrapping one of two is worse, wrapping both is scope creep);
+  the mitigation is the parameter names + the AC-3/AC-8 pins, which fail behaviorally on a swap.
 
 ```java
-	/** The instant online sales for {@code bookingDate} end: the venue's sales close on the day
-	 *  itself, {@code Europe/Tirane} (invariant #4). */
-	public Instant salesCloseAt(LocalTime salesClose, LocalDate bookingDate) {
-		return bookingDate.atTime(salesClose).atZone(TIRANE).toInstant();
-	}
-
 	/** Whether online booking for {@code bookingDate} is currently open (strictly before the close). */
 	public boolean isBookable(LocalTime salesClose, LocalDate bookingDate) {
 		return clock.instant().isBefore(salesCloseAt(salesClose, bookingDate));
 	}
-
-	/** The instant free cancellation ends: the venue's evening-before cutoff (ADR-0005; no sales role). */
-	public Instant freeCancellationEndsAt(LocalTime cutoff, LocalDate bookingDate) {
-		return bookingDate.minusDays(1).atTime(cutoff).atZone(TIRANE).toInstant();
-	}
 ```
-
-  `cancellationWindow` switches to `freeCancellationEndsAt`; `closesAt` is deleted (its two
-  callers move in this phase and Phase 3). Class doc rewritten: the day now has **three**
-  boundaries in one place — sales close (on D), free-cancellation end (evening before), service
-  day open (midnight).
-- [ ] **Step 4: Verify green** — `./gradlew test --tests "*BookingCutoffTest*" --tests "*RefundPolicyTest*"`;
-  `RefundPolicyTest` must pass **unmodified** (AC-8).
-- [ ] **Step 5: Generalization audit** — population: *callers of `closesAt`* (mechanism: the
-  renamed/deleted method) → `grep -rn "closesAt(" platform/src` → expect exactly
-  `CancellationPolicy` (this phase) + `ReserveSetService` (Phase 3); anything else is a missed
-  site. Log below.
-- [ ] **Step 6–7: Commit + status** — `"Move the sales window to the day itself in BookingCutoff (#791)"`.
-  *(This commit is red-to-green self-contained but the reserve path still passes `bookingCutoff`
-  until Phase 3 — `isBookable`'s parameter meaning changes at the call site there; keep both
-  phases in one push if CI's semantic sweep would flag the interim, and say so in the PR.)*
-
-## Phase 3 — reserve paths
-
-**Files:** Modify `ReserveSetService.java`, `BookingOutcome.java` (Javadoc),
-`CreateBookingServiceTest.java`, `BookingControllerIT.java`.
 
 - [ ] **Step 1: Failing tests** — AC-4/AC-5 in `CreateBookingServiceTest` (fixed `Clock`,
   `new BookingCutoff(CLOCK)`, fixture `SetBookingInfo` with the wanted `salesClose`/`bookingMode`):
@@ -642,11 +658,24 @@ ALTER TABLE venue
 			       OR (accepted_at IS NOT NULL AND accepted_at < :acceptedBefore))
 ```
 
-  `BookingRecord` gains `Instant createdAt` (SELECT + mapper); `ViewBookingService`:
+  `BookingRecord` gains `Instant createdAt` (SELECT + mapper). The Java half of the predicate
+  gets **one named home on `BookingCutoff`** (the civil-day authority — structural-check
+  refinement, so the SQL arm's comment can point at a single definition rather than an inline
+  expression):
 
 ```java
-		boolean bornBeforeServiceDay = b.createdAt().isBefore(cutoff.serviceDayOpensAt(b.bookingDate()));
-		boolean payWindowClosed = awaitingPayment && quote.serviceDayOpen() && bornBeforeServiceDay;
+	/** Whether the booking was created before its own service day opened (the #576 fences apply
+	 *  only to these; a same-day-born booking is governed by its TTL until #792). */
+	public boolean bornBeforeServiceDay(Instant createdAt, LocalDate bookingDate) {
+		return createdAt.isBefore(serviceDayOpensAt(bookingDate));
+	}
+```
+
+  `ViewBookingService`:
+
+```java
+		boolean payWindowClosed = awaitingPayment && quote.serviceDayOpen()
+				&& cutoff.bornBeforeServiceDay(b.createdAt(), b.bookingDate());
 ```
 
 - [ ] **Step 4: Verify green** — the two test classes, then `BookingViewIT`.
