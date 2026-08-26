@@ -255,7 +255,7 @@
         }
       } @else if (reading()) {
         <!-- The read has not settled, so an empty grid states nothing: mirror the shape instead of claiming an empty venue (#744). Wholly decorative — the rail's own "Loading the current layout…" label owns the words. -->
-        <div data-testid="layout-skeleton" aria-hidden="true" inert>
+        <div data-testid="layout-loading" aria-hidden="true" inert>
           <app-beach-map-canvas
             frameTestid="layout-skeleton-frame"
             viewportTestid="layout-skeleton-grid"

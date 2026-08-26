@@ -91,7 +91,7 @@ describe('LayoutEditor a11y (#172)', () => {
   it('has no axe violations while the read is in flight — the skeleton hides no tab stop (#744)', async () => {
     configure();
 
-    expect(byId('layout-skeleton')).toBeTruthy();
+    expect(byId('layout-loading')).toBeTruthy();
     await expectNoAxeViolations(host());
 
     mapRequest().flush({ id: 1, name: 'V', sets: [], setVersion: 0 });

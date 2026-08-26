@@ -290,7 +290,7 @@ test('holds both surfaces until the map read settles (#721)', async ({ page }) =
   await expect(generate).toHaveText(/Loading the current layout/);
 
   // The bulk surface is the default while sets are unknown: it skeletons too, not just Select (#744).
-  await expect(page.getByTestId('layout-skeleton')).toHaveAttribute('aria-hidden', 'true');
+  await expect(page.getByTestId('layout-loading')).toHaveAttribute('aria-hidden', 'true');
   expect(await page.getByTestId('layout-skeleton-tile').count()).toBeGreaterThan(0);
   await expect(page.getByTestId('layout-empty')).toHaveCount(0);
   await expectNoSeriousAxeViolations(page, 'layout editor, bulk read in flight');

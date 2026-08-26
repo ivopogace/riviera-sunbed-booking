@@ -132,7 +132,7 @@ describe('LayoutEditor (#172)', () => {
     configure();
     host = fixture.nativeElement as HTMLElement;
 
-    expect(byId('layout-skeleton')).toBeTruthy();
+    expect(byId('layout-loading')).toBeTruthy();
     expect(host.querySelectorAll('[data-testid="layout-skeleton-tile"]').length).toBeGreaterThan(0);
     expect(host.querySelector('[data-testid="layout-empty"]')).toBeNull();
     expect(host.querySelector('[data-testid="layout-cell"]')).toBeNull();
@@ -144,7 +144,7 @@ describe('LayoutEditor (#172)', () => {
       .flush({ id: 1, name: 'V', sets: [], setVersion: 0 });
     fixture.detectChanges();
 
-    expect(host.querySelector('[data-testid="layout-skeleton"]')).toBeNull();
+    expect(host.querySelector('[data-testid="layout-loading"]')).toBeNull();
     expect(byId('layout-empty')).toBeTruthy();
   });
 
@@ -152,8 +152,8 @@ describe('LayoutEditor (#172)', () => {
     configure();
     host = fixture.nativeElement as HTMLElement;
 
-    expect(byId('layout-skeleton').getAttribute('aria-hidden')).toBe('true');
-    expect(byId('layout-skeleton').hasAttribute('inert')).toBe(true);
+    expect(byId('layout-loading').getAttribute('aria-hidden')).toBe('true');
+    expect(byId('layout-loading').hasAttribute('inert')).toBe(true);
     const tiles = Array.from(
       host.querySelectorAll<HTMLElement>('[data-testid="layout-skeleton-tile"]'),
     );
