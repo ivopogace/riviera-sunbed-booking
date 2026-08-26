@@ -115,7 +115,7 @@ export class AdminConsoleTabs {
       const url = this.currentUrl();
       const links = this.tabLinks();
       const index = this.tabs.findIndex((tab) => tab.path === url);
-      links[index]?.nativeElement.scrollIntoView?.({ inline: 'nearest', block: 'nearest' });
+      links[index]?.nativeElement.scrollIntoView?.({ inline: 'center', block: 'nearest' });
     });
   }
 }
