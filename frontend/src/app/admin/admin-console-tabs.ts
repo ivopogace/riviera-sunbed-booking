@@ -64,7 +64,7 @@ export const ADMIN_CONSOLE_TAB_ORDER = [
   imports: [RouterLink, RouterLinkActive, TouchTarget],
   template: `
     <nav
-      class="mt-3 mb-1 flex w-full flex-nowrap items-center gap-2 overflow-x-auto scroll-px-1 scroll-smooth px-1 py-1 [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-16px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-16px),transparent)] scrollbar-none"
+      class="mt-3 mb-1 flex w-full flex-nowrap items-center gap-2 overflow-x-auto scroll-px-1 px-1 py-1 [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-16px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-16px),transparent)] scrollbar-none"
       [attr.aria-label]="label()"
     >
       @for (tab of tabs; track tab.path) {
