@@ -64,7 +64,7 @@ import { LedgerRow } from './operator-console.model';
           </div>
         </div>
 
-        <div class="mt-5 overflow-hidden rounded-[14px] border border-[#0c2a33]/12">
+        <div class="mt-5 overflow-x-auto rounded-[14px] border border-[#0c2a33]/12">
           <table class="w-full border-collapse text-[12.5px]">
             <caption class="sr-only">
               Statement entries
