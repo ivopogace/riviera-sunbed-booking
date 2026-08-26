@@ -38,24 +38,13 @@
     </div>
 
     <!-- The same canvas, so the grid frame keeps its place and its --riv-tile geometry; the same railCodes, so the rail reserves the loaded rail's width instead of sliding the grid on load (#749). -->
-    <app-beach-map-canvas
+    <app-map-skeleton-grid
       frameTestid="daily-grid-frame"
       viewportTestid="daily-skeleton-grid"
+      tileTestid="daily-skeleton-tile"
+      tileRadiusClass="rounded-[6px]"
       railCodes="labels"
-      [loading]="true"
-    >
-      <ng-template [appBeachMapRow]="skeletonRows">
-        <div class="grid h-full grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5">
-          @for (tile of skeletonTiles; track tile) {
-            <span
-              appSkeletonBlock
-              class="bg-riv-card-track h-full min-w-0 rounded-[6px]"
-              data-testid="daily-skeleton-tile"
-            ></span>
-          }
-        </div>
-      </ng-template>
-    </app-beach-map-canvas>
+    />
 
     <div
       appCardGlass

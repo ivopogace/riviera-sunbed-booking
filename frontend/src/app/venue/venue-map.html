@@ -395,27 +395,14 @@
 
       <!-- Description and amenity chips are deliberately absent: both are conditional in the loaded header, so mirroring them makes the frame jump UP on a venue that carries neither (#744). -->
       <!-- The same canvas, and the same 1100px breakout, so the frame does not move when the map lands. The same rail vocabularies too: both rails reserve their width, so the grid neither slides sideways (#749) nor loses its trailing edge (#751) when the map lands. -->
-      <app-beach-map-canvas
+      <app-map-skeleton-grid
         class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
         viewportTestid="map-skeleton-grid"
+        tileTestid="map-skeleton-tile"
+        tileRadiusClass="rounded-[10px]"
         railCodes="capped-labels"
         priceChips="capped-phrases"
-        [loading]="true"
-      >
-        <ng-template [appBeachMapRow]="skeletonRows">
-          <div
-            class="grid h-full grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
-          >
-            @for (tile of skeletonTiles; track tile) {
-              <span
-                appSkeletonBlock
-                class="bg-riv-card-track h-full min-w-0 rounded-[10px]"
-                data-testid="map-skeleton-tile"
-              ></span>
-            }
-          </div>
-        </ng-template>
-      </app-beach-map-canvas>
+      />
     </div>
   }
 

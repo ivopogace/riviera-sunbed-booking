@@ -515,26 +515,13 @@
         </section>
 
         <div class="flex min-w-0 flex-col gap-2">
-          <app-beach-map-canvas
+          <app-map-skeleton-grid
             frameTestid="set-skeleton-frame"
             viewportTestid="set-skeleton-grid"
-            [loading]="true"
+            tileTestid="set-skeleton-tile"
+            tileRadiusClass="rounded-[8px]"
             [fitWidth]="true"
-          >
-            <ng-template [appBeachMapRow]="skeletonRows">
-              <div
-                class="grid h-full grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))] gap-1.5"
-              >
-                @for (tile of skeletonTiles; track tile) {
-                  <span
-                    appSkeletonBlock
-                    class="bg-riv-card-track h-full min-w-0 rounded-[8px]"
-                    data-testid="set-skeleton-tile"
-                  ></span>
-                }
-              </div>
-            </ng-template>
-          </app-beach-map-canvas>
+          />
         </div>
       </div>
     </div>
