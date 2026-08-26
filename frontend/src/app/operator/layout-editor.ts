@@ -32,6 +32,8 @@ import {
 } from './beach-cell';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
 import { todayBookingDate } from '../shared/booking-date';
+import { MAP_SKELETON_ROWS, MAP_SKELETON_TILES } from '../shared/map-skeleton';
+import { SkeletonBlock } from '../shared/skeleton-block';
 import { SetView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
 import { ConsoleVenueMap } from './console-venue-map';
@@ -119,6 +121,7 @@ const SWATCH_CLASS: Record<CellState, string> = {
     BeachMapRowDef,
     ConfirmPanel,
     SetEditor,
+    SkeletonBlock,
     StaleWriteBanner,
     BusyAction,
     TouchTarget,
@@ -154,6 +157,10 @@ export class LayoutEditor {
   /** Generate inputs: rows × positions. Clamped to the design maxima on generate. */
   protected readonly genRows = signal(4);
   protected readonly genCols = signal(6);
+
+  /** The in-flight skeleton's geometry, shared with every other beach-map surface (#744). */
+  protected readonly skeletonTiles = MAP_SKELETON_TILES;
+  protected readonly skeletonRows = MAP_SKELETON_ROWS;
 
   /** The current grid, row-major with row 0 sea-facing. Empty until generated or loaded. */
   protected readonly grid = signal<CellState[][]>([]);

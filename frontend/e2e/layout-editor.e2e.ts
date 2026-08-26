@@ -289,6 +289,12 @@ test('holds both surfaces until the map read settles (#721)', async ({ page }) =
   expect(await generate.evaluate((el) => (el as HTMLButtonElement).disabled)).toBe(false);
   await expect(generate).toHaveText(/Loading the current layout/);
 
+  // The bulk surface is the default while sets are unknown: it skeletons too, not just Select (#744).
+  await expect(page.getByTestId('layout-loading')).toHaveAttribute('aria-hidden', 'true');
+  expect(await page.getByTestId('layout-skeleton-tile').count()).toBeGreaterThan(0);
+  await expect(page.getByTestId('layout-empty')).toHaveCount(0);
+  await expectNoSeriousAxeViolations(page, 'layout editor, bulk read in flight');
+
   await page.getByTestId('layout-tool-select').click();
   // The words live in the persistent announcer now; the skeleton beside it is decoration (#741).
   await expect(page.getByTestId('load-announcer')).toHaveText('Loading this venue’s sets…');

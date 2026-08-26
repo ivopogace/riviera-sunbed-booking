@@ -88,6 +88,16 @@ describe('LayoutEditor a11y (#172)', () => {
     await expectNoAxeViolations(host());
   });
 
+  it('has no axe violations while the read is in flight — the skeleton hides no tab stop (#744)', async () => {
+    configure();
+
+    expect(byId('layout-loading')).toBeTruthy();
+    await expectNoAxeViolations(host());
+
+    mapRequest().flush({ id: 1, name: 'V', sets: [], setVersion: 0 });
+    fixture.detectChanges();
+  });
+
   it('has no axe violations with the per-row rename control present (#726)', async () => {
     // With a Save-name button per stored row, each row's input must stay its own labelled control.
     render([
