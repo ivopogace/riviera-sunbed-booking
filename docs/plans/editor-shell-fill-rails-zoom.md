@@ -236,11 +236,9 @@ N/A — no contract change. `toRequest()`'s `LayoutCellRequest[]` shape and `rep
 
 ## Execution status
 
-**Stage pointer:** review gate ran, findings fixed, Sonar gate green — ready to merge.
+**Stage pointer:** DONE — merged via PR #771.
 
-**Next action:** none pending from this session — merge is a maintainer/human decision (a merge
-to `main` triggers `deploy.yml`'s production deploy per ADR-0004, treated as a confirm-first
-action per this session's operating rules). PR #771 is green and ready.
+**Next action:** none — merged to `main`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
