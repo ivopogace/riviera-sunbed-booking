@@ -87,9 +87,11 @@
     </nav>
 
     <sc-if value="{{ tabLayout }}" hint-placeholder-val="{{ true }}">
+    <!-- as-built diverges — see #708 (editor shell rebuild: one canvas + one tool rail replaces this always-visible generate/paint two-panel split, plus a docked inspector and a persistent save bar with a dirty count); design record left as drawn, docs/design/README.md -->
     <div data-screen-label="Layout editor" style="display:grid;grid-template-columns:280px 1fr;gap:18px;align-items:start;">
       <div style="display:flex;flex-direction:column;gap:14px;">
         <section style="border-radius:24px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:18px 18px 16px;">
+          <!-- as-built diverges — see #711 (Generate layout is demoted to a single button on the tool rail, not a standing panel); design record left as drawn, docs/design/README.md -->
           <h2 style="font-size:15px;font-weight:700;margin:0 0 4px;">Generate layout</h2>
           <p style="font-size:12.5px;line-height:1.45;color:rgba(12,42,51,0.55);margin:0 0 12px;">Creates the full grid in one go. Rows are labelled A&ndash;{{ lastRowLabel }}, row A faces the sea.</p>
           <div style="display:flex;gap:10px;">
@@ -107,6 +109,7 @@
         </section>
 
         <section style="border-radius:24px;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.85);padding:18px 18px 16px;">
+          <!-- as-built diverges — see #711 (this panel is now one tool rail: Select joins the paint brushes as a tool, arming the docked set inspector instead of a separate mode); design record left as drawn, docs/design/README.md -->
           <h2 style="font-size:15px;font-weight:700;margin:0 0 4px;">Paint tool</h2>
           <p style="font-size:12.5px;line-height:1.45;color:rgba(12,42,51,0.55);margin:0 0 12px;">Pick a tool, then click or drag across the map to apply it.</p>
           <div style="display:flex;flex-direction:column;gap:8px;">
@@ -148,6 +151,7 @@
         <p style="text-align:center;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;font-size:12px;color:#0a4f5e;margin:12px -18px -16px;padding:12px;border-top:1px dashed rgba(12,42,51,0.22);">&#9660;&nbsp;&nbsp;Promenade &middot; Entrance</p>
       </section>
     </div>
+    <!-- as-built diverges — see #711 (this floating legend is retired; the same swatches now live on the tool rail's own chips, not a separate list); design record left as drawn, docs/design/README.md -->
     <ul style="list-style:none;display:flex;gap:16px;flex-wrap:wrap;padding:0;margin:14px 2px 0;font-size:12.5px;color:rgba(12,42,51,0.7);">
       <li style="display:flex;align-items:center;gap:7px;"><span style="width:13px;height:13px;border-radius:4px;background:rgba(255,255,255,0.85);border:1px solid rgba(12,42,51,0.15);"></span> Standard &middot; online</li>
       <li style="display:flex;align-items:center;gap:7px;"><span style="width:13px;height:13px;border-radius:4px;background:linear-gradient(180deg,#ffe3a3,#f4c05a);border:1px solid rgba(180,120,20,0.4);"></span> Front row &middot; premium</li>
