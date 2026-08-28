@@ -4,7 +4,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { completeDialog, settle } from './support/booking-dialog';
 
 /**
- * Real-render a11y audit of the same-day booking journey (#791): the homepage's date picker now
+ * Real-render a11y audit of the same-day booking journey: the homepage's date picker now
  * offers today, and an Instant Book venue can be booked for today up to its sales close. Fixed
  * before that close (`page.clock.setFixedTime`, per `availability-calendar.e2e.ts`) so the
  * scenario is deterministic. The API is mocked via `page.route`, so the test is self-contained.

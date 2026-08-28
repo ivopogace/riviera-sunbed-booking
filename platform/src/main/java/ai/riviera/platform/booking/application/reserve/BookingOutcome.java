@@ -19,7 +19,7 @@ public sealed interface BookingOutcome
 	 * {@code PENDING_REQUEST} — the {@code (set, date)} is soft-held (invariant #2), but no
 	 * PaymentIntent exists and no card is charged until the venue accepts. The controller maps
 	 * this to {@code 202}; {@code requestExpiresAt} is the venue-response deadline
-	 * (min(now + expiry-window, evening-before cutoff)).
+	 * (min(now + expiry-window, the venue's sales close)).
 	 */
 	record Requested(BookingConfirmation confirmation, java.time.Instant requestExpiresAt)
 			implements BookingOutcome {

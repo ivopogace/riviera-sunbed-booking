@@ -9,7 +9,7 @@ import { uniformDays } from '../../testing/calendar-days';
 import { AvailabilityCalendar } from './availability-calendar';
 
 /**
- * The Vitest clock is frozen at Monday 2026-06-15 midday Europe/Tirane, so "today" (#791's floor)
+ * The Vitest clock is frozen at Monday 2026-06-15 midday Europe/Tirane, so "today" (the floor)
  * is 2026-06-15 and June 2026 is the month the picker opens on unless a spec says otherwise.
  */
 const MIN_DATE = '2026-06-15';

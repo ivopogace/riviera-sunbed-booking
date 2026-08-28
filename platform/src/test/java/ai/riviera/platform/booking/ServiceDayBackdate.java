@@ -22,7 +22,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
  * unique constraint that enforces invariant #2, so any earlier residue at the target date is cleared
  * first.
  *
- * <p>{@code created_at} moves with {@code booking_date} (#791, R-8): a real advance booking is
+ * <p>{@code created_at} moves with {@code booking_date}: a real advance booking is
  * created before the date it's for, so an honest fixture backdates both — otherwise the moved row
  * reads as same-day-born to {@link ai.riviera.platform.booking.application.cancel.BookingCutoff#bornBeforeServiceDay}.
  */

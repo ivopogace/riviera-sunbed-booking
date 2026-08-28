@@ -29,7 +29,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * mail was withheld (#390) without this module ever handling an address.
  *
  * <p>{@code createdAt} feeds {@link ai.riviera.platform.booking.application.cancel.BookingCutoff#bornBeforeServiceDay}
- * — whether the #576 day-open pay fences apply to this row (#791).
+ * — whether the day-open pay fences apply to this row.
  */
 public record BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,
 		CustomerId customerId, LocalDate bookingDate, long amountMinor, String currency,

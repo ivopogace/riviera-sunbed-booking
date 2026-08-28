@@ -45,9 +45,18 @@ issue's "temporary gate" framing; the Behavior-parity ledger enumerates every jo
 evening-before fence was doing) · `tdd` (each phase is red-green; the window arithmetic and both
 bridge predicates are unit-pinned under a fixed `Clock` before any wiring) ·
 `riviera-review-overlay` (review gate — due at ready-for-review) · `riviera-docs-freshness`
-(**due at merge close-out — not yet run** (plan stage); invariant #4's rewording, `CONTEXT.md`'s
-Cutoff split, and `RESPONSIBILITIES.md` §`booking`/§`venue` are in-slice Phase 8 work, and the
-close-out sweep re-checks them plus the stale-Javadoc census in the File structure section) ·
+(**run at Phase 8, range `origin/claude/sdlc-791-planning-s3p4ha...HEAD`**: rename/removal grep
+for "evening before"/"evening-before" in `platform/src/main/java` — 11 hits, 2 stale
+(`RequestProperties`/`RequestPropertiesTest`, fixed), 9 correct as-is or already fixed in earlier
+phases; a second pass for `#791` inside Javadoc/TSDoc blocks (repo-wide, backend + frontend) —
+20 hits, all stripped per §6d; walked the substrate map top-down for CLAUDE.md/CONTEXT.md/
+RESPONSIBILITIES.md — invariant #4 reworded, module table gains the sales-close mention,
+**Sales close** added to CONTEXT.md and **Cutoff** demoted, §`booking`/§`venue` of
+RESPONSIBILITIES.md updated including the `VenueAdminService` "no write path can create a hold
+behind the cutoff" re-grounding; also surfaced (by reading the controller directly, not by grep)
+that `VenueReadController`'s no-date default was still tomorrow — fixed, see generalization-audit
+log. Full findings: this Execution status's generalization-audit log + File structure's Phase 8
+finding notes) ·
 `grilling` (the intake interrogation itself — its factual questions were answered from code via
 two Explore passes; the one product fork, the backfill default, was already settled by the
 maintainer) · `postgres` (CHECK-over-ENUM for the three-value constraint, mirroring V43's
@@ -171,7 +180,7 @@ An implement session with a different designated branch records its substitution
   paths. *Pinned by:* `StaffBookingControllerIT.sameDayConfirmedBookingAppearsInTodaysList`
   (new case), `WeatherRefundServiceIT.reachesASameDayBooking` (new case); accrual: the existing
   date-agnostic `payout` listener tests stand as the pin (no change to re-pin).
-- [ ] **AC-12 (docs):** Given the merged slice, then CLAUDE.md invariant #4 states the
+- [x] **AC-12 (docs):** Given the merged slice, then CLAUDE.md invariant #4 states the
   venue-controlled on-day sales close (number kept), CONTEXT.md defines **Sales close** and
   demotes **Cutoff** to its cancellation role, and `RESPONSIBILITIES.md` §`booking`/§`venue`
   describe the new rule. *Pinned by:* `riviera-docs-freshness` at close-out (procedural pin).
@@ -402,7 +411,7 @@ if any styling does surface, load `riviera-tailwind` then (routing-gate re-entry
 | 5 — lifecycle regression pins | ✅ | Pin same-day bookings through staff view and weather refund (#791) |
 | 6 — frontend floor + copy | ✅ | Allow today as the earliest bookable date; state the on-day sales close (#791) |
 | 7 — mocked e2e | ✅ | Cover the today-booking journey and after-close refusal e2e (#791) |
-| 8 — substrate docs + Javadoc sweep | | |
+| 8 — substrate docs + Javadoc sweep | ✅ | Reword invariant #4 to the venue-controlled sales close (#791) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -457,6 +466,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/booking/BookingViewIT.java` — advance-born `created_at` fixture fix (Phase 4 deviation)
 - every other fixture constructing `SetBookingInfo`/`BookingRecord` (compile-driven; e.g.
   `RespondToRequestServiceTest` builders) — record growth (R-7)
+- `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueReadController.java` — **Phase 8 finding** (deviation, not in the original file list): the discovery list/map/calendar reads' no-date default was still `tomorrowInTirane()`, contradicting the FE's new today floor and the slice's own point; renamed to `todayInTirane()` (no `.plusDays(1)`), 3 Javadoc mentions fixed
+- `platform/src/test/java/ai/riviera/platform/venue/VenueReadControllerIT.java` — `defaultsToTomorrowTirane` → `defaultsToTodayTirane`
+- `platform/src/test/java/ai/riviera/platform/venue/VenueListControllerIT.java` — `defaultsToTomorrowTirane` → `defaultsToTodayTirane`
+- `platform/src/test/java/ai/riviera/platform/VenueAvailabilityCalendarControllerTest.java` — `defaultsToTomorrowInTiraneForTwoWeeks` → `defaultsToTodayInTiraneForTwoWeeks`
+- `platform/src/main/java/ai/riviera/platform/venue/application/VenueAdminService.java` — Javadoc-only, `hasLiveHold`'s "no write path can create a hold behind the cutoff" sentence re-grounded on past-dates-only
+- `platform/src/main/java/ai/riviera/platform/booking/adapter/in/AbandonedPaymentProperties.java` — Javadoc-only, `MAX_TTL` doc reworked (Phase 8 sweep, pre-existing deviation note)
+- `platform/src/main/java/ai/riviera/platform/booking/application/request/RequestWindows.java` — Javadoc-only, 2 stale "evening-before cutoff" mentions fixed
+- `platform/src/main/java/ai/riviera/platform/booking/application/request/RespondToRequestService.java` — Javadoc-only, 1 stale "the cutoff" mention fixed
+- `platform/src/main/java/ai/riviera/platform/venue/api/SetBookingFacts.java` — Javadoc-only, mentions sales close alongside the evening-before cutoff
 
 **Frontend — modified**
 - `frontend/src/app/shared/booking-date.ts` + `booking-date.spec.ts` — floor → today
@@ -481,6 +499,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `RESPONSIBILITIES.md` — §`booking` (window rule, narrowed fences), §`venue` (new setting; the "no write path can create a hold behind the cutoff" sentence re-grounded on past-dates-only)
 - `docs/plans/same-day-sales-close.md` — this plan (execution status upkeep)
 - Javadoc sweep (Phase 8, same files as backend-modified where not already listed): `CancellationWindow`, `CancellationPolicy`, `RequestWindows`, `RespondToRequestService`, `SetBookingInfo`, V19/V22/V39 migration headers are **not** edited (historical documents) — only living Javadoc
+- **Phase 8 finding (deviation):** the Javadoc sweep also turned up `#791` left in ~20 Javadoc/TSDoc blocks across earlier phases (riviera-java-conventions §6d / the frontend CLAUDE.md mirror — "no issue numbers in Javadoc/TSDoc") — stripped from `BookingCutoff.java`, `AbandonedBookingSweepService.java`, `BookingRecord.java`, `VenueProfileResponse.java`, `VenueProfileView.java`, `SalesCloseMigrationIT.java`, `BookingCutoffTest.java`, `BookingViewIT.java`, `ServiceDayBackdate.java` (backend) and `admin-commissions.ts`, `home.ts`, `booking-date.spec.ts`, `availability-calendar.ts`/`.spec.ts`, `venue-map.ts`, `same-day-booking.e2e.ts` (frontend). Inline `//` comments and test-title strings carrying `#791` were left alone — the rule's literal text scopes only Javadoc/TSDoc, not `//` comments or test names.
 
 ---
 
@@ -809,19 +828,22 @@ ALTER TABLE venue
 **Files:** `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, living Javadoc (list in File
 structure), this plan doc (final execution status).
 
-- [ ] **Step 1:** Reword invariant #4 (number kept): sales window per date runs from map publish
+- [x] **Step 1:** Reword invariant #4 (number kept): sales window per date runs from map publish
   to the venue's `sales_close` on D (`00:01`/`16:00`/`23:59`, default `16:00`, Europe/Tirane);
   the evening-before cutoff is cancellation-only; the day-open fence applies to advance-born
   `AWAITING_PAYMENT` bookings (same-day-born ride the TTL until #792); confirm path still
   unfenced. CONTEXT.md: add **Sales close**, demote **Cutoff**. RESPONSIBILITIES.md
   §`booking`/§`venue` per the File-structure notes.
-- [ ] **Step 2:** Sweep the stale living Javadoc (grill census): `CancellationWindow`,
+- [x] **Step 2:** Sweep the stale living Javadoc (grill census): `CancellationWindow`,
   `CancellationPolicy`, `RequestWindows`, `RespondToRequestService`, `SetBookingInfo`,
-  `BookingOutcome`, FE doc comments not already touched in Phase 6.
-- [ ] **Step 3:** Run `node scripts/check-plan-file-structure.mjs --diff origin/main`; run
+  `BookingOutcome`, FE doc comments not already touched in Phase 6. *Deviation:* also swept and
+  fixed `RequestProperties`/`RequestPropertiesTest` (stale — see generalization-audit log) and
+  `VenueReadController` (the today/tomorrow default finding — see File structure); stripped
+  `#791` from ~20 Javadoc/TSDoc blocks repo-wide (§6d "no issue numbers").
+- [x] **Step 3:** Run `node scripts/check-plan-file-structure.mjs --diff origin/main`; run
   `riviera-docs-freshness` over the slice range at close-out and record its findings in
   *Skills consulted*.
-- [ ] **Step 6–7: Commit + status** — `"Reword invariant #4 to the venue-controlled sales close (#791)"`.
+- [x] **Step 6–7: Commit + status** — `"Reword invariant #4 to the venue-controlled sales close (#791)"`.
 
 ---
 
@@ -837,6 +859,7 @@ structure), this plan doc (final execution status).
 | 2026-08-28 | Phase 6 (`defaultBookingDate` floor moves from tomorrow to today) | every FE site encoding the old floor or the retired sentence | `grep -rn "tomorrow\|evening before" frontend/src frontend/e2e` | 14 hits judged: `clock-icon.spec.ts` (unrelated generic fixture, untouched); `admin-commissions.*` ×4 + `.spec.ts` clause (the commission schedule's own unchanged "reporting from tomorrow" rule — reworded to drop the now-false evening-before justification, kept the unchanged claim); `booking-dialog.ts`/`booking-view.ts` free-cancellation copy ×2 (unchanged, correctly still evening-before) + the new today-branch's own "try … tomorrow" (intentional); `terms-of-service.*` ×3 + `legal-pages.e2e.ts` (cancellation clause kept; the conflated "bookings close … evening before" sentence split into two, since sales-close and free-cancellation are no longer the same boundary) | Fixed: `discovery-flow.e2e.ts`'s stale comments + its full-sentence cutoff-note regex (Phase 7's file, touched early since the audit reached it). Not caught by this grep (no literal match): `daily-view-tab.spec.ts` — see Step 5 note above |
 
 | 2026-08-28 | Phase 4 (day-open fences narrow to advance-born rows) | every consumer of `serviceDayOpen`/`serviceDayHasOpened`/`lastOpenedServiceDay` | `grep -rn "serviceDayOpen\|serviceDayHasOpened\|lastOpenedServiceDay" platform/src/main` | 3 judged (`RespondToRequestService`/`RequestWindows.payDeadline` — safe, same-day requests still gated by Phase 3's temporary gate; `CancellationPolicy.serviceDayOpen()` — correct as-is, same-day=CLOSED is the intended cancellation policy, not narrowed; `NoShowSweepService`/`markPastConfirmedAsNoShow` — safe, `booking_date < :today` strictly-before) | No change needed at any site; also found and fixed `BookingViewIT.reportsPayWindowClosedForAnOpenServiceDay`, whose same-day-born fixture went stale under the new predicate |
+| 2026-08-28 | Phase 8 (`riviera-docs-freshness`: substrate sweep + living-Javadoc sweep over the full slice range) | (a) every "evening before"/"evening-before" mention in `platform/src/main/java`; (b) every `#791` in a Javadoc/TSDoc block, backend + frontend | `grep -rn "evening before\|evening-before" platform/src/main/java`; `git grep -n "#791"` on `platform/src/{main,test}/java` and `frontend/src`+`frontend/e2e`, filtered to `/** */` blocks | (a) 11 hits: `RequestProperties`/`RequestPropertiesTest` (stale — still described the retired `freeCancellationEndsAt` cap, not Phase 3's `salesCloseAt` switch), `BookingCutoff`/`CancellationPolicy`/`RefundPolicy`/`CancellationWindow`/`SetBookingFacts` (correct as-is — the unchanged free-cancellation boundary), `VenueCommissionService` (flagged in Open Questions, not fixed — different module's rationale, out of this slice's AC coverage); (b) 20 Javadoc/TSDoc hits, 0 inline-`//`/test-title hits excluded by design | (a) Fixed `RequestProperties.java` + `RequestPropertiesTest.java` (3 Javadoc mentions + 1 exception-message string each still said "evening-before cutoff"/`freeCancellationEndsAt` — the accept-deadline cap's actual site had moved to `salesCloseAt` in Phase 3 but its Javadoc never followed); also found and fixed `VenueReadController.tomorrowInTirane()` (not a grep hit — found by reading the controller directly per the plan's "no living Javadoc left stale" mandate) — the discovery/map/calendar reads' default date was still tomorrow, contradicting the new today floor; (b) all 20 stripped of `#791` (see File-structure's Phase 8 finding note for the file list) |
 
 ---
 

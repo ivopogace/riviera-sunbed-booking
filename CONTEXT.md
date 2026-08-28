@@ -88,10 +88,10 @@ model in `docs/architecture/domain-model.md`.
   ways, one per party who can end it: the venue **declines** (`DECLINED`), nobody answers by
   the response deadline (`EXPIRED`), or the guest **withdraws** it (`WITHDRAWN`). Each frees
   the soft-hold. The deadline is
-  min(request + `booking.request.expiry-window`, the evening-before cutoff); after accept
+  min(request + `booking.request.expiry-window`, the venue's sales close); after accept
   the guest has min(accept + `booking.request.pay-window`, the service day's opening) to pay
-  before the abandoned sweep cancels — capped, so a request accepted the evening before can
-  never be paid into the day it was booked for (invariant #4).
+  before the abandoned sweep cancels — capped, so a request accepted close to its service
+  day's opening can never be paid into the day it was booked for (invariant #4).
 - **Withdraw** — the guest's own retraction of their pending request, before the venue has
   decided (`WITHDRAWN`). Distinct from **cancel**, which ends a *confirmed* booking and carries
   a refund decision: a withdrawn request was never charged, so there is nothing to refund.
@@ -106,8 +106,13 @@ model in `docs/architecture/domain-model.md`.
   every money read that counts a delivered stay counts a no-show too. The one exception is
   the admin **weather refund**, which reaches a no-show on purpose: on a washed-out day
   those are the guests who stayed home because of the storm.
-- **Cutoff** — the moment online bookings for a day close (default 18:00 the
-  evening before, `Europe/Tirane`). Doubles as the free-cancellation deadline.
+- **Sales close** — the moment a venue's online sales for a date close, on the date
+  itself: a per-venue setting fixed at one of three wall-clock values (00:01 opts the
+  venue out of same-day sales, 16:00 the default, or 23:59), `Europe/Tirane`. The point
+  past which a booking can no longer be created for that date (invariant #4).
+- **Cutoff** — the evening-before wall-clock boundary (default 18:00, `Europe/Tirane`,
+  per-venue configurable). Governs free cancellation only — it no longer gates whether
+  a booking can be created; that is sales close's job.
 - **Booking mode** — how a venue accepts bookings: **Instant Book** (auto-confirm)
   or **Request-to-Book** (venue accepts/declines first).
 

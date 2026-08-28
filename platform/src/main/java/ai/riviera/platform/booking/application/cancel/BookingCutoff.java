@@ -14,7 +14,7 @@ import ai.riviera.platform.booking.domain.CancellationWindow;
  * Names the service day's three boundaries (invariant #4), all reasoned in {@code Europe/Tirane}
  * (invariant #6) from an injected UTC {@link Clock} — never the JVM default zone, never
  * {@code LocalDateTime.now()}: {@link #salesCloseAt}, when online sales for a date close, on the
- * day itself (venue-controlled, #791); {@link #freeCancellationEndsAt}, the evening-before
+ * day itself (venue-controlled); {@link #freeCancellationEndsAt}, the evening-before
  * boundary that now serves cancellation only; and {@link #serviceDayOpensAt}, midnight opening the
  * stay, past which cancellation is refused outright (invariant #10) and a payment may no longer be
  * taken. Rationale: {@code RESPONSIBILITIES.md} §{@code booking}.
@@ -102,7 +102,7 @@ public class BookingCutoff {
 
 	/**
 	 * The instant free cancellation for {@code bookingDate} ends — the venue's evening-before
-	 * {@code cutoff} wall-clock time in {@code Europe/Tirane} (ADR-0005; no sales role since #791).
+	 * {@code cutoff} wall-clock time in {@code Europe/Tirane} (ADR-0005; no sales role now).
 	 */
 	public java.time.Instant freeCancellationEndsAt(LocalTime cutoff, LocalDate bookingDate) {
 		return bookingDate.minusDays(1).atTime(cutoff).atZone(TIRANE).toInstant();

@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * The Request-to-Book windows (issue #98), bound from {@code booking.request.*}:
  * {@code expiry-window} — how long a venue has to respond to a pending request (default 24h;
- * the effective deadline is additionally capped at the evening-before cutoff, invariant #4) —
+ * the effective deadline is additionally capped at the venue's sales close, invariant #4) —
  * and {@code pay-window} — how long the guest has to pay after accept, from {@code accepted_at}
  * (default 12h; the guest may be asleep when the accept lands, so the instant-book 15-minute
  * TTL would be far too tight). Converted to the application-layer {@code RequestWindows} value
@@ -28,9 +28,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * being asked to pay for it.
  *
  * <p><strong>{@code expiryWindow} is bounded below only, deliberately.</strong> {@code ReserveSetService}
- * caps the deadline at the evening-before cutoff — {@code min(clock.instant().plus(expiryWindow),
- * cutoff.freeCancellationEndsAt(...))}, invariant #4 — so an over-long window cannot reach the domain:
- * it degrades to "expires at the cutoff", the safe direction. A ceiling would bound a value the use
+ * caps the deadline at the venue's sales close — {@code min(clock.instant().plus(expiryWindow),
+ * cutoff.salesCloseAt(...))}, invariant #4 — so an over-long window cannot reach the domain:
+ * it degrades to "expires when sales close", the safe direction. A ceiling would bound a value the use
  * site already bounds. {@code payWindow} is capped the same way at the service day's opening
  * ({@code RequestWindows#payDeadline}) and is <em>also</em> bounded at both ends
  * ({@link #MAX_PAY_WINDOW}), because the cap only binds for a request accepted the evening before —
@@ -74,7 +74,7 @@ public record RequestProperties(Duration expiryWindow, Duration payWindow) {
 		if (expiryWindow.compareTo(MIN_WINDOW) < 0) {
 			throw new IllegalArgumentException(
 					"booking.request.expiry-window must be at least " + MIN_WINDOW + ", but was "
-							+ expiryWindow + "; the deadline is min(now + window, the evening-before cutoff), "
+							+ expiryWindow + "; the deadline is min(now + window, the venue's sales close), "
 							+ "so a window this short makes every pending request expire on creation and no "
 							+ "accept can ever win the request_expires_at > now guard — the venue takes no "
 							+ "bookings and nothing reports a fault. There is no upper bound: the cutoff "

@@ -101,7 +101,7 @@ export class Home {
   protected readonly beach = signal('');
   protected readonly region = signal('');
   /**
-   * The earliest selectable booking date — today in Europe/Tirane (#791). Backs the date input's
+   * The earliest selectable booking date — today in Europe/Tirane. Backs the date input's
    * `min` and clamps a hand-typed date so a past date can't be presented as bookable (an
    * invariant #4 display guardrail; the server stays authoritative for the real cutoff).
    *

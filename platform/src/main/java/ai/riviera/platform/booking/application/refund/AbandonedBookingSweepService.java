@@ -19,8 +19,8 @@ import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 
 /**
  * Expires {@code AWAITING_PAYMENT} bookings that can no longer be paid — past their TTL, past the
- * accepted request's pay window, or (for a booking created before its own service day opened,
- * #791) for a service day already underway (invariant #4) — and frees their sets, implementing
+ * accepted request's pay window, or (for a booking created before its own service day opened) for
+ * a service day already underway (invariant #4) — and frees their sets, implementing
  * {@link ExpireAbandonedBookings}. For each stale booking it:
  *
  * <ol>

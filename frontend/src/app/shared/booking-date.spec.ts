@@ -16,7 +16,7 @@ import {
 } from './booking-date';
 
 /**
- * Pins the map/dialog default date: TODAY in Europe/Tirane, as ISO YYYY-MM-DD (#791 — sales for a
+ * Pins the map/dialog default date: TODAY in Europe/Tirane, as ISO YYYY-MM-DD (sales for a
  * day now close on the day itself), computed purely from an injected `now`. Covers the civil-day
  * derivation at a month/year boundary and the late-evening Tirane shoulder.
  */

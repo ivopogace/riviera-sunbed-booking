@@ -11,7 +11,7 @@ import java.time.Instant;
  *
  * <ul>
  * <li>{@code expiryWindow} — how long a venue has to accept/decline before the request expires;
- *     the effective deadline is additionally capped at the evening-before cutoff (invariant #4).</li>
+ *     the effective deadline is additionally capped at the venue's sales close (invariant #4).</li>
  * <li>{@code payWindow} — how long the guest has to pay after accept, measured from
  *     {@code accepted_at} (never {@code created_at} — the instant-book TTL clock would sweep an
  *     accepted request immediately), and capped at the service day's opening (invariant #4).</li>
@@ -23,7 +23,8 @@ public record RequestWindows(Duration expiryWindow, Duration payWindow) {
 	 * When an accepted request's guest must have paid — the deadline the payment-due mail promises:
 	 * {@code min(acceptedAt + payWindow, serviceDayOpensAt)}. Past the service day's opening a
 	 * payment would buy a stay already underway, so the window closes there however much of it is
-	 * left (invariant #4), exactly as the accept deadline is capped at the evening-before cutoff.
+	 * left (invariant #4), the same day-open boundary the accept deadline is capped at (by the
+	 * venue's sales close, which sits on or before it).
 	 *
 	 * <p>It is stated here, beside {@link #acceptedBefore}, because the mail promises a moment the
 	 * abandoned sweep enforces and the two must be the same one. For the raw window the two are exact

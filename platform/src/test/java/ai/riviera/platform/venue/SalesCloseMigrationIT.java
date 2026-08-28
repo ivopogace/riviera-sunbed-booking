@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Verifies Flyway V44 (#791, epic #790): the per-venue sales-close column, its default backfill,
+ * Verifies Flyway V44: the per-venue sales-close column, its default backfill,
  * and the three-value CHECK. Runs only when Docker is available (Testcontainers Postgres),
  * against the full Flyway chain incl. the seed.
  */

@@ -44,7 +44,7 @@ import { TouchTarget } from '../shared/touch-target';
  * in the ledger at the old rate while the takings show the new one. The copy says that rather than
  * promising exactness. Separately, the <em>live</em> rate moves immediately — which is why the list
  * shows the new number at once — while <em>reporting</em> moves from tomorrow (`Europe/Tirane`),
- * the commission schedule's own effective-dating rule (`VenueCommissionService`, unchanged by #791).
+ * the commission schedule's own effective-dating rule (`VenueCommissionService`, unchanged here).
  * These are not in tension: the live rate is what the next accrual will use.
  *
  * <p>The change is armed in place before it is sent — the console's recurring confirm-in-place shape,

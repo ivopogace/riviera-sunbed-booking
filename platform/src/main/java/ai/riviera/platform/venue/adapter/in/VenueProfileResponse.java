@@ -30,7 +30,7 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
  * PREVIEW serving URL, {@code null} when empty — always all three keys, so the tab renders
  * a stable grid. Emptiness is the null URL; no separate boolean.
  *
- * <p>{@code salesClose} (#791) is display-only, like commission — no PATCH field reaches it.
+ * <p>{@code salesClose} is display-only, like commission — no PATCH field reaches it.
  */
 record VenueProfileResponse(String name, String beach, String region, String description,
 		String bookingMode, String bookingCutoff, String salesClose, int commissionBps,

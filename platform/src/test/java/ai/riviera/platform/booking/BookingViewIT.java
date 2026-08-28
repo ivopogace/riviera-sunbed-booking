@@ -188,7 +188,7 @@ class BookingViewIT {
 
 	/**
 	 * A self-contained venue offering a 50% late-cancel refund, its one online set, and a
-	 * {@code CONFIRMED} booking on {@code date}, honestly advance-born (#791: {@code created_at} the
+	 * {@code CONFIRMED} booking on {@code date}, honestly advance-born ({@code created_at} the
 	 * day before {@code date}'s own Tirane midnight, matching a real advance booking). Isolated from
 	 * the seed venue so other ITs' assumptions hold, and its {@code 00:00} cutoff keeps the window
 	 * classification independent of the wall-clock hour the suite happens to run at.

@@ -99,7 +99,7 @@ export class AvailabilityCalendar {
   /** The day the map is currently showing — rendered as selected, and where the picker opens. */
   readonly selectedDate = input.required<string>();
 
-  /** The earliest day that can be chosen — today in `Europe/Tirane`, sales close on the day itself (#791). */
+  /** The earliest day that can be chosen — today in `Europe/Tirane`, sales close on the day itself. */
   readonly minDate = input.required<string>();
 
   readonly chosen = output<string>();

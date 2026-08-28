@@ -127,8 +127,8 @@ standing rules:
     declined option 2). Consequence, **by design**: a venue with one ancient *cancelled*
     booking answers `LAYOUT_IN_USE` on delete/regenerate forever; only the edit is
     relieved of it.
-  - The narrowed probes are race-safe not by breadth: invariant #4 plus the staff mark's
-    `DATE_IN_PAST` refusal mean **no write path can create a hold behind the cutoff**, so
+  - The narrowed probes are race-safe not by breadth: a past date is never claimable — a
+    booking reserve rejects it and the staff mark's `DATE_IN_PAST` refusal does too — so
     the range they stopped asking about is one nothing can be written into.
   - Which statuses are live is `booking`'s call (`BookingStatus#isTerminal`, reached
     through `BookingPresence#hasLiveBookings`); `venue` never enumerates booking statuses.
@@ -169,6 +169,12 @@ standing rules:
   date reprices and no ledger entry is touched (invariant #9). The asymmetry it preserves:
   the *owner's* profile PATCH still cannot write the rate at all (O8 #177) — a venue does
   not set its own commission.
+- **The per-venue sales-close setting** (`sales_close`, V44, invariant #4): a fixed-vocabulary
+  wall-clock time (`00:01`/`16:00`/`23:59`, `Europe/Tirane`) naming when a venue's online sales
+  for a date close, on the date itself — the fact `SetBookingFacts#setBookingInfo` carries to
+  `booking`'s reserve path (`BookingCutoff#salesCloseAt`) so it can gate creation without
+  reaching into my tables. Read-only this slice: no PATCH field reaches it, mirroring how the
+  commission rate stays owner-write-proof above.
 - **The tourist availability calendar** (`GET /api/venues/{venueId}/availability-calendar?from=&to=`,
   #760; public, window-capped at the edge): I own the set total and therefore
   `free = total − taken` and the gap fill for days nobody has touched; `availability` answers
@@ -217,7 +223,7 @@ total is `venue`'s. Throughout: `venue` composes; I answer state.
   sets by id; I don't own them)
 - *Why* a set is taken — which booking, who paid → **`booking`** (I record *that*
   `(set, date)` is claimed, not the booking behind it)
-- Deciding whether bookings are even open for a date (the same-day cutoff) →
+- Deciding whether bookings are even open for a date (the venue's sales close) →
   **`booking`** owns that rule; I only hold state
 - Pricing → **`venue`**; payment → **`payment`**
 
@@ -248,13 +254,20 @@ re-claimable (invariant #2). The arrivals list and daily takings count `COMPLETE
 The guest-cancel guard stays `CONFIRMED`-only (a delivered stay is never reclaimed); the **admin
 weather refund does not** — it admits `NO_SHOW` on its own `cancelForWeather` transition, because
 the storm is only known afterwards, by which time the sweep has marked exactly the guests who
-stayed home. That split is why the two share no port method. Enforce the cancellation policy and the same-day cutoff — **both of the
-day's boundaries**, since `BookingCutoff` owns the service day's opening as well as the
-evening-before close. That second boundary fences the *pay* path as well as the cancel path
-(#576): the guest's deadline is `min(accepted_at + pay-window, service-day open)`, the
-abandoned sweep carries a third, disjoint `booking_date` arm so a set stops being held
-unsellable into its own service day, and the code-gated view withholds the `clientSecret`
-past it. **The confirm path is deliberately not fenced.** A guest already holding a live
+stayed home. That split is why the two share no port method. Enforce the cancellation policy and
+own all three of the day's boundaries on `BookingCutoff` (#791): `salesCloseAt` — the venue's
+own sales-close setting, per date, which gates whether a booking can be *created* at all (invariant
+#4) — `freeCancellationEndsAt`, the older evening-before boundary, now cancellation-only — and
+`serviceDayOpensAt`, midnight opening the stay. That third boundary fences the *pay* path
+(#576), narrowed since sales can now close on the day itself: it applies only to an
+**advance-born** `AWAITING_PAYMENT` booking (`created_at` before its own service day's midnight,
+`BookingCutoff#bornBeforeServiceDay`) — the guest's deadline is `min(accepted_at + pay-window,
+service-day open)`, the abandoned sweep's `booking_date` arm now also requires an advance-born
+row so it never reaps one born the same day it is for, and the code-gated view withholds the
+`clientSecret` past it under the same predicate. A **same-day-born** `AWAITING_PAYMENT` booking is
+outside this fence entirely — only its own TTL (`AbandonedPaymentProperties`) frees it, which is
+why that TTL is now the sole backstop for a set left unpaid on the day it was claimed for.
+**The confirm path is deliberately not fenced.** A guest already holding a live
 `clientSecret` who pays between midnight and the next sweep run still confirms. Refusing
 without refunding would strand the money on an `AWAITING_PAYMENT` booking the sweep can never
 release (`NotCancellable` forever), and refunding cannot reuse `BookingCancelled`: a

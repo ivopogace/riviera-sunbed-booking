@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Verifies the day's three boundaries (invariant #4, #6): a date is bookable until its venue's
- * sales close on the day itself (#791); free cancellation ends the evening before; the service
+ * sales close on the day itself; free cancellation ends the evening before; the service
  * day opens at midnight. All arithmetic computed in {@code Europe/Tirane} from a fixed UTC clock
  * — never the JVM default zone. Pure unit test (real {@link BookingCutoff} + {@code Clock.fixed}).
  */
