@@ -27,8 +27,12 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * The view carries the id only — never the contact itself, which belongs to {@code customer} — so a
  * confirmed booking can ask {@code booking.spi.ConfirmationMailDelivery} whether its confirmation
  * mail was withheld (#390) without this module ever handling an address.
+ *
+ * <p>{@code createdAt} feeds {@link ai.riviera.platform.booking.application.cancel.BookingCutoff#bornBeforeServiceDay}
+ * — whether the #576 day-open pay fences apply to this row (#791).
  */
 public record BookingRecord(long id, String code, BookingStatus status, VenueId venueId, SetId setId,
 		CustomerId customerId, LocalDate bookingDate, long amountMinor, String currency,
-		Instant cancelledAt, Long refundMinor, Instant requestExpiresAt, RefundReason cancelReason) {
+		Instant cancelledAt, Long refundMinor, Instant requestExpiresAt, RefundReason cancelReason,
+		Instant createdAt) {
 }

@@ -1,6 +1,10 @@
 package ai.riviera.platform.booking;
 
+import java.sql.Timestamp;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 
@@ -17,8 +21,14 @@ import org.springframework.jdbc.core.simple.JdbcClient;
  * A second run would then move another row onto the same {@code (set_id, booking_date)} and hit the
  * unique constraint that enforces invariant #2, so any earlier residue at the target date is cleared
  * first.
+ *
+ * <p>{@code created_at} moves with {@code booking_date} (#791, R-8): a real advance booking is
+ * created before the date it's for, so an honest fixture backdates both — otherwise the moved row
+ * reads as same-day-born to {@link ai.riviera.platform.booking.application.cancel.BookingCutoff#bornBeforeServiceDay}.
  */
 final class ServiceDayBackdate {
+
+	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	private final JdbcClient jdbc;
 
@@ -36,8 +46,9 @@ final class ServiceDayBackdate {
 				WHERE set_id = :set AND booking_date = (SELECT booking_date FROM booking WHERE code = :c)
 				""")
 				.param("past", past).param("set", setId).param("c", code).update();
-		jdbc.sql("UPDATE booking SET booking_date = :past WHERE code = :c")
-				.param("past", past).param("c", code).update();
+		Instant createdAt = past.atStartOfDay(TIRANE).toInstant().minus(Duration.ofDays(1));
+		jdbc.sql("UPDATE booking SET booking_date = :past, created_at = :createdAt WHERE code = :c")
+				.param("past", past).param("createdAt", Timestamp.from(createdAt)).param("c", code).update();
 	}
 
 	private void clearResidueAt(long setId, LocalDate past) {

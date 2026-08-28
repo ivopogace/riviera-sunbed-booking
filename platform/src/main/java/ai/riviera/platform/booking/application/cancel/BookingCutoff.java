@@ -79,6 +79,14 @@ public class BookingCutoff {
 	}
 
 	/**
+	 * Whether the booking was created before its own service day opened (the #576 fences apply
+	 * only to these; a same-day-born booking is governed by its TTL until #792).
+	 */
+	public boolean bornBeforeServiceDay(java.time.Instant createdAt, LocalDate bookingDate) {
+		return createdAt.isBefore(serviceDayOpensAt(bookingDate));
+	}
+
+	/**
 	 * The latest booking date whose service day has already begun at {@code now} — the set-based form
 	 * of {@link #serviceDayHasOpened}, for a sweep that selects rows by {@code booking_date} rather
 	 * than asking per booking.

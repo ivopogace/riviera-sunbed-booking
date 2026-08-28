@@ -136,14 +136,14 @@ An implement session with a different designated branch records its substitution
   `expiresAt = min(now + expiry-window, D at the venue's sales close)`. *Pinned by:*
   `CreateBookingServiceTest.sameDayRequestStillClosed`,
   `.eveningBeforeRequestSucceedsWithDeadlineCappedAtSalesClose`.
-- [ ] **AC-6 (sweep bridge):** Given a same-day-born `AWAITING_PAYMENT` booking younger than the
+- [x] **AC-6 (sweep bridge):** Given a same-day-born `AWAITING_PAYMENT` booking younger than the
   TTL, when the abandoned sweep runs, then it is **not** expired (its claim is kept); given an
   advance-born `AWAITING_PAYMENT` booking whose service day has opened, then it **is** expired
   exactly as #576 shipped. *Pinned by:*
   `AbandonedBookingSweepIT.spareSameDayBornBookingWithinTtl`,
   `AbandonedBookingSweepIT.expiresAnAwaitingPaymentBookingOnceItsServiceDayHasOpened` (existing,
   updated fixture — see Phase 4).
-- [ ] **AC-7 (view bridge):** Given a same-day-born `AWAITING_PAYMENT` booking, when the guest
+- [x] **AC-7 (view bridge):** Given a same-day-born `AWAITING_PAYMENT` booking, when the guest
   opens the code-gated view, then payment credentials are issued; given an advance-born one past
   its service-day open, then they are withheld (unchanged #576 behavior). *Pinned by:*
   `ViewBookingServiceTest.sameDayBornBookingKeepsItsCredentials`,
@@ -381,7 +381,7 @@ if any styling does surface, load `riviera-tailwind` then (routing-gate re-entry
 | 1 — venue read surface (`SetBookingInfo`, profile read) | ✅ | Expose venue sales close on profile read and SetBookingFacts (#791) |
 | 2 — the window rule (`BookingCutoff`) | ✅ | Name the day's three boundaries in BookingCutoff (#791) |
 | 3 — reserve paths (Instant gate, Request gate + cap) | ✅ | Gate reserve on the same-day sales close; keep same-day requests closed (#791) |
-| 4 — same-day pay-fence bridges (sweep + view) | | |
+| 4 — same-day pay-fence bridges (sweep + view) | ✅ | Spare same-day-born bookings from the day-open pay fences (#791) |
 | 5 — lifecycle regression pins | | |
 | 6 — frontend floor + copy | | |
 | 7 — mocked e2e | | |
@@ -436,6 +436,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/notification/application/MailDeliveryLookupServiceTest.java` — record growth (R-7, `SetBookingInfo` fixture)
 - `platform/src/test/java/ai/riviera/platform/notification/application/BookingMailFactsServiceTest.java` — record growth (R-7, `SetBookingInfo` fixture)
 - `platform/src/test/java/ai/riviera/platform/booking/adapter/in/BookingCreationViewsContractTest.java` — record growth (R-7, `SetBookingInfo` fixture)
+- `platform/src/test/java/ai/riviera/platform/booking/application/request/WithdrawRequestServiceTest.java` — record growth (R-7, `BookingRecord` fixture)
+- `platform/src/test/java/ai/riviera/platform/booking/BookingViewIT.java` — advance-born `created_at` fixture fix (Phase 4 deviation)
 - every other fixture constructing `SetBookingInfo`/`BookingRecord` (compile-driven; e.g.
   `RespondToRequestServiceTest` builders) — record growth (R-7)
 
@@ -651,14 +653,18 @@ ALTER TABLE venue
 `ViewBookingService.java`, `ServiceDayBackdate.java`, `AbandonedBookingSweepIT.java`,
 `ViewBookingServiceTest.java`.
 
-- [ ] **Step 1: Failing tests** — AC-6: `spareSameDayBornBookingWithinTtl` seeds an
+- [x] **Step 1: Failing tests** — AC-6: `spareSameDayBornBookingWithinTtl` seeds an
   `AWAITING_PAYMENT` booking dated today, created now → sweep leaves it and its claim;
   the existing day-open expiry IT keeps passing once `ServiceDayBackdate` also backdates
   `created_at` (R-8 — set it to well before the moved date's Tirane midnight). AC-7:
   `sameDayBornBookingKeepsItsCredentials` / `advanceBornBookingLosesCredentialsAtDayOpen` on
   `ViewBookingService` with fixture `BookingRecord`s differing only in `createdAt`.
-- [ ] **Step 2: Verify red** — `./gradlew test --tests "*AbandonedBookingSweepIT*" --tests "*ViewBookingServiceTest*"`.
-- [ ] **Step 3: Minimal implementation** — sweep date arm narrows to advance-born rows
+  **Deviation:** `expiresAnAwaitingPaymentBookingOnceItsServiceDayHasOpened` did not go through
+  `ServiceDayBackdate` as the plan assumed — it inserted `OPENED_SERVICE_DAY` directly via raw SQL
+  with a fresh `created_at`. Reworked to insert at a near-future date, claim it, then call
+  `new ServiceDayBackdate(jdbc).moveToPast(...)` — R-8's fix, applied at its actual call site.
+- [x] **Step 2: Verify red** — `./gradlew test --tests "*AbandonedBookingSweepIT*" --tests "*ViewBookingServiceTest*"`.
+- [x] **Step 3: Minimal implementation** — sweep date arm narrows to advance-born rows
   (zone literal mirrors `BookingCutoff.TIRANE` — R-4):
 
 ```sql
@@ -688,14 +694,20 @@ ALTER TABLE venue
 				&& cutoff.bornBeforeServiceDay(b.createdAt(), b.bookingDate());
 ```
 
-- [ ] **Step 4: Verify green** — the two test classes, then `BookingViewIT`.
-- [ ] **Step 5: Generalization audit** — population: *every consumer of
+- [x] **Step 4: Verify green** — the two test classes, then `BookingViewIT`.
+  **Deviation found:** `BookingViewIT.reportsPayWindowClosedForAnOpenServiceDay` seeded its
+  booking dated "today" with `created_at = NOW()` (default) — same-day-born under #791's new
+  predicate, so its `payWindowClosed=true` assertion went red. Not a plan omission so much as
+  an IT this narrow change reaches: fixed by making `seedLateCancelBooking` backdate
+  `created_at` to the day before its `date` param (an honest advance-born fixture), preserving
+  the test's original intent (pin the unchanged #576 fence for an advance-born booking).
+- [x] **Step 5: Generalization audit** — population: *every consumer of
   `serviceDayOpen`/`serviceDayHasOpened`/`lastOpenedServiceDay`* (mechanism: fences behavior at
   day-open) → `grep -rn "serviceDayOpen\|serviceDayHasOpened\|lastOpenedServiceDay" platform/src/main`
   → judge each for the same same-day-born blindspot (expected: the pay-deadline announce
   (#792's, requests only — gated), the cancel classification (correct: same-day = CLOSED is
   the *intended* policy), the no-show sweep (dates strictly before today — safe). Log below.
-- [ ] **Step 6–7: Commit + status** — `"Spare same-day-born bookings from the day-open pay fences (#791)"`.
+- [x] **Step 6–7: Commit + status** — `"Spare same-day-born bookings from the day-open pay fences (#791)"`.
 
 ## Phase 5 — lifecycle regression pins
 
@@ -793,6 +805,7 @@ structure), this plan doc (final execution status).
 | 2026-08-28 | Phase 1 (`SetBookingInfo` gains `salesClose`) | constructors of `SetBookingInfo` (record growth) | `grep -rn "new SetBookingInfo(" platform/src` | 6 (1 main: `JdbcVenueCatalog`; 5 test: `MailDeliveryLookupServiceTest`, `BookingMailFactsServiceTest`, `BookingCreationViewsContractTest`, `ViewBookingServiceTest`, `CreateBookingServiceTest`) | All fixed; also found + fixed 2 `VenueProfileView` constructor sites (`JdbcVenues`, `VenueAdminServiceTest`) growing in the same phase |
 | 2026-08-28 | Phase 2 (`closesAt` renamed `freeCancellationEndsAt`) | callers of `closesAt` (renamed method) | `grep -rn "closesAt(" platform/src` | 4 (2 main: `BookingCutoff` self-call in `isBeforeCutoff`, `ReserveSetService`'s request-deadline cap; 2 Javadoc-only prose mentions: `RequestProperties`, `RequestPropertiesTest`) | All renamed; grep returns zero after |
 | 2026-08-28 | Phase 3 (`isBookable` switches to `salesCloseAt`) | every caller of `isBookable`/`bookingCutoff()` deciding sellability | `grep -rn "isBookable\|bookingCutoff()" platform/src/main` | 2 (`ReserveSetService` — the reserve gate, moved to `set.salesClose()`; `CancellationPolicy` — cancellation-only, correctly stays on `bookingCutoff()`) | No third site found selling off the old fence; also found and fixed one stale pre-existing test (`CreateBookingServiceTest.requestDeadlineCappedAtCutoff`, asserting the retired evening-before cap) — renamed `requestDeadlineUncappedTheMorningBeforeDeparture` and re-derived its expected value under the new rule |
+| 2026-08-28 | Phase 4 (day-open fences narrow to advance-born rows) | every consumer of `serviceDayOpen`/`serviceDayHasOpened`/`lastOpenedServiceDay` | `grep -rn "serviceDayOpen\|serviceDayHasOpened\|lastOpenedServiceDay" platform/src/main` | 3 judged (`RespondToRequestService`/`RequestWindows.payDeadline` — safe, same-day requests still gated by Phase 3's temporary gate; `CancellationPolicy.serviceDayOpen()` — correct as-is, same-day=CLOSED is the intended cancellation policy, not narrowed; `NoShowSweepService`/`markPastConfirmedAsNoShow` — safe, `booking_date < :today` strictly-before) | No change needed at any site; also found and fixed `BookingViewIT.reportsPayWindowClosedForAnOpenServiceDay`, whose same-day-born fixture went stale under the new predicate |
 
 ---
 
