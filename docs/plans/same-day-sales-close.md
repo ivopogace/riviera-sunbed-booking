@@ -102,7 +102,7 @@ An implement session with a different designated branch records its substitution
 > Written at the application boundary (inner hexagon) in domain terms; adapter-level pins named
 > where the AC is about the wire or the UI.
 
-- [ ] **AC-1 (migration + backfill):** Given a database migrated through V43 with existing venue
+- [x] **AC-1 (migration + backfill):** Given a database migrated through V43 with existing venue
   rows, when V44 applies, then every existing venue reads `sales_close = 16:00` and a direct SQL
   write of any value outside `{00:01, 16:00, 23:59}` is rejected by
   `venue_sales_close_check`. *Pinned by:* `SalesCloseMigrationIT.backfillsExistingVenuesTo1600`,
@@ -377,7 +377,7 @@ if any styling does surface, load `riviera-tailwind` then (routing-gate re-entry
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V44 migration + migration IT | | |
+| 0 — V44 migration + migration IT | ✅ | Add per-venue sales_close column, default 16:00 (#791) |
 | 1 — venue read surface (`SetBookingInfo`, profile read) | | |
 | 2 — the window rule (`BookingCutoff`) | | |
 | 3 — reserve paths (Instant gate, Request gate + cap) | | |
@@ -460,14 +460,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `V44__venue_sales_close.sql`, `SalesCloseMigrationIT.java`
 
-- [ ] **Step 1: Write the failing test** — `SalesCloseMigrationIT` (Testcontainers,
+- [x] **Step 1: Write the failing test** — `SalesCloseMigrationIT` (Testcontainers,
   `@EnabledIfDockerAvailable`): `backfillsExistingVenuesTo1600` reads the V3-seeded venue's
   `sales_close` expecting `16:00`; `checkRejectsAnyOtherTime` attempts
   `UPDATE venue SET sales_close = TIME '12:00'` expecting a constraint violation naming
   `venue_sales_close_check`.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*SalesCloseMigrationIT*"`
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*SalesCloseMigrationIT*"`
   → FAIL (no column).
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```sql
 -- #791 (epic #790): per-venue sales close on the service day itself (design spec §13).
@@ -484,10 +484,10 @@ ALTER TABLE venue
         CHECK (sales_close IN (TIME '00:01', TIME '16:00', TIME '23:59'));
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — N/A (no bug fix; pattern follows V43).
-- [ ] **Step 6: Commit** — `git commit -m "Add per-venue sales_close column, default 16:00 (#791)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS.
+- [x] **Step 5: Generalization-audit pass** — N/A (no bug fix; pattern follows V43).
+- [x] **Step 6: Commit** — `git commit -m "Add per-venue sales_close column, default 16:00 (#791)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — venue read surface
 
