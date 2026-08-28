@@ -125,6 +125,22 @@ class StaffBookingControllerIT {
 	}
 
 	@Test
+	void sameDayConfirmedBookingAppearsInTodaysList() throws Exception {
+		// AC-11 (#791): a same-day confirmed booking lists exactly like an advance one.
+		LocalDate today = LocalDate.now(ZoneId.of("Europe/Tirane"));
+		List<Long> sets = venueSets(1);
+		long customer = newCustomer("today-" + today + "@e.com");
+		seedBookingOn("U8TODAY001", sets.get(0), customer, "CONFIRMED", today);
+
+		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).cookie(operatorSession)
+						.param("date", today.toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].code").value("U8TODAY001"))
+				.andExpect(jsonPath("$[0].setId").value(sets.get(0)));
+	}
+
+	@Test
 	void bookingsListRequiresOperator() throws Exception {
 		// AC-9: no operator credential → 401, never a public read of booking codes (invariant #7).
 		mvc.perform(get("/api/venues/{id}/bookings", MIRAMAR).param("date", DAY.toString()))

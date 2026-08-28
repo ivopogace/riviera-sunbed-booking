@@ -165,7 +165,7 @@ An implement session with a different designated branch records its substitution
   given a mocked `422 BOOKING_CLOSED`, when the tourist attempts today at a closed venue, then
   the dialog shows the today-refusal copy and stays recoverable; axe passes on both. *Pinned
   by:* `frontend/e2e/same-day-booking.e2e.ts` (both scenarios).
-- [ ] **AC-11 (same-day lifecycle regression):** Given a confirmed same-day booking, when staff
+- [x] **AC-11 (same-day lifecycle regression):** Given a confirmed same-day booking, when staff
   open the daily view for today and the live map, then it is listed and its set reads taken; the
   payout accrual and the admin weather refund reach it through the unchanged date-agnostic
   paths. *Pinned by:* `StaffBookingControllerIT.sameDayConfirmedBookingAppearsInTodaysList`
@@ -382,7 +382,7 @@ if any styling does surface, load `riviera-tailwind` then (routing-gate re-entry
 | 2 — the window rule (`BookingCutoff`) | ✅ | Name the day's three boundaries in BookingCutoff (#791) |
 | 3 — reserve paths (Instant gate, Request gate + cap) | ✅ | Gate reserve on the same-day sales close; keep same-day requests closed (#791) |
 | 4 — same-day pay-fence bridges (sweep + view) | ✅ | Spare same-day-born bookings from the day-open pay fences (#791) |
-| 5 — lifecycle regression pins | | |
+| 5 — lifecycle regression pins | ✅ | Pin same-day bookings through staff view and weather refund (#791) |
 | 6 — frontend floor + copy | | |
 | 7 — mocked e2e | | |
 | 8 — substrate docs + Javadoc sweep | | |
@@ -713,15 +713,18 @@ ALTER TABLE venue
 
 **Files:** Modify `StaffBookingControllerIT.java`, `WeatherRefundServiceIT.java`.
 
-- [ ] **Step 1: Write the (expected-green) pins** — a confirmed today-dated booking appears in
+- [x] **Step 1: Write the (expected-green) pins** — a confirmed today-dated booking appears in
   the staff daily list and takings; the weather refund for venue+today reaches it. These pin
   AC-11 without changing production code — a red here is a discovered defect, handled per
-  `diagnosing-bugs`.
-- [ ] **Step 2–4:** `./gradlew test --tests "*StaffBookingControllerIT*" --tests "*WeatherRefundServiceIT*"` → PASS.
-- [ ] **Step 5:** Generalization audit — N/A unless a pin turns red (then: population = *every
-  read that filters `booking_date`*, enumerate `grep -rn "booking_date" platform/src/main` and
-  judge each for a hidden no-same-day assumption).
-- [ ] **Step 6–7: Commit + status** — `"Pin same-day bookings through staff view and weather refund (#791)"`.
+  `diagnosing-bugs`. **Note:** `StaffBookingControllerIT`'s new case went red once, but from a
+  test-authoring mistake (a JsonPath filter-expression numeric comparison, `Integer` vs `Long`),
+  not a production defect — fixed by switching to the class's existing `$[0].field` index style
+  (the array holds exactly one row); no `diagnosing-bugs` escalation needed. `WeatherRefundServiceIT`'s
+  new case picks a distinct ONLINE-set offset to avoid an availability-row collision with
+  `AbandonedBookingSweepIT`'s same-day fixture, both now claiming "today" on the shared container.
+- [x] **Step 2–4:** `./gradlew test --tests "*StaffBookingControllerIT*" --tests "*WeatherRefundServiceIT*"` → PASS.
+- [x] **Step 5:** Generalization audit — N/A, no pin turned red from a production cause.
+- [x] **Step 6–7: Commit + status** — `"Pin same-day bookings through staff view and weather refund (#791)"`.
 
 ## Phase 6 — frontend floor + copy
 
