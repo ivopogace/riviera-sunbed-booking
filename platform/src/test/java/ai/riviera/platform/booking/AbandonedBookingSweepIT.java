@@ -68,11 +68,11 @@ class AbandonedBookingSweepIT {
 	private static final int FRESH_AGE_MINUTES = 1;
 
 	/**
-	 * A service day long since opened. Fixed rather than derived from "now" so the row this class
+	 * A service day long since ended. Fixed rather than derived from "now" so the row this class
 	 * deletes between methods is the row it wrote; every other date here is far in the future, so the
-	 * service-day arm is inert for them and each arm is exercised in isolation.
+	 * day-end arm is inert for them and each arm is exercised in isolation.
 	 */
-	private static final LocalDate OPENED_SERVICE_DAY = LocalDate.of(2020, 8, 1);
+	private static final LocalDate ENDED_SERVICE_DAY = LocalDate.of(2020, 8, 1);
 
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
@@ -104,9 +104,14 @@ class AbandonedBookingSweepIT {
 				+ "OR payment_intent_id = 'pi_succeeded'").update();
 		jdbc.sql("DELETE FROM set_availability WHERE booking_date BETWEEN '2027-08-01' AND '2027-08-31'")
 				.update();
-		// The service-day arm needs an already-opened date, which no future-dated range would cover.
-		jdbc.sql("DELETE FROM set_availability WHERE booking_date = :opened")
-				.param("opened", OPENED_SERVICE_DAY).update();
+		// The day-end arm needs an already-ended date, which no future-dated range would cover.
+		jdbc.sql("DELETE FROM set_availability WHERE booking_date = :ended")
+				.param("ended", ENDED_SERVICE_DAY).update();
+		// Today-dated methods leave held claims behind; release exactly this class's own (join by code).
+		jdbc.sql("""
+				DELETE FROM set_availability sa USING booking b
+				WHERE b.code LIKE 'SWEEPAC%' AND sa.set_id = b.set_id AND sa.booking_date = b.booking_date
+				""").update();
 		jdbc.sql("DELETE FROM booking WHERE code LIKE 'SWEEPAC%'").update();
 		jdbc.sql("DELETE FROM customer WHERE email LIKE 'SWEEPAC%@example.com'").update();
 	}
@@ -279,31 +284,69 @@ class AbandonedBookingSweepIT {
 	}
 
 	@Test
-	void expiresAnAwaitingPaymentBookingOnceItsServiceDayHasOpened() throws Exception {
-		// R-8 (#791): an honest advance-born fixture, backdated (booking_date + created_at) together.
+	void expiresAnAwaitingPaymentBookingOnceItsServiceDayHasEnded() throws Exception {
+		// The day-end arm (#792): a booking whose whole service day is over can never be paid again.
 		SetRef set = onlineSet();
 		LocalDate future = LocalDate.of(2027, 8, 12);
 		long booking = insertAcceptedRequest("SWEEPAC0007", set, future, FRESH_AGE_MINUTES);
 		insertPayment(booking, "pi_sweep_serviceday");
 		claim(set, future);
-		new ServiceDayBackdate(jdbc).moveToPast("SWEEPAC0007", OPENED_SERVICE_DAY);
+		new ServiceDayBackdate(jdbc).moveToPast("SWEEPAC0007", ENDED_SERVICE_DAY);
 
-		// Accepted a minute ago against a 24h TTL: only the service-day arm can reach it.
+		// Accepted a minute ago against a 24h TTL: only the day-end arm can reach it.
 		int expired = sweep.sweep(Duration.ofHours(24), WINDOWS);
 
-		assertEquals(1, expired, "a booking for a day already underway can no longer be paid");
+		assertEquals(1, expired, "a booking whose service day has ended can no longer be paid");
 		assertEquals("CANCELLED", statusOf(booking), "so it is cancelled rather than left payable");
-		assertEquals(0L, availabilityRows(set, OPENED_SERVICE_DAY),
+		assertEquals(0L, availabilityRows(set, ENDED_SERVICE_DAY),
 				"and its (set, date) claim is released (invariant #2)");
 		verify(cancelableIntent).cancel();
 
-		assertEquals(ClaimOutcome.CLAIMED, availability.claim(new SetId(set.setId()), OPENED_SERVICE_DAY),
-				"the set is back in the pool instead of held unsellable into its own service day");
+		assertEquals(ClaimOutcome.CLAIMED, availability.claim(new SetId(set.setId()), ENDED_SERVICE_DAY),
+				"the set is back in the pool instead of held unsellable past its own service day");
+	}
+
+	@Test
+	void sparesAnAcceptedAdvanceBookingInsideItsOpenServiceDay() throws Exception {
+		// #792: born before D, accepted moments ago, D underway but not over — payable until the deadline.
+		SetRef set = onlineSet();
+		LocalDate today = LocalDate.now(TIRANE);
+		long booking = insertAcceptedRequest("SWEEPAC0009", set, today, FRESH_AGE_MINUTES);
+		insertPayment(booking, "pi_sweep_advopen");
+		claim(set, today);
+		jdbc.sql("UPDATE booking SET created_at = :c WHERE id = :id")
+				.param("c", java.sql.Timestamp.from(
+						today.atStartOfDay(TIRANE).toInstant().minus(Duration.ofHours(6))))
+				.param("id", booking).update();
+
+		int expired = sweep.sweep(Duration.ofHours(24), WINDOWS);
+
+		assertEquals(0, expired, "an accepted advance booking is payable into its own service day");
+		assertEquals("AWAITING_PAYMENT", statusOf(booking), "the old day-open arm must not reap it");
+		assertEquals(1L, availabilityRows(set, today));
+		verify(cancelableIntent, never()).cancel();
+	}
+
+	@Test
+	void sameDayAcceptedBookingSurvivesTheSweep() throws Exception {
+		// AC-3 (#792): accepted moments ago for TODAY — its pay deadline has not passed.
+		SetRef set = onlineSet();
+		LocalDate today = LocalDate.now(TIRANE);
+		long booking = insertAcceptedRequest("SWEEPAC0010", set, today, FRESH_AGE_MINUTES);
+		insertPayment(booking, "pi_sweep_samedayacc");
+		claim(set, today);
+
+		int expired = sweep.sweep(TTL, WINDOWS);
+
+		assertEquals(0, expired, "a same-day accepted booking inside its pay window is not swept");
+		assertEquals("AWAITING_PAYMENT", statusOf(booking));
+		assertEquals(1L, availabilityRows(set, today));
+		verify(cancelableIntent, never()).cancel();
 	}
 
 	@Test
 	void spareSameDayBornBookingWithinTtl() throws Exception {
-		// AC-6/R-2 (#791): the old date arm would expire this immediately; narrowed, it survives.
+		// #792: its service day has not ended and its TTL has not run — neither arm may reach it.
 		SetRef set = onlineSet();
 		LocalDate today = LocalDate.now(TIRANE);
 		long booking = insertBooking("SWEEPAC0008", set, today, "AWAITING_PAYMENT", FRESH_AGE_MINUTES);

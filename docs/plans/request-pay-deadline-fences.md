@@ -297,14 +297,15 @@ that stays true).
 **Stage pointer:** `implement` — Phase 0 done; routing gate re-run (`riviera-local-debug`,
 `riviera-modulith`, `riviera-java-conventions`, `tdd` loaded before the first build/edit).
 
-**Next action:** Phase 2 (sweep day-ended arm; load `postgres` first). Draft PR #800 open,
-activity subscribed; check each phase push's CI run before the next phase.
+**Next action:** Phase 3 (view fences on the pay deadline + FE copy; load the FE rows +
+angular-cli MCP first). Draft PR #800 open, activity subscribed; phase-0 push (f175ea5)
+CI green (all 8 checks); check each phase push's CI run before the next phase.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — BookingCutoff day-end boundary + relocation to `application/` root | ✅ | Add the service-day-end boundary and re-home BookingCutoff (#792) |
 | 1 — Pay deadline caps at day end (mail ≡ sweep identity) | ✅ | Cap the pay deadline at the end of the service day (#792) |
-| 2 — Sweep: day-ended arm | | |
+| 2 — Sweep: day-ended arm | ✅ | Sweep abandoned bookings once the pay deadline has passed (#792) |
 | 3 — View fences on the pay deadline (+ FE copy) | | |
 | 4 — Response deadline caps at sales close | | |
 | 5 — Remove the #791 gate; lifecycle + confirm-unfenced pins; retire dead members | | |
@@ -451,7 +452,7 @@ public static LocalDate lastEndedServiceDay(Instant now) {
 
 **Files:** Modify `JdbcBookings.java:561–587`, `AbandonedBookingSweepService.java:66–70` · Test `AbandonedBookingSweepServiceTest.java`, `AbandonedBookingSweepIT.java`
 
-- [ ] **Step 1: Failing tests.** Unit: `bindsTheDayArmToTheLastEndedTiraneServiceDay`
+- [x] **Step 1: Failing tests.** Unit: `bindsTheDayArmToTheLastEndedTiraneServiceDay`
   (expects `BookingCutoff.lastEndedServiceDay(now)` as the third argument). IT (new):
 
 ```java
@@ -467,8 +468,8 @@ void sameDayAcceptedBookingSurvivesTheSweep() {
   and adapt `expiresAnAwaitingPaymentBookingOnceItsServiceDayHasOpened` →
   `…OnceItsServiceDayHasEnded` (booking dated **yesterday** via the backdater is reaped;
   dated today is not).
-- [ ] **Step 2: Run red** — `./gradlew test --tests "*AbandonedBookingSweep*"` → FAIL.
-- [ ] **Step 3: Implement.** SQL arm 1 becomes (advance-born mirror deleted):
+- [x] **Step 2: Run red** — `./gradlew test --tests "*AbandonedBookingSweep*"` → FAIL.
+- [x] **Step 3: Implement.** SQL arm 1 becomes (advance-born mirror deleted):
 
 ```sql
 AND (   booking_date <= :serviceDayEndedOnOrBefore
@@ -482,12 +483,12 @@ AND (   booking_date <= :serviceDayEndedOnOrBefore
   this plan. (`postgres`: same status+date shape as before — the existing candidate
   scan/index serves it; the Tirane day arithmetic stays in Java, bound as a `LocalDate`,
   no per-row `AT TIME ZONE` left.)
-- [ ] **Step 4: Run green**; regression `./gradlew test --tests "*JdbcBookings*"`.
-- [ ] **Step 5: Generalization audit** — population: *every SQL predicate mirroring
+- [x] **Step 4: Run green**; regression `./gradlew test --tests "*JdbcBookings*"`.
+- [x] **Step 5: Generalization audit** — population: *every SQL predicate mirroring
   `bornBeforeServiceDay` / Tirane midnight* → `git ls-files '*adapter/out/*.java' | xargs grep -ln "AT TIME ZONE"` →
   confirm the sweep was the only mirror (expected: yes).
-- [ ] **Step 6: Commit** — `Sweep abandoned bookings once the pay deadline has passed (#792)`
-- [ ] **Step 7: Update execution status.**
+- [x] **Step 6: Commit** — `Sweep abandoned bookings once the pay deadline has passed (#792)`
+- [x] **Step 7: Update execution status.**
 
 ---
 
@@ -604,6 +605,7 @@ boolean payWindowClosed = awaitingPayment && !clock.instant().isBefore(payDeadli
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-28 | Phase 2 (sweep day-end arm) | Every SQL predicate mirroring `bornBeforeServiceDay` / Tirane midnight in a driven adapter | `git ls-files '*adapter/out/*.java' \| xargs grep -ln "AT TIME ZONE"` | none (the sweep's deleted `AT TIME ZONE` arm was the only mirror) | Confirmed sole mirror; the surviving day-end arm binds a Java-computed `LocalDate` |
 | 2026-08-28 | Phase 1 (pay-deadline cap) | Every call site passing a cap into `payDeadline` or documenting it | `grep -rn "payDeadline\|serviceDayOpensAt" platform/src/main/java platform/src/test/java` | `RespondToRequestService` (fixed this phase), `RequestWindows`(+Test) (re-aimed), `ExpireAbandonedBookings` Javadoc (phase 2), `ReserveSetService:118` + `RequestProperties`(+Test) prose (phase 4), `BookingCutoff` cancel/day-end-delegation/`bornBeforeServiceDay` uses (legit or phase 5) | Known-pending sites recorded; none outside planned phases |
 | 2026-08-28 | Phase 0 (BookingCutoff re-home) | Module-shared classes still addressed under a single use-case sub-package — enumerated as cross-sub-package `application.*` imports | `git ls-files 'platform/src/main/java/ai/riviera/platform/booking/application/*/*.java' \| xargs grep -l "import ai.riviera.platform.booking.application\."` | Root-homed shared classes (`Bookings`, `BookingCodeGenerator`, now `BookingCutoff`) + 5 cross-slice edges: `cancel.CancellationPolicy`(+`RefundQuote`)/`cancel.CancelledBooking`, `request.RequestWindows`, `refund.ReleaseAbandonedBooking`, `reserve.ConfirmBooking`, `view.BookingRecord` | No further moves: each remaining edge's class is addressed at its vocabulary owner (the refund rule is cancel's, the pay window request's, the record the view's shape) and consumed cross-slice by design — the mechanism that made `BookingCutoff`'s address wrong (a module-wide authority under one slice) matches no other site |
 
