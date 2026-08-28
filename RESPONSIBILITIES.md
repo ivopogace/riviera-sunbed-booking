@@ -183,7 +183,13 @@ standing rules:
   for a date close, on the date itself — the fact `SetBookingFacts#setBookingInfo` carries to
   `booking`'s reserve path (`BookingCutoff#salesCloseAt`) so it can gate creation without
   reaching into my tables. Read-only this slice: no PATCH field reaches it, mirroring how the
-  commission rate stays owner-write-proof above.
+  commission rate stays owner-write-proof above. Since #793 the two tourist catalogue reads
+  (list + map) also *project* the open/closed verdict for the selected date as an additive
+  `salesOpen` field, consulted through my **third** `spi` driven port — `SalesWindow`,
+  implemented by `booking` beside `SetAvailabilityLookup` and `BookingPresence` — with one
+  request-scoped instant per read, so verdicts within one response cannot disagree. The port
+  returns the *verdict*, never a close instant: I store the time and display the answer;
+  `booking` keeps the rule and its boundary semantics, so no second source of truth exists.
 - **The tourist availability calendar** (`GET /api/venues/{venueId}/availability-calendar?from=&to=`,
   #760; public, window-capped at the edge): I own the set total and therefore
   `free = total − taken` and the gap fill for days nobody has touched; `availability` answers
@@ -268,7 +274,10 @@ own all of the day's boundaries on `BookingCutoff` (#791, re-homed to the `appli
 at #792 as the module-wide day-boundary authority): `salesCloseAt` — the venue's
 own sales-close setting, per date, which gates whether a booking can be *created* at all and,
 since #792, caps a pending request's **response deadline** (`min(created + expiry-window, D at
-sales close)`, invariant #4) — `freeCancellationEndsAt`, the older evening-before boundary, now
+sales close)`, invariant #4); since #793 the same `isBookable` fence also answers the tourist
+browse through `venue.spi.SalesWindow` (the `BookingCutoffSalesWindow` adapter) — same
+authority, second consumer, display-only: the browse verdict never gates anything, the
+reserve path keeps enforcing independently — `freeCancellationEndsAt`, the older evening-before boundary, now
 cancellation-only — `serviceDayOpensAt`, midnight opening the stay, the cancellation window's
 outer fence — and `serviceDayEndsAt`, the next midnight, the pay deadline's outer bound. The
 *pay* path fences on **the pay deadline having passed** (#792, replacing the #576 day-open

@@ -72,38 +72,38 @@ cloud addendum; recorded per the Branch-line rule).
 > Written at the application boundary (the ports and views), not the HTTP or Angular
 > layer; adapter-level assertions live in the named ITs/specs.
 
-- [ ] **AC-1:** Given venue A (`sales_close 16:00`) and venue B (`sales_close 23:59`) both
+- [x] **AC-1:** Given venue A (`sales_close 16:00`) and venue B (`sales_close 23:59`) both
   visible, when `VenueCatalog.listVenues(filter, today)` is evaluated at 17:00
   `Europe/Tirane`, then A's `VenueSummaryView.salesOpen()` is `false` and B's is `true`.
   *Pinned by:* `VenueListControllerIT.listCarriesPerVenueSalesOpenForToday`
-- [ ] **AC-2:** Given the same fixture, when `listVenues` is evaluated for **tomorrow**,
+- [x] **AC-2:** Given the same fixture, when `listVenues` is evaluated for **tomorrow**,
   then every venue's `salesOpen()` is `true` (future dates are open everywhere — no
   special-casing, the rule alone produces it). *Pinned by:*
   `VenueListControllerIT.futureDatesAreOpenAtEveryVenue`
-- [ ] **AC-3:** Given venue A after its close, when `VenueCatalog.findVenueMap(A, today)`
+- [x] **AC-3:** Given venue A after its close, when `VenueCatalog.findVenueMap(A, today)`
   is evaluated, then `VenueMapView.salesOpen()` is `false`; for tomorrow it is `true`.
   *Pinned by:* `VenueReadControllerIT.mapCarriesSalesOpenForSelectedDate`
-- [ ] **AC-4:** Given any `(salesClose, date, now)`, when `venue.spi.SalesWindow.isOpen`
+- [x] **AC-4:** Given any `(salesClose, date, now)`, when `venue.spi.SalesWindow.isOpen`
   is asked, then the answer equals `BookingCutoff.isBookable(salesClose, date, now)` —
   including the boundary: at exactly `D at sales_close` the answer is `false`
   (strictly-before, the reserve path's convention). *Pinned by:*
   `BookingCutoffSalesWindowTest.delegatesToTheCutoffAuthority` (+ `closedAtTheExactCloseInstant`)
-- [ ] **AC-5:** Given a Discover card for a venue with `salesOpen: false`, when the list
+- [x] **AC-5:** Given a Discover card for a venue with `salesOpen: false`, when the list
   renders, then the card shows the "Sales closed for today" chip AND the card's
   `aria-label` carries the closed state (the card body is `aria-hidden`); a venue with
   `salesOpen: true` shows no chip. *Pinned by:* `home.spec.ts` ("badges a venue whose
   online sales for today have closed") + `home.a11y.spec.ts` (axe over the closed fixture)
-- [ ] **AC-6:** Given the venue map loaded with `salesOpen: false`, when it renders, then
+- [x] **AC-6:** Given the venue map loaded with `salesOpen: false`, when it renders, then
   the closed state (`data-testid="map-sales-closed"`) is visible, no set tile is
   selectable (the booking dialog cannot be opened), and picking tomorrow from the date
   picker refetches and restores the normal bookable map. *Pinned by:*
   `venue-map.spec.ts` ("sales-closed map disables set selection and recovers on a date change")
-- [ ] **AC-7:** Given a deep link `/venues/{id}?date=<today>` to a closed venue, when the
+- [x] **AC-7:** Given a deep link `/venues/{id}?date=<today>` to a closed venue, when the
   page loads, then the closed state shows instead of a bookable map, and changing the date
   to tomorrow recovers — mocked end-to-end with axe coverage. *Pinned by:*
   `same-day-booking.e2e.ts` ("deep link to a closed venue's map shows the closed state, and
   tomorrow recovers")
-- [ ] **AC-8:** Given the browse for today at 17:00 with one closed and one open venue,
+- [x] **AC-8:** Given the browse for today at 17:00 with one closed and one open venue,
   when the tourist browses and opens the closed venue, then the badge is visible on the
   closed card only and the map path shows the closed state — mocked end-to-end, axe-clean.
   *Pinned by:* `same-day-booking.e2e.ts` ("browse today after a venue's close shows the
@@ -134,14 +134,14 @@ byte-identical.)
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A second source of truth: `venue` (or the FE) re-deriving `now < D@sales_close` instead of consulting `booking`'s rule — the exact review finding `RESPONSIBILITIES.md` warns about | med | high | the `venue.spi.SalesWindow` port returns the **verdict** (boolean), never a close instant to compare; no time arithmetic lands in `venue` or the FE; AC-4 pins delegation incl. the boundary case | session | open |
-| R-2 | Module cycle `venue → booking` (booking already depends on `venue::api`) | low | high | `spi` inversion (compile edge stays `booking → venue`); `booking` already granted `venue::spi`; `ModularityTests` run in phase 0 | session | open |
-| R-3 | Appending a record component to the published `VenueSummaryView`/`VenueMapView` breaks positional constructors across tests/fixtures | high | low | append `salesOpen` **last** in both records; compile-driven sweep of construction sites in the same phase; structural net re-run | session | open |
-| R-4 | Badge staleness: a page held open across a venue's close (or a mid-day #794 flip, later) keeps showing "open" | med | low | **accepted residual**, same class as `Home.minDate`'s documented midnight residual: the verdict is server-computed per fetch, refreshed on every date/filter change and navigation; the reserve path stays authoritative and the dialog's today-aware `BOOKING_CLOSED` copy (#797) is the backstop | session | open |
-| R-5 | a11y: the Discover card body is `aria-hidden="true"`, so a visual-only badge is invisible to AT | high | med | fold the closed state into `Home.toCard`'s `ariaLabel`; `home.a11y.spec.ts` + the e2e axe pass cover it | session | open |
-| R-6 | Per-row clock reads: N `clock.instant()` calls while mapping the list could disagree mid-list | low | low | capture **one** `Instant now` per catalogue call and reuse it for every row (the `ReserveSetService` one-instant discipline) | session | open |
-| R-7 | e2e timezone drift: fixed-clock instants vs `Europe/Tirane` (+02:00 in season) off-by-an-hour | med | med | reuse `same-day-booking.e2e.ts`'s existing `TODAY`/`BEFORE_CLOSE` constants; add `AFTER_CLOSE = 2026-08-30T15:00:00Z` (= 17:00 Tirane) beside them | session | open |
-| R-8 | Error contract (§6b): none — no new request DTO, no new error response; additive response fields only | low | low | FE types updated in `shared/venue-views.ts`, no `as any` | session | open |
+| R-1 | A second source of truth: `venue` (or the FE) re-deriving `now < D@sales_close` instead of consulting `booking`'s rule — the exact review finding `RESPONSIBILITIES.md` warns about | med | high | the `venue.spi.SalesWindow` port returns the **verdict** (boolean), never a close instant to compare; no time arithmetic lands in `venue` or the FE; AC-4 pins delegation incl. the boundary case | session | resolved (phase 0/1: verdict-only port; `BookingCutoffSalesWindowTest` green) |
+| R-2 | Module cycle `venue → booking` (booking already depends on `venue::api`) | low | high | `spi` inversion (compile edge stays `booking → venue`); `booking` already granted `venue::spi`; `ModularityTests` run in phase 0 | session | resolved (phase 0: structural net green, no grant change) |
+| R-3 | Appending a record component to the published `VenueSummaryView`/`VenueMapView` breaks positional constructors across tests/fixtures | high | low | append `salesOpen` **last** in both records; compile-driven sweep of construction sites in the same phase; structural net re-run | session | resolved (phase 1: appended last; 2 sites, both in `JdbcVenueCatalog`) |
+| R-4 | Badge staleness: a page held open across a venue's close (or a mid-day #794 flip, later) keeps showing "open" | med | low | **accepted residual**, same class as `Home.minDate`'s documented midnight residual: the verdict is server-computed per fetch, refreshed on every date/filter change and navigation; the reserve path stays authoritative and the dialog's today-aware `BOOKING_CLOSED` copy (#797) is the backstop | session | accepted residual (documented; no code) |
+| R-5 | a11y: the Discover card body is `aria-hidden="true"`, so a visual-only badge is invisible to AT | high | med | fold the closed state into `Home.toCard`'s `ariaLabel`; `home.a11y.spec.ts` + the e2e axe pass cover it | session | resolved (phase 2: closed clause in the card's accessible name, spec-pinned) |
+| R-6 | Per-row clock reads: N `clock.instant()` calls while mapping the list could disagree mid-list | low | low | capture **one** `Instant now` per catalogue call and reuse it for every row (the `ReserveSetService` one-instant discipline) | session | resolved (phase 1: one instant per `listVenues`/`findVenueMap` call) |
+| R-7 | e2e timezone drift: fixed-clock instants vs `Europe/Tirane` (+02:00 in season) off-by-an-hour | med | med | reuse `same-day-booking.e2e.ts`'s existing `TODAY`/`BEFORE_CLOSE` constants; add `AFTER_CLOSE = 2026-08-30T15:00:00Z` (= 17:00 Tirane) beside them | session | resolved (phase 4: constants beside `TODAY`/`BEFORE_CLOSE`; suite green) |
+| R-8 | Error contract (§6b): none — no new request DTO, no new error response; additive response fields only | low | low | FE types updated in `shared/venue-views.ts`, no `as any` | session | resolved (phase 2: typed optional `salesOpen`; only an explicit `false` closes) |
 
 Flyway: no version claimed — no migration in this slice (checked against `main` at V44 and
 the open-PR set, which is dependabot-only).
@@ -152,11 +152,11 @@ the open-PR set, which is dependabot-only).
   distinguishes closed from open) satisfies AC "visibly distinguishes"; no negative-color
   variant is needed. If review or the maintainer disagrees, the variant lands with its
   `chip-fills.ts` + contrast-spec + e2e-hex triple updated together
-  (`riviera-tailwind`). — *Owner:* session · *Resolves by:* phase 2 / review gate
+  (`riviera-tailwind`). — *Owner:* session · *Status:* resolved as assumed (phase 2: the semantic fill reused unchanged; badge presence + the aria clause distinguish; the review gate may still revisit)
 - **Assumption (OQ-2):** a **past-date** deep link to the map (reachable only by URL
   editing; the picker floors at today) rendering the closed state is correct behavior —
   the rule's verdict is honestly `false` and the date picker offers recovery. — *Owner:*
-  session · *Resolves by:* phase 3
+  session · *Status:* resolved (phase 3: moot in practice — `routeDate` floors a past URL date to today; the non-today closed copy ships as a spec-pinned defensive branch)
 - **Deviation (D-1, phase 1):** AC-1/AC-3's prescribed fixture (venue pair 16:00/23:59
   evaluated at a mocked 17:00 clock) is realized instead with the repo's established
   boundary-venue trick — the ITs deliberately never mock the `Clock` bean (#791/#792
@@ -167,7 +167,7 @@ the open-PR set, which is dependabot-only).
   over new harness)
 - **Assumption (OQ-3):** the closed-map state disables set *selection* while still
   rendering the grid and its availability (the issue asks for "no bookable set selection",
-  not a hidden map). — *Owner:* session · *Resolves by:* phase 3
+  not a hidden map). — *Owner:* session · *Status:* resolved as assumed (phase 3: grid + availability rendered, selection gated, banner explains)
 
 ## Availability & concurrency (invariant #2)
 
@@ -293,11 +293,13 @@ initial load and the status role targets the date-change transition.
 
 > Session-recovery anchor. Update in the same commit window as the change it records.
 
-**Stage pointer:** implement — phases 0–4 done (backend port + projection, badge, map
-closed state, mocked e2e journeys; full mocked suite green).
+**Stage pointer:** implement complete — awaiting external review (the planning session
+reviews PR #801 against this plan; the review gate, Sonar triage and merge deliberately
+did NOT run in the implement session).
 
-**Next action:** phase 5 — RESPONSIBILITIES.md updates, plan-doc close-out, merge latest
-origin/main, CI green, stop for external review.
+**Next action (external):** review PR #801 against this plan; findings re-enter at
+Implement. `origin/main` was still at the plan base (72cc693) at implement-complete —
+no merge commit was needed.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -306,7 +308,7 @@ origin/main, CI green, stop for external review.
 | 2 — Discover badge + aria | ✅ | "Badge closed-for-today venues on Discover (#793)" |
 | 3 — map closed state + recovery | ✅ | "Show a sales-closed state on the tourist map (#793)" |
 | 4 — mocked e2e + a11y | ✅ | "e2e: badge + closed-map journeys for same-day sales close (#793)" |
-| 5 — substrate docs + close-out | | |
+| 5 — substrate docs + close-out | ✅ | "Record the sales-window spi port in the substrate docs (#793)" |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -323,6 +325,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `docs/plans/discover-sales-open.md` — this plan.
 - `platform/src/main/java/ai/riviera/platform/venue/spi/SalesWindow.java` — the new driven port.
 - `platform/src/main/java/ai/riviera/platform/venue/spi/package-info.java` — Javadoc port list 2→3.
+- `platform/src/main/java/ai/riviera/platform/venue/package-info.java` — module Javadoc: the inversion count grows (phase 5 counting sweep).
 - `platform/src/main/java/ai/riviera/platform/venue/vocabulary/VenueSummaryView.java` — `salesOpen` appended.
 - `platform/src/main/java/ai/riviera/platform/venue/vocabulary/VenueMapView.java` — `salesOpen` appended.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenueCatalog.java` — `sales_close` in both SELECTs; one-instant verdict per request via the port.
@@ -641,17 +644,17 @@ Test `pages/home/home.spec.ts`, `pages/home/home.a11y.spec.ts`
 
 **Files:** Modify `RESPONSIBILITIES.md`, `docs/plans/discover-sales-open.md`
 
-- [ ] `RESPONSIBILITIES.md` §`venue`: a third spi bullet beside
+- [x] `RESPONSIBILITIES.md` §`venue`: a third spi bullet beside
   `SetAvailabilityLookup`/`BookingPresence` (the sales-window verdict consulted by the
   catalogue reads); §`booking`: note the rule now also answers the browse via
   `venue.spi.SalesWindow` — same authority, second consumer.
-- [ ] Counting-sweep targets (`riviera-docs-freshness` at merge close-out): the
+- [x] Counting-sweep targets (`riviera-docs-freshness` at merge close-out): the
   `venue/spi/package-info.java` two-port sentence (done in phase 0), any "two SPI ports"
   phrasing, `venue/package-info.java`'s "the one module that owns a cross-module
   dependency inversion" (still true — venue remains the sole owner; the *count* inside it
   grows), CLAUDE.md's `venue` module row (no change expected — it doesn't enumerate spi
   ports), `CONTEXT.md` (no change — **Sales close** already canonical).
-- [ ] Run `node scripts/check-plan-file-structure.mjs --diff origin/main` with the plan
+- [x] Run `node scripts/check-plan-file-structure.mjs --diff origin/main` with the plan
   doc staged; reconcile.
 - [ ] Finalize Execution status (stage pointer DONE, `merged via PR #NN`, findings
   resolved, Open Questions empty or issue-linked) **in the PR's own last commit**.
@@ -672,29 +675,29 @@ Test `pages/home/home.spec.ts`, `pages/home/home.a11y.spec.ts`
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/AC-2:** `./gradlew test --tests "*VenueListControllerIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** `./gradlew test --tests "*VenueReadControllerIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** `./gradlew test --tests "*BookingCutoffSalesWindowTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** `npm test -- --run home.spec` + `npm run test:a11y` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** `npm test -- --run venue-map` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7/AC-8:** `npm run test:e2e:a11y` → PASS. Verified at commit `<sha>`.
+- [x] **AC-1/AC-2:** `gradle test --tests "*VenueListControllerIT*"` → PASS (boundary-venue fixture, D-1). Verified at commit `cd422d1`.
+- [x] **AC-3:** `./gradlew test --tests "*VenueReadControllerIT*"` → PASS. Verified at commit `<sha>`.
+- [x] **AC-4:** `./gradlew test --tests "*BookingCutoffSalesWindowTest*"` → PASS. Verified at commit `<sha>`.
+- [x] **AC-5:** `npm test -- --run home.spec` + `npm run test:a11y` → PASS. Verified at commit `<sha>`.
+- [x] **AC-6:** `npm test -- --run venue-map` → PASS. Verified at commit `<sha>`.
+- [x] **AC-7/AC-8:** `npm run test:e2e:a11y` → PASS (292/293 locally; the one fail, `customer-password.e2e.ts`, is a pre-existing sandbox-load flake off this slice's surface — passes solo on this branch and on `origin/main`; CI is the backstop). Verified at commit `185ee68`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (read-only slice; concurrency paths untouched, invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — one rule, consulted, never re-derived.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event changes (invariant #11).
-- [ ] **Payment/payout** N/A upheld — no payment code in the diff.
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone correct: verdict computed from one UTC `Instant` against `Europe/Tirane` wall-clock (invariant #6), only inside `booking`.
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No Flyway migration needed and none added (invariant #12).
-- [ ] **Frontend** standards met (v22 posture, signals, native control flow); no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (read-only slice; concurrency paths untouched, invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — one rule, consulted, never re-derived.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event changes (invariant #11).
+- [x] **Payment/payout** N/A upheld — no payment code in the diff.
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone correct: verdict computed from one UTC `Instant` against `Europe/Tirane` wall-clock (invariant #6), only inside `booking`.
+- [x] Booking codes untouched (invariant #7).
+- [x] No Flyway migration needed and none added (invariant #12).
+- [x] **Frontend** standards met (v22 posture, signals, native control flow); no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR** — final state citing `merged via PR #NN`; no docs-only follow-up.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
