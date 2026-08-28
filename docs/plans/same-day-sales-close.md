@@ -91,6 +91,10 @@ CI-safe mocked suite with `page.route` + `page.clock.setFixedTime` per the
 stands in for `feature/same-day-sales-close` (`riviera-sdlc` § Remote/cloud session addendum).
 An implement session with a different designated branch records its substitution here.
 
+**Implement-session substitution:** this execution session's designated remote branch is
+`claude/sdlc-791-implementation-em5lt3`, started from the planning branch's tip (4d0943f) per
+`riviera-sdlc` § Remote/cloud session addendum.
+
 ---
 
 ## Acceptance criteria (testable)
@@ -366,12 +370,10 @@ if any styling does surface, load `riviera-tailwind` then (routing-gate re-entry
 > change it records, at every phase boundary and SDLC stage transition. Finalize before merge
 > citing `merged via PR #NN`.
 
-**Stage pointer:** plan committed — **stopped after plan by user instruction** (2026-08-26).
-Implement has not started.
+**Stage pointer:** implement in progress — started 2026-08-28 on
+`claude/sdlc-791-implementation-em5lt3`.
 
-**Next action:** an implement session starts at Phase 0 — first load `riviera-local-debug`
-(before any `./gradlew`/`npm`), re-run the Skill-routing gate per phase, open the draft PR at
-the first phase commit.
+**Next action:** Phase 0 — V44 migration + migration IT.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
