@@ -396,10 +396,11 @@ if any styling does surface, load `riviera-tailwind` then (routing-gate re-entry
 > change it records, at every phase boundary and SDLC stage transition. Finalize before merge
 > citing `merged via PR #NN`.
 
-**Stage pointer:** implement in progress — started 2026-08-28 on
-`claude/sdlc-791-implementation-em5lt3`.
+**Stage pointer:** awaiting review gate (run by the plan session) — all 9 phases (0–8) landed
+2026-08-28 on `claude/sdlc-791-implementation-em5lt3`, PR #797, CI green on `100c75e8`
+(`origin/main` unchanged since the branch's base — no merge needed), marked ready for review.
 
-**Next action:** Phase 0 — V44 migration + migration IT.
+**Next action:** the plan's author session runs `/code-review` and the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -873,20 +874,20 @@ structure), this plan doc (final execution status).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section filled; concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4 — as reworded by this slice).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event change (invariant #11).
-- [ ] **Payment/payout** untouched as planned; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side, unchanged (invariant #10, AC-8).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` reasoned (invariant #6) — incl. the one new SQL zone literal (R-4).
-- [ ] Booking codes unguessable — untouched (invariant #7).
-- [ ] Flyway migration present; the CHECK is created and tested by V44 (invariant #12).
-- [ ] **Frontend** standards met; no `as any`; no new cross-feature edge (RV-FE-8).
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] **Close-out written in THIS PR** — final state cites `merged via PR #NN`.
-- [ ] **The review gate ran in full** — invocation ladder per `references/pr-gates.md` §1 + `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section filled; concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4 — as reworded by this slice).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event change (invariant #11).
+- [x] **Payment/payout** untouched as planned; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side, unchanged (invariant #10, AC-8).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` reasoned (invariant #6) — incl. the one new SQL zone literal (R-4).
+- [x] Booking codes unguessable — untouched (invariant #7).
+- [x] Flyway migration present; the CHECK is created and tested by V44 (invariant #12).
+- [x] **Frontend** standards met; no `as any`; no new cross-feature edge (RV-FE-8).
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [ ] **Close-out written in THIS PR** — final state cites `merged via PR #NN`. *(not yet — awaiting merge)*
+- [ ] **The review gate ran in full** — invocation ladder per `references/pr-gates.md` §1 + `riviera-review-overlay`. *(deferred to the plan's author session — execution-only session scope)*
