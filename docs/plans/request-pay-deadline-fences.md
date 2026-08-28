@@ -85,43 +85,43 @@ in for `feature/request-pay-deadline-fences` (riviera-sdlc cloud addendum).
 
 > Written at the application boundary — the inner hexagon — in domain terms.
 
-- [ ] **AC-1:** Given a Request-to-Book set on date D at a venue with sales close C, when a
+- [x] **AC-1:** Given a Request-to-Book set on date D at a venue with sales close C, when a
   request is created at time T, then the stored response deadline is
   `min(T + expiry-window, D at C Europe/Tirane)` — uncapped two days out, capped at D's
   sales close for a near-term request. *Pinned by:*
   `CreateBookingServiceTest.requestDeadlineCappedAtSalesClose` (adapting
   `eveningBeforeRequestSucceedsWithDeadlineCappedAtServiceDayOpen`) and the existing
   `requestDeadlineUncappedTwoDaysOut`.
-- [ ] **AC-2:** Given an accepted request, when `BookingPaymentDue` is announced, then
+- [x] **AC-2:** Given an accepted request, when `BookingPaymentDue` is announced, then
   `payBy = min(accepted_at + pay-window, end of service day D)` — and the mailed deadline
   and the sweep's cutoff remain **pinned identical**. *Pinned by:*
   `RequestWindowsTest` (the existing mail-deadline ≡ sweep-cutoff identity cases, re-aimed
   at the day-end cap).
-- [ ] **AC-3:** Given a same-day accepted `AWAITING_PAYMENT` booking whose pay deadline has
+- [x] **AC-3:** Given a same-day accepted `AWAITING_PAYMENT` booking whose pay deadline has
   not passed, when the abandoned sweep runs, then it is **not** expired; once
   `min(accepted_at + pay-window, end of day D)` has passed, it is expired and its claim
   released. *Pinned by:* `AbandonedBookingSweepIT.sameDayAcceptedBookingSurvivesTheSweep`
   (new) and `expiresAnAwaitingPaymentBookingOnceItsServiceDayHasEnded` (adapted from
   `…HasOpened`).
-- [ ] **AC-4:** Given an `AWAITING_PAYMENT` booking (same-day **and** advance alike), when
+- [x] **AC-4:** Given an `AWAITING_PAYMENT` booking (same-day **and** advance alike), when
   the code-gated view is read, then payment credentials are issued while the pay deadline
   hasn't passed and withheld after. *Pinned by:*
   `ViewBookingServiceTest.issuesCredentialsUntilThePayDeadline`,
   `withholdsCredentialsOnceThePayDeadlineHasPassed`,
   `acceptedAdvanceBookingKeepsCredentialsIntoItsServiceDay` (the old day-open withhold is
   now wrong by design), plus `BookingViewIT.reportsPayWindowClosedOnceThePayDeadlinePassed`.
-- [ ] **AC-5:** Given a Request-to-Book venue before its sales close **on the service day
+- [x] **AC-5:** Given a Request-to-Book venue before its sales close **on the service day
   itself**, when a tourist requests, the venue accepts, and payment succeeds, then the
   booking reaches `CONFIRMED` — the #791 temporary gate is gone. *Pinned by:*
   `CreateBookingServiceTest.sameDayRequestSucceedsBeforeSalesClose` (replacing
   `sameDayRequestStillClosed`) and `SameDayRequestLifecycleIT` (request → accept → pay →
   `CONFIRMED`, boundary-venue trick: `23:59` close).
-- [ ] **AC-6:** Given an `AWAITING_PAYMENT` booking whose pay deadline **has passed**, when
+- [x] **AC-6:** Given an `AWAITING_PAYMENT` booking whose pay deadline **has passed**, when
   payment confirmation arrives, then the booking still transitions to `CONFIRMED` — the
   confirm path stays unfenced (settled posture, do not "fix"). *Pinned by:*
   `JdbcBookingsTransitionIT.confirmSucceedsAfterThePayDeadlineHasPassed` (new
   characterization test — the posture was previously prose-only).
-- [ ] **AC-7:** `RESPONSIBILITIES.md` §`booking` (L272–285 region) and `CLAUDE.md`
+- [x] **AC-7:** `RESPONSIBILITIES.md` §`booking` (L272–285 region) and `CLAUDE.md`
   invariant #4 no longer state the `min(accepted_at + pay-window, service-day open)` rule
   or the sweep's advance-born `booking_date` arm; they state the day-end rule. *Pinned by:*
   review + `riviera-docs-freshness` sweep at phase 6 (no test class — docs).
@@ -158,31 +158,31 @@ in for `feature/request-pay-deadline-fences` (riviera-sdlc cloud addendum).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **Ordering:** moving the response cap to sales close (or removing the gate) while the day-open fences stand recreates #791 F-1 — accepts inside D mint bookings the mail dooms, the view starves, the sweep kills | high (if reordered) | high | Phase order is normative: fences (phases 0–3) before cap+gate (phases 4–5); each phase green before the next | impl session | open |
-| R-2 | Sweep's day-end arm releases `(set, date)` claims into a **past** date | med | low | Pre-existing accepted behavior (the old `booking_date <= today` arm already swept past dates after downtime); a past date is never claimable — reserve rejects it and the staff mark answers `DATE_IN_PAST` — so invariant #2 holds; the availability calendar reports the freed past day (cosmetic, reads availability not bookability) | impl session | open |
-| R-3 | View reads `accepted_at` — a missed SELECT column / mapper slot silently treats accepted rows as never-accepted (deadline too generous vs the mailed one) | med | med | `BookingViewIT` + `ViewBookingServiceTest` advance-accepted cases assert the withhold at `accepted+window` before day end | impl session | open |
-| R-4 | IT determinism near Tirane midnight / sales close | med | med | #791 R-5's **boundary-venue trick** (`23:59` venue for same-day success, `00:01` for refusal) + backdating fixtures (`ServiceDayBackdate` for `created_at`; add an `accepted_at` backdater beside it); boundary arithmetic proven in fixed-`Clock` unit tests | impl session | open |
+| R-1 | **Ordering:** moving the response cap to sales close (or removing the gate) while the day-open fences stand recreates #791 F-1 — accepts inside D mint bookings the mail dooms, the view starves, the sweep kills | high (if reordered) | high | Phase order is normative: fences (phases 0–3) before cap+gate (phases 4–5); each phase green before the next | impl session | resolved — phase order held: fences (0–3) landed and went green before the cap (4) and the gate removal (5) |
+| R-2 | Sweep's day-end arm releases `(set, date)` claims into a **past** date | med | low | Pre-existing accepted behavior (the old `booking_date <= today` arm already swept past dates after downtime); a past date is never claimable — reserve rejects it and the staff mark answers `DATE_IN_PAST` — so invariant #2 holds; the availability calendar reports the freed past day (cosmetic, reads availability not bookability) | impl session | resolved (accepted) — pre-existing sweep behavior; a past date is unclaimable, invariant #2 holds |
+| R-3 | View reads `accepted_at` — a missed SELECT column / mapper slot silently treats accepted rows as never-accepted (deadline too generous vs the mailed one) | med | med | `BookingViewIT` + `ViewBookingServiceTest` advance-accepted cases assert the withhold at `accepted+window` before day end | impl session | resolved — `BookingViewIT.reportsPayWindowClosedOnceThePayDeadlinePassed` + the advance-accepted unit cases pin the `accepted_at` wiring |
+| R-4 | IT determinism near Tirane midnight / sales close | med | med | #791 R-5's **boundary-venue trick** (`23:59` venue for same-day success, `00:01` for refusal) + backdating fixtures (`ServiceDayBackdate` for `created_at`; add an `accepted_at` backdater beside it); boundary arithmetic proven in fixed-`Clock` unit tests | impl session | resolved — 23:59 boundary-venue `SameDayRequestLifecycleIT` + fixed-`Clock` unit cases; no wall-clock dependence in units |
 | R-5 | A venue accepting minutes before a `23:59` close leaves a near-zero pay window (deadline = day end) | low | low | Accepted product residual — spec §13: "never past the end of the service day"; confirm stays unfenced, so a payment in flight still lands; noted, not engineered around | plan | accepted |
-| R-6 | Timezone arithmetic at the day-end boundary (DST) | low | med | `serviceDayEndsAt(D)` delegates to the existing `serviceDayOpensAt(D+1)` (zone-rule-safe `ZonedDateTime` path already unit-tested); new unit cases pin `23:59:59` vs `00:00:00` membership | impl session | open |
-| R-7 | Deleting `bornBeforeServiceDay`/`serviceDayHasOpened`/`lastOpenedServiceDay` breaks a caller the grep missed (`out/` gitignore trap) | low | med | Negative confirmed via `git ls-files` sweep at plan time (call-site inventory in File structure); `ModularityTests` + compile break loudly either way | plan | open |
-| R-8 | The mail ≡ sweep identity silently diverges (mail says day end, sweep re-derives it in SQL — the accepted mirror) | low | high | `RequestWindowsTest` identity cases re-aimed at the day-end cap (AC-2) + the day-arm boundary IT (the SQL twin of `serviceDayHasEnded`); both sides bind their day bound from the same `BookingCutoff` members; the SQL carries a one-line pointer to `RequestWindows.payDeadline` | impl session | open |
-| R-9 | The `BookingCutoff` relocation breaks a caller or the `cancellationWindow` visibility widening leaks structure | low | low | Mechanical `git mv` + import updates across the five injecting services and the test; the compile and the structural net (`ModularityTests`/`PackageShapeArchitectureTests`) catch any miss; `application/*` is non-published, so the public widening exports nothing | impl session | open |
+| R-6 | Timezone arithmetic at the day-end boundary (DST) | low | med | `serviceDayEndsAt(D)` delegates to the existing `serviceDayOpensAt(D+1)` (zone-rule-safe `ZonedDateTime` path already unit-tested); new unit cases pin `23:59:59` vs `00:00:00` membership | impl session | resolved — `serviceDayEndsAtHandlesTheDstShoulder` + delegation to `serviceDayOpensAt(D+1)` |
+| R-7 | Deleting `bornBeforeServiceDay`/`serviceDayHasOpened`/`lastOpenedServiceDay` breaks a caller the grep missed (`out/` gitignore trap) | low | med | Negative confirmed via `git ls-files` sweep at plan time (call-site inventory in File structure); `ModularityTests` + compile break loudly either way | plan | resolved — call-site inventory held; `git ls-files` adapter sweep negative-confirmed post-delete; compile + structural net green |
+| R-8 | The mail ≡ sweep identity silently diverges (mail says day end, sweep re-derives it in SQL — the accepted mirror) | low | high | `RequestWindowsTest` identity cases re-aimed at the day-end cap (AC-2) + the day-arm boundary IT (the SQL twin of `serviceDayHasEnded`); both sides bind their day bound from the same `BookingCutoff` members; the SQL carries a one-line pointer to `RequestWindows.payDeadline` | impl session | resolved — identity cases re-aimed (AC-2), day-arm boundary IT green, SQL carries the one-line mirror pointer |
+| R-9 | The `BookingCutoff` relocation breaks a caller or the `cancellationWindow` visibility widening leaks structure | low | low | Mechanical `git mv` + import updates across the five injecting services and the test; the compile and the structural net (`ModularityTests`/`PackageShapeArchitectureTests`) catch any miss; `application/*` is non-published, so the public widening exports nothing | impl session | resolved — mechanical move; `ModularityTests`/`PackageShapeArchitectureTests` green; `cancellationWindow` widening exports nothing |
 
 ## Open questions / Assumptions
 
-- **Assumption (drift, reconciled):** issue #792's AC-1 matches the epic; the *code*
-  deliberately differs (#791 review F-1 parked the accept cap at day-open as a bridge —
-  epic #790 comment, 2026-08-28). No issue edit needed: #792's ACs already describe the
-  target state; this plan encodes the bridge-lift ordering. — *Owner:* plan · *Resolves:*
-  phase 4.
+- **Assumption (drift, reconciled — RESOLVED at phase 4):** issue #792's AC-1 matches the
+  epic; the *code* deliberately differed (#791 review F-1 parked the accept cap at day-open
+  as a bridge — epic #790 comment, 2026-08-28). The bridge lifted in order: fences first
+  (phases 0–3), then the cap (phase 4) and the gate (phase 5).
 - **Assumption:** for a **never-accepted** `AWAITING_PAYMENT` booking the pay deadline is
   the **end of its service day** (TTL stays a sweep-only backstop, not a view fence) —
   continuous with today's pinned posture (`sameDayBornBookingKeepsItsCredentials`) and the
   issue's `min(accepted + pay-window, end of day)` formula, which defines the accepted
-  case only. — *Owner:* plan · *Resolves by:* phase 3 tests making it explicit.
+  case only. — RESOLVED at phase 3: `neverAcceptedBookingKeepsCredentialsUntilDayEnd` +
+  `withholdsCredentialsOnceTheServiceDayHasEnded` make it explicit.
 - **Assumption:** pre-deploy pending requests keep their stored (day-open-capped)
-  `request_expires_at`; forward-only behavior change, no backfill. — *Owner:* plan ·
-  *Resolves:* accepted at plan time.
+  `request_expires_at`; forward-only behavior change, no backfill. — RESOLVED: accepted at
+  plan time; no backfill shipped.
 
 ## Availability & concurrency (invariant #2)
 
@@ -294,13 +294,27 @@ that stays true).
 
 > Session-recovery anchor — update in the same commit window as the change it records.
 
-**Stage pointer:** `implement` — Phase 0 done; routing gate re-run (`riviera-local-debug`,
-`riviera-modulith`, `riviera-java-conventions`, `tdd` loaded before the first build/edit).
+**Stage pointer:** **implement complete — awaiting external review gate.** All phases 0–6
+done and pushed on draft PR #800; the review gate (`/code-review` + overlay), the Sonar
+issue-list triage, ready-for-review, and merge are the planning session's to run — this
+session deliberately stops before them.
 
-**Next action:** Phase 6 (e2e arm — load `playwright-cli` first; docs freshness;
-close-out). Draft PR #800 open, activity subscribed; check each phase push's CI run
-before the next phase. (Phase-1+2 push 30bf39f went hygiene-red — plan-doc File
-structure omissions — fixed in the phase-3 push 3a45da7.)
+**Next action:** the planning session runs the Review + Sonar gates per `riviera-sdlc`
+`references/pr-gates.md`, then merge close-out. Skill-routing gate ran per phase:
+backend rows + `riviera-local-debug` (phases 0–5), `postgres` (phase 2),
+`riviera-frontend`/`riviera-tailwind`/`angular-developer`+MCP (phase 3), `playwright-cli`
++ `riviera-docs-freshness` (phase 6). (Phase-1+2 push 30bf39f went hygiene-red — plan-doc
+File structure omissions — fixed in the phase-3 push 3a45da7. Full-suite e2e note: one
+unrelated spec, `operator-venue.e2e.ts` stale-tab 409, failed once under the 291-spec
+parallel local run and passes in isolation — outside this diff; CI arbitrates.)
+
+**Docs-freshness run (phase 6, `origin/main..HEAD`):** two findings, both patched —
+`CONTEXT.md` pending-request entry still said the pay window capped at the service day's
+*opening* (→ end of day), and `BookingCutoffTest`'s class Javadoc still counted "the
+day's three boundaries" (→ four, incl. `serviceDayEndsAt`). Verified clean: CLAUDE.md
+invariant #10 + ADR-0005 (cancellation stays day-open-fenced — a different fence),
+`docs/design/` + spec §13 (no stale pay-fence copy), no surviving references to the
+retired members or the `cancel/` address outside deliberate history.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -310,7 +324,7 @@ structure omissions — fixed in the phase-3 push 3a45da7.)
 | 3 — View fences on the pay deadline (+ FE copy) | ✅ | Gate the booking view's payment credentials on the pay deadline (#792) |
 | 4 — Response deadline caps at sales close | ✅ | Cap the request response deadline at the sales close (#792) |
 | 5 — Remove the #791 gate; lifecycle + confirm-unfenced pins; retire dead members | ✅ | Open same-day Request-to-Book: remove the temporary gate (#792) |
-| 6 — e2e arm + docs freshness + close-out | | |
+| 6 — e2e arm + docs freshness + close-out | ✅ | Follow the on-day sales window in docs and e2e (#792) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -358,6 +372,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/request-to-book.e2e.ts` — same-day arm (FE-3).
 - `RESPONSIBILITIES.md` — §`booking` L272–285 region rewritten to the day-end rule (AC-7).
 - `CLAUDE.md` — invariant #4 pay-fence sentence rewritten (AC-7).
+- `CONTEXT.md` — pending-request glossary entry's pay-window sentence re-aimed at the day's end (docs-freshness finding).
 
 ---
 
@@ -585,12 +600,12 @@ boolean payWindowClosed = awaitingPayment && !clock.instant().isBefore(payDeadli
 
 **Files:** Modify `frontend/e2e/request-to-book.e2e.ts`, `RESPONSIBILITIES.md`, `CLAUDE.md`, this plan doc.
 
-- [ ] **Step 1:** Load `playwright-cli` (routing gate), then extend the mocked
+- [x] **Step 1:** Load `playwright-cli` (routing gate), then extend the mocked
   request-to-book spec with a same-day arm (today's date, accept mocked before close, pay
   CTA renders; axe via `expectNoSeriousAxeViolations`). Suite placement (CI-safe mocked) —
   RV-FE-E2E's call, matching the #791 precedent.
-- [ ] **Step 2:** `cd frontend && npm run lint && npm run format:check && npm run test:e2e:a11y` → PASS.
-- [ ] **Step 3:** Docs (AC-7): rewrite `RESPONSIBILITIES.md` §`booking` L272–285 region —
+- [x] **Step 2:** `cd frontend && npm run lint && npm run format:check && npm run test:e2e:a11y` → PASS.
+- [x] **Step 3:** Docs (AC-7): rewrite `RESPONSIBILITIES.md` §`booking` L272–285 region —
   the pay fence is now *"the guest's deadline is `min(accepted_at + pay-window, end of the
   service day)`; the abandoned sweep and the code-gated view fence on the pay deadline
   having passed; a never-accepted booking's deadline is the day's end, its TTL the sweep's
@@ -598,12 +613,13 @@ boolean payWindowClosed = awaitingPayment && !clock.instant().isBefore(payDeadli
   reword `CLAUDE.md` invariant #4's pay-fence sentence (number keeps, never renumber).
   Run `riviera-docs-freshness` over the slice range (the counting sweep: "three sweep
   arms", "#576 fences", `bornBeforeServiceDay` mentions).
-- [ ] **Step 4:** `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan doc
+- [x] **Step 4:** `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan doc
   staged first) + `node scripts/check-inline-comments.mjs --diff origin/main` → PASS.
-- [ ] **Step 5:** Finalize Execution status (stage pointer, phase rows, AC verification,
-  Self-review checklist), merge-from-main with phase discipline, mark the PR ready for
-  review → the Review + Sonar gates per `riviera-sdlc` `references/pr-gates.md`.
-- [ ] **Step 6: Commit** — `Follow the on-day sales window in docs and e2e (#792)`
+- [x] **Step 5 (implement half):** Execution status finalized; origin/main verified
+  already merged (branch up to date at `04e2303`). **Ready-for-review + the Review and
+  Sonar gates are deliberately NOT run here** — the planning session owns them (session
+  instruction); stage pointer says so.
+- [x] **Step 6: Commit** — `Follow the on-day sales window in docs and e2e (#792)`
 
 ---
 
@@ -622,29 +638,29 @@ boolean payWindowClosed = awaitingPayment && !clock.instant().isBefore(payDeadli
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `./gradlew test --tests "*CreateBookingServiceTest*"` → deadline-cap cases PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** `./gradlew test --tests "*RequestWindowsTest*"` → identity cases PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** `./gradlew test --tests "*AbandonedBookingSweep*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** `./gradlew test --tests "*ViewBooking*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** `./gradlew test --tests "*SameDayRequestLifecycleIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** `./gradlew test --tests "*JdbcBookingsTransitionIT*"` → confirm-after-deadline PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** docs diff reviewed + `riviera-docs-freshness` run recorded in Skills consulted. Verified at commit `<sha>`.
+- [x] **AC-1:** `./gradlew test --tests "*CreateBookingServiceTest*"` → deadline-cap cases PASS. Verified at commits `a3b2c87` (cap) + `2d43b94` (same-day case).
+- [x] **AC-2:** `./gradlew test --tests "*RequestWindowsTest*"` → identity cases PASS. Verified at commit `fdd37de`.
+- [x] **AC-3:** `./gradlew test --tests "*AbandonedBookingSweep*"` → PASS (ITs ran against real Postgres, not skipped). Verified at commit `30bf39f`.
+- [x] **AC-4:** `./gradlew test --tests "*ViewBooking*"` → PASS incl. `BookingViewIT`. Verified at commit `3a45da7`.
+- [x] **AC-5:** `./gradlew test --tests "*SameDayRequestLifecycleIT*"` → PASS. Verified at commit `2d43b94`.
+- [x] **AC-6:** `./gradlew test --tests "*JdbcBookingsTransitionIT*"` → confirm-after-deadline PASS. Verified at commit `2d43b94`.
+- [x] **AC-7:** docs diff reviewed + `riviera-docs-freshness` run recorded (Execution status). Verified at the phase-6 commit.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section holds; no claim-path change; sweep-timing ITs present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section holds; no cross-module `application.*`/`adapter.*` imports; `BookingPaymentDue` payload unchanged (invariant #11).
-- [ ] **Payment/payout** untouched as declared; confirm path unfenced and now pinned (invariants #5, #8, #9, #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for the day boundary (invariant #6); DST-safe via `serviceDayOpensAt(D+1)` delegation.
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No schema change → no migration (invariant #12 trivially holds); `V45` still free at merge.
-- [ ] **Frontend** copy-only change verified drift-free (spec assertion updated; no styling delta).
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section holds; no claim-path change; sweep-timing ITs present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section holds; no cross-module `application.*`/`adapter.*` imports; `BookingPaymentDue` payload unchanged (invariant #11).
+- [x] **Payment/payout** untouched as declared; confirm path unfenced and now pinned (invariants #5, #8, #9, #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for the day boundary (invariant #6); DST-safe via `serviceDayOpensAt(D+1)` delegation.
+- [x] Booking codes untouched (invariant #7).
+- [x] No schema change → no migration (invariant #12 trivially holds); `V45` still free at merge.
+- [x] **Frontend** copy-only change verified drift-free (spec assertion updated; no styling delta).
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** per the invocation ladder + `riviera-review-overlay`.
