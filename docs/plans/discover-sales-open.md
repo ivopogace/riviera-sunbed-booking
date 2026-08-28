@@ -293,18 +293,18 @@ initial load and the status role targets the date-change transition.
 
 > Session-recovery anchor. Update in the same commit window as the change it records.
 
-**Stage pointer:** implement — phases 0–2 done (port, projection, Discover badge; unit +
-a11y + lint/format green).
+**Stage pointer:** implement — phases 0–3 done (port, projection, badge, map closed
+state; unit + a11y + lint/format green).
 
-**Next action:** phase 3 — map closed state + recovery (same FE skill set, already loaded
-this session).
+**Next action:** phase 4 — mocked e2e + a11y (`playwright-cli` loaded before the first
+e2e edit).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `venue.spi.SalesWindow` + booking implementor | ✅ | "Add venue.spi.SalesWindow implemented by booking (#793)" |
 | 1 — catalogue projection (`salesOpen` on both views) | ✅ | "Carry per-venue salesOpen on the tourist catalogue reads (#793)" |
 | 2 — Discover badge + aria | ✅ | "Badge closed-for-today venues on Discover (#793)" |
-| 3 — map closed state + recovery | | |
+| 3 — map closed state + recovery | ✅ | "Show a sales-closed state on the tourist map (#793)" |
 | 4 — mocked e2e + a11y | | |
 | 5 — substrate docs + close-out | | |
 
@@ -565,14 +565,14 @@ Test `pages/home/home.spec.ts`, `pages/home/home.a11y.spec.ts`
 **Files:** Modify `venue/venue-map.ts`, `venue/venue-map.html` · Test
 `venue/venue-map.spec.ts`, `venue/venue-map.a11y.spec.ts`
 
-- [ ] **Step 1: Write the failing specs** — `venue-map.spec.ts`: with the map response
+- [x] **Step 1: Write the failing specs** — `venue-map.spec.ts`: with the map response
   stubbed `salesOpen: false`, assert `data-testid="map-sales-closed"` is rendered, no set
   tile is selectable (clicking a FREE online-pool tile does not open the booking dialog),
   and after a date change to tomorrow with a `salesOpen: true` response the closed state
   is gone and tiles select normally (the non-latching pin). `venue-map.a11y.spec.ts`:
   closed fixture, `expectNoAxeViolations`.
 
-- [ ] **Step 2: Run, verify FAIL** — `npm test -- --run venue-map` → FAIL
+- [x] **Step 2: Run, verify FAIL** — `npm test -- --run venue-map` → FAIL
 
 - [x] **Step 3: Minimal implementation**
   - `venue-map.ts`: `salesClosed = computed(() => this.map()?.salesOpen === false)`; the
@@ -589,17 +589,17 @@ Test `pages/home/home.spec.ts`, `pages/home/home.a11y.spec.ts`
     (OQ-3); no navigation is removed, so deep-link recovery is the existing per-date
     refetch (no new plumbing).
 
-- [ ] **Step 4: Run, verify PASS** — `npm test -- --run venue-map` then
+- [x] **Step 4: Run, verify PASS** — `npm test -- --run venue-map` then
   `npm run test:a11y`; `npm run lint && npm run format:check`.
 
-- [ ] **Step 5: Generalization-audit pass** — population: *renderers of tile bookability*
+- [x] **Step 5: Generalization-audit pass** — population: *renderers of tile bookability*
   → enumerate `grep -rn "availability === 'FREE'" frontend/src` → verify every site
   honors the sales gate or is out of scope (staff/live map is walk-in, deliberately
   ungated — sales close fences *online* sales only, invariant #4). Append to the log.
 
-- [ ] **Step 6: Commit** — `git commit -m "Show a sales-closed state on the tourist map (#793)"`
+- [x] **Step 6: Commit** — `git commit -m "Show a sales-closed state on the tourist map (#793)"`
 
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -664,6 +664,7 @@ Test `pages/home/home.spec.ts`, `pages/home/home.a11y.spec.ts`
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-28 | phase 3 (tile sales gate) | renderers of tile bookability | `grep -rn "availability === 'FREE'" frontend/src` | 3 | `venue-map.toTile` gated; `venue-map.freeCount` + operator `console-stats-strip` are free-count displays, not selection — the staff/walk-in surface is deliberately ungated (invariant #4 fences online sales only) |
 | 2026-08-28 | phase 1 (widened `VenueSummaryView`/`VenueMapView`) | call sites constructing the two widened records | `grep -rn "new VenueSummaryView\|new VenueMapView" platform/src` | 2 (both in `JdbcVenueCatalog`) | both pass the verdict; compile sweep clean, no other constructors |
 
 ---

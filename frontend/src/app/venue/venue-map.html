@@ -185,6 +185,23 @@
         </div>
       </div>
 
+      <!-- Date-dependent (unlike map-empty's onward guidance): the copy points back at the date picker above, which stays enabled as the recovery path. The grid below stays rendered — availability is still true, only selection is gated. -->
+      @if (salesClosed()) {
+        <p
+          role="status"
+          data-testid="map-sales-closed"
+          appCardGlass
+          class="mt-[18px] rounded-[26px] px-5 py-4 text-[14.5px] leading-normal text-riv-card-ink min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
+        >
+          @if (closedForToday()) {
+            Online sales for today have closed at this venue. Pick another day — every venue is open
+            for future dates.
+          } @else {
+            Online sales for that date have closed at this venue. Pick a later day.
+          }
+        </p>
+      }
+
       <!-- Only the map card leaves the 780px shell, to the design's 1100px (#700); the margin derives from that width so a shell edit cannot drift it. The query is px to match: rem-based `xl` tracks the browser's default font size, firing at 960px on Chrome's "Small" setting. -->
       <app-beach-map-canvas
         class="mt-[18px] min-[1280px]:[margin-inline:calc((100%_-_1100px)/2)]"
