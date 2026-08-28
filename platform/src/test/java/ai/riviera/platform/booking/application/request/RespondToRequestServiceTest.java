@@ -134,23 +134,40 @@ class RespondToRequestServiceTest {
 	}
 
 	@Test
-	void announcesAPayDeadlineCappedAtTheServiceDay() {
-		// The shape from issue #576: accepted 17:30 Tirane, one date ahead, 12h window.
-		Instant eveningBefore = Instant.parse("2026-07-10T15:30:00Z");
-		LocalDate tomorrow = LocalDate.of(2026, 7, 11);
-		Clock atAccept = Clock.fixed(eveningBefore, ZoneId.of("UTC"));
-		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, eveningBefore)).thenReturn(
-				Optional.of(new AcceptedRequest(BOOKING.value(), VENUE, SET, tomorrow, eveningBefore,
+	void announcesAPayDeadlineCappedAtTheEndOfTheServiceDay() {
+		// Same-day accept at 17:30 Tirane, 12h window crossing midnight: the day's end wins (#792).
+		Instant onDayAccept = Instant.parse("2026-07-11T15:30:00Z");
+		LocalDate today = LocalDate.of(2026, 7, 11);
+		Clock atAccept = Clock.fixed(onDayAccept, ZoneId.of("UTC"));
+		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, onDayAccept)).thenReturn(
+				Optional.of(new AcceptedRequest(BOOKING.value(), VENUE, SET, today, onDayAccept,
 						4500L, "EUR")));
 		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
 
 		serviceOn(atAccept).accept(OPERATOR, VENUE, BOOKING);
 
-		Instant serviceDayOpensAt = Instant.parse("2026-07-10T22:00:00Z");
-		assertTrue(serviceDayOpensAt.isBefore(eveningBefore.plus(PAY_WINDOW)),
-				"the raw window must genuinely outrun the service day, or this pins nothing");
-		verify(publisher).publishEvent((Object) new BookingPaymentDue(BOOKING, VENUE, SET, tomorrow,
-				serviceDayOpensAt, 4500L, "EUR"));
+		Instant serviceDayEndsAt = Instant.parse("2026-07-11T22:00:00Z");
+		assertTrue(serviceDayEndsAt.isBefore(onDayAccept.plus(PAY_WINDOW)),
+				"the raw window must genuinely outrun the service day's end, or this pins nothing");
+		verify(publisher).publishEvent((Object) new BookingPaymentDue(BOOKING, VENUE, SET, today,
+				serviceDayEndsAt, 4500L, "EUR"));
+	}
+
+	@Test
+	void announcesTheRawDeadlineForAnEarlyAcceptInsideTheServiceDay() {
+		// Accepted 08:00 Tirane on D itself: the window ends 20:00, inside the day — legal now (#792).
+		Instant onDayAccept = Instant.parse("2026-07-11T06:00:00Z");
+		LocalDate today = LocalDate.of(2026, 7, 11);
+		Clock atAccept = Clock.fixed(onDayAccept, ZoneId.of("UTC"));
+		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, onDayAccept)).thenReturn(
+				Optional.of(new AcceptedRequest(BOOKING.value(), VENUE, SET, today, onDayAccept,
+						4500L, "EUR")));
+		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
+
+		serviceOn(atAccept).accept(OPERATOR, VENUE, BOOKING);
+
+		verify(publisher).publishEvent((Object) new BookingPaymentDue(BOOKING, VENUE, SET, today,
+				onDayAccept.plus(PAY_WINDOW), 4500L, "EUR"));
 	}
 
 	@Test

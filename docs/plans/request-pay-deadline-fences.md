@@ -297,12 +297,13 @@ that stays true).
 **Stage pointer:** `implement` — Phase 0 done; routing gate re-run (`riviera-local-debug`,
 `riviera-modulith`, `riviera-java-conventions`, `tdd` loaded before the first build/edit).
 
-**Next action:** open the draft PR for this branch (CI vehicle), then Phase 1.
+**Next action:** Phase 2 (sweep day-ended arm; load `postgres` first). Draft PR #800 open,
+activity subscribed; check each phase push's CI run before the next phase.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — BookingCutoff day-end boundary + relocation to `application/` root | ✅ | Add the service-day-end boundary and re-home BookingCutoff (#792) |
-| 1 — Pay deadline caps at day end (mail ≡ sweep identity) | | |
+| 1 — Pay deadline caps at day end (mail ≡ sweep identity) | ✅ | Cap the pay deadline at the end of the service day (#792) |
 | 2 — Sweep: day-ended arm | | |
 | 3 — View fences on the pay deadline (+ FE copy) | | |
 | 4 — Response deadline caps at sales close | | |
@@ -426,23 +427,23 @@ public static LocalDate lastEndedServiceDay(Instant now) {
 
 **Files:** Modify `RequestWindows.java`, `RespondToRequestService.java:181–182` · Test `RequestWindowsTest.java`
 
-- [ ] **Step 1: Re-aim the identity tests** (the mail-deadline ≡ sweep-cutoff cases at
+- [x] **Step 1: Re-aim the identity tests** (the mail-deadline ≡ sweep-cutoff cases at
   `RequestWindowsTest`): the cap argument becomes the day **end**; a same-day accept with
   `pay-window` crossing midnight pins `payBy == serviceDayEndsAt(D)`, an early-day accept
   pins `payBy == acceptedAt + payWindow` (now legal **inside** D).
-- [ ] **Step 2: Run red** — `./gradlew test --tests "*RequestWindowsTest*"` → FAIL.
-- [ ] **Step 3: Implement** — rename `payDeadline`'s cap parameter to `serviceDayEndsAt`
+- [x] **Step 2: Run red** — `./gradlew test --tests "*RequestWindowsTest*"` → FAIL.
+- [x] **Step 3: Implement** — rename `payDeadline`'s cap parameter to `serviceDayEndsAt`
   (Javadoc: *"never past the end of the service day"*, spec §13); in
   `RespondToRequestService.announcePaymentDue` pass
   `cutoff.serviceDayEndsAt(accepted.bookingDate())`.
-- [ ] **Step 4: Run green**; end-of-phase regression
+- [x] **Step 4: Run green**; end-of-phase regression
   `./gradlew test --tests "ai.riviera.platform.booking.application.request.*"`.
-- [ ] **Step 5: Generalization audit** — population: *every call site passing a cap into
+- [x] **Step 5: Generalization audit** — population: *every call site passing a cap into
   `payDeadline` or documenting it* → `grep -rn "payDeadline\|serviceDayOpensAt" platform/src/main/java platform/src/test/java` →
   fix every remaining day-open mention on the pay path (view + sweep are later phases —
   record them as known-pending here).
-- [ ] **Step 6: Commit** — `Cap the pay deadline at the end of the service day (#792)`
-- [ ] **Step 7: Update execution status.**
+- [x] **Step 6: Commit** — `Cap the pay deadline at the end of the service day (#792)`
+- [x] **Step 7: Update execution status.**
 
 ---
 
@@ -603,6 +604,7 @@ boolean payWindowClosed = awaitingPayment && !clock.instant().isBefore(payDeadli
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-28 | Phase 1 (pay-deadline cap) | Every call site passing a cap into `payDeadline` or documenting it | `grep -rn "payDeadline\|serviceDayOpensAt" platform/src/main/java platform/src/test/java` | `RespondToRequestService` (fixed this phase), `RequestWindows`(+Test) (re-aimed), `ExpireAbandonedBookings` Javadoc (phase 2), `ReserveSetService:118` + `RequestProperties`(+Test) prose (phase 4), `BookingCutoff` cancel/day-end-delegation/`bornBeforeServiceDay` uses (legit or phase 5) | Known-pending sites recorded; none outside planned phases |
 | 2026-08-28 | Phase 0 (BookingCutoff re-home) | Module-shared classes still addressed under a single use-case sub-package — enumerated as cross-sub-package `application.*` imports | `git ls-files 'platform/src/main/java/ai/riviera/platform/booking/application/*/*.java' \| xargs grep -l "import ai.riviera.platform.booking.application\."` | Root-homed shared classes (`Bookings`, `BookingCodeGenerator`, now `BookingCutoff`) + 5 cross-slice edges: `cancel.CancellationPolicy`(+`RefundQuote`)/`cancel.CancelledBooking`, `request.RequestWindows`, `refund.ReleaseAbandonedBooking`, `reserve.ConfirmBooking`, `view.BookingRecord` | No further moves: each remaining edge's class is addressed at its vocabulary owner (the refund rule is cancel's, the pay window request's, the record the view's shape) and consumed cross-slice by design — the mechanism that made `BookingCutoff`'s address wrong (a module-wide authority under one slice) matches no other site |
 
 ---
