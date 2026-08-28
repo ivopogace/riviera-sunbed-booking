@@ -43,9 +43,9 @@ import { TouchTarget } from '../shared/touch-target';
  * one rate to a whole service date, so a booking confirmed before a change but served after it sits
  * in the ledger at the old rate while the takings show the new one. The copy says that rather than
  * promising exactness. Separately, the <em>live</em> rate moves immediately — which is why the list
- * shows the new number at once — while <em>reporting</em> moves from tomorrow (`Europe/Tirane`),
- * the commission schedule's own effective-dating rule (`VenueCommissionService`, unchanged here).
- * These are not in tension: the live rate is what the next accrual will use.
+ * shows the new number at once — and <em>reporting</em> follows from today (`Europe/Tirane`),
+ * the commission schedule's own effective-dating rule (`VenueCommissionService`, unchanged here):
+ * today's takings answer the same rate the next accrual applies.
  *
  * <p>The change is armed in place before it is sent — the console's recurring confirm-in-place shape,
  * where the editor itself is the confirmation: it names the venue, states when the change takes
@@ -177,8 +177,8 @@ import { TouchTarget } from '../shared/touch-target';
 
                 <p class="mt-3 text-[13px] text-riv-card-ink-soft">
                   Saving moves the live rate straight away, so this list shows the new number at
-                  once. Reporting follows from tomorrow: today's takings still report at
-                  {{ percent(venue.commissionBps) }}.
+                  once. Reporting follows from today: each service date already past keeps the rate
+                  it was sold under.
                 </p>
 
                 <div class="mt-3 flex flex-wrap items-center gap-2">
@@ -264,21 +264,22 @@ import { TouchTarget } from '../shared/touch-target';
       </section>
 
       <section>
-        <h3 class="text-[14px] font-semibold text-riv-card-ink">Reporting moves from tomorrow</h3>
+        <h3 class="text-[14px] font-semibold text-riv-card-ink">Reporting follows from today</h3>
         <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft">
-          Today's date keeps reporting at the rate already in force for it. Tomorrow (Europe/Tirane)
-          is the first service date the operator's takings report at the new one.
+          Today (Europe/Tirane) is the first service date the operator's takings report at the new
+          rate — the same rate any booking confirmed after the change is charged commission at.
+          Dates already past keep the rate that was in force when they were sold.
         </p>
       </section>
 
       <section>
         <h3 class="text-[14px] font-semibold text-riv-card-ink">
-          The list still updates immediately
+          The list updates immediately too
         </h3>
         <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft">
-          That is not a contradiction with the line above. The number here is the live rate — what
-          the next accrual will use. The reporting date is about days whose bookings have already
-          closed.
+          The number here is the live rate — what the next booking's commission uses. Reporting
+          follows it from today, so the list and today's takings move together; only days already
+          past keep their own rate.
         </p>
       </section>
 
@@ -286,10 +287,10 @@ import { TouchTarget } from '../shared/touch-target';
         <h3 class="text-[14px] font-semibold text-riv-card-ink">What this does not promise</h3>
         <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft">
           An operator's takings figures are not a copy of the ledger. The ledger prices each booking
-          when it accrues; the takings apply one rate to a whole service date. So a booking
-          confirmed before a change but served after it sits in the ledger at the old rate while the
-          takings show the new one. The firm guarantee is the narrower one: a past service date
-          never re-prices.
+          when it accrues; the takings apply one rate to a whole service date. So a booking whose
+          commission accrued before a change, for a service date from the change onward, sits in the
+          ledger at the old rate while the takings for that date show the new one. The firm
+          guarantee is the narrower one: a past service date never re-prices.
         </p>
       </section>
 
@@ -410,7 +411,7 @@ export class AdminCommissions {
       this.closeEditor();
       this.notice.set(
         `${updated.name}: commission ${this.percent(venue.commissionBps)} → ${this.percent(updated.commissionBps)}. ` +
-          'The live rate has moved; reporting follows from tomorrow.',
+          'The live rate has moved; reporting follows from today.',
       );
       this.focusAfterRender(`admin-commission-edit-${venue.venueId}`);
     } catch (error) {

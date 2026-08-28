@@ -165,8 +165,17 @@ standing rules:
   its own `VenueCommissionAdministration` port (same reason as `VenuePhotoModeration`:
   `EditVenueProfile` stays uniformly `assertOwns`-first), and it is **forward-only by
   construction** — it pins the superseded rate back to an epoch floor, moves the live
-  column, and schedules the new rate from tomorrow (`Europe/Tirane`) — so no past service
-  date reprices and no ledger entry is touched (invariant #9). The asymmetry it preserves:
+  column, and schedules the new rate from the **current** service date (`Europe/Tirane`) —
+  so no past service date reprices and no ledger entry is touched (invariant #9). The
+  schedule started *tomorrow* until #798: that rested on invariant #4's retired
+  evening-before close ("today's bookings have all accrued"), a premise #791's same-day
+  sales broke — a mid-day change then had same-day bookings accruing at the new live rate
+  while the takings strip reported the old scheduled rate until midnight. Starting today
+  makes `commissionBpsOn(today)` track the live rate, so the two reads cannot disagree on
+  the current date; bookings accrued *before* the change remain the documented
+  per-booking-vs-per-day approximation. (V39's migration header still argues the retired
+  tomorrow rule — it is an applied, checksum-immutable historical document; this paragraph
+  supersedes it.) The asymmetry it preserves:
   the *owner's* profile PATCH still cannot write the rate at all (O8 #177) — a venue does
   not set its own commission.
 - **The per-venue sales-close setting** (`sales_close`, V44, invariant #4): a fixed-vocabulary

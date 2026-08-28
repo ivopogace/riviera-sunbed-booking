@@ -126,8 +126,9 @@ model in `docs/architecture/domain-model.md`.
   commission (O8 #177).
 - **Rate schedule** — the per-venue record of which commission rate applied to bookings served on
   which dates. A change is **forward-only**: it pins the rate it supersedes and takes effect for
-  reporting from the next service date, so a day already sold never re-prices and the payout ledger
-  it must agree with is never rewritten (invariant #9). A venue whose rate has never changed has no
+  reporting from the current service date (`Europe/Tirane`), so today's takings answer the same
+  rate new accruals apply while a day already past never re-prices, and the payout ledger it must
+  agree with is never rewritten (invariant #9). A venue whose rate has never changed has no
   schedule at all — its live rate is what applied throughout.
 - **Payout ledger** — the per-venue record of what is owed (booking amounts minus
   commission), entry-per-booking, reversed on refund.

@@ -350,7 +350,9 @@ describe('AdminCommissions', () => {
     expect(explainer).toContain('never re-price');
     // The divergence is stated, not glossed — dropping this sentence is what would make the copy lie.
     expect(explainer).toContain('not a copy of the ledger');
-    expect(explainer).toContain('tomorrow');
+    // Reporting follows from today — any "tomorrow" would resurrect the retired rule.
+    expect(explainer).toContain('today');
+    expect(explainer).not.toContain('tomorrow');
     expect(explainer).toContain('europe/tirane');
     expect(explainer).toContain('live rate');
   });
