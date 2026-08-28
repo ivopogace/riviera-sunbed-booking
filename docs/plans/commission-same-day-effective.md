@@ -189,15 +189,15 @@ N/A — no contract change (no endpoint, DTO, or wire shape touched).
 
 ## Execution status
 
-**Stage pointer:** plan committed — next: implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** Phase 1 — turn `VenueCommissionServiceTest`'s schedule expectation to today (red),
-then move `VenueCommissionService` to the today policy (green).
+**Next action:** Phase 2 — load FE skills, move the `admin-commissions.spec.ts` `'tomorrow'` pin to
+the today-claim (red), then reword the `admin-commissions.ts` copy (green).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc + draft PR | ⏳ | |
-| 1 — Backend: effective date → today (unit + ITs + Javadoc) | | |
+| 0 — Plan doc + draft PR | ✅ | beab9c3; draft PR #799 |
+| 1 — Backend: effective date → today (unit + ITs + Javadoc) | ✅ | this commit |
 | 2 — Frontend: explainer copy + spec pin | | |
 | 3 — Substrate docs + docs-freshness + close-out | | |
 
@@ -274,6 +274,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-28 | Phase 1 (effective-date policy change) | every backend statement/pin of the "tomorrow" effective date — enumerated by the word, not by file resemblance | `grep -rni "tomorrow" platform/src/{main,test}/java` | 5 commission sites (service Javadoc, unit test ×2, `AdminVenueCommissionIT` message, `VenueCommissionForwardOnlyIT` test + header) — all fixed in Phase 1; remaining hits are booking-date fixtures and the request pay-window, whose "tomorrow"s are service dates, not the schedule policy | fixed all in-population; rest out of population |
 
 ---
 

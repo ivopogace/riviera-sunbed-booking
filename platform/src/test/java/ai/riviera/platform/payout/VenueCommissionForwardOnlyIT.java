@@ -62,7 +62,7 @@ class VenueCommissionForwardOnlyIT {
 	private static final String OWNER = "forward-only-owner";
 	private static final String OWNER_PW = "owner-pw";
 	/**
-	 * Invariant #6: a service date is a civil date in this zone. The service computes "tomorrow" in
+	 * Invariant #6: a service date is a civil date in this zone. The service computes "today" in
 	 * Tirane off a UTC clock, so a test reckoning it in the JVM default zone disagrees for the ~2 hours
 	 * each evening when Tirane has already rolled over and UTC has not — the assertion would then
 	 * demand the new rate for a date the schedule correctly still governs at the old one.
@@ -119,14 +119,14 @@ class VenueCommissionForwardOnlyIT {
 	}
 
 	@Test
-	void theNewRateGovernsServiceDatesFromTomorrowOnward() throws Exception {
-		LocalDate tomorrow = LocalDate.now(TIRANE).plusDays(1);
+	void theNewRateGovernsTheCurrentServiceDateOnward() throws Exception {
+		LocalDate today = LocalDate.now(TIRANE);
 		long venueId = ownedVenue();
 
 		raiseTheRate(venueId);
 
 		mvc.perform(get("/api/venues/{v}/takings", venueId)
-						.param("date", tomorrow.toString())
+						.param("date", today.toString())
 						.cookie(ownerSession()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.commissionBps").value(NEW_BPS));
