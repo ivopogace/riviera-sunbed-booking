@@ -60,9 +60,10 @@ untouched) · `angular-developer` + angular-cli MCP `get_best_practices` v22 +
 `ngClass`; doc checks recorded in the phase notes) · `playwright-cli` (mocked-suite spec
 shape: `page.route` + `page.clock.setFixedTime`, extending the #797 files).
 
-**Branch:** `claude/sdlc-793-planning-w3bg4k` — the session's designated remote branch
-stands in for `feature/discover-sales-open` (riviera-sdlc cloud addendum; recorded per the
-Branch-line rule).
+**Branch:** `claude/sdlc-793-implement-1d1ojx` — the implement session's designated remote
+branch, restarted from `claude/sdlc-793-planning-w3bg4k` (the plan-only session's branch)
+so the plan doc rides in the PR; stands in for `feature/discover-sales-open` (riviera-sdlc
+cloud addendum; recorded per the Branch-line rule).
 
 ---
 
@@ -284,16 +285,15 @@ initial load and the status role targets the date-change transition.
 
 > Session-recovery anchor. Update in the same commit window as the change it records.
 
-**Stage pointer:** plan complete (plan-only session — stopped after the Plan stage by
-request) — next session enters at Implement.
+**Stage pointer:** implement — phase 0 done (port + implementor + structural net green);
+next: phase 1 (catalogue projection).
 
-**Next action:** re-read this plan + `riviera-sdlc`'s routing gate, then start phase 0
-(load `riviera-local-debug` before the first `./gradlew`), opening the draft PR at the
-first phase commit.
+**Next action:** phase 1 — failing ITs in `VenueListControllerIT`/`VenueReadControllerIT`,
+then widen the two views and project the verdict in `JdbcVenueCatalog`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `venue.spi.SalesWindow` + booking implementor | | |
+| 0 — `venue.spi.SalesWindow` + booking implementor | ✅ | "Add venue.spi.SalesWindow implemented by booking (#793)" |
 | 1 — catalogue projection (`salesOpen` on both views) | | |
 | 2 — Discover badge + aria | | |
 | 3 — map closed state + recovery | | |
@@ -339,7 +339,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Create `venue/spi/SalesWindow.java`, `booking/adapter/out/BookingCutoffSalesWindow.java`,
 `booking/adapter/out/BookingCutoffSalesWindowTest.java` · Modify `venue/spi/package-info.java`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```java
 package ai.riviera.platform.booking.adapter.out;
@@ -381,10 +381,10 @@ class BookingCutoffSalesWindowTest {
 
 (2026-08-30 is CEST, `Europe/Tirane` = UTC+02:00 → 16:00 local = 14:00Z.)
 
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `./gradlew test --tests "*BookingCutoffSalesWindowTest*"` → FAIL (class does not exist)
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```java
 package ai.riviera.platform.venue.spi;
@@ -431,19 +431,19 @@ class BookingCutoffSalesWindow implements SalesWindow {
 
 Update `venue/spi/package-info.java`'s Javadoc so the port inventory names all three.
 
-- [ ] **Step 4: Run it, verify it passes** —
+- [x] **Step 4: Run it, verify it passes** —
   `./gradlew test --tests "*BookingCutoffSalesWindowTest*"` → PASS
 
 > End-of-phase regression: `./gradlew test --tests "*ModularityTests*" --tests
 > "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` — the
 > structural net, mandatory after any backend structure change.
 
-- [ ] **Step 5: Generalization-audit pass** — N/A (no bug fix; the pattern is the
+- [x] **Step 5: Generalization-audit pass** — N/A (no bug fix; the pattern is the
   established #44 shape, not a new one)
 
-- [ ] **Step 6: Commit** — `git commit -m "Add venue.spi.SalesWindow implemented by booking (#793)"`
+- [x] **Step 6: Commit** — `git commit -m "Add venue.spi.SalesWindow implemented by booking (#793)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window. Open the
+- [x] **Step 7: Update plan-doc execution status** in the same commit window. Open the
   draft PR now (first phase commit exists — CI needs the `pull_request` event).
 
 ---
@@ -484,7 +484,7 @@ void mapCarriesSalesOpenForSelectedDate() {
   `./gradlew test --tests "*VenueListControllerIT*" --tests "*VenueReadControllerIT*"`
   → FAIL (no `salesOpen` in the JSON)
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
   - Append `boolean salesOpen` as the **last** component of `VenueSummaryView` and
     `VenueMapView` (positional-ctor churn minimized; sweep the compile errors).
   - `JdbcVenueCatalog`: add `sales_close` to the `listVenues` and `findVenueMap` venue
@@ -521,7 +521,7 @@ Test `pages/home/home.spec.ts`, `pages/home/home.a11y.spec.ts`
 
 - [ ] **Step 2: Run, verify FAIL** — `npm test -- --run home.spec` → FAIL
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
   - `shared/venue-views.ts`: `salesOpen: boolean` on `VenueSummary` (and `VenueMapView`
     for phase 3).
   - `home.ts`: `VenueCard` gains `salesClosed: boolean` (from `!venue.salesOpen`, inside
@@ -566,7 +566,7 @@ Test `pages/home/home.spec.ts`, `pages/home/home.a11y.spec.ts`
 
 - [ ] **Step 2: Run, verify FAIL** — `npm test -- --run venue-map` → FAIL
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
   - `venue-map.ts`: `salesClosed = computed(() => this.map()?.salesOpen === false)`; the
     tile-bookability derivation gains `&& map.salesOpen` beside the existing
     `availability === 'FREE' && pool === 'ONLINE'` test.

@@ -10,9 +10,11 @@
  * {@code application}, not here.)
  *
  * <p>Holds {@link SetAvailabilityLookup}, implemented by the {@code availability} module so the
- * venue's dated reads — the beach map, the owner's daily view and the tourist availability calendar — can overlay live per-{@code (set, date)} availability, and
+ * venue's dated reads — the beach map, the owner's daily view and the tourist availability calendar — can overlay live per-{@code (set, date)} availability,
  * {@link BookingPresence}, implemented by the {@code booking} module so the bulk layout replace can
- * refuse a venue that has bookings — both without venue depending on those modules.
+ * refuse a venue that has bookings, and {@link SalesWindow}, implemented by the {@code booking}
+ * module so the tourist catalogue reads can carry the open/closed sales verdict without venue
+ * re-deriving the rule — all without venue depending on those modules.
  * Grant {@code venue::spi} only to the implementing module; callers that merely use venue use
  * {@code venue::api}.
  */
