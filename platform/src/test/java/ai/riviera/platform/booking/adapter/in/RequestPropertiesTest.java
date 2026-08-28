@@ -123,7 +123,9 @@ class RequestPropertiesTest {
 		assertThatIllegalArgumentException()
 				.isThrownBy(() -> windows(RequestProperties.MIN_WINDOW.minusSeconds(1),
 						Duration.ofHours(12)))
-				.withMessageContaining("booking.request.expiry-window");
+				.withMessageContaining("booking.request.expiry-window")
+				// The guard explains the real cap — the sales close, not the retired day-open (review F-1).
+				.withMessageContaining("sales close");
 		assertThatIllegalArgumentException()
 				.isThrownBy(() -> windows(Duration.ofHours(24), RequestProperties.MIN_WINDOW.minusSeconds(1)))
 				.withMessageContaining("booking.request.pay-window");

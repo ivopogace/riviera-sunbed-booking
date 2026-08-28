@@ -5,7 +5,6 @@ import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 import ai.riviera.platform.booking.application.request.RequestWindows;
 
 import java.time.Clock;
-import java.time.Instant;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -95,12 +94,10 @@ class ViewBookingService implements ViewBooking {
 				&& refundStatus.progressOf(new ai.riviera.platform.payment.vocabulary.BookingRef(b.id()))
 						== ai.riviera.platform.payment.vocabulary.RefundProgress.OUTSTANDING;
 		boolean awaitingPayment = b.status() == BookingStatus.AWAITING_PAYMENT;
-		// The same deadline the payment-due mail promises; a never-accepted row's is its day's end.
-		Instant payDeadline = b.acceptedAt() != null
-				? windows.payDeadline(b.acceptedAt(), cutoff.serviceDayEndsAt(b.bookingDate()))
-				: cutoff.serviceDayEndsAt(b.bookingDate());
-		// Strictly after: the promised instant itself is still payable, exactly as the sweep spares it.
-		boolean payWindowClosed = awaitingPayment && clock.instant().isAfter(payDeadline);
+		// Sweep-arm parity by construction: day end inclusive, the promised raw-window instant payable.
+		boolean payWindowClosed = awaitingPayment && (cutoff.serviceDayHasEnded(b.bookingDate())
+				|| (b.acceptedAt() != null
+						&& b.acceptedAt().isBefore(windows.acceptedBefore(clock.instant()))));
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment =
 				awaitingPayment && !payWindowClosed
 						? checkout.pendingCredentials(

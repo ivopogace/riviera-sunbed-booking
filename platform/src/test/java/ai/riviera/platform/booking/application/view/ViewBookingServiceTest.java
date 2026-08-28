@@ -258,6 +258,32 @@ class ViewBookingServiceTest {
 	}
 
 	@Test
+	void withholdsCredentialsAtTheExactEndOfServiceDay() {
+		// Day-end bound is inclusive, exactly as the sweep's day arm reaps at that instant (review F-2).
+		givenAwaitingPayment(DATE, Instant.EPOCH, null);
+		ViewBookingService atDayEnd = serviceAt(Instant.parse("2026-08-01T22:00:00Z"));
+
+		BookingDetail detail = atDayEnd.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNull();
+		assertThat(detail.payWindowClosed()).isTrue();
+		verifyNoInteractions(checkout);
+	}
+
+	@Test
+	void dayEndCapClosesAnAcceptedBookingAtThatSameInstant() {
+		// Accepted mid-day, raw window crossing midnight: the capped deadline shares the day arm's edge.
+		givenAwaitingPayment(DATE, Instant.EPOCH, Instant.parse("2026-08-01T12:00:00Z"));
+		ViewBookingService atDayEnd = serviceAt(Instant.parse("2026-08-01T22:00:00Z"));
+
+		BookingDetail detail = atDayEnd.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNull();
+		assertThat(detail.payWindowClosed()).isTrue();
+		verifyNoInteractions(checkout);
+	}
+
+	@Test
 	void sameDayBornBookingKeepsItsCredentials() {
 		// Same-day-born, never accepted: same day-end deadline as any other unaccepted row.
 		Instant sameDayBirth = Instant.parse("2026-08-01T10:00:00Z");
@@ -385,6 +411,13 @@ class ViewBookingServiceTest {
 	}
 
 	/** An {@code AWAITING_PAYMENT} row for the pay-fence cases; {@code acceptedAt} may be null. */
+	/** The same collaborators on a different instant — for pinning the exact deadline boundaries. */
+	private ViewBookingService serviceAt(Instant now) {
+		Clock at = Clock.fixed(now, ZoneId.of("UTC"));
+		return new ViewBookingService(bookings, cancellationPolicy, new BookingCutoff(at), checkout,
+				mailDelivery, collection, refundStatus, WINDOWS, at);
+	}
+
 	private void givenAwaitingPayment(LocalDate date, Instant createdAt, Instant acceptedAt) {
 		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.AWAITING_PAYMENT, VENUE, SET,

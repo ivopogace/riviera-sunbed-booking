@@ -296,15 +296,16 @@ that stays true).
 
 > Session-recovery anchor — update in the same commit window as the change it records.
 
-**Stage pointer:** **review gate ran — fixing findings.** `/code-review` (5-agent fan-out
-+ `riviera-review-overlay`) ran over `origin/main...a9b83ea8` on 2026-08-28; review comment
-posted on PR #800; three findings recorded below (F-1 open at confidence 100; F-2/F-3
-verified-real boundary items). Each fix re-enters at Implement per the re-entry rule.
-Sonar: quality gate green on a9b83ea8 — the issue-list pull (pr-gates §2) still due before
-merge.
+**Stage pointer:** **review gate ran — all three findings fixed (red-first), fix commit
+pushed.** `/code-review` (5-agent fan-out + `riviera-review-overlay`) ran over
+`origin/main...a9b83ea8` on 2026-08-28; review comment posted on PR #800; findings F-1/F-2/
+F-3 recorded and fixed below (re-entered at Implement per the re-entry rule; routed skills
+re-loaded: `riviera-java-conventions`, `riviera-modulith`, `riviera-local-debug`). Sonar:
+quality gate green on a9b83ea8; re-check plus the issue-list pull (pr-gates §2) due on the
+fix push before merge.
 
-**Next action:** the planning session runs the Review + Sonar gates per `riviera-sdlc`
-`references/pr-gates.md`, then merge close-out. Skill-routing gate ran per phase:
+**Next action:** check the fix push's CI run, pull the Sonar issue list on it (pr-gates
+§2), then ready-for-review + merge close-out. Skill-routing gate ran per phase:
 backend rows + `riviera-local-debug` (phases 0–5), `postgres` (phase 2),
 `riviera-frontend`/`riviera-tailwind`/`angular-developer`+MCP (phase 3), `playwright-cli`
 + `riviera-docs-freshness` (phase 6). (Phase-1+2 push 30bf39f went hygiene-red — plan-doc
@@ -336,9 +337,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review (`/code-review` + overlay, confidence 100) | `RequestProperties.java:77` boot-guard exception message still says the deadline caps at "the booked day's opening" — this slice moved the cap to the sales close and updated the class Javadoc, so the runtime message contradicts both. The exact lockstep site #791's F-3 audit named. | open |
-| F-2 | review (three agents convergent, confidence 75 — below the PR-comment bar, real) | `ViewBookingService.java:102–103` — the strict `isAfter(payDeadline)` disagrees with the sweep's **inclusive** day-end arm at exactly `now == serviceDayEndsAt(D)`: sweep reaps (and releases the claim) while the view still issues credentials; the "exactly as the sweep spares it" comment holds only for the accepted/raw-window arm (`accepted_at < :acceptedBefore`, genuinely strict). Fix direction: make the day-end side consistent (either `serviceDayHasEnded`-style non-strict for the capped branch, or make the sweep's day bound strict) and correct the comment. | open |
-| F-3 | review (companion to F-2, confidence 75) | No test pins the day-end-capped exact-instant parity (AC-2/R-8 discipline): `withholdsCredentialsOnceTheServiceDayHasEnded` uses a date two days gone; the sweep ITs stay clear of the boundary. Add the boundary case alongside F-2's fix. | open |
+| F-1 | review (`/code-review` + overlay, confidence 100) | `RequestProperties.java:77` boot-guard exception message still says the deadline caps at "the booked day's opening" — this slice moved the cap to the sales close and updated the class Javadoc, so the runtime message contradicts both. The exact lockstep site #791's F-3 audit named. | fixed in review-fix commit (message names the sales close; pinned by `RequestPropertiesTest.acceptsTheWholeWindowRangeButNotBeyondIt`) |
+| F-2 | review (three agents convergent, confidence 75 — below the PR-comment bar, real) | `ViewBookingService.java:102–103` — the strict `isAfter(payDeadline)` disagrees with the sweep's **inclusive** day-end arm at exactly `now == serviceDayEndsAt(D)`: sweep reaps (and releases the claim) while the view still issues credentials; the "exactly as the sweep spares it" comment holds only for the accepted/raw-window arm (`accepted_at < :acceptedBefore`, genuinely strict). Fixed by making the view mirror the sweep **by construction**: `payWindowClosed = serviceDayHasEnded(date) OR acceptedAt < acceptedBefore(now)` — the exact two members the sweep binds (`lastEndedServiceDay`/`acceptedBefore`), so day end is inclusive on both sides and the raw-window instant payable on both; the mailed `payBy` value is untouched. | fixed in review-fix commit |
+| F-3 | review (companion to F-2, confidence 75) | No test pins the day-end-capped exact-instant parity (AC-2/R-8 discipline): `withholdsCredentialsOnceTheServiceDayHasEnded` uses a date two days gone; the sweep ITs stay clear of the boundary. Add the boundary case alongside F-2's fix. | fixed in review-fix commit (`ViewBookingServiceTest.withholdsCredentialsAtTheExactEndOfServiceDay` + `dayEndCapClosesAnAcceptedBookingAtThatSameInstant`, red-first) |
 
 ---
 
@@ -633,6 +634,7 @@ boolean payWindowClosed = awaitingPayment && !clock.instant().isBefore(payDeadli
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-28 | Review-fix F-2 (view/sweep boundary-strictness parity) | every production site comparing *now* against a pay-deadline or day-boundary bound | `grep -rn "acceptedBefore\|serviceDayHasEnded\|lastEndedServiceDay" platform/src/main/java` (+ `request_expires_at` guards) | sweep SQL + `AbandonedBookingSweepService` binding (authoritative); `ViewBookingService` (fixed — now binds the same two members); the `request_expires_at` pair (accept guard `> now` vs expiry sweep `<= now`) | View rebuilt on `serviceDayHasEnded` + `acceptedBefore` so parity is by construction; `request_expires_at` pair already consistent (at the stored instant: not acceptable AND expirable — no gap), left unchanged |
 | 2026-08-28 | Phase 5 (gate removal) | Every `#791`/`#792`/"temporary gate" marker in main+test code | `git grep -n "#791\|#792\|temporary gate" platform/src frontend/src frontend/e2e` | Gate block + retired members (deleted), `requestDeadlineUncappedTwoDaysOut`'s stale day-open comment (fixed); every other hit is deliberate history (#791 sales-close features that survive) or a live #792 marker | Retired-member callers: none left (`git ls-files` adapter sweep negative-confirmed, R-7) |
 | 2026-08-28 | Phase 4 (accept cap) | Every site stating the accept-cap bound (re-run of #791's F-1/F-3 audit population) | `grep -rn "serviceDayOpensAt\|day-open\|day open" platform/src/main/java platform/src/test/java` | `ReserveSetService` cap + comment (fixed), `RequestProperties`(+Test) prose (fixed), `BookingCutoff` class/`serviceDayOpensAt` Javadoc still claiming the pay-fence role (fixed this phase); the rest is cancel-window prose, day-end delegation, or the phase-5 retirees | No accept-cap statement names day-open any more |
 | 2026-08-28 | Phase 3 (view fence) | Every consumer of `payWindowClosed` (backend DTOs, FE model/template/specs/e2e fixtures) | `git grep -n "payWindowClosed"` | `BookingDetail` Javadoc + `booking.model.ts` TSDoc (day-open prose — rewritten), `request-to-book.e2e.ts` test title (day-open premise — renamed), panel copy + spec (fixed this phase); remaining hits are premise-free fixtures/pass-throughs | All day-open premises on the wire flag removed |

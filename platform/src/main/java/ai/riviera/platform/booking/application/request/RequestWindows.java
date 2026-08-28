@@ -39,10 +39,11 @@ public record RequestWindows(Duration expiryWindow, Duration payWindow) {
 	}
 
 	/**
-	 * The cutoff the abandoned sweep's accepted arm binds: a booking whose {@code accepted_at} is
-	 * strictly before this has run out its <em>raw</em> pay window. Strictly — so at the uncapped
-	 * {@link #payDeadline} itself the booking is not yet expirable, and the mail never promises a
-	 * moment already past. The sweep's other arm expires a booking whose service day has ended.
+	 * The cutoff the abandoned sweep's accepted arm — and the code-gated view's — binds: a booking
+	 * whose {@code accepted_at} is strictly before this has run out its <em>raw</em> pay window.
+	 * Strictly — so at the uncapped {@link #payDeadline} itself the booking is not yet expirable,
+	 * and the mail never promises a moment already past. The other arm both share expires a booking
+	 * whose service day has ended, inclusive at the day-end instant ({@code serviceDayHasEnded}).
 	 */
 	public Instant acceptedBefore(Instant now) {
 		return now.minus(payWindow);

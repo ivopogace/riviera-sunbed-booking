@@ -74,7 +74,8 @@ public record RequestProperties(Duration expiryWindow, Duration payWindow) {
 		if (expiryWindow.compareTo(MIN_WINDOW) < 0) {
 			throw new IllegalArgumentException(
 					"booking.request.expiry-window must be at least " + MIN_WINDOW + ", but was "
-							+ expiryWindow + "; the deadline is min(now + window, the booked day's opening), "
+							+ expiryWindow + "; the deadline is min(now + window, the venue's sales close on "
+							+ "the booked day), "
 							+ "so a window this short makes every pending request expire on creation and no "
 							+ "accept can ever win the request_expires_at > now guard — the venue takes no "
 							+ "bookings and nothing reports a fault. There is no upper bound: the cutoff "
