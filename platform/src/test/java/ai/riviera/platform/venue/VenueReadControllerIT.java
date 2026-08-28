@@ -1,8 +1,10 @@
 package ai.riviera.platform.venue;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -168,6 +170,41 @@ class VenueReadControllerIT {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.amenities").value(empty()))
 				.andExpect(jsonPath("$.distanceToWaterM").value(nullValue()));
+	}
+
+	@Test
+	void mapCarriesSalesOpenForSelectedDate() throws Exception {
+		// #793 AC-3: a 00:01 opt-out venue's map reads closed for today, open for tomorrow.
+		LocalTime now = LocalTime.now(TIRANE);
+		Assumptions.assumeTrue(now.isAfter(LocalTime.of(0, 2)) && now.isBefore(LocalTime.of(23, 58)),
+				"skipped near midnight — today would roll over or the verdict flip mid-test");
+		long id = insertOptOutVenue();
+		LocalDate today = LocalDate.now(TIRANE);
+		try {
+			mvc.perform(get("/api/venues/{id}", id).param("date", today.toString()))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.salesOpen").value(false));
+
+			mvc.perform(get("/api/venues/{id}", id).param("date", today.plusDays(1).toString()))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.salesOpen").value(true));
+		} finally {
+			jdbc.sql("DELETE FROM operator_venue WHERE venue_id = :id").param("id", id).update();
+			jdbc.sql("DELETE FROM venue WHERE id = :id").param("id", id).update();
+		}
+	}
+
+	/** A visible venue at the 00:01 sales-close opt-out — deterministically closed for today. */
+	private long insertOptOutVenue() {
+		long id = jdbc.sql("""
+				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency,
+				                   sales_close)
+				VALUES ('Sales-closed map venue IT', 'Sales close beach IT', 'Sales close IT region',
+				        'INSTANT', 1500, 'EUR', '00:01')
+				RETURNING id
+				""").query(Long.class).single();
+		OwnershipFixtures.grantToBootstrap(jdbc, id);
+		return id;
 	}
 
 	/** Owned by the bootstrap ACTIVE operator — the tourist map read hides ownerless venues (#693). */

@@ -157,6 +157,14 @@ the open-PR set, which is dependabot-only).
   editing; the picker floors at today) rendering the closed state is correct behavior —
   the rule's verdict is honestly `false` and the date picker offers recovery. — *Owner:*
   session · *Resolves by:* phase 3
+- **Deviation (D-1, phase 1):** AC-1/AC-3's prescribed fixture (venue pair 16:00/23:59
+  evaluated at a mocked 17:00 clock) is realized instead with the repo's established
+  boundary-venue trick — the ITs deliberately never mock the `Clock` bean (#791/#792
+  precedent): a `00:01` opt-out venue is deterministically closed for today and a `23:59`
+  venue open, guarded by a near-midnight `Assumption`. The same per-venue open/closed
+  contrast is pinned; the exact 16:00 boundary arithmetic stays pinned by
+  `BookingCutoffSalesWindowTest` (AC-4). — *Owner:* session · *Status:* resolved (convention
+  over new harness)
 - **Assumption (OQ-3):** the closed-map state disables set *selection* while still
   rendering the grid and its availability (the issue asks for "no bookable set selection",
   not a hidden map). — *Owner:* session · *Resolves by:* phase 3
@@ -285,16 +293,16 @@ initial load and the status role targets the date-change transition.
 
 > Session-recovery anchor. Update in the same commit window as the change it records.
 
-**Stage pointer:** implement — phase 0 done (port + implementor + structural net green);
-next: phase 1 (catalogue projection).
+**Stage pointer:** implement — phases 0–1 done (port, implementor, projection; ITs +
+venue-module regression green).
 
-**Next action:** phase 1 — failing ITs in `VenueListControllerIT`/`VenueReadControllerIT`,
-then widen the two views and project the verdict in `JdbcVenueCatalog`.
+**Next action:** phase 2 — Discover badge + aria (`riviera-frontend` + `riviera-tailwind` +
+`angular-developer` + angular-cli MCP loaded before the first FE edit).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `venue.spi.SalesWindow` + booking implementor | ✅ | "Add venue.spi.SalesWindow implemented by booking (#793)" |
-| 1 — catalogue projection (`salesOpen` on both views) | | |
+| 1 — catalogue projection (`salesOpen` on both views) | ✅ | "Carry per-venue salesOpen on the tourist catalogue reads (#793)" |
 | 2 — Discover badge + aria | | |
 | 3 — map closed state + recovery | | |
 | 4 — mocked e2e + a11y | | |
@@ -454,7 +462,7 @@ Update `venue/spi/package-info.java`'s Javadoc so the port inventory names all t
 `venue/adapter/out/JdbcVenueCatalog.java` · Test `venue/VenueListControllerIT.java`,
 `venue/VenueReadControllerIT.java` (+ compile-driven record-ctor sweep)
 
-- [ ] **Step 1: Write the failing tests** — in `VenueListControllerIT` (following its
+- [x] **Step 1: Write the failing tests** — in `VenueListControllerIT` (following its
   existing fixture style; the mocked-clock harness is the one the reserve ITs use):
 
 ```java
@@ -480,7 +488,7 @@ void mapCarriesSalesOpenForSelectedDate() {
 }
 ```
 
-- [ ] **Step 2: Run, verify FAIL** —
+- [x] **Step 2: Run, verify FAIL** —
   `./gradlew test --tests "*VenueListControllerIT*" --tests "*VenueReadControllerIT*"`
   → FAIL (no `salesOpen` in the JSON)
 
@@ -494,17 +502,17 @@ void mapCarriesSalesOpenForSelectedDate() {
     fence and the `SetAvailabilityLookup` overlay are untouched and stay in their current
     order.
 
-- [ ] **Step 4: Run, verify PASS** — same targeted commands, then the venue-module
+- [x] **Step 4: Run, verify PASS** — same targeted commands, then the venue-module
   regression: `./gradlew test --tests "*VenueCatalogVisibilityIT*" --tests "*Venue*IT*"`
   (Testcontainers; skips cleanly without Docker — CI is the backstop).
 
-- [ ] **Step 5: Generalization-audit pass** — population: *call sites constructing the two
+- [x] **Step 5: Generalization-audit pass** — population: *call sites constructing the two
   widened records* → enumerate `grep -rn "new VenueSummaryView\|new VenueMapView" platform/src`
   → fix all (compile errors make the sweep total). Append to the log below.
 
-- [ ] **Step 6: Commit** — `git commit -m "Carry per-venue salesOpen on the tourist catalogue reads (#793)"`
+- [x] **Step 6: Commit** — `git commit -m "Carry per-venue salesOpen on the tourist catalogue reads (#793)"`
 
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -656,6 +664,7 @@ Test `pages/home/home.spec.ts`, `pages/home/home.a11y.spec.ts`
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-28 | phase 1 (widened `VenueSummaryView`/`VenueMapView`) | call sites constructing the two widened records | `grep -rn "new VenueSummaryView\|new VenueMapView" platform/src` | 2 (both in `JdbcVenueCatalog`) | both pass the verdict; compile sweep clean, no other constructors |
 
 ---
 
