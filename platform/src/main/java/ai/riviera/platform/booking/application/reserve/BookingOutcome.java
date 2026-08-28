@@ -47,7 +47,7 @@ public sealed interface BookingOutcome
 		NOT_ONLINE_POOL,
 		/** No set has the given id. */
 		NO_SUCH_SET,
-		/** The evening-before cutoff for that date has passed (invariant #4). */
+		/** The sales window for that date has closed (invariant #4). */
 		BOOKING_CLOSED
 	}
 }

@@ -35,8 +35,9 @@ public class BookingCutoff {
 		this.clock = clock;
 	}
 
-	public boolean isBookable(LocalTime cutoff, LocalDate bookingDate) {
-		return isBeforeCutoff(cutoff, bookingDate);
+	/** Whether online booking for {@code bookingDate} is currently open (strictly before the close). */
+	public boolean isBookable(LocalTime salesClose, LocalDate bookingDate) {
+		return clock.instant().isBefore(salesCloseAt(salesClose, bookingDate));
 	}
 
 	/**
@@ -97,9 +98,5 @@ public class BookingCutoff {
 	 */
 	public java.time.Instant freeCancellationEndsAt(LocalTime cutoff, LocalDate bookingDate) {
 		return bookingDate.minusDays(1).atTime(cutoff).atZone(TIRANE).toInstant();
-	}
-
-	private boolean isBeforeCutoff(LocalTime cutoff, LocalDate bookingDate) {
-		return clock.instant().isBefore(freeCancellationEndsAt(cutoff, bookingDate));
 	}
 }

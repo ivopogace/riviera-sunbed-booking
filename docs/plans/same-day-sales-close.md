@@ -113,7 +113,7 @@ An implement session with a different designated branch records its substitution
   the full-replace PATCH leaves `sales_close` unchanged. *Pinned by:*
   `VenueAdminControllerIT.createDefaultsSalesCloseAndProfileReturnsIt`,
   `VenueAdminControllerIT.patchCannotReachSalesClose`.
-- [ ] **AC-3 (the window rule):** Given a fixed clock, when `BookingCutoff.isBookable(salesClose, D)`
+- [x] **AC-3 (the window rule):** Given a fixed clock, when `BookingCutoff.isBookable(salesClose, D)`
   is asked, then: at `D-1` 20:00 with close `16:00` it answers **true** (the retired
   evening-before fence, pinned explicitly); at `D` 15:59 true; at `D` 16:00 false
   (strictly-before, matching the old boundary convention); with close `00:01` any instant from
@@ -121,7 +121,7 @@ An implement session with a different designated branch records its substitution
   answers true; any past `D` false. *Pinned by:* `BookingCutoffTest.bookableTheEveningBefore`,
   `.sameDayBookableUntilSalesClose`, `.closedAtSalesClose`, `.optOutVenueSellsNothingOnTheDay`,
   `.lateCloseSellsToElevenFiftyNine`, `.closedForPastDate`.
-- [ ] **AC-4 (same-day Instant reserve):** Given an Instant Book venue with close `16:00` and a
+- [x] **AC-4 (same-day Instant reserve):** Given an Instant Book venue with close `16:00` and a
   fixed clock before it, when a tourist reserves an online-pool set for today, then the claim is
   made and the outcome is `AwaitingPayment` with a `clientSecret`; at/after the close the outcome
   is `Rejected(BOOKING_CLOSED)` and the wire shape is the existing
@@ -129,7 +129,7 @@ An implement session with a different designated branch records its substitution
   `CreateBookingServiceTest.sameDayInstantReserveBeforeClose`,
   `.sameDayInstantRejectedAtClose`, `BookingControllerIT.sameDayBookingSucceedsBeforeClose`,
   `BookingControllerIT.sameDayAfterCloseReturns422` (IT determinism strategy: Risk R-5).
-- [ ] **AC-5 (Request temporary gate + advance cap):** Given a Request-to-Book venue, when a
+- [x] **AC-5 (Request temporary gate + advance cap):** Given a Request-to-Book venue, when a
   tourist requests **today**, then `Rejected(BOOKING_CLOSED)` regardless of the close time
   (the temporary gate, removed by #792); when they request a **future** date D — including at
   20:00 the evening before D — then the request is created with
@@ -380,7 +380,7 @@ if any styling does surface, load `riviera-tailwind` then (routing-gate re-entry
 | 0 — V44 migration + migration IT | ✅ | Add per-venue sales_close column, default 16:00 (#791) |
 | 1 — venue read surface (`SetBookingInfo`, profile read) | ✅ | Expose venue sales close on profile read and SetBookingFacts (#791) |
 | 2 — the window rule (`BookingCutoff`) | ✅ | Name the day's three boundaries in BookingCutoff (#791) |
-| 3 — reserve paths (Instant gate, Request gate + cap) | | |
+| 3 — reserve paths (Instant gate, Request gate + cap) | ✅ | Gate reserve on the same-day sales close; keep same-day requests closed (#791) |
 | 4 — same-day pay-fence bridges (sweep + view) | | |
 | 5 — lifecycle regression pins | | |
 | 6 — frontend floor + copy | | |
@@ -570,7 +570,7 @@ ALTER TABLE venue
 `BookingOutcome.java` (Javadoc), `BookingCutoffTest.java` (AC-3 window cases),
 `CreateBookingServiceTest.java`, `BookingControllerIT.java`.
 
-- [ ] **Step 0: `isBookable` switches semantics WITH its call site** (the Phase 2 blockquote):
+- [x] **Step 0: `isBookable` switches semantics WITH its call site** (the Phase 2 blockquote):
   re-implement it on `salesCloseAt` and, in the same commit, make `ReserveSetService` pass
   `set.salesClose()`; the AC-3 `BookingCutoffTest` cases land here:
 
@@ -607,7 +607,7 @@ ALTER TABLE venue
 	}
 ```
 
-- [ ] **Step 1: Failing tests** — AC-4/AC-5 in `CreateBookingServiceTest` (fixed `Clock`,
+- [x] **Step 1: Failing tests** — AC-4/AC-5 in `CreateBookingServiceTest` (fixed `Clock`,
   `new BookingCutoff(CLOCK)`, fixture `SetBookingInfo` with the wanted `salesClose`/`bookingMode`):
   same-day instant success before close / rejection at close; same-day request →
   `BOOKING_CLOSED`; evening-before request succeeds with
@@ -616,8 +616,8 @@ ALTER TABLE venue
   booking succeeds end-to-end (claim + AWAITING/CONFIRMED per profile); seed a `00:01` venue →
   today returns `422 BOOKING_CLOSED`; the existing `afterCutoffReturns422` (yesterday) stays
   green as the past-date pin.
-- [ ] **Step 2: Verify red** — `./gradlew test --tests "*CreateBookingServiceTest*"`.
-- [ ] **Step 3: Minimal implementation** — in `ReserveSetService.reserve`:
+- [x] **Step 2: Verify red** — `./gradlew test --tests "*CreateBookingServiceTest*"`.
+- [x] **Step 3: Minimal implementation** — in `ReserveSetService.reserve`:
 
 ```java
 		if (!cutoff.isBookable(set.salesClose(), command.bookingDate())) {
@@ -636,14 +636,14 @@ ALTER TABLE venue
 ```
 
   `BOOKING_CLOSED` Javadoc reworded ("The sales window for that date has closed (invariant #4)").
-- [ ] **Step 4: Verify green** — `./gradlew test --tests "ai.riviera.platform.booking.*"` scoped
+- [x] **Step 4: Verify green** — `./gradlew test --tests "ai.riviera.platform.booking.*"` scoped
   to the reserve/request classes, then `BookingControllerIT` (Docker).
-- [ ] **Step 5: Generalization audit** — population: *every caller of
+- [x] **Step 5: Generalization audit** — population: *every caller of
   `isBookable`/`bookingCutoff()` deciding sellability* (mechanism: reads the venue time to gate
   a sale) → `grep -rn "isBookable\|bookingCutoff()" platform/src/main` → expect the reserve gate
   (moved), `CancellationPolicy` (cancellation-only, stays on `bookingCutoff`) — confirm no third
   site sells anything off the old fence. Log below.
-- [ ] **Step 6–7: Commit + status** — `"Gate reserve on the same-day sales close; keep same-day requests closed (#791)"`.
+- [x] **Step 6–7: Commit + status** — `"Gate reserve on the same-day sales close; keep same-day requests closed (#791)"`.
 
 ## Phase 4 — same-day pay-fence bridges
 
@@ -792,6 +792,7 @@ structure), this plan doc (final execution status).
 |---|---|---|---|---|---|
 | 2026-08-28 | Phase 1 (`SetBookingInfo` gains `salesClose`) | constructors of `SetBookingInfo` (record growth) | `grep -rn "new SetBookingInfo(" platform/src` | 6 (1 main: `JdbcVenueCatalog`; 5 test: `MailDeliveryLookupServiceTest`, `BookingMailFactsServiceTest`, `BookingCreationViewsContractTest`, `ViewBookingServiceTest`, `CreateBookingServiceTest`) | All fixed; also found + fixed 2 `VenueProfileView` constructor sites (`JdbcVenues`, `VenueAdminServiceTest`) growing in the same phase |
 | 2026-08-28 | Phase 2 (`closesAt` renamed `freeCancellationEndsAt`) | callers of `closesAt` (renamed method) | `grep -rn "closesAt(" platform/src` | 4 (2 main: `BookingCutoff` self-call in `isBeforeCutoff`, `ReserveSetService`'s request-deadline cap; 2 Javadoc-only prose mentions: `RequestProperties`, `RequestPropertiesTest`) | All renamed; grep returns zero after |
+| 2026-08-28 | Phase 3 (`isBookable` switches to `salesCloseAt`) | every caller of `isBookable`/`bookingCutoff()` deciding sellability | `grep -rn "isBookable\|bookingCutoff()" platform/src/main` | 2 (`ReserveSetService` — the reserve gate, moved to `set.salesClose()`; `CancellationPolicy` — cancellation-only, correctly stays on `bookingCutoff()`) | No third site found selling off the old fence; also found and fixed one stale pre-existing test (`CreateBookingServiceTest.requestDeadlineCappedAtCutoff`, asserting the retired evening-before cap) — renamed `requestDeadlineUncappedTheMorningBeforeDeparture` and re-derived its expected value under the new rule |
 
 ---
 

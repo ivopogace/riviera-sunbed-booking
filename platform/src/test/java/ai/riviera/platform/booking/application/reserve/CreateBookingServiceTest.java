@@ -82,12 +82,17 @@ class CreateBookingServiceTest {
 
 	private CreateBookingService service(SetBookingInfo info, AvailabilityClaim claim,
 			CheckoutPort checkout, BookingCodeGenerator codes, boolean venueVisible) {
+		return service(info, claim, checkout, codes, venueVisible, CLOCK);
+	}
+
+	private CreateBookingService service(SetBookingInfo info, AvailabilityClaim claim,
+			CheckoutPort checkout, BookingCodeGenerator codes, boolean venueVisible, Clock clock) {
 		SetBookingFacts catalog = new FakeCatalog(info);
 		CustomerDirectory customers = _ -> new CustomerId(99);
 		ReserveSetService reservation = new ReserveSetService(catalog, claim, visibility(venueVisible),
-				customers, bookings, codes, new BookingCutoff(CLOCK), WINDOWS, CLOCK);
+				customers, bookings, codes, new BookingCutoff(clock), WINDOWS, clock);
 		return new CreateBookingService(reservation, checkout, confirmer, release, confirmationMail,
-				collection, CLOCK);
+				collection, clock);
 	}
 
 	private CreateBookingCommand command() {
@@ -341,9 +346,8 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
-	void requestDeadlineCappedAtCutoff() {
-		// Invariant #4: the response deadline never extends past the evening-before cutoff —
-		// for a next-day booking, min(now + 24h, cutoff) is the cutoff instant (18:00 Europe/Tirane = 17:00Z).
+	void requestDeadlineUncappedTheMorningBeforeDeparture() {
+		// #791: D's sales close is the only cap now, far off enough at this hour to leave it uncapped.
 		CreateBookingService service = service(
 				set("ONLINE", BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
@@ -353,8 +357,8 @@ class CreateBookingServiceTest {
 				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 2), GUEST));
 
 		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
-		assertEquals(Instant.parse("2026-11-01T17:00:00Z"), requested.requestExpiresAt(),
-				"deadline capped at the evening-before 18:00 Europe/Tirane cutoff");
+		assertEquals(Instant.parse("2026-11-02T09:00:00Z"), requested.requestExpiresAt(),
+				"uncapped: now + 24h is well before D's 16:00 Europe/Tirane sales close");
 	}
 
 	@Test
@@ -473,6 +477,62 @@ class CreateBookingServiceTest {
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, LocalDate.of(2026, 10, 1), GUEST));
 		assertSame(BookingOutcome.Rejected.BOOKING_CLOSED, outcome);
+	}
+
+	@Test
+	void sameDayInstantReserveBeforeClose() {
+		// AC-4: "now" is 10:00 Tirane; a 16:00 sales close still allows booking TODAY (#791).
+		Clock beforeClose = Clock.fixed(Instant.parse("2026-11-01T09:00:00Z"), ZoneId.of("UTC"));
+		CreateBookingService service = service(set("ONLINE"), claiming(ClaimOutcome.CLAIMED),
+				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "CODE234567", true, beforeClose);
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 1), GUEST));
+
+		assertInstanceOf(BookingOutcome.Confirmed.class, outcome, "same-day reserve + pay succeeds");
+	}
+
+	@Test
+	void sameDayInstantRejectedAtClose() {
+		// AC-4: exactly at the venue's 16:00 sales close (15:00Z = 16:00 CET), the same date is closed.
+		Clock atClose = Clock.fixed(Instant.parse("2026-11-01T15:00:00Z"), ZoneId.of("UTC"));
+		CreateBookingService service = service(set("ONLINE"), claiming(ClaimOutcome.CLAIMED),
+				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X", true, atClose);
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 1), GUEST));
+
+		assertSame(BookingOutcome.Rejected.BOOKING_CLOSED, outcome);
+	}
+
+	@Test
+	void sameDayRequestStillClosed() {
+		// AC-5: the temporary gate refuses same-day Request even though the window itself allows it.
+		Clock beforeClose = Clock.fixed(Instant.parse("2026-11-01T09:00:00Z"), ZoneId.of("UTC"));
+		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
+				claiming(ClaimOutcome.CLAIMED),
+				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "X", true, beforeClose);
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 1), GUEST));
+
+		assertSame(BookingOutcome.Rejected.BOOKING_CLOSED, outcome);
+	}
+
+	@Test
+	void eveningBeforeRequestSucceedsWithDeadlineCappedAtSalesClose() {
+		// AC-5: 20:00 Tirane the evening before D now succeeds, deadline capped at D's sales close.
+		Clock eveningBefore = Clock.fixed(Instant.parse("2026-11-01T19:00:00Z"), ZoneId.of("UTC"));
+		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
+				claiming(ClaimOutcome.CLAIMED),
+				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE003", true, eveningBefore);
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 2), GUEST));
+
+		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
+		assertEquals(Instant.parse("2026-11-02T15:00:00Z"), requested.requestExpiresAt(),
+				"deadline capped at D's 16:00 Europe/Tirane sales close, not the evening-before cutoff");
 	}
 
 	@Test
