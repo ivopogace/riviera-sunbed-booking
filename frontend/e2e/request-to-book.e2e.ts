@@ -356,7 +356,7 @@ test('an expired request shows terminal no-charge copy', async ({ page }) => {
   await expectNoSeriousAxeViolations(page, 'booking view (expired request)');
 });
 
-test('an accepted request whose service day has opened cannot be paid', async ({ page }) => {
+test('an accepted request whose pay deadline has passed cannot be paid', async ({ page }) => {
   await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
     route.fulfill({
       json: {

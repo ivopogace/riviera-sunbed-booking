@@ -33,10 +33,10 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * {@code false} <em>without the question being asked</em> — the `202` create hands out the code
  * before payment, so answering earlier would make this code-gated view a suppression oracle (D-8).
  *
- * <p>{@code payWindowClosed} says the booking's service day has opened, so no payment may be taken
- * for it any more (invariant #4) and {@code payment} is {@code null} whatever the status. It is
- * carried rather than derived on the client because the boundary is a civil-day instant in
- * {@code Europe/Tirane} and the server owns that zone and clock (invariant #6).
+ * <p>{@code payWindowClosed} says the booking's pay deadline — {@code min(accepted_at + pay-window,
+ * end of service day)} — has passed, so no payment may be taken for it any more (invariant #4) and
+ * {@code payment} is {@code null} whatever the status. It is carried rather than derived on the
+ * client because the deadline arithmetic is the server's ({@code Europe/Tirane}, invariant #6).
  *
  * <p>{@code cancelReason} says <em>which</em> cancellation a {@code CANCELLED} booking went through,
  * so the guest can be told; {@code null} for every other status, and also for a cancellation that

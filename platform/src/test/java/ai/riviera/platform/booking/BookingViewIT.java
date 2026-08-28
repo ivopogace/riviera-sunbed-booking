@@ -141,9 +141,12 @@ class BookingViewIT {
 	}
 
 	@Test
-	void reportsPayWindowClosedForAnOpenServiceDay() throws Exception {
+	void reportsPayWindowClosedOnceThePayDeadlinePassed() throws Exception {
+		// Accepted 13h ago against the 12h pay window (R-3: proves accepted_at reaches the view read).
 		seedLateCancelBooking("VIEWPAY01", "toolate@e.com", tirane());
 		markAwaitingPayment("VIEWPAY01");
+		jdbc.sql("UPDATE booking SET accepted_at = NOW() - INTERVAL '13 hours' WHERE code = :c")
+				.param("c", "VIEWPAY01").update();
 
 		mvc.perform(get("/api/bookings/{code}", "VIEWPAY01"))
 				.andExpect(status().isOk())

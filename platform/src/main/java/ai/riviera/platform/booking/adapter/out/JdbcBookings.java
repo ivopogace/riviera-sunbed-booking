@@ -288,7 +288,7 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				SELECT id, code, status, venue_id, set_id, customer_id, booking_date,
 				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at,
-				       cancel_reason, created_at
+				       cancel_reason, created_at, accepted_at
 				FROM booking
 				WHERE code = :code
 				""")
@@ -306,7 +306,7 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				SELECT id, code, status, venue_id, set_id, customer_id, booking_date,
 				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at,
-				       cancel_reason, created_at
+				       cancel_reason, created_at, accepted_at
 				FROM booking
 				WHERE account_id = :account
 				ORDER BY booking_date DESC, id DESC
@@ -322,6 +322,7 @@ class JdbcBookings implements Bookings {
 		Long refundMinor = rs.getObject("refund_minor", Long.class);
 		java.sql.Timestamp requestExpiresAt = rs.getTimestamp(COL_REQUEST_EXPIRES_AT);
 		String cancelReason = rs.getString(COL_CANCEL_REASON);
+		java.sql.Timestamp acceptedAt = rs.getTimestamp("accepted_at");
 		return new BookingRecord(
 				rs.getLong("id"), rs.getString("code"),
 				BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
@@ -331,7 +332,8 @@ class JdbcBookings implements Bookings {
 				rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
 				cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor,
 				requestExpiresAt == null ? null : requestExpiresAt.toInstant(),
-				refundReasonOf(cancelReason), rs.getTimestamp("created_at").toInstant());
+				refundReasonOf(cancelReason), rs.getTimestamp("created_at").toInstant(),
+				acceptedAt == null ? null : acceptedAt.toInstant());
 	}
 
 	/**

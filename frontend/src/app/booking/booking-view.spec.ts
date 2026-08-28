@@ -849,8 +849,11 @@ describe('BookingView', () => {
 
     const panel = host.querySelector('[data-testid="pay-window-closed"]');
     expect(panel?.textContent).toContain('Payment window closed');
+    expect(panel?.textContent).toContain('payment deadline for this booking has passed');
     expect(panel?.textContent).toContain('can no longer be paid');
-    // Calendar-only flag: a payment may be in flight, so no "you weren't charged" claim.
+    // The trigger is the pay deadline now (#792), not the service day having started.
+    expect(panel?.textContent).not.toContain('has already started');
+    // Deadline-only flag: a payment may be in flight, so no "you weren't charged" claim.
     expect(panel?.textContent).not.toContain('haven’t been charged');
     expect(host.querySelector('[data-testid="pay-now"]')).toBeNull();
     await expectNoAxeViolations(host);
