@@ -69,7 +69,7 @@ class CreateBookingServiceTest {
 
 	private SetBookingInfo set(String pool, BookingMode mode) {
 		return new SetBookingInfo(SET, new VenueId(1), "Miramar", "Front row", 2, pool,
-				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), mode);
+				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0), mode);
 	}
 
 	private static final RequestWindows WINDOWS =

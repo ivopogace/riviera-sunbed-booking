@@ -382,7 +382,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	private static final String SET_BOOKING_INFO_SELECT = """
 			SELECT sp.id AS set_id, sp.venue_id, v.name AS venue_name, sp.row_label,
 			       sp.position_no, sp.pool, sp.price_minor, sp.price_currency, v.booking_cutoff,
-			       v.booking_mode
+			       v.sales_close, v.booking_mode
 			FROM set_position sp
 			JOIN venue v ON v.id = sp.venue_id
 			""";
@@ -415,6 +415,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				rs.getInt("position_no"), rs.getString("pool"),
 				new MoneyView(rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)),
 				rs.getObject("booking_cutoff", java.time.LocalTime.class),
+				rs.getObject("sales_close", java.time.LocalTime.class),
 				BookingMode.valueOf(rs.getString(COL_BOOKING_MODE)));
 	}
 

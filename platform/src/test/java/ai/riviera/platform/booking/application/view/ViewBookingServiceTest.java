@@ -328,6 +328,7 @@ class ViewBookingServiceTest {
 
 	private static SetBookingInfo setInfo() {
 		return new SetBookingInfo(SET, VENUE, "Miramar", "Front row", 2, "ONLINE",
-				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), BookingMode.INSTANT);
+				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
+				BookingMode.INSTANT);
 	}
 }

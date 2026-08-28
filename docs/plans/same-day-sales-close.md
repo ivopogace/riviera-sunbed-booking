@@ -107,7 +107,7 @@ An implement session with a different designated branch records its substitution
   write of any value outside `{00:01, 16:00, 23:59}` is rejected by
   `venue_sales_close_check`. *Pinned by:* `SalesCloseMigrationIT.backfillsExistingVenuesTo1600`,
   `SalesCloseMigrationIT.checkRejectsAnyOtherTime`.
-- [ ] **AC-2 (venue surface, read-only):** Given a venue created via `POST /api/venues` with no
+- [x] **AC-2 (venue surface, read-only):** Given a venue created via `POST /api/venues` with no
   sales-close field, when the owner reads `GET /api/venues/{id}/profile`, then the response
   carries `salesClose: "16:00"`; the PATCH request record carries **no** sales-close field and
   the full-replace PATCH leaves `sales_close` unchanged. *Pinned by:*
@@ -378,7 +378,7 @@ if any styling does surface, load `riviera-tailwind` then (routing-gate re-entry
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V44 migration + migration IT | ✅ | Add per-venue sales_close column, default 16:00 (#791) |
-| 1 — venue read surface (`SetBookingInfo`, profile read) | | |
+| 1 — venue read surface (`SetBookingInfo`, profile read) | ✅ | Expose venue sales close on profile read and SetBookingFacts (#791) |
 | 2 — the window rule (`BookingCutoff`) | | |
 | 3 — reserve paths (Instant gate, Request gate + cap) | | |
 | 4 — same-day pay-fence bridges (sweep + view) | | |
@@ -421,7 +421,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/BookingRecord.java` — `+ Instant createdAt`
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/ViewBookingService.java` — born-before predicate on the credentials fence
 - `platform/src/test/java/ai/riviera/platform/booking/application/cancel/BookingCutoffTest.java` — AC-3/AC-8 cases
-- `platform/src/test/java/ai/riviera/platform/booking/CreateBookingServiceTest.java` — AC-4/AC-5 cases *(path per its current package)*
+- `platform/src/test/java/ai/riviera/platform/booking/application/reserve/CreateBookingServiceTest.java` — AC-4/AC-5 cases *(deviation: plan said `booking/CreateBookingServiceTest.java`; the class actually lives at `booking/application/reserve/`, corrected here)*
 - `platform/src/test/java/ai/riviera/platform/booking/BookingControllerIT.java` — AC-4 IT cases
 - `platform/src/test/java/ai/riviera/platform/booking/AbandonedBookingSweepIT.java` — AC-6 cases
 - `platform/src/test/java/ai/riviera/platform/booking/ServiceDayBackdate.java` — also backdate `created_at` (R-8)
@@ -429,7 +429,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/booking/StaffBookingControllerIT.java` — AC-11 case
 - `platform/src/test/java/ai/riviera/platform/booking/WeatherRefundServiceIT.java` — AC-11 case *(path per its current package)*
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAdminControllerIT.java` — AC-2 cases
-- every fixture constructing `SetBookingInfo`/`BookingRecord` (compile-driven; e.g. `RespondToRequestServiceTest`, `ViewBookingServiceTest` builders) — record growth (R-7)
+- `platform/src/test/java/ai/riviera/platform/venue/SetBookingInfoIT.java` — asserts `salesClose` on the returned record (AC-2)
+- `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java` — record growth (R-7, `VenueProfileView` fixture)
+- `platform/src/test/java/ai/riviera/platform/notification/application/MailDeliveryLookupServiceTest.java` — record growth (R-7, `SetBookingInfo` fixture)
+- `platform/src/test/java/ai/riviera/platform/notification/application/BookingMailFactsServiceTest.java` — record growth (R-7, `SetBookingInfo` fixture)
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/in/BookingCreationViewsContractTest.java` — record growth (R-7, `SetBookingInfo` fixture)
+- every other fixture constructing `SetBookingInfo`/`BookingRecord` (compile-driven; e.g.
+  `RespondToRequestServiceTest` builders) — record growth (R-7)
 
 **Frontend — modified**
 - `frontend/src/app/shared/booking-date.ts` + `booking-date.spec.ts` — floor → today
@@ -495,24 +501,24 @@ ALTER TABLE venue
 `VenueProfileView.java`, `VenueProfileResponse.java`; tests `VenueAdminControllerIT`,
 `SetBookingInfoIT`-adjacent, compile-driven fixture updates.
 
-- [ ] **Step 1: Failing tests** — `VenueAdminControllerIT.createDefaultsSalesCloseAndProfileReturnsIt`
+- [x] **Step 1: Failing tests** — `VenueAdminControllerIT.createDefaultsSalesCloseAndProfileReturnsIt`
   (create venue with the existing body → profile read asserts `salesClose == "16:00"`);
   `.patchCannotReachSalesClose` (full-replace PATCH with the existing body → re-read still
   `16:00`; and the PATCH DTO has no such field — compile-level guarantee, assert the response
   only). Extend the existing `SetBookingFacts` IT to assert `salesClose` on the returned record.
-- [ ] **Step 2: Verify red** — `./gradlew test --tests "*VenueAdminControllerIT*"`.
-- [ ] **Step 3: Minimal implementation** — `SetBookingInfo` gains `LocalTime salesClose` (after
+- [x] **Step 2: Verify red** — `./gradlew test --tests "*VenueAdminControllerIT*"`.
+- [x] **Step 3: Minimal implementation** — `SetBookingInfo` gains `LocalTime salesClose` (after
   `bookingCutoff`); `SET_BOOKING_INFO_SELECT` adds `v.sales_close`; `mapSetBookingInfo` maps it;
   `JdbcVenues.findProfile` SELECT + `ProfileRow` + `VenueProfileView` + `VenueProfileResponse`
   (`CUTOFF`-formatter, field name `salesClose`). **No change** to `NewVenueCommand`,
   `CreateVenueRequest` (the DB DEFAULT stamps creates), `VenueProfileCommand`,
   `UpdateVenueProfileRequest`, or the `UPDATE … SET` clause — absence *is* the read-only
   contract (the `commissionBps` precedent). Fix record-growth compile breaks in fixtures.
-- [ ] **Step 4: Verify green** — venue package: `./gradlew test --tests "ai.riviera.platform.venue.*"`.
-- [ ] **Step 5: Generalization audit** — population: *constructors of `SetBookingInfo`*
+- [x] **Step 4: Verify green** — venue package: `./gradlew test --tests "ai.riviera.platform.venue.*"`.
+- [x] **Step 5: Generalization audit** — population: *constructors of `SetBookingInfo`*
   (mechanism: record growth) → enumerate `grep -rn "new SetBookingInfo(" platform/src` →
   fix all. Log below.
-- [ ] **Step 6–7: Commit + status** — `"Expose venue sales close on profile read and SetBookingFacts (#791)"`.
+- [x] **Step 6–7: Commit + status** — `"Expose venue sales close on profile read and SetBookingFacts (#791)"`.
 
 ## Phase 2 — the new boundary + the honest rename (`BookingCutoff`, additive only)
 
@@ -782,6 +788,7 @@ structure), this plan doc (final execution status).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-28 | Phase 1 (`SetBookingInfo` gains `salesClose`) | constructors of `SetBookingInfo` (record growth) | `grep -rn "new SetBookingInfo(" platform/src` | 6 (1 main: `JdbcVenueCatalog`; 5 test: `MailDeliveryLookupServiceTest`, `BookingMailFactsServiceTest`, `BookingCreationViewsContractTest`, `ViewBookingServiceTest`, `CreateBookingServiceTest`) | All fixed; also found + fixed 2 `VenueProfileView` constructor sites (`JdbcVenues`, `VenueAdminServiceTest`) growing in the same phase |
 
 ---
 

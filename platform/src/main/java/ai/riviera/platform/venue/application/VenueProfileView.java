@@ -25,8 +25,12 @@ import ai.riviera.platform.venue.vocabulary.BookingMode;
  *
  * <p>{@code photos} carries every {@code PhotoSlot} in declaration order with its preview URL
  * ({@code null} = empty slot) — always all three slots, so the tab renders a stable grid.
+ *
+ * <p>{@code salesClose} (#791) is read-only display this slice — the per-venue on-day sales-close
+ * time; no PATCH field sets it (the operator-control slice adds that).
  */
 public record VenueProfileView(String name, String beach, String region, String description,
-		BookingMode bookingMode, LocalTime bookingCutoff, int commissionBps, String payoutCurrency,
-		List<Amenity> amenities, Integer distanceToWaterM, long version, List<PhotoSlotView> photos) {
+		BookingMode bookingMode, LocalTime bookingCutoff, LocalTime salesClose, int commissionBps,
+		String payoutCurrency, List<Amenity> amenities, Integer distanceToWaterM, long version,
+		List<PhotoSlotView> photos) {
 }

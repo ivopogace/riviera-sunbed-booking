@@ -149,7 +149,8 @@ class MailDeliveryLookupServiceTest {
 	private void givenTheVenueIsNamed(String venueName) {
 		when(sets.setBookingInfo(SET)).thenReturn(Optional.of(
 				new SetBookingInfo(SET, new VenueId(3L), venueName, "A", 3, "ONLINE",
-						new MoneyView(4500, "EUR"), LocalTime.of(18, 0), BookingMode.INSTANT)));
+						new MoneyView(4500, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
+						BookingMode.INSTANT)));
 	}
 
 	private static CustomerBookingSummary booking(BookingId id, LocalDate date) {

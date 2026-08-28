@@ -29,10 +29,12 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
  * <p>{@code photos} keys every slot (lower-case, matching the REST path vocabulary) to its
  * PREVIEW serving URL, {@code null} when empty — always all three keys, so the tab renders
  * a stable grid. Emptiness is the null URL; no separate boolean.
+ *
+ * <p>{@code salesClose} (#791) is display-only, like commission — no PATCH field reaches it.
  */
 record VenueProfileResponse(String name, String beach, String region, String description,
-		String bookingMode, String bookingCutoff, int commissionBps, String payoutCurrency,
-		List<String> amenities, Integer distanceToWaterM, long version,
+		String bookingMode, String bookingCutoff, String salesClose, int commissionBps,
+		String payoutCurrency, List<String> amenities, Integer distanceToWaterM, long version,
 		Map<String, SlotPhoto> photos) {
 
 	record SlotPhoto(String previewUrl) {
@@ -47,8 +49,8 @@ record VenueProfileResponse(String name, String beach, String region, String des
 			photos.put(slot.slot().name().toLowerCase(Locale.ROOT), new SlotPhoto(slot.previewUrl()));
 		}
 		return new VenueProfileResponse(v.name(), v.beach(), v.region(), v.description(),
-				v.bookingMode().name(), v.bookingCutoff().format(CUTOFF), v.commissionBps(),
-				v.payoutCurrency(), v.amenities().stream().map(Amenity::name).toList(),
+				v.bookingMode().name(), v.bookingCutoff().format(CUTOFF), v.salesClose().format(CUTOFF),
+				v.commissionBps(), v.payoutCurrency(), v.amenities().stream().map(Amenity::name).toList(),
 				v.distanceToWaterM(), v.version(), photos);
 	}
 }

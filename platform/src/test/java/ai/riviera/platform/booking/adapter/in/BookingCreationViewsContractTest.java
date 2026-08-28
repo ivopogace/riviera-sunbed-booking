@@ -86,7 +86,8 @@ class BookingCreationViewsContractTest {
 	private static BookingConfirmation confirmation(BookingStatus status) {
 		return new BookingConfirmation("CODE234567", status,
 				new SetBookingInfo(new SetId(11), new VenueId(7), "Vala Beach", "A", 4, "ONLINE",
-						new MoneyView(4500, "EUR"), LocalTime.of(18, 0), BookingMode.REQUEST),
+						new MoneyView(4500, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
+						BookingMode.REQUEST),
 				LocalDate.of(2026, 8, 10), false);
 	}
 }
