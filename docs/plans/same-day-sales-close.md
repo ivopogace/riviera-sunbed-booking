@@ -142,9 +142,14 @@ An implement session with a different designated branch records its substitution
   tourist requests **today**, then `Rejected(BOOKING_CLOSED)` regardless of the close time
   (the temporary gate, removed by #792); when they request a **future** date D — including at
   20:00 the evening before D — then the request is created with
-  `expiresAt = min(now + expiry-window, D at the venue's sales close)`. *Pinned by:*
-  `CreateBookingServiceTest.sameDayRequestStillClosed`,
-  `.eveningBeforeRequestSucceedsWithDeadlineCappedAtSalesClose`.
+  `expiresAt = min(now + expiry-window, D's service-day open)` — **amended at the review gate
+  (F-1):** a sales-close cap would let a venue accept ON the service day, minting a booking
+  born past its pay deadline while the #576 fences stand; the day-open cap keeps every accept
+  outside the day, and #792 moves it to the sales close together with the fences (deliberate
+  deviation from issue #791's "capped at the new sales close" wording, recorded on the PR).
+  *Pinned by:* `CreateBookingServiceTest.sameDayRequestStillClosed`,
+  `.eveningBeforeRequestSucceedsWithDeadlineCappedAtServiceDayOpen`,
+  `.requestDeadlineUncappedTwoDaysOut`.
 - [x] **AC-6 (sweep bridge):** Given a same-day-born `AWAITING_PAYMENT` booking younger than the
   TTL, when the abandoned sweep runs, then it is **not** expired (its claim is kept); given an
   advance-born `AWAITING_PAYMENT` booking whose service day has opened, then it **is** expired
@@ -213,7 +218,7 @@ An implement session with a different designated branch records its substitution
 |---|---|---|
 | Reserve (Instant) refused `BOOKING_CLOSED` from 18:00 the evening before | **changed** | Refused from the venue's `sales_close` on D itself (`isBookable` on `salesCloseAt`); the 20:00-evening-before reserve now **succeeds** — pinned by `BookingCutoffTest.bookableTheEveningBefore` + `CreateBookingServiceTest` |
 | Reserve (Request) refused `BOOKING_CLOSED` from the same instant | **changed** | Advance requests follow the same new window; **same-day** requests refused by an explicit mode-aware gate (temporary, #792 removes) — the *effective* behavior for same-day is preserved, for advance evenings it is opened |
-| Request response deadline capped at the evening-before cutoff | **changed** | Capped at `salesCloseAt(salesClose, D)` — `min(now + expiry-window, D@close)` |
+| Request response deadline capped at the evening-before cutoff | **changed** | Capped at `serviceDayOpensAt(D)` — `min(now + expiry-window, D 00:00 Tirane)` (review F-1: the planned sales-close cap allowed accepts inside the service day, creating unpayable bookings while the #576 fences stand; #792 moves the cap to the sales close) |
 | Free-cancellation deadline at the evening-before cutoff (`booking_cutoff`) | **preserved** | Untouched: `cancellationWindow` keeps reading `booking_cutoff` via the renamed `freeCancellationEndsAt`; FREE/LATE boundary identical |
 | Pay deadline announced as `min(accepted_at + pay-window, service-day open)` | **preserved** | Untouched this slice (`RequestWindows.payDeadline` + `serviceDayOpensAt`); correct because same-day requests cannot exist yet — #792 reworks |
 | Abandoned sweep expires `AWAITING_PAYMENT` at service-day open (`booking_date` arm) | **changed (narrowed)** | Arm now applies only to bookings **born before their own service day** (`created_at < day-open(booking_date)`); a same-day-born booking is governed by the created-arm TTL instead — without this the sweep kills every same-day Instant booking within 5 minutes (R-2) |
@@ -396,11 +401,13 @@ if any styling does surface, load `riviera-tailwind` then (routing-gate re-entry
 > change it records, at every phase boundary and SDLC stage transition. Finalize before merge
 > citing `merged via PR #NN`.
 
-**Stage pointer:** awaiting review gate (run by the plan session) — all 9 phases (0–8) landed
-2026-08-28 on `claude/sdlc-791-implementation-em5lt3`, PR #797, CI green on `100c75e8`
-(`origin/main` unchanged since the branch's base — no merge needed), marked ready for review.
+**Stage pointer:** review gate **ran** 2026-08-28 (plan session; `/code-review` high effort,
+single-pass inline — no subagent fan-out available — + `riviera-review-overlay` fullstack
+banks): 4 findings, all fixed in the review-fix commit (register below). Awaiting: CI + Sonar
+re-check on the fix push, then merge (maintainer).
 
-**Next action:** the plan's author session runs `/code-review` and the review gate.
+**Next action:** confirm CI + SonarCloud green on the review-fix push, then merge and run the
+close-out checklist (`references/pr-gates.md` §3).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -420,7 +427,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | | | |
+| F-1 | review (Blocker) | Request-expiry cap at the on-day sales close let a venue accept an advance request ON the service day → booking born past its pay deadline: mail promises a dead deadline, view withholds the `clientSecret` (advance-born + day open), sweep cancels it within a tick. Fix: cap at `serviceDayOpensAt(D)` (the sales-close term is redundant — every close time is after day-open); AC-5 + parity ledger amended; deviation from issue wording recorded on the PR; #792 moves the cap to the sales close | fixed in review-fix commit |
+| F-2 | review (Major) | `BookingControllerIT` same-day cases derived "today" via `LocalDate.now()` in the JVM default zone → daily 1–2h UTC-evening CI flake window (invariant #6). Fix: Tirane-zoned `today()` helper | fixed in review-fix commit |
+| F-3 | review (Major, docs) | `RequestWindows` Javadoc claimed the accept-deadline cap (sales close) "sits on or before" day-open — false, and exactly F-1's premise. Reworded; generalization audit found the same stale claim in `RequestProperties` and the `ReserveSetService` inline comment — both fixed | fixed in review-fix commit |
+| F-4 | review (Minor) | Temporary same-day-Request gate used the static sweep-form `lastOpenedServiceDay` instead of the per-booking `cutoff.serviceDayHasOpened(date)` — duplicate boundary expression, second clock source. Inlined to the instance call | fixed in review-fix commit |
 
 ---
 
@@ -857,8 +867,9 @@ structure), this plan doc (final execution status).
 | 2026-08-28 | Phase 1 (`SetBookingInfo` gains `salesClose`) | constructors of `SetBookingInfo` (record growth) | `grep -rn "new SetBookingInfo(" platform/src` | 6 (1 main: `JdbcVenueCatalog`; 5 test: `MailDeliveryLookupServiceTest`, `BookingMailFactsServiceTest`, `BookingCreationViewsContractTest`, `ViewBookingServiceTest`, `CreateBookingServiceTest`) | All fixed; also found + fixed 2 `VenueProfileView` constructor sites (`JdbcVenues`, `VenueAdminServiceTest`) growing in the same phase |
 | 2026-08-28 | Phase 2 (`closesAt` renamed `freeCancellationEndsAt`) | callers of `closesAt` (renamed method) | `grep -rn "closesAt(" platform/src` | 4 (2 main: `BookingCutoff` self-call in `isBeforeCutoff`, `ReserveSetService`'s request-deadline cap; 2 Javadoc-only prose mentions: `RequestProperties`, `RequestPropertiesTest`) | All renamed; grep returns zero after |
 | 2026-08-28 | Phase 3 (`isBookable` switches to `salesCloseAt`) | every caller of `isBookable`/`bookingCutoff()` deciding sellability | `grep -rn "isBookable\|bookingCutoff()" platform/src/main` | 2 (`ReserveSetService` — the reserve gate, moved to `set.salesClose()`; `CancellationPolicy` — cancellation-only, correctly stays on `bookingCutoff()`) | No third site found selling off the old fence; also found and fixed one stale pre-existing test (`CreateBookingServiceTest.requestDeadlineCappedAtCutoff`, asserting the retired evening-before cap) — renamed `requestDeadlineUncappedTheMorningBeforeDeparture` and re-derived its expected value under the new rule |
+| 2026-08-28 | Review fix F-1/F-3 (request-expiry cap moves from sales close to day-open) | every site stating or computing the accept-deadline cap (mechanism: derives or documents the bound `ReserveSetService` applies) | `grep -rn "salesCloseAt(" platform/src/main` + `grep -n "sales close" RequestProperties*.java` | 9 (1 computing: `ReserveSetService`; 8 prose: `RequestWindows` Javadoc, `ReserveSetService` inline comment, `RequestProperties` ×3 incl. the boot-guard message, `RequestPropertiesTest` ×3) | All moved to the day-open cap; `salesCloseAt`'s one remaining caller is `BookingCutoff.isBookable` (the reserve gate), as designed |
+| 2026-08-28 | Review fix F-2 (IT "today" derived in the JVM default zone) | every bare `LocalDate.now()` in backend tests whose assertion depends on agreeing with Tirane's civil date | `grep -rn "LocalDate.now()" platform/src/test` | 21 hits: 2 same-day (the flagged `BookingControllerIT` cases — fixed via Tirane `today()`), 19 months-or-years-out or always-past (zone-safe, untouched) | Fixed the 2; no other same-day-sensitive site exists |
 | 2026-08-28 | Phase 6 (`defaultBookingDate` floor moves from tomorrow to today) | every FE site encoding the old floor or the retired sentence | `grep -rn "tomorrow\|evening before" frontend/src frontend/e2e` | 14 hits judged: `clock-icon.spec.ts` (unrelated generic fixture, untouched); `admin-commissions.*` ×4 + `.spec.ts` clause (the commission schedule's own unchanged "reporting from tomorrow" rule — reworded to drop the now-false evening-before justification, kept the unchanged claim); `booking-dialog.ts`/`booking-view.ts` free-cancellation copy ×2 (unchanged, correctly still evening-before) + the new today-branch's own "try … tomorrow" (intentional); `terms-of-service.*` ×3 + `legal-pages.e2e.ts` (cancellation clause kept; the conflated "bookings close … evening before" sentence split into two, since sales-close and free-cancellation are no longer the same boundary) | Fixed: `discovery-flow.e2e.ts`'s stale comments + its full-sentence cutoff-note regex (Phase 7's file, touched early since the audit reached it). Not caught by this grep (no literal match): `daily-view-tab.spec.ts` — see Step 5 note above |
-
 | 2026-08-28 | Phase 4 (day-open fences narrow to advance-born rows) | every consumer of `serviceDayOpen`/`serviceDayHasOpened`/`lastOpenedServiceDay` | `grep -rn "serviceDayOpen\|serviceDayHasOpened\|lastOpenedServiceDay" platform/src/main` | 3 judged (`RespondToRequestService`/`RequestWindows.payDeadline` — safe, same-day requests still gated by Phase 3's temporary gate; `CancellationPolicy.serviceDayOpen()` — correct as-is, same-day=CLOSED is the intended cancellation policy, not narrowed; `NoShowSweepService`/`markPastConfirmedAsNoShow` — safe, `booking_date < :today` strictly-before) | No change needed at any site; also found and fixed `BookingViewIT.reportsPayWindowClosedForAnOpenServiceDay`, whose same-day-born fixture went stale under the new predicate |
 | 2026-08-28 | Phase 8 (`riviera-docs-freshness`: substrate sweep + living-Javadoc sweep over the full slice range) | (a) every "evening before"/"evening-before" mention in `platform/src/main/java`; (b) every `#791` in a Javadoc/TSDoc block, backend + frontend | `grep -rn "evening before\|evening-before" platform/src/main/java`; `git grep -n "#791"` on `platform/src/{main,test}/java` and `frontend/src`+`frontend/e2e`, filtered to `/** */` blocks | (a) 11 hits: `RequestProperties`/`RequestPropertiesTest` (stale — still described the retired `freeCancellationEndsAt` cap, not Phase 3's `salesCloseAt` switch), `BookingCutoff`/`CancellationPolicy`/`RefundPolicy`/`CancellationWindow`/`SetBookingFacts` (correct as-is — the unchanged free-cancellation boundary), `VenueCommissionService` (flagged in Open Questions, not fixed — different module's rationale, out of this slice's AC coverage); (b) 20 Javadoc/TSDoc hits, 0 inline-`//`/test-title hits excluded by design | (a) Fixed `RequestProperties.java` + `RequestPropertiesTest.java` (3 Javadoc mentions + 1 exception-message string each still said "evening-before cutoff"/`freeCancellationEndsAt` — the accept-deadline cap's actual site had moved to `salesCloseAt` in Phase 3 but its Javadoc never followed); also found and fixed `VenueReadController.tomorrowInTirane()` (not a grep hit — found by reading the controller directly per the plan's "no living Javadoc left stale" mandate) — the discovery/map/calendar reads' default date was still tomorrow, contradicting the new today floor; (b) all 20 stripped of `#791` (see File-structure's Phase 8 finding note for the file list) |
 

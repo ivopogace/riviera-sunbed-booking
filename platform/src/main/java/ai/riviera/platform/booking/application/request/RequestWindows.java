@@ -23,8 +23,9 @@ public record RequestWindows(Duration expiryWindow, Duration payWindow) {
 	 * When an accepted request's guest must have paid — the deadline the payment-due mail promises:
 	 * {@code min(acceptedAt + payWindow, serviceDayOpensAt)}. Past the service day's opening a
 	 * payment would buy a stay already underway, so the window closes there however much of it is
-	 * left (invariant #4), the same day-open boundary the accept deadline is capped at (by the
-	 * venue's sales close, which sits on or before it).
+	 * left (invariant #4) — the same day-open boundary the accept deadline itself is capped at, so
+	 * no accept can produce a pay deadline already in the past (the venue's on-day sales close sits
+	 * <em>after</em> day-open; #792 moves both caps into the day together).
 	 *
 	 * <p>It is stated here, beside {@link #acceptedBefore}, because the mail promises a moment the
 	 * abandoned sweep enforces and the two must be the same one. For the raw window the two are exact

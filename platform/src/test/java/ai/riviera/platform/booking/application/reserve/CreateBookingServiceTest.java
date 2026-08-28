@@ -346,19 +346,19 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
-	void requestDeadlineUncappedTheMorningBeforeDeparture() {
-		// #791: D's sales close is the only cap now, far off enough at this hour to leave it uncapped.
+	void requestDeadlineUncappedTwoDaysOut() {
+		// #791: the accept deadline caps at D's open, far enough off at two days out to leave it uncapped.
 		CreateBookingService service = service(
 				set("ONLINE", BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE002");
 
 		BookingOutcome outcome = service.create(
-				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 2), GUEST));
+				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 3), GUEST));
 
 		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
 		assertEquals(Instant.parse("2026-11-02T09:00:00Z"), requested.requestExpiresAt(),
-				"uncapped: now + 24h is well before D's 16:00 Europe/Tirane sales close");
+				"uncapped: now + 24h is well before D's 00:00 Europe/Tirane open");
 	}
 
 	@Test
@@ -520,8 +520,8 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
-	void eveningBeforeRequestSucceedsWithDeadlineCappedAtSalesClose() {
-		// AC-5: 20:00 Tirane the evening before D now succeeds, deadline capped at D's sales close.
+	void eveningBeforeRequestSucceedsWithDeadlineCappedAtServiceDayOpen() {
+		// AC-5: 20:00 Tirane the evening before D now succeeds; the accept deadline caps at D's open.
 		Clock eveningBefore = Clock.fixed(Instant.parse("2026-11-01T19:00:00Z"), ZoneId.of("UTC"));
 		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
@@ -531,8 +531,9 @@ class CreateBookingServiceTest {
 				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 2), GUEST));
 
 		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
-		assertEquals(Instant.parse("2026-11-02T15:00:00Z"), requested.requestExpiresAt(),
-				"deadline capped at D's 16:00 Europe/Tirane sales close, not the evening-before cutoff");
+		assertEquals(Instant.parse("2026-11-01T23:00:00Z"), requested.requestExpiresAt(),
+				"accept deadline capped at D's 00:00 Europe/Tirane open — an accept inside D would be "
+						+ "born past its pay deadline while the #576 fences stand (#792 lifts the cap)");
 	}
 
 	@Test

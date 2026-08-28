@@ -63,6 +63,11 @@ class BookingControllerIT {
 		return LocalDate.now().plusYears(1);
 	}
 
+	/** Today as Tirane's civil date (invariant #6) — the JVM-default zone drifts a day near midnight UTC. */
+	private static LocalDate today() {
+		return LocalDate.now(java.time.ZoneId.of("Europe/Tirane"));
+	}
+
 	/**
 	 * A fresh Instant-Book venue at the given {@code sales_close} boundary value, with one ONLINE
 	 * set — the R-5 boundary-venue trick: a {@code 23:59}/{@code 00:01} venue makes today's
@@ -141,7 +146,7 @@ class BookingControllerIT {
 	void sameDayBookingSucceedsBeforeClose() throws Exception {
 		// AC-4: a venue selling until 23:59 is still open for today (the retired fence would refuse this).
 		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
-						.content(body(onlineSetAtSalesClose("23:59"), LocalDate.now())))
+						.content(body(onlineSetAtSalesClose("23:59"), today())))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.status").value("CONFIRMED"));
 	}
@@ -150,7 +155,7 @@ class BookingControllerIT {
 	void sameDayAfterCloseReturns422() throws Exception {
 		// AC-4: the 00:01 opt-out sells nothing today — reproduces the old no-same-day behavior.
 		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
-						.content(body(onlineSetAtSalesClose("00:01"), LocalDate.now())))
+						.content(body(onlineSetAtSalesClose("00:01"), today())))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("BOOKING_CLOSED"));

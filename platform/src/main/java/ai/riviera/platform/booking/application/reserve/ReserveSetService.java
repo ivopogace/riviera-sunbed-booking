@@ -96,7 +96,7 @@ class ReserveSetService {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.BOOKING_CLOSED);
 		}
 		if (set.bookingMode() == BookingMode.REQUEST
-				&& !command.bookingDate().isAfter(BookingCutoff.lastOpenedServiceDay(clock.instant()))) {
+				&& cutoff.serviceDayHasOpened(command.bookingDate())) {
 			// Temporary gate (#791, removed by #792): the pay-deadline fences still assume no same-day.
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.BOOKING_CLOSED);
 		}
@@ -112,10 +112,10 @@ class ReserveSetService {
 		CustomerId customerId = customers.findOrCreate(command.contact());
 		// Request-to-Book (issue #98): a REQUEST venue's booking starts as a pending request that
 		// holds the claimed (set, date) row but triggers no payment — payment-request-on-accept.
-		// The deadline is capped at the venue's sales close (#791) so an accept can't beat it.
+		// The accept deadline caps at D's open: inside D the pay fences assume no same-day (#792).
 		if (set.bookingMode() == BookingMode.REQUEST) {
 			Instant expiresAt = min(clock.instant().plus(requestWindows.expiryWindow()),
-					cutoff.salesCloseAt(set.salesClose(), command.bookingDate()));
+					cutoff.serviceDayOpensAt(command.bookingDate()));
 			Inserted pending = insertWithUniqueCode(set, customerId, command,
 					b -> bookings.insertPendingRequest(b, expiresAt));
 			return new ReserveOutcome.RequestPending(pending.id(), pending.code(), set, expiresAt);
