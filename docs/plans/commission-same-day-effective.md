@@ -35,9 +35,12 @@ from today) · `riviera-plan-doc` (this template — forced the parity ledger ov
 "tomorrow" surface: enumerated every pin of the old behavior — 2 unit tests, 2 ITs, 1 FE spec pin,
 FE copy in 4 places, 2 substrate docs) · `tdd` (unit test red first: the `Scheduled` expectation
 moves to today, then the service; ITs follow) · `riviera-review-overlay` (review gate — due at
-ready-for-review) · `riviera-docs-freshness` (run at Phase 3 over `origin/main...HEAD`: sweep
-"tomorrow"/"next service date" statements in CONTEXT.md, RESPONSIBILITIES.md §`venue`, and living
-Javadoc/TSDoc) · `riviera-modulith` (change stays inside `venue.application`; `VenueRates` is an
+ready-for-review) · `riviera-docs-freshness` (**ran** at Phase 3 over `origin/main...HEAD` + working tree: rename
+grep for "tomorrow"/`nextServiceDate`/"moves from tomorrow" across the substrate set — zero stale
+present-tense hits after the two substrate patches (RESPONSIBILITIES.md §`venue`, CONTEXT.md
+**Rate schedule**); counting sweep N/A — the slice adds no Nth instance of anything; the
+admin-console design record's "tomorrow"/commission hits are the payout tiles and historical
+narrative, no explainer copy depicted, no divergence pointer needed) · `riviera-modulith` (change stays inside `venue.application`; `VenueRates` is an
 existing `api/` port whose Javadoc is updated, signature untouched — no grant, event, or surface
 change) · `riviera-java-conventions` (§6d governs the Javadoc rewrite: the retired evening-before
 safety argument is decision history — the contract statement stays, the archaeology moves to
@@ -189,10 +192,10 @@ N/A — no contract change (no endpoint, DTO, or wire shape touched).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** implement (phase 3 — docs done, freshness ran clean)
 
-**Next action:** Phase 3 — RESPONSIBILITIES.md §`venue` + CONTEXT.md **Rate schedule**, then the
-docs-freshness sweep, guards, merge-from-main, ready-for-review + gates.
+**Next action:** run the hygiene guards + file-structure check, merge latest `origin/main`, mark
+PR #799 ready for review, then the Review + Sonar gates per `references/pr-gates.md`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
