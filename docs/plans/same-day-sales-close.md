@@ -92,7 +92,10 @@ machinery — the native `min` + clamp shape is kept, compliant with v22's "Sign
 workspace + `search_documentation`: `linkedSignal` and `input.required` — the calendar's
 existing mechanisms the floor change rides — confirmed current v22 APIs; the guide's "do not
 assume globals like `new Date()` in templates" pins that the dialog's today-branch computes in
-class code, never the template) · `playwright-cli` (the two new journeys go in the
+class code, never the template; **post-implementation re-check** against the v22 docs confirmed
+the shipped mechanics — `@if (…; as msg)` control flow, expression-syntax rule honored, NBSP
+copy pattern per #734 F-7, ToS sales/cancellation split correct, e2e conventions per the
+mocked-suite precedents — one mock-fidelity nit deferred to #795, Open Questions) · `playwright-cli` (the two new journeys go in the
 CI-safe mocked suite with `page.route` + `page.clock.setFixedTime` per the
 `availability-calendar.e2e.ts` precedent; suite placement per RV-FE-E2E).
 
@@ -275,6 +278,12 @@ An implement session with a different designated branch records its substitution
 - **Open question (deferred by design, not this slice's):** whether #792 persists the pay
   deadline on the booking row or keeps deriving it — noted here only so the Phase 4 bridge is
   not mistaken for the final shape. — *Owner:* #792 · *Resolves by:* issue #792.
+- **Deferred nit → #795 (post-implementation docs check):** `same-day-booking.e2e.ts`'s
+  `AWAITING_DETAIL` mock carries `beforeCutoff: true` + a full `refundIfCancelledNow` — a state
+  the backend cannot produce for a same-day booking (born past free cancellation). Nothing
+  asserts those fields today, but #795 makes the cancellation-terms fields load-bearing on
+  checkout; its slice must correct this mock rather than inherit the impossible state.
+  — *Owner:* #795 · *Resolves by:* the disclosure slice.
 
 ## Availability & concurrency (invariant #2)
 
