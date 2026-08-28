@@ -34,6 +34,7 @@ const VENUES = [
     amenities: ['SHOWERS', 'BEACH_BAR', 'FREE_PARKING', 'WIFI'],
     distanceToWaterM: 15,
     availability: { free: 18, total: 24 },
+    salesOpen: true,
   },
   {
     id: 2,
@@ -45,6 +46,7 @@ const VENUES = [
     bookingMode: 'REQUEST',
     fromPrice: { minorUnits: 3000, currency: 'EUR' },
     availability: { free: 5, total: 10 },
+    salesOpen: true,
   },
 ];
 
@@ -84,6 +86,7 @@ const VENUE_MAP = {
       availability: 'FREE',
     },
   ],
+  salesOpen: true,
 };
 
 test.beforeEach(async ({ page }) => {
@@ -178,11 +181,16 @@ test('the date chosen on discovery carries into the venue map (#294)', async ({ 
   });
   await dateInput.fill(chosen);
 
+  // A future date is open at every venue (#793): the refetched list carries no closed badge.
+  await expect(page.getByTestId('venue-card')).toHaveCount(2);
+  await expect(page.locator('.sales-closed-chip')).toHaveCount(0);
+
   // Open the first venue → the map opens on the carried date (URL + picker), not today.
   await page.getByTestId('venue-card').first().click();
   await expect(page).toHaveURL(new RegExp(`/venues/1\\?date=${chosen}`));
   // Since #761 the map's date field is the calendar's trigger, not a native input.
   await expect(page.getByTestId('map-date')).toHaveAttribute('data-date', chosen);
+  await expect(page.getByTestId('map-sales-closed')).toHaveCount(0);
   await expectNoSeriousAxeViolations(page, 'venue map (date carried from discovery)');
 });
 

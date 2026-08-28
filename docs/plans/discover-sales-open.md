@@ -293,11 +293,11 @@ initial load and the status role targets the date-change transition.
 
 > Session-recovery anchor. Update in the same commit window as the change it records.
 
-**Stage pointer:** implement — phases 0–3 done (port, projection, badge, map closed
-state; unit + a11y + lint/format green).
+**Stage pointer:** implement — phases 0–4 done (backend port + projection, badge, map
+closed state, mocked e2e journeys; full mocked suite green).
 
-**Next action:** phase 4 — mocked e2e + a11y (`playwright-cli` loaded before the first
-e2e edit).
+**Next action:** phase 5 — RESPONSIBILITIES.md updates, plan-doc close-out, merge latest
+origin/main, CI green, stop for external review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -305,7 +305,7 @@ e2e edit).
 | 1 — catalogue projection (`salesOpen` on both views) | ✅ | "Carry per-venue salesOpen on the tourist catalogue reads (#793)" |
 | 2 — Discover badge + aria | ✅ | "Badge closed-for-today venues on Discover (#793)" |
 | 3 — map closed state + recovery | ✅ | "Show a sales-closed state on the tourist map (#793)" |
-| 4 — mocked e2e + a11y | | |
+| 4 — mocked e2e + a11y | ✅ | "e2e: badge + closed-map journeys for same-day sales close (#793)" |
 | 5 — substrate docs + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -607,7 +607,7 @@ Test `pages/home/home.spec.ts`, `pages/home/home.a11y.spec.ts`
 
 **Files:** Modify `frontend/e2e/same-day-booking.e2e.ts`, `frontend/e2e/discovery-flow.e2e.ts`
 
-- [ ] **Step 1: Write the failing e2e** — in `same-day-booking.e2e.ts`, beside the
+- [x] **Step 1: Write the failing e2e** — in `same-day-booking.e2e.ts`, beside the
   existing `TODAY`/`BEFORE_CLOSE` constants, add
   `const AFTER_CLOSE = new Date('2026-08-30T15:00:00Z');` (= 17:00 `Europe/Tirane`) and:
   - **AC-8:** fixed clock at `AFTER_CLOSE`; `/api/venues` mock with a `salesOpen: false`
@@ -620,20 +620,20 @@ Test `pages/home/home.spec.ts`, `pages/home/home.a11y.spec.ts`
   - In `discovery-flow.e2e.ts`: extend the `VENUES`/`VENUE_MAP` fixtures with
     `salesOpen: true` and pin **no badge on a future date** (AC-2's UI half).
 
-- [ ] **Step 2: Run, verify FAIL** — `npm run test:e2e:a11y -- same-day-booking` → FAIL
+- [x] **Step 2: Run, verify FAIL** — `npm run test:e2e:a11y -- same-day-booking` → FAIL
 
-- [ ] **Step 3: Implementation** — fixtures only (the app code shipped in phases 1–3);
+- [x] **Step 3: Implementation** — fixtures only (the app code shipped in phases 1–3);
   align mock shapes with the widened views.
 
-- [ ] **Step 4: Run, verify PASS** — `npm run test:e2e:a11y` (the CI-safe suite in full).
+- [x] **Step 4: Run, verify PASS** — `npm run test:e2e:a11y` (the CI-safe suite in full).
 
-- [ ] **Step 5: Generalization-audit pass** — population: *e2e fixtures mocking
+- [x] **Step 5: Generalization-audit pass** — population: *e2e fixtures mocking
   `/api/venues` responses* → enumerate `grep -rln "api\\/venues" frontend/e2e` → add
   `salesOpen` where a spec's mock now misses a required field. Append to the log.
 
-- [ ] **Step 6: Commit** — `git commit -m "e2e: badge + closed-map journeys for same-day sales close (#793)"`
+- [x] **Step 6: Commit** — `git commit -m "e2e: badge + closed-map journeys for same-day sales close (#793)"`
 
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -664,6 +664,7 @@ Test `pages/home/home.spec.ts`, `pages/home/home.a11y.spec.ts`
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-28 | phase 4 (e2e fixtures for the widened views) | e2e fixtures mocking `/api/venues` responses | `grep -rln "api\\/venues" frontend/e2e` | 15 files | tourist-surface fixtures asserting the badge/closed state carry `salesOpen` (same-day-booking, discovery-flow); every other mock omits it legitimately — the FE closes only on an explicit `false`, so an omitting mock renders the unchanged open surface (the typed-optional contract); real-backend suite gets the field from the real API |
 | 2026-08-28 | phase 3 (tile sales gate) | renderers of tile bookability | `grep -rn "availability === 'FREE'" frontend/src` | 3 | `venue-map.toTile` gated; `venue-map.freeCount` + operator `console-stats-strip` are free-count displays, not selection — the staff/walk-in surface is deliberately ungated (invariant #4 fences online sales only) |
 | 2026-08-28 | phase 1 (widened `VenueSummaryView`/`VenueMapView`) | call sites constructing the two widened records | `grep -rn "new VenueSummaryView\|new VenueMapView" platform/src` | 2 (both in `JdbcVenueCatalog`) | both pass the verdict; compile sweep clean, no other constructors |
 
