@@ -347,7 +347,7 @@ class CreateBookingServiceTest {
 
 	@Test
 	void requestDeadlineUncappedTwoDaysOut() {
-		// #791: the accept deadline caps at D's open, far enough off at two days out to leave it uncapped.
+		// The accept deadline caps at D's sales close, far enough off two days out to stay uncapped.
 		CreateBookingService service = service(
 				set("ONLINE", BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
@@ -506,17 +506,19 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
-	void sameDayRequestStillClosed() {
-		// AC-5: the temporary gate refuses same-day Request even though the window itself allows it.
+	void sameDayRequestSucceedsBeforeSalesClose() {
+		// AC-5 (#792): the temporary gate is gone — today is requestable until the venue's close.
 		Clock beforeClose = Clock.fixed(Instant.parse("2026-11-01T09:00:00Z"), ZoneId.of("UTC"));
 		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "X", true, beforeClose);
+				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE004", true, beforeClose);
 
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 1), GUEST));
 
-		assertSame(BookingOutcome.Rejected.BOOKING_CLOSED, outcome);
+		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
+		assertEquals(Instant.parse("2026-11-01T15:00:00Z"), requested.requestExpiresAt(),
+				"a same-day request's deadline caps at today's 16:00 sales close, Europe/Tirane (CET)");
 	}
 
 	@Test

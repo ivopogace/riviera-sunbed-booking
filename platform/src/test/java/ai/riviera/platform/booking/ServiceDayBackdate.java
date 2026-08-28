@@ -23,8 +23,9 @@ import org.springframework.jdbc.core.simple.JdbcClient;
  * first.
  *
  * <p>{@code created_at} moves with {@code booking_date}: a real advance booking is
- * created before the date it's for, so an honest fixture backdates both — otherwise the moved row
- * reads as same-day-born to {@link ai.riviera.platform.booking.application.cancel.BookingCutoff#bornBeforeServiceDay}.
+ * created before the date it's for, so an honest fixture backdates both. The mechanism now also
+ * serves the abandoned sweep's day-end arm
+ * ({@link ai.riviera.platform.booking.application.BookingCutoff#lastEndedServiceDay}).
  */
 final class ServiceDayBackdate {
 

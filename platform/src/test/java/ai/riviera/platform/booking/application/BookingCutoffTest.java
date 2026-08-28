@@ -102,16 +102,6 @@ class BookingCutoffTest {
 	}
 
 	@Test
-	void serviceDayHasOpenedOnlyFromMidnight() {
-		assertFalse(at(ZonedDateTime.of(2026, 7, 14, 23, 59, 59, 0, TIRANE))
-				.serviceDayHasOpened(BOOKING_DATE));
-		assertTrue(at(ZonedDateTime.of(2026, 7, 15, 0, 0, 0, 0, TIRANE))
-				.serviceDayHasOpened(BOOKING_DATE));
-		assertTrue(at(ZonedDateTime.of(2026, 7, 16, 9, 0, 0, 0, TIRANE))
-				.serviceDayHasOpened(BOOKING_DATE));
-	}
-
-	@Test
 	void serviceDayEndsAtTheNextTiraneMidnight() {
 		// 2026-07-15T22:00Z is 2026-07-16T00:00 in Tirane (CEST, UTC+2).
 		assertEquals(ZonedDateTime.of(2026, 7, 16, 0, 0, 0, 0, TIRANE).toInstant(),
@@ -141,15 +131,6 @@ class BookingCutoffTest {
 				BookingCutoff.lastEndedServiceDay(ZonedDateTime.of(2026, 7, 15, 23, 59, 0, 0, TIRANE).toInstant()));
 		assertEquals(BOOKING_DATE,
 				BookingCutoff.lastEndedServiceDay(ZonedDateTime.of(2026, 7, 16, 0, 0, 0, 0, TIRANE).toInstant()));
-	}
-
-	@Test
-	void lastOpenedServiceDayIsTheTiraneCivilDate() {
-		BookingCutoff cutoff = at(ZonedDateTime.of(2026, 7, 1, 9, 0, 0, 0, TIRANE));
-		assertEquals(LocalDate.of(2026, 7, 14),
-				cutoff.lastOpenedServiceDay(ZonedDateTime.of(2026, 7, 14, 23, 59, 0, 0, TIRANE).toInstant()));
-		assertEquals(BOOKING_DATE,
-				cutoff.lastOpenedServiceDay(ZonedDateTime.of(2026, 7, 15, 0, 0, 0, 0, TIRANE).toInstant()));
 	}
 
 	@Test

@@ -297,10 +297,10 @@ that stays true).
 **Stage pointer:** `implement` — Phase 0 done; routing gate re-run (`riviera-local-debug`,
 `riviera-modulith`, `riviera-java-conventions`, `tdd` loaded before the first build/edit).
 
-**Next action:** Phase 5 (remove the #791 gate; retire the day-open members). Draft PR
-#800 open, activity subscribed; check each phase push's CI run before the next phase.
-(Phase-1+2 push 30bf39f went hygiene-red — plan-doc File structure omissions — fixed in
-the phase-3 push 3a45da7.)
+**Next action:** Phase 6 (e2e arm — load `playwright-cli` first; docs freshness;
+close-out). Draft PR #800 open, activity subscribed; check each phase push's CI run
+before the next phase. (Phase-1+2 push 30bf39f went hygiene-red — plan-doc File
+structure omissions — fixed in the phase-3 push 3a45da7.)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -309,7 +309,7 @@ the phase-3 push 3a45da7.)
 | 2 — Sweep: day-ended arm | ✅ | Sweep abandoned bookings once the pay deadline has passed (#792) |
 | 3 — View fences on the pay deadline (+ FE copy) | ✅ | Gate the booking view's payment credentials on the pay deadline (#792) |
 | 4 — Response deadline caps at sales close | ✅ | Cap the request response deadline at the sales close (#792) |
-| 5 — Remove the #791 gate; lifecycle + confirm-unfenced pins; retire dead members | | |
+| 5 — Remove the #791 gate; lifecycle + confirm-unfenced pins; retire dead members | ✅ | Open same-day Request-to-Book: remove the temporary gate (#792) |
 | 6 — e2e arm + docs freshness + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -559,25 +559,25 @@ boolean payWindowClosed = awaitingPayment && !clock.instant().isBefore(payDeadli
 
 **Files:** Modify `ReserveSetService.java:98–102` (delete gate), `BookingCutoff.java` (delete retired members), `BookingCutoffTest.java`, `ServiceDayBackdate.java` · Create `SameDayRequestLifecycleIT.java` · Test `CreateBookingServiceTest.java`, `JdbcBookingsTransitionIT.java`
 
-- [ ] **Step 1: Failing tests** — `sameDayRequestSucceedsBeforeSalesClose` (replaces
+- [x] **Step 1: Failing tests** — `sameDayRequestSucceedsBeforeSalesClose` (replaces
   `sameDayRequestStillClosed`); `SameDayRequestLifecycleIT` (23:59-close venue: request
   today → accept → stub/webhook pay → `CONFIRMED`);
   `JdbcBookingsTransitionIT.confirmSucceedsAfterThePayDeadlineHasPassed` (backdated
   `accepted_at` + past `booking_date` — confirm still moves the row; AC-6, settled
   posture).
-- [ ] **Step 2: Run red** — the unit test fails on the gate's `BOOKING_CLOSED`.
-- [ ] **Step 3: Implement** — delete the gate block; delete `serviceDayHasOpened`,
+- [x] **Step 2: Run red** — the unit test fails on the gate's `BOOKING_CLOSED`.
+- [x] **Step 3: Implement** — delete the gate block; delete `serviceDayHasOpened`,
   `bornBeforeServiceDay`, `lastOpenedServiceDay` + their unit cases (all callers now gone;
   R-7 inventory); update `ServiceDayBackdate`'s doc (its mechanism now serves the day-end
   arm) and add the `accepted_at` backdater the ITs need.
-- [ ] **Step 4: Run green** — `./gradlew test --tests "*CreateBookingServiceTest*"
+- [x] **Step 4: Run green** — `./gradlew test --tests "*CreateBookingServiceTest*"
   --tests "*SameDayRequestLifecycleIT*" --tests "*JdbcBookingsTransitionIT*"`, then the
   structural net: `./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"`.
-- [ ] **Step 5: Generalization audit** — population: *every `#791`/“temporary gate”/
+- [x] **Step 5: Generalization audit** — population: *every `#791`/“temporary gate”/
   `#792` marker in main+test Java* → `git grep -n "#791\|#792\|temporary gate" platform/src frontend/src frontend/e2e` →
   each hit either dies in this slice or is deliberate history (plan docs).
-- [ ] **Step 6: Commit** — `Open same-day Request-to-Book: remove the temporary gate (#792)`
-- [ ] **Step 7: Update execution status.**
+- [x] **Step 6: Commit** — `Open same-day Request-to-Book: remove the temporary gate (#792)`
+- [x] **Step 7: Update execution status.**
 
 ---
 
@@ -611,6 +611,7 @@ boolean payWindowClosed = awaitingPayment && !clock.instant().isBefore(payDeadli
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-28 | Phase 5 (gate removal) | Every `#791`/`#792`/"temporary gate" marker in main+test code | `git grep -n "#791\|#792\|temporary gate" platform/src frontend/src frontend/e2e` | Gate block + retired members (deleted), `requestDeadlineUncappedTwoDaysOut`'s stale day-open comment (fixed); every other hit is deliberate history (#791 sales-close features that survive) or a live #792 marker | Retired-member callers: none left (`git ls-files` adapter sweep negative-confirmed, R-7) |
 | 2026-08-28 | Phase 4 (accept cap) | Every site stating the accept-cap bound (re-run of #791's F-1/F-3 audit population) | `grep -rn "serviceDayOpensAt\|day-open\|day open" platform/src/main/java platform/src/test/java` | `ReserveSetService` cap + comment (fixed), `RequestProperties`(+Test) prose (fixed), `BookingCutoff` class/`serviceDayOpensAt` Javadoc still claiming the pay-fence role (fixed this phase); the rest is cancel-window prose, day-end delegation, or the phase-5 retirees | No accept-cap statement names day-open any more |
 | 2026-08-28 | Phase 3 (view fence) | Every consumer of `payWindowClosed` (backend DTOs, FE model/template/specs/e2e fixtures) | `git grep -n "payWindowClosed"` | `BookingDetail` Javadoc + `booking.model.ts` TSDoc (day-open prose — rewritten), `request-to-book.e2e.ts` test title (day-open premise — renamed), panel copy + spec (fixed this phase); remaining hits are premise-free fixtures/pass-throughs | All day-open premises on the wire flag removed |
 | 2026-08-28 | Phase 2 (sweep day-end arm) | Every SQL predicate mirroring `bornBeforeServiceDay` / Tirane midnight in a driven adapter | `git ls-files '*adapter/out/*.java' \| xargs grep -ln "AT TIME ZONE"` | none (the sweep's deleted `AT TIME ZONE` arm was the only mirror) | Confirmed sole mirror; the surviving day-end arm binds a Java-computed `LocalDate` |

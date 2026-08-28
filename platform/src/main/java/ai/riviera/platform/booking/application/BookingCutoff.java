@@ -74,11 +74,6 @@ public class BookingCutoff {
 		return bookingDate.atStartOfDay(TIRANE).toInstant();
 	}
 
-	/** Whether {@code bookingDate}'s stay is already underway — the per-booking pay-window bound. */
-	public boolean serviceDayHasOpened(LocalDate bookingDate) {
-		return !clock.instant().isBefore(serviceDayOpensAt(bookingDate));
-	}
-
 	/** The instant service day {@code bookingDate} ends: the next day's Tirane midnight. */
 	public java.time.Instant serviceDayEndsAt(LocalDate bookingDate) {
 		return serviceDayOpensAt(bookingDate.plusDays(1));
@@ -91,33 +86,16 @@ public class BookingCutoff {
 
 	/**
 	 * The most recent service day already ended at {@code now} — the set-based form of
-	 * {@link #serviceDayHasEnded}, for a sweep that selects rows by {@code booking_date}. Static for
-	 * the same one-reading contract as {@link #lastOpenedServiceDay}.
-	 */
-	public static LocalDate lastEndedServiceDay(java.time.Instant now) {
-		return LocalDate.ofInstant(now, TIRANE).minusDays(1);
-	}
-
-	/**
-	 * Whether the booking was created before its own service day opened (the #576 fences apply
-	 * only to these; a same-day-born booking is governed by its TTL until #792).
-	 */
-	public boolean bornBeforeServiceDay(java.time.Instant createdAt, LocalDate bookingDate) {
-		return createdAt.isBefore(serviceDayOpensAt(bookingDate));
-	}
-
-	/**
-	 * The latest booking date whose service day has already begun at {@code now} — the set-based form
-	 * of {@link #serviceDayHasOpened}, for a sweep that selects rows by {@code booking_date} rather
-	 * than asking per booking.
+	 * {@link #serviceDayHasEnded}, for a sweep that selects rows by {@code booking_date} rather than
+	 * asking per booking.
 	 *
 	 * <p><strong>Static, and that is the contract:</strong> it is a pure projection of the caller's
 	 * own instant onto the Tirane civil day, so a sweep bounds every arm of one run against one
 	 * reading. An instance method here would read as clock-backed like its neighbour and silently is
 	 * not.
 	 */
-	public static LocalDate lastOpenedServiceDay(java.time.Instant now) {
-		return LocalDate.ofInstant(now, TIRANE);
+	public static LocalDate lastEndedServiceDay(java.time.Instant now) {
+		return LocalDate.ofInstant(now, TIRANE).minusDays(1);
 	}
 
 	/**

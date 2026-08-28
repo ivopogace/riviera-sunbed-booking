@@ -35,8 +35,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest(properties = "booking.no-show.enabled=false")
 class JdbcBookingsTransitionIT {
 
-	/** Earlier than every fixture date here, so the service-day arm selects nothing. */
-	private static final LocalDate NO_SERVICE_DAY_OPEN = LocalDate.of(2020, 1, 1);
+	/** Earlier than every fixture date here, so the day-end arm selects nothing. */
+	private static final LocalDate NO_ENDED_SERVICE_DAY = LocalDate.of(2020, 1, 1);
 
 	@Autowired
 	Bookings bookings;
@@ -142,7 +142,7 @@ class JdbcBookingsTransitionIT {
 		// (1h into its 12h window, though 25h old by creation) is NOT.
 		var withinPayWindow = bookings.findExpirableAwaitingPayment(
 				now.minus(java.time.Duration.ofMinutes(15)), now.minus(java.time.Duration.ofHours(12)),
-				NO_SERVICE_DAY_OPEN);
+				NO_ENDED_SERVICE_DAY);
 		var ids = withinPayWindow.stream().map(BookingId::value).toList();
 		Assertions.assertTrue(ids.contains(instantBooking),
 				"a stale instant booking expires on the creation clock");
@@ -152,20 +152,43 @@ class JdbcBookingsTransitionIT {
 		// Once the pay-window has elapsed (window shrunk to 30m), the accepted request IS selected.
 		var pastPayWindow = bookings.findExpirableAwaitingPayment(
 				now.minus(Duration.ofMinutes(15)), now.minus(Duration.ofMinutes(30)),
-				NO_SERVICE_DAY_OPEN);
+				NO_ENDED_SERVICE_DAY);
 		var lateIds = pastPayWindow.stream().map(BookingId::value).toList();
 		Assertions.assertTrue(lateIds.contains(acceptedRequest),
 				"an accepted request past its pay-window is expirable");
 
-		// Third arm alone: both windows widened past every row, so only the date bound can select.
-		var serviceDayOpen = bookings.findExpirableAwaitingPayment(
+		// Day-end arm alone: both windows widened past every row, so only the date bound can select.
+		var dayEnded = bookings.findExpirableAwaitingPayment(
 				now.minus(Duration.ofHours(24)), now.minus(Duration.ofHours(12)),
 				LocalDate.of(2027, 9, 1));
-		var openIds = serviceDayOpen.stream().map(BookingId::value).toList();
-		Assertions.assertTrue(openIds.contains(acceptedRequest),
-				"a booking for a day already underway is expirable whatever its window says");
-		Assertions.assertFalse(openIds.contains(instantBooking),
+		var endedIds = dayEnded.stream().map(BookingId::value).toList();
+		Assertions.assertTrue(endedIds.contains(acceptedRequest),
+				"a booking whose service day has ended is expirable whatever its window says");
+		Assertions.assertFalse(endedIds.contains(instantBooking),
 				"one dated a day further out is not — the arm is a date bound, not a blanket");
+	}
+
+	/**
+	 * The confirm path is deliberately unfenced: a payment in flight past the pay deadline still
+	 * lands, because the webhook is the source of truth for payment state (invariant #8). Settled
+	 * posture ({@code RESPONSIBILITIES.md} §{@code booking}) — do not "fix" this by fencing the
+	 * transition; this test exists so such a fence reddens instead of shipping quietly.
+	 */
+	@Test
+	void confirmSucceedsAfterThePayDeadlineHasPassed() {
+		SetRef set = onlineSet();
+		LocalDate yesterday = LocalDate.now(java.time.ZoneId.of("Europe/Tirane")).minusDays(1);
+		long booking = insertAwaiting("GUARDLATE01", set, yesterday);
+		jdbc.sql("UPDATE booking SET created_at = :created, accepted_at = :accepted WHERE id = :id")
+				.param("created", Timestamp.from(Instant.now().minus(Duration.ofHours(30))))
+				.param("accepted", Timestamp.from(Instant.now().minus(Duration.ofHours(20))))
+				.param("id", booking).update();
+
+		Optional<ConfirmedBooking> confirmed = bookings.confirmFromPayment(booking, Instant.now());
+
+		assertTrue(confirmed.isPresent(),
+				"confirm still transitions a booking whose pay deadline (day end + window) has passed");
+		assertEquals("CONFIRMED", statusOf(booking));
 	}
 
 }

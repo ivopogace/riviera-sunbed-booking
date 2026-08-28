@@ -95,11 +95,6 @@ class ReserveSetService {
 		if (!cutoff.isBookable(set.salesClose(), command.bookingDate())) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.BOOKING_CLOSED);
 		}
-		if (set.bookingMode() == BookingMode.REQUEST
-				&& cutoff.serviceDayHasOpened(command.bookingDate())) {
-			// Temporary gate (#791, removed by #792): the pay-deadline fences still assume no same-day.
-			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.BOOKING_CLOSED);
-		}
 
 		ClaimOutcome claim = availability.claim(command.setId(), command.bookingDate());
 		switch (claim) {
