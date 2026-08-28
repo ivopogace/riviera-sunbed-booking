@@ -538,8 +538,8 @@ describe('DailyViewTab (#175)', () => {
   it('reloads and clears optimistic overrides when the date changes', () => {
     render();
     const date = byId('daily-date') as HTMLInputElement;
-    // Tomorrow in Tirane: never equals the preloaded today, so the reload actually fires.
-    date.value = defaultBookingDate(new Date());
+    // A week out: never equals the preloaded today (#791), so the reload actually fires.
+    date.value = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
     date.dispatchEvent(new Event('change'));
     fixture.detectChanges();
     // A fresh load cycle for the new date; all four sets free that day.

@@ -1,13 +1,16 @@
 package ai.riviera.platform.booking.application.view;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.booking.application.Bookings;
+import ai.riviera.platform.booking.application.cancel.BookingCutoff;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.CancellationWindow;
@@ -52,13 +55,15 @@ class ViewBookingServiceTest {
 
 	private final Bookings bookings = mock(Bookings.class);
 	private final CancellationPolicy cancellationPolicy = mock(CancellationPolicy.class);
+	private final BookingCutoff cutoff =
+			new BookingCutoff(Clock.fixed(Instant.parse("2026-08-01T09:00:00Z"), ZoneId.of("UTC")));
 	private final PaymentCredentialsLookup checkout = mock(PaymentCredentialsLookup.class);
 	private final ConfirmationMailDelivery mailDelivery = mock(ConfirmationMailDelivery.class);
 	private final CollectionGuarantee collection = mock(CollectionGuarantee.class);
 	private final RefundStatusLookup refundStatus = mock(RefundStatusLookup.class);
 
 	private final ViewBookingService service = new ViewBookingService(bookings, cancellationPolicy,
-			checkout, mailDelivery, collection, refundStatus);
+			cutoff, checkout, mailDelivery, collection, refundStatus);
 
 	@Test
 	void flagsWithheldConfirmationMailForSuppressedGuest() {
@@ -174,6 +179,32 @@ class ViewBookingServiceTest {
 	@Test
 	void withholdsPaymentCredentialsOnceTheServiceDayHasOpened() {
 		givenBooking(BookingStatus.AWAITING_PAYMENT, CancellationWindow.CLOSED, 0L);
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNull();
+		assertThat(detail.payWindowClosed()).isTrue();
+		verifyNoInteractions(checkout);
+	}
+
+	@Test
+	void sameDayBornBookingKeepsItsCredentials() {
+		// AC-7 (#791): a same-day-born booking is governed by its TTL, not the day-open fence.
+		Instant sameDayBirth = Instant.parse("2026-08-01T10:00:00Z"); // after DATE's own day-open
+		givenBooking(BookingStatus.AWAITING_PAYMENT, CancellationWindow.CLOSED, 0L, sameDayBirth);
+		when(checkout.pendingCredentials(any()))
+				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNotNull();
+		assertThat(detail.payWindowClosed()).isFalse();
+	}
+
+	@Test
+	void advanceBornBookingLosesCredentialsAtDayOpen() {
+		// AC-7: unchanged #576 behavior for a booking created before its own service day opened.
+		givenBooking(BookingStatus.AWAITING_PAYMENT, CancellationWindow.CLOSED, 0L, Instant.EPOCH);
 
 		BookingDetail detail = service.byCode(CODE).orElseThrow();
 
@@ -305,22 +336,29 @@ class ViewBookingServiceTest {
 	}
 
 	private void givenBooking(BookingStatus status) {
-		givenBooking(status, CancellationWindow.FREE, 4500L);
+		givenBooking(status, CancellationWindow.FREE, 4500L, Instant.EPOCH);
 	}
 
 	/** A cancelled row: the refund decision's three fields move together, or none of them is set. */
 	private void givenCancelledBooking(RefundReason reason, Long refundMinor) {
 		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.CANCELLED, VENUE, SET, GUEST,
-				DATE, 4500L, "EUR", refundMinor == null ? null : Instant.EPOCH, refundMinor, null, reason);
+				DATE, 4500L, "EUR", refundMinor == null ? null : Instant.EPOCH, refundMinor, null, reason,
+				Instant.EPOCH);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
 		when(cancellationPolicy.quote(record))
 				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), CancellationWindow.CLOSED, 0L));
 	}
 
 	private void givenBooking(BookingStatus status, CancellationWindow window, long refundMinor) {
+		givenBooking(status, window, refundMinor, Instant.EPOCH);
+	}
+
+	/** {@code createdAt} is advance-born ({@code Instant.EPOCH}) by default; AC-7 tests override it. */
+	private void givenBooking(BookingStatus status, CancellationWindow window, long refundMinor,
+			Instant createdAt) {
 		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, status, VENUE, SET, GUEST, DATE,
-				4500L, "EUR", null, null, null, null);
+				4500L, "EUR", null, null, null, null, createdAt);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
 		when(cancellationPolicy.quote(record))
 				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), window, refundMinor));
@@ -328,6 +366,7 @@ class ViewBookingServiceTest {
 
 	private static SetBookingInfo setInfo() {
 		return new SetBookingInfo(SET, VENUE, "Miramar", "Front row", 2, "ONLINE",
-				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), BookingMode.INSTANT);
+				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
+				BookingMode.INSTANT);
 	}
 }

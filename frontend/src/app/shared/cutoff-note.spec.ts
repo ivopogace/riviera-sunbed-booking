@@ -4,7 +4,8 @@ import { TestBed } from '@angular/core/testing';
 import { CutoffNote } from './cutoff-note';
 
 /** The sentence, re-typed on purpose: this is the one place a copy edit has to come through. */
-const SENTENCE = 'Book any day from tomorrow — each day’s sales close at 6 PM the evening before.';
+const SENTENCE =
+  'Book any day, today included — each day’s online sales close at the venue’s chosen time that day (4 PM at most venues).';
 
 @Component({
   imports: [CutoffNote],
@@ -31,9 +32,9 @@ describe('CutoffNote', () => {
     expect(text).toBe(SENTENCE);
   });
 
-  it('keeps the no-break space in "6 PM" that the normalized compare cannot see', () => {
+  it('keeps the no-break space in "4 PM" that the normalized compare cannot see', () => {
     // Without it the note may wrap between the digit and the meridiem (#734 F-7).
-    expect(noteOf(BareHost).textContent).toContain('6 PM');
+    expect(noteOf(BareHost).textContent).toContain('4 PM');
   });
 
   it('binds to the caller’s native <p>, so paragraph semantics survive the move', () => {

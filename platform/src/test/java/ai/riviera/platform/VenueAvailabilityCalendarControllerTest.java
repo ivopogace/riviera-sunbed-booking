@@ -49,8 +49,8 @@ class VenueAvailabilityCalendarControllerTest {
 
 	/**
 	 * Late enough on 1 November that UTC and {@code Europe/Tirane} disagree about the date: Tirane
-	 * (UTC+1 in November) has already rolled over to the 2nd, so "tomorrow" is the 3rd — a UTC
-	 * reading would say the 2nd and fail (invariant #6).
+	 * (UTC+1 in November) has already rolled over to the 2nd, so "today" is the 2nd — a UTC
+	 * reading would say the 1st and fail (invariant #6).
 	 */
 	private static final Instant LATE_ON_THE_FIRST = Instant.parse("2026-11-01T23:30:00Z");
 
@@ -89,14 +89,14 @@ class VenueAvailabilityCalendarControllerTest {
 	}
 
 	@Test
-	void defaultsToTomorrowInTiraneForTwoWeeks() throws Exception {
-		LocalDate tomorrow = LocalDate.of(2026, 11, 3);
-		when(catalog.availabilityBetween(new VenueId(VENUE), tomorrow, tomorrow.plusDays(13)))
+	void defaultsToTodayInTiraneForTwoWeeks() throws Exception {
+		LocalDate today = LocalDate.of(2026, 11, 2);
+		when(catalog.availabilityBetween(new VenueId(VENUE), today, today.plusDays(13)))
 				.thenReturn(Optional.of(List.of()));
 
 		mvc.perform(get(CALENDAR, VENUE)).andExpect(status().isOk());
 
-		verify(catalog).availabilityBetween(new VenueId(VENUE), tomorrow, tomorrow.plusDays(13));
+		verify(catalog).availabilityBetween(new VenueId(VENUE), today, today.plusDays(13));
 	}
 
 	@Test

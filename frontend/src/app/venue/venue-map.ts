@@ -151,7 +151,7 @@ export class VenueMap {
     () => !this.failed() && !this.notFound() && !this.venueView(),
   );
 
-  /** Earliest bookable day (tomorrow, Europe/Tirane): today is not offered (invariant #4, display).
+  /** Earliest bookable day — today, Europe/Tirane (sales close on the day itself).
    *  Re-derived from a fresh clock on every route reset — the instance outlives
    *  navigations, so a construction-time floor would go stale past Tirane midnight. */
   protected readonly minDate = signal(defaultBookingDate(new Date()));

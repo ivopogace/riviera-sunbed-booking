@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Miramar venue: shape, integer-minor-unit money (invariant #5), 404 for an unknown id, public
  * access, and — the date-aware behaviour — that each set's availability is sourced
  * per-{@code (set, date)} from {@code set_availability} (invariant #2), with the date
- * defaulting to tomorrow in {@code Europe/Tirane}. Testcontainers Postgres, so it runs in CI;
+ * defaulting to today in {@code Europe/Tirane}. Testcontainers Postgres, so it runs in CI;
  * skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
@@ -130,12 +130,12 @@ class VenueReadControllerIT {
 	}
 
 	@Test
-	void defaultsToTomorrowTirane() throws Exception {
-		// AC-3: no date param ⇒ tomorrow in Europe/Tirane. Book a set for that exact date and
+	void defaultsToTodayTirane() throws Exception {
+		// AC-3: no date param ⇒ today in Europe/Tirane. Book a set for that exact date and
 		// confirm the param-less read renders it TAKEN.
 		long set = anyOnlineSet();
-		LocalDate tomorrow = LocalDate.now(TIRANE).plusDays(1);
-		book(set, tomorrow);
+		LocalDate today = LocalDate.now(TIRANE);
+		book(set, today);
 
 		mvc.perform(get("/api/venues/{id}", MIRAMAR))
 				.andExpect(status().isOk())

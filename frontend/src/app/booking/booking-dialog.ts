@@ -13,6 +13,7 @@ import { LegalConsent } from './legal-consent';
 import { email, FormField, form, required, submit } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
 
+import { todayBookingDate } from '../shared/booking-date';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { FieldGlass } from '../shared/field-glass';
 import { trapFocusWithin } from '../shared/focus-trap';
@@ -472,7 +473,9 @@ export class BookingDialog implements OnInit {
       case 'SET_NOT_BOOKABLE_ONLINE':
         return 'This set is not available to book online.';
       case 'BOOKING_CLOSED':
-        return 'Booking has closed for that date. Try a later day.';
+        return this.date() === todayBookingDate(new Date())
+          ? 'Online sales for today have closed at this venue. Try another venue or tomorrow.'
+          : 'Booking has closed for that date. Try a later day.';
       case 'NO_SUCH_SET':
         return 'That set could not be found.';
       case 'INVALID_REQUEST':

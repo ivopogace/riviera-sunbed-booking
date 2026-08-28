@@ -133,6 +133,31 @@ class VenueAdminControllerIT {
 	}
 
 	@Test
+	void createDefaultsSalesCloseAndProfileReturnsIt() throws Exception {
+		// AC-2 (#791): the body carries no sales-close field, yet the profile reads back 16:00.
+		long venue = createVenue("Default Sales Close Club");
+
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.salesClose").value("16:00"));
+	}
+
+	@Test
+	void patchCannotReachSalesClose() throws Exception {
+		// AC-2 (#791): the full-replace PATCH body has no such field; sales_close stays unchanged.
+		long venue = createVenue("Sales Close Read Only Club");
+
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(profileBody("Still Mine", "INSTANT", "18:00", "[]", "null", 0)))
+				.andExpect(status().isNoContent());
+
+		mvc.perform(get("/api/venues/{v}/profile", venue).cookie(operatorSession))
+				.andExpect(jsonPath("$.salesClose").value("16:00")) // unchanged
+				.andExpect(jsonPath("$.name").value("Still Mine"));  // editable field did change
+	}
+
+	@Test
 	void createRejectsClientSuppliedCommission() throws Exception {
 		// AC-2 (#692): a client-supplied rate — even 0 — is refused loudly; nothing is created.
 		mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())

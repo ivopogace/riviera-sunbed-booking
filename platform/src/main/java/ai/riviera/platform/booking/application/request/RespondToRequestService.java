@@ -36,7 +36,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * ordering as {@code CreateBookingService}, risk R-3). From {@code AWAITING_PAYMENT} onward the
  * flow is byte-for-byte the Instant spine: verified webhook → confirm → {@code BookingConfirmed}.
  * The transition's {@code request_expires_at > now} guard means an accept after the deadline
- * (or after bookings closed — the deadline is capped at the cutoff, invariant #4) matches no row.
+ * (or after bookings closed — the deadline is capped at the venue's sales close, invariant #4)
+ * matches no row.
  *
  * <p><strong>Failure compensation:</strong> a failed (or thrown) PaymentIntent issuance reverts
  * the booking to {@code PENDING_REQUEST} rather than releasing the hold: the venue said yes, so

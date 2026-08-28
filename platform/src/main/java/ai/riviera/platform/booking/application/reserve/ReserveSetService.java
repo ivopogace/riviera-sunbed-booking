@@ -26,7 +26,7 @@ import ai.riviera.platform.venue.api.SetBookingFacts;
 
 /**
  * The committed <em>reserve</em> phase of Instant-Book (issue #52): validate the set (online pool,
- * invariant #3; evening-before cutoff, invariant #4), claim the {@code (set, date)} (the
+ * invariant #3; the venue's on-day sales close, invariant #4), claim the {@code (set, date)} (the
  * double-booking guard, invariant #2), resolve the guest, and insert the {@code AWAITING_PAYMENT}
  * booking — all in <strong>one transaction that commits before any payment call</strong>. Splitting
  * this off from {@link CreateBookingService} is precisely what lets the Stripe PaymentIntent be
@@ -92,7 +92,12 @@ class ReserveSetService {
 		if (!ONLINE_POOL.equals(set.pool())) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NOT_ONLINE_POOL);
 		}
-		if (!cutoff.isBookable(set.bookingCutoff(), command.bookingDate())) {
+		if (!cutoff.isBookable(set.salesClose(), command.bookingDate())) {
+			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.BOOKING_CLOSED);
+		}
+		if (set.bookingMode() == BookingMode.REQUEST
+				&& cutoff.serviceDayHasOpened(command.bookingDate())) {
+			// Temporary gate (#791, removed by #792): the pay-deadline fences still assume no same-day.
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.BOOKING_CLOSED);
 		}
 
@@ -107,11 +112,10 @@ class ReserveSetService {
 		CustomerId customerId = customers.findOrCreate(command.contact());
 		// Request-to-Book (issue #98): a REQUEST venue's booking starts as a pending request that
 		// holds the claimed (set, date) row but triggers no payment — payment-request-on-accept.
-		// The deadline is capped at the same evening-before cutoff isBookable just enforced, so an
-		// accept (guarded by request_expires_at > now) can never happen after bookings close (#4).
+		// The accept deadline caps at D's open: inside D the pay fences assume no same-day (#792).
 		if (set.bookingMode() == BookingMode.REQUEST) {
 			Instant expiresAt = min(clock.instant().plus(requestWindows.expiryWindow()),
-					cutoff.closesAt(set.bookingCutoff(), command.bookingDate()));
+					cutoff.serviceDayOpensAt(command.bookingDate()));
 			Inserted pending = insertWithUniqueCode(set, customerId, command,
 					b -> bookings.insertPendingRequest(b, expiresAt));
 			return new ReserveOutcome.RequestPending(pending.id(), pending.code(), set, expiresAt);

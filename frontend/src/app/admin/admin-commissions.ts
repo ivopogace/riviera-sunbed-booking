@@ -44,7 +44,7 @@ import { TouchTarget } from '../shared/touch-target';
  * in the ledger at the old rate while the takings show the new one. The copy says that rather than
  * promising exactness. Separately, the <em>live</em> rate moves immediately — which is why the list
  * shows the new number at once — while <em>reporting</em> moves from tomorrow (`Europe/Tirane`),
- * because invariant #4 closed today's bookings the evening before and they have already accrued.
+ * the commission schedule's own effective-dating rule (`VenueCommissionService`, unchanged here).
  * These are not in tension: the live rate is what the next accrual will use.
  *
  * <p>The change is armed in place before it is sent — the console's recurring confirm-in-place shape,
@@ -177,8 +177,8 @@ import { TouchTarget } from '../shared/touch-target';
 
                 <p class="mt-3 text-[13px] text-riv-card-ink-soft">
                   Saving moves the live rate straight away, so this list shows the new number at
-                  once. Reporting follows from tomorrow: today's bookings closed last evening and
-                  have already accrued at {{ percent(venue.commissionBps) }}.
+                  once. Reporting follows from tomorrow: today's takings still report at
+                  {{ percent(venue.commissionBps) }}.
                 </p>
 
                 <div class="mt-3 flex flex-wrap items-center gap-2">
@@ -266,9 +266,8 @@ import { TouchTarget } from '../shared/touch-target';
       <section>
         <h3 class="text-[14px] font-semibold text-riv-card-ink">Reporting moves from tomorrow</h3>
         <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft">
-          Bookings for a day close the evening before, so today's have already accrued at the old
-          rate. Tomorrow (Europe/Tirane) is the first service date the operator's takings report at
-          the new one.
+          Today's date keeps reporting at the rate already in force for it. Tomorrow (Europe/Tirane)
+          is the first service date the operator's takings report at the new one.
         </p>
       </section>
 

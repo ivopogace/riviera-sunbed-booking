@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Verifies the discovery list API ({@code GET /api/venues?beach=&region=&date=}, issue #61):
  * filtering by beach/region, the rating-then-name sort, the per-{@code (set, date)} free/total
  * count sourced from {@code set_availability} (invariant #2), the "from" price in integer minor
- * units (invariant #5), the tomorrow-Europe/Tirane date default (invariant #6), empty results,
+ * units (invariant #5), the today-Europe/Tirane date default (invariant #6), empty results,
  * and public access. Testcontainers Postgres (runs in CI; skipped without Docker).
  *
  * <p>Fixtures are isolated under a marker {@code region} ({@link #IT_REGION}) and torn down in
@@ -201,10 +201,10 @@ class VenueListControllerIT {
 	}
 
 	@Test
-	void defaultsToTomorrowTirane() throws Exception {
-		// AC-5: no date param ⇒ counts for tomorrow in Europe/Tirane.
-		LocalDate tomorrow = LocalDate.now(TIRANE).plusDays(1);
-		book(firstSetOf(aurora), tomorrow);
+	void defaultsToTodayTirane() throws Exception {
+		// AC-5: no date param ⇒ counts for today in Europe/Tirane.
+		LocalDate today = LocalDate.now(TIRANE);
+		book(firstSetOf(aurora), today);
 
 		mvc.perform(get("/api/venues").param("beach", BEACH_DHERMI))
 				.andExpect(status().isOk())

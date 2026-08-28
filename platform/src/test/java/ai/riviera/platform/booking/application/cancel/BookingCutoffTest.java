@@ -15,15 +15,18 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Verifies the evening-before cutoff arithmetic (issue #6, AC-5 / invariants #4, #6): a date
- * is bookable until its cutoff time the day before, computed in {@code Europe/Tirane} from a
- * fixed UTC clock — never the JVM default zone. Pure unit test (real {@link BookingCutoff} +
- * {@code Clock.fixed}).
+ * Verifies the day's three boundaries (invariant #4, #6): a date is bookable until its venue's
+ * sales close on the day itself; free cancellation ends the evening before; the service
+ * day opens at midnight. All arithmetic computed in {@code Europe/Tirane} from a fixed UTC clock
+ * — never the JVM default zone. Pure unit test (real {@link BookingCutoff} + {@code Clock.fixed}).
  */
 class BookingCutoffTest {
 
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 	private static final LocalTime CUTOFF = LocalTime.of(18, 0);
+	private static final LocalTime SALES_CLOSE_1600 = LocalTime.of(16, 0);
+	private static final LocalTime SALES_CLOSE_0001 = LocalTime.of(0, 1);
+	private static final LocalTime SALES_CLOSE_2359 = LocalTime.of(23, 59);
 	private static final LocalDate BOOKING_DATE = LocalDate.of(2026, 7, 15);
 
 	private BookingCutoff at(ZonedDateTime tiraneNow) {
@@ -31,30 +34,42 @@ class BookingCutoffTest {
 	}
 
 	@Test
-	void bookableJustBeforeCutoff() {
-		// 17:59 Tirane on the evening before — one minute before close.
-		BookingCutoff cutoff = at(ZonedDateTime.of(2026, 7, 14, 17, 59, 0, 0, TIRANE));
-		assertTrue(cutoff.isBookable(CUTOFF, BOOKING_DATE));
+	void bookableTheEveningBefore() {
+		// The retired evening-before fence: 20:00 on D-1 is now inside the window (#791).
+		assertTrue(at(ZonedDateTime.of(2026, 7, 14, 20, 0, 0, 0, TIRANE))
+				.isBookable(SALES_CLOSE_1600, BOOKING_DATE));
 	}
 
 	@Test
-	void closedAtCutoff() {
-		// Exactly 18:00 Tirane the evening before — closed (strictly-before rule).
-		BookingCutoff cutoff = at(ZonedDateTime.of(2026, 7, 14, 18, 0, 0, 0, TIRANE));
-		assertFalse(cutoff.isBookable(CUTOFF, BOOKING_DATE));
+	void sameDayBookableUntilSalesClose() {
+		assertTrue(at(ZonedDateTime.of(2026, 7, 15, 15, 59, 0, 0, TIRANE))
+				.isBookable(SALES_CLOSE_1600, BOOKING_DATE));
 	}
 
 	@Test
-	void closedForSameDay() {
-		// Morning of the booking date — long past the evening-before cutoff.
-		BookingCutoff cutoff = at(ZonedDateTime.of(2026, 7, 15, 9, 0, 0, 0, TIRANE));
-		assertFalse(cutoff.isBookable(CUTOFF, BOOKING_DATE));
+	void closedAtSalesClose() {
+		// Strictly-before rule: exactly 16:00 on D itself is closed.
+		assertFalse(at(ZonedDateTime.of(2026, 7, 15, 16, 0, 0, 0, TIRANE))
+				.isBookable(SALES_CLOSE_1600, BOOKING_DATE));
+	}
+
+	@Test
+	void optOutVenueSellsNothingOnTheDay() {
+		// A 00:01 sales close reproduces the old no-same-day behavior.
+		assertFalse(at(ZonedDateTime.of(2026, 7, 15, 0, 1, 0, 0, TIRANE))
+				.isBookable(SALES_CLOSE_0001, BOOKING_DATE));
+	}
+
+	@Test
+	void lateCloseSellsToElevenFiftyNine() {
+		assertTrue(at(ZonedDateTime.of(2026, 7, 15, 23, 58, 0, 0, TIRANE))
+				.isBookable(SALES_CLOSE_2359, BOOKING_DATE));
 	}
 
 	@Test
 	void closedForPastDate() {
 		BookingCutoff cutoff = at(ZonedDateTime.of(2026, 7, 20, 9, 0, 0, 0, TIRANE));
-		assertFalse(cutoff.isBookable(CUTOFF, BOOKING_DATE));
+		assertFalse(cutoff.isBookable(SALES_CLOSE_1600, BOOKING_DATE));
 	}
 
 	@Test
@@ -103,6 +118,27 @@ class BookingCutoffTest {
 				cutoff.lastOpenedServiceDay(ZonedDateTime.of(2026, 7, 14, 23, 59, 0, 0, TIRANE).toInstant()));
 		assertEquals(BOOKING_DATE,
 				cutoff.lastOpenedServiceDay(ZonedDateTime.of(2026, 7, 15, 0, 0, 0, 0, TIRANE).toInstant()));
+	}
+
+	@Test
+	void salesCloseAtIsTheGivenTimeOnTheBookingDateInTirane() {
+		// #791: unlike the evening-before freeCancellationEndsAt, salesCloseAt lands on D itself.
+		BookingCutoff cutoff = at(ZonedDateTime.of(2026, 7, 1, 9, 0, 0, 0, TIRANE));
+		assertEquals(ZonedDateTime.of(2026, 7, 15, 16, 0, 0, 0, TIRANE).toInstant(),
+				cutoff.salesCloseAt(LocalTime.of(16, 0), BOOKING_DATE));
+		assertEquals(ZonedDateTime.of(2026, 7, 15, 0, 1, 0, 0, TIRANE).toInstant(),
+				cutoff.salesCloseAt(LocalTime.of(0, 1), BOOKING_DATE));
+		assertEquals(ZonedDateTime.of(2026, 7, 15, 23, 59, 0, 0, TIRANE).toInstant(),
+				cutoff.salesCloseAt(LocalTime.of(23, 59), BOOKING_DATE));
+	}
+
+	@Test
+	void salesCloseAtHandlesTheDstShoulder() {
+		// Tirane's DST-shoulder date (2026-10-25); 16:00 sits well outside the fold hour (R-4).
+		BookingCutoff cutoff = at(ZonedDateTime.of(2026, 7, 1, 9, 0, 0, 0, TIRANE));
+		LocalDate dstShoulder = LocalDate.of(2026, 10, 25);
+		assertEquals(ZonedDateTime.of(2026, 10, 25, 16, 0, 0, 0, TIRANE).toInstant(),
+				cutoff.salesCloseAt(LocalTime.of(16, 0), dstShoulder));
 	}
 
 	@Test

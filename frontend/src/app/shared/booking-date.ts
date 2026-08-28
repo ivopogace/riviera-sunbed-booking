@@ -1,17 +1,16 @@
 /**
- * The default booking date the beach map and booking dialog open on: **tomorrow in
- * Europe/Tirane** (invariant #6), as an ISO `YYYY-MM-DD` string. The server is authoritative for
- * the real cutoff (invariant #4); this is a display default only.
+ * The default booking date the beach map and booking dialog open on: **today in
+ * Europe/Tirane** (invariant #6) — sales for a day now close on the day itself, server
+ * authoritative (invariant #4); this is a display default only.
  *
  * Computed from the given `now` so it is pure and unit-testable (no ambient `new Date()` — the
  * caller injects the clock). Tirane's civil "today" is derived via `Intl` with an explicit time
- * zone, then advanced one day — never via `toISOString()`, which is UTC and can roll the day for
- * late-evening users.
+ * zone — never via `toISOString()`, which is UTC and can roll the day for late-evening users.
  */
 const TIRANE = 'Europe/Tirane';
 
 export function defaultBookingDate(now: Date): string {
-  return addOneDay(todayBookingDate(now));
+  return todayBookingDate(now);
 }
 
 /**
@@ -74,11 +73,6 @@ export function formatCivilDate(isoDate: string): string {
     month: 'short',
     year: 'numeric',
   }).format(parseIsoDate(isoDate));
-}
-
-/** Add one calendar day to an ISO `YYYY-MM-DD` string, returning the same format. */
-function addOneDay(isoDate: string): string {
-  return addDays(isoDate, 1);
 }
 
 /**

@@ -23,9 +23,9 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  * instant the venue accepted it.
  *
  * <p><strong>Why {@code expiryWindow} has a floor but no ceiling — and why that is pinned here.</strong>
- * {@code ReserveSetService} caps the deadline at the evening-before cutoff
- * ({@code min(clock.instant().plus(expiryWindow), cutoff.closesAt(...))}, invariant #4), so a long
- * window cannot reach the domain: it degrades to "expires at the cutoff", which is the safe direction.
+ * {@code ReserveSetService} caps the deadline at the booked day's opening
+ * ({@code min(clock.instant().plus(expiryWindow), cutoff.serviceDayOpensAt(...))}, invariant #4),
+ * so a long window cannot reach the domain: it degrades to "expires when the day opens", the safe direction.
  * A ceiling there would bound a value the use site already bounds. {@link
  * #aLongExpiryWindowIsAcceptedBecauseTheCutoffCapsIt} exists so that a later edit adding one for
  * symmetry reddens instead of passing quietly. {@code payWindow} has no such cap — it is subtracted
@@ -107,8 +107,8 @@ class RequestPropertiesTest {
 	void aLongExpiryWindowIsAcceptedBecauseTheCutoffCapsIt() {
 		runner.withPropertyValues("booking.request.expiry-window=P30D")
 				.run(context -> assertThat(context.getBean(RequestProperties.class).expiryWindow())
-						.as("ReserveSetService caps the deadline at the evening-before cutoff, so a long "
-								+ "window degrades to 'expires at the cutoff' — the safe direction")
+						.as("ReserveSetService caps the deadline at the booked day's opening, so a long "
+								+ "window degrades to 'expires when the day opens' — the safe direction")
 						.isEqualTo(Duration.ofDays(30)));
 	}
 

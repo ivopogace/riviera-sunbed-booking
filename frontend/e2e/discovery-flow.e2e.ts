@@ -168,7 +168,7 @@ test('the date chosen on discovery carries into the venue map (#294)', async ({ 
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Find your spot on the Riviera' })).toBeVisible();
 
-  // Pick a date a month past the picker floor — clearly NOT the map's own default (tomorrow), so
+  // Pick a date a month past the picker floor — clearly NOT the map's own default (today), so
   // seeing it on the map proves the carry rather than the map's fallback. Clock-free (derived in-page).
   const dateInput = page.getByTestId('filter-date');
   const chosen = await dateInput.evaluate((el: HTMLInputElement) => {
@@ -178,7 +178,7 @@ test('the date chosen on discovery carries into the venue map (#294)', async ({ 
   });
   await dateInput.fill(chosen);
 
-  // Open the first venue → the map opens on the carried date (URL + picker), not tomorrow.
+  // Open the first venue → the map opens on the carried date (URL + picker), not today.
   await page.getByTestId('venue-card').first().click();
   await expect(page).toHaveURL(new RegExp(`/venues/1\\?date=${chosen}`));
   // Since #761 the map's date field is the calendar's trigger, not a native input.
@@ -234,7 +234,7 @@ test('discovery load-failure panel recovers when Retry is pressed (#149)', async
   await expect(panel.getByRole('heading', { name: /couldn.t load the beaches/ })).toBeVisible();
   // The cutoff explainer sits under the filter bar in every state, including this one.
   await expect(page.getByTestId('cutoff-note')).toContainText(
-    /Book any day from tomorrow[\s\S]*each day.s sales close at 6\s+PM the evening before\./,
+    /Book any day, today included[\s\S]*each day.s online sales close at the venue.s chosen time that day \(4\s+PM at most venues\)\./,
   );
   await expectNoSeriousAxeViolations(page, 'discovery load-failure panel');
 

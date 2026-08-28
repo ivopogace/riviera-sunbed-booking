@@ -34,10 +34,11 @@ import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
  * is the operator-only per-set state read.
  *
  * <p>The optional {@code date} query param selects the day whose availability the map reflects.
- * When omitted it defaults to <strong>tomorrow in {@code Europe/Tirane}</strong> (invariant #6) —
- * the next bookable day under the evening-before cutoff — computed from the injected UTC
- * {@link Clock}, never the JVM default zone. The booking cutoff (invariant #4) remains enforced
- * server-side at booking time; this default is a display convenience, not a booking guarantee.
+ * When omitted it defaults to <strong>today in {@code Europe/Tirane}</strong> (invariant #6) — the
+ * earliest day a booking can still land on, now that a venue's sales window can run to the day
+ * itself — computed from the injected UTC {@link Clock}, never the JVM default zone. The venue's
+ * sales close (invariant #4) remains enforced server-side at booking time; this default is a
+ * display convenience, not a booking guarantee.
  */
 @RestController
 @RequestMapping("/api/venues")
@@ -63,21 +64,21 @@ class VenueReadController {
 	 * Discovery list: the venues matching the optional {@code beach}/{@code region}
 	 * filters, as summaries with each venue's free/total set count for {@code date}. Always 200 with
 	 * a JSON array (empty when nothing matches) — a filter that hits no venue is not a 404. {@code date}
-	 * defaults to tomorrow in {@code Europe/Tirane} like the map read above.
+	 * defaults to today in {@code Europe/Tirane} like the map read above.
 	 */
 	@GetMapping
 	List<VenueSummaryView> listVenues(
 			@RequestParam(required = false) String beach,
 			@RequestParam(required = false) String region,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-		LocalDate effectiveDate = date != null ? date : tomorrowInTirane();
+		LocalDate effectiveDate = date != null ? date : todayInTirane();
 		return catalog.listVenues(VenueFilter.of(beach, region), effectiveDate);
 	}
 
 	@GetMapping("/{venueId}")
 	ResponseEntity<VenueMapView> getVenue(@PathVariable long venueId,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-		LocalDate effectiveDate = date != null ? date : tomorrowInTirane();
+		LocalDate effectiveDate = date != null ? date : todayInTirane();
 		return catalog.findVenueMap(new VenueId(venueId), effectiveDate)
 				.map(ResponseEntity::ok)
 				.orElseGet(() -> ResponseEntity.notFound().build());
@@ -85,19 +86,20 @@ class VenueReadController {
 
 	/**
 	 * Per-day free/total set counts across {@code [from, to]} — the calendar behind date choice.
-	 * Both bounds are optional: {@code from} defaults to tomorrow in {@code Europe/Tirane} like the
+	 * Both bounds are optional: {@code from} defaults to today in {@code Europe/Tirane} like the
 	 * reads above, {@code to} to a fortnight from {@code from}. A window that is inverted or wider
 	 * than {@link #MAX_WINDOW_DAYS} days is rejected {@code 400} before the catalogue is asked.
 	 *
 	 * <p>The counts are a snapshot, not a hold, and past days are answered like any other: this
-	 * reports availability, not bookability. The cutoff (invariant #4) stays enforced at booking time.
+	 * reports availability, not bookability. The venue's sales close (invariant #4) stays enforced
+	 * at booking time.
 	 */
 	@GetMapping("/{venueId}/availability-calendar")
 	ResponseEntity<List<DailyAvailabilityView>> availabilityCalendar(
 			@PathVariable long venueId,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-		LocalDate start = from != null ? from : tomorrowInTirane();
+		LocalDate start = from != null ? from : todayInTirane();
 		LocalDate end = to != null ? to : start.plusDays(DEFAULT_WINDOW_DAYS - 1L);
 		if (end.isBefore(start)) {
 			throw new InvalidApiRequestException("availability-calendar: 'to' precedes 'from'");
@@ -111,7 +113,7 @@ class VenueReadController {
 				.orElseGet(() -> ResponseEntity.notFound().build());
 	}
 
-	private LocalDate tomorrowInTirane() {
-		return LocalDate.ofInstant(clock.instant(), TIRANE).plusDays(1);
+	private LocalDate todayInTirane() {
+		return LocalDate.ofInstant(clock.instant(), TIRANE);
 	}
 }

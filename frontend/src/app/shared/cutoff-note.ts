@@ -27,7 +27,8 @@ import { ClockIcon } from './clock-icon';
   },
   template: `<app-clock-icon />
     <span
-      >Book any day from tomorrow — each day’s sales close at 6&nbsp;PM the evening before.</span
+      >Book any day, today included — each day’s online sales close at the venue’s chosen time that
+      day (4&nbsp;PM at most venues).</span
     >`,
 })
 export class CutoffNote {}

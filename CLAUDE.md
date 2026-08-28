@@ -97,7 +97,7 @@ it** — that file holds the per-module contracts, settled rules, and history.
 
 | Module | Owns | Aggregate root(s) |
 |---|---|---|
-| `venue` | venue profiles, beach map/layout, set positions, pool assignment, pricing, booking mode (Instant/Request), amenities, venue photos + platform-admin photo moderation (ADR-0008, ADR-0013), the effective-dated commission-rate schedule | `Venue`, `BeachMap` |
+| `venue` | venue profiles, beach map/layout, set positions, pool assignment, pricing, booking mode (Instant/Request), amenities, the per-venue sales-close setting, venue photos + platform-admin photo moderation (ADR-0008, ADR-0013), the effective-dated commission-rate schedule | `Venue`, `BeachMap` |
 | `availability` | the per-`(set, date)` source-of-truth state (free / booked-online / staff-marked); the only writer of that table | `SetAvailability` |
 | `booking` | bookings, booking codes, the full lifecycle (incl. guest withdraw, staff check-in, the no-show sweep), request accept/decline + expiry sweep, cancellation-policy enforcement, driving the post-commit cancellation refund via `payment.api.RefundPort` | `Booking` |
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `Payment` |
@@ -147,15 +147,19 @@ by number — the numbering is stable; never renumber.
    never double-sell a set.
 3. **Online and walk-in pools are separate.** Each set carries a pool flag; an
    online booking can only target an online-pool set.
-4. **No same-day booking (v1).** Sales for a day close the evening before
-   (default 18:00 `Europe/Tirane`, configurable) — also the cancellation cutoff.
-   The point of sale is fenced **again** at the service day's opening
-   (00:00 `Europe/Tirane`): the pay deadline is `min(accepted_at + pay-window,
-   service-day open)`, the abandoned sweep expires bookings whose service day
-   has opened, and the code-gated view issues no payment credentials past it.
-   The confirm path is deliberately NOT fenced — a payment in flight at
-   midnight still confirms; read `RESPONSIBILITIES.md` §`booking` before
-   treating a late confirm as a bug.
+4. **Sales close is venue-controlled, on the day itself.** A date D's online sales
+   window runs until the venue's `sales_close` wall-clock time on D — a per-venue
+   setting fixed at one of three values (`00:01` opts the venue out of same-day
+   sales, `16:00` the default, or `23:59`), `Europe/Tirane`. Cancellation keeps its
+   own, separate evening-before boundary (default 18:00 `Europe/Tirane`,
+   configurable) — the two are no longer the same fence. The point of sale is
+   fenced **again** at the service day's opening (00:00 `Europe/Tirane`): the pay
+   deadline is `min(accepted_at + pay-window, service-day open)`, the abandoned
+   sweep expires an advance-born `AWAITING_PAYMENT` booking whose service day has
+   opened (a same-day-born one relies on the sweep's TTL instead), and the
+   code-gated view issues no payment credentials past it. The confirm path is
+   deliberately NOT fenced — a payment in flight at midnight still confirms; read
+   `RESPONSIBILITIES.md` §`booking` before treating a late confirm as a bug.
 5. **Money is integer minor units, never floating point.** `long`/`int` cents
    with an explicit ISO currency code; exact-integer commission/payout
    arithmetic; rounding rules written down at any division. v1 collection

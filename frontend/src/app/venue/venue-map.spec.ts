@@ -19,7 +19,7 @@ import { environment } from '../../environments/environment';
 import { uniformDays } from '../../testing/calendar-days';
 import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
 import { formatBookingDate } from '../shared/booking-date-label';
-import { defaultBookingDate, formatCivilDate, todayBookingDate } from '../shared/booking-date';
+import { addDays, defaultBookingDate, formatCivilDate } from '../shared/booking-date';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueMap } from './venue-map';
 
@@ -933,11 +933,11 @@ describe('VenueMap', () => {
     expect(note.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
     // Class pin (jsdom computes no Tailwind): the map keeps the bare header-glass ink.
     expect(note.classList.contains('text-riv-ink-faint')).toBe(true);
-    // The floor the note explains, as the picker now expresses it: tomorrow is offered, today is not.
+    // The floor the note explains, as the picker now expresses it: today is offered, yesterday is not.
     await openPicker();
     const floor = defaultBookingDate(new Date());
     expect(calendarDay(floor).getAttribute('aria-disabled')).toBeNull();
-    expect(calendarDay(todayBookingDate(new Date())).getAttribute('aria-disabled')).toBe('true');
+    expect(calendarDay(addDays(floor, -1)).getAttribute('aria-disabled')).toBe('true');
   });
 
   it('paints the date field with the themed near-opaque field tokens (#675)', async () => {
@@ -1188,7 +1188,7 @@ describe('VenueMap', () => {
     expect(navigate).toHaveBeenCalledWith(['/booking/pay']);
   });
 
-  it('requests the venue for tomorrow in Europe/Tirane by default', () => {
+  it('requests the venue for today in Europe/Tirane by default', () => {
     const req = venueRequest();
     expect(req.request.params.get('date')).toBe(defaultBookingDate(new Date()));
     req.flush(miramar());
@@ -1198,9 +1198,7 @@ describe('VenueMap', () => {
     flushVenue();
     await fixture.whenStable();
 
-    // A date guaranteed to differ from the component's default (tomorrow) on ANY calendar day —
-    // a hardcoded date that happens to equal "tomorrow" fires no change event (the 2026-07-14
-    // flake). Derived like the component derives its own default, a week out.
+    // A date guaranteed to differ from the default (today) on any calendar day (the 2026-07-14 flake).
     const chosen = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
     await openPicker();
     pickDay(chosen);
@@ -1296,7 +1294,7 @@ describe('VenueMap', () => {
     try {
       params$.next(convertToParamMap({ id: '2' }));
       await fixture.whenStable();
-      // The reset must clamp to the CURRENT tomorrow, not the construction-time floor.
+      // The reset must clamp to the CURRENT today, not the construction-time floor.
       const req = venueRequest(2);
       expect(req.request.params.get('date')).toBe(defaultBookingDate(new Date()));
       req.flush({ ...miramar(), id: 2 });
@@ -1362,8 +1360,7 @@ describe('VenueMap', () => {
     flushVenue();
     await fixture.whenStable();
 
-    // Derived a week out, never hardcoded — a date equal to the component's default (tomorrow)
-    // fires no change event and no re-fetch (the 2026-07-14 flake class).
+    // Derived a week out, never hardcoded — a date equal to the default (today) fires no change.
     const chosen = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
     await openPicker();
     pickDay(chosen);
@@ -1383,7 +1380,7 @@ describe('VenueMap', () => {
 /**
  * The venue map seeds its date from the `?date=` query param the discovery page carries when a
  * venue is opened, so the tourist's chosen date persists across the hop. The param is
- * validated (well-formed ISO calendar date) and clamped to the map's floor (tomorrow, invariant #4);
+ * validated (well-formed ISO calendar date) and clamped to the map's floor (today, invariant #4);
  * an absent or malformed value falls back to the default. Each case needs its own ActivatedRoute, so
  * this block configures TestBed per test rather than sharing the suite's beforeEach.
  */
@@ -1445,7 +1442,7 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
     req.flush(miramar());
   });
 
-  it('ignores a malformed ?date= param, falling back to tomorrow', async () => {
+  it('ignores a malformed ?date= param, falling back to today', async () => {
     await setup({ date: 'not-a-date' });
     const req = venueReq();
     expect(req.request.params.get('date')).toBe(defaultBookingDate(new Date()));

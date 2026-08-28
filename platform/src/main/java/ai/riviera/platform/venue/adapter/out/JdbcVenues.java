@@ -437,7 +437,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 		// currency. Two reads inside the caller's read-only tx — the venue row, then its amenity set
 		// (catalogue-ordered) — mirroring findVenueMap's shape. Ownership is asserted by the caller.
 		Optional<ProfileRow> venue = jdbc.sql("""
-				SELECT name, beach, region, description, booking_mode, booking_cutoff,
+				SELECT name, beach, region, description, booking_mode, booking_cutoff, sales_close,
 				       commission_bps, payout_currency, distance_to_water_m, version
 				FROM venue
 				WHERE id = :id
@@ -448,6 +448,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 						rs.getString(COL_DESCRIPTION),
 						BookingMode.valueOf(rs.getString("booking_mode")),
 						rs.getObject("booking_cutoff", LocalTime.class),
+						rs.getObject("sales_close", LocalTime.class),
 						rs.getInt("commission_bps"), rs.getString("payout_currency"),
 						rs.getObject("distance_to_water_m", Integer.class),
 						rs.getLong("version")))
@@ -463,7 +464,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 				.sorted() // enum natural order == canonical catalogue order (as findVenueMap)
 				.toList();
 		return Optional.of(new VenueProfileView(v.name(), v.beach(), v.region(), v.description(),
-				v.bookingMode(), v.bookingCutoff(), v.commissionBps(), v.payoutCurrency(),
+				v.bookingMode(), v.bookingCutoff(), v.salesClose(), v.commissionBps(), v.payoutCurrency(),
 				amenities, v.distanceToWaterM(), v.version(), slotPhotos(venueId)));
 	}
 
@@ -494,8 +495,8 @@ class JdbcVenues implements Venues, CommissionRateStore {
 
 	/** The venue row backing a {@link VenueProfileView}, before its amenity set is folded in. */
 	private record ProfileRow(String name, String beach, String region, String description,
-			BookingMode bookingMode, LocalTime bookingCutoff, int commissionBps, String payoutCurrency,
-			Integer distanceToWaterM, long version) {
+			BookingMode bookingMode, LocalTime bookingCutoff, LocalTime salesClose, int commissionBps,
+			String payoutCurrency, Integer distanceToWaterM, long version) {
 	}
 
 	private static Map<String, Object> setParams(SetCommand c) {

@@ -63,6 +63,40 @@ class BookingControllerIT {
 		return LocalDate.now().plusYears(1);
 	}
 
+	/** Today as Tirane's civil date (invariant #6) — the JVM-default zone drifts a day near midnight UTC. */
+	private static LocalDate today() {
+		return LocalDate.now(java.time.ZoneId.of("Europe/Tirane"));
+	}
+
+	/**
+	 * A fresh Instant-Book venue at the given {@code sales_close} boundary value, with one ONLINE
+	 * set — the R-5 boundary-venue trick: a {@code 23:59}/{@code 00:01} venue makes today's
+	 * bookability deterministic without a fixed-clock Spring context, residual risk only within a
+	 * minute of Tirane midnight.
+	 */
+	private long onlineSetAtSalesClose(String salesClose) {
+		long venue = jdbc.sql("""
+				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency, sales_close)
+				VALUES (:name, 'Boundary Beach', 'Boundary Region', 'INSTANT', 1500, 'EUR', TIME '%s')
+				RETURNING id
+				""".formatted(salesClose))
+				.param("name", "Boundary Club " + salesClose)
+				.query(Long.class).single();
+		long operator = jdbc.sql("INSERT INTO operator (username, status) "
+						+ "VALUES ('boundary-op-' || :v, 'ACTIVE') RETURNING id")
+				.param("v", venue).query(Long.class).single();
+		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
+				.param("v", venue).param("o", operator).update();
+		return jdbc.sql("""
+				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
+				                          price_currency, grid_x, grid_y)
+				VALUES (:venue, 'A', 1, 'STANDARD', 'ONLINE', 4500, 'EUR', 1, 1)
+				RETURNING id
+				""")
+				.param("venue", venue)
+				.query(Long.class).single();
+	}
+
 	@Test
 	void createsConfirmedBooking() throws Exception {
 		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
@@ -103,6 +137,25 @@ class BookingControllerIT {
 		// Yesterday — the evening-before cutoff has long passed (invariant #4).
 		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
 						.content(body(onlineSet(), LocalDate.now().minusDays(1))))
+				.andExpect(status().isUnprocessableEntity())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("BOOKING_CLOSED"));
+	}
+
+	@Test
+	void sameDayBookingSucceedsBeforeClose() throws Exception {
+		// AC-4: a venue selling until 23:59 is still open for today (the retired fence would refuse this).
+		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+						.content(body(onlineSetAtSalesClose("23:59"), today())))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.status").value("CONFIRMED"));
+	}
+
+	@Test
+	void sameDayAfterCloseReturns422() throws Exception {
+		// AC-4: the 00:01 opt-out sells nothing today — reproduces the old no-same-day behavior.
+		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+						.content(body(onlineSetAtSalesClose("00:01"), today())))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("BOOKING_CLOSED"));

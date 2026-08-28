@@ -188,9 +188,10 @@ class BookingViewIT {
 
 	/**
 	 * A self-contained venue offering a 50% late-cancel refund, its one online set, and a
-	 * {@code CONFIRMED} booking on {@code date}. Isolated from the seed venue so other ITs'
-	 * assumptions hold, and its {@code 00:00} cutoff keeps the window classification independent of
-	 * the wall-clock hour the suite happens to run at.
+	 * {@code CONFIRMED} booking on {@code date}, honestly advance-born ({@code created_at} the
+	 * day before {@code date}'s own Tirane midnight, matching a real advance booking). Isolated from
+	 * the seed venue so other ITs' assumptions hold, and its {@code 00:00} cutoff keeps the window
+	 * classification independent of the wall-clock hour the suite happens to run at.
 	 */
 	private void seedLateCancelBooking(String code, String email, LocalDate date) {
 		long venueId = jdbc.sql("""
@@ -209,13 +210,16 @@ class BookingViewIT {
 		long customerId = jdbc.sql("INSERT INTO customer (email, full_name, phone) "
 						+ "VALUES (:email, 'Partial Guest', '+355600') RETURNING id")
 				.param("email", email).query(Long.class).single();
+		java.time.Instant createdAt = date.atStartOfDay(ZoneId.of("Europe/Tirane")).toInstant()
+				.minus(java.time.Duration.ofDays(1));
 		jdbc.sql("""
 				INSERT INTO booking (code, venue_id, set_id, customer_id, booking_date,
-				                     amount_minor, amount_currency, status, confirmed_at)
-				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', 'CONFIRMED', NOW())
+				                     amount_minor, amount_currency, status, confirmed_at, created_at)
+				VALUES (:code, :venue, :set, :cust, :date, 4500, 'EUR', 'CONFIRMED', NOW(), :createdAt)
 				""")
 				.param("code", code).param("venue", venueId).param("set", setId)
-				.param("cust", customerId).param("date", date).update();
+				.param("cust", customerId).param("date", date)
+				.param("createdAt", java.sql.Timestamp.from(createdAt)).update();
 	}
 
 	@Test

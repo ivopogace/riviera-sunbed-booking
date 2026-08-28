@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking.application.view;
 
+import ai.riviera.platform.booking.application.cancel.BookingCutoff;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 
 import java.util.Optional;
@@ -24,18 +25,20 @@ class ViewBookingService implements ViewBooking {
 
 	private final Bookings bookings;
 	private final CancellationPolicy cancellationPolicy;
+	private final BookingCutoff cutoff;
 	private final ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout;
 	private final ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail;
 	private final ai.riviera.platform.payment.api.CollectionGuarantee collection;
 	private final ai.riviera.platform.payment.api.RefundStatusLookup refundStatus;
 
-	ViewBookingService(Bookings bookings, CancellationPolicy cancellationPolicy,
+	ViewBookingService(Bookings bookings, CancellationPolicy cancellationPolicy, BookingCutoff cutoff,
 			ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout,
 			ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail,
 			ai.riviera.platform.payment.api.CollectionGuarantee collection,
 			ai.riviera.platform.payment.api.RefundStatusLookup refundStatus) {
 		this.bookings = bookings;
 		this.cancellationPolicy = cancellationPolicy;
+		this.cutoff = cutoff;
 		this.checkout = checkout;
 		this.confirmationMail = confirmationMail;
 		this.collection = collection;
@@ -84,8 +87,9 @@ class ViewBookingService implements ViewBooking {
 				&& refundStatus.progressOf(new ai.riviera.platform.payment.vocabulary.BookingRef(b.id()))
 						== ai.riviera.platform.payment.vocabulary.RefundProgress.OUTSTANDING;
 		boolean awaitingPayment = b.status() == BookingStatus.AWAITING_PAYMENT;
-		// Off the same quote as cancellable, so one response cannot straddle the midnight boundary.
-		boolean payWindowClosed = awaitingPayment && quote.serviceDayOpen();
+		// Narrowed to advance-born rows (#791) — a same-day-born booking's TTL governs it instead.
+		boolean payWindowClosed = awaitingPayment && quote.serviceDayOpen()
+				&& cutoff.bornBeforeServiceDay(b.createdAt(), b.bookingDate());
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment =
 				awaitingPayment && !payWindowClosed
 						? checkout.pendingCredentials(

@@ -64,6 +64,7 @@ class SetBookingInfoIT {
 		assertEquals("EUR", i.price().currency());
 		assertEquals(4500L, i.price().minorUnits(), "front-row premium price is €45.00 minor units");
 		assertEquals(LocalTime.of(18, 0), i.bookingCutoff(), "Miramar cutoff is 18:00 Europe/Tirane");
+		assertEquals(LocalTime.of(16, 0), i.salesClose(), "Miramar sales close backfilled to 16:00 (#791)");
 		assertEquals("Miramar Beach Club", i.venueName());
 		assertEquals("Front row · Sea view", i.rowLabel());
 	}

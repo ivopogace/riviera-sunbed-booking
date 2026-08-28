@@ -2,6 +2,7 @@ package ai.riviera.platform.booking;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 import com.stripe.StripeClient;
 import com.stripe.model.PaymentIntent;
@@ -72,6 +73,8 @@ class AbandonedBookingSweepIT {
 	 * service-day arm is inert for them and each arm is exercised in isolation.
 	 */
 	private static final LocalDate OPENED_SERVICE_DAY = LocalDate.of(2020, 8, 1);
+
+	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	@Autowired
 	JdbcClient jdbc;
@@ -277,10 +280,13 @@ class AbandonedBookingSweepIT {
 
 	@Test
 	void expiresAnAwaitingPaymentBookingOnceItsServiceDayHasOpened() throws Exception {
+		// R-8 (#791): an honest advance-born fixture, backdated (booking_date + created_at) together.
 		SetRef set = onlineSet();
-		long booking = insertAcceptedRequest("SWEEPAC0007", set, OPENED_SERVICE_DAY, FRESH_AGE_MINUTES);
+		LocalDate future = LocalDate.of(2027, 8, 12);
+		long booking = insertAcceptedRequest("SWEEPAC0007", set, future, FRESH_AGE_MINUTES);
 		insertPayment(booking, "pi_sweep_serviceday");
-		claim(set, OPENED_SERVICE_DAY);
+		claim(set, future);
+		new ServiceDayBackdate(jdbc).moveToPast("SWEEPAC0007", OPENED_SERVICE_DAY);
 
 		// Accepted a minute ago against a 24h TTL: only the service-day arm can reach it.
 		int expired = sweep.sweep(Duration.ofHours(24), WINDOWS);
@@ -293,6 +299,23 @@ class AbandonedBookingSweepIT {
 
 		assertEquals(ClaimOutcome.CLAIMED, availability.claim(new SetId(set.setId()), OPENED_SERVICE_DAY),
 				"the set is back in the pool instead of held unsellable into its own service day");
+	}
+
+	@Test
+	void spareSameDayBornBookingWithinTtl() throws Exception {
+		// AC-6/R-2 (#791): the old date arm would expire this immediately; narrowed, it survives.
+		SetRef set = onlineSet();
+		LocalDate today = LocalDate.now(TIRANE);
+		long booking = insertBooking("SWEEPAC0008", set, today, "AWAITING_PAYMENT", FRESH_AGE_MINUTES);
+		insertPayment(booking, "pi_sweep_sameday");
+		claim(set, today);
+
+		int expired = sweep.sweep(TTL, WINDOWS);
+
+		assertEquals(0, expired, "a same-day-born booking within its TTL is not swept by the date arm");
+		assertEquals("AWAITING_PAYMENT", statusOf(booking), "its claim is kept, not expired mid-checkout");
+		assertEquals(1L, availabilityRows(set, today));
+		verify(cancelableIntent, never()).cancel();
 	}
 
 	@Test
