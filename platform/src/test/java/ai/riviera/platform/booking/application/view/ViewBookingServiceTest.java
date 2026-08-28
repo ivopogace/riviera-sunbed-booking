@@ -232,6 +232,23 @@ class ViewBookingServiceTest {
 	}
 
 	@Test
+	void stillIssuesCredentialsAtTheExactDayEndInstant() {
+		// The capped deadline gets the same strictly-after reading as the raw-window one.
+		Clock atDayEnd = Clock.fixed(Instant.parse("2026-07-31T22:00:00Z"), ZoneId.of("UTC"));
+		ViewBookingService atBoundary = new ViewBookingService(bookings, cancellationPolicy,
+				new BookingCutoff(atDayEnd), checkout, mailDelivery, collection, refundStatus,
+				WINDOWS, atDayEnd);
+		givenAwaitingPayment(LocalDate.of(2026, 7, 31), Instant.EPOCH, null);
+		when(checkout.pendingCredentials(any()))
+				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+
+		BookingDetail detail = atBoundary.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNotNull();
+		assertThat(detail.payWindowClosed()).isFalse();
+	}
+
+	@Test
 	void acceptedAdvanceBookingKeepsCredentialsIntoItsServiceDay() {
 		// Accepted 23:30 the evening before, window to 11:30: the old day-open withhold is wrong now.
 		givenAwaitingPayment(DATE, Instant.EPOCH, Instant.parse("2026-07-31T21:30:00Z"));

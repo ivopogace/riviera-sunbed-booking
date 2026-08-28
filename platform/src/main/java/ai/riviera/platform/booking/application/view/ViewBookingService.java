@@ -99,7 +99,7 @@ class ViewBookingService implements ViewBooking {
 		Instant payDeadline = b.acceptedAt() != null
 				? windows.payDeadline(b.acceptedAt(), cutoff.serviceDayEndsAt(b.bookingDate()))
 				: cutoff.serviceDayEndsAt(b.bookingDate());
-		// Strictly after: the promised instant itself is still payable, exactly as the sweep spares it.
+		// Strictly after: the promised instant is still payable, as the sweep's accepted arm spares it.
 		boolean payWindowClosed = awaitingPayment && clock.instant().isAfter(payDeadline);
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment =
 				awaitingPayment && !payWindowClosed
