@@ -270,8 +270,8 @@ An implement session with a different designated branch records its substitution
   is production policy this session has no mandate to change. The FE copy was reworded to stop
   asserting the now-false mechanism (Phase 6, `admin-commissions.ts`); the backend Javadoc still
   states it (unedited — flagged here rather than silently fixed or silently left).
-  — *Owner:* maintainer · *Resolves by:* a follow-up issue (candidate for #792 or a new one) —
-  raised at merge close-out review.
+  — *Owner:* maintainer · *Resolves by:* **issue #798** (opened at the review close-out; the
+  backend Javadoc correction and the policy decision live there).
 - **Assumption:** the after-close refusal needs no new error code — `BOOKING_CLOSED` + the
   request's date is enough for the FE to render today-specific copy (epic: "the refusal
   contract is unchanged"). — *Owner:* plan · *Resolves by:* AC-4/AC-10 as written.
@@ -410,13 +410,16 @@ if any styling does surface, load `riviera-tailwind` then (routing-gate re-entry
 > change it records, at every phase boundary and SDLC stage transition. Finalize before merge
 > citing `merged via PR #NN`.
 
-**Stage pointer:** review gate **ran** 2026-08-28 (plan session; `/code-review` high effort,
-single-pass inline — no subagent fan-out available — + `riviera-review-overlay` fullstack
-banks): 4 findings, all fixed in the review-fix commit (register below). Awaiting: CI + Sonar
-re-check on the fix push, then merge (maintainer).
+**Stage pointer:** DONE pending merge — review gate **ran** 2026-08-28 (plan session;
+`/code-review` high effort, single-pass inline — no subagent fan-out available — +
+`riviera-review-overlay` fullstack banks; 4 findings, all fixed, register below), CI green on
+the final head, SonarCloud quality gate **passed with the API list verified empty** (0 issues,
+100% new-code coverage, 0 duplication, measures non-empty). Deferred findings propagated:
+issue #798 (commission rate/takings same-day mismatch), the #795 mock-fidelity note (Open
+Questions). Slice merged via **PR #797** (maintainer merges; this is the PR's last commit).
 
-**Next action:** confirm CI + SonarCloud green on the review-fix push, then merge and run the
-close-out checklist (`references/pr-gates.md` §3).
+**Next action:** maintainer merges PR #797; post-merge GitHub-only steps: verify #791 closes,
+tick epic #790's checklist with `PR #797`, confirm the PR subscription ended.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -909,5 +912,5 @@ structure), this plan doc (final execution status).
 - [x] **Frontend** standards met; no `as any`; no new cross-feature edge (RV-FE-8).
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] **Close-out written in THIS PR** — final state cites `merged via PR #NN`. *(not yet — awaiting merge)*
-- [ ] **The review gate ran in full** — invocation ladder per `references/pr-gates.md` §1 + `riviera-review-overlay`. *(deferred to the plan's author session — execution-only session scope)*
+- [x] **Close-out written in THIS PR** — final state cites `merged via PR #797` (this commit).
+- [x] **The review gate ran in full** — `/code-review` at high effort via the pr-gates §1 ladder (single-pass inline, no subagent fan-out available — declared) + `riviera-review-overlay` fullstack banks; 4 findings fixed, re-review of the fix surface clean; Sonar list verified empty via the API.
