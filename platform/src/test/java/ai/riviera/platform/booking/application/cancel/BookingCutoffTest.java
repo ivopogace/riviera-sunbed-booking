@@ -106,6 +106,27 @@ class BookingCutoffTest {
 	}
 
 	@Test
+	void salesCloseAtIsTheGivenTimeOnTheBookingDateInTirane() {
+		// #791: unlike the evening-before freeCancellationEndsAt, salesCloseAt lands on D itself.
+		BookingCutoff cutoff = at(ZonedDateTime.of(2026, 7, 1, 9, 0, 0, 0, TIRANE));
+		assertEquals(ZonedDateTime.of(2026, 7, 15, 16, 0, 0, 0, TIRANE).toInstant(),
+				cutoff.salesCloseAt(LocalTime.of(16, 0), BOOKING_DATE));
+		assertEquals(ZonedDateTime.of(2026, 7, 15, 0, 1, 0, 0, TIRANE).toInstant(),
+				cutoff.salesCloseAt(LocalTime.of(0, 1), BOOKING_DATE));
+		assertEquals(ZonedDateTime.of(2026, 7, 15, 23, 59, 0, 0, TIRANE).toInstant(),
+				cutoff.salesCloseAt(LocalTime.of(23, 59), BOOKING_DATE));
+	}
+
+	@Test
+	void salesCloseAtHandlesTheDstShoulder() {
+		// Tirane's DST-shoulder date (2026-10-25); 16:00 sits well outside the fold hour (R-4).
+		BookingCutoff cutoff = at(ZonedDateTime.of(2026, 7, 1, 9, 0, 0, 0, TIRANE));
+		LocalDate dstShoulder = LocalDate.of(2026, 10, 25);
+		assertEquals(ZonedDateTime.of(2026, 10, 25, 16, 0, 0, 0, TIRANE).toInstant(),
+				cutoff.salesCloseAt(LocalTime.of(16, 0), dstShoulder));
+	}
+
+	@Test
 	void cancellationWindowIgnoresACutoffLaterThanMidnight() {
 		// A 23:30 cutoff leaves FREE and CLOSED 30 minutes apart, not inverted.
 		LocalTime lateCutoff = LocalTime.of(23, 30);

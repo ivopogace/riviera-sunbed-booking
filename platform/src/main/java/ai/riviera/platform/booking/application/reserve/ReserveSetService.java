@@ -111,7 +111,7 @@ class ReserveSetService {
 		// accept (guarded by request_expires_at > now) can never happen after bookings close (#4).
 		if (set.bookingMode() == BookingMode.REQUEST) {
 			Instant expiresAt = min(clock.instant().plus(requestWindows.expiryWindow()),
-					cutoff.closesAt(set.bookingCutoff(), command.bookingDate()));
+					cutoff.freeCancellationEndsAt(set.bookingCutoff(), command.bookingDate()));
 			Inserted pending = insertWithUniqueCode(set, customerId, command,
 					b -> bookings.insertPendingRequest(b, expiresAt));
 			return new ReserveOutcome.RequestPending(pending.id(), pending.code(), set, expiresAt);

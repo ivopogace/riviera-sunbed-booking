@@ -24,8 +24,8 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  *
  * <p><strong>Why {@code expiryWindow} has a floor but no ceiling — and why that is pinned here.</strong>
  * {@code ReserveSetService} caps the deadline at the evening-before cutoff
- * ({@code min(clock.instant().plus(expiryWindow), cutoff.closesAt(...))}, invariant #4), so a long
- * window cannot reach the domain: it degrades to "expires at the cutoff", which is the safe direction.
+ * ({@code min(clock.instant().plus(expiryWindow), cutoff.freeCancellationEndsAt(...))}, invariant #4),
+ * so a long window cannot reach the domain: it degrades to "expires at the cutoff", the safe direction.
  * A ceiling there would bound a value the use site already bounds. {@link
  * #aLongExpiryWindowIsAcceptedBecauseTheCutoffCapsIt} exists so that a later edit adding one for
  * symmetry reddens instead of passing quietly. {@code payWindow} has no such cap — it is subtracted

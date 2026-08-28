@@ -29,9 +29,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * <p><strong>{@code expiryWindow} is bounded below only, deliberately.</strong> {@code ReserveSetService}
  * caps the deadline at the evening-before cutoff — {@code min(clock.instant().plus(expiryWindow),
- * cutoff.closesAt(...))}, invariant #4 — so an over-long window cannot reach the domain: it degrades to
- * "expires at the cutoff", the safe direction. A ceiling would bound a value the use site already
- * bounds. {@code payWindow} is capped the same way at the service day's opening
+ * cutoff.freeCancellationEndsAt(...))}, invariant #4 — so an over-long window cannot reach the domain:
+ * it degrades to "expires at the cutoff", the safe direction. A ceiling would bound a value the use
+ * site already bounds. {@code payWindow} is capped the same way at the service day's opening
  * ({@code RequestWindows#payDeadline}) and is <em>also</em> bounded at both ends
  * ({@link #MAX_PAY_WINDOW}), because the cap only binds for a request accepted the evening before —
  * one accepted days ahead still holds its set for the whole raw window.

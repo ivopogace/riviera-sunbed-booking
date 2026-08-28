@@ -379,7 +379,7 @@ if any styling does surface, load `riviera-tailwind` then (routing-gate re-entry
 |-------|--------|---------|
 | 0 — V44 migration + migration IT | ✅ | Add per-venue sales_close column, default 16:00 (#791) |
 | 1 — venue read surface (`SetBookingInfo`, profile read) | ✅ | Expose venue sales close on profile read and SetBookingFacts (#791) |
-| 2 — the window rule (`BookingCutoff`) | | |
+| 2 — the window rule (`BookingCutoff`) | ✅ | Name the day's three boundaries in BookingCutoff (#791) |
 | 3 — reserve paths (Instant gate, Request gate + cap) | | |
 | 4 — same-day pay-fence bridges (sweep + view) | | |
 | 5 — lifecycle regression pins | | |
@@ -414,6 +414,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/venue/application/VenueProfileView.java` — `+ salesClose`
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueProfileResponse.java` — `+ salesClose "HH:mm"`
 - `platform/src/main/java/ai/riviera/platform/booking/application/cancel/BookingCutoff.java` — `salesCloseAt`, `isBookable` rework, `closesAt` → `freeCancellationEndsAt`, class doc
+- `platform/src/main/java/ai/riviera/platform/booking/adapter/in/RequestProperties.java` — Javadoc-only, renamed method mention
+- `platform/src/test/java/ai/riviera/platform/booking/adapter/in/RequestPropertiesTest.java` — Javadoc-only, renamed method mention
 - `platform/src/main/java/ai/riviera/platform/booking/application/reserve/ReserveSetService.java` — gate on `salesClose`, Request same-day gate, deadline cap
 - `platform/src/main/java/ai/riviera/platform/booking/application/reserve/BookingOutcome.java` — `BOOKING_CLOSED` Javadoc only
 - `platform/src/main/java/ai/riviera/platform/booking/application/refund/AbandonedBookingSweepService.java` — doc only (semantics comment)
@@ -534,11 +536,11 @@ ALTER TABLE venue
 > method still referenced) or ships a wrong, unpinned interim (bookable-until-18:00-on-D).
 > Every commit compiles and means what its tests pin.
 
-- [ ] **Step 1: Failing tests** — the `salesCloseAt` arithmetic cases via the existing
+- [x] **Step 1: Failing tests** — the `salesCloseAt` arithmetic cases via the existing
   `at(ZonedDateTime)` fixed-clock helper: the close instant for each of the three values on a
   fixed D, incl. a DST-shoulder date (R-4); rename-only edits to the cancellation-window tests.
-- [ ] **Step 2: Verify red** — `./gradlew test --tests "*BookingCutoffTest*"`.
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 2: Verify red** — `./gradlew test --tests "*BookingCutoffTest*"`.
+- [x] **Step 3: Minimal implementation**
 
 ```java
 	/** The instant online sales for {@code bookingDate} end: the venue's sales close on the day
@@ -555,12 +557,12 @@ ALTER TABLE venue
 
   Class doc rewritten: the day now has **three** boundaries in one place — sales close (on D),
   free-cancellation end (evening before), service day open (midnight).
-- [ ] **Step 4: Verify green** — `./gradlew test --tests "*BookingCutoffTest*" --tests "*RefundPolicyTest*"`;
+- [x] **Step 4: Verify green** — `./gradlew test --tests "*BookingCutoffTest*" --tests "*RefundPolicyTest*"`;
   `RefundPolicyTest` must pass **unmodified** (AC-8).
-- [ ] **Step 5: Generalization audit** — population: *callers of `closesAt`* (mechanism: the
+- [x] **Step 5: Generalization audit** — population: *callers of `closesAt`* (mechanism: the
   renamed method) → `grep -rn "closesAt(" platform/src` → must return zero after the rename;
   a leftover is a missed site. Log below.
-- [ ] **Step 6–7: Commit + status** — `"Name the day's three boundaries in BookingCutoff (#791)"`.
+- [x] **Step 6–7: Commit + status** — `"Name the day's three boundaries in BookingCutoff (#791)"`.
 
 ## Phase 3 — the window switch + reserve paths
 
@@ -789,6 +791,7 @@ structure), this plan doc (final execution status).
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-28 | Phase 1 (`SetBookingInfo` gains `salesClose`) | constructors of `SetBookingInfo` (record growth) | `grep -rn "new SetBookingInfo(" platform/src` | 6 (1 main: `JdbcVenueCatalog`; 5 test: `MailDeliveryLookupServiceTest`, `BookingMailFactsServiceTest`, `BookingCreationViewsContractTest`, `ViewBookingServiceTest`, `CreateBookingServiceTest`) | All fixed; also found + fixed 2 `VenueProfileView` constructor sites (`JdbcVenues`, `VenueAdminServiceTest`) growing in the same phase |
+| 2026-08-28 | Phase 2 (`closesAt` renamed `freeCancellationEndsAt`) | callers of `closesAt` (renamed method) | `grep -rn "closesAt(" platform/src` | 4 (2 main: `BookingCutoff` self-call in `isBeforeCutoff`, `ReserveSetService`'s request-deadline cap; 2 Javadoc-only prose mentions: `RequestProperties`, `RequestPropertiesTest`) | All renamed; grep returns zero after |
 
 ---
 
