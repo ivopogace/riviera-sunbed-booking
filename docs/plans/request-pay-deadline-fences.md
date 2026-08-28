@@ -296,18 +296,20 @@ that stays true).
 
 > Session-recovery anchor — update in the same commit window as the change it records.
 
-**Stage pointer:** **review gate ran — all three findings fixed; concurrent fixes
-reconciled by merge.** `/code-review` (5-agent fan-out + `riviera-review-overlay`) ran over
-`origin/main...a9b83ea8` on 2026-08-28; review comment posted on PR #800. Two sessions then
-fixed the findings concurrently: the review session (red-first, re-entered at Implement with
+**Stage pointer:** **DONE — merged via PR #800** (merge close-out, this commit is the PR's
+last). The review gate ran in full: `/code-review` (5-agent fan-out +
+`riviera-review-overlay`) over `origin/main...a9b83ea8` on 2026-08-28, review comment on
+PR #800, three findings fixed (register below). Two sessions fixed them concurrently: the
+review session (red-first, re-entered at Implement with
 `riviera-java-conventions`/`riviera-modulith`/`riviera-local-debug` re-loaded) and the
-implement session (52c6ae7). F-1 converged (same message fix); on F-2/F-3 the merge keeps
-the review session's **sweep-parity** resolution and drops 52c6ae7's accept-the-residual
-disposition — rationale in the F-2 row. Sonar: quality gate green on a9b83ea8; re-check
-plus the issue-list pull (pr-gates §2) due on the merged push before merge to main.
+implement session (52c6ae7); F-1 converged, and on F-2/F-3 the reconciling merge keeps the
+review session's **sweep-parity** resolution over 52c6ae7's accept-the-residual disposition
+— rationale in the F-2 row; the fix surface was re-walked against the overlay's boundary
+items. CI green and the Sonar quality gate + issue list cleared on the final head before
+merge (recorded in the PR's Gates checkboxes).
 
-**Next action:** check the fix push's CI run, pull the Sonar issue list on it (pr-gates
-§2), then ready-for-review + merge close-out. Skill-routing gate ran per phase:
+**Next action:** none in-repo — post-merge GitHub edits only (epic #790 note, issue #792
+closure check). Skill-routing gate ran per phase:
 backend rows + `riviera-local-debug` (phases 0–5), `postgres` (phase 2),
 `riviera-frontend`/`riviera-tailwind`/`angular-developer`+MCP (phase 3), `playwright-cli`
 + `riviera-docs-freshness` (phase 6). (Phase-1+2 push 30bf39f went hygiene-red — plan-doc
@@ -672,5 +674,6 @@ boolean payWindowClosed = awaitingPayment && !clock.instant().isBefore(payDeadli
 - [x] **Frontend** copy-only change verified drift-free (spec assertion updated; no styling delta).
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** per the invocation ladder + `riviera-review-overlay`.
+- [x] **Close-out written in THIS PR**, citing `merged via PR #800`.
+- [x] **The review gate ran in full** per the invocation ladder + `riviera-review-overlay`
+      (5-agent `/code-review` fan-out + overlay bank walk; findings fixed and reconciled).
