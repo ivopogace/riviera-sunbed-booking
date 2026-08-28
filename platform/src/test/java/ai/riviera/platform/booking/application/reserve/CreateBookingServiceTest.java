@@ -520,8 +520,8 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
-	void eveningBeforeRequestSucceedsWithDeadlineCappedAtServiceDayOpen() {
-		// AC-5: 20:00 Tirane the evening before D now succeeds; the accept deadline caps at D's open.
+	void requestDeadlineCappedAtSalesClose() {
+		// AC-1 (#792): a near-term request's response deadline caps at D's own sales close.
 		Clock eveningBefore = Clock.fixed(Instant.parse("2026-11-01T19:00:00Z"), ZoneId.of("UTC"));
 		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
@@ -531,9 +531,9 @@ class CreateBookingServiceTest {
 				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 2), GUEST));
 
 		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
-		assertEquals(Instant.parse("2026-11-01T23:00:00Z"), requested.requestExpiresAt(),
-				"accept deadline capped at D's 00:00 Europe/Tirane open — an accept inside D would be "
-						+ "born past its pay deadline while the #576 fences stand (#792 lifts the cap)");
+		assertEquals(Instant.parse("2026-11-02T15:00:00Z"), requested.requestExpiresAt(),
+				"capped at the venue's 16:00 sales close on D, Europe/Tirane (CET) — an accept past "
+						+ "the close would sell a window the venue has already shut");
 	}
 
 	@Test

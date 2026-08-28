@@ -11,13 +11,14 @@ import org.springframework.stereotype.Component;
 import ai.riviera.platform.booking.domain.CancellationWindow;
 
 /**
- * Names the service day's three boundaries (invariant #4), all reasoned in {@code Europe/Tirane}
+ * Names the service day's boundaries (invariant #4), all reasoned in {@code Europe/Tirane}
  * (invariant #6) from an injected UTC {@link Clock} — never the JVM default zone, never
  * {@code LocalDateTime.now()}: {@link #salesCloseAt}, when online sales for a date close, on the
  * day itself (venue-controlled); {@link #freeCancellationEndsAt}, the evening-before
- * boundary that now serves cancellation only; and {@link #serviceDayOpensAt}, midnight opening the
- * stay, past which cancellation is refused outright (invariant #10) and a payment may no longer be
- * taken. Rationale: {@code RESPONSIBILITIES.md} §{@code booking}.
+ * boundary that now serves cancellation only; {@link #serviceDayOpensAt}, midnight opening the
+ * stay, past which cancellation is refused outright (invariant #10); and {@link #serviceDayEndsAt},
+ * the next midnight, the pay deadline's outer bound. Rationale: {@code RESPONSIBILITIES.md}
+ * §{@code booking}.
  *
  * <p>Lives at the {@code application} root, beside {@code Bookings}: the module-wide day-boundary
  * authority, consulted by the reserve, request, view, refund and cancel slices alike. Not exported:
@@ -66,8 +67,8 @@ public class BookingCutoff {
 
 	/**
 	 * The instant the stay becomes consumable — midnight in {@code Europe/Tirane} (invariant #6).
-	 * Public for the guest's pay deadline: past this instant a payment would buy a day already
-	 * underway.
+	 * The cancellation window's outer fence (invariant #10), and the anchor
+	 * {@link #serviceDayEndsAt} delegates to.
 	 */
 	public java.time.Instant serviceDayOpensAt(LocalDate bookingDate) {
 		return bookingDate.atStartOfDay(TIRANE).toInstant();

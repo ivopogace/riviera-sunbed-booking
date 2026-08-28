@@ -297,9 +297,10 @@ that stays true).
 **Stage pointer:** `implement` — Phase 0 done; routing gate re-run (`riviera-local-debug`,
 `riviera-modulith`, `riviera-java-conventions`, `tdd` loaded before the first build/edit).
 
-**Next action:** Phase 4 (response deadline caps at the sales close). Draft PR #800 open,
-activity subscribed; phase-0 push (f175ea5) CI green; check each phase push's CI run
-before the next phase.
+**Next action:** Phase 5 (remove the #791 gate; retire the day-open members). Draft PR
+#800 open, activity subscribed; check each phase push's CI run before the next phase.
+(Phase-1+2 push 30bf39f went hygiene-red — plan-doc File structure omissions — fixed in
+the phase-3 push 3a45da7.)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -307,7 +308,7 @@ before the next phase.
 | 1 — Pay deadline caps at day end (mail ≡ sweep identity) | ✅ | Cap the pay deadline at the end of the service day (#792) |
 | 2 — Sweep: day-ended arm | ✅ | Sweep abandoned bookings once the pay deadline has passed (#792) |
 | 3 — View fences on the pay deadline (+ FE copy) | ✅ | Gate the booking view's payment credentials on the pay deadline (#792) |
-| 4 — Response deadline caps at sales close | | |
+| 4 — Response deadline caps at sales close | ✅ | Cap the request response deadline at the sales close (#792) |
 | 5 — Remove the #791 gate; lifecycle + confirm-unfenced pins; retire dead members | | |
 | 6 — e2e arm + docs freshness + close-out | | |
 
@@ -536,21 +537,21 @@ boolean payWindowClosed = awaitingPayment && !clock.instant().isBefore(payDeadli
 
 **Files:** Modify `ReserveSetService.java:113–122`, `RequestProperties.java` (Javadoc) · Test `CreateBookingServiceTest.java`, `RequestPropertiesTest.java`
 
-- [ ] **Step 1: Failing tests** — adapt
+- [x] **Step 1: Failing tests** — adapt
   `eveningBeforeRequestSucceedsWithDeadlineCappedAtServiceDayOpen` →
   `requestDeadlineCappedAtSalesClose` (deadline = D at the venue's close, not D 00:00);
   keep `requestDeadlineUncappedTwoDaysOut` green.
-- [ ] **Step 2: Run red** — `./gradlew test --tests "*CreateBookingServiceTest*"` → FAIL.
-- [ ] **Step 3: Implement** — the cap becomes
+- [x] **Step 2: Run red** — `./gradlew test --tests "*CreateBookingServiceTest*"` → FAIL.
+- [x] **Step 3: Implement** — the cap becomes
   `cutoff.salesCloseAt(set.salesClose(), command.bookingDate())`; the inline comment about
   the day-open bridge goes; `RequestProperties`/`RequestPropertiesTest` prose follows.
-- [ ] **Step 4: Run green**; regression `./gradlew test --tests "ai.riviera.platform.booking.application.reserve.*"`.
-- [ ] **Step 5: Generalization audit** — population: *every site stating the accept-cap
+- [x] **Step 4: Run green**; regression `./gradlew test --tests "ai.riviera.platform.booking.application.reserve.*"`.
+- [x] **Step 5: Generalization audit** — population: *every site stating the accept-cap
   bound* (the #791 F-1/F-3 audit's own population, re-run) →
   `grep -rn "serviceDayOpensAt\|day-open\|day open" platform/src/main/java platform/src/test/java` →
   every remaining hit must be cancel-window or day-end-delegation prose, none the accept cap.
-- [ ] **Step 6: Commit** — `Cap the request response deadline at the sales close (#792)`
-- [ ] **Step 7: Update execution status.**
+- [x] **Step 6: Commit** — `Cap the request response deadline at the sales close (#792)`
+- [x] **Step 7: Update execution status.**
 
 ---
 
@@ -610,6 +611,7 @@ boolean payWindowClosed = awaitingPayment && !clock.instant().isBefore(payDeadli
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-28 | Phase 4 (accept cap) | Every site stating the accept-cap bound (re-run of #791's F-1/F-3 audit population) | `grep -rn "serviceDayOpensAt\|day-open\|day open" platform/src/main/java platform/src/test/java` | `ReserveSetService` cap + comment (fixed), `RequestProperties`(+Test) prose (fixed), `BookingCutoff` class/`serviceDayOpensAt` Javadoc still claiming the pay-fence role (fixed this phase); the rest is cancel-window prose, day-end delegation, or the phase-5 retirees | No accept-cap statement names day-open any more |
 | 2026-08-28 | Phase 3 (view fence) | Every consumer of `payWindowClosed` (backend DTOs, FE model/template/specs/e2e fixtures) | `git grep -n "payWindowClosed"` | `BookingDetail` Javadoc + `booking.model.ts` TSDoc (day-open prose — rewritten), `request-to-book.e2e.ts` test title (day-open premise — renamed), panel copy + spec (fixed this phase); remaining hits are premise-free fixtures/pass-throughs | All day-open premises on the wire flag removed |
 | 2026-08-28 | Phase 2 (sweep day-end arm) | Every SQL predicate mirroring `bornBeforeServiceDay` / Tirane midnight in a driven adapter | `git ls-files '*adapter/out/*.java' \| xargs grep -ln "AT TIME ZONE"` | none (the sweep's deleted `AT TIME ZONE` arm was the only mirror) | Confirmed sole mirror; the surviving day-end arm binds a Java-computed `LocalDate` |
 | 2026-08-28 | Phase 1 (pay-deadline cap) | Every call site passing a cap into `payDeadline` or documenting it | `grep -rn "payDeadline\|serviceDayOpensAt" platform/src/main/java platform/src/test/java` | `RespondToRequestService` (fixed this phase), `RequestWindows`(+Test) (re-aimed), `ExpireAbandonedBookings` Javadoc (phase 2), `ReserveSetService:118` + `RequestProperties`(+Test) prose (phase 4), `BookingCutoff` cancel/day-end-delegation/`bornBeforeServiceDay` uses (legit or phase 5) | Known-pending sites recorded; none outside planned phases |

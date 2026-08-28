@@ -112,10 +112,10 @@ class ReserveSetService {
 		CustomerId customerId = customers.findOrCreate(command.contact());
 		// Request-to-Book (issue #98): a REQUEST venue's booking starts as a pending request that
 		// holds the claimed (set, date) row but triggers no payment — payment-request-on-accept.
-		// The accept deadline caps at D's open: inside D the pay fences assume no same-day (#792).
+		// The accept deadline caps at D's sales close: past it the venue has shut its own window.
 		if (set.bookingMode() == BookingMode.REQUEST) {
 			Instant expiresAt = min(clock.instant().plus(requestWindows.expiryWindow()),
-					cutoff.serviceDayOpensAt(command.bookingDate()));
+					cutoff.salesCloseAt(set.salesClose(), command.bookingDate()));
 			Inserted pending = insertWithUniqueCode(set, customerId, command,
 					b -> bookings.insertPendingRequest(b, expiresAt));
 			return new ReserveOutcome.RequestPending(pending.id(), pending.code(), set, expiresAt);
