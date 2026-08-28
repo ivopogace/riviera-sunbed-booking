@@ -1,6 +1,6 @@
 package ai.riviera.platform.booking.application.reserve;
 
-import ai.riviera.platform.booking.application.cancel.BookingCutoff;
+import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.request.RequestWindows;
 
 import java.time.Clock;

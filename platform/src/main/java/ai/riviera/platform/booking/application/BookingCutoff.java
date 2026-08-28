@@ -1,4 +1,4 @@
-package ai.riviera.platform.booking.application.cancel;
+package ai.riviera.platform.booking.application;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -19,8 +19,8 @@ import ai.riviera.platform.booking.domain.CancellationWindow;
  * stay, past which cancellation is refused outright (invariant #10) and a payment may no longer be
  * taken. Rationale: {@code RESPONSIBILITIES.md} §{@code booking}.
  *
- * <p>Module-internal but {@code public} so the {@code reserve} slice ({@code ReserveSetService})
- * can consult the same boundaries the {@code cancel} slice enforces. Not exported:
+ * <p>Lives at the {@code application} root, beside {@code Bookings}: the module-wide day-boundary
+ * authority, consulted by the reserve, request, view, refund and cancel slices alike. Not exported:
  * {@code application} is not a {@code @NamedInterface}, so Modulith still keeps it inside the
  * {@code booking} module (invariant #11).
  */
@@ -53,7 +53,7 @@ public class BookingCutoff {
 	 * {@link #freeCancellationEndsAt}, then the start of the service day, past which cancellation is
 	 * refused outright.
 	 */
-	CancellationWindow cancellationWindow(LocalTime cutoff, LocalDate bookingDate) {
+	public CancellationWindow cancellationWindow(LocalTime cutoff, LocalDate bookingDate) {
 		// One reading of the clock, so both boundaries classify the same instant.
 		java.time.Instant now = clock.instant();
 		if (now.isBefore(freeCancellationEndsAt(cutoff, bookingDate))) {
@@ -76,6 +76,25 @@ public class BookingCutoff {
 	/** Whether {@code bookingDate}'s stay is already underway — the per-booking pay-window bound. */
 	public boolean serviceDayHasOpened(LocalDate bookingDate) {
 		return !clock.instant().isBefore(serviceDayOpensAt(bookingDate));
+	}
+
+	/** The instant service day {@code bookingDate} ends: the next day's Tirane midnight. */
+	public java.time.Instant serviceDayEndsAt(LocalDate bookingDate) {
+		return serviceDayOpensAt(bookingDate.plusDays(1));
+	}
+
+	/** Whether service day {@code bookingDate} is over ({@code Europe/Tirane}). */
+	public boolean serviceDayHasEnded(LocalDate bookingDate) {
+		return !clock.instant().isBefore(serviceDayEndsAt(bookingDate));
+	}
+
+	/**
+	 * The most recent service day already ended at {@code now} — the set-based form of
+	 * {@link #serviceDayHasEnded}, for a sweep that selects rows by {@code booking_date}. Static for
+	 * the same one-reading contract as {@link #lastOpenedServiceDay}.
+	 */
+	public static LocalDate lastEndedServiceDay(java.time.Instant now) {
+		return LocalDate.ofInstant(now, TIRANE).minusDays(1);
 	}
 
 	/**

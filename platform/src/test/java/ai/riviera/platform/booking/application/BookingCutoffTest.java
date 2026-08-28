@@ -1,4 +1,4 @@
-package ai.riviera.platform.booking.application.cancel;
+package ai.riviera.platform.booking.application;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -109,6 +109,38 @@ class BookingCutoffTest {
 				.serviceDayHasOpened(BOOKING_DATE));
 		assertTrue(at(ZonedDateTime.of(2026, 7, 16, 9, 0, 0, 0, TIRANE))
 				.serviceDayHasOpened(BOOKING_DATE));
+	}
+
+	@Test
+	void serviceDayEndsAtTheNextTiraneMidnight() {
+		// 2026-07-15T22:00Z is 2026-07-16T00:00 in Tirane (CEST, UTC+2).
+		assertEquals(ZonedDateTime.of(2026, 7, 16, 0, 0, 0, 0, TIRANE).toInstant(),
+				at(ZonedDateTime.of(2026, 7, 1, 9, 0, 0, 0, TIRANE)).serviceDayEndsAt(BOOKING_DATE));
+	}
+
+	@Test
+	void serviceDayEndsAtHandlesTheDstShoulder() {
+		// The night into 2026-10-25 repeats 02:00–03:00 in Tirane; the D+1 midnight stays unambiguous (R-6).
+		assertEquals(ZonedDateTime.of(2026, 10, 25, 0, 0, 0, 0, TIRANE).toInstant(),
+				at(ZonedDateTime.of(2026, 7, 1, 9, 0, 0, 0, TIRANE)).serviceDayEndsAt(LocalDate.of(2026, 10, 24)));
+	}
+
+	@Test
+	void serviceDayHasEndedOnlyAfterItsLastInstant() {
+		assertFalse(at(ZonedDateTime.of(2026, 7, 15, 23, 59, 59, 0, TIRANE))
+				.serviceDayHasEnded(BOOKING_DATE));
+		assertTrue(at(ZonedDateTime.of(2026, 7, 16, 0, 0, 0, 0, TIRANE))
+				.serviceDayHasEnded(BOOKING_DATE));
+		assertTrue(at(ZonedDateTime.of(2026, 7, 17, 9, 0, 0, 0, TIRANE))
+				.serviceDayHasEnded(BOOKING_DATE));
+	}
+
+	@Test
+	void lastEndedServiceDayIsYesterdayInTirane() {
+		assertEquals(LocalDate.of(2026, 7, 14),
+				BookingCutoff.lastEndedServiceDay(ZonedDateTime.of(2026, 7, 15, 23, 59, 0, 0, TIRANE).toInstant()));
+		assertEquals(BOOKING_DATE,
+				BookingCutoff.lastEndedServiceDay(ZonedDateTime.of(2026, 7, 16, 0, 0, 0, 0, TIRANE).toInstant()));
 	}
 
 	@Test

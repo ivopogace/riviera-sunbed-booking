@@ -2,6 +2,7 @@ package ai.riviera.platform.booking.application.cancel;
 
 import org.springframework.stereotype.Component;
 
+import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.domain.CancellationWindow;
 import ai.riviera.platform.booking.domain.RefundPolicy;

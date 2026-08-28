@@ -1,6 +1,6 @@
 package ai.riviera.platform.booking.application.view;
 
-import ai.riviera.platform.booking.application.cancel.BookingCutoff;
+import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 
 import java.util.Optional;

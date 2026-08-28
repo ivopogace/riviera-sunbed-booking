@@ -294,16 +294,14 @@ that stays true).
 
 > Session-recovery anchor — update in the same commit window as the change it records.
 
-**Stage pointer:** `plan` — plan doc authored and committed; **stopped after plan by
-user instruction** (this session goes no further).
+**Stage pointer:** `implement` — Phase 0 done; routing gate re-run (`riviera-local-debug`,
+`riviera-modulith`, `riviera-java-conventions`, `tdd` loaded before the first build/edit).
 
-**Next action:** an implement session starts at Phase 0 after re-running the
-`riviera-sdlc` Skill-routing gate (backend rows + `riviera-local-debug` before the first
-`./gradlew`), opening the draft PR at the first phase commit.
+**Next action:** open the draft PR for this branch (CI vehicle), then Phase 1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — BookingCutoff day-end boundary + relocation to `application/` root | | |
+| 0 — BookingCutoff day-end boundary + relocation to `application/` root | ✅ | Add the service-day-end boundary and re-home BookingCutoff (#792) |
 | 1 — Pay deadline caps at day end (mail ≡ sweep identity) | | |
 | 2 — Sweep: day-ended arm | | |
 | 3 — View fences on the pay deadline (+ FE copy) | | |
@@ -359,7 +357,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Move `…/application/cancel/BookingCutoff.java` → `…/application/BookingCutoff.java` (with `BookingCutoffTest`) · Modify the 12 referencing files (imports; inventory in File structure) · Test `…/application/BookingCutoffTest.java`
 
-- [ ] **Step 1: Write the failing tests** (fixed `Clock`, `Europe/Tirane` — match the
+- [x] **Step 1: Write the failing tests** (fixed `Clock`, `Europe/Tirane` — match the
   existing `BookingCutoffTest` fixtures):
 
 ```java
@@ -383,10 +381,10 @@ void lastEndedServiceDayIsYesterdayInTirane() {
 }
 ```
 
-- [ ] **Step 2: Run, verify red** — `./gradlew test --tests "*BookingCutoffTest*"` → FAIL
+- [x] **Step 2: Run, verify red** — `./gradlew test --tests "*BookingCutoffTest*"` → FAIL
   (methods missing). Load `riviera-local-debug` first if this is the session's first build.
 
-- [ ] **Step 3: Minimal implementation** (delegating so zone rules live once):
+- [x] **Step 3: Minimal implementation** (delegating so zone rules live once):
 
 ```java
 /** The instant service day {@code bookingDate} ends: the next day's Tirane midnight. */
@@ -405,22 +403,22 @@ public static LocalDate lastEndedServiceDay(Instant now) {
 }
 ```
 
-- [ ] **Step 4: Run, verify green** — same command → PASS. (Retired members are deleted in
+- [x] **Step 4: Run, verify green** — same command → PASS. (Retired members are deleted in
   phase 5, once their callers are gone — not here, or phases 1–4 won't compile.)
-- [ ] **Step 5: Refactor — relocate the day-boundary authority.** `git mv` `BookingCutoff`
+- [x] **Step 5: Refactor — relocate the day-boundary authority.** `git mv` `BookingCutoff`
   (and `BookingCutoffTest`) from `application/cancel/` to `application/`, beside `Bookings`
   and `BookingCodeGenerator`; widen `cancellationWindow` to public (its `CancellationPolicy`
   caller now sits in a sibling package; `application/*` stays non-exported, so nothing is
   published); update the imports across the referencer inventory (File structure). Verify:
   `./gradlew test --tests "*BookingCutoffTest*" --tests "*CancellationPolicy*"` then the
   structural net (`*ModularityTests*`, `*PackageShapeArchitectureTests*`) → PASS.
-- [ ] **Step 6: Generalization audit** — population: *module-shared classes still addressed
+- [x] **Step 6: Generalization audit** — population: *module-shared classes still addressed
   under a single use-case sub-package* → `git ls-files 'platform/src/main/java/ai/riviera/platform/booking/application/*/*.java' | xargs grep -l "import ai.riviera.platform.booking.application\."` (cross-sub-package imports) →
   judge each: today's known edges are `BookingCutoff` (moved here), `RequestWindows`
   (stays in `request/` — the pay *window* is request vocabulary; view/sweep consuming it is
   the precedented edge, not an addressing error). Record the outcome below.
-- [ ] **Step 7: Commit** — `Add the service-day-end boundary and re-home BookingCutoff (#792)`
-- [ ] **Step 8: Update plan-doc execution status.**
+- [x] **Step 7: Commit** — `Add the service-day-end boundary and re-home BookingCutoff (#792)`
+- [x] **Step 8: Update plan-doc execution status.**
 
 ---
 
@@ -605,6 +603,7 @@ boolean payWindowClosed = awaitingPayment && !clock.instant().isBefore(payDeadli
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-28 | Phase 0 (BookingCutoff re-home) | Module-shared classes still addressed under a single use-case sub-package — enumerated as cross-sub-package `application.*` imports | `git ls-files 'platform/src/main/java/ai/riviera/platform/booking/application/*/*.java' \| xargs grep -l "import ai.riviera.platform.booking.application\."` | Root-homed shared classes (`Bookings`, `BookingCodeGenerator`, now `BookingCutoff`) + 5 cross-slice edges: `cancel.CancellationPolicy`(+`RefundQuote`)/`cancel.CancelledBooking`, `request.RequestWindows`, `refund.ReleaseAbandonedBooking`, `reserve.ConfirmBooking`, `view.BookingRecord` | No further moves: each remaining edge's class is addressed at its vocabulary owner (the refund rule is cancel's, the pay window request's, the record the view's shape) and consumed cross-slice by design — the mechanism that made `BookingCutoff`'s address wrong (a module-wide authority under one slice) matches no other site |
 
 ---
 
