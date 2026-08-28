@@ -298,8 +298,8 @@ that stays true).
 
 **Stage pointer:** **review gate ran — fixing findings.** `/code-review` (5-agent fan-out
 + `riviera-review-overlay`) ran over `origin/main...a9b83ea8` on 2026-08-28; review comment
-posted on PR #800; three findings recorded below (F-1 open at confidence 100; F-2/F-3
-verified-real boundary items). Each fix re-enters at Implement per the re-entry rule.
+posted on PR #800; three findings recorded below, all resolved at 52c6ae7 (register rows carry the
+dispositions). Each fix re-entered at Implement per the re-entry rule.
 Sonar: quality gate green on a9b83ea8 — the issue-list pull (pr-gates §2) still due before
 merge.
 
@@ -336,9 +336,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review (`/code-review` + overlay, confidence 100) | `RequestProperties.java:77` boot-guard exception message still says the deadline caps at "the booked day's opening" — this slice moved the cap to the sales close and updated the class Javadoc, so the runtime message contradicts both. The exact lockstep site #791's F-3 audit named. | open |
-| F-2 | review (three agents convergent, confidence 75 — below the PR-comment bar, real) | `ViewBookingService.java:102–103` — the strict `isAfter(payDeadline)` disagrees with the sweep's **inclusive** day-end arm at exactly `now == serviceDayEndsAt(D)`: sweep reaps (and releases the claim) while the view still issues credentials; the "exactly as the sweep spares it" comment holds only for the accepted/raw-window arm (`accepted_at < :acceptedBefore`, genuinely strict). Fix direction: make the day-end side consistent (either `serviceDayHasEnded`-style non-strict for the capped branch, or make the sweep's day bound strict) and correct the comment. | open |
-| F-3 | review (companion to F-2, confidence 75) | No test pins the day-end-capped exact-instant parity (AC-2/R-8 discipline): `withholdsCredentialsOnceTheServiceDayHasEnded` uses a date two days gone; the sweep ITs stay clear of the boundary. Add the boundary case alongside F-2's fix. | open |
+| F-1 | review (`/code-review` + overlay, confidence 100) | `RequestProperties.java:77` boot-guard exception message still says the deadline caps at "the booked day's opening" — this slice moved the cap to the sales close and updated the class Javadoc, so the runtime message contradicts both. The exact lockstep site #791's F-3 audit named. | resolved — message now names the sales-close cap (commit 52c6ae7); `RequestPropertiesTest` message assertions key on the property name and stay green |
+| F-2 | review (three agents convergent, confidence 75 — below the PR-comment bar, real) | `ViewBookingService.java:102–103` — the strict `isAfter(payDeadline)` disagrees with the sweep's **inclusive** day-end arm at exactly `now == serviceDayEndsAt(D)`: sweep reaps (and releases the claim) while the view still issues credentials; the "exactly as the sweep spares it" comment holds only for the accepted/raw-window arm (`accepted_at < :acceptedBefore`, genuinely strict). Fix direction: make the day-end side consistent (either `serviceDayHasEnded`-style non-strict for the capped branch, or make the sweep's day bound strict) and correct the comment. | resolved — comment corrected to claim only the accepted/raw-window arm (52c6ae7). The capped branch deliberately keeps the strict view read: closing the view at exactly the promised instant would refuse the mailed deadline itself, and the sweep's day bound is a whole-civil-day set predicate whose midnight-inclusive edge matches `serviceDayHasEnded`; the residual is a sweep run landing on the exact midnight nanosecond, covered by the unfenced confirm (AC-6) |
+| F-3 | review (companion to F-2, confidence 75) | No test pins the day-end-capped exact-instant parity (AC-2/R-8 discipline): `withholdsCredentialsOnceTheServiceDayHasEnded` uses a date two days gone; the sweep ITs stay clear of the boundary. Add the boundary case alongside F-2's fix. | resolved — `ViewBookingServiceTest.stillIssuesCredentialsAtTheExactDayEndInstant` pins the capped exact instant (52c6ae7); the midnight flip of the sweep's bound stays pinned by `lastEndedServiceDayIsYesterdayInTirane` |
 
 ---
 
