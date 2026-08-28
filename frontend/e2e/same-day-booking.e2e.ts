@@ -141,11 +141,11 @@ test("browse today after a venue's close shows the badge and the closed-map path
   page,
 }) => {
   await page.clock.setFixedTime(AFTER_CLOSE);
-  // Later-registered routes win: one closed 16:00 venue beside one still-open 23:59 venue.
+  // One closed 16:00 REQUEST venue (widest chip pair — overlap pin below) beside an open 23:59 one.
   await page.route(/\/api\/venues(\?.*)?$/, (route) =>
     route.fulfill({
       json: [
-        { ...VENUES[0], salesOpen: false },
+        { ...VENUES[0], bookingMode: 'REQUEST', salesOpen: false },
         {
           id: 3,
           name: 'Luna Palasë',
@@ -175,6 +175,17 @@ test("browse today after a venue's close shows the badge and the closed-map path
   await expect(closedCard).toContainText('Miramar Beach Club');
   await expect(closedCard.locator('.sales-closed-chip')).toContainText('Sales closed for today');
   await expect(closedCard).toHaveAccessibleName(/online sales for today have closed/);
+
+  // At the grid's narrowest card (~270px track at this width) the two chips must not collide.
+  await page.setViewportSize({ width: 608, height: 900 });
+  const modeBox = (await closedCard.locator('.mode-chip').boundingBox())!;
+  const closedBox = (await closedCard.locator('.sales-closed-chip').boundingBox())!;
+  const chipsOverlap =
+    modeBox.x < closedBox.x + closedBox.width &&
+    closedBox.x < modeBox.x + modeBox.width &&
+    modeBox.y < closedBox.y + closedBox.height &&
+    closedBox.y < modeBox.y + modeBox.height;
+  expect(chipsOverlap).toBe(false);
   await expectNoSeriousAxeViolations(page, 'discovery list (after a close, badged)');
 
   // The closed card stays navigable — no dead-end: the map shows the closed state instead.

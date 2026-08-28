@@ -178,20 +178,23 @@
                   ></span>
                 }
                 <span class="photo-scrim absolute inset-0 bg-(image:--riv-photo-scrim)"></span>
-                <!-- A SEMANTIC chip (#705): it promises how booking works, so it wears the inverted accent pill rather than the descriptive chips' pale one. Its opaque fill also retires the glass backing this chip used to need over an arbitrary cover photo — see shared/semantic-chip.ts. -->
+                <!-- The SEMANTIC chips (#705): platform claims about how booking will go, wearing the inverted accent pill (opaque fill — see shared/semantic-chip.ts). One flex row instead of two absolute corners: flex-wrap stacks the closed chip under the mode chip on a near-minimum-width card, where the two pills would otherwise collide. card.ariaLabel carries the closed state to AT — this band is aria-hidden. -->
                 <span
-                  appSemanticChip
-                  class="mode-chip absolute top-[14px] left-[14px] inline-flex items-center px-[11px] py-[5px] text-[11px] tracking-[0.03em]"
-                  >{{ card.modeLabel }}</span
+                  class="absolute inset-x-[14px] top-[14px] flex flex-wrap items-start justify-between gap-[7px]"
                 >
-                <!-- A platform claim like the mode chip (same semantic fill); card.ariaLabel carries it to AT — this band is aria-hidden. -->
-                @if (card.salesClosed) {
                   <span
                     appSemanticChip
-                    class="sales-closed-chip absolute top-[14px] right-[14px] inline-flex items-center px-[11px] py-[5px] text-[11px] tracking-[0.03em]"
-                    >Sales closed for today</span
+                    class="mode-chip inline-flex items-center px-[11px] py-[5px] text-[11px] tracking-[0.03em]"
+                    >{{ card.modeLabel }}</span
                   >
-                }
+                  @if (card.salesClosed) {
+                    <span
+                      appSemanticChip
+                      class="sales-closed-chip inline-flex items-center px-[11px] py-[5px] text-[11px] tracking-[0.03em]"
+                      >Sales closed for today</span
+                    >
+                  }
+                </span>
                 <!-- The location yields the dot rail's corner: 72px = the rail at its widest (3 dots: 13px inset + 14px padding + 24px dots + 14px gaps = 65px) plus 7px clearance — it must be re-derived whenever the rail's metrics change (#704). The explicit 15px line box is the scrim geometry home.contrast.spec.ts pins. -->
                 <span
                   class="photo-location absolute bottom-[13px] left-[15px] text-[12.5px] leading-[15px] font-semibold text-riv-photo-ink [text-shadow:0_1px_6px_rgba(0,0,0,0.4)]"

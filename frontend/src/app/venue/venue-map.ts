@@ -199,8 +199,13 @@ export class VenueMap {
    */
   protected readonly salesClosed = computed(() => this.venue()?.salesOpen === false);
 
-  /** Whether the selected date is the floor day (today) — keys the closed banner's copy. */
-  protected readonly closedForToday = computed(() => this.selectedDate() === this.minDate());
+  /** Whether the selected date is today — keys the closed banner's copy. Reads a fresh clock
+   *  per recompute (each date change), not the mount-time floor, so a tab held across Tirane
+   *  midnight gets the today copy back on its next pick; a banner already on screen at the
+   *  rollover keeps its copy until then (the documented minDate residual class). */
+  protected readonly closedForToday = computed(
+    () => this.selectedDate() === defaultBookingDate(new Date()),
+  );
 
   /**
    * The header's render+a11y view, precomputed off `venue()`: the template reads these

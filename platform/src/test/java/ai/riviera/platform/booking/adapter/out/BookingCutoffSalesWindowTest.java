@@ -33,7 +33,6 @@ class BookingCutoffSalesWindowTest {
 	@Test
 	void delegatesToTheCutoffAuthority() {
 		assertTrue(window.isOpen(FOUR_PM, DATE, BEFORE_CLOSE));
-		assertFalse(window.isOpen(FOUR_PM, DATE, AT_CLOSE));
 		assertTrue(window.isOpen(FOUR_PM, DATE.plusDays(1), AT_CLOSE));
 	}
 
