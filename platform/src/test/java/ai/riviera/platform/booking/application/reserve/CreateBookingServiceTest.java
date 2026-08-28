@@ -1,6 +1,6 @@
 package ai.riviera.platform.booking.application.reserve;
 
-import ai.riviera.platform.booking.application.cancel.BookingCutoff;
+import ai.riviera.platform.booking.application.BookingCutoff;
 
 import java.time.*;
 import java.util.ArrayList;
@@ -347,7 +347,7 @@ class CreateBookingServiceTest {
 
 	@Test
 	void requestDeadlineUncappedTwoDaysOut() {
-		// #791: the accept deadline caps at D's open, far enough off at two days out to leave it uncapped.
+		// The accept deadline caps at D's sales close, far enough off two days out to stay uncapped.
 		CreateBookingService service = service(
 				set("ONLINE", BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
@@ -506,22 +506,57 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
-	void sameDayRequestStillClosed() {
-		// AC-5: the temporary gate refuses same-day Request even though the window itself allows it.
+	void sameDayRequestSucceedsBeforeSalesClose() {
+		// AC-5 (#792): the temporary gate is gone — today is requestable until the venue's close.
 		Clock beforeClose = Clock.fixed(Instant.parse("2026-11-01T09:00:00Z"), ZoneId.of("UTC"));
 		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
-				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "X", true, beforeClose);
+				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE004", true, beforeClose);
 
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 1), GUEST));
 
-		assertSame(BookingOutcome.Rejected.BOOKING_CLOSED, outcome);
+		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
+		assertEquals(Instant.parse("2026-11-01T15:00:00Z"), requested.requestExpiresAt(),
+				"a same-day request's deadline caps at today's 16:00 sales close, Europe/Tirane (CET)");
 	}
 
 	@Test
-	void eveningBeforeRequestSucceedsWithDeadlineCappedAtServiceDayOpen() {
-		// AC-5: 20:00 Tirane the evening before D now succeeds; the accept deadline caps at D's open.
+	void requestFenceAndDeadlineShareOneClockReading() {
+		// A close crossing between two reads would admit a request already past its own deadline.
+		var reads = new java.util.concurrent.atomic.AtomicInteger();
+		Clock counting = new Clock() {
+			@Override
+			public ZoneId getZone() {
+				return ZoneId.of("UTC");
+			}
+
+			@Override
+			public Clock withZone(ZoneId zone) {
+				return this;
+			}
+
+			@Override
+			public Instant instant() {
+				reads.incrementAndGet();
+				return Instant.parse("2026-11-01T09:00:00Z");
+			}
+		};
+		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
+				claiming(ClaimOutcome.CLAIMED),
+				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE005", true, counting);
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 1), GUEST));
+
+		assertInstanceOf(BookingOutcome.Requested.class, outcome);
+		assertEquals(1, reads.get(),
+				"the sales-close fence and the response deadline must classify the same instant");
+	}
+
+	@Test
+	void requestDeadlineCappedAtSalesClose() {
+		// AC-1 (#792): a near-term request's response deadline caps at D's own sales close.
 		Clock eveningBefore = Clock.fixed(Instant.parse("2026-11-01T19:00:00Z"), ZoneId.of("UTC"));
 		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
@@ -531,9 +566,9 @@ class CreateBookingServiceTest {
 				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 2), GUEST));
 
 		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
-		assertEquals(Instant.parse("2026-11-01T23:00:00Z"), requested.requestExpiresAt(),
-				"accept deadline capped at D's 00:00 Europe/Tirane open — an accept inside D would be "
-						+ "born past its pay deadline while the #576 fences stand (#792 lifts the cap)");
+		assertEquals(Instant.parse("2026-11-02T15:00:00Z"), requested.requestExpiresAt(),
+				"capped at the venue's 16:00 sales close on D, Europe/Tirane (CET) — an accept past "
+						+ "the close would sell a window the venue has already shut");
 	}
 
 	@Test

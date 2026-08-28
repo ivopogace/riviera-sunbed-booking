@@ -1,8 +1,10 @@
 package ai.riviera.platform.booking.application.view;
 
-import ai.riviera.platform.booking.application.cancel.BookingCutoff;
+import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
+import ai.riviera.platform.booking.application.request.RequestWindows;
 
+import java.time.Clock;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -30,12 +32,15 @@ class ViewBookingService implements ViewBooking {
 	private final ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail;
 	private final ai.riviera.platform.payment.api.CollectionGuarantee collection;
 	private final ai.riviera.platform.payment.api.RefundStatusLookup refundStatus;
+	private final RequestWindows windows;
+	private final Clock clock;
 
 	ViewBookingService(Bookings bookings, CancellationPolicy cancellationPolicy, BookingCutoff cutoff,
 			ai.riviera.platform.payment.api.PaymentCredentialsLookup checkout,
 			ai.riviera.platform.booking.spi.ConfirmationMailDelivery confirmationMail,
 			ai.riviera.platform.payment.api.CollectionGuarantee collection,
-			ai.riviera.platform.payment.api.RefundStatusLookup refundStatus) {
+			ai.riviera.platform.payment.api.RefundStatusLookup refundStatus,
+			RequestWindows windows, Clock clock) {
 		this.bookings = bookings;
 		this.cancellationPolicy = cancellationPolicy;
 		this.cutoff = cutoff;
@@ -43,6 +48,8 @@ class ViewBookingService implements ViewBooking {
 		this.confirmationMail = confirmationMail;
 		this.collection = collection;
 		this.refundStatus = refundStatus;
+		this.windows = windows;
+		this.clock = clock;
 	}
 
 	@Override
@@ -87,9 +94,10 @@ class ViewBookingService implements ViewBooking {
 				&& refundStatus.progressOf(new ai.riviera.platform.payment.vocabulary.BookingRef(b.id()))
 						== ai.riviera.platform.payment.vocabulary.RefundProgress.OUTSTANDING;
 		boolean awaitingPayment = b.status() == BookingStatus.AWAITING_PAYMENT;
-		// Narrowed to advance-born rows (#791) — a same-day-born booking's TTL governs it instead.
-		boolean payWindowClosed = awaitingPayment && quote.serviceDayOpen()
-				&& cutoff.bornBeforeServiceDay(b.createdAt(), b.bookingDate());
+		// Sweep-arm parity by construction: day end inclusive, the promised raw-window instant payable.
+		boolean payWindowClosed = awaitingPayment && (cutoff.serviceDayHasEnded(b.bookingDate())
+				|| (b.acceptedAt() != null
+						&& b.acceptedAt().isBefore(windows.acceptedBefore(clock.instant()))));
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment =
 				awaitingPayment && !payWindowClosed
 						? checkout.pendingCredentials(

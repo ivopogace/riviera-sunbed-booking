@@ -264,22 +264,28 @@ The guest-cancel guard stays `CONFIRMED`-only (a delivered stay is never reclaim
 weather refund does not** — it admits `NO_SHOW` on its own `cancelForWeather` transition, because
 the storm is only known afterwards, by which time the sweep has marked exactly the guests who
 stayed home. That split is why the two share no port method. Enforce the cancellation policy and
-own all three of the day's boundaries on `BookingCutoff` (#791): `salesCloseAt` — the venue's
-own sales-close setting, per date, which gates whether a booking can be *created* at all (invariant
-#4) — `freeCancellationEndsAt`, the older evening-before boundary, now cancellation-only — and
-`serviceDayOpensAt`, midnight opening the stay. That third boundary fences the *pay* path
-(#576), narrowed since sales can now close on the day itself: it applies only to an
-**advance-born** `AWAITING_PAYMENT` booking (`created_at` before its own service day's midnight,
-`BookingCutoff#bornBeforeServiceDay`) — the guest's deadline is `min(accepted_at + pay-window,
-service-day open)`, the abandoned sweep's `booking_date` arm now also requires an advance-born
-row so it never reaps one born the same day it is for, and the code-gated view withholds the
-`clientSecret` past it under the same predicate. A **same-day-born** `AWAITING_PAYMENT` booking is
-outside this fence entirely — only its own TTL (`AbandonedPaymentProperties`) frees it, which is
-why that TTL is now the sole backstop for a set left unpaid on the day it was claimed for.
-**The confirm path is deliberately not fenced.** A guest already holding a live
-`clientSecret` who pays between midnight and the next sweep run still confirms. Refusing
-without refunding would strand the money on an `AWAITING_PAYMENT` booking the sweep can never
-release (`NotCancellable` forever), and refunding cannot reuse `BookingCancelled`: a
+own all of the day's boundaries on `BookingCutoff` (#791, re-homed to the `application/` root
+at #792 as the module-wide day-boundary authority): `salesCloseAt` — the venue's
+own sales-close setting, per date, which gates whether a booking can be *created* at all and,
+since #792, caps a pending request's **response deadline** (`min(created + expiry-window, D at
+sales close)`, invariant #4) — `freeCancellationEndsAt`, the older evening-before boundary, now
+cancellation-only — `serviceDayOpensAt`, midnight opening the stay, the cancellation window's
+outer fence — and `serviceDayEndsAt`, the next midnight, the pay deadline's outer bound. The
+*pay* path fences on **the pay deadline having passed** (#792, replacing the #576 day-open
+family): an accepted `AWAITING_PAYMENT` booking's deadline is `min(accepted_at + pay-window,
+end of service day)` — the same instant the payment-due mail promises — and a **never-accepted**
+one's is the end of its service day, with its TTL (`AbandonedPaymentProperties`) the sweep's
+earlier backstop, never a view fence. The abandoned sweep's `booking_date` arm reaps any
+`AWAITING_PAYMENT` row whose service day has **ended** (`BookingCutoff.lastEndedServiceDay`;
+the SQL re-derives the deadline as an accepted, pinned mirror of `RequestWindows#payDeadline` —
+the mail ≡ sweep identity is `RequestWindowsTest`'s contract), and the code-gated view withholds
+the `clientSecret` once the same deadline has passed (`ViewBookingService`, reading
+`accepted_at`).
+**The confirm path is deliberately not fenced** (pinned by
+`JdbcBookingsTransitionIT.confirmSucceedsAfterThePayDeadlineHasPassed`). A guest already holding
+a live `clientSecret` who pays past the deadline but before the next sweep run still confirms.
+Refusing without refunding would strand the money on an `AWAITING_PAYMENT` booking the sweep can
+never release (`NotCancellable` forever), and refunding cannot reuse `BookingCancelled`: a
 never-confirmed booking has no `ACCRUAL`, so `payout`'s listener would defer that publication
 permanently and hold `riviera.outbox.pending` non-zero. The residual is a sub-sweep-interval
 race the guest opts into and is paid for with the full stay.

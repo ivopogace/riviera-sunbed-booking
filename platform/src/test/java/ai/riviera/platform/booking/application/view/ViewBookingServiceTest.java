@@ -10,8 +10,9 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.booking.application.Bookings;
-import ai.riviera.platform.booking.application.cancel.BookingCutoff;
+import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
+import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.domain.CancellationWindow;
 import ai.riviera.platform.booking.spi.ConfirmationMailDelivery;
@@ -53,17 +54,21 @@ class ViewBookingServiceTest {
 	private static final VenueId VENUE = new VenueId(1);
 	private static final LocalDate DATE = LocalDate.of(2026, 8, 1);
 
+	/** 11:00 Tirane on {@code DATE} (CEST): the service day is open and ends at 22:00Z. */
+	private static final Clock NOW = Clock.fixed(Instant.parse("2026-08-01T09:00:00Z"), ZoneId.of("UTC"));
+	private static final RequestWindows WINDOWS =
+			new RequestWindows(java.time.Duration.ofHours(24), java.time.Duration.ofHours(12));
+
 	private final Bookings bookings = mock(Bookings.class);
 	private final CancellationPolicy cancellationPolicy = mock(CancellationPolicy.class);
-	private final BookingCutoff cutoff =
-			new BookingCutoff(Clock.fixed(Instant.parse("2026-08-01T09:00:00Z"), ZoneId.of("UTC")));
+	private final BookingCutoff cutoff = new BookingCutoff(NOW);
 	private final PaymentCredentialsLookup checkout = mock(PaymentCredentialsLookup.class);
 	private final ConfirmationMailDelivery mailDelivery = mock(ConfirmationMailDelivery.class);
 	private final CollectionGuarantee collection = mock(CollectionGuarantee.class);
 	private final RefundStatusLookup refundStatus = mock(RefundStatusLookup.class);
 
 	private final ViewBookingService service = new ViewBookingService(bookings, cancellationPolicy,
-			cutoff, checkout, mailDelivery, collection, refundStatus);
+			cutoff, checkout, mailDelivery, collection, refundStatus, WINDOWS, NOW);
 
 	@Test
 	void flagsWithheldConfirmationMailForSuppressedGuest() {
@@ -172,13 +177,14 @@ class ViewBookingServiceTest {
 
 	/**
 	 * The pay fence is a short-circuit, not a filter on the answer — the same shape as the D-8 mail
-	 * gate above it. Past the service day's opening the credentials port must not be
-	 * <em>consulted</em>: a {@code clientSecret} handed out then buys a stay already underway
-	 * (invariant #4), which #566's cancellation fence would immediately refuse to undo.
+	 * gate above it. Past the pay deadline — {@code min(accepted_at + pay-window, end of service
+	 * day)}, the same instant the payment-due mail promises — the credentials port must not be
+	 * <em>consulted</em> (invariant #4).
 	 */
 	@Test
-	void withholdsPaymentCredentialsOnceTheServiceDayHasOpened() {
-		givenBooking(BookingStatus.AWAITING_PAYMENT, CancellationWindow.CLOSED, 0L);
+	void withholdsCredentialsOnceTheServiceDayHasEnded() {
+		// Never accepted, so the deadline is its day's end — two days gone by now.
+		givenAwaitingPayment(LocalDate.of(2026, 7, 30), Instant.EPOCH, null);
 
 		BookingDetail detail = service.byCode(CODE).orElseThrow();
 
@@ -188,9 +194,99 @@ class ViewBookingServiceTest {
 	}
 
 	@Test
+	void issuesCredentialsUntilThePayDeadline() {
+		// Accepted 10:00 Tirane on D itself: the deadline is 22:00, eleven hours away (#792).
+		givenAwaitingPayment(DATE, Instant.EPOCH, Instant.parse("2026-08-01T08:00:00Z"));
+		when(checkout.pendingCredentials(any()))
+				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNotNull();
+		assertThat(detail.payWindowClosed()).isFalse();
+	}
+
+	@Test
+	void withholdsCredentialsOncePayDeadlinePassed() {
+		// Accepted 20:00 Tirane the evening before: the 12h window ran out at 08:00, an hour ago.
+		givenAwaitingPayment(DATE, Instant.EPOCH, Instant.parse("2026-07-31T18:00:00Z"));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNull();
+		assertThat(detail.payWindowClosed()).isTrue();
+		verifyNoInteractions(checkout);
+	}
+
+	@Test
+	void stillIssuesCredentialsAtTheExactDeadlineInstant() {
+		// The mailed deadline itself is still payable (mail ≡ sweep identity); closed strictly after.
+		givenAwaitingPayment(DATE, Instant.EPOCH, Instant.parse("2026-07-31T21:00:00Z"));
+		when(checkout.pendingCredentials(any()))
+				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNotNull();
+		assertThat(detail.payWindowClosed()).isFalse();
+	}
+
+	@Test
+	void acceptedAdvanceBookingKeepsCredentialsIntoItsServiceDay() {
+		// Accepted 23:30 the evening before, window to 11:30: the old day-open withhold is wrong now.
+		givenAwaitingPayment(DATE, Instant.EPOCH, Instant.parse("2026-07-31T21:30:00Z"));
+		when(checkout.pendingCredentials(any()))
+				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNotNull();
+		assertThat(detail.payWindowClosed()).isFalse();
+	}
+
+	@Test
+	void neverAcceptedBookingKeepsCredentialsUntilDayEnd() {
+		// Advance-born, never accepted, day underway: the TTL stays a sweep-only backstop.
+		givenAwaitingPayment(DATE, Instant.EPOCH, null);
+		when(checkout.pendingCredentials(any()))
+				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNotNull();
+		assertThat(detail.payWindowClosed()).isFalse();
+	}
+
+	@Test
+	void withholdsCredentialsAtTheExactEndOfServiceDay() {
+		// Day-end bound is inclusive, exactly as the sweep's day arm reaps at that instant (review F-2).
+		givenAwaitingPayment(DATE, Instant.EPOCH, null);
+		ViewBookingService atDayEnd = serviceAt(Instant.parse("2026-08-01T22:00:00Z"));
+
+		BookingDetail detail = atDayEnd.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNull();
+		assertThat(detail.payWindowClosed()).isTrue();
+		verifyNoInteractions(checkout);
+	}
+
+	@Test
+	void dayEndCapClosesAnAcceptedBookingAtThatSameInstant() {
+		// Accepted mid-day, raw window crossing midnight: the capped deadline shares the day arm's edge.
+		givenAwaitingPayment(DATE, Instant.EPOCH, Instant.parse("2026-08-01T12:00:00Z"));
+		ViewBookingService atDayEnd = serviceAt(Instant.parse("2026-08-01T22:00:00Z"));
+
+		BookingDetail detail = atDayEnd.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNull();
+		assertThat(detail.payWindowClosed()).isTrue();
+		verifyNoInteractions(checkout);
+	}
+
+	@Test
 	void sameDayBornBookingKeepsItsCredentials() {
-		// AC-7 (#791): a same-day-born booking is governed by its TTL, not the day-open fence.
-		Instant sameDayBirth = Instant.parse("2026-08-01T10:00:00Z"); // after DATE's own day-open
+		// Same-day-born, never accepted: same day-end deadline as any other unaccepted row.
+		Instant sameDayBirth = Instant.parse("2026-08-01T10:00:00Z");
 		givenBooking(BookingStatus.AWAITING_PAYMENT, CancellationWindow.CLOSED, 0L, sameDayBirth);
 		when(checkout.pendingCredentials(any()))
 				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
@@ -201,38 +297,13 @@ class ViewBookingServiceTest {
 		assertThat(detail.payWindowClosed()).isFalse();
 	}
 
-	@Test
-	void advanceBornBookingLosesCredentialsAtDayOpen() {
-		// AC-7: unchanged #576 behavior for a booking created before its own service day opened.
-		givenBooking(BookingStatus.AWAITING_PAYMENT, CancellationWindow.CLOSED, 0L, Instant.EPOCH);
-
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
-
-		assertThat(detail.payment()).isNull();
-		assertThat(detail.payWindowClosed()).isTrue();
-		verifyNoInteractions(checkout);
-	}
-
-	@Test
-	void stillIssuesCredentialsBeforeTheServiceDayOpens() {
-		givenBooking(BookingStatus.AWAITING_PAYMENT);
-		when(checkout.pendingCredentials(any()))
-				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
-
-		BookingDetail detail = service.byCode(CODE).orElseThrow();
-
-		assertThat(detail.payment()).isNotNull();
-		assertThat(detail.payWindowClosed()).isFalse();
-	}
-
 	/**
-	 * The pay fence hangs off the service-day boundary, not the evening-before cutoff: between the
-	 * two — the {@code LATE} window — the guest may still pay. Reading the fence off the quote is
-	 * what makes that automatic; a second clock read could disagree with the very same response's
-	 * {@code cancellable}.
+	 * The pay fence hangs off the pay deadline, not the evening-before cutoff: in the {@code LATE}
+	 * cancellation window the guest may still pay — the two boundaries answer different questions
+	 * and must not be conflated.
 	 */
 	@Test
-	void stillIssuesCredentialsAfterTheCutoffWhileTheServiceDayIsStillClosed() {
+	void stillIssuesCredentialsAfterTheCutoffWhileThePayDeadlineHolds() {
 		givenBooking(BookingStatus.AWAITING_PAYMENT, CancellationWindow.LATE, 2250L);
 		when(checkout.pendingCredentials(any()))
 				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
@@ -339,11 +410,28 @@ class ViewBookingServiceTest {
 		givenBooking(status, CancellationWindow.FREE, 4500L, Instant.EPOCH);
 	}
 
+	/** An {@code AWAITING_PAYMENT} row for the pay-fence cases; {@code acceptedAt} may be null. */
+	/** The same collaborators on a different instant — for pinning the exact deadline boundaries. */
+	private ViewBookingService serviceAt(Instant now) {
+		Clock at = Clock.fixed(now, ZoneId.of("UTC"));
+		return new ViewBookingService(bookings, cancellationPolicy, new BookingCutoff(at), checkout,
+				mailDelivery, collection, refundStatus, WINDOWS, at);
+	}
+
+	private void givenAwaitingPayment(LocalDate date, Instant createdAt, Instant acceptedAt) {
+		when(collection.provenBeforeConfirmation()).thenReturn(true);
+		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.AWAITING_PAYMENT, VENUE, SET,
+				GUEST, date, 4500L, "EUR", null, null, null, null, createdAt, acceptedAt);
+		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
+		when(cancellationPolicy.quote(record))
+				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), CancellationWindow.CLOSED, 0L));
+	}
+
 	/** A cancelled row: the refund decision's three fields move together, or none of them is set. */
 	private void givenCancelledBooking(RefundReason reason, Long refundMinor) {
 		BookingRecord record = new BookingRecord(1L, CODE, BookingStatus.CANCELLED, VENUE, SET, GUEST,
 				DATE, 4500L, "EUR", refundMinor == null ? null : Instant.EPOCH, refundMinor, null, reason,
-				Instant.EPOCH);
+				Instant.EPOCH, null);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
 		when(cancellationPolicy.quote(record))
 				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), CancellationWindow.CLOSED, 0L));
@@ -358,7 +446,7 @@ class ViewBookingServiceTest {
 			Instant createdAt) {
 		when(collection.provenBeforeConfirmation()).thenReturn(true);
 		BookingRecord record = new BookingRecord(1L, CODE, status, VENUE, SET, GUEST, DATE,
-				4500L, "EUR", null, null, null, null, createdAt);
+				4500L, "EUR", null, null, null, null, createdAt, null);
 		when(bookings.findByCode(CODE)).thenReturn(Optional.of(record));
 		when(cancellationPolicy.quote(record))
 				.thenReturn(new CancellationPolicy.RefundQuote(setInfo(), window, refundMinor));

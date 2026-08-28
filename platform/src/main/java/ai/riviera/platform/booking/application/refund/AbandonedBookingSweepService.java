@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.Bookings;
-import ai.riviera.platform.booking.application.cancel.BookingCutoff;
+import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.payment.vocabulary.BookingRef;
 import ai.riviera.platform.payment.api.CancelPaymentPort;
@@ -19,9 +19,8 @@ import ai.riviera.platform.payment.vocabulary.PaymentCancellation;
 
 /**
  * Expires {@code AWAITING_PAYMENT} bookings that can no longer be paid — past their TTL, past the
- * accepted request's pay window, or (for a booking created before its own service day opened) for
- * a service day already underway (invariant #4) — and frees their sets, implementing
- * {@link ExpireAbandonedBookings}. For each stale booking it:
+ * accepted request's pay window, or with their whole service day ended (invariant #4) — and frees
+ * their sets, implementing {@link ExpireAbandonedBookings}. For each stale booking it:
  *
  * <ol>
  *   <li>cancels the Stripe PaymentIntent via {@link CancelPaymentPort} (collect-only — voids an
@@ -67,7 +66,7 @@ class AbandonedBookingSweepService implements ExpireAbandonedBookings {
 		// One reading, so all three arms of this run are bounded against the same instant.
 		Instant now = clock.instant();
 		List<BookingId> stale = bookings.findExpirableAwaitingPayment(now.minus(ttl),
-				windows.acceptedBefore(now), BookingCutoff.lastOpenedServiceDay(now));
+				windows.acceptedBefore(now), BookingCutoff.lastEndedServiceDay(now));
 		int expired = 0;
 		for (BookingId id : stale) {
 			try {

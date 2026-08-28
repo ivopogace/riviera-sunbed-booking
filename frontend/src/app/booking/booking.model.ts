@@ -129,8 +129,9 @@ export interface BookingDetail {
   /** Open-intent credentials, present only while `AWAITING_PAYMENT` with an open PaymentIntent. */
   readonly payment: BookingPayment | null;
   /**
-   * The service day has started, so no payment may be taken any more and `payment` is null.
-   * Server-computed: the boundary is midnight in Europe/Tirane and the server owns that clock.
+   * The pay deadline (`min(accepted_at + pay-window, end of service day)`) has passed, so no
+   * payment may be taken any more and `payment` is null. Server-computed: the deadline arithmetic
+   * is the server's, in Europe/Tirane.
    */
   readonly payWindowClosed: boolean;
   /**

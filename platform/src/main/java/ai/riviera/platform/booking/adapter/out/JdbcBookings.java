@@ -288,7 +288,7 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				SELECT id, code, status, venue_id, set_id, customer_id, booking_date,
 				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at,
-				       cancel_reason, created_at
+				       cancel_reason, created_at, accepted_at
 				FROM booking
 				WHERE code = :code
 				""")
@@ -306,7 +306,7 @@ class JdbcBookings implements Bookings {
 		return jdbc.sql("""
 				SELECT id, code, status, venue_id, set_id, customer_id, booking_date,
 				       amount_minor, amount_currency, cancelled_at, refund_minor, request_expires_at,
-				       cancel_reason, created_at
+				       cancel_reason, created_at, accepted_at
 				FROM booking
 				WHERE account_id = :account
 				ORDER BY booking_date DESC, id DESC
@@ -322,6 +322,7 @@ class JdbcBookings implements Bookings {
 		Long refundMinor = rs.getObject("refund_minor", Long.class);
 		java.sql.Timestamp requestExpiresAt = rs.getTimestamp(COL_REQUEST_EXPIRES_AT);
 		String cancelReason = rs.getString(COL_CANCEL_REASON);
+		java.sql.Timestamp acceptedAt = rs.getTimestamp("accepted_at");
 		return new BookingRecord(
 				rs.getLong("id"), rs.getString("code"),
 				BookingStatus.valueOf(rs.getString(PARAM_STATUS)),
@@ -331,7 +332,8 @@ class JdbcBookings implements Bookings {
 				rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
 				cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor,
 				requestExpiresAt == null ? null : requestExpiresAt.toInstant(),
-				refundReasonOf(cancelReason), rs.getTimestamp("created_at").toInstant());
+				refundReasonOf(cancelReason), rs.getTimestamp("created_at").toInstant(),
+				acceptedAt == null ? null : acceptedAt.toInstant());
 	}
 
 	/**
@@ -560,21 +562,19 @@ class JdbcBookings implements Bookings {
 
 	@Override
 	public List<BookingId> findExpirableAwaitingPayment(Instant createdBefore, Instant acceptedBefore,
-			LocalDate serviceDayOnOrBefore) {
+			LocalDate serviceDayEndedOnOrBefore) {
 		// Abandoned-payment sweep candidates, two clocks: an instant booking
 		// (accepted_at IS NULL) expires on the creation clock — served by
 		// booking_awaiting_created_idx (V13); an accepted request expires on the accept clock —
 		// served by booking_awaiting_accepted_idx (V19). Never the other way around: an accepted
 		// request judged by created_at would be swept the moment it was accepted.
-		// The first arm narrows to advance-born rows (#791, mirrors BookingCutoff#bornBeforeServiceDay).
-		// The third arm needs no index of its own: it shares the partial predicate both carry.
 		// sweepJdbc, not jdbc: this read opens a scheduled run and is bounded.
 		return sweepJdbc.sql("""
 				SELECT id
 				FROM booking
 				WHERE status = :awaiting
-				  AND (   (booking_date <= :serviceDayOnOrBefore
-				           AND created_at < (booking_date::timestamp AT TIME ZONE 'Europe/Tirane'))
+				  -- SQL mirror of RequestWindows#payDeadline; identity pinned by RequestWindowsTest
+				  AND (   booking_date <= :serviceDayEndedOnOrBefore
 				       OR (accepted_at IS NULL AND created_at < :createdBefore)
 				       OR (accepted_at IS NOT NULL AND accepted_at < :acceptedBefore))
 				ORDER BY id
@@ -582,7 +582,7 @@ class JdbcBookings implements Bookings {
 				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
 				.param("createdBefore", java.sql.Timestamp.from(createdBefore))
 				.param("acceptedBefore", java.sql.Timestamp.from(acceptedBefore))
-				.param("serviceDayOnOrBefore", serviceDayOnOrBefore)
+				.param("serviceDayEndedOnOrBefore", serviceDayEndedOnOrBefore)
 				.query((rs, rowNum) -> new BookingId(rs.getLong("id")))
 				.list();
 	}

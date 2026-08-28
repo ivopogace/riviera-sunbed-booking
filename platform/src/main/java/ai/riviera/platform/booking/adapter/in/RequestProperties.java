@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * The Request-to-Book windows (issue #98), bound from {@code booking.request.*}:
  * {@code expiry-window} — how long a venue has to respond to a pending request (default 24h;
- * the effective deadline is additionally capped at the booked day's opening, invariant #4) —
+ * the effective deadline is additionally capped at the venue's sales close on D, invariant #4) —
  * and {@code pay-window} — how long the guest has to pay after accept, from {@code accepted_at}
  * (default 12h; the guest may be asleep when the accept lands, so the instant-book 15-minute
  * TTL would be far too tight). Converted to the application-layer {@code RequestWindows} value
@@ -28,12 +28,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * being asked to pay for it.
  *
  * <p><strong>{@code expiryWindow} is bounded below only, deliberately.</strong> {@code ReserveSetService}
- * caps the deadline at the booked day's opening — {@code min(clock.instant().plus(expiryWindow),
- * cutoff.serviceDayOpensAt(...))}, invariant #4 — so an over-long window cannot reach the domain:
- * it degrades to "expires when the service day opens", the safe direction. A ceiling would bound a
- * value the use site already bounds. {@code payWindow} is capped the same way at the service day's opening
- * ({@code RequestWindows#payDeadline}) and is <em>also</em> bounded at both ends
- * ({@link #MAX_PAY_WINDOW}), because the cap only binds for a request accepted the evening before —
+ * caps the deadline at the venue's sales close on D — {@code min(clock.instant().plus(expiryWindow),
+ * cutoff.salesCloseAt(...))}, invariant #4 — so an over-long window cannot reach the domain:
+ * it degrades to "expires at the sales close", the safe direction. A ceiling would bound a
+ * value the use site already bounds. {@code payWindow} is capped the same way at the end of the
+ * service day ({@code RequestWindows#payDeadline}) and is <em>also</em> bounded at both ends
+ * ({@link #MAX_PAY_WINDOW}), because the cap only binds for a near-term accept —
  * one accepted days ahead still holds its set for the whole raw window.
  *
  * <p>Validated in the compact constructor rather than with {@code @Validated} + {@code @Min}: Boot
@@ -74,11 +74,11 @@ public record RequestProperties(Duration expiryWindow, Duration payWindow) {
 		if (expiryWindow.compareTo(MIN_WINDOW) < 0) {
 			throw new IllegalArgumentException(
 					"booking.request.expiry-window must be at least " + MIN_WINDOW + ", but was "
-							+ expiryWindow + "; the deadline is min(now + window, the booked day's opening), "
-							+ "so a window this short makes every pending request expire on creation and no "
-							+ "accept can ever win the request_expires_at > now guard — the venue takes no "
-							+ "bookings and nothing reports a fault. There is no upper bound: the cutoff "
-							+ "already caps the deadline (invariant #4)");
+							+ expiryWindow + "; the deadline is min(now + window, the venue's sales close on "
+							+ "the booked day), so a window this short makes every pending request expire on "
+							+ "creation and no accept can ever win the request_expires_at > now guard — the "
+							+ "venue takes no bookings and nothing reports a fault. There is no upper bound: "
+							+ "the sales close already caps the deadline (invariant #4)");
 		}
 		if (payWindow.compareTo(MIN_WINDOW) < 0 || payWindow.compareTo(MAX_PAY_WINDOW) > 0) {
 			throw new IllegalArgumentException(

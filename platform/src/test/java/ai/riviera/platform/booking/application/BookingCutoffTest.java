@@ -1,4 +1,4 @@
-package ai.riviera.platform.booking.application.cancel;
+package ai.riviera.platform.booking.application;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -15,10 +15,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Verifies the day's three boundaries (invariant #4, #6): a date is bookable until its venue's
+ * Verifies the day's boundaries (invariant #4, #6): a date is bookable until its venue's
  * sales close on the day itself; free cancellation ends the evening before; the service
- * day opens at midnight. All arithmetic computed in {@code Europe/Tirane} from a fixed UTC clock
- * — never the JVM default zone. Pure unit test (real {@link BookingCutoff} + {@code Clock.fixed}).
+ * day opens at midnight and ends at the next one (the pay deadline's outer bound). All arithmetic
+ * computed in {@code Europe/Tirane} from a fixed UTC clock — never the JVM default zone. Pure unit
+ * test (real {@link BookingCutoff} + {@code Clock.fixed}).
  */
 class BookingCutoffTest {
 
@@ -102,22 +103,35 @@ class BookingCutoffTest {
 	}
 
 	@Test
-	void serviceDayHasOpenedOnlyFromMidnight() {
-		assertFalse(at(ZonedDateTime.of(2026, 7, 14, 23, 59, 59, 0, TIRANE))
-				.serviceDayHasOpened(BOOKING_DATE));
-		assertTrue(at(ZonedDateTime.of(2026, 7, 15, 0, 0, 0, 0, TIRANE))
-				.serviceDayHasOpened(BOOKING_DATE));
-		assertTrue(at(ZonedDateTime.of(2026, 7, 16, 9, 0, 0, 0, TIRANE))
-				.serviceDayHasOpened(BOOKING_DATE));
+	void serviceDayEndsAtTheNextTiraneMidnight() {
+		// 2026-07-15T22:00Z is 2026-07-16T00:00 in Tirane (CEST, UTC+2).
+		assertEquals(ZonedDateTime.of(2026, 7, 16, 0, 0, 0, 0, TIRANE).toInstant(),
+				at(ZonedDateTime.of(2026, 7, 1, 9, 0, 0, 0, TIRANE)).serviceDayEndsAt(BOOKING_DATE));
 	}
 
 	@Test
-	void lastOpenedServiceDayIsTheTiraneCivilDate() {
-		BookingCutoff cutoff = at(ZonedDateTime.of(2026, 7, 1, 9, 0, 0, 0, TIRANE));
+	void serviceDayEndsAtHandlesTheDstShoulder() {
+		// The night into 2026-10-25 repeats 02:00–03:00 in Tirane; the D+1 midnight stays unambiguous (R-6).
+		assertEquals(ZonedDateTime.of(2026, 10, 25, 0, 0, 0, 0, TIRANE).toInstant(),
+				at(ZonedDateTime.of(2026, 7, 1, 9, 0, 0, 0, TIRANE)).serviceDayEndsAt(LocalDate.of(2026, 10, 24)));
+	}
+
+	@Test
+	void serviceDayHasEndedOnlyAfterItsLastInstant() {
+		assertFalse(at(ZonedDateTime.of(2026, 7, 15, 23, 59, 59, 0, TIRANE))
+				.serviceDayHasEnded(BOOKING_DATE));
+		assertTrue(at(ZonedDateTime.of(2026, 7, 16, 0, 0, 0, 0, TIRANE))
+				.serviceDayHasEnded(BOOKING_DATE));
+		assertTrue(at(ZonedDateTime.of(2026, 7, 17, 9, 0, 0, 0, TIRANE))
+				.serviceDayHasEnded(BOOKING_DATE));
+	}
+
+	@Test
+	void lastEndedServiceDayIsYesterdayInTirane() {
 		assertEquals(LocalDate.of(2026, 7, 14),
-				cutoff.lastOpenedServiceDay(ZonedDateTime.of(2026, 7, 14, 23, 59, 0, 0, TIRANE).toInstant()));
+				BookingCutoff.lastEndedServiceDay(ZonedDateTime.of(2026, 7, 15, 23, 59, 0, 0, TIRANE).toInstant()));
 		assertEquals(BOOKING_DATE,
-				cutoff.lastOpenedServiceDay(ZonedDateTime.of(2026, 7, 15, 0, 0, 0, 0, TIRANE).toInstant()));
+				BookingCutoff.lastEndedServiceDay(ZonedDateTime.of(2026, 7, 16, 0, 0, 0, 0, TIRANE).toInstant()));
 	}
 
 	@Test

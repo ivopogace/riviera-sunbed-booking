@@ -150,16 +150,19 @@ by number — the numbering is stable; never renumber.
 4. **Sales close is venue-controlled, on the day itself.** A date D's online sales
    window runs until the venue's `sales_close` wall-clock time on D — a per-venue
    setting fixed at one of three values (`00:01` opts the venue out of same-day
-   sales, `16:00` the default, or `23:59`), `Europe/Tirane`. Cancellation keeps its
-   own, separate evening-before boundary (default 18:00 `Europe/Tirane`,
-   configurable) — the two are no longer the same fence. The point of sale is
-   fenced **again** at the service day's opening (00:00 `Europe/Tirane`): the pay
-   deadline is `min(accepted_at + pay-window, service-day open)`, the abandoned
-   sweep expires an advance-born `AWAITING_PAYMENT` booking whose service day has
-   opened (a same-day-born one relies on the sweep's TTL instead), and the
-   code-gated view issues no payment credentials past it. The confirm path is
-   deliberately NOT fenced — a payment in flight at midnight still confirms; read
-   `RESPONSIBILITIES.md` §`booking` before treating a late confirm as a bug.
+   sales, `16:00` the default, or `23:59`), `Europe/Tirane`. A pending request's
+   response deadline is capped at that same close (`min(created + expiry-window,
+   D at sales close)`). Cancellation keeps its own, separate evening-before
+   boundary (default 18:00 `Europe/Tirane`, configurable) — the two are no longer
+   the same fence. The pay path fences on **the pay deadline having passed**: an
+   accepted `AWAITING_PAYMENT` booking's deadline is `min(accepted_at +
+   pay-window, end of service day D)` (never past D's end, 00:00 `Europe/Tirane`
+   of D+1), a never-accepted one's is D's end with the sweep's TTL as the earlier
+   backstop; the abandoned sweep expires a booking once its deadline has passed,
+   and the code-gated view issues no payment credentials past it. The confirm
+   path is deliberately NOT fenced — a payment in flight at the deadline still
+   confirms; read `RESPONSIBILITIES.md` §`booking` before treating a late
+   confirm as a bug.
 5. **Money is integer minor units, never floating point.** `long`/`int` cents
    with an explicit ISO currency code; exact-integer commission/payout
    arithmetic; rounding rules written down at any division. v1 collection

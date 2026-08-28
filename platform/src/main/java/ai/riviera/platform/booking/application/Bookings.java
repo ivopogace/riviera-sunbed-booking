@@ -204,15 +204,14 @@ public interface Bookings {
 	 * terminating webhook, so such a booking lingers and keeps its {@code (set, date)} claimed; the
 	 * sweep cancels the PaymentIntent and releases the claim. Ordered by id for stable iteration.
 	 *
-	 * @param createdBefore        an instant booking expires on its creation clock (the TTL)
-	 * @param acceptedBefore       an accepted request expires on its accept clock, per
+	 * @param createdBefore             an instant booking expires on its creation clock (the TTL)
+	 * @param acceptedBefore            an accepted request expires on its accept clock, per
 	 *        {@link ai.riviera.platform.booking.application.request.RequestWindows#acceptedBefore}
-	 * @param serviceDayOnOrBefore any booking for a service day already underway expires regardless of
-	 *        either window (invariant #4) — a payment past that instant would buy a day the guest can
-	 *        already consume
+	 * @param serviceDayEndedOnOrBefore any booking whose service day has ended expires regardless of
+	 *        either window (invariant #4) — with the day over there is nothing left to pay for
 	 */
 	List<BookingId> findExpirableAwaitingPayment(Instant createdBefore, Instant acceptedBefore,
-			LocalDate serviceDayOnOrBefore);
+			LocalDate serviceDayEndedOnOrBefore);
 
 	/**
 	 * The ids of {@code PENDING_REQUEST} bookings past their stored deadline — the request-expiry sweep's
