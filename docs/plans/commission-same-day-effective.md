@@ -189,16 +189,16 @@ N/A — no contract change (no endpoint, DTO, or wire shape touched).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** Phase 2 — load FE skills, move the `admin-commissions.spec.ts` `'tomorrow'` pin to
-the today-claim (red), then reword the `admin-commissions.ts` copy (green).
+**Next action:** Phase 3 — RESPONSIBILITIES.md §`venue` + CONTEXT.md **Rate schedule**, then the
+docs-freshness sweep, guards, merge-from-main, ready-for-review + gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | beab9c3; draft PR #799 |
-| 1 — Backend: effective date → today (unit + ITs + Javadoc) | ✅ | this commit |
-| 2 — Frontend: explainer copy + spec pin | | |
+| 1 — Backend: effective date → today (unit + ITs + Javadoc) | ✅ | 867b82b |
+| 2 — Frontend: explainer copy + spec pin | ✅ | this commit |
 | 3 — Substrate docs + docs-freshness + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
