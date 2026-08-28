@@ -34,8 +34,11 @@ contention — and none needed; surfaced the one product fork and escalated it, 
 from today) · `riviera-plan-doc` (this template — forced the parity ledger over the retired
 "tomorrow" surface: enumerated every pin of the old behavior — 2 unit tests, 2 ITs, 1 FE spec pin,
 FE copy in 4 places, 2 substrate docs) · `tdd` (unit test red first: the `Scheduled` expectation
-moves to today, then the service; ITs follow) · `riviera-review-overlay` (review gate — due at
-ready-for-review) · `riviera-docs-freshness` (**ran** at Phase 3 over `origin/main...HEAD` + working tree: rename
+moves to today, then the service; ITs follow) · `riviera-review-overlay` (review gate — **ran** at ready-for-review on PR #799: `/code-review`
+executed via the Skill probe (single-pass — the fork's Agent tool was unavailable, so no
+multi-agent fan-out; declared in the PR) + all three overlay banks walked over the fullstack
+diff; 3 findings (copy precision ×2, V39 header staleness), all fixed in 13c7fee and the fixed
+surfaces re-verified — spec 23/23, guards clean, CI + Sonar green on that head) · `riviera-docs-freshness` (**ran** at Phase 3 over `origin/main...HEAD` + working tree: rename
 grep for "tomorrow"/`nextServiceDate`/"moves from tomorrow" across the substrate set — zero stale
 present-tense hits after the two substrate patches (RESPONSIBILITIES.md §`venue`, CONTEXT.md
 **Rate schedule**); counting sweep N/A — the slice adds no Nth instance of anything; the
@@ -63,23 +66,23 @@ routing table rather than silently absent).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a venue at 1500 bps, when the admin sets 2000 bps at midday, then the live
+- [x] **AC-1:** Given a venue at 1500 bps, when the admin sets 2000 bps at midday, then the live
   rate is 2000 **and** the same rate is scheduled effective **today** (`Europe/Tirane`), so past
   service dates keep their rate via the pinned floor. *Pinned by:*
   `VenueCommissionServiceTest.writeUpdatesTheLiveRateAndSchedulesItFromToday`
-- [ ] **AC-2:** Given a change at 22:30 UTC (already the next civil day in Tirane), when the
+- [x] **AC-2:** Given a change at 22:30 UTC (already the next civil day in Tirane), when the
   schedule row is written, then its effective date is **Tirane's** today, not UTC's (invariant #6).
   *Pinned by:* `VenueCommissionServiceTest.todayIsReckonedInTiraneNotUtc`
-- [ ] **AC-3:** Given a ledger accrual recorded at the old rate for a past service date, when the
+- [x] **AC-3:** Given a ledger accrual recorded at the old rate for a past service date, when the
   admin raises the rate, then that date's takings still split at the **old** rate and the ledger
   entry is byte-identical (invariant #9 — unchanged behavior, re-pinned against the new policy).
   *Pinned by:* `VenueCommissionForwardOnlyIT.aRateChangeDoesNotResplitPastServiceDatesNorTouchTheLedger`
-- [ ] **AC-4:** Given the admin raises the rate, when the operator reads takings for **today**,
+- [x] **AC-4:** Given the admin raises the rate, when the operator reads takings for **today**,
   then `commissionBps` is the **new** rate — the same rate a same-day accrual applies from that
   moment. *Pinned by:* `VenueCommissionForwardOnlyIT.theNewRateGovernsTheCurrentServiceDateOnward`
   (was `…FromTomorrowOnward`) + `AdminVenueCommissionIT.adminChangesAVenuesRateForwardOnly`
   (schedule-row date assertion moves to today).
-- [ ] **AC-5:** Given the admin console explainer, when rendered, then it states reporting for
+- [x] **AC-5:** Given the admin console explainer, when rendered, then it states reporting for
   **today** follows the change (and keeps the pinned claims: past service dates never re-price,
   the strip is not a copy of the ledger, `Europe/Tirane`, live rate). *Pinned by:*
   `admin-commissions.spec.ts` "states the narrow guarantee…" (the `'tomorrow'` pin becomes a
@@ -121,10 +124,10 @@ stated it:
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Timezone slip: effective date computed in UTC, not Tirane — wrong by a day for ~2h each evening (invariant #6) | low | high | keep `LocalDate.ofInstant(clock.instant(), TIRANE)`; AC-2 pins the 22:30 UTC boundary case | impl session | open |
-| R-2 | A test reckoning "today" in the JVM default zone disagrees with the service near midnight (the `VenueCommissionForwardOnlyIT` header documents this exact trap) | low | med | ITs already use `LocalDate.now(TIRANE)`; keep that idiom in every edited assertion | impl session | open |
+| R-1 | Timezone slip: effective date computed in UTC, not Tirane — wrong by a day for ~2h each evening (invariant #6) | low | high | keep `LocalDate.ofInstant(clock.instant(), TIRANE)`; AC-2 pins the 22:30 UTC boundary case | impl session | closed — 867b82b, `todayIsReckonedInTiraneNotUtc` green |
+| R-2 | A test reckoning "today" in the JVM default zone disagrees with the service near midnight (the `VenueCommissionForwardOnlyIT` header documents this exact trap) | low | med | ITs already use `LocalDate.now(TIRANE)`; keep that idiom in every edited assertion | impl session | closed — 867b82b, both ITs green locally (real Docker) + CI |
 | R-3 | Repricing leak: some read treats "today's figure may change mid-day" as a broken guarantee | low | med | grill swept all `commissionBpsOn` consumers — only `DailyTakingsService`; its documented guarantee is "a **past** date's figure never changes", which still holds | plan session | closed — verified at grill |
-| R-4 | FE spec pins break silently in CI only | low | low | Phase 2 runs the admin spec scoped locally before push | impl session | open |
+| R-4 | FE spec pins break silently in CI only | low | low | Phase 2 runs the admin spec scoped locally before push | impl session | closed — e8a99dc/13c7fee, spec 23/23 locally + CI green |
 | R-5 | Flyway collision | — | — | no migration in scope | — | closed — n/a |
 | R-6 | Per-venue authorization (invariant #13) | — | — | no venue-scoped surface changes; admin write stays role-gated (`/api/admin/**` exemption), takings read keeps `assertOwns` — both untouched | — | closed — n/a |
 
@@ -192,17 +195,18 @@ N/A — no contract change (no endpoint, DTO, or wire shape touched).
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3 — docs done, freshness ran clean)
+**Stage pointer:** merge close-out — all gates green; awaiting maintainer merge of PR #799
+(post-merge steps are GitHub-only: verify #798 closes, no epic checklist applies)
 
-**Next action:** run the hygiene guards + file-structure check, merge latest `origin/main`, mark
-PR #799 ready for review, then the Review + Sonar gates per `references/pr-gates.md`.
+**Next action:** maintainer merges PR #799 (slice merged via **PR #799**); this is the PR's last
+commit — no repo commit remains after it.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | beab9c3; draft PR #799 |
 | 1 — Backend: effective date → today (unit + ITs + Javadoc) | ✅ | 867b82b |
 | 2 — Frontend: explainer copy + spec pin | ✅ | this commit |
-| 3 — Substrate docs + docs-freshness + close-out | | |
+| 3 — Substrate docs + docs-freshness + close-out | ✅ | 92402fc; review fixes 13c7fee; this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -238,40 +242,40 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `AdminVenueCommissionIT.java`, `VenueCommissionForwardOnlyIT.java`, `VenueRates.java`,
 `DailyTakingsService.java`
 
-- [ ] **Step 1: Red** — `writeUpdatesTheLiveRateAndSchedulesItFromToday` expects
+- [x] **Step 1: Red** — `writeUpdatesTheLiveRateAndSchedulesItFromToday` expects
   `LocalDate.of(2026, 8, 6)` under `MIDDAY` (2026-08-05T12:00Z = Aug 5 Tirane → **today = Aug 5**);
   `todayIsReckonedInTiraneNotUtc` expects `2026-08-06` under `LATE_UTC_EVENING` (22:30 UTC Aug 5 =
   00:30 Aug 6 Tirane). Run
   `./gradlew test --tests "*VenueCommissionServiceTest*"` → FAIL (service still schedules +1).
-- [ ] **Step 2: Green** — `VenueCommissionService`: `nextServiceDate()` →
+- [x] **Step 2: Green** — `VenueCommissionService`: `nextServiceDate()` →
   `currentServiceDate()` returning `LocalDate.ofInstant(clock.instant(), TIRANE)`; Javadoc
   rewritten (three-writes contract kept; evening-before paragraph replaced by the today rationale,
   history to RESPONSIBILITIES.md). Same command → PASS.
-- [ ] **Step 3: ITs** — `AdminVenueCommissionIT`: expected date `LocalDate.now(TIRANE)`;
+- [x] **Step 3: ITs** — `AdminVenueCommissionIT`: expected date `LocalDate.now(TIRANE)`;
   message re-grounded. `VenueCommissionForwardOnlyIT`: rename
   `theNewRateGovernsServiceDatesFromTomorrowOnward` → `theNewRateGovernsTheCurrentServiceDateOnward`,
   query `date=today` (Tirane); header Javadoc updated. Run scoped (Docker-dependent — skip cleanly
   locally if no daemon; CI owns them).
-- [ ] **Step 4: Javadoc sweep** — `VenueRates#commissionBpsOn` + `DailyTakingsService` restated.
-- [ ] **Step 5: Scoped green** — `./gradlew test --tests "ai.riviera.platform.venue.*"` (+ payout
+- [x] **Step 4: Javadoc sweep** — `VenueRates#commissionBpsOn` + `DailyTakingsService` restated.
+- [x] **Step 5: Scoped green** — `./gradlew test --tests "ai.riviera.platform.venue.*"` (+ payout
   takings tests: `--tests "*DailyTakingsServiceTest*"`).
-- [ ] **Step 6: Commit** — `Schedule commission changes from today, not tomorrow (#798)`; open the
+- [x] **Step 6: Commit** — `Schedule commission changes from today, not tomorrow (#798)`; open the
   draft PR; update Execution status.
 
 ## Phase 2 — Frontend: explainer copy + spec pin
 
-- [ ] **Step 1: Red** — spec: replace the `'tomorrow'` pin with the today-claim (e.g.
+- [x] **Step 1: Red** — spec: replace the `'tomorrow'` pin with the today-claim (e.g.
   `toContain('today')` + keep the surviving pins); run scoped Vitest → FAIL.
-- [ ] **Step 2: Green** — `admin-commissions.ts`: TSDoc, the two explainer blocks, the save
+- [x] **Step 2: Green** — `admin-commissions.ts`: TSDoc, the two explainer blocks, the save
   notice → reporting-follows-today copy. Scoped Vitest + `npm run lint` + `npm run format:check`.
-- [ ] **Step 3: Commit** — update Execution status.
+- [x] **Step 3: Commit** — update Execution status.
 
 ## Phase 3 — Substrate docs + close-out
 
-- [ ] **Step 1:** RESPONSIBILITIES.md §`venue` + CONTEXT.md **Rate schedule** entry.
-- [ ] **Step 2:** `riviera-docs-freshness` over `origin/main...HEAD` (incl. the counting sweep).
-- [ ] **Step 3:** `node scripts/check-plan-file-structure.mjs --diff origin/main` + hygiene guards.
-- [ ] **Step 4:** Merge latest `origin/main`, mark PR ready, run the Review + Sonar gates
+- [x] **Step 1:** RESPONSIBILITIES.md §`venue` + CONTEXT.md **Rate schedule** entry.
+- [x] **Step 2:** `riviera-docs-freshness` over `origin/main...HEAD` (incl. the counting sweep).
+- [x] **Step 3:** `node scripts/check-plan-file-structure.mjs --diff origin/main` + hygiene guards.
+- [x] **Step 4:** Merge latest `origin/main`, mark PR ready, run the Review + Sonar gates
   (`references/pr-gates.md`), finalize Execution status in the PR's last commit.
 
 ---
@@ -287,26 +291,26 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/AC-2:** `./gradlew test --tests "*VenueCommissionServiceTest*"` → PASS. Verified at ``.
-- [ ] **AC-3/AC-4:** CI run of `VenueCommissionForwardOnlyIT` + `AdminVenueCommissionIT` green. Verified at ``.
-- [ ] **AC-5:** scoped Vitest `admin-commissions.spec.ts` → PASS. Verified at ``.
+- [x] **AC-1/AC-2:** `gradle test --tests "*VenueCommissionServiceTest*"` → PASS (8/8). Verified at 867b82b.
+- [x] **AC-3/AC-4:** `VenueCommissionForwardOnlyIT` + `AdminVenueCommissionIT` green locally against real Docker (867b82b) and in CI's backend job on 13c7fee.
+- [x] **AC-5:** scoped Vitest `admin-commissions.spec.ts` → PASS (23/23). Verified at 13c7fee.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section justified N/A (invariant #2 untouched).
-- [ ] Pool + cutoff rules honored (invariants #3, #4 — untouched).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports (invariant #11).
-- [ ] **Payment/payout** section filled; ledger exactly-once untouched (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone correct: effective date in `Europe/Tirane` off the injected clock (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No schema change → no migration (invariant #12 n/a).
-- [ ] **Frontend** copy-only; no `as any`.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR** — final state cites `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder + `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section justified N/A (invariant #2 untouched).
+- [x] Pool + cutoff rules honored (invariants #3, #4 — untouched).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports (invariant #11).
+- [x] **Payment/payout** section filled; ledger exactly-once untouched (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone correct: effective date in `Europe/Tirane` off the injected clock (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] No schema change → no migration (invariant #12 n/a).
+- [x] **Frontend** copy-only; no `as any`.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — final state cites `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder + `riviera-review-overlay`.
