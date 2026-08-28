@@ -431,7 +431,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				rs.getInt("position_no"), rs.getString("pool"),
 				new MoneyView(rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)),
 				rs.getObject("booking_cutoff", java.time.LocalTime.class),
-				rs.getObject("sales_close", java.time.LocalTime.class),
+				rs.getObject(COL_SALES_CLOSE, java.time.LocalTime.class),
 				BookingMode.valueOf(rs.getString(COL_BOOKING_MODE)));
 	}
 

@@ -316,7 +316,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | | | |
+| F-1 | sonar | `Web:S6819` (MAJOR) `venue-map.html`: use `<output>` instead of `role="status"` on the closed banner | fixed — banner is now `<output>` (implicit status role) + `block`; spec asserts the tag |
+| F-2 | sonar | `java:S1192` (CRITICAL) `JdbcVenueCatalog:434`: duplicated `"sales_close"` literal beside `COL_SALES_CLOSE` | fixed — mapper uses the constant; `SetBookingInfoIT` green |
 
 ---
 

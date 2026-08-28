@@ -956,7 +956,8 @@ describe('VenueMap', () => {
 
     // The closed state is visible with the today copy; the grid stays rendered.
     const banner = el().querySelector('[data-testid="map-sales-closed"]')!;
-    expect(banner.getAttribute('role')).toBe('status');
+    // <output> carries the implicit status role (Sonar S6819 prefers it over role="status").
+    expect(banner.tagName).toBe('OUTPUT');
     expect(banner.textContent).toContain('Online sales for today have closed');
     expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBeGreaterThan(0);
 
