@@ -24,6 +24,14 @@ ended" is never true from birth), and the code-gated view computes the same
 Ordering is load-bearing: the pay fences move **first**, the response-deadline cap moves to
 the sales close and the temporary gate is removed **last** — the reverse order recreates
 #791's review finding F-1 (an accept inside D minting an unpayable booking).
+Two structure decisions ride along: **`BookingCutoff` relocates from `application/cancel/`
+to the `application/` root** (after this slice it serves reserve, request, view, refund
+*and* cancel — the module-wide day-boundary authority belongs beside `Bookings` and
+`BookingCodeGenerator`, not under one use-case slice; done at Phase 0's refactor leg so
+every later phase imports its final home), and **the sweep's SQL re-derivation of the pay
+deadline is an accepted, pinned mirror** — a set-based query cannot call `RequestWindows`,
+so the mail ≡ sweep identity tests (AC-2) plus the day-arm boundary IT are the contract
+that keeps the two derivations from diverging.
 
 **Persistence:** JDBC only (invariant #1). **No Flyway migration** — `request_expires_at`
 and `accepted_at` already exist (V19); the pay deadline stays derived. Changed SQL only:
@@ -46,14 +54,19 @@ smallest seam: `BookingCutoffTest` → `RequestWindowsTest` → sweep/view ITs) 
 (due at phase 6 close-out over the slice range — `RESPONSIBILITIES.md` §`booking`,
 `CLAUDE.md` invariant #4, and the #791-era Javadocs are known-stale targets) ·
 `riviera-modulith` (all changes stay inside `booking`; no published-surface change — `payBy`
-keeps its field, only its value moves; `venue::api` grant already carries `salesClose`) ·
+keeps its field, only its value moves; `venue::api` grant already carries `salesClose`;
+the `BookingCutoff` move is intra-module — `application/*` is non-published either way, so
+`PackageShapeArchitectureTests`/`verify()` are indifferent to it) ·
 `riviera-java-conventions` (derived-not-stored deadlines as plain methods; §6d Javadoc —
 the retired day-open rationale is *relocated* to `RESPONSIBILITIES.md`, not restated;
 one-line inline comments) · `postgres` (sweep predicate redesign: the day-ended arm reuses
 the existing status+date shape, no new index; `TIMESTAMPTZ` comparisons bound as instants,
 Tirane day arithmetic done in Java, not per-row SQL `AT TIME ZONE`) · `codebase-design`
 (pay-deadline arithmetic stays in `RequestWindows`, day boundaries in `BookingCutoff` — the
-view composes the two rather than growing a third authority) · `grilling` (issue intake —
+view composes the two rather than growing a third authority; surfaced the two structure
+debts this plan now pays/pins: `BookingCutoff`'s misleading `cancel/` address → relocated to
+the `application/` root, and the sweep's SQL deadline mirror → accepted with its identity
+pinned rather than hidden) · `grilling` (issue intake —
 AC drift reconciled, see Open questions) · `riviera-frontend` (FE surface is one in-place
 copy edit in `booking/booking-view.ts` + its spec + one mocked-e2e arm; no new files, no
 placement question) · `riviera-tailwind` (verified: **no styling delta** — the touched
@@ -152,7 +165,8 @@ in for `feature/request-pay-deadline-fences` (riviera-sdlc cloud addendum).
 | R-5 | A venue accepting minutes before a `23:59` close leaves a near-zero pay window (deadline = day end) | low | low | Accepted product residual — spec §13: "never past the end of the service day"; confirm stays unfenced, so a payment in flight still lands; noted, not engineered around | plan | accepted |
 | R-6 | Timezone arithmetic at the day-end boundary (DST) | low | med | `serviceDayEndsAt(D)` delegates to the existing `serviceDayOpensAt(D+1)` (zone-rule-safe `ZonedDateTime` path already unit-tested); new unit cases pin `23:59:59` vs `00:00:00` membership | impl session | open |
 | R-7 | Deleting `bornBeforeServiceDay`/`serviceDayHasOpened`/`lastOpenedServiceDay` breaks a caller the grep missed (`out/` gitignore trap) | low | med | Negative confirmed via `git ls-files` sweep at plan time (call-site inventory in File structure); `ModularityTests` + compile break loudly either way | plan | open |
-| R-8 | The mail ≡ sweep identity silently diverges (mail says day end, sweep uses another bound) | low | high | `RequestWindowsTest` identity cases re-aimed at the day-end cap (AC-2); both sides derive from the same `RequestWindows.payDeadline` + `BookingCutoff` day-end members | impl session | open |
+| R-8 | The mail ≡ sweep identity silently diverges (mail says day end, sweep re-derives it in SQL — the accepted mirror) | low | high | `RequestWindowsTest` identity cases re-aimed at the day-end cap (AC-2) + the day-arm boundary IT (the SQL twin of `serviceDayHasEnded`); both sides bind their day bound from the same `BookingCutoff` members; the SQL carries a one-line pointer to `RequestWindows.payDeadline` | impl session | open |
+| R-9 | The `BookingCutoff` relocation breaks a caller or the `cancellationWindow` visibility widening leaks structure | low | low | Mechanical `git mv` + import updates across the five injecting services and the test; the compile and the structural net (`ModularityTests`/`PackageShapeArchitectureTests`) catch any miss; `application/*` is non-published, so the public widening exports nothing | impl session | open |
 
 ## Open questions / Assumptions
 
@@ -214,6 +228,28 @@ three of the day's boundaries on `BookingCutoff`"); `venue` keeps storing the sa
 *setting* (its Job), `availability` keeps holding state only (its Not-My-Job: "deciding
 whether bookings are even open for a date → `booking`").
 
+**Intra-module structure (the perfection pass):**
+
+- **`BookingCutoff` moves to `booking/application/` (root)** — Phase 0. After this slice it
+  serves five of the six use-case sub-packages; its `cancel/` address is a historical
+  accident that misleads readers about its role. The root already hosts the module-shared
+  pieces (`Bookings`, `BookingCodeGenerator`), so the move follows the established shape.
+  Consequence: `cancellationWindow` widens from package-private to public
+  (`CancellationPolicy` in `cancel/` calls it) — no published surface is created,
+  `application/*` stays non-exported, and every other member is public already.
+- **The `view → request` edge (`ViewBookingService` injecting `RequestWindows`) is
+  precedented, not new debt** — the refund sweep already injects `RequestWindows`, and the
+  view already injects `BookingCutoff`; the alternative (a third copy of the deadline
+  arithmetic) is the worse structure.
+- **The sweep's SQL deadline mirror is accepted and pinned, never silent:** the day-end
+  arm and the `accepted_at` arm together re-derive `min(accepted + pay-window, day end)`
+  in SQL because a set-based candidate query cannot call `RequestWindows`. The contract
+  holding the two derivations together is (a) the mail ≡ sweep identity tests in
+  `RequestWindowsTest` (AC-2), (b) the day-arm boundary IT (dated-yesterday reaped /
+  dated-today spared — the SQL twin of `serviceDayHasEnded`), and (c) both sides binding
+  their day bound from the same `BookingCutoff` members. A one-line comment above the SQL
+  names `RequestWindows.payDeadline` as the rule being mirrored.
+
 ## Payment & payout (invariants #5, #8, #9, #10)
 
 - **Model:** collect-only via Stripe, **no Connect** — untouched.
@@ -267,7 +303,7 @@ user instruction** (this session goes no further).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — BookingCutoff day-end boundary | | |
+| 0 — BookingCutoff day-end boundary + relocation to `application/` root | | |
 | 1 — Pay deadline caps at day end (mail ≡ sweep identity) | | |
 | 2 — Sweep: day-ended arm | | |
 | 3 — View fences on the pay deadline (+ FE copy) | | |
@@ -288,7 +324,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 ## File structure
 
 - `docs/plans/request-pay-deadline-fences.md` — this plan.
-- `platform/src/main/java/ai/riviera/platform/booking/application/cancel/BookingCutoff.java` — add `serviceDayEndsAt`, `serviceDayHasEnded`, static `lastEndedServiceDay`; delete `serviceDayHasOpened`, `bornBeforeServiceDay`, static `lastOpenedServiceDay` (call-site inventory verified: only the gate, the view, and the sweep binding — all rewired in this slice); Javadoc loses the "#576/until #792" bridge prose (§6d: relocated to RESPONSIBILITIES.md).
+- `platform/src/main/java/ai/riviera/platform/booking/application/BookingCutoff.java` — **moved here from `application/cancel/`** (Phase 0 refactor leg; `cancellationWindow` widens to public for `CancellationPolicy`); add `serviceDayEndsAt`, `serviceDayHasEnded`, static `lastEndedServiceDay`; delete `serviceDayHasOpened`, `bornBeforeServiceDay`, static `lastOpenedServiceDay` (call-site inventory verified: only the gate, the view, and the sweep binding — all rewired in this slice); Javadoc loses the "#576/until #792" bridge prose (§6d: relocated to RESPONSIBILITIES.md).
+- `platform/src/main/java/ai/riviera/platform/booking/application/cancel/CancellationPolicy.java` — import update for the moved `BookingCutoff` (call sites unchanged).
 - `platform/src/main/java/ai/riviera/platform/booking/application/request/RequestWindows.java` — `payDeadline` cap parameter renamed to `serviceDayEndsAt`; Javadoc re-aimed.
 - `platform/src/main/java/ai/riviera/platform/booking/application/request/RespondToRequestService.java` — `announcePaymentDue` passes `cutoff.serviceDayEndsAt(...)`.
 - `platform/src/main/java/ai/riviera/platform/booking/application/refund/AbandonedBookingSweepService.java` — binds `BookingCutoff.lastEndedServiceDay(now)`.
@@ -298,7 +335,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcBookings.java` — sweep `WHERE` arm 1 → `booking_date <= :serviceDayEndedOnOrBefore` (advance-born mirror dropped); `findByCode` SELECT + mapper gain `accepted_at`.
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/RequestProperties.java` — Javadoc: expiry-window ceiling rationale now cites the sales-close cap.
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/AbandonedPaymentProperties.java` — `MAX_TTL` Javadoc: the day-end arm is the universal backstop now.
-- `platform/src/test/java/ai/riviera/platform/booking/application/cancel/BookingCutoffTest.java` — day-end members' unit cases; retired members' cases deleted.
+- `platform/src/test/java/ai/riviera/platform/booking/application/BookingCutoffTest.java` — **moved with its class**; day-end members' unit cases; retired members' cases deleted.
+- `platform/src/test/java/ai/riviera/platform/booking/application/request/RespondToRequestServiceTest.java` — import update for the moved `BookingCutoff` + the announce-cap change's expectations (Phase 1). (The move's full referencer set was enumerated at plan time with `git grep -l "BookingCutoff" platform/src` — 14 files, every one already an entry in this section; no import-only stragglers exist.)
 - `platform/src/test/java/ai/riviera/platform/booking/application/request/RequestWindowsTest.java` — identity cases re-aimed (AC-2).
 - `platform/src/test/java/ai/riviera/platform/booking/application/refund/AbandonedBookingSweepServiceTest.java` — binding case re-aimed (`bindsTheServiceDayArmToTheTiraneCivilDate` → day-ended).
 - `platform/src/test/java/ai/riviera/platform/booking/AbandonedBookingSweepIT.java` — AC-3 cases (adapt + new same-day-accepted survival).
@@ -317,9 +355,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ---
 
-## Phase 0 — BookingCutoff day-end boundary
+## Phase 0 — BookingCutoff day-end boundary (+ relocation to the application root)
 
-**Files:** Modify `…/application/cancel/BookingCutoff.java` · Test `…/application/cancel/BookingCutoffTest.java`
+**Files:** Move `…/application/cancel/BookingCutoff.java` → `…/application/BookingCutoff.java` (with `BookingCutoffTest`) · Modify the 12 referencing files (imports; inventory in File structure) · Test `…/application/BookingCutoffTest.java`
 
 - [ ] **Step 1: Write the failing tests** (fixed `Clock`, `Europe/Tirane` — match the
   existing `BookingCutoffTest` fixtures):
@@ -369,10 +407,20 @@ public static LocalDate lastEndedServiceDay(Instant now) {
 
 - [ ] **Step 4: Run, verify green** — same command → PASS. (Retired members are deleted in
   phase 5, once their callers are gone — not here, or phases 1–4 won't compile.)
-- [ ] **Step 5: Generalization audit** — N/A (no bug fix; new members follow the existing
-  `serviceDayOpensAt`/`serviceDayHasOpened` pattern).
-- [ ] **Step 6: Commit** — `Add the service-day-end boundary to BookingCutoff (#792)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [ ] **Step 5: Refactor — relocate the day-boundary authority.** `git mv` `BookingCutoff`
+  (and `BookingCutoffTest`) from `application/cancel/` to `application/`, beside `Bookings`
+  and `BookingCodeGenerator`; widen `cancellationWindow` to public (its `CancellationPolicy`
+  caller now sits in a sibling package; `application/*` stays non-exported, so nothing is
+  published); update the imports across the referencer inventory (File structure). Verify:
+  `./gradlew test --tests "*BookingCutoffTest*" --tests "*CancellationPolicy*"` then the
+  structural net (`*ModularityTests*`, `*PackageShapeArchitectureTests*`) → PASS.
+- [ ] **Step 6: Generalization audit** — population: *module-shared classes still addressed
+  under a single use-case sub-package* → `git ls-files 'platform/src/main/java/ai/riviera/platform/booking/application/*/*.java' | xargs grep -l "import ai.riviera.platform.booking.application\."` (cross-sub-package imports) →
+  judge each: today's known edges are `BookingCutoff` (moved here), `RequestWindows`
+  (stays in `request/` — the pay *window* is request vocabulary; view/sweep consuming it is
+  the precedented edge, not an addressing error). Record the outcome below.
+- [ ] **Step 7: Commit** — `Add the service-day-end boundary and re-home BookingCutoff (#792)`
+- [ ] **Step 8: Update plan-doc execution status.**
 
 ---
 
@@ -429,9 +477,12 @@ AND (   booking_date <= :serviceDayEndedOnOrBefore
      OR (accepted_at IS NOT NULL AND accepted_at < :acceptedBefore))
 ```
 
-  Service binds `BookingCutoff.lastEndedServiceDay(now)`. (`postgres`: same
-  status+date shape as before — the existing candidate scan/index serves it; the Tirane
-  day arithmetic stays in Java, bound as a `LocalDate`, no per-row `AT TIME ZONE` left.)
+  Service binds `BookingCutoff.lastEndedServiceDay(now)`. A one-line comment above the
+  `WHERE` names the mirrored rule (`-- SQL mirror of RequestWindows#payDeadline; identity
+  pinned by RequestWindowsTest`), so the duplication is visible at the site, not just in
+  this plan. (`postgres`: same status+date shape as before — the existing candidate
+  scan/index serves it; the Tirane day arithmetic stays in Java, bound as a `LocalDate`,
+  no per-row `AT TIME ZONE` left.)
 - [ ] **Step 4: Run green**; regression `./gradlew test --tests "*JdbcBookings*"`.
 - [ ] **Step 5: Generalization audit** — population: *every SQL predicate mirroring
   `bornBeforeServiceDay` / Tirane midnight* → `git ls-files '*adapter/out/*.java' | xargs grep -ln "AT TIME ZONE"` →
