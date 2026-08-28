@@ -75,11 +75,10 @@ public record RequestProperties(Duration expiryWindow, Duration payWindow) {
 			throw new IllegalArgumentException(
 					"booking.request.expiry-window must be at least " + MIN_WINDOW + ", but was "
 							+ expiryWindow + "; the deadline is min(now + window, the venue's sales close on "
-							+ "the booked day), "
-							+ "so a window this short makes every pending request expire on creation and no "
-							+ "accept can ever win the request_expires_at > now guard — the venue takes no "
-							+ "bookings and nothing reports a fault. There is no upper bound: the cutoff "
-							+ "already caps the deadline (invariant #4)");
+							+ "the booked day), so a window this short makes every pending request expire on "
+							+ "creation and no accept can ever win the request_expires_at > now guard — the "
+							+ "venue takes no bookings and nothing reports a fault. There is no upper bound: "
+							+ "the sales close already caps the deadline (invariant #4)");
 		}
 		if (payWindow.compareTo(MIN_WINDOW) < 0 || payWindow.compareTo(MAX_PAY_WINDOW) > 0) {
 			throw new IllegalArgumentException(

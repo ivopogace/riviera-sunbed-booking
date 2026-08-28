@@ -296,13 +296,15 @@ that stays true).
 
 > Session-recovery anchor — update in the same commit window as the change it records.
 
-**Stage pointer:** **review gate ran — all three findings fixed (red-first), fix commit
-pushed.** `/code-review` (5-agent fan-out + `riviera-review-overlay`) ran over
-`origin/main...a9b83ea8` on 2026-08-28; review comment posted on PR #800; findings F-1/F-2/
-F-3 recorded and fixed below (re-entered at Implement per the re-entry rule; routed skills
-re-loaded: `riviera-java-conventions`, `riviera-modulith`, `riviera-local-debug`). Sonar:
-quality gate green on a9b83ea8; re-check plus the issue-list pull (pr-gates §2) due on the
-fix push before merge.
+**Stage pointer:** **review gate ran — all three findings fixed; concurrent fixes
+reconciled by merge.** `/code-review` (5-agent fan-out + `riviera-review-overlay`) ran over
+`origin/main...a9b83ea8` on 2026-08-28; review comment posted on PR #800. Two sessions then
+fixed the findings concurrently: the review session (red-first, re-entered at Implement with
+`riviera-java-conventions`/`riviera-modulith`/`riviera-local-debug` re-loaded) and the
+implement session (52c6ae7). F-1 converged (same message fix); on F-2/F-3 the merge keeps
+the review session's **sweep-parity** resolution and drops 52c6ae7's accept-the-residual
+disposition — rationale in the F-2 row. Sonar: quality gate green on a9b83ea8; re-check
+plus the issue-list pull (pr-gates §2) due on the merged push before merge to main.
 
 **Next action:** check the fix push's CI run, pull the Sonar issue list on it (pr-gates
 §2), then ready-for-review + merge close-out. Skill-routing gate ran per phase:
@@ -337,9 +339,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review (`/code-review` + overlay, confidence 100) | `RequestProperties.java:77` boot-guard exception message still says the deadline caps at "the booked day's opening" — this slice moved the cap to the sales close and updated the class Javadoc, so the runtime message contradicts both. The exact lockstep site #791's F-3 audit named. | fixed in review-fix commit (message names the sales close; pinned by `RequestPropertiesTest.acceptsTheWholeWindowRangeButNotBeyondIt`) |
-| F-2 | review (three agents convergent, confidence 75 — below the PR-comment bar, real) | `ViewBookingService.java:102–103` — the strict `isAfter(payDeadline)` disagrees with the sweep's **inclusive** day-end arm at exactly `now == serviceDayEndsAt(D)`: sweep reaps (and releases the claim) while the view still issues credentials; the "exactly as the sweep spares it" comment holds only for the accepted/raw-window arm (`accepted_at < :acceptedBefore`, genuinely strict). Fixed by making the view mirror the sweep **by construction**: `payWindowClosed = serviceDayHasEnded(date) OR acceptedAt < acceptedBefore(now)` — the exact two members the sweep binds (`lastEndedServiceDay`/`acceptedBefore`), so day end is inclusive on both sides and the raw-window instant payable on both; the mailed `payBy` value is untouched. | fixed in review-fix commit |
-| F-3 | review (companion to F-2, confidence 75) | No test pins the day-end-capped exact-instant parity (AC-2/R-8 discipline): `withholdsCredentialsOnceTheServiceDayHasEnded` uses a date two days gone; the sweep ITs stay clear of the boundary. Add the boundary case alongside F-2's fix. | fixed in review-fix commit (`ViewBookingServiceTest.withholdsCredentialsAtTheExactEndOfServiceDay` + `dayEndCapClosesAnAcceptedBookingAtThatSameInstant`, red-first) |
+| F-1 | review (`/code-review` + overlay, confidence 100) | `RequestProperties.java:77` boot-guard exception message still says the deadline caps at "the booked day's opening" — this slice moved the cap to the sales close and updated the class Javadoc, so the runtime message contradicts both. The exact lockstep site #791's F-3 audit named. | fixed — both sessions converged on the same message fix (52c6ae7 + the review-fix commit, merged); pinned by `RequestPropertiesTest.acceptsTheWholeWindowRangeButNotBeyondIt` asserting "sales close" |
+| F-2 | review (three agents convergent, confidence 75 — below the PR-comment bar, real) | `ViewBookingService.java:102–103` — the strict `isAfter(payDeadline)` disagrees with the sweep's **inclusive** day-end arm at exactly `now == serviceDayEndsAt(D)`: sweep reaps (and releases the claim) while the view still issues credentials; the "exactly as the sweep spares it" comment holds only for the accepted/raw-window arm (`accepted_at < :acceptedBefore`, genuinely strict). | fixed — the view now mirrors the sweep **by construction**: `payWindowClosed = serviceDayHasEnded(date) OR acceptedAt < acceptedBefore(now)`, the exact two members the sweep binds, so day end is inclusive on both sides and the raw-window instant payable on both; the mailed `payBy` value is untouched. **Supersedes 52c6ae7's accept-the-residual disposition** (comment-only fix arguing the mailed instant must stay payable): that kept the one combination the finding flagged — credentials issued at an instant the sweep may cancel the booking and release its claim — and its own rationale conceded the sweep's midnight edge is inclusive, so the coherent promise is the pair's shared semantics |
+| F-3 | review (companion to F-2, confidence 75) | No test pins the day-end-capped exact-instant parity (AC-2/R-8 discipline): `withholdsCredentialsOnceTheServiceDayHasEnded` uses a date two days gone; the sweep ITs stay clear of the boundary. Add the boundary case alongside F-2's fix. | fixed — `ViewBookingServiceTest.withholdsCredentialsAtTheExactEndOfServiceDay` + `dayEndCapClosesAnAcceptedBookingAtThatSameInstant` (red-first) pin withhold-at-day-end; 52c6ae7's opposite pin (`stillIssuesCredentialsAtTheExactDayEndInstant`) removed in the merge as it asserted the superseded behavior |
 
 ---
 
