@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
+import { todayBookingDate } from '../shared/booking-date';
 import { SetView } from '../shared/venue-views';
 import { AwaitingPayment, BookingConfirmation, RequestedBooking } from './booking.model';
 import { BookingDialog } from './booking-dialog';
@@ -328,6 +329,15 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     }
     p.errorCode.set(undefined);
     expect(p.errorMessage()).toBeUndefined();
+  });
+
+  it('renders the today-specific BOOKING_CLOSED copy for a same-day attempt, the generic copy otherwise (#791)', () => {
+    const p = probe();
+    p.errorCode.set('BOOKING_CLOSED');
+    expect(p.errorMessage()).toContain('Booking has closed');
+
+    fixture.componentRef.setInput('date', todayBookingDate(new Date()));
+    expect(p.errorMessage()).toContain('Online sales for today have closed');
   });
 
   it('traps Tab focus at both edges of the dialog', async () => {

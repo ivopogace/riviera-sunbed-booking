@@ -9,10 +9,10 @@ import { uniformDays } from '../../testing/calendar-days';
 import { AvailabilityCalendar } from './availability-calendar';
 
 /**
- * The Vitest clock is frozen at Monday 2026-06-15 midday Europe/Tirane, so "tomorrow" is
- * 2026-06-16 and June 2026 is the month the picker opens on unless a spec says otherwise.
+ * The Vitest clock is frozen at Monday 2026-06-15 midday Europe/Tirane, so "today" (#791's floor)
+ * is 2026-06-15 and June 2026 is the month the picker opens on unless a spec says otherwise.
  */
-const MIN_DATE = '2026-06-16';
+const MIN_DATE = '2026-06-15';
 
 @Component({
   imports: [AvailabilityCalendar],
@@ -242,10 +242,10 @@ describe('AvailabilityCalendar', () => {
       );
     });
 
-    it('announces today and past days as disabled, and refuses to select them', async () => {
+    it('announces past days as disabled, and refuses to select them', async () => {
       await flushCalendar();
 
-      for (const iso of ['2026-06-15', '2026-06-01']) {
+      for (const iso of ['2026-06-14', '2026-06-01']) {
         expect(dayButton(iso)!.getAttribute('aria-disabled')).toBe('true');
         expect(dayButton(iso)!.getAttribute('aria-label')).toContain('not bookable');
         dayButton(iso)!.click();
@@ -253,6 +253,13 @@ describe('AvailabilityCalendar', () => {
       fixture.detectChanges();
 
       expect(host.chosen).toEqual([]);
+    });
+
+    it('announces today as bookable, not disabled (#791)', async () => {
+      await flushCalendar();
+
+      expect(dayButton('2026-06-15')!.getAttribute('aria-disabled')).toBeNull();
+      expect(dayButton('2026-06-15')!.getAttribute('aria-label')).not.toContain('not bookable');
     });
 
     it('marks the chosen day as selected', async () => {
@@ -414,8 +421,9 @@ describe('AvailabilityCalendar', () => {
       await flushCalendar();
 
       press('2026-06-20', 'Home');
-      expect(focused()).toBe('2026-06-15');
-      expect(dayButton('2026-06-15')!.getAttribute('aria-disabled')).toBe('true');
+      press('2026-06-15', 'ArrowLeft');
+      expect(focused()).toBe('2026-06-14');
+      expect(dayButton('2026-06-14')!.getAttribute('aria-disabled')).toBe('true');
     });
 
     it('leaves keys it does not own to the browser', async () => {
@@ -444,10 +452,11 @@ describe('AvailabilityCalendar', () => {
       await flushCalendar();
 
       press('2026-06-20', 'Home');
-      dayButton('2026-06-15')!.dispatchEvent(
+      press('2026-06-15', 'ArrowLeft');
+      dayButton('2026-06-14')!.dispatchEvent(
         new KeyboardEvent('keydown', { key: ' ', bubbles: true }),
       );
-      dayButton('2026-06-15')!.click();
+      dayButton('2026-06-14')!.click();
 
       expect(host.chosen).toEqual([]);
     });

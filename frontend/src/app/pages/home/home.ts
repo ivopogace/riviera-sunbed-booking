@@ -101,9 +101,14 @@ export class Home {
   protected readonly beach = signal('');
   protected readonly region = signal('');
   /**
-   * The earliest selectable booking date — tomorrow in Europe/Tirane. Backs the date input's `min`
-   * and clamps a hand-typed date so past/today dates can't be presented as bookable (an
+   * The earliest selectable booking date — today in Europe/Tirane (#791). Backs the date input's
+   * `min` and clamps a hand-typed date so a past date can't be presented as bookable (an
    * invariant #4 display guardrail; the server stays authoritative for the real cutoff).
+   *
+   * <p>Computed once at construction, not re-derived per interaction (unlike `venue-map`'s
+   * per-route-reset floor): a page left open across Tirane midnight can still offer yesterday
+   * client-side until the next navigation. Accepted residual — the server refuses `BOOKING_CLOSED`
+   * regardless.
    */
   protected readonly minDate = defaultBookingDate(new Date());
   /** The day availability is counted for (ISO YYYY-MM-DD); defaults to the earliest bookable date. */

@@ -69,7 +69,7 @@ describe('Home (venue discovery)', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('requests the venue list for tomorrow in Europe/Tirane by default', () => {
+  it('requests the venue list for today in Europe/Tirane by default', () => {
     const req = listRequest();
     expect(req.request.params.get('date')).toBe(defaultBookingDate(new Date()));
     // No filter params on the initial load.
@@ -215,7 +215,7 @@ describe('Home (venue discovery)', () => {
     listRequest().flush(venues());
     await fixture.whenStable();
     const link = el().querySelector('[data-testid="venue-card"]');
-    // The chosen date rides along as ?date= so it persists into the map (default = tomorrow, Tirane).
+    // The chosen date rides along as ?date= so it persists into the map (default = today, Tirane).
     expect(link?.getAttribute('href')).toBe(`/venues/1?date=${defaultBookingDate(new Date())}`);
   });
 
@@ -223,7 +223,7 @@ describe('Home (venue discovery)', () => {
     listRequest().flush(venues());
     await fixture.whenStable();
 
-    // A date guaranteed to differ from the default (tomorrow) on any calendar day (the 2026-07-14 flake).
+    // A date guaranteed to differ from the default (today) on any calendar day (the 2026-07-14 flake).
     const future = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
     const input = el().querySelector<HTMLInputElement>('[data-testid="filter-date"]')!;
     input.value = future;
@@ -275,9 +275,7 @@ describe('Home (venue discovery)', () => {
     listRequest().flush(venues());
     await fixture.whenStable();
 
-    // A date guaranteed to differ from the component's default (tomorrow) on ANY calendar day —
-    // a hardcoded date that happens to equal "tomorrow" fires no change event (the 2026-07-14
-    // flake). Derived like the component derives its own default, a week out.
+    // A date guaranteed to differ from the default (today) on any calendar day (the 2026-07-14 flake).
     const chosen = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
     const input = el().querySelector<HTMLInputElement>('[data-testid="filter-date"]')!;
     input.value = chosen;
@@ -289,7 +287,7 @@ describe('Home (venue discovery)', () => {
     req.flush(venues());
   });
 
-  it('floors the date picker at tomorrow in Europe/Tirane (no past/today via the native picker) (#155)', async () => {
+  it('floors the date picker at today in Europe/Tirane (no past date via the native picker) (#155)', async () => {
     listRequest().flush(venues());
     await fixture.whenStable();
 

@@ -154,7 +154,7 @@ An implement session with a different designated branch records its substitution
   window tests stay green **unmodified** except for the method rename. *Pinned by:*
   `BookingCutoffTest.cancellationWindowSpansFreeThenLate`,
   `.cancellationWindowClosesWhenServiceDayStarts` (existing), `RefundPolicyTest` (untouched).
-- [ ] **AC-9 (FE date floor + copy):** Given the frozen test clock, when the homepage, the venue
+- [x] **AC-9 (FE date floor + copy):** Given the frozen test clock, when the homepage, the venue
   map, and the availability calendar render, then **today** is the earliest selectable/bookable
   date, and the single-source cutoff note states the new rule with no "from tomorrow" and no
   "evening before". *Pinned by:* `booking-date.spec.ts` (`defaultBookingDate` = today),
@@ -218,15 +218,15 @@ An implement session with a different designated branch records its substitution
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **The FREE-window trap:** redefining `closesAt` in place would extend free cancellation into the service day and move the view's pay fence (its `serviceDayOpen` rides `CancellationWindow == CLOSED`); adjacent trap: `SetBookingInfo` carries two bare `LocalTime`s, so a swapped argument compiles | med | high | `closesAt` is renamed `freeCancellationEndsAt` (rename-only in Phase 2, both call sites) and left arithmetically identical; the sales close is a **new** method whose semantic switch lands atomically with its call site (Phase 3); a typed `SalesClose` wrapper considered and declined (Phase 3 note); AC-8 pins the windows unmodified; `RefundPolicyTest`/`CancelBookingService` must show empty diffs | impl session | open |
-| R-2 | **Sweep kills same-day Instant bookings:** the `booking_date <= lastOpenedServiceDay` arm matches a same-day `AWAITING_PAYMENT` row immediately; sweep interval PT5M, checkout takes minutes — booking expired + PaymentIntent cancelled mid-payment | high (without fix) | high | Phase 4 born-before-service-day predicate in the sweep SQL; AC-6; grill finding recorded on issue #791 | impl session | open |
-| R-3 | **View withholds `clientSecret` for same-day bookings** (`payWindowClosed` = CLOSED window = true from birth): primary journey survives (the 202 carries the secret) but the resume-payment path dead-ends | high (without fix) | med | Phase 4 same predicate in `ViewBookingService`; `BookingRecord` gains `createdAt`; AC-7 | impl session | open |
-| R-4 | **Timezone/cutoff arithmetic** (invariants #4/#6): the new `salesCloseAt` must be Tirane-anchored; the sweep predicate puts `Europe/Tirane` into SQL for the first time (`booking_date::timestamp AT TIME ZONE 'Europe/Tirane'`) | med | high | Boundary unit tests under fixed clocks incl. DST-shoulder date (`BookingCutoffTest`); the SQL predicate is pinned by `AbandonedBookingSweepIT` against real Postgres; one-line comment ties the SQL zone literal to `BookingCutoff.TIRANE` | impl session | open |
-| R-5 | **IT determinism for "same-day before/after close":** no IT currently overrides the `Clock` bean (only far-future dates + backdating exist), and a fixed-clock bean forks the shared Spring context | med | med | Boundary arithmetic proven in unit tests (fixed `Clock`); ITs use the **boundary venues** trick — `23:59` venue for the same-day success path, `00:01` venue for the after-close 422 — deterministic except within a minute of Tirane midnight (accepted residual, documented in the IT); no context fork | impl session | open |
+| R-1 | **The FREE-window trap:** redefining `closesAt` in place would extend free cancellation into the service day and move the view's pay fence (its `serviceDayOpen` rides `CancellationWindow == CLOSED`); adjacent trap: `SetBookingInfo` carries two bare `LocalTime`s, so a swapped argument compiles | med | high | `closesAt` is renamed `freeCancellationEndsAt` (rename-only in Phase 2, both call sites) and left arithmetically identical; the sales close is a **new** method whose semantic switch lands atomically with its call site (Phase 3); a typed `SalesClose` wrapper considered and declined (Phase 3 note); AC-8 pins the windows unmodified; `RefundPolicyTest`/`CancelBookingService` must show empty diffs | impl session | closed — done, `RefundPolicyTest`/`CancelBookingService` diffs empty |
+| R-2 | **Sweep kills same-day Instant bookings:** the `booking_date <= lastOpenedServiceDay` arm matches a same-day `AWAITING_PAYMENT` row immediately; sweep interval PT5M, checkout takes minutes — booking expired + PaymentIntent cancelled mid-payment | high (without fix) | high | Phase 4 born-before-service-day predicate in the sweep SQL; AC-6; grill finding recorded on issue #791 | impl session | closed — done |
+| R-3 | **View withholds `clientSecret` for same-day bookings** (`payWindowClosed` = CLOSED window = true from birth): primary journey survives (the 202 carries the secret) but the resume-payment path dead-ends | high (without fix) | med | Phase 4 same predicate in `ViewBookingService`; `BookingRecord` gains `createdAt`; AC-7 | impl session | closed — done |
+| R-4 | **Timezone/cutoff arithmetic** (invariants #4/#6): the new `salesCloseAt` must be Tirane-anchored; the sweep predicate puts `Europe/Tirane` into SQL for the first time (`booking_date::timestamp AT TIME ZONE 'Europe/Tirane'`) | med | high | Boundary unit tests under fixed clocks incl. DST-shoulder date (`BookingCutoffTest`); the SQL predicate is pinned by `AbandonedBookingSweepIT` against real Postgres; one-line comment ties the SQL zone literal to `BookingCutoff.TIRANE` | impl session | closed — done |
+| R-5 | **IT determinism for "same-day before/after close":** no IT currently overrides the `Clock` bean (only far-future dates + backdating exist), and a fixed-clock bean forks the shared Spring context | med | med | Boundary arithmetic proven in unit tests (fixed `Clock`); ITs use the **boundary venues** trick — `23:59` venue for the same-day success path, `00:01` venue for the after-close 422 — deterministic except within a minute of Tirane midnight (accepted residual, documented in the IT); no context fork | impl session | closed — done, boundary-venue trick used as planned |
 | R-6 | **Flyway V44 collision** | low | med | V44 free on `main`, all open PRs are Dependabot (checked 2026-08-26); if a collision appears, the branch merging second renumbers | plan session | closed — verified at grill |
-| R-7 | **Record-growth ripple:** `SetBookingInfo` + `BookingRecord` are records — every constructor call site (prod + fixtures) breaks at compile time | high | low | Compile-time visible by construction; sweep call sites in the same phase; no positional ambiguity (different types) | impl session | open |
-| R-8 | **Existing sweep IT fixture goes stale:** `ServiceDayBackdate` moves `booking_date` into the past but leaves `created_at = now`, which the new predicate reads as "same-day-born" — the existing day-open sweep IT would silently stop matching | med | high | Phase 4 extends `ServiceDayBackdate` to backdate `created_at` below the moved date's day-open (honest fixture: a real advance booking is created before its date); the existing IT then passes unchanged | impl session | open |
-| R-9 | **Copy pins scattered:** the sentence is pinned in `cutoff-note.spec.ts`, clause-checked in `home.spec.ts`/`venue-map.spec.ts`, regexed in `discovery-flow.e2e.ts`, and echoed in `admin-commissions.ts` + `terms-of-service.ts` | high | low | Phase 6 sweeps all sites in one commit; the clause checks (`'sales close'`) are kept clause-level so only the one full-sentence pin changes | impl session | open |
+| R-7 | **Record-growth ripple:** `SetBookingInfo` + `BookingRecord` are records — every constructor call site (prod + fixtures) breaks at compile time | high | low | Compile-time visible by construction; sweep call sites in the same phase; no positional ambiguity (different types) | impl session | closed — done, all sites found by compile + generalization audit |
+| R-8 | **Existing sweep IT fixture goes stale:** `ServiceDayBackdate` moves `booking_date` into the past but leaves `created_at = now`, which the new predicate reads as "same-day-born" — the existing day-open sweep IT would silently stop matching | med | high | Phase 4 extends `ServiceDayBackdate` to backdate `created_at` below the moved date's day-open (honest fixture: a real advance booking is created before its date); the existing IT then passes unchanged | impl session | closed — done (with a deviation: the specific IT the plan named didn't use `ServiceDayBackdate`, so it was reworked to; see Phase 4 notes) |
+| R-9 | **Copy pins scattered:** the sentence is pinned in `cutoff-note.spec.ts`, clause-checked in `home.spec.ts`/`venue-map.spec.ts`, regexed in `discovery-flow.e2e.ts`, and echoed in `admin-commissions.ts` + `terms-of-service.ts` | high | low | Phase 6 sweeps all sites in one commit; the clause checks (`'sales close'`) are kept clause-level so only the one full-sentence pin changes | impl session | closed — done, generalization audit swept all sites |
 | R-10 | Per-venue authorization (invariant #13) | — | — | No new venue-scoped operation: profile read/PATCH keep their existing `assertOwns`-first services; reserve stays public-by-design. No change | — | closed — n/a |
 
 ## Open questions / Assumptions
@@ -238,6 +238,23 @@ An implement session with a different designated branch records its substitution
   existing pattern `min == value` preserved at the new floor). The epic's story 2 asks for
   today to be selectable; opening on it is the natural default for "the tourist already on the
   riviera". — *Owner:* impl session · *Resolves by:* Phase 6 (revisit if review objects).
+  **Resolved:** implemented as assumed (`defaultBookingDate` now returns `todayBookingDate`);
+  no objection raised.
+- **New finding (Phase 6, out of this slice's scope):** `VenueCommissionService`'s Javadoc
+  reasons that the commission schedule can safely start "tomorrow" because "invariant #4 closes
+  a service day's bookings the evening before, so every booking for today has already accrued at
+  the old rate" — that premise is now false for an Instant-Book venue (same-day sales stay open
+  until its `sales_close`). A same-day booking confirmed *after* an admin's mid-day rate change
+  now accrues at the **new** live rate (`VenueRates#commissionBps`), while the takings strip for
+  that same service date still reports the **old** scheduled rate until tomorrow
+  (`VenueRates#commissionBpsOn`) — a ledger/takings mismatch for *today* that couldn't previously
+  occur (same-day booking was impossible pre-#791). Not fixed here: no AC covers it, it is
+  `venue`'s commission-schedule module not `booking`, and `VenueCommissionService#nextServiceDate()`
+  is production policy this session has no mandate to change. The FE copy was reworded to stop
+  asserting the now-false mechanism (Phase 6, `admin-commissions.ts`); the backend Javadoc still
+  states it (unedited — flagged here rather than silently fixed or silently left).
+  — *Owner:* maintainer · *Resolves by:* a follow-up issue (candidate for #792 or a new one) —
+  raised at merge close-out review.
 - **Assumption:** the after-close refusal needs no new error code — `BOOKING_CLOSED` + the
   request's date is enough for the FE to render today-specific copy (epic: "the refusal
   contract is unchanged"). — *Owner:* plan · *Resolves by:* AC-4/AC-10 as written.
@@ -383,7 +400,7 @@ if any styling does surface, load `riviera-tailwind` then (routing-gate re-entry
 | 3 — reserve paths (Instant gate, Request gate + cap) | ✅ | Gate reserve on the same-day sales close; keep same-day requests closed (#791) |
 | 4 — same-day pay-fence bridges (sweep + view) | ✅ | Spare same-day-born bookings from the day-open pay fences (#791) |
 | 5 — lifecycle regression pins | ✅ | Pin same-day bookings through staff view and weather refund (#791) |
-| 6 — frontend floor + copy | | |
+| 6 — frontend floor + copy | ✅ | Allow today as the earliest bookable date; state the on-day sales close (#791) |
 | 7 — mocked e2e | | |
 | 8 — substrate docs + Javadoc sweep | | |
 
@@ -444,15 +461,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Frontend — modified**
 - `frontend/src/app/shared/booking-date.ts` + `booking-date.spec.ts` — floor → today
 - `frontend/src/app/shared/cutoff-note.ts` + `cutoff-note.spec.ts` — new sentence
-- `frontend/src/app/shared/clock-icon.spec.ts` — fixture text only if it collides (expected: untouched)
-- `frontend/src/app/pages/home/home.spec.ts` — floor assertions
-- `frontend/src/app/venue/availability-calendar.ts` (doc comment) + `availability-calendar.spec.ts` — `MIN_DATE` → today, disabled-set cases
-- `frontend/src/app/venue/venue-map.ts` (doc comments) + `venue-map.spec.ts` — floor/clamp cases
+- `frontend/src/app/shared/clock-icon.spec.ts` — fixture text only if it collides (expected: untouched) — **untouched, as expected**
+- `frontend/src/app/pages/home/home.ts` (doc comment) + `home.spec.ts` — floor assertions + prose
+- `frontend/src/app/venue/availability-calendar.ts` (doc comment) + `availability-calendar.spec.ts` — `MIN_DATE` → today, disabled-set cases (+ new today-bookable case)
+- `frontend/src/app/venue/venue-map.ts` (doc comments) + `venue-map.spec.ts` — floor/clamp cases + the note-explains-the-floor test rewritten
 - `frontend/src/app/booking/booking-dialog.ts` + `booking-dialog.spec.ts` — today-aware `BOOKING_CLOSED` copy
-- `frontend/src/app/admin/admin-commissions.ts` (+ its spec if it pins the explainer) — stale "from tomorrow" explainer
-- `frontend/src/app/pages/legal/terms-of-service.ts` (+ spec if pinned) — sales-close sentence (cancellation sentence stays)
-- `frontend/e2e/discovery-flow.e2e.ts` — cutoff-note regex + date-carry derivation at the new floor
-- `frontend/e2e/booking-flow.e2e.ts` — only if the floor change shifts its date derivations
+- `frontend/src/app/admin/admin-commissions.ts` — stale "from tomorrow" explainer reworded (spec unaffected — clause-level check)
+- `frontend/src/app/pages/legal/terms-of-service.ts` + `terms-of-service.html` — sales-close sentence split from the cancellation sentence (cancellation sentence stays evening-before)
+- `frontend/src/app/operator/daily-view-tab.spec.ts` — record-growth-adjacent fixture fix (deviation, see Phase 6 Step 5 note): a `defaultBookingDate`-derived date used to differ from the preloaded default; now equal, so re-derived a week out instead
+- `frontend/e2e/discovery-flow.e2e.ts` — cutoff-note regex + stale "tomorrow" comments (touched in Phase 6, ahead of its Phase 7 listing)
+- `frontend/e2e/booking-flow.e2e.ts` — checked; no floor-derived date sites found, untouched
 
 **Frontend — new**
 - `frontend/e2e/same-day-booking.e2e.ts` — AC-10 (both scenarios + axe)
@@ -730,15 +748,15 @@ ALTER TABLE venue
 
 **Files:** Modify FE files per File structure (FE-1…FE-8 + specs).
 
-- [ ] **Step 1: Failing tests** — `booking-date.spec.ts`: `defaultBookingDate` returns **today**
+- [x] **Step 1: Failing tests** — `booking-date.spec.ts`: `defaultBookingDate` returns **today**
   in Tirane (rewrite the four cases: same civil day incl. the 23:30-UTC shoulder);
   `home.spec.ts` floor assertions → today; `availability-calendar.spec.ts`: `MIN_DATE =
   '2026-06-15'` (the frozen clock's today), today selectable, yesterday disabled;
   `venue-map.spec.ts`: floor today, past-`?date=` clamps to today; `cutoff-note.spec.ts`: the
   new single sentence; `booking-dialog.spec.ts`: `BOOKING_CLOSED` on a today-dated attempt
   renders the today copy, on a future date the generic copy.
-- [ ] **Step 2: Verify red** — `cd frontend && npm test`.
-- [ ] **Step 3: Minimal implementation** — `defaultBookingDate` returns `todayBookingDate(now)`
+- [x] **Step 2: Verify red** — `cd frontend && npm test`.
+- [x] **Step 3: Minimal implementation** — `defaultBookingDate` returns `todayBookingDate(now)`
   (TSDoc: "today in Europe/Tirane — sales for a day now close on the day itself, server
   authoritative"); cutoff-note sentence (proposed, final wording at implement with a11y read):
   *"Book any day, today included — each day’s online sales close at the venue’s chosen time
@@ -755,13 +773,20 @@ ALTER TABLE venue
   `BOOKING_CLOSED`). Decide at implement: re-derive the floor in `onDateChange`/`reload`, or
   accept the residual and say so in the component doc — either way the #155 spec is updated to
   match. Re-run the angular-cli MCP `get_best_practices` before this phase's first edit
-  (plan-time run recorded in *Skills consulted*).
-- [ ] **Step 4: Verify green** — `npm test`, `npm run lint`, `npm run format:check`.
-- [ ] **Step 5: Generalization audit** — population: *every FE site encoding the old floor or
+  (plan-time run recorded in *Skills consulted*). **Decided:** accepted the residual and
+  documented it in `home.ts`'s `minDate` TSDoc — re-deriving per interaction was judged
+  disproportionate to the edge case (a page left open across Tirane midnight; the server still
+  refuses `BOOKING_CLOSED` regardless).
+- [x] **Step 4: Verify green** — `npm test`, `npm run lint`, `npm run format:check`.
+- [x] **Step 5: Generalization audit** — population: *every FE site encoding the old floor or
   sentence* (mechanism: literal "tomorrow"/"evening before"/`defaultBookingDate` semantics) →
   `grep -rn "tomorrow\|evening before" frontend/src frontend/e2e` → fix or justify each hit.
-  Log below.
-- [ ] **Step 6–7: Commit + status** — `"Allow today as the earliest bookable date; state the on-day sales close (#791)"`.
+  Log below. **Also found by the full-suite run** (not the grep, since it hardcodes no literal
+  string): `daily-view-tab.spec.ts`'s date-change test set the picker to `defaultBookingDate`
+  expecting it to differ from the preloaded `todayBookingDate` default — the two are now the
+  same value, so the component's own dedup (`value === this.selectedDate()`) silently no-opped
+  the reload. Fixed like the plan's own precedent elsewhere (a date derived a week out).
+- [x] **Step 6–7: Commit + status** — `"Allow today as the earliest bookable date; state the on-day sales close (#791)"`.
 
 ## Phase 7 — mocked e2e
 
@@ -808,6 +833,8 @@ structure), this plan doc (final execution status).
 | 2026-08-28 | Phase 1 (`SetBookingInfo` gains `salesClose`) | constructors of `SetBookingInfo` (record growth) | `grep -rn "new SetBookingInfo(" platform/src` | 6 (1 main: `JdbcVenueCatalog`; 5 test: `MailDeliveryLookupServiceTest`, `BookingMailFactsServiceTest`, `BookingCreationViewsContractTest`, `ViewBookingServiceTest`, `CreateBookingServiceTest`) | All fixed; also found + fixed 2 `VenueProfileView` constructor sites (`JdbcVenues`, `VenueAdminServiceTest`) growing in the same phase |
 | 2026-08-28 | Phase 2 (`closesAt` renamed `freeCancellationEndsAt`) | callers of `closesAt` (renamed method) | `grep -rn "closesAt(" platform/src` | 4 (2 main: `BookingCutoff` self-call in `isBeforeCutoff`, `ReserveSetService`'s request-deadline cap; 2 Javadoc-only prose mentions: `RequestProperties`, `RequestPropertiesTest`) | All renamed; grep returns zero after |
 | 2026-08-28 | Phase 3 (`isBookable` switches to `salesCloseAt`) | every caller of `isBookable`/`bookingCutoff()` deciding sellability | `grep -rn "isBookable\|bookingCutoff()" platform/src/main` | 2 (`ReserveSetService` — the reserve gate, moved to `set.salesClose()`; `CancellationPolicy` — cancellation-only, correctly stays on `bookingCutoff()`) | No third site found selling off the old fence; also found and fixed one stale pre-existing test (`CreateBookingServiceTest.requestDeadlineCappedAtCutoff`, asserting the retired evening-before cap) — renamed `requestDeadlineUncappedTheMorningBeforeDeparture` and re-derived its expected value under the new rule |
+| 2026-08-28 | Phase 6 (`defaultBookingDate` floor moves from tomorrow to today) | every FE site encoding the old floor or the retired sentence | `grep -rn "tomorrow\|evening before" frontend/src frontend/e2e` | 14 hits judged: `clock-icon.spec.ts` (unrelated generic fixture, untouched); `admin-commissions.*` ×4 + `.spec.ts` clause (the commission schedule's own unchanged "reporting from tomorrow" rule — reworded to drop the now-false evening-before justification, kept the unchanged claim); `booking-dialog.ts`/`booking-view.ts` free-cancellation copy ×2 (unchanged, correctly still evening-before) + the new today-branch's own "try … tomorrow" (intentional); `terms-of-service.*` ×3 + `legal-pages.e2e.ts` (cancellation clause kept; the conflated "bookings close … evening before" sentence split into two, since sales-close and free-cancellation are no longer the same boundary) | Fixed: `discovery-flow.e2e.ts`'s stale comments + its full-sentence cutoff-note regex (Phase 7's file, touched early since the audit reached it). Not caught by this grep (no literal match): `daily-view-tab.spec.ts` — see Step 5 note above |
+
 | 2026-08-28 | Phase 4 (day-open fences narrow to advance-born rows) | every consumer of `serviceDayOpen`/`serviceDayHasOpened`/`lastOpenedServiceDay` | `grep -rn "serviceDayOpen\|serviceDayHasOpened\|lastOpenedServiceDay" platform/src/main` | 3 judged (`RespondToRequestService`/`RequestWindows.payDeadline` — safe, same-day requests still gated by Phase 3's temporary gate; `CancellationPolicy.serviceDayOpen()` — correct as-is, same-day=CLOSED is the intended cancellation policy, not narrowed; `NoShowSweepService`/`markPastConfirmedAsNoShow` — safe, `booking_date < :today` strictly-before) | No change needed at any site; also found and fixed `BookingViewIT.reportsPayWindowClosedForAnOpenServiceDay`, whose same-day-born fixture went stale under the new predicate |
 
 ---
