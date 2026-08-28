@@ -276,8 +276,9 @@ guidance is the pattern the card/chip already follow. Tailwind v4 docs
 syntax ("theme tokens first, arbitrary to break out" — matching this repo's deliberate
 `text-[14px]` convention, `riviera-tailwind` rule 5). One nuance carried into phase 3: a
 `role="status"` region announces *changes*; content already present at initial render may
-not be read — acceptable, since the banner's `aria-label`-independent text serves the
-initial load and the status role targets the date-change transition.
+not be read — a concern the shipped shape mooted: per F-1 (Sonar `Web:S6819`) the banner
+became an inserted `role="alert"` panel, the map-not-found/map-error insertion pattern
+that announces reliably on both the deep-link and date-change paths.
 
 ## FE↔BE contract
 
@@ -293,13 +294,13 @@ initial load and the status role targets the date-change transition.
 
 > Session-recovery anchor. Update in the same commit window as the change it records.
 
-**Stage pointer:** implement complete — awaiting external review (the planning session
-reviews PR #801 against this plan; the review gate, Sonar triage and merge deliberately
-did NOT run in the implement session).
+**Stage pointer:** DONE — merged via PR #801. External review gate ran in the planning
+session (`/code-review` plugin 5-agent fan-out + `riviera-review-overlay` bank walk,
+high effort) on head `b1be0b9`; Sonar verified first-hand (0 issues, 100% new-code
+coverage, 0 duplication, analysis present); the three doc-staleness findings it returned
+(F-3..F-5) are fixed in this close-out commit.
 
-**Next action (external):** review PR #801 against this plan; findings re-enter at
-Implement. `origin/main` was still at the plan base (72cc693) at implement-complete —
-no merge commit was needed.
+**Next action:** none — slice complete; merge close-out recorded on epic #790.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -318,6 +319,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | sonar | `Web:S6819` (MAJOR) `venue-map.html`: use `<output>` instead of `role="status"` on the closed banner | fixed — the banner is an inserted `role="alert"` panel (the map-not-found/map-error shape; no status role, so S6819 cannot fire); spec asserts the role |
 | F-2 | sonar | `java:S1192` (CRITICAL) `JdbcVenueCatalog:434`: duplicated `"sales_close"` literal beside `COL_SALES_CLOSE` | fixed — mapper uses the constant; `SetBookingInfoIT` green |
+| F-3 | review (external, score 100) | `booking/package-info.java` `venue::spi` grant comment named only `BookingPresence` — stale once this slice made `SalesWindow` the second port `booking` implements (the counting-sweep class) | fixed in the close-out commit — comment names both ports, one line (RV-STYLE-1) |
+| F-4 | review (external, score 75) | plan doc Phase 3 prose + Doc-checks nuance still said `role="status"` while F-1 and the shipped banner say `role="alert"` | fixed in the close-out commit — both passages record the supersession |
+| F-5 | review (external, score 50) | `shared/semantic-chip.ts` TSDoc counted "four call sites"; the sales-closed chip is the fifth | fixed in the close-out commit — five, with the fifth named (11px photo-overlay, beside the mode chip) |
 
 ---
 
@@ -331,6 +335,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/venue/vocabulary/VenueMapView.java` — `salesOpen` appended.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenueCatalog.java` — `sales_close` in both SELECTs; one-instant verdict per request via the port.
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/out/BookingCutoffSalesWindow.java` — the implementor.
+- `platform/src/main/java/ai/riviera/platform/booking/package-info.java` — `venue::spi` grant comment names both implemented ports (F-3).
+- `frontend/src/app/shared/semantic-chip.ts` · `semantic-chip.spec.ts` — call-site count 4→5 (F-5; the spec's copy found by the close-out counting sweep).
 - `platform/src/test/java/ai/riviera/platform/booking/adapter/out/BookingCutoffSalesWindowTest.java` — AC-4.
 - `platform/src/test/java/ai/riviera/platform/venue/VenueListControllerIT.java` — AC-1/AC-2.
 - `platform/src/test/java/ai/riviera/platform/venue/VenueReadControllerIT.java` — AC-3.
@@ -583,7 +589,8 @@ Test `pages/home/home.spec.ts`, `pages/home/home.a11y.spec.ts`
     tile-bookability derivation gains `&& map.salesOpen` beside the existing
     `availability === 'FREE' && pool === 'ONLINE'` test.
   - `venue-map.html`: a closed banner rendered above the canvas when `salesClosed()` —
-    `role="status"`, `data-testid="map-sales-closed"`, copy keyed on the selected date
+    an inserted `role="alert"` panel (planned as `role="status"`, changed by F-1 / Sonar
+    `Web:S6819`), `data-testid="map-sales-closed"`, copy keyed on the selected date
     (mirroring the #797 dialog split): today →
     "Online sales for today have closed at this venue. Pick another day — every venue is
     open for future dates."; any other (past-URL) date → "Online sales for that date have

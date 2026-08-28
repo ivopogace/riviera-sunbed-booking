@@ -57,7 +57,7 @@ describe('SemanticChip', () => {
   });
 
   it('carries no geometry, so each call site keeps its own box', () => {
-    // The four call sites differ in padding, font size and positioning; the directive owning any of them would move a box and break the no-layout-shift criterion of #705.
+    // The five call sites differ in padding, font size and positioning; the directive owning any of them would move a box and break the no-layout-shift criterion of #705.
     const emitted = [...chip().classList];
     expect(emitted).not.toContain('inline-flex');
     expect(emitted.filter((name) => /^(p|m)[xytrbl]?-/.test(name))).toEqual([]);
