@@ -296,10 +296,12 @@ that stays true).
 
 > Session-recovery anchor — update in the same commit window as the change it records.
 
-**Stage pointer:** **implement complete — awaiting external review gate.** All phases 0–6
-done and pushed on draft PR #800; the review gate (`/code-review` + overlay), the Sonar
-issue-list triage, ready-for-review, and merge are the planning session's to run — this
-session deliberately stops before them.
+**Stage pointer:** **review gate ran — fixing findings.** `/code-review` (5-agent fan-out
++ `riviera-review-overlay`) ran over `origin/main...a9b83ea8` on 2026-08-28; review comment
+posted on PR #800; three findings recorded below (F-1 open at confidence 100; F-2/F-3
+verified-real boundary items). Each fix re-enters at Implement per the re-entry rule.
+Sonar: quality gate green on a9b83ea8 — the issue-list pull (pr-gates §2) still due before
+merge.
 
 **Next action:** the planning session runs the Review + Sonar gates per `riviera-sdlc`
 `references/pr-gates.md`, then merge close-out. Skill-routing gate ran per phase:
@@ -334,7 +336,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | | | |
+| F-1 | review (`/code-review` + overlay, confidence 100) | `RequestProperties.java:77` boot-guard exception message still says the deadline caps at "the booked day's opening" — this slice moved the cap to the sales close and updated the class Javadoc, so the runtime message contradicts both. The exact lockstep site #791's F-3 audit named. | open |
+| F-2 | review (three agents convergent, confidence 75 — below the PR-comment bar, real) | `ViewBookingService.java:102–103` — the strict `isAfter(payDeadline)` disagrees with the sweep's **inclusive** day-end arm at exactly `now == serviceDayEndsAt(D)`: sweep reaps (and releases the claim) while the view still issues credentials; the "exactly as the sweep spares it" comment holds only for the accepted/raw-window arm (`accepted_at < :acceptedBefore`, genuinely strict). Fix direction: make the day-end side consistent (either `serviceDayHasEnded`-style non-strict for the capped branch, or make the sweep's day bound strict) and correct the comment. | open |
+| F-3 | review (companion to F-2, confidence 75) | No test pins the day-end-capped exact-instant parity (AC-2/R-8 discipline): `withholdsCredentialsOnceTheServiceDayHasEnded` uses a date two days gone; the sweep ITs stay clear of the boundary. Add the boundary case alongside F-2's fix. | open |
 
 ---
 
