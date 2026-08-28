@@ -13,6 +13,9 @@ import { completeDialog, settle } from './support/booking-dialog';
 const TODAY = '2026-08-30';
 /** 12:00 Europe/Tirane in August (CEST, UTC+2) — well before the venue's default 16:00 close. */
 const BEFORE_CLOSE = new Date(`${TODAY}T10:00:00Z`);
+/** 17:00 Europe/Tirane — after a 16:00 close, before a 23:59 one (#793). */
+const AFTER_CLOSE = new Date(`${TODAY}T15:00:00Z`);
+const TOMORROW = '2026-08-31';
 
 const VENUES = [
   {
@@ -132,6 +135,107 @@ test('today journey: homepage → map → dialog → pay → confirmed', async (
   await expect(page.getByRole('heading', { name: /You.re booked/ })).toBeVisible();
   await expect(page.getByTestId('booking-code')).toContainText('WXYZ345678');
   await expectNoSeriousAxeViolations(page, 'payment page (today, confirmed)');
+});
+
+test("browse today after a venue's close shows the badge and the closed-map path", async ({
+  page,
+}) => {
+  await page.clock.setFixedTime(AFTER_CLOSE);
+  // One closed 16:00 REQUEST venue (widest chip pair — overlap pin below) beside an open 23:59 one.
+  await page.route(/\/api\/venues(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: [
+        { ...VENUES[0], bookingMode: 'REQUEST', salesOpen: false },
+        {
+          id: 3,
+          name: 'Luna Palasë',
+          beach: 'Palasë',
+          region: 'Albanian Riviera',
+          ratingTenths: 44,
+          reviewsCount: 102,
+          bookingMode: 'INSTANT',
+          fromPrice: { minorUnits: 3000, currency: 'EUR' },
+          availability: { free: 6, total: 10 },
+          salesOpen: true,
+        },
+      ],
+    }),
+  );
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+    route.fulfill({ json: { ...VENUE_MAP, salesOpen: false } }),
+  );
+
+  await page.goto('/');
+  const cards = page.getByTestId('venue-card');
+  await expect(cards).toHaveCount(2);
+
+  // The badge sits on the closed card only; the open venue stays badge-free (AC-8).
+  const closedCard = cards.filter({ has: page.locator('.sales-closed-chip') });
+  await expect(closedCard).toHaveCount(1);
+  await expect(closedCard).toContainText('Miramar Beach Club');
+  await expect(closedCard.locator('.sales-closed-chip')).toContainText('Sales closed for today');
+  await expect(closedCard).toHaveAccessibleName(/online sales for today have closed/);
+
+  // At the grid's narrowest card (~270px track at this width) the two chips must not collide.
+  await page.setViewportSize({ width: 608, height: 900 });
+  const modeBox = (await closedCard.locator('.mode-chip').boundingBox())!;
+  const closedBox = (await closedCard.locator('.sales-closed-chip').boundingBox())!;
+  const chipsOverlap =
+    modeBox.x < closedBox.x + closedBox.width &&
+    closedBox.x < modeBox.x + modeBox.width &&
+    modeBox.y < closedBox.y + closedBox.height &&
+    closedBox.y < modeBox.y + modeBox.height;
+  expect(chipsOverlap).toBe(false);
+  await expectNoSeriousAxeViolations(page, 'discovery list (after a close, badged)');
+
+  // The closed card stays navigable — no dead-end: the map shows the closed state instead.
+  await closedCard.click();
+  await expect(page).toHaveURL(/\/venues\/1/);
+  await expect(page.getByTestId('map-sales-closed')).toBeVisible();
+  await expect(page.getByTestId('map-sales-closed')).toContainText(
+    'Online sales for today have closed',
+  );
+  await expect(page.getByRole('button', { name: /Select to book/ })).toHaveCount(0);
+  await expectNoSeriousAxeViolations(page, 'venue map (sales closed)');
+});
+
+test("deep link to a closed venue's map shows the closed state, and tomorrow recovers", async ({
+  page,
+}) => {
+  await page.clock.setFixedTime(AFTER_CLOSE);
+  // The verdict is per selected date: closed for today, open for tomorrow (the rule alone).
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
+    const date = new URL(route.request().url()).searchParams.get('date');
+    return route.fulfill({ json: { ...VENUE_MAP, salesOpen: date === TOMORROW } });
+  });
+  await page.route(/\/api\/venues\/\d+\/availability-calendar\?.*$/, (route) => {
+    const url = new URL(route.request().url());
+    const days: { date: string; free: number; total: number }[] = [];
+    for (
+      let day = new Date(`${url.searchParams.get('from')}T00:00:00Z`);
+      ;
+      day.setUTCDate(day.getUTCDate() + 1)
+    ) {
+      const iso = day.toISOString().slice(0, 10);
+      days.push({ date: iso, free: 10, total: 30 });
+      if (iso === url.searchParams.get('to')) break;
+    }
+    return route.fulfill({ json: days });
+  });
+
+  await page.goto(`/venues/1?date=${TODAY}`);
+  await expect(page.getByRole('heading', { name: 'Miramar Beach Club' })).toBeVisible();
+  await expect(page.getByTestId('map-sales-closed')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Select to book/ })).toHaveCount(0);
+  await expectNoSeriousAxeViolations(page, 'venue map (closed deep link)');
+
+  // Recovery is the existing per-date refetch: pick tomorrow → a bookable map again.
+  await page.getByTestId('map-date').click();
+  await page
+    .locator(`[data-testid="availability-calendar"] button[data-date="${TOMORROW}"]`)
+    .click();
+  await expect(page.getByTestId('map-sales-closed')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Select to book/ }).first()).toBeVisible();
 });
 
 test('a today-dated BOOKING_CLOSED refusal is recoverable', async ({ page }) => {

@@ -117,6 +117,12 @@ describe('VenueMap accessibility (axe)', () => {
     await expectNoAxeViolations(host());
   });
 
+  it('has no violations when online sales for the date have closed', async () => {
+    expectVenueRequest().flush({ ...fixture(), salesOpen: false });
+    await fixtureRef.whenStable();
+    await expectNoAxeViolations(host());
+  });
+
   it('has no violations with the availability calendar open (#761)', async () => {
     expectVenueRequest().flush(fixture());
     await fixtureRef.whenStable();

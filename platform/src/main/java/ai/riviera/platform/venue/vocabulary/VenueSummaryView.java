@@ -24,9 +24,14 @@ import java.util.List;
  * photo slot, in {@link PhotoSlot} order (cover, sunbeds, bar), possibly empty. Uploads predating
  * the secondary slots' CARD variant serve their PREVIEW variant instead, so a venue's slideshow
  * never loses a photo to the rollout.
+ *
+ * <p>{@code salesOpen} is whether online sales for the selected date are open right now —
+ * booking's sales-window verdict (invariant #4), computed per request; display only, the reserve
+ * path enforces the fence independently.
  */
 public record VenueSummaryView(long id, String name, String beach, String region,
 		int ratingTenths, int reviewsCount, String bookingMode,
 		MoneyView fromPrice, List<Amenity> amenities, Integer distanceToWaterM,
-		AvailabilitySummary availability, CoverPhotoView coverPhoto, List<String> photos) {
+		AvailabilitySummary availability, CoverPhotoView coverPhoto, List<String> photos,
+		boolean salesOpen) {
 }

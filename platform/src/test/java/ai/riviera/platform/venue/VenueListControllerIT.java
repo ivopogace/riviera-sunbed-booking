@@ -1,12 +1,14 @@
 package ai.riviera.platform.venue;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
 
 import com.jayway.jsonpath.JsonPath;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +49,7 @@ class VenueListControllerIT {
 	private static final String IT_REGION = "IT Discovery Riviera";
 	private static final String BEACH_DHERMI = "Dhërmi IT";
 	private static final String BEACH_PALASE = "Palasë IT";
+	private static final String BEACH_SALES_CLOSE = "Sales Close IT";
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	@Autowired
@@ -241,6 +244,60 @@ class VenueListControllerIT {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[0].distanceToWaterM").value(25))
 				.andExpect(jsonPath("$[0].amenities").value(contains("BEACH_BAR", "WIFI")));
+	}
+
+	/**
+	 * A fresh visible venue at the given {@code sales_close} boundary value — the boundary-venue
+	 * trick the reserve ITs use instead of clock mocking: a {@code 00:01} venue is closed for today
+	 * at any run hour past the first minute, a {@code 23:59} venue open until the last.
+	 */
+	private long insertVenueAtSalesClose(String name, LocalTime salesClose) {
+		long id = jdbc.sql("""
+				INSERT INTO venue (name, beach, region, rating_tenths, reviews_count, booking_mode,
+				                   commission_bps, payout_currency, sales_close)
+				VALUES (:name, :beach, :region, 40, 10, 'INSTANT', 1500, 'EUR', :close)
+				RETURNING id
+				""")
+				.param("name", name).param("beach", BEACH_SALES_CLOSE).param("region", IT_REGION)
+				.param("close", salesClose)
+				.query(Long.class).single();
+		OwnershipFixtures.grantToBootstrap(jdbc, id);
+		return id;
+	}
+
+	/** Skip the midnight minutes where "today" or a boundary venue's verdict would flip mid-test. */
+	private static void assumeAwayFromMidnightBoundaries() {
+		LocalTime now = LocalTime.now(TIRANE);
+		Assumptions.assumeTrue(now.isAfter(LocalTime.of(0, 2)) && now.isBefore(LocalTime.of(23, 58)),
+				"skipped near midnight — today would roll over or a boundary venue's verdict flip mid-test");
+	}
+
+	@Test
+	void listCarriesPerVenueSalesOpenForToday() throws Exception {
+		// #793 AC-1: today's list carries per-venue verdicts — 00:01 closed, 23:59 open, one response.
+		assumeAwayFromMidnightBoundaries();
+		long closed = insertVenueAtSalesClose("Closed For Today IT", LocalTime.of(0, 1));
+		long open = insertVenueAtSalesClose("Open Till Late IT", LocalTime.of(23, 59));
+
+		mvc.perform(get("/api/venues").param("beach", BEACH_SALES_CLOSE)
+						.param("date", LocalDate.now(TIRANE).toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == %d)].salesOpen".formatted(closed)).value(contains(false)))
+				.andExpect(jsonPath("$[?(@.id == %d)].salesOpen".formatted(open)).value(contains(true)));
+	}
+
+	@Test
+	void futureDatesAreOpenAtEveryVenue() throws Exception {
+		// #793 AC-2: tomorrow is open at both boundary venues — the rule alone, no special-casing.
+		assumeAwayFromMidnightBoundaries();
+		long optOut = insertVenueAtSalesClose("Opt-Out Tomorrow IT", LocalTime.of(0, 1));
+		long lateClose = insertVenueAtSalesClose("Late Tomorrow IT", LocalTime.of(23, 59));
+
+		mvc.perform(get("/api/venues").param("beach", BEACH_SALES_CLOSE)
+						.param("date", LocalDate.now(TIRANE).plusDays(1).toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == %d)].salesOpen".formatted(optOut)).value(contains(true)))
+				.andExpect(jsonPath("$[?(@.id == %d)].salesOpen".formatted(lateClose)).value(contains(true)));
 	}
 
 	@Test

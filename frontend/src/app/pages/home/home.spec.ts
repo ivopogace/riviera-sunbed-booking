@@ -107,6 +107,32 @@ describe('Home (venue discovery)', () => {
     expect(cards[0].querySelector('[data-testid="card-photo-dots"]')).toBeNull();
   });
 
+  it('badges a venue whose online sales for today have closed', async () => {
+    const [closed, open] = venues();
+    listRequest().flush([
+      { ...closed, salesOpen: false },
+      { ...open, salesOpen: true },
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const cards = el().querySelectorAll('[data-testid="venue-card"]');
+    const chip = cards[0].querySelector('.sales-closed-chip');
+    expect(chip?.textContent).toContain('Sales closed for today');
+    // The card body is aria-hidden, so the closed state must ride the card's accessible name.
+    expect(cards[0].getAttribute('aria-label')).toContain('online sales for today have closed');
+    expect(cards[1].querySelector('.sales-closed-chip')).toBeNull();
+    expect(cards[1].getAttribute('aria-label')).not.toContain('closed');
+  });
+
+  it('shows no closed badge when the payload omits salesOpen (older test double)', async () => {
+    listRequest().flush(venues());
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(el().querySelector('.sales-closed-chip')).toBeNull();
+  });
+
   it('renders the photo slideshow — resolved slide stack, dots, and step controls outside the card link', async () => {
     const [venue] = venues();
     listRequest().flush([

@@ -51,6 +51,8 @@ interface VenueCard {
   readonly priceLabel: string | null;
   readonly free: number;
   readonly total: number;
+  /** True when the server's verdict says online sales for the selected date have closed. */
+  readonly salesClosed: boolean;
   /** The single accessible name carrying every card fact (nothing conveyed by layout alone). */
   readonly ariaLabel: string;
 }
@@ -271,15 +273,20 @@ export class Home {
     const { free, total } = venue.availability;
     const freePercent = total === 0 ? 0 : Math.round((free / total) * 100);
 
+    // Only an explicit false is "closed" — an older payload without the verdict stays unbadged.
+    const salesClosed = venue.salesOpen === false;
+
     const price = priceLabel ? `, from ${priceLabel} per set` : '';
     const waterText = water ? `${water}. ` : '';
     const amenitiesText = amenities.length
       ? `Amenities: ${amenities.map((a) => a.label).join(', ')}. `
       : '';
     const ratingText = rated ? `rated ${rating} out of 5` : 'no reviews yet';
+    // The card body is aria-hidden, so the closed state must ride the accessible name too.
+    const closedText = salesClosed ? ', online sales for today have closed' : '';
     const ariaLabel =
       `${venue.name}, ${venue.beach} · ${venue.region}, ${ratingText}${price}, ` +
-      `${free} of ${total} sets free on ${dateLabel}. ` +
+      `${free} of ${total} sets free on ${dateLabel}${closedText}. ` +
       `${waterText}${amenitiesText}` +
       `View beach map.`;
 
@@ -299,6 +306,7 @@ export class Home {
       priceLabel,
       free,
       total,
+      salesClosed,
       ariaLabel,
     };
   }

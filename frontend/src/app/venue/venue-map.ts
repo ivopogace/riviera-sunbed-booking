@@ -193,6 +193,21 @@ export class VenueMap {
   protected readonly totalCount = computed(() => this.venue()?.sets.length ?? 0);
 
   /**
+   * True when the server's verdict says online sales for the selected date have closed
+   * (invariant #4 — display only; the reserve path enforces the real fence). Only an explicit
+   * `false` closes, so older payloads without the field keep the bookable map.
+   */
+  protected readonly salesClosed = computed(() => this.venue()?.salesOpen === false);
+
+  /** Whether the selected date is today — keys the closed banner's copy. Reads a fresh clock
+   *  per recompute (each date change), not the mount-time floor, so a tab held across Tirane
+   *  midnight gets the today copy back on its next pick; a banner already on screen at the
+   *  rollover keeps its copy until then (the documented minDate residual class). */
+  protected readonly closedForToday = computed(
+    () => this.selectedDate() === defaultBookingDate(new Date()),
+  );
+
+  /**
    * The header's render+a11y view, precomputed off `venue()`: the template reads these
    * ready-made fields instead of calling parameterized pure methods each CD tick. `undefined` while
    * the venue is loading/failed, mirroring `venue()` — so it also gates the loaded branch.
@@ -299,7 +314,8 @@ export class VenueMap {
   private toTile(set: SetView): TileView {
     const tier = tierSentenceLabel(set.tier);
     const state = mapTileState(set);
-    const bookable = set.availability === 'FREE' && set.pool === 'ONLINE';
+    // The sales gate (invariant #4): a closed date renders its grid, but nothing is selectable.
+    const bookable = set.availability === 'FREE' && set.pool === 'ONLINE' && !this.salesClosed();
     const announced = MAP_TILE_MEANING[state].announced;
     const name = `${spotLabel(set.rowLabel, set.positionNo)}, ${tier}, ${this.money(set.price)}, ${announced}`;
     return { set, bookable, state, name, bookName: `${name}. Select to book.` };

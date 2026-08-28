@@ -1,6 +1,9 @@
 package ai.riviera.platform.venue.adapter.out;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -41,6 +44,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueMapView;
 import ai.riviera.platform.venue.api.VenueRates;
 import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
+import ai.riviera.platform.venue.spi.SalesWindow;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 
 /**
@@ -67,6 +71,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	private static final String COL_DISTANCE_TO_WATER = "distance_to_water_m";
 	private static final String COL_VENUE_ID = "venue_id";
 	private static final String COL_AMENITY = "amenity";
+	private static final String COL_SALES_CLOSE = "sales_close";
 	/** The bulk IN-clause bind param shared by the three list-read queries (named once — Sonar S1192). */
 	private static final String P_VENUE_IDS = "venueIds";
 	// Slideshow preferences: own size first, then fallbacks for pre-uniform-surface uploads.
@@ -78,11 +83,16 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	private final JdbcClient jdbc;
 	private final SetAvailabilityLookup availability;
 	private final VenueVisibility visibility;
+	private final SalesWindow salesWindow;
+	private final Clock clock;
 
-	JdbcVenueCatalog(JdbcClient jdbc, SetAvailabilityLookup availability, VenueVisibility visibility) {
+	JdbcVenueCatalog(JdbcClient jdbc, SetAvailabilityLookup availability, VenueVisibility visibility,
+			SalesWindow salesWindow, Clock clock) {
 		this.jdbc = jdbc;
 		this.availability = availability;
 		this.visibility = visibility;
+		this.salesWindow = salesWindow;
+		this.clock = clock;
 	}
 
 	@Override
@@ -93,7 +103,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		}
 		Optional<VenueRow> venue = jdbc.sql("""
 				SELECT id, name, beach, region, description, rating_tenths, reviews_count, booking_mode,
-				       distance_to_water_m, set_version
+				       distance_to_water_m, set_version, sales_close
 				FROM venue
 				WHERE id = :id
 				""")
@@ -104,7 +114,8 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 						rs.getInt("rating_tenths"), rs.getInt("reviews_count"),
 						rs.getString(COL_BOOKING_MODE),
 						rs.getObject(COL_DISTANCE_TO_WATER, Integer.class),
-						rs.getLong("set_version")))
+						rs.getLong("set_version"),
+						rs.getObject(COL_SALES_CLOSE, LocalTime.class)))
 				.optional();
 
 		if (venue.isEmpty()) {
@@ -157,7 +168,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		return Optional.of(new VenueMapView(v.id(), v.name(), v.beach(), v.region(),
 				v.description(), v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, amenities, v.distanceToWaterM(), sets, v.setVersion(), coverPhoto,
-				photos));
+				photos, salesWindow.isOpen(v.salesClose(), date, clock.instant())));
 	}
 
 	@Override
@@ -166,7 +177,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		// type the bound NULL so "(:p IS NULL OR col = :p)" plans without an undetermined-type error.
 		List<SummaryRow> venues = jdbc.sql("""
 				SELECT id, name, beach, region, rating_tenths, reviews_count, booking_mode,
-				       distance_to_water_m
+				       distance_to_water_m, sales_close
 				FROM venue
 				WHERE (CAST(:beach AS TEXT) IS NULL OR beach = :beach)
 				  AND (CAST(:region AS TEXT) IS NULL OR region = :region)
@@ -178,7 +189,8 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 						rs.getLong("id"), rs.getString("name"), rs.getString(COL_BEACH),
 						rs.getString(COL_REGION), rs.getInt("rating_tenths"),
 						rs.getInt("reviews_count"), rs.getString(COL_BOOKING_MODE),
-						rs.getObject(COL_DISTANCE_TO_WATER, Integer.class)))
+						rs.getObject(COL_DISTANCE_TO_WATER, Integer.class),
+						rs.getObject(COL_SALES_CLOSE, LocalTime.class)))
 				.list();
 
 		venues = onlyVisible(venues);
@@ -222,12 +234,15 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		// One blob-free photo read for ALL matched venues feeds both the cover pair and the slideshow.
 		Map<Long, Map<PhotoSlot, Map<PhotoSurface, String>>> photosByVenue = photoVariantsByVenue(venueIds);
 
+		// One instant for every row, so verdicts within one response cannot disagree (invariant #6).
+		Instant now = clock.instant();
 		return venues.stream()
 				.map(v -> toSummary(v, setsByVenue.getOrDefault(v.id(), List.of()), taken,
 						amenitiesByVenue.getOrDefault(v.id(), List.of()),
 						coverOf(v.id(), photosByVenue.getOrDefault(v.id(), Map.of())),
 						slideshowOf(v.id(), photosByVenue.getOrDefault(v.id(), Map.of()),
-								CARD_SLIDESHOW)))
+								CARD_SLIDESHOW),
+						salesWindow.isOpen(v.salesClose(), date, now)))
 				.toList();
 	}
 
@@ -307,7 +322,8 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	}
 
 	private static VenueSummaryView toSummary(SummaryRow v, List<SetPriceRow> sets, Set<SetId> taken,
-			List<Amenity> amenities, CoverPhotoView coverPhoto, List<String> photos) {
+			List<Amenity> amenities, CoverPhotoView coverPhoto, List<String> photos,
+			boolean salesOpen) {
 		int total = sets.size();
 		int free = (int) sets.stream().filter(s -> !taken.contains(new SetId(s.id()))).count();
 		MoneyView fromPrice = sets.stream()
@@ -318,7 +334,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		return new VenueSummaryView(v.id(), v.name(), v.beach(), v.region(),
 				v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, ordered, v.distanceToWaterM(), new AvailabilitySummary(free, total),
-				coverPhoto, photos);
+				coverPhoto, photos, salesOpen);
 	}
 
 	@Override
@@ -415,13 +431,13 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				rs.getInt("position_no"), rs.getString("pool"),
 				new MoneyView(rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)),
 				rs.getObject("booking_cutoff", java.time.LocalTime.class),
-				rs.getObject("sales_close", java.time.LocalTime.class),
+				rs.getObject(COL_SALES_CLOSE, java.time.LocalTime.class),
 				BookingMode.valueOf(rs.getString(COL_BOOKING_MODE)));
 	}
 
 	private record VenueRow(long id, String name, String beach, String region,
 			String description, int ratingTenths, int reviewsCount, String bookingMode,
-			Integer distanceToWaterM, long setVersion) {
+			Integer distanceToWaterM, long setVersion, LocalTime salesClose) {
 	}
 
 	/** The static set-position layout, before availability is overlaid for the chosen date. */
@@ -431,7 +447,8 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 
 	/** A venue's discovery-list row, before its sets' price/availability are folded in. */
 	private record SummaryRow(long id, String name, String beach, String region,
-			int ratingTenths, int reviewsCount, String bookingMode, Integer distanceToWaterM) {
+			int ratingTenths, int reviewsCount, String bookingMode, Integer distanceToWaterM,
+			LocalTime salesClose) {
 	}
 
 	/** A set's id, owning venue, and price — all the list view needs to count and price a venue. */

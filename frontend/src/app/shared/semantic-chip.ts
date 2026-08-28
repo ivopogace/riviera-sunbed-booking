@@ -24,17 +24,18 @@ import { Directive } from '@angular/core';
  * The rim is a LIGHTER accent, inverting the descriptive chips' darker-than-fill border for the
  * same reason the fill inverts: on the dark map header a darker rim would have dissolved.
  *
- * <p>Deliberately carries NO geometry — no `display`, no padding, no `text-*`. The four call
- * sites differ (11px tracked caps over a photo, 13.5px inherited inside the Discover rating row,
+ * <p>Deliberately carries NO geometry — no `display`, no padding, no `text-*`. The five call
+ * sites differ (11px tracked caps over a photo — twice, the mode and sales-closed chips —
+ * 13.5px inherited inside the Discover rating row,
  * 0.78rem twice in the map header), and #705 asks for no layout shift, so each keeps its own box
  * and the directive supplies only what makes the family read as one. That is the opposite of the
  * `amenity-chip` / `status-chip` split, where the whole pill IS the recipe; the difference is
  * that those two own every one of their call sites' boxes and this one owns none.
  *
- * <p>`rounded-full` and `border` DO belong here: all four call sites already agreed on both, and
+ * <p>`rounded-full` and `border` DO belong here: all five call sites already agreed on both, and
  * leaving a radius at the call site beside one in a directive is the stylesheet-order coin-flip
  * `shared/panel-glass.ts` documents. The border's *width* is what must not move — every call
- * site had a 1px border before, so swapping only its colour keeps all four boxes identical.
+ * site had a 1px border before, so swapping only its colour keeps all five boxes identical.
  *
  * <p>The literal marker class `semantic-chip` is retained as an inert hook in the sibling
  * directives' style, and here it is load-bearing: `home.spec.ts` and `venue-map.spec.ts` assert

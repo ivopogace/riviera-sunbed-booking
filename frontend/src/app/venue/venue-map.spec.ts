@@ -949,6 +949,47 @@ describe('VenueMap', () => {
     expect(dateTrigger().classList.contains('text-riv-card-ink')).toBe(true);
   });
 
+  it('sales-closed map disables set selection and recovers on a date change', async () => {
+    venueRequest().flush({ ...miramar(), salesOpen: false });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The closed state is visible with the today copy; the grid stays rendered.
+    const banner = el().querySelector('[data-testid="map-sales-closed"]')!;
+    // Inserted panels announce via role=alert (RV-FE-10) — a region born with its text is silent.
+    expect(banner.getAttribute('role')).toBe('alert');
+    expect(banner.textContent).toContain('Online sales for today have closed');
+    expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBeGreaterThan(0);
+
+    // No tile is selectable: a FREE ONLINE set renders no select button, so no dialog can open.
+    expect(el().querySelector('.set-button')).toBeNull();
+
+    // Picking tomorrow refetches; an open verdict restores the bookable map (non-latching).
+    await openPicker();
+    pickDay('2026-06-16');
+    venueRequest().flush(miramar());
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(el().querySelector('[data-testid="map-sales-closed"]')).toBeNull();
+    el().querySelector<HTMLButtonElement>('.set-button')!.click();
+    await fixture.whenStable();
+    expect(el().querySelector('app-booking-dialog')).not.toBeNull();
+  });
+
+  it('keys the closed copy on the selected date — a non-today date gets the pick-a-later-day copy', async () => {
+    flushVenue();
+    await fixture.whenStable();
+    await openPicker();
+    pickDay('2026-06-16');
+    venueRequest().flush({ ...miramar(), salesOpen: false });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const banner = el().querySelector('[data-testid="map-sales-closed"]')!;
+    expect(banner.textContent).toContain('Online sales for that date have closed');
+  });
+
   it('opens the booking dialog when a free set is activated, and closes it on dismiss', async () => {
     flushVenue();
     await fixture.whenStable();
