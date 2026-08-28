@@ -160,7 +160,7 @@ An implement session with a different designated branch records its substitution
   "evening before". *Pinned by:* `booking-date.spec.ts` (`defaultBookingDate` = today),
   `home.spec.ts` (floor = today), `availability-calendar.spec.ts` (today selectable, yesterday
   not), `venue-map.spec.ts` (floor + carry clamp at today), `cutoff-note.spec.ts` (new sentence).
-- [ ] **AC-10 (e2e):** Given the mocked suite with a fixed page clock before 16:00, when the
+- [x] **AC-10 (e2e):** Given the mocked suite with a fixed page clock before 16:00, when the
   tourist books today homepage → map → dialog → pay, then the journey completes to `CONFIRMED`;
   given a mocked `422 BOOKING_CLOSED`, when the tourist attempts today at a closed venue, then
   the dialog shows the today-refusal copy and stays recoverable; axe passes on both. *Pinned
@@ -401,7 +401,7 @@ if any styling does surface, load `riviera-tailwind` then (routing-gate re-entry
 | 4 — same-day pay-fence bridges (sweep + view) | ✅ | Spare same-day-born bookings from the day-open pay fences (#791) |
 | 5 — lifecycle regression pins | ✅ | Pin same-day bookings through staff view and weather refund (#791) |
 | 6 — frontend floor + copy | ✅ | Allow today as the earliest bookable date; state the on-day sales close (#791) |
-| 7 — mocked e2e | | |
+| 7 — mocked e2e | ✅ | Cover the today-booking journey and after-close refusal e2e (#791) |
 | 8 — substrate docs + Javadoc sweep | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -793,15 +793,16 @@ ALTER TABLE venue
 **Files:** Create `frontend/e2e/same-day-booking.e2e.ts`; modify `discovery-flow.e2e.ts`
 (regex + date derivation), `booking-flow.e2e.ts` only if floor-derived dates shift.
 
-- [ ] **Step 1: Author the two journeys** (CI-safe mocked suite; `page.route` mocks per
+- [x] **Step 1: Author the two journeys** (CI-safe mocked suite; `page.route` mocks per
   `booking-flow.e2e.ts`; `page.clock.setFixedTime` before 16:00 Tirane per
   `availability-calendar.e2e.ts`): (a) today journey homepage → map → dialog → fake-Stripe pay →
   confirmed, asserting the homepage picker offers today; (b) refusal: `POST /api/bookings` mocked
   `422 BOOKING_CLOSED` → dialog alert shows the today copy, dialog recoverable. Both run
   `expectNoSeriousAxeViolations` after `settle(page)`.
-- [ ] **Step 2–4:** `npm run test:e2e:a11y` (scoped with `--grep` first, then the suite) → PASS.
-- [ ] **Step 5:** Generalization audit — N/A (new coverage, no fix).
-- [ ] **Step 6–7: Commit + status** — `"Cover the today-booking journey and after-close refusal e2e (#791)"`.
+- [x] **Step 2–4:** `npm run test:e2e:a11y` (scoped with `--grep` first, then the suite) → PASS
+  (both new tests green on the first run; full suite 290/290 green).
+- [x] **Step 5:** Generalization audit — N/A (new coverage, no fix).
+- [x] **Step 6–7: Commit + status** — `"Cover the today-booking journey and after-close refusal e2e (#791)"`.
 
 ## Phase 8 — substrate docs + Javadoc sweep
 
