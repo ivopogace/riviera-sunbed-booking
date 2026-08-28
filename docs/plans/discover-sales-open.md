@@ -208,23 +208,27 @@ composition — the edge is scoped to login/session machinery (RV-BE-11) and
 |---|---|---|---|---|---|---|
 | — | none new; none changed | | | | | `ModularityTests` (verify); the five-event inventory in CLAUDE.md unchanged |
 
-**Doc checks (plan-time, recorded):** direct fetch of `docs.spring.io` is egress-blocked
-in this session, so the checks ran against official-doc search excerpts plus the repo's
-executable ground truth (the architecture tests CI already runs). Spring Modulith
-fundamentals confirm the `$module::$namedInterface` grant syntax — the reference's own
-worked example is `allowedDependencies = "order::spi"`, an **SPI named interface consumed
-across modules**, i.e. exactly the `venue::spi` shape this plan reuses (and the verbatim
-string already in `booking/package-info.java` on `main`). The verification chapter
-confirms `ApplicationModules.verify()` requires the module graph to be a **directed
-acyclic graph** and rejects any reference into another module's internal packages — the
-documented ground for this plan's central constraint (`venue` may never call a `booking`
-port; the `spi` inversion is the sanctioned escape, phase 0 runs the test). Spring
-Framework docs confirm `JdbcClient` as the **unified JDBC facade (6.1+, current in
-Framework 7 / Boot 4)** delegating to `JdbcTemplate`/`NamedParameterJdbcTemplate` with
-named parameters — so the `JdbcVenueCatalog` change stays on the current documented API,
-and the plan's SQL edit (adding `sales_close` to two SELECTs with named-param binding) is
-idiomatic, not legacy. Sources: Spring Modulith reference (fundamentals + verification
-chapters), Spring Framework `JdbcClient` API doc / JDBC core chapter.
+**Doc checks (plan-time, recorded — fetched directly from `docs.spring.io`):** the Spring
+Modulith fundamentals chapter's own worked example for named-interface grants is
+`@ApplicationModule(allowedDependencies = "order :: spi")` — *"code in inventory would be
+allowed to depend on SomeSpiInterface and other code residing in the order.spi interface,
+but not on OrderManagement"* — exactly the `venue::spi` shape this plan reuses (the
+verbatim grant already in `booking/package-info.java` on `main`; the docs render the
+syntax with spaces, whitespace-insensitively). The verification chapter states
+`ApplicationModules.verify()` enforces *"No cycles on the application module level — the
+dependencies between modules have to form a directed acyclic graph"*, *"Efferent module
+access via API packages only — all references to types that reside in application module
+internal packages are rejected"*, and that with `allowedDependencies` configured,
+*"dependencies to other application modules are rejected"* — the documented ground for
+this plan's central constraint (`venue` may never call a `booking` port; the `spi`
+inversion is the sanctioned escape, phase 0 runs the test). The Spring Framework JDBC
+core chapter confirms `JdbcClient` as the **unified client API** (*"As of 6.1, the named
+parameter statements of NamedParameterJdbcTemplate and the positional parameter
+statements of a regular JdbcTemplate are available through a unified client API with a
+fluent interaction model"*) — so the `JdbcVenueCatalog` change (adding `sales_close` to
+two SELECTs with named-param binding) stays on the current documented API, not a legacy
+one. Sources: Spring Modulith reference `fundamentals.html` + `verification.html`, Spring
+Framework reference `data-access/jdbc/core.html`.
 
 ### Module ownership (§4a)
 
