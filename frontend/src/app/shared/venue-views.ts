@@ -74,6 +74,13 @@ export interface VenueMapView {
    * payloads may omit it; the band then falls back to `coverPhoto` alone.
    */
   readonly photos?: readonly string[];
+  /**
+   * Whether online sales for the selected date are open right now — the server's sales-window
+   * verdict (invariant #4), display only; the reserve path enforces the real fence. Optional
+   * because test doubles and older payloads may omit it; only an explicit `false` renders the
+   * closed state.
+   */
+  readonly salesOpen?: boolean;
 }
 
 /**
@@ -131,6 +138,12 @@ export interface VenueSummary {
    * payloads may omit it; the card then falls back to `coverPhoto` alone.
    */
   readonly photos?: readonly string[];
+  /**
+   * Whether online sales for the selected date are open right now — the server's sales-window
+   * verdict (invariant #4), display only; the reserve path enforces the real fence. Optional
+   * because test doubles and older payloads may omit it; only an explicit `false` badges the card.
+   */
+  readonly salesOpen?: boolean;
 }
 
 /**

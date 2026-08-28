@@ -85,6 +85,16 @@ describe('Home accessibility (axe)', () => {
     await expectNoAxeViolations(host());
   });
 
+  it('has no violations when a venue is badged sales-closed for today', async () => {
+    const [closed, open] = venues();
+    listRequest().flush([
+      { ...closed, salesOpen: false },
+      { ...open, salesOpen: true },
+    ]);
+    await fixture.whenStable();
+    await expectNoAxeViolations(host());
+  });
+
   it('has no violations in the loading state', async () => {
     const req = listRequest(); // pending → loading message
     await fixture.whenStable();

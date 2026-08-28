@@ -293,17 +293,17 @@ initial load and the status role targets the date-change transition.
 
 > Session-recovery anchor. Update in the same commit window as the change it records.
 
-**Stage pointer:** implement — phases 0–1 done (port, implementor, projection; ITs +
-venue-module regression green).
+**Stage pointer:** implement — phases 0–2 done (port, projection, Discover badge; unit +
+a11y + lint/format green).
 
-**Next action:** phase 2 — Discover badge + aria (`riviera-frontend` + `riviera-tailwind` +
-`angular-developer` + angular-cli MCP loaded before the first FE edit).
+**Next action:** phase 3 — map closed state + recovery (same FE skill set, already loaded
+this session).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `venue.spi.SalesWindow` + booking implementor | ✅ | "Add venue.spi.SalesWindow implemented by booking (#793)" |
 | 1 — catalogue projection (`salesOpen` on both views) | ✅ | "Carry per-venue salesOpen on the tourist catalogue reads (#793)" |
-| 2 — Discover badge + aria | | |
+| 2 — Discover badge + aria | ✅ | "Badge closed-for-today venues on Discover (#793)" |
 | 3 — map closed state + recovery | | |
 | 4 — mocked e2e + a11y | | |
 | 5 — substrate docs + close-out | | |
@@ -521,13 +521,13 @@ void mapCarriesSalesOpenForSelectedDate() {
 **Files:** Modify `shared/venue-views.ts`, `pages/home/home.ts`, `pages/home/home.html` ·
 Test `pages/home/home.spec.ts`, `pages/home/home.a11y.spec.ts`
 
-- [ ] **Step 1: Write the failing specs** — `home.spec.ts`: with a fixture of one
+- [x] **Step 1: Write the failing specs** — `home.spec.ts`: with a fixture of one
   `salesOpen: false` and one `salesOpen: true` venue, assert the closed card renders the
   `sales-closed-chip` marker with the copy "Sales closed for today", the open card renders
   none, and the closed card's `aria-label` contains the closed state.
   `home.a11y.spec.ts`: extend the flushed fixture with a closed venue; `expectNoAxeViolations`.
 
-- [ ] **Step 2: Run, verify FAIL** — `npm test -- --run home.spec` → FAIL
+- [x] **Step 2: Run, verify FAIL** — `npm test -- --run home.spec` → FAIL
 
 - [x] **Step 3: Minimal implementation**
   - `shared/venue-views.ts`: `salesOpen: boolean` on `VenueSummary` (and `VenueMapView`
@@ -549,14 +549,14 @@ Test `pages/home/home.spec.ts`, `pages/home/home.a11y.spec.ts`
   go); `sales-closed-chip` is the inert marker class specs query (`riviera-tailwind` rule
   2). Non-interactive — no touch-target declaration due.
 
-- [ ] **Step 4: Run, verify PASS** — `npm test -- --run home.spec` then
+- [x] **Step 4: Run, verify PASS** — `npm test -- --run home.spec` then
   `npm run test:a11y`; `npm run lint && npm run format:check`.
 
-- [ ] **Step 5: Generalization-audit pass** — N/A (no bug fix; chip pattern reused, not invented)
+- [x] **Step 5: Generalization-audit pass** — N/A (no bug fix; chip pattern reused, not invented)
 
-- [ ] **Step 6: Commit** — `git commit -m "Badge closed-for-today venues on Discover (#793)"`
+- [x] **Step 6: Commit** — `git commit -m "Badge closed-for-today venues on Discover (#793)"`
 
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
