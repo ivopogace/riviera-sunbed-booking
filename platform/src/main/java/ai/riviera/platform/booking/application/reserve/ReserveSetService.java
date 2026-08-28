@@ -92,7 +92,9 @@ class ReserveSetService {
 		if (!ONLINE_POOL.equals(set.pool())) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NOT_ONLINE_POOL);
 		}
-		if (!cutoff.isBookable(set.salesClose(), command.bookingDate())) {
+		// One reading of the clock, so the fence and the request deadline classify the same instant.
+		Instant now = clock.instant();
+		if (!cutoff.isBookable(set.salesClose(), command.bookingDate(), now)) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.BOOKING_CLOSED);
 		}
 
@@ -109,7 +111,7 @@ class ReserveSetService {
 		// holds the claimed (set, date) row but triggers no payment — payment-request-on-accept.
 		// The accept deadline caps at D's sales close: past it the venue has shut its own window.
 		if (set.bookingMode() == BookingMode.REQUEST) {
-			Instant expiresAt = min(clock.instant().plus(requestWindows.expiryWindow()),
+			Instant expiresAt = min(now.plus(requestWindows.expiryWindow()),
 					cutoff.salesCloseAt(set.salesClose(), command.bookingDate()));
 			Inserted pending = insertWithUniqueCode(set, customerId, command,
 					b -> bookings.insertPendingRequest(b, expiresAt));

@@ -219,6 +219,19 @@ class ViewBookingServiceTest {
 	}
 
 	@Test
+	void stillIssuesCredentialsAtTheExactDeadlineInstant() {
+		// The mailed deadline itself is still payable (mail ≡ sweep identity); closed strictly after.
+		givenAwaitingPayment(DATE, Instant.EPOCH, Instant.parse("2026-07-31T21:00:00Z"));
+		when(checkout.pendingCredentials(any()))
+				.thenReturn(Optional.of(new PaymentCredentials("cs_x", "pi_x")));
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.payment()).isNotNull();
+		assertThat(detail.payWindowClosed()).isFalse();
+	}
+
+	@Test
 	void acceptedAdvanceBookingKeepsCredentialsIntoItsServiceDay() {
 		// Accepted 23:30 the evening before, window to 11:30: the old day-open withhold is wrong now.
 		givenAwaitingPayment(DATE, Instant.EPOCH, Instant.parse("2026-07-31T21:30:00Z"));

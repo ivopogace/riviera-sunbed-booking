@@ -38,7 +38,15 @@ public class BookingCutoff {
 
 	/** Whether online booking for {@code bookingDate} is currently open (strictly before the close). */
 	public boolean isBookable(LocalTime salesClose, LocalDate bookingDate) {
-		return clock.instant().isBefore(salesCloseAt(salesClose, bookingDate));
+		return isBookable(salesClose, bookingDate, clock.instant());
+	}
+
+	/**
+	 * The same fence against a caller-supplied reading, so a fence and a deadline computed from one
+	 * instant cannot disagree about which side of the close it falls on.
+	 */
+	public boolean isBookable(LocalTime salesClose, LocalDate bookingDate, java.time.Instant now) {
+		return now.isBefore(salesCloseAt(salesClose, bookingDate));
 	}
 
 	/**

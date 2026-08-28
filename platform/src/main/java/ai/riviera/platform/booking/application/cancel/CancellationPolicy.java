@@ -66,13 +66,5 @@ public class CancellationPolicy {
 			return window != CancellationWindow.CLOSED;
 		}
 
-		/**
-		 * Whether the service day has begun — the same boundary {@code CLOSED} already encodes, named
-		 * for the pay path's use of it (invariant #4). Read off this quote rather than the clock a
-		 * second time, so one response cannot offer a cancellation and declare the day open at once.
-		 */
-		public boolean serviceDayOpen() {
-			return window == CancellationWindow.CLOSED;
-		}
 	}
 }

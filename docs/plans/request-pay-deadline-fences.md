@@ -133,8 +133,10 @@ in for `feature/request-pay-deadline-fences` (riviera-sdlc cloud addendum).
   `AWAITING_DETAIL` mock).
 - **Discover open/closed badges for today** — #793; **operator sales-close control /
   kill switch** — #794.
-- Any cancellation-policy change: `freeCancellationEndsAt`, the FREE/LATE/CLOSED windows,
-  and `RefundQuote.serviceDayOpen()` (the cancel-UI fact) are untouched.
+- Any cancellation-policy change: `freeCancellationEndsAt` and the FREE/LATE/CLOSED
+  windows are untouched. (`RefundQuote.serviceDayOpen()` turned out to have no caller
+  left once the view fence moved to the pay deadline — the accessor is retired with the
+  other day-open members rather than kept as dead code.)
 - Storing the pay deadline in the schema (stays derived; no migration).
 - Any payment-module change: PaymentIntent creation timing, refunds, webhooks untouched.
 - Rewording `V19`'s stale migration comment — applied migrations are checksum-immutable
@@ -340,13 +342,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - `docs/plans/request-pay-deadline-fences.md` — this plan.
 - `platform/src/main/java/ai/riviera/platform/booking/application/BookingCutoff.java` — **moved here from `application/cancel/`** (Phase 0 refactor leg; `cancellationWindow` widens to public for `CancellationPolicy`); add `serviceDayEndsAt`, `serviceDayHasEnded`, static `lastEndedServiceDay`; delete `serviceDayHasOpened`, `bornBeforeServiceDay`, static `lastOpenedServiceDay` (call-site inventory verified: only the gate, the view, and the sweep binding — all rewired in this slice); Javadoc loses the "#576/until #792" bridge prose (§6d: relocated to RESPONSIBILITIES.md).
-- `platform/src/main/java/ai/riviera/platform/booking/application/cancel/CancellationPolicy.java` — import update for the moved `BookingCutoff` (call sites unchanged).
+- `platform/src/main/java/ai/riviera/platform/booking/application/cancel/CancellationPolicy.java` — import update for the moved `BookingCutoff`; the quote's `serviceDayOpen()` accessor retired (caller-less once the view fence moved to the pay deadline).
 - `platform/src/main/java/ai/riviera/platform/booking/application/request/RequestWindows.java` — `payDeadline` cap parameter renamed to `serviceDayEndsAt`; Javadoc re-aimed.
 - `platform/src/main/java/ai/riviera/platform/booking/application/request/RespondToRequestService.java` — `announcePaymentDue` passes `cutoff.serviceDayEndsAt(...)`.
 - `platform/src/main/java/ai/riviera/platform/booking/application/refund/AbandonedBookingSweepService.java` — binds `BookingCutoff.lastEndedServiceDay(now)`; class Javadoc's third arm re-aimed at "day ended".
 - `platform/src/main/java/ai/riviera/platform/booking/application/refund/ExpireAbandonedBookings.java` — port Javadoc's third-arm paragraph re-aimed at "day ended".
 - `platform/src/main/java/ai/riviera/platform/booking/application/Bookings.java` — `findExpirableAwaitingPayment` cap parameter renamed `serviceDayEndedOnOrBefore`; Javadoc re-aimed.
-- `platform/src/main/java/ai/riviera/platform/booking/application/reserve/ReserveSetService.java` — expiry cap → `salesCloseAt`; temporary gate block deleted.
+- `platform/src/main/java/ai/riviera/platform/booking/application/reserve/ReserveSetService.java` — expiry cap → `salesCloseAt`, computed from the same single clock reading as the sales-close fence (`BookingCutoff.isBookable` gained an explicit-instant overload for it); temporary gate block deleted.
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/ViewBookingService.java` — pay-deadline predicate (injects `RequestWindows` + `Clock`).
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/BookingRecord.java` — gains `acceptedAt`.
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/BookingDetail.java` — `payWindowClosed` Javadoc re-aimed at the pay deadline (phase-3 audit).

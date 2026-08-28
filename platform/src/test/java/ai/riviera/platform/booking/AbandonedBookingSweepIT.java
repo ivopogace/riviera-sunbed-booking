@@ -179,6 +179,13 @@ class AbandonedBookingSweepIT {
 				.param("id", bookingId).query(String.class).single();
 	}
 
+	/** A today-dated survival pin cannot straddle Tirane midnight — the day-end arm flips there. */
+	private static void assumeClearOfTiraneMidnight() {
+		org.junit.jupiter.api.Assumptions.assumeTrue(
+				java.time.LocalTime.now(TIRANE).isBefore(java.time.LocalTime.of(23, 58)),
+				"skipped in the day's final minutes — today would end mid-test");
+	}
+
 	private long availabilityRows(SetRef set, LocalDate date) {
 		return jdbc.sql("SELECT COUNT(*) FROM set_availability WHERE set_id = :set AND booking_date = :date")
 				.param("set", set.setId()).param("date", date).query(Long.class).single();
@@ -308,6 +315,7 @@ class AbandonedBookingSweepIT {
 
 	@Test
 	void sparesAnAcceptedAdvanceBookingInsideItsOpenServiceDay() throws Exception {
+		assumeClearOfTiraneMidnight();
 		// #792: born before D, accepted moments ago, D underway but not over — payable until the deadline.
 		SetRef set = onlineSet();
 		LocalDate today = LocalDate.now(TIRANE);
@@ -329,6 +337,7 @@ class AbandonedBookingSweepIT {
 
 	@Test
 	void sameDayAcceptedBookingSurvivesTheSweep() throws Exception {
+		assumeClearOfTiraneMidnight();
 		// AC-3 (#792): accepted moments ago for TODAY — its pay deadline has not passed.
 		SetRef set = onlineSet();
 		LocalDate today = LocalDate.now(TIRANE);
@@ -346,6 +355,7 @@ class AbandonedBookingSweepIT {
 
 	@Test
 	void spareSameDayBornBookingWithinTtl() throws Exception {
+		assumeClearOfTiraneMidnight();
 		// #792: its service day has not ended and its TTL has not run — neither arm may reach it.
 		SetRef set = onlineSet();
 		LocalDate today = LocalDate.now(TIRANE);

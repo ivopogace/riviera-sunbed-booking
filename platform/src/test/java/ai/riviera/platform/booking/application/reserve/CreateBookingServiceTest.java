@@ -522,6 +522,39 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
+	void requestFenceAndDeadlineShareOneClockReading() {
+		// A close crossing between two reads would admit a request already past its own deadline.
+		var reads = new java.util.concurrent.atomic.AtomicInteger();
+		Clock counting = new Clock() {
+			@Override
+			public ZoneId getZone() {
+				return ZoneId.of("UTC");
+			}
+
+			@Override
+			public Clock withZone(ZoneId zone) {
+				return this;
+			}
+
+			@Override
+			public Instant instant() {
+				reads.incrementAndGet();
+				return Instant.parse("2026-11-01T09:00:00Z");
+			}
+		};
+		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
+				claiming(ClaimOutcome.CLAIMED),
+				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE005", true, counting);
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 1), GUEST));
+
+		assertInstanceOf(BookingOutcome.Requested.class, outcome);
+		assertEquals(1, reads.get(),
+				"the sales-close fence and the response deadline must classify the same instant");
+	}
+
+	@Test
 	void requestDeadlineCappedAtSalesClose() {
 		// AC-1 (#792): a near-term request's response deadline caps at D's own sales close.
 		Clock eveningBefore = Clock.fixed(Instant.parse("2026-11-01T19:00:00Z"), ZoneId.of("UTC"));
