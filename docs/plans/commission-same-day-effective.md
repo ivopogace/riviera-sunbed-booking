@@ -210,6 +210,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (`/code-review`, single-pass) | Editor note over-generalized: "service dates already past keep reporting at {live rate}" is false for a venue with an earlier rate change (older dates report their own pinned rate) | fixed — copy drops the rate interpolation: "each service date already past keeps the rate it was sold under" |
+| F-2 | review | "What this does not promise" dropped the served-after qualifier, claiming every pre-change accrual's service date shows the new rate — false for dates before the change | fixed — "for a service date from the change onward" restored the precision |
+| F-3 | review | V39's migration header still asserts the tomorrow policy as design ("effective today would be wrong by construction"); the Phase 1 sweep's grep covered `platform/src/{main,test}/java` only, missing `src/main/resources` | fixed — migration is applied/checksum-immutable, so a supersession marker was added to RESPONSIBILITIES.md §`venue`; audit log corrected below |
 
 ---
 
@@ -278,6 +281,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-28 | Phase 1 (effective-date policy change) | every backend statement/pin of the "tomorrow" effective date — enumerated by the word, not by file resemblance | `grep -rni "tomorrow" platform/src/{main,test}/java` | 5 commission sites (service Javadoc, unit test ×2, `AdminVenueCommissionIT` message, `VenueCommissionForwardOnlyIT` test + header) — all fixed in Phase 1; remaining hits are booking-date fixtures and the request pay-window, whose "tomorrow"s are service dates, not the schedule policy | fixed all in-population; rest out of population |
+| 2026-08-28 | Review F-3 (the Phase 1 grep's path missed `src/main/resources`) | same population, re-enumerated over ALL of `platform/src` — the mechanism is "states the tomorrow policy", not "is a Java file" | `grep -rni "tomorrow" platform/src` | one new site: `V39__venue_commission_rate_schedule.sql` header (lines 14–17) | applied migration is checksum-immutable — supersession marker added to RESPONSIBILITIES.md §`venue` instead of an edit |
 
 ---
 

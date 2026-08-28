@@ -177,8 +177,8 @@ import { TouchTarget } from '../shared/touch-target';
 
                 <p class="mt-3 text-[13px] text-riv-card-ink-soft">
                   Saving moves the live rate straight away, so this list shows the new number at
-                  once. Reporting follows from today: service dates already past keep reporting at
-                  {{ percent(venue.commissionBps) }}.
+                  once. Reporting follows from today: each service date already past keeps the rate
+                  it was sold under.
                 </p>
 
                 <div class="mt-3 flex flex-wrap items-center gap-2">
@@ -288,9 +288,9 @@ import { TouchTarget } from '../shared/touch-target';
         <p class="mt-1 text-[13px] leading-relaxed text-riv-card-ink-soft">
           An operator's takings figures are not a copy of the ledger. The ledger prices each booking
           when it accrues; the takings apply one rate to a whole service date. So a booking whose
-          commission accrued before a change sits in the ledger at the old rate while the takings
-          for its service date show the new one. The firm guarantee is the narrower one: a past
-          service date never re-prices.
+          commission accrued before a change, for a service date from the change onward, sits in the
+          ledger at the old rate while the takings for that date show the new one. The firm
+          guarantee is the narrower one: a past service date never re-prices.
         </p>
       </section>
 

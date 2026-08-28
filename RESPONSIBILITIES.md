@@ -173,7 +173,9 @@ standing rules:
   while the takings strip reported the old scheduled rate until midnight. Starting today
   makes `commissionBpsOn(today)` track the live rate, so the two reads cannot disagree on
   the current date; bookings accrued *before* the change remain the documented
-  per-booking-vs-per-day approximation. The asymmetry it preserves:
+  per-booking-vs-per-day approximation. (V39's migration header still argues the retired
+  tomorrow rule — it is an applied, checksum-immutable historical document; this paragraph
+  supersedes it.) The asymmetry it preserves:
   the *owner's* profile PATCH still cannot write the rate at all (O8 #177) — a venue does
   not set its own commission.
 - **The per-venue sales-close setting** (`sales_close`, V44, invariant #4): a fixed-vocabulary
