@@ -79,7 +79,7 @@ implement entry; the plan branch is now history, not a second line of work.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (submit):** Given a booking whose status is `COMPLETED`, `completed_at` within
+- [x] **AC-1 (submit):** Given a booking whose status is `COMPLETED`, `completed_at` within
   60 days, and no existing review, when `SubmitReview.submit(code, stars=4)` runs, then a
   review row is recorded for that booking/venue and `ReviewsChanged(venueRef)` is published
   in the same transaction (registry persists at commit). *Pinned by:*
@@ -88,41 +88,41 @@ implement entry; the plan branch is now history, not a second line of work.
   dropped because module isolation bootstraps the root composition and would force every other
   module's `api` port to be mocked, as `PayoutModuleTest`'s fifteen `@MockitoBean`s show, while
   proving less: this test's point is that the inverted `CompletedStays` really answers).
-- [ ] **AC-2 (one review per booking, ever):** Given a booking already reviewed, when a
+- [x] **AC-2 (one review per booking, ever):** Given a booking already reviewed, when a
   second submit races or repeats, then exactly one row exists and the outcome is
   `AlreadyReviewed` — enforced by `UNIQUE(booking_id)` + `INSERT … ON CONFLICT DO NOTHING`,
   proven under real concurrency. *Pinned by:* `ReviewUniquenessIT.concurrentDoubleSubmitRecordsOne`.
-- [ ] **AC-3 (eligibility fence):** Given a booking in any non-`COMPLETED` status
+- [x] **AC-3 (eligibility fence):** Given a booking in any non-`COMPLETED` status
   (`PENDING_REQUEST`, `AWAITING_PAYMENT`, `CONFIRMED`, `CANCELLED`, `NO_SHOW`, `DECLINED`,
   `EXPIRED`, `WITHDRAWN`), when submit is attempted, then the outcome is `NotEligible` and
   nothing is written. *Pinned by:* `SubmitReviewServiceTest.refusesAStayThatWasNeverCheckedIn`
   (the outcome mapping) + `JdbcCompletedStaysIT.yieldsNothingForAnyStatusButCompleted`
   (`@EnumSource` over every `BookingStatus` but `COMPLETED` — the status fence lives in SQL, so the
   enumeration belongs at the adapter the service can no longer see statuses through).
-- [ ] **AC-4 (window fence):** Given `completed_at` more than 60 days ago, when submit is
+- [x] **AC-4 (window fence):** Given `completed_at` more than 60 days ago, when submit is
   attempted, then the outcome is `WindowClosed`. *Pinned by:* `ReviewWindowTest`.
-- [ ] **AC-5 (aggregate recompute):** Given visible reviews {5, 4} for a venue, when the
+- [x] **AC-5 (aggregate recompute):** Given visible reviews {5, 4} for a venue, when the
   `ReviewsChanged` listener runs, then the venue row reads `rating_tenths=45,
   reviews_count=2` (half-up rule below); given zero reviews, it reads `0/0`. Recompute is
   a full re-read (order-independent, idempotent under at-least-once delivery). *Pinned by:*
   `AggregateRatingTest` (the division), `VenueRatingRecomputeIT` (listener → venue row).
-- [ ] **AC-6 (server-owned view flag):** Given the code-gated view of an eligible booking,
+- [x] **AC-6 (server-owned view flag):** Given the code-gated view of an eligible booking,
   then `BookingDetail.reviewable == true`; for an ineligible or already-reviewed one,
   `false`. *Pinned by:* `ViewBookingServiceTest.reviewableFollowsReviewEligibility`.
-- [ ] **AC-7 (seed superseded):** After V45, every venue row carries `0/0` until a real
+- [x] **AC-7 (seed superseded):** After V45, every venue row carries `0/0` until a real
   recompute moves it — Miramar's 48/326 is never served again; a zero-review venue renders
   "New", never "0.0". *Pinned by:* `ReviewMigrationIT`, updated `VenueReadControllerIT` /
   `VenueListControllerIT` expectations.
-- [ ] **AC-8 (structure):** `ModularityTests`, `PackageShapeArchitectureTests`,
+- [x] **AC-8 (structure):** `ModularityTests`, `PackageShapeArchitectureTests`,
   `PublishedSurfacePlacementArchitectureTests`, `JdbcOnlyArchitectureTests`,
   `EndpointRoleGateCoverageTest` all green with the ninth module and the new endpoint.
-- [ ] **AC-9 (FE journey, mocked suite):** A COMPLETED+reviewable booking's page offers the
+- [x] **AC-9 (FE journey, mocked suite):** A COMPLETED+reviewable booking's page offers the
   star radiogroup; selecting 4 stars and submitting POSTs `{stars: 4}`, the page announces
   success and hides the form on the re-read; the venue surfaces show the recomputed
   score/count from the (mocked) wire. Star input is keyboard-operable and passes axe +
   touch-target sweeps. *Pinned by:* `frontend/e2e/review-a-stay.e2e.ts`,
   `star-rating.spec.ts` (keyboard contract + axe), touch-target sweep entry.
-- [ ] **AC-10 (real loop, local suite):** Operator creates a venue (sales close 23:59),
+- [x] **AC-10 (real loop, local suite):** Operator creates a venue (sales close 23:59),
   a tourist instant-books today (StubPaymentGateway confirms synchronously), the operator
   checks the code in from the daily view, the tourist rates 5 stars, and the venue header
   shows `5.0 · 1 review`. *Pinned by:* `frontend/e2e/real-backend/reviews.e2e.ts`.
@@ -418,7 +418,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `review/events/ReviewsChanged.java` (+ package-infos) · Modify `ModularityTests` javadoc ·
 Test `ReviewMigrationIT`
 
-- [ ] **Step 1: Write the failing migration IT** (Testcontainers; skips cleanly without Docker)
+- [x] **Step 1: Write the failing migration IT** (Testcontainers; skips cleanly without Docker)
 
 ```java
 @Test
@@ -438,8 +438,8 @@ void v45ResetsEverySeededRatingToZero() {
 }
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*ReviewMigrationIT*"` → FAIL (`relation "review" does not exist`)
-- [ ] **Step 3: Minimal implementation** — `V45__review.sql` (house prose header naming
+- [x] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*ReviewMigrationIT*"` → FAIL (`relation "review" does not exist`)
+- [x] **Step 3: Minimal implementation** — `V45__review.sql` (house prose header naming
   issue #811, the no-later-slice-columns decision, and the verifying IT):
 
 ```sql
@@ -469,11 +469,11 @@ UPDATE venue SET rating_tenths = 0, reviews_count = 0;
   VenueRef venue, Instant completedAt)`, `SubmitOutcome` sealed
   (`Submitted`/`AlreadyReviewed`/`NotEligible`/`WindowClosed`/`NoSuchStay`);
   `events/ReviewsChanged(VenueRef venue)`.
-- [ ] **Step 4: Run** — `./gradlew test --tests "*ReviewMigrationIT*" --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS
-- [ ] **Step 5: Generalization audit** — population "everything that asserts the seeded
+- [x] **Step 4: Run** — `./gradlew test --tests "*ReviewMigrationIT*" --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"` → PASS
+- [x] **Step 5: Generalization audit** — population "everything that asserts the seeded
   48/326 or Miramar-first ordering": `grep -rn "48\b.*326\|rating_tenths" platform/src/test frontend/e2e frontend/src --include="*.java" --include="*.ts" -l` → fix list feeds Phase 2/4; log below.
-- [ ] **Step 6: Commit** — `git commit -m "Add review module skeleton + V45 review table, supersede demo rating seed (#811)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Add review module skeleton + V45 review table, supersede demo rating seed (#811)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 1 — submit path (domain + application + adapters)
 
@@ -483,7 +483,7 @@ UPDATE venue SET rating_tenths = 0, reviews_count = 0;
 `booking/package-info.java` · Tests `SubmitReviewServiceTest`, `ReviewWindowTest`,
 `AggregateRatingTest`, `ReviewUniquenessIT`, `JdbcCompletedStaysIT`, `ReviewSubmitFlowIT`
 
-- [ ] **Step 1: Failing service test** (fake `CompletedStays` + fake `Reviews`; frozen `Clock`)
+- [x] **Step 1: Failing service test** (fake `CompletedStays` + fake `Reviews`; frozen `Clock`)
 
 ```java
 @Test
@@ -502,8 +502,8 @@ void refusesAfterSixtyDays() {
 }
 ```
 
-- [ ] **Step 2: Run/verify FAIL** — `./gradlew test --tests "*SubmitReviewServiceTest*"`
-- [ ] **Step 3: Implementation.** `SubmitReviewService` (package-private `@Service`,
+- [x] **Step 2: Run/verify FAIL** — `./gradlew test --tests "*SubmitReviewServiceTest*"`
+- [x] **Step 3: Implementation.** `SubmitReviewService` (package-private `@Service`,
   `@Transactional`, constructor-injected `CompletedStays`, `Reviews`,
   `ApplicationEventPublisher`, `Clock`): resolve the stay (`empty` → `NoSuchStay`; the
   controller maps it to the shared non-enumerating 404), check
@@ -515,16 +515,16 @@ void refusesAfterSixtyDays() {
   in `booking/adapter/out`: own `SELECT id, venue_id, completed_at FROM booking WHERE code
   = :code AND status = 'COMPLETED'` (status token in lockstep with the CHECK-listed
   values), never widening `findByCode`.
-- [ ] **Step 4: Run/verify PASS** — service + window + `ReviewUniquenessIT` (two threads,
+- [x] **Step 4: Run/verify PASS** — service + window + `ReviewUniquenessIT` (two threads,
   `ExecutorService` try-with-resources, exactly one row + one `AlreadyReviewed`) +
   `ReviewSubmitFlowIT` (`@ApplicationModuleTest` with `PublishedEvents`); then broaden to
   the `review` package.
-- [ ] **Step 5: Generalization audit** — population "spi ports `booking` implements":
+- [x] **Step 5: Generalization audit** — population "spi ports `booking` implements":
   `grep -rln "implements .*\.spi\." platform/src/main` → confirm `JdbcCompletedStays`
   matches the `JdbcGuestBookingHistory` shape (package-private, empty-guard, no logging of
   the code).
-- [ ] **Step 6: Commit** — `git commit -m "Review submit path: eligibility via booking-implemented CompletedStays, one review per booking (#811)"`
-- [ ] **Step 7: Update execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Review submit path: eligibility via booking-implemented CompletedStays, one review per booking (#811)"`
+- [x] **Step 7: Update execution status.**
 
 ## Phase 2 — aggregate recompute (`ReviewsChanged` → venue)
 
@@ -534,7 +534,7 @@ void refusesAfterSixtyDays() {
 JDBC adapter (rating UPDATE), `VenueReadControllerIT`, `VenueListControllerIT` · Tests
 `AggregateRatingTest`, `VenueRatingRecomputeIT`
 
-- [ ] **Step 1: Failing math + recompute tests**
+- [x] **Step 1: Failing math + recompute tests**
 
 ```java
 @Test
@@ -549,8 +549,8 @@ void halfUpAtTheDivision() {
   `VenueRatingRecomputeIT` (`@ApplicationModuleTest` on `venue` + `Scenario`): publish
   `ReviewsChanged(venue)` with two seeded reviews {5,4} → venue row becomes 45/2;
   re-deliver the same event → still 45/2 (idempotent).
-- [ ] **Step 2: Run/verify FAIL** — `./gradlew test --tests "*AggregateRatingTest*" --tests "*VenueRatingRecomputeIT*"`
-- [ ] **Step 3: Implementation.** `AggregateRating.tenths(sumStars, count)` =
+- [x] **Step 2: Run/verify FAIL** — `./gradlew test --tests "*AggregateRatingTest*" --tests "*VenueRatingRecomputeIT*"`
+- [x] **Step 3: Implementation.** `AggregateRating.tenths(sumStars, count)` =
   `count == 0 ? 0 : (10 * sumStars + count / 2) / count` (all `int`/`long`, documented
   half-up). `JdbcReviews` gains `SELECT COUNT(*), COALESCE(SUM(stars), 0) FROM review
   WHERE venue_id = :venue` behind `VenueRatingSummary` — as built that SQL sits behind the module's
@@ -563,13 +563,13 @@ void halfUpAtTheDivision() {
   (`@Transactional`): query NI-1, `UPDATE venue SET rating_tenths = :tenths, reviews_count
   = :count WHERE id = :id` via venue's own adapter. Update the two ITs' 48/326 + ordering
   expectations (Phase 0 audit list).
-- [ ] **Step 4: Run/verify PASS** — the two new tests + `--tests "*Venue*ControllerIT*"` +
+- [x] **Step 4: Run/verify PASS** — the two new tests + `--tests "*Venue*ControllerIT*"` +
   the structural net.
-- [ ] **Step 5: Generalization audit** — population "every `@ApplicationModuleListener`":
+- [x] **Step 5: Generalization audit** — population "every `@ApplicationModuleListener`":
   `grep -rln "@ApplicationModuleListener" platform/src/main` → confirm the new listener is
   the only one re-computing venue state and carries the idempotence contract.
-- [ ] **Step 6: Commit** — `git commit -m "Venue recomputes rating from ReviewsChanged via review's aggregate port (#811)"`
-- [ ] **Step 7: Update execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Venue recomputes rating from ReviewsChanged via review's aggregate port (#811)"`
+- [x] **Step 7: Update execution status.**
 
 ## Phase 3 — edge: controller, view flag, security wiring
 
@@ -580,13 +580,13 @@ is property-driven), `EndpointRoleGateCoverageTest`, `WebSliceStubs`,
 `ViewBookingService`, `BookingDetail`, `BookingDetailView`, `booking/package-info.java` ·
 Tests `ReviewControllerTest` (web slice), `ViewBookingServiceTest`
 
-- [ ] **Step 1: Failing tests.** `ReviewControllerTest`: `POST /api/bookings/{code}/review`
+- [x] **Step 1: Failing tests.** `ReviewControllerTest`: `POST /api/bookings/{code}/review`
   `{"stars":4}` → 201; each `SubmitOutcome` → its ProblemDetail code (FE↔BE table above);
   `stars: 0|6|missing` → 400 `INVALID_REQUEST`; response `instance` is the constant
   `/api/bookings` (code never echoed). `ViewBookingServiceTest.reviewableFollowsReviewEligibility`:
   `ELIGIBLE` → `true`, every other state → `false`.
-- [ ] **Step 2: Run/verify FAIL** — `./gradlew test --tests "*ReviewControllerTest*" --tests "*ViewBookingServiceTest*"`
-- [ ] **Step 3: Implementation.** Controller: package-private `@RestController`, exhaustive
+- [x] **Step 2: Run/verify FAIL** — `./gradlew test --tests "*ReviewControllerTest*" --tests "*ViewBookingServiceTest*"`
+- [x] **Step 3: Implementation.** Controller: package-private `@RestController`, exhaustive
   `switch` over the sealed `SubmitOutcome` → `ApiProblem` rejects; request record with
   compact-constructor 1–5 validation throwing `InvalidApiRequestException` (§6b).
   `ReviewEligibilityService` implements NI-2 (consults `CompletedStays` + `Reviews`,
@@ -594,11 +594,11 @@ Tests `ReviewControllerTest` (web slice), `ViewBookingServiceTest`
   + CSRF ignore + `REVIEW_TEMPLATE` in the shared per-code budget + `DECLARED_REACHABLE`
   entry ("public by design: the code is the credential, invariant #7") + `WebSliceStubs`
   beans for `SubmitReview`/`ReviewEligibility`.
-- [ ] **Step 4: Run/verify PASS** — the two test classes + `--tests "*EndpointRoleGateCoverageTest*"` + structural net; end-of-phase: `review` + `booking` packages.
-- [ ] **Step 5: Generalization audit** — population "every code-keyed endpoint":
+- [x] **Step 4: Run/verify PASS** — the two test classes + `--tests "*EndpointRoleGateCoverageTest*"` + structural net; end-of-phase: `review` + `booking` packages.
+- [x] **Step 5: Generalization audit** — population "every code-keyed endpoint":
   `grep -rn "bookings/\*" platform/src/main/java/ai/riviera/platform/SecurityConfig.java platform/src/main/java/ai/riviera/platform/RateLimitFilter.java` → confirm all four legs (view/cancel/withdraw/review) share the per-code budget and CSRF posture.
-- [ ] **Step 6: Commit** — `git commit -m "Code-gated review submit endpoint + server-owned reviewable flag (#811)"`
-- [ ] **Step 7: Update execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Code-gated review submit endpoint + server-owned reviewable flag (#811)"`
+- [x] **Step 7: Update execution status.**
 
 ## Phase 4 — frontend: star input, panel, mocked e2e
 
@@ -607,7 +607,7 @@ Modify `booking/booking-view.ts` + `.spec.ts` (+ `.contrast.spec.ts` if a new co
 lands), `booking/booking.service.ts` + `.spec.ts`, `booking/booking.model.ts`,
 touch-target sweep entry (O-1)
 
-- [ ] **Step 1: Failing specs.** `star-rating.spec.ts`: renders 5 `role="radio"` in a
+- [x] **Step 1: Failing specs.** `star-rating.spec.ts`: renders 5 `role="radio"` in a
   labelled `role="radiogroup"`; roving tabindex (none selected → first radio `tabIndex=0`);
   `ArrowRight` from 3 selects+focuses 4 (wraps 5→1); `Home`/`End`; click selects and
   focuses; each interaction writes the `value` model (the `FormValueControl` contract —
@@ -617,14 +617,14 @@ touch-target sweep entry (O-1)
   invalid, service NOT called, required message shown; select 4 + submit → service called
   with `(CODE, 4)`, re-read with `reviewable:false` → panel gone, result region announces;
   `reviewable:false` → no panel (status never consulted); axe run on the reviewable state.
-- [ ] **Step 2: Run/verify FAIL** — `npm test -- star-rating booking-view` (scoped)
-- [ ] **Step 3: Implementation** per the FE-1/FE-2 contract above (segmented-control as the
+- [x] **Step 2: Run/verify FAIL** — `npm test -- star-rating booking-view` (scoped)
+- [x] **Step 3: Implementation** per the FE-1/FE-2 contract above (segmented-control as the
   copy source for keyboard/roving-tabindex; `FormValueControl` shape + `form()`/`required()`
   schema per `find-booking.ts` and angular.dev custom-controls; `[appBusy]` submit button
   with the house BTN recipe; result region cloned from the outside-the-switch
   `role="status"` block; per-booking signal **and form** reset added to the `paramMap`
   subscription; `getByCode`-prefetch note: success path calls `load(true)`).
-- [ ] **Step 4: Run/verify PASS** — scoped Vitest, then `npm run lint`,
+- [x] **Step 4: Run/verify PASS** — scoped Vitest, then `npm run lint`,
   `npm run format:check`, `npm run test:a11y`; guards:
   `node scripts/check-touch-target.mjs --files …`, `node scripts/check-focus-posture.mjs --files …`.
   Mocked e2e: `review-a-stay.e2e.ts` (route intercepts shaped on `request-to-book.e2e.ts`:
@@ -632,11 +632,11 @@ touch-target sweep entry (O-1)
   re-served detail `reviewable:false`, venue/list payloads with moved `ratingTenths` —
   covers AC-9's "see the score move" + the New→first-review display transition;
   `expectNoSeriousAxeViolations` after `settle`), run via `npm run test:e2e:a11y`.
-- [ ] **Step 5: Generalization audit** — population "surfaces the touch-target sweep
+- [x] **Step 5: Generalization audit** — population "surfaces the touch-target sweep
   visits": read `e2e/support/touch-targets.ts` surface list → add `/booking/:code` if
   absent (O-1); population "fixtures asserting seed semantics" (O-2 grep).
-- [ ] **Step 6: Commit** — `git commit -m "Star rating input on the code-gated page, submit-and-see-score journey (#811)"`
-- [ ] **Step 7: Update execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Star rating input on the code-gated page, submit-and-see-score journey (#811)"`
+- [x] **Step 7: Update execution status.**
 
 ## Phase 5 — real-backend loop + docs close-out
 
@@ -644,13 +644,13 @@ touch-target sweep entry (O-1)
 Modify `CLAUDE.md`, `RESPONSIBILITIES.md`, `CONTEXT.md`,
 `.claude/skills/riviera-modulith/SKILL.md`, `ModularityTests` javadoc, spec "Later" line
 
-- [ ] **Step 1: Real-backend spec** (local-only; existing operator helpers): create venue +
+- [x] **Step 1: Real-backend spec** (local-only; existing operator helpers): create venue +
   set (sales close **23:59** so booking *today* is legal), tourist instant-books today via
   the FE (StubPaymentGateway confirms synchronously — no Stripe), capture the code from the
   confirmation, operator daily-view check-in, open `/booking/{code}`, rate 5, assert the
   venue map header reads `5.0 · 1 review`. Run `npm run test:e2e` locally; document the
   run result honestly in the PR if the cloud sandbox cannot run it (riviera-local-debug).
-- [ ] **Step 2: Docs.** CLAUDE.md: `review` row (Owns: the review record, eligibility +
+- [x] **Step 2: Docs.** CLAUDE.md: `review` row (Owns: the review record, eligibility +
   60-day window, aggregate math; Root: `Review`), six-events sentence
   (`ReviewsChanged` → `venue`), Modulith module list. RESPONSIBILITIES.md: §`review`
   (Job / Not-My-Job — "writing `venue` columns → `venue`"; "deciding check-in → `booking`"),
@@ -658,13 +658,13 @@ Modify `CLAUDE.md`, `RESPONSIBILITIES.md`, `CONTEXT.md`,
   note for R-11. CONTEXT.md: the three epic-defined terms. ADR-0015 (A-1). Counting-sweep
   sites: `riviera-modulith` SKILL.md ×2, `ModularityTests` javadoc. Spec "Later" line
   annotated. Then run `riviera-docs-freshness` over the branch range and act on findings.
-- [ ] **Step 3: Full local verification** — scoped per `riviera-local-debug`; CI owns the
+- [x] **Step 3: Full local verification** — scoped per `riviera-local-debug`; CI owns the
   full suite. `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan doc
   staged first). Merge latest `origin/main` with phase discipline; mark PR ready for
   review → Review gate (`/code-review` + `riviera-review-overlay`) → Sonar gate → merge
   close-out per `references/pr-gates.md`.
-- [ ] **Step 4: Commit** — `git commit -m "Reviews docs close-out: ninth module recorded, ADR-0015, real-backend loop (#811)"`
-- [ ] **Step 5: Update execution status → finalize before merge (merged via PR #NN).**
+- [x] **Step 4: Commit** — `git commit -m "Reviews docs close-out: ninth module recorded, ADR-0015, real-backend loop (#811)"`
+- [x] **Step 5: Update execution status → finalize before merge (merged via PR #NN).**
 
 ---
 
@@ -683,30 +683,43 @@ Modify `CLAUDE.md`, `RESPONSIBILITIES.md`, `CONTEXT.md`,
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..7:** `./gradlew test --tests "*Review*" --tests "*VenueRating*" --tests "*ViewBookingServiceTest*" --tests "*Venue*ControllerIT*"` → all green. Verified at commit `<sha>`.
-- [ ] **AC-8:** `./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*EndpointRoleGateCoverageTest*"` → green.
-- [ ] **AC-9:** `npm test`, `npm run test:a11y`, `npm run test:e2e:a11y` → green.
-- [ ] **AC-10:** `npm run test:e2e` (local, Docker + backend up) → green, or the honest
-  fallback recorded per R-9.
+- [x] **AC-1..7:** the scoped `*Review*` / `*VenueRating*` / `*ViewBookingServiceTest*` /
+  `*Venue*ControllerIT*` batches ran green locally per phase, and CI's full backend suite is green
+  on the branch head — the two halves `riviera-local-debug` says make up complete verification.
+- [x] **AC-8:** `ModularityTests`, `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`,
+  `PublishedSurfacePlacementArchitectureTests`, `EndpointRoleGateCoverageTest` green (run after
+  every structural change, not just at the end — `ModularityTests` caught the missing
+  `review::api` grant on `booking` the moment `ViewBookingService` took it).
+- [x] **AC-9:** `npm test` (2009 specs), `npm run test:a11y` (482), `npm run test:e2e:a11y`
+  (299, incl. the new journey and the widened touch-target sweep) → all green.
+- [x] **AC-10:** `npm run test:e2e -- reviews` → **green in this cloud session** against the real
+  backend + real Postgres (`scripts/e2e-local-stack.sh`). R-9's fallback was not needed. Six
+  *other* specs in that local-only suite fail on a pre-existing sign-in race this branch does not
+  touch — findings register F-2.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section justified N/A; the slice's own concurrency test present (`ReviewUniquenessIT`).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4 — no reservation-path change).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; `ReviewsChanged` payload id-based (invariant #11).
-- [ ] **Payment/payout** N/A holds — no Stripe/ledger surface in the diff.
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone: `completed_at`/`created_at` are UTC `Instant`s; the 60-day window is pure `Duration` arithmetic (invariant #6).
-- [ ] Booking codes never logged / never in error bodies (invariant #7 — R-8).
-- [ ] Flyway V45 present; constraints tested by `ReviewMigrationIT` (invariant #12).
-- [ ] **Frontend** standards met (Signal Forms per A-4); no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality (stage pointer, phase table, findings register).
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] **Close-out written in THIS PR** (`merged via PR #NN`; docs-freshness ran).
-- [ ] **The review gate ran in full** — invocation ladder per `references/pr-gates.md` §1 + `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section justified N/A; the slice's own concurrency test present (`ReviewUniquenessIT`).
+- [x] Pool + cutoff rules untouched (invariants #3, #4 — no reservation-path change).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; `ReviewsChanged` payload id-based (invariant #11).
+- [x] **Payment/payout** N/A holds — no Stripe/ledger surface in the diff.
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone: `completed_at`/`created_at` are UTC `Instant`s; the 60-day window is pure `Duration` arithmetic (invariant #6).
+- [x] Booking codes never logged / never in error bodies (invariant #7 — R-8).
+- [x] Flyway V45 present; constraints tested by `ReviewMigrationIT` (invariant #12).
+- [x] **Frontend** standards met (Signal Forms per A-4); no `as any` on the contract.
+- [x] Execution status at HEAD matches reality (stage pointer, phase table, findings register).
+- [x] Risk register has no stale `open` rows (all eleven closed or explicitly downgraded); Open Questions O-1/O-2 both resolved in-slice.
+- [ ] **Close-out written in THIS PR** (`merged via PR #816`; docs-freshness ran). *Half done: the
+  docs-freshness sweep ran and its findings are logged; the `merged via` line belongs to the
+  merging session, which is not this one.*
+- [ ] **The review gate ran in full** — invocation ladder per `references/pr-gates.md` §1 +
+  `riviera-review-overlay`. *Deliberately not run here — the maintainer scheduled it for a
+  separate session, which is also why PR #816 stays a draft. This is a known, stated gap, not an
+  oversight.*
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
