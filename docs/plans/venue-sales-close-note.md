@@ -230,6 +230,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-2 | review | the three `@switch` branches triplicated the `<p data-testid="sales-close-note">` shell + glyph; a class/testid tweak could silently drift per branch | fixed: single `@if` shell, `@switch` selects only the sentence `<span>` |
 | F-3 | review | `SALES_CLOSE_WIRE` re-declared the `HH:mm` wire formatter beside `VenueProfileResponse.CUTOFF` — two independent definitions of a load-bearing wire shape | fixed: one `SalesClose.WIRE` constant (venue domain), both adapters format through it |
 
+| F-4 | CI (`Repo hygiene`, run 33262181059 on 76f7b3d) | `check-plan-file-structure` flagged the two review-fix Java paths missing from File structure — the guard ran locally before the fix round, not after it (the re-entry rule's own lesson) | fixed: paths added, guard re-run clean, in the F-4 commit |
+
 Re-review of the fix round: overlay re-walked for the touched areas — template keeps
 testid/classes (single shell removes the drift F-2 named), `SalesClose.WIRE` is
 module-internal (both adapters are `venue`'s own; no published-surface change, invariant
@@ -242,6 +244,9 @@ module-internal (both adapters are `venue`'s own; no published-surface change, i
 - `docs/plans/venue-sales-close-note.md` — this plan.
 - `platform/src/main/java/ai/riviera/platform/venue/vocabulary/VenueMapView.java` — `salesClose` component appended last + Javadoc.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenueCatalog.java` — format `v.salesClose()` as `"HH:mm"` into the view.
+- `platform/src/main/java/ai/riviera/platform/venue/domain/SalesClose.java` — the shared `WIRE` formatter (review-fix F-3).
+- `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueProfileResponse.java` — formats through `SalesClose.WIRE`; its private duplicate dropped (review-fix F-3).
+- `frontend/src/app/shared/clock-icon.ts` — TSDoc trued to the single beach-map consumer (review-fix F-1).
 - `platform/src/test/java/ai/riviera/platform/venue/VenueReadControllerIT.java` — AC-1 pin.
 - `frontend/src/app/shared/venue-views.ts` — `SalesCloseTime` union + `salesClose?` on `VenueMapView`.
 - `frontend/src/app/operator/operator-console.model.ts` — re-export the union from `shared/venue-views` (drop the local duplicate).
