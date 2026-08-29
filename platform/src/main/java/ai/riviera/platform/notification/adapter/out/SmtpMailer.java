@@ -191,19 +191,25 @@ class SmtpMailer implements Mailer {
 
 	/**
 	 * The born-past-free-cancellation disclosure (#795), appended to the confirmation and
-	 * payment-due bodies: CLOSED or LATE at 0 bps → non-refundable; LATE at bps &gt; 0 → the partial
-	 * share; FREE or null (a pre-#795 payload — tolerated forever) → nothing.
+	 * payment-due bodies. One line per window, matching the checkout note: LATE stays cancellable
+	 * (invariant #10 — refused only at CLOSED), so only CLOSED may claim the booking can't be
+	 * cancelled; FREE or null (a pre-#795 payload — tolerated forever) renders nothing.
 	 */
 	private static String disclosureLine(CancellationWindow windowAtBirth, int lateCancelRefundBps) {
 		if (windowAtBirth == null || windowAtBirth == CancellationWindow.FREE) {
 			return "";
 		}
-		if (windowAtBirth == CancellationWindow.LATE && lateCancelRefundBps > 0) {
-			return """
+		if (windowAtBirth == CancellationWindow.LATE) {
+			return lateCancelRefundBps > 0
+					? """
 
 
-					This booking was made past free cancellation — cancelling refunds only %s%% of the price."""
-					.formatted(bpsAsPercent(lateCancelRefundBps));
+							This booking was made past free cancellation — cancelling refunds only %s%% of the price."""
+							.formatted(bpsAsPercent(lateCancelRefundBps))
+					: """
+
+
+							This booking was made past free cancellation — no refund if cancelled.""";
 		}
 		return """
 

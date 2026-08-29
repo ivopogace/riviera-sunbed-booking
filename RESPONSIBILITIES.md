@@ -314,9 +314,10 @@ late share), and classifies `windowAtBirth` from the booking's `created_at` via
 `cancellationWindowAtBirth` + `lateCancelRefundBps` onto `BookingConfirmed` and
 `BookingPaymentDue` — facts fixed at the moment, the `amountMinor` posture, so a later
 cutoff edit can't rewrite a sent mail; a pre-#795 payload deserializes to a null window
-and every consumer renders no disclosure for null, forever. The code-gated view reports
-the same field, and the admin-resend facts re-derive it from the venue's *current* cutoff
-(bounded, documented drift — the stamped event stays the record of what was first sent).
+and every consumer renders no disclosure for null, forever. The code-gated view and the
+admin-resend facts re-derive the same field from the venue's *current* cutoff on each
+read (bounded, documented drift — the stamped events stay the record of what was first
+sent; only they are immutable).
 Orchestrate the reserve → pay → confirm flow across `availability` and `payment` — since
 #693 refusing both reserve paths (Instant and Request) for a hidden venue's set before any
 claim, via `operator.api.VenueVisibility`, answering `NO_SUCH_SET` so hidden reads as
@@ -821,9 +822,10 @@ list and the delivery log below are the module's two pieces of owned state.
 - The **registry-borne booking mails**, all assembled from `booking`/`venue`/`customer`
   published ports (ids only) by one module-internal resolver: the `BookingConfirmed`
   confirmation (#371) — since #795 carrying the booking's `cancellationWindowAtBirth` +
-  `lateCancelRefundBps` off the event, **rendered, never decided**: CLOSED or LATE-at-0-bps
-  gets the non-refundable line, LATE-with-share the partial one, FREE or null (a pre-#795
-  registry payload, tolerated forever) nothing; the `BookingCancelled` cancellation/refund record (#374) — one
+  `lateCancelRefundBps` off the event, **rendered, never decided**: CLOSED gets the
+  non-refundable last-minute line, LATE the past-free-cancellation line (partial share at
+  bps > 0, no-refund at 0 — LATE stays cancellable, so only CLOSED claims it can't be),
+  FREE or null (a pre-#795 registry payload, tolerated forever) nothing; the `BookingCancelled` cancellation/refund record (#374) — one
   listener covering every cancellation channel, tourist self-service and operator weather
   refund alike, because it subscribes to the fact rather than to either caller, and
   **rendering** the server-computed refund (invariant #10), never deciding it; the

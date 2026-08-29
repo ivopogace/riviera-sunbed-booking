@@ -159,9 +159,10 @@ model in `docs/architecture/domain-model.md`.
   not refunded at a tier, because the guest can already be consuming the stay). The
   venue's own weather refund is outside the window and stays available for past dates.
 - **Window at birth** — the cancellation-window phase in force at the instant a booking
-  was created. Stamped on `BookingConfirmed`/`BookingPaymentDue` and their mails, and
-  reported on the code-gated view; immutable once stamped, even if the venue later edits
-  its cutoff.
+  was created. Stamped on `BookingConfirmed`/`BookingPaymentDue` and their mails —
+  immutable once stamped, even if the venue later edits its cutoff. The code-gated view
+  and the admin resend re-derive it from the venue's current cutoff on each read
+  (bounded, documented drift; the stamped events stay the record of what was first sent).
 - **Last-minute booking** — a booking born past its free-cancellation deadline (window
   at birth LATE or CLOSED). The guest-facing copy "non-refundable last-minute booking"
   is reserved for CLOSED-born bookings, where no cancellation is possible at all.

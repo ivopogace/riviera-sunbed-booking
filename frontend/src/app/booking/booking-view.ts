@@ -473,7 +473,7 @@ const CLS = {
               class="mx-0 my-0 text-[13.5px] leading-[1.5] text-riv-card-ink-soft"
               data-testid="last-minute-note"
             >
-              Non-refundable last-minute booking — it can’t be cancelled.
+              {{ lastMinuteNote(b) }}
             </p>
           </section>
         }
@@ -736,12 +736,19 @@ export class BookingView {
   /**
    * Whether to present the booking as a non-refundable last-minute booking (#795): CLOSED-born and
    * still live. FREE/LATE-born bookings whose window has since closed keep rendering nothing here
-   * (parity with the old blank state); a cancelled or spent booking has nothing to disclose.
+   * (parity with the old blank state); a cancelled or spent booking has nothing to disclose — and
+   * neither does a PENDING_REQUEST, whose withdraw affordance would contradict the note.
    */
   protected showLastMinuteNote(b: BookingDetail): boolean {
-    const live =
-      b.status === 'CONFIRMED' || b.status === 'AWAITING_PAYMENT' || b.status === 'PENDING_REQUEST';
+    const live = b.status === 'CONFIRMED' || b.status === 'AWAITING_PAYMENT';
     return live && b.cancellationWindowAtBirth === 'CLOSED' && !this.cancellation();
+  }
+
+  /** The note keeps the checkout's "once paid" qualifier while the booking is still unpaid. */
+  protected lastMinuteNote(b: BookingDetail): string {
+    return b.status === 'AWAITING_PAYMENT'
+      ? 'Non-refundable last-minute booking — it can’t be cancelled once paid.'
+      : 'Non-refundable last-minute booking — it can’t be cancelled.';
   }
 
   /** Refund-terms copy for a still-cancellable booking (server-computed values, invariant #10). */

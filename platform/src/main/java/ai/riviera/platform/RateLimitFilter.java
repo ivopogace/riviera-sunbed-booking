@@ -90,6 +90,8 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	// Mirrors the SecurityConfig matchers for the four public booking endpoints.
 	private static final String CREATE_PATH = "/api/bookings";
+	/** A literal sibling of the {@code {code}} routes (#795): it carries no code to key a bucket on. */
+	private static final String TERMS_PATH = "/api/bookings/cancellation-terms";
 	private static final String VIEW_TEMPLATE = "/api/bookings/{code}";
 	private static final String CANCEL_TEMPLATE = "/api/bookings/{code}/cancel";
 	private static final String WITHDRAW_TEMPLATE = "/api/bookings/{code}/withdraw";
@@ -364,7 +366,10 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		}
 		String path = pathWithinApplication(request);
 		if (HttpMethod.GET.matches(method) && paths.match(VIEW_TEMPLATE, path)) {
-			return new Target(paths.extractUriTemplateVariables(VIEW_TEMPLATE, path).get(CODE_VAR));
+			// The terms segment is no code — a shared "code" bucket would 429 site-wide. Per-IP only.
+			return TERMS_PATH.equals(path)
+					? new Target(null)
+					: new Target(paths.extractUriTemplateVariables(VIEW_TEMPLATE, path).get(CODE_VAR));
 		}
 		if (HttpMethod.POST.matches(method)) {
 			if (paths.match(CANCEL_TEMPLATE, path)) {

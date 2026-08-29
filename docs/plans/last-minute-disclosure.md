@@ -380,6 +380,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/booking/application/cancel/QuoteCancellationTerms.java` — new driving port (the controller depends on the seam, not the class — web-slice contexts stub it)
 - `platform/src/main/java/ai/riviera/platform/booking/application/cancel/CancelBookingService.java` — import update
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingController.java` — terms endpoint
+- `platform/src/main/java/ai/riviera/platform/RateLimitFilter.java` — the literal terms path spends per-IP only, never the shared per-code bucket
+- `platform/src/test/java/ai/riviera/platform/RateLimitFilterTest.java` — pins that
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/CancellationTermsView.java` — new response DTO
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingDetailView.java` — + `cancellationWindowAtBirth`
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/ViewBookingService.java` — classify window-at-birth

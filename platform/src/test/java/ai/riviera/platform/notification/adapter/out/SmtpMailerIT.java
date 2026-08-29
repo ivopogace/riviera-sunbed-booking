@@ -102,7 +102,7 @@ class SmtpMailerIT {
 				.doesNotContain("non-refundable", "past free cancellation");
 	}
 
-	/** The #795 disclosure branches, rendered: CLOSED and LATE@0 → non-refundable; LATE@bps → share. */
+	/** The #795 disclosure branches, rendered — only CLOSED may claim the booking can't be cancelled. */
 	@Test
 	void rendersTheBornPastFreeCancellationDisclosure() throws Exception {
 		mailer().sendBookingConfirmation(TO, withBirthWindow(CancellationWindow.CLOSED, 0));
@@ -110,9 +110,11 @@ class SmtpMailerIT {
 				.contains("non-refundable last-minute booking");
 		greenMail.purgeEmailFromAllMailboxes();
 
+		// LATE at 0 bps is still cancellable (refund NONE), so the copy must not say otherwise.
 		mailer().sendBookingConfirmation(TO, withBirthWindow(CancellationWindow.LATE, 0));
-		assertThat(theOnlyReceivedMessage().getContent().toString())
-				.contains("non-refundable last-minute booking");
+		String lateAtZero = theOnlyReceivedMessage().getContent().toString();
+		assertThat(lateAtZero).contains("past free cancellation — no refund if cancelled");
+		assertThat(lateAtZero).doesNotContain("can't be cancelled", "last-minute");
 		greenMail.purgeEmailFromAllMailboxes();
 
 		mailer().sendBookingConfirmation(TO, withBirthWindow(CancellationWindow.LATE, 2250));

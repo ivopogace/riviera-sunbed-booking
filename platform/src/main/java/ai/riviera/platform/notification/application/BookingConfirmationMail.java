@@ -22,9 +22,10 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
  * module's own {@code adapter} packages (the listener assembles it, the transports render it).
  *
  * <p>{@code cancellationWindowAtBirth} + {@code lateCancelRefundBps} carry the born-past-free-
- * cancellation disclosure (#795), carried straight off the event: {@code CLOSED} or {@code LATE} at
- * 0 bps renders a non-refundable line, {@code LATE} at bps &gt; 0 the partial share, and
- * {@code FREE} or {@code null} (a pre-#795 payload — tolerated forever) renders nothing.
+ * cancellation disclosure (#795), carried straight off the event: {@code CLOSED} renders the
+ * non-refundable last-minute line, {@code LATE} the past-free-cancellation line (the partial share
+ * at bps &gt; 0, no-refund at 0 — a LATE-born booking stays cancellable, so only CLOSED may say it
+ * can't be), and {@code FREE} or {@code null} (a pre-#795 payload — tolerated forever) nothing.
  */
 public record BookingConfirmationMail(String bookingCode, String venueName, LocalDate bookingDate,
 		String rowLabel, int positionNo, long amountMinor, String currency,

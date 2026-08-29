@@ -189,6 +189,21 @@ class RateLimitFilterTest {
 		viewFromIp("10.4.0.4", "kcode-W").andExpect(status().isNotFound());
 	}
 
+	/**
+	 * The pre-reserve terms read (#795) matches the {@code /api/bookings/{code}} template but its
+	 * literal segment is no code: keyed as one it would be a single platform-wide bucket every
+	 * tourist's disclosure drains. It must spend per-IP only, exactly like create.
+	 */
+	@Test
+	void cancellationTermsReadNeverSpendsTheSharedCodeBucket() throws Exception {
+		// Distinct IPs isolate the code dimension: a shared code bucket (capacity 2) would 429 the third.
+		for (String ip : new String[] {"10.22.0.1", "10.22.0.2", "10.22.0.3"}) {
+			mvc.perform(get("/api/bookings/cancellation-terms")
+							.param("setId", "1").param("date", "2030-01-01").with(fromIp(ip)))
+					.andExpect(status().isNotFound());
+		}
+	}
+
 	@Test
 	void createIsPerIpLimited() throws Exception {
 		String ip = "10.5.0.1";

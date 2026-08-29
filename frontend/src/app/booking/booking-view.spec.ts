@@ -580,6 +580,46 @@ describe('BookingView', () => {
     expect(host.querySelector('[data-testid="refund-terms"]')).toBeNull();
   });
 
+  it('renders no last-minute note for a CLOSED-born pending request — withdraw is the affordance (#795)', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          status: 'PENDING_REQUEST',
+          cancellable: false,
+          withdrawable: true,
+          beforeCutoff: false,
+          refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
+          cancellationWindowAtBirth: 'CLOSED',
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="last-minute-note"]')).toBeNull();
+    expect(host.querySelector('[data-testid="withdraw-request"]')).not.toBeNull();
+  });
+
+  it('keeps the once-paid qualifier on the note while a CLOSED-born booking is unpaid (#795)', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          status: 'AWAITING_PAYMENT',
+          cancellable: false,
+          beforeCutoff: false,
+          refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
+          cancellationWindowAtBirth: 'CLOSED',
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="last-minute-note"]')?.textContent).toContain(
+      'can’t be cancelled once paid',
+    );
+  });
+
   it('keeps rendering nothing for an advance-born booking whose window has since closed (#795 parity)', async () => {
     const fixture = await render(
       stubService({
