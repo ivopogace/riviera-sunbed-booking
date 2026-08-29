@@ -69,8 +69,10 @@ schema-level validation — verified on angular.dev/guide/forms/signals/custom-c
 recipe; Tailwind v4 docs verified for `focus-visible`/`aria-*` variants) · `playwright-cli`
 (mocked journey shaped on `request-to-book.e2e.ts`; real-backend loop design).
 
-**Branch:** `claude/sdlc-811-plan-review-ubc6zl` — the session's designated remote branch
-stands in for `feature/reviews-s1-star-rating` (riviera-sdlc cloud addendum).
+**Branch:** `claude/sdlc-811-implement-reviews-s1-300qj8` — the implement session's designated
+remote branch stands in for `feature/reviews-s1-star-rating` (riviera-sdlc cloud addendum). It
+carries the plan branch `claude/sdlc-811-plan-review-ubc6zl` (HEAD `10de3e3`), merged in at
+implement entry; the plan branch is now history, not a second line of work.
 
 ---
 
@@ -334,20 +336,16 @@ APIs; OnPush default (v22 — not set explicitly); Signal Forms per the house st
 > **This section is the session-recovery anchor** — update in the same commit window as
 > the change it records, at every phase boundary and stage transition.
 
-**Stage pointer:** `plan` — **plan complete, committed for maintainer review; implementation
-not started** (session instruction: stop after the plan). Revised 2026-08-29 per maintainer
-direction: the `BookingCompleted`-event alternative was researched and rejected with
-recorded rationale (see Architecture + the Modulith "Alternative considered" block), and
-the FE submit switched to Signal Forms with `star-rating` as a `FormValueControl` (A-4).
+**Stage pointer:** `implement` — Phase 0 done. Implementation runs on the branch above; the
+review gate is deliberately **out of scope for this session** (it runs from a separate session,
+per the maintainer's instruction), so the PR stays a **draft** and is never marked ready.
 
-**Next action:** on pick-up — re-run the Skill-routing gate for phase 0 (re-load
-`postgres`, `riviera-modulith`, `riviera-java-conventions`), load `riviera-local-debug`
-before the first `./gradlew`, open the draft PR at the first phase commit, then execute
-Phase 0.
+**Next action:** Phase 1 — the submit path (`ReviewWindow`, `SubmitReviewService`, `Reviews` +
+`JdbcReviews`, `review.spi.CompletedStays` + booking's `JdbcCompletedStays`), test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V45 migration + `review` module skeleton + structural tests | | |
+| 0 — V45 migration + `review` module skeleton + structural tests | ✅ | `<phase-0>` |
 | 1 — submit path: domain, service, JDBC adapter, spi + booking's `JdbcCompletedStays` | | |
 | 2 — `ReviewsChanged` → venue listener → recompute + seed-supersede IT updates | | |
 | 3 — edge: `ReviewController`, `reviewable` on the view, SecurityConfig/RateLimit/coverage | | |
@@ -373,7 +371,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `.claude/skills/riviera-modulith/SKILL.md` — "eight bounded-context modules" → nine (both sites)
 - `docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md` — "Later" line annotated (epic #810 executes it)
 - `platform/src/main/resources/db/migration/V45__review.sql` — table + Miramar reset
-- `platform/src/main/java/ai/riviera/platform/review/**` — `package-info.java`, `api/{VenueRatingSummary,ReviewEligibility,package-info}.java`, `spi/{CompletedStays,package-info}.java`, `vocabulary/{VenueRef,BookingRef,RatingSummary,ReviewState,CompletedStay,SubmitOutcome,package-info}.java`, `events/{ReviewsChanged,package-info}.java`, `application/{SubmitReview,SubmitReviewService,ReviewEligibilityService,Reviews}.java`, `domain/{ReviewWindow,AggregateRating}.java`, `adapter/in/ReviewController.java`, `adapter/out/JdbcReviews.java`
+- `platform/src/main/java/ai/riviera/platform/review/**/*.java` — `package-info.java`, `api/{VenueRatingSummary,ReviewEligibility,package-info}.java`, `spi/{CompletedStays,package-info}.java`, `vocabulary/{VenueRef,BookingRef,RatingSummary,ReviewState,CompletedStay,SubmitOutcome,package-info}.java`, `events/{ReviewsChanged,package-info}.java`, `application/{SubmitReview,SubmitReviewService,ReviewEligibilityService,Reviews}.java`, `domain/{ReviewWindow,AggregateRating}.java`, `adapter/in/ReviewController.java`, `adapter/out/JdbcReviews.java`
 - `platform/src/main/java/ai/riviera/platform/booking/package-info.java` — grants `+ review::api/spi/vocabulary`
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcCompletedStays.java` — implements NI-3
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/{ViewBookingService,BookingDetail}.java` — `reviewable`
@@ -384,9 +382,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/{SecurityConfig,RateLimitFilter}.java` — edge wiring
 - `platform/src/test/java/ai/riviera/platform/ModularityTests.java` — javadoc count
 - `platform/src/test/java/ai/riviera/platform/{EndpointRoleGateCoverageTest,WebSliceStubs}.java` — declaration + stubs
-- `platform/src/test/java/ai/riviera/platform/review/**` — `SubmitReviewServiceTest`, `ReviewWindowTest`, `AggregateRatingTest`, `ReviewUniquenessIT`, `ReviewSubmitFlowIT`, `ReviewMigrationIT`, `ReviewControllerTest`
-- `platform/src/test/java/ai/riviera/platform/venue/**` — `VenueRatingRecomputeIT`; updated `VenueReadControllerIT`, `VenueListControllerIT`
-- `platform/src/test/java/ai/riviera/platform/booking/**` — `ViewBookingServiceTest` update, `JdbcCompletedStaysIT`
+- `platform/src/test/java/ai/riviera/platform/review/**/*.java` — `SubmitReviewServiceTest`, `ReviewWindowTest`, `AggregateRatingTest`, `ReviewUniquenessIT`, `ReviewSubmitFlowIT`, `ReviewMigrationIT`, `ReviewControllerTest`
+- `platform/src/test/java/ai/riviera/platform/venue/**/*.java` — `VenueRatingRecomputeIT`; updated `VenueReadControllerIT`, `VenueListControllerIT`
+- `platform/src/test/java/ai/riviera/platform/booking/**/*.java` — `ViewBookingServiceTest` update, `JdbcCompletedStaysIT`
 - `frontend/src/app/shared/star-rating.ts` + `frontend/src/app/shared/star-rating.spec.ts` — control + keyboard/axe spec
 - `frontend/src/app/booking/{booking-view.ts,booking-view.spec.ts,booking.service.ts,booking.service.spec.ts,booking.model.ts}` — panel, flag, POST
 - `frontend/src/app/booking/booking-view.contrast.spec.ts` — star glyph/status colors over the card stops (if a new color pairing is introduced)
@@ -653,6 +651,7 @@ Modify `CLAUDE.md`, `RESPONSIBILITIES.md`, `CONTEXT.md`,
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-29 | Phase 0 (V45 resets every venue's rating columns) | everything asserting the seeded 48/326 or Miramar-first ordering | `grep -rn "ratingTenths\|rating_tenths\|reviewsCount\|reviews_count" platform/src/test --include="*.java"` + the same over `frontend/src` / `frontend/e2e` / `frontend/e2e/real-backend` | 1 backend assertion (`VenueReadControllerIT.returnsVenueWithSets` → 48); `VenueListControllerIT` inserts its own ratings **after** migration so it is unaffected; `VenueAdminControllerIT` already asserts 0/0 for a fresh venue; every FE hit is a mocked wire value or the display helper — none asserts seed semantics (**resolves O-2**); the real-backend suite asserts no rating at all | `VenueReadControllerIT` updated to `0` with the superseding comment; no FE change needed |
 
 ---
 
