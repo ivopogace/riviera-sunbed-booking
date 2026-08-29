@@ -20,8 +20,17 @@ addendum on epic #810 (comment of 2026-08-29): eligibility facts flow in through
 `venue`); aggregation flows out through an ids-only `review.events.ReviewsChanged` event to
 a `venue` listener that queries `review.api.VenueRatingSummary` and writes venue's **own**
 columns (full idempotent recompute, never an increment). No `BookingCompleted` event is
-introduced: check-in stays event-less (its documented "publishes no event" stance holds);
-review eligibility is **pull-based** off `booking.completed_at` at view/submit time.
+introduced — **considered and rejected** (maintainer asked for the re-examination,
+2026-08-29): the check-in fact is a *query*, not a state change to propagate, so the house
+rule (events for state changes, `api/` ports for queries — invariant #11) and Spring
+Modulith guidance both put it behind a port; concretely, `review` listening to
+`booking::events` would add the `review → booking` module edge that re-closes the
+`venue → review → booking → venue` cycle `ApplicationModules.verify()` rejects, an async
+projection would leave `reviewable=false` for a just-checked-in guest (epic story 6:
+"review the moment I'm checked in"), and pre-deploy COMPLETED bookings would need a
+backfill the pull reads for free. Check-in stays event-less (its documented "publishes no
+event" stance holds); review eligibility is **pull-based** off `booking.completed_at` at
+view/submit time. Full rationale lands in ADR-0015.
 
 **Persistence:** JDBC only (invariant #1). New table `review` via **Flyway V45** (V45 is
 free on `main` and unclaimed by any open PR — verified 2026-08-29, only Dependabot PRs
@@ -52,7 +61,10 @@ terms Review / Review window / Aggregate rating; ADR-0015 judgment) · `riviera-
 (star input → `shared/`, submit logic → `booking/`; no new cross-feature edge) ·
 `angular-developer` + angular-cli MCP (`get_best_practices` v22: signals, no
 `standalone:true`, OnPush default; `search_documentation` confirmed Angular Aria has no
-radio-group primitive → house `segmented-control` radiogroup contract) · `riviera-tailwind`
+radio-group primitive → house `segmented-control` radiogroup contract; Signal Forms
+custom-control contract — `FormValueControl` + `value = model(...)` + `[formField]`,
+schema-level validation — verified on angular.dev/guide/forms/signals/custom-controls) ·
+`riviera-tailwind`
 (token-first styling, `appTouchTarget` per radio, BUSY-1 `[appBusy]`, focus-visible
 recipe; Tailwind v4 docs verified for `focus-visible`/`aria-*` variants) · `playwright-cli`
 (mocked journey shaped on `request-to-book.e2e.ts`; real-backend loop design).
@@ -166,11 +178,15 @@ division. Lives in `review.domain.AggregateRating`, pinned by `AggregateRatingTe
   `UPDATE venue SET rating_tenths = 0, reviews_count = 0`) — no real review exists, so every
   nonzero value is fabricated; "overwritten by first recompute" would leave 326 fake reviews
   in denominators. *Owner:* plan · *Resolves by:* phase 0.
-- **Assumption A-4:** the FE submit leg is signal-state + `POST` (the
-  `confirmCancel`/`confirmWithdraw` pattern), **not** a Signal Form — the "form" is one
-  custom radiogroup + a button, no text entry; deviation from the "prefer Signal Forms"
-  default recorded here deliberately (matches house `segmented-control` consumers).
-  *Owner:* plan · *Resolves by:* phase 4.
+- **Decision A-4 (revised per maintainer direction, 2026-08-29):** the FE submit leg is a
+  **Signal Form** — `form(signal({ stars: null }), p => required(p.stars, …))` in
+  `booking-view.ts`, with `shared/star-rating.ts` implementing Signal Forms'
+  `FormValueControl<number | null>` (`value = model(...)`) and bound via
+  `[formField]="reviewForm.stars"`; validation lives in the schema, the control only
+  displays state (angular.dev custom-controls guidance). This matches the house standard
+  (16 files on `@angular/forms/signals`, zero on `@angular/forms`) and makes the control a
+  drop-in field for #812's fuller form (comment + display name). The earlier
+  signal-state-only deviation is withdrawn. *Owner:* plan · *Resolved.*
 - **Open question O-1:** does the mocked touch-target sweep already visit `/booking/:code`
   (then the 5 radios are swept for free), or does the surface need adding to
   `touch-targets*.e2e.ts`? — *Owner:* impl · *Resolves by:* phase 4 (read the sweep's
@@ -226,6 +242,20 @@ the availability-has-no-listener framing are updated in Phase 5. The listener re
 aggregate through NI-1 rather than trusting anything on the event (the
 `BookingConfirmedPayoutListener` commission-rate discipline).
 
+**Alternative considered — `BookingCompleted` event instead of the `CompletedStays` pull
+(rejected; recorded in ADR-0015).** Events are for propagating state changes to modules
+that react (Modulith's own posture, and this repo's invariant #11); the check-in fact is a
+*lookup* the moment review needs it. Making it an event fails three ways: (1) **cycle** —
+`review` consuming `booking::events` adds `review → booking`, and with `venue → review`
+(the listener) plus `booking → venue::api` already fixed, `verify()` rejects the graph;
+this is the same cycle the epic addendum killed for `review → booking::api`. (2)
+**consistency** — an event-fed eligibility projection is eventually consistent, so a guest
+checking in and immediately opening their booking page (epic story 6) would see no review
+form until the listener ran. (3) **backfill** — bookings already COMPLETED at deploy would
+need a one-off projection seed; the pull reads `booking.completed_at` directly and needs
+none. The slice still keeps the event where an event belongs: `ReviewsChanged` propagating
+the state change to `venue`.
+
 **allowedDependencies deltas** (narrowest named interfaces):
 
 - `review` (new): `{ "shared" }`.
@@ -253,8 +283,8 @@ integer-arithmetic discipline (#5) is borrowed for the rating mean (rounding rul
 
 | # | Surface | Existing/new | Type | State/reactivity | Forms |
 |---|---|---|---|---|---|
-| FE-1 | `shared/star-rating.ts` (+ `.spec.ts`) | new | standalone component (presentational primitive — `shared/` per `riviera-frontend`; no HTTP, no app state) | `model.required<number \| null>()` two-way value; `input.required<string>()` aria-label | none (custom radiogroup control) |
-| FE-2 | `booking/booking-view.ts` | modified | review panel `@if (b.reviewable)` + result region (house `role="status"` outside-the-switch pattern); per-booking signal reset in the `paramMap` subscription | signals; `submitting` flag with `[appBusy]` | signal-state + POST (A-4 deviation) |
+| FE-1 | `shared/star-rating.ts` (+ `.spec.ts`) | new | standalone component (presentational primitive — `shared/` per `riviera-frontend`; no HTTP, no app state) | implements Signal Forms' `FormValueControl<number \| null>`: `value = model<number \| null>(null)`; `input.required<string>()` aria-label; optional `disabled`/`touched` inputs only if needed | Signal Forms custom control, bound via `[formField]` |
+| FE-2 | `booking/booking-view.ts` | modified | review panel `@if (b.reviewable)` + result region (house `role="status"` outside-the-switch pattern); per-booking signal/form reset in the `paramMap` subscription | signals; `submitting` flag with `[appBusy]` | Signal Form: `form(signal({ stars: null }), p => required(p.stars, { message: 'Pick a star rating.' }))`; submit guarded on form validity (A-4) |
 | FE-3 | `booking/booking.service.ts` | modified | `review(code, stars)` → `POST /api/bookings/{code}/review` beside `cancel`/`withdraw`; success → `load(true)` re-read | rxjs `.subscribe({next, error})` + `problemCodeOf` | — |
 | FE-4 | `booking/booking.model.ts` | modified | `BookingDetail` gains `reviewable: boolean` | — | — |
 
@@ -265,7 +295,10 @@ integer-arithmetic discipline (#5) is borrowed for the rating mean (rounding rul
 labels "1 star" … "5 stars"; **roving tabindex** (checked radio is the tab stop; none
 checked → first radio); arrows move selection *and* focus with wrap, Home/End to extremes;
 `(keydown)` bound **per radio, never the group div** (a11y-lint `interactive-supports-focus`);
-selection ends with `.focus()`. Selected state is filled `★` vs outline `☆` (never
+selection ends with `.focus()` and writes the `value` model (which is what makes the
+component a `FormValueControl` — the `[formField]` directive two-way-binds it and feeds
+schema state back; validation stays in the form schema, never in the control).
+Selected state is filled `★` vs outline `☆` (never
 color-only); glyph spans `aria-hidden="true"`. Styling: token-first Tailwind v4, house
 focus recipe `focus-visible:outline-[3px] focus-visible:outline-offset-2
 focus-visible:outline-riv-accent-ink`, `text-[…px]` sizes, `motion-reduce:` guard —
@@ -273,7 +306,8 @@ state classes bound from the model signal (no `peer-checked` needed; Tailwind v4
 confirm the variants exist if the shape ever changes to native inputs).
 
 **Standards:** standalone, `inject()`, `@if`/`@for`, `input()`/`output()`/`model()` signal
-APIs; OnPush default (v22 — not set explicitly); deviation A-4 (no Signal Form) documented.
+APIs; OnPush default (v22 — not set explicitly); Signal Forms per the house standard (A-4)
+— no deviation remains.
 
 ## FE↔BE contract
 
@@ -301,7 +335,10 @@ APIs; OnPush default (v22 — not set explicitly); deviation A-4 (no Signal Form
 > the change it records, at every phase boundary and stage transition.
 
 **Stage pointer:** `plan` — **plan complete, committed for maintainer review; implementation
-not started** (session instruction: stop after the plan).
+not started** (session instruction: stop after the plan). Revised 2026-08-29 per maintainer
+direction: the `BookingCompleted`-event alternative was researched and rejected with
+recorded rationale (see Architecture + the Modulith "Alternative considered" block), and
+the FE submit switched to Signal Forms with `star-rating` as a `FormValueControl` (A-4).
 
 **Next action:** on pick-up — re-run the Skill-routing gate for phase 0 (re-load
 `postgres`, `riviera-modulith`, `riviera-java-conventions`), load `riviera-local-debug`
@@ -329,7 +366,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 ## File structure
 
 - `docs/plans/reviews-s1-star-rating.md` — this plan
-- `docs/adr/0015-review-leaf-module.md` — ADR: leaf `review` module, spi inversion, event + own-write aggregation (A-1)
+- `docs/adr/0015-review-leaf-module.md` — ADR: leaf `review` module, spi inversion, event + own-write aggregation; rejected alternatives recorded (`review → booking::api`, and a `BookingCompleted` event — cycle, consistency lag, backfill) (A-1)
 - `CLAUDE.md` — bounded-context table row `review`; "Five published events" → six; module count prose
 - `RESPONSIBILITIES.md` — new §`review`; §venue Job/Not-My-Job aggregate lines; §booking Not-My-Job review line + `CompletedStays` mention; header module list; machine-vs-review-checked classification
 - `CONTEXT.md` — Review, Review window, Aggregate rating
@@ -554,16 +591,20 @@ touch-target sweep entry (O-1)
 - [ ] **Step 1: Failing specs.** `star-rating.spec.ts`: renders 5 `role="radio"` in a
   labelled `role="radiogroup"`; roving tabindex (none selected → first radio `tabIndex=0`);
   `ArrowRight` from 3 selects+focuses 4 (wraps 5→1); `Home`/`End`; click selects and
-  focuses; filled-vs-outline glyph classes; `expectNoAxeViolations(host)`.
-  `booking-view.spec.ts`: `reviewable:true` detail → panel visible; submit 4 → service
-  called with `(CODE, 4)`, re-read with `reviewable:false` → panel gone, result region
-  announces; `reviewable:false` → no panel (status never consulted); axe run on the
-  reviewable state.
+  focuses; each interaction writes the `value` model (the `FormValueControl` contract —
+  pin it so `[formField]` binding keeps working); filled-vs-outline glyph classes;
+  `expectNoAxeViolations(host)`. `booking-view.spec.ts`: `reviewable:true` detail → panel
+  visible with the star control bound via `[formField]`; submit with no star → form
+  invalid, service NOT called, required message shown; select 4 + submit → service called
+  with `(CODE, 4)`, re-read with `reviewable:false` → panel gone, result region announces;
+  `reviewable:false` → no panel (status never consulted); axe run on the reviewable state.
 - [ ] **Step 2: Run/verify FAIL** — `npm test -- star-rating booking-view` (scoped)
 - [ ] **Step 3: Implementation** per the FE-1/FE-2 contract above (segmented-control as the
-  copy source; `[appBusy]` submit button with the house BTN recipe; result region cloned
-  from the outside-the-switch `role="status"` block; per-booking signal reset added to the
-  `paramMap` subscription; `getByCode`-prefetch note: success path calls `load(true)`).
+  copy source for keyboard/roving-tabindex; `FormValueControl` shape + `form()`/`required()`
+  schema per `find-booking.ts` and angular.dev custom-controls; `[appBusy]` submit button
+  with the house BTN recipe; result region cloned from the outside-the-switch
+  `role="status"` block; per-booking signal **and form** reset added to the `paramMap`
+  subscription; `getByCode`-prefetch note: success path calls `load(true)`).
 - [ ] **Step 4: Run/verify PASS** — scoped Vitest, then `npm run lint`,
   `npm run format:check`, `npm run test:a11y`; guards:
   `node scripts/check-touch-target.mjs --files …`, `node scripts/check-focus-posture.mjs --files …`.
@@ -637,7 +678,7 @@ Modify `CLAUDE.md`, `RESPONSIBILITIES.md`, `CONTEXT.md`,
 - [ ] Timezone: `completed_at`/`created_at` are UTC `Instant`s; the 60-day window is pure `Duration` arithmetic (invariant #6).
 - [ ] Booking codes never logged / never in error bodies (invariant #7 — R-8).
 - [ ] Flyway V45 present; constraints tested by `ReviewMigrationIT` (invariant #12).
-- [ ] **Frontend** standards met; deviation A-4 documented; no `as any` on the contract.
+- [ ] **Frontend** standards met (Signal Forms per A-4); no `as any` on the contract.
 - [ ] Execution status at HEAD matches reality (stage pointer, phase table, findings register).
 - [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
 - [ ] **Close-out written in THIS PR** (`merged via PR #NN`; docs-freshness ran).
