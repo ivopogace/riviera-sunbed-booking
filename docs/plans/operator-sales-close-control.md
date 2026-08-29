@@ -285,10 +285,13 @@ tokens).
 > **This section is the session-recovery anchor** — see the template blockquote; update in
 > the same commit window as the change it records.
 
-**Stage pointer:** `review gate ran (session 2026-08-29: /code-review 5-agent fan-out at high effort + riviera-review-overlay walk — 3 findings F-8..F-10, fixed); Sonar gate re-check due on the fix push's analysis; then merge close-out (merged via PR #802 citation)`
+**Stage pointer:** `DONE — merged via PR #802. Review gate ran (2026-08-29: /code-review
+5-agent fan-out at high effort + riviera-review-overlay walk — findings F-8..F-10, all
+fixed); Sonar gate green on the final head with the API lists pulled and empty (0 issues,
+0 duplicated blocks, 83.96% new-code coverage over 399 new lines); CI green on every head.`
 
-**Next action:** confirm CI + the SonarCloud analysis on the review-fix push (pull the
-issues/measures lists per pr-gates §2, not just the gate), then merge close-out.
+**Next action:** none in-repo — the remaining close-out items are GitHub-only (epic #790
+slice-4 tick, #794 auto-close, unsubscribe).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -310,9 +313,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-5 | impl (phase 1) | `operator-venue.e2e.ts`'s stale-write test raced `bump()` against the profile load (latent; exposed when F-4 slowed the run) — the test now waits for the seeded form before bumping, so version 7 is provably loaded first | closed |
 | F-6 | CI (phase 0 push) | `check-plan-file-structure` flagged three touched-but-unlisted paths; File structure updated (commit "List every phase-0-touched path…") | closed |
 | F-7 | CI (phase 0 full suite) | Four ITs outside the scoped set (`CrossVenueDenialIT` ×2, `AdminVenueCommissionIT`, `BookingModeSwitchIT`) PATCH the profile with raw bodies that lacked the now-required `salesClose` → 400. Bodies completed; the `"distanceToWaterM"`-body sweep confirms none remain (create bodies are exempt — the field is optional there) | closed |
-| F-8 | review (posted on PR, scored 85) | RESPONSIBILITIES.md §`venue` claimed commission "is now the *only* owner-write-proof field" — wrong count, `payoutCurrency` is equally write-proof (`VenueProfileCommand` Javadoc; `patchIgnoresReadOnlyCommissionAndCurrency`); AC-10's note repeated it | fixed (review-fix commit) |
-| F-9 | review (RV-FE-10, verified, scored 75 — below the PR-comment bar, fixed anyway) | `daily-sales-closed` paragraph inserted with its message, no `role="alert"` — silent to screen readers on initial-load-of-closed-today and venue/date switches (the map-sales-closed precedent, #741); fixed with `role="alert"`, pinned by the spec's new role assertion | fixed (review-fix commit) |
-| F-10 | review (verified, scored 75 — below the PR-comment bar, fixed anyway) | `VenueProfileView` Javadoc internally inconsistent: the "editable core" enumeration omitted `salesClose` while the same doc's later paragraph calls it owner-editable | fixed (review-fix commit) |
+| F-8 | review (posted on PR, scored 85) | RESPONSIBILITIES.md §`venue` claimed commission "is now the *only* owner-write-proof field" — wrong count, `payoutCurrency` is equally write-proof (`VenueProfileCommand` Javadoc; `patchIgnoresReadOnlyCommissionAndCurrency`); AC-10's note repeated it | fixed-in-`0aec5cf4` |
+| F-9 | review (RV-FE-10, verified, scored 75 — below the PR-comment bar, fixed anyway) | `daily-sales-closed` paragraph inserted with its message, no `role="alert"` — silent to screen readers on initial-load-of-closed-today and venue/date switches (the map-sales-closed precedent, #741); fixed with `role="alert"`, pinned by the spec's new role assertion | fixed-in-`0aec5cf4` |
+| F-10 | review (verified, scored 75 — below the PR-comment bar, fixed anyway) | `VenueProfileView` Javadoc internally inconsistent: the "editable core" enumeration omitted `salesClose` while the same doc's later paragraph calls it owner-editable | fixed-in-`0aec5cf4` |
 
 ---
 
@@ -632,5 +635,5 @@ it('closes today via the standing setting after confirm', async () => {
 - [x] **Frontend** standards met; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
-- [ ] **Close-out written in THIS PR** — final plan-doc state committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] **Close-out written in THIS PR** — final plan-doc state committed here, citing `merged via PR #802`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone (rung 1: the plugin Skill invocation succeeded; high effort).
