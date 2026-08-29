@@ -41,9 +41,7 @@ slice only extends `JdbcVenues`' UPDATE SET clause and INSERT column list. V45 s
 recorded assumptions below) · `riviera-plan-doc` (this template — forced the parity
 ledger for the relabel and the daily-view race into the risk register) · `tdd` (each
 phase opens with a failing edge/IT test, per the phase steps) · `riviera-review-overlay`
-(review gate — due at ready-for-review) · `riviera-docs-freshness` (due at merge
-close-out over this slice's range — RESPONSIBILITIES.md §`venue` "read-only this slice"
-sentence is a known staleness) · `grilling` (issue-intake pass over #794) ·
+(review gate — due at ready-for-review) · `riviera-docs-freshness` (run at implement close-out over `origin/main..HEAD`: the §`venue` read-only sentence patched, the operator-console artboard's cutoff label flagged `as-built diverges — see #794`, counting sweep clean — `venue.spi` stays three; re-run due at merge close-out) · `grilling` (issue-intake pass over #794) ·
 `riviera-modulith` (no new port/module needed; write stays in `venue`'s existing
 application service; ownership via `operator::api` unchanged; `SalesClose` placed in
 `domain/`, not `vocabulary/` — no sibling consumes it) · `domain-modeling` (CONTEXT.md's
@@ -59,7 +57,8 @@ Forms preferred; `search_documentation` confirmed `FormValueControl` lets
 `SegmentedControl` bind via `[formField]`, and model-signal two-way binding) ·
 `riviera-tailwind` (reuse `SegmentedControl` + `[appTouchTarget]`; docs-checked
 `min-h-11` = 44px and built-in `aria-*` variants; no new tokens, no SCSS) ·
-`playwright-cli` (mocked-suite authoring; stateful `page.route` mock pattern).
+`playwright-cli` (mocked-suite authoring; stateful `page.route` mock pattern) ·
+`riviera-local-debug` (cloud build recipe; scoped-test discipline through phases 0–2).
 
 **Branch:** `claude/sdlc-794-implement-lbvxb6` (implement session, started from
 `claude/sdlc-794-plan-review-jh1h77`) — the session's designated remote branch stands in
@@ -69,48 +68,48 @@ for `feature/operator-sales-close-control` (riviera-sdlc cloud addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (PATCH carries the setting):** Given a venue at `16:00` and its owner's
+- [x] **AC-1 (PATCH carries the setting):** Given a venue at `16:00` and its owner's
   full-replace PATCH carrying `salesClose: "00:01"` and the current `version`, when
   `EditVenueProfile.updateProfile` applies it, then the outcome is `APPLIED`, the profile
   read returns `00:01`, and `version` is bumped; a stale token stays `STALE_WRITE`/409
   with no field landing. *Pinned by:* `VenueAdminControllerIT.patchUpdatesSalesClose`
   (+ existing `staleVersionPatchIs409` extended to assert `salesClose` did not land).
-- [ ] **AC-2 (fixed vocabulary):** Given a PATCH or create request whose `salesClose` is
+- [x] **AC-2 (fixed vocabulary):** Given a PATCH or create request whose `salesClose` is
   anything but the three fixed values (`"12:00"`, `"garbage"`, null on PATCH), when the
   edge parses it, then the response is `400 INVALID_REQUEST` per the §6b contract and
   nothing is written. *Pinned by:* `VenueAdminControllerIT.invalidSalesCloseIs400`,
   `SalesCloseTest.fromTimeRejectsAnythingButTheThreeValues`.
-- [ ] **AC-3 (create):** Given a create request without `salesClose`, when the venue is
+- [x] **AC-3 (create):** Given a create request without `salesClose`, when the venue is
   onboarded, then its profile reads `16:00`; given one carrying `"23:59"`, it reads
   `23:59`. *Pinned by:* `VenueAdminControllerIT.createDefaultsSalesCloseAndProfileReturnsIt`
   (extended) + `VenueAdminControllerIT.createAcceptsExplicitSalesClose`.
-- [ ] **AC-4 (kill switch is effective immediately):** Given an online-pool set bookable
+- [x] **AC-4 (kill switch is effective immediately):** Given an online-pool set bookable
   today at a `23:59` venue, when the owner's PATCH sets `salesClose` to `00:01` and a
   tourist reserve for today follows, then the reserve outcome is
   `Rejected(BOOKING_CLOSED)` (422 at the edge). *Pinned by:*
   `BookingControllerIT.reserveRefusedAfterOwnerClosesSalesForToday`.
-- [ ] **AC-5 (re-open is immediate too):** Given a venue past its `16:00` close today
+- [x] **AC-5 (re-open is immediate too):** Given a venue past its `16:00` close today
   (clock mid-afternoon), when the owner's PATCH sets `23:59` and a tourist reserve for
   today follows, then the reserve succeeds. *Pinned by:*
   `BookingControllerIT.reserveSucceedsAfterOwnerReopensSalesForToday`.
-- [ ] **AC-6 (ownership, invariant #13):** Given an authenticated `OPERATOR` who does not
+- [x] **AC-6 (ownership, invariant #13):** Given an authenticated `OPERATOR` who does not
   own the path venue, when they PATCH the profile (sales-close included), then the
   application service rejects with 403 before any write. *Pinned by:* existing
   `VenueAdminControllerIT.profileEditUnownedVenueIs403` (body now carries `salesClose`).
-- [ ] **AC-7 (settings-tab control):** Given the loaded venue tab, when the operator picks
+- [x] **AC-7 (settings-tab control):** Given the loaded venue tab, when the operator picks
   a sales-close choice and saves, then the PATCH wire body carries the chosen value with
   every other profile field (full replace), and the relabeled "Free-cancellation deadline
   (Europe/Tirane)" field still round-trips the cutoff. *Pinned by:* `venue-tab.spec.ts`
   (save body), `operator-venue.e2e.ts` (wire assertion via the stateful mock).
-- [ ] **AC-8 (daily-view kill switch):** Given the daily view on today, when the operator
+- [x] **AC-8 (daily-view kill switch):** Given the daily view on today, when the operator
   taps "Close today's online sales now" and confirms, then the profile PATCH body carries
   `salesClose: "00:01"` and the notice states it persists for future days until changed
   back. *Pinned by:* `daily-view-tab.spec.ts`, `operator-daily.e2e.ts`.
-- [ ] **AC-9 (a11y):** Both new/changed surfaces pass axe (unit `*.a11y.spec.ts` + in-spec
+- [x] **AC-9 (a11y):** Both new/changed surfaces pass axe (unit `*.a11y.spec.ts` + in-spec
   e2e axe), every new control declares `[appTouchTarget]` (guard TT-1) and measures ≥44px
   in the touch-target sweep. *Pinned by:* `venue-tab.a11y.spec.ts`,
   `daily-view-tab.a11y.spec.ts`, `touch-targets.e2e.ts` (existing sweep, venue + daily tabs).
-- [ ] **AC-10 (docs):** `RESPONSIBILITIES.md` §`venue`'s sales-close bullet no longer says
+- [x] **AC-10 (docs):** `RESPONSIBILITIES.md` §`venue`'s sales-close bullet no longer says
   "read-only this slice"; it names the owner-editable write path. *Verified by:* the
   `riviera-docs-freshness` close-out run + review gate (not a test class).
 
@@ -139,28 +138,28 @@ specs — see R-2.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Daily-view kill switch's GET→PATCH read-modify-write races a concurrent profile edit (or double-tap) and clobbers/409s | med | med | Optimistic `version` token makes the race lose loudly (409); on 409 the notice says "couldn't close — try again" and re-reads; no auto-retry loop | impl | open |
-| R-2 | Relabel misses a consumer — `booking-cutoff-field` is shared by the venue tab AND the create card (incl. their two "required" validation messages) | med | low | Relabel inside the shared component once; update both message strings (`venue-tab.ts`, `venue-create-card.ts`); both surfaces' specs assert the new copy | impl | open |
-| R-3 | FE sends `salesClose` but a naming mismatch lets Jackson silently drop it (no `FAIL_ON_UNKNOWN_PROPERTIES`) → "saved" without effect | low | high | AC-1 IT round-trips through the read API; e2e asserts the wire body key; one wire token set (`"HH:mm"`, same `CUTOFF` formatter as the read) | impl | open |
-| R-4 | #791's pin `VenueAdminControllerIT.patchCannotReachSalesClose` contradicts the new behavior if left standing | high | low | Phase 0 step explicitly inverts it (becomes `patchUpdatesSalesClose`); `patchIgnoresReadOnlyCommissionAndCurrency` stays (commission asymmetry survives) | impl | open |
-| R-5 | The Java mirror drifts from the V44 CHECK (invariant #4 vocabulary) | low | med | The `SalesClose` enum is the **single** Java mirror (no separate validator set); `SalesCloseTest` pins its three `time()` values against the CHECK tokens; `SalesCloseMigrationIT.checkRejectsAnyOtherTime` keeps pinning the DB side | impl | open |
+| R-1 | Daily-view kill switch's GET→PATCH read-modify-write races a concurrent profile edit (or double-tap) and clobbers/409s | med | med | Optimistic `version` token makes the race lose loudly (409); on 409 the notice says "couldn't close — try again" and re-reads; no auto-retry loop | impl | closed — shipped as designed: the fresh GET's `version` guards the PATCH, a 409 shows "try again" + re-reads (pinned by `daily-view-tab.spec.ts` "a lost 409 race"), `closeSalesBusy` gates the double-tap |
+| R-2 | Relabel misses a consumer — `booking-cutoff-field` is shared by the venue tab AND the create card (incl. their two "required" validation messages) | med | low | Relabel inside the shared component once; update both message strings (`venue-tab.ts`, `venue-create-card.ts`); both surfaces' specs assert the new copy | impl | closed — relabeled once inside the shared component; both consumers' "required" messages updated; `booking-cutoff-field.spec.ts` + `venue-create-card.spec.ts` + `venue-tab.spec.ts` assert the new copy |
+| R-3 | FE sends `salesClose` but a naming mismatch lets Jackson silently drop it (no `FAIL_ON_UNKNOWN_PROPERTIES`) → "saved" without effect | low | high | AC-1 IT round-trips through the read API; e2e asserts the wire body key; one wire token set (`"HH:mm"`, same `CUTOFF` formatter as the read) | impl | closed — `patchUpdatesSalesClose` round-trips through the read API; `operator-venue.e2e.ts` + `operator-daily.e2e.ts` assert the wire key; one `"HH:mm"` token set both directions |
+| R-4 | #791's pin `VenueAdminControllerIT.patchCannotReachSalesClose` contradicts the new behavior if left standing | high | low | Phase 0 step explicitly inverts it (becomes `patchUpdatesSalesClose`); `patchIgnoresReadOnlyCommissionAndCurrency` stays (commission asymmetry survives) | impl | closed — inverted in phase 0; `patchIgnoresReadOnlyCommissionAndCurrency` stays (its body gained the required field, F-2) |
+| R-5 | The Java mirror drifts from the V44 CHECK (invariant #4 vocabulary) | low | med | The `SalesClose` enum is the **single** Java mirror (no separate validator set); `SalesCloseTest` pins its three `time()` values against the CHECK tokens; `SalesCloseMigrationIT.checkRejectsAnyOtherTime` keeps pinning the DB side | impl | closed — `SalesClose` is the single mirror; `SalesCloseTest` pins the three times against the CHECK tokens; `SalesCloseMigrationIT` untouched |
 | R-6 | New busy-flag name trips `check-focus-posture.mjs` BUSY-1, or the confirm flow skips a focus leg (FOCUS-1) | med | low | Copy the payouts weather-refund inline two-step verbatim (`[appBusy]`, `focusMover()` on all three legs); add the flag stem to `BUSY_STEMS` only if no existing stem fits | impl | closed — `closeSalesBusy` carries the existing `busy` stem (no `BUSY_STEMS` edit); all three `focusAfterRender` legs shipped; guards green |
-| R-7 | Full PATCH from the daily view re-serializes a profile field wrongly (e.g. amenity codes, photos excluded) → silent profile corruption | low | high | One mapping helper `toProfileUpdate(view)` in `operator-console.model.ts`, unit-tested against the venue-tab save shape; e2e asserts untouched fields survive the kill switch | impl | open |
-| R-8 | Error contract drift on the new 400 (raw `IllegalArgumentException` → 500, issue #118 class) | low | med | Parse inside `InvalidApiRequestException.parsing(...)` exactly like `PhotoSlots`/`parseCode`; `invalidSalesCloseIs400` asserts `$.code == INVALID_REQUEST` | impl | open |
+| R-7 | Full PATCH from the daily view re-serializes a profile field wrongly (e.g. amenity codes, photos excluded) → silent profile corruption | low | high | One mapping helper `toProfileUpdate(view)` in `operator-console.model.ts`, unit-tested against the venue-tab save shape; e2e asserts untouched fields survive the kill switch | impl | closed — `toProfileUpdate(view)` shared by the venue tab and the kill switch; `operator-daily.e2e.ts` asserts untouched fields survive (name + expectedVersion on the wire) |
+| R-8 | Error contract drift on the new 400 (raw `IllegalArgumentException` → 500, issue #118 class) | low | med | Parse inside `InvalidApiRequestException.parsing(...)` exactly like `PhotoSlots`/`parseCode`; `invalidSalesCloseIs400` asserts `$.code == INVALID_REQUEST` | impl | closed — both edges parse inside `InvalidApiRequestException.parsing`; `invalidSalesCloseIs400` + `createRejectsOffVocabularySalesClose` assert `$.code == INVALID_REQUEST` |
 
 ## Open questions / Assumptions
 
 - **Assumption (create surface):** the create *API* accepts `salesClose` optionally
   (absent → `16:00`), but the console's create card gets **no** control — the issue says
   the console "exposes it twice" (settings tab + daily view) and AC-2 says "default 16:00
-  on create". — *Owner:* maintainer review of this plan · *Resolves by:* phase 0.
+  on create". — *Owner:* maintainer review of this plan · *Resolved:* held through phase 0 (create API optional, no create-card control).
 - **Assumption (kill-switch transport):** reuse profile GET + full-replace PATCH; no
   dedicated endpoint. AC-1 pins the setting to the PATCH; a second write path would be a
-  new surface the issue doesn't ask for. — *Owner:* maintainer review · *Resolves by:* phase 2.
+  new surface the issue doesn't ask for. — *Owner:* maintainer review · *Resolved:* held through phase 2 (GET→PATCH via `closeOnlineSalesNow`; no new endpoint).
 - **Assumption (control copy):** the three choices carry human labels, e.g. "00:01 — no
   same-day sales" / "16:00 — mid-afternoon (default)" / "23:59 — all day", with
   `Europe/Tirane` noted once on the group label (mirroring the cutoff field's precedent).
-  Final copy is an implement-time call. — *Owner:* impl · *Resolves by:* phase 1.
+  Final copy is an implement-time call. — *Owner:* impl · *Resolved:* shipped as "00:01 — no same-day sales" / "16:00 — mid-afternoon" (blurb names it the default) / "23:59 — all day", group label "Same-day sales close (Europe/Tirane)".
 
 ## Availability & concurrency (invariant #2)
 
@@ -286,18 +285,17 @@ tokens).
 > **This section is the session-recovery anchor** — see the template blockquote; update in
 > the same commit window as the change it records.
 
-**Stage pointer:** `implement — phases 0–2 done (session 2026-08-29); phase 3 (docs + close-out) next`
+**Stage pointer:** `implement complete — PR #802 ready for review (session 2026-08-29); review gate + Sonar gate pending, run in a separate session; merge close-out (merged via PR #NN citation + freshness re-check) after that`
 
-**Next action:** phase 3: rewrite RESPONSIBILITIES.md §`venue`'s sales-close bullet, run
-`riviera-docs-freshness` over the slice's range, hygiene guards, finalize this section,
-mark PR #802 ready for review.
+**Next action:** run the review gate (`/code-review` per the pr-gates invocation ladder +
+`riviera-review-overlay`) and the Sonar gate against PR #802 — a separate session's job.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Backend write path (PATCH + create + vocabulary) | ✅ | "Make the sales-close setting venue-editable via profile PATCH and create (#794)" |
 | 1 — Settings tab control + cutoff relabel | ✅ | "Add the sales-close control to the venue settings tab and relabel the cancellation deadline (#794)" |
 | 2 — Daily-view kill switch | ✅ | "Add the one-tap close-today kill switch to the daily view (#794)" |
-| 3 — Docs + close-out (RESPONSIBILITIES.md, freshness run, self-review) | | |
+| 3 — Docs + close-out (RESPONSIBILITIES.md, freshness run, self-review) | ✅ | "Record the owner-editable sales close in the substrate docs and close out the plan (#794)" |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -345,6 +343,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/operator-daily.e2e.ts` — kill-switch journey incl. axe.
 - `frontend/e2e/support/operator-console.mocks.ts` — `profile()` fixture gains `salesClose`.
 - `RESPONSIBILITIES.md` — §`venue` sales-close bullet: write path replaces "read-only this slice".
+- `docs/design/riviera-operator-console-v2.dc.html` — the artboard's "Booking cutoff" label gains the standard `as-built diverges — see #794` note (freshness run).
 - `scripts/check-focus-posture.mjs` — only if a novel busy-flag stem is unavoidable (`BUSY_STEMS`).
 
 ---
@@ -582,15 +581,15 @@ it('closes today via the standing setting after confirm', async () => {
 
 **Files:** Modify `RESPONSIBILITIES.md`, this plan doc.
 
-- [ ] **Step 1:** Rewrite §`venue`'s sales-close bullet: the setting is owner-editable via
+- [x] **Step 1:** Rewrite §`venue`'s sales-close bullet: the setting is owner-editable via
   the profile PATCH/create (edge validation mirroring the CHECK), the commission
   write-proof asymmetry now names sales-close as the exception it no longer mirrors.
-- [ ] **Step 2:** `riviera-docs-freshness` over the slice's range (the #793 close-out's
+- [x] **Step 2:** `riviera-docs-freshness` over the slice's range (the #793 close-out's
   count-sites list: `venue.spi` inventory unchanged at three — verify, don't assume).
-- [ ] **Step 3:** `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan doc
+- [x] **Step 3:** `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan doc
   staged first), `node scripts/check-inline-comments.mjs --diff origin/main`,
   `node scripts/check-touch-target.mjs --all` — all green before ready-for-review.
-- [ ] **Step 4:** Finalize Execution status (stage pointer, phase rows with commits, ACs
+- [x] **Step 4:** Finalize Execution status (stage pointer, phase rows with commits, ACs
   verified, risks closed, `merged via PR #NN` at close-out — never a merge SHA); run the
   Self-review checklist; mark the PR ready for review → Review gate (`/code-review` per
   the invocation ladder) + Sonar gate per `references/pr-gates.md`.
@@ -609,26 +608,26 @@ it('closes today via the standing setting after confirm', async () => {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-6:** `./gradlew test --tests "*VenueAdminControllerIT*" --tests "*VenueProfileCommandTest*" --tests "*BookingControllerIT*"` → all pass. Verified at commit `<sha>`.
-- [ ] **AC-7..AC-9:** `npm test` · `npm run test:a11y` · `npm run test:e2e:a11y` → all pass. Verified at commit `<sha>`.
-- [ ] **AC-10:** RESPONSIBILITIES.md diff reviewed in the PR; freshness run recorded in *Skills consulted*.
+- [x] **AC-1..AC-6:** `./gradlew test --tests "*VenueAdminControllerIT*" --tests "*VenueProfileCommandTest*" --tests "*BookingControllerIT*"` → all pass. Verified locally at commit `fa66cd8` (+ `28f064a` for the widened IT bodies); CI full suite green at run 2897.
+- [x] **AC-7..AC-9:** `npm test` (1973) · a11y/contrast specs · `npm run test:e2e:a11y` (venue 6, daily 8, touch-targets 33) → all pass. Verified locally at commit `62f3319`.
+- [x] **AC-10:** RESPONSIBILITIES.md §`venue` rewritten (owner-editable write path; commission now the only mirrored write-proof field); freshness run recorded below.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section filled; concurrency posture stated (invariant #2 untouched, #4 is the live one).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event changes (invariant #11).
-- [ ] **Payment/payout** N/A justified (invariants #5, #8, #9).
-- [ ] Refund policy untouched server-side (invariant #10).
-- [ ] Timezone correct: the setting stays a `Europe/Tirane` wall-clock token; fence math unchanged (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No schema change ⇒ no migration; V44's CHECK still the DB-side pin (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section filled; concurrency posture stated (invariant #2 untouched, #4 is the live one).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event changes (invariant #11).
+- [x] **Payment/payout** N/A justified (invariants #5, #8, #9).
+- [x] Refund policy untouched server-side (invariant #10).
+- [x] Timezone correct: the setting stays a `Europe/Tirane` wall-clock token; fence math unchanged (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] No schema change ⇒ no migration; V44's CHECK still the DB-side pin (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty or deferred with an issue #.
 - [ ] **Close-out written in THIS PR** — final plan-doc state committed here, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
