@@ -228,6 +228,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-2 | review | the three `@switch` branches triplicated the `<p data-testid="sales-close-note">` shell + glyph; a class/testid tweak could silently drift per branch | fixed: single `@if` shell, `@switch` selects only the sentence `<span>` |
 | F-3 | review | `SALES_CLOSE_WIRE` re-declared the `HH:mm` wire formatter beside `VenueProfileResponse.CUTOFF` — two independent definitions of a load-bearing wire shape | fixed: one `SalesClose.WIRE` constant (venue domain), both adapters format through it |
 
+| F-5 | review (the code-review plugin fan-out, user-requested — 5 parallel agents + confidence scoring; 4 agents clean, 1 finding scored 75, below the 80 reporting bar) | `SalesClose.WIRE` Javadoc claimed the profile read/write all format through it — the write path parses ISO input + revalidates via `fromTime`, never touching `WIRE` | fixed in `9293e5f` (contract stated precisely); PR comment: "No issues found" per the plugin’s ≥80 filter |
 | F-4 | CI (`Repo hygiene`, run 33262181059 on 76f7b3d) | `check-plan-file-structure` flagged the two review-fix Java paths missing from File structure — the guard ran locally before the fix round, not after it (the re-entry rule's own lesson) | fixed: paths added, guard re-run clean, in the F-4 commit |
 
 Re-review of the fix round: overlay re-walked for the touched areas — template keeps
