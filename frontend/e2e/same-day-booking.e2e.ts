@@ -70,6 +70,7 @@ const AWAITING = {
   paymentIntentId: 'pi_123',
 };
 
+/** The truthful CLOSED-born shape (#795): a same-day booking is past every boundary from birth. */
 const AWAITING_DETAIL = {
   code: 'WXYZ345678',
   status: 'AWAITING_PAYMENT',
@@ -79,16 +80,27 @@ const AWAITING_DETAIL = {
   positionNo: 2,
   bookingDate: TODAY,
   amount: { minorUnits: 4500, currency: 'EUR' },
-  cancellable: true,
-  beforeCutoff: true,
-  refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
+  cancellable: false,
+  beforeCutoff: false,
+  refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
   refundedAmount: null,
+  cancellationWindowAtBirth: 'CLOSED',
+};
+
+/** The pre-reserve quote for a same-day booking: born CLOSED, nothing refundable (#795). */
+const CLOSED_TERMS = {
+  window: 'CLOSED',
+  freeCancellationEndsAt: `2026-08-29T16:00:00Z`,
+  lateCancelRefundBps: 0,
 };
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(BEFORE_CLOSE);
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE_MAP }));
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: VENUES }));
+  await page.route(/\/api\/bookings\/cancellation-terms(\?.*)?$/, (route) =>
+    route.fulfill({ json: CLOSED_TERMS }),
+  );
 });
 
 test('today journey: homepage → map → dialog → pay → confirmed', async ({ page }) => {
@@ -125,11 +137,26 @@ test('today journey: homepage → map → dialog → pay → confirmed', async (
   await expect(dialog).toBeVisible();
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'booking dialog (today, Details)');
-  await completeDialog(dialog, 'Continue to payment');
+
+  // Review step: the server-quoted disclosure renders before the guest commits (#795 AC-11).
+  await dialog.getByLabel('Full name').fill('Holiday Guest');
+  await dialog.getByLabel('Email').fill('guest@example.com');
+  await dialog.getByLabel('Phone').fill('+355699000');
+  await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(dialog.getByTestId('cancellation-terms-note')).toContainText(
+    'Non-refundable last-minute booking',
+  );
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'booking dialog (today, Review + disclosure)');
+  await dialog.getByRole('button', { name: 'Continue to payment' }).click();
 
   await expect(page).toHaveURL(/\/booking\/pay/);
   await expect(page.getByTestId('pay-button')).toBeVisible();
-  await expectNoSeriousAxeViolations(page, 'payment page (today, ready)');
+  // The pay page repeats the disclosure beside the order summary, before any payment (#795).
+  await expect(page.getByTestId('cancellation-terms-note')).toContainText(
+    'Non-refundable last-minute booking',
+  );
+  await expectNoSeriousAxeViolations(page, 'payment page (today, ready + disclosure)');
 
   await page.getByTestId('pay-button').click();
   await expect(page.getByRole('heading', { name: /You.re booked/ })).toBeVisible();

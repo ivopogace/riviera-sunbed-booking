@@ -41,6 +41,7 @@ const DETAIL = {
   refundedAmount: null,
   requestExpiresAt: null,
   payment: null,
+  cancellationWindowAtBirth: 'FREE',
 };
 
 // Pin the OS scheme to dark so the boot theme is deterministic (headless defaults light → porcelain).
@@ -81,6 +82,36 @@ test('finds a booking by code and opens its detail view (+ axe, riviera)', async
   await expect(page.getByRole('dialog')).toHaveCount(0);
   // The detail rendered from the primed hand-off — only the modal's own lookup hit the endpoint.
   expect(getCount).toBe(1);
+});
+
+test('a CLOSED-born booking shows the last-minute state and no cancel section (#795)', async ({
+  page,
+}) => {
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({
+      json: {
+        ...DETAIL,
+        cancellable: false,
+        beforeCutoff: false,
+        refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
+        cancellationWindowAtBirth: 'CLOSED',
+      },
+    }),
+  );
+
+  await page.goto('/');
+  await page.getByTestId('find-open').click();
+  await page.getByTestId('find-code').fill(CODE);
+  await page.getByTestId('find-submit').click();
+
+  await expect(page).toHaveURL(new RegExp(`/booking/${CODE}`));
+  await expect(page.getByTestId('last-minute-note')).toContainText(
+    'Non-refundable last-minute booking',
+  );
+  await expect(page.getByTestId('start-cancel')).toHaveCount(0);
+  await expect(page.getByTestId('refund-terms')).toHaveCount(0);
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'booking view (CLOSED-born last-minute)');
 });
 
 test('audits the open find modal in the porcelain theme', async ({ page }) => {

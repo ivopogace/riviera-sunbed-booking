@@ -64,52 +64,52 @@ doc rides along.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (terms read — FREE):** Given a venue with cutoff 18:00 and a booking date D,
+- [x] **AC-1 (terms read — FREE):** Given a venue with cutoff 18:00 and a booking date D,
   when the terms are quoted at D-2 (before D-1 18:00 Tirane), then the quote is
   `window=FREE` with `freeCancellationEndsAt` = D-1 18:00 Tirane as an `Instant`.
   *Pinned by:* `CancellationPolicyTermsTest.freeWindowQuotesDeadline`
-- [ ] **AC-2 (terms read — LATE):** Given the same venue with `lateCancelRefundBps=2500`,
+- [x] **AC-2 (terms read — LATE):** Given the same venue with `lateCancelRefundBps=2500`,
   when the terms are quoted between D-1 18:00 and D 00:00 Tirane, then the quote is
   `window=LATE, lateCancelRefundBps=2500`. *Pinned by:*
   `CancellationPolicyTermsTest.lateWindowCarriesVenueShare`
-- [ ] **AC-3 (terms read — CLOSED/same-day):** Given date D = today (Tirane), when the
+- [x] **AC-3 (terms read — CLOSED/same-day):** Given date D = today (Tirane), when the
   terms are quoted, then the quote is `window=CLOSED` (born non-refundable). *Pinned by:*
   `CancellationPolicyTermsTest.sameDayQuotesClosed`
-- [ ] **AC-4 (terms endpoint):** Given a known set, when
+- [x] **AC-4 (terms endpoint):** Given a known set, when
   `GET /api/bookings/cancellation-terms?setId=…&date=…` is called, then `200` with
   `{window, freeCancellationEndsAt, lateCancelRefundBps}`; an unknown set yields the
   `ApiProblem` 404 contract, and `GET /api/bookings/{code}` still resolves a code (route
   literal-vs-template pin). *Pinned by:* `CancellationTermsEndpointIT`
-- [ ] **AC-5 (confirmation mail):** Given a booking born in CLOSED (created on its service
+- [x] **AC-5 (confirmation mail):** Given a booking born in CLOSED (created on its service
   day) that confirms, when `BookingConfirmed` is handled, then the recorded
   `BookingConfirmationMail` carries `cancellationWindowAtBirth=CLOSED`; a booking born in
   FREE records `FREE` and each transport renders no disclosure line for it. *Pinned by:*
   `BookingConfirmationMailIT.sameDayBookingCarriesNonRefundableDisclosure` (+ sibling
   absent-case)
-- [ ] **AC-6 (payment-due mail):** Given a same-day request accepted before the venue's
+- [x] **AC-6 (payment-due mail):** Given a same-day request accepted before the venue's
   sales close, when `BookingPaymentDue` is handled, then the recorded `PaymentDueMail`
   carries `cancellationWindowAtBirth=CLOSED`. *Pinned by:*
   `RequestPaymentDueMailIT.sameDayAcceptCarriesNonRefundableDisclosure`
-- [ ] **AC-7 (registry compatibility):** Given a `BookingConfirmed` publication serialized
+- [x] **AC-7 (registry compatibility):** Given a `BookingConfirmed` publication serialized
   *before* this slice (no window fields), when the listener deserializes and handles it,
   then the mail sends with no disclosure line (null window tolerated forever). *Pinned
   by:* `BookingConfirmationMailListenerTest.legacyPayloadWithoutWindowRendersNoDisclosure`
-- [ ] **AC-8 (booking view):** Given a CONFIRMED same-day booking, when
+- [x] **AC-8 (booking view):** Given a CONFIRMED same-day booking, when
   `ViewBookingService` builds the view, then `cancellable=false` (already true) AND
   `cancellationWindowAtBirth=CLOSED`; an advance FREE-born booking reports `FREE` and
   keeps `beforeCutoff`/`refundIfCancelledNow` unchanged. *Pinned by:*
   `ViewBookingServiceTest.sameDayBookingReportsClosedBirthWindow`
-- [ ] **AC-9 (weather-refund regression):** Given a CONFIRMED booking created on its own
+- [x] **AC-9 (weather-refund regression):** Given a CONFIRMED booking created on its own
   service day, when the admin weather refund runs for that venue+date, then the booking is
   refunded in full and cancelled. *Pinned by:*
   `WeatherRefundServiceIT.reachesASameDayBooking` (pre-existing #791 pin — covers this AC; no new test needed)
-- [ ] **AC-10 (checkout renders truth):** Given the dialog opens with terms
+- [x] **AC-10 (checkout renders truth):** Given the dialog opens with terms
   FREE/LATE(bps>0)/LATE(0)/CLOSED, then the mode note states respectively: free until the
   formatted Tirane deadline / partial-refund share / non-refundable / "non-refundable
   last-minute booking" — and while terms are loading or failed, **no** free-cancellation
   claim renders. *Pinned by:* `booking-dialog.spec.ts` (new cases) +
   `cancellation-terms-note.spec.ts`
-- [ ] **AC-11 (e2e + a11y):** The mocked today-journey shows the non-refundable disclosure
+- [x] **AC-11 (e2e + a11y):** The mocked today-journey shows the non-refundable disclosure
   in the dialog and on the pay page before payment, with axe green at each step; the
   booking view for a mocked CLOSED-born detail shows the last-minute state and no cancel
   section. *Pinned by:* `same-day-booking.e2e.ts` (extended), `find-a-booking.e2e.ts`
@@ -150,26 +150,25 @@ branch are replaced surfaces:
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Widened event payloads break outstanding Event Publication Registry entries serialized pre-slice (missing fields → null enum / 0 int) | med | med | additive fields only, same `event_type` (no move/rename → no Flyway rewrite per `riviera-modulith`); listeners treat null window as "no disclosure", pinned by AC-7 as a permanent guard, not a deploy-window hack | agent | open |
-| R-2 | `GET /api/bookings/cancellation-terms` shadowed by `GET /api/bookings/{code}` (or vice versa) | low | med | Spring ranks the literal segment above the template; both directions pinned in `CancellationTermsEndpointIT` (AC-4) | agent | open |
-| R-3 | Terms quote drifts from the actual cancel/refund decision | low | high | both live in `CancellationPolicy` calling the same `BookingCutoff` boundaries; no second implementation of the window rule anywhere (invariant #10) | agent | open |
-| R-4 | FE renders the deadline in the browser's timezone, not `Europe/Tirane` (invariant #6) | med | med | wire carries the `Instant`; a `shared/booking-date.ts` formatter pins `timeZone: 'Europe/Tirane'`; asserted in `cancellation-terms-note.spec.ts` with a non-Tirane-ambiguous instant | agent | open |
-| R-5 | "Non-refundable" line false for a LATE-born booking at a venue with bps > 0 | low | high | structured window + bps on payloads/DTOs (maintainer decision); transports and FE branch on it; per-branch mail ITs + FE specs | agent | open |
-| R-6 | Async-loaded disclosure invisible to screen readers (RV-FE-10 precedent #741/#794) | med | med | the terms note container is a polite live region (`role="status"`); axe runs at the dialog step in e2e; the booking-view note renders with page data (no live region needed) | agent | open |
-| R-7 | New/changed DTOs drift from the error contract | low | med | unknown set → `ApiProblem` 404; invalid params → the standing `ApiErrorHandler` mapping; no per-controller `@ExceptionHandler` (§6b) | agent | open |
-| R-8 | Mail listener contract break — listener class/method/param names are registry `listener_id` contract | low | high | only payload record fields and `SmtpMailer` rendering change; listener signatures untouched | agent | open |
+| R-1 | Widened event payloads break outstanding Event Publication Registry entries serialized pre-slice (missing fields → null enum / 0 int) | med | med | additive fields only, same `event_type` (no move/rename → no Flyway rewrite per `riviera-modulith`); listeners treat null window as "no disclosure", pinned by AC-7 as a permanent guard, not a deploy-window hack | agent | resolved — additive fields, AC-7 pinned in `BookingConfirmationMailListenerTest` |
+| R-2 | `GET /api/bookings/cancellation-terms` shadowed by `GET /api/bookings/{code}` (or vice versa) | low | med | Spring ranks the literal segment above the template; both directions pinned in `CancellationTermsEndpointIT` (AC-4) | agent | resolved — pinned both ways |
+| R-3 | Terms quote drifts from the actual cancel/refund decision | low | high | both live in `CancellationPolicy` calling the same `BookingCutoff` boundaries; no second implementation of the window rule anywhere (invariant #10) | agent | resolved — `terms`/`windowAtBirth` live beside `quote` on `CancellationPolicy`; phase-1 audit found no second site |
+| R-4 | FE renders the deadline in the browser's timezone, not `Europe/Tirane` (invariant #6) | med | med | wire carries the `Instant`; a `shared/booking-date.ts` formatter pins `timeZone: 'Europe/Tirane'`; asserted in `cancellation-terms-note.spec.ts` with a non-Tirane-ambiguous instant | agent | resolved — reused `shared/deadline.ts#formatDeadline` (already Tirane-pinned); spec asserts 16:00Z renders 18:00 |
+| R-5 | "Non-refundable" line false for a LATE-born booking at a venue with bps > 0 | low | high | structured window + bps on payloads/DTOs (maintainer decision); transports and FE branch on it; per-branch mail ITs + FE specs | agent | resolved — LATE-at-bps>0 renders the share line everywhere (SmtpMailerIT, note spec, dialog spec) |
+| R-6 | Async-loaded disclosure invisible to screen readers (RV-FE-10 precedent #741/#794) | med | med | the terms note container is a polite live region (`role="status"`); axe runs at the dialog step in e2e; the booking-view note renders with page data (no live region needed) | agent | resolved — `role="status"` container in the dialog, axe green at both disclosure steps |
+| R-7 | New/changed DTOs drift from the error contract | low | med | unknown set → `ApiProblem` 404; invalid params → the standing `ApiErrorHandler` mapping; no per-controller `@ExceptionHandler` (§6b) | agent | resolved — pinned in `CancellationTermsEndpointIT` (404 `ApiProblem`, 400 contract) |
+| R-8 | Mail listener contract break — listener class/method/param names are registry `listener_id` contract | low | high | only payload record fields and `SmtpMailer` rendering change; listener signatures untouched | agent | resolved — signatures untouched; registry ITs green |
 
 ## Open questions / Assumptions
 
-- **Assumption:** outstanding registry publications at deploy time are few and short-lived;
-  the null-window tolerance (AC-7) nevertheless stays permanent. — *Owner:* agent ·
-  *Resolves by:* phase 2 (test pins it)
 - **Assumption:** exact user-facing wording of the disclosure lines (web + mail + ToS) is
   review-adjustable copy; the plan fixes the *branches*, not the final prose. — *Owner:*
-  maintainer at review gate · *Resolves by:* review gate
+  maintainer at review gate · *Resolves by:* review gate (still open, deliberately)
 
 ### Resolved
 
+- **Registry-payload tolerance** → the null-window tolerance (AC-7) is pinned permanently in
+  `BookingConfirmationMailListenerTest.legacyPayloadWithoutWindowRendersNoDisclosure` (phase 2).
 - **Pre-reserve terms read vs create-response-only** → pre-reserve read (booking-owned
   endpoint), maintainer-confirmed 2026-08-29 (AskUserQuestion, this session).
 - **Mail flag shape: boolean vs structured window** → structured
@@ -341,9 +340,12 @@ strings**, never interpolated fragments.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window as
 > the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** implement — phases 0–4 done, phase 5 next; draft PR #803 open
+**Stage pointer:** review gate — handed back to planning session (phases 0–5 done; PR #803
+marked ready for review once its final CI run is green)
 
-**Next action:** phase 5 (mocked e2e + docs + close-out).
+**Next action:** planning session runs the review gate (`/code-review` + `riviera-review-overlay`),
+the Sonar gate, and the merge close-out (incl. the full `riviera-docs-freshness` pass over the
+merge range and the plan-doc final state citing `merged via PR #803`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -352,7 +354,7 @@ strings**, never interpolated fragments.
 | 2 — Events + mails + resend | ✅ | `Carry the born-past-free-cancellation window …` |
 | 3 — Booking-view window-at-birth (BE + model) | ✅ | `Report the cancellation window at birth …` |
 | 4 — FE checkout, booking view, ToS | ✅ | `Disclose the booking's actual cancellation terms …` |
-| 5 — Mocked e2e + docs + close-out | | |
+| 5 — Mocked e2e + docs + close-out | ✅ | `Pin the last-minute disclosure end-to-end …` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -673,23 +675,23 @@ specs)
 **Files:** Modify `frontend/e2e/same-day-booking.e2e.ts`, `frontend/e2e/find-a-booking.e2e.ts`,
 `RESPONSIBILITIES.md`, `CONTEXT.md` · plan doc final state
 
-- [ ] **Step 1: e2e** — extend the today-journey: dialog shows the non-refundable note
+- [x] **Step 1: e2e** — extend the today-journey: dialog shows the non-refundable note
   before submit, pay page repeats it before payment; **correct the `AWAITING_DETAIL`
   fixture** to the truthful CLOSED-born shape (the #791/#794 close-out note);
   `expectNoSeriousAxeViolations` at the disclosure steps; `find-a-booking.e2e.ts` gains
   the CLOSED-born detail case (last-minute state, no cancel section). Suite placement is
   RV-FE-E2E's: mocked CI suite, both files already there.
-- [ ] **Step 2: Run** — `npm run test:e2e:a11y` → PASS.
-- [ ] **Step 3: Docs** — RESPONSIBILITIES §booking (the terms read + window-at-birth
+- [x] **Step 2: Run** — `npm run test:e2e:a11y` → PASS.
+- [x] **Step 3: Docs** — RESPONSIBILITIES §booking (the terms read + window-at-birth
   stamping join the cutoff-authority paragraph), §notification (the two widened payloads;
   rendering-not-deciding restated). CONTEXT.md already landed in phase 0 (step 5a) —
   verify it matches the shipped names, don't re-author it here. Run
   `riviera-docs-freshness` over the slice range, incl. the counting
   sweep (do the widened events change any "the five events carry…"-shaped statement?).
-- [ ] **Step 4: Guards** — `node scripts/check-plan-file-structure.mjs --diff origin/main`
+- [x] **Step 4: Guards** — `node scripts/check-plan-file-structure.mjs --diff origin/main`
   (plan doc staged first), inline-comment + touch-target guards over the diff.
-- [ ] **Step 5: Commit** — `git commit -m "Pin the last-minute disclosure end-to-end and refresh the substrate docs (#795)"`
-- [ ] **Step 6: Finalize Execution status** (stage pointer, `merged via PR #NN` at
+- [x] **Step 5: Commit** — `git commit -m "Pin the last-minute disclosure end-to-end and refresh the substrate docs (#795)"`
+- [x] **Step 6: Finalize Execution status** (stage pointer, `merged via PR #NN` at
   close-out — never a SHA), then the PR gates per `references/pr-gates.md`.
 
 ---
@@ -708,32 +710,32 @@ specs)
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..3:** `./gradlew test --tests "*CancellationPolicyTermsTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** `./gradlew test --tests "*CancellationTermsEndpointIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5/AC-7:** `./gradlew test --tests "*BookingConfirmationMail*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** `./gradlew test --tests "*RequestPaymentDueMailIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-8:** `./gradlew test --tests "*ViewBookingServiceTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-9:** `./gradlew test --tests "*WeatherRefundServiceIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-10:** `npm test -- --run` (dialog + note specs) → PASS. Verified at commit `<sha>`.
-- [ ] **AC-11:** `npm run test:e2e:a11y` → PASS. Verified at commit `<sha>`.
+- [x] **AC-1..3:** scoped `gradle test --tests "*CancellationPolicyTermsTest*"` → PASS (4 tests, 0 skipped). Verified at commit `2c34cf2`.
+- [x] **AC-4:** scoped `gradle test --tests "*CancellationTermsEndpointIT*"` → PASS (6 tests, 0 skipped, Testcontainers live). Verified at commits `2c34cf2` + `217de7c` (port refactor).
+- [x] **AC-5/AC-7:** scoped `gradle test --tests "*BookingConfirmationMail*"` → PASS (IT 6 tests + listener 16, 0 skipped). Verified at commit `61ff689`.
+- [x] **AC-6:** scoped `gradle test --tests "*RequestPaymentDueMailIT*"` → PASS (7 tests, 0 skipped). Verified at commit `61ff689`.
+- [x] **AC-8:** scoped `gradle test --tests "*ViewBookingServiceTest*"` → PASS. Verified at commit `a85afb8`.
+- [x] **AC-9:** scoped `gradle test --tests "*WeatherRefund*"` → PASS (pre-existing `reachesASameDayBooking` covers the AC). Verified at commit `a85afb8`.
+- [x] **AC-10:** `npm test` → 1992/1992 PASS (dialog + note + pay + view specs included). Verified at commit `6f9c3ca`.
+- [x] **AC-11:** `npm run test:e2e:a11y` → 295/295 PASS (extended today-journey + CLOSED-born view case). Verified at the phase-5 commit.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7) — no code in any event payload.
-- [ ] Flyway migration present for schema changes — N/A, no schema change (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7) — no code in any event payload.
+- [x] Flyway migration present for schema changes — N/A, no schema change (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR** — final state cites `merged via PR #NN`.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
 
