@@ -55,8 +55,10 @@ specs; docs confirmed host-string class detection with the complete-static-token
 constraint) · `playwright-cli` (mocked-suite journey + axe policy helper) · `postgres`
 N/A — no migration, no SQL change.
 
-**Branch:** `claude/sdlc-795-planning-4avz5x` — the session's designated remote branch
-stands in for `feature/last-minute-disclosure` (riviera-sdlc cloud addendum).
+**Branch:** `claude/sdlc-795-implement-5qurkp` — the implement session's designated remote
+branch stands in for `feature/last-minute-disclosure` (riviera-sdlc cloud addendum);
+restarted from the planning branch `claude/sdlc-795-planning-4avz5x`'s head so this plan
+doc rides along.
 
 ---
 
@@ -339,15 +341,13 @@ strings**, never interpolated fragments.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window as
 > the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** plan authored — awaiting implement session (plan-only session by
-maintainer instruction; stop after plan)
+**Stage pointer:** implement — phase 0 done, phase 1 next
 
-**Next action:** start phase 0 (load `riviera-local-debug` before the first `./gradlew`),
-open the draft PR after the first phase commit.
+**Next action:** phase 1 (terms quote + endpoint), then open the draft PR at its commit.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Publish the window (vocabulary move + at-birth overload) | | |
+| 0 — Publish the window (vocabulary move + at-birth overload) | ✅ | `Publish CancellationWindow …` |
 | 1 — Terms quote + endpoint | | |
 | 2 — Events + mails + resend | | |
 | 3 — Booking-view window-at-birth (BE + model) | | |
@@ -409,7 +409,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `BookingCutoff.java`, `RefundPolicy.java`, `CancellationPolicy.java`,
 `CancelBookingService.java` (imports) · Test `BookingCutoffTest`, structural suite
 
-- [ ] **Step 1: Write the failing test** — at-birth classification in `BookingCutoffTest`:
+- [x] **Step 1: Write the failing test** — at-birth classification in `BookingCutoffTest`:
 
 ```java
 @Test
@@ -435,9 +435,9 @@ void boundaryInstantsAreLeftClosed() {
 }
 ```
 
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `./gradlew test --tests "*BookingCutoffTest*"` → FAIL (no such overload)
-- [ ] **Step 3: Minimal implementation** — move the enum file (same body, new package);
+- [x] **Step 3: Minimal implementation** — move the enum file (same body, new package);
   update the five imports; refactor the existing `cancellationWindow` to delegate:
 
 ```java
@@ -456,20 +456,20 @@ public CancellationWindow cancellationWindow(LocalTime cutoff, LocalDate booking
 }
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*BookingCutoffTest*"
+- [x] **Step 4: Run it, verify it passes** — `./gradlew test --tests "*BookingCutoffTest*"
   --tests "*CancellationPolicy*" --tests "*CancelBooking*"` → PASS
-- [ ] **Step 4a: Structural net** — `./gradlew test --tests "*ModularityTests*" --tests
+- [x] **Step 4a: Structural net** — `./gradlew test --tests "*ModularityTests*" --tests
   "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` → PASS (the
   moved enum sits in a `@NamedInterface("vocabulary")` package;
   `PublishedSurfacePlacementArchitectureTests` accepts an enum there)
-- [ ] **Step 5: Generalization-audit pass** — population: every reference to the old FQCN
+- [x] **Step 5: Generalization-audit pass** — population: every reference to the old FQCN
   (`grep -rn "booking.domain.CancellationWindow" platform/src`) → fix all; append to log.
-- [ ] **Step 5a: Glossary, inline** — update `CONTEXT.md` in this same commit (the
+- [x] **Step 5a: Glossary, inline** — update `CONTEXT.md` in this same commit (the
   Domain-model section's reconciliation): sharpen *Cancellation window* to name the three
   phases, add *Last-minute booking* and *Window at birth*. Terms captured when they enter
   the code, not batched at close-out.
-- [ ] **Step 6: Commit** — `git commit -m "Publish CancellationWindow and classify the window at a caller-supplied instant (#795)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Publish CancellationWindow and classify the window at a caller-supplied instant (#795)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -662,6 +662,7 @@ specs)
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-29 | phase 0 (enum move) | every reference to the old FQCN, incl. gitignore-shadowed paths | `grep -rn "booking.domain.CancellationWindow" platform/src` + `git ls-files 'platform/*.java' \| xargs grep -ln "domain.CancellationWindow"` | 0 in code (5 main + 3 test files import-rewritten; only historical plan docs mention the old path) | none needed |
 
 ---
 

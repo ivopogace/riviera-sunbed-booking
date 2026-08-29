@@ -14,7 +14,7 @@ import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.booking.domain.BookingStatus;
-import ai.riviera.platform.booking.domain.CancellationWindow;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.spi.ConfirmationMailDelivery;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
