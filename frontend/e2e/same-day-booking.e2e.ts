@@ -233,7 +233,9 @@ test("deep link to a closed venue's map shows the closed state, and tomorrow rec
   // The verdict is per selected date: closed for today, open for tomorrow (the rule alone).
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
     const date = new URL(route.request().url()).searchParams.get('date');
-    return route.fulfill({ json: { ...VENUE_MAP, salesOpen: date === TOMORROW } });
+    return route.fulfill({
+      json: { ...VENUE_MAP, salesClose: '00:01', salesOpen: date === TOMORROW },
+    });
   });
   await page.route(/\/api\/venues\/\d+\/availability-calendar\?.*$/, (route) => {
     const url = new URL(route.request().url());
@@ -254,6 +256,8 @@ test("deep link to a closed venue's map shows the closed state, and tomorrow rec
   await expect(page.getByRole('heading', { name: 'Miramar Beach Club' })).toBeVisible();
   await expect(page.getByTestId('map-sales-closed')).toBeVisible();
   await expect(page.getByRole('button', { name: /Select to book/ })).toHaveCount(0);
+  // A 00:01 venue states its advance-only rule alongside the closed alert (#804).
+  await expect(page.getByTestId('sales-close-note')).toContainText('sells in advance only');
   await expectNoSeriousAxeViolations(page, 'venue map (closed deep link)');
 
   // Recovery is the existing per-date refetch: pick tomorrow → a bookable map again.
@@ -263,6 +267,9 @@ test("deep link to a closed venue's map shows the closed state, and tomorrow rec
     .click();
   await expect(page.getByTestId('map-sales-closed')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Select to book/ }).first()).toBeVisible();
+  // The advance-only wording stands on every date selection, tomorrow included (#804 AC-3).
+  await expect(page.getByTestId('sales-close-note')).toContainText('sells in advance only');
+  await expectNoSeriousAxeViolations(page, 'venue map (advance-only venue, tomorrow)');
 });
 
 test('a today-dated BOOKING_CLOSED refusal is recoverable', async ({ page }) => {

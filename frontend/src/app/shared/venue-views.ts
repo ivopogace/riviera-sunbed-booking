@@ -81,7 +81,21 @@ export interface VenueMapView {
    * closed state.
    */
   readonly salesOpen?: boolean;
+  /**
+   * The venue's own sales-close setting — a display-copy key only: wording branches on the
+   * value and never compares it with a clock; {@link salesOpen} stays the open/closed verdict.
+   * Optional because test doubles and older payloads may omit it; absent renders no note.
+   */
+  readonly salesClose?: SalesCloseTime;
 }
+
+/**
+ * The venue's on-day sales-close choice (invariant #4): exactly the three server-vocabulary
+ * wall-clock tokens, `"HH:mm"` in Europe/Tirane. `00:01` opts the venue out of same-day online
+ * sales, `16:00` is the default, `23:59` keeps today bookable all day. The wire keeps this shape
+ * in both directions, so the FE never parses times.
+ */
+export type SalesCloseTime = '00:01' | '16:00' | '23:59';
 
 /**
  * A venue's set availability on a chosen day, as a count (mirrors the backend

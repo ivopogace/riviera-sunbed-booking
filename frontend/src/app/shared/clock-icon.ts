@@ -1,10 +1,10 @@
 import { Component } from '@angular/core';
 
 /**
- * The cutoff rule's clock glyph, shared by Discover and the beach map. An inline SVG on
- * `currentColor`, chosen over the ⏰ emoji the two notes used to carry: at this size, on this
- * glass, the emoji rendered platform-dependently and read as an error mark. That is a judgement
- * about these two notes, not a rule against emoji glyphs — the app's remaining ones
+ * The sales-close note's clock glyph, rendered in the beach-map header (`venue/venue-map.html`).
+ * An inline SVG on `currentColor`, chosen over the ⏰ emoji the note used to carry: at this size,
+ * on this glass, the emoji rendered platform-dependently and read as an error mark. That is a
+ * judgement about this note, not a rule against emoji glyphs — the app's remaining ones
  * (`appFailureIcon`'s ⚠, the requests-tab ⏰) are unrelated and stay.
  *
  * <p>A component rather than a directive — deliberately breaking the neighbouring `shared/` glyph

@@ -55,9 +55,8 @@ import {
  *
  * The failure-panel additions reuse already-pinned tokens: the failure panel sits on the same
  * `--riv-card-glass` as the cards with `--riv-card-ink` (title) / `--riv-card-ink-soft`
- * (body copy), and the cutoff explainer line uses `--riv-card-ink-soft` on that card glass —
- * both covered by the "card ink" / "card ink-soft" cases above. The genuinely new surface is
- * the "Try again" button's white text on `--riv-cta-grad` (pinned below).
+ * (body copy) — covered by the "card ink" / "card ink-soft" cases above. The genuinely new
+ * surface is the "Try again" button's white text on `--riv-cta-grad` (pinned below).
  *
  * Deliberately excluded (WCAG 1.4.3 incidental / 1.4.11 redundant decoration): the
  * availability bar track+fill (`N of M free` text carries the fact), the sun disc, the

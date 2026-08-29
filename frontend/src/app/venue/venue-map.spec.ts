@@ -181,6 +181,11 @@ describe('VenueMap', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  /** Sentence text with template/NBSP whitespace collapsed — NBSP presence is pinned separately. */
+  function noteText(note: Element): string {
+    return note.textContent.replace(/\s+/g, ' ').trim();
+  }
+
   /** The calendar popover's trigger — a button since #761, not the old native date input. */
   function dateTrigger(): HTMLButtonElement {
     return el().querySelector<HTMLButtonElement>('[data-testid="map-date"]')!;
@@ -941,14 +946,17 @@ describe('VenueMap', () => {
     expect(label).toContain('Select to book'); // pinned so booking-flow.e2e.ts keeps matching
   });
 
-  it('mounts the shared cutoff note above the date floor it explains', async () => {
-    flushVenue();
+  it('states the 16:00 venue rule above the date floor it explains', async () => {
+    venueRequest().flush({ ...miramar(), salesClose: '16:00' });
     await settle();
-    // The test id exists only in shared/cutoff-note.ts, so finding it proves the note mounted.
-    const note = el().querySelector('[data-testid="cutoff-note"]')!;
+    const note = el().querySelector('[data-testid="sales-close-note"]')!;
     expect(note.tagName).toBe('P');
-    // A clause, not the sentence — the wording stays pinned once, in cutoff-note.spec.ts.
-    expect(note.textContent).toContain('sales close at');
+    // The one full-sentence pin per branch lives here — this is the sentence's only spec home.
+    expect(noteText(note)).toBe(
+      'Book any day, today included — online sales for today close at 4 PM at this venue.',
+    );
+    // The reviewable NBSP entity (#734 F-7): "4 PM" is one unbreakable token.
+    expect(note.textContent).toContain('4\u00a0PM');
     expect(note.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
     // Class pin (jsdom computes no Tailwind): the map keeps the bare header-glass ink.
     expect(note.classList.contains('text-riv-ink-faint')).toBe(true);
@@ -957,6 +965,40 @@ describe('VenueMap', () => {
     const floor = defaultBookingDate(new Date());
     expect(calendarDay(floor).getAttribute('aria-disabled')).toBeNull();
     expect(calendarDay(addDays(floor, -1)).getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('states the all-day rule for a 23:59 venue', async () => {
+    venueRequest().flush({ ...miramar(), salesClose: '23:59' });
+    await settle();
+    expect(noteText(el().querySelector('[data-testid="sales-close-note"]')!)).toBe(
+      'Book any day, today included — this venue takes online bookings all day.',
+    );
+  });
+
+  it('states advance-only for a 00:01 venue on every date, with tomorrow still bookable', async () => {
+    venueRequest().flush({ ...miramar(), salesClose: '00:01', salesOpen: false });
+    await settle();
+    fixture.detectChanges();
+    const advanceOnly = 'This venue sells in advance only — book for tomorrow onward.';
+    expect(noteText(el().querySelector('[data-testid="sales-close-note"]')!)).toBe(advanceOnly);
+    // Today is closed for a 00:01 venue — the #793 alert coexists with the standing note.
+    expect(el().querySelector('[data-testid="map-sales-closed"]')).not.toBeNull();
+
+    // Tomorrow: the note keeps the same wording and the map is bookable (regression, AC-3).
+    await openPicker();
+    pickDay('2026-06-16');
+    venueRequest().flush({ ...miramar(), salesClose: '00:01' });
+    await settle();
+    fixture.detectChanges();
+    expect(noteText(el().querySelector('[data-testid="sales-close-note"]')!)).toBe(advanceOnly);
+    expect(el().querySelector('[data-testid="map-sales-closed"]')).toBeNull();
+    expect(el().querySelector('.set-button')).not.toBeNull();
+  });
+
+  it('renders no sales-close note when the payload omits the value', async () => {
+    flushVenue();
+    await settle();
+    expect(el().querySelector('[data-testid="sales-close-note"]')).toBeNull();
   });
 
   it('paints the date field with the themed near-opaque field tokens (#675)', async () => {

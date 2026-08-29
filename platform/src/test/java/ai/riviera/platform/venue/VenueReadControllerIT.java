@@ -194,6 +194,24 @@ class VenueReadControllerIT {
 		}
 	}
 
+	@Test
+	void mapCarriesSalesCloseValue() throws Exception {
+		// #804 AC-1: the venue's own close value rides beside the salesOpen verdict, as HH:mm.
+		mvc.perform(get("/api/venues/{id}", MIRAMAR))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.salesClose").value("16:00"));
+
+		long id = insertOptOutVenue();
+		try {
+			mvc.perform(get("/api/venues/{id}", id))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.salesClose").value("00:01"));
+		} finally {
+			jdbc.sql("DELETE FROM operator_venue WHERE venue_id = :id").param("id", id).update();
+			jdbc.sql("DELETE FROM venue WHERE id = :id").param("id", id).update();
+		}
+	}
+
 	/** A visible venue at the 00:01 sales-close opt-out — deterministically closed for today. */
 	private long insertOptOutVenue() {
 		long id = jdbc.sql("""

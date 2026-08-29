@@ -9,7 +9,6 @@ import {
 } from '../../shared/amenities';
 import { AmenityChip } from '../../shared/amenity-chip';
 import { CardGlass } from '../../shared/card-glass';
-import { CutoffNote } from '../../shared/cutoff-note';
 import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
 import { FieldGlass } from '../../shared/field-glass';
 import { LoadAnnouncer } from '../../shared/load-announcer';
@@ -75,7 +74,6 @@ interface VenueCard {
     PanelGlass,
     PhotoSlideshow,
     CardGlass,
-    CutoffNote,
     AmenityChip,
     SemanticChip,
     FieldGlass,

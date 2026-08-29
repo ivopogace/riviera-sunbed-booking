@@ -44,6 +44,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueMapView;
 import ai.riviera.platform.venue.api.VenueRates;
 import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
+import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.spi.SalesWindow;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 
@@ -168,7 +169,8 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		return Optional.of(new VenueMapView(v.id(), v.name(), v.beach(), v.region(),
 				v.description(), v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, amenities, v.distanceToWaterM(), sets, v.setVersion(), coverPhoto,
-				photos, salesWindow.isOpen(v.salesClose(), date, clock.instant())));
+				photos, salesWindow.isOpen(v.salesClose(), date, clock.instant()),
+				SalesClose.WIRE.format(v.salesClose())));
 	}
 
 	@Override

@@ -123,6 +123,12 @@ describe('VenueMap accessibility (axe)', () => {
     await expectNoAxeViolations(host());
   });
 
+  it('has no violations with the venue sales-close note rendered (#804)', async () => {
+    expectVenueRequest().flush({ ...fixture(), salesClose: '16:00' });
+    await fixtureRef.whenStable();
+    await expectNoAxeViolations(host());
+  });
+
   it('has no violations with the availability calendar open (#761)', async () => {
     expectVenueRequest().flush(fixture());
     await fixtureRef.whenStable();

@@ -1,6 +1,5 @@
 package ai.riviera.platform.venue.adapter.in;
 
-import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -8,6 +7,7 @@ import java.util.Map;
 
 import ai.riviera.platform.venue.application.PhotoSlotView;
 import ai.riviera.platform.venue.application.VenueProfileView;
+import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.Amenity;
 
 /**
@@ -41,16 +41,14 @@ record VenueProfileResponse(String name, String beach, String region, String des
 	record SlotPhoto(String previewUrl) {
 	}
 
-	/** {@code "HH:mm"} to match the write DTO's cutoff shape (drops the always-zero seconds of a TIME). */
-	private static final DateTimeFormatter CUTOFF = DateTimeFormatter.ofPattern("HH:mm");
-
 	static VenueProfileResponse from(VenueProfileView v) {
 		Map<String, SlotPhoto> photos = new LinkedHashMap<>(); // slot declaration order, stable on the wire
 		for (PhotoSlotView slot : v.photos()) {
 			photos.put(slot.slot().name().toLowerCase(Locale.ROOT), new SlotPhoto(slot.previewUrl()));
 		}
 		return new VenueProfileResponse(v.name(), v.beach(), v.region(), v.description(),
-				v.bookingMode().name(), v.bookingCutoff().format(CUTOFF), v.salesClose().format(CUTOFF),
+				v.bookingMode().name(), v.bookingCutoff().format(SalesClose.WIRE),
+				v.salesClose().format(SalesClose.WIRE),
 				v.commissionBps(), v.payoutCurrency(), v.amenities().stream().map(Amenity::name).toList(),
 				v.distanceToWaterM(), v.version(), photos);
 	}

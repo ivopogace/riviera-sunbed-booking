@@ -78,7 +78,7 @@ and where each lands:
 | Request-to-Book guest lifecycle: request-mode dialog ("Send request"), Request-sent screen, status banners (pending + withdraw, accepted + Pay-now + deadline, declined, expired), full status-chip union incl. COMPLETED/NO_SHOW | #137 (dialog/request), #138 (detail banners/chips) |
 | Real Payment page (Payment-Element container, summary, "Confirming your booking…" webhook-wait state, payment-failed + retry) | #137 |
 | Find-a-booking (code entry; nav item replaces the dead "How it works") | new tourist-epic slice (T8) |
-| Cutoff explainer ("Book by 6 PM the day before"), date picker excludes today | #135/#136 (copy), behavior already server-enforced (invariant #4) |
+| Cutoff explainer ("Book by 6 PM the day before"), date picker excludes today | #135/#136 (copy), behavior already server-enforced (invariant #4) <!-- as-built diverges — see #804: the generic explainer retired; venue-specific note on the map only --> |
 | Venue description on the map header | #136 |
 | Discover/map load-failure states with retry | #135/#136 |
 | Operator **Requests** tab (queue, accept/decline, expiry-race error copy, badge count) | operator epic #141 (mandatory slice) |

@@ -23,7 +23,7 @@ This skill states only the few decisions and traps the *code can't show you*.
    component (`retry-button.ts`) or variant directive (`amenity-chip.ts`). When that reused
    element must stay a **native** tag — for its semantics, or so the call site's own skin keeps
    painting on the real box — the component takes an **attribute selector** over that tag
-   (`shared/cutoff-note.ts` is `p[appCutoffNote]`), which is what angular.dev's a11y guide
+   (`booking/cancellation-terms-note.ts` is `p[appCancellationTermsNote]`), which is what angular.dev's a11y guide
    recommends for augmenting a native element. Two consequences worth knowing before you write
    one. First, `@angular-eslint/component-selector` is configured `type: 'element'` and cannot
    express both forms at once (`style` takes a single value, and the two disagree on case), so an
@@ -34,8 +34,8 @@ This skill states only the few decisions and traps the *code can't show you*.
    > **Augment by attribute when the element is a text container; own the element inside the
    > component when its own content carries a11y meaning.**
 
-   `<p>` and `<div>` take the attribute form happily (`p[appCutoffNote]`, `p[appAdminForbidden]`,
-   `p[appLegalConsent]`, `div[appLegalFooter]`). An `<a>` or a `<label>` does not: written empty at
+   `<p>` and `<div>` take the attribute form happily (`p[appAdminForbidden]`,
+   `p[appCancellationTermsNote]`, `p[appLegalConsent]`, `div[appLegalFooter]`). An `<a>` or a `<label>` does not: written empty at
    the call site, with its content supplied by the component, it is indistinguishable to
    `elements-content` and `label-has-associated-control` from a genuinely empty link or a label
    with no control — and silencing those per file blinds them to real violations elsewhere in the
@@ -100,8 +100,8 @@ This skill states only the few decisions and traps the *code can't show you*.
 There is **no icon library and no icon registry** here: `MatIconRegistry` is Angular Material
 (not in this stack), the angular-cli MCP has no SVG tooling, and angular.dev's v22 index returns
 nothing for an icon component. An icon is an inline `<svg>` you write. The repo's one glyph and
-its precedent is **`shared/clock-icon.ts`** (the cutoff-note clock, reached by both Discover and
-the beach map through `shared/cutoff-note.ts`) — read it before adding a second.
+its precedent is **`shared/clock-icon.ts`** (the beach-map sales-close note's clock, rendered
+directly in `venue/venue-map.html`) — read it before adding a second.
 
 **ICON-1. A shared glyph is a `@Component`, not a directive** — an instance of the general rule
 that a directive only adds classes and attributes to an element that already exists, so anything
@@ -109,8 +109,8 @@ supplying *markup* (this glyph's `circle`/`path` geometry, a shared note's sente
 rule 1's "reused *element*" branch rather than choosing it. It
 will look inconsistent with the `appFailureIcon` / `appAmenityChip` neighbours; it isn't.
 
-**ICON-2. `stroke="currentColor"` (or `stroke-current`) is what lets one copy serve two call
-sites** on different inks — the surrounding note's `color` cascades in and the stroke follows.
+**ICON-2. `stroke="currentColor"` (or `stroke-current`) is what lets one copy serve any call
+site's ink** — the surrounding note's `color` cascades in and the stroke follows.
 This is why a shared glyph needs **no colour input and no variant**.
 
 **ICON-3. Size with presentation attributes, override with a class.** `width="13"` /
@@ -121,8 +121,8 @@ class — no `input()`, no specificity arithmetic.
 **ICON-4. Utilities are global here, so the call site can reach into the glyph.**
 `src/tailwind.css` loads through `angular.json`'s `styles` array, and emulated encapsulation only
 stamps `_ngcontent-*` onto rules compiled from a component's own `styles`/`styleUrls`. So
-`[&_svg]:size-[15px]` written on any **ancestor** in the parent template — today Discover's
-`<p appCutoffNote>`, two elements above the glyph — compiles to a plain `… svg` descendant rule and
+`[&_svg]:size-[15px]` written on any **ancestor** in the parent template — the override contract
+`clock-icon.spec.ts` pins on its host — compiles to a plain `… svg` descendant rule and
 matches it, with zero API surface on either component. Two costs
 to take with it: **prefer the descendant `[&_svg]` to the child `[&>svg]`** — the child form
 silently stops matching the day anyone wraps the root element — and remember this makes the

@@ -143,7 +143,32 @@
                 {{ triggerLabel() }}
               </button>
             </p>
-            <p appCutoffNote class="mt-2 text-[11.5px] text-riv-ink-faint"></p>
+            <!-- This venue's own sales-close rule, keyed on the structured value — never a client clock comparison (invariant #4; the server enforces the fence). Absent value: no note. -->
+            @if (v.salesClose) {
+              <p
+                data-testid="sales-close-note"
+                class="mt-2 inline-flex items-center gap-1 leading-[1.35] text-[11.5px] text-riv-ink-faint"
+              >
+                <app-clock-icon />
+                @switch (v.salesClose) {
+                  @case ('23:59') {
+                    <span
+                      >Book any day, today included — this venue takes online bookings all
+                      day.</span
+                    >
+                  }
+                  @case ('16:00') {
+                    <span
+                      >Book any day, today included — online sales for today close at 4&nbsp;PM at
+                      this venue.</span
+                    >
+                  }
+                  @case ('00:01') {
+                    <span>This venue sells in advance only — book for tomorrow onward.</span>
+                  }
+                }
+              </p>
+            }
           </div>
         </div>
       </header>

@@ -540,19 +540,12 @@ describe('Home (venue discovery)', () => {
     expect(el().querySelectorAll('[data-testid="venue-card"]').length).toBe(1);
   });
 
-  it('mounts the shared cutoff note, wearing its own glass pill', async () => {
+  it('renders no lead-time note — the rule lives on the venue surface now (#804)', async () => {
     listRequest().flush(venues());
     await fixture.whenStable();
 
-    // The test id exists only in shared/cutoff-note.ts, so finding it proves the note mounted.
-    const note = el().querySelector('[data-testid="cutoff-note"]')!;
-    expect(note.tagName).toBe('P');
-    // A clause, not the sentence — the wording stays pinned once, in cutoff-note.spec.ts.
-    expect(note.textContent).toContain('sales close at');
-    expect(note.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
-    // Class pins (jsdom computes no Tailwind): the skin stays Discover's, not the component's.
-    expect(note.classList.contains('rounded-full')).toBe(true);
-    expect(note.classList.contains('[&_svg]:size-[15px]')).toBe(true);
+    expect(el().querySelector('[data-testid="cutoff-note"]')).toBeNull();
+    expect(el().querySelector('[data-testid="sales-close-note"]')).toBeNull();
   });
 
   it('shows the loading state before the response arrives', async () => {
