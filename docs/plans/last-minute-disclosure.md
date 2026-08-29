@@ -40,7 +40,10 @@ event-payload widening without an `event_type` rewrite, grants already sufficien
 `notification` holds `booking::vocabulary`) · `riviera-java-conventions` (records, typed
 outcomes, `ApiProblem` error contract §6b, one-line comments) · `codebase-design` (terms
 as a second method on the existing `CancellationPolicy` seam, not a new module/port) ·
-`domain-modeling` (CONTEXT.md gains "Last-minute booking") · `riviera-frontend` (all new
+`domain-modeling` (the Domain-model section: the *Cancellation window* duration-vs-phases
+glossary conflict + reconciliation, left-closed boundary semantics, the S-1..S-7 scenario
+register — S-5's birth-keyed-mail gap surfaced and resolved — inline glossary capture at
+phase 0, and the no-ADR call against the three-part bar) · `riviera-frontend` (all new
 FE files land in `booking/`; the Tirane time formatter joins `shared/booking-date.ts`) ·
 `angular-developer` + angular-cli MCP (`get_best_practices` v22: signals, `@Service`,
 native control flow; `search_documentation` corrected the fetch primitive to
@@ -220,6 +223,54 @@ usage sites update imports (`BookingCutoff`, `CancellationPolicy`, `CancelBookin
 `payout` listens to `BookingConfirmed` but reads none of the new fields — additive change,
 its listener compiles and behaves identically (verified in phase 2).
 
+### Domain model (ubiquitous language, scenarios, ADR check)
+
+**Language.** Terms this slice adds or sharpens, kept consistent with `CONTEXT.md`
+(existing entries: *Sales close*, *Cutoff*, *Refund tier*, *Cancellation window*).
+Glossary updates land **inline with the phase that puts the term into code (phase 0)**,
+not batched at close-out — the `domain-modeling` capture-as-it-crystallises rule.
+
+| Term | Meaning | Carrier in code |
+|---|---|---|
+| **Last-minute booking** | a booking born past its free-cancellation deadline — birth phase LATE or CLOSED | derived predicate (`cancellationWindowAtBirth != FREE`); the copy "non-refundable last-minute booking" is reserved for CLOSED-born |
+| **Window at birth** | the cancellation-window phase in force at the booking's creation instant | `cancellationWindowAtBirth` on both events, both mail payloads, `BookingConfirmationFacts`, `BookingDetailView` |
+| **Cancellation terms** | the pre-reserve quote: phase now, free-cancellation deadline, venue's late share | `CancellationPolicy.CancellationTerms` / `CancellationTermsView` |
+| **Free-cancellation deadline** | the existing *Cutoff* term (D−1 at the venue's cutoff, `Europe/Tirane`) | `BookingCutoff.freeCancellationEndsAt` — reused, never renamed |
+
+**Glossary reconciliation (a real conflict, not a nicety):** `CONTEXT.md`'s
+*Cancellation window* entry describes a **duration** ("how long a confirmed booking may
+be cancelled at all… once the service day opens the window is closed"), while the
+`CancellationWindow` enum names the three **phases** (FREE/LATE/CLOSED) of that same
+timeline — and this slice publishes the enum into `booking/vocabulary`, making it
+ubiquitous language. Phase 0 sharpens the entry to name the phases explicitly (FREE →
+*full* tier, LATE → *partial/none* tier, CLOSED → refused) so glossary, enum, and the
+*Refund tier* entry state one model, and adds the *Last-minute booking* and *Window at
+birth* entries.
+
+**Boundary semantics (explicit, the #792 F-2 practice).** The classification is
+left-closed on both boundaries, inherited from `cancellationWindow`'s `isBefore` tests:
+an instant **exactly at** the free-cancellation deadline is already **LATE**; an instant
+**exactly at** 00:00 Tirane on D is already **CLOSED**. Stated here so the at-birth
+overload, the terms quote, and every test agree; pinned by the phase-0 boundary cases in
+`BookingCutoffTest`.
+
+**Scenario register** (stress tests of the model — each resolves to a pinned behavior):
+
+| # | Scenario | Model answer | Pinned by |
+|---|---|---|---|
+| S-1 | Instant booking created 09:00 on its own service day | CLOSED-born; disclosed at checkout, in the confirmation mail, on the view | AC-3/5/8/10/11 |
+| S-2 | Booking created D−1 21:00 (cutoff 18:00) | LATE-born; share line at bps>0, non-refundable line at 0 bps | AC-2, AC-10, mail ITs |
+| S-3 | Created **exactly at** D−1 18:00 / exactly at 00:00 on D | LATE / CLOSED (boundary semantics above) | `BookingCutoffTest` boundary cases (phase 0) |
+| S-4 | Venue at sales close `00:01`: booking born in the [00:00, 00:01) sliver | legal and CLOSED-born; the disclosure covers it with no special case | S-1's pins (same path) |
+| S-5 | Request born FREE (D−2), venue accepts D−1 20:00 — window is LATE by accept time | birth-keyed mails carry **no** disclosure (the issue/epic decision: "born past"); the surface the tourist actually pays from — the code-gated view — shows the **live** window truth via the existing `refundTerms` branches, so pay-time disclosure still exists. A deliberate resolution, recorded here rather than silently assumed | AC-8 (advance parity) + existing view ITs |
+| S-6 | Venue edits its cutoff after a booking's birth | the event-stamped window is immutable (a sent mail's truth can't be rewritten); the admin resend re-derives from the current cutoff — bounded, documented drift | AC-5/AC-7; resend IT |
+| S-7 | Weather refund on a CLOSED-born booking | reaches it — the weather refund is *outside the window* by the glossary's own definition | AC-9 |
+
+**ADR check:** none offered. The one candidate (birth-keyed mail disclosure, S-5) fails
+the bar — it is cheap to reverse (additive fields; a later slice could stamp
+accept-time), and the trade-off is recorded here and in the issue. The vocabulary move
+and the terms endpoint are ordinary evolution under existing decisions (ADR-0005/0007).
+
 ### Module ownership (§4a)
 
 | Capability (what the slice adds/changes) | Owner module | Justification |
@@ -348,7 +399,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/find-a-booking.e2e.ts` — CLOSED-born booking-view case
 - `docs/plans/last-minute-disclosure.md` — this plan
 - `RESPONSIBILITIES.md` — §booking (terms read, window-at-birth stamping), §notification (widened payload fields)
-- `CONTEXT.md` — "Last-minute booking" glossary entry
+- `CONTEXT.md` — *Cancellation window* sharpened to the three phases; *Last-minute booking* + *Window at birth* entries (phase 0, inline)
 
 ---
 
@@ -370,6 +421,17 @@ void classifiesWindowAtACallerSuppliedInstant() {
     Instant bornLateEvening = ZonedDateTime.of(2026, 8, 29, 21, 0, 0, 0, TIRANE).toInstant();
     assertEquals(CancellationWindow.LATE,
         cutoff.cancellationWindow(LocalTime.of(18, 0), LocalDate.of(2026, 8, 30), bornLateEvening));
+}
+
+@Test
+void boundaryInstantsAreLeftClosed() {
+    // Domain-model S-3: exactly AT the deadline is already LATE; exactly AT 00:00 on D is CLOSED.
+    Instant atDeadline = ZonedDateTime.of(2026, 8, 29, 18, 0, 0, 0, TIRANE).toInstant();
+    assertEquals(CancellationWindow.LATE,
+        cutoff.cancellationWindow(LocalTime.of(18, 0), LocalDate.of(2026, 8, 30), atDeadline));
+    Instant atDayOpen = ZonedDateTime.of(2026, 8, 30, 0, 0, 0, 0, TIRANE).toInstant();
+    assertEquals(CancellationWindow.CLOSED,
+        cutoff.cancellationWindow(LocalTime.of(18, 0), LocalDate.of(2026, 8, 30), atDayOpen));
 }
 ```
 
@@ -402,6 +464,10 @@ public CancellationWindow cancellationWindow(LocalTime cutoff, LocalDate booking
   `PublishedSurfacePlacementArchitectureTests` accepts an enum there)
 - [ ] **Step 5: Generalization-audit pass** — population: every reference to the old FQCN
   (`grep -rn "booking.domain.CancellationWindow" platform/src`) → fix all; append to log.
+- [ ] **Step 5a: Glossary, inline** — update `CONTEXT.md` in this same commit (the
+  Domain-model section's reconciliation): sharpen *Cancellation window* to name the three
+  phases, add *Last-minute booking* and *Window at birth*. Terms captured when they enter
+  the code, not batched at close-out.
 - [ ] **Step 6: Commit** — `git commit -m "Publish CancellationWindow and classify the window at a caller-supplied instant (#795)"`
 - [ ] **Step 7: Update plan-doc execution status** in the same commit window.
 
@@ -580,9 +646,9 @@ specs)
 - [ ] **Step 2: Run** — `npm run test:e2e:a11y` → PASS.
 - [ ] **Step 3: Docs** — RESPONSIBILITIES §booking (the terms read + window-at-birth
   stamping join the cutoff-authority paragraph), §notification (the two widened payloads;
-  rendering-not-deciding restated), CONTEXT.md ("Last-minute booking — a booking born past
-  its free-cancellation deadline; same-day births are CLOSED-born and non-refundable by
-  construction"). Run `riviera-docs-freshness` over the slice range, incl. the counting
+  rendering-not-deciding restated). CONTEXT.md already landed in phase 0 (step 5a) —
+  verify it matches the shipped names, don't re-author it here. Run
+  `riviera-docs-freshness` over the slice range, incl. the counting
   sweep (do the widened events change any "the five events carry…"-shaped statement?).
 - [ ] **Step 4: Guards** — `node scripts/check-plan-file-structure.mjs --diff origin/main`
   (plan doc staged first), inline-comment + touch-target guards over the diff.
