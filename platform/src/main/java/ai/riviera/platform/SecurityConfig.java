@@ -288,7 +288,8 @@ class SecurityConfig {
 						// Hardened to mirror the session cookie's posture (keeps spa()'s handler).
 						.csrfTokenRepository(csrfTokenRepository)
 						.ignoringRequestMatchers("/api/bookings", "/api/bookings/*/cancel",
-								"/api/bookings/*/withdraw", "/api/payments/stripe/webhook"))
+								"/api/bookings/*/withdraw", "/api/bookings/*/review",
+								"/api/payments/stripe/webhook"))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
 						// Anonymous by definition — authentication happens INSIDE the endpoint.
@@ -363,6 +364,7 @@ class SecurityConfig {
 						// Authorized by the code (invariant #7); the refund amount is server-computed.
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/withdraw").permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/bookings/*/review").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
 						.requestMatchers(HttpMethod.POST, OPERATOR_PASSWORD_PATH).hasRole(OPERATOR_ROLE)
 						// Every verb, not just GET — anonymous → 401, operator session → 403.

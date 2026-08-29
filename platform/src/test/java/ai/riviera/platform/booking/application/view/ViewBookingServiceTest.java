@@ -67,8 +67,33 @@ class ViewBookingServiceTest {
 	private final CollectionGuarantee collection = mock(CollectionGuarantee.class);
 	private final RefundStatusLookup refundStatus = mock(RefundStatusLookup.class);
 
+	private final ai.riviera.platform.review.api.ReviewEligibility reviewEligibility =
+			mock(ai.riviera.platform.review.api.ReviewEligibility.class);
+
 	private final ViewBookingService service = new ViewBookingService(bookings, cancellationPolicy,
-			cutoff, checkout, mailDelivery, collection, refundStatus, WINDOWS, NOW);
+			cutoff, checkout, mailDelivery, collection, refundStatus, reviewEligibility, WINDOWS, NOW);
+
+	@org.junit.jupiter.params.ParameterizedTest
+	@org.junit.jupiter.params.provider.EnumSource(
+			value = ai.riviera.platform.review.vocabulary.ReviewState.class,
+			names = "ELIGIBLE", mode = org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE)
+	void reviewableIsFalseForEveryStateButEligible(
+			ai.riviera.platform.review.vocabulary.ReviewState state) {
+		givenBooking(BookingStatus.COMPLETED);
+		when(reviewEligibility.stateFor(CODE)).thenReturn(state);
+
+		assertThat(service.byCode(CODE).orElseThrow().reviewable()).isFalse();
+	}
+
+	@Test
+	void reviewableFollowsReviewEligibility() {
+		// COMPLETED throughout: the flag tracks review's verdict, not the status it sits beside.
+		givenBooking(BookingStatus.COMPLETED);
+		when(reviewEligibility.stateFor(CODE))
+				.thenReturn(ai.riviera.platform.review.vocabulary.ReviewState.ELIGIBLE);
+
+		assertThat(service.byCode(CODE).orElseThrow().reviewable()).isTrue();
+	}
 
 	@Test
 	void flagsWithheldConfirmationMailForSuppressedGuest() {
@@ -440,7 +465,7 @@ class ViewBookingServiceTest {
 	private ViewBookingService serviceAt(Instant now) {
 		Clock at = Clock.fixed(now, ZoneId.of("UTC"));
 		return new ViewBookingService(bookings, cancellationPolicy, new BookingCutoff(at), checkout,
-				mailDelivery, collection, refundStatus, WINDOWS, at);
+				mailDelivery, collection, refundStatus, reviewEligibility, WINDOWS, at);
 	}
 
 	private void givenAwaitingPayment(LocalDate date, Instant createdAt, Instant acceptedAt) {

@@ -22,4 +22,7 @@ public interface Reviews {
 
 	/** What this venue's review rows add up to right now — {@code 0/0} when it has none. */
 	ReviewTotals totalsFor(VenueRef venue);
+
+	/** Whether this booking's one review slot is already taken. */
+	boolean existsFor(BookingRef booking);
 }

@@ -104,6 +104,8 @@ class EndpointRoleGateCoverageTest {
 			"GET /api/bookings/{code}",
 			"POST /api/bookings/{code}/cancel",
 			"POST /api/bookings/{code}/withdraw",
+			// permitAll — the code is the credential for rating the stay too (invariant #7).
+			"POST /api/bookings/{code}/review",
 			// permitAll via the one-segment GET matcher — a public tourist read (#795).
 			"GET /api/bookings/cancellation-terms",
 			// permitAll — server-to-server, authenticated by its Stripe signature header (invariant #8).

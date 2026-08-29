@@ -59,4 +59,13 @@ class JdbcReviews implements Reviews {
 						rs.getLong("star_total")))
 				.single();
 	}
+
+	@Override
+	public boolean existsFor(BookingRef booking) {
+		return Boolean.TRUE.equals(jdbc.sql(
+				"SELECT EXISTS (SELECT 1 FROM review WHERE booking_id = :booking)")
+				.param("booking", booking.value())
+				.query(Boolean.class)
+				.single());
+	}
 }

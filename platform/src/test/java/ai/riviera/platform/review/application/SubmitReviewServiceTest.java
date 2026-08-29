@@ -139,6 +139,11 @@ class SubmitReviewServiceTest {
 		public ReviewTotals totalsFor(VenueRef venue) {
 			throw new UnsupportedOperationException("the submit use case never aggregates");
 		}
+
+		@Override
+		public boolean existsFor(BookingRef booking) {
+			return alreadyHeld.contains(booking);
+		}
 	}
 
 	private static final class RecordingPublisher implements ApplicationEventPublisher {

@@ -88,13 +88,14 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			{"type":"about:blank","title":"Too Many Requests","status":429,\
 			"detail":"Too many requests.","code":"RATE_LIMITED"}""";
 
-	// Mirrors the SecurityConfig matchers for the five public booking endpoints.
+	// Mirrors the SecurityConfig matchers for the six public booking endpoints.
 	private static final String CREATE_PATH = "/api/bookings";
 	/** A literal sibling of the {@code {code}} routes (#795): it carries no code to key a bucket on. */
 	private static final String TERMS_PATH = "/api/bookings/cancellation-terms";
 	private static final String VIEW_TEMPLATE = "/api/bookings/{code}";
 	private static final String CANCEL_TEMPLATE = "/api/bookings/{code}/cancel";
 	private static final String WITHDRAW_TEMPLATE = "/api/bookings/{code}/withdraw";
+	private static final String REVIEW_TEMPLATE = "/api/bookings/{code}/review";
 	private static final String CODE_VAR = "code";
 
 	// The auth POSTs, each on its own budget below; mirrors SecurityConfig's paths.
@@ -356,7 +357,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	/**
 	 * Classify the request in a single pass: {@code null} if it is a CORS preflight or not one of the
-	 * four booking endpoints; otherwise a {@link Target} carrying the booking code (or {@code null}
+	 * five booking endpoints; otherwise a {@link Target} carrying the booking code (or {@code null}
 	 * for create). Computes the path and runs the matcher once, not per check.
 	 */
 	private Target targetOf(HttpServletRequest request) {
@@ -377,6 +378,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			}
 			if (paths.match(WITHDRAW_TEMPLATE, path)) {
 				return new Target(paths.extractUriTemplateVariables(WITHDRAW_TEMPLATE, path).get(CODE_VAR));
+			}
+			if (paths.match(REVIEW_TEMPLATE, path)) {
+				return new Target(paths.extractUriTemplateVariables(REVIEW_TEMPLATE, path).get(CODE_VAR));
 			}
 			if (path.equals(CREATE_PATH)) {
 				return new Target(null); // create carries no code → per-IP only
