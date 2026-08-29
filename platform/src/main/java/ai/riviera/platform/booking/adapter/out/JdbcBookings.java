@@ -281,7 +281,7 @@ class JdbcBookings implements Bookings {
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class),
 						new ai.riviera.platform.customer.vocabulary.CustomerId(rs.getLong(COL_CUSTOMER_ID)),
 						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
-						rs.getTimestamp("created_at").toInstant(),
+						rs.getTimestamp(COL_CREATED_AT).toInstant(),
 						rs.getTimestamp(COL_REQUEST_EXPIRES_AT).toInstant()))
 				.list();
 	}
@@ -335,7 +335,7 @@ class JdbcBookings implements Bookings {
 				rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
 				cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor,
 				requestExpiresAt == null ? null : requestExpiresAt.toInstant(),
-				refundReasonOf(cancelReason), rs.getTimestamp("created_at").toInstant(),
+				refundReasonOf(cancelReason), rs.getTimestamp(COL_CREATED_AT).toInstant(),
 				acceptedAt == null ? null : acceptedAt.toInstant());
 	}
 

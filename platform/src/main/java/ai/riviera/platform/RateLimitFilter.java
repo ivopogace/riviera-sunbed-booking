@@ -367,9 +367,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		String path = pathWithinApplication(request);
 		if (HttpMethod.GET.matches(method) && paths.match(VIEW_TEMPLATE, path)) {
 			// The terms segment is no code — a shared "code" bucket would 429 site-wide. Per-IP only.
-			return TERMS_PATH.equals(path)
-					? new Target(null)
-					: new Target(paths.extractUriTemplateVariables(VIEW_TEMPLATE, path).get(CODE_VAR));
+			return new Target(TERMS_PATH.equals(path)
+					? null
+					: paths.extractUriTemplateVariables(VIEW_TEMPLATE, path).get(CODE_VAR));
 		}
 		if (HttpMethod.POST.matches(method)) {
 			if (paths.match(CANCEL_TEMPLATE, path)) {
