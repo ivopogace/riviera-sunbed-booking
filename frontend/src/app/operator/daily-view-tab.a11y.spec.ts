@@ -116,6 +116,16 @@ describe('DailyViewTab a11y (#175)', () => {
     await expectNoAxeViolations(host());
   });
 
+  it('has no axe violations with the close-sales confirm open (#794)', async () => {
+    render([seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 'FREE')], []);
+
+    host().querySelector<HTMLButtonElement>('[data-testid="daily-close-sales"]')!.click();
+    fixture.detectChanges();
+    expect(host().querySelector('[data-testid="daily-close-sales-confirm-panel"]')).toBeTruthy();
+
+    await expectNoAxeViolations(host());
+  });
+
   it('has no axe violations while the read is in flight — the skeleton hides no tab stop (#744)', async () => {
     mount();
 

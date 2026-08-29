@@ -24,6 +24,7 @@ import {
 } from '../shared/availability-grid';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { focusMover } from '../shared/focus-after-render';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { MapSkeletonGrid } from '../shared/map-skeleton-grid';
 import { SkeletonBlock } from '../shared/skeleton-block';
@@ -36,13 +37,19 @@ import { setLabel, setsById, tierSentenceLabel } from '../shared/set-label';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
 import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
-import { ConsoleDailyBooking, MarkErrorCode, ReleaseErrorCode } from './operator-console.model';
+import {
+  ConsoleDailyBooking,
+  MarkErrorCode,
+  ReleaseErrorCode,
+  VenueProfileErrorCode,
+} from './operator-console.model';
 import {
   OperatorConsoleService,
   checkInErrorOf,
   checkInWrongDateOf,
   markErrorOf,
   releaseErrorOf,
+  venueProfileErrorOf,
 } from './operator-console.service';
 import { QrScanner } from './qr-scanner';
 import { codeFromScan } from './scan-input';
@@ -160,6 +167,19 @@ export class DailyViewTab {
   /** The day the view reflects (ISO YYYY-MM-DD); defaults to today in Europe/Tirane (invariant #6). */
   protected readonly selectedDate = signal(todayBookingDate(new Date()));
 
+  /** Every kill-switch transition destroys the control that was just activated (WCAG 2.4.3). */
+  private readonly focusAfterRender = focusMover();
+  /** True while the amber "close today's online sales" confirm is open (two-step, no accidental close). */
+  protected readonly closeSalesConfirm = signal(false);
+  /** An in-flight close-sales GET→PATCH — gates the confirm so a double-tap cannot double-write. */
+  protected readonly closeSalesBusy = signal(false);
+  /** The kill switch targets today only — on any other date the sales window is not "now". */
+  protected readonly selectedDateIsToday = computed(
+    () => this.selectedDate() === todayBookingDate(new Date()),
+  );
+  /** Whether today's online sales are still open per the map read's per-request verdict. */
+  protected readonly salesOpenToday = computed(() => this.venue()?.salesOpen !== false);
+
   private readonly scanner = inject(QrScanner);
   /** The check-in scanner panel is open (camera live for the real adapter). */
   protected readonly scanOpen = signal(false);
@@ -270,6 +290,8 @@ export class DailyViewTab {
     this.closeScan();
     this.checkInBusy.set(false);
     this.checkInNotice.set(undefined);
+    this.closeSalesConfirm.set(false);
+    this.closeSalesBusy.set(false);
     this.selectedDate.set(todayBookingDate(new Date()));
     this.overrides.set(new Map());
     this.pendingSets.set(new Set());
@@ -396,12 +418,68 @@ export class DailyViewTab {
     this.overrides.set(new Map());
     this.pendingSets.set(new Set());
     this.notice.set(undefined);
+    this.closeSalesConfirm.set(false);
     this.loadError.set(false);
     this.loaded.set(false);
     this.venue.set(undefined);
     this.bookings.set([]);
     this.states.set(undefined);
     this.load();
+  }
+
+  /** Open the amber close-sales confirm (two-step — the write is the confirm's job). */
+  protected onCloseSales(): void {
+    this.notice.set(undefined);
+    this.closeSalesConfirm.set(true);
+    this.focusAfterRender('daily-close-sales-confirm');
+  }
+
+  protected onCancelCloseSales(): void {
+    this.closeSalesConfirm.set(false);
+    this.focusAfterRender('daily-close-sales');
+  }
+
+  /**
+   * Close today's online sales via the STANDING setting (the service's GET→PATCH; invariant #4) —
+   * no per-day override exists. Either outcome re-reads the day so the header's button state
+   * reconciles with the map read's `salesOpen` verdict; a lost `STALE_WRITE` race says try again
+   * rather than auto-retrying (the operator should see what changed first).
+   */
+  protected onConfirmCloseSales(): void {
+    const venueId = this.venueId();
+    if (venueId === undefined || this.closeSalesBusy()) {
+      return;
+    }
+    const epoch = this.epoch;
+    this.closeSalesBusy.set(true);
+    this.console.closeOnlineSalesNow(venueId).subscribe({
+      next: () => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this write's UI state (#180)
+        }
+        this.closeSalesBusy.set(false);
+        this.closeSalesConfirm.set(false);
+        this.notice.set(
+          'Online sales for today are closed. This stays in place for future days until you change it back in Venue & commodities.',
+        );
+        this.focusAfterRender('daily-notice');
+        this.load();
+      },
+      error: (e: unknown) => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this write's UI state (#180)
+        }
+        this.closeSalesBusy.set(false);
+        this.closeSalesConfirm.set(false);
+        const reason = venueProfileErrorOf(e);
+        if (reason === 'UNAUTHORIZED') {
+          this.operator.sessionLost();
+        }
+        this.notice.set(closeSalesFailureNotice(reason));
+        this.focusAfterRender('daily-notice');
+        this.load();
+      },
+    });
   }
 
   /** Optimistically flip a tile and mark it pending. */
@@ -537,6 +615,20 @@ export class DailyViewTab {
   protected tileLabel(set: SetView): string {
     const tier = tierSentenceLabel(set.tier);
     return `Set ${set.rowLabel} ${set.positionNo}, ${tier}, ${this.money(set.price)}, ${tileAction(this.stateOf(set))}`;
+  }
+}
+
+/** Map a close-sales failure to its operator-facing notice; a lost race asks for a re-try. */
+function closeSalesFailureNotice(reason: VenueProfileErrorCode): string {
+  switch (reason) {
+    case 'STALE_WRITE':
+      return 'Couldn’t close today’s sales — the venue was changed at the same time. Check the refreshed state and try again.';
+    case 'NOT_VENUE_OWNER':
+      return 'You don’t manage this venue, so you can’t close its sales.';
+    case 'UNAUTHORIZED':
+      return SESSION_EXPIRED_MESSAGE;
+    default:
+      return 'Couldn’t close today’s sales. Please try again.';
   }
 }
 

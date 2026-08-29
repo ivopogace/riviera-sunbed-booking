@@ -92,4 +92,24 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
       ).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });
+
+  it('the close-sales confirm copy (--riv-card-ink) meets AA over the #f0aa2e@0.10 amber tint (#794)', () => {
+    // The same darkened-amber pattern the payouts weather confirm proves; re-pinned per file.
+    const amberTint = { color: [240, 170, 46] as [number, number, number], alpha: 0.1 };
+    for (const stop of PORCELAIN_STOPS) {
+      const tint = composite(
+        amberTint.color,
+        amberTint.alpha,
+        surfaceOver(PORCELAIN_CARD_GLASS, stop),
+      );
+      expect(
+        contrastRatio(rgbToHex(INK_DARK), rgbToHex(tint)),
+        `ink over amber tint ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
+  it('the close-sales confirm button (white on darkened amber #9a6410) meets AA (#794)', () => {
+    expect(contrastRatio('#ffffff', '#9a6410')).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
 });

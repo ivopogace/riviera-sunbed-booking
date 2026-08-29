@@ -144,7 +144,7 @@ specs — see R-2.
 | R-3 | FE sends `salesClose` but a naming mismatch lets Jackson silently drop it (no `FAIL_ON_UNKNOWN_PROPERTIES`) → "saved" without effect | low | high | AC-1 IT round-trips through the read API; e2e asserts the wire body key; one wire token set (`"HH:mm"`, same `CUTOFF` formatter as the read) | impl | open |
 | R-4 | #791's pin `VenueAdminControllerIT.patchCannotReachSalesClose` contradicts the new behavior if left standing | high | low | Phase 0 step explicitly inverts it (becomes `patchUpdatesSalesClose`); `patchIgnoresReadOnlyCommissionAndCurrency` stays (commission asymmetry survives) | impl | open |
 | R-5 | The Java mirror drifts from the V44 CHECK (invariant #4 vocabulary) | low | med | The `SalesClose` enum is the **single** Java mirror (no separate validator set); `SalesCloseTest` pins its three `time()` values against the CHECK tokens; `SalesCloseMigrationIT.checkRejectsAnyOtherTime` keeps pinning the DB side | impl | open |
-| R-6 | New busy-flag name trips `check-focus-posture.mjs` BUSY-1, or the confirm flow skips a focus leg (FOCUS-1) | med | low | Copy the payouts weather-refund inline two-step verbatim (`[appBusy]`, `focusMover()` on all three legs); add the flag stem to `BUSY_STEMS` only if no existing stem fits | impl | open |
+| R-6 | New busy-flag name trips `check-focus-posture.mjs` BUSY-1, or the confirm flow skips a focus leg (FOCUS-1) | med | low | Copy the payouts weather-refund inline two-step verbatim (`[appBusy]`, `focusMover()` on all three legs); add the flag stem to `BUSY_STEMS` only if no existing stem fits | impl | closed — `closeSalesBusy` carries the existing `busy` stem (no `BUSY_STEMS` edit); all three `focusAfterRender` legs shipped; guards green |
 | R-7 | Full PATCH from the daily view re-serializes a profile field wrongly (e.g. amenity codes, photos excluded) → silent profile corruption | low | high | One mapping helper `toProfileUpdate(view)` in `operator-console.model.ts`, unit-tested against the venue-tab save shape; e2e asserts untouched fields survive the kill switch | impl | open |
 | R-8 | Error contract drift on the new 400 (raw `IllegalArgumentException` → 500, issue #118 class) | low | med | Parse inside `InvalidApiRequestException.parsing(...)` exactly like `PhotoSlots`/`parseCode`; `invalidSalesCloseIs400` asserts `$.code == INVALID_REQUEST` | impl | open |
 
@@ -286,16 +286,17 @@ tokens).
 > **This section is the session-recovery anchor** — see the template blockquote; update in
 > the same commit window as the change it records.
 
-**Stage pointer:** `implement — phases 0–1 done (session 2026-08-29); phase 2 next`
+**Stage pointer:** `implement — phases 0–2 done (session 2026-08-29); phase 3 (docs + close-out) next`
 
-**Next action:** phase 2 test-first (`tdd`): the daily-view kill switch — failing
-`daily-view-tab.spec.ts` first (`closes today via the standing setting after confirm`).
+**Next action:** phase 3: rewrite RESPONSIBILITIES.md §`venue`'s sales-close bullet, run
+`riviera-docs-freshness` over the slice's range, hygiene guards, finalize this section,
+mark PR #802 ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Backend write path (PATCH + create + vocabulary) | ✅ | "Make the sales-close setting venue-editable via profile PATCH and create (#794)" |
 | 1 — Settings tab control + cutoff relabel | ✅ | "Add the sales-close control to the venue settings tab and relabel the cancellation deadline (#794)" |
-| 2 — Daily-view kill switch | | |
+| 2 — Daily-view kill switch | ✅ | "Add the one-tap close-today kill switch to the daily view (#794)" |
 | 3 — Docs + close-out (RESPONSIBILITIES.md, freshness run, self-review) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -339,7 +340,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/booking-cutoff-field.ts` · `.spec.ts` — label + TSDoc relabel; the spec pins the new copy.
 - `frontend/src/app/operator/venue-create-card.ts` · `.spec.ts` — "required" message copy for the relabeled field; the spec's label inventory follows.
 - `frontend/e2e/operator-venue-photos.e2e.ts` — profile fixture gains `salesClose` (a fixture without it crashes the tab's render — see F-4).
-- `frontend/src/app/operator/daily-view-tab.ts` · `.html` · `.spec.ts` · `.a11y.spec.ts` — kill switch + confirm + notice + specs.
+- `frontend/src/app/operator/daily-view-tab.ts` · `.html` · `.spec.ts` · `.a11y.spec.ts` · `.contrast.spec.ts` — kill switch + confirm + notice + specs (the contrast spec re-pins the payouts amber pattern per file).
 - `frontend/e2e/operator-venue.e2e.ts` — control save + wire-body assertions; mock gains `salesClose`.
 - `frontend/e2e/operator-daily.e2e.ts` — kill-switch journey incl. axe.
 - `frontend/e2e/support/operator-console.mocks.ts` — `profile()` fixture gains `salesClose`.
@@ -527,7 +528,7 @@ it('labels the cutoff as the free-cancellation deadline', async () => {
 `operator-console.model.ts` · Test `daily-view-tab.spec.ts`, `daily-view-tab.a11y.spec.ts`,
 `operator-daily.e2e.ts`, `support/operator-console.mocks.ts`
 
-- [ ] **Step 1: Failing unit spec:**
+- [x] **Step 1: Failing unit spec:**
 
 ```ts
 it('closes today via the standing setting after confirm', async () => {
@@ -544,9 +545,9 @@ it('closes today via the standing setting after confirm', async () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL** — `npm test -- daily-view-tab`.
+- [x] **Step 2: Run, verify FAIL** — `npm test -- daily-view-tab`.
 
-- [ ] **Step 3: Minimal implementation** —
+- [x] **Step 3: Minimal implementation** —
   - `toProfileUpdate(view: VenueProfileView): VenueProfileUpdate` in the model (photos
     dropped, `expectedVersion` from `view.version`) — unit-tested; `venue-tab.onSave()`
     reuses it where it fits.
@@ -564,16 +565,16 @@ it('closes today via the standing setting after confirm', async () => {
   - When today is already closed (`salesOpen === false`), render the static "Online sales
     for today are closed" line instead of the button (the map read already carries the
     verdict per date).
-- [ ] **Step 4: Run, verify PASS** — `npm test -- daily-view-tab` · lint/format · e2e:
+- [x] **Step 4: Run, verify PASS** — `npm test -- daily-view-tab` · lint/format · e2e:
   `operator-daily.e2e.ts` journey (tap → confirm copy → wire body → notice; axe after
   settle) + `operator-console.mocks.ts` `profile()` gains `salesClose`;
   `npm run test:e2e:a11y -- operator-daily touch-targets`.
-- [ ] **Step 5: Generalization-audit pass** — population: *every surface that renders a
+- [x] **Step 5: Generalization-audit pass** — population: *every surface that renders a
   sales-window state to the operator* → enumerate `git grep -ln "salesOpen" frontend/src`
   → decide per site whether the kill switch's state change must reconcile it (today:
   daily view reconciles via `load()`; tourist surfaces re-read per request).
-- [ ] **Step 6: Commit** — `Add the one-tap close-today kill switch to the daily view (#794)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `Add the one-tap close-today kill switch to the daily view (#794)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -602,6 +603,7 @@ it('closes today via the standing setting after confirm', async () => {
 |---|---|---|---|---|---|
 | 2026-08-29 | phase 0 commit | Every write statement persisting venue profile columns | `git grep -n "UPDATE venue\b\|INSERT INTO venue\b" platform/src/main` | 4 Java sites in `JdbcVenues` + V3 seed | `insertVenue` + `updateVenueProfile` carry `sales_close`; `updateLiveRate` (commission) and the `set_version` bump touch other columns by design; the V3 seed takes the 16:00 DEFAULT. No other writer exists — no action |
 | 2026-08-29 | phase 1 commit | Every FE construction site of `VenueProfileUpdate` or profile fixture | `git grep -ln "VenueProfileUpdate\|salesClose" frontend/src frontend/e2e` | venue-tab save + `toProfileUpdate` (send it); 5 operator fixtures (carry it); tourist `salesOpen` sites are the #793 read projection, untouched by design | fixtures completed (F-4); no other action |
+| 2026-08-29 | phase 2 commit | Every surface rendering a sales-window state to the operator or tourist | `git grep -ln "salesOpen" frontend/src` | daily view (the kill switch's own surface — reconciles via `load()` after either outcome); tourist home + venue-map read `salesOpen` per request (#793) and need no reconcile | no action beyond the daily view's own reload |
 
 ---
 
