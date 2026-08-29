@@ -72,7 +72,7 @@ dependencies {
 	testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
 	testImplementation 'org.testcontainers:testcontainers-postgresql'
 	// In-JVM SMTP sink for SmtpMailerIT (#368) — jakarta-mail 2.x line; no Docker needed.
-	testImplementation 'com.icegreen:greenmail-junit5:2.1.3'
+	testImplementation 'com.icegreen:greenmail-junit5:2.1.13'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
