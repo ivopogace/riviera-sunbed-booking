@@ -98,7 +98,7 @@ pin this down rather than re-derive it:
   reverse) and `notification`, and `booking`'s own `BookingCancelled` listener drives
   the refund via `payment.api.RefundPort`. **`availability` consumes no events** — the
   `(set, date)` row was claimed synchronously at reserve time and is released
-  synchronously on cancel (CLAUDE.md's five-event inventory is canonical).
+  synchronously on cancel (CLAUDE.md's six-event inventory is canonical).
 - The Stripe SDK and webhook controller live in `payment`'s adapter layer only
   (`adapter/in/StripeWebhookController`, `adapter/out/StripePaymentGateway`); the
   `booking`/`payout` domains never import Stripe types — they speak `Money`,

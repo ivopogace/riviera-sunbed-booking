@@ -13,12 +13,13 @@ import ai.riviera.platform.review.vocabulary.VenueRef;
 public interface Reviews {
 
 	/**
-	 * Claim this booking's one review slot and record {@code stars} against it.
+	 * Claim this booking's one review slot and record {@code stars} against it. Named for the
+	 * availability primitive it mirrors, not for the write: the row's creation <em>is</em> the claim.
 	 *
 	 * @return {@code true} if this call recorded the review, {@code false} if the booking already had
 	 *         one — the claim is atomic, so a lost race is an ordinary {@code false}, not an exception
 	 */
-	boolean record(BookingRef booking, VenueRef venue, int stars, Instant at);
+	boolean claim(BookingRef booking, VenueRef venue, int stars, Instant at);
 
 	/** What this venue's review rows add up to right now — {@code 0/0} when it has none. */
 	ReviewTotals totalsFor(VenueRef venue);

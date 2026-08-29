@@ -18,8 +18,8 @@ description: >-
 api/-named-interface boundaries, and the ApplicationModules.verify() contract."*
 
 riviera-sunbed-booking is a Spring Modulith modular monolith: base package **`ai.riviera.platform`**,
-eight bounded-context modules — **venue, availability, booking, payment, payout, customer,
-operator, notification** (#382; table in `CLAUDE.md`) — plus one non-context module, **`shared`**
+nine bounded-context modules — **venue, availability, booking, payment, payout, customer,
+operator, notification** (#382), **review** (#811) — plus one non-context module, **`shared`**
 (the OPEN Shared Kernel, #371; see below) — on **Spring Boot 4, Spring Modulith 2.1, Java 25, Gradle,
 Spring Data JDBC / `JdbcClient` only — no JPA**.
 
@@ -66,7 +66,7 @@ so the inside never knows whether a real HTTP client, an `@ApplicationModuleTest
 caller is on the other side.
 
 **Assignment rule (mechanical): a module is THIN iff it has no application service** — its `api/`
-port is implemented directly by a JDBC adapter. Otherwise it is FULL. Today **all eight bounded-context
+port is implemented directly by a JDBC adapter. Otherwise it is FULL. Today **all nine bounded-context
 modules are full**: `customer` graduated thin → full in S2 (#111), so no module is thin at present — the
 thin template below stays the documented shape for a future serviceless module. `availability` is "small but
 full" — it owns a published command port with real concurrency semantics; small LOC does not make a
@@ -175,7 +175,7 @@ worked example: `references/boundaries.md`.
   `availability.api.AvailabilityClaim.claim(...)` and branches on the `ClaimOutcome` in the same
   transaction.
 - **Domain event (async, decoupled)** when the module just announces a fact — the write-side
-  spine is CLAUDE.md's five-event inventory. (No `availability` listener exists — the
+  spine is CLAUDE.md's six-event inventory. (No `availability` listener exists — the
   claim/release is the synchronous port above.) Events break would-be cycles. Sync-vs-async
   listener choice + the registry: `references/events.md`.
 

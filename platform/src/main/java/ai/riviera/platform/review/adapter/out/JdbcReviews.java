@@ -34,7 +34,7 @@ class JdbcReviews implements Reviews {
 	}
 
 	@Override
-	public boolean record(BookingRef booking, VenueRef venue, int stars, Instant at) {
+	public boolean claim(BookingRef booking, VenueRef venue, int stars, Instant at) {
 		int inserted = jdbc.sql("""
 				INSERT INTO review (booking_id, venue_id, stars, created_at)
 				VALUES (:booking, :venue, :stars, :createdAt)

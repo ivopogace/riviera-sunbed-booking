@@ -6,7 +6,7 @@ The boundary-declaration mechanics behind the SKILL.md body. Everything here is 
 ## Declaring a module
 
 Each module declares a display name **and an explicit `allowedDependencies` deny-list** — this is
-**already true of all eight bounded-context modules in `main`**, not a future tightening. Keep it
+**already true of all nine bounded-context modules in `main`**, not a future tightening. Keep it
 that way:
 
 ```java

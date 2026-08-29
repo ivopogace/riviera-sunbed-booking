@@ -127,7 +127,7 @@ class SubmitReviewServiceTest {
 		private final Set<BookingRef> alreadyHeld = new HashSet<>();
 
 		@Override
-		public boolean record(BookingRef booking, VenueRef venue, int stars, Instant at) {
+		public boolean claim(BookingRef booking, VenueRef venue, int stars, Instant at) {
 			if (!alreadyHeld.add(booking)) {
 				return false;
 			}

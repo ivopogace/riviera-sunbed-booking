@@ -2,10 +2,12 @@
 
 Events are how modules integrate on the write side and how would-be cycles are broken. The
 originating module announces a fact; it does not know or care who listens. The spine is
-**CLAUDE.md's five-event inventory** (canonical there): `BookingConfirmed`/`BookingCancelled`
+**CLAUDE.md's six-event inventory** (canonical there): `BookingConfirmed`/`BookingCancelled`
 fan out to `payout` and `notification` — with `booking`'s **own** `BookingCancelled` listener
 (`BookingRefundListener`) driving `payment`'s `RefundPort` (invariant #9/#10) — and
 `BookingPaymentDue`/`BookingRequestDeclined`/`BookingRequestExpired` go to `notification` only.
+`ReviewsChanged` goes from `review` to `venue`, whose listener recomputes its own rating columns
+from a full re-read rather than from the payload (#811, ADR-0015).
 `availability` has **no event listener**: the `(set, date)` row is
 claimed at reserve time and released on cancel synchronously through its `api/` port
 (`AvailabilityClaim.claim/release` — U3, invariant #2), so confirmation changes nothing in its table. **U4** (#8) introduced the *first* event

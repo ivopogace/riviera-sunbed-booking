@@ -48,8 +48,9 @@ loop feasible) · `riviera-plan-doc` (this template — forced the parity ledger
 seed supersede and the rounding-rule write-down) · `tdd` (every phase red-green; the
 uniqueness and recompute rules are pinned by failing tests first) ·
 `riviera-review-overlay` (review gate — runs at ready-for-review) ·
-`riviera-docs-freshness` (N/A at plan time — the close-out sweep runs over the merge
-range; the counting sweep targets are pre-listed in Phase 5) · `riviera-modulith` (leaf
+`riviera-docs-freshness` (**ran at Phase 5** over `origin/main...HEAD` — see the
+Generalization-audit log's docs-freshness row for the findings; the plan's pre-listed
+counting-sweep targets turned out to be a subset) · `riviera-modulith` (leaf
 module shape, api-vs-spi call for `CompletedStays`, ninth-module structural-test/docs
 updates, event-registry semantics for `ReviewsChanged`) · `riviera-java-conventions`
 (records, typed `SubmitOutcome` over exceptions, package-private adapters, §6b error
@@ -168,7 +169,7 @@ division. Lives in `review.domain.AggregateRating`, pinned by `AggregateRatingTe
 | R-6 | Module cycle (`venue → review → booking → venue`) | low | high | leaf posture per epic addendum: `review` depends only on `shared`; `ApplicationModules.verify()` is the gate | impl | **closed** (Phases 0–1 — `review` ships `allowedDependencies = { shared }`; `ModularityTests` green with the ninth module and `booking`'s `review::spi` grant) |
 | R-7 | Flyway V45 collision with in-flight work | low | med | verified free on `main` + all 20 open PRs are Dependabot (2026-08-29); if a collision appears, this branch renumbers (merges second) | impl | **closed** (Phase 0 — V45 landed with no collision; re-checked at the pre-merge `origin/main` merge) |
 | R-8 | Booking code leaks via the new module (invariant #7) | med | high | code never logged, never in ProblemDetail (`instance` overridden to constant URI — copy `BookingController.error(...)`); per-code rate-limit joins the shared "guesses at the same secret" budget | impl | **closed** (Phase 3 — `ReviewControllerTest.theBookingCodeNeverAppearsInAnErrorBody` asserts the whole body, `instance` pinned to `/api/bookings`; no `review` class logs at all) |
-| R-9 | Real-backend loop infeasible (check-in is service-date-only; sales close blocks same-day booking) | med | low | `StubPaymentGateway` (`@Profile("!stripe")`) confirms synchronously — verified; the spec sets the venue's sales close to 23:59 and books **today** so check-in is legal; fallback: the backend `ReviewSubmitFlowIT` already proves the true loop server-side, and the e2e AC is renegotiated with the maintainer | impl | open |
+| R-9 | Real-backend loop infeasible (check-in is service-date-only; sales close blocks same-day booking) | med | low | `StubPaymentGateway` (`@Profile("!stripe")`) confirms synchronously — verified; the spec sets the venue's sales close to 23:59 and books **today** so check-in is legal; fallback: the backend `ReviewSubmitFlowIT` already proves the true loop server-side, and the e2e AC is renegotiated with the maintainer | impl | **closed — the fallback was NOT needed** (Phase 5: `reviews.e2e.ts` ran green in this cloud session against the real Spring Boot backend + real Postgres via `scripts/e2e-local-stack.sh`; sales close 23:59, booked today, `StubPaymentGateway` confirmed, real check-in, real rating, header read `5.0 · 1 review`) |
 | R-10 | Star control fails the a11y/touch-target/focus gates | med | med | follow `segmented-control.ts` verbatim (roving tabindex, keydown per radio); `appTouchTarget` on each of the 5 radios (TT-1); `[appBusy]` on submit (BUSY-1 — `submitting` is a guarded stem); filled-vs-outline glyphs so state is never color-only | impl | **closed** (Phase 4 — `star-rating.spec.ts` axe + keyboard contract green, both authoring guards green, and the sweep now *measures* the five radios via a new reviewable-booking case) |
 | R-11 | `venue.rating_tenths` gains a second writer unnoticed (no machine rule guards the venue table the way `ResponsibilitiesArchitectureTests` guards `set_availability`) | low | med | review-checked boundary: `review` has no SQL touching `venue`; called out for RV-BE; RESPONSIBILITIES §venue gains the "I store the aggregate; `review` computes it" line | impl | **mitigated, stays review-checked** (Phase 2 — the write is one method, `JdbcVenues.store`, behind venue's own `VenueRatings` port; `review`'s SQL names only the `review` table. Still no machine rule: the RESPONSIBILITIES line lands in Phase 5) |
 
@@ -349,9 +350,10 @@ APIs; OnPush default (v22 — not set explicitly); Signal Forms per the house st
 review gate is deliberately **out of scope for this session** (it runs from a separate session,
 per the maintainer's instruction), so the PR stays a **draft** and is never marked ready.
 
-**Next action:** Phase 5 — the real-backend loop plus the docs close-out (ADR-0015, CLAUDE.md's
-six-events sentence and module table, RESPONSIBILITIES §`review`, CONTEXT.md terms, the
-`riviera-modulith` counting sweep), then merge latest `origin/main`.
+**Next action:** none in this session — all six phases are done, CI is green, and the session's
+stop condition is reached. The PR (**#816**) stays a **draft**: the review gate and the
+ready-for-review transition are the next session's, by the maintainer's instruction. Final
+close-out (`merged via PR #NN`, the self-review boxes) belongs to that session's merge step.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -360,7 +362,7 @@ six-events sentence and module table, RESPONSIBILITIES §`review`, CONTEXT.md te
 | 2 — `ReviewsChanged` → venue listener → recompute + seed-supersede IT updates | ✅ | `<phase-2>` |
 | 3 — edge: `ReviewController`, `reviewable` on the view, SecurityConfig/RateLimit/coverage | ✅ | `<phase-3>` |
 | 4 — FE: `star-rating`, booking-view panel, service/model, unit+axe+contrast, mocked e2e | ✅ | `<phase-4>` |
-| 5 — real-backend e2e loop + docs (CLAUDE/RESPONSIBILITIES/CONTEXT/ADR-0015/counting sweep) | | |
+| 5 — real-backend e2e loop + docs (CLAUDE/RESPONSIBILITIES/CONTEXT/ADR-0015/counting sweep) | ✅ | `<phase-5>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -368,17 +370,20 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | Sonar (PR #816, `java:S6213` ×2) | `Reviews.record(...)` and its adapter override match a **restricted identifier** (`record`) — MAJOR code smell, and this repo's merge bar is 0 new issues, not merely a green gate | **fixed** — renamed to `Reviews.claim(...)`, which also reads better: it is the same atomic-claim primitive as `AvailabilityClaim.claim`, and the row's creation *is* the claim |
+| F-2 | Local run of the real-backend suite (Phase 5) | 6 of the 10 pre-existing real-backend specs fail — `venue-editor`, `venue` ×2, `daily`, `pricing`, `payouts` — all at the shared `createVenue` helper's `Venue details` heading, because `signInOperator` only *submits* the login and those call sites navigate again before the session round-trip settles (`venue-editor.e2e.ts:50-51`) | **not this slice's, reported not fixed** — `git diff origin/main` shows this branch touches none of those files or the helper; the suite is local-only (never CI), so the race was invisible. The new `reviews.e2e.ts` avoids it by awaiting the heading after sign-in. Proposed patch: move that `await expect(...)` inside `createVenue`, ahead of its own `goto` |
 
 ---
 
 ## File structure
 
 - `docs/plans/reviews-s1-star-rating.md` — this plan
-- `docs/adr/0015-review-leaf-module.md` — ADR: leaf `review` module, spi inversion, event + own-write aggregation; rejected alternatives recorded (`review → booking::api`, and a `BookingCompleted` event — cycle, consistency lag, backfill) (A-1)
+- `docs/adr/ADR-0015-review-leaf-module.md` (the repo's actual `ADR-NNNN-` prefix, not the template's bare number) — ADR: leaf `review` module, spi inversion, event + own-write aggregation; rejected alternatives recorded (`review → booking::api`, and a `BookingCompleted` event — cycle, consistency lag, backfill) (A-1)
 - `CLAUDE.md` — bounded-context table row `review`; "Five published events" → six; module count prose
 - `RESPONSIBILITIES.md` — new §`review`; §venue Job/Not-My-Job aggregate lines; §booking Not-My-Job review line + `CompletedStays` mention; header module list; machine-vs-review-checked classification
 - `CONTEXT.md` — Review, Review window, Aggregate rating
-- `.claude/skills/riviera-modulith/SKILL.md` — "eight bounded-context modules" → nine (both sites)
+- `.claude/skills/riviera-modulith/SKILL.md` — "eight bounded-context modules" → nine (both sites) and the five-event inventory → six
+- `.claude/skills/riviera-modulith/references/boundaries.md`, `.claude/skills/riviera-modulith/references/events.md`, `.claude/skills/riviera-stripe-payments/SKILL.md`, `docs/adr/ADR-0007-package-structure.md`, `docs/agents/domain.md` — the five counting-sweep sites the plan did **not** pre-list, found by the `riviera-docs-freshness` sweep (three of them only on the re-run *after* the first fix round — the #373 lesson holding)
 - `docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md` — "Later" line annotated (epic #810 executes it)
 - `platform/src/main/resources/db/migration/V45__review.sql` — table + Miramar reset
 - `platform/src/main/java/ai/riviera/platform/review/**/*.java` — `package-info.java`, `api/{VenueRatingSummary,ReviewEligibility,package-info}.java`, `spi/{CompletedStays,package-info}.java`, `vocabulary/{VenueRef,BookingRef,RatingSummary,ReviewState,CompletedStay,SubmitOutcome,package-info}.java`, `events/{ReviewsChanged,package-info}.java`, `application/{SubmitReview,SubmitReviewService,ReviewEligibilityService,Reviews}.java`, `domain/{ReviewWindow,AggregateRating}.java`, `adapter/in/ReviewController.java`, `adapter/out/JdbcReviews.java`
@@ -667,6 +672,7 @@ Modify `CLAUDE.md`, `RESPONSIBILITIES.md`, `CONTEXT.md`,
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-29 | Phase 5 (`riviera-docs-freshness` over `origin/main...HEAD`) | every substrate doc stating the module count or the published-event count — the counting sweep, whose whole point is that these sit in files the diff never touches | `grep -rniE '\b(the\|both\|only\|all) (eight\|8\|five\|5\|two\|2)\b' platform/src CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents docs/runbooks docs/deploy .claude/skills \| grep -iE 'module\|bounded\|event\|listener\|context\|published'`, then re-run after each fix round | **7 patched:** CLAUDE.md (module table + five→six events), `riviera-modulith` SKILL.md ×3 (eight→nine ×2, five-event→six), `riviera-modulith/references/boundaries.md`, `riviera-modulith/references/events.md`, `riviera-stripe-payments/SKILL.md`, `ADR-0007`, `docs/agents/domain.md`. **Read and left alone:** every "the two X" about mail vehicles / principal types / bulkhead pools / TTLs (different subject, still true), `RESPONSIBILITIES.md`'s "all five shipped listeners" (notification's *mail* listeners — mine is venue's and is not one), and the `docs/plans/*` hits (historical records, never living docs) | Three of the seven — `boundaries.md`, `events.md`, `riviera-stripe-payments` — surfaced **only on the re-run after the first fix round**, exactly the #373 failure mode the skill warns about; a single pass would have shipped them stale |
 | 2026-08-29 | Phase 4 (`BookingDetail` gains a required field) | every `BookingDetail` fixture in the frontend | `grep -rln ": BookingDetail =" frontend/src` + `grep -rln "cancellationWindowAtBirth" frontend/src --include="*.spec.ts"` | 5 spec files — `booking-view`, `booking.service`, `find-booking`, `booking-pay`, `my-bookings` | all five given `reviewable: false`; the compiler was the enumerator here (a required field cannot be missed), and the grep only confirmed the fix list. The e2e fixtures are wire JSON, not typed, so an absent flag reads as `undefined` → falsy → no panel, which is the safe default and what the "not reviewable" case asserts |
 | 2026-08-29 | Phase 3 (a fourth code-keyed public endpoint) | every code-keyed endpoint, and whether all of them share one posture | `grep -n "bookings/\*" …/SecurityConfig.java` + `grep -n "bookings/{code}" …/RateLimitFilter.java` | 4 legs — view (GET), cancel, withdraw, review | All four are `permitAll` + CSRF-ignored and resolve to a `Target(code)`; `RateLimitFilter` keys **one** `codeBuckets` map on the code alone, so the four share the "guesses at the same secret" budget rather than getting a fourth of their own. `/api/bookings/cancellation-terms` stays the deliberate exception (a literal sibling with no code to key on) |
 | 2026-08-29 | Phase 2 (a ninth `@ApplicationModuleListener` joins the app) | every `@ApplicationModuleListener` | `grep -rln "@ApplicationModuleListener" platform/src/main/java` | 9 files — 6 listeners (2 booking, 1 notification composite, 2 payout, the new venue one), 2 executor configs naming bulkhead pools, 1 service-level listener | `ReviewsChangedListener` is the only one recomputing venue state, and it carries the at-least-once/idempotence paragraph the payout listeners set the shape for. It takes the **shared** executor, matching the two payout listeners (DB-only work); the bulkhead-pool listeners are the mail/refund ones, whose blast radius is an external call this one does not make |
