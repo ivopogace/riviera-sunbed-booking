@@ -341,9 +341,9 @@ strings**, never interpolated fragments.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window as
 > the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** implement — phases 0–3 done, phase 4 next; draft PR #803 open
+**Stage pointer:** implement — phases 0–4 done, phase 5 next; draft PR #803 open
 
-**Next action:** phase 4 (FE checkout, booking view, ToS).
+**Next action:** phase 5 (mocked e2e + docs + close-out).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -351,7 +351,7 @@ strings**, never interpolated fragments.
 | 1 — Terms quote + endpoint | ✅ | `Quote pre-reserve cancellation terms …` |
 | 2 — Events + mails + resend | ✅ | `Carry the born-past-free-cancellation window …` |
 | 3 — Booking-view window-at-birth (BE + model) | ✅ | `Report the cancellation window at birth …` |
-| 4 — FE checkout, booking view, ToS | | |
+| 4 — FE checkout, booking view, ToS | ✅ | `Disclose the booking's actual cancellation terms …` |
 | 5 — Mocked e2e + docs + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -419,14 +419,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/notification/adapter/out/EmailSuppressionReinstatementIT.java` — widened record construction
 - `platform/src/test/java/ai/riviera/platform/notification/application/TransactionalMailServiceTest.java` — widened record constructions
 - `platform/src/test/java/ai/riviera/platform/notification/application/BookingConfirmationResendServiceTest.java` — resend pass-through pin
-- `frontend/src/app/booking/cancellation-terms-note.ts` + `.spec.ts` + `.a11y.spec.ts` — new
+- `frontend/src/app/booking/cancellation-terms-note.ts` + `frontend/src/app/booking/cancellation-terms-note.spec.ts` + `frontend/src/app/booking/cancellation-terms-note.a11y.spec.ts` — new
+- `frontend/eslint.config.js` — the note joins the attribute-selector override list
+- `frontend/src/app/venue/venue-map.spec.ts` — `settle()` helpers flush the dialog's pending terms quote (an unanswered `httpResource` parks `whenStable`)
+- `frontend/src/app/booking/booking-dialog.a11y.spec.ts` — same flush in its setup
 - `frontend/src/app/booking/booking-dialog.ts` + `booking-dialog.spec.ts` — terms resource + note
 - `frontend/src/app/booking/booking-pay.ts` + `booking-pay.spec.ts` — note on the pay step
 - `frontend/src/app/booking/booking-view.ts` + `booking-view.spec.ts` — CLOSED-born branch
 - `frontend/src/app/booking/booking.service.ts` + `booking.service.spec.ts` — terms read
 - `frontend/src/app/booking/booking.model.ts` — `CancellationTerms`, widened `BookingDetail`/`PaymentHandoff`
 - `frontend/src/app/booking/find-booking.spec.ts`, `frontend/src/app/booking/my-bookings.spec.ts` — fixture literals gain the new field
-- `frontend/src/app/shared/booking-date.ts` + `booking-date.spec.ts` — Tirane time formatter
+- `frontend/src/app/shared/booking-date.ts` — NOT touched after all: `shared/deadline.ts#formatDeadline` already pins the Tirane rendering (R-4), so the note reuses it instead of adding a near-duplicate formatter
 - `frontend/src/app/pages/legal/terms-of-service.html` — one-sentence exception
 - `frontend/e2e/same-day-booking.e2e.ts` — disclosure steps + corrected `AWAITING_DETAIL` fixture
 - `frontend/e2e/find-a-booking.e2e.ts` — CLOSED-born booking-view case
@@ -629,15 +632,15 @@ Modify `booking.service.ts`, `booking.model.ts`, `booking-dialog.ts`, `booking-p
 `booking-view.ts`, `shared/booking-date.ts`, `pages/legal/terms-of-service.html` (+ their
 specs)
 
-- [ ] **Step 1: Failing specs** — AC-10 branches on the note component; dialog spec: terms
+- [x] **Step 1: Failing specs** — AC-10 branches on the note component; dialog spec: terms
   fetched on open, note rendered per window, **no cancellation claim while
   loading/errored**; pay-page spec: note rendered from the handoff; booking-view spec:
   CLOSED-born renders the last-minute note and no cancel section, advance keeps
   `refundTerms`; `booking-date.spec.ts`: deadline formatted in `Europe/Tirane` for a
   non-ambiguous instant; a11y spec: axe green with the note present, `role="status"` on
   the async container.
-- [ ] **Step 2: Run, verify FAIL** — `npm test -- --run <touched specs>` (scoped).
-- [ ] **Step 3: Minimal implementation** —
+- [x] **Step 2: Run, verify FAIL** — `npm test -- --run <touched specs>` (scoped).
+- [x] **Step 3: Minimal implementation** —
   - `BookingService.cancellationTerms(params)` — an `httpResource` factory keeping URL +
     typing in the service; `CancellationTerms` model type.
   - Dialog: the `httpResource` keyed on `(set().id, date())`; the instant note keeps its
@@ -655,13 +658,13 @@ specs)
   - `booking-view`: `@else if (b.cancellationWindowAtBirth === 'CLOSED')` branch renders
     the last-minute note (no live region — page data).
   - ToS: one sentence in the cancellation section.
-- [ ] **Step 4: Run, verify PASS** — touched Vitest specs + `npm run lint` +
+- [x] **Step 4: Run, verify PASS** — touched Vitest specs + `npm run lint` +
   `npm run format:check` + `npm run test:a11y`.
-- [ ] **Step 5: Generalization-audit** — population: every template stating a
+- [x] **Step 5: Generalization-audit** — population: every template stating a
   free-cancellation claim (`grep -rn "Free cancellation\|evening before" frontend/src`) →
   each surface now truthful or listed in the ledger.
-- [ ] **Step 6: Commit** — `git commit -m "Disclose the booking's actual cancellation terms across checkout, booking view and ToS (#795)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Disclose the booking's actual cancellation terms across checkout, booking view and ToS (#795)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -699,6 +702,7 @@ specs)
 | 2026-08-29 | phase 1 (terms quote) | every consumer of the window rule in main sources | `grep -rn "cancellationWindow\|freeCancellationEndsAt" platform/src/main` | 3 files: `BookingCutoff` (the rule), `CancellationPolicy` (the one quote site), `CancellationTermsView` (field name only) | none needed — no second implementation |
 | 2026-08-29 | phase 2 (event widening) | every publication site of the two events; every consumer of the four widened records | `grep -rn "new BookingConfirmed(\|new BookingPaymentDue(" platform/src/main` + `git ls-files … \| xargs grep -ln "BookingConfirmationMail\|PaymentDueMail\|BookingConfirmed\|BookingPaymentDue"` | 2 production publication sites (`ConfirmBookingService`, `RespondToRequestService`) — both stamp; 46 mentioning files — listeners/resend carry the fields, `payout`'s `BookingConfirmedPayoutListener` provably ignores them (ids/amount only), rest are Javadoc mentions | all updated or verified |
 | 2026-08-29 | phase 3 (view DTO) | every producer of `BookingDetail`/`BookingDetailView` | `grep -rn "new BookingDetailView(\|new BookingDetail(" platform/src` | 1 producer each (`ViewBookingService`, `BookingDetailView.of`) + spec fixture literals (5 FE spec files) | all stamp the field |
+| 2026-08-29 | phase 4 (disclosure surfaces) | every FE surface stating a free-cancellation claim | `grep -rn "Free cancellation\|evening before" frontend/src` | 3 surviving claims: the terms note (server-quoted), `booking-view.refundTerms` (conditional on server `beforeCutoff` — ledger: preserved), ToS (now qualified by the new bullet) | dialog's static claim replaced; all truthful |
 
 ---
 

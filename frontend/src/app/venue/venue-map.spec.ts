@@ -141,6 +141,25 @@ describe('VenueMap', () => {
 
   afterEach(() => httpMock.verify());
 
+  /**
+   * Settle pending renders after flushing the booking dialog's pre-reserve terms quote (#795) —
+   * an unanswered httpResource request would park `whenStable` forever. A no-op while no dialog
+   * is open (`match` returns nothing).
+   */
+  async function settle(): Promise<void> {
+    fixture.detectChanges();
+    httpMock
+      .match((req) => req.url.includes('/api/bookings/cancellation-terms'))
+      .forEach((req) =>
+        req.flush({
+          window: 'FREE',
+          freeCancellationEndsAt: '2026-06-14T16:00:00Z',
+          lateCancelRefundBps: 0,
+        }),
+      );
+    await fixture.whenStable();
+  }
+
   /** Match the venue request on path only (a `?date=` param is appended). */
   function venueRequest(id = 1): TestRequest {
     return httpMock.expectOne((req) => req.url === `${environment.apiBaseUrl}/api/venues/${id}`);
@@ -181,7 +200,7 @@ describe('VenueMap', () => {
     fixture.detectChanges();
     dateTrigger().click();
     fixture.detectChanges();
-    await fixture.whenStable();
+    await settle();
     flushCalendar();
     fixture.detectChanges();
   }
@@ -252,7 +271,7 @@ describe('VenueMap', () => {
     expect(placeholder.classList.contains('min-w-[92px]')).toBe(true);
 
     flushVenue();
-    await fixture.whenStable();
+    await settle();
 
     // Both canvases carry the vocabulary: a reservation on one alone would just reverse the slide.
     expect(
@@ -288,19 +307,19 @@ describe('VenueMap', () => {
 
   it('renders 24 positioned tiles', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(24);
   });
 
   it('fills the canvas-owned row height with set tiles, never a height mechanism of its own (#685)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     expectCellsFillCanvasRow(el(), '[data-testid="set-tile"]');
   });
 
   it('renders the photo band in the venue header, leaving the overview card as count + bar (#704)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
 
     const band = el().querySelector('.photo-band')!;
     expect(band.closest('header')).not.toBeNull();
@@ -329,7 +348,7 @@ describe('VenueMap', () => {
 
   it('paints the no-photo empty state as an opaque warm sun (#704)', async () => {
     flushVenue(); // the fixture has no photos
-    await fixture.whenStable();
+    await settle();
 
     const sun = el().querySelector('[data-testid="map-banner-empty"]')!;
     const fill = /bg-\[radial-gradient\(([^\]]*)\)\]/.exec(sun.className)?.[1];
@@ -344,7 +363,7 @@ describe('VenueMap', () => {
       ...miramar(),
       coverPhoto: { card: '/api/venues/1/photos/aa01', banner: '/api/venues/1/photos/bb02' },
     });
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
 
     const img = el().querySelector<HTMLImageElement>('[data-testid="map-banner-img"]');
@@ -360,7 +379,7 @@ describe('VenueMap', () => {
 
   it('falls back to the bare gradient band without the pill when there is no cover photo (#142)', async () => {
     flushVenue(); // the fixture has no coverPhoto
-    await fixture.whenStable();
+    await settle();
 
     expect(el().querySelector('[data-testid="map-banner-img"]')).toBeNull();
     expect(el().querySelector('.photo-band')).toBeTruthy();
@@ -372,7 +391,7 @@ describe('VenueMap', () => {
       ...miramar(),
       photos: ['/api/venues/1/photos/bb02'],
     });
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
 
     const band = el().querySelector('.photo-band')!;
@@ -399,7 +418,7 @@ describe('VenueMap', () => {
         '/api/venues/1/photos/dd04',
       ],
     });
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
 
     // The header keeps its narrower shell — no in-header photo band once the grid takes over.
@@ -415,7 +434,7 @@ describe('VenueMap', () => {
 
   it('opens the lightbox from the single-photo band and returns focus to it on dismiss (#765)', async () => {
     venueRequest().flush({ ...miramar(), photos: ['/api/venues/1/photos/bb02'] });
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
 
     const trigger = el().querySelector<HTMLButtonElement>('[data-testid="photo-band-view"]')!;
@@ -435,7 +454,7 @@ describe('VenueMap', () => {
 
   it('does not offer a photo lightbox trigger when the venue has no photos', async () => {
     flushVenue(); // the fixture has no photos
-    await fixture.whenStable();
+    await settle();
     expect(el().querySelector('[data-testid="photo-band-view"]')).toBeNull();
   });
 
@@ -448,7 +467,7 @@ describe('VenueMap', () => {
         '/api/venues/1/photos/dd04',
       ],
     });
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
 
     const tile = el().querySelector<HTMLButtonElement>('[data-testid="gallery-photo-2"]')!;
@@ -470,14 +489,14 @@ describe('VenueMap', () => {
 
   it('closes the lightbox on an in-place venue switch, instead of reopening on the new venue', async () => {
     venueRequest().flush({ ...miramar(), photos: ['/api/venues/1/photos/bb02'] });
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
     el().querySelector<HTMLButtonElement>('[data-testid="photo-band-view"]')!.click();
     fixture.detectChanges();
     expect(el().querySelector('app-photo-lightbox')).not.toBeNull();
 
     params$.next(convertToParamMap({ id: '2' }));
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
 
     // Torn down with the rest of venue 1's state, not carried over as stale index.
@@ -489,7 +508,7 @@ describe('VenueMap', () => {
       name: 'Riviera Blue',
       photos: ['/api/venues/1/photos/aa01', '/api/venues/1/photos/cc03'],
     });
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
 
     // The new venue's gallery grid renders closed — the stale index must not reopen it.
@@ -499,7 +518,7 @@ describe('VenueMap', () => {
 
   it('marks the premium front row and the taken sets distinctly', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     // A taken front-row set is a ghost, not a premium tile: the 6 split 4 + 2 (#701).
     expect(el().querySelectorAll('.set-tile.premium').length).toBe(4);
     expect(el().querySelectorAll('.set-tile.taken').length).toBe(6); // 18 of 24 free
@@ -507,7 +526,7 @@ describe('VenueMap', () => {
 
   it('lets the appearance directive own every tile colour — the template adds none (#701)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     // The unit host in `map-tile.spec.ts` cannot see this: it pins the directive against itself.
     const paints = /^(bg-|text-riv-tile|border-riv-tile|border-dashed)/;
     for (const tile of el().querySelectorAll('.set-tile')) {
@@ -521,7 +540,7 @@ describe('VenueMap', () => {
 
   it('spells one state two ways that can never select different tiles (#701)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     for (const state of ['premium', 'walkin', 'taken']) {
       const byClass = [...el().querySelectorAll(`.set-tile.${state}`)];
       const byAttribute = [...el().querySelectorAll(`.set-tile[data-state="${state}"]`)];
@@ -531,7 +550,7 @@ describe('VenueMap', () => {
 
   it('shows the availability summary "18 of 24"', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     expect(el().querySelector('[data-testid="availability"]')?.textContent).toContain('18 of 24');
     expect(el().querySelector('[data-testid="availability-bar"]')).not.toBeNull();
     expect(el().querySelector('[data-testid="map-empty"]')).toBeNull();
@@ -539,7 +558,7 @@ describe('VenueMap', () => {
 
   it('explains an empty map instead of framing empty space (#717)', async () => {
     flushMapless();
-    await fixture.whenStable();
+    await settle();
 
     const card = el().querySelector('[data-testid="beach-grid"]')!;
     const empty = card.querySelector<HTMLElement>('[data-testid="map-empty"]');
@@ -560,7 +579,7 @@ describe('VenueMap', () => {
 
   it('offers a way out of an empty map, back to Discover (#717)', async () => {
     flushMapless();
-    await fixture.whenStable();
+    await settle();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
     const exit = el().querySelector<HTMLButtonElement>('[data-testid="map-empty-back"]')!;
@@ -572,7 +591,7 @@ describe('VenueMap', () => {
 
   it('replaces the 0-of-0 summary and its empty bar with a plain no-sets line (#717)', async () => {
     flushMapless();
-    await fixture.whenStable();
+    await settle();
 
     const summary = el().querySelector('[data-testid="availability"]')!;
     expect(summary.textContent?.trim()).toBe('No sets to book yet');
@@ -583,7 +602,7 @@ describe('VenueMap', () => {
 
   it('the INSTANT footer names booking, device-neutrally', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
 
     const footer = el().querySelector('[canvasFooter]')!;
     expect(footer.textContent).toContain('Pick any free set to book it');
@@ -593,7 +612,7 @@ describe('VenueMap', () => {
 
   it('the REQUEST footer explains the no-charge deal at the tap, naming the venue', async () => {
     flushRequestVenue();
-    await fixture.whenStable();
+    await settle();
 
     const footer = el().querySelector('[canvasFooter]')!;
     expect(footer.textContent).toContain(
@@ -604,7 +623,7 @@ describe('VenueMap', () => {
 
   it('renders no legend, grid or tap-hint for a venue with no sets (#717)', async () => {
     flushMapless();
-    await fixture.whenStable();
+    await settle();
 
     expect(el().querySelector('ul[aria-label="Legend"]')).toBeNull();
     expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(0);
@@ -614,7 +633,7 @@ describe('VenueMap', () => {
 
   it('shows the rating and review count for a rated venue', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     const header = el().querySelector('header')!;
     expect(header.textContent).toContain('4.8');
     expect(header.textContent).toContain('326 reviews');
@@ -623,7 +642,7 @@ describe('VenueMap', () => {
 
   it('renders a "New" pill (aria "No reviews yet", no ★ 0.0) for an unrated venue (#154)', async () => {
     venueRequest().flush({ ...miramar(), name: 'Miramare', ratingTenths: 0, reviewsCount: 0 });
-    await fixture.whenStable();
+    await settle();
 
     const header = el().querySelector('header')!;
     const chip = header.querySelector('[data-testid="new-chip"]')!;
@@ -635,7 +654,7 @@ describe('VenueMap', () => {
 
   it('splits the header chips into a semantic family and a descriptive one (#705)', async () => {
     venueRequest().flush({ ...miramar(), ratingTenths: 0, reviewsCount: 0 });
-    await fixture.whenStable();
+    await settle();
 
     const header = el().querySelector('header')!;
     // The same two platform claims as the Discover card, wearing the same pill — that parity is the point of #705.
@@ -651,7 +670,7 @@ describe('VenueMap', () => {
 
   it('renders the stored row labels on the rail, in insertion order (#724)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     const codes = [...el().querySelectorAll('[data-testid="row-code"]')].map((n) =>
       n.textContent?.trim(),
     );
@@ -660,7 +679,7 @@ describe('VenueMap', () => {
 
   it('caps the rail chips with an ellipsis — tile names carry the full label (#724)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     const inner = el().querySelector('[data-testid="row-code"] .truncate')!;
     expect(inner.classList.contains('max-w-12')).toBe(true);
     expect(inner.classList.contains('sm:max-w-[96px]')).toBe(true);
@@ -672,7 +691,7 @@ describe('VenueMap', () => {
 
   it("renders the price once per zone, carrying the row's meaning (#672, #702)", async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
       n.textContent?.trim(),
     );
@@ -688,7 +707,7 @@ describe('VenueMap', () => {
       s.pool === 'WALK_IN' ? { ...s, price: { minorUnits: 3500, currency: 'EUR' } } : s,
     );
     venueRequest().flush({ ...base, sets });
-    await fixture.whenStable();
+    await settle();
 
     const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
       n.textContent?.trim(),
@@ -713,7 +732,7 @@ describe('VenueMap', () => {
       rowLabel: shifted[original.indexOf(s.rowLabel)],
     }));
     venueRequest().flush({ ...base, sets });
-    await fixture.whenStable();
+    await settle();
 
     // The rail reads the venue's own letters — including the skip.
     const codes = [...el().querySelectorAll('[data-testid="row-code"]')].map((n) =>
@@ -745,7 +764,7 @@ describe('VenueMap', () => {
         : s,
     );
     venueRequest().flush({ ...base, sets });
-    await fixture.whenStable();
+    await settle();
 
     const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
       n.textContent?.trim(),
@@ -758,7 +777,7 @@ describe('VenueMap', () => {
 
   it('keeps the rail decorative — tile names carry the one stored identity (#702, #724)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     const chip = el().querySelector('[data-testid="row-price"]')!;
     expect(chip.closest('[aria-hidden="true"]')).not.toBeNull();
     // The booking surfaces' own phrase: what the map announces, the mail later prints.
@@ -775,7 +794,7 @@ describe('VenueMap', () => {
 
   it('separates price zones with a gap at zone starts, aligned across all three columns (#672)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     // A opens the map (no gap), B opens the €35 zone, C continues it, D opens the €25 zone.
     const zoneGaps = [false, true, false, true];
     // The gap sits on the canvas-owned row wrapper around each projected ul.set-row (#672 slice 2).
@@ -799,7 +818,7 @@ describe('VenueMap', () => {
         : s,
     );
     venueRequest().flush({ ...base, sets });
-    await fixture.whenStable();
+    await settle();
     const prices = [...el().querySelectorAll('[data-testid="row-price"]')].map((n) =>
       n.textContent?.trim(),
     );
@@ -809,7 +828,7 @@ describe('VenueMap', () => {
 
   it('renders the venue description in the header', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     expect(el().querySelector('.description')?.textContent).toContain(
       'Premium loungers on the Ksamil shoreline.',
     );
@@ -817,7 +836,7 @@ describe('VenueMap', () => {
 
   it('renders the full amenity row + a to-water chip on the map header (catalogue order)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     const chips = el().querySelector('[data-testid="venue-chips"]')!;
     const texts = [...chips.querySelectorAll('.amenity-chip')].map((c) => c.textContent?.trim());
     // To-water first, then ALL amenities in canonical catalogue order (no ≤3 cap on the map).
@@ -826,7 +845,7 @@ describe('VenueMap', () => {
 
   it('gives each tile an accessible name carrying its row, spot and state (not colour-only)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     const firstTile = el().querySelector('[data-testid="set-tile"]'); // spot 1 — taken, so the <li> carries the name
     expect(firstTile?.getAttribute('aria-label')).toContain('Front row · Sea view · spot 1');
     expect(firstTile?.getAttribute('aria-label')).toContain('taken');
@@ -834,7 +853,7 @@ describe('VenueMap', () => {
 
   it('exposes a booking button only for free online sets', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     // Free ONLINE sets are bookable buttons; taken and walk-in sets are not interactive.
     expect(el().querySelectorAll('.set-button').length).toBeGreaterThan(0);
     expect(el().querySelector('.set-tile.taken')?.querySelector('button')).toBeNull();
@@ -842,7 +861,7 @@ describe('VenueMap', () => {
 
   it('gives free walk-in sets their own treatment: sand tile, no button, walk-in-only name (#672)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     const walkins = [...el().querySelectorAll('.set-tile.walkin')];
     expect(walkins.length).toBe(5); // row D is the walk-in pool: 6 sets, 1 taken
     expect(walkins[0].querySelector('button')).toBeNull();
@@ -853,7 +872,7 @@ describe('VenueMap', () => {
 
   it('renders a taken walk-in set as taken, not walk-in — the ghost wins (#672)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     const d4 = [...el().querySelectorAll('.set-tile')].find((t) =>
       t.getAttribute('aria-label')?.startsWith('Row 4 · Back · spot 4,'),
     )!;
@@ -864,7 +883,7 @@ describe('VenueMap', () => {
 
   it('lists a walk-in entry in the legend, next to the restyled swatches (#672)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     const legend = el().querySelector('ul[aria-label="Legend"]')!;
     expect(legend.textContent).toContain('Walk-in only');
     expect(legend.querySelectorAll('li').length).toBe(4); // Available · Front row · Walk-in · Taken
@@ -872,7 +891,7 @@ describe('VenueMap', () => {
 
   it('renders the legend inside the map card, above the tile grid (#701)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     const legends = el().querySelectorAll('ul[aria-label="Legend"]');
     expect(legends.length).toBe(1);
 
@@ -889,7 +908,7 @@ describe('VenueMap', () => {
 
   it('gives every legend swatch the state of the tile it stands for (#701)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     const swatches = [...el().querySelectorAll('ul[aria-label="Legend"] [data-state]')];
     expect(swatches.map((s) => s.getAttribute('data-state'))).toEqual([
       'available',
@@ -901,7 +920,7 @@ describe('VenueMap', () => {
 
   it('renders a free walk-in tile hatched and a taken one as the ghost (#701)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     // A bookable tile carries its name on the inner button, a static one on the `<li>` itself.
     const stateOf = (rowLabel: string, positionNo: number): string | null => {
       const named = `[aria-label^="${rowLabel} · spot ${positionNo},"]`;
@@ -917,14 +936,14 @@ describe('VenueMap', () => {
 
   it('keeps the bookable button accessible name ending in "Select to book"', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     const label = el().querySelector('.set-button')?.getAttribute('aria-label');
     expect(label).toContain('Select to book'); // pinned so booking-flow.e2e.ts keeps matching
   });
 
   it('mounts the shared cutoff note above the date floor it explains', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     // The test id exists only in shared/cutoff-note.ts, so finding it proves the note mounted.
     const note = el().querySelector('[data-testid="cutoff-note"]')!;
     expect(note.tagName).toBe('P');
@@ -942,7 +961,7 @@ describe('VenueMap', () => {
 
   it('paints the date field with the themed near-opaque field tokens (#675)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
     // Light in riviera/porcelain, slate in dark — --riv-field-solid decides per theme now.
     expect(dateTrigger().classList.contains('bg-riv-field-solid')).toBe(true);
@@ -951,7 +970,7 @@ describe('VenueMap', () => {
 
   it('sales-closed map disables set selection and recovers on a date change', async () => {
     venueRequest().flush({ ...miramar(), salesOpen: false });
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
 
     // The closed state is visible with the today copy; the grid stays rendered.
@@ -968,22 +987,22 @@ describe('VenueMap', () => {
     await openPicker();
     pickDay('2026-06-16');
     venueRequest().flush(miramar());
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
 
     expect(el().querySelector('[data-testid="map-sales-closed"]')).toBeNull();
     el().querySelector<HTMLButtonElement>('.set-button')!.click();
-    await fixture.whenStable();
+    await settle();
     expect(el().querySelector('app-booking-dialog')).not.toBeNull();
   });
 
   it('keys the closed copy on the selected date — a non-today date gets the pick-a-later-day copy', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     await openPicker();
     pickDay('2026-06-16');
     venueRequest().flush({ ...miramar(), salesOpen: false });
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
 
     const banner = el().querySelector('[data-testid="map-sales-closed"]')!;
@@ -992,14 +1011,14 @@ describe('VenueMap', () => {
 
   it('opens the booking dialog when a free set is activated, and closes it on dismiss', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
 
     el().querySelector<HTMLButtonElement>('.set-button')!.click();
-    await fixture.whenStable();
+    await settle();
     expect(el().querySelector('app-booking-dialog')).not.toBeNull();
 
     (fixture.componentInstance as unknown as { onDialogClose(): void }).onDialogClose();
-    await fixture.whenStable();
+    await settle();
     expect(el().querySelector('app-booking-dialog')).toBeNull();
   });
 
@@ -1018,31 +1037,31 @@ describe('VenueMap', () => {
 
   it('does not open the dialog when a drag-pan (not a tap) mouse-releases over a tile', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
 
     pan();
     clickFreeButton(1); // the mouse click that follows a pan-release (detail > 0)
-    await fixture.whenStable();
+    await settle();
     expect(el().querySelector('app-booking-dialog')).toBeNull();
 
     clickFreeButton(1); // a genuine mouse tap afterwards still opens the dialog
-    await fixture.whenStable();
+    await settle();
     expect(el().querySelector('app-booking-dialog')).not.toBeNull();
   });
 
   it('does NOT swallow a keyboard activation after a pan that ended off a tile (a11y)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
 
     pan(); // a pan whose release fired no consuming click (ended off a button) — flag lingers
     clickFreeButton(0); // tab to a tile, press Enter (detail 0) → must open, not be swallowed
-    await fixture.whenStable();
+    await settle();
     expect(el().querySelector('app-booking-dialog')).not.toBeNull();
   });
 
   it('shows the designed failure panel (alert semantics + retry) and recovers on Retry', async () => {
     venueRequest().error(new ProgressEvent('error'));
-    await fixture.whenStable();
+    await settle();
 
     const panel = el().querySelector('[data-testid="map-error"]');
     expect(panel).not.toBeNull();
@@ -1050,9 +1069,9 @@ describe('VenueMap', () => {
     expect(panel?.querySelector('.failure-title')?.textContent).toContain('load this beach map');
 
     el().querySelector<HTMLButtonElement>('[data-testid="map-retry"]')!.click();
-    await fixture.whenStable();
+    await settle();
     venueRequest().flush(miramar());
-    await fixture.whenStable();
+    await settle();
 
     expect(el().querySelector('[data-testid="map-error"]')).toBeNull();
     expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(24);
@@ -1061,7 +1080,7 @@ describe('VenueMap', () => {
   /** #693: a 404 (venue gone or hidden) is a distinct dead end — no retry, a way back instead. */
   it('shows the not-available state on a 404, with back-to-Discover instead of retry', async () => {
     venueRequest().flush('gone', { status: 404, statusText: 'Not Found' });
-    await fixture.whenStable();
+    await settle();
 
     const panel = el().querySelector('[data-testid="map-not-found"]');
     expect(panel).not.toBeNull();
@@ -1077,7 +1096,7 @@ describe('VenueMap', () => {
 
   it('says nothing over the not-available panel — a 404 is not a loaded map (#741 review)', async () => {
     venueRequest().flush('gone', { status: 404, statusText: 'Not Found' });
-    await fixture.whenStable();
+    await settle();
 
     expect(el().querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
   });
@@ -1085,13 +1104,13 @@ describe('VenueMap', () => {
   /** #693 review F-1: a hidden-while-browsing venue must not keep serving the stale map. */
   it('replaces a loaded map with the not-available panel when a date change 404s', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
 
     const c = fixture.componentInstance as unknown as { onDateChange(value: string): void };
     const dateB = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
     c.onDateChange(dateB);
     venueRequest().flush('gone', { status: 404, statusText: 'Not Found' });
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
 
     expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(0);
@@ -1104,7 +1123,7 @@ describe('VenueMap', () => {
   describe('the availability calendar', () => {
     it('replaces the native date input with a labelled calendar trigger', async () => {
       flushVenue();
-      await fixture.whenStable();
+      await settle();
       fixture.detectChanges();
 
       expect(el().querySelector('input[type="date"]')).toBeNull();
@@ -1116,13 +1135,13 @@ describe('VenueMap', () => {
 
     it('opens the calendar for the venue and the day the map is showing', async () => {
       flushVenue();
-      await fixture.whenStable();
+      await settle();
       fixture.detectChanges();
 
       fixture.detectChanges();
       dateTrigger().click();
       fixture.detectChanges();
-      await fixture.whenStable();
+      await settle();
 
       const request = httpMock.expectOne((req) =>
         req.url.endsWith('/api/venues/1/availability-calendar'),
@@ -1138,7 +1157,7 @@ describe('VenueMap', () => {
 
     it("drives the map re-fetch and the dialog's seeded date from the chosen day", async () => {
       flushVenue();
-      await fixture.whenStable();
+      await settle();
       fixture.detectChanges();
       await openPicker();
       const chosen = defaultBookingDate(new Date(Date.now() + 6 * 24 * 60 * 60 * 1000));
@@ -1148,14 +1167,14 @@ describe('VenueMap', () => {
       const request = venueRequest();
       expect(request.request.params.get('date')).toBe(chosen);
       request.flush(miramar());
-      await fixture.whenStable();
+      await settle();
       fixture.detectChanges();
 
       // Closed, and the map and the dialog now agree on the one date the component holds.
       expect(el().querySelector('[data-testid="availability-calendar"]')).toBeNull();
       expect(dateTrigger().getAttribute('data-date')).toBe(chosen);
       el().querySelector<HTMLButtonElement>('[data-testid="set-tile"] button')!.click();
-      await fixture.whenStable();
+      await settle();
       fixture.detectChanges();
 
       // The RENDERED date: `date` is a signal input, so a reflected-attribute read is a tautology.
@@ -1166,7 +1185,7 @@ describe('VenueMap', () => {
 
     it('returns focus to the trigger when the calendar is dismissed', async () => {
       flushVenue();
-      await fixture.whenStable();
+      await settle();
       fixture.detectChanges();
       await openPicker();
 
@@ -1182,14 +1201,14 @@ describe('VenueMap', () => {
 
     it('closes the calendar without chasing a trigger the failure destroyed (RV-FE-9)', async () => {
       flushVenue();
-      await fixture.whenStable();
+      await settle();
       fixture.detectChanges();
       await openPicker();
       const chosen = defaultBookingDate(new Date(Date.now() + 6 * 24 * 60 * 60 * 1000));
 
       pickDay(chosen);
       venueRequest().flush('gone', { status: 404, statusText: 'Not Found' });
-      await fixture.whenStable();
+      await settle();
       fixture.detectChanges();
 
       const panel = el().querySelector('[data-testid="map-not-found"]');
@@ -1201,7 +1220,7 @@ describe('VenueMap', () => {
 
   it('navigates back to discovery when the back pill is pressed', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
     el().querySelector<HTMLButtonElement>('.back-pill')!.click();
@@ -1211,7 +1230,7 @@ describe('VenueMap', () => {
 
   it('navigates to the confirmation when the dialog reports a booking', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
     (fixture.componentInstance as unknown as { onBooked(): void }).onBooked();
@@ -1221,7 +1240,7 @@ describe('VenueMap', () => {
 
   it('navigates to the payment page when the dialog reports awaiting payment (stripe)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
     (fixture.componentInstance as unknown as { onAwaiting(): void }).onAwaiting();
@@ -1237,13 +1256,13 @@ describe('VenueMap', () => {
 
   it('re-fetches availability for a newly chosen date', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
 
     // A date guaranteed to differ from the default (today) on any calendar day (the 2026-07-14 flake).
     const chosen = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
     await openPicker();
     pickDay(chosen);
-    await fixture.whenStable();
+    await settle();
 
     const req = venueRequest();
     expect(req.request.params.get('date')).toBe(chosen);
@@ -1252,61 +1271,61 @@ describe('VenueMap', () => {
 
   it('re-loads and resets when the venue param changes in place (#499)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     el().querySelector<HTMLButtonElement>('.set-button')!.click();
-    await fixture.whenStable();
+    await settle();
     expect(el().querySelector('app-booking-dialog')).not.toBeNull();
 
     params$.next(convertToParamMap({ id: '2' }));
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
 
     // Fresh-mount state: the dialog is closed and venue 1's map no longer renders while loading.
     expect(el().querySelector('app-booking-dialog')).toBeNull();
     expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(0);
     venueRequest(2).flush({ ...miramar(), id: 2, name: 'Riviera Blue' });
-    await fixture.whenStable();
+    await settle();
     expect(el().querySelector('header')?.textContent).toContain('Riviera Blue');
   });
 
   it("drops a superseded venue's late response (#499)", async () => {
     const stale = venueRequest(); // venue 1's load, still in flight at the switch
     params$.next(convertToParamMap({ id: '2' }));
-    await fixture.whenStable();
+    await settle();
 
     stale.flush(miramar());
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
     expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(0);
 
     venueRequest(2).flush({ ...miramar(), id: 2, name: 'Riviera Blue' });
-    await fixture.whenStable();
+    await settle();
     expect(el().querySelector('header')?.textContent).toContain('Riviera Blue');
   });
 
   it('drops a stale first-visit response after an A→B→A switch (#499)', async () => {
     const firstVisit = venueRequest(); // venue 1's first load, never answered before the round trip
     params$.next(convertToParamMap({ id: '2' }));
-    await fixture.whenStable();
+    await settle();
     const detour = venueRequest(2);
     params$.next(convertToParamMap({ id: '1' }));
-    await fixture.whenStable();
+    await settle();
 
     // A value guard (id === 1) would re-admit `firstVisit`; the epoch identity guard must not.
     detour.flush({ ...miramar(), id: 2, name: 'Riviera Blue' });
     firstVisit.flush({ ...miramar(), name: 'Stale Miramar' });
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
     expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(0);
 
     venueRequest().flush(miramar());
-    await fixture.whenStable();
+    await settle();
     expect(el().querySelector('header')?.textContent).toContain('Miramar Beach Club');
   });
 
   it('drops a stale same-date response from before a picker round trip (#499, the #487 class)', async () => {
     const first = venueRequest(); // the initial date-A load, never settled before the round trip
-    await fixture.whenStable();
+    await settle();
 
     const c = fixture.componentInstance as unknown as { onDateChange(value: string): void };
     const dateB = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
@@ -1319,7 +1338,7 @@ describe('VenueMap', () => {
     detour.flush(miramar());
     // Same venue, same date as `fresh` — only a per-DISPATCH generation tells this stale success from the freshest attempt's failure; it must not resurrect the map.
     first.flush(miramar());
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
 
     expect(el().querySelector('[data-testid="map-error"]')).not.toBeNull();
@@ -1328,18 +1347,18 @@ describe('VenueMap', () => {
 
   it('re-derives the booking floor at an in-place switch after midnight (#499, invariant #4)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
 
     const frozen = new Date();
     vi.setSystemTime(new Date(frozen.getTime() + 3 * 24 * 60 * 60 * 1000));
     try {
       params$.next(convertToParamMap({ id: '2' }));
-      await fixture.whenStable();
+      await settle();
       // The reset must clamp to the CURRENT today, not the construction-time floor.
       const req = venueRequest(2);
       expect(req.request.params.get('date')).toBe(defaultBookingDate(new Date()));
       req.flush({ ...miramar(), id: 2 });
-      await fixture.whenStable();
+      await settle();
       fixture.detectChanges();
       await openPicker();
       expect(calendarDay(defaultBookingDate(new Date())).getAttribute('aria-disabled')).toBeNull();
@@ -1350,31 +1369,31 @@ describe('VenueMap', () => {
 
   it('re-seeds the date from the ?date param on an in-place navigation (#499)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
 
     const carried = defaultBookingDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000));
     queryParams$.next(convertToParamMap({ date: carried }));
-    await fixture.whenStable();
+    await settle();
 
     const req = venueRequest();
     expect(req.request.params.get('date')).toBe(carried);
     req.flush(miramar());
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
     expect(dateTrigger().getAttribute('data-date')).toBe(carried);
   });
 
   it('clamps an in-place ?date below the booking floor back to it (#499, invariant #4)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
     // Move off the floor first so the clamped fallback is an observable change.
     const carried = defaultBookingDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000));
     queryParams$.next(convertToParamMap({ date: carried }));
-    await fixture.whenStable();
+    await settle();
     venueRequest().flush(miramar());
 
     queryParams$.next(convertToParamMap({ date: '2020-01-01' }));
-    await fixture.whenStable();
+    await settle();
     const req = venueRequest();
     expect(req.request.params.get('date')).toBe(defaultBookingDate(new Date()));
     req.flush(miramar());
@@ -1382,35 +1401,35 @@ describe('VenueMap', () => {
 
   it('fails fast when the param turns invalid and recovers on a valid id (#499)', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
 
     params$.next(convertToParamMap({ id: 'abc' }));
-    await fixture.whenStable();
+    await settle();
     fixture.detectChanges();
     expect(el().querySelector('[data-testid="map-error"]')).not.toBeNull();
 
     params$.next(convertToParamMap({ id: '3' }));
-    await fixture.whenStable();
+    await settle();
     venueRequest(3).flush({ ...miramar(), id: 3 });
-    await fixture.whenStable();
+    await settle();
     expect(el().querySelector('[data-testid="map-error"]')).toBeNull();
     expect(el().querySelectorAll('[data-testid="set-tile"]').length).toBe(24);
   });
 
   it('opens the booking dialog pre-set to the map’s selected date', async () => {
     flushVenue();
-    await fixture.whenStable();
+    await settle();
 
     // Derived a week out, never hardcoded — a date equal to the default (today) fires no change.
     const chosen = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
     await openPicker();
     pickDay(chosen);
-    await fixture.whenStable();
+    await settle();
     venueRequest().flush(miramar()); // settle the re-fetch
 
-    await fixture.whenStable();
+    await settle();
     el().querySelector<HTMLButtonElement>('.set-button')!.click();
-    await fixture.whenStable();
+    await settle();
 
     // The dialog now shows the map's date read-only (the map owns the date) — assert the formatted date display instead of an editable input.
     const dialogDate = el().querySelector('app-booking-dialog [data-testid="dialog-date"]');
@@ -1455,6 +1474,21 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
 
   afterEach(() => httpMock.verify());
 
+  /** The suite-level settle(), rebound to this block's own fixture/httpMock pair. */
+  async function settle(): Promise<void> {
+    fixture.detectChanges();
+    httpMock
+      .match((req) => req.url.includes('/api/bookings/cancellation-terms'))
+      .forEach((req) =>
+        req.flush({
+          window: 'FREE',
+          freeCancellationEndsAt: '2026-06-14T16:00:00Z',
+          lateCancelRefundBps: 0,
+        }),
+      );
+    await fixture.whenStable();
+  }
+
   function venueReq(): TestRequest {
     return httpMock.expectOne((req) => req.url === `${environment.apiBaseUrl}/api/venues/1`);
   }
@@ -1466,7 +1500,7 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
     const req = venueReq();
     expect(req.request.params.get('date')).toBe(chosen);
     req.flush(miramar());
-    await fixture.whenStable();
+    await settle();
 
     const trigger = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(
       '[data-testid="map-date"]',

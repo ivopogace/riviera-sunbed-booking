@@ -5,7 +5,12 @@ import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
-import { AwaitingPayment, BookingDetail, CreateBookingRequest } from './booking.model';
+import {
+  AwaitingPayment,
+  BookingDetail,
+  CancellationTerms,
+  CreateBookingRequest,
+} from './booking.model';
 import { BookingService } from './booking.service';
 import { freezeClock } from '../../testing/freeze-clock';
 import { BookingPay } from './booking-pay';
@@ -99,7 +104,7 @@ interface PayProbe {
 
 async function setup(
   gateway: StripePaymentGateway,
-  { prime = true }: { prime?: boolean } = {},
+  { prime = true, terms }: { prime?: boolean; terms?: CancellationTerms } = {},
 ): Promise<{
   fixture: ComponentFixture<BookingPay>;
   httpMock: HttpTestingController;
@@ -116,7 +121,7 @@ async function setup(
   const httpMock = TestBed.inject(HttpTestingController);
   if (prime) {
     // Prime the awaiting-payment hand-off exactly as a 202 booking-create would.
-    TestBed.inject(BookingService).createBooking(REQUEST).subscribe();
+    TestBed.inject(BookingService).createBooking(REQUEST, terms).subscribe();
     httpMock.expectOne(CREATE_URL).flush(AWAITING, { status: 202, statusText: 'Accepted' });
   }
   const fixture = TestBed.createComponent(BookingPay);
@@ -131,6 +136,29 @@ describe('BookingPay', () => {
 
     expect(comp.state()).toBe('missing');
     expect(gateway.mounted).toBe(false);
+  });
+
+  it('repeats the checkout-quoted terms beside the order summary (#795)', async () => {
+    const { fixture } = await setup(new FakeGateway(), {
+      terms: {
+        window: 'CLOSED',
+        freeCancellationEndsAt: '2026-11-30T17:00:00Z',
+        lateCancelRefundBps: 0,
+      },
+    });
+    const note = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="cancellation-terms-note"]',
+    );
+    expect(note?.textContent).toContain('Non-refundable last-minute booking');
+  });
+
+  it('renders no cancellation claim when the hand-off carries no terms (#795)', async () => {
+    const { fixture } = await setup(new FakeGateway());
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(
+        '[data-testid="cancellation-terms-note"]',
+      ),
+    ).toBeNull();
   });
 
   it('mounts the Payment Element and becomes ready', async () => {

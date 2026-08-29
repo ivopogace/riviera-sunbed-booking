@@ -467,6 +467,15 @@ const CLS = {
               </button>
             }
           </section>
+        } @else if (showLastMinuteNote(b)) {
+          <section class="mt-5 border-t border-riv-card-track pt-[18px]" aria-label="Cancellation">
+            <p
+              class="mx-0 my-0 text-[13.5px] leading-[1.5] text-riv-card-ink-soft"
+              data-testid="last-minute-note"
+            >
+              Non-refundable last-minute booking — it can’t be cancelled.
+            </p>
+          </section>
         }
 
         <a appTouchTarget routerLink="/" [class]="cls.linkBack">Back to home</a>
@@ -722,6 +731,17 @@ export class BookingView {
       paymentIntentId: payment.paymentIntentId,
     });
     await this.router.navigate(['/booking/pay']);
+  }
+
+  /**
+   * Whether to present the booking as a non-refundable last-minute booking (#795): CLOSED-born and
+   * still live. FREE/LATE-born bookings whose window has since closed keep rendering nothing here
+   * (parity with the old blank state); a cancelled or spent booking has nothing to disclose.
+   */
+  protected showLastMinuteNote(b: BookingDetail): boolean {
+    const live =
+      b.status === 'CONFIRMED' || b.status === 'AWAITING_PAYMENT' || b.status === 'PENDING_REQUEST';
+    return live && b.cancellationWindowAtBirth === 'CLOSED' && !this.cancellation();
   }
 
   /** Refund-terms copy for a still-cancellable booking (server-computed values, invariant #10). */

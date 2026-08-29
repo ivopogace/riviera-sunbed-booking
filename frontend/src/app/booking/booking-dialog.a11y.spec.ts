@@ -1,5 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { expectNoAxeViolations } from '../../testing/axe';
@@ -37,6 +37,15 @@ describe('BookingDialog accessibility (axe)', () => {
     fixture.componentRef.setInput('set', SET);
     fixture.componentRef.setInput('date', '2026-12-01');
     fixture.componentRef.setInput('venueName', 'Miramar Beach Club');
+    // Resolve the pre-reserve terms quote (#795): the pending httpResource would park whenStable.
+    fixture.detectChanges();
+    TestBed.inject(HttpTestingController)
+      .expectOne((req) => req.url.includes('/api/bookings/cancellation-terms'))
+      .flush({
+        window: 'FREE',
+        freeCancellationEndsAt: '2026-11-30T17:00:00Z',
+        lateCancelRefundBps: 0,
+      });
     await fixture.whenStable();
   });
 

@@ -559,6 +559,45 @@ describe('BookingView', () => {
     );
   });
 
+  it('presents a CLOSED-born booking as a non-refundable last-minute booking (#795 AC-8/AC-11)', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          cancellable: false,
+          beforeCutoff: false,
+          refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
+          cancellationWindowAtBirth: 'CLOSED',
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="last-minute-note"]')?.textContent).toContain(
+      'Non-refundable last-minute booking',
+    );
+    expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
+    expect(host.querySelector('[data-testid="refund-terms"]')).toBeNull();
+  });
+
+  it('keeps rendering nothing for an advance-born booking whose window has since closed (#795 parity)', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          cancellable: false,
+          beforeCutoff: false,
+          refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
+          cancellationWindowAtBirth: 'FREE',
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="last-minute-note"]')).toBeNull();
+    expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
+  });
+
   it('flips the chip to Cancelled and shows the refunded row after cancelling (no reload)', async () => {
     // The post-cancel reload returns the backend's CANCELLED detail (refunded amount set).
     const cancelled: BookingDetail = {

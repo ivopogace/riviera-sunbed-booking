@@ -64,6 +64,12 @@ export interface PaymentHandoff {
   readonly amount: MoneyView;
   readonly clientSecret: string;
   readonly paymentIntentId: string;
+  /**
+   * The terms quoted at checkout, riding the hand-off so the pay page repeats the disclosure
+   * without a refetch (#795). Absent on the "Pay now" rebuild from a fetched detail — the
+   * code-gated view already discloses the live truth there, and the note renders no claim.
+   */
+  readonly cancellationTerms?: CancellationTerms | null;
 }
 
 /**
@@ -154,6 +160,18 @@ export interface BookingDetail {
 
 /** The cancellation-window phases, mirroring the backend `booking.vocabulary.CancellationWindow`. */
 export type CancellationWindow = 'FREE' | 'LATE' | 'CLOSED';
+
+/**
+ * Typed view of the pre-reserve terms read (`GET /api/bookings/cancellation-terms`). Mirrors the
+ * backend `CancellationTermsView`: the window a booking created now would be born in, the
+ * free-cancellation deadline as an ISO UTC instant (rendered client-side in Europe/Tirane,
+ * invariant #6), and the venue's late share in basis points (0 outside LATE).
+ */
+export interface CancellationTerms {
+  readonly window: CancellationWindow;
+  readonly freeCancellationEndsAt: string;
+  readonly lateCancelRefundBps: number;
+}
 
 /** The open PaymentIntent of an `AWAITING_PAYMENT` booking (the "Pay now" resume path). */
 export interface BookingPayment {
