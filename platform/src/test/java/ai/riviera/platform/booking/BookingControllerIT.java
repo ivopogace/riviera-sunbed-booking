@@ -2,6 +2,7 @@ package ai.riviera.platform.booking;
 
 import java.time.LocalDate;
 
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -12,10 +13,13 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
 
 import com.jayway.jsonpath.JsonPath;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -32,7 +36,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "booking.no-show.enabled=false")
+@SpringBootTest(properties = { "riviera.operator.password=test-operator-pw",
+		"booking.no-show.enabled=false" })
 @AutoConfigureMockMvc
 class BookingControllerIT {
 
@@ -75,18 +80,26 @@ class BookingControllerIT {
 	 * minute of Tirane midnight.
 	 */
 	private long onlineSetAtSalesClose(String salesClose) {
-		long venue = jdbc.sql("""
+		long venue = boundaryVenue(salesClose);
+		long operator = jdbc.sql("INSERT INTO operator (username, status) "
+						+ "VALUES ('boundary-op-' || :v, 'ACTIVE') RETURNING id")
+				.param("v", venue).query(Long.class).single();
+		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
+				.param("v", venue).param("o", operator).update();
+		return boundaryOnlineSet(venue);
+	}
+
+	private long boundaryVenue(String salesClose) {
+		return jdbc.sql("""
 				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency, sales_close)
 				VALUES (:name, 'Boundary Beach', 'Boundary Region', 'INSTANT', 1500, 'EUR', TIME '%s')
 				RETURNING id
 				""".formatted(salesClose))
 				.param("name", "Boundary Club " + salesClose)
 				.query(Long.class).single();
-		long operator = jdbc.sql("INSERT INTO operator (username, status) "
-						+ "VALUES ('boundary-op-' || :v, 'ACTIVE') RETURNING id")
-				.param("v", venue).query(Long.class).single();
-		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:v, :o)")
-				.param("v", venue).param("o", operator).update();
+	}
+
+	private long boundaryOnlineSet(long venue) {
 		return jdbc.sql("""
 				INSERT INTO set_position (venue_id, row_label, position_no, tier, pool, price_minor,
 				                          price_currency, grid_x, grid_y)
@@ -95,6 +108,30 @@ class BookingControllerIT {
 				""")
 				.param("venue", venue)
 				.query(Long.class).single();
+	}
+
+	/**
+	 * A boundary venue owned by the seeded {@code operator} login (instead of a throwaway row), so
+	 * the #794 tests can drive the owner's real profile {@code PATCH} through the edge before a
+	 * tourist reserve. Fresh row ⇒ profile {@code version} 0.
+	 */
+	private long boundaryVenueOwnedBySeededOperator(String salesClose) {
+		long venue = boundaryVenue(salesClose);
+		jdbc.sql("""
+				INSERT INTO operator_venue (venue_id, operator_id)
+				SELECT :v, id FROM operator WHERE username = 'operator'
+				""")
+				.param("v", venue).update();
+		return venue;
+	}
+
+	/** The owner's full-replace PATCH body flipping only {@code salesClose} (#794 AC-4/AC-5). */
+	private static String closeSalesBody(String salesClose) {
+		return """
+				{"name":"Boundary Club","beach":"Boundary Beach","region":"Boundary Region",
+				 "description":null,"bookingMode":"INSTANT","bookingCutoff":"18:00",
+				 "salesClose":"%s","amenities":[],"distanceToWaterM":null,"expectedVersion":0}
+				""".formatted(salesClose);
 	}
 
 	@Test
@@ -159,6 +196,43 @@ class BookingControllerIT {
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
 				.andExpect(jsonPath("$.code").value("BOOKING_CLOSED"));
+	}
+
+	@Test
+	void reserveRefusedAfterOwnerClosesSalesForToday() throws Exception {
+		// AC-4 (#794): the owner's PATCH to 00:01 refuses the very next reserve for today (R-5 trick).
+		long venue = boundaryVenueOwnedBySeededOperator("23:59");
+		long set = boundaryOnlineSet(venue);
+		Cookie owner = SessionLoginSupport.operatorSession(mvc, "operator", "test-operator-pw");
+
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(owner).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(closeSalesBody("00:01")))
+				.andExpect(status().isNoContent());
+
+		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+						.content(body(set, today())))
+				.andExpect(status().isUnprocessableEntity())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("BOOKING_CLOSED"));
+	}
+
+	@Test
+	void reserveSucceedsAfterOwnerReopensSalesForToday() throws Exception {
+		// AC-5 (#794): a venue closed for today (00:01 stands in for a lapsed 16:00) re-opens at once.
+		long venue = boundaryVenueOwnedBySeededOperator("00:01");
+		long set = boundaryOnlineSet(venue);
+		Cookie owner = SessionLoginSupport.operatorSession(mvc, "operator", "test-operator-pw");
+
+		mvc.perform(patch("/api/venues/{v}", venue).cookie(owner).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(closeSalesBody("23:59")))
+				.andExpect(status().isNoContent());
+
+		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+						.content(body(set, today())))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.status").value("CONFIRMED"));
 	}
 
 	@Test

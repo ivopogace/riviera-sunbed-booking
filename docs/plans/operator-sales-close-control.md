@@ -61,8 +61,9 @@ Forms preferred; `search_documentation` confirmed `FormValueControl` lets
 `min-h-11` = 44px and built-in `aria-*` variants; no new tokens, no SCSS) ·
 `playwright-cli` (mocked-suite authoring; stateful `page.route` mock pattern).
 
-**Branch:** `claude/sdlc-794-plan-review-jh1h77` — the session's designated remote branch
-stands in for `feature/operator-sales-close-control` (riviera-sdlc cloud addendum).
+**Branch:** `claude/sdlc-794-implement-lbvxb6` (implement session, started from
+`claude/sdlc-794-plan-review-jh1h77`) — the session's designated remote branch stands in
+for `feature/operator-sales-close-control` (riviera-sdlc cloud addendum).
 
 ---
 
@@ -285,14 +286,15 @@ tokens).
 > **This section is the session-recovery anchor** — see the template blockquote; update in
 > the same commit window as the change it records.
 
-**Stage pointer:** `plan complete — stopped after plan by request (session 2026-08-28)`
+**Stage pointer:** `implement — phase 0 done (session 2026-08-29); phase 1 next`
 
-**Next action:** implement phase 0 test-first (`tdd`): re-run the Skill-routing gate for
-the backend area, then write `patchUpdatesSalesClose` failing.
+**Next action:** phase 1 test-first (`tdd`): run the Skill-routing gate for the frontend
+area (riviera-frontend, angular-developer + angular-cli MCP, riviera-tailwind,
+playwright-cli), then write the venue-tab save-body spec failing.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Backend write path (PATCH + create + vocabulary) | | |
+| 0 — Backend write path (PATCH + create + vocabulary) | ✅ | "Make the sales-close setting venue-editable via profile PATCH and create (#794)" |
 | 1 — Settings tab control + cutoff relabel | | |
 | 2 — Daily-view kill switch | | |
 | 3 — Docs + close-out (RESPONSIBILITIES.md, freshness run, self-review) | | |
@@ -303,6 +305,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | impl (phase 0) | AC-5's step-4 note said "mocked clock mid-afternoon"; `BookingControllerIT` has no fixed-clock context, so the test uses the file's own R-5 boundary trick instead (00:01 stands in for a lapsed 16:00, re-opened to 23:59) — deterministic except within a minute of Tirane midnight, same residual as the #791 tests | closed (deviation recorded) |
+| F-2 | impl (phase 0) | `patchIgnoresReadOnlyCommissionAndCurrency` kept its commission pin but its raw body needed the now-required `salesClose` field (R-4's "stays" meant the asymmetry, not the byte-identical body) | closed |
+| F-3 | impl (phase 0) | `BookingControllerIT` gained `riviera.operator.password=test-operator-pw` for the owner PATCH; the property pair matches `CheckInFlowIT`/`StaffBookingControllerIT` exactly, so it joins their cached Spring context rather than forking a new one | closed |
 
 ---
 
@@ -343,7 +348,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `SalesCloseTest.java`, `VenueAdminControllerIT.java`, `VenueProfileCommandTest.java`,
 `BookingControllerIT.java`
 
-- [ ] **Step 1: Write the failing tests** — invert #791's pin and add the new edge cases:
+- [x] **Step 1: Write the failing tests** — invert #791's pin and add the new edge cases:
 
 ```java
 @Test
@@ -385,9 +390,9 @@ void theThreeChoicesMirrorTheV44CheckTokens() {
 
 (`profileBody` gains a `salesClose` parameter — thread it through every existing call site.)
 
-- [ ] **Step 2: Run, verify FAIL** — `./gradlew test --tests "*VenueAdminControllerIT*" --tests "*VenueProfileCommandTest*"` (load `riviera-local-debug` first; Docker ITs skip cleanly without a daemon — run what the sandbox allows and lean on CI for the rest, honestly noted in the commit).
+- [x] **Step 2: Run, verify FAIL** — `./gradlew test --tests "*VenueAdminControllerIT*" --tests "*VenueProfileCommandTest*"` (load `riviera-local-debug` first; Docker ITs skip cleanly without a daemon — run what the sandbox allows and lean on CI for the rest, honestly noted in the commit).
 
-- [ ] **Step 3: Minimal implementation** — the domain type (see *Domain model* above):
+- [x] **Step 3: Minimal implementation** — the domain type (see *Domain model* above):
 
 ```java
 /** The venue's sales-close choice — invariant #4; times mirror venue_sales_close_check (V44). */
@@ -417,22 +422,22 @@ clause gains `sales_close = :salesClose` bound from `command.salesClose().time()
 Javadoc sentences on `VenueProfileView` / `VenueProfileResponse` are updated (the read
 model keeps `LocalTime` — it only displays).
 
-- [ ] **Step 4: Run, verify PASS** — same scoped commands; then the cross-module ITs
+- [x] **Step 4: Run, verify PASS** — same scoped commands; then the cross-module ITs
   (`BookingControllerIT.reserveRefusedAfterOwnerClosesSalesForToday` /
   `reserveSucceedsAfterOwnerReopensSalesForToday`: owner PATCH via the edge, tourist
   reserve today via the edge, mocked clock mid-afternoon).
 
-- [ ] **Step 5: Generalization-audit pass** — population: *every write statement that
+- [x] **Step 5: Generalization-audit pass** — population: *every write statement that
   persists `venue` profile columns* → enumerate
   `git grep -n "UPDATE venue\|INSERT INTO venue\b" platform/src/main` → confirm exactly
   the two statements in `JdbcVenues` carry the column and no other writer exists. Append
   to the log.
 
-- [ ] **Step 6: Structural net** — `./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` (backend structure touched, even without new packages).
+- [x] **Step 6: Structural net** — `./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` (backend structure touched, even without new packages).
 
-- [ ] **Step 7: Commit** — `Make the sales-close setting venue-editable via profile PATCH and create (#794)` — and open the **draft PR** (CI fires on `pull_request` only).
+- [x] **Step 7: Commit** — `Make the sales-close setting venue-editable via profile PATCH and create (#794)` — and open the **draft PR** (CI fires on `pull_request` only).
 
-- [ ] **Step 8: Update plan-doc execution status** in the same commit window.
+- [x] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ---
 

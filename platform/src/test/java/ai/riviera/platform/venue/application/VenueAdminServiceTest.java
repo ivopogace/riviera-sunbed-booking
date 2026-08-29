@@ -24,6 +24,7 @@ import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.spi.BookingPresence;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
+import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -96,7 +97,7 @@ class VenueAdminServiceTest {
 	void onboardReturnsTheInsertedVenueId() {
 		venues.nextVenueId = 99;
 		NewVenueCommand command = new NewVenueCommand("Sunset", "Ksamil", "Riviera", "nice",
-				"INSTANT", "EUR", LocalTime.of(18, 0));
+				"INSTANT", "EUR", LocalTime.of(18, 0), null);
 
 		// Creator-owns-on-create writes ownership too; the ownership write + non-owner denial is
 		// proven end-to-end by CrossVenueDenialIT.creatorOwnsCreatedVenueAndOthersAreDenied.
@@ -110,7 +111,7 @@ class VenueAdminServiceTest {
 		OnboardVenueService configured = new OnboardVenueService(venues,
 				new FakeOwnership(OWNER, VENUE), new VenueCreationProperties(700));
 		NewVenueCommand command = new NewVenueCommand("Sunset", "Ksamil", "Riviera", "nice",
-				"INSTANT", "EUR", LocalTime.of(18, 0));
+				"INSTANT", "EUR", LocalTime.of(18, 0), null);
 
 		configured.onboard(OWNER, command);
 
@@ -397,7 +398,7 @@ class VenueAdminServiceTest {
 	/** A valid widened profile command with the given amenities + distance; core fields fixed. */
 	private static VenueProfileCommand profile(Set<Amenity> amenities, Integer distanceToWaterM) {
 		return new VenueProfileCommand("Sunset", "Ksamil", "Riviera", "nice", "INSTANT",
-				LocalTime.of(18, 0), amenities, distanceToWaterM);
+				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, amenities, distanceToWaterM);
 	}
 
 	@Test
