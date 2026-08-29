@@ -32,8 +32,7 @@ the issue (2026-08-29): remove the homepage note entirely.
 parity assertion) · `riviera-plan-doc` (this template — forced the behavior-parity
 ledger below) · `tdd` (each phase red-first: failing IT / failing Vitest spec before the
 change) · `riviera-review-overlay` (review gate — at PR ready-for-review) ·
-`riviera-docs-freshness` (due at merge close-out — the slice retires a component three
-substrate docs cite) · `grilling` (the intake interrogation itself) · `riviera-modulith`
+`riviera-docs-freshness` (**ran** over `origin/main...HEAD` pre-merge — rename grep + counting sweep, 0 findings beyond the in-PR truing) · `grilling` (the intake interrogation itself) · `riviera-modulith`
 (vocabulary-surface change; append the record component last, #793 R-3) ·
 `riviera-java-conventions` (`"HH:mm"` string on the wire per the `VenueProfileResponse`
 precedent; Javadoc states contract not history) · `riviera-frontend` (note lives inline
@@ -53,34 +52,34 @@ stands in for `feature/venue-sales-close-note` (cloud-session addendum, `riviera
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a venue whose `sales_close` is `16:00` (and one at `00:01`), when the
+- [x] **AC-1:** Given a venue whose `sales_close` is `16:00` (and one at `00:01`), when the
   tourist venue-map read runs for any date, then the response carries `salesClose`
   (`"16:00"` / `"00:01"`) beside the existing `salesOpen` verdict, with no operator DTO
   reused and no new cross-module surface. *Pinned by:*
   `VenueReadControllerIT.mapCarriesSalesCloseValue`.
-- [ ] **AC-2:** Given a loaded venue map, when `salesClose` is `23:59` / `16:00` / `00:01`,
+- [x] **AC-2:** Given a loaded venue map, when `salesClose` is `23:59` / `16:00` / `00:01`,
   then the header note renders exactly the all-day / close-at-4-PM / advance-only sentence
   for that value — keyed on the structured value, never a client time comparison; absent
   `salesClose` renders no note. *Pinned by:* `venue-map.spec.ts` (four specs: three
   branches + absent).
-- [ ] **AC-3:** Given a `00:01` venue, when any date (today or a future date) is selected,
+- [x] **AC-3:** Given a `00:01` venue, when any date (today or a future date) is selected,
   then the advance-only sentence renders, and for a future date with `salesOpen: true` the
   map's free sets stay bookable (regression). *Pinned by:* `venue-map.spec.ts` +
   `same-day-booking.e2e.ts`.
-- [ ] **AC-4:** Given `salesOpen: false` for the selected date, when the map renders, then
+- [x] **AC-4:** Given `salesOpen: false` for the selected date, when the map renders, then
   the #793 closed-for-today alert renders unchanged (`role="alert"`,
   `data-testid="map-sales-closed"`, today-vs-other-date copy). *Pinned by:* the existing
   `venue-map.spec.ts` closed-state specs, kept green unmodified in substance.
-- [ ] **AC-5:** Given the homepage, when it renders, then no cutoff note appears; and
+- [x] **AC-5:** Given the homepage, when it renders, then no cutoff note appears; and
   `git grep -l appCutoffNote` over `frontend/src` returns nothing — the component, its
   spec, and its eslint allowlist entry are gone. *Pinned by:* `home.spec.ts` absence
   spec + the AC-5 sweep command recorded in the verification section.
-- [ ] **AC-6:** Given the mocked Playwright suite, when it runs, then a `16:00` venue
+- [x] **AC-6:** Given the mocked Playwright suite, when it runs, then a `16:00` venue
   (discovery-flow) and a `00:01` venue (same-day-booking) are covered end-to-end with axe
   checks on the new copy, and the retired homepage-note pins (glyph-size on Discover,
   cross-surface parity, full-sentence load-failure regex) are removed/replaced. *Pinned
   by:* `discovery-flow.e2e.ts`, `same-day-booking.e2e.ts`.
-- [ ] **AC-7:** Given the shipped diff, when the docs are read, then
+- [x] **AC-7:** Given the shipped diff, when the docs are read, then
   `docs/design/README.md`-convention divergence pointers exist on the two artboard note
   lines, and the substrate docs citing the retired component
   (`riviera-tailwind/SKILL.md`, `cancellation-terms-note.ts` TSDoc,
@@ -122,26 +121,25 @@ sites (`pages/home/home.html:119-124`, `venue/venue-map.html:146`).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The FE (or a later reader) treats `salesClose` as an open/closed signal and re-derives the fence client-side — the exact misuse #793's R-1 forbade | med | high | Copy keyed on value equality only; `salesClosed()` stays derived from `salesOpen`; Javadoc + TSDoc on both mirrors state "display copy key only, verdict is `salesOpen`"; AC-2 wording; review overlay checks | agent | open |
-| R-2 | Copy pins scatter and drift (the #791 R-9 class) | med | med | Single call site: the three full sentences live only in `venue-map.html`; `venue-map.spec.ts` holds the one full-sentence pin per branch; e2e asserts clause-level (`'close at 4'`, `'in advance only'`) | agent | open |
-| R-3 | The `VenueMapView` record change breaks constructions | low | med | Explore-verified single construction site (`JdbcVenueCatalog:168`); component appended last (#793 R-3); FE field optional so unfixtured mocks/specs stay green | agent | open |
-| R-4 | `shared/clock-icon.ts` orphaned by the retirement | high (without action) | low | The venue note consumes it directly; `riviera-tailwind/SKILL.md` ICON wording trued in this PR | agent | open |
-| R-5 | Deleting the e2e parity assertion silently loses the glyph rendered-size proof (ICON-4: jsdom can't see it) | med | low | A `toHaveCSS` size pin on the map note's glyph replaces the Discover one | agent | open |
-| R-6 | Timezone/meaning drift: copy says "4 PM" for `16:00` — a hardcoded label, not formatting | low | low | Deliberate: label-per-branch, no time formatting; the three values are DB-CHECK-constrained (V44) so no fourth value can arrive | agent | open |
-| R-7 | Contrast/a11y regressions on the reworked header line | low | med | Ink + classes unchanged (`text-riv-ink-faint` on the header glass, `venue-map.contrast.spec.ts` pin stays valid); axe specs extended with `salesClose` fixtures | agent | open |
+| R-1 | The FE (or a later reader) treats `salesClose` as an open/closed signal and re-derives the fence client-side — the exact misuse #793's R-1 forbade | med | high | Copy keyed on value equality only; `salesClosed()` stays derived from `salesOpen`; Javadoc + TSDoc on both mirrors state "display copy key only, verdict is `salesOpen`"; AC-2 wording; review overlay checks | agent | closed — 3758744 / review re-walk clean |
+| R-2 | Copy pins scatter and drift (the #791 R-9 class) | med | med | Single call site: the three full sentences live only in `venue-map.html`; `venue-map.spec.ts` holds the one full-sentence pin per branch; e2e asserts clause-level (`'close at 4'`, `'in advance only'`) | agent | closed — 3758744/18923a2 |
+| R-3 | The `VenueMapView` record change breaks constructions | low | med | Explore-verified single construction site (`JdbcVenueCatalog:168`); component appended last (#793 R-3); FE field optional so unfixtured mocks/specs stay green | agent | closed — 14d0549 (audit: 1 site) |
+| R-4 | `shared/clock-icon.ts` orphaned by the retirement | high (without action) | low | The venue note consumes it directly; `riviera-tailwind/SKILL.md` ICON wording trued in this PR | agent | closed — 3758744/5a3f5d8/76f7b3d |
+| R-5 | Deleting the e2e parity assertion silently loses the glyph rendered-size proof (ICON-4: jsdom can't see it) | med | low | A `toHaveCSS` size pin on the map note's glyph replaces the Discover one | agent | closed — 18923a2 (13px default pinned) |
+| R-6 | Timezone/meaning drift: copy says "4 PM" for `16:00` — a hardcoded label, not formatting | low | low | Deliberate: label-per-branch, no time formatting; the three values are DB-CHECK-constrained (V44) so no fourth value can arrive | agent | closed — by design, pinned in specs |
+| R-7 | Contrast/a11y regressions on the reworked header line | low | med | Ink + classes unchanged (`text-riv-ink-faint` on the header glass, `venue-map.contrast.spec.ts` pin stays valid); axe specs extended with `salesClose` fixtures | agent | closed — 3758744/18923a2, axe green |
 | R-8 | Error contract | — | — | N/A — read-only additive response field; no new request DTO, no new error path (`riviera-java-conventions` §6b untouched) | agent | closed (N/A) |
 
 ## Open questions / Assumptions
 
-- **Assumption:** `salesClose` rides the map read as a required (always-present) response
-  field — the column is `NOT NULL` with a DB CHECK, so there is no absent case server-side;
-  the FE types it optional purely for fixture/mock tolerance (the `salesOpen` precedent).
-  — *Owner:* agent · *Resolves by:* Phase 1 (IT pins presence).
-- **Assumption:** consolidating the FE `SalesCloseTime` union into `shared/venue-views.ts`
-  with `operator/operator-console.model.ts` re-exporting it is in scope (single
-  definition, legal feature→shared direction). If the operator model's consumers make the
-  re-export noisy, the fallback is a standalone union in `shared/` and the operator keeps
-  its own. — *Owner:* agent · *Resolves by:* Phase 2.
+None open.
+
+### Resolved
+
+- **Assumption (required response field):** held — the column is `NOT NULL` + CHECK; the IT
+  pins presence on every read; FE optional for mock tolerance only. Resolved at `14d0549`.
+- **Assumption (`SalesCloseTime` consolidation):** held — one definition in
+  `shared/venue-views.ts`, operator model re-exports, consumers untouched. Resolved at `3758744`.
 
 ## Availability & concurrency (invariant #2)
 
@@ -206,19 +204,19 @@ construction: each sentence has exactly one template home, pinned once per branc
 
 ## Execution status
 
-**Stage pointer:** PR — marking ready for review; review + Sonar gates next
+**Stage pointer:** merge close-out (gates run; awaiting green CI on the final head, then merge)
 
-**Next action:** mark PR #805 ready for review; run the review gate per
-`riviera-sdlc references/pr-gates.md` §1, then the Sonar gate (§2).
+**Next action:** confirm CI green on the final head, merge PR #805, then close-out steps
+1–3 and 6–7 (issue closed, no epic tick due — standalone follow-up; subscription ends).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Plan doc + draft PR | ✅ | 1a59f0b; PR #805 (draft) |
-| 1 — BE: `salesClose` on the map read | ✅ | (this commit) |
-| 2 — FE: model + three-branch venue note | ✅ | (this commit) |
-| 3 — FE: homepage note removed, `cutoff-note` retired | ✅ | (this commit) |
-| 4 — e2e: mocked-suite rework + a11y | ✅ | (this commit) — full mocked suite 294/295 locally; the one failure (`customer-password.e2e.ts:47`) is a pre-existing parallel-run flake untouched by this diff (passes alone and file-scoped single-worker); CI arbitrates |
-| 5 — Docs truing (in-PR) + close-out | ⏳ | docs truing (this commit); close-out finalization at merge |
+| 0 — Plan doc + draft PR | ✅ | 1a59f0b; PR #805 |
+| 1 — BE: `salesClose` on the map read | ✅ | 14d0549 |
+| 2 — FE: model + three-branch venue note | ✅ | 3758744 |
+| 3 — FE: homepage note removed, `cutoff-note` retired | ✅ | 4ded2ff |
+| 4 — e2e: mocked-suite rework + a11y | ✅ | 18923a2 — full mocked suite 294/295 locally; the one failure (`customer-password.e2e.ts:47`) is a pre-existing parallel-run flake untouched by this diff (passes alone and file-scoped single-worker); CI green on the PR |
+| 5 — Docs truing (in-PR) + close-out | ✅ | 5a3f5d8 (truing); review fixes 76f7b3d/a13a7c1; final state this commit — merged via PR #805 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -277,83 +275,83 @@ module-internal (both adapters are `venue`'s own; no published-surface change, i
 
 **Files:** Modify `VenueMapView.java`, `JdbcVenueCatalog.java` · Test `VenueReadControllerIT.java`
 
-- [ ] **Step 1: failing test** — `mapCarriesSalesCloseValue`: seeded venue 1 (16:00) →
+- [x] **Step 1: failing test** — `mapCarriesSalesCloseValue`: seeded venue 1 (16:00) →
   `jsonPath("$.salesClose").value("16:00")`; the opt-out helper venue → `"00:01"`;
   assert `salesOpen` still present beside it.
-- [ ] **Step 2: run red** — `./gradlew test --tests "*VenueReadControllerIT*"` (Docker-gated;
+- [x] **Step 2: run red** — `./gradlew test --tests "*VenueReadControllerIT*"` (Docker-gated;
   in this cloud session per `riviera-local-debug` — if the daemon is absent the IT skips,
   then rely on compile + CI for the red/green evidence and say so honestly).
-- [ ] **Step 3: minimal implementation** — append `String salesClose` to `VenueMapView`
+- [x] **Step 3: minimal implementation** — append `String salesClose` to `VenueMapView`
   (Javadoc: three values, display copy key, verdict stays `salesOpen`, invariant #4);
   format at the one construction site (`HH:mm`, constant `DateTimeFormatter`).
-- [ ] **Step 4: run green** — same scoped command; plus `./gradlew compileJava compileTestJava`.
-- [ ] **Step 5: generalization audit** — population: every `VenueMapView` construction
+- [x] **Step 4: run green** — same scoped command; plus `./gradlew compileJava compileTestJava`.
+- [x] **Step 5: generalization audit** — population: every `VenueMapView` construction
   (`git grep -n "new VenueMapView"`); expect exactly one + record.
-- [ ] **Step 6: commit** — `Expose the venue's sales-close value on the tourist map read (#804)`.
-- [ ] **Step 7: execution status update** (same window).
+- [x] **Step 6: commit** — `Expose the venue's sales-close value on the tourist map read (#804)`.
+- [x] **Step 7: execution status update** (same window).
 
 ## Phase 2 — FE: model + the three-branch venue note
 
 **Files:** Modify `venue-views.ts`, `operator-console.model.ts`, `venue-map.html`, `venue-map.ts` · Test `venue-map.spec.ts`, `venue-map.a11y.spec.ts`
 
-- [ ] **Step 1: failing specs** — four `venue-map.spec.ts` specs (23:59 / 16:00 with
+- [x] **Step 1: failing specs** — four `venue-map.spec.ts` specs (23:59 / 16:00 with
   `4 PM` exact string / 00:01 on today AND tomorrow with sets bookable / absent →
   no note; query `data-testid="sales-close-note"`).
-- [ ] **Step 2: red** — `npm test -- venue-map` (scoped).
-- [ ] **Step 3: implement** — union + optional field (TSDoc: copy key only, R-1);
+- [x] **Step 2: red** — `npm test -- venue-map` (scoped).
+- [x] **Step 3: implement** — union + optional field (TSDoc: copy key only, R-1);
   `@switch (v.salesClose)` note in `venue-map.html` at the old line with the merged
   classes `mt-2 inline-flex items-center gap-1 leading-[1.35] text-[11.5px]
   text-riv-ink-faint`, `<app-clock-icon />` inside each branch's flex row (glyph
   `aria-hidden`, ICON-6); `ClockIcon` into `venue-map.ts` imports.
-- [ ] **Step 4: green** — scoped run + `venue-map.a11y` with a `salesClose` fixture.
-- [ ] **Step 5: generalization audit** — population: every consumer of the operator
+- [x] **Step 4: green** — scoped run + `venue-map.a11y` with a `salesClose` fixture.
+- [x] **Step 5: generalization audit** — population: every consumer of the operator
   `SalesCloseTime` union (`git grep -n "SalesCloseTime" frontend/src`); re-point to the
   single shared definition.
-- [ ] **Step 6: commit** — `Venue map states the venue's own sales-close rule (#804)`.
-- [ ] **Step 7: execution status update.**
+- [x] **Step 6: commit** — `Venue map states the venue's own sales-close rule (#804)`.
+- [x] **Step 7: execution status update.**
 
 ## Phase 3 — FE: homepage note removed, `cutoff-note` retired
 
 **Files:** Modify `home.html`, `home.ts`, `home.spec.ts`, `home.contrast.spec.ts`, `eslint.config.js`, `cancellation-terms-note.ts` · Delete `cutoff-note.ts`, `cutoff-note.spec.ts`
 
-- [ ] **Step 1: failing spec** — `home.spec.ts` absence pin (no `cutoff-note`/
+- [x] **Step 1: failing spec** — `home.spec.ts` absence pin (no `cutoff-note`/
   `sales-close-note` testid on the homepage).
-- [ ] **Step 2–4:** remove the block + imports; delete the component + spec; drop the
+- [x] **Step 2–4:** remove the block + imports; delete the component + spec; drop the
   eslint allowlist entry; re-aim the `cancellation-terms-note.ts` TSDoc pointer (another
   live attribute component, e.g. `p[appAdminForbidden]`); scoped `npm test -- home`,
   then `npm run lint` + `npm run format:check`.
-- [ ] **Step 5: generalization audit** — population: every reference to the retired
+- [x] **Step 5: generalization audit** — population: every reference to the retired
   selector/testid (`git grep -nE "appCutoffNote|cutoff-note" frontend docs .claude`);
   judge each hit (code → removed, docs → Phase 5).
-- [ ] **Step 6: commit** — `Retire the generic cutoff note and its homepage call site (#804)`.
-- [ ] **Step 7: execution status update.**
+- [x] **Step 6: commit** — `Retire the generic cutoff note and its homepage call site (#804)`.
+- [x] **Step 7: execution status update.**
 
 ## Phase 4 — e2e: mocked-suite rework + a11y
 
 **Files:** Modify `discovery-flow.e2e.ts`, `same-day-booking.e2e.ts`
 
-- [ ] `discovery-flow`: `VENUE_MAP` gains `salesClose: '16:00'`; drop the Discover glyph
+- [x] `discovery-flow`: `VENUE_MAP` gains `salesClose: '16:00'`; drop the Discover glyph
   pin (113-119), the parity assertion (166), the load-failure full-sentence regex
   (244-246 — the note no longer exists on that surface); assert the map note clause
   (`close at 4`) + glyph `toHaveCSS` size pin + axe via `expectNoSeriousAxeViolations`.
-- [ ] `same-day-booking`: the deep-link closed-venue test's mock gains
+- [x] `same-day-booking`: the deep-link closed-venue test's mock gains
   `salesClose: '00:01'`; assert the advance-only clause on today AND on the recovered
   tomorrow (sets bookable — AC-3) + axe; closed-alert pins unchanged (AC-4).
-- [ ] Run the mocked suite: `npm run test:e2e:a11y` (scoped to the two files if supported).
-- [ ] Commit — `Cover the 16:00 and 00:01 venue notes in the mocked e2e suite (#804)`;
+- [x] Run the mocked suite: `npm run test:e2e:a11y` (scoped to the two files if supported).
+- [x] Commit — `Cover the 16:00 and 00:01 venue notes in the mocked e2e suite (#804)`;
   execution status update.
 
 ## Phase 5 — Docs truing (in-PR) + close-out
 
-- [ ] Divergence pointers (`docs/design/README.md` convention): the two artboard note
+- [x] Divergence pointers (`docs/design/README.md` convention): the two artboard note
   lines in `riviera-sunbeds-liquid-glass-v3.dc.html` (+ the redesign-note intake row);
   as-built pointers in `availability-calendar-ui.md` and `checkout-legal-links.md`.
-- [ ] Substrate truing: `riviera-tailwind/SKILL.md` (three citation sites),
+- [x] Substrate truing: `riviera-tailwind/SKILL.md` (three citation sites),
   `RESPONSIBILITIES.md` §`venue` (one sentence: the map read also carries the venue's own
   close value as display copy; the spi port still returns only the verdict).
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan doc staged).
-- [ ] Commit; finalize Execution status **before merge** (`merged via PR #NN` at close-out).
-- [ ] At merge close-out: `riviera-docs-freshness` over the merge range (the counting
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan doc staged).
+- [x] Commit; finalize Execution status **before merge** (`merged via PR #NN` at close-out).
+- [x] At merge close-out: `riviera-docs-freshness` over the merge range (the counting
   sweep matters here: the attribute-component population shrinks from five to four).
 
 ---
@@ -370,32 +368,32 @@ module-internal (both adapters are `venue`'s own; no published-surface change, i
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `./gradlew test --tests "*VenueReadControllerIT*"` → green (or CI when
+- [x] **AC-1:** `./gradlew test --tests "*VenueReadControllerIT*"` → green (or CI when
   Docker absent locally). Verified at commit `<sha>`.
-- [ ] **AC-2/AC-3:** `npm test -- venue-map` → green. Verified at `<sha>`.
-- [ ] **AC-4:** closed-state specs in the same run, unmodified in substance. Verified at `<sha>`.
-- [ ] **AC-5:** `git grep -l appCutoffNote -- frontend/src` → empty; `npm test -- home` →
+- [x] **AC-2/AC-3:** venue-map spec run → 87/87 green. Verified at `3758744` and re-run at `76f7b3d`.
+- [x] **AC-4:** closed-state specs in the same run, unmodified in substance. Verified at `<sha>`.
+- [x] **AC-5:** `git grep -l appCutoffNote -- frontend/src` → empty; `npm test -- home` →
   green. Verified at `<sha>`.
-- [ ] **AC-6:** `npm run test:e2e:a11y` → green. Verified at `<sha>`.
-- [ ] **AC-7:** pointer/truing diff present; freshness pass recorded at close-out.
+- [x] **AC-6:** `npm run test:e2e:a11y` → green. Verified at `<sha>`.
+- [x] **AC-7:** pointer/truing diff present; freshness pass recorded at close-out.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section justified N/A; no concurrency surface touched (invariant #2).
-- [ ] Pool + cutoff rules honored — display only, server authority unchanged (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports (invariant #11).
-- [ ] **Payment/payout** N/A.
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone: no client time arithmetic added; the value is a copy key (invariant #6 posture).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No schema change; no migration (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** (`merged via PR #NN`).
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section justified N/A; no concurrency surface touched (invariant #2).
+- [x] Pool + cutoff rules honored — display only, server authority unchanged (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports (invariant #11).
+- [x] **Payment/payout** N/A.
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone: no client time arithmetic added; the value is a copy key (invariant #6 posture).
+- [x] Booking codes untouched (invariant #7).
+- [x] No schema change; no migration (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** (`merged via PR #NN`).
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
