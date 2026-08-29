@@ -1,5 +1,7 @@
 package ai.riviera.platform.booking.domain;
 
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+
 /**
  * The server-side cancellation refund policy (invariant #10). Pure integer arithmetic, no Spring —
  * the refund decision lives with the rule it encodes, unit-testable in isolation (mirrors the

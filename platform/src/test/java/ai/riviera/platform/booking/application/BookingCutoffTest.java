@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking.application;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -8,7 +9,7 @@ import java.time.ZonedDateTime;
 
 import org.junit.jupiter.api.Test;
 
-import ai.riviera.platform.booking.domain.CancellationWindow;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -153,6 +154,33 @@ class BookingCutoffTest {
 		LocalDate dstShoulder = LocalDate.of(2026, 10, 25);
 		assertEquals(ZonedDateTime.of(2026, 10, 25, 16, 0, 0, 0, TIRANE).toInstant(),
 				cutoff.salesCloseAt(LocalTime.of(16, 0), dstShoulder));
+	}
+
+	@Test
+	void classifiesWindowAtACallerSuppliedInstant() {
+		// The clock reads a July instant; classification follows the supplied August birth instant.
+		BookingCutoff cutoff = at(ZonedDateTime.of(2026, 7, 1, 9, 0, 0, 0, TIRANE));
+		Instant bornSameDay = ZonedDateTime.of(2026, 8, 30, 9, 0, 0, 0, TIRANE).toInstant();
+		assertEquals(CancellationWindow.CLOSED,
+				cutoff.cancellationWindow(CUTOFF, LocalDate.of(2026, 8, 30), bornSameDay));
+		Instant bornLateEvening = ZonedDateTime.of(2026, 8, 29, 21, 0, 0, 0, TIRANE).toInstant();
+		assertEquals(CancellationWindow.LATE,
+				cutoff.cancellationWindow(CUTOFF, LocalDate.of(2026, 8, 30), bornLateEvening));
+		Instant bornWellAhead = ZonedDateTime.of(2026, 8, 28, 12, 0, 0, 0, TIRANE).toInstant();
+		assertEquals(CancellationWindow.FREE,
+				cutoff.cancellationWindow(CUTOFF, LocalDate.of(2026, 8, 30), bornWellAhead));
+	}
+
+	@Test
+	void boundaryInstantsAreLeftClosed() {
+		// Domain-model S-3: exactly AT the deadline is already LATE; exactly AT 00:00 on D is CLOSED.
+		BookingCutoff cutoff = at(ZonedDateTime.of(2026, 7, 1, 9, 0, 0, 0, TIRANE));
+		Instant atDeadline = ZonedDateTime.of(2026, 8, 29, 18, 0, 0, 0, TIRANE).toInstant();
+		assertEquals(CancellationWindow.LATE,
+				cutoff.cancellationWindow(CUTOFF, LocalDate.of(2026, 8, 30), atDeadline));
+		Instant atDayOpen = ZonedDateTime.of(2026, 8, 30, 0, 0, 0, 0, TIRANE).toInstant();
+		assertEquals(CancellationWindow.CLOSED,
+				cutoff.cancellationWindow(CUTOFF, LocalDate.of(2026, 8, 30), atDayOpen));
 	}
 
 	@Test

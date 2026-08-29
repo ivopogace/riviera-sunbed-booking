@@ -27,11 +27,14 @@ typed ids and value data only — never aggregate objects** (invariant #11):
 ```java
 // ai.riviera.platform.booking.events  (@NamedInterface("events"))
 public record BookingConfirmed(BookingId bookingId, VenueId venueId, SetId setId,
-		LocalDate bookingDate, long amountMinor, String currency) {}
+		LocalDate bookingDate, long amountMinor, String currency,
+		CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps) {}
 ```
 
 Note what the real payload carries: typed ids plus the **immutable value facts** of the booking
-(gross amount, currency). What it deliberately does *not* carry is mutable configuration — the
+(gross amount, currency, and since #795 the cancellation window and late-cancel share captured at
+birth — facts fixed at the moment, for the mail disclosure). What it deliberately does *not* carry
+is mutable configuration — the
 commission rate is re-read from `venue::api` by the listener, because the rate can change while the
 event sits in the registry.
 
@@ -55,7 +58,8 @@ using `ApplicationEventPublisher`, **after** the aggregate reaches its new state
 after the claim/persist succeed within the same transaction that the registry will tie delivery to).
 
 ```java
-publisher.publishEvent(new BookingConfirmed(bookingId, venueId, setId, bookingDate, amountMinor, currency));
+publisher.publishEvent(new BookingConfirmed(bookingId, venueId, setId, bookingDate, amountMinor,
+		currency, windowAtBirth, lateCancelRefundBps));
 ```
 
 ## Listening

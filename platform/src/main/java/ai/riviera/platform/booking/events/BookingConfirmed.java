@@ -6,6 +6,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 
 /**
  * Published when a booking transitions to {@code CONFIRMED} — the write-side spine fact other
@@ -19,7 +20,15 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
  * integer minor units + ISO {@code currency} (invariant #5). No aggregates, no mutable config: the
  * commission rate is deliberately <em>not</em> carried here — {@code payout} re-reads it from
  * {@code venue::api} because it is mutable venue configuration, not a fact of this booking.
+ *
+ * <p>{@code cancellationWindowAtBirth} + {@code lateCancelRefundBps} (#795) are likewise facts fixed
+ * at the moment, the {@code amountMinor} posture: the window the booking was <em>born</em> in and the
+ * late share its disclosure promised — a sent mail's truth can't be rewritten by a later config edit,
+ * which is why the bps here is not the mutable-rate exception above. {@code cancellationWindowAtBirth}
+ * is {@code null} on payloads serialized before the fields existed; consumers render no disclosure
+ * for null, forever.
  */
 public record BookingConfirmed(BookingId bookingId, VenueId venueId, SetId setId,
-		LocalDate bookingDate, long amountMinor, String currency) {
+		LocalDate bookingDate, long amountMinor, String currency,
+		CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps) {
 }

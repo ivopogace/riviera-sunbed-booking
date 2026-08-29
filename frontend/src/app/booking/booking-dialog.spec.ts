@@ -6,7 +6,12 @@ import { vi } from 'vitest';
 import { environment } from '../../environments/environment';
 import { todayBookingDate } from '../shared/booking-date';
 import { SetView } from '../shared/venue-views';
-import { AwaitingPayment, BookingConfirmation, RequestedBooking } from './booking.model';
+import {
+  AwaitingPayment,
+  BookingConfirmation,
+  CancellationTerms,
+  RequestedBooking,
+} from './booking.model';
 import { BookingDialog } from './booking-dialog';
 
 const SET: SetView = {
@@ -90,10 +95,29 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     fixture.componentRef.setInput('venueName', 'Miramar Beach Club');
     dialog = fixture.componentInstance;
     httpMock = TestBed.inject(HttpTestingController);
+    // Resolve the pre-reserve terms quote (#795): the pending httpResource would park whenStable.
+    fixture.detectChanges();
+    httpMock.expectOne(TERMS_URL).flush(FREE_TERMS);
     await fixture.whenStable();
   });
 
-  afterEach(() => httpMock.verify());
+  afterEach(() => {
+    // Drain the terms quote any test left unanswered — its absence is a legitimate state (no claim).
+    httpMock.match((req) => req.url.includes('/api/bookings/cancellation-terms'));
+    httpMock.verify();
+  });
+
+  const TERMS_URL = `${environment.apiBaseUrl}/api/bookings/cancellation-terms?setId=2&date=2026-12-01`;
+
+  const FREE_TERMS: CancellationTerms = {
+    window: 'FREE',
+    freeCancellationEndsAt: '2026-11-30T17:00:00Z',
+    lateCancelRefundBps: 0,
+  };
+
+  function termsNote(): HTMLElement | null {
+    return host().querySelector('[data-testid="cancellation-terms-note"]');
+  }
 
   function host(): HTMLElement {
     return fixture.nativeElement as HTMLElement;
@@ -124,6 +148,71 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     submitForm();
     await fixture.whenStable();
   }
+
+  describe('the pre-reserve cancellation terms (#795 AC-10)', () => {
+    /** Re-quote by moving the dialog's date — the resource keys on (set, date). */
+    async function requoteWith(terms: CancellationTerms): Promise<void> {
+      fixture.componentRef.setInput('date', '2026-12-02');
+      fixture.detectChanges();
+      httpMock
+        .expectOne(
+          `${environment.apiBaseUrl}/api/bookings/cancellation-terms?setId=2&date=2026-12-02`,
+        )
+        .flush(terms);
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    it('states free cancellation until the deadline for FREE terms, inside a live region', async () => {
+      await goToReview();
+      const note = termsNote();
+      expect(note?.textContent).toContain('Free cancellation until');
+      expect(note?.closest('[role="status"]')).not.toBeNull();
+    });
+
+    it('renders no cancellation claim while a re-quote is loading', async () => {
+      await goToReview();
+      fixture.componentRef.setInput('date', '2026-12-02');
+      fixture.detectChanges();
+      expect(termsNote()).toBeNull();
+      expect(host().textContent).not.toContain('Free cancellation');
+    });
+
+    it('renders no cancellation claim when the terms read failed', async () => {
+      await goToReview();
+      fixture.componentRef.setInput('date', '2026-12-02');
+      fixture.detectChanges();
+      httpMock
+        .expectOne(
+          `${environment.apiBaseUrl}/api/bookings/cancellation-terms?setId=2&date=2026-12-02`,
+        )
+        .flush({ code: 'NO_SUCH_SET' }, { status: 404, statusText: 'Not Found' });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(termsNote()).toBeNull();
+      expect(host().textContent).not.toContain('Free cancellation');
+    });
+
+    it('states the non-refundable last-minute booking for CLOSED terms', async () => {
+      await requoteWith({ ...FREE_TERMS, window: 'CLOSED' });
+      await goToReview();
+      expect(termsNote()?.textContent).toContain('Non-refundable last-minute booking');
+    });
+
+    it('states the partial share for LATE terms with a venue share', async () => {
+      await requoteWith({ ...FREE_TERMS, window: 'LATE', lateCancelRefundBps: 2500 });
+      await goToReview();
+      expect(termsNote()?.textContent).toContain('refunds only 25%');
+    });
+
+    it('discloses on the Request review step too (both modes, AC-1)', async () => {
+      fixture.componentRef.setInput('mode', 'REQUEST');
+      await requoteWith({ ...FREE_TERMS, window: 'CLOSED' });
+      await goToReview();
+      expect(host().textContent).toContain('Request to Book');
+      expect(termsNote()?.textContent).toContain('Non-refundable last-minute booking');
+    });
+  });
 
   it('opens on the Details step: read-only date + price, step indicator on 1, no editable date input', () => {
     expect(probe().step()).toBe(1);
@@ -250,7 +339,8 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
       .flush(AWAITING, { status: 202, statusText: 'Accepted' });
     await fixture.whenStable();
 
-    expect(awaiting).toEqual(AWAITING);
+    // The dialog stamps its resolved quote onto the hand-off so the pay page can repeat it (#795).
+    expect(awaiting).toEqual({ ...AWAITING, cancellationTerms: FREE_TERMS });
     expect(booked).toBe(false);
     expect(probe().submitting()).toBe(false);
   });

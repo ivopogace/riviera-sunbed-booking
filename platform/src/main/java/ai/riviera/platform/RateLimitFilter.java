@@ -44,7 +44,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Per-IP, per-code and per-identity rate limiting for the platform's unauthenticated and
- * credential-bearing endpoints: the public booking-code endpoints (view / cancel / withdraw / create),
+ * credential-bearing endpoints: the public booking-code endpoints (view / cancel / withdraw / create / terms),
  * the two logins, registration, password change, account recovery and the SSO redirect GETs. The
  * booking-code endpoints are {@code permitAll} because the code is the bearer credential (invariant
  * #7), so their {@code 200}/{@code 404} answer is a brute-force oracle; the rest are credential- or
@@ -88,8 +88,10 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			{"type":"about:blank","title":"Too Many Requests","status":429,\
 			"detail":"Too many requests.","code":"RATE_LIMITED"}""";
 
-	// Mirrors the SecurityConfig matchers for the four public booking endpoints.
+	// Mirrors the SecurityConfig matchers for the five public booking endpoints.
 	private static final String CREATE_PATH = "/api/bookings";
+	/** A literal sibling of the {@code {code}} routes (#795): it carries no code to key a bucket on. */
+	private static final String TERMS_PATH = "/api/bookings/cancellation-terms";
 	private static final String VIEW_TEMPLATE = "/api/bookings/{code}";
 	private static final String CANCEL_TEMPLATE = "/api/bookings/{code}/cancel";
 	private static final String WITHDRAW_TEMPLATE = "/api/bookings/{code}/withdraw";
@@ -364,7 +366,10 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		}
 		String path = pathWithinApplication(request);
 		if (HttpMethod.GET.matches(method) && paths.match(VIEW_TEMPLATE, path)) {
-			return new Target(paths.extractUriTemplateVariables(VIEW_TEMPLATE, path).get(CODE_VAR));
+			// The terms segment is no code — a shared "code" bucket would 429 site-wide. Per-IP only.
+			return new Target(TERMS_PATH.equals(path)
+					? null
+					: paths.extractUriTemplateVariables(VIEW_TEMPLATE, path).get(CODE_VAR));
 		}
 		if (HttpMethod.POST.matches(method)) {
 			if (paths.match(CANCEL_TEMPLATE, path)) {

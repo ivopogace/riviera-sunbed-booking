@@ -40,6 +40,7 @@ module.exports = defineConfig([
     // Components augmenting a native element are camelCase-attribute-selected, like a directive.
     files: [
       'src/app/admin/admin-forbidden.ts',
+      'src/app/booking/cancellation-terms-note.ts',
       'src/app/booking/legal-consent.ts',
       'src/app/shared/cutoff-note.ts',
       'src/app/shared/legal-footer.ts',

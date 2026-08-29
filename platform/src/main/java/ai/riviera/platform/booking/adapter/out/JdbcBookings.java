@@ -64,6 +64,7 @@ class JdbcBookings implements Bookings {
 	private static final String COL_REQUEST_EXPIRES_AT = "request_expires_at";
 	private static final String COL_CUSTOMER_ID = "customer_id";
 	private static final String COL_CANCEL_REASON = "cancel_reason";
+	private static final String COL_CREATED_AT = "created_at";
 
 	private final JdbcClient jdbc;
 
@@ -168,7 +169,8 @@ class JdbcBookings implements Bookings {
 				SET status = :awaiting, accepted_at = :now
 				WHERE id = :id AND venue_id = :venue AND status = :pending
 				  AND request_expires_at > :now
-				RETURNING id, venue_id, set_id, booking_date, accepted_at, amount_minor, amount_currency
+				RETURNING id, venue_id, set_id, booking_date, accepted_at, created_at,
+				          amount_minor, amount_currency
 				""")
 				.param(PARAM_AWAITING, BookingStatus.AWAITING_PAYMENT.name())
 				.param("now", java.sql.Timestamp.from(now))
@@ -178,7 +180,8 @@ class JdbcBookings implements Bookings {
 				.query((rs, rowNum) -> new ai.riviera.platform.booking.application.request.AcceptedRequest(
 						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
 						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
-						rs.getTimestamp("accepted_at").toInstant(), rs.getLong(COL_AMOUNT_MINOR),
+						rs.getTimestamp("accepted_at").toInstant(),
+						rs.getTimestamp(COL_CREATED_AT).toInstant(), rs.getLong(COL_AMOUNT_MINOR),
 						rs.getString(COL_AMOUNT_CURRENCY)))
 				.optional();
 	}
@@ -278,7 +281,7 @@ class JdbcBookings implements Bookings {
 						rs.getObject(COL_BOOKING_DATE, LocalDate.class),
 						new ai.riviera.platform.customer.vocabulary.CustomerId(rs.getLong(COL_CUSTOMER_ID)),
 						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
-						rs.getTimestamp("created_at").toInstant(),
+						rs.getTimestamp(COL_CREATED_AT).toInstant(),
 						rs.getTimestamp(COL_REQUEST_EXPIRES_AT).toInstant()))
 				.list();
 	}
@@ -332,7 +335,7 @@ class JdbcBookings implements Bookings {
 				rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY),
 				cancelledAt == null ? null : cancelledAt.toInstant(), refundMinor,
 				requestExpiresAt == null ? null : requestExpiresAt.toInstant(),
-				refundReasonOf(cancelReason), rs.getTimestamp("created_at").toInstant(),
+				refundReasonOf(cancelReason), rs.getTimestamp(COL_CREATED_AT).toInstant(),
 				acceptedAt == null ? null : acceptedAt.toInstant());
 	}
 
@@ -383,7 +386,7 @@ class JdbcBookings implements Bookings {
 				UPDATE booking
 				SET status = :status, confirmed_at = :at
 				WHERE id = :id AND status = :awaiting
-				RETURNING id, venue_id, set_id, booking_date, amount_minor, amount_currency
+				RETURNING id, venue_id, set_id, booking_date, created_at, amount_minor, amount_currency
 				""")
 				.param(PARAM_STATUS, BookingStatus.CONFIRMED.name())
 				.param("at", java.sql.Timestamp.from(confirmedAt))
@@ -392,6 +395,7 @@ class JdbcBookings implements Bookings {
 				.query((rs, rowNum) -> new ConfirmedBooking(
 						rs.getLong("id"), new VenueId(rs.getLong(COL_VENUE_ID)),
 						new SetId(rs.getLong(COL_SET_ID)), rs.getObject(COL_BOOKING_DATE, LocalDate.class),
+						rs.getTimestamp(COL_CREATED_AT).toInstant(),
 						rs.getLong(COL_AMOUNT_MINOR), rs.getString(COL_AMOUNT_CURRENCY)))
 				.optional();
 	}

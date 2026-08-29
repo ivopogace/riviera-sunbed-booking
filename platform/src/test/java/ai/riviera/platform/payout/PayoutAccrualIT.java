@@ -17,6 +17,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -74,7 +75,7 @@ class PayoutAccrualIT {
 
 	private BookingConfirmed event(Ref b) {
 		return new BookingConfirmed(new BookingId(b.bookingId()), new VenueId(b.venueId()),
-				new SetId(b.setId()), LocalDate.of(2029, 7, 1), 4500L, "EUR");
+				new SetId(b.setId()), LocalDate.of(2029, 7, 1), 4500L, "EUR", CancellationWindow.FREE, 0);
 	}
 
 	/** Publish inside a transaction so the AFTER_COMMIT registry listener is triggered. */

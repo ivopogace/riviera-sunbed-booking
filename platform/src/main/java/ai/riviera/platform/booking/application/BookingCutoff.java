@@ -8,7 +8,7 @@ import java.time.ZonedDateTime;
 
 import org.springframework.stereotype.Component;
 
-import ai.riviera.platform.booking.domain.CancellationWindow;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 
 /**
  * Names the service day's boundaries (invariant #4), all reasoned in {@code Europe/Tirane}
@@ -64,11 +64,16 @@ public class BookingCutoff {
 	 */
 	public CancellationWindow cancellationWindow(LocalTime cutoff, LocalDate bookingDate) {
 		// One reading of the clock, so both boundaries classify the same instant.
-		java.time.Instant now = clock.instant();
-		if (now.isBefore(freeCancellationEndsAt(cutoff, bookingDate))) {
+		return cancellationWindow(cutoff, bookingDate, clock.instant());
+	}
+
+	/** The same classification against a caller-supplied reading (the {@link #isBookable} precedent). */
+	public CancellationWindow cancellationWindow(LocalTime cutoff, LocalDate bookingDate,
+			java.time.Instant at) {
+		if (at.isBefore(freeCancellationEndsAt(cutoff, bookingDate))) {
 			return CancellationWindow.FREE;
 		}
-		return now.isBefore(serviceDayOpensAt(bookingDate))
+		return at.isBefore(serviceDayOpensAt(bookingDate))
 				? CancellationWindow.LATE
 				: CancellationWindow.CLOSED;
 	}

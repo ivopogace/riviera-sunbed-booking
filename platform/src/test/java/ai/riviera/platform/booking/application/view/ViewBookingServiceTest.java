@@ -14,7 +14,7 @@ import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 import ai.riviera.platform.booking.application.request.RequestWindows;
 import ai.riviera.platform.booking.domain.BookingStatus;
-import ai.riviera.platform.booking.domain.CancellationWindow;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.spi.ConfirmationMailDelivery;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
@@ -404,6 +404,31 @@ class ViewBookingServiceTest {
 		assertThat(service.byCode(CODE).orElseThrow().refundOutstanding()).isFalse();
 
 		verifyNoInteractions(refundStatus);
+	}
+
+	/** #795 AC-8: a same-day booking reports its CLOSED birth window beside {@code cancellable=false}. */
+	@Test
+	void sameDayBookingReportsClosedBirthWindow() {
+		Instant sameDayBirth = Instant.parse("2026-08-01T05:00:00Z");
+		givenBooking(BookingStatus.CONFIRMED, CancellationWindow.CLOSED, 0L, sameDayBirth);
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.cancellable()).isFalse();
+		assertThat(detail.cancellationWindowAtBirth()).isEqualTo(CancellationWindow.CLOSED);
+	}
+
+	/** #795 AC-8 sibling: an advance FREE-born booking keeps every existing field unchanged. */
+	@Test
+	void advanceBookingReportsFreeBirthWindow() {
+		givenBooking(BookingStatus.CONFIRMED, CancellationWindow.FREE, 4500L);
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.cancellationWindowAtBirth()).isEqualTo(CancellationWindow.FREE);
+		assertThat(detail.beforeCutoff()).isTrue();
+		assertThat(detail.cancellable()).isTrue();
+		assertThat(detail.refundIfCancelledNow().minorUnits()).isEqualTo(4500L);
 	}
 
 	private void givenBooking(BookingStatus status) {

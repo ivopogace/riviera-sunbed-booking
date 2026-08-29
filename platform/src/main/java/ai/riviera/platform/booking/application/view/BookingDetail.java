@@ -3,6 +3,7 @@ package ai.riviera.platform.booking.application.view;
 import java.time.LocalDate;
 
 import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -55,5 +56,6 @@ public record BookingDetail(String code, BookingStatus status, VenueId venueId, 
 		MoneyView refundedAmount, boolean refundOutstanding,
 		java.time.Instant requestExpiresAt,
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment, boolean emailWithheld,
-		boolean payWindowClosed, RefundReason cancelReason) {
+		boolean payWindowClosed, RefundReason cancelReason,
+		CancellationWindow cancellationWindowAtBirth) {
 }

@@ -104,6 +104,8 @@ class EndpointRoleGateCoverageTest {
 			"GET /api/bookings/{code}",
 			"POST /api/bookings/{code}/cancel",
 			"POST /api/bookings/{code}/withdraw",
+			// permitAll via the one-segment GET matcher — a public tourist read (#795).
+			"GET /api/bookings/cancellation-terms",
 			// permitAll — server-to-server, authenticated by its Stripe signature header (invariant #8).
 			"POST /api/payments/stripe/webhook",
 			// The ONE deliberate fall-through to anyRequest().authenticated(): the reload-restore read

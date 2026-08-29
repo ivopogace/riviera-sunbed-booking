@@ -28,6 +28,7 @@ import {
   RequestedBooking,
 } from './booking.model';
 import { BookingService, bookingErrorOf } from './booking.service';
+import { CancellationTermsNote } from './cancellation-terms-note';
 
 import { TouchTarget } from '../shared/touch-target';
 
@@ -46,7 +47,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
  */
 @Component({
   selector: 'app-booking-dialog',
-  imports: [LegalConsent, FormField, BusyAction, FieldGlass, TouchTarget],
+  imports: [LegalConsent, FormField, BusyAction, FieldGlass, TouchTarget, CancellationTermsNote],
   host: {
     // The fixed, scrim-backed backdrop must paint ABOVE the sticky glass header (z-60) — the app shell relies on this.
     class:
@@ -265,10 +266,20 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                 class="mode-note instant mt-[14px] mb-1 block rounded-2xl border border-[rgba(43,184,212,0.34)] bg-[rgba(43,184,212,0.12)] px-[15px] py-[13px] text-[12.8px] leading-[1.5] text-riv-card-ink-soft"
               >
                 <strong class="text-riv-card-ink">Instant Book.</strong> Next you’ll pay securely to
-                confirm this set right away. Free cancellation until the evening before — your
-                booking code arrives on-screen and by email.
+                confirm this set right away — your booking code arrives on-screen and by email.
               </p>
             }
+
+            <!-- Polite live region: the server-quoted terms may resolve after the step renders (R-6). -->
+            <div role="status" data-testid="terms-region">
+              @if (terms.hasValue()) {
+                <p
+                  appCancellationTermsNote
+                  [terms]="terms.value()!"
+                  class="mt-2 mb-1 block rounded-2xl border border-riv-card-track bg-riv-wash-fill px-[15px] py-[11px] text-[12.5px] text-riv-card-ink-soft"
+                ></p>
+              }
+            </div>
 
             <!-- New tab (not routerLink) so the modal's checkout state survives reading the document. -->
             <p
@@ -345,6 +356,15 @@ export class BookingDialog implements OnInit {
 
   private readonly bookings = inject(BookingService);
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  /**
+   * This booking's server-quoted cancellation terms (#795). While loading or failed the template
+   * renders no cancellation claim at all — never a false "free cancellation".
+   */
+  protected readonly terms = this.bookings.cancellationTerms(() => ({
+    setId: this.set().id,
+    date: this.date(),
+  }));
 
   /** 1 = Details, 2 = Review. */
   protected readonly step = signal<1 | 2>(1);
@@ -445,11 +465,14 @@ export class BookingDialog implements OnInit {
       this.submitting.set(true);
       try {
         const result = await firstValueFrom(
-          this.bookings.createBooking({
-            setId: this.set().id,
-            bookingDate: m.date,
-            contact: { email: m.email, fullName: m.fullName, phone: m.phone },
-          }),
+          this.bookings.createBooking(
+            {
+              setId: this.set().id,
+              bookingDate: m.date,
+              contact: { email: m.email, fullName: m.fullName, phone: m.phone },
+            },
+            this.terms.hasValue() ? this.terms.value() : undefined,
+          ),
         );
         if (result.kind === 'requested') {
           this.requested.emit(result.requested);

@@ -84,6 +84,7 @@ const DETAIL: BookingDetail = {
   emailWithheld: false,
   payWindowClosed: false,
   cancelReason: null,
+  cancellationWindowAtBirth: 'FREE',
 };
 
 describe('BookingService', () => {
@@ -126,8 +127,10 @@ describe('BookingService', () => {
     const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings`);
     req.flush(AWAITING, { status: 202, statusText: 'Accepted' });
 
-    expect(received).toEqual({ kind: 'awaiting', awaiting: AWAITING });
-    expect(service.lastAwaitingPayment()).toEqual(AWAITING);
+    // The service stamps the (absent) checkout quote as an explicit null (#795).
+    const stamped = { ...AWAITING, cancellationTerms: null };
+    expect(received).toEqual({ kind: 'awaiting', awaiting: stamped });
+    expect(service.lastAwaitingPayment()).toEqual(stamped);
     expect(service.lastConfirmation()).toBeUndefined();
   });
 
@@ -266,6 +269,7 @@ describe('BookingService', () => {
       emailWithheld: false,
       payWindowClosed: false,
       cancelReason: null,
+      cancellationWindowAtBirth: 'FREE',
     };
     let received: BookingDetail | undefined;
     service.getByCode('ABCD234567').subscribe((d) => (received = d));

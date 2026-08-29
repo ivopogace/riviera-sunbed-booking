@@ -24,6 +24,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.application.EmailSuppressions;
 import ai.riviera.platform.notification.application.ReinstateOutcome;
 import ai.riviera.platform.notification.application.SuppressionReason;
@@ -223,7 +224,8 @@ class EmailSuppressionReinstatementIT {
 	}
 
 	private static BookingConfirmationMail confirmation() {
-		return new BookingConfirmationMail("CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR");
+		return new BookingConfirmationMail("CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3,
+				4500, "EUR", CancellationWindow.FREE, 0);
 	}
 
 	private Optional<Instant> reinstatedAt(String domain) {

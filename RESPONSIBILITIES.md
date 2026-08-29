@@ -305,6 +305,19 @@ never release (`NotCancellable` forever), and refunding cannot reuse `BookingCan
 never-confirmed booking has no `ACCRUAL`, so `payout`'s listener would defer that publication
 permanently and hold `riviera.outbox.pending` non-zero. The residual is a sub-sweep-interval
 race the guest opts into and is paid for with the full stay.
+Quote **pre-reserve cancellation terms** and stamp the **window at birth** (#795, pure
+disclosure — no policy change): `CancellationPolicy` — still the single home of the window
+rule — answers the public tourist read `GET /api/bookings/cancellation-terms` behind the
+`QuoteCancellationTerms` driving port (`terms`: window now, free-cancellation deadline,
+late share), and classifies `windowAtBirth` from the booking's `created_at` via
+`BookingCutoff.cancellationWindow`'s at-instant overload. Both publication sites stamp
+`cancellationWindowAtBirth` + `lateCancelRefundBps` onto `BookingConfirmed` and
+`BookingPaymentDue` — facts fixed at the moment, the `amountMinor` posture, so a later
+cutoff edit can't rewrite a sent mail; a pre-#795 payload deserializes to a null window
+and every consumer renders no disclosure for null, forever. The code-gated view and the
+admin-resend facts re-derive the same field from the venue's *current* cutoff on each
+read (bounded, documented drift — the stamped events stay the record of what was first
+sent; only they are immutable).
 Orchestrate the reserve → pay → confirm flow across `availability` and `payment` — since
 #693 refusing both reserve paths (Instant and Request) for a hidden venue's set before any
 claim, via `operator.api.VenueVisibility`, answering `NO_SUCH_SET` so hidden reads as
@@ -808,11 +821,16 @@ list and the delivery log below are the module's two pieces of owned state.
 
 - The **registry-borne booking mails**, all assembled from `booking`/`venue`/`customer`
   published ports (ids only) by one module-internal resolver: the `BookingConfirmed`
-  confirmation (#371); the `BookingCancelled` cancellation/refund record (#374) — one
+  confirmation (#371) — since #795 carrying the booking's `cancellationWindowAtBirth` +
+  `lateCancelRefundBps` off the event, **rendered, never decided**: CLOSED gets the
+  non-refundable last-minute line, LATE the past-free-cancellation line (partial share at
+  bps > 0, no-refund at 0 — LATE stays cancellable, so only CLOSED claims it can't be),
+  FREE or null (a pre-#795 registry payload, tolerated forever) nothing; the `BookingCancelled` cancellation/refund record (#374) — one
   listener covering every cancellation channel, tourist self-service and operator weather
   refund alike, because it subscribes to the fact rather than to either caller, and
   **rendering** the server-computed refund (invariant #10), never deciding it; the
-  `BookingPaymentDue` notice (#373) — the listener decides nothing about *whether*
+  `BookingPaymentDue` notice (#373), carrying the same #795 birth-window disclosure on the
+  same rules — the listener decides nothing about *whether*
   payment is owed: `booking` settles that by publishing the fact only on the accept
   branch where money is genuinely outstanding (a failed PaymentIntent reverts the booking
   to `PENDING_REQUEST`), which a status read here could not learn without racing the

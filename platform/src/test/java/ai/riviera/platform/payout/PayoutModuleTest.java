@@ -17,6 +17,7 @@ import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.api.DailyTakings;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.customer.api.AccountErasure;
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
@@ -168,7 +169,7 @@ class PayoutModuleTest {
 
 	private BookingConfirmed event(Ref b) {
 		return new BookingConfirmed(new BookingId(b.bookingId()), new VenueId(b.venueId()),
-				new SetId(b.setId()), LocalDate.of(2029, 9, 1), 4500L, "EUR");
+				new SetId(b.setId()), LocalDate.of(2029, 9, 1), 4500L, "EUR", CancellationWindow.FREE, 0);
 	}
 
 	private long accrualRows(long bookingId) {

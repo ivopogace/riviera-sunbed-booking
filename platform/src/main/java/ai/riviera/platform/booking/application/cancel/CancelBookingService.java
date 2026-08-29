@@ -17,7 +17,7 @@ import ai.riviera.platform.booking.application.cancel.CancellationPolicy.RefundQ
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.domain.BookingStatus;
-import ai.riviera.platform.booking.domain.CancellationWindow;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 
 /**
  * The cancel-a-booking use case (U6, issue #11). In one transaction it loads the booking by code,

@@ -38,6 +38,7 @@ function detail(
     emailWithheld: false,
     payWindowClosed: false,
     cancelReason: null,
+    cancellationWindowAtBirth: 'FREE',
     ...extra,
   };
 }

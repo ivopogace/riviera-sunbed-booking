@@ -1,8 +1,8 @@
-package ai.riviera.platform.booking.domain;
+package ai.riviera.platform.booking.vocabulary;
 
 /**
  * Where a cancellation request falls relative to its booking's service day, reasoned in
- * {@code Europe/Tirane} (invariants #4/#6). This is the <em>temporal</em> input {@link RefundPolicy}
+ * {@code Europe/Tirane} (invariants #4/#6). This is the <em>temporal</em> input {@code RefundPolicy}
  * switches on — not the reported outcome, which is {@code CancelOutcome.Tier} and does not
  * correspond one-to-one: a {@link #LATE} window at 0 bps reports {@code NONE}, and {@link #CLOSED}
  * reports no tier at all because the cancellation never happens.

@@ -152,10 +152,20 @@ model in `docs/architecture/domain-model.md`.
   share), or **none** (after the cutoff, the venue offering 0 bps). Always computed
   server-side, and only within the **cancellation window**.
 - **Cancellation window** — how long a confirmed booking may be cancelled at all:
-  from booking until `00:00 Europe/Tirane` on the service date. Once the service day
-  opens the window is **closed** — the cancellation is refused outright (not refunded
-  at a tier), because the guest can already be consuming the stay. The venue's own
-  weather refund is outside the window and stays available for past dates.
+  from booking until `00:00 Europe/Tirane` on the service date, in three named phases
+  (`booking.vocabulary.CancellationWindow`): **FREE** (before the cutoff — the *full*
+  refund tier), **LATE** (cutoff passed, service day not open — the *partial*/*none*
+  tier), **CLOSED** (the service day has opened — the cancellation is refused outright,
+  not refunded at a tier, because the guest can already be consuming the stay). The
+  venue's own weather refund is outside the window and stays available for past dates.
+- **Window at birth** — the cancellation-window phase in force at the instant a booking
+  was created. Stamped on `BookingConfirmed`/`BookingPaymentDue` and their mails —
+  immutable once stamped, even if the venue later edits its cutoff. The code-gated view
+  and the admin resend re-derive it from the venue's current cutoff on each read
+  (bounded, documented drift; the stamped events stay the record of what was first sent).
+- **Last-minute booking** — a booking born past its free-cancellation deadline (window
+  at birth LATE or CLOSED). The guest-facing copy "non-refundable last-minute booking"
+  is reserved for CLOSED-born bookings, where no cancellation is possible at all.
 
 ## Demand (tourist side)
 

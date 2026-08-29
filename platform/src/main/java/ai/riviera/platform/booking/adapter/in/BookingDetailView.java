@@ -25,7 +25,7 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 		boolean beforeCutoff, MoneyView refundIfCancelledNow, MoneyView refundedAmount,
 		boolean refundOutstanding,
 		Instant requestExpiresAt, PaymentCredentialsView payment, boolean emailWithheld,
-		boolean payWindowClosed, String cancelReason) {
+		boolean payWindowClosed, String cancelReason, String cancellationWindowAtBirth) {
 
 	static BookingDetailView of(BookingDetail d) {
 		return new BookingDetailView(d.code(), d.status().name(), d.venueId().value(), d.venueName(),
@@ -36,7 +36,8 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 						: new PaymentCredentialsView(d.payment().clientSecret(),
 								d.payment().paymentIntentId()),
 				d.emailWithheld(), d.payWindowClosed(),
-				d.cancelReason() == null ? null : d.cancelReason().name());
+				d.cancelReason() == null ? null : d.cancelReason().name(),
+				d.cancellationWindowAtBirth().name());
 	}
 
 	/** The open PaymentIntent's credentials — present only while {@code AWAITING_PAYMENT}. */

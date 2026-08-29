@@ -21,6 +21,7 @@ import { PanelGlass } from '../shared/panel-glass';
 import { BusyAction } from '../shared/busy-action';
 import { WithheldEmailNotice } from './withheld-email-notice';
 import { BookingService } from './booking.service';
+import { CancellationTermsNote } from './cancellation-terms-note';
 import { StripeCheckout, StripePaymentGateway } from './stripe-payment.gateway';
 
 import { TouchTarget } from '../shared/touch-target';
@@ -88,6 +89,7 @@ const CLS = {
     WithheldEmailNotice,
     BusyAction,
     TouchTarget,
+    CancellationTermsNote,
   ],
   template: `
     <!-- One persistent live region announces every state change. A live region only announces
@@ -303,6 +305,14 @@ const CLS = {
                 </dd>
               </div>
             </dl>
+
+            @if (booking!.cancellationTerms; as terms) {
+              <p
+                appCancellationTermsNote
+                [terms]="terms"
+                class="mt-3 text-[12.5px] text-riv-card-ink-soft"
+              ></p>
+            }
 
             @if (showPayButton()) {
               <!-- New tab (not routerLink) so the mounted Payment Element survives reading the document. -->
