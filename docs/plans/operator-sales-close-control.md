@@ -318,6 +318,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/venue/domain/SalesCloseTest.java` — pins the three times against the V44 CHECK tokens; rejects off-vocabulary input.
 - `platform/src/main/java/ai/riviera/platform/venue/application/VenueProfileCommand.java` — `SalesClose salesClose` component (required).
 - `platform/src/main/java/ai/riviera/platform/venue/application/NewVenueCommand.java` — `salesClose`, null → `SalesClose.DEFAULT`.
+- `platform/src/main/java/ai/riviera/platform/venue/application/VenueFieldValidation.java` — `requireSalesClose` (presence-only; the vocabulary lives in the type).
 - `platform/src/main/java/ai/riviera/platform/venue/application/VenueProfileView.java` — TSDoc/Javadoc "read-only display this slice" note updated.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/UpdateVenueProfileRequest.java` — wire field + parse (`InvalidApiRequestException.parsing`).
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/CreateVenueRequest.java` — optional wire field + parse.
@@ -325,6 +326,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenues.java` — UPDATE SET `sales_close = :salesClose`; INSERT column.
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAdminControllerIT.java` — invert `patchCannotReachSalesClose` → `patchUpdatesSalesClose`; `invalidSalesCloseIs400`; `createAcceptsExplicitSalesClose`; extend `createDefaultsSalesCloseAndProfileReturnsIt`, `staleVersionPatchIs409`, the `profileBody(...)` helper and round-trip tests.
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenueProfileCommandTest.java` — `nullSalesCloseIsRejected` (the off-vocabulary case lives in `SalesCloseTest`).
+- `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java` — command construction sites thread the new component.
+- `platform/src/test/java/ai/riviera/platform/venue/VenueProfileConcurrencyIT.java` — same threading; the guarded-UPDATE race shape is unchanged.
 - `platform/src/test/java/ai/riviera/platform/booking/BookingControllerIT.java` — `reserveRefusedAfterOwnerClosesSalesForToday`, `reserveSucceedsAfterOwnerReopensSalesForToday` (reuse `onlineSetAtSalesClose`).
 - `frontend/src/app/operator/operator-console.model.ts` — `SalesCloseTime`, `salesClose` on `VenueProfileView`/`VenueProfileUpdate`, `toProfileUpdate(view)`.
 - `frontend/src/app/operator/operator-console.service.ts` — PATCH doc update; `closeOnlineSalesNow(venueId)`.
@@ -589,6 +592,7 @@ it('closes today via the standing setting after confirm', async () => {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-29 | phase 0 commit | Every write statement persisting venue profile columns | `git grep -n "UPDATE venue\b\|INSERT INTO venue\b" platform/src/main` | 4 Java sites in `JdbcVenues` + V3 seed | `insertVenue` + `updateVenueProfile` carry `sales_close`; `updateLiveRate` (commission) and the `set_version` bump touch other columns by design; the V3 seed takes the 16:00 DEFAULT. No other writer exists — no action |
 
 ---
 
