@@ -204,8 +204,8 @@ class CrossVenueDenialIT {
 	 *  The owning-venue counterpart edits a fresh venue, so {@code expectedVersion} 0 matches. */
 	private static final String FULL_PROFILE_BODY = """
 			{"name":"Edited","beach":"Ksamil","region":"Riviera","description":"x",
-			 "bookingMode":"INSTANT","bookingCutoff":"18:00","amenities":["BEACH_BAR"],
-			 "distanceToWaterM":15,"expectedVersion":0}
+			 "bookingMode":"INSTANT","bookingCutoff":"18:00","salesClose":"16:00",
+			 "amenities":["BEACH_BAR"],"distanceToWaterM":15,"expectedVersion":0}
 			""";
 
 	@Test

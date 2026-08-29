@@ -310,6 +310,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-4 | impl (phase 1) | The `[formField]` binding makes `salesClose` load-bearing at render time: `operator-venue-photos.e2e.ts`'s profile fixture lacked it and the tab's render crashed mid-cycle (`model.required` read while unset), timing out three photo tests. Fixture completed; enumerated every other fixture (`git grep -rln bookingCutoff frontend/e2e` ∖ `salesClose`) — none left | closed |
 | F-5 | impl (phase 1) | `operator-venue.e2e.ts`'s stale-write test raced `bump()` against the profile load (latent; exposed when F-4 slowed the run) — the test now waits for the seeded form before bumping, so version 7 is provably loaded first | closed |
 | F-6 | CI (phase 0 push) | `check-plan-file-structure` flagged three touched-but-unlisted paths; File structure updated (commit "List every phase-0-touched path…") | closed |
+| F-7 | CI (phase 0 full suite) | Four ITs outside the scoped set (`CrossVenueDenialIT` ×2, `AdminVenueCommissionIT`, `BookingModeSwitchIT`) PATCH the profile with raw bodies that lacked the now-required `salesClose` → 400. Bodies completed; the `"distanceToWaterM"`-body sweep confirms none remain (create bodies are exempt — the field is optional there) | closed |
 
 ---
 
@@ -330,6 +331,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenueProfileCommandTest.java` — `nullSalesCloseIsRejected` (the off-vocabulary case lives in `SalesCloseTest`).
 - `platform/src/test/java/ai/riviera/platform/venue/application/VenueAdminServiceTest.java` — command construction sites thread the new component.
 - `platform/src/test/java/ai/riviera/platform/venue/VenueProfileConcurrencyIT.java` — same threading; the guarded-UPDATE race shape is unchanged.
+- `platform/src/test/java/ai/riviera/platform/CrossVenueDenialIT.java` · `venue/AdminVenueCommissionIT.java` · `venue/BookingModeSwitchIT.java` — their raw profile-PATCH bodies gain the now-required `salesClose` (F-7).
 - `platform/src/test/java/ai/riviera/platform/booking/BookingControllerIT.java` — `reserveRefusedAfterOwnerClosesSalesForToday`, `reserveSucceedsAfterOwnerReopensSalesForToday` (reuse `onlineSetAtSalesClose`).
 - `frontend/src/app/operator/operator-console.model.ts` — `SalesCloseTime`, `salesClose` on `VenueProfileView`/`VenueProfileUpdate`, `toProfileUpdate(view)`.
 - `frontend/src/app/operator/operator-console.service.ts` — PATCH doc update; `closeOnlineSalesNow(venueId)`.
