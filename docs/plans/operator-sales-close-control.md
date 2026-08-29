@@ -613,7 +613,7 @@ it('closes today via the standing setting after confirm', async () => {
 
 - [x] **AC-1..AC-6:** `./gradlew test --tests "*VenueAdminControllerIT*" --tests "*VenueProfileCommandTest*" --tests "*BookingControllerIT*"` → all pass. Verified locally at commit `fa66cd8` (+ `28f064a` for the widened IT bodies); CI full suite green at run 2897.
 - [x] **AC-7..AC-9:** `npm test` (1973) · a11y/contrast specs · `npm run test:e2e:a11y` (venue 6, daily 8, touch-targets 33) → all pass. Verified locally at commit `62f3319`.
-- [x] **AC-10:** RESPONSIBILITIES.md §`venue` rewritten (owner-editable write path; commission and payout currency remain the mirrored write-proof fields — count corrected at the review gate, F-8); freshness run recorded below.
+- [x] **AC-10:** RESPONSIBILITIES.md §`venue` rewritten (owner-editable write path; commission + payout currency remain the two mirrored write-proof fields — count corrected at the review gate, F-8); freshness run recorded below.
 
 ## Self-review checklist (before merge / PR)
 
