@@ -17,10 +17,13 @@ is relabeled to its remaining meaning (free-cancellation deadline).
 **Architecture:** No new endpoint and no new port — the kill switch writes the **same
 standing setting through the same profile GET + full-replace PATCH** (optimistic `version`
 guards the read-modify-write), because AC-1 pins the setting to the profile PATCH and the
-epic rejects a per-day override. The three-value vocabulary gains its Java mirror in
-`VenueFieldValidation` (the `BOOKING_MODES` pattern: validator, wire tokens, and the V44
-CHECK stay one source of truth). No read-side change: #793 already projects `salesOpen`
-per request and nothing on the venue→booking path caches, so a write is effective on the
+epic rejects a per-day override. The three-value concept gets its domain type: a
+`SalesClose` enum in `venue/domain/` whose three constants carry their wall-clock times —
+the write path speaks the choice (invalid values unrepresentable past the edge parse),
+the V44 CHECK stays the DB floor, and the published carriers to `booking` keep speaking
+`LocalTime` (the fence does time arithmetic; the three-ness is venue's write concern) —
+see *Domain model* below. No read-side change: #793 already projects `salesOpen` per
+request and nothing on the venue→booking path caches, so a write is effective on the
 next reserve attempt.
 
 **Persistence:** JDBC only (invariant #1). **No migration** — `V44__venue_sales_close.sql`
@@ -42,8 +45,13 @@ phase opens with a failing edge/IT test, per the phase steps) · `riviera-review
 close-out over this slice's range — RESPONSIBILITIES.md §`venue` "read-only this slice"
 sentence is a known staleness) · `grilling` (issue-intake pass over #794) ·
 `riviera-modulith` (no new port/module needed; write stays in `venue`'s existing
-application service; ownership via `operator::api` unchanged) · `riviera-java-conventions`
-(validator-constant pattern §6a, edge error contract §6b `InvalidApiRequestException.parsing`)
+application service; ownership via `operator::api` unchanged; `SalesClose` placed in
+`domain/`, not `vocabulary/` — no sibling consumes it) · `domain-modeling` (CONTEXT.md's
+"Sales close" entry — a choice among three fixed values — drove the `SalesClose` domain
+type; no glossary change, no ADR: reversible) · `codebase-design` (contained the type to
+`venue`'s write path; cross-module carriers stay `LocalTime`, so no published-seam
+ripple) · `riviera-java-conventions`
+(enum-over-validator §5/§6a, edge error contract §6b `InvalidApiRequestException.parsing`)
 · `postgres` (confirmed CHECK-over-enum shape of V44; no migration due) ·
 `riviera-frontend` (field lands in `operator/` models/service, not `shared/`; frozen
 cross-feature edges not widened) · `angular-developer` + angular-cli MCP (v22: Signal
@@ -70,7 +78,7 @@ stands in for `feature/operator-sales-close-control` (riviera-sdlc cloud addendu
   anything but the three fixed values (`"12:00"`, `"garbage"`, null on PATCH), when the
   edge parses it, then the response is `400 INVALID_REQUEST` per the §6b contract and
   nothing is written. *Pinned by:* `VenueAdminControllerIT.invalidSalesCloseIs400`,
-  `VenueProfileCommandTest.salesCloseOutsideTheThreeValuesIsRejected`.
+  `SalesCloseTest.fromTimeRejectsAnythingButTheThreeValues`.
 - [ ] **AC-3 (create):** Given a create request without `salesClose`, when the venue is
   onboarded, then its profile reads `16:00`; given one carrying `"23:59"`, it reads
   `23:59`. *Pinned by:* `VenueAdminControllerIT.createDefaultsSalesCloseAndProfileReturnsIt`
@@ -134,7 +142,7 @@ specs — see R-2.
 | R-2 | Relabel misses a consumer — `booking-cutoff-field` is shared by the venue tab AND the create card (incl. their two "required" validation messages) | med | low | Relabel inside the shared component once; update both message strings (`venue-tab.ts`, `venue-create-card.ts`); both surfaces' specs assert the new copy | impl | open |
 | R-3 | FE sends `salesClose` but a naming mismatch lets Jackson silently drop it (no `FAIL_ON_UNKNOWN_PROPERTIES`) → "saved" without effect | low | high | AC-1 IT round-trips through the read API; e2e asserts the wire body key; one wire token set (`"HH:mm"`, same `CUTOFF` formatter as the read) | impl | open |
 | R-4 | #791's pin `VenueAdminControllerIT.patchCannotReachSalesClose` contradicts the new behavior if left standing | high | low | Phase 0 step explicitly inverts it (becomes `patchUpdatesSalesClose`); `patchIgnoresReadOnlyCommissionAndCurrency` stays (commission asymmetry survives) | impl | open |
-| R-5 | Validator drifts from the V44 CHECK (invariant #4 vocabulary) | low | med | One constant set `VenueFieldValidation.SALES_CLOSE_TIMES` mirroring the CHECK tokens (the `BOOKING_MODES` precedent); `SalesCloseMigrationIT.checkRejectsAnyOtherTime` keeps pinning the DB side | impl | open |
+| R-5 | The Java mirror drifts from the V44 CHECK (invariant #4 vocabulary) | low | med | The `SalesClose` enum is the **single** Java mirror (no separate validator set); `SalesCloseTest` pins its three `time()` values against the CHECK tokens; `SalesCloseMigrationIT.checkRejectsAnyOtherTime` keeps pinning the DB side | impl | open |
 | R-6 | New busy-flag name trips `check-focus-posture.mjs` BUSY-1, or the confirm flow skips a focus leg (FOCUS-1) | med | low | Copy the payouts weather-refund inline two-step verbatim (`[appBusy]`, `focusMover()` on all three legs); add the flag stem to `BUSY_STEMS` only if no existing stem fits | impl | open |
 | R-7 | Full PATCH from the daily view re-serializes a profile field wrongly (e.g. amenity codes, photos excluded) → silent profile corruption | low | high | One mapping helper `toProfileUpdate(view)` in `operator-console.model.ts`, unit-tested against the venue-tab save shape; e2e asserts untouched fields survive the kill switch | impl | open |
 | R-8 | Error contract drift on the new 400 (raw `IllegalArgumentException` → 500, issue #118 class) | low | med | Parse inside `InvalidApiRequestException.parsing(...)` exactly like `PhotoSlots`/`parseCode`; `invalidSalesCloseIs400` asserts `$.code == INVALID_REQUEST` | impl | open |
@@ -193,6 +201,36 @@ keeps guarding. The `venue.spi` port inventory stays at three (no fourth — the
 close-out's counting-sweep warning doesn't fire).
 
 **Domain events** — none touched (the five-event inventory is unchanged).
+
+### Domain model (the modeling decision this slice makes)
+
+CONTEXT.md's glossary already defines **Sales close** as *"a per-venue setting fixed at
+one of three wall-clock values"* — the domain concept is a **choice**, not an arbitrary
+time. This slice makes the code speak that language on the write path:
+
+- **`venue/domain/SalesClose`** — an enum of the three choices, each carrying its
+  wall-clock `time()` (`DAY_START` 00:01 · `MID_AFTERNOON` 16:00, the default ·
+  `DAY_END` 23:59; constant names are an implement-time call, the glossary meanings are
+  not). `fromTime(LocalTime)` is the one conversion in, throwing `IllegalArgumentException`
+  for anything off-vocabulary — invalid states are unrepresentable past the edge parse,
+  and the enum replaces the separately-planned `SALES_CLOSE_TIMES` validator set
+  entirely. Its unit test pins the three `time()` values against the V44 CHECK tokens.
+- **Placement: `domain/`, not `vocabulary/`.** No sibling module consumes the choice —
+  `booking`'s fence wants a *time* (it computes `date.atTime(salesClose)` and is
+  indifferent to the three-ness, which is venue's write constraint). Publishing a type
+  nothing external uses is the hypothetical-seam smell; it graduates to `vocabulary/`
+  the day a sibling needs the choice itself.
+- **The published carriers deliberately keep `LocalTime`** — `SetBookingInfo`,
+  `venue.spi.SalesWindow`, `BookingCutoff` are three merged slices' seams and their
+  interface is the honest one for the rule they serve. Boundary: commands and the
+  aggregate write speak `SalesClose`; the value crosses module seams as its time.
+- **No CONTEXT.md change** (the entry is accurate; the glossary carries no
+  implementation detail) and **no ADR** — the decision is easily reversible, so it
+  fails the ADR bar (hard-to-reverse ∧ surprising ∧ real trade-off); this section and
+  RESPONSIBILITIES.md §`venue` at close-out are its record.
+- **Revisit trigger:** the moment any *server-side* code branches on the choice
+  (per-option behavior, not just storage), the enum is already there to switch on —
+  exhaustively, no `default`.
 
 ### Module ownership (§4a)
 
@@ -271,16 +309,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 ## File structure
 
 - `docs/plans/operator-sales-close-control.md` — this plan.
-- `platform/src/main/java/ai/riviera/platform/venue/application/VenueFieldValidation.java` — `SALES_CLOSE_TIMES` + `DEFAULT_SALES_CLOSE` constants, `requireSalesClose`.
-- `platform/src/main/java/ai/riviera/platform/venue/application/VenueProfileCommand.java` — `salesClose` component + validation.
-- `platform/src/main/java/ai/riviera/platform/venue/application/NewVenueCommand.java` — optional `salesClose`, null → default.
+- `platform/src/main/java/ai/riviera/platform/venue/domain/SalesClose.java` — the three-choice enum: `time()`, `fromTime(LocalTime)`, `DEFAULT`.
+- `platform/src/test/java/ai/riviera/platform/venue/domain/SalesCloseTest.java` — pins the three times against the V44 CHECK tokens; rejects off-vocabulary input.
+- `platform/src/main/java/ai/riviera/platform/venue/application/VenueProfileCommand.java` — `SalesClose salesClose` component (required).
+- `platform/src/main/java/ai/riviera/platform/venue/application/NewVenueCommand.java` — `salesClose`, null → `SalesClose.DEFAULT`.
 - `platform/src/main/java/ai/riviera/platform/venue/application/VenueProfileView.java` — TSDoc/Javadoc "read-only display this slice" note updated.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/UpdateVenueProfileRequest.java` — wire field + parse (`InvalidApiRequestException.parsing`).
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/CreateVenueRequest.java` — optional wire field + parse.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueProfileResponse.java` — Javadoc "display-only" sentence updated.
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenues.java` — UPDATE SET `sales_close = :salesClose`; INSERT column.
 - `platform/src/test/java/ai/riviera/platform/venue/VenueAdminControllerIT.java` — invert `patchCannotReachSalesClose` → `patchUpdatesSalesClose`; `invalidSalesCloseIs400`; `createAcceptsExplicitSalesClose`; extend `createDefaultsSalesCloseAndProfileReturnsIt`, `staleVersionPatchIs409`, the `profileBody(...)` helper and round-trip tests.
-- `platform/src/test/java/ai/riviera/platform/venue/application/VenueProfileCommandTest.java` — `salesCloseOutsideTheThreeValuesIsRejected`, `nullSalesCloseIsRejected`.
+- `platform/src/test/java/ai/riviera/platform/venue/application/VenueProfileCommandTest.java` — `nullSalesCloseIsRejected` (the off-vocabulary case lives in `SalesCloseTest`).
 - `platform/src/test/java/ai/riviera/platform/booking/BookingControllerIT.java` — `reserveRefusedAfterOwnerClosesSalesForToday`, `reserveSucceedsAfterOwnerReopensSalesForToday` (reuse `onlineSetAtSalesClose`).
 - `frontend/src/app/operator/operator-console.model.ts` — `SalesCloseTime`, `salesClose` on `VenueProfileView`/`VenueProfileUpdate`, `toProfileUpdate(view)`.
 - `frontend/src/app/operator/operator-console.service.ts` — PATCH doc update; `closeOnlineSalesNow(venueId)`.
@@ -298,10 +337,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 0 — Backend write path (PATCH + create + vocabulary)
 
-**Files:** Modify `VenueFieldValidation.java`, `VenueProfileCommand.java`,
+**Files:** Create `venue/domain/SalesClose.java` · Modify `VenueProfileCommand.java`,
 `NewVenueCommand.java`, `UpdateVenueProfileRequest.java`, `CreateVenueRequest.java`,
 `JdbcVenues.java`, `VenueProfileResponse.java`, `VenueProfileView.java` · Test
-`VenueAdminControllerIT.java`, `VenueProfileCommandTest.java`, `BookingControllerIT.java`
+`SalesCloseTest.java`, `VenueAdminControllerIT.java`, `VenueProfileCommandTest.java`,
+`BookingControllerIT.java`
 
 - [ ] **Step 1: Write the failing tests** — invert #791's pin and add the new edge cases:
 
@@ -325,13 +365,21 @@ void invalidSalesCloseIs400() {
 }
 ```
 
-and at the command level:
+and at the domain level:
 
 ```java
 @Test
-void salesCloseOutsideTheThreeValuesIsRejected() {
-    assertThrows(IllegalArgumentException.class,
-        () -> command(mode: "INSTANT", cutoff: LocalTime.of(18, 0), salesClose: LocalTime.of(12, 0)));
+void fromTimeRejectsAnythingButTheThreeValues() {
+    assertThrows(IllegalArgumentException.class, () -> SalesClose.fromTime(LocalTime.of(12, 0)));
+    assertThrows(IllegalArgumentException.class, () -> SalesClose.fromTime(null));
+}
+
+@Test
+void theThreeChoicesMirrorTheV44CheckTokens() {
+    assertEquals(LocalTime.of(0, 1), SalesClose.DAY_START.time());
+    assertEquals(LocalTime.of(16, 0), SalesClose.MID_AFTERNOON.time());
+    assertEquals(LocalTime.of(23, 59), SalesClose.DAY_END.time());
+    assertEquals(SalesClose.MID_AFTERNOON, SalesClose.DEFAULT);
 }
 ```
 
@@ -339,29 +387,35 @@ void salesCloseOutsideTheThreeValuesIsRejected() {
 
 - [ ] **Step 2: Run, verify FAIL** — `./gradlew test --tests "*VenueAdminControllerIT*" --tests "*VenueProfileCommandTest*"` (load `riviera-local-debug` first; Docker ITs skip cleanly without a daemon — run what the sandbox allows and lean on CI for the rest, honestly noted in the commit).
 
-- [ ] **Step 3: Minimal implementation** — the vocabulary mirror (§6a, the `BOOKING_MODES` pattern):
+- [ ] **Step 3: Minimal implementation** — the domain type (see *Domain model* above):
 
 ```java
-/** The three sales-close choices, mirroring venue_sales_close_check (V44) — invariant #4. */
-static final Set<LocalTime> SALES_CLOSE_TIMES =
-        Set.of(LocalTime.of(0, 1), LocalTime.of(16, 0), LocalTime.of(23, 59));
-static final LocalTime DEFAULT_SALES_CLOSE = LocalTime.of(16, 0);
+/** The venue's sales-close choice — invariant #4; times mirror venue_sales_close_check (V44). */
+public enum SalesClose {
+    DAY_START(LocalTime.of(0, 1)), MID_AFTERNOON(LocalTime.of(16, 0)), DAY_END(LocalTime.of(23, 59));
 
-static LocalTime requireSalesClose(LocalTime salesClose) {
-    if (salesClose == null || !SALES_CLOSE_TIMES.contains(salesClose)) {
-        throw new IllegalArgumentException("salesClose must be one of 00:01, 16:00, 23:59");
+    public static final SalesClose DEFAULT = MID_AFTERNOON;
+    private final LocalTime time;
+
+    SalesClose(LocalTime time) { this.time = time; }
+
+    public LocalTime time() { return time; }
+
+    public static SalesClose fromTime(LocalTime time) {
+        return Arrays.stream(values()).filter(c -> c.time.equals(time)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("salesClose must be one of 00:01, 16:00, 23:59"));
     }
-    return salesClose;
 }
 ```
 
-Then: `salesClose` components on both commands (`NewVenueCommand` normalizes null →
-`DEFAULT_SALES_CLOSE`; `VenueProfileCommand` requires it), wire fields on both request
-records parsed inside the existing `InvalidApiRequestException.parsing(...)` boundary
-(reuse the cutoff's `LocalTime` parse), `JdbcVenues.updateVenueProfile` SET clause gains
-`sales_close = :salesClose`, `insertVenue` gains the column, and the two stale
-"display-only / no PATCH field" Javadoc sentences on `VenueProfileView` /
-`VenueProfileResponse` are updated.
+Then: `SalesClose` components on both commands (`NewVenueCommand` normalizes null →
+`SalesClose.DEFAULT`; `VenueProfileCommand` requires it), wire fields on both request
+records parsed as `LocalTime` then `SalesClose.fromTime(...)` inside the existing
+`InvalidApiRequestException.parsing(...)` boundary, `JdbcVenues.updateVenueProfile` SET
+clause gains `sales_close = :salesClose` bound from `command.salesClose().time()`,
+`insertVenue` gains the column, and the two stale "display-only / no PATCH field"
+Javadoc sentences on `VenueProfileView` / `VenueProfileResponse` are updated (the read
+model keeps `LocalTime` — it only displays).
 
 - [ ] **Step 4: Run, verify PASS** — same scoped commands; then the cross-module ITs
   (`BookingControllerIT.reserveRefusedAfterOwnerClosesSalesForToday` /
