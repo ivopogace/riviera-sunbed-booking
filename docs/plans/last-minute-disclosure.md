@@ -360,16 +360,22 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (run 2906) | `BookingController` injected the concrete `CancellationPolicy`, unsatisfiable in the shared `@WebMvcTest` context — 177 failures across 18 web-slice classes | fixed: `QuoteCancellationTerms` driving port + `WebSliceStubs` inert stub (the `CreateBooking` pattern) |
+| F-2 | CI (run 2906) | `EndpointRoleGateCoverageTest` flagged the terms endpoint as reachable-but-undeclared | fixed: `DECLARED_REACHABLE` entry — public tourist read, permitAll via the one-segment GET matcher |
+| F-3 | CI (run 2906) | plan-doc file-structure guard: prose globs don't satisfy #533 — touched paths must be listed explicitly | fixed: File structure section rewritten to explicit paths |
 
 ---
 
 ## File structure
 
 - `platform/src/main/java/ai/riviera/platform/booking/vocabulary/CancellationWindow.java` — moved from `domain/` (published enum)
+- `platform/src/main/java/ai/riviera/platform/booking/vocabulary/package-info.java` — mention the enum in the surface Javadoc
 - `platform/src/main/java/ai/riviera/platform/booking/domain/CancellationWindow.java` — deleted (the move)
 - `platform/src/main/java/ai/riviera/platform/booking/domain/RefundPolicy.java` — import update
 - `platform/src/main/java/ai/riviera/platform/booking/application/BookingCutoff.java` — `cancellationWindow(cutoff, date, Instant at)` overload
-- `platform/src/main/java/ai/riviera/platform/booking/application/cancel/CancellationPolicy.java` — `terms(SetId, LocalDate)` + `CancellationTerms` record; import update
+- `platform/src/main/java/ai/riviera/platform/booking/application/cancel/CancellationPolicy.java` — `terms(SetId, LocalDate)` + `windowAtBirth(SetId, LocalDate, Instant)`; implements the port; import update
+- `platform/src/main/java/ai/riviera/platform/booking/application/cancel/CancellationTerms.java` — new quote record (top-level, the `ConfirmedBooking` style)
+- `platform/src/main/java/ai/riviera/platform/booking/application/cancel/QuoteCancellationTerms.java` — new driving port (the controller depends on the seam, not the class — web-slice contexts stub it)
 - `platform/src/main/java/ai/riviera/platform/booking/application/cancel/CancelBookingService.java` — import update
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingController.java` — terms endpoint
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/CancellationTermsView.java` — new response DTO
@@ -378,15 +384,40 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/booking/events/BookingConfirmed.java` — + two fields
 - `platform/src/main/java/ai/riviera/platform/booking/events/BookingPaymentDue.java` — + two fields
 - `platform/src/main/java/ai/riviera/platform/booking/vocabulary/BookingConfirmationFacts.java` — + two fields (resend path)
-- publication sites of `BookingConfirmed`/`BookingPaymentDue` + the `BookingNotificationFacts` adapter — stamped fields (exact list from the phase-2 mechanism sweep)
+- `platform/src/main/java/ai/riviera/platform/booking/application/reserve/ConfirmBookingService.java` — stamps the birth window on `BookingConfirmed`
+- `platform/src/main/java/ai/riviera/platform/booking/application/reserve/ConfirmedBooking.java` — + `createdAt` (off the confirm `RETURNING`)
+- `platform/src/main/java/ai/riviera/platform/booking/application/request/RespondToRequestService.java` — stamps the birth window on `BookingPaymentDue`
+- `platform/src/main/java/ai/riviera/platform/booking/application/request/AcceptedRequest.java` — + `createdAt` (off the accept `RETURNING`)
+- `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcBookings.java` — `created_at` joins both `RETURNING` clauses
+- `platform/src/main/java/ai/riviera/platform/booking/adapter/out/JdbcBookingNotificationFacts.java` — resend path derives the birth window via `CancellationPolicy`
 - `platform/src/main/java/ai/riviera/platform/notification/application/BookingConfirmationMail.java` — + two fields
 - `platform/src/main/java/ai/riviera/platform/notification/application/PaymentDueMail.java` — + two fields
 - `platform/src/main/java/ai/riviera/platform/notification/adapter/in/BookingConfirmationMailListener.java` — carry fields off the event
 - `platform/src/main/java/ai/riviera/platform/notification/adapter/in/RequestPaymentDueMailListener.java` — carry fields off the event
 - `platform/src/main/java/ai/riviera/platform/notification/application/BookingConfirmationResendService.java` — carry fields off the facts
 - `platform/src/main/java/ai/riviera/platform/notification/adapter/out/SmtpMailer.java` — render the disclosure line (both mails)
-- `platform/src/test/java/ai/riviera/platform/booking/**` — `CancellationPolicyTermsTest` (new), `CancellationTermsEndpointIT` (new), `BookingCutoffTest`, `ViewBookingServiceTest`, `WeatherRefundServiceIT`, `BookingCreationViewsContractTest` (only if touched), existing window/refund tests' imports
-- `platform/src/test/java/ai/riviera/platform/notification/**` — `BookingConfirmationMailIT`, `RequestPaymentDueMailIT`, `BookingConfirmationMailListenerTest`, `MockMailerTest`, resend IT
+- `platform/src/test/java/ai/riviera/platform/booking/application/cancel/CancellationPolicyTermsTest.java` — new (AC-1..3)
+- `platform/src/test/java/ai/riviera/platform/booking/CancellationTermsEndpointIT.java` — new (AC-4)
+- `platform/src/test/java/ai/riviera/platform/booking/application/BookingCutoffTest.java` — at-birth overload + boundary cases
+- `platform/src/test/java/ai/riviera/platform/booking/application/view/ViewBookingServiceTest.java` — import update (phase 0), AC-8 (phase 3)
+- `platform/src/test/java/ai/riviera/platform/booking/domain/RefundPolicyTest.java` — import update
+- `platform/src/test/java/ai/riviera/platform/booking/application/request/RespondToRequestServiceTest.java` — accept-path stamping pin
+- `platform/src/test/java/ai/riviera/platform/booking/application/request/PaymentDueAnnouncerIT.java` — widened event construction
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — inert `QuoteCancellationTerms` stub for the web slices
+- `platform/src/test/java/ai/riviera/platform/EndpointRoleGateCoverageTest.java` — the terms endpoint's declared-reachable entry
+- `platform/src/test/java/ai/riviera/platform/EventRegistryDurabilityIT.java` — widened event construction
+- `platform/src/test/java/ai/riviera/platform/payout/PayoutAccrualIT.java`, `platform/src/test/java/ai/riviera/platform/payout/PayoutModuleTest.java`, `platform/src/test/java/ai/riviera/platform/payout/PayoutSpineScenarioIT.java` — widened event constructions (`payout` reads none of the new fields)
+- `platform/src/test/java/ai/riviera/platform/booking/**` — `WeatherRefundServiceIT` (AC-9, phase 3), `BookingCreationViewsContractTest` (only if touched)
+- `platform/src/test/java/ai/riviera/platform/notification/BookingConfirmationMailIT.java` — AC-5 + real-checkout stamping pin
+- `platform/src/test/java/ai/riviera/platform/notification/RequestPaymentDueMailIT.java` — AC-6
+- `platform/src/test/java/ai/riviera/platform/notification/adapter/in/BookingConfirmationMailListenerTest.java` — AC-7 + pass-through pin
+- `platform/src/test/java/ai/riviera/platform/notification/BookingMailFixtures.java` — stamped-event overloads
+- `platform/src/test/java/ai/riviera/platform/notification/AdminMailDeliveryIT.java` — resend re-derivation pin (S-6)
+- `platform/src/test/java/ai/riviera/platform/notification/adapter/out/SmtpMailerIT.java` — disclosure-line rendering pins
+- `platform/src/test/java/ai/riviera/platform/notification/adapter/out/MockMailerTest.java` — widened record constructions
+- `platform/src/test/java/ai/riviera/platform/notification/adapter/out/EmailSuppressionReinstatementIT.java` — widened record construction
+- `platform/src/test/java/ai/riviera/platform/notification/application/TransactionalMailServiceTest.java` — widened record constructions
+- `platform/src/test/java/ai/riviera/platform/notification/application/BookingConfirmationResendServiceTest.java` — resend pass-through pin
 - `frontend/src/app/booking/cancellation-terms-note.ts` + `.spec.ts` + `.a11y.spec.ts` — new
 - `frontend/src/app/booking/booking-dialog.ts` + `booking-dialog.spec.ts` — terms resource + note
 - `frontend/src/app/booking/booking-pay.ts` + `booking-pay.spec.ts` — note on the pay step

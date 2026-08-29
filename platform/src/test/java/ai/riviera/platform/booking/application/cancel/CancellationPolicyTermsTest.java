@@ -56,7 +56,7 @@ class CancellationPolicyTermsTest {
 	@Test
 	void freeWindowQuotesDeadline() {
 		givenSet();
-		CancellationPolicy.CancellationTerms terms =
+		CancellationTerms terms =
 				policyAt(ZonedDateTime.of(2026, 8, 28, 9, 0, 0, 0, TIRANE)).terms(SET, DATE)
 						.orElseThrow();
 		assertEquals(CancellationWindow.FREE, terms.window());
@@ -69,7 +69,7 @@ class CancellationPolicyTermsTest {
 	void lateWindowCarriesVenueShare() {
 		givenSet();
 		when(rates.lateCancelRefundBps(VENUE)).thenReturn(OptionalInt.of(2500));
-		CancellationPolicy.CancellationTerms terms =
+		CancellationTerms terms =
 				policyAt(ZonedDateTime.of(2026, 8, 29, 21, 0, 0, 0, TIRANE)).terms(SET, DATE)
 						.orElseThrow();
 		assertEquals(CancellationWindow.LATE, terms.window());
@@ -79,7 +79,7 @@ class CancellationPolicyTermsTest {
 	@Test
 	void sameDayQuotesClosed() {
 		givenSet();
-		CancellationPolicy.CancellationTerms terms =
+		CancellationTerms terms =
 				policyAt(ZonedDateTime.of(2026, 8, 30, 9, 0, 0, 0, TIRANE)).terms(SET, DATE)
 						.orElseThrow();
 		assertEquals(CancellationWindow.CLOSED, terms.window());

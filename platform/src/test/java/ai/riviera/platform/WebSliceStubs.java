@@ -211,6 +211,11 @@ class WebSliceStubs {
 	}
 
 	@Bean
+	ai.riviera.platform.booking.application.cancel.QuoteCancellationTerms quoteCancellationTerms() {
+		return (_, _) -> Optional.empty();
+	}
+
+	@Bean
 	Clock clock() {
 		return Clock.fixed(Instant.parse("2026-06-30T12:00:00Z"), ZoneOffset.UTC);
 	}

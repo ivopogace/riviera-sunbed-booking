@@ -2,7 +2,7 @@ package ai.riviera.platform.booking.adapter.in;
 
 import java.time.Instant;
 
-import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
+import ai.riviera.platform.booking.application.cancel.CancellationTerms;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 
 /**
@@ -13,7 +13,7 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 record CancellationTermsView(CancellationWindow window, Instant freeCancellationEndsAt,
 		int lateCancelRefundBps) {
 
-	static CancellationTermsView of(CancellationPolicy.CancellationTerms terms) {
+	static CancellationTermsView of(CancellationTerms terms) {
 		return new CancellationTermsView(terms.window(), terms.freeCancellationEndsAt(),
 				terms.lateCancelRefundBps());
 	}

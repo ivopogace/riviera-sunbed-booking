@@ -24,7 +24,7 @@ import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
 import ai.riviera.platform.booking.application.request.WithdrawOutcome;
 import ai.riviera.platform.booking.application.request.WithdrawRequest;
-import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
+import ai.riviera.platform.booking.application.cancel.QuoteCancellationTerms;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
@@ -55,17 +55,17 @@ class BookingController {
 	private final CancelBooking cancelBooking;
 	private final WithdrawRequest withdrawRequest;
 	private final CurrentCustomer currentCustomer;
-	private final CancellationPolicy cancellationPolicy;
+	private final QuoteCancellationTerms cancellationTerms;
 
 	BookingController(CreateBooking createBooking, ViewBooking viewBooking, CancelBooking cancelBooking,
 			WithdrawRequest withdrawRequest, CurrentCustomer currentCustomer,
-			CancellationPolicy cancellationPolicy) {
+			QuoteCancellationTerms cancellationTerms) {
 		this.createBooking = createBooking;
 		this.viewBooking = viewBooking;
 		this.cancelBooking = cancelBooking;
 		this.withdrawRequest = withdrawRequest;
 		this.currentCustomer = currentCustomer;
-		this.cancellationPolicy = cancellationPolicy;
+		this.cancellationTerms = cancellationTerms;
 	}
 
 	/**
@@ -76,7 +76,7 @@ class BookingController {
 	@GetMapping("/cancellation-terms")
 	ResponseEntity<?> cancellationTerms(@RequestParam long setId,
 			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-		return cancellationPolicy.terms(new SetId(setId), date)
+		return cancellationTerms.terms(new SetId(setId), date)
 				.<ResponseEntity<?>>map(terms -> ResponseEntity.ok(CancellationTermsView.of(terms)))
 				.orElseGet(() -> error(HttpStatus.NOT_FOUND, "NO_SUCH_SET", "No such set."));
 	}

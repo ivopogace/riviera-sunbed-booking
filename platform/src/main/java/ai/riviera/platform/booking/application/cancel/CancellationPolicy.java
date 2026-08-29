@@ -27,7 +27,7 @@ import ai.riviera.platform.venue.api.VenueRates;
  * {@code @NamedInterface}, so it stays inside the {@code booking} module (invariant #11).
  */
 @Component
-public class CancellationPolicy {
+public class CancellationPolicy implements QuoteCancellationTerms {
 
 	private final SetBookingFacts setFacts;
 	private final VenueRates rates;
@@ -61,6 +61,7 @@ public class CancellationPolicy {
 	 * and the venue's late share. Empty for an unknown set: a stale map in a tourist's hands is an
 	 * expected flow here, unlike {@link #quote}'s booking-FK breach.
 	 */
+	@Override
 	public Optional<CancellationTerms> terms(SetId setId, LocalDate bookingDate) {
 		return setFacts.setBookingInfo(setId).map(set -> {
 			CancellationWindow window = cutoff.cancellationWindow(set.bookingCutoff(), bookingDate);
@@ -68,11 +69,6 @@ public class CancellationPolicy {
 					cutoff.freeCancellationEndsAt(set.bookingCutoff(), bookingDate),
 					lateShare(window, set.venueId()));
 		});
-	}
-
-	/** The pre-reserve quote: phase now, free-cancellation deadline, and the venue's late share. */
-	public record CancellationTerms(CancellationWindow window, Instant freeCancellationEndsAt,
-			int lateCancelRefundBps) {
 	}
 
 	/**
