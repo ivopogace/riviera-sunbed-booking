@@ -406,18 +406,28 @@ test('one tap closes today’s online sales via the standing setting, effective 
   await page.goto('/operator/1');
   await signInAndOpenDaily(page);
 
-  // Today, sales open → the kill switch is offered.
+  // Opening the confirm REPLACES the trigger and moves focus onto the destructive button.
   await page.getByTestId('daily-close-sales').click();
   const panel = page.getByTestId('daily-close-sales-confirm-panel');
   await expect(panel).toContainText('effective immediately');
   await expect(panel).toContainText('stays closed for future days');
+  await expect(page.getByTestId('daily-close-sales')).toHaveCount(0);
+  await expect(page.getByTestId('daily-close-sales-confirm')).toBeFocused();
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'daily view with the close-sales confirm open');
 
+  // Backing out restores the trigger and returns focus to it.
+  await page.getByTestId('daily-close-sales-cancel').click();
+  await expect(page.getByTestId('daily-close-sales-confirm-panel')).toHaveCount(0);
+  await expect(page.getByTestId('daily-close-sales')).toBeFocused();
+
+  // Re-open and go through with it.
+  await page.getByTestId('daily-close-sales').click();
   await page.getByTestId('daily-close-sales-confirm').click();
 
-  // The outcome notice announces the standing nature of the change...
+  // The outcome notice announces the standing nature of the change and takes focus (settled leg)...
   await expect(page.getByTestId('daily-notice')).toContainText('closed');
+  await expect(page.getByTestId('daily-notice')).toBeFocused();
   await expect(page.getByTestId('daily-notice')).toContainText('future days');
   // ...the wire carried the full-replace body with the flipped setting...
   expect(patches).toHaveLength(1);

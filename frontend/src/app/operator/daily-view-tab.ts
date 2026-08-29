@@ -121,6 +121,12 @@ interface CheckInNotice {
  * chrome via {@link BeachMapCanvas}. Tile state is conveyed by an accessible name, not colour alone
  * (WCAG AA); codes are bearer credentials (invariant #7), shown for arrival verification, never logged.
  *
+ * <p>The one write beyond the mark/release path is the on-today kill switch: "close today's
+ * online sales now" flips the venue's STANDING sales-close setting to 00:01 (invariant #4)
+ * through {@link OperatorConsoleService#closeOnlineSalesNow}'s profile GET→PATCH — no per-day
+ * override — behind an inline two-step confirm; either outcome re-reads the day so the header
+ * reconciles with the map read's {@code salesOpen} verdict.
+ *
  * <p>The Request-to-Book queue is deliberately out of scope — it is the Requests tab's job. This
  * tab does daily-ops only.
  */

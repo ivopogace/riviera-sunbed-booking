@@ -114,7 +114,15 @@
         </p>
       </div>
       @if (selectedDateIsToday()) {
-        @if (salesOpenToday()) {
+        @if (!salesOpenToday()) {
+          <p
+            class="mt-3 text-[13px] font-semibold text-riv-card-ink"
+            data-testid="daily-sales-closed"
+          >
+            Online sales for today are closed.
+          </p>
+        } @else if (!closeSalesConfirm()) {
+          <!-- One affordance at a time: the confirm below replaces the trigger while it is open. -->
           <button
             type="button"
             appTouchTarget
@@ -125,13 +133,6 @@
           >
             Close today’s online sales now
           </button>
-        } @else {
-          <p
-            class="mt-3 text-[13px] font-semibold text-riv-card-ink"
-            data-testid="daily-sales-closed"
-          >
-            Online sales for today are closed.
-          </p>
         }
       }
       @if (closeSalesConfirm()) {

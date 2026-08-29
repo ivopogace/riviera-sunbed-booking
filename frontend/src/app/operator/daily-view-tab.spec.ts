@@ -922,7 +922,7 @@ describe('DailyViewTab (#175)', () => {
     http.expectNone((r) => r.url.endsWith('/api/venues/1/profile'));
   });
 
-  it('a lost 409 race says try again and re-reads the day (#794, R-1)', () => {
+  it('a lost 409 race says try again and re-reads the day (#794, R-1)', async () => {
     render();
 
     byId('daily-close-sales').click();
@@ -939,6 +939,66 @@ describe('DailyViewTab (#175)', () => {
 
     flushLoad(); // the failure path also re-reads, so the button reflects server truth
     expect(byId('daily-notice').textContent?.toLowerCase()).toContain('try again');
+    // The settled-failure leg parks focus on the notice (WCAG 2.4.3 — the confirm is gone).
+    await settleDaily();
+    expect(document.activeElement).toBe(byId('daily-notice'));
+  });
+
+  async function settleDaily(): Promise<void> {
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  it('replaces the trigger with the confirm while the prompt is open (#794)', async () => {
+    render();
+
+    byId('daily-close-sales').click();
+    await settleDaily();
+
+    // One affordance at a time (the payouts weather-refund shape): the trigger is gone.
+    expect(host.querySelector('[data-testid="daily-close-sales"]')).toBeNull();
+    expect(byId('daily-close-sales-confirm-panel')).toBeTruthy();
+  });
+
+  it('moves focus to the confirm button when the close-sales prompt opens (#794)', async () => {
+    render();
+
+    byId('daily-close-sales').click();
+    await settleDaily();
+
+    expect(document.activeElement).toBe(byId('daily-close-sales-confirm'));
+  });
+
+  it('returns focus to the trigger when the operator backs out (#794)', async () => {
+    render();
+
+    byId('daily-close-sales').click();
+    await settleDaily();
+    byId('daily-close-sales-cancel').click();
+    await settleDaily();
+
+    expect(document.activeElement).toBe(byId('daily-close-sales'));
+  });
+
+  it('parks focus on the notice when the close settles (#794)', async () => {
+    render();
+
+    byId('daily-close-sales').click();
+    await settleDaily();
+    byId('daily-close-sales-confirm').click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/profile'))
+      .flush(PROFILE);
+    http
+      .expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'))
+      .flush(null, { status: 204, statusText: 'No Content' });
+    fixture.detectChanges();
+    flushLoad();
+    await settleDaily();
+
+    expect(host.querySelector('[data-testid="daily-close-sales-confirm-panel"]')).toBeNull();
+    expect(document.activeElement).toBe(byId('daily-notice'));
   });
 });
 
