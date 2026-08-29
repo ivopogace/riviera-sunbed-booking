@@ -340,15 +340,15 @@ strings**, never interpolated fragments.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window as
 > the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** sonar gate — review gate ran clean 2026-08-29 (planning session:
-`/code-review` 5-agent fan-out at high effort + the full `riviera-review-overlay` bank walk,
-head `1b08671d` + the `1aa9afa5` delta read directly; record: PR #803 comment). Awaiting the
-SonarCloud re-analysis on `1aa9afa5` to confirm F-4/F-5 closed.
+**Stage pointer:** merge close-out — both gates green 2026-08-29: review gate ran clean
+(`/code-review` 5-agent fan-out at high effort + the full `riviera-review-overlay` bank walk;
+record: PR #803 comment) and the Sonar gate is API-verified on the final head (quality gate
+passed; issue list EMPTY — F-4/F-5 confirmed closed; 98.8% new-code coverage, 0 duplication).
+Awaiting the maintainer's merge decision.
 
-**Next action:** once the SonarCloud check on `1aa9afa5` completes, re-pull the PR issue list
-(expect empty — F-4/F-5 fixed by that commit), then run the merge close-out (incl. the full
-`riviera-docs-freshness` pass over the merge range and the plan-doc final state citing
-`merged via PR #803`).
+**Next action:** on the maintainer's go: finalize this doc (risk rows closed, AC verification
+ticked, `merged via PR #803`) in the PR's own last commit, run the `riviera-docs-freshness`
+pass over the merge range, merge, then the epic #790 close-out comment (slice 5 of 5).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -368,8 +368,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | CI (run 2906) | `BookingController` injected the concrete `CancellationPolicy`, unsatisfiable in the shared `@WebMvcTest` context — 177 failures across 18 web-slice classes | fixed: `QuoteCancellationTerms` driving port + `WebSliceStubs` inert stub (the `CreateBooking` pattern) |
 | F-2 | CI (run 2906) | `EndpointRoleGateCoverageTest` flagged the terms endpoint as reachable-but-undeclared | fixed: `DECLARED_REACHABLE` entry — public tourist read, permitAll via the one-segment GET matcher |
 | F-3 | CI (run 2906) | plan-doc file-structure guard: prose globs don't satisfy #533 — touched paths must be listed explicitly | fixed: File structure section rewritten to explicit paths |
-| F-4 | sonar (PR analysis) | java:S9358 — conditional expression outside the `Target` construction, `RateLimitFilter.java:370` | fixed-in-`1aa9afa5` (awaiting re-analysis confirm) |
-| F-5 | sonar (PR analysis) | java:S1192 — `"created_at"` literal duplicating `COL_CREATED_AT`, `JdbcBookings.java:284` (×2 sites) | fixed-in-`1aa9afa5` (awaiting re-analysis confirm) |
+| F-4 | sonar (PR analysis) | java:S9358 — conditional expression outside the `Target` construction, `RateLimitFilter.java:370` | fixed-in-`1aa9afa5`, confirmed by re-analysis (0 issues) |
+| F-5 | sonar (PR analysis) | java:S1192 — `"created_at"` literal duplicating `COL_CREATED_AT`, `JdbcBookings.java:284` (×2 sites) | fixed-in-`1aa9afa5`, confirmed by re-analysis (0 issues) |
 | F-6 | review (fan-out agent #4) | RV-FE-10 candidate: dialog `terms-region` mounts inside the step-2 branch, plausibly born with its message | rejected at the confidence gate (25/100): region pre-exists content in the async leg (mutation-tested); resolve-early leg renders static step content — no lost announcement. No change needed |
 
 ---
