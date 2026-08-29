@@ -21,6 +21,7 @@ const INITIAL_PROFILE = {
   description: 'Loungers on the shore.',
   bookingMode: 'INSTANT',
   bookingCutoff: '18:00',
+  salesClose: '16:00',
   commissionBps: 1500,
   payoutCurrency: 'EUR',
   amenities: ['WIFI', 'BEACH_BAR'],
@@ -172,6 +173,11 @@ test('pre-fills the form, saves the widened profile without commission/currency,
   // The form pre-fills from the owner profile; commission is a read-only %, payout currency read-only.
   await expect(page.getByTestId('venue-name')).toHaveValue('Miramar Beach Club');
   await expect(page.getByTestId('venue-booking-mode')).toHaveValue('INSTANT');
+  // The three-choice sales-close control reflects the loaded 16:00 default (#794).
+  await expect(page.getByTestId('venue-sales-close-16:00')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('label', { has: page.getByTestId('venue-cutoff') })).toContainText(
+    'Free-cancellation deadline (Europe/Tirane)',
+  );
   await expect(page.getByTestId('venue-commission')).toHaveText('15%');
   await expect(page.getByTestId('venue-payout-currency')).toHaveText('EUR');
   await expect(page.getByTestId('amenity-toggle-WIFI')).toHaveAttribute('aria-pressed', 'true');
@@ -182,9 +188,10 @@ test('pre-fills the form, saves the widened profile without commission/currency,
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'venue tab');
 
-  // Edit: rename, flip mode to REQUEST, toggle an amenity, then save.
+  // Edit: rename, flip mode to REQUEST, pick a new sales close, toggle an amenity, then save.
   await page.getByTestId('venue-name').fill('Miramar Renamed');
   await page.getByTestId('venue-booking-mode').selectOption('REQUEST');
+  await page.getByTestId('venue-sales-close-23:59').click();
   await page.getByTestId('amenity-toggle-RESTAURANT').click();
   await page.getByTestId('venue-save').click();
 
@@ -193,12 +200,14 @@ test('pre-fills the form, saves the widened profile without commission/currency,
   const body = patches[0].postDataJSON() as {
     name?: string;
     bookingMode?: string;
+    salesClose?: string;
     amenities?: string[];
     commissionBps?: number;
     payoutCurrency?: string;
   };
   expect(body.name).toBe('Miramar Renamed');
   expect(body.bookingMode).toBe('REQUEST'); // flips the tourist Instant→Request flow server-side
+  expect(body.salesClose).toBe('23:59'); // the chosen close rides the full-replace PATCH (#794)
   expect(body.amenities).toEqual(expect.arrayContaining(['WIFI', 'BEACH_BAR', 'RESTAURANT']));
   // Read-only fields are NEVER on the wire (invariant #9).
   expect(body.commissionBps).toBeUndefined();
@@ -226,6 +235,8 @@ test('a stale-tab save is rejected 409, keeps the edits, and Reload recovers (#2
   const { bump } = await mockVenue(page);
   await page.goto('/operator/1');
   await signInAndOpenVenue(page); // the tab loads the profile at version 7
+  // The seeded form proves version 7 loaded BEFORE the bump; a later load would legitimately save.
+  await expect(page.getByTestId('venue-name')).toHaveValue('Miramar Beach Club');
 
   // A concurrent writer moves the venue on (→ version 8) behind this still-open tab.
   bump();

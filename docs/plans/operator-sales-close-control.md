@@ -286,16 +286,15 @@ tokens).
 > **This section is the session-recovery anchor** — see the template blockquote; update in
 > the same commit window as the change it records.
 
-**Stage pointer:** `implement — phase 0 done (session 2026-08-29); phase 1 next`
+**Stage pointer:** `implement — phases 0–1 done (session 2026-08-29); phase 2 next`
 
-**Next action:** phase 1 test-first (`tdd`): run the Skill-routing gate for the frontend
-area (riviera-frontend, angular-developer + angular-cli MCP, riviera-tailwind,
-playwright-cli), then write the venue-tab save-body spec failing.
+**Next action:** phase 2 test-first (`tdd`): the daily-view kill switch — failing
+`daily-view-tab.spec.ts` first (`closes today via the standing setting after confirm`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Backend write path (PATCH + create + vocabulary) | ✅ | "Make the sales-close setting venue-editable via profile PATCH and create (#794)" |
-| 1 — Settings tab control + cutoff relabel | | |
+| 1 — Settings tab control + cutoff relabel | ✅ | "Add the sales-close control to the venue settings tab and relabel the cancellation deadline (#794)" |
 | 2 — Daily-view kill switch | | |
 | 3 — Docs + close-out (RESPONSIBILITIES.md, freshness run, self-review) | | |
 
@@ -308,6 +307,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | impl (phase 0) | AC-5's step-4 note said "mocked clock mid-afternoon"; `BookingControllerIT` has no fixed-clock context, so the test uses the file's own R-5 boundary trick instead (00:01 stands in for a lapsed 16:00, re-opened to 23:59) — deterministic except within a minute of Tirane midnight, same residual as the #791 tests | closed (deviation recorded) |
 | F-2 | impl (phase 0) | `patchIgnoresReadOnlyCommissionAndCurrency` kept its commission pin but its raw body needed the now-required `salesClose` field (R-4's "stays" meant the asymmetry, not the byte-identical body) | closed |
 | F-3 | impl (phase 0) | `BookingControllerIT` gained `riviera.operator.password=test-operator-pw` for the owner PATCH; the property pair matches `CheckInFlowIT`/`StaffBookingControllerIT` exactly, so it joins their cached Spring context rather than forking a new one | closed |
+| F-4 | impl (phase 1) | The `[formField]` binding makes `salesClose` load-bearing at render time: `operator-venue-photos.e2e.ts`'s profile fixture lacked it and the tab's render crashed mid-cycle (`model.required` read while unset), timing out three photo tests. Fixture completed; enumerated every other fixture (`git grep -rln bookingCutoff frontend/e2e` ∖ `salesClose`) — none left | closed |
+| F-5 | impl (phase 1) | `operator-venue.e2e.ts`'s stale-write test raced `bump()` against the profile load (latent; exposed when F-4 slowed the run) — the test now waits for the seeded form before bumping, so version 7 is provably loaded first | closed |
+| F-6 | CI (phase 0 push) | `check-plan-file-structure` flagged three touched-but-unlisted paths; File structure updated (commit "List every phase-0-touched path…") | closed |
 
 ---
 
@@ -332,8 +334,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/operator-console.model.ts` — `SalesCloseTime`, `salesClose` on `VenueProfileView`/`VenueProfileUpdate`, `toProfileUpdate(view)`.
 - `frontend/src/app/operator/operator-console.service.ts` — PATCH doc update; `closeOnlineSalesNow(venueId)`.
 - `frontend/src/app/operator/venue-tab.ts` · `.html` · `.spec.ts` · `.a11y.spec.ts` · `.contrast.spec.ts` — the three-choice control + save wiring + specs (a11y `PROFILE` constant gains `salesClose`).
-- `frontend/src/app/operator/booking-cutoff-field.ts` — label + TSDoc relabel.
-- `frontend/src/app/operator/venue-create-card.ts` — "required" message copy for the relabeled field.
+- `frontend/src/app/operator/booking-cutoff-field.ts` · `.spec.ts` — label + TSDoc relabel; the spec pins the new copy.
+- `frontend/src/app/operator/venue-create-card.ts` · `.spec.ts` — "required" message copy for the relabeled field; the spec's label inventory follows.
+- `frontend/e2e/operator-venue-photos.e2e.ts` — profile fixture gains `salesClose` (a fixture without it crashes the tab's render — see F-4).
 - `frontend/src/app/operator/daily-view-tab.ts` · `.html` · `.spec.ts` · `.a11y.spec.ts` — kill switch + confirm + notice + specs.
 - `frontend/e2e/operator-venue.e2e.ts` — control save + wire-body assertions; mock gains `salesClose`.
 - `frontend/e2e/operator-daily.e2e.ts` — kill-switch journey incl. axe.
@@ -451,7 +454,7 @@ model keeps `LocalTime` — it only displays).
 `venue-tab.spec.ts`, `venue-tab.a11y.spec.ts`, `venue-tab.contrast.spec.ts`,
 `operator-venue.e2e.ts` (+ its mock)
 
-- [ ] **Step 1: Failing unit spec** — the save body carries the chosen value:
+- [x] **Step 1: Failing unit spec** — the save body carries the chosen value:
 
 ```ts
 it('sends the chosen sales close with the full-replace PATCH', async () => {
@@ -469,9 +472,9 @@ it('labels the cutoff as the free-cancellation deadline', async () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL** — `npm test -- venue-tab` (scoped).
+- [x] **Step 2: Run, verify FAIL** — `npm test -- venue-tab` (scoped).
 
-- [ ] **Step 3: Minimal implementation** —
+- [x] **Step 3: Minimal implementation** —
   - `VenueDetailsModel` gains `salesClose: SalesCloseTime`; `form()` schema unchanged
     beyond the field (all three values valid ⇒ no validator; `required` implicit in the
     union + seed). Template:
@@ -488,7 +491,10 @@ it('labels the cutoff as the free-cancellation deadline', async () => {
   (per the v22 custom-controls doc, `SegmentedControl`'s `value` model satisfies
   `FormValueControl`; if the binding fights the generic `T`, fall back to the
   `amenityDraft`-style side signal merged in `onSave()` — decide in this step, note the
-  outcome here.)
+  outcome here. **Outcome: `[formField]` bound cleanly** — the generic inferred
+  `SalesCloseTime` from the options input; no fallback, zero `SegmentedControl` changes.
+  One consequence: a profile fixture *without* `salesClose` now crashes the tab's render
+  (`model.required` read while unset) — how F-4 surfaced.)
   - Options with human labels per the copy assumption; group label carries the
     `Europe/Tirane` note.
   - `booking-cutoff-field.ts` label span → `Free-cancellation deadline (Europe/Tirane)`;
@@ -498,18 +504,18 @@ it('labels the cutoff as the free-cancellation deadline', async () => {
   - a11y spec `PROFILE` constant gains `salesClose: '16:00'`; contrast spec: no new
     literal colors expected (token reuse) — add stops only if any appear.
 
-- [ ] **Step 4: Run, verify PASS** — `npm test -- venue-tab` · `npm run lint` ·
+- [x] **Step 4: Run, verify PASS** — `npm test -- venue-tab` · `npm run lint` ·
   `npm run format:check`; e2e: extend `operator-venue.e2e.ts` (mock profile gains
   `salesClose`, save asserts wire body, axe re-run on the tab) — `npm run test:e2e:a11y -- operator-venue`.
 
-- [ ] **Step 5: Generalization-audit pass** — population: *every FE construction site of
+- [x] **Step 5: Generalization-audit pass** — population: *every FE construction site of
   `VenueProfileUpdate` or profile fixture* → enumerate
   `git grep -ln "VenueProfileUpdate\|salesClose" frontend/src frontend/e2e` → all send /
   fixture the field; decision recorded.
 
-- [ ] **Step 6: Commit** — `Add the sales-close control to the venue settings tab and relabel the cancellation deadline (#794)`.
+- [x] **Step 6: Commit** — `Add the sales-close control to the venue settings tab and relabel the cancellation deadline (#794)`.
 
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -593,6 +599,7 @@ it('closes today via the standing setting after confirm', async () => {
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-29 | phase 0 commit | Every write statement persisting venue profile columns | `git grep -n "UPDATE venue\b\|INSERT INTO venue\b" platform/src/main` | 4 Java sites in `JdbcVenues` + V3 seed | `insertVenue` + `updateVenueProfile` carry `sales_close`; `updateLiveRate` (commission) and the `set_version` bump touch other columns by design; the V3 seed takes the 16:00 DEFAULT. No other writer exists — no action |
+| 2026-08-29 | phase 1 commit | Every FE construction site of `VenueProfileUpdate` or profile fixture | `git grep -ln "VenueProfileUpdate\|salesClose" frontend/src frontend/e2e` | venue-tab save + `toProfileUpdate` (send it); 5 operator fixtures (carry it); tourist `salesOpen` sites are the #793 read projection, untouched by design | fixtures completed (F-4); no other action |
 
 ---
 

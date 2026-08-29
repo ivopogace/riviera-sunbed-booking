@@ -96,7 +96,7 @@ describe('VenueCreateCard (#278)', () => {
       'Description',
       'Booking mode',
       'Payout currency (ISO 4217)',
-      'Booking cutoff (Europe/Tirane)',
+      'Free-cancellation deadline (Europe/Tirane)',
     ]);
     expect(host().querySelector<HTMLSelectElement>('select')?.value).toBe('INSTANT');
     // The commission input is gone (#692): the platform stamps the rate; nothing to type into.

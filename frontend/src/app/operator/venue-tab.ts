@@ -14,9 +14,11 @@ import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { formatCommissionPercent } from '../shared/commission-rate';
 import { parentVenueId } from '../shared/parent-venue-id';
+import { SegmentedControl, SegmentedOption } from '../shared/segmented-control';
 import { parseWholeNumber } from '../shared/whole-number';
 import { BookingMode, PhotoSlotKey } from '../shared/venue-views';
 import {
+  SalesCloseTime,
   VenueProfileErrorCode,
   VenueProfileUpdate,
   VenueProfileView,
@@ -39,6 +41,7 @@ interface VenueDetailsModel {
   description: string;
   bookingMode: BookingMode;
   bookingCutoff: string; // "HH:mm" Europe/Tirane
+  salesClose: SalesCloseTime;
 }
 
 const EMPTY_DETAILS: VenueDetailsModel = {
@@ -48,7 +51,31 @@ const EMPTY_DETAILS: VenueDetailsModel = {
   description: '',
   bookingMode: 'INSTANT',
   bookingCutoff: '18:00',
+  salesClose: '16:00',
 };
+
+/** The three fixed sales-close choices (invariant #4) — the union type IS the validator, so the
+ *  form needs none; every option is a legal write. */
+const SALES_CLOSE_OPTIONS: readonly SegmentedOption<SalesCloseTime>[] = [
+  {
+    value: '00:01',
+    label: '00:01 — no same-day sales',
+    description: 'Tourists can book ahead, never for today.',
+    testId: 'venue-sales-close-00:01',
+  },
+  {
+    value: '16:00',
+    label: '16:00 — mid-afternoon',
+    description: 'Today stays bookable until 16:00. The default.',
+    testId: 'venue-sales-close-16:00',
+  },
+  {
+    value: '23:59',
+    label: '23:59 — all day',
+    description: 'Today stays bookable until midnight.',
+    testId: 'venue-sales-close-23:59',
+  },
+];
 
 /** The three designed photo slots. All are tourist-surfaced in the Discover-card and beach-map
  *  slideshows; the cover leads both. */
@@ -94,6 +121,7 @@ const EMPTY_SLOTS: Readonly<Record<PhotoSlotKey, SlotUi>> = {
     FormField,
     CardGlass,
     NgOptimizedImage,
+    SegmentedControl,
     StaleWriteBanner,
     BusyAction,
     TouchTarget,
@@ -141,8 +169,11 @@ export class VenueTab {
     required(path.name, { message: 'Venue name is required' });
     required(path.beach, { message: 'Beach is required' });
     required(path.region, { message: 'Region is required' });
-    required(path.bookingCutoff, { message: 'Booking cutoff is required' });
+    required(path.bookingCutoff, { message: 'Free-cancellation deadline is required' });
   });
+
+  /** The three-choice sales-close options rendered by the segmented control. */
+  protected readonly salesCloseOptions = SALES_CLOSE_OPTIONS;
 
   /** The commodities: amenity toggle set + distance-to-water string (edited, saved with the form). */
   protected readonly amenityCatalogue = AMENITY_CATALOGUE;
@@ -259,6 +290,7 @@ export class VenueTab {
         description: m.description,
         bookingMode: m.bookingMode,
         bookingCutoff: m.bookingCutoff,
+        salesClose: m.salesClose,
         amenities: [...this.amenityDraft()],
         distanceToWaterM,
         expectedVersion,
@@ -337,6 +369,7 @@ export class VenueTab {
       description: profile.description ?? '',
       bookingMode: profile.bookingMode,
       bookingCutoff: profile.bookingCutoff,
+      salesClose: profile.salesClose,
     });
     this.amenityDraft.set(new Set(profile.amenities));
     this.distanceDraft.set(

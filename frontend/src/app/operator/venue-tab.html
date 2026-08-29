@@ -92,6 +92,22 @@
             <app-booking-cutoff-field [field]="detailsForm.bookingCutoff" testId="venue-cutoff" />
           </div>
 
+          <div class="flex flex-col gap-1">
+            <span class="text-[12.5px] font-semibold text-riv-card-ink"
+              >Same-day sales close (Europe/Tirane)</span
+            >
+            <app-segmented-control
+              variant="card"
+              label="Same-day sales close (Europe/Tirane)"
+              [options]="salesCloseOptions"
+              [formField]="detailsForm.salesClose"
+              data-testid="venue-sales-close"
+            />
+            <span class="text-[11px] text-riv-card-ink-soft"
+              >When today’s online sales stop. Booking ahead is always open.</span
+            >
+          </div>
+
           <!-- Read-only display fields: commission (the platform's cut) + payout currency. -->
           <div class="grid grid-cols-2 gap-3">
             <div class="flex flex-col gap-1">
