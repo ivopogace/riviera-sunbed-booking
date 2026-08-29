@@ -206,10 +206,10 @@ construction: each sentence has exactly one template home, pinned once per branc
 
 ## Execution status
 
-**Stage pointer:** implement (phase 4)
+**Stage pointer:** implement (phase 5)
 
-**Next action:** Phase 4 — mocked e2e rework (`discovery-flow.e2e.ts`,
-`same-day-booking.e2e.ts`).
+**Next action:** Phase 5 — docs truing (design divergence pointers + substrate citations),
+then the file-structure guard and ready-for-review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -217,7 +217,7 @@ construction: each sentence has exactly one template home, pinned once per branc
 | 1 — BE: `salesClose` on the map read | ✅ | (this commit) |
 | 2 — FE: model + three-branch venue note | ✅ | (this commit) |
 | 3 — FE: homepage note removed, `cutoff-note` retired | ✅ | (this commit) |
-| 4 — e2e: mocked-suite rework + a11y | | |
+| 4 — e2e: mocked-suite rework + a11y | ✅ | (this commit) — full mocked suite 294/295 locally; the one failure (`customer-password.e2e.ts:47`) is a pre-existing parallel-run flake untouched by this diff (passes alone and file-scoped single-worker); CI arbitrates |
 | 5 — Docs truing (in-PR) + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

@@ -87,6 +87,7 @@ const VENUE_MAP = {
     },
   ],
   salesOpen: true,
+  salesClose: '16:00',
 };
 
 test.beforeEach(async ({ page }) => {
@@ -110,15 +111,9 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await expect(cards.first()).toContainText('Miramar Beach Club');
   await expect(cards.first()).toContainText('18 of 24 free');
 
-  // Discover sizes the shared glyph from its own template — the rendered box, which jsdom can't prove.
-  const cutoffGlyph = page.getByTestId('cutoff-note').locator('svg');
-  await expect(cutoffGlyph).toHaveCSS('width', '15px');
-  await expect(cutoffGlyph).toHaveCSS('height', '15px');
-  // Captured, not re-typed, so the map below compares against Discover itself (#735).
-  const rawCutoff = await page.getByTestId('cutoff-note').textContent();
-  // Normalized here: toHaveText would collapse the U+00A0 in "6 PM" on only one side.
-  const discoverCutoff = rawCutoff?.replace(/\s+/g, ' ').trim();
-  expect(discoverCutoff).toBeTruthy();
+  // The generic lead-time note is retired (#804): Discover carries no cutoff explainer.
+  await expect(page.getByTestId('cutoff-note')).toHaveCount(0);
+  await expect(page.getByTestId('sales-close-note')).toHaveCount(0);
   // One combined assertion: bare toContainText('2') would be vacuously satisfied by the
   // year digits in the date label (review finding).
   await expect(page.getByTestId('results')).toContainText('2 venues');
@@ -162,8 +157,13 @@ test('discovery → filter → venue map is accessible end-to-end', async ({ pag
   await expect(headerChips).toContainText('15m to water');
   await expect(headerChips).toContainText('WiFi');
 
-  // One rule, one voice: the map's note reads exactly as the one Discover just rendered.
-  await expect(page.getByTestId('cutoff-note')).toHaveText(discoverCutoff!);
+  // Clause-level: the full sentence per branch is pinned once, in venue-map.spec.ts.
+  const salesCloseNote = page.getByTestId('sales-close-note');
+  await expect(salesCloseNote).toContainText('close at 4 PM at this venue');
+  // The glyph's rendered box at its presentation-attribute default — jsdom can't prove this (ICON-4).
+  const noteGlyph = salesCloseNote.locator('svg');
+  await expect(noteGlyph).toHaveCSS('width', '13px');
+  await expect(noteGlyph).toHaveCSS('height', '13px');
   await expectNoSeriousAxeViolations(page, 'venue beach map');
 });
 
@@ -240,10 +240,6 @@ test('discovery load-failure panel recovers when Retry is pressed (#149)', async
   await expect(panel).toBeVisible();
   await expect(panel).toHaveAttribute('role', 'alert');
   await expect(panel.getByRole('heading', { name: /couldn.t load the beaches/ })).toBeVisible();
-  // The cutoff explainer sits under the filter bar in every state, including this one.
-  await expect(page.getByTestId('cutoff-note')).toContainText(
-    /Book any day, today included[\s\S]*each day.s online sales close at the venue.s chosen time that day \(4\s+PM at most venues\)\./,
-  );
   await expectNoSeriousAxeViolations(page, 'discovery load-failure panel');
 
   // Retry refetches → the panel is replaced by the venue list.
