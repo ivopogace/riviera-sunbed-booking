@@ -24,9 +24,10 @@ public enum SalesClose {
 	public static final SalesClose DEFAULT = MID_AFTERNOON;
 
 	/**
-	 * The one {@code HH:mm} wire form for venue wall-clock settings — the profile read/write and
-	 * the tourist map read's {@code salesClose} all format through it, so the surfaces cannot
-	 * drift apart (the FE keys copy on exact string equality).
+	 * The one {@code HH:mm} wire form for venue wall-clock settings — every read (the profile
+	 * response and the tourist map's {@code salesClose}) formats through it, so the served
+	 * surfaces cannot drift apart (the FE keys copy on exact string equality). The write path
+	 * parses ISO input and revalidates via {@link #fromTime}, so it needs no formatter.
 	 */
 	public static final DateTimeFormatter WIRE = DateTimeFormatter.ofPattern("HH:mm");
 
