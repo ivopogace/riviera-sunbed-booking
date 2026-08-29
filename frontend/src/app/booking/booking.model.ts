@@ -156,6 +156,12 @@ export interface BookingDetail {
    * non-refundable last-minute booking; the view keys its no-cancel copy on it.
    */
   readonly cancellationWindowAtBirth: CancellationWindow;
+  /**
+   * The server will accept a rating for this stay right now — checked in, inside the review window,
+   * not yet rated. The panel gates on this and never on `status`: a `COMPLETED` stay stops being
+   * reviewable without its status moving, and every one of those fences is the server's.
+   */
+  readonly reviewable: boolean;
 }
 
 /** The cancellation-window phases, mirroring the backend `booking.vocabulary.CancellationWindow`. */
@@ -236,6 +242,14 @@ export interface Cancellation {
 export interface Withdrawal {
   readonly code: string;
   readonly status: string;
+}
+
+/**
+ * The `POST /api/bookings/{code}/review` body — a star count and nothing else in this slice. The
+ * server bounds it 1..5 and is the only judge of eligibility; the client sends what the guest picked.
+ */
+export interface SubmitReviewRequest {
+  readonly stars: number;
 }
 
 /** Server rejection codes mapped from the HTTP error body, plus a transport fallback. */

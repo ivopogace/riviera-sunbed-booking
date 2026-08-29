@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormField, form, required } from '@angular/forms/signals';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { HttpErrorResponse } from '@angular/common/http';
@@ -11,6 +12,7 @@ import { CardGlass } from '../shared/card-glass';
 import { formatDeadline } from '../shared/deadline';
 import { focusMover } from '../shared/focus-after-render';
 import { formatMoney, MoneyView } from '../shared/money';
+import { StarRating } from '../shared/star-rating';
 import { StatusChip } from '../shared/status-chip';
 import { BusyAction } from '../shared/busy-action';
 import { BookingQr } from './booking-qr';
@@ -34,6 +36,30 @@ const LINK =
 /** The neutral terminal-outcome treatment, shared by the expired and cancelled banners. */
 const BANNER_NEUTRAL = `${BANNER} border-[#dde1e3] bg-[#f0f2f3]`;
 const EYEBROW_NEUTRAL = 'text-[#4f5f67]';
+
+/** The schema's required message, shared by the form and the one result region that renders it. */
+const REVIEW_REQUIRED = 'Pick a star rating.';
+
+/**
+ * What to tell the guest when a rating is refused. Each server code is a settled fact a retry can
+ * never change, so it reads as an explanation; anything else (a transport failure, a 5xx) is worth
+ * retrying, and the panel stays open behind it.
+ */
+function reviewRejectionCopy(error: unknown): string {
+  if (!(error instanceof HttpErrorResponse)) {
+    return 'We couldn’t send your rating. Please try again.';
+  }
+  switch (problemCodeOf(error)) {
+    case 'REVIEW_ALREADY_SUBMITTED':
+      return 'This stay has already been rated.';
+    case 'REVIEW_WINDOW_CLOSED':
+      return 'The window for rating this stay has closed.';
+    case 'BOOKING_NOT_COMPLETED':
+      return 'You can rate a stay once you’ve been checked in.';
+    default:
+      return 'We couldn’t send your rating. Please try again.';
+  }
+}
 
 /** The repeated Tailwind recipes of this view — see {@link BookingView} for why they live here. */
 const CLS = {
@@ -74,6 +100,8 @@ const CLS = {
   btnDanger: `${BTN} border border-[rgba(200,90,60,0.4)] bg-[linear-gradient(180deg,#c14a2c,#a83c25)] font-bold text-white shadow-[0_8px_20px_rgba(179,67,42,0.4)] [transition:filter_0.15s_ease] hover:brightness-[1.08]`,
   btnOutline: `${BTN_OUTLINE} border-[rgba(255,255,255,0.7)] text-[#0a4f5e]`,
   btnOutlineDanger: `${BTN_OUTLINE} border-[rgba(200,90,60,0.5)] text-[#a3372a]`,
+  sectionTitle: 'mx-0 mt-0 mb-1.5 text-[16px] font-bold text-riv-card-ink',
+  sectionNote: 'mx-0 mt-0 mb-3.5 text-[13.5px] leading-[1.5] text-riv-card-ink-soft',
   btnCta:
     'mt-3.5 block w-full cursor-pointer rounded-[16px] border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-[15px] text-center text-[15.5px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:brightness-[1.06] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white aria-disabled:cursor-not-allowed aria-disabled:opacity-65',
 } as const;
@@ -111,7 +139,16 @@ const CLS = {
  */
 @Component({
   selector: 'app-booking-view',
-  imports: [RouterLink, CardGlass, StatusChip, BookingQr, BusyAction, TouchTarget],
+  imports: [
+    RouterLink,
+    CardGlass,
+    StatusChip,
+    BookingQr,
+    BusyAction,
+    TouchTarget,
+    StarRating,
+    FormField,
+  ],
   template: `
     @if (notFound()) {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title">
@@ -478,6 +515,47 @@ const CLS = {
           </section>
         }
 
+        <!-- Outside the panel on purpose: scoped to it, the success message would unmount with it. -->
+        <p
+          [class]="cls.result"
+          role="status"
+          aria-live="polite"
+          tabindex="-1"
+          data-testid="review-result"
+        >
+          @if (reviewed()) {
+            Thanks for rating your stay.
+          } @else if (reviewRejection(); as msg) {
+            {{ msg }}
+          }
+        </p>
+
+        @if (b.reviewable) {
+          <section
+            class="mt-5 border-t border-riv-card-track pt-[18px]"
+            aria-labelledby="review-title"
+            data-testid="review-panel"
+          >
+            <h2 id="review-title" [class]="cls.sectionTitle">How was your stay?</h2>
+            <p [class]="cls.sectionNote">
+              Rate {{ b.venueName }} from one to five stars. You can rate a stay once.
+            </p>
+
+            <form (submit)="submitReview(); $event.preventDefault()" novalidate>
+              <app-star-rating label="Your rating" [formField]="reviewForm.stars" />
+              <button
+                appTouchTarget
+                type="submit"
+                class="{{ cls.btnOutline }} mt-3.5"
+                [appBusy]="submittingReview()"
+                data-testid="submit-review"
+              >
+                {{ submittingReview() ? 'Sending…' : 'Submit rating' }}
+              </button>
+            </form>
+          </section>
+        }
+
         <a appTouchTarget routerLink="/" [class]="cls.linkBack">Back to home</a>
       </section>
     } @else {
@@ -511,6 +589,15 @@ export class BookingView {
   /** The server says the venue already answered — a retry can never succeed (the withdraw twin of {@link cancelWindowClosed}). */
   protected readonly withdrawNotPending = signal(false);
   protected readonly withdrawn = signal(false);
+  protected readonly submittingReview = signal(false);
+  protected readonly reviewed = signal(false);
+  /** The one rejection line: the schema's required message, or what the server said. */
+  protected readonly reviewRejection = signal<string | undefined>(undefined);
+
+  private readonly reviewModel = signal<{ stars: number | null }>({ stars: null });
+  protected readonly reviewForm = form(this.reviewModel, (path) => {
+    required(path.stars, { message: REVIEW_REQUIRED });
+  });
 
   private readonly focusAfterRender = focusMover();
 
@@ -537,6 +624,10 @@ export class BookingView {
       this.withdrawFailed.set(false);
       this.withdrawNotPending.set(false);
       this.withdrawn.set(false);
+      this.submittingReview.set(false);
+      this.reviewed.set(false);
+      this.reviewRejection.set(undefined);
+      this.reviewModel.set({ stars: null });
       if (this.code) {
         this.load();
       } else {
@@ -588,6 +679,39 @@ export class BookingView {
   protected keepBooking(): void {
     this.confirming.set(false);
     this.focusAfterRender('start-cancel');
+  }
+
+  /**
+   * Submit the chosen rating. Validity is the form schema's answer, not a hand-rolled check, so the
+   * required message has one home; a `201` carries no body, so the new state comes from a re-read
+   * (`reviewable` flips to false and the panel unmounts) rather than a local patch.
+   */
+  protected submitReview(): void {
+    if (this.submittingReview()) {
+      return;
+    }
+    this.reviewRejection.set(undefined);
+    const stars = this.reviewModel().stars;
+    if (stars === null) {
+      this.reviewRejection.set(REVIEW_REQUIRED);
+      this.focusAfterRender('review-result');
+      return;
+    }
+    this.submittingReview.set(true);
+    this.bookings.review(this.code, stars).subscribe({
+      next: () => {
+        this.reviewed.set(true);
+        this.submittingReview.set(false);
+        // The refresh below is async, so focus aims at the result this write populates synchronously.
+        this.focusAfterRender('review-result');
+        this.load(true); // re-read: reviewable flips to false and the panel unmounts
+      },
+      error: (e: unknown) => {
+        this.reviewRejection.set(reviewRejectionCopy(e));
+        this.submittingReview.set(false);
+        this.focusAfterRender('review-result');
+      },
+    });
   }
 
   protected confirmCancel(): void {

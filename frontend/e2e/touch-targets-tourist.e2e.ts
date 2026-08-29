@@ -186,6 +186,19 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
 
     await expectTouchTargets(page, 'booking detail');
   });
+
+  test('booking detail — a delivered stay offering the star rating', async ({ page }) => {
+    // Its own case: the five radios exist only here, and the sweep above still owns the cancel controls.
+    await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
+      route.fulfill({
+        json: { ...BOOKING, status: 'COMPLETED', cancellable: false, reviewable: true },
+      }),
+    );
+    await page.goto('/booking/WXYZ345678');
+    await expect(page.getByTestId('review-panel')).toBeVisible();
+
+    await expectTouchTargets(page, 'booking detail with the rating panel');
+  });
   test('venue detail — the booking dialog open', async ({ page }) => {
     await page.goto('/venues/1');
     await page

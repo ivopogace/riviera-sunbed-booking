@@ -169,7 +169,7 @@ division. Lives in `review.domain.AggregateRating`, pinned by `AggregateRatingTe
 | R-7 | Flyway V45 collision with in-flight work | low | med | verified free on `main` + all 20 open PRs are Dependabot (2026-08-29); if a collision appears, this branch renumbers (merges second) | impl | **closed** (Phase 0 — V45 landed with no collision; re-checked at the pre-merge `origin/main` merge) |
 | R-8 | Booking code leaks via the new module (invariant #7) | med | high | code never logged, never in ProblemDetail (`instance` overridden to constant URI — copy `BookingController.error(...)`); per-code rate-limit joins the shared "guesses at the same secret" budget | impl | **closed** (Phase 3 — `ReviewControllerTest.theBookingCodeNeverAppearsInAnErrorBody` asserts the whole body, `instance` pinned to `/api/bookings`; no `review` class logs at all) |
 | R-9 | Real-backend loop infeasible (check-in is service-date-only; sales close blocks same-day booking) | med | low | `StubPaymentGateway` (`@Profile("!stripe")`) confirms synchronously — verified; the spec sets the venue's sales close to 23:59 and books **today** so check-in is legal; fallback: the backend `ReviewSubmitFlowIT` already proves the true loop server-side, and the e2e AC is renegotiated with the maintainer | impl | open |
-| R-10 | Star control fails the a11y/touch-target/focus gates | med | med | follow `segmented-control.ts` verbatim (roving tabindex, keydown per radio); `appTouchTarget` on each of the 5 radios (TT-1); `[appBusy]` on submit (BUSY-1 — `submitting` is a guarded stem); filled-vs-outline glyphs so state is never color-only | impl | open |
+| R-10 | Star control fails the a11y/touch-target/focus gates | med | med | follow `segmented-control.ts` verbatim (roving tabindex, keydown per radio); `appTouchTarget` on each of the 5 radios (TT-1); `[appBusy]` on submit (BUSY-1 — `submitting` is a guarded stem); filled-vs-outline glyphs so state is never color-only | impl | **closed** (Phase 4 — `star-rating.spec.ts` axe + keyboard contract green, both authoring guards green, and the sweep now *measures* the five radios via a new reviewable-booking case) |
 | R-11 | `venue.rating_tenths` gains a second writer unnoticed (no machine rule guards the venue table the way `ResponsibilitiesArchitectureTests` guards `set_availability`) | low | med | review-checked boundary: `review` has no SQL touching `venue`; called out for RV-BE; RESPONSIBILITIES §venue gains the "I store the aggregate; `review` computes it" line | impl | **mitigated, stays review-checked** (Phase 2 — the write is one method, `JdbcVenues.store`, behind venue's own `VenueRatings` port; `review`'s SQL names only the `review` table. Still no machine rule: the RESPONSIBILITIES line lands in Phase 5) |
 
 ## Open questions / Assumptions
@@ -195,13 +195,16 @@ division. Lives in `review.domain.AggregateRating`, pinned by `AggregateRatingTe
   (16 files on `@angular/forms/signals`, zero on `@angular/forms`) and makes the control a
   drop-in field for #812's fuller form (comment + display name). The earlier
   signal-state-only deviation is withdrawn. *Owner:* plan · *Resolved.*
-- **Open question O-1:** does the mocked touch-target sweep already visit `/booking/:code`
-  (then the 5 radios are swept for free), or does the surface need adding to
-  `touch-targets*.e2e.ts`? — *Owner:* impl · *Resolves by:* phase 4 (read the sweep's
-  surface list; add the entry if absent).
-- **Open question O-2:** FE e2e fixtures (~45) that set `ratingTenths: 48, reviewsCount: 326`
-  are mocked wire values and stay valid; confirm none asserts "Miramar seeded" semantics.
-  — *Owner:* impl · *Resolves by:* phase 4 grep.
+- **Open question O-1 — resolved (phase 4), and the answer was "half".**
+  `touch-targets-tourist.e2e.ts` does visit `/booking/:code`, but with a **CONFIRMED**
+  booking, so the five radios — which exist only on a reviewable one — were *not* swept for
+  free. A second case (`booking detail — a delivered stay offering the star rating`) serves the
+  same fixture as `COMPLETED` + `reviewable`, so the radios are measured; the confirmed case
+  keeps proving the cancel controls it was written for.
+- **Open question O-2 — resolved (phase 0 audit, re-confirmed phase 4).** Every FE hit for
+  `ratingTenths`/`reviewsCount` is either a mocked wire value or the display helper; none
+  asserts "Miramar seeded" semantics, and the real-backend suite asserts no rating at all. No
+  FE fixture needed changing.
 
 ## Availability & concurrency (invariant #2)
 
@@ -346,9 +349,9 @@ APIs; OnPush default (v22 — not set explicitly); Signal Forms per the house st
 review gate is deliberately **out of scope for this session** (it runs from a separate session,
 per the maintainer's instruction), so the PR stays a **draft** and is never marked ready.
 
-**Next action:** Phase 4 — the frontend (`shared/star-rating.ts` as a Signal Forms
-`FormValueControl`, the `booking-view` review panel, `booking.service` POST + model flag, unit +
-axe + contrast specs, the mocked `review-a-stay` journey), test-first.
+**Next action:** Phase 5 — the real-backend loop plus the docs close-out (ADR-0015, CLAUDE.md's
+six-events sentence and module table, RESPONSIBILITIES §`review`, CONTEXT.md terms, the
+`riviera-modulith` counting sweep), then merge latest `origin/main`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -356,7 +359,7 @@ axe + contrast specs, the mocked `review-a-stay` journey), test-first.
 | 1 — submit path: domain, service, JDBC adapter, spi + booking's `JdbcCompletedStays` | ✅ | `<phase-1>` |
 | 2 — `ReviewsChanged` → venue listener → recompute + seed-supersede IT updates | ✅ | `<phase-2>` |
 | 3 — edge: `ReviewController`, `reviewable` on the view, SecurityConfig/RateLimit/coverage | ✅ | `<phase-3>` |
-| 4 — FE: `star-rating`, booking-view panel, service/model, unit+axe+contrast, mocked e2e | | |
+| 4 — FE: `star-rating`, booking-view panel, service/model, unit+axe+contrast, mocked e2e | ✅ | `<phase-4>` |
 | 5 — real-backend e2e loop + docs (CLAUDE/RESPONSIBILITIES/CONTEXT/ADR-0015/counting sweep) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -396,6 +399,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/booking/**/*.java` — `ViewBookingServiceTest` update, `JdbcCompletedStaysIT`
 - `frontend/src/app/shared/star-rating.ts` + `frontend/src/app/shared/star-rating.spec.ts` — control + keyboard/axe spec
 - `frontend/src/app/booking/{booking-view.ts,booking-view.spec.ts,booking.service.ts,booking.service.spec.ts,booking.model.ts}` — panel, flag, POST
+- `frontend/src/app/booking/{find-booking.spec.ts,booking-pay.spec.ts,my-bookings.spec.ts}` — their `BookingDetail` fixtures gain `reviewable` (the field is required, so every fixture declares it)
 - `frontend/src/app/booking/booking-view.contrast.spec.ts` — star glyph/status colors over the card stops (if a new color pairing is introduced)
 - `frontend/e2e/review-a-stay.e2e.ts` — mocked journey (AC-9)
 - `frontend/e2e/touch-targets*.e2e.ts` — surface entry if `/booking/:code` absent (O-1)
@@ -663,6 +667,7 @@ Modify `CLAUDE.md`, `RESPONSIBILITIES.md`, `CONTEXT.md`,
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-29 | Phase 4 (`BookingDetail` gains a required field) | every `BookingDetail` fixture in the frontend | `grep -rln ": BookingDetail =" frontend/src` + `grep -rln "cancellationWindowAtBirth" frontend/src --include="*.spec.ts"` | 5 spec files — `booking-view`, `booking.service`, `find-booking`, `booking-pay`, `my-bookings` | all five given `reviewable: false`; the compiler was the enumerator here (a required field cannot be missed), and the grep only confirmed the fix list. The e2e fixtures are wire JSON, not typed, so an absent flag reads as `undefined` → falsy → no panel, which is the safe default and what the "not reviewable" case asserts |
 | 2026-08-29 | Phase 3 (a fourth code-keyed public endpoint) | every code-keyed endpoint, and whether all of them share one posture | `grep -n "bookings/\*" …/SecurityConfig.java` + `grep -n "bookings/{code}" …/RateLimitFilter.java` | 4 legs — view (GET), cancel, withdraw, review | All four are `permitAll` + CSRF-ignored and resolve to a `Target(code)`; `RateLimitFilter` keys **one** `codeBuckets` map on the code alone, so the four share the "guesses at the same secret" budget rather than getting a fourth of their own. `/api/bookings/cancellation-terms` stays the deliberate exception (a literal sibling with no code to key on) |
 | 2026-08-29 | Phase 2 (a ninth `@ApplicationModuleListener` joins the app) | every `@ApplicationModuleListener` | `grep -rln "@ApplicationModuleListener" platform/src/main/java` | 9 files — 6 listeners (2 booking, 1 notification composite, 2 payout, the new venue one), 2 executor configs naming bulkhead pools, 1 service-level listener | `ReviewsChangedListener` is the only one recomputing venue state, and it carries the at-least-once/idempotence paragraph the payout listeners set the shape for. It takes the **shared** executor, matching the two payout listeners (DB-only work); the bulkhead-pool listeners are the mail/refund ones, whose blast radius is an external call this one does not make |
 | 2026-08-29 | Phase 1 (`booking` implements a second module's spi port) | every `spi` port `booking` implements | `grep -rln "implements .*\.spi\." platform/src/main` (plus the by-name sweep, since the import-and-implement forms differ) | 5 adapters: `JdbcGuestBookingHistory`, `JdbcBookingPresence`, `BookingCutoffSalesWindow`, `JdbcSetAvailabilityLookup`, `SuppressedConfirmationMailDelivery` | `JdbcCompletedStays` matches the shape verbatim — `@Repository`, package-private class + constructor, `JdbcClient`, empty-safe, no logging of the code. One sweep finding applied: `JdbcBookingPresence` derives its status tokens from `BookingStatus` rather than a literal, so `JdbcCompletedStays` now does too (§6a, and the enum still never crosses the seam) |
