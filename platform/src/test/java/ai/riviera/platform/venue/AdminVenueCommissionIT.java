@@ -159,8 +159,8 @@ class AdminVenueCommissionIT {
 						.content("""
 								{"name":"A7 Owner Venue","beach":"Test Beach","region":"Test Region",
 								 "description":null,"bookingMode":"INSTANT","bookingCutoff":"18:00",
-								 "amenities":[],"distanceToWaterM":null,"commissionBps":100,
-								 "expectedVersion":0}
+								 "salesClose":"16:00","amenities":[],"distanceToWaterM":null,
+								 "commissionBps":100,"expectedVersion":0}
 								"""))
 				.andExpect(status().isNoContent());
 

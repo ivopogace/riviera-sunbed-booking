@@ -11,7 +11,7 @@ import { BookingCutoffField } from './booking-cutoff-field';
 class Host {
   protected readonly model = signal({ bookingCutoff: '18:00' });
   protected readonly venueForm = form(this.model, (path) => {
-    required(path.bookingCutoff, { message: 'Cutoff time is required' });
+    required(path.bookingCutoff, { message: 'Free-cancellation deadline is required' });
   });
 
   clear(): void {
@@ -27,9 +27,9 @@ describe('BookingCutoffField', () => {
     return { fixture, label: (fixture.nativeElement as HTMLElement).querySelector('label')! };
   }
 
-  it('names the zone in the label — the cutoff is a Europe/Tirane wall clock', () => {
+  it('names the deadline role and the zone in the label — a Europe/Tirane wall clock (#794 relabel)', () => {
     expect(render().label.querySelector('span')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      'Booking cutoff (Europe/Tirane)',
+      'Free-cancellation deadline (Europe/Tirane)',
     );
   });
 
@@ -50,7 +50,7 @@ describe('BookingCutoffField', () => {
     fixture.detectChanges();
 
     expect(label.querySelector('[role="alert"]')?.textContent?.trim()).toBe(
-      'Cutoff time is required',
+      'Free-cancellation deadline is required',
     );
   });
 });

@@ -303,11 +303,19 @@ export type LayoutErrorCode =
   | 'UNKNOWN';
 
 /**
+ * The venue's on-day sales-close choice (invariant #4): exactly the three server-vocabulary
+ * wall-clock tokens, `"HH:mm"` in Europe/Tirane. `00:01` opts the venue out of same-day online
+ * sales, `16:00` is the default, `23:59` keeps today bookable all day. The wire keeps this shape in
+ * both directions, so the FE never parses times.
+ */
+export type SalesCloseTime = '00:01' | '16:00' | '23:59';
+
+/**
  * The operator's own view of a venue's admin profile (`GET /api/venues/{id}/profile`): the editable core
  * plus the two read-only display fields, {@link commissionBps} (the platform's cut, invariant #9; the
  * form shows it as a %) and {@link payoutCurrency}. {@link bookingCutoff} is `"HH:mm"` in Europe/Tirane
- * (invariants #4/#6). Not the public tourist map view — this carries commission, so its endpoint is
- * operator-gated rather than the anonymous read.
+ * (invariants #4/#6); {@link salesClose} is the three-value on-day close. Not the public tourist map
+ * view — this carries commission, so its endpoint is operator-gated rather than the anonymous read.
  */
 export interface VenueProfileView {
   readonly name: string;
@@ -316,6 +324,7 @@ export interface VenueProfileView {
   readonly description: string;
   readonly bookingMode: BookingMode;
   readonly bookingCutoff: string;
+  readonly salesClose: SalesCloseTime;
   readonly commissionBps: number;
   readonly payoutCurrency: string;
   readonly amenities: readonly Amenity[];
@@ -349,9 +358,31 @@ export interface VenueProfileUpdate {
   readonly description: string;
   readonly bookingMode: BookingMode;
   readonly bookingCutoff: string;
+  readonly salesClose: SalesCloseTime;
   readonly amenities: readonly Amenity[];
   readonly distanceToWaterM: number | null;
   readonly expectedVersion: number;
+}
+
+/**
+ * The full-replace {@link VenueProfileUpdate} that would re-save `view` unchanged: every editable
+ * field mapped faithfully (photos are not profile-write fields; `expectedVersion` echoes the view's
+ * `version`). The venue tab's save and the daily view's close-sales write both build on it, so the
+ * profile→write mapping cannot drift between the two surfaces.
+ */
+export function toProfileUpdate(view: VenueProfileView): VenueProfileUpdate {
+  return {
+    name: view.name,
+    beach: view.beach,
+    region: view.region,
+    description: view.description,
+    bookingMode: view.bookingMode,
+    bookingCutoff: view.bookingCutoff,
+    salesClose: view.salesClose,
+    amenities: view.amenities,
+    distanceToWaterM: view.distanceToWaterM,
+    expectedVersion: view.version,
+  };
 }
 
 /**

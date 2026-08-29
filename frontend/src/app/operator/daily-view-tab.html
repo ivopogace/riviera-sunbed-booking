@@ -113,10 +113,69 @@
           }
         </p>
       </div>
+      @if (selectedDateIsToday()) {
+        @if (!salesOpenToday()) {
+          <!-- role=alert: inserted with its message, so only an alert announces (RV-FE-10, the map-sales-closed pattern). -->
+          <p
+            role="alert"
+            class="mt-3 text-[13px] font-semibold text-riv-card-ink"
+            data-testid="daily-sales-closed"
+          >
+            Online sales for today are closed.
+          </p>
+        } @else if (!closeSalesConfirm()) {
+          <!-- One affordance at a time: the confirm below replaces the trigger while it is open. -->
+          <button
+            type="button"
+            appTouchTarget
+            class="mt-3 cursor-pointer rounded-[12px] border border-[#d9861a]/50 bg-white/60 px-[14px] py-[9px] text-[13.5px] font-bold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-white/85 focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-65"
+            data-testid="daily-close-sales"
+            [appBusy]="closeSalesBusy()"
+            (click)="onCloseSales()"
+          >
+            Close today’s online sales now
+          </button>
+        }
+      }
+      @if (closeSalesConfirm()) {
+        <div
+          class="mt-3.5 rounded-[16px] border border-[#d9861a]/40 bg-[#f0aa2e]/10 px-4 py-3.5"
+          data-testid="daily-close-sales-confirm-panel"
+        >
+          <p class="mb-2.5 text-[13.5px] leading-[1.5] text-riv-card-ink">
+            <strong>Close today’s online sales?</strong> Tourists can no longer book any set for
+            today, effective immediately. This sets your standing sales close to 00:01, so it stays
+            closed for future days until you change it back in Venue &amp; commodities.
+          </p>
+          <div class="flex flex-wrap gap-2.5">
+            <button
+              type="button"
+              appTouchTarget
+              class="rounded-[12px] bg-[#9a6410] px-[18px] py-2.5 text-[13.5px] font-bold text-white aria-disabled:opacity-60"
+              data-testid="daily-close-sales-confirm"
+              [appBusy]="closeSalesBusy()"
+              (click)="onConfirmCloseSales()"
+            >
+              Close today’s sales
+            </button>
+            <button
+              type="button"
+              appTouchTarget
+              class="rounded-[12px] border border-riv-card-border bg-white/60 px-[18px] py-2.5 text-[13.5px] font-semibold text-riv-card-ink"
+              data-testid="daily-close-sales-cancel"
+              [appBusy]="closeSalesBusy()"
+              (click)="onCancelCloseSales()"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      }
       @if (notice(); as msg) {
         <output
           class="mt-3 block text-[13px] font-semibold text-[#a3160e]"
           aria-live="polite"
+          tabindex="-1"
           data-testid="daily-notice"
           >{{ msg }}</output
         >

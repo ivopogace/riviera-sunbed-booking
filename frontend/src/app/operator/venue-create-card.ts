@@ -82,7 +82,7 @@ export class VenueCreateCard {
     required(path.beach, { message: 'Beach is required' });
     required(path.region, { message: 'Region is required' });
     required(path.payoutCurrency, { message: 'Payout currency is required' });
-    required(path.bookingCutoff, { message: 'Cutoff time is required' });
+    required(path.bookingCutoff, { message: 'Free-cancellation deadline is required' });
   });
 
   protected onCreateVenue(): void {

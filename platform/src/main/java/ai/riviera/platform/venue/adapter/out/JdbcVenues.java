@@ -62,6 +62,8 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	private static final String COL_BEACH = "beach";
 	private static final String COL_REGION = "region";
 	private static final String COL_DESCRIPTION = "description";
+	/** Bind-param name for the venue's {@code sales_close} column, shared by insert + profile update. */
+	private static final String P_SALES_CLOSE = "salesClose";
 	/**
 	 * The date a venue's first rate change pins its previous rate at. It predates the
 	 * platform, so once a venue has changed rate every service date it could have sold on is covered,
@@ -92,8 +94,8 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	public long insertVenue(NewVenueCommand c, int commissionBps) {
 		return jdbc.sql("""
 				INSERT INTO venue (name, beach, region, description, booking_mode,
-				                   commission_bps, payout_currency, booking_cutoff)
-				VALUES (:name, :beach, :region, :description, :mode, :bps, :currency, :cutoff)
+				                   commission_bps, payout_currency, booking_cutoff, sales_close)
+				VALUES (:name, :beach, :region, :description, :mode, :bps, :currency, :cutoff, :salesClose)
 				RETURNING id
 				""")
 				.param(COL_NAME, c.name())
@@ -104,6 +106,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 				.param("bps", commissionBps)
 				.param("currency", c.payoutCurrency())
 				.param("cutoff", c.bookingCutoff())
+				.param(P_SALES_CLOSE, c.salesClose().time())
 				.query(Long.class)
 				.single();
 	}
@@ -387,8 +390,8 @@ class JdbcVenues implements Venues, CommissionRateStore {
 		int rows = jdbc.sql("""
 				UPDATE venue
 				SET name = :name, beach = :beach, region = :region, description = :description,
-				    booking_mode = :mode, booking_cutoff = :cutoff, distance_to_water_m = :distance,
-				    version = version + 1
+				    booking_mode = :mode, booking_cutoff = :cutoff, sales_close = :salesClose,
+				    distance_to_water_m = :distance, version = version + 1
 				WHERE id = :id AND version = :version
 				""")
 				.param(COL_NAME, command.name())
@@ -397,6 +400,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 				.param(COL_DESCRIPTION, command.description())
 				.param("mode", command.bookingMode())
 				.param("cutoff", command.bookingCutoff())
+				.param(P_SALES_CLOSE, command.salesClose().time())
 				.param("distance", command.distanceToWaterM())
 				.param("id", venueId.value())
 				.param("version", expectedVersion)

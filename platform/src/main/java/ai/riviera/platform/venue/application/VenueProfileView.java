@@ -9,7 +9,8 @@ import ai.riviera.platform.venue.vocabulary.BookingMode;
 /**
  * The operator's own view of a venue's admin profile — everything the console's
  * Venue &amp; commodities tab needs to render its form: the editable core
- * (name/beach/region/description, booking mode, booking cutoff, amenities, distance-to-water) plus
+ * (name/beach/region/description, booking mode, booking cutoff, sales close, amenities,
+ * distance-to-water) plus
  * the two <strong>read-only</strong> display fields, {@code commissionBps} (shown as a %; the
  * platform's cut, invariant #9) and {@code payoutCurrency} (standing provisional). Returned by the
  * {@link ViewVenueProfile} driving port after the owner check (invariant #13).
@@ -26,8 +27,9 @@ import ai.riviera.platform.venue.vocabulary.BookingMode;
  * <p>{@code photos} carries every {@code PhotoSlot} in declaration order with its preview URL
  * ({@code null} = empty slot) — always all three slots, so the tab renders a stable grid.
  *
- * <p>{@code salesClose} is read-only display this slice — the per-venue on-day sales-close
- * time; no PATCH field sets it (a later slice adds that).
+ * <p>{@code salesClose} is the per-venue on-day sales-close time, owner-editable via the profile
+ * {@code PATCH}. The read model keeps {@code LocalTime} — it only displays; the write path
+ * speaks the three-value {@code SalesClose} choice.
  */
 public record VenueProfileView(String name, String beach, String region, String description,
 		BookingMode bookingMode, LocalTime bookingCutoff, LocalTime salesClose, int commissionBps,

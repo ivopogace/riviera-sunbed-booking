@@ -182,8 +182,15 @@ standing rules:
   wall-clock time (`00:01`/`16:00`/`23:59`, `Europe/Tirane`) naming when a venue's online sales
   for a date close, on the date itself — the fact `SetBookingFacts#setBookingInfo` carries to
   `booking`'s reserve path (`BookingCutoff#salesCloseAt`) so it can gate creation without
-  reaching into my tables. Read-only this slice: no PATCH field reaches it, mirroring how the
-  commission rate stays owner-write-proof above. Since #793 the two tourist catalogue reads
+  reaching into my tables. **Owner-editable since #794**: the choice is a required field of the
+  profile full-replace PATCH and an optional one on create (absent → 16:00), spoken on the write
+  path as the `venue/domain/SalesClose` enum — the single Java mirror of the V44 CHECK, so an
+  off-vocabulary value is a §6b `400` at the edge and unrepresentable past it; the read model and
+  the cross-module carriers keep `LocalTime` (the fence does time arithmetic; the three-ness is my
+  write concern). The console's daily-view "close today's online sales now" is the same write —
+  no per-day override, no second endpoint — leaving the commission rate above and the payout
+  currency as the two owner-write-proof fields the PATCH still mirrors. Since #793 the two
+  tourist catalogue reads
   (list + map) also *project* the open/closed verdict for the selected date as an additive
   `salesOpen` field, consulted through my **third** `spi` driven port — `SalesWindow`,
   implemented by `booking` beside `SetAvailabilityLookup` and `BookingPresence` — with one

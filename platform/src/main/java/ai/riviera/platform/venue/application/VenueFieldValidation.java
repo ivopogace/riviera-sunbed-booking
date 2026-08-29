@@ -6,6 +6,7 @@ import java.util.Currency;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 
 /**
@@ -65,6 +66,13 @@ final class VenueFieldValidation {
 	static void requireCutoff(LocalTime cutoff) {
 		if (cutoff == null) {
 			throw new IllegalArgumentException("bookingCutoff is required");
+		}
+	}
+
+	/** Presence only — off-vocabulary values are already unrepresentable in the {@link SalesClose} type. */
+	static void requireSalesClose(SalesClose salesClose) {
+		if (salesClose == null) {
+			throw new IllegalArgumentException("salesClose is required");
 		}
 	}
 

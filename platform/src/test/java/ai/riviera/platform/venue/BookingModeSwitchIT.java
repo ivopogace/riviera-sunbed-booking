@@ -69,7 +69,8 @@ class BookingModeSwitchIT {
 						.content("""
 								{"name":"Mode Switch Club","beach":"Ksamil","region":"Riviera",
 								 "description":"x","bookingMode":"REQUEST","bookingCutoff":"18:00",
-								 "amenities":[],"distanceToWaterM":null,"expectedVersion":0}
+								 "salesClose":"16:00","amenities":[],"distanceToWaterM":null,
+								 "expectedVersion":0}
 								"""))
 				.andExpect(status().isNoContent());
 

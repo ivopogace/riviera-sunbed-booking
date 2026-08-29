@@ -12,6 +12,7 @@ interface SentBody {
   name: string;
   amenities: string[];
   bookingMode: string;
+  salesClose: string;
   expectedVersion: number;
   commissionBps?: number;
   payoutCurrency?: string;
@@ -44,6 +45,7 @@ describe('VenueTab (#177)', () => {
     description: 'lovely',
     bookingMode: 'INSTANT',
     bookingCutoff: '18:00',
+    salesClose: '16:00',
     commissionBps: 1500,
     payoutCurrency: 'EUR',
     amenities: ['WIFI', 'BEACH_BAR'],
@@ -142,6 +144,7 @@ describe('VenueTab (#177)', () => {
       description: 'lovely',
       bookingMode: 'INSTANT',
       bookingCutoff: '18:00',
+      salesClose: '16:00',
       amenities: ['WIFI', 'BEACH_BAR'],
       distanceToWaterM: 20,
       expectedVersion: 7, // the loaded optimistic-concurrency token
@@ -171,6 +174,33 @@ describe('VenueTab (#177)', () => {
     expect(body(req).amenities).toContain('BEACH_BAR');
     expect(body(req).amenities).not.toContain('WIFI');
     req.flush(null);
+  });
+
+  it('sends the chosen sales close with the full-replace PATCH (#794)', async () => {
+    render(); // loaded at 16:00
+
+    byId('venue-sales-close-00:01').click(); // pick "no same-day sales" on the segmented control
+    fixture.detectChanges();
+    await save();
+
+    const req = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
+    expect(body(req).salesClose).toBe('00:01');
+    expect(body(req).expectedVersion).toBe(7);
+    req.flush(null);
+  });
+
+  it('seeds the sales-close control from the profile and reflects the checked option (#794)', () => {
+    render({ ...PROFILE, salesClose: '23:59' });
+
+    expect(byId('venue-sales-close-23:59').getAttribute('aria-checked')).toBe('true');
+    expect(byId('venue-sales-close-16:00').getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('labels the cutoff as the free-cancellation deadline (#794 relabel)', () => {
+    render();
+
+    const cutoffLabel = byId('venue-cutoff').closest('label')!;
+    expect(cutoffLabel.textContent).toContain('Free-cancellation deadline (Europe/Tirane)');
   });
 
   it('save sends the loaded expectedVersion token (#224)', async () => {

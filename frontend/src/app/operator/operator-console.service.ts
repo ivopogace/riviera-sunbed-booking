@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, map, switchMap } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { problemCodeOf } from '../shared/api-error';
@@ -31,6 +31,7 @@ import {
   VenueProfileUpdate,
   VenueProfileView,
   WeatherRefundResult,
+  toProfileUpdate,
 } from './operator-console.model';
 
 /**
@@ -273,12 +274,28 @@ export class OperatorConsoleService {
   }
 
   /**
-   * Save the venue's editable profile — REPLACES it (the form re-sends every field).
-   * Owner-asserted server-side (invariant #13); commission + payout currency are read-only and never
-   * sent (invariant #9). `204` on success; an unknown amenity code / bad field is `400` (§6b).
+   * Save the venue's editable profile — REPLACES it (the form re-sends every field, `salesClose`
+   * included). Owner-asserted server-side (invariant #13); commission + payout currency are
+   * read-only and never sent (invariant #9). `204` on success; an unknown amenity code / bad
+   * field is `400` (§6b).
    */
   updateVenueProfile(venueId: number, request: VenueProfileUpdate): Observable<void> {
     return this.http.patch<void>(`${this.base}/api/venues/${venueId}`, request);
+  }
+
+  /**
+   * The daily view's kill switch: close today's online sales by flipping the STANDING
+   * `salesClose` setting to `00:01` (invariant #4) through the same profile GET + full-replace
+   * PATCH the venue tab uses — no dedicated endpoint, no per-day override. The fresh read's
+   * optimistic `version` guards the read-modify-write, so a concurrent profile edit loses loudly
+   * (`409 STALE_WRITE`) instead of being clobbered; effective on the very next tourist reserve.
+   */
+  closeOnlineSalesNow(venueId: number): Observable<void> {
+    return this.venueProfile(venueId).pipe(
+      switchMap((view) =>
+        this.updateVenueProfile(venueId, { ...toProfileUpdate(view), salesClose: '00:01' }),
+      ),
+    );
   }
 }
 
