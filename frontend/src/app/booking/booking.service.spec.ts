@@ -84,6 +84,7 @@ const DETAIL: BookingDetail = {
   emailWithheld: false,
   payWindowClosed: false,
   cancelReason: null,
+  cancellationWindowAtBirth: 'FREE',
 };
 
 describe('BookingService', () => {
@@ -266,6 +267,7 @@ describe('BookingService', () => {
       emailWithheld: false,
       payWindowClosed: false,
       cancelReason: null,
+      cancellationWindowAtBirth: 'FREE',
     };
     let received: BookingDetail | undefined;
     service.getByCode('ABCD234567').subscribe((d) => (received = d));

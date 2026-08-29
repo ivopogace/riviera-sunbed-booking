@@ -145,7 +145,15 @@ export interface BookingDetail {
    * from the guest's own cancellation, and only one of those is news to the guest.
    */
   readonly cancelReason: CancelReason | null;
+  /**
+   * The cancellation-window phase in force when this booking was created. `CLOSED` marks a
+   * non-refundable last-minute booking; the view keys its no-cancel copy on it.
+   */
+  readonly cancellationWindowAtBirth: CancellationWindow;
 }
+
+/** The cancellation-window phases, mirroring the backend `booking.vocabulary.CancellationWindow`. */
+export type CancellationWindow = 'FREE' | 'LATE' | 'CLOSED';
 
 /** The open PaymentIntent of an `AWAITING_PAYMENT` booking (the "Pay now" resume path). */
 export interface BookingPayment {

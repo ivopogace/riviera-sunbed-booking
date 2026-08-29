@@ -406,6 +406,31 @@ class ViewBookingServiceTest {
 		verifyNoInteractions(refundStatus);
 	}
 
+	/** #795 AC-8: a same-day booking reports its CLOSED birth window beside {@code cancellable=false}. */
+	@Test
+	void sameDayBookingReportsClosedBirthWindow() {
+		Instant sameDayBirth = Instant.parse("2026-08-01T05:00:00Z");
+		givenBooking(BookingStatus.CONFIRMED, CancellationWindow.CLOSED, 0L, sameDayBirth);
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.cancellable()).isFalse();
+		assertThat(detail.cancellationWindowAtBirth()).isEqualTo(CancellationWindow.CLOSED);
+	}
+
+	/** #795 AC-8 sibling: an advance FREE-born booking keeps every existing field unchanged. */
+	@Test
+	void advanceBookingReportsFreeBirthWindow() {
+		givenBooking(BookingStatus.CONFIRMED, CancellationWindow.FREE, 4500L);
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.cancellationWindowAtBirth()).isEqualTo(CancellationWindow.FREE);
+		assertThat(detail.beforeCutoff()).isTrue();
+		assertThat(detail.cancellable()).isTrue();
+		assertThat(detail.refundIfCancelledNow().minorUnits()).isEqualTo(4500L);
+	}
+
 	private void givenBooking(BookingStatus status) {
 		givenBooking(status, CancellationWindow.FREE, 4500L, Instant.EPOCH);
 	}

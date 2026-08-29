@@ -102,7 +102,7 @@ doc rides along.
 - [ ] **AC-9 (weather-refund regression):** Given a CONFIRMED booking created on its own
   service day, when the admin weather refund runs for that venue+date, then the booking is
   refunded in full and cancelled. *Pinned by:*
-  `WeatherRefundServiceIT.fullRefundReachesSameDayBooking`
+  `WeatherRefundServiceIT.reachesASameDayBooking` (pre-existing #791 pin — covers this AC; no new test needed)
 - [ ] **AC-10 (checkout renders truth):** Given the dialog opens with terms
   FREE/LATE(bps>0)/LATE(0)/CLOSED, then the mode note states respectively: free until the
   formatted Tirane deadline / partial-refund share / non-refundable / "non-refundable
@@ -341,16 +341,16 @@ strings**, never interpolated fragments.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window as
 > the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** implement — phases 0–2 done, phase 3 next; draft PR #803 open
+**Stage pointer:** implement — phases 0–3 done, phase 4 next; draft PR #803 open
 
-**Next action:** phase 3 (booking-view window-at-birth).
+**Next action:** phase 4 (FE checkout, booking view, ToS).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Publish the window (vocabulary move + at-birth overload) | ✅ | `Publish CancellationWindow …` |
 | 1 — Terms quote + endpoint | ✅ | `Quote pre-reserve cancellation terms …` |
 | 2 — Events + mails + resend | ✅ | `Carry the born-past-free-cancellation window …` |
-| 3 — Booking-view window-at-birth (BE + model) | | |
+| 3 — Booking-view window-at-birth (BE + model) | ✅ | `Report the cancellation window at birth …` |
 | 4 — FE checkout, booking view, ToS | | |
 | 5 — Mocked e2e + docs + close-out | | |
 
@@ -381,6 +381,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/CancellationTermsView.java` — new response DTO
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingDetailView.java` — + `cancellationWindowAtBirth`
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/ViewBookingService.java` — classify window-at-birth
+- `platform/src/main/java/ai/riviera/platform/booking/application/view/BookingDetail.java` — + `cancellationWindowAtBirth`
 - `platform/src/main/java/ai/riviera/platform/booking/events/BookingConfirmed.java` — + two fields
 - `platform/src/main/java/ai/riviera/platform/booking/events/BookingPaymentDue.java` — + two fields
 - `platform/src/main/java/ai/riviera/platform/booking/vocabulary/BookingConfirmationFacts.java` — + two fields (resend path)
@@ -424,6 +425,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/booking/booking-view.ts` + `booking-view.spec.ts` — CLOSED-born branch
 - `frontend/src/app/booking/booking.service.ts` + `booking.service.spec.ts` — terms read
 - `frontend/src/app/booking/booking.model.ts` — `CancellationTerms`, widened `BookingDetail`/`PaymentHandoff`
+- `frontend/src/app/booking/find-booking.spec.ts`, `frontend/src/app/booking/my-bookings.spec.ts` — fixture literals gain the new field
 - `frontend/src/app/shared/booking-date.ts` + `booking-date.spec.ts` — Tirane time formatter
 - `frontend/src/app/pages/legal/terms-of-service.html` — one-sentence exception
 - `frontend/e2e/same-day-booking.e2e.ts` — disclosure steps + corrected `AWAITING_DETAIL` fixture
@@ -606,17 +608,17 @@ void sameDayBookingCarriesNonRefundableDisclosure() {
 **Files:** Modify `ViewBookingService.java`, `BookingDetailView.java`,
 `frontend/src/app/booking/booking.model.ts` · Test `ViewBookingServiceTest`
 
-- [ ] **Step 1: Failing test** — AC-8: same-day booking → `cancellationWindowAtBirth=CLOSED`
+- [x] **Step 1: Failing test** — AC-8: same-day booking → `cancellationWindowAtBirth=CLOSED`
   + `cancellable=false`; advance booking → `FREE` with every existing field unchanged.
-- [ ] **Step 2: Run, verify FAIL** — `./gradlew test --tests "*ViewBookingService*"`
-- [ ] **Step 3: Minimal implementation** — classify from `record.createdAt()` via the
+- [x] **Step 2: Run, verify FAIL** — `./gradlew test --tests "*ViewBookingService*"`
+- [x] **Step 3: Minimal implementation** — classify from `record.createdAt()` via the
   phase-0 overload (the set's cutoff is already resolved for the quote); additive DTO
   field; mirror on `BookingDetail` in `booking.model.ts`.
-- [ ] **Step 4: Run, verify PASS** — view slice + `BookingDetailView` contract tests.
-- [ ] **Step 5: Generalization-audit** — population: every producer of `BookingDetailView`
+- [x] **Step 4: Run, verify PASS** — view slice + `BookingDetailView` contract tests.
+- [x] **Step 5: Generalization-audit** — population: every producer of `BookingDetailView`
   (`grep -rn "new BookingDetailView(" platform/src`) → all stamp the field.
-- [ ] **Step 6: Commit** — `git commit -m "Report the cancellation window at birth on the code-gated view (#795)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Report the cancellation window at birth on the code-gated view (#795)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -696,6 +698,7 @@ specs)
 | 2026-08-29 | phase 0 (enum move) | every reference to the old FQCN, incl. gitignore-shadowed paths | `grep -rn "booking.domain.CancellationWindow" platform/src` + `git ls-files 'platform/*.java' \| xargs grep -ln "domain.CancellationWindow"` | 0 in code (5 main + 3 test files import-rewritten; only historical plan docs mention the old path) | none needed |
 | 2026-08-29 | phase 1 (terms quote) | every consumer of the window rule in main sources | `grep -rn "cancellationWindow\|freeCancellationEndsAt" platform/src/main` | 3 files: `BookingCutoff` (the rule), `CancellationPolicy` (the one quote site), `CancellationTermsView` (field name only) | none needed — no second implementation |
 | 2026-08-29 | phase 2 (event widening) | every publication site of the two events; every consumer of the four widened records | `grep -rn "new BookingConfirmed(\|new BookingPaymentDue(" platform/src/main` + `git ls-files … \| xargs grep -ln "BookingConfirmationMail\|PaymentDueMail\|BookingConfirmed\|BookingPaymentDue"` | 2 production publication sites (`ConfirmBookingService`, `RespondToRequestService`) — both stamp; 46 mentioning files — listeners/resend carry the fields, `payout`'s `BookingConfirmedPayoutListener` provably ignores them (ids/amount only), rest are Javadoc mentions | all updated or verified |
+| 2026-08-29 | phase 3 (view DTO) | every producer of `BookingDetail`/`BookingDetailView` | `grep -rn "new BookingDetailView(\|new BookingDetail(" platform/src` | 1 producer each (`ViewBookingService`, `BookingDetailView.of`) + spec fixture literals (5 FE spec files) | all stamp the field |
 
 ---
 
