@@ -12,6 +12,7 @@ import ai.riviera.platform.booking.events.BookingPaymentDue;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.BookingCutoff;
+import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
 import ai.riviera.platform.booking.application.reserve.ConfirmBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
@@ -65,12 +66,14 @@ class RespondToRequestService implements RespondToRequest {
 	private final PaymentDueAnnouncer paymentDue;
 	private final RequestWindows windows;
 	private final BookingCutoff cutoff;
+	private final CancellationPolicy cancellationPolicy;
 	private final Clock clock;
 
 	RespondToRequestService(VenueOwnership ownership, Bookings bookings,
 			RequestReleaseService declineRelease, CheckoutPort checkout, ConfirmBooking confirmBooking,
 			ReleaseAbandonedBooking releaseAbandoned, PaymentDueAnnouncer paymentDue,
-			RequestWindows windows, BookingCutoff cutoff, Clock clock) {
+			RequestWindows windows, BookingCutoff cutoff, CancellationPolicy cancellationPolicy,
+			Clock clock) {
 		this.ownership = ownership;
 		this.bookings = bookings;
 		this.declineRelease = declineRelease;
@@ -80,6 +83,7 @@ class RespondToRequestService implements RespondToRequest {
 		this.paymentDue = paymentDue;
 		this.windows = windows;
 		this.cutoff = cutoff;
+		this.cancellationPolicy = cancellationPolicy;
 		this.clock = clock;
 	}
 
@@ -176,11 +180,16 @@ class RespondToRequestService implements RespondToRequest {
 	 */
 	private void announcePaymentDue(AcceptedRequest accepted) {
 		try {
+			// Birth-keyed disclosure (#795): classified from created_at, never the accept instant.
+			var birth = cancellationPolicy.windowAtBirth(accepted.setId(), accepted.bookingDate(),
+					accepted.createdAt());
 			paymentDue.announce(new BookingPaymentDue(new BookingId(accepted.bookingId()),
 					accepted.venueId(), accepted.setId(), accepted.bookingDate(),
 					windows.payDeadline(accepted.acceptedAt(),
 							cutoff.serviceDayEndsAt(accepted.bookingDate())),
-					accepted.amountMinor(), accepted.currency()));
+					accepted.amountMinor(), accepted.currency(),
+					birth.map(CancellationPolicy.BirthTerms::window).orElse(null),
+					birth.map(CancellationPolicy.BirthTerms::lateCancelRefundBps).orElse(0)));
 		}
 		catch (RuntimeException notAnnounced) {
 			log.warn("payment-due fact not published for accepted booking {} — the accept and its payment "

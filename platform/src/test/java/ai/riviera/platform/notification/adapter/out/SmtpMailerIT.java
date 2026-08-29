@@ -20,6 +20,7 @@ import com.icegreen.greenmail.util.ServerSetupTest;
 import jakarta.mail.internet.MimeMessage;
 
 import ai.riviera.platform.booking.vocabulary.RefundReason;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.PaymentDueMail;
@@ -48,7 +49,8 @@ class SmtpMailerIT {
 	private static final Instant DEADLINE = Instant.parse("2026-08-14T18:30:00Z");
 
 	private static final BookingConfirmationMail CONFIRMATION = new BookingConfirmationMail(
-			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), "Front row · Sea view", 3, 2500, "EUR");
+			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), "Front row · Sea view", 3, 2500, "EUR",
+			CancellationWindow.FREE, 0);
 
 	@RegisterExtension
 	static GreenMailExtension greenMail = new GreenMailExtension(ServerSetupTest.SMTP);
@@ -95,6 +97,47 @@ class SmtpMailerIT {
 				.as("the spot line renders the row label as the operator wrote it (#723) — no 'Row ' prefix")
 				.doesNotContain("Row Front row");
 		assertThat(body).doesNotContain("<html", "<img", "http://track", "utm_");
+		assertThat(body)
+				.as("a FREE-born booking gets no disclosure line (#795 AC-5 absent case)")
+				.doesNotContain("non-refundable", "past free cancellation");
+	}
+
+	/** The #795 disclosure branches, rendered: CLOSED and LATE@0 → non-refundable; LATE@bps → share. */
+	@Test
+	void rendersTheBornPastFreeCancellationDisclosure() throws Exception {
+		mailer().sendBookingConfirmation(TO, withBirthWindow(CancellationWindow.CLOSED, 0));
+		assertThat(theOnlyReceivedMessage().getContent().toString())
+				.contains("non-refundable last-minute booking");
+		greenMail.purgeEmailFromAllMailboxes();
+
+		mailer().sendBookingConfirmation(TO, withBirthWindow(CancellationWindow.LATE, 0));
+		assertThat(theOnlyReceivedMessage().getContent().toString())
+				.contains("non-refundable last-minute booking");
+		greenMail.purgeEmailFromAllMailboxes();
+
+		mailer().sendBookingConfirmation(TO, withBirthWindow(CancellationWindow.LATE, 2250));
+		assertThat(theOnlyReceivedMessage().getContent().toString())
+				.contains("cancelling refunds only 22.5% of the price");
+		greenMail.purgeEmailFromAllMailboxes();
+
+		// Null = a pre-#795 registry payload: tolerated forever, renders nothing (AC-7).
+		mailer().sendBookingConfirmation(TO, withBirthWindow(null, 0));
+		assertThat(theOnlyReceivedMessage().getContent().toString())
+				.doesNotContain("non-refundable", "past free cancellation");
+	}
+
+	@Test
+	void rendersTheDisclosureOnThePaymentDueMailToo() throws Exception {
+		mailer().sendPaymentDue(TO, new PaymentDueMail(BOOKING_CODE, "Miramar Beach",
+				LocalDate.of(2026, 8, 15), DEADLINE, 2500, "EUR", PAY_LINK,
+				CancellationWindow.CLOSED, 0));
+		assertThat(theOnlyReceivedMessage().getContent().toString())
+				.contains("non-refundable last-minute booking");
+	}
+
+	private static BookingConfirmationMail withBirthWindow(CancellationWindow window, int lateBps) {
+		return new BookingConfirmationMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15),
+				"Front row · Sea view", 3, 2500, "EUR", window, lateBps);
 	}
 
 	@Test
@@ -251,7 +294,7 @@ class SmtpMailerIT {
 
 	private static PaymentDueMail paymentDue() {
 		return new PaymentDueMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15),
-				DEADLINE, 2500, "EUR", PAY_LINK);
+				DEADLINE, 2500, "EUR", PAY_LINK, CancellationWindow.FREE, 0);
 	}
 
 	private static BookingCancellationMail cancellation(long refundMinor, RefundReason reason) {
@@ -286,7 +329,7 @@ class SmtpMailerIT {
 	void aVenueNameCarryingNewlinesCannotInjectHeaders() throws Exception {
 		BookingConfirmationMail injected = new BookingConfirmationMail(BOOKING_CODE,
 				"Evil\r\nBcc: attacker@example.com\r\nX-Injected: yes", LocalDate.of(2026, 8, 15),
-				"A", 3, 2500, "EUR");
+				"A", 3, 2500, "EUR", CancellationWindow.FREE, 0);
 
 		mailer().sendBookingConfirmation(TO, injected);
 

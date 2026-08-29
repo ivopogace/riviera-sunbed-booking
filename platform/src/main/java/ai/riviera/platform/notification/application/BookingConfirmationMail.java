@@ -2,6 +2,8 @@ package ai.riviera.platform.notification.application;
 
 import java.time.LocalDate;
 
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+
 /**
  * Everything the booking-confirmation email renders (#371, epic #367 story 1) — structured, not
  * pre-rendered, so each {@link Mailer} implementation decides its own presentation: {@code SmtpMailer}
@@ -18,7 +20,13 @@ import java.time.LocalDate;
  * <p>{@code rowLabel} + {@code positionNo} are the beach-map spot, sourced from
  * {@code venue.api.SetBookingFacts}. Unpublished module-internal value (#382) — public only for the
  * module's own {@code adapter} packages (the listener assembles it, the transports render it).
+ *
+ * <p>{@code cancellationWindowAtBirth} + {@code lateCancelRefundBps} carry the born-past-free-
+ * cancellation disclosure (#795), carried straight off the event: {@code CLOSED} or {@code LATE} at
+ * 0 bps renders a non-refundable line, {@code LATE} at bps &gt; 0 the partial share, and
+ * {@code FREE} or {@code null} (a pre-#795 payload — tolerated forever) renders nothing.
  */
 public record BookingConfirmationMail(String bookingCode, String venueName, LocalDate bookingDate,
-		String rowLabel, int positionNo, long amountMinor, String currency) {
+		String rowLabel, int positionNo, long amountMinor, String currency,
+		CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps) {
 }

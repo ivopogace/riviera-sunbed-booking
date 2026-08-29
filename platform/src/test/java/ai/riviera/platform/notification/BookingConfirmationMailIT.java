@@ -25,6 +25,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.adapter.out.MockMailer;
 import ai.riviera.platform.notification.adapter.out.SentEmail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
@@ -180,8 +181,32 @@ class BookingConfirmationMailIT {
 
 		SentEmail sent = mailer.lastTo(GUEST_EMAIL).orElseThrow();
 		assertThat(sent.kind()).isEqualTo(SentEmail.Kind.BOOKING_CONFIRMATION);
+		// FREE + 0 pin the real ConfirmBookingService stamping for an advance booking (#795 AC-5 absent case).
 		assertThat(sent.confirmation()).isEqualTo(new BookingConfirmationMail(
-				code, set.venueName(), date, set.rowLabel(), set.positionNo(), amountMinor, "EUR"));
+				code, set.venueName(), date, set.rowLabel(), set.positionNo(), amountMinor, "EUR",
+				CancellationWindow.FREE, 0));
+	}
+
+	/**
+	 * #795 AC-5: a booking born on its own service day is disclosed as non-refundable in its
+	 * confirmation mail. The CLOSED-stamped event is published directly (a real same-day checkout
+	 * would depend on the wall-clock hour vs the seed venue's sales close); the sibling test above
+	 * pins the production stamping through a real checkout.
+	 */
+	@Test
+	void sameDayBookingCarriesNonRefundableDisclosure() {
+		SetRef set = onlineSet();
+		LocalDate date = LocalDate.of(2029, 6, 16);
+		String contactEmail = "same-day@example.com";
+
+		long bookingId = seedConfirmedBooking(set, "SAMEDAY1", date, contactEmail, 2600L);
+
+		publishInTransaction(new BookingConfirmed(new BookingId(bookingId), new VenueId(set.venueId()),
+				new SetId(set.setId()), date, 2600L, "EUR", CancellationWindow.CLOSED, 0));
+
+		Awaitility.await().atMost(WAIT).until(() -> countTo(contactEmail) == 1L);
+		assertThat(mailer.lastTo(contactEmail).orElseThrow().confirmation().cancellationWindowAtBirth())
+				.isEqualTo(CancellationWindow.CLOSED);
 	}
 
 	@Test
@@ -198,7 +223,7 @@ class BookingConfirmationMailIT {
 		long bookingId = seedBooking(set, "SIGNEDIN", date, contactEmail, 3200L, "CONFIRMED", accountId);
 
 		publishInTransaction(new BookingConfirmed(new BookingId(bookingId), new VenueId(set.venueId()),
-				new SetId(set.setId()), date, 3200L, "EUR"));
+				new SetId(set.setId()), date, 3200L, "EUR", CancellationWindow.FREE, 0));
 
 		Awaitility.await().atMost(WAIT).until(() -> countTo(contactEmail) == 1L);
 		assertThat(countTo("signed-in-account@example.com"))
@@ -223,7 +248,7 @@ class BookingConfirmationMailIT {
 		Awaitility.await().atMost(WAIT).until(() -> countTo(contactEmail) == 1L);
 		assertThat(mailer.lastTo(contactEmail).orElseThrow().confirmation())
 				.isEqualTo(new BookingConfirmationMail("PAIDPATH", set.venueName(), date,
-						set.rowLabel(), set.positionNo(), 4400L, "EUR"));
+						set.rowLabel(), set.positionNo(), 4400L, "EUR", CancellationWindow.FREE, 0));
 	}
 
 	@Test
@@ -238,7 +263,7 @@ class BookingConfirmationMailIT {
 		long bookingId = seedConfirmedBooking(set, "SUPPRESS1", date, suppressed, 2100L);
 
 		publishInTransaction(new BookingConfirmed(new BookingId(bookingId), new VenueId(set.venueId()),
-				new SetId(set.setId()), date, 2100L, "EUR"));
+				new SetId(set.setId()), date, 2100L, "EUR", CancellationWindow.FREE, 0));
 
 		// Archive mode moves completed rows out, so no-outstanding-row = the skip COMPLETED (AC-5, R-6).
 		Awaitility.await().atMost(WAIT).until(() -> jdbc.sql(
@@ -257,7 +282,7 @@ class BookingConfirmationMailIT {
 		long bookingId = seedConfirmedBooking(set, "REPLAY01", date, contactEmail, 2100L);
 
 		publishInTransaction(new BookingConfirmed(new BookingId(bookingId), new VenueId(set.venueId()),
-				new SetId(set.setId()), date, 2100L, "EUR"));
+				new SetId(set.setId()), date, 2100L, "EUR", CancellationWindow.FREE, 0));
 		Awaitility.await().atMost(WAIT).until(() -> countTo(contactEmail) == 1L);
 
 		// Exactly what republish-outstanding-events-on-restart does at boot. The publication this

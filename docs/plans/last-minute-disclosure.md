@@ -341,15 +341,15 @@ strings**, never interpolated fragments.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window as
 > the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** implement — phases 0–1 done, phase 2 next; draft PR #803 open
+**Stage pointer:** implement — phases 0–2 done, phase 3 next; draft PR #803 open
 
-**Next action:** phase 2 (events + mails + resend), starting with the publication-site mechanism sweep.
+**Next action:** phase 3 (booking-view window-at-birth).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Publish the window (vocabulary move + at-birth overload) | ✅ | `Publish CancellationWindow …` |
 | 1 — Terms quote + endpoint | ✅ | `Quote pre-reserve cancellation terms …` |
-| 2 — Events + mails + resend | | |
+| 2 — Events + mails + resend | ✅ | `Carry the born-past-free-cancellation window …` |
 | 3 — Booking-view window-at-birth (BE + model) | | |
 | 4 — FE checkout, booking view, ToS | | |
 | 5 — Mocked e2e + docs + close-out | | |
@@ -536,12 +536,12 @@ its adapter, both mail records, both listeners, `BookingConfirmationResendServic
 `SmtpMailer` · Test `BookingConfirmationMailIT`, `RequestPaymentDueMailIT`,
 `BookingConfirmationMailListenerTest` (AC-7), `MockMailerTest`, resend IT
 
-- [ ] **Step 1: Mechanism sweep first** — enumerate every publication site:
+- [x] **Step 1: Mechanism sweep first** — enumerate every publication site:
   `grep -rn "new BookingConfirmed(\|new BookingPaymentDue(" platform/src/main` (confirm
   the negative with `git ls-files` if a site seems missing — `adapter/out` is
   gitignore-shadowed). Every site stamps `cancellationWindowAtBirth` (classified from the
   booking's `createdAt` via the phase-0 overload) + the captured `lateCancelRefundBps`.
-- [ ] **Step 2: Write the failing tests** — AC-5/AC-6 via the recording `MockMailer`
+- [x] **Step 2: Write the failing tests** — AC-5/AC-6 via the recording `MockMailer`
   (present + absent cases), AC-7 legacy-payload null-window tolerance:
 
 ```java
@@ -553,20 +553,20 @@ void sameDayBookingCarriesNonRefundableDisclosure() {
 }
 ```
 
-- [ ] **Step 3: Run, verify FAIL** — scoped to the four notification test classes.
-- [ ] **Step 4: Minimal implementation** — widen the two event records + two mail records
+- [x] **Step 3: Run, verify FAIL** — scoped to the four notification test classes.
+- [x] **Step 4: Minimal implementation** — widen the two event records + two mail records
   + `BookingConfirmationFacts` (additive fields, Javadoc: fixed-at-the-moment posture);
   listeners pass them through; `SmtpMailer` renders per branch (CLOSED or LATE@0 →
   non-refundable line; LATE@bps>0 → share line; FREE/null → none); resend classifies via
   the widened facts. `payout`'s `BookingConfirmed` listener: verify untouched compile +
   green.
-- [ ] **Step 5: Run, verify PASS** — the notification package + `*BookingConfirmed*` +
+- [x] **Step 5: Run, verify PASS** — the notification package + `*BookingConfirmed*` +
   `*Payout*` listener tests + the structural net (event payloads still id/fact-based).
-- [ ] **Step 6: Generalization-audit** — population: every consumer of the two widened
+- [x] **Step 6: Generalization-audit** — population: every consumer of the two widened
   records (`grep -rln "BookingConfirmationMail\|PaymentDueMail\|BookingConfirmed\|BookingPaymentDue" platform/src`)
   → each either uses the new fields or provably ignores them.
-- [ ] **Step 7: Commit** — `git commit -m "Carry the born-past-free-cancellation window on confirmation and payment-due mails (#795)"`
-- [ ] **Step 8: Update plan-doc execution status.**
+- [x] **Step 7: Commit** — `git commit -m "Carry the born-past-free-cancellation window on confirmation and payment-due mails (#795)"`
+- [x] **Step 8: Update plan-doc execution status.**
 
 ---
 
@@ -664,6 +664,7 @@ specs)
 |---|---|---|---|---|---|
 | 2026-08-29 | phase 0 (enum move) | every reference to the old FQCN, incl. gitignore-shadowed paths | `grep -rn "booking.domain.CancellationWindow" platform/src` + `git ls-files 'platform/*.java' \| xargs grep -ln "domain.CancellationWindow"` | 0 in code (5 main + 3 test files import-rewritten; only historical plan docs mention the old path) | none needed |
 | 2026-08-29 | phase 1 (terms quote) | every consumer of the window rule in main sources | `grep -rn "cancellationWindow\|freeCancellationEndsAt" platform/src/main` | 3 files: `BookingCutoff` (the rule), `CancellationPolicy` (the one quote site), `CancellationTermsView` (field name only) | none needed — no second implementation |
+| 2026-08-29 | phase 2 (event widening) | every publication site of the two events; every consumer of the four widened records | `grep -rn "new BookingConfirmed(\|new BookingPaymentDue(" platform/src/main` + `git ls-files … \| xargs grep -ln "BookingConfirmationMail\|PaymentDueMail\|BookingConfirmed\|BookingPaymentDue"` | 2 production publication sites (`ConfirmBookingService`, `RespondToRequestService`) — both stamp; 46 mentioning files — listeners/resend carry the fields, `payout`'s `BookingConfirmedPayoutListener` provably ignores them (ids/amount only), rest are Javadoc mentions | all updated or verified |
 
 ---
 

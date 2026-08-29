@@ -12,6 +12,7 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.domain.RefundPolicy;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.api.VenueRates;
 
@@ -63,17 +64,37 @@ public class CancellationPolicy {
 	public Optional<CancellationTerms> terms(SetId setId, LocalDate bookingDate) {
 		return setFacts.setBookingInfo(setId).map(set -> {
 			CancellationWindow window = cutoff.cancellationWindow(set.bookingCutoff(), bookingDate);
-			int lateBps = window == CancellationWindow.LATE
-					? rates.lateCancelRefundBps(set.venueId()).orElse(0)
-					: 0;
 			return new CancellationTerms(window,
-					cutoff.freeCancellationEndsAt(set.bookingCutoff(), bookingDate), lateBps);
+					cutoff.freeCancellationEndsAt(set.bookingCutoff(), bookingDate),
+					lateShare(window, set.venueId()));
 		});
 	}
 
 	/** The pre-reserve quote: phase now, free-cancellation deadline, and the venue's late share. */
 	public record CancellationTerms(CancellationWindow window, Instant freeCancellationEndsAt,
 			int lateCancelRefundBps) {
+	}
+
+	/**
+	 * The window a booking was born in and the late share its disclosure promises (#795) — the same
+	 * classification as {@link #terms}, read at the booking's {@code createdAt} instead of now. What
+	 * the event publication sites stamp; empty for an unknown set so a confirm never fails on it.
+	 */
+	public Optional<BirthTerms> windowAtBirth(SetId setId, LocalDate bookingDate, Instant createdAt) {
+		return setFacts.setBookingInfo(setId).map(set -> {
+			CancellationWindow window =
+					cutoff.cancellationWindow(set.bookingCutoff(), bookingDate, createdAt);
+			return new BirthTerms(window, lateShare(window, set.venueId()));
+		});
+	}
+
+	/** The at-birth classification the events and mails disclose (#795). */
+	public record BirthTerms(CancellationWindow window, int lateCancelRefundBps) {
+	}
+
+	/** The venue's late share applies only inside the LATE window; every other phase discloses 0. */
+	private int lateShare(CancellationWindow window, VenueId venueId) {
+		return window == CancellationWindow.LATE ? rates.lateCancelRefundBps(venueId).orElse(0) : 0;
 	}
 
 	/**

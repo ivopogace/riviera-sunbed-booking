@@ -20,10 +20,12 @@ import ai.riviera.platform.booking.events.BookingPaymentDue;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.BookingCutoff;
+import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 import ai.riviera.platform.booking.application.refund.ReleaseAbandonedBooking;
 import ai.riviera.platform.booking.application.reserve.ClaimRef;
 import ai.riviera.platform.booking.application.reserve.ConfirmBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
@@ -66,6 +68,7 @@ class RespondToRequestServiceTest {
 	private static final SetId SET = new SetId(11);
 	private static final LocalDate BOOKING_DATE = LocalDate.of(2026, 8, 1);
 	private static final Instant NOW = Instant.parse("2026-07-10T08:00:00Z");
+	private static final Instant CREATED_AT = Instant.parse("2026-07-08T09:00:00Z");
 	private static final Duration PAY_WINDOW = Duration.ofHours(12);
 	private static final RequestWindows WINDOWS = new RequestWindows(Duration.ofHours(24), PAY_WINDOW);
 
@@ -78,6 +81,14 @@ class RespondToRequestServiceTest {
 	private final ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
 	private final Clock clock = Clock.fixed(NOW, ZoneId.of("UTC"));
 
+	/** The birth-window quote every accept stamps onto {@code BookingPaymentDue} (#795). */
+	private final CancellationPolicy cancellationPolicy = mock(CancellationPolicy.class);
+
+	{
+		when(cancellationPolicy.windowAtBirth(any(), any(), any())).thenReturn(
+				Optional.of(new CancellationPolicy.BirthTerms(CancellationWindow.LATE, 2500)));
+	}
+
 	private RespondToRequestService service() {
 		return serviceOn(clock);
 	}
@@ -85,12 +96,13 @@ class RespondToRequestServiceTest {
 	private RespondToRequestService serviceOn(Clock at) {
 		return new RespondToRequestService(ownership, bookings,
 				new RequestReleaseService(bookings, availability, publisher), checkout, confirmBooking,
-				releaseAbandoned, new PaymentDueAnnouncer(publisher), WINDOWS, new BookingCutoff(at), at);
+				releaseAbandoned, new PaymentDueAnnouncer(publisher), WINDOWS, new BookingCutoff(at),
+				cancellationPolicy, at);
 	}
 
 	/** The facts the guarded accept transition RETURNINGs — every one of them a payload field. */
 	private static AcceptedRequest acceptedRequest() {
-		return new AcceptedRequest(BOOKING.value(), VENUE, SET, BOOKING_DATE, NOW, 4500L, "EUR");
+		return new AcceptedRequest(BOOKING.value(), VENUE, SET, BOOKING_DATE, NOW, CREATED_AT, 4500L, "EUR");
 	}
 
 	@Test
@@ -130,7 +142,9 @@ class RespondToRequestServiceTest {
 		service().accept(OPERATOR, VENUE, BOOKING);
 
 		verify(publisher).publishEvent((Object) new BookingPaymentDue(BOOKING, VENUE, SET, BOOKING_DATE,
-				NOW.plus(PAY_WINDOW), 4500L, "EUR"));
+				NOW.plus(PAY_WINDOW), 4500L, "EUR", CancellationWindow.LATE, 2500));
+		// The classification keys on the booking's birth, not the accept instant (#795 S-5).
+		verify(cancellationPolicy).windowAtBirth(SET, BOOKING_DATE, CREATED_AT);
 	}
 
 	@Test
@@ -141,7 +155,7 @@ class RespondToRequestServiceTest {
 		Clock atAccept = Clock.fixed(onDayAccept, ZoneId.of("UTC"));
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, onDayAccept)).thenReturn(
 				Optional.of(new AcceptedRequest(BOOKING.value(), VENUE, SET, today, onDayAccept,
-						4500L, "EUR")));
+						CREATED_AT, 4500L, "EUR")));
 		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
 
 		serviceOn(atAccept).accept(OPERATOR, VENUE, BOOKING);
@@ -150,7 +164,7 @@ class RespondToRequestServiceTest {
 		assertTrue(serviceDayEndsAt.isBefore(onDayAccept.plus(PAY_WINDOW)),
 				"the raw window must genuinely outrun the service day's end, or this pins nothing");
 		verify(publisher).publishEvent((Object) new BookingPaymentDue(BOOKING, VENUE, SET, today,
-				serviceDayEndsAt, 4500L, "EUR"));
+				serviceDayEndsAt, 4500L, "EUR", CancellationWindow.LATE, 2500));
 	}
 
 	@Test
@@ -161,13 +175,13 @@ class RespondToRequestServiceTest {
 		Clock atAccept = Clock.fixed(onDayAccept, ZoneId.of("UTC"));
 		when(bookings.acceptPendingRequest(BOOKING.value(), VENUE, onDayAccept)).thenReturn(
 				Optional.of(new AcceptedRequest(BOOKING.value(), VENUE, SET, today, onDayAccept,
-						4500L, "EUR")));
+						CREATED_AT, 4500L, "EUR")));
 		when(checkout.pay(any(), any())).thenReturn(new PaymentOutcome.Pending("cs_x", "pi_x"));
 
 		serviceOn(atAccept).accept(OPERATOR, VENUE, BOOKING);
 
 		verify(publisher).publishEvent((Object) new BookingPaymentDue(BOOKING, VENUE, SET, today,
-				onDayAccept.plus(PAY_WINDOW), 4500L, "EUR"));
+				onDayAccept.plus(PAY_WINDOW), 4500L, "EUR", CancellationWindow.LATE, 2500));
 	}
 
 	@Test

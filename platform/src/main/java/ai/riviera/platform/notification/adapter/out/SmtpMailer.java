@@ -14,6 +14,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.Mailer;
@@ -108,11 +109,13 @@ class SmtpMailer implements Mailer {
 				  Spot:          %s, position %d
 				  Paid:          %s
 
-				Show the booking code at the venue on arrival."""
+				Show the booking code at the venue on arrival.%s"""
 				.formatted(confirmation.bookingCode(), confirmation.venueName(),
 						DATE_FORMAT.format(confirmation.bookingDate()), confirmation.rowLabel(),
 						confirmation.positionNo(),
-						formatAmount(confirmation.amountMinor(), confirmation.currency())));
+						formatAmount(confirmation.amountMinor(), confirmation.currency()),
+						disclosureLine(confirmation.cancellationWindowAtBirth(),
+								confirmation.lateCancelRefundBps())));
 	}
 
 	@Override
@@ -177,11 +180,40 @@ class SmtpMailer implements Mailer {
 				%s
 
 				If we haven't received payment by then the set is released for someone else, and you
-				would need to request it again."""
+				would need to request it again.%s"""
 				.formatted(paymentDue.venueName(), paymentDue.bookingCode(), paymentDue.venueName(),
 						DATE_FORMAT.format(paymentDue.bookingDate()),
 						formatAmount(paymentDue.amountMinor(), paymentDue.currency()),
-						DEADLINE_FORMAT.format(paymentDue.payBy().atZone(TIRANE)), paymentDue.payLink()));
+						DEADLINE_FORMAT.format(paymentDue.payBy().atZone(TIRANE)), paymentDue.payLink(),
+						disclosureLine(paymentDue.cancellationWindowAtBirth(),
+								paymentDue.lateCancelRefundBps())));
+	}
+
+	/**
+	 * The born-past-free-cancellation disclosure (#795), appended to the confirmation and
+	 * payment-due bodies: CLOSED or LATE at 0 bps → non-refundable; LATE at bps &gt; 0 → the partial
+	 * share; FREE or null (a pre-#795 payload — tolerated forever) → nothing.
+	 */
+	private static String disclosureLine(CancellationWindow windowAtBirth, int lateCancelRefundBps) {
+		if (windowAtBirth == null || windowAtBirth == CancellationWindow.FREE) {
+			return "";
+		}
+		if (windowAtBirth == CancellationWindow.LATE && lateCancelRefundBps > 0) {
+			return """
+
+
+					This booking was made past free cancellation — cancelling refunds only %s%% of the price."""
+					.formatted(bpsAsPercent(lateCancelRefundBps));
+		}
+		return """
+
+
+				This is a non-refundable last-minute booking — it can't be cancelled.""";
+	}
+
+	/** Basis points → a display percentage, trimming trailing zeros (2500 → 25, 2250 → 22.5). */
+	private static String bpsAsPercent(int bps) {
+		return BigDecimal.valueOf(bps).movePointLeft(2).stripTrailingZeros().toPlainString();
 	}
 
 	@Override

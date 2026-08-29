@@ -17,7 +17,10 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * two are the same instant today — the service passes {@code now} in — but the mailed pay deadline
  * is computed from this field, and reading it back from the row that actually transitioned is what
  * keeps the deadline anchored to the {@code accepted_at} the sweep will later compare against.
+ *
+ * <p>{@code createdAt} is the booking's birth instant (#795), from which the payment-due mail's
+ * cancellation-window-at-birth disclosure is classified — the birth, not the accept, keys it.
  */
 public record AcceptedRequest(long bookingId, VenueId venueId, SetId setId, LocalDate bookingDate,
-		Instant acceptedAt, long amountMinor, String currency) {
+		Instant acceptedAt, Instant createdAt, long amountMinor, String currency) {
 }

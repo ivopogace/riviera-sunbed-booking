@@ -4,6 +4,8 @@ import java.net.URI;
 import java.time.Instant;
 import java.time.LocalDate;
 
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+
 /**
  * Everything the "your request was accepted — payment is due" email renders (#373, epic #367 story
  * 14) — structured rather than pre-rendered, so each {@link Mailer} decides its own presentation,
@@ -30,7 +32,12 @@ import java.time.LocalDate;
  * <p>No spot ({@code rowLabel}/{@code positionNo}): the guest chose it and has it on screen and in
  * this booking already; the one thing this mail is for is the deadline. Unpublished module-internal
  * value (#382) — public only for the module's own {@code adapter} packages.
+ *
+ * <p>{@code cancellationWindowAtBirth} + {@code lateCancelRefundBps} carry the born-past-free-
+ * cancellation disclosure (#795) on {@link BookingConfirmationMail}'s exact rules, including the
+ * permanent null tolerance for pre-#795 payloads.
  */
 public record PaymentDueMail(String bookingCode, String venueName, LocalDate bookingDate,
-		Instant payBy, long amountMinor, String currency, URI payLink) {
+		Instant payBy, long amountMinor, String currency, URI payLink,
+		CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps) {
 }
