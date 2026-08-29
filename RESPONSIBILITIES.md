@@ -188,8 +188,8 @@ standing rules:
   off-vocabulary value is a §6b `400` at the edge and unrepresentable past it; the read model and
   the cross-module carriers keep `LocalTime` (the fence does time arithmetic; the three-ness is my
   write concern). The console's daily-view "close today's online sales now" is the same write —
-  no per-day override, no second endpoint — so the commission rate above is now the *only*
-  owner-write-proof field the PATCH mirrors. Since #793 the two tourist catalogue reads
+  no per-day override, no second endpoint — leaving the commission rate and payout currency
+  above as the PATCH's owner-write-proof fields. Since #793 the two tourist catalogue reads
   (list + map) also *project* the open/closed verdict for the selected date as an additive
   `salesOpen` field, consulted through my **third** `spi` driven port — `SalesWindow`,
   implemented by `booking` beside `SetAvailabilityLookup` and `BookingPresence` — with one

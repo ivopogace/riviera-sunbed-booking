@@ -285,10 +285,10 @@ tokens).
 > **This section is the session-recovery anchor** — see the template blockquote; update in
 > the same commit window as the change it records.
 
-**Stage pointer:** `implement complete — PR #802 ready for review (session 2026-08-29); review gate + Sonar gate pending, run in a separate session; merge close-out (merged via PR #NN citation + freshness re-check) after that`
+**Stage pointer:** `review gate ran (session 2026-08-29: /code-review 5-agent fan-out at high effort + riviera-review-overlay walk — 3 findings F-8..F-10, fixed); Sonar gate re-check due on the fix push's analysis; then merge close-out (merged via PR #802 citation)`
 
-**Next action:** run the review gate (`/code-review` per the pr-gates invocation ladder +
-`riviera-review-overlay`) and the Sonar gate against PR #802 — a separate session's job.
+**Next action:** confirm CI + the SonarCloud analysis on the review-fix push (pull the
+issues/measures lists per pr-gates §2, not just the gate), then merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -310,6 +310,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-5 | impl (phase 1) | `operator-venue.e2e.ts`'s stale-write test raced `bump()` against the profile load (latent; exposed when F-4 slowed the run) — the test now waits for the seeded form before bumping, so version 7 is provably loaded first | closed |
 | F-6 | CI (phase 0 push) | `check-plan-file-structure` flagged three touched-but-unlisted paths; File structure updated (commit "List every phase-0-touched path…") | closed |
 | F-7 | CI (phase 0 full suite) | Four ITs outside the scoped set (`CrossVenueDenialIT` ×2, `AdminVenueCommissionIT`, `BookingModeSwitchIT`) PATCH the profile with raw bodies that lacked the now-required `salesClose` → 400. Bodies completed; the `"distanceToWaterM"`-body sweep confirms none remain (create bodies are exempt — the field is optional there) | closed |
+| F-8 | review (posted on PR, scored 85) | RESPONSIBILITIES.md §`venue` claimed commission "is now the *only* owner-write-proof field" — wrong count, `payoutCurrency` is equally write-proof (`VenueProfileCommand` Javadoc; `patchIgnoresReadOnlyCommissionAndCurrency`); AC-10's note repeated it | fixed (review-fix commit) |
+| F-9 | review (RV-FE-10, verified, scored 75 — below the PR-comment bar, fixed anyway) | `daily-sales-closed` paragraph inserted with its message, no `role="alert"` — silent to screen readers on initial-load-of-closed-today and venue/date switches (the map-sales-closed precedent, #741); fixed with `role="alert"`, pinned by the spec's new role assertion | fixed (review-fix commit) |
+| F-10 | review (verified, scored 75 — below the PR-comment bar, fixed anyway) | `VenueProfileView` Javadoc internally inconsistent: the "editable core" enumeration omitted `salesClose` while the same doc's later paragraph calls it owner-editable | fixed (review-fix commit) |
 
 ---
 
@@ -610,7 +613,7 @@ it('closes today via the standing setting after confirm', async () => {
 
 - [x] **AC-1..AC-6:** `./gradlew test --tests "*VenueAdminControllerIT*" --tests "*VenueProfileCommandTest*" --tests "*BookingControllerIT*"` → all pass. Verified locally at commit `fa66cd8` (+ `28f064a` for the widened IT bodies); CI full suite green at run 2897.
 - [x] **AC-7..AC-9:** `npm test` (1973) · a11y/contrast specs · `npm run test:e2e:a11y` (venue 6, daily 8, touch-targets 33) → all pass. Verified locally at commit `62f3319`.
-- [x] **AC-10:** RESPONSIBILITIES.md §`venue` rewritten (owner-editable write path; commission now the only mirrored write-proof field); freshness run recorded below.
+- [x] **AC-10:** RESPONSIBILITIES.md §`venue` rewritten (owner-editable write path; commission and payout currency remain the mirrored write-proof fields — count corrected at the review gate, F-8); freshness run recorded below.
 
 ## Self-review checklist (before merge / PR)
 

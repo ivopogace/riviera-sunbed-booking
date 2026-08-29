@@ -115,7 +115,9 @@
       </div>
       @if (selectedDateIsToday()) {
         @if (!salesOpenToday()) {
+          <!-- role=alert: inserted with its message, so only an alert announces (RV-FE-10, the map-sales-closed pattern). -->
           <p
+            role="alert"
             class="mt-3 text-[13px] font-semibold text-riv-card-ink"
             data-testid="daily-sales-closed"
           >

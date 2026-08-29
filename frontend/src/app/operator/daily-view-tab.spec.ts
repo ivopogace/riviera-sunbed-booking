@@ -893,6 +893,7 @@ describe('DailyViewTab (#175)', () => {
 
     expect(host.querySelector('[data-testid="daily-close-sales"]')).toBeNull();
     expect(byId('daily-sales-closed').textContent).toContain('closed');
+    expect(byId('daily-sales-closed').getAttribute('role')).toBe('alert');
   });
 
   it('offers no kill switch on a non-today date (#794)', () => {
