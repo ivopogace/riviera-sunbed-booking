@@ -509,6 +509,7 @@
                 <span style="font-size:12.8px;line-height:1.5;color:rgba(12,42,51,0.75);"><strong style="color:#0a2a33;">Request to Book.</strong> This venue reviews each request before payment. We&rsquo;ll send your request now &mdash; <strong style="color:#0a2a33;">you won&rsquo;t be charged yet</strong>. If the venue accepts, you&rsquo;ll get a notification with a link to pay {{ totalStr }} and lock in the set.</span>
               </div>
             </sc-if>
+            <!-- as-built diverges (#795): the Instant Book blurb dropped its "Free cancellation until the evening before" clause; the terms are a separate server-quoted note below it, one of three sentences by window. Record left as drawn per docs/design/README.md. -->
             <sc-if value="{{ venueIsInstant }}" hint-placeholder-val="{{ true }}">
               <div style="display:flex;gap:11px;background:rgba(43,184,212,0.12);border:1px solid rgba(43,184,212,0.34);border-radius:16px;padding:13px 15px;margin-top:14px;">
                 <span style="font-size:18px;line-height:1.2;">&#128179;</span>

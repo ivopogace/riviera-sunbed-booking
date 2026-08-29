@@ -34,8 +34,8 @@ the two epic close-out notes for this slice) · `riviera-plan-doc` (this templat
 the behavior-parity ledger on the booking-view nothing-branch and the pre-reserve fork to
 the maintainer) · `tdd` (each phase red-green at the smallest seam) ·
 `riviera-review-overlay` (review gate — due at ready-for-review) · `riviera-docs-freshness`
-(due at close-out over this slice's merge range; RESPONSIBILITIES §booking/§notification
-and CONTEXT.md change) · `riviera-modulith` (the vocabulary move for `CancellationWindow`,
+(**ran** over the slice range + the epic #790 span (`6b6b677~1..HEAD`): 3 findings, all
+slice-attributable, fixed pre-merge in the close-out commit) · `riviera-modulith` (the vocabulary move for `CancellationWindow`,
 event-payload widening without an `event_type` rewrite, grants already sufficient —
 `notification` holds `booking::vocabulary`) · `riviera-java-conventions` (records, typed
 outcomes, `ApiProblem` error contract §6b, one-line comments) · `codebase-design` (terms
@@ -161,11 +161,10 @@ branch are replaced surfaces:
 
 ## Open questions / Assumptions
 
-- **Assumption:** exact user-facing wording of the disclosure lines (web + mail + ToS) is
-  review-adjustable copy; the plan fixes the *branches*, not the final prose. — *Owner:*
-  maintainer at review gate · *Resolves by:* review gate (still open, deliberately)
-
 ### Resolved
+
+- **Disclosure wording (web + mail + ToS)** → review gate ran 2026-08-29 with zero copy
+  findings; the shipped prose stands.
 
 - **Registry-payload tolerance** → the null-window tolerance (AC-7) is pinned permanently in
   `BookingConfirmationMailListenerTest.legacyPayloadWithoutWindowRendersNoDisclosure` (phase 2).
@@ -340,15 +339,16 @@ strings**, never interpolated fragments.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window as
 > the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** merge close-out — both gates green 2026-08-29: review gate ran clean
-(`/code-review` 5-agent fan-out at high effort + the full `riviera-review-overlay` bank walk;
-record: PR #803 comment) and the Sonar gate is API-verified on the final head (quality gate
-passed; issue list EMPTY — F-4/F-5 confirmed closed; 98.8% new-code coverage, 0 duplication).
-Awaiting the maintainer's merge decision.
+**Stage pointer:** DONE — merged via PR #803. Both gates green 2026-08-29: review gate ran
+clean (`/code-review` 5-agent fan-out at high effort + the full `riviera-review-overlay` bank
+walk; record: PR #803 comment); Sonar gate API-verified on the final head (issue list EMPTY,
+98.8% new-code coverage, 0 duplication). `riviera-docs-freshness` ran over the slice range AND
+the epic #790 span: 3 findings, all slice-#795-attributable, all fixed in this commit
+(RateLimitFilter endpoint count 4→5, the `events.md` BookingConfirmed example payload, the
+liquid-glass design-doc as-built pointer). Epic #790 slice 5 of 5.
 
-**Next action:** on the maintainer's go: finalize this doc (risk rows closed, AC verification
-ticked, `merged via PR #803`) in the PR's own last commit, run the `riviera-docs-freshness`
-pass over the merge range, merge, then the epic #790 close-out comment (slice 5 of 5).
+**Next action:** none — post-merge GitHub edits only (epic close-out comment; #795 closes via
+the PR).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -386,7 +386,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/booking/application/cancel/QuoteCancellationTerms.java` — new driving port (the controller depends on the seam, not the class — web-slice contexts stub it)
 - `platform/src/main/java/ai/riviera/platform/booking/application/cancel/CancelBookingService.java` — import update
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingController.java` — terms endpoint
-- `platform/src/main/java/ai/riviera/platform/RateLimitFilter.java` — the literal terms path spends per-IP only, never the shared per-code bucket
+- `platform/src/main/java/ai/riviera/platform/RateLimitFilter.java` — the literal terms path spends per-IP only, never the shared per-code bucket; endpoint-count comments trued to five (freshness)
+- `.claude/skills/riviera-modulith/references/events.md` — BookingConfirmed example payload trued to the widened record (freshness)
+- `docs/design/riviera-sunbeds-liquid-glass-v3.dc.html` — as-built divergence pointer for the Instant Book blurb (freshness)
 - `platform/src/test/java/ai/riviera/platform/RateLimitFilterTest.java` — pins that
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/CancellationTermsView.java` — new response DTO
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingDetailView.java` — + `cancellationWindowAtBirth`
@@ -744,7 +746,7 @@ specs)
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final state cites `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] **Close-out written in THIS PR** — final state cites `merged via PR #803`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone (record: PR #803 review comment).
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
