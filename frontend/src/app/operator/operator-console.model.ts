@@ -302,13 +302,9 @@ export type LayoutErrorCode =
   | 'CONFLICT'
   | 'UNKNOWN';
 
-/**
- * The venue's on-day sales-close choice (invariant #4): exactly the three server-vocabulary
- * wall-clock tokens, `"HH:mm"` in Europe/Tirane. `00:01` opts the venue out of same-day online
- * sales, `16:00` is the default, `23:59` keeps today bookable all day. The wire keeps this shape in
- * both directions, so the FE never parses times.
- */
-export type SalesCloseTime = '00:01' | '16:00' | '23:59';
+/** The three-value on-day close: the one definition lives with the tourist mirror in `shared/`. */
+export type { SalesCloseTime } from '../shared/venue-views';
+import type { SalesCloseTime } from '../shared/venue-views';
 
 /**
  * The operator's own view of a venue's admin profile (`GET /api/venues/{id}/profile`): the editable core

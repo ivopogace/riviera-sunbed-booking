@@ -12,7 +12,7 @@ import { CardGlass } from '../shared/card-glass';
 import { MapSkeletonGrid } from '../shared/map-skeleton-grid';
 import { SkeletonBlock } from '../shared/skeleton-block';
 import { LoadAnnouncer } from '../shared/load-announcer';
-import { CutoffNote } from '../shared/cutoff-note';
+import { ClockIcon } from '../shared/clock-icon';
 import { FAILURE_DIRECTIVES } from '../shared/failure-panel';
 import { MAP_TILE_LEGEND, MAP_TILE_MEANING, MapTile, MapTileState, mapTileState } from './map-tile';
 import { rowPriceLabel } from './row-price-label';
@@ -80,6 +80,8 @@ interface VenueHeader {
   readonly priceLabel: string | null;
   readonly water: string | null;
   readonly amenities: readonly { readonly code: Amenity; readonly label: string }[];
+  /** The venue's sales-close value — the note's copy key only; `salesOpen` stays the verdict. */
+  readonly salesClose: VenueMapView['salesClose'];
 }
 
 /**
@@ -110,7 +112,7 @@ interface VenueHeader {
     PhotoSlideshow,
     CardGlass,
     LoadAnnouncer,
-    CutoffNote,
+    ClockIcon,
     AmenityChip,
     SemanticChip,
     TouchTarget,
@@ -235,6 +237,7 @@ export class VenueMap {
         code,
         label: amenityLabel(code),
       })),
+      salesClose: v.salesClose,
     };
   });
 

@@ -206,16 +206,16 @@ construction: each sentence has exactly one template home, pinned once per branc
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** Phase 2 red specs in `venue-map.spec.ts` (four branch specs on
-`data-testid="sales-close-note"`).
+**Next action:** Phase 3 — homepage note removal + `cutoff-note` deletion (red spec:
+`home.spec.ts` absence pin).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | 1a59f0b; PR #805 (draft) |
 | 1 — BE: `salesClose` on the map read | ✅ | (this commit) |
-| 2 — FE: model + three-branch venue note | | |
+| 2 — FE: model + three-branch venue note | ✅ | (this commit) |
 | 3 — FE: homepage note removed, `cutoff-note` retired | | |
 | 4 — e2e: mocked-suite rework + a11y | | |
 | 5 — Docs truing (in-PR) + close-out | | |
@@ -350,6 +350,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-29 | Phase 1 (record component added) | every `VenueMapView` construction — call-site mechanism, whole repo incl. `adapter/out` (gitignore-blind path confirmed via `git ls-files`) | `git grep -n "new VenueMapView" -- '*.java'` + `git ls-files '*/adapter/out/*.java' \| xargs grep -ln VenueMapView` | 1 (`JdbcVenueCatalog:171`) | fixed at the one site; `WebSliceStubs` returns `Optional.empty()`, unaffected |
+| 2026-08-29 | Phase 2 (union moved to `shared/`) | every consumer of the `SalesCloseTime` union — import mechanism | `grep -rn "SalesCloseTime" frontend/src` | 1 definition (shared) + operator model re-export + `venue-tab.ts` via the model | operator consumers untouched (re-export keeps their import path); no second definition remains |
 
 ---
 
