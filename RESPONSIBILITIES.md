@@ -197,6 +197,9 @@ standing rules:
   request-scoped instant per read, so verdicts within one response cannot disagree. The port
   returns the *verdict*, never a close instant: I store the time and display the answer;
   `booking` keeps the rule and its boundary semantics, so no second source of truth exists.
+  Since #804 the map read additionally projects my stored close value itself (`salesClose`,
+  `HH:mm`) as a display-copy key for the venue surface's own-rule note — the value crosses no
+  module boundary and clients never compare it with a clock; `salesOpen` stays the verdict.
 - **The tourist availability calendar** (`GET /api/venues/{venueId}/availability-calendar?from=&to=`,
   #760; public, window-capped at the edge): I own the set total and therefore
   `free = total − taken` and the gap fill for days nobody has touched; `availability` answers

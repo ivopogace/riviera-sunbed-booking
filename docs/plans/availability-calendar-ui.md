@@ -143,7 +143,7 @@ addendum*). Branched from `origin/main` at `7d93a3f`.
 | `<label for="map-date">Date</label>` associates the caption | changed | A `<label>` cannot label a `<button>`. The visible "DATE" caption stays and is wired with `aria-labelledby`, so the accessible name is still `"Date, <the current day>"`. |
 | `data-testid="map-date"` query hook | preserved | Kept on the trigger button (`riviera-tailwind` rule 2 — never make a styling/structure change force a test rewrite). |
 | `appTouchTarget` on the control | preserved | On the trigger and on all 42 day cells. |
-| The `<p appCutoffNote>` sentence below the field | preserved | Untouched, stays outside the popover, exactly where it is (`venue-map.html:109`). |
+| The `<p appCutoffNote>` sentence below the field | preserved | Untouched, stays outside the popover, exactly where it is (`venue-map.html:109`). <!-- as-built diverges — see #804: the generic note became the venue-specific sales-close note in the same position --> |
 | A map-read 404/error moves focus to the error panel | preserved | Plus a new leg: the popover closes on that transition and does **not** attempt to restore focus to a trigger the failure has destroyed (see R-3). |
 
 ## Risk register
@@ -217,7 +217,7 @@ only *counts* `set_availability` rows.
 - **Cutoff rule (invariant #4):** today and every past day are rendered non-selectable **client-side
   only** (display, as #706 recorded). The server stays authoritative: the evening-before cutoff and
   the service-day-open fence are untouched, and the existing `appCutoffNote` sentence remains the
-  written explanation.
+  written explanation. <!-- as-built diverges — see #804: that sentence is now the venue-specific sales-close note -->
 - **Pinning test:** N/A — no reservation path is added, so `ConcurrentReservationIT` is unchanged
   and no new concurrency test is warranted. The client-ordering risk is pinned instead by
   `availability-calendar.spec.ts` › `drops a stale month response`.

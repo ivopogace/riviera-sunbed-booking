@@ -206,10 +206,10 @@ construction: each sentence has exactly one template home, pinned once per branc
 
 ## Execution status
 
-**Stage pointer:** implement (phase 5)
+**Stage pointer:** PR — marking ready for review; review + Sonar gates next
 
-**Next action:** Phase 5 — docs truing (design divergence pointers + substrate citations),
-then the file-structure guard and ready-for-review.
+**Next action:** mark PR #805 ready for review; run the review gate per
+`riviera-sdlc references/pr-gates.md` §1, then the Sonar gate (§2).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -218,7 +218,7 @@ then the file-structure guard and ready-for-review.
 | 2 — FE: model + three-branch venue note | ✅ | (this commit) |
 | 3 — FE: homepage note removed, `cutoff-note` retired | ✅ | (this commit) |
 | 4 — e2e: mocked-suite rework + a11y | ✅ | (this commit) — full mocked suite 294/295 locally; the one failure (`customer-password.e2e.ts:47`) is a pre-existing parallel-run flake untouched by this diff (passes alone and file-scoped single-worker); CI arbitrates |
-| 5 — Docs truing (in-PR) + close-out | | |
+| 5 — Docs truing (in-PR) + close-out | ⏳ | docs truing (this commit); close-out finalization at merge |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

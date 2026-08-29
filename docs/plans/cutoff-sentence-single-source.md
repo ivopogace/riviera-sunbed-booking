@@ -1,5 +1,8 @@
 # Cutoff sentence — one source, the rest are pins Implementation Plan
 
+<!-- as-built diverges — see #804: p[appCutoffNote] retired with both call sites; the rule's single home is the venue map's venue-specific sales-close note -->
+
+
 > **For agentic workers:** to implement this plan use `implement` + `tdd` (installed),
 > or the superpowers `subagent-driven-development`/`executing-plans` skills if present
 > task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
