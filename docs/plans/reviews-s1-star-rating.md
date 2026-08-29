@@ -82,8 +82,11 @@ implement entry; the plan branch is now history, not a second line of work.
   60 days, and no existing review, when `SubmitReview.submit(code, stars=4)` runs, then a
   review row is recorded for that booking/venue and `ReviewsChanged(venueRef)` is published
   in the same transaction (registry persists at commit). *Pinned by:*
-  `SubmitReviewServiceTest.recordsReviewAndPublishes`, `ReviewSubmitFlowIT` (module test,
-  `PublishedEvents`).
+  `SubmitReviewServiceTest.recordsReviewAndPublishes`, `ReviewSubmitFlowIT` (`@SpringBootTest` +
+  `@RecordApplicationEvents` — `BookingEventIT`'s house shape; `@ApplicationModuleTest` was
+  dropped because module isolation bootstraps the root composition and would force every other
+  module's `api` port to be mocked, as `PayoutModuleTest`'s fifteen `@MockitoBean`s show, while
+  proving less: this test's point is that the inverted `CompletedStays` really answers).
 - [ ] **AC-2 (one review per booking, ever):** Given a booking already reviewed, when a
   second submit races or repeats, then exactly one row exists and the outcome is
   `AlreadyReviewed` — enforced by `UNIQUE(booking_id)` + `INSERT … ON CONFLICT DO NOTHING`,
@@ -91,7 +94,10 @@ implement entry; the plan branch is now history, not a second line of work.
 - [ ] **AC-3 (eligibility fence):** Given a booking in any non-`COMPLETED` status
   (`PENDING_REQUEST`, `AWAITING_PAYMENT`, `CONFIRMED`, `CANCELLED`, `NO_SHOW`, `DECLINED`,
   `EXPIRED`, `WITHDRAWN`), when submit is attempted, then the outcome is `NotEligible` and
-  nothing is written. *Pinned by:* `SubmitReviewServiceTest.refusesEveryNonCompletedStatus`.
+  nothing is written. *Pinned by:* `SubmitReviewServiceTest.refusesAStayThatWasNeverCheckedIn`
+  (the outcome mapping) + `JdbcCompletedStaysIT.yieldsNothingForAnyStatusButCompleted`
+  (`@EnumSource` over every `BookingStatus` but `COMPLETED` — the status fence lives in SQL, so the
+  enumeration belongs at the adapter the service can no longer see statuses through).
 - [ ] **AC-4 (window fence):** Given `completed_at` more than 60 days ago, when submit is
   attempted, then the outcome is `WindowClosed`. *Pinned by:* `ReviewWindowTest`.
 - [ ] **AC-5 (aggregate recompute):** Given visible reviews {5, 4} for a venue, when the
@@ -154,13 +160,13 @@ division. Lives in `review.domain.AggregateRating`, pinned by `AggregateRatingTe
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Concurrent double-submit records two reviews | med | high | `UNIQUE(booking_id)` + `INSERT … ON CONFLICT DO NOTHING` claim; typed `AlreadyReviewed` outcome; `ReviewUniquenessIT` real-concurrency test | impl | open |
+| R-1 | Concurrent double-submit records two reviews | med | high | `UNIQUE(booking_id)` + `INSERT … ON CONFLICT DO NOTHING` claim; typed `AlreadyReviewed` outcome; `ReviewUniquenessIT` real-concurrency test | impl | **closed** (Phase 1 — four racing submits give one `Submitted` + three `AlreadyReviewed` and one row, `@RepeatedTest(3)`) |
 | R-2 | Lost/duplicated `ReviewsChanged` delivery skews the aggregate | med | med | Event Publication Registry (at-least-once, AFTER_COMMIT) + **full recompute** (idempotent, order-independent — the payout-listener discipline); converges because each submit's own listener runs after its commit | impl | open |
 | R-3 | Rounding drift / float sneaking into the mean | low | med | integer half-up formula written down above; `AggregateRatingTest` edge cases; no `double` anywhere in the math | impl | open |
 | R-4 | Seed reset breaks ITs/e2e asserting 48/326 or Miramar-first order | high | low | grill found the assertion sites (`VenueListControllerIT`, `VenueReadControllerIT`; FE e2e fixtures are mocks and stay); updated in the same phase as V45 | impl | open |
 | R-5 | New public POST misses an edge wire (SecurityConfig permitAll, CSRF ignore, per-code rate-limit template, `DECLARED_REACHABLE`, `WebSliceStubs`) | med | med | `EndpointRoleGateCoverageTest` enumerates every mapped endpoint (fails loud); Phase 3 checklist lists all five sites; review overlay RV-BE checks | impl | open |
-| R-6 | Module cycle (`venue → review → booking → venue`) | low | high | leaf posture per epic addendum: `review` depends only on `shared`; `ApplicationModules.verify()` is the gate | impl | open |
-| R-7 | Flyway V45 collision with in-flight work | low | med | verified free on `main` + all 20 open PRs are Dependabot (2026-08-29); if a collision appears, this branch renumbers (merges second) | impl | open |
+| R-6 | Module cycle (`venue → review → booking → venue`) | low | high | leaf posture per epic addendum: `review` depends only on `shared`; `ApplicationModules.verify()` is the gate | impl | **closed** (Phases 0–1 — `review` ships `allowedDependencies = { shared }`; `ModularityTests` green with the ninth module and `booking`'s `review::spi` grant) |
+| R-7 | Flyway V45 collision with in-flight work | low | med | verified free on `main` + all 20 open PRs are Dependabot (2026-08-29); if a collision appears, this branch renumbers (merges second) | impl | **closed** (Phase 0 — V45 landed with no collision; re-checked at the pre-merge `origin/main` merge) |
 | R-8 | Booking code leaks via the new module (invariant #7) | med | high | code never logged, never in ProblemDetail (`instance` overridden to constant URI — copy `BookingController.error(...)`); per-code rate-limit joins the shared "guesses at the same secret" budget | impl | open |
 | R-9 | Real-backend loop infeasible (check-in is service-date-only; sales close blocks same-day booking) | med | low | `StubPaymentGateway` (`@Profile("!stripe")`) confirms synchronously — verified; the spec sets the venue's sales close to 23:59 and books **today** so check-in is legal; fallback: the backend `ReviewSubmitFlowIT` already proves the true loop server-side, and the e2e AC is renegotiated with the maintainer | impl | open |
 | R-10 | Star control fails the a11y/touch-target/focus gates | med | med | follow `segmented-control.ts` verbatim (roving tabindex, keydown per radio); `appTouchTarget` on each of the 5 radios (TT-1); `[appBusy]` on submit (BUSY-1 — `submitting` is a guarded stem); filled-vs-outline glyphs so state is never color-only | impl | open |
@@ -226,7 +232,7 @@ concurrent recomputes converge (last reader sees the complete set); no lock need
 |---|---|---|---|---|
 | NI-1 | `review.api` | `VenueRatingSummary#summaryFor(VenueRef): RatingSummary` | `VenueRef`, `RatingSummary(int ratingTenths, int reviewsCount)` | consumer: `venue` (listener) |
 | NI-2 | `review.api` | `ReviewEligibility#stateFor(String bookingCode): ReviewState` | `ReviewState` enum (`ELIGIBLE`, `ALREADY_REVIEWED`, `NOT_COMPLETED`, `WINDOW_CLOSED`, `NO_SUCH_STAY`) | consumer: `booking` (`ViewBookingService` → `reviewable`; #812 consumes richer states) |
-| NI-3 | `review.spi` | `CompletedStays#byCode(String): Optional<CompletedStay>` — empty unless the booking exists **and** is `COMPLETED` | `CompletedStay(BookingRef booking, VenueRef venue, Instant completedAt)`, `BookingRef` | **implemented by `booking`** (`JdbcCompletedStays`, own SQL — `findByCode` untouched) |
+| NI-3 | `review.spi` | `CompletedStays#byCode(String): Optional<CompletedStay>` — empty unless the booking exists **and** is `COMPLETED` — plus `#existsByCode(String): boolean`, the presence probe that separates "no such booking" from "never checked in" (the contract's 404-vs-409; unreadable off an empty `byCode`, and consulted only once `byCode` comes back empty — the `venue.spi.BookingPresence` fact-probe shape) | `CompletedStay(BookingRef booking, VenueRef venue, Instant completedAt)`, `BookingRef` | **implemented by `booking`** (`JdbcCompletedStays`, own SQL — `findByCode` untouched) |
 
 Two `api/` ports split by consumer role (#94); submit stays an **internal** application
 port (`review.application.SubmitReview`) — its only caller is `review`'s own REST adapter
@@ -340,13 +346,13 @@ APIs; OnPush default (v22 — not set explicitly); Signal Forms per the house st
 review gate is deliberately **out of scope for this session** (it runs from a separate session,
 per the maintainer's instruction), so the PR stays a **draft** and is never marked ready.
 
-**Next action:** Phase 1 — the submit path (`ReviewWindow`, `SubmitReviewService`, `Reviews` +
-`JdbcReviews`, `review.spi.CompletedStays` + booking's `JdbcCompletedStays`), test-first.
+**Next action:** Phase 2 — the aggregate recompute (`AggregateRating`, `review.api.VenueRatingSummary`,
+`venue`'s `ReviewsChangedListener` → `VenueRatingService`), test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V45 migration + `review` module skeleton + structural tests | ✅ | `<phase-0>` |
-| 1 — submit path: domain, service, JDBC adapter, spi + booking's `JdbcCompletedStays` | | |
+| 1 — submit path: domain, service, JDBC adapter, spi + booking's `JdbcCompletedStays` | ✅ | `<phase-1>` |
 | 2 — `ReviewsChanged` → venue listener → recompute + seed-supersede IT updates | | |
 | 3 — edge: `ReviewController`, `reviewable` on the view, SecurityConfig/RateLimit/coverage | | |
 | 4 — FE: `star-rating`, booking-view panel, service/model, unit+axe+contrast, mocked e2e | | |
@@ -383,6 +389,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/ModularityTests.java` — javadoc count
 - `platform/src/test/java/ai/riviera/platform/{EndpointRoleGateCoverageTest,WebSliceStubs}.java` — declaration + stubs
 - `platform/src/test/java/ai/riviera/platform/review/**/*.java` — `SubmitReviewServiceTest`, `ReviewWindowTest`, `AggregateRatingTest`, `ReviewUniquenessIT`, `ReviewSubmitFlowIT`, `ReviewMigrationIT`, `ReviewControllerTest`
+- `platform/src/test/java/ai/riviera/platform/ReviewFixtures.java` — the venue/set/guest/booking seeding both the `review` and `booking` test packages share (the `OwnershipFixtures` placement precedent)
 - `platform/src/test/java/ai/riviera/platform/venue/**/*.java` — `VenueRatingRecomputeIT`; updated `VenueReadControllerIT`, `VenueListControllerIT`
 - `platform/src/test/java/ai/riviera/platform/booking/**/*.java` — `ViewBookingServiceTest` update, `JdbcCompletedStaysIT`
 - `frontend/src/app/shared/star-rating.ts` + `frontend/src/app/shared/star-rating.spec.ts` — control + keyboard/axe spec
@@ -651,6 +658,7 @@ Modify `CLAUDE.md`, `RESPONSIBILITIES.md`, `CONTEXT.md`,
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-29 | Phase 1 (`booking` implements a second module's spi port) | every `spi` port `booking` implements | `grep -rln "implements .*\.spi\." platform/src/main` (plus the by-name sweep, since the import-and-implement forms differ) | 5 adapters: `JdbcGuestBookingHistory`, `JdbcBookingPresence`, `BookingCutoffSalesWindow`, `JdbcSetAvailabilityLookup`, `SuppressedConfirmationMailDelivery` | `JdbcCompletedStays` matches the shape verbatim — `@Repository`, package-private class + constructor, `JdbcClient`, empty-safe, no logging of the code. One sweep finding applied: `JdbcBookingPresence` derives its status tokens from `BookingStatus` rather than a literal, so `JdbcCompletedStays` now does too (§6a, and the enum still never crosses the seam) |
 | 2026-08-29 | Phase 0 (V45 resets every venue's rating columns) | everything asserting the seeded 48/326 or Miramar-first ordering | `grep -rn "ratingTenths\|rating_tenths\|reviewsCount\|reviews_count" platform/src/test --include="*.java"` + the same over `frontend/src` / `frontend/e2e` / `frontend/e2e/real-backend` | 1 backend assertion (`VenueReadControllerIT.returnsVenueWithSets` → 48); `VenueListControllerIT` inserts its own ratings **after** migration so it is unaffected; `VenueAdminControllerIT` already asserts 0/0 for a fresh venue; every FE hit is a mocked wire value or the display helper — none asserts seed semantics (**resolves O-2**); the real-backend suite asserts no rating at all | `VenueReadControllerIT` updated to `0` with the superseding comment; no FE change needed |
 
 ---
