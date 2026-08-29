@@ -341,14 +341,14 @@ strings**, never interpolated fragments.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window as
 > the change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** implement — phase 0 done, phase 1 next
+**Stage pointer:** implement — phases 0–1 done, phase 2 next; draft PR #803 open
 
-**Next action:** phase 1 (terms quote + endpoint), then open the draft PR at its commit.
+**Next action:** phase 2 (events + mails + resend), starting with the publication-site mechanism sweep.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Publish the window (vocabulary move + at-birth overload) | ✅ | `Publish CancellationWindow …` |
-| 1 — Terms quote + endpoint | | |
+| 1 — Terms quote + endpoint | ✅ | `Quote pre-reserve cancellation terms …` |
 | 2 — Events + mails + resend | | |
 | 3 — Booking-view window-at-birth (BE + model) | | |
 | 4 — FE checkout, booking view, ToS | | |
@@ -479,7 +479,7 @@ public CancellationWindow cancellationWindow(LocalTime cutoff, LocalDate booking
 `CancellationTermsView.java` · Test `CancellationPolicyTermsTest` (new, fixed clock),
 `CancellationTermsEndpointIT` (new)
 
-- [ ] **Step 1: Write the failing tests** (AC-1..3 unit; AC-4 IT):
+- [x] **Step 1: Write the failing tests** (AC-1..3 unit; AC-4 IT):
 
 ```java
 @Test
@@ -495,9 +495,9 @@ void sameDayQuotesClosed() {
 IT pins: `200` shape for a seeded set (all three windows via mocked clock), 404
 `ApiProblem` for an unknown set, and `GET /api/bookings/{code}` unshadowed (R-2).
 
-- [ ] **Step 2: Run, verify FAIL** — `./gradlew test --tests "*CancellationPolicyTerms*"
+- [x] **Step 2: Run, verify FAIL** — `./gradlew test --tests "*CancellationPolicyTerms*"
   --tests "*CancellationTermsEndpoint*"`
-- [ ] **Step 3: Minimal implementation** —
+- [x] **Step 3: Minimal implementation** —
 
 ```java
 /** The pre-reserve terms for booking this set on this date, quoted now (invariant #10). */
@@ -519,13 +519,13 @@ Controller: `@GetMapping("/api/bookings/cancellation-terms")`, params `setId` + 
 `date`, empty → `ApiProblem` 404 (unknown set is an expected flow here — the tourist may
 hold a stale map — unlike `quote`'s booking-FK breach).
 
-- [ ] **Step 4: Run, verify PASS** — same scoped commands, then the booking package.
-- [ ] **Step 5: Generalization-audit** — population: other pre-existing quotes of
+- [x] **Step 4: Run, verify PASS** — same scoped commands, then the booking package.
+- [x] **Step 5: Generalization-audit** — population: other pre-existing quotes of
   cancellation terms (`grep -rn "cancellationWindow\|freeCancellationEndsAt" platform/src/main`)
   → confirm every consumer still routes through `BookingCutoff`/`CancellationPolicy`.
-- [ ] **Step 6: Commit** — `git commit -m "Quote pre-reserve cancellation terms (#795)"`
+- [x] **Step 6: Commit** — `git commit -m "Quote pre-reserve cancellation terms (#795)"`
   — then **open the draft PR** (first phase commit exists; CI needs the `pull_request` event).
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -663,6 +663,7 @@ specs)
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-29 | phase 0 (enum move) | every reference to the old FQCN, incl. gitignore-shadowed paths | `grep -rn "booking.domain.CancellationWindow" platform/src` + `git ls-files 'platform/*.java' \| xargs grep -ln "domain.CancellationWindow"` | 0 in code (5 main + 3 test files import-rewritten; only historical plan docs mention the old path) | none needed |
+| 2026-08-29 | phase 1 (terms quote) | every consumer of the window rule in main sources | `grep -rn "cancellationWindow\|freeCancellationEndsAt" platform/src/main` | 3 files: `BookingCutoff` (the rule), `CancellationPolicy` (the one quote site), `CancellationTermsView` (field name only) | none needed — no second implementation |
 
 ---
 
