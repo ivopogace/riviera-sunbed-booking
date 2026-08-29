@@ -206,17 +206,17 @@ construction: each sentence has exactly one template home, pinned once per branc
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** implement (phase 4)
 
-**Next action:** Phase 3 — homepage note removal + `cutoff-note` deletion (red spec:
-`home.spec.ts` absence pin).
+**Next action:** Phase 4 — mocked e2e rework (`discovery-flow.e2e.ts`,
+`same-day-booking.e2e.ts`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Plan doc + draft PR | ✅ | 1a59f0b; PR #805 (draft) |
 | 1 — BE: `salesClose` on the map read | ✅ | (this commit) |
 | 2 — FE: model + three-branch venue note | ✅ | (this commit) |
-| 3 — FE: homepage note removed, `cutoff-note` retired | | |
+| 3 — FE: homepage note removed, `cutoff-note` retired | ✅ | (this commit) |
 | 4 — e2e: mocked-suite rework + a11y | | |
 | 5 — Docs truing (in-PR) + close-out | | |
 
@@ -351,6 +351,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|---|---|
 | 2026-08-29 | Phase 1 (record component added) | every `VenueMapView` construction — call-site mechanism, whole repo incl. `adapter/out` (gitignore-blind path confirmed via `git ls-files`) | `git grep -n "new VenueMapView" -- '*.java'` + `git ls-files '*/adapter/out/*.java' \| xargs grep -ln VenueMapView` | 1 (`JdbcVenueCatalog:171`) | fixed at the one site; `WebSliceStubs` returns `Optional.empty()`, unaffected |
 | 2026-08-29 | Phase 2 (union moved to `shared/`) | every consumer of the `SalesCloseTime` union — import mechanism | `grep -rn "SalesCloseTime" frontend/src` | 1 definition (shared) + operator model re-export + `venue-tab.ts` via the model | operator consumers untouched (re-export keeps their import path); no second definition remains |
+| 2026-08-29 | Phase 3 (component retired) | every reference to the retired selector/component/testid — token mechanism across code, e2e, skills, docs | `git grep -nE "appCutoffNote\|cutoff-note\|CutoffNote" -- frontend .claude docs *.md` | `frontend/src`: only the deliberate absence pin; `frontend/e2e`: discovery-flow pins (Phase 4); `riviera-tailwind/SKILL.md` ×4 + `availability-calendar-ui.md` + `cutoff-sentence-single-source.md` standing claims (Phase 5); other plan docs are historical narrative, no standing claim broken — left as-is | code swept now; e2e Phase 4; docs Phase 5 |
 
 ---
 
