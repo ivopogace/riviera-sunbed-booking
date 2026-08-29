@@ -19,4 +19,7 @@ public interface Reviews {
 	 *         one — the claim is atomic, so a lost race is an ordinary {@code false}, not an exception
 	 */
 	boolean record(BookingRef booking, VenueRef venue, int stars, Instant at);
+
+	/** What this venue's review rows add up to right now — {@code 0/0} when it has none. */
+	ReviewTotals totalsFor(VenueRef venue);
 }

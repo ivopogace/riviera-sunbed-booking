@@ -161,16 +161,16 @@ division. Lives in `review.domain.AggregateRating`, pinned by `AggregateRatingTe
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Concurrent double-submit records two reviews | med | high | `UNIQUE(booking_id)` + `INSERT … ON CONFLICT DO NOTHING` claim; typed `AlreadyReviewed` outcome; `ReviewUniquenessIT` real-concurrency test | impl | **closed** (Phase 1 — four racing submits give one `Submitted` + three `AlreadyReviewed` and one row, `@RepeatedTest(3)`) |
-| R-2 | Lost/duplicated `ReviewsChanged` delivery skews the aggregate | med | med | Event Publication Registry (at-least-once, AFTER_COMMIT) + **full recompute** (idempotent, order-independent — the payout-listener discipline); converges because each submit's own listener runs after its commit | impl | open |
-| R-3 | Rounding drift / float sneaking into the mean | low | med | integer half-up formula written down above; `AggregateRatingTest` edge cases; no `double` anywhere in the math | impl | open |
-| R-4 | Seed reset breaks ITs/e2e asserting 48/326 or Miramar-first order | high | low | grill found the assertion sites (`VenueListControllerIT`, `VenueReadControllerIT`; FE e2e fixtures are mocks and stay); updated in the same phase as V45 | impl | open |
+| R-2 | Lost/duplicated `ReviewsChanged` delivery skews the aggregate | med | med | Event Publication Registry (at-least-once, AFTER_COMMIT) + **full recompute** (idempotent, order-independent — the payout-listener discipline); converges because each submit's own listener runs after its commit | impl | **closed** (Phase 2 — `VenueRatingRecomputeIT.redeliveryOfTheSameEventChangesNothing`; nothing but the venue id is read off the event) |
+| R-3 | Rounding drift / float sneaking into the mean | low | med | integer half-up formula written down above; `AggregateRatingTest` edge cases; no `double` anywhere in the math | impl | **closed** (Phase 2 — `AggregateRating` is `long`/`int` only, the rounding rule is stated at the division, and the mean is taken in the domain rather than in SQL so a test can reach it) |
+| R-4 | Seed reset breaks ITs/e2e asserting 48/326 or Miramar-first order | high | low | grill found the assertion sites (`VenueListControllerIT`, `VenueReadControllerIT`; FE e2e fixtures are mocks and stay); updated in the same phase as V45 | impl | **closed** (Phase 0 audit — one real site, `VenueReadControllerIT`, updated with V45; `VenueListControllerIT` seeds its own ratings post-migration and needed nothing) |
 | R-5 | New public POST misses an edge wire (SecurityConfig permitAll, CSRF ignore, per-code rate-limit template, `DECLARED_REACHABLE`, `WebSliceStubs`) | med | med | `EndpointRoleGateCoverageTest` enumerates every mapped endpoint (fails loud); Phase 3 checklist lists all five sites; review overlay RV-BE checks | impl | open |
 | R-6 | Module cycle (`venue → review → booking → venue`) | low | high | leaf posture per epic addendum: `review` depends only on `shared`; `ApplicationModules.verify()` is the gate | impl | **closed** (Phases 0–1 — `review` ships `allowedDependencies = { shared }`; `ModularityTests` green with the ninth module and `booking`'s `review::spi` grant) |
 | R-7 | Flyway V45 collision with in-flight work | low | med | verified free on `main` + all 20 open PRs are Dependabot (2026-08-29); if a collision appears, this branch renumbers (merges second) | impl | **closed** (Phase 0 — V45 landed with no collision; re-checked at the pre-merge `origin/main` merge) |
 | R-8 | Booking code leaks via the new module (invariant #7) | med | high | code never logged, never in ProblemDetail (`instance` overridden to constant URI — copy `BookingController.error(...)`); per-code rate-limit joins the shared "guesses at the same secret" budget | impl | open |
 | R-9 | Real-backend loop infeasible (check-in is service-date-only; sales close blocks same-day booking) | med | low | `StubPaymentGateway` (`@Profile("!stripe")`) confirms synchronously — verified; the spec sets the venue's sales close to 23:59 and books **today** so check-in is legal; fallback: the backend `ReviewSubmitFlowIT` already proves the true loop server-side, and the e2e AC is renegotiated with the maintainer | impl | open |
 | R-10 | Star control fails the a11y/touch-target/focus gates | med | med | follow `segmented-control.ts` verbatim (roving tabindex, keydown per radio); `appTouchTarget` on each of the 5 radios (TT-1); `[appBusy]` on submit (BUSY-1 — `submitting` is a guarded stem); filled-vs-outline glyphs so state is never color-only | impl | open |
-| R-11 | `venue.rating_tenths` gains a second writer unnoticed (no machine rule guards the venue table the way `ResponsibilitiesArchitectureTests` guards `set_availability`) | low | med | review-checked boundary: `review` has no SQL touching `venue`; called out for RV-BE; RESPONSIBILITIES §venue gains the "I store the aggregate; `review` computes it" line | impl | open |
+| R-11 | `venue.rating_tenths` gains a second writer unnoticed (no machine rule guards the venue table the way `ResponsibilitiesArchitectureTests` guards `set_availability`) | low | med | review-checked boundary: `review` has no SQL touching `venue`; called out for RV-BE; RESPONSIBILITIES §venue gains the "I store the aggregate; `review` computes it" line | impl | **mitigated, stays review-checked** (Phase 2 — the write is one method, `JdbcVenues.store`, behind venue's own `VenueRatings` port; `review`'s SQL names only the `review` table. Still no machine rule: the RESPONSIBILITIES line lands in Phase 5) |
 
 ## Open questions / Assumptions
 
@@ -346,14 +346,15 @@ APIs; OnPush default (v22 — not set explicitly); Signal Forms per the house st
 review gate is deliberately **out of scope for this session** (it runs from a separate session,
 per the maintainer's instruction), so the PR stays a **draft** and is never marked ready.
 
-**Next action:** Phase 2 — the aggregate recompute (`AggregateRating`, `review.api.VenueRatingSummary`,
-`venue`'s `ReviewsChangedListener` → `VenueRatingService`), test-first.
+**Next action:** Phase 3 — the edge (`ReviewController`, `review.api.ReviewEligibility` +
+`ReviewEligibilityService`, `reviewable` on the code-gated view, SecurityConfig / RateLimitFilter /
+`EndpointRoleGateCoverageTest` / `WebSliceStubs`), test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V45 migration + `review` module skeleton + structural tests | ✅ | `<phase-0>` |
 | 1 — submit path: domain, service, JDBC adapter, spi + booking's `JdbcCompletedStays` | ✅ | `<phase-1>` |
-| 2 — `ReviewsChanged` → venue listener → recompute + seed-supersede IT updates | | |
+| 2 — `ReviewsChanged` → venue listener → recompute + seed-supersede IT updates | ✅ | `<phase-2>` |
 | 3 — edge: `ReviewController`, `reviewable` on the view, SecurityConfig/RateLimit/coverage | | |
 | 4 — FE: `star-rating`, booking-view panel, service/model, unit+axe+contrast, mocked e2e | | |
 | 5 — real-backend e2e loop + docs (CLAUDE/RESPONSIBILITIES/CONTEXT/ADR-0015/counting sweep) | | |
@@ -384,7 +385,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingDetailView.java` — wire field
 - `platform/src/main/java/ai/riviera/platform/venue/package-info.java` — grants `+ review::api/events/vocabulary`
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/ReviewsChangedListener.java` — first venue listener
-- `platform/src/main/java/ai/riviera/platform/venue/application/VenueRatingService.java` + `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenues.java` (or a dedicated `JdbcVenueRatings.java`) — the one venue-side write
+- `platform/src/main/java/ai/riviera/platform/venue/application/VenueRatingService.java` + its ports `platform/src/main/java/ai/riviera/platform/venue/application/RecomputeVenueRating.java` (inbound, the listener's) and `platform/src/main/java/ai/riviera/platform/venue/application/VenueRatings.java` (outbound, the write) + `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenues.java` — the one venue-side write (no dedicated `JdbcVenueRatings`: `JdbcVenues` already serves two ports writing this same row)
 - `platform/src/main/java/ai/riviera/platform/{SecurityConfig,RateLimitFilter}.java` — edge wiring
 - `platform/src/test/java/ai/riviera/platform/ModularityTests.java` — javadoc count
 - `platform/src/test/java/ai/riviera/platform/{EndpointRoleGateCoverageTest,WebSliceStubs}.java` — declaration + stubs
@@ -542,7 +543,10 @@ void halfUpAtTheDivision() {
 - [ ] **Step 3: Implementation.** `AggregateRating.tenths(sumStars, count)` =
   `count == 0 ? 0 : (10 * sumStars + count / 2) / count` (all `int`/`long`, documented
   half-up). `JdbcReviews` gains `SELECT COUNT(*), COALESCE(SUM(stars), 0) FROM review
-  WHERE venue_id = :venue` behind `VenueRatingSummary`. `ReviewsChangedListener`
+  WHERE venue_id = :venue` behind `VenueRatingSummary` — as built that SQL sits behind the module's
+  internal `Reviews` port returning raw `ReviewTotals`, with `VenueRatingSummaryService` applying
+  `AggregateRating` in front of the published port, so the rounding rule stays in the domain rather
+  than in an adapter. `ReviewsChangedListener`
   (package-private `@Component`, single `@ApplicationModuleListener void on(ReviewsChanged
   event)`, DB-only → shared pool, javadoc mirroring the payout listener's
   at-least-once/idempotence paragraph) → `VenueRatingService.recompute(VenueRef)`
@@ -658,6 +662,7 @@ Modify `CLAUDE.md`, `RESPONSIBILITIES.md`, `CONTEXT.md`,
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-29 | Phase 2 (a ninth `@ApplicationModuleListener` joins the app) | every `@ApplicationModuleListener` | `grep -rln "@ApplicationModuleListener" platform/src/main/java` | 9 files — 6 listeners (2 booking, 1 notification composite, 2 payout, the new venue one), 2 executor configs naming bulkhead pools, 1 service-level listener | `ReviewsChangedListener` is the only one recomputing venue state, and it carries the at-least-once/idempotence paragraph the payout listeners set the shape for. It takes the **shared** executor, matching the two payout listeners (DB-only work); the bulkhead-pool listeners are the mail/refund ones, whose blast radius is an external call this one does not make |
 | 2026-08-29 | Phase 1 (`booking` implements a second module's spi port) | every `spi` port `booking` implements | `grep -rln "implements .*\.spi\." platform/src/main` (plus the by-name sweep, since the import-and-implement forms differ) | 5 adapters: `JdbcGuestBookingHistory`, `JdbcBookingPresence`, `BookingCutoffSalesWindow`, `JdbcSetAvailabilityLookup`, `SuppressedConfirmationMailDelivery` | `JdbcCompletedStays` matches the shape verbatim — `@Repository`, package-private class + constructor, `JdbcClient`, empty-safe, no logging of the code. One sweep finding applied: `JdbcBookingPresence` derives its status tokens from `BookingStatus` rather than a literal, so `JdbcCompletedStays` now does too (§6a, and the enum still never crosses the seam) |
 | 2026-08-29 | Phase 0 (V45 resets every venue's rating columns) | everything asserting the seeded 48/326 or Miramar-first ordering | `grep -rn "ratingTenths\|rating_tenths\|reviewsCount\|reviews_count" platform/src/test --include="*.java"` + the same over `frontend/src` / `frontend/e2e` / `frontend/e2e/real-backend` | 1 backend assertion (`VenueReadControllerIT.returnsVenueWithSets` → 48); `VenueListControllerIT` inserts its own ratings **after** migration so it is unaffected; `VenueAdminControllerIT` already asserts 0/0 for a fresh venue; every FE hit is a mocked wire value or the display helper — none asserts seed semantics (**resolves O-2**); the real-backend suite asserts no rating at all | `VenueReadControllerIT` updated to `0` with the superseding comment; no FE change needed |
 

@@ -34,6 +34,7 @@ import ai.riviera.platform.venue.application.SetPlacement;
 import ai.riviera.platform.venue.application.VenueCommissionView;
 import ai.riviera.platform.venue.application.VenueProfileCommand;
 import ai.riviera.platform.venue.application.VenueProfileView;
+import ai.riviera.platform.venue.application.VenueRatings;
 import ai.riviera.platform.venue.application.Venues;
 
 /**
@@ -46,10 +47,12 @@ import ai.riviera.platform.venue.application.Venues;
  * <p>One adapter serves both ports because both write the {@code venue} row: the ports are split by
  * the conversation their callers are having (an owner editing their venue vs the platform setting a
  * commercial term), not by table, and {@link #updateLiveRate} and {@link #updateVenueProfile} write
- * columns of the same row.
+ * columns of the same row. {@link VenueRatings} joins them on the same argument: the recompute writes
+ * two more columns of that row, and the aggregate it stores is a third such conversation — the
+ * platform's, on {@code review}'s behalf.
  */
 @Repository
-class JdbcVenues implements Venues, CommissionRateStore {
+class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 
 	/** Named-parameter keys reused across the set queries (must match the {@code :name} SQL refs). */
 	private static final String P_SET_ID = "setId";
@@ -511,5 +514,15 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	}
 
 	private record ConflictRow(boolean positionTaken, boolean cellTaken) {
+	}
+
+	@Override
+	public void store(VenueId venue, int ratingTenths, int reviewsCount) {
+		jdbc.sql("""
+				UPDATE venue SET rating_tenths = :tenths, reviews_count = :count WHERE id = :id
+				""")
+				.param("tenths", ratingTenths).param("count", reviewsCount)
+				.param("id", venue.value())
+				.update();
 	}
 }

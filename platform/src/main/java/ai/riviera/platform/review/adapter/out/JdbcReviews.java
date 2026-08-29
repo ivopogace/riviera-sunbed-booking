@@ -6,6 +6,7 @@ import java.time.Instant;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import ai.riviera.platform.review.application.ReviewTotals;
 import ai.riviera.platform.review.application.Reviews;
 import ai.riviera.platform.review.vocabulary.BookingRef;
 import ai.riviera.platform.review.vocabulary.VenueRef;
@@ -19,6 +20,9 @@ import ai.riviera.platform.review.vocabulary.VenueRef;
  * {@code 1} recorded it, {@code 0} means another submit already holds this booking's slot. Because
  * the row's creation <em>is</em> the claim there is no read-then-write window between the two
  * (the {@code JdbcAvailabilityClaim} discipline).
+ *
+ * <p>The aggregate read is the counterpart: one grouped scan of a venue's rows, served by
+ * {@code review_venue_id_idx}. It returns raw totals — the mean and its rounding stay in the domain.
  */
 @Repository
 class JdbcReviews implements Reviews {
@@ -42,5 +46,17 @@ class JdbcReviews implements Reviews {
 				.param("createdAt", Timestamp.from(at))
 				.update();
 		return inserted == 1;
+	}
+
+	@Override
+	public ReviewTotals totalsFor(VenueRef venue) {
+		return jdbc.sql("""
+				SELECT count(*) AS review_count, COALESCE(sum(stars), 0) AS star_total
+				FROM review WHERE venue_id = :venue
+				""")
+				.param("venue", venue.value())
+				.query((rs, rowNum) -> new ReviewTotals(rs.getInt("review_count"),
+						rs.getLong("star_total")))
+				.single();
 	}
 }

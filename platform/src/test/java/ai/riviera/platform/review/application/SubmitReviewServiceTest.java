@@ -134,6 +134,11 @@ class SubmitReviewServiceTest {
 			recorded.add(new Recorded(booking, venue, stars, at));
 			return true;
 		}
+
+		@Override
+		public ReviewTotals totalsFor(VenueRef venue) {
+			throw new UnsupportedOperationException("the submit use case never aggregates");
+		}
 	}
 
 	private static final class RecordingPublisher implements ApplicationEventPublisher {
