@@ -4,7 +4,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -45,6 +44,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueMapView;
 import ai.riviera.platform.venue.api.VenueRates;
 import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
+import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.spi.SalesWindow;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 
@@ -73,8 +73,6 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	private static final String COL_VENUE_ID = "venue_id";
 	private static final String COL_AMENITY = "amenity";
 	private static final String COL_SALES_CLOSE = "sales_close";
-	/** The wire shape for the sales-close value — {@code HH:mm}, the profile-read precedent. */
-	private static final DateTimeFormatter SALES_CLOSE_WIRE = DateTimeFormatter.ofPattern("HH:mm");
 	/** The bulk IN-clause bind param shared by the three list-read queries (named once — Sonar S1192). */
 	private static final String P_VENUE_IDS = "venueIds";
 	// Slideshow preferences: own size first, then fallbacks for pre-uniform-surface uploads.
@@ -172,7 +170,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				v.description(), v.ratingTenths(), v.reviewsCount(), v.bookingMode(),
 				fromPrice, amenities, v.distanceToWaterM(), sets, v.setVersion(), coverPhoto,
 				photos, salesWindow.isOpen(v.salesClose(), date, clock.instant()),
-				SALES_CLOSE_WIRE.format(v.salesClose())));
+				SalesClose.WIRE.format(v.salesClose())));
 	}
 
 	@Override

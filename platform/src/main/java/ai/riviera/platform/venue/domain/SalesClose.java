@@ -1,6 +1,7 @@
 package ai.riviera.platform.venue.domain;
 
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 
 /**
@@ -21,6 +22,13 @@ public enum SalesClose {
 	DAY_END(LocalTime.of(23, 59));
 
 	public static final SalesClose DEFAULT = MID_AFTERNOON;
+
+	/**
+	 * The one {@code HH:mm} wire form for venue wall-clock settings — the profile read/write and
+	 * the tourist map read's {@code salesClose} all format through it, so the surfaces cannot
+	 * drift apart (the FE keys copy on exact string equality).
+	 */
+	public static final DateTimeFormatter WIRE = DateTimeFormatter.ofPattern("HH:mm");
 
 	private final LocalTime time;
 

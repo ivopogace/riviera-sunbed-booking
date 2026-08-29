@@ -226,6 +226,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (medium, inline single-pass — the code-review skill ran forked without the subagent fan-out; mode recorded here per pr-gates §1) | `clock-icon.ts` doc header still claimed the glyph is shared by Discover + beach map via the retired cutoff-note | fixed in review-fix commit |
+| F-2 | review | the three `@switch` branches triplicated the `<p data-testid="sales-close-note">` shell + glyph; a class/testid tweak could silently drift per branch | fixed: single `@if` shell, `@switch` selects only the sentence `<span>` |
+| F-3 | review | `SALES_CLOSE_WIRE` re-declared the `HH:mm` wire formatter beside `VenueProfileResponse.CUTOFF` — two independent definitions of a load-bearing wire shape | fixed: one `SalesClose.WIRE` constant (venue domain), both adapters format through it |
+
+Re-review of the fix round: overlay re-walked for the touched areas — template keeps
+testid/classes (single shell removes the drift F-2 named), `SalesClose.WIRE` is
+module-internal (both adapters are `venue`'s own; no published-surface change, invariant
+#11 unaffected), TSDoc truthful. Scoped tests + lint + format green.
 
 ---
 
