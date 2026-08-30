@@ -1164,6 +1164,8 @@ describe('BookingView', () => {
     expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContain('BBBBBBBBBB');
     expect(host.textContent).toContain('Venue Beta');
     expect(host.textContent).not.toContain('Venue Alpha');
+    // The swap destroyed whatever held focus (WCAG 2.4.3) — the new booking's title takes it.
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="bv-title"]'));
   });
 
   describe('review panel', () => {
@@ -1453,6 +1455,34 @@ describe('BookingView', () => {
         'Please try again',
       );
       expect(host.querySelector('[data-testid="review-panel"]')).not.toBeNull();
+    });
+
+    it('leaves focus on the confirm pair after a retryable delete failure', async () => {
+      const fixture = await render(
+        stubService({ detail: REVIEWED, reviewError: new HttpErrorResponse({ status: 500 }) }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      host.querySelector<HTMLButtonElement>('[data-testid="start-delete-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const confirm = host.querySelector<HTMLButtonElement>(
+        '[data-testid="confirm-delete-review"]',
+      )!;
+      expect(document.activeElement).toBe(confirm);
+
+      confirm.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'Please try again',
+      );
+      // Retryable, so the pair survives — and keeps focus rather than losing it to the live region.
+      expect(host.querySelector('[data-testid="confirm-delete-review"]')).toBe(confirm);
+      expect(document.activeElement).toBe(confirm);
     });
   });
 });
