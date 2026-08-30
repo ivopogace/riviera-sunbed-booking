@@ -2,7 +2,6 @@ package ai.riviera.platform.review.domain;
 
 import java.time.Instant;
 
-import ai.riviera.platform.review.vocabulary.ReviewState;
 
 /**
  * The order the review fences apply in, as one pure function: unknown booking, then never checked

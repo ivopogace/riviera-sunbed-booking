@@ -144,7 +144,7 @@ stands in for `feature/reviews-s2-comment-lifecycle` (cloud-session substitution
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Flyway V46 collision with in-flight work | low | high | Checked: V45 is highest on `main`; open PRs are Dependabot-only. If a collision appears, this branch renumbers (merges second) | agent | open |
-| R-2 | Fence-order drift between submit / edit / delete / panel-read (rated+frozen must read frozen everywhere) | low (was med) | med | **Structurally removed**: the order lives once in `domain/ReviewGate`, consulted by both the lifecycle service and the panel read; `ReviewGateTest` pins it, `ReviewLifecycleFlowIT` proves the ends agree | agent | open |
+| R-2 | Fence-order drift between submit / edit / delete / panel-read (rated+frozen must read frozen everywhere) | low (was med) | med | **Structurally removed**: the order lives once in `domain/ReviewGate`, consulted by both the lifecycle service and the panel read; `ReviewGateTest` pins it, `ReviewLifecycleFlowIT` proves the ends agree | agent | **closed (phases 1-3)** — one `ReviewGate.stateOf` call in each of the two services and nowhere else |
 | R-3 | Edit/delete forget to republish `ReviewsChanged` → stale aggregate | med | high | `ReviewLifecycleServiceTest` asserts the publish per verb; `VenueRatingRecomputeIT` extension proves delete-to-"New"; recompute is already idempotent (full recompute, never increment) | agent | **closed (phase 2)** — both publishes pinned per verb, and `aDeletedSoleReviewReturnsTheVenueToNew` proves the venue returns to `0/0` through the real listener |
 | R-4 | `display_name`/`comment` are the **first PII in the `review` table** — erasure (ADR-0010) has no hook yet | high | med | Deliberate epic sequencing (story 25 is a later slice). Record the obligation: close-out files a follow-up issue referencing epic #810 story 25 before this slice merges | agent | open |
 | R-5 | Client `maxLength` counts UTF-16 units, server counts code points (emoji differ) | low | low | Client is strictly tighter (a surrogate pair counts 2); the server bound + DB CHECK are the contract (AC-2); no truncation anywhere | agent | open |
@@ -370,17 +370,18 @@ with `cls.btnOutlineDanger`; every new control carries `appTouchTarget`.
 
 ## Execution status
 
-**Stage pointer:** `implement — phases 0-2 done; draft PR #819 open against main`
+**Stage pointer:** `implement — phases 0-3 done (backend complete); draft PR #819 open against main`
 
-**Next action:** build phase 3 (sealed panel read + name suggestion), after checking phase
-2's CI run.
+**Next action:** build phase 4 (the frontend review panel), after checking phase 3's CI run.
+The frontend still reads the retired `reviewable` flag between phases 3 and 4 — phase 4's
+generalization audit is what closes that.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V46 migration + store-port widening | ✅ | `5a4e72a` |
 | 1 — review gate + submit with comment/display name | ✅ | `f501e30` |
-| 2 — edit + delete on the lifecycle port + edge wiring | ✅ | this commit |
-| 3 — sealed panel read + name suggestion | | |
+| 2 — edit + delete on the lifecycle port + edge wiring | ✅ | `de46936` |
+| 3 — sealed panel read + name suggestion | ✅ | this commit |
 | 4 — frontend panel (form / own / frozen / messaging) | | |
 | 5 — e2e journeys + docs freshness + close-out | | |
 
@@ -408,6 +409,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/resources/db/migration/V46__review_comment_display_name.sql` — new columns + CHECKs
 - `platform/src/main/java/ai/riviera/platform/review/domain/ReviewText.java` — comment/name bounds + messages
 - `platform/src/main/java/ai/riviera/platform/review/domain/ReviewGate.java` — the fence order, stated once (pure)
+- `platform/src/main/java/ai/riviera/platform/review/domain/ReviewWindow.java` — gains `closesAt`, so the panel's deadline is the window's own arithmetic
 - `platform/src/main/java/ai/riviera/platform/review/domain/ReviewState.java` — relocated from `vocabulary/` (no cross-module consumer remains)
 - `platform/src/main/java/ai/riviera/platform/review/application/Reviews.java` — port gains `findFor`, `update`, `delete`; `claim` widens
 - `platform/src/main/java/ai/riviera/platform/review/application/ReviewSubmission.java` — `(int stars, String comment, String displayName)` internal value
@@ -418,6 +420,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/review/vocabulary/OwnReview.java` — published read record
 - `platform/src/main/java/ai/riviera/platform/review/vocabulary/AmendOutcome.java` — sealed outcome for edit + delete
 - `platform/src/main/java/ai/riviera/platform/review/vocabulary/ReviewState.java` — deleted (moves to `domain/`)
+- `platform/src/main/java/ai/riviera/platform/review/vocabulary/package-info.java` — the published-vocabulary list follows the surface change
 - `platform/src/main/java/ai/riviera/platform/review/api/ReviewEligibility.java` — `stateFor` → `panelFor`
 - `platform/src/main/java/ai/riviera/platform/review/adapter/in/ReviewController.java` — body widens; PUT + DELETE mappings
 - `platform/src/main/java/ai/riviera/platform/review/adapter/in/SubmitReviewRequest.java` — comment/displayName + compact-ctor bounds
@@ -425,6 +428,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/ViewBookingService.java` — panel + name suggestion
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/BookingDetail.java` — `reviewPanel`, `reviewable` dropped
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingDetailView.java` — wire mirror (exhaustive switch over the sealed panel)
+- `platform/src/main/java/ai/riviera/platform/booking/package-info.java` — the `review::api` grant comment follows the surface change
 - `platform/src/main/java/ai/riviera/platform/SecurityConfig.java` — PUT/DELETE permitAll + CSRF-ignore rows
 - `platform/src/main/java/ai/riviera/platform/RateLimitFilter.java` — PUT/DELETE join the per-code review budget (count comment updated)
 - `platform/src/test/java/ai/riviera/platform/review/**/*.java` — new/extended: `ReviewMigrationIT`, `ReviewGateTest`, `ReviewLifecycleServiceTest` (replaces `SubmitReviewServiceTest`), `ReviewEligibilityServiceTest`, `ReviewLifecycleFlowIT`, `ReviewUniquenessIT`
@@ -721,6 +725,7 @@ protected readonly reviewForm = form(this.model, (path) => {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-30 | Phase 3 — consumers of the retired `stateFor` / `ReviewState` / `reviewable` | everything reading the slice-1 shape of the review verdict, across both apps | `grep -rln "reviewable\|ReviewState\|stateFor" platform/src frontend/src frontend/e2e` | 22 files — 9 backend main, 8 backend test, 5 frontend (`booking.model.ts`, `booking-view.ts`, three specs) plus the two e2e specs | every backend site migrated in this phase (incl. the two `package-info` javadocs the grep found); the frontend sites are phase 4's step 5 by design, so the app reads the retired flag for exactly one commit |
 | 2026-08-30 | Phase 2 — publishers of `ReviewsChanged` | every site that announces a moved venue aggregate; the risk is a lifecycle verb writing without announcing | `grep -rn "new ReviewsChanged" platform/src/main/java` | 2 — both in `ReviewLifecycleService` (the claim path and the shared amend path) | none needed: all three verbs route their write through one of those two lines, so "wrote but did not announce" is unrepresentable rather than merely tested |
 | 2026-08-30 | Phase 1 — bounded free text on an edge DTO | the repo's one bounded-text edge mechanism: strip first, then bound in **code points** so Postgres `char_length` never rejects what Java accepted | `git ls-files 'platform/*adapter/in*.java' \| xargs grep -ln codePointCount` (none — the mechanism lives one layer in) + `grep -rln VenueFieldValidation platform/src/main` | 7 venue application commands via `VenueFieldValidation.requireText(value, field, maxLength)` | none needed — `ReviewText.fitsComment`/`fitsDisplayName` mirror it exactly (strip in the compact ctor, then code-point bound); the review edge keeps `InvalidApiRequestException` because it is the DTO itself, not an application command |
 

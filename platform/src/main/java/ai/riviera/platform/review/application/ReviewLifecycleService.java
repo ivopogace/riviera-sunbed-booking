@@ -14,7 +14,7 @@ import ai.riviera.platform.review.events.ReviewsChanged;
 import ai.riviera.platform.review.spi.CompletedStays;
 import ai.riviera.platform.review.vocabulary.AmendOutcome;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
-import ai.riviera.platform.review.vocabulary.ReviewState;
+import ai.riviera.platform.review.domain.ReviewState;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 
 /**

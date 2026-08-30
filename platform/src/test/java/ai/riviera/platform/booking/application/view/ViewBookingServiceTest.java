@@ -18,11 +18,14 @@ import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.spi.ConfirmationMailDelivery;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.payment.api.CollectionGuarantee;
 import ai.riviera.platform.payment.api.PaymentCredentialsLookup;
 import ai.riviera.platform.payment.api.RefundStatusLookup;
 import ai.riviera.platform.payment.vocabulary.PaymentCredentials;
 import ai.riviera.platform.payment.vocabulary.RefundProgress;
+import ai.riviera.platform.review.vocabulary.OwnReview;
+import ai.riviera.platform.review.vocabulary.ReviewPanel;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
@@ -32,6 +35,8 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -69,30 +74,62 @@ class ViewBookingServiceTest {
 
 	private final ai.riviera.platform.review.api.ReviewEligibility reviewEligibility =
 			mock(ai.riviera.platform.review.api.ReviewEligibility.class);
+	private final ai.riviera.platform.customer.api.CustomerLookup customers =
+			mock(ai.riviera.platform.customer.api.CustomerLookup.class);
 
 	private final ViewBookingService service = new ViewBookingService(bookings, cancellationPolicy,
-			cutoff, checkout, mailDelivery, collection, refundStatus, reviewEligibility, WINDOWS, NOW);
+			cutoff, checkout, mailDelivery, collection, refundStatus, reviewEligibility, customers,
+			WINDOWS, NOW);
 
 	@org.junit.jupiter.params.ParameterizedTest
-	@org.junit.jupiter.params.provider.EnumSource(
-			value = ai.riviera.platform.review.vocabulary.ReviewState.class,
-			names = "ELIGIBLE", mode = org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE)
-	void reviewableIsFalseForEveryStateButEligible(
-			ai.riviera.platform.review.vocabulary.ReviewState state) {
+	@org.junit.jupiter.params.provider.MethodSource("everyPanel")
+	void reviewPanelFollowsReviewEligibility(ReviewPanel panel) {
+		// COMPLETED throughout: the panel tracks review's verdict, not the status it sits beside.
 		givenBooking(BookingStatus.COMPLETED);
-		when(reviewEligibility.stateFor(CODE)).thenReturn(state);
+		when(reviewEligibility.panelFor(CODE)).thenReturn(panel);
 
-		assertThat(service.byCode(CODE).orElseThrow().reviewable()).isFalse();
+		assertThat(service.byCode(CODE).orElseThrow().reviewPanel()).isEqualTo(panel);
+	}
+
+	static java.util.stream.Stream<ReviewPanel> everyPanel() {
+		Instant closes = Instant.parse("2026-09-01T09:00:00Z");
+		OwnReview own = new OwnReview(4, "Great sunbeds", "Ana");
+		return java.util.stream.Stream.of(new ReviewPanel.Eligible(closes),
+				new ReviewPanel.AlreadyReviewed(own, closes), new ReviewPanel.Frozen(own),
+				new ReviewPanel.WindowClosed(), new ReviewPanel.NotCompleted());
 	}
 
 	@Test
-	void reviewableFollowsReviewEligibility() {
-		// COMPLETED throughout: the flag tracks review's verdict, not the status it sits beside.
+	void suggestsTheContactFirstNameForTheReviewForm() {
 		givenBooking(BookingStatus.COMPLETED);
-		when(reviewEligibility.stateFor(CODE))
-				.thenReturn(ai.riviera.platform.review.vocabulary.ReviewState.ELIGIBLE);
+		givenReviewable();
+		when(customers.findById(GUEST))
+				.thenReturn(Optional.of(new GuestContact("ana@example.test", "Ana Kelmendi", "+355690000000")));
 
-		assertThat(service.byCode(CODE).orElseThrow().reviewable()).isTrue();
+		assertThat(service.byCode(CODE).orElseThrow().reviewNameSuggestion()).isEqualTo("Ana");
+	}
+
+	@Test
+	void suggestsNoNameWhenTheContactIsGone() {
+		givenBooking(BookingStatus.COMPLETED);
+		givenReviewable();
+		when(customers.findById(GUEST)).thenReturn(Optional.empty());
+
+		assertThat(service.byCode(CODE).orElseThrow().reviewNameSuggestion()).isNull();
+	}
+
+	@Test
+	void neverSuggestsANameForAPanelThatCarriesNoForm() {
+		givenBooking(BookingStatus.COMPLETED);
+		when(reviewEligibility.panelFor(CODE)).thenReturn(new ReviewPanel.WindowClosed());
+
+		assertThat(service.byCode(CODE).orElseThrow().reviewNameSuggestion()).isNull();
+		verify(customers, never()).findById(any());
+	}
+
+	private void givenReviewable() {
+		when(reviewEligibility.panelFor(CODE))
+				.thenReturn(new ReviewPanel.Eligible(Instant.parse("2026-09-01T09:00:00Z")));
 	}
 
 	@Test
@@ -465,7 +502,7 @@ class ViewBookingServiceTest {
 	private ViewBookingService serviceAt(Instant now) {
 		Clock at = Clock.fixed(now, ZoneId.of("UTC"));
 		return new ViewBookingService(bookings, cancellationPolicy, new BookingCutoff(at), checkout,
-				mailDelivery, collection, refundStatus, reviewEligibility, WINDOWS, at);
+				mailDelivery, collection, refundStatus, reviewEligibility, customers, WINDOWS, at);
 	}
 
 	private void givenAwaitingPayment(LocalDate date, Instant createdAt, Instant acceptedAt) {

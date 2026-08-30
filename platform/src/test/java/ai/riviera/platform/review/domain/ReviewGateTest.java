@@ -5,7 +5,6 @@ import java.time.Instant;
 
 import org.junit.jupiter.api.Test;
 
-import ai.riviera.platform.review.vocabulary.ReviewState;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

@@ -22,7 +22,7 @@ import ai.riviera.platform.review.application.ReviewSubmission;
 import ai.riviera.platform.review.domain.ReviewWindow;
 import ai.riviera.platform.review.events.ReviewsChanged;
 import ai.riviera.platform.review.vocabulary.AmendOutcome;
-import ai.riviera.platform.review.vocabulary.ReviewState;
+import ai.riviera.platform.review.vocabulary.ReviewPanel;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 import ai.riviera.platform.review.vocabulary.VenueRef;
 
@@ -87,7 +87,7 @@ class ReviewLifecycleFlowIT {
 
 		assertThat(fixtures.reviewCountFor(code)).isZero();
 		assertThat(events.stream(ReviewsChanged.class).count()).isEqualTo(2);
-		assertEquals(ReviewState.ELIGIBLE, eligibility.stateFor(code), "the stay is reviewable again");
+		assertThat(eligibility.panelFor(code)).isInstanceOf(ReviewPanel.Eligible.class);
 	}
 
 	@Test
@@ -100,7 +100,7 @@ class ReviewLifecycleFlowIT {
 				lifecycle.edit(code, new ReviewSubmission(1, null, "Ana")));
 		assertEquals(new AmendOutcome.WindowClosed(), lifecycle.delete(code));
 
-		assertEquals(ReviewState.WINDOW_CLOSED, eligibility.stateFor(code));
+		assertThat(eligibility.panelFor(code)).isInstanceOf(ReviewPanel.Frozen.class);
 		assertThat(storedReview(code)).containsExactly("3", "Fine", "Ana");
 	}
 

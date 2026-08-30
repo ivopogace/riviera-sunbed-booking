@@ -16,7 +16,7 @@
     // venue::spi: booking implements venue.spi.BookingPresence and venue.spi.SalesWindow — inverted, acyclic edges, the same shape as availability implementing venue.spi.SetAvailabilityLookup.
     // customer::spi: booking implements customer.spi.GuestBookingHistory (the retention-basis fact behind
     // the retention-policy sweep) — the same inversion, since customer must not depend on booking.
-    // review::spi is the CompletedStays inversion (review is a leaf); review::api answers the view's reviewable flag.
+    // review::spi is the CompletedStays inversion (review is a leaf); review::api answers the view's review panel.
     allowedDependencies = { "venue::api", "venue::vocabulary", "venue::spi", "availability::api", "availability::vocabulary", "payment::api", "payment::vocabulary", "payment::events", "customer::api", "customer::spi", "customer::vocabulary", "operator::api", "operator::vocabulary", "review::api", "review::spi", "review::vocabulary", "shared" }
 )
 package ai.riviera.platform.booking;

@@ -21,7 +21,7 @@ import ai.riviera.platform.review.application.ReviewLifecycle;
 import ai.riviera.platform.review.application.ReviewSubmission;
 import ai.riviera.platform.review.domain.ReviewWindow;
 import ai.riviera.platform.review.events.ReviewsChanged;
-import ai.riviera.platform.review.vocabulary.ReviewState;
+import ai.riviera.platform.review.vocabulary.ReviewPanel;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 import ai.riviera.platform.review.vocabulary.VenueRef;
 
@@ -118,7 +118,7 @@ class ReviewSubmitFlowIT {
 		assertEquals(new SubmitOutcome.Submitted(), lifecycle.submit(code, stars(4)));
 		freezeTheWindowFor(code);
 
-		assertEquals(ReviewState.WINDOW_CLOSED, eligibility.stateFor(code));
+		assertThat(eligibility.panelFor(code)).isInstanceOf(ReviewPanel.Frozen.class);
 		assertEquals(new SubmitOutcome.WindowClosed(), lifecycle.submit(code, stars(5)));
 	}
 
