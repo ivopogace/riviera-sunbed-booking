@@ -254,7 +254,7 @@ the same `X-Audit-Reason` header behaviour.
 **Files:** Modify `frontend/src/app/admin/admin-commissions.ts:208–214` (template) and
 `:328–335, 375–425` (class) · Test `frontend/src/app/admin/admin-commissions.spec.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 // admin-commissions.spec.ts — new, beside the existing editor tests.
@@ -319,14 +319,14 @@ expect(field.hasAttribute('aria-describedby')).toBe(false);
 expect(byTestId(fixture, 'admin-commission-percent-error-7')).toBeNull();
 ```
 
-- [ ] **Step 2: Run them, verify they fail** —
-      `npm test -- --run src/app/admin/admin-commissions.spec.ts` → FAIL:
+- [x] **Step 2: Run them, verify they fail** —
+      `npm test -- --watch=false --include="src/app/admin/admin-commissions.spec.ts"` → FAIL (4 of 25):
       `admin-commission-percent-error-7` is `null`, and the clean-editor test fails on the
       always-mounted `[role="alert"]`.
 
 > Scope: this ONE spec file. `riviera-local-debug` owns the run recipe; the full Vitest suite is CI's job.
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 Class — replace the single `editorError` signal (`admin-commissions.ts:328`) with two, and update
 its four writers:
@@ -424,13 +424,21 @@ Template — add the ref, the associated error, and the reserving wrapper:
 imports: [CardGlass, BusyAction, TouchTarget, FieldErrorFor],
 ```
 
-- [ ] **Step 4: Run them, verify they pass** —
-      `npm test -- --run src/app/admin/admin-commissions.spec.ts` → PASS.
+- [x] **Step 4: Run them, verify they pass** —
+      `npm test -- --watch=false --include="src/app/admin/admin-commissions.spec.ts"` → PASS (25).
 
 > Scope (end-of-phase regression): broaden to the touched folder —
-> `npm test -- --run src/app/admin/`.
+> `npm test -- --watch=false --include="src/app/admin/**/*.spec.ts"` → 23 files / 189 tests PASS.
 
-- [ ] **Step 5: Generalization-audit pass**
+> **Two things the plan's step text got wrong, corrected in execution — mechanics, not decisions:**
+> (1) the runner is `@angular/build:unit-test`, so the invocation is
+> `npm test -- --watch=false --include="<glob>"`; `--run <path>` is rejected as an unknown argument.
+> (2) the release half of the take/release test cannot call `typeRate` a second time — that helper
+> clicks `admin-commission-edit-N`, which is unmounted while the editor is open. The
+> type-into-an-open-editor half is extracted as `retypeRate()`, which `typeRate()` now calls, so the
+> assertion is unchanged and the helper stays DRY.
+
+- [x] **Step 5: Generalization-audit pass**
 
 Population `every element in the app that renders a field-scoped error message but is mounted
 unconditionally — i.e. the mechanism #826 names, an error element whose lifetime is NOT the error's
@@ -450,9 +458,9 @@ assume: #821 swept the 17 field-scoped sites and left 48 excluded — the ones w
 any **unconditional** element among those 48 that carries a field verdict, which is exactly how
 #826 was found. Anything genuinely form-/page-/action-level stays out on its merits (record why).
 
-- [ ] **Step 6: Commit** — `git commit -m "Split the commission editor's error so the rate field names its own (#826)"`
+- [x] **Step 6: Commit** — `git commit -m "Split the commission editor's error so the rate field names its own (#826)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -549,17 +557,16 @@ it('has no axe violations while a rate editor shows a validation error', async (
 
 ## Execution status
 
-**Stage pointer:** `plan — complete, awaiting go-ahead to implement` (the user asked to stop after
-the plan).
+**Stage pointer:** `implement — Phase 0 done, Phase 1 next`.
 
-**Next action:** On go-ahead, start Phase 0 step 1. Before editing, re-run the `riviera-sdlc`
-Skill-routing gate (frontend → `riviera-frontend` + `angular-developer` + angular-cli MCP +
-`riviera-tailwind` + `playwright-cli`) and load `riviera-local-debug` before the session's first
-`npm` invocation.
+**Next action:** Open the draft PR (CI fires on `pull_request` only), then Phase 1 step 1.
+Skill-routing gate re-run at implement entry: loaded `riviera-sdlc`, `riviera-local-debug`,
+`riviera-frontend`, `angular-developer` + angular-cli MCP (`list_projects` → v22/Vitest,
+`get_best_practices`), `riviera-tailwind`, `playwright-cli`, `tdd`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Split the error, associate the field half | | |
+| 0 — Split the error, associate the field half | ✅ | this commit |
 | 1 — Prove it in a real browser, fix the stale doc | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -579,6 +586,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-30 | #826 Phase 0 | **Mechanism:** an element rendering an error message whose lifetime is NOT the error's lifetime — i.e. mounted unconditionally, so a `role="alert"` sits in the DOM empty. Enumerated by taking **every** `role="alert"` in `frontend/src` production files (85 hits repo-wide; spec files and comment-only lines dropped) and keeping the ones whose opening tag is not immediately preceded by a gating `@if` / `@else if` / `@case`. Deliberately **not** enumerated by `min-h-*`: the reserve is a symptom, and `oppw-error` below proves it — it reserves nothing (`empty:mt-0`), so a resemblance sweep would have missed it | `grep -rn 'role=\"alert\"' frontend/src --include=*.ts --include=*.html`, then a script walking back from each hit to its opening tag and testing the 3 non-blank lines above it for `@if` / `@else if` / `@case` | 4 ungated: `admin/admin-privacy.ts:179` (`admin-privacy-error`), `auth/operator-password.ts:98` (`oppw-error`), `auth/verify-email.ts:55` and `:69` | **`admin-commissions.ts` fixed** (this phase). **`verify-email.ts:55,69` — excluded:** static copy inside `@switch` `@case`/`@default` branches, so the branch *is* the gate; never mounted empty, and they name no control. **`admin-privacy-error` — excluded from association on its merits:** written only in the erasure submit's `catch` (*"Nothing was erased"*), an action outcome, not a verdict on the typed email — whose field error (`admin-privacy-email-error:101`) is already `@if`-gated and already carries `[appFieldErrorFor]`. **`oppw-error` — same:** written from `operatorPasswordChangeMessage(result)`, a failed submit (incl. `session-lost`), form-level and deliberately focus-managed (`tabindex=\"-1\"` + `revealOutcome()`). So **0 further sites take `[appFieldErrorFor]`** — #826 was the last field-scoped one. Both do carry the residual *empty live region* shape this phase removed from `admin-commissions`; that half is a separate, smaller fix outside #826's field-scoped population — **proposed as a follow-up issue at close-out**, recorded here rather than silently widening the slice |
 
 ---
 
