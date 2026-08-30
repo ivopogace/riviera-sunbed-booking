@@ -2,6 +2,11 @@ import { Directive, effect, input } from '@angular/core';
 
 let nextFieldErrorId = 0;
 
+function nextFieldErrorElementId(): string {
+  nextFieldErrorId += 1;
+  return `riv-field-error-${nextFieldErrorId}`;
+}
+
 /**
  * Associates an inline field error with the control it belongs to: while this element is in the
  * DOM, the control names it through `aria-describedby` and carries `aria-invalid="true"`.
@@ -21,7 +26,7 @@ let nextFieldErrorId = 0;
 export class FieldErrorFor {
   readonly control = input.required<HTMLElement>({ alias: 'appFieldErrorFor' });
 
-  protected readonly id = `riv-field-error-${(nextFieldErrorId += 1)}`;
+  protected readonly id = nextFieldErrorElementId();
 
   constructor() {
     effect((onCleanup) => {

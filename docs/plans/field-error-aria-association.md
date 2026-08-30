@@ -255,6 +255,12 @@ export class FieldErrorFor {
 }
 ```
 
+> **One line of the sketch below did not survive contact with the Sonar gate.** The id
+> generator shipped as a `nextFieldErrorElementId()` helper rather than the inline
+> `` `riv-field-error-${(nextFieldErrorId += 1)}` ``, because a nested assignment inside a
+> template-literal expression is `typescript:S1121` (finding F-1). Behaviour is unchanged;
+> everything else below shipped exactly as written.
+
 **This sketch is verified, not proposed.** It was written to
 `src/app/shared/field-error-for.{ts,spec.ts}` at plan time, run with
 `npx ng test --watch=false --include="src/app/shared/field-error-for.spec.ts"` → **3 passed**
@@ -329,7 +335,9 @@ self-review checklist's review-gate box is left unticked rather than ticked for 
 did not run.
 
 **Next action:** (maintainer) the Review gate, then the Sonar gate, then merge close-out —
-including citing `merged via PR #823` in this doc.
+including citing `merged via PR #823` in this doc. One Sonar finding (F-1) arrived on the
+phase-2 head and was fixed on the maintainer's explicit instruction; the register below
+carries it.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -346,7 +354,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | sonar (PR #823, head `ec76ee0`) | `typescript:S1121` MAJOR at `field-error-for.ts:24` — "Extract the assignment of `nextFieldErrorId` from this expression". The plan's verified sketch generated the id as `` `riv-field-error-${(nextFieldErrorId += 1)}` ``, an assignment nested inside a template-literal expression. The Quality Gate *passed* (1 new issue), but this repo's merge bar is **0 new issues**, so it was above the bar | **fixed** — extracted into a `nextFieldErrorElementId()` helper that increments then returns. Behaviour is identical: ids stay unique, monotonic and the same shape, and no call site moves. Re-entered at Implement per the `riviera-sdlc` re-entry rule (routing gate: `riviera-frontend` — the directive stays in `shared/`, nothing moves; `angular-developer` + `frontend/.claude/CLAUDE.md`; `tdd`). Re-verified: `field-error-for.spec.ts`, `admin-privacy.spec.ts`, `review-panel.spec.ts`, `pricing-tab.spec.ts` — **67 passed** |
 
 ---
 
