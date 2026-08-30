@@ -39,6 +39,7 @@ function detail(
     payWindowClosed: false,
     cancelReason: null,
     cancellationWindowAtBirth: 'FREE',
+    reviewable: false,
     ...extra,
   };
 }

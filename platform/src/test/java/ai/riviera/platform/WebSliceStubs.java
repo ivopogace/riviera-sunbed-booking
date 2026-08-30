@@ -127,6 +127,10 @@ import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueFilter;
+import ai.riviera.platform.review.api.ReviewEligibility;
+import ai.riviera.platform.review.application.SubmitReview;
+import ai.riviera.platform.review.vocabulary.ReviewState;
+import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueMapView;
 import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
@@ -929,5 +933,21 @@ class WebSliceStubs {
 				return false;
 			}
 		};
+	}
+
+	/**
+	 * The review submit port {@code ReviewController} registers with — inert, so the web slice
+	 * exercises routing, CSRF and the permitAll matcher. {@code ReviewControllerTest} overrides it
+	 * with a {@code @MockitoBean} to drive the real outcomes.
+	 */
+	@Bean
+	SubmitReview submitReview() {
+		return (_, _) -> new SubmitOutcome.NoSuchStay();
+	}
+
+	/** The eligibility port the code-gated booking read consults for its {@code reviewable} flag. */
+	@Bean
+	ReviewEligibility reviewEligibility() {
+		return _ -> ReviewState.NO_SUCH_STAY;
 	}
 }

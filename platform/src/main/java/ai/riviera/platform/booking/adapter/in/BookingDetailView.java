@@ -18,14 +18,17 @@ import java.time.Instant;
  * ({@code POLICY}/{@code WEATHER}/{@code CONFLICT}), and is {@code null} both for a live booking and
  * for one cancelled without ever being charged. {@code refundOutstanding} is {@code true} only while
  * a cancelled booking's refund is decided but not yet accepted by the gateway — the panel then says
- * the refund is being processed instead of on its way. Mirrors the FE {@code BookingDetail} type.
+ * the refund is being processed instead of on its way. {@code reviewable} is the server's own answer
+ * to "may this stay be rated now?" — the panel gates on it, never on {@code status}.
+ * Mirrors the FE {@code BookingDetail} type.
  */
 record BookingDetailView(String code, String status, long venueId, String venueName, String rowLabel,
 		int positionNo, String bookingDate, MoneyView amount, boolean cancellable, boolean withdrawable,
 		boolean beforeCutoff, MoneyView refundIfCancelledNow, MoneyView refundedAmount,
 		boolean refundOutstanding,
 		Instant requestExpiresAt, PaymentCredentialsView payment, boolean emailWithheld,
-		boolean payWindowClosed, String cancelReason, String cancellationWindowAtBirth) {
+		boolean payWindowClosed, String cancelReason, String cancellationWindowAtBirth,
+		boolean reviewable) {
 
 	static BookingDetailView of(BookingDetail d) {
 		return new BookingDetailView(d.code(), d.status().name(), d.venueId().value(), d.venueName(),
@@ -37,7 +40,7 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 								d.payment().paymentIntentId()),
 				d.emailWithheld(), d.payWindowClosed(),
 				d.cancelReason() == null ? null : d.cancelReason().name(),
-				d.cancellationWindowAtBirth().name());
+				d.cancellationWindowAtBirth().name(), d.reviewable());
 	}
 
 	/** The open PaymentIntent's credentials — present only while {@code AWAITING_PAYMENT}. */

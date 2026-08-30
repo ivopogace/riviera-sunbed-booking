@@ -177,8 +177,6 @@ class BookingController {
 	private static final URI BOOKINGS_PATH = URI.create("/api/bookings");
 
 	private static ResponseEntity<ProblemDetail> error(HttpStatus status, String code, String detail) {
-		ProblemDetail problem = ApiProblem.of(status, code, detail);
-		problem.setInstance(BOOKINGS_PATH);
-		return ResponseEntity.status(status).body(problem);
+		return ApiProblem.responseAt(status, code, detail, BOOKINGS_PATH);
 	}
 }

@@ -657,6 +657,16 @@ describe('VenueMap', () => {
     expect(header.textContent).not.toContain('0 reviews');
   });
 
+  it('agrees the review noun with the count — a venue\'s first rating reads "1 review"', async () => {
+    // V45 zeroed every seeded count, so one review is the first rated state any venue reaches.
+    venueRequest().flush({ ...miramar(), ratingTenths: 50, reviewsCount: 1 });
+    await settle();
+
+    const header = el().querySelector('header')!;
+    expect(header.textContent).toContain('1 review');
+    expect(header.textContent).not.toContain('1 reviews');
+  });
+
   it('splits the header chips into a semantic family and a descriptive one (#705)', async () => {
     venueRequest().flush({ ...miramar(), ratingTenths: 0, reviewsCount: 0 });
     await settle();

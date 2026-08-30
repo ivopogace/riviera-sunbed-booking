@@ -45,6 +45,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * {@code refundedAmount} alone cannot separate a venue's weather refund from the guest's own
  * cancellation — both return money, only one is news to the guest.
  *
+ * <p>{@code reviewable} says {@code review} will accept a rating for this stay right now — checked
+ * in, inside the review window, not yet rated. It is carried rather than derived from
+ * {@code status} because every one of those fences is review's, not booking's: a
+ * {@code COMPLETED} stay stops being reviewable without its status moving at all.
+ *
  * <p>{@code refundOutstanding} says the gateway has collected for this cancelled booking but not yet
  * accepted its refund, so the surface must say the refund is being processed rather than on its way
  * to the card. {@code false} everywhere else — including when the wired gateway never collected
@@ -57,5 +62,5 @@ public record BookingDetail(String code, BookingStatus status, VenueId venueId, 
 		java.time.Instant requestExpiresAt,
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment, boolean emailWithheld,
 		boolean payWindowClosed, RefundReason cancelReason,
-		CancellationWindow cancellationWindowAtBirth) {
+		CancellationWindow cancellationWindowAtBirth, boolean reviewable) {
 }

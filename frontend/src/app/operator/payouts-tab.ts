@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { ActivatedRoute } from '@angular/router';
 
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
+import { plural } from '../shared/plural';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { SkeletonBlock } from '../shared/skeleton-block';
@@ -316,11 +317,6 @@ function signedSum(
   pick: (e: PayoutLedgerEntryView) => number,
 ): number {
   return entries.reduce((total, e) => total + (e.type === 'REVERSAL' ? -pick(e) : pick(e)), 0);
-}
-
-/** A count + singular/plural noun, e.g. `1 booking` / `2 bookings`. */
-function plural(n: number, noun: string): string {
-  return `${n} ${noun}${n === 1 ? '' : 's'}`;
 }
 
 /** A reversal's reason as a short human label (mirrors the backend `RefundReason` token set). */

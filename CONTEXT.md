@@ -210,6 +210,21 @@ model in `docs/architecture/domain-model.md`.
   basis (#101 Slice 2). Proactive where **erasure** is reactive, but it writes the same **tombstone**.
   It touches guest contacts only, never accounts, and never the retained financial records.
 
+## Reviews
+
+- **Review** — a tourist's verdict on one delivered stay: a star rating of 1–5, recorded against the
+  booking that stay was made under. **One per booking, ever** — a stay is rated once, and a rating is
+  not revised. It is a *verified-stay* review: only a booking the venue actually checked in can carry
+  one, which is what makes the aggregate resistant to gaming.
+- **Review window** — how long a delivered stay stays reviewable. It opens at **check-in** and closes
+  60 days later, after which the verdict is frozen. A stay outside its window is refused a rating,
+  and the refusal is the server's — the surfaces render from its answer, never from the booking's
+  status.
+- **Aggregate rating** — a venue's public score: the **mean of its visible reviews**, carried in
+  **tenths** (4.5 stars is 45 — integer arithmetic, never floating point, the money discipline
+  applied to the rating) alongside the count it is over. A venue with no reviews reads 0/0 and is
+  shown as **New**, never "0.0".
+
 ## Transactional mail
 
 - **Suppression list** — the platform's do-not-mail record: the addresses no transactional mail

@@ -213,7 +213,7 @@
                     <span class="star text-[#f4a939]">★</span>
                     <span class="rating font-bold text-riv-card-ink">{{ card.rating }}</span>
                     <span class="dot text-riv-card-ink opacity-30">·</span>
-                    {{ card.reviewsCount }} reviews
+                    {{ card.reviewsLabel }}
                   } @else {
                     <!-- "New" / unrated state — the second SEMANTIC chip (#705): like the mode chip it is a platform claim, not a venue self-description, so it takes the same inverted accent pill. Padding stays here; the row's 13.5px is inherited. -->
                     <span appSemanticChip class="new-chip px-[9px] py-px" data-testid="new-chip"

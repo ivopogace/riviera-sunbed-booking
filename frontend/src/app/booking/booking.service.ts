@@ -17,6 +17,7 @@ import {
   MyBookingSummary,
   PaymentHandoff,
   RequestedBooking,
+  SubmitReviewRequest,
   Withdrawal,
 } from './booking.model';
 
@@ -192,6 +193,19 @@ export class BookingService {
     return this.http.post<Withdrawal>(
       `${environment.apiBaseUrl}/api/bookings/${encodeURIComponent(code)}/withdraw`,
       {},
+    );
+  }
+
+  /**
+   * Rate a delivered stay by code (`POST /api/bookings/{code}/review`). The `201` carries no body —
+   * the new state lives on the booking, so the caller re-reads it rather than patching locally.
+   * Eligibility is the server's call (invariant #7: the code is the whole authorization).
+   */
+  review(code: string, stars: number): Observable<void> {
+    const body: SubmitReviewRequest = { stars };
+    return this.http.post<void>(
+      `${environment.apiBaseUrl}/api/bookings/${encodeURIComponent(code)}/review`,
+      body,
     );
   }
 }

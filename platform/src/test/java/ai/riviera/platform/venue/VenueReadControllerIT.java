@@ -66,7 +66,8 @@ class VenueReadControllerIT {
 				.andExpect(jsonPath("$.id").value((int) MIRAMAR))
 				.andExpect(jsonPath("$.name").value("Miramar Beach Club"))
 				.andExpect(jsonPath("$.beach").value("Ksamil"))
-				.andExpect(jsonPath("$.ratingTenths").value(48))
+				// V45 superseded the seed's fabricated 4.8/326: unreviewed venues read 0/0 ("New").
+				.andExpect(jsonPath("$.ratingTenths").value(0))
 				.andExpect(jsonPath("$.bookingMode").value("INSTANT"))
 				.andExpect(jsonPath("$.sets.length()").value(24));
 	}

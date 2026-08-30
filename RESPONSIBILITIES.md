@@ -7,8 +7,8 @@ it owns and — more usefully — what it must **refuse to own**. When a boundar
 ambiguous in a plan or review, this is the tie-breaker.
 
 Modules: `venue`, `availability`, `booking`, `payment`, `payout`, `customer`,
-`operator`, and `notification` (#382). Cross-module collaboration is **events for
-state changes, `api/` ports for queries** (invariant #11).
+`operator`, `notification` (#382), and `review` (#811). Cross-module collaboration is
+**events for state changes, `api/` ports for queries** (invariant #11).
 
 The **structural** subset of these boundaries is machine-enforced — see
 [Machine-checked vs review-checked](#machine-checked-vs-review-checked) at the end
@@ -105,6 +105,15 @@ standing rules:
   ports run the same single cascading delete, and a takedown removes one **slot**, not one
   image: byte-identical variants in another slot keep serving; each published slot is its
   own takedown.
+- **I store the rating aggregate; `review` computes it** (#811). `rating_tenths` /
+  `reviews_count` are my columns and I stay their **only** writer — but I own neither the
+  arithmetic nor the policy behind them. On `review.events.ReviewsChanged` my listener re-reads
+  the whole answer through `review.api.VenueRatingSummary` and overwrites: a **full recompute**,
+  never an increment, which is what makes an at-least-once redelivery converge. Nothing but the
+  venue id is taken off the event (the `BookingConfirmedPayoutListener` commission-rate
+  discipline). This split mirrors the commission one exactly — I store the *values*, another
+  module owns the rule — and it is **review-checked, not machine-checked**: no ArchUnit rule
+  guards this table the way `ResponsibilitiesArchitectureTests` guards `set_availability`.
 - **A layout write that a live claim depends on is refused** (#567/#599/#602). Scope
   follows what the write destroys: the bulk replace deletes every set, so it asks the
   venue-wide question (`LAYOUT_IN_USE`); `editSet`/`removeSet` touch one set, so they ask
@@ -230,6 +239,9 @@ standing rules:
 - Deciding *which* venues an operator owns, or authorizing them → **`operator`** (it owns the
   mapping and answers the question; since #277 I *render* that answer as named summaries, but the
   set itself is always its call)
+- Deciding what a venue's rating *is* — who may review, for how long, and what the mean rounds
+  to → **`review`** (#811). I hold the resulting numbers and nothing else: no review row, no
+  window, no rounding rule
 
 ---
 
@@ -407,6 +419,13 @@ sits in the outbox.
 - The **retention window** or the contact scrub → **`customer`** (#101 Slice 2). I answer only the
   *fact* "does this guest have a booking on/after date D", via `customer.spi.GuestBookingHistory`
   — I hold no retention policy and never write a `customer` row
+- **Review policy** — eligibility, the 60-day window, one-per-booking, the aggregate math →
+  **`review`** (#811, ADR-0015), the same sentence-shape as `GuestBookingHistory` above. I answer
+  only the *fact* "was this stay checked in, and when", via `review.spi.CompletedStays`, and I
+  never expose `BookingStatus` doing it — the presence of a `CompletedStay` **is** the completed
+  fact. The `reviewable` flag on my code-gated read is mine to *carry* (the view contract is mine)
+  but not to *decide*: the verdict comes from `review.api.ReviewEligibility`, so the panel can
+  never be offered for a stay the submit would refuse
 - Authorizing which operator may view staff bookings → **`operator`**
 - Deciding whether a confirmation email will be sent, or knowing any address → **`notification`**
   (suppression) and **`customer`** (the contact). Since #390 I *expose* the withheld fact on a
@@ -936,6 +955,58 @@ list and the delivery log below are the module's two pieces of owned state.
 pinned by `CompositionRootDisciplineTests`), V31 rewriting the registry `listener_id` for the
 moved listener, and the V32 suppression list enforced on both vehicles.
 
+## `review`
+**Job:** Own everything about a tourist's verdict on a delivered stay — the review record
+(one per booking, ever), who may leave one and until when, and the arithmetic that turns a
+venue's reviews into a score. The standing rules:
+
+- **I am a leaf** (ADR-0015): `allowedDependencies = { "shared" }`, the `operator`/`customer`
+  posture. The two facts I need from elsewhere both arrive by **inversion**, never by an
+  outbound edge — `review.spi.CompletedStays` (implemented by `booking`) tells me a stay was
+  checked in and when, and `review.events.ReviewsChanged` carries my "your aggregate moved"
+  outward for `venue` to act on. Calling `booking::api` — or listening to a `BookingCompleted`
+  event — would close the cycle `venue → review → booking → venue`, since `booking` already
+  depends on `venue`. That is why check-in keeps its "publishes no event" stance and eligibility
+  is a **pull** at view/submit time: a guest checked in a second ago is eligible a second ago.
+- **I publish my own typed ids** (`VenueRef`, `BookingRef`) rather than borrowing `venue`'s or
+  `booking`'s — the `operator.vocabulary.VenueRef` precedent, and what keeps the grant list at
+  `shared` alone.
+- **One review per booking is the database's answer, not mine.** `UNIQUE (booking_id)` plus an
+  atomic `INSERT … ON CONFLICT DO NOTHING` whose row count *is* the outcome — the discipline
+  invariant #2 mandates for availability, applied to this module's own concurrency point. A lost
+  race is ordinary flow (`AlreadyReviewed`), never an exception.
+- **The mean is integer and its rounding is written down where the division happens**
+  (`AggregateRating`): `(10 × Σstars + count / 2) / count`, half-up, with zero reviews
+  short-circuiting to `0/0` — the invariant-#5 money discipline borrowed for the rating. No
+  `double` anywhere in the math, and the mean is taken in the domain rather than in SQL so a
+  test can reach it.
+- **My two `api` ports are split by consumer role** (#94): `VenueRatingSummary` answers `venue`'s
+  question about its own aggregate, `ReviewEligibility` answers `booking`'s about one stay.
+  Submitting stays an **internal** `application` port whose only caller is my own REST adapter
+  (the `booking.ViewBooking` precedent), so neither consumer can reach the write surface.
+- **The booking code is the whole authorization** (invariant #7). `POST /api/bookings/{code}/review`
+  is `permitAll` and joins the shared per-code rate-limit budget with the view / cancel / withdraw
+  legs — they are all guesses at the same secret. The code is never logged and never reaches an
+  error body: `instance` is pinned to the constant `/api/bookings`.
+
+**Not My Job:**
+- Writing `venue.rating_tenths` / `reviews_count` → **`venue`** (I compute the values and
+  announce that they moved; it stores them and stays its table's only writer)
+- Deciding a stay was delivered, or owning `completed_at` → **`booking`** (check-in is its
+  lifecycle transition; I only ask the resulting fact through my `spi` port, and I never see
+  `BookingStatus`)
+- Displaying a rating, ordering Discover by it, or the "New" treatment → **`venue`** and the
+  frontend (my numbers, their surfaces — the display contract was untouched by #811)
+- The guest's identity → **`customer`**. A review is attached to a *booking*, not a person, and
+  slice 1 stores no display name at all
+- Login, sessions, CSRF, rate-limit wiring → the platform **edge** (RV-BE-11)
+
+**Shipped** (#811, slice 1 of epic #810): the module, V45 (`review` table + the demo-seed
+supersede), the code-gated submit endpoint, the server-owned `reviewable` flag on `booking`'s
+read model, and `venue`'s first `adapter/in` listener. Comments, display names, "your review",
+ineligibility messaging, the venue-page review list, moderation and the erasure hook are later
+slices of #810 and add columns by forward migration.
+
 ## `shared` (not a bounded context)
 
 The **Shared Kernel** (Evans, DDD ch. 14), extracted from the root package in #371 —
@@ -1025,6 +1096,8 @@ sufficient.
 | `availability` is the **only writer** (and direct reader) of `set_availability` — invariant #2 | `ResponsibilitiesArchitectureTests` (sole-writer bytecode scan) |
 | Only `payment` talks to Stripe — the SDK is unreachable elsewhere | `ResponsibilitiesArchitectureTests` (Stripe-reach rule) |
 | Events carry technical ids/values, never foreign aggregates — invariant #11 Need-To-Know | `ResponsibilitiesArchitectureTests` (id-based-events rule) |
+| `review` is the **only writer** (and direct reader) of the `review` table — #811 | `ResponsibilitiesArchitectureTests` (SQL-shaped review-table scan; the bare name would match the module's package string in every consumer) |
+| Only `venue` names `rating_tenths` / `reviews_count` — "I store the aggregate; `review` computes it" (#811) | `ResponsibilitiesArchitectureTests` (rating-columns sole-writer scan) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
 | No module reaches another's `application`/`domain`/`adapter` internals; `allowedDependencies` deny-lists hold | `ModularityTests` (`ApplicationModules.verify()`) |
 | The ADR-0007 package shape; published-surface kinds (`api`/`spi`/`vocabulary`/`events`); the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |
@@ -1047,6 +1120,11 @@ review item RV-BE-11):
 - A refund **policy** reimplemented inside `payment` (only `booking` decides
   whether/how much to refund; `payment` executes).
 - Commission **math** inside `venue` (it stores the rate; only `payout` computes).
+- Review **policy** (eligibility, the window, the rounding rule) leaking into `venue` —
+  the twin of the commission split. The *SQL* half of this boundary graduated to
+  machine-checked above (a second writer of the rating columns, or outside SQL against
+  the `review` table, now fails the build); the *policy* half still needs no illegal
+  import and stays review-checked (ADR-0015).
 - A booking-lifecycle decision creeping into `availability` (it holds state, not the
   cutoff rule), or any other capability landing on a module's Not-My-Job list without
   crossing a package boundary.

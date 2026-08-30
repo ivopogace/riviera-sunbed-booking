@@ -587,4 +587,15 @@ describe('Home (venue discovery)', () => {
     // Empty on purpose: the persistent results-count region already speaks the outcome.
     expect(announcer.textContent?.trim()).toBe('');
   });
+
+  it('agrees the review noun with the count on the Discover card', async () => {
+    // The twin of the venue-map header assertion — shared/rating.ts exists so these cannot drift.
+    const [rated] = venues();
+    listRequest().flush([{ ...rated, ratingTenths: 50, reviewsCount: 1 }]);
+    await fixture.whenStable();
+
+    const card = el().querySelector('[data-testid="venue-card"]')!;
+    expect(card.textContent).toContain('1 review');
+    expect(card.textContent).not.toContain('1 reviews');
+  });
 });

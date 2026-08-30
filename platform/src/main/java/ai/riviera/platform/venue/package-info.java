@@ -18,6 +18,7 @@
     displayName = "Venue",
     // operator::api: VenueAdminService asserts per-venue ownership before a beach-map edit
     // (invariant #13). operator publishes its own VenueRef, so this edge does not cycle.
-    allowedDependencies = { "operator::api", "operator::vocabulary", "shared" }
+    // review::events + ::api: the rating listener re-reads the aggregate review computed; review is a leaf.
+    allowedDependencies = { "operator::api", "operator::vocabulary", "review::api", "review::events", "review::vocabulary", "shared" }
 )
 package ai.riviera.platform.venue;

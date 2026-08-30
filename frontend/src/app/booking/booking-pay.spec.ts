@@ -57,6 +57,7 @@ const DETAIL: BookingDetail = {
   payWindowClosed: false,
   cancelReason: null,
   cancellationWindowAtBirth: 'FREE',
+  reviewable: false,
 };
 
 const CREATE_URL = `${environment.apiBaseUrl}/api/bookings`;

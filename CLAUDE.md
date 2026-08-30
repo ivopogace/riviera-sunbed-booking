@@ -104,6 +104,7 @@ it** — that file holds the per-module contracts, settled rules, and history.
 | `payout` | the venue payout ledger (bookings − commission), manual BKT batch reporting; accrual/reversal is order-independent and idempotent | `PayoutLedgerEntry`, `PayoutBatch` |
 | `customer` | tourist identity: guest-checkout contact, the customer account (register/sign-in, SSO linkage, email verification, password recovery/set), GDPR erasure (ADR-0010) + the retention sweep, and the canonical email form (`customer.vocabulary.Emails`) | `Customer`, `CustomerAccount` |
 | `operator` | operator accounts, the operator↔venue ownership mapping (invariant #13), the admin-driven lifecycle (`PENDING`→`ACTIVE`⇄`SUSPENDED`), the `is_admin` flag, the tourist-visibility answer (a venue is visible iff its owner is `ACTIVE`, fail-closed for unowned — #693; `venue` fences its catalogue reads, `booking` its reserve paths) | `Operator` |
+| `review` | the review record (one per booking, ever), the eligibility + 60-day review-window policy, the aggregate rating math (integer tenths, half-up). A **leaf** module: eligibility arrives through `review.spi.CompletedStays` (implemented by `booking`) and the recomputed aggregate leaves as `ReviewsChanged` — ADR-0015 | `Review` |
 | `notification` | transactional mail: both ADR-0011 delivery vehicles (Event Publication Registry for ids-only payloads, bounded in-memory dispatcher for bearer-credential ones) on their own bounded executors, the hashed email-suppression list (ADR-0012), the delivery log + admin resend/re-drive | (none — owns mail state, no aggregate yet) |
 
 Plus one **non-context** module: **`shared`**, an OPEN Shared Kernel of
@@ -115,11 +116,12 @@ reuse**; the bar and per-type grounds are `RESPONSIBILITIES.md` §`shared`.
 Cross-module collaboration is **events for state changes, `api/` ports for
 queries** (invariant #11). The availability write happens synchronously at
 claim time via `availability`'s `AvailabilityClaim` port — `availability` has
-no event listener. Five published events: `BookingConfirmed` and
+no event listener. Six published events: `BookingConfirmed` and
 `BookingCancelled` fan out to `payout` and `notification` (and `booking`'s own
 `BookingCancelled` listener drives the refund); `BookingPaymentDue`,
 `BookingRequestDeclined`, and `BookingRequestExpired` go to `notification`
-only. Publication-site rationale: `RESPONSIBILITIES.md`.
+only; `ReviewsChanged` goes to `venue`, whose listener recomputes its own
+rating columns. Publication-site rationale: `RESPONSIBILITIES.md`.
 
 Settled platform-edge rules (detail: `RESPONSIBILITIES.md` + `docs/plans/`):
 server-side sessions (Spring Session JDBC) with **two principal types**; all

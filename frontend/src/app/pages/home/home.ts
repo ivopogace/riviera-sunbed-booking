@@ -18,7 +18,7 @@ import { formatBookingDate } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
 import { PhotoSlideshow } from '../../shared/photo-slideshow';
 import { slideshowPhotos } from '../../shared/photo-url';
-import { isRated, ratingScore } from '../../shared/rating';
+import { isRated, ratingScore, reviewsLabel } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
 import { SemanticChip } from '../../shared/semantic-chip';
 import { defaultBookingDate } from '../../shared/booking-date';
@@ -42,7 +42,8 @@ interface VenueCard {
   readonly modeLabel: string;
   readonly isRated: boolean;
   readonly rating: string;
-  readonly reviewsCount: number;
+  /** The count with its noun already agreed — "1 review", "2 reviews" (shared/rating.ts). */
+  readonly reviewsLabel: string;
   readonly water: string | null;
   readonly amenities: readonly { readonly code: Amenity; readonly label: string }[];
   readonly freePercent: number;
@@ -297,7 +298,7 @@ export class Home {
       modeLabel: venue.bookingMode === 'INSTANT' ? 'Instant Book' : 'Request to Book',
       isRated: rated,
       rating,
-      reviewsCount: venue.reviewsCount,
+      reviewsLabel: reviewsLabel(venue.reviewsCount),
       water,
       amenities,
       freePercent,
