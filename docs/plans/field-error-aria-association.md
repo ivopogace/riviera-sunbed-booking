@@ -44,7 +44,9 @@ already exists is a directive, not a component; and the no-visual-drift rule is 
 only `[attr.aria-invalid]`; `effect` + `onCleanup` is the sanctioned shape for syncing
 signal state to an imperative DOM API) · `playwright-cli` (the mocked-suite assertion is
 `toHaveAccessibleDescription`, which exercises the real Chromium accname computation that
-jsdom cannot).
+jsdom cannot) · `riviera-local-debug` (implement session — the scoped-test recipe every phase
+ran under, and the `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` the mocked e2e config
+needs in a cloud session).
 
 **Branch:** `claude/sdlc-821-field-error-aria-b76fq0` — **cloud-session substitution** for the
 `bugfix/field-error-aria-association` this plan would otherwise name (`riviera-sdlc`
