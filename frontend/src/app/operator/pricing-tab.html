@@ -52,6 +52,7 @@
           @if (err.label === row.label) {
             <span
               [appFieldErrorFor]="priceControl"
+              [appFieldErrorForInvalidValue]="valueIsInvalid(err.code)"
               class="block py-1 text-right text-[11.5px] font-semibold text-[#a3160e]"
               role="alert"
               [attr.data-testid]="'pricing-error-' + row.label"

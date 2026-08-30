@@ -168,6 +168,11 @@ describe('ReviewPanel', () => {
       r.click('star-4');
       r.type('review-comment', 'x'.repeat(1001));
       r.click('submit-review');
+      // Pin the take first: an absence-only assertion also passes when nothing was ever written.
+      expect(r.find('review-comment')!.getAttribute('aria-describedby')).toBe(
+        r.find('review-comment-error')!.id,
+      );
+
       r.type('review-comment', 'Lovely spot.');
 
       expect(r.find('review-comment-error')).toBeNull();

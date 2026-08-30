@@ -26,11 +26,25 @@ import { FieldErrorFor } from './field-error-for';
         >
       }
     </label>
+    <label>
+      <span>Full-day price</span>
+      <input #price data-testid="price" />
+      @if (priceWriteFailed()) {
+        <span
+          [appFieldErrorFor]="price"
+          [appFieldErrorForInvalidValue]="false"
+          role="alert"
+          data-testid="price-error"
+          >Your session has expired. Please sign in again.</span
+        >
+      }
+    </label>
   `,
 })
 class FieldErrorForHost {
   readonly commentFailed = signal(false);
   readonly emailFailed = signal(false);
+  readonly priceWriteFailed = signal(false);
 }
 
 /**
@@ -69,6 +83,9 @@ describe('FieldErrorFor', () => {
   it('releases the association when the error goes away', () => {
     host.commentFailed.set(true);
     fixture.detectChanges();
+    // Pin the take first: an absence-only assertion also passes when nothing was ever written.
+    expect(element('comment')!.getAttribute('aria-describedby')).toBe(element('comment-error')!.id);
+
     host.commentFailed.set(false);
     fixture.detectChanges();
 
@@ -89,6 +106,16 @@ describe('FieldErrorFor', () => {
 
     expect(element('email')!.getAttribute('aria-describedby')).toBe('email-hint');
     expect(element('email')!.hasAttribute('aria-invalid')).toBe(false);
+  });
+
+  it('describes the control without marking its value invalid when told not to', () => {
+    host.priceWriteFailed.set(true);
+    fixture.detectChanges();
+
+    const errorId = element('price-error')!.id;
+    expect(errorId).toBeTruthy();
+    expect(element('price')!.getAttribute('aria-describedby')).toBe(errorId);
+    expect(element('price')!.hasAttribute('aria-invalid')).toBe(false);
   });
 
   it('gives each error its own id', () => {

@@ -612,6 +612,11 @@ export class LayoutEditor {
   }
 
   /** The operator-facing message for a per-row rename failure. */
+  /** Whether the rename failure blames the name the operator typed, rather than the write itself. */
+  protected rowNameValueIsInvalid(code: RowNameErrorCode): boolean {
+    return code === 'ROW_NAME_TAKEN' || code === 'INVALID_REQUEST';
+  }
+
   protected rowNameErrorMessage(code: RowNameErrorCode): string {
     switch (code) {
       case 'ROW_NAME_TAKEN':

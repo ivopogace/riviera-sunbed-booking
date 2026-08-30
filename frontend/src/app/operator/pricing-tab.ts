@@ -194,6 +194,11 @@ export class PricingTab {
     }
   }
 
+  /** Whether the reprice failure blames the price the operator typed, rather than the write itself. */
+  protected valueIsInvalid(code: RepriceErrorCode): boolean {
+    return code === 'INVALID_REQUEST';
+  }
+
   /** The operator-facing message for a reprice failure code. */
   protected errorMessage(code: RepriceErrorCode): string {
     switch (code) {

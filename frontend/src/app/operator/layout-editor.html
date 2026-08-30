@@ -191,6 +191,7 @@
                 @if (failure.y === y) {
                   <p
                     [appFieldErrorFor]="rowNameControl"
+                    [appFieldErrorForInvalidValue]="rowNameValueIsInvalid(failure.code)"
                     class="ml-8 text-[12.5px] font-semibold text-[#a3160e]"
                     role="alert"
                     data-testid="layout-row-name-write-error"

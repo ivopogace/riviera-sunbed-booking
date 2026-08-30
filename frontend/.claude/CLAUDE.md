@@ -39,11 +39,14 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - **An inline field error carries `role="alert"` AND `[appFieldErrorFor]` naming its
   control** (`shared/field-error-for.ts`): the alert announces on appearance, the
   association is what a screen-reader user hears on re-focus. The directive goes on the
-  **error element**, taking the control's template ref, so it lives and dies inside the
-  same `@if` — a hand-written `aria-describedby` for a field error is a review finding,
-  because a dangling reference is only an axe *incomplete* and `expectNoAxeViolations`
-  does not fail on it. Form- and page-level banners have no field referent and stay
-  alert-only.
+  **error element**, taking the control's template ref, so its lifetime *is* the error's
+  own — a hand-written `aria-describedby` for a field error is a review finding, because
+  a dangling reference is only an axe *incomplete* and `expectNoAxeViolations` does not
+  fail on it. It also stamps `aria-invalid="true"`, which is a claim about the **entered
+  value** (ARIA21), so an error reporting a failed *write* — a 403, an expired session —
+  binds `[appFieldErrorForInvalidValue]="false"` and is described without being marked
+  invalid. Form-, page- and **action**-level banners name no single control and stay
+  alert-only (`photo-error-{slot}`, `admin-commission-error-*`). Reviewed as RV-FE-11.
 - **Every interactive control declares the 44 × 44 px floor**: `[appTouchTarget]`
   (`shared/touch-target.ts`), or `data-touch-exempt="<reason>"` on the control or an
   ancestor (three documented exemption classes — see `riviera-tailwind`). `<a>` is

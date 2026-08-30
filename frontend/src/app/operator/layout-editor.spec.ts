@@ -833,6 +833,23 @@ describe('LayoutEditor (#172)', () => {
     expect(rowNameInputs()[0].hasAttribute('aria-invalid')).toBe(false);
   });
 
+  it('describes a refused rename without calling the typed name invalid', async () => {
+    renderSaved();
+
+    setRowName(1, 'A');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush({ code: 'NOT_VENUE_OWNER' }, { status: 403, statusText: 'Forbidden' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const failing = rowNameInputs()[1];
+    expect(failing.getAttribute('aria-describedby')).toBe(byId('layout-row-name-write-error').id);
+    // The name is fine; the write was refused. Only a taken or malformed name is a bad value.
+    expect(failing.hasAttribute('aria-invalid')).toBe(false);
+  });
+
   it('surfaces a taken row name against the row that asked, keeping the draft (#726)', async () => {
     renderSaved();
 

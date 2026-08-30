@@ -35,7 +35,9 @@ scope-exclusion table and the risk register that surfaced R-1) · `tdd` (directi
 red-green in phase 0; each application phase pins the association in the touched
 component's existing spec before the template edit) · `riviera-review-overlay` (review gate
 — due at ready-for-review; RV-FE-E2E decided the e2e suite) · `riviera-docs-freshness`
-(pending — due at merge close-out step 5) · `riviera-frontend` (placement: the directive is
+(ran pre-merge over `origin/main...HEAD` at the review-gate fix round: the rename grep found the
+stale F-13 deferral, F-4; the counting sweep found no falsified count, but caught that the overlay
+SKILL.md enumerates the FE bank items and so needed RV-FE-11 adding beside the reference file) · `riviera-frontend` (placement: the directive is
 a pure, stateless presentational primitive → `shared/`, not `core/`; mocked-a11y e2e suite)
 · `riviera-tailwind` (rule 1 — a thing that only adds *attributes* to an element that
 already exists is a directive, not a component; and the no-visual-drift rule is why
@@ -69,6 +71,7 @@ own branch and is an ancestor of this one.
 - [x] **AC-4:** Given the booking surfaces with a failing field, when the error shows, then each control names its error via `aria-describedby`. *Pinned by:* `review-panel.spec.ts` › `describes the comment and display-name fields by their errors`, `booking-dialog.spec.ts` › `describes each guest-contact field by its error`
 - [x] **AC-5:** Given the operator surfaces with a failing field, when the error shows, then each control names its error via `aria-describedby` — including the two `@for`-scoped errors, where the association is per row and never crosses rows. *Pinned by:* `venue-create-card.spec.ts`, `venue-tab.spec.ts`, `booking-cutoff-field.spec.ts`, `pricing-tab.spec.ts` › `describes only the failing row's price input`, `layout-editor.spec.ts` › `describes only the failing row's name input`
 - [x] **AC-6:** Given the review form in a real browser, when it is submitted with a **blank display name**, then that control's **accessible description** equals the error text. *Pinned by:* `e2e/review-a-stay.e2e.ts` › `a rejected field describes itself to assistive technology`. **Deviation from the plan as written, forced by the browser:** the AC originally named a *too-long comment*, which is unreachable in a real browser — `[formField]` projects the `maxLength` validator onto the native `maxlength` attribute, so Chromium truncates the paste at exactly 1000 characters and the field never becomes invalid (the unit spec reaches it only because it assigns `.value` directly, bypassing `maxlength`). The blank required display name is the nearest failure a real guest can actually produce, and it exercises the same accname path
+- [x] **AC-8:** Given an error element that reports a failed **write** rather than a bad value, when it renders, then its control is described by it but carries **no** `aria-invalid` — and an error that does blame the value still sets it. *Pinned by:* `field-error-for.spec.ts` › `describes the control without marking its value invalid when told not to`, `pricing-tab.spec.ts` › `describes only the failing row’s price input` (403, not marked) **and** `marks the price invalid only when the server rejected the value itself` (400), `layout-editor.spec.ts` › `describes a refused rename without calling the typed name invalid` (403) **and** `surfaces a taken row name…` (409, marked). Real-browser half: `e2e/operator-pricing.e2e.ts` › `shows the not-owner message and reverts the projection when the reprice is 403`
 - [x] **AC-7:** Given every touched surface, when its existing axe spec runs, then it reports no new critical/serious violation. *Pinned by:* the existing `*.a11y.spec.ts` files for the touched components (unchanged assertions, re-run).
 
 ## Non-goals
@@ -110,7 +113,7 @@ template reference per site. The one behavior that changes is the intended one (
 | R-1 | **A dangling `aria-describedby` is invisible to this repo's CI.** Verified against the installed axe-core 4.12.1: a reference to a missing id is reported as `incomplete`, never a violation — and `src/testing/axe.ts` filters to `critical`/`serious` **violations**, so `expectNoAxeViolations` passes either way. A hand-written binding could rot silently. | high | med | The chosen shape removes the failure mode rather than testing for it: the directive is created and destroyed with the error element, so the token cannot outlive the span. AC-2 pins the release explicitly. | plan | closed — the shape shipped as designed: the directive is created and destroyed with the error element (`field-error-for.spec.ts` › `releases the association when the error goes away`, plus a release assertion at four applied sites). The failure mode is structurally absent, not merely untested |
 | R-2 | **`@for`-scoped errors could describe the wrong row.** `pricing-tab` and `layout-editor` render one error inside a loop keyed on the failing row; a mis-scoped template ref would point every row's error at one input. | med | high | The `#ctl` ref is declared **inside** the `@for` body, so it resolves per iteration. AC-5 asserts positively (the failing row is described) *and* negatively (no sibling row is). | plan | closed — **answered: per iteration.** Each `@for` iteration is its own embedded view, so `#priceControl` / `#rowNameControl` resolve within that view only. Pinned both ways: `pricing-tab.spec.ts` › `describes only the failing row’s price input` and `layout-editor.spec.ts` › `describes only the failing row’s name input` each assert the failing row IS described and a sibling row carries neither attribute. Both confirmed failing with the templates reverted, so neither passes vacuously |
 | R-3 | **`aria-invalid` clobbering.** The directive both sets and removes `aria-invalid`; a control that carried it for another reason would lose it on error dismissal. | low | low | Verified by grep: no control in `frontend/src/app` sets `aria-invalid` today, so the directive is the sole writer. Stated in the directive's TSDoc so a future second writer is a conscious choice. | plan | closed — re-confirmed on the finished tree: `aria-invalid` appears in `frontend/src/app` only from this directive. The sole-writer claim is stated in its TSDoc |
-| R-4 | **Double announcement.** With both `role="alert"` and `aria-describedby`, an error appearing *while its own field has focus* could be spoken twice. | low | low | Structurally unlikely here: every gate is `submitAttempted()` (focus is on the submit button) or `touched()` (which flips on blur, so focus has already left). Kept as a real-screen-reader check, not a code change — #821 asks for exactly this judgement. See Open questions OQ-1. | plan | closed as **deferred to a human** — no screen reader was available in the implement session, so the live pass OQ-1 needs became **issue #824**. `role="alert"` ships as planned |
+| R-4 | **Double announcement.** With both `role="alert"` and `aria-describedby`, an error appearing *while its own field has focus* could be spoken twice. | low | low | Structurally unlikely at the 15 Signal-Forms/`touched()` sites: each gate is `submitAttempted()` (focus is on the submit button) or `touched()` (which flips on blur, so focus has already left). Kept as a real-screen-reader check, not a code change — #821 asks for exactly this judgement. See Open questions OQ-1. | plan | closed as **deferred to a human** — no screen reader was available in the implement session, so the live pass OQ-1 needs became **issue #824**. `role="alert"` ships as planned. **Amended at the review gate (F-7):** the "every gate" reasoning above was overstated — it holds for 15 sites but not for site 16, whose `errorRow()` is set from a `(change)` commit on a number input, where Enter commits *without* leaving the field. #824 should target that site specifically |
 | R-5 | **In-flight collision.** A concurrent slice editing the same templates would conflict — these 8 files are high-traffic. | low | med | Checked at the intake gate: branch is level with `origin/main`, no open PR touches these files. No Flyway version is claimed (no migration), so the #122/#127 collision class does not apply. Re-check with a merge-from-main before marking the PR ready. | plan | closed — no collision materialized. The branch took the phase commits cleanly and no other PR touched these 8 files; no Flyway version was claimed |
 | R-6 | **Touch-target guard false trip.** `scripts/check-touch-target.mjs` fires as a `PostToolUse` hook on edited templates containing `<input>`/`<select>`/`<textarea>`. | low | low | Every touched control already declares `[appTouchTarget]` or a reasoned `data-touch-exempt`; the diff adds no new control. If TT-1/TT-2 fire, that is the build's finding to fix, not a workaround. | plan | closed — `check-touch-target.mjs --diff origin/main` ran green before every push. The diff adds no control, and spec fixtures are out of the guard’s scope by design |
 
@@ -328,11 +331,30 @@ Sites 14, 16 and 17 are the three interesting ones (existing-hint composition, a
 
 ## Execution status
 
-**Stage pointer:** `implement — all four phases done; PR #823 left as a DRAFT at the
-maintainer's instruction`. **Neither gate was run in this session** — the maintainer is
-running the Review and Sonar gates separately. Both remain due before merge, and the
-self-review checklist's review-gate box is left unticked rather than ticked for a gate that
-did not run.
+**Stage pointer:** `review — the gate RAN in full and its seven findings (F-2..F-8) are
+fixed; re-review of the fix round is due, then merge close-out`. PR #823 stays a **DRAFT** at
+the maintainer's instruction.
+
+The **Review gate** ran per `riviera-sdlc` `references/pr-gates.md` §1 at **rung 1** of the
+invocation ladder — the `Skill("code-review")` probe succeeded, so `/code-review 823 high`
+ran its five-agent fan-out, with `riviera-review-overlay` layered on top for the RV-FE/RV-PROC
+bank. Not a degraded mode; both halves ran. Findings F-2..F-8 below; each re-entered at
+Implement with the routing gate run first.
+
+Two review-gate results worth keeping, because both cost real time to establish:
+
+- **Sonar was verified, not assumed.** The reported list was pulled from the API rather than
+  read off the gate's badge: `new_lines` **177** (so the analysis exists — not the false-clean
+  read `pr-gates.md` §2 warns about), 0 issues, 0 duplicated blocks, 97.96% new-code coverage.
+- **Two of the five review agents reported a 14-site defect that does not exist** — that the
+  error text folds into the control's accessible *name*, making the association a double read.
+  Both had measured **Playwright's `ariaSnapshot`/`toHaveAccessibleName`**, which is Playwright's
+  own JS reimplementation of accname. Chromium's real AX tree (CDP
+  `Accessibility.getPartialAXTree`) disagrees on exactly this shape: `role="alert"` inside a
+  wrapping `<label>` contributes **nothing** to the name, while a plain `<span>` does. The plan's
+  measured fact 1 was right and the finding was rejected. Recorded in **RV-FE-11** so the next
+  reviewer does not re-derive it — and note the fix those agents proposed (asserting
+  `toHaveAccessibleName`) would have failed against a correct page.
 
 One qualifier on that: SonarCloud analyses every PR push on its own, so its bot posted a
 result without the gate being *run* here. It reported Quality Gate **passed** but **1 new
@@ -341,8 +363,8 @@ own new code; the maintainer was asked and explicitly directed the fix, so it wa
 recorded as **F-1** below. That is the whole of the Sonar work done here; triaging the gate
 proper is still the maintainer's.
 
-**Next action:** (maintainer) the Review gate, then the Sonar gate, then merge close-out —
-including citing `merged via PR #823` in this doc.
+**Next action:** re-review the fix round (F-2..F-8) per the re-entry rule, re-check CI + the
+Sonar list on the new head, then merge close-out — including citing `merged via PR #823` here.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -350,6 +372,7 @@ including citing `merged via PR #823` in this doc.
 | 1 — booking surfaces (sites 1–5) | ✅ | `4512d36` |
 | 2 — operator surfaces (sites 6–13, 15–17) | ✅ | `ec76ee0` |
 | 3 — admin site 14, e2e, convention note, close-out | ✅ | `5121aa9`, then `3b91273` + `fb5542d` (plan-doc precision) |
+| 4 — review-gate fix round (F-2..F-8) | ✅ | see the findings register |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -360,6 +383,13 @@ Skill-routing gate for what the fix touches *before* editing).
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | sonar bot (PR #823, analysed at head `ec76ee0`) | `typescript:S1121` MAJOR at `field-error-for.ts:24` — "Extract the assignment of `nextFieldErrorId` from this expression". The plan's verified sketch generated the id as `` `riv-field-error-${(nextFieldErrorId += 1)}` ``, an assignment nested inside a template-literal expression. The Quality Gate *passed* (1 new issue), but this repo's merge bar is **0 new issues**, so it was above the bar | **fixed** — extracted into a `nextFieldErrorElementId()` helper that increments then returns. Behaviour is identical: ids stay unique, monotonic and the same shape, and no call site moves. Re-entered at Implement per the `riviera-sdlc` re-entry rule (routing gate: `riviera-frontend` — the directive stays in `shared/`, nothing moves; `angular-developer` + `frontend/.claude/CLAUDE.md`; `tdd`). Re-verified: `field-error-for.spec.ts`, `admin-privacy.spec.ts`, `review-panel.spec.ts`, `pricing-tab.spec.ts` — **67 passed**. Fixed in `d6a1649` |
+| F-2 | review gate (`/code-review` agents 1 + 3, confirmed independently) | **`aria-invalid="true"` asserted for failures that are not value problems**, at sites 16–17. `RepriceErrorCode`/`RowNameErrorCode` are dominated by write outcomes (`NOT_VENUE_OWNER`, `NO_SUCH_ROW`, `NO_SUCH_VENUE`, `UNAUTHORIZED`, `UNKNOWN`); only `INVALID_REQUEST` — and, for renames, `ROW_NAME_TAKEN` — blames the entered value. Sharpest at `pricing-tab.ts:179`, which **reverts the row to the server's own price** before setting the error, so the input displayed a known-good value while announcing it invalid and describing it as *"Your session has expired."* The slice applied its own distinction inconsistently: Non-goals excludes `photo-error-{slot}` for exactly this reason. `pricing-tab.spec.ts` pinned the wrong semantics, flushing a **403** and asserting `aria-invalid === 'true'` | **fixed** — the directive gained an `appFieldErrorForInvalidValue` input (default `true`; named for the selector rather than aliased, per `busy-action.ts`'s `appBusy` and `@angular-eslint/no-input-rename`), read inside the effect and guarding both the set and the cleanup removal, so `aria-invalid` stays this directive's alone. Both loop sites bind it to a per-code predicate (`valueIsInvalid` / `rowNameValueIsInvalid`) rather than a constant, so a genuinely bad value is still marked. Pinned by AC-8 in both directions. Routing gate: `riviera-frontend` (directive stays in `shared/`, nothing moves) · `angular-developer` (v22 `input()` with a default) · `tdd` (red → green per site) |
+| F-3 | review gate (agent 5) | **The added convention condemns a site shipped in the same file.** `frontend/.claude/CLAUDE.md` carved out only *"Form- and page-level banners"*, but `venue-tab.html:256` (`photo-error-{slot}`) is **action**-scoped — a third class, in a file this PR edits, deliberately shipped without the directive. The bullet also never mentioned `aria-invalid` at all, which is the half carrying F-2's hazard | **fixed** — the carve-out now reads "Form-, page- and **action**-level", names both excluded examples, states the ARIA21 rule and the `[appFieldErrorForInvalidValue]="false"` escape, and cites RV-FE-11. Also corrected *"lives and dies inside the same `@if`"*, which did not describe the two `@for` sites' nested shape |
+| F-4 | review gate (agent 3; found independently in the docs-freshness sweep) | **The deferral this slice discharges was left stale.** `docs/plans/reviews-s2-comment-lifecycle.md:450` (F-13, from PR #819) still read *"deferred — follow-up #821"* and *"all 24 inline field errors do it this way and none associates"* — both false once this ships, and in a file no amount of reviewing the diff would surface | **fixed** — the row is annotated to its resolution (closed by #821 / PR #823, 17 sites, and why "24" was an over-count) without rewriting the historical finding, per the `riviera-docs-freshness` scope rule and the `focus-guard-hardening` / `focus-surface-scoping` precedent. Routing gate: `riviera-docs-freshness` |
+| F-5 | review gate (agents 1 + 3) | **A new a11y convention shipped with no bank item and no guard.** Both prior a11y classes got one (RV-FE-9 for #621, RV-FE-10 for #741); this one landed only in `frontend/.claude/CLAUDE.md`, inserted directly above the *"Guards enforce these while you type"* bullet — while R-1 records that CI is structurally blind to a missing or dangling association | **fixed** — added **RV-FE-11** to `riviera-review-overlay`'s `references/frontend-conventions.md` (six gate checks, follow-up, severity, skill framing) and extended the enumeration in its `SKILL.md`, which the counting sweep flagged would otherwise go stale. The item states plainly that nothing machine-checks it, and carries the Playwright-vs-CDP accname trap |
+| F-6 | review gate (agents 2 + 3, both with reproductions) | **Three real limitations absent from the directive's TSDoc.** `aria-invalid` removal is not reference-counted (two errors on one control: the first to unmount clears the mark while the other still shows — reproduced, no current call site); "pre-existing tokens are preserved" holds only for a **static** attribute, not an `[attr.aria-describedby]` binding (`auth-page.ts:220` is the app's only one); and ids are process-monotonic under `isolate: false`, so a literal id is not reproducible | **fixed (documented, not refcounted)** — all three stated in the TSDoc. Refcounting was deliberately *not* built: no control carries two error elements, and R-3 set the precedent that a sole-writer property is held by a written-down constraint rather than speculative machinery. The note says to refcount if that shape ever arrives. The `isolate: false` half mirrors what `freeze-clock.ts` already carries (ADR-0014) |
+| F-7 | review gate (this session) | **The plan overstated two things.** Phase 2's steps 1–2 were ticked as *"— red"* / *"→ FAIL"* when the phase was built green-first; and R-4's *"every gate is `submitAttempted()`… or `touched()`, so focus has already left"* is false for site 16, whose `(change)` commit on a number input fires on Enter without leaving the field — and that claim is the stated basis for deferring OQ-1 | **fixed** — phase 2 step 2 now records what actually happened and what the stash-and-rerun recovery does and does not buy; R-4 is scoped to the 15 sites where it holds and amended for site 16, which #824 should target. The recovery itself was judged **adequate** and re-verified independently at the gate |
+| F-8 | review gate (agent 2, mutation-tested) | **Three release assertions passed with the feature reverted.** `field-error-for.spec.ts` › `releases the association when the error goes away`, `booking-dialog.spec.ts` › `stops describing…once they are valid`, and `review-panel.spec.ts` › `stops describing a field once its error is corrected` asserted only *absence*, which is trivially true when nothing was ever written — so AC-2, the criterion R-1 calls the whole point of the design, was pinned one-directionally at three of its six sites | **fixed** — each now pins the **take** before the release, matching the three sites that already did (`admin-privacy`, `booking-cutoff-field`, `venue-tab`). Mutation-verified: with the directive's `effect` removed all three now fail, where before they passed |
 
 ---
 
@@ -389,7 +419,11 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/admin/admin-privacy.ts` — site 14 + `imports`
 - `frontend/src/app/admin/admin-privacy.spec.ts` — AC-3 composition case
 - `frontend/e2e/review-a-stay.e2e.ts` — AC-6
-- `frontend/.claude/CLAUDE.md` — the convention note #821 asks for (added under Accessibility Requirements)
+- `frontend/e2e/operator-pricing.e2e.ts` — AC-8's real-browser half (F-2): the 403 case asserts the refusal is described but the reverted price is not marked invalid
+- `frontend/.claude/CLAUDE.md` — the convention note #821 asks for (added under Accessibility Requirements; widened by F-3)
+- `docs/plans/reviews-s2-comment-lifecycle.md` — F-4: the F-13 deferral this slice discharges, annotated to its resolution
+- `.claude/skills/riviera-review-overlay/references/frontend-conventions.md` — F-5: the new RV-FE-11 bank item
+- `.claude/skills/riviera-review-overlay/SKILL.md` — F-5: RV-FE-11 added to the frontend-bank enumeration
 
 > Run `node scripts/check-plan-file-structure.mjs --diff origin/main` before pushing, with
 > this doc staged — the guard short-circuits on an unstaged plan.
@@ -432,8 +466,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `venue-create-card.{ts,html}` · `venue-tab.{ts,html}` · `booking-cutoff-field.ts` · `pricing-tab.{ts,html}` · `layout-editor.{ts,html}` · Test each `.spec.ts`
 
-- [x] **Step 1:** Extend the five specs with AC-5, and for `pricing-tab`/`layout-editor` add the **negative** assertion that a non-failing row's control carries no `aria-describedby` — red. This is R-2's mitigation and is the phase's real content.
-- [x] **Step 2:** Run `npm test -- venue-create-card venue-tab booking-cutoff-field pricing-tab layout-editor` → FAIL.
+- [x] **Step 1:** Extend the five specs with AC-5, and for `pricing-tab`/`layout-editor` add the **negative** assertion that a non-failing row's control carries no `aria-describedby`. This is R-2's mitigation and is the phase's real content.
+- [x] **Step 2 — built green-first, recovered afterwards (not red-first; recorded honestly rather than ticked as if it had been).** The specs and the templates landed together, so no run observed them red. The recovery was to stash the five templates and re-run: **all six new tests failed**, which is the non-vacuity property red-first exists to buy. Re-verified independently at the review gate — stripping `[appFieldErrorFor]` from both `@for` templates fails exactly the two negative-row tests and nothing else. What the recovery does *not* buy is design pressure on the test, worth little here: phase 2 is a mechanical application of a directive already designed and red-green'd in phase 0.
 - [x] **Step 3:** Apply the shape. `booking-cutoff-field` is internal-only (no call-site edit). The two `@for` sites declare `#ctl` inside the loop body.
 - [x] **Step 4:** Run the same five → PASS, then their `*.a11y.spec.ts` and `*.contrast.spec.ts` (contrast must be untouched — no class changed).
 - [x] **Step 5:** Generalization audit — record the `@for`-scoping question and its answer for both loop sites.
@@ -475,6 +509,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - [x] **AC-5:** the five operator specs **134 passed** at `ec76ee0`. All six new tests were confirmed to fail with the templates stashed, so none passes vacuously.
 - [x] **AC-6:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts review-a-stay` → **4 passed**. `toHaveAccessibleDescription` is the real-Chromium proof. Retargeted at the display-name field — see the AC for why the comment case is unreachable in a browser.
 - [x] **AC-7:** the touched surfaces' axe + contrast specs re-run unchanged — booking **43 passed**, operator **39 passed**, plus `expectNoSeriousAxeViolations` over the review form carrying a rejected field in the e2e. No new violation, and no contrast spec moved (no class changed).
+- [x] **AC-8:** added at the review gate (F-2). `field-error-for.spec.ts` › `describes the control without marking its value invalid when told not to` was confirmed red first (a compile error — the input did not exist), then green. Both loop sites pin the distinction in **both** directions: a 403 describes without marking, a 400 `INVALID_REQUEST` / 409 `ROW_NAME_TAKEN` still marks. The two "not marked" assertions were each confirmed red against the pre-fix template, as was the e2e one — reverting the `pricing-tab` binding fails it with the browser reporting `aria-invalid="true"` on the reverted, server-valid €90, which is the defect stated as a rendered fact.
 - [x] **Sweep completeness:** `grep -rn appFieldErrorFor frontend/src/app` (excluding specs and the directive itself) returns **exactly 17**, distributed file-for-file as the plan's inventory predicts: admin-privacy 1, booking-dialog 3, review-panel 2, booking-cutoff-field 1, layout-editor 1, pricing-tab 1, venue-create-card 4, venue-tab 4. Every remaining `role="alert"` is on the Non-goals list — including the two borderline exclusions the phase-0 audit re-checked.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
@@ -498,6 +533,6 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`. — the PR is **#823**; the `merged via` line is the maintainer's to write at merge, since the PR is still a draft.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`. **Left unticked deliberately: it did not run in the implement session.** The maintainer instructed that they are running the Review and Sonar gates in a separate session, so the PR stays a draft. Both gates remain due before merge.
+- [x] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`. Ran at **rung 1** (the `Skill("code-review")` probe succeeded), so `/code-review 823 high`'s five-agent fan-out ran with the overlay layered on top — both halves, no degraded mode. Seven findings (F-2..F-8), all fixed; one reported finding rejected on evidence (the accname double-read). The Sonar list was pulled from the API and verified non-empty-analysis. **Still due:** re-review of the fix round, and re-checking CI + Sonar on the new head.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
