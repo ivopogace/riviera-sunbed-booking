@@ -55,6 +55,8 @@ const BOOKING = {
   beforeCutoff: true,
   refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
   refundedAmount: null,
+  // The wire always carries a panel; a stay nobody checked in is the reason there is no form.
+  reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
 async function mockTourist(page: Page): Promise<void> {
@@ -187,17 +189,50 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await expectTouchTargets(page, 'booking detail');
   });
 
-  test('booking detail — a delivered stay offering the star rating', async ({ page }) => {
-    // Its own case: the five radios exist only here, and the sweep above still owns the cancel controls.
+  test('booking detail — a delivered stay offering the review form', async ({ page }) => {
+    // Its own case: the radios and the two text fields exist only here.
     await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
       route.fulfill({
-        json: { ...BOOKING, status: 'COMPLETED', cancellable: false, reviewable: true },
+        json: {
+          ...BOOKING,
+          status: 'COMPLETED',
+          cancellable: false,
+          reviewPanel: {
+            kind: 'ELIGIBLE',
+            windowClosesAt: '2026-07-31T16:00:00Z',
+            nameSuggestion: 'Ana',
+          },
+        },
       }),
     );
     await page.goto('/booking/WXYZ345678');
     await expect(page.getByTestId('review-panel')).toBeVisible();
 
-    await expectTouchTargets(page, 'booking detail with the rating panel');
+    await expectTouchTargets(page, 'booking detail with the review form');
+  });
+
+  test('booking detail — the guest’s own review, with its edit and remove controls', async ({
+    page,
+  }) => {
+    await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
+      route.fulfill({
+        json: {
+          ...BOOKING,
+          status: 'COMPLETED',
+          cancellable: false,
+          reviewPanel: {
+            kind: 'ALREADY_REVIEWED',
+            review: { stars: 4, comment: 'Great sunbeds', displayName: 'Ana' },
+            windowClosesAt: '2026-07-31T16:00:00Z',
+          },
+        },
+      }),
+    );
+    await page.goto('/booking/WXYZ345678');
+    await page.getByTestId('start-delete-review').click();
+    await expect(page.getByTestId('confirm-delete-review')).toBeVisible();
+
+    await expectTouchTargets(page, 'booking detail with the review removal confirmation');
   });
   test('venue detail — the booking dialog open', async ({ page }) => {
     await page.goto('/venues/1');

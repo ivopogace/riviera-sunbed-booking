@@ -57,8 +57,8 @@ maintainer's request and rejected, on three independent grounds:
    edge; with `venue → review` (the rating listener) and `booking → venue::api` both already fixed,
    `verify()` rejects the graph exactly as it does for `review → booking::api`.
 2. **It would be eventually consistent where the product is not.** Epic story 6 is "review the moment
-   I'm checked in". An event-fed eligibility projection leaves `reviewable=false` for a guest who
-   opens their booking page in the seconds after the operator checks them in.
+   I'm checked in". An event-fed eligibility projection still answers "not checked in yet" for a
+   guest who opens their booking page in the seconds after the operator checks them in.
 3. **It would need a backfill.** Bookings already `COMPLETED` at deploy have no event to replay, so
    an event-fed projection needs a one-off seed. The pull reads `booking.completed_at` directly and
    needs none.

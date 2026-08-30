@@ -28,7 +28,7 @@ const DETAIL: BookingDetail = {
   payWindowClosed: false,
   cancelReason: null,
   cancellationWindowAtBirth: 'FREE',
-  reviewable: false,
+  reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
 /** A found-by-code stub; `getByCode`/`primeDetail`/`takePrefetched` are spies for assertions. */

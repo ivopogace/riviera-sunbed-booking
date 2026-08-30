@@ -85,6 +85,8 @@ const AWAITING_DETAIL = {
   refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
   refundedAmount: null,
   cancellationWindowAtBirth: 'CLOSED',
+  // The wire always carries a panel; a stay nobody checked in is the reason there is no form.
+  reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
 /** The pre-reserve quote for a same-day booking: born CLOSED, nothing refundable (#795). */

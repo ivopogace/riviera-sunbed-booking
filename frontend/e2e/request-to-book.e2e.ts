@@ -80,6 +80,8 @@ const DETAIL_BASE = {
   requestExpiresAt: '2026-11-30T16:00:00Z',
   payment: null,
   payWindowClosed: false,
+  // The wire always carries a panel; a stay nobody checked in is the reason there is no form.
+  reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
 test.beforeEach(async ({ page }) => {

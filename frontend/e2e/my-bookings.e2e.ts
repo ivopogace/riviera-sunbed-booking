@@ -76,6 +76,8 @@ const CONFIRMED_DETAIL = {
   refundedAmount: null,
   requestExpiresAt: null,
   payment: null,
+  // The wire always carries a panel; a stay nobody checked in is the reason there is no form.
+  reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
 const CANCELLED_DETAIL = {
@@ -193,6 +195,57 @@ test('the empty My bookings state is accessible (no bookings on this device)', a
   await expectNoSeriousAxeViolations(page, 'my bookings empty state');
 });
 
+test('signed in: a completed stay opens from My bookings straight onto its review form', async ({
+  page,
+}) => {
+  const STAY_CODE = 'RVWMYB1234';
+  const completedRow = {
+    code: STAY_CODE,
+    status: 'COMPLETED',
+    venueId: 1,
+    venueName: 'Miramar Beach Club',
+    rowLabel: 'Front row · Sea view',
+    positionNo: 2,
+    bookingDate: '2026-06-01',
+    amount: { minorUnits: 4500, currency: 'EUR' },
+    requestExpiresAt: null,
+  };
+
+  await page.route(/\/api\/auth\/me$/, (route) =>
+    route.fulfill({ json: { username: 'tourist@example.com', principalType: 'CUSTOMER' } }),
+  );
+  await page.route(/\/api\/me\/bookings(\?.*)?$/, (route) =>
+    route.fulfill({ json: [completedRow] }),
+  );
+  await page.route(new RegExp(`/api/bookings/${STAY_CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({
+      json: {
+        ...completedRow,
+        cancellable: false,
+        beforeCutoff: false,
+        refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
+        refundedAmount: null,
+        payment: null,
+        reviewPanel: {
+          kind: 'ELIGIBLE',
+          windowClosesAt: '2026-07-31T16:00:00Z',
+          nameSuggestion: 'Ana',
+        },
+      },
+    }),
+  );
+
+  // No code email anywhere in this journey: the account list is the whole route to the stay.
+  await page.goto('/my-bookings');
+  await page.getByTestId('booking-row').click();
+
+  await expect(page).toHaveURL(new RegExp(`/booking/${STAY_CODE}`));
+  await expect(page.getByTestId('review-panel')).toBeVisible();
+  await expect(page.getByTestId('review-display-name')).toHaveValue('Ana');
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'review form reached from My bookings');
+});
+
 // Signed-in union + dedupe. DEVICE_CODE is device-only; SHARED_CODE is on this device AND
 // in the account list (booked while signed in → shown once); ACCT_CODE is account-only (another
 // device → the account list ADDS it). Device codes render per-code (device rows show immediately);
@@ -247,6 +300,7 @@ function deviceDetail(
     refundedAmount: null,
     requestExpiresAt: null,
     payment: null,
+    reviewPanel: { kind: 'NOT_COMPLETED' },
   };
 }
 

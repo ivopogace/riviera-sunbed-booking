@@ -39,7 +39,7 @@ function detail(
     payWindowClosed: false,
     cancelReason: null,
     cancellationWindowAtBirth: 'FREE',
-    reviewable: false,
+    reviewPanel: { kind: 'NOT_COMPLETED' },
     ...extra,
   };
 }

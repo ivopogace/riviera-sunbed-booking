@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
+import ai.riviera.platform.review.vocabulary.ReviewPanel;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -45,10 +46,15 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * {@code refundedAmount} alone cannot separate a venue's weather refund from the guest's own
  * cancellation — both return money, only one is news to the guest.
  *
- * <p>{@code reviewable} says {@code review} will accept a rating for this stay right now — checked
- * in, inside the review window, not yet rated. It is carried rather than derived from
- * {@code status} because every one of those fences is review's, not booking's: a
- * {@code COMPLETED} stay stops being reviewable without its status moving at all.
+ * <p>{@code reviewPanel} is what this stay's review section should show — the form, the guest's own
+ * verdict, a frozen one, or the reason there is none. It is carried rather than derived from
+ * {@code status} because every fence behind it is review's, not booking's: a {@code COMPLETED} stay
+ * stops being reviewable without its status moving at all.
+ *
+ * <p>{@code reviewNameSuggestion} is booking's own addition beside it — the first name from the
+ * contact on this booking, so the review form can prefill a display name. {@code null} unless the
+ * panel is {@code Eligible}, and {@code null} when the contact is gone: it is a convenience, never
+ * a disclosure the panel depends on.
  *
  * <p>{@code refundOutstanding} says the gateway has collected for this cancelled booking but not yet
  * accepted its refund, so the surface must say the refund is being processed rather than on its way
@@ -62,5 +68,6 @@ public record BookingDetail(String code, BookingStatus status, VenueId venueId, 
 		java.time.Instant requestExpiresAt,
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment, boolean emailWithheld,
 		boolean payWindowClosed, RefundReason cancelReason,
-		CancellationWindow cancellationWindowAtBirth, boolean reviewable) {
+		CancellationWindow cancellationWindowAtBirth, ReviewPanel reviewPanel,
+		String reviewNameSuggestion) {
 }

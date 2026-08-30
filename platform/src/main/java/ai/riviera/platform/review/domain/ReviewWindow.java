@@ -21,6 +21,11 @@ public final class ReviewWindow {
 	 * The boundary is inclusive: only a stay checked in <em>more</em> than {@link #WINDOW} ago closes.
 	 */
 	public static boolean isOpen(Instant completedAt, Instant now) {
-		return !now.isAfter(completedAt.plus(WINDOW));
+		return !now.isAfter(closesAt(completedAt));
+	}
+
+	/** The last instant a stay checked in at {@code completedAt} may still be rated or amended. */
+	public static Instant closesAt(Instant completedAt) {
+		return completedAt.plus(WINDOW);
 	}
 }

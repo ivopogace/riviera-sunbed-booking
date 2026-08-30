@@ -1,12 +1,10 @@
-package ai.riviera.platform.review.vocabulary;
+package ai.riviera.platform.review.domain;
 
 /**
- * Whether a booking may be reviewed right now, and if not, why — the answer
- * {@link ai.riviera.platform.review.api.ReviewEligibility} gives the code-gated read so the
- * frontend renders from server truth instead of re-deriving the fences.
- *
- * <p>Slice 1 collapses everything but {@link #ELIGIBLE} to "no panel"; the distinct reasons are
- * carried from the start because slice 2's messaging is keyed on them.
+ * Where a stay stands against the review fences — {@link ReviewGate}'s verdict, and internal to
+ * this module. It says which fence answered; what a caller is then handed is
+ * {@link ai.riviera.platform.review.vocabulary.ReviewPanel}, which carries the data each state
+ * actually has.
  */
 public enum ReviewState {
 

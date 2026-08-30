@@ -17,10 +17,11 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.ReviewFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.review.api.ReviewEligibility;
-import ai.riviera.platform.review.application.SubmitReview;
+import ai.riviera.platform.review.application.ReviewLifecycle;
+import ai.riviera.platform.review.application.ReviewSubmission;
 import ai.riviera.platform.review.domain.ReviewWindow;
 import ai.riviera.platform.review.events.ReviewsChanged;
-import ai.riviera.platform.review.vocabulary.ReviewState;
+import ai.riviera.platform.review.vocabulary.ReviewPanel;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 import ai.riviera.platform.review.vocabulary.VenueRef;
 
@@ -46,7 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ReviewSubmitFlowIT {
 
 	@Autowired
-	SubmitReview submit;
+	ReviewLifecycle lifecycle;
 
 	@Autowired
 	ReviewEligibility eligibility;
@@ -69,11 +70,22 @@ class ReviewSubmitFlowIT {
 		long venueId = fixtures.venue("Submit Flow");
 		String code = fixtures.completedBooking(venueId, Instant.now().minus(1, ChronoUnit.DAYS));
 
-		assertEquals(new SubmitOutcome.Submitted(), submit.submit(code, 4));
+		assertEquals(new SubmitOutcome.Submitted(), lifecycle.submit(code, stars(4)));
 
 		assertThat(starsFor(code)).isEqualTo(4);
 		List<ReviewsChanged> published = events.stream(ReviewsChanged.class).toList();
 		assertThat(published).containsExactly(new ReviewsChanged(new VenueRef(venueId)));
+	}
+
+	@Test
+	void recordsACommentedReview() {
+		long venueId = fixtures.venue("Submit Flow Commented");
+		String code = fixtures.completedBooking(venueId, Instant.now().minus(1, ChronoUnit.DAYS));
+
+		assertEquals(new SubmitOutcome.Submitted(),
+				lifecycle.submit(code, new ReviewSubmission(4, "Great sunbeds", "Ana")));
+
+		assertThat(storedReview(code)).containsExactly("4", "Great sunbeds", "Ana");
 	}
 
 	@Test
@@ -82,7 +94,7 @@ class ReviewSubmitFlowIT {
 		String code = fixtures.completedBooking(venueId,
 				Instant.now().minus(ReviewWindow.WINDOW).minus(1, ChronoUnit.DAYS));
 
-		assertEquals(new SubmitOutcome.WindowClosed(), submit.submit(code, 4));
+		assertEquals(new SubmitOutcome.WindowClosed(), lifecycle.submit(code, stars(4)));
 
 		assertThat(fixtures.reviewCountFor(code)).isZero();
 		assertThat(events.stream(ReviewsChanged.class).toList()).isEmpty();
@@ -93,7 +105,7 @@ class ReviewSubmitFlowIT {
 		long venueId = fixtures.venue("Submit Flow Confirmed");
 		String code = fixtures.booking(venueId, "CONFIRMED", null);
 
-		assertEquals(new SubmitOutcome.NotEligible(), submit.submit(code, 4));
+		assertEquals(new SubmitOutcome.NotEligible(), lifecycle.submit(code, stars(4)));
 
 		assertThat(fixtures.reviewCountFor(code)).isZero();
 	}
@@ -103,16 +115,16 @@ class ReviewSubmitFlowIT {
 		// Rated inside the window, then frozen: both paths must answer the same way.
 		long venueId = fixtures.venue("Submit Flow Rated Then Frozen");
 		String code = fixtures.completedBooking(venueId, Instant.now().minus(1, ChronoUnit.DAYS));
-		assertEquals(new SubmitOutcome.Submitted(), submit.submit(code, 4));
+		assertEquals(new SubmitOutcome.Submitted(), lifecycle.submit(code, stars(4)));
 		freezeTheWindowFor(code);
 
-		assertEquals(ReviewState.WINDOW_CLOSED, eligibility.stateFor(code));
-		assertEquals(new SubmitOutcome.WindowClosed(), submit.submit(code, 5));
+		assertThat(eligibility.panelFor(code)).isInstanceOf(ReviewPanel.Frozen.class);
+		assertEquals(new SubmitOutcome.WindowClosed(), lifecycle.submit(code, stars(5)));
 	}
 
 	@Test
 	void refusesACodeNoBookingAnswersTo() {
-		assertEquals(new SubmitOutcome.NoSuchStay(), submit.submit("NOSUCHCODE", 4));
+		assertEquals(new SubmitOutcome.NoSuchStay(), lifecycle.submit("NOSUCHCODE", stars(4)));
 	}
 
 	/** Backdate the check-in past the window, so the stay is frozen without touching the clock. */
@@ -122,6 +134,19 @@ class ReviewSubmitFlowIT {
 						Instant.now().minus(ReviewWindow.WINDOW).minus(1, ChronoUnit.DAYS)))
 				.param("code", code)
 				.update();
+	}
+
+	/** The stars a star-only submit needs, so each test states only what it is about. */
+	private static ReviewSubmission stars(int stars) {
+		return new ReviewSubmission(stars, null, "Ana");
+	}
+
+	private List<String> storedReview(String code) {
+		return jdbc.sql("SELECT stars, comment, display_name FROM review WHERE booking_id = :id")
+				.param("id", fixtures.bookingIdOf(code))
+				.query((rs, rowNum) -> List.of(String.valueOf(rs.getInt("stars")), rs.getString("comment"),
+						rs.getString("display_name")))
+				.single();
 	}
 
 	private int starsFor(String code) {

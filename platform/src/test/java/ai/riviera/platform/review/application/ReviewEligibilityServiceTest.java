@@ -5,27 +5,28 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.review.api.ReviewEligibility;
+import ai.riviera.platform.review.domain.ReviewWindow;
 import ai.riviera.platform.review.spi.CompletedStays;
 import ai.riviera.platform.review.vocabulary.BookingRef;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
-import ai.riviera.platform.review.vocabulary.ReviewState;
+import ai.riviera.platform.review.vocabulary.OwnReview;
+import ai.riviera.platform.review.vocabulary.ReviewPanel;
 import ai.riviera.platform.review.vocabulary.VenueRef;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Every answer the code-gated view's {@code reviewable} flag is derived from, including the two the
- * happy path never reaches. The ordering matters as much as the values: this read and the submit
- * path fence in the same order, so a stay that trips two fences at once is told the same thing
- * whichever one answers it — {@code ReviewSubmitFlowIT} pins that agreement end to end.
+ * One case per panel variant — including the two the enum this replaced could not tell apart: a
+ * frozen verdict that is still worth reading back, and a window nobody ever wrote in.
+ *
+ * <p>The fence <em>order</em> is {@code ReviewGateTest}'s; what is pinned here is which panel each
+ * verdict becomes and what it carries.
  */
 class ReviewEligibilityServiceTest {
 
@@ -33,6 +34,9 @@ class ReviewEligibilityServiceTest {
 	private static final String CODE = "RVWCODE123";
 	private static final BookingRef BOOKING = new BookingRef(7);
 	private static final VenueRef VENUE = new VenueRef(3);
+	private static final Instant YESTERDAY = NOW.minus(Duration.ofDays(1));
+	private static final Instant LONG_AGO = NOW.minus(Duration.ofDays(61));
+	private static final OwnReview OWN = new OwnReview(4, "Great sunbeds", "Ana");
 
 	private final FakeCompletedStays stays = new FakeCompletedStays();
 	private final FakeReviews reviews = new FakeReviews();
@@ -40,52 +44,53 @@ class ReviewEligibilityServiceTest {
 			new ReviewEligibilityService(stays, reviews, Clock.fixed(NOW, ZoneOffset.UTC));
 
 	@Test
-	void aCheckedInUnratedStayInsideTheWindowIsEligible() {
-		stays.completed(CODE, NOW.minus(Duration.ofDays(1)));
+	void aCheckedInUnratedStayInsideTheWindowGetsTheForm() {
+		stays.completed(CODE, YESTERDAY);
 
-		assertEquals(ReviewState.ELIGIBLE, eligibility.stateFor(CODE));
+		assertEquals(new ReviewPanel.Eligible(ReviewWindow.closesAt(YESTERDAY)),
+				eligibility.panelFor(CODE));
 	}
 
 	@Test
-	void aStayAlreadyRatedIsAlreadyReviewed() {
-		stays.completed(CODE, NOW.minus(Duration.ofDays(1)));
-		reviews.rated.add(BOOKING);
+	void panelCarriesTheOwnReview() {
+		stays.completed(CODE, YESTERDAY);
+		reviews.stored.put(BOOKING, OWN);
 
-		assertEquals(ReviewState.ALREADY_REVIEWED, eligibility.stateFor(CODE));
+		assertEquals(new ReviewPanel.AlreadyReviewed(OWN, ReviewWindow.closesAt(YESTERDAY)),
+				eligibility.panelFor(CODE));
 	}
 
 	@Test
-	void aStayCheckedInBeyondTheWindowIsFrozen() {
-		stays.completed(CODE, NOW.minus(Duration.ofDays(61)));
+	void aRatedStayPastItsWindowIsFrozenAndStillReadable() {
+		stays.completed(CODE, LONG_AGO);
+		reviews.stored.put(BOOKING, OWN);
 
-		assertEquals(ReviewState.WINDOW_CLOSED, eligibility.stateFor(CODE));
+		assertEquals(new ReviewPanel.Frozen(OWN), eligibility.panelFor(CODE));
 	}
 
 	@Test
-	void aStayThatIsBothRatedAndFrozenReadsAsFrozen() {
-		// Submit fences the window first, so this read must not answer ALREADY_REVIEWED instead.
-		stays.completed(CODE, NOW.minus(Duration.ofDays(61)));
-		reviews.rated.add(BOOKING);
+	void anUnratedStayPastItsWindowIsSimplyClosed() {
+		stays.completed(CODE, LONG_AGO);
 
-		assertEquals(ReviewState.WINDOW_CLOSED, eligibility.stateFor(CODE));
+		assertEquals(new ReviewPanel.WindowClosed(), eligibility.panelFor(CODE));
 	}
 
 	@Test
 	void aBookingThatWasNeverCheckedInIsNotCompleted() {
 		stays.knownButNotCompleted(CODE);
 
-		assertEquals(ReviewState.NOT_COMPLETED, eligibility.stateFor(CODE));
+		assertEquals(new ReviewPanel.NotCompleted(), eligibility.panelFor(CODE));
 	}
 
 	@Test
 	void aCodeNoBookingAnswersToIsNoSuchStay() {
-		assertEquals(ReviewState.NO_SUCH_STAY, eligibility.stateFor(CODE));
+		assertEquals(new ReviewPanel.NoSuchStay(), eligibility.panelFor(CODE));
 	}
 
 	private static final class FakeCompletedStays implements CompletedStays {
 
 		private final Map<String, CompletedStay> completed = new HashMap<>();
-		private final Set<String> known = new HashSet<>();
+		private final java.util.Set<String> known = new java.util.HashSet<>();
 
 		void completed(String code, Instant completedAt) {
 			completed.put(code, new CompletedStay(BOOKING, VENUE, completedAt));
@@ -109,11 +114,28 @@ class ReviewEligibilityServiceTest {
 
 	private static final class FakeReviews implements Reviews {
 
-		private final Set<BookingRef> rated = new HashSet<>();
+		private final Map<BookingRef, OwnReview> stored = new HashMap<>();
 
 		@Override
-		public boolean claim(BookingRef booking, VenueRef venue, int stars, Instant at) {
+		public boolean claim(BookingRef booking, VenueRef venue, int stars, String comment,
+				String displayName, Instant at) {
 			throw new UnsupportedOperationException("the eligibility read never writes");
+		}
+
+		@Override
+		public boolean update(BookingRef booking, int stars, String comment, String displayName,
+				Instant at) {
+			throw new UnsupportedOperationException("the eligibility read never writes");
+		}
+
+		@Override
+		public boolean delete(BookingRef booking) {
+			throw new UnsupportedOperationException("the eligibility read never writes");
+		}
+
+		@Override
+		public Optional<OwnReview> findFor(BookingRef booking) {
+			return Optional.ofNullable(stored.get(booking));
 		}
 
 		@Override
@@ -123,7 +145,7 @@ class ReviewEligibilityServiceTest {
 
 		@Override
 		public boolean existsFor(BookingRef booking) {
-			return rated.contains(booking);
+			return stored.containsKey(booking);
 		}
 	}
 }

@@ -19,8 +19,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Verifies Flyway V45: the {@code review} table's two invariants — one review per booking, ever
- * (the DB half of AC-2) and stars bounded 1..5 — plus the demo-seed supersede (AC-7).
+ * Verifies the {@code review} table's constraints: V45's two invariants — at most one review
+ * per booking (the DB half of AC-2) and stars bounded 1..5 — plus the demo-seed supersede (AC-7), and
+ * V46's length bounds on the free-text comment and display name.
  *
  * <p>The supersede is checked on the <strong>seeded</strong> row, the only one that carried a
  * fabricated rating, rather than as a count over the whole table: sibling ITs share this container
@@ -60,6 +61,28 @@ class ReviewMigrationIT {
 		assertThat(assertThrows(DataIntegrityViolationException.class,
 				() -> insertReview(seedCompletedBooking(venueId), venueId, 6)).getMessage())
 				.contains("review_stars_check");
+	}
+
+	@Test
+	void commentAndDisplayNameCarryLengthChecks() {
+		long venueId = seedVenue("Review Migration Text Bounds");
+
+		assertThat(assertThrows(DataIntegrityViolationException.class,
+				() -> insertReview(seedCompletedBooking(venueId), venueId, 4, "x".repeat(1001), "Ana"))
+				.getMessage()).contains("review_comment_length_check");
+		assertThat(assertThrows(DataIntegrityViolationException.class,
+				() -> insertReview(seedCompletedBooking(venueId), venueId, 4, "Great sunbeds", "y".repeat(61)))
+				.getMessage()).contains("review_display_name_length_check");
+	}
+
+	@Test
+	void acceptsTheLongestAllowedCommentAndDisplayName() {
+		long venueId = seedVenue("Review Migration Text At Bound");
+
+		insertReview(seedCompletedBooking(venueId), venueId, 4, "x".repeat(1000), "y".repeat(60));
+
+		assertThat(jdbc.sql("SELECT count(*) FROM review WHERE venue_id = :v")
+				.param("v", venueId).query(Long.class).single()).isEqualTo(1L);
 	}
 
 	@Test
@@ -110,11 +133,17 @@ class ReviewMigrationIT {
 	}
 
 	private void insertReview(long bookingId, long venueId, int stars) {
+		insertReview(bookingId, venueId, stars, null, null);
+	}
+
+	private void insertReview(long bookingId, long venueId, int stars, String comment,
+			String displayName) {
 		jdbc.sql("""
-				INSERT INTO review (booking_id, venue_id, stars, created_at)
-				VALUES (:booking, :venue, :stars, :createdAt)
+				INSERT INTO review (booking_id, venue_id, stars, comment, display_name, created_at)
+				VALUES (:booking, :venue, :stars, :comment, :displayName, :createdAt)
 				""")
 				.param("booking", bookingId).param("venue", venueId).param("stars", stars)
+				.param("comment", comment).param("displayName", displayName)
 				.param("createdAt", Timestamp.from(Instant.parse("2026-07-02T08:00:00Z")))
 				.update();
 	}

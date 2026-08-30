@@ -12,7 +12,9 @@ import org.springframework.stereotype.Service;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy.RefundQuote;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.domain.BookingStatus;
-import ai.riviera.platform.review.vocabulary.ReviewState;
+import ai.riviera.platform.customer.api.CustomerLookup;
+import ai.riviera.platform.customer.vocabulary.GuestContact;
+import ai.riviera.platform.review.vocabulary.ReviewPanel;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 
@@ -34,6 +36,7 @@ class ViewBookingService implements ViewBooking {
 	private final ai.riviera.platform.payment.api.CollectionGuarantee collection;
 	private final ai.riviera.platform.payment.api.RefundStatusLookup refundStatus;
 	private final ai.riviera.platform.review.api.ReviewEligibility reviewEligibility;
+	private final CustomerLookup customers;
 	private final RequestWindows windows;
 	private final Clock clock;
 
@@ -43,7 +46,7 @@ class ViewBookingService implements ViewBooking {
 			ai.riviera.platform.payment.api.CollectionGuarantee collection,
 			ai.riviera.platform.payment.api.RefundStatusLookup refundStatus,
 			ai.riviera.platform.review.api.ReviewEligibility reviewEligibility,
-			RequestWindows windows, Clock clock) {
+			CustomerLookup customers, RequestWindows windows, Clock clock) {
 		this.bookings = bookings;
 		this.cancellationPolicy = cancellationPolicy;
 		this.cutoff = cutoff;
@@ -52,6 +55,7 @@ class ViewBookingService implements ViewBooking {
 		this.collection = collection;
 		this.refundStatus = refundStatus;
 		this.reviewEligibility = reviewEligibility;
+		this.customers = customers;
 		this.windows = windows;
 		this.clock = clock;
 	}
@@ -83,6 +87,7 @@ class ViewBookingService implements ViewBooking {
 	}
 
 	private BookingDetail toDetail(BookingRecord b) {
+		ReviewPanel panel = reviewEligibility.panelFor(b.code());
 		RefundQuote quote = cancellationPolicy.quote(b);
 		SetBookingInfo set = quote.set();
 		boolean cancellable = b.status() == BookingStatus.CONFIRMED && quote.cancellationOpen();
@@ -114,6 +119,24 @@ class ViewBookingService implements ViewBooking {
 				refunded, refundOutstanding, b.requestExpiresAt(), payment, emailWithheld,
 				payWindowClosed, b.cancelReason(),
 				cutoff.cancellationWindow(set.bookingCutoff(), b.bookingDate(), b.createdAt()),
-				reviewEligibility.stateFor(b.code()) == ReviewState.ELIGIBLE);
+				panel, nameSuggestionFor(panel, b));
+	}
+
+	/**
+	 * The display name to prefill the review form with: the first whitespace-separated token of the
+	 * contact's name, which is the only "first name" this system stores. {@code null} for any panel
+	 * but the form, and whenever the contact is gone (erasure, ADR-0010) — the form then simply
+	 * starts empty.
+	 */
+	private String nameSuggestionFor(ReviewPanel panel, BookingRecord b) {
+		if (!(panel instanceof ReviewPanel.Eligible)) {
+			return null;
+		}
+		return customers.findById(b.customerId())
+				.map(GuestContact::fullName)
+				.map(String::strip)
+				.filter(name -> !name.isEmpty())
+				.map(name -> name.split("\\s+", 2)[0])
+				.orElse(null);
 	}
 }

@@ -1,21 +1,28 @@
 package ai.riviera.platform.review.application;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
 import ai.riviera.platform.review.api.ReviewEligibility;
+import ai.riviera.platform.review.domain.ReviewGate;
 import ai.riviera.platform.review.domain.ReviewWindow;
 import ai.riviera.platform.review.spi.CompletedStays;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
-import ai.riviera.platform.review.vocabulary.ReviewState;
+import ai.riviera.platform.review.vocabulary.OwnReview;
+import ai.riviera.platform.review.vocabulary.ReviewPanel;
 
 /**
- * Answers {@link ReviewEligibility} by applying the same three fences the submit path applies, in
- * the same order — no stay, not checked in, frozen, already rated — so the view can never offer a
- * form the submit would refuse. Package-private behind the port (invariant #11); read-only, so no
- * {@code @Transactional}.
+ * Answers {@link ReviewEligibility} from the same {@link ReviewGate} the write path consults, so
+ * the view can never offer a form the submit would refuse — the two agree because they ask one
+ * question, not because they were written alike. Package-private behind the port (invariant #11);
+ * read-only, so no {@code @Transactional}.
+ *
+ * <p>The gate's verdict then picks the panel variant, and only the closed-window verdict needs the
+ * stored review to choose: a frozen verdict is still worth reading back, a window nobody wrote in
+ * has nothing to show.
  */
 @Service
 class ReviewEligibilityService implements ReviewEligibility {
@@ -31,19 +38,23 @@ class ReviewEligibilityService implements ReviewEligibility {
 	}
 
 	@Override
-	public ReviewState stateFor(String bookingCode) {
+	public ReviewPanel panelFor(String bookingCode) {
 		Optional<CompletedStay> found = stays.byCode(bookingCode);
-		if (found.isEmpty()) {
-			return stays.existsByCode(bookingCode) ? ReviewState.NOT_COMPLETED : ReviewState.NO_SUCH_STAY;
-		}
+		Optional<OwnReview> review = found.flatMap(stay -> reviews.findFor(stay.booking()));
+		return switch (ReviewGate.stateOf(found.isPresent() || stays.existsByCode(bookingCode),
+				found.map(CompletedStay::completedAt).orElse(null), review.isPresent(),
+				clock.instant())) {
+			case NO_SUCH_STAY -> new ReviewPanel.NoSuchStay();
+			case NOT_COMPLETED -> new ReviewPanel.NotCompleted();
+			case WINDOW_CLOSED -> review.<ReviewPanel>map(ReviewPanel.Frozen::new)
+					.orElseGet(ReviewPanel.WindowClosed::new);
+			case ALREADY_REVIEWED ->
+					new ReviewPanel.AlreadyReviewed(review.orElseThrow(), closesFor(found.orElseThrow()));
+			case ELIGIBLE -> new ReviewPanel.Eligible(closesFor(found.orElseThrow()));
+		};
+	}
 
-		CompletedStay stay = found.get();
-		// Window before rating: the submit path fences in that order, and the two must agree.
-		if (!ReviewWindow.isOpen(stay.completedAt(), clock.instant())) {
-			return ReviewState.WINDOW_CLOSED;
-		}
-		return reviews.existsFor(stay.booking())
-				? ReviewState.ALREADY_REVIEWED
-				: ReviewState.ELIGIBLE;
+	private static Instant closesFor(CompletedStay stay) {
+		return ReviewWindow.closesAt(stay.completedAt());
 	}
 }
