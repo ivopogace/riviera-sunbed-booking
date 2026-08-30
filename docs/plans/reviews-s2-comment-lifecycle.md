@@ -64,6 +64,13 @@ tailwindcss.com/docs/field-sizing; new banner/error surfaces get contrast-spec r
 `playwright-cli` (mocked-suite journeys authored to the stateful `page.route` flip
 pattern the slice-1 spec established)
 
+**Skills re-consulted at the Implement stage** (the routing gate, per area as it was entered):
+`riviera-sdlc` (the loop) · `riviera-local-debug` (before the first `gradle`/`npm`) · `postgres` +
+`riviera-modulith` + `riviera-java-conventions` + `codebase-design` (phases 0-3) ·
+`riviera-frontend` + `riviera-tailwind` + `angular-developer` + the angular-cli MCP
+(`get_best_practices`, `search_documentation` — which is what caught that `[formField]` refuses a
+hand-written `maxlength`, phase 4) · `playwright-cli` + `riviera-docs-freshness` (phase 5).
+
 **Branch:** `claude/sdlc-812-plan-review-k93ud6` — the session's designated remote branch
 stands in for `feature/reviews-s2-comment-lifecycle` (cloud-session substitution per
 `riviera-sdlc` remote addendum).
@@ -143,15 +150,15 @@ stands in for `feature/reviews-s2-comment-lifecycle` (cloud-session substitution
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Flyway V46 collision with in-flight work | low | high | Checked: V45 is highest on `main`; open PRs are Dependabot-only. If a collision appears, this branch renumbers (merges second) | agent | open |
+| R-1 | Flyway V46 collision with in-flight work | low | high | Checked: V45 is highest on `main`; open PRs are Dependabot-only. If a collision appears, this branch renumbers (merges second) | agent | **closed** — re-verified at implement entry (2026-08-30): V45 still the highest on `main`, all 20 open PRs Dependabot bumps |
 | R-2 | Fence-order drift between submit / edit / delete / panel-read (rated+frozen must read frozen everywhere) | low (was med) | med | **Structurally removed**: the order lives once in `domain/ReviewGate`, consulted by both the lifecycle service and the panel read; `ReviewGateTest` pins it, `ReviewLifecycleFlowIT` proves the ends agree | agent | **closed (phases 1-3)** — one `ReviewGate.stateOf` call in each of the two services and nowhere else |
 | R-3 | Edit/delete forget to republish `ReviewsChanged` → stale aggregate | med | high | `ReviewLifecycleServiceTest` asserts the publish per verb; `VenueRatingRecomputeIT` extension proves delete-to-"New"; recompute is already idempotent (full recompute, never increment) | agent | **closed (phase 2)** — both publishes pinned per verb, and `aDeletedSoleReviewReturnsTheVenueToNew` proves the venue returns to `0/0` through the real listener |
-| R-4 | `display_name`/`comment` are the **first PII in the `review` table** — erasure (ADR-0010) has no hook yet | high | med | Deliberate epic sequencing (story 25 is a later slice). Record the obligation: close-out files a follow-up issue referencing epic #810 story 25 before this slice merges | agent | open |
+| R-4 | `display_name`/`comment` are the **first PII in the `review` table** — erasure (ADR-0010) has no hook yet | high | med | Deliberate epic sequencing (story 25 is a later slice). Record the obligation: close-out files a follow-up issue referencing epic #810 story 25 before this slice merges | agent | **closed (phase 5)** — filed as **#820**, and RESPONSIBILITIES §review's Shipped ¶ now names the gap |
 | R-5 | Client `maxLength` counts UTF-16 units, server counts code points (emoji differ) | low | low | Client is strictly tighter (a surrogate pair counts 2); the server bound + DB CHECK are the contract (AC-2); no truncation anywhere | agent | **closed (phase 4)** — the schema's `maxLength` refuses inline and sends nothing; the bounds are stated once in `booking.model.ts` |
-| R-6 | Invariant #7 — booking code in new error bodies/logs | low | high | All errors via `ApiProblem` with `instance` pinned to `/api/bookings`; `ReviewControllerTest.theBookingCodeNeverAppearsInAnErrorBody` extended to PUT/DELETE | agent | open |
+| R-6 | Invariant #7 — booking code in new error bodies/logs | low | high | All errors via `ApiProblem` with `instance` pinned to `/api/bookings`; `ReviewControllerTest.theBookingCodeNeverAppearsInAnErrorBody` extended to PUT/DELETE | agent | **closed (phase 2)** — the sweep runs as `theBookingCodeNeverAppearsInAnAmendErrorBody` over both new verbs |
 | R-7 | New PUT/DELETE routes bypass the per-code rate-limit budget or CSRF/permitAll wiring | med | med | Same `RateLimitFilter.REVIEW_TEMPLATE` bucket; `SecurityConfig` permitAll + CSRF-ignore rows; `EndpointRoleGateCoverageTest.DECLARED_REACHABLE` gains both routes (the inline endpoint count comment updates — the F-3 lesson) | agent | **closed (phase 2)** — all three verbs classified together in `targetOf`, the two `permitAll` rows added (the CSRF ignore was already path-scoped, so it covered them), both coverage rows added, the six→eight counts updated, and `RateLimitFilterTest.everyReviewVerbSpendsTheSamePerCodeBudget` + `aReviewDeleteAndTheViewShareOneCodeBudget` pin it |
-| R-8 | Error-contract drift on new 4xx paths (§6b) | low | med | Compact-ctor `InvalidApiRequestException` for 400s; typed-outcome switch + `ApiProblem` for 404/409; no per-controller `@ExceptionHandler` (`ErrorContractArchitectureTests` enforces) | agent | open |
-| R-9 | `ResponsibilitiesArchitectureTests` — new review SQL outside `review/adapter/out` | low | med | All new SQL lands in `JdbcReviews`; `booking` touches only its own view + `CustomerLookup` | agent | open |
+| R-8 | Error-contract drift on new 4xx paths (§6b) | low | med | Compact-ctor `InvalidApiRequestException` for 400s; typed-outcome switch + `ApiProblem` for 404/409; no per-controller `@ExceptionHandler` (`ErrorContractArchitectureTests` enforces) | agent | **closed (phase 2)** — `ErrorContractArchitectureTests` green over the new verbs |
+| R-9 | `ResponsibilitiesArchitectureTests` — new review SQL outside `review/adapter/out` | low | med | All new SQL lands in `JdbcReviews`; `booking` touches only its own view + `CustomerLookup` | agent | **closed (phases 0-3)** — the test is green; every new statement is in `JdbcReviews` |
 | R-10 | Concurrent edit racing a delete on the same review | low | low | Row-level semantics: `Reviews.update`/`delete` return whether a row was affected — the loser maps to `NO_SUCH_REVIEW`, never a duplicate (the `UNIQUE (booking_id)` constraint stands); pinned by `ReviewUniquenessIT.aDeleteRacingAnEditLeavesAtMostOneRow` | agent | **closed (phase 2)** — the race test passes against real Postgres |
 
 ## Open questions / Assumptions
@@ -171,14 +178,18 @@ stands in for `feature/reviews-s2-comment-lifecycle` (cloud-session substitution
   there would be noise. Frozen and already-reviewed messaging render regardless of how the stay
   ended. Built in phase 4.
 
+### Resolved during the build
+
+- **Assumption A-4 — held** (phase 3): `reviewable` left the wire and every consumer in the
+  repo moved with it; the SPA ships from the same deploy, so there was no external consumer
+  to break.
+- **Assumption A-5 — held** (phase 2): PUT/DELETE against a stay carrying no review answer
+  `404 NO_SUCH_REVIEW`; a window-closed amend answers `409 REVIEW_WINDOW_CLOSED`, reusing the
+  existing code. Pinned by `ReviewControllerTest` and `ReviewLifecycleFlowIT`.
+
 ### Open
 
-- **Assumption A-4:** Replacing `reviewable: boolean` with the `reviewPanel` object on
-  the wire is safe — same-origin single deploy, no external API consumers. — *Owner:*
-  agent · *Resolves by:* phase 3
-- **Assumption A-5:** PUT with no existing review (or DELETE likewise) → `404
-  NO_SUCH_REVIEW`; window-closed edit/delete → `409 REVIEW_WINDOW_CLOSED` (reusing the
-  existing code). — *Owner:* agent · *Resolves by:* phase 2
+*(None — every assumption above is resolved.)*
 
 ## Availability & concurrency (invariant #2)
 
@@ -370,10 +381,11 @@ with `cls.btnOutlineDanger`; every new control carries `appTouchTarget`.
 
 ## Execution status
 
-**Stage pointer:** `implement — phases 0-4 done; draft PR #819 open against main`
+**Stage pointer:** `implement — all six phases done; draft PR #819 open against main, close-out written`
 
-**Next action:** build phase 5 (mocked + real-backend e2e journeys, docs freshness, the R-4
-follow-up issue, close-out), after checking phase 4's CI run.
+**Next action:** merge the latest `origin/main` in with phase discipline, mark PR #819 ready
+for review, and hand it to the review session. **The review gate, the Sonar-gate triage and
+the merge have NOT been run** — they belong to the follow-up session by request.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -381,8 +393,8 @@ follow-up issue, close-out), after checking phase 4's CI run.
 | 1 — review gate + submit with comment/display name | ✅ | `f501e30` |
 | 2 — edit + delete on the lifecycle port + edge wiring | ✅ | `de46936` |
 | 3 — sealed panel read + name suggestion | ✅ | `eaf57d7` |
-| 4 — frontend panel (form / own / frozen / messaging) | ✅ | this commit |
-| 5 — e2e journeys + docs freshness + close-out | | |
+| 4 — frontend panel (form / own / frozen / messaging) | ✅ | `9833e02` |
+| 5 — e2e journeys + docs freshness + close-out | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -448,6 +460,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/touch-targets-tourist.e2e.ts` — panel controls in the sweep
 - `frontend/e2e/real-backend/reviews.e2e.ts` — comment+edit+delete on the true loop
 - `RESPONSIBILITIES.md` — §review Shipped ¶ + published-surface note, §booking `reviewable` ¶
+- `CLAUDE.md` — the `review` row of the bounded-context table
+- `platform/src/main/java/ai/riviera/platform/review/package-info.java` — the module's own one-line summary
 - `CONTEXT.md` — Display name + Frozen review vocabulary entries
 - `docs/plans/reviews-s2-comment-lifecycle.md` — this plan
 
@@ -725,38 +739,68 @@ protected readonly reviewForm = form(this.model, (path) => {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-30 | Phase 5 — `riviera-docs-freshness` over `origin/main..HEAD` (see the run record below) | the substrate-doc map, twice: the rename/removal grep for `reviewable`/`ReviewState`/`stateFor`, then the counting sweep over the review vocabulary | `grep -rn "ReviewState\|stateFor\|reviewable" CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents docs/design .claude/skills` + `grep -rn "one per booking" …` | 7 stated facts falsified across 4 files | all patched (below); re-run after the fix round came back clean |
 | 2026-08-30 | Phase 4 — frontend uses of the retired `reviewable` flag | every template, model and fixture reading the slice-1 boolean | `grep -rn "reviewable" frontend/src frontend/e2e` | 8 files — `booking.model.ts`, `booking-view.ts` + its spec, four sibling `BookingDetail` fixtures, and the two e2e specs | all eight migrated to `reviewPanel`; the two e2e specs land in phase 5 with the journeys that exercise them |
 | 2026-08-30 | Phase 3 — consumers of the retired `stateFor` / `ReviewState` / `reviewable` | everything reading the slice-1 shape of the review verdict, across both apps | `grep -rln "reviewable\|ReviewState\|stateFor" platform/src frontend/src frontend/e2e` | 22 files — 9 backend main, 8 backend test, 5 frontend (`booking.model.ts`, `booking-view.ts`, three specs) plus the two e2e specs | every backend site migrated in this phase (incl. the two `package-info` javadocs the grep found); the frontend sites are phase 4's step 5 by design, so the app reads the retired flag for exactly one commit |
 | 2026-08-30 | Phase 2 — publishers of `ReviewsChanged` | every site that announces a moved venue aggregate; the risk is a lifecycle verb writing without announcing | `grep -rn "new ReviewsChanged" platform/src/main/java` | 2 — both in `ReviewLifecycleService` (the claim path and the shared amend path) | none needed: all three verbs route their write through one of those two lines, so "wrote but did not announce" is unrepresentable rather than merely tested |
 | 2026-08-30 | Phase 1 — bounded free text on an edge DTO | the repo's one bounded-text edge mechanism: strip first, then bound in **code points** so Postgres `char_length` never rejects what Java accepted | `git ls-files 'platform/*adapter/in*.java' \| xargs grep -ln codePointCount` (none — the mechanism lives one layer in) + `grep -rln VenueFieldValidation platform/src/main` | 7 venue application commands via `VenueFieldValidation.requireText(value, field, maxLength)` | none needed — `ReviewText.fitsComment`/`fitsDisplayName` mirror it exactly (strip in the compact ctor, then code-point bound); the review edge keeps `InvalidApiRequestException` because it is the DTO itself, not an application command |
 
+## Docs-freshness run (phase 5)
+
+Range `origin/main..HEAD`. Seven stated facts falsified, all patched in the phase-5 commit:
+
+| Doc:line | Stated fact | Contradicted by | Action |
+|---|---|---|---|
+| `CONTEXT.md` §Reviews | "a star rating of 1–5 … **a rating is not revised**" | the whole slice: reviews carry words and a name, and their author may change or remove them inside the window | patched — plus new **Display name** and **Frozen review** entries the messaging needs |
+| `CONTEXT.md` §Reviews | "One per booking, **ever**" | a delete frees the slot while the window is open | patched to "one per booking", a standing constraint rather than a one-shot |
+| `CLAUDE.md` module table, `review` row | "the review record (one per booking, ever), the eligibility + 60-day review-window policy" | comment/display name and the own-review lifecycle | patched |
+| `RESPONSIBILITIES.md` §`booking` | "The `reviewable` flag on my code-gated read is mine to carry" | the flag is gone; a sealed panel plus a name suggestion replaced it | patched |
+| `RESPONSIBILITIES.md` §`review` Job + 4 standing rules | one-shot wording, "submitting stays an internal port", `POST`-only authorization | the lifecycle port, the gate, the sealed panel, three verbs on one budget | patched |
+| `RESPONSIBILITIES.md` §`review` Not-My-Job | "slice 1 stores **no display name at all**" | V46 stores one | patched — it is a label the author chose, not an identity `review` resolves |
+| `RESPONSIBILITIES.md` §`review` Shipped ¶ | slice-1 inventory, "comments, display names … are later slices" | they shipped here | patched, and it now names the erasure hook (#820) as what is still outstanding |
+| `platform/**/review/package-info.java` | "the review record (one per booking, ever)" | same as the module table | patched (source prose counts — it is what the next reader believes) |
+
+**Flagged, not patched:** `docs/adr/ADR-0015` §rejected-alternatives argues that an event-fed
+projection "leaves `reviewable=false` for a guest who opens their booking page in the seconds
+after check-in". The field it names no longer exists, but the sentence is the *reasoning* behind a
+rejected alternative, not a present-tense fact about the system — rewriting an ADR's argument to
+match today's field names is exactly what this skill's scope discipline forbids. Left for the
+maintainer to judge.
+
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-7:** `./gradlew test --tests "*Review*" --tests "*ViewBooking*" --tests "*VenueRating*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-8:** `npm run test:e2e:a11y` → PASS. Verified at commit `<sha>`.
+- [x] **AC-1..AC-7:** `gradle test --tests "*Review*" --tests "*ViewBooking*" --tests "*VenueRating*"`
+  → PASS locally against the hook-provided Docker (every IT ran; `skipped=0`), and the full suite
+  green in CI on every phase push. Verified through `eaf57d7` (the last backend phase).
+- [x] **AC-8:** `npm run test:e2e:a11y` → **306 passed** (the whole mocked suite, not just the new
+  specs), plus `npm test` → 2059 unit tests green. Verified at the phase-5 commit.
+- [x] **The real-backend loop** (local-only, never CI): `frontend/e2e/real-backend/reviews.e2e.ts`
+  extended to submit-with-comment → edit → delete with the venue header polled after each. Authored,
+  not executed here — the container has no running stack (`riviera-local-debug`), so this one is
+  proven by review and by its mocked twin, and is the honest gap in the AC table.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section filled; concurrency covered by `ReviewUniquenessIT` (invariant #2 untouched).
-- [ ] Pool + cutoff rules honored — N/A, no reserve path (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based; published surface shrank (`ReviewState` retired) rather than leaked (invariant #11).
-- [ ] **Payment/payout** N/A (invariants #5, #8, #9).
-- [ ] Refund policy — N/A (invariant #10).
-- [ ] Timezone correct: `updated_at`/`windowClosesAt` UTC instants; deadline rendered `Europe/Tirane` (invariant #6).
-- [ ] Booking codes never in error bodies/logs (invariant #7) — pinned test extended to the new verbs.
-- [ ] Flyway V46 present; CHECKs tested by `ReviewMigrationIT` (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — `JdbcOnlyArchitectureTests` green.
+- [x] **Availability** section filled; concurrency covered by `ReviewUniquenessIT` (invariant #2 untouched).
+- [x] Pool + cutoff rules honored — N/A, no reserve path (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based; the published surface **shrank** (`ReviewState` retired to `domain/`) rather than leaked (invariant #11). `ModularityTests` + `PackageShapeArchitectureTests` + `PublishedSurfacePlacementArchitectureTests` green.
+- [x] **Payment/payout** N/A (invariants #5, #8, #9).
+- [x] Refund policy — N/A (invariant #10).
+- [x] Timezone correct: `updated_at`/`windowClosesAt` UTC instants in `TIMESTAMPTZ`; the deadline renders through `shared/deadline.ts` in `Europe/Tirane` (invariant #6).
+- [x] Booking codes never in error bodies/logs (invariant #7) — the redaction sweep extended to PUT and DELETE.
+- [x] Flyway V46 present; both CHECKs tested by `ReviewMigrationIT` (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract (the one cast in the e2e mock is on a request body the mock itself reads back).
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, deviations, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (R-4 deferred to issue **#820**).
+- [x] **Close-out written in THIS PR** (#819). The `merged via PR #NN` citation is the merging session's to add — this session stops before the merge by request.
+- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`. **NOT RUN, deliberately:** the maintainer asked for the review, the Sonar-gate triage and the merge to happen in a separate session. This box is the follow-up session's to tick.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

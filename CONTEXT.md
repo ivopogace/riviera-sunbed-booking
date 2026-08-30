@@ -212,14 +212,22 @@ model in `docs/architecture/domain-model.md`.
 
 ## Reviews
 
-- **Review** — a tourist's verdict on one delivered stay: a star rating of 1–5, recorded against the
-  booking that stay was made under. **One per booking, ever** — a stay is rated once, and a rating is
-  not revised. It is a *verified-stay* review: only a booking the venue actually checked in can carry
-  one, which is what makes the aggregate resistant to gaming.
+- **Review** — a tourist's verdict on one delivered stay: a star rating of 1–5, an optional bounded
+  comment, and the **display name** it is attributed to, recorded against the booking that stay was
+  made under. **One per booking** — a stay carries at most one, enforced by the database. It is a
+  *verified-stay* review: only a booking the venue actually checked in can carry one, which is what
+  makes the aggregate resistant to gaming.
+- **Display name** — the name a review is shown under, chosen by its author rather than read off
+  their account. It is required on every review written since slice 2 of the reviews epic, defaults
+  to the first name on the booking contact, and is the only identity a review ever carries — the
+  `review` module never learns who the guest is.
 - **Review window** — how long a delivered stay stays reviewable. It opens at **check-in** and closes
-  60 days later, after which the verdict is frozen. A stay outside its window is refused a rating,
-  and the refusal is the server's — the surfaces render from its answer, never from the booking's
-  status.
+  60 days later. Inside it the author may change or remove their own review; outside it a stay is
+  refused a rating and an existing one is frozen. The refusal is the server's — the surfaces render
+  from its answer, never from the booking's status.
+- **Frozen review** — a review whose window has closed: still readable by its author, no longer
+  changeable or removable. Distinct from a **closed window with no review**, where there is nothing
+  to show and nothing left to write; the two say opposite things on screen.
 - **Aggregate rating** — a venue's public score: the **mean of its visible reviews**, carried in
   **tenths** (4.5 stars is 45 — integer arithmetic, never floating point, the money discipline
   applied to the rating) alongside the count it is over. A venue with no reviews reads 0/0 and is

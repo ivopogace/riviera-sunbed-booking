@@ -423,9 +423,11 @@ sits in the outbox.
   **`review`** (#811, ADR-0015), the same sentence-shape as `GuestBookingHistory` above. I answer
   only the *fact* "was this stay checked in, and when", via `review.spi.CompletedStays`, and I
   never expose `BookingStatus` doing it — the presence of a `CompletedStay` **is** the completed
-  fact. The `reviewable` flag on my code-gated read is mine to *carry* (the view contract is mine)
-  but not to *decide*: the verdict comes from `review.api.ReviewEligibility`, so the panel can
-  never be offered for a stay the submit would refuse
+  fact. The **review panel** on my code-gated read is mine to *carry* (the view contract is mine)
+  but not to *decide*: the verdict comes from `review.api.ReviewEligibility`, so a form can never
+  be offered for a stay the submit would refuse. The display-name suggestion beside it is mine —
+  the first name off the contact I already resolve through `customer.api.CustomerLookup`, so
+  `review` never learns the guest's identity to prefill its own form
 - Authorizing which operator may view staff bookings → **`operator`**
 - Deciding whether a confirmation email will be sent, or knowing any address → **`notification`**
   (suppression) and **`customer`** (the contact). Since #390 I *expose* the withheld fact on a
@@ -957,8 +959,8 @@ moved listener, and the V32 suppression list enforced on both vehicles.
 
 ## `review`
 **Job:** Own everything about a tourist's verdict on a delivered stay — the review record
-(one per booking, ever), who may leave one and until when, and the arithmetic that turns a
-venue's reviews into a score. The standing rules:
+(stars, comment and display name; one per booking), who may leave one, change one or remove one
+and until when, and the arithmetic that turns a venue's reviews into a score. The standing rules:
 
 - **I am a leaf** (ADR-0015): `allowedDependencies = { "shared" }`, the `operator`/`customer`
   posture. The two facts I need from elsewhere both arrive by **inversion**, never by an
@@ -974,20 +976,31 @@ venue's reviews into a score. The standing rules:
 - **One review per booking is the database's answer, not mine.** `UNIQUE (booking_id)` plus an
   atomic `INSERT … ON CONFLICT DO NOTHING` whose row count *is* the outcome — the discipline
   invariant #2 mandates for availability, applied to this module's own concurrency point. A lost
-  race is ordinary flow (`AlreadyReviewed`), never an exception.
+  race is ordinary flow (`AlreadyReviewed`), never an exception. Edit and delete answer the same
+  way: they address the row by `booking_id` and report rows-affected, so an edit racing a delete
+  resolves as `NoSuchReview` rather than as a duplicate or a throw. A delete frees the slot, so a
+  stay whose window is still open becomes reviewable again — "one per booking" is a standing
+  constraint, not a one-shot.
+- **The fence order is stated once, as domain policy.** `domain/ReviewGate` is a pure function —
+  unknown stay, never checked in, window closed, already rated, eligible — and both the lifecycle
+  service and the panel read consult it. "Rated and frozen reads as frozen" is therefore true by
+  construction, not by two services being kept in step.
 - **The mean is integer and its rounding is written down where the division happens**
   (`AggregateRating`): `(10 × Σstars + count / 2) / count`, half-up, with zero reviews
   short-circuiting to `0/0` — the invariant-#5 money discipline borrowed for the rating. No
   `double` anywhere in the math, and the mean is taken in the domain rather than in SQL so a
   test can reach it.
 - **My two `api` ports are split by consumer role** (#94): `VenueRatingSummary` answers `venue`'s
-  question about its own aggregate, `ReviewEligibility` answers `booking`'s about one stay.
-  Submitting stays an **internal** `application` port whose only caller is my own REST adapter
-  (the `booking.ViewBooking` precedent), so neither consumer can reach the write surface.
-- **The booking code is the whole authorization** (invariant #7). `POST /api/bookings/{code}/review`
-  is `permitAll` and joins the shared per-code rate-limit budget with the view / cancel / withdraw
-  legs — they are all guesses at the same secret. The code is never logged and never reaches an
-  error body: `instance` is pinned to the constant `/api/bookings`.
+  question about its own aggregate, `ReviewEligibility` answers `booking`'s about one stay — with
+  the sealed `ReviewPanel`, whose variants carry exactly their own data and split a *frozen* review
+  from a window nobody ever wrote in. The whole lifecycle (submit, edit, delete) stays one
+  **internal** `application` port, `ReviewLifecycle`, whose only caller is my own REST adapter (the
+  `booking.ViewBooking` precedent), so neither consumer can reach the write surface.
+- **The booking code is the whole authorization** (invariant #7). All three verbs on
+  `/api/bookings/{code}/review` — `POST`, `PUT`, `DELETE` — are `permitAll` and share one per-code
+  rate-limit budget with the view / cancel / withdraw legs: they are all guesses at the same
+  secret. The code is never logged and never reaches an error body: `instance` is pinned to the
+  constant `/api/bookings`.
 
 **Not My Job:**
 - Writing `venue.rating_tenths` / `reviews_count` → **`venue`** (I compute the values and
@@ -997,15 +1010,17 @@ venue's reviews into a score. The standing rules:
   `BookingStatus`)
 - Displaying a rating, ordering Discover by it, or the "New" treatment → **`venue`** and the
   frontend (my numbers, their surfaces — the display contract was untouched by #811)
-- The guest's identity → **`customer`**. A review is attached to a *booking*, not a person, and
-  slice 1 stores no display name at all
+- The guest's identity → **`customer`**. A review is attached to a *booking*, not a person. The
+  display name I store is a **label the author chose**, handed to me on the write; I never resolve a
+  customer to a name, and the form's prefill suggestion is `booking`'s to derive
 - Login, sessions, CSRF, rate-limit wiring → the platform **edge** (RV-BE-11)
 
-**Shipped** (#811, slice 1 of epic #810): the module, V45 (`review` table + the demo-seed
-supersede), the code-gated submit endpoint, the server-owned `reviewable` flag on `booking`'s
-read model, and `venue`'s first `adapter/in` listener. Comments, display names, "your review",
-ineligibility messaging, the venue-page review list, moderation and the erasure hook are later
-slices of #810 and add columns by forward migration.
+**Shipped** (#811 slice 1, #812 slice 2 of epic #810): the module, V45 (`review` table + the
+demo-seed supersede) and V46 (comment, display name, `updated_at`), the code-gated submit / edit /
+delete endpoints, `ReviewGate` as the one statement of the fence order, the sealed `ReviewPanel` on
+`booking`'s read model (which retired the `reviewable` flag and `ReviewState` from the published
+surface), and `venue`'s first `adapter/in` listener. The venue-page review list, moderation and the
+**erasure hook for the review PII this slice introduced** are later slices of #810.
 
 ## `shared` (not a bounded context)
 

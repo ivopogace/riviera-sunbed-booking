@@ -517,16 +517,19 @@ const CLS = {
           }
         </p>
 
-        <app-review-panel
-          [panel]="b.reviewPanel"
-          [bookingStatus]="b.status"
-          [venueName]="b.venueName"
-          [busy]="submittingReview()"
-          (submitted)="sendReview($event)"
-          (updated)="sendReviewUpdate($event)"
-          (deleted)="sendReviewDelete()"
-          (blocked)="blockReview($event)"
-        />
+        <!-- Guarded: a detail without a panel shows no review section rather than failing to render. -->
+        @if (b.reviewPanel; as reviewPanel) {
+          <app-review-panel
+            [panel]="reviewPanel"
+            [bookingStatus]="b.status"
+            [venueName]="b.venueName"
+            [busy]="submittingReview()"
+            (submitted)="sendReview($event)"
+            (updated)="sendReviewUpdate($event)"
+            (deleted)="sendReviewDelete()"
+            (blocked)="blockReview($event)"
+          />
+        }
 
         <a appTouchTarget routerLink="/" [class]="cls.linkBack">Back to home</a>
       </section>

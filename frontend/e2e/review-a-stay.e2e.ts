@@ -4,13 +4,15 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 
 /**
- * Real-render a11y + behaviour audit of the rate-a-stay journey (#811): a checked-in guest opens
- * their code-gated booking, picks four stars from the radiogroup, submits, and the panel gives way
- * to a confirmation — then the venue surfaces show the moved score, and an unrated venue still reads
- * "New" rather than "0.0". The API is mocked (`page.route`), so the suite is CI-safe with no backend.
+ * Real-render a11y + behaviour audit of the rate-a-stay journey: a checked-in guest opens their
+ * code-gated booking, picks four stars from the radiogroup, writes a comment, submits, and the form
+ * gives way to their own review — then the venue surfaces show the moved score, and an unrated venue
+ * still reads "New" rather than "0.0". The API is mocked (`page.route`), so the suite is CI-safe
+ * with no backend. The lifecycle that follows a first review — change, remove, frozen — is
+ * `review-lifecycle.e2e.ts`.
  *
- * The panel is gated on the server's `reviewable` flag throughout, never on the status: the second
- * test serves a `COMPLETED` booking with the flag false and expects no panel at all.
+ * The section renders on the server's review panel throughout, never on the status: the second test
+ * serves a `COMPLETED` booking whose panel is `WINDOW_CLOSED` and expects no form at all.
  */
 
 const CODE = 'RVWE234567';
@@ -65,7 +67,21 @@ const COMPLETED_BOOKING = {
   payWindowClosed: true,
   cancelReason: null,
   cancellationWindowAtBirth: 'CLOSED',
-  reviewable: true,
+  reviewPanel: {
+    kind: 'ELIGIBLE',
+    windowClosesAt: '2026-07-31T16:00:00Z',
+    nameSuggestion: 'Ana',
+  },
+};
+
+/** The same booking once the review exists — what the server serves on the post-submit re-read. */
+const REVIEWED_BOOKING = {
+  ...COMPLETED_BOOKING,
+  reviewPanel: {
+    kind: 'ALREADY_REVIEWED',
+    review: { stars: 4, comment: 'Great sunbeds, shade all afternoon.', displayName: 'Ana' },
+    windowClosesAt: '2026-07-31T16:00:00Z',
+  },
 };
 
 test.describe('rating a delivered stay', () => {
@@ -75,13 +91,13 @@ test.describe('rating a delivered stay', () => {
     );
   });
 
-  test('a checked-in guest rates their stay and the venue score moves', async ({ page }) => {
-    // Reviewable until the POST lands, then not — what the server does once the review exists.
+  test('a checked-in guest reviews their stay and the venue score moves', async ({ page }) => {
+    // The form until the POST lands, then their own review — what the server serves once it exists.
     let reviewed = false;
     const submitted: unknown[] = [];
 
     await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
-      route.fulfill({ json: { ...COMPLETED_BOOKING, reviewable: !reviewed } }),
+      route.fulfill({ json: reviewed ? REVIEWED_BOOKING : COMPLETED_BOOKING }),
     );
     await page.route(new RegExp(`/api/bookings/${CODE}/review$`), async (route) => {
       submitted.push(route.request().postDataJSON());
@@ -113,13 +129,21 @@ test.describe('rating a delivered stay', () => {
     await expect(stars.nth(3)).toHaveAttribute('aria-checked', 'true');
     await expect(stars.nth(4)).toHaveAttribute('aria-checked', 'false');
 
+    // The display name arrives prefilled from the server's suggestion; the comment is the guest's.
+    await expect(panel.getByTestId('review-display-name')).toHaveValue('Ana');
+    await panel.getByTestId('review-comment').fill('Great sunbeds, shade all afternoon.');
     await page.getByTestId('submit-review').click();
 
-    await expect(page.getByTestId('review-result')).toContainText('Thanks for rating your stay.');
-    // The submit button unmounts with the panel — RV-FE-9: the settled leg parks focus on the result.
+    await expect(page.getByTestId('review-result')).toContainText(
+      'Thanks for reviewing your stay.',
+    );
+    // The submit button unmounts with the form — RV-FE-9: the settled leg parks focus on the result.
     await expect(page.getByTestId('review-result')).toBeFocused();
-    await expect(page.getByTestId('review-panel')).toHaveCount(0);
-    expect(submitted).toEqual([{ stars: 4 }]);
+    await expect(page.getByTestId('submit-review')).toHaveCount(0);
+    await expect(page.getByTestId('own-review-comment')).toContainText('Great sunbeds');
+    expect(submitted).toEqual([
+      { stars: 4, comment: 'Great sunbeds, shade all afternoon.', displayName: 'Ana' },
+    ]);
 
     // The venue surfaces read the recomputed score — "New" gives way to the first real rating.
     await page.goto('/venues/1');
@@ -132,17 +156,19 @@ test.describe('rating a delivered stay', () => {
     await expectNoSeriousAxeViolations(page, 'venue map after the first rating');
   });
 
-  test('a stay the server will not accept a rating for offers no panel', async ({ page }) => {
+  test('a stay the server will not accept a rating for offers no form, and says why', async ({
+    page,
+  }) => {
     await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
-      route.fulfill({ json: { ...COMPLETED_BOOKING, reviewable: false } }),
+      route.fulfill({ json: { ...COMPLETED_BOOKING, reviewPanel: { kind: 'WINDOW_CLOSED' } } }),
     );
 
     await page.goto(`/booking/${CODE}`);
     await expect(page.getByTestId('booking-code')).toContainText(CODE);
 
-    // COMPLETED on screen, and still no panel — the flag decides, the status never does.
-    await expect(page.getByTestId('review-panel')).toHaveCount(0);
+    // COMPLETED on screen, and still no form — the panel decides, the status never does.
     await expect(page.getByTestId('submit-review')).toHaveCount(0);
+    await expect(page.getByTestId('review-window-closed-note')).toContainText('window has closed');
   });
 
   test('a refused rating explains itself and leaves the panel open only when a retry could help', async ({

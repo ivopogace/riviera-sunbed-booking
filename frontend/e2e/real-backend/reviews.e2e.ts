@@ -4,15 +4,16 @@ import { completeDialog } from '../support/booking-dialog';
 import { createVenue, signInOperator, venueName } from './support/operator';
 
 /**
- * Real-backend e2e for the rate-a-stay loop (#811). A real Chromium drives the REAL Spring Boot
+ * Real-backend e2e for the whole review loop. A real Chromium drives the REAL Spring Boot
  * backend against the REAL Flyway-migrated Postgres — nothing is mocked, and the payment leg runs on
  * the in-process `StubPaymentGateway` (`@Profile("!stripe")`), which confirms synchronously, so the
  * booking reaches `CONFIRMED` without Stripe.
  *
  * It proves the one thing the backend ITs and the mocked suite can each only prove in halves: the
  * whole chain, in order — operator lays out a venue and opens same-day sales, a tourist books today,
- * the operator checks the code in, the guest rates five stars, and the venue's public header shows
- * the recomputed score. Every fence in between is the server's.
+ * the operator checks the code in, the guest reviews the stay in words, changes it, removes it, and
+ * the venue's public header follows every one of those through a real recompute. Every fence in
+ * between is the server's.
  *
  * The tourist runs in its OWN browser context: the booking legs are deliberately session-free, and
  * sharing the operator's cookie would test a signed-in operator booking a sunbed instead.
@@ -66,6 +67,19 @@ async function bookToday(tourist: Page, venueId: number): Promise<string> {
   return code;
 }
 
+/** Poll the venue header until the AFTER_COMMIT recompute has landed the expected score. */
+async function expectVenueScore(tourist: Page, venueId: number, score: string): Promise<void> {
+  await expect(async () => {
+    await tourist.goto(`/venues/${venueId}`);
+    const header = tourist.locator('.map-head');
+    await expect(header.getByTestId('new-chip')).toHaveCount(0);
+    await expect(header).toContainText(score);
+    await expect(header).toContainText('1 review');
+    // "1 review" is a substring of "1 reviews", so the singular needs its own assertion.
+    await expect(header).not.toContainText('1 reviews');
+  }).toPass({ timeout: 20_000 });
+}
+
 test.describe('reviews — real backend, real Postgres', () => {
   test('a checked-in guest rates their stay and the venue header shows the score', async ({
     page,
@@ -99,28 +113,43 @@ test.describe('reviews — real backend, real Postgres', () => {
       await page.getByTestId('checkin-submit').click();
       await expect(page.getByTestId('checkin-result')).toContainText('Checked in');
 
-      // Now the panel appears — from the server's flag, on a re-read of the same page.
+      // Now the form appears — from the server's panel, on a re-read of the same page.
       await tourist.reload();
       await expect(tourist.getByTestId('review-panel')).toBeVisible();
       await tourist.getByTestId('star-5').click();
+      await tourist.getByTestId('review-comment').fill('Best sunbeds on the bay.');
       await tourist.getByTestId('submit-review').click();
-      await expect(tourist.getByTestId('review-result')).toContainText('Thanks for rating');
-      await expect(tourist.getByTestId('review-panel')).toHaveCount(0);
+      await expect(tourist.getByTestId('review-result')).toContainText('Thanks for reviewing');
+
+      // The stored review reads back from the server, words and all — no local patch.
+      await expect(tourist.getByTestId('own-review-comment')).toContainText('Best sunbeds');
+      await tourist.reload();
+      await expect(tourist.getByTestId('own-review-comment')).toContainText('Best sunbeds');
+      await expect(tourist.getByTestId('submit-review')).toHaveCount(0);
 
       // The aggregate recompute rides an AFTER_COMMIT event, so the header is polled, not assumed.
+      await expectVenueScore(tourist, venueId, '5.0');
+
+      // An edit rewrites the row and moves the score with it.
+      await tourist.goto(`/booking/${code}`);
+      await tourist.getByTestId('edit-review').click();
+      await expect(tourist.getByTestId('review-comment')).toHaveValue('Best sunbeds on the bay.');
+      await tourist.getByTestId('star-3').click();
+      await tourist.getByTestId('submit-review').click();
+      await expect(tourist.getByTestId('review-result')).toContainText('has been updated');
+      await expectVenueScore(tourist, venueId, '3.0');
+
+      // A delete takes the venue back to "New" — the recompute is a full re-read, never a decrement.
+      await tourist.goto(`/booking/${code}`);
+      await tourist.getByTestId('start-delete-review').click();
+      await tourist.getByTestId('confirm-delete-review').click();
+      await expect(tourist.getByTestId('review-result')).toContainText('has been removed');
+      // The stay is reviewable again: a delete frees the slot while the window is still open.
+      await expect(tourist.getByTestId('submit-review')).toBeVisible();
       await expect(async () => {
         await tourist.goto(`/venues/${venueId}`);
-        const header = tourist.locator('.map-head');
-        await expect(header.getByTestId('new-chip')).toHaveCount(0);
-        await expect(header).toContainText('5.0');
-        await expect(header).toContainText('1 review');
-        // "1 review" is a substring of "1 reviews", so the singular needs its own assertion.
-        await expect(header).not.toContainText('1 reviews');
+        await expect(tourist.locator('.map-head').getByTestId('new-chip')).toBeVisible();
       }).toPass({ timeout: 20_000 });
-
-      // One review per booking, ever — the second attempt is refused by the DB-backed claim.
-      await tourist.goto(`/booking/${code}`);
-      await expect(tourist.getByTestId('review-panel')).toHaveCount(0);
     } finally {
       await touristContext.close();
     }
