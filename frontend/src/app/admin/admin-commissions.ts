@@ -8,6 +8,7 @@ import {
   commissionPercentToBps,
   formatCommissionPercent,
 } from '../shared/commission-rate';
+import { FieldErrorFor } from '../shared/field-error-for';
 import { focusMover } from '../shared/focus-after-render';
 import { AdminCommissionsService, commissionWriteErrorOf } from './admin-commissions.service';
 import { VenueCommissionView } from './admin.model';
@@ -58,7 +59,7 @@ import { TouchTarget } from '../shared/touch-target';
  */
 @Component({
   selector: 'app-admin-commissions',
-  imports: [CardGlass, BusyAction, TouchTarget],
+  imports: [CardGlass, BusyAction, TouchTarget, FieldErrorFor],
   template: `
     <p class="mt-5 max-w-[62ch] text-[15px] text-riv-ink-soft">
       The platform sets each venue's rate — the operator sees it, and cannot change it. A rate is
@@ -144,6 +145,7 @@ import { TouchTarget } from '../shared/touch-target';
                   [disabled]="busy()"
                   (input)="onPercentTyped($event)"
                   class="mt-1 w-full max-w-[160px] rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[15px] text-riv-card-ink"
+                  #percentInput
                 />
                 <p
                   class="mt-2 text-[13px] text-riv-card-ink-soft"
@@ -156,6 +158,17 @@ import { TouchTarget } from '../shared/touch-target';
                     {{ venue.commissionBps }} bps ({{ percent(venue.commissionBps) }}).
                   }
                 </p>
+
+                @if (percentError()) {
+                  <p
+                    class="mt-2 text-[13.5px] font-semibold text-[#b3261e]"
+                    role="alert"
+                    [appFieldErrorFor]="percentInput"
+                    [attr.data-testid]="'admin-commission-percent-error-' + venue.venueId"
+                  >
+                    {{ percentError() }}
+                  </p>
+                }
 
                 <label
                   [attr.for]="'admin-commission-reason-' + venue.venueId"
@@ -206,13 +219,17 @@ import { TouchTarget } from '../shared/touch-target';
                   </button>
                 </div>
 
-                <p
-                  class="mt-2 min-h-[1.25rem] text-[13.5px] font-semibold text-[#b3261e]"
-                  role="alert"
-                  [attr.data-testid]="'admin-commission-error-' + venue.venueId"
-                >
-                  {{ editorError() }}
-                </p>
+                <div class="mt-2 min-h-[1.25rem]">
+                  @if (saveError()) {
+                    <p
+                      class="text-[13.5px] font-semibold text-[#b3261e]"
+                      role="alert"
+                      [attr.data-testid]="'admin-commission-error-' + venue.venueId"
+                    >
+                      {{ saveError() }}
+                    </p>
+                  }
+                </div>
               </div>
             } @else {
               <button
@@ -324,7 +341,15 @@ export class AdminCommissions {
   protected readonly editingId = signal<number | undefined>(undefined);
   protected readonly draftPercent = signal('');
   protected readonly reason = signal('');
-  protected readonly editorError = signal('');
+  /**
+   * The editor's two error kinds, deliberately separate. `percentError` is a verdict about the value
+   * in the rate field — decided here, before anything is sent — so it is rendered as a field error the
+   * input names through `[appFieldErrorFor]`, carrying `aria-invalid` because the admin must retype to
+   * fix it. `saveError` reports a failed write: the typed value is fine, nothing needs retyping, so it
+   * stays an alert-only action banner beside the buttons that produced it.
+   */
+  protected readonly percentError = signal('');
+  protected readonly saveError = signal('');
   protected readonly loading = signal(false);
   protected readonly loadError = signal(false);
   protected readonly busy = signal(false);
@@ -359,7 +384,8 @@ export class AdminCommissions {
     this.editingId.set(venue.venueId);
     this.draftPercent.set(commissionBpsToPercentInput(venue.commissionBps));
     this.reason.set('');
-    this.editorError.set('');
+    this.percentError.set('');
+    this.saveError.set('');
     this.notice.set('');
     this.focusAfterRender(`admin-commission-percent-${venue.venueId}`);
   }
@@ -371,7 +397,8 @@ export class AdminCommissions {
 
   protected onPercentTyped(event: Event): void {
     this.draftPercent.set((event.target as HTMLInputElement).value);
-    this.editorError.set('');
+    this.percentError.set('');
+    this.saveError.set('');
   }
 
   protected onReasonTyped(event: Event): void {
@@ -391,16 +418,17 @@ export class AdminCommissions {
   protected async saveRate(venue: VenueCommissionView): Promise<void> {
     const commissionBps = this.draftBps();
     if (commissionBps === null) {
-      this.editorError.set('Commission must be a percentage between 0% and 100%.');
+      this.percentError.set('Commission must be a percentage between 0% and 100%.');
       return;
     }
     if (commissionBps === venue.commissionBps) {
-      this.editorError.set(`That is already this venue's rate (${venue.commissionBps} bps).`);
+      this.percentError.set(`That is already this venue's rate (${venue.commissionBps} bps).`);
       return;
     }
     const grounds = this.reason().trim();
     this.busy.set(true);
-    this.editorError.set('');
+    this.percentError.set('');
+    this.saveError.set('');
     try {
       const updated = await (grounds === ''
         ? this.service.setCommission(venue.venueId, commissionBps)
@@ -415,7 +443,7 @@ export class AdminCommissions {
       );
       this.focusAfterRender(`admin-commission-edit-${venue.venueId}`);
     } catch (error) {
-      this.editorError.set(messageFor(commissionWriteErrorOf(error)));
+      this.saveError.set(messageFor(commissionWriteErrorOf(error)));
       // Redundant since the busy posture stopped blurring, but kept: the leg must still land.
       this.focusAfterRender(`admin-commission-save-${venue.venueId}`);
     } finally {
@@ -458,7 +486,8 @@ export class AdminCommissions {
     this.editingId.set(undefined);
     this.draftPercent.set('');
     this.reason.set('');
-    this.editorError.set('');
+    this.percentError.set('');
+    this.saveError.set('');
   }
 }
 
