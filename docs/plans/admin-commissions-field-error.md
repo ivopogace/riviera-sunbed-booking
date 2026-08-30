@@ -62,40 +62,40 @@ addendum*). Exists in git and on `origin`.
 > Written at this slice's application boundary: the component's observable DOM/ARIA contract, which
 > is what a screen reader and `aria-describedby` actually consume. There is no backend hexagon here.
 
-- [ ] **AC-1:** Given the rate editor is open on venue 7, when the admin saves a percent outside
+- [x] **AC-1:** Given the rate editor is open on venue 7, when the admin saves a percent outside
       0–100 (`101`), then a `role="alert"` element carrying *"Commission must be a percentage
       between 0% and 100%."* is rendered, and `admin-commission-percent-7` has
       `aria-describedby` equal to that element's `id` and `aria-invalid="true"`.
       *Pinned by:* `admin-commissions.spec.ts` › `describes the rate field by its validation error, and releases it once the value is usable`
 
-- [ ] **AC-2:** Given AC-1's state, when the admin types a usable percent (`11`), then the
+- [x] **AC-2:** Given AC-1's state, when the admin types a usable percent (`11`), then the
       validation element is removed from the DOM and `admin-commission-percent-7` carries **neither**
       `aria-describedby` **nor** `aria-invalid`.
       *Pinned by:* the same test (the release half — an absence-only assertion passes when nothing
       was ever written, so take and release are asserted in one test).
 
-- [ ] **AC-3:** Given the admin saves a percent the venue already has (`15`), then the same
+- [x] **AC-3:** Given the admin saves a percent the venue already has (`15`), then the same
       validation element renders *"That is already this venue's rate (1500 bps)."* and the input is
       marked `aria-invalid="true"` — the admin must retype a different value to proceed, so ARIA21's
       "is the entered value wrong?" test answers yes.
       *Pinned by:* `admin-commissions.spec.ts` › `refuses a change that is already the venue's rate`
 
-- [ ] **AC-4:** Given the write fails (`PUT` rejects), then `admin-commission-error-7` renders
+- [x] **AC-4:** Given the write fails (`PUT` rejects), then `admin-commission-error-7` renders
       *"Nothing was changed…"* with `role="alert"`, and `admin-commission-percent-7` carries
       **neither** `aria-describedby` **nor** `aria-invalid` — a 500 is not a claim about the typed
       value (RV-FE-11 trap #1).
       *Pinned by:* `admin-commissions.spec.ts` › `keeps the old rate and the typed draft when the write fails`
 
-- [ ] **AC-5:** Given no error of either kind, then **no** `role="alert"` element exists inside the
+- [x] **AC-5:** Given no error of either kind, then **no** `role="alert"` element exists inside the
       open editor, and the input carries no `aria-describedby` — i.e. nothing empty is left mounted.
       *Pinned by:* `admin-commissions.spec.ts` › `mounts no error element while the editor is clean`
 
-- [ ] **AC-6:** In a real browser at 360px, given the admin saves `101`, then the rate input's
+- [x] **AC-6:** In a real browser at 360px, given the admin saves `101`, then the rate input's
       `aria-describedby` resolves to a **present, non-empty** element, and the page has no serious
       axe violations; after typing a usable value the attribute is gone.
       *Pinned by:* `frontend/e2e/admin-commissions.e2e.ts` › `an out-of-range rate names the field it blames, and lets go when corrected`
 
-- [ ] **AC-7:** The open editor's axe audit still passes with the error element **showing**, not
+- [x] **AC-7:** The open editor's axe audit still passes with the error element **showing**, not
       only when clean.
       *Pinned by:* `admin-commissions.a11y.spec.ts` › `has no axe violations while a rate editor shows a validation error`
 
@@ -136,13 +136,13 @@ addendum*). Exists in git and on `origin`.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The template ref `#percentInput` is declared in the `@if (editingId() === venue.venueId)` body but consumed in a **nested** `@if (percentError())` — if inner views could not read outer refs, the binding would be `undefined` at runtime and `input.required` would throw | low | high | angular.dev § *Template reference variables → Accessing in a nested template*: *"An inner template can access template variables that the outer template defines."* Verified via the angular-cli MCP against the v22 index. AC-1 fails loudly (thrown required-input error) if this is ever wrong | agent | open |
-| R-2 | `aria-invalid` is **not** reference-counted (the directive's own documented limit). If both errors ever associated with the same input, the first to unmount would clear the mark while the other still shows | low | med | Structural, not a test: `saveError` is deliberately **not** associated. Only one element ever names `admin-commission-percent-*`. AC-4 pins that the write failure leaves the input unmarked | agent | open |
-| R-3 | The `@for` loop means one `#percentInput` ref **per embedded view**. A ref leaking across rows would associate venue 9's error with venue 7's input | low | high | Only one editor is open at a time (`editingId()` is a single value), and refs resolve per embedded view (RV-FE-11 checkbox 2). The e2e (AC-6) reads the attribute off row 7's own input by testid | agent | open |
-| R-4 | Renaming the validation half's testid silently breaks a spec or e2e that queried the merged element | med | low | Enumerated up front: 4 unit assertions (`admin-commissions.spec.ts:226,250,264,335`) and 1 e2e (`admin-commissions.e2e.ts:182`). Lines 264/335/182 are **write** failures and keep `admin-commission-error-7` unchanged; only 226 and 250 move to `admin-commission-percent-error-7`. Full-repo sweep in Phase 0 step 5 | agent | open |
-| R-5 | Moving the reserved space changes the rendered row height and the tab silently starts scrolling sideways at 360px | low | med | The wrapper keeps `mt-2 min-h-[1.25rem]` at the same position, so the closed-error height is byte-identical. The existing e2e `the tab strip … never scrolls sideways at 360px` re-runs unchanged and is the proof | agent | open |
-| R-6 | An `@if`-inserted `role="alert"` announces less reliably than a pre-existing live region in some AT | low | med | Accepted, and it is the repo's settled convention: every other field error in this app is `@if`-gated (`booking-cutoff-field.ts`, `venue-tab.html`, `review-panel.ts`, `admin-privacy.ts`, `booking-dialog.ts`). `[appFieldErrorFor]` exists **because** the association is what a screen-reader user hears on re-focus — the alert is the notification, the association is the durable answer | agent | open |
-| R-7 | Scope creep into the `#b3261e` → token migration or Signal Forms while touching the file | med | low | Both named in *Non-goals*; OQ-2 records the colour decision with its reason | agent | open |
+| R-1 | The template ref `#percentInput` is declared in the `@if (editingId() === venue.venueId)` body but consumed in a **nested** `@if (percentError())` — if inner views could not read outer refs, the binding would be `undefined` at runtime and `input.required` would throw | low | high | angular.dev § *Template reference variables → Accessing in a nested template*: *"An inner template can access template variables that the outer template defines."* Verified via the angular-cli MCP against the v22 index. AC-1 fails loudly (thrown required-input error) if this is ever wrong | agent | **closed** — and the concern was already answered in-tree: `operator/pricing-tab.html` declares `#priceControl` in the row body and consumes it from a nested `@if`. AC-1 and AC-6 both pass |
+| R-2 | `aria-invalid` is **not** reference-counted (the directive's own documented limit). If both errors ever associated with the same input, the first to unmount would clear the mark while the other still shows | low | med | Structural, not a test: `saveError` is deliberately **not** associated. Only one element ever names `admin-commission-percent-*`. AC-4 pins that the write failure leaves the input unmarked | agent | **closed** — `saveError` is not associated; AC-4 passes |
+| R-3 | The `@for` loop means one `#percentInput` ref **per embedded view**. A ref leaking across rows would associate venue 9's error with venue 7's input | low | high | Only one editor is open at a time (`editingId()` is a single value), and refs resolve per embedded view (RV-FE-11 checkbox 2). The e2e (AC-6) reads the attribute off row 7's own input by testid | agent | **closed** — AC-6 passes in a real browser with row 9 present |
+| R-4 | Renaming the validation half's testid silently breaks a spec or e2e that queried the merged element | med | low | Enumerated up front: 4 unit assertions (`admin-commissions.spec.ts:226,250,264,335`) and 1 e2e (`admin-commissions.e2e.ts:182`). Lines 264/335/182 are **write** failures and keep `admin-commission-error-7` unchanged; only 226 and 250 move to `admin-commission-percent-error-7`. Full-repo sweep in Phase 0 step 5 | agent | **closed** — all five call sites moved or kept as enumerated; the whole `admin/` folder (23 spec files, 190 tests) and the 7-test e2e file are green |
+| R-5 | Moving the reserved space changes the rendered row height and the tab silently starts scrolling sideways at 360px | low | med | The wrapper keeps `mt-2 min-h-[1.25rem]` at the same position, so the closed-error height is byte-identical. The existing e2e `the tab strip … never scrolls sideways at 360px` re-runs unchanged and is the proof | agent | **closed** — that test passes unchanged |
+| R-6 | An `@if`-inserted `role="alert"` announces less reliably than a pre-existing live region in some AT | low | med | Accepted, and it is the repo's settled convention: every other field error in this app is `@if`-gated (`booking-cutoff-field.ts`, `venue-tab.html`, `review-panel.ts`, `admin-privacy.ts`, `booking-dialog.ts`). `[appFieldErrorFor]` exists **because** the association is what a screen-reader user hears on re-focus — the alert is the notification, the association is the durable answer | agent | **accepted** — the convention is unchanged, and the association is what carries the guarantee |
+| R-7 | Scope creep into the `#b3261e` → token migration or Signal Forms while touching the file | med | low | Both named in *Non-goals*; OQ-2 records the colour decision with its reason | agent | **closed** — neither was touched; the new element carries the sibling's `text-[#b3261e]` literal and the wrapper the carried-over `min-h-[1.25rem]` |
 
 ## Open questions / Assumptions
 
@@ -469,7 +469,7 @@ any **unconditional** element among those 48 that carries a field verdict, which
 **Files:** Test `frontend/e2e/admin-commissions.e2e.ts` ·
 Test `frontend/src/app/admin/admin-commissions.a11y.spec.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```ts
 // admin-commissions.e2e.ts — AC-6. jsdom cannot prove the reference RESOLVES; axe reports a
@@ -522,14 +522,13 @@ it('has no axe violations while a rate editor shows a validation error', async (
 });
 ```
 
-- [ ] **Step 2: Run them, verify they fail** —
-      `npm test -- --run src/app/admin/admin-commissions.a11y.spec.ts` and
-      `npm run test:e2e:a11y -- admin-commissions` → FAIL on the missing attributes / element.
-      (If Phase 0 is already committed these pass immediately; then run them **against Phase 0's
-      parent** to prove they are real assertions, or accept them as characterization tests and say
-      so in the commit.)
+- [x] **Step 2: Run them, verify they fail** — Phase 0 was already committed, so both were run
+      **against Phase 0's parent** (`252ad2e`'s `admin-commissions.ts` restored over the working
+      tree) rather than accepted as characterization tests. Both failed for the right reason:
+      the a11y spec on `admin-commission-percent-error-7` being `null`, and the e2e on
+      `aria-invalid` resolving to `null` on the rate input. Implementation restored, both green.
 
-- [ ] **Step 3: Fix the doc the change contradicts** — `admin-commissions.a11y.spec.ts`'s TSDoc:
+- [x] **Step 3: Fix the doc the change contradicts** — `admin-commissions.a11y.spec.ts`'s TSDoc:
 
 ```
  * <p>Audited in three states — closed, editor open, and editor showing a validation error. The
@@ -539,35 +538,39 @@ it('has no axe violations while a rate editor shows a validation error', async (
 
 (replacing *"…and an alert region that exists before it ever carries text."*)
 
-- [ ] **Step 4: Run the frontend gate** — `npm run lint`, `npm run format:check`,
-      `npm test -- --run src/app/admin/`, `npm run test:e2e:a11y -- admin-commissions`,
-      plus `node scripts/check-touch-target.mjs --files frontend/src/app/admin/admin-commissions.ts`
-      and `node scripts/check-focus-posture.mjs --files frontend/src/app/admin/admin-commissions.ts`
-      → all green.
+- [x] **Step 4: Run the frontend gate** — all green: `npm run lint` (all files pass),
+      `npm run format:check` (all files Prettier-clean), `npm test -- --watch=false
+      --include="src/app/admin/**/*.spec.ts"` (23 files / **190** tests),
+      `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- admin-commissions`
+      (**7** tests, incl. the unchanged 360px no-sideways-scroll test that is R-5's proof), plus
+      `check-touch-target.mjs`, `check-focus-posture.mjs` and `check-inline-comments.mjs` over the
+      four touched files.
 
-- [ ] **Step 5: Reconcile the file-structure section** —
-      `node scripts/check-plan-file-structure.mjs --diff origin/main` (stage this plan doc first,
-      or the guard short-circuits and passes whatever the section says).
+- [x] **Step 5: Reconcile the file-structure section** —
+      `node scripts/check-plan-file-structure.mjs --diff origin/main` with everything staged →
+      exit 0, no findings. The section needed no edit: the diff touches exactly the five files it
+      lists.
 
-- [ ] **Step 6: Commit** — `git commit -m "Prove the commission field-error association in a real browser (#826)"`
+- [x] **Step 6: Commit** — `git commit -m "Prove the commission field-error association in a real browser (#826)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
 ## Execution status
 
-**Stage pointer:** `implement — Phase 0 done, Phase 1 next`.
+**Stage pointer:** `implement — both phases done; CI gate on draft PR #827`.
 
-**Next action:** Open the draft PR (CI fires on `pull_request` only), then Phase 1 step 1.
-Skill-routing gate re-run at implement entry: loaded `riviera-sdlc`, `riviera-local-debug`,
-`riviera-frontend`, `angular-developer` + angular-cli MCP (`list_projects` → v22/Vitest,
-`get_best_practices`), `riviera-tailwind`, `playwright-cli`, `tdd`.
+**Next action:** Confirm CI green on #827, then **stop**. Review, Sonar and merge gates are
+deliberately NOT run in this session — the PR stays a draft. Skill-routing gate re-run at implement
+entry: loaded `riviera-sdlc`, `riviera-local-debug`, `riviera-frontend`, `angular-developer` +
+angular-cli MCP (`list_projects` → v22/Vitest, `get_best_practices`), `riviera-tailwind`,
+`playwright-cli`, `tdd`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Split the error, associate the field half | ✅ | this commit |
-| 1 — Prove it in a real browser, fix the stale doc | | |
+| 0 — Split the error, associate the field half | ✅ | `de9c68d` |
+| 1 — Prove it in a real browser, fix the stale doc | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -575,7 +578,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | implementation (Phase 0) | The plan's step commands used `npm test -- --run <path>`; the `@angular/build:unit-test` runner rejects `--run`. Real form: `npm test -- --watch=false --include="<glob>"` | **fixed** in the plan's step text |
+| F-2 | implementation (Phase 0) | The take/release test cannot call `typeRate()` twice — it clicks `admin-commission-edit-N`, unmounted while the editor is open | **fixed** — `retypeRate()` extracted, `typeRate()` calls it |
+| F-3 | generalization audit (Phase 0 step 5) | `admin-privacy-error` and `oppw-error` keep the residual *empty live region* shape (an unconditionally mounted `role="alert"`). Both are action/form-level banners, so **outside** #826's field-scoped population and correctly unassociated | **open — follow-up issue proposed at close-out**, alongside the OQ-2 colour sweep |
 
 ---
 
@@ -592,12 +597,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/AC-2:** `npm test -- --run src/app/admin/admin-commissions.spec.ts` → `describes the rate field by its validation error, and releases it once the value is usable` PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** same command → `refuses a change that is already the venue's rate` PASS. Verified at `<sha>`.
-- [ ] **AC-4:** same command → `keeps the old rate and the typed draft when the write fails` PASS. Verified at `<sha>`.
-- [ ] **AC-5:** same command → `mounts no error element while the editor is clean` PASS. Verified at `<sha>`.
-- [ ] **AC-6:** `npm run test:e2e:a11y -- admin-commissions` → `an out-of-range rate names the field it blames, and lets go when corrected` PASS. Verified at `<sha>`.
-- [ ] **AC-7:** `npm test -- --run src/app/admin/admin-commissions.a11y.spec.ts` → `has no axe violations while a rate editor shows a validation error` PASS. Verified at `<sha>`.
+> The unit command is `npm test -- --watch=false --include="<glob>"` — the
+> `@angular/build:unit-test` runner rejects `--run <path>`. The mocked e2e needs
+> `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` in a cloud session (`riviera-local-debug`).
+
+- [x] **AC-1/AC-2:** `--include="src/app/admin/admin-commissions.spec.ts"` → `describes the rate field by its validation error, and releases it once the value is usable` PASS. Verified at `de9c68d`.
+- [x] **AC-3:** same command → `refuses a change that is already the venue's rate` PASS. Verified at `de9c68d`.
+- [x] **AC-4:** same command → `keeps the old rate and the typed draft when the write fails` PASS. Verified at `de9c68d`.
+- [x] **AC-5:** same command → `mounts no error element while the editor is clean` PASS. Verified at `de9c68d`.
+- [x] **AC-6:** `npm run test:e2e:a11y -- admin-commissions` → `an out-of-range rate names the field it blames, and lets go when corrected` PASS (7/7 in the file). Verified at this commit; proven RED first against `252ad2e`.
+- [x] **AC-7:** `--include="src/app/admin/admin-commissions.a11y.spec.ts"` → `has no axe violations while a rate editor shows a validation error` PASS (3/3). Verified at this commit; proven RED first against `252ad2e`.
 
 ## Self-review checklist (before merge / PR)
 
