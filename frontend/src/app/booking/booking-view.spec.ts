@@ -1254,6 +1254,7 @@ describe('BookingView', () => {
       fixture.detectChanges();
       await submit();
       expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain('Thanks');
+      expect(document.activeElement).toBe(host.querySelector('[data-testid="review-result"]'));
 
       stars(host)[4].click();
       fixture.detectChanges();

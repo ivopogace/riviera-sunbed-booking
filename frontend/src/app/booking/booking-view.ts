@@ -90,8 +90,7 @@ const CLS = {
   rowLabel: 'text-riv-card-ink-soft',
   rowValue: 'm-0 text-right font-bold text-riv-card-ink',
   rowAmount: 'm-0 text-right font-bold text-riv-accent-ink',
-  // `empty:hidden` is the twin of the retired `.result:empty` — both regions render an empty <p>.
-  // The outline shows a keyboard guest where a settled cancel/withdrawal parked their focus.
+  // `empty:hidden` twins the retired `.result:empty`; the outline shows where a settled cancel/withdraw/review parked a keyboard guest's focus.
   result:
     'mx-0 mt-4 mb-0 text-[13.5px] leading-[1.5] font-semibold text-riv-accent-ink empty:hidden focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
   confirmQ: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-riv-card-ink',

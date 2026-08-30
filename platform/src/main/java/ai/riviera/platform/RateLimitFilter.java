@@ -210,14 +210,14 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		Instant now = clock.instant();
 		String ip = clientIps.resolve(request);
 
-		// Per-IP: all four endpoints.
+		// Per-IP: all six endpoints.
 		TokenBucket ipBucket = bucketFor(ipBuckets, ip, props.perIp(), now);
 		if (!ipBucket.tryAcquire(now)) {
 			reject(response, ipBucket.retryAfterSeconds(now), ip, "ip");
 			return;
 		}
 
-		// Per-code: only the three code-keyed endpoints carry a code.
+		// Per-code: only the four code-keyed endpoints carry a code.
 		if (target.code() != null) {
 			TokenBucket codeBucket = bucketFor(codeBuckets, target.code(), props.perCode(), now);
 			if (!codeBucket.tryAcquire(now)) {

@@ -346,14 +346,15 @@ APIs; OnPush default (v22 — not set explicitly); Signal Forms per the house st
 > **This section is the session-recovery anchor** — update in the same commit window as
 > the change it records, at every phase boundary and stage transition.
 
-**Stage pointer:** `implement` — Phase 0 done. Implementation runs on the branch above; the
-review gate is deliberately **out of scope for this session** (it runs from a separate session,
-per the maintainer's instruction), so the PR stays a **draft** and is never marked ready.
+**Stage pointer:** `review gate — ran, findings fixed` (2026-08-30). `/code-review` ran in
+full from the review session (5 reviewer agents + confidence scoring, riviera-review-overlay
+banks walked — no Blocker/Major; three sub-bar findings F-3..F-5 fixed below, re-entering at
+Implement per the re-entry rule). Sonar gate: green with **0 new issues / 0 duplication /
+95.1% new-code coverage** — the issue list is clear, the merge bar is met.
 
-**Next action:** none in this session — all six phases are done, CI is green, and the session's
-stop condition is reached. The PR (**#816**) stays a **draft**: the review gate and the
-ready-for-review transition are the next session's, by the maintainer's instruction. Final
-close-out (`merged via PR #NN`, the self-review boxes) belongs to that session's merge step.
+**Next action:** discuss the maintainer's own review findings; then mark PR **#816** ready
+for review and run the merge close-out (`references/pr-gates.md` §3), recording
+`merged via PR #816` here.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -372,6 +373,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | Sonar (PR #816, `java:S6213` ×2) | `Reviews.record(...)` and its adapter override match a **restricted identifier** (`record`) — MAJOR code smell, and this repo's merge bar is 0 new issues, not merely a green gate | **fixed** — renamed to `Reviews.claim(...)`, which also reads better: it is the same atomic-claim primitive as `AvailabilityClaim.claim`, and the row's creation *is* the claim |
 | F-2 | Local run of the real-backend suite (Phase 5) | 6 of the 10 pre-existing real-backend specs fail — `venue-editor`, `venue` ×2, `daily`, `pricing`, `payouts` — all at the shared `createVenue` helper's `Venue details` heading, because `signInOperator` only *submits* the login and those call sites navigate again before the session round-trip settles (`venue-editor.e2e.ts:50-51`) | **not this slice's, reported not fixed** — `git diff origin/main` shows this branch touches none of those files or the helper; the suite is local-only (never CI), so the race was invisible. The new `reviews.e2e.ts` avoids it by awaiting the heading after sign-in. Proposed patch: move that `await expect(...)` inside `createVenue`, ahead of its own `goto` |
+| F-3 | Review gate (`/code-review`, lockstep-drift bank theme; scored 75) | `RateLimitFilter` inline counts left stale by the review-endpoint addition: `// Per-IP: all four endpoints.` (six exist) and `// Per-code: only the three code-keyed endpoints` (four carry a code) | **fixed** — both counts corrected in the review-fix commit |
+| F-4 | Review gate (RV-FE-9, missing proof; scored 75) | The review-panel teardown after a successful submit destroys the focused submit button; behavior is correct (`focusAfterRender('review-result')`) but no spec asserted the focused element, unlike every sibling flow | **fixed** — `toBeFocused()` added to `review-a-stay.e2e.ts` (settled leg) + `document.activeElement` assertion in `booking-view.spec.ts`; both green |
+| F-5 | Review gate (comment compliance; scored 50) | `booking-view.ts` `CLS.result` comment said "both regions" / "cancel/withdrawal" — this slice added a third consumer (`review-result`) | **fixed** — condensed to one line (RV-STYLE-1) covering all three regions |
 
 ---
 

@@ -116,6 +116,8 @@ test.describe('rating a delivered stay', () => {
     await page.getByTestId('submit-review').click();
 
     await expect(page.getByTestId('review-result')).toContainText('Thanks for rating your stay.');
+    // The submit button unmounts with the panel — RV-FE-9: the settled leg parks focus on the result.
+    await expect(page.getByTestId('review-result')).toBeFocused();
     await expect(page.getByTestId('review-panel')).toHaveCount(0);
     expect(submitted).toEqual([{ stars: 4 }]);
 
