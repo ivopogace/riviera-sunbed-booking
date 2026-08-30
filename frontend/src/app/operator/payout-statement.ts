@@ -42,7 +42,7 @@ import { LedgerRow } from './operator-console.model';
         <button
           type="button"
           appTouchTarget
-          class="rounded-full border border-[#0c2a33]/14 bg-[#0c2a33]/5 px-3.5 py-1.5 text-[13px] font-semibold text-[#0a4f5e]"
+          class="rounded-full border border-[#0c2a33]/14 bg-[#0c2a33]/5 px-3.5 py-1.5 text-[13px] font-semibold text-riv-accent-ink"
           data-testid="statement-close"
           (click)="dismissed.emit()"
         >

@@ -230,15 +230,15 @@ a11y specs stand unchanged except for the pinned colour constants (R-5).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** migrate the nine porcelain-pinned console ink sites onto
-`riv-accent-ink`, then re-point `venue-tab.contrast.spec.ts`'s two constants.
+**Next action:** move the three fixed-`#f4f6f7`-fill sites onto
+`text-riv-solid-btn-ink` and re-point their three pinned spec constants.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The token set + its contrast proof | ✅ | |
-| 1 — The nine console ink sites → `--riv-accent-ink` | | |
+| 1 — The nine console ink sites → `--riv-accent-ink` | ✅ | |
 | 2 — The fixed-fill trio → `--riv-solid-btn-ink` | | |
 | 3 — The tint family → the accent tint tokens | | |
 | 4 — Computed-style verification + the e2e pin | | |
