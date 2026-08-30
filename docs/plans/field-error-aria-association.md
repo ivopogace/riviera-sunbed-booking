@@ -363,8 +363,14 @@ own new code; the maintainer was asked and explicitly directed the fix, so it wa
 recorded as **F-1** below. That is the whole of the Sonar work done here; triaging the gate
 proper is still the maintainer's.
 
-**Next action:** re-review the fix round (F-2..F-8) per the re-entry rule, re-check CI + the
-Sonar list on the new head, then merge close-out — including citing `merged via PR #823` here.
+**The fix round cleared the loop on head `f4763b3`:** CI green on all 8 checks, and the Sonar
+list pulled from the API (not read off the badge) — `new_lines` **219**, up from 177, so the
+analysis is of this diff rather than a stale or unanalyzed read; 0 bugs / vulnerabilities / code
+smells / hotspots, 0 duplicated blocks, **98.36%** new-code coverage.
+
+**Next action:** (maintainer) decide whether the fix round wants a further review pass, then merge
+close-out — ticking the PR body's Gates boxes and citing `merged via PR #823` here. The PR is still
+a **DRAFT** by instruction, so it is not marked ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -533,6 +539,8 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`. — the PR is **#823**; the `merged via` line is the maintainer's to write at merge, since the PR is still a draft.
-- [x] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`. Ran at **rung 1** (the `Skill("code-review")` probe succeeded), so `/code-review 823 high`'s five-agent fan-out ran with the overlay layered on top — both halves, no degraded mode. Seven findings (F-2..F-8), all fixed; one reported finding rejected on evidence (the accname double-read). The Sonar list was pulled from the API and verified non-empty-analysis. **Still due:** re-review of the fix round, and re-checking CI + Sonar on the new head.
+- [x] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`. Ran at **rung 1** (the `Skill("code-review")` probe succeeded), so `/code-review 823 high`'s five-agent fan-out ran with the overlay layered on top — both halves, no degraded mode. Seven findings (F-2..F-8), all fixed; one reported finding rejected on evidence (the accname double-read). The Sonar list was pulled from the API and verified non-empty-analysis. **Re-checked on the fix head `f4763b3`:** CI 8/8 green and the Sonar list clear from the API
+(219 new lines analysed, 0 issues, 98.36% coverage). **Still due:** the maintainer's call on whether
+the fix round wants a further review pass.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
