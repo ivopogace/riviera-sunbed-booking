@@ -186,8 +186,9 @@ test('a failed erasure leaves focus on the confirm button, not on the body', asy
  * nothing above it can move and a button-position assertion passes with the reserve deleted. What
  * the reserve actually buys is measured instead — the panel grows by LESS than the banner's own
  * height, because a line of it was already reserved. Without the reserve the two are equal, so this
- * fails; that was verified, not assumed. It is deliberately not "no growth at all": the message
- * wraps to two lines at this width and a fixed reserve cannot promise zero shift responsively.
+ * fails; that was verified, not assumed. The bound is deliberately one-sided: full absorption (no
+ * growth at all) is a strictly better outcome, so the test must not forbid it — the message happens
+ * to wrap to two lines at this width against a one-line reserve, and shortening it must not go red.
  */
 test('the failure banner lands in reserved space, so the panel absorbs part of it', async ({
   page,
@@ -203,7 +204,7 @@ test('the failure banner lands in reserved space, so the panel absorbs part of i
   const confirm = page.getByTestId('admin-privacy-confirm');
   await expect(confirm).toBeVisible();
   // The panel animates in; a box read mid-pop measures the animation, not the layout.
-  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)));
+  await settled(panel);
   const clean = { panel: await panel.boundingBox(), confirm: await confirm.boundingBox() };
 
   await page.route(/\/api\/admin\/erasure$/, (route) => route.fulfill({ status: 500, body: '' }));
@@ -212,7 +213,7 @@ test('the failure banner lands in reserved space, so the panel absorbs part of i
 
   const grew = (await panel.boundingBox())!.height - clean.panel!.height;
   const banner = (await page.getByTestId('admin-privacy-error').boundingBox())!.height;
-  expect(grew).toBeGreaterThan(0);
+  expect(grew).toBeGreaterThanOrEqual(0);
   expect(grew).toBeLessThan(banner);
   expect((await confirm.boundingBox())?.y).toBe(clean.confirm?.y);
 });

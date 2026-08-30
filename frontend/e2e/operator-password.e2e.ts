@@ -51,6 +51,8 @@ test('operator changes its own password from the console, and the new credential
   await page.getByTestId('oppw-submit').click();
   await expect(page.getByTestId('oppw-error')).toContainText('current password is incorrect');
   await expect(page.getByTestId('oppw-notice')).toHaveText('');
+  // RV-FE-9 in a real browser: the failure arm keeps focus off the silent notice above the form.
+  await expect(page.getByTestId('oppw-error')).toBeFocused();
   await expectNoSeriousAxeViolations(page, 'wrong current password');
 
   // Right current password: the confirmation must name the other-devices sign-out.
@@ -61,6 +63,7 @@ test('operator changes its own password from the console, and the new credential
     'Any other devices signed in as you have been signed out',
   );
   await expect(page.getByTestId('oppw-error')).toHaveCount(0);
+  await expect(page.getByTestId('oppw-notice')).toBeFocused();
   await expectNoSeriousAxeViolations(page, 'password changed');
 
   // Both secrets are cleared from the DOM once the change lands.

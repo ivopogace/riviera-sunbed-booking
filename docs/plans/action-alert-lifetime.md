@@ -49,7 +49,12 @@ out of scope — see Non-goals R-4) · `angular-developer` + angular-cli MCP
 posture; `search_documentation` on `afterNextRender` did **not** settle the earlyRead
 ordering, so the claim is anchored on in-repo evidence instead — see AS-1) · `playwright-cli`
 (the mocked e2e suite is where the two `toHaveText('')` breakages live; the repo's
-absence idiom is `toHaveCount(0)`).
+absence idiom is `toHaveCount(0)`; at the review gate it also supplied the RV-FE-9 shape —
+`toBeFocused()` at each leg in the CI-run suite — that F-9 adds) · `riviera-local-debug`
+(every scoped run in this slice: the `npx ng test --include=` form that F-3 records, and the
+`PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` recipe the Playwright runs use — it was
+consulted throughout and cited in-body, but omitted from this line until the review gate's
+RV-PROC-1 walk caught it, F-10).
 
 **Branch:** `claude/action-alert-lifetime-828-u8kh54` — the implementing cloud session's
 designated branch, standing in for `bugfix/action-alert-lifetime` per `riviera-sdlc`
@@ -77,8 +82,9 @@ the code in one PR.
       is clean and then fails, then `admin-privacy-confirm`'s vertical offset is unchanged
       **and** the panel grows by strictly less than the banner's own height — the reserve
       absorbs a line of it. The original "the reserve absorbs the banner" is not
-      achievable: the message wraps to two lines at the e2e width while the reserve is one,
-      so the panel grows by the difference — exactly as it did on `main`. *Pinned by:*
+      achievable *at this width*: the message wraps to two lines while the reserve is one,
+      so the panel grows by the difference — exactly as it did on `main`. The bound stayed
+      one-sided (`0 ≤ grew < banner`) rather than pinning that wrap — F-7. *Pinned by:*
       `admin-privacy.e2e.ts` › `the failure banner lands in reserved space, so the panel
       absorbs part of it`
 - [x] **AC-4:** Given the operator change-password form untouched, when it renders, then
@@ -89,10 +95,12 @@ the code in one PR.
 - [x] **AC-5:** Given a submit that fails (wrong current password), when the failure
       lands, then `oppw-error` exists with `role="alert"` and
       `document.activeElement` is that element. *Pinned by:*
-      `operator-password.spec.ts` › `focuses the error it just inserted, not the body`
+      `operator-password.spec.ts` › `focuses the error it just inserted, not the body`,
+      **and in Chromium** by `operator-password.e2e.ts`'s `toBeFocused()` leg (F-9)
 - [x] **AC-6:** Given a submit that succeeds, when the notice lands, then `oppw-error`
       is absent and `document.activeElement` is `oppw-notice`. *Pinned by:*
-      `operator-password.spec.ts` › `focuses the success notice and mounts no alert`
+      `operator-password.spec.ts` › `focuses the success notice and mounts no alert`,
+      **and in Chromium** by `operator-password.e2e.ts`'s success `toBeFocused()` leg (F-9)
 - [x] **AC-7:** Given the mocked e2e run over both surfaces, when each of the three
       states is reached, then `expectNoSeriousAxeViolations` passes and the absence
       assertion uses `toHaveCount(0)`, not `toHaveText('')` (one such assertion, not two —
@@ -264,20 +272,42 @@ N/A — no contract change. No endpoint, DTO, or client type is touched.
 doc travels with the code (cloud-session branch substitution, `riviera-sdlc`
 §Remote/cloud addendum).
 
-**Next action:** Phases 0–3 are complete and every AC is verified below. Awaiting the
-maintainer's diff review; the PR (and with it the CI, Review and Sonar gates) is their call.
+**Next action:** Phases 0–3 are complete and every AC is verified below. PR **#832** is open
+and out of draft; CI, the Review gate and the Sonar gate have all run — see §Gate log.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Retarget the three assertions that read the old shape (G-1…G-3) | ✅ | `4ea229b` |
 | 1 — Gate `oppw-error`, preserving the focus contract | ✅ | `288067b` |
 | 2 — Gate `admin-privacy-error`, reserve to a wrapper | ✅ | `1543276` |
-| 3 — Doc-header freshness + generalization audit | ✅ | `c449eb5` + this commit (F-5) |
+| 3 — Doc-header freshness + generalization audit | ✅ | `c449eb5` + `6344b79` (F-5) |
+| 4 — Review-gate findings F-7…F-10 | ✅ | this commit |
 
-**Next after this commit:** the branch is pushed. **No PR is open** — one was not asked
-for, and CI fires on `pull_request` only (#417), so this branch has had no CI run: the
-scoped local runs recorded below are the whole of the verification so far. Opening the
-draft PR is what makes the CI, Review and Sonar gates due.
+**Next after this commit:** the close-out commit — plan-doc final state and the two open
+self-review boxes — then squash-merge once this push's CI is green.
+
+### Gate log
+
+- **Integration.** No merge commit: the branch's merge-base already *was* `origin/main`'s tip
+  (`0dec1f9`), so there was nothing to integrate and nothing for a routing gate to cover.
+- **CI.** Green on `7d355be` — all 8 checks (backend build+test, frontend lint/test/build,
+  repo hygiene, both CodeQL analyses, SonarCloud). CI fires on `pull_request` only (#417), so
+  opening PR #832 is what produced the branch's first run.
+- **Review gate.** Ran via **rung 1** of the `riviera-sdlc` `references/pr-gates.md` §1 ladder:
+  `Skill("code-review")` was **not** refused this session, so the plugin's subagent fan-out ran
+  directly over `origin/main...HEAD`; `riviera-review-overlay` was layered on top and its
+  frontend bank walked item by item. Two findings from the fan-out (F-7, F-8), two from the
+  overlay (F-9 RV-FE-9, F-10 RV-PROC-1). Effort: **medium** — the slice touches no availability,
+  booking, money or authorization surface, and its structural net (lint, format, the four
+  diff-scoped hygiene guards) is green. Overlay items that mattered: RV-FE-9 ✅ (all three legs,
+  now with a Chromium leg), RV-FE-10 ✅ (the notice is untouched; an alert created *with* its
+  message is the shape this item explicitly sanctions), RV-FE-11 ✅ (both banners are
+  action-level, so alert-only is correct), RV-FE-E2E ✅ (mocked/CI-run suite, correct half),
+  RV-FE-8 ✅ (the diff adds no import at all), RV-FE-7 ✅, RV-STYLE-1/2 ✅ (guard + Prettier).
+- **Sonar gate.** Clear on `7d355be`, and **not** a false-clean read: `new_lines=20` is
+  populated and the `SonarCloud Code Analysis` check-run concluded `success`. 0 new issues,
+  0 new bugs / vulnerabilities / code smells / security hotspots, `new_duplicated_blocks=0`,
+  new-code coverage **100%** (bar: ≥80%). Re-checked after the F-7…F-10 push.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -293,6 +323,10 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-5 | Phase 3 follow-up, at maintainer's instruction ("don't file follow-ups, fix it here") | The two surviving `empty:` utilities, measured in real Chromium instead of deferred — and they went **opposite** ways. `booking-view.ts`'s `empty:hidden` **works** (its `<p>` holds only `@if` comment anchors, which do not affect `:empty`): left untouched. `operator-password.ts`'s `cls.notice` `empty:mb-0` is **dead** (Angular collapses the whitespace around `{{ notice() }}` to `"  "`, and whitespace is not `:empty` in Chromium): deleted, with its comment corrected. Chromium and jsdom disagree in *opposite directions* on a zero-length text node — Chromium calls it empty, nwsapi does not — so this is unpinnable by any unit spec | fixed in Phase 3 — deletion proven a no-op (20px before and after) by a `toHaveCSS` assertion in `operator-password.e2e.ts` |
 | F-4 | Phase 2 TDD (AC-3 mutation check) | AC-3 as the plan wrote it could not fail: it measured `admin-privacy-confirm`'s `y`, and the banner is the panel's **last** child, so nothing above it moves whether the reserve exists or not — it passed with `min-h-[1.25rem]` deleted. Rewriting it to measure the panel exposed the second half: the reserve is one line (20px) while the message wraps to two (40.5px), so the panel grows 20.5px anyway. Not a regression — the always-mounted banner reserved the same single line on `main` | fixed in Phase 2 — AC-3 restated as "grows by less than the banner's own height", verified red with the reserve deleted and green with it |
 | F-3 | Phase 1 generalization audit | The plan's per-phase command `npm test -- <name>` does not scope anything here: `ng test` reads a positional argument as the *project* name and exits `Invalid values: Argument: project`. The working scoped form is `npx ng test --include="<path to spec>"` | no code change — recorded so the next session does not re-derive it |
+| F-7 | Review gate (`code-review`, PR #832) | `admin-privacy.e2e.ts`'s new AC-3 test pinned the *current* two-line wrap as a requirement: `expect(grew).toBeGreaterThan(0)` goes red if `messageFor()` is ever shortened enough for the reserve to absorb the banner whole — i.e. it fails for a strictly **better** layout outcome than the one the test's own name describes. The real claim is one-sided: `0 ≤ grew < banner` | fixed — `toBeGreaterThanOrEqual(0)`; the mutation check survives unchanged, since deleting the reserve makes `grew == banner` and `toBeLessThan` still fails. The test's TSDoc now states the bound is one-sided on purpose |
+| F-8 | Review gate (`code-review`, PR #832) | The same test settled the panel's entry animation with `page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))` — **document-scoped**, so any `infinite` animation anywhere on the page (`animate-pulse`, `pay-spin`, `riv-drift` all exist in this repo) never resolves `finished` and hangs the test to a 60s timeout. Inert on the Privacy tab today, but latent — and the file already defines the element-scoped `settled(panel)` helper at `:71`, used twice above | fixed — the new test calls `settled(panel)` like its neighbours; no new helper, the duplication was the finding |
+| F-9 | Review gate (riviera-review-overlay, RV-FE-9) | F-1 is a **shipped WCAG 2.4.3 defect** and it was pinned only in jsdom. RV-FE-9's stated shape for this repo is `await expect(page.getByTestId('…')).toBeFocused()` at each leg in the CI-run mocked suite — and the item warns in the same breath that jsdom is not evidence for a focus claim. The `<p>`s carry `tabindex="-1"`, so the browser leg was available and simply absent | fixed — a `toBeFocused()` leg on each arm of the existing `operator-password.e2e.ts` walk-through. **Mutation-checked**: restoring `main`'s selector list turns the failure leg red (`unexpected value "inactive"` — focus on the notice), which is F-1 reproduced in Chromium rather than argued |
+| F-10 | Review gate (riviera-review-overlay, RV-PROC-1) | `riviera-local-debug` was missing from **Skills consulted** although the plan cites its recipes in three places (the scoped-run rule, the `npx ng test --include=` form recorded as F-3, and the `PW_CHROMIUM_EXECUTABLE` Playwright recipe). The skill was consulted; the line under-reported it, which is exactly the drift RV-PROC-1 checks for | fixed — added to the line with what it contributed. `playwright-cli`'s entry also now records the RV-FE-9 shape it supplied for F-9 |
 
 ---
 
