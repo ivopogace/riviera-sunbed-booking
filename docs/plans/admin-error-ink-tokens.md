@@ -272,8 +272,8 @@ the theme-switcher UI displays, and this slice adds no theme.
 
 ## Execution status
 
-**Stage pointer:** `PR #833 ready for review — CI green, Sonar gate cleared`. Every AC
-verifies; the computed-style drift is accounted for property by property.
+**Stage pointer:** `DONE — merged via PR #833`. Every AC verifies; the computed-style drift
+is accounted for property by property; all three gates ran.
 
 **CI + Sonar (head `4b8731a`).** All 8 checks green. The Sonar gate is cleared on its
 *reported list*, not just its conclusion (`references/pr-gates.md` §2): `new_lines` **79**
@@ -283,11 +283,16 @@ with `new_bugs` 0, `new_code_smells` 0, `new_vulnerabilities` 0, `new_duplicated
 `api/hotspots/search` total 0, and the `SonarCloud Code Analysis` check-run `success`.
 Nothing to triage, so nothing re-entered at Implement from this gate.
 
-**Next action:** Green CI + a cleared Sonar new-issue list, then mark PR #833 ready for
-review. The **review gate is deliberately NOT run in this session** — it belongs to the
-session that authored the plan — and neither is the merge. The three follow-up issues are
-open: **#834** (R-3's sub-3:1 boundaries), **#835** (the `#0a4f5e` teal sweep), **#836** (the
-app-wide literal residue).
+**Review gate (head `916e941`).** Ran in the plan-authoring session per
+`references/pr-gates.md` §1 rung 1: `/code-review:code-review 833` — five parallel reviewers
+(conventions, shallow bug scan, git history, prior-PR feedback, code-comment guidance) — with
+`riviera-review-overlay` loaded alongside for the RV-FE / RV-STYLE / RV-PROC bank. One
+finding was raised and scored below the confidence bar (F-4); nothing re-entered at
+Implement. Recorded on the PR as issue comment `5471842303`.
+
+**Next action:** None — the slice is merged. The three follow-up issues stay open: **#834**
+(R-3's sub-3:1 boundaries), **#835** (the `#0a4f5e` teal sweep), **#836** (the app-wide
+literal residue).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -317,6 +322,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-1 | phase 0 contrast maths (R-3, pre-existing) | The erasure panel's **non-text** boundaries are below WCAG 1.4.11's 3:1 on `main` today, and the token migration preserves them byte-identically: the Erase button's `rgba(179,54,43,0.6)` border measures **2.60–2.69:1** over the panel fill (matching the plan's hand-computed ≈2.6:1), and the panel's own `rgba(179,54,43,0.35)` border **1.74–1.76:1** over the card glass. Per R-3 this is recorded, **not** adjusted — changing it is a visual decision outside a token migration. The dark candidates clear the button border (3.44–3.68:1) but not the panel border (2.29–2.32:1). The contrast spec's scope is text pairs (1.4.3) and its header says so. | deferred — **#834** |
 | F-2 | phase 3 full mocked e2e (red locally, before any push) | **R-7 under-counted.** `admin-venue-photos.e2e.ts:127` pinned the outgoing ink by its **resolved** value — `toHaveCSS('color', 'rgb(179, 38, 30)')` — which R-7's hex grep (`grep -rn 'b3261e…'`) structurally cannot see. The assertion's intent (the destructive button carries the error ink) is unchanged; only the expected value moves to `rgb(163, 22, 14)`. Swept for every other resolved form of the five migrated colours across `e2e/` and `src/**/*.spec.ts`: this was the only one. | fixed in the phase-3 commit |
 | F-3 | CI on the phase-2 head `26434ea` (not this PR's) | `BookingControllerIT.sameDayAfterCloseReturns422` and `reserveRefusedAfterOwnerClosesSalesForToday` failed. Both use a `00:01` sales close to mean "sells nothing today", and the run hit them at **00:00:52 Europe/Tirane** — inside the window the helper's own TSDoc names: *"residual risk only within a minute of Tirane midnight"* (`onlineSetAtSalesClose`). This slice touches **zero** backend files, so no fix existed to port and writing one would have widened a frontend styling PR into backend test determinism. Both passed on head `4b8731a` at 00:33 Tirane, confirming the diagnosis rather than assuming it. | not this PR's — confirmed green on the current head |
+| F-4 | review gate (`/code-review:code-review` + overlay, head `916e941`) | The new doc comments cite issue numbers and decision history (`#829`, `OQ-2`, `R-3`, "not an oversight"), which `frontend/.claude/CLAUDE.md` asks TSDoc to avoid — "states the contract, not the changelog". Scored **25** at the confidence gate and filtered: the identical pattern is pre-existing in `tailwind.css` and in the comparable contrast specs (`operator-console`, `semantic-chip`), and PR #782 reviewed it clean, so it is house style for these files rather than a regression this diff introduces. Recorded rather than dropped silently. | filtered — not actioned |
 
 ---
 
@@ -578,8 +584,8 @@ claim is measured, not asserted.
       R-3 materialised and is deferred as **#834**, cited from its risk row and from finding F-1.
 - [x] Follow-up issues opened: **#835** (the `#0a4f5e` teal sweep) and **#836** (phase 0's
       literal residue), plus **#834** (R-3).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN` — PR is **#833**; the
-      `merged via` citation is written by the merging session, not this one.
-- [ ] **The review gate ran in full** — the `references/pr-gates.md` §1 ladder *plus*
-      `riviera-review-overlay`, not the overlay alone. **Deliberately not run here:** this
-      session was scoped to implementation; the review belongs to the session that wrote the plan.
+- [x] **Close-out written in THIS PR**, citing `merged via PR #833` — written by the merging
+      session in this PR's own last commit, so no docs-only follow-up PR is needed.
+- [x] **The review gate ran in full** — `references/pr-gates.md` §1 rung 1
+      (`/code-review:code-review 833`, five parallel reviewers) *plus* `riviera-review-overlay`,
+      not the overlay alone. Result and the one filtered finding: F-4 in the findings register.
