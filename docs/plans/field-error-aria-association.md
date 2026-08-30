@@ -318,18 +318,19 @@ Sites 14, 16 and 17 are the three interesting ones (existing-hint composition, a
 
 ## Execution status
 
-**Stage pointer:** `implement — phases 0–1 done, phase 2 next`. Draft PR **#823** is open
-(phase 0 step 8) and is the branch's only CI vehicle.
+**Stage pointer:** `implement — phases 0–2 done, phase 3 next`. Draft PR **#823** is open
+(phase 0 step 8) and is the branch's only CI vehicle. The phase-1 push ran green on the
+backend, the hygiene guards and the **full** Vitest suite.
 
-**Next action:** Check PR #823's CI run for the phase-1 push, then phase 2 — extend the five
-operator specs with AC-5 (including the two negative `@for`-row assertions) red before the
-template edits.
+**Next action:** Check PR #823's CI run for the phase-2 push, then phase 3 — `admin-privacy`
+(AC-3's composed value), the AC-6 e2e leg, the `frontend/.claude/CLAUDE.md` convention note,
+and OQ-1/OQ-2.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the `FieldErrorFor` directive (red → green) | ✅ | `60fe74b` |
-| 1 — booking surfaces (sites 1–5) | ✅ | `3e4d360` |
-| 2 — operator surfaces (sites 6–13, 15–17) | | |
+| 1 — booking surfaces (sites 1–5) | ✅ | `4512d36` |
+| 2 — operator surfaces (sites 6–13, 15–17) | ✅ | `<phase-2>` |
 | 3 — admin site 14, e2e, convention note, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -413,12 +414,12 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `venue-create-card.{ts,html}` · `venue-tab.{ts,html}` · `booking-cutoff-field.ts` · `pricing-tab.{ts,html}` · `layout-editor.{ts,html}` · Test each `.spec.ts`
 
-- [ ] **Step 1:** Extend the five specs with AC-5, and for `pricing-tab`/`layout-editor` add the **negative** assertion that a non-failing row's control carries no `aria-describedby` — red. This is R-2's mitigation and is the phase's real content.
-- [ ] **Step 2:** Run `npm test -- venue-create-card venue-tab booking-cutoff-field pricing-tab layout-editor` → FAIL.
-- [ ] **Step 3:** Apply the shape. `booking-cutoff-field` is internal-only (no call-site edit). The two `@for` sites declare `#ctl` inside the loop body.
-- [ ] **Step 4:** Run the same five → PASS, then their `*.a11y.spec.ts` and `*.contrast.spec.ts` (contrast must be untouched — no class changed).
-- [ ] **Step 5:** Generalization audit — record the `@for`-scoping question and its answer for both loop sites.
-- [ ] **Step 6: Commit** — `git commit -m "Associate the operator field errors with their controls (#821)"`
+- [x] **Step 1:** Extend the five specs with AC-5, and for `pricing-tab`/`layout-editor` add the **negative** assertion that a non-failing row's control carries no `aria-describedby` — red. This is R-2's mitigation and is the phase's real content.
+- [x] **Step 2:** Run `npm test -- venue-create-card venue-tab booking-cutoff-field pricing-tab layout-editor` → FAIL.
+- [x] **Step 3:** Apply the shape. `booking-cutoff-field` is internal-only (no call-site edit). The two `@for` sites declare `#ctl` inside the loop body.
+- [x] **Step 4:** Run the same five → PASS, then their `*.a11y.spec.ts` and `*.contrast.spec.ts` (contrast must be untouched — no class changed).
+- [x] **Step 5:** Generalization audit — record the `@for`-scoping question and its answer for both loop sites.
+- [x] **Step 6: Commit** — `git commit -m "Associate the operator field errors with their controls (#821)"`
 - [ ] **Step 7:** Update execution status; check that push's CI run.
 
 ---
@@ -444,6 +445,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-30 | phase 0 (re-run of the plan's command) | Same population, re-enumerated on the implement branch to confirm the inventory before applying it | (the command in the row below) | **65** `role="alert"` attribute occurrences (69 grep lines − 4 that are prose in TSDoc/HTML comments), not the 39 the row below records — the plan's total was undercounted. The **17 field-scoped sites are unchanged**: every one was confirmed present at its stated `file:line`. The delta is entirely in the excluded class, which is 48, not 22 | Scope unchanged. Two borderline exclusions re-checked and left out on their merits: `layout-editor.html:205` (`layout-row-name-error`, "two rows share a name" — a cross-row constraint naming no single control) and `admin-commissions.ts:211` (`admin-commission-error-*` — a save-action error rendered after the row's buttons, mixing validation and write-failure copy, same class as `venue-create-error`). Both are candidates for the form-level-summary follow-up |
+| 2026-08-30 | phase 2 (the `@for`-scoping question, R-2) | The two loop-scoped error sites — `pricing-tab` (`pricing-error-{label}`) and `layout-editor` (`layout-row-name-write-error`) — asked whether one template ref inside a `@for` body resolves per iteration or collapses to the last row | Declared `#priceControl` / `#rowNameControl` **inside** the `@for` body, then asserted the negative | 2 sites; both scope per row | **Answered: per iteration.** Each `@for` iteration is its own embedded view, so the ref resolves within that view only. Pinned positively *and* negatively — `pricing-tab.spec.ts` › `describes only the failing row's price input` and `layout-editor.spec.ts` › `describes only the failing row's name input` each assert the failing row is described **and** that a sibling row carries neither `aria-describedby` nor `aria-invalid`. Both tests were confirmed to fail with the templates reverted, so neither passes vacuously |
 | 2026-08-30 | plan (pre-phase-0 inventory) | Every element in `frontend/src/app` carrying `role="alert"` — the mechanism, rather than "spans with a `*-error` testid", which is how #821 described it and which **misses 11 of the 17** (sites 3–13: no error element in `booking-dialog`, `venue-create-card`, `venue-tab`'s three Signal-Forms fields, or `booking-cutoff-field` carries a testid at all) | `grep -rn 'role="alert"' frontend/src/app --include=*.ts --include=*.html \| grep -v '\.spec\.'` | 39 total → classified: 17 field-scoped (in scope), 22 form/page-level or action-scoped (Non-goals) | Fix all 17; each exclusion recorded in Non-goals with its reason |
 
 ---

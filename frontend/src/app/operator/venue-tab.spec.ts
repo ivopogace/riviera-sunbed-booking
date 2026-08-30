@@ -372,6 +372,39 @@ describe('VenueTab (#177)', () => {
     expect(host.querySelector('[data-testid="venue-distance-error"]')).toBeNull();
   });
 
+  it('describes each required details field by its own error once touched', () => {
+    render();
+
+    for (const testId of ['venue-name', 'venue-beach', 'venue-region']) {
+      setValue(testId, '');
+      byId(testId).dispatchEvent(new Event('blur'));
+    }
+    fixture.detectChanges();
+
+    for (const testId of ['venue-name', 'venue-beach', 'venue-region']) {
+      const control = byId(testId);
+      const errorId = control.getAttribute('aria-describedby');
+      expect(errorId).toBeTruthy();
+      expect(control.getAttribute('aria-invalid')).toBe('true');
+      expect(host.querySelector(`#${errorId}`)?.getAttribute('role')).toBe('alert');
+    }
+  });
+
+  it('describes the distance field by its error, and releases it once the value is valid', async () => {
+    render();
+
+    setValue('venue-distance', '4.5');
+    await save();
+
+    const control = byId('venue-distance');
+    expect(control.getAttribute('aria-describedby')).toBe(byId('venue-distance-error').id);
+    expect(control.getAttribute('aria-invalid')).toBe('true');
+
+    setValue('venue-distance', '20');
+    expect(byId('venue-distance').hasAttribute('aria-describedby')).toBe(false);
+    expect(byId('venue-distance').hasAttribute('aria-invalid')).toBe(false);
+  });
+
   it('shows a load-error message (not a blank form) when the profile read fails', () => {
     configure();
     http

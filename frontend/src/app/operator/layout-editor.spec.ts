@@ -813,6 +813,26 @@ describe('LayoutEditor (#172)', () => {
     await fixture.whenStable();
   });
 
+  it('describes only the failing row\u2019s name input', async () => {
+    renderSaved();
+
+    setRowName(1, 'A');
+    rowNameSaves()[1].click();
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.endsWith('/api/venues/1/rows/B/name'))
+      .flush({ code: 'ROW_NAME_TAKEN' }, { status: 409, statusText: 'Conflict' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const failing = rowNameInputs()[1];
+    expect(failing.getAttribute('aria-describedby')).toBe(byId('layout-row-name-write-error').id);
+    expect(failing.getAttribute('aria-invalid')).toBe('true');
+
+    // R-2: the ref is declared inside the @for body, so the sibling row must be untouched.
+    expect(rowNameInputs()[0].hasAttribute('aria-describedby')).toBe(false);
+    expect(rowNameInputs()[0].hasAttribute('aria-invalid')).toBe(false);
+  });
+
   it('surfaces a taken row name against the row that asked, keeping the draft (#726)', async () => {
     renderSaved();
 

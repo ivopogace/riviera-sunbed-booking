@@ -17,6 +17,7 @@ import { OperatorAuth } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmPanel } from '../shared/confirm-panel';
+import { FieldErrorFor } from '../shared/field-error-for';
 import { focusMover } from '../shared/focus-after-render';
 import { formatMoney, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
@@ -119,6 +120,7 @@ const SWATCH_CLASS: Record<CellState, string> = {
     BeachMapCanvas,
     BeachMapRowDef,
     ConfirmPanel,
+    FieldErrorFor,
     SetEditor,
     MapSkeletonGrid,
     StaleWriteBanner,

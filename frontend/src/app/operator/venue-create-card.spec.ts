@@ -152,6 +152,23 @@ describe('VenueCreateCard (#278)', () => {
     expect(submitButton().disabled).toBe(true);
   });
 
+  it('describes each field by its own error once touched', () => {
+    for (const testId of ['venue-create-name', 'venue-create-beach', 'venue-create-region']) {
+      const control = host().querySelector<HTMLInputElement>(`[data-testid="${testId}"]`)!;
+      control.dispatchEvent(new Event('focus'));
+      control.dispatchEvent(new Event('blur'));
+    }
+    fixture.detectChanges();
+
+    for (const testId of ['venue-create-name', 'venue-create-beach', 'venue-create-region']) {
+      const control = host().querySelector<HTMLInputElement>(`[data-testid="${testId}"]`)!;
+      const errorId = control.getAttribute('aria-describedby');
+      expect(errorId).toBeTruthy();
+      expect(control.getAttribute('aria-invalid')).toBe('true');
+      expect(host().querySelector(`#${errorId}`)?.getAttribute('role')).toBe('alert');
+    }
+  });
+
   it('creates the venue, resets the owned list, then navigates to the new console beach-map tab', async () => {
     const ownedVenues = TestBed.inject(OwnedVenues);
     const reset = vi.spyOn(ownedVenues, 'reset');

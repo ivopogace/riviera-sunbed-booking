@@ -250,6 +250,24 @@ describe('PricingTab (#174)', () => {
     );
   });
 
+  it('describes only the failing row\u2019s price input', async () => {
+    render();
+    editRow('A', '99');
+    http
+      .expectOne((r) => r.method === 'PUT' && r.url.includes('/api/venues/1/rows/A/price'))
+      .flush({ code: 'NOT_VENUE_OWNER' }, { status: 403, statusText: 'Forbidden' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const failingId = input('A').getAttribute('aria-describedby');
+    expect(failingId).toBe(byId('pricing-error-A').id);
+    expect(input('A').getAttribute('aria-invalid')).toBe('true');
+
+    // R-2: the ref is declared inside the @for body, so a sibling row must be untouched.
+    expect(input('B').hasAttribute('aria-describedby')).toBe(false);
+    expect(input('B').hasAttribute('aria-invalid')).toBe(false);
+  });
+
   it('reverts the row, shows the stale banner, and Reload re-loads on a 409 STALE_WRITE', async () => {
     // A stale-write conflict reverts the row's value and shows the recover-and-reload banner, not a per-row error.
     render(SEED, 3); // loaded at set_version 3

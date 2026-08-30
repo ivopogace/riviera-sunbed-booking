@@ -162,6 +162,7 @@
                     [attr.aria-label]="'Row ' + rowCode(y) + ' name'"
                     data-testid="layout-row-name"
                     class="w-full min-w-0 rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[14px] text-riv-card-ink"
+                    #rowNameControl
                   />
                 </label>
                 @if (storedRowName(y); as stored) {
@@ -189,6 +190,7 @@
               @if (rowNameError(); as failure) {
                 @if (failure.y === y) {
                   <p
+                    [appFieldErrorFor]="rowNameControl"
                     class="ml-8 text-[12.5px] font-semibold text-[#a3160e]"
                     role="alert"
                     data-testid="layout-row-name-write-error"
