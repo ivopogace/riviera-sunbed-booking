@@ -34,9 +34,14 @@ export async function signInOperator(
  * Create a venue on the operator home's create state:
  * open `/operator?create=1` (deterministic whatever the operator already owns), fill the
  * "Venue details" form (defaults stand for commission/currency/cutoff) and submit; returns the real
- * venue id parsed from the beach-map console URL the app navigates into. Must be signed in first.
+ * venue id parsed from the beach-map console URL the app navigates into. Must be signed in first —
+ * and the caller must have navigated to `/operator?create=1` before signing in, so the app's
+ * post-login redirect lands back on that create state (the reference shape: `page.goto`, then
+ * `signInOperator`, then call this).
  */
 export async function createVenue(page: Page, name: string): Promise<number> {
+  // signInOperator only submits: awaiting the landing heading HERE, before navigating again, is what settles the session round-trip.
+  await expect(page.getByRole('heading', { name: 'Venue details' })).toBeVisible();
   await page.goto('/operator?create=1');
   await expect(page.getByRole('heading', { name: 'Venue details' })).toBeVisible();
   await page.getByLabel('Name', { exact: true }).fill(name);
