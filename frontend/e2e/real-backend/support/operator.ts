@@ -40,9 +40,7 @@ export async function signInOperator(
  * `signInOperator`, then call this).
  */
 export async function createVenue(page: Page, name: string): Promise<number> {
-  // signInOperator only submits: awaiting the landing heading HERE, before navigating again, is what settles the session round-trip.
-  await expect(page.getByRole('heading', { name: 'Venue details' })).toBeVisible();
-  await page.goto('/operator?create=1');
+  // signInOperator only submits: awaiting the landing heading is what settles the session round-trip.
   await expect(page.getByRole('heading', { name: 'Venue details' })).toBeVisible();
   await page.getByLabel('Name', { exact: true }).fill(name);
   await page.getByLabel('Beach', { exact: true }).fill('Ksamil');
