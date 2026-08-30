@@ -40,11 +40,16 @@ describe('ReviewPanel', () => {
     find(testId: string): HTMLElement | null;
   }
 
-  function render(panel: ReviewPanelState, status: BookingStatus = 'COMPLETED'): Rendered {
+  function render(
+    panel: ReviewPanelState,
+    status: BookingStatus = 'COMPLETED',
+    busy = false,
+  ): Rendered {
     const fixture = TestBed.createComponent(ReviewPanel);
     fixture.componentRef.setInput('panel', panel);
     fixture.componentRef.setInput('bookingStatus', status);
     fixture.componentRef.setInput('venueName', 'Miramar Beach Club');
+    fixture.componentRef.setInput('busy', busy);
     const submitted: SubmitReviewRequest[] = [];
     const updated: SubmitReviewRequest[] = [];
     const deleted: number[] = [];
@@ -221,6 +226,47 @@ describe('ReviewPanel', () => {
       expect(r.deleted).toEqual([]);
       expect(r.find('confirm-delete-question')).toBeNull();
       expect(r.find('start-delete-review')).not.toBeNull();
+    });
+
+    it('moves focus into the form when the edit opens, and back when it is cancelled', async () => {
+      const r = render(ALREADY_REVIEWED);
+
+      r.click('edit-review');
+      await r.fixture.whenStable();
+      expect(document.activeElement).toBe(r.find('review-comment'));
+
+      r.click('cancel-edit-review');
+      await r.fixture.whenStable();
+      expect(document.activeElement).toBe(r.find('edit-review'));
+    });
+
+    it('will not take back a removal that is already in flight', () => {
+      const r = render(ALREADY_REVIEWED, 'COMPLETED', true);
+
+      r.click('start-delete-review');
+      r.click('keep-review');
+
+      expect(r.find('confirm-delete-question')).not.toBeNull();
+    });
+
+    it('will not cancel an edit whose save is already in flight', () => {
+      const r = render(ALREADY_REVIEWED, 'COMPLETED', true);
+
+      r.click('edit-review');
+      r.click('cancel-edit-review');
+
+      expect(r.find('review-comment')).not.toBeNull();
+    });
+
+    it('settling a landed write closes the edit form without a new panel', () => {
+      const r = render(ALREADY_REVIEWED);
+
+      r.click('edit-review');
+      r.fixture.componentInstance.settle();
+      r.fixture.detectChanges();
+
+      expect(r.find('review-comment')).toBeNull();
+      expect(r.find('own-review')).not.toBeNull();
     });
   });
 

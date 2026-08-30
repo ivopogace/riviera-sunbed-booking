@@ -71,6 +71,14 @@ pattern the slice-1 spec established)
 (`get_best_practices`, `search_documentation` — which is what caught that `[formField]` refuses a
 hand-written `maxlength`, phase 4) · `playwright-cli` + `riviera-docs-freshness` (phase 5).
 
+**Skills re-consulted at the Review stage** (the routing gate again, per area the fix round touched):
+`riviera-sdlc` (`references/pr-gates.md`, the three gates) · `riviera-review-overlay` (the RV banks,
+layered onto `/code-review:code-review`) · `riviera-local-debug` (before the session's first
+`gradle`/`npm`, and for the live-stack bring-up) · `riviera-java-conventions` (§6a named literals for
+the Sonar round, §6d Javadoc-as-contract for F-6/F-7) · `riviera-frontend` (placement for the
+`booking/` and e2e edits — no file moved) · `riviera-docs-freshness` (the counting sweep behind F-8
+and the ADR-0015 patch)
+
 **Branch:** `claude/sdlc-812-plan-review-k93ud6` — the session's designated remote branch
 stands in for `feature/reviews-s2-comment-lifecycle` (cloud-session substitution per
 `riviera-sdlc` remote addendum).
@@ -381,16 +389,24 @@ with `cls.btnOutlineDanger`; every new control carries `appTouchTarget`.
 
 ## Execution status
 
-**Stage pointer:** `ready for review — review gate NOT yet run, owned by the follow-up session`
+**Stage pointer:** `merged via PR #819`
 
-**Next action:** the review session picks PR #819 up at the **Review gate** — `/code-review`
-per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 with
-`riviera-review-overlay` layered on, then the **Sonar-gate triage** (finding F-2: the gate
-passes but four new issues stand against this repo's stricter 0-new-issues bar), then merge
-and the close-out citation. **None of those three has been run here**, by request.
+**Review gate:** run in the follow-up session — `/code-review:code-review` (plugin skill, ladder
+rung 1: the `Skill` probe succeeded, so no degraded fallback was needed) at **high effort**, with
+`riviera-review-overlay` layered on for the RV-BE / RV-FE / RV-CT banks. Seven parallel reviewers:
+the plugin's five (CLAUDE.md adherence, shallow bug scan, git-history regression, prior-PR comment
+carry-over, code-comment compliance) plus one overlay walk per side. Every finding is in the
+register below.
 
-`origin/main` was re-fetched at close-out and the branch is **0 commits behind**, so the
-"merge the latest main" step was a no-op — nothing to integrate, no conflict to resolve.
+**Sonar gate:** the four reported new issues (all `java:S1192`) are cleared in code — the gate was
+green throughout, which is why the *list* was the check (`pr-gates.md` §2).
+
+**Beyond the gates:** the real-backend suite the build session could not execute was run against a
+live stack (host Postgres 16 + `bootRun`, per `scripts/e2e-local-stack.sh`). It **failed**, and the
+failure was real — F-5 below. With that fixed the whole journey passes on the true loop:
+ineligible → check-in → submit with comment → read back → aggregate `5.0` → edit → `3.0` → delete →
+"New". That closes the build session's honest gap, and answers F-1: phase 4 now has a green run of
+the whole tree behind it, locally and in CI.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -399,7 +415,8 @@ and the close-out citation. **None of those three has been run here**, by reques
 | 2 — edit + delete on the lifecycle port + edge wiring | ✅ | `de46936` |
 | 3 — sealed panel read + name suggestion | ✅ | `eaf57d7` |
 | 4 — frontend panel (form / own / frozen / messaging) | ✅ | `9833e02` |
-| 5 — e2e journeys + docs freshness + close-out | ✅ | `d758bc5` + this close-out commit |
+| 5 — e2e journeys + docs freshness + close-out | ✅ | `d758bc5` + the close-out commit |
+| 6 — review-gate + Sonar-gate fix round | ✅ | the fix-round commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -411,15 +428,28 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | D-2 | phase 1 relocates `ReviewState` to `domain/` | phase 1 leaves it in `vocabulary/`; phase 3 moves it | while `ReviewEligibility.stateFor` still returns it, a `domain/` type would be an unpublished return on a published port — the plan's own phase-3 file list already places the move there |
 | D-3 | `final class ReviewText` (package-private sketch) | `public final class ReviewText` | `adapter/in` validates against the bounds, and it is a different package — the `Stars` precedent |
 | D-4 | `vocabulary/OwnReview` lands in phase 3 | landed in phase 0 | `Reviews.findFor` returns it, and the plan allows "moved from phase 0 if not yet public" |
-| D-5 | the view renders `<app-review-panel>` unconditionally | wrapped in `@if (b.reviewPanel; as …)` | found in phase 5: the repo's e2e `BookingDetail` fixtures are deliberately partial, and a template that dereferences a missing field takes the **whole** booking view down with it — cancel button included. The guard degrades to "no review section", exactly what the retired `reviewable` flag did when absent |
-| D-6 | the textarea carries a `maxlength` attribute | the schema's `maxLength` validator carries it | Angular v22 refuses `[attr.maxlength]` on a `[formField]` node (NG8022) — the directive syncs the attribute from the schema itself, which is the same bound stated once |
+| D-5 | the view renders `<app-review-panel>` unconditionally | wrapped in `@if (b.reviewPanel; as …)` in phase 5, **reverted at the review gate** — the plan was right | the guard was added because the repo's e2e `BookingDetail` fixtures are partial and a missing field took the whole booking view down. But the field is not optional: `ViewBookingService.toDetail` runs only for a row `findByCode` already returned, and `ReviewEligibility` answers `NoSuchStay` only when `existsByCode` is false on that same table — so the wire always carries a panel, and the TS type says so. The guard contradicted its own type and would have hidden a real regression; the gap was in the untyped e2e fixtures, and that is where it is now fixed (F-10) |
+| D-6 | the textarea carries a `maxlength` attribute | the schema's `maxLength` validator carries it | Angular v22 refuses `[attr.maxlength]` on a `[formField]` node (NG8022) — the directive syncs the attribute from the schema itself, which is the same bound stated once. **Verified at the review gate**: `FormField.elementAcceptsNativeProperty` returns true for `maxLength` on a textual element, and the rendered `<textarea>`/`<input>` do carry `maxlength="1000"` / `maxlength="60"` |
+| D-7 | (not planned) | `ReviewPanel.settle()`, called by the booking view when a write lands | review-gate finding F-4: the panel's edit / confirm mode was reset only by a new panel object arriving, and the booking view deliberately lets a post-write re-read fail without flipping the page. A landed write now ends the mode itself |
 
 **Findings register**
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-2 | Sonar (PR #819, reported on the phase-3 head) | **Quality Gate passed** — 93.2% coverage on new code, 0.0% duplication, 0 security hotspots — but **4 new issues**, and this repo's merge bar is stricter than the gate (0 new issues). Not triaged here: the maintainer asked for the Sonar-gate triage to run in the review session | **open — owned by the review session** |
-| F-1 | CI (process) | Phase 4's own CI run was **cancelled by the concurrency group** when phase 5 was pushed ~20 minutes later, so that phase never got its own green run — a miss against the riviera-sdlc CI-gate rule ("check that push's run before starting the next phase"). Phases 0-3 were each checked (phase 3's run was green on all eight checks), and phase 5's run covers the cumulative tree including phase 4. Locally, phase 4 was proven by the full Vitest suite (2059 tests) and the full mocked e2e suite (306 tests), not a scoped subset | closed — noted rather than fixed; the cumulative run is the evidence |
+| F-2 | Sonar (PR #819) | **Quality Gate passed** — 94.4% coverage on new code, 0.0% duplication, 0 hotspots — but **4 new issues** (`java:S1192`: the `/api/bookings/*/review` matcher ×4 in `SecurityConfig`, and `booking`/`stars`/`comment` as repeated bind-parameter names in `JdbcReviews`), and this repo's merge bar is 0 | **closed** — named per the file's own convention: `BOOKING_REVIEW_PATH`, and `PARAM_*` / `COL_*` on the `JdbcCustomerDirectory` precedent (bind parameter and column kept apart: they coincide by name, not by rule) |
+| F-3 | Review gate (bug scan) | `keep-review` and `cancel-edit-review` carried no `[appBusy]`, unlike **every** other confirm pair in the repo (`keep-booking`, `keep-request`). `appBusy` is what consumes the click, so tapping "Keep my review" while the DELETE it confirmed was in flight dismissed the confirmation and then announced the removal anyway | **closed** — both buttons busy-guarded; pinned by two `review-panel.spec.ts` cases that fail without it |
+| F-4 | Review gate (bug scan) | `editing` / `confirmingDelete` reset only when a new panel object arrived, so a write that succeeded while its re-read failed left a live "Yes, remove it" under a "review removed" line — `confirmCancel` / `confirmWithdraw` reset their own flags instead of relying on the reload | **closed** — D-7's `settle()`; pinned by `booking-view.spec.ts` "closes the delete confirmation even when the re-read after it fails" |
+| F-5 | Review gate (ran the unproven suite) | `frontend/e2e/real-backend/reviews.e2e.ts` asserted `review-panel` had **count 0** before check-in — slice-1 behaviour that **this slice's own AC-6 replaced** with the "once the staff have checked you in" note. The spec was authored, never executed, so nothing caught it | **closed** — asserts the ineligibility note and the absence of a form; the whole spec now passes against a live stack |
+| F-6 | Review gate (comment compliance) | `OwnReview`'s Javadoc said "every review written since carries both" — false for `comment`, which stays optional (`ReviewControllerTest.aBlankCommentReachesTheUseCaseAsNoComment` records exactly such a row). A published `vocabulary` type telling a consumer a nullable field is non-null | **closed** — the contract now separates the required display name from the optional comment |
+| F-7 | Review gate (comment compliance) | `ReviewUniquenessIT` and `ReviewMigrationIT` kept "one review per booking, **ever**", which this slice falsified (a delete frees the slot) and corrected in `package-info.java` and `RESPONSIBILITIES.md` — but not in the two test files it was editing at the same time | **closed** — both read "at most one review per booking" |
+| F-8 | Review gate (counting sweep) | `RateLimitFilter` updated its "six → eight booking endpoints" counts in three places and missed a fourth: "the **four** code-keyed endpoints", now six. `RateLimitProperties`' own "four"/"three" were already stale before this slice and are wrong again after it | **closed** — both files carry eight / six. The `RateLimitProperties` half is a pre-existing drift the counting sweep caught, fixed here rather than left behind |
+| F-9 | Review gate (RV-BE-10) | Three refusal `code` + `detail` pairs are now emitted from **two** switches (submit and amend) as hand-typed twins — the drift class #644 closed with `CurrentPasswordDetailTwinTest`, reopened without its guard | **closed** — hoisted to `noSuchBooking()` / `notCheckedIn()` / `windowClosed()`. Both switches call one method, so the pair cannot drift rather than being watched for drift |
+| F-10 | Review gate (D-5 adjudication) | The `@if (b.reviewPanel; as …)` guard wrapped a field the wire cannot omit, contradicting the non-optional TS type and masking any regression that did drop it. The real gap was the untyped e2e fixtures | **closed** — guard removed; all six booking-detail fixtures (`find-a-booking`, `request-to-book`, `same-day-booking`, `booking-flow`, `suppressed-confirmation`, `touch-targets-tourist`) carry `reviewPanel`, so those journeys now exercise the shape the server actually sends. The last three were found the honest way — by the mocked suite going red on the removal, not by grep |
+| F-11 | Review gate (RV-FE) | `writeReview`'s error branch never re-read the booking, unlike `confirmCancel` / `confirmWithdraw` — so a `NO_SUCH_REVIEW` left the confirm dialog offering to delete a review the server had just said was gone | **closed** — a *settled* refusal now re-reads (a blanket re-read would discard a guest's unsaved edit on a transient 5xx). The refusal codes and their copy are one map, so the two can't name different codes |
+| F-12 | Review gate (RV-FE-9) | `startEdit` / `cancelEdit` move focus correctly, but nothing asserted either — and the mechanical focus guard is satisfied once *one* flip site moves focus, so it silently exempts the other. Delete got all three legs pinned; edit got none | **closed** — one spec pins both legs |
+| F-13 | Review gate (a11y) | The two new field errors are `role="alert"` siblings with no `aria-describedby` from their field, so a screen-reader user tabbing back later gets no restatement | **deferred — follow-up #821.** Repo-wide: all 24 inline field errors do it this way and none associates. Fixing two of them here would be a one-off inconsistency, not an improvement |
+| F-14 | Review gate (comment compliance) | `SubmitReviewRequest`'s TSDoc said "the three review verbs (`POST`/`PUT`)" — self-contradictory; `DELETE` carries no body | **closed** — "the two review writes" |
+| F-1 | CI (process) | Phase 4's own CI run was **cancelled by the concurrency group** when phase 5 was pushed ~20 minutes later, so that phase never got its own green run — a miss against the riviera-sdlc CI-gate rule ("check that push's run before starting the next phase"). Phases 0-3 were each checked (phase 3's run was green on all eight checks), and phase 5's run covers the cumulative tree including phase 4 | closed — the per-phase evidence does not exist and cannot be recovered, but the gap it left is now covered by something stronger than a re-run would have been: the review gate exercised phase 4's surface directly (F-3, F-4, F-10, F-11, F-12 all landed in it) and the fix round's own CI run is green on the cumulative tree |
 
 ---
 
@@ -472,6 +502,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/review/package-info.java` — the module's own one-line summary
 - `CONTEXT.md` — Display name + Frozen review vocabulary entries
 - `docs/plans/reviews-s2-comment-lifecycle.md` — this plan
+
+**Added by the review-gate fix round** (findings F-3 … F-12, below):
+
+- `platform/src/main/java/ai/riviera/platform/RateLimitProperties.java` — the per-IP / per-code endpoint counts follow the two new verbs
+- `docs/adr/ADR-0015-review-leaf-module.md` — the rejected alternative's argument stops naming the retired `reviewable` flag
+- `frontend/e2e/find-a-booking.e2e.ts` · `request-to-book.e2e.ts` · `same-day-booking.e2e.ts` · `booking-flow.e2e.ts` · `suppressed-confirmation.e2e.ts` · `touch-targets-tourist.e2e.ts` — every booking-detail fixture carries `reviewPanel`, the field the wire always sends
 
 ---
 

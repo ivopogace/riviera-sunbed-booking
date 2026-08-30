@@ -221,7 +221,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			return;
 		}
 
-		// Per-code: only the four code-keyed endpoints carry a code.
+		// Per-code: only the six code-keyed endpoints carry a code.
 		if (target.code() != null) {
 			TokenBucket codeBucket = bucketFor(codeBuckets, target.code(), props.perCode(), now);
 			if (!codeBucket.tryAcquire(now)) {

@@ -94,6 +94,8 @@ class SecurityConfig {
 
 	/** Staff check-in (#583): flips lifecycle state off a bearer code — operator-gated (invariant #7). */
 	private static final String BOOKING_CHECK_IN_PATH = "/api/venues/*/bookings/*/check-in";
+	/** The guest's one review on their own stay — POST / PUT / DELETE, all code-gated (invariant #7). */
+	private static final String BOOKING_REVIEW_PATH = "/api/bookings/*/review";
 	/** The admin weather-refund write; an operator-session POST, CSRF-protected like every write. */
 	private static final String WEATHER_REFUND_PATH = "/api/venues/*/weather-refund";
 	/** The operator-only per-venue payout ledger read. Order-sensitive. */
@@ -288,7 +290,7 @@ class SecurityConfig {
 						// Hardened to mirror the session cookie's posture (keeps spa()'s handler).
 						.csrfTokenRepository(csrfTokenRepository)
 						.ignoringRequestMatchers("/api/bookings", "/api/bookings/*/cancel",
-								"/api/bookings/*/withdraw", "/api/bookings/*/review",
+								"/api/bookings/*/withdraw", BOOKING_REVIEW_PATH,
 								"/api/payments/stripe/webhook"))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
@@ -364,10 +366,10 @@ class SecurityConfig {
 						// Authorized by the code (invariant #7); the refund amount is server-computed.
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/withdraw").permitAll()
-						.requestMatchers(HttpMethod.POST, "/api/bookings/*/review").permitAll()
+						.requestMatchers(HttpMethod.POST, BOOKING_REVIEW_PATH).permitAll()
 						// Same credential, same resource: the code-holder may also amend their own review.
-						.requestMatchers(HttpMethod.PUT, "/api/bookings/*/review").permitAll()
-						.requestMatchers(HttpMethod.DELETE, "/api/bookings/*/review").permitAll()
+						.requestMatchers(HttpMethod.PUT, BOOKING_REVIEW_PATH).permitAll()
+						.requestMatchers(HttpMethod.DELETE, BOOKING_REVIEW_PATH).permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
 						.requestMatchers(HttpMethod.POST, OPERATOR_PASSWORD_PATH).hasRole(OPERATOR_ROLE)
 						// Every verb, not just GET — anonymous → 401, operator session → 403.

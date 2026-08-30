@@ -99,6 +99,8 @@ function stubService(opts: {
   /** Served on the reload after a successful cancel (mirrors the backend returning CANCELLED). */
   detailAfterCancel?: BookingDetail;
   getError?: unknown;
+  /** Fails only the re-read after an action, so a spec can hold the first detail on screen. */
+  refreshError?: unknown;
   cancel?: Cancellation;
   cancelError?: unknown;
   cancelCalls?: string[];
@@ -119,8 +121,12 @@ function stubService(opts: {
   return {
     getByCode: (code: string) => {
       opts.getCalls?.push(code);
-      const detail = served++ === 0 ? opts.detail! : (opts.detailAfterCancel ?? opts.detail!);
-      return opts.getError ? throwError(() => opts.getError) : of(detail);
+      const first = served++ === 0;
+      const detail = first ? opts.detail! : (opts.detailAfterCancel ?? opts.detail!);
+      if (opts.getError || (!first && opts.refreshError)) {
+        return throwError(() => opts.getError ?? opts.refreshError);
+      }
+      return of(detail);
     },
     cancel: (code: string) => {
       opts.cancelCalls?.push(code);
@@ -1275,6 +1281,29 @@ describe('BookingView', () => {
       );
       expect(host.querySelector('[data-testid="review-panel"]')).not.toBeNull();
       expect(host.querySelector('[data-testid="own-review"]')).toBeNull();
+    });
+
+    it('closes the delete confirmation even when the re-read after it fails', async () => {
+      const deleteCalls: string[] = [];
+      const fixture = await render(
+        stubService({ detail: REVIEWED, deleteCalls, refreshError: { status: 500 } }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      host.querySelector<HTMLButtonElement>('[data-testid="start-delete-review"]')!.click();
+      fixture.detectChanges();
+      host.querySelector<HTMLButtonElement>('[data-testid="confirm-delete-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(deleteCalls).toEqual(['ABCD234567']);
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'Your review has been removed.',
+      );
+      // The stale detail stays on screen by design; a live "Yes, remove it" under it must not.
+      expect(host.querySelector('[data-testid="confirm-delete-question"]')).toBeNull();
+      expect(host.querySelector('[data-testid="confirm-delete-review"]')).toBeNull();
     });
 
     it('says so when the review an amend targets is already gone', async () => {

@@ -101,10 +101,11 @@ test.describe('reviews — real backend, real Postgres', () => {
     try {
       const code = await bookToday(tourist, venueId);
 
-      // Not yet delivered: the server refuses to offer a rating for a stay nobody checked in.
+      // Not yet delivered: the server's panel says why there is no form, and offers none.
       await tourist.goto(`/booking/${code}`);
       await expect(tourist.getByTestId('booking-code')).toContainText(code);
-      await expect(tourist.getByTestId('review-panel')).toHaveCount(0);
+      await expect(tourist.getByTestId('review-not-completed-note')).toBeVisible();
+      await expect(tourist.getByTestId('submit-review')).toHaveCount(0);
 
       // The operator checks the code in from the daily view — the real guarded transition.
       await page.goto(`/operator/${venueId}/daily`);

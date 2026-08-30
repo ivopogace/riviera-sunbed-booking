@@ -19,8 +19,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Verifies the {@code review} table's constraints: V45's two invariants — one review per booking,
- * ever (the DB half of AC-2) and stars bounded 1..5 — plus the demo-seed supersede (AC-7), and
+ * Verifies the {@code review} table's constraints: V45's two invariants — at most one review
+ * per booking (the DB half of AC-2) and stars bounded 1..5 — plus the demo-seed supersede (AC-7), and
  * V46's length bounds on the free-text comment and display name.
  *
  * <p>The supersede is checked on the <strong>seeded</strong> row, the only one that carried a

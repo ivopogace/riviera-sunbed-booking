@@ -43,12 +43,9 @@ class ReviewController {
 	ResponseEntity<?> review(@PathVariable String code, @RequestBody SubmitReviewRequest request) {
 		return switch (lifecycle.submit(code, request.toSubmission())) {
 			case SubmitOutcome.Submitted ignored -> ResponseEntity.status(HttpStatus.CREATED).build();
-			case SubmitOutcome.NoSuchStay ignored ->
-					error(HttpStatus.NOT_FOUND, "NO_SUCH_BOOKING", "No booking with this code.");
-			case SubmitOutcome.NotEligible ignored ->
-					error(HttpStatus.CONFLICT, "BOOKING_NOT_COMPLETED", "This stay has not been checked in.");
-			case SubmitOutcome.WindowClosed ignored ->
-					error(HttpStatus.CONFLICT, "REVIEW_WINDOW_CLOSED", "The review window for this stay has closed.");
+			case SubmitOutcome.NoSuchStay ignored -> noSuchBooking();
+			case SubmitOutcome.NotEligible ignored -> notCheckedIn();
+			case SubmitOutcome.WindowClosed ignored -> windowClosed();
 			case SubmitOutcome.AlreadyReviewed ignored ->
 					error(HttpStatus.CONFLICT, "REVIEW_ALREADY_SUBMITTED", "This stay has already been reviewed.");
 		};
@@ -68,14 +65,11 @@ class ReviewController {
 	private static ResponseEntity<?> amended(AmendOutcome outcome) {
 		return switch (outcome) {
 			case AmendOutcome.Done ignored -> ResponseEntity.noContent().build();
-			case AmendOutcome.NoSuchStay ignored ->
-					error(HttpStatus.NOT_FOUND, "NO_SUCH_BOOKING", "No booking with this code.");
+			case AmendOutcome.NoSuchStay ignored -> noSuchBooking();
 			case AmendOutcome.NoSuchReview ignored ->
 					error(HttpStatus.NOT_FOUND, "NO_SUCH_REVIEW", "This stay carries no review.");
-			case AmendOutcome.NotEligible ignored ->
-					error(HttpStatus.CONFLICT, "BOOKING_NOT_COMPLETED", "This stay has not been checked in.");
-			case AmendOutcome.WindowClosed ignored ->
-					error(HttpStatus.CONFLICT, "REVIEW_WINDOW_CLOSED", "The review window for this stay has closed.");
+			case AmendOutcome.NotEligible ignored -> notCheckedIn();
+			case AmendOutcome.WindowClosed ignored -> windowClosed();
 		};
 	}
 
@@ -88,5 +82,22 @@ class ReviewController {
 
 	private static ResponseEntity<ProblemDetail> error(HttpStatus status, String code, String detail) {
 		return ApiProblem.responseAt(status, code, detail, BOOKINGS_PATH);
+	}
+
+	/**
+	 * The three refusals both switches can reach, each stated once. Submit and amend answer one
+	 * condition in one wording because they call the same method, not because two literals agree.
+	 */
+	private static ResponseEntity<ProblemDetail> noSuchBooking() {
+		return error(HttpStatus.NOT_FOUND, "NO_SUCH_BOOKING", "No booking with this code.");
+	}
+
+	private static ResponseEntity<ProblemDetail> notCheckedIn() {
+		return error(HttpStatus.CONFLICT, "BOOKING_NOT_COMPLETED", "This stay has not been checked in.");
+	}
+
+	private static ResponseEntity<ProblemDetail> windowClosed() {
+		return error(HttpStatus.CONFLICT, "REVIEW_WINDOW_CLOSED",
+				"The review window for this stay has closed.");
 	}
 }

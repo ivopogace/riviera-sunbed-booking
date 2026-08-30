@@ -55,6 +55,8 @@ const BOOKING = {
   beforeCutoff: true,
   refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
   refundedAmount: null,
+  // The wire always carries a panel; a stay nobody checked in is the reason there is no form.
+  reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
 async function mockTourist(page: Page): Promise<void> {

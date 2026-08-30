@@ -29,8 +29,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * The headline AC-2 test: one review per booking, ever, under real concurrency. Several submits for
- * the same booking fire together (released by a {@link CountDownLatch}); exactly one must answer
+ * The headline AC-2 test: at most one review per booking, under real concurrency. Several submits
+ * for the same booking fire together (released by a {@link CountDownLatch}); exactly one must answer
  * {@code Submitted}, the rest {@code AlreadyReviewed}, and exactly one row may exist.
  *
  * <p>Run against a real Postgres (Testcontainers) because the guarantee is the atomic

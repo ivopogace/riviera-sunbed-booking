@@ -33,6 +33,15 @@ import ai.riviera.platform.review.vocabulary.VenueRef;
 @Repository
 class JdbcReviews implements Reviews {
 
+	/** Named once, per the {@code JdbcBookings} bind-parameter convention — five call sites bind it. */
+	private static final String PARAM_BOOKING = "booking";
+	private static final String PARAM_STARS = "stars";
+	private static final String PARAM_COMMENT = "comment";
+
+	/** The columns, kept apart from the bind parameters above: the two coincide by name, not by rule. */
+	private static final String COL_STARS = "stars";
+	private static final String COL_COMMENT = "comment";
+
 	private final JdbcClient jdbc;
 
 	JdbcReviews(JdbcClient jdbc) {
@@ -47,10 +56,10 @@ class JdbcReviews implements Reviews {
 				VALUES (:booking, :venue, :stars, :comment, :displayName, :createdAt)
 				ON CONFLICT (booking_id) DO NOTHING
 				""")
-				.param("booking", booking.value())
+				.param(PARAM_BOOKING, booking.value())
 				.param("venue", venue.value())
-				.param("stars", stars)
-				.param("comment", comment)
+				.param(PARAM_STARS, stars)
+				.param(PARAM_COMMENT, comment)
 				.param("displayName", displayName)
 				.param("createdAt", Timestamp.from(at))
 				.update();
@@ -66,9 +75,9 @@ class JdbcReviews implements Reviews {
 				    updated_at = :updatedAt
 				WHERE booking_id = :booking
 				""")
-				.param("booking", booking.value())
-				.param("stars", stars)
-				.param("comment", comment)
+				.param(PARAM_BOOKING, booking.value())
+				.param(PARAM_STARS, stars)
+				.param(PARAM_COMMENT, comment)
 				.param("displayName", displayName)
 				.param("updatedAt", Timestamp.from(at))
 				.update();
@@ -78,7 +87,7 @@ class JdbcReviews implements Reviews {
 	@Override
 	public boolean delete(BookingRef booking) {
 		return jdbc.sql("DELETE FROM review WHERE booking_id = :booking")
-				.param("booking", booking.value())
+				.param(PARAM_BOOKING, booking.value())
 				.update() == 1;
 	}
 
@@ -87,8 +96,8 @@ class JdbcReviews implements Reviews {
 		return jdbc.sql("""
 				SELECT stars, comment, display_name FROM review WHERE booking_id = :booking
 				""")
-				.param("booking", booking.value())
-				.query((rs, rowNum) -> new OwnReview(rs.getInt("stars"), rs.getString("comment"),
+				.param(PARAM_BOOKING, booking.value())
+				.query((rs, rowNum) -> new OwnReview(rs.getInt(COL_STARS), rs.getString(COL_COMMENT),
 						rs.getString("display_name")))
 				.optional();
 	}
@@ -109,7 +118,7 @@ class JdbcReviews implements Reviews {
 	public boolean existsFor(BookingRef booking) {
 		return Boolean.TRUE.equals(jdbc.sql(
 				"SELECT EXISTS (SELECT 1 FROM review WHERE booking_id = :booking)")
-				.param("booking", booking.value())
+				.param(PARAM_BOOKING, booking.value())
 				.query(Boolean.class)
 				.single());
 	}

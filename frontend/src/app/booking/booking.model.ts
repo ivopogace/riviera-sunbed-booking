@@ -276,8 +276,8 @@ export interface Withdrawal {
 }
 
 /**
- * The body shared by the three review verbs (`POST`/`PUT` on
- * `/api/bookings/{code}/review`) — the stars, the guest's words, and the name to attribute them to.
+ * The body shared by the two review writes (`POST` and `PUT` on `/api/bookings/{code}/review`; the
+ * `DELETE` carries none) — the stars, the guest's words, and the name to attribute them to.
  * The server bounds all three and is the only judge of eligibility; the client sends what the guest
  * wrote and lets the server refuse.
  */

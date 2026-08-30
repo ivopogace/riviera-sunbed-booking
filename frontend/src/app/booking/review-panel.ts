@@ -144,6 +144,7 @@ function starsLabel(stars: number): string {
                   appTouchTarget
                   type="button"
                   [class]="cls.btnOutline"
+                  [appBusy]="busy()"
                   data-testid="keep-review"
                   (click)="keepReview()"
                 >
@@ -278,6 +279,7 @@ function starsLabel(stars: number): string {
               appTouchTarget
               type="button"
               [class]="cls.btnOutline"
+              [appBusy]="busy()"
               data-testid="cancel-edit-review"
               (click)="cancelEdit()"
             >
@@ -408,5 +410,17 @@ export class ReviewPanel {
     } else {
       this.submitted.emit(review);
     }
+  }
+
+  /**
+   * The write this panel asked for has landed. The edit / confirm interaction is over at that
+   * point, so the mode closes here rather than waiting for the re-read — which the booking view
+   * deliberately lets fail without flipping the page, and which would otherwise leave a live
+   * "Yes, remove it" under a "review removed" line.
+   */
+  settle(): void {
+    this.editing.set(false);
+    this.confirmingDelete.set(false);
+    this.submitAttempted.set(false);
   }
 }

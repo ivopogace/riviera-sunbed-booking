@@ -42,6 +42,8 @@ const DETAIL = {
   requestExpiresAt: null,
   payment: null,
   cancellationWindowAtBirth: 'FREE',
+  // The wire always carries a panel; a stay nobody checked in is the reason there is no form.
+  reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
 // Pin the OS scheme to dark so the boot theme is deterministic (headless defaults light → porcelain).

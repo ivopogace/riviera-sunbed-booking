@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -38,26 +38,24 @@ const BANNER_NEUTRAL = `${BANNER} border-[#dde1e3] bg-[#f0f2f3]`;
 const EYEBROW_NEUTRAL = 'text-[#4f5f67]';
 
 /**
- * What to tell the guest when a review write is refused. Each server code is a settled fact a retry
- * can never change, so it reads as an explanation; anything else (a transport failure, a 5xx) is
- * worth retrying, and the panel stays open behind it.
+ * The review refusals that are settled facts: a retry can never change them, and each one means the
+ * server's panel has moved on from the one on screen. Stated once, so the copy and the re-read that
+ * follows it can never name different codes.
  */
-function reviewRejectionCopy(error: unknown): string {
-  if (!(error instanceof HttpErrorResponse)) {
-    return 'We couldn’t save your review. Please try again.';
-  }
-  switch (problemCodeOf(error)) {
-    case 'REVIEW_ALREADY_SUBMITTED':
-      return 'This stay has already been rated.';
-    case 'REVIEW_WINDOW_CLOSED':
-      return 'The window for rating this stay has closed.';
-    case 'BOOKING_NOT_COMPLETED':
-      return 'You can rate a stay once you’ve been checked in.';
-    case 'NO_SUCH_REVIEW':
-      return 'This stay no longer carries a review.';
-    default:
-      return 'We couldn’t save your review. Please try again.';
-  }
+const REVIEW_REFUSALS = new Map<string, string>([
+  ['REVIEW_ALREADY_SUBMITTED', 'This stay has already been rated.'],
+  ['REVIEW_WINDOW_CLOSED', 'The window for rating this stay has closed.'],
+  ['BOOKING_NOT_COMPLETED', 'You can rate a stay once you’ve been checked in.'],
+  ['NO_SUCH_REVIEW', 'This stay no longer carries a review.'],
+]);
+
+const REVIEW_RETRY = 'We couldn’t save your review. Please try again.';
+
+/** The settled refusal this error carries, or `undefined` for anything worth retrying. */
+function reviewRefusal(error: unknown): string | undefined {
+  return error instanceof HttpErrorResponse
+    ? REVIEW_REFUSALS.get(problemCodeOf(error) ?? '')
+    : undefined;
 }
 
 /** The repeated Tailwind recipes of this view — see {@link BookingView} for why they live here. */
@@ -517,19 +515,16 @@ const CLS = {
           }
         </p>
 
-        <!-- Guarded: a detail without a panel shows no review section rather than failing to render. -->
-        @if (b.reviewPanel; as reviewPanel) {
-          <app-review-panel
-            [panel]="reviewPanel"
-            [bookingStatus]="b.status"
-            [venueName]="b.venueName"
-            [busy]="submittingReview()"
-            (submitted)="sendReview($event)"
-            (updated)="sendReviewUpdate($event)"
-            (deleted)="sendReviewDelete()"
-            (blocked)="blockReview($event)"
-          />
-        }
+        <app-review-panel
+          [panel]="b.reviewPanel"
+          [bookingStatus]="b.status"
+          [venueName]="b.venueName"
+          [busy]="submittingReview()"
+          (submitted)="sendReview($event)"
+          (updated)="sendReviewUpdate($event)"
+          (deleted)="sendReviewDelete()"
+          (blocked)="blockReview($event)"
+        />
 
         <a appTouchTarget routerLink="/" [class]="cls.linkBack">Back to home</a>
       </section>
@@ -571,6 +566,9 @@ export class BookingView {
   protected readonly reviewRejection = signal<string | undefined>(undefined);
 
   private readonly focusAfterRender = focusMover();
+
+  /** Absent until the detail loads — the panel lives inside the loaded-booking branch. */
+  private readonly reviewPanel = viewChild(ReviewPanel);
 
   private code = '';
 
@@ -690,13 +688,21 @@ export class BookingView {
       next: () => {
         this.reviewSuccess.set(success);
         this.submittingReview.set(false);
+        // Not left to the re-read: a refresh may fail, and its edit/confirm mode would outlive the write.
+        this.reviewPanel()?.settle();
         // The refresh below is async, so focus aims at the result this write populates synchronously.
         this.focusAfterRender('review-result');
         this.load(true);
       },
       error: (e: unknown) => {
-        this.reviewRejection.set(reviewRejectionCopy(e));
+        const refusal = reviewRefusal(e);
+        this.reviewRejection.set(refusal ?? REVIEW_RETRY);
         this.submittingReview.set(false);
+        if (refusal) {
+          // The server moved on, so the panel on screen is stale — re-read rather than offer it again.
+          this.reviewPanel()?.settle();
+          this.load(true);
+        }
         this.focusAfterRender('review-result');
       },
     });

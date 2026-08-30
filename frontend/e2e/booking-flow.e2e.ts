@@ -96,6 +96,8 @@ const AWAITING_DETAIL = {
   beforeCutoff: true,
   refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
   refundedAmount: null,
+  // The wire always carries a panel; a stay nobody checked in is the reason there is no form.
+  reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
 /** A terminal CANCELLED detail as an arriving guest sees it — the cases differ only in these. */

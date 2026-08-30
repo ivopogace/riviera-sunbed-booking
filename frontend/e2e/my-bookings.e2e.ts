@@ -76,6 +76,8 @@ const CONFIRMED_DETAIL = {
   refundedAmount: null,
   requestExpiresAt: null,
   payment: null,
+  // The wire always carries a panel; a stay nobody checked in is the reason there is no form.
+  reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
 const CANCELLED_DETAIL = {
@@ -298,6 +300,7 @@ function deviceDetail(
     refundedAmount: null,
     requestExpiresAt: null,
     payment: null,
+    reviewPanel: { kind: 'NOT_COMPLETED' },
   };
 }
 
