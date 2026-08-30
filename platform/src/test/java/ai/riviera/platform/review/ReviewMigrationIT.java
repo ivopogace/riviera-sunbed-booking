@@ -59,11 +59,12 @@ class ReviewMigrationIT {
 	}
 
 	@Test
-	void resetsEverySeededRatingToZero() {
-		Integer fabricated = jdbc.sql(
-				"SELECT count(*) FROM venue WHERE rating_tenths <> 0 OR reviews_count <> 0")
-				.query(Integer.class).single();
-		assertThat(fabricated).isZero();
+	void resetsTheSeededRatingToZero() {
+		// Scoped to the seeded row, not the table: sibling ITs recompute venues in this container.
+		int[] miramar = jdbc.sql(
+				"SELECT rating_tenths, reviews_count FROM venue WHERE name = 'Miramar Beach Club'")
+				.query((rs, n) -> new int[] {rs.getInt(1), rs.getInt(2)}).single();
+		assertThat(miramar).containsExactly(0, 0);
 	}
 
 	private long seedVenue(String name) {

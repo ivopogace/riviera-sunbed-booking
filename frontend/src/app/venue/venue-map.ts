@@ -24,7 +24,7 @@ import { PhotoGalleryGrid } from '../shared/photo-gallery-grid';
 import { PhotoLightbox } from '../shared/photo-lightbox';
 import { PhotoSlideshow } from '../shared/photo-slideshow';
 import { slideshowPhotos } from '../shared/photo-url';
-import { isRated, ratingScore } from '../shared/rating';
+import { isRated, ratingScore, reviewsLabel } from '../shared/rating';
 import { RetryButton } from '../shared/retry-button';
 import { defaultBookingDate, formatCivilDate, isIsoDate } from '../shared/booking-date';
 import { routeIdParam } from '../shared/parent-venue-id';
@@ -75,7 +75,8 @@ interface VenueHeader {
   readonly modeLabel: string;
   readonly isRated: boolean;
   readonly rating: string;
-  readonly reviewsCount: number;
+  /** The count with its noun already agreed — "1 review", "2 reviews" (shared/rating.ts). */
+  readonly reviewsLabel: string;
   /** The "from €X / set" price string, or `null` when the venue has no sets. */
   readonly priceLabel: string | null;
   readonly water: string | null;
@@ -230,7 +231,7 @@ export class VenueMap {
       modeLabel: v.bookingMode === 'INSTANT' ? 'Instant Book' : 'Request to Book',
       isRated: isRated(v),
       rating: ratingScore(v.ratingTenths),
-      reviewsCount: v.reviewsCount,
+      reviewsLabel: reviewsLabel(v.reviewsCount),
       priceLabel: v.fromPrice ? formatMoney(v.fromPrice) : null,
       water: distanceToWaterLabel(v.distanceToWaterM ?? null),
       amenities: orderedAmenities(v.amenities ?? []).map((code) => ({

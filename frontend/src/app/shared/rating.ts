@@ -19,3 +19,12 @@ export function isRated(venue: RatingView): boolean {
 export function ratingScore(ratingTenths: number): string {
   return (ratingTenths / 10).toFixed(1);
 }
+
+/**
+ * The review count with its noun agreed ("1 review", "2 reviews"). A single review is the first
+ * state every venue reaches, so the plural-only form is not a rare edge — it is what a venue reads
+ * the moment it stops being "New".
+ */
+export function reviewsLabel(reviewsCount: number): string {
+  return `${reviewsCount} ${reviewsCount === 1 ? 'review' : 'reviews'}`;
+}

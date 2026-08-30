@@ -124,7 +124,8 @@ test.describe('rating a delivered stay', () => {
     const mapHeader = page.locator('.map-head');
     await expect(mapHeader.getByTestId('new-chip')).toHaveCount(0);
     await expect(mapHeader).toContainText('4.0');
-    await expect(mapHeader).toContainText('1 reviews');
+    await expect(mapHeader).toContainText('1 review');
+    await expect(mapHeader).not.toContainText('1 reviews');
     await settle(page);
     await expectNoSeriousAxeViolations(page, 'venue map after the first rating');
   });

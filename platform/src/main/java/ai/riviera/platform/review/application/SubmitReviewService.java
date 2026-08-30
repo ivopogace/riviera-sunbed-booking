@@ -19,8 +19,11 @@ import ai.riviera.platform.review.vocabulary.SubmitOutcome;
  * fences, claim the booking's one review slot, and announce that the venue's aggregate moved.
  * Package-private behind the {@link SubmitReview} port (invariant #11).
  *
- * <p>Every rejection is a typed {@link SubmitOutcome}, not an exception — including a lost
- * uniqueness race, which is ordinary flow here. The claim's row count is the answer, so there is no
+ * <p>Every rejection a caller can provoke with a legitimate request is a typed {@link SubmitOutcome},
+ * not an exception — including a lost uniqueness race, which is ordinary flow here. An out-of-range
+ * rating is the exception to that, and deliberately so: the driving adapter rejects it as a
+ * {@code 400} before this port is reached, so one arriving here is a caller bug, and failing loudly
+ * beats letting the DB's {@code review_stars_check} surface it as a {@code 500} with no outcome. The claim's row count is the answer, so there is no
  * read-then-write window for a second submit to slip through; {@code ReviewUniquenessIT} proves it
  * under real concurrency.
  *
@@ -29,6 +32,9 @@ import ai.riviera.platform.review.vocabulary.SubmitOutcome;
  */
 @Service
 class SubmitReviewService implements SubmitReview {
+
+	private static final int MIN_STARS = 1;
+	private static final int MAX_STARS = 5;
 
 	private final CompletedStays stays;
 	private final Reviews reviews;
@@ -46,6 +52,9 @@ class SubmitReviewService implements SubmitReview {
 	@Override
 	@Transactional
 	public SubmitOutcome submit(String bookingCode, int stars) {
+		if (stars < MIN_STARS || stars > MAX_STARS) {
+			throw new IllegalArgumentException("stars must be between " + MIN_STARS + " and " + MAX_STARS);
+		}
 		Optional<CompletedStay> found = stays.byCode(bookingCode);
 		if (found.isEmpty()) {
 			return stays.existsByCode(bookingCode)

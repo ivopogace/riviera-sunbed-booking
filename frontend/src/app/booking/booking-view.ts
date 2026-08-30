@@ -37,7 +37,7 @@ const LINK =
 const BANNER_NEUTRAL = `${BANNER} border-[#dde1e3] bg-[#f0f2f3]`;
 const EYEBROW_NEUTRAL = 'text-[#4f5f67]';
 
-/** The schema's required message, shared by the form and the one result region that renders it. */
+/** The required rule's message. Defined once, on the schema; the result region renders the same constant. */
 const REVIEW_REQUIRED = 'Pick a star rating.';
 
 /**
@@ -682,21 +682,23 @@ export class BookingView {
   }
 
   /**
-   * Submit the chosen rating. Validity is the form schema's answer, not a hand-rolled check, so the
-   * required message has one home; a `201` carries no body, so the new state comes from a re-read
-   * (`reviewable` flips to false and the panel unmounts) rather than a local patch.
+   * Submit the chosen rating. Validity is the form schema's answer — `reviewForm().valid()`, not a
+   * second null check — so the required rule has one home; a `201` carries no body, so the new state
+   * comes from a re-read (`reviewable` flips to false and the panel unmounts) rather than a local patch.
    */
   protected submitReview(): void {
     if (this.submittingReview()) {
       return;
     }
+    // A new attempt supersedes the last outcome, or a stale success hides this one's rejection.
     this.reviewRejection.set(undefined);
-    const stars = this.reviewModel().stars;
-    if (stars === null) {
+    this.reviewed.set(false);
+    if (!this.reviewForm().valid()) {
       this.reviewRejection.set(REVIEW_REQUIRED);
       this.focusAfterRender('review-result');
       return;
     }
+    const stars = this.reviewModel().stars!;
     this.submittingReview.set(true);
     this.bookings.review(this.code, stars).subscribe({
       next: () => {

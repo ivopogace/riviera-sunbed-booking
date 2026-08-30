@@ -3,6 +3,11 @@ package ai.riviera.platform.venue;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +25,8 @@ import ai.riviera.platform.ReviewFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.review.events.ReviewsChanged;
 import ai.riviera.platform.review.vocabulary.VenueRef;
+import ai.riviera.platform.venue.application.RecomputeVenueRating;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -48,6 +55,9 @@ class VenueRatingRecomputeIT {
 
 	@Autowired
 	PlatformTransactionManager txManager;
+
+	@Autowired
+	RecomputeVenueRating ratings;
 
 	private ReviewFixtures fixtures;
 
@@ -78,6 +88,40 @@ class VenueRatingRecomputeIT {
 
 		announce(venueId);
 		awaitRating(venueId, 45, 2);
+	}
+
+	@Test
+	void aRecomputeWaitsForAConcurrentWriterAndThenReadsTheWholeReviewSet() throws Exception {
+		long venueId = fixtures.venue("Recompute Race");
+		review(venueId, 5);
+
+		// A competing transaction holds the venue row while adding the second review.
+		CountDownLatch holdsLock = new CountDownLatch(1);
+		try (ExecutorService pool = Executors.newSingleThreadExecutor()) {
+			Future<?> competitor = pool.submit(() -> new TransactionTemplate(txManager).executeWithoutResult(status -> {
+				jdbc.sql("SELECT id FROM venue WHERE id = :id FOR UPDATE")
+						.param("id", venueId).query(Long.class).single();
+				review(venueId, 4);
+				holdsLock.countDown();
+				sleepQuietly();
+			}));
+
+			assertThat(holdsLock.await(15, TimeUnit.SECONDS)).isTrue();
+			ratings.recompute(new VenueId(venueId));
+			competitor.get(15, TimeUnit.SECONDS);
+		}
+
+		awaitRating(venueId, 45, 2);
+	}
+
+	/** Long enough that a recompute which did not wait would have read and written the stale totals. */
+	private static void sleepQuietly() {
+		try {
+			Thread.sleep(1500);
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
 	}
 
 	@Test

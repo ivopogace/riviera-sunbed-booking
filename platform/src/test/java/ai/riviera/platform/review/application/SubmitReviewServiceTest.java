@@ -23,6 +23,7 @@ import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 import ai.riviera.platform.review.vocabulary.VenueRef;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -91,6 +92,16 @@ class SubmitReviewServiceTest {
 		assertEquals(new SubmitOutcome.AlreadyReviewed(), service.submit(CODE, 4));
 
 		assertTrue(events.published.isEmpty(), "a lost claim moved no aggregate");
+	}
+
+	@Test
+	void refusesARatingOutsideTheScaleBeforeTouchingAnything() {
+		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
+
+		for (int stars : new int[] {0, 6, -1}) {
+			assertThrows(IllegalArgumentException.class, () -> service.submit(CODE, stars));
+		}
+		assertTrue(reviews.recorded.isEmpty(), "an invalid rating must not reach the store");
 	}
 
 	private record Recorded(BookingRef booking, VenueRef venue, int stars, Instant at) {

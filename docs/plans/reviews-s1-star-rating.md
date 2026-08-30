@@ -393,7 +393,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingDetailView.java` — wire field
 - `platform/src/main/java/ai/riviera/platform/venue/package-info.java` — grants `+ review::api/events/vocabulary`
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/ReviewsChangedListener.java` — first venue listener
-- `platform/src/main/java/ai/riviera/platform/venue/application/VenueRatingService.java` + its ports `platform/src/main/java/ai/riviera/platform/venue/application/RecomputeVenueRating.java` (inbound, the listener's) and `platform/src/main/java/ai/riviera/platform/venue/application/VenueRatings.java` (outbound, the write) + `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenues.java` — the one venue-side write (no dedicated `JdbcVenueRatings`: `JdbcVenues` already serves two ports writing this same row)
+- `platform/src/main/java/ai/riviera/platform/venue/application/VenueRatingService.java` + its ports `platform/src/main/java/ai/riviera/platform/venue/application/RecomputeVenueRating.java` (inbound, the listener's) and `platform/src/main/java/ai/riviera/platform/venue/application/VenueRatings.java` (outbound: the row lock the recompute takes before reading, then the write) + `platform/src/main/java/ai/riviera/platform/venue/adapter/out/JdbcVenues.java` — the one venue-side write (no dedicated `JdbcVenueRatings`: `JdbcVenues` already serves two ports writing this same row)
 - `platform/src/main/java/ai/riviera/platform/{SecurityConfig,RateLimitFilter}.java` — edge wiring
 - `platform/src/test/java/ai/riviera/platform/ModularityTests.java` — javadoc count
 - `platform/src/test/java/ai/riviera/platform/{EndpointRoleGateCoverageTest,WebSliceStubs}.java` — declaration + stubs
@@ -409,6 +409,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/review-a-stay.e2e.ts` — mocked journey (AC-9)
 - `frontend/e2e/touch-targets*.e2e.ts` — surface entry if `/booking/:code` absent (O-1)
 - `frontend/e2e/real-backend/reviews.e2e.ts` (+ any new `frontend/e2e/real-backend/support/*.ts` helper) — AC-10
+- `frontend/src/app/shared/rating.ts` + `frontend/src/app/shared/rating.spec.ts` — `reviewsLabel(count)`, so a venue's first rating reads "1 review" and not "1 reviews"; the seed reset makes a count of one the first state every venue reaches, and this helper already exists to stop the two rating surfaces drifting
+- `frontend/src/app/venue/venue-map.ts` + `frontend/src/app/venue/venue-map.html` + `frontend/src/app/venue/venue-map.spec.ts` — the beach-map header renders `reviewsLabel` instead of a hard-coded plural
+- `frontend/src/app/pages/home/home.ts` + `frontend/src/app/pages/home/home.html` + `frontend/src/app/pages/home/home.spec.ts` — the Discover card, same change, same helper
+- `platform/src/main/java/ai/riviera/platform/shared/ApiProblem.java` — `responseAt(status, code, detail, at)`: the invariant-#7 `instance` override, kept in the one factory now that two modules serve code-scoped paths
+- `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingController.java` — its private copy of that override gives way to `ApiProblem.responseAt`
 
 ---
 

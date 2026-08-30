@@ -16,9 +16,11 @@ import org.springframework.test.context.event.RecordApplicationEvents;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.ReviewFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.review.api.ReviewEligibility;
 import ai.riviera.platform.review.application.SubmitReview;
 import ai.riviera.platform.review.domain.ReviewWindow;
 import ai.riviera.platform.review.events.ReviewsChanged;
+import ai.riviera.platform.review.vocabulary.ReviewState;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 import ai.riviera.platform.review.vocabulary.VenueRef;
 
@@ -45,6 +47,9 @@ class ReviewSubmitFlowIT {
 
 	@Autowired
 	SubmitReview submit;
+
+	@Autowired
+	ReviewEligibility eligibility;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -94,8 +99,29 @@ class ReviewSubmitFlowIT {
 	}
 
 	@Test
+	void agreesWithTheEligibilityReadOnAStayThatIsBothRatedAndFrozen() {
+		// Rated inside the window, then frozen: both paths must answer the same way.
+		long venueId = fixtures.venue("Submit Flow Rated Then Frozen");
+		String code = fixtures.completedBooking(venueId, Instant.now().minus(1, ChronoUnit.DAYS));
+		assertEquals(new SubmitOutcome.Submitted(), submit.submit(code, 4));
+		freezeTheWindowFor(code);
+
+		assertEquals(ReviewState.WINDOW_CLOSED, eligibility.stateFor(code));
+		assertEquals(new SubmitOutcome.WindowClosed(), submit.submit(code, 5));
+	}
+
+	@Test
 	void refusesACodeNoBookingAnswersTo() {
 		assertEquals(new SubmitOutcome.NoSuchStay(), submit.submit("NOSUCHCODE", 4));
+	}
+
+	/** Backdate the check-in past the window, so the stay is frozen without touching the clock. */
+	private void freezeTheWindowFor(String code) {
+		jdbc.sql("UPDATE booking SET completed_at = :at WHERE code = :code")
+				.param("at", java.sql.Timestamp.from(
+						Instant.now().minus(ReviewWindow.WINDOW).minus(1, ChronoUnit.DAYS)))
+				.param("code", code)
+				.update();
 	}
 
 	private int starsFor(String code) {

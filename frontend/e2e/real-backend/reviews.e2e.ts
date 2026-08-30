@@ -114,6 +114,8 @@ test.describe('reviews — real backend, real Postgres', () => {
         await expect(header.getByTestId('new-chip')).toHaveCount(0);
         await expect(header).toContainText('5.0');
         await expect(header).toContainText('1 review');
+        // "1 review" is a substring of "1 reviews", so the singular needs its own assertion.
+        await expect(header).not.toContainText('1 reviews');
       }).toPass({ timeout: 20_000 });
 
       // One review per booking, ever — the second attempt is refused by the DB-backed claim.

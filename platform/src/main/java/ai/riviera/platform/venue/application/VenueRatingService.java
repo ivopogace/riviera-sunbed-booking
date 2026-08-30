@@ -13,8 +13,10 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * whole review set now says, write the answer to the venue's own columns.
  *
  * <p>A <strong>full recompute</strong>, never an increment — which is what makes it safe under the
- * registry's at-least-once delivery: running it twice, or out of order against a concurrent submit,
- * converges on the same row. Nothing is read off the event; the numbers come from the port.
+ * registry's at-least-once delivery: running it twice converges on the same row. Nothing is read off
+ * the event; the numbers come from the port. Idempotence alone is not enough, though: the read and
+ * the write are separate statements, so the venue row is locked first and concurrent recomputes of
+ * one venue serialize rather than racing to overwrite each other with differently-stale totals.
  *
  * <p>The venue is named here in venue's own {@link VenueId} and converted at the port call, the
  * conversion {@code review.vocabulary.VenueRef} exists for — review publishes its own ref precisely
@@ -34,6 +36,8 @@ class VenueRatingService implements RecomputeVenueRating {
 	@Override
 	@Transactional
 	public void recompute(VenueId venue) {
+		// Before the read, not after — that ordering is what makes concurrent recomputes converge.
+		venues.lockForRecompute(venue);
 		RatingSummary summary = reviews.summaryFor(new VenueRef(venue.value()));
 		venues.store(venue, summary.ratingTenths(), summary.reviewsCount());
 	}

@@ -38,11 +38,12 @@ class ReviewEligibilityService implements ReviewEligibility {
 		}
 
 		CompletedStay stay = found.get();
-		if (reviews.existsFor(stay.booking())) {
-			return ReviewState.ALREADY_REVIEWED;
+		// Window before rating: the submit path fences in that order, and the two must agree.
+		if (!ReviewWindow.isOpen(stay.completedAt(), clock.instant())) {
+			return ReviewState.WINDOW_CLOSED;
 		}
-		return ReviewWindow.isOpen(stay.completedAt(), clock.instant())
-				? ReviewState.ELIGIBLE
-				: ReviewState.WINDOW_CLOSED;
+		return reviews.existsFor(stay.booking())
+				? ReviewState.ALREADY_REVIEWED
+				: ReviewState.ELIGIBLE;
 	}
 }

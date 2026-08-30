@@ -1224,6 +1224,46 @@ describe('BookingView', () => {
       );
     });
 
+    it('replaces the thanks with the rejection when a second submit is refused', async () => {
+      // A failed re-read leaves the panel up; the 409 that follows must outrank the stale thanks.
+      const service = stubService({ detail: REVIEWABLE });
+      let attempt = 0;
+      service.review = () => {
+        attempt += 1;
+        return attempt === 1
+          ? of(undefined)
+          : throwError(
+              () =>
+                new HttpErrorResponse({
+                  status: 409,
+                  error: { code: 'REVIEW_ALREADY_SUBMITTED' },
+                }),
+            );
+      };
+      const fixture = await render(service);
+      const host = fixture.nativeElement as HTMLElement;
+
+      const submit = async () => {
+        host.querySelector<HTMLButtonElement>('[data-testid="submit-review"]')!.click();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+      };
+
+      stars(host)[4].click();
+      fixture.detectChanges();
+      await submit();
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain('Thanks');
+
+      stars(host)[4].click();
+      fixture.detectChanges();
+      await submit();
+
+      const result = host.querySelector('[data-testid="review-result"]')?.textContent;
+      expect(result).toContain('already been rated');
+      expect(result).not.toContain('Thanks');
+    });
+
     it('offers a retry after a transport failure', async () => {
       const fixture = await render(
         stubService({ detail: REVIEWABLE, reviewError: new HttpErrorResponse({ status: 0 }) }),

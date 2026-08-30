@@ -73,6 +73,26 @@ describe('StarRating', () => {
     expect(stars()[3].getAttribute('aria-checked')).toBe('true');
   });
 
+  it('marks exactly one radio checked, however many stars are filled', async () => {
+    await click(3);
+
+    // Glyphs fill cumulatively; a radiogroup still has exactly one checked radio.
+    expect(stars().map((s) => s.getAttribute('aria-checked'))).toEqual([
+      'false',
+      'false',
+      'false',
+      'true',
+      'false',
+    ]);
+  });
+
+  it('wraps back to five stars on ArrowLeft when nothing is selected yet', async () => {
+    await press(stars()[0], 'ArrowLeft');
+
+    expect(host.model().stars).toBe(5);
+    expect(document.activeElement).toBe(stars()[4]);
+  });
+
   it('moves the roving tab stop to the checked star', async () => {
     await click(3);
 

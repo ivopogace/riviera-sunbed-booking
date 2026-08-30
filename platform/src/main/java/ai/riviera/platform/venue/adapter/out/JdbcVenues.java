@@ -517,6 +517,14 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	}
 
 	@Override
+	public void lockForRecompute(VenueId venue) {
+		jdbc.sql("SELECT id FROM venue WHERE id = :id FOR UPDATE")
+				.param("id", venue.value())
+				.query(Long.class)
+				.optional();
+	}
+
+	@Override
 	public void store(VenueId venue, int ratingTenths, int reviewsCount) {
 		jdbc.sql("""
 				UPDATE venue SET rating_tenths = :tenths, reviews_count = :count WHERE id = :id

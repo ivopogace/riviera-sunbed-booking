@@ -44,7 +44,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Per-IP, per-code and per-identity rate limiting for the platform's unauthenticated and
- * credential-bearing endpoints: the public booking-code endpoints (view / cancel / withdraw / create / terms),
+ * credential-bearing endpoints: the public booking-code endpoints (view / cancel / withdraw / review / create / terms),
  * the two logins, registration, password change, account recovery and the SSO redirect GETs. The
  * booking-code endpoints are {@code permitAll} because the code is the bearer credential (invariant
  * #7), so their {@code 200}/{@code 404} answer is a brute-force oracle; the rest are credential- or
@@ -357,7 +357,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 
 	/**
 	 * Classify the request in a single pass: {@code null} if it is a CORS preflight or not one of the
-	 * five booking endpoints; otherwise a {@link Target} carrying the booking code (or {@code null}
+	 * six booking endpoints; otherwise a {@link Target} carrying the booking code (or {@code null}
 	 * for create). Computes the path and runs the matcher once, not per check.
 	 */
 	private Target targetOf(HttpServletRequest request) {

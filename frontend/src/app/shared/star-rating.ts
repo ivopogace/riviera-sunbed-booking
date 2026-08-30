@@ -36,7 +36,7 @@ const STARS = [1, 2, 3, 4, 5] as const;
           type="button"
           role="radio"
           [class]="starClasses"
-          [attr.aria-checked]="row.selected"
+          [attr.aria-checked]="row.chosen"
           [attr.aria-label]="row.label"
           [tabIndex]="row.tabStop ? 0 : -1"
           [attr.data-testid]="'star-' + row.stars"
@@ -72,7 +72,10 @@ export class StarRating implements FormValueControl<number | null> {
     const selected = this.value();
     return STARS.map((stars) => ({
       stars,
+      // Filled cumulatively, so the glyphs read as a rating…
       selected: selected !== null && stars <= selected,
+      // …but exactly ONE radio is checked, or a reader announces the first filled star instead.
+      chosen: stars === selected,
       // No selection yet ⇒ the first star is the group's single tab stop (APG radiogroup).
       tabStop: selected === null ? stars === STARS[0] : stars === selected,
       label: stars === 1 ? '1 star' : `${stars} stars`,
@@ -86,17 +89,18 @@ export class StarRating implements FormValueControl<number | null> {
    */
   protected onKeydown(event: KeyboardEvent): void {
     const count = STARS.length;
-    // null (nothing chosen) behaves as "before the first", so the first arrow lands on one star.
-    const current = (this.value() ?? 0) - 1;
+    const chosen = this.value();
+    // Nothing chosen has no index, so each direction names its own entry point, then wraps.
+    const current = chosen === null ? null : chosen - 1;
     let next: number;
     switch (event.key) {
       case 'ArrowRight':
       case 'ArrowDown':
-        next = (current + 1) % count;
+        next = current === null ? 0 : (current + 1) % count;
         break;
       case 'ArrowLeft':
       case 'ArrowUp':
-        next = (current - 1 + count) % count;
+        next = current === null ? count - 1 : (current - 1 + count) % count;
         break;
       case 'Home':
         next = 0;
