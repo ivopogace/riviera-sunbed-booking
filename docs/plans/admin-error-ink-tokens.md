@@ -65,7 +65,7 @@ carries both of its commits.
 > boundary in scope. `riviera-tailwind`'s hard rule is that the class list is never the
 > proof, so no AC asserts a class name.
 
-- [ ] **AC-1:** Given the whole of `frontend/src`, when
+- [x] **AC-1:** Given the whole of `frontend/src`, when
   `grep -rno '\[#b3261e\]' frontend/src --include=*.ts --include=*.html` runs, then it
   returns exactly the **2** occurrences on `app.html:6` (the deliberate sign-out-notice
   deviation, `app.ts:59–69`) and nothing else. *Pinned by:* the command itself, run in
@@ -73,14 +73,14 @@ carries both of its commits.
 - [ ] **AC-2:** Given the whole of `frontend/src`, when
   `grep -rno '#8f2c22\|179, *54, *43\|#0a5f73' frontend/src --include=*.ts --include=*.html`
   runs, then it returns **0** occurrences. *Pinned by:* the command itself.
-- [ ] **AC-3:** Given the porcelain admin console, when the error ink (`#a3160e`) is
+- [x] **AC-3:** Given the porcelain admin console, when the error ink (`#a3160e`) is
   composited over each of the two admin surfaces — the bare page background
   (`PORCELAIN_STOPS`) and the card glass (`PORCELAIN_CARD_GLASS` over `PORCELAIN_STOPS`) —
   then every pair meets WCAG AA 4.5:1, and is **at least as high as** the same pair computed
   with the outgoing `#b3261e`. *Pinned by:*
   `admin-console.contrast.spec.ts` › `'the error ink meets AA on both admin surfaces'` and
   › `'the migration does not lower contrast on any admin surface'`.
-- [ ] **AC-4:** Given the erasure confirm panel, when the danger ink (`--riv-danger-ink`) is
+- [x] **AC-4:** Given the erasure confirm panel, when the danger ink (`--riv-danger-ink`) is
   composited over the danger fill over the card glass over each porcelain stop — and again
   over the action fill for the button label — then both pairs meet AA 4.5:1, in **porcelain
   and in dark**. *Pinned by:* `admin-console.contrast.spec.ts` ›
@@ -148,13 +148,13 @@ carries both of its commits.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The sweep silently reverses the `app.html:6` deliberate deviation, because "replace all 18" reads as complete | med | med | it is a Non-goal above; AC-1 asserts the residual count is **exactly 2 on `app.html:6`**, so an over-eager sweep fails the AC rather than passing it | ivopogace | open |
+| R-1 | The sweep silently reverses the `app.html:6` deliberate deviation, because "replace all 18" reads as complete | med | med | it is a Non-goal above; AC-1 asserts the residual count is **exactly 2 on `app.html:6`**, so an over-eager sweep fails the AC rather than passing it | ivopogace | closed — phase 1 left exactly the 2 `app.html:6` occurrences standing |
 | R-2 | The new dark `--riv-danger-*` values are latent (no in-tree consumer can render them — the console pins porcelain) and so ship unproven | high | med | AC-4 asserts the dark pairs in the contrast spec, which is pure maths and needs no renderer; the values are candidates until that spec is green, and are adjusted to pass rather than asserted around | ivopogace | closed — the planned candidates passed unchanged (phase 0) |
 | R-3 | Encoding the existing button/panel boundaries as tokens exposes a **pre-existing** sub-3:1 non-text contrast (WCAG 1.4.11) on the Erase button's border — hand-computed at ≈2.6:1 over the panel fill | med | med | the contrast spec's scope is **text pairs (1.4.3)**; a non-text boundary is asserted only where it already holds. If the spec finds one below 3:1, **do not silently change the value** — record it as a finding and open a follow-up issue. Changing it is a visual decision outside a token migration | ivopogace | **materialised** — recorded as F-1 in the Findings register; follow-up issue at close-out |
 | R-4 | Expressing the danger tints as Tailwind opacity modifiers (`bg-riv-danger/6`) would compile to `color-mix(in oklab, …, transparent)`, changing both the interpolation space and the `getComputedStyle` string — indistinguishable from a real regression under the no-drift rule | low | high | **rejected at plan time**: the five danger tokens are declared as pre-composed `rgba()` values, matching the repo's existing idiom (`--riv-field-border: rgba(12, 42, 51, 0.55)`). Verified against Tailwind v4 docs + tailwindlabs PR #15201 | ivopogace | closed — decided |
 | R-5 | Adding tokens to `tailwind.css` without the matching `@theme inline` row leaves the named utility ungenerated, and the class silently does nothing | low | high | each of the five tokens gets its `--color-riv-danger-*: var(--riv-danger-*)` row in the same commit; AC-5's `toHaveCSS` on a real render is what catches a missing mapping (a class list check could not) | ivopogace | closed — all five rows added in the phase-0 commit |
 | R-6 | `confirm-with-reason.ts` lives in `shared/`, so migrating it changes any future non-porcelain consumer's appearance | low | low | that is the *point* of the migration (the issue's future-proofing rationale); today its only consumers are `admin-venue-photos` and `admin-operators`, both porcelain — verified, and `shared/confirm-panel.ts` is a TSDoc cross-reference only, not a dependency | ivopogace | open |
-| R-7 | An existing unit/e2e spec pins one of the literals and breaks | low | low | verified none does: `grep -rn 'b3261e\|8f2c22\|0a5f73\|179, *54, *43' frontend/src --include=*.spec.ts frontend/e2e` returns nothing. Re-run before phase 1 | ivopogace | open |
+| R-7 | An existing unit/e2e spec pins one of the literals and breaks | low | low | verified none does: `grep -rn 'b3261e\|8f2c22\|0a5f73\|179, *54, *43' frontend/src --include=*.spec.ts frontend/e2e` returns nothing. Re-run before phase 1 | ivopogace | closed — re-run at phase 1 step 1, still nothing |
 | R-8 | The plan-file-structure guard fails the PR on a path this section does not list | med | low | run `node scripts/check-plan-file-structure.mjs --diff origin/main` before every push, **with the plan doc staged** — unstaged, the guard short-circuits and passes | ivopogace | open |
 
 ## Open questions / Assumptions
@@ -266,17 +266,16 @@ the theme-switcher UI displays, and this slice adds no theme.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done`. The danger token set is registered and the
-contrast proof is green; the component sweep (phases 1–2) has not started.
+**Stage pointer:** `implement — phase 1 done`. The danger token set is registered, the
+contrast proof is green, and the 16 in-scope `#b3261e` occurrences now read
+`--riv-error-ink`. Draft PR **#833** is open (CI vehicle).
 
-**Next action:** Open the **draft** PR against the phase-0 commit — CI fires on the
-`pull_request` event only, so a branch with no PR gets no CI at all — then work phase 1
-step 1.
+**Next action:** Phase 2 — the erasure panel's three sites and the `Kept` term.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Danger token set + contrast proof | ✅ | `Register the admin danger treatment as --riv-danger-* tokens (#829)` |
-| 1 — The 16 `#b3261e` occurrences → `--riv-error-ink` | | |
+| 1 — The 16 `#b3261e` occurrences → `--riv-error-ink` | ✅ | `Paint the admin error ink from --riv-error-ink (#829)` |
 | 2 — The erasure panel → `--riv-danger-*`, `Kept` → `--riv-accent-ink` | | |
 | 3 — Computed-style drift verification + e2e pin | | |
 
@@ -441,16 +440,16 @@ import {
 `admin-operators.ts:55,157` · `admin-privacy.ts:104,182,237` · `admin-refund-outbox.ts:35` ·
 `admin-venue-photos.ts:78`
 
-- [ ] **Step 1:** Re-run R-7's check — no spec pins the literal — then re-run AC-1's grep to
+- [x] **Step 1:** Re-run R-7's check — no spec pins the literal — then re-run AC-1's grep to
   confirm the population is still 18/10 files against current `main`.
-- [ ] **Step 2:** Replace `text-[#b3261e]` → `text-riv-error-ink` and `border-[#b3261e]` →
+- [x] **Step 2:** Replace `text-[#b3261e]` → `text-riv-error-ink` and `border-[#b3261e]` →
   `border-riv-error-ink` at all 16 in-scope occurrences. **Do not touch `app.html:6`** (R-1).
-- [ ] **Step 3:** `npm test -- src/app/admin/ src/app/shared/confirm-with-reason.spec.ts` → PASS
+- [x] **Step 3:** `npm test -- src/app/admin/ src/app/shared/confirm-with-reason.spec.ts` → PASS
   (nothing should move; the specs query `data-testid`, not colours).
-- [ ] **Step 4:** `npm run lint && npm run format:check` → clean.
-- [ ] **Step 5: Generalization audit** — none needed; phase 0 already swept the mechanism.
-- [ ] **Step 6: Commit** — `git commit -m "Paint the admin error ink from --riv-error-ink (#829)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 4:** `npm run lint && npm run format:check` → clean.
+- [x] **Step 5: Generalization audit** — none needed; phase 0 already swept the mechanism.
+- [x] **Step 6: Commit** — `git commit -m "Paint the admin error ink from --riv-error-ink (#829)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 

@@ -45,7 +45,7 @@ import { TouchTarget } from '../shared/touch-target';
     @if (lever.loading()) {
       <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-outbox-loading">Loading…</p>
     } @else if (lever.loadError()) {
-      <p class="mt-4 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-outbox-error">
+      <p class="mt-4 text-[15px] text-riv-error-ink" role="alert" data-testid="admin-outbox-error">
         Something went wrong loading the email outbox.
         <button
           type="button"

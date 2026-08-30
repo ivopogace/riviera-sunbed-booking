@@ -59,7 +59,7 @@ import { TouchTarget } from './touch-target';
         [attr.data-testid]="confirmTestId()"
         [appBusy]="busy()"
         (click)="confirmed.emit()"
-        class="rounded-[10px] border border-[#b3261e] px-4 py-2 text-[14px] font-semibold text-[#b3261e] aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+        class="rounded-[10px] border border-riv-error-ink px-4 py-2 text-[14px] font-semibold text-riv-error-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
       >
         {{ confirmLabel() }}
       </button>

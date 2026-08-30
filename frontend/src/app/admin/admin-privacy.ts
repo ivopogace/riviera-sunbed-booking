@@ -101,7 +101,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
             @if (reviewAttempted() && erasureForm.email().errors().length) {
               <p
                 [appFieldErrorFor]="emailControl"
-                class="mt-2 text-[13.5px] font-semibold text-[#b3261e]"
+                class="mt-2 text-[13.5px] font-semibold text-riv-error-ink"
                 role="alert"
                 data-testid="admin-privacy-email-error"
               >
@@ -179,7 +179,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
             <div class="mt-2 min-h-[1.25rem]">
               @if (erasureError()) {
                 <p
-                  class="text-[13.5px] font-semibold text-[#b3261e]"
+                  class="text-[13.5px] font-semibold text-riv-error-ink"
                   role="alert"
                   data-testid="admin-privacy-error"
                 >
@@ -234,7 +234,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
         <dl
           class="mt-3 grid grid-cols-[auto_1fr] gap-x-2 gap-y-2.5 text-[12.5px] leading-relaxed text-riv-card-ink-soft"
         >
-          <dt class="font-bold text-[#b3261e]">Erased</dt>
+          <dt class="font-bold text-riv-error-ink">Erased</dt>
           <dd>Name, email, phone — overwritten in place, not deleted rows.</dd>
           <dt class="font-bold text-[#0a5f73]">Kept</dt>
           <dd>

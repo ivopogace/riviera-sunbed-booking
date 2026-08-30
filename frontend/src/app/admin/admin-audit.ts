@@ -34,7 +34,7 @@ import { AdminAuditEntryView } from './admin.model';
     @if (loading()) {
       <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-audit-loading">Loading…</p>
     } @else if (loadError()) {
-      <p class="mt-4 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-audit-error">
+      <p class="mt-4 text-[15px] text-riv-error-ink" role="alert" data-testid="admin-audit-error">
         Something went wrong loading the audit trail.
         <button
           type="button"
