@@ -47,6 +47,7 @@ const REVIEW_REFUSALS = new Map<string, string>([
   ['REVIEW_WINDOW_CLOSED', 'The window for rating this stay has closed.'],
   ['BOOKING_NOT_COMPLETED', 'You can rate a stay once you’ve been checked in.'],
   ['NO_SUCH_REVIEW', 'This stay no longer carries a review.'],
+  ['NO_SUCH_BOOKING', 'We couldn’t find a booking for that code.'],
 ]);
 
 const REVIEW_RETRY = 'We couldn’t save your review. Please try again.';
@@ -62,8 +63,11 @@ function reviewRefusal(error: unknown): string | undefined {
 const CLS = {
   card: `${CARD_SURFACE} mx-auto my-8 max-w-[560px] px-[26px] pt-[26px] pb-6`,
   stateCard: `${CARD_SURFACE} mx-auto my-8 max-w-[460px] px-[30px] py-10 text-center`,
-  title: 'm-0 text-[28px] font-bold tracking-[-0.02em] text-riv-card-ink',
-  stateTitle: 'mx-0 mt-0 mb-2 text-[22px] font-bold tracking-[-0.02em] text-riv-card-ink',
+  // The outline twins cls.result's: a booking→booking swap parks a keyboard guest's focus here.
+  title:
+    'm-0 text-[28px] font-bold tracking-[-0.02em] text-riv-card-ink focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
+  stateTitle:
+    'mx-0 mt-0 mb-2 text-[22px] font-bold tracking-[-0.02em] text-riv-card-ink focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
   lead: 'mx-0 mt-0 mb-[18px] text-[14.5px] leading-[1.5] text-riv-card-ink-soft',
   link: `${LINK} inline-flex items-center`,
   linkBack: `${LINK} mt-[18px] inline-flex items-center`,
@@ -137,7 +141,7 @@ const CLS = {
   template: `
     @if (notFound()) {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title">
-        <h1 id="bv-title" [class]="cls.stateTitle">Booking not found</h1>
+        <h1 id="bv-title" data-testid="bv-title" [class]="cls.stateTitle">Booking not found</h1>
         <p [class]="cls.lead">
           We couldn’t find a booking for that code. Check the code and try again.
         </p>
@@ -145,14 +149,16 @@ const CLS = {
       </section>
     } @else if (failed()) {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title">
-        <h1 id="bv-title" [class]="cls.stateTitle">Couldn’t load your booking</h1>
+        <h1 id="bv-title" data-testid="bv-title" [class]="cls.stateTitle">
+          Couldn’t load your booking
+        </h1>
         <p [class]="cls.lead">Something went wrong. Please try again in a moment.</p>
         <a appTouchTarget routerLink="/" [class]="cls.link">Back to home</a>
       </section>
     } @else if (booking(); as b) {
       <section [class]="cls.card" appCardGlass aria-labelledby="bv-title">
         <div class="flex items-center justify-between gap-3">
-          <h1 id="bv-title" [class]="cls.title">Your booking</h1>
+          <h1 id="bv-title" data-testid="bv-title" [class]="cls.title">Your booking</h1>
           <span>
             <!-- Restores the "Status: X" context the removed dl row gave assistive tech. -->
             <span class="sr-only">Booking status:</span>
@@ -530,7 +536,7 @@ const CLS = {
       </section>
     } @else {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title" aria-busy="true">
-        <h1 id="bv-title" [class]="cls.stateTitle">Loading your booking…</h1>
+        <h1 id="bv-title" data-testid="bv-title" [class]="cls.stateTitle">Loading your booking…</h1>
       </section>
     }
   `,
@@ -567,6 +573,9 @@ export class BookingView {
 
   private readonly focusAfterRender = focusMover();
 
+  /** Set by a booking→booking param swap; the load outcome that renders next consumes it (RV-FE-9). */
+  private refocusTitle = false;
+
   /** Absent until the detail loads — the panel lives inside the loaded-booking branch. */
   private readonly reviewPanel = viewChild(ReviewPanel);
 
@@ -577,8 +586,12 @@ export class BookingView {
 
   constructor() {
     // React to route `code`, not the snapshot — the find modal makes booking→booking nav real; the sync emit loads initially.
+    let initialEmit = true;
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       this.code = params.get('code') ?? '';
+      // A swap tears down whatever held focus, so the next settled card's title takes it.
+      this.refocusTitle = !initialEmit;
+      initialEmit = false;
       // Reset the per-booking view state before (re)loading the new code.
       this.booking.set(undefined);
       this.notFound.set(false);
@@ -600,8 +613,16 @@ export class BookingView {
         this.load();
       } else {
         this.notFound.set(true);
+        this.refocusTitleIfSwapped();
       }
     });
+  }
+
+  private refocusTitleIfSwapped(): void {
+    if (this.refocusTitle) {
+      this.refocusTitle = false;
+      this.focusAfterRender('bv-title');
+    }
   }
 
   /**
@@ -616,11 +637,15 @@ export class BookingView {
       const prefetched = this.bookings.takePrefetched(this.code);
       if (prefetched) {
         this.booking.set(prefetched);
+        this.refocusTitleIfSwapped();
         return;
       }
     }
     this.bookings.getByCode(this.code).subscribe({
-      next: (b) => this.booking.set(b),
+      next: (b) => {
+        this.booking.set(b);
+        this.refocusTitleIfSwapped();
+      },
       error: (e: unknown) => {
         if (isRefresh) {
           return;
@@ -630,6 +655,7 @@ export class BookingView {
         } else {
           this.failed.set(true);
         }
+        this.refocusTitleIfSwapped();
       },
     });
   }
@@ -702,8 +728,9 @@ export class BookingView {
           // The server moved on, so the panel on screen is stale — re-read rather than offer it again.
           this.reviewPanel()?.settle();
           this.load(true);
+          this.focusAfterRender('review-result');
         }
-        this.focusAfterRender('review-result');
+        // A retryable failure keeps the pressed control alive; the polite region announces unmoved.
       },
     });
   }

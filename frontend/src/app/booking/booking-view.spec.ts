@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
-import { BehaviorSubject, of, throwError } from 'rxjs';
+import { BehaviorSubject, NEVER, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { expectNoAxeViolations } from '../../testing/axe';
@@ -1164,6 +1164,87 @@ describe('BookingView', () => {
     expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContain('BBBBBBBBBB');
     expect(host.textContent).toContain('Venue Beta');
     expect(host.textContent).not.toContain('Venue Alpha');
+    // The swap destroyed whatever held focus (WCAG 2.4.3) — the new booking's title takes it.
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="bv-title"]'));
+  });
+
+  it('parks focus on the failure card when the swapped-to booking fails to load', async () => {
+    const paramMap$ = new BehaviorSubject(convertToParamMap({ code: 'AAAAAAAAAA' }));
+    const service: Partial<BookingService> = {
+      getByCode: (code: string) =>
+        code === 'AAAAAAAAAA'
+          ? of({ ...DETAIL, code: 'AAAAAAAAAA' })
+          : throwError(() => new HttpErrorResponse({ status: 500 })),
+      takePrefetched: () => undefined,
+    };
+    await TestBed.configureTestingModule({
+      imports: [BookingView],
+      providers: [
+        provideRouter([]),
+        { provide: BookingService, useValue: service },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: paramMap$.value }, paramMap: paramMap$ },
+        },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(BookingView);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+
+    paramMap$.next(convertToParamMap({ code: 'BBBBBBBBBB' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.textContent).toContain('Couldn’t load your booking');
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="bv-title"]'));
+  });
+
+  it('parks focus on the not-found card when a swap arrives with no code', async () => {
+    const paramMap$ = new BehaviorSubject(convertToParamMap({ code: 'AAAAAAAAAA' }));
+    const service: Partial<BookingService> = {
+      getByCode: () => of({ ...DETAIL, code: 'AAAAAAAAAA' }),
+      takePrefetched: () => undefined,
+    };
+    await TestBed.configureTestingModule({
+      imports: [BookingView],
+      providers: [
+        provideRouter([]),
+        { provide: BookingService, useValue: service },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: paramMap$.value }, paramMap: paramMap$ },
+        },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(BookingView);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+
+    paramMap$.next(convertToParamMap({}));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.textContent).toContain('Booking not found');
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="bv-title"]'));
+  });
+
+  it('shows the loading card while the fetch is in flight', async () => {
+    const fixture = await render({
+      getByCode: () => NEVER,
+      takePrefetched: () => undefined,
+    });
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="bv-title"]')?.textContent).toContain(
+      'Loading your booking',
+    );
   });
 
   describe('review panel', () => {
@@ -1327,6 +1408,29 @@ describe('BookingView', () => {
       );
     });
 
+    it('treats a vanished booking as a settled refusal, not a retry', async () => {
+      const fixture = await render(
+        stubService({
+          detail: REVIEWED,
+          reviewError: new HttpErrorResponse({ status: 404, error: { code: 'NO_SUCH_BOOKING' } }),
+        }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      host.querySelector<HTMLButtonElement>('[data-testid="start-delete-review"]')!.click();
+      fixture.detectChanges();
+      host.querySelector<HTMLButtonElement>('[data-testid="confirm-delete-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'couldn’t find a booking',
+      );
+      // Settled, so the confirm pair is gone — not left open behind a "try again".
+      expect(host.querySelector('[data-testid="confirm-delete-review"]')).toBeNull();
+    });
+
     it('renders the frozen review read-only, with no form and no actions', async () => {
       const fixture = await render(
         stubService({
@@ -1430,6 +1534,34 @@ describe('BookingView', () => {
         'Please try again',
       );
       expect(host.querySelector('[data-testid="review-panel"]')).not.toBeNull();
+    });
+
+    it('leaves focus on the confirm pair after a retryable delete failure', async () => {
+      const fixture = await render(
+        stubService({ detail: REVIEWED, reviewError: new HttpErrorResponse({ status: 500 }) }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      host.querySelector<HTMLButtonElement>('[data-testid="start-delete-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const confirm = host.querySelector<HTMLButtonElement>(
+        '[data-testid="confirm-delete-review"]',
+      )!;
+      expect(document.activeElement).toBe(confirm);
+
+      confirm.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'Please try again',
+      );
+      // Retryable, so the pair survives — and keeps focus rather than losing it to the live region.
+      expect(host.querySelector('[data-testid="confirm-delete-review"]')).toBe(confirm);
+      expect(document.activeElement).toBe(confirm);
     });
   });
 });
