@@ -381,11 +381,16 @@ with `cls.btnOutlineDanger`; every new control carries `appTouchTarget`.
 
 ## Execution status
 
-**Stage pointer:** `implement — all six phases done; draft PR #819 open against main, close-out written`
+**Stage pointer:** `ready for review — review gate NOT yet run, owned by the follow-up session`
 
-**Next action:** merge the latest `origin/main` in with phase discipline, mark PR #819 ready
-for review, and hand it to the review session. **The review gate, the Sonar-gate triage and
-the merge have NOT been run** — they belong to the follow-up session by request.
+**Next action:** the review session picks PR #819 up at the **Review gate** — `/code-review`
+per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 with
+`riviera-review-overlay` layered on, then the **Sonar-gate triage** (finding F-2: the gate
+passes but four new issues stand against this repo's stricter 0-new-issues bar), then merge
+and the close-out citation. **None of those three has been run here**, by request.
+
+`origin/main` was re-fetched at close-out and the branch is **0 commits behind**, so the
+"merge the latest main" step was a no-op — nothing to integrate, no conflict to resolve.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -394,7 +399,7 @@ the merge have NOT been run** — they belong to the follow-up session by reques
 | 2 — edit + delete on the lifecycle port + edge wiring | ✅ | `de46936` |
 | 3 — sealed panel read + name suggestion | ✅ | `eaf57d7` |
 | 4 — frontend panel (form / own / frozen / messaging) | ✅ | `9833e02` |
-| 5 — e2e journeys + docs freshness + close-out | ✅ | this commit |
+| 5 — e2e journeys + docs freshness + close-out | ✅ | `d758bc5` + this close-out commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -406,12 +411,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | D-2 | phase 1 relocates `ReviewState` to `domain/` | phase 1 leaves it in `vocabulary/`; phase 3 moves it | while `ReviewEligibility.stateFor` still returns it, a `domain/` type would be an unpublished return on a published port — the plan's own phase-3 file list already places the move there |
 | D-3 | `final class ReviewText` (package-private sketch) | `public final class ReviewText` | `adapter/in` validates against the bounds, and it is a different package — the `Stars` precedent |
 | D-4 | `vocabulary/OwnReview` lands in phase 3 | landed in phase 0 | `Reviews.findFor` returns it, and the plan allows "moved from phase 0 if not yet public" |
+| D-5 | the view renders `<app-review-panel>` unconditionally | wrapped in `@if (b.reviewPanel; as …)` | found in phase 5: the repo's e2e `BookingDetail` fixtures are deliberately partial, and a template that dereferences a missing field takes the **whole** booking view down with it — cancel button included. The guard degrades to "no review section", exactly what the retired `reviewable` flag did when absent |
+| D-6 | the textarea carries a `maxlength` attribute | the schema's `maxLength` validator carries it | Angular v22 refuses `[attr.maxlength]` on a `[formField]` node (NG8022) — the directive syncs the attribute from the schema itself, which is the same bound stated once |
 
 **Findings register**
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | | | |
+| F-2 | Sonar (PR #819, reported on the phase-3 head) | **Quality Gate passed** — 93.2% coverage on new code, 0.0% duplication, 0 security hotspots — but **4 new issues**, and this repo's merge bar is stricter than the gate (0 new issues). Not triaged here: the maintainer asked for the Sonar-gate triage to run in the review session | **open — owned by the review session** |
+| F-1 | CI (process) | Phase 4's own CI run was **cancelled by the concurrency group** when phase 5 was pushed ~20 minutes later, so that phase never got its own green run — a miss against the riviera-sdlc CI-gate rule ("check that push's run before starting the next phase"). Phases 0-3 were each checked (phase 3's run was green on all eight checks), and phase 5's run covers the cumulative tree including phase 4. Locally, phase 4 was proven by the full Vitest suite (2059 tests) and the full mocked e2e suite (306 tests), not a scoped subset | closed — noted rather than fixed; the cumulative run is the evidence |
 
 ---
 
