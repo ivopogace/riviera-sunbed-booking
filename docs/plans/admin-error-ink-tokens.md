@@ -156,20 +156,34 @@ remote branch stands in; do not create the literal `feature/…` branch.
 
 ## Open questions / Assumptions
 
-- **OQ-1 (open):** Both destructive confirmations in the admin console end this slice
-  painted from different token families — `confirm-with-reason`'s outlined button from
-  `--riv-error-ink`, `admin-privacy`'s Erase button from `--riv-danger-*`. Proposed
-  resolution: **leave it**, because the two treatments genuinely differ (a bare outlined
-  button on a row card vs. a tinted panel), and unifying them is a visual decision the
-  no-drift rule puts outside a token sweep. If the maintainer disagrees, it is a follow-up
-  issue, not a widening of this one. — *Owner:* ivopogace · *Resolves by:* phase 2 review.
-- **OQ-2 (open):** The dark-theme `--riv-danger-ink` is proposed as `#ffa9a1` — the same
-  value as the dark `--riv-error-ink` — on the grounds that the dark palette does not need
-  two near-identical light reds. Porcelain keeps them distinct (`#a3160e` vs `#8f2c22`).
-  Confirm this asymmetry is intended rather than an oversight. — *Owner:* ivopogace ·
-  *Resolves by:* phase 0.
+**None open.** The two slice-level questions were put to the maintainer at plan time and are
+resolved below (OQ-1, OQ-2); OQ-A…OQ-D are the issue-intake grill's findings. The one item
+that can re-open this section is **R-3**: if phase 0's contrast spec finds the Erase
+button's border below 3:1, that becomes a recorded finding with a follow-up issue — never a
+silent value change.
 
 ### Resolved
+
+- **OQ-1 — the two destructive buttons keep different token families.** Maintainer
+  decision: leave it. `shared/confirm-with-reason.ts`'s bare outlined button reads
+  `--riv-error-ink`; `admin-privacy.ts`'s tinted Erase button reads `--riv-danger-*`. The
+  families track the two *treatments*, which genuinely differ (border + label, no fill, on
+  a row card vs. a tinted action inside a tinted panel), and this is what keeps every
+  erasure-panel value byte-identical — the zero-drift outcome. **Rejected:** consolidating
+  the ink (would turn two `preserved` ledger rows into `changed` for no visual gain, and
+  drop `--riv-danger-ink` entirely), and unifying the two treatments (a redesign of a
+  `shared/` component with two live consumers — its own issue, with its own before/after).
+  *Consequence:* the split is invisible in the code, so the phase 2 commit body must state
+  it; the Behavior-parity ledger already carries it row by row.
+- **OQ-2 — the dark `--riv-danger-ink` is `#ffa9a1`, the same value as the dark
+  `--riv-error-ink`.** Maintainer decision. The dark palette does not need two
+  near-identical light reds nobody could distinguish on a dark card; porcelain keeps the
+  families distinct (`#a3160e` error vs `#8f2c22` danger), dark deliberately does not.
+  Because that asymmetry reads like an oversight, phase 0 states it in a comment beside the
+  dark block. AC-4 still proves the value by maths rather than assertion. **Rejected:** a
+  distinct dark danger ink (invents a value no one can currently see), and declaring the
+  danger set porcelain-only (re-creates exactly the latent trap #829 exists to remove — the
+  first non-porcelain consumer would paint `#8f2c22` on a dark ground).
 
 - **OQ-A — the issue's "`#ffa9a1` in the dark themes" (plural) is wrong.** Only
   `[data-riv-theme='dark']` overrides `--riv-error-ink`; the `riviera` block
@@ -249,13 +263,13 @@ the theme-switcher UI displays, and this slice adds no theme.
 
 ## Execution status
 
-**Stage pointer:** `plan — authored, awaiting maintainer sign-off` (the SDLC run was scoped
-to "stop after creating the plan").
+**Stage pointer:** `plan — complete; implementation not started` (the SDLC run was scoped to
+"stop after creating the plan"). Both open questions are answered; nothing blocks phase 0.
 
-**Next action:** Maintainer reviews this plan — in particular OQ-1 and OQ-2, and R-3's
-decision to leave a pre-existing sub-3:1 boundary alone. On approval, open the draft PR
-**before** the first phase commit lands is pushed (CI fires on `pull_request` only), then
-start phase 0.
+**Next action:** Open the **draft** PR as soon as the first phase-0 commit exists — CI fires
+on the `pull_request` event only, so a branch with no PR gets no CI at all — then work phase
+0 step 1. The one live judgement call during phase 0 is R-3: if a porcelain contrast row
+comes out below its bar, record it and open a follow-up, do not adjust the value.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -365,6 +379,9 @@ import {
   and to `[data-riv-theme='dark']` (candidate values — the spec is the gate, adjust to pass):
 
 ```css
+  /* Deliberately the same ink as --riv-error-ink here (OQ-2): porcelain distinguishes the
+     error and danger reds, the dark palette does not — two near-identical light reds on a
+     dark card would be noise. Not an oversight; do not "fix" the duplication. */
   --riv-danger-ink: #ffa9a1;
   --riv-danger-fill: rgba(255, 138, 122, 0.1);
   --riv-danger-border: rgba(255, 138, 122, 0.42);
@@ -498,7 +515,7 @@ import {
 - [ ] `app.html:6`'s deliberate deviation is intact and its TSDoc still accurate.
 - [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
 - [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #) —
-      incl. OQ-1, OQ-2, and R-3's follow-up if the spec finds a sub-3:1 boundary.
+      incl. R-3's follow-up if the contrast spec finds a sub-3:1 boundary.
 - [ ] Follow-up issues opened: the `#0a4f5e` teal sweep, and phase 0's literal residue.
 - [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — the `references/pr-gates.md` §1 ladder *plus*
