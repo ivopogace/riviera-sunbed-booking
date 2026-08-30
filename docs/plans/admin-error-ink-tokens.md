@@ -85,18 +85,18 @@ carries both of its commits.
   over the action fill for the button label — then both pairs meet AA 4.5:1, in **porcelain
   and in dark**. *Pinned by:* `admin-console.contrast.spec.ts` ›
   `'the danger ink meets AA on the panel and action fills, per theme'`.
-- [ ] **AC-5:** Given the mocked-backend admin console rendered in a real browser, when the
+- [x] **AC-5:** Given the mocked-backend admin console rendered in a real browser, when the
   error message, the destructive button, the Suspended badge and the erasure panel are
   read with `toHaveCSS`, then each reports exactly the token's resolved value
   (`rgb(163, 22, 14)` for the error ink; `rgb(143, 44, 34)` and
   `rgba(179, 54, 43, 0.06)` for the danger family) — i.e. the computed style, not the class
   list, is what is pinned. *Pinned by:* `admin-token-inks.e2e.ts`.
-- [ ] **AC-6:** Given every admin surface the mocked e2e already visits (including
+- [x] **AC-6:** Given every admin surface the mocked e2e already visits (including
   `admin-commissions.e2e.ts`'s validation-error state), when the suite runs, then
   `expectNoSeriousAxeViolations` still reports zero serious/critical violations — the
   real-render `color-contrast` net does not regress. *Pinned by:* `npm run test:e2e:a11y`
   (existing specs, unchanged).
-- [ ] **AC-7:** Given the admin console subtree, when it renders under a document theme of
+- [x] **AC-7:** Given the admin console subtree, when it renders under a document theme of
   `riviera` or `dark`, then every migrated site resolves the token through the subtree's own
   `data-riv-theme="porcelain"` pin (`admin-console.ts:59`) and paints the porcelain value —
   proving the `@theme inline` mapping still defers resolution to the consuming scope.
@@ -155,7 +155,7 @@ carries both of its commits.
 | R-5 | Adding tokens to `tailwind.css` without the matching `@theme inline` row leaves the named utility ungenerated, and the class silently does nothing | low | high | each of the five tokens gets its `--color-riv-danger-*: var(--riv-danger-*)` row in the same commit; AC-5's `toHaveCSS` on a real render is what catches a missing mapping (a class list check could not) | ivopogace | closed — all five rows added in the phase-0 commit |
 | R-6 | `confirm-with-reason.ts` lives in `shared/`, so migrating it changes any future non-porcelain consumer's appearance | low | low | that is the *point* of the migration (the issue's future-proofing rationale); today its only consumers are `admin-venue-photos` and `admin-operators`, both porcelain — verified, and `shared/confirm-panel.ts` is a TSDoc cross-reference only, not a dependency | ivopogace | closed — migrated at phase 1; both consumers verified porcelain |
 | R-7 | An existing unit/e2e spec pins one of the literals and breaks | low | low | verified none does: `grep -rn 'b3261e\|8f2c22\|0a5f73\|179, *54, *43' frontend/src --include=*.spec.ts frontend/e2e` returns nothing. Re-run before phase 1 | ivopogace | closed — re-run at phase 1 step 1, still nothing |
-| R-8 | The plan-file-structure guard fails the PR on a path this section does not list | med | low | run `node scripts/check-plan-file-structure.mjs --diff origin/main` before every push, **with the plan doc staged** — unstaged, the guard short-circuits and passes | ivopogace | open |
+| R-8 | The plan-file-structure guard fails the PR on a path this section does not list | med | low | run `node scripts/check-plan-file-structure.mjs --diff origin/main` before every push, **with the plan doc staged** — unstaged, the guard short-circuits and passes | ivopogace | closed — run staged before every push; green each time |
 
 ## Open questions / Assumptions
 
@@ -266,19 +266,20 @@ the theme-switcher UI displays, and this slice adds no theme.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 2 done`. Every red literal under `admin/` and
-`shared/confirm-with-reason.ts` is now a registered token; AC-1 and AC-2 both hold. Draft
-PR **#833** is open (CI vehicle).
+**Stage pointer:** `implement — all four phases done; PR #833 driving CI + Sonar`. Every AC
+verifies; the computed-style drift is accounted for property by property.
 
-**Next action:** Phase 3 — the computed-style drift proof and `admin-token-inks.e2e.ts`,
-then the AC-verification section and ready-for-review.
+**Next action:** Green CI + a cleared Sonar new-issue list, then mark PR #833 ready for
+review. The **review gate is deliberately NOT run in this session** — it belongs to the
+session that authored the plan — and neither is the merge. Still open at close-out: the two
+follow-up issues (R-3's sub-3:1 boundaries; the literal residue + the `#0a4f5e` teal sweep).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Danger token set + contrast proof | ✅ | `Register the admin danger treatment as --riv-danger-* tokens (#829)` |
 | 1 — The 16 `#b3261e` occurrences → `--riv-error-ink` | ✅ | `Paint the admin error ink from --riv-error-ink (#829)` |
 | 2 — The erasure panel → `--riv-danger-*`, `Kept` → `--riv-accent-ink` | ✅ | `Paint the erasure panel from the danger tokens (#829)` |
-| 3 — Computed-style drift verification + e2e pin | | |
+| 3 — Computed-style drift verification + e2e pin | ✅ | `Pin the admin token inks against a real render (#829)` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -299,6 +300,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | phase 0 contrast maths (R-3, pre-existing) | The erasure panel's **non-text** boundaries are below WCAG 1.4.11's 3:1 on `main` today, and the token migration preserves them byte-identically: the Erase button's `rgba(179,54,43,0.6)` border measures **2.60–2.69:1** over the panel fill (matching the plan's hand-computed ≈2.6:1), and the panel's own `rgba(179,54,43,0.35)` border **1.74–1.76:1** over the card glass. Per R-3 this is recorded, **not** adjusted — changing it is a visual decision outside a token migration. The dark candidates clear the button border (3.44–3.68:1) but not the panel border (2.29–2.32:1). The contrast spec's scope is text pairs (1.4.3) and its header says so. | follow-up issue at close-out |
+| F-2 | phase 3 full mocked e2e (red locally, before any push) | **R-7 under-counted.** `admin-venue-photos.e2e.ts:127` pinned the outgoing ink by its **resolved** value — `toHaveCSS('color', 'rgb(179, 38, 30)')` — which R-7's hex grep (`grep -rn 'b3261e…'`) structurally cannot see. The assertion's intent (the destructive button carries the error ink) is unchanged; only the expected value moves to `rgb(163, 22, 14)`. Swept for every other resolved form of the five migrated colours across `e2e/` and `src/**/*.spec.ts`: this was the only one. | fixed in the phase-3 commit |
 
 ---
 
@@ -326,6 +328,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
   families: error ink, danger set, accent ink)
 - `frontend/src/app/admin/admin-refund-outbox.ts` — line 35
 - `frontend/src/app/admin/admin-venue-photos.ts` — line 78
+- `frontend/e2e/admin-venue-photos.e2e.ts` — line 127, the one existing spec that pinned the
+  outgoing ink by its **resolved** value rather than its hex (finding F-2)
 - `frontend/e2e/admin-token-inks.e2e.ts` — **new**; the computed-style pin (AC-5, AC-7).
   Placement in the **CI-safe mocked** suite is deliberate (no backend needed); RV-FE-E2E owns
   the final call at review
@@ -473,22 +477,22 @@ import {
 
 **Files:** Create `frontend/e2e/admin-token-inks.e2e.ts`
 
-- [ ] **Step 1: The drift proof (issue step 3).** With the mocked e2e driving each admin tab,
+- [x] **Step 1: The drift proof (issue step 3).** With the mocked e2e driving each admin tab,
   capture `getComputedStyle` for every migrated element **before** (at `main`) and **after**,
   and diff. Every moved property must be one of the six intended value changes in the
   Behavior-parity ledger; anything else — a dropped `cursor`, a changed `transition`, a
   border-width shift — is a regression, not a colour decision. (Chromium snaps `border-width`
   to the device pixel; `1.5px` reading as `"1px"` is not a regression — `riviera-tailwind`
   GOTCHA.) Paste the diff into the AC-verification section.
-- [ ] **Step 2:** Write `admin-token-inks.e2e.ts` — `toHaveCSS` on one representative element
+- [x] **Step 2:** Write `admin-token-inks.e2e.ts` — `toHaveCSS` on one representative element
   per family (AC-5) plus the porcelain-pin test under a `dark` document theme (AC-7).
-- [ ] **Step 3:** `npm run test:e2e:a11y` → PASS, including every existing admin spec's
+- [x] **Step 3:** `npm run test:e2e:a11y` → PASS, including every existing admin spec's
   `expectNoSeriousAxeViolations` (AC-6).
-- [ ] **Step 4:** `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan doc
+- [x] **Step 4:** `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan doc
   staged) · `node scripts/check-touch-target.mjs --diff origin/main` · `npm run lint` ·
   `npm run format:check` → all clean.
-- [ ] **Step 5: Commit** — `git commit -m "Pin the admin token inks against a real render (#829)"`
-- [ ] **Step 6: Update plan-doc execution status**, then mark the PR ready for review.
+- [x] **Step 5: Commit** — `git commit -m "Pin the admin token inks against a real render (#829)"`
+- [x] **Step 6: Update plan-doc execution status**, then mark the PR ready for review.
 
 ---
 
@@ -502,12 +506,39 @@ import {
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `grep -rno '\[#b3261e\]' frontend/src --include=*.ts --include=*.html | wc -l` → `2`, both on `app.html:6`.
-- [ ] **AC-2:** `grep -rno '#8f2c22\|179, *54, *43\|#0a5f73' frontend/src --include=*.ts --include=*.html | wc -l` → `0`.
-- [ ] **AC-3/AC-4:** `npm test -- src/app/admin/admin-console.contrast.spec.ts` → PASS.
-- [ ] **AC-5/AC-7:** `npm run test:e2e:a11y -- admin-token-inks` → PASS.
-- [ ] **AC-6:** `npm run test:e2e:a11y` → PASS (full mocked suite).
-- [ ] Computed-style before/after diff pasted here, every moved property accounted for.
+- [x] **AC-1:** `grep -rno '\[#b3261e\]' frontend/src --include=*.ts --include=*.html | wc -l` → `2`, both on `app.html:6`.
+- [x] **AC-2:** `grep -rno '#8f2c22\|179, *54, *43\|#0a5f73' frontend/src --include=*.ts --include=*.html | wc -l` → `0`.
+- [x] **AC-3/AC-4:** `npm test -- --include="src/app/admin/admin-console.contrast.spec.ts"` → 4 passed.
+      (`ng test` reads a bare positional as the *project* name; `--include` is the single-spec form.)
+- [x] **AC-5/AC-7:** `npx playwright test --config playwright.a11y.config.ts admin-token-inks` → 4 passed.
+- [x] **AC-6:** `npm run test:e2e:a11y` → **313 passed**, full mocked suite, every existing admin
+      spec's `expectNoSeriousAxeViolations` included. Full Vitest suite: 2098 passed / 195 files.
+- [x] Computed-style before/after diff pasted below, every moved property accounted for.
+
+### The computed-style drift diff (AC-5, issue step 3)
+
+Method: one throwaway Playwright spec drove every migrated element into view against the mocked
+backend and dumped its **entire** `getComputedStyle` — not a chosen property list, so an unintended
+move could not hide. The identical run was taken at `origin/main` (`git checkout origin/main --
+frontend/src`) and at HEAD, and the two dumps diffed property by property. **18 elements**
+captured: the 13 error-message sites, the destructive button, the Suspended badge, the `Erased`
+and `Kept` terms, and the erasure panel's panel/heading/Erase-button trio.
+
+Every moved property falls into exactly three classes, and there is no fourth:
+
+| Class | Properties that moved | Verdict |
+|---|---|---|
+| **1 — the intended ink change** | `color`, plus the 15 properties that resolve to `currentColor` when unset: the eight `border-*-color` longhands, `caret-color`, `column-rule-color`, `outline-color`, `text-decoration-color`, `text-emphasis-color`, `-webkit-text-fill-color`, `-webkit-text-stroke-color`. `rgb(179, 38, 30)` → `rgb(163, 22, 14)` on the 16 error-ink elements; `rgb(10, 95, 115)` → `rgb(8, 90, 110)` on `Kept` | **intended** — ledger rows 1–5. All 16 are downstream of the one `color` change; only the badge and the destructive button actually *paint* a border, and both are meant to move with the label |
+| **2 — the registry entry itself** | the five `--riv-danger-*` custom properties, `undefined` → their declared values, on **every** captured element | **intended** — they inherit from `:root`; a custom property is not paint. Their presence on elements that never read them is what a global token declaration looks like |
+| **3 — an animation sampled mid-flight** | on the confirm panel only: `opacity` `0.0613211` → `0.0613778`, `transform` `matrix(0.962453, …, 11.2641)` → `matrix(0.962455, …, 11.2635)` | **not a change** — the `riv-pop` entry animation is untouched and unpaused; the two runs sampled it microseconds apart. The committed e2e awaits `getAnimations().finished` so it never reads a moving value |
+
+**What did *not* move is the load-bearing half.** The erasure panel, its heading and the Erase
+button report **zero** colour movement — `background-color`, `border-*-color` and `color` are
+byte-identical across the two runs, which is the whole point of moving those five values to the
+registry unchanged (ledger rows 6–8). And across all 18 elements nothing moved in `border-width`,
+`border-style`, `cursor`, `transition`, `animation`, `opacity` (outside class 3), `padding`,
+`margin`, `font-*` or any layout property — so the "same element, one colour utility swapped"
+claim is measured, not asserted.
 
 ## Self-review checklist (before merge / PR)
 
