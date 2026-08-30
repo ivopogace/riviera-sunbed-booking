@@ -11,13 +11,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import ai.riviera.platform.review.application.SubmitReview;
+import ai.riviera.platform.review.application.ReviewLifecycle;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 import ai.riviera.platform.shared.ApiProblem;
 
 /**
- * The rate-a-stay endpoint. Driving adapter — depends only on this module's {@link SubmitReview}
- * port (invariant #11). It joins the code-gated {@code /api/bookings/{code}} URL family without
+ * The rate-a-stay endpoint. Driving adapter — depends only on this module's
+ * {@link ReviewLifecycle} port (invariant #11). It joins the code-gated {@code /api/bookings/{code}} URL family without
  * touching {@code BookingController}: the resource is the guest's booking, the use case is
  * {@code review}'s. The code is the whole authorization (invariant #7); there is no session.
  *
@@ -29,15 +29,15 @@ import ai.riviera.platform.shared.ApiProblem;
 @RequestMapping("/api/bookings")
 class ReviewController {
 
-	private final SubmitReview submitReview;
+	private final ReviewLifecycle lifecycle;
 
-	ReviewController(SubmitReview submitReview) {
-		this.submitReview = submitReview;
+	ReviewController(ReviewLifecycle lifecycle) {
+		this.lifecycle = lifecycle;
 	}
 
 	@PostMapping("/{code}/review")
 	ResponseEntity<?> review(@PathVariable String code, @RequestBody SubmitReviewRequest request) {
-		return switch (submitReview.submit(code, request.stars())) {
+		return switch (lifecycle.submit(code, request.toSubmission())) {
 			case SubmitOutcome.Submitted ignored -> ResponseEntity.status(HttpStatus.CREATED).build();
 			case SubmitOutcome.NoSuchStay ignored ->
 					error(HttpStatus.NOT_FOUND, "NO_SUCH_BOOKING", "No booking with this code.");

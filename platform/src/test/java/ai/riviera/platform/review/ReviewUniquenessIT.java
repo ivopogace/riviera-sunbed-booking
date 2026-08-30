@@ -20,7 +20,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.ReviewFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.review.application.SubmitReview;
+import ai.riviera.platform.review.application.ReviewLifecycle;
+import ai.riviera.platform.review.application.ReviewSubmission;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -43,7 +44,7 @@ class ReviewUniquenessIT {
 	private static final Instant CHECKED_IN = Instant.now().minusSeconds(3600);
 
 	@Autowired
-	SubmitReview submit;
+	ReviewLifecycle lifecycle;
 
 	@Autowired
 	JdbcClient jdbc;
@@ -72,9 +73,13 @@ class ReviewUniquenessIT {
 	void aRepeatedSubmitIsAlreadyReviewed() {
 		String code = fixtures.completedBooking(fixtures.venue("Repeat"), CHECKED_IN);
 
-		assertEquals(new SubmitOutcome.Submitted(), submit.submit(code, 5));
-		assertEquals(new SubmitOutcome.AlreadyReviewed(), submit.submit(code, 1));
+		assertEquals(new SubmitOutcome.Submitted(), lifecycle.submit(code, stars(5)));
+		assertEquals(new SubmitOutcome.AlreadyReviewed(), lifecycle.submit(code, stars(1)));
 		assertEquals(1, fixtures.reviewCountFor(code));
+	}
+
+	private static ReviewSubmission stars(int stars) {
+		return new ReviewSubmission(stars, null, "Ana");
 	}
 
 	/** Fire {@code contenders} submits for one booking, released together. Bounded waits fail fast. */
@@ -82,7 +87,7 @@ class ReviewUniquenessIT {
 		CountDownLatch startGate = new CountDownLatch(1);
 		Callable<SubmitOutcome> attempt = () -> {
 			startGate.await();
-			return submit.submit(code, 4);
+			return lifecycle.submit(code, stars(4));
 		};
 		try (ExecutorService pool = Executors.newFixedThreadPool(contenders)) {
 			List<Future<SubmitOutcome>> futures = new ArrayList<>();

@@ -370,21 +370,30 @@ with `cls.btnOutlineDanger`; every new control carries `appTouchTarget`.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done; A-1/A-2/A-3 confirmed by the maintainer and moved to Resolved`
+**Stage pointer:** `implement — phases 0-1 done; draft PR #819 open against main`
 
-**Next action:** open the draft PR against `main` (CI fires on `pull_request` only), then
-build phase 1 (review gate + submit with comment/display name).
+**Next action:** build phase 2 (edit + delete on the lifecycle port + edge wiring), after
+checking phase 1's CI run.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V46 migration + store-port widening | ✅ | this commit |
-| 1 — review gate + submit with comment/display name | | |
+| 0 — V46 migration + store-port widening | ✅ | `5a4e72a` |
+| 1 — review gate + submit with comment/display name | ✅ | this commit |
 | 2 — edit + delete on the lifecycle port + edge wiring | | |
 | 3 — sealed panel read + name suggestion | | |
 | 4 — frontend panel (form / own / frozen / messaging) | | |
 | 5 — e2e journeys + docs freshness + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Deviations from the plan** (design intent unchanged; each is an idiom or sequencing correction)
+
+| # | Plan said | Built as | Why |
+|---|---|---|---|
+| D-1 | `ReviewGate.stateOf(…, Optional<Instant> completedAt, …)` | a nullable `Instant completedAt`, documented on the parameter | `riviera-java-conventions` §5: `Optional` is for query-port returns, never parameters |
+| D-2 | phase 1 relocates `ReviewState` to `domain/` | phase 1 leaves it in `vocabulary/`; phase 3 moves it | while `ReviewEligibility.stateFor` still returns it, a `domain/` type would be an unpublished return on a published port — the plan's own phase-3 file list already places the move there |
+| D-3 | `final class ReviewText` (package-private sketch) | `public final class ReviewText` | `adapter/in` validates against the bounds, and it is a different package — the `Stars` precedent |
+| D-4 | `vocabulary/OwnReview` lands in phase 3 | landed in phase 0 | `Reviews.findFor` returns it, and the plan allows "moved from phase 0 if not yet public" |
 
 **Findings register**
 
@@ -711,6 +720,7 @@ protected readonly reviewForm = form(this.model, (path) => {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-30 | Phase 1 — bounded free text on an edge DTO | the repo's one bounded-text edge mechanism: strip first, then bound in **code points** so Postgres `char_length` never rejects what Java accepted | `git ls-files 'platform/*adapter/in*.java' \| xargs grep -ln codePointCount` (none — the mechanism lives one layer in) + `grep -rln VenueFieldValidation platform/src/main` | 7 venue application commands via `VenueFieldValidation.requireText(value, field, maxLength)` | none needed — `ReviewText.fitsComment`/`fitsDisplayName` mirror it exactly (strip in the compact ctor, then code-point bound); the review edge keeps `InvalidApiRequestException` because it is the DTO itself, not an application command |
 
 ---
 

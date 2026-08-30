@@ -7,6 +7,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,6 +20,7 @@ import ai.riviera.platform.review.events.ReviewsChanged;
 import ai.riviera.platform.review.spi.CompletedStays;
 import ai.riviera.platform.review.vocabulary.BookingRef;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
+import ai.riviera.platform.review.vocabulary.OwnReview;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 import ai.riviera.platform.review.vocabulary.VenueRef;
 
@@ -27,50 +29,64 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The submit use case in isolation — the eligibility and window fences, the one-per-booking answer,
- * and the event that announces a moved aggregate (AC-1, AC-3, AC-4). Both collaborators are fakes:
- * {@link CompletedStays} is implemented by {@code booking} in production, and the claim's row-count
- * semantics are pinned for real by {@code ReviewUniquenessIT}. The clock is frozen, so the window
- * cases are exact.
+ * The lifecycle use cases in isolation — what each verb writes and what it announces. The fences
+ * themselves are {@code ReviewGateTest}'s; what is pinned here is that this service maps the gate's
+ * verdict onto its own outcomes and publishes exactly when the aggregate really moved.
+ *
+ * <p>Both collaborators are fakes: {@link CompletedStays} is implemented by {@code booking} in
+ * production, and the claim's row-count semantics are pinned for real by {@code ReviewUniquenessIT}.
+ * The clock is frozen, so the window cases are exact.
  */
-class SubmitReviewServiceTest {
+class ReviewLifecycleServiceTest {
 
 	private static final Instant NOW = Instant.parse("2026-08-01T09:00:00Z");
 	private static final String CODE = "RVWCODE123";
 	private static final BookingRef BOOKING = new BookingRef(7);
 	private static final VenueRef VENUE = new VenueRef(3);
+	private static final ReviewSubmission COMMENTED =
+			new ReviewSubmission(4, "Great sunbeds", "Ana");
 
 	private final FakeCompletedStays stays = new FakeCompletedStays();
 	private final FakeReviews reviews = new FakeReviews();
 	private final RecordingPublisher events = new RecordingPublisher();
-	private final SubmitReview service =
-			new SubmitReviewService(stays, reviews, events, Clock.fixed(NOW, ZoneOffset.UTC));
+	private final ReviewLifecycle service =
+			new ReviewLifecycleService(stays, reviews, events, Clock.fixed(NOW, ZoneOffset.UTC));
 
 	@Test
-	void recordsReviewAndPublishes() {
+	void recordsCommentAndDisplayNameAndPublishes() {
 		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
 
-		assertEquals(new SubmitOutcome.Submitted(), service.submit(CODE, 4));
+		assertEquals(new SubmitOutcome.Submitted(), service.submit(CODE, COMMENTED));
 
-		assertEquals(List.of(new Recorded(BOOKING, VENUE, 4, NOW)), reviews.recorded);
+		assertEquals(List.of(new Recorded(BOOKING, VENUE, new OwnReview(4, "Great sunbeds", "Ana"), NOW)),
+				reviews.writes);
 		assertEquals(List.of(new ReviewsChanged(VENUE)), events.published);
+	}
+
+	@Test
+	void recordsAStarOnlyReviewWhenNoCommentWasWritten() {
+		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
+
+		assertEquals(new SubmitOutcome.Submitted(), service.submit(CODE, new ReviewSubmission(5, null, "Ana")));
+
+		assertEquals(new OwnReview(5, null, "Ana"), reviews.stored.get(BOOKING));
 	}
 
 	@Test
 	void refusesAStayThatWasNeverCheckedIn() {
 		stays.knownButNotCompleted(CODE);
 
-		assertEquals(new SubmitOutcome.NotEligible(), service.submit(CODE, 4));
+		assertEquals(new SubmitOutcome.NotEligible(), service.submit(CODE, COMMENTED));
 
-		assertTrue(reviews.recorded.isEmpty());
+		assertTrue(reviews.writes.isEmpty());
 		assertTrue(events.published.isEmpty());
 	}
 
 	@Test
 	void refusesACodeNoBookingAnswersTo() {
-		assertEquals(new SubmitOutcome.NoSuchStay(), service.submit(CODE, 4));
+		assertEquals(new SubmitOutcome.NoSuchStay(), service.submit(CODE, COMMENTED));
 
-		assertTrue(reviews.recorded.isEmpty());
+		assertTrue(reviews.writes.isEmpty());
 		assertTrue(events.published.isEmpty());
 	}
 
@@ -78,18 +94,18 @@ class SubmitReviewServiceTest {
 	void refusesAfterSixtyDays() {
 		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(61)));
 
-		assertEquals(new SubmitOutcome.WindowClosed(), service.submit(CODE, 4));
+		assertEquals(new SubmitOutcome.WindowClosed(), service.submit(CODE, COMMENTED));
 
-		assertTrue(reviews.recorded.isEmpty());
+		assertTrue(reviews.writes.isEmpty());
 		assertTrue(events.published.isEmpty());
 	}
 
 	@Test
 	void answersAlreadyReviewedWhenTheClaimIsLost() {
 		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
-		reviews.alreadyHeld.add(BOOKING);
+		reviews.stored.put(BOOKING, new OwnReview(2, null, "Someone"));
 
-		assertEquals(new SubmitOutcome.AlreadyReviewed(), service.submit(CODE, 4));
+		assertEquals(new SubmitOutcome.AlreadyReviewed(), service.submit(CODE, COMMENTED));
 
 		assertTrue(events.published.isEmpty(), "a lost claim moved no aggregate");
 	}
@@ -99,12 +115,13 @@ class SubmitReviewServiceTest {
 		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
 
 		for (int stars : new int[] {0, 6, -1}) {
-			assertThrows(IllegalArgumentException.class, () -> service.submit(CODE, stars));
+			assertThrows(IllegalArgumentException.class,
+					() -> service.submit(CODE, new ReviewSubmission(stars, null, "Ana")));
 		}
-		assertTrue(reviews.recorded.isEmpty(), "an invalid rating must not reach the store");
+		assertTrue(reviews.writes.isEmpty(), "an invalid rating must not reach the store");
 	}
 
-	private record Recorded(BookingRef booking, VenueRef venue, int stars, Instant at) {
+	private record Recorded(BookingRef booking, VenueRef venue, OwnReview review, Instant at) {
 	}
 
 	private static final class FakeCompletedStays implements CompletedStays {
@@ -132,46 +149,52 @@ class SubmitReviewServiceTest {
 		}
 	}
 
+	/** An in-memory review table: what is stored, plus the write log the publish assertions read. */
 	private static final class FakeReviews implements Reviews {
 
-		private final List<Recorded> recorded = new ArrayList<>();
-		private final Set<BookingRef> alreadyHeld = new HashSet<>();
+		private final Map<BookingRef, OwnReview> stored = new LinkedHashMap<>();
+		private final List<Recorded> writes = new ArrayList<>();
 
 		@Override
 		public boolean claim(BookingRef booking, VenueRef venue, int stars, String comment,
 				String displayName, Instant at) {
-			if (!alreadyHeld.add(booking)) {
+			OwnReview review = new OwnReview(stars, comment, displayName);
+			if (stored.putIfAbsent(booking, review) != null) {
 				return false;
 			}
-			recorded.add(new Recorded(booking, venue, stars, at));
+			writes.add(new Recorded(booking, venue, review, at));
 			return true;
 		}
 
 		@Override
 		public boolean update(BookingRef booking, int stars, String comment, String displayName,
 				Instant at) {
-			throw new UnsupportedOperationException("the submit use case never edits");
+			OwnReview review = new OwnReview(stars, comment, displayName);
+			if (stored.replace(booking, review) == null) {
+				return false;
+			}
+			writes.add(new Recorded(booking, null, review, at));
+			return true;
 		}
 
 		@Override
 		public boolean delete(BookingRef booking) {
-			throw new UnsupportedOperationException("the submit use case never deletes");
+			return stored.remove(booking) != null;
 		}
 
 		@Override
-		public java.util.Optional<ai.riviera.platform.review.vocabulary.OwnReview> findFor(
-				BookingRef booking) {
-			throw new UnsupportedOperationException("the submit use case never reads a review back");
+		public Optional<OwnReview> findFor(BookingRef booking) {
+			return Optional.ofNullable(stored.get(booking));
 		}
 
 		@Override
 		public ReviewTotals totalsFor(VenueRef venue) {
-			throw new UnsupportedOperationException("the submit use case never aggregates");
+			throw new UnsupportedOperationException("the lifecycle never aggregates");
 		}
 
 		@Override
 		public boolean existsFor(BookingRef booking) {
-			return alreadyHeld.contains(booking);
+			return stored.containsKey(booking);
 		}
 	}
 

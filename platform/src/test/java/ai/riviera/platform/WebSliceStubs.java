@@ -128,7 +128,7 @@ import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueFilter;
 import ai.riviera.platform.review.api.ReviewEligibility;
-import ai.riviera.platform.review.application.SubmitReview;
+import ai.riviera.platform.review.application.ReviewLifecycle;
 import ai.riviera.platform.review.vocabulary.ReviewState;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -936,12 +936,12 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * The review submit port {@code ReviewController} registers with — inert, so the web slice
+	 * The review lifecycle port {@code ReviewController} registers with — inert, so the web slice
 	 * exercises routing, CSRF and the permitAll matcher. {@code ReviewControllerTest} overrides it
 	 * with a {@code @MockitoBean} to drive the real outcomes.
 	 */
 	@Bean
-	SubmitReview submitReview() {
+	ReviewLifecycle reviewLifecycle() {
 		return (_, _) -> new SubmitOutcome.NoSuchStay();
 	}
 
