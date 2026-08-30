@@ -51,9 +51,11 @@ ordering, so the claim is anchored on in-repo evidence instead — see AS-1) · 
 (the mocked e2e suite is where the two `toHaveText('')` breakages live; the repo's
 absence idiom is `toHaveCount(0)`).
 
-**Branch:** `claude/sdlc-828-planning-xh3wm2` — the cloud session's designated branch,
-standing in for `bugfix/action-alert-lifetime` per `riviera-sdlc` §Remote/cloud addendum.
-It exists and is checked out.
+**Branch:** `claude/action-alert-lifetime-828-u8kh54` — the implementing cloud session's
+designated branch, standing in for `bugfix/action-alert-lifetime` per `riviera-sdlc`
+§Remote/cloud addendum. Branched from `claude/sdlc-828-planning-xh3wm2` (the planning
+session's designated branch, whose single commit is this plan doc) so the plan travels with
+the code in one PR.
 
 ---
 
@@ -243,20 +245,23 @@ N/A — no contract change. No endpoint, DTO, or client type is touched.
 
 ## Execution status
 
-**Stage pointer:** `plan` — plan doc authored, not yet committed. Implementation is
-deliberately **not** started: this session's scope is "sdlc #828 and we stop after
-creating the plan".
+**Stage pointer:** `implement` — building on
+`claude/action-alert-lifetime-828-u8kh54`, branched from the planning branch so the plan
+doc travels with the code (cloud-session branch substitution, `riviera-sdlc`
+§Remote/cloud addendum).
 
-**Next action:** Commit this plan doc to `claude/sdlc-828-planning-xh3wm2` and push. Then
-**stop** and await instruction. A session resuming to build starts at Phase 0 and opens the
-draft PR at the first phase commit (CI fires on `pull_request` only — #417).
+**Next action:** Phase 1 — gate `oppw-error` behind `@if (error())`, with the two focus
+specs written red first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Retarget the three assertions that read the old shape (G-1…G-3) | | |
+| 0 — Retarget the three assertions that read the old shape (G-1…G-3) | ✅ | `Point the operator-password assertions at a gated alert (#828)` |
 | 1 — Gate `oppw-error`, preserving the focus contract | | |
 | 2 — Gate `admin-privacy-error`, reserve to a wrapper | | |
 | 3 — Doc-header freshness + generalization audit | | |
+
+Short SHAs are filled into the Commits column at the Phase 3 close-out commit, once every
+phase commit exists (a commit cannot cite its own hash).
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -300,26 +305,26 @@ at the shape the next two phases produce. Each edit turns a currently-green asse
 Phases 1–2 turn them green again. That ordering is what makes G-1…G-3 impossible to
 discover late.
 
-- [ ] **Step 1: Split the both-regions spec** (G-1) into
+- [x] **Step 1: Split the both-regions spec** (G-1) into
       `keeps the polite notice mounted before there is anything to announce` (asserts
       `oppw-notice` present, `role="status"`, text `''` — RV-FE-10's protection, unchanged
       in substance) and `mounts no alert region before there is anything to announce`
       (asserts `querySelector('[data-testid="oppw-error"]')` is `null`). Keep the
       one-line comment above the first; the second gets its own naming the lifetime rule.
-- [ ] **Step 2: Fix the success-path assertion** (G-2) — `:75` becomes an explicit absence
+- [x] **Step 2: Fix the success-path assertion** (G-2) — `:75` becomes an explicit absence
       check against the queried element, not `text(…)`, so the assertion says *absent*
       rather than leaning on a helper's `undefined`.
-- [ ] **Step 3: Retarget the two e2e assertions** (G-3) — `:53` and `:91` become
+- [x] **Step 3: Retarget the two e2e assertions** (G-3) — `:53` and `:91` become
       `await expect(page.getByTestId('oppw-error')).toHaveCount(0);`. Leave the adjacent
       `oppw-notice` `toHaveText('')` lines alone.
-- [ ] **Step 4: Run and verify they now fail** —
+- [x] **Step 4: Run and verify they now fail** —
       `npm test -- operator-password` → FAIL on the three retargeted assertions (element
       still mounted). The e2e half is proven in Phase 1's run, not here.
 
 > Scope per `riviera-local-debug`: a single spec file, never the full suite.
 
-- [ ] **Step 5: Commit** — `git commit -m "Point the operator-password assertions at a gated alert (#828)"`
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Commit** — `git commit -m "Point the operator-password assertions at a gated alert (#828)"`
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ---
 

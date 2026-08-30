@@ -50,7 +50,7 @@ test('operator changes its own password from the console, and the new credential
   await expect(page.getByTestId('oppw-notice')).toContainText(
     'Any other devices signed in as you have been signed out',
   );
-  await expect(page.getByTestId('oppw-error')).toHaveText('');
+  await expect(page.getByTestId('oppw-error')).toHaveCount(0);
   await expectNoSeriousAxeViolations(page, 'password changed');
 
   // Both secrets are cleared from the DOM once the change lands.
