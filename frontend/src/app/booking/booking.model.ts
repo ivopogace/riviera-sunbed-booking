@@ -157,12 +157,43 @@ export interface BookingDetail {
    */
   readonly cancellationWindowAtBirth: CancellationWindow;
   /**
-   * The server will accept a rating for this stay right now — checked in, inside the review window,
-   * not yet rated. The panel gates on this and never on `status`: a `COMPLETED` stay stops being
-   * reviewable without its status moving, and every one of those fences is the server's.
+   * What this stay's review section should show — the form, the guest's own verdict, a frozen one,
+   * or the reason there is none. The panel renders on this and never on `status`: a `COMPLETED`
+   * stay stops being reviewable without its status moving, and every one of those fences is the
+   * server's.
    */
-  readonly reviewable: boolean;
+  readonly reviewPanel: ReviewPanel;
 }
+
+/** A stored review as its author reads it back; both texts are null on a star-only row. */
+export interface OwnReviewView {
+  readonly stars: number;
+  readonly comment: string | null;
+  readonly displayName: string | null;
+}
+
+/**
+ * The server's answer for the review section, mirroring the backend sealed `ReviewPanel`. Each
+ * variant carries exactly what its state has, so the template narrows on `kind` instead of testing
+ * a flag and hoping the neighbouring fields are set.
+ *
+ * `FROZEN` and `WINDOW_CLOSED` are deliberately distinct: one is a verdict still worth reading, the
+ * other a window nobody ever wrote in, and the two need opposite words on screen.
+ */
+export type ReviewPanel =
+  | {
+      readonly kind: 'ELIGIBLE';
+      readonly windowClosesAt: string;
+      readonly nameSuggestion: string | null;
+    }
+  | {
+      readonly kind: 'ALREADY_REVIEWED';
+      readonly review: OwnReviewView;
+      readonly windowClosesAt: string;
+    }
+  | { readonly kind: 'FROZEN'; readonly review: OwnReviewView }
+  | { readonly kind: 'WINDOW_CLOSED' }
+  | { readonly kind: 'NOT_COMPLETED' };
 
 /** The cancellation-window phases, mirroring the backend `booking.vocabulary.CancellationWindow`. */
 export type CancellationWindow = 'FREE' | 'LATE' | 'CLOSED';
@@ -245,12 +276,25 @@ export interface Withdrawal {
 }
 
 /**
- * The `POST /api/bookings/{code}/review` body — a star count and nothing else in this slice. The
- * server bounds it 1..5 and is the only judge of eligibility; the client sends what the guest picked.
+ * The body shared by the three review verbs (`POST`/`PUT` on
+ * `/api/bookings/{code}/review`) — the stars, the guest's words, and the name to attribute them to.
+ * The server bounds all three and is the only judge of eligibility; the client sends what the guest
+ * wrote and lets the server refuse.
  */
 export interface SubmitReviewRequest {
   readonly stars: number;
+  /** Null when the guest wrote nothing — never an empty string, which the server would store. */
+  readonly comment: string | null;
+  readonly displayName: string;
 }
+
+/**
+ * The text bounds the server enforces, restated for the form so an over-long entry is caught before
+ * a round trip. The client counts UTF-16 units where the server counts code points, so it is
+ * strictly the tighter of the two — never the looser, which would let a refusal through.
+ */
+export const REVIEW_COMMENT_MAX = 1000;
+export const REVIEW_DISPLAY_NAME_MAX = 60;
 
 /** Server rejection codes mapped from the HTTP error body, plus a transport fallback. */
 export type BookingErrorCode =

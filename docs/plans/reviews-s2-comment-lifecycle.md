@@ -147,7 +147,7 @@ stands in for `feature/reviews-s2-comment-lifecycle` (cloud-session substitution
 | R-2 | Fence-order drift between submit / edit / delete / panel-read (rated+frozen must read frozen everywhere) | low (was med) | med | **Structurally removed**: the order lives once in `domain/ReviewGate`, consulted by both the lifecycle service and the panel read; `ReviewGateTest` pins it, `ReviewLifecycleFlowIT` proves the ends agree | agent | **closed (phases 1-3)** — one `ReviewGate.stateOf` call in each of the two services and nowhere else |
 | R-3 | Edit/delete forget to republish `ReviewsChanged` → stale aggregate | med | high | `ReviewLifecycleServiceTest` asserts the publish per verb; `VenueRatingRecomputeIT` extension proves delete-to-"New"; recompute is already idempotent (full recompute, never increment) | agent | **closed (phase 2)** — both publishes pinned per verb, and `aDeletedSoleReviewReturnsTheVenueToNew` proves the venue returns to `0/0` through the real listener |
 | R-4 | `display_name`/`comment` are the **first PII in the `review` table** — erasure (ADR-0010) has no hook yet | high | med | Deliberate epic sequencing (story 25 is a later slice). Record the obligation: close-out files a follow-up issue referencing epic #810 story 25 before this slice merges | agent | open |
-| R-5 | Client `maxLength` counts UTF-16 units, server counts code points (emoji differ) | low | low | Client is strictly tighter (a surrogate pair counts 2); the server bound + DB CHECK are the contract (AC-2); no truncation anywhere | agent | open |
+| R-5 | Client `maxLength` counts UTF-16 units, server counts code points (emoji differ) | low | low | Client is strictly tighter (a surrogate pair counts 2); the server bound + DB CHECK are the contract (AC-2); no truncation anywhere | agent | **closed (phase 4)** — the schema's `maxLength` refuses inline and sends nothing; the bounds are stated once in `booking.model.ts` |
 | R-6 | Invariant #7 — booking code in new error bodies/logs | low | high | All errors via `ApiProblem` with `instance` pinned to `/api/bookings`; `ReviewControllerTest.theBookingCodeNeverAppearsInAnErrorBody` extended to PUT/DELETE | agent | open |
 | R-7 | New PUT/DELETE routes bypass the per-code rate-limit budget or CSRF/permitAll wiring | med | med | Same `RateLimitFilter.REVIEW_TEMPLATE` bucket; `SecurityConfig` permitAll + CSRF-ignore rows; `EndpointRoleGateCoverageTest.DECLARED_REACHABLE` gains both routes (the inline endpoint count comment updates — the F-3 lesson) | agent | **closed (phase 2)** — all three verbs classified together in `targetOf`, the two `permitAll` rows added (the CSRF ignore was already path-scoped, so it covered them), both coverage rows added, the six→eight counts updated, and `RateLimitFilterTest.everyReviewVerbSpendsTheSamePerCodeBudget` + `aReviewDeleteAndTheViewShareOneCodeBudget` pin it |
 | R-8 | Error-contract drift on new 4xx paths (§6b) | low | med | Compact-ctor `InvalidApiRequestException` for 400s; typed-outcome switch + `ApiProblem` for 404/409; no per-controller `@ExceptionHandler` (`ErrorContractArchitectureTests` enforces) | agent | open |
@@ -370,19 +370,18 @@ with `cls.btnOutlineDanger`; every new control carries `appTouchTarget`.
 
 ## Execution status
 
-**Stage pointer:** `implement — phases 0-3 done (backend complete); draft PR #819 open against main`
+**Stage pointer:** `implement — phases 0-4 done; draft PR #819 open against main`
 
-**Next action:** build phase 4 (the frontend review panel), after checking phase 3's CI run.
-The frontend still reads the retired `reviewable` flag between phases 3 and 4 — phase 4's
-generalization audit is what closes that.
+**Next action:** build phase 5 (mocked + real-backend e2e journeys, docs freshness, the R-4
+follow-up issue, close-out), after checking phase 4's CI run.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V46 migration + store-port widening | ✅ | `5a4e72a` |
 | 1 — review gate + submit with comment/display name | ✅ | `f501e30` |
 | 2 — edit + delete on the lifecycle port + edge wiring | ✅ | `de46936` |
-| 3 — sealed panel read + name suggestion | ✅ | this commit |
-| 4 — frontend panel (form / own / frozen / messaging) | | |
+| 3 — sealed panel read + name suggestion | ✅ | `eaf57d7` |
+| 4 — frontend panel (form / own / frozen / messaging) | ✅ | this commit |
 | 5 — e2e journeys + docs freshness + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -442,6 +441,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/booking/review-panel.ts` · `.spec.ts` · `.contrast.spec.ts` — the extracted panel
 - `frontend/src/app/booking/booking-view.ts` · `booking-view.spec.ts` · `booking-view.contrast.spec.ts` — embed + trimmed
 - `frontend/src/app/booking/booking.model.ts` · `booking.service.ts` · `booking.service.spec.ts` — contract + verbs
+- `frontend/src/app/booking/booking-pay.spec.ts` · `find-booking.spec.ts` · `my-bookings.spec.ts` — `BookingDetail` fixtures follow the contract change
 - `frontend/e2e/review-a-stay.e2e.ts` — fixtures to `reviewPanel`; submit-with-comment journey
 - `frontend/e2e/review-lifecycle.e2e.ts` — edit / delete / frozen / ineligible journeys
 - `frontend/e2e/my-bookings.e2e.ts` — signed-in COMPLETED row → review form journey
@@ -725,6 +725,7 @@ protected readonly reviewForm = form(this.model, (path) => {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-30 | Phase 4 — frontend uses of the retired `reviewable` flag | every template, model and fixture reading the slice-1 boolean | `grep -rn "reviewable" frontend/src frontend/e2e` | 8 files — `booking.model.ts`, `booking-view.ts` + its spec, four sibling `BookingDetail` fixtures, and the two e2e specs | all eight migrated to `reviewPanel`; the two e2e specs land in phase 5 with the journeys that exercise them |
 | 2026-08-30 | Phase 3 — consumers of the retired `stateFor` / `ReviewState` / `reviewable` | everything reading the slice-1 shape of the review verdict, across both apps | `grep -rln "reviewable\|ReviewState\|stateFor" platform/src frontend/src frontend/e2e` | 22 files — 9 backend main, 8 backend test, 5 frontend (`booking.model.ts`, `booking-view.ts`, three specs) plus the two e2e specs | every backend site migrated in this phase (incl. the two `package-info` javadocs the grep found); the frontend sites are phase 4's step 5 by design, so the app reads the retired flag for exactly one commit |
 | 2026-08-30 | Phase 2 — publishers of `ReviewsChanged` | every site that announces a moved venue aggregate; the risk is a lifecycle verb writing without announcing | `grep -rn "new ReviewsChanged" platform/src/main/java` | 2 — both in `ReviewLifecycleService` (the claim path and the shared amend path) | none needed: all three verbs route their write through one of those two lines, so "wrote but did not announce" is unrepresentable rather than merely tested |
 | 2026-08-30 | Phase 1 — bounded free text on an edge DTO | the repo's one bounded-text edge mechanism: strip first, then bound in **code points** so Postgres `char_length` never rejects what Java accepted | `git ls-files 'platform/*adapter/in*.java' \| xargs grep -ln codePointCount` (none — the mechanism lives one layer in) + `grep -rln VenueFieldValidation platform/src/main` | 7 venue application commands via `VenueFieldValidation.requireText(value, field, maxLength)` | none needed — `ReviewText.fitsComment`/`fitsDisplayName` mirror it exactly (strip in the compact ctor, then code-point bound); the review edge keeps `InvalidApiRequestException` because it is the DTO itself, not an application command |

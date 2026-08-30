@@ -11,6 +11,7 @@ import {
   Cancellation,
   CancelReason,
   PaymentHandoff,
+  SubmitReviewRequest,
   Withdrawal,
 } from './booking.model';
 import { BookingView } from './booking-view';
@@ -37,17 +38,31 @@ const DETAIL: BookingDetail = {
   payWindowClosed: false,
   cancelReason: null,
   cancellationWindowAtBirth: 'FREE',
-  reviewable: false,
+  reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
 const WITHDRAWAL: Withdrawal = { code: 'ABCD234567', status: 'WITHDRAWN' };
 
-/** A delivered stay the server says may be rated — the flag, never the status, opens the panel. */
+/** A delivered stay the server says may be rated — the panel, never the status, opens the form. */
 const REVIEWABLE: BookingDetail = {
   ...DETAIL,
   status: 'COMPLETED',
   cancellable: false,
-  reviewable: true,
+  reviewPanel: {
+    kind: 'ELIGIBLE',
+    windowClosesAt: '2026-09-29T16:00:00Z',
+    nameSuggestion: 'Ana',
+  },
+};
+
+/** The same stay once it carries the guest's own review, still inside the window. */
+const REVIEWED: BookingDetail = {
+  ...REVIEWABLE,
+  reviewPanel: {
+    kind: 'ALREADY_REVIEWED',
+    review: { stars: 4, comment: 'Great sunbeds', displayName: 'Ana' },
+    windowClosesAt: '2026-09-29T16:00:00Z',
+  },
 };
 
 /** A PENDING_REQUEST detail the guest may still retract. */
@@ -91,7 +106,9 @@ function stubService(opts: {
   getCalls?: string[];
   withdrawCalls?: string[];
   withdrawError?: unknown;
-  reviewCalls?: [string, number][];
+  reviewCalls?: [string, SubmitReviewRequest][];
+  updateCalls?: [string, SubmitReviewRequest][];
+  deleteCalls?: string[];
   reviewError?: unknown;
   handoffs?: PaymentHandoff[];
   /** A primed detail (find-a-booking hand-off); consumed one-shot for the matching code. */
@@ -115,8 +132,16 @@ function stubService(opts: {
       opts.withdrawCalls?.push(code);
       return opts.withdrawError ? throwError(() => opts.withdrawError) : of(WITHDRAWAL);
     },
-    review: (code: string, stars: number) => {
-      opts.reviewCalls?.push([code, stars]);
+    review: (code: string, review: SubmitReviewRequest) => {
+      opts.reviewCalls?.push([code, review]);
+      return opts.reviewError ? throwError(() => opts.reviewError) : of(undefined);
+    },
+    updateReview: (code: string, review: SubmitReviewRequest) => {
+      opts.updateCalls?.push([code, review]);
+      return opts.reviewError ? throwError(() => opts.reviewError) : of(undefined);
+    },
+    deleteReview: (code: string) => {
+      opts.deleteCalls?.push(code);
       return opts.reviewError ? throwError(() => opts.reviewError) : of(undefined);
     },
     beginPayment: (handoff: PaymentHandoff) => {
@@ -1149,15 +1174,19 @@ describe('BookingView', () => {
       await expectNoAxeViolations(host);
     });
 
-    it('hides the panel when the server says the stay is not reviewable', async () => {
-      const fixture = await render(stubService({ detail: { ...REVIEWABLE, reviewable: false } }));
+    it('shows no review section at all for a stay that ended without a check-in', async () => {
+      const fixture = await render(
+        stubService({
+          detail: { ...REVIEWABLE, status: 'CANCELLED', reviewPanel: { kind: 'NOT_COMPLETED' } },
+        }),
+      );
       const host = fixture.nativeElement as HTMLElement;
 
       expect(host.querySelector('[data-testid="review-panel"]')).toBeNull();
     });
 
     it('refuses to submit with no star picked and shows the required message', async () => {
-      const reviewCalls: [string, number][] = [];
+      const reviewCalls: [string, SubmitReviewRequest][] = [];
       const fixture = await render(stubService({ detail: REVIEWABLE, reviewCalls }));
       const host = fixture.nativeElement as HTMLElement;
 
@@ -1173,12 +1202,12 @@ describe('BookingView', () => {
     });
 
     it('submits the chosen rating and re-reads the booking', async () => {
-      const reviewCalls: [string, number][] = [];
+      const reviewCalls: [string, SubmitReviewRequest][] = [];
       const getCalls: string[] = [];
       const fixture = await render(
         stubService({
           detail: REVIEWABLE,
-          detailAfterCancel: { ...REVIEWABLE, reviewable: false },
+          detailAfterCancel: REVIEWED,
           reviewCalls,
           getCalls,
         }),
@@ -1192,12 +1221,102 @@ describe('BookingView', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
-      expect(reviewCalls).toEqual([['ABCD234567', 4]]);
+      expect(reviewCalls).toEqual([
+        ['ABCD234567', { stars: 4, comment: null, displayName: 'Ana' }],
+      ]);
       expect(getCalls).toHaveLength(2);
-      expect(host.querySelector('[data-testid="review-panel"]')).toBeNull();
+      expect(host.querySelector('[data-testid="own-review"]')).not.toBeNull();
       expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
-        'Thanks for rating your stay.',
+        'Thanks for reviewing your stay.',
       );
+    });
+
+    it('sends an edited review and narrates it in the result region', async () => {
+      const updateCalls: [string, SubmitReviewRequest][] = [];
+      const getCalls: string[] = [];
+      const fixture = await render(stubService({ detail: REVIEWED, updateCalls, getCalls }));
+      const host = fixture.nativeElement as HTMLElement;
+
+      host.querySelector<HTMLButtonElement>('[data-testid="edit-review"]')!.click();
+      fixture.detectChanges();
+      stars(host)[1].click();
+      fixture.detectChanges();
+      host.querySelector<HTMLButtonElement>('[data-testid="submit-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(updateCalls).toEqual([
+        ['ABCD234567', { stars: 2, comment: 'Great sunbeds', displayName: 'Ana' }],
+      ]);
+      expect(getCalls).toHaveLength(2);
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'Your review has been updated.',
+      );
+    });
+
+    it('removes a review once confirmed, and narrates that too', async () => {
+      const deleteCalls: string[] = [];
+      const fixture = await render(
+        stubService({ detail: REVIEWED, detailAfterCancel: REVIEWABLE, deleteCalls }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      host.querySelector<HTMLButtonElement>('[data-testid="start-delete-review"]')!.click();
+      fixture.detectChanges();
+      host.querySelector<HTMLButtonElement>('[data-testid="confirm-delete-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(deleteCalls).toEqual(['ABCD234567']);
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'Your review has been removed.',
+      );
+      expect(host.querySelector('[data-testid="review-panel"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="own-review"]')).toBeNull();
+    });
+
+    it('says so when the review an amend targets is already gone', async () => {
+      const fixture = await render(
+        stubService({
+          detail: REVIEWED,
+          reviewError: new HttpErrorResponse({ status: 404, error: { code: 'NO_SUCH_REVIEW' } }),
+        }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      host.querySelector<HTMLButtonElement>('[data-testid="start-delete-review"]')!.click();
+      fixture.detectChanges();
+      host.querySelector<HTMLButtonElement>('[data-testid="confirm-delete-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'no longer carries a review',
+      );
+    });
+
+    it('renders the frozen review read-only, with no form and no actions', async () => {
+      const fixture = await render(
+        stubService({
+          detail: {
+            ...REVIEWABLE,
+            reviewPanel: {
+              kind: 'FROZEN',
+              review: { stars: 5, comment: 'Perfect day', displayName: 'Ana' },
+            },
+          },
+        }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(host.querySelector('[data-testid="own-review-comment"]')?.textContent).toContain(
+        'Perfect day',
+      );
+      expect(host.querySelector('[data-testid="submit-review"]')).toBeNull();
+      expect(host.querySelector('[data-testid="edit-review"]')).toBeNull();
     });
 
     it('says so when a rating this stay already carries is submitted again', async () => {

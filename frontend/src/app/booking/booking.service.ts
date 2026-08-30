@@ -201,12 +201,22 @@ export class BookingService {
    * the new state lives on the booking, so the caller re-reads it rather than patching locally.
    * Eligibility is the server's call (invariant #7: the code is the whole authorization).
    */
-  review(code: string, stars: number): Observable<void> {
-    const body: SubmitReviewRequest = { stars };
-    return this.http.post<void>(
-      `${environment.apiBaseUrl}/api/bookings/${encodeURIComponent(code)}/review`,
-      body,
-    );
+  review(code: string, review: SubmitReviewRequest): Observable<void> {
+    return this.http.post<void>(this.reviewUrl(code), review);
+  }
+
+  /** Rewrite the review already recorded against this stay (`PUT`); `204`, no body. */
+  updateReview(code: string, review: SubmitReviewRequest): Observable<void> {
+    return this.http.put<void>(this.reviewUrl(code), review);
+  }
+
+  /** Remove the review recorded against this stay (`DELETE`); `204`, no body. */
+  deleteReview(code: string): Observable<void> {
+    return this.http.delete<void>(this.reviewUrl(code));
+  }
+
+  private reviewUrl(code: string): string {
+    return `${environment.apiBaseUrl}/api/bookings/${encodeURIComponent(code)}/review`;
   }
 }
 
