@@ -156,18 +156,23 @@ stands in for `feature/reviews-s2-comment-lifecycle` (cloud-session substitution
 
 ## Open questions / Assumptions
 
-- **Assumption A-1:** "Booking contact's first name" (issue wording) = the **first
-  whitespace-separated token of `GuestContact.fullName`** — no first-name field exists
-  anywhere. ← confirm — *Owner:* maintainer · *Resolves by:* plan review
-- **Assumption A-2:** Display name is **required (non-blank, ≤60 code points) on every
-  slice-2 submit/edit**; the column stays nullable for slice-1 star-only rows. Prefill
-  makes this invisible in the happy path, and it guarantees every commented review is
-  attributable (epic stories 3/14). ← confirm — *Owner:* maintainer · *Resolves by:* plan review
-- **Assumption A-3:** The NOT_COMPLETED "you can rate once you're checked in" note renders
-  **only for status `CONFIRMED`** (an upcoming/active stay); terminal statuses (CANCELLED,
-  NO_SHOW, …) show no review section — inviting a review there would be noise. Frozen and
-  already-reviewed messaging render regardless of how the stay ended. ← confirm —
-  *Owner:* maintainer · *Resolves by:* plan review
+### Resolved
+
+- **Assumption A-1 — confirmed** (maintainer, at implement entry): "Booking contact's first
+  name" (issue wording) = the **first whitespace-separated token of `GuestContact.fullName`**
+  — no first-name field exists anywhere. Built in phase 3.
+- **Assumption A-2 — confirmed** (maintainer, at implement entry): display name is
+  **required (non-blank, ≤60 code points) on every slice-2 submit/edit**; the column stays
+  nullable for slice-1 star-only rows. Prefill makes this invisible in the happy path, and it
+  guarantees every commented review is attributable (epic stories 3/14). Built in phases 0-1.
+- **Assumption A-3 — confirmed** (maintainer, at implement entry): the NOT_COMPLETED "you can
+  rate once you're checked in" note renders **only for status `CONFIRMED`** (an upcoming/active
+  stay); terminal statuses (CANCELLED, NO_SHOW, …) show no review section — inviting a review
+  there would be noise. Frozen and already-reviewed messaging render regardless of how the stay
+  ended. Built in phase 4.
+
+### Open
+
 - **Assumption A-4:** Replacing `reviewable: boolean` with the `reviewPanel` object on
   the wire is safe — same-origin single deploy, no external API consumers. — *Owner:*
   agent · *Resolves by:* phase 3
@@ -365,14 +370,14 @@ with `cls.btnOutlineDanger`; every new control carries `appTouchTarget`.
 
 ## Execution status
 
-**Stage pointer:** `plan — complete (boundary-design pass folded in); stopped by request (plan-only session), awaiting maintainer review`
+**Stage pointer:** `implement — phase 0 done; A-1/A-2/A-3 confirmed by the maintainer and moved to Resolved`
 
-**Next action:** maintainer reviews this plan (esp. A-1/A-2/A-3); then a build session
-starts at Phase 0 (re-run the skill-routing gate on entry).
+**Next action:** open the draft PR against `main` (CI fires on `pull_request` only), then
+build phase 1 (review gate + submit with comment/display name).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V46 migration + store-port widening | | |
+| 0 — V46 migration + store-port widening | ✅ | this commit |
 | 1 — review gate + submit with comment/display name | | |
 | 2 — edit + delete on the lifecycle port + edge wiring | | |
 | 3 — sealed panel read + name suggestion | | |
@@ -413,7 +418,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/booking/adapter/in/BookingDetailView.java` — wire mirror (exhaustive switch over the sealed panel)
 - `platform/src/main/java/ai/riviera/platform/SecurityConfig.java` — PUT/DELETE permitAll + CSRF-ignore rows
 - `platform/src/main/java/ai/riviera/platform/RateLimitFilter.java` — PUT/DELETE join the per-code review budget (count comment updated)
-- `platform/src/test/java/ai/riviera/platform/review/**` — new/extended: `ReviewMigrationIT`, `ReviewGateTest`, `ReviewLifecycleServiceTest` (replaces `SubmitReviewServiceTest`), `ReviewEligibilityServiceTest`, `ReviewLifecycleFlowIT`, `ReviewUniquenessIT`
+- `platform/src/test/java/ai/riviera/platform/review/**/*.java` — new/extended: `ReviewMigrationIT`, `ReviewGateTest`, `ReviewLifecycleServiceTest` (replaces `SubmitReviewServiceTest`), `ReviewEligibilityServiceTest`, `ReviewLifecycleFlowIT`, `ReviewUniquenessIT`
 - `platform/src/test/java/ai/riviera/platform/ReviewControllerTest.java` — new verbs + 400 bounds + code-redaction sweep
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — stubs for the evolved ports
 - `platform/src/test/java/ai/riviera/platform/EndpointRoleGateCoverageTest.java` — two new DECLARED_REACHABLE rows

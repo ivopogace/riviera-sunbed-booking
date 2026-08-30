@@ -66,7 +66,7 @@ class SubmitReviewService implements SubmitReview {
 		if (!ReviewWindow.isOpen(stay.completedAt(), now)) {
 			return new SubmitOutcome.WindowClosed();
 		}
-		if (!reviews.claim(stay.booking(), stay.venue(), stars, now)) {
+		if (!reviews.claim(stay.booking(), stay.venue(), stars, null, null, now)) {
 			return new SubmitOutcome.AlreadyReviewed();
 		}
 

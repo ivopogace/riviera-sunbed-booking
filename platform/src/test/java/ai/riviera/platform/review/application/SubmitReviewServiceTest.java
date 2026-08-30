@@ -138,12 +138,30 @@ class SubmitReviewServiceTest {
 		private final Set<BookingRef> alreadyHeld = new HashSet<>();
 
 		@Override
-		public boolean claim(BookingRef booking, VenueRef venue, int stars, Instant at) {
+		public boolean claim(BookingRef booking, VenueRef venue, int stars, String comment,
+				String displayName, Instant at) {
 			if (!alreadyHeld.add(booking)) {
 				return false;
 			}
 			recorded.add(new Recorded(booking, venue, stars, at));
 			return true;
+		}
+
+		@Override
+		public boolean update(BookingRef booking, int stars, String comment, String displayName,
+				Instant at) {
+			throw new UnsupportedOperationException("the submit use case never edits");
+		}
+
+		@Override
+		public boolean delete(BookingRef booking) {
+			throw new UnsupportedOperationException("the submit use case never deletes");
+		}
+
+		@Override
+		public java.util.Optional<ai.riviera.platform.review.vocabulary.OwnReview> findFor(
+				BookingRef booking) {
+			throw new UnsupportedOperationException("the submit use case never reads a review back");
 		}
 
 		@Override

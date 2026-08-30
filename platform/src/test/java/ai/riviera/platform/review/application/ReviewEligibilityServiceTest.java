@@ -112,8 +112,25 @@ class ReviewEligibilityServiceTest {
 		private final Set<BookingRef> rated = new HashSet<>();
 
 		@Override
-		public boolean claim(BookingRef booking, VenueRef venue, int stars, Instant at) {
+		public boolean claim(BookingRef booking, VenueRef venue, int stars, String comment,
+				String displayName, Instant at) {
 			throw new UnsupportedOperationException("the eligibility read never writes");
+		}
+
+		@Override
+		public boolean update(BookingRef booking, int stars, String comment, String displayName,
+				Instant at) {
+			throw new UnsupportedOperationException("the eligibility read never writes");
+		}
+
+		@Override
+		public boolean delete(BookingRef booking) {
+			throw new UnsupportedOperationException("the eligibility read never writes");
+		}
+
+		@Override
+		public Optional<ai.riviera.platform.review.vocabulary.OwnReview> findFor(BookingRef booking) {
+			throw new UnsupportedOperationException("slice-1 eligibility never reads a review back");
 		}
 
 		@Override
