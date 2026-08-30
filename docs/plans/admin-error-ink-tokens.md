@@ -272,8 +272,16 @@ the theme-switcher UI displays, and this slice adds no theme.
 
 ## Execution status
 
-**Stage pointer:** `implement — all four phases done; PR #833 driving CI + Sonar`. Every AC
+**Stage pointer:** `PR #833 ready for review — CI green, Sonar gate cleared`. Every AC
 verifies; the computed-style drift is accounted for property by property.
+
+**CI + Sonar (head `4b8731a`).** All 8 checks green. The Sonar gate is cleared on its
+*reported list*, not just its conclusion (`references/pr-gates.md` §2): `new_lines` **79**
+— non-empty, so the analysis is real rather than the false-clean read of an unanalysed PR —
+with `new_bugs` 0, `new_code_smells` 0, `new_vulnerabilities` 0, `new_duplicated_blocks` 0,
+`new_duplicated_lines_density` 0.0%, `new_coverage` **100.0%**, `api/issues/search` total 0,
+`api/hotspots/search` total 0, and the `SonarCloud Code Analysis` check-run `success`.
+Nothing to triage, so nothing re-entered at Implement from this gate.
 
 **Next action:** Green CI + a cleared Sonar new-issue list, then mark PR #833 ready for
 review. The **review gate is deliberately NOT run in this session** — it belongs to the
@@ -308,6 +316,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 |---|---|---|---|
 | F-1 | phase 0 contrast maths (R-3, pre-existing) | The erasure panel's **non-text** boundaries are below WCAG 1.4.11's 3:1 on `main` today, and the token migration preserves them byte-identically: the Erase button's `rgba(179,54,43,0.6)` border measures **2.60–2.69:1** over the panel fill (matching the plan's hand-computed ≈2.6:1), and the panel's own `rgba(179,54,43,0.35)` border **1.74–1.76:1** over the card glass. Per R-3 this is recorded, **not** adjusted — changing it is a visual decision outside a token migration. The dark candidates clear the button border (3.44–3.68:1) but not the panel border (2.29–2.32:1). The contrast spec's scope is text pairs (1.4.3) and its header says so. | deferred — **#834** |
 | F-2 | phase 3 full mocked e2e (red locally, before any push) | **R-7 under-counted.** `admin-venue-photos.e2e.ts:127` pinned the outgoing ink by its **resolved** value — `toHaveCSS('color', 'rgb(179, 38, 30)')` — which R-7's hex grep (`grep -rn 'b3261e…'`) structurally cannot see. The assertion's intent (the destructive button carries the error ink) is unchanged; only the expected value moves to `rgb(163, 22, 14)`. Swept for every other resolved form of the five migrated colours across `e2e/` and `src/**/*.spec.ts`: this was the only one. | fixed in the phase-3 commit |
+| F-3 | CI on the phase-2 head `26434ea` (not this PR's) | `BookingControllerIT.sameDayAfterCloseReturns422` and `reserveRefusedAfterOwnerClosesSalesForToday` failed. Both use a `00:01` sales close to mean "sells nothing today", and the run hit them at **00:00:52 Europe/Tirane** — inside the window the helper's own TSDoc names: *"residual risk only within a minute of Tirane midnight"* (`onlineSetAtSalesClose`). This slice touches **zero** backend files, so no fix existed to port and writing one would have widened a frontend styling PR into backend test determinism. Both passed on head `4b8731a` at 00:33 Tirane, confirming the diagnosis rather than assuming it. | not this PR's — confirmed green on the current head |
 
 ---
 
