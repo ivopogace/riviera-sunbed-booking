@@ -1,5 +1,6 @@
 package ai.riviera.platform.review.adapter.in;
 
+import ai.riviera.platform.review.domain.Stars;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 
 /**
@@ -9,12 +10,9 @@ import ai.riviera.platform.shared.InvalidApiRequestException;
  */
 record SubmitReviewRequest(Integer stars) {
 
-	private static final int MIN_STARS = 1;
-	private static final int MAX_STARS = 5;
-
 	SubmitReviewRequest {
-		if (stars == null || stars < MIN_STARS || stars > MAX_STARS) {
-			throw new InvalidApiRequestException("stars must be between " + MIN_STARS + " and " + MAX_STARS);
+		if (stars == null || !Stars.isValid(stars)) {
+			throw new InvalidApiRequestException(Stars.SCALE_DESCRIPTION);
 		}
 	}
 }

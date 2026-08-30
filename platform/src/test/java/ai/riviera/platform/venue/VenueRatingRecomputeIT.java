@@ -97,27 +97,44 @@ class VenueRatingRecomputeIT {
 
 		// A competing transaction holds the venue row while adding the second review.
 		CountDownLatch holdsLock = new CountDownLatch(1);
-		try (ExecutorService pool = Executors.newSingleThreadExecutor()) {
+		CountDownLatch mayCommit = new CountDownLatch(1);
+		ExecutorService pool = Executors.newSingleThreadExecutor();
+		try {
 			Future<?> competitor = pool.submit(() -> new TransactionTemplate(txManager).executeWithoutResult(status -> {
-				jdbc.sql("SELECT id FROM venue WHERE id = :id FOR UPDATE")
+				jdbc.sql("SELECT id FROM venue WHERE id = :id FOR NO KEY UPDATE")
 						.param("id", venueId).query(Long.class).single();
 				review(venueId, 4);
 				holdsLock.countDown();
-				sleepQuietly();
+				awaitQuietly(mayCommit);
 			}));
 
-			assertThat(holdsLock.await(15, TimeUnit.SECONDS)).isTrue();
+			assertThat(holdsLock.await(WAIT.toSeconds(), TimeUnit.SECONDS)).isTrue();
+			// Release the competitor only once the recompute is provably parked on the venue row.
+			awaitBlockedOnALock(mayCommit);
 			ratings.recompute(new VenueId(venueId));
-			competitor.get(15, TimeUnit.SECONDS);
+			competitor.get(WAIT.toSeconds(), TimeUnit.SECONDS);
+		}
+		finally {
+			mayCommit.countDown(); // never leave the competitor holding the row if an assertion threw
+			pool.shutdownNow();
 		}
 
 		awaitRating(venueId, 45, 2);
 	}
 
-	/** Long enough that a recompute which did not wait would have read and written the stale totals. */
-	private static void sleepQuietly() {
+	/** Release {@code gate} as soon as some session is waiting on a lock — the recompute, parked. */
+	private void awaitBlockedOnALock(CountDownLatch gate) {
+		Executors.newSingleThreadExecutor().submit(() -> {
+			Awaitility.await().atMost(WAIT).until(() -> Boolean.TRUE.equals(jdbc.sql(
+					"SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE wait_event_type = 'Lock')")
+					.query(Boolean.class).single()));
+			gate.countDown();
+		});
+	}
+
+	private static void awaitQuietly(CountDownLatch gate) {
 		try {
-			Thread.sleep(1500);
+			gate.await(WAIT.toSeconds(), TimeUnit.SECONDS);
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();

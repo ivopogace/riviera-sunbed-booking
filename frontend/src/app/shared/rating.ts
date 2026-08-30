@@ -1,3 +1,5 @@
+import { plural } from './plural';
+
 /**
  * Rating helpers shared by the home venue card and the venue-map header. A venue with
  * no reviews yet is "new / unrated", never "rated 0.0" — `isRated` gates that decision in one place
@@ -26,5 +28,5 @@ export function ratingScore(ratingTenths: number): string {
  * the moment it stops being "New".
  */
 export function reviewsLabel(reviewsCount: number): string {
-  return `${reviewsCount} ${reviewsCount === 1 ? 'review' : 'reviews'}`;
+  return plural(reviewsCount, 'review');
 }

@@ -409,6 +409,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/review-a-stay.e2e.ts` — mocked journey (AC-9)
 - `frontend/e2e/touch-targets*.e2e.ts` — surface entry if `/booking/:code` absent (O-1)
 - `frontend/e2e/real-backend/reviews.e2e.ts` (+ any new `frontend/e2e/real-backend/support/*.ts` helper) — AC-10
+- `frontend/src/app/shared/plural.ts` — the count-with-agreed-noun helper, promoted out of `operator/payouts-tab.ts` (where it already existed, private) so a sixth ad-hoc copy is not added; `frontend/src/app/operator/payouts-tab.ts` imports it instead of declaring it
 - `frontend/src/app/shared/rating.ts` + `frontend/src/app/shared/rating.spec.ts` — `reviewsLabel(count)`, so a venue's first rating reads "1 review" and not "1 reviews"; the seed reset makes a count of one the first state every venue reaches, and this helper already exists to stop the two rating surfaces drifting
 - `frontend/src/app/venue/venue-map.ts` + `frontend/src/app/venue/venue-map.html` + `frontend/src/app/venue/venue-map.spec.ts` — the beach-map header renders `reviewsLabel` instead of a hard-coded plural
 - `frontend/src/app/pages/home/home.ts` + `frontend/src/app/pages/home/home.html` + `frontend/src/app/pages/home/home.spec.ts` — the Discover card, same change, same helper

@@ -20,9 +20,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Verifies Flyway V45: the {@code review} table's two invariants — one review per booking, ever
- * (the DB half of AC-2) and stars bounded 1..5 — plus the demo-seed supersede (AC-7), which resets
- * every venue's rating columns so no fabricated value is ever served again. Runs only when Docker
- * is available (Testcontainers Postgres), against the full Flyway chain incl. the seed.
+ * (the DB half of AC-2) and stars bounded 1..5 — plus the demo-seed supersede (AC-7).
+ *
+ * <p>The supersede is checked on the <strong>seeded</strong> row, the only one that carried a
+ * fabricated rating, rather than as a count over the whole table: sibling ITs share this container
+ * and legitimately recompute their own venues to nonzero scores, so a table-wide assertion would
+ * pass or fail on class ordering. Runs only when Docker is available (Testcontainers Postgres),
+ * against the full Flyway chain incl. the seed.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)

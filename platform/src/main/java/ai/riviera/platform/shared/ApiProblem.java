@@ -59,10 +59,16 @@ public final class ApiProblem {
 	 * request URI.
 	 *
 	 * <p>This is the override the class doc describes, kept here rather than in each controller: the
-	 * code-scoped paths are served from two modules now ({@code booking}'s view/cancel/withdraw and
-	 * {@code review}'s submit), and a redaction rule copied per module is one a later change can fix
-	 * in one place and miss in the other — re-opening the invariant-#7 leak the pinning exists to
-	 * close. Pass a **constant** URI; passing anything derived from the request defeats the point.
+	 * <strong>code-scoped</strong> paths are served from two modules now ({@code booking}'s
+	 * view/cancel/withdraw and {@code review}'s submit), and a redaction rule copied per module is one
+	 * a later change can fix in one place and miss in the other — re-opening the invariant-#7 leak the
+	 * pinning exists to close. Pass a <strong>constant</strong> URI: deriving one from the request is
+	 * what this exists to stop.
+	 *
+	 * <p>It does not yet serve every {@code instance} override in the codebase —
+	 * {@code StaffBookingController} builds a venue-scoped path and adds an extension property, which
+	 * this signature cannot carry. That path is operator-authenticated and its {@code venueId} is not
+	 * a credential, so it is out of scope here rather than an oversight.
 	 */
 	public static ResponseEntity<ProblemDetail> responseAt(HttpStatus status, String code, String detail,
 			URI at) {

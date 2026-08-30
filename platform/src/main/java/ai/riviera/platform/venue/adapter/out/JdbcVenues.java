@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -518,7 +519,13 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 
 	@Override
 	public void lockForRecompute(VenueId venue) {
-		jdbc.sql("SELECT id FROM venue WHERE id = :id FOR UPDATE")
+		if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+			throw new IllegalStateException(
+					"lockForRecompute needs an active transaction — outside one the lock is released "
+							+ "at once and the recompute silently degrades to a read-then-write race");
+		}
+		// NO KEY UPDATE self-conflicts, so recomputes serialize, without blocking this row's FK inserts.
+		jdbc.sql("SELECT id FROM venue WHERE id = :id FOR NO KEY UPDATE")
 				.param("id", venue.value())
 				.query(Long.class)
 				.optional();

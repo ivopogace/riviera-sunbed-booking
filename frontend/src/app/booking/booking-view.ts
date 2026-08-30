@@ -682,9 +682,11 @@ export class BookingView {
   }
 
   /**
-   * Submit the chosen rating. Validity is the form schema's answer — `reviewForm().valid()`, not a
-   * second null check — so the required rule has one home; a `201` carries no body, so the new state
-   * comes from a re-read (`reviewable` flips to false and the panel unmounts) rather than a local patch.
+   * Submit the chosen rating. Validity is the form schema's answer, so the required rule has one
+   * home; the `null` test beside it narrows the type rather than restating the rule — a field the
+   * schema later hides or disables reports valid, and `stars` must still not reach the wire as null.
+   * A `201` carries no body, so the new state comes from a re-read (`reviewable` flips to false and
+   * the panel unmounts) rather than a local patch.
    */
   protected submitReview(): void {
     if (this.submittingReview()) {
@@ -693,12 +695,12 @@ export class BookingView {
     // A new attempt supersedes the last outcome, or a stale success hides this one's rejection.
     this.reviewRejection.set(undefined);
     this.reviewed.set(false);
-    if (!this.reviewForm().valid()) {
+    const stars = this.reviewModel().stars;
+    if (!this.reviewForm().valid() || stars === null) {
       this.reviewRejection.set(REVIEW_REQUIRED);
       this.focusAfterRender('review-result');
       return;
     }
-    const stars = this.reviewModel().stars!;
     this.submittingReview.set(true);
     this.bookings.review(this.code, stars).subscribe({
       next: () => {
