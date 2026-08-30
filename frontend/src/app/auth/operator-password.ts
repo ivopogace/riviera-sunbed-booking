@@ -29,7 +29,7 @@ const CLS = {
   hint: '-mt-1.5 text-[12px] text-riv-card-ink-soft',
   // A live region stays in the DOM empty, so empty: zeroes its resting margin.
   notice: 'm-0 mb-5 text-[13.5px] leading-[1.5] text-riv-card-ink-soft empty:mb-0',
-  submitError: 'mt-3 text-[13px] font-semibold text-riv-error-ink empty:mt-0',
+  submitError: 'mt-3 text-[13px] font-semibold text-riv-error-ink',
   submit:
     'mt-4.5 w-full p-[13px] rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) text-white font-[inherit] font-bold text-[15px] cursor-pointer shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] motion-safe:[transition:filter_0.15s_ease] motion-reduce:transition-none aria-disabled:cursor-default aria-disabled:opacity-70 hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white',
   alt: 'mt-4.5 text-center text-[13.5px] text-riv-card-ink-soft',
@@ -95,9 +95,11 @@ const CLS = {
             8–72 characters. Changing it signs you out on every other device.
           </p>
 
-          <p [class]="cls.submitError" role="alert" tabindex="-1" data-testid="oppw-error">
-            {{ error() }}
-          </p>
+          @if (error()) {
+            <p [class]="cls.submitError" role="alert" tabindex="-1" data-testid="oppw-error">
+              {{ error() }}
+            </p>
+          }
 
           <button
             appTouchTarget
@@ -202,10 +204,14 @@ export class OperatorPassword {
     // callback cannot outlive the component and move focus somewhere else later.
     afterNextRender(
       {
+        // Error first, notice second — not one selector list. querySelector resolves a list in
+        // DOCUMENT order, and the notice renders above the form while the error renders below it, so
+        // a list always returned the notice and a failure focused a blank paragraph. The
+        // `:not(:empty)` that was meant to prevent that never could: an interpolated <p> holds a
+        // whitespace text node, which `:empty` does not match.
         earlyRead: () =>
-          this.hostRef.nativeElement.querySelector<HTMLElement>(
-            '[data-testid="oppw-notice"]:not(:empty), [data-testid="oppw-error"]:not(:empty)',
-          ),
+          this.hostRef.nativeElement.querySelector<HTMLElement>('[data-testid="oppw-error"]') ??
+          this.hostRef.nativeElement.querySelector<HTMLElement>('[data-testid="oppw-notice"]'),
         write: (outcome) => {
           // Optional-called: jsdom implements neither, and neither is worth failing a submit over.
           outcome?.scrollIntoView?.({ block: 'nearest' });

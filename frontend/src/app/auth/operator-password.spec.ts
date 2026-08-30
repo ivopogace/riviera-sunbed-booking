@@ -189,6 +189,33 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
     expect(query(fixture, 'oppw-error')).toBeNull();
   });
 
+  /**
+   * RV-FE-9 on a surface that asserted focus nowhere: `revealOutcome()` is the whole reason the
+   * outcome reaches a keyboard user, and gating the error on its message moves the element that
+   * lookup has to find from always-present to just-created. Both specs were verified to fail with
+   * the `revealOutcome()` calls removed, not assumed to.
+   */
+  it('focuses the error it just inserted, not the body', async () => {
+    const fixture = await render(authStub('invalid-current'));
+
+    setModel(fixture, 'wrong', 'rotated-pass2');
+    await submit(fixture);
+
+    const error = query(fixture, 'oppw-error');
+    expect(error?.getAttribute('role')).toBe('alert');
+    expect(document.activeElement).toBe(error);
+  });
+
+  it('focuses the success notice and mounts no alert', async () => {
+    const fixture = await render(authStub('changed'));
+
+    setModel(fixture, 'current-pass1', 'rotated-pass2');
+    await submit(fixture);
+
+    expect(query(fixture, 'oppw-error')).toBeNull();
+    expect(document.activeElement).toBe(query(fixture, 'oppw-notice'));
+  });
+
   it('clears the fields on success so the entered password is not left on screen', async () => {
     const fixture = await render(authStub('changed'));
 

@@ -126,8 +126,8 @@ the code in one PR.
 | `admin-privacy-error` carries `mt-2` spacing | **preserved** | moves to the wrapper with the reserve; the inner `<p>` keeps only its type/colour classes |
 | erasure failure returns focus to `admin-privacy-confirm` (`admin-privacy.ts:326`) | **preserved** | untouched — the banner never held focus on this surface, so the RV-FE-9 leg is unaffected |
 | `oppw-error` announces a failure via text mutation on a mounted `role="alert"` | **changed** | as above — announced on insertion |
-| `oppw-error` is scrolled into view and focused by `revealOutcome()` | **preserved** | `tabindex="-1"` stays on the element; `earlyRead` finds the just-inserted node (AS-1). Newly pinned by AC-5, which nothing asserts today |
-| `revealOutcome()`'s `:not(:empty)` distinguishes "has something to say" from "sitting empty" | **changed** | redundant for the error half (gating does the distinguishing) but **kept verbatim** — still load-bearing for the always-mounted notice half. See AS-2 |
+| `oppw-error` is scrolled into view and focused by `revealOutcome()` | **fixed** | `tabindex="-1"` stays and `earlyRead` finds the just-inserted node (AS-1 held). But the focus never reached it: AC-5 measured focus landing on `oppw-notice` instead, on `main` and after gating alike — see F-1. The error arm is now queried first |
+| `revealOutcome()`'s `:not(:empty)` distinguishes "has something to say" from "sitting empty" | **dropped** | it never did — an interpolated `<p>` always holds a text node, and `:empty` matches only an element with no child nodes at all. AS-2 is falsified, not kept; the ordered two-query lookup replaces it |
 | `cls.submitError` collapses its own top margin when empty (`empty:mt-0`) | **dropped** | dead once the element only exists non-empty. The identical `empty:mb-0` on `cls.notice` **stays** — that element is still mounted empty |
 | `oppw-error` is present-but-empty on a *successful* submit, and specs read `''` from it | **changed** | absent. Three assertions read that emptiness today and each breaks — see Grill findings G-1…G-3 |
 
@@ -135,7 +135,7 @@ the code in one PR.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Gating `oppw-error` breaks `revealOutcome()` — `earlyRead` runs before the `@if` view is created, so focus is stranded on `<body>` (RV-FE-9, the repo's most-repeated bug class) | low | high | AS-1 settles the ordering on in-repo evidence. Regardless: AC-5 and AC-6 assert `document.activeElement` directly, and both are written **red-first against the current code** so they cannot be assertions that pass vacuously | claude | open |
+| R-1 | Gating `oppw-error` breaks `revealOutcome()` — `earlyRead` runs before the `@if` view is created, so focus is stranded on `<body>` (RV-FE-9, the repo's most-repeated bug class) | low | high | AS-1 settles the ordering on in-repo evidence. Regardless: AC-5 and AC-6 assert `document.activeElement` directly, and both are written **red-first against the current code** so they cannot be assertions that pass vacuously | claude | **closed, Phase 1** — AS-1 held (`earlyRead` finds the `@if`-created node), but the specs caught a different live defect on the same line: F-1. Both were mutation-checked against a deleted `revealOutcome()` |
 | R-2 | Someone "finishes the job" by gating `oppw-notice` too — it is the same always-mounted `<p>` matched by the same selector | med | high | Non-goals row 1 + the surviving spec `keeps the polite notice mounted…` fails loudly if it is gated. The ticket's own second comment reversed this exact conclusion once | claude | open |
 | R-3 | The three test breakages (G-1…G-3) are discovered at CI rather than at plan time, costing a red-CI round trip | — | med | **Already mitigated**: enumerated below by mechanism, and Phase 0 fixes them before the template changes | claude | closed by this plan |
 | R-4 | Swapping `text-[#b3261e]` for `text-riv-error-ink` while the class attribute is already being edited introduces colour drift | low | med | **Declined.** The token is `#a3160e`/`#ffa9a1` — a real colour change in both themes — and `admin-privacy` has no `.contrast.spec.ts` to prove AA either way. `riviera-tailwind`'s no-drift rule requires a computed-style diff, which this slice will not run. 16 raw-hex sites across 11 files make it a repo-wide sweep, not a rider | claude | declined — see FU-1 |
@@ -155,11 +155,16 @@ the code in one PR.
   `admin-privacy-done-panel`, both of which are `@if`-gated stage panels created by the very
   render the move rides on. Same mechanism, same file, shipped. — *Owner:* claude ·
   *Resolves by:* Phase 1, where AC-5 proves it directly rather than by analogy.
-- **AS-2 (Assumption):** `revealOutcome()`'s selector is left **byte-identical**. Dropping
-  `:not(:empty)` from only the error half would make the selector asymmetric for no gain;
-  dropping it from both would break the notice half, which is still mounted empty. Keeping
-  it costs one redundant pseudo-class and keeps the diff to the template. — *Owner:* claude
-  · *Resolves by:* Phase 1 review.
+- **AS-2 (Assumption) — FALSIFIED at Phase 1, see F-1.** It assumed `revealOutcome()`'s
+  selector could be left byte-identical because `:not(:empty)` was load-bearing for the
+  notice half. Measured: it is load-bearing for neither half. `:empty` matches an element
+  with **no child nodes at all**; an Angular interpolation always leaves a text node, so
+  both regions match `:not(:empty)` unconditionally — and `querySelector` resolves a
+  selector *list* in **document order**, not list order, with the notice above the form and
+  the error below it. The selector therefore returned the notice on every call. Replaced by
+  an ordered pair of queries (error, then notice); the diff reaches
+  `operator-password.ts`'s class, not just its template. — *Owner:* claude ·
+  *Resolved:* Phase 1, by AC-5.
 - **AS-3 (Assumption):** `admin-privacy`'s reserve is worth keeping. The banner is the
   panel's *last* child, so nothing above it shifts when it appears — but the ticket asks for
   the wrapper explicitly, #827 set the precedent, and silently deleting a reserve is an
@@ -170,6 +175,12 @@ the code in one PR.
 
 - **FU-1:** File an issue for the raw `#b3261e` → `--riv-error-ink` sweep (16 sites, 11
   files, needs contrast proofs). Do this at close-out, not now.
+- **FU-2:** File an issue for the two surviving `empty:` utilities (`cls.notice`'s
+  `empty:mb-0`, `booking-view.ts`'s `result` `empty:hidden`) — measure in real Chromium
+  whether `:empty` fires on an interpolated element, then delete them as dead code or keep
+  them with the measurement recorded. Out of scope here: both are margin/visibility on
+  surfaces this slice does not own, and F-1 already removed the one place where `:empty`
+  governed *correctness* rather than spacing.
 
 ## Grill findings — what the issue does not carry
 
@@ -250,13 +261,12 @@ N/A — no contract change. No endpoint, DTO, or client type is touched.
 doc travels with the code (cloud-session branch substitution, `riviera-sdlc`
 §Remote/cloud addendum).
 
-**Next action:** Phase 1 — gate `oppw-error` behind `@if (error())`, with the two focus
-specs written red first.
+**Next action:** Phase 2 — gate `admin-privacy-error` and move its reserve to a wrapper.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Retarget the three assertions that read the old shape (G-1…G-3) | ✅ | `Point the operator-password assertions at a gated alert (#828)` |
-| 1 — Gate `oppw-error`, preserving the focus contract | | |
+| 1 — Gate `oppw-error`, preserving the focus contract | ✅ | `Mount the operator password error only while it has something to say (#828)` |
 | 2 — Gate `admin-privacy-error`, reserve to a wrapper | | |
 | 3 — Doc-header freshness + generalization audit | | |
 
@@ -271,7 +281,9 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet — no code written | — |
+| F-1 | Phase 1 TDD (AC-5 red) | `revealOutcome()` focused `oppw-notice` on **every** call, failure path included — so a failed password change dropped a keyboard user on a blank paragraph above the form (RV-FE-9, live on `main`). Two causes compounding: `querySelector` resolves a selector list in document order (notice above, error below), and the `:not(:empty)` meant to exclude the silent region cannot — `:empty` matches only an element with **no child nodes**, and an interpolation always leaves one. Invisible until AC-5 asserted `document.activeElement`; gating the element alone did **not** fix it | fixed in Phase 1 — error queried first, notice as fallback; pinned by AC-5 + AC-6, both mutation-checked |
+| F-2 | Phase 0 (G-3 re-check) | G-3 overcounted the e2e breakage: `operator-password.e2e.ts:91` is an `oppw-notice` assertion, not an `oppw-error` one (the plan lists `:91` in both roles, two paragraphs apart). Exactly **one** e2e assertion needed retargeting, `:53` | fixed in Phase 0 — `:53` → `toHaveCount(0)`; `:43` and `:91` left alone as the second G-3 paragraph intended |
+| F-3 | Phase 1 generalization audit | The plan's per-phase command `npm test -- <name>` does not scope anything here: `ng test` reads a positional argument as the *project* name and exits `Invalid values: Argument: project`. The working scoped form is `npx ng test --include="<path to spec>"` | no code change — recorded so the next session does not re-derive it |
 
 ---
 
@@ -333,23 +345,24 @@ discover late.
 **Files:** Modify `frontend/src/app/auth/operator-password.ts:32,98-100` · Test
 `frontend/src/app/auth/operator-password.spec.ts`
 
-- [ ] **Step 1: Write the two failing focus specs** (AC-5, AC-6) — assert
+- [x] **Step 1: Write the two failing focus specs** (AC-5, AC-6) — assert
       `document.activeElement` is the `oppw-error` element after a failed submit, and the
       `oppw-notice` element after a successful one, with `oppw-error` absent in the second.
       These pin RV-FE-9 on a surface that asserts focus nowhere today, and they must be
       **mutation-checked**: each has to fail if `revealOutcome()` is deleted.
-- [ ] **Step 2: Run, verify failure** — `npm test -- operator-password` → the focus specs
+- [x] **Step 2: Run, verify failure** — `npm test -- operator-password` → the focus specs
       FAIL (nothing asserts focus yet), alongside Phase 0's three.
-- [ ] **Step 3: Gate the element.** Wrap the `<p>` at `:98` in `@if (error()) { … }`,
+- [x] **Step 3: Gate the element.** Wrap the `<p>` at `:98` in `@if (error()) { … }`,
       keeping `role="alert"`, `tabindex="-1"` and `data-testid` verbatim; drop
-      `empty:mt-0` from `cls.submitError` at `:32`; leave `cls.notice`'s `empty:mb-0` and
-      the `revealOutcome()` selector at `:207` untouched (AS-2).
-- [ ] **Step 4: Run, verify pass** — `npm test -- operator-password` → PASS (all five).
+      `empty:mt-0` from `cls.submitError` at `:32`; leave `cls.notice`'s `empty:mb-0`
+      untouched. **The `revealOutcome()` selector at `:207` did not survive AS-2** — AC-5
+      stayed red after the gating, and the two-query fix in F-1 is what turned it green.
+- [x] **Step 4: Run, verify pass** — `npm test -- operator-password` → PASS (all five).
       Then `npm run test:e2e:a11y -- operator-password` → PASS, proving G-3's retarget.
-- [ ] **Step 5: Generalization-audit pass** — see the log; this phase introduces the
+- [x] **Step 5: Generalization-audit pass** — see the log; this phase introduces the
       pattern the sweep is about.
-- [ ] **Step 6: Commit** — `git commit -m "Mount the operator password error only while it has something to say (#828)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Mount the operator password error only while it has something to say (#828)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -415,7 +428,9 @@ discover late.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-30 | plan (pre-audit, inherited) | Every `role="alert"` in `frontend/src` that is mounted unconditionally — enumerated by **mechanism** (an error element mounted regardless of its message), not by resemblance to `admin-commissions` | `grep -rn 'role="alert"' frontend/src` (#826's Phase 0 sweep) | 4 ungated | 1 fixed by #827; 2 are this slice; the 4th judged on its merits in #827's audit log — **do not re-enumerate** |
-| _(Phase 1)_ | | Every reader of a gated testid — the mechanism this slice's defect class needs is *a test that asserts emptiness on an element that may now be absent*, which is invisible to a `role="alert"` sweep | `grep -rn 'oppw-error\|admin-privacy-error' frontend/` then, for the general form, `grep -rn "toHaveText('')\|toBe('')" frontend/e2e frontend/src` | _(fill at Phase 1)_ | The narrow sweep already yielded G-1…G-3. The broad one asks whether other surfaces carry the same latent coupling; record the verdict, do not skip it |
+| 2026-08-30 | Phase 1 | Every reader of a gated testid — *a test that asserts emptiness on an element that may now be absent*, invisible to a `role="alert"` sweep | `grep -rn 'oppw-error\|admin-privacy-error' frontend/` then `grep -rn "toHaveText('')" frontend/e2e frontend/src` | 4 other `toHaveText('')` sites | All four target regions that stay unconditionally mounted (`oppw-notice` ×2, `admin-photos-notice`, the load announcer, a skeleton placeholder). No other surface carries the coupling — nothing to change |
+| 2026-08-30 | Phase 1 (F-1) | The **new** mechanism F-1 exposed, which no `role="alert"` sweep reaches: a `querySelector` **selector list** used to pick a focus target, where the list's order reads as a priority it does not have | `grep -rn 'querySelector' frontend/src --include=*.ts \| grep -v spec \| grep ','` | 1 — `revealOutcome()` itself | Fixed in place. No second site: every other focus lookup is a single selector, or goes through `shared/focus-after-render.ts`'s explicit primary/fallback pair, which had the ordering right all along |
+| 2026-08-30 | Phase 1 (F-1) | The second half of F-1: a **CSS `:empty` guard on an element whose content is an Angular interpolation**, which cannot fire because the interpolation leaves a text node | `grep -rn ':empty' frontend/src --include=*.ts` | 3 — the fixed selector, `cls.notice`'s `empty:mb-0`, `booking-view.ts`'s `result` `empty:hidden` | The selector is fixed. The two `empty:` *utilities* are **left exactly as they are**: whether they fire in a real browser turns on whether the engine ships Selectors L3 or L4 `:empty` semantics, which this slice did not measure, so removing them would be an unproven visual change on surfaces #828 does not own. Recorded as FU-2 — verify in Chromium, then delete or keep with a proof. The rule that *does* generalize: never let focus or announcement correctness depend on `:empty` |
 
 ---
 
