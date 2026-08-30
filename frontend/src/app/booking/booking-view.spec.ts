@@ -1327,6 +1327,29 @@ describe('BookingView', () => {
       );
     });
 
+    it('treats a vanished booking as a settled refusal, not a retry', async () => {
+      const fixture = await render(
+        stubService({
+          detail: REVIEWED,
+          reviewError: new HttpErrorResponse({ status: 404, error: { code: 'NO_SUCH_BOOKING' } }),
+        }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      host.querySelector<HTMLButtonElement>('[data-testid="start-delete-review"]')!.click();
+      fixture.detectChanges();
+      host.querySelector<HTMLButtonElement>('[data-testid="confirm-delete-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'couldn’t find a booking',
+      );
+      // Settled, so the confirm pair is gone — not left open behind a "try again".
+      expect(host.querySelector('[data-testid="confirm-delete-review"]')).toBeNull();
+    });
+
     it('renders the frozen review read-only, with no form and no actions', async () => {
       const fixture = await render(
         stubService({

@@ -47,6 +47,7 @@ const REVIEW_REFUSALS = new Map<string, string>([
   ['REVIEW_WINDOW_CLOSED', 'The window for rating this stay has closed.'],
   ['BOOKING_NOT_COMPLETED', 'You can rate a stay once you’ve been checked in.'],
   ['NO_SUCH_REVIEW', 'This stay no longer carries a review.'],
+  ['NO_SUCH_BOOKING', 'We couldn’t find a booking for that code.'],
 ]);
 
 const REVIEW_RETRY = 'We couldn’t save your review. Please try again.';
