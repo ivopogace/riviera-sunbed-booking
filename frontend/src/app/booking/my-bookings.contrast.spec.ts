@@ -1,4 +1,4 @@
-import { AA_NORMAL, Rgb, contrastRatio, hexToRgb } from '../../testing/contrast';
+import { AA_NORMAL, Rgb, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
@@ -12,6 +12,8 @@ import {
   PORCELAIN_STOPS,
   RIVIERA_CARD_GLASS,
   RIVIERA_STOPS,
+  SOLID_BTN_FILL,
+  SOLID_BTN_INK,
   expectAaOverStops,
 } from '../../testing/glass-tokens';
 
@@ -62,8 +64,11 @@ describe('My bookings — solid-fill controls (WCAG AA, issue #139)', () => {
     }
   });
 
+  /** The ink is --riv-solid-btn-ink, theme-invariant because its #f4f6f7 fill is too. */
   it('the Retry outline ink meets AA on its solid #f4f6f7 fill', () => {
-    expect(contrastRatio('#0a4f5e', '#f4f6f7')).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrastRatio(rgbToHex(SOLID_BTN_INK), rgbToHex(SOLID_BTN_FILL))).toBeGreaterThanOrEqual(
+      AA_NORMAL,
+    );
   });
 
   it('the rows-failed alert ink (#a3160e, #745) meets AA on its solid #f6e8e7 fill', () => {
