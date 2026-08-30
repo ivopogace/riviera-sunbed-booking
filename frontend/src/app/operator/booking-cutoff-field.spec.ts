@@ -18,6 +18,10 @@ class Host {
     this.model.set({ bookingCutoff: '' });
     this.venueForm.bookingCutoff().markAsTouched();
   }
+
+  restore(): void {
+    this.model.set({ bookingCutoff: '18:00' });
+  }
 }
 
 describe('BookingCutoffField', () => {
@@ -52,5 +56,22 @@ describe('BookingCutoffField', () => {
     expect(label.querySelector('[role="alert"]')?.textContent?.trim()).toBe(
       'Free-cancellation deadline is required',
     );
+  });
+
+  it('describes the time input by that message, and releases it when the value is valid', () => {
+    const { fixture, label } = render();
+    fixture.componentInstance.clear();
+    fixture.detectChanges();
+
+    const input = label.querySelector<HTMLInputElement>('input')!;
+    const error = label.querySelector<HTMLElement>('[role="alert"]')!;
+    expect(input.getAttribute('aria-describedby')).toBe(error.id);
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+
+    fixture.componentInstance.restore();
+    fixture.detectChanges();
+
+    expect(input.hasAttribute('aria-describedby')).toBe(false);
+    expect(input.hasAttribute('aria-invalid')).toBe(false);
   });
 });

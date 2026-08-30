@@ -424,3 +424,53 @@ persistent sibling region already announces the same outcome and the new one is 
 - Peer-review: "For each live region in this diff: is the element still there before and after the
   change it announces, or is it created along with its message? Which single region owns each
   sentence on that surface — and does anything else repeat it? What does it say when the load fails?"
+
+---
+
+### RV-FE-11. An inline field error names its control, and `aria-invalid` means the value is wrong (#821)
+**Gate:** Does every inline, field-scoped error the diff writes carry **both** `role="alert"` and
+`[appFieldErrorFor]` naming its control — and does its `aria-invalid` claim match what actually failed?
+- [ ] the error element carries `[appFieldErrorFor]="<ctl>"` (`shared/field-error-for.ts`), never a
+      hand-written `aria-describedby` — a dangling reference is only an axe *incomplete*, and
+      `expectNoAxeViolations` (unit **and** `e2e/support/axe.ts`) reads `violations` only, so CI is
+      structurally blind to both a missing and a rotted association
+- [ ] the directive sits on the **error element**, taking the control's template ref, so the
+      association's lifetime is the error's own. A ref declared inside a `@for` body resolves per
+      embedded view — that is what keeps a loop-scoped error off its sibling rows
+- [ ] **`aria-invalid` is a claim about the entered value (ARIA21), not about the request.** An error
+      that reports a failed *write* — a 403, a vanished row, an expired session — binds
+      `[appFieldErrorForInvalidValue]="false"`. Ask what the user would have to *retype* to fix it;
+      if the answer is "nothing", the control is described but not marked invalid
+- [ ] the error is genuinely **field-scoped**. Form-, page- and **action**-level banners name no
+      single control and stay alert-only — describing a button or a `class="hidden"` file input is
+      the action-error pattern, not field validation
+- [ ] a control that already carries a hint keeps it **first**: the directive appends, and
+      announcement order follows the attribute's token order, not DOM order
+- [ ] the spec asserts the **take and the release**, not the release alone — an absence-only
+      assertion passes just as well when nothing was ever written
+
+> **Two traps, both paid for on #823's review gate.** The first is the `aria-invalid` half: the
+> mechanism is so mechanical to apply that a *write*-outcome error gets swept in with the validation
+> ones, and the spec then pins the wrong semantics (a 403 asserting `aria-invalid="true"` on a value
+> the app had already reverted to the server's own). The second is measuring the result with the
+> wrong tool: **Playwright's `toHaveAccessibleName` / `ariaSnapshot` use its own JS reimplementation
+> of accname, which disagrees with the browser.** On `<label><span>Name</span><input><span
+> role="alert">…</span></label>` Playwright folds the alert into the name; Chromium's real AX tree
+> (CDP `Accessibility.getPartialAXTree`) does not. Two review agents called a 14-site defect off the
+> Playwright reading. When an accname question is load-bearing, read the **CDP tree** — that is what
+> a screen reader consumes — and treat `toHaveAccessibleDescription` as the assertion that does hold.
+
+**Follow-up:**
+- Nothing machine-checks this one: there is no guard script and axe cannot see it, so it is a
+  read-the-diff item in a way RV-FE-9 and RV-FE-10 are not.
+- The convention itself: `frontend/.claude/CLAUDE.md` § *Accessibility Requirements*. The directive's
+  own TSDoc records its three limits (no `aria-invalid` refcount; preservation assumes a **static**
+  `aria-describedby`, not an `[attr.]` binding; ids are process-monotonic, so never assert a literal).
+
+**Default severity:** **Major** — an unassociated field error is a WCAG 3.3.1 gap invisible to CI.
+**Minor** for an `aria-invalid` over-claim on an operator-only surface; **Blocker** if a hand-written
+association ships on a tourist-facing form, where the reference can rot unseen.
+**Skill framing:**
+- Peer-review: "For each inline error in this diff: which control names it, and would that control
+  still name it if the error re-rendered somewhere else? What would the user retype to clear it — and
+  if the answer is nothing, why is it marked invalid?"

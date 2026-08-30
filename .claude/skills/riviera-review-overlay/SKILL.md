@@ -50,7 +50,12 @@ frontend-only review never pays for the backend bank:
   shapes they cannot match — the item is what covers those), and **RV-FE-10**
   (a live region outlives the content it announces — a region created together
   with its message announces nothing, and the text being present means every
-  spec reading it passes either way; #741 shipped that on eight surfaces).
+  spec reading it passes either way; #741 shipped that on eight surfaces), and
+  **RV-FE-11** (an inline field error names its control via `[appFieldErrorFor]`,
+  and `aria-invalid` claims the *entered value* is wrong — never merely that a
+  write was refused; #823's gate found both halves missed, and the
+  Playwright-vs-CDP accname trap that made two reviewers report a 14-site defect
+  that was not there).
 - **Fullstack diff** → both of the above, plus `references/fe-be-contract.md` —
   API typing, money/date on the wire, webhook-vs-redirect, idempotency.
 

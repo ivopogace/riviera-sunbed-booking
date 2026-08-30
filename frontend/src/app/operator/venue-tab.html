@@ -35,11 +35,15 @@
               data-testid="venue-name"
               appTouchTarget
               class="rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
+              #nameControl
             />
             @if (detailsForm.name().touched() && detailsForm.name().errors().length) {
-              <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
-                detailsForm.name().errors()[0].message
-              }}</span>
+              <span
+                [appFieldErrorFor]="nameControl"
+                class="text-[11.5px] font-semibold text-[#a3160e]"
+                role="alert"
+                >{{ detailsForm.name().errors()[0].message }}</span
+              >
             }
           </label>
 
@@ -52,11 +56,15 @@
                 data-testid="venue-beach"
                 appTouchTarget
                 class="rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
+                #beachControl
               />
               @if (detailsForm.beach().touched() && detailsForm.beach().errors().length) {
-                <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
-                  detailsForm.beach().errors()[0].message
-                }}</span>
+                <span
+                  [appFieldErrorFor]="beachControl"
+                  class="text-[11.5px] font-semibold text-[#a3160e]"
+                  role="alert"
+                  >{{ detailsForm.beach().errors()[0].message }}</span
+                >
               }
             </label>
             <label class="flex flex-col gap-1">
@@ -67,11 +75,15 @@
                 data-testid="venue-region"
                 appTouchTarget
                 class="rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
+                #regionControl
               />
               @if (detailsForm.region().touched() && detailsForm.region().errors().length) {
-                <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
-                  detailsForm.region().errors()[0].message
-                }}</span>
+                <span
+                  [appFieldErrorFor]="regionControl"
+                  class="text-[11.5px] font-semibold text-[#a3160e]"
+                  role="alert"
+                  >{{ detailsForm.region().errors()[0].message }}</span
+                >
               }
             </label>
           </div>
@@ -295,9 +307,11 @@
               (input)="onDistanceInput($any($event.target).value)"
               appTouchTarget
               class="w-[140px] rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
+              #distanceControl
             />
             @if (distanceError()) {
               <span
+                [appFieldErrorFor]="distanceControl"
                 class="text-[11.5px] font-semibold text-[#a3160e]"
                 role="alert"
                 data-testid="venue-distance-error"

@@ -1,6 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { Field, FormField } from '@angular/forms/signals';
 
+import { FieldErrorFor } from '../shared/field-error-for';
 import { TouchTarget } from '../shared/touch-target';
 
 /**
@@ -16,7 +17,7 @@ import { TouchTarget } from '../shared/touch-target';
  */
 @Component({
   selector: 'app-booking-cutoff-field',
-  imports: [FormField, TouchTarget],
+  imports: [FieldErrorFor, FormField, TouchTarget],
   host: { class: 'contents' },
   template: `<label class="flex flex-col gap-1">
     <span class="text-[12.5px] font-semibold text-riv-card-ink"
@@ -28,11 +29,15 @@ import { TouchTarget } from '../shared/touch-target';
       [attr.data-testid]="testId()"
       appTouchTarget
       class="rounded-[11px] border border-riv-card-border bg-white/60 px-3 py-2 text-[14px] text-riv-card-ink"
+      #cutoffControl
     />
     @if (state().touched() && state().errors().length) {
-      <span class="text-[11.5px] font-semibold text-[#a3160e]" role="alert">{{
-        state().errors()[0].message
-      }}</span>
+      <span
+        [appFieldErrorFor]="cutoffControl"
+        class="text-[11.5px] font-semibold text-[#a3160e]"
+        role="alert"
+        >{{ state().errors()[0].message }}</span
+      >
     }
   </label>`,
 })

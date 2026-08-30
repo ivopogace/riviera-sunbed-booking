@@ -8,6 +8,7 @@ import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { FieldErrorFor } from '../shared/field-error-for';
 import { TouchTarget } from '../shared/touch-target';
 import { Amenity, AMENITY_CATALOGUE, amenityLabel } from '../shared/amenities';
 import { BusyAction } from '../shared/busy-action';
@@ -118,6 +119,7 @@ const EMPTY_SLOTS: Readonly<Record<PhotoSlotKey, SlotUi>> = {
   imports: [
     BookingCutoffField,
     BookingModeField,
+    FieldErrorFor,
     FormField,
     CardGlass,
     NgOptimizedImage,

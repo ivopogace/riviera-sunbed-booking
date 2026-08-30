@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { OwnedVenues } from '../core/owned-venues';
+import { FieldErrorFor } from '../shared/field-error-for';
 import { TouchTarget } from '../shared/touch-target';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
@@ -40,7 +41,15 @@ interface VenueDraft {
  */
 @Component({
   selector: 'app-venue-create-card',
-  imports: [BookingCutoffField, BookingModeField, CardGlass, FormField, BusyAction, TouchTarget],
+  imports: [
+    BookingCutoffField,
+    BookingModeField,
+    CardGlass,
+    FieldErrorFor,
+    FormField,
+    BusyAction,
+    TouchTarget,
+  ],
   templateUrl: './venue-create-card.html',
 })
 export class VenueCreateCard {

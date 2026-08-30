@@ -122,6 +122,24 @@ describe('AdminPrivacy', () => {
     expect(service.erase).not.toHaveBeenCalled();
   });
 
+  it('describes the email field by its intro and its error, in that order', async () => {
+    const service = serviceStub();
+    const fixture = await render(service);
+
+    await armConfirmation(fixture, 'not-an-email');
+
+    const control = byTestId(fixture, 'admin-privacy-email')!;
+    const error = byTestId(fixture, 'admin-privacy-email-error')!;
+    // Announcement order follows the attribute's token order, not DOM order.
+    expect(control.getAttribute('aria-describedby')).toBe(`admin-privacy-erase-intro ${error.id}`);
+    expect(control.getAttribute('aria-invalid')).toBe('true');
+
+    await armConfirmation(fixture, 'guest@example.com');
+
+    expect(control.getAttribute('aria-describedby')).toBe('admin-privacy-erase-intro');
+    expect(control.hasAttribute('aria-invalid')).toBe(false);
+  });
+
   it('arms a confirmation that names the address, sending nothing', async () => {
     const service = serviceStub();
     const fixture = await render(service);

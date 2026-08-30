@@ -4,6 +4,7 @@ import { email, FormField, form, required } from '@angular/forms/signals';
 
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { FieldErrorFor } from '../shared/field-error-for';
 import { focusMover } from '../shared/focus-after-render';
 import { AdminPrivacyService, erasureErrorOf } from './admin-privacy.service';
 
@@ -50,7 +51,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
  */
 @Component({
   selector: 'app-admin-privacy',
-  imports: [FormField, CardGlass, BusyAction, TouchTarget],
+  imports: [FormField, CardGlass, BusyAction, FieldErrorFor, TouchTarget],
   template: `
     <div class="mt-5 grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,320px)]">
       <section
@@ -94,10 +95,12 @@ type ErasureStage = 'form' | 'confirm' | 'done';
               placeholder="guest@example.com"
               aria-describedby="admin-privacy-erase-intro"
               class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[15px] text-riv-card-ink"
+              #emailControl
             />
 
             @if (reviewAttempted() && erasureForm.email().errors().length) {
               <p
+                [appFieldErrorFor]="emailControl"
                 class="mt-2 text-[13.5px] font-semibold text-[#b3261e]"
                 role="alert"
                 data-testid="admin-privacy-email-error"

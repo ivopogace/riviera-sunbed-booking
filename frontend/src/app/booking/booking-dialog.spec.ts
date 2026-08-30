@@ -251,6 +251,47 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     expect(host().querySelector('[data-testid="legal-agreement"]')).not.toBeNull();
   });
 
+  it('describes each guest-contact field by its error', async () => {
+    submitForm(); // Continue with an empty form
+    await fixture.whenStable();
+
+    for (const autocomplete of ['name', 'email', 'tel']) {
+      const control = host().querySelector<HTMLInputElement>(
+        `input[autocomplete="${autocomplete}"]`,
+      )!;
+      const errorId = control.getAttribute('aria-describedby');
+      expect(errorId).toBeTruthy();
+      expect(control.getAttribute('aria-invalid')).toBe('true');
+
+      const error = host().querySelector(`#${errorId}`);
+      expect(error?.getAttribute('role')).toBe('alert');
+      expect(error?.textContent?.trim()).toBeTruthy();
+    }
+  });
+
+  it('stops describing the guest-contact fields once they are valid', async () => {
+    submitForm();
+    await fixture.whenStable();
+
+    // Pin the take first: an absence-only assertion also passes when nothing was ever written.
+    for (const autocomplete of ['name', 'email', 'tel']) {
+      const control = host().querySelector<HTMLInputElement>(
+        `input[autocomplete="${autocomplete}"]`,
+      )!;
+      expect(control.getAttribute('aria-describedby')).toBeTruthy();
+    }
+
+    await fillValid();
+
+    for (const autocomplete of ['name', 'email', 'tel']) {
+      const control = host().querySelector<HTMLInputElement>(
+        `input[autocomplete="${autocomplete}"]`,
+      )!;
+      expect(control.hasAttribute('aria-describedby')).toBe(false);
+      expect(control.hasAttribute('aria-invalid')).toBe(false);
+    }
+  });
+
   it('shows role=alert field errors only after the first Continue, then advances when valid', async () => {
     // Nothing announced before the first submit attempt.
     expect(host().querySelectorAll('[role="alert"]').length).toBe(0);
