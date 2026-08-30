@@ -1096,6 +1096,8 @@ sufficient.
 | `availability` is the **only writer** (and direct reader) of `set_availability` — invariant #2 | `ResponsibilitiesArchitectureTests` (sole-writer bytecode scan) |
 | Only `payment` talks to Stripe — the SDK is unreachable elsewhere | `ResponsibilitiesArchitectureTests` (Stripe-reach rule) |
 | Events carry technical ids/values, never foreign aggregates — invariant #11 Need-To-Know | `ResponsibilitiesArchitectureTests` (id-based-events rule) |
+| `review` is the **only writer** (and direct reader) of the `review` table — #811 | `ResponsibilitiesArchitectureTests` (SQL-shaped review-table scan; the bare name would match the module's package string in every consumer) |
+| Only `venue` names `rating_tenths` / `reviews_count` — "I store the aggregate; `review` computes it" (#811) | `ResponsibilitiesArchitectureTests` (rating-columns sole-writer scan) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
 | No module reaches another's `application`/`domain`/`adapter` internals; `allowedDependencies` deny-lists hold | `ModularityTests` (`ApplicationModules.verify()`) |
 | The ADR-0007 package shape; published-surface kinds (`api`/`spi`/`vocabulary`/`events`); the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |
@@ -1118,11 +1120,11 @@ review item RV-BE-11):
 - A refund **policy** reimplemented inside `payment` (only `booking` decides
   whether/how much to refund; `payment` executes).
 - Commission **math** inside `venue` (it stores the rate; only `payout` computes).
-- A second writer of `venue.rating_tenths` / `reviews_count`, or review **policy**
-  (eligibility, the window, the rounding rule) leaking into `venue` — the exact twin of the
-  commission split, and unguarded for the same reason: `review` writing that table would need
-  no illegal import, only its own SQL. Today `review`'s SQL names the `review` table alone
-  (ADR-0015).
+- Review **policy** (eligibility, the window, the rounding rule) leaking into `venue` —
+  the twin of the commission split. The *SQL* half of this boundary graduated to
+  machine-checked above (a second writer of the rating columns, or outside SQL against
+  the `review` table, now fails the build); the *policy* half still needs no illegal
+  import and stays review-checked (ADR-0015).
 - A booking-lifecycle decision creeping into `availability` (it holds state, not the
   cutoff rule), or any other capability landing on a module's Not-My-Job list without
   crossing a package boundary.
