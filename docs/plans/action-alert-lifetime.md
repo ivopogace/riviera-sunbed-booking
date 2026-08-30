@@ -65,28 +65,32 @@ the code in one PR.
 > seam beneath them — the observable outcome *is* the rendered DOM and the focus
 > position, so that is where the ACs sit.
 
-- [ ] **AC-1:** Given the admin Privacy tab with a confirmation armed and no failure yet,
+- [x] **AC-1:** Given the admin Privacy tab with a confirmation armed and no failure yet,
       when the panel renders, then no element with `role="alert"` exists inside
       `admin-privacy-confirm-panel`. *Pinned by:*
       `admin-privacy.spec.ts` › `mounts no error element while the confirmation is clean`
-- [ ] **AC-2:** Given an armed confirmation, when the erasure request fails, then
+- [x] **AC-2:** Given an armed confirmation, when the erasure request fails, then
       `admin-privacy-error` exists, carries `role="alert"`, and contains
       "Nothing was erased". *Pinned by:* `admin-privacy.spec.ts` ›
       `keeps the confirmation armed when the request fails` (existing, still green)
-- [ ] **AC-3:** Given an armed confirmation, when the panel is clean and then fails, then
-      the vertical offset of `admin-privacy-confirm` (the destructive button) is unchanged
-      between the two states — the reserve absorbs the banner. *Pinned by:*
-      `admin-privacy.e2e.ts` › `arming and failing does not shift the confirm button`
-- [ ] **AC-4:** Given the operator change-password form untouched, when it renders, then
+- [x] **AC-3 (restated at Phase 2, see F-4):** Given an armed confirmation, when the panel
+      is clean and then fails, then `admin-privacy-confirm`'s vertical offset is unchanged
+      **and** the panel grows by strictly less than the banner's own height — the reserve
+      absorbs a line of it. The original "the reserve absorbs the banner" is not
+      achievable: the message wraps to two lines at the e2e width while the reserve is one,
+      so the panel grows by the difference — exactly as it did on `main`. *Pinned by:*
+      `admin-privacy.e2e.ts` › `the failure banner lands in reserved space, so the panel
+      absorbs part of it`
+- [x] **AC-4:** Given the operator change-password form untouched, when it renders, then
       `oppw-error` is absent **and** `oppw-notice` is present with `role="status"` and
       empty text. *Pinned by:* `operator-password.spec.ts` ›
       `keeps the polite notice mounted before there is anything to announce` **and** ›
       `mounts no alert region before there is anything to announce`
-- [ ] **AC-5:** Given a submit that fails (wrong current password), when the failure
+- [x] **AC-5:** Given a submit that fails (wrong current password), when the failure
       lands, then `oppw-error` exists with `role="alert"` and
       `document.activeElement` is that element. *Pinned by:*
       `operator-password.spec.ts` › `focuses the error it just inserted, not the body`
-- [ ] **AC-6:** Given a submit that succeeds, when the notice lands, then `oppw-error`
+- [x] **AC-6:** Given a submit that succeeds, when the notice lands, then `oppw-error`
       is absent and `document.activeElement` is `oppw-notice`. *Pinned by:*
       `operator-password.spec.ts` › `focuses the success notice and mounts no alert`
 - [ ] **AC-7:** Given the mocked e2e run over both surfaces, when each of the three
@@ -122,7 +126,7 @@ the code in one PR.
 | Old-surface behavior | Verdict | How the new surface does it, or why it's gone |
 |---|---|---|
 | `admin-privacy-error` announces a failure via text mutation on a mounted `role="alert"` | **changed** | announces via *insertion* instead — the reliable case per `load-announcer.ts`. Both announce; insertion is the settled shape |
-| `admin-privacy-error` reserves `min-h-[1.25rem]` so the panel does not grow when it speaks | **preserved** | the reserve moves to a `<div class="mt-2 min-h-[1.25rem]">` wrapper, exactly the #827 shape (`admin-commissions.ts:222`) |
+| `admin-privacy-error` reserves `min-h-[1.25rem]` so the panel does not grow when it speaks | **preserved** | the reserve moves to a `<div class="mt-2 min-h-[1.25rem]">` wrapper, exactly the #827 shape (`admin-commissions.ts:222`). The parenthetical is the part that was never true — one reserved line against a two-line message, on `main` as much as here (F-4). Byte-for-byte the same reserved space before and after |
 | `admin-privacy-error` carries `mt-2` spacing | **preserved** | moves to the wrapper with the reserve; the inner `<p>` keeps only its type/colour classes |
 | erasure failure returns focus to `admin-privacy-confirm` (`admin-privacy.ts:326`) | **preserved** | untouched — the banner never held focus on this surface, so the RV-FE-9 leg is unaffected |
 | `oppw-error` announces a failure via text mutation on a mounted `role="alert"` | **changed** | as above — announced on insertion |
@@ -165,11 +169,13 @@ the code in one PR.
   an ordered pair of queries (error, then notice); the diff reaches
   `operator-password.ts`'s class, not just its template. — *Owner:* claude ·
   *Resolved:* Phase 1, by AC-5.
-- **AS-3 (Assumption):** `admin-privacy`'s reserve is worth keeping. The banner is the
-  panel's *last* child, so nothing above it shifts when it appears — but the ticket asks for
-  the wrapper explicitly, #827 set the precedent, and silently deleting a reserve is an
-  unproven visual change. AC-3 turns the assumption into a measured e2e assertion rather
-  than leaving it as taste. — *Owner:* claude · *Resolves by:* Phase 2.
+- **AS-3 (Assumption) — HELD, but its premise was wrong; see F-4.** Keeping the reserve is
+  right: deleting it shrinks the clean panel by a line, an unproven visual change #828 does
+  not own. The premise that the reserve makes the banner cost *no* shift is false, and the
+  AC-3 the assumption produced was **vacuous as first written** — it measured the confirm
+  button, which sits above the banner and cannot move either way; it passed with the
+  reserve deleted. Rewritten to measure the panel and mutation-checked both directions.
+  — *Owner:* claude · *Resolved:* Phase 2.
 
 **Follow-ups (not blocking):**
 
@@ -261,13 +267,13 @@ N/A — no contract change. No endpoint, DTO, or client type is touched.
 doc travels with the code (cloud-session branch substitution, `riviera-sdlc`
 §Remote/cloud addendum).
 
-**Next action:** Phase 2 — gate `admin-privacy-error` and move its reserve to a wrapper.
+**Next action:** Phase 3 — a11y spec header freshness, audit close-out, guards.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Retarget the three assertions that read the old shape (G-1…G-3) | ✅ | `Point the operator-password assertions at a gated alert (#828)` |
 | 1 — Gate `oppw-error`, preserving the focus contract | ✅ | `Mount the operator password error only while it has something to say (#828)` |
-| 2 — Gate `admin-privacy-error`, reserve to a wrapper | | |
+| 2 — Gate `admin-privacy-error`, reserve to a wrapper | ✅ | `Mount the erasure failure banner only while it has something to say (#828)` |
 | 3 — Doc-header freshness + generalization audit | | |
 
 Short SHAs are filled into the Commits column at the Phase 3 close-out commit, once every
@@ -283,6 +289,7 @@ Skill-routing gate for what the fix touches *before* editing).
 |---|---|---|---|
 | F-1 | Phase 1 TDD (AC-5 red) | `revealOutcome()` focused `oppw-notice` on **every** call, failure path included — so a failed password change dropped a keyboard user on a blank paragraph above the form (RV-FE-9, live on `main`). Two causes compounding: `querySelector` resolves a selector list in document order (notice above, error below), and the `:not(:empty)` meant to exclude the silent region cannot — `:empty` matches only an element with **no child nodes**, and an interpolation always leaves one. Invisible until AC-5 asserted `document.activeElement`; gating the element alone did **not** fix it | fixed in Phase 1 — error queried first, notice as fallback; pinned by AC-5 + AC-6, both mutation-checked |
 | F-2 | Phase 0 (G-3 re-check) | G-3 overcounted the e2e breakage: `operator-password.e2e.ts:91` is an `oppw-notice` assertion, not an `oppw-error` one (the plan lists `:91` in both roles, two paragraphs apart). Exactly **one** e2e assertion needed retargeting, `:53` | fixed in Phase 0 — `:53` → `toHaveCount(0)`; `:43` and `:91` left alone as the second G-3 paragraph intended |
+| F-4 | Phase 2 TDD (AC-3 mutation check) | AC-3 as the plan wrote it could not fail: it measured `admin-privacy-confirm`'s `y`, and the banner is the panel's **last** child, so nothing above it moves whether the reserve exists or not — it passed with `min-h-[1.25rem]` deleted. Rewriting it to measure the panel exposed the second half: the reserve is one line (20px) while the message wraps to two (40.5px), so the panel grows 20.5px anyway. Not a regression — the always-mounted banner reserved the same single line on `main` | fixed in Phase 2 — AC-3 restated as "grows by less than the banner's own height", verified red with the reserve deleted and green with it |
 | F-3 | Phase 1 generalization audit | The plan's per-phase command `npm test -- <name>` does not scope anything here: `ng test` reads a positional argument as the *project* name and exits `Invalid values: Argument: project`. The working scoped form is `npx ng test --include="<path to spec>"` | no code change — recorded so the next session does not re-derive it |
 
 ---
@@ -371,14 +378,14 @@ discover late.
 **Files:** Modify `frontend/src/app/admin/admin-privacy.ts:179-184` · Test
 `frontend/src/app/admin/admin-privacy.spec.ts` · `frontend/e2e/admin-privacy.e2e.ts`
 
-- [ ] **Step 1: Write the failing specs** — AC-1 (`mounts no error element while the
+- [x] **Step 1: Write the failing specs** — AC-1 (`mounts no error element while the
       confirmation is clean`, asserting `confirmPanel.querySelector('[role="alert"]')` is
       `null`, mirroring `admin-commissions.spec.ts:266`) and AC-3 (e2e: read
       `admin-privacy-confirm`'s `boundingBox().y` clean, trigger the failure, read it again,
       assert equality).
-- [ ] **Step 2: Run, verify failure** — `npm test -- admin-privacy` → AC-1 FAILS (the
+- [x] **Step 2: Run, verify failure** — `npm test -- admin-privacy` → AC-1 FAILS (the
       empty alert is mounted).
-- [ ] **Step 3: Apply the #827 shape** — wrapper takes the layout, `<p>` keeps the type:
+- [x] **Step 3: Apply the #827 shape** — wrapper takes the layout, `<p>` keeps the type:
 
 ```html
 <div class="mt-2 min-h-[1.25rem]">
@@ -394,10 +401,10 @@ discover late.
 </div>
 ```
 
-- [ ] **Step 4: Run, verify pass** — `npm test -- admin-privacy` → PASS; then
+- [x] **Step 4: Run, verify pass** — `npm test -- admin-privacy` → PASS; then
       `npm run test:e2e:a11y -- admin-privacy` → PASS (AC-3).
-- [ ] **Step 5: Commit** — `git commit -m "Mount the erasure failure banner only while it has something to say (#828)"`
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Commit** — `git commit -m "Mount the erasure failure banner only while it has something to say (#828)"`
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ---
 
