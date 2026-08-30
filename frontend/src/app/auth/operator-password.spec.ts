@@ -181,8 +181,7 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
     expect(notice?.textContent?.trim()).toBe('');
   });
 
-  // The assertive half is the opposite: an alert is announced when it is inserted, so it exists
-  // only while it has something to say.
+  // The assertive half is the opposite: an alert is announced when it is inserted.
   it('mounts no alert region before there is anything to announce', async () => {
     const fixture = await render(authStub('changed'));
 

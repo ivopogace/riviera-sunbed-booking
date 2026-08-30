@@ -93,10 +93,11 @@ the code in one PR.
 - [x] **AC-6:** Given a submit that succeeds, when the notice lands, then `oppw-error`
       is absent and `document.activeElement` is `oppw-notice`. *Pinned by:*
       `operator-password.spec.ts` › `focuses the success notice and mounts no alert`
-- [ ] **AC-7:** Given the mocked e2e run over both surfaces, when each of the three
+- [x] **AC-7:** Given the mocked e2e run over both surfaces, when each of the three
       states is reached, then `expectNoSeriousAxeViolations` passes and the absence
-      assertions use `toHaveCount(0)`, not `toHaveText('')`. *Pinned by:*
-      `operator-password.e2e.ts` (existing three axe calls) + `admin-privacy.e2e.ts`
+      assertion uses `toHaveCount(0)`, not `toHaveText('')` (one such assertion, not two —
+      F-2). *Pinned by:* `operator-password.e2e.ts` (existing three axe calls) +
+      `admin-privacy.e2e.ts`
 
 ## Non-goals
 
@@ -140,10 +141,10 @@ the code in one PR.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Gating `oppw-error` breaks `revealOutcome()` — `earlyRead` runs before the `@if` view is created, so focus is stranded on `<body>` (RV-FE-9, the repo's most-repeated bug class) | low | high | AS-1 settles the ordering on in-repo evidence. Regardless: AC-5 and AC-6 assert `document.activeElement` directly, and both are written **red-first against the current code** so they cannot be assertions that pass vacuously | claude | **closed, Phase 1** — AS-1 held (`earlyRead` finds the `@if`-created node), but the specs caught a different live defect on the same line: F-1. Both were mutation-checked against a deleted `revealOutcome()` |
-| R-2 | Someone "finishes the job" by gating `oppw-notice` too — it is the same always-mounted `<p>` matched by the same selector | med | high | Non-goals row 1 + the surviving spec `keeps the polite notice mounted…` fails loudly if it is gated. The ticket's own second comment reversed this exact conclusion once | claude | open |
+| R-2 | Someone "finishes the job" by gating `oppw-notice` too — it is the same always-mounted `<p>` matched by the same selector | med | high | Non-goals row 1 + the surviving spec `keeps the polite notice mounted…` fails loudly if it is gated. The ticket's own second comment reversed this exact conclusion once | claude | **closed, Phase 3** — `oppw-notice` is untouched: still mounted, still `role="status"`, still `empty:mb-0`, and AC-4's first spec plus AC-6's focus assertion both fail if it is gated |
 | R-3 | The three test breakages (G-1…G-3) are discovered at CI rather than at plan time, costing a red-CI round trip | — | med | **Already mitigated**: enumerated below by mechanism, and Phase 0 fixes them before the template changes | claude | closed by this plan |
 | R-4 | Swapping `text-[#b3261e]` for `text-riv-error-ink` while the class attribute is already being edited introduces colour drift | low | med | **Declined.** The token is `#a3160e`/`#ffa9a1` — a real colour change in both themes — and `admin-privacy` has no `.contrast.spec.ts` to prove AA either way. `riviera-tailwind`'s no-drift rule requires a computed-style diff, which this slice will not run. 16 raw-hex sites across 11 files make it a repo-wide sweep, not a rider | claude | declined — see FU-1 |
-| R-5 | The a11y specs' file-header TSDoc keeps describing an always-mounted alert after the code stops having one | med | low | #827 updated `admin-commissions.a11y.spec.ts`'s header in the same commit; mirror that. Listed explicitly in File structure so `check-plan-file-structure.mjs` sees the paths | claude | open |
+| R-5 | The a11y specs' file-header TSDoc keeps describing an always-mounted alert after the code stops having one | med | low | #827 updated `admin-commissions.a11y.spec.ts`'s header in the same commit; mirror that. Listed explicitly in File structure so `check-plan-file-structure.mjs` sees the paths | claude | **closed, Phase 3** — one header was stale, not two; `admin-privacy.a11y.spec.ts` never described the banner |
 | R-6 | An identical failure repeated back-to-back re-announces on one surface but not the other | low | low | Not a regression either way: today the text goes `X → X` with no mutation and no announcement. Gating makes `admin-privacy` *better* (the `set('')` before the `await` destroys the view, so the retry re-inserts) and leaves `oppw`'s synchronous-validation path identical (both `set`s coalesce into one render). Focus, not the live region, is what conveys it on `oppw` — and `revealOutcome()` re-runs every time | claude | accepted |
 
 ## Open questions / Assumptions
@@ -179,9 +180,9 @@ the code in one PR.
 
 **Follow-ups (not blocking):**
 
-- **FU-1:** File an issue for the raw `#b3261e` → `--riv-error-ink` sweep (16 sites, 11
+- **FU-1 (filed: #830):** the raw `#b3261e` → `--riv-error-ink` sweep (16 sites, 11
   files, needs contrast proofs). Do this at close-out, not now.
-- **FU-2:** File an issue for the two surviving `empty:` utilities (`cls.notice`'s
+- **FU-2 (filed: #831):** the two surviving `empty:` utilities (`cls.notice`'s
   `empty:mb-0`, `booking-view.ts`'s `result` `empty:hidden`) — measure in real Chromium
   whether `:empty` fires on an interpolated element, then delete them as dead code or keep
   them with the measurement recorded. Out of scope here: both are margin/visibility on
@@ -267,17 +268,20 @@ N/A — no contract change. No endpoint, DTO, or client type is touched.
 doc travels with the code (cloud-session branch substitution, `riviera-sdlc`
 §Remote/cloud addendum).
 
-**Next action:** Phase 3 — a11y spec header freshness, audit close-out, guards.
+**Next action:** Phases 0–3 are complete and every AC is verified below. Awaiting the
+maintainer's diff review; the PR (and with it the CI, Review and Sonar gates) is their call.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Retarget the three assertions that read the old shape (G-1…G-3) | ✅ | `Point the operator-password assertions at a gated alert (#828)` |
-| 1 — Gate `oppw-error`, preserving the focus contract | ✅ | `Mount the operator password error only while it has something to say (#828)` |
-| 2 — Gate `admin-privacy-error`, reserve to a wrapper | ✅ | `Mount the erasure failure banner only while it has something to say (#828)` |
-| 3 — Doc-header freshness + generalization audit | | |
+| 0 — Retarget the three assertions that read the old shape (G-1…G-3) | ✅ | `4ea229b` |
+| 1 — Gate `oppw-error`, preserving the focus contract | ✅ | `288067b` |
+| 2 — Gate `admin-privacy-error`, reserve to a wrapper | ✅ | `1543276` |
+| 3 — Doc-header freshness + generalization audit | ✅ | this commit |
 
-Short SHAs are filled into the Commits column at the Phase 3 close-out commit, once every
-phase commit exists (a commit cannot cite its own hash).
+**Next after this commit:** the branch is pushed. **No PR is open** — one was not asked
+for, and CI fires on `pull_request` only (#417), so this branch has had no CI run: the
+scoped local runs recorded below are the whole of the verification so far. Opening the
+draft PR is what makes the CI, Review and Sonar gates due.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -298,19 +302,21 @@ Skill-routing gate for what the fix touches *before* editing).
 
 - `docs/plans/action-alert-lifetime.md` — this plan
 - `frontend/src/app/auth/operator-password.ts` — gate `oppw-error` on `error()`; drop
-  `empty:mt-0` from `cls.submitError`; retarget the `cls.notice` comment at `:30` so it
-  describes the notice only
+  `empty:mt-0` from `cls.submitError`; **and, unplanned (F-1), fix `revealOutcome()`** to
+  query the error before the notice instead of as one selector list, with the why moved into
+  the method's TSDoc (RV-STYLE-1: an inline comment is one line)
 - `frontend/src/app/auth/operator-password.spec.ts` — split the both-regions spec (G-1),
   fix the `toBe('')` assertion (G-2), add the two focus specs (AC-5, AC-6)
 - `frontend/src/app/auth/operator-password.a11y.spec.ts` — header TSDoc: the alert is no
   longer "present before it carries text" (R-5)
-- `frontend/e2e/operator-password.e2e.ts` — `toHaveText('')` → `toHaveCount(0)` on the two
-  error-absence assertions (G-3)
+- `frontend/e2e/operator-password.e2e.ts` — `toHaveText('')` → `toHaveCount(0)` on the
+  **one** error-absence assertion, `:53` (G-3, corrected by F-2)
 - `frontend/src/app/admin/admin-privacy.ts` — wrap the banner in
   `<div class="mt-2 min-h-[1.25rem]">` and gate the `<p>` on `erasureError()`
 - `frontend/src/app/admin/admin-privacy.spec.ts` — add the clean-state spec (AC-1)
-- `frontend/src/app/admin/admin-privacy.a11y.spec.ts` — header TSDoc (R-5)
-- `frontend/e2e/admin-privacy.e2e.ts` — add the no-shift measurement (AC-3)
+- `frontend/src/app/admin/admin-privacy.a11y.spec.ts` — **unchanged**; its header never
+  described the banner (R-5 over-scoped, see Phase 3 Step 1)
+- `frontend/e2e/admin-privacy.e2e.ts` — add the reserve measurement (AC-3, restated per F-4)
 
 ---
 
@@ -412,18 +418,22 @@ discover late.
 
 **Files:** Modify both `*.a11y.spec.ts` headers · this plan doc
 
-- [ ] **Step 1: Update both a11y spec header TSDocs** (R-5) so neither still describes an
-      alert region that exists before it carries text — the #827 precedent updated its
-      header in the same commit as the code.
-- [ ] **Step 2: Record the generalization audit** in the log below.
-- [ ] **Step 3: Run the structural checks** —
+- [x] **Step 1: Update the a11y spec header TSDocs** (R-5). **One** of the two needed it:
+      `operator-password.a11y.spec.ts`'s header said both regions "only exist after a
+      submit", which post-gating conflates the always-mounted notice with the inserted
+      alert and reads as a contradiction of RV-FE-10 — rewritten to state the asymmetry.
+      `admin-privacy.a11y.spec.ts` needed **no** edit: its header describes the `@if`-gated
+      email-field error, never the banner, so nothing in it went stale. R-5 assumed two
+      stale headers; there was one.
+- [x] **Step 2: Record the generalization audit** in the log below.
+- [x] **Step 3: Run the structural checks** —
       `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan doc **staged**
       first, or it short-circuits and passes),
       `node scripts/check-inline-comments.mjs --diff origin/main`,
       `node scripts/check-focus-posture.mjs --diff origin/main` (read FOCUS-1's *output*;
       it returns 0 either way), `npm run lint`, `npm run format:check`.
-- [ ] **Step 4: File FU-1** and record its number here.
-- [ ] **Step 5: Commit + finalize execution status** for the PR's last commit.
+- [x] **Step 4: File FU-1** — filed as **#830**. FU-2 (new at Phase 1) filed as **#831**.
+- [x] **Step 5: Commit + finalize execution status** for the PR's last commit.
 
 ---
 
@@ -443,37 +453,60 @@ discover late.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npm test -- admin-privacy` → `mounts no error element while the confirmation is clean` PASS. Verified at `<sha>`.
-- [ ] **AC-2:** `npm test -- admin-privacy` → `keeps the confirmation armed when the request fails` PASS (unchanged). Verified at `<sha>`.
-- [ ] **AC-3:** `npm run test:e2e:a11y -- admin-privacy` → no-shift assertion PASS. Verified at `<sha>`.
-- [ ] **AC-4:** `npm test -- operator-password` → both split specs PASS. Verified at `<sha>`.
-- [ ] **AC-5:** `npm test -- operator-password` → `focuses the error it just inserted, not the body` PASS, **and** fails when `revealOutcome()` is stubbed out. Verified at `<sha>`.
-- [ ] **AC-6:** `npm test -- operator-password` → `focuses the success notice and mounts no alert` PASS. Verified at `<sha>`.
-- [ ] **AC-7:** `npm run test:e2e:a11y` over both specs → PASS with three axe calls green. Verified at `<sha>`.
+> Test scope per `riviera-local-debug`: one spec file per run, never the full suite. The
+> **working scoped command is `npx ng test --include="<path>"`** — `npm test -- <name>` as
+> the phases wrote it does not scope anything (`ng test` reads the positional argument as a
+> *project* name and exits `Invalid values: Argument: project`). Finding F-3.
 
-If any AC isn't verified by a passing test, write the test or admit it's not done.
+- [x] **AC-1:** `npx ng test --include="src/app/admin/admin-privacy.spec.ts"` →
+      `mounts no error element while the confirmation is clean` PASS (20/20). Red before
+      the gating with `expected <p role="alert" …> to be null`. Verified at `1543276`.
+- [x] **AC-2:** same run → `keeps the confirmation armed when the request fails` PASS,
+      unchanged. Verified at `1543276`.
+- [x] **AC-3 (restated):** `npm run test:e2e:a11y -- admin-privacy` → 8/8 PASS, including
+      `the failure banner lands in reserved space, so the panel absorbs part of it`.
+      **Mutation-checked both ways:** with `min-h-[1.25rem]` deleted it fails
+      (`Expected: < 40.5, Received: 40.5`); the *original* AC-3 wording passed with the
+      reserve deleted, which is why it was restated — F-4. Verified at `1543276`.
+- [x] **AC-4:** `npx ng test --include="src/app/auth/operator-password.spec.ts"` → both
+      split specs PASS (14/14). Verified at `288067b`.
+- [x] **AC-5:** same run → `focuses the error it just inserted, not the body` PASS, **and
+      it fails with `revealOutcome()` deleted** — run with both call sites stripped:
+      `2 failed | 12 passed`, the two focus specs being the failures. It also stayed red
+      after the gating alone, which is what exposed F-1. Verified at `288067b`.
+- [x] **AC-6:** same run → `focuses the success notice and mounts no alert` PASS, and in
+      the same mutation run above it fails with `revealOutcome()` deleted. Verified at
+      `288067b`.
+- [x] **AC-7:** `npm run test:e2e:a11y -- operator-password` → 2/2 PASS with its three
+      `expectNoSeriousAxeViolations` calls green; `npm run test:e2e:a11y -- admin-privacy`
+      → 8/8 PASS. The absence assertion is `toHaveCount(0)`; no `toHaveText('')` remains on
+      either error testid. Verified at `1543276`.
+
+Playwright runs use `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` per
+`riviera-local-debug`. **CI owns the full suite** — these scoped runs prove the changed
+surfaces only.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, no backend code in the diff.
-- [ ] **Availability** section justified N/A (invariant #2) — no `(set, date)` write path in scope.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section justified N/A (invariant #11) — frontend-only.
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A; the erasure *failure* banner is presentation over an existing endpoint.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met — native `@if`, signals, no `ngClass`; `riviera-tailwind`'s reserve-in-a-wrapper shape followed; no new `.scss` (RV-FE-7 clean).
-- [ ] `oppw-notice` still mounted and still `role="status"` (RV-FE-10 — the one thing this slice must **not** change).
-- [ ] `revealOutcome()`'s scroll/focus contract asserted, not assumed (RV-FE-9, AC-5/AC-6).
-- [ ] Neither banner gained `[appFieldErrorFor]` (RV-FE-11's action-level checkbox).
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (AS-1…AS-3 resolved or moved under `### Resolved`).
-- [ ] **Close-out written in THIS PR** — final plan-doc state committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test. AC-3 and AC-5/AC-6 were mutation-checked rather than trusted; AC-3 failed that check as first written and was restated (F-4).
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases — no signature changed; `revealOutcome()` keeps its `(): void`.
+- [x] **No JPA** introduced (invariant #1) — N/A, no backend code in the diff.
+- [x] **Availability** section justified N/A (invariant #2) — no `(set, date)` write path in scope.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section justified N/A (invariant #11) — frontend-only; nothing under `platform/` is in the diff.
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — N/A; the erasure *failure* banner is presentation over an existing endpoint.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met — native `@if`, signals, no `ngClass`; `riviera-tailwind`'s reserve-in-a-wrapper shape followed (#827's exact shape); no new `.scss`, and neither touched component carries legacy SCSS, so RV-FE-7's migrate-on-touch does not fire. `npm run lint` and `npm run format:check` both clean.
+- [x] `oppw-notice` still mounted and still `role="status"` (RV-FE-10) — its element, role, `tabindex`, `empty:mb-0` and template comment are byte-identical to `main`. Two specs fail if it is gated.
+- [x] `revealOutcome()`'s scroll/focus contract asserted, not assumed (RV-FE-9, AC-5/AC-6) — and asserting it found the contract **broken on `main`** (F-1), not merely unpinned.
+- [x] Neither banner gained `[appFieldErrorFor]` (RV-FE-11's action-level checkbox); `admin-privacy.ts`'s email-field error is untouched.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, and a findings register carrying F-1…F-4.
+- [x] Risk register has no stale `open` rows (R-1, R-2, R-5 closed; R-3 closed by the plan; R-4 declined → #830; R-6 accepted). AS-1 held, AS-2 falsified, AS-3 held with a corrected premise — each annotated in place.
+- [ ] **Close-out written in THIS PR** — final plan-doc state committed here, citing `merged via PR #NN`. **Open:** no PR exists yet; due when one is opened.
+- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`. **Open:** due at ready-for-review, not yet run.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

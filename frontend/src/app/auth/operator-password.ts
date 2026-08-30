@@ -198,17 +198,20 @@ export class OperatorPassword {
    * Bring the outcome into view and focus it. The notice renders above the form while the error renders
    * below it, so on a phone a success message lands off-screen and is indistinguishable from the form
    * merely emptying itself — the one thing this page exists to communicate, silently missed.
+   *
+   * <p>The error is queried FIRST and the notice only as a fallback, rather than as one selector list
+   * (#828). `querySelector` resolves a list in **document order**, not list order, so with the notice
+   * above the form and the error below it a list always returned the notice — a failed change focused
+   * a blank paragraph. The `:not(:empty)` that was meant to prevent exactly that never could: `:empty`
+   * matches an element with no child nodes, and an interpolation always leaves a text node in both.
+   * Neither arm needs a guard now — this runs only from `fail()` or the success branch, so whichever
+   * region it finds has just been given its message.
    */
   private revealOutcome(): void {
     // afterNextRender, not queueMicrotask: it is bound to this component's injector, so a pending
     // callback cannot outlive the component and move focus somewhere else later.
     afterNextRender(
       {
-        // Error first, notice second — not one selector list. querySelector resolves a list in
-        // DOCUMENT order, and the notice renders above the form while the error renders below it, so
-        // a list always returned the notice and a failure focused a blank paragraph. The
-        // `:not(:empty)` that was meant to prevent that never could: an interpolated <p> holds a
-        // whitespace text node, which `:empty` does not match.
         earlyRead: () =>
           this.hostRef.nativeElement.querySelector<HTMLElement>('[data-testid="oppw-error"]') ??
           this.hostRef.nativeElement.querySelector<HTMLElement>('[data-testid="oppw-notice"]'),
