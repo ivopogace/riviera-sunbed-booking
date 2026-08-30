@@ -346,15 +346,15 @@ APIs; OnPush default (v22 — not set explicitly); Signal Forms per the house st
 > **This section is the session-recovery anchor** — update in the same commit window as
 > the change it records, at every phase boundary and stage transition.
 
-**Stage pointer:** `review gate — ran, findings fixed` (2026-08-30). `/code-review` ran in
-full from the review session (5 reviewer agents + confidence scoring, riviera-review-overlay
-banks walked — no Blocker/Major; three sub-bar findings F-3..F-5 fixed below, re-entering at
-Implement per the re-entry rule). Sonar gate: green with **0 new issues / 0 duplication /
-95.1% new-code coverage** — the issue list is clear, the merge bar is met.
+**Stage pointer:** `merge close-out — final state; merged via PR #816`. The review gate ran
+in full (2026-08-30: `/code-review` — 5 reviewer agents + confidence scoring — with the
+riviera-review-overlay banks; no Blocker/Major; findings F-3..F-6 fixed through the loop,
+including the maintainer's F-6 arch-test hardening). Sonar gate: green on every head with
+**0 new issues / 0 duplication / 95.1% new-code coverage**. CI green on the merge head.
 
-**Next action:** discuss the maintainer's own review findings; then mark PR **#816** ready
-for review and run the merge close-out (`references/pr-gates.md` §3), recording
-`merged via PR #816` here.
+**Next action:** none — the slice is done. Post-merge GitHub-only items (issue #811 closed
+via the PR, epic #810 sub-issue progress, subscription end) are the merging session's
+checklist, not repo commits. Slice 2 (#812) starts its own plan doc.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -729,12 +729,13 @@ Modify `CLAUDE.md`, `RESPONSIBILITIES.md`, `CONTEXT.md`,
 - [x] **Frontend** standards met (Signal Forms per A-4); no `as any` on the contract.
 - [x] Execution status at HEAD matches reality (stage pointer, phase table, findings register).
 - [x] Risk register has no stale `open` rows (all eleven closed or explicitly downgraded); Open Questions O-1/O-2 both resolved in-slice.
-- [ ] **Close-out written in THIS PR** (`merged via PR #816`; docs-freshness ran). *Half done: the
-  docs-freshness sweep ran and its findings are logged; the `merged via` line belongs to the
-  merging session, which is not this one.*
-- [ ] **The review gate ran in full** — invocation ladder per `references/pr-gates.md` §1 +
-  `riviera-review-overlay`. *Deliberately not run here — the maintainer scheduled it for a
-  separate session, which is also why PR #816 stays a draft. This is a known, stated gap, not an
-  oversight.*
+- [x] **Close-out written in THIS PR** — **merged via PR #816**; docs-freshness ran in the
+  implementing session over the full range, and the merging session re-ran the counting sweep
+  after the F-6 arch-test hardening (one stale ADR-0015 consequence found and patched in the
+  same commit as this line).
+- [x] **The review gate ran in full** (2026-08-30, from the review session): `/code-review`
+  via the plugin workflow — 5 parallel review agents + per-finding confidence scoring — with
+  `riviera-review-overlay` banks walked on top; findings F-3..F-6 fixed through the loop
+  (re-entry rule), each fix push re-validated by CI + Sonar.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

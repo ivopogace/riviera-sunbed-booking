@@ -71,10 +71,12 @@ documented "publishes no event" stance, and the slice still uses an event where 
 
 ## Consequences
 
-- The `review → venue` rating write is **review-checked, not machine-checked.** No ArchUnit rule
-  guards the `venue` table the way `ResponsibilitiesArchitectureTests` guards `set_availability`;
-  what holds the line is that `review` has no SQL naming `venue`, plus the RESPONSIBILITIES §`venue`
-  line. A second writer would be a review finding, not a build failure.
+- The SQL half of the `review → venue` boundary is **machine-checked** (hardened at review-gate
+  finding F-6, same PR): `ResponsibilitiesArchitectureTests` fails the build on any reference to
+  `rating_tenths`/`reviews_count` outside `venue` and on SQL-shaped references to the `review`
+  table outside `review` — the `set_availability` sole-writer mechanism, fixture-proven. The
+  *policy* half (eligibility, window, rounding leaking into `venue`) needs no illegal import and
+  stays review-checked via the RESPONSIBILITIES §`venue` line and RV-BE-11.
 - **The aggregate is eventually consistent by design.** A submit returns before its venue row moves.
   Every surface reads the stored columns, so a guest can see their own rating land a moment later.
 - **The two `api` ports are split by consumer role** (`VenueRatingSummary` for `venue`,
