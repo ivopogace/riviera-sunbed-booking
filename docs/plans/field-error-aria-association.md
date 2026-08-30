@@ -46,9 +46,13 @@ signal state to an imperative DOM API) · `playwright-cli` (the mocked-suite ass
 `toHaveAccessibleDescription`, which exercises the real Chromium accname computation that
 jsdom cannot).
 
-**Branch:** `claude/sdlc-821-plan-review-1f80bm` — **cloud-session substitution** for the
+**Branch:** `claude/sdlc-821-field-error-aria-b76fq0` — **cloud-session substitution** for the
 `bugfix/field-error-aria-association` this plan would otherwise name (`riviera-sdlc`
-§Remote/cloud addendum). It exists and is level with `origin/main`.
+§Remote/cloud addendum). The implement session was assigned this branch rather than the
+plan branch `claude/sdlc-821-plan-review-1f80bm`, so it was created **from** that branch
+(fast-forward onto the plan commit `cbdc5f7`), not from `main` — which is what carries the
+plan doc into the implementation. `claude/sdlc-821-plan-review-1f80bm` remains as the plan's
+own branch and is an ancestor of this one.
 
 ---
 
@@ -314,15 +318,14 @@ Sites 14, 16 and 17 are the three interesting ones (existing-hint composition, a
 
 ## Execution status
 
-**Stage pointer:** `plan — authored, awaiting approval to implement` (the maintainer asked
-to stop after the plan).
+**Stage pointer:** `implement — phase 0 done, phase 1 next`.
 
-**Next action:** On resume, re-read this section, then start phase 0 — write
-`field-error-for.spec.ts` red against AC-1..AC-3 before creating the directive.
+**Next action:** Open the draft PR (phase 0 step 8), then phase 1 — extend
+`review-panel.spec.ts` and `booking-dialog.spec.ts` with AC-4 red before the template edits.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the `FieldErrorFor` directive (red → green) | | |
+| 0 — the `FieldErrorFor` directive (red → green) | ✅ | `9fa09cd` |
 | 1 — booking surfaces (sites 1–5) | | |
 | 2 — operator surfaces (sites 6–13, 15–17) | | |
 | 3 — admin site 14, e2e, convention note, close-out | | |
@@ -376,16 +379,16 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Create `frontend/src/app/shared/field-error-for.ts` · Test `frontend/src/app/shared/field-error-for.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — a host component with a control, a `show` signal, and the error behind `@if`, asserting all three of AC-1, AC-2, AC-3 (including the "attribute dropped entirely when no tokens remain" branch and the pre-existing-hint restore).
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- field-error-for` → FAIL (module not found, then assertion failures).
+- [x] **Step 1: Write the failing test** — a host component with a control, a `show` signal, and the error behind `@if`, asserting all three of AC-1, AC-2, AC-3 (including the "attribute dropped entirely when no tokens remain" branch and the pre-existing-hint restore).
+- [x] **Step 2: Run it, verify it fails** — `npm test -- field-error-for` → FAIL (module not found, then assertion failures).
 
 > Scope: this one spec file. Not the full suite (`riviera-local-debug`).
 
-- [ ] **Step 3: Minimal implementation** — the directive as sketched above.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- field-error-for` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population `every element in frontend/src/app that renders a field-scoped validation error`; the enumerating command is the one that found the 17, recorded in the audit log below.
-- [ ] **Step 6: Commit** — `git commit -m "Add a field-error ARIA association directive (#821)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 3: Minimal implementation** — the directive as sketched above.
+- [x] **Step 4: Run it, verify it passes** — `npm test -- field-error-for` → PASS.
+- [x] **Step 5: Generalization-audit pass** — population `every element in frontend/src/app that renders a field-scoped validation error`; the enumerating command is the one that found the 17, recorded in the audit log below.
+- [x] **Step 6: Commit** — `git commit -m "Add a field-error ARIA association directive (#821)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 - [ ] **Step 8: Open the PR as a draft** — CI fires only on the `pull_request` event (#417), so the branch gets no CI until the draft exists.
 
 ---
@@ -438,6 +441,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-30 | phase 0 (re-run of the plan's command) | Same population, re-enumerated on the implement branch to confirm the inventory before applying it | (the command in the row below) | **65** `role="alert"` attribute occurrences (69 grep lines − 4 that are prose in TSDoc/HTML comments), not the 39 the row below records — the plan's total was undercounted. The **17 field-scoped sites are unchanged**: every one was confirmed present at its stated `file:line`. The delta is entirely in the excluded class, which is 48, not 22 | Scope unchanged. Two borderline exclusions re-checked and left out on their merits: `layout-editor.html:205` (`layout-row-name-error`, "two rows share a name" — a cross-row constraint naming no single control) and `admin-commissions.ts:211` (`admin-commission-error-*` — a save-action error rendered after the row's buttons, mixing validation and write-failure copy, same class as `venue-create-error`). Both are candidates for the form-level-summary follow-up |
 | 2026-08-30 | plan (pre-phase-0 inventory) | Every element in `frontend/src/app` carrying `role="alert"` — the mechanism, rather than "spans with a `*-error` testid", which is how #821 described it and which **misses 11 of the 17** (sites 3–13: no error element in `booking-dialog`, `venue-create-card`, `venue-tab`'s three Signal-Forms fields, or `booking-cutoff-field` carries a testid at all) | `grep -rn 'role="alert"' frontend/src/app --include=*.ts --include=*.html \| grep -v '\.spec\.'` | 39 total → classified: 17 field-scoped (in scope), 22 form/page-level or action-scoped (Non-goals) | Fix all 17; each exclusion recorded in Non-goals with its reason |
 
 ---
