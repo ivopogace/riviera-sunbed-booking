@@ -49,9 +49,12 @@ registry carries only what the switcher UI shows) · `angular-developer` + angul
 own `styles`, so the global `tailwind.css` utilities reach these inline templates unchanged;
 no Angular API is touched by this slice)
 
-**Branch:** `claude/sdlc-829-planning-uy2pt1` — **cloud-session substitution** for
+**Branch:** `claude/sdlc-829-implementation-pofv2c` — **cloud-session substitution** for
 `feature/admin-error-ink-tokens` per `riviera-sdlc` §Remote/cloud addendum. The designated
-remote branch stands in; do not create the literal `feature/…` branch.
+remote branch stands in; do not create the literal `feature/…` branch. The plan was authored
+on `claude/sdlc-829-planning-uy2pt1` (never merged to `main`); the implementation session was
+designated a second branch, so it is **based on the planning branch**, not on `main`, and
+carries both of its commits.
 
 ---
 
@@ -146,10 +149,10 @@ remote branch stands in; do not create the literal `feature/…` branch.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | The sweep silently reverses the `app.html:6` deliberate deviation, because "replace all 18" reads as complete | med | med | it is a Non-goal above; AC-1 asserts the residual count is **exactly 2 on `app.html:6`**, so an over-eager sweep fails the AC rather than passing it | ivopogace | open |
-| R-2 | The new dark `--riv-danger-*` values are latent (no in-tree consumer can render them — the console pins porcelain) and so ship unproven | high | med | AC-4 asserts the dark pairs in the contrast spec, which is pure maths and needs no renderer; the values are candidates until that spec is green, and are adjusted to pass rather than asserted around | ivopogace | open |
-| R-3 | Encoding the existing button/panel boundaries as tokens exposes a **pre-existing** sub-3:1 non-text contrast (WCAG 1.4.11) on the Erase button's border — hand-computed at ≈2.6:1 over the panel fill | med | med | the contrast spec's scope is **text pairs (1.4.3)**; a non-text boundary is asserted only where it already holds. If the spec finds one below 3:1, **do not silently change the value** — record it as a finding and open a follow-up issue. Changing it is a visual decision outside a token migration | ivopogace | open |
+| R-2 | The new dark `--riv-danger-*` values are latent (no in-tree consumer can render them — the console pins porcelain) and so ship unproven | high | med | AC-4 asserts the dark pairs in the contrast spec, which is pure maths and needs no renderer; the values are candidates until that spec is green, and are adjusted to pass rather than asserted around | ivopogace | closed — the planned candidates passed unchanged (phase 0) |
+| R-3 | Encoding the existing button/panel boundaries as tokens exposes a **pre-existing** sub-3:1 non-text contrast (WCAG 1.4.11) on the Erase button's border — hand-computed at ≈2.6:1 over the panel fill | med | med | the contrast spec's scope is **text pairs (1.4.3)**; a non-text boundary is asserted only where it already holds. If the spec finds one below 3:1, **do not silently change the value** — record it as a finding and open a follow-up issue. Changing it is a visual decision outside a token migration | ivopogace | **materialised** — recorded as F-1 in the Findings register; follow-up issue at close-out |
 | R-4 | Expressing the danger tints as Tailwind opacity modifiers (`bg-riv-danger/6`) would compile to `color-mix(in oklab, …, transparent)`, changing both the interpolation space and the `getComputedStyle` string — indistinguishable from a real regression under the no-drift rule | low | high | **rejected at plan time**: the five danger tokens are declared as pre-composed `rgba()` values, matching the repo's existing idiom (`--riv-field-border: rgba(12, 42, 51, 0.55)`). Verified against Tailwind v4 docs + tailwindlabs PR #15201 | ivopogace | closed — decided |
-| R-5 | Adding tokens to `tailwind.css` without the matching `@theme inline` row leaves the named utility ungenerated, and the class silently does nothing | low | high | each of the five tokens gets its `--color-riv-danger-*: var(--riv-danger-*)` row in the same commit; AC-5's `toHaveCSS` on a real render is what catches a missing mapping (a class list check could not) | ivopogace | open |
+| R-5 | Adding tokens to `tailwind.css` without the matching `@theme inline` row leaves the named utility ungenerated, and the class silently does nothing | low | high | each of the five tokens gets its `--color-riv-danger-*: var(--riv-danger-*)` row in the same commit; AC-5's `toHaveCSS` on a real render is what catches a missing mapping (a class list check could not) | ivopogace | closed — all five rows added in the phase-0 commit |
 | R-6 | `confirm-with-reason.ts` lives in `shared/`, so migrating it changes any future non-porcelain consumer's appearance | low | low | that is the *point* of the migration (the issue's future-proofing rationale); today its only consumers are `admin-venue-photos` and `admin-operators`, both porcelain — verified, and `shared/confirm-panel.ts` is a TSDoc cross-reference only, not a dependency | ivopogace | open |
 | R-7 | An existing unit/e2e spec pins one of the literals and breaks | low | low | verified none does: `grep -rn 'b3261e\|8f2c22\|0a5f73\|179, *54, *43' frontend/src --include=*.spec.ts frontend/e2e` returns nothing. Re-run before phase 1 | ivopogace | open |
 | R-8 | The plan-file-structure guard fails the PR on a path this section does not list | med | low | run `node scripts/check-plan-file-structure.mjs --diff origin/main` before every push, **with the plan doc staged** — unstaged, the guard short-circuits and passes | ivopogace | open |
@@ -263,29 +266,39 @@ the theme-switcher UI displays, and this slice adds no theme.
 
 ## Execution status
 
-**Stage pointer:** `plan — complete; implementation not started` (the SDLC run was scoped to
-"stop after creating the plan"). Both open questions are answered; nothing blocks phase 0.
+**Stage pointer:** `implement — phase 0 done`. The danger token set is registered and the
+contrast proof is green; the component sweep (phases 1–2) has not started.
 
-**Next action:** Open the **draft** PR as soon as the first phase-0 commit exists — CI fires
-on the `pull_request` event only, so a branch with no PR gets no CI at all — then work phase
-0 step 1. The one live judgement call during phase 0 is R-3: if a porcelain contrast row
-comes out below its bar, record it and open a follow-up, do not adjust the value.
+**Next action:** Open the **draft** PR against the phase-0 commit — CI fires on the
+`pull_request` event only, so a branch with no PR gets no CI at all — then work phase 1
+step 1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Danger token set + contrast proof | | |
+| 0 — Danger token set + contrast proof | ✅ | `Register the admin danger treatment as --riv-danger-* tokens (#829)` |
 | 1 — The 16 `#b3261e` occurrences → `--riv-error-ink` | | |
 | 2 — The erasure panel → `--riv-danger-*`, `Kept` → `--riv-accent-ink` | | |
 | 3 — Computed-style drift verification + e2e pin | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
+**Phase 0 outcome.** The plan's dark candidate values passed the AA maths **unchanged** —
+no tuning was needed, so R-2 closes on the values as planned. Two departures from the phase-0
+step list, both additive:
+
+- The spec carries a **fourth** test, `'the accent ink the Kept term moves to meets AA on the
+  card glass'`. `Kept`'s `#0a5f73` → `--riv-accent-ink` (`#085a6e`) is one of the six intended
+  value changes in the Behavior-parity ledger, and it was the only one with no contrast proof
+  anywhere. Ratios rise 6.56→7.05 … 7.25→7.78 across the porcelain stops.
+- `testing/glass-tokens.ts` also gains `ERROR_INK` and `ACCENT_INK` (the light-theme values;
+  only the `DARK_*` counterparts existed), which the File-structure list already anticipated.
+
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding. Every fix
 re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet — no code written | — |
+| F-1 | phase 0 contrast maths (R-3, pre-existing) | The erasure panel's **non-text** boundaries are below WCAG 1.4.11's 3:1 on `main` today, and the token migration preserves them byte-identically: the Erase button's `rgba(179,54,43,0.6)` border measures **2.60–2.69:1** over the panel fill (matching the plan's hand-computed ≈2.6:1), and the panel's own `rgba(179,54,43,0.35)` border **1.74–1.76:1** over the card glass. Per R-3 this is recorded, **not** adjusted — changing it is a visual decision outside a token migration. The dark candidates clear the button border (3.44–3.68:1) but not the panel border (2.29–2.32:1). The contrast spec's scope is text pairs (1.4.3) and its header says so. | follow-up issue at close-out |
 
 ---
 
@@ -327,7 +340,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Modify `frontend/src/tailwind.css` · Modify `frontend/src/testing/glass-tokens.ts` ·
 Create `frontend/src/app/admin/admin-console.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing test.** `admin-console.contrast.spec.ts`, importing danger
+- [x] **Step 1: Write the failing test.** `admin-console.contrast.spec.ts`, importing danger
   constants that do not exist yet (red = module resolution failure, which is the honest red
   for a values-first slice). Shape, following `operator-console.contrast.spec.ts`:
 
@@ -358,10 +371,10 @@ import {
   over `DANGER_FILL` over the card; (d) the same danger pairs in dark, over
   `DARK_CARD_GLASS`/`DARK_STOPS`.
 
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `npm test -- src/app/admin/admin-console.contrast.spec.ts` → FAIL, unresolved imports.
 
-- [ ] **Step 3: Minimal implementation.** Add to `tailwind.css`'s `:root, [data-riv-theme='porcelain']`
+- [x] **Step 3: Minimal implementation.** Add to `tailwind.css`'s `:root, [data-riv-theme='porcelain']`
   block, beside `--riv-error-ink`:
 
 ```css
@@ -402,11 +415,11 @@ import {
   **`riviera` gets no block** — its cards are light (`rgba(255,255,255,0.78)`), so it
   inherits the porcelain values, exactly as `--riv-error-ink` already does (OQ-A).
 
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- src/app/admin/` → PASS.
+- [x] **Step 4: Run it, verify it passes** — `npm test -- src/app/admin/` → PASS.
   If a **dark** row fails, adjust the candidate value and re-run; if a **porcelain** row
   fails, that is R-3 — record it, do not change the value.
 
-- [ ] **Step 5: Generalization-audit pass.** Population `every colour position in
+- [x] **Step 5: Generalization-audit pass.** Population `every colour position in
   frontend/src still written as a hex or rgba literal rather than a --riv-* token` →
   enumerate
   `grep -rnoE '(text|bg|border|fill|stroke|shadow)-\[(#[0-9a-fA-F]{3,8}|rgba?\()' frontend/src --include=*.ts --include=*.html`
@@ -415,9 +428,9 @@ import {
   the residue in the log below and open one follow-up issue for it — do **not** widen this
   slice.
 
-- [ ] **Step 6: Commit** — `git commit -m "Register the admin danger treatment as --riv-danger-* tokens (#829)"`
+- [x] **Step 6: Commit** — `git commit -m "Register the admin danger treatment as --riv-danger-* tokens (#829)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -483,7 +496,7 @@ import {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| | phase 0 step 5 | every colour position still written as a literal rather than a `--riv-*` token | `grep -rnoE '(text\|bg\|border\|fill\|stroke\|shadow)-\[(#[0-9a-fA-F]{3,8}\|rgba?\()' frontend/src --include=*.ts --include=*.html` | | |
+| 2026-08-30 | phase 0 step 5 | every colour position still written as a literal rather than a `--riv-*` token | `grep -rnoE '(text\|bg\|border\|fill\|stroke\|shadow)-\[(#[0-9a-fA-F]{3,8}\|rgba?\()' frontend/src --include=*.ts --include=*.html` | **380 occurrences** (336 outside `*.spec.ts`), in **62** non-spec files: `operator/` 119, `booking/` 84, `shared/` 63, `admin/` 31, `venue/` 20, `auth/` 8, `pages/` 6, app shell 5 | **Follow-up issue, slice not widened.** The residue is app-wide and mostly *not* this mechanism: the bulk is per-state palettes inside arbitrary variant expressions (`shared/status-chip.ts`, `semantic-chip.ts`, `amenity-chip.ts`, `operator/beach-cell.ts`, `venue/day-availability.ts` — exemption class 2, a value inside a composite arbitrary expression), plus `app.html:6`'s recorded deliberate deviation (exemption class 1). What #829 owns — the red families under `admin/` and `shared/confirm-with-reason.ts` — is phases 1–2; the teal `#0a4f5e`/`#0a5f73` family is the Non-goals' separate accent sweep. Deciding which of the remaining 336 want tokens is a design pass, not a sweep |
 
 ---
 
