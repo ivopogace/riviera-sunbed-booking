@@ -1,7 +1,6 @@
 import { expect, Page, test } from '@playwright/test';
 
-import { OperatorSignInPage } from '../support/pages/operator-sign-in.page';
-import { OPERATOR_PASSWORD, OPERATOR_USERNAME } from './support/operator';
+import { createVenue, signInOperator, venueName } from './support/operator';
 
 /**
  * Real-backend e2e for the Daily view. A real Chromium drives the operator console's
@@ -13,49 +12,31 @@ import { OPERATOR_PASSWORD, OPERATOR_USERNAME } from './support/operator';
  * Each test creates its OWN venue (the DB persists across the run) so tests are order-free.
  */
 
-function venueName(label: string): string {
-  return `E2E ${label} ${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-}
-
-async function signIn(page: Page): Promise<void> {
-  await new OperatorSignInPage(page).signIn(OPERATOR_USERNAME, OPERATOR_PASSWORD);
-}
-
-async function createVenue(page: Page, name: string): Promise<number> {
-  await expect(page.getByRole('heading', { name: '1 · Create venue' })).toBeVisible();
-  await page.getByLabel('Name', { exact: true }).fill(name);
-  await page.getByLabel('Beach', { exact: true }).fill('Ksamil');
-  await page.getByLabel('Region', { exact: true }).fill('Albanian Riviera');
-  await page.getByRole('button', { name: 'Create venue' }).click();
-  const created = page.getByTestId('venue-created');
-  await expect(created).toBeVisible();
-  const id = Number((await created.textContent())?.match(/#(\d+)/)?.[1]);
-  expect(Number.isInteger(id)).toBe(true);
-  return id;
-}
-
-async function addOnlineSet(page: Page): Promise<void> {
-  const before = await page.getByTestId('layout-row').count();
-  await page.getByLabel('Row label').fill('A');
-  await page.getByLabel('Position number').fill('1');
-  await page.getByTestId('set-tier').selectOption('PREMIUM');
-  await page.getByTestId('set-pool').selectOption('ONLINE');
-  await page.getByLabel('Price (minor units)').fill('3000');
-  await page.getByLabel('Grid column (X)').fill('1');
-  await page.getByLabel('Grid row (Y)').fill('1');
-  await page.getByRole('button', { name: 'Add set', exact: true }).click();
-  await expect(page.getByTestId('layout-row')).toHaveCount(before + 1);
+/**
+ * Lay out one sea-facing set on the console's beach-map tab. A 1×1 generate is the whole gesture:
+ * generated cells are ONLINE by default (the walk-in tool is what makes one WALK_IN), so this is the
+ * shortest real layout a tourist can book against.
+ */
+async function addOnlineSet(page: Page, venueId: number): Promise<void> {
+  await page.goto(`/operator/${venueId}/beach-map`);
+  await expect(page.getByTestId('layout-editor')).toBeVisible();
+  await page.getByTestId('layout-gen-rows').fill('1');
+  await page.getByTestId('layout-gen-cols').fill('1');
+  await page.getByTestId('layout-generate').click();
+  await expect(page.getByTestId('layout-cell')).toHaveCount(1);
+  await page.getByTestId('layout-save').click();
+  await expect(page.getByTestId('layout-saved')).toBeVisible();
 }
 
 test.describe('O5 daily view — real backend, real Postgres', () => {
   test('marks a walk-in in the console; it flips and survives a reload (availability persisted)', async ({
     page,
   }) => {
-    // Lay out a venue with one ONLINE set via the legacy editor (bootstrap operator session).
-    await page.goto('/operator');
-    await signIn(page);
+    // Onboard a fresh venue via the shared onboarding helper, then lay out one ONLINE set.
+    await page.goto('/operator?create=1');
+    await signInOperator(page);
     const id = await createVenue(page, venueName('daily'));
-    await addOnlineSet(page);
+    await addOnlineSet(page, id);
 
     // Open the console Daily view tab (the editor sign-in cookie carries the real session).
     await page.goto(`/operator/${id}/daily`);
