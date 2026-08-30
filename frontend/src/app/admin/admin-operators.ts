@@ -35,7 +35,7 @@ import { TouchTarget } from '../shared/touch-target';
   imports: [CardGlass, AdminConsoleStats, ConfirmWithReason, BusyAction, TouchTarget],
   template: `
     <p
-      class="mt-4 text-[15px] text-riv-ink-soft empty:hidden"
+      class="mt-4 text-[15px] text-riv-ink-soft"
       role="status"
       aria-live="polite"
       tabindex="-1"

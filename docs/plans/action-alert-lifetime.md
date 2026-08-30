@@ -281,10 +281,14 @@ and out of draft; CI, the Review gate and the Sonar gate have all run — see §
 | 1 — Gate `oppw-error`, preserving the focus contract | ✅ | `288067b` |
 | 2 — Gate `admin-privacy-error`, reserve to a wrapper | ✅ | `1543276` |
 | 3 — Doc-header freshness + generalization audit | ✅ | `c449eb5` + `6344b79` (F-5) |
-| 4 — Review-gate findings F-7…F-10 | ✅ | this commit |
+| 4 — Review-gate findings F-7…F-10 | ✅ | `026a73c` |
+| 5 — Close-out: docs-freshness F-11, plan-doc final state | ✅ | this commit |
 
-**Next after this commit:** the close-out commit — plan-doc final state and the two open
-self-review boxes — then squash-merge once this push's CI is green.
+**Next after this commit:** nothing in the repo. This IS the close-out commit — plan-doc
+final state and both remaining self-review boxes are written here, per `pr-gates.md` §3 step 4,
+so no docs-only follow-up PR is needed. What is left is squash-merging PR **#832** once this
+push's CI is green, then the GitHub-only close-out (verify #828 closed, confirm the PR
+subscription ended). **Merged via PR #832.**
 
 ### Gate log
 
@@ -304,6 +308,15 @@ self-review boxes — then squash-merge once this push's CI is green.
   message is the shape this item explicitly sanctions), RV-FE-11 ✅ (both banners are
   action-level, so alert-only is correct), RV-FE-E2E ✅ (mocked/CI-run suite, correct half),
   RV-FE-8 ✅ (the diff adds no import at all), RV-FE-7 ✅, RV-STYLE-1/2 ✅ (guard + Prettier).
+- **Docs-freshness (pre-merge smoke, `origin/main...HEAD`).** Rename/removal grep over the
+  substrate-doc set for every identifier this slice removed (`empty:mb-0`, `empty:mt-0`,
+  `:not(:empty)`, `toHaveText('')`, the split spec name): **0 hits** — nothing in `CLAUDE.md`,
+  `CONTEXT.md`, `RESPONSIBILITIES.md`, `docs/adr`, `docs/agents`, `docs/design` or the
+  `riviera-*` skills states a fact this diff contradicts. `frontend/.claude/CLAUDE.md`'s
+  action-level-banner sentence cites `photo-error-{slot}` and `admin-commission-error-*` as
+  examples; both still exist and the sentence stays true, so it was left alone rather than
+  churned. The counting sweep is what earned its keep: it found the Phase-1 `:empty`
+  enumeration was wrong — **F-11**, fixed in-slice.
 - **Sonar gate.** Clear on `7d355be`, and **not** a false-clean read: `new_lines=20` is
   populated and the `SonarCloud Code Analysis` check-run concluded `success`. 0 new issues,
   0 new bugs / vulnerabilities / code smells / security hotspots, `new_duplicated_blocks=0`,
@@ -327,6 +340,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-8 | Review gate (`code-review`, PR #832) | The same test settled the panel's entry animation with `page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)))` — **document-scoped**, so any `infinite` animation anywhere on the page (`animate-pulse`, `pay-spin`, `riv-drift` all exist in this repo) never resolves `finished` and hangs the test to a 60s timeout. Inert on the Privacy tab today, but latent — and the file already defines the element-scoped `settled(panel)` helper at `:71`, used twice above | fixed — the new test calls `settled(panel)` like its neighbours; no new helper, the duplication was the finding |
 | F-9 | Review gate (riviera-review-overlay, RV-FE-9) | F-1 is a **shipped WCAG 2.4.3 defect** and it was pinned only in jsdom. RV-FE-9's stated shape for this repo is `await expect(page.getByTestId('…')).toBeFocused()` at each leg in the CI-run mocked suite — and the item warns in the same breath that jsdom is not evidence for a focus claim. The `<p>`s carry `tabindex="-1"`, so the browser leg was available and simply absent | fixed — a `toBeFocused()` leg on each arm of the existing `operator-password.e2e.ts` walk-through. **Mutation-checked**: restoring `main`'s selector list turns the failure leg red (`unexpected value "inactive"` — focus on the notice), which is F-1 reproduced in Chromium rather than argued |
 | F-10 | Review gate (riviera-review-overlay, RV-PROC-1) | `riviera-local-debug` was missing from **Skills consulted** although the plan cites its recipes in three places (the scoped-run rule, the `npx ng test --include=` form recorded as F-3, and the `PW_CHROMIUM_EXECUTABLE` Playwright recipe). The skill was consulted; the line under-reported it, which is exactly the drift RV-PROC-1 checks for | fixed — added to the line with what it contributed. `playwright-cli`'s entry also now records the RV-FE-9 shape it supplied for F-9 |
+| F-11 | Close-out `riviera-docs-freshness` (pre-merge smoke), then fixed at the maintainer's call | The Phase-1 `:empty` sweep **never searched for the mechanism it was sweeping**. `:empty` (colon first) is the CSS pseudo-class; the Tailwind variant is `empty:` (colon last), and `--include=*.ts` excludes the four `.html` templates — so the grep matched its three sites through *prose mentions* of `:empty` in adjacent comments and read as a clean sweep regardless. Corrected population: **6 `empty:hidden` sites**, five of them unseen. Four work by construction; **`admin-operators.ts:38`'s `admin-ops-notice` is dead** — a `role="status"` live region whose `{{ notice() }}` sits on its own line, byte-identical to the `cls.notice` F-5 deleted | fixed in-slice, not deferred: asked, and the maintainer held F-5's standing instruction ("don't file follow-ups, fix it here") over the don't-widen default. Utility deleted; pinned a no-op by two `toHaveCSS` assertions in `admin-operator-suspension.e2e.ts`. **The first measurement was invalid and is recorded because that is the reusable part:** the probe sat after `seedApprovedOperator()`, which leaves "Approved zoe." in the notice, so it measured a *non-empty* region where `empty:hidden` correctly should not fire. Re-measured on the one test reaching `/admin` with no lifecycle action behind it — silent notice, utility still in place, `display: block`. Only then deleted |
 
 ---
 
@@ -351,7 +365,14 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/admin/admin-privacy.spec.ts` — add the clean-state spec (AC-1)
 - `frontend/src/app/admin/admin-privacy.a11y.spec.ts` — **unchanged**; its header never
   described the banner (R-5 over-scoped, see Phase 3 Step 1)
-- `frontend/e2e/admin-privacy.e2e.ts` — add the reserve measurement (AC-3, restated per F-4)
+- `frontend/e2e/admin-privacy.e2e.ts` — add the reserve measurement (AC-3, restated per F-4);
+  at the review gate, reuse the file's own `settled(panel)` instead of a document-scoped
+  animation wait (F-8) and relax the growth bound to one-sided (F-7)
+- `frontend/src/app/admin/admin-operators.ts` — **close-out addition (F-11):** delete
+  `admin-ops-notice`'s dead `empty:hidden`, measured rather than inferred
+- `frontend/e2e/admin-operator-suspension.e2e.ts` — **close-out addition (F-11):** pin that
+  deletion as a no-op (`display: block`, `margin-top: 16px` on the silent notice), with the
+  why in the file header per RV-STYLE-1
 
 ---
 
@@ -486,7 +507,8 @@ discover late.
 | 2026-08-30 | plan (pre-audit, inherited) | Every `role="alert"` in `frontend/src` that is mounted unconditionally — enumerated by **mechanism** (an error element mounted regardless of its message), not by resemblance to `admin-commissions` | `grep -rn 'role="alert"' frontend/src` (#826's Phase 0 sweep) | 4 ungated | 1 fixed by #827; 2 are this slice; the 4th judged on its merits in #827's audit log — **do not re-enumerate** |
 | 2026-08-30 | Phase 1 | Every reader of a gated testid — *a test that asserts emptiness on an element that may now be absent*, invisible to a `role="alert"` sweep | `grep -rn 'oppw-error\|admin-privacy-error' frontend/` then `grep -rn "toHaveText('')" frontend/e2e frontend/src` | 4 other `toHaveText('')` sites | All four target regions that stay unconditionally mounted (`oppw-notice` ×2, `admin-photos-notice`, the load announcer, a skeleton placeholder). No other surface carries the coupling — nothing to change |
 | 2026-08-30 | Phase 1 (F-1) | The **new** mechanism F-1 exposed, which no `role="alert"` sweep reaches: a `querySelector` **selector list** used to pick a focus target, where the list's order reads as a priority it does not have | `grep -rn 'querySelector' frontend/src --include=*.ts \| grep -v spec \| grep ','` | 1 — `revealOutcome()` itself | Fixed in place. No second site: every other focus lookup is a single selector, or goes through `shared/focus-after-render.ts`'s explicit primary/fallback pair, which had the ordering right all along |
-| 2026-08-30 | Phase 1 (F-1) | The second half of F-1: a **CSS `:empty` guard on an element whose content is an Angular interpolation**, which cannot fire because the interpolation leaves a text node | `grep -rn ':empty' frontend/src --include=*.ts` | 3 — the fixed selector, `cls.notice`'s `empty:mb-0`, `booking-view.ts`'s `result` `empty:hidden` | All three resolved in-slice (F-5), not deferred. Selector fixed; `booking-view`'s utility **measured working** (comment anchors do not defeat `:empty`) and left alone; `cls.notice`'s **measured dead** (whitespace text node) and deleted as a proven no-op. The generalizing rule: never let focus or announcement correctness depend on `:empty` — and never let a *unit* spec adjudicate it, since jsdom and Chromium disagree in opposite directions |
+| 2026-08-30 | Phase 1 (F-1) | The second half of F-1: a **CSS `:empty` guard on an element whose content is an Angular interpolation**, which cannot fire because the interpolation leaves a text node | `grep -rn ':empty' frontend/src --include=*.ts` — **wrong pattern, corrected at close-out: see the row below** | 3 — the fixed selector, `cls.notice`'s `empty:mb-0`, `booking-view.ts`'s `result` `empty:hidden` | All three resolved in-slice (F-5), not deferred. Selector fixed; `booking-view`'s utility **measured working** (comment anchors do not defeat `:empty`) and left alone; `cls.notice`'s **measured dead** (whitespace text node) and deleted as a proven no-op. The generalizing rule: never let focus or announcement correctness depend on `:empty` — and never let a *unit* spec adjudicate it, since jsdom and Chromium disagree in opposite directions |
+| 2026-08-30 | Close-out (`riviera-docs-freshness`, F-11) | **Re-run of the row above, because its search was wrong.** `:empty` (colon first) is the CSS pseudo-class; the Tailwind variant is `empty:` (colon last), and `--include=*.ts` excludes the four `.html` templates. The row above matched its three sites through *prose mentions* of `:empty` in nearby comments, not through the class strings — so it read as a clean sweep while never having searched for the mechanism at all | `grep -rn ':empty\|empty:' frontend/src --include=*.ts --include=*.html --include=*.css --include=*.scss` | **6 `empty:hidden` sites**, not 1: `booking-view.ts:96` (known), plus `admin-operators.ts:38`, `beach-map-canvas.html:4`, `daily-view-tab.html:351`, `venue-map.html:112`, `home.html:227` — five the first sweep never saw | Read each against F-5's rule (whitespace around an interpolation ⇒ dead; comment anchors, projected content and a *glued* interpolation ⇒ works). Four work by construction: `beach-map-canvas` (empty `<ng-content>`), `venue-map` + `home` (`@if`/`@for` anchors only), `daily-view-tab` (the interpolation is glued to its tags — `>{{ … }}</output>` — so the text node is zero-length). **One is dead: `admin-operators.ts:38`'s `admin-ops-notice`**, whose `{{ notice() }}` sits on its own line exactly like the `cls.notice` F-5 deleted. Out of this slice's scope (a different feature component, no alert involved) → **flagged to the maintainer at close-out, not fixed here**; see F-11 |
 
 ---
 
@@ -544,9 +566,9 @@ surfaces only.
 - [x] `oppw-notice` still mounted and still `role="status"` (RV-FE-10) — its element, role, `tabindex`, `empty:mb-0` and template comment are byte-identical to `main`. Two specs fail if it is gated.
 - [x] `revealOutcome()`'s scroll/focus contract asserted, not assumed (RV-FE-9, AC-5/AC-6) — and asserting it found the contract **broken on `main`** (F-1), not merely unpinned.
 - [x] Neither banner gained `[appFieldErrorFor]` (RV-FE-11's action-level checkbox); `admin-privacy.ts`'s email-field error is untouched.
-- [x] Execution status at HEAD matches reality — stage pointer, phase table, and a findings register carrying F-1…F-4.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, gate log, and a findings register carrying F-1…F-11.
 - [x] Risk register has no stale `open` rows (R-1, R-2, R-5 closed; R-3 closed by the plan; R-4 declined → #829; R-6 accepted). AS-1 held, AS-2 falsified, AS-3 held with a corrected premise — each annotated in place.
-- [ ] **Close-out written in THIS PR** — final plan-doc state committed here, citing `merged via PR #NN`. **Open:** no PR exists yet; due when one is opened.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`. **Open:** due at ready-for-review, not yet run.
+- [x] **Close-out written in THIS PR** — this commit is the PR's last: execution status ✅ across all five phases, the findings register carrying F-1…F-11, every risk row closed or explicitly declined/accepted, AC pin-names reconciled against the tests that actually shipped (AC-3's bound restated per F-7; AC-5/AC-6 now cite the Chromium legs F-9 added), and Open Questions carrying no undeferred entry — AS-1 held, AS-2 falsified in place, AS-3 held with a corrected premise, FU-1 pointing at #829, FU-2 resolved in-slice. **Merged via PR #832.** No docs-only follow-up PR is needed.
+- [x] **The review gate ran in full** — **rung 1** of the `references/pr-gates.md` §1 ladder: the `Skill("code-review")` probe was *not* refused this session, so the plugin's own subagent fan-out ran over `origin/main...HEAD` — no degraded `/review` fallback was needed and none was used. `riviera-review-overlay` was loaded on top and its frontend bank walked item by item (RV-FE-1/7/8/9/10/11, RV-FE-E2E, RV-STYLE-1/2, RV-PROC-1); the overlay was layered onto the review, never run as a substitute for it. Four findings, all resolved in-slice: F-7 and F-8 from the fan-out, F-9 (RV-FE-9) and F-10 (RV-PROC-1) from the overlay. Sonar's reported list was pulled from the API and is empty, not merely gate-green. Effort: medium — no availability, booking, money or authorization surface is touched.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
