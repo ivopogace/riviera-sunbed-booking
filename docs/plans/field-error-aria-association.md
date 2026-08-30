@@ -331,9 +331,8 @@ Sites 14, 16 and 17 are the three interesting ones (existing-hint composition, a
 
 ## Execution status
 
-**Stage pointer:** `review — the gate RAN in full and its seven findings (F-2..F-8) are
-fixed; re-review of the fix round is due, then merge close-out`. PR #823 stays a **DRAFT** at
-the maintainer's instruction.
+**Stage pointer:** `merged — the review gate ran in full, its seven findings (F-2..F-8) are fixed
+and verified, and the close-out is complete`.
 
 The **Review gate** ran per `riviera-sdlc` `references/pr-gates.md` §1 at **rung 1** of the
 invocation ladder — the `Skill("code-review")` probe succeeded, so `/code-review 823 high`
@@ -368,9 +367,11 @@ list pulled from the API (not read off the badge) — `new_lines` **219**, up fr
 analysis is of this diff rather than a stale or unanalyzed read; 0 bugs / vulnerabilities / code
 smells / hotspots, 0 duplicated blocks, **98.36%** new-code coverage.
 
-**Next action:** (maintainer) decide whether the fix round wants a further review pass, then merge
-close-out — ticking the PR body's Gates boxes and citing `merged via PR #823` here. The PR is still
-a **DRAFT** by instruction, so it is not marked ready for review.
+**Merged via PR #823.** The maintainer lifted the draft hold and instructed "merge if green"; the
+close-out below was written into this PR's own last commit, before the merge, per `pr-gates.md` §3
+step 4. Deferred findings propagated: **#824** (OQ-1, amended with F-7's correction and a second
+pass over site 16), **#825** (OQ-2, noting the convention's new `appFieldErrorForInvalidValue`
+half), **#826** (the `admin-commissions` gap this slice's audit log had pointed at the wrong home).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -502,7 +503,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-08-30 | phase 0 (re-run of the plan's command) | Same population, re-enumerated on the implement branch to confirm the inventory before applying it | (the command in the row below) | **65** `role="alert"` attribute occurrences (69 grep lines − 4 that are prose in TSDoc/HTML comments), not the 39 the row below records — the plan's total was undercounted. The **17 field-scoped sites are unchanged**: every one was confirmed present at its stated `file:line`. The delta is entirely in the excluded class, which is 48, not 22 | Scope unchanged. Two borderline exclusions re-checked and left out on their merits: `layout-editor.html:205` (`layout-row-name-error`, "two rows share a name" — a cross-row constraint naming no single control) and `admin-commissions.ts:211` (`admin-commission-error-*` — a save-action error rendered after the row's buttons, mixing validation and write-failure copy, same class as `venue-create-error`). Both are candidates for the form-level-summary follow-up |
+| 2026-08-30 | phase 0 (re-run of the plan's command) | Same population, re-enumerated on the implement branch to confirm the inventory before applying it | (the command in the row below) | **65** `role="alert"` attribute occurrences (69 grep lines − 4 that are prose in TSDoc/HTML comments), not the 39 the row below records — the plan's total was undercounted. The **17 field-scoped sites are unchanged**: every one was confirmed present at its stated `file:line`. The delta is entirely in the excluded class, which is 48, not 22 | Scope unchanged. Two borderline exclusions re-checked and left out on their merits: `layout-editor.html:205` (`layout-row-name-error`, "two rows share a name" — a cross-row constraint naming no single control) and `admin-commissions.ts:211` (`admin-commission-error-*` — a save-action error rendered after the row's buttons, mixing validation and write-failure copy, same class as `venue-create-error`). `admin-commissions.ts:211` was re-examined at the review gate and **filed as #826**: its `editorError()` really does carry a field-validation verdict, so it is a genuine WCAG 3.3.1 gap — but the form-level-summary home suggested here is the wrong one for a per-field error, and the element is never inside an `@if`, so this directive would attach a *permanent* association. `layout-editor.html:205` stays excluded on its merits |
 | 2026-08-30 | phase 2 (the `@for`-scoping question, R-2) | The two loop-scoped error sites — `pricing-tab` (`pricing-error-{label}`) and `layout-editor` (`layout-row-name-write-error`) — asked whether one template ref inside a `@for` body resolves per iteration or collapses to the last row | Declared `#priceControl` / `#rowNameControl` **inside** the `@for` body, then asserted the negative | 2 sites; both scope per row | **Answered: per iteration.** Each `@for` iteration is its own embedded view, so the ref resolves within that view only. Pinned positively *and* negatively — `pricing-tab.spec.ts` › `describes only the failing row's price input` and `layout-editor.spec.ts` › `describes only the failing row's name input` each assert the failing row is described **and** that a sibling row carries neither `aria-describedby` nor `aria-invalid`. Both tests were confirmed to fail with the templates reverted, so neither passes vacuously |
 | 2026-08-30 | plan (pre-phase-0 inventory) | Every element in `frontend/src/app` carrying `role="alert"` — the mechanism, rather than "spans with a `*-error` testid", which is how #821 described it and which **misses 11 of the 17** (sites 3–13: no error element in `booking-dialog`, `venue-create-card`, `venue-tab`'s three Signal-Forms fields, or `booking-cutoff-field` carries a testid at all) | `grep -rn 'role="alert"' frontend/src/app --include=*.ts --include=*.html \| grep -v '\.spec\.'` | 39 total → classified: 17 field-scoped (in scope), 22 form/page-level or action-scoped (Non-goals) | Fix all 17; each exclusion recorded in Non-goals with its reason |
 
@@ -538,7 +539,7 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] `npm run lint` and `npm run format:check` green over `src` and `e2e`.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`. — the PR is **#823**; the `merged via` line is the maintainer's to write at merge, since the PR is still a draft.
+- [x] **Close-out written in THIS PR**, citing `merged via PR #823` — written into this PR's last commit, before the merge, so no post-merge repo commit is needed.
 - [x] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`. Ran at **rung 1** (the `Skill("code-review")` probe succeeded), so `/code-review 823 high`'s five-agent fan-out ran with the overlay layered on top — both halves, no degraded mode. Seven findings (F-2..F-8), all fixed; one reported finding rejected on evidence (the accname double-read). The Sonar list was pulled from the API and verified non-empty-analysis. **Re-checked on the fix head `f4763b3`:** CI 8/8 green and the Sonar list clear from the API
 (219 new lines analysed, 0 issues, 98.36% coverage). **Still due:** the maintainer's call on whether
 the fix round wants a further review pass.
