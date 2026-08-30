@@ -176,13 +176,17 @@ type ErasureStage = 'form' | 'confirm' | 'done';
               </button>
             </div>
 
-            <p
-              class="mt-2 min-h-[1.25rem] text-[13.5px] font-semibold text-[#b3261e]"
-              role="alert"
-              data-testid="admin-privacy-error"
-            >
-              {{ erasureError() }}
-            </p>
+            <div class="mt-2 min-h-[1.25rem]">
+              @if (erasureError()) {
+                <p
+                  class="text-[13.5px] font-semibold text-[#b3261e]"
+                  role="alert"
+                  data-testid="admin-privacy-error"
+                >
+                  {{ erasureError() }}
+                </p>
+              }
+            </div>
           </div>
         } @else {
           <div

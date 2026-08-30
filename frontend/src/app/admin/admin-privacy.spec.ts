@@ -237,6 +237,17 @@ describe('AdminPrivacy', () => {
     expect(service.erase).toHaveBeenLastCalledWith('bob@example.com');
   });
 
+  /** Nothing is mounted empty: the defect is an always-present live region with no text in it. */
+  it('mounts no error element while the confirmation is clean', async () => {
+    const fixture = await render(serviceStub());
+
+    await armConfirmation(fixture);
+
+    expect(byTestId(fixture, 'admin-privacy-confirm-panel')!.querySelector('[role="alert"]')).toBe(
+      null,
+    );
+  });
+
   it('keeps the confirmation armed when the request fails', async () => {
     const service = serviceStub();
     service.erase.mockRejectedValueOnce(new Error('boom'));
