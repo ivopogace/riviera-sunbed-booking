@@ -124,9 +124,12 @@ type ErasureStage = 'form' | 'confirm' | 'done';
             tabindex="-1"
             data-testid="admin-privacy-confirm-panel"
             aria-labelledby="admin-privacy-confirm-heading"
-            class="mt-4 rounded-[14px] border border-[rgba(179,54,43,0.35)] bg-[rgba(179,54,43,0.06)] p-4 [animation:riv-pop_0.22s_ease] motion-reduce:[animation:none]"
+            class="mt-4 rounded-[14px] border border-riv-danger-border bg-riv-danger-fill p-4 [animation:riv-pop_0.22s_ease] motion-reduce:[animation:none]"
           >
-            <h3 id="admin-privacy-confirm-heading" class="text-[14px] font-bold text-[#8f2c22]">
+            <h3
+              id="admin-privacy-confirm-heading"
+              class="text-[14px] font-bold text-riv-danger-ink"
+            >
               Erase everything linked to this email?
             </h3>
             <p class="mt-2 text-[13px] leading-relaxed text-riv-card-ink-soft">
@@ -160,7 +163,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
                 data-testid="admin-privacy-confirm"
                 [appBusy]="busy()"
                 (click)="erase()"
-                class="rounded-[12px] border border-[rgba(179,54,43,0.6)] bg-[rgba(179,54,43,0.1)] px-5 py-3 text-[13.5px] font-bold text-[#8f2c22] aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                class="rounded-[12px] border border-riv-danger-action-border bg-riv-danger-action-fill px-5 py-3 text-[13.5px] font-bold text-riv-danger-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
               >
                 {{ busy() ? 'Erasing…' : 'Erase permanently' }}
               </button>
@@ -236,7 +239,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
         >
           <dt class="font-bold text-riv-error-ink">Erased</dt>
           <dd>Name, email, phone — overwritten in place, not deleted rows.</dd>
-          <dt class="font-bold text-[#0a5f73]">Kept</dt>
+          <dt class="font-bold text-riv-accent-ink">Kept</dt>
           <dd>
             Bookings, payments, payout ledger entries — the records we are legally required to
             retain, now anonymous.

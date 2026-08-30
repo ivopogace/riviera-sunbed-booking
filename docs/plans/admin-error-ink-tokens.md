@@ -70,7 +70,7 @@ carries both of its commits.
   returns exactly the **2** occurrences on `app.html:6` (the deliberate sign-out-notice
   deviation, `app.ts:59–69`) and nothing else. *Pinned by:* the command itself, run in
   AC-verification; the count moves 18 → 2.
-- [ ] **AC-2:** Given the whole of `frontend/src`, when
+- [x] **AC-2:** Given the whole of `frontend/src`, when
   `grep -rno '#8f2c22\|179, *54, *43\|#0a5f73' frontend/src --include=*.ts --include=*.html`
   runs, then it returns **0** occurrences. *Pinned by:* the command itself.
 - [x] **AC-3:** Given the porcelain admin console, when the error ink (`#a3160e`) is
@@ -153,7 +153,7 @@ carries both of its commits.
 | R-3 | Encoding the existing button/panel boundaries as tokens exposes a **pre-existing** sub-3:1 non-text contrast (WCAG 1.4.11) on the Erase button's border — hand-computed at ≈2.6:1 over the panel fill | med | med | the contrast spec's scope is **text pairs (1.4.3)**; a non-text boundary is asserted only where it already holds. If the spec finds one below 3:1, **do not silently change the value** — record it as a finding and open a follow-up issue. Changing it is a visual decision outside a token migration | ivopogace | **materialised** — recorded as F-1 in the Findings register; follow-up issue at close-out |
 | R-4 | Expressing the danger tints as Tailwind opacity modifiers (`bg-riv-danger/6`) would compile to `color-mix(in oklab, …, transparent)`, changing both the interpolation space and the `getComputedStyle` string — indistinguishable from a real regression under the no-drift rule | low | high | **rejected at plan time**: the five danger tokens are declared as pre-composed `rgba()` values, matching the repo's existing idiom (`--riv-field-border: rgba(12, 42, 51, 0.55)`). Verified against Tailwind v4 docs + tailwindlabs PR #15201 | ivopogace | closed — decided |
 | R-5 | Adding tokens to `tailwind.css` without the matching `@theme inline` row leaves the named utility ungenerated, and the class silently does nothing | low | high | each of the five tokens gets its `--color-riv-danger-*: var(--riv-danger-*)` row in the same commit; AC-5's `toHaveCSS` on a real render is what catches a missing mapping (a class list check could not) | ivopogace | closed — all five rows added in the phase-0 commit |
-| R-6 | `confirm-with-reason.ts` lives in `shared/`, so migrating it changes any future non-porcelain consumer's appearance | low | low | that is the *point* of the migration (the issue's future-proofing rationale); today its only consumers are `admin-venue-photos` and `admin-operators`, both porcelain — verified, and `shared/confirm-panel.ts` is a TSDoc cross-reference only, not a dependency | ivopogace | open |
+| R-6 | `confirm-with-reason.ts` lives in `shared/`, so migrating it changes any future non-porcelain consumer's appearance | low | low | that is the *point* of the migration (the issue's future-proofing rationale); today its only consumers are `admin-venue-photos` and `admin-operators`, both porcelain — verified, and `shared/confirm-panel.ts` is a TSDoc cross-reference only, not a dependency | ivopogace | closed — migrated at phase 1; both consumers verified porcelain |
 | R-7 | An existing unit/e2e spec pins one of the literals and breaks | low | low | verified none does: `grep -rn 'b3261e\|8f2c22\|0a5f73\|179, *54, *43' frontend/src --include=*.spec.ts frontend/e2e` returns nothing. Re-run before phase 1 | ivopogace | closed — re-run at phase 1 step 1, still nothing |
 | R-8 | The plan-file-structure guard fails the PR on a path this section does not list | med | low | run `node scripts/check-plan-file-structure.mjs --diff origin/main` before every push, **with the plan doc staged** — unstaged, the guard short-circuits and passes | ivopogace | open |
 
@@ -266,17 +266,18 @@ the theme-switcher UI displays, and this slice adds no theme.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1 done`. The danger token set is registered, the
-contrast proof is green, and the 16 in-scope `#b3261e` occurrences now read
-`--riv-error-ink`. Draft PR **#833** is open (CI vehicle).
+**Stage pointer:** `implement — phase 2 done`. Every red literal under `admin/` and
+`shared/confirm-with-reason.ts` is now a registered token; AC-1 and AC-2 both hold. Draft
+PR **#833** is open (CI vehicle).
 
-**Next action:** Phase 2 — the erasure panel's three sites and the `Kept` term.
+**Next action:** Phase 3 — the computed-style drift proof and `admin-token-inks.e2e.ts`,
+then the AC-verification section and ready-for-review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Danger token set + contrast proof | ✅ | `Register the admin danger treatment as --riv-danger-* tokens (#829)` |
 | 1 — The 16 `#b3261e` occurrences → `--riv-error-ink` | ✅ | `Paint the admin error ink from --riv-error-ink (#829)` |
-| 2 — The erasure panel → `--riv-danger-*`, `Kept` → `--riv-accent-ink` | | |
+| 2 — The erasure panel → `--riv-danger-*`, `Kept` → `--riv-accent-ink` | ✅ | `Paint the erasure panel from the danger tokens (#829)` |
 | 3 — Computed-style drift verification + e2e pin | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -457,14 +458,14 @@ import {
 
 **Files:** Modify `admin/admin-privacy.ts:129,163,239`
 
-- [ ] **Step 1:** `:129` → `text-riv-danger-ink`. `:163` →
+- [x] **Step 1:** `:129` → `text-riv-danger-ink`. `:163` →
   `border-riv-danger-action-border bg-riv-danger-action-fill text-riv-danger-ink`.
   The panel at `:127` → `border-riv-danger-border bg-riv-danger-fill`. `:239` →
   `text-riv-accent-ink`.
-- [ ] **Step 2:** `npm test -- src/app/admin/admin-privacy` → PASS.
-- [ ] **Step 3:** AC-2's grep → 0 occurrences.
-- [ ] **Step 4: Commit** — `git commit -m "Paint the erasure panel from the danger tokens (#829)"`
-- [ ] **Step 5: Update plan-doc execution status.**
+- [x] **Step 2:** `npm test -- src/app/admin/admin-privacy` → PASS.
+- [x] **Step 3:** AC-2's grep → 0 occurrences.
+- [x] **Step 4: Commit** — `git commit -m "Paint the erasure panel from the danger tokens (#829)"`
+- [x] **Step 5: Update plan-doc execution status.**
 
 ---
 
