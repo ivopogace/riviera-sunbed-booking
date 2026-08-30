@@ -1,10 +1,19 @@
-import { AA_NORMAL, Rgb, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
+import {
+  AA_LARGE,
+  AA_NORMAL,
+  Rgb,
+  composite,
+  contrastRatio,
+  rgbToHex,
+} from '../../testing/contrast';
 import {
   ACCENT_INK,
+  DANGER_ACTION_BORDER,
   DANGER_ACTION_FILL,
   DANGER_FILL,
   DANGER_INK,
   DARK_CARD_GLASS,
+  DARK_DANGER_ACTION_BORDER,
   DARK_DANGER_ACTION_FILL,
   DARK_DANGER_FILL,
   DARK_DANGER_INK,
@@ -26,10 +35,11 @@ import {
  * (`admin-commissions.ts` loading/error paragraphs use `text-riv-ink*`, the shell's ink),
  * while the cards put it on `--riv-card-glass`. Both are asserted.
  *
- * <p>Scope is WCAG 1.4.3 TEXT pairs. The erasure panel's own boundaries are non-text (1.4.11)
- * and are not asserted here — the Erase button's border measures ≈2.6:1 over the panel fill,
- * which the token migration preserves rather than changes. Rationale:
- * `docs/plans/admin-error-ink-tokens.md`.
+ * <p>Scope is WCAG 1.4.3 TEXT pairs, plus the erasure panel's two WCAG 1.4.11 (non-text)
+ * boundaries below. Of those two, only the Erase button's border is asserted: it is the
+ * boundary that reads as an affordance, and is held to 3:1 against the panel fill. The panel's
+ * own edge (`--riv-danger-border`) is a decorative container edge whose meaning is already
+ * carried by the fill and the heading, and is deliberately left unasserted — issue #834.
  */
 
 const OUTGOING_ERROR_INK: Rgb = [0xb3, 0x26, 0x1e];
@@ -108,6 +118,38 @@ describe('AdminConsole contrast (WCAG AA, #829)', () => {
           ratio(theme.ink, action),
           `${theme.name} danger ink over the action fill on ${rgbToHex(stop)}`,
         ).toBeGreaterThanOrEqual(AA_NORMAL);
+      }
+    }
+  });
+
+  it("the Erase button's border marks its affordance boundary at 3:1 over the panel fill (WCAG 1.4.11)", () => {
+    const themes = [
+      {
+        name: 'porcelain',
+        glass: PORCELAIN_CARD_GLASS,
+        stops: PORCELAIN_STOPS,
+        panel: DANGER_FILL,
+        border: DANGER_ACTION_BORDER,
+      },
+      {
+        name: 'dark',
+        glass: DARK_CARD_GLASS,
+        stops: DARK_STOPS,
+        panel: DARK_DANGER_FILL,
+        border: DARK_DANGER_ACTION_BORDER,
+      },
+    ];
+
+    for (const theme of themes) {
+      for (const stop of theme.stops) {
+        const card = surfaceOver(theme.glass, stop);
+        const panel = composite(theme.panel.color, theme.panel.alpha, card);
+        const border = composite(theme.border.color, theme.border.alpha, panel);
+
+        expect(
+          ratio(border, panel),
+          `${theme.name} Erase button border over the panel fill on ${rgbToHex(stop)}`,
+        ).toBeGreaterThanOrEqual(AA_LARGE);
       }
     }
   });

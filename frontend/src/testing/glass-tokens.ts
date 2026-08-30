@@ -54,12 +54,14 @@ export const DARK_WASH_FILL: Glass = { color: WHITE, alpha: 0.08 };
 /** The `--riv-danger-*` set — the erasure confirm panel's tinted danger treatment: a panel tint
  *  over the card glass, then a stronger action tint over the panel. Light themes here; the dark
  *  counterparts are the DARK_DANGER_* mirrors below. The `*_BORDER` pair is non-text chrome
- *  (WCAG 1.4.11) and is not asserted by the contrast spec — see its header. */
+ *  (WCAG 1.4.11): `ACTION_BORDER` (the Erase button's affordance boundary) is asserted at 3:1
+ *  against the panel fill; `DANGER_BORDER` (the panel's own edge) is decorative and is not —
+ *  see the contrast spec's header (issue #834). */
 export const DANGER_INK: Rgb = hexToRgb('8f2c22');
 export const DANGER_FILL: Glass = { color: hexToRgb('b3362b'), alpha: 0.06 };
 export const DANGER_BORDER: Glass = { color: hexToRgb('b3362b'), alpha: 0.35 };
 export const DANGER_ACTION_FILL: Glass = { color: hexToRgb('b3362b'), alpha: 0.1 };
-export const DANGER_ACTION_BORDER: Glass = { color: hexToRgb('b3362b'), alpha: 0.6 };
+export const DANGER_ACTION_BORDER: Glass = { color: hexToRgb('b3362b'), alpha: 0.75 };
 
 /** The dark theme's `--riv-danger-*` set. The ink matches DARK_ERROR_INK — porcelain
  *  distinguishes the two reds, dark does not. */
