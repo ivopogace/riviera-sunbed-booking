@@ -47,7 +47,13 @@ contrast spec is colocated per-feature, the token registry stays the two-place
 registry carries only what the switcher UI shows) · `angular-developer` + angular-cli MCP
 (`search_documentation` v22 — confirmed Emulated encapsulation scopes only a component's
 own `styles`, so the global `tailwind.css` utilities reach these inline templates unchanged;
-no Angular API is touched by this slice)
+no Angular API is touched by this slice) · `playwright-cli` (implement stage — the phase-3
+drift-capture harness and `admin-token-inks.e2e.ts`: request mocking via `page.route`,
+`toHaveCSS` over class-list assertions, and awaiting `getAnimations().finished` before reading
+a value on an animating surface) · `riviera-local-debug` (implement stage — the cloud-session
+recipes: `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` for the mocked Playwright config,
+never `playwright install`; and `ng test --include=<path>`, since `ng test` reads a bare
+positional as the *project* name)
 
 **Branch:** `claude/sdlc-829-implementation-pofv2c` — **cloud-session substitution** for
 `feature/admin-error-ink-tokens` per `riviera-sdlc` §Remote/cloud addendum. The designated
@@ -116,7 +122,7 @@ carries both of its commits.
   visual-design decision, not a token migration — see OQ-1.
 - **The `#0a4f5e` teal literals** (`admin-refund-outbox.ts:74`, `admin-privacy.ts:199`,
   `admin-mail-outbox.ts:87`, `admin-mail-delivery.ts:67,73`). Not red, not in #829's
-  mechanism; a separate accent-ink sweep. Follow-up issue at close-out.
+  mechanism; a separate accent-ink sweep — **#835**.
 - **Behaviour, wire format, or any backend invariant.** Nothing is added, removed, or
   reordered in any template beyond the value of a colour utility.
 - **New `*.a11y.spec.ts` files.** `admin/` already has one per tab; axe cannot measure
@@ -150,7 +156,7 @@ carries both of its commits.
 |---|---|---|---|---|---|---|
 | R-1 | The sweep silently reverses the `app.html:6` deliberate deviation, because "replace all 18" reads as complete | med | med | it is a Non-goal above; AC-1 asserts the residual count is **exactly 2 on `app.html:6`**, so an over-eager sweep fails the AC rather than passing it | ivopogace | closed — phase 1 left exactly the 2 `app.html:6` occurrences standing |
 | R-2 | The new dark `--riv-danger-*` values are latent (no in-tree consumer can render them — the console pins porcelain) and so ship unproven | high | med | AC-4 asserts the dark pairs in the contrast spec, which is pure maths and needs no renderer; the values are candidates until that spec is green, and are adjusted to pass rather than asserted around | ivopogace | closed — the planned candidates passed unchanged (phase 0) |
-| R-3 | Encoding the existing button/panel boundaries as tokens exposes a **pre-existing** sub-3:1 non-text contrast (WCAG 1.4.11) on the Erase button's border — hand-computed at ≈2.6:1 over the panel fill | med | med | the contrast spec's scope is **text pairs (1.4.3)**; a non-text boundary is asserted only where it already holds. If the spec finds one below 3:1, **do not silently change the value** — record it as a finding and open a follow-up issue. Changing it is a visual decision outside a token migration | ivopogace | **materialised** — recorded as F-1 in the Findings register; follow-up issue at close-out |
+| R-3 | Encoding the existing button/panel boundaries as tokens exposes a **pre-existing** sub-3:1 non-text contrast (WCAG 1.4.11) on the Erase button's border — hand-computed at ≈2.6:1 over the panel fill | med | med | the contrast spec's scope is **text pairs (1.4.3)**; a non-text boundary is asserted only where it already holds. If the spec finds one below 3:1, **do not silently change the value** — record it as a finding and open a follow-up issue. Changing it is a visual decision outside a token migration | ivopogace | **materialised** — recorded as F-1 in the Findings register; deferred to **#834** |
 | R-4 | Expressing the danger tints as Tailwind opacity modifiers (`bg-riv-danger/6`) would compile to `color-mix(in oklab, …, transparent)`, changing both the interpolation space and the `getComputedStyle` string — indistinguishable from a real regression under the no-drift rule | low | high | **rejected at plan time**: the five danger tokens are declared as pre-composed `rgba()` values, matching the repo's existing idiom (`--riv-field-border: rgba(12, 42, 51, 0.55)`). Verified against Tailwind v4 docs + tailwindlabs PR #15201 | ivopogace | closed — decided |
 | R-5 | Adding tokens to `tailwind.css` without the matching `@theme inline` row leaves the named utility ungenerated, and the class silently does nothing | low | high | each of the five tokens gets its `--color-riv-danger-*: var(--riv-danger-*)` row in the same commit; AC-5's `toHaveCSS` on a real render is what catches a missing mapping (a class list check could not) | ivopogace | closed — all five rows added in the phase-0 commit |
 | R-6 | `confirm-with-reason.ts` lives in `shared/`, so migrating it changes any future non-porcelain consumer's appearance | low | low | that is the *point* of the migration (the issue's future-proofing rationale); today its only consumers are `admin-venue-photos` and `admin-operators`, both porcelain — verified, and `shared/confirm-panel.ts` is a TSDoc cross-reference only, not a dependency | ivopogace | closed — migrated at phase 1; both consumers verified porcelain |
@@ -271,8 +277,9 @@ verifies; the computed-style drift is accounted for property by property.
 
 **Next action:** Green CI + a cleared Sonar new-issue list, then mark PR #833 ready for
 review. The **review gate is deliberately NOT run in this session** — it belongs to the
-session that authored the plan — and neither is the merge. Still open at close-out: the two
-follow-up issues (R-3's sub-3:1 boundaries; the literal residue + the `#0a4f5e` teal sweep).
+session that authored the plan — and neither is the merge. The three follow-up issues are
+open: **#834** (R-3's sub-3:1 boundaries), **#835** (the `#0a4f5e` teal sweep), **#836** (the
+app-wide literal residue).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -299,7 +306,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | phase 0 contrast maths (R-3, pre-existing) | The erasure panel's **non-text** boundaries are below WCAG 1.4.11's 3:1 on `main` today, and the token migration preserves them byte-identically: the Erase button's `rgba(179,54,43,0.6)` border measures **2.60–2.69:1** over the panel fill (matching the plan's hand-computed ≈2.6:1), and the panel's own `rgba(179,54,43,0.35)` border **1.74–1.76:1** over the card glass. Per R-3 this is recorded, **not** adjusted — changing it is a visual decision outside a token migration. The dark candidates clear the button border (3.44–3.68:1) but not the panel border (2.29–2.32:1). The contrast spec's scope is text pairs (1.4.3) and its header says so. | follow-up issue at close-out |
+| F-1 | phase 0 contrast maths (R-3, pre-existing) | The erasure panel's **non-text** boundaries are below WCAG 1.4.11's 3:1 on `main` today, and the token migration preserves them byte-identically: the Erase button's `rgba(179,54,43,0.6)` border measures **2.60–2.69:1** over the panel fill (matching the plan's hand-computed ≈2.6:1), and the panel's own `rgba(179,54,43,0.35)` border **1.74–1.76:1** over the card glass. Per R-3 this is recorded, **not** adjusted — changing it is a visual decision outside a token migration. The dark candidates clear the button border (3.44–3.68:1) but not the panel border (2.29–2.32:1). The contrast spec's scope is text pairs (1.4.3) and its header says so. | deferred — **#834** |
 | F-2 | phase 3 full mocked e2e (red locally, before any push) | **R-7 under-counted.** `admin-venue-photos.e2e.ts:127` pinned the outgoing ink by its **resolved** value — `toHaveCSS('color', 'rgb(179, 38, 30)')` — which R-7's hex grep (`grep -rn 'b3261e…'`) structurally cannot see. The assertion's intent (the destructive button carries the error ink) is unchanged; only the expected value moves to `rgb(163, 22, 14)`. Swept for every other resolved form of the five migrated colours across `e2e/` and `src/**/*.spec.ts`: this was the only one. | fixed in the phase-3 commit |
 
 ---
@@ -500,7 +507,7 @@ import {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-08-30 | phase 0 step 5 | every colour position still written as a literal rather than a `--riv-*` token | `grep -rnoE '(text\|bg\|border\|fill\|stroke\|shadow)-\[(#[0-9a-fA-F]{3,8}\|rgba?\()' frontend/src --include=*.ts --include=*.html` | **380 occurrences** (336 outside `*.spec.ts`), in **62** non-spec files: `operator/` 119, `booking/` 84, `shared/` 63, `admin/` 31, `venue/` 20, `auth/` 8, `pages/` 6, app shell 5 | **Follow-up issue, slice not widened.** The residue is app-wide and mostly *not* this mechanism: the bulk is per-state palettes inside arbitrary variant expressions (`shared/status-chip.ts`, `semantic-chip.ts`, `amenity-chip.ts`, `operator/beach-cell.ts`, `venue/day-availability.ts` — exemption class 2, a value inside a composite arbitrary expression), plus `app.html:6`'s recorded deliberate deviation (exemption class 1). What #829 owns — the red families under `admin/` and `shared/confirm-with-reason.ts` — is phases 1–2; the teal `#0a4f5e`/`#0a5f73` family is the Non-goals' separate accent sweep. Deciding which of the remaining 336 want tokens is a design pass, not a sweep |
+| 2026-08-30 | phase 0 step 5 | every colour position still written as a literal rather than a `--riv-*` token | `grep -rnoE '(text\|bg\|border\|fill\|stroke\|shadow)-\[(#[0-9a-fA-F]{3,8}\|rgba?\()' frontend/src --include=*.ts --include=*.html` | **380 occurrences** (336 outside `*.spec.ts`), in **62** non-spec files: `operator/` 119, `booking/` 84, `shared/` 63, `admin/` 31, `venue/` 20, `auth/` 8, `pages/` 6, app shell 5 | **Follow-up issue, slice not widened.** The residue is app-wide and mostly *not* this mechanism: the bulk is per-state palettes inside arbitrary variant expressions (`shared/status-chip.ts`, `semantic-chip.ts`, `amenity-chip.ts`, `operator/beach-cell.ts`, `venue/day-availability.ts` — exemption class 2, a value inside a composite arbitrary expression), plus `app.html:6`'s recorded deliberate deviation (exemption class 1). What #829 owns — the red families under `admin/` and `shared/confirm-with-reason.ts` — is phases 1–2; the teal `#0a4f5e`/`#0a5f73` family is the Non-goals' separate accent sweep. Deciding which of the remaining 336 want tokens is a design pass, not a sweep — **#836** |
 
 ---
 
@@ -542,25 +549,28 @@ claim is measured, not asserted.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met; no new SCSS; every colour position uses a named token
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met; no new SCSS; every colour position uses a named token
       utility, not a literal (RV-FE / `riviera-tailwind`).
-- [ ] `app.html:6`'s deliberate deviation is intact and its TSDoc still accurate.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #) —
-      incl. R-3's follow-up if the contrast spec finds a sub-3:1 boundary.
-- [ ] Follow-up issues opened: the `#0a4f5e` teal sweep, and phase 0's literal residue.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] `app.html:6`'s deliberate deviation is intact and its TSDoc still accurate.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #) —
+      R-3 materialised and is deferred as **#834**, cited from its risk row and from finding F-1.
+- [x] Follow-up issues opened: **#835** (the `#0a4f5e` teal sweep) and **#836** (phase 0's
+      literal residue), plus **#834** (R-3).
+- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN` — PR is **#833**; the
+      `merged via` citation is written by the merging session, not this one.
 - [ ] **The review gate ran in full** — the `references/pr-gates.md` §1 ladder *plus*
-      `riviera-review-overlay`, not the overlay alone.
+      `riviera-review-overlay`, not the overlay alone. **Deliberately not run here:** this
+      session was scoped to implementation; the review belongs to the session that wrote the plan.
