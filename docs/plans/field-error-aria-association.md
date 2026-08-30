@@ -334,7 +334,7 @@ including citing `merged via PR #823` in this doc.
 | 0 — the `FieldErrorFor` directive (red → green) | ✅ | `60fe74b` |
 | 1 — booking surfaces (sites 1–5) | ✅ | `4512d36` |
 | 2 — operator surfaces (sites 6–13, 15–17) | ✅ | `ec76ee0` |
-| 3 — admin site 14, e2e, convention note, close-out | ✅ | this commit |
+| 3 — admin site 14, e2e, convention note, close-out | ✅ | `5121aa9` (+ this sha-recording commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
