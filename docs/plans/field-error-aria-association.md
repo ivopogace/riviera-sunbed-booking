@@ -329,22 +329,27 @@ Sites 14, 16 and 17 are the three interesting ones (existing-hint composition, a
 ## Execution status
 
 **Stage pointer:** `implement — all four phases done; PR #823 left as a DRAFT at the
-maintainer's instruction`. The Review and Sonar gates were **deliberately not run** in this
-session — the maintainer is running them separately. They remain due before merge, and the
+maintainer's instruction`. **Neither gate was run in this session** — the maintainer is
+running the Review and Sonar gates separately. Both remain due before merge, and the
 self-review checklist's review-gate box is left unticked rather than ticked for a gate that
 did not run.
 
+One qualifier on that: SonarCloud analyses every PR push on its own, so its bot posted a
+result without the gate being *run* here. It reported Quality Gate **passed** but **1 new
+issue**, which is above this repo's 0-new-issues merge bar. The finding was in this slice's
+own new code; the maintainer was asked and explicitly directed the fix, so it was taken —
+recorded as **F-1** below. That is the whole of the Sonar work done here; triaging the gate
+proper is still the maintainer's.
+
 **Next action:** (maintainer) the Review gate, then the Sonar gate, then merge close-out —
-including citing `merged via PR #823` in this doc. One Sonar finding (F-1) arrived on the
-phase-2 head and was fixed on the maintainer's explicit instruction; the register below
-carries it.
+including citing `merged via PR #823` in this doc.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the `FieldErrorFor` directive (red → green) | ✅ | `60fe74b` |
 | 1 — booking surfaces (sites 1–5) | ✅ | `4512d36` |
 | 2 — operator surfaces (sites 6–13, 15–17) | ✅ | `ec76ee0` |
-| 3 — admin site 14, e2e, convention note, close-out | ✅ | `5121aa9` (+ this sha-recording commit) |
+| 3 — admin site 14, e2e, convention note, close-out | ✅ | `5121aa9`, then `3b91273` + `fb5542d` (plan-doc precision) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -354,7 +359,7 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | sonar (PR #823, head `ec76ee0`) | `typescript:S1121` MAJOR at `field-error-for.ts:24` — "Extract the assignment of `nextFieldErrorId` from this expression". The plan's verified sketch generated the id as `` `riv-field-error-${(nextFieldErrorId += 1)}` ``, an assignment nested inside a template-literal expression. The Quality Gate *passed* (1 new issue), but this repo's merge bar is **0 new issues**, so it was above the bar | **fixed** — extracted into a `nextFieldErrorElementId()` helper that increments then returns. Behaviour is identical: ids stay unique, monotonic and the same shape, and no call site moves. Re-entered at Implement per the `riviera-sdlc` re-entry rule (routing gate: `riviera-frontend` — the directive stays in `shared/`, nothing moves; `angular-developer` + `frontend/.claude/CLAUDE.md`; `tdd`). Re-verified: `field-error-for.spec.ts`, `admin-privacy.spec.ts`, `review-panel.spec.ts`, `pricing-tab.spec.ts` — **67 passed** |
+| F-1 | sonar bot (PR #823, analysed at head `ec76ee0`) | `typescript:S1121` MAJOR at `field-error-for.ts:24` — "Extract the assignment of `nextFieldErrorId` from this expression". The plan's verified sketch generated the id as `` `riv-field-error-${(nextFieldErrorId += 1)}` ``, an assignment nested inside a template-literal expression. The Quality Gate *passed* (1 new issue), but this repo's merge bar is **0 new issues**, so it was above the bar | **fixed** — extracted into a `nextFieldErrorElementId()` helper that increments then returns. Behaviour is identical: ids stay unique, monotonic and the same shape, and no call site moves. Re-entered at Implement per the `riviera-sdlc` re-entry rule (routing gate: `riviera-frontend` — the directive stays in `shared/`, nothing moves; `angular-developer` + `frontend/.claude/CLAUDE.md`; `tdd`). Re-verified: `field-error-for.spec.ts`, `admin-privacy.spec.ts`, `review-panel.spec.ts`, `pricing-tab.spec.ts` — **67 passed**. Fixed in `d6a1649` |
 
 ---
 
