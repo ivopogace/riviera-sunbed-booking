@@ -1,0 +1,119 @@
+import { AA_NORMAL, Rgb, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
+import {
+  ACCENT_BORDER,
+  ACCENT_CHIP_FILL,
+  ACCENT_FILL,
+  ACCENT_INK,
+  Glass,
+  PORCELAIN_CARD_GLASS,
+  PORCELAIN_STOPS,
+  SOLID_BTN_FILL,
+  SOLID_BTN_HOVER,
+  SOLID_BTN_INK,
+  WHITE,
+  surfaceOver,
+} from '../../testing/glass-tokens';
+
+/**
+ * WCAG guard for the `--riv-accent-*` token family (#835), the positive-state counterpart to
+ * `admin-console.contrast.spec.ts`'s negative-state guard.
+ *
+ * <p>Porcelain only, and that is the whole proof rather than half of it: the nine sites this
+ * family migrates all sit inside a console that pins `data-riv-theme="porcelain"` on its host
+ * (`admin-console.ts`, `operator-console.ts`), so no other theme can reach them. The subtree
+ * pinning that guarantee rests on is not something jsdom maths can see — `accent-token-inks.e2e.ts`
+ * pins it against a real render under a forced dark document theme.
+ *
+ * <p>The teal ink the family replaces was `#0a4f5e`; `--riv-accent-ink` is `#085a6e`, which is
+ * LIGHTER, so this migration lowers contrast. That is deliberate (it collapses a near-duplicate
+ * out of the palette) and it is bounded here rather than discovered later.
+ *
+ * <p>Scope is WCAG 1.4.3 TEXT pairs, with one exception: the panel border is non-text chrome
+ * (1.4.11) and does not reach 3:1 at any alpha of this hue, so the last test asserts only that
+ * normalising three drifted alphas onto one token does not lower it. Raising it is #834's, which
+ * owns the danger panel's identical boundary.
+ */
+
+/** The teal ink these sites painted before the migration, kept for the bounding test. */
+const OUTGOING_ACCENT_INK: Rgb = hexToRgb('0a4f5e');
+
+/** The `white/85` pill the console's tabs and outbox buttons paint on. */
+const PILL: Glass = { color: WHITE, alpha: 0.85 };
+
+function layer(glass: Glass, base: Rgb): Rgb {
+  return surfaceOver(glass, base);
+}
+
+/**
+ * Every surface a migrated console ink lands on: the bare page stop, the card glass over it, the
+ * white pill over that, and the two accent tints over that.
+ */
+function consoleSurfaces(): readonly Rgb[] {
+  return PORCELAIN_STOPS.flatMap((stop) => {
+    const glass = layer(PORCELAIN_CARD_GLASS, stop);
+    return [
+      stop,
+      glass,
+      layer(PILL, glass),
+      layer(ACCENT_FILL, glass),
+      layer(ACCENT_CHIP_FILL, glass),
+    ];
+  });
+}
+
+function ratio(ink: Rgb, surface: Rgb): number {
+  return contrastRatio(rgbToHex(ink), rgbToHex(surface));
+}
+
+describe('Accent token family contrast (WCAG AA, #835)', () => {
+  it('the accent ink meets AA on every console surface it lands on', () => {
+    for (const surface of consoleSurfaces()) {
+      expect(
+        ratio(ACCENT_INK, surface),
+        `accent ink over ${rgbToHex(surface)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
+  it('the migration lowers contrast but never below AA', () => {
+    for (const surface of consoleSurfaces()) {
+      const before = ratio(OUTGOING_ACCENT_INK, surface);
+      const after = ratio(ACCENT_INK, surface);
+
+      expect(after, `accent ink over ${rgbToHex(surface)}`).toBeLessThan(before);
+      expect(after, `accent ink over ${rgbToHex(surface)}`).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
+  it('the solid-button ink is theme-invariant and meets AA on both fixed fills', () => {
+    for (const fill of [SOLID_BTN_FILL, SOLID_BTN_HOVER]) {
+      expect(ratio(SOLID_BTN_INK, fill), `solid ink over ${rgbToHex(fill)}`).toBeGreaterThanOrEqual(
+        AA_NORMAL,
+      );
+    }
+  });
+
+  it('normalising the panel border does not lower its non-text ratio', () => {
+    const outgoing: readonly Glass[] = [
+      { color: hexToRgb('2bb8d4'), alpha: 0.3 },
+      { color: hexToRgb('2bb8d4'), alpha: 0.34 },
+      { color: hexToRgb('0e8aa8'), alpha: 0.35 },
+    ];
+
+    for (const stop of PORCELAIN_STOPS) {
+      const glass = layer(PORCELAIN_CARD_GLASS, stop);
+      const fill = layer(ACCENT_FILL, glass);
+      const outside = ratio(layer(ACCENT_BORDER, glass), glass);
+      const inside = ratio(layer(ACCENT_BORDER, fill), fill);
+
+      for (const border of outgoing) {
+        expect(outside, `border over ${rgbToHex(glass)}`).toBeGreaterThanOrEqual(
+          ratio(layer(border, glass), glass),
+        );
+        expect(inside, `border over ${rgbToHex(fill)}`).toBeGreaterThanOrEqual(
+          ratio(layer(border, fill), fill),
+        );
+      }
+    }
+  });
+});

@@ -230,15 +230,14 @@ a11y specs stand unchanged except for the pinned colour constants (R-5).
 
 ## Execution status
 
-**Stage pointer:** `plan — authored, not yet committed`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** commit this plan doc on `claude/sdlc-835-pt3bat`, then start phase 0
-(write `accent-tokens.contrast.spec.ts` red against `glass-tokens.ts` constants that do
-not exist yet).
+**Next action:** migrate the nine porcelain-pinned console ink sites onto
+`riv-accent-ink`, then re-point `venue-tab.contrast.spec.ts`'s two constants.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The token set + its contrast proof | | |
+| 0 — The token set + its contrast proof | ✅ | |
 | 1 — The nine console ink sites → `--riv-accent-ink` | | |
 | 2 — The fixed-fill trio → `--riv-solid-btn-ink` | | |
 | 3 — The tint family → the accent tint tokens | | |
