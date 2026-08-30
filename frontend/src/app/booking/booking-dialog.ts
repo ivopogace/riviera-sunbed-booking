@@ -278,7 +278,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               </p>
             } @else {
               <p
-                class="mode-note instant mt-[14px] mb-1 block rounded-2xl border border-[rgba(43,184,212,0.34)] bg-[rgba(43,184,212,0.12)] px-[15px] py-[13px] text-[12.8px] leading-[1.5] text-riv-card-ink-soft"
+                class="mode-note instant mt-[14px] mb-1 block rounded-2xl border border-riv-accent-border bg-riv-accent-fill px-[15px] py-[13px] text-[12.8px] leading-[1.5] text-riv-card-ink-soft"
               >
                 <strong class="text-riv-card-ink">Instant Book.</strong> Next you’ll pay securely to
                 confirm this set right away — your booking code arrives on-screen and by email.

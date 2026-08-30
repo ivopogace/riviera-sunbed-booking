@@ -230,17 +230,17 @@ a11y specs stand unchanged except for the pinned colour constants (R-5).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** move the six tint sites onto the accent fill/border, chip and
-track tokens.
+**Next action:** write `accent-token-inks.e2e.ts` — one element per family, plus
+the forced-dark-document-theme test for both consoles (R-1, R-4).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The token set + its contrast proof | ✅ | |
 | 1 — The nine console ink sites → `--riv-accent-ink` | ✅ | |
 | 2 — The fixed-fill trio → `--riv-solid-btn-ink` | ✅ | |
-| 3 — The tint family → the accent tint tokens | | |
+| 3 — The tint family → the accent tint tokens | ✅ | |
 | 4 — Computed-style verification + the e2e pin | | |
 | 5 — Mechanism re-grep, follow-up issue, close-out | | |
 
@@ -412,6 +412,7 @@ needs a real browser for `getComputedStyle` but no live API — the same call
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-30 | plan / grill gate | Every literal spelling of the `#0a4f5e` teal — **including the `rgba()` form the issue's hex-only grep structurally cannot see** | `grep -rn '#0a4f5e\|rgba(10, *79, *94\|rgba(14, *138, *168\|rgba(43, *184, *212' frontend/src` | 14 production sites — the issue's 13, **plus** `booking-dialog.ts:326` | 13 migrated; the 14th is a latent dark-theme defect, not a tokenisation candidate → OQ-C follow-up |
+| 2026-08-30 | phase 3 | Widened once more to the **bare brand-teal hexes**, since the tint family is written three ways (`rgba(…)`, `#hex`, and Tailwind's `/opacity` modifier) and only the first two were swept | `grep -rn '#2bb8d4\|#0e8aa8' frontend/src/app` | 8 further production sites: `set-editor.html` ×5, `layout-editor.html`, `payout-statement.ts:105`, `app.html:312` | **Not migrated — deliberately.** All are the `/opacity` modifier form on the map/editor selection chrome: a different treatment, a different compile path (`color-mix()`), and the issue routes them to **#836** ("the app-wide literal residue this is one named sub-population of"). Recorded rather than silently absorbed |
 
 ---
 

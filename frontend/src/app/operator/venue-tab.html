@@ -283,7 +283,7 @@
                 <button
                   type="button"
                   appTouchTarget
-                  class="amenity-chip rounded-full border px-[15px] py-2 text-[12.5px] font-semibold [transition:background_0.15s_ease,border-color_0.15s_ease] [&.active]:border-[#0e8aa8] [&.active]:bg-[#2bb8d4]/[0.22] [&.active]:text-riv-accent-ink [&:not(.active)]:border-riv-card-border [&:not(.active)]:bg-white/50 [&:not(.active)]:text-riv-card-ink-soft"
+                  class="amenity-chip rounded-full border px-[15px] py-2 text-[12.5px] font-semibold [transition:background_0.15s_ease,border-color_0.15s_ease] [&.active]:border-riv-accent-chip-border [&.active]:bg-riv-accent-chip-fill [&.active]:text-riv-accent-ink [&:not(.active)]:border-riv-card-border [&:not(.active)]:bg-white/50 [&:not(.active)]:text-riv-card-ink-soft"
                   [class.active]="isAmenityActive(code)"
                   [attr.aria-pressed]="isAmenityActive(code)"
                   [attr.data-testid]="'amenity-toggle-' + code"

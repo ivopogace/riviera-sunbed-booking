@@ -17,7 +17,7 @@ const CLS = {
   lead: 'm-0 mb-4.5 text-[14.5px] leading-[1.5] text-riv-card-ink-soft',
   strong: 'text-riv-card-ink',
   infoBox:
-    'mb-3.5 flex items-start gap-2.5 rounded-[18px] border border-[rgba(43,184,212,0.3)] bg-[rgba(43,184,212,0.1)] px-4 py-3.5 text-left',
+    'mb-3.5 flex items-start gap-2.5 rounded-[18px] border border-riv-accent-border bg-riv-accent-fill px-4 py-3.5 text-left',
   infoIcon: 'text-[16px] leading-[1.3]',
   infoText: 'm-0 text-[13px] leading-[1.5] text-riv-card-ink-soft',
   codeCard:

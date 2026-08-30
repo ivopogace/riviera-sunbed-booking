@@ -60,6 +60,6 @@ export class OutcomeCard {
       'mx-auto mb-[18px] flex h-[66px] w-[66px] items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] text-[30px] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] ' +
       (this.tone() === 'pending'
         ? 'bg-[rgba(240,170,46,0.2)] text-[#a86a12]'
-        : 'bg-[rgba(43,184,212,0.18)] text-riv-accent-ink'),
+        : 'bg-riv-accent-chip-fill text-riv-accent-ink'),
   );
 }

@@ -197,7 +197,7 @@ type ErasureStage = 'form' | 'confirm' | 'done';
             tabindex="-1"
             data-testid="admin-privacy-done-panel"
             aria-labelledby="admin-privacy-done-heading"
-            class="mt-4 rounded-[14px] border border-[rgba(14,138,168,0.35)] bg-[rgba(43,184,212,0.12)] p-4 [animation:riv-pop_0.22s_ease] motion-reduce:[animation:none]"
+            class="mt-4 rounded-[14px] border border-riv-accent-border bg-riv-accent-fill p-4 [animation:riv-pop_0.22s_ease] motion-reduce:[animation:none]"
           >
             <h3 id="admin-privacy-done-heading" class="text-[14px] font-bold text-riv-accent-ink">
               Request actioned
