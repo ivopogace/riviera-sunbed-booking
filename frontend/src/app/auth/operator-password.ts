@@ -27,7 +27,7 @@ const CLS = {
   input:
     'font-[inherit] text-[16px] text-riv-card-ink bg-riv-field-fill border border-riv-field-border rounded-[14px] px-[14px] py-3 placeholder:text-riv-card-ink-soft focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink',
   hint: '-mt-1.5 text-[12px] text-riv-card-ink-soft',
-  // Keeps its resting margin while silent: an interpolation leaves whitespace, so `:empty` cannot match.
+  // Always mounted, so it keeps its resting margin while silent: an interpolation defeats `:empty`.
   notice: 'm-0 mb-5 text-[13.5px] leading-[1.5] text-riv-card-ink-soft',
   submitError: 'mt-3 text-[13px] font-semibold text-riv-error-ink',
   submit:
@@ -199,13 +199,12 @@ export class OperatorPassword {
    * below it, so on a phone a success message lands off-screen and is indistinguishable from the form
    * merely emptying itself — the one thing this page exists to communicate, silently missed.
    *
-   * <p>The error is queried FIRST and the notice only as a fallback, rather than as one selector list
-   * (#828). `querySelector` resolves a list in **document order**, not list order, so with the notice
-   * above the form and the error below it a list always returned the notice — a failed change focused
-   * a blank paragraph. The `:not(:empty)` that was meant to prevent exactly that never could: `:empty`
-   * matches an element with no child nodes, and an interpolation always leaves a text node in both.
-   * Neither arm needs a guard now — this runs only from `fail()` or the success branch, so whichever
-   * region it finds has just been given its message.
+   * <p>Two ordered lookups, not one selector list: `querySelector` resolves a list in **document
+   * order**, not list order, so a list returns the notice — which sits above the form — even when the
+   * error is what just spoke. Neither arm needs an emptiness guard, and `:empty` could not provide
+   * one: this runs only from `fail()` or the success branch, so the region it finds has just been
+   * given its message, and an interpolation always leaves a text node.
+   * Rationale: `docs/plans/action-alert-lifetime.md`.
    */
   private revealOutcome(): void {
     // afterNextRender, not queueMicrotask: it is bound to this component's injector, so a pending
