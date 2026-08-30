@@ -22,8 +22,10 @@ import ai.riviera.platform.ReviewFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.review.application.ReviewLifecycle;
 import ai.riviera.platform.review.application.ReviewSubmission;
+import ai.riviera.platform.review.vocabulary.AmendOutcome;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -35,6 +37,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * {@code INSERT ... ON CONFLICT} against the {@code review_once_per_booking} index — a fake could
  * not prove it. A read-then-write implementation would either record two rows or throw at the loser;
  * both are caught here.
+ *
+ * <p>The amend race is the same guarantee one verb along: an edit and a delete fired together on
+ * one review resolve by row-level semantics, so the loser reads its rows-affected as
+ * {@code NoSuchReview} instead of throwing or leaving a second row behind.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
@@ -80,6 +86,44 @@ class ReviewUniquenessIT {
 
 	private static ReviewSubmission stars(int stars) {
 		return new ReviewSubmission(stars, null, "Ana");
+	}
+
+	@RepeatedTest(3)
+	void aDeleteRacingAnEditLeavesAtMostOneRow() throws Exception {
+		String code = fixtures.completedBooking(fixtures.venue("Amend Race"), CHECKED_IN);
+		assertEquals(new SubmitOutcome.Submitted(), lifecycle.submit(code, stars(4)));
+
+		List<AmendOutcome> outcomes = raceAnEditAgainstADelete(code);
+
+		assertThat(outcomes).allMatch(
+				outcome -> outcome instanceof AmendOutcome.Done
+						|| outcome instanceof AmendOutcome.NoSuchReview,
+				"an amend may only succeed or find no review — never throw");
+		assertThat(outcomes).anyMatch(AmendOutcome.Done.class::isInstance);
+		assertThat(fixtures.reviewCountFor(code)).isLessThanOrEqualTo(1);
+	}
+
+	/** One edit and one delete on the same review, released together. Bounded waits fail fast. */
+	private List<AmendOutcome> raceAnEditAgainstADelete(String code) throws Exception {
+		CountDownLatch startGate = new CountDownLatch(1);
+		List<Callable<AmendOutcome>> attempts = List.of(
+				() -> {
+					startGate.await();
+					return lifecycle.edit(code, stars(5));
+				},
+				() -> {
+					startGate.await();
+					return lifecycle.delete(code);
+				});
+		try (ExecutorService pool = Executors.newFixedThreadPool(attempts.size())) {
+			List<Future<AmendOutcome>> futures = attempts.stream().map(pool::submit).toList();
+			startGate.countDown();
+			List<AmendOutcome> outcomes = new ArrayList<>();
+			for (Future<AmendOutcome> f : futures) {
+				outcomes.add(f.get(15, TimeUnit.SECONDS));
+			}
+			return outcomes;
+		}
 	}
 
 	/** Fire {@code contenders} submits for one booking, released together. Bounded waits fail fast. */

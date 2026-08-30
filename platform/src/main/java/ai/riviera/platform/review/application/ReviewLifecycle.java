@@ -1,5 +1,6 @@
 package ai.riviera.platform.review.application;
 
+import ai.riviera.platform.review.vocabulary.AmendOutcome;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 
 /**
@@ -19,4 +20,19 @@ public interface ReviewLifecycle {
 	 * @param bookingCode the bearer credential the guest presents (invariant #7) — never logged
 	 */
 	SubmitOutcome submit(String bookingCode, ReviewSubmission submission);
+
+	/**
+	 * Rewrite the review already recorded against that stay, or say why not.
+	 *
+	 * @param bookingCode the bearer credential the guest presents (invariant #7) — never logged
+	 */
+	AmendOutcome edit(String bookingCode, ReviewSubmission submission);
+
+	/**
+	 * Remove the review already recorded against that stay, or say why not. The stay stays
+	 * reviewable while its window is open, so a delete is not a final answer.
+	 *
+	 * @param bookingCode the bearer credential the guest presents (invariant #7) — never logged
+	 */
+	AmendOutcome delete(String bookingCode);
 }

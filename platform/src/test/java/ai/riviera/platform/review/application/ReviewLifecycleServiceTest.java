@@ -18,6 +18,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import ai.riviera.platform.review.events.ReviewsChanged;
 import ai.riviera.platform.review.spi.CompletedStays;
+import ai.riviera.platform.review.vocabulary.AmendOutcome;
 import ai.riviera.platform.review.vocabulary.BookingRef;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
 import ai.riviera.platform.review.vocabulary.OwnReview;
@@ -119,6 +120,119 @@ class ReviewLifecycleServiceTest {
 					() -> service.submit(CODE, new ReviewSubmission(stars, null, "Ana")));
 		}
 		assertTrue(reviews.writes.isEmpty(), "an invalid rating must not reach the store");
+	}
+
+	@Test
+	void editUpdatesAndRepublishes() {
+		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
+		service.submit(CODE, new ReviewSubmission(2, null, "Ana"));
+		events.published.clear();
+
+		assertEquals(new AmendOutcome.Done(),
+				service.edit(CODE, new ReviewSubmission(5, "Better than I said", "Ana K")));
+
+		assertEquals(new OwnReview(5, "Better than I said", "Ana K"), reviews.stored.get(BOOKING));
+		assertEquals(List.of(new ReviewsChanged(VENUE)), events.published);
+	}
+
+	@Test
+	void editRefusesAfterTheWindow() {
+		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
+		service.submit(CODE, new ReviewSubmission(2, null, "Ana"));
+		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(61)));
+		events.published.clear();
+
+		assertEquals(new AmendOutcome.WindowClosed(), service.edit(CODE, COMMENTED));
+
+		assertEquals(new OwnReview(2, null, "Ana"), reviews.stored.get(BOOKING), "a frozen verdict stands");
+		assertTrue(events.published.isEmpty());
+	}
+
+	@Test
+	void editWithoutAReviewIsNoSuchReview() {
+		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
+
+		assertEquals(new AmendOutcome.NoSuchReview(), service.edit(CODE, COMMENTED));
+
+		assertTrue(events.published.isEmpty());
+	}
+
+	@Test
+	void editRefusesAStayThatWasNeverCheckedIn() {
+		stays.knownButNotCompleted(CODE);
+
+		assertEquals(new AmendOutcome.NotEligible(), service.edit(CODE, COMMENTED));
+	}
+
+	@Test
+	void editRefusesACodeNoBookingAnswersTo() {
+		assertEquals(new AmendOutcome.NoSuchStay(), service.edit(CODE, COMMENTED));
+	}
+
+	@Test
+	void editRefusesARatingOutsideTheScaleBeforeTouchingAnything() {
+		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
+		service.submit(CODE, new ReviewSubmission(2, null, "Ana"));
+
+		assertThrows(IllegalArgumentException.class,
+				() -> service.edit(CODE, new ReviewSubmission(6, null, "Ana")));
+
+		assertEquals(new OwnReview(2, null, "Ana"), reviews.stored.get(BOOKING));
+	}
+
+	@Test
+	void deleteRepublishes() {
+		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
+		service.submit(CODE, COMMENTED);
+		events.published.clear();
+
+		assertEquals(new AmendOutcome.Done(), service.delete(CODE));
+
+		assertTrue(reviews.stored.isEmpty());
+		assertEquals(List.of(new ReviewsChanged(VENUE)), events.published);
+	}
+
+	@Test
+	void deleteRefusesAfterTheWindow() {
+		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
+		service.submit(CODE, COMMENTED);
+		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(61)));
+		events.published.clear();
+
+		assertEquals(new AmendOutcome.WindowClosed(), service.delete(CODE));
+
+		assertTrue(reviews.existsFor(BOOKING), "a frozen verdict stands");
+		assertTrue(events.published.isEmpty());
+	}
+
+	@Test
+	void deleteWithoutAReviewIsNoSuchReview() {
+		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
+
+		assertEquals(new AmendOutcome.NoSuchReview(), service.delete(CODE));
+
+		assertTrue(events.published.isEmpty());
+	}
+
+	@Test
+	void deleteRefusesAStayThatWasNeverCheckedIn() {
+		stays.knownButNotCompleted(CODE);
+
+		assertEquals(new AmendOutcome.NotEligible(), service.delete(CODE));
+	}
+
+	@Test
+	void deleteRefusesACodeNoBookingAnswersTo() {
+		assertEquals(new AmendOutcome.NoSuchStay(), service.delete(CODE));
+	}
+
+	@Test
+	void aDeletedReviewLeavesTheStayReviewableAgain() {
+		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
+		service.submit(CODE, COMMENTED);
+		service.delete(CODE);
+
+		assertEquals(new SubmitOutcome.Submitted(), service.submit(CODE, new ReviewSubmission(1, null, "Ana")));
 	}
 
 	private record Recorded(BookingRef booking, VenueRef venue, OwnReview review, Instant at) {

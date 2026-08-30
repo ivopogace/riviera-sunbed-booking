@@ -145,14 +145,14 @@ stands in for `feature/reviews-s2-comment-lifecycle` (cloud-session substitution
 |---|---|---|---|---|---|---|
 | R-1 | Flyway V46 collision with in-flight work | low | high | Checked: V45 is highest on `main`; open PRs are Dependabot-only. If a collision appears, this branch renumbers (merges second) | agent | open |
 | R-2 | Fence-order drift between submit / edit / delete / panel-read (rated+frozen must read frozen everywhere) | low (was med) | med | **Structurally removed**: the order lives once in `domain/ReviewGate`, consulted by both the lifecycle service and the panel read; `ReviewGateTest` pins it, `ReviewLifecycleFlowIT` proves the ends agree | agent | open |
-| R-3 | Edit/delete forget to republish `ReviewsChanged` → stale aggregate | med | high | `ReviewLifecycleServiceTest` asserts the publish per verb; `VenueRatingRecomputeIT` extension proves delete-to-"New"; recompute is already idempotent (full recompute, never increment) | agent | open |
+| R-3 | Edit/delete forget to republish `ReviewsChanged` → stale aggregate | med | high | `ReviewLifecycleServiceTest` asserts the publish per verb; `VenueRatingRecomputeIT` extension proves delete-to-"New"; recompute is already idempotent (full recompute, never increment) | agent | **closed (phase 2)** — both publishes pinned per verb, and `aDeletedSoleReviewReturnsTheVenueToNew` proves the venue returns to `0/0` through the real listener |
 | R-4 | `display_name`/`comment` are the **first PII in the `review` table** — erasure (ADR-0010) has no hook yet | high | med | Deliberate epic sequencing (story 25 is a later slice). Record the obligation: close-out files a follow-up issue referencing epic #810 story 25 before this slice merges | agent | open |
 | R-5 | Client `maxLength` counts UTF-16 units, server counts code points (emoji differ) | low | low | Client is strictly tighter (a surrogate pair counts 2); the server bound + DB CHECK are the contract (AC-2); no truncation anywhere | agent | open |
 | R-6 | Invariant #7 — booking code in new error bodies/logs | low | high | All errors via `ApiProblem` with `instance` pinned to `/api/bookings`; `ReviewControllerTest.theBookingCodeNeverAppearsInAnErrorBody` extended to PUT/DELETE | agent | open |
-| R-7 | New PUT/DELETE routes bypass the per-code rate-limit budget or CSRF/permitAll wiring | med | med | Same `RateLimitFilter.REVIEW_TEMPLATE` bucket; `SecurityConfig` permitAll + CSRF-ignore rows; `EndpointRoleGateCoverageTest.DECLARED_REACHABLE` gains both routes (the inline endpoint count comment updates — the F-3 lesson) | agent | open |
+| R-7 | New PUT/DELETE routes bypass the per-code rate-limit budget or CSRF/permitAll wiring | med | med | Same `RateLimitFilter.REVIEW_TEMPLATE` bucket; `SecurityConfig` permitAll + CSRF-ignore rows; `EndpointRoleGateCoverageTest.DECLARED_REACHABLE` gains both routes (the inline endpoint count comment updates — the F-3 lesson) | agent | **closed (phase 2)** — all three verbs classified together in `targetOf`, the two `permitAll` rows added (the CSRF ignore was already path-scoped, so it covered them), both coverage rows added, the six→eight counts updated, and `RateLimitFilterTest.everyReviewVerbSpendsTheSamePerCodeBudget` + `aReviewDeleteAndTheViewShareOneCodeBudget` pin it |
 | R-8 | Error-contract drift on new 4xx paths (§6b) | low | med | Compact-ctor `InvalidApiRequestException` for 400s; typed-outcome switch + `ApiProblem` for 404/409; no per-controller `@ExceptionHandler` (`ErrorContractArchitectureTests` enforces) | agent | open |
 | R-9 | `ResponsibilitiesArchitectureTests` — new review SQL outside `review/adapter/out` | low | med | All new SQL lands in `JdbcReviews`; `booking` touches only its own view + `CustomerLookup` | agent | open |
-| R-10 | Concurrent edit racing a delete on the same review | low | low | Row-level semantics: `Reviews.update`/`delete` return whether a row was affected — the loser maps to `NO_SUCH_REVIEW`, never a duplicate (the `UNIQUE (booking_id)` constraint stands); pinned by `ReviewUniquenessIT.aDeleteRacingAnEditLeavesAtMostOneRow` | agent | open |
+| R-10 | Concurrent edit racing a delete on the same review | low | low | Row-level semantics: `Reviews.update`/`delete` return whether a row was affected — the loser maps to `NO_SUCH_REVIEW`, never a duplicate (the `UNIQUE (booking_id)` constraint stands); pinned by `ReviewUniquenessIT.aDeleteRacingAnEditLeavesAtMostOneRow` | agent | **closed (phase 2)** — the race test passes against real Postgres |
 
 ## Open questions / Assumptions
 
@@ -370,16 +370,16 @@ with `cls.btnOutlineDanger`; every new control carries `appTouchTarget`.
 
 ## Execution status
 
-**Stage pointer:** `implement — phases 0-1 done; draft PR #819 open against main`
+**Stage pointer:** `implement — phases 0-2 done; draft PR #819 open against main`
 
-**Next action:** build phase 2 (edit + delete on the lifecycle port + edge wiring), after
-checking phase 1's CI run.
+**Next action:** build phase 3 (sealed panel read + name suggestion), after checking phase
+2's CI run.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V46 migration + store-port widening | ✅ | `5a4e72a` |
-| 1 — review gate + submit with comment/display name | ✅ | this commit |
-| 2 — edit + delete on the lifecycle port + edge wiring | | |
+| 1 — review gate + submit with comment/display name | ✅ | `f501e30` |
+| 2 — edit + delete on the lifecycle port + edge wiring | ✅ | this commit |
 | 3 — sealed panel read + name suggestion | | |
 | 4 — frontend panel (form / own / frozen / messaging) | | |
 | 5 — e2e journeys + docs freshness + close-out | | |
@@ -431,6 +431,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/ReviewControllerTest.java` — new verbs + 400 bounds + code-redaction sweep
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — stubs for the evolved ports
 - `platform/src/test/java/ai/riviera/platform/EndpointRoleGateCoverageTest.java` — two new DECLARED_REACHABLE rows
+- `platform/src/test/java/ai/riviera/platform/RateLimitFilterTest.java` — the three review verbs share one per-code budget
 - `platform/src/test/java/ai/riviera/platform/booking/application/view/ViewBookingServiceTest.java` — panel pass-through + suggestion
 - `platform/src/test/java/ai/riviera/platform/venue/VenueRatingRecomputeIT.java` — delete-to-"New" case
 - `platform/src/test/java/ai/riviera/platform/review/ReviewFixtures.java` — helpers for commented reviews
@@ -720,6 +721,7 @@ protected readonly reviewForm = form(this.model, (path) => {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-30 | Phase 2 — publishers of `ReviewsChanged` | every site that announces a moved venue aggregate; the risk is a lifecycle verb writing without announcing | `grep -rn "new ReviewsChanged" platform/src/main/java` | 2 — both in `ReviewLifecycleService` (the claim path and the shared amend path) | none needed: all three verbs route their write through one of those two lines, so "wrote but did not announce" is unrepresentable rather than merely tested |
 | 2026-08-30 | Phase 1 — bounded free text on an edge DTO | the repo's one bounded-text edge mechanism: strip first, then bound in **code points** so Postgres `char_length` never rejects what Java accepted | `git ls-files 'platform/*adapter/in*.java' \| xargs grep -ln codePointCount` (none — the mechanism lives one layer in) + `grep -rln VenueFieldValidation platform/src/main` | 7 venue application commands via `VenueFieldValidation.requireText(value, field, maxLength)` | none needed — `ReviewText.fitsComment`/`fitsDisplayName` mirror it exactly (strip in the compact ctor, then code-point bound); the review edge keeps `InvalidApiRequestException` because it is the DTO itself, not an application command |
 
 ---

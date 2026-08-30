@@ -365,6 +365,9 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/withdraw").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/review").permitAll()
+						// Same credential, same resource: the code-holder may also amend their own review.
+						.requestMatchers(HttpMethod.PUT, "/api/bookings/*/review").permitAll()
+						.requestMatchers(HttpMethod.DELETE, "/api/bookings/*/review").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
 						.requestMatchers(HttpMethod.POST, OPERATOR_PASSWORD_PATH).hasRole(OPERATOR_ROLE)
 						// Every verb, not just GET — anonymous → 401, operator session → 403.

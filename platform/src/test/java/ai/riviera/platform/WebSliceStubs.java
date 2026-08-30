@@ -129,6 +129,8 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueFilter;
 import ai.riviera.platform.review.api.ReviewEligibility;
 import ai.riviera.platform.review.application.ReviewLifecycle;
+import ai.riviera.platform.review.application.ReviewSubmission;
+import ai.riviera.platform.review.vocabulary.AmendOutcome;
 import ai.riviera.platform.review.vocabulary.ReviewState;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -942,7 +944,23 @@ class WebSliceStubs {
 	 */
 	@Bean
 	ReviewLifecycle reviewLifecycle() {
-		return (_, _) -> new SubmitOutcome.NoSuchStay();
+		return new ReviewLifecycle() {
+
+			@Override
+			public SubmitOutcome submit(String bookingCode, ReviewSubmission submission) {
+				return new SubmitOutcome.NoSuchStay();
+			}
+
+			@Override
+			public AmendOutcome edit(String bookingCode, ReviewSubmission submission) {
+				return new AmendOutcome.NoSuchStay();
+			}
+
+			@Override
+			public AmendOutcome delete(String bookingCode) {
+				return new AmendOutcome.NoSuchStay();
+			}
+		};
 	}
 
 	/** The eligibility port the code-gated booking read consults for its {@code reviewable} flag. */

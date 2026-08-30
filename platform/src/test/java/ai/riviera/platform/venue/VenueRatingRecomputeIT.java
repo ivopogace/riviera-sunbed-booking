@@ -142,6 +142,19 @@ class VenueRatingRecomputeIT {
 	}
 
 	@Test
+	void aDeletedSoleReviewReturnsTheVenueToNew() {
+		long venueId = fixtures.venue("Recompute Delete");
+		String code = review(venueId, 5);
+		announce(venueId);
+		awaitRating(venueId, 50, 1);
+
+		deleteReviewFor(code);
+		announce(venueId);
+
+		awaitRating(venueId, 0, 0);
+	}
+
+	@Test
 	void aVenueWithNoReviewsRecomputesBackToNew() {
 		long venueId = fixtures.venue("Recompute Empty");
 
@@ -156,7 +169,7 @@ class VenueRatingRecomputeIT {
 				status -> publisher.publishEvent(new ReviewsChanged(new VenueRef(venueId))));
 	}
 
-	private void review(long venueId, int stars) {
+	private String review(long venueId, int stars) {
 		String code = fixtures.completedBooking(venueId, Instant.now().minusSeconds(3600));
 		jdbc.sql("""
 				INSERT INTO review (booking_id, venue_id, stars, created_at)
@@ -165,6 +178,12 @@ class VenueRatingRecomputeIT {
 				.param("booking", fixtures.bookingIdOf(code)).param("venue", venueId)
 				.param("stars", stars).param("createdAt", Timestamp.from(Instant.now()))
 				.update();
+		return code;
+	}
+
+	private void deleteReviewFor(String code) {
+		jdbc.sql("DELETE FROM review WHERE booking_id = :id")
+				.param("id", fixtures.bookingIdOf(code)).update();
 	}
 
 	private void awaitRating(long venueId, int ratingTenths, int reviewsCount) {

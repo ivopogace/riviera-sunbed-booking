@@ -12,6 +12,7 @@ import ai.riviera.platform.review.domain.ReviewGate;
 import ai.riviera.platform.review.domain.Stars;
 import ai.riviera.platform.review.events.ReviewsChanged;
 import ai.riviera.platform.review.spi.CompletedStays;
+import ai.riviera.platform.review.vocabulary.AmendOutcome;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
 import ai.riviera.platform.review.vocabulary.ReviewState;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
@@ -64,6 +65,47 @@ class ReviewLifecycleService implements ReviewLifecycle {
 		};
 	}
 
+	@Override
+	@Transactional
+	public AmendOutcome edit(String bookingCode, ReviewSubmission submission) {
+		if (!Stars.isValid(submission.stars())) {
+			throw new IllegalArgumentException(Stars.SCALE_DESCRIPTION);
+		}
+		return amend(bookingCode, (stay, at) -> reviews.update(stay.booking(), submission.stars(),
+				submission.comment(), submission.displayName(), at));
+	}
+
+	@Override
+	@Transactional
+	public AmendOutcome delete(String bookingCode) {
+		return amend(bookingCode, (stay, at) -> reviews.delete(stay.booking()));
+	}
+
+	/**
+	 * The half of an amend that both verbs share: the gate decides, and only a stay that already
+	 * carries a review is amendable — so {@code ELIGIBLE}, which means "no review yet", is this
+	 * path's {@code NoSuchReview} rather than its go-ahead.
+	 */
+	private AmendOutcome amend(String bookingCode, AmendWrite write) {
+		Optional<CompletedStay> found = stays.byCode(bookingCode);
+		Instant now = clock.instant();
+		return switch (stateOf(bookingCode, found, now)) {
+			case NO_SUCH_STAY -> new AmendOutcome.NoSuchStay();
+			case NOT_COMPLETED -> new AmendOutcome.NotEligible();
+			case WINDOW_CLOSED -> new AmendOutcome.WindowClosed();
+			case ELIGIBLE -> new AmendOutcome.NoSuchReview();
+			case ALREADY_REVIEWED -> write(found.orElseThrow(), write, now);
+		};
+	}
+
+	private AmendOutcome write(CompletedStay stay, AmendWrite write, Instant now) {
+		if (!write.to(stay, now)) {
+			return new AmendOutcome.NoSuchReview();
+		}
+		events.publishEvent(new ReviewsChanged(stay.venue()));
+		return new AmendOutcome.Done();
+	}
+
 	private SubmitOutcome claim(CompletedStay stay, ReviewSubmission submission, Instant now) {
 		if (!reviews.claim(stay.booking(), stay.venue(), submission.stars(), submission.comment(),
 				submission.displayName(), now)) {
@@ -77,5 +119,15 @@ class ReviewLifecycleService implements ReviewLifecycle {
 		return ReviewGate.stateOf(found.isPresent() || stays.existsByCode(bookingCode),
 				found.map(CompletedStay::completedAt).orElse(null),
 				found.isPresent() && reviews.existsFor(found.get().booking()), now);
+	}
+
+	/**
+	 * The row write an amend performs once the gate has cleared it. {@code false} means no row
+	 * answered to the booking any more — a concurrent delete won, which the caller reports as
+	 * {@code NoSuchReview} rather than as a failure.
+	 */
+	private interface AmendWrite {
+
+		boolean to(CompletedStay stay, Instant at);
 	}
 }

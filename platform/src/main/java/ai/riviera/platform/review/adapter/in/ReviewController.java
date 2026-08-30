@@ -5,13 +5,16 @@ import java.net.URI;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.review.application.ReviewLifecycle;
+import ai.riviera.platform.review.vocabulary.AmendOutcome;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 import ai.riviera.platform.shared.ApiProblem;
 
@@ -21,9 +24,10 @@ import ai.riviera.platform.shared.ApiProblem;
  * touching {@code BookingController}: the resource is the guest's booking, the use case is
  * {@code review}'s. The code is the whole authorization (invariant #7); there is no session.
  *
- * <p>Maps the sealed {@link SubmitOutcome} to HTTP through an exhaustive {@code switch}, so a future
- * outcome cannot fall into an existing arm. Success is {@code 201} with no body — the client
- * re-reads the booking, which is where the new {@code reviewable} state lives.
+ * <p>All three verbs live on one path — the guest's one review — and each maps its sealed outcome
+ * to HTTP through an exhaustive {@code switch}, so a future outcome cannot fall into an existing
+ * arm. Success carries no body: the client re-reads the booking, which is where the review's new
+ * state lives.
  */
 @RestController
 @RequestMapping("/api/bookings")
@@ -47,6 +51,31 @@ class ReviewController {
 					error(HttpStatus.CONFLICT, "REVIEW_WINDOW_CLOSED", "The review window for this stay has closed.");
 			case SubmitOutcome.AlreadyReviewed ignored ->
 					error(HttpStatus.CONFLICT, "REVIEW_ALREADY_SUBMITTED", "This stay has already been reviewed.");
+		};
+	}
+
+	@PutMapping("/{code}/review")
+	ResponseEntity<?> updateReview(@PathVariable String code,
+			@RequestBody SubmitReviewRequest request) {
+		return amended(lifecycle.edit(code, request.toSubmission()));
+	}
+
+	@DeleteMapping("/{code}/review")
+	ResponseEntity<?> deleteReview(@PathVariable String code) {
+		return amended(lifecycle.delete(code));
+	}
+
+	private static ResponseEntity<?> amended(AmendOutcome outcome) {
+		return switch (outcome) {
+			case AmendOutcome.Done ignored -> ResponseEntity.noContent().build();
+			case AmendOutcome.NoSuchStay ignored ->
+					error(HttpStatus.NOT_FOUND, "NO_SUCH_BOOKING", "No booking with this code.");
+			case AmendOutcome.NoSuchReview ignored ->
+					error(HttpStatus.NOT_FOUND, "NO_SUCH_REVIEW", "This stay carries no review.");
+			case AmendOutcome.NotEligible ignored ->
+					error(HttpStatus.CONFLICT, "BOOKING_NOT_COMPLETED", "This stay has not been checked in.");
+			case AmendOutcome.WindowClosed ignored ->
+					error(HttpStatus.CONFLICT, "REVIEW_WINDOW_CLOSED", "The review window for this stay has closed.");
 		};
 	}
 

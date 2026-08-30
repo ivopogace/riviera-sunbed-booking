@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.RequestBuilder;
 
 import ai.riviera.platform.review.application.ReviewLifecycle;
 import ai.riviera.platform.review.application.ReviewSubmission;
+import ai.riviera.platform.review.vocabulary.AmendOutcome;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,7 +21,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -159,6 +162,95 @@ class ReviewControllerTest {
 
 		assertThat(body).doesNotContain(CODE);
 		mvc.perform(submit(4)).andExpect(jsonPath("$.instance").value("/api/bookings"));
+	}
+
+	@Test
+	void anEditIsNoContent() throws Exception {
+		when(reviewLifecycle.edit(any(), any())).thenReturn(new AmendOutcome.Done());
+
+		mvc.perform(edit())
+				.andExpect(status().isNoContent())
+				.andExpect(content().string(""));
+
+		verify(reviewLifecycle).edit(eq(CODE), eq(SUBMISSION));
+	}
+
+	@Test
+	void aDeleteIsNoContent() throws Exception {
+		when(reviewLifecycle.delete(any())).thenReturn(new AmendOutcome.Done());
+
+		mvc.perform(delete(REVIEW, CODE).with(csrf()))
+				.andExpect(status().isNoContent())
+				.andExpect(content().string(""));
+
+		verify(reviewLifecycle).delete(eq(CODE));
+	}
+
+	@Test
+	void amendingAStayWithNoReviewIsItsOwnNotFound() throws Exception {
+		when(reviewLifecycle.edit(any(), any())).thenReturn(new AmendOutcome.NoSuchReview());
+		when(reviewLifecycle.delete(any())).thenReturn(new AmendOutcome.NoSuchReview());
+
+		mvc.perform(edit())
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("NO_SUCH_REVIEW"));
+		mvc.perform(delete(REVIEW, CODE).with(csrf()))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("NO_SUCH_REVIEW"));
+	}
+
+	@Test
+	void amendingAnUnknownCodeIsTheSharedNonEnumeratingAnswer() throws Exception {
+		when(reviewLifecycle.edit(any(), any())).thenReturn(new AmendOutcome.NoSuchStay());
+
+		mvc.perform(edit())
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("NO_SUCH_BOOKING"));
+	}
+
+	@Test
+	void amendingANeverCheckedInStayIsAConflict() throws Exception {
+		when(reviewLifecycle.delete(any())).thenReturn(new AmendOutcome.NotEligible());
+
+		mvc.perform(delete(REVIEW, CODE).with(csrf()))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("BOOKING_NOT_COMPLETED"));
+	}
+
+	@Test
+	void amendingAFrozenStayIsAConflict() throws Exception {
+		when(reviewLifecycle.edit(any(), any())).thenReturn(new AmendOutcome.WindowClosed());
+
+		mvc.perform(edit())
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("REVIEW_WINDOW_CLOSED"));
+	}
+
+	@Test
+	void anEditIsBoundedTheSameWayASubmitIs() throws Exception {
+		mvc.perform(put(REVIEW, CODE).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"stars\":4,\"comment\":\"" + "x".repeat(1001) + "\",\"displayName\":\"Ana\"}"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+		verify(reviewLifecycle, never()).edit(any(), any());
+	}
+
+	@Test
+	void theBookingCodeNeverAppearsInAnAmendErrorBody() throws Exception {
+		when(reviewLifecycle.edit(any(), any())).thenReturn(new AmendOutcome.WindowClosed());
+		when(reviewLifecycle.delete(any())).thenReturn(new AmendOutcome.NoSuchReview());
+
+		assertThat(mvc.perform(edit()).andReturn().getResponse().getContentAsString())
+				.doesNotContain(CODE);
+		assertThat(mvc.perform(delete(REVIEW, CODE).with(csrf())).andReturn().getResponse()
+				.getContentAsString()).doesNotContain(CODE);
+		mvc.perform(edit()).andExpect(jsonPath("$.instance").value("/api/bookings"));
+	}
+
+	private static RequestBuilder edit() {
+		return put(REVIEW, CODE).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"stars\":4,\"comment\":\"Great sunbeds\",\"displayName\":\"Ana\"}");
 	}
 
 	private static RequestBuilder submit(int stars) {
