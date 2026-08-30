@@ -63,8 +63,11 @@ function reviewRefusal(error: unknown): string | undefined {
 const CLS = {
   card: `${CARD_SURFACE} mx-auto my-8 max-w-[560px] px-[26px] pt-[26px] pb-6`,
   stateCard: `${CARD_SURFACE} mx-auto my-8 max-w-[460px] px-[30px] py-10 text-center`,
-  title: 'm-0 text-[28px] font-bold tracking-[-0.02em] text-riv-card-ink',
-  stateTitle: 'mx-0 mt-0 mb-2 text-[22px] font-bold tracking-[-0.02em] text-riv-card-ink',
+  // The outline twins cls.result's: a booking→booking swap parks a keyboard guest's focus here.
+  title:
+    'm-0 text-[28px] font-bold tracking-[-0.02em] text-riv-card-ink focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
+  stateTitle:
+    'mx-0 mt-0 mb-2 text-[22px] font-bold tracking-[-0.02em] text-riv-card-ink focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
   lead: 'mx-0 mt-0 mb-[18px] text-[14.5px] leading-[1.5] text-riv-card-ink-soft',
   link: `${LINK} inline-flex items-center`,
   linkBack: `${LINK} mt-[18px] inline-flex items-center`,
