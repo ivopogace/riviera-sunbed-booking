@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
-import { BehaviorSubject, of, throwError } from 'rxjs';
+import { BehaviorSubject, NEVER, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { expectNoAxeViolations } from '../../testing/axe';
@@ -1166,6 +1166,85 @@ describe('BookingView', () => {
     expect(host.textContent).not.toContain('Venue Alpha');
     // The swap destroyed whatever held focus (WCAG 2.4.3) — the new booking's title takes it.
     expect(document.activeElement).toBe(host.querySelector('[data-testid="bv-title"]'));
+  });
+
+  it('parks focus on the failure card when the swapped-to booking fails to load', async () => {
+    const paramMap$ = new BehaviorSubject(convertToParamMap({ code: 'AAAAAAAAAA' }));
+    const service: Partial<BookingService> = {
+      getByCode: (code: string) =>
+        code === 'AAAAAAAAAA'
+          ? of({ ...DETAIL, code: 'AAAAAAAAAA' })
+          : throwError(() => new HttpErrorResponse({ status: 500 })),
+      takePrefetched: () => undefined,
+    };
+    await TestBed.configureTestingModule({
+      imports: [BookingView],
+      providers: [
+        provideRouter([]),
+        { provide: BookingService, useValue: service },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: paramMap$.value }, paramMap: paramMap$ },
+        },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(BookingView);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+
+    paramMap$.next(convertToParamMap({ code: 'BBBBBBBBBB' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.textContent).toContain('Couldn’t load your booking');
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="bv-title"]'));
+  });
+
+  it('parks focus on the not-found card when a swap arrives with no code', async () => {
+    const paramMap$ = new BehaviorSubject(convertToParamMap({ code: 'AAAAAAAAAA' }));
+    const service: Partial<BookingService> = {
+      getByCode: () => of({ ...DETAIL, code: 'AAAAAAAAAA' }),
+      takePrefetched: () => undefined,
+    };
+    await TestBed.configureTestingModule({
+      imports: [BookingView],
+      providers: [
+        provideRouter([]),
+        { provide: BookingService, useValue: service },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: paramMap$.value }, paramMap: paramMap$ },
+        },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(BookingView);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+
+    paramMap$.next(convertToParamMap({}));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.textContent).toContain('Booking not found');
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="bv-title"]'));
+  });
+
+  it('shows the loading card while the fetch is in flight', async () => {
+    const fixture = await render({
+      getByCode: () => NEVER,
+      takePrefetched: () => undefined,
+    });
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="bv-title"]')?.textContent).toContain(
+      'Loading your booking',
+    );
   });
 
   describe('review panel', () => {
