@@ -811,6 +811,37 @@ rejected alternative, not a present-tense fact about the system — rewriting an
 match today's field names is exactly what this skill's scope discipline forbids. Left for the
 maintainer to judge.
 
+### Re-run at the review gate (close-out step 5)
+
+Range `origin/main...claude/reviews-slice-2-impl-6i6pk8`, over the slice **and** the fix round.
+
+**Sweep 2a (renames/removals):** every remaining hit for `reviewable` / `stateFor` /
+`SubmitReview*` is either the English adjective or past-tense narrative ("which retired the
+`reviewable` flag"). No stated present-tense fact survives the rename. Zero findings.
+
+**Sweep 2b (counting):** the slice made the **eighth** public booking endpoint and the **sixth**
+code-keyed one. The phase-5 pass updated three of `RateLimitFilter`'s four counts and left "the
+**four** code-keyed endpoints"; `RateLimitProperties` was already stale at four/three before this
+slice. Both patched (F-8). `BookingController`'s "the view, cancel and withdraw legs (all three
+code-gated)" is scoped to its own controller and stays true. Nothing else counts reviews, verbs,
+events, listeners or migrations.
+
+**Step 3 (reverse direction):** `docs/design/riviera-sunbeds-liquid-glass-v3.dc.html` depicts the
+rating *display* (card and header counts) and the request-to-book copy, never a booking-page review
+section — nothing in it is contradicted, so no `as-built diverges` pointer is due.
+
+**ADR-0015 — the phase-5 flag, resolved.** Amended: the argument is kept verbatim in substance and
+now says the projection "still answers *not checked in yet*" instead of naming `reviewable=false`.
+The reasoning is untouched; only the dangling identifier goes, which is what the scope discipline
+protects (a decision's substance) versus what it does not (a deleted field's name).
+
+**Also raised, not fixed — pre-existing, out of this slice's scope:** `BookingController`'s
+`UNKNOWN_CODE_DETAIL` and `ReviewController`'s `noSuchBooking()` carry the same
+`NO_SUCH_BOOKING` / "No booking with this code." pair across two files, where a shared private
+constant cannot reach. That is the #644 twin class one file apart, and it arrived with slice 1
+(#816), not here. The `CurrentPasswordDetailTwinTest` shape is the tool for it if it is ever worth
+pinning.
+
 ---
 
 ## Acceptance-criteria verification (final)
