@@ -5,6 +5,7 @@ import { FormField, form, maxLength, required } from '@angular/forms/signals';
 import { BookingStatus } from '../shared/booking-status';
 import { BusyAction } from '../shared/busy-action';
 import { formatDeadline } from '../shared/deadline';
+import { FieldErrorFor } from '../shared/field-error-for';
 import { FieldGlass } from '../shared/field-glass';
 import { focusMover } from '../shared/focus-after-render';
 import { StarRating } from '../shared/star-rating';
@@ -100,7 +101,15 @@ function starsLabel(stars: number): string {
  * outlive this component, since a successful write is exactly what replaces the form.
  */
 @Component({
-  imports: [BusyAction, FieldGlass, FormField, NgTemplateOutlet, StarRating, TouchTarget],
+  imports: [
+    BusyAction,
+    FieldErrorFor,
+    FieldGlass,
+    FormField,
+    NgTemplateOutlet,
+    StarRating,
+    TouchTarget,
+  ],
   selector: 'app-review-panel',
   template: `
     @switch (panel().kind) {
@@ -238,11 +247,16 @@ function starsLabel(stars: number): string {
             [class]="cls.textarea"
             [formField]="reviewForm.comment"
             data-testid="review-comment"
+            #commentControl
           ></textarea>
           @if (submitAttempted() && reviewForm.comment().errors().length) {
-            <span [class]="cls.fieldError" role="alert" data-testid="review-comment-error">{{
-              reviewForm.comment().errors()[0].message
-            }}</span>
+            <span
+              [appFieldErrorFor]="commentControl"
+              [class]="cls.fieldError"
+              role="alert"
+              data-testid="review-comment-error"
+              >{{ reviewForm.comment().errors()[0].message }}</span
+            >
           }
         </label>
 
@@ -256,11 +270,16 @@ function starsLabel(stars: number): string {
             [class]="cls.input"
             [formField]="reviewForm.displayName"
             data-testid="review-display-name"
+            #displayNameControl
           />
           @if (submitAttempted() && reviewForm.displayName().errors().length) {
-            <span [class]="cls.fieldError" role="alert" data-testid="review-display-name-error">{{
-              reviewForm.displayName().errors()[0].message
-            }}</span>
+            <span
+              [appFieldErrorFor]="displayNameControl"
+              [class]="cls.fieldError"
+              role="alert"
+              data-testid="review-display-name-error"
+              >{{ reviewForm.displayName().errors()[0].message }}</span
+            >
           }
         </label>
 

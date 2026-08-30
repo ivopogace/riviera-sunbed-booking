@@ -15,6 +15,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { todayBookingDate } from '../shared/booking-date';
 import { formatBookingDate } from '../shared/booking-date-label';
+import { FieldErrorFor } from '../shared/field-error-for';
 import { FieldGlass } from '../shared/field-glass';
 import { trapFocusWithin } from '../shared/focus-trap';
 import { formatMoney } from '../shared/money';
@@ -47,7 +48,15 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
  */
 @Component({
   selector: 'app-booking-dialog',
-  imports: [LegalConsent, FormField, BusyAction, FieldGlass, TouchTarget, CancellationTermsNote],
+  imports: [
+    LegalConsent,
+    FormField,
+    BusyAction,
+    FieldErrorFor,
+    FieldGlass,
+    TouchTarget,
+    CancellationTermsNote,
+  ],
   host: {
     // The fixed, scrim-backed backdrop must paint ABOVE the sticky glass header (z-60) — the app shell relies on this.
     class:
@@ -153,10 +162,12 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                   type="text"
                   autocomplete="name"
                   [formField]="bookingForm.fullName"
+                  #fullNameControl
                 />
                 @if (submitAttempted() && bookingForm.fullName().errors().length) {
                   <!-- Dark brick red — AA on the light panel over the worst gradient stop. -->
                   <span
+                    [appFieldErrorFor]="fullNameControl"
                     class="field-error text-[12px] font-semibold text-riv-error-ink"
                     role="alert"
                     >{{ bookingForm.fullName().errors()[0].message }}</span
@@ -175,9 +186,11 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                   type="email"
                   autocomplete="email"
                   [formField]="bookingForm.email"
+                  #emailControl
                 />
                 @if (submitAttempted() && bookingForm.email().errors().length) {
                   <span
+                    [appFieldErrorFor]="emailControl"
                     class="field-error text-[12px] font-semibold text-riv-error-ink"
                     role="alert"
                     >{{ bookingForm.email().errors()[0].message }}</span
@@ -196,9 +209,11 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
                   type="tel"
                   autocomplete="tel"
                   [formField]="bookingForm.phone"
+                  #phoneControl
                 />
                 @if (submitAttempted() && bookingForm.phone().errors().length) {
                   <span
+                    [appFieldErrorFor]="phoneControl"
                     class="field-error text-[12px] font-semibold text-riv-error-ink"
                     role="alert"
                     >{{ bookingForm.phone().errors()[0].message }}</span

@@ -318,15 +318,17 @@ Sites 14, 16 and 17 are the three interesting ones (existing-hint composition, a
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, phase 1 next`.
+**Stage pointer:** `implement — phases 0–1 done, phase 2 next`. Draft PR **#823** is open
+(phase 0 step 8) and is the branch's only CI vehicle.
 
-**Next action:** Open the draft PR (phase 0 step 8), then phase 1 — extend
-`review-panel.spec.ts` and `booking-dialog.spec.ts` with AC-4 red before the template edits.
+**Next action:** Check PR #823's CI run for the phase-1 push, then phase 2 — extend the five
+operator specs with AC-5 (including the two negative `@for`-row assertions) red before the
+template edits.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the `FieldErrorFor` directive (red → green) | ✅ | `9fa09cd` |
-| 1 — booking surfaces (sites 1–5) | | |
+| 0 — the `FieldErrorFor` directive (red → green) | ✅ | `60fe74b` |
+| 1 — booking surfaces (sites 1–5) | ✅ | `3e4d360` |
 | 2 — operator surfaces (sites 6–13, 15–17) | | |
 | 3 — admin site 14, e2e, convention note, close-out | | |
 
@@ -397,12 +399,12 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `frontend/src/app/booking/review-panel.ts` · `frontend/src/app/booking/booking-dialog.ts` · Test both `.spec.ts`
 
-- [ ] **Step 1:** Extend `review-panel.spec.ts` and `booking-dialog.spec.ts` with AC-4's assertions (describedby present while erroring, absent after) — red.
-- [ ] **Step 2:** Run `npm test -- review-panel booking-dialog` → FAIL.
-- [ ] **Step 3:** Add `#ctl` refs and `[appFieldErrorFor]`, and `FieldErrorFor` to each component's `imports`.
-- [ ] **Step 4:** Run `npm test -- review-panel booking-dialog` → PASS; then the two surfaces' `*.a11y.spec.ts` for AC-7.
-- [ ] **Step 5:** Generalization audit — n/a for a mechanical application phase; record "no new pattern".
-- [ ] **Step 6: Commit** — `git commit -m "Associate the booking field errors with their controls (#821)"`
+- [x] **Step 1:** Extend `review-panel.spec.ts` and `booking-dialog.spec.ts` with AC-4's assertions (describedby present while erroring, absent after) — red.
+- [x] **Step 2:** Run `npm test -- review-panel booking-dialog` → FAIL.
+- [x] **Step 3:** Add `#ctl` refs and `[appFieldErrorFor]`, and `FieldErrorFor` to each component's `imports`.
+- [x] **Step 4:** Run `npm test -- review-panel booking-dialog` → PASS; then the two surfaces' `*.a11y.spec.ts` for AC-7.
+- [x] **Step 5:** Generalization audit — n/a for a mechanical application phase; record "no new pattern".
+- [x] **Step 6: Commit** — `git commit -m "Associate the booking field errors with their controls (#821)"`
 - [ ] **Step 7:** Update execution status; check that push's CI run before phase 2.
 
 ---

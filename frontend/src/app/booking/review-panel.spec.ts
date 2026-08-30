@@ -145,6 +145,36 @@ describe('ReviewPanel', () => {
       expect(r.find('review-comment-error')?.textContent).toContain('1000 characters');
     });
 
+    it('describes the comment and display-name fields by their errors', () => {
+      const r = render(ELIGIBLE);
+
+      r.click('star-4');
+      r.type('review-comment', 'x'.repeat(1001));
+      r.type('review-display-name', '');
+      r.click('submit-review');
+
+      for (const field of ['review-comment', 'review-display-name']) {
+        const control = r.find(field)!;
+        const error = r.find(`${field}-error`)!;
+        expect(control.getAttribute('aria-describedby')).toBe(error.id);
+        expect(control.getAttribute('aria-invalid')).toBe('true');
+        expect(error.id).toBeTruthy();
+      }
+    });
+
+    it('stops describing a field once its error is corrected', () => {
+      const r = render(ELIGIBLE);
+
+      r.click('star-4');
+      r.type('review-comment', 'x'.repeat(1001));
+      r.click('submit-review');
+      r.type('review-comment', 'Lovely spot.');
+
+      expect(r.find('review-comment-error')).toBeNull();
+      expect(r.find('review-comment')!.hasAttribute('aria-describedby')).toBe(false);
+      expect(r.find('review-comment')!.hasAttribute('aria-invalid')).toBe(false);
+    });
+
     it('refuses a blank display name with an inline error, and sends nothing', () => {
       const r = render(ELIGIBLE);
 
