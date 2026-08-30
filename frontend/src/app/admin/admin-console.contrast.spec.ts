@@ -18,20 +18,18 @@ import {
 
 /**
  * WCAG-AA contrast guard for the admin console. The console is ALWAYS porcelain (its host
- * scopes `data-riv-theme="porcelain"`, admin-console.ts:59), so the porcelain rows are the
- * live proof; the dark rows exist because `shared/confirm-with-reason.ts` and the danger
- * token set are reachable from outside this console, and a latent value nobody proved is
- * how #829's own "dark-red ink on a dark ground" case got written in the first place.
+ * scopes `data-riv-theme="porcelain"`, admin-console.ts), so the porcelain rows are the live
+ * proof; the dark rows cover the danger token set and `shared/confirm-with-reason.ts`, which
+ * are reachable from outside this console.
  *
  * <p>Two surfaces, not one: the tab bodies put error text directly on the page background
  * (`admin-commissions.ts` loading/error paragraphs use `text-riv-ink*`, the shell's ink),
  * while the cards put it on `--riv-card-glass`. Both are asserted.
  *
- * <p>Scope is WCAG 1.4.3 TEXT pairs. The erasure panel's own boundaries are non-text
- * (1.4.11) and are deliberately NOT asserted here: the Erase button's border measures
- * ≈2.6:1 over the panel fill on `main` today, so asserting it would either fail on
- * pre-existing paint or invite a silent value change during a token migration. Recorded as
- * a finding on #829 with its own follow-up issue instead (plan R-3).
+ * <p>Scope is WCAG 1.4.3 TEXT pairs. The erasure panel's own boundaries are non-text (1.4.11)
+ * and are not asserted here — the Erase button's border measures ≈2.6:1 over the panel fill,
+ * which the token migration preserves rather than changes. Rationale:
+ * `docs/plans/admin-error-ink-tokens.md`.
  */
 
 const OUTGOING_ERROR_INK: Rgb = [0xb3, 0x26, 0x1e];

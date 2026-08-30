@@ -51,19 +51,18 @@ export const DARK_DIALOG_GLASS: Glass = { color: hexToRgb('101a2e'), alpha: 0.94
 /** Dark `--riv-wash-fill` / `--riv-inset-fill` (light themes: white 0.5 / 0.4). */
 export const DARK_WASH_FILL: Glass = { color: WHITE, alpha: 0.08 };
 
-/** The `--riv-danger-*` set (#829) — the erasure confirm panel's tinted danger treatment: a
- *  panel tint over the card glass, then a stronger action tint over the panel. Light themes
- *  here; the dark theme's counterparts are the DARK_DANGER_* mirrors below. The `*_BORDER`
- *  pair is non-text chrome (WCAG 1.4.11) and is deliberately not asserted by the contrast
- *  spec — see its header note and the #829 R-3 finding. */
+/** The `--riv-danger-*` set — the erasure confirm panel's tinted danger treatment: a panel tint
+ *  over the card glass, then a stronger action tint over the panel. Light themes here; the dark
+ *  counterparts are the DARK_DANGER_* mirrors below. The `*_BORDER` pair is non-text chrome
+ *  (WCAG 1.4.11) and is not asserted by the contrast spec — see its header. */
 export const DANGER_INK: Rgb = hexToRgb('8f2c22');
 export const DANGER_FILL: Glass = { color: hexToRgb('b3362b'), alpha: 0.06 };
 export const DANGER_BORDER: Glass = { color: hexToRgb('b3362b'), alpha: 0.35 };
 export const DANGER_ACTION_FILL: Glass = { color: hexToRgb('b3362b'), alpha: 0.1 };
 export const DANGER_ACTION_BORDER: Glass = { color: hexToRgb('b3362b'), alpha: 0.6 };
 
-/** The dark theme's `--riv-danger-*` set. The ink is deliberately the same value as
- *  DARK_ERROR_INK (#829 OQ-2) — porcelain distinguishes the two reds, dark does not. */
+/** The dark theme's `--riv-danger-*` set. The ink matches DARK_ERROR_INK — porcelain
+ *  distinguishes the two reds, dark does not. */
 export const DARK_DANGER_INK: Rgb = hexToRgb('ffa9a1');
 export const DARK_DANGER_FILL: Glass = { color: hexToRgb('ff8a7a'), alpha: 0.1 };
 export const DARK_DANGER_BORDER: Glass = { color: hexToRgb('ff8a7a'), alpha: 0.42 };

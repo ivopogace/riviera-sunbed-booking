@@ -4,18 +4,18 @@ import { ADMIN, mockWholeAdminConsole } from './support/admin-console.mocks';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
- * The admin console's negative state paints from the token registry, proven against a real render
- * (#829). The class list is deliberately NOT what is asserted: a `text-riv-error-ink` that never
- * generated a utility, or a `--riv-danger-*` declared without its `@theme inline` row, would leave
- * the class in place and the paint unchanged — only the computed style can tell those apart.
+ * The admin console's negative state paints from the token registry, asserted against a real
+ * render. The computed style is what is checked, never the class list: a `text-riv-error-ink`
+ * that generated no utility, or a `--riv-danger-*` declared without its `@theme inline` row,
+ * leaves the class in place and the paint unchanged, and only the computed value separates those
+ * from a working token.
  *
  * <p>One representative element per family, since a token resolves the same way everywhere: the
  * error ink, the danger panel's fill and border, and the danger ink on the action inside it.
  *
- * <p>The last test is what makes the registry entry load-bearing rather than cosmetic. `@theme
- * inline` emits `var(--riv-*)` into each utility instead of resolving it once on `:root`, so a
- * subtree that pins its own `data-riv-theme` re-resolves the value. The console pins porcelain
- * (`admin-console.ts`), so its inks must survive a `dark` document theme unchanged.
+ * <p>The last test pins the subtree resolution `@theme inline` buys: each utility carries
+ * `var(--riv-*)` rather than a resolved value, so a subtree pinning its own `data-riv-theme`
+ * re-resolves it. The console pins porcelain, so its inks must survive a `dark` document theme.
  */
 
 const ERROR_INK = 'rgb(163, 22, 14)';
