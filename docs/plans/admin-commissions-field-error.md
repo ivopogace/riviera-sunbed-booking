@@ -33,11 +33,11 @@ template — forced the behaviour-parity ledger, which is what caught the reserv
 assertion is written before the directive is applied) · `riviera-review-overlay` (review gate — due
 at ready-for-review; RV-FE-11 is the bank item this slice is graded on, and its two named traps
 drove the `appFieldErrorForInvalidValue` decision and the "assert the take **and** the release"
-AC) · `riviera-docs-freshness` (**ran** over the planned diff — 1 finding: the
-`admin-commissions.a11y.spec.ts` TSDoc sentence "an alert region that exists before it ever
-carries text" is contradicted by this change and is fixed in Phase 1; `frontend/.claude/CLAUDE.md:49`
-and `docs/plans/field-error-aria-association.md:506` re-read and confirmed **still accurate**
-after the change — see *Docs-freshness ledger*) · `riviera-frontend` (structure: no new file, no
+AC) · `riviera-docs-freshness` (**ran twice** — at plan
+time over the planned diff, 1 finding: the `admin-commissions.a11y.spec.ts` TSDoc sentence "an
+alert region that exists before it ever carries text", fixed in Phase 1; then again at close-out
+with the **counting sweep**, which overturned one of the plan-time verdicts — see *Docs-freshness
+ledger*) · `riviera-frontend` (structure: no new file, no
 new folder — the change is confined to the `admin/` feature folder; the directive already lives in
 `shared/`, so no import-direction question arises) · `riviera-tailwind` (styling: keep
 `min-h-[1.25rem]` on the new wrapper rather than the scale form `min-h-5`, and keep the sibling's
@@ -166,8 +166,8 @@ addendum*). Exists in git and on `origin`.
   rule as the *hard* one, and `--riv-error-ink` resolves to `#a3160e` in porcelain (the theme the
   admin console pins). Using the token on the new element alone would put two different reds in one
   editor; migrating both would be a deliberate colour change on a presentation-only a11y slice,
-  needing a contrast proof this plan does not carry. Recorded as a Non-goal with a follow-up issue
-  proposed at close-out (18 literal sites repo-wide; no existing issue — searched).
+  needing a contrast proof this plan does not carry. Recorded as a Non-goal; **follow-up filed as issue #829** at close-out
+  (18 literal sites repo-wide; no pre-existing issue — searched).
 
 - **OQ-3 — Does the validation error render above or below the bps preview?** **Resolved: below.**
   The preview is the field's hint; `frontend/.claude/CLAUDE.md` and RV-FE-11 checkbox 5 both make
@@ -229,7 +229,7 @@ the same `X-Audit-Reason` header behaviour.
 |---|---|---|
 | `frontend/src/app/admin/admin-commissions.a11y.spec.ts` (TSDoc) | *"…and an alert region that exists before it ever carries text."* | **Contradicted** by the slice — no region is mounted empty any more. Rewritten in Phase 1 |
 | `frontend/.claude/CLAUDE.md:49` | *"Form-, page- and action-level banners name no single control and stay alert-only (`photo-error-{slot}`, `admin-commission-error-*`)."* | **Still accurate, and more so** — after the split, `admin-commission-error-*` is a *pure* action banner. Deliberately no edit; the testid is kept on the write-failure half specifically to keep this true |
-| `docs/plans/field-error-aria-association.md:506` | The audit-log row excluding `admin-commissions.ts:211` and recording *"filed as #826"* | **Still accurate** — the row states history, and the history does not change. No edit |
+| `docs/plans/field-error-aria-association.md:506` | The audit-log row excluding `admin-commissions.ts:211` and recording *"filed as #826"* | ~~Still accurate~~ → **overturned at close-out, patched in this PR.** The plan-time read ("the row states history, so it cannot go stale") was too narrow: the row also states a *standing* exclusion and a population of **17 field-scoped sites**, and this slice discharges the one and makes the other 18. The counting sweep is what caught it — the file is not in the diff, so reviewing changed files never could (the #447 class). Annotated to its resolution rather than rewritten, per the F-4 precedent in that same file |
 | `.claude/skills/riviera-review-overlay/references/frontend-conventions.md` (RV-FE-11) | The bank item and its two traps | **Still accurate** — this slice is an instance of the rule, not a change to it |
 
 ---
@@ -246,6 +246,10 @@ the same `X-Audit-Reason` header behaviour.
 - `frontend/src/app/admin/admin-commissions.a11y.spec.ts` — add the error-showing axe audit; fix
   the stale TSDoc sentence
 - `frontend/e2e/admin-commissions.e2e.ts` — add the real-browser association test (AC-6)
+- `docs/plans/field-error-aria-association.md` — close-out docs-freshness patch: annotate #821's
+  generalization-audit row to its resolution, since this slice discharges the
+  `admin-commissions.ts:211` exclusion that row records as standing (found by the counting sweep,
+  not by reviewing the diff — the file is not otherwise in scope)
 
 ---
 
@@ -559,18 +563,19 @@ it('has no axe violations while a rate editor shows a validation error', async (
 
 ## Execution status
 
-**Stage pointer:** `implement — both phases done; CI gate on draft PR #827`.
+**Stage pointer:** `merge close-out` — all gates cleared, **merged via PR #827**.
 
-**Next action:** Confirm CI green on #827, then **stop**. Review, Sonar and merge gates are
-deliberately NOT run in this session — the PR stays a draft. Skill-routing gate re-run at implement
-entry: loaded `riviera-sdlc`, `riviera-local-debug`, `riviera-frontend`, `angular-developer` +
-angular-cli MCP (`list_projects` → v22/Vitest, `get_best_practices`), `riviera-tailwind`,
-`playwright-cli`, `tdd`.
+**Next action:** None. Post-merge items are GitHub-only and done: issue #826 closed by the PR,
+follow-ups #828 (RV-FE-10 empty banners) and #829 (error-ink token sweep) filed. Skill-routing gate
+re-run at implement entry: loaded `riviera-sdlc`, `riviera-local-debug`, `riviera-frontend`,
+`angular-developer` + angular-cli MCP (`list_projects` → v22/Vitest, `get_best_practices`),
+`riviera-tailwind`, `playwright-cli`, `tdd`; and again at close-out for the docs-freshness patch
+(`riviera-docs-freshness`, counting sweep).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Split the error, associate the field half | ✅ | `de9c68d` |
-| 1 — Prove it in a real browser, fix the stale doc | ✅ | this commit |
+| 1 — Prove it in a real browser, fix the stale doc | ✅ | `1f5fcbd` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -580,7 +585,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | implementation (Phase 0) | The plan's step commands used `npm test -- --run <path>`; the `@angular/build:unit-test` runner rejects `--run`. Real form: `npm test -- --watch=false --include="<glob>"` | **fixed** in the plan's step text |
 | F-2 | implementation (Phase 0) | The take/release test cannot call `typeRate()` twice — it clicks `admin-commission-edit-N`, unmounted while the editor is open | **fixed** — `retypeRate()` extracted, `typeRate()` calls it |
-| F-3 | generalization audit (Phase 0 step 5) | `admin-privacy-error` and `oppw-error` keep the residual *empty live region* shape (an unconditionally mounted `role="alert"`). Both are action/form-level banners, so **outside** #826's field-scoped population and correctly unassociated | **open — follow-up issue proposed at close-out**, alongside the OQ-2 colour sweep |
+| F-3 | generalization audit (Phase 0 step 5) | `admin-privacy-error` and `oppw-error` keep the residual *empty live region* shape (an unconditionally mounted `role="alert"`). Both are action/form-level banners, so **outside** #826's field-scoped population and correctly unassociated | **deferred → issue #828** (filed at close-out) |
+| F-4 | review gate (`/code-review`, 6-agent fan-out + `riviera-review-overlay`) | One candidate raised: the `(#826)` provenance in the rewritten `a11y.spec.ts` TSDoc, against `frontend/.claude/CLAUDE.md`'s "TSDoc … states the contract, not the changelog (no issue numbers)". Scored **25** — 44 pre-existing instances of the same provenance idiom in `frontend/src`, and `check-inline-comments.mjs` exempts doc comments by design | **not a finding** — below the reporting bar, no change made |
+| F-5 | close-out docs-freshness (counting sweep) | `docs/plans/field-error-aria-association.md:506` records the `admin-commissions.ts:211` exclusion as *standing* and the field-scoped population as 17. This slice discharges that exclusion and makes it 18 — and that file is **not in the diff**, so no amount of reviewing changed files would surface it (the #447 class) | **fixed** in this PR — the row is annotated to its resolution without rewriting the historical finding, per the F-4 precedent in that same file |
 
 ---
 
@@ -605,32 +612,35 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **AC-3:** same command → `refuses a change that is already the venue's rate` PASS. Verified at `de9c68d`.
 - [x] **AC-4:** same command → `keeps the old rate and the typed draft when the write fails` PASS. Verified at `de9c68d`.
 - [x] **AC-5:** same command → `mounts no error element while the editor is clean` PASS. Verified at `de9c68d`.
-- [x] **AC-6:** `npm run test:e2e:a11y -- admin-commissions` → `an out-of-range rate names the field it blames, and lets go when corrected` PASS (7/7 in the file). Verified at this commit; proven RED first against `252ad2e`.
-- [x] **AC-7:** `--include="src/app/admin/admin-commissions.a11y.spec.ts"` → `has no axe violations while a rate editor shows a validation error` PASS (3/3). Verified at this commit; proven RED first against `252ad2e`.
+- [x] **AC-6:** `npm run test:e2e:a11y -- admin-commissions` → `an out-of-range rate names the field it blames, and lets go when corrected` PASS (7/7 in the file). Verified at `1f5fcbd`; proven RED first against `252ad2e`.
+- [x] **AC-7:** `--include="src/app/admin/admin-commissions.a11y.spec.ts"` → `has no axe violations while a rate editor shows a validation error` PASS (3/3). Verified at `1f5fcbd`; proven RED first against `252ad2e`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (`N/A` justified); invariant #2 untouched.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled (`N/A — frontend-only`); invariant #11 untouched.
-- [ ] **Payment/payout** section filled (`N/A`); invariants #5, #8, #9 untouched — no arithmetic,
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (`N/A` justified); invariant #2 untouched.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled (`N/A — frontend-only`); invariant #11 untouched.
+- [x] **Payment/payout** section filled (`N/A`); invariants #5, #8, #9 untouched — no arithmetic,
       no effective-dating, no wire change.
-- [ ] Refund policy (invariant #10) — untouched.
-- [ ] Timezone (invariant #6) — untouched.
-- [ ] Booking codes (invariant #7) — untouched.
-- [ ] Flyway (invariant #12) — no schema change, no version number claimed.
-- [ ] **Frontend standards met:** `role="alert"` + `[appFieldErrorFor]` on the field error;
+- [x] Refund policy (invariant #10) — untouched.
+- [x] Timezone (invariant #6) — untouched.
+- [x] Booking codes (invariant #7) — untouched.
+- [x] Flyway (invariant #12) — no schema change, no version number claimed.
+- [x] **Frontend standards met:** `role="alert"` + `[appFieldErrorFor]` on the field error;
       `aria-invalid` claims the value is wrong and the write banner claims nothing (RV-FE-11);
       no `as any`; no new `.scss`; touch-target and focus-posture guards green.
-- [ ] Behavior-parity ledger re-checked against the actual diff — every `preserved` row verified,
+- [x] Behavior-parity ledger re-checked against the actual diff — every `preserved` row verified,
       not assumed.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] Follow-up issue filed (or explicitly declined) for the `#b3261e` → `riv-error-ink` sweep.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — `/code-review` per the invocation ladder *plus*
-      `riviera-review-overlay`, not the overlay alone.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] Follow-up issues filed: **#829** (`#b3261e` → `riv-error-ink` sweep) and **#828** (the two
+      residual empty alert banners, F-3).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #827`.
+- [x] **The review gate ran in full** — `/code-review` (invocation ladder rung 1, the plugin skill;
+      6-agent fan-out) *plus* `riviera-review-overlay` walked as its own bank agent. Zero findings
+      above the reporting bar; result posted on PR #827. Sonar gate: 0 new issues, 0 duplicated
+      blocks, 100% new-code coverage, `new_lines=40` confirming a real analysis (not a false-clean zero).
