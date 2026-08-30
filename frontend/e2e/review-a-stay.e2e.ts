@@ -156,6 +156,33 @@ test.describe('rating a delivered stay', () => {
     await expectNoSeriousAxeViolations(page, 'venue map after the first rating');
   });
 
+  test('a rejected field describes itself to assistive technology', async ({ page }) => {
+    await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+      route.fulfill({ json: COMPLETED_BOOKING }),
+    );
+
+    await page.goto(`/booking/${CODE}`);
+    const panel = page.getByTestId('review-panel');
+    await expect(panel).toBeVisible();
+
+    // The display name, not the comment: `maxlength` truncates an over-long paste in a browser.
+    await page.getByTestId('star-4').click();
+    await panel.getByTestId('review-display-name').fill('');
+    await page.getByTestId('submit-review').click();
+
+    const error = panel.getByTestId('review-display-name-error');
+    await expect(error).toBeVisible();
+    const message = ((await error.textContent()) ?? '').trim();
+    expect(message).not.toBe('');
+
+    // The real Chromium accname computation, which jsdom cannot do.
+    await expect(panel.getByTestId('review-display-name')).toHaveAccessibleDescription(message);
+    await expect(panel.getByTestId('review-display-name')).toHaveAttribute('aria-invalid', 'true');
+
+    await settle(page);
+    await expectNoSeriousAxeViolations(page, 'review form with a rejected display name');
+  });
+
   test('a stay the server will not accept a rating for offers no form, and says why', async ({
     page,
   }) => {

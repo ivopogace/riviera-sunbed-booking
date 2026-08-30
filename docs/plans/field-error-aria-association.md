@@ -61,13 +61,13 @@ own branch and is an ancestor of this one.
 > **Mandatory before phase 0.** Each item is "Given X, when Y, then Z" and names a
 > test class. Prose is not an AC.
 
-- [ ] **AC-1:** Given a control and an error element carrying `[appFieldErrorFor]="ctl"`, when the error element is rendered, then the control's `aria-describedby` contains the error element's generated id and the control has `aria-invalid="true"`. *Pinned by:* `field-error-for.spec.ts` › `associates the error with its control while the error is showing`
-- [ ] **AC-2:** Given that association, when the error element is removed from the DOM, then the control's `aria-describedby` no longer contains the id (and the attribute is dropped entirely when no tokens remain) and `aria-invalid` is removed. *Pinned by:* `field-error-for.spec.ts` › `releases the association when the error goes away`
-- [ ] **AC-3:** Given a control that already carries `aria-describedby="hint-id"`, when its error renders, then `aria-describedby` is exactly `"hint-id <error-id>"` — pre-existing tokens first, the error last — and on removal it returns to exactly `"hint-id"`. *Pinned by:* `field-error-for.spec.ts` › `appends after an existing description and restores it` **and** `admin-privacy.spec.ts` › `describes the email field by its intro and its error, in that order`
-- [ ] **AC-4:** Given the booking surfaces with a failing field, when the error shows, then each control names its error via `aria-describedby`. *Pinned by:* `review-panel.spec.ts` › `describes the comment and display-name fields by their errors`, `booking-dialog.spec.ts` › `describes each guest-contact field by its error`
-- [ ] **AC-5:** Given the operator surfaces with a failing field, when the error shows, then each control names its error via `aria-describedby` — including the two `@for`-scoped errors, where the association is per row and never crosses rows. *Pinned by:* `venue-create-card.spec.ts`, `venue-tab.spec.ts`, `booking-cutoff-field.spec.ts`, `pricing-tab.spec.ts` › `describes only the failing row's price input`, `layout-editor.spec.ts` › `describes only the failing row's name input`
-- [ ] **AC-6:** Given the review form in a real browser, when it is submitted with a too-long comment, then the comment control's **accessible description** equals the error text. *Pinned by:* `e2e/review-a-stay.e2e.ts` › `a rejected field describes itself to assistive technology`
-- [ ] **AC-7:** Given every touched surface, when its existing axe spec runs, then it reports no new critical/serious violation. *Pinned by:* the existing `*.a11y.spec.ts` files for the touched components (unchanged assertions, re-run).
+- [x] **AC-1:** Given a control and an error element carrying `[appFieldErrorFor]="ctl"`, when the error element is rendered, then the control's `aria-describedby` contains the error element's generated id and the control has `aria-invalid="true"`. *Pinned by:* `field-error-for.spec.ts` › `associates the error with its control while the error is showing`
+- [x] **AC-2:** Given that association, when the error element is removed from the DOM, then the control's `aria-describedby` no longer contains the id (and the attribute is dropped entirely when no tokens remain) and `aria-invalid` is removed. *Pinned by:* `field-error-for.spec.ts` › `releases the association when the error goes away`
+- [x] **AC-3:** Given a control that already carries `aria-describedby="hint-id"`, when its error renders, then `aria-describedby` is exactly `"hint-id <error-id>"` — pre-existing tokens first, the error last — and on removal it returns to exactly `"hint-id"`. *Pinned by:* `field-error-for.spec.ts` › `appends after an existing description and restores it` **and** `admin-privacy.spec.ts` › `describes the email field by its intro and its error, in that order`
+- [x] **AC-4:** Given the booking surfaces with a failing field, when the error shows, then each control names its error via `aria-describedby`. *Pinned by:* `review-panel.spec.ts` › `describes the comment and display-name fields by their errors`, `booking-dialog.spec.ts` › `describes each guest-contact field by its error`
+- [x] **AC-5:** Given the operator surfaces with a failing field, when the error shows, then each control names its error via `aria-describedby` — including the two `@for`-scoped errors, where the association is per row and never crosses rows. *Pinned by:* `venue-create-card.spec.ts`, `venue-tab.spec.ts`, `booking-cutoff-field.spec.ts`, `pricing-tab.spec.ts` › `describes only the failing row's price input`, `layout-editor.spec.ts` › `describes only the failing row's name input`
+- [x] **AC-6:** Given the review form in a real browser, when it is submitted with a **blank display name**, then that control's **accessible description** equals the error text. *Pinned by:* `e2e/review-a-stay.e2e.ts` › `a rejected field describes itself to assistive technology`. **Deviation from the plan as written, forced by the browser:** the AC originally named a *too-long comment*, which is unreachable in a real browser — `[formField]` projects the `maxLength` validator onto the native `maxlength` attribute, so Chromium truncates the paste at exactly 1000 characters and the field never becomes invalid (the unit spec reaches it only because it assigns `.value` directly, bypassing `maxlength`). The blank required display name is the nearest failure a real guest can actually produce, and it exercises the same accname path
+- [x] **AC-7:** Given every touched surface, when its existing axe spec runs, then it reports no new critical/serious violation. *Pinned by:* the existing `*.a11y.spec.ts` files for the touched components (unchanged assertions, re-run).
 
 ## Non-goals
 
@@ -105,33 +105,35 @@ template reference per site. The one behavior that changes is the intended one (
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **A dangling `aria-describedby` is invisible to this repo's CI.** Verified against the installed axe-core 4.12.1: a reference to a missing id is reported as `incomplete`, never a violation — and `src/testing/axe.ts` filters to `critical`/`serious` **violations**, so `expectNoAxeViolations` passes either way. A hand-written binding could rot silently. | high | med | The chosen shape removes the failure mode rather than testing for it: the directive is created and destroyed with the error element, so the token cannot outlive the span. AC-2 pins the release explicitly. | plan | open |
-| R-2 | **`@for`-scoped errors could describe the wrong row.** `pricing-tab` and `layout-editor` render one error inside a loop keyed on the failing row; a mis-scoped template ref would point every row's error at one input. | med | high | The `#ctl` ref is declared **inside** the `@for` body, so it resolves per iteration. AC-5 asserts positively (the failing row is described) *and* negatively (no sibling row is). | plan | open |
-| R-3 | **`aria-invalid` clobbering.** The directive both sets and removes `aria-invalid`; a control that carried it for another reason would lose it on error dismissal. | low | low | Verified by grep: no control in `frontend/src/app` sets `aria-invalid` today, so the directive is the sole writer. Stated in the directive's TSDoc so a future second writer is a conscious choice. | plan | open |
-| R-4 | **Double announcement.** With both `role="alert"` and `aria-describedby`, an error appearing *while its own field has focus* could be spoken twice. | low | low | Structurally unlikely here: every gate is `submitAttempted()` (focus is on the submit button) or `touched()` (which flips on blur, so focus has already left). Kept as a real-screen-reader check, not a code change — #821 asks for exactly this judgement. See Open questions OQ-1. | plan | open |
-| R-5 | **In-flight collision.** A concurrent slice editing the same templates would conflict — these 8 files are high-traffic. | low | med | Checked at the intake gate: branch is level with `origin/main`, no open PR touches these files. No Flyway version is claimed (no migration), so the #122/#127 collision class does not apply. Re-check with a merge-from-main before marking the PR ready. | plan | open |
-| R-6 | **Touch-target guard false trip.** `scripts/check-touch-target.mjs` fires as a `PostToolUse` hook on edited templates containing `<input>`/`<select>`/`<textarea>`. | low | low | Every touched control already declares `[appTouchTarget]` or a reasoned `data-touch-exempt`; the diff adds no new control. If TT-1/TT-2 fire, that is the build's finding to fix, not a workaround. | plan | open |
+| R-1 | **A dangling `aria-describedby` is invisible to this repo's CI.** Verified against the installed axe-core 4.12.1: a reference to a missing id is reported as `incomplete`, never a violation — and `src/testing/axe.ts` filters to `critical`/`serious` **violations**, so `expectNoAxeViolations` passes either way. A hand-written binding could rot silently. | high | med | The chosen shape removes the failure mode rather than testing for it: the directive is created and destroyed with the error element, so the token cannot outlive the span. AC-2 pins the release explicitly. | plan | closed — the shape shipped as designed: the directive is created and destroyed with the error element (`field-error-for.spec.ts` › `releases the association when the error goes away`, plus a release assertion at four applied sites). The failure mode is structurally absent, not merely untested |
+| R-2 | **`@for`-scoped errors could describe the wrong row.** `pricing-tab` and `layout-editor` render one error inside a loop keyed on the failing row; a mis-scoped template ref would point every row's error at one input. | med | high | The `#ctl` ref is declared **inside** the `@for` body, so it resolves per iteration. AC-5 asserts positively (the failing row is described) *and* negatively (no sibling row is). | plan | closed — **answered: per iteration.** Each `@for` iteration is its own embedded view, so `#priceControl` / `#rowNameControl` resolve within that view only. Pinned both ways: `pricing-tab.spec.ts` › `describes only the failing row’s price input` and `layout-editor.spec.ts` › `describes only the failing row’s name input` each assert the failing row IS described and a sibling row carries neither attribute. Both confirmed failing with the templates reverted, so neither passes vacuously |
+| R-3 | **`aria-invalid` clobbering.** The directive both sets and removes `aria-invalid`; a control that carried it for another reason would lose it on error dismissal. | low | low | Verified by grep: no control in `frontend/src/app` sets `aria-invalid` today, so the directive is the sole writer. Stated in the directive's TSDoc so a future second writer is a conscious choice. | plan | closed — re-confirmed on the finished tree: `aria-invalid` appears in `frontend/src/app` only from this directive. The sole-writer claim is stated in its TSDoc |
+| R-4 | **Double announcement.** With both `role="alert"` and `aria-describedby`, an error appearing *while its own field has focus* could be spoken twice. | low | low | Structurally unlikely here: every gate is `submitAttempted()` (focus is on the submit button) or `touched()` (which flips on blur, so focus has already left). Kept as a real-screen-reader check, not a code change — #821 asks for exactly this judgement. See Open questions OQ-1. | plan | closed as **deferred to a human** — no screen reader was available in the implement session, so the live pass OQ-1 needs became **issue #824**. `role="alert"` ships as planned |
+| R-5 | **In-flight collision.** A concurrent slice editing the same templates would conflict — these 8 files are high-traffic. | low | med | Checked at the intake gate: branch is level with `origin/main`, no open PR touches these files. No Flyway version is claimed (no migration), so the #122/#127 collision class does not apply. Re-check with a merge-from-main before marking the PR ready. | plan | closed — no collision materialized. The branch took the phase commits cleanly and no other PR touched these 8 files; no Flyway version was claimed |
+| R-6 | **Touch-target guard false trip.** `scripts/check-touch-target.mjs` fires as a `PostToolUse` hook on edited templates containing `<input>`/`<select>`/`<textarea>`. | low | low | Every touched control already declares `[appTouchTarget]` or a reasoned `data-touch-exempt`; the diff adds no new control. If TT-1/TT-2 fire, that is the build's finding to fix, not a workaround. | plan | closed — `check-touch-target.mjs --diff origin/main` ran green before every push. The diff adds no control, and spec fixtures are out of the guard’s scope by design |
 
 ## Open questions / Assumptions
 
 > **Mandatory. Work is NOT done while this has unresolved entries.**
 
-- **OQ-1 (open question):** Does keeping `role="alert"` alongside the new association cause a
-  double announcement on any real screen reader? Documentation says the two techniques are
-  complementary (ARIA19 announces on appearance; the description is read on focus) and the
-  gating analysis in R-4 says the two moments never coincide here — so the plan **keeps
-  `role="alert"`**. A live NVDA/VoiceOver pass is the only thing that can close this. —
-  *Owner:* maintainer · *Resolves by:* phase 3, or deferred with a follow-up issue if no
-  screen reader is available in-session.
-- **OQ-2 (open question):** Should `app-star-rating`'s missing inline error (Non-goals) get a
-  follow-up issue? — *Owner:* maintainer · *Resolves by:* phase 3.
-- **Assumption:** Every one of the 17 sites keeps its current gating expression, so the
-  directive never needs to know *why* an error is showing — only that it is. Verified by
-  reading all 17; no site renders its error unconditionally. — *Owner:* plan · *Resolves by:*
-  phase 2 (the last application phase).
+`None open.` All three entries resolved — see Resolved, below.
 
 ### Resolved
 
+- **OQ-1 — deferred to a human, with an issue.** Does keeping `role="alert"` alongside the
+  new association double-announce on a real screen reader? Documentation says the two are
+  complementary (ARIA19 announces on appearance; the description is read on focus) and R-4's
+  gating analysis says the two moments never coincide here — every site gates on
+  `submitAttempted()` (focus is on the submit button) or `touched()` (focus has already left).
+  No screen reader was available in the implement session, so the maintainer chose the
+  follow-up route the plan prescribes: **issue #824**. `role="alert"` ships as planned; the
+  slice does **not** claim the question is answered.
+- **OQ-2 — follow-up issue filed.** `app-star-rating`'s missing inline error is a real gap but
+  a *missing message* one, not an *association* one — there is no error element to associate.
+  The maintainer chose to track it: **issue #825**.
+- **Assumption — held.** Every one of the 17 sites kept its current gating expression, so the
+  directive never needs to know *why* an error is showing, only that it is. Confirmed across
+  all 17 as they were applied; not one gate, message or validation rule changed.
 - **Scope.** Three classes of `role="alert"` exist, not one. Settled with the maintainer:
   **all 17 field-scoped errors**, both Signal-Forms and hand-rolled. Rejected: 14
   (Signal-Forms only — would leave associated and unassociated errors side by side in
@@ -318,20 +320,21 @@ Sites 14, 16 and 17 are the three interesting ones (existing-hint composition, a
 
 ## Execution status
 
-**Stage pointer:** `implement — phases 0–2 done, phase 3 next`. Draft PR **#823** is open
-(phase 0 step 8) and is the branch's only CI vehicle. The phase-1 push ran green on the
-backend, the hygiene guards and the **full** Vitest suite.
+**Stage pointer:** `implement — all four phases done; PR #823 left as a DRAFT at the
+maintainer's instruction`. The Review and Sonar gates were **deliberately not run** in this
+session — the maintainer is running them separately. They remain due before merge, and the
+self-review checklist's review-gate box is left unticked rather than ticked for a gate that
+did not run.
 
-**Next action:** Check PR #823's CI run for the phase-2 push, then phase 3 — `admin-privacy`
-(AC-3's composed value), the AC-6 e2e leg, the `frontend/.claude/CLAUDE.md` convention note,
-and OQ-1/OQ-2.
+**Next action:** (maintainer) the Review gate, then the Sonar gate, then merge close-out —
+including citing `merged via PR #823` in this doc.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the `FieldErrorFor` directive (red → green) | ✅ | `60fe74b` |
 | 1 — booking surfaces (sites 1–5) | ✅ | `4512d36` |
-| 2 — operator surfaces (sites 6–13, 15–17) | ✅ | `<phase-2>` |
-| 3 — admin site 14, e2e, convention note, close-out | | |
+| 2 — operator surfaces (sites 6–13, 15–17) | ✅ | `ec76ee0` |
+| 3 — admin site 14, e2e, convention note, close-out | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -371,7 +374,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/admin/admin-privacy.ts` — site 14 + `imports`
 - `frontend/src/app/admin/admin-privacy.spec.ts` — AC-3 composition case
 - `frontend/e2e/review-a-stay.e2e.ts` — AC-6
-- `frontend/.claude/CLAUDE.md` — the convention note #821 asks for
+- `frontend/.claude/CLAUDE.md` — the convention note #821 asks for (added under Accessibility Requirements)
 
 > Run `node scripts/check-plan-file-structure.mjs --diff origin/main` before pushing, with
 > this doc staged — the guard short-circuits on an unstaged plan.
@@ -392,7 +395,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - [x] **Step 5: Generalization-audit pass** — population `every element in frontend/src/app that renders a field-scoped validation error`; the enumerating command is the one that found the 17, recorded in the audit log below.
 - [x] **Step 6: Commit** — `git commit -m "Add a field-error ARIA association directive (#821)"`
 - [x] **Step 7: Update plan-doc execution status** in the same commit window.
-- [ ] **Step 8: Open the PR as a draft** — CI fires only on the `pull_request` event (#417), so the branch gets no CI until the draft exists.
+- [x] **Step 8: Open the PR as a draft** — CI fires only on the `pull_request` event (#417), so the branch gets no CI until the draft exists. Opened as **draft PR #823**.
 
 ---
 
@@ -406,7 +409,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - [x] **Step 4:** Run `npm test -- review-panel booking-dialog` → PASS; then the two surfaces' `*.a11y.spec.ts` for AC-7.
 - [x] **Step 5:** Generalization audit — n/a for a mechanical application phase; record "no new pattern".
 - [x] **Step 6: Commit** — `git commit -m "Associate the booking field errors with their controls (#821)"`
-- [ ] **Step 7:** Update execution status; check that push's CI run before phase 2.
+- [x] **Step 7:** Update execution status; check that push's CI run before phase 2. The phase-1 run was green on the backend, the hygiene guards and the full Vitest suite.
 
 ---
 
@@ -420,7 +423,7 @@ Skill-routing gate for what the fix touches *before* editing).
 - [x] **Step 4:** Run the same five → PASS, then their `*.a11y.spec.ts` and `*.contrast.spec.ts` (contrast must be untouched — no class changed).
 - [x] **Step 5:** Generalization audit — record the `@for`-scoping question and its answer for both loop sites.
 - [x] **Step 6: Commit** — `git commit -m "Associate the operator field errors with their controls (#821)"`
-- [ ] **Step 7:** Update execution status; check that push's CI run.
+- [x] **Step 7:** Update execution status; check that push's CI run.
 
 ---
 
@@ -428,15 +431,15 @@ Skill-routing gate for what the fix touches *before* editing).
 
 **Files:** Modify `frontend/src/app/admin/admin-privacy.ts` + `.spec.ts` · `frontend/e2e/review-a-stay.e2e.ts` · `frontend/.claude/CLAUDE.md`
 
-- [ ] **Step 1:** `admin-privacy.spec.ts` asserts AC-3's exact composed value `"admin-privacy-erase-intro <error-id>"`, in that order — red.
-- [ ] **Step 2:** Run `npm test -- admin-privacy` → FAIL.
-- [ ] **Step 3:** Apply the shape to site 14.
-- [ ] **Step 4:** Run `npm test -- admin-privacy` → PASS.
-- [ ] **Step 5:** Add AC-6 to `e2e/review-a-stay.e2e.ts` — submit the review form with an invalid comment, then `await expect(panel.getByTestId('review-comment')).toHaveAccessibleDescription(<the message>)`. This is the only assertion that exercises the real Chromium accname/description computation; jsdom cannot. Run `npm run test:e2e:a11y -- review-a-stay`.
-- [ ] **Step 6:** Record the convention in `frontend/.claude/CLAUDE.md` under Accessibility Requirements — one entry: an inline field error carries `role="alert"` **and** `[appFieldErrorFor]` naming its control; a hand-written `aria-describedby` for an error is a review finding.
-- [ ] **Step 7:** Resolve OQ-1 and OQ-2 — a real screen-reader pass on the review form, or a follow-up issue for each.
-- [ ] **Step 8: Commit** — `git commit -m "Associate the admin erasure field error and pin the convention (#821)"`
-- [ ] **Step 9:** Finalize the execution status in this PR's last commit (`merged via PR #NN`), mark ready for review, then the Review and Sonar gates.
+- [x] **Step 1:** `admin-privacy.spec.ts` asserts AC-3's exact composed value `"admin-privacy-erase-intro <error-id>"`, in that order — red.
+- [x] **Step 2:** Run `npm test -- admin-privacy` → FAIL.
+- [x] **Step 3:** Apply the shape to site 14.
+- [x] **Step 4:** Run `npm test -- admin-privacy` → PASS.
+- [x] **Step 5:** Add AC-6 to `e2e/review-a-stay.e2e.ts` — submit the review form with an invalid comment, then `await expect(panel.getByTestId('review-comment')).toHaveAccessibleDescription(<the message>)`. This is the only assertion that exercises the real Chromium accname/description computation; jsdom cannot. Run `npm run test:e2e:a11y -- review-a-stay`.
+- [x] **Step 6:** Record the convention in `frontend/.claude/CLAUDE.md` under Accessibility Requirements — one entry: an inline field error carries `role="alert"` **and** `[appFieldErrorFor]` naming its control; a hand-written `aria-describedby` for an error is a review finding.
+- [x] **Step 7:** Resolve OQ-1 and OQ-2 — a real screen-reader pass on the review form, or a follow-up issue for each.
+- [x] **Step 8: Commit** — `git commit -m "Associate the admin erasure field error and pin the convention (#821)"`
+- [x] **Step 9 (partial, by instruction):** Execution status finalized in this commit. The PR is **#823** and is **left as a draft** — the maintainer is running the Review and Sonar gates in a separate session, so this session does not mark it ready for review, does not run either gate, and does not write the `merged via` line.
 
 ---
 
@@ -452,34 +455,34 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-3:** Run `npm test -- field-error-for admin-privacy` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `npm test -- review-panel booking-dialog` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `npm test -- venue-create-card venue-tab booking-cutoff-field pricing-tab layout-editor` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** Run `npm run test:e2e:a11y -- review-a-stay` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** Run `npm run test:a11y` → PASS, no new violation. Verified at commit `<sha>`.
-- [ ] **Sweep completeness:** re-run the audit-log command; every one of the 17 rows carries `appFieldErrorFor`, and every remaining `role="alert"` is on the Non-goals list.
+- [x] **AC-1..AC-3:** `field-error-for.spec.ts` **4 passed** at `60fe74b` (`associates the error with its control while the error is showing`, `releases the association when the error goes away`, `appends after an existing description and restores it`, `gives each error its own id`). AC-3's shipped composition case: `admin-privacy.spec.ts` › `describes the email field by its intro and its error, in that order` — **19 passed**, red before the template edit with `expected 'admin-privacy-erase-intro' to be 'admin-privacy-erase-intro <id>'`.
+- [x] **AC-4:** `review-panel.spec.ts` + `booking-dialog.spec.ts` **47 passed** at `4512d36`; the two association tests were confirmed red first.
+- [x] **AC-5:** the five operator specs **134 passed** at `ec76ee0`. All six new tests were confirmed to fail with the templates stashed, so none passes vacuously.
+- [x] **AC-6:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts review-a-stay` → **4 passed**. `toHaveAccessibleDescription` is the real-Chromium proof. Retargeted at the display-name field — see the AC for why the comment case is unreachable in a browser.
+- [x] **AC-7:** the touched surfaces' axe + contrast specs re-run unchanged — booking **43 passed**, operator **39 passed**, plus `expectNoSeriousAxeViolations` over the review form carrying a rejected field in the e2e. No new violation, and no contrast spec moved (no class changed).
+- [x] **Sweep completeness:** `grep -rn appFieldErrorFor frontend/src/app` (excluding specs and the directive itself) returns **exactly 17**, distributed file-for-file as the plan's inventory predicts: admin-privacy 1, booking-dialog 3, review-panel 2, booking-cutoff-field 1, layout-editor 1, pricing-tab 1, venue-create-card 4, venue-tab 4. Every remaining `role="alert"` is on the Non-goals list — including the two borderline exclusions the phase-0 audit re-checked.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — vacuous, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6); booking codes untouched (invariant #7).
-- [ ] No Flyway migration needed (invariant #12); no venue-scoped authorization change (invariant #13).
-- [ ] **Frontend** standards met: `shared/` placement, `host` object not `@HostBinding`, `input()` API, no new SCSS, no visual drift (`*.contrast.spec.ts` unchanged and passing).
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` green with this doc staged.
-- [ ] `npm run lint` and `npm run format:check` green over `src` and `e2e`.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — vacuous, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6); booking codes untouched (invariant #7).
+- [x] No Flyway migration needed (invariant #12); no venue-scoped authorization change (invariant #13).
+- [x] **Frontend** standards met: `shared/` placement, `host` object not `@HostBinding`, `input()` API, no new SCSS, no visual drift (`*.contrast.spec.ts` unchanged and passing).
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` green with this doc staged.
+- [x] `npm run lint` and `npm run format:check` green over `src` and `e2e`.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`. — the PR is **#823**; the `merged via` line is the maintainer's to write at merge, since the PR is still a draft.
+- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1 *plus* `riviera-review-overlay`. **Left unticked deliberately: it did not run in the implement session.** The maintainer instructed that they are running the Review and Sonar gates in a separate session, so the PR stays a draft. Both gates remain due before merge.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

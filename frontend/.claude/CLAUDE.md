@@ -36,6 +36,14 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   via `shared/focus-after-render.ts`'s `focusMover()`, on all three legs — open,
   back-out, and settled. A focus-trapped modal's teardown counts as a surface.
   This is the repo's most-repeated bug class; reviewed as RV-FE-9.
+- **An inline field error carries `role="alert"` AND `[appFieldErrorFor]` naming its
+  control** (`shared/field-error-for.ts`): the alert announces on appearance, the
+  association is what a screen-reader user hears on re-focus. The directive goes on the
+  **error element**, taking the control's template ref, so it lives and dies inside the
+  same `@if` — a hand-written `aria-describedby` for a field error is a review finding,
+  because a dangling reference is only an axe *incomplete* and `expectNoAxeViolations`
+  does not fail on it. Form- and page-level banners have no field referent and stay
+  alert-only.
 - **Every interactive control declares the 44 × 44 px floor**: `[appTouchTarget]`
   (`shared/touch-target.ts`), or `data-touch-exempt="<reason>"` on the control or an
   ancestor (three documented exemption classes — see `riviera-tailwind`). `<a>` is
