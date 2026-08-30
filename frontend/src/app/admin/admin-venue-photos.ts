@@ -75,7 +75,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
     @if (loading()) {
       <p class="mt-6 text-[15px] text-riv-ink-soft" data-testid="admin-photos-loading">Loading…</p>
     } @else if (loadError()) {
-      <p class="mt-6 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-photos-error">
+      <p class="mt-6 text-[15px] text-riv-error-ink" role="alert" data-testid="admin-photos-error">
         Something went wrong loading this venue's photos.
         <button
           type="button"

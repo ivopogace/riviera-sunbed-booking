@@ -124,7 +124,7 @@ test('an admin picks a venue, sees its slots, and takes one down behind a confir
   await expect(panel).toHaveCSS('margin-top', '12px');
   await expect(page.getByTestId('admin-photo-confirm-cover')).toHaveCSS(
     'color',
-    'rgb(179, 38, 30)',
+    'rgb(163, 22, 14)',
   );
   await expect(page.getByTestId('admin-photo-reason-cover')).toHaveCSS('font-size', '14px');
 

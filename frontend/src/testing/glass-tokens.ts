@@ -36,6 +36,11 @@ export const DARK_CARD_INK: Rgb = hexToRgb('f2f7fa');
 export const DARK_ACCENT_INK: Rgb = hexToRgb('7cd7e8');
 /** `--riv-error-ink` per ink family (light themes: #a3160e). */
 export const DARK_ERROR_INK: Rgb = hexToRgb('ffa9a1');
+/** `--riv-error-ink` on the light themes (the dark theme's is DARK_ERROR_INK above). */
+export const ERROR_INK: Rgb = hexToRgb('a3160e');
+/** `--riv-accent-ink` on the light themes (the dark theme's is DARK_ACCENT_INK above). */
+export const ACCENT_INK: Rgb = hexToRgb('085a6e');
+
 /** Dark `--riv-field-fill` / `--riv-field-border` (light themes: the FIELD_*_ALPHA constants). */
 export const DARK_FIELD_FILL: Glass = { color: hexToRgb('020a16'), alpha: 0.45 };
 export const DARK_FIELD_BORDER: Glass = { color: WHITE, alpha: 0.5 };
@@ -45,6 +50,24 @@ export const DARK_CARD_TRACK: Glass = { color: WHITE, alpha: 0.18 };
 export const DARK_DIALOG_GLASS: Glass = { color: hexToRgb('101a2e'), alpha: 0.94 };
 /** Dark `--riv-wash-fill` / `--riv-inset-fill` (light themes: white 0.5 / 0.4). */
 export const DARK_WASH_FILL: Glass = { color: WHITE, alpha: 0.08 };
+
+/** The `--riv-danger-*` set — the erasure confirm panel's tinted danger treatment: a panel tint
+ *  over the card glass, then a stronger action tint over the panel. Light themes here; the dark
+ *  counterparts are the DARK_DANGER_* mirrors below. The `*_BORDER` pair is non-text chrome
+ *  (WCAG 1.4.11) and is not asserted by the contrast spec — see its header. */
+export const DANGER_INK: Rgb = hexToRgb('8f2c22');
+export const DANGER_FILL: Glass = { color: hexToRgb('b3362b'), alpha: 0.06 };
+export const DANGER_BORDER: Glass = { color: hexToRgb('b3362b'), alpha: 0.35 };
+export const DANGER_ACTION_FILL: Glass = { color: hexToRgb('b3362b'), alpha: 0.1 };
+export const DANGER_ACTION_BORDER: Glass = { color: hexToRgb('b3362b'), alpha: 0.6 };
+
+/** The dark theme's `--riv-danger-*` set. The ink matches DARK_ERROR_INK — porcelain
+ *  distinguishes the two reds, dark does not. */
+export const DARK_DANGER_INK: Rgb = hexToRgb('ffa9a1');
+export const DARK_DANGER_FILL: Glass = { color: hexToRgb('ff8a7a'), alpha: 0.1 };
+export const DARK_DANGER_BORDER: Glass = { color: hexToRgb('ff8a7a'), alpha: 0.42 };
+export const DARK_DANGER_ACTION_FILL: Glass = { color: hexToRgb('ff8a7a'), alpha: 0.16 };
+export const DARK_DANGER_ACTION_BORDER: Glass = { color: hexToRgb('ff8a7a'), alpha: 0.66 };
 /** `--riv-card-ink-soft` alpha over the card glass. */
 export const CARD_INK_SOFT_ALPHA = 0.78;
 /** `--riv-card-ink-faint` alpha over the card glass. */

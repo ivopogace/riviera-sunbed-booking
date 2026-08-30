@@ -71,7 +71,11 @@ import { TouchTarget } from '../shared/touch-target';
         Loading…
       </p>
     } @else if (loadError()) {
-      <p class="mt-6 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-commissions-error">
+      <p
+        class="mt-6 text-[15px] text-riv-error-ink"
+        role="alert"
+        data-testid="admin-commissions-error"
+      >
         Something went wrong loading the venue list.
         <button
           type="button"
@@ -161,7 +165,7 @@ import { TouchTarget } from '../shared/touch-target';
 
                 @if (percentError()) {
                   <p
-                    class="mt-2 text-[13.5px] font-semibold text-[#b3261e]"
+                    class="mt-2 text-[13.5px] font-semibold text-riv-error-ink"
                     role="alert"
                     [appFieldErrorFor]="percentInput"
                     [attr.data-testid]="'admin-commission-percent-error-' + venue.venueId"
@@ -222,7 +226,7 @@ import { TouchTarget } from '../shared/touch-target';
                 <div class="mt-2 min-h-[1.25rem]">
                   @if (saveError()) {
                     <p
-                      class="text-[13.5px] font-semibold text-[#b3261e]"
+                      class="text-[13.5px] font-semibold text-riv-error-ink"
                       role="alert"
                       [attr.data-testid]="'admin-commission-error-' + venue.venueId"
                     >

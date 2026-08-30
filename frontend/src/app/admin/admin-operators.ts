@@ -52,7 +52,7 @@ import { TouchTarget } from '../shared/touch-target';
     @if (loading()) {
       <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-ops-loading">Loading…</p>
     } @else if (loadError()) {
-      <p class="mt-4 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-ops-error">
+      <p class="mt-4 text-[15px] text-riv-error-ink" role="alert" data-testid="admin-ops-error">
         Something went wrong loading operators.
         <button
           type="button"
@@ -154,7 +154,7 @@ import { TouchTarget } from '../shared/touch-target';
                   }
                   @if (op.suspended) {
                     <span
-                      class="ml-2 rounded-[6px] border border-[#b3261e] px-1.5 py-0.5 text-[12px] font-medium text-[#b3261e]"
+                      class="ml-2 rounded-[6px] border border-riv-error-ink px-1.5 py-0.5 text-[12px] font-medium text-riv-error-ink"
                       [attr.data-testid]="'admin-suspended-badge-' + op.id"
                       >Suspended</span
                     >

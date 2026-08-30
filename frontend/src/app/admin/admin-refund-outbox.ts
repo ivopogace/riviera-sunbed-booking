@@ -32,7 +32,7 @@ import { TouchTarget } from '../shared/touch-target';
     @if (lever.loading()) {
       <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-refunds-loading">Loading…</p>
     } @else if (lever.loadError()) {
-      <p class="mt-4 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-refunds-error">
+      <p class="mt-4 text-[15px] text-riv-error-ink" role="alert" data-testid="admin-refunds-error">
         Something went wrong loading the refund outbox.
         <button
           type="button"

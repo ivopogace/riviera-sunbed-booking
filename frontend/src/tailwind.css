@@ -51,6 +51,11 @@
   --color-riv-field-fill: var(--riv-field-fill);
   --color-riv-field-solid: var(--riv-field-solid);
   --color-riv-error-ink: var(--riv-error-ink);
+  --color-riv-danger-ink: var(--riv-danger-ink);
+  --color-riv-danger-fill: var(--riv-danger-fill);
+  --color-riv-danger-border: var(--riv-danger-border);
+  --color-riv-danger-action-fill: var(--riv-danger-action-fill);
+  --color-riv-danger-action-border: var(--riv-danger-action-border);
   --color-riv-card-track: var(--riv-card-track);
 
   --color-riv-pop-surface: var(--riv-pop-surface);
@@ -165,6 +170,15 @@
   /* the venue-map date field's near-opaque fill (deliberately not --riv-field-fill; see its spec) */
   --riv-field-solid: rgba(255, 255, 255, 0.9);
   --riv-error-ink: #a3160e;
+  /** The erasure confirm panel's danger treatment: a tinted panel plus a stronger tinted
+      action inside it. Keep these pre-composed rgba, like --riv-field-border — a Tailwind
+      `/opacity` modifier compiles to color-mix() and changes the computed value. AA-proven by
+      admin-console.contrast.spec.ts. Rationale: docs/plans/admin-error-ink-tokens.md */
+  --riv-danger-ink: #8f2c22;
+  --riv-danger-fill: rgba(179, 54, 43, 0.06);
+  --riv-danger-border: rgba(179, 54, 43, 0.35);
+  --riv-danger-action-fill: rgba(179, 54, 43, 0.1);
+  --riv-danger-action-border: rgba(179, 54, 43, 0.6);
   --riv-card-track: rgba(12, 42, 51, 0.12);
 
   /** The near-opaque popover surface (theme picker, account menu, mobile sheet — app.ts POP)
@@ -334,6 +348,14 @@
   --riv-field-scheme: dark;
   --riv-field-solid: rgba(15, 23, 42, 0.92);
   --riv-error-ink: #ffa9a1;
+  /** The ink matches --riv-error-ink here; that is the intended value, so do not collapse the
+      duplication. `riviera` gets no block: its cards stay white glass, so it inherits the
+      porcelain values. Rationale: docs/plans/admin-error-ink-tokens.md */
+  --riv-danger-ink: #ffa9a1;
+  --riv-danger-fill: rgba(255, 138, 122, 0.1);
+  --riv-danger-border: rgba(255, 138, 122, 0.42);
+  --riv-danger-action-fill: rgba(255, 138, 122, 0.16);
+  --riv-danger-action-border: rgba(255, 138, 122, 0.66);
   --riv-card-track: rgba(255, 255, 255, 0.18);
 
   /* The no-photo placeholder follows the theme (the photo scrim/chrome stay photo-proof). */

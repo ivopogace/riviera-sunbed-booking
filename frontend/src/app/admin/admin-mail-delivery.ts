@@ -79,7 +79,11 @@ import { TouchTarget } from '../shared/touch-target';
       </form>
 
       @if (lookupError()) {
-        <p class="mt-3 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-delivery-error">
+        <p
+          class="mt-3 text-[15px] text-riv-error-ink"
+          role="alert"
+          data-testid="admin-delivery-error"
+        >
           Something went wrong looking that up.
         </p>
       }
