@@ -40,29 +40,17 @@ at Implement", it means this paragraph.
 | **Implement** | Build the slice test-first, one behavior at a time, at seams named in the plan. Re-run the Skill-routing gate for each area you touch. | `tdd` + the Skill-routing gate (below). `implement` is the **human's** entry command (`/implement`) — model-invocation is disabled on it upstream, so never route to it and never re-enact it from memory; it hands off to exactly this row |
 | **CI gate** | Every push to an **open PR** builds both apps, runs tests, scans (CodeQL + Dependabot + SonarCloud). Green required. After any push that claims a phase green, check that push's run before starting the next phase (red-TDD and labeled-partial pushes exempt) — full-suite-only failures surface only here (case history: #122/#127). | GitHub Actions (issue #3); red → `diagnosing-bugs` |
 | **PR** | **Open the PR as a draft as soon as the first phase commit exists** — CI fires on the `pull_request` event only (`push` is scoped to `main`, #417), so a branch with no PR gets **no CI at all**; `opened` gates the first push, `synchronize` every later one. A draft is a CI vehicle, not a request to review. When the slice is built: merge the latest `origin/main` in with full phase discipline (routing gate for what the integration touches, scoped tests, honest commit), then mark **ready for review** — which is what makes the Review and Sonar gates due (`references/pr-gates.md`). | `triage` (issue lifecycle — issues only in this repo; PRs go through normal review) |
-| **Review** | **Mandatory gate**, due at ready-for-review. Start `/code-review` (a subagent fan-out) via the **invocation ladder** in `references/pr-gates.md` §1 — the harness's built-in `code-review` skill only as a declared degraded fallback, and **the overlay alone is NOT the review**. A rejected invocation name is not the gate being unavailable; if tooling genuinely blocks every rung, say so in the PR and leave the box unticked rather than substituting silently. Review the diff against the invariants; each fix re-enters at Implement. Green CI is not a substitute. | `riviera-review-overlay` + `/code-review` |
+| **Review** | **Mandatory gate**, due at ready-for-review. Start `/code-review` (a subagent fan-out) via the **invocation ladder** in `references/pr-gates.md` §1 — **the overlay alone is NOT the review**, and a blocked rung is declared in the PR, never silently substituted (§1 owns the ladder, the fallback, and the no-rung rule). Review the diff against the invariants; each fix re-enters at Implement. Green CI is not a substitute. | `riviera-review-overlay` + `/code-review` |
 | **Sonar gate** | **Mandatory gate (PR-time; Sonar analyzes PRs + `main` only).** A green gate is not the check — pull the reported new-issue + duplication list from the API and fix every entry before merge; logic-changing findings re-enter at Implement (re-entry rule) — procedure: `references/pr-gates.md` §2. | SonarCloud + `diagnosing-bugs` for a genuine defect |
 | **Merge** | Only after green CI + Review gate run + Sonar gate green **and** its issue list cleared + findings resolved through the loop → merge, then run the close-out checklist — procedure: `references/pr-gates.md` §3. | the Merge close-out (`references/pr-gates.md`) |
 
 ## Epic front-end (optional — for multi-slice epics)
 
-Ahead of `Refine → Issue`, a big change can be authored top-down through three
-Matt-Pocock craft skills: `wayfinder` (foggy epics **only** — destination clear, route
-fog, decisions that won't fit one session; when `to-issues` can already cut clean
-slices, skip it) → `to-spec` (synthesizes the discussion into one committed epic issue:
-user stories + testing seams + out-of-scope) → `to-issues` (slices the spec's user
-stories — the normal Issue stage). This is **optional scaffolding for epics, not a new
-gate** — a single slice or a one-liner skips it entirely. The full procedure and the two
-boundaries that keep it from fighting the loop (altitude: the spec is epic-level, the
-plan doc slice-level; state store: the `wayfinder:map` issue governs charting only,
-never build progress): `references/epic-front-end.md`.
-
-## Issue-intake grill gate (summary)
-
-A written issue is a snapshot of intent at creation time, not ground truth. Before authoring the
-plan doc for an existing issue, run a `grilling` pass over it: re-validate the ACs against today's
-code, check what else is in flight (open PRs, shared files, the next Flyway version number), and
-sanity-check module ownership against `RESPONSIBILITIES.md`. Full procedure: `references/issue-intake-gate.md`.
+Ahead of `Refine → Issue`, a big change can be authored top-down through `wayfinder`
+(foggy epics **only**) → `to-spec` (the committed epic spec) → `to-issues` (the normal
+Issue stage). **Optional scaffolding for epics, not a new gate** — a single slice or a
+one-liner skips it entirely. The chain, the triggers, and the two boundaries that keep it
+from fighting the loop: `references/epic-front-end.md`.
 
 ## Skill-routing gate (mandatory — load *before* you write)
 
@@ -95,9 +83,7 @@ sanity-check module ownership against `RESPONSIBILITIES.md`. Full procedure: `re
    load all of them; don't stop at the label.
 
    > **An empty search result is not evidence of absence** — confirm any negative with
-   > `git ls-files` before concluding a thing doesn't exist (search tools honour
-   > `.gitignore`, which ignores `out/` — the name of every `adapter/out` package;
-   > see `CLAUDE.md` § *Searching the codebase*).
+   > `git ls-files` (`CLAUDE.md` § *Searching the codebase* — the `.gitignore` `out/` trap).
 2. **Load + announce.** Load each triggered skill **before** authoring that part and say
    so out loud, e.g. *"Loaded `postgres` (migration V2), `codebase-design` (venue seam),
    `angular-developer` + angular-cli MCP (beach-map component)."* If you wrote the
@@ -112,8 +98,8 @@ This gate fires at the plan stage (vet the design), the implement stage (vet the
 the review-fix stage** (vet each finding fix). Fixing a finding is implementation: re-detect
 what the fix touches and load that area's skills **per the routing table** before you edit
 (re-entry rule). Loading a skill earlier does not exempt you when a new area appears — nor
-after a **context compaction**, where a previously loaded skill may survive only as a summary
-sentence (re-load it; see Context hygiene) — and re-loading is cheap: when in doubt, load it.
+after a **context compaction** (Context hygiene rule 3) — and re-loading is cheap: when in
+doubt, load it.
 
 ## Rules of the loop
 
@@ -181,20 +167,18 @@ Cloud sessions (Claude Code on the web / iOS) differ from the idealized local se
 - **Local builds & tests:** load **`riviera-local-debug`** before the session's first
   `./gradlew` or `npm` invocation — it owns the cloud specifics.
 - **Toolset drift:** verify a tool can actually do what a skill assumes before promising
-  it (recurring: Gmail is draft-only → push is the only notification channel; `gh` IS
-  provisioned in cloud sessions but proxy-restricted — the working recipe and REST
-  substitution table live in `references/pr-gates.md` §1, and the GitHub MCP tools remain
-  the substitute when `gh` is missing). When an instruction is impossible in the current
-  toolset, do the nearest honest thing and **say so in the reply** — don't silently
-  half-do it.
+  it (recurring examples: Gmail is draft-only → push is the only notification channel;
+  `gh` is provisioned but proxy-restricted — recipe + REST substitution table:
+  `references/pr-gates.md` §1; the GitHub MCP tools substitute when `gh` is missing).
+  When an instruction is impossible in the current toolset, do the nearest honest thing
+  and **say so in the reply** — don't silently half-do it.
 - **Staying in touch (notifications):** SDLC runs typically start from the Claude iOS
   app; the user then walks away, phone locked — when the workflow needs them, reach out;
   don't go silent and wait. Push via `PushNotification` *before* any `AskUserQuestion`
   (a question prompt alone does **not** buzz the phone), and when work finishes and you
   await the next command. Email backstop only if a send-capable (not draft-only) tool
   exists — a short "done, your move" mail to the maintainer address from the session
-  context, never one hardcoded here (draft-only Gmail, the common cloud case: skip
-  email, say push was the only channel). **Never ping during live back-and-forth**; the
+  context, never one hardcoded here. **Never ping during live back-and-forth**; the
   trigger is "they may have walked away and something is waiting" — err toward sending
   for blocking questions and completions. If pushes don't arrive: iOS → Settings →
   Notifications → Claude → Allow Notifications.
@@ -203,11 +187,9 @@ Cloud sessions (Claude Code on the web / iOS) differ from the idealized local se
 
 Detection is tool presence, not environment guessing: if `mcp__idea__*` tools are
 available this session, the project is open in IntelliJ IDEA — read
-`references/idea-mcp.md` (where the tools pay off per stage, and why the server stays
-out of the committed settings). If they're absent (cloud session, plain terminal), skip
-it entirely; never try to connect, enable, or add the `idea` server yourself — and never
-add it to any `disabledMcpjsonServers` list (a deny at any scope wins over every enable,
-including the developer machine's).
+`references/idea-mcp.md` (where the tools pay off per stage, and the settings rules). If
+they're absent (cloud session, plain terminal), skip it entirely; never try to connect,
+enable, add, or deny the `idea` server yourself (the settings rules in that file own why).
 
 ## The substrate these skills read
 
@@ -253,6 +235,5 @@ table's Implement row, `grill-me` → `grilling`. Don't drop the flag to "fix" a
   SonarCloud gate (API URLs, triage rules), and the Merge close-out checklist.
 - `references/idea-mcp.md` — read only when `mcp__idea__*` tools are present: per-stage
   payoffs and the settings rules for the JetBrains `idea` MCP server.
-- `references/case-history.md` — the incidents behind the rules (#122/#127, #158, #72,
-  #93, epic #141's un-ticked checklist, O6/PR #219, PR #318, the three docs-only
-  close-out PRs, #351, PR #353/#355); read when you want the why.
+- `references/case-history.md` — the incidents behind the rules, told once in full; read
+  when you want the why behind a "(case history: #NNN)" citation.

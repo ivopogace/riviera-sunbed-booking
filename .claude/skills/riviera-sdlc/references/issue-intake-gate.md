@@ -27,16 +27,14 @@ Read this at plan entry, whenever work starts from an already-written GitHub iss
    - **What else is in flight right now?** List the open PRs and active session branches
      and check for overlap with this slice: shared files (`SecurityConfig`, shared test
      fixtures, FE core/) and above all the **next Flyway version number** — `V<n>` must be
-     free on `main` *and* unclaimed by any open PR's diff (case history: #122/#127 — a
-     V19 collision left a PR unmergeable, with no PR CI or Sonar able to run). If a
-     collision is possible, record in the plan doc **who renumbers** (default: the branch
-     that merges second) and expect a merge-from-main before the PR.
+     free on `main` *and* unclaimed by any open PR's diff (case history: the #122/#127 V19
+     collision). If a collision is possible, record in the plan doc **who renumbers**
+     (default: the branch that merges second) and expect a merge-from-main before the PR.
    - **Is the previous sibling slice's close-out actually complete?** If this slice belongs
      to a tracking epic, verify the *previously-merged* sibling ticked the epic checklist
      (Merge close-out step 2, with its PR/commit) and closed its issue. A missed tick is a
      silent close-out gap — catching it here fixes it **one slice later** instead of at a
-     retro, and you're already reading the epic. Case history: O4 **and** O5 both merged
-     un-ticked in epic #141, caught only at O6's close-out.
+     retro, and you're already reading the epic (case history: epic #141).
    - **Which module should own each piece of the work?** Sanity-check the intended
      placement against `RESPONSIBILITIES.md` (Job / Not-My-Job) *before* planning: does
      any step put logic in a module whose **Not My Job** list rejects it (a refund
