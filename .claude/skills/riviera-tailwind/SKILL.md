@@ -180,10 +180,8 @@ Vary by theme in this order of preference:
    declaration — a theme-invariant token is a decision to write down, never an omission. #850
    is the first half again, and the worked example to copy: the form-error banners' fill and ink
    move as a **pair** (`--riv-form-error-fill`/`-ink`), because it is the fill's own fixedness that
-   forbids the ink from theming — the themed `--riv-error-ink` over it measures 1.54:1. #851 then
-   completed the FIRST family the same way: once a skin's fill is fixed, its border and its danger
-   ink are pinned to it too, so `--riv-solid-btn-*` is declared as a whole (the themed
-   `--riv-danger-ink` over that fill measures 1.69:1) — the unit is the skin, not the pair. This is
+   forbids the ink from theming — the themed `--riv-error-ink` over it measures 1.54:1. The unit is
+   the whole skin, not one position: a fixed fill pins every ink and border on it (`--riv-solid-btn-*`). This is
    Tailwind's own documented multi-theme pattern (docs: Colors § "Referencing other
    variables" — plain vars per `:root`/attribute scope, mapped via `@theme inline`;
    `inline` is what keeps the utility emitting `var(--riv-*)` so per-scope overrides and

@@ -220,7 +220,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review gate (history reviewer) **and** `riviera-docs-freshness` pre-merge smoke, found independently | `.claude/skills/riviera-tailwind/SKILL.md:176` still described `--riv-solid-btn-ink` as sitting on "the fixed `#f4f6f7` outline-button fill" — a present-tense fact this slice falsifies, the fill now being a token. Both #835 and #850 extended that same paragraph in their own commit; this slice had not | **fixed** — reworded, and the paragraph now records #851 completing the family |
+| F-1 | review gate (history reviewer) **and** `riviera-docs-freshness` pre-merge smoke, found independently | `.claude/skills/riviera-tailwind/SKILL.md:176` still described `--riv-solid-btn-ink` as sitting on "the fixed `#f4f6f7` outline-button fill" — a present-tense fact this slice falsifies, the fill now being a token. Both #835 and #850 extended that same paragraph in their own commit; this slice had not | **fixed** — reworded. First fix appended a four-line slice narrative; trimmed on maintainer feedback to the one durable rule, the ratios staying at the token declaration where a reader needs them |
 | F-2 | `riviera-docs-freshness` counting sweep | `docs/design/colour-literal-token-audit.md:22` said "the two slices already cut" — five are now cut, and the sentence's argument never needed the count | **fixed** — count dropped |
 | F-3 | `riviera-docs-freshness` rename grep | The audit ledger's prior-slices index listed #829/#835/#855/#850 but not #851 | **fixed** — index extended |
 | F-4 | review gate (prior-PR reviewer) | The two new border tokens were waved off as "non-text chrome, so no contrast assertion" — a **category-level exemption without a measurement**, which is exactly what PR #838's own review found to be a real WCAG 1.4.11 regression, and which #840 raised again | **fixed** — measured instead of assumed: 1.06:1 (neutral) and 1.90:1 (danger) over the fill, recorded at both declarations. Neither clears 3:1, but the fill itself is 1.02:1 against the card glass, so the boundary is the glass aesthetic's open question, already tracked at **#834** — not this slice's to change. Values carried across unchanged, per the parity ledger |
@@ -241,7 +241,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/booking/booking-view.contrast.spec.ts|my-bookings.contrast.spec.ts|review-panel.contrast.spec.ts` — the three sibling specs stop hand-copying `'#a3372a'` and take `SOLID_BTN_DANGER_INK` from the mirror; titles/docblocks stop naming the fill by literal
 - `frontend/e2e/solid-btn-token-skin.e2e.ts` — the computed-style proof under a forced dark theme
 - `docs/design/colour-literal-token-audit.md` — F-2 row → done; the prior-slices index gains #851, and "the two slices already cut" loses a count the staleness sweep falsified
-- `.claude/skills/riviera-tailwind/SKILL.md` — the tier-1 worked example stops calling the fill a literal, and records #851 completing the family (the same paragraph #835 and #850 each extended)
+- `.claude/skills/riviera-tailwind/SKILL.md` — two lines: the tier-1 worked example stops calling the fill a literal, and gains one sentence of *rule* (the unit is the whole skin, not one position). Deliberately **not** a per-slice narrative or a second copy of the ratios — a skill carries what the next author must do; the measurements live at the token declaration
 
 ---
 
