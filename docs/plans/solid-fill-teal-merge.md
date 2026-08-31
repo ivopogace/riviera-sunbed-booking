@@ -140,10 +140,10 @@ for `feature/solid-fill-teal-merge`** (`riviera-sdlc` §Remote/cloud session add
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | The three repainted sites lose contrast: white ink goes 7.24:1 → **5.86:1** | certain (maths) | low | 5.86 clears AA (4.5) with margin at every one of them — all three are bold text, the smallest 11.5px. The family spec's floor is `AA_NORMAL` and stays the gate (AC-3). AAA was never claimed for this family | agent | accepted — measured, above floor |
-| R-2 | A half-done rename leaves `bg-riv-solid-fill-action` in markup: the class survives, the utility does not, and the fill silently vanishes with **no unit spec able to see it** | med | high | AC-2's sweep bans the string tree-wide, and the e2e's utility-generation test asserts exactly the surviving utilities exist as real CSS selectors (AC-5) | agent | open → closes at phase 2 |
+| R-2 | A half-done rename leaves `bg-riv-solid-fill-action` in markup: the class survives, the utility does not, and the fill silently vanishes with **no unit spec able to see it** | med | high | AC-2's sweep bans the string tree-wide, and the e2e's utility-generation test asserts exactly the surviving utilities exist as real CSS selectors (AC-5) | agent | **closed** — sweep green, and the console/chip boxes measure the merged fill against a real render |
 | R-3 | An over-eager sweep for `#0a5f74` breaks its six legitimate non-fill roles (CTA stops, rings, inks) | med | high | The family spec's `SURVIVORS` list asserts **positively** that each file still paints it (AC-8); the sweep regex keeps its `bg-` discriminator | agent | **closed** — green at phase 1, all six files still paint it |
 | R-4 | `semantic-chip`'s `border-[#2f7d92]` was picked against the deeper fill; against the lighter one it separates less (1.54:1 → **1.248:1**) | certain (maths) | low | Decorative, and not the boundary WCAG 1.4.11 cares about: the chip is identified against the **card**, and the new fill sits at 5.39:1 there — far past the 3:1 non-text floor. Recorded, not acted on (Non-goals) | agent | accepted — measured, no floor crossed |
-| R-5 | The rendered value is duplicated in **three** e2e files by design (`discovery-flow` keeps a deliberate second copy so it stays a black-box check); missing one leaves CI red, or worse, a stale-but-green literal | med | med | Enumerated by mechanism, not by memory: `grep -rn '10, 95, 116' frontend/` is the command that found the population (three hits), recorded in the Generalization-audit log | agent | open → closes at phase 2 |
+| R-5 | The rendered value is duplicated in **three** e2e files by design (`discovery-flow` keeps a deliberate second copy so it stays a black-box check); missing one leaves CI red, or worse, a stale-but-green literal | med | med | Enumerated by mechanism, not by memory: `grep -rn '10, 95, 116' frontend/` is the command that found the population (three hits), recorded in the Generalization-audit log | agent | **closed** — three found, three repinned, suite green |
 | R-6 | #848 (T-2, the 16 `#0a6e85` **`text-` ink** sites) touches `requests-tab.html` and `payouts-tab.html`, the same two files this slice edits | low | med | No open PR exists on the repo today (checked at plan time), so there is nothing to collide with now. The edits are in different utility forms (`bg-` here, `text-` there) and different lines; **whoever merges second merges `main` in and re-runs the family spec.** Do not run the two concurrently | agent | open → re-check before PR |
 | R-7 | No Flyway migration, no backend, no `V<n>` to claim | n/a | n/a | Frontend-only slice | — | N/A |
 
@@ -218,17 +218,17 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Phase 2 — enumerate the rendered-value population by mechanism
-(`grep -rn '10, 95, 116' frontend/`), repin the three e2e files, run `test:e2e:a11y`, and
-mutation-check the forced-dark assertion.
+**Next action:** Phase 3 — the ledger row, G-4's answer in the #854 plan doc, the
+`semantic-chips.md` as-built pointer, the `riviera-docs-freshness` sweep, and the file-structure
+guard.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The merged registry, red | ✅ | `<phase-0>` |
 | 1 — Merge the declaration + rename the four sites, green | ✅ | `<phase-1>` |
-| 2 — The computed-style proofs + the mutation check | | |
+| 2 — The computed-style proofs + the mutation check | ✅ | `<phase-2>` |
 | 3 — Docs, ledger row and close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -374,27 +374,34 @@ three contrast specs · Modify `frontend/src/testing/chip-fills.ts`
 **Files:** Modify `frontend/e2e/solid-fill-token-skin.e2e.ts` ·
 `frontend/e2e/discovery-flow.e2e.ts` · `frontend/e2e/layout-editor.e2e.ts`
 
-- [ ] **Step 1: Enumerate by mechanism, not memory.** The population is *every place that pins the
+- [x] **Step 1: Enumerate by mechanism, not memory.** The population is *every place that pins the
       old fill as a rendered value*: `grep -rn '10, 95, 116' frontend/` → three files. Record it in
       the Generalization-audit log with that command (R-5).
 
-- [ ] **Step 2: Update the three** — `BRAND`/`ACTION` collapse to one `rgb(10, 110, 133)` in
+- [x] **Step 2: Update the three** — `BRAND`/`ACTION` collapse to one `rgb(10, 110, 133)` in
       `solid-fill-token-skin.e2e.ts` (with its `REGISTRY` and `UTILITIES`), `SEMANTIC_FILL` in
       `discovery-flow.e2e.ts`, and the confirm-yes assertion in `layout-editor.e2e.ts`.
 
-- [ ] **Step 3: Run the mocked suite** — `npm run test:e2e:a11y` (cloud recipe per
-      `riviera-local-debug`) → PASS.
+- [x] **Step 3: Run the mocked suite** — the three repinned specs first
+      (`solid-fill-token-skin` 5/5, `discovery-flow` + `layout-editor` 22/22), then the whole
+      mocked suite: **335 passed, 1 failed**. The failure is `customer-password.e2e.ts:47`, which
+      **passes in isolation** (4/4) and shares nothing with this diff — zero hits for any touched
+      token, class or triple — in a file whose subject is the per-IP change-password budget, the
+      shared-state shape `riviera-local-debug` documents as the full-suite-only class (#127). Not
+      this slice's; CI arbitrates, and if it is red there it is red on `main` too.
 
-- [ ] **Step 4: Mutation-check AC-6** — add `--riv-solid-fill-brand: #7cd7e8` to the dark theme
-      block, re-run the forced-dark test, confirm it goes RED, revert. Record the observed failure
-      in the ACs' verification section — a forced-dark test that cannot die is the one thing #854's
-      own AC-8 forbade.
+- [x] **Step 4: Mutation-check AC-6** — `--riv-solid-fill-brand: #7cd7e8` added to the dark block.
+      **The forced-dark test died and only it** (`unexpected value "rgb(124, 215, 232)"`, 1 failed /
+      4 passed) — the console tests survive because the porcelain pin is real, which is the
+      asymmetry #854 designed for. The unit guard caught the same mutation independently
+      (`--riv-solid-fill-brand declarations: expected [ '#0a6e85', '#7cd7e8' ] to have a length of 1`).
+      Reverted; `tailwind.css` diffs byte-identical to its pre-mutation copy.
 
-- [ ] **Step 5: Generalization-audit pass** — as Step 1; append the row.
+- [x] **Step 5: Generalization-audit pass** — as Step 1; append the row.
 
-- [ ] **Step 6: Commit** — `git commit -m "Repin the rendered teal in the three computed-style proofs (#861)"`
+- [x] **Step 6: Commit** — `git commit -m "Repin the rendered teal in the three computed-style proofs (#861)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -431,6 +438,7 @@ three contrast specs · Modify `frontend/src/testing/chip-fills.ts`
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-31 | phase 2 | Every place that pins the **old fill as a rendered value** — the mechanism is "asserts a computed `background-color` triple", not "is an e2e file about teal". Enumerated by the rgb triple the browser reports, which is the only form these assertions take | `grep -rn "10, 95, 116" frontend/ --include=*.ts` | 3: `solid-fill-token-skin.e2e.ts:32`, `layout-editor.e2e.ts:505`, `discovery-flow.e2e.ts:19` | all three repinned to `rgb(10, 110, 133)`. The sweep is what found `layout-editor.e2e.ts` — an inline literal in a spec about grid regeneration, which no search for "teal" or "chip" would have returned |
 
 ---
 

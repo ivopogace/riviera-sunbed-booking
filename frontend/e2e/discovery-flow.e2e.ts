@@ -14,9 +14,9 @@ import { expectNoSeriousAxeViolations } from './support/axe';
  * surface-invariant. Deliberately a second copy of `src/testing/chip-fills.ts`'s hexes rather than
  * an import: this suite drives the built app as a black box and takes nothing from app source, so
  * a value that drifted here would still be caught, by this suite going red against the real page.
- * Change both together — `#0a5f74` / `#ffffff` there are these two triples.
+ * Change both together — `#0a6e85` / `#ffffff` there are these two triples.
  */
-const SEMANTIC_FILL = 'rgb(10, 95, 116)';
+const SEMANTIC_FILL = 'rgb(10, 110, 133)';
 const SEMANTIC_INK = 'rgb(255, 255, 255)';
 
 const VENUES = [

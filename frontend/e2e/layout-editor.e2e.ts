@@ -502,7 +502,7 @@ test('regenerating over a grid confirms first and moves focus with the confirmat
   await expect(confirm).toHaveCSS('background-color', 'rgb(255, 244, 224)');
   await expect(page.getByTestId('layout-confirm-yes')).toHaveCSS(
     'background-color',
-    'rgb(10, 95, 116)',
+    'rgb(10, 110, 133)', // --riv-solid-fill-brand, #0a6e85 since the #861 merge
   );
   await expect(page.getByTestId('layout-confirm-yes')).toHaveCSS('color', 'rgb(255, 255, 255)');
   await expect(page.getByTestId('layout-confirm-yes')).toHaveCSS('min-height', '44px');
