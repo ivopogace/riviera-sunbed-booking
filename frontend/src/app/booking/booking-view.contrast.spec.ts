@@ -12,6 +12,7 @@ import {
   PORCELAIN_STOPS,
   RIVIERA_CARD_GLASS,
   RIVIERA_STOPS,
+  SOLID_BTN_DANGER_INK,
   SOLID_BTN_FILL,
   SOLID_BTN_INK,
   expectAaOverStops,
@@ -102,10 +103,11 @@ describe('Booking view — action buttons (WCAG AA, issue #138)', () => {
     }
   });
 
-  /** The teal ink is --riv-solid-btn-ink, which does NOT theme: the #f4f6f7 fill under it does
-   *  not either, and this file's own rule above is that a themed ink over a fixed fill drifts. */
-  it('the outline buttons (Cancel / Keep) inks meet AA on the solid #f4f6f7 fill', () => {
-    for (const ink of ['#a3372a', rgbToHex(SOLID_BTN_INK)]) {
+  /** Both inks are --riv-solid-btn-*, which do NOT theme: the fill under them does not either,
+   *  and this file's own rule above is that a themed ink over a fixed fill drifts. The family's
+   *  own guard (incl. the hover fill and the themed-ink bounds) is solid-btn-tokens.contrast.spec.ts. */
+  it('the outline buttons (Cancel / Keep) inks meet AA on the solid fill', () => {
+    for (const ink of [SOLID_BTN_DANGER_INK, SOLID_BTN_INK].map(rgbToHex)) {
       expect(contrastRatio(ink, rgbToHex(SOLID_BTN_FILL)), ink).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });

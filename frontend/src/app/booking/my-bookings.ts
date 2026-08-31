@@ -202,7 +202,7 @@ const CLS = {
   emptyLead: 'mb-5 text-[14.5px] leading-[1.5] text-riv-card-ink-soft',
   cta: CTA,
   ctaBusy: `${CTA} ${BUSY_SKIN}`,
-  rowRetry: `shrink-0 cursor-pointer rounded-[14px] border-[1.5px] border-[rgba(255,255,255,0.7)] bg-[#f4f6f7] px-3.5 py-2 text-[13px] font-semibold text-riv-solid-btn-ink [transition:background_0.15s_ease] hover:bg-[#e7ebec] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink motion-reduce:transition-none ${BUSY_SKIN}`,
+  rowRetry: `shrink-0 cursor-pointer rounded-[14px] border-[1.5px] border-riv-solid-btn-border bg-riv-solid-btn-fill px-3.5 py-2 text-[13px] font-semibold text-riv-solid-btn-ink [transition:background_0.15s_ease] hover:bg-riv-solid-btn-hover focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink motion-reduce:transition-none ${BUSY_SKIN}`,
 } as const;
 
 @Component({

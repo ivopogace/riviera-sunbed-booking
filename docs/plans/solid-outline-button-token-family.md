@@ -197,17 +197,16 @@ N/A — no API shape changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Phase 2 — repaint `booking-view.ts`, `review-panel.ts` and
-`my-bookings.ts` onto the utilities, turning the last sweep test green.
+**Next action:** Phase 3 — write `e2e/solid-btn-token-skin.e2e.ts` and mutation-check it.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the family spec, red | ✅ | `8023378` |
-| 1 — declare the tokens + `@theme` rows, green | ✅ | `<phase-1>` |
-| 2 — repaint the three components onto them | ⏳ | |
-| 3 — the mocked e2e (+ mutation check) | | |
+| 1 — declare the tokens + `@theme` rows, green | ✅ | `7b453f2` |
+| 2 — repaint the three components onto them | ✅ | `<phase-2>` |
+| 3 — the mocked e2e (+ mutation check) | ⏳ | |
 | 4 — ledger row + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -307,6 +306,7 @@ the log below.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-31 | phase 2 (new pattern: a theme-invariant token family) | Every colour position of the outline-button skin, enumerated by grepping each literal's **role** tree-wide rather than listing the sites the issue named — which is what surfaced the two `border-[rgba(255,255,255,0.7)]` sites in unrelated roles the issue's site list did not contain | `grep -rn "f4f6f7\|e7ebec\|rgba(200,90,60\|border-\[rgba(255,255,255,0\.7)\]\|a3372a" --include=*.ts --include=*.html src/ \| grep -v "\.spec\.ts"` | 13 in-family positions across 3 components; 7 out-of-family `#a3372a` across 5 files; 2 out-of-family borders (`auth/auth-page.ts:120`, `venue/availability-calendar.html:8`); 1 near-miss alpha (`booking-view.ts:100`, `rgba(200,90,60,0.4)`) | Repainted the 13. Left the other 10 — each a different role, and `payouts-tab.html`'s `/opacity` form is #852's. The two out-of-family borders are why the guard's sweep is file-scoped, not tree-wide |
 
 ---
 
