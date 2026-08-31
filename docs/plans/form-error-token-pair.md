@@ -190,10 +190,12 @@ components stay theme-agnostic and name no theme.
 
 ## Execution status
 
-**Stage pointer:** `review gate` — draft PR #857, phases 0–3 built, docs-freshness run.
+**Stage pointer:** `sonar gate` — PR #857 ready for review; review gate **run** (rung 1 of the
+`pr-gates.md` §1 ladder: `code-review:code-review`, five-agent fan-out, + this overlay), 2 findings,
+both dispositioned in the register below.
 
-**Next action:** Mark PR #857 ready for review (which is what makes the Review and Sonar gates due
-per `pr-gates.md`), run the review gate via the §1 invocation ladder, then work the Sonar issue list.
+**Next action:** Pull PR #857's SonarCloud issue + duplication list from the web API and clear every
+entry (a green gate is not the check), then merge close-out.
 
 > **Push cadence:** phase 0's literal guard is deliberately red until phase 1 lands, so the branch is
 > pushed — and the draft PR opened, which is what makes CI run at all — at the **end of phase 1**,
@@ -213,7 +215,8 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| *(none yet)* | | | |
+| F-1 | review gate (agent 1 — guidance compliance) | New TSDoc cites issue numbers (`#850`, the plan-doc path), which `frontend/.claude/CLAUDE.md` bars from doc comments ("states the contract, not the changelog — no issue numbers, no decision history") | **not actioned, with reason.** PR #856's own review adjudicated exactly this: *narrated* decision history is the finding, and "the bare `(#855)` citation stays". Every neighbouring token comment in `tailwind.css` cites its issue the same way (`#834`, `#839`, `#704`, `#142`), as do the sibling slices #835/#855. The reporting agent flagged the same caveat itself. Changing it here would make this one comment inconsistent with its own file |
+| F-2 | review gate (agent 5 — comment guidance) | `booking-pay.contrast.spec.ts`'s header states it "Mirrors every text token in `booking-pay.scss`" — a file that has not existed since the SCSS retirement (#739/#780) | **fixed** — and the population swept by mechanism rather than by the one instance: `grep -rn "\.scss" src --include=*.ts \| grep -v retired` found a **second** live case, `booking-confirmation.contrast.spec.ts:22`. Both corrected; the six `shared/*` hits say "the **retired** `_glass.scss`" and are historical narrative, correctly left alone |
 
 ---
 
@@ -229,7 +232,8 @@ at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/booking/my-bookings.ts` — banner class string
 - `frontend/src/app/booking/form-error-tokens.contrast.spec.ts` — **new**, the family spec (AC-1/2/3)
 - `frontend/src/app/booking/booking-dialog.contrast.spec.ts` — reads the mirror; splits the two reds (R-3)
-- `frontend/src/app/booking/booking-pay.contrast.spec.ts` — reads the mirror
+- `frontend/src/app/booking/booking-pay.contrast.spec.ts` — reads the mirror; header's stale `.scss` reference corrected (review finding F-2)
+- `frontend/src/app/booking/booking-confirmation.contrast.spec.ts` — the second half of F-2's population
 - `frontend/src/app/booking/my-bookings.contrast.spec.ts` — reads the mirror
 - `frontend/e2e/form-error-token-skin.e2e.ts` — **new**, the mocked computed-style proof (AC-4/5)
 
@@ -322,6 +326,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-31 | review gate — finding F-2 | **Every present-tense reference in `frontend/src` to a `.scss` file**, after the SCSS retirement (#739/#780) left zero on disk. Named the mechanism (a spec header asserting where its tokens live) rather than fixing the one file the reviewer happened to open | `grep -rn "\.scss" src --include=*.ts \| grep -v "styleUrl\|styles:"` then `\| grep -v retired` to drop the historical form | 8 hits, of which **2** are live false statements (`booking-pay.contrast.spec.ts:29`, `booking-confirmation.contrast.spec.ts:22`); the other 6 (`shared/*`) say "the **retired** `_glass.scss`" | Fixed **both**. Fixing only the one in the diff would have left the population half-swept — the failure mode this log exists to prevent. The 6 historical hits stay: scope discipline says narrative about what was retired remains true |
 | 2026-08-31 | phase 2 — the e2e's first green run | **Every assertion in the new e2e that could pass vacuously**, enumerated by asking what a *missing* token would leave behind rather than by re-reading the tests: the three all depend on the `@theme inline` rows, so deleting one row is the single mutation that tests all three at once | `sed -i 's\|^  --color-riv-form-error-ink: .*\|/* probe */\|' src/tailwind.css` then re-run the spec | 3 of 3 tests turn red; the dark-theme test resolves the ink to `rgb(242, 247, 250)` — light on the fixed light fill, exactly the drift the slice prevents | Kept all three. The probe is the evidence they are not vacuous; `tailwind.css` restored from a scratchpad copy and re-verified green |
 | 2026-08-31 | phase 0 — the literal guard's first run | **Every component position painting `#f6e8e7` or `#a3160e` in any role**, enumerated from the tree rather than from the issue's three named files. The guard was first written to match the pair **by value**, and went red on eight sites beyond the family | `grep -rn "#a3160e" src/app --include=*.ts --include=*.html \| grep -v "\.spec\.ts"` then `grep -rno "\[#a3160e[^]]*\]"` to split the forms by utility prefix | 11: the 3 banner **inks** (this slice) · `confirm-panel:9` + `requests-tab:125,172` as `bg-` **fills** (class R → #854) · `set-editor:428`, `requests-tab:82,204`, `payouts-tab:85`, `daily-view-tab:76` as `border-` **tints** (class O → #852) | Narrowed the guard from the *value* to the **role** (`#f6e8e7` any form; `#a3160e` only as `text-[…]`). Matching by value would have dragged two other audit classes — both explicit Non-goals — into this slice. The other eight sites are correct as they stand and are left to their own issues |
 
@@ -355,4 +360,4 @@ at Implement per the `riviera-sdlc` re-entry rule.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty.
 - [ ] **Close-out written in THIS PR** — the plan doc's final state cites `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `pr-gates.md` §1 ladder *plus* `riviera-review-overlay`.
+- [x] **The review gate ran in full** — rung 1 of the `pr-gates.md` §1 ladder (`code-review:code-review`, the plugin's five-agent workflow) *plus* `riviera-review-overlay`; findings F-1/F-2 dispositioned.

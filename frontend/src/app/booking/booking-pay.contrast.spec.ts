@@ -26,7 +26,7 @@ import {
  * WCAG-AA contrast guard for the Liquid Glass payment page. The
  * page sits on the bare themed gradient with light card-glass panels, so every pair is the
  * EFFECTIVE colour: the glass composited over the theme's worst-case gradient stops, then the ink
- * over that (the `venue-map.contrast.spec.ts` pattern). Mirrors every text token in booking-pay.scss.
+ * over that (the `venue-map.contrast.spec.ts` pattern). Mirrors every text token in `booking-pay.ts`.
  *
  * Deliberately excluded (1.4.11 decorative, aria-hidden — the heading/label carries the meaning):
  * the ✓ / ⏳ done badge, the spinner, and the ✕ fail badge. The done badges now use SOLID composited
