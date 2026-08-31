@@ -22,7 +22,7 @@ Two lessons were paid for the hard way in cloud sessions and belong pre-made:
 ### Cloud session (Claude Code on the web — the common case)
 
 The pinned Gradle wrapper **cannot self-provision** (repo-scoped proxy blocks the
-distribution download) and Gradle 8.14 cannot *run* on JDK 25. Recipe — details and
+distribution download) and the image's system Gradle 8.14 cannot *run* on JDK 25. Recipe — details and
 rationale in `docs/agents/gradle-proxy-trust.md` (read it on any TLS/PKIX or 403 error):
 
 ```bash

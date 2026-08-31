@@ -17,11 +17,10 @@ description: >
 
 **Announce at start:** "Running riviera-docs-freshness over `<range>`."
 
-The systematic backstop behind `riviera-sdlc`'s merge close-out step 5 (the NemoClaw
-`update-docs` pattern, owned in-repo). The cautionary tale is epic #72: ten slices shipped
-while `CLAUDE.md`, `CONTEXT.md`, and `RESPONSIBILITIES.md` kept describing the pre-epic
-world until a retro caught it. Docs the agents load every session are **load-bearing** —
-a stale fact there propagates into every future plan and review.
+The systematic backstop behind `riviera-sdlc`'s merge close-out step 5 (cautionary tale:
+epic #72 shipped ten slices while three substrate docs kept describing the pre-epic world —
+`riviera-sdlc` `references/case-history.md`). Docs the agents load every session are
+**load-bearing** — a stale fact there propagates into every future plan and review.
 
 ## Inputs
 
@@ -68,8 +67,8 @@ a stale fact there propagates into every future plan and review.
    the **count** can, and it is seconds against a class of error that otherwise ships.
 
    Grep the **words**, not the new identifier — in two steps, because the phrasings alone
-   are too broad (~200 hits repo-wide when this was written) and collapse to a readable
-   list once filtered by the vocabulary of the thing that grew (~75 for the mail lineage).
+   are too broad (~265 hits repo-wide, re-measured 2026-08-31) and collapse to a readable
+   list once filtered by the vocabulary of the thing that grew (~80 for the mail lineage).
    Re-measure rather than trusting those two numbers: they date the recipe, they do not
    describe your repo today.
 
@@ -88,14 +87,10 @@ a stale fact there propagates into every future plan and review.
    **Javadoc and test-assertion descriptions count as stated facts** — they are what the
    next reader believes.
 
-   Case history: **#373** added the third registry-borne booking mail and the sixth mail
-   counter, and the review found **sixteen** statements it falsified. **How they were found
-   is the argument for this step:** ordinary review of the changed files surfaced six; the
-   other **ten** came only from grepping the substrate, in a second round, after the first
-   six were already fixed — invisible to file-by-file review because they were never in the
-   diff. **Re-run the sweep after the fix round** — #373's own fix made a test's Javadoc
-   stale within the hour. The itemized sixteen, and #374 hitting the same class one slice
-   earlier: `riviera-sdlc` `references/case-history.md` (#447).
+   Case history: **#373** falsified **sixteen** statements — diff review surfaced six, the
+   other **ten** only via this substrate grep, in a second round. **Re-run the sweep after
+   the fix round** — #373's own fix made a test's Javadoc stale within the hour. The
+   itemized sixteen: `riviera-sdlc` `references/case-history.md` (#447).
 3. **Walk the map top-down for the reverse direction.** Skim each substrate doc's claims
    that TOUCH the diff's area (the module table row, the skill's example table, the
    glossary entries) and ask: does the diff make any stated sentence false, even where no
