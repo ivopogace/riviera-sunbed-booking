@@ -70,6 +70,10 @@
   --color-riv-solid-btn-border: var(--riv-solid-btn-border);
   --color-riv-solid-btn-danger-ink: var(--riv-solid-btn-danger-ink);
   --color-riv-solid-btn-danger-border: var(--riv-solid-btn-danger-border);
+  --color-riv-solid-fill-action: var(--riv-solid-fill-action);
+  --color-riv-solid-fill-action-hover: var(--riv-solid-fill-action-hover);
+  --color-riv-solid-fill-brand: var(--riv-solid-fill-brand);
+  --color-riv-solid-fill-danger: var(--riv-solid-fill-danger);
   --color-riv-card-track: var(--riv-card-track);
 
   --color-riv-pop-surface: var(--riv-pop-surface);
@@ -260,6 +264,44 @@
       forced dark document theme). Rationale: docs/plans/form-error-token-pair.md, issue #850. */
   --riv-form-error-fill: #f6e8e7;
   --riv-form-error-ink: #a3160e;
+
+  /** The nine solid button/badge fills that carry FIXED WHITE INK (#854): the operator console's
+      accept / export / selected-day / legend quartet, the two destructive confirms, and the brand
+      badge worn by shared/confirm-panel's primary tone, shared/semantic-chip and the console's
+      request-count badge. Grouped by FORM, not by value — three literals, one job.
+
+      Theme-invariant BY DESIGN, the third family after --riv-solid-btn-* and --riv-form-error-*
+      above, and for the same reason read the other way round: there the fill was fixed and pinned
+      its inks, here the INK is fixed — `text-white`, which cannot theme — so it pins its fills.
+      White clears AA on all four (5.86 / 7.35 / 7.24 / 7.84).
+
+      Neither coincidental token is the answer, and both coincide exactly. --riv-error-ink IS
+      #a3160e but is an INK, and themes to #ffa9a1 — white on it is 1.84:1, a pale pink button with
+      unreadable text. --riv-pop-accent IS #0a6e85 but is the popover accent (#848 is settling that
+      name), and themes to #7cd7e8 — 1.65:1. #0a5f74 is only a gradient STOP inside --riv-cta-grad.
+      Substituting any of them would encode the wrong meaning AND break the skin.
+
+      shared/ is why this is worth a family: confirm-panel and semantic-chip are mounted by whoever
+      renders them, so a themed fill here restyles the same component differently per host. The
+      operator console pins itself porcelain, but semantic-chip's tourist mounts do not — which is
+      the surface solid-fill-token-skin.e2e.ts forces to `dark`.
+
+      -action and -brand are two near-duplicate teals with no role separating them (the console's
+      badge takes the deeper one while its own buttons take the lighter). Very likely drift, NOT
+      merged here: that would be a visual change at three sites, which a migration slice does not
+      make unilaterally. Tracked as a follow-up, like #0c2a33 vs #0a2a33 in the ledger's class O.
+
+      No ink token: `text-white` already cannot theme, so one would add a declaration without
+      removing a literal. One member owes no contrast pair at all — daily-view-tab's legend swatch
+      is aria-hidden with no text, so none is invented for it.
+      Proof: shared/solid-fill-tokens.contrast.spec.ts (the four AA pairs, the two coincidental-token
+      bounds, and the single-declaration guard that is the only thing able to see a dark override) +
+      solid-fill-token-skin.e2e.ts (the computed fills under a forced dark document theme).
+      Rationale: docs/plans/solid-fill-token-family.md, issue #854. */
+  --riv-solid-fill-action: #0a6e85;
+  --riv-solid-fill-action-hover: #0a5e72;
+  --riv-solid-fill-brand: #0a5f74;
+  --riv-solid-fill-danger: #a3160e;
 
   /** The near-opaque popover surface (theme picker, account menu, mobile sheet — app.ts POP)
       and the segmented-control fills (shared/segmented-control.ts). Light values here; the

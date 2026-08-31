@@ -259,16 +259,15 @@ N/A — no API surface changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** write `shared/solid-fill-tokens.contrast.spec.ts` red, then declare the
-tokens.
+**Next action:** repaint the nine fills and update the four pinned specs.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The family spec, red | ⏳ | |
-| 1 — Declare the tokens, green | | |
-| 2 — Repaint the nine sites + the pinned specs | | |
+| 0 — The family spec, red | ✅ | (this commit) |
+| 1 — Declare the tokens, green | ✅ | (this commit) |
+| 2 — Repaint the nine sites + the pinned specs | ⏳ | |
 | 3 — The mocked e2e + the mutation check | | |
 | 4 — Ledger row + close-out | | |
 

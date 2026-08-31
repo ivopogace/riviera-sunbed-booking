@@ -101,6 +101,33 @@ export const SOLID_BTN_DANGER_INK: Rgb = hexToRgb('a3372a');
 export const SOLID_BTN_BORDER: Glass = { color: WHITE, alpha: 0.7 };
 export const SOLID_BTN_DANGER_BORDER: Glass = { color: hexToRgb('c85a3c'), alpha: 0.5 };
 
+/** The `--riv-solid-fill-*` family (#854, class R-2 of the colour-literal audit): the nine solid
+ *  button/badge fills that carry FIXED WHITE INK. Grouped by FORM, not by value — three literals
+ *  doing one job — which is the correction that re-cut the issue.
+ *
+ *  <p>Theme-invariant for the same reason as the two families above: the ink over them is Tailwind's
+ *  named `text-white` and cannot theme, so the fills may not either. Both coincidental tokens do
+ *  theme, which is exactly why neither is the answer — `--riv-error-ink` (same value as
+ *  `SOLID_FILL_DANGER`) resolves DARK_ERROR_INK, and `--riv-pop-accent` (same value as
+ *  `SOLID_FILL_ACTION`) resolves DARK_POP_ACCENT; white ink on either is light on light.
+ *
+ *  <p>ACTION and BRAND are two near-duplicate brand teals with no role separating them — the
+ *  console's badge takes the deeper one while its neighbouring buttons take the lighter. Very
+ *  likely drift, deliberately NOT merged here: that would be a visual change at three sites, which
+ *  a migration slice does not make unilaterally. Tracked as a follow-up.
+ *
+ *  <p>Guarded by `shared/solid-fill-tokens.contrast.spec.ts`. */
+export const SOLID_FILL_ACTION: Rgb = hexToRgb('0a6e85');
+export const SOLID_FILL_ACTION_HOVER: Rgb = hexToRgb('0a5e72');
+export const SOLID_FILL_BRAND: Rgb = hexToRgb('0a5f74');
+export const SOLID_FILL_DANGER: Rgb = hexToRgb('a3160e');
+/** The family's ink, fixed. Not a token: `text-white` is already unthemeable, so declaring one
+ *  would add a declaration without removing a literal. Mirrored so the AA proof has a constant. */
+export const SOLID_FILL_INK: Rgb = WHITE;
+/** The dark theme's `--riv-pop-accent`, the coincidental token for `SOLID_FILL_ACTION`. Its
+ *  counterpart for `SOLID_FILL_DANGER` is DARK_ERROR_INK above. */
+export const DARK_POP_ACCENT: Rgb = hexToRgb('7cd7e8');
+
 /** `--riv-form-error-fill` / `--riv-form-error-ink` — the three tourist error banners' skin (#850).
  *  Theme-invariant as a PAIR: the fill is a solid composite that does not theme, so the themed
  *  `--riv-error-ink` over it would resolve DARK_ERROR_INK at 1.54:1. Guarded by
