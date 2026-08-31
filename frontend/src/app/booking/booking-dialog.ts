@@ -9,10 +9,14 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { LegalConsent } from './legal-consent';
 import { email, FormField, form, required, submit } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
 
+import { todayBookingDate } from '../shared/booking-date';
 import { formatBookingDate } from '../shared/booking-date-label';
+import { FieldErrorFor } from '../shared/field-error-for';
+import { FieldGlass } from '../shared/field-glass';
 import { trapFocusWithin } from '../shared/focus-trap';
 import { formatMoney } from '../shared/money';
 import { touristTierLabel } from '../shared/set-label';
@@ -25,6 +29,7 @@ import {
   RequestedBooking,
 } from './booking.model';
 import { BookingService, bookingErrorOf } from './booking.service';
+import { CancellationTermsNote } from './cancellation-terms-note';
 
 import { TouchTarget } from '../shared/touch-target';
 
@@ -43,15 +48,25 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
  */
 @Component({
   selector: 'app-booking-dialog',
-  imports: [FormField, BusyAction, TouchTarget],
+  imports: [
+    LegalConsent,
+    FormField,
+    BusyAction,
+    FieldErrorFor,
+    FieldGlass,
+    TouchTarget,
+    CancellationTermsNote,
+  ],
   host: {
-    class: 'booking-backdrop',
+    // The fixed, scrim-backed backdrop must paint ABOVE the sticky glass header (z-60) — the app shell relies on this.
+    class:
+      'booking-backdrop fixed inset-0 z-60 flex items-center justify-center bg-[rgba(6,30,40,0.45)] p-5 backdrop-blur-[6px]',
     '(click)': 'requestClose()',
     '(keydown.escape)': 'requestClose()',
   },
   template: `
     <div
-      class="booking-panel"
+      class="booking-panel flex max-h-[calc(100vh-40px)] w-full max-w-[430px] flex-col overflow-hidden rounded-[30px] border border-riv-card-border bg-riv-dialog-glass text-riv-card-ink shadow-[0_40px_90px_rgba(6,30,40,0.5),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-[34px] backdrop-saturate-[1.8] [animation:riv-pop_0.26s_cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:[animation:none]"
       role="dialog"
       aria-modal="true"
       [attr.aria-labelledby]="'booking-dialog-venue booking-dialog-title'"
@@ -59,31 +74,53 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
       (keydown.tab)="trapFocus($event, false)"
       (keydown.shift.tab)="trapFocus($event, true)"
     >
-      <header class="dialog-head">
+      <!-- AA-safe dark-teal gradient header, SOLID white inks (deviation from the design's frosted whites, on purpose). -->
+      <header
+        class="dialog-head relative shrink-0 bg-[linear-gradient(160deg,#0c7288,#0a5f74)] px-6 pt-[18px] pb-[15px] text-white"
+      >
+        <!-- bg #31798a = solid composite of the frosted white-0.16 chip over the teal header (white 4.96:1; static-analysis safe). -->
         <button
           appTouchTarget
           type="button"
-          class="dialog-close"
+          class="dialog-close absolute top-[14px] right-[14px] flex size-[30px] cursor-pointer items-center justify-center rounded-full border border-[rgba(255,255,255,0.4)] bg-[#31798a] text-[15px] leading-none text-white motion-safe:[transition:filter_0.15s_ease] hover:brightness-[1.12] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
           data-testid="dialog-close"
           aria-label="Close"
           (click)="requestClose()"
         >
           <span aria-hidden="true">✕</span>
         </button>
-        <span id="booking-dialog-venue" class="dialog-venue">{{ venueName() }}</span>
-        <h2 id="booking-dialog-title" class="dialog-title">{{ set().rowLabel }}</h2>
-        <p class="dialog-meta">Spot {{ set().positionNo }} · {{ tierLabel() }}</p>
-        <p class="dialog-includes">{{ includes }}</p>
+        <span
+          id="booking-dialog-venue"
+          class="dialog-venue block text-[12px] tracking-[0.1em] uppercase text-white"
+          >{{ venueName() }}</span
+        >
+        <h2
+          id="booking-dialog-title"
+          class="dialog-title mt-[5px] text-[23px] leading-[1.1] font-bold tracking-[-0.02em] text-white"
+        >
+          {{ set().rowLabel }}
+        </h2>
+        <p class="dialog-meta mt-[5px] text-[13px] text-white">
+          Spot {{ set().positionNo }} · {{ tierLabel() }}
+        </p>
+        <p class="dialog-includes mt-[7px] text-[12.5px] text-white">{{ includes }}</p>
 
-        <ol class="steps" aria-label="Booking steps">
+        <ol class="steps mt-[14px] flex items-center gap-2" aria-label="Booking steps">
           @for (s of steps(); track s.n) {
+            <!-- Solid white on the teal header — AA; the connector line is the ::after rule. -->
             <li
-              class="step"
+              class="step flex min-w-0 flex-1 items-center gap-[7px] text-[12px] font-semibold whitespace-nowrap text-white [&:not(:last-child)]:after:h-px [&:not(:last-child)]:after:min-w-2 [&:not(:last-child)]:after:flex-1 [&:not(:last-child)]:after:bg-[rgba(255,255,255,0.32)]"
               [class.active]="s.active"
               [attr.data-testid]="'step-' + s.n"
               [attr.aria-current]="s.active ? 'step' : null"
             >
-              <span class="step-num" aria-hidden="true">{{ s.n }}</span>
+              <!-- Decorative number (aria-hidden) — the label carries the meaning, so the circle tints are 1.4.11-exempt. Inactive #2c7789 = the AA-safe muted teal (white 5.1:1; static-analysis safe). -->
+              <span
+                class="step-num flex size-[22px] shrink-0 items-center justify-center rounded-[50%] text-[12px] font-bold"
+                [class]="s.active ? 'bg-white text-[#0a5f74]' : 'bg-[#2c7789] text-white'"
+                aria-hidden="true"
+                >{{ s.n }}</span
+              >
               <span class="step-label">{{ s.label }}</span>
             </li>
           }
@@ -91,138 +128,202 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
       </header>
 
       <form (submit)="onPrimary(); $event.preventDefault()" novalidate>
-        <div class="dialog-body">
+        <div class="dialog-body min-h-0 flex-1 overflow-y-auto px-6 pt-[15px] pb-2">
           @if (step() === 1) {
-            <div class="ro-row">
-              <span class="ro-key">Date</span>
-              <strong class="ro-val" data-testid="dialog-date">{{ dateLabel() }}</strong>
+            <div
+              class="ro-row flex items-center justify-between border-b border-b-riv-card-track py-[9px] text-[14.5px] first:pt-0"
+            >
+              <span class="ro-key text-riv-card-ink-soft">Date</span>
+              <strong class="ro-val text-riv-card-ink" data-testid="dialog-date">{{
+                dateLabel()
+              }}</strong>
             </div>
-            <div class="ro-row">
-              <span class="ro-key">Price</span>
-              <strong class="ro-val accent" data-testid="dialog-price">{{ price() }}</strong>
+            <div
+              class="ro-row flex items-center justify-between border-b border-b-riv-card-track py-[9px] text-[14.5px] first:pt-0"
+            >
+              <span class="ro-key text-riv-card-ink-soft">Price</span>
+              <strong
+                class="ro-val accent text-[16px] text-riv-accent-ink"
+                data-testid="dialog-price"
+                >{{ price() }}</strong
+              >
             </div>
 
-            <div class="fields">
-              <label class="field">
-                <span class="field-label">Full name</span>
+            <div class="fields mt-3 flex flex-col gap-2.5">
+              <label class="field flex flex-col gap-1.5">
+                <span
+                  class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-soft"
+                  >Full name</span
+                >
                 <input
                   appTouchTarget
+                  appFieldGlass
+                  class="rounded-[14px] px-[13px] py-[11px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink"
                   type="text"
                   autocomplete="name"
                   [formField]="bookingForm.fullName"
+                  #fullNameControl
                 />
                 @if (submitAttempted() && bookingForm.fullName().errors().length) {
-                  <span class="field-error" role="alert">{{
-                    bookingForm.fullName().errors()[0].message
-                  }}</span>
+                  <!-- Dark brick red — AA on the light panel over the worst gradient stop. -->
+                  <span
+                    [appFieldErrorFor]="fullNameControl"
+                    class="field-error text-[12px] font-semibold text-riv-error-ink"
+                    role="alert"
+                    >{{ bookingForm.fullName().errors()[0].message }}</span
+                  >
                 }
               </label>
-              <label class="field">
-                <span class="field-label">Email</span>
+              <label class="field flex flex-col gap-1.5">
+                <span
+                  class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-soft"
+                  >Email</span
+                >
                 <input
                   appTouchTarget
+                  appFieldGlass
+                  class="rounded-[14px] px-[13px] py-[11px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink"
                   type="email"
                   autocomplete="email"
                   [formField]="bookingForm.email"
+                  #emailControl
                 />
                 @if (submitAttempted() && bookingForm.email().errors().length) {
-                  <span class="field-error" role="alert">{{
-                    bookingForm.email().errors()[0].message
-                  }}</span>
+                  <span
+                    [appFieldErrorFor]="emailControl"
+                    class="field-error text-[12px] font-semibold text-riv-error-ink"
+                    role="alert"
+                    >{{ bookingForm.email().errors()[0].message }}</span
+                  >
                 }
               </label>
-              <label class="field">
-                <span class="field-label">Phone</span>
+              <label class="field flex flex-col gap-1.5">
+                <span
+                  class="field-label text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-soft"
+                  >Phone</span
+                >
                 <input
                   appTouchTarget
+                  appFieldGlass
+                  class="rounded-[14px] px-[13px] py-[11px] text-[15px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink"
                   type="tel"
                   autocomplete="tel"
                   [formField]="bookingForm.phone"
+                  #phoneControl
                 />
                 @if (submitAttempted() && bookingForm.phone().errors().length) {
-                  <span class="field-error" role="alert">{{
-                    bookingForm.phone().errors()[0].message
-                  }}</span>
+                  <span
+                    [appFieldErrorFor]="phoneControl"
+                    class="field-error text-[12px] font-semibold text-riv-error-ink"
+                    role="alert"
+                    >{{ bookingForm.phone().errors()[0].message }}</span
+                  >
                 }
               </label>
             </div>
-            <p class="fine">
+            <p class="fine mt-2.5 mb-1 text-[12.5px] leading-[1.45] text-riv-card-ink-soft">
               We only use these to send your booking code and reach you about this booking.
             </p>
           }
 
           @if (step() === 2) {
             <dl class="review">
-              <div class="sum-row">
-                <dt>Venue</dt>
-                <dd>{{ venueName() }}</dd>
+              <div
+                class="sum-row flex items-center justify-between gap-3 border-b border-b-riv-card-track py-[11px] text-[14.5px] first:pt-0"
+              >
+                <dt class="text-riv-card-ink-soft">Venue</dt>
+                <dd class="text-right font-bold text-riv-card-ink">{{ venueName() }}</dd>
               </div>
-              <div class="sum-row">
-                <dt>Set</dt>
-                <dd>{{ set().rowLabel }} · spot {{ set().positionNo }}</dd>
+              <div
+                class="sum-row flex items-center justify-between gap-3 border-b border-b-riv-card-track py-[11px] text-[14.5px] first:pt-0"
+              >
+                <dt class="text-riv-card-ink-soft">Set</dt>
+                <dd class="text-right font-bold text-riv-card-ink">
+                  {{ set().rowLabel }} · spot {{ set().positionNo }}
+                </dd>
               </div>
-              <div class="sum-row">
-                <dt>Date</dt>
-                <dd>{{ dateLabel() }}</dd>
+              <div
+                class="sum-row flex items-center justify-between gap-3 border-b border-b-riv-card-track py-[11px] text-[14.5px] first:pt-0"
+              >
+                <dt class="text-riv-card-ink-soft">Date</dt>
+                <dd class="text-right font-bold text-riv-card-ink">{{ dateLabel() }}</dd>
               </div>
-              <div class="sum-row">
-                <dt>Guest</dt>
-                <dd>{{ model().fullName }}</dd>
+              <div
+                class="sum-row flex items-center justify-between gap-3 border-b border-b-riv-card-track py-[11px] text-[14.5px] first:pt-0"
+              >
+                <dt class="text-riv-card-ink-soft">Guest</dt>
+                <dd class="text-right font-bold text-riv-card-ink">{{ model().fullName }}</dd>
               </div>
-              <div class="sum-row total">
-                <dt>Total</dt>
-                <dd data-testid="review-total">{{ price() }}</dd>
+              <div
+                class="sum-row total flex items-center justify-between gap-3 pt-[14px] pb-[11px] text-[14.5px]"
+              >
+                <dt class="text-[15px] text-riv-card-ink-soft">Total</dt>
+                <dd
+                  class="text-right text-[26px] font-bold tracking-[-0.02em] text-riv-accent-ink"
+                  data-testid="review-total"
+                >
+                  {{ price() }}
+                </dd>
               </div>
             </dl>
 
             @if (isRequest()) {
-              <p class="mode-note request">
-                <strong>Request to Book.</strong> This venue reviews each request before payment.
-                We’ll send your request now — <strong>you won’t be charged yet</strong>. If the
-                venue accepts, you’ll get a link to pay {{ price() }} and lock in the set.
+              <p
+                class="mode-note request mt-[14px] mb-1 block rounded-2xl border border-[rgba(240,170,46,0.38)] bg-[rgba(240,170,46,0.12)] px-[15px] py-[13px] text-[12.8px] leading-[1.5] text-riv-card-ink-soft"
+              >
+                <strong class="text-riv-card-ink">Request to Book.</strong> This venue reviews each
+                request before payment. We’ll send your request now —
+                <strong class="text-riv-card-ink">you won’t be charged yet</strong>. If the venue
+                accepts, you’ll get a link to pay {{ price() }} and lock in the set.
               </p>
             } @else {
-              <p class="mode-note instant">
-                <strong>Instant Book.</strong> Next you’ll pay securely to confirm this set right
-                away. Free cancellation until the evening before — your booking code arrives
-                on-screen and by email.
+              <p
+                class="mode-note instant mt-[14px] mb-1 block rounded-2xl border border-riv-accent-border bg-riv-accent-fill px-[15px] py-[13px] text-[12.8px] leading-[1.5] text-riv-card-ink-soft"
+              >
+                <strong class="text-riv-card-ink">Instant Book.</strong> Next you’ll pay securely to
+                confirm this set right away — your booking code arrives on-screen and by email.
               </p>
             }
 
+            <!-- Polite live region: the server-quoted terms may resolve after the step renders (R-6). -->
+            <div role="status" data-testid="terms-region">
+              @if (terms.hasValue()) {
+                <p
+                  appCancellationTermsNote
+                  [terms]="terms.value()!"
+                  class="mt-2 mb-1 block rounded-2xl border border-riv-card-track bg-riv-wash-fill px-[15px] py-[11px] text-[12.5px] text-riv-card-ink-soft"
+                ></p>
+              }
+            </div>
+
             <!-- New tab (not routerLink) so the modal's checkout state survives reading the document. -->
-            <p class="fine" data-testid="legal-agreement">
-              By continuing you agree to our
-              <a
-                class="underline"
-                data-testid="legal-terms-link"
-                href="/legal/terms"
-                target="_blank"
-                rel="noopener"
-                >Terms of Service</a
-              >
-              and acknowledge our
-              <a
-                class="underline"
-                data-testid="legal-privacy-link"
-                href="/legal/privacy"
-                target="_blank"
-                rel="noopener"
-                >Privacy Policy</a
-              >.
-            </p>
+            <p
+              appLegalConsent
+              lead="By continuing"
+              class="fine mt-2.5 mb-1 text-[12.5px] leading-[1.45] text-riv-card-ink-soft"
+            ></p>
           }
         </div>
 
         @if (errorMessage(); as msg) {
-          <p class="form-error" role="alert" data-testid="dialog-error">{{ msg }}</p>
+          <!-- Solid #f6e8e7 = composite of the translucent red tint over the panel; brick red clears AA (~6.6:1) on it. -->
+          <p
+            class="form-error mx-6 rounded-xl bg-[#f6e8e7] px-[13px] py-2.5 text-[13px] font-semibold text-[#a3160e]"
+            role="alert"
+            data-testid="dialog-error"
+          >
+            {{ msg }}
+          </p>
         }
 
-        <div class="dialog-actions">
+        <div
+          class="dialog-actions flex shrink-0 gap-2.5 border-t border-t-riv-card-track px-6 pt-[14px] pb-4"
+        >
           @if (step() === 2) {
             <button
               appTouchTarget
               type="button"
-              class="btn-back"
+              class="btn-back shrink-0 cursor-pointer rounded-2xl border-[1.5px] border-riv-card-border bg-riv-wash-fill px-5 py-[14px] text-[15px] font-semibold text-riv-back-ink backdrop-blur-[8px] motion-safe:[transition:background_0.15s_ease,border-color_0.15s_ease,box-shadow_0.15s_ease] hover:border-riv-wash-hover-border hover:bg-riv-wash-hover hover:shadow-[0_6px_16px_rgba(6,30,40,0.14)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
               data-testid="dialog-back"
               (click)="back()"
             >
@@ -232,7 +333,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
           <button
             appTouchTarget
             type="submit"
-            class="btn-primary"
+            class="btn-primary flex-1 cursor-pointer rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-[14px] text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] motion-safe:[transition:filter_0.15s_ease] hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-default disabled:opacity-70"
             data-testid="dialog-primary"
             [appBusy]="submitting()"
           >
@@ -242,7 +343,6 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
       </form>
     </div>
   `,
-  styleUrl: './booking-dialog.scss',
 })
 export class BookingDialog implements OnInit {
   readonly set = input.required<SetView>();
@@ -271,6 +371,15 @@ export class BookingDialog implements OnInit {
 
   private readonly bookings = inject(BookingService);
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  /**
+   * This booking's server-quoted cancellation terms (#795). While loading or failed the template
+   * renders no cancellation claim at all — never a false "free cancellation".
+   */
+  protected readonly terms = this.bookings.cancellationTerms(() => ({
+    setId: this.set().id,
+    date: this.date(),
+  }));
 
   /** 1 = Details, 2 = Review. */
   protected readonly step = signal<1 | 2>(1);
@@ -371,11 +480,14 @@ export class BookingDialog implements OnInit {
       this.submitting.set(true);
       try {
         const result = await firstValueFrom(
-          this.bookings.createBooking({
-            setId: this.set().id,
-            bookingDate: m.date,
-            contact: { email: m.email, fullName: m.fullName, phone: m.phone },
-          }),
+          this.bookings.createBooking(
+            {
+              setId: this.set().id,
+              bookingDate: m.date,
+              contact: { email: m.email, fullName: m.fullName, phone: m.phone },
+            },
+            this.terms.hasValue() ? this.terms.value() : undefined,
+          ),
         );
         if (result.kind === 'requested') {
           this.requested.emit(result.requested);
@@ -399,7 +511,9 @@ export class BookingDialog implements OnInit {
       case 'SET_NOT_BOOKABLE_ONLINE':
         return 'This set is not available to book online.';
       case 'BOOKING_CLOSED':
-        return 'Booking has closed for that date. Try a later day.';
+        return this.date() === todayBookingDate(new Date())
+          ? 'Online sales for today have closed at this venue. Try another venue or tomorrow.'
+          : 'Booking has closed for that date. Try a later day.';
       case 'NO_SUCH_SET':
         return 'That set could not be found.';
       case 'INVALID_REQUEST':

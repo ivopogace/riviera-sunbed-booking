@@ -23,6 +23,25 @@ export function formatMoney(amount: MoneyView): string {
 }
 
 /**
+ * Render one or more amounts as a single label: the one formatted price when every amount is
+ * equal, else the min–max span ("€35–€45"). The span keeps a mixed-price row honest — no single
+ * amount can represent it — while a uniform list renders exactly like {@link formatMoney}. Bounds
+ * are chosen by integer minor-unit comparison (invariant #5) and each bound renders with its own
+ * currency. The list must not be empty.
+ */
+export function formatMoneyRange(amounts: readonly MoneyView[]): string {
+  let min = amounts[0];
+  let max = amounts[0];
+  for (const amount of amounts) {
+    min = amount.minorUnits < min.minorUnits ? amount : min;
+    max = amount.minorUnits > max.minorUnits ? amount : max;
+  }
+  return min.minorUnits === max.minorUnits
+    ? formatMoney(min)
+    : `${formatMoney(min)}–${formatMoney(max)}`;
+}
+
+/**
  * Parse a euros input string to integer minor units (invariant #5 — the conversion at the edge), or
  * `null` when the input is empty or not a number. The caller MUST treat `null` as "no change", never
  * as €0 — a cleared field must not silently reprice to free. Negatives clamp to 0. This is the single

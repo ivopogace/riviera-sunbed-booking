@@ -162,6 +162,39 @@ test('no grounds are sent when the reason is left blank', async ({ page }) => {
 });
 
 /**
+ * The association, in a real browser. jsdom cannot prove the reference RESOLVES — axe reports a
+ * dangling `aria-describedby` as `incomplete`, and `expectNoSeriousAxeViolations` reads
+ * `violations` only, so nothing in CI would see a rotted association except an assertion that
+ * dereferences it. No network mock is needed beyond the fixtures: the validation refusal never
+ * reaches the wire.
+ */
+test('an out-of-range rate names the field it blames, and lets go when corrected', async ({
+  page,
+}) => {
+  await mockOperatorLifecycleApi(page, { admin: ADMIN });
+  await mockCommissions(page);
+  await openCommissionsTab(page);
+
+  await page.getByTestId('admin-commission-edit-7').click();
+  await page.getByTestId('admin-commission-percent-7').fill('101');
+  await page.getByTestId('admin-commission-save-7').click();
+
+  const field = page.getByTestId('admin-commission-percent-7');
+  await expect(field).toHaveAttribute('aria-invalid', 'true');
+  const describedBy = await field.getAttribute('aria-describedby');
+  expect(describedBy).toBeTruthy();
+  await expect(page.locator(`#${describedBy}`)).toHaveText(/percentage between 0% and 100%/);
+  await expectNoSeriousAxeViolations(page, 'admin commissions tab showing a validation error');
+
+  await page.getByTestId('admin-commission-percent-7').fill('11');
+
+  await expect(field).not.toHaveAttribute('aria-invalid', /.*/);
+  await expect(field).not.toHaveAttribute('aria-describedby', /.*/);
+  // Nothing was sent: the refusal is decided before the wire.
+  expect(await writesSoFar(page)).toEqual([]);
+});
+
+/**
  * The focus transition jsdom cannot show. Disabling a focused button blurs it to `<body>` in a real
  * browser but not under jsdom, so the unit spec pins the intended target while this proves the
  * behaviour that made it a bug — a failed save leaving a keyboard user with nowhere to go, on the one

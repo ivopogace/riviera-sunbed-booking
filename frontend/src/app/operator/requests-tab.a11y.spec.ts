@@ -34,6 +34,12 @@ describe('RequestsTab a11y (#176)', () => {
   ];
 
   function render(requests: object[] = REQUESTS): void {
+    mount();
+    settle(requests);
+  }
+
+  /** Mount the tab and settle only the session read, so the tab is left mid-load. */
+  function mount(): void {
     TestBed.configureTestingModule({
       imports: [RequestsTab],
       providers: [
@@ -58,6 +64,10 @@ describe('RequestsTab a11y (#176)', () => {
     http
       .expectOne((r) => r.url.includes('/api/auth/me'))
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+  }
+
+  /** Flush the tab's two load GETs, moving it from skeleton to content. */
+  function settle(requests: object[]): void {
     http
       .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/booking-requests'))
       .flush(requests);
@@ -118,6 +128,15 @@ describe('RequestsTab a11y (#176)', () => {
   it('has no axe violations for the all-caught-up empty state', async () => {
     render([]);
     await expectNoAxeViolations(host());
+  });
+
+  it('has no axe violations while the read is in flight (#744)', async () => {
+    mount();
+
+    expect(host().querySelectorAll('[data-testid="request-skeleton-card"]').length).toBe(3);
+    await expectNoAxeViolations(host());
+
+    settle([]);
   });
 });
 

@@ -69,6 +69,34 @@ public interface EditBeachMap {
 			RowPriceCommand command);
 
 	/**
+	 * Rename <strong>every set in a row</strong> — a display-only write, the {@link #repriceRow}
+	 * analogue for the row's label. After asserting {@code operator} owns {@code venueId}, it writes
+	 * {@code command.newLabel()} over {@code row_label} for every set carrying
+	 * {@code command.rowLabel()} in one non-destructive {@code UPDATE}: set identity, pool,
+	 * coordinates, price and any {@code set_availability} hold are untouched, so — unlike
+	 * {@link #replaceLayout} and {@link #editSet} — a rename is allowed on a venue with bookings or
+	 * holds and asks no claim question at all. Nothing a claim depends on changes, so nothing can be
+	 * stranded or re-seated; the guest keeps the same set, at the same row position, and reads the
+	 * new name live.
+	 *
+	 * <p>Refused with {@link SetRejection#ROW_NAME_TAKEN} (→ 409) when another row already carries
+	 * the requested label — the database alone would not catch it unless the two rows' position
+	 * numbers also collided, and a shared label merges two physical rows wherever sets are grouped
+	 * by it. A rename to the row's current label is a permitted no-op. Returns
+	 * {@code Rejected(NO_SUCH_VENUE)} / {@code Rejected(NO_SUCH_ROW)} when the venue or the row is
+	 * unknown.
+	 *
+	 * <p>Optimistic concurrency: identical to {@link #repriceRow} — the caller passes the
+	 * {@code set_version} the tab loaded, the write is conditional on it, a mismatch yields
+	 * {@link SetRejection#STALE_WRITE} (→ 409), and the token is advanced only after a rename that
+	 * actually wrote — so a rejected one, <em>and the same-label no-op</em>, both leave the acting
+	 * tab's own retry valid. A caller that optimistically advances its own copy of the token must
+	 * therefore not send a same-label rename, or it will run one ahead of the server.
+	 */
+	ChangeOutcome renameRow(OperatorId operator, VenueId venueId, long expectedVersion,
+			RowNameCommand command);
+
+	/**
 	 * Replace the venue's <strong>whole</strong> beach-map layout in one transaction —
 	 * the generate-grid + paint editor's bulk write. After asserting {@code operator} owns {@code venueId},
 	 * it is <em>reject-unless-unclaimed</em>: if any of the venue's existing sets has a booking (any status)
@@ -77,6 +105,11 @@ public interface EditBeachMap {
 	 * invariants #2/#3 hold. A hold whose day has gone does not block: it describes a day already past and
 	 * goes with its set. On a clear venue the existing sets are deleted and {@code command}'s grid inserted
 	 * atomically.
+	 *
+	 * <p>Refused with {@link ReplaceRejection#ROW_NAME_TAKEN} (→ 409) when one submitted
+	 * {@code rowLabel} appears under two distinct grid rows — {@link #renameRow}'s one-label-one-row
+	 * rule checked within the batch, which no DB constraint can see (gap-cell numbering keeps every
+	 * {@code (row_label, position_no)} pair unique).
 	 *
 	 * <p>Optimistic concurrency: the caller passes the {@code expectedVersion} (the venue's
 	 * {@code set_version}) the tab loaded with the map; the write is conditional on it. Another writer having

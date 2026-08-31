@@ -38,6 +38,8 @@ function detail(
     emailWithheld: false,
     payWindowClosed: false,
     cancelReason: null,
+    cancellationWindowAtBirth: 'FREE',
+    reviewPanel: { kind: 'NOT_COMPLETED' },
     ...extra,
   };
 }
@@ -273,6 +275,37 @@ describe('MyBookings (device-local list, issue #139)', () => {
     expect(host.querySelector('[data-testid="booking-row"]')?.textContent).toContain('TRAN5678');
   });
 
+  it('announces a per-code failure once, page-level — not a live region per row (#745)', async () => {
+    seedCodes(['FAIL0001', 'FAIL0002']);
+    const service: Partial<BookingService> = {
+      getByCode: () => throwError(() => ({ status: 500 })),
+    };
+    const fixture = await render(service);
+    const host = fixture.nativeElement as HTMLElement;
+
+    // Pin the mechanism (an `alert`), and ONE element for two failed rows — never one per row.
+    const panels = host.querySelectorAll('[data-testid="rows-failed-alert"]');
+    expect(panels).toHaveLength(1);
+    expect(panels[0].getAttribute('role')).toBe('alert');
+
+    const alert = panels[0];
+    host.querySelector<HTMLButtonElement>('[data-testid="row-retry"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Retry re-fails too, so the panel stays — same node, not re-inserted by the re-sort.
+    expect(host.querySelector('[data-testid="rows-failed-alert"]')).toBe(alert);
+  });
+
+  it('has no rows-failed alert while nothing has failed', async () => {
+    seedCodes(['OK000001']);
+    const fixture = await render(stubService({ OK000001: detail('OK000001', 'CONFIRMED') }));
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="rows-failed-alert"]')).toBeNull();
+  });
+
   it('shows the empty state with Browse beaches and no find-by-code button (T8 deferred)', async () => {
     seedCodes([]);
     const fixture = await render(stubService({}));
@@ -306,6 +339,58 @@ describe('MyBookings (device-local list, issue #139)', () => {
     expect(loading).not.toBeNull();
     expect(loading?.getAttribute('aria-busy')).toBe('true');
     await expectNoAxeViolations(host);
+  });
+
+  it('skeletons pulse on the shared track token, guarded for reduced motion (#739)', async () => {
+    seedCodes(['LOAD0001']);
+    const fixture = await render({
+      getByCode: () => new Subject<BookingDetail>().asObservable(),
+    });
+    const host = fixture.nativeElement as HTMLElement;
+
+    const lines = host.querySelectorAll('[data-testid="booking-row-loading"] .skeleton');
+    expect(lines).toHaveLength(2);
+    for (const line of lines) {
+      expect(line.classList.contains('animate-pulse')).toBe(true);
+      expect(line.classList.contains('motion-reduce:animate-none')).toBe(true);
+      expect(line.classList.contains('bg-riv-card-track')).toBe(true);
+    }
+  });
+
+  it('page-level loading is wholly decorative — the announcer owns the words (#739, #741)', async () => {
+    const restoring = {
+      restoring: signal(true),
+      signedIn: signal(false),
+    } as unknown as CustomerAuth;
+    const fixture = await render(stubService({}), restoring);
+    const host = fixture.nativeElement as HTMLElement;
+
+    const loading = host.querySelector('[data-testid="my-bookings-loading"]')!;
+    // Decoration now: it used to be the live region, born holding its text (#741).
+    expect(loading.getAttribute('aria-live')).toBeNull();
+    expect(loading.getAttribute('aria-hidden')).toBe('true');
+    expect(loading.querySelectorAll('.skeleton')).toHaveLength(2);
+    await expectNoAxeViolations(host);
+  });
+
+  it('announces through one region that survives loading → loaded (#741)', async () => {
+    const restoring = {
+      restoring: signal(true),
+      signedIn: signal(false),
+    } as unknown as CustomerAuth;
+    const fixture = await render(stubService({}), restoring);
+    const host = fixture.nativeElement as HTMLElement;
+
+    const announcer = host.querySelector('[data-testid="load-announcer"]')!;
+    expect(announcer.textContent?.trim()).toBe('Loading your bookings…');
+
+    restoring.restoring.set(false);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(host.querySelector('[data-testid="load-announcer"]')).toBe(announcer);
+    expect(announcer.textContent?.trim()).toBe('Your bookings loaded.');
   });
 
   describe('fetch fan-out (#164)', () => {
@@ -441,9 +526,164 @@ describe('MyBookings (device-local list, issue #139)', () => {
       const rows = host.querySelectorAll('[data-testid="booking-row"]');
       expect(rows).toHaveLength(1);
       expect(rows[0].textContent).toContain('DEVONLY1');
-      // …and the failed account list is surfaced with a retry, not hidden.
-      expect(host.querySelector('[data-testid="account-error"]')).not.toBeNull();
+      // …surfaced with a retry as an `alert`, not hidden — a `status` there announces nothing (#745).
+      const accountError = host.querySelector('[data-testid="account-error"]')!;
+      expect(accountError).not.toBeNull();
+      expect(accountError.getAttribute('role')).toBe('alert');
       expect(host.querySelector('[data-testid="account-retry"]')).not.toBeNull();
+      // Silent: bookings made elsewhere may be missing, so "loaded" overstates it (#741 review).
+      expect(host.querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
+    });
+
+    it('stays silent while the account read is still in flight (#741 re-review)', async () => {
+      // The device rows clear `loading` while the account list is still out (the gap #741's re-review found).
+      seedCodes(['DEVONLY1']);
+      const reads: Subject<MyBookingSummary[]>[] = [];
+      const service = {
+        ...stubService({ DEVONLY1: detail('DEVONLY1', 'CONFIRMED') }),
+        myBookings: () => {
+          const read = new Subject<MyBookingSummary[]>();
+          reads.push(read);
+          return read.asObservable();
+        },
+      };
+      const fixture = await render(service, authStub(true));
+      const host = fixture.nativeElement as HTMLElement;
+      const announcer = host.querySelector('[data-testid="load-announcer"]')!;
+
+      expect(announcer.textContent?.trim()).toBe('');
+
+      reads[0].error({ status: 500 });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(announcer.textContent?.trim()).toBe('');
+      expect(host.querySelector('[data-testid="account-error"]')).not.toBeNull();
+
+      // accountError stays true for the whole retry round trip (#746 RV-FE-9) — still silent.
+      host.querySelector<HTMLButtonElement>('[data-testid="account-retry"]')!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(announcer.textContent?.trim()).toBe('');
+
+      reads[1].next([]);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(announcer.textContent?.trim()).toBe('Your bookings loaded.');
+    });
+
+    it('stays silent while device rows are still resolving behind their skeletons', async () => {
+      // A guest never touches the account list, so this window is the common path, not the rare one.
+      seedCodes(['DEVONLY1']);
+      const lookup = new Subject<BookingDetail>();
+      const service = { ...stubService({}), getByCode: () => lookup.asObservable() };
+      const fixture = await render(service);
+      const host = fixture.nativeElement as HTMLElement;
+      const announcer = host.querySelector('[data-testid="load-announcer"]')!;
+
+      expect(announcer.textContent?.trim()).toBe('');
+
+      lookup.next(detail('DEVONLY1', 'CONFIRMED'));
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(announcer.textContent?.trim()).toBe('Your bookings loaded.');
+    });
+
+    it('never flashes the empty card while a signed-in account read is in flight', async () => {
+      // No device codes, so `loading` clears with zero rows — exactly when the card would flash.
+      const account = new Subject<MyBookingSummary[]>();
+      const service = { ...stubService({}), myBookings: () => account.asObservable() };
+      const fixture = await render(service, authStub(true));
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(host.querySelector('[data-testid="my-bookings-empty"]')).toBeNull();
+      // Absence is not the contract — asserting only that would have passed over a blank page.
+      expect(host.querySelector('[data-testid="my-bookings-loading"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe(
+        'Loading your bookings…',
+      );
+
+      account.next([]);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="my-bookings-empty"]')).not.toBeNull();
+    });
+
+    it('says nothing when a device row failed — a retry card is not a loaded booking', async () => {
+      seedCodes(['DEVONLY1']);
+      const service = stubService({ DEVONLY1: { error: { status: 500 } } });
+      const fixture = await render(service);
+      const host = fixture.nativeElement as HTMLElement;
+
+      // Silence only counts as right if the retry card is what stands there instead.
+      expect(host.querySelector('[data-testid="booking-row-failed"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="row-retry"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="load-announcer"]')!.textContent?.trim()).toBe('');
+    });
+
+    it('announces once, after a row retry succeeds — never while it is still in flight', async () => {
+      // The order is the contract: silence → "loaded", never "loaded" → silence → "loaded".
+      seedCodes(['DEVONLY1']);
+      const second = new Subject<BookingDetail>();
+      let attempt = 0;
+      const service: Partial<BookingService> = {
+        getByCode: () => {
+          attempt += 1;
+          return attempt === 1 ? throwError(() => ({ status: 500 })) : second;
+        },
+      };
+      const fixture = await render(service);
+      const host = fixture.nativeElement as HTMLElement;
+      const announcer = host.querySelector('[data-testid="load-announcer"]')!;
+      expect(announcer.textContent?.trim()).toBe('');
+
+      const retryButton = host.querySelector<HTMLButtonElement>('[data-testid="row-retry"]')!;
+      retryButton.focus();
+      retryButton.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // The row stays 'failed' — same button, same DOM node — for the whole round trip (#746 RV-FE-9).
+      expect(host.querySelector('[data-testid="booking-row-loading"]')).toBeNull();
+      expect(host.querySelector('[data-testid="booking-row-failed"]')).not.toBeNull();
+      expect(retryButton.getAttribute('aria-disabled')).toBe('true');
+      expect(retryButton.textContent?.trim()).toBe('Retrying…');
+      expect(document.activeElement).toBe(retryButton);
+      expect(announcer.textContent?.trim()).toBe('');
+
+      second.next(detail('DEVONLY1', 'CONFIRMED'));
+      second.complete();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // "loaded" is vacuously true for an empty list, so pin what the retry actually produced.
+      expect(host.querySelector('[data-testid="booking-row-failed"]')).toBeNull();
+      expect(host.querySelector('[data-testid="booking-row"]')?.textContent).toContain('DEVONLY1');
+      expect(announcer.textContent?.trim()).toBe('Your bookings loaded.');
+      // The pressed button is gone now — focus lands on the row that replaced it (WCAG 2.4.3).
+      expect(document.activeElement).toBe(host.querySelector('[data-testid="booking-row"]'));
+    });
+
+    it('keeps focus on the row-retry button while a retry re-fails, never destroying it (#746 RV-FE-9)', async () => {
+      seedCodes(['DEVONLY1']);
+      const fixture = await render(stubService({ DEVONLY1: { error: { status: 500 } } }));
+      const host = fixture.nativeElement as HTMLElement;
+
+      const retryButton = host.querySelector<HTMLButtonElement>('[data-testid="row-retry"]')!;
+      retryButton.focus();
+      retryButton.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Same failed card, same button element — a retry that re-fails never strands focus.
+      expect(host.querySelector('[data-testid="row-retry"]')).toBe(retryButton);
+      expect(document.activeElement).toBe(retryButton);
+      expect(retryButton.getAttribute('aria-disabled')).toBeNull();
+      expect(retryButton.textContent?.trim()).toBe('Retry');
     });
 
     it('shows the account list when the device has no remembered codes', async () => {
@@ -581,27 +821,43 @@ describe('MyBookings (device-local list, issue #139)', () => {
       expect(codes).toEqual(['NEW00001', 'MID00001', 'OLD00001']);
     });
 
-    it('retry re-loads the account list after a failure', async () => {
-      seedCodes([]);
+    it('retry re-loads the account list after a failure, staying busy and focused throughout (#746 RV-FE-9)', async () => {
+      // A device row already renders, so `showSkeleton()` never takes over (#746's exact repro).
+      seedCodes(['DEVONLY1']);
+      const second = new Subject<MyBookingSummary[]>();
       let calls = 0;
       const service: Partial<BookingService> = {
-        ...stubService({}),
-        myBookings: () =>
-          calls++ === 0 ? throwError(() => ({ status: 500 })) : of([summary('ACCTLATER1')]),
+        ...stubService({ DEVONLY1: detail('DEVONLY1', 'CONFIRMED') }),
+        myBookings: () => (calls++ === 0 ? throwError(() => ({ status: 500 })) : second),
       };
       const fixture = await render(service, authStub(true));
       const host = fixture.nativeElement as HTMLElement;
 
       expect(host.querySelector('[data-testid="account-error"]')).not.toBeNull();
-      host.querySelector<HTMLButtonElement>('[data-testid="account-retry"]')!.click();
+      const retryButton = host.querySelector<HTMLButtonElement>('[data-testid="account-retry"]')!;
+      retryButton.focus();
+      retryButton.click();
       fixture.detectChanges();
       await fixture.whenStable();
       fixture.detectChanges();
 
+      // The card — and the just-pressed button inside it — stays mounted while the retry is out.
+      expect(host.querySelector('[data-testid="account-error"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="account-retry"]')).toBe(retryButton);
+      expect(retryButton.getAttribute('aria-disabled')).toBe('true');
+      expect(retryButton.textContent?.trim()).toBe('Retrying…');
+      expect(document.activeElement).toBe(retryButton);
+
+      second.next([summary('ACCTLATER1')]);
+      second.complete();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
       expect(host.querySelector('[data-testid="account-error"]')).toBeNull();
-      expect(host.querySelector('[data-testid="booking-row"]')?.textContent).toContain(
-        'ACCTLATER1',
-      );
+      const rows = [...host.querySelectorAll('[data-testid="booking-row"]')];
+      expect(rows.some((r) => r.textContent?.includes('ACCTLATER1'))).toBe(true);
+      // The error card (and its button) is gone now — focus lands on the page heading (WCAG 2.4.3).
+      expect(document.activeElement).toBe(host.querySelector('[data-testid="mb-title"]'));
     });
   });
 });

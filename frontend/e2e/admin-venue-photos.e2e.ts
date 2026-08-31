@@ -35,20 +35,18 @@ async function mockPhotoModeration(page: Page): Promise<void> {
     9: { cover: null, sunbeds: null, bar: null },
   };
 
-  await page.route(/\/api\/venues(\?.*)?$/, (route) =>
+  // The picker reads the ADMIN venue list (#693) — the catalogue hides not-ACTIVE-owned venues.
+  await page.route(/\/api\/admin\/venues$/, (route) =>
     route.fulfill({
-      json: VENUES.map((venue) => ({
-        ...venue,
-        region: 'Vlorë',
-        ratingTenths: 47,
-        reviewsCount: 12,
-        bookingMode: 'INSTANT',
-        fromPrice: null,
-        amenities: [],
-        distanceToWaterM: null,
-        availability: { free: 4, total: 10 },
-        coverPhoto: null,
-      })),
+      json: {
+        venues: VENUES.map((venue) => ({
+          venueId: venue.id,
+          name: venue.name,
+          beach: venue.beach,
+          commissionBps: 500,
+          payoutCurrency: 'EUR',
+        })),
+      },
     }),
   );
 
@@ -126,7 +124,7 @@ test('an admin picks a venue, sees its slots, and takes one down behind a confir
   await expect(panel).toHaveCSS('margin-top', '12px');
   await expect(page.getByTestId('admin-photo-confirm-cover')).toHaveCSS(
     'color',
-    'rgb(179, 38, 30)',
+    'rgb(163, 22, 14)',
   );
   await expect(page.getByTestId('admin-photo-reason-cover')).toHaveCSS('font-size', '14px');
 

@@ -2,8 +2,11 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { ActivatedRoute } from '@angular/router';
 
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
+import { plural } from '../shared/plural';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { SkeletonBlock } from '../shared/skeleton-block';
+import { LoadAnnouncer } from '../shared/load-announcer';
 import { focusMover } from '../shared/focus-after-render';
 import { formatMoney } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
@@ -38,7 +41,7 @@ import { PayoutStatement } from './payout-statement';
  */
 @Component({
   selector: 'app-payouts-tab',
-  imports: [CardGlass, PayoutStatement, BusyAction, TouchTarget],
+  imports: [CardGlass, LoadAnnouncer, SkeletonBlock, PayoutStatement, BusyAction, TouchTarget],
   templateUrl: './payouts-tab.html',
 })
 export class PayoutsTab {
@@ -58,6 +61,9 @@ export class PayoutsTab {
   protected readonly loaded = signal(false);
   /** The load-error message (owner / session / generic), or undefined when the read succeeded. */
   protected readonly loadErrorMsg = signal<string | undefined>(undefined);
+
+  /** The in-flight skeleton's placeholder ledger rows — enough to read as a table (#744). */
+  protected readonly skeletonRows = [1, 2, 3, 4] as const;
 
   /** The washed-out day a weather refund targets (ISO YYYY-MM-DD); defaults to today Europe/Tirane
    *  (invariant #6). The refund is per-DATE (whole-day, invariant #10) — the design's per-row buttons
@@ -311,11 +317,6 @@ function signedSum(
   pick: (e: PayoutLedgerEntryView) => number,
 ): number {
   return entries.reduce((total, e) => total + (e.type === 'REVERSAL' ? -pick(e) : pick(e)), 0);
-}
-
-/** A count + singular/plural noun, e.g. `1 booking` / `2 bookings`. */
-function plural(n: number, noun: string): string {
-  return `${n} ${noun}${n === 1 ? '' : 's'}`;
 }
 
 /** A reversal's reason as a short human label (mirrors the backend `RefundReason` token set). */

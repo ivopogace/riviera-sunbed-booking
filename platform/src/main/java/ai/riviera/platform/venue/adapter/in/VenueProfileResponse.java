@@ -1,6 +1,5 @@
 package ai.riviera.platform.venue.adapter.in;
 
-import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -8,6 +7,7 @@ import java.util.Map;
 
 import ai.riviera.platform.venue.application.PhotoSlotView;
 import ai.riviera.platform.venue.application.VenueProfileView;
+import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.Amenity;
 
 /**
@@ -29,17 +29,17 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
  * <p>{@code photos} keys every slot (lower-case, matching the REST path vocabulary) to its
  * PREVIEW serving URL, {@code null} when empty — always all three keys, so the tab renders
  * a stable grid. Emptiness is the null URL; no separate boolean.
+ *
+ * <p>{@code salesClose} round-trips like the cutoff — {@code "HH:mm"} here, written back through
+ * the {@code PATCH}'s required three-value field; it is no longer display-only.
  */
 record VenueProfileResponse(String name, String beach, String region, String description,
-		String bookingMode, String bookingCutoff, int commissionBps, String payoutCurrency,
-		List<String> amenities, Integer distanceToWaterM, long version,
+		String bookingMode, String bookingCutoff, String salesClose, int commissionBps,
+		String payoutCurrency, List<String> amenities, Integer distanceToWaterM, long version,
 		Map<String, SlotPhoto> photos) {
 
 	record SlotPhoto(String previewUrl) {
 	}
-
-	/** {@code "HH:mm"} to match the write DTO's cutoff shape (drops the always-zero seconds of a TIME). */
-	private static final DateTimeFormatter CUTOFF = DateTimeFormatter.ofPattern("HH:mm");
 
 	static VenueProfileResponse from(VenueProfileView v) {
 		Map<String, SlotPhoto> photos = new LinkedHashMap<>(); // slot declaration order, stable on the wire
@@ -47,8 +47,9 @@ record VenueProfileResponse(String name, String beach, String region, String des
 			photos.put(slot.slot().name().toLowerCase(Locale.ROOT), new SlotPhoto(slot.previewUrl()));
 		}
 		return new VenueProfileResponse(v.name(), v.beach(), v.region(), v.description(),
-				v.bookingMode().name(), v.bookingCutoff().format(CUTOFF), v.commissionBps(),
-				v.payoutCurrency(), v.amenities().stream().map(Amenity::name).toList(),
+				v.bookingMode().name(), v.bookingCutoff().format(SalesClose.WIRE),
+				v.salesClose().format(SalesClose.WIRE),
+				v.commissionBps(), v.payoutCurrency(), v.amenities().stream().map(Amenity::name).toList(),
 				v.distanceToWaterM(), v.version(), photos);
 	}
 }

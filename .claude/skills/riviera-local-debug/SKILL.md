@@ -98,24 +98,26 @@ out of courtesy to your battery; `./gradlew test` for the full suite is fine.
 
 ## Frontend (Angular, `frontend/`)
 
-```bash
-cd frontend
-npm run lint
-npm run format:check   # Prettier over src + e2e (clean since #631); `npm run format` to apply
-npm test          # Vitest via @angular/build:unit-test — runs once in jsdom; NOT Karma
-npm run build     # only when production-build risk is in play
-```
+The command set is CLAUDE.md §Commands (lint / format / test — Vitest in jsdom, NOT Karma —
+/ build). Local-run notes: run `npm run build` only when production-build risk is in play;
+on Windows (the primary dev machine) run the mocked e2e suite via `npm run test:e2e:a11y` —
+plain `npm run test:e2e` is the local real-backend suite (suite placement:
+`riviera-review-overlay` RV-FE-E2E; authoring: `playwright-cli`).
 
-E2e: the CI-safe mocked suite lives in `frontend/e2e/`; the local-only real-backend suite
-in `frontend/e2e/real-backend/` (placement rules: `riviera-review-overlay` RV-FE-E2E;
-authoring: `playwright-cli`). On Windows (the primary dev machine) run the mocked suite
-via `npm run test:e2e:a11y`; plain `npm run test:e2e` is the local real-backend suite.
+**Playwright in a cloud session:** never run `playwright install` — Chromium is pre-installed
+at `/opt/pw-browsers/chromium` (a stable symlink), and the pinned `@playwright/test` often
+wants a *newer* revision than the image ships, so a bare run can fail with "Executable doesn't
+exist" (#164). The real-backend config (`playwright.config.ts`) auto-falls-back to that path
+when `PW_CHROMIUM_EXECUTABLE` is unset; the mocked config (`playwright.a11y.config.ts`) honours
+only the env var — run it as `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`.
 
 ## Running the stack
 
 There is no supported single-command local stack in a cloud sandbox (DB via Testcontainers
-is CI/local-Docker territory). For deployed-environment checks see `docs/deploy/` and the
-runbooks in `docs/runbooks/`.
+is CI/local-Docker territory). The one workaround is `scripts/e2e-local-stack.sh` — host
+Postgres + the backend inside the constrained container so the real-backend suite can run —
+which its own header marks container-local-only, not a normal run path. For
+deployed-environment checks see `docs/deploy/` and the runbooks in `docs/runbooks/`.
 
 ## When NOT to use
 

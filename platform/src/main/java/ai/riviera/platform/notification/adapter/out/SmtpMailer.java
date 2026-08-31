@@ -14,6 +14,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.Mailer;
@@ -105,14 +106,16 @@ class SmtpMailer implements Mailer {
 				  Booking code:  %s
 				  Venue:         %s
 				  Date:          %s
-				  Spot:          Row %s, position %d
+				  Spot:          %s, position %d
 				  Paid:          %s
 
-				Show the booking code at the venue on arrival."""
+				Show the booking code at the venue on arrival.%s"""
 				.formatted(confirmation.bookingCode(), confirmation.venueName(),
 						DATE_FORMAT.format(confirmation.bookingDate()), confirmation.rowLabel(),
 						confirmation.positionNo(),
-						formatAmount(confirmation.amountMinor(), confirmation.currency())));
+						formatAmount(confirmation.amountMinor(), confirmation.currency()),
+						disclosureLine(confirmation.cancellationWindowAtBirth(),
+								confirmation.lateCancelRefundBps())));
 	}
 
 	@Override
@@ -177,11 +180,46 @@ class SmtpMailer implements Mailer {
 				%s
 
 				If we haven't received payment by then the set is released for someone else, and you
-				would need to request it again."""
+				would need to request it again.%s"""
 				.formatted(paymentDue.venueName(), paymentDue.bookingCode(), paymentDue.venueName(),
 						DATE_FORMAT.format(paymentDue.bookingDate()),
 						formatAmount(paymentDue.amountMinor(), paymentDue.currency()),
-						DEADLINE_FORMAT.format(paymentDue.payBy().atZone(TIRANE)), paymentDue.payLink()));
+						DEADLINE_FORMAT.format(paymentDue.payBy().atZone(TIRANE)), paymentDue.payLink(),
+						disclosureLine(paymentDue.cancellationWindowAtBirth(),
+								paymentDue.lateCancelRefundBps())));
+	}
+
+	/**
+	 * The born-past-free-cancellation disclosure (#795), appended to the confirmation and
+	 * payment-due bodies. One line per window, matching the checkout note: LATE stays cancellable
+	 * (invariant #10 — refused only at CLOSED), so only CLOSED may claim the booking can't be
+	 * cancelled; FREE or null (a pre-#795 payload — tolerated forever) renders nothing.
+	 */
+	private static String disclosureLine(CancellationWindow windowAtBirth, int lateCancelRefundBps) {
+		if (windowAtBirth == null || windowAtBirth == CancellationWindow.FREE) {
+			return "";
+		}
+		if (windowAtBirth == CancellationWindow.LATE) {
+			return lateCancelRefundBps > 0
+					? """
+
+
+							This booking was made past free cancellation — cancelling refunds only %s%% of the price."""
+							.formatted(bpsAsPercent(lateCancelRefundBps))
+					: """
+
+
+							This booking was made past free cancellation — no refund if cancelled.""";
+		}
+		return """
+
+
+				This is a non-refundable last-minute booking — it can't be cancelled.""";
+	}
+
+	/** Basis points → a display percentage, trimming trailing zeros (2500 → 25, 2250 → 22.5). */
+	private static String bpsAsPercent(int bps) {
+		return BigDecimal.valueOf(bps).movePointLeft(2).stripTrailingZeros().toPlainString();
 	}
 
 	@Override
@@ -220,11 +258,13 @@ class SmtpMailer implements Mailer {
 	@Override
 	public void sendOperatorApproved(String toEmail, URI signInLink) {
 		send(toEmail, OPERATOR_APPROVED_SUBJECT, """
-				Your operator account has been approved — you can sign in now:
+				Your operator account has been approved.
 
-				%s
+				Venues you own are now live and bookable by tourists, and any venue you
+				add goes live as soon as you create it. Manage them any time from the
+				operator console:
 
-				Signing in for the first time takes you to venue onboarding.""".formatted(signInLink));
+				%s""".formatted(signInLink));
 	}
 
 	/**

@@ -15,15 +15,15 @@ import { createVenue, signInOperator, venueName } from './support/operator';
 test('edits venue details + commodities via the console tab → tourist beach-map re-renders', async ({
   page,
 }) => {
-  // Onboard a fresh venue (INSTANT, 15% commission by default), then open its Venue tab in the console.
-  await page.goto('/operator');
+  // Onboard a fresh venue (INSTANT, stamped at the 500 bps platform default), then open its Venue tab.
+  await page.goto('/operator?create=1');
   await signInOperator(page);
   const id = await createVenue(page, venueName('venue-tab'));
 
   await page.goto(`/operator/${id}/venue`);
   await expect(page.getByTestId('venue-tab')).toBeVisible();
   // The form pre-fills from the just-created venue; commission is a read-only % (the platform's cut).
-  await expect(page.getByTestId('venue-commission')).toHaveText('15%');
+  await expect(page.getByTestId('venue-commission')).toHaveText('5%');
   await expect(page.getByTestId('venue-payout-currency')).toHaveText('EUR');
   await expectNoSeriousAxeViolations(page, 'venue tab (real backend)');
 
@@ -58,7 +58,7 @@ test('a stale-tab save is rejected with the 409 banner, and Reload recovers (#22
   context,
 }) => {
   // Onboard a fresh venue and open its tab (loads at version 0) — this is the "stale" tab.
-  await page.goto('/operator');
+  await page.goto('/operator?create=1');
   await signInOperator(page);
   const id = await createVenue(page, venueName('stale'));
   await page.goto(`/operator/${id}/venue`);

@@ -1,5 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+  TestRequest,
+} from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
@@ -9,15 +13,16 @@ import { LayoutEditor } from './layout-editor';
 
 /**
  * Structural a11y audit for the layout editor. The grid must be keyboard + AT operable
- * (an AC): every cell is a labelled `<button>`. axe runs over the empty state, the generated grid,
- * and a painted grid. (Colour contrast is proven by `layout-editor.contrast.spec.ts` — axe can't
+ * (an AC): every cell is a labelled `<button>`. axe runs over the bulk empty state, the generated
+ * grid, a painted grid, Edit-sets mode on a venue with no sets, and the failed-read state on both
+ * surfaces. (Colour contrast is proven by `layout-editor.contrast.spec.ts` — axe can't
  * measure it under jsdom.)
  */
 describe('LayoutEditor a11y (#172)', () => {
   let fixture: ComponentFixture<LayoutEditor>;
   let http: HttpTestingController;
 
-  function render(): void {
+  function configure(): void {
     TestBed.configureTestingModule({
       imports: [LayoutEditor],
       providers: [
@@ -42,9 +47,22 @@ describe('LayoutEditor a11y (#172)', () => {
     http
       .expectOne((r) => r.url.includes('/api/auth/me'))
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
-    http
-      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'))
-      .flush({ id: 1, name: 'V', sets: [] });
+  }
+
+  function mapRequest(): TestRequest {
+    return http.expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1'));
+  }
+
+  function render(sets: unknown[] = []): void {
+    configure();
+    mapRequest().flush({ id: 1, name: 'V', sets, setVersion: 2 });
+    fixture.detectChanges();
+  }
+
+  /** The initial map read FAILS, so the tab has no map to offer on either surface. */
+  function renderWithFailedLoad(): void {
+    configure();
+    mapRequest().flush({ code: 'INTERNAL' }, { status: 500, statusText: 'Server Error' });
     fixture.detectChanges();
   }
 
@@ -67,6 +85,58 @@ describe('LayoutEditor a11y (#172)', () => {
 
   it('has no axe violations in the empty state', async () => {
     render();
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no axe violations while the read is in flight — the skeleton hides no tab stop (#744)', async () => {
+    configure();
+
+    expect(byId('layout-loading')).toBeTruthy();
+    await expectNoAxeViolations(host());
+
+    mapRequest().flush({ id: 1, name: 'V', sets: [], setVersion: 0 });
+    fixture.detectChanges();
+  });
+
+  it('has no axe violations with the per-row rename control present (#726)', async () => {
+    // With a Save-name button per stored row, each row's input must stay its own labelled control.
+    render([
+      {
+        id: 1,
+        rowLabel: 'A',
+        positionNo: 1,
+        tier: 'PREMIUM',
+        pool: 'ONLINE',
+        price: { minorUnits: 2000, currency: 'EUR' },
+        gridX: 1,
+        gridY: 1,
+        available: true,
+      },
+    ]);
+    byId('layout-tool-premium').click();
+    fixture.detectChanges();
+
+    expect(byId('layout-row-name-save')).toBeTruthy();
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no axe violations in Edit-sets mode with no sets (#718)', async () => {
+    render();
+    byId('layout-tool-select').click();
+    fixture.detectChanges();
+
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no axe violations when the initial map read failed (#721)', async () => {
+    renderWithFailedLoad();
+
+    expect(byId('layout-load-failed')).toBeTruthy();
+    await expectNoAxeViolations(host());
+
+    byId('layout-tool-select').click();
+    fixture.detectChanges();
+
     await expectNoAxeViolations(host());
   });
 

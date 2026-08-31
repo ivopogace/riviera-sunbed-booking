@@ -16,6 +16,10 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Implement lazy loading for feature routes
 - Do NOT use the `@HostBinding` and `@HostListener` decorators. Put host bindings inside the `host` object of the `@Component` or `@Directive` decorator instead
 - Use `NgOptimizedImage` for all static images (not for inline base64 images).
+- **Uncertain about an Angular API's behavior** (signals, `linkedSignal`, forms, lifecycle,
+  router)? Verify against angular.dev via the angular-cli MCP's `search_documentation`
+  (version 22) — never from memory; training data trails a v22 codebase. Same when a review
+  finding hinges on a framework-behavior claim.
 
 ## Accessibility Requirements
 
@@ -32,6 +36,17 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   via `shared/focus-after-render.ts`'s `focusMover()`, on all three legs — open,
   back-out, and settled. A focus-trapped modal's teardown counts as a surface.
   This is the repo's most-repeated bug class; reviewed as RV-FE-9.
+- **An inline field error carries `role="alert"` AND `[appFieldErrorFor]` naming its
+  control** (`shared/field-error-for.ts`): the alert announces on appearance, the
+  association is what a screen-reader user hears on re-focus. The directive goes on the
+  **error element**, taking the control's template ref, so its lifetime *is* the error's
+  own — a hand-written `aria-describedby` for a field error is a review finding, because
+  a dangling reference is only an axe *incomplete* and `expectNoAxeViolations` does not
+  fail on it. It also stamps `aria-invalid="true"`, which is a claim about the **entered
+  value** (ARIA21), so an error reporting a failed *write* — a 403, an expired session —
+  binds `[appFieldErrorForInvalidValue]="false"` and is described without being marked
+  invalid. Form-, page- and **action**-level banners name no single control and stay
+  alert-only (`photo-error-{slot}`, `admin-commission-error-*`). Reviewed as RV-FE-11.
 - **Every interactive control declares the 44 × 44 px floor**: `[appTouchTarget]`
   (`shared/touch-target.ts`), or `data-touch-exempt="<reason>"` on the control or an
   ancestor (three documented exemption classes — see `riviera-tailwind`). `<a>` is
@@ -71,8 +86,15 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 
 ## Styling
 
-- Tailwind v4 is the go-forward; component SCSS is being retired. Load the
-  **`riviera-tailwind`** skill before writing or refactoring any Tailwind.
+- Tailwind v4 is the **default for new styling**: whenever Tailwind can express it, style
+  with utilities, not SCSS. SCSS is not obsolete — it stays legitimate for what Tailwind
+  can't express cleanly (the retired `home.scss` scrim is the historical example — none
+  remain in-tree), with the justification stated; an
+  **unjustified** fresh `.scss` is a review finding. **Migrate on touch:** a slice that
+  touches a component still carrying legacy SCSS migrates that styling to Tailwind in the
+  same slice; deferral only by **asking the maintainer** (`AskUserQuestion`), recorded
+  with a follow-up issue — `riviera-tailwind` owns the rule. Load **`riviera-tailwind`**
+  before styling anything.
 
 ## Comments
 

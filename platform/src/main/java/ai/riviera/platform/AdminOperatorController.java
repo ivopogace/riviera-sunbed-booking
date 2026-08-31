@@ -20,6 +20,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
+import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
 
 /**
@@ -35,12 +36,13 @@ import ai.riviera.platform.operator.vocabulary.PendingOperator;
  * {@link ApiProblem} (issue #97): a not-pending id → {@code 409 NOT_PENDING}, a wrong-status transition →
  * {@code 409 WRONG_STATUS}, an unknown id → {@code 404 NO_SUCH_OPERATOR}; success is {@code 204}.
  *
- * <p><strong>Suspension revokes sessions here, at the edge (#128).</strong> Without it a suspended
- * operator's existing cookie would keep authenticating every non-venue-scoped role-gated surface until
- * it expired — venue-scoped ones were already safe, since ownership resolves ACTIVE-only.
+ * <p><strong>Suspension and rejection revoke sessions here, at the edge (#128).</strong> Without it
+ * the operator's existing cookie would keep authenticating every non-venue-scoped role-gated surface
+ * until it expired — and, since a PENDING operator holds a working console session, a rejected
+ * one's cookie would keep the whole console alive too.
  *
  * <p><strong>The revoke brackets the transition</strong> (#357): once <em>before</em> it, keyed by
- * {@link OperatorLifecycle#activeUsername}, and once <em>after</em> it, keyed by the username the
+ * {@link OperatorLifecycle#usernameInStatus}, and once <em>after</em> it, keyed by the username the
  * outcome carries. Before, because the two effects are not atomic and cannot be — the status write is
  * the module's transaction, the session deletes are Spring Session's, so a {@code @Transactional} here
  * would look atomic without being atomic (#344 D-1). Revoking only afterwards, as #128 shipped, meant a
@@ -111,9 +113,20 @@ class AdminOperatorController {
 		return toResponse(outcome);
 	}
 
+	/**
+	 * Reject a registration, revoking any live sessions on <strong>both sides</strong> of the
+	 * transition — a PENDING operator signs in and uses the console, so rejection removes the right
+	 * to a session exactly as suspension does, and it gets the same bracket for the same reasons.
+	 */
 	@PostMapping("/{operatorId}/reject")
 	ResponseEntity<?> reject(@PathVariable long operatorId) {
-		return toResponse(lifecycle.reject(new OperatorId(operatorId)));
+		OperatorId target = new OperatorId(operatorId);
+		lifecycle.usernameInStatus(target, OperatorStatus.PENDING).ifPresent(sessionRevoker::revokeAll);
+		ApprovalOutcome outcome = lifecycle.reject(target);
+		if (outcome instanceof ApprovalOutcome.Rejected(String username)) {
+			sessionRevoker.revokeAll(username);
+		}
+		return toResponse(outcome);
 	}
 
 	/** The admin's view of a decided operator account; {@code contactEmail} may be null. */
@@ -132,8 +145,8 @@ class AdminOperatorController {
 
 	/**
 	 * Suspend an operator, revoking its live sessions on <strong>both sides</strong> of the transition
-	 * (#357). The pre-read is what makes the first revoke possible at all: {@code suspend} only names the
-	 * principal in its outcome, i.e. after it has committed.
+	 * (#357). The status-guarded pre-read is what makes the first revoke possible at all:
+	 * {@code suspend} only names the principal in its outcome, i.e. after it has committed.
 	 */
 	@PostMapping("/{operatorId}/suspend")
 	ResponseEntity<?> suspend(@PathVariable long operatorId, Authentication authentication) {
@@ -142,7 +155,7 @@ class AdminOperatorController {
 			return ApiProblem.response(HttpStatus.CONFLICT, "CANNOT_SUSPEND_SELF",
 					"The target operator is the account this request is authenticated as.");
 		}
-		lifecycle.activeUsername(target).ifPresent(sessionRevoker::revokeAll);
+		lifecycle.usernameInStatus(target, OperatorStatus.ACTIVE).ifPresent(sessionRevoker::revokeAll);
 		return toResponse(lifecycle.suspend(target), true);
 	}
 

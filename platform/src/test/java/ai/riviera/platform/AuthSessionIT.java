@@ -255,6 +255,29 @@ class AuthSessionIT {
 				.andExpect(jsonPath("$.instance").value("about:blank"));
 	}
 
+	// ---- The wire principal carries the operator lifecycle status ----
+
+	@Test
+	void operatorPrincipalCarriesItsLifecycleStatus() throws Exception {
+		MvcResult activeLogin = mvc.perform(post(LOGIN_PATH).with(csrf())
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"username": "op-a", "password": "pw-a"}"""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.operatorStatus").value("ACTIVE"))
+				.andReturn();
+		mvc.perform(get("/api/auth/me").cookie(activeLogin.getResponse().getCookie(SESSION_COOKIE)))
+				.andExpect(jsonPath("$.operatorStatus").value("ACTIVE"));
+
+		// A PENDING operator reads back PENDING — the FE's cue for the pending-approval notice.
+		provisioning.provision("op-c", encoder.encode("pw-c"));
+		jdbc.sql("UPDATE operator SET status = 'PENDING' WHERE username = 'op-c'").update();
+		Cookie pending = SessionLoginSupport.operatorSession(mvc, "op-c", "pw-c");
+		mvc.perform(get("/api/auth/me").cookie(pending))
+				.andExpect(jsonPath("$.operatorStatus").value("PENDING"));
+	}
+
 	private Cookie login() throws Exception {
 		MvcResult result = mvc.perform(post(LOGIN_PATH).with(csrf())
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())

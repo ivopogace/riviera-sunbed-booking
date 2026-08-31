@@ -146,12 +146,28 @@ class PerOperatorLoginIT {
 				.andExpect(status().isForbidden());
 	}
 
-	// ---- A suspended operator cannot authenticate at all ----
+	// ---- The may-authenticate set (#694): PENDING signs in; SUSPENDED/REJECTED cannot ----
 
 	@Test
 	void aSuspendedOperatorCannotLogIn() throws Exception {
 		provisioning.provision("op-c", encoder.encode("pw-c"));
 		jdbc.sql("UPDATE operator SET status = 'SUSPENDED' WHERE username = 'op-c'").update();
+
+		expectLoginRejected("op-c", "pw-c");
+	}
+
+	@Test
+	void aPendingOperatorCanLogIn() throws Exception {
+		provisioning.provision("op-c", encoder.encode("pw-c"));
+		jdbc.sql("UPDATE operator SET status = 'PENDING' WHERE username = 'op-c'").update();
+
+		SessionLoginSupport.operatorSession(mvc, "op-c", "pw-c");
+	}
+
+	@Test
+	void aRejectedOperatorCannotLogIn() throws Exception {
+		provisioning.provision("op-c", encoder.encode("pw-c"));
+		jdbc.sql("UPDATE operator SET status = 'REJECTED' WHERE username = 'op-c'").update();
 
 		expectLoginRejected("op-c", "pw-c");
 	}

@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
-import { BehaviorSubject, of, throwError } from 'rxjs';
+import { BehaviorSubject, NEVER, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { expectNoAxeViolations } from '../../testing/axe';
@@ -11,6 +11,7 @@ import {
   Cancellation,
   CancelReason,
   PaymentHandoff,
+  SubmitReviewRequest,
   Withdrawal,
 } from './booking.model';
 import { BookingView } from './booking-view';
@@ -36,9 +37,33 @@ const DETAIL: BookingDetail = {
   emailWithheld: false,
   payWindowClosed: false,
   cancelReason: null,
+  cancellationWindowAtBirth: 'FREE',
+  reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
 const WITHDRAWAL: Withdrawal = { code: 'ABCD234567', status: 'WITHDRAWN' };
+
+/** A delivered stay the server says may be rated — the panel, never the status, opens the form. */
+const REVIEWABLE: BookingDetail = {
+  ...DETAIL,
+  status: 'COMPLETED',
+  cancellable: false,
+  reviewPanel: {
+    kind: 'ELIGIBLE',
+    windowClosesAt: '2026-09-29T16:00:00Z',
+    nameSuggestion: 'Ana',
+  },
+};
+
+/** The same stay once it carries the guest's own review, still inside the window. */
+const REVIEWED: BookingDetail = {
+  ...REVIEWABLE,
+  reviewPanel: {
+    kind: 'ALREADY_REVIEWED',
+    review: { stars: 4, comment: 'Great sunbeds', displayName: 'Ana' },
+    windowClosesAt: '2026-09-29T16:00:00Z',
+  },
+};
 
 /** A PENDING_REQUEST detail the guest may still retract. */
 const PENDING: BookingDetail = {
@@ -74,6 +99,8 @@ function stubService(opts: {
   /** Served on the reload after a successful cancel (mirrors the backend returning CANCELLED). */
   detailAfterCancel?: BookingDetail;
   getError?: unknown;
+  /** Fails only the re-read after an action, so a spec can hold the first detail on screen. */
+  refreshError?: unknown;
   cancel?: Cancellation;
   cancelError?: unknown;
   cancelCalls?: string[];
@@ -81,6 +108,10 @@ function stubService(opts: {
   getCalls?: string[];
   withdrawCalls?: string[];
   withdrawError?: unknown;
+  reviewCalls?: [string, SubmitReviewRequest][];
+  updateCalls?: [string, SubmitReviewRequest][];
+  deleteCalls?: string[];
+  reviewError?: unknown;
   handoffs?: PaymentHandoff[];
   /** A primed detail (find-a-booking hand-off); consumed one-shot for the matching code. */
   prefetched?: BookingDetail;
@@ -90,8 +121,12 @@ function stubService(opts: {
   return {
     getByCode: (code: string) => {
       opts.getCalls?.push(code);
-      const detail = served++ === 0 ? opts.detail! : (opts.detailAfterCancel ?? opts.detail!);
-      return opts.getError ? throwError(() => opts.getError) : of(detail);
+      const first = served++ === 0;
+      const detail = first ? opts.detail! : (opts.detailAfterCancel ?? opts.detail!);
+      if (opts.getError || (!first && opts.refreshError)) {
+        return throwError(() => opts.getError ?? opts.refreshError);
+      }
+      return of(detail);
     },
     cancel: (code: string) => {
       opts.cancelCalls?.push(code);
@@ -102,6 +137,18 @@ function stubService(opts: {
     withdraw: (code: string) => {
       opts.withdrawCalls?.push(code);
       return opts.withdrawError ? throwError(() => opts.withdrawError) : of(WITHDRAWAL);
+    },
+    review: (code: string, review: SubmitReviewRequest) => {
+      opts.reviewCalls?.push([code, review]);
+      return opts.reviewError ? throwError(() => opts.reviewError) : of(undefined);
+    },
+    updateReview: (code: string, review: SubmitReviewRequest) => {
+      opts.updateCalls?.push([code, review]);
+      return opts.reviewError ? throwError(() => opts.reviewError) : of(undefined);
+    },
+    deleteReview: (code: string) => {
+      opts.deleteCalls?.push(code);
+      return opts.reviewError ? throwError(() => opts.reviewError) : of(undefined);
     },
     beginPayment: (handoff: PaymentHandoff) => {
       opts.handoffs?.push(handoff);
@@ -558,6 +605,85 @@ describe('BookingView', () => {
     );
   });
 
+  it('presents a CLOSED-born booking as a non-refundable last-minute booking (#795 AC-8/AC-11)', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          cancellable: false,
+          beforeCutoff: false,
+          refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
+          cancellationWindowAtBirth: 'CLOSED',
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="last-minute-note"]')?.textContent).toContain(
+      'Non-refundable last-minute booking',
+    );
+    expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
+    expect(host.querySelector('[data-testid="refund-terms"]')).toBeNull();
+  });
+
+  it('renders no last-minute note for a CLOSED-born pending request — withdraw is the affordance (#795)', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          status: 'PENDING_REQUEST',
+          cancellable: false,
+          withdrawable: true,
+          beforeCutoff: false,
+          refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
+          cancellationWindowAtBirth: 'CLOSED',
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="last-minute-note"]')).toBeNull();
+    expect(host.querySelector('[data-testid="withdraw-request"]')).not.toBeNull();
+  });
+
+  it('keeps the once-paid qualifier on the note while a CLOSED-born booking is unpaid (#795)', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          status: 'AWAITING_PAYMENT',
+          cancellable: false,
+          beforeCutoff: false,
+          refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
+          cancellationWindowAtBirth: 'CLOSED',
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="last-minute-note"]')?.textContent).toContain(
+      'can’t be cancelled once paid',
+    );
+  });
+
+  it('keeps rendering nothing for an advance-born booking whose window has since closed (#795 parity)', async () => {
+    const fixture = await render(
+      stubService({
+        detail: {
+          ...DETAIL,
+          cancellable: false,
+          beforeCutoff: false,
+          refundIfCancelledNow: { minorUnits: 0, currency: 'EUR' },
+          cancellationWindowAtBirth: 'FREE',
+        },
+      }),
+    );
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="last-minute-note"]')).toBeNull();
+    expect(host.querySelector('[data-testid="start-cancel"]')).toBeNull();
+  });
+
   it('flips the chip to Cancelled and shows the refunded row after cancelling (no reload)', async () => {
     // The post-cancel reload returns the backend's CANCELLED detail (refunded amount set).
     const cancelled: BookingDetail = {
@@ -849,8 +975,11 @@ describe('BookingView', () => {
 
     const panel = host.querySelector('[data-testid="pay-window-closed"]');
     expect(panel?.textContent).toContain('Payment window closed');
+    expect(panel?.textContent).toContain('payment deadline for this booking has passed');
     expect(panel?.textContent).toContain('can no longer be paid');
-    // Calendar-only flag: a payment may be in flight, so no "you weren't charged" claim.
+    // The trigger is the pay deadline now (#792), not the service day having started.
+    expect(panel?.textContent).not.toContain('has already started');
+    // Deadline-only flag: a payment may be in flight, so no "you weren't charged" claim.
     expect(panel?.textContent).not.toContain('haven’t been charged');
     expect(host.querySelector('[data-testid="pay-now"]')).toBeNull();
     await expectNoAxeViolations(host);
@@ -1035,5 +1164,405 @@ describe('BookingView', () => {
     expect(host.querySelector('[data-testid="booking-code"]')?.textContent).toContain('BBBBBBBBBB');
     expect(host.textContent).toContain('Venue Beta');
     expect(host.textContent).not.toContain('Venue Alpha');
+    // The swap destroyed whatever held focus (WCAG 2.4.3) — the new booking's title takes it.
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="bv-title"]'));
+  });
+
+  it('parks focus on the failure card when the swapped-to booking fails to load', async () => {
+    const paramMap$ = new BehaviorSubject(convertToParamMap({ code: 'AAAAAAAAAA' }));
+    const service: Partial<BookingService> = {
+      getByCode: (code: string) =>
+        code === 'AAAAAAAAAA'
+          ? of({ ...DETAIL, code: 'AAAAAAAAAA' })
+          : throwError(() => new HttpErrorResponse({ status: 500 })),
+      takePrefetched: () => undefined,
+    };
+    await TestBed.configureTestingModule({
+      imports: [BookingView],
+      providers: [
+        provideRouter([]),
+        { provide: BookingService, useValue: service },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: paramMap$.value }, paramMap: paramMap$ },
+        },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(BookingView);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+
+    paramMap$.next(convertToParamMap({ code: 'BBBBBBBBBB' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.textContent).toContain('Couldn’t load your booking');
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="bv-title"]'));
+  });
+
+  it('parks focus on the not-found card when a swap arrives with no code', async () => {
+    const paramMap$ = new BehaviorSubject(convertToParamMap({ code: 'AAAAAAAAAA' }));
+    const service: Partial<BookingService> = {
+      getByCode: () => of({ ...DETAIL, code: 'AAAAAAAAAA' }),
+      takePrefetched: () => undefined,
+    };
+    await TestBed.configureTestingModule({
+      imports: [BookingView],
+      providers: [
+        provideRouter([]),
+        { provide: BookingService, useValue: service },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: paramMap$.value }, paramMap: paramMap$ },
+        },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(BookingView);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+
+    paramMap$.next(convertToParamMap({}));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.textContent).toContain('Booking not found');
+    expect(document.activeElement).toBe(host.querySelector('[data-testid="bv-title"]'));
+  });
+
+  it('shows the loading card while the fetch is in flight', async () => {
+    const fixture = await render({
+      getByCode: () => NEVER,
+      takePrefetched: () => undefined,
+    });
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="bv-title"]')?.textContent).toContain(
+      'Loading your booking',
+    );
+  });
+
+  describe('review panel', () => {
+    function stars(host: HTMLElement): HTMLElement[] {
+      return [...host.querySelectorAll<HTMLElement>('[data-testid^="star-"]')];
+    }
+
+    it('offers the star radiogroup for a reviewable stay', async () => {
+      const fixture = await render(stubService({ detail: REVIEWABLE }));
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(host.querySelector('[data-testid="review-panel"]')).not.toBeNull();
+      expect(stars(host)).toHaveLength(5);
+      await expectNoAxeViolations(host);
+    });
+
+    it('shows no review section at all for a stay that ended without a check-in', async () => {
+      const fixture = await render(
+        stubService({
+          detail: { ...REVIEWABLE, status: 'CANCELLED', reviewPanel: { kind: 'NOT_COMPLETED' } },
+        }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(host.querySelector('[data-testid="review-panel"]')).toBeNull();
+    });
+
+    it('shows the inline star error, not the shared result region, when no star is picked', async () => {
+      const reviewCalls: [string, SubmitReviewRequest][] = [];
+      const fixture = await render(stubService({ detail: REVIEWABLE, reviewCalls }));
+      const host = fixture.nativeElement as HTMLElement;
+
+      host.querySelector<HTMLButtonElement>('[data-testid="submit-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(reviewCalls).toEqual([]);
+      expect(host.querySelector('[data-testid="star-rating-error"]')?.textContent).toContain(
+        'Pick a star rating.',
+      );
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent?.trim()).toBe('');
+    });
+
+    it('submits the chosen rating and re-reads the booking', async () => {
+      const reviewCalls: [string, SubmitReviewRequest][] = [];
+      const getCalls: string[] = [];
+      const fixture = await render(
+        stubService({
+          detail: REVIEWABLE,
+          detailAfterCancel: REVIEWED,
+          reviewCalls,
+          getCalls,
+        }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      stars(host)[3].click();
+      fixture.detectChanges();
+      host.querySelector<HTMLButtonElement>('[data-testid="submit-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(reviewCalls).toEqual([
+        ['ABCD234567', { stars: 4, comment: null, displayName: 'Ana' }],
+      ]);
+      expect(getCalls).toHaveLength(2);
+      expect(host.querySelector('[data-testid="own-review"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'Thanks for reviewing your stay.',
+      );
+    });
+
+    it('sends an edited review and narrates it in the result region', async () => {
+      const updateCalls: [string, SubmitReviewRequest][] = [];
+      const getCalls: string[] = [];
+      const fixture = await render(stubService({ detail: REVIEWED, updateCalls, getCalls }));
+      const host = fixture.nativeElement as HTMLElement;
+
+      host.querySelector<HTMLButtonElement>('[data-testid="edit-review"]')!.click();
+      fixture.detectChanges();
+      stars(host)[1].click();
+      fixture.detectChanges();
+      host.querySelector<HTMLButtonElement>('[data-testid="submit-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(updateCalls).toEqual([
+        ['ABCD234567', { stars: 2, comment: 'Great sunbeds', displayName: 'Ana' }],
+      ]);
+      expect(getCalls).toHaveLength(2);
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'Your review has been updated.',
+      );
+    });
+
+    it('removes a review once confirmed, and narrates that too', async () => {
+      const deleteCalls: string[] = [];
+      const fixture = await render(
+        stubService({ detail: REVIEWED, detailAfterCancel: REVIEWABLE, deleteCalls }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      host.querySelector<HTMLButtonElement>('[data-testid="start-delete-review"]')!.click();
+      fixture.detectChanges();
+      host.querySelector<HTMLButtonElement>('[data-testid="confirm-delete-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(deleteCalls).toEqual(['ABCD234567']);
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'Your review has been removed.',
+      );
+      expect(host.querySelector('[data-testid="review-panel"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="own-review"]')).toBeNull();
+    });
+
+    it('closes the delete confirmation even when the re-read after it fails', async () => {
+      const deleteCalls: string[] = [];
+      const fixture = await render(
+        stubService({ detail: REVIEWED, deleteCalls, refreshError: { status: 500 } }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      host.querySelector<HTMLButtonElement>('[data-testid="start-delete-review"]')!.click();
+      fixture.detectChanges();
+      host.querySelector<HTMLButtonElement>('[data-testid="confirm-delete-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(deleteCalls).toEqual(['ABCD234567']);
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'Your review has been removed.',
+      );
+      // The stale detail stays on screen by design; a live "Yes, remove it" under it must not.
+      expect(host.querySelector('[data-testid="confirm-delete-question"]')).toBeNull();
+      expect(host.querySelector('[data-testid="confirm-delete-review"]')).toBeNull();
+    });
+
+    it('says so when the review an amend targets is already gone', async () => {
+      const fixture = await render(
+        stubService({
+          detail: REVIEWED,
+          reviewError: new HttpErrorResponse({ status: 404, error: { code: 'NO_SUCH_REVIEW' } }),
+        }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      host.querySelector<HTMLButtonElement>('[data-testid="start-delete-review"]')!.click();
+      fixture.detectChanges();
+      host.querySelector<HTMLButtonElement>('[data-testid="confirm-delete-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'no longer carries a review',
+      );
+    });
+
+    it('treats a vanished booking as a settled refusal, not a retry', async () => {
+      const fixture = await render(
+        stubService({
+          detail: REVIEWED,
+          reviewError: new HttpErrorResponse({ status: 404, error: { code: 'NO_SUCH_BOOKING' } }),
+        }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      host.querySelector<HTMLButtonElement>('[data-testid="start-delete-review"]')!.click();
+      fixture.detectChanges();
+      host.querySelector<HTMLButtonElement>('[data-testid="confirm-delete-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'couldn’t find a booking',
+      );
+      // Settled, so the confirm pair is gone — not left open behind a "try again".
+      expect(host.querySelector('[data-testid="confirm-delete-review"]')).toBeNull();
+    });
+
+    it('renders the frozen review read-only, with no form and no actions', async () => {
+      const fixture = await render(
+        stubService({
+          detail: {
+            ...REVIEWABLE,
+            reviewPanel: {
+              kind: 'FROZEN',
+              review: { stars: 5, comment: 'Perfect day', displayName: 'Ana' },
+            },
+          },
+        }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(host.querySelector('[data-testid="own-review-comment"]')?.textContent).toContain(
+        'Perfect day',
+      );
+      expect(host.querySelector('[data-testid="submit-review"]')).toBeNull();
+      expect(host.querySelector('[data-testid="edit-review"]')).toBeNull();
+    });
+
+    it('says so when a rating this stay already carries is submitted again', async () => {
+      const fixture = await render(
+        stubService({
+          detail: REVIEWABLE,
+          reviewError: new HttpErrorResponse({
+            status: 409,
+            error: { code: 'REVIEW_ALREADY_SUBMITTED' },
+          }),
+        }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      stars(host)[4].click();
+      fixture.detectChanges();
+      host.querySelector<HTMLButtonElement>('[data-testid="submit-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'already been rated',
+      );
+    });
+
+    it('replaces the thanks with the rejection when a second submit is refused', async () => {
+      // A failed re-read leaves the panel up; the 409 that follows must outrank the stale thanks.
+      const service = stubService({ detail: REVIEWABLE });
+      let attempt = 0;
+      service.review = () => {
+        attempt += 1;
+        return attempt === 1
+          ? of(undefined)
+          : throwError(
+              () =>
+                new HttpErrorResponse({
+                  status: 409,
+                  error: { code: 'REVIEW_ALREADY_SUBMITTED' },
+                }),
+            );
+      };
+      const fixture = await render(service);
+      const host = fixture.nativeElement as HTMLElement;
+
+      const submit = async () => {
+        host.querySelector<HTMLButtonElement>('[data-testid="submit-review"]')!.click();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+      };
+
+      stars(host)[4].click();
+      fixture.detectChanges();
+      await submit();
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain('Thanks');
+      expect(document.activeElement).toBe(host.querySelector('[data-testid="review-result"]'));
+
+      stars(host)[4].click();
+      fixture.detectChanges();
+      await submit();
+
+      const result = host.querySelector('[data-testid="review-result"]')?.textContent;
+      expect(result).toContain('already been rated');
+      expect(result).not.toContain('Thanks');
+    });
+
+    it('offers a retry after a transport failure', async () => {
+      const fixture = await render(
+        stubService({ detail: REVIEWABLE, reviewError: new HttpErrorResponse({ status: 0 }) }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      stars(host)[0].click();
+      fixture.detectChanges();
+      host.querySelector<HTMLButtonElement>('[data-testid="submit-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'Please try again',
+      );
+      expect(host.querySelector('[data-testid="review-panel"]')).not.toBeNull();
+    });
+
+    it('leaves focus on the confirm pair after a retryable delete failure', async () => {
+      const fixture = await render(
+        stubService({ detail: REVIEWED, reviewError: new HttpErrorResponse({ status: 500 }) }),
+      );
+      const host = fixture.nativeElement as HTMLElement;
+
+      host.querySelector<HTMLButtonElement>('[data-testid="start-delete-review"]')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const confirm = host.querySelector<HTMLButtonElement>(
+        '[data-testid="confirm-delete-review"]',
+      )!;
+      expect(document.activeElement).toBe(confirm);
+
+      confirm.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+        'Please try again',
+      );
+      // Retryable, so the pair survives — and keeps focus rather than losing it to the live region.
+      expect(host.querySelector('[data-testid="confirm-delete-review"]')).toBe(confirm);
+      expect(document.activeElement).toBe(confirm);
+    });
   });
 });

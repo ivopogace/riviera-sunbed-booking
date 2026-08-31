@@ -7,6 +7,7 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 
 /**
  * Published when a venue's acceptance of a Request-mode booking leaves the guest genuinely owing
@@ -51,7 +52,14 @@ import ai.riviera.platform.booking.vocabulary.BookingId;
  * the registry serializes events into {@code event_publication} as text and retains them under
  * archive completion mode, so carrying the arrival credential would persist it in cleartext
  * (invariant #7). The subscriber reads it at send time through {@code booking.api}.
+ *
+ * <p>{@code cancellationWindowAtBirth} + {@code lateCancelRefundBps} (#795): the window the booking
+ * was <em>born</em> in (classified from its {@code created_at}, not the accept instant) and the late
+ * share its disclosure promised — facts fixed at the moment, the {@code amountMinor} posture, so a
+ * later cutoff edit cannot rewrite a sent mail. {@code cancellationWindowAtBirth} is {@code null} on
+ * payloads serialized before the fields existed; consumers render no disclosure for null, forever.
  */
 public record BookingPaymentDue(BookingId bookingId, VenueId venueId, SetId setId,
-		LocalDate bookingDate, Instant payBy, long amountMinor, String currency) {
+		LocalDate bookingDate, Instant payBy, long amountMinor, String currency,
+		CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps) {
 }

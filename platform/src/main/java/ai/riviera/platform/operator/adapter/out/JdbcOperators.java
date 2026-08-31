@@ -1,5 +1,6 @@
 package ai.riviera.platform.operator.adapter.out;
 
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -17,8 +18,8 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
+import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
-import ai.riviera.platform.operator.domain.OperatorStatus;
 
 /**
  * JDBC adapter for the {@code operator} module's {@link Operators} port (ADR-0007 {@code adapter/out}).
@@ -37,8 +38,15 @@ class JdbcOperators implements Operators {
 	private static final String ACTIVE_PARAM = "active";
 	/** SQL named-param key bound to the {@code SUSPENDED} status token (invariant #6a). */
 	private static final String SUSPENDED_PARAM = "suspended";
+	/** SQL named-param key bound to the may-operate status tokens (invariant #6a). */
+	private static final String OPERABLE_PARAM = "operable";
+	/** The may-operate set: ownership resolves for these statuses; tourist visibility stays ACTIVE-only. */
+	private static final List<String> MAY_OPERATE =
+			List.of(OperatorStatus.ACTIVE.name(), OperatorStatus.PENDING.name());
 	/** SQL named-param key bound to an operator id in the ownership queries (named, not duplicated). */
 	private static final String OPERATOR_PARAM = "operator";
+	/** SQL named-param key bound to a venue id in the ownership/visibility queries (S1192). */
+	private static final String VENUE_PARAM = "venue";
 	/** SQL named-param key for an operator's primary key in the lifecycle statements (S1192). */
 	private static final String ID_PARAM = "id";
 	/** SQL named-param key for the status a lifecycle transition writes (S1192). */
@@ -53,10 +61,10 @@ class JdbcOperators implements Operators {
 	}
 
 	@Override
-	public Optional<OperatorId> idByActiveUsername(String username) {
-		return jdbc.sql("SELECT id FROM operator WHERE username = :username AND status = :active")
+	public Optional<OperatorId> idByOperableUsername(String username) {
+		return jdbc.sql("SELECT id FROM operator WHERE username = :username AND status IN (:operable)")
 				.param(USERNAME, username)
-				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
+				.param(OPERABLE_PARAM, MAY_OPERATE)
 				.query(Long.class)
 				.optional()
 				.map(OperatorId::new);
@@ -64,15 +72,14 @@ class JdbcOperators implements Operators {
 
 	@Override
 	public Optional<OperatorCredential> credentialByUsername(String username) {
-		// Any status — the edge builds a disabled principal for a non-ACTIVE account so the framework
-		// rejects it before the password check. active is derived from the status token (invariant #6a);
+		// Any status — the edge derives its may-authenticate set from the returned token (RV-BE-11);
 		// is_admin drives the edge's ROLE_ADMIN grant.
 		return jdbc.sql("SELECT username, password_hash, status, is_admin FROM operator WHERE username = :username")
 				.param(USERNAME, username)
 				.query((rs, rowNum) -> new OperatorCredential(
 						rs.getString(USERNAME),
 						rs.getString("password_hash"),
-						OperatorStatus.ACTIVE.name().equals(rs.getString("status")),
+						OperatorStatus.valueOf(rs.getString("status")),
 						rs.getBoolean("is_admin")))
 				.optional();
 	}
@@ -159,12 +166,12 @@ class JdbcOperators implements Operators {
 				.list();
 	}
 
-	/** Primary-key point lookup with {@link #idByActiveUsername}'s status filter — no new index needed. */
+	/** Primary-key point lookup guarded by the expected status — no new index needed. */
 	@Override
-	public Optional<String> activeUsernameById(OperatorId operatorId) {
-		return jdbc.sql("SELECT username FROM operator WHERE id = :id AND status = :active")
+	public Optional<String> usernameByIdInStatus(OperatorId operatorId, OperatorStatus expected) {
+		return jdbc.sql("SELECT username FROM operator WHERE id = :id AND status = :expected")
 				.param(ID_PARAM, operatorId.value())
-				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
+				.param("expected", expected.name())
 				.query(String.class)
 				.optional();
 	}
@@ -179,31 +186,32 @@ class JdbcOperators implements Operators {
 	@Override
 	public ApprovalOutcome rejectPending(OperatorId operatorId) {
 		return transitionFromPending(operatorId, OperatorStatus.REJECTED)
-				.<ApprovalOutcome>map(row -> new ApprovalOutcome.Rejected())
+				.<ApprovalOutcome>map(row -> new ApprovalOutcome.Rejected(row.username()))
 				.orElseGet(() -> classifyMissedTransition(operatorId));
 	}
 
 	/** What the transition wrote — present iff this call is the one that flipped the row. */
-	private record TransitionedRow(String contactEmail) {
+	private record TransitionedRow(String contactEmail, String username) {
 	}
 
 	/**
 	 * Move a PENDING operator to {@code target}, reporting the row it wrote. The conditional
 	 * {@code WHERE status = PENDING} is the single source of truth, so two concurrent approvals cannot
-	 * both win; {@code RETURNING} hands the winner the stored contact email in the same statement,
-	 * which is what lets {@code activate}'s caller mail an approved operator without a second read and
-	 * without the loser being able to mail anything at all.
+	 * both win; {@code RETURNING} hands the winner the stored contact email and username in the same
+	 * statement, which is what lets {@code activate}'s caller mail an approved operator — and
+	 * {@code rejectPending}'s caller revoke a rejected one's sessions — without a second read and
+	 * without the loser being able to act at all.
 	 */
 	private Optional<TransitionedRow> transitionFromPending(OperatorId operatorId, OperatorStatus target) {
 		return jdbc.sql("""
 				UPDATE operator SET status = :target
 				WHERE id = :id AND status = :pending
-				RETURNING contact_email
+				RETURNING contact_email, username
 				""")
 				.param(TARGET_PARAM, target.name())
 				.param(ID_PARAM, operatorId.value())
 				.param(PENDING_PARAM, OperatorStatus.PENDING.name())
-				.query((rs, rowNum) -> new TransitionedRow(rs.getString(CONTACT_EMAIL)))
+				.query((rs, rowNum) -> new TransitionedRow(rs.getString(CONTACT_EMAIL), rs.getString(USERNAME)))
 				.optional();
 	}
 
@@ -267,7 +275,7 @@ class JdbcOperators implements Operators {
 				)
 				""")
 				.param(OPERATOR_PARAM, operator.value())
-				.param("venue", venue.value())
+				.param(VENUE_PARAM, venue.value())
 				.query(Boolean.class)
 				.single();
 	}
@@ -287,8 +295,42 @@ class JdbcOperators implements Operators {
 		// One owner per venue (operator_venue.venue_id is the PK) — a plain INSERT so a second owner
 		// for the same venue surfaces as a constraint violation rather than silently no-op'ing.
 		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) VALUES (:venue, :operator)")
-				.param("venue", venue.value())
+				.param(VENUE_PARAM, venue.value())
 				.param(OPERATOR_PARAM, operator.value())
 				.update();
+	}
+
+	@Override
+	public boolean hasActiveOwner(VenueRef venue) {
+		// PK probe on operator_venue(venue_id) joined to the tiny operator table.
+		return jdbc.sql("""
+				SELECT EXISTS (
+				    SELECT 1 FROM operator_venue ov
+				    JOIN operator o ON o.id = ov.operator_id
+				    WHERE ov.venue_id = :venue AND o.status = :active
+				)
+				""")
+				.param(VENUE_PARAM, venue.value())
+				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
+				.query(Boolean.class)
+				.single();
+	}
+
+	@Override
+	public Set<VenueRef> venuesWithActiveOwner(Collection<VenueRef> venues) {
+		if (venues.isEmpty()) {
+			return Set.of();
+		}
+		return jdbc.sql("""
+				SELECT ov.venue_id FROM operator_venue ov
+				JOIN operator o ON o.id = ov.operator_id
+				WHERE o.status = :active AND ov.venue_id IN (:venues)
+				""")
+				.param(ACTIVE_PARAM, OperatorStatus.ACTIVE.name())
+				.param("venues", venues.stream().map(VenueRef::value).toList())
+				.query(Long.class)
+				.list().stream()
+				.map(VenueRef::new)
+				.collect(Collectors.toUnmodifiableSet());
 	}
 }

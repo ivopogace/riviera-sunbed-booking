@@ -23,6 +23,7 @@ import ai.riviera.platform.venue.application.EditBeachMap;
 import ai.riviera.platform.venue.application.LayoutCommand;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.application.ReplaceRejection;
+import ai.riviera.platform.venue.application.RowNameCommand;
 import ai.riviera.platform.venue.application.RowPriceCommand;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
@@ -33,7 +34,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * The cross-write concurrency test (AC-3): a {@code replaceLayout} and a {@code repriceRow} race
  * off the <strong>same</strong> {@code set_version = V} — exactly one applies and the other is
- * {@code STALE_WRITE}, proving the two set-writes share ONE token (they write overlapping columns:
+ * {@code STALE_WRITE} — and the same race for {@code replaceLayout} vs {@code renameRow} — proving
+ * the set-writes share ONE token (they write overlapping columns:
  * map-replace re-sends {@code price_minor}, reprice overwrites it, so they must not both win). Also
  * exercises the R-1 lock ordering: both paths take the venue row (the {@code set_version} bump) before
  * its {@code set_position} rows, so replace-vs-reprice on one venue can never deadlock — the loser
@@ -88,6 +90,49 @@ class VenueSetWriteConcurrencyIT {
 					() -> "the other must be STALE_WRITE (they share one token), got replace=" + replaced
 							+ " reprice=" + repriced);
 			assertEquals(1L, setVersionOf(venue), "the shared token is bumped exactly once (0 -> 1)");
+		}
+	}
+
+	@RepeatedTest(6)
+	void replaceAndRenameCannotBothWin(RepetitionInfo info) throws Exception {
+		int rep = info.getCurrentRepetition();
+		VenueId venue = new VenueId(insertVenue());
+		seedRowA(venue.value());
+		OperatorId owner = insertOperator("crossrename-owner-" + rep);
+		grant(owner, venue.value());
+
+		CountDownLatch gate = new CountDownLatch(1);
+		Callable<ReplaceLayoutOutcome> replace = () -> {
+			gate.await();
+			return editBeachMap.replaceLayout(owner, venue, 0L, new LayoutCommand(
+					List.of(new SetCommand("A", 1, "PREMIUM", "ONLINE", 9100 + rep, "EUR", 1, 1))));
+		};
+		Callable<ChangeOutcome> rename = () -> {
+			gate.await();
+			return editBeachMap.renameRow(owner, venue, 0L, new RowNameCommand("A", "Front row " + rep));
+		};
+
+		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {
+			Future<ReplaceLayoutOutcome> replacedF = pool.submit(replace);
+			Future<ChangeOutcome> renamedF = pool.submit(rename);
+			gate.countDown();
+			ReplaceLayoutOutcome replaced = replacedF.get(20, TimeUnit.SECONDS);
+			ChangeOutcome renamed = renamedF.get(20, TimeUnit.SECONDS);
+
+			int applied = (replaced instanceof ReplaceLayoutOutcome.Replaced ? 1 : 0)
+					+ (renamed instanceof ChangeOutcome.Applied ? 1 : 0);
+			int stale = (isStale(replaced) ? 1 : 0) + (isStale(renamed) ? 1 : 0);
+
+			assertEquals(1, applied,
+					() -> "exactly one of replace/rename may apply off the same set_version, got replace="
+							+ replaced + " rename=" + renamed);
+			assertEquals(1, stale,
+					() -> "the other must be STALE_WRITE (they share one token), got replace=" + replaced
+							+ " rename=" + renamed);
+			assertEquals(1L, setVersionOf(venue), "the shared token is bumped exactly once (0 -> 1)");
+			// Whichever won, the row is not split: every set on the venue carries one label.
+			assertEquals(1L, jdbc.sql("SELECT COUNT(DISTINCT row_label) FROM set_position WHERE venue_id = :v")
+					.param("v", venue.value()).query(Long.class).single());
 		}
 	}
 

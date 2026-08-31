@@ -91,6 +91,8 @@ const AWAITING_DETAIL = {
   // Present but false before payment: BookingDetailView always carries the field, and the backend
   // never even consults the port unless the booking is CONFIRMED.
   emailWithheld: false,
+  // The wire always carries a panel; a stay nobody checked in is the reason there is no form.
+  reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
 test.beforeEach(async ({ page }) => {

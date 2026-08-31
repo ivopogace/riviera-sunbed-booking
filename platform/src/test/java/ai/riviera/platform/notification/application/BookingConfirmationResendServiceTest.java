@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 import ai.riviera.platform.booking.api.BookingNotificationFacts;
 import ai.riviera.platform.booking.vocabulary.BookingConfirmationFacts;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -44,7 +45,8 @@ class BookingConfirmationResendServiceTest {
 	private static final String CODE = "ABCD2345";
 
 	private static final BookingConfirmationFacts CONFIRMED = new BookingConfirmationFacts(SET_ID,
-			LocalDate.of(2026, 8, 1), 4500L, "EUR", CODE, new CustomerId(9L), true);
+			LocalDate.of(2026, 8, 1), 4500L, "EUR", CODE, new CustomerId(9L), true,
+			CancellationWindow.CLOSED, 0);
 	private static final BookingMailFacts.Resolved RESOLVED =
 			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3);
 
@@ -79,7 +81,8 @@ class BookingConfirmationResendServiceTest {
 		service.resend(BOOKING_ID);
 
 		verify(mails).sendBookingConfirmation(EMAIL, new BookingConfirmationMail(
-				CODE, "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500L, "EUR"));
+				CODE, "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500L, "EUR",
+				CancellationWindow.CLOSED, 0));
 	}
 
 	@Test
@@ -127,7 +130,8 @@ class BookingConfirmationResendServiceTest {
 	@Test
 	void refusesABookingThatWasNeverConfirmed() {
 		when(bookings.confirmationFacts(BOOKING_ID)).thenReturn(Optional.of(new BookingConfirmationFacts(
-				SET_ID, LocalDate.of(2026, 8, 1), 4500L, "EUR", CODE, new CustomerId(9L), false)));
+				SET_ID, LocalDate.of(2026, 8, 1), 4500L, "EUR", CODE, new CustomerId(9L), false,
+				CancellationWindow.FREE, 0)));
 
 		assertThat(service.resend(BOOKING_ID)).isEqualTo(ResendOutcome.NOT_CONFIRMED);
 

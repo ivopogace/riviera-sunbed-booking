@@ -15,6 +15,7 @@ package ai.riviera.platform.venue.application;
 public record RowPriceCommand(String rowLabel, long priceMinor, String priceCurrency) {
 
 	public RowPriceCommand {
+		rowLabel = VenueFieldValidation.strip(rowLabel);
 		VenueFieldValidation.requireText(rowLabel, "rowLabel");
 		if (priceMinor < 0) {
 			throw new IllegalArgumentException("priceMinor must be >= 0");

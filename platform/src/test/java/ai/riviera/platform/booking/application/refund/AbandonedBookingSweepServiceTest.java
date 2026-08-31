@@ -94,8 +94,8 @@ class AbandonedBookingSweepServiceTest {
 	}
 
 	@Test
-	void bindsTheServiceDayArmToTheTiraneCivilDate() {
-		// CLOCK is 09:00Z on 2026-11-01, which is 10:00 in Tirane — the day is already underway.
+	void bindsTheDayArmToTheLastEndedTiraneServiceDay() {
+		// CLOCK is 09:00Z on 2026-11-01 (10:00 Tirane): October 31 has ended, November 1 has not.
 		Bookings bookings = mock(Bookings.class);
 		when(bookings.findExpirableAwaitingPayment(any(), any(), any())).thenReturn(List.of());
 
@@ -104,6 +104,6 @@ class AbandonedBookingSweepServiceTest {
 
 		Instant now = CLOCK.instant();
 		verify(bookings).findExpirableAwaitingPayment(now.minus(TTL), WINDOWS.acceptedBefore(now),
-				LocalDate.of(2026, 11, 1));
+				LocalDate.of(2026, 10, 31));
 	}
 }

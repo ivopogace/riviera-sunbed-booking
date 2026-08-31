@@ -31,7 +31,7 @@ test('flags the SecurityConfig two-line matcher block (#522)', () => {
   assert.equal(violations[0].endLine, 5);
 });
 
-const SCSS = 'frontend/src/styles.scss';
+const SCSS = 'frontend/src/app/pages/home/home.scss';
 
 test('flags a two-line block comment in SCSS', () => {
   const violations = findViolations({

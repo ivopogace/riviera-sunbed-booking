@@ -10,14 +10,13 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of, tap } from 'rxjs';
 
 import { TouchTarget } from '../shared/touch-target';
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import {
   HeldSetState,
-  SetRow,
   TileState,
   deriveTileStates,
   groupSetsByRow,
@@ -25,22 +24,32 @@ import {
 } from '../shared/availability-grid';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { focusMover } from '../shared/focus-after-render';
+import { LoadAnnouncer } from '../shared/load-announcer';
+import { MapSkeletonGrid } from '../shared/map-skeleton-grid';
+import { SkeletonBlock } from '../shared/skeleton-block';
 import { StatusChip } from '../shared/status-chip';
-import { formatMoney, MoneyView } from '../shared/money';
+import { formatMoney, formatMoneyRange, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { formatCivilDate, todayBookingDate } from '../shared/booking-date';
 import { BookingStatus, metaFor } from '../shared/booking-status';
 import { setLabel, setsById, tierSentenceLabel } from '../shared/set-label';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueService } from '../venue/venue.service';
-import { BeachGridFrame } from './beach-grid-frame';
-import { ConsoleDailyBooking, MarkErrorCode, ReleaseErrorCode } from './operator-console.model';
+import { BeachMapCanvas, BeachMapCanvasRow, BeachMapRowDef } from '../shared/beach-map-canvas';
+import {
+  ConsoleDailyBooking,
+  MarkErrorCode,
+  ReleaseErrorCode,
+  VenueProfileErrorCode,
+} from './operator-console.model';
 import {
   OperatorConsoleService,
   checkInErrorOf,
   checkInWrongDateOf,
   markErrorOf,
   releaseErrorOf,
+  venueProfileErrorOf,
 } from './operator-console.service';
 import { QrScanner } from './qr-scanner';
 import { codeFromScan } from './scan-input';
@@ -80,6 +89,11 @@ const ARRIVAL_CHIPS: Partial<Record<BookingStatus, ArrivalChip>> = {
   NO_SHOW: { modifier: metaFor('NO_SHOW').chip, label: 'No-show', testId: 'arrival-no-show' },
 };
 
+/** One availability row on the shared canvas's row contract, plus the sets its tiles render. */
+interface DailyRow extends BeachMapCanvasRow {
+  readonly sets: readonly SetView[];
+}
+
 /** The check-in panel's announced outcome; tone drives the ink, the text carries the meaning. */
 interface CheckInNotice {
   readonly tone: 'ok' | 'error';
@@ -104,15 +118,32 @@ interface CheckInNotice {
  * a safe no-op). Reads `:venueId` from the parent route via {@link parentVenueId} (child routes don't
  * inherit it), the same as {@link import('./pricing-tab').PricingTab}. Always
  * porcelain (inherited from the console shell); glass via {@link CardGlass}; the shared sea-facing
- * chrome via {@link BeachGridFrame}. Tile state is conveyed by an accessible name, not colour alone
+ * chrome via {@link BeachMapCanvas}. Tile state is conveyed by an accessible name, not colour alone
  * (WCAG AA); codes are bearer credentials (invariant #7), shown for arrival verification, never logged.
+ *
+ * <p>The one write beyond the mark/release path is the on-today kill switch: "close today's
+ * online sales now" flips the venue's STANDING sales-close setting to 00:01 (invariant #4)
+ * through {@link OperatorConsoleService#closeOnlineSalesNow}'s profile GET→PATCH — no per-day
+ * override — behind an inline two-step confirm; either outcome re-reads the day so the header
+ * reconciles with the map read's {@code salesOpen} verdict.
  *
  * <p>The Request-to-Book queue is deliberately out of scope — it is the Requests tab's job. This
  * tab does daily-ops only.
  */
 @Component({
   selector: 'app-daily-view-tab',
-  imports: [CardGlass, BeachGridFrame, StatusChip, BusyAction, TouchTarget],
+  imports: [
+    CardGlass,
+    LoadAnnouncer,
+    BeachMapCanvas,
+    BeachMapRowDef,
+    SkeletonBlock,
+    MapSkeletonGrid,
+    StatusChip,
+    BusyAction,
+    TouchTarget,
+    RouterLink,
+  ],
   templateUrl: './daily-view-tab.html',
 })
 export class DailyViewTab {
@@ -123,7 +154,7 @@ export class DailyViewTab {
 
   /** The venue this tab manages, from the parent `/operator/:venueId` route (undefined if
    *  invalid) — reactive to in-place venue switches, which reuse this instance. */
-  private readonly venueId = parentVenueId(this.route);
+  protected readonly venueId = parentVenueId(this.route);
 
   protected readonly venue = signal<VenueMapView | undefined>(undefined);
   protected readonly bookings = signal<readonly ConsoleDailyBooking[]>([]);
@@ -133,11 +164,27 @@ export class DailyViewTab {
   protected readonly loaded = signal(false);
   /** True when the initial venue read failed — shows an error (not a false "no sets" state). */
   protected readonly loadError = signal(false);
+
+  /** The arrivals placeholder rows — its own constant, so the map's geometry cannot move them. */
+  protected readonly skeletonArrivals = [1, 2, 3, 4] as const;
   /** A transient notice (e.g. a set was just taken by the other channel, or a write failed). */
   protected readonly notice = signal<string | undefined>(undefined);
 
   /** The day the view reflects (ISO YYYY-MM-DD); defaults to today in Europe/Tirane (invariant #6). */
   protected readonly selectedDate = signal(todayBookingDate(new Date()));
+
+  /** Every kill-switch transition destroys the control that was just activated (WCAG 2.4.3). */
+  private readonly focusAfterRender = focusMover();
+  /** True while the amber "close today's online sales" confirm is open (two-step, no accidental close). */
+  protected readonly closeSalesConfirm = signal(false);
+  /** An in-flight close-sales GET→PATCH — gates the confirm so a double-tap cannot double-write. */
+  protected readonly closeSalesBusy = signal(false);
+  /** The kill switch targets today only — on any other date the sales window is not "now". */
+  protected readonly selectedDateIsToday = computed(
+    () => this.selectedDate() === todayBookingDate(new Date()),
+  );
+  /** Whether today's online sales are still open per the map read's per-request verdict. */
+  protected readonly salesOpenToday = computed(() => this.venue()?.salesOpen !== false);
 
   private readonly scanner = inject(QrScanner);
   /** The check-in scanner panel is open (camera live for the real adapter). */
@@ -249,6 +296,8 @@ export class DailyViewTab {
     this.closeScan();
     this.checkInBusy.set(false);
     this.checkInNotice.set(undefined);
+    this.closeSalesConfirm.set(false);
+    this.closeSalesBusy.set(false);
     this.selectedDate.set(todayBookingDate(new Date()));
     this.overrides.set(new Map());
     this.pendingSets.set(new Set());
@@ -261,10 +310,19 @@ export class DailyViewTab {
     this.load();
   }
 
-  /** Sets grouped into rows (read order preserved) for the grid. */
-  protected readonly rows = computed<readonly SetRow[]>(() =>
-    groupSetsByRow(this.venue()?.sets ?? []),
-  );
+  /** Sets grouped into rows (read order preserved), on the shared canvas's row contract. */
+  protected readonly rows = computed<readonly DailyRow[]>(() => {
+    const rows = groupSetsByRow(this.venue()?.sets ?? []);
+    // A mixed-price row renders its min–max span, never just the first set's price (#689).
+    const prices = rows.map((r) => formatMoneyRange(r.sets.map((s) => s.price)));
+    return rows.map((row, i) => ({
+      code: row.label,
+      priceLabel: prices[i],
+      zoneStart: i === 0 || prices[i] !== prices[i - 1],
+      tileCount: row.sets.length,
+      sets: row.sets,
+    }));
+  });
 
   /** The effective tile state per set id: optimistic override, else the server state token. */
   private readonly tileState = computed<ReadonlyMap<number, TileState>>(() =>
@@ -289,11 +347,6 @@ export class DailyViewTab {
     () => [...this.tileState().values()].filter((s) => s === 'FREE').length,
   );
   protected readonly totalCount = computed(() => this.venue()?.sets.length ?? 0);
-
-  /** Per-row grid columns: equal share of the row, never below the 44px touch floor (#605). */
-  protected columns(row: SetRow): string {
-    return `repeat(${row.sets.length}, minmax(44px, 1fr))`;
-  }
 
   /** State of one tile (defaults to FREE before the map loads). */
   protected stateOf(set: SetView): TileState {
@@ -371,12 +424,68 @@ export class DailyViewTab {
     this.overrides.set(new Map());
     this.pendingSets.set(new Set());
     this.notice.set(undefined);
+    this.closeSalesConfirm.set(false);
     this.loadError.set(false);
     this.loaded.set(false);
     this.venue.set(undefined);
     this.bookings.set([]);
     this.states.set(undefined);
     this.load();
+  }
+
+  /** Open the amber close-sales confirm (two-step — the write is the confirm's job). */
+  protected onCloseSales(): void {
+    this.notice.set(undefined);
+    this.closeSalesConfirm.set(true);
+    this.focusAfterRender('daily-close-sales-confirm');
+  }
+
+  protected onCancelCloseSales(): void {
+    this.closeSalesConfirm.set(false);
+    this.focusAfterRender('daily-close-sales');
+  }
+
+  /**
+   * Close today's online sales via the STANDING setting (the service's GET→PATCH; invariant #4) —
+   * no per-day override exists. Either outcome re-reads the day so the header's button state
+   * reconciles with the map read's `salesOpen` verdict; a lost `STALE_WRITE` race says try again
+   * rather than auto-retrying (the operator should see what changed first).
+   */
+  protected onConfirmCloseSales(): void {
+    const venueId = this.venueId();
+    if (venueId === undefined || this.closeSalesBusy()) {
+      return;
+    }
+    const epoch = this.epoch;
+    this.closeSalesBusy.set(true);
+    this.console.closeOnlineSalesNow(venueId).subscribe({
+      next: () => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this write's UI state (#180)
+        }
+        this.closeSalesBusy.set(false);
+        this.closeSalesConfirm.set(false);
+        this.notice.set(
+          'Online sales for today are closed. This stays in place for future days until you change it back in Venue & commodities.',
+        );
+        this.focusAfterRender('daily-notice');
+        this.load();
+      },
+      error: (e: unknown) => {
+        if (this.epoch !== epoch) {
+          return; // a venue switch superseded this write's UI state (#180)
+        }
+        this.closeSalesBusy.set(false);
+        this.closeSalesConfirm.set(false);
+        const reason = venueProfileErrorOf(e);
+        if (reason === 'UNAUTHORIZED') {
+          this.operator.sessionLost();
+        }
+        this.notice.set(closeSalesFailureNotice(reason));
+        this.focusAfterRender('daily-notice');
+        this.load();
+      },
+    });
   }
 
   /** Optimistically flip a tile and mark it pending. */
@@ -480,15 +589,16 @@ export class DailyViewTab {
     return formatMoney(amount);
   }
 
-  /** The tile glyph: a check for a staff mark, a dot when locked, else the price. */
-  protected tileGlyph(set: SetView): string {
+  /** The state glyph shown beside the position number: a check for a staff mark, a dot when
+   *  locked, none when free — state stays glyph + fill, never colour alone. */
+  protected stateGlyph(set: SetView): string | undefined {
     switch (this.stateOf(set)) {
       case 'STAFF_MARKED':
         return '✓';
       case 'BOOKED_ONLINE':
         return '●';
       default:
-        return this.money(set.price);
+        return undefined;
     }
   }
 
@@ -498,9 +608,9 @@ export class DailyViewTab {
       case 'STAFF_MARKED':
         return 'border-transparent bg-[#0a6e85] text-white';
       case 'BOOKED_ONLINE':
-        return 'border-[#0c2a33]/15 bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.28)_0_3px,rgba(12,42,51,0.1)_3px_6px)] text-(--riv-card-ink)';
+        return 'border-[#0c2a33]/15 bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.28)_0_3px,rgba(12,42,51,0.1)_3px_6px)] text-riv-card-ink';
       default:
-        return 'border-[#0c2a33]/15 bg-white/85 text-(--riv-card-ink)';
+        return 'border-[#0c2a33]/15 bg-white/85 text-riv-card-ink';
     }
   }
 
@@ -511,6 +621,20 @@ export class DailyViewTab {
   protected tileLabel(set: SetView): string {
     const tier = tierSentenceLabel(set.tier);
     return `Set ${set.rowLabel} ${set.positionNo}, ${tier}, ${this.money(set.price)}, ${tileAction(this.stateOf(set))}`;
+  }
+}
+
+/** Map a close-sales failure to its operator-facing notice; a lost race asks for a re-try. */
+function closeSalesFailureNotice(reason: VenueProfileErrorCode): string {
+  switch (reason) {
+    case 'STALE_WRITE':
+      return 'Couldn’t close today’s sales — the venue was changed at the same time. Check the refreshed state and try again.';
+    case 'NOT_VENUE_OWNER':
+      return 'You don’t manage this venue, so you can’t close its sales.';
+    case 'UNAUTHORIZED':
+      return SESSION_EXPIRED_MESSAGE;
+    default:
+      return 'Couldn’t close today’s sales. Please try again.';
   }
 }
 

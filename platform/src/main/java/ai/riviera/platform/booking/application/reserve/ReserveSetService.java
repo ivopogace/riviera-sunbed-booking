@@ -1,6 +1,6 @@
 package ai.riviera.platform.booking.application.reserve;
 
-import ai.riviera.platform.booking.application.cancel.BookingCutoff;
+import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.request.RequestWindows;
 
 import java.time.Clock;
@@ -18,13 +18,15 @@ import ai.riviera.platform.booking.application.BookingCodeGenerator;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.customer.api.CustomerDirectory;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
+import ai.riviera.platform.operator.api.VenueVisibility;
+import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 
 /**
  * The committed <em>reserve</em> phase of Instant-Book (issue #52): validate the set (online pool,
- * invariant #3; evening-before cutoff, invariant #4), claim the {@code (set, date)} (the
+ * invariant #3; the venue's on-day sales close, invariant #4), claim the {@code (set, date)} (the
  * double-booking guard, invariant #2), resolve the guest, and insert the {@code AWAITING_PAYMENT}
  * booking — all in <strong>one transaction that commits before any payment call</strong>. Splitting
  * this off from {@link CreateBookingService} is precisely what lets the Stripe PaymentIntent be
@@ -48,6 +50,7 @@ class ReserveSetService {
 
 	private final SetBookingFacts setFacts;
 	private final AvailabilityClaim availability;
+	private final VenueVisibility visibility;
 	private final CustomerDirectory customers;
 	private final Bookings bookings;
 	private final BookingCodeGenerator codeGenerator;
@@ -56,10 +59,12 @@ class ReserveSetService {
 	private final Clock clock;
 
 	ReserveSetService(SetBookingFacts setFacts, AvailabilityClaim availability,
-			CustomerDirectory customers, Bookings bookings, BookingCodeGenerator codeGenerator,
-			BookingCutoff cutoff, RequestWindows requestWindows, Clock clock) {
+			VenueVisibility visibility, CustomerDirectory customers, Bookings bookings,
+			BookingCodeGenerator codeGenerator, BookingCutoff cutoff, RequestWindows requestWindows,
+			Clock clock) {
 		this.setFacts = setFacts;
 		this.availability = availability;
+		this.visibility = visibility;
 		this.customers = customers;
 		this.bookings = bookings;
 		this.codeGenerator = codeGenerator;
@@ -80,10 +85,16 @@ class ReserveSetService {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NO_SUCH_SET);
 		}
 		SetBookingInfo set = found.get();
+		// A hidden venue's set books like one that does not exist (#693), refused before any claim.
+		if (!visibility.isVisible(new VenueRef(set.venueId().value()))) {
+			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NO_SUCH_SET);
+		}
 		if (!ONLINE_POOL.equals(set.pool())) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NOT_ONLINE_POOL);
 		}
-		if (!cutoff.isBookable(set.bookingCutoff(), command.bookingDate())) {
+		// One reading of the clock, so the fence and the request deadline classify the same instant.
+		Instant now = clock.instant();
+		if (!cutoff.isBookable(set.salesClose(), command.bookingDate(), now)) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.BOOKING_CLOSED);
 		}
 
@@ -98,11 +109,10 @@ class ReserveSetService {
 		CustomerId customerId = customers.findOrCreate(command.contact());
 		// Request-to-Book (issue #98): a REQUEST venue's booking starts as a pending request that
 		// holds the claimed (set, date) row but triggers no payment — payment-request-on-accept.
-		// The deadline is capped at the same evening-before cutoff isBookable just enforced, so an
-		// accept (guarded by request_expires_at > now) can never happen after bookings close (#4).
+		// The accept deadline caps at D's sales close: past it the venue has shut its own window.
 		if (set.bookingMode() == BookingMode.REQUEST) {
-			Instant expiresAt = min(clock.instant().plus(requestWindows.expiryWindow()),
-					cutoff.closesAt(set.bookingCutoff(), command.bookingDate()));
+			Instant expiresAt = min(now.plus(requestWindows.expiryWindow()),
+					cutoff.salesCloseAt(set.salesClose(), command.bookingDate()));
 			Inserted pending = insertWithUniqueCode(set, customerId, command,
 					b -> bookings.insertPendingRequest(b, expiresAt));
 			return new ReserveOutcome.RequestPending(pending.id(), pending.code(), set, expiresAt);

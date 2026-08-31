@@ -15,8 +15,8 @@
  *   component is not enough, since those own the open leg only. Judged per **gating signal** (#624):
  *   moving focus for one surface used to excuse every other surface the component owned.
  *
- * Only ever reasons about lines a diff **added**: ~12 legitimate `[disabled]` bindings and 11
- * standing surfaces — 8 confirm + 3 focus-trapped modals, the count #626's widened trigger judges —
+ * Only ever reasons about lines a diff **added**: ~12 legitimate `[disabled]` bindings and 12
+ * standing surfaces — 8 confirm + 4 focus-trapped modals, the count #626's widened trigger judges —
  * must never fail the repo, and a guard that goes red on day one gets switched off
  * (issue #529). `--all` sweeps the whole tree for an audit instead.
  *
@@ -57,8 +57,9 @@ const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
 const GATING = new Set(['BUSY-1', 'BUSY-2']);
 
 /**
- * Identifier stems that denote an in-flight write the user's own activation started. Derived from
- * the 17 distinct expressions already bound to `[appBusy]`, plus their obvious siblings.
+ * Identifier stems that denote an in-flight request the control must not be `[disabled]` for.
+ * Derived from the expressions already bound to `[appBusy]`, plus their obvious siblings — a read
+ * the control merely waits on (`reading`) strands focus exactly as a write it started does.
  *
  * Deliberately excludes `loading`, `pending`, `processing`, `updating` and `creating`: each reads as
  * often as *state* (`isPending(set)` is a standing carve-out) as it does as busyness, and a stem
@@ -76,6 +77,7 @@ export const BUSY_STEMS = [
   'refunding',
   'sending',
   'reloading',
+  'reading',
   'searching',
   'deciding',
   'acting',
@@ -94,8 +96,8 @@ export const BUSY_STEMS = [
  *
  * An allow-list, not a deny-list: `BusyAction` is for buttons only — inertness comes from consuming
  * the activating click — so advising it on a `<fieldset>` or a child component's `disabled` input
- * asks for a rewrite that cannot be written, and every one of the 51 `[appBusy]` bindings in the
- * app is on a `<button>`.
+ * asks for a rewrite that cannot be written, and every `[appBusy]` binding in the app is on a
+ * `<button>`.
  */
 const ACTIONABLE = new Set(['button', 'a']);
 

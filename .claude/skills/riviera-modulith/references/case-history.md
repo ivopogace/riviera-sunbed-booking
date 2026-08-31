@@ -26,7 +26,9 @@ the cases the convention can't (e.g. whether a new type is genuinely vocabulary)
 `VenueCatalog` had grown into a wide port serving unrelated consumer roles. #94 split it by role:
 `VenueCatalog` (tourist reads), `SetBookingFacts` (`setBookingInfo`/`poolForClaim`), `VenueRates`
 (`commissionBps`/`lateCancelRefundBps`) — pinned by `VenueApiRoleSplitTests`. The durable rule: a
-wide port splits by consumer role; don't pile new methods onto `VenueCatalog`.
+wide port splits by consumer role; don't pile new **sibling-facing** methods onto `VenueCatalog`.
+Further tourist reads stay free — the test asserts dependency direction, not a method list, and
+#760 added `availabilityBetween` through a full review gate without breaching it.
 
 ## Issue #44: the first `spi` (venue ↔ availability)
 
@@ -42,3 +44,13 @@ the adapter vocabulary uniform and the ArchUnit allowed-set clean. The question 
 `customer` was the thin module that raised it, and it graduated to the full template at S2 (#111),
 gaining `adapter/in` at #101 Slice 2. **No module is thin today**, so there is no `adapter/out`-vs-
 `internal/` decision outstanding — revisit only if a future serviceless module appears.
+
+## Issue #371: the root-package cycle — why `shared` exists
+
+An edge listener on `booking.events.BookingConfirmed` living in the root package produced
+`booking → root → booking`: five modules imported `ApiProblem`/`CurrentOperator` from the root,
+so the root was both depended-on and depending — a shape that closes cycles by construction. It
+had held only by accident (every earlier edge class happened to touch just `customer` and
+`operator`). The fix (ADR-0007 Amendment 2): module-needed types moved to the OPEN Shared Kernel
+`shared`; the root stays the composition root nothing depends on, pinned by
+`CompositionRootDisciplineTests`. The durable rule lives in SKILL.md's root-package blockquote.

@@ -65,8 +65,7 @@ class CancelBookingIT {
 	}
 
 	private Created confirmBookingOn(LocalDate date) {
-		long setId = jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id DESC LIMIT 1")
-				.query(Long.class).single();
+		long setId = VisibleOnlineSets.newest(jdbc).id();
 		BookingOutcome outcome =
 				createBooking.create(new CreateBookingCommand(new SetId(setId), date, GUEST));
 		BookingOutcome.Confirmed confirmed = assertInstanceOf(BookingOutcome.Confirmed.class, outcome);
