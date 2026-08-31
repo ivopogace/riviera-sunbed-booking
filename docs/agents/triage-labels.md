@@ -33,18 +33,17 @@ labels.
 | `foundational` | Enabling work others are blocked by (scaffolding, pipeline). |
 | `good first issue` | Gentle, well-scoped entry point for a new contributor. |
 
-Area labels drive **skill routing** in `riviera-sdlc`: `area:frontend` → Angular
-skills + Angular MCP; `area:backend` → `codebase-design` / `domain-modeling` + `postgres` (Flyway/table
-design) + `riviera-stripe-payments` (payment/payout); both always plan with
-`riviera-plan-doc` and review with `riviera-review-overlay`.
+Area labels are the **starting hint** for skill routing — the authority is
+`riviera-sdlc`'s Skill-routing table, and the real trigger is what the change
+actually touches, not the label.
 
 ## Wayfinding (planning — the `wayfinder` skill)
 
-Used only when charting a **foggy epic** with `wayfinder` (destination clear, route
-not — the niche front-stage; the common path skips straight to `to-spec` / `to-issues`).
-These label the map issue and its **decision** tickets — questions whose resolution is a
-decision, not build slices. They live only for the charting phase; execution tickets use
-the state/category/area labels above.
+Used only when charting a **foggy epic** with `wayfinder` (trigger + chain:
+`riviera-sdlc` `references/epic-front-end.md`). These label the map issue and its
+**decision** tickets — questions whose resolution is a decision, not build slices. They
+live only for the charting phase; execution tickets use the state/category/area labels
+above.
 
 | Label | Meaning |
 |---|---|

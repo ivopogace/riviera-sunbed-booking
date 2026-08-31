@@ -4,31 +4,20 @@ description: Plan a huge chunk of work (more than one agent session can hold) as
 ---
 
 > **In riviera-sunbed-booking (localization):**
-> - **Use it only for a genuinely foggy epic** — destination clear, route not. When
->   `to-issues` can already cut clean vertical slices (the common case here — the product
->   design spec + domain model are captured up front), skip wayfinder and go straight to
->   `to-spec` / `to-issues`. This is a niche front-stage, not a default.
-> - **Tracker ops** (map issue, child tickets, native blocking / sub-issues, frontier
->   query) = GitHub. The **"Wayfinding operations" section the body below asks for** is
->   `docs/agents/issue-tracker.md` § *Wayfinding operations* — it is written and its
->   endpoints are verified; the **labels** (`wayfinder:map` +
->   `wayfinder:{research,prototype,grilling,task}`) are in `docs/agents/triage-labels.md`
->   § *Wayfinding*. Use the MCP tools for issues and sub-issues; **blocking has no MCP
->   tool** — that one call is `gh api`, and its body takes the numeric `issue_id`, never
->   `#NN`. Ignore the "default to local-markdown tracker" fallback below — this repo has a
->   real tracker.
+> - **Use it only for a genuinely foggy epic** — destination clear, route not; when
+>   `to-issues` can already cut clean vertical slices (the common case here), skip
+>   straight to `to-spec` / `to-issues`. The trigger, the handoff chain, and the
+>   altitude + state-store boundaries: `riviera-sdlc` `references/epic-front-end.md`.
+> - **Tracker ops** (map issue, sub-issue tickets, native blocking, frontier query) =
+>   GitHub. The **"Wayfinding operations" section the body below asks for** is
+>   `docs/agents/issue-tracker.md` § *Wayfinding operations* (including the `gh api`
+>   blocking call and its `issue_id` trap); the **labels** are
+>   `docs/agents/triage-labels.md` § *Wayfinding*. Ignore the "default to local-markdown
+>   tracker" fallback below — this repo has a real tracker.
 > - **Ticket-type skills:** `grilling`, `domain-modeling`, `research` and `prototype` are
 >   all vendored here, so every ticket type resolves through the skill upstream names —
->   no substitution. A **prototype** ticket's throwaway code goes on a spike branch
->   (label it a spike), which is that skill's own capture rule. The upstream
->   `agents/openai.yaml` config is dropped.
-> - **State-store boundary:** the `wayfinder:map` issue governs the **charting** phase
->   only. The moment a slice enters execution, `riviera-sdlc`'s plan-doc **Execution
->   status** section is the state store (rules 10–11) — the map *indexes* decisions, it
->   does not track build progress.
-> - **Handoff:** wayfinder's destination ("a spec") feeds `to-spec`; `to-spec`'s user
->   stories feed `to-issues`; each slice then runs the full `refine → … → merge` loop.
->   Wayfinder replaces nothing in that loop — it sits ahead of it.
+>   no substitution. A **prototype** ticket's throwaway code follows that skill's own
+>   spike-branch rule. The upstream `agents/openai.yaml` config is dropped.
 
 A loose idea has arrived, too big for one agent session, and wrapped in fog: the way from here to the **destination** isn't visible yet. Wayfinding is about finding that way, not charging at the destination. This skill charts the way as a **shared map** on the repo's issue tracker, then works its **decision tickets** (questions whose resolution is a decision, not slices of a build to execute) one at a time until the route is clear.
 

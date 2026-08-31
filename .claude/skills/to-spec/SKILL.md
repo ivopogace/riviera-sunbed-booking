@@ -5,14 +5,11 @@ description: "Turn the current conversation into a spec and publish it to the pr
 
 > **In riviera-sunbed-booking (localization):**
 > - **Tracker** = GitHub via the MCP tools (not `gh`); **labels** per `docs/agents/triage-labels.md`.
-> - **Altitude — this is the epic/feature spec, not the slice plan.** It holds user
->   stories + testing seams + out-of-scope, committed **once** as the epic issue (a
->   rule-10 source-of-intent doc). Per-**slice** detail — testable ACs, risk register,
->   invariant proof, the Execution-status state store — stays in `riviera-plan-doc`.
->   Keep the two at different altitudes; don't restate slice ACs here.
-> - **Flow:** sits between **Refine** and **Issue** in `riviera-sdlc`. The numbered
->   **User Stories** it produces are the source `to-issues` slices against ("user stories
->   covered"). A foggy epic may feed it from `wayfinder` first.
+> - **Altitude — this is the epic/feature spec, not the slice plan.** User stories +
+>   testing seams + out-of-scope, committed **once** as the epic issue (a rule-10
+>   source-of-intent doc); per-**slice** detail stays in `riviera-plan-doc`. The
+>   altitude boundary and the `wayfinder` → here → `to-issues` chain:
+>   `riviera-sdlc` `references/epic-front-end.md`.
 > - **Label:** the spec is the **epic issue** (source of intent). The `ready-for-agent`
 >   AFK-ready tickets are the **slices** `to-issues` cuts from it — do **not** blanket
 >   `ready-for-agent` on the epic itself; that label belongs on the implementable slices.

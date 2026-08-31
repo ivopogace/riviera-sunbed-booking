@@ -5,8 +5,8 @@
 The engineering skills (`to-issues`, `triage`, `wayfinder`) read from and write to
 GitHub Issues. In this repo, agents reach GitHub through the **GitHub MCP tools**
 (`mcp__plugin_github_github__*`) — the convention for tracker ops even though `gh` is
-now provisioned in cloud sessions too (as the review plugin's transport; the proxy
-403s most non-REST subcommands there). A contributor running Claude Code locally may
+provisioned in cloud sessions too (proxy-restricted; `riviera-sdlc`
+`references/pr-gates.md` §1). A contributor running Claude Code locally may
 use the `gh` CLI instead — both target the same issues.
 
 **External PRs as a triage surface:** No. Pull requests here are normal review
@@ -30,9 +30,9 @@ once a slice enters execution the plan doc's Execution status is the state store
 | Operation | How GitHub expresses it here |
 |---|---|
 | **Map** | An issue labelled `wayfinder:map`. |
-| **Ticket** | A **native sub-issue** of the map — `mcp__plugin_github_github__sub_issue_write`, or `POST /repos/{o}/{r}/issues/{map}/sub_issues`. Verified live on this repo. |
+| **Ticket** | A **native sub-issue** of the map — `mcp__plugin_github_github__sub_issue_write`, or `POST /repos/{o}/{r}/issues/{map}/sub_issues`. |
 | **Claim** | Assign the ticket to the dev driving the map. An open, **unassigned** ticket is unclaimed. |
-| **Blocking** | **Native issue dependencies** — `GET/POST /repos/{o}/{r}/issues/{n}/dependencies/blocked_by`. Verified live. No MCP tool wraps it, so use `gh api`. |
+| **Blocking** | **Native issue dependencies** — `GET/POST /repos/{o}/{r}/issues/{n}/dependencies/blocked_by`. No MCP tool wraps it, so use `gh api`. |
 | **Frontier** | Open sub-issues of the map that are unassigned and whose `blocked_by` list is empty-or-all-closed. There is no single query: list the sub-issues, then check `blocked_by` per candidate. |
 
 > **The write body takes `issue_id`, not `issue_number`** — the numeric REST id, which is
