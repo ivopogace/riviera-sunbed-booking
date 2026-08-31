@@ -75,7 +75,7 @@ method, or field is the repo's documented convention (`riviera-java-conventions`
 `api/` surface depends on it) and stays as long as it earns its length. Applies to what the diff
 writes; don't reflow untouched comments to satisfy it.
 
-**Don't walk this by hand — run the guard** (#529):
+**Don't walk this by hand — run the guard:**
 `node scripts/check-inline-comments.mjs --diff origin/main` lists every multi-line inline
 comment the diff wrote, and the same check runs from a `PostToolUse` hook while the author edits
 and as a CI job on the PR. A clean run discharges the mechanical half of this item.
@@ -84,25 +84,24 @@ What it does **not** cover, which is what this item is still for:
 
 - **`#` files** (shell, YAML, `.properties`) and **SQL `--`** are outside the tool's four languages
   — `#` because every such file here carries multi-line header prose as its convention, SQL because
-  F-6 on PR #522 declined exactly that, citing `V9__payout_ledger.sql`. Judge these by eye, and
-  lean toward leaving them alone.
+  a review finding declined exactly that (PR #522, `V9__payout_ledger.sql`). Judge these by eye,
+  and lean toward leaving them alone.
 - **A one-line comment that shouldn't exist at all.** The rule's other half is "default to zero
   inline comments in a method"; the guard counts lines, it cannot weigh whether the *why* was
   already available from the code.
 
-The guard is diff-scoped by construction, so it will never flag the pre-existing multi-line blocks
-in `SecurityConfig` or `tailwind.css` — and neither should you.
+The guard is diff-scoped by construction — pre-existing multi-line blocks are not findings.
 
 ## RV-STYLE-2 — formatting is `prettier --check`'s job, not the reviewer's
 
 `frontend/.prettierrc` is enforced whole-scope: the frontend job's Format step runs bare
-`prettier --check src e2e` over a clean tree (the one-time reformat: #631, recorded in
+`prettier --check src e2e` over a clean tree (the one-time reformat is recorded in
 `.git-blame-ignore-revs`). So a formatting comment on a frontend diff is either
 redundant with a gate that already ran or wrong:
 
 - **Don't hand-flag `printWidth`, quote style, or wrapping** in `frontend/src` or `frontend/e2e`.
   If a line were really misformatted, the Format step would have failed the PR and named the
-  file (the PR #520 and #612 round trips are what this gate retires). A dirty file is fixed
+  file. A dirty file is fixed
   with `npm run format` (or a scoped `npx prettier --write <file>`), never by a review comment.
 
 Outside that scope, hands off for two different reasons: `scripts/`, `docs/`, and `platform/`
@@ -132,7 +131,7 @@ changed), and `npm test` is Vitest-in-jsdom — there is no `--browsers=ChromeHe
 
 | Thought | Reality |
 |---|---|
-| "`gradlew.bat` flipped CRLF→LF — that's corruption, revert it." | Check `.gitattributes` at every level (incl. `platform/.gitattributes`) first: `*.bat text eol=crlf` stores the blob **LF** and checks out CRLF, so an LF blob is the **correct** normalized form — don't "revert" it (git re-normalizes on `add`). Only a wrong **working-tree** EOL is a real finding (PR #37). |
+| "`gradlew.bat` flipped CRLF→LF — that's corruption, revert it." | Check `.gitattributes` at every level (incl. `platform/.gitattributes`) first: `*.bat text eol=crlf` stores the blob **LF** and checks out CRLF, so an LF blob is the **correct** normalized form — don't "revert" it (git re-normalizes on `add`). Only a wrong **working-tree** EOL is a real finding. |
 
 The authoring-idiom red flags (JPA/Lombok, float money, JVM-default-zone time,
 cross-module service calls, multi-line comments, …) live in the full table in

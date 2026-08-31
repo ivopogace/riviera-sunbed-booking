@@ -1,8 +1,7 @@
 # Riviera frontend overlay items
 
 Repo-specific frontend bank items. Loaded by `riviera-review-overlay` and layered
-onto whatever generic frontend bank the active review engine runs (today: the
-`code-review` plugin) — walked after it.
+onto whatever generic frontend bank the active review engine runs — walked after it.
 
 Item format: gate → follow-up → default severity → skill framing. Invariant numbers
 reference `CLAUDE.md`.
@@ -34,30 +33,25 @@ reference `CLAUDE.md`.
   the project-critical subset; defer to that skill for the full rules.
 
 **Default severity:** Minor (consistency), Major if a non-standard pattern spreads.
-**Skill framing:**
-- Peer-review: "Each new component: standalone? `inject()`? new control flow? signal
-  I/O? Any `ngClass`/`ngStyle`/`@HostBinding` or redundant `standalone: true`?"
 
 ---
 
 ### RV-FE-7. Styling is Tailwind, shared via directives, with no rendered drift (`riviera-tailwind`)
 **Gate:** Does new/changed styling follow the project's Tailwind conventions?
-- [ ] Tailwind utilities by default — new component styling isn't a fresh `.scss` **unless justified** (Tailwind-expressible → Tailwind; SCSS needs its stated why — the retired `home.scss` scrim is the historical precedent, none remain in-tree)
+- [ ] Tailwind utilities by default — new component styling isn't a fresh `.scss` **unless justified** (Tailwind-expressible → Tailwind; SCSS needs its stated why — `riviera-tailwind` owns the rule)
 - [ ] **migrate-on-touch:** a component the diff touches that still carries legacy component SCSS had that styling migrated to Tailwind in this same slice — or the SCSS is a justified holdout (with its stated why), or the defer was **maintainer-approved** (asked via `AskUserQuestion`, recorded with a follow-up issue — never self-granted; `riviera-tailwind` owns the rule + checklist)
 - [ ] a reused surface/element is a shared directive/component (`shared/*-glass.ts`, `retry-button.ts`), **not** `@apply`/`@utility`
 - [ ] a class a spec queries (`.set-tile.premium`, `.amenity-chip`, `.failure-title`, …) is retained as an inert marker after its styling moved to utilities
 - [ ] a restyle/migration proves **no rendered drift** with a computed-style diff, not just the class list (the `*.contrast.spec.ts` are pure maths and can't see it)
-- [ ] a new/changed interactive control meets the **44 × 44 px floor** (#605) — and the two halves of that check are **not** interchangeable (see Follow-up)
+- [ ] a new/changed interactive control meets the **44 × 44 px floor** — and the two halves of that check are **not** interchangeable (see Follow-up)
 
 **Follow-up:**
-- **The touch-target floor has a gating guard and a measuring sweep; neither is the other.** `check-touch-target.mjs` (#648, a `Repo hygiene (diff-scoped)` step and a `PostToolUse` hook) fails the build when a `<button>`/`<input>`/`<select>`/`<textarea>` declares neither `[appTouchTarget]` nor a reasoned `data-touch-exempt` — **both TT-1 and TT-2 gate**, so like BUSY-1 those lines are the build's finding and not yours (RV-STYLE-2's posture). But it proves only that somebody *declared* something. Two things it is blind to, which are exactly this item's: a declaration that is **false** (the directive is a no-op on a `display: inline` box, so `min-h-11` on a bare `<a>` changes nothing), and **every `<a>` in the app** — anchors are out of the guard's scope entirely and stand undeclared by design. Rendered size is `frontend/e2e/touch-targets*.e2e.ts`'s to prove; a green guard on a surface the sweep never opens means nothing was measured.
+- **The touch-target floor has a gating guard and a measuring sweep; neither is the other.** `check-touch-target.mjs` (a `Repo hygiene (diff-scoped)` step and a `PostToolUse` hook) fails the build when a `<button>`/`<input>`/`<select>`/`<textarea>` declares neither `[appTouchTarget]` nor a reasoned `data-touch-exempt` — **both TT-1 and TT-2 gate**, so like BUSY-1 those lines are the build's finding and not yours (RV-STYLE-2's posture). But it proves only that somebody *declared* something. Two things it is blind to, which are exactly this item's: a declaration that is **false** (the directive is a no-op on a `display: inline` box, so `min-h-11` on a bare `<a>` changes nothing), and **every `<a>` in the app** — anchors are out of the guard's scope entirely and stand undeclared by design. Rendered size is `frontend/e2e/touch-targets*.e2e.ts`'s to prove; a green guard on a surface the sweep never opens means nothing was measured.
 - Sharing moves to the directive/component layer — Tailwind has no mixin and this repo does not `@apply`. Surface directives carry no `border-radius` (it resolves by stylesheet order, not `class` order).
 - Don't flag a `getComputedStyle` `border-width` of `"1px"` for a `1.5px` border as a regression — Chromium snaps it, identically to the old SCSS. Diff against the SCSS's own computed values.
 - Load `riviera-tailwind` for the full conventions + the SCSS→Tailwind migration checklist.
 
 **Default severity:** Minor (consistency) for an idiom slip; **Major** for a restyle shipped with no drift check, or an `@apply`/new-`.scss` sharing pattern that spreads.
-**Skill framing:**
-- Peer-review: "Is styling Tailwind? Is a reused surface a directive (not `@apply`)? Are the test-hook classes kept? For a restyle — where's the computed-style no-drift check?"
 
 ---
 
@@ -71,9 +65,6 @@ contact) use a modern forms API with typed, server-validated state?
 - [ ] client validation is UX only; the **server** is authoritative (esp. money, dates, availability)
 
 **Follow-up:**
-- The MCP/`angular-developer` standard for Angular 22+ is Signal Forms first
-  (signal-based state, type-safe field access, schema validation); Reactive next;
-  Template-driven is discouraged for new code.
 - Client-side validation never replaces server checks — price (minor units, #5),
   booking date / cutoff (`Europe/Tirane`, #4/#6), and set availability (#2) are all
   decided server-side. A form that "validates" availability locally and trusts it is
@@ -82,9 +73,6 @@ contact) use a modern forms API with typed, server-validated state?
 
 **Default severity:** Major for a new Template-driven form or `any`-typed form values
 on the contract; Minor for a Reactive-where-Signal-Forms-fit style choice.
-**Skill framing:**
-- Peer-review: "Is this a Signal Form or Reactive? Any Template-driven `ngModel`? Are
-  the form value types explicit, and is the server still the authority for money/date/availability?"
 
 ---
 
@@ -97,17 +85,12 @@ recover gracefully when a chosen set was taken meanwhile?
 - [ ] taken sets visually distinct and not selectable
 
 **Follow-up:**
-- The server is the source of truth (invariant #2); the client map is a snapshot. A
-  user can pick a set that someone else just took.
 - On `409 SET_TAKEN`, don't dump a raw error — refresh availability, grey out the
   set, and prompt "that spot was just taken, pick another."
 - Re-fetch availability when the user returns to the map or changes the date.
 
 **Default severity:** Major for no conflict handling on submit; Minor for a missing
 periodic refresh.
-**Skill framing:**
-- Peer-review: "What happens when the user books a set that got taken after the map
-  loaded? Is there 409 handling that refreshes the map?"
 
 ---
 
@@ -129,9 +112,6 @@ booking `LocalDate`, without doing money math in JS floats?
 
 **Default severity:** Major for client-side float money math that drives the charge;
 Minor for display-only rounding.
-**Skill framing:**
-- Peer-review: "Where does the UI compute or format price? Floats? Is the charged
-  amount the server's or the client's?"
 
 ---
 
@@ -173,8 +153,6 @@ interaction?
 
 **Default severity:** Minor→Major depending on how central the picker is to the flow
 (it is the core flow, so lean Major for keyboard inaccessibility).
-**Skill framing:**
-- Peer-review: "Can the seat picker be operated by keyboard? Is status color-only?"
 
 ---
 
@@ -198,7 +176,7 @@ in the **suite that will actually run it**?
 > wiring / real HTTP status / DB UNIQUE constraint / cross-feature round-trip → real-backend
 > suite. A spec must live in exactly one tree. **In cloud sessions** never `playwright
 > install` — a Chromium is pre-installed and both configs take `PW_CHROMIUM_EXECUTABLE`; the
-> run recipe and the revision-mismatch trap (#164) live in `riviera-local-debug`.
+> run recipe and the revision-mismatch trap live in `riviera-local-debug`.
 
 **Follow-up:**
 - A frontend flow change with **no** e2e consideration, or a backend-only spec dropped into
@@ -209,10 +187,6 @@ in the **suite that will actually run it**?
 
 **Default severity:** **Major** (Blocker if the change removes existing coverage or makes the
 CI-run a11y suite green-but-blind to a real regression; Minor for a cosmetic-only tweak).
-**Skill framing:**
-- Peer-review: "Load `playwright-cli` and check the new/changed spec against its best
-  practices. Which suite covers this change, and will CI run it? Are the locators and data
-  per-test-safe, with no fixed sleeps?"
 
 ---
 
@@ -226,8 +200,7 @@ grandfathered debt table?
 - [ ] a genuinely needed new edge is argued in the plan doc, not slipped in on the table's precedent
 
 > **The table is a freeze, not a licence.** `riviera-frontend`'s residual table lists every
-> cross-feature edge that exists — five behavioral edges since **#489** moved the published
-> API-view vocabulary to `shared/`; each awaits its own slice, and the freeze stops the count
+> cross-feature edge that exists; each awaits its own slice, and the freeze stops the count
 > growing meanwhile. **"`operator/` already imports `venue/`" is not an argument for a new
 > import** — judge a new edge against the one-way rule on its merits.
 >
@@ -246,16 +219,12 @@ grandfathered debt table?
   (pure → `shared/`, stateful/HTTP → `core/`), don't cross-import.
 - Shrinking the set means updating `riviera-frontend`'s table in the same PR — a stale count
   reads as licence.
-- **No ESLint boundary rule enforces this today**, which is why it is a review-bank item; with
-  the residual down to five (#489), pinning it mechanically is the natural follow-up.
+- **No ESLint boundary rule enforces this today**, which is why it is a review-bank item;
+  pinning it mechanically is the natural follow-up.
 
 **Default severity:** **Major** for a new feature→feature import; **Blocker** for a new
 `shared/ →` or `core/ → feature/` import (it reintroduces the cycle the one-way rule prevents).
 Not a finding for a pre-existing edge the diff merely moves or consolidates.
-**Skill framing:**
-- Peer-review: "Run the grep. Is every cross-feature import in the diff already in
-  `riviera-frontend`'s debt table? If the diff adds one, what is the argument — and is it
-  really just 'the neighbours already do it'?"
 
 ---
 
@@ -278,10 +247,10 @@ sitting on** move focus somewhere deliberate, via `shared/focus-after-render.ts`
       before ticking this
 
 **Don't walk the mechanical half by hand — but don't read a green step as an all-clear either.**
-`node scripts/check-focus-posture.mjs --diff origin/main` (#621) runs from a `PostToolUse` hook while
+`node scripts/check-focus-posture.mjs --diff origin/main` runs from a `PostToolUse` hook while
 the author types and as a step in `Repo hygiene (diff-scoped)`. It carries three rules in two
-**opposite postures** — the BUSY pair gates (BUSY-2, #628, covers the #625 shape's text-entry half;
-see blind spot 4), FOCUS-1 advises — and conflating them is the way to get this item wrong in both
+**opposite postures** — the BUSY pair gates (BUSY-2 covers the text-entry half; see blind
+spot 4), FOCUS-1 advises — and conflating them is the way to get this item wrong in both
 directions:
 
 - **BUSY-1 fails the build — for the shapes it can see.** A `[disabled]` bound to an in-flight flag
@@ -296,35 +265,32 @@ directions:
   whitespace-ignoring flag, so a re-indented line is an added line and BUSY-1 does judge it.) Silence
   from BUSY-1 means "not one of the shapes I match", never "checked and fine".
 - **FOCUS-1 prints and returns 0.** It advises; it does not gate. So a **green** hygiene job can sit
-  on top of unread FOCUS-1 findings — read the step's *output*, not its exit code. It went advisory
+  on top of unread FOCUS-1 findings — read the step's *output*, not its exit code. It is advisory
   deliberately: "does this component move focus?" is a runtime property approximated by a regex over
-  source, and three review passes each found a fresh false positive in the predicate.
+  source, and review passes keep finding fresh false positives in the predicate — don't "promote" it.
 
 **What the guard cannot judge — this is what the item is for:**
 
 1. **Where focus should land.** The guard asks only whether a focus call site exists in the
    component. Landing on the page host is not the same answer as landing on the notice that says
    what happened, and only a human reads the surface.
-2. **The *second* stranding flip on an already-compliant signal.** #626 narrowed FOCUS-1 from
-   component scope to the **signal that gates each surface**, which is what let instance 14 hide
-   (`payouts-tab` moved focus for its weather confirm, and its focus-**trapped** statement modal was
-   then torn down by `resetForVenue()` with no leg). What remains is one step down: a signal is
-   excused by **one** compliant flip site — deliberately, since a bulk state reset beside a compliant
-   dismiss is not a bug — so a *second* stranding flip added beside a good one is unreported. So is a
+2. **The *second* stranding flip on an already-compliant signal.** FOCUS-1's scope is the
+   **signal that gates each surface**, and a signal is excused by **one** compliant flip site —
+   deliberately, since a bulk state reset beside a compliant dismiss is not a bug — so a *second*
+   stranding flip added beside a good one is unreported (the live shape: a focus-trapped modal
+   torn down by a bulk reset while the component's confirm leg kept the signal compliant). So is a
    teardown written some other way: `update(…)`, a `linkedSignal`, anything that is not a `set(false)`
    the scanner recognises.
 3. **Teardowns that are neither a confirm branch nor a focus trap.** FOCUS-1's trigger is an `@if`
    whose condition calls something matching `/confirm/i`, or one rendering a focus trap
-   (`trapFocusWithin`, `aria-modal`, `role="dialog"`) — #626 added the second after instance 13, a
-   modal **dismiss** that named no confirm flag anywhere. A surface that is neither still destroys
+   (`trapFocusWithin`, `aria-modal`, `role="dialog"`). A surface that is neither still destroys
    focus and is still yours to check: a row removed from a list, an error panel replacing the form
    that had focus, a wizard step swapped out.
 4. **The input carve-out's premise.** Inputs keep `[disabled]` and BUSY-1 allow-lists `button`/`a`
    only, on the stated grounds that *focus is on the button, never the field*. That holds wherever a
    button starts the write — and fails where the **field's own** `(change)`/`(blur)` starts it, which
-   the guard cannot tell apart. `pricing-tab` was the live case (**#625**, fixed): Enter fired
-   `change` without leaving the field, so the flag disabled the input focus was in; clicking to the
-   next row disabled *that* one just as focus landed. **Where `readonly` applies** — text-entry
+   the guard cannot tell apart (the live case: Enter fires `change` without leaving the field, so
+   the flag disables the input focus is in). **Where `readonly` applies** — text-entry
    inputs including `number` and the date/time types, plus `<textarea>` — **the fix is `[readonly]`**,
    not `[appBusy]` and not a focus leg: it blocks typing just as completely while keeping the field
    focused. **Where it doesn't** — `<select>`, checkbox, radio, `file`, `range`, `color` — no
@@ -332,16 +298,16 @@ directions:
    the handler. Don't accept `[disabled]` plus a settle-time focus move there: focus is on `<body>`
    for the whole request, and a leg afterwards only fixes where it lands. Ask where focus actually is
    when the flag flips, and whether `readonly` even applies to that control. **The text-entry half is
-   machine-checked (#628)**: BUSY-2 gates a `(change)`/`(blur)` + busy-`[disabled]` pairing on the
+   machine-checked**: BUSY-2 gates a `(change)`/`(blur)` + busy-`[disabled]` pairing on the
    `readonly`-lockable kinds. What stays this item's alone: the inert kinds, a field that commits per
    keystroke (`(input)` is excluded as draft-sync — the mirror case where a button starts the write),
    and whether the chosen lock is the *right* one for the surface.
 
 **Follow-up:**
 - The convention itself, both postures and the guard's flags: `frontend/.claude/CLAUDE.md`. The
-  fifteen instances and why each recurred: #604, #614, #616, #621, #625 and their `docs/plans/` entries.
+  recurring instances and why each recurred: the focus plan docs under `docs/plans/`.
 - **A jsdom spec is not evidence for a busy-window claim.** jsdom does not implement
-  unfocus-on-disable (#614 R-1, re-confirmed by #616), so a unit spec can pass without the fix. A
+  unfocus-on-disable, so a unit spec can pass without the fix. A
   claim about a *disabled* control needs a Chromium leg; a claim about a *destroyed* one may be
   pinned in jsdom, which does model unmounting.
 - The e2e shape to ask for is `await expect(page.getByTestId('…')).toBeFocused()` at each leg
@@ -366,7 +332,7 @@ server error). Not a finding at all for a BUSY-1 shape — CI already failed it 
 
 ---
 
-### RV-FE-10. A live region outlives the content it announces (#741)
+### RV-FE-10. A live region outlives the content it announces
 **Gate:** Does every `aria-live` / `role="status"` / `<output>` region the diff writes **already
 exist in the DOM before the text it announces changes**?
 - [ ] the region is **outside** the `@if`/`@switch` branch it describes — a region created together
@@ -388,17 +354,14 @@ exist in the DOM before the text it announces changes**?
 
 > **The trap this item exists for:** the text is always there, so a spec that reads it passes either
 > way, and both the assertion and the comment beside it end up claiming an announcement nobody
-> proved. #741 shipped that shape on **eight** surfaces at once — three of them named in the ticket,
-> five found only by enumerating the mechanism (`grep -rn 'aria-live\|role="status"\|<output>'
-> frontend/src`). `booking/booking-pay.ts`'s `pay-status` region and the #717/#718 count regions had
-> the rule right the whole time; the loading surfaces never adopted it. angular.dev says the same
-> thing under `@defer` › *Keep accessibility in mind*.
+> proved. That shape once shipped on **eight** surfaces at once (#741) — most found only by
+> enumerating the mechanism (`grep -rn 'aria-live\|role="status"\|<output>' frontend/src`), so
+> enumerate; don't trust the diff's own surfaces to be the population.
 >
-> **The fail-open trap, paid for once already.** PR #743's own review gate caught the `[ready]`
-> rule above the hard way: the first cut took a `[failed]` flag, and three of eight call sites had
-> a non-success exit nobody had thought to bind — the beach map's 404, My bookings' failed account
-> read, the account page's signed-out visitor — each announcing "…loaded." over a panel saying the
-> opposite. Announcing the failure itself is a *different* item: the house pattern is
+> **The fail-open trap, paid for once already.** A first cut of the `[ready]` rule took a
+> `[failed]` flag, and three of eight call sites had a non-success exit nobody had thought to
+> bind — a 404, a failed account read, a signed-out visitor — each announcing "…loaded." over a
+> panel saying the opposite. Announcing the failure itself is a *different* item: the house pattern is
 > `role="alert"` on the failure panel, insertion being the one case a live region is reliably
 > announced without a prior mutation. **Read the branch; never assume the panels handle it** — and
 > read what kind of region it is, because two shapes announce nothing: a `role="status"` panel born
@@ -406,13 +369,13 @@ exist in the DOM before the text it announces changes**?
 > file may belong to a submit or a delete flow, not to the load. Where the load's non-success
 > branch is silent, `role="alert"` on the panel already in the diff is usually the right fix.
 > What is **not** is a live region **per row** of a list — assertive, one interruption per failure,
-> and re-announced when a re-sort moves the node; PR #743 shipped that for one round and reverted
-> it. This item deliberately records **no inventory of which panels carry a role today** — that
+> and re-announced when a re-sort moves the node; that shipped once and was reverted.
+> This item deliberately records **no inventory of which panels carry a role today** — that
 > decays between reviews. Count when you review.
 >
 > **Ask whether the spec was mutation-checked.** Moving the region back inside its branch must fail
 > it, and so must widening `[ready]` past the loaded branch — a passing assertion that cannot fail
-> is the same false comfort in a new place (worked examples, all mutation-checked in PR #743:
+> is the same false comfort in a new place (worked, mutation-checked examples:
 > `requests-tab.spec.ts`, `e2e/loading-announcements.e2e.ts`, and the three `[ready]` specs in
 > `venue-map.spec.ts` / `my-bookings.spec.ts` / `set-password.spec.ts`).
 
@@ -427,7 +390,7 @@ persistent sibling region already announces the same outcome and the new one is 
 
 ---
 
-### RV-FE-11. An inline field error names its control, and `aria-invalid` means the value is wrong (#821)
+### RV-FE-11. An inline field error names its control, and `aria-invalid` means the value is wrong
 **Gate:** Does every inline, field-scoped error the diff writes carry **both** `role="alert"` and
 `[appFieldErrorFor]` naming its control — and does its `aria-invalid` claim match what actually failed?
 - [ ] the error element carries `[appFieldErrorFor]="<ctl>"` (`shared/field-error-for.ts`), never a
@@ -449,7 +412,7 @@ persistent sibling region already announces the same outcome and the new one is 
 - [ ] the spec asserts the **take and the release**, not the release alone — an absence-only
       assertion passes just as well when nothing was ever written
 
-> **Two traps, both paid for on #823's review gate.** The first is the `aria-invalid` half: the
+> **Two traps, both already paid for.** The first is the `aria-invalid` half: the
 > mechanism is so mechanical to apply that a *write*-outcome error gets swept in with the validation
 > ones, and the spec then pins the wrong semantics (a 403 asserting `aria-invalid="true"` on a value
 > the app had already reverted to the server's own). The second is measuring the result with the
