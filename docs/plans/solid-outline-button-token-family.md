@@ -135,9 +135,9 @@ session addendum). The literal `feature/*` branch is deliberately not created.
 |---|---|---|---|---|---|---|
 | R-1 | **The issue's "correction #2" is itself wrong** — it states `rgba(255,255,255,0.7)` "appears exactly once, inlined on `my-bookings.ts:205`" and asks which border `my-bookings` should carry. A grep shows it on **all three** outline buttons (`booking-view.ts:101`, `review-panel.ts:49`, `my-bookings.ts:205`): it sits on the `btnOutline` **variant**, not in the shared `BTN_OUTLINE` base, which is why reading the base alone missed it. Planning to the issue's text would have left a family-wide border untokenised and invented a fake divergence to "reconcile" | — | med | Treat the border as family-wide (`--riv-solid-btn-border`); AC-4 sweeps all three roles. The audit ledger's own F-2 row already lists this border as a family member with n=9 (3 fill + 3 hover + 3 border), so the ledger and the code agree and only the issue body drifted | agent | **resolved at plan time** — recorded here, in the PR, and as a comment on #851 |
 | R-2 | A value-blind sweep of `#a3372a` hits 6 out-of-family sites (the over-claim the issue itself flags) | med | high | Match **by role**, never by bare value — the `LITERAL_ROLES` pattern #850 established (`text-\[#a3372a\]`, not `#a3372a`); AC-5 asserts the six survivors positively | agent | open → closed by AC-5 |
-| R-3 | A token declared without its `@theme inline` row generates **no utility**: the class stays in the markup, the paint silently reverts to unstyled, and every jsdom spec still passes | med | high | AC-7 walks `document.styleSheets` in a real browser for each utility selector — #850's first e2e test, kept for the same reason | agent | open → closed by AC-7 |
+| R-3 | A token declared without its `@theme inline` row generates **no utility**: the class stays in the markup, the paint silently reverts to unstyled, and every jsdom spec still passes | med | high | AC-7 walks `document.styleSheets` in a real browser for each utility selector — #850's first e2e test, kept for the same reason | agent | **closed** — and demonstrated: phase 3's mutation 2 deleted exactly that row and the e2e went red |
 | R-4 | A later slice adds a `dark` override "for consistency", silently flipping these buttons light-on-light | med | high | AC-1's single-declaration + base-block guards fail on the added declaration; AC-3 keeps the measured counter-evidence in the tree; the reason is written at the declaration itself | agent | open → closed by AC-1/AC-3 |
-| R-5 | The e2e passes vacuously (selector never matches, or asserts a value that was already the default) | med | med | Mutation-check each assertion before commit: break one token value, watch the e2e go red, restore. Recorded in the phase-3 notes as the issue's AC requires | agent | open → closed in phase 3 |
+| R-5 | The e2e passes vacuously (selector never matches, or asserts a value that was already the default) | med | med | Mutation-check before commit | agent | **closed** — phase 3 step 3: both mutations turned all 3 tests red, restore returned green |
 | R-6 | `check-plan-file-structure.mjs` short-circuits because this plan doc is written but unstaged, passing whatever this section says | high | low | `git add` the plan doc before running the guard; run it as the last step before every push | agent | open → closed per phase |
 
 ## Open questions / Assumptions
@@ -197,17 +197,18 @@ N/A — no API shape changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** Phase 3 — write `e2e/solid-btn-token-skin.e2e.ts` and mutation-check it.
+**Next action:** Phase 4 — flip the ledger's F-2 row to done, run the file-structure
+guard, mark the PR ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the family spec, red | ✅ | `8023378` |
 | 1 — declare the tokens + `@theme` rows, green | ✅ | `7b453f2` |
-| 2 — repaint the three components onto them | ✅ | `<phase-2>` |
-| 3 — the mocked e2e (+ mutation check) | ⏳ | |
-| 4 — ledger row + close-out | | |
+| 2 — repaint the three components onto them | ✅ | `6b8fb29` |
+| 3 — the mocked e2e (+ mutation check) | ✅ | `<phase-3>` |
+| 4 — ledger row + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -285,9 +286,10 @@ the log below.
       test (AC-7), the computed-skin test incl. `hover` (AC-6), and the forced-`dark`
       repeat.
 - [ ] **Step 2: Run** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- solid-btn` → PASS.
-- [ ] **Step 3: Mutation-check (R-5).** Temporarily change `--riv-solid-btn-fill` to
-      `#ff0000`, re-run → the fill assertions must go RED. Restore, re-run → green. Record
-      the observed failure here.
+- [x] **Step 3: Mutation-check (R-5).** Two mutations, both observed:
+      (1) `--riv-solid-btn-fill` → `#ff0000` → **3 failed**; (2) the `--color-riv-solid-btn-border`
+      `@theme inline` row deleted → **3 failed**, with `border-riv-solid-btn-border` still present
+      in the failing element's class list — the silent no-paint of R-3, caught. Restored → 3 passed.
 - [ ] **Step 4: Commit.**
 
 ## Phase 4 — Ledger row + close-out
