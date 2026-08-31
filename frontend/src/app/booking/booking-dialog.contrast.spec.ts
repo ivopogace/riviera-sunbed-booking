@@ -56,6 +56,11 @@ const ERROR_RED = '#a3160e'; // --riv-error-ink (.field-error) + .form-error ink
 const ERROR_FILL = '#f6e8e7'; // .form-error solid light-pink box (composite of the old rgba(163,22,14,.1) tint)
 const BACK_INK = '#0a4f5e'; // --riv-back-ink (.btn-back text)
 const DARK_BACK_INK = '#b7dfe9';
+const BACK_HOVER_FILL: Glass = { color: WHITE, alpha: 0.75 }; // --riv-wash-hover (.btn-back:hover)
+const DARK_BACK_HOVER_FILL: Glass = { color: WHITE, alpha: 0.16 };
+// --riv-wash-hover-border: the button's own affordance boundary, tuned per theme to clear 3:1 (#839).
+const BACK_HOVER_BORDER: Glass = { color: hexToRgb(BACK_INK.slice(1)), alpha: 0.6 };
+const DARK_BACK_HOVER_BORDER: Glass = { color: hexToRgb(DARK_BACK_INK.slice(1)), alpha: 0.55 };
 
 // The AA-safe dark-teal header gradient stops (= --riv-cta-grad), carrying solid white ink — used
 // by the header AND the primary CTA. Theme-independent (the header teal does not vary by theme).
@@ -73,6 +78,8 @@ interface Theme {
   readonly fieldBorder: Glass; // --riv-field-border over the field
   readonly backFill: Glass; // --riv-wash-fill under the Back button
   readonly backInk: string; // --riv-back-ink
+  readonly backHoverFill: Glass; // --riv-wash-hover under the Back button on hover
+  readonly backHoverBorder: Glass; // --riv-wash-hover-border on hover
 }
 const LIGHT_SURFACES = {
   panel: DIALOG_GLASS,
@@ -84,6 +91,8 @@ const LIGHT_SURFACES = {
   fieldBorder: { color: CARD_INK, alpha: FIELD_BORDER_ALPHA },
   backFill: BACK_FILL,
   backInk: BACK_INK,
+  backHoverFill: BACK_HOVER_FILL,
+  backHoverBorder: BACK_HOVER_BORDER,
 };
 const THEMES: readonly Theme[] = [
   { name: 'riviera', stops: RIVIERA_STOPS, ...LIGHT_SURFACES },
@@ -100,6 +109,8 @@ const THEMES: readonly Theme[] = [
     fieldBorder: DARK_FIELD_BORDER,
     backFill: DARK_WASH_FILL,
     backInk: DARK_BACK_INK,
+    backHoverFill: DARK_BACK_HOVER_FILL,
+    backHoverBorder: DARK_BACK_HOVER_BORDER,
   },
 ];
 
@@ -168,6 +179,21 @@ describe.each(THEMES)(
         const panel = surfaceOver(theme.panel, stop);
         const back = composite(theme.backFill.color, theme.backFill.alpha, panel);
         expect(contrastRatio(theme.backInk, rgbToHex(back))).toBeGreaterThanOrEqual(AA_NORMAL);
+      }
+    });
+
+    it("Back button's hover border marks its own affordance boundary at 3:1 against its hover fill (WCAG 1.4.11, issue #839)", () => {
+      for (const stop of theme.stops) {
+        const panel = surfaceOver(theme.panel, stop);
+        const hoverFill = composite(theme.backHoverFill.color, theme.backHoverFill.alpha, panel);
+        const border = composite(
+          theme.backHoverBorder.color,
+          theme.backHoverBorder.alpha,
+          hoverFill,
+        );
+        expect(contrastRatio(rgbToHex(border), rgbToHex(hoverFill))).toBeGreaterThanOrEqual(
+          AA_LARGE,
+        );
       }
     });
   },
