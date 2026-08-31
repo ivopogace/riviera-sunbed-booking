@@ -287,15 +287,15 @@ N/A — no contract change. No endpoint, DTO, or wire shape is touched.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window as the
 > change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** Phase 0 step 1 — write `operator/console-negative-token.contrast.spec.ts` with
-its AC-1/AC-2/AC-6/AC-7 tests and watch it fail on the undeclared token.
+**Next action:** Phase 1 step 1 — add the AC-4/AC-5 sweep tests to the guard spec and watch them
+fail on the three unmigrated sites.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Register the token, its mirror, and its declaration guard | | |
-| 1 — Migrate the three sites and reconcile the downstream guards | | |
+| 0 — Register the token, its mirror, and its declaration guard | ✅ | `<phase-0>` |
+| 1 — Migrate the three sites and reconcile the downstream guards | ⏳ | |
 | 2 — Prove the render and the porcelain pin (mocked e2e) | | |
 | 3 — Ledger class-R row + close-out | | |
 
@@ -447,6 +447,7 @@ Modify `frontend/src/app/operator/payouts-tab.html` (the `data-testid="ledger-ne
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-31 | phase 0 (new pattern: a second token registered for a value another token already carries) | **Every registered token whose declared value coincides with another token's** — the mechanism the whole class-R question is about. Enumerated by extracting every `--riv-*: #hex;` declaration and asking which hex values appear more than once, rather than by listing the coincidences already in mind | `grep -oP '^\s*--riv-[a-z0-9-]+:\s*\K#[0-9a-f]{3,8}' src/tailwind.css \| sort \| uniq -d` | 13 duplicated values. Three are **role** coincidences inside one theme and each already has a distinctness guard: `#0a6e85` (#848), `#a3160e` (#850 + #854), and `#a3372a` — this slice's. Six are the same token declared once per theme block (`#7cd7e8`, `#ffa9a1`, `#f2f7fa`, `#8fd6e2`, `#ffffff`, `#0a2a33`), not coincidences at all. **Two are unguarded role coincidences**: `#0a4f5e` (`--riv-solid-btn-ink` / `--riv-back-ink` / `--riv-map-rail-ink`) and `#0f7d8c` (`--riv-tile-available-ink` / `--riv-tile-focus`) | **No action in this slice.** Both unguarded pairs are pre-existing, already-tokenised positions — nothing in this diff creates or widens them, and neither is class R's (whose row is the plain-literal `#a3372a` ink form). Fixing them here would be a second family in one slice. Recorded so the audit's finding is not lost |
 
 ---
 

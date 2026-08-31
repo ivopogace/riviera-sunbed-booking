@@ -74,6 +74,7 @@
   --color-riv-solid-fill-brand-hover: var(--riv-solid-fill-brand-hover);
   --color-riv-solid-fill-danger: var(--riv-solid-fill-danger);
   --color-riv-console-accent-ink: var(--riv-console-accent-ink);
+  --color-riv-console-negative-ink: var(--riv-console-negative-ink);
   --color-riv-card-track: var(--riv-card-track);
 
   --color-riv-pop-surface: var(--riv-pop-surface);
@@ -307,6 +308,30 @@
       console-accent-ink.e2e.ts.
       Rationale: docs/plans/console-accent-ink-token.md, issue #848. */
   --riv-console-accent-ink: #0a6e85;
+
+  /** The operator console's NEGATIVE ink — the reversal net and its reason chip on the Payouts
+      tab, the failed-check-in notice on the Daily view. Three positions, all on card glass, all
+      children of the porcelain-pinned console. The `negative` pole of the --riv-console-*-ink
+      pair whose accent pole sits above.
+
+      Its own token, NOT a reuse, although --riv-solid-btn-danger-ink carries this exact value and
+      is itself theme-invariant, so the substitution would resolve correctly and look free. It is
+      not: that is the outline BUTTON's ink, pinned to the button's own fixed #f4f6f7 fill (#851).
+      `@theme inline` resolves a utility at the point of use, so reusing it would route these
+      console inks through the variable the button skin owns, and Angular's emulated encapsulation
+      scopes no custom property that would keep the two apart. Named `negative`, not `danger`,
+      for the same reason: `danger` is that button token's own word, and --riv-danger-*
+      /--riv-error-ink are the tourist alert families — one hyphen apart is not a distinction.
+      The themed reds are not the answer either: #ffa9a1 over this card glass measures 1.84:1.
+
+      Declared ONCE, with no dark counterpart: all three sites are children of `operator-console`,
+      whose host pins porcelain, so a dark branch is unreachable and a dark value would be an
+      unverifiable claim.
+      Proof: operator/console-negative-token.contrast.spec.ts (the single-declaration guard, the
+      only thing able to see a dark override) + payouts-tab.contrast.spec.ts's AA proofs for the
+      chip tint, the lowest pair at 5.05:1 + console-negative-ink.e2e.ts.
+      Rationale: docs/plans/console-negative-ink-token.md, issue #864. */
+  --riv-console-negative-ink: #a3372a;
 
   /** The near-opaque popover surface (theme picker, account menu, mobile sheet — app.ts POP)
       and the segmented-control fills (shared/segmented-control.ts). Light values here; the
