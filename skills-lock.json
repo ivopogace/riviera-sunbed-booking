@@ -117,14 +117,15 @@
       "source": "planetscale/database-skills",
       "sourceType": "github",
       "skillPath": "skills/postgres/SKILL.md",
-      "ref": "main",
-      "vendored": "trimmed — generic-Postgres subset; PlanetScale-product references removed"
+      "ref": "73b20b7eb64716d8c7100c054f0677c0c6e77e30",
+      "vendored": "trimmed — generic-Postgres subset; the seven PlanetScale-product references (pgbouncer-configuration, ps-*) dropped, SKILL.md and query-patterns.md de-branded, upstream LICENSE copied in, and two references written here rather than vendored: concurrency-and-locking.md and connection-pooling.md. Audited 2026-08-31: all 15 shared reference files are byte-identical to upstream HEAD, and the only upstream postgres commit since vendoring (a9b2585e, do not session-SET on PgBouncer's port 6432) landed entirely in dropped ps-* files — nothing to port, and no exposure here (the backend sets no session state; timeouts are per-adapter)."
     },
     "playwright-cli": {
       "source": "@playwright/cli",
       "sourceType": "npm",
       "skillPath": "playwright-cli/SKILL.md",
-      "vendored": "verbatim — the official Playwright skill shipped with the @playwright/cli npm package; refreshed by reinstalling the package skill, not by hand-editing"
+      "ref": "0.1.14",
+      "vendored": "verbatim — the official Playwright skill, refreshed by reinstalling the package skill, never by hand-editing. PIN IT TO THE INSTALLED PLAYWRIGHT: this copy is byte-identical to the skill bundled in playwright 1.61.1, which is what frontend/package.json's @playwright/test resolves to. @playwright/cli@0.1.18 (= the skill bundled in playwright 1.62.1) documents commands the 1.61.1 CLI does not have — find, screenshot --hires, open --mobile/--device, npx playwright cli — so it is deliberately NOT vendored ahead of the dependency. Refresh it in the same change that bumps @playwright/test; from 1.62.1 the bundle lives at playwright-core/lib/tools/skills/ and also ships playwright-component-testing and playwright-trace."
     }
   }
 }
