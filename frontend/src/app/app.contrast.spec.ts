@@ -1,8 +1,8 @@
 import { AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from '../testing/contrast';
 import {
   DARK_CHIP,
-  DARK_POP_ACCENT,
   DARK_HEADER_GLASS,
+  DARK_POP_ACCENT,
   DARK_STOPS,
   INK_DARK,
   POP_ACCENT,
