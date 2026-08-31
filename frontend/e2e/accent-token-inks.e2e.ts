@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { ADMIN, mockWholeAdminConsole } from './support/admin-console.mocks';
+import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 
 /**
@@ -15,13 +16,15 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  * because `inline` is precisely the mode in which no such alias is written to `:root`. That is what
  * lets the rest of the file stay on the two families that are cheap to drive.
  *
- * <p>The last test pins the subtree resolution the family's correctness rests on: the nine migrated
- * console sites are safe on a THEMED token only because their console pins porcelain, so their inks
- * must survive a `dark` document theme. The unit contrast spec proves porcelain only, and cannot
- * see that.
+ * <p>The last two tests pin the subtree resolution the family's correctness rests on: the nine
+ * migrated console sites are safe on a THEMED token only because their console pins porcelain, so
+ * their inks must survive a `dark` document theme. The unit contrast spec proves porcelain only,
+ * and cannot see that. Both consoles are driven, because they pin porcelain through two separate
+ * host bindings — one passing is not evidence about the other.
  */
 
 const ACCENT_INK = 'rgb(8, 90, 110)';
+const ACCENT_STRONG = 'rgb(14, 138, 168)';
 const ACCENT_FILL = 'rgba(43, 184, 212, 0.12)';
 const ACCENT_BORDER = 'rgba(14, 138, 168, 0.35)';
 
@@ -117,7 +120,7 @@ test.describe('the accent teal family paints from the token registry', () => {
     await expect(page.locator('#admin-privacy-done-heading')).toHaveCSS('color', ACCENT_INK);
   });
 
-  test('the console keeps its porcelain accent ink under a dark document theme', async ({
+  test('the admin console keeps its porcelain accent ink under a dark document theme', async ({
     page,
   }) => {
     await page.addInitScript(() => localStorage.setItem('riviera-theme', 'dark'));
@@ -130,5 +133,24 @@ test.describe('the accent teal family paints from the token registry', () => {
       'background-color',
       ACCENT_FILL,
     );
+  });
+});
+
+test.describe('the operator console paints the same family from the same registry', () => {
+  test('the active amenity chip keeps its porcelain ink and opaque border under a dark theme', async ({
+    page,
+  }) => {
+    await mockWholeConsole(page);
+    await page.addInitScript(() => localStorage.setItem('riviera-theme', 'dark'));
+    await page.goto('/operator/1');
+    await signInAsOperator(page);
+    await page.goto('/operator/1/venue');
+
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
+
+    const chip = page.getByTestId('amenity-toggle-WIFI');
+    await expect(chip).toHaveAttribute('aria-pressed', 'true');
+    await expect(chip).toHaveCSS('color', ACCENT_INK);
+    await expect(chip).toHaveCSS('border-top-color', ACCENT_STRONG);
   });
 });

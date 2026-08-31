@@ -8,6 +8,7 @@ import {
   rgbToHex,
 } from '../../testing/contrast';
 import {
+  ACCENT_CHIP_FILL,
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
@@ -52,8 +53,8 @@ const ACCENT = hexToRgb('085a6e'); // --riv-accent-ink (light themes)
 const ERROR_INK = hexToRgb('a3160e'); // --riv-error-ink (light themes; was #8c2b22 pre-token)
 const CTA_STOPS = ['#0c7288', '#0a5f74']; // --riv-cta-grad, both stops (submit + landed CTA)
 
-/** segmented-control.ts card variant: the selected teal tint (the one literal) + --riv-wash-fill. */
-const OPTION_SELECTED: Glass = { color: hexToRgb('2bb8d4'), alpha: 0.16 };
+/** segmented-control.ts card variant: --riv-accent-chip-fill over --riv-wash-fill. */
+const OPTION_SELECTED: Glass = ACCENT_CHIP_FILL;
 const LIGHT_WASH: Glass = { color: WHITE, alpha: 0.5 };
 
 interface Theme {

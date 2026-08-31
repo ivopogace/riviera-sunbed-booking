@@ -87,21 +87,27 @@ token from a class that generated no utility)
       fixed `#f4f6f7` fill and its `#e7ebec` hover, then both meet AA — and the token has
       **no** dark-theme override, so the value is identical in all three themes.
       *Pinned by:* `accent-tokens.contrast.spec.ts` › `the solid-button ink is theme-invariant and meets AA on both fixed fills`
-- [x] **AC-4:** Given the normalised `--riv-accent-border`, when its non-text boundary
-      ratio is measured against both adjacent colours (the card glass outside, the accent
-      fill inside), then the spec records the measured value and asserts it is **not
-      lowered** by the normalisation — 1.4.11 compliance itself is #834's, and this AC
-      pins that this slice does not make it worse. *Pinned by:*
-      `accent-tokens.contrast.spec.ts` › `normalising the panel border does not lower its non-text ratio`
+- [x] **AC-4:** Given the two non-text (1.4.11) boundaries, then each is asserted according
+      to what it can actually reach. The **chip** border is opaque and clears 3:1 on both
+      adjacent colours — held there, because the sweep briefly lowered it below the floor
+      (F-1). The **panel** border is a tint that reaches only ~1.6:1 and that no alpha of
+      this hue would lift to 3:1, so the spec states where normalising moves it — up on
+      porcelain, **down** on the dark card glass — rather than claiming a single direction.
+      Raising it to compliance is #834's. *Pinned by:*
+      `accent-tokens.contrast.spec.ts` › `the active chip border clears the 1.4.11 non-text floor on both adjacent colours`,
+      › `normalising the panel border does not lower its non-text ratio on porcelain`,
+      › `lowers the panel border on the dark card glass, within one non-compliant band`
 - [x] **AC-5:** Given a running app, when each migrated family is rendered, then its
       computed style equals the registered token value — the error mode this catches is a
       token declared without its `@theme inline` row, which leaves the class in place and
       the paint unchanged. *Pinned by:* `accent-token-inks.e2e.ts`
-- [x] **AC-6:** Given the document theme forced to `dark`, when the admin console and the
-      operator console are rendered, then their migrated inks still resolve to the
-      porcelain value — the subtree pinning `@theme inline` buys is what makes AC-1's
-      porcelain-only proof sufficient. *Pinned by:*
-      `accent-token-inks.e2e.ts` › `the consoles keep their porcelain accent ink under a dark document theme`
+- [x] **AC-6:** Given the document theme forced to `dark`, when **each** console is
+      rendered, then its migrated inks still resolve to the porcelain value — the subtree
+      pinning `@theme inline` buys is what makes AC-1's porcelain-only proof sufficient.
+      Both are driven, because they pin porcelain through separate host bindings and one
+      passing is not evidence about the other (F-4). *Pinned by:*
+      `accent-token-inks.e2e.ts` › `the admin console keeps its porcelain accent ink under a dark document theme`,
+      › `the active amenity chip keeps its porcelain ink and opaque border under a dark theme`
 - [x] **AC-7:** Given `main` at merge time, when
       `grep -rn '#0a4f5e\|rgba(43, *184, *212\|rgba(14, *138, *168' frontend/src/app` is
       run, then it returns **only** contrast-spec constants, all of which belong to tokens
@@ -153,11 +159,12 @@ token from a class that generated no utility)
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A migrated console component is rendered **outside** its porcelain-pinned host (a portal/overlay), so a themed token resolves dark and the ink flips light-on-white | low | high | Both hosts verified inline in the subtree (`admin-console.ts:84`, `payouts-tab.html:285`); AC-6 pins it against a forced `dark` document theme in a real render | claude | closed |
+| R-1 | A migrated console component is rendered **outside** its porcelain-pinned host (a portal/overlay), so a themed token resolves dark and the ink flips light-on-white | low | high | Both hosts verified inline in the subtree (`admin-console.ts:84`, `payouts-tab.html:285`); AC-6 pins **each** console against a forced `dark` document theme in a real render — closed too early on the admin proof alone (F-4) | claude | closed |
 | R-2 | A new tint token given a dark-theme value would silently change computed styles on the themeable tourist surfaces | med | med | Every tint token is declared **once**, in the base block only, with a registry comment stating why; AC-5 asserts the computed value in a real render | claude | closed |
 | R-3 | A token consumed via Tailwind's `/opacity` modifier compiles to `color-mix()` and changes the computed value | med | med | Tokens are **pre-composed `rgba()`**, matching `--riv-danger-*` and `--riv-field-border`; no `/opacity` on any of them (`riviera-tailwind`) | claude | closed |
 | R-4 | A token declared in `tailwind.css` without its `@theme inline` row generates no utility — the class stays, the paint silently does not change | med | high | AC-5's `toHaveCSS` in a real render is exactly this detector; the unit specs cannot see it | claude | closed |
 | R-5 | The three contrast specs pinning `#0a4f5e` (`venue-tab`, `venue-map`, `booking-*`, `my-bookings`) drift from the tokens after migration | med | med | Phase 0 moves every pinned constant into `glass-tokens.ts` first, so the specs read the token values rather than restating them | claude | closed |
+| R-7 | A *normalised* value silently crosses a WCAG floor the outgoing value cleared — the risk register anticipated drift within a band, not a crossing | med | high | Every boundary the sweep moves is asserted against the floor it must hold, not merely against its predecessor; caught as F-1 at the review gate, which is later than it should have been | claude | closed |
 | R-6 | `venue-map.contrast.spec.ts` pins `#0a4f5e` for the **map rail** (`--riv-map-rail-ink`), a different token that merely shares the value — migrating it would be wrong | med | med | The map family is out of scope and stays on `--riv-map-rail-ink`; phase 0 renames only the spec constants that belong to the migrated sites | claude | closed |
 
 ## Open questions / Assumptions
@@ -234,10 +241,11 @@ a11y specs stand unchanged except for the pinned colour constants (R-5).
 
 ## Execution status
 
-**Stage pointer:** `review gate — PR #838 ready for review`
+**Stage pointer:** `sonar gate`
 
-**Next action:** run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then
-the Sonar gate; fix findings through the re-entry rule.
+**Next action:** the review gate ran (`/code-review` over `origin/main...HEAD` +
+`riviera-review-overlay`); all four findings are fixed. Pull PR #838's Sonar new-issue and
+duplication list and clear every entry.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -256,7 +264,10 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate | **`venue-tab.html:286` — the active amenity chip's border was OPAQUE `#0e8aa8`, and normalising it onto the 0.75 chip-border token dropped its non-text ratio from 3.17–3.45:1 to 2.25–2.38:1, crossing WCAG 1.4.11.** The Non-goal's reasoning ("no alpha of this hue reaches 3:1") did not apply, because the outgoing value was not an alpha. Fixed by pointing the border at `--riv-accent-strong` (`#0e8aa8`, byte-identical to before); the lightened 0.18 fill leaves it slightly *better* than it started. A new test holds the floor so it cannot come back | fixed-in-`c39c85b` |
+| F-2 | review gate | `auth-page.contrast.spec.ts`'s `OPTION_SELECTED` still restated `2bb8d4 @ 0.16` while `segmented-control` now paints the 0.18 token — the only spec covering that surface in all three themes was measuring a colour the app no longer renders. AC-7's grep could not see it: the literal is written `hexToRgb('2bb8d4')` | fixed-in-`c39c85b` |
+| F-3 | review gate | The spec header claimed porcelain-only coverage was "the whole proof". True of the nine ink sites, false of the **tint** tokens, which five tourist components consume under riviera and dark. Measured there, the normalised panel border is **lowered** (1.79–1.95:1 → 1.58:1), so AC-4's "not lowered" was a porcelain-only half-truth | fixed-in-`c39c85b` — header corrected and a dark-surface test added that states the direction honestly rather than claiming one |
+| F-4 | review gate | The forced-dark subtree test drove only the admin console, though R-1 was closed and AC-6 worded as if both were covered. The two consoles pin porcelain through separate host bindings, so one passing is not evidence about the other | fixed-in-`c39c85b` — the operator console's active amenity chip is now driven under a forced dark theme |
 
 ---
 
@@ -281,6 +292,8 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/booking/my-bookings.ts` — Retry ink
 - `frontend/src/app/booking/my-bookings.contrast.spec.ts` — pinned constant
 - `frontend/src/app/booking/booking-dialog.contrast.spec.ts` — `BACK_INK` comment only
+- `frontend/src/app/auth/auth-page.contrast.spec.ts` — its `OPTION_SELECTED` constant, which
+  restated `segmented-control`'s tint as a literal (review finding F-2)
 - `frontend/src/app/booking/request-confirmation.ts` — panel fill/border
 - `frontend/src/app/booking/booking-dialog.ts` — mode-note panel fill/border
 - `frontend/src/app/booking/booking-pay.ts` — spinner track + head
@@ -422,6 +435,7 @@ needs a real browser for `getComputedStyle` but no live API — the same call
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-30 | plan / grill gate | Every literal spelling of the `#0a4f5e` teal — **including the `rgba()` form the issue's hex-only grep structurally cannot see** | `grep -rn '#0a4f5e\|rgba(10, *79, *94\|rgba(14, *138, *168\|rgba(43, *184, *212' frontend/src` | 14 production sites — the issue's 13, **plus** `booking-dialog.ts:326` | 13 migrated; the 14th is a latent dark-theme defect, not a tokenisation candidate → OQ-C follow-up |
+| 2026-08-31 | review fixes (F-1/F-2) | Every place a value this sweep moved is **restated as a literal in a spec** — the population the sweep's own grep cannot reach, because a spec writes the colour as `hexToRgb('2bb8d4')`, not as a CSS literal | `grep -rn "hexToRgb('2bb8d4'\|hexToRgb('0e8aa8'\|hexToRgb('0a4f5e'" frontend/src` | `auth-page.contrast.spec.ts` (F-2), plus the out-of-scope `venue-map` / `booking-dialog` map-rail and back-ink constants (R-6) | F-2's constant now reads the token; the R-6 pair is correctly untouched — different tokens that merely share a value |
 | 2026-08-30 | phase 3 | Widened once more to the **bare brand-teal hexes**, since the tint family is written three ways (`rgba(…)`, `#hex`, and Tailwind's `/opacity` modifier) and only the first two were swept | `grep -rn '#2bb8d4\|#0e8aa8' frontend/src/app` | 8 further production sites: `set-editor.html` ×5, `layout-editor.html`, `payout-statement.ts:105`, `app.html:312` | **Not migrated — deliberately.** All are the `/opacity` modifier form on the map/editor selection chrome: a different treatment, a different compile path (`color-mix()`), and the issue routes them to **#836** ("the app-wide literal residue this is one named sub-population of"). Recorded rather than silently absorbed |
 
 ---
@@ -456,7 +470,7 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

@@ -1,9 +1,19 @@
-import { AA_NORMAL, Rgb, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
+import {
+  AA_LARGE,
+  AA_NORMAL,
+  Rgb,
+  contrastRatio,
+  hexToRgb,
+  rgbToHex,
+} from '../../testing/contrast';
 import {
   ACCENT_BORDER,
   ACCENT_CHIP_FILL,
   ACCENT_FILL,
   ACCENT_INK,
+  ACCENT_STRONG,
+  DARK_CARD_GLASS,
+  DARK_STOPS,
   Glass,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
@@ -18,20 +28,28 @@ import {
  * WCAG guard for the `--riv-accent-*` token family (#835), the positive-state counterpart to
  * `admin-console.contrast.spec.ts`'s negative-state guard.
  *
- * <p>Porcelain only, and that is the whole proof rather than half of it: the nine sites this
- * family migrates all sit inside a console that pins `data-riv-theme="porcelain"` on its host
+ * <p>The INK sites are porcelain-only, and for them that is the whole proof rather than half of
+ * it: all nine sit inside a console that pins `data-riv-theme="porcelain"` on its host
  * (`admin-console.ts`, `operator-console.ts`), so no other theme can reach them. The subtree
  * pinning that guarantee rests on is not something jsdom maths can see — `accent-token-inks.e2e.ts`
  * pins it against a real render under a forced dark document theme.
+ *
+ * <p>The TINT tokens are a different matter and are asserted on both surface families. They are
+ * theme-invariant, but five tourist components consume them under riviera and dark, where the card
+ * glass behind them inverts — so a value chosen on porcelain evidence alone would be half-measured.
  *
  * <p>The teal ink the family replaces was `#0a4f5e`; `--riv-accent-ink` is `#085a6e`, which is
  * LIGHTER, so this migration lowers contrast. That is deliberate (it collapses a near-duplicate
  * out of the palette) and it is bounded here rather than discovered later.
  *
- * <p>Scope is WCAG 1.4.3 TEXT pairs, with one exception: the panel border is non-text chrome
- * (1.4.11) and does not reach 3:1 at any alpha of this hue, so the last test asserts only that
- * normalising three drifted alphas onto one token does not lower it. Raising it is #834's, which
- * owns the danger panel's identical boundary.
+ * <p>Scope is WCAG 1.4.3 TEXT pairs, plus the two non-text (1.4.11) boundaries, which behave
+ * differently and so are asserted differently. The active chip's border is OPAQUE and clears 3:1,
+ * so it is held there — the sweep briefly lowered it to a 0.75 alpha, which crossed the floor, and
+ * this is the test that stops that returning. The panel's border is a tint: it reaches only
+ * ~1.6:1 and no alpha of this hue would reach 3:1, so normalising three drifted alphas onto one
+ * token can only move it within a band that already fails. The last two tests say where it moves —
+ * up on porcelain, DOWN on the dark card glass — rather than claiming a single direction. Raising
+ * it to compliance is #834's, which owns the danger panel's identical boundary.
  */
 
 /** The teal ink these sites painted before the migration, kept for the bounding test. */
@@ -93,7 +111,23 @@ describe('Accent token family contrast (WCAG AA, #835)', () => {
     }
   });
 
-  it('normalising the panel border does not lower its non-text ratio', () => {
+  it('the active chip border clears the 1.4.11 non-text floor on both adjacent colours', () => {
+    for (const stop of PORCELAIN_STOPS) {
+      const glass = layer(PORCELAIN_CARD_GLASS, stop);
+      const fill = layer(ACCENT_CHIP_FILL, glass);
+
+      expect(
+        ratio(ACCENT_STRONG, fill),
+        `chip border over ${rgbToHex(fill)}`,
+      ).toBeGreaterThanOrEqual(AA_LARGE);
+      expect(
+        ratio(ACCENT_STRONG, glass),
+        `chip border over ${rgbToHex(glass)}`,
+      ).toBeGreaterThanOrEqual(AA_LARGE);
+    }
+  });
+
+  it('normalising the panel border does not lower its non-text ratio on porcelain', () => {
     const outgoing: readonly Glass[] = [
       { color: hexToRgb('2bb8d4'), alpha: 0.3 },
       { color: hexToRgb('2bb8d4'), alpha: 0.34 },
@@ -114,6 +148,26 @@ describe('Accent token family contrast (WCAG AA, #835)', () => {
           ratio(layer(border, fill), fill),
         );
       }
+    }
+  });
+
+  it('lowers the panel border on the dark card glass, within one non-compliant band', () => {
+    const outgoing: readonly Glass[] = [
+      { color: hexToRgb('2bb8d4'), alpha: 0.3 },
+      { color: hexToRgb('2bb8d4'), alpha: 0.34 },
+    ];
+
+    for (const stop of DARK_STOPS) {
+      const glass = layer(DARK_CARD_GLASS, stop);
+      const after = ratio(layer(ACCENT_BORDER, glass), glass);
+
+      for (const border of outgoing) {
+        expect(after, `border over ${rgbToHex(glass)}`).toBeLessThan(
+          ratio(layer(border, glass), glass),
+        );
+      }
+
+      expect(after, `border over ${rgbToHex(glass)}`).toBeLessThan(AA_LARGE);
     }
   });
 });
