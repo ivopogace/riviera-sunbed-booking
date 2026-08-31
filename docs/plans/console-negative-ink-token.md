@@ -138,8 +138,12 @@ for** `feature/console-negative-ink-token` (`riviera-sdlc` §Remote/cloud addend
       `e2e/console-negative-ink.e2e.ts` — "the reversal net resolves to the registered token value".
 - [ ] **AC-9:** Given a **forced `dark` document theme**, when the same payouts net and the
       daily-view check-in error notice are read, then `html[data-riv-theme="dark"]` holds and both
-      still compute `rgb(163, 55, 42)` — the subtree-pinning proof. Mutation-checked: adding a dark
-      override for the token must turn this red. *Seam:* the rendered console routes under
+      still compute `rgb(163, 55, 42)` — the subtree-pinning proof. **Mutation-checked against the
+      mutation that actually discriminates it:** a dark override for the token alone leaves this
+      test green, and correctly so — the pin holds, which is the property it exists to prove, and
+      the e2e's own header says it cannot distinguish a themed token from an unthemed one. What
+      must turn it red is breaking the porcelain pin with that override in place. (The override on
+      its own is the *guard spec's* mutation — AC-1 — not this one's.) *Seam:* the rendered console routes under
       `localStorage['riviera-theme'] = 'dark'` · *Pinned by:* `e2e/console-negative-ink.e2e.ts` —
       "the console keeps its porcelain negative ink under a dark document theme".
 - [ ] **AC-10:** Given `booking/solid-btn-tokens.contrast.spec.ts`'s `OUT_OF_FAMILY` guard, which
@@ -211,7 +215,7 @@ names how it is *verified* rather than assumed.
 | R-4 | `booking/solid-btn-tokens.contrast.spec.ts` goes red on the phase-1 push — its `OUT_OF_FAMILY` guard asserts five files still paint the literal, and two stop | **high** | med | Found by the intake grill, not by CI: AC-10 makes the narrowing part of phase 1's own red→green, so the guard never sees a broken intermediate | agent | open |
 | R-5 | `operator/payout-statement.spec.ts`'s `netClass: 'text-[#a3372a]'` fixture drifts from what `payouts-tab.ts` now emits — the spec keeps passing while mirroring a string nothing produces | **high** | low | Found by the intake grill; updated in the same phase as the producer (phase 1) | agent | open |
 | R-6 | Merge conflict with **#858**, which edits the same `OUT_OF_FAMILY` array (removing `shared/failure-panel.ts` and `booking/booking-pay.ts`) — the ticket's "independent of #858: no shared files" is wrong | med | low | No PR is open for #858 today, so the collision is not live. **Whichever merges second re-narrows the array** and re-runs the guard; this plan leaves the array one entry per line so the second edit is a clean deletion, not a rewrite | agent | open |
-| R-7 | The dark-theme e2e passes **vacuously** — the token is declared once, so it could not resolve differently even if the pin failed, and the test would stay green against a broken pin | med | med | Stated honestly in the spec's header (what it does and does not prove, mirroring `console-accent-ink.e2e.ts`), and **mutation-checked**: a temporary dark override must turn AC-9 red before the spec is trusted; the log records the run | agent | open |
+| R-7 | The dark-theme e2e passes **vacuously** — the token is declared once, so it could not resolve differently even if the pin failed, and the test would stay green against a broken pin | med | med | Stated honestly in the spec's header (what it does and does not prove, mirroring `console-accent-ink.e2e.ts`), and **mutation-checked**: the mutation that discriminates AC-9 is a broken porcelain pin, not the override alone — the log records both runs and which guard each turned red | agent | **closed** — phase 2's mutation check ran; both guards discriminate, on different mutations |
 | R-8 | Naming the token `--riv-console-danger-ink` would sit one hyphen from `--riv-solid-btn-danger-ink`, the token this slice exists to *not* widen | low | med | Settled at plan time: the pole word is `negative`, and the reason is recorded at the declaration and in the ledger's class-R row | agent | **closed** — decided in *Architecture* |
 | R-9 | Invariant #5/#9 blast radius: `payouts-tab.ts` is edited, and it renders payout money | low | high | The edit changes **one class string** in the `netClass` ternary. No money arithmetic, no sign, no currency, no ledger call is touched — `money()`, `sign`, `netMinor` are untouched lines, and the server's `netOwedMinor` is still rendered as-is | agent | open |
 
@@ -309,6 +313,8 @@ Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review gate (prior-PR-comments agent) | **AC-9 overstated what its mutation proves.** It said "adding a dark override for the token must turn this red", but phase 2's own audit log records that the override *alone* left the e2e green — correctly, since the pin held — and only breaking the porcelain pin as well turned it red. The AC contradicted the evidence recorded three sections below it, and R-7's mitigation cell repeated the same claim | **fixed** — AC-9 now names the discriminating mutation and says which guard the override alone belongs to (AC-1); R-7 reconciled and closed |
+| F-2 | review gate (CLAUDE.md-adherence agent) | **§6d: the new TSDoc/CSS doc blocks cite issue numbers and decision history**, which `frontend/.claude/CLAUDE.md` §Comments and `riviera-java-conventions` §6d prohibit ("no issue numbers, no decision history"). Nothing machine-enforces §6d, so the four green hygiene guards are not evidence against it | **declined, with reason** — and the reason is the review history, not the convention's mere existence. #862's finding 4 (citing #859's precedent) is a *reviewer requiring the opposite*: a contrast/exemption claim must live **at the token's declaration**, not only in the plan doc. Trimming this block would re-create that finding. §6d's own "relocate, don't delete… leave a one-line pointer" is satisfied — the block ends `Rationale: docs/plans/console-negative-ink-token.md, issue #864`, and the full argument lives in the plan doc and the ledger's class-R row, both committed here. Trimming only *this* block while its `--riv-console-accent-ink` sibling (PR #863, through this same gate) keeps its own would also make the stylesheet inconsistent, and fixing both widens the PR into merged work. **Recorded as a real convention tension, not silently dropped:** §6d and the token-declaration precedent genuinely disagree, and the disagreement outlives this slice |
 
 ---
 
