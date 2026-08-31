@@ -114,10 +114,12 @@ describe('Console accent-ink token (theme invariance + role distinctness, #848)'
     expect(consoleFilesPaintingTheLiteral()).toEqual([]);
   });
 
+  /**
+   * Option B — widening `--riv-pop-accent` — would have handed the console this ink in the dark
+   * theme. It lands well under AA on the porcelain stops the console actually renders, so the
+   * coincidence was never a shared role. Kept in the tree so the reason survives the decision.
+   */
   it('stays its own token: the popover accent it coincides with themes away, and this must not', () => {
-    // Option B — widening `--riv-pop-accent` — would have handed the console this ink in the dark
-    // theme. It is 1.65:1 on the porcelain stops the console actually renders, so the coincidence
-    // was never a shared role. Kept in the tree so the reason survives the decision.
     for (const stop of PORCELAIN_STOPS) {
       expect(
         contrastRatio(rgbToHex(DARK_POP_ACCENT), rgbToHex(stop)),
@@ -126,10 +128,12 @@ describe('Console accent-ink token (theme invariance + role distinctness, #848)'
     }
   });
 
+  /**
+   * Same colour, opposite roles: this one is an ink ON porcelain, that one a fill UNDER white. The
+   * audit's class R exists for exactly this, so the equality is asserted rather than left to
+   * coincidence — and the two declarations are asserted to be two.
+   */
   it('shares a value with the solid-fill brand while staying a separate declaration', () => {
-    // Same colour, opposite roles: this one is an ink ON porcelain, that one a fill UNDER white.
-    // The audit's class R exists for exactly this, so the equality is asserted rather than left to
-    // coincidence — and the two declarations are asserted to be two.
     expect(rgbToHex(CONSOLE_ACCENT_INK)).toBe(rgbToHex(SOLID_FILL_BRAND));
     expect(declarationsOf('--riv-solid-fill-brand')).toHaveLength(1);
   });

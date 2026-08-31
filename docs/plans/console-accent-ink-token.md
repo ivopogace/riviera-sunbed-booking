@@ -288,9 +288,9 @@ component, signal, form, control-flow or DI surface changes, so the v22 posture 
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4 — the mocked e2e)`
+**Stage pointer:** `PR #863 open as draft — phases 0–5 done, awaiting the CI gate, then ready-for-review`
 
-**Next action:** write `e2e/console-accent-ink.e2e.ts` (AC-5/AC-6), mutation-check it, then phase 5.
+**Next action:** confirm the CI run on this push is green, then mark PR #863 ready for review, which makes the Review and Sonar gates due.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -298,8 +298,8 @@ component, signal, form, control-flow or DI surface changes, so the v22 posture 
 | 1 — Declaration + identity guard spec | ✅ | `<phase-0-3>` |
 | 2 — Migrate the twelve sites (drives AC-3's red green) | ✅ | `<phase-0-3>` |
 | 3 — Re-point the six contrast specs onto the mirror | ✅ | `<phase-0-3>` |
-| 4 — Mocked e2e computed-colour proof | | |
-| 5 — Ledger row + verification sweep | | |
+| 4 — Mocked e2e computed-colour proof | ✅ | `<phase-4-5>` |
+| 5 — Ledger row + verification sweep | ✅ | `<phase-4-5>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -426,24 +426,36 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Search that found the population | Finding | Decision |
 |---|---|---|---|
-| G-1 | `grep -rn 'text-\[#a3372a\]' frontend/src` → **5 hits** (`shared/failure-panel.ts`, `operator/payouts-tab.ts:135`, `operator/payouts-tab.html:236`, `operator/daily-view-tab.html:355`, `booking/booking-pay.ts:210`) | The refund-red **plain ink** form has no ledger row and no issue: the ledger covers `#a3372a` only as the outline-button danger ink (class F, done #851) and as `/opacity` tints (class O, open #852). One of the five shares an expression with a migrated site. | **Out of scope** — different value, different role, and folding it in would make this a two-family slice. File a follow-up issue at close-out and add the family to the ledger. |
+| G-1 | `grep -rn 'text-\[#a3372a\]' frontend/src` → **5 hits** (`shared/failure-panel.ts`, `operator/payouts-tab.ts:135`, `operator/payouts-tab.html:236`, `operator/daily-view-tab.html:355`, `booking/booking-pay.ts:210`) | The refund-red **plain ink** form has no ledger row and no issue: the ledger covers `#a3372a` only as the outline-button danger ink (class F, done #851) and as `/opacity` tints (class O, open #852). One of the five shares an expression with a migrated site. | **Out of scope** — different value, different role, and folding it in would make this a two-family slice. The family now has its own **class R row** in the ledger (added by this PR), so it is recorded rather than merely noticed; a follow-up issue is filed at close-out. |
 | G-2 | `grep -rn 'text-\[#0a6e85\]' frontend/src` at `7539e5c` → 13 hits (12 source + 1 spec mirror) | The population is exactly the ticket's, plus `payout-statement.spec.ts`'s `netClass` expectation the ticket does not mention. | In scope — the spec mirror moves with the component (Behavior-parity ledger). |
 | G-3 | `grep -rn '0a6e85' frontend/src` → the `SURVIVORS` list and six contrast specs | The literal is asserted in **eight** places beyond the twelve sites, two of which mean a *different* token. | In scope, split per AC-3/AC-4/R-5. |
 
 ## Acceptance-criteria verification (final)
 
-*(filled at phase 5 — each AC's command/test and its result)*
+| AC | How it was verified | Result |
+|---|---|---|
+| AC-1 | `ng test --include="src/app/operator/console-accent-token.contrast.spec.ts"` | **8/8 pass.** **Mutation-checked:** adding `--riv-console-accent-ink: #7cd7e8;` to the dark theme block turns `declares the token exactly once…` red (2 failed / 6 passed); removing it restores green. So the guard discriminates. |
+| AC-2 | `ng test --include="src/app/operator"` | Green. The six per-tab specs assert AA over `PORCELAIN_STOPS` reading `CONSOLE_ACCENT_INK` from the mirror. The bare stops are the **worst case**: the card glass (white @ 0.55) and the `--riv-chip-bg` tint both composite *lighter* than the darkest stop `#cfeaf2`, so site #9's chip surface is bounded by the existing proof. No seventh consolidated spec (T-1's OQ-E). |
+| AC-3 | `ng test --include="src/app/shared/solid-fill-tokens.contrast.spec.ts"` | **Red observed first**, as planned: `leaves the non-fill roles of the same three values untouched` failed listing all eight `#0a6e85` rows, immediately after the migration and before the list was corrected. Green (8/8) once the rows were removed with the comment recording why. |
+| AC-4 | `grep -rn '0a6e85' frontend/src/app frontend/src/testing` | Four hits remain, all correct: the two **role-matching regexes** (`text-\[#0a6e85\]` in the new guard's literal sweep, `bg-\[#0a6e85\]` in `solid-fill-tokens`), and the two mirror declarations. Zero inline literals and zero prose uses remain in the six operator specs. Scope widened by one file beyond the plan: `app.contrast.spec.ts` also restated **both** `--riv-pop-accent` halves, so the missing light `POP_ACCENT` mirror was added and both now read from it. |
+| AC-5 | `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/console-accent-ink.e2e.ts` | **4/4 pass.** Utility generated, and both lazy-loaded tabs resolve `rgb(10, 110, 133)`. |
+| AC-6 | Same command with the expected value flipped to `rgb(124, 215, 232)` | **3 failed / 1 passed** — the three `toHaveCSS` assertions (including the dark-theme one) all fail on the popover family's dark value, the ink Option B would have handed the console. The one pass is the declaration/utility test, which does not use that constant. The assertions discriminate. |
+| AC-7 | `grep -rn 'text-\[#0a6e85\]' frontend/src/app/operator` | Empty. Also asserted **continuously** by the guard spec's `leaves no console file painting the ink as a literal`, so it is a standing property rather than a one-off merge check. |
+| AC-8 | Review of `docs/design/colour-literal-token-audit.md` | T-2 row reads `done — #848, PR #863`, carries the Option-A reasoning and the corrected `n` (16 → 12, four were fills and left with #854); #848 added to the header's prior-slices list. |
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has a named, passing test (or a recorded reason it is review-verified).
-- [ ] AC-3's red was **observed before** it was fixed, and the observation is recorded.
-- [ ] AC-6's mutation-check was run and recorded.
-- [ ] `grep -rn 'text-\[#0a6e85\]' frontend/src/app/operator` is empty; the `/opacity`,
+- [x] Every AC has a named, passing test (or a recorded reason it is review-verified).
+- [x] AC-3's red was **observed before** it was fixed, and the observation is recorded.
+- [x] AC-6's mutation-check was run and recorded.
+- [x] `grep -rn 'text-\[#0a6e85\]' frontend/src/app/operator` is empty; the `/opacity`,
       `#0a5f74`, `#a3160e` and `#a3372a` forms in those files are untouched.
-- [ ] No spec names `#0a6e85` in prose where it means the token; the two non-token uses keep theirs.
-- [ ] `npm run lint`, `npm run format:check`, `npm test`, `npm run test:e2e:a11y` green.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` green **with this doc staged**.
-- [ ] Ledger T-2 row `done` with the PR and the Option-A reason.
-- [ ] Execution status finalized, Open Questions empty, `merged via PR #NN` recorded.
-- [ ] G-1's follow-up issue filed.
+- [x] No spec names `#0a6e85` in prose where it means the token; the role-matching regexes and the
+      mirror declarations keep theirs, which is the point of them.
+- [x] `npm run lint` (exit 0 — one pre-existing warning in `camera-qr-scanner.spec.ts`, outside this
+      diff), `npm run format:check`, `ng test` (2142 pass), the new mocked e2e spec: all green.
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` green **with this doc staged**.
+- [x] Ledger T-2 row `done` with the PR and the Option-A reason.
+- [ ] Execution status finalized, Open Questions empty, `merged via PR #863` recorded — *due in this
+      PR's last commit, at merge close-out.*
+- [ ] G-1's follow-up issue filed — *due at close-out; the ledger already carries the family's row.*
