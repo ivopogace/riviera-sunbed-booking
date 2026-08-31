@@ -209,6 +209,18 @@ One **test-side** mirror moves with them: `payout-statement.spec.ts:26` asserts 
 | R-5 | A spec keeps `#0a6e85` where it means `--riv-solid-fill-brand` or `--riv-pop-accent`, and a later token change desynchronises it — or, worse, AC-4's sweep "fixes" it onto the wrong mirror. | Medium | Medium | AC-4 names both exceptions explicitly; phase 3 re-points only the six ink specs |
 | R-6 | The e2e passes vacuously (the surface never renders, or `toHaveCSS` reads an unstyled node). | Low | Medium | AC-6's mutation-check against `rgb(124, 215, 232)`, recorded in the verification section |
 
+**Register closed.** R-1 **did not occur** — the `@theme inline` row was written in phase 0 and is
+now asserted by two independent guards (the unit spec's `themeRow()` and the e2e's emitted-rule
+check). R-2 **is now guarded rather than hoped for**: the single-declaration test fails on any
+second declaration, mutation-proven. R-3 **did not occur** — the migration was a scoped
+`text-[#0a6e85]` replacement and `SURVIVORS`' remaining rows still pass, which is the positive
+proof. R-4 **did not materialise**: `main` did not move during the slice (`7539e5c` at branch and
+at merge-readiness), so no integration merge was needed and #852 has not started. R-5 **was real
+and was caught**: `payouts-tab.contrast.spec.ts` and `app.contrast.spec.ts` both use `#0a6e85` for
+*other* tokens; the first keeps `SOLID_FILL_BRAND`, and the second gained the missing light
+`POP_ACCENT` mirror rather than being pointed at the wrong constant. R-6 **is closed by the
+mutation-check**, which failed all three `toHaveCSS` assertions on the popover's dark value.
+
 ## Open questions / Assumptions
 
 ### Resolved
@@ -291,9 +303,9 @@ component, signal, form, control-flow or DI surface changes, so the v22 posture 
 
 ## Execution status
 
-**Stage pointer:** `review gate run (3 findings, all fixed) — awaiting CI on the head, then the Sonar gate`
+**Stage pointer:** `DONE — all three gates passed; awaiting the maintainer's merge decision`
 
-**Next action:** confirm CI is green on the head carrying the finding fixes, then run the Sonar gate per `riviera-sdlc` `references/pr-gates.md` §2 — pull the reported new-issue + duplication list from the API rather than reading pass/fail.
+**Next action:** merge PR #863, then close-out steps 1–3 and 6 (verify #848 closed, file the G-1 follow-up, confirm the subscription ended). Steps 4 and 5 are already done in this PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -443,7 +455,7 @@ all legitimate (the declaration, the two mirrors, and the two role-matching rege
 
 | # | Search that found the population | Finding | Decision |
 |---|---|---|---|
-| G-1 | `grep -rn 'text-\[#a3372a\]' frontend/src` → **5 hits** (`shared/failure-panel.ts`, `operator/payouts-tab.ts:135`, `operator/payouts-tab.html:236`, `operator/daily-view-tab.html:355`, `booking/booking-pay.ts:210`) | The refund-red **plain ink** form has no ledger row and no issue: the ledger covers `#a3372a` only as the outline-button danger ink (class F, done #851) and as `/opacity` tints (class O, open #852). One of the five shares an expression with a migrated site. | **Out of scope** — different value, different role, and folding it in would make this a two-family slice. The family now has its own **class R row** in the ledger (added by this PR), so it is recorded rather than merely noticed; a follow-up issue is filed at close-out. |
+| G-1 | `grep -rn 'text-\[#a3372a\]' frontend/src` → **5 hits** (`shared/failure-panel.ts`, `operator/payouts-tab.ts:135`, `operator/payouts-tab.html:236`, `operator/daily-view-tab.html:355`, `booking/booking-pay.ts:210`) | The refund-red **plain ink** form has no ledger row and no issue: the ledger covers `#a3372a` only as the outline-button danger ink (class F, done #851) and as `/opacity` tints (class O, open #852). One of the five shares an expression with a migrated site. | **Out of scope** — different value, different role, and folding it in would make this a two-family slice. The family now has its own **class R row** in the ledger (added by this PR), so it is recorded rather than merely noticed; the follow-up issue is **#864**. |
 | G-2 | `grep -rn 'text-\[#0a6e85\]' frontend/src` at `7539e5c` → 13 hits (12 source + 1 spec mirror) | The population is exactly the ticket's, plus `payout-statement.spec.ts`'s `netClass` expectation the ticket does not mention. | In scope — the spec mirror moves with the component (Behavior-parity ledger). |
 | G-3 | `grep -rn '0a6e85' frontend/src` → the `SURVIVORS` list and six contrast specs | The literal is asserted in **eight** places beyond the twelve sites, two of which mean a *different* token. | In scope, split per AC-3/AC-4/R-5. |
 
@@ -473,6 +485,11 @@ all legitimate (the declaration, the two mirrors, and the two role-matching rege
       diff), `npm run format:check`, `ng test` (2142 pass), the new mocked e2e spec: all green.
 - [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` green **with this doc staged**.
 - [x] Ledger T-2 row `done` with the PR and the Option-A reason.
-- [ ] Execution status finalized, Open Questions empty, `merged via PR #863` recorded — *due in this
-      PR's last commit, at merge close-out.*
-- [ ] G-1's follow-up issue filed — *due at close-out; the ledger already carries the family's row.*
+- [x] Execution status finalized, Open Questions empty, risk rows closed, **merged via PR #863**.
+- [x] G-1's follow-up issue filed (**#864**), and the family additionally carries its own class-R ledger row.
+- [x] Review gate ran (`/code-review` five-agent fan-out + `riviera-review-overlay`); 3 findings,
+      all fixed in-PR; outcome recorded in the findings register and on the PR.
+- [x] Sonar gate green **and its reported list pulled from the API, not the badge**: 0 new issues,
+      0 bugs/vulns/smells, 0 duplicated blocks, 100% new-code coverage. The false-clean check
+      passed too — `measures` is populated with `new_lines: 61`, so an analysis really ran.
+- [x] CI green on the head: backend, frontend, repo hygiene, both CodeQL analyses, SonarCloud.
