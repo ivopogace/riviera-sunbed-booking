@@ -8,13 +8,18 @@ import { StarRating } from './star-rating';
 @Component({
   selector: 'app-star-rating-host',
   imports: [StarRating, FormField],
-  template: `<app-star-rating label="Your rating" [formField]="ratingForm.stars" />`,
+  template: `<app-star-rating
+    label="Your rating"
+    [formField]="ratingForm.stars"
+    [submitAttempted]="submitAttempted()"
+  />`,
 })
 class StarRatingHost {
   readonly model = signal<{ stars: number | null }>({ stars: null });
   readonly ratingForm = form(this.model, (path) => {
     required(path.stars, { message: 'Pick a star rating.' });
   });
+  readonly submitAttempted = signal(false);
 }
 
 describe('StarRating', () => {
@@ -164,5 +169,49 @@ describe('StarRating', () => {
     await click(3);
 
     await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
+  });
+
+  describe('the inline required error', () => {
+    function error(): HTMLElement | null {
+      return (fixture.nativeElement as HTMLElement).querySelector(
+        '[data-testid="star-rating-error"]',
+      );
+    }
+
+    it('shows no error before a submit is attempted', () => {
+      expect(error()).toBeNull();
+      expect(group().hasAttribute('aria-describedby')).toBe(false);
+    });
+
+    it('describes itself with the required error once a submit is attempted with nothing picked', () => {
+      host.submitAttempted.set(true);
+      fixture.detectChanges();
+
+      const err = error();
+      expect(err).not.toBeNull();
+      expect(err!.textContent).toContain('Pick a star rating.');
+      expect(err!.getAttribute('role')).toBe('alert');
+      expect(group().getAttribute('aria-describedby')).toBe(err!.id);
+      expect(group().getAttribute('aria-invalid')).toBe('true');
+    });
+
+    it('stops describing itself once a star is picked', async () => {
+      host.submitAttempted.set(true);
+      fixture.detectChanges();
+      expect(error()).not.toBeNull();
+
+      await click(2);
+
+      expect(error()).toBeNull();
+      expect(group().hasAttribute('aria-describedby')).toBe(false);
+      expect(group().hasAttribute('aria-invalid')).toBe(false);
+    });
+
+    it('has no axe violations with the error showing', async () => {
+      host.submitAttempted.set(true);
+      fixture.detectChanges();
+
+      await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
+    });
   });
 });
