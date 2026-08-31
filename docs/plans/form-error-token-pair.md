@@ -189,16 +189,19 @@ components stay theme-agnostic and name no theme.
 
 ## Execution status
 
-**Stage pointer:** `plan — written, awaiting phase 0`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Run phase 0 — write `form-error-tokens.contrast.spec.ts` red, then declare the pair
-in `tailwind.css` (base block, `@theme inline` rows, reason + both ratios at the declaration) and
-mirror it in `glass-tokens.ts`.
+**Next action:** Migrate the three banner class strings onto the utilities and rewire the three
+contrast specs onto the mirror (minding R-3), which is what turns the family spec's sixth test green.
+
+> **Push cadence:** phase 0's literal guard is deliberately red until phase 1 lands, so the branch is
+> pushed — and the draft PR opened, which is what makes CI run at all — at the **end of phase 1**,
+> the first point a push is honestly green. Decided once, per phase 0 step 4.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Declare the theme-invariant pair + its family spec | | |
-| 1 — Migrate the three banners and rewire the three contrast specs | | |
+| 0 — Declare the theme-invariant pair + its family spec | ✅ | `<phase-0>` |
+| 1 — Migrate the three banners and rewire the three contrast specs | ⏳ | |
 | 2 — Mocked e2e: registry, utility generation, computed skin under a forced dark theme | | |
 | 3 — Ledger row + close-out | | |
 
@@ -317,6 +320,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-31 | phase 0 — the literal guard's first run | **Every component position painting `#f6e8e7` or `#a3160e` in any role**, enumerated from the tree rather than from the issue's three named files. The guard was first written to match the pair **by value**, and went red on eight sites beyond the family | `grep -rn "#a3160e" src/app --include=*.ts --include=*.html \| grep -v "\.spec\.ts"` then `grep -rno "\[#a3160e[^]]*\]"` to split the forms by utility prefix | 11: the 3 banner **inks** (this slice) · `confirm-panel:9` + `requests-tab:125,172` as `bg-` **fills** (class R → #854) · `set-editor:428`, `requests-tab:82,204`, `payouts-tab:85`, `daily-view-tab:76` as `border-` **tints** (class O → #852) | Narrowed the guard from the *value* to the **role** (`#f6e8e7` any form; `#a3160e` only as `text-[…]`). Matching by value would have dragged two other audit classes — both explicit Non-goals — into this slice. The other eight sites are correct as they stand and are left to their own issues |
 
 ---
 

@@ -51,6 +51,8 @@
   --color-riv-field-fill: var(--riv-field-fill);
   --color-riv-field-solid: var(--riv-field-solid);
   --color-riv-error-ink: var(--riv-error-ink);
+  --color-riv-form-error-fill: var(--riv-form-error-fill);
+  --color-riv-form-error-ink: var(--riv-form-error-ink);
   --color-riv-danger-ink: var(--riv-danger-ink);
   --color-riv-danger-fill: var(--riv-danger-fill);
   --color-riv-danger-border: var(--riv-danger-border);
@@ -219,6 +221,21 @@
       light-on-light. The fill/hover/border literals around it are #836's. */
   --riv-solid-btn-ink: #0a4f5e;
   --riv-card-track: rgba(12, 42, 51, 0.12);
+
+  /** The form-error skin worn by the three tourist error banners (booking-dialog, booking-pay,
+      my-bookings). The fill is the SOLID composite of the old translucent red tint over the panel,
+      opaque so static CSS contrast analysis computes the real ratio; the ink is the brick red that
+      clears AA on it (6.58:1).
+
+      Theme-invariant BY DESIGN, and a PAIR for that reason — the same call as --riv-solid-btn-ink
+      above. --riv-error-ink is the WRONG token here: it themes to #ffa9a1 in the dark theme, over a
+      fill that stays #f6e8e7, which is 1.54:1 — light on light. So the fill and the ink are pinned
+      to each other and move together; giving either a dark override reintroduces exactly that
+      drift. Proof: form-error-tokens.contrast.spec.ts (the AA pair, the failing themed-ink bound,
+      and the single-declaration guard) + form-error-token-skin.e2e.ts (the computed skin under a
+      forced dark document theme). Rationale: docs/plans/form-error-token-pair.md, issue #850. */
+  --riv-form-error-fill: #f6e8e7;
+  --riv-form-error-ink: #a3160e;
 
   /** The near-opaque popover surface (theme picker, account menu, mobile sheet — app.ts POP)
       and the segmented-control fills (shared/segmented-control.ts). Light values here; the
