@@ -62,7 +62,7 @@ exposed**; the hexagon beneath is at most `application` / `domain` / `adapter`.
 > *Which modules are thin and which are full is **decision-time state (2026-07-01), not maintained
 > here** — the same caveat the evidence table above carries, and for the same reason. Every
 > parenthetical census in this section has since drifted: `customer` was the sole thin module and
-> **graduated to full at S2 (#111)**, so **no module is thin today** and all eight bounded contexts
+> **graduated to full at S2 (#111)**, so **no module is thin today** and all nine bounded contexts
 > are full. The maintained census lives in `.claude/skills/riviera-modulith/SKILL.md`; the current
 > tree is in `CLAUDE.md`. What this section decides — the mechanical thin-iff-no-application-service
 > rule and the two package shapes — is unchanged and still binding. (Freshness note added per #544,

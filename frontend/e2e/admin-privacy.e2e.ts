@@ -177,6 +177,47 @@ test('a failed erasure leaves focus on the confirm button, not on the body', asy
   await expect(page.getByTestId('admin-privacy-done-panel')).toBeHidden();
 });
 
+/**
+ * The reserve, measured rather than trusted. Gating the banner on its message means the panel gains
+ * an element it did not have, and the wrapper's `min-h-[1.25rem]` is what absorbs it — a layout
+ * shift no unit spec can see.
+ *
+ * <p>Measured on the PANEL, not the confirm button's `y`: the banner is the panel's last child, so
+ * nothing above it can move and a button-position assertion passes with the reserve deleted. What
+ * the reserve actually buys is measured instead — the panel grows by LESS than the banner's own
+ * height, because a line of it was already reserved. Without the reserve the two are equal, so this
+ * fails; that was verified, not assumed. The bound is deliberately one-sided: full absorption (no
+ * growth at all) is a strictly better outcome, so the test must not forbid it — the message happens
+ * to wrap to two lines at this width against a one-line reserve, and shortening it must not go red.
+ */
+test('the failure banner lands in reserved space, so the panel absorbs part of it', async ({
+  page,
+}) => {
+  await mockOperatorLifecycleApi(page, { admin: ADMIN });
+  await mockErasure(page);
+  await openPrivacyTab(page);
+
+  await page.getByTestId('admin-privacy-email').fill(KNOWN);
+  await page.getByTestId('admin-privacy-review').click();
+
+  const panel = page.getByTestId('admin-privacy-confirm-panel');
+  const confirm = page.getByTestId('admin-privacy-confirm');
+  await expect(confirm).toBeVisible();
+  // The panel animates in; a box read mid-pop measures the animation, not the layout.
+  await settled(panel);
+  const clean = { panel: await panel.boundingBox(), confirm: await confirm.boundingBox() };
+
+  await page.route(/\/api\/admin\/erasure$/, (route) => route.fulfill({ status: 500, body: '' }));
+  await confirm.click();
+  await expect(page.getByTestId('admin-privacy-error')).toContainText('Nothing was erased');
+
+  const grew = (await panel.boundingBox())!.height - clean.panel!.height;
+  const banner = (await page.getByTestId('admin-privacy-error').boundingBox())!.height;
+  expect(grew).toBeGreaterThanOrEqual(0);
+  expect(grew).toBeLessThan(banner);
+  expect((await confirm.boundingBox())?.y).toBe(clean.confirm?.y);
+});
+
 test('the tab strip marks Privacy in slot 7 and never scrolls sideways at 360px', async ({
   page,
 }) => {

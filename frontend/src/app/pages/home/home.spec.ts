@@ -69,7 +69,7 @@ describe('Home (venue discovery)', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('requests the venue list for tomorrow in Europe/Tirane by default', () => {
+  it('requests the venue list for today in Europe/Tirane by default', () => {
     const req = listRequest();
     expect(req.request.params.get('date')).toBe(defaultBookingDate(new Date()));
     // No filter params on the initial load.
@@ -102,6 +102,84 @@ describe('Home (venue discovery)', () => {
     // No cover → the gradient placeholder (sun, no img).
     expect(cards[1].querySelector('[data-testid="card-photo-img"]')).toBeNull();
     expect(cards[1].querySelector('.photo-sun')).toBeTruthy();
+    // A single photo is no slideshow: no step controls, no dots.
+    expect(cards[0].closest('li')?.querySelector('[data-testid="card-photo-next"]')).toBeNull();
+    expect(cards[0].querySelector('[data-testid="card-photo-dots"]')).toBeNull();
+  });
+
+  it('badges a venue whose online sales for today have closed', async () => {
+    const [closed, open] = venues();
+    listRequest().flush([
+      { ...closed, salesOpen: false },
+      { ...open, salesOpen: true },
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const cards = el().querySelectorAll('[data-testid="venue-card"]');
+    const chip = cards[0].querySelector('.sales-closed-chip');
+    expect(chip?.textContent).toContain('Sales closed for today');
+    // The card body is aria-hidden, so the closed state must ride the card's accessible name.
+    expect(cards[0].getAttribute('aria-label')).toContain('online sales for today have closed');
+    expect(cards[1].querySelector('.sales-closed-chip')).toBeNull();
+    expect(cards[1].getAttribute('aria-label')).not.toContain('closed');
+  });
+
+  it('shows no closed badge when the payload omits salesOpen (older test double)', async () => {
+    listRequest().flush(venues());
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(el().querySelector('.sales-closed-chip')).toBeNull();
+  });
+
+  it('renders the photo slideshow — resolved slide stack, dots, and step controls outside the card link', async () => {
+    const [venue] = venues();
+    listRequest().flush([
+      {
+        ...venue,
+        photos: [
+          '/api/venues/1/photos/aa01',
+          '/api/venues/1/photos/cc03',
+          '/api/venues/1/photos/dd04',
+        ],
+      },
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const item = el().querySelector('[data-testid="venue-card"]')!.closest('li')!;
+    const slides = item.querySelectorAll<HTMLImageElement>(
+      '[data-testid="card-photo-img"], [data-testid="card-photo-slide-img"]',
+    );
+    expect(slides.length).toBe(3);
+    // The service resolves each wire path against the API origin.
+    expect(slides[0].getAttribute('src')).toBe(
+      `${environment.apiBaseUrl}/api/venues/1/photos/aa01`,
+    );
+    expect(item.querySelectorAll('[data-testid="card-photo-dots"] span').length).toBe(3);
+
+    // The controls are the link's SIBLINGS (a nested interactive control is invalid + an axe fail).
+    const next = item.querySelector<HTMLButtonElement>('[data-testid="card-photo-next"]')!;
+    const prev = item.querySelector<HTMLButtonElement>('[data-testid="card-photo-prev"]')!;
+    expect(next.closest('a')).toBeNull();
+    expect(prev.closest('a')).toBeNull();
+
+    // First slide visible, the rest faded out.
+    expect(slides[0].classList.contains('opacity-0')).toBe(false);
+    expect(slides[1].classList.contains('opacity-0')).toBe(true);
+
+    next.click();
+    fixture.detectChanges();
+    expect(slides[0].classList.contains('opacity-0')).toBe(true);
+    expect(slides[1].classList.contains('opacity-0')).toBe(false);
+
+    // Stepping back from the first photo wraps to the last.
+    prev.click();
+    prev.click();
+    fixture.detectChanges();
+    expect(slides[2].classList.contains('opacity-0')).toBe(false);
+    expect(slides[0].classList.contains('opacity-0')).toBe(true);
   });
 
   it('renders a card per venue with name, location, rating, from-price and availability', async () => {
@@ -163,7 +241,7 @@ describe('Home (venue discovery)', () => {
     listRequest().flush(venues());
     await fixture.whenStable();
     const link = el().querySelector('[data-testid="venue-card"]');
-    // The chosen date rides along as ?date= so it persists into the map (default = tomorrow, Tirane).
+    // The chosen date rides along as ?date= so it persists into the map (default = today, Tirane).
     expect(link?.getAttribute('href')).toBe(`/venues/1?date=${defaultBookingDate(new Date())}`);
   });
 
@@ -171,7 +249,7 @@ describe('Home (venue discovery)', () => {
     listRequest().flush(venues());
     await fixture.whenStable();
 
-    // A date guaranteed to differ from the default (tomorrow) on any calendar day (the 2026-07-14 flake).
+    // A date guaranteed to differ from the default (today) on any calendar day (the 2026-07-14 flake).
     const future = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
     const input = el().querySelector<HTMLInputElement>('[data-testid="filter-date"]')!;
     input.value = future;
@@ -223,9 +301,7 @@ describe('Home (venue discovery)', () => {
     listRequest().flush(venues());
     await fixture.whenStable();
 
-    // A date guaranteed to differ from the component's default (tomorrow) on ANY calendar day —
-    // a hardcoded date that happens to equal "tomorrow" fires no change event (the 2026-07-14
-    // flake). Derived like the component derives its own default, a week out.
+    // A date guaranteed to differ from the default (today) on any calendar day (the 2026-07-14 flake).
     const chosen = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
     const input = el().querySelector<HTMLInputElement>('[data-testid="filter-date"]')!;
     input.value = chosen;
@@ -237,7 +313,7 @@ describe('Home (venue discovery)', () => {
     req.flush(venues());
   });
 
-  it('floors the date picker at tomorrow in Europe/Tirane (no past/today via the native picker) (#155)', async () => {
+  it('floors the date picker at today in Europe/Tirane (no past date via the native picker) (#155)', async () => {
     listRequest().flush(venues());
     await fixture.whenStable();
 
@@ -365,6 +441,23 @@ describe('Home (venue discovery)', () => {
     expect(secondChips?.textContent?.trim()).toBe('');
   });
 
+  it('splits the card chips into a semantic family and a descriptive one (#705)', async () => {
+    const [rated] = venues();
+    listRequest().flush([{ ...rated, ratingTenths: 0, reviewsCount: 0 }]);
+    await fixture.whenStable();
+
+    const card = el().querySelector('[data-testid="venue-card"]')!;
+    // The two chips that make a platform claim: how booking works, and that nobody has rated this venue yet.
+    expect(card.querySelector('.mode-chip')?.classList.contains('semantic-chip')).toBe(true);
+    expect(
+      card.querySelector('[data-testid="new-chip"]')?.classList.contains('semantic-chip'),
+    ).toBe(true);
+    // Everything the venue says about itself stays in the descriptive family.
+    const descriptive = [...card.querySelectorAll('[data-testid="card-chips"] .amenity-chip')];
+    expect(descriptive.length).toBeGreaterThan(0);
+    expect(descriptive.some((chip) => chip.classList.contains('semantic-chip'))).toBe(false);
+  });
+
   it('shows a distinct empty state when no venues match', async () => {
     listRequest().flush([]);
     await fixture.whenStable();
@@ -409,6 +502,21 @@ describe('Home (venue discovery)', () => {
     expect(beachOptions).toEqual(['All beaches', 'Dhërmi', 'Ksamil']);
   });
 
+  it('moves keyboard focus to the persistent count block when Retry is pressed (WCAG 2.4.3)', async () => {
+    listRequest().error(new ProgressEvent('error'));
+    await fixture.whenStable();
+
+    el().querySelector<HTMLButtonElement>('[data-testid="retry"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Retry tears down the panel holding the pressed button; the count block outlives every state.
+    expect(document.activeElement).toBe(el().querySelector('[data-testid="results"]'));
+
+    listRequest().flush(venues()); // settle for httpMock.verify()
+  });
+
   it('retries the filtered request (not the initial load) when a filter-change fetch failed', async () => {
     listRequest().flush(venues());
     await fixture.whenStable();
@@ -432,16 +540,12 @@ describe('Home (venue discovery)', () => {
     expect(el().querySelectorAll('[data-testid="venue-card"]').length).toBe(1);
   });
 
-  it('renders the cutoff explainer line under the filter bar (display-only, invariant #4)', async () => {
+  it('renders no lead-time note — the rule lives on the venue surface now (#804)', async () => {
     listRequest().flush(venues());
     await fixture.whenStable();
 
-    const note = el().querySelector('[data-testid="cutoff-note"]');
-    expect(note).not.toBeNull();
-    // \s matches the non-breaking space in "6 PM", so the copy reads plainly here.
-    const text = note?.textContent ?? '';
-    expect(text).toContain('Bookings close the evening before');
-    expect(text).toMatch(/book by 6\s+PM the day before/);
+    expect(el().querySelector('[data-testid="cutoff-note"]')).toBeNull();
+    expect(el().querySelector('[data-testid="sales-close-note"]')).toBeNull();
   });
 
   it('shows the loading state before the response arrives', async () => {
@@ -449,5 +553,49 @@ describe('Home (venue discovery)', () => {
     await fixture.whenStable();
     expect(el().querySelector('[data-testid="loading"]')).not.toBeNull();
     req.flush(venues()); // settle for httpMock.verify()
+  });
+
+  it('renders pulsing skeleton cards, wholly decorative — the announcer carries the words', async () => {
+    const req = listRequest(); // pending
+    await fixture.whenStable();
+
+    const loading = el().querySelector('[data-testid="loading"]')!;
+    // Decoration only: it used to BE the live region, born holding its text (#741).
+    expect(loading.getAttribute('aria-live')).toBeNull();
+    expect(loading.getAttribute('aria-hidden')).toBe('true');
+    const skeletons = loading.querySelectorAll('[data-testid="skeleton-card"]');
+    expect(skeletons.length).toBe(6);
+    expect(skeletons[0].classList.contains('animate-pulse')).toBe(true);
+
+    req.flush(venues());
+    await fixture.whenStable();
+    expect(el().querySelector('[data-testid="skeleton-card"]')).toBeNull();
+  });
+
+  it('announces through one region that survives loading → loaded (#741)', async () => {
+    const req = listRequest(); // pending
+    await fixture.whenStable();
+
+    const announcer = el().querySelector('[data-testid="load-announcer"]')!;
+    expect(announcer.textContent?.trim()).toBe('Loading venues…');
+
+    req.flush(venues());
+    await fixture.whenStable();
+
+    // The SAME node, still mounted: that identity is what makes the change an announcement.
+    expect(el().querySelector('[data-testid="load-announcer"]')).toBe(announcer);
+    // Empty on purpose: the persistent results-count region already speaks the outcome.
+    expect(announcer.textContent?.trim()).toBe('');
+  });
+
+  it('agrees the review noun with the count on the Discover card', async () => {
+    // The twin of the venue-map header assertion — shared/rating.ts exists so these cannot drift.
+    const [rated] = venues();
+    listRequest().flush([{ ...rated, ratingTenths: 50, reviewsCount: 1 }]);
+    await fixture.whenStable();
+
+    const card = el().querySelector('[data-testid="venue-card"]')!;
+    expect(card.textContent).toContain('1 review');
+    expect(card.textContent).not.toContain('1 reviews');
   });
 });

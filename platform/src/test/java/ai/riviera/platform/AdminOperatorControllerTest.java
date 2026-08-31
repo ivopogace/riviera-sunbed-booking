@@ -17,6 +17,7 @@ import ai.riviera.platform.operator.api.OperatorLifecycle;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
+import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -45,7 +46,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code OperatorLifecycleOutcome.Changed} carries the username — so a transient revoke failure
  * committed the suspension, raised {@code 500}, and left the suspended operator's sessions alive
  * with the admin's retry drawing {@code 409 WRONG_STATUS}. The fix pre-reads the username through
- * {@link OperatorLifecycle#activeUsername} and revokes on <em>both</em> sides (D-1).
+ * {@link OperatorLifecycle#usernameInStatus} and revokes on <em>both</em> sides (D-1).
  *
  * <p>Lives in the root test package because the web slice imports the package-private edge config
  * ({@code SecurityConfig} / {@code WebCorsConfig} / {@link WebSliceStubs}). Docker-free. Every request
@@ -138,7 +139,7 @@ class AdminOperatorControllerTest {
 	 */
 	@Test
 	void anUnknownOrNotActiveTargetRevokesNothing() throws Exception {
-		when(lifecycle.activeUsername(TARGET)).thenReturn(Optional.empty());
+		when(lifecycle.usernameInStatus(TARGET, OperatorStatus.ACTIVE)).thenReturn(Optional.empty());
 		when(lifecycle.suspend(TARGET)).thenReturn(new OperatorLifecycleOutcome.WrongStatus());
 
 		mvc.perform(isolated(post(SUSPEND, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
@@ -158,7 +159,7 @@ class AdminOperatorControllerTest {
 				.andExpect(status().isNoContent());
 
 		verify(sessionRevoker, never()).revokeAll(anyString());
-		verify(lifecycle, never()).activeUsername(any());
+		verify(lifecycle, never()).usernameInStatus(any(), any());
 	}
 
 	/**
@@ -173,7 +174,7 @@ class AdminOperatorControllerTest {
 				.andExpect(jsonPath("$.detail")
 						.value("The target operator is the account this request is authenticated as."));
 
-		verify(lifecycle, never()).activeUsername(any());
+		verify(lifecycle, never()).usernameInStatus(any(), any());
 		verify(lifecycle, never()).suspend(any());
 		verify(sessionRevoker, never()).revokeAll(anyString());
 	}
@@ -221,7 +222,7 @@ class AdminOperatorControllerTest {
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("NO_SUCH_OPERATOR"));
 
-		when(lifecycle.reject(TARGET)).thenReturn(new ApprovalOutcome.Rejected());
+		when(lifecycle.reject(TARGET)).thenReturn(new ApprovalOutcome.Rejected(TARGET_USERNAME));
 		mvc.perform(isolated(post(REJECT, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
 				.andExpect(status().isNoContent());
 
@@ -229,8 +230,24 @@ class AdminOperatorControllerTest {
 		verify(mails, never()).sendOperatorApproved(anyString(), any());
 	}
 
+	/** The reject bracket mirrors suspend's: pre-read the PENDING username, revoke, transition, revoke. */
+	@Test
+	void rejectRevokesOnBothSidesOfTheTransition() throws Exception {
+		when(lifecycle.usernameInStatus(TARGET, OperatorStatus.PENDING))
+				.thenReturn(Optional.of(TARGET_USERNAME));
+		when(lifecycle.reject(TARGET)).thenReturn(new ApprovalOutcome.Rejected(TARGET_USERNAME));
+
+		mvc.perform(isolated(post(REJECT, TARGET.value())).with(user(ADMIN_USERNAME).roles("ADMIN")))
+				.andExpect(status().isNoContent());
+
+		InOrder ordered = inOrder(sessionRevoker, lifecycle);
+		ordered.verify(sessionRevoker).revokeAll(TARGET_USERNAME);
+		ordered.verify(lifecycle).reject(TARGET);
+		ordered.verify(sessionRevoker).revokeAll(TARGET_USERNAME);
+	}
+
 	private void givenTheTargetIsActive() {
-		when(lifecycle.activeUsername(TARGET)).thenReturn(Optional.of(TARGET_USERNAME));
+		when(lifecycle.usernameInStatus(TARGET, OperatorStatus.ACTIVE)).thenReturn(Optional.of(TARGET_USERNAME));
 		when(lifecycle.suspend(TARGET))
 				.thenReturn(new OperatorLifecycleOutcome.Changed(TARGET, TARGET_USERNAME));
 	}

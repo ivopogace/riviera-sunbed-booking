@@ -8,14 +8,16 @@ import { SetView } from '../shared/venue-views';
  * The shared beach-map cell styling, extracted from the layout editor so the bulk grid and the
  * per-set grid cannot drift apart (#600). These strings are the NO-DRIFT PIN: each is byte-identical
  * to the `CELL_CLASS` entry the layout editor carried before the move, so the extraction is
- * verifiable rather than eyeballed.
+ * verifiable rather than eyeballed. One deliberate departure since: the gap border darkened
+ * `/35` → `/55` so the aisle boundary is 3:1 composited over the shared canvas wash (#672 slice 2,
+ * pinned in `layout-editor.contrast.spec.ts`).
  */
 const PRE_MOVE_CELL_CLASS: Record<CellState, string> = {
   premium: 'border-[#b47814]/40 bg-[linear-gradient(180deg,#ffe3a3,#f4c05a)]',
   standard: 'border-[#0c2a33]/15 bg-white/85',
   walkin:
     'border-[#0c2a33]/15 bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.3)_0_3px,rgba(12,42,51,0.12)_3px_6px)]',
-  gap: 'border-dashed border-[#0c2a33]/35 bg-transparent',
+  gap: 'border-dashed border-[#0c2a33]/55 bg-transparent',
 };
 
 @Component({

@@ -41,6 +41,10 @@ describe('VenueCreateCard (#278)', () => {
     httpMock
       .expectOne(`${environment.apiBaseUrl}/api/auth/me`)
       .flush({ username: 'operator', principalType: 'OPERATOR' });
+    // The card discloses the platform commission from the server-served default (#692).
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/venue-defaults`)
+      .flush({ commissionBps: 500 });
     await fixture.whenStable();
     fixture.detectChanges();
   });
@@ -53,7 +57,7 @@ describe('VenueCreateCard (#278)', () => {
 
   /** Set a Signal Forms field by the text of its label, then notify the form. */
   function setField(label: string, value: string): void {
-    const field = Array.from(host().querySelectorAll('label.field')).find((l) =>
+    const field = Array.from(host().querySelectorAll('label')).find((l) =>
       l.querySelector('span')?.textContent?.trim().startsWith(label),
     );
     if (!field) {
@@ -80,9 +84,10 @@ describe('VenueCreateCard (#278)', () => {
     await fixture.whenStable();
   }
 
-  it('renders the 8 fields with the retired editor defaults (INSTANT / 1500 / EUR / 18:00)', () => {
-    const labels = Array.from(host().querySelectorAll('label.field span')).map((s) =>
-      s.textContent?.trim(),
+  it('renders the 7 fields with the defaults (INSTANT / EUR / 18:00) and no commission control', () => {
+    // Every field's own <label>, marker-class-free: two of them come from shared components.
+    const labels = Array.from(host().querySelectorAll('label')).map((l) =>
+      l.querySelector('span')?.textContent?.replace(/\s+/g, ' ').trim(),
     );
     expect(labels).toEqual([
       'Name',
@@ -90,14 +95,49 @@ describe('VenueCreateCard (#278)', () => {
       'Region',
       'Description',
       'Booking mode',
-      'Commission (basis points)',
       'Payout currency (ISO 4217)',
-      'Booking cutoff (Europe/Tirane)',
+      'Free-cancellation deadline (Europe/Tirane)',
     ]);
     expect(host().querySelector<HTMLSelectElement>('select')?.value).toBe('INSTANT');
-    const commission = host().querySelector<HTMLInputElement>('input[inputmode="numeric"]');
-    expect(commission?.value).toBe('1500');
+    // The commission input is gone (#692): the platform stamps the rate; nothing to type into.
+    expect(host().querySelector('input[inputmode="numeric"]')).toBeNull();
+    expect(host().querySelector('[data-testid="venue-create-commission"]')).toBeNull();
     expect(host().querySelector<HTMLInputElement>('input[type="time"]')?.value).toBe('18:00');
+  });
+
+  it('states the platform commission from the served default, value-driven (500 → 5%)', () => {
+    const note = host().querySelector('[data-testid="venue-create-commission-note"]');
+    expect(note?.textContent?.trim()).toBe('The platform commission is 5% per booking.');
+  });
+
+  it('renders the served figure, not a hardcoded one (550 → 5.5%)', async () => {
+    const second = TestBed.createComponent(VenueCreateCard);
+    second.detectChanges();
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/venue-defaults`)
+      .flush({ commissionBps: 550 });
+    await second.whenStable();
+    second.detectChanges();
+
+    const note = (second.nativeElement as HTMLElement).querySelector(
+      '[data-testid="venue-create-commission-note"]',
+    );
+    expect(note?.textContent?.trim()).toBe('The platform commission is 5.5% per booking.');
+  });
+
+  it('hides the commission note when the defaults read fails, and the form still works', async () => {
+    const second = TestBed.createComponent(VenueCreateCard);
+    second.detectChanges();
+    httpMock
+      .expectOne(`${environment.apiBaseUrl}/api/venue-defaults`)
+      .flush(null, { status: 500, statusText: 'Server Error' });
+    await second.whenStable();
+    second.detectChanges();
+
+    const el = second.nativeElement as HTMLElement;
+    // No hardcoded fallback figure — a wrong disclosed rate is worse than none.
+    expect(el.querySelector('[data-testid="venue-create-commission-note"]')).toBeNull();
+    expect(el.querySelector('form')).not.toBeNull();
   });
 
   it('shows the required-field message once a field is touched, and disables submit while invalid', () => {
@@ -110,6 +150,23 @@ describe('VenueCreateCard (#278)', () => {
 
     expect(host().textContent).toContain('Venue name is required');
     expect(submitButton().disabled).toBe(true);
+  });
+
+  it('describes each field by its own error once touched', () => {
+    for (const testId of ['venue-create-name', 'venue-create-beach', 'venue-create-region']) {
+      const control = host().querySelector<HTMLInputElement>(`[data-testid="${testId}"]`)!;
+      control.dispatchEvent(new Event('focus'));
+      control.dispatchEvent(new Event('blur'));
+    }
+    fixture.detectChanges();
+
+    for (const testId of ['venue-create-name', 'venue-create-beach', 'venue-create-region']) {
+      const control = host().querySelector<HTMLInputElement>(`[data-testid="${testId}"]`)!;
+      const errorId = control.getAttribute('aria-describedby');
+      expect(errorId).toBeTruthy();
+      expect(control.getAttribute('aria-invalid')).toBe('true');
+      expect(host().querySelector(`#${errorId}`)?.getAttribute('role')).toBe('alert');
+    }
   });
 
   it('creates the venue, resets the owned list, then navigates to the new console beach-map tab', async () => {
@@ -125,10 +182,11 @@ describe('VenueCreateCard (#278)', () => {
       beach: 'Ksamil',
       region: 'Riviera',
       bookingMode: 'INSTANT',
-      commissionBps: 1500,
       payoutCurrency: 'EUR',
       bookingCutoff: '18:00',
     });
+    // The payload carries no rate at all — the server would reject one with a 400 (#692).
+    expect(createReq.request.body).not.toHaveProperty('commissionBps');
     // Session model: the HttpOnly cookie is the credential — withCredentials, no header.
     expect(createReq.request.headers.has('Authorization')).toBe(false);
     expect(createReq.request.withCredentials).toBe(true);
@@ -141,16 +199,6 @@ describe('VenueCreateCard (#278)', () => {
     expect(reset.mock.invocationCallOrder[0]).toBeLessThan(
       navigateByUrl.mock.invocationCallOrder[0],
     );
-  });
-
-  it('rejects a non-integer commission client-side without calling the server', async () => {
-    setField('Commission', '15.5'); // not clean digits → must not be truncated to 15 and sent
-    await fillRequiredAndSubmit();
-
-    httpMock.expectNone(`${environment.apiBaseUrl}/api/venues`);
-    fixture.detectChanges();
-    expect(host().querySelector('[role="alert"]')?.textContent).toContain('check the form values');
-    expect(navigateByUrl).not.toHaveBeenCalled();
   });
 
   it('keeps the saving state on the submit button while the create is in flight', async () => {

@@ -1,12 +1,14 @@
 package ai.riviera.platform.venue;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
 
 import com.jayway.jsonpath.JsonPath;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +19,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.hamcrest.Matchers.contains;
@@ -30,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Verifies the discovery list API ({@code GET /api/venues?beach=&region=&date=}, issue #61):
  * filtering by beach/region, the rating-then-name sort, the per-{@code (set, date)} free/total
  * count sourced from {@code set_availability} (invariant #2), the "from" price in integer minor
- * units (invariant #5), the tomorrow-Europe/Tirane date default (invariant #6), empty results,
+ * units (invariant #5), the today-Europe/Tirane date default (invariant #6), empty results,
  * and public access. Testcontainers Postgres (runs in CI; skipped without Docker).
  *
  * <p>Fixtures are isolated under a marker {@code region} ({@link #IT_REGION}) and torn down in
@@ -46,6 +49,7 @@ class VenueListControllerIT {
 	private static final String IT_REGION = "IT Discovery Riviera";
 	private static final String BEACH_DHERMI = "Dhërmi IT";
 	private static final String BEACH_PALASE = "Palasë IT";
+	private static final String BEACH_SALES_CLOSE = "Sales Close IT";
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
 	@Autowired
@@ -72,12 +76,16 @@ class VenueListControllerIT {
 
 	@AfterEach
 	void cleanup() {
+		// operator_venue has no cascade from venue, so drop the ownership rows first; then
 		// ON DELETE CASCADE removes set_position, and set_availability cascades from set_position.
+		jdbc.sql("DELETE FROM operator_venue WHERE venue_id IN "
+				+ "(SELECT id FROM venue WHERE region = :r)").param("r", IT_REGION).update();
 		jdbc.sql("DELETE FROM venue WHERE region = :r").param("r", IT_REGION).update();
 	}
 
+	/** Owned by the bootstrap ACTIVE operator — the tourist list hides ownerless venues (#693). */
 	private long insertVenue(String name, String beach, int ratingTenths) {
-		return jdbc.sql("""
+		long id = jdbc.sql("""
 				INSERT INTO venue (name, beach, region, rating_tenths, reviews_count, booking_mode,
 				                   commission_bps, payout_currency)
 				VALUES (:name, :beach, :region, :rating, 10, 'INSTANT', 1500, 'EUR')
@@ -86,6 +94,8 @@ class VenueListControllerIT {
 				.param("name", name).param("beach", beach).param("region", IT_REGION)
 				.param("rating", ratingTenths)
 				.query(Long.class).single();
+		OwnershipFixtures.grantToBootstrap(jdbc, id);
+		return id;
 	}
 
 	private long insertSet(long venueId, int positionNo, long priceMinor) {
@@ -194,10 +204,10 @@ class VenueListControllerIT {
 	}
 
 	@Test
-	void defaultsToTomorrowTirane() throws Exception {
-		// AC-5: no date param ⇒ counts for tomorrow in Europe/Tirane.
-		LocalDate tomorrow = LocalDate.now(TIRANE).plusDays(1);
-		book(firstSetOf(aurora), tomorrow);
+	void defaultsToTodayTirane() throws Exception {
+		// AC-5: no date param ⇒ counts for today in Europe/Tirane.
+		LocalDate today = LocalDate.now(TIRANE);
+		book(firstSetOf(aurora), today);
 
 		mvc.perform(get("/api/venues").param("beach", BEACH_DHERMI))
 				.andExpect(status().isOk())
@@ -234,6 +244,60 @@ class VenueListControllerIT {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[0].distanceToWaterM").value(25))
 				.andExpect(jsonPath("$[0].amenities").value(contains("BEACH_BAR", "WIFI")));
+	}
+
+	/**
+	 * A fresh visible venue at the given {@code sales_close} boundary value — the boundary-venue
+	 * trick the reserve ITs use instead of clock mocking: a {@code 00:01} venue is closed for today
+	 * at any run hour past the first minute, a {@code 23:59} venue open until the last.
+	 */
+	private long insertVenueAtSalesClose(String name, LocalTime salesClose) {
+		long id = jdbc.sql("""
+				INSERT INTO venue (name, beach, region, rating_tenths, reviews_count, booking_mode,
+				                   commission_bps, payout_currency, sales_close)
+				VALUES (:name, :beach, :region, 40, 10, 'INSTANT', 1500, 'EUR', :close)
+				RETURNING id
+				""")
+				.param("name", name).param("beach", BEACH_SALES_CLOSE).param("region", IT_REGION)
+				.param("close", salesClose)
+				.query(Long.class).single();
+		OwnershipFixtures.grantToBootstrap(jdbc, id);
+		return id;
+	}
+
+	/** Skip the midnight minutes where "today" or a boundary venue's verdict would flip mid-test. */
+	private static void assumeAwayFromMidnightBoundaries() {
+		LocalTime now = LocalTime.now(TIRANE);
+		Assumptions.assumeTrue(now.isAfter(LocalTime.of(0, 2)) && now.isBefore(LocalTime.of(23, 58)),
+				"skipped near midnight — today would roll over or a boundary venue's verdict flip mid-test");
+	}
+
+	@Test
+	void listCarriesPerVenueSalesOpenForToday() throws Exception {
+		// #793 AC-1: today's list carries per-venue verdicts — 00:01 closed, 23:59 open, one response.
+		assumeAwayFromMidnightBoundaries();
+		long closed = insertVenueAtSalesClose("Closed For Today IT", LocalTime.of(0, 1));
+		long open = insertVenueAtSalesClose("Open Till Late IT", LocalTime.of(23, 59));
+
+		mvc.perform(get("/api/venues").param("beach", BEACH_SALES_CLOSE)
+						.param("date", LocalDate.now(TIRANE).toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == %d)].salesOpen".formatted(closed)).value(contains(false)))
+				.andExpect(jsonPath("$[?(@.id == %d)].salesOpen".formatted(open)).value(contains(true)));
+	}
+
+	@Test
+	void futureDatesAreOpenAtEveryVenue() throws Exception {
+		// #793 AC-2: tomorrow is open at both boundary venues — the rule alone, no special-casing.
+		assumeAwayFromMidnightBoundaries();
+		long optOut = insertVenueAtSalesClose("Opt-Out Tomorrow IT", LocalTime.of(0, 1));
+		long lateClose = insertVenueAtSalesClose("Late Tomorrow IT", LocalTime.of(23, 59));
+
+		mvc.perform(get("/api/venues").param("beach", BEACH_SALES_CLOSE)
+						.param("date", LocalDate.now(TIRANE).plusDays(1).toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == %d)].salesOpen".formatted(optOut)).value(contains(true)))
+				.andExpect(jsonPath("$[?(@.id == %d)].salesOpen".formatted(lateClose)).value(contains(true)));
 	}
 
 	@Test

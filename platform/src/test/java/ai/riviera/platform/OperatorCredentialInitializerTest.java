@@ -8,6 +8,7 @@ import java.util.Optional;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 import ai.riviera.platform.operator.api.OperatorProvisioning;
 import ai.riviera.platform.operator.vocabulary.OperatorCredential;
+import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,7 +41,7 @@ class OperatorCredentialInitializerTest {
 	/** Give the bootstrap operator a stored hash that {@code matches} the given raw password, or none. */
 	private void storedCredential(String rawPasswordItMatches) {
 		when(accounts.findByUsername("operator"))
-				.thenReturn(Optional.of(new OperatorCredential("operator", "{bcrypt}stored", true, true)));
+				.thenReturn(Optional.of(new OperatorCredential("operator", "{bcrypt}stored", OperatorStatus.ACTIVE, true)));
 		when(encoder.matches(any(), eq("{bcrypt}stored")))
 				.thenAnswer(call -> rawPasswordItMatches.equals(call.getArgument(0)));
 	}
@@ -111,7 +112,7 @@ class OperatorCredentialInitializerTest {
 		when(encoder.encode(any())).thenReturn("{bcrypt}encoded");
 		when(provisioning.setPassword(eq("operator"), any())).thenReturn(true);
 		when(accounts.findByUsername("operator"))
-				.thenReturn(Optional.of(new OperatorCredential("operator", null, true, true)));
+				.thenReturn(Optional.of(new OperatorCredential("operator", null, OperatorStatus.ACTIVE, true)));
 
 		initializer("operator", "secret").run(null);
 

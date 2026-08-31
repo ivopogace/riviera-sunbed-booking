@@ -22,7 +22,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Operator self-registration endpoint (design D-5/D-8). A fresh username creates a
  * <strong>PENDING</strong> account and does <em>NOT</em> sign the operator in (no {@code SESSION}
- * cookie) — a PENDING operator cannot authenticate until a platform admin approves it. An
+ * cookie) — the 202 itself is session-less either branch; since #694 the PENDING account can sign
+ * in immediately (approval gates tourist visibility, not access). An
  * already-taken username returns a <strong>byte-identical</strong> {@code 202} response with no second
  * row (non-enumeration); the password policy is enforced server-side before any write. Real Postgres
  * via Testcontainers, so the full Flyway chain (incl. V29) backs the row. Each request carries a unique
@@ -50,18 +51,20 @@ class OperatorRegistrationIT {
 	}
 
 	@Test
-	void registersPendingAndCannotLogInUntilApproved() throws Exception {
+	void registersPendingWithoutASessionAndCanSignInImmediately() throws Exception {
 		register("reg-op-alice", PASSWORD, "alice@venue.example")
 				.andExpect(status().isAccepted())
 				.andExpect(jsonPath("$.status").value("PENDING"))
-				.andExpect(cookie().doesNotExist(SESSION_COOKIE)); // no auto-sign-in — awaits admin approval
+				.andExpect(cookie().doesNotExist(SESSION_COOKIE)); // the 202 itself never signs in (D-8)
 
 		String status = jdbc.sql("SELECT status FROM operator WHERE username = :u")
 				.param("u", "reg-op-alice").query(String.class).single();
 		assertEquals("PENDING", status, "a self-registered operator starts PENDING");
 
-		// A PENDING account cannot authenticate (generic 401) — the edge builds a disabled principal.
-		login("reg-op-alice", PASSWORD).andExpect(status().isUnauthorized());
+		// A PENDING account authenticates (#694): approval gates tourist visibility, not access.
+		login("reg-op-alice", PASSWORD)
+				.andExpect(status().isOk())
+				.andExpect(cookie().exists(SESSION_COOKIE));
 	}
 
 	@Test

@@ -1,303 +1,418 @@
-<section class="mx-auto w-full max-w-[1100px] px-5 py-4" data-testid="layout-editor">
-  <!-- Which surface can work is decided by the venue's lifecycle, so the choice is explicit, not hidden. -->
-  <fieldset class="mb-4 border-0 p-0" data-testid="layout-mode">
-    <legend class="sr-only">Beach map editing mode</legend>
-    <div class="flex flex-wrap gap-2">
-      <button
-        appTouchTarget
-        type="button"
-        [attr.aria-pressed]="mode() === 'bulk'"
-        (click)="chooseMode('bulk')"
-        data-testid="layout-mode-bulk"
-        class="flex-1 rounded-[13px] px-4 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) sm:flex-none"
-        [class]="
-          mode() === 'bulk'
-            ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
-            : 'border border-(--riv-card-border) bg-white/45'
-        "
-      >
-        Bulk layout
-      </button>
-      <button
-        appTouchTarget
-        type="button"
-        [attr.aria-pressed]="mode() === 'sets'"
-        (click)="chooseMode('sets')"
-        data-testid="layout-mode-sets"
-        class="flex-1 rounded-[13px] px-4 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink) sm:flex-none"
-        [class]="
-          mode() === 'sets'
-            ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
-            : 'border border-(--riv-card-border) bg-white/45'
-        "
-      >
-        Edit sets
-      </button>
-    </div>
-  </fieldset>
+<section class="mx-auto w-full max-w-[1260px] px-5 py-4" data-testid="layout-editor">
+  <!-- Mode-independent, so it sits above the branch: neither surface has a map when the read failed. -->
+  @if (loadFailed()) {
+    <p
+      class="mb-4 text-[13px] font-semibold text-[#a3160e]"
+      role="alert"
+      data-testid="layout-load-failed"
+    >
+      Couldn’t load this venue’s beach map, so it can’t be edited or saved yet. Refresh the page and
+      try again.
+    </p>
+  }
 
-  @if (mode() === 'sets') {
-    @if (venueId(); as id) {
-      <app-set-editor [venueId]="id" [sets]="loadedSets()" (changed)="onSetsChanged()" />
-    }
-  } @else {
-    <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[280px_1fr]">
-      <!-- Controls: Generate + Paint -->
-      <div class="flex flex-col gap-3.5">
-        <section appCardGlass class="rounded-[20px] px-[18px] py-4">
-          <h2 class="text-[15px] font-bold text-(--riv-card-ink)">Generate layout</h2>
-          <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)">
-            Creates the full grid in one go. Rows are labelled A–…, row A faces the sea.
-          </p>
-          <div class="flex gap-2.5">
-            <label class="flex flex-1 flex-col gap-1.5">
-              <span
-                class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
-                >Rows</span
-              >
-              <input
-                appTouchTarget
-                type="number"
-                min="1"
-                [max]="26"
-                [value]="genRows()"
-                (input)="setRows($any($event.target).value)"
-                data-testid="layout-gen-rows"
-                class="w-full rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[15px] text-(--riv-card-ink)"
-              />
-            </label>
-            <label class="flex flex-1 flex-col gap-1.5">
-              <span
-                class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
-                >Positions</span
-              >
-              <input
-                appTouchTarget
-                type="number"
-                min="1"
-                [max]="40"
-                [value]="genCols()"
-                (input)="setCols($any($event.target).value)"
-                data-testid="layout-gen-cols"
-                class="w-full rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[15px] text-(--riv-card-ink)"
-              />
-            </label>
-          </div>
-          <button
-            appTouchTarget
-            type="button"
-            (click)="onGenerate()"
-            data-testid="layout-generate"
-            class="mt-3 w-full rounded-[14px] border border-white/40 bg-(image:--riv-cta-grad) px-3 py-[11px] text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] [transition:filter_0.12s_ease] hover:brightness-105"
-          >
-            Generate {{ genTotal() }} sets
-          </button>
-          <p class="mt-2.5 text-[11.5px] leading-[1.4] text-(--riv-card-ink-soft)">
-            Regenerating replaces the current layout. Row A is priced as front row automatically.
-          </p>
-
-          @if (confirmRegen()) {
-            <app-confirm-panel
-              label="Confirm regenerate"
-              message="Regenerate replaces your current layout. This can’t be undone."
-              confirmLabel="Replace layout"
-              tone="primary"
-              panelTestId="layout-confirm-regen"
-              confirmTestId="layout-confirm-yes"
-              cancelTestId="layout-confirm-no"
-              (confirmed)="confirmGenerate()"
-              (cancelled)="cancelGenerate()"
-            />
-          }
-        </section>
-
-        <section appCardGlass class="rounded-[20px] px-[18px] py-4">
-          <h2 class="text-[15px] font-bold text-(--riv-card-ink)">Paint tool</h2>
-          <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-(--riv-card-ink-soft)">
-            Pick a tool, then click or drag across the map to apply it.
-          </p>
-          <div class="flex flex-col gap-2" aria-label="Paint tool">
-            @for (tool of tools(); track tool.key) {
-              <button
-                appTouchTarget
-                type="button"
-                [attr.aria-pressed]="tool.active"
-                (click)="selectTool(tool.key)"
-                [attr.data-testid]="'layout-tool-' + tool.key"
-                class="flex w-full items-center gap-2.5 rounded-[13px] px-3 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink)"
-                [class]="
-                  tool.active
-                    ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
-                    : 'border border-(--riv-card-border) bg-white/45'
-                "
-              >
+  <div class="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[280px_1fr]">
+    <!-- The tool rail is always visible; only the content beside it changes with the armed tool. -->
+    <div class="flex flex-col gap-3.5">
+      <section appCardGlass class="rounded-[20px] px-[18px] py-4" data-testid="layout-tool-rail">
+        <h2 class="text-[15px] font-bold text-riv-card-ink">Tools</h2>
+        <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-riv-card-ink-soft">
+          Arm Select to pick a set on the map, or a brush to paint tier, pool and aisles by click or
+          drag.
+        </p>
+        <div
+          class="flex gap-2 overflow-x-auto scroll-px-1 pb-1 [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%_-_16px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%_-_16px),transparent)] scrollbar-none lg:flex-col lg:overflow-visible lg:pb-0 lg:[mask-image:none] lg:[-webkit-mask-image:none]"
+          aria-label="Tools"
+        >
+          @for (tool of tools(); track tool.key) {
+            <button
+              #toolChip
+              appTouchTarget
+              type="button"
+              [attr.aria-pressed]="tool.active"
+              (click)="armTool(tool.key)"
+              [attr.data-testid]="'layout-tool-' + tool.key"
+              class="flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-[13px] px-3 py-2.5 text-[13.5px] font-semibold text-riv-card-ink lg:w-full lg:shrink"
+              [class]="
+                tool.active
+                  ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
+                  : 'border border-riv-card-border bg-white/45'
+              "
+            >
+              @if (tool.key === 'select') {
+                <span
+                  class="h-[18px] w-[18px] flex-shrink-0 rounded-[6px] ring-2 ring-offset-1 ring-[#0a5f74]"
+                  aria-hidden="true"
+                ></span>
+              } @else {
                 <span
                   class="h-[18px] w-[18px] flex-shrink-0 rounded-[6px] border border-[#0c2a33]/20"
                   [class]="swatchClass(tool.key)"
                   aria-hidden="true"
                 ></span>
-                <span class="flex-1 text-left">{{ tool.label }}</span>
+              }
+              <span class="flex-1 text-left">{{ tool.label }}</span>
+              @if (tool.count !== null) {
                 <span
-                  class="text-[11.5px] text-(--riv-card-ink-soft)"
+                  class="text-[11.5px] text-riv-card-ink-soft"
                   [attr.data-testid]="'layout-count-' + tool.key"
                   >{{ tool.count }}</span
                 >
-              </button>
-            }
-          </div>
-        </section>
-      </div>
+              }
+            </button>
+          }
+        </div>
 
-      <!-- The sea-facing grid -->
-      <app-beach-grid-frame testid="layout-grid-frame">
-        @if (hasLayout()) {
-          <div
-            class="select-none overflow-x-auto"
-            data-testid="layout-grid"
-            (mouseup)="onPaintEnd()"
-            (mouseleave)="onPaintEnd()"
-          >
-            @for (row of displayRows(); track $index; let ri = $index) {
-              <div class="mb-1.5 flex items-center gap-2">
-                <span
-                  class="w-5 flex-shrink-0 text-center text-[11px] font-bold text-(--riv-card-ink)"
-                  >{{ row.label }}</span
-                >
-                <div
-                  class="grid flex-1 gap-1"
-                  [style.grid-template-columns]="'repeat(' + colCount() + ', minmax(44px, 1fr))'"
-                >
-                  @for (cell of row.cells; track $index; let ci = $index) {
-                    <button
-                      appTouchTarget
-                      type="button"
-                      appBeachCell
-                      [state]="cell.state"
-                      (mousedown)="onCellDown(ri, ci)"
-                      (mouseenter)="onCellEnter(ri, ci)"
-                      (click)="paintCell(ri, ci)"
-                      [title]="cell.label"
-                      [attr.aria-label]="cell.label"
-                      data-testid="layout-cell"
-                      class="rounded-[6px] border [transition:transform_0.1s_ease] hover:scale-[1.04]"
-                    ></button>
-                  }
-                </div>
-                <span
-                  class="w-[58px] flex-shrink-0 text-right text-[11px] font-semibold text-(--riv-card-ink-soft)"
-                  >{{ row.priceStr }}</span
-                >
+        <div class="my-3.5 h-px bg-riv-card-border" aria-hidden="true"></div>
+
+        <h2 class="text-[15px] font-bold text-riv-card-ink">Generate layout</h2>
+        <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-riv-card-ink-soft">
+          Creates the full grid in one go. Rows are labelled A–…, row A faces the sea.
+        </p>
+        <div class="flex gap-2.5">
+          <label class="flex flex-1 flex-col gap-1.5">
+            <span
+              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+              >Rows</span
+            >
+            <input
+              appTouchTarget
+              type="number"
+              min="1"
+              [max]="26"
+              [value]="genRows()"
+              (input)="setRows($any($event.target).value)"
+              data-testid="layout-gen-rows"
+              class="w-full rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
+            />
+          </label>
+          <label class="flex flex-1 flex-col gap-1.5">
+            <span
+              class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
+              >Positions</span
+            >
+            <input
+              appTouchTarget
+              type="number"
+              min="1"
+              [max]="40"
+              [value]="genCols()"
+              (input)="setCols($any($event.target).value)"
+              data-testid="layout-gen-cols"
+              class="w-full rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
+            />
+          </label>
+        </div>
+        <button
+          appTouchTarget
+          type="button"
+          (click)="onGenerate()"
+          [appBusy]="reading()"
+          data-testid="layout-generate"
+          class="mt-3 w-full rounded-[14px] border border-white/40 bg-(image:--riv-cta-grad) px-3 py-[11px] text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] [transition:filter_0.12s_ease] aria-disabled:opacity-50 hover:brightness-105"
+        >
+          @if (reading()) {
+            Loading the current layout…
+          } @else {
+            Generate {{ genTotal() }} sets
+          }
+        </button>
+        <p class="mt-2.5 text-[11.5px] leading-[1.4] text-riv-card-ink-soft">
+          Regenerating replaces the current layout. Row A is priced as front row automatically.
+        </p>
+
+        @if (confirmRegen()) {
+          <app-confirm-panel
+            label="Confirm regenerate"
+            message="Regenerate replaces your current layout. This can’t be undone."
+            confirmLabel="Replace layout"
+            tone="primary"
+            panelTestId="layout-confirm-regen"
+            confirmTestId="layout-confirm-yes"
+            cancelTestId="layout-confirm-no"
+            (confirmed)="confirmGenerate()"
+            (cancelled)="cancelGenerate()"
+          />
+        }
+      </section>
+
+      @if (mode() === 'bulk' && hasLayout()) {
+        <section appCardGlass class="rounded-[20px] px-[18px] py-4">
+          <h2 class="text-[15px] font-bold text-riv-card-ink">Row names</h2>
+          <p class="mt-1 mb-3 text-[12.5px] leading-[1.45] text-riv-card-ink-soft">
+            What a row’s price chip says on the public map — “Under the pines”, “Back row”. Leave
+            the letter to keep the automatic label. Renaming a saved row takes effect on its own,
+            even when saving the whole layout is locked — guests already booked into that row see
+            the new name, so make it match the signage on the beach.
+          </p>
+          <div class="flex flex-col gap-2">
+            @for (name of rowNames(); track $index; let y = $index) {
+              <div class="flex items-center gap-2">
+                <label class="flex min-w-0 flex-1 items-center gap-2">
+                  <span
+                    class="w-6 shrink-0 text-center text-[11px] font-bold uppercase text-riv-card-ink-faint"
+                    >{{ rowCode(y) }}</span
+                  >
+                  <input
+                    appTouchTarget
+                    type="text"
+                    maxlength="40"
+                    [value]="name"
+                    (input)="onRowNameInput(y, $any($event.target).value)"
+                    [attr.aria-label]="'Row ' + rowCode(y) + ' name'"
+                    data-testid="layout-row-name"
+                    class="w-full min-w-0 rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[14px] text-riv-card-ink"
+                    #rowNameControl
+                  />
+                </label>
+                @if (storedRowName(y); as stored) {
+                  <button
+                    appTouchTarget
+                    type="button"
+                    [appBusy]="renamingRow() === y || saving()"
+                    (click)="onRenameRow(y)"
+                    [attr.aria-label]="'Save the name for row ' + stored"
+                    data-testid="layout-row-name-save"
+                    class="shrink-0 rounded-[12px] border border-riv-card-border px-[13px] py-[9px] text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-60 hover:bg-white/50 [transition:background_0.15s_ease]"
+                  >
+                    {{ renamingRow() === y ? 'Saving…' : 'Save name' }}
+                  </button>
+                }
               </div>
+              @if (renamedRow() === y) {
+                <output
+                  class="ml-8 block text-[12.5px] font-semibold text-riv-card-ink-soft"
+                  data-testid="layout-row-name-saved"
+                >
+                  Row name saved.
+                </output>
+              }
+              @if (rowNameError(); as failure) {
+                @if (failure.y === y) {
+                  <p
+                    [appFieldErrorFor]="rowNameControl"
+                    [appFieldErrorForInvalidValue]="rowNameValueIsInvalid(failure.code)"
+                    class="ml-8 text-[12.5px] font-semibold text-[#a3160e]"
+                    role="alert"
+                    data-testid="layout-row-name-write-error"
+                  >
+                    {{ rowNameErrorMessage(failure.code) }}
+                  </p>
+                }
+              }
             }
           </div>
-        } @else {
+          @if (duplicateRowName(); as clash) {
+            <p
+              class="mt-2 text-[12.5px] font-semibold text-[#a3160e]"
+              role="alert"
+              data-testid="layout-row-name-error"
+            >
+              Two rows are both named “{{ clash }}”. Give each row its own name before saving.
+            </p>
+          }
+        </section>
+      }
+    </div>
+
+    <!-- The mode-switched surface: the paint grid, or the per-set editor with S1's selection state. -->
+    <div class="min-w-0">
+      @if (mode() === 'sets') {
+        @if (venueId(); as id) {
+          <!-- Nothing at all when there is no map: rendering the paint grid instead would misstate the mode. -->
+          @if (!mapUnavailable()) {
+            <app-set-editor
+              [venueId]="id"
+              [sets]="loadedSets()"
+              [loaded]="mapLoaded()"
+              [expectedVersion]="loadedSetVersion()"
+              (changed)="onSetsChanged()"
+              (staleWrite)="onBatchStaleWrite()"
+            />
+            <!-- A batch apply's own 409 STALE_WRITE reuses the bulk save's recovery banner (#714). -->
+            @if (errorCode() === 'STALE_WRITE') {
+              <app-stale-write-banner
+                class="mt-3 block"
+                data-testid="layout-stale-banner"
+                reloadTestId="layout-stale-reload"
+                [reloading]="reloading()"
+                (reload)="reloadAfterStale()"
+              >
+                This layout was changed somewhere else since you opened it. Your selection is kept —
+                reload the latest layout, then apply again.
+                <ng-container ngProjectAs="[bannerFooter]">
+                  @if (reloadFailed()) {
+                    <span
+                      class="text-[12px] font-semibold text-[#a3160e]"
+                      role="alert"
+                      data-testid="layout-reload-failed"
+                    >
+                      Couldn’t reload — your selection is still here. Check your connection and try
+                      again.
+                    </span>
+                  }
+                </ng-container>
+              </app-stale-write-banner>
+            }
+          }
+        }
+      } @else if (reading()) {
+        <!-- The read has not settled, so an empty grid states nothing: mirror the shape instead of claiming an empty venue (#744). Wholly decorative — the rail's own "Loading the current layout…" label owns the words. -->
+        <div data-testid="layout-loading" aria-hidden="true" inert>
+          <app-map-skeleton-grid
+            frameTestid="layout-skeleton-frame"
+            viewportTestid="layout-skeleton-grid"
+            tileTestid="layout-skeleton-tile"
+            tileRadiusClass="rounded-[6px]"
+            [fitWidth]="true"
+          />
+        </div>
+      } @else {
+        <!-- The sea-facing grid on the shared canvas; the editor's own drag gesture is paint, so drag-pan is off. -->
+        <app-beach-map-canvas
+          frameTestid="layout-grid-frame"
+          viewportTestid="layout-grid"
+          [dragPan]="false"
+          [fitWidth]="true"
+          [rowRailInteractive]="true"
+          [rowRailLabel]="rowFillLabel"
+          (rowRailFill)="fillRow($event)"
+          [colHeaderInteractive]="true"
+          [colHeaderLabel]="colFillLabel"
+          (colHeaderFill)="fillColumn($event)"
+          [zoomControl]="true"
+        >
+          <ng-template [appBeachMapRow]="displayRows()" let-row let-ri="index">
+            <div
+              class="grid h-full gap-1.5 grid-cols-[repeat(var(--riv-map-cols,1),var(--riv-tile))]"
+            >
+              @for (cell of row.cells; track $index; let ci = $index) {
+                <button
+                  appTouchTarget
+                  type="button"
+                  appBeachCell
+                  [state]="cell.state"
+                  (mousedown)="onCellDown(ri, ci, $event)"
+                  (mouseenter)="onCellEnter(ri, ci, $event)"
+                  (touchstart)="onCellTouchStart(ri, ci)"
+                  (click)="paintCell(ri, ci)"
+                  [title]="cell.label"
+                  [attr.aria-label]="cell.label"
+                  [attr.data-grid-row]="ri"
+                  [attr.data-grid-col]="ci"
+                  data-testid="layout-cell"
+                  class="h-full min-w-0 flex items-center justify-center touch-none rounded-[6px] border text-[12.5px] font-bold text-[#0c2a33] [transition:scale_0.1s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100"
+                >
+                  @if (cell.state !== 'gap') {
+                    <span aria-hidden="true">{{ ci + 1 }}</span>
+                  }
+                </button>
+              }
+            </div>
+          </ng-template>
           <p
-            class="px-3 py-10 text-center text-[13px] text-(--riv-card-ink-soft)"
+            canvasEmpty
+            class="px-3 py-10 text-center text-[13px] text-riv-card-ink-soft"
             data-testid="layout-empty"
           >
             Generate a layout to begin, then paint tiers, walk-in sets and aisles.
           </p>
-        }
-      </app-beach-grid-frame>
-    </div>
+        </app-beach-map-canvas>
 
-    <!-- Legend -->
-    <ul
-      class="mx-0.5 mt-3.5 flex list-none flex-wrap gap-4 p-0 text-[12.5px] text-(--riv-card-ink)"
-      aria-label="Legend"
-    >
-      <li class="flex items-center gap-[7px]">
-        <span
-          class="h-[13px] w-[13px] rounded-[4px] border border-[#0c2a33]/15 bg-white/85"
-          aria-hidden="true"
-        ></span>
-        Standard · online
-      </li>
-      <li class="flex items-center gap-[7px]">
-        <span
-          class="h-[13px] w-[13px] rounded-[4px] border border-[#b47814]/40 bg-[linear-gradient(180deg,#ffe3a3,#f4c05a)]"
-          aria-hidden="true"
-        ></span>
-        Front row · premium
-      </li>
-      <li class="flex items-center gap-[7px]">
-        <span
-          class="h-[13px] w-[13px] rounded-[4px] bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.3)_0_3px,rgba(12,42,51,0.12)_3px_6px)]"
-          aria-hidden="true"
-        ></span>
-        Walk-in pool (not bookable online)
-      </li>
-      <li class="flex items-center gap-[7px]">
-        <span
-          class="h-[13px] w-[13px] rounded-[4px] border-[1.5px] border-dashed border-[#0c2a33]/45"
-          aria-hidden="true"
-        ></span>
-        Gap / aisle
-      </li>
-    </ul>
+        <!-- Persistent save bar: pinned to the viewport bottom so it's reachable without scrolling. -->
+        <div class="sticky bottom-3 z-10 mt-4" data-testid="layout-save-bar">
+          <div
+            appCardGlass
+            class="flex flex-col gap-2.5 rounded-[16px] px-4 py-3 shadow-[0_10px_30px_rgba(12,42,51,0.25)] sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div class="flex min-w-0 flex-col gap-0.5 text-[12px] text-riv-card-ink-soft">
+              <span
+                class="text-[13px] font-bold text-riv-card-ink"
+                data-testid="layout-dirty-count"
+              >
+                @if (isDirty()) {
+                  {{ dirtyCount() }} unsaved change{{ dirtyCount() === 1 ? '' : 's' }}
+                } @else {
+                  No unsaved changes
+                }
+              </span>
+              @if (lastChange(); as change) {
+                <span data-testid="layout-last-change">{{ change }}</span>
+              }
+              <span data-testid="layout-last-saved">{{ lastSavedLabel() }}</span>
+            </div>
 
-    <!-- Save + notices -->
-    <div class="mt-4 flex flex-wrap items-center gap-3">
-      <button
-        appTouchTarget
-        type="button"
-        (click)="onSave()"
-        [disabled]="!hasLayout()"
-        [appBusy]="saving()"
-        data-testid="layout-save"
-        class="rounded-[14px] bg-(image:--riv-cta-grad) px-5 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
-      >
-        {{ saving() ? 'Saving…' : 'Save layout' }}
-      </button>
-      @if (savedNotice()) {
-        <output class="text-[13px] font-semibold text-[#0a6e85]" data-testid="layout-saved">
-          Saved. The public beach map reflects your changes.
-        </output>
-      }
-      @if (errorMessage(); as message) {
-        <span
-          class="text-[13px] font-semibold text-[#a3160e]"
-          role="alert"
-          data-testid="layout-error"
-        >
-          {{ message }}
-        </span>
-      }
-      @if (loadFailed()) {
-        <span
-          class="text-[13px] font-semibold text-[#a3160e]"
-          role="alert"
-          data-testid="layout-load-failed"
-        >
-          Couldn’t load the current layout, so it can’t be saved yet. Refresh the page and try
-          again.
-        </span>
-      }
-    </div>
+            <div class="flex flex-wrap items-center gap-2.5">
+              <button
+                appTouchTarget
+                type="button"
+                (click)="discard()"
+                [disabled]="!isDirty()"
+                [appBusy]="saving()"
+                data-testid="layout-discard"
+                class="rounded-[14px] border border-riv-card-border bg-white/45 px-4 py-2.5 text-[13.5px] font-semibold text-riv-card-ink disabled:opacity-50 aria-disabled:opacity-50"
+              >
+                Discard
+              </button>
+              <button
+                appTouchTarget
+                type="button"
+                (click)="onSave()"
+                [disabled]="!hasLayout()"
+                [appBusy]="saving() || renamingRow() !== null"
+                data-testid="layout-save"
+                class="rounded-[14px] bg-(image:--riv-cta-grad) px-5 py-2.5 text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] disabled:opacity-50 aria-disabled:opacity-50"
+              >
+                {{ saving() ? 'Saving…' : 'Save layout' }}
+              </button>
+            </div>
 
-    <!-- A stale-write 409 is a recoverable conflict, not a plain error — keep the grid, explain, offer a Reload (never a silent discard). -->
-    @if (errorCode() === 'STALE_WRITE') {
-      <app-stale-write-banner
-        class="mt-3"
-        data-testid="layout-stale-banner"
-        reloadTestId="layout-stale-reload"
-        [reloading]="reloading()"
-        (reload)="reloadAfterStale()"
-      >
-        This layout was changed somewhere else since you opened it. Your painted grid is kept —
-        reload the latest layout, re-apply your changes, then Save again.
-        <ng-container ngProjectAs="[bannerFooter]">
-          @if (reloadFailed()) {
-            <span
-              class="text-[12px] font-semibold text-[#a3160e]"
-              role="alert"
-              data-testid="layout-reload-failed"
+            @if (savedNotice()) {
+              <output
+                class="text-[13px] font-semibold text-[#0a6e85] sm:basis-full"
+                data-testid="layout-saved"
+              >
+                Saved. The public beach map reflects your changes.
+              </output>
+            }
+            @if (errorMessage(); as message) {
+              <span
+                class="text-[13px] font-semibold text-[#a3160e] sm:basis-full"
+                role="alert"
+                data-testid="layout-error"
+              >
+                {{ message }}
+              </span>
+            }
+          </div>
+
+          <!-- A stale-write 409 is a recoverable conflict, not a plain error — keep the grid, explain, offer a Reload (never a silent discard). -->
+          @if (errorCode() === 'STALE_WRITE') {
+            <app-stale-write-banner
+              class="mt-2 block"
+              data-testid="layout-stale-banner"
+              reloadTestId="layout-stale-reload"
+              [reloading]="reloading()"
+              (reload)="reloadAfterStale()"
             >
-              Couldn’t reload — your changes are still here. Check your connection and try again.
-            </span>
+              This layout was changed somewhere else since you opened it. Your painted grid is kept
+              — reload the latest layout, re-apply your changes, then Save again.
+              <ng-container ngProjectAs="[bannerFooter]">
+                @if (reloadFailed()) {
+                  <span
+                    class="text-[12px] font-semibold text-[#a3160e]"
+                    role="alert"
+                    data-testid="layout-reload-failed"
+                  >
+                    Couldn’t reload — your changes are still here. Check your connection and try
+                    again.
+                  </span>
+                }
+              </ng-container>
+            </app-stale-write-banner>
           }
-        </ng-container>
-      </app-stale-write-banner>
-    }
-  }
+        </div>
+      }
+    </div>
+  </div>
 </section>

@@ -15,9 +15,9 @@ package ai.riviera.platform.operator.vocabulary;
  * It comes from the {@code RETURNING} clause of the {@code WHERE status = PENDING}-guarded
  * {@code UPDATE}, so only the call that actually flipped the row ever receives one: two admins racing
  * the same registration produce one {@link Approved} and one {@link NotPending}, and the loser has
- * nothing to send. Reading the address <em>before</em> the call — as {@code activeUsername} does for
- * suspension — was rejected: that precedent exists because a revoke must <em>precede</em> its write,
- * whereas this mail must follow one.
+ * nothing to send. Reading the address <em>before</em> the call — as {@code usernameInStatus} does
+ * for the revocation brackets — was rejected: that precedent exists because a revoke must
+ * <em>precede</em> its write, whereas this mail must follow one.
  */
 public sealed interface ApprovalOutcome
 		permits ApprovalOutcome.Approved, ApprovalOutcome.Rejected, ApprovalOutcome.NotPending,
@@ -34,8 +34,13 @@ public sealed interface ApprovalOutcome
 	record Approved(String contactEmail) implements ApprovalOutcome {
 	}
 
-	/** The PENDING operator was transitioned to REJECTED (reject) — it still cannot sign in. */
-	record Rejected() implements ApprovalOutcome {
+	/**
+	 * The PENDING operator was transitioned to REJECTED (reject) — it can no longer sign in. Carries
+	 * the {@code username} from the same guarded {@code UPDATE}'s {@code RETURNING}, so the edge can
+	 * revoke any live session the operator established while PENDING — the exactly-once shape
+	 * {@link Approved} has for the address. Deliberately no contact email: a rejection sends nothing.
+	 */
+	record Rejected(String username) implements ApprovalOutcome {
 	}
 
 	/** The operator exists but is not PENDING (already ACTIVE/REJECTED/SUSPENDED) → the edge maps to 409. */

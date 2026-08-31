@@ -55,7 +55,7 @@ const TAKINGS = {
   date: '2026-07-08',
 };
 
-// Pin the OS scheme to dark so the tourist shell boots the riviera (dark) theme deterministically —
+// Pin the OS scheme to dark so the tourist shell boots the dark theme deterministically —
 // letting the porcelain-override assertion be meaningful (headless defaults to light → porcelain).
 test.use({ colorScheme: 'dark' });
 
@@ -196,29 +196,52 @@ test('keeps the operator signed in across a reload (session restored from /me)',
   await expect(page).toHaveURL(/\/operator\/1/);
 });
 
-test('renders porcelain over the tourist theme with a responsive tab row (#170)', async ({
+test('renders porcelain over the tourist theme with a single scrolling tab row, no wrap (#710)', async ({
   page,
 }) => {
   await mockConsole(page);
 
-  // Establish the dark riviera tourist theme first.
+  // Establish the dark tourist theme first.
   await page.goto('/');
-  await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
+  await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
 
   await page.setViewportSize({ width: 380, height: 800 });
   await page.goto('/operator/1');
   await signIn(page);
   await expect(page.getByTestId('oc-header')).toBeVisible();
 
-  // The console is always porcelain (scoped to its host); the document theme stays riviera.
+  // The console is always porcelain (scoped to its host); the document theme stays dark.
   await expect(page.locator('app-operator-console')).toHaveAttribute('data-riv-theme', 'porcelain');
-  await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
+  await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
 
-  // No horizontal page overflow on a narrow viewport — the pill tab row wraps.
-  const overflow = await page.evaluate(
+  // The tab row scrolls within itself, never wraps or pushes the page wider.
+  const pageOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
-  expect(overflow).toBeLessThanOrEqual(1);
+  expect(pageOverflow).toBeLessThanOrEqual(1);
+
+  // All six pills share one `top` (one row) and the nav overflows horizontally — it scrolls.
+  const tabs = page.getByTestId('oc-tabs');
+  const links = tabs.getByRole('link');
+  const tops = await links.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
+  expect(new Set(tops.map((t) => Math.round(t))).size).toBe(1);
+  const [scrollWidth, clientWidth] = await tabs.evaluate((el) => [el.scrollWidth, el.clientWidth]);
+  expect(scrollWidth).toBeGreaterThan(clientWidth);
+
+  // Switching to a tab further along the row scrolls it into view automatically.
+  await links.filter({ hasText: 'Venue & commodities' }).click();
+  await expect(page).toHaveURL(/\/operator\/1\/venue/);
+  const active = links.filter({ hasText: 'Venue & commodities' });
+  await expect(active).toHaveAttribute('aria-current', 'page');
+  await expect(active).toBeInViewport();
+
+  // Reload on that off-screen tab proves the ON-LOAD path too, not just the click.
+  await page.reload();
+  await expect(page.getByTestId('oc-header')).toBeVisible();
+  const reloadedActive = tabs.getByRole('link').filter({ hasText: 'Venue & commodities' });
+  await expect(reloadedActive).toHaveAttribute('aria-current', 'page');
+  await expect(reloadedActive).toBeInViewport();
+
   await settle(page);
-  await expectNoSeriousAxeViolations(page, 'operator console (narrow, porcelain over riviera)');
+  await expectNoSeriousAxeViolations(page, 'operator console (narrow, single scrolling tab row)');
 });

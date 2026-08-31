@@ -1,6 +1,7 @@
 package ai.riviera.platform.booking;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -188,6 +189,23 @@ class WeatherRefundServiceIT {
 				"first run refunds the confirmed booking");
 		assertEquals(0, refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId), day).refundedCount(),
 				"a re-run refunds nothing already cancelled (idempotent at booking level)");
+	}
+
+	@Test
+	void reachesASameDayBooking() {
+		// AC-11 (#791): a distinct set offset avoids colliding with other same-day fixtures.
+		LocalDate today = LocalDate.now(ZoneId.of("Europe/Tirane"));
+		long venueId = venueWithOnlineSets();
+		List<Long> sets = onlineSets(venueId, 3);
+		Seeded booking = confirmedBooking(venueId, sets.get(2), today, "WXTODAY001", 4500L);
+
+		WeatherRefundOutcome outcome =
+				refundForWeather.refundForWeather(bootstrap(), new VenueId(venueId), today);
+
+		assertEquals(1, outcome.refundedCount(), "the same-day booking is refunded");
+		assertEquals(4500L, outcome.totalRefundedMinor());
+		assertEquals("CANCELLED", status(booking.bookingId()));
+		assertEquals(0, availabilityRows(booking.setId(), today), "the set is freed (invariant #2)");
 	}
 
 	@Test

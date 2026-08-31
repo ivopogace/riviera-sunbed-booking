@@ -1,0 +1,193 @@
+<app-beach-grid-frame [testid]="frameTestid()" [label]="label()">
+  @if (rows().length > 0) {
+    <!-- Tourist-only legend slot (#701): projected between the sea banner and the wash so the colours are decoded BEFORE the tiles are read. The canvas owns the band's spacing, because the two margins it has to cancel — the banner's mb-3.5 and the wash's -mt-3.5 — are its own; :empty makes this wrapper generate no box when nothing is projected, so on the three operator surfaces those two still meet exactly as before. -->
+    <div class="-mx-[18px] -mt-3.5 mb-3.5 empty:hidden" data-testid="legend-band">
+      <ng-content select="[canvasLegend]" />
+    </div>
+    <!-- Fit/100% zoom toggle (#713): absent unless a consumer opts in, floating over the wash's top-right corner per the design artboard. -->
+    @if (zoomControl()) {
+      <div class="relative z-20">
+        <div class="absolute top-2 right-3 flex gap-1">
+          <button
+            appTouchTarget
+            type="button"
+            data-testid="zoom-fit"
+            [attr.aria-pressed]="zoomMode() === 'fit'"
+            (click)="setZoom('fit')"
+            class="rounded-full px-2.5 py-1 text-[10.5px] font-bold"
+            [class]="
+              zoomMode() === 'fit'
+                ? 'bg-[rgba(14,122,137,0.12)] border-[1.5px] border-[#0e7a89] text-[#0a2a33]'
+                : 'bg-white/70 border border-[rgba(12,42,51,0.14)] text-[rgba(12,42,51,0.66)]'
+            "
+          >
+            Fit
+          </button>
+          <button
+            appTouchTarget
+            type="button"
+            data-testid="zoom-100"
+            [attr.aria-pressed]="zoomMode() === 'full'"
+            (click)="setZoom('full')"
+            class="rounded-full px-2.5 py-1 text-[10.5px] font-bold"
+            [class]="
+              zoomMode() === 'full'
+                ? 'bg-[rgba(14,122,137,0.12)] border-[1.5px] border-[#0e7a89] text-[#0a2a33]'
+                : 'bg-white/70 border border-[rgba(12,42,51,0.14)] text-[rgba(12,42,51,0.66)]'
+            "
+          >
+            100%
+          </button>
+        </div>
+      </div>
+    }
+    <!-- The sea→sand wash: aqua at the sea banner fading to warm sand at the promenade, fixed to the viewport of the vertical scroller so "the water is up there" reads at any scroll depth. -->
+    <div
+      #washScroller
+      class="overflow-y-auto overflow-x-hidden max-h-[532px] -mx-[18px] px-[18px] -mt-3.5 pt-3.5 pb-3 bg-[linear-gradient(180deg,var(--riv-map-sea)_0%,var(--riv-map-mid)_55%,var(--riv-map-sand)_100%)]"
+      [class]="scrollbarChrome()"
+      data-riv-scroller
+    >
+      <div class="flex items-start gap-2.5" [style.--riv-map-cols]="mapCols()">
+        <!-- Left rail: row codes. Decorative (aria-hidden) unless the consumer opts into fill buttons (#713); each surface's tile names already carry the row otherwise. While loading the chip carries no text: the placeholder reserves the rail, it never states a row name nobody has fetched (#749, F-3). -->
+        <div
+          class="flex flex-col gap-1.5 shrink-0"
+          [class]="railColumnClass()"
+          [attr.aria-hidden]="rowRailInteractive() ? null : true"
+        >
+          @if (colHeaderInteractive()) {
+            <div class="pb-1.5" aria-hidden="true"><div class="h-11"></div></div>
+          }
+          @for (row of rows(); track row.code; let i = $index) {
+            <span
+              class="h-[var(--riv-tile)] flex items-center justify-start"
+              [class.mt-3]="row.zoneStart && i > 0"
+            >
+              @if (loading()) {
+                <span
+                  class="inline-flex h-6 rounded-lg bg-riv-map-rail-fill"
+                  [class]="railPlaceholderClass()"
+                  data-testid="row-code-placeholder"
+                ></span>
+              } @else if (rowRailInteractive()) {
+                <button
+                  appTouchTarget
+                  type="button"
+                  data-testid="row-code-fill"
+                  [attr.aria-label]="rowRailLabel()?.(i) ?? null"
+                  (mousedown)="onRailDown('row', i, $event)"
+                  (mouseenter)="onRailEnter('row', i, $event)"
+                  (click)="onRailClick('row', i, $event)"
+                  class="inline-flex h-full w-full items-center justify-center rounded-lg bg-riv-map-rail-fill text-[10.5px] font-bold text-riv-map-rail-ink"
+                >
+                  <span [class]="railCodeTextClass()">{{ row.code }}</span>
+                </button>
+              } @else {
+                <span
+                  class="inline-flex items-center justify-center min-w-6 h-6 px-[3px] rounded-lg bg-riv-map-rail-fill text-[10.5px] font-bold text-riv-map-rail-ink"
+                  data-testid="row-code"
+                  ><span [class]="railCodeTextClass()">{{ row.code }}</span></span
+                >
+              }
+            </span>
+          }
+        </div>
+
+        <!-- Center: the pannable tile grid (2D mouse drag — vertical rides the wash scroller when it overflows; touch scrolls natively). The edge fade + inner padding + scroll-pl apply only while the grid actually overflows horizontally (.pannable ← scrollHint()), so a non-overflowing map never fades tile column 1 and a snapped tile rests past the 16px fade, not inside it. -->
+        <div
+          #canvasViewport
+          class="group overflow-x-auto overflow-y-hidden [-webkit-overflow-scrolling:touch] flex-1 min-w-0 select-none snap-x snap-proximity [&.pannable]:scroll-pl-4 [&.pannable]:[mask-image:linear-gradient(90deg,transparent,black_16px,black_calc(100%-16px),transparent)]"
+          [class]="scrollbarChrome()"
+          [style.padding-top.px]="cellLiftHeadroomPx()"
+          [attr.data-testid]="viewportTestid()"
+          data-riv-scroller
+          [class.pannable]="scrollHint()"
+          [class.cursor-grab]="dragPan() && !loading()"
+          [attr.tabindex]="viewportTabindex()"
+          [attr.aria-label]="viewportLabel() || null"
+          [attr.role]="viewportLabel() ? 'region' : null"
+          (mousedown)="onViewportMouseDown($event)"
+          (mousemove)="onViewportMouseMove($event)"
+          (mouseup)="onViewportMouseUp()"
+          (mouseleave)="onViewportMouseUp()"
+          (touchstart)="onViewportTouchStart($event)"
+          (touchmove)="onViewportTouchMove($event)"
+          (touchend)="onViewportTouchEnd()"
+        >
+          <div #rowGrid data-map-grid class="flex flex-col gap-1.5 w-max group-[.pannable]:px-4">
+            <!-- Column-header fill strip (#713): absent unless a consumer opts in; scrolls with the columns beneath it (same horizontal scroll parent) and stays pinned against the vertical wash scroll. -->
+            @if (colHeaderInteractive()) {
+              <div class="sticky top-0 z-10 flex gap-1.5 bg-riv-map-sea/95 pb-1.5">
+                @for (n of colIndexes(); track n) {
+                  <button
+                    appTouchTarget
+                    type="button"
+                    data-testid="col-header-fill"
+                    [attr.aria-label]="colHeaderLabel()?.(n) ?? null"
+                    (mousedown)="onRailDown('col', n, $event)"
+                    (mouseenter)="onRailEnter('col', n, $event)"
+                    (click)="onRailClick('col', n, $event)"
+                    class="h-11 w-[var(--riv-tile)] flex-shrink-0 rounded-lg bg-riv-map-rail-fill text-[10px] font-bold text-riv-map-rail-ink"
+                  >
+                    {{ n + 1 }}
+                  </button>
+                }
+              </div>
+            }
+            @for (row of rows(); track row.code; let i = $index) {
+              <div data-map-row class="h-[var(--riv-tile)]" [class.mt-3]="row.zoneStart && i > 0">
+                <ng-container
+                  *ngTemplateOutlet="rowDef().template; context: { $implicit: row, index: i }"
+                />
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Right rail: the chip, once per zone (aria-hidden; surfaces carry price in tile names where it matters). The tourist map's chip carries what the price buys beside its price — since #724 only the tier or the channel, the two facts the left rail's row name cannot state (#702's venue-words qualifier retired with the derived codes) — so the cell is capped and the chip ellipsizes: past the cap a longer phrase costs the tile viewport (flex-1 min-w-0 — it is what gives, not the shrink-0 rail) nothing. The cap is the design canvas's own rail width, 128px, narrowed below sm where 390px has none to spare. Operator rails render a bare formatMoney string, far under either cap, so they are unchanged. A phrase rail also RESERVES the 92px phone cap in both states (#751), because a column sized from whatever the read returned narrows the tile viewport from the right on every load. -->
+        <div
+          class="flex flex-col gap-1.5 shrink-0"
+          [class]="priceColumnClass()"
+          [attr.data-testid]="loading() ? 'price-col-placeholder' : 'price-col'"
+          aria-hidden="true"
+        >
+          @if (colHeaderInteractive()) {
+            <div class="pb-1.5" aria-hidden="true"><div class="h-11"></div></div>
+          }
+          @for (row of rows(); track row.code; let i = $index) {
+            <span
+              class="h-[var(--riv-tile)] flex items-center justify-end min-w-[52px] max-w-[92px] sm:max-w-[128px]"
+              [class.mt-3]="row.zoneStart && i > 0"
+            >
+              @if (!loading() && row.zoneStart && row.priceLabel; as price) {
+                <span
+                  class="rounded-full bg-riv-map-chip-fill border border-riv-map-chip-border px-2 py-[3px] text-[11px] font-bold text-riv-map-rail-ink shadow-[0_1px_4px_rgba(7,42,58,0.10)] min-w-0 max-w-full truncate"
+                  data-testid="row-price"
+                  >{{ price }}</span
+                >
+              }
+            </span>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Named per surface: on a paint surface "drag" would name the gesture that paints instead. -->
+    <!-- Withheld while loading, and its line deliberately NOT reserved: the rail's width is predictable from the vocabulary, this line's need is not — it depends on whether the map that lands overflows, which the placeholder's own overflow does not answer (a 4 × 6 placeholder overflows a phone that the real map may fit). Reserving it can therefore be wrong in the one direction #744 rules out: the card would SHRINK on load and lift everything below it. Not reserving is only ever wrong downward, which is the direction that slice chose (#749). -->
+    @if (!loading() && (scrollHint() || vScrollHint())) {
+      <p
+        class="text-center text-[12px] font-semibold text-riv-accent-ink mt-3"
+        data-testid="scroll-hint"
+      >
+        {{
+          dragPan()
+            ? 'Drag or swipe to see the whole beach.'
+            : 'Scroll, or drag the scrollbar, to see the whole beach.'
+        }}
+      </p>
+    }
+    <ng-content select="[canvasFooter]" />
+  } @else {
+    <ng-content select="[canvasEmpty]" />
+  }
+</app-beach-grid-frame>

@@ -5,6 +5,7 @@ import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter } from '@ang
 import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
+import { expectCellsFillCanvasRow } from '../../testing/beach-map-height';
 import { defaultBookingDate, todayBookingDate } from '../shared/booking-date';
 import { Pool, SetView, Tier } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
@@ -19,7 +20,8 @@ import { QrScanner } from './qr-scanner';
  * availability grid + the Arrivals list. Drives: the three tile states (FREE / booked-online-locked /
  * staff-marked); tap-to-mark and tap-to-release round-trips with optimistic flip + reconcile; the
  * online-booked lock; the arrivals code chips (display-only, invariant #7); the Tirane default date +
- * reload-on-change; and the mark/release 403/401 failure copy (invariant #13).
+ * reload-on-change; the mark/release 403/401 failure copy (invariant #13); and the zero-set state —
+ * the empty map card, and the availability summary and legend that go with the tiles they describe.
  */
 describe('DailyViewTab (#175)', () => {
   let fixture: ComponentFixture<DailyViewTab>;
@@ -108,6 +110,65 @@ describe('DailyViewTab (#175)', () => {
 
   afterEach(() => http.verify());
 
+  it('announces through one region that survives loading → loaded (#741)', () => {
+    configure();
+    const el = fixture.nativeElement as HTMLElement;
+    const announcer = el.querySelector('[data-testid="load-announcer"]')!;
+    expect(announcer.textContent?.trim()).toBe('Loading the daily view…');
+    // The visible copy is decoration; the announcer alone carries the words.
+    expect(el.querySelector('[data-testid="daily-loading"]')!.getAttribute('aria-hidden')).toBe(
+      'true',
+    );
+
+    flushLoad(SEED, BOOKINGS, STATES);
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(el.querySelector('[data-testid="load-announcer"]')).toBe(announcer);
+    expect(announcer.textContent?.trim()).toBe('Daily view loaded.');
+  });
+
+  it('renders a skeleton mirroring the loaded day while the read is in flight (#744)', () => {
+    configure();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const loading = el.querySelector('[data-testid="daily-loading"]')!;
+    expect(loading.querySelector('[data-testid="daily-skeleton-head"]')).not.toBeNull();
+    expect(loading.querySelectorAll('[data-testid="daily-skeleton-tile"]').length).toBeGreaterThan(
+      0,
+    );
+    const arrivals = loading.querySelector('[data-testid="daily-skeleton-arrivals"]')!;
+    // Four rows from the tab's own constant — not from the map's grid geometry, which is unrelated.
+    expect(arrivals.querySelectorAll('.animate-pulse[class*="h-[42px]"]')).toHaveLength(4);
+    // The sentence the skeleton replaces; a mirrored shape says it without a reflow (#744).
+    expect(loading.textContent).not.toContain('Loading the daily view');
+
+    flushLoad(SEED, BOOKINGS, STATES);
+
+    expect(el.querySelector('[data-testid="daily-loading"]')).toBeNull();
+    expect(el.querySelector('[data-testid="daily-skeleton-tile"]')).toBeNull();
+  });
+
+  it('the daily skeleton is decorative and motion-reduce safe (#744)', () => {
+    configure();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const loading = el.querySelector('[data-testid="daily-loading"]')!;
+    expect(loading.getAttribute('aria-hidden')).toBe('true');
+    expect(loading.getAttribute('aria-live')).toBeNull();
+    // The loaded grid is a tab stop; a focusable node inside aria-hidden is an axe violation.
+    expect(loading.querySelector('[tabindex]')).toBeNull();
+    // `inert` covers what that cannot: an overflowing scroller is focusable with no tabindex at all.
+    expect(loading.hasAttribute('inert')).toBe(true);
+
+    const blocks = loading.querySelectorAll('.animate-pulse');
+    expect(blocks.length).toBeGreaterThan(0);
+    for (const block of blocks) {
+      expect(block.classList.contains('motion-reduce:animate-none')).toBe(true);
+    }
+
+    flushLoad(SEED, BOOKINGS, STATES);
+  });
+
   function byId(id: string): HTMLElement {
     return host.querySelector<HTMLElement>(`[data-testid="${id}"]`)!;
   }
@@ -126,6 +187,38 @@ describe('DailyViewTab (#175)', () => {
     expect(tile(1).tagName).toBe('BUTTON');
     expect(tile(3).tagName).toBe('BUTTON');
     expect(tile(2).tagName).toBe('SPAN');
+  });
+
+  it('shows each set’s position number on its tile, beside the state glyph (#686)', () => {
+    render();
+    // Visible tile text only — the locked tile also carries an sr-only state label.
+    const visible = (setId: number): string =>
+      [...tile(setId).querySelectorAll('[aria-hidden="true"]')]
+        .map((s) => s.textContent?.trim())
+        .join(' ');
+    expect(visible(1)).toBe('1'); // FREE: the number alone — the zone rail carries the price
+    expect(visible(3)).toBe('✓ 3'); // STAFF_MARKED: state glyph + number
+    expect(visible(2)).toBe('● 2'); // BOOKED_ONLINE: state glyph + number
+    expect(visible(4)).toBe('1'); // B1 — the position number, never the set id
+  });
+
+  it('renders a mixed-price row as its min–max span on the zone rail (#689)', () => {
+    // Row A mixes €25 + €30 (a supported state); row B stays uniform at €30.
+    const mixed = SEED.map((s) =>
+      s.rowLabel === 'A' && s.positionNo === 1
+        ? { ...s, price: { minorUnits: 2500, currency: 'EUR' } }
+        : s,
+    );
+    render(mixed);
+    const chips = [...host.querySelectorAll('[data-testid="row-price"]')].map((n) =>
+      n.textContent?.trim(),
+    );
+    expect(chips).toEqual(['€25–€30', '€30']);
+  });
+
+  it('fills the canvas-owned row height with tiles, never a height mechanism of its own (#685)', () => {
+    render();
+    expectCellsFillCanvasRow(host, '[data-testid="daily-tile"]');
   });
 
   it('locks an unpaid online hold — server state wins over the confirmed-bookings list (#207)', () => {
@@ -445,8 +538,8 @@ describe('DailyViewTab (#175)', () => {
   it('reloads and clears optimistic overrides when the date changes', () => {
     render();
     const date = byId('daily-date') as HTMLInputElement;
-    // Tomorrow in Tirane: never equals the preloaded today, so the reload actually fires.
-    date.value = defaultBookingDate(new Date());
+    // A week out: never equals the preloaded today (#791), so the reload actually fires.
+    date.value = defaultBookingDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
     date.dispatchEvent(new Event('change'));
     fixture.detectChanges();
     // A fresh load cycle for the new date; all four sets free that day.
@@ -685,6 +778,228 @@ describe('DailyViewTab (#175)', () => {
 
     expect(host.querySelectorAll('[data-set-id]')).toHaveLength(1);
     expect(tile(9).getAttribute('data-state')).toBe('FREE');
+  });
+
+  it('explains a venue with no sets instead of framing empty space (#718)', () => {
+    render([], [], []);
+    const empty = byId('daily-map-empty');
+    expect(empty).not.toBeNull();
+    expect(empty.textContent).toContain('No beach map for this venue yet');
+    // The operator can fix this state, so the copy ends in the tab that fixes it.
+    expect(empty.querySelector('a')!.getAttribute('href')).toBe('/operator/1/beach-map');
+    // The chrome the tiles were framed by goes with them.
+    expect(host.querySelectorAll('[data-testid="daily-tile"]')).toHaveLength(0);
+    expect(host.querySelector('[data-testid="row-code"]')).toBeNull();
+    expect(host.querySelector('[data-testid="row-price"]')).toBeNull();
+  });
+
+  it('drops the 0-of-0 count and the tile legend when there are no sets (#718)', () => {
+    render([], [], []);
+    // Only the CONTENT branches: a rebuilt aria-live region announces unreliably.
+    const summary = byId('daily-availability');
+    expect(summary.getAttribute('aria-live')).toBe('polite');
+    expect(summary.textContent.replace(/\s+/g, ' ').trim()).toBe('No sets on the map yet');
+    expect(host.querySelector('[aria-label="Legend"]')).toBeNull();
+  });
+
+  it('keeps the count, the legend and no empty state on a populated map (#718)', () => {
+    render();
+    expect(byId('daily-availability').textContent.replace(/\s+/g, ' ').trim()).toBe(
+      '1 walk-in marked · 2 of 4 sets free on Mon 15 Jun 2026',
+    );
+    expect(host.querySelectorAll('[aria-label="Legend"] li')).toHaveLength(3);
+    expect(host.querySelector('[data-testid="daily-map-empty"]')).toBeNull();
+  });
+
+  // ---- The one-tap "close today's online sales now" kill switch (#794) ----
+
+  const PROFILE = {
+    name: 'Miramar',
+    beach: 'Ksamil',
+    region: 'Riviera',
+    description: 'lovely',
+    bookingMode: 'INSTANT',
+    bookingCutoff: '18:00',
+    salesClose: '23:59',
+    commissionBps: 1500,
+    payoutCurrency: 'EUR',
+    amenities: ['WIFI'],
+    distanceToWaterM: 20,
+    version: 7,
+    photos: {
+      cover: { previewUrl: null },
+      sunbeds: { previewUrl: null },
+      bar: { previewUrl: null },
+    },
+  };
+
+  it('closes today via the standing setting after confirm (#794)', () => {
+    render(); // frozen clock: the selected date IS today, sales open (no salesOpen flag = open)
+
+    byId('daily-close-sales').click(); // trigger → inline confirm appears
+    fixture.detectChanges();
+    expect(byId('daily-close-sales-confirm-panel').textContent).toContain(
+      'stays closed for future days',
+    );
+
+    byId('daily-close-sales-confirm').click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/profile'))
+      .flush(PROFILE);
+    const patch = http.expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'));
+    const body = patch.request.body as {
+      salesClose?: string;
+      name?: string;
+      expectedVersion?: number;
+    };
+    expect(body.salesClose).toBe('00:01');
+    expect(body.name).toBe(PROFILE.name); // full replace, faithfully mapped
+    expect(body.expectedVersion).toBe(7);
+    patch.flush(null, { status: 204, statusText: 'No Content' });
+    fixture.detectChanges();
+
+    // Success re-reads the day so salesOpen and the button state reconcile.
+    flushLoad();
+    expect(byId('daily-notice').textContent).toContain('closed');
+  });
+
+  it('renders the static closed line instead of the trigger when today is already closed (#794)', () => {
+    configure();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/bookings'))
+      .flush(BOOKINGS);
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/availability'))
+      .flush(STATES);
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'GET' &&
+          r.url.includes('/api/venues/1') &&
+          !r.url.includes('/bookings') &&
+          !r.url.includes('/availability'),
+      )
+      .flush({
+        id: 1,
+        name: 'V',
+        beach: 'Ksamil',
+        region: 'Riviera',
+        sets: SEED,
+        salesOpen: false,
+      });
+    fixture.detectChanges();
+    host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="daily-close-sales"]')).toBeNull();
+    expect(byId('daily-sales-closed').textContent).toContain('closed');
+    expect(byId('daily-sales-closed').getAttribute('role')).toBe('alert');
+  });
+
+  it('offers no kill switch on a non-today date (#794)', () => {
+    render();
+    const input = byId('daily-date') as HTMLInputElement;
+    input.value = '2026-06-16'; // tomorrow under the frozen Mon 2026-06-15 clock
+    input.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    flushLoad();
+
+    expect(host.querySelector('[data-testid="daily-close-sales"]')).toBeNull();
+    expect(host.querySelector('[data-testid="daily-sales-closed"]')).toBeNull();
+  });
+
+  it('cancel closes the confirm without any write (#794)', () => {
+    render();
+
+    byId('daily-close-sales').click();
+    fixture.detectChanges();
+    expect(byId('daily-close-sales-confirm-panel')).toBeTruthy();
+
+    byId('daily-close-sales-cancel').click();
+    fixture.detectChanges();
+
+    expect(host.querySelector('[data-testid="daily-close-sales-confirm-panel"]')).toBeNull();
+    http.expectNone((r) => r.method === 'PATCH');
+    http.expectNone((r) => r.url.endsWith('/api/venues/1/profile'));
+  });
+
+  it('a lost 409 race says try again and re-reads the day (#794, R-1)', async () => {
+    render();
+
+    byId('daily-close-sales').click();
+    fixture.detectChanges();
+    byId('daily-close-sales-confirm').click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/profile'))
+      .flush(PROFILE);
+    http
+      .expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'))
+      .flush({ code: 'STALE_WRITE' }, { status: 409, statusText: 'Conflict' });
+    fixture.detectChanges();
+
+    flushLoad(); // the failure path also re-reads, so the button reflects server truth
+    expect(byId('daily-notice').textContent?.toLowerCase()).toContain('try again');
+    // The settled-failure leg parks focus on the notice (WCAG 2.4.3 — the confirm is gone).
+    await settleDaily();
+    expect(document.activeElement).toBe(byId('daily-notice'));
+  });
+
+  async function settleDaily(): Promise<void> {
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  it('replaces the trigger with the confirm while the prompt is open (#794)', async () => {
+    render();
+
+    byId('daily-close-sales').click();
+    await settleDaily();
+
+    // One affordance at a time (the payouts weather-refund shape): the trigger is gone.
+    expect(host.querySelector('[data-testid="daily-close-sales"]')).toBeNull();
+    expect(byId('daily-close-sales-confirm-panel')).toBeTruthy();
+  });
+
+  it('moves focus to the confirm button when the close-sales prompt opens (#794)', async () => {
+    render();
+
+    byId('daily-close-sales').click();
+    await settleDaily();
+
+    expect(document.activeElement).toBe(byId('daily-close-sales-confirm'));
+  });
+
+  it('returns focus to the trigger when the operator backs out (#794)', async () => {
+    render();
+
+    byId('daily-close-sales').click();
+    await settleDaily();
+    byId('daily-close-sales-cancel').click();
+    await settleDaily();
+
+    expect(document.activeElement).toBe(byId('daily-close-sales'));
+  });
+
+  it('parks focus on the notice when the close settles (#794)', async () => {
+    render();
+
+    byId('daily-close-sales').click();
+    await settleDaily();
+    byId('daily-close-sales-confirm').click();
+    fixture.detectChanges();
+    http
+      .expectOne((r) => r.method === 'GET' && r.url.endsWith('/api/venues/1/profile'))
+      .flush(PROFILE);
+    http
+      .expectOne((r) => r.method === 'PATCH' && r.url.endsWith('/api/venues/1'))
+      .flush(null, { status: 204, statusText: 'No Content' });
+    fixture.detectChanges();
+    flushLoad();
+    await settleDaily();
+
+    expect(host.querySelector('[data-testid="daily-close-sales-confirm-panel"]')).toBeNull();
+    expect(document.activeElement).toBe(byId('daily-notice'));
   });
 });
 

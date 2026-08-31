@@ -18,3 +18,18 @@ export function apiPhotoUrl(path: string): string {
 export function resolveCoverPhoto(cover: CoverPhotoView | null | undefined): CoverPhotoView | null {
   return cover ? { card: apiPhotoUrl(cover.card), banner: apiPhotoUrl(cover.banner) } : null;
 }
+
+/**
+ * A tourist surface's slideshow photos: the view's `photos` when present, else the chosen cover
+ * surface alone (older payloads/doubles omit `photos` — a compatibility shim), else empty — the
+ * gradient placeholder renders instead. The Discover card picks `card`, the beach-map band `banner`.
+ */
+export function slideshowPhotos(
+  view: { readonly photos?: readonly string[]; readonly coverPhoto?: CoverPhotoView | null },
+  coverSurface: keyof CoverPhotoView,
+): readonly string[] {
+  if (view.photos?.length) {
+    return view.photos;
+  }
+  return view.coverPhoto ? [view.coverPhoto[coverSurface]] : [];
+}

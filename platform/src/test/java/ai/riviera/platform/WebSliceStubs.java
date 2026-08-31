@@ -106,6 +106,7 @@ import ai.riviera.platform.venue.application.EditVenueProfile;
 import ai.riviera.platform.venue.application.LayoutCommand;
 import ai.riviera.platform.venue.application.ListOwnedVenues;
 import ai.riviera.platform.venue.application.OnboardVenue;
+import ai.riviera.platform.venue.application.VenueCreationProperties;
 import ai.riviera.platform.venue.application.PhotoProcessingResult;
 import ai.riviera.platform.venue.application.PhotoSlotView;
 import ai.riviera.platform.venue.application.PhotoUploadResult;
@@ -126,6 +127,12 @@ import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueFilter;
+import ai.riviera.platform.review.api.ReviewEligibility;
+import ai.riviera.platform.review.application.ReviewLifecycle;
+import ai.riviera.platform.review.application.ReviewSubmission;
+import ai.riviera.platform.review.vocabulary.AmendOutcome;
+import ai.riviera.platform.review.vocabulary.ReviewPanel;
+import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueMapView;
 import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
@@ -207,6 +214,11 @@ class WebSliceStubs {
 	@Bean
 	ai.riviera.platform.booking.application.request.WithdrawRequest withdrawRequest() {
 		return _ -> ai.riviera.platform.booking.application.request.WithdrawOutcome.Rejected.NO_SUCH_BOOKING;
+	}
+
+	@Bean
+	ai.riviera.platform.booking.application.cancel.QuoteCancellationTerms quoteCancellationTerms() {
+		return (_, _) -> Optional.empty();
 	}
 
 	@Bean
@@ -306,7 +318,8 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public Optional<String> activeUsername(OperatorId operatorId) {
+			public Optional<String> usernameInStatus(OperatorId operatorId,
+					ai.riviera.platform.operator.vocabulary.OperatorStatus expected) {
 				return Optional.empty();
 			}
 
@@ -648,6 +661,12 @@ class WebSliceStubs {
 			public List<VenueSummaryView> listVenues(VenueFilter filter, LocalDate date) {
 				return List.of();
 			}
+
+			@Override
+			public Optional<List<ai.riviera.platform.venue.vocabulary.DailyAvailability>> availabilityBetween(
+					VenueId id, LocalDate from, LocalDate to) {
+				return Optional.empty();
+			}
 		};
 	}
 
@@ -782,6 +801,11 @@ class WebSliceStubs {
 	}
 
 	@Bean
+	VenueCreationProperties venueCreationProperties() {
+		return new VenueCreationProperties(500);
+	}
+
+	@Bean
 	EditBeachMap editBeachMap() {
 		return new EditBeachMap() {
 			@Override
@@ -808,6 +832,12 @@ class WebSliceStubs {
 			@Override
 			public ChangeOutcome repriceRow(OperatorId operator, VenueId venueId, long expectedVersion,
 					ai.riviera.platform.venue.application.RowPriceCommand command) {
+				return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
+			}
+
+			@Override
+			public ChangeOutcome renameRow(OperatorId operator, VenueId venueId, long expectedVersion,
+					ai.riviera.platform.venue.application.RowNameCommand command) {
 				return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
 			}
 		};
@@ -905,5 +935,37 @@ class WebSliceStubs {
 				return false;
 			}
 		};
+	}
+
+	/**
+	 * The review lifecycle port {@code ReviewController} registers with — inert, so the web slice
+	 * exercises routing, CSRF and the permitAll matcher. {@code ReviewControllerTest} overrides it
+	 * with a {@code @MockitoBean} to drive the real outcomes.
+	 */
+	@Bean
+	ReviewLifecycle reviewLifecycle() {
+		return new ReviewLifecycle() {
+
+			@Override
+			public SubmitOutcome submit(String bookingCode, ReviewSubmission submission) {
+				return new SubmitOutcome.NoSuchStay();
+			}
+
+			@Override
+			public AmendOutcome edit(String bookingCode, ReviewSubmission submission) {
+				return new AmendOutcome.NoSuchStay();
+			}
+
+			@Override
+			public AmendOutcome delete(String bookingCode) {
+				return new AmendOutcome.NoSuchStay();
+			}
+		};
+	}
+
+	/** The eligibility port the code-gated booking read consults for its review panel. */
+	@Bean
+	ReviewEligibility reviewEligibility() {
+		return _ -> new ReviewPanel.NoSuchStay();
 	}
 }

@@ -6,17 +6,19 @@
  * <p>Full-module layout (ADR-0007): it owns an application service
  * ({@code VenueAdminService}), so it takes the full template — {@code api} + {@code spi}
  * + {@code vocabulary} + {@code application} + {@code adapter.in} + {@code adapter.out} (no {@code domain}
- * today). It is the one module that owns a <strong>cross-module dependency inversion</strong>:
- * {@code venue.spi.SetAvailabilityLookup} is declared here and implemented by
- * {@code availability} (which lists {@code venue::api} + {@code venue::spi}), so the beach-map
- * read can overlay live per-{@code (set, date)} availability without venue depending on
- * availability. Cross-module access is via this module's {@code api/} port (inbound) or its
- * {@code spi/} driven port (inverted) — never a reach into its internals.
+ * today). It is the one module that owns <strong>cross-module dependency inversions</strong>:
+ * the driven ports declared in {@code venue.spi} (inventory: that package's Javadoc) are
+ * implemented by {@code availability} and {@code booking} — each of which lists
+ * {@code venue::spi} — so venue's reads and write guards can consult live availability,
+ * booking presence, and the sales-window verdict without venue depending on those modules.
+ * Cross-module access is via this module's {@code api/} port (inbound) or its
+ * {@code spi/} driven ports (inverted) — never a reach into its internals.
  */
 @org.springframework.modulith.ApplicationModule(
     displayName = "Venue",
     // operator::api: VenueAdminService asserts per-venue ownership before a beach-map edit
     // (invariant #13). operator publishes its own VenueRef, so this edge does not cycle.
-    allowedDependencies = { "operator::api", "operator::vocabulary", "shared" }
+    // review::events + ::api: the rating listener re-reads the aggregate review computed; review is a leaf.
+    allowedDependencies = { "operator::api", "operator::vocabulary", "review::api", "review::events", "review::vocabulary", "shared" }
 )
 package ai.riviera.platform.venue;

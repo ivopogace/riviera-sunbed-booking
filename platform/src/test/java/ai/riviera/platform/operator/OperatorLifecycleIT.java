@@ -13,7 +13,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.operator.api.OperatorLifecycle;
-import ai.riviera.platform.operator.domain.OperatorStatus;
+import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
@@ -115,37 +115,40 @@ class OperatorLifecycleIT {
 	}
 
 	/**
-	 * The pre-read that lets the edge revoke an operator's sessions <em>before</em> the suspension
-	 * commits. It must apply exactly the ACTIVE-only rule the rest of the module resolves by — a username
-	 * for a PENDING/REJECTED/SUSPENDED account would revoke sessions for a transition that is then refused.
+	 * The pre-read that lets the edge revoke an operator's sessions <em>before</em> a transition
+	 * commits. The expected-status guard keeps it as precise as the transition it precedes — a
+	 * username for any other status would revoke sessions for a transition that is then refused.
 	 */
 	@Test
-	void activeUsernameResolvesOnlyAnActiveOperator() {
+	void usernameInStatusResolvesOnlyTheExpectedStatus() {
 		OperatorId active = insertOperator("lifecycle-named", OperatorStatus.ACTIVE);
 		OperatorId pending = insertOperator("lifecycle-named-pending", OperatorStatus.PENDING);
 		OperatorId rejected = insertOperator("lifecycle-named-rejected", OperatorStatus.REJECTED);
 		OperatorId suspended = insertOperator("lifecycle-named-suspended", OperatorStatus.SUSPENDED);
 
-		assertEquals(Optional.of("lifecycle-named"), lifecycle.activeUsername(active));
-		assertEquals(Optional.empty(), lifecycle.activeUsername(pending));
-		assertEquals(Optional.empty(), lifecycle.activeUsername(rejected));
-		assertEquals(Optional.empty(), lifecycle.activeUsername(suspended));
-		assertEquals(Optional.empty(), lifecycle.activeUsername(new OperatorId(-1L)));
+		assertEquals(Optional.of("lifecycle-named"), lifecycle.usernameInStatus(active, OperatorStatus.ACTIVE));
+		assertEquals(Optional.of("lifecycle-named-pending"),
+				lifecycle.usernameInStatus(pending, OperatorStatus.PENDING));
+		assertEquals(Optional.empty(), lifecycle.usernameInStatus(pending, OperatorStatus.ACTIVE));
+		assertEquals(Optional.empty(), lifecycle.usernameInStatus(rejected, OperatorStatus.ACTIVE));
+		assertEquals(Optional.empty(), lifecycle.usernameInStatus(suspended, OperatorStatus.ACTIVE));
+		assertEquals(Optional.empty(), lifecycle.usernameInStatus(new OperatorId(-1L), OperatorStatus.ACTIVE));
 	}
 
 	/** The read is pure: naming an operator must not move it, so the suspension after it still applies. */
 	@Test
-	void activeUsernameChangesNothing() {
+	void usernameInStatusChangesNothing() {
 		OperatorId id = insertOperator("lifecycle-named-untouched", OperatorStatus.ACTIVE);
 
-		assertEquals(Optional.of("lifecycle-named-untouched"), lifecycle.activeUsername(id));
+		assertEquals(Optional.of("lifecycle-named-untouched"),
+				lifecycle.usernameInStatus(id, OperatorStatus.ACTIVE));
 		assertEquals(OperatorStatus.ACTIVE.name(), statusOf(id));
 		assertInstanceOf(OperatorLifecycleOutcome.Changed.class, lifecycle.suspend(id));
 	}
 
 	/**
 	 * The approval outcome reports the address the operator registered with, so the edge can mail
-	 * it the "you can sign in now" notice without a second read — the same reasoning that put the
+	 * it the "your venues are now live" notice without a second read — the same reasoning that put the
 	 * username on {@link OperatorLifecycleOutcome.Changed}. The address comes from the
 	 * {@code RETURNING} clause of the PENDING-guarded {@code UPDATE}, which is what ties it to the call
 	 * that actually flipped the row rather than to the id that was asked about.
@@ -174,10 +177,10 @@ class OperatorLifecycleIT {
 	}
 
 	@Test
-	void rejectMovesAPendingOperatorToRejectedAndCarriesNoAddress() {
+	void rejectMovesAPendingOperatorToRejectedAndNamesThePrincipal() {
 		OperatorId id = insertOperator("lifecycle-reject", OperatorStatus.PENDING);
 
-		assertEquals(new ApprovalOutcome.Rejected(), lifecycle.reject(id));
+		assertEquals(new ApprovalOutcome.Rejected("lifecycle-reject"), lifecycle.reject(id));
 		assertEquals(new ApprovalOutcome.NotPending(), lifecycle.reject(id));
 		assertEquals(OperatorStatus.REJECTED.name(), statusOf(id));
 	}

@@ -1,13 +1,28 @@
-import { Component, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { EMPTY, Observable, catchError, defer, from, mergeMap, tap } from 'rxjs';
+import { EMPTY, Observable, catchError, defer, finalize, from, mergeMap, tap } from 'rxjs';
 
 import { CustomerAuth } from '../core/customer-auth';
 import { DeviceLocalBookings } from '../core/device-local-bookings';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { amountLabelFor, metaFor } from '../shared/booking-status';
+import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { focusMover } from '../shared/focus-after-render';
+import { LoadAnnouncer } from '../shared/load-announcer';
+import { SkeletonBlock } from '../shared/skeleton-block';
 import { formatDeadline } from '../shared/deadline';
 import { formatMoney } from '../shared/money';
 import { StatusChip } from '../shared/status-chip';
@@ -163,120 +178,196 @@ function isNotFound(error: unknown): boolean {
  * #6). On a `404` a device-local row is dropped from view but the code is kept (invariant #7 — a 404
  * can be transient); a transient/offline failure shows Retry. Codes are treated as secrets — never logged.
  */
+/** The card-glass row chrome (v4 translate utilities animate `translate`, so the transition lists it). */
+const ROW =
+  'flex w-full items-center gap-3.5 rounded-[22px] px-[18px] py-4 shadow-[0_10px_30px_rgba(7,42,58,0.22),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[24px] backdrop-saturate-[1.7] [transition:translate_0.15s_ease,box-shadow_0.15s_ease] hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(7,42,58,0.3),inset_0_1px_0_rgba(255,255,255,0.9)] motion-reduce:transition-none motion-reduce:hover:translate-y-0';
+const SKELETON = 'skeleton block rounded-[6px] bg-riv-card-track';
+const EMPTY_CARD =
+  'rounded-[28px] px-[30px] py-10 text-center shadow-[0_14px_44px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.8)] backdrop-blur-[26px] backdrop-saturate-[1.7]';
+
+/** The `[appBusy]` control's own aria-disabled skin (`shared/busy-action.ts`), shared by both retry buttons. */
+const BUSY_SKIN = 'aria-disabled:cursor-not-allowed aria-disabled:opacity-60';
+const CTA =
+  'inline-flex min-h-11 cursor-pointer items-center rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) px-[26px] py-[13px] text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white';
+
+/** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
+const CLS = {
+  row: `${ROW} focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink`,
+  rowPlaceholder: `${ROW} justify-between`,
+  rowMain: 'flex min-w-0 flex-1 flex-col gap-[3px]',
+  meta: 'text-[13px] text-riv-card-ink-soft',
+  skeletonLine: `${SKELETON} h-[12px] w-3/5`,
+  skeletonLineShort: `${SKELETON} mt-2 h-[10px] w-[35%]`,
+  emptyCard: EMPTY_CARD,
+  emptyLead: 'mb-5 text-[14.5px] leading-[1.5] text-riv-card-ink-soft',
+  cta: CTA,
+  ctaBusy: `${CTA} ${BUSY_SKIN}`,
+  rowRetry: `shrink-0 cursor-pointer rounded-[14px] border-[1.5px] border-[rgba(255,255,255,0.7)] bg-[#f4f6f7] px-3.5 py-2 text-[13px] font-semibold text-riv-solid-btn-ink [transition:background_0.15s_ease] hover:bg-[#e7ebec] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink motion-reduce:transition-none ${BUSY_SKIN}`,
+} as const;
+
 @Component({
   selector: 'app-my-bookings',
-  imports: [RouterLink, CardGlass, StatusChip, BookingQr, TouchTarget],
+  imports: [
+    RouterLink,
+    BusyAction,
+    CardGlass,
+    LoadAnnouncer,
+    SkeletonBlock,
+    StatusChip,
+    BookingQr,
+    TouchTarget,
+  ],
   template: `
-    <section class="my-bookings" aria-labelledby="mb-title">
-      <a routerLink="/" class="back-link">← All beaches</a>
-      <h1 id="mb-title">Your bookings</h1>
+    <section class="mx-auto w-full max-w-[560px] px-5 pt-6 pb-20" aria-labelledby="mb-title">
+      <a
+        routerLink="/"
+        class="mb-3.5 inline-flex min-h-11 items-center text-[14px] font-semibold text-riv-accent-ink hover:underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
+        >← All beaches</a
+      >
+      <h1
+        class="mb-[18px] text-[clamp(28px,4vw,34px)] font-bold tracking-[-0.02em]"
+        id="mb-title"
+        data-testid="mb-title"
+      >
+        Your bookings
+      </h1>
 
-      @if (loading()) {
-        <div class="rows" aria-busy="true" data-testid="my-bookings-loading">
-          <div class="row row--loading" appCardGlass>
-            <span class="row-main">
-              <span class="skeleton skeleton-line"></span>
-              <span class="skeleton skeleton-line short"></span>
+      <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
+      <app-load-announcer
+        [loading]="showSkeleton()"
+        [ready]="announceReady()"
+        loadingLabel="Loading your bookings…"
+        readyLabel="Your bookings loaded."
+      />
+
+      @if (showSkeleton()) {
+        <!-- Wholly decorative skeleton — the announcer above owns the words (#741). -->
+        <div aria-hidden="true" data-testid="my-bookings-loading">
+          <div [class]="cls.rowPlaceholder" appCardGlass>
+            <span [class]="cls.rowMain">
+              <span appSkeletonBlock [class]="cls.skeletonLine"></span>
+              <span appSkeletonBlock [class]="cls.skeletonLineShort"></span>
             </span>
           </div>
         </div>
       } @else if (rows().length === 0 && !accountError()) {
         <section
-          class="empty-card"
+          [class]="cls.emptyCard"
           appCardGlass
           aria-labelledby="mb-empty-title"
           data-testid="my-bookings-empty"
         >
-          <h2 id="mb-empty-title">No booking yet</h2>
-          <p class="empty-lead">
+          <h2 class="mb-2 text-[26px] font-bold tracking-[-0.02em]" id="mb-empty-title">
+            No booking yet
+          </h2>
+          <p [class]="cls.emptyLead">
             Pick a beach, choose your exact set on the map, and your booking code will live here.
           </p>
-          <a routerLink="/" class="btn-cta" data-testid="browse-beaches">Browse beaches</a>
+          <a routerLink="/" [class]="cls.cta" data-testid="browse-beaches">Browse beaches</a>
         </section>
       } @else {
         @if (accountError()) {
-          <section class="empty-card" appCardGlass role="status" data-testid="account-error">
-            <p class="empty-lead">
+          <section [class]="cls.emptyCard" appCardGlass role="alert" data-testid="account-error">
+            <p [class]="cls.emptyLead">
               We couldn’t load your account bookings just now — any made on other devices may be
               missing.
             </p>
             <button
               appTouchTarget
               type="button"
-              class="btn-cta"
+              [class]="cls.ctaBusy"
+              [appBusy]="accountPending()"
               (click)="retryAccount()"
               data-testid="account-retry"
             >
-              Retry
+              {{ accountPending() ? 'Retrying…' : 'Retry' }}
             </button>
           </section>
         }
-        <ul class="rows" role="list">
+        @if (anyRowFailed()) {
+          <!-- Page-level, once — never per row: role="alert" announces on insertion (#745). -->
+          <p
+            class="mb-3 rounded-xl bg-[#f6e8e7] px-3.5 py-[11px] text-[13px] font-semibold text-[#a3160e]"
+            role="alert"
+            data-testid="rows-failed-alert"
+          >
+            Some bookings couldn’t load. Retry the ones marked below.
+          </p>
+        }
+        <ul class="flex flex-col gap-3" role="list">
           @for (row of rows(); track row.code) {
-            <li>
+            <li [attr.data-row-code]="row.code">
               @switch (row.state) {
                 @case ('loaded') {
                   <a
                     [routerLink]="['/booking', row.view.code]"
-                    class="row"
+                    [class]="cls.row"
                     appCardGlass
                     data-testid="booking-row"
                   >
-                    <span class="row-main">
-                      <span class="venue">{{ row.view.venueName }}</span>
-                      <span class="meta">{{ row.view.setLabel }}</span>
-                      <span class="meta">{{ row.view.dateLabel }}</span>
+                    <span [class]="cls.rowMain">
+                      <span class="text-[16px] font-bold">{{ row.view.venueName }}</span>
+                      <span [class]="cls.meta">{{ row.view.setLabel }}</span>
+                      <span [class]="cls.meta">{{ row.view.dateLabel }}</span>
                       @if (row.view.subLine) {
-                        <span class="subline" data-testid="row-subline">{{
-                          row.view.subLine
-                        }}</span>
+                        <span
+                          class="text-[12px] font-semibold text-riv-card-ink-soft"
+                          data-testid="row-subline"
+                          >{{ row.view.subLine }}</span
+                        >
                       }
-                      <span class="code">{{ row.view.code }}</span>
+                      <span
+                        class="code mt-[2px] text-[12px] font-bold tracking-[0.08em] text-riv-accent-ink"
+                        >{{ row.view.code }}</span
+                      >
                       @if (row.view.showQr) {
                         <app-booking-qr class="mt-2" [code]="row.view.code" [size]="104" />
                       }
                     </span>
-                    <span class="row-side">
+                    <span class="flex shrink-0 flex-col items-end gap-1.5">
                       <!-- Status conveyed in text (the chip label), never colour alone (WCAG AA). -->
                       <span [appStatusChip]="row.view.chipClass" data-testid="row-status">{{
                         row.view.statusLabel
                       }}</span>
-                      <span class="amount-wrap">
-                        <span class="amount-label" data-testid="row-amount-label">{{
-                          row.view.amountLabel
-                        }}</span>
-                        <span class="amount">{{ row.view.amountStr }}</span>
+                      <span class="flex flex-col items-end gap-[1px]">
+                        <span
+                          class="text-[10px] font-bold tracking-[0.08em] uppercase text-riv-card-ink-soft"
+                          data-testid="row-amount-label"
+                          >{{ row.view.amountLabel }}</span
+                        >
+                        <span class="text-[13.5px] font-bold">{{ row.view.amountStr }}</span>
                       </span>
                     </span>
                   </a>
                 }
                 @case ('failed') {
-                  <div class="row row--failed" appCardGlass data-testid="booking-row-failed">
-                    <span class="row-main">
-                      <span class="venue">Couldn’t load this booking</span>
-                      <span class="meta">Check your connection and try again.</span>
+                  <div [class]="cls.rowPlaceholder" appCardGlass data-testid="booking-row-failed">
+                    <span [class]="cls.rowMain">
+                      <span class="text-[16px] font-bold">Couldn’t load this booking</span>
+                      <span [class]="cls.meta">Check your connection and try again.</span>
                     </span>
                     <button
                       appTouchTarget
                       type="button"
-                      class="btn-retry"
+                      [class]="cls.rowRetry"
+                      [appBusy]="retryingCodes().has(row.code)"
                       (click)="retry(row.code)"
                       data-testid="row-retry"
                     >
-                      Retry
+                      {{ retryingCodes().has(row.code) ? 'Retrying…' : 'Retry' }}
                     </button>
                   </div>
                 }
                 @default {
                   <div
-                    class="row row--loading"
+                    [class]="cls.rowPlaceholder"
                     appCardGlass
                     aria-busy="true"
                     data-testid="booking-row-loading"
                   >
-                    <span class="row-main">
-                      <span class="skeleton skeleton-line"></span>
-                      <span class="skeleton skeleton-line short"></span>
+                    <span [class]="cls.rowMain">
+                      <span appSkeletonBlock [class]="cls.skeletonLine"></span>
+                      <span appSkeletonBlock [class]="cls.skeletonLineShort"></span>
                     </span>
                   </div>
                 }
@@ -287,9 +378,11 @@ function isNotFound(error: unknown): boolean {
       }
     </section>
   `,
-  styleUrl: './my-bookings.scss',
+  host: { class: 'block text-riv-card-ink' },
 })
 export class MyBookings {
+  protected readonly cls = CLS;
+
   private readonly store = inject(DeviceLocalBookings);
   private readonly bookings = inject(BookingService);
   private readonly auth = inject(CustomerAuth);
@@ -298,14 +391,75 @@ export class MyBookings {
   protected readonly rows = signal<readonly Row[]>([]);
   /**
    * True until the initial list is decided (the session restore has settled AND the first rows are
-   * set). Gates the empty card so a signed-in account fetch in flight never flashes "No booking yet".
+   * set). It is cleared as soon as the DEVICE rows render, so it cannot gate the empty card on its
+   * own; {@link showSkeleton} is what does, by keeping the skeleton up while a signed-in account
+   * fetch is still out and there is nothing else to draw.
    */
-  protected readonly loading = signal(true);
+  private readonly loading = signal(true);
   /**
    * The account list (signed-in) failed to load — surface a Retry rather than silently hiding the
    * account bookings behind the device-local ones.
    */
   protected readonly accountError = signal(false);
+
+  /**
+   * The account list is out. Distinct from {@link loading}, which the device rows clear the moment
+   * they render — so without this there is a window where nothing is "loading" and nothing has
+   * failed yet, and the announcer would call that loaded. Never true for a guest:
+   * {@link loadAccount} is the only writer. Read by {@link showSkeleton} and {@link announceReady},
+   * and by the template — it drives the `account-retry` button's `[appBusy]` state (RV-FE-9).
+   */
+  protected readonly accountPending = signal(false);
+
+  /**
+   * Nothing to draw yet, so the page-level skeleton stands in — and the same signal is the
+   * announcer's `loading`, so what is drawn and what is announced cannot disagree. Deliberately
+   * NOT just {@link loading}: that is cleared the moment the device rows render, which for a
+   * signed-in customer whose bookings all live on the server leaves zero rows and no skeleton
+   * for the whole account round trip.
+   *
+   * <p>Per-code rows resolving behind their own row skeletons are NOT this signal's business —
+   * the page has something to draw then. {@link announceReady} is what withholds the
+   * announcement until they settle.
+   */
+  protected readonly showSkeleton = computed(
+    () => this.loading() || (this.accountPending() && this.rows().length === 0),
+  );
+
+  /**
+   * Every page-level read has settled **and produced a booking, or none**. Rows must be `'loaded'`,
+   * not merely "not loading": a `'failed'` row renders a "Couldn't load this booking" retry card,
+   * and announcing success over it is the same lie the `ready` polarity exists to prevent.
+   *
+   * <p>That is also what keeps the announcement single. A per-row Retry leaves its row `'failed'`
+   * for the whole round trip ({@link retry} — the button only exists inside that case), so this
+   * stays false throughout; a failed row means the page never announced in the first place. So the
+   * sequence a guest hears is silence → "loaded", never "loaded" → silence → "loaded".
+   */
+  protected readonly announceReady = computed(
+    () =>
+      !this.loading() &&
+      !this.accountPending() &&
+      !this.accountError() &&
+      this.rows().every((row) => row.state === 'loaded'),
+  );
+  /**
+   * At least one row failed a per-code lookup — the page-level `role="alert"` panel's gate. Kept
+   * separate from a per-row alert (reverted in PR #743: assertive, one interruption per failure,
+   * and `@for … track`'s detach+insert re-sort re-announces an unchanged one) so a failure is
+   * announced exactly once, by an element the row re-sort never touches.
+   */
+  protected readonly anyRowFailed = computed(() => this.rows().some((r) => r.state === 'failed'));
+
+  /**
+   * Codes a manual {@link retry} currently has in flight — the `row-retry` button's `[appBusy]`
+   * gate (RV-FE-9). Kept separate from the row's own `'loading'` state so a manual retry can stay
+   * on the SAME `'failed'` DOM node for its whole round trip: `@switch (row.state)` never swaps the
+   * subtree, so the just-pressed button is never destroyed and never strands keyboard focus on
+   * `<body>` (WCAG 2.4.3) while the request is out.
+   */
+  protected readonly retryingCodes = signal<ReadonlySet<string>>(new Set());
+
   /**
    * Codes the account list has already answered for. Consulted when a queued per-code lookup
    * is DEQUEUED — never as a barrier, so device rows are still issued immediately.
@@ -313,6 +467,11 @@ export class MyBookings {
   private readonly accountResolved = new Set<string>();
   /** Each code's first-seen position — the {@link inDisplayOrder} tie-break for same-date rows. */
   private readonly displayRank = new Map<string, number>();
+
+  private readonly hostEl = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+  /** Moves focus to the page heading once the account-error card it was on is torn down. */
+  private readonly focusAfterAccountRetry = focusMover();
 
   constructor() {
     // Kick the load once the session restore has settled — signed-in vs guest is only known then.
@@ -371,9 +530,16 @@ export class MyBookings {
    *
    * <p>Each returned code is also recorded as account-resolved, so a device code still sitting
    * in the fetch queue is answered from here instead of costing a second request for the same booking.
+   *
+   * <p>Deliberately does NOT clear {@link accountError} up front: a {@link retryAccount} call finds
+   * it already `true`, and clearing it here would tear the `account-error` card — and the focused
+   * `account-retry` button inside it — down before the request even lands (WCAG 2.4.3). It stays up,
+   * busy (`[appBusy]="accountPending()"`), for the whole round trip; only a genuine success clears
+   * it, and only then does focus move on, deliberately, to the page heading.
    */
   private loadAccount(): void {
-    this.accountError.set(false);
+    const wasErrored = this.accountError();
+    this.accountPending.set(true);
     this.bookings
       .myBookings()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -388,8 +554,16 @@ export class MyBookings {
               bookingDate: b.bookingDate,
             })),
           );
+          this.accountError.set(false);
+          this.accountPending.set(false);
+          if (wasErrored) {
+            this.focusAfterAccountRetry('mb-title');
+          }
         },
-        error: () => this.accountError.set(true),
+        error: () => {
+          this.accountError.set(true);
+          this.accountPending.set(false);
+        },
       });
   }
 
@@ -422,14 +596,41 @@ export class MyBookings {
     this.loadAccount();
   }
 
+  /**
+   * A manual retry bypasses the queue — the user asked for this one now. Deliberately does NOT
+   * route through {@link fetch}: that flips the row straight to `'loading'`, which under
+   * `@switch (row.state)` destroys the just-pressed `row-retry` button and strands focus on
+   * `<body>` (WCAG 2.4.3, RV-FE-9). The row instead stays `'failed'` — same DOM node, so focus
+   * stays put on its own — for the whole round trip; only {@link retryingCodes} moves, driving the
+   * button's `[appBusy]` state. Settling destroys that node only on success (→ `'loaded'`) or a 404
+   * (row dropped), so only those two legs move focus deliberately, to whatever now occupies the row
+   * or, failing that, the page heading.
+   */
   protected retry(code: string): void {
-    // A manual retry bypasses the queue — the user asked for this one now.
-    this.fetch(code).pipe(takeUntilDestroyed(this.destroyRef)).subscribe();
+    this.retryingCodes.update((codes) => new Set(codes).add(code));
+    this.settle(code)
+      .pipe(
+        finalize(() => {
+          this.retryingCodes.update((codes) => {
+            const next = new Set(codes);
+            next.delete(code);
+            return next;
+          });
+          this.moveFocusAfterRetry(code);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe();
   }
 
-  /** The per-code lookup and its row transitions, shared by the queue and the manual Retry. */
+  /** The queue's own fetch: renders the row 'loading' immediately, then {@link settle}s it. */
   private fetch(code: string): Observable<unknown> {
     this.setRow({ code, state: 'loading' });
+    return this.settle(code);
+  }
+
+  /** The per-code lookup's outcome, shared by the queue and the manual {@link retry}. */
+  private settle(code: string): Observable<unknown> {
     return this.bookings.getByCode(code).pipe(
       tap((detail) =>
         this.setRow({
@@ -453,6 +654,34 @@ export class MyBookings {
         }
         return EMPTY;
       }),
+    );
+  }
+
+  /**
+   * A manual retry's settled leg: the row it was on may now be `'loaded'` (destroying the pressed
+   * button), still `'failed'` (same node — nothing to move), or gone entirely (a 404). Lands on
+   * whatever now occupies the row, else the page heading — never nothing (WCAG 2.4.3). `code` is
+   * base32 (invariant #7), so interpolating it into the attribute selector is safe as-is.
+   */
+  private moveFocusAfterRetry(code: string): void {
+    afterNextRender(
+      {
+        // Read before write (angular.dev's afterNextRender guidance), matching focusMover()'s shape.
+        earlyRead: () =>
+          this.hostEl.nativeElement.querySelector<HTMLElement>(
+            `[data-row-code="${code}"] [data-testid="booking-row"], [data-row-code="${code}"] [data-testid="row-retry"]`,
+          ) ?? this.hostEl.nativeElement.querySelector<HTMLElement>('[data-testid="mb-title"]'),
+        write: (target) => {
+          if (!target) {
+            return;
+          }
+          if (target.tabIndex < 0 && !target.hasAttribute('tabindex')) {
+            target.tabIndex = -1;
+          }
+          target.focus();
+        },
+      },
+      { injector: this.injector },
     );
   }
 

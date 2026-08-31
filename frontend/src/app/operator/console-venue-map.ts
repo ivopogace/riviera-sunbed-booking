@@ -38,8 +38,8 @@ const SNAPSHOT_TTL_MS = 30_000;
  * write.
  *
  * <p><strong>Invalidation is the sharp edge.</strong> {@link reset} is called on sign-out and after
- * every successful write to the map — a layout save, a row reprice, and each per-set add / edit /
- * move / remove — or the tabs would render retired sets and stale prices. It is also called *before*
+ * every successful write to the map — a layout save, a row reprice, a row rename, and each per-set
+ * add / edit / move / remove — or the tabs would render retired sets and stale prices. It is also called *before*
  * the two `409 STALE_WRITE` recovery reads: serving that read from the snapshot whose `setVersion`
  * lost the race would make the conflict unrecoverable.
  *

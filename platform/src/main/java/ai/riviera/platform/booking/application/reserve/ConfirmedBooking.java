@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking.application.reserve;
 
+import java.time.Instant;
 import java.time.LocalDate;
 
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -14,5 +15,5 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * minor units + ISO currency (invariant #5).
  */
 public record ConfirmedBooking(long id, VenueId venueId, SetId setId, LocalDate bookingDate,
-		long amountMinor, String currency) {
+		Instant createdAt, long amountMinor, String currency) {
 }

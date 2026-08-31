@@ -96,12 +96,20 @@ class EndpointRoleGateCoverageTest {
 			"GET /api/venues",
 			"GET /api/venues/{venueId}",
 			"GET /api/venues/{venueId}/photos/{hash}",
+			// permitAll — the map read's public availability, for a window of days (#760).
+			"GET /api/venues/{venueId}/availability-calendar",
 			// permitAll — guest checkout is deliberately session-free; the booking code authorizes
 			// the read, the cancel and the request-withdraw (invariant #7).
 			"POST /api/bookings",
 			"GET /api/bookings/{code}",
 			"POST /api/bookings/{code}/cancel",
 			"POST /api/bookings/{code}/withdraw",
+			// permitAll — the code is the credential for rating the stay and amending it (invariant #7).
+			"POST /api/bookings/{code}/review",
+			"PUT /api/bookings/{code}/review",
+			"DELETE /api/bookings/{code}/review",
+			// permitAll via the one-segment GET matcher — a public tourist read (#795).
+			"GET /api/bookings/cancellation-terms",
 			// permitAll — server-to-server, authenticated by its Stripe signature header (invariant #8).
 			"POST /api/payments/stripe/webhook",
 			// The ONE deliberate fall-through to anyRequest().authenticated(): the reload-restore read

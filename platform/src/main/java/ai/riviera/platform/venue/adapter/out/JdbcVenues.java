@@ -6,11 +6,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -26,12 +28,14 @@ import ai.riviera.platform.venue.application.NewVenueCommand;
 import ai.riviera.platform.venue.application.OwnedVenueView;
 import ai.riviera.platform.venue.application.PhotoServingUrls;
 import ai.riviera.platform.venue.application.PhotoSlotView;
+import ai.riviera.platform.venue.application.RowNameCommand;
 import ai.riviera.platform.venue.application.RowPriceCommand;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetPlacement;
 import ai.riviera.platform.venue.application.VenueCommissionView;
 import ai.riviera.platform.venue.application.VenueProfileCommand;
 import ai.riviera.platform.venue.application.VenueProfileView;
+import ai.riviera.platform.venue.application.VenueRatings;
 import ai.riviera.platform.venue.application.Venues;
 
 /**
@@ -44,21 +48,26 @@ import ai.riviera.platform.venue.application.Venues;
  * <p>One adapter serves both ports because both write the {@code venue} row: the ports are split by
  * the conversation their callers are having (an owner editing their venue vs the platform setting a
  * commercial term), not by table, and {@link #updateLiveRate} and {@link #updateVenueProfile} write
- * columns of the same row.
+ * columns of the same row. {@link VenueRatings} joins them on the same argument: the recompute writes
+ * two more columns of that row, and the aggregate it stores is a third such conversation — the
+ * platform's, on {@code review}'s behalf.
  */
 @Repository
-class JdbcVenues implements Venues, CommissionRateStore {
+class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 
 	/** Named-parameter keys reused across the set queries (must match the {@code :name} SQL refs). */
 	private static final String P_SET_ID = "setId";
 	private static final String P_VENUE = "venue";
 	private static final String P_ROW_LABEL = "rowLabel";
+	private static final String P_NEW_LABEL = "newLabel";
 	/** Venue text-column / bind-param names, reused across insert / profile-update / profile-read
 	 *  (named once — Sonar S1192; mirrors JdbcVenueCatalog's COL_* constants). */
 	private static final String COL_NAME = "name";
 	private static final String COL_BEACH = "beach";
 	private static final String COL_REGION = "region";
 	private static final String COL_DESCRIPTION = "description";
+	/** Bind-param name for the venue's {@code sales_close} column, shared by insert + profile update. */
+	private static final String P_SALES_CLOSE = "salesClose";
 	/**
 	 * The date a venue's first rate change pins its previous rate at. It predates the
 	 * platform, so once a venue has changed rate every service date it could have sold on is covered,
@@ -86,11 +95,11 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	}
 
 	@Override
-	public long insertVenue(NewVenueCommand c) {
+	public long insertVenue(NewVenueCommand c, int commissionBps) {
 		return jdbc.sql("""
 				INSERT INTO venue (name, beach, region, description, booking_mode,
-				                   commission_bps, payout_currency, booking_cutoff)
-				VALUES (:name, :beach, :region, :description, :mode, :bps, :currency, :cutoff)
+				                   commission_bps, payout_currency, booking_cutoff, sales_close)
+				VALUES (:name, :beach, :region, :description, :mode, :bps, :currency, :cutoff, :salesClose)
 				RETURNING id
 				""")
 				.param(COL_NAME, c.name())
@@ -98,9 +107,10 @@ class JdbcVenues implements Venues, CommissionRateStore {
 				.param(COL_REGION, c.region())
 				.param(COL_DESCRIPTION, c.description())
 				.param("mode", c.bookingMode())
-				.param("bps", c.commissionBps())
+				.param("bps", commissionBps)
 				.param("currency", c.payoutCurrency())
 				.param("cutoff", c.bookingCutoff())
+				.param(P_SALES_CLOSE, c.salesClose().time())
 				.query(Long.class)
 				.single();
 	}
@@ -298,6 +308,28 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	}
 
 	@Override
+	public Set<String> distinctRowLabels(VenueId venueId) {
+		return Set.copyOf(jdbc.sql("SELECT DISTINCT row_label FROM set_position WHERE venue_id = :venue")
+				.param(P_VENUE, venueId.value())
+				.query(String.class)
+				.list());
+	}
+
+	@Override
+	public int renameRow(VenueId venueId, RowNameCommand c) {
+		// Display-only: only row_label is written, so identity/pool/price/holds survive. 0 ⇒ unknown row.
+		return jdbc.sql("""
+				UPDATE set_position
+				SET row_label = :newLabel
+				WHERE venue_id = :venue AND row_label = :rowLabel
+				""")
+				.param(P_NEW_LABEL, c.newLabel())
+				.param(P_VENUE, venueId.value())
+				.param(P_ROW_LABEL, c.rowLabel())
+				.update();
+	}
+
+	@Override
 	public List<SetId> setIdsOf(VenueId venueId) {
 		return jdbc.sql("SELECT id FROM set_position WHERE venue_id = :venue ORDER BY id")
 				.param(P_VENUE, venueId.value())
@@ -362,8 +394,8 @@ class JdbcVenues implements Venues, CommissionRateStore {
 		int rows = jdbc.sql("""
 				UPDATE venue
 				SET name = :name, beach = :beach, region = :region, description = :description,
-				    booking_mode = :mode, booking_cutoff = :cutoff, distance_to_water_m = :distance,
-				    version = version + 1
+				    booking_mode = :mode, booking_cutoff = :cutoff, sales_close = :salesClose,
+				    distance_to_water_m = :distance, version = version + 1
 				WHERE id = :id AND version = :version
 				""")
 				.param(COL_NAME, command.name())
@@ -372,6 +404,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 				.param(COL_DESCRIPTION, command.description())
 				.param("mode", command.bookingMode())
 				.param("cutoff", command.bookingCutoff())
+				.param(P_SALES_CLOSE, command.salesClose().time())
 				.param("distance", command.distanceToWaterM())
 				.param("id", venueId.value())
 				.param("version", expectedVersion)
@@ -412,7 +445,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 		// currency. Two reads inside the caller's read-only tx — the venue row, then its amenity set
 		// (catalogue-ordered) — mirroring findVenueMap's shape. Ownership is asserted by the caller.
 		Optional<ProfileRow> venue = jdbc.sql("""
-				SELECT name, beach, region, description, booking_mode, booking_cutoff,
+				SELECT name, beach, region, description, booking_mode, booking_cutoff, sales_close,
 				       commission_bps, payout_currency, distance_to_water_m, version
 				FROM venue
 				WHERE id = :id
@@ -423,6 +456,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 						rs.getString(COL_DESCRIPTION),
 						BookingMode.valueOf(rs.getString("booking_mode")),
 						rs.getObject("booking_cutoff", LocalTime.class),
+						rs.getObject("sales_close", LocalTime.class),
 						rs.getInt("commission_bps"), rs.getString("payout_currency"),
 						rs.getObject("distance_to_water_m", Integer.class),
 						rs.getLong("version")))
@@ -438,7 +472,7 @@ class JdbcVenues implements Venues, CommissionRateStore {
 				.sorted() // enum natural order == canonical catalogue order (as findVenueMap)
 				.toList();
 		return Optional.of(new VenueProfileView(v.name(), v.beach(), v.region(), v.description(),
-				v.bookingMode(), v.bookingCutoff(), v.commissionBps(), v.payoutCurrency(),
+				v.bookingMode(), v.bookingCutoff(), v.salesClose(), v.commissionBps(), v.payoutCurrency(),
 				amenities, v.distanceToWaterM(), v.version(), slotPhotos(venueId)));
 	}
 
@@ -469,8 +503,8 @@ class JdbcVenues implements Venues, CommissionRateStore {
 
 	/** The venue row backing a {@link VenueProfileView}, before its amenity set is folded in. */
 	private record ProfileRow(String name, String beach, String region, String description,
-			BookingMode bookingMode, LocalTime bookingCutoff, int commissionBps, String payoutCurrency,
-			Integer distanceToWaterM, long version) {
+			BookingMode bookingMode, LocalTime bookingCutoff, LocalTime salesClose, int commissionBps,
+			String payoutCurrency, Integer distanceToWaterM, long version) {
 	}
 
 	private static Map<String, Object> setParams(SetCommand c) {
@@ -481,5 +515,29 @@ class JdbcVenues implements Venues, CommissionRateStore {
 	}
 
 	private record ConflictRow(boolean positionTaken, boolean cellTaken) {
+	}
+
+	@Override
+	public void lockForRecompute(VenueId venue) {
+		if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+			throw new IllegalStateException(
+					"lockForRecompute needs an active transaction — outside one the lock is released "
+							+ "at once and the recompute silently degrades to a read-then-write race");
+		}
+		// NO KEY UPDATE self-conflicts, so recomputes serialize, without blocking this row's FK inserts.
+		jdbc.sql("SELECT id FROM venue WHERE id = :id FOR NO KEY UPDATE")
+				.param("id", venue.value())
+				.query(Long.class)
+				.optional();
+	}
+
+	@Override
+	public void store(VenueId venue, int ratingTenths, int reviewsCount) {
+		jdbc.sql("""
+				UPDATE venue SET rating_tenths = :tenths, reviews_count = :count WHERE id = :id
+				""")
+				.param("tenths", ratingTenths).param("count", reviewsCount)
+				.param("id", venue.value())
+				.update();
 	}
 }

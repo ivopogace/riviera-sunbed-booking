@@ -16,8 +16,9 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
  * venue-scoped controllers call {@link #require} and pass the id to their application service,
  * which performs the actual ownership check (invariant #13).
  *
- * <p>An authenticated principal with no {@code ACTIVE} operator account owns nothing →
- * {@link AccessDeniedException} (mapped to {@code 403} by the root {@code ApiErrorHandler} advice).
+ * <p>An authenticated principal outside the may-operate set ({@code ACTIVE} or {@code PENDING})
+ * owns nothing → {@link AccessDeniedException} (mapped to {@code 403} by the root
+ * {@code ApiErrorHandler} advice).
  */
 @Component
 public class CurrentOperator {
@@ -35,6 +36,6 @@ public class CurrentOperator {
 			throw new AccessDeniedException("no authenticated operator");
 		}
 		return directory.operatorFor(username)
-				.orElseThrow(() -> new AccessDeniedException("principal is not an active operator"));
+				.orElseThrow(() -> new AccessDeniedException("principal resolves to no operable operator"));
 	}
 }

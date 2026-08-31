@@ -151,34 +151,24 @@ describe('AdminAudit', () => {
     expect(document.activeElement).toBe(byTestId(fixture, 'admin-audit-card'));
   });
 
-  it('shows nothing to a non-admin operator (AC-5)', async () => {
+  /** The gate itself (forbidden/signed-out/restoring markup) moved to `AdminConsole`; this
+   *  component's own defensive guard — redundant once the shell's gate is in place, but harmless
+   *  to keep — still must not load when the admin session says no (AC-5). */
+  it('does not load for a signed-in non-admin (AC-5)', async () => {
     const service = serviceStub();
-
-    const fixture = await render(authStub({ isAdmin: false }), service);
-
-    expect(byTestId(fixture, 'admin-audit-forbidden')).not.toBeNull();
-    expect(byTestId(fixture, 'admin-audit-table')).toBeNull();
+    await render(authStub({ isAdmin: false }), service);
     expect(service.latest).not.toHaveBeenCalled();
   });
 
-  it('shows no tab strip to a signed-out visitor (AC-5)', async () => {
+  it('does not load for a signed-out visitor (AC-5)', async () => {
     const service = serviceStub();
-
-    const fixture = await render(authStub({ signedIn: false, isAdmin: false }), service);
-
-    expect(byTestId(fixture, 'admin-audit-signed-out')).not.toBeNull();
-    expect(
-      (fixture.nativeElement as HTMLElement).querySelector('app-admin-console-tabs'),
-    ).toBeNull();
+    await render(authStub({ signedIn: false, isAdmin: false }), service);
     expect(service.latest).not.toHaveBeenCalled();
   });
 
-  it('waits for session restore before deciding anything (AC-5)', async () => {
+  it('does not load while the session is still restoring (AC-5)', async () => {
     const service = serviceStub();
-
-    const fixture = await render(authStub({ restoring: true }), service);
-
-    expect(byTestId(fixture, 'admin-audit-restoring')).not.toBeNull();
+    await render(authStub({ restoring: true }), service);
     expect(service.latest).not.toHaveBeenCalled();
   });
 });

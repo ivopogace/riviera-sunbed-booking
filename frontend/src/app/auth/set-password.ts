@@ -10,9 +10,27 @@ import {
 } from '../core/customer-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { LoadAnnouncer } from '../shared/load-announcer';
 import { focusMover } from '../shared/focus-after-render';
 
 import { TouchTarget } from '../shared/touch-target';
+
+/** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
+const CLS = {
+  card: 'w-full max-w-[400px] rounded-[26px] px-[26px] pt-[30px] pb-6 shadow-[0_30px_70px_rgba(6,30,40,0.28),inset_0_1px_0_rgba(255,255,255,0.7)]',
+  title: 'm-0 mb-1.5 text-[24px] font-bold tracking-[-0.02em] text-riv-card-ink',
+  intro: 'm-0 mb-5 text-[13.5px] leading-[1.5] text-riv-card-ink-soft',
+  field: 'flex flex-col gap-1.5 mb-3.5',
+  label: 'text-[11px] font-bold tracking-[0.08em] uppercase text-riv-card-ink-soft',
+  input:
+    'font-[inherit] text-[16px] text-riv-card-ink bg-riv-field-fill border border-riv-field-border rounded-[14px] px-[14px] py-3 placeholder:text-riv-card-ink-soft focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink',
+  hint: '-mt-1.5 text-[12px] text-riv-card-ink-soft',
+  error: 'mt-3 text-[13px] font-semibold text-riv-error-ink',
+  submit:
+    'mt-4.5 w-full p-[13px] rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) text-white font-[inherit] font-bold text-[15px] cursor-pointer shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] motion-safe:[transition:filter_0.15s_ease] motion-reduce:transition-none aria-disabled:cursor-default aria-disabled:opacity-70 hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white',
+  alt: 'mt-4.5 text-center text-[13.5px] text-riv-card-ink-soft',
+  altLink: 'inline-flex items-center font-bold text-riv-accent-ink',
+} as const;
 
 const RESEND_NOTICES = {
   sent: 'Verification email sent. Check your inbox.',
@@ -43,30 +61,53 @@ const RESEND_NOTICES = {
  */
 @Component({
   selector: 'app-set-password',
-  imports: [FormField, RouterLink, CardGlass, BusyAction, TouchTarget],
+  imports: [FormField, RouterLink, CardGlass, LoadAnnouncer, BusyAction, TouchTarget],
   template: `
-    <section class="auth-wrap" aria-labelledby="setpw-title">
-      <div class="auth-card" appCardGlass>
-        <h1 id="setpw-title" class="auth-title">Your account</h1>
+    <section
+      class="flex min-h-[60vh] items-center justify-center px-5 py-8"
+      aria-labelledby="setpw-title"
+    >
+      <div [class]="cls.card" appCardGlass>
+        <h1 id="setpw-title" [class]="cls.title">Your account</h1>
+
+        <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
+        <app-load-announcer
+          [loading]="auth.restoring()"
+          [ready]="!erased() && !auth.restoring() && auth.signedIn()"
+          loadingLabel="Loading…"
+          readyLabel="Account loaded."
+        />
 
         @if (erased()) {
-          <p class="auth-intro" role="status" tabindex="-1" data-testid="erase-done">
+          <p [class]="cls.intro" role="status" tabindex="-1" data-testid="erase-done">
             Your account and personal data have been erased, and you have been signed out. Any
             booking records are kept only as long as the law requires, with your personal details
             removed.
           </p>
         } @else if (auth.restoring()) {
-          <p class="auth-intro" role="status">Loading…</p>
+          <!-- Visible copy only; the announcer above owns the announcement (#741). -->
+          <p [class]="cls.intro" aria-hidden="true" data-testid="setpw-loading">Loading…</p>
+        } @else if (!auth.signedIn() && auth.restoreFailed()) {
+          <!-- A failed restore is not "signed out" — needed its own branch, not an attribute (#745). -->
+          <p [class]="cls.error" role="alert" data-testid="setpw-restore-failed">
+            We couldn't check whether you're signed in. Refresh the page and try again.
+          </p>
         } @else if (!auth.signedIn()) {
-          <p class="auth-intro" data-testid="setpw-signed-out">Sign in to manage your account.</p>
-          <p class="auth-alt">
-            <a routerLink="/account/sign-in" data-testid="setpw-to-signin">Sign in</a>
+          <p [class]="cls.intro" data-testid="setpw-signed-out">Sign in to manage your account.</p>
+          <p [class]="cls.alt">
+            <a
+              appTouchTarget
+              [class]="cls.altLink"
+              routerLink="/account/sign-in"
+              data-testid="setpw-to-signin"
+              >Sign in</a
+            >
           </p>
         } @else {
-          <p class="auth-intro" data-testid="setpw-email">Signed in as {{ auth.email() }}.</p>
+          <p [class]="cls.intro" data-testid="setpw-email">Signed in as {{ auth.email() }}.</p>
 
           @if (auth.emailVerified() === false) {
-            <p class="auth-hint" data-testid="setpw-unverified">
+            <p [class]="cls.hint" data-testid="setpw-unverified">
               Your email isn't verified yet.
               <button
                 appTouchTarget
@@ -80,18 +121,19 @@ const RESEND_NOTICES = {
               </button>
             </p>
           } @else if (auth.emailVerified() === true) {
-            <p class="auth-hint" data-testid="setpw-verified">Your email is verified.</p>
+            <p [class]="cls.hint" data-testid="setpw-verified">Your email is verified.</p>
           }
 
           @if (notice(); as msg) {
-            <p class="auth-intro" role="status" data-testid="setpw-notice">{{ msg }}</p>
+            <p [class]="cls.intro" role="status" data-testid="setpw-notice">{{ msg }}</p>
           }
 
           <form (submit)="onSubmit(); $event.preventDefault()" novalidate>
-            <label class="auth-field">
-              <span class="auth-label">Current password</span>
+            <label [class]="cls.field">
+              <span [class]="cls.label">Current password</span>
               <input
                 appTouchTarget
+                [class]="cls.input"
                 type="password"
                 data-testid="setpw-current"
                 [formField]="setForm.currentPassword"
@@ -99,14 +141,15 @@ const RESEND_NOTICES = {
                 aria-describedby="setpw-current-hint"
               />
             </label>
-            <p id="setpw-current-hint" class="auth-hint">
+            <p id="setpw-current-hint" [class]="cls.hint">
               Leave blank if you signed in with Google or Apple and haven't set a password yet.
             </p>
 
-            <label class="auth-field">
-              <span class="auth-label">New password</span>
+            <label [class]="cls.field">
+              <span [class]="cls.label">New password</span>
               <input
                 appTouchTarget
+                [class]="cls.input"
                 type="password"
                 data-testid="setpw-new"
                 [formField]="setForm.newPassword"
@@ -114,16 +157,16 @@ const RESEND_NOTICES = {
                 aria-describedby="setpw-new-hint"
               />
             </label>
-            <p id="setpw-new-hint" class="auth-hint">8–72 characters.</p>
+            <p id="setpw-new-hint" [class]="cls.hint">8–72 characters.</p>
 
             @if (error(); as msg) {
-              <p class="auth-error" role="alert" data-testid="setpw-error">{{ msg }}</p>
+              <p [class]="cls.error" role="alert" data-testid="setpw-error">{{ msg }}</p>
             }
 
             <button
               appTouchTarget
               type="submit"
-              class="auth-submit"
+              [class]="cls.submit"
               data-testid="setpw-submit"
               [appBusy]="submitting()"
             >
@@ -131,29 +174,23 @@ const RESEND_NOTICES = {
             </button>
           </form>
 
-          <section
-            class="mt-7 border-t border-[color:var(--riv-field-border)] pt-5"
-            aria-labelledby="erase-title"
-          >
-            <h2
-              id="erase-title"
-              class="m-0 mb-1 text-[15px] font-bold text-[color:var(--riv-card-ink)]"
-            >
+          <section class="mt-7 border-t border-riv-field-border pt-5" aria-labelledby="erase-title">
+            <h2 id="erase-title" class="m-0 mb-1 text-[15px] font-bold text-riv-card-ink">
               Delete your account
             </h2>
-            <p class="auth-hint">
+            <p [class]="cls.hint">
               Permanently erase your account and personal details. Booking records are kept only as
               long as the law requires, with your personal data removed. This cannot be undone.
             </p>
 
             @if (confirming()) {
-              <p class="auth-error" role="alert" data-testid="erase-warning">
+              <p [class]="cls.error" role="alert" data-testid="erase-warning">
                 Erase your account and personal data? This cannot be undone.
               </p>
               <button
                 appTouchTarget
                 type="button"
-                class="auth-submit"
+                [class]="cls.submit"
                 data-testid="erase-confirm"
                 [appBusy]="erasing()"
                 (click)="erase()"
@@ -163,7 +200,7 @@ const RESEND_NOTICES = {
               <button
                 appTouchTarget
                 type="button"
-                class="mt-3 w-full border-0 bg-transparent p-0 underline [cursor:pointer] [font:inherit] text-[color:var(--riv-card-ink-soft)] aria-disabled:opacity-60"
+                class="mt-3 w-full border-0 bg-transparent p-0 underline [cursor:pointer] [font:inherit] text-riv-card-ink-soft aria-disabled:opacity-60"
                 data-testid="erase-cancel"
                 [appBusy]="erasing()"
                 (click)="keepAccount()"
@@ -174,7 +211,7 @@ const RESEND_NOTICES = {
               <button
                 appTouchTarget
                 type="button"
-                class="mt-2 w-full rounded-[16px] border border-[color:var(--riv-field-border)] bg-transparent px-[13px] py-[13px] text-[15px] font-bold text-[color:var(--riv-card-ink)] [cursor:pointer] [transition:background_0.15s_ease] hover:bg-[color:var(--riv-field-fill)]"
+                class="mt-2 w-full rounded-[16px] border border-riv-field-border bg-transparent px-[13px] py-[13px] text-[15px] font-bold text-riv-card-ink [cursor:pointer] [transition:background_0.15s_ease] hover:bg-riv-field-fill"
                 data-testid="erase-account"
                 (click)="askToErase()"
               >
@@ -183,20 +220,20 @@ const RESEND_NOTICES = {
             }
 
             @if (eraseError(); as msg) {
-              <p class="auth-error" role="alert" data-testid="erase-error">{{ msg }}</p>
+              <p [class]="cls.error" role="alert" data-testid="erase-error">{{ msg }}</p>
             }
           </section>
         }
       </div>
     </section>
   `,
-  styleUrl: './auth.scss',
 })
 export class SetPassword {
   protected readonly auth = inject(CustomerAuth);
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly focusAfterRender = focusMover();
 
+  protected readonly cls = CLS;
   protected readonly submitting = signal(false);
   protected readonly resending = signal(false);
   protected readonly error = signal<string | undefined>(undefined);

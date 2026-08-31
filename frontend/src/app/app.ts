@@ -1,4 +1,5 @@
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { LegalFooter } from './shared/legal-footer';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
@@ -10,6 +11,28 @@ import { ThemeId, ThemeService } from './core/theme';
 import { OperatorChrome } from './operator/operator-chrome';
 import { TouchTarget } from './shared/touch-target';
 
+/** The near-opaque popover surface (account menu, theme picker, mobile sheet) — themed via the
+ *  `--riv-pop-*` family: light in porcelain/riviera, slate in the dark theme. */
+const POP =
+  'absolute z-40 animate-[riv-pop_0.2s_ease] rounded-[18px] border border-riv-pop-border bg-riv-pop-surface text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none';
+const POP_ITEM =
+  'block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-riv-pop-ink [transition:background_0.12s_ease] hover:bg-riv-pop-hover';
+const MOBILE_ITEM =
+  'block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-riv-pop-ink hover:bg-riv-pop-hover';
+
+/** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
+const CLS = {
+  backdrop: 'fixed inset-0 z-30 bg-[rgba(6,30,40,0.2)]',
+  accountPop: `riv-account-pop top-[calc(100%+10px)] right-0 w-[186px] p-[7px] ${POP}`,
+  themePop: `riv-theme-pop top-[calc(100%+10px)] right-0 w-[214px] p-[7px] ${POP}`,
+  mobileMenu: `top-[calc(100%+8px)] right-3 left-3 p-2 ${POP}`,
+  popItem: POP_ITEM,
+  popBtn: `${POP_ITEM} cursor-pointer text-left`,
+  mobileItem: MOBILE_ITEM,
+  mobileBtn: `${MOBILE_ITEM} cursor-pointer`,
+  navLink: 'cursor-pointer hover:text-riv-ink',
+} as const;
+
 /**
  * The Liquid Glass app shell: themed gradient background, sticky glass header with
  * responsive nav (inline on desktop, hamburger menu below 640px — CSS decides, both live here),
@@ -19,9 +42,8 @@ import { TouchTarget } from './shared/touch-target';
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, FindBooking, OperatorChrome, TouchTarget],
+  imports: [LegalFooter, RouterOutlet, RouterLink, FindBooking, OperatorChrome, TouchTarget],
   templateUrl: './app.html',
-  styleUrl: './app.scss',
   host: {
     '(document:keydown.escape)': 'closeMenus()',
     // Pins the subtree porcelain on operator-chrome routes, whatever tourist theme is selected.
@@ -29,6 +51,8 @@ import { TouchTarget } from './shared/touch-target';
   },
 })
 export class App {
+  protected readonly cls = CLS;
+
   protected readonly themes = inject(ThemeService);
   /** Customer session state for the header: sign-in/register links ↔ signed-in + sign-out. */
   protected readonly customerAuth = inject(CustomerAuth);

@@ -51,7 +51,13 @@ behavior stays with the backend contracts and the invariants in `CLAUDE.md`.
    persistence, and `prefers-color-scheme` default. The other 12 palettes in
    the design file are follow-up data, not code. *(Superseded — maintainer,
    2026-08-01: the follow-up was declined; two themes, one dark + one light,
-   are the final set. #143 closed not-planned.)*
+   were declared the final set. #143 closed not-planned.)* *(Re-amended —
+   maintainer, 2026-08-25 theme restructure: the set is now three — porcelain
+   as the light default, riviera as a switcher-only choice, and a neutral
+   dark-slate `dark` theme as the OS-dark default. Unlike riviera, whose cards
+   keep the white Liquid Glass, the dark theme inverts the whole surface family
+   (dark cards/dialogs/popovers/fields, light inks). The dark palette is
+   code-derived, not a design-file export.)*
 4. **Amenities + distance-to-water: fullstack slice** in the tourist epic
    (Flyway migration, `venue` module surface, editor input, discovery/map
    chips). The operator design's "Commodities" chip editor is the operator-side
@@ -72,7 +78,7 @@ and where each lands:
 | Request-to-Book guest lifecycle: request-mode dialog ("Send request"), Request-sent screen, status banners (pending + withdraw, accepted + Pay-now + deadline, declined, expired), full status-chip union incl. COMPLETED/NO_SHOW | #137 (dialog/request), #138 (detail banners/chips) |
 | Real Payment page (Payment-Element container, summary, "Confirming your booking…" webhook-wait state, payment-failed + retry) | #137 |
 | Find-a-booking (code entry; nav item replaces the dead "How it works") | new tourist-epic slice (T8) |
-| Cutoff explainer ("Book by 6 PM the day before"), date picker excludes today | #135/#136 (copy), behavior already server-enforced (invariant #4) |
+| Cutoff explainer ("Book by 6 PM the day before"), date picker excludes today | #135/#136 (copy), behavior already server-enforced (invariant #4) <!-- as-built diverges — see #804: the generic explainer retired; venue-specific note on the map only --> |
 | Venue description on the map header | #136 |
 | Discover/map load-failure states with retry | #135/#136 |
 | Operator **Requests** tab (queue, accept/decline, expiry-race error copy, badge count) | operator epic #141 (mandatory slice) |
@@ -125,5 +131,5 @@ restyle must respect:
 | Auth modal, SSO buttons, user menu | Epic #108 (#111/#112/#114) — design is their visual spec |
 | Auth **surface split** (tourist modal vs operator sign-in card) | **Overridden** (maintainer, 2026-07-02): one unified sign-in/register page for both sides; registration chooses the account type. Styling per the designs; split per the #108 comment |
 | Venue photos (upload + display) | Follow-up issue |
-| Remaining 12 theme palettes | **Declined** (maintainer, 2026-08-01): two themes — one dark, one light — are the final set; #143 closed not-planned |
+| Remaining 12 theme palettes | **Declined** (maintainer, 2026-08-01): two themes were declared the final set; #143 closed not-planned. **Re-amended** (maintainer, 2026-08-25): the set is now three — porcelain (light default), riviera (switcher-only), dark (neutral slate, OS-dark default) — still not the design file's 12 |
 | Platform-admin console (approvals, operators, commissions, daily payouts, privacy) | Epic #348 — added 2026-07-26, outside the original import |

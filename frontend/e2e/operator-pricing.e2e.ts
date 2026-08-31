@@ -247,6 +247,13 @@ test('shows the not-owner message and reverts the projection when the reprice is
   await expect(page.getByTestId('pricing-error-A')).toContainText(/manage/i);
   // Reverted: the projection is back to the original €90, not the optimistic €200.
   await expect(page.getByTestId('pricing-projected')).toHaveText('€90');
+
+  // The refusal is described from the field, but the reverted price is not announced as invalid.
+  const error = page.getByTestId('pricing-error-A');
+  await expect(page.getByTestId('pricing-input-A')).toHaveAccessibleDescription(
+    ((await error.textContent()) ?? '').trim(),
+  );
+  await expect(page.getByTestId('pricing-input-A')).not.toHaveAttribute('aria-invalid');
 });
 
 test('a stale reprice is rejected 409, reverts the row + shows Reload, then recovers (#226, + axe)', async ({

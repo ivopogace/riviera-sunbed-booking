@@ -1,13 +1,19 @@
-import { AA_NORMAL, Rgb, contrastRatio, hexToRgb } from '../../testing/contrast';
+import { AA_NORMAL, Rgb, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
+  DARK_ACCENT_INK,
+  DARK_CARD_GLASS,
+  DARK_CARD_INK,
+  DARK_STOPS,
   Glass,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
   RIVIERA_CARD_GLASS,
   RIVIERA_STOPS,
+  SOLID_BTN_FILL,
+  SOLID_BTN_INK,
   expectAaOverStops,
 } from '../../testing/glass-tokens';
 
@@ -31,23 +37,29 @@ interface Theme {
   readonly name: string;
   readonly stops: readonly Rgb[];
   readonly cardGlass: Glass;
+  readonly cardInk: Rgb; // --riv-card-ink
+  readonly cardInkBase: Rgb; // base of the muted rgba ink family
+  readonly accent: Rgb; // --riv-accent-ink
 }
+const LIGHT_INKS = { cardInk: INK_DARK, cardInkBase: CARD_INK, accent: hexToRgb(ACCENT.slice(1)) };
+const DARK_INKS = { cardInk: DARK_CARD_INK, cardInkBase: DARK_CARD_INK, accent: DARK_ACCENT_INK };
 const THEMES: readonly Theme[] = [
-  { name: 'riviera', stops: RIVIERA_STOPS, cardGlass: RIVIERA_CARD_GLASS },
-  { name: 'porcelain', stops: PORCELAIN_STOPS, cardGlass: PORCELAIN_CARD_GLASS },
+  { name: 'riviera', stops: RIVIERA_STOPS, cardGlass: RIVIERA_CARD_GLASS, ...LIGHT_INKS },
+  { name: 'porcelain', stops: PORCELAIN_STOPS, cardGlass: PORCELAIN_CARD_GLASS, ...LIGHT_INKS },
+  { name: 'dark', stops: DARK_STOPS, cardGlass: DARK_CARD_GLASS, ...DARK_INKS },
 ];
 
 describe.each(THEMES)('Booking view — card-glass text (WCAG AA, issue #138) — $name', (theme) => {
   it('card ink (title, detail values, strong emphasis) meets AA on the card glass', () => {
-    expectAaOverStops(INK_DARK, 1, theme.cardGlass, theme.stops);
+    expectAaOverStops(theme.cardInk, 1, theme.cardGlass, theme.stops);
   });
 
   it('card ink-soft (lead, detail labels, code label/note, terms) meets AA on the card glass', () => {
-    expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
+    expectAaOverStops(theme.cardInkBase, CARD_INK_SOFT_ALPHA, theme.cardGlass, theme.stops);
   });
 
   it('accent ink (booking code, Paid amount, cancel result, links) meets AA on the card glass', () => {
-    expectAaOverStops(hexToRgb(ACCENT), 1, theme.cardGlass, theme.stops);
+    expectAaOverStops(theme.accent, 1, theme.cardGlass, theme.stops);
   });
 });
 
@@ -90,9 +102,11 @@ describe('Booking view — action buttons (WCAG AA, issue #138)', () => {
     }
   });
 
+  /** The teal ink is --riv-solid-btn-ink, which does NOT theme: the #f4f6f7 fill under it does
+   *  not either, and this file's own rule above is that a themed ink over a fixed fill drifts. */
   it('the outline buttons (Cancel / Keep) inks meet AA on the solid #f4f6f7 fill', () => {
-    for (const ink of ['#a3372a', '#0a4f5e']) {
-      expect(contrastRatio(ink, '#f4f6f7'), ink).toBeGreaterThanOrEqual(AA_NORMAL);
+    for (const ink of ['#a3372a', rgbToHex(SOLID_BTN_INK)]) {
+      expect(contrastRatio(ink, rgbToHex(SOLID_BTN_FILL)), ink).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });
 

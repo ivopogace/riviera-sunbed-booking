@@ -24,6 +24,7 @@ import ai.riviera.platform.operator.api.VenueOwnership;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.spi.BookingPresence;
 import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
+import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -72,8 +73,13 @@ class VenueAdminServiceTest {
 	private static final Clock CLOCK = Clock.fixed(Instant.parse("2027-06-15T22:30:00Z"), ZoneOffset.UTC);
 	private static final LocalDate TODAY_IN_TIRANE = LocalDate.of(2027, 6, 16);
 
+	private static final VenueCreationProperties CREATION = new VenueCreationProperties(500);
+
 	private final VenueAdminService service = new VenueAdminService(
 			venues, new FakeOwnership(OWNER, VENUE), availability, bookings, CLOCK);
+
+	private final OnboardVenueService onboarding =
+			new OnboardVenueService(venues, new FakeOwnership(OWNER, VENUE), CREATION);
 
 	private static LayoutCommand grid(int rows, int cols) {
 		List<SetCommand> cells = new ArrayList<>();
@@ -91,12 +97,25 @@ class VenueAdminServiceTest {
 	void onboardReturnsTheInsertedVenueId() {
 		venues.nextVenueId = 99;
 		NewVenueCommand command = new NewVenueCommand("Sunset", "Ksamil", "Riviera", "nice",
-				"INSTANT", 1500, "EUR", LocalTime.of(18, 0));
+				"INSTANT", "EUR", LocalTime.of(18, 0), null);
 
 		// Creator-owns-on-create writes ownership too; the ownership write + non-owner denial is
 		// proven end-to-end by CrossVenueDenialIT.creatorOwnsCreatedVenueAndOthersAreDenied.
-		assertEquals(new VenueId(99), service.onboard(OWNER, command));
+		assertEquals(new VenueId(99), onboarding.onboard(OWNER, command));
 		assertEquals(1, venues.insertedVenues);
+	}
+
+	@Test
+	void onboardStampsConfiguredDefaultCommission() {
+		// A non-500 configured rate proves the stamp reads configuration, never a literal (AC-4).
+		OnboardVenueService configured = new OnboardVenueService(venues,
+				new FakeOwnership(OWNER, VENUE), new VenueCreationProperties(700));
+		NewVenueCommand command = new NewVenueCommand("Sunset", "Ksamil", "Riviera", "nice",
+				"INSTANT", "EUR", LocalTime.of(18, 0), null);
+
+		configured.onboard(OWNER, command);
+
+		assertEquals(700, venues.lastInsertCommissionBps);
 	}
 
 	@Test
@@ -379,7 +398,7 @@ class VenueAdminServiceTest {
 	/** A valid widened profile command with the given amenities + distance; core fields fixed. */
 	private static VenueProfileCommand profile(Set<Amenity> amenities, Integer distanceToWaterM) {
 		return new VenueProfileCommand("Sunset", "Ksamil", "Riviera", "nice", "INSTANT",
-				LocalTime.of(18, 0), amenities, distanceToWaterM);
+				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, amenities, distanceToWaterM);
 	}
 
 	@Test
@@ -567,6 +586,49 @@ class VenueAdminServiceTest {
 	}
 
 	@Test
+	void rejectsALayoutSharingOneLabelAcrossTwoGridRows() {
+		venues.venues.add(VENUE.value());
+		// The #728 reproducer: gap-cell numbering keeps every (rowLabel, positionNo) pair unique.
+		LayoutCommand split = new LayoutCommand(List.of(
+				new SetCommand("A", 2, "PREMIUM", "ONLINE", 2000, "EUR", 2, 1),
+				new SetCommand("A", 3, "PREMIUM", "ONLINE", 2000, "EUR", 3, 1),
+				new SetCommand("A", 1, "STANDARD", "ONLINE", 2000, "EUR", 1, 2)));
+
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, split);
+
+		assertEquals(ReplaceRejection.ROW_NAME_TAKEN, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.deletedAllCount);
+		assertEquals(0, venues.insertedInLayout);
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void duplicatePositionOutranksTheSplitLabel() {
+		venues.venues.add(VENUE.value());
+		LayoutCommand doubleFault = new LayoutCommand(List.of(
+				new SetCommand("A", 1, "PREMIUM", "ONLINE", 2000, "EUR", 1, 1),
+				new SetCommand("A", 1, "STANDARD", "ONLINE", 2000, "EUR", 1, 2)));
+
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, doubleFault);
+
+		assertEquals(ReplaceRejection.DUPLICATE_POSITION, ((ReplaceLayoutOutcome.Rejected) outcome).reason());
+	}
+
+	@Test
+	void acceptsOneLabelSpanningManyPositionsOnOneGridRow() {
+		venues.venues.add(VENUE.value());
+		// Gap-cell numbering on a single grid row — same label repeated is the normal shape, never a split.
+		LayoutCommand gapped = new LayoutCommand(List.of(
+				new SetCommand("A", 2, "PREMIUM", "ONLINE", 2000, "EUR", 2, 1),
+				new SetCommand("A", 3, "PREMIUM", "ONLINE", 2000, "EUR", 3, 1)));
+
+		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, gapped);
+
+		assertEquals(ReplaceLayoutOutcome.Replaced.REPLACED, outcome);
+		assertEquals(2, venues.insertedInLayout);
+	}
+
+	@Test
 	void rejectsReplaceOnUnknownVenue() {
 		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, grid(1, 1));
 
@@ -664,6 +726,140 @@ class VenueAdminServiceTest {
 		assertEquals(0, venues.incrementedSetVersions); // fail closed before the version read/write too
 	}
 
+	// ---- Per-row rename ----
+
+	private static final RowNameCommand RENAME_CMD = new RowNameCommand("B", "Back row");
+
+	@Test
+	void renamesRowForOwnedVenue() {
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.add("B");
+
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
+
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
+		assertEquals(1, venues.renamedRows);
+		assertEquals(1, venues.incrementedSetVersions); // token advanced once, on success
+	}
+
+	@Test
+	void renameNeverProbesClaims() {
+		// Unlike editSet/removeSet/replaceLayout, a rename asks neither availability nor booking.
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.add("B");
+		availability.holdOn.put(SET, TODAY_IN_TIRANE);
+		bookings.setHasLiveBookings = true;
+
+		assertSame(ChangeOutcome.Applied.APPLIED, service.renameRow(OWNER, VENUE, 0L, RENAME_CMD));
+		assertFalse(callLog.contains("anyClaimsFrom"));
+	}
+
+	@Test
+	void rejectsARenameOntoAnotherRowsLabel() {
+		// A shared label merges two rows wherever sets are grouped by it; the UNIQUE index misses that.
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.addAll(Set.of("A", "B"));
+
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", "A"));
+
+		assertEquals(SetRejection.ROW_NAME_TAKEN, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.renamedRows);
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void allowsARenameToTheSameLabel() {
+		// A no-op, not a self-collision — and it must not spend the token other tabs are holding.
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.add("B");
+
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", "B"));
+
+		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
+		assertEquals(0, venues.renamedRows);
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void renameOnUnknownVenueIsRejectedBeforeAnyWrite() {
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
+
+		assertEquals(SetRejection.NO_SUCH_VENUE, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.renamedRows);
+	}
+
+	@Test
+	void renameOfARowWithNoSetsIsNotFound() {
+		venues.venues.add(VENUE.value()); // no row carries "B"
+
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
+
+		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.renamedRows); // refused before the UPDATE, not by its rows-affected
+		// A rejected rename leaves the token alone, so the acting tab's next write off it still works.
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void renameLosesTheRowToAConcurrentRemoveAndIsNotFound() {
+		// A concurrent removeSet can empty the row after the label read — rows-affected is a real guard.
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.add("B");
+		venues.forceRenameRows = 0;
+
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
+
+		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void renameOfAMissingRowOntoATakenLabelIsNotFoundNotTaken() {
+		// Both refusals apply; the honest one names what is actually wrong — the row is gone.
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.add("A");
+
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", "A"));
+
+		assertEquals(SetRejection.NO_SUCH_ROW, ((ChangeOutcome.Rejected) outcome).reason());
+	}
+
+	@Test
+	void renameStripsSurroundingWhitespaceSoItCannotDodgeTheDuplicateRefusal() {
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.addAll(Set.of("A", "B"));
+
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, new RowNameCommand("B", " A "));
+
+		assertEquals(SetRejection.ROW_NAME_TAKEN, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.renamedRows);
+	}
+
+	@Test
+	void renameWithStaleSetVersionIsStaleWrite() {
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.add("B");
+		venues.setVersionOnLock = 1; // the row moved to 1; the tab loaded 0
+
+		ChangeOutcome outcome = service.renameRow(OWNER, VENUE, 0L, RENAME_CMD);
+
+		assertEquals(SetRejection.STALE_WRITE, ((ChangeOutcome.Rejected) outcome).reason());
+		assertEquals(0, venues.renamedRows);
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
+	@Test
+	void renameByANonOwnerIsDeniedBeforeAnyWrite() {
+		venues.venues.add(VENUE.value());
+		venues.rowLabels.add("B");
+
+		// Invariant #13: the ownership guard is the first act — a stranger never reaches the UPDATE.
+		assertThrows(NotVenueOwnerException.class,
+				() -> service.renameRow(STRANGER, VENUE, 0L, RENAME_CMD));
+		assertEquals(0, venues.renamedRows);
+		assertEquals(0, venues.incrementedSetVersions);
+	}
+
 	// ---- Owned-venues read ----
 
 	private static final OperatorId MULTI_OWNER = new OperatorId(7);
@@ -694,8 +890,8 @@ class VenueAdminServiceTest {
 	void ownedByReturnsEmptyWithoutHittingTheRepositoryWhenNothingIsOwned() {
 		// A freshly-approved operator owns nothing: an empty list, and no `IN ()` predicate at all.
 		FakeVenues store = new FakeVenues(new ArrayList<>());
-		VenueAdminService owned =
-				new VenueAdminService(store, new MultiOwnership(Map.of()), availability, bookings, CLOCK);
+		VenueAdminService owned = new VenueAdminService(store, new MultiOwnership(Map.of()),
+				availability, bookings, CLOCK);
 
 		assertEquals(List.of(), owned.ownedBy(MULTI_OWNER));
 		assertEquals(List.of(), store.summaryQueries);
@@ -758,6 +954,7 @@ class VenueAdminServiceTest {
 		long nextVenueId = 1;
 		long nextSetId = 1;
 		int insertedVenues;
+		int lastInsertCommissionBps;
 		int insertedSets;
 		int updatedSets;
 		int deletedSets;
@@ -767,8 +964,9 @@ class VenueAdminServiceTest {
 		Integer forceProfileUpdateRows;
 
 		@Override
-		public long insertVenue(NewVenueCommand command) {
+		public long insertVenue(NewVenueCommand command, int commissionBps) {
 			insertedVenues++;
+			lastInsertCommissionBps = commissionBps;
 			return nextVenueId;
 		}
 
@@ -839,7 +1037,7 @@ class VenueAdminServiceTest {
 		public Optional<VenueProfileView> findProfile(VenueId venueId) {
 			return venues.contains(venueId.value())
 					? Optional.of(new VenueProfileView("Sunset", "Ksamil", "Riviera", "nice",
-							BookingMode.INSTANT, LocalTime.of(18, 0), 1500, "EUR",
+							BookingMode.INSTANT, LocalTime.of(18, 0), LocalTime.of(16, 0), 1500, "EUR",
 							List.of(Amenity.WIFI), 20, 0, List.of()))
 					: Optional.empty();
 		}
@@ -896,6 +1094,23 @@ class VenueAdminServiceTest {
 			repricedRows++;
 			return forceRepriceRows != null ? forceRepriceRows : 1;
 		}
+
+		int renamedRows;
+		// null ⇒ a rename finds its sets (1 row updated); set to 0 to model a row emptied mid-write.
+		Integer forceRenameRows;
+		// The venue's labels, so the fake answers both questions a rename asks off one piece of state.
+		final Set<String> rowLabels = new HashSet<>();
+
+		@Override
+		public Set<String> distinctRowLabels(VenueId venueId) {
+			return Set.copyOf(rowLabels);
+		}
+
+		@Override
+		public int renameRow(VenueId venueId, RowNameCommand command) {
+			renamedRows++;
+			return forceRenameRows != null ? forceRenameRows : 1;
+		}
 	}
 
 	/**
@@ -935,6 +1150,12 @@ class VenueAdminServiceTest {
 
 		@Override
 		public java.util.Map<SetId, String> statesOn(Collection<SetId> setIds, java.time.LocalDate date) {
+			return java.util.Map.of();
+		}
+
+		@Override
+		public java.util.Map<java.time.LocalDate, Integer> takenCountsBetween(
+				Collection<SetId> setIds, java.time.LocalDate from, java.time.LocalDate to) {
 			return java.util.Map.of();
 		}
 	}

@@ -1,11 +1,18 @@
 package ai.riviera.platform.booking.application.cancel;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Optional;
+
 import org.springframework.stereotype.Component;
 
+import ai.riviera.platform.booking.application.BookingCutoff;
 import ai.riviera.platform.booking.application.view.BookingRecord;
-import ai.riviera.platform.booking.domain.CancellationWindow;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.domain.RefundPolicy;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.api.VenueRates;
 
@@ -20,7 +27,7 @@ import ai.riviera.platform.venue.api.VenueRates;
  * {@code @NamedInterface}, so it stays inside the {@code booking} module (invariant #11).
  */
 @Component
-public class CancellationPolicy {
+public class CancellationPolicy implements QuoteCancellationTerms {
 
 	private final SetBookingFacts setFacts;
 	private final VenueRates rates;
@@ -49,6 +56,44 @@ public class CancellationPolicy {
 	}
 
 	/**
+	 * The pre-reserve terms for booking this set on this date, quoted now (invariant #10) — the
+	 * window a booking created at this instant would be born in, the free-cancellation deadline,
+	 * and the venue's late share. Empty for an unknown set: a stale map in a tourist's hands is an
+	 * expected flow here, unlike {@link #quote}'s booking-FK breach.
+	 */
+	@Override
+	public Optional<CancellationTerms> terms(SetId setId, LocalDate bookingDate) {
+		return setFacts.setBookingInfo(setId).map(set -> {
+			CancellationWindow window = cutoff.cancellationWindow(set.bookingCutoff(), bookingDate);
+			return new CancellationTerms(window,
+					cutoff.freeCancellationEndsAt(set.bookingCutoff(), bookingDate),
+					lateShare(window, set.venueId()));
+		});
+	}
+
+	/**
+	 * The window a booking was born in and the late share its disclosure promises (#795) — the same
+	 * classification as {@link #terms}, read at the booking's {@code createdAt} instead of now. What
+	 * the event publication sites stamp; empty for an unknown set so a confirm never fails on it.
+	 */
+	public Optional<BirthTerms> windowAtBirth(SetId setId, LocalDate bookingDate, Instant createdAt) {
+		return setFacts.setBookingInfo(setId).map(set -> {
+			CancellationWindow window =
+					cutoff.cancellationWindow(set.bookingCutoff(), bookingDate, createdAt);
+			return new BirthTerms(window, lateShare(window, set.venueId()));
+		});
+	}
+
+	/** The at-birth classification the events and mails disclose (#795). */
+	public record BirthTerms(CancellationWindow window, int lateCancelRefundBps) {
+	}
+
+	/** The venue's late share applies only inside the LATE window; every other phase discloses 0. */
+	private int lateShare(CancellationWindow window, VenueId venueId) {
+		return window == CancellationWindow.LATE ? rates.lateCancelRefundBps(venueId).orElse(0) : 0;
+	}
+
+	/**
 	 * The computed cancellation terms: set display, which {@link CancellationWindow} the request
 	 * falls in, and the refund due. {@code beforeCutoff} is derived rather than stored so the
 	 * window stays the single carrier of the temporal decision.
@@ -65,13 +110,5 @@ public class CancellationPolicy {
 			return window != CancellationWindow.CLOSED;
 		}
 
-		/**
-		 * Whether the service day has begun — the same boundary {@code CLOSED} already encodes, named
-		 * for the pay path's use of it (invariant #4). Read off this quote rather than the clock a
-		 * second time, so one response cannot offer a cancellation and declare the day open at once.
-		 */
-		public boolean serviceDayOpen() {
-			return window == CancellationWindow.CLOSED;
-		}
 	}
 }

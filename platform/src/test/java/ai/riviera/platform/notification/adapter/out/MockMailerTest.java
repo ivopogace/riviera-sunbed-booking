@@ -9,6 +9,7 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import ai.riviera.platform.booking.vocabulary.RefundReason;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.PaymentDueMail;
@@ -27,7 +28,8 @@ class MockMailerTest {
 	private static final String BOOKING_CODE = "XK4T9PQ2";
 
 	private static final BookingConfirmationMail CONFIRMATION = new BookingConfirmationMail(
-			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), "A", 3, 2500, "EUR");
+			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), "A", 3, 2500, "EUR",
+			CancellationWindow.CLOSED, 0);
 
 	private static final BookingCancellationMail CANCELLATION = new BookingCancellationMail(
 			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), 2500, "EUR", RefundReason.POLICY);
@@ -36,7 +38,8 @@ class MockMailerTest {
 
 	private static final PaymentDueMail PAYMENT_DUE = new PaymentDueMail("CODE1234", "Vala Beach",
 			java.time.LocalDate.of(2026, 8, 1), java.time.Instant.parse("2026-07-31T18:00:00Z"),
-			4500, "EUR", URI.create("https://riviera.example/booking/CODE1234"));
+			4500, "EUR", URI.create("https://riviera.example/booking/CODE1234"),
+			CancellationWindow.CLOSED, 0);
 
 	@Test
 	void recordsEachEmailAndReturnsTheLatestPerAddress() {

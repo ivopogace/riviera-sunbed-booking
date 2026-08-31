@@ -1,5 +1,7 @@
 import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
+  ACCENT_CHIP_FILL,
+  ACCENT_INK,
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
   INK_DARK,
@@ -16,14 +18,10 @@ import {
  * INACTIVE amenity chip use `--riv-card-ink-soft` (0.78) — an inactive chip sits on a lighter
  * `bg-white/50`, so `--riv-card-ink-soft` over the plain card glass is its worst case too. The
  * commission % + "Saved" notice use the AA-safe teal `#0a6e85`; the save/load error uses `#a3160e`;
- * the ACTIVE amenity chip's dark-teal ink `#0a4f5e` sits over a `#2bb8d4 @ 0.22` tint. Values mirror
- * the template + `styles.scss`; a token edit there must re-pass here.
+ * the ACTIVE amenity chip reads both its ink and its tint from the `--riv-accent-*` registry (#835).
+ * Values mirror the template + `tailwind.css`; a token edit there must re-pass here.
  */
 
-/** The active amenity-chip tint (#2bb8d4 @ 0.22) from the design mock; its ink is #0a4f5e. */
-const CHIP_TEAL: [number, number, number] = [43, 184, 212];
-const CHIP_TEAL_ALPHA = 0.22;
-const ACTIVE_CHIP_INK = '#0a4f5e';
 const ACCENT_TEAL = '#0a6e85';
 const ERROR_INK = '#a3160e';
 /** The stale-write banner: an amber wash (#f59e0b @ 0.14) over the card glass; ink is --riv-card-ink. */
@@ -39,15 +37,15 @@ describe('VenueTab porcelain contrast (WCAG AA, #177)', () => {
     expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
-  it('the active amenity chip ink (#0a4f5e) meets AA over the teal tint on the card glass', () => {
+  it('the active amenity chip ink meets AA over the accent chip tint on the card glass', () => {
     for (const stop of PORCELAIN_STOPS) {
       const chipSurface = composite(
-        CHIP_TEAL,
-        CHIP_TEAL_ALPHA,
+        ACCENT_CHIP_FILL.color,
+        ACCENT_CHIP_FILL.alpha,
         surfaceOver(PORCELAIN_CARD_GLASS, stop),
       );
       expect(
-        contrastRatio(ACTIVE_CHIP_INK, rgbToHex(chipSurface)),
+        contrastRatio(rgbToHex(ACCENT_INK), rgbToHex(chipSurface)),
         `active chip over ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
     }

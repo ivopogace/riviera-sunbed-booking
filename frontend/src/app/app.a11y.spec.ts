@@ -31,7 +31,7 @@ describe('App shell accessibility (axe, issue #134)', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
-  it.each(['riviera', 'porcelain'] as const)(
+  it.each(['riviera', 'porcelain', 'dark'] as const)(
     'shell with menus closed has no violations (%s)',
     async (theme) => {
       const { fixture, el } = shell();

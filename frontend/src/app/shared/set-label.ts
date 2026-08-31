@@ -23,6 +23,16 @@ export function setLabel(byId: ReadonlyMap<number, SetView>, setId: number): str
   return set ? `${set.rowLabel} · ${set.positionNo}` : `Set ${setId}`;
 }
 
+/**
+ * The set identity phrase the booking surfaces print (`Front row · Sea view · spot 1`) —
+ * always built from the stored `rowLabel`, the one per-venue row identity (#724). The tourist
+ * map's tile accessible names open with it, so what a screen reader hears on the map is
+ * byte-identical to what the dialog, pay page, bookings and mail later print.
+ */
+export function spotLabel(rowLabel: string, positionNo: number): string {
+  return `${rowLabel} · spot ${positionNo}`;
+}
+
 /** The operator-surface tier label — request cards, pricing-row descriptions. */
 export function tierLabel(tier: Tier): string {
   return tier === 'PREMIUM' ? 'Front row' : 'Standard';

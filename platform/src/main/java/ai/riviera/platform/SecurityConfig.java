@@ -71,7 +71,7 @@ class SecurityConfig {
 	/** A single venue item (PATCH profile edit — amenities + distance-to-water); session + CSRF. */
 	private static final String VENUE_ITEM_PATH = "/api/venues/*";
 	/**
-	 * The two operator-only venue-write {@code PUT}s — bulk beach-map layout replace and row reprice.
+	 * The operator-only venue-write {@code PUT}s — bulk beach-map layout replace, row reprice, row rename.
 	 *
 	 * <p>Gated per-verb rather than by namespace, deliberately: unlike {@code /api/me/**} (where a
 	 * method-agnostic rule is right because every verb belongs to one principal type),
@@ -81,6 +81,7 @@ class SecurityConfig {
 	 */
 	private static final String BEACH_MAP_PATH = "/api/venues/*/beach-map";
 	private static final String ROW_PRICE_PATH = "/api/venues/*/rows/*/price";
+	private static final String ROW_NAME_PATH = "/api/venues/*/rows/*/name";
 	/**
 	 * A single venue photo slot: POST upload / DELETE remove, operator-only. The public GET serving path
 	 * falls under {@code GET /api/venues/**} below.
@@ -93,6 +94,8 @@ class SecurityConfig {
 
 	/** Staff check-in (#583): flips lifecycle state off a bearer code — operator-gated (invariant #7). */
 	private static final String BOOKING_CHECK_IN_PATH = "/api/venues/*/bookings/*/check-in";
+	/** The guest's one review on their own stay — POST / PUT / DELETE, all code-gated (invariant #7). */
+	private static final String BOOKING_REVIEW_PATH = "/api/bookings/*/review";
 	/** The admin weather-refund write; an operator-session POST, CSRF-protected like every write. */
 	private static final String WEATHER_REFUND_PATH = "/api/venues/*/weather-refund";
 	/** The operator-only per-venue payout ledger read. Order-sensitive. */
@@ -116,6 +119,12 @@ class SecurityConfig {
 	 * the ownership map to anyone. A literal segment, so it never collides with {@code /api/venues/*}.
 	 */
 	private static final String MY_VENUES_PATH = "/api/venues/mine";
+
+	/**
+	 * The operator create form's defaults read (issue #692) — the platform commission the create
+	 * path stamps. Operator-gated: the platform's commercial terms are operator-facing, not public.
+	 */
+	private static final String VENUE_DEFAULTS_PATH = "/api/venue-defaults";
 	/** The operator-only pending-requests queue. Order-sensitive. */
 	private static final String BOOKING_REQUESTS_PATH = "/api/venues/*/booking-requests";
 	/** Accept/decline a pending request; operator-session POSTs, CSRF token required. */
@@ -281,7 +290,8 @@ class SecurityConfig {
 						// Hardened to mirror the session cookie's posture (keeps spa()'s handler).
 						.csrfTokenRepository(csrfTokenRepository)
 						.ignoringRequestMatchers("/api/bookings", "/api/bookings/*/cancel",
-								"/api/bookings/*/withdraw", "/api/payments/stripe/webhook"))
+								"/api/bookings/*/withdraw", BOOKING_REVIEW_PATH,
+								"/api/payments/stripe/webhook"))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health/**").permitAll()
 						// Anonymous by definition — authentication happens INSIDE the endpoint.
@@ -306,6 +316,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, DAILY_AVAILABILITY_PATH).hasRole(OPERATOR_ROLE)
 						// Order-sensitive: exposes the operator↔venue ownership map.
 						.requestMatchers(HttpMethod.GET, MY_VENUES_PATH).hasRole(OPERATOR_ROLE)
+						// The platform's venue-creation terms; a literal path outside /api/venues/**.
+						.requestMatchers(HttpMethod.GET, VENUE_DEFAULTS_PATH).hasRole(OPERATOR_ROLE)
 						// Order-sensitive: guest names and venue demand are operator data.
 						.requestMatchers(HttpMethod.GET, BOOKING_REQUESTS_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.POST, BOOKING_REQUEST_ACCEPT_PATH).hasRole(OPERATOR_ROLE)
@@ -343,7 +355,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/venues/*/sets").hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.PATCH, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, SET_ITEM_PATH).hasRole(OPERATOR_ROLE)
-						.requestMatchers(HttpMethod.PUT, BEACH_MAP_PATH, ROW_PRICE_PATH).hasRole(OPERATOR_ROLE)
+						.requestMatchers(HttpMethod.PUT, BEACH_MAP_PATH, ROW_PRICE_PATH, ROW_NAME_PATH)
+						.hasRole(OPERATOR_ROLE)
 						// Non-GET, so these never shadow the public serving read above.
 						.requestMatchers(HttpMethod.POST, PHOTO_ITEM_PATH).hasRole(OPERATOR_ROLE)
 						.requestMatchers(HttpMethod.DELETE, PHOTO_ITEM_PATH).hasRole(OPERATOR_ROLE)
@@ -353,6 +366,10 @@ class SecurityConfig {
 						// Authorized by the code (invariant #7); the refund amount is server-computed.
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/cancel").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/bookings/*/withdraw").permitAll()
+						.requestMatchers(HttpMethod.POST, BOOKING_REVIEW_PATH).permitAll()
+						// Same credential, same resource: the code-holder may also amend their own review.
+						.requestMatchers(HttpMethod.PUT, BOOKING_REVIEW_PATH).permitAll()
+						.requestMatchers(HttpMethod.DELETE, BOOKING_REVIEW_PATH).permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
 						.requestMatchers(HttpMethod.POST, OPERATOR_PASSWORD_PATH).hasRole(OPERATOR_ROLE)
 						// Every verb, not just GET — anonymous → 401, operator session → 403.

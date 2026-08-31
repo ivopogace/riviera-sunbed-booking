@@ -21,10 +21,10 @@ describe('FieldGlass', () => {
   it('applies the field-glass surface utilities to the host', () => {
     const el = host();
     for (const cls of [
-      'bg-(--riv-field-fill)',
+      'bg-riv-field-fill',
       'border',
-      'border-(--riv-field-border)',
-      'text-(--riv-card-ink)',
+      'border-riv-field-border',
+      'text-riv-card-ink',
     ]) {
       expect(el.classList.contains(cls)).toBe(true);
     }

@@ -1,17 +1,32 @@
 import { Component, inject, signal } from '@angular/core';
+import { BookingCutoffField } from './booking-cutoff-field';
+import { BookingModeField } from './booking-mode-field';
 import { form, required, submit, FormField } from '@angular/forms/signals';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { OwnedVenues } from '../core/owned-venues';
+import { FieldErrorFor } from '../shared/field-error-for';
 import { TouchTarget } from '../shared/touch-target';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
-import { parseWholeNumber } from '../shared/whole-number';
+import { formatCommissionPercent } from '../shared/commission-rate';
 import { BookingMode } from '../shared/venue-views';
-import { VenueAdminErrorCode } from './venue-admin.model';
+import { VenueAdminErrorCode, VenueDefaults } from './venue-admin.model';
 import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
+
+/** The new-venue fields bound to the Signal Form. Typed rather than inferred, so `bookingMode`
+ *  is the union the server accepts instead of a bare string the submit path has to assert. */
+interface VenueDraft {
+  name: string;
+  beach: string;
+  region: string;
+  description: string;
+  bookingMode: BookingMode;
+  payoutCurrency: string;
+  bookingCutoff: string; // "HH:mm" Europe/Tirane
+}
 
 /**
  * The create-venue form inside the operator console surface — the retired
@@ -21,11 +36,20 @@ import { VenueAdminService, venueAdminErrorOf } from './venue-admin.service';
  * landing decision reads it) and navigates straight into the new venue's beach-map tab:
  * laying out the map is the operator's next real step, and creator-owns-on-create
  * means the console is immediately theirs. The server re-validates every field (invariants
- * #3/#5/#12); numeric fields are parsed on submit.
+ * #3/#5/#12). The commission is not an input: the platform stamps its default server-side, and
+ * the card only discloses the served figure (`GET /api/venue-defaults`).
  */
 @Component({
   selector: 'app-venue-create-card',
-  imports: [CardGlass, FormField, BusyAction, TouchTarget],
+  imports: [
+    BookingCutoffField,
+    BookingModeField,
+    CardGlass,
+    FieldErrorFor,
+    FormField,
+    BusyAction,
+    TouchTarget,
+  ],
   templateUrl: './venue-create-card.html',
 })
 export class VenueCreateCard {
@@ -37,13 +61,28 @@ export class VenueCreateCard {
   protected readonly saving = signal(false);
   private readonly errorCode = signal<VenueAdminErrorCode | undefined>(undefined);
 
-  protected readonly venueModel = signal({
+  /**
+   * The platform terms served by `GET /api/venue-defaults` — the commission the create will be
+   * stamped with, disclosed as an info line. Stays `undefined` (line hidden) when the read fails:
+   * the disclosure is informational and must neither block the form nor fall back to a hardcoded
+   * figure that could drift from the stamped rate.
+   */
+  protected readonly platformDefaults = signal<VenueDefaults | undefined>(undefined);
+  protected readonly commissionPercent = formatCommissionPercent;
+
+  constructor() {
+    this.admin.venueDefaults().subscribe({
+      next: (defaults) => this.platformDefaults.set(defaults),
+      error: () => this.platformDefaults.set(undefined),
+    });
+  }
+
+  protected readonly venueModel = signal<VenueDraft>({
     name: '',
     beach: '',
     region: '',
     description: '',
     bookingMode: 'INSTANT',
-    commissionBps: '1500',
     payoutCurrency: 'EUR',
     bookingCutoff: '18:00',
   });
@@ -51,20 +90,14 @@ export class VenueCreateCard {
     required(path.name, { message: 'Venue name is required' });
     required(path.beach, { message: 'Beach is required' });
     required(path.region, { message: 'Region is required' });
-    required(path.commissionBps, { message: 'Commission (bps) is required' });
     required(path.payoutCurrency, { message: 'Payout currency is required' });
-    required(path.bookingCutoff, { message: 'Cutoff time is required' });
+    required(path.bookingCutoff, { message: 'Free-cancellation deadline is required' });
   });
 
   protected onCreateVenue(): void {
     this.errorCode.set(undefined);
     void submit(this.venueForm, async () => {
       const m = this.venueModel();
-      const commissionBps = parseWholeNumber(m.commissionBps);
-      if (commissionBps === undefined) {
-        this.errorCode.set('INVALID_REQUEST');
-        return;
-      }
       this.saving.set(true);
       try {
         const created = await firstValueFrom(
@@ -73,8 +106,7 @@ export class VenueCreateCard {
             beach: m.beach,
             region: m.region,
             description: m.description,
-            bookingMode: m.bookingMode as BookingMode,
-            commissionBps,
+            bookingMode: m.bookingMode,
             payoutCurrency: m.payoutCurrency,
             bookingCutoff: m.bookingCutoff,
           }),

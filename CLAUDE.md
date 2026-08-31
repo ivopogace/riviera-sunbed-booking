@@ -97,13 +97,14 @@ it** — that file holds the per-module contracts, settled rules, and history.
 
 | Module | Owns | Aggregate root(s) |
 |---|---|---|
-| `venue` | venue profiles, beach map/layout, set positions, pool assignment, pricing, booking mode (Instant/Request), amenities, venue photos + platform-admin photo moderation (ADR-0008, ADR-0013), the effective-dated commission-rate schedule | `Venue`, `BeachMap` |
+| `venue` | venue profiles, beach map/layout, set positions, pool assignment, pricing, booking mode (Instant/Request), amenities, the per-venue sales-close setting, venue photos + platform-admin photo moderation (ADR-0008, ADR-0013), the effective-dated commission-rate schedule | `Venue`, `BeachMap` |
 | `availability` | the per-`(set, date)` source-of-truth state (free / booked-online / staff-marked); the only writer of that table | `SetAvailability` |
 | `booking` | bookings, booking codes, the full lifecycle (incl. guest withdraw, staff check-in, the no-show sweep), request accept/decline + expiry sweep, cancellation-policy enforcement, driving the post-commit cancellation refund via `payment.api.RefundPort` | `Booking` |
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `Payment` |
 | `payout` | the venue payout ledger (bookings − commission), manual BKT batch reporting; accrual/reversal is order-independent and idempotent | `PayoutLedgerEntry`, `PayoutBatch` |
 | `customer` | tourist identity: guest-checkout contact, the customer account (register/sign-in, SSO linkage, email verification, password recovery/set), GDPR erasure (ADR-0010) + the retention sweep, and the canonical email form (`customer.vocabulary.Emails`) | `Customer`, `CustomerAccount` |
-| `operator` | operator accounts, the operator↔venue ownership mapping (invariant #13), the admin-driven lifecycle (`PENDING`→`ACTIVE`⇄`SUSPENDED`), the `is_admin` flag | `Operator` |
+| `operator` | operator accounts, the operator↔venue ownership mapping (invariant #13), the admin-driven lifecycle (`PENDING`→`ACTIVE`⇄`SUSPENDED`), the `is_admin` flag, the tourist-visibility answer (a venue is visible iff its owner is `ACTIVE`, fail-closed for unowned — #693; `venue` fences its catalogue reads, `booking` its reserve paths) | `Operator` |
+| `review` | the review record (stars, comment, display name — one per booking), the eligibility + 60-day review-window policy, the author's own submit/edit/delete lifecycle inside that window, the aggregate rating math (integer tenths, half-up). A **leaf** module: eligibility arrives through `review.spi.CompletedStays` (implemented by `booking`) and the recomputed aggregate leaves as `ReviewsChanged` — ADR-0015 | `Review` |
 | `notification` | transactional mail: both ADR-0011 delivery vehicles (Event Publication Registry for ids-only payloads, bounded in-memory dispatcher for bearer-credential ones) on their own bounded executors, the hashed email-suppression list (ADR-0012), the delivery log + admin resend/re-drive | (none — owns mail state, no aggregate yet) |
 
 Plus one **non-context** module: **`shared`**, an OPEN Shared Kernel of
@@ -115,11 +116,12 @@ reuse**; the bar and per-type grounds are `RESPONSIBILITIES.md` §`shared`.
 Cross-module collaboration is **events for state changes, `api/` ports for
 queries** (invariant #11). The availability write happens synchronously at
 claim time via `availability`'s `AvailabilityClaim` port — `availability` has
-no event listener. Five published events: `BookingConfirmed` and
+no event listener. Six published events: `BookingConfirmed` and
 `BookingCancelled` fan out to `payout` and `notification` (and `booking`'s own
 `BookingCancelled` listener drives the refund); `BookingPaymentDue`,
 `BookingRequestDeclined`, and `BookingRequestExpired` go to `notification`
-only. Publication-site rationale: `RESPONSIBILITIES.md`.
+only; `ReviewsChanged` goes to `venue`, whose listener recomputes its own
+rating columns. Publication-site rationale: `RESPONSIBILITIES.md`.
 
 Settled platform-edge rules (detail: `RESPONSIBILITIES.md` + `docs/plans/`):
 server-side sessions (Spring Session JDBC) with **two principal types**; all
@@ -147,15 +149,22 @@ by number — the numbering is stable; never renumber.
    never double-sell a set.
 3. **Online and walk-in pools are separate.** Each set carries a pool flag; an
    online booking can only target an online-pool set.
-4. **No same-day booking (v1).** Sales for a day close the evening before
-   (default 18:00 `Europe/Tirane`, configurable) — also the cancellation cutoff.
-   The point of sale is fenced **again** at the service day's opening
-   (00:00 `Europe/Tirane`): the pay deadline is `min(accepted_at + pay-window,
-   service-day open)`, the abandoned sweep expires bookings whose service day
-   has opened, and the code-gated view issues no payment credentials past it.
-   The confirm path is deliberately NOT fenced — a payment in flight at
-   midnight still confirms; read `RESPONSIBILITIES.md` §`booking` before
-   treating a late confirm as a bug.
+4. **Sales close is venue-controlled, on the day itself.** A date D's online sales
+   window runs until the venue's `sales_close` wall-clock time on D — a per-venue
+   setting fixed at one of three values (`00:01` opts the venue out of same-day
+   sales, `16:00` the default, or `23:59`), `Europe/Tirane`. A pending request's
+   response deadline is capped at that same close (`min(created + expiry-window,
+   D at sales close)`). Cancellation keeps its own, separate evening-before
+   boundary (default 18:00 `Europe/Tirane`, configurable) — the two are no longer
+   the same fence. The pay path fences on **the pay deadline having passed**: an
+   accepted `AWAITING_PAYMENT` booking's deadline is `min(accepted_at +
+   pay-window, end of service day D)` (never past D's end, 00:00 `Europe/Tirane`
+   of D+1), a never-accepted one's is D's end with the sweep's TTL as the earlier
+   backstop; the abandoned sweep expires a booking once its deadline has passed,
+   and the code-gated view issues no payment credentials past it. The confirm
+   path is deliberately NOT fenced — a payment in flight at the deadline still
+   confirms; read `RESPONSIBILITIES.md` §`booking` before treating a late
+   confirm as a bug.
 5. **Money is integer minor units, never floating point.** `long`/`int` cents
    with an explicit ISO currency code; exact-integer commission/payout
    arithmetic; rounding rules written down at any division. v1 collection

@@ -97,6 +97,18 @@ function text(fixture: ComponentFixture<AdminCommissions>, id: string): string {
   return byTestId(fixture, id)?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 }
 
+/** Type a percent into an editor that is already open. */
+function retypeRate(
+  fixture: ComponentFixture<AdminCommissions>,
+  venueId: number,
+  percent: string,
+): void {
+  const field = byTestId<HTMLInputElement>(fixture, `admin-commission-percent-${venueId}`)!;
+  field.value = percent;
+  field.dispatchEvent(new Event('input'));
+  fixture.detectChanges();
+}
+
 /** Open one venue's editor and type a percent into it. */
 async function typeRate(
   fixture: ComponentFixture<AdminCommissions>,
@@ -106,10 +118,7 @@ async function typeRate(
   byTestId<HTMLButtonElement>(fixture, `admin-commission-edit-${venueId}`)!.click();
   fixture.detectChanges();
   await settle(fixture);
-  const field = byTestId<HTMLInputElement>(fixture, `admin-commission-percent-${venueId}`)!;
-  field.value = percent;
-  field.dispatchEvent(new Event('input'));
-  fixture.detectChanges();
+  retypeRate(fixture, venueId, percent);
 }
 
 async function save(fixture: ComponentFixture<AdminCommissions>, venueId: number): Promise<void> {
@@ -223,8 +232,49 @@ describe('AdminCommissions', () => {
     await save(fixture, 7);
 
     expect(service.setCommission).not.toHaveBeenCalled();
-    expect(text(fixture, 'admin-commission-error-7')).toContain('0%');
+    expect(text(fixture, 'admin-commission-percent-error-7')).toContain('0%');
     expect(text(fixture, 'admin-commission-rate-7')).toBe('15%');
+  });
+
+  /**
+   * The association, both halves. An absence-only assertion passes just as well when nothing was
+   * ever written, so the take is asserted before the release.
+   */
+  it('describes the rate field by its validation error, and releases it once the value is usable', async () => {
+    const service = serviceStub();
+    const fixture = await render(authStub(), service);
+
+    await typeRate(fixture, 7, '101');
+    await save(fixture, 7);
+
+    const field = byTestId<HTMLInputElement>(fixture, 'admin-commission-percent-7')!;
+    const error = byTestId(fixture, 'admin-commission-percent-error-7')!;
+    // Ids are process-monotonic and shared across specs in a worker — read it back, never assert a literal.
+    expect(field.getAttribute('aria-describedby')).toBe(error.id);
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(error.getAttribute('role')).toBe('alert');
+    expect(error.textContent).toContain('0%');
+
+    retypeRate(fixture, 7, '11');
+
+    expect(byTestId(fixture, 'admin-commission-percent-error-7')).toBeNull();
+    expect(field.hasAttribute('aria-describedby')).toBe(false);
+    expect(field.hasAttribute('aria-invalid')).toBe(false);
+  });
+
+  /** Nothing is mounted empty: the defect is an always-present live region with no text in it. */
+  it('mounts no error element while the editor is clean', async () => {
+    const fixture = await render(authStub(), serviceStub());
+
+    await typeRate(fixture, 7, '11');
+
+    const editor = byTestId(fixture, 'admin-commission-editor-7')!;
+    expect(editor.querySelector('[role="alert"]')).toBeNull();
+    expect(
+      byTestId<HTMLInputElement>(fixture, 'admin-commission-percent-7')!.hasAttribute(
+        'aria-describedby',
+      ),
+    ).toBe(false);
   });
 
   it('refuses a blank rate rather than reading it as zero commission', async () => {
@@ -247,7 +297,7 @@ describe('AdminCommissions', () => {
 
     // A no-op write would still schedule a superseding row and record an audit entry.
     expect(service.setCommission).not.toHaveBeenCalled();
-    expect(text(fixture, 'admin-commission-error-7')).toContain('already');
+    expect(text(fixture, 'admin-commission-percent-error-7')).toContain('already');
   });
 
   it('keeps the old rate and the typed draft when the write fails', async () => {
@@ -262,6 +312,11 @@ describe('AdminCommissions', () => {
     // The editor stays open holding what was typed, so a retry costs no re-typing.
     expect(byTestId<HTMLInputElement>(fixture, 'admin-commission-percent-7')!.value).toBe('12.5');
     expect(text(fixture, 'admin-commission-error-7')).toContain('Nothing was changed');
+    // A 500 is not a claim about the typed value: the write banner describes nothing and marks nothing.
+    const field = byTestId<HTMLInputElement>(fixture, 'admin-commission-percent-7')!;
+    expect(field.hasAttribute('aria-invalid')).toBe(false);
+    expect(field.hasAttribute('aria-describedby')).toBe(false);
+    expect(byTestId(fixture, 'admin-commission-percent-error-7')).toBeNull();
   });
 
   /**
@@ -350,7 +405,9 @@ describe('AdminCommissions', () => {
     expect(explainer).toContain('never re-price');
     // The divergence is stated, not glossed — dropping this sentence is what would make the copy lie.
     expect(explainer).toContain('not a copy of the ledger');
-    expect(explainer).toContain('tomorrow');
+    // Reporting follows from today — any "tomorrow" would resurrect the retired rule.
+    expect(explainer).toContain('today');
+    expect(explainer).not.toContain('tomorrow');
     expect(explainer).toContain('europe/tirane');
     expect(explainer).toContain('live rate');
   });
@@ -389,16 +446,14 @@ describe('AdminCommissions', () => {
     expect(document.activeElement).toBe(byTestId(fixture, 'admin-commission-edit-7'));
   });
 
-  it('self-gates on the admin session', async () => {
+  /** The gate itself (forbidden markup) moved to `AdminConsole`; this component's own defensive
+   *  guard — redundant once the shell's gate is in place, but harmless to keep — still must not
+   *  load when the admin session says no. */
+  it('does not load when the admin session is not confirmed', async () => {
     const service = serviceStub();
     const fixture = await render(authStub({ isAdmin: false }), service);
 
-    expect(byTestId(fixture, 'admin-commissions-forbidden')).not.toBeNull();
     expect(byTestId(fixture, 'admin-commission-row-7')).toBeNull();
-    // A signed-out visitor is never told which admin surfaces exist.
-    expect(
-      (fixture.nativeElement as HTMLElement).querySelector('app-admin-console-tabs'),
-    ).toBeNull();
     expect(service.venues).not.toHaveBeenCalled();
   });
 

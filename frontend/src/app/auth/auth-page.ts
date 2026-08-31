@@ -58,7 +58,7 @@ const ROLE_OPTIONS: readonly SegmentedOption<Audience>[] = [
 ];
 
 const FIELD_CLASS = 'w-full rounded-[14px] px-[13px] py-[11px] text-[15px] font-[inherit]';
-const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--riv-card-ink-faint)';
+const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-card-ink-faint';
 
 /**
  * The one audience-aware auth card — four flows on a single surface: tourist sign-in,
@@ -109,15 +109,15 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--ri
             heading="Registration submitted for approval"
             testId="auth-pending"
           >
-            Thanks — we’ve received your operator registration. Because operators manage real venues
-            and payments, a platform admin reviews each request. You’ll be able to sign in once your
-            account is approved, and can set up your beach map then.
+            Thanks — we’ve received your operator registration. Sign in with your new credentials to
+            set up your venue and beach map right away. A platform admin reviews each registration;
+            your venue is shown to tourists once your account is approved.
             <button
               appTouchTarget
               outcomeCta
               type="button"
               data-testid="auth-pending-back"
-              class="w-full cursor-pointer rounded-[16px] border-[1.5px] border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.5)] px-4 py-3.5 text-[14.5px] font-semibold text-(--riv-accent-ink)"
+              class="w-full cursor-pointer rounded-[16px] border-[1.5px] border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.5)] px-4 py-3.5 text-[14.5px] font-semibold text-riv-accent-ink"
               (click)="backToSignIn()"
             >
               Back to sign-in
@@ -131,13 +131,13 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--ri
           >
             <h1
               id="auth-title"
-              class="m-0 mb-1.5 text-[25px] font-bold tracking-[-0.02em] text-(--riv-card-ink)"
+              class="m-0 mb-1.5 text-[25px] font-bold tracking-[-0.02em] text-riv-card-ink"
             >
               {{ title() }}
             </h1>
             <p
               id="auth-intro"
-              class="m-0 mb-4.5 text-[13.5px] leading-[1.5] text-(--riv-card-ink-soft)"
+              class="m-0 mb-4.5 text-[13.5px] leading-[1.5] text-riv-card-ink-soft"
             >
               {{ subtitle() }}
             </p>
@@ -222,14 +222,14 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--ri
               </label>
 
               @if (mode() === 'register') {
-                <p id="auth-hint" class="m-0 text-[12px] text-(--riv-card-ink-faint)">
+                <p id="auth-hint" class="m-0 text-[12px] text-riv-card-ink-faint">
                   8–72 characters.
                 </p>
               }
 
               @if (error(); as msg) {
                 <p
-                  class="m-0 text-[13px] font-semibold text-[#8c2b22]"
+                  class="m-0 text-[13px] font-semibold text-riv-error-ink"
                   role="alert"
                   data-testid="auth-error"
                 >
@@ -251,14 +251,14 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--ri
             <app-sso-buttons [audience]="audience()" />
 
             <p
-              class="mt-4 mb-0 text-center text-[13px] text-(--riv-card-ink-soft)"
+              class="mt-4 mb-0 text-center text-[13px] text-riv-card-ink-soft"
               data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
             >
               {{ togglePrompt() }}
               <button
                 type="button"
                 data-testid="auth-toggle-mode"
-                class="cursor-pointer border-0 bg-transparent p-0 text-[13px] font-bold text-(--riv-accent-ink) underline"
+                class="cursor-pointer border-0 bg-transparent p-0 text-[13px] font-bold text-riv-accent-ink underline"
                 (click)="toggleMode()"
               >
                 {{ toggleAction() }}
@@ -271,7 +271,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-(--ri
                   appTouchTarget
                   routerLink="/account/forgot"
                   data-testid="auth-to-forgot"
-                  class="inline-flex items-center text-(--riv-accent-ink) underline"
+                  class="inline-flex items-center text-riv-accent-ink underline"
                   >Forgot your password?</a
                 >
               </p>
@@ -511,14 +511,25 @@ export class AuthPage {
       }
       return;
     }
-    // No session is established: the account is PENDING until a platform admin approves it.
+    // The 202 itself is session-less (D-8); a PENDING account signs in immediately (#694).
     const result = await this.operatorAuth.register(identifier, password, contactEmail);
-    if (result === 'submitted') {
-      this.model.set({ identifier: '', contactEmail: '', password: '' });
-      this.submittedForApproval.set(true);
-    } else {
+    if (result !== 'submitted') {
       this.error.set(operatorRegisterMessage(result));
+      return;
     }
+    // Auto-sign-in: fresh registration lands in the console; a duplicate fails like any sign-in (D-8).
+    const signIn = await this.operatorAuth.signIn(identifier, password);
+    this.model.set({ identifier: '', contactEmail: '', password: '' });
+    if (signIn === 'signed-in') {
+      await this.land(await this.operatorLandingRoute());
+      return;
+    }
+    if (signIn === 'invalid-credentials' || signIn === 'rate-limited') {
+      this.error.set(signInFailureMessage(signIn));
+      return;
+    }
+    // Registration accepted but the sign-in transport failed → the submitted card.
+    this.submittedForApproval.set(true);
   }
 
   private async land(url: string): Promise<void> {

@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { OperatorAuth } from '../core/operator-auth';
 import { groupSetsByRow } from '../shared/availability-grid';
 import { CardGlass } from '../shared/card-glass';
+import { FieldErrorFor } from '../shared/field-error-for';
 import { eurosToMinorUnits, formatMoney, minorUnitsToEuros, MoneyView } from '../shared/money';
 import { parentVenueId } from '../shared/parent-venue-id';
 import { todayBookingDate } from '../shared/booking-date';
@@ -44,7 +45,7 @@ interface PriceRow {
  */
 @Component({
   selector: 'app-pricing-tab',
-  imports: [CardGlass, StaleWriteBanner, TouchTarget],
+  imports: [CardGlass, FieldErrorFor, StaleWriteBanner, TouchTarget],
   templateUrl: './pricing-tab.html',
 })
 export class PricingTab {
@@ -191,6 +192,11 @@ export class PricingTab {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  /** Whether the reprice failure blames the price the operator typed, rather than the write itself. */
+  protected valueIsInvalid(code: RepriceErrorCode): boolean {
+    return code === 'INVALID_REQUEST';
   }
 
   /** The operator-facing message for a reprice failure code. */

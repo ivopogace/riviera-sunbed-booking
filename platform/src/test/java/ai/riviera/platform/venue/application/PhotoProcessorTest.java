@@ -17,7 +17,6 @@ import org.junit.jupiter.api.Test;
 import ai.riviera.platform.venue.application.PhotoProcessingResult.Processed;
 import ai.riviera.platform.venue.application.PhotoProcessingResult.Reason;
 import ai.riviera.platform.venue.application.PhotoProcessingResult.Rejected;
-import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.PhotoSurface;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The pure image pipeline (no Spring, no DB): validation guard, per-slot variant set, EXIF strip.
+ * The pure image pipeline (no Spring, no DB): validation guard, uniform variant set, EXIF strip.
  * Fixtures are generated in-test so the suite carries no binary blobs.
  */
 class PhotoProcessorTest {
@@ -38,11 +37,11 @@ class PhotoProcessorTest {
 	private final PhotoProcessor processor = new PhotoProcessor(26_214_400L, 50_000_000L, 12_000);
 
 	@Test
-	void coverProducesCardBannerAndPreviewJpegVariants() throws IOException {
-		Processed result = assertProcessed(processor.process(solidJpeg(1600, 1200), PhotoSlot.COVER));
+	void everyUploadProducesCardBannerAndPreviewJpegVariants() throws IOException {
+		Processed result = assertProcessed(processor.process(solidJpeg(1600, 1200)));
 
 		List<StoredVariant> variants = result.photo().variants();
-		assertEquals(3, variants.size(), "cover feeds card + banner + preview");
+		assertEquals(3, variants.size(), "every slot feeds card + banner + preview (uniform surfaces)");
 		Set<PhotoSurface> surfaces = variants.stream().map(StoredVariant::surface).collect(Collectors.toSet());
 		assertEquals(Set.of(PhotoSurface.CARD, PhotoSurface.BANNER, PhotoSurface.PREVIEW), surfaces);
 		for (StoredVariant v : variants) {
@@ -57,25 +56,16 @@ class PhotoProcessorTest {
 	}
 
 	@Test
-	void secondarySlotProducesPreviewOnly() throws IOException {
-		Processed result = assertProcessed(processor.process(solidPng(1600, 1200), PhotoSlot.BAR));
-
-		assertEquals(List.of(PhotoSurface.PREVIEW),
-				result.photo().variants().stream().map(StoredVariant::surface).toList(),
-				"secondary slots are operator-preview only");
-	}
-
-	@Test
 	void rejectsAnUploadOverTheSizeCap() {
 		PhotoProcessor tiny = new PhotoProcessor(10L, 50_000_000L, 12_000);
-		assertEquals(Reason.TOO_LARGE, assertRejected(tiny.process(new byte[20], PhotoSlot.COVER)).reason());
+		assertEquals(Reason.TOO_LARGE, assertRejected(tiny.process(new byte[20])).reason());
 	}
 
 	@Test
 	void rejectsNonImageBytesByMagicNotContentType() {
 		byte[] notAnImage = "this is definitely not an image".getBytes(StandardCharsets.UTF_8);
 		assertEquals(Reason.UNSUPPORTED_FORMAT,
-				assertRejected(processor.process(notAnImage, PhotoSlot.COVER)).reason());
+				assertRejected(processor.process(notAnImage)).reason());
 	}
 
 	@Test
@@ -83,7 +73,7 @@ class PhotoProcessorTest {
 		// 100x100 = 10_000 px exceeds a 100-px megapixel cap; both sides stay under the per-side cap.
 		PhotoProcessor lowMegapixels = new PhotoProcessor(26_214_400L, 100L, 100_000);
 		assertEquals(Reason.DIMENSIONS_EXCEEDED,
-				assertRejected(lowMegapixels.process(solidPng(100, 100), PhotoSlot.COVER)).reason());
+				assertRejected(lowMegapixels.process(solidPng(100, 100))).reason());
 	}
 
 	@Test
@@ -91,14 +81,14 @@ class PhotoProcessorTest {
 		// 100 px wide exceeds a 50-px per-side cap even though total pixels are tiny.
 		PhotoProcessor lowDimension = new PhotoProcessor(26_214_400L, 50_000_000L, 50);
 		assertEquals(Reason.DIMENSIONS_EXCEEDED,
-				assertRejected(lowDimension.process(solidPng(100, 10), PhotoSlot.COVER)).reason());
+				assertRejected(lowDimension.process(solidPng(100, 10))).reason());
 	}
 
 	@Test
 	void rejectsCorruptImageWithValidMagic() {
 		// JPEG magic (FF D8 FF) but no decodable image behind it.
 		byte[] corrupt = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-		assertEquals(Reason.UNREADABLE, assertRejected(processor.process(corrupt, PhotoSlot.COVER)).reason());
+		assertEquals(Reason.UNREADABLE, assertRejected(processor.process(corrupt)).reason());
 	}
 
 	@Test
@@ -113,7 +103,7 @@ class PhotoProcessorTest {
 		System.arraycopy(whole, 0, headerOnly, 0, headerOnly.length);
 
 		assertEquals(Reason.UNREADABLE,
-				assertRejected(processor.process(headerOnly, PhotoSlot.COVER)).reason());
+				assertRejected(processor.process(headerOnly)).reason());
 	}
 
 	/** The offset of the JPEG SOS marker (FF DA) — everything before it is header segments only. */
@@ -132,7 +122,7 @@ class PhotoProcessorTest {
 		// sanity: the input really carries an EXIF APP1 marker
 		assertTrue(containsSequence(withExif, EXIF_ID), "fixture carries EXIF");
 
-		Processed result = assertProcessed(processor.process(withExif, PhotoSlot.COVER));
+		Processed result = assertProcessed(processor.process(withExif));
 
 		for (StoredVariant v : result.photo().variants()) {
 			assertFalse(containsSequence(v.bytes(), EXIF_ID),

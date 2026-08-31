@@ -77,7 +77,7 @@ import { VenueCommissionView } from './admin.model';
 
       @if (meanRateCaption()) {
         <p
-          class="mt-2 text-[11.5px] leading-[1.45] text-(--riv-ink-soft)"
+          class="mt-2 text-[11.5px] leading-[1.45] text-riv-ink-soft"
           data-testid="admin-stats-mean-note"
         >
           The mean averages venue rates equally — what the platform takes depends on where bookings

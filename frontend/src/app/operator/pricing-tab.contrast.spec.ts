@@ -17,7 +17,7 @@ import {
  * projected label use `--riv-card-ink-soft` (0.78); the projected figure + "Saved" notice use the
  * AA-safe teal `#0a6e85`; the reprice error uses `#a3160e`. The number inputs sit on a lighter
  * `bg-white/60`, so `--riv-card-ink` over the plain card glass is the worst case for them too.
- * Values mirror the template + `styles.scss`; a token edit there must re-pass here.
+ * Values mirror the template + `tailwind.css`; a token edit there must re-pass here.
  */
 
 describe('PricingTab porcelain contrast (WCAG AA, #174)', () => {

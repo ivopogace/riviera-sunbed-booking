@@ -11,8 +11,9 @@ package ai.riviera.platform.operator.vocabulary;
  * address. {@code admin} surfaces the platform-admin flag so the console can mark those rows — the
  * self-suspend refusal itself is enforced server-side (AC-5), never by hiding a button.
  *
- * <p>The state is published as a {@code suspended} boolean rather than the status token, because
- * {@code OperatorStatus} is module-internal ({@code domain/}) and must not cross the seam.
+ * <p>The state is published as a {@code suspended} boolean rather than the status token: this list
+ * only ever contains decided accounts ({@code ACTIVE}/{@code SUSPENDED}), so a boolean says
+ * everything the console needs.
  */
 public record OperatorAccount(OperatorId id, String username, String contactEmail, boolean admin,
 		boolean suspended) {

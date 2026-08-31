@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.application.Bookings;
+import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 
 /**
  * The single confirm seam (invariant #11 event spine): transitions a booking to {@code CONFIRMED}
@@ -28,10 +29,13 @@ class ConfirmBookingService implements ConfirmBooking {
 
 	private final Bookings bookings;
 	private final ApplicationEventPublisher events;
+	private final CancellationPolicy cancellationPolicy;
 
-	ConfirmBookingService(Bookings bookings, ApplicationEventPublisher events) {
+	ConfirmBookingService(Bookings bookings, ApplicationEventPublisher events,
+			CancellationPolicy cancellationPolicy) {
 		this.bookings = bookings;
 		this.events = events;
+		this.cancellationPolicy = cancellationPolicy;
 	}
 
 	@Override
@@ -49,7 +53,11 @@ class ConfirmBookingService implements ConfirmBooking {
 	}
 
 	private void publish(ConfirmedBooking c) {
+		// A missing set (an FK breach) must not fail the confirm: a null window means no disclosure.
+		var birth = cancellationPolicy.windowAtBirth(c.setId(), c.bookingDate(), c.createdAt());
 		events.publishEvent(new BookingConfirmed(new BookingId(c.id()), c.venueId(), c.setId(),
-				c.bookingDate(), c.amountMinor(), c.currency()));
+				c.bookingDate(), c.amountMinor(), c.currency(),
+				birth.map(CancellationPolicy.BirthTerms::window).orElse(null),
+				birth.map(CancellationPolicy.BirthTerms::lateCancelRefundBps).orElse(0)));
 	}
 }
