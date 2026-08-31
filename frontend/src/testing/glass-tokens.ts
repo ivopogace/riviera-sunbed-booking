@@ -112,9 +112,22 @@ export const SOLID_FILL_DANGER: Rgb = hexToRgb('a3160e');
 /** The family's ink, fixed. Not a token: `text-white` is already unthemeable, so declaring one
  *  would add a declaration without removing a literal. Mirrored so the AA proof has a constant. */
 export const SOLID_FILL_INK: Rgb = WHITE;
-/** The dark theme's `--riv-pop-accent`, the coincidental token for `SOLID_FILL_BRAND`. Its
- *  counterpart for `SOLID_FILL_DANGER` is DARK_ERROR_INK above. */
+/** The dark theme's `--riv-pop-accent`, the coincidental token for `SOLID_FILL_BRAND` and
+ *  `CONSOLE_ACCENT_INK`. Its counterpart for `SOLID_FILL_DANGER` is DARK_ERROR_INK above. */
 export const DARK_POP_ACCENT: Rgb = hexToRgb('7cd7e8');
+/** `--riv-pop-accent` on the light themes — the popover family's accent (the theme-picker check,
+ *  app.html). Third of the three roles sharing this value, and the one that genuinely themes; the
+ *  other two are `SOLID_FILL_BRAND` (a fill) and `CONSOLE_ACCENT_INK` (the console's ink). */
+export const POP_ACCENT: Rgb = hexToRgb('0a6e85');
+
+/** `--riv-console-accent-ink` (#848) — the operator console's accent ink: prices, projected
+ *  takings, owed/net payout figures, the commission chip and the per-tab "Saved" notices.
+ *  Its own token despite sharing a value with `SOLID_FILL_BRAND` (a fill under fixed white ink)
+ *  and `--riv-pop-accent` (the popover accent, which themes to DARK_POP_ACCENT above) — same
+ *  value, three roles. Theme-invariant: every consumer is a child of the porcelain-pinned
+ *  `operator-console`, so a dark branch would be unreachable. Full reasoning sits at the
+ *  declaration in `tailwind.css`. Guarded by `operator/console-accent-token.contrast.spec.ts`. */
+export const CONSOLE_ACCENT_INK: Rgb = hexToRgb('0a6e85');
 
 /** `--riv-form-error-fill` / `--riv-form-error-ink` — the three tourist error banners' skin (#850).
  *  Theme-invariant as a PAIR: the fill is a solid composite that does not theme, so the themed

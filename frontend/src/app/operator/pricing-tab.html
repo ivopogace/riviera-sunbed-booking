@@ -43,7 +43,7 @@
         </div>
         @if (savedRow() === row.label) {
           <output
-            class="block py-1 text-right text-[11.5px] font-semibold text-[#0a6e85]"
+            class="block py-1 text-right text-[11.5px] font-semibold text-riv-console-accent-ink"
             [attr.data-testid]="'pricing-saved-' + row.label"
             >Saved. The public beach map reflects the new price.</output
           >
@@ -77,7 +77,9 @@
 
       <p class="mt-3 text-[12px] text-riv-card-ink-soft">
         Projected full-day take if every online set sells:
-        <strong class="text-[#0a6e85]" data-testid="pricing-projected">{{ projected() }}</strong>
+        <strong class="text-riv-console-accent-ink" data-testid="pricing-projected">{{
+          projected()
+        }}</strong>
       </p>
     } @else if (loadError()) {
       <p

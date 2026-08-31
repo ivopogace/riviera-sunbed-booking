@@ -288,16 +288,16 @@ component, signal, form, control-flow or DI surface changes, so the v22 posture 
 
 ## Execution status
 
-**Stage pointer:** `plan — authored, awaiting phase 0`
+**Stage pointer:** `implement (phase 4 — the mocked e2e)`
 
-**Next action:** commit this plan doc on `claude/sdlc-848-sj742n`, then run phase 0.
+**Next action:** write `e2e/console-accent-ink.e2e.ts` (AC-5/AC-6), mutation-check it, then phase 5.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Register the token + the test-side mirror | | |
-| 1 — Declaration + identity guard spec | | |
-| 2 — Migrate the twelve sites (drives AC-3's red green) | | |
-| 3 — Re-point the six contrast specs onto the mirror | | |
+| 0 — Register the token + the test-side mirror | ✅ | `<phase-0-3>` |
+| 1 — Declaration + identity guard spec | ✅ | `<phase-0-3>` |
+| 2 — Migrate the twelve sites (drives AC-3's red green) | ✅ | `<phase-0-3>` |
+| 3 — Re-point the six contrast specs onto the mirror | ✅ | `<phase-0-3>` |
 | 4 — Mocked e2e computed-colour proof | | |
 | 5 — Ledger row + verification sweep | | |
 
@@ -319,7 +319,10 @@ Skill-routing gate for what the fix touches *before* editing).
 - `docs/design/colour-literal-token-audit.md` — the T-2 row to `done` with the Option-A reason.
 - `frontend/src/tailwind.css` — the token declaration (base block, with its reason) + the
   `@theme inline` row that generates the utility.
-- `frontend/src/testing/glass-tokens.ts` — the `CONSOLE_ACCENT_INK` mirror.
+- `frontend/src/testing/glass-tokens.ts` — the `CONSOLE_ACCENT_INK` mirror, plus the light
+  `POP_ACCENT` counterpart the mirror was missing (see AC-4).
+- `frontend/src/app/app.contrast.spec.ts` — reads both `--riv-pop-accent` halves from the mirror
+  instead of restating them.
 - `frontend/src/app/operator/console-accent-token.contrast.spec.ts` — **new**: the
   single-declaration + identity guard.
 - `frontend/src/app/operator/{set-editor,layout-editor,requests-tab,pricing-tab,venue-tab,payouts-tab}.html`

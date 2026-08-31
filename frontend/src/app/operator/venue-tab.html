@@ -126,7 +126,7 @@
               <span class="text-[12.5px] font-semibold text-riv-card-ink">Commission</span>
               <output
                 data-testid="venue-commission"
-                class="rounded-[11px] border border-dashed border-riv-card-border bg-riv-chip-bg px-3 py-2 text-[14px] font-semibold text-[#0a6e85]"
+                class="rounded-[11px] border border-dashed border-riv-card-border bg-riv-chip-bg px-3 py-2 text-[14px] font-semibold text-riv-console-accent-ink"
                 >{{ commissionPct() }}</output
               >
               <span class="text-[11px] text-riv-card-ink-soft">Set by Riviera.</span>
@@ -154,7 +154,9 @@
           </button>
 
           @if (saved()) {
-            <output class="text-[11.5px] font-semibold text-[#0a6e85]" data-testid="venue-saved"
+            <output
+              class="text-[11.5px] font-semibold text-riv-console-accent-ink"
+              data-testid="venue-saved"
               >Saved. Your venue card and beach-map page now show these details.</output
             >
           }

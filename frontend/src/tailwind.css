@@ -73,6 +73,7 @@
   --color-riv-solid-fill-brand: var(--riv-solid-fill-brand);
   --color-riv-solid-fill-brand-hover: var(--riv-solid-fill-brand-hover);
   --color-riv-solid-fill-danger: var(--riv-solid-fill-danger);
+  --color-riv-console-accent-ink: var(--riv-console-accent-ink);
   --color-riv-card-track: var(--riv-card-track);
 
   --color-riv-pop-surface: var(--riv-pop-surface);
@@ -287,6 +288,34 @@
   --riv-solid-fill-brand: #0a6e85;
   --riv-solid-fill-brand-hover: #0a5e72;
   --riv-solid-fill-danger: #a3160e;
+
+  /** The operator console's ACCENT INK (#848): prices, projected takings, the owed/net payout
+      figures, the commission chip and the per-tab "Saved" notices — twelve positions across eight
+      console files, previously the literal `#0a6e85`.
+
+      Its own token, NOT a reuse, although two registered tokens carry this exact value. Utilities
+      here are mapped `@theme inline`, so `text-riv-pop-accent` would emit `var(--riv-pop-accent)`
+      and resolve AT THE POINT OF USE — which is what makes the porcelain subtree pin work, and
+      what would have made a reuse a permanent coupling: the console's ink would resolve through
+      the variable the `[data-riv-theme]` blocks override for the popover family, so retuning
+      popover chrome would move payout figures. `--riv-solid-fill-brand` is the other coincidence
+      and is a FILL under fixed white ink (#854/#861). Same value, three roles; Angular's emulated
+      encapsulation does not scope custom properties, so naming is the only separator there is.
+
+      Declared ONCE, with no dark counterpart, and that is deliberate: all twelve sites are
+      children of `operator-console`, whose host pins `data-riv-theme="porcelain"` ("Always
+      porcelain", operator-console.ts), so a dark branch would be unreachable by construction —
+      an unverifiable claim in CSS, since a themed token resolves the light value inside a pinned
+      subtree too and no render could tell the two apart. `--riv-pop-accent`'s dark `#7cd7e8` has
+      never been contrast-checked against a console surface. This is why the reasoning differs
+      from #855's, which reused the THEMED --riv-error-ink here: that token also paints tourist
+      surfaces, so its dark branch is reachable — just not from the console.
+      Proof: operator/console-accent-token.contrast.spec.ts (the single-declaration guard, the
+      only thing able to see a dark override, plus the mirror-identity assertion) + the six
+      operator *.contrast.spec.ts AA proofs + console-accent-ink.e2e.ts (the computed ink under a
+      forced dark document theme).
+      Rationale: docs/plans/console-accent-ink-token.md, issue #848. */
+  --riv-console-accent-ink: #0a6e85;
 
   /** The near-opaque popover surface (theme picker, account menu, mobile sheet — app.ts POP)
       and the segmented-control fills (shared/segmented-control.ts). Light values here; the

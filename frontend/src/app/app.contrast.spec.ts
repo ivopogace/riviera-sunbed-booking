@@ -1,9 +1,11 @@
 import { AA_NORMAL, Rgb, composite, contrastRatio, hexToRgb, rgbToHex } from '../testing/contrast';
 import {
   DARK_CHIP,
+  DARK_POP_ACCENT,
   DARK_HEADER_GLASS,
   DARK_STOPS,
   INK_DARK,
+  POP_ACCENT,
   PORCELAIN_CHIP,
   PORCELAIN_HEADER_GLASS,
   PORCELAIN_STOPS,
@@ -32,7 +34,6 @@ import {
 const POPOVER = { color: WHITE, alpha: 0.92 };
 const DARK_POPOVER = { color: hexToRgb('101a2e'), alpha: 0.96 };
 const DARK_POP_INK = hexToRgb('f2f7fa'); // --riv-pop-ink (dark)
-const DARK_POP_ACCENT = '#7cd7e8'; // --riv-pop-accent (dark)
 
 interface GlassPair {
   readonly usage: string;
@@ -143,7 +144,9 @@ describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
     expect(contrastRatio(rgbToHex(INK_DARK), rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
     const label = composite(INK_DARK, 0.7, popover);
     expect(contrastRatio(rgbToHex(label), rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
-    expect(contrastRatio('#0a6e85', rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrastRatio(rgbToHex(POP_ACCENT), rgbToHex(popover))).toBeGreaterThanOrEqual(
+      AA_NORMAL,
+    );
   });
 
   it('dark popover text meets AA over every dark-theme stop', () => {
@@ -154,7 +157,9 @@ describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
       );
       const label = composite(DARK_POP_INK, 0.75, popover);
       expect(contrastRatio(rgbToHex(label), rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
-      expect(contrastRatio(DARK_POP_ACCENT, rgbToHex(popover))).toBeGreaterThanOrEqual(AA_NORMAL);
+      expect(contrastRatio(rgbToHex(DARK_POP_ACCENT), rgbToHex(popover))).toBeGreaterThanOrEqual(
+        AA_NORMAL,
+      );
     }
   });
 

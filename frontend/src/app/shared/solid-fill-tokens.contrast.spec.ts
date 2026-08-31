@@ -104,15 +104,12 @@ const FILL_ROLES = [
  * after this slice, in a role that is not a solid fill.
  */
 const SURVIVORS: readonly (readonly [string, string])[] = [
-  // `#0a6e85` as a `text-` ink — class T, the `operator/` sites #848 is settling.
-  ['operator/set-editor.html', '#0a6e85'],
-  ['operator/payout-statement.ts', '#0a6e85'],
-  ['operator/layout-editor.html', '#0a6e85'],
-  ['operator/requests-tab.html', '#0a6e85'],
-  ['operator/pricing-tab.html', '#0a6e85'],
-  ['operator/payouts-tab.ts', '#0a6e85'],
-  ['operator/venue-tab.html', '#0a6e85'],
-  ['operator/payouts-tab.html', '#0a6e85'],
+  // `#0a6e85` had eight rows here — the `operator/` console inks this list was written to prove
+  // #854 had not swept. #848 has since tokenised them onto `--riv-console-accent-ink`, so they are
+  // gone as LITERALS, not as paint: the ink is still there, and `--riv-solid-fill-brand` is still a
+  // separate declaration of the same value in a different role. Read the shrunk list as that slice
+  // landing, never as #854 having over-reached after all; the ink's own guard is
+  // `operator/console-accent-token.contrast.spec.ts`.
   // `#0a5f74` as a `text-` ink, a selection `ring-`, and the dialog head's gradient stop.
   ['shared/amenity-chip.ts', '#0a5f74'],
   ['operator/set-editor.html', '#0a5f74'],

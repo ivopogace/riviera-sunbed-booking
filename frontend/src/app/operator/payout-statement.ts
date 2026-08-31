@@ -107,7 +107,7 @@ import { LedgerRow } from './operator-console.model';
                 <td class="px-3.5 py-3 font-bold text-riv-card-ink">Total due</td>
                 <td class="px-3.5 py-3"></td>
                 <td
-                  class="whitespace-nowrap px-3.5 py-3 text-right text-[15px] font-bold text-[#0a6e85]"
+                  class="whitespace-nowrap px-3.5 py-3 text-right text-[15px] font-bold text-riv-console-accent-ink"
                   data-testid="statement-total"
                 >
                   {{ owed() }}

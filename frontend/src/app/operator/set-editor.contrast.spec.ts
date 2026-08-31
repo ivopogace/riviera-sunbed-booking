@@ -3,6 +3,7 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  CONSOLE_ACCENT_INK,
   ERROR_INK,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
@@ -61,9 +62,10 @@ describe('SetEditor porcelain contrast (WCAG AA, #600)', () => {
       expect(contrastRatio(DESTRUCTIVE_INK, hex), `destructive over ${hex}`).toBeGreaterThanOrEqual(
         AA_NORMAL,
       );
-      expect(contrastRatio('#0a6e85', hex), `saved notice over ${hex}`).toBeGreaterThanOrEqual(
-        AA_NORMAL,
-      );
+      expect(
+        contrastRatio(rgbToHex(CONSOLE_ACCENT_INK), hex),
+        `saved notice over ${hex}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });
 
