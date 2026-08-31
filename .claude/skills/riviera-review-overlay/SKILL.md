@@ -8,11 +8,11 @@ description: Project-specific review overlay for the riviera-sunbed-booking repo
 ## Purpose
 
 A code review (today the `code-review` plugin's `/code-review`, or the harness's
-built-in `code-review` skill as its degraded fallback; historically the superpowers
-`*-review-interview` skills) walks its own generic
+built-in `code-review` skill as its degraded fallback) walks its own generic
 FE/BE/contract banks. This overlay layers in the **riviera-specific** items — the
-`CLAUDE.md` invariants turned into checkable review gates (cited, never restated). It is **content**, not a workflow: bank items, severity hints, and
-verification commands contributed to an active review.
+`CLAUDE.md` invariants turned into checkable review gates (cited, never restated). It
+is **content**, not a workflow: bank items, severity hints, and verification commands
+contributed to an active review.
 
 ## Activation
 
@@ -23,8 +23,7 @@ riviera-sunbed-booking repo (a `CLAUDE.md` with the riviera invariants /
 `ai.riviera.platform.*` modules). This overlay **never runs alone** — it layers
 onto an active review; honor an explicit user invoke by starting the review first.
 In the `riviera-sdlc` flow, starting the review is your duty — via the invocation
-ladder in riviera-sdlc's `references/pr-gates.md` §1 (the built-in `code-review`
-skill only as the degraded fallback); see riviera-sdlc's **Review gate**.
+ladder in riviera-sdlc's `references/pr-gates.md` §1.
 `/security-review` doesn't auto-load this overlay; consult the reference files directly.
 
 When loaded, announce: *"riviera-review-overlay loaded. Adding project-specific bank items."*
@@ -42,21 +41,13 @@ frontend-only review never pays for the backend bank:
   error body) — even with no frontend file touched — also load `references/fe-be-contract.md`.
 - **Frontend diff** → `references/frontend-conventions.md` — Angular standards,
   beach-map stale-availability handling, money/date rendering, no client secrets,
-  **RV-FE-8** (no *new* cross-feature folder import — the FE mirror of RV-BE-3;
-  the frozen set is `riviera-frontend`'s residual table: five behavioral edges
-  left after #489 moved the vocabulary to `shared/`), and **RV-FE-9** (a
-  transition that destroys the focused element moves focus — the repo's
-  most-repeated bug class, fifteen instances across #604/#614/#616/#621/#625.
-  One of the guard's two rules gates, the other only advises, and both have
-  shapes they cannot match — the item is what covers those), and **RV-FE-10**
-  (a live region outlives the content it announces — a region created together
-  with its message announces nothing, and the text being present means every
-  spec reading it passes either way; #741 shipped that on eight surfaces), and
-  **RV-FE-11** (an inline field error names its control via `[appFieldErrorFor]`,
-  and `aria-invalid` claims the *entered value* is wrong — never merely that a
-  write was refused; #823's gate found both halves missed, and the
-  Playwright-vs-CDP accname trap that made two reviewers report a 14-site defect
-  that was not there).
+  **RV-FE-8** (no *new* cross-feature folder import — the FE mirror of RV-BE-3),
+  **RV-FE-9** (a transition that destroys the focused element moves focus — the
+  repo's most-repeated bug class, and the guard's blind spots are exactly what the
+  item covers), **RV-FE-10** (a live region must outlive the content it announces),
+  and **RV-FE-11** (an inline field error names its control, and `aria-invalid`
+  claims the *entered value* is wrong — never merely that a write was refused).
+  Each item's full mechanics, guard postures, and case history live in the file.
 - **Fullstack diff** → both of the above, plus `references/fe-be-contract.md` —
   API typing, money/date on the wire, webhook-vs-redirect, idempotency.
 
@@ -105,16 +96,14 @@ in `SecurityConfig` or `tailwind.css` — and neither should you.
 ## RV-STYLE-2 — formatting is `prettier --check`'s job, not the reviewer's
 
 `frontend/.prettierrc` is enforced whole-scope: the frontend job's Format step runs bare
-`prettier --check src e2e`, and the tree has been clean since #631's one-time reformat (recorded
-in `.git-blame-ignore-revs`; it retired #615's diff-scoped wrapper, whose line-scoping existed
-only for the then-drifted tree). So a formatting comment on a frontend diff is either redundant
-with a gate that already ran or wrong:
+`prettier --check src e2e`, and the tree has been clean since #631's one-time reformat
+(recorded in `.git-blame-ignore-revs`). So a formatting comment on a frontend diff is either
+redundant with a gate that already ran or wrong:
 
 - **Don't hand-flag `printWidth`, quote style, or wrapping** in `frontend/src` or `frontend/e2e`.
   If a line were really misformatted, the Format step would have failed the PR and named the
-  file — the raised-and-fixed round trip on PR #520 and the raised-and-rejected one on PR #612
-  are the two this gate exists to retire. A dirty file is fixed with `npm run format` (or a
-  scoped `npx prettier --write <file>`), never by a review comment.
+  file (the PR #520 and #612 round trips are what this gate retires). A dirty file is fixed
+  with `npm run format` (or a scoped `npx prettier --write <file>`), never by a review comment.
 
 Outside that scope, hands off for two different reasons: `scripts/`, `docs/`, and `platform/`
 have no Prettier config at all (`resolveConfig` returns null there), while `frontend/`'s own
