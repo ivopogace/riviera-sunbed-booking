@@ -181,7 +181,10 @@ Vary by theme in this order of preference:
    is the first half again, and the worked example to copy: the form-error banners' fill and ink
    move as a **pair** (`--riv-form-error-fill`/`-ink`), because it is the fill's own fixedness that
    forbids the ink from theming — the themed `--riv-error-ink` over it measures 1.54:1. The unit is
-   the whole skin, not one position: a fixed fill pins every ink and border on it (`--riv-solid-btn-*`). This is
+   the whole skin, not one position: a fixed fill pins every ink and border on it
+   (`--riv-solid-btn-*`), and the pinning runs in **whichever direction the fixed position sits** —
+   at `--riv-solid-fill-*` the fixed ink (`text-white`) is what pins its fills. Group such a family
+   by **form, not value**, and reject a coincidental token on its **role** before its value. This is
    Tailwind's own documented multi-theme pattern (docs: Colors § "Referencing other
    variables" — plain vars per `:root`/attribute scope, mapped via `@theme inline`;
    `inline` is what keeps the utility emitting `var(--riv-*)` so per-scope overrides and

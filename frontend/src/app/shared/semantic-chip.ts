@@ -45,7 +45,8 @@ import { Directive } from '@angular/core';
 @Directive({
   selector: '[appSemanticChip]',
   host: {
-    class: 'semantic-chip rounded-full border font-bold bg-[#0a5f74] border-[#2f7d92] text-white',
+    class:
+      'semantic-chip rounded-full border font-bold bg-riv-solid-fill-brand border-[#2f7d92] text-white',
   },
 })
 export class SemanticChip {}

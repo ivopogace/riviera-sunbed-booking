@@ -6,7 +6,8 @@ the generalization-audit residue from #829 (PR #833). Prior slices that cut fami
 of this population: **#829** (the negative/red admin family, PR #833), **#835** (the accent
 teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR #856),
 **#850** (the tourist form-error skin's theme-invariant pair, PR #857), **#851** (the solid
-outline-button skin's theme-invariant family, PR #859).
+outline-button skin's theme-invariant family, PR #859), **#854** (the nine solid button/badge
+fills under fixed white ink, PR #860).
 
 > **This file is not a design record.** `docs/design/README.md` governs the `.dc.html`
 > artboards — approved-look snapshots that are deliberately *never* rewritten to track the
@@ -105,8 +106,7 @@ does not. Each needs its own token, not the coincidental one.
 | Family | n | Coincides with | Why not that token | Status |
 |---|---:|---|---|---|
 | `border-[rgba(255,255,255,0.4)]` (15 of 17; 2 are `bg-`) | 17 | `--riv-inset-fill` | That is a **fill** token (dark theme: `rgba(255,255,255,0.08)`). A border wants a border token; none of this value exists | open → #853 |
-| `bg-[#a3160e]` + `text-white` (`confirm-panel:9`, `requests-tab:172`) | 2 | `--riv-error-ink` | An **ink** token used as a fill. The white ink on it is fixed, so the pair is theme-invariant | open → #854 |
-| `#0a5f74` solid fills | 7 | `--riv-cta-grad` (end stop) | A gradient stop is not a fill token | open → #854 |
+| Solid fills under fixed white ink: `bg-[#0a6e85]` ×4, `bg-[#0a5f74]` ×3, `bg-[#a3160e]` ×2 | 9 | `--riv-pop-accent`, `--riv-cta-grad` (end stop), `--riv-error-ink` | Three coincidences, one form. An **ink** token and a **popover accent** used as fills, and a gradient stop that is not a fill token — and all three *theme*, while the white ink over them cannot | **done — #854, PR #860** (`--riv-solid-fill-*`) |
 | `#8a5410` warn ink, `#8a3a2a`, `#0a5e7a`, `#334a52`, … | ~20 | — | No token at all; these are genuine new-token candidates once their role is named | open |
 
 ### Class S — per-state palettes and one-offs: exempt for now

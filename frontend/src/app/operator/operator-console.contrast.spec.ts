@@ -4,6 +4,7 @@ import {
   PORCELAIN_HEADER_GLASS,
   PORCELAIN_STOPS,
   expectAaOverStops,
+  SOLID_FILL_BRAND,
 } from '../../testing/glass-tokens';
 
 /**
@@ -19,7 +20,7 @@ import {
 
 const WHITE = '#ffffff';
 const INK = '#0a2a33'; // --riv-ink (porcelain)
-const BADGE_FILL = '#0a5f74';
+const BADGE_FILL = rgbToHex(SOLID_FILL_BRAND);
 const SIGNOUT_HOVER_FILL = '#eef1f2';
 
 describe('OperatorConsole porcelain contrast (WCAG AA, #170)', () => {

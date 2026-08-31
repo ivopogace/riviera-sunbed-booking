@@ -26,18 +26,31 @@
  * two files away. Set equality is the load-bearing part: `contains` assertions would pass while a
  * second, translucent fill shipped beside the opaque one.
  *
- * <p>Two ties are weaker than the rest, and saying so is cheaper than discovering it. The semantic
+ * <p>Three ties are weaker than the rest, and saying so is cheaper than discovering it. The semantic
  * ink is Tailwind's named `text-white`, which cannot be interpolated from a hex, so its spec pins
- * the mirror with a literal equality instead. And no spec can see a variant it never renders:
+ * the mirror with a literal equality instead. The semantic FILL is a named utility for the same
+ * reason (#854), so {@link ChipFill.fillClass} carries the class and the hex is inherited from
+ * `glass-tokens.ts` rather than restated — one link longer, but still unbroken. And no spec can see
+ * a variant it never renders:
  * `water` is the amenity chip's only axis and it is boolean, so a third variant means a new input —
  * rendering it in that spec is part of adding it, not a step this file can enforce.
  */
+
+import { rgbToHex } from './contrast';
+import { SOLID_FILL_BRAND } from './glass-tokens';
 
 /** A chip recipe: the ink, and the opaque fill it sits on. Values mirror the directives' host classes. */
 export interface ChipFill {
   readonly name: string;
   readonly ink: string;
   readonly fill: string;
+  /**
+   * The class the fill is painted through, when that is no longer derivable from {@link fill} by
+   * interpolation — i.e. once the recipe has been tokenised and paints a named utility instead of a
+   * `bg-[#…]` arbitrary value. Absent means the recipe is still a literal and `bg-[${fill}]` is the
+   * class, which is how the amenity chips (class S of the colour-literal audit) still work.
+   */
+  readonly fillClass?: string;
 }
 
 /** `shared/amenity-chip.ts` — what the VENUE says about itself. */
@@ -46,9 +59,17 @@ export const DESCRIPTIVE_CHIPS: readonly ChipFill[] = [
   { name: 'amenity-chip--water (to-water accent)', ink: '#0a5f74', fill: '#d7eef4' },
 ];
 
-/** `shared/semantic-chip.ts` — what the PLATFORM claims about how booking works. */
+/**
+ * `shared/semantic-chip.ts` — what the PLATFORM claims about how booking works.
+ *
+ * <p>Tokenised at #854: the fill is `--riv-solid-fill-brand`, so the hex is no longer tied to what
+ * renders by interpolation. It is taken from the family mirror instead, which
+ * `shared/solid-fill-tokens.contrast.spec.ts` ties to the declaration in `tailwind.css` — so the
+ * chain from this value to the paint is unbroken, just one link longer than the amenity chips'.
+ */
 export const SEMANTIC_CHIP: ChipFill = {
   name: 'semantic-chip (mode + New)',
   ink: '#ffffff',
-  fill: '#0a5f74',
+  fill: rgbToHex(SOLID_FILL_BRAND),
+  fillClass: 'bg-riv-solid-fill-brand',
 };
