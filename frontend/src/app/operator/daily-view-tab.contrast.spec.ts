@@ -27,7 +27,7 @@ import {
  * The FREE tile's number is proven AA composited over the wash's worst-case stops; the locked
  * tile's number is proven over its striped fill's worst case, the darker stripe (the `●` beside it
  * stays `aria-hidden` decorative — state is carried by sr-only text); the filled STAFF_MARKED
- * tile — white text on `--riv-solid-fill-action`, also its legend swatch — is wash-independent. The
+ * tile — white text on `--riv-solid-fill-brand`, also its legend swatch — is wash-independent. The
  * zero-set empty state introduces no colour: its heading is `--riv-card-ink` and its copy
  * `--riv-card-ink-soft`, both already proven on this card glass, and its link is white on the
  * `--riv-cta-grad` stops the sibling operator CTAs prove. Values
@@ -70,7 +70,7 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
     }
   });
 
-  it('the marked-tile glyph + legend swatch (white on --riv-solid-fill-action) meet AA', () => {
+  it('the marked-tile glyph + legend swatch (white on --riv-solid-fill-brand) meet AA', () => {
     expect(contrastRatio('#ffffff', rgbToHex(SOLID_FILL_BRAND))).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 

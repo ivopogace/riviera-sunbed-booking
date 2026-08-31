@@ -105,10 +105,7 @@ export const SOLID_BTN_DANGER_BORDER: Glass = { color: hexToRgb('c85a3c'), alpha
  *  INK, grouped by FORM rather than value. Theme-invariant — the ink cannot theme, so the fills may
  *  not either; both coincidental tokens (`--riv-error-ink`, `--riv-pop-accent`) do theme, which is
  *  why neither is the answer. Full reasoning sits at the declaration in `tailwind.css`.
- *  Guarded by `shared/solid-fill-tokens.contrast.spec.ts`.
- *
- *  <p>ONE brand teal since #861, not two: `-action` (#0a6e85) and `-brand` (#0a5f74) were the same
- *  job with no role between them, and merged onto #0a6e85. */
+ *  Guarded by `shared/solid-fill-tokens.contrast.spec.ts`. One brand teal since #861. */
 export const SOLID_FILL_BRAND: Rgb = hexToRgb('0a6e85');
 export const SOLID_FILL_BRAND_HOVER: Rgb = hexToRgb('0a5e72');
 export const SOLID_FILL_DANGER: Rgb = hexToRgb('a3160e');

@@ -277,19 +277,13 @@
       but is the popover accent (#848) and themes to #7cd7e8 (1.65:1). No ink token: `text-white`
       already cannot theme.
 
-      ONE brand teal, not two (#861). -action (#0a6e85) and -brand (#0a5f74) were the same job —
-      solid fill under fixed white ink — with no role between them: buttons wore both, chips wore
-      both, and operator-console.html:70's badge took the deeper one beside lighter-teal buttons in
-      one porcelain-pinned shell. They merged onto #0a6e85, which is the design's brand teal (42
-      uses across the four docs/design canvases; #0a5f74 appears in NONE of them — it is the
-      AA-darkened end STOP of --riv-cta-grad, eyedropped into three flat fills). It is also the only
-      direction the hover survives: #0a5f74 against -brand-hover #0a5e72 is 1.016:1, one colour to
-      the eye. Cost, accepted: white ink at the three repainted sites goes 7.24:1 to 5.86:1, clear
-      of AA. #0a5f74 keeps its non-fill roles (both --riv-cta-grad stops, the editor selection
-      rings, three booking/ inks) — merged as a FILL, not deleted as a value.
+      ONE brand teal (#861): -action and -brand had no role between them and merged onto #0a6e85.
+      #0a5f74 is retired as a FILL only — it still paints both --riv-cta-grad stops, the editor
+      selection rings and three booking/ inks. Do not re-darken this fill to #0a5f74: it sits
+      1.016:1 from -brand-hover, which erases the hover.
       Proof: shared/solid-fill-tokens.contrast.spec.ts + solid-fill-token-skin.e2e.ts.
-      Rationale: docs/plans/solid-fill-teal-merge.md (the merge), then
-      docs/plans/solid-fill-token-family.md (the family). */
+      Rationale: docs/plans/solid-fill-teal-merge.md, then
+      docs/plans/solid-fill-token-family.md. */
   --riv-solid-fill-brand: #0a6e85;
   --riv-solid-fill-brand-hover: #0a5e72;
   --riv-solid-fill-danger: #a3160e;

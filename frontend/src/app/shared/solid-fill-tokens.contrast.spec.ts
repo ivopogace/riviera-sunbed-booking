@@ -15,10 +15,9 @@ import {
  * Guard for the `--riv-solid-fill-*` family (#854) — the nine solid button/badge fills carrying
  * fixed white ink, across `operator/` and two `shared/` components.
  *
- * <p>Nine sites, but only TWO values since #861: `-action` (#0a6e85) and `-brand` (#0a5f74) were
- * one job with no role between them and merged onto #0a6e85, so seven of the nine now wear the
- * surviving `-brand` and two wear `-danger`. The retired name is swept for below — a class naming
- * a token that no longer exists keeps painting nothing, silently, which no ratio here can see.
+ * <p>Nine sites, two values since #861: seven wear `-brand`, two wear `-danger`. The retired
+ * `-action` name is swept for below, prose included — a class naming a token that no longer
+ * exists paints nothing, silently, which no ratio here can see.
  *
  * <p>The sweep keys on the `bg-` form, not the bare value: all three literals — the merged-away
  * #0a5f74 included — also appear as `text-` inks, `ring-`s and gradient stops, which are other
@@ -65,6 +64,16 @@ const APP = join(process.cwd(), 'src/app');
 function componentSources(): readonly string[] {
   return readdirSync(APP, { recursive: true, encoding: 'utf8' }).filter(
     (path) => /\.(ts|html)$/.test(path) && !path.endsWith('.spec.ts'),
+  );
+}
+
+/** This file, the one source that may legitimately name the retired token — it is the sweep. */
+const SELF = 'shared/solid-fill-tokens.contrast.spec.ts';
+
+/** Every source under `src/app`, specs included: a retired name rots in prose as well as in code. */
+function everySource(): readonly string[] {
+  return readdirSync(APP, { recursive: true, encoding: 'utf8' }).filter(
+    (path) => /\.(ts|html)$/.test(path) && path.replaceAll('\\', '/') !== SELF,
   );
 }
 
@@ -156,9 +165,9 @@ describe('Solid fill token family (WCAG AA + theme invariance, #854)', () => {
   it('retires the -action name and the question it deferred (#861)', () => {
     // The merge's own failure mode: a class outliving its token paints nothing, silently.
     expect(STYLESHEET).not.toMatch(/--(color-)?riv-solid-fill-action/);
-    expect(
-      componentSources().filter((path) => read(path).includes('riv-solid-fill-action')),
-    ).toEqual([]);
+    expect(everySource().filter((path) => read(path).includes('riv-solid-fill-action'))).toEqual(
+      [],
+    );
 
     // And the declaration comment now answers #861 rather than deferring to it.
     expect(STYLESHEET).not.toContain('#861 settles whether');

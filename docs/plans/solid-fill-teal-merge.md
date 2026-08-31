@@ -35,7 +35,10 @@ surfaced the #848 file overlap, R-6) · `riviera-plan-doc` (this template; its B
 ledger is what forced the four *unchanged-paint* sites to be enumerated beside the three repainted
 ones — the rename is the half of this diff that can silently drop a paint) · `tdd` (phase 0 writes
 the merged registry into the mirror + family spec and watches it go red against `tailwind.css`) ·
-`riviera-review-overlay` (review gate — due at ready-for-review) · `riviera-docs-freshness`
+`riviera-review-overlay` (review gate — **ran** at ready-for-review with the `/code-review`
+five-agent fan-out; 6 findings, all fixed and re-verified. Its own frontend bank walked: RV-FE-7,
+RV-FE-E2E, RV-FE-8, RV-STYLE-1/2 and RV-PROC-1 all clear; RV-FE-1/2/3/4/5/9/10/11 not applicable
+to a token merge) · `riviera-docs-freshness`
 (**ran** over `origin/main...HEAD` at phase 3 — 3 findings, all patched: the audit ledger's R-2 row,
 G-4's answer in the #854 plan doc, and an as-built pointer on `semantic-chips.md`; the counting
 sweep also caught two stale counts inside the token declaration itself, fixed at phase 1) · `riviera-tailwind` (the
@@ -46,9 +49,12 @@ retired name) · `riviera-frontend` (placement: no new files; the e2e proofs sta
 `frontend/e2e/` suite, and `src/testing/glass-tokens.ts` remains the single mirror the unit specs
 read) · `playwright-cli` (`toHaveCSS` on the computed box, `addInitScript` for the forced dark
 theme — the existing three specs are edited, not re-authored) · `riviera-local-debug` (scoped
-`npm test -- <path>` / `test:e2e:a11y` runs and the cloud Chromium recipe) · `angular-developer`
-(**N/A — no component logic changed**: the diff is CSS custom properties, class strings and test
-mirrors, so no signals/DI/control-flow API is in play. Named rather than omitted, per the
+`npm test -- <path>` / `test:e2e:a11y` runs and the cloud Chromium recipe) ·
+`riviera-java-conventions` §6c–6d (the canonical comment contract, cited by
+`frontend/.claude/CLAUDE.md` — it is what adjudicated review finding F-3, where two review agents
+disagreed about whether the new prose was narration) · `angular-developer`
+(**N/A — no component logic changed**: the diff is CSS custom properties, class strings, comments and
+test mirrors, so no signals/DI/control-flow API is in play. Named rather than omitted, per the
 RV-PROC-1 gap #856's review flagged).
 
 **Branch:** `claude/sdlc-861-n5p1gh` — **the cloud session's designated remote branch stands in
@@ -223,10 +229,11 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `PR — ready for review; review gate due`
+**Stage pointer:** `review gate — findings fixed, re-verifying; sonar gate next`
 
-**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1 (the
-`/code-review` ladder plus `riviera-review-overlay`), then the Sonar gate's issue list.
+**Next action:** Confirm CI green on the fix commit, then pull the SonarCloud issue + duplication
+list for PR #862 on the final head (per `references/pr-gates.md` §2 — a green gate is not the
+check, and confirm the analysis actually ran rather than reading a false-clean zero).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -234,6 +241,7 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 | 1 — Merge the declaration + rename the four sites, green | ✅ | `c564c46` |
 | 2 — The computed-style proofs + the mutation check | ✅ | `a233a08` |
 | 3 — Docs, ledger row and close-out | ✅ | `31da33b` |
+| Review-gate fixes (F-1…F-6) | ✅ | `<review-fixes>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -241,7 +249,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-0 | CI (`Repo hygiene`, `a233a08`) | `check-inline-comments` — a two-line inline comment in the new retirement test | **fixed** in `31da33b`, green on the head since |
+| F-1 | review gate (agents 3 + 5) | `shared/semantic-chip.ts:14` states the fill **is** `--riv-cta-grad`'s dark stop — true until this slice, false after it. A file with **zero diff lines**, so only a reader of the declaration would ever have caught it | **fixed** — the sentence now names `--riv-solid-fill-brand` and its 5.86:1 |
+| F-2 | review gate (agent 5) | Three prose spots still named the retired `--riv-solid-fill-action` (`daily-view-tab.contrast.spec.ts:30,73`, `requests-tab.contrast.spec.ts:24`) — invisible to my own retirement sweep, which excluded `*.spec.ts` | **fixed** — prose renamed **and the sweep widened** to every source under `src/app` except itself; mutation-checked (reintroducing the name turns it red) |
+| F-3 | review gate (agent 1) | The declaration comment and three doc headers narrated decision history — `riviera-java-conventions` §6d ("no decision history", "relocate, don't delete", ~6 lines on a type). Agent 4 read the same prose as compliant; §6d itself settles it, and #854's own F-1/F-7 set the precedent | **fixed** — declaration 13 lines → 6 (contract + the don't-re-darken warning + the pointer), mirror header 4 → 1, spec header 8 → 6, e2e header 5 → 1. Bare `(#861)` citations kept, per PR #856/#857's adjudication |
+| F-4 | review gate (agent 4) | PR #859's precedent: a contrast claim that justifies **not** acting belongs at the code declaration, not only in the plan. R-4's border-vs-fill 1.248:1 lived only here | **fixed** — `semantic-chip.ts` now records both numbers (1.25:1 to the fill, 5.39:1 to the card) where the border is declared |
+| F-5 | review gate (agent 4) | The File-structure section claimed `chip-fills.ts` changed; it did not (nor did `operator-console.contrast.spec.ts`) — both already derive from the mirror | **fixed** — section corrected, with the reason kept visible |
+| F-6 | review gate (agent 3) | `layout-editor.contrast.spec.ts:81` asserted AA against the **hardcoded** `#0a5f74` — the only unit assertion of the repainted `ConfirmPanel` primary fill. Phase 2's sweep looked for the **rgb-triple** form, so the hex form escaped it; the family sweep excludes `*.spec.ts`. This is #854's own review finding F-5 recurring | **fixed** — migrated onto `SOLID_FILL_BRAND`, and the mechanism re-enumerated (see the audit log) |
 
 ---
 
@@ -252,14 +266,23 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   now answers #861 instead of deferring it.
 - `frontend/src/testing/glass-tokens.ts` — `SOLID_FILL_BRAND` takes `#0a6e85`,
   `SOLID_FILL_BRAND_HOVER` replaces `SOLID_FILL_ACTION_HOVER`, `SOLID_FILL_ACTION` retires.
-- `frontend/src/testing/chip-fills.ts` — the `SEMANTIC_CHIP` mirror's comment follows the merge
-  (its value already derives from `SOLID_FILL_BRAND`).
 - `frontend/src/app/shared/solid-fill-tokens.contrast.spec.ts` — merged `FAMILY`, the new
-  retirement assertion, the `SURVIVORS` sweep kept green.
+  retirement assertion (widened at the review gate to sweep spec prose too), the `SURVIVORS`
+  sweep kept green.
+- `frontend/src/app/shared/semantic-chip.ts` — comment only: its declaration claimed the fill
+  **is** `--riv-cta-grad`'s dark stop, which the merge made false (review finding F-1/F-4).
+- `frontend/src/app/operator/layout-editor.contrast.spec.ts` — the one unit assertion of the
+  repainted `ConfirmPanel` primary fill, migrated off its hardcoded hex onto the mirror (F-6).
+
+> **Not touched, though an earlier draft of this section said they would be:**
+> `frontend/src/testing/chip-fills.ts` and `frontend/src/app/operator/operator-console.contrast.spec.ts`
+> already derive from `SOLID_FILL_BRAND`, so the merge reaches them with no edit — which is the
+> mirror pattern working as intended. Corrected here after the review gate flagged the bookkeeping.
 - `frontend/src/app/operator/requests-tab.html|payouts-tab.html|daily-view-tab.ts|daily-view-tab.html`
   — the four `bg-riv-solid-fill-action` class strings (and the one hover) renamed to `-brand`.
-- `frontend/src/app/operator/requests-tab.contrast.spec.ts|payouts-tab.contrast.spec.ts|daily-view-tab.contrast.spec.ts|operator-console.contrast.spec.ts`
-  — the renamed mirror constant (in phase 0, per that phase's recorded deviation).
+- `frontend/src/app/operator/requests-tab.contrast.spec.ts|payouts-tab.contrast.spec.ts|daily-view-tab.contrast.spec.ts`
+  — the renamed mirror constant (in phase 0, per that phase's recorded deviation), and the two
+  whose prose still named the retired token (F-2).
 - `frontend/e2e/solid-fill-token-skin.e2e.ts` — the merged `REGISTRY`, `UTILITIES` and expected
   rgb triples; the forced-dark test re-mutation-checked.
 - `frontend/e2e/discovery-flow.e2e.ts` — `SEMANTIC_FILL`'s deliberate second copy.
@@ -450,6 +473,7 @@ three contrast specs · Modify `frontend/src/testing/chip-fills.ts`
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-31 | phase 2 | Every place that pins the **old fill as a rendered value** — the mechanism is "asserts a computed `background-color` triple", not "is an e2e file about teal". Enumerated by the rgb triple the browser reports, which is the only form these assertions take | `grep -rn "10, 95, 116" frontend/ --include=*.ts` | 3: `solid-fill-token-skin.e2e.ts:32`, `layout-editor.e2e.ts:505`, `discovery-flow.e2e.ts:19` | all three repinned to `rgb(10, 110, 133)`. The sweep is what found `layout-editor.e2e.ts` — an inline literal in a spec about grid regeneration, which no search for "teal" or "chip" would have returned |
+| 2026-08-31 | review gate, F-6 | The **hex** form of the same mechanism, which phase 2 missed by enumerating only the rgb triple a browser reports: every contrast spec asserting AA against a **hardcoded** `#0a5f74` rather than the mirror. Same class as #854's own review finding F-5 | `grep -rn "0a5f74" src/app --include=*.contrast.spec.ts` | 2 hits, triaged by role: `layout-editor.contrast.spec.ts:81` (white **on** the fill — the repainted `ConfirmPanel` primary, **stale**) and `booking-dialog.contrast.spec.ts:129` (`#0a5f74` **as an ink** on white — a survivor role, correct as-is). Every other hit is `CTA_STOPS` or `SELECTION_RING` — survivors | the first migrated to `SOLID_FILL_BRAND`; the second deliberately left. The lesson recorded: a value that moves must be swept in **both** the authored (hex) and rendered (rgb) forms |
 
 ---
 

@@ -11,8 +11,8 @@ import { Directive } from '@angular/core';
  * <p>The distinction is an INVERSION rather than another tint: an opaque saturated accent fill
  * with white ink, against the descriptive family's pale fills with dark ink. A tint was not
  * available — the to-water chip already owns the pale-teal accent, so a second one would have
- * muddled the two families instead of separating them. The fill is `--riv-cta-grad`'s dark stop,
- * a colour the system already proves carries white body text at AA.
+ * muddled the two families instead of separating them. The fill is `--riv-solid-fill-brand`, the
+ * brand teal the system proves carries white body text at AA (5.86:1).
  *
  * <p>OPAQUE SOLID, never rgba — the css:S7924 treatment the sibling chips use, and here it does
  * more than satisfy the analyzer. The mode chip sits over an ARBITRARY uploaded cover photo,
@@ -22,7 +22,9 @@ import { Directive } from '@angular/core';
  * opaque fill removes the backdrop from both arguments at once, which is why one ink/fill pair
  * in `shared/semantic-chip.contrast.spec.ts` now replaces two composited per-surface proofs.
  * The rim is a LIGHTER accent, inverting the descriptive chips' darker-than-fill border for the
- * same reason the fill inverts: on the dark map header a darker rim would have dissolved.
+ * same reason the fill inverts: on the dark map header a darker rim would have dissolved. It
+ * separates from the fill at only 1.25:1 (#861 lightened the fill), which is decorative and not
+ * the boundary WCAG 1.4.11 asks about — the chip is identified against the CARD, at 5.39:1.
  *
  * <p>Deliberately carries NO geometry — no `display`, no padding, no `text-*`. The five call
  * sites differ (11px tracked caps over a photo — twice, the mode and sales-closed chips —

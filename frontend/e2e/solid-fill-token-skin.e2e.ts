@@ -27,11 +27,7 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * fills paint from the tokens at all, which is the other half.
  */
 
-/**
- * One brand teal since #861: `-action` (#0a6e85) and `-brand` (#0a5f74) were the same job with no
- * role between them and merged onto #0a6e85, so the console button and the discovery chip now
- * assert the SAME triple. That is the point of the merge, not a copy-paste slip.
- */
+/** One teal since #861, so the console button and the discovery chip assert the SAME triple. */
 const BRAND = 'rgb(10, 110, 133)';
 const BRAND_HOVER = 'rgb(10, 94, 114)';
 const DANGER = 'rgb(163, 22, 14)';

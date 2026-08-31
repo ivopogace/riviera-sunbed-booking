@@ -21,7 +21,7 @@ import {
  * the console teal `#0a6e85` (still a literal — class T, #848); the urgency chip + decline text +
  * expired-race + load-error use the alert red `--riv-error-ink` (also the urgency-chip text over its
  * own `#a3160e`@0.10 tint, a class-O modifier left to #852). The primary buttons put white on
- * `--riv-solid-fill-action` (accept) / `--riv-solid-fill-danger` (confirm-decline), tokenised at #854.
+ * `--riv-solid-fill-brand` (accept) / `--riv-solid-fill-danger` (confirm-decline), tokenised at #854.
  *
  * <p>The design mock's lighter teal→teal gradient (`#2bb8d4`) and raw ambers fail AA on their light
  * stops, so this tab deliberately uses the console's proven `#0a6e85` / `--riv-error-ink` inks instead (the
