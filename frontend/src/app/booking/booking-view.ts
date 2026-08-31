@@ -567,7 +567,7 @@ export class BookingView {
   protected readonly submittingReview = signal(false);
   /** What the last successful review write did — the panel that produced it is gone by then. */
   protected readonly reviewSuccess = signal<string | undefined>(undefined);
-  /** The one rejection line: the panel's own refusal, or what the server said. */
+  /** What the server refused a review write for — a missing rating shows its own inline error instead. */
   protected readonly reviewRejection = signal<string | undefined>(undefined);
 
   private readonly focusAfterRender = focusMover();
