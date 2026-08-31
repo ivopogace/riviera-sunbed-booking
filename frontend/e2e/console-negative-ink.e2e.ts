@@ -26,7 +26,8 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * this token from a themed one. What it does prove is the property the three sites actually depend
  * on — that nothing in the cascade repaints the console's negative ink when the document theme
  * changes — which is exactly what would break if a later slice gave the token a dark override and
- * the console stopped pinning porcelain. The declaration guard in
+ * the console stopped pinning porcelain. Both sites carry their own dark-theme test, for the same
+ * reason the porcelain ones are separate: independent lazy route children. The declaration guard in
  * `operator/console-negative-token.contrast.spec.ts` is what watches the override itself.
  * Rationale: docs/plans/console-negative-ink-token.md.
  */
@@ -136,7 +137,7 @@ test.describe('the operator console negative ink paints from the token registry'
     await expect(notice).toHaveCSS('color', CONSOLE_NEGATIVE_INK);
   });
 
-  test('the console keeps its porcelain negative ink under a dark document theme', async ({
+  test('the payouts net keeps its porcelain negative ink under a dark document theme', async ({
     page,
   }) => {
     await page.addInitScript(() => localStorage.setItem('riviera-theme', 'dark'));
@@ -144,5 +145,18 @@ test.describe('the operator console negative ink paints from the token registry'
 
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
     await expect(page.getByTestId('ledger-net')).toHaveCSS('color', CONSOLE_NEGATIVE_INK);
+  });
+
+  test('the check-in notice keeps its porcelain negative ink under a dark document theme', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => localStorage.setItem('riviera-theme', 'dark'));
+    await openConsoleTab(page, 'daily');
+
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
+    await page.getByTestId('checkin-code-input').fill(NOT_A_BOOKING_CODE);
+    await page.getByTestId('checkin-submit').click();
+
+    await expect(page.getByTestId('checkin-result')).toHaveCSS('color', CONSOLE_NEGATIVE_INK);
   });
 });

@@ -21,8 +21,9 @@ import {
  * intro/dates/commission/empty sub-copy use `--riv-card-ink-soft` (0.78); the "Owed to you" label,
  * column headers and footnote use `--riv-card-ink-faint` (0.72). The owed figure + accrual net use the
  * console accent ink `--riv-console-accent-ink`; reversal net + the reason chip use the console's negative ink
- * `--riv-console-negative-ink` (the chip also over its own tint of that same value at 0.12 — the tab's lowest-contrast
- * pair, and the token's, which is why the measurement lives here); the load-error uses the alert red `--riv-error-ink`.
+ * `--riv-console-negative-ink` (the chip also over its own tint of that same value at 0.12 — at 5.05:1 the lowest
+ * pair that ink lands in anywhere, which is why the measurement lives here; the tab's own lowest is the weather
+ * button's white on `#9a6410` at 4.99:1); the load-error uses the alert red `--riv-error-ink`.
  * Solid buttons put white on `--riv-solid-fill-brand`
  * (statement) and on a **darkened** amber `#9a6410` (weather confirm).
  *
