@@ -5,9 +5,8 @@ import { AA_NORMAL, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   DARK_ERROR_INK,
   DARK_POP_ACCENT,
-  SOLID_FILL_ACTION,
-  SOLID_FILL_ACTION_HOVER,
   SOLID_FILL_BRAND,
+  SOLID_FILL_BRAND_HOVER,
   SOLID_FILL_DANGER,
   SOLID_FILL_INK,
 } from '../../testing/glass-tokens';
@@ -16,8 +15,13 @@ import {
  * Guard for the `--riv-solid-fill-*` family (#854) — the nine solid button/badge fills carrying
  * fixed white ink, across `operator/` and two `shared/` components.
  *
- * <p>The sweep keys on the `bg-` form, not the bare value: the same three literals also appear as
- * `text-` inks, `ring-`s and gradient stops, which are other audit classes and other slices' work.
+ * <p>Nine sites, two values since #861: seven wear `-brand`, two wear `-danger`. The retired
+ * `-action` name is swept for below, prose included — a class naming a token that no longer
+ * exists paints nothing, silently, which no ratio here can see.
+ *
+ * <p>The sweep keys on the `bg-` form, not the bare value: all three literals — the merged-away
+ * #0a5f74 included — also appear as `text-` inks, `ring-`s and gradient stops, which are other
+ * audit classes and other slices' work.
  *
  * <p>The declaration tests read `src/tailwind.css` as TEXT (the `core/theme-boot.spec.ts` pattern)
  * rather than doing maths, because jsdom cannot see the thing worth protecting: a dark override
@@ -35,9 +39,8 @@ const STYLESHEET = readFileSync(join(process.cwd(), 'src/tailwind.css'), 'utf8')
 
 /** The whole family, with the value `tailwind.css` is expected to declare for it. */
 const FAMILY = {
-  '--riv-solid-fill-action': rgbToHex(SOLID_FILL_ACTION),
-  '--riv-solid-fill-action-hover': rgbToHex(SOLID_FILL_ACTION_HOVER),
   '--riv-solid-fill-brand': rgbToHex(SOLID_FILL_BRAND),
+  '--riv-solid-fill-brand-hover': rgbToHex(SOLID_FILL_BRAND_HOVER),
   '--riv-solid-fill-danger': rgbToHex(SOLID_FILL_DANGER),
 } as const;
 
@@ -61,6 +64,16 @@ const APP = join(process.cwd(), 'src/app');
 function componentSources(): readonly string[] {
   return readdirSync(APP, { recursive: true, encoding: 'utf8' }).filter(
     (path) => /\.(ts|html)$/.test(path) && !path.endsWith('.spec.ts'),
+  );
+}
+
+/** This file, the one source that may legitimately name the retired token — it is the sweep. */
+const SELF = 'shared/solid-fill-tokens.contrast.spec.ts';
+
+/** Every source under `src/app`, specs included: a retired name rots in prose as well as in code. */
+function everySource(): readonly string[] {
+  return readdirSync(APP, { recursive: true, encoding: 'utf8' }).filter(
+    (path) => /\.(ts|html)$/.test(path) && path.replaceAll('\\', '/') !== SELF,
   );
 }
 
@@ -117,12 +130,7 @@ const SURVIVORS: readonly (readonly [string, string])[] = [
 describe('Solid fill token family (WCAG AA + theme invariance, #854)', () => {
   it('white ink clears AA on every fill in the family', () => {
     // The legend swatch has no row: `aria-hidden`, no text, so no ink to pair it with (see header).
-    for (const fill of [
-      SOLID_FILL_ACTION,
-      SOLID_FILL_ACTION_HOVER,
-      SOLID_FILL_BRAND,
-      SOLID_FILL_DANGER,
-    ]) {
+    for (const fill of [SOLID_FILL_BRAND, SOLID_FILL_BRAND_HOVER, SOLID_FILL_DANGER]) {
       expect(
         contrastRatio(rgbToHex(SOLID_FILL_INK), rgbToHex(fill)),
         `white on ${rgbToHex(fill)}`,
@@ -152,6 +160,17 @@ describe('Solid fill token family (WCAG AA + theme invariance, #854)', () => {
     for (const name of Object.keys(FAMILY)) {
       expect(base, `${name} in the base block`).toContain(`${name}:`);
     }
+  });
+
+  it('retires the -action name and the question it deferred (#861)', () => {
+    // The merge's own failure mode: a class outliving its token paints nothing, silently.
+    expect(STYLESHEET).not.toMatch(/--(color-)?riv-solid-fill-action/);
+    expect(everySource().filter((path) => read(path).includes('riv-solid-fill-action'))).toEqual(
+      [],
+    );
+
+    // And the declaration comment now answers #861 rather than deferring to it.
+    expect(STYLESHEET).not.toContain('#861 settles whether');
   });
 
   it('declares the values this test mirror carries', () => {

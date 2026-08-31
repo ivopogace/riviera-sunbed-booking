@@ -218,6 +218,11 @@ The literal `feature/*` branch is deliberately not created.
   slice preserves values. Both are tokenised separately here, the near-duplicate is written
   at the declaration so the next reader sees it, and **issue #861** records the question — the
   same treatment the ledger already gives `#0c2a33` vs `#0a2a33`.
+  **Answered since (#861, PR #862):** they were one colour. Merged onto `#0a6e85` — the design's
+  brand teal (42 uses across the four canvases; `#0a5f74` appears in none, being the AA-darkened
+  end stop of `--riv-cta-grad`) and the only direction the family's hover step survives, since
+  `#0a5f74` against `#0a5e72` is 1.016:1. The three `#0a5f74` fills were repainted; `-action`
+  retired. Rationale: `docs/plans/solid-fill-teal-merge.md`.
 
 ## Availability & concurrency (invariant #2)
 

@@ -14,7 +14,9 @@ it carries **only the distinction** (opaque accent fill, white ink, weight, radi
 presence) and **no geometry**: every one of the four call sites keeps its own padding,
 font size and positioning, which is what makes "no layout shift" provable by inspection
 rather than by measurement. The fill is an **opaque solid** (`#0a5f74`, the `--riv-cta-grad`
-dark stop), following the css:S7924 treatment the two sibling chips already use — so the
+dark stop <!-- as-built diverges — the fill is `--riv-solid-fill-brand` since #854, and #0a6e85
+since the #861 merge; the CTA-stop tie is history -->), following the css:S7924 treatment the two
+sibling chips already use — so the
 treatment is theme-independent, surface-independent, and proven once by a single ink/fill
 assertion instead of per-surface composited maths.
 

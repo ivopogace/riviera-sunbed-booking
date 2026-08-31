@@ -7,6 +7,7 @@ import {
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
+  SOLID_FILL_BRAND,
   WASH_STOPS,
   expectAaOverStops,
 } from '../../testing/glass-tokens';
@@ -78,7 +79,8 @@ describe('LayoutEditor porcelain contrast (WCAG AA, #172)', () => {
 
   it('regenerate-confirm text meets AA on its warning surface, and its confirm button (white) on solid teal', () => {
     expect(contrastRatio('#7a4a08', '#fff4e0')).toBeGreaterThanOrEqual(AA_NORMAL);
-    expect(contrastRatio('#ffffff', '#0a5f74')).toBeGreaterThanOrEqual(AA_NORMAL);
+    // The ConfirmPanel primary fill, read from the mirror — a literal here drifts off the token.
+    expect(contrastRatio('#ffffff', rgbToHex(SOLID_FILL_BRAND))).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
   it('save error + saved notice inks meet AA over every porcelain stop', () => {

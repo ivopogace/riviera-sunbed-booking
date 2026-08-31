@@ -27,17 +27,16 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * fills paint from the tokens at all, which is the other half.
  */
 
-const ACTION = 'rgb(10, 110, 133)';
-const ACTION_HOVER = 'rgb(10, 94, 114)';
-const BRAND = 'rgb(10, 95, 116)';
+/** One teal since #861, so the console button and the discovery chip assert the SAME triple. */
+const BRAND = 'rgb(10, 110, 133)';
+const BRAND_HOVER = 'rgb(10, 94, 114)';
 const DANGER = 'rgb(163, 22, 14)';
 const WHITE = 'rgb(255, 255, 255)';
 
 /** Every token the family registers, with the value `tailwind.css` declares for it. */
 const REGISTRY = {
-  '--riv-solid-fill-action': '#0a6e85',
-  '--riv-solid-fill-action-hover': '#0a5e72',
-  '--riv-solid-fill-brand': '#0a5f74',
+  '--riv-solid-fill-brand': '#0a6e85',
+  '--riv-solid-fill-brand-hover': '#0a5e72',
   '--riv-solid-fill-danger': '#a3160e',
 } as const;
 
@@ -46,11 +45,7 @@ const REGISTRY = {
  * The hover fill is deliberately absent: it compiles to `.hover\:bg-…:hover`, not a bare class
  * selector, so it is proven where it actually matters — the hovered box, in the console test.
  */
-const UTILITIES = [
-  'bg-riv-solid-fill-action',
-  'bg-riv-solid-fill-brand',
-  'bg-riv-solid-fill-danger',
-];
+const UTILITIES = ['bg-riv-solid-fill-brand', 'bg-riv-solid-fill-danger'];
 
 /** One venue card, enough for the discovery grid to render its semantic mode chip. */
 const VENUES = [
@@ -130,21 +125,21 @@ test.describe('the solid fill family paints from the token registry', () => {
     await expect(chip).toHaveCSS('color', WHITE);
   });
 
-  test('the console paints the action fill, hover included', async ({ page }) => {
+  test('the console paints the brand fill, hover included', async ({ page }) => {
     await mockWholeConsole(page);
     await openConsoleTab(page, 'requests');
 
     const accept = page.getByRole('button', { name: /Accept/ }).first();
-    await expect(accept).toHaveCSS('background-color', ACTION);
+    await expect(accept).toHaveCSS('background-color', BRAND);
     await expect(accept).toHaveCSS('color', WHITE);
 
     await page.goto('/operator/1/payouts');
 
     // The hover fill is the one position no bare class selector proves — it needs the hovered box.
     const statement = page.getByTestId('statement-open');
-    await expect(statement).toHaveCSS('background-color', ACTION);
+    await expect(statement).toHaveCSS('background-color', BRAND);
     await statement.hover();
-    await expect(statement).toHaveCSS('background-color', ACTION_HOVER);
+    await expect(statement).toHaveCSS('background-color', BRAND_HOVER);
   });
 
   test('the console paints the danger fill and the shared confirm panel the brand fill', async ({

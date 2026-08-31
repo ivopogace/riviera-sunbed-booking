@@ -105,15 +105,14 @@ export const SOLID_BTN_DANGER_BORDER: Glass = { color: hexToRgb('c85a3c'), alpha
  *  INK, grouped by FORM rather than value. Theme-invariant — the ink cannot theme, so the fills may
  *  not either; both coincidental tokens (`--riv-error-ink`, `--riv-pop-accent`) do theme, which is
  *  why neither is the answer. Full reasoning sits at the declaration in `tailwind.css`.
- *  Guarded by `shared/solid-fill-tokens.contrast.spec.ts`. */
-export const SOLID_FILL_ACTION: Rgb = hexToRgb('0a6e85');
-export const SOLID_FILL_ACTION_HOVER: Rgb = hexToRgb('0a5e72');
-export const SOLID_FILL_BRAND: Rgb = hexToRgb('0a5f74');
+ *  Guarded by `shared/solid-fill-tokens.contrast.spec.ts`. One brand teal since #861. */
+export const SOLID_FILL_BRAND: Rgb = hexToRgb('0a6e85');
+export const SOLID_FILL_BRAND_HOVER: Rgb = hexToRgb('0a5e72');
 export const SOLID_FILL_DANGER: Rgb = hexToRgb('a3160e');
 /** The family's ink, fixed. Not a token: `text-white` is already unthemeable, so declaring one
  *  would add a declaration without removing a literal. Mirrored so the AA proof has a constant. */
 export const SOLID_FILL_INK: Rgb = WHITE;
-/** The dark theme's `--riv-pop-accent`, the coincidental token for `SOLID_FILL_ACTION`. Its
+/** The dark theme's `--riv-pop-accent`, the coincidental token for `SOLID_FILL_BRAND`. Its
  *  counterpart for `SOLID_FILL_DANGER` is DARK_ERROR_INK above. */
 export const DARK_POP_ACCENT: Rgb = hexToRgb('7cd7e8');
 
