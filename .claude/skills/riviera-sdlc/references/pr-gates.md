@@ -25,7 +25,7 @@ restating it.
    a slice "done"/"ready to merge"), the review gate is **due**. Do not wait to be asked.
    A **draft** PR does not trigger it — see the note at the top of this file.
 2. **Run the review — right-sized, never skipped.** Start a review over the **PR diff** —
-   `/code-review` `origin/main...HEAD` (or `/review <PR>`) — and **load
+   `/code-review` `origin/main...HEAD` (or the rung-3 fallback below) — and **load
    `riviera-review-overlay`** so the project bank items (RV-BE-*/RV-FE-*/RV-CT-*, the
    availability and payment Blockers, RV-PROC-1) are walked **on top of** the generic
    banks. Announce it: *"Running the SDLC review gate (riviera-review-overlay +
@@ -34,13 +34,13 @@ restating it.
    > **The overlay is not the review — running it alone does NOT satisfy this gate.**
    > `riviera-review-overlay` says so itself ("this overlay **never runs alone**"): it
    > contributes *additional* bank items to an active review. Walking those items by hand
-   > without starting `/code-review` (or `/review <PR>`) leaves the **generic** FE/BE/contract
+   > without starting `/code-review` (or the rung-3 fallback) leaves the **generic** FE/BE/contract
    > banks unrun, and those are where the non-project-specific defects live. Half the gate is
    > not the gate.
    >
-   > **`/code-review` is the default — it is the strongest of the three, by measurement**
+   > **`/code-review` is the default — the strongest engine here, by measurement**
    > (case history: #351 — its subagent fan-out found three defects the hand-walked overlay
-   > *and* inline `/review` had both missed). Start it first, every time.
+   > *and* the then-installed inline `/review` had both missed). Start it first, every time.
    >
    > **The subagent fan-out is pre-authorized in this repo.** A standing "don't use the
    > Agent tool" session instruction does not reach this gate: the maintainer authorized
@@ -55,22 +55,23 @@ restating it.
    >    The plugin is enabled at **project** scope (`.claude/settings.json` →
    >    `enabledPlugins`), and its installed command declares
    >    `disable-model-invocation: false`, so the Skill tool serves it. Note the
-   >    **`plugin:skill` form** — a bare `Skill("code-review")` is a different, unqualified
-   >    name and is not what to call. (Re-verified 2026-08-31. An older revision of this file
+   >    **`plugin:skill` form** — a bare `Skill("code-review")` is a different skill, the
+   >    harness's built-in reviewer: that is rung 3's fallback, not the gate. (Re-verified 2026-08-31. An older revision of this file
    >    claimed the CLI refuses it human-invoke-only and sent you to rung 2 by default; that
    >    was wrong. **Verify before you believe either claim** — read the payload's frontmatter
    >    and `enabledPlugins`, both one grep away.)
    > 2. **Only if rung 1 is actually refused → execute the installed plugin's command file
-   >    directly; that still IS the gate, not a degraded mode.** Resolve the payload: read
-   >    `~/.claude/plugins/installed_plugins.json`, key
-   >    `code-review@claude-plugins-official`, field `installPath`; then read
+   >    directly; that still IS the gate, not a degraded mode.** Resolve the payload: in
+   >    `~/.claude/plugins/installed_plugins.json`, under the top-level `plugins` map, the
+   >    key `code-review@claude-plugins-official` holds an **array** of installs — take the
+   >    entry's `installPath`; then read
    >    `<installPath>/commands/code-review.md` and follow its steps exactly as if the
    >    command had been typed. Reading it from the installed payload at run time is what
    >    keeps Anthropic's upstream updates flowing (`scripts/ensure-plugins.sh` tracks the
    >    marketplace) — **never vendor a copy of the workflow into the repo.** (The cache can
    >    hold more than one payload dir for the plugin; they have been byte-identical, but
    >    prefer the `installPath` the JSON names for **this** project.)
-   > 3. The degraded `/review <PR>` fallback below applies only when this ladder cannot
+   > 3. The degraded built-in-reviewer fallback below applies only when this ladder cannot
    >    run the workflow: the payload is absent and `bash scripts/ensure-plugins.sh`
    >    cannot repair it, or the review subagents genuinely cannot run.
    >
@@ -98,11 +99,14 @@ restating it.
    > failed job's log with the GitHub MCP `get_job_logs` (`return_content: true` plus a
    > `tail_lines`), and grep the saved file rather than pulling it all into context.
    >
-   > **Fallback, only under the ladder's rung-3 conditions: `/review <PR>`** — a plain skill
-   > that runs inline against the same banks. It is weaker than
-   > `/code-review`, so treat it as a degraded mode and say so in the PR.
+   > **Fallback, only under the ladder's rung-3 conditions: the harness's built-in
+   > `code-review` skill** — `Skill("code-review")`, the unqualified name (a human types
+   > `/code-review <PR>` at an effort level). It is the host CLI's own reviewer, not the
+   > plugin's multi-reviewer workflow, and it does not know this repo's banks — still load
+   > the overlay. Treat it as a degraded mode and say so in the PR. (The old `/review <PR>`
+   > fallback no longer exists as an installable skill — verified 2026-08-31; don't chase it.)
    >
-   > **If neither can start, say so — never substitute silently.** That is a legitimate blocker
+   > **If no rung can start, say so — never substitute silently.** That is a legitimate blocker
    > and an illegitimate secret: **leave the PR's review checkbox unticked, write one line in
    > the PR saying which half ran and why**, and ask the human to authorize the missing half.
    > Ticking a box whose text names `/code-review` when no review ran makes the PR record lie

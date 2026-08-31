@@ -1,29 +1,30 @@
 ---
 name: riviera-review-overlay
-description: Project-specific review overlay for the riviera-sunbed-booking repo. Layers onto an active code review (the code-review plugin's /code-review, /review, or another active review engine) to add the RV-BE/RV-FE/RV-CT bank items built from the CLAUDE.md invariants — availability, payments, Modulith boundaries, money/timezone, per-venue authorization. Load whenever reviewing a diff or PR in this repo; it adds bank items, it does not run a review on its own.
+description: Project-specific review overlay for the riviera-sunbed-booking repo. Layers onto an active code review (the code-review plugin's /code-review, or another active review engine) to add the RV-BE/RV-FE/RV-CT bank items built from the CLAUDE.md invariants — availability, payments, Modulith boundaries, money/timezone, per-venue authorization. Load whenever reviewing a diff or PR in this repo; it adds bank items, it does not run a review on its own.
 ---
 
 # Riviera review overlay
 
 ## Purpose
 
-A code review (today the `code-review` plugin's `/code-review` / `/review`;
-historically the superpowers `*-review-interview` skills) walks its own generic
+A code review (today the `code-review` plugin's `/code-review`, or the harness's
+built-in `code-review` skill as its degraded fallback; historically the superpowers
+`*-review-interview` skills) walks its own generic
 FE/BE/contract banks. This overlay layers in the **riviera-specific** items — the
 `CLAUDE.md` invariants turned into checkable review gates (cited, never restated). It is **content**, not a workflow: bank items, severity hints, and
 verification commands contributed to an active review.
 
 ## Activation
 
-Load when **both** hold: a review is **active** (`/code-review` / `/review`, or
-whatever review engine is running), **and** the work is in the
+Load when **both** hold: a review is **active** (`/code-review`, or whatever
+review engine is running), **and** the work is in the
 riviera-sunbed-booking repo (a `CLAUDE.md` with the riviera invariants /
 `.claude/skills/riviera-*`, or an `AGENTS.md`/`CLAUDE.md` referencing
 `ai.riviera.platform.*` modules). This overlay **never runs alone** — it layers
 onto an active review; honor an explicit user invoke by starting the review first.
 In the `riviera-sdlc` flow, starting the review is your duty — via the invocation
-ladder in riviera-sdlc's `references/pr-gates.md` §1 (`/review <PR>` only as the
-degraded fallback); see riviera-sdlc's **Review gate**.
+ladder in riviera-sdlc's `references/pr-gates.md` §1 (the built-in `code-review`
+skill only as the degraded fallback); see riviera-sdlc's **Review gate**.
 `/security-review` doesn't auto-load this overlay; consult the reference files directly.
 
 When loaded, announce: *"riviera-review-overlay loaded. Adding project-specific bank items."*

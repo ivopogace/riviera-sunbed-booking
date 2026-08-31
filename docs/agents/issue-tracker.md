@@ -36,7 +36,7 @@ once a slice enters execution the plan doc's Execution status is the state store
 | **Frontier** | Open sub-issues of the map that are unassigned and whose `blocked_by` list is empty-or-all-closed. There is no single query: list the sub-issues, then check `blocked_by` per candidate. |
 
 > **The write body takes `issue_id`, not `issue_number`** — the numeric REST id, which is
-> nothing like the `#NN` everyone reads (issue **#845** has id **5300177553**). Resolve it
+> nothing like the `#NN` everyone reads (issue **#367** has id **4986850745**). Resolve it
 > with `gh api repos/{o}/{r}/issues/{n} --jq .id` first. Posting a `#NN` here either 422s or
 > silently links the wrong issue.
 

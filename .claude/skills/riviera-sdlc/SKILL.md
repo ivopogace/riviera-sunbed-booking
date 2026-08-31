@@ -40,7 +40,7 @@ at Implement", it means this paragraph.
 | **Implement** | Build the slice test-first, one behavior at a time, at seams named in the plan. Re-run the Skill-routing gate for each area you touch. | `tdd` + the Skill-routing gate (below). `implement` is the **human's** entry command (`/implement`) — model-invocation is disabled on it upstream, so never route to it and never re-enact it from memory; it hands off to exactly this row |
 | **CI gate** | Every push to an **open PR** builds both apps, runs tests, scans (CodeQL + Dependabot + SonarCloud). Green required. After any push that claims a phase green, check that push's run before starting the next phase (red-TDD and labeled-partial pushes exempt) — full-suite-only failures surface only here (case history: #122/#127). | GitHub Actions (issue #3); red → `diagnosing-bugs` |
 | **PR** | **Open the PR as a draft as soon as the first phase commit exists** — CI fires on the `pull_request` event only (`push` is scoped to `main`, #417), so a branch with no PR gets **no CI at all**; `opened` gates the first push, `synchronize` every later one. A draft is a CI vehicle, not a request to review. When the slice is built: merge the latest `origin/main` in with full phase discipline (routing gate for what the integration touches, scoped tests, honest commit), then mark **ready for review** — which is what makes the Review and Sonar gates due (`references/pr-gates.md`). | `triage` (issue lifecycle — issues only in this repo; PRs go through normal review) |
-| **Review** | **Mandatory gate**, due at ready-for-review. Start `/code-review` (a subagent fan-out) via the **invocation ladder** in `references/pr-gates.md` §1 — `/review <PR>` only as a declared degraded fallback, and **the overlay alone is NOT the review**. A rejected invocation name is not the gate being unavailable; if tooling genuinely blocks every rung, say so in the PR and leave the box unticked rather than substituting silently. Review the diff against the invariants; each fix re-enters at Implement. Green CI is not a substitute. | `riviera-review-overlay` + `/code-review` |
+| **Review** | **Mandatory gate**, due at ready-for-review. Start `/code-review` (a subagent fan-out) via the **invocation ladder** in `references/pr-gates.md` §1 — the harness's built-in `code-review` skill only as a declared degraded fallback, and **the overlay alone is NOT the review**. A rejected invocation name is not the gate being unavailable; if tooling genuinely blocks every rung, say so in the PR and leave the box unticked rather than substituting silently. Review the diff against the invariants; each fix re-enters at Implement. Green CI is not a substitute. | `riviera-review-overlay` + `/code-review` |
 | **Sonar gate** | **Mandatory gate (PR-time; Sonar analyzes PRs + `main` only).** A green gate is not the check — pull the reported new-issue + duplication list from the API and fix every entry before merge; logic-changing findings re-enter at Implement (re-entry rule) — procedure: `references/pr-gates.md` §2. | SonarCloud + `diagnosing-bugs` for a genuine defect |
 | **Merge** | Only after green CI + Review gate run + Sonar gate green **and** its issue list cleared + findings resolved through the loop → merge, then run the close-out checklist — procedure: `references/pr-gates.md` §3. | the Merge close-out (`references/pr-gates.md`) |
 
@@ -227,9 +227,10 @@ including the developer machine's).
 
 The loop table and the Skill-routing gate above ARE the skill map — there is no separate
 list to maintain. Vendored craft skills (Matt Pocock, MIT) are tracked in
-`skills-lock.json`; four of them are not routed above: `improve-codebase-architecture`
-(deepening existing code outside slice work), `grill-me` (the `grilling` alias), and
-`research` + `prototype`, which only `wayfinder` routes — as decision-ticket types.
+`skills-lock.json`; five of them are not routed above: `improve-codebase-architecture`
+(deepening existing code outside slice work), `grill-me` (the `grilling` alias),
+`research` + `prototype`, which only `wayfinder` routes — as decision-ticket types — and
+`implement`, which the Implement row names only as the human's entry command, never a route.
 
 **Three skills are human-invoke-only** — `implement`, `grill-me`, and
 `improve-codebase-architecture` carry upstream's `disable-model-invocation: true`, so the

@@ -86,8 +86,8 @@ the root `.gitattributes`.
 - `frontend/e2e/` — the CI-safe mocked Playwright suite;
   `frontend/e2e/real-backend/` — the local-only real-backend suite.
 - `docs/` — `architecture/`, `adr/` (decisions), `design/`, `plans/` (per-slice
-  plan docs), `agents/` (issue-tracker conventions + runbooks), `deploy/` +
-  `runbooks/`, `superpowers/specs/` (product design).
+  plan docs), `research/` (findings behind decisions), `agents/` (issue-tracker
+  conventions + runbooks), `deploy/` + `runbooks/`, `superpowers/specs/` (product design).
 
 ## Bounded contexts (Spring Modulith modules)
 
@@ -225,8 +225,8 @@ map: **`riviera-sdlc`** routes all feature work (start there) →
 `riviera-tailwind` (frontend), `riviera-stripe-payments` (payments/commission),
 `riviera-local-debug` (before the session's first build/test),
 `riviera-docs-freshness` (merge/epic close-out), `postgres` (migrations),
-`playwright-cli` (e2e). The vendored craft skills (`tdd`, `implement`,
-`grilling`, …) are the generic engine the `riviera-*` skills specialize;
+`playwright-cli` (e2e). The vendored craft skills (`tdd`, `grilling`,
+`diagnosing-bugs`, …) are the generic engine the `riviera-*` skills specialize;
 vendored ones are tracked in `skills-lock.json`.
 
 ## Where things are written down

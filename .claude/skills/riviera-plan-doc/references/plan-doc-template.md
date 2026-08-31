@@ -57,6 +57,9 @@ slice.>
 > since "the inner hexagon" doesn't name one. Prefer an existing seam to a new one, and
 > the highest one that still reaches the behavior — fewer seams is better. A phase that
 > discovers it needs a seam this section didn't name stops and adds it here first.
+> "Confirmed" happens when this doc is agreed at the Plan gate — that approval IS `tdd`'s
+> confirm-with-the-user step; implementation doesn't re-ask. (Plan docs agreed before
+> 2026-08-31 predate the *Seam* field — forward-only; see `riviera-plan-doc` step 1.)
 
 - [ ] **AC-1:** Given <precondition>, when <action>, then <observable outcome>. *Seam:* `<port / interface / route observed through>` · *Pinned by:* `<TestClassName>.<testMethodName>`
 - [ ] **AC-2:** ...

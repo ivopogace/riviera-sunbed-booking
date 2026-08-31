@@ -1,6 +1,6 @@
 ---
 name: riviera-plan-doc
-description: Use at the plan stage of riviera-sdlc, or whenever writing or executing a plan for riviera-sunbed-booking work. Adds project-specific plan-doc discipline — mandatory testable acceptance criteria, a risk register, an open-questions register, and dedicated sections for the Spring-Modulith modules/events touched, the availability single-source-of-truth invariant, and the payment/payout flow. Pairs with the plan-doc template at references/plan-doc-template.md. The execution engine is Pocock implement + tdd (installed); the superpowers writing-plans/executing-plans plugin also works if present.
+description: Use at the plan stage of riviera-sdlc, or whenever writing or executing a plan for riviera-sunbed-booking work. Adds project-specific plan-doc discipline — mandatory testable acceptance criteria, a risk register, an open-questions register, and dedicated sections for the Spring-Modulith modules/events touched, the availability single-source-of-truth invariant, and the payment/payout flow. Pairs with the plan-doc template at references/plan-doc-template.md. The execution engine is tdd at the plan's named seams (/implement is the human's entry command, not a model route); the superpowers writing-plans/executing-plans plugin also works if present.
 ---
 
 # Riviera Plan Doc
@@ -63,7 +63,9 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    GitHub issue) into testable ACs per the template (Given/When/Then, named test
    class, written at the inner hexagon). **Each AC names its seam** — `tdd` writes no
    test at an unconfirmed seam, and this section is where the confirmation happens, so
-   an unnamed seam blocks phase 0 exactly as a missing AC does.
+   an unnamed seam blocks phase 0 exactly as a missing AC does. Forward-only: plan docs
+   agreed before 2026-08-31 predate the *Seam* field — when re-entering one, name the
+   seam for the AC you are about to pin; don't halt over the rest.
 2. **Risk register + Open Questions before phase 0:** fill both sections per the
    template — its blockquote carries the risk categories that already matter here.
 3. **Availability & concurrency:** if the feature touches booking, the beach map,

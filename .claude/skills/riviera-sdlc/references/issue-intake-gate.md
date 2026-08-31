@@ -64,8 +64,8 @@ questions the slice itself will answer. Escalate it to `wayfinder` instead — a
 on the epic's existing map, or a freshly charted map if none exists — and hold the slice until
 the decision closes. The test is wayfinder's own: can you state the question sharply *and*
 resolve it inside this slice? Drift reconciles here; fog gets a ticket. (Wayfinder's ticket
-taxonomy — research / grilling / prototype / task, AFK vs. HITL — is useful vocabulary for
-classifying what the grill turned up, even when nothing escalates.)
+taxonomy — the `wayfinder:{research,grilling,prototype,task}` label values, AFK vs. HITL —
+is useful vocabulary for classifying what the grill turned up, even when nothing escalates.)
 
 ## Proportional, never skipped
 
