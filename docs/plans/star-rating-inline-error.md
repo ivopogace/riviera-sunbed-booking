@@ -159,11 +159,11 @@ has nothing to migrate.
 
 ## Execution status
 
-**Stage pointer:** `review gate run and its one finding fixed — Sonar gate pending on
-the PR's own analysis; merge next once both are clear`.
+**Stage pointer:** `merge close-out — CI green, review gate run and cleared, Sonar gate
+green and verified via the API; merging PR #841`.
 
-**Next action:** pull the SonarCloud issue+duplication list for PR #841 from the API,
-confirm CI is green, then merge.
+**Next action:** none — merging this PR now; the merge close-out checklist
+(`riviera-sdlc` `references/pr-gates.md` §3) runs immediately after.
 
 **PR:** [#841](https://github.com/ivopogace/riviera-sunbed-booking/pull/841), opened
 against `main`.
@@ -173,23 +173,27 @@ the invocation ladder succeeded), with `riviera-review-overlay` (`references/fro
 loaded for this frontend-only diff) walked on top. Five parallel review agents: CLAUDE.md/RV-FE-*
 compliance, a bug scan, git-history/precedent, prior-PR (#823/#816) carried-over concerns, and
 in-file code-comment consistency. Four reported no issues; the fifth found F-1 (below), fixed in
-commit `0844f62`.
+commit `0844f62`. Posted to the PR: [review comment](https://github.com/ivopogace/riviera-sunbed-booking/pull/841#issuecomment-5475943912).
+
+**Sonar gate — green, verified via the API (not just the badge).** `SonarCloud Code Analysis`
+check-run concluded `success`. Pulled from `sonarcloud.io/api/measures/component` at PR 841:
+`new_lines` **35** (a real, non-empty analysis — the false-clean-zero trap `pr-gates.md` warns
+about does not apply), `new_bugs` 0, `new_vulnerabilities` 0, `new_code_smells` 0,
+`new_duplicated_blocks` 0, `new_duplicated_lines_density` 0.0%, `new_coverage` 100.0%. Confirmed
+against `sonarcloud.io/api/issues/search` too: 0 open issues. (`new_lines` is small because
+`sonar-project.properties` excludes `**/*.spec.ts` and does not include `frontend/e2e/` or
+`docs/` in `sonar.sources` — only the three non-spec `.ts` files this PR touches are scanned.)
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `StarRating` renders its own inline error (AC-1..AC-3, AC-6) | ✅ | `74dfb80` |
 | 1+2 — `ReviewPanel` wires `submitAttempted` down and drops `blocked`; `BookingView` drops the dead routing (AC-4) — **landed as one commit**, not two: removing `blocked` and its consumer are one compiler-checked unit (deleting the emitter without the consumer edit does not compile), so phase 1's step 3 and phase 2's step 3 could not land as separate green states | ✅ | `f3ecba0` |
-| 3 — e2e (AC-5) + close-out | ✅ | (this commit) |
-
-**Not done in this session, by instruction:** the task instructions for this session
-(`riviera-sdlc` PR stage) direct opening a draft PR as soon as phase 0 lands, and running
-the Review + Sonar gates before merge. This session's own operating instructions say not
-to create a pull request unless the user explicitly asks for one, and no such request was
-made — so the branch is pushed with all phases green, but **no PR exists, and neither the
-Review gate nor the Sonar gate has run.** Do not treat this plan's phase table as a merge
-signal; that only happens once a PR is opened and both gates are cleared.
+| 3 — e2e (AC-5) + close-out | ✅ | `349f303` |
+| 4 — review-gate fix round (F-1) | ✅ | `0844f62` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Merged via PR #841.**
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding.
 
@@ -315,7 +319,8 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows (R-3 is open but not stale — it's a stated,
   reasoned residual, not a forgotten item); Open Questions empty.
-- [ ] **Close-out written in this PR** — pending: cite `merged via PR #841` once merged.
+- [x] **Close-out written in this PR** — citing `merged via PR #841`, written before the
+  merge per `pr-gates.md` §3 step 4 (no post-merge repo commit needed).
 - [x] **The review gate ran in full** — `Skill("code-review:code-review")` (rung 1) plus
   `riviera-review-overlay`, five-agent fan-out. One finding (F-1), fixed and re-verified.
 
