@@ -57,7 +57,7 @@ The literal `feature/*` branch is deliberately not created.
 
 > Frontend slice, so every AC names its seam explicitly.
 
-- [ ] **AC-1:** Given the four new tokens, when `tailwind.css` is read as text, then each is
+- [x] **AC-1:** Given the four new tokens, when `tailwind.css` is read as text, then each is
       declared **exactly once** and that declaration sits in the base block
       (`:root, [data-riv-theme='porcelain']`), so no theme block can override it and all
       three themes resolve the same value. *Seam:* `src/tailwind.css` as text (the
@@ -65,51 +65,51 @@ The literal `feature/*` branch is deliberately not created.
       override) · *Pinned by:* `solid-fill-tokens.contrast.spec.ts` › "declares each token
       exactly once" + "declares the family in the base block" + "declares the values this
       test mirror carries".
-- [ ] **AC-2:** Given fixed white ink, when composited on each of the four fills, then every
+- [x] **AC-2:** Given fixed white ink, when composited on each of the four fills, then every
       pair clears WCAG AA (4.5:1). *Seam:* `src/testing/contrast.ts` `contrastRatio` over
       `src/testing/glass-tokens.ts` · *Pinned by:* `solid-fill-tokens.contrast.spec.ts` ›
       "white ink clears AA on every fill in the family".
-- [ ] **AC-3:** Given the themed tokens whose values these fills coincide with, when white
+- [x] **AC-3:** Given the themed tokens whose values these fills coincide with, when white
       ink is composited on their **dark** resolutions, then it falls **below** AA — keeping
       the reason the family exists in the tree rather than only in a comment. *Seam:* same as
       AC-2 · *Pinned by:* `solid-fill-tokens.contrast.spec.ts` › "the coincidental tokens
       would not survive theming — which is why the family exists".
-- [ ] **AC-4:** Given the whole `src/app` tree, when swept for this family's literals **in
+- [x] **AC-4:** Given the whole `src/app` tree, when swept for this family's literals **in
       their fill form** (`bg-[#0a6e85]`, `bg-[#a3160e]` without an `/opacity` modifier,
       `bg-[#0a5f74]`, `hover:bg-[#0a5e72]`), then no non-spec component file still paints
       one. *Seam:* `readdirSync(src/app, {recursive:true})` over `.ts`/`.html` · *Pinned by:*
       `solid-fill-tokens.contrast.spec.ts` › "leaves no component painting the family as a
       literal".
-- [ ] **AC-5:** Given the same three values in **non-fill** roles — `text-`, `ring-`,
+- [x] **AC-5:** Given the same three values in **non-fill** roles — `text-`, `ring-`,
       `border-` and gradient stops, which are other classes of the audit and other slices'
       work — when the same sweep runs, then each is **still present**: the half that proves
       the sweep did not overreach. *Seam:* the same tree read, asserted positively by path ·
       *Pinned by:* `solid-fill-tokens.contrast.spec.ts` › "leaves the non-fill roles of the
       same three values untouched".
-- [ ] **AC-6:** Given a real browser render, when the operator console's confirm button and
+- [x] **AC-6:** Given a real browser render, when the operator console's confirm button and
       the home page's semantic chip are shown, then their computed `background-color` equals
       the registered value, the accept button's hover fill applies on hover, and **all of it
       is unchanged under a forced `dark` document theme**. *Seam:* the `/operator/:venueId`
       set-editor and `/` discovery routes in the mocked Playwright suite, read through
       `toHaveCSS` · *Pinned by:* `e2e/solid-fill-token-skin.e2e.ts`.
-- [ ] **AC-7:** Given each registered token, when the page loads, then the token resolves on
+- [x] **AC-7:** Given each registered token, when the page loads, then the token resolves on
       `document.documentElement` **and** its `@theme inline` row generated the utility class
       — a token declared without its row generates no utility, so the class stays in the
       markup and the paint silently does not change. *Seam:* `document.styleSheets` walked
       for the utility selectors · *Pinned by:* `e2e/solid-fill-token-skin.e2e.ts` › "every
       registered token is declared and generates its utility".
-- [ ] **AC-8:** Given the forced-dark assertion of AC-6, when a dark override for the family
+- [x] **AC-8:** Given the forced-dark assertion of AC-6, when a dark override for the family
       is temporarily added to `tailwind.css`, then the e2e **fails** — the mutation check the
       issue asks for, recorded in this plan's Execution status with its output rather than
       claimed. *Seam:* a throwaway edit to `src/tailwind.css`, reverted · *Pinned by:* the
       recorded mutation-check result (a procedure, not a committed test — stated so rather
       than faked with one).
-- [ ] **AC-9:** Given the three specs that pin these classes by literal —
+- [x] **AC-9:** Given the three specs that pin these classes by literal —
       `shared/confirm-panel.spec.ts`, `shared/semantic-chip.spec.ts` (three assertions) and
       `operator/requests-tab.contrast.spec.ts:79` — when the family moves, then each asserts
       the token utility instead, and `src/testing/chip-fills.ts`'s `SEMANTIC_CHIP.fill`
       mirror moves with it. *Seam:* those four files · *Pinned by:* their own suites, green.
-- [ ] **AC-10:** Given the audit ledger, when the R-2 row is read at merge, then it reads
+- [x] **AC-10:** Given the audit ledger, when the R-2 row is read at merge, then it reads
       `done — #854, PR #NN`. *Seam:* `docs/design/colour-literal-token-audit.md` · *Pinned
       by:* review (a doc row, not a test — stated so rather than faked with one).
 
@@ -216,8 +216,8 @@ The literal `feature/*` branch is deliberately not created.
   neighbouring console buttons take the lighter. That is very likely drift, not intent.
   **Resolution:** **not this slice's call.** Merging them is a visual change; a migration
   slice preserves values. Both are tokenised separately here, the near-duplicate is written
-  at the declaration so the next reader sees it, and a follow-up issue records the question —
-  the same treatment the ledger already gives `#0c2a33` vs `#0a2a33`.
+  at the declaration so the next reader sees it, and **issue #861** records the question — the
+  same treatment the ledger already gives `#0c2a33` vs `#0a2a33`.
 
 ## Availability & concurrency (invariant #2)
 
@@ -259,9 +259,9 @@ N/A — no API surface changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `review gate`
 
-**Next action:** update the ledger's R-2 rows, open the G-4 follow-up issue, then mark the PR ready for review.
+**Next action:** run the review gate on PR #860, then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -269,7 +269,7 @@ N/A — no API surface changes.
 | 1 — Declare the tokens, green | ✅ | (this commit) |
 | 2 — Repaint the nine sites + the pinned specs | ✅ | (this commit) |
 | 3 — The mocked e2e + the mutation check | ✅ | (this commit) |
-| 4 — Ledger row + close-out | ⏳ | |
+| 4 — Ledger row + close-out | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -315,6 +315,8 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/operator/daily-view-tab.ts|.html` — selected chip + legend swatch
 - `frontend/src/app/operator/operator-console.html` — the badge fill
 - `frontend/e2e/solid-fill-token-skin.e2e.ts` — the computed-skin e2e (new)
+- `.claude/skills/riviera-tailwind/SKILL.md` — the theme-invariance rule gains the converse
+  direction this slice is the case for (docs-freshness)
 
 ---
 
@@ -378,22 +380,38 @@ Skill-routing gate for what the fix touches *before* editing).
 
 ## Generalization-audit log
 
+> Enumerated by **mechanism**, not by resemblance — the population is "a colour literal in a
+> `bg-` role carrying one of this family's values", found by the command, not by recall.
+
 | Phase | Mechanism enumerated | Command | Decision |
 |---|---|---|---|
-| | | | |
+| 0 | Every `.ts`/`.html` under `src/app` painting one of the three values in ANY role | `grep -rn "0a6e85\|a3160e\|0a5f74" src/app --include=*.ts --include=*.html` | 40 positions found; the `bg-` subset is 9 (+1 hover). The rest are `text-`, `ring-`, `border-` and gradient stops — other classes, other slices. Split by form; both halves asserted (AC-4 and AC-5). |
+| 2 | Every spec pinning one of the repainted classes by literal | `grep -rn "bg-\[#0a6e85\]\|bg-\[#a3160e\]\|bg-\[#0a5f74\]\|SEMANTIC_CHIP" src --include=*.spec.ts` + the `chip-fills.ts` mirror's own consumers | Four files, not the two the issue named — grill finding G-2. All moved. |
+| 3 | Every `shared/` component in the family, and whether its host theme actually varies | `grep -rn "app-confirm-panel\|appSemanticChip" src/app` then `grep -n data-riv-theme` on each mount's shell | `ConfirmPanel`: 2 mounts, both porcelain-pinned. `SemanticChip`: 5 mounts, none pinned. Drove where the forced-dark assertion sits — G-1, then confirmed by the mutation check. |
+| 4 | Every substrate doc stating a fact about the theme-invariant families | `grep -rn "riv-solid-btn\|riv-form-error\|theme-invariant" .claude/skills docs CLAUDE.md` | Two stale: the ledger's prior-slices line, and `riviera-tailwind`'s rule, which stated the pinning in one direction only. Both patched here. |
 
 ## Acceptance-criteria verification (final)
 
 | AC | Verified by | Result |
 |---|---|---|
-| | | |
+| AC-1 | `solid-fill-tokens.contrast.spec.ts` × 3 declaration tests | ✅ |
+| AC-2 | `solid-fill-tokens.contrast.spec.ts` › "white ink clears AA on every fill" — 5.86 / 7.35 / 7.24 / 7.84 | ✅ |
+| AC-3 | same spec › "the coincidental tokens would not survive theming" — 1.84 / 1.65 | ✅ |
+| AC-4 | same spec › "leaves no component painting the family as a literal" | ✅ |
+| AC-5 | same spec › "leaves the non-fill roles … untouched" — 18 (path, value) survivors | ✅ |
+| AC-6 | `solid-fill-token-skin.e2e.ts` × 4 render tests | ✅ |
+| AC-7 | `solid-fill-token-skin.e2e.ts` › "every registered token is declared and generates its utility" | ✅ |
+| AC-8 | the mutation check recorded in Execution status — 1 failed / 4 passed | ✅ |
+| AC-9 | `confirm-panel.spec.ts`, `semantic-chip.spec.ts`, `semantic-chip.contrast.spec.ts`, `requests-tab.contrast.spec.ts`, `chip-fills.ts` — full unit suite green (199 files, 2133 tests) | ✅ |
+| AC-10 | the ledger's class-R row reads `done — #854, PR #860` | ✅ |
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has a named, passing pin (or a stated reason it is a review check).
-- [ ] Behavior-parity ledger: every row **preserved**, verified against the diff.
-- [ ] Open questions section empty or each item citing a follow-up issue.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` green.
-- [ ] `npm run lint` + `npm run format:check` green.
-- [ ] The mutation check ran and its output is recorded, not claimed.
-- [ ] Execution status finalized in the PR's own last commit, recording `merged via PR #NN`.
+- [x] Every AC has a named, passing pin (or a stated reason it is a review check).
+- [x] Behavior-parity ledger: every row **preserved**, verified against the diff.
+- [x] Open questions section empty — all four grill findings resolved, G-4 citing #861.
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` green.
+- [x] `npm run lint` + `npm run format:check` green (the one lint warning is pre-existing,
+      `camera-qr-scanner.spec.ts`, outside this diff).
+- [x] The mutation check ran and its output is recorded, not claimed.
+- [ ] Execution status finalized in the PR's own last commit, recording `merged via PR #860`.
