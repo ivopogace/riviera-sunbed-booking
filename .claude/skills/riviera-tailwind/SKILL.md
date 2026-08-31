@@ -177,7 +177,10 @@ Vary by theme in this order of preference:
    light-on-light if it switched, and a tint family that painted one literal in every theme
    before it was tokenised (`--riv-accent-*`) gains a silent restyle the day someone adds a
    dark override. Both are declared once, in the base block, with the reason at the
-   declaration — a theme-invariant token is a decision to write down, never an omission. This is
+   declaration — a theme-invariant token is a decision to write down, never an omission. #850
+   is the first half again, and the worked example to copy: the form-error banners' fill and ink
+   move as a **pair** (`--riv-form-error-fill`/`-ink`), because it is the fill's own fixedness that
+   forbids the ink from theming — the themed `--riv-error-ink` over it measures 1.54:1. This is
    Tailwind's own documented multi-theme pattern (docs: Colors § "Referencing other
    variables" — plain vars per `:root`/attribute scope, mapped via `@theme inline`;
    `inline` is what keeps the utility emitting `var(--riv-*)` so per-scope overrides and

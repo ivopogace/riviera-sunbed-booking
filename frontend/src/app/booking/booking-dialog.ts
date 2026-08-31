@@ -306,9 +306,8 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
         </div>
 
         @if (errorMessage(); as msg) {
-          <!-- Solid #f6e8e7 = composite of the translucent red tint over the panel; brick red clears AA (~6.6:1) on it. -->
           <p
-            class="form-error mx-6 rounded-xl bg-[#f6e8e7] px-[13px] py-2.5 text-[13px] font-semibold text-[#a3160e]"
+            class="form-error mx-6 rounded-xl bg-riv-form-error-fill px-[13px] py-2.5 text-[13px] font-semibold text-riv-form-error-ink"
             role="alert"
             data-testid="dialog-error"
           >

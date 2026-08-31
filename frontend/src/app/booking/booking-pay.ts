@@ -252,7 +252,7 @@ const CLS = {
 
             @if (errorMessage(); as msg) {
               <p
-                class="mt-3.5 rounded-xl bg-[#f6e8e7] px-3.5 py-[11px] text-[13.5px] font-semibold text-[#a3160e]"
+                class="mt-3.5 rounded-xl bg-riv-form-error-fill px-3.5 py-[11px] text-[13.5px] font-semibold text-riv-form-error-ink"
                 role="alert"
                 data-testid="pay-error"
               >

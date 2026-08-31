@@ -6,6 +6,8 @@ import {
   DARK_CARD_GLASS,
   DARK_CARD_INK,
   DARK_STOPS,
+  FORM_ERROR_FILL,
+  FORM_ERROR_INK,
   Glass,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
@@ -71,7 +73,10 @@ describe('My bookings — solid-fill controls (WCAG AA, issue #139)', () => {
     );
   });
 
-  it('the rows-failed alert ink (#a3160e, #745) meets AA on its solid #f6e8e7 fill', () => {
-    expect(contrastRatio('#a3160e', '#f6e8e7')).toBeGreaterThanOrEqual(AA_NORMAL);
+  /** The alert (#745) wears --riv-form-error-* (#850), theme-invariant as a pair. */
+  it('the rows-failed alert ink meets AA on its solid fill', () => {
+    expect(
+      contrastRatio(rgbToHex(FORM_ERROR_INK), rgbToHex(FORM_ERROR_FILL)),
+    ).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });

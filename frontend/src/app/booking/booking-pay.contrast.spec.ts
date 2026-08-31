@@ -1,4 +1,4 @@
-import { AA_NORMAL, Rgb, contrastRatio, hexToRgb } from '../../testing/contrast';
+import { AA_NORMAL, Rgb, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
@@ -8,6 +8,8 @@ import {
   DARK_CARD_INK,
   DARK_HEADER_GLASS,
   DARK_STOPS,
+  FORM_ERROR_FILL,
+  FORM_ERROR_INK,
   Glass,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
@@ -24,7 +26,7 @@ import {
  * WCAG-AA contrast guard for the Liquid Glass payment page. The
  * page sits on the bare themed gradient with light card-glass panels, so every pair is the
  * EFFECTIVE colour: the glass composited over the theme's worst-case gradient stops, then the ink
- * over that (the `venue-map.contrast.spec.ts` pattern). Mirrors every text token in booking-pay.scss.
+ * over that (the `venue-map.contrast.spec.ts` pattern). Mirrors every text token in `booking-pay.ts`.
  *
  * Deliberately excluded (1.4.11 decorative, aria-hidden — the heading/label carries the meaning):
  * the ✓ / ⏳ done badge, the spinner, and the ✕ fail badge. The done badges now use SOLID composited
@@ -32,8 +34,6 @@ import {
  */
 
 const ACCENT = '#085a6e'; // --riv-accent-ink (total, code, links)
-const ERROR_RED = '#a3160e'; // .form-error ink
-const ERROR_FILL = '#f6e8e7'; // .form-error solid light-pink box (composite of the old rgba(163,22,14,.1) tint)
 const CTA_STOPS = ['#0c7288', '#0a5f74']; // --riv-cta-grad — the Pay button's white text
 
 interface Theme {
@@ -86,10 +86,14 @@ describe('Payment page — theme-independent CTA (WCAG AA, issue #137)', () => {
     }
   });
 
+  /**
+   * Both halves are `--riv-form-error-*`: an opaque box, not the old translucent red tint, so the
+   * pair is one fixed value in every theme — a real ~6.6:1, not the ~1:1 the analyser saw.
+   */
   it('form-error red meets AA on its solid light-pink fill (theme-independent, static-analysis safe)', () => {
-    // .form-error now sits on an opaque #f6e8e7 box (was a translucent red tint), so the pair is a
-    // single fixed hex in both themes — a real ~6.6:1, not the ~1:1 the analyser saw on the tint.
-    expect(contrastRatio(ERROR_RED, ERROR_FILL)).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(
+      contrastRatio(rgbToHex(FORM_ERROR_INK), rgbToHex(FORM_ERROR_FILL)),
+    ).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });
 

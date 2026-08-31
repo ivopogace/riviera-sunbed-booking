@@ -19,7 +19,7 @@ import {
  * WCAG-AA contrast guard for the Liquid Glass "You're booked." confirmation card. A centered
  * card-glass surface on the bare themed gradient, so every pair is the EFFECTIVE colour
  * composited over the theme's worst-case stops (the venue-map pattern). Mirrors
- * booking-confirmation.scss. The ✓ badge is decorative (aria-hidden) — 1.4.11-exempt.
+ * `booking-confirmation.ts`. The ✓ badge is decorative (aria-hidden) — 1.4.11-exempt.
  */
 
 const ACCENT = '#085a6e'; // --riv-accent-ink (Paid, big code, link)

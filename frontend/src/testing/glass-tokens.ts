@@ -87,6 +87,13 @@ export const SOLID_BTN_INK: Rgb = hexToRgb('0a4f5e');
 export const SOLID_BTN_FILL: Rgb = hexToRgb('f4f6f7');
 export const SOLID_BTN_HOVER: Rgb = hexToRgb('e7ebec');
 
+/** `--riv-form-error-fill` / `--riv-form-error-ink` — the three tourist error banners' skin (#850).
+ *  Theme-invariant as a PAIR: the fill is a solid composite that does not theme, so the themed
+ *  `--riv-error-ink` over it would resolve DARK_ERROR_INK at 1.54:1. Guarded by
+ *  `booking/form-error-tokens.contrast.spec.ts`. */
+export const FORM_ERROR_FILL: Rgb = hexToRgb('f6e8e7');
+export const FORM_ERROR_INK: Rgb = hexToRgb('a3160e');
+
 /** `--riv-card-ink-soft` alpha over the card glass. */
 export const CARD_INK_SOFT_ALPHA = 0.78;
 /** `--riv-card-ink-faint` alpha over the card glass. */
