@@ -5,114 +5,105 @@ procedures, in order. Wherever a fix is required, the **re-entry rule** applies 
 canonical statement lives in SKILL.md ("The loop"); this file cites it rather than
 restating it.
 
-> **Not when the draft opens.** Since #417 the PR is opened as a **draft** as soon as the
-> first phase commit exists, purely so each phase push gets CI — at that point the slice
-> is barely started and there is nothing to review. Both gates below are due at
-> **ready-for-review**, not at PR creation. Running them against a draft mid-implementation
-> reviews an empty or half-built diff and burns the gate on work that is about to change.
+> **Not when the draft opens.** The draft PR that exists from the first phase commit is a
+> CI vehicle, not a request to review (SKILL.md, PR row — #417). Both gates below are due
+> at **ready-for-review**: running them against a half-built draft burns the gate on work
+> that is about to change.
 
 ## 1. Review gate (mandatory — between PR and merge)
 
-> The `review` stage is a **gate, not a label on the diagram.** Opening a PR, getting
-> green CI, and clearing Sonar are **necessary but not sufficient** — none of them is the
-> review. A slice is **not done** and **must not be merged** until the review gate has run
-> and its findings are resolved or explicitly deferred. "PR opened + CI green" is the
-> trap, not the finish line.
+> The `review` stage is a **gate, not a label on the diagram.** Opening a PR, green CI,
+> and a clear Sonar gate are necessary but not sufficient — none of them is the review. A
+> slice is **not done** and must not be merged until this gate has run and its findings
+> are resolved or explicitly deferred.
 
 **How the gate runs — every PR, before merge:**
 
-1. **Trigger.** The moment the PR is marked **ready for review** (or before you would call
-   a slice "done"/"ready to merge"), the review gate is **due**. Do not wait to be asked.
-   A **draft** PR does not trigger it — see the note at the top of this file.
-2. **Run the review — right-sized, never skipped.** Start a review over the **PR diff** —
-   `/code-review` `origin/main...HEAD` (or the rung-3 fallback below) — and **load
+1. **Trigger.** Due the moment the PR is marked **ready for review** (or before you would
+   call the slice "done"). Do not wait to be asked. A draft does not trigger it — see the
+   note at the top of this file.
+2. **Run the review — right-sized, never skipped.** Start `/code-review` over the **PR
+   diff** (`origin/main...HEAD`) via the invocation ladder below, and **load
    `riviera-review-overlay`** so the project bank items (RV-BE-*/RV-FE-*/RV-CT-*, the
    availability and payment Blockers, RV-PROC-1) are walked **on top of** the generic
    banks. Announce it: *"Running the SDLC review gate (riviera-review-overlay +
    code-review) on PR #NN."*
 
-   > **The overlay is not the review — running it alone does NOT satisfy this gate.**
-   > `riviera-review-overlay` says so itself ("this overlay **never runs alone**"): it
-   > contributes *additional* bank items to an active review. Walking those items by hand
-   > without starting `/code-review` (or the rung-3 fallback) leaves the **generic** FE/BE/contract
-   > banks unrun, and those are where the non-project-specific defects live. Half the gate is
-   > not the gate.
+   > **The overlay alone is NOT the review.** It contributes *additional* bank items to an
+   > active review ("this overlay **never runs alone**"); walking them by hand without
+   > starting `/code-review` (or the rung-3 fallback) leaves the **generic** banks unrun —
+   > and those are where the non-project-specific defects live. `/code-review` is the
+   > strongest engine here **by measurement** — its subagent fan-out found three defects
+   > the hand-walked overlay *and* the then-installed inline `/review` had both missed
+   > (case history: #351). Start it first, every time.
    >
-   > **`/code-review` is the default — the strongest engine here, by measurement**
-   > (case history: #351 — its subagent fan-out found three defects the hand-walked overlay
-   > *and* the then-installed inline `/review` had both missed). Start it first, every time.
-   >
-   > **The subagent fan-out is pre-authorized in this repo.** A standing "don't use the
-   > Agent tool" session instruction does not reach this gate: the maintainer authorized
-   > the review gate as the standing exception (2026-07-27), so **run it — don't stop to
-   > re-ask.** That authorization covers this gate only; everything else still honors the
-   > session instruction.
+   > **The subagent fan-out is pre-authorized in this repo** (maintainer, 2026-07-27): a
+   > standing "don't use the Agent tool" session instruction does not reach this gate —
+   > run it, don't stop to re-ask. The authorization covers this gate only.
    >
    > **The invocation ladder — how to actually start `/code-review`** (a rejected name is
    > NOT the gate being unavailable):
    >
    > 1. **Call `Skill("code-review:code-review")` — this is the gate; expect it to work.**
    >    The plugin is enabled at **project** scope (`.claude/settings.json` →
-   >    `enabledPlugins`), and its installed command declares
+   >    `enabledPlugins`) and its installed command declares
    >    `disable-model-invocation: false`, so the Skill tool serves it. Note the
    >    **`plugin:skill` form** — a bare `Skill("code-review")` is a different skill, the
-   >    harness's built-in reviewer: that is rung 3's fallback, not the gate. (Re-verified 2026-08-31. An older revision of this file
-   >    claimed the CLI refuses it human-invoke-only and sent you to rung 2 by default; that
-   >    was wrong. **Verify before you believe either claim** — read the payload's frontmatter
-   >    and `enabledPlugins`, both one grep away.)
+   >    harness's built-in reviewer: rung 3's fallback, not the gate. (Re-verified
+   >    2026-08-31; an older revision claimed the CLI refuses this rung — wrong. When in
+   >    doubt, read the payload's frontmatter and `enabledPlugins` — both one grep away —
+   >    rather than believing either claim.)
    > 2. **Only if rung 1 is actually refused → execute the installed plugin's command file
-   >    directly; that still IS the gate, not a degraded mode.** Resolve the payload: in
+   >    directly; that still IS the gate, not a degraded mode.** In
    >    `~/.claude/plugins/installed_plugins.json`, under the top-level `plugins` map, the
    >    key `code-review@claude-plugins-official` holds an **array** of installs — take the
-   >    entry's `installPath`; then read
-   >    `<installPath>/commands/code-review.md` and follow its steps exactly as if the
-   >    command had been typed. Reading it from the installed payload at run time is what
-   >    keeps Anthropic's upstream updates flowing (`scripts/ensure-plugins.sh` tracks the
-   >    marketplace) — **never vendor a copy of the workflow into the repo.** (The cache can
-   >    hold more than one payload dir for the plugin; they have been byte-identical, but
-   >    prefer the `installPath` the JSON names for **this** project.)
+   >    entry's `installPath`, read `<installPath>/commands/code-review.md`, and follow its
+   >    steps exactly as if the command had been typed. Reading the installed payload at
+   >    run time keeps Anthropic's upstream updates flowing (`scripts/ensure-plugins.sh`
+   >    tracks the marketplace) — **never vendor a copy of the workflow into the repo.**
+   >    (The cache can hold more than one payload dir; prefer the `installPath` the JSON
+   >    names for this project.)
    > 3. The degraded built-in-reviewer fallback below applies only when this ladder cannot
    >    run the workflow: the payload is absent and `bash scripts/ensure-plugins.sh`
    >    cannot repair it, or the review subagents genuinely cannot run.
    >
    > **`gh` in cloud sessions** — provisioned by `scripts/cloud-session-setup.sh` step 6
    > (GH_TOKEN is already in the session env). The repo-scope proxy serves REST plus a
-   > pinned set of PR-review GraphQL operations, so some of the plugin workflow's `gh`
-   > calls need their REST equivalent (the proxy's 403 message says exactly this):
-   > `gh pr diff N` and `gh api repos/{owner}/{repo}/...` **work**;
-   > `gh pr list` / `gh pr checks` / `gh search` **403** → use
-   > `gh api "repos/O/R/pulls?state=open"`, `gh api repos/O/R/commits/{sha}/check-runs`, and
-   > `gh api -X GET search/issues -f q=...` (the `-X GET` is load-bearing — a bare `-f`
-   > flips `gh api` to POST); post the final review comment with
-   > `gh api -X POST repos/O/R/issues/N/comments -f body='...'` (verified served). The
-   > GitHub MCP tools remain the substitute if `gh` is missing.
-   >
-   > **`gh pr view` is field-dependent, not simply blocked** (re-probed 2026-08-22):
-   > `gh pr view N --json number,draft,…` is served, while `--json comments` 403s — the pin
-   > is per GraphQL *query*, so judge it by the field set you ask for, not by the
-   > subcommand. `gh api repos/O/R/pulls/N` sidesteps the question entirely.
-   >
-   > **Job logs are the one REST call that still fails, and not at the gateway:**
-   > `gh api repos/O/R/actions/jobs/{id}/logs` answers a redirect to
-   > `productionresultssa19.blob.core.windows.net`, which the **agent proxy** denies
-   > (`connect_rejected`, visible in `curl -sS "$HTTPS_PROXY/__agentproxy/status"`). Read a
-   > failed job's log with the GitHub MCP `get_job_logs` (`return_content: true` plus a
-   > `tail_lines`), and grep the saved file rather than pulling it all into context.
+   > pinned set of PR-review GraphQL operations, so some `gh` calls need their REST
+   > equivalent (the proxy's 403 message says exactly this):
+   > - `gh pr diff N` and `gh api repos/{owner}/{repo}/...` **work**.
+   > - `gh pr list` / `gh pr checks` / `gh search` **403** → use
+   >   `gh api "repos/O/R/pulls?state=open"`, `gh api repos/O/R/commits/{sha}/check-runs`,
+   >   and `gh api -X GET search/issues -f q=...` (the `-X GET` is load-bearing — a bare
+   >   `-f` flips `gh api` to POST).
+   > - Post the final review comment with
+   >   `gh api -X POST repos/O/R/issues/N/comments -f body='...'` (verified served).
+   > - **`gh pr view` is field-dependent, not simply blocked** (re-probed 2026-08-22): the
+   >   pin is per GraphQL *query*, so `--json number,draft,…` is served while
+   >   `--json comments` 403s — judge by the field set, not the subcommand.
+   >   `gh api repos/O/R/pulls/N` sidesteps the question entirely.
+   > - **Job logs are the one REST call that still fails, and not at the gateway:**
+   >   `gh api …/actions/jobs/{id}/logs` answers a redirect to Azure blob storage, which
+   >   the **agent proxy** denies (`connect_rejected` in
+   >   `curl -sS "$HTTPS_PROXY/__agentproxy/status"`). Read a failed job's log with the
+   >   GitHub MCP `get_job_logs` (`return_content: true` plus a `tail_lines`) and grep the
+   >   saved file rather than pulling it all into context.
+   > - The GitHub MCP tools remain the substitute if `gh` is missing.
    >
    > **Fallback, only under the ladder's rung-3 conditions: the harness's built-in
    > `code-review` skill** — `Skill("code-review")`, the unqualified name (a human types
    > `/code-review <PR>` at an effort level). It is the host CLI's own reviewer, not the
    > plugin's multi-reviewer workflow, and it does not know this repo's banks — still load
    > the overlay. Treat it as a degraded mode and say so in the PR. (The old `/review <PR>`
-   > fallback no longer exists as an installable skill — verified 2026-08-31; don't chase it.)
+   > fallback no longer exists as an installable skill — verified 2026-08-31; don't chase
+   > it.)
    >
-   > **If no rung can start, say so — never substitute silently.** That is a legitimate blocker
-   > and an illegitimate secret: **leave the PR's review checkbox unticked, write one line in
-   > the PR saying which half ran and why**, and ask the human to authorize the missing half.
-   > Ticking a box whose text names `/code-review` when no review ran makes the PR record lie
-   > about the process — precisely what close-out step 4 exists to prevent.
-   > (Case history: PR #353/#355 — a box ticked over a half-run gate hid a recurring
-   > WCAG 2.4.3 regression that the unrun half then found.)
+   > **If no rung can start, say so — never substitute silently.** That is a legitimate
+   > blocker and an illegitimate secret: **leave the PR's review checkbox unticked, write
+   > one line in the PR saying which half ran and why**, and ask the human to authorize
+   > the missing half. Ticking a box whose text names `/code-review` when no review ran
+   > makes the PR record lie about the process — and the unrun half is where the recurring
+   > defect class hides (case history: PR #353/#355).
 
    **Pick the review effort by risk class** (same principle as the grill gate — the size
    flexes; the gate does not):
@@ -127,9 +118,8 @@ restating it.
    - When unsure, go high. Effort choice changes the fan-out, never whether the overlay
      bank items are walked — those run every time.
 3. **Resolve — back through the loop, not around it.** A finding fix is implementation
-   work, so it **re-enters at Implement per the re-entry rule** (SKILL.md, "The loop"):
-   load the fix's area skills per the routing table, build it test-first, get CI green
-   again, re-review the changed surface. Additionally:
+   work: it **re-enters at Implement per the re-entry rule** (SKILL.md, "The loop").
+   Additionally:
    - **Update the plan's _Skills consulted_ line** with any new area a fix pulled in, so
      RV-PROC-1 stays truthful.
    - **Re-review** = re-run `/code-review` on the new diff, or at minimum re-walk the
@@ -148,32 +138,29 @@ Missing any one means the slice is still in flight — say so rather than report
 
 ## 2. SonarCloud quality gate (mandatory — on the PR, before merge)
 
-> SonarCloud's quality gate is **not** a feature-branch check — by design (`ci.yml`) Sonar
-> analyzes **pull requests and `main` only**, because SonarCloud's plan cannot read
-> non-`main` branches and a branch-push Sonar job would go spuriously red. So the Sonar
-> gate is **due when the PR is ready for review** (not when the draft opens — see the note
-> at the top of this file), runs on the PR's check suite, and is a **distinct
-> gate from CI** (a green CI build does **not** mean Sonar passed — the SonarCloud check
-> is separate). A slice is **not** mergeable until this gate is green.
+> By design (`ci.yml`) Sonar analyzes **pull requests and `main` only** — SonarCloud's
+> plan cannot read non-`main` branches, and a branch-push Sonar job would go spuriously
+> red. So this gate is due at **ready-for-review** (not at draft creation — see the note
+> at the top of this file), runs on the PR's check suite, and is a **distinct gate from
+> CI**: a green CI build does **not** mean Sonar passed.
 >
 > **Green is necessary, NOT sufficient.** The quality gate can **pass while SonarCloud
 > still reports new issues** (MAJOR/minor code smells, security hotspots) **and
-> duplications** that sit *below* its fail thresholds. So the green **check-run conclusion
-> is not proof of "no new issues"** — you MUST pull the actual reported issue +
-> duplication *list* (step 2) and **fix every entry before merge, even when the gate is
-> green.** Don't merge on the gate's pass/fail alone (case history: #158).
+> duplications** that sit below its fail thresholds. So the green check-run conclusion is
+> not proof of "no new issues" — you MUST pull the actual reported issue + duplication
+> *list* (step 2) and **fix every entry before merge, even when the gate is green** (case
+> history: #158).
 
 **How the gate runs — every PR, after CI + the Review gate, before merge:**
 
-1. **Trigger.** The moment the PR is open, the SonarCloud analysis runs on the PR head.
-   Wait for the **SonarCloud Code Analysis** check (and the PR's quality-gate status) to
-   complete — do not merge on "CI green" alone. The gate must **pass** with **new-code
-   coverage ≥ 80%** — **and** the reported list (step 2) must be empty-or-resolved (green
-   is necessary, not sufficient — the blockquote above is the canonical statement).
+1. **Trigger.** The analysis runs on the PR head as soon as the PR is open. Wait for the
+   **SonarCloud Code Analysis** check (and the PR's quality-gate status) to complete — do
+   not merge on "CI green" alone. The gate must **pass** with **new-code coverage ≥ 80%**,
+   and the reported list (step 2) must be empty-or-resolved.
 2. **Read the findings — the actual list, not just the gate conclusion.** The check-run
-   (`pull_request_read get_check_runs`) only reports the gate's **pass/fail**; it does
-   **not** list the issues. Pull the real reported list from the SonarCloud web API
-   (anonymous-readable for this public project, so `WebFetch` works), project key
+   (`pull_request_read get_check_runs`) only reports pass/fail; it does **not** list the
+   issues. Pull the real list from the SonarCloud web API (anonymous-readable for this
+   public project, so `WebFetch` works), project key
    **`ivopogace_riviera-sunbed-booking`**, `<N>` = the PR number:
    - **Issues:** `https://sonarcloud.io/api/issues/search?componentKeys=ivopogace_riviera-sunbed-booking&pullRequest=<N>&resolved=false&ps=100`
      — every new bug, vulnerability, code smell, and security hotspot with its rule, file,
@@ -183,49 +170,42 @@ Missing any one means the slice is still in flight — say so rather than report
    > **The false-clean read — confirm an analysis actually exists before believing a zero.**
    > `api/issues/search` returns `"total": 0` for a PR that has **not been analyzed yet**,
    > byte-for-byte identical to a genuinely clean PR. Before accepting a zero issue count:
-   > confirm `measures` is **non-empty** (for a code PR, that `new_lines` has a value) **and**
-   > that the `SonarCloud Code Analysis` check-run itself concluded `success`. The workflow's
-   > own `SonarCloud scan` job is **not** the gate and never was: it `needs: [backend, frontend]`,
-   > so a red build skips it, no analysis is uploaded, and the app check never appears at all —
-   > a `skipped` there means *unanalyzed*, not *clean*. (Pre-#418 it also skipped in the duplicate
-   > push run — its `if:` guard admits only `pull_request` and `main` — and that skipped check-run
-   > could land last and mask the real one. #418 removed the duplicate run; this cause remains.)
-   > Compounding it:
-   > `WebFetch` caches responses for
-   > **15 minutes**, so cache-bust when re-reading — one early read can persist as a stale
-   > "clean" answer across the whole gate. (Case history: PR #318.)
+   > confirm `measures` is **non-empty** (for a code PR, that `new_lines` has a value)
+   > **and** that the `SonarCloud Code Analysis` check-run itself concluded `success`. The
+   > workflow's own `SonarCloud scan` job is **not** the gate: it `needs:
+   > [backend, frontend]`, so a red build skips it, no analysis is uploaded, and the app
+   > check never appears at all — a `skipped` there means *unanalyzed*, not *clean*.
+   > Compounding it: `WebFetch` caches responses for **15 minutes** — cache-bust on every
+   > re-read, or one early read persists as a stale "clean" answer across the whole gate.
+   > (Case history: PR #318.)
 
    Triage **every** entry the list returns — bug, vulnerability, code smell, security
-   hotspot, a **duplicated block**, or a coverage shortfall (per the blockquote above,
-   even under a green gate).
+   hotspot, a **duplicated block**, or a coverage shortfall — even under a green gate.
 3. **Resolve — back through the loop, not around it.** Triage by finding type:
    - **A finding that changes implemented logic** is a code change — it **re-enters at
-     Implement per the re-entry rule** (SKILL.md, "The loop"): decide whether the issue is
-     backend or frontend, load that area's skills per the routing table, fix test-first,
-     CI green again, re-review the changed surface. Update the plan's *Skills consulted*
-     line for any new area a fix pulled in.
+     Implement per the re-entry rule** (SKILL.md, "The loop"). Update the plan's *Skills
+     consulted* line for any new area a fix pulled in.
    - **A coverage gap** on new code → add the missing tests (still test-first; the new
      test is itself the fix).
    - **A genuine defect** Sonar surfaced (real bug/vuln) → drive it with
      `diagnosing-bugs`, then the fix re-enters the loop as above.
    - **A duplicated block** (`new_duplicated_blocks > 0`, or a `common-*:DuplicatedBlocks`
-     issue) → refactor the duplication out (extract the shared helper / dedupe the
-     near-identical test or `.scss`) before merge — even if the duplication density stayed
-     under the gate's fail threshold.
+     issue) → refactor the duplication out before merge, even if the density stayed under
+     the gate's fail threshold.
    - **A false positive / won't-fix / out-of-scope smell** → **prefer an in-code fix that
      also satisfies the static analyzer**, so the reported list reaches literally **zero**
      without needing SonarCloud UI/token access. The recurring FE case is **`css:S7924`
      ("text does not meet the minimal contrast requirement") on translucent glass** — the
-     analyzer ignores the rgba alpha / can't composite the glass over the gradient, so a
-     pair the `*.contrast.spec.ts` proves AA still flags. Fix it the way
-     `frontend/src/app/shared/failure-panel.ts` (`failure-icon`) already does: **swap the
-     translucent fill for its solid composited equivalent** (and nudge the ink to clear
+     analyzer can't composite the rgba glass over the gradient, so a pair the
+     `*.contrast.spec.ts` proves AA still flags. Fix it the way
+     `frontend/src/app/shared/failure-panel.ts` (`failure-icon`) does: **swap the
+     translucent fill for its solid composited equivalent** (nudging the ink to clear
      4.5:1 outright); decorative `aria-hidden` glyphs get the same treatment. Only when a
      code fix would genuinely degrade the design do you **mark it resolved in SonarCloud
      with a written rationale** (or open a follow-up issue) — and record that decision in
      the plan's Sonar note. Either way, an **unaddressed** reported new issue blocks merge.
    - Each fix push re-triggers CI **and** the Sonar analysis — **re-check both before
-     merging** (being small or post-green is not an exemption; re-entry rule).
+     merging** (re-entry rule; being small or post-green is not an exemption).
 4. **Only then merge.** Merge is reached **only** when CI is green **and** the Review gate
    has run **and** the Sonar gate is green **with its reported list cleared** (each entry
    code-fixed, or resolved-with-rationale in SonarCloud; new-code coverage ≥ 80%) **and**
@@ -247,46 +227,37 @@ Merging is not the last step; the close-out is. Every item, every merge:
    Execution-status table ✅, Open Questions empty or deferred with issue numbers, every
    risk-register row closed with its outcome, AC pin-names matching the tests that actually
    shipped (already required by `riviera-plan-doc` — verify, don't assume). **Tick the PR
-   body's Gates checkboxes** as each gate actually passes — both 2026-07-02 PRs merged with
-   all three left `[ ]` despite all three passing, which makes the PR record lie about the
-   process that ran.
+   body's Gates checkboxes** as each gate actually passes — both 2026-07-02 PRs merged
+   with all three left `[ ]` despite all three passing, which makes the PR record lie
+   about the process that ran.
 
    > **Reference the PR number, never the merge SHA — this is what makes the step
-   > pre-merge-able.** A squash SHA cannot exist before the merge, so a plan doc that records
-   > "merged as `<sha>`" *guarantees* a second commit; `merged via PR #NN` is knowable the
-   > moment the PR opens, and the SHA is one `git log --grep "(#NN)"` away if anyone needs it.
-   > Everything else in this step was always knowable pre-merge — it was only ever done late.
-   >
-   > **Why this hardened:** a "one-line follow-up commit on `main`" assumes a push permission
-   > cloud agents don't have, so it degrades into a whole docs-only PR + CI cycle every time
-   > (case history: the three close-out PRs, #326→#347, #346→#352, #351→#354).
+   > pre-merge-able.** A squash SHA cannot exist before the merge, so recording "merged as
+   > `<sha>`" *guarantees* a second commit; `merged via PR #NN` is knowable the moment the
+   > PR opens (the SHA is one `git log --grep "(#NN)"` away if needed). A post-merge
+   > "one-line follow-up commit on `main`" assumes a push permission cloud agents don't
+   > have, so it degrades into a whole docs-only PR + CI cycle every time (case history:
+   > the three close-out PRs, #326→#347, #346→#352, #351→#354).
    >
    > **After this step there is no post-merge repo commit.** The only genuinely post-merge
    > items are GitHub edits, not commits: the parent-epic checkbox tick (step 2) and any
-   > follow-up issue (step 3).
+   > follow-up issue (step 3). **If you find yourself opening a docs-only PR to finish a
+   > close-out, step 4 was skipped** — that is the signal, not a normal cost.
 5. **Substrate-doc staleness check — run `riviera-docs-freshness`.** If the slice changed
    something `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, an ADR, or a `riviera-*`
    skill **states** — a module's shipped/planned status, the package shape, a canonical
-   value set (statuses, pools), an ownership rule, a filename a skill cites as an example —
-   load the **`riviera-docs-freshness`** skill and run it. **Split it by what it needs:**
-   - **Staleness patches (a renamed/removed file a skill cites, an epic's "in progress"
+   value set, an ownership rule, a filename a skill cites as an example — load the skill
+   and run it. **Split it by what it needs:**
+   - **Staleness patches** (a renamed/removed file a skill cites, an epic's "in progress"
      line, a changed mechanism phrase) don't need the merge SHA — run the staleness grep
-     `pre-merge` (the skill's "pre-merge smoke" mode over `origin/main...HEAD`) and fold
-     those patches into the *code PR itself***. Don't spin up a whole second docs PR + CI
-     cycle for edits the code PR could have carried (case history: O6 / PR #219).
+     **pre-merge** (the skill's "pre-merge smoke" mode over `origin/main...HEAD`) and fold
+     the patches into the **code PR itself**; don't spin up a second docs PR + CI cycle
+     for edits the code PR could have carried (case history: O6 / PR #219).
    - **Did this slice make the Nth of something?** A new listener, counter, event, module,
-     profile, transport, or sweep falsifies every doc that says "the two …", "both …", "the
-     first of the two", "five <things>" — and **none of those files is in the diff**, so no
-     amount of reviewing the changed files finds them. Run the skill's **counting sweep**
-     (its procedure step 2b) beside the rename grep: reviewing #373's changed files found
-     six such statements, and a substrate grep then found **ten more** it could not have
-     seen (case history: #447).
-   - **Nothing here is inherently post-merge any more.** Step 4 removed the last repo-commit
-     dependency by recording `merged via PR #NN` instead of the merge SHA, so the staleness
-     patches and the plan-doc final state both belong in the **code PR itself**. What remains
-     post-merge is GitHub-only and needs no commit: the epic checkbox tick (step 2) and any
-     follow-up issue (step 3). **If you find yourself opening a docs-only PR to finish a
-     close-out, step 4 was skipped** — that is the signal, not a normal cost.
+     profile, transport, or sweep falsifies every doc that says "the two …" — and none of
+     those files is in the diff, so reviewing the changed files cannot find them. Run the
+     skill's **counting sweep** (its procedure step 2b) beside the rename grep (case
+     history: #447 — the sweep found ten statements the diff review could not see).
    - It also runs over every epic's full merge span at epic close-out (case history: #72).
 6. **Subscription closed:** confirm the PR-activity subscription ended with the merge
    (auto-unsubscribe) or unsubscribe manually.
