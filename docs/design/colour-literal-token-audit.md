@@ -25,6 +25,15 @@ different answer. A find-and-replace would have flipped an ink light-on-light in
 So the unit of decision is the **family**, and a family is defined by *value + role + painted-on
 surface*, not by value alone. This file records the verdict per family.
 
+> **Correction, 2026-08-31 — this ledger broke its own rule twice.** The first cut of class R
+> filed `#0a6e85` and `#0a5f74` by **value**, which is exactly what the paragraph above forbids.
+> Re-checked by form: 4 of `#0a6e85`'s 16 sites are `bg-` fills, not inks, and 4 of `#0a5f74`'s 7
+> are `text-` inks over fixed fills, not fills. The symptom was concrete —
+> `requests-tab.contrast.spec.ts:79` asserts one sentence about two of those literals, so the
+> old split would have had two PRs editing the same assertion. Rows below are now cut by form,
+> and the orphaned inks became #858. **The lesson is the ledger's own thesis: a shared value is
+> not a shared role, and only the utility form makes that visible.**
+
 ## The population
 
 ```bash
@@ -65,7 +74,7 @@ actually generated, and nothing more.
 | Family | n | Token | Verdict | Status |
 |---|---:|---|---|---|
 | `text-[#a3160e]` in `operator/` (9 files) | 32 | `--riv-error-ink` | **migrate** — hosts are porcelain-pinned, where the token resolves `#a3160e` | **done — #855, PR #856** |
-| `#0a6e85` in `operator/` | 16 | `--riv-pop-accent` | **migrate, but name the role first** — value-correct, role wrong: `--riv-pop-accent` is the *popover* accent. Either register a console-accent token or widen that token's contract | open → #848 |
+| `text-[#0a6e85]` in `operator/` (8 files) | 12 | `--riv-pop-accent` | **migrate, but name the role first** — value-correct, role wrong: `--riv-pop-accent` is the *popover* accent. Either register a console-accent token or widen that token's contract | open → #848 |
 | `#0a2a33` (`text-`) | 5 | `--riv-ink` / `--riv-card-ink` / `--riv-pop-ink` | **migrate** — but three tokens share the value, so each site must be assigned to the one whose *surface* it sits on | open → #849 |
 | `rgba(12,42,51,·)` inks/borders (`.66`, `.78`, `.14`, `.1`) | 9 | `--riv-ink-faint`, `--riv-card-ink-soft`, `--riv-chip-border`, `--riv-pop-divider` | **migrate** — same one-value-many-tokens caveat | open → #849 |
 
@@ -79,7 +88,8 @@ These families must move **as a pair**, onto tokens declared **once** with no da
 | Family | n | Verdict | Status |
 |---|---:|---|---|
 | Form-error skin: `bg-[#f6e8e7]` + `text-[#a3160e]` (`booking-dialog:311`, `booking-pay:255`, `my-bookings:290`) | 6 | **new theme-invariant token pair.** The themed `--riv-error-ink` is *wrong* here — it resolves `#ffa9a1` in dark, over a fill that stays `#f6e8e7`: light on light | **done — #850, PR #857** |
-| Solid outline-button skin: `#f4f6f7` fill, `#e7ebec` hover, `rgba(255,255,255,0.7)` border, `#a3372a` danger ink | 9 | **new theme-invariant tokens**, one family. Its teal ink already moved to `--riv-solid-btn-ink` in #835 | open → #851 (recorded on #836 by the maintainer) |
+| Solid outline-button skin: `#f4f6f7` fill ×3, `#e7ebec` hover ×3, `rgba(200,90,60,0.5)` danger border ×2, `#a3372a` danger ink ×2 | 10 | **new theme-invariant tokens**, completing the existing `--riv-solid-btn-*` family. Only 2 of `#a3372a`'s 8 sites belong here — see #851's scope correction | open → #851 |
+| `text-[#0a5f74]` over three **fixed** fills (`#d7eef4`, `white`, `#d9f2f7`) on themeable hosts — `amenity-chip:29`, `booking-dialog:120`, `booking-pay:114`, `booking-confirmation:41` | 4 | **the #850 trap, unfixed.** Same shape as the form-error skin: a themed token here resolves light over a fill that stays pale. Open question the slice owes: one ink token over three fill tokens, or three separate pairs? | open → #858 |
 
 ### Class O — `/opacity` modifier: tokenising is a computed-value change
 
@@ -104,8 +114,7 @@ does not. Each needs its own token, not the coincidental one.
 | Family | n | Coincides with | Why not that token | Status |
 |---|---:|---|---|---|
 | `border-[rgba(255,255,255,0.4)]` (15 of 17; 2 are `bg-`) | 17 | `--riv-inset-fill` | That is a **fill** token (dark theme: `rgba(255,255,255,0.08)`). A border wants a border token; none of this value exists | open → #853 |
-| `bg-[#a3160e]` + `text-white` (`confirm-panel:9`, `requests-tab:172`) | 2 | `--riv-error-ink` | An **ink** token used as a fill. The white ink on it is fixed, so the pair is theme-invariant | open → #854 |
-| `#0a5f74` solid fills | 7 | `--riv-cta-grad` (end stop) | A gradient stop is not a fill token | open → #854 |
+| **Solid button/badge fills with fixed white ink** — `bg-[#0a6e85]` ×4, `bg-[#a3160e]` ×2, `bg-[#0a5f74]` ×3 | 9 | `--riv-pop-accent` / `--riv-error-ink` / `--riv-cta-grad`'s end stop | Three literals, **one family**: each puts fixed white ink on a solid brand fill, so each pair is theme-invariant. None of the coincidental tokens fits — two are **inks** and one is a **gradient stop**. Two members live in `shared/`, where the host theme varies, which is what makes a themed token actively wrong | open → #854 |
 | `#8a5410` warn ink, `#8a3a2a`, `#0a5e7a`, `#334a52`, … | ~20 | — | No token at all; these are genuine new-token candidates once their role is named | open |
 
 ### Class S — per-state palettes and one-offs: exempt for now
