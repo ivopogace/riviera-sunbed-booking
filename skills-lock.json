@@ -5,7 +5,9 @@
       "source": "angular/skills",
       "sourceType": "github",
       "skillPath": "angular-developer/SKILL.md",
-      "computedHash": "dc0d00affef561cd0181f5e2c38723fe645a1ecef591655d2b03ad95685812c9"
+      "ref": "936dcd7763a9877a555d8fb41fa077c2dcc0e19b",
+      "vendored": "verbatim — the whole skill dir (SKILL.md + references/), refreshed 2026-08-31 from angular/skills@936dcd77, the last upstream commit touching angular-developer/. computedHash = sha256 of SKILL.md with LF endings (the pre-refresh value came from the original installer and was not reproducible).",
+      "computedHash": "ec5e3a0b1ef218c0d7d40e35c40e5255e7319d7d595c5a6036d8bdac2532c782"
     },
     "angular-new-app": {
       "source": "angular/skills",
