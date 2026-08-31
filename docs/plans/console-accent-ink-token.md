@@ -294,12 +294,12 @@ component, signal, form, control-flow or DI surface changes, so the v22 posture 
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Register the token + the test-side mirror | ✅ | `<phase-0-3>` |
-| 1 — Declaration + identity guard spec | ✅ | `<phase-0-3>` |
-| 2 — Migrate the twelve sites (drives AC-3's red green) | ✅ | `<phase-0-3>` |
-| 3 — Re-point the six contrast specs onto the mirror | ✅ | `<phase-0-3>` |
-| 4 — Mocked e2e computed-colour proof | ✅ | `<phase-4-5>` |
-| 5 — Ledger row + verification sweep | ✅ | `<phase-4-5>` |
+| 0 — Register the token + the test-side mirror | ✅ | `9b011fc` |
+| 1 — Declaration + identity guard spec | ✅ | `9b011fc` |
+| 2 — Migrate the twelve sites (drives AC-3's red green) | ✅ | `9b011fc` |
+| 3 — Re-point the six contrast specs onto the mirror | ✅ | `9b011fc` |
+| 4 — Mocked e2e computed-colour proof | ✅ | `263b4b7` |
+| 5 — Ledger row + verification sweep | ✅ | `263b4b7` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
