@@ -323,7 +323,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
             <button
               appTouchTarget
               type="button"
-              class="btn-back shrink-0 cursor-pointer rounded-2xl border-[1.5px] border-riv-card-border bg-riv-wash-fill px-5 py-[14px] text-[15px] font-semibold text-riv-back-ink backdrop-blur-[8px] motion-safe:[transition:background_0.15s_ease,border-color_0.15s_ease,box-shadow_0.15s_ease] hover:border-[rgba(10,79,94,0.45)] hover:bg-riv-wash-hover hover:shadow-[0_6px_16px_rgba(6,30,40,0.14)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
+              class="btn-back shrink-0 cursor-pointer rounded-2xl border-[1.5px] border-riv-card-border bg-riv-wash-fill px-5 py-[14px] text-[15px] font-semibold text-riv-back-ink backdrop-blur-[8px] motion-safe:[transition:background_0.15s_ease,border-color_0.15s_ease,box-shadow_0.15s_ease] hover:border-riv-wash-hover-border hover:bg-riv-wash-hover hover:shadow-[0_6px_16px_rgba(6,30,40,0.14)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
               data-testid="dialog-back"
               (click)="back()"
             >
