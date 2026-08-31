@@ -12,8 +12,7 @@ restating it.
 
 ## 1. Review gate (mandatory — between PR and merge)
 
-> The `review` stage is a **gate, not a label on the diagram.** Opening a PR, green CI,
-> and a clear Sonar gate are necessary but not sufficient — none of them is the review. A
+> Opening a PR, green CI, and a clear Sonar gate — none of them is the review. A
 > slice is **not done** and must not be merged until this gate has run and its findings
 > are resolved or explicitly deferred.
 
@@ -33,9 +32,8 @@ restating it.
    > active review ("this overlay **never runs alone**"); walking them by hand without
    > starting `/code-review` (or the rung-3 fallback) leaves the **generic** banks unrun —
    > and those are where the non-project-specific defects live. `/code-review` is the
-   > strongest engine here **by measurement** — its subagent fan-out found three defects
-   > the hand-walked overlay *and* the then-installed inline `/review` had both missed
-   > (case history: #351). Start it first, every time.
+   > strongest engine here **by measurement** (case history: #351). Start it first, every
+   > time.
    >
    > **The subagent fan-out is pre-authorized in this repo** (maintainer, 2026-07-27): a
    > standing "don't use the Agent tool" session instruction does not reach this gate —
@@ -49,10 +47,9 @@ restating it.
    >    `enabledPlugins`) and its installed command declares
    >    `disable-model-invocation: false`, so the Skill tool serves it. Note the
    >    **`plugin:skill` form** — a bare `Skill("code-review")` is a different skill, the
-   >    harness's built-in reviewer: rung 3's fallback, not the gate. (An older revision
-   >    claimed the CLI refuses this rung — wrong. When in doubt, read the payload's
-   >    frontmatter and `enabledPlugins` — both one grep away — rather than believing
-   >    either claim.)
+   >    harness's built-in reviewer: rung 3's fallback, not the gate. (When in doubt, read
+   >    the installed payload's frontmatter and `enabledPlugins` — both one grep away —
+   >    rather than trusting a remembered claim about what the CLI refuses.)
    > 2. **Only if rung 1 is actually refused → execute the installed plugin's command file
    >    directly; that still IS the gate, not a degraded mode.** In
    >    `~/.claude/plugins/installed_plugins.json`, under the top-level `plugins` map, the
@@ -70,7 +67,7 @@ restating it.
    > **`gh` in cloud sessions** — provisioned by `scripts/cloud-session-setup.sh` step 6
    > (GH_TOKEN is already in the session env). The repo-scope proxy serves REST plus a
    > pinned set of PR-review GraphQL operations, so some `gh` calls need their REST
-   > equivalent (the proxy's 403 message says exactly this):
+   > equivalent:
    > - `gh pr diff N` and `gh api repos/{owner}/{repo}/...` **work**.
    > - `gh pr list` / `gh pr checks` / `gh search` **403** → use
    >   `gh api "repos/O/R/pulls?state=open"`, `gh api repos/O/R/commits/{sha}/check-runs`,
@@ -174,8 +171,6 @@ Missing any one means the slice is still in flight — say so rather than report
    > workflow's own `SonarCloud scan` job is **not** the gate: it `needs:
    > [backend, frontend]`, so a red build skips it, no analysis is uploaded, and the app
    > check never appears at all — a `skipped` there means *unanalyzed*, not *clean*.
-   > (#418 removed a second origin of this trap — a duplicate push-triggered run whose
-   > skipped check-run could land last and mask the real one; the `needs:` cause remains.)
    > Compounding it: `WebFetch` caches responses for **15 minutes** — cache-bust on every
    > re-read, or one early read persists as a stale "clean" answer across the whole gate.
    > (Case history: PR #318.)
@@ -228,9 +223,8 @@ Merging is not the last step; the close-out is. Every item, every merge:
    Execution-status table ✅, Open Questions empty or deferred with issue numbers, every
    risk-register row closed with its outcome, AC pin-names matching the tests that actually
    shipped (already required by `riviera-plan-doc` — verify, don't assume). **Tick the PR
-   body's Gates checkboxes** as each gate actually passes — two PRs once merged with all
-   three left `[ ]` despite all three passing, which makes the PR record lie about the
-   process that ran.
+   body's Gates checkboxes** as each gate actually passes — left `[ ]`, the PR record
+   lies about the process that ran.
 
    > **Reference the PR number, never the merge SHA — this is what makes the step
    > pre-merge-able.** A squash SHA cannot exist before the merge, so recording "merged as
@@ -238,7 +232,7 @@ Merging is not the last step; the close-out is. Every item, every merge:
    > PR opens (the SHA is one `git log --grep "(#NN)"` away if needed). A post-merge
    > "one-line follow-up commit on `main`" assumes a push permission cloud agents don't
    > have, so it degrades into a whole docs-only PR + CI cycle every time (case history:
-   > the three close-out PRs, #326→#347, #346→#352, #351→#354).
+   > the three close-out PRs).
    >
    > **After this step there is no post-merge repo commit.** The only genuinely post-merge
    > items are GitHub edits, not commits: the parent-epic checkbox tick (step 2) and any
@@ -258,7 +252,7 @@ Merging is not the last step; the close-out is. Every item, every merge:
      profile, transport, or sweep falsifies every doc that says "the two …" — and none of
      those files is in the diff, so reviewing the changed files cannot find them. Run the
      skill's **counting sweep** (its procedure step 2b) beside the rename grep (case
-     history: #447 — the sweep found ten statements the diff review could not see).
+     history: #447).
    - It also runs over every epic's full merge span at epic close-out (case history: #72).
 6. **Subscription closed:** confirm the PR-activity subscription ended with the merge
    (auto-unsubscribe) or unsubscribe manually.

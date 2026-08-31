@@ -6,9 +6,8 @@ Read this at plan entry, whenever work starts from an already-written GitHub iss
 > time you pick it up the code may have moved, a sibling slice may have changed a
 > contract, an ADR may have landed, or the issue may simply have missed something nobody
 > thought of at creation. **Before** you author the plan doc for an already-written issue
-> you **MUST** run a `grilling` pass over it. This is a **gate, not a suggestion** — do
-> not treat the issue text as correct-by-default, and "the issue looked complete" is never
-> a reason to skip (that is exactly when stale ACs slip through).
+> you **MUST** run a `grilling` pass over it — do not treat the issue text as
+> correct-by-default, and "the issue looked complete" is never a reason to skip.
 
 ## How the gate runs — every time work starts from an existing issue
 
@@ -21,7 +20,7 @@ Read this at plan entry, whenever work starts from an already-written GitHub iss
    - Are the acceptance criteria still **correct, complete, and testable today**?
    - Has the codebase moved since it was written — APIs, schema, sibling slices, ADRs,
      design tokens? Cross-check against the **actual code/spec**, not the issue's
-     assumptions. (E.g. example values inlined in the issue may be stale.)
+     assumptions.
    - What did we **not** think of when we wrote it — missing states, edge cases, the
      invariants in play (esp. #2 availability, #4 cutoff, #5 money, #8 webhook-as-truth)?
    - **What else is in flight right now?** List the open PRs and active session branches
@@ -39,8 +38,7 @@ Read this at plan entry, whenever work starts from an already-written GitHub iss
      placement against `RESPONSIBILITIES.md` (Job / Not-My-Job) *before* planning: does
      any step put logic in a module whose **Not My Job** list rejects it (a refund
      *decision* in `payment`, commission *math* in `venue`, a login subsystem in
-     `customer`), or that two modules both claim? Catching a misplacement here is a
-     sentence in the plan; catching it at review is a diff. The plan doc then records
+     `customer`), or that two modules both claim? The plan doc then records
      the answer in its Module-ownership table (plan-doc §4a).
    - Division of labor (same rule as any grill): answer the **discoverable/factual**
      questions yourself from the code/spec and mark each "← confirm?"; escalate the
@@ -49,8 +47,6 @@ Read this at plan entry, whenever work starts from an already-written GitHub iss
 3. **Reconcile before building.** Fold the outcome into the plan doc's
    **Open questions / Assumptions** and **Acceptance criteria**. If the issue is materially
    stale, say so and **update the issue (or record the drift)** before you plan against it.
-   A surprise caught at this gate is far cheaper than one caught at the review gate or in
-   production.
 
 ## Escalation — drift vs. fog
 
