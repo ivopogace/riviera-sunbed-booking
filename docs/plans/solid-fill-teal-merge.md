@@ -158,7 +158,7 @@ _None open._
 
 ### Resolved
 
-- **Assumption (closed at phase 1, `<phase-1>`):** the four `-action` sites are content to be
+- **Assumption (closed at phase 1, `c564c46`):** the four `-action` sites are content to be
   called `-brand`. They are — the surviving token names a *form* (a solid brand fill under fixed
   white ink), which is what the family was grouped by in the first place, and "action" was never
   true of three of them (a day-state chip, an `aria-hidden` legend swatch, a count badge). All four
@@ -230,10 +230,10 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The merged registry, red | ✅ | `<phase-0>` |
-| 1 — Merge the declaration + rename the four sites, green | ✅ | `<phase-1>` |
-| 2 — The computed-style proofs + the mutation check | ✅ | `<phase-2>` |
-| 3 — Docs, ledger row and close-out | ✅ | `<phase-3>` |
+| 0 — The merged registry, red | ✅ | `440f788` |
+| 1 — Merge the declaration + rename the four sites, green | ✅ | `c564c46` |
+| 2 — The computed-style proofs + the mutation check | ✅ | `a233a08` |
+| 3 — Docs, ledger row and close-out | ✅ | `31da33b` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -455,7 +455,7 @@ three contrast specs · Modify `frontend/src/testing/chip-fills.ts`
 
 ## Acceptance-criteria verification (final)
 
-All eight verified at `<phase-2>`; the unit runs at `<phase-1>`, the e2e runs at `<phase-2>`.
+All eight verified at `a233a08`; the unit runs at `c564c46`, the e2e runs at `a233a08`.
 
 - [x] **AC-1:** `npx ng test --watch=false --include="src/app/shared/solid-fill-tokens.contrast.spec.ts"`
       → 8/8 PASS, including the value, single-declaration and base-block assertions.
