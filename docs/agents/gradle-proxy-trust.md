@@ -44,8 +44,8 @@ setup hook's Temurin JDK (from `adoptium/temurin25-binaries`) 403s — which is 
 `corretto.aws` (network-allowlisted, not GitHub-gated), landing a JDK at `/opt/jdk-25`.
 
 **Do NOT change the wrapper's `distributionUrl`** — CI has full GitHub access and depends
-on the pinned version (9.7.1 as of 2026-08-31 — `platform/gradle/wrapper/gradle-wrapper.properties`
-is the source of truth) + JDK 25. Local builds use the **pre-installed system Gradle 8.14.x**
+on the pinned version (`platform/gradle/wrapper/gradle-wrapper.properties` is the source
+of truth) + JDK 25. Local builds use the **pre-installed system Gradle 8.14.x**
 instead. One catch: **Gradle 8.14.x cannot _run_ on JDK 25** (`Unsupported class file major
 version 69`). So run its daemon on **JDK 21** and point the **toolchain** at `/opt/jdk-25`:
 

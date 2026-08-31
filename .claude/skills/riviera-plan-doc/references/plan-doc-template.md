@@ -265,17 +265,16 @@ Skill-routing gate for what the fix touches *before* editing).
 > Map files to be created/modified before defining tasks.
 >
 > **Every path in the diff, including the one-line ones — and this is machine-checked.** Listing
-> only the interesting files was a review finding on five consecutive slices (#438, #522, #524,
-> #525, #526), and the paths that fall out are always the same shape: a registry entry, a
-> comment-only freshness fix, a docs-sweep file. Since #533 CI fails the PR on any path the diff
-> changed and this section does not list. Run it yourself before pushing — it is the check, not a
-> reminder to do the check by hand:
+> only the interesting files was a recurring review finding, and the paths that fall out are
+> always the same shape: a registry entry, a comment-only freshness fix, a docs-sweep file. CI
+> fails the PR on any path the diff changed and this section does not list (#533). Run it
+> yourself before pushing — it is the check, not a reminder to do the check by hand:
 >
 > ```bash
 > node scripts/check-plan-file-structure.mjs --diff origin/main
 > ```
 >
-> Since #654 it judges untracked paths as well as the diff, so a file you have written but not
+> It judges untracked paths as well as the diff (#654), so a file you have written but not
 > staged is caught too. **Stage or commit this plan doc first** — `git add` is what marks it as part
 > of the change, and with the doc merely written the guard short-circuits and passes whatever the
 > section says. A file you never intend to commit belongs behind an ignore rule (`.git/info/exclude`

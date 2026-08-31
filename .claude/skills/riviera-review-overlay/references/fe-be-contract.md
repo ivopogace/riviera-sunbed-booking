@@ -26,7 +26,7 @@ typed services, with the backend DTO as the single source of shape?
 
 **Default severity:** Major for `as any` on a contract response; Major for a stale
 hand-stubbed type.
-**What the linter already covers (since #632) — so review effort goes where it doesn't.**
+**What the linter already covers (#632) — so review effort goes where it doesn't.**
 An explicit `as any` was never this item's hard part: `no-explicit-any` ships in
 `tseslint.configs.recommended` and has always failed the build. What #632's type-aware flip
 added is the **unsafe-`any` family** (`no-unsafe-assignment`/`-member-access`/`-argument`/

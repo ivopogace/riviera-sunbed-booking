@@ -49,10 +49,10 @@ restating it.
    >    `enabledPlugins`) and its installed command declares
    >    `disable-model-invocation: false`, so the Skill tool serves it. Note the
    >    **`plugin:skill` form** — a bare `Skill("code-review")` is a different skill, the
-   >    harness's built-in reviewer: rung 3's fallback, not the gate. (Re-verified
-   >    2026-08-31; an older revision claimed the CLI refuses this rung — wrong. When in
-   >    doubt, read the payload's frontmatter and `enabledPlugins` — both one grep away —
-   >    rather than believing either claim.)
+   >    harness's built-in reviewer: rung 3's fallback, not the gate. (An older revision
+   >    claimed the CLI refuses this rung — wrong. When in doubt, read the payload's
+   >    frontmatter and `enabledPlugins` — both one grep away — rather than believing
+   >    either claim.)
    > 2. **Only if rung 1 is actually refused → execute the installed plugin's command file
    >    directly; that still IS the gate, not a degraded mode.** In
    >    `~/.claude/plugins/installed_plugins.json`, under the top-level `plugins` map, the
@@ -77,8 +77,8 @@ restating it.
    >   and `gh api -X GET search/issues -f q=...` (the `-X GET` is load-bearing — a bare
    >   `-f` flips `gh api` to POST).
    > - Post the final review comment with
-   >   `gh api -X POST repos/O/R/issues/N/comments -f body='...'` (verified served).
-   > - **`gh pr view` is field-dependent, not simply blocked** (re-probed 2026-08-22): the
+   >   `gh api -X POST repos/O/R/issues/N/comments -f body='...'`.
+   > - **`gh pr view` is field-dependent, not simply blocked**: the
    >   pin is per GraphQL *query*, so `--json number,draft,…` is served while
    >   `--json comments` 403s — judge by the field set, not the subcommand.
    >   `gh api repos/O/R/pulls/N` sidesteps the question entirely.
@@ -95,8 +95,7 @@ restating it.
    > `/code-review <PR>` at an effort level). It is the host CLI's own reviewer, not the
    > plugin's multi-reviewer workflow, and it does not know this repo's banks — still load
    > the overlay. Treat it as a degraded mode and say so in the PR. (The old `/review <PR>`
-   > fallback no longer exists as an installable skill — verified 2026-08-31; don't chase
-   > it.)
+   > fallback no longer exists as an installable skill — don't chase it.)
    >
    > **If no rung can start, say so — never substitute silently.** That is a legitimate
    > blocker and an illegitimate secret: **leave the PR's review checkbox unticked, write
@@ -229,9 +228,9 @@ Merging is not the last step; the close-out is. Every item, every merge:
    Execution-status table ✅, Open Questions empty or deferred with issue numbers, every
    risk-register row closed with its outcome, AC pin-names matching the tests that actually
    shipped (already required by `riviera-plan-doc` — verify, don't assume). **Tick the PR
-   body's Gates checkboxes** as each gate actually passes — both 2026-07-02 PRs merged
-   with all three left `[ ]` despite all three passing, which makes the PR record lie
-   about the process that ran.
+   body's Gates checkboxes** as each gate actually passes — two PRs once merged with all
+   three left `[ ]` despite all three passing, which makes the PR record lie about the
+   process that ran.
 
    > **Reference the PR number, never the merge SHA — this is what makes the step
    > pre-merge-able.** A squash SHA cannot exist before the merge, so recording "merged as

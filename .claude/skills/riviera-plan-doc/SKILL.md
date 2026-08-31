@@ -126,8 +126,7 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
 
    The sharpest trap: **the plan doc itself must be staged or committed** — merely written, the
    guard short-circuits and passes. Everything else (#654 untracked-path judging, #533 CI
-   enforcement, the five-consecutive-slices history, the accepted path idioms): the template's
-   File-structure blockquote.
+   enforcement, the accepted path idioms): the template's File-structure blockquote.
 4. **Scope test runs to the smallest set that proves the change** — the run recipes
    live in `riviera-local-debug`; load it before the session's first build/test invocation.
 

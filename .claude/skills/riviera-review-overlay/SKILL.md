@@ -75,8 +75,8 @@ method, or field is the repo's documented convention (`riviera-java-conventions`
 `api/` surface depends on it) and stays as long as it earns its length. Applies to what the diff
 writes; don't reflow untouched comments to satisfy it.
 
-**Don't walk this by hand — run the guard** (#529, after the item was raised on eight consecutive
-PRs): `node scripts/check-inline-comments.mjs --diff origin/main` lists every multi-line inline
+**Don't walk this by hand — run the guard** (#529):
+`node scripts/check-inline-comments.mjs --diff origin/main` lists every multi-line inline
 comment the diff wrote, and the same check runs from a `PostToolUse` hook while the author edits
 and as a CI job on the PR. A clean run discharges the mechanical half of this item.
 
@@ -96,8 +96,8 @@ in `SecurityConfig` or `tailwind.css` — and neither should you.
 ## RV-STYLE-2 — formatting is `prettier --check`'s job, not the reviewer's
 
 `frontend/.prettierrc` is enforced whole-scope: the frontend job's Format step runs bare
-`prettier --check src e2e`, and the tree has been clean since #631's one-time reformat
-(recorded in `.git-blame-ignore-revs`). So a formatting comment on a frontend diff is either
+`prettier --check src e2e` over a clean tree (the one-time reformat: #631, recorded in
+`.git-blame-ignore-revs`). So a formatting comment on a frontend diff is either
 redundant with a gate that already ran or wrong:
 
 - **Don't hand-flag `printWidth`, quote style, or wrapping** in `frontend/src` or `frontend/e2e`.

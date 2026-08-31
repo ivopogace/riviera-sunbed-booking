@@ -67,10 +67,8 @@ epic #72 shipped ten slices while three substrate docs kept describing the pre-e
    the **count** can, and it is seconds against a class of error that otherwise ships.
 
    Grep the **words**, not the new identifier — in two steps, because the phrasings alone
-   are too broad (~265 hits repo-wide, re-measured 2026-08-31) and collapse to a readable
-   list once filtered by the vocabulary of the thing that grew (~80 for the mail lineage).
-   Re-measure rather than trusting those two numbers: they date the recipe, they do not
-   describe your repo today.
+   are far too broad repo-wide and collapse to a readable list only once filtered by the
+   vocabulary of the thing that grew.
 
    ```bash
    # 1. phrasings of N−1 — ordinal and cardinal, spelled-out and digit
@@ -117,8 +115,7 @@ epic #72 shipped ten slices while three substrate docs kept describing the pre-e
 
 - **Merge close-out step 5** (`riviera-sdlc`) — over the merged PR's range, when the slice
   changed something a substrate doc states.
-- **Epic close-out** — over the epic's full merge span (the systematic sweep; first real
-  target: epic #108).
+- **Epic close-out** — over the epic's full merge span (the systematic sweep).
 - **Pre-merge smoke** — over `origin/main...HEAD` when a slice knowingly renames/moves
   things (cheapest moment to catch the skill/table references).
 

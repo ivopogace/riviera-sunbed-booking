@@ -332,7 +332,7 @@ directions:
    the handler. Don't accept `[disabled]` plus a settle-time focus move there: focus is on `<body>`
    for the whole request, and a leg afterwards only fixes where it lands. Ask where focus actually is
    when the flag flips, and whether `readonly` even applies to that control. **The text-entry half is
-   machine-checked since #628**: BUSY-2 gates a `(change)`/`(blur)` + busy-`[disabled]` pairing on the
+   machine-checked (#628)**: BUSY-2 gates a `(change)`/`(blur)` + busy-`[disabled]` pairing on the
    `readonly`-lockable kinds. What stays this item's alone: the inert kinds, a field that commits per
    keystroke (`(input)` is excluded as draft-sync — the mirror case where a button starts the write),
    and whether the chosen lock is the *right* one for the surface.

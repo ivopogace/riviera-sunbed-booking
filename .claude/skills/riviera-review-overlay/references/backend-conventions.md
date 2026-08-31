@@ -265,16 +265,16 @@ Any diff that touches a **venue-scoped** endpoint or service
 staff availability, weather refund) must verify the **authenticated operator owns
 the path `venueId`** — and that the check sits in the **application service**, not
 the controller alone. The check is the `operator` module's `assertOwns` consulted
-from the application service (shipped #73/#74, pinned by `CrossVenueDenialIT`) —
+from the application service (pinned by `CrossVenueDenialIT`; #73/#74) —
 verify any **new** venue-scoped surface calls it too, and that no driving adapter
 bypasses it. A shared role is necessary but not sufficient (OWASP API #1, BOLA) —
 default **Blocker** whenever a venue-scoped surface is touched. Platform-wide
-`/api/admin/**` is role-gated and exempt — and since #528 that gate is machine-checked
-rather than read: `AdminSurfaceRoleGateTest` discovers the mapped `/api/admin/**`
+`/api/admin/**` is role-gated and exempt — and that gate is machine-checked rather than
+read (#528): `AdminSurfaceRoleGateTest` discovers the mapped `/api/admin/**`
 endpoints and fails the build unless each refuses both non-admin principal types, so a
 new admin endpoint needs its `hasRole(ADMIN_ROLE)` matcher and there is no allow-list to
-opt out through. (Authority: invariant #13.) Since #115 the
-denial is uniform: `403 NOT_VENUE_OWNER` **before any existence check**, even for a
+opt out through. (Authority: invariant #13.) The denial is
+uniform (#115): `403 NOT_VENUE_OWNER` **before any existence check**, even for a
 nonexistent venue — a 404 that leaks the existence of an unowned venue is a finding.
 
 ---
