@@ -529,7 +529,6 @@ const CLS = {
           (submitted)="sendReview($event)"
           (updated)="sendReviewUpdate($event)"
           (deleted)="sendReviewDelete()"
-          (blocked)="blockReview($event)"
         />
 
         <a appTouchTarget routerLink="/" [class]="cls.linkBack">Back to home</a>
@@ -688,13 +687,6 @@ export class BookingView {
 
   protected sendReviewDelete(): void {
     this.writeReview(this.bookings.deleteReview(this.code), 'Your review has been removed.');
-  }
-
-  /** The panel refused to send — its reason belongs in the result region, like a server refusal. */
-  protected blockReview(message: string): void {
-    this.reviewSuccess.set(undefined);
-    this.reviewRejection.set(message);
-    this.focusAfterRender('review-result');
   }
 
   /**

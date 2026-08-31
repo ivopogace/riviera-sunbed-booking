@@ -154,15 +154,14 @@ has nothing to migrate.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1 next`.
+**Stage pointer:** `implement — phase 3 next (e2e + close-out)`.
 
-**Next action:** wire `[submitAttempted]` down from `review-panel.ts` and drop the `blocked` output.
+**Next action:** add the AC-5 case to `review-a-stay.e2e.ts` and annotate OQ-2's resolution.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `StarRating` renders its own inline error (AC-1..AC-3, AC-6) | ✅ | (pending) |
-| 1 — `ReviewPanel` wires `submitAttempted` down, drops `blocked` (AC-4) | | |
-| 2 — `BookingView` drops the dead `blockReview` routing (AC-4) | | |
+| 0 — `StarRating` renders its own inline error (AC-1..AC-3, AC-6) | ✅ | `74dfb80` |
+| 1+2 — `ReviewPanel` wires `submitAttempted` down and drops `blocked`; `BookingView` drops the dead routing (AC-4) — **landed as one commit**, not two: removing `blocked` and its consumer are one compiler-checked unit (deleting the emitter without the consumer edit does not compile), so phase 1's step 3 and phase 2's step 3 could not land as separate green states | ✅ | (pending) |
 | 3 — e2e (AC-5) + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
