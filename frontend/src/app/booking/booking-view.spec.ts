@@ -1272,7 +1272,7 @@ describe('BookingView', () => {
       expect(host.querySelector('[data-testid="review-panel"]')).toBeNull();
     });
 
-    it('refuses to submit with no star picked and shows the required message', async () => {
+    it('shows the inline star error, not the shared result region, when no star is picked', async () => {
       const reviewCalls: [string, SubmitReviewRequest][] = [];
       const fixture = await render(stubService({ detail: REVIEWABLE, reviewCalls }));
       const host = fixture.nativeElement as HTMLElement;
@@ -1283,9 +1283,10 @@ describe('BookingView', () => {
       fixture.detectChanges();
 
       expect(reviewCalls).toEqual([]);
-      expect(host.querySelector('[data-testid="review-result"]')?.textContent).toContain(
+      expect(host.querySelector('[data-testid="star-rating-error"]')?.textContent).toContain(
         'Pick a star rating.',
       );
+      expect(host.querySelector('[data-testid="review-result"]')?.textContent?.trim()).toBe('');
     });
 
     it('submits the chosen rating and re-reads the booking', async () => {

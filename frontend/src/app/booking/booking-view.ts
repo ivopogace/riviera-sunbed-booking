@@ -529,7 +529,6 @@ const CLS = {
           (submitted)="sendReview($event)"
           (updated)="sendReviewUpdate($event)"
           (deleted)="sendReviewDelete()"
-          (blocked)="blockReview($event)"
         />
 
         <a appTouchTarget routerLink="/" [class]="cls.linkBack">Back to home</a>
@@ -568,7 +567,7 @@ export class BookingView {
   protected readonly submittingReview = signal(false);
   /** What the last successful review write did — the panel that produced it is gone by then. */
   protected readonly reviewSuccess = signal<string | undefined>(undefined);
-  /** The one rejection line: the panel's own refusal, or what the server said. */
+  /** What the server refused a review write for — a missing rating shows its own inline error instead. */
   protected readonly reviewRejection = signal<string | undefined>(undefined);
 
   private readonly focusAfterRender = focusMover();
@@ -688,13 +687,6 @@ export class BookingView {
 
   protected sendReviewDelete(): void {
     this.writeReview(this.bookings.deleteReview(this.code), 'Your review has been removed.');
-  }
-
-  /** The panel refused to send — its reason belongs in the result region, like a server refusal. */
-  protected blockReview(message: string): void {
-    this.reviewSuccess.set(undefined);
-    this.reviewRejection.set(message);
-    this.focusAfterRender('review-result');
   }
 
   /**

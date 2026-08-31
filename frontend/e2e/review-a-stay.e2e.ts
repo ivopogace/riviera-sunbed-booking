@@ -183,6 +183,33 @@ test.describe('rating a delivered stay', () => {
     await expectNoSeriousAxeViolations(page, 'review form with a rejected display name');
   });
 
+  test('an unrated submit describes the radiogroup itself to assistive technology', async ({
+    page,
+  }) => {
+    await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+      route.fulfill({ json: COMPLETED_BOOKING }),
+    );
+
+    await page.goto(`/booking/${CODE}`);
+    const panel = page.getByTestId('review-panel');
+    await expect(panel).toBeVisible();
+
+    await page.getByTestId('submit-review').click();
+
+    const error = panel.getByTestId('star-rating-error');
+    await expect(error).toBeVisible();
+    const message = ((await error.textContent()) ?? '').trim();
+    expect(message).not.toBe('');
+
+    const group = panel.getByRole('radiogroup');
+    // The real Chromium accname computation, which jsdom cannot do.
+    await expect(group).toHaveAccessibleDescription(message);
+    await expect(group).toHaveAttribute('aria-invalid', 'true');
+
+    await settle(page);
+    await expectNoSeriousAxeViolations(page, 'review form with no star picked');
+  });
+
   test('a stay the server will not accept a rating for offers no form, and says why', async ({
     page,
   }) => {

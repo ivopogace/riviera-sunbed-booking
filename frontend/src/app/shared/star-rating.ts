@@ -1,6 +1,7 @@
 import { Component, ElementRef, computed, input, model, viewChildren } from '@angular/core';
-import { FormValueControl } from '@angular/forms/signals';
+import { FormValueControl, ValidationError, WithOptionalFieldTree } from '@angular/forms/signals';
 
+import { FieldErrorFor } from './field-error-for';
 import { TouchTarget } from './touch-target';
 
 /** The rating scale — 1..5 stars, the range the backend's `review_stars_check` also bounds. */
@@ -23,28 +24,45 @@ const STARS = [1, 2, 3, 4, 5] as const;
  * Selection is conveyed by a filled ★ against an outline ☆, never by colour alone (WCAG 1.4.1), and
  * each star carries its own accessible name ("4 stars"), so a screen-reader user hears what they are
  * choosing rather than a position. Styling is token-first Tailwind on the host of each star.
+ *
+ * The optional `invalid`/`errors` inputs are part of the `FormValueControl` contract — the
+ * `Field` directive auto-wires them from the schema's `required` rule, no plumbing needed beyond
+ * declaring them (angular.dev v22 Custom Controls guide). `submitAttempted` is this component's
+ * own addition, mirroring the gate every sibling field on the review form already uses: the
+ * error shows only once a submit has been tried, never on first render of an empty group.
  */
 @Component({
-  imports: [TouchTarget],
+  imports: [FieldErrorFor, TouchTarget],
   selector: 'app-star-rating',
   template: `
-    <div class="star-rating flex gap-1" role="radiogroup" [attr.aria-label]="label()">
-      @for (row of rows(); track row.stars) {
-        <button
-          appTouchTarget
-          #starButton
-          type="button"
-          role="radio"
-          [class]="starClasses"
-          [attr.aria-checked]="row.chosen"
-          [attr.aria-label]="row.label"
-          [tabIndex]="row.tabStop ? 0 : -1"
-          [attr.data-testid]="'star-' + row.stars"
-          (click)="select(row.stars)"
-          (keydown)="onKeydown($event)"
+    <div class="flex flex-col gap-1.5">
+      <div class="star-rating flex gap-1" role="radiogroup" [attr.aria-label]="label()" #radiogroup>
+        @for (row of rows(); track row.stars) {
+          <button
+            appTouchTarget
+            #starButton
+            type="button"
+            role="radio"
+            [class]="starClasses"
+            [attr.aria-checked]="row.chosen"
+            [attr.aria-label]="row.label"
+            [tabIndex]="row.tabStop ? 0 : -1"
+            [attr.data-testid]="'star-' + row.stars"
+            (click)="select(row.stars)"
+            (keydown)="onKeydown($event)"
+          >
+            <span aria-hidden="true">{{ row.selected ? '★' : '☆' }}</span>
+          </button>
+        }
+      </div>
+      @if (submitAttempted() && invalid()) {
+        <span
+          [appFieldErrorFor]="radiogroup"
+          class="text-[12px] font-semibold text-riv-error-ink"
+          role="alert"
+          data-testid="star-rating-error"
+          >{{ errors()[0].message }}</span
         >
-          <span aria-hidden="true">{{ row.selected ? '★' : '☆' }}</span>
-        </button>
       }
     </div>
   `,
@@ -57,6 +75,12 @@ export class StarRating implements FormValueControl<number | null> {
   readonly value = model<number | null>(null);
   /** Accessible name for the radiogroup (axe requires one). */
   readonly label = input.required<string>();
+  /** Whether the field is currently invalid — bound automatically by the `Field` directive. */
+  readonly invalid = input(false);
+  /** The schema's validation errors for this field — bound automatically by the `Field` directive. */
+  readonly errors = input<readonly WithOptionalFieldTree<ValidationError>[]>([]);
+  /** Whether the caller's form has had a submit attempt — gates the inline error, like every sibling field. */
+  readonly submitAttempted = input(false);
 
   private readonly starButtons = viewChildren<ElementRef<HTMLButtonElement>>('starButton');
 

@@ -138,9 +138,16 @@ template reference per site. The one behavior that changes is the intended one (
   re-focus, and Pass B (pricing tab site 16, the F-7 coincidence — error appearing while its
   own field held focus) also announced once. Both techniques stay as shipped; no follow-up
   slice. #824 closed with the results.
-- **OQ-2 — follow-up issue filed.** `app-star-rating`'s missing inline error is a real gap but
-  a *missing message* one, not an *association* one — there is no error element to associate.
-  The maintainer chose to track it: **issue #825**.
+- **OQ-2 — follow-up issue filed, and discharged.** `app-star-rating`'s missing inline error is
+  a real gap but a *missing message* one, not an *association* one — there is no error element
+  to associate. The maintainer chose to track it: **issue #825**. **Discharged by #825**: the
+  component now declares `FormValueControl`'s optional `invalid`/`errors` inputs (auto-wired by
+  the `Field` directive) plus its own `submitAttempted` gate, and renders an inline
+  `[appFieldErrorFor]`-associated error on its `role="radiogroup"` element — never an individual
+  radio. The parent-result-region routing (`ReviewPanel.blocked` → `BookingView.blockReview()`)
+  is retired rather than kept alongside it, per this issue's own steer against duplicating one
+  message in two places.
+>>>>>>> origin/main
 - **Assumption — held.** Every one of the 17 sites kept its current gating expression, so the
   directive never needs to know *why* an error is showing, only that it is. Confirmed across
   all 17 as they were applied; not one gate, message or validation rule changed.
