@@ -53,7 +53,7 @@
             <span
               [appFieldErrorFor]="priceControl"
               [appFieldErrorForInvalidValue]="valueIsInvalid(err.code)"
-              class="block py-1 text-right text-[11.5px] font-semibold text-[#a3160e]"
+              class="block py-1 text-right text-[11.5px] font-semibold text-riv-error-ink"
               role="alert"
               [attr.data-testid]="'pricing-error-' + row.label"
               >{{ errorMessage(err.code) }}</span
@@ -81,7 +81,7 @@
       </p>
     } @else if (loadError()) {
       <p
-        class="px-3 py-10 text-center text-[13px] text-[#a3160e]"
+        class="px-3 py-10 text-center text-[13px] text-riv-error-ink"
         role="alert"
         data-testid="pricing-load-error"
       >

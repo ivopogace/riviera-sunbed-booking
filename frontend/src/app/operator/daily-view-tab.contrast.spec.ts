@@ -3,6 +3,7 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  ERROR_INK,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_CHIP,
@@ -18,7 +19,7 @@ import {
  * host); its date + arrivals panels use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text
  * pairs: the headings, date labels, arrivals labels and the availability strong counts use
  * `--riv-card-ink`; the helper/availability text uses `--riv-card-ink-soft` (0.78); the "Date"
- * mini-label uses `--riv-card-ink-faint` (0.72); the write-failure notice + load-error use `#a3160e`.
+ * mini-label uses `--riv-card-ink-faint` (0.72); the write-failure notice + load-error use `--riv-error-ink`.
  * The arrival-code chip ink (`--riv-card-ink`) sits over `--riv-chip-bg` over the card glass.
  * Since #672 slice 2 the grid sits on the shared canvas's sea→sand wash (rail-chip inks proven in
  * `venue-map.contrast.spec.ts`); since #686 every tile's visible text is its *position number*.
@@ -38,6 +39,8 @@ const FREE_TILE_FILL = { color: WHITE, alpha: 0.85 };
 const LOCKED_STRIPE_FILL = { color: CARD_INK, alpha: 0.28 };
 // --riv-cta-grad stops (the AA-safe darkened teal shared with every CTA); the empty-state link sits on these.
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
+
+const ERROR_HEX = rgbToHex(ERROR_INK);
 
 describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
   it('headings + labels + arrivals + availability counts (--riv-card-ink) meet AA on the card glass', () => {
@@ -84,10 +87,10 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
     }
   });
 
-  it('the write-failure notice + load-error ink (#a3160e) meet AA over every porcelain stop', () => {
+  it('the write-failure notice + load-error ink (--riv-error-ink) meet AA over every porcelain stop', () => {
     for (const stop of PORCELAIN_STOPS) {
       expect(
-        contrastRatio('#a3160e', rgbToHex(stop)),
+        contrastRatio(ERROR_HEX, rgbToHex(stop)),
         `error over ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
     }

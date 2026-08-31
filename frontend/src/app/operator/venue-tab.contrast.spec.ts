@@ -4,6 +4,7 @@ import {
   ACCENT_INK,
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
+  ERROR_INK,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
@@ -17,13 +18,13 @@ import {
  * headings + field labels + input values use `--riv-card-ink`; sub-copy, soft labels and the
  * INACTIVE amenity chip use `--riv-card-ink-soft` (0.78) — an inactive chip sits on a lighter
  * `bg-white/50`, so `--riv-card-ink-soft` over the plain card glass is its worst case too. The
- * commission % + "Saved" notice use the AA-safe teal `#0a6e85`; the save/load error uses `#a3160e`;
+ * commission % + "Saved" notice use the AA-safe teal `#0a6e85`; the save/load error uses `--riv-error-ink`;
  * the ACTIVE amenity chip reads both its ink and its tint from the `--riv-accent-*` registry (#835).
  * Values mirror the template + `tailwind.css`; a token edit there must re-pass here.
  */
 
 const ACCENT_TEAL = '#0a6e85';
-const ERROR_INK = '#a3160e';
+const ERROR_HEX = rgbToHex(ERROR_INK);
 /** The stale-write banner: an amber wash (#f59e0b @ 0.14) over the card glass; ink is --riv-card-ink. */
 const BANNER_TINT: [number, number, number] = [245, 158, 11];
 const BANNER_TINT_ALPHA = 0.14;
@@ -60,10 +61,10 @@ describe('VenueTab porcelain contrast (WCAG AA, #177)', () => {
     }
   });
 
-  it('save/load error ink (#a3160e) meets AA over every porcelain stop', () => {
+  it('save/load error ink (--riv-error-ink) meets AA over every porcelain stop', () => {
     for (const stop of PORCELAIN_STOPS) {
       expect(
-        contrastRatio(ERROR_INK, rgbToHex(stop)),
+        contrastRatio(ERROR_HEX, rgbToHex(stop)),
         `error over ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
     }

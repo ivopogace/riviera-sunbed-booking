@@ -3,6 +3,7 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  ERROR_INK,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
@@ -37,6 +38,8 @@ const PREMIUM_FILL_STOPS = ['#ffe3a3', '#f4c05a'];
 const STANDARD_FILL_ALPHA = 0.85;
 // beach-cell.ts CELL_CLASS: the walk-in hatch's lighter band (worst case) — a CARD_INK tint over the wash.
 const WALKIN_LIGHT_BAND_ALPHA = 0.12;
+
+const ERROR_HEX = rgbToHex(ERROR_INK);
 
 describe('LayoutEditor porcelain contrast (WCAG AA, #172)', () => {
   it('panel headings + promenade banner (--riv-card-ink) meet AA on the card glass', () => {
@@ -81,7 +84,7 @@ describe('LayoutEditor porcelain contrast (WCAG AA, #172)', () => {
   it('save error + saved notice inks meet AA over every porcelain stop', () => {
     for (const stop of PORCELAIN_STOPS) {
       const hex = rgbToHex(stop);
-      expect(contrastRatio('#a3160e', hex), `error over ${hex}`).toBeGreaterThanOrEqual(AA_NORMAL);
+      expect(contrastRatio(ERROR_HEX, hex), `error over ${hex}`).toBeGreaterThanOrEqual(AA_NORMAL);
       expect(contrastRatio('#0a6e85', hex), `notice over ${hex}`).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });

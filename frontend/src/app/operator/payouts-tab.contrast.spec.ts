@@ -3,6 +3,7 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  ERROR_INK,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
@@ -17,7 +18,7 @@ import {
  * intro/dates/commission/empty sub-copy use `--riv-card-ink-soft` (0.78); the "Owed to you" label,
  * column headers and footnote use `--riv-card-ink-faint` (0.72). The owed figure + accrual net use the
  * console teal `#0a6e85`; reversal net + the reason chip use refund-red `#a3372a` (also over its own
- * `#a3372a`@0.12 tint); the load-error uses alert red `#a3160e`. Solid buttons put white on `#0a6e85`
+ * `#a3372a`@0.12 tint); the load-error uses the alert red `--riv-error-ink`. Solid buttons put white on `#0a6e85`
  * (statement) and on a **darkened** amber `#9a6410` (weather confirm).
  *
  * <p>The design mock's amber `#d9861a`/`#f0aa2e` with white text fails AA on white; per the
@@ -28,7 +29,7 @@ import {
 
 const TEAL = '#0a6e85';
 const REVERSAL = '#a3372a';
-const ALERT = '#a3160e';
+const ALERT = rgbToHex(ERROR_INK);
 const WEATHER_BTN = '#9a6410';
 const REVERSAL_RGB = hexToRgb(REVERSAL);
 const WEATHER_TINT = hexToRgb('f0aa2e');
@@ -79,7 +80,7 @@ describe('PayoutsTab porcelain contrast (WCAG AA, #173)', () => {
     }
   });
 
-  it('the load-error red (#a3160e) meets AA on the card glass (a fortiori over its white/70 panel)', () => {
+  it('the load-error red (--riv-error-ink) meets AA on the card glass (a fortiori over its white/70 panel)', () => {
     for (const stop of PORCELAIN_STOPS) {
       expect(
         contrastRatio(ALERT, cardSurface(stop)),

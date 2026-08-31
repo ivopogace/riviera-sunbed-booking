@@ -34,7 +34,7 @@ import { TouchTarget } from '../shared/touch-target';
     @if (state().touched() && state().errors().length) {
       <span
         [appFieldErrorFor]="cutoffControl"
-        class="text-[11.5px] font-semibold text-[#a3160e]"
+        class="text-[11.5px] font-semibold text-riv-error-ink"
         role="alert"
         >{{ state().errors()[0].message }}</span
       >

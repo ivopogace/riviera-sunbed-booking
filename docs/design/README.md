@@ -21,3 +21,13 @@ the "v3 gap-fill" export superseding the first 2026-07-02 export.
 `docs/design/` is part of `riviera-docs-freshness`'s substrate-doc map for
 exactly this reason: a sweep should catch (and pointer-note) a diverged
 artboard line, never silently drift past it.
+
+## The one exception: `colour-literal-token-audit.md`
+
+Everything above governs the `.dc.html` **records**. `colour-literal-token-audit.md`
+(#836) is the opposite kind of file — a **maintained ledger** of which hex/rgba
+positions in `frontend/src` want `--riv-*` tokens, and the verdict per family. It
+*is* rewritten to track the shipped app: every slice that cuts a family updates
+that family's row with its PR. It sits here because it reasons about the design
+substrate, not because it records an approved look. Don't apply the
+`as-built diverges` pointer convention to it — bring it up to date instead.
