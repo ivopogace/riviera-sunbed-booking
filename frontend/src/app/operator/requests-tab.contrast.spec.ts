@@ -7,7 +7,7 @@ import {
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
-  SOLID_FILL_ACTION,
+  SOLID_FILL_BRAND,
   SOLID_FILL_DANGER,
   expectAaOverStops,
   surfaceOver,
@@ -81,7 +81,7 @@ describe('RequestsTab porcelain contrast (WCAG AA, #176)', () => {
 
   it('the primary buttons (white on the --riv-solid-fill-* accept / confirm-decline fills) meet AA', () => {
     // Both fills are this tab's members of the #854 family; the family's own AA proof, its theme-invariance guard and the sweep that keeps them off literals are shared/solid-fill-tokens.contrast.spec.ts.
-    expect(contrastRatio('#ffffff', rgbToHex(SOLID_FILL_ACTION))).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrastRatio('#ffffff', rgbToHex(SOLID_FILL_BRAND))).toBeGreaterThanOrEqual(AA_NORMAL);
     expect(contrastRatio('#ffffff', rgbToHex(SOLID_FILL_DANGER))).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });

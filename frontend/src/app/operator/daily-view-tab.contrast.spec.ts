@@ -12,7 +12,7 @@ import {
   WHITE,
   expectAaOverStops,
   surfaceOver,
-  SOLID_FILL_ACTION,
+  SOLID_FILL_BRAND,
 } from '../../testing/glass-tokens';
 
 /**
@@ -71,7 +71,7 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
   });
 
   it('the marked-tile glyph + legend swatch (white on --riv-solid-fill-action) meet AA', () => {
-    expect(contrastRatio('#ffffff', rgbToHex(SOLID_FILL_ACTION))).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrastRatio('#ffffff', rgbToHex(SOLID_FILL_BRAND))).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
   it('the FREE tile position number (--riv-card-ink on white/85) meets AA over every wash stop (#686)', () => {

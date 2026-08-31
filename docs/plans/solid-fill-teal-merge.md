@@ -218,14 +218,15 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `plan — awaiting phase 0`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write the merged registry into `glass-tokens.ts` + the family spec
-(including the new retirement assertion) and watch it go red against the unmerged `tailwind.css`.
+**Next action:** Phase 1 — merge the declaration in `tailwind.css` (+ its `@theme inline` rows and
+the answered comment) and rename the four `bg-riv-solid-fill-action` sites, turning the four red
+assertions green.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The merged registry, red | | |
+| 0 — The merged registry, red | ✅ | `<phase-0>` |
 | 1 — Merge the declaration + rename the four sites, green | | |
 | 2 — The computed-style proofs + the mutation check | | |
 | 3 — Docs, ledger row and close-out | | |
@@ -253,8 +254,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   retirement assertion, the `SURVIVORS` sweep kept green.
 - `frontend/src/app/operator/requests-tab.html|payouts-tab.html|daily-view-tab.ts|daily-view-tab.html`
   — the four `bg-riv-solid-fill-action` class strings (and the one hover) renamed to `-brand`.
-- `frontend/src/app/operator/requests-tab.contrast.spec.ts|payouts-tab.contrast.spec.ts|daily-view-tab.contrast.spec.ts`
-  — the renamed mirror constant.
+- `frontend/src/app/operator/requests-tab.contrast.spec.ts|payouts-tab.contrast.spec.ts|daily-view-tab.contrast.spec.ts|operator-console.contrast.spec.ts`
+  — the renamed mirror constant (in phase 0, per that phase's recorded deviation).
 - `frontend/e2e/solid-fill-token-skin.e2e.ts` — the merged `REGISTRY`, `UTILITIES` and expected
   rgb triples; the forced-dark test re-mutation-checked.
 - `frontend/e2e/discovery-flow.e2e.ts` — `SEMANTIC_FILL`'s deliberate second copy.
@@ -270,7 +271,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Modify `frontend/src/testing/glass-tokens.ts` · Modify
 `frontend/src/app/shared/solid-fill-tokens.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing test.** Point the mirror at the merged value and add the
+- [x] **Step 1: Write the failing test.** Point the mirror at the merged value and add the
       retirement assertion to the family spec:
 
 ```ts
@@ -294,18 +295,27 @@ it('retires the -action name and the question it deferred', () => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- src/app/shared/solid-fill-tokens.contrast.spec.ts`
-      → FAIL (`--riv-solid-fill-brand` declared `#0a5f74`, `--riv-solid-fill-action` still present).
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include="src/app/shared/solid-fill-tokens.contrast.spec.ts"`
+      → **FAIL, 4 assertions**: the merged value (`expected '#0a5f74' to be '#0a6e85'`),
+      `-brand-hover` missing from the base block, `--riv-solid-fill-brand` declared more than the
+      merged family allows, and the retirement sweep still finding `--riv-solid-fill-action`.
 
-- [ ] **Step 3: Minimal implementation** — none in this phase; the red is the deliverable.
+> **Deviation from the plan as written, recorded rather than smoothed over:** the three consumer
+> contrast specs (`daily-view-tab`, `payouts-tab`, `requests-tab`) and `operator-console`'s
+> `BADGE_FILL` import the mirror constant by name, and `ng test` type-checks the whole project
+> even under `--include`. Renaming the mirror alone therefore yields a *compile* error, not a
+> failing assertion — a red that proves nothing. Their one-word rename moved into this phase so
+> the red is a real assertion; phase 1 keeps only the paint change.
 
-- [ ] **Step 4:** n/a — phase 1 turns it green.
+- [x] **Step 3: Minimal implementation** — none in this phase; the red is the deliverable.
 
-- [ ] **Step 5: Generalization-audit pass** — deferred to phase 2, where the mechanism sweep runs.
+- [x] **Step 4:** n/a — phase 1 turns it green.
 
-- [ ] **Step 6: Commit** — `git commit -m "Pin the merged solid-fill teal in the spec mirror, red (#861)"`
+- [x] **Step 5: Generalization-audit pass** — deferred to phase 2, where the mechanism sweep runs.
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Pin the merged solid-fill teal in the spec mirror, red (#861)"`
+
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 

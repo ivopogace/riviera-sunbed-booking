@@ -9,7 +9,7 @@ import {
   PORCELAIN_STOPS,
   expectAaOverStops,
   surfaceOver,
-  SOLID_FILL_ACTION,
+  SOLID_FILL_BRAND,
 } from '../../testing/glass-tokens';
 
 /**
@@ -101,7 +101,7 @@ describe('PayoutsTab porcelain contrast (WCAG AA, #173)', () => {
   });
 
   it('the solid buttons (white on teal #0a6e85 statement / darkened amber #9a6410 confirm) meet AA', () => {
-    expect(contrastRatio('#ffffff', rgbToHex(SOLID_FILL_ACTION))).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrastRatio('#ffffff', rgbToHex(SOLID_FILL_BRAND))).toBeGreaterThanOrEqual(AA_NORMAL);
     expect(contrastRatio('#ffffff', WEATHER_BTN)).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });
