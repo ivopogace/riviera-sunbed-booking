@@ -48,8 +48,17 @@ slice.>
 > redirect, or the HTTP status alone; tech-specific assertions belong in adapter-level
 > tests (Cockburn 2005). This keeps ACs stable across UI/payment-adapter churn and
 > reusable from any driving adapter.
+>
+> **These ACs ARE the pre-agreed seams — `tdd` writes no test at an unconfirmed seam,
+> and this section is where they get confirmed.** Each AC's *Pinned by* names the test,
+> and *Seam* names the public boundary it observes through — the port/interface/route,
+> not the class under test. For a backend AC the inner-hexagon rule usually settles it
+> (the `api/` or `spi/` port); **say it anyway**, and for a frontend AC say it always,
+> since "the inner hexagon" doesn't name one. Prefer an existing seam to a new one, and
+> the highest one that still reaches the behavior — fewer seams is better. A phase that
+> discovers it needs a seam this section didn't name stops and adds it here first.
 
-- [ ] **AC-1:** Given <precondition>, when <action>, then <observable outcome>. *Pinned by:* `<TestClassName>.<testMethodName>`
+- [ ] **AC-1:** Given <precondition>, when <action>, then <observable outcome>. *Seam:* `<port / interface / route observed through>` · *Pinned by:* `<TestClassName>.<testMethodName>`
 - [ ] **AC-2:** ...
 
 ## Non-goals

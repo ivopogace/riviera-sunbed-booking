@@ -61,7 +61,9 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
 
 1. **Acceptance criteria before phase 0:** convert the spec's user stories (or the
    GitHub issue) into testable ACs per the template (Given/When/Then, named test
-   class, written at the inner hexagon).
+   class, written at the inner hexagon). **Each AC names its seam** — `tdd` writes no
+   test at an unconfirmed seam, and this section is where the confirmation happens, so
+   an unnamed seam blocks phase 0 exactly as a missing AC does.
 2. **Risk register + Open Questions before phase 0:** fill both sections per the
    template — its blockquote carries the risk categories that already matter here.
 3. **Availability & concurrency:** if the feature touches booking, the beach map,

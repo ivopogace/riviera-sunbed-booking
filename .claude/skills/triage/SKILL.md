@@ -1,6 +1,6 @@
 ---
 name: triage
-description: Move issues and external PRs through a state machine of triage roles, categorise, verify, grill if needed, and write agent-ready briefs. Load at the riviera-sdlc PR stage or when sorting/labelling incoming issues and PRs.
+description: Move issues through a state machine of triage roles, categorise, verify, grill if needed, and write agent-ready briefs. Load when sorting or labelling incoming issues. In this repo PRs are NOT a triage surface — they go through the normal review pipeline.
 ---
 
 > **In riviera-sunbed-booking (localization):**

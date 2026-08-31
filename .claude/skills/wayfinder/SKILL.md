@@ -9,10 +9,14 @@ description: Plan a huge chunk of work (more than one agent session can hold) as
 >   design spec + domain model are captured up front), skip wayfinder and go straight to
 >   `to-spec` / `to-issues`. This is a niche front-stage, not a default.
 > - **Tracker ops** (map issue, child tickets, native blocking / sub-issues, frontier
->   query) = GitHub via the **MCP tools** (not `gh`); the wayfinding ops and **labels**
->   (`wayfinder:map` + `wayfinder:{research,prototype,grilling,task}`) live in
->   `docs/agents/triage-labels.md`'s **Wayfinding** section. Ignore the "default to
->   local-markdown tracker" fallback below — this repo has a real tracker.
+>   query) = GitHub. The **"Wayfinding operations" section the body below asks for** is
+>   `docs/agents/issue-tracker.md` § *Wayfinding operations* — it is written and its
+>   endpoints are verified; the **labels** (`wayfinder:map` +
+>   `wayfinder:{research,prototype,grilling,task}`) are in `docs/agents/triage-labels.md`
+>   § *Wayfinding*. Use the MCP tools for issues and sub-issues; **blocking has no MCP
+>   tool** — that one call is `gh api`, and its body takes the numeric `issue_id`, never
+>   `#NN`. Ignore the "default to local-markdown tracker" fallback below — this repo has a
+>   real tracker.
 > - **Ticket-type skills:** `grilling`, `domain-modeling`, `research` and `prototype` are
 >   all vendored here, so every ticket type resolves through the skill upstream names —
 >   no substitution. A **prototype** ticket's throwaway code goes on a spike branch

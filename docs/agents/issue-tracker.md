@@ -2,7 +2,7 @@
 
 **Tracker:** GitHub Issues on `ivopogace/riviera-sunbed-booking`.
 
-The engineering skills (`to-issues`, `triage`, `implement`) read from and write to
+The engineering skills (`to-issues`, `triage`, `wayfinder`) read from and write to
 GitHub Issues. In this repo, agents reach GitHub through the **GitHub MCP tools**
 (`mcp__plugin_github_github__*`) — the convention for tracker ops even though `gh` is
 now provisioned in cloud sessions too (as the review plugin's transport; the proxy
@@ -20,3 +20,26 @@ later takes contributions from strangers.
 - Issues that are fully specified and ready for an agent to pick up carry
   `ready-for-agent` (see `triage-labels.md`).
 - Reference the issue number (`#NN`) in the branch's commits and its plan doc.
+
+## Wayfinding operations
+
+How this repo physically expresses a wayfinder map. The `wayfinder` skill asks for this
+section by name; its **labels** live in `triage-labels.md` § Wayfinding. Charting only —
+once a slice enters execution the plan doc's Execution status is the state store.
+
+| Operation | How GitHub expresses it here |
+|---|---|
+| **Map** | An issue labelled `wayfinder:map`. |
+| **Ticket** | A **native sub-issue** of the map — `mcp__plugin_github_github__sub_issue_write`, or `POST /repos/{o}/{r}/issues/{map}/sub_issues`. Verified live on this repo. |
+| **Claim** | Assign the ticket to the dev driving the map. An open, **unassigned** ticket is unclaimed. |
+| **Blocking** | **Native issue dependencies** — `GET/POST /repos/{o}/{r}/issues/{n}/dependencies/blocked_by`. Verified live. No MCP tool wraps it, so use `gh api`. |
+| **Frontier** | Open sub-issues of the map that are unassigned and whose `blocked_by` list is empty-or-all-closed. There is no single query: list the sub-issues, then check `blocked_by` per candidate. |
+
+> **The write body takes `issue_id`, not `issue_number`** — the numeric REST id, which is
+> nothing like the `#NN` everyone reads (issue **#845** has id **5300177553**). Resolve it
+> with `gh api repos/{o}/{r}/issues/{n} --jq .id` first. Posting a `#NN` here either 422s or
+> silently links the wrong issue.
+
+Because blocking needs `gh api`, a cloud session hits the repo-scope proxy: plain REST is
+served, so these calls work where `gh pr list`-style subcommands 403 (`riviera-sdlc`
+`references/pr-gates.md` §1 has the substitution table).

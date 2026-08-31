@@ -37,7 +37,7 @@ at Implement", it means this paragraph.
 | **Refine** | Sharpen a fuzzy idea into a precise, sliceable use case. Ground the interview in what already exists — read the substrate docs and grep the real code, so you refine against what's there, not assumptions. A **foggy epic** (destination clear, route not) may first be charted with `wayfinder` — see *Epic front-end*, below. | `grilling` (interview), `domain-modeling` (vocabulary + ADRs); `wayfinder` (foggy epics only) |
 | **Issue** | Break the use case into vertical-slice tracer-bullet issues on GitHub. For an **epic** (multi-slice), optionally first synthesize a committed epic **spec** — user stories + testing seams + out-of-scope — then slice its user stories (see *Epic front-end*, below). Any strategic document the issues reference must be committed to the repo before or with them (rule 10). | `to-spec` (epic spec, optional) → `to-issues` |
 | **Plan** | Write the plan doc: testable ACs, risk register, and — if booking/availability/money is touched — how the invariant holds. Map the affected surface (modules + events + blast radius) by grepping the modules and their published surfaces (an Explore agent for anything broad) — evidence for the plan's *modules/events touched* section and the Detect step below. Entering at an existing issue? Grill it first — procedure: `references/issue-intake-gate.md`. Then the Skill-routing gate. | `riviera-plan-doc` (owner) + `grilling` + both gates |
-| **Implement** | Build the slice test-first, one behavior at a time, at agreed seams. Re-run the Skill-routing gate for each area you touch. | `implement` + `tdd` + the Skill-routing gate (below) |
+| **Implement** | Build the slice test-first, one behavior at a time, at seams named in the plan. Re-run the Skill-routing gate for each area you touch. | `tdd` + the Skill-routing gate (below). `implement` is the **human's** entry command (`/implement`) — model-invocation is disabled on it upstream, so never route to it and never re-enact it from memory; it hands off to exactly this row |
 | **CI gate** | Every push to an **open PR** builds both apps, runs tests, scans (CodeQL + Dependabot + SonarCloud). Green required. After any push that claims a phase green, check that push's run before starting the next phase (red-TDD and labeled-partial pushes exempt) — full-suite-only failures surface only here (case history: #122/#127). | GitHub Actions (issue #3); red → `diagnosing-bugs` |
 | **PR** | **Open the PR as a draft as soon as the first phase commit exists** — CI fires on the `pull_request` event only (`push` is scoped to `main`, #417), so a branch with no PR gets **no CI at all**; `opened` gates the first push, `synchronize` every later one. A draft is a CI vehicle, not a request to review. When the slice is built: merge the latest `origin/main` in with full phase discipline (routing gate for what the integration touches, scoped tests, honest commit), then mark **ready for review** — which is what makes the Review and Sonar gates due (`references/pr-gates.md`). | `triage` (issue lifecycle — issues only in this repo; PRs go through normal review) |
 | **Review** | **Mandatory gate**, due at ready-for-review. Start `/code-review` (a subagent fan-out) via the **invocation ladder** in `references/pr-gates.md` §1 — `/review <PR>` only as a declared degraded fallback, and **the overlay alone is NOT the review**. A rejected invocation name is not the gate being unavailable; if tooling genuinely blocks every rung, say so in the PR and leave the box unticked rather than substituting silently. Review the diff against the invariants; each fix re-enters at Implement. Green CI is not a substitute. | `riviera-review-overlay` + `/code-review` |
@@ -230,6 +230,14 @@ list to maintain. Vendored craft skills (Matt Pocock, MIT) are tracked in
 `skills-lock.json`; four of them are not routed above: `improve-codebase-architecture`
 (deepening existing code outside slice work), `grill-me` (the `grilling` alias), and
 `research` + `prototype`, which only `wayfinder` routes — as decision-ticket types.
+
+**Three skills are human-invoke-only** — `implement`, `grill-me`, and
+`improve-codebase-architecture` carry upstream's `disable-model-invocation: true`, so the
+Skill tool refuses them and forbids re-enacting their workflow by other means. That flag is
+**kept deliberately** (the lockfile records why per skill): each is a *human's* entry
+command whose body this repo already encodes more precisely, so routing to one would be a
+dead edge. Everything they cover is reachable through the rows above — `implement` → this
+table's Implement row, `grill-me` → `grilling`. Don't drop the flag to "fix" a refusal.
 
 ## References
 

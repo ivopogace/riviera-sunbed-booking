@@ -172,5 +172,5 @@ Surface these in the output — the overlay recommends, it does not execute:
   JDBC adapter) → `riviera-java-conventions`; the overlay flags the breach.
 
 Not for use outside the riviera-sunbed-booking repo — the items assume its invariants.
-`riviera-sdlc` loads this overlay at its Review gate; `triage` manages the issue/PR
-lifecycle around the review.
+`riviera-sdlc` loads this overlay at its Review gate; `triage` manages the **issue**
+lifecycle around the review (PRs are not a triage surface here — `docs/agents/issue-tracker.md`).
