@@ -190,12 +190,24 @@ components stay theme-agnostic and name no theme.
 
 ## Execution status
 
-**Stage pointer:** `sonar gate` — PR #857 ready for review; review gate **run** (rung 1 of the
-`pr-gates.md` §1 ladder: `code-review:code-review`, five-agent fan-out, + this overlay), 2 findings,
-both dispositioned in the register below.
+**Stage pointer:** `DONE pending merge` — every gate on PR #857 has run and cleared on head
+`11ab8ca`. The merge itself is the maintainer's.
 
-**Next action:** Pull PR #857's SonarCloud issue + duplication list from the web API and clear every
-entry (a green gate is not the check), then merge close-out.
+**Next action:** Maintainer merges #857. Post-merge, only two GitHub edits remain (no repo commit —
+close-out step 4 is written here, in this PR): confirm #850 closed, and confirm the PR-activity
+subscription ended.
+
+**Gate record (head `11ab8ca`):**
+
+| Gate | Outcome |
+|---|---|
+| CI | ✅ green — Backend, Frontend (lint + test + build + mocked e2e), Repo hygiene (diff-scoped), CodeQL both languages |
+| Review | ✅ **ran** — `pr-gates.md` §1 rung 1 (`code-review:code-review`, five-agent fan-out) + `riviera-review-overlay`. 2 findings: F-2 fixed in `11ab8ca`, F-1 not-actioned with reason |
+| Sonar | ✅ green **and its list cleared** — `api/issues/search` total **0**, and the false-clean read ruled out: `measures` is populated (`new_lines: 27`) and the `SonarCloud Code Analysis` check-run concluded `success`. `new_coverage` **100%** (bar: ≥80%), `new_duplicated_blocks` **0**, `new_bugs`/`new_vulnerabilities`/`new_code_smells` **0**, 0 security hotspots |
+
+One earlier CI failure, now resolved and recorded: `Repo hygiene` went red on the first push
+(`6197c647`) for RV-STYLE-1 — two multi-line inline comments in the contrast specs. The same local
+guard run had already caught it; both became doc comments in `9a7b54c`, before ready-for-review.
 
 > **Push cadence:** phase 0's literal guard is deliberately red until phase 1 lands, so the branch is
 > pushed — and the draft PR opened, which is what makes CI run at all — at the **end of phase 1**,
@@ -206,7 +218,7 @@ entry (a green gate is not the check), then merge close-out.
 | 0 — Declare the theme-invariant pair + its family spec | ✅ | `e13368f` |
 | 1 — Migrate the three banners and rewire the three contrast specs | ✅ | `6197c64` |
 | 2 — Mocked e2e: registry, utility generation, computed skin under a forced dark theme | ✅ | `9a7b54c` |
-| 3 — Ledger row + close-out | ⏳ | (this commit) |
+| 3 — Ledger row + close-out | ✅ | `3945793`, `11ab8ca` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
