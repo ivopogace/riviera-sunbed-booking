@@ -83,7 +83,7 @@ for** `feature/console-negative-ink-token` (`riviera-sdlc` §Remote/cloud addend
 >
 > **These ACs ARE the pre-agreed seams — `tdd` writes no test at an unconfirmed seam.**
 
-- [ ] **AC-1:** Given `src/tailwind.css` as the token registry, when the stylesheet is read as
+- [x] **AC-1:** Given `src/tailwind.css` as the token registry, when the stylesheet is read as
       text, then `--riv-console-negative-ink` is declared **exactly once**, in the base
       `:root, [data-riv-theme='porcelain']` block, with the value the test mirror carries, and a
       `--color-riv-console-negative-ink: var(--riv-console-negative-ink);` row exists in
@@ -92,13 +92,13 @@ for** `feature/console-negative-ink-token` (`riviera-sdlc` §Remote/cloud addend
       `operator/console-negative-token.contrast.spec.ts` — "declares the token exactly once",
       "declares the token in the base block", "declares the value this test mirror carries",
       "maps the token in `@theme inline`".
-- [ ] **AC-2:** Given the porcelain background stops the console renders over, when
+- [x] **AC-2:** Given the porcelain background stops the console renders over, when
       `#a3372a` is measured against each raw stop, then every ratio clears WCAG AA for normal
       text (worst case `#cfeaf2`, 5.32:1). *Seam:* `src/testing/contrast.ts`'s `contrastRatio`
       over `PORCELAIN_STOPS` · *Pinned by:*
       `operator/console-negative-token.contrast.spec.ts` — "clears AA over every porcelain stop
       the console paints it on".
-- [ ] **AC-3:** Given the reversal reason chip's own `#a3372a`@0.12 tint composited over the
+- [x] **AC-3:** Given the reversal reason chip's own `#a3372a`@0.12 tint composited over the
       card glass over each porcelain stop — the **lowest**-contrast pair of the three sites, and
       lower than any raw stop, so AC-2 does not cover it — when the ink is measured against it,
       then every ratio clears AA (worst case 5.05:1), and the constant is read from
@@ -106,37 +106,37 @@ for** `feature/console-negative-ink-token` (`riviera-sdlc` §Remote/cloud addend
       `surfaceOver` over `PORCELAIN_CARD_GLASS` · *Pinned by:*
       `operator/payouts-tab.contrast.spec.ts` — "the reason-chip text
       (`--riv-console-negative-ink`) meets AA over its own @0.12 tint on the card glass".
-- [ ] **AC-4:** Given every `.ts`/`.html` source under `frontend/src/app/operator/`, when swept
+- [x] **AC-4:** Given every `.ts`/`.html` source under `frontend/src/app/operator/`, when swept
       for the **plain ink role** `text-[#a3372a]` (matched by role, never by bare value — a value
       sweep would demand the `/opacity` tints change too), then no file matches. *Seam:* the
       `operator/` source tree read from disk · *Pinned by:*
       `operator/console-negative-token.contrast.spec.ts` — "leaves no console file painting the
       ink as a literal".
-- [ ] **AC-5:** Given `operator/payouts-tab.html`'s reversal reason chip, when the same sweep
+- [x] **AC-5:** Given `operator/payouts-tab.html`'s reversal reason chip, when the same sweep
       runs, then `border-[#a3372a]/28` and `bg-[#a3372a]/12` are **still present** — the positive
       half proving the migration did not overreach into #852. *Seam:* `payouts-tab.html` read from
       disk · *Pinned by:* `operator/console-negative-token.contrast.spec.ts` — "leaves #852's
       `/opacity` tints on the reason chip untouched".
-- [ ] **AC-6:** Given `--riv-solid-btn-danger-ink` carries the identical value in a different
+- [x] **AC-6:** Given `--riv-solid-btn-danger-ink` carries the identical value in a different
       role, when both tokens are read from the stylesheet, then the two values are equal **and**
       each is a separate single declaration — the coincidence asserted rather than left to luck,
       and the button token neither widened nor renamed. *Seam:* `src/tailwind.css` read as text
       · *Pinned by:* `operator/console-negative-token.contrast.spec.ts` — "shares a value with the
       outline button's danger ink while staying a separate declaration".
-- [ ] **AC-7:** Given the two themed reds a reviewer might reach for instead
+- [x] **AC-7:** Given the two themed reds a reviewer might reach for instead
       (`--riv-error-ink`/`--riv-danger-ink`, both resolving `#ffa9a1` in dark), when measured over
       the console's card glass, then every ratio is **below** AA (worst 1.84:1) — the reason this
       role cannot take a themed token, kept in the tree so the decision survives. *Seam:*
       `contrastRatio` over `PORCELAIN_CARD_GLASS` · *Pinned by:*
       `operator/console-negative-token.contrast.spec.ts` — "stays theme-invariant: the themed reds
       would not clear AA on the console's own surface".
-- [ ] **AC-8:** Given a rendered payouts tab whose ledger carries a REVERSAL row, when the net
+- [x] **AC-8:** Given a rendered payouts tab whose ledger carries a REVERSAL row, when the net
       cell is read, then it carries the `text-riv-console-negative-ink` class **and** its computed
       `color` is `rgb(163, 55, 42)` — the one failure no unit spec can see, a utility consumed
       without its `@theme inline` row ever generating it. *Seam:* the rendered
       `/operator/1/payouts` route, `[data-testid="ledger-net"]` · *Pinned by:*
       `e2e/console-negative-ink.e2e.ts` — "the reversal net resolves to the registered token value".
-- [ ] **AC-9:** Given a **forced `dark` document theme**, when the same payouts net and the
+- [x] **AC-9:** Given a **forced `dark` document theme**, when the same payouts net and the
       daily-view check-in error notice are read, then `html[data-riv-theme="dark"]` holds and both
       still compute `rgb(163, 55, 42)` — the subtree-pinning proof. **Mutation-checked against the
       mutation that actually discriminates it:** a dark override for the token alone leaves this
@@ -149,14 +149,14 @@ for** `feature/console-negative-ink-token` (`riviera-sdlc` §Remote/cloud addend
       `localStorage['riviera-theme'] = 'dark'` · *Pinned by:* `e2e/console-negative-ink.e2e.ts` —
       "the payouts net keeps its porcelain negative ink under a dark document theme" **and** "the
       check-in notice keeps its porcelain negative ink under a dark document theme".
-- [ ] **AC-10:** Given `booking/solid-btn-tokens.contrast.spec.ts`'s `OUT_OF_FAMILY` guard, which
+- [x] **AC-10:** Given `booking/solid-btn-tokens.contrast.spec.ts`'s `OUT_OF_FAMILY` guard, which
       today asserts all **five** listed files still paint `#a3372a`, when this slice removes the
       literal from two of them, then the array is narrowed to the three files that still paint it
       and the guard passes — the downstream consequence the ticket does not list. *Seam:* the
       `OUT_OF_FAMILY` file list read from disk · *Pinned by:*
       `booking/solid-btn-tokens.contrast.spec.ts` — "leaves the out-of-family #a3372a sites
       untouched".
-- [ ] **AC-11:** Given `docs/design/colour-literal-token-audit.md`'s class-R row, when the PR is
+- [x] **AC-11:** Given `docs/design/colour-literal-token-audit.md`'s class-R row, when the PR is
       read, then the row's status is `done — #864, PR #NN` and its "Why not that token" cell
       records the settled name/family answer. *Seam:* the ledger document · *Pinned by:* review-gate
       inspection (a documentation AC; no automated test claims it).
@@ -212,15 +212,15 @@ names how it is *verified* rather than assumed.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A value-blind `#a3372a` sweep migrates the reason chip's `/opacity` tints too, silently doing #852's work and breaking its slice | med | med | Match **by role** (`/text-\[#a3372a\]/i`), the pattern #850 established and #848 reused; AC-5 asserts the two tints positively, so an overreach fails a test rather than reaching review | agent | open |
-| R-2 | The `@theme inline` row is forgotten: `text-riv-console-negative-ink` lands in the markup, never generates, and `color` silently inherits — invisible to every unit spec and to a class-list assertion | med | high | AC-1 asserts the row as text (a unit test *names* the missing line); AC-8/AC-9 assert the resolved computed colour in a real render | agent | open |
-| R-3 | A later slice adds a dark override for the token; nothing notices, because inside the porcelain-pinned subtree every ratio still passes and no render can tell a themed token from an unthemed one | low | high | The single-declaration guard (AC-1) is the only thing able to see it, and the reason is written at the declaration; AC-7 keeps the "why not a themed red" measurement in the tree | agent | open |
-| R-4 | `booking/solid-btn-tokens.contrast.spec.ts` goes red on the phase-1 push — its `OUT_OF_FAMILY` guard asserts five files still paint the literal, and two stop | **high** | med | Found by the intake grill, not by CI: AC-10 makes the narrowing part of phase 1's own red→green, so the guard never sees a broken intermediate | agent | open |
-| R-5 | `operator/payout-statement.spec.ts`'s `netClass: 'text-[#a3372a]'` fixture drifts from what `payouts-tab.ts` now emits — the spec keeps passing while mirroring a string nothing produces | **high** | low | Found by the intake grill; updated in the same phase as the producer (phase 1) | agent | open |
-| R-6 | Merge conflict with **#858**, which edits the same `OUT_OF_FAMILY` array (removing `shared/failure-panel.ts` and `booking/booking-pay.ts`) — the ticket's "independent of #858: no shared files" is wrong | med | low | No PR is open for #858 today, so the collision is not live. **Whichever merges second re-narrows the array** and re-runs the guard; this plan leaves the array one entry per line so the second edit is a clean deletion, not a rewrite | agent | open |
+| R-1 | A value-blind `#a3372a` sweep migrates the reason chip's `/opacity` tints too, silently doing #852's work and breaking its slice | med | med | Match **by role** (`/text-\[#a3372a\]/i`), the pattern #850 established and #848 reused; AC-5 asserts the two tints positively, so an overreach fails a test rather than reaching review | agent | **closed** — the sweep matched `/text-\\[#a3372a\\]/i`, and AC-5 asserts both tints present; the final merge grep returns them |
+| R-2 | The `@theme inline` row is forgotten: `text-riv-console-negative-ink` lands in the markup, never generates, and `color` silently inherits — invisible to every unit spec and to a class-list assertion | med | high | AC-1 asserts the row as text (a unit test *names* the missing line); AC-8/AC-9 assert the resolved computed colour in a real render | agent | **closed** — the `@theme inline` row is asserted as text (AC-1) and the resolved colour in a real render (AC-8/AC-9, 6 e2e tests green) |
+| R-3 | A later slice adds a dark override for the token; nothing notices, because inside the porcelain-pinned subtree every ratio still passes and no render can tell a themed token from an unthemed one | low | high | The single-declaration guard (AC-1) is the only thing able to see it, and the reason is written at the declaration; AC-7 keeps the "why not a themed red" measurement in the tree | agent | **closed** — the single-declaration guard is in the tree and was mutation-proven to fire (phase 2 audit log) |
+| R-4 | `booking/solid-btn-tokens.contrast.spec.ts` goes red on the phase-1 push — its `OUT_OF_FAMILY` guard asserts five files still paint the literal, and two stop | **high** | med | Found by the intake grill, not by CI: AC-10 makes the narrowing part of phase 1's own red→green, so the guard never sees a broken intermediate | agent | **closed** — narrowed in phase 1’s own red→green; the guard never saw a broken intermediate |
+| R-5 | `operator/payout-statement.spec.ts`'s `netClass: 'text-[#a3372a]'` fixture drifts from what `payouts-tab.ts` now emits — the spec keeps passing while mirroring a string nothing produces | **high** | low | Found by the intake grill; updated in the same phase as the producer (phase 1) | agent | **closed** — fixture updated in the same phase as the producer; `payout-statement.spec.ts` green |
+| R-6 | Merge conflict with **#858**, which edits the same `OUT_OF_FAMILY` array (removing `shared/failure-panel.ts` and `booking/booking-pay.ts`) — the ticket's "independent of #858: no shared files" is wrong | med | low | No PR is open for #858 today, so the collision is not live. **Whichever merges second re-narrows the array** and re-runs the guard; this plan leaves the array one entry per line so the second edit is a clean deletion, not a rewrite | agent | **open → handed to #858**, deliberately: no PR is open for it today, so nothing collides now. Whichever merges second re-narrows `OUT_OF_FAMILY`; this PR left it one entry per line so that edit is a deletion. Recorded on the #858 issue at close-out step 3, not left in this transcript |
 | R-7 | The dark-theme e2e passes **vacuously** — the token is declared once, so it could not resolve differently even if the pin failed, and the test would stay green against a broken pin | med | med | Stated honestly in the spec's header (what it does and does not prove, mirroring `console-accent-ink.e2e.ts`), and **mutation-checked**: the mutation that discriminates AC-9 is a broken porcelain pin, not the override alone — the log records both runs and which guard each turned red | agent | **closed** — phase 2's mutation check ran; both guards discriminate, on different mutations |
 | R-8 | Naming the token `--riv-console-danger-ink` would sit one hyphen from `--riv-solid-btn-danger-ink`, the token this slice exists to *not* widen | low | med | Settled at plan time: the pole word is `negative`, and the reason is recorded at the declaration and in the ledger's class-R row | agent | **closed** — decided in *Architecture* |
-| R-9 | Invariant #5/#9 blast radius: `payouts-tab.ts` is edited, and it renders payout money | low | high | The edit changes **one class string** in the `netClass` ternary. No money arithmetic, no sign, no currency, no ledger call is touched — `money()`, `sign`, `netMinor` are untouched lines, and the server's `netOwedMinor` is still rendered as-is | agent | open |
+| R-9 | Invariant #5/#9 blast radius: `payouts-tab.ts` is edited, and it renders payout money | low | high | The edit changes **one class string** in the `netClass` ternary. No money arithmetic, no sign, no currency, no ledger call is touched — `money()`, `sign`, `netMinor` are untouched lines, and the server's `netOwedMinor` is still rendered as-is | agent | **closed** — the diff touches one class string in the `netClass` ternary; `money()`, `sign`, `netMinor` and the server’s `netOwedMinor` are untouched lines |
 
 ## Open questions / Assumptions
 
@@ -296,18 +296,21 @@ N/A — no contract change. No endpoint, DTO, or wire shape is touched.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window as the
 > change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** `PR — marking ready for review; review gate due`
+**Stage pointer:** `DONE — merged via PR #866`
 
-**Next action:** Mark PR #866 ready for review, then run the review gate per `riviera-sdlc`
-`references/pr-gates.md` §1, followed by the Sonar gate. Finalize this section, the AC-verification
-table and the self-review checklist in this PR's last commit before merge.
+**Next action:** None. All four phases shipped; CI green on every check; the review gate ran the
+full `/code-review` fan-out plus `riviera-review-overlay` (F-1..F-5, four fixed and one declined on
+review-history evidence); the Sonar gate passed with its **reported list confirmed empty against the
+API**, not merely against the green badge — `new_lines: 44` with the `SonarCloud Code Analysis`
+check at `success`, so the zero is a real zero and not the unanalyzed false-clean read. Post-merge
+there are only GitHub edits, no repo commit: close #864 and unsubscribe from the PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Register the token, its mirror, and its declaration guard | ✅ | `56e1fd8` |
 | 1 — Migrate the three sites and reconcile the downstream guards | ✅ | `ba07e59` |
 | 2 — Prove the render and the porcelain pin (mocked e2e) | ✅ | `5f9443d` |
-| 3 — Ledger class-R row + close-out | ⏳ | `5342c1d` — row landed; close-out finalizes pre-merge |
+| 3 — Ledger class-R row + close-out | ✅ | `5342c1d` (ledger row) · `0bb7140`, `b1b40bf` (review-gate fixes) · this commit (close-out) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -356,27 +359,27 @@ Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Create `frontend/src/app/operator/console-negative-token.contrast.spec.ts` ·
 Modify `frontend/src/tailwind.css`, `frontend/src/testing/glass-tokens.ts`
 
-- [ ] **Step 1: Write the failing test** — `console-negative-token.contrast.spec.ts`, copied in
+- [x] **Step 1: Write the failing test** — `console-negative-token.contrast.spec.ts`, copied in
       shape from `console-accent-token.contrast.spec.ts` (the AC's named worked example): the
       `baseBlock()` / `declarationsOf()` / `themeRow()` helpers, the AC-2 stop loop, the AC-6
       same-value-separate-declaration pair against `SOLID_BTN_DANGER_INK`, and the AC-7
       themed-reds-would-fail proof. The AC-4/AC-5 sweep tests are **deliberately deferred to
       phase 1**, where their red→green is the migration itself.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- console-negative-token` → FAIL:
+- [x] **Step 2: Run it, verify it fails** — `npm test -- console-negative-token` → FAIL:
       `--riv-console-negative-ink declarations` expected length 1, received 0.
-- [ ] **Step 3: Minimal implementation** — declare the token once in `tailwind.css`'s
+- [x] **Step 3: Minimal implementation** — declare the token once in `tailwind.css`'s
       `:root, [data-riv-theme='porcelain']` block with the reason at the declaration (its role,
       why not `--riv-solid-btn-danger-ink`, why no dark counterpart, the proofs, and
       `docs/plans/console-negative-ink-token.md` + issue #864), add the
       `--color-riv-console-negative-ink` row to `@theme inline` beside the accent token's, and
       export `CONSOLE_NEGATIVE_INK` from `glass-tokens.ts` with the family note.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- console-negative-token` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: *every registered token whose value
+- [x] **Step 4: Run it, verify it passes** — `npm test -- console-negative-token` → PASS.
+- [x] **Step 5: Generalization-audit pass** — population: *every registered token whose value
       coincides with another registered token's* (the mechanism this whole ledger class is about),
       enumerated by grepping the declaration block for duplicate values rather than by listing the
       ones already in mind. Append to the log.
-- [ ] **Step 6: Commit** — `git commit -m "Register the operator console's negative ink as its own token (#864)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Register the operator console's negative ink as its own token (#864)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -390,27 +393,27 @@ Modify `frontend/src/tailwind.css`, `frontend/src/testing/glass-tokens.ts`
 `frontend/src/app/operator/payout-statement.spec.ts`,
 `frontend/src/app/booking/solid-btn-tokens.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — add AC-4 ("leaves no console file painting the ink as a
+- [x] **Step 1: Write the failing test** — add AC-4 ("leaves no console file painting the ink as a
       literal", sweeping `operator/` for `/text-\[#a3372a\]/i` **by role**) and AC-5 ("leaves
       #852's `/opacity` tints on the reason chip untouched", asserting `border-[#a3372a]/28` and
       `bg-[#a3372a]/12` are still present in `payouts-tab.html`) to the guard spec.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- console-negative-token` → FAIL: the sweep
+- [x] **Step 2: Run it, verify it fails** — `npm test -- console-negative-token` → FAIL: the sweep
       returns `['daily-view-tab.html', 'payouts-tab.html', 'payouts-tab.ts']`, expected `[]`.
-- [ ] **Step 3: Minimal implementation** — repoint the three `text-` positions to
+- [x] **Step 3: Minimal implementation** — repoint the three `text-` positions to
       `text-riv-console-negative-ink`, leaving both `/opacity` positions on the chip element
       untouched; then reconcile the three downstream files the sweep does not itself fix:
       `payouts-tab.contrast.spec.ts` (constant from the mirror, titles and docblock naming the
       token), `payout-statement.spec.ts` (the reversal fixture's `netClass`), and
       `solid-btn-tokens.contrast.spec.ts` (`OUT_OF_FAMILY` narrowed to the three files still
       painting the literal, one entry per line, and the docblock's "five other homes" corrected).
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- console-negative-token payouts-tab payout-statement solid-btn-tokens`
+- [x] **Step 4: Run it, verify it passes** — `npm test -- console-negative-token payouts-tab payout-statement solid-btn-tokens`
       → PASS, then `npm run lint && npm run format:check`.
-- [ ] **Step 5: Generalization-audit pass** — population: *every file in the tree that restates
+- [x] **Step 5: Generalization-audit pass** — population: *every file in the tree that restates
       `#a3372a`, in code or in prose*, enumerated with one tree-wide grep (not a list of the files
       the ticket named) and judged one by one against whose ticket each occurrence is. Append to
       the log.
-- [ ] **Step 6: Commit** — `git commit -m "Move the console's three refund-red inks onto the negative-ink token (#864)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Move the console's three refund-red inks onto the negative-ink token (#864)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -419,25 +422,25 @@ Modify `frontend/src/tailwind.css`, `frontend/src/testing/glass-tokens.ts`
 **Files:** Create `frontend/e2e/console-negative-ink.e2e.ts` ·
 Modify `frontend/src/app/operator/payouts-tab.html` (the `data-testid="ledger-net"` locator)
 
-- [ ] **Step 1: Write the failing test** — the mocked-suite spec (RV-FE-E2E: render/computed-style
+- [x] **Step 1: Write the failing test** — the mocked-suite spec (RV-FE-E2E: render/computed-style
       proofs belong in `frontend/e2e/`, which CI runs): the token-declared-and-utility-generated
       test, the payouts reversal net (a per-test `page.route` override of
       `/api/venues/1/payout-ledger` adding a REVERSAL entry on top of `mockWholeConsole`), the
       daily-view check-in error notice (driven client-side by submitting a malformed booking code —
       no route needed), and the forced-`dark` subtree-pinning test. Header states plainly what the
       dark test does and does **not** prove (R-7).
-- [ ] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- console-negative-ink`
+- [x] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- console-negative-ink`
       → FAIL: `getByTestId('ledger-net')` resolves to 0 elements.
-- [ ] **Step 3: Minimal implementation** — add `data-testid="ledger-net"` to the ledger's net
+- [x] **Step 3: Minimal implementation** — add `data-testid="ledger-net"` to the ledger's net
       `<td>` in `payouts-tab.html`.
-- [ ] **Step 4: Run it, verify it passes** — the same command → PASS.
-- [ ] **Step 5: Mutation-check (R-7, and the AC-9 requirement)** — temporarily add
+- [x] **Step 4: Run it, verify it passes** — the same command → PASS.
+- [x] **Step 5: Mutation-check (R-7, and the AC-9 requirement)** — temporarily add
       `--riv-console-negative-ink: #ff8a7a;` to `tailwind.css`'s `[data-riv-theme='dark']` block;
       confirm the dark-theme e2e turns **red** *and* the guard spec's single-declaration test turns
       red; revert. Record both outcomes in the Generalization-audit log — an unmutated
       absence-of-change assertion passes vacuously.
-- [ ] **Step 6: Commit** — `git commit -m "Prove the console's negative ink resolves from the registry under both themes (#864)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Prove the console's negative ink resolves from the registry under both themes (#864)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -445,12 +448,12 @@ Modify `frontend/src/app/operator/payouts-tab.html` (the `data-testid="ledger-ne
 
 **Files:** Modify `docs/design/colour-literal-token-audit.md`, `docs/plans/console-negative-ink-token.md`
 
-- [ ] **Step 1** — move the class-R row's status to `done — #864, PR #NN`, replace its "Why not
+- [x] **Step 1** — move the class-R row's status to `done — #864, PR #NN`, replace its "Why not
       that token" cell with the settled answer (own token, `negative` over `danger` and why, family
       in naming only), and add #864 to the header's landed-slices line.
-- [ ] **Step 2** — run `node scripts/check-plan-file-structure.mjs --diff origin/main` with the
+- [x] **Step 2** — run `node scripts/check-plan-file-structure.mjs --diff origin/main` with the
       plan doc **staged** (merely written, the guard short-circuits and passes).
-- [ ] **Step 3** — finalize Execution status, the AC-verification table, and the self-review
+- [x] **Step 3** — finalize Execution status, the AC-verification table, and the self-review
       checklist **in this PR's last commit**, citing `merged via PR #NN`.
 
 ---
@@ -471,14 +474,16 @@ Modify `frontend/src/app/operator/payouts-tab.html` (the `data-testid="ledger-ne
 
 ## Acceptance-criteria verification (final)
 
-> The gate before claiming done. Not a wish.
+> The gate before claiming done. Not a wish. **Every line below was run at the close-out commit**,
+> not carried forward from the phase that wrote it.
 
-- [ ] **AC-1..AC-7:** Run `npm test -- console-negative-token payouts-tab` → all PASS.
-- [ ] **AC-8, AC-9:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- console-negative-ink`
-      → PASS, and the phase-2 mutation check recorded red-on-override.
-- [ ] **AC-10:** Run `npm test -- solid-btn-tokens` → PASS.
-- [ ] **AC-11:** `grep -n 'class-R\|#864' docs/design/colour-literal-token-audit.md` → the row reads `done`.
-- [ ] **Merge grep (the ticket's own check), stated as the two greps that actually discriminate.**
+- [x] **AC-1..AC-7:** Run `npm test -- console-negative-token payouts-tab` → all PASS.
+- [x] **AC-8, AC-9:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- console-negative-ink`
+      → **6 passed**, both sites covered under a forced dark theme, and the phase-2 mutation check
+      recorded which mutation turns each guard red.
+- [x] **AC-10:** Run `npm test -- solid-btn-tokens` → PASS.
+- [x] **AC-11:** `grep -n 'class-R\|#864' docs/design/colour-literal-token-audit.md` → the row reads `done`.
+- [x] **Merge grep (the ticket's own check), stated as the two greps that actually discriminate.**
       A bare `grep -rn 'a3372a' frontend/src/app/operator/` is **not** the check — it returns five
       lines, because a *role* sweep must name the literal it excludes (three lines in
       `console-negative-token.contrast.spec.ts`) and `set-editor.contrast.spec.ts` carries a true
@@ -491,23 +496,23 @@ Modify `frontend/src/app/operator/payouts-tab.html` (the `data-testid="ledger-ne
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking path touched.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9) — R-9 records why
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking path touched.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9) — R-9 records why
       `payouts-tab.ts` in the diff is not a money change.
-- [ ] Refund policy enforced server-side (invariant #10) — N/A, no refund logic touched.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met: token consumed through its named utility, no component branches
+- [x] Refund policy enforced server-side (invariant #10) — N/A, no refund logic touched.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met: token consumed through its named utility, no component branches
       on a theme, class bindings not `ngClass`, the e2e in the CI-run mocked suite.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR**, citing `merged via PR #866` — no docs-only follow-up needed.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
