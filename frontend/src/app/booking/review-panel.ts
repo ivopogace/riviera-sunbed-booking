@@ -18,8 +18,8 @@ import {
   SubmitReviewRequest,
 } from './booking.model';
 
-/** The required rule's message. Stated on the schema; the parent's result region renders the same constant. */
-export const REVIEW_REQUIRED = 'Pick a star rating.';
+/** The required rule's message, stated on the schema and rendered by `app-star-rating`'s own inline error. */
+const REVIEW_REQUIRED = 'Pick a star rating.';
 
 const COMMENT_TOO_LONG = `Keep your comment to ${REVIEW_COMMENT_MAX} characters or fewer.`;
 const NAME_REQUIRED = 'Add the name to show with your review.';
@@ -236,7 +236,11 @@ function starsLabel(stars: number): string {
 
     <ng-template #reviewFormTemplate>
       <form (submit)="send(); $event.preventDefault()" novalidate>
-        <app-star-rating label="Your rating" [formField]="reviewForm.stars" />
+        <app-star-rating
+          label="Your rating"
+          [formField]="reviewForm.stars"
+          [submitAttempted]="submitAttempted()"
+        />
 
         <label [class]="cls.field">
           <span [class]="cls.fieldLabel">Your comment (optional)</span>
@@ -325,11 +329,6 @@ export class ReviewPanel {
   readonly submitted = output<SubmitReviewRequest>();
   readonly updated = output<SubmitReviewRequest>();
   readonly deleted = output<void>();
-  /**
-   * The form refused to send and the reason belongs in the parent's result region — the star
-   * control has no inline error slot of its own, so its message is funnelled the way it always was.
-   */
-  readonly blocked = output<string>();
 
   /** Reseeded whenever the panel changes, which is what makes a successful write reset the form. */
   private readonly model = linkedSignal(() => seedFor(this.panel()));
@@ -414,9 +413,6 @@ export class ReviewPanel {
     this.submitAttempted.set(true);
     const value = this.model();
     if (!this.reviewForm().valid() || value.stars === null) {
-      if (value.stars === null) {
-        this.blocked.emit(REVIEW_REQUIRED);
-      }
       return;
     }
     const review: SubmitReviewRequest = {

@@ -34,7 +34,6 @@ describe('ReviewPanel', () => {
     readonly submitted: SubmitReviewRequest[];
     readonly updated: SubmitReviewRequest[];
     readonly deleted: number[];
-    readonly blocked: string[];
     click(testId: string): void;
     type(testId: string, value: string): void;
     find(testId: string): HTMLElement | null;
@@ -53,11 +52,9 @@ describe('ReviewPanel', () => {
     const submitted: SubmitReviewRequest[] = [];
     const updated: SubmitReviewRequest[] = [];
     const deleted: number[] = [];
-    const blocked: string[] = [];
     fixture.componentInstance.submitted.subscribe((r) => submitted.push(r));
     fixture.componentInstance.updated.subscribe((r) => updated.push(r));
     fixture.componentInstance.deleted.subscribe(() => deleted.push(1));
-    fixture.componentInstance.blocked.subscribe((m) => blocked.push(m));
     fixture.detectChanges();
     const host = fixture.nativeElement as HTMLElement;
     const find = (testId: string) => host.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
@@ -67,7 +64,6 @@ describe('ReviewPanel', () => {
       submitted,
       updated,
       deleted,
-      blocked,
       find,
       click: (testId: string) => {
         find(testId)!.click();
@@ -112,7 +108,7 @@ describe('ReviewPanel', () => {
       r.click('submit-review');
 
       expect(r.submitted).toEqual([{ stars: 4, comment: null, displayName: 'Ana' }]);
-      expect(r.blocked).toEqual([]);
+      expect(r.find('star-rating-error')).toBeNull();
     });
 
     it('emits the comment the guest wrote, trimmed', () => {
@@ -125,13 +121,29 @@ describe('ReviewPanel', () => {
       expect(r.submitted).toEqual([{ stars: 5, comment: 'Great sunbeds', displayName: 'Ana' }]);
     });
 
-    it('sends nothing and funnels the required message when no star is picked', () => {
+    it('sends nothing and shows the inline error when no star is picked', () => {
       const r = render(ELIGIBLE);
 
       r.click('submit-review');
 
       expect(r.submitted).toEqual([]);
-      expect(r.blocked).toEqual(['Pick a star rating.']);
+      expect(r.find('star-rating-error')?.textContent).toContain('Pick a star rating.');
+    });
+
+    it('describes the radiogroup by its own error, and stops once a star is picked', () => {
+      const r = render(ELIGIBLE);
+
+      r.click('submit-review');
+
+      const group = r.find('review-panel')!.querySelector('[role="radiogroup"]')!;
+      const error = r.find('star-rating-error')!;
+      expect(group.getAttribute('aria-describedby')).toBe(error.id);
+      expect(group.getAttribute('aria-invalid')).toBe('true');
+
+      r.click('star-3');
+
+      expect(r.find('star-rating-error')).toBeNull();
+      expect(group.hasAttribute('aria-describedby')).toBe(false);
     });
 
     it('refuses a comment over the bound with an inline error, and sends nothing', () => {
