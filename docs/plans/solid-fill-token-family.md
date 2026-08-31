@@ -259,19 +259,35 @@ N/A — no API surface changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** write `e2e/solid-fill-token-skin.e2e.ts`, then run the AC-8 mutation check.
+**Next action:** update the ledger's R-2 rows, open the G-4 follow-up issue, then mark the PR ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The family spec, red | ✅ | (this commit) |
 | 1 — Declare the tokens, green | ✅ | (this commit) |
 | 2 — Repaint the nine sites + the pinned specs | ✅ | (this commit) |
-| 3 — The mocked e2e + the mutation check | ⏳ | |
-| 4 — Ledger row + close-out | | |
+| 3 — The mocked e2e + the mutation check | ✅ | (this commit) |
+| 4 — Ledger row + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Mutation check (AC-8), run at phase 3.** `--riv-solid-fill-brand: #7cd7e8` added to the dark
+theme block, the e2e re-run, the override reverted. Result — **1 failed, 4 passed**:
+
+```
+✘ … › and does not move under a dark document theme
+    Error: expect(locator).toHaveCSS(expected) failed
+    Expected: "rgb(10, 95, 116)"
+    Received: "rgb(124, 215, 232)"
+```
+
+The unit guard caught it too (`--riv-solid-fill-brand declarations: expected [ '#0a5f74',
+'#7cd7e8' ] to have a length of 1 but got 2`). **The four passing tests are the finding**, not a
+footnote: both console assertions — including the confirm button the issue named — went green
+*with* the dark override live. That is G-1 measured rather than argued, and it is why the
+falsifiable assertion sits on `semantic-chip` instead.
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding.
 Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule (run the
