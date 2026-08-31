@@ -3,6 +3,7 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  CONSOLE_ACCENT_INK,
   ERROR_INK,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
@@ -18,18 +19,19 @@ import {
  * cards use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text pairs: the heading, guest name,
  * set-label + confirm/dismiss/keep-it copy use `--riv-card-ink`; the intro/meta/empty sub-copy use
  * `--riv-card-ink-soft` (0.78); "Respond by" uses `--riv-card-ink-faint` (0.72); the price value uses
- * the console teal `#0a6e85` (still a literal — class T, #848); the urgency chip + decline text +
+ * the console accent ink `--riv-console-accent-ink` (#848); the urgency chip + decline text +
  * expired-race + load-error use the alert red `--riv-error-ink` (also the urgency-chip text over its
  * own `#a3160e`@0.10 tint, a class-O modifier left to #852). The primary buttons put white on
  * `--riv-solid-fill-brand` (accept) / `--riv-solid-fill-danger` (confirm-decline), tokenised at #854.
  *
  * <p>The design mock's lighter teal→teal gradient (`#2bb8d4`) and raw ambers fail AA on their light
- * stops, so this tab deliberately uses the console's proven `#0a6e85` / `--riv-error-ink` inks instead (the
+ * stops, so this tab deliberately uses the console's proven `--riv-console-accent-ink` /
+ * `--riv-error-ink` inks instead (the
  * `riviera-tailwind` "deviate-from-design-for-AA-with-a-note" rule). Values mirror the template; a
  * colour edit there must re-pass here.
  */
 
-const TEAL = '#0a6e85';
+const TEAL = rgbToHex(CONSOLE_ACCENT_INK);
 const ALERT = rgbToHex(ERROR_INK);
 const ALERT_RGB = ERROR_INK;
 
@@ -51,7 +53,7 @@ describe('RequestsTab porcelain contrast (WCAG AA, #176)', () => {
     expectAaOverStops(CARD_INK, CARD_INK_FAINT_ALPHA, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
-  it('the price value (teal #0a6e85) meets AA on the card glass', () => {
+  it('the price value (--riv-console-accent-ink) meets AA on the card glass', () => {
     for (const stop of PORCELAIN_STOPS) {
       expect(
         contrastRatio(TEAL, cardSurface(stop)),

@@ -7,7 +7,8 @@ of this population: **#829** (the negative/red admin family, PR #833), **#835** 
 teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR #856),
 **#850** (the tourist form-error skin's theme-invariant pair, PR #857), **#851** (the solid
 outline-button skin's theme-invariant family, PR #859), **#854** (the nine solid button/badge
-fills under fixed white ink, PR #860).
+fills under fixed white ink, PR #860), **#861** (merging that family's two brand teals onto one,
+PR #862), **#848** (the operator console's accent ink, PR #863).
 
 > **This file is not a design record.** `docs/design/README.md` governs the `.dc.html`
 > artboards — approved-look snapshots that are deliberately *never* rewritten to track the
@@ -67,7 +68,7 @@ actually generated, and nothing more.
 | Family | n | Token | Verdict | Status |
 |---|---:|---|---|---|
 | `text-[#a3160e]` in `operator/` (9 files) | 32 | `--riv-error-ink` | **migrate** — hosts are porcelain-pinned, where the token resolves `#a3160e` | **done — #855, PR #856** |
-| `#0a6e85` in `operator/` | 16 | `--riv-pop-accent` | **migrate, but name the role first** — value-correct, role wrong: `--riv-pop-accent` is the *popover* accent. Either register a console-accent token or widen that token's contract | open → #848 |
+| `#0a6e85` **inks** in `operator/` | 12 | `--riv-console-accent-ink` (**new**) | **migrated onto its own token, not the coincidental one.** Value-correct, role wrong: `--riv-pop-accent` is the *popover* accent, and `--riv-solid-fill-brand` is a fill. **Option A over B**, on mechanical grounds: `@theme inline` makes a utility resolve `var(--riv-*)` at the point of use, so widening `--riv-pop-accent` would route the console's ink through the variable the popover family's theme blocks override — popover retuning would move payout figures. Angular's emulated encapsulation does not scope custom properties, so naming is the only separator. Declared **once**: every consumer is porcelain-pinned, so a dark branch is unreachable by construction, and no render can tell a themed token from an unthemed one inside a pinned subtree | **done — #848, PR #863.** n corrected 16 → 12: four were `bg-` fills, a different role, and left with #854 |
 | `#0a2a33` (`text-`) | 5 | `--riv-ink` / `--riv-card-ink` / `--riv-pop-ink` | **migrate** — but three tokens share the value, so each site must be assigned to the one whose *surface* it sits on | open → #849 |
 | `rgba(12,42,51,·)` inks/borders (`.66`, `.78`, `.14`, `.1`) | 9 | `--riv-ink-faint`, `--riv-card-ink-soft`, `--riv-chip-border`, `--riv-pop-divider` | **migrate** — same one-value-many-tokens caveat | open → #849 |
 
@@ -108,6 +109,7 @@ does not. Each needs its own token, not the coincidental one.
 | `border-[rgba(255,255,255,0.4)]` (15 of 17; 2 are `bg-`) | 17 | `--riv-inset-fill` | That is a **fill** token (dark theme: `rgba(255,255,255,0.08)`). A border wants a border token; none of this value exists | open → #853 |
 | Solid fills under fixed white ink: `bg-[#0a6e85]` ×4, `bg-[#0a5f74]` ×3, `bg-[#a3160e]` ×2 | 9 | `--riv-pop-accent`, `--riv-cta-grad` (end stop), `--riv-error-ink` | Three coincidences, one form. An **ink** token and a **popover accent** used as fills, and a gradient stop that is not a fill token — and all three *theme*, while the white ink over them cannot | **done — #854, PR #860** (`--riv-solid-fill-*`), then **merged to one teal — #861, PR #862**: `-action` and `-brand` had no role between them, so the family is `#0a6e85` + `#a3160e` and the three `#0a5f74` fills were repainted |
 | `#8a5410` warn ink, `#8a3a2a`, `#0a5e7a`, `#334a52`, … | ~20 | — | No token at all; these are genuine new-token candidates once their role is named | open |
+| Plain `text-[#a3372a]` refund-red inks (`shared/failure-panel.ts`, `operator/payouts-tab.ts` + `.html`, `operator/daily-view-tab.html`, `booking/booking-pay.ts`) | 5 | `--riv-solid-btn-danger-ink` | That token is the outline **button**'s ink, fixed to the button's own non-theming fill (#851). These five are inks on porcelain and card glass, which is a different role and a different theming answer. Found by #848's generalization sweep — the ink form had no row while the `/opacity` tints (#852) and the button ink (#851) both did. **Splits by form**: two are inks over their own fixed `#f7e8e4` fill (class F), two are console inks on card glass (class T), one carries `/opacity` (#852's) | open → #864 |
 
 ### Class S — per-state palettes and one-offs: exempt for now
 

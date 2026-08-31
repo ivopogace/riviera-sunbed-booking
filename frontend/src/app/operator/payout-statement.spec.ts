@@ -23,7 +23,7 @@ describe('PayoutStatement (#173)', () => {
       grossStr: '€45',
       commissionStr: '€6.75',
       netStr: '€38.25',
-      netClass: 'text-[#0a6e85]',
+      netClass: 'text-riv-console-accent-ink',
     },
     {
       bookingId: 12,

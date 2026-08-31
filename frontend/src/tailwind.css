@@ -73,6 +73,7 @@
   --color-riv-solid-fill-brand: var(--riv-solid-fill-brand);
   --color-riv-solid-fill-brand-hover: var(--riv-solid-fill-brand-hover);
   --color-riv-solid-fill-danger: var(--riv-solid-fill-danger);
+  --color-riv-console-accent-ink: var(--riv-console-accent-ink);
   --color-riv-card-track: var(--riv-card-track);
 
   --color-riv-pop-surface: var(--riv-pop-surface);
@@ -287,6 +288,25 @@
   --riv-solid-fill-brand: #0a6e85;
   --riv-solid-fill-brand-hover: #0a5e72;
   --riv-solid-fill-danger: #a3160e;
+
+  /** The operator console's ACCENT INK (#848): prices, projected takings, the owed/net payout
+      figures, the commission chip and the per-tab "Saved" notices — twelve positions across eight
+      console files.
+
+      Its own token, NOT a reuse, although `--riv-pop-accent` (the popover accent) and
+      `--riv-solid-fill-brand` (a FILL under fixed white ink, #854/#861) carry this exact value.
+      Same value, three roles: `@theme inline` resolves a utility at the point of use, so reusing
+      either would route this ink through a variable another family's theme blocks override.
+
+      Declared ONCE, with no dark counterpart: all twelve sites are children of `operator-console`,
+      whose host pins porcelain, so a dark branch is unreachable and a dark value would be an
+      unverifiable claim. (#855 could reuse the THEMED --riv-error-ink because that token also
+      paints tourist surfaces, where its dark branch IS reachable.)
+      Proof: operator/console-accent-token.contrast.spec.ts (the single-declaration guard, the only
+      thing able to see a dark override) + the six operator *.contrast.spec.ts AA proofs +
+      console-accent-ink.e2e.ts.
+      Rationale: docs/plans/console-accent-ink-token.md, issue #848. */
+  --riv-console-accent-ink: #0a6e85;
 
   /** The near-opaque popover surface (theme picker, account menu, mobile sheet — app.ts POP)
       and the segmented-control fills (shared/segmented-control.ts). Light values here; the

@@ -3,13 +3,14 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  CONSOLE_ACCENT_INK,
   ERROR_INK,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
+  SOLID_FILL_BRAND,
   expectAaOverStops,
   surfaceOver,
-  SOLID_FILL_BRAND,
 } from '../../testing/glass-tokens';
 
 /**
@@ -18,8 +19,8 @@ import {
  * (`#<bookingId>` reference, gross), period-total label and statement ink use `--riv-card-ink`; the
  * intro/dates/commission/empty sub-copy use `--riv-card-ink-soft` (0.78); the "Owed to you" label,
  * column headers and footnote use `--riv-card-ink-faint` (0.72). The owed figure + accrual net use the
- * console teal `#0a6e85`; reversal net + the reason chip use refund-red `#a3372a` (also over its own
- * `#a3372a`@0.12 tint); the load-error uses the alert red `--riv-error-ink`. Solid buttons put white on `#0a6e85`
+ * console accent ink `--riv-console-accent-ink`; reversal net + the reason chip use refund-red `#a3372a` (also over its own
+ * `#a3372a`@0.12 tint); the load-error uses the alert red `--riv-error-ink`. Solid buttons put white on `--riv-solid-fill-brand`
  * (statement) and on a **darkened** amber `#9a6410` (weather confirm).
  *
  * <p>The design mock's amber `#d9861a`/`#f0aa2e` with white text fails AA on white; per the
@@ -28,7 +29,7 @@ import {
  * `--riv-card-ink` copy (dark ink, ample contrast). Values mirror the template; a colour edit re-passes here.
  */
 
-const TEAL = '#0a6e85';
+const TEAL = rgbToHex(CONSOLE_ACCENT_INK);
 const REVERSAL = '#a3372a';
 const ALERT = rgbToHex(ERROR_INK);
 const WEATHER_BTN = '#9a6410';
@@ -53,7 +54,7 @@ describe('PayoutsTab porcelain contrast (WCAG AA, #173)', () => {
     expectAaOverStops(CARD_INK, CARD_INK_FAINT_ALPHA, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
-  it('the owed figure + accrual net (teal #0a6e85) meet AA on the card glass', () => {
+  it('the owed figure + accrual net (--riv-console-accent-ink) meet AA on the card glass', () => {
     for (const stop of PORCELAIN_STOPS) {
       expect(
         contrastRatio(TEAL, cardSurface(stop)),
@@ -100,7 +101,7 @@ describe('PayoutsTab porcelain contrast (WCAG AA, #173)', () => {
     }
   });
 
-  it('the solid buttons (white on teal #0a6e85 statement / darkened amber #9a6410 confirm) meet AA', () => {
+  it('the solid buttons (white on --riv-solid-fill-brand statement / darkened amber #9a6410 confirm) meet AA', () => {
     expect(contrastRatio('#ffffff', rgbToHex(SOLID_FILL_BRAND))).toBeGreaterThanOrEqual(AA_NORMAL);
     expect(contrastRatio('#ffffff', WEATHER_BTN)).toBeGreaterThanOrEqual(AA_NORMAL);
   });
