@@ -300,7 +300,7 @@ table and the self-review checklist in this PR's last commit before merge.
 | 0 — Register the token, its mirror, and its declaration guard | ✅ | `56e1fd8` |
 | 1 — Migrate the three sites and reconcile the downstream guards | ✅ | `ba07e59` |
 | 2 — Prove the render and the porcelain pin (mocked e2e) | ✅ | `5f9443d` |
-| 3 — Ledger class-R row + close-out | ⏳ | `<phase-3>` — row landed; close-out finalizes pre-merge |
+| 3 — Ledger class-R row + close-out | ⏳ | `5342c1d` — row landed; close-out finalizes pre-merge |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
