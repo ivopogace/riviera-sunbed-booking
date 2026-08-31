@@ -21,8 +21,7 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  * THEMED token (`#a3160e` light, `#ffa9a1` dark) ONLY because their host pins porcelain — so the ink
  * must survive a `dark` DOCUMENT theme. The unit contrast specs prove porcelain and cannot see this.
  * Both hosts are driven, because `operator-console.ts` and `operator-home.ts` pin porcelain through
- * two SEPARATE host bindings: one passing is not evidence about the other. (#835 closed the
- * equivalent risk on a single host and had to reopen it — recorded there as F-4.)
+ * two SEPARATE host bindings: one passing is not evidence about the other.
  */
 
 /** `--riv-error-ink` as the light themes declare it, which the porcelain pin keeps in force. */
