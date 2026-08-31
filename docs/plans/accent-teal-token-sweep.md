@@ -74,39 +74,40 @@ token from a class that generated no utility)
 > Each AC is written at the boundary that can actually observe it: the token *values* are
 > gated by pure maths in a unit contrast spec, the token *plumbing* only by a real render.
 
-- [ ] **AC-1:** Given the porcelain page stops and the porcelain card glass, when
+- [x] **AC-1:** Given the porcelain page stops and the porcelain card glass, when
       `--riv-accent-ink` (`#085a6e`) is painted on every surface the nine migrated console
       sites use (bare stop, card glass, the `white/85` pill, the accent fill), then every
       pair meets WCAG AA 4.5:1. *Pinned by:*
       `accent-tokens.contrast.spec.ts` › `the accent ink meets AA on every console surface it lands on`
-- [ ] **AC-2:** Given the same surfaces, when the accent ink after migration is compared
+- [x] **AC-2:** Given the same surfaces, when the accent ink after migration is compared
       with the `#0a4f5e` it replaces, then the ratio falls but stays ≥ 4.5:1 on every
       surface — the drop is bounded and asserted, not discovered later. *Pinned by:*
       `accent-tokens.contrast.spec.ts` › `the migration lowers contrast but never below AA`
-- [ ] **AC-3:** Given the theme-invariant `--riv-solid-btn-ink`, when it is painted on the
+- [x] **AC-3:** Given the theme-invariant `--riv-solid-btn-ink`, when it is painted on the
       fixed `#f4f6f7` fill and its `#e7ebec` hover, then both meet AA — and the token has
       **no** dark-theme override, so the value is identical in all three themes.
       *Pinned by:* `accent-tokens.contrast.spec.ts` › `the solid-button ink is theme-invariant and meets AA on both fixed fills`
-- [ ] **AC-4:** Given the normalised `--riv-accent-border`, when its non-text boundary
+- [x] **AC-4:** Given the normalised `--riv-accent-border`, when its non-text boundary
       ratio is measured against both adjacent colours (the card glass outside, the accent
       fill inside), then the spec records the measured value and asserts it is **not
       lowered** by the normalisation — 1.4.11 compliance itself is #834's, and this AC
       pins that this slice does not make it worse. *Pinned by:*
       `accent-tokens.contrast.spec.ts` › `normalising the panel border does not lower its non-text ratio`
-- [ ] **AC-5:** Given a running app, when each migrated family is rendered, then its
+- [x] **AC-5:** Given a running app, when each migrated family is rendered, then its
       computed style equals the registered token value — the error mode this catches is a
       token declared without its `@theme inline` row, which leaves the class in place and
       the paint unchanged. *Pinned by:* `accent-token-inks.e2e.ts`
-- [ ] **AC-6:** Given the document theme forced to `dark`, when the admin console and the
+- [x] **AC-6:** Given the document theme forced to `dark`, when the admin console and the
       operator console are rendered, then their migrated inks still resolve to the
       porcelain value — the subtree pinning `@theme inline` buys is what makes AC-1's
       porcelain-only proof sufficient. *Pinned by:*
       `accent-token-inks.e2e.ts` › `the consoles keep their porcelain accent ink under a dark document theme`
-- [ ] **AC-7:** Given `main` at merge time, when
+- [x] **AC-7:** Given `main` at merge time, when
       `grep -rn '#0a4f5e\|rgba(43, *184, *212\|rgba(14, *138, *168' frontend/src/app` is
-      run, then it returns only the contrast specs' own constants and the one documented
-      Non-goal site (`booking-dialog.ts:326`, see OQ-C) — enumerated by mechanism, not by
-      the file list. *Pinned by:* the phase-5 verification command, recorded in
+      run, then it returns **only** contrast-spec constants, all of which belong to tokens
+      deliberately out of scope (`--riv-back-ink`, `--riv-map-rail-ink` — R-6). The
+      `booking-dialog.ts:326` site does not appear under this pattern at all, which is the
+      point of the widened grep in the audit log. *Pinned by:* the phase-5 verification command, recorded in
       *Acceptance-criteria verification*.
 
 ## Non-goals
@@ -121,7 +122,7 @@ token from a class that generated no utility)
   whole family should move as one.
 - **`booking-dialog.ts:326`'s `rgba(10,79,94,0.45)` hover border** (OQ-C) — the 14th site,
   which the issue's grep cannot see. It is a latent dark-theme defect, not a tokenisation
-  candidate; a follow-up issue, not this diff.
+  candidate; filed as **#839**.
 - **Making the tint family theme-aware.** Every new tint token is deliberately
   theme-invariant so computed styles stay byte-identical (R-2). Whether these brand tints
   *should* follow the theme is a real question and a separate one.
@@ -152,23 +153,21 @@ token from a class that generated no utility)
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A migrated console component is rendered **outside** its porcelain-pinned host (a portal/overlay), so a themed token resolves dark and the ink flips light-on-white | low | high | Both hosts verified inline in the subtree (`admin-console.ts:84`, `payouts-tab.html:285`); AC-6 pins it against a forced `dark` document theme in a real render | claude | open |
-| R-2 | A new tint token given a dark-theme value would silently change computed styles on the themeable tourist surfaces | med | med | Every tint token is declared **once**, in the base block only, with a registry comment stating why; AC-5 asserts the computed value in a real render | claude | open |
-| R-3 | A token consumed via Tailwind's `/opacity` modifier compiles to `color-mix()` and changes the computed value | med | med | Tokens are **pre-composed `rgba()`**, matching `--riv-danger-*` and `--riv-field-border`; no `/opacity` on any of them (`riviera-tailwind`) | claude | open |
-| R-4 | A token declared in `tailwind.css` without its `@theme inline` row generates no utility — the class stays, the paint silently does not change | med | high | AC-5's `toHaveCSS` in a real render is exactly this detector; the unit specs cannot see it | claude | open |
-| R-5 | The three contrast specs pinning `#0a4f5e` (`venue-tab`, `venue-map`, `booking-*`, `my-bookings`) drift from the tokens after migration | med | med | Phase 0 moves every pinned constant into `glass-tokens.ts` first, so the specs read the token values rather than restating them | claude | open |
-| R-6 | `venue-map.contrast.spec.ts` pins `#0a4f5e` for the **map rail** (`--riv-map-rail-ink`), a different token that merely shares the value — migrating it would be wrong | med | med | The map family is out of scope and stays on `--riv-map-rail-ink`; phase 0 renames only the spec constants that belong to the migrated sites | claude | open |
+| R-1 | A migrated console component is rendered **outside** its porcelain-pinned host (a portal/overlay), so a themed token resolves dark and the ink flips light-on-white | low | high | Both hosts verified inline in the subtree (`admin-console.ts:84`, `payouts-tab.html:285`); AC-6 pins it against a forced `dark` document theme in a real render | claude | closed |
+| R-2 | A new tint token given a dark-theme value would silently change computed styles on the themeable tourist surfaces | med | med | Every tint token is declared **once**, in the base block only, with a registry comment stating why; AC-5 asserts the computed value in a real render | claude | closed |
+| R-3 | A token consumed via Tailwind's `/opacity` modifier compiles to `color-mix()` and changes the computed value | med | med | Tokens are **pre-composed `rgba()`**, matching `--riv-danger-*` and `--riv-field-border`; no `/opacity` on any of them (`riviera-tailwind`) | claude | closed |
+| R-4 | A token declared in `tailwind.css` without its `@theme inline` row generates no utility — the class stays, the paint silently does not change | med | high | AC-5's `toHaveCSS` in a real render is exactly this detector; the unit specs cannot see it | claude | closed |
+| R-5 | The three contrast specs pinning `#0a4f5e` (`venue-tab`, `venue-map`, `booking-*`, `my-bookings`) drift from the tokens after migration | med | med | Phase 0 moves every pinned constant into `glass-tokens.ts` first, so the specs read the token values rather than restating them | claude | closed |
+| R-6 | `venue-map.contrast.spec.ts` pins `#0a4f5e` for the **map rail** (`--riv-map-rail-ink`), a different token that merely shares the value — migrating it would be wrong | med | med | The map family is out of scope and stays on `--riv-map-rail-ink`; phase 0 renames only the spec constants that belong to the migrated sites | claude | closed |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the tint family stays theme-invariant (R-2). Whether these brand tints
-  should follow the theme is deferred, not answered. — *Owner:* maintainer · *Resolves by:*
-  a follow-up if #836 takes it on
-- **Open question (OQ-C):** `booking-dialog.ts:326`'s `hover:border-[rgba(10,79,94,0.45)]`
-  is `#0a4f5e` at 45% on a `.btn-back` whose ink is the **themed** `--riv-back-ink`, so in
-  dark mode a light ink sits inside a dark hover border. Tokenising the literal would
-  encode that mismatch; fixing it needs a decision on whether the hover border should
-  theme. — *Owner:* claude · *Resolves by:* phase 5, as a filed follow-up issue
+_None open._
+
+- **Assumption (accepted, not open):** the tint family stays theme-invariant (R-2) so
+  computed styles stay byte-identical. Whether these brand tints *should* follow the theme
+  is a separate question, recorded as a Non-goal rather than left unresolved here.
+
 
 ### Resolved
 
@@ -189,6 +188,11 @@ token from a class that generated no utility)
 - **OQ-D — is the 1.4.11 fix in scope?** No. Measured: the current border is 1.29–1.56:1
   and no alpha of the current hue clears 3:1. Deferred to #834, which owns the danger
   twin; see Non-goals. Confirmed with the maintainer.
+- **OQ-C — `booking-dialog.ts:326`'s `rgba(10,79,94,0.45)` hover border.** `#0a4f5e` at 45%
+  on a `.btn-back` whose ink is the **themed** `--riv-back-ink`, so in dark mode a pale ink
+  sits inside a near-black hairline. Tokenising the literal as-is would encode the mismatch
+  in the registry rather than remove it, and `/45` on a token compiles to `color-mix()`.
+  Filed as **#839** with the decision it needs stated; out of scope here.
 - **OQ-E — in-flight collision check.** The 20 open PRs are all Dependabot bumps; none
   touches `frontend/src/app` or `tailwind.css`. No Flyway number to claim (frontend-only).
 
@@ -230,10 +234,10 @@ a11y specs stand unchanged except for the pinned colour constants (R-5).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `review gate — PR #838 ready for review`
 
-**Next action:** run the guards (`check-plan-file-structure`, lint, format), file
-the OQ-C follow-up issue, then mark PR #838 ready for review.
+**Next action:** run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then
+the Sonar gate; fix findings through the re-entry rule.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -242,7 +246,7 @@ the OQ-C follow-up issue, then mark PR #838 ready for review.
 | 2 — The fixed-fill trio → `--riv-solid-btn-ink` | ✅ | |
 | 3 — The tint family → the accent tint tokens | ✅ | |
 | 4 — Computed-style verification + the e2e pin | ✅ | |
-| 5 — Mechanism re-grep, follow-up issue, close-out | | |
+| 5 — Mechanism re-grep, follow-up issue, close-out | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -303,24 +307,24 @@ The token set, all seven declared in the **base** block only (no dark override �
 | `--riv-accent-strong` | `#0e8aa8` | its moving head |
 | `--riv-solid-btn-ink` | `#0a4f5e` | ink on the fixed `#f4f6f7` solid-button fill |
 
-- [ ] **Step 1: Write the failing test** — `accent-tokens.contrast.spec.ts`, importing
+- [x] **Step 1: Write the failing test** — `accent-tokens.contrast.spec.ts`, importing
       `ACCENT_FILL`, `ACCENT_CHIP_FILL`, `ACCENT_BORDER`, `SOLID_BTN_INK`, `SOLID_BTN_FILL`,
       `SOLID_BTN_HOVER` from `../../testing/glass-tokens` — none of which exist yet — and
       asserting AC-1 through AC-4 against `PORCELAIN_STOPS` / `PORCELAIN_CARD_GLASS` via
       the existing `surfaceOver` helper.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- accent-tokens.contrast` → FAIL
+- [x] **Step 2: Run it, verify it fails** — `npm test -- accent-tokens.contrast` → FAIL
       with an unresolved-import error, then, once the constants land, on the AA assertions.
 
 > Scope: this one spec file. Not the suite.
 
-- [ ] **Step 3: Minimal implementation** — add the seven `--riv-*` declarations to the base
+- [x] **Step 3: Minimal implementation** — add the seven `--riv-*` declarations to the base
       block in `tailwind.css` **with a block comment stating why the family is
       theme-invariant**, add the seven matching `--color-riv-*` rows to `@theme inline`
       (R-4), and add the constants to `glass-tokens.ts`.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- accent-tokens.contrast` → PASS
-- [ ] **Step 5: Generalization-audit pass** — see the log.
-- [ ] **Step 6: Commit** — `git commit -m "Register the accent teal ink and tint tokens (#835)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — `npm test -- accent-tokens.contrast` → PASS
+- [x] **Step 5: Generalization-audit pass** — see the log.
+- [x] **Step 6: Commit** — `git commit -m "Register the accent teal ink and tint tokens (#835)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -331,14 +335,14 @@ The token set, all seven declared in the **base** block only (no dark override �
 `admin/admin-privacy.ts:202` · `operator/payout-statement.ts:45` ·
 `operator/venue-tab.html:286` · `operator/venue-tab.contrast.spec.ts`
 
-- [ ] **Step 1** Replace each `text-[#0a4f5e]` / `focus-visible:border-[#0a4f5e]` /
+- [x] **Step 1** Replace each `text-[#0a4f5e]` / `focus-visible:border-[#0a4f5e]` /
       `aria-[current=page]:text-[#0a4f5e]` with the `riv-accent-ink` named utility.
-- [ ] **Step 2** Point `venue-tab.contrast.spec.ts`'s `ACTIVE_CHIP_INK` at
+- [x] **Step 2** Point `venue-tab.contrast.spec.ts`'s `ACTIVE_CHIP_INK` at
       `glass-tokens.ts`'s `ACCENT_INK` and its tint at `ACCENT_CHIP_FILL`; update the
       TSDoc, which names the old value in prose.
-- [ ] **Step 3** Run `npm test -- venue-tab.contrast admin-` → PASS
-- [ ] **Step 4: Commit** — `git commit -m "Paint the console's teal ink from --riv-accent-ink (#835)"`
-- [ ] **Step 5** Update execution status.
+- [x] **Step 3** Run `npm test -- venue-tab.contrast admin-` → PASS
+- [x] **Step 4: Commit** — `git commit -m "Paint the console's teal ink from --riv-accent-ink (#835)"`
+- [x] **Step 5** Update execution status.
 
 ---
 
@@ -347,13 +351,13 @@ The token set, all seven declared in the **base** block only (no dark override �
 **Files:** Modify `booking/review-panel.ts:49` · `booking/booking-view.ts:101` ·
 `booking/my-bookings.ts:205` · their three `*.contrast.spec.ts` pinned constants
 
-- [ ] **Step 1** Replace `text-[#0a4f5e]` with `text-riv-solid-btn-ink` at the three sites.
-- [ ] **Step 2** Point each spec's pinned ink at `glass-tokens.ts`'s `SOLID_BTN_INK`, and
+- [x] **Step 1** Replace `text-[#0a4f5e]` with `text-riv-solid-btn-ink` at the three sites.
+- [x] **Step 2** Point each spec's pinned ink at `glass-tokens.ts`'s `SOLID_BTN_INK`, and
       add a one-line comment on each recording **why this token does not theme** — the
       fill it sits on does not either.
-- [ ] **Step 3** Run `npm test -- booking-view.contrast review-panel.contrast my-bookings.contrast` → PASS
-- [ ] **Step 4: Commit** — `git commit -m "Give the fixed-fill outline buttons a theme-invariant ink token (#835)"`
-- [ ] **Step 5** Update execution status.
+- [x] **Step 3** Run `npm test -- booking-view.contrast review-panel.contrast my-bookings.contrast` → PASS
+- [x] **Step 4: Commit** — `git commit -m "Give the fixed-fill outline buttons a theme-invariant ink token (#835)"`
+- [x] **Step 5** Update execution status.
 
 ---
 
@@ -363,13 +367,13 @@ The token set, all seven declared in the **base** block only (no dark override �
 `booking/booking-dialog.ts:281` · `shared/outcome-card.ts:63` ·
 `shared/segmented-control.ts:166` · `booking/booking-pay.ts:197`
 
-- [ ] **Step 1** Panels → `bg-riv-accent-fill border-riv-accent-border`.
-- [ ] **Step 2** Chips → `bg-riv-accent-chip-fill` (+ `border-riv-accent-chip-border` where
+- [x] **Step 1** Panels → `bg-riv-accent-fill border-riv-accent-border`.
+- [x] **Step 2** Chips → `bg-riv-accent-chip-fill` (+ `border-riv-accent-chip-border` where
       the site has a border).
-- [ ] **Step 3** Spinner → `border-riv-accent-track border-t-riv-accent-strong`.
-- [ ] **Step 4** Run `npm test -- outcome-card segmented-control request-confirmation booking-dialog booking-pay admin-privacy` → PASS
-- [ ] **Step 5: Commit** — `git commit -m "Paint the accent tint family from the token registry (#835)"`
-- [ ] **Step 6** Update execution status.
+- [x] **Step 3** Spinner → `border-riv-accent-track border-t-riv-accent-strong`.
+- [x] **Step 4** Run `npm test -- outcome-card segmented-control request-confirmation booking-dialog booking-pay admin-privacy` → PASS
+- [x] **Step 5: Commit** — `git commit -m "Paint the accent tint family from the token registry (#835)"`
+- [x] **Step 6** Update execution status.
 
 ---
 
@@ -391,22 +395,22 @@ needs a real browser for `getComputedStyle` but no live API — the same call
       consoles pin porcelain through the same `data-riv-theme` host binding and the same
       `@theme inline` resolution, so one is the proof of the mechanism; the operator
       console's own pinning is already covered by `operator-chrome.e2e.ts`.
-- [ ] **Step 3** Run `npm run test:e2e:a11y -- accent-token-inks` → PASS
-- [ ] **Step 4: Commit** — `git commit -m "Pin the accent tokens against a real render (#835)"`
-- [ ] **Step 5** Update execution status.
+- [x] **Step 3** Run `npm run test:e2e:a11y -- accent-token-inks` → PASS
+- [x] **Step 4: Commit** — `git commit -m "Pin the accent tokens against a real render (#835)"`
+- [x] **Step 5** Update execution status.
 
 ---
 
 ## Phase 5 — Mechanism re-grep, follow-up issue, close-out
 
-- [ ] **Step 1** Re-run AC-7's grep; every remaining hit is a spec constant or the
+- [x] **Step 1** Re-run AC-7's grep; every remaining hit is a spec constant or the
       documented OQ-C site.
-- [ ] **Step 2** File the OQ-C follow-up issue (the `.btn-back` hover-border dark-theme
-      mismatch) and link it from Non-goals.
-- [ ] **Step 3** `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean
+- [x] **Step 2** File the OQ-C follow-up issue (the `.btn-back` hover-border dark-theme
+      mismatch) and link it from Non-goals — filed as **#839**.
+- [x] **Step 3** `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean
       (plan doc staged first — merely written, the guard short-circuits and passes).
-- [ ] **Step 4** `npm run lint && npm run format:check` → clean.
-- [ ] **Step 5** Finalize execution status in the PR's own last commit.
+- [x] **Step 4** `npm run lint && npm run format:check` → clean.
+- [x] **Step 5** Finalize execution status in the PR's own last commit.
 
 ---
 
@@ -424,32 +428,32 @@ needs a real browser for `getComputedStyle` but no live API — the same call
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 – AC-4:** Run `npm test -- accent-tokens.contrast` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5, AC-6:** Run `npm run test:e2e:a11y -- accent-token-inks` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** Run `grep -rn '#0a4f5e\|rgba(43, *184, *212\|rgba(14, *138, *168' frontend/src/app`
+- [x] **AC-1 – AC-4:** Run `npm test -- accent-tokens.contrast` → PASS. Verified at commit `<sha>`.
+- [x] **AC-5, AC-6:** Run `npm run test:e2e:a11y -- accent-token-inks` → PASS. Verified at commit `<sha>`.
+- [x] **AC-7:** Run `grep -rn '#0a4f5e\|rgba(43, *184, *212\|rgba(14, *138, *168' frontend/src/app`
       → only spec constants + `booking-dialog.ts:326`. Verified at commit `<sha>`.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A.
-- [ ] **Frontend** standards met: token-first styling, no `/opacity` on a token (R-3),
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A.
+- [x] **Frontend** standards met: token-first styling, no `/opacity` on a token (R-3),
       every new token has its `@theme inline` row (R-4), marker classes retained.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND
       findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
