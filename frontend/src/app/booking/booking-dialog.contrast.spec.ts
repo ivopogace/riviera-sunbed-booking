@@ -129,10 +129,12 @@ describe('Booking dialog — theme-independent header + CTA (WCAG AA, issue #137
     expect(contrastRatio('#0a5f74', '#ffffff')).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
+  /**
+   * The banner is `--riv-form-error-*`, NOT the themed `--riv-error-ink` the `.field-error` above
+   * wears: an opaque box in every theme, so a real ~6.6:1 rather than the ~1:1 the analyser saw on
+   * the old tint. The invariance itself belongs to `form-error-tokens.contrast.spec.ts`.
+   */
   it('form-error red meets AA on its solid light-pink fill (theme-independent, static-analysis safe)', () => {
-    // The banner is --riv-form-error-* (#850), NOT the themed --riv-error-ink the .field-error
-    // above wears: an opaque box in every theme, so a real ~6.6:1 rather than the ~1:1 the
-    // analyser saw on the old tint. The invariance itself is form-error-tokens.contrast.spec.ts's.
     expect(
       contrastRatio(rgbToHex(FORM_ERROR_INK), rgbToHex(FORM_ERROR_FILL)),
     ).toBeGreaterThanOrEqual(AA_NORMAL);

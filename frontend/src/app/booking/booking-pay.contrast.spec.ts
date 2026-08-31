@@ -86,9 +86,11 @@ describe('Payment page — theme-independent CTA (WCAG AA, issue #137)', () => {
     }
   });
 
+  /**
+   * Both halves are `--riv-form-error-*`: an opaque box, not the old translucent red tint, so the
+   * pair is one fixed value in every theme — a real ~6.6:1, not the ~1:1 the analyser saw.
+   */
   it('form-error red meets AA on its solid light-pink fill (theme-independent, static-analysis safe)', () => {
-    // Both halves are --riv-form-error-* (#850): an opaque box, not the old translucent red tint,
-    // so the pair is one fixed value in every theme — a real ~6.6:1, not the ~1:1 the analyser saw.
     expect(
       contrastRatio(rgbToHex(FORM_ERROR_INK), rgbToHex(FORM_ERROR_FILL)),
     ).toBeGreaterThanOrEqual(AA_NORMAL);

@@ -117,11 +117,11 @@ for `feature/form-error-token-pair`** per `riviera-sdlc` §Remote/cloud session 
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The `@theme inline` rows are omitted or misspelled: the utility never generates, the class stays in the markup, and the banner silently loses its skin — invisible to any class-list check | med | high | AC-5's e2e walks the document's emitted `CSSStyleRule` selectors and asserts both utilities exist (the `accent-token-inks.e2e.ts` pattern, which exists because this exact failure is otherwise undetectable) | claude | open |
-| R-2 | A later slice adds a `dark:` override for the pair "for consistency", flipping the ink to `#ffa9a1` over the fixed fill — 1.54:1, the exact drift this slice exists to prevent | med | high | AC-2's stylesheet drift guard fails the build if either name appears in a themed block; plus the reason written at the declaration | claude | open |
-| R-3 | Rewiring `booking-dialog.contrast.spec.ts` conflates the two reds: its `ERROR_RED` currently serves both the **themed** `.field-error` ink and the **invariant** banner ink. Pointing the field-error at the new invariant token would silently stop testing the dark theme's `#ffa9a1` | med | med | Explicit split in phase 1: `LIGHT_SURFACES.error` → `ERROR_INK`, dark theme keeps `DARK_ERROR_INK`, banner test → `FORM_ERROR_*`. Called out in the parity ledger so review can check rather than re-derive | claude | open |
-| R-4 | Visual drift the contrast maths cannot see (a wrong-but-still-AA colour, a dropped utility) | low | med | `riviera-tailwind`'s hard rule: AC-4 diffs **computed styles** via `toHaveCSS`, not the class list | claude | open |
-| R-5 | The three banners' literals are re-introduced by a later slice because nothing forbids them | low | low | AC-1's grep-style assertion in the family spec fails on any component-source occurrence | claude | open |
+| R-1 | The `@theme inline` rows are omitted or misspelled: the utility never generates, the class stays in the markup, and the banner silently loses its skin — invisible to any class-list check | med | high | AC-5's e2e walks the document's emitted `CSSStyleRule` selectors and asserts both utilities exist (the `accent-token-inks.e2e.ts` pattern, which exists because this exact failure is otherwise undetectable) | claude | **closed** — guard falsified in phase 2: deleting one `@theme inline` row turns all three e2e tests red |
+| R-2 | A later slice adds a `dark:` override for the pair "for consistency", flipping the ink to `#ffa9a1` over the fixed fill — 1.54:1, the exact drift this slice exists to prevent | med | high | AC-2's stylesheet drift guard fails the build if either name appears in a themed block; plus the reason written at the declaration | claude | **closed** — `e13368f` (the single-declaration + base-block tests) |
+| R-3 | Rewiring `booking-dialog.contrast.spec.ts` conflates the two reds: its `ERROR_RED` currently serves both the **themed** `.field-error` ink and the **invariant** banner ink. Pointing the field-error at the new invariant token would silently stop testing the dark theme's `#ffa9a1` | med | med | Explicit split in phase 1: `LIGHT_SURFACES.error` → `ERROR_INK`, dark theme keeps `DARK_ERROR_INK`, banner test → `FORM_ERROR_*`. Called out in the parity ledger so review can check rather than re-derive | claude | **closed** — `6197c64`: the light themes read `ERROR_INK`, the dark theme still reads `DARK_ERROR_INK` |
+| R-4 | Visual drift the contrast maths cannot see (a wrong-but-still-AA colour, a dropped utility) | low | med | `riviera-tailwind`'s hard rule: AC-4 diffs **computed styles** via `toHaveCSS`, not the class list | claude | **closed** — `<phase-2>`: `rgb(246, 232, 231)` / `rgb(163, 22, 14)` pinned on a real render, in both the default and a forced `dark` theme |
+| R-5 | The three banners' literals are re-introduced by a later slice because nothing forbids them | low | low | AC-1's grep-style assertion in the family spec fails on any component-source occurrence, matched **by role** so the other audit classes stay out of it (audit log, phase 0) | claude | **closed** — `6197c64` |
 | R-6 | In-flight collision with a sibling class-F/class-T slice touching `tailwind.css` or `glass-tokens.ts` | low | low | Checked at intake: **zero open PRs** on the repo, and #855/PR #856 (the only recently-merged sibling) is on `main` and is a Non-goal here. No Flyway number to claim — frontend-only slice | claude | **closed** — verified at plan time |
 
 ## Open questions / Assumptions
@@ -189,11 +189,10 @@ components stay theme-agnostic and name no theme.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)` — draft PR #857 open, CI running.
 
-**Next action:** Open the draft PR (the first push — CI fires on the `pull_request` event only),
-then write `e2e/form-error-token-skin.e2e.ts`: the token registry + emitted-utility walk, and the
-computed skin on `[data-testid="dialog-error"]` under both the default and a forced `dark` theme.
+**Next action:** Tick the ledger's F-1 row to `done — #850, PR #857`, then mark the PR ready for
+review, which is what makes the Review and Sonar gates due (`pr-gates.md`).
 
 > **Push cadence:** phase 0's literal guard is deliberately red until phase 1 lands, so the branch is
 > pushed — and the draft PR opened, which is what makes CI run at all — at the **end of phase 1**,
@@ -202,9 +201,9 @@ computed skin on `[data-testid="dialog-error"]` under both the default and a for
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Declare the theme-invariant pair + its family spec | ✅ | `e13368f` |
-| 1 — Migrate the three banners and rewire the three contrast specs | ✅ | `<phase-1>` |
-| 2 — Mocked e2e: registry, utility generation, computed skin under a forced dark theme | ⏳ | |
-| 3 — Ledger row + close-out | | |
+| 1 — Migrate the three banners and rewire the three contrast specs | ✅ | `6197c64` |
+| 2 — Mocked e2e: registry, utility generation, computed skin under a forced dark theme | ✅ | `<phase-2>` |
+| 3 — Ledger row + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -321,6 +320,7 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-08-31 | phase 2 — the e2e's first green run | **Every assertion in the new e2e that could pass vacuously**, enumerated by asking what a *missing* token would leave behind rather than by re-reading the tests: the three all depend on the `@theme inline` rows, so deleting one row is the single mutation that tests all three at once | `sed -i 's\|^  --color-riv-form-error-ink: .*\|/* probe */\|' src/tailwind.css` then re-run the spec | 3 of 3 tests turn red; the dark-theme test resolves the ink to `rgb(242, 247, 250)` — light on the fixed light fill, exactly the drift the slice prevents | Kept all three. The probe is the evidence they are not vacuous; `tailwind.css` restored from a scratchpad copy and re-verified green |
 | 2026-08-31 | phase 0 — the literal guard's first run | **Every component position painting `#f6e8e7` or `#a3160e` in any role**, enumerated from the tree rather than from the issue's three named files. The guard was first written to match the pair **by value**, and went red on eight sites beyond the family | `grep -rn "#a3160e" src/app --include=*.ts --include=*.html \| grep -v "\.spec\.ts"` then `grep -rno "\[#a3160e[^]]*\]"` to split the forms by utility prefix | 11: the 3 banner **inks** (this slice) · `confirm-panel:9` + `requests-tab:125,172` as `bg-` **fills** (class R → #854) · `set-editor:428`, `requests-tab:82,204`, `payouts-tab:85`, `daily-view-tab:76` as `border-` **tints** (class O → #852) | Narrowed the guard from the *value* to the **role** (`#f6e8e7` any form; `#a3160e` only as `text-[…]`). Matching by value would have dragged two other audit classes — both explicit Non-goals — into this slice. The other eight sites are correct as they stand and are left to their own issues |
 
 ---
