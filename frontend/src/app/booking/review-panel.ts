@@ -46,7 +46,7 @@ const CLS = {
     'resize-y rounded-[11px] px-3 py-2 text-[14px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink',
   fieldError: 'text-[12px] font-semibold text-riv-error-ink',
   actions: 'mt-3.5 flex flex-wrap gap-2.5',
-  btnOutline: `${BTN_OUTLINE} border-[rgba(255,255,255,0.7)] text-[#0a4f5e]`,
+  btnOutline: `${BTN_OUTLINE} border-[rgba(255,255,255,0.7)] text-riv-solid-btn-ink`,
   btnOutlineDanger: `${BTN_OUTLINE} border-[rgba(200,90,60,0.5)] text-[#a3372a]`,
   ownCard: 'rounded-[16px] border border-riv-card-track bg-riv-wash-fill px-[15px] py-3',
   ownStars: 'm-0 text-[17px] leading-none tracking-[0.14em] text-riv-accent-ink',

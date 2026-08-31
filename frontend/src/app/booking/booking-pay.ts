@@ -194,7 +194,7 @@ const CLS = {
               @case ('processing') {
                 <div class="px-[10px] pt-[30px] pb-3 text-center">
                   <span
-                    class="mb-[18px] inline-block h-13 w-13 animate-[pay-spin_0.8s_linear_infinite] rounded-full border-4 border-[rgba(43,184,212,0.25)] border-t-[#0e8aa8] motion-reduce:animate-none"
+                    class="mb-[18px] inline-block h-13 w-13 animate-[pay-spin_0.8s_linear_infinite] rounded-full border-4 border-riv-accent-track border-t-riv-accent-strong motion-reduce:animate-none"
                     aria-hidden="true"
                   ></span>
                   <h1 [class]="cls.h1" id="pay-title">Confirming your booking…</h1>

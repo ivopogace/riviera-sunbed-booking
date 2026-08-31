@@ -56,6 +56,13 @@
   --color-riv-danger-border: var(--riv-danger-border);
   --color-riv-danger-action-fill: var(--riv-danger-action-fill);
   --color-riv-danger-action-border: var(--riv-danger-action-border);
+  --color-riv-accent-fill: var(--riv-accent-fill);
+  --color-riv-accent-border: var(--riv-accent-border);
+  --color-riv-accent-chip-fill: var(--riv-accent-chip-fill);
+  --color-riv-accent-chip-border: var(--riv-accent-chip-border);
+  --color-riv-accent-track: var(--riv-accent-track);
+  --color-riv-accent-strong: var(--riv-accent-strong);
+  --color-riv-solid-btn-ink: var(--riv-solid-btn-ink);
   --color-riv-card-track: var(--riv-card-track);
 
   --color-riv-pop-surface: var(--riv-pop-surface);
@@ -183,6 +190,33 @@
   --riv-danger-border: rgba(179, 54, 43, 0.35);
   --riv-danger-action-fill: rgba(179, 54, 43, 0.1);
   --riv-danger-action-border: rgba(179, 54, 43, 0.75);
+
+  /** The `--riv-accent-*` tint family: the brand teal (the --riv-photo-grad stops #2bb8d4 and
+      #0e8aa8) as the three tinted treatments that paint POSITIVE state — the info panel, the
+      selected chip, and the pay spinner's track. Pre-composed rgba, like --riv-danger-* above,
+      because a Tailwind `/opacity` modifier compiles to color-mix() and changes the computed
+      value. The ink on all of them is --riv-accent-ink.
+
+      Declared ONCE, with no dark counterpart, and that is deliberate: these tints painted the
+      same literal in every theme before they were tokens, so a dark override would be a silent
+      restyle rather than a sweep. Whether the brand tints should follow the theme is a real
+      question and a separate one. AA-proven by accent-tokens.contrast.spec.ts; the `*-border`
+      pair is non-text chrome (WCAG 1.4.11) and reaches only ~1.5:1 — raising it needs a darker
+      hue, not more alpha, and belongs with the danger panel's identical boundary (#834).
+      Rationale: docs/plans/accent-teal-token-sweep.md */
+  --riv-accent-fill: rgba(43, 184, 212, 0.12);
+  --riv-accent-border: rgba(14, 138, 168, 0.35);
+  --riv-accent-chip-fill: rgba(43, 184, 212, 0.18);
+  --riv-accent-chip-border: rgba(14, 138, 168, 0.75);
+  --riv-accent-track: rgba(43, 184, 212, 0.25);
+  --riv-accent-strong: #0e8aa8;
+
+  /** Ink for the solid outline buttons (booking-view / review-panel Cancel-Keep-Edit-Remove,
+      my-bookings Retry). Theme-invariant BY DESIGN, unlike --riv-accent-ink: the #f4f6f7 fill it
+      sits on does not theme either, and booking-view.contrast.spec.ts already pins the rule that
+      a themed ink over a fixed fill drifts between themes. Giving this a dark value would flip it
+      light-on-light. The fill/hover/border literals around it are #836's. */
+  --riv-solid-btn-ink: #0a4f5e;
   --riv-card-track: rgba(12, 42, 51, 0.12);
 
   /** The near-opaque popover surface (theme picker, account menu, mobile sheet — app.ts POP)

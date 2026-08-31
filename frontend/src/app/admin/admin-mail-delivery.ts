@@ -64,13 +64,13 @@ import { TouchTarget } from '../shared/touch-target';
             autocapitalize="off"
             spellcheck="false"
             aria-describedby="admin-delivery-intro"
-            class="w-[280px] max-w-full rounded-[10px] border border-white/70 bg-white/85 px-3 py-2 text-[14px] text-[#0a4f5e] [transition:border-color_0.15s_ease] focus-visible:border-[#0a4f5e]"
+            class="w-[280px] max-w-full rounded-[10px] border border-white/70 bg-white/85 px-3 py-2 text-[14px] text-riv-accent-ink [transition:border-color_0.15s_ease] focus-visible:border-riv-accent-ink"
           />
         </label>
         <button
           appTouchTarget
           type="submit"
-          class="inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-[#0a4f5e] shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+          class="inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-riv-accent-ink shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
           [appBusy]="searching()"
           data-testid="admin-delivery-lookup"
         >
@@ -130,7 +130,7 @@ import { TouchTarget } from '../shared/touch-target';
               <button
                 appTouchTarget
                 type="button"
-                class="mt-3 inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-[#0a4f5e] shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                class="mt-3 inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-riv-accent-ink shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
                 [appBusy]="resending() !== undefined"
                 (click)="onResend(booking.bookingId)"
                 [attr.data-testid]="'admin-delivery-resend-' + booking.bookingId"
