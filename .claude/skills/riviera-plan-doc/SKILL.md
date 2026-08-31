@@ -13,9 +13,9 @@ engine — here `riviera-sdlc` driving Pocock's `implement` + `tdd` (superpowers
 engine; it adds the plan-doc structure this marketplace needs, with
 `references/plan-doc-template.md` as the **single home of section guidance**.
 
-The invariants at stake (#1 JDBC-only, #2 availability, #8 payments, #11 module
-boundaries) are canonical in `CLAUDE.md`; the incidents behind the discipline live
-in `riviera-sdlc` `references/case-history.md`.
+This skill is **preventive** — built from the risks the design surfaced, not from
+post-mortems; the invariants at stake (#1 JDBC-only, #2 availability, #8 payments,
+#11 module boundaries) are canonical in `CLAUDE.md`.
 
 Load at the **plan stage** when starting a riviera feature, and again when picking
 up a riviera plan to **execute** in a fresh session.
@@ -106,7 +106,8 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    the one that *found* the population, not one that confirmed the members you had
    already guessed.
 
-   > **Case history (#641).** PR #618's audit asked whether its defect held for "the
+   > **Incident #641 (its full telling lives here, not in `case-history.md` — that file
+   > is scoped to `riviera-sdlc`'s rules).** PR #618's audit asked whether its defect held for "the
    > other two guards", answering "all three" — there were **four**: whole-file
    > `check-comment-only.mjs` invokes git like its siblings but did not *resemble* them,
    > was never enumerated, and carried every defect for eight further PRs.
