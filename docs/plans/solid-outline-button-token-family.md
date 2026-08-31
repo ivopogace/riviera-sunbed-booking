@@ -197,15 +197,15 @@ N/A — no API shape changes.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write `solid-btn-tokens.contrast.spec.ts` red against the
-not-yet-declared tokens.
+**Next action:** Phase 1 — declare the five tokens + their `@theme inline` rows in
+`tailwind.css`, turning the three declaration guards green.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the family spec, red | | |
-| 1 — declare the tokens + `@theme` rows, green | | |
+| 0 — the family spec, red | ✅ | `<phase-0>` |
+| 1 — declare the tokens + `@theme` rows, green | ⏳ | |
 | 2 — repaint the three components onto them | | |
 | 3 — the mocked e2e (+ mutation check) | | |
 | 4 — ledger row + close-out | | |
