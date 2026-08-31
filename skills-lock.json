@@ -5,7 +5,9 @@
       "source": "angular/skills",
       "sourceType": "github",
       "skillPath": "angular-developer/SKILL.md",
-      "computedHash": "dc0d00affef561cd0181f5e2c38723fe645a1ecef591655d2b03ad95685812c9"
+      "ref": "936dcd7763a9877a555d8fb41fa077c2dcc0e19b",
+      "vendored": "verbatim — the whole skill dir (SKILL.md + references/), refreshed 2026-08-31 from angular/skills@936dcd77, the last upstream commit touching angular-developer/. computedHash = sha256 of SKILL.md with LF endings (the pre-refresh value came from the original installer and was not reproducible).",
+      "computedHash": "ec5e3a0b1ef218c0d7d40e35c40e5255e7319d7d595c5a6036d8bdac2532c782"
     },
     "angular-new-app": {
       "source": "angular/skills",
@@ -17,98 +19,113 @@
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/productivity/grilling/SKILL.md",
-      "ref": "main",
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
       "vendored": true
     },
     "grill-me": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/productivity/grill-me/SKILL.md",
-      "ref": "main",
-      "vendored": true
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "vendored": "verbatim, INCLUDING upstream's disable-model-invocation: true — keep it. It is the human's alias for `grilling` (its whole body is 'call the Skill tool with grilling'), so a model that wants it should call `grilling` directly."
     },
     "to-issues": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/to-issues/SKILL.md",
-      "ref": "main",
-      "vendored": "verbatim + cherry-picked two improvements from the newer engineering/to-tickets: native blocking-link wiring (second pass) and expand→contract sequencing for wide refactors"
+      "ref": "e84f5be0-era to-issues (upstream path since renamed to skills/engineering/to-tickets)",
+      "vendored": "verbatim + cherry-picked two improvements from the newer engineering/to-tickets: native blocking-link wiring (second pass) and expand→contract sequencing for wide refactors. DELIBERATELY NOT refreshed at the 2026-08-31 sweep: upstream renamed the skill to-tickets and swapped 'issue' for 'ticket' throughout, which fights this repo's GitHub-issue vocabulary; the only other upstream change was dropping the 'work the frontier one ticket at a time with implement' line, which we keep."
     },
     "to-spec": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/to-spec/SKILL.md",
-      "ref": "main",
-      "vendored": "verbatim body + a riviera localization note (epic-vs-slice altitude, GitHub-MCP tracker + triage-labels, feeds to-issues)"
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "vendored": "verbatim body + a riviera localization note (epic-vs-slice altitude, GitHub-MCP tracker + triage-labels, feeds to-issues) + template tags flattened to headings; upstream disable-model-invocation dropped so the skill stays listable. Localization rebased onto the current upstream body 2026-08-31."
     },
     "wayfinder": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/wayfinder/SKILL.md",
-      "ref": "main",
-      "vendored": "verbatim body + a riviera localization note (foggy-epics-only, GitHub-MCP tracker + wayfinder:* labels, research/prototype subagent substitution, map-vs-plan-doc state-store boundary); upstream agents/openai.yaml dropped"
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "vendored": "verbatim body + a riviera localization note (foggy-epics-only, GitHub tracker + wayfinder:* labels, map-vs-plan-doc state-store boundary); upstream agents/openai.yaml dropped, as is disable-model-invocation. Localization rebased onto the current upstream body 2026-08-31, and the research/prototype substitution bullet retired now that both skills are vendored. The body's 'Wayfinding operations' pointer now resolves: docs/agents/issue-tracker.md gained that section (sub-issues + native blocked_by dependencies, both probed live on the repo 2026-08-31; blocking has no MCP tool and its body takes the numeric issue_id, not #NN)."
     },
     "implement": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/implement/SKILL.md",
-      "ref": "main",
-      "vendored": true
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "vendored": "verbatim, INCLUDING upstream's disable-model-invocation: true — keep it. The Skill tool refuses this skill (probed 2026-08-31) and forbids re-enacting it, which is correct here: riviera-sdlc's Implement row + the Skill-routing gate + riviera-local-debug already encode its five lines more precisely, and its unqualified 'run the full test suite once at the end' fights riviera-local-debug's scoped-run rule. It is the human's /implement entry command; the SDLC no longer routes to it. Do not drop the flag to 'fix' a refusal."
     },
     "tdd": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/tdd/SKILL.md",
-      "ref": "main",
-      "vendored": true
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "vendored": "verbatim — SKILL.md + mocking.md + tests.md. refactoring.md was deleted upstream (refactoring moved out of the red-green loop into the review stage) and is deleted here too; CONTRIBUTING.md and riviera-plan-doc were reworded to match."
     },
     "diagnosing-bugs": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
-      "ref": "main",
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
       "vendored": true
     },
     "codebase-design": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/codebase-design/SKILL.md",
-      "ref": "main",
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
       "vendored": true
     },
     "domain-modeling": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
-      "ref": "main",
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
       "vendored": true
+    },
+    "research": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/research/SKILL.md",
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "vendored": "verbatim body + a riviera localization note (findings land at docs/research/<slug>.md on the asking ticket's branch — the repo had no such convention and the skill asks for one; subagents expected; version-pinned primary sources incl. the angular-cli MCP); upstream agents/openai.yaml dropped. Vendored 2026-08-31 for wayfinder's research decision-ticket type, which previously had to be substituted with a bare Explore subagent."
+    },
+    "prototype": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/prototype/SKILL.md",
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "vendored": "verbatim body (SKILL.md + LOGIC.md + UI.md) + a riviera localization note (spike/<slug> branch, no plan doc, never a PR, never merged; npm not pnpm/bun; the spine invariants still bound what a prototype may validate; capture on the decision ticket); upstream agents/openai.yaml dropped. Vendored 2026-08-31 for wayfinder's prototype decision-ticket type, which previously had to be substituted with a bare spike branch."
     },
     "triage": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/triage/SKILL.md",
-      "ref": "main",
-      "vendored": true
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "vendored": "verbatim body (SKILL.md + AGENT-BRIEF.md + OUT-OF-SCOPE.md) + a riviera localization note (GitHub-MCP tracker + label mapping, issues-only — no PR triage surface); upstream disable-model-invocation dropped. The frontmatter description is also ours: upstream's advertises PR triage, which this repo does not do, and CLAUDE.md makes the description the authoritative 'when to load'. This entry read `true` before 2026-08-31; it was never verbatim."
     },
     "improve-codebase-architecture": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
-      "ref": "main",
-      "vendored": true
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "vendored": "verbatim, INCLUDING upstream's disable-model-invocation: true — keep it. It is a human-initiated deepening pass over existing code, deliberately outside slice work, so riviera-sdlc routes nothing to it."
     },
     "postgres": {
       "source": "planetscale/database-skills",
       "sourceType": "github",
       "skillPath": "skills/postgres/SKILL.md",
-      "ref": "main",
-      "vendored": "trimmed — generic-Postgres subset; PlanetScale-product references removed"
+      "ref": "73b20b7eb64716d8c7100c054f0677c0c6e77e30",
+      "vendored": "trimmed — generic-Postgres subset; the seven PlanetScale-product references (pgbouncer-configuration, ps-*) dropped, SKILL.md and query-patterns.md de-branded, upstream LICENSE copied in, and two references written here rather than vendored: concurrency-and-locking.md and connection-pooling.md. Audited 2026-08-31: all 15 shared reference files are byte-identical to upstream HEAD, and the only upstream postgres commit since vendoring (a9b2585e, do not session-SET on PgBouncer's port 6432) landed entirely in dropped ps-* files — nothing to port, and no exposure here (the backend sets no session state; timeouts are per-adapter)."
     },
     "playwright-cli": {
       "source": "@playwright/cli",
       "sourceType": "npm",
       "skillPath": "playwright-cli/SKILL.md",
-      "vendored": "verbatim — the official Playwright skill shipped with the @playwright/cli npm package; refreshed by reinstalling the package skill, not by hand-editing"
+      "ref": "0.1.14",
+      "vendored": "verbatim — the official Playwright skill, refreshed by reinstalling the package skill, never by hand-editing. PIN IT TO THE INSTALLED PLAYWRIGHT: this copy is byte-identical to the skill bundled in playwright 1.61.1, which is what frontend/package.json's @playwright/test resolves to. @playwright/cli@0.1.18 (= the skill bundled in playwright 1.62.1) documents commands the 1.61.1 CLI does not have — find, screenshot --hires, open --mobile/--device, npx playwright cli — so it is deliberately NOT vendored ahead of the dependency. Refresh it in the same change that bumps @playwright/test; from 1.62.1 the bundle lives at playwright-core/lib/tools/skills/ and also ships playwright-component-testing and playwright-trace."
     }
   }
 }

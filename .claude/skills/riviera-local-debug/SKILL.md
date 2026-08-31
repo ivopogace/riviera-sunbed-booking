@@ -1,6 +1,6 @@
 ---
 name: riviera-local-debug
-description: How to build, test, and run riviera-sunbed-booking locally — especially in a Claude Code cloud session, where the Gradle wrapper cannot self-provision, the full backend test task can OOM-kill the container, and Testcontainers ITs need the hook-provided dockerd (they skip cleanly without one). Load BEFORE the first ./gradlew, gradle, or npm invocation of a session, or when diagnosing a local build/test failure. It encodes the scoped-test discipline (smallest set that proves the change; CI owns the full suite) and points at the deeper runbooks (gradle-proxy-trust, docker-testcontainers).
+description: How to build, test, and run riviera-sunbed-booking locally — especially in a Claude Code cloud session, where the Gradle wrapper cannot self-provision, the full backend test task can OOM-kill the container, and Testcontainers ITs need the hook-provided dockerd (they skip cleanly without one). Load BEFORE the first ./gradlew, gradle, or npm invocation of a session, or when diagnosing a local build/test failure. It encodes the scoped-test discipline (smallest set that proves the change; CI owns the full suite).
 ---
 
 # Riviera local debug — build & test recipes
@@ -8,21 +8,12 @@ description: How to build, test, and run riviera-sunbed-booking locally — espe
 **Announce at start:** "Loaded riviera-local-debug — using the session-appropriate
 build/test recipe."
 
-## Why this skill exists
-
-Two lessons were paid for the hard way in cloud sessions and belong pre-made:
-
-1. **`./gradlew` dies on first use** in a repo-scoped cloud session (the proxy 403s the
-   pinned wrapper distribution), and nothing else routes you to the fix before you hit it.
-2. **`gradle test` (the full task) can OOM-kill the container** (exit 137) — it boots
-   several Spring contexts. The suite is CI's job, not the sandbox's.
-
 ## Backend (Spring Boot, `platform/`)
 
 ### Cloud session (Claude Code on the web — the common case)
 
 The pinned Gradle wrapper **cannot self-provision** (repo-scoped proxy blocks the
-distribution download) and Gradle 8.14 cannot *run* on JDK 25. Recipe — details and
+distribution download) and the image's system Gradle 8.14 cannot *run* on JDK 25. Recipe — details and
 rationale in `docs/agents/gradle-proxy-trust.md` (read it on any TLS/PKIX or 403 error):
 
 ```bash
@@ -41,7 +32,8 @@ gradle --no-daemon --console=plain compileJava compileTestJava
 ### Scoped tests — the discipline (any environment)
 
 Run the **smallest set that proves the change**; never the bare `test` task in a cloud
-sandbox (OOM risk — and broad IT sweeps are slow on the vfs storage driver):
+sandbox (it boots several Spring contexts and can OOM-kill the container, exit 137 — and
+broad IT sweeps are slow on the vfs storage driver):
 
 ```bash
 # the structural net (fast, context-free — run after any backend structure change)
@@ -67,20 +59,19 @@ gradle --no-daemon --console=plain test --tests "*<ClassName>*"
 Scoped batches share almost nothing; CI's full suite runs every test through **cached,
 long-lived Spring contexts in one JVM**. So there is a failure class that scoped runs
 **cannot** show: **cross-cutting stateful infrastructure accumulating state across tests**.
-It has bitten twice in one day:
 
-- **#127:** a new per-IP login rate limiter passed every scoped batch, then failed the full
-  suite with 19×429 — every MockMvc login in the JVM shared the one default client IP and
-  blew the 10/min budget mid-run. Fix: each test login presents a unique `X-Forwarded-For`
-  (`SessionLoginSupport.uniqueClientIp()`). **Since #129 that address must also be
-  _untrusted_** — the resolver now skips hops inside `riviera.ratelimit.trusted-proxies`
-  (loopback + RFC1918 + link-local), so a "unique" `10.x`/`192.168.x` value is read as a proxy
-  hop, falls through to the loopback MockMvc peer, and silently recreates the #127 lockout.
-  The helper mints `198.18.x.y` (RFC 2544) for exactly this reason. **Since #286 the resolver
-  also prefers an edge-supplied client-IP header** (`riviera.ratelimit.client-ip-header`,
-  shipped `CF-Connecting-IP`) ahead of the `X-Forwarded-For` walk — the ITs deliberately do
-  **not** set it, so they keep taking the walk and this isolation rule is unchanged. A test
-  that *does* set that header takes over the key outright; don't mix the two in one test.
+- **#127:** a per-IP login rate limiter passed every scoped batch, then failed the full
+  suite — every MockMvc login in the JVM shares one default client IP and blows the login
+  budget mid-run. So each test login presents a unique `X-Forwarded-For`
+  (`SessionLoginSupport.uniqueClientIp()`). **That address must also be _untrusted_** —
+  the resolver skips hops inside `riviera.ratelimit.trusted-proxies` (loopback + RFC1918
+  + link-local), so a "unique" `10.x`/`192.168.x` value is read as a proxy hop, falls
+  through to the loopback MockMvc peer, and silently recreates the lockout; the helper
+  mints `198.18.x.y` (RFC 2544) for exactly this reason. **The resolver also prefers an
+  edge-supplied client-IP header** (`riviera.ratelimit.client-ip-header`, shipped
+  `CF-Connecting-IP`) ahead of the `X-Forwarded-For` walk — the ITs deliberately do
+  **not** set it, so they keep taking the walk. A test that *does* set that header takes
+  over the key outright; don't mix the two in one test.
 - **#98/#122:** an unconditional `@EnableScheduling` background sweep interfered with a
   race IT's timing window. Fix: a long `initial-delay` pushes the sweep out of test windows.
 
@@ -107,7 +98,7 @@ plain `npm run test:e2e` is the local real-backend suite (suite placement:
 **Playwright in a cloud session:** never run `playwright install` — Chromium is pre-installed
 at `/opt/pw-browsers/chromium` (a stable symlink), and the pinned `@playwright/test` often
 wants a *newer* revision than the image ships, so a bare run can fail with "Executable doesn't
-exist" (#164). The real-backend config (`playwright.config.ts`) auto-falls-back to that path
+exist". The real-backend config (`playwright.config.ts`) auto-falls-back to that path
 when `PW_CHROMIUM_EXECUTABLE` is unset; the mocked config (`playwright.a11y.config.ts`) honours
 only the env var — run it as `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`.
 
@@ -121,7 +112,7 @@ deployed-environment checks see `docs/deploy/` and the runbooks in `docs/runbook
 
 ## When NOT to use
 
-- CI configuration questions (that's `ci.yml` + issue #3 history, not this skill).
+- CI configuration questions (that's `ci.yml`, not this skill).
 - Diagnosing a *test failure's cause* — that's `diagnosing-bugs`; this skill only gets the
   tests *running* in the right scope.
 

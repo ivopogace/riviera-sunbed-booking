@@ -1,6 +1,13 @@
 ---
 name: riviera-stripe-payments
-description: The locked payment model and Stripe integration conventions for the riviera-sunbed-booking project. Use this skill for ANY work in the payment or payout modules, any Stripe integration (PaymentIntents, webhooks, refunds), commission/payout-ledger logic, or whenever a task touches how tourists pay or how venues get paid. It encodes a deliberately-made architectural decision (collect-only, NO Stripe Connect, manual BKT payouts from a German entity) so no future session re-derives or accidentally reverses it. Load it even if the task only mentions "charge the card", "refund", "payout", "commission", or "Stripe webhook".
+description: >-
+  The locked payment model and Stripe integration conventions for the riviera-sunbed-booking
+  project. Use this skill for ANY work in the payment or payout modules, any Stripe
+  integration (PaymentIntents, webhooks, refunds), commission/payout-ledger logic, or
+  whenever a task touches how tourists pay or how venues get paid — the model is a
+  deliberately-made locked decision; load this skill rather than re-derive or reverse it.
+  Load it even if the task only mentions "charge the card", "refund", "payout",
+  "commission", or "Stripe webhook".
 ---
 
 # Riviera Stripe Payments

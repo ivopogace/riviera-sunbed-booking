@@ -1,8 +1,9 @@
 # <Feature Title> Implementation Plan
 
-> **For agentic workers:** to implement this plan use `implement` + `tdd` (installed),
-> or the superpowers `subagent-driven-development`/`executing-plans` skills if present
-> task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** to implement this plan use `tdd` at the plan's named seams
+> (`/implement` is the human's entry command — `riviera-sdlc`'s Implement row is the
+> model's route), or the superpowers `subagent-driven-development`/`executing-plans`
+> skills if present task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 > **Riviera discipline baked into this template:** the Availability & concurrency,
 > Spring-Modulith, and Payment & payout sections are first-class spec sections, not
@@ -29,8 +30,7 @@ here means the plan is not ready. `N/A — <reason>` only for a truly single-are
 slice.>
 
 > **The five leading entries are pre-filled on purpose — extend them, don't replace them**
-> (#447: pre-fill the constant so the author edits rather than recalls; full rationale:
-> `riviera-plan-doc` workflow step 0). Fill every parenthesis with what the skill actually
+> (case history: #447; the rule: `riviera-plan-doc` workflow step 0). Fill every parenthesis with what the skill actually
 > did — a name with a fixed label is cargo cult; RV-PROC-1 checks the line against the diff
 > either way. Keep `riviera-docs-freshness`'s parenthesis **explicit — `ran` (range +
 > findings) or `N/A — <reason>`**: "not listed" and "not applicable" read the same in a diff.
@@ -46,10 +46,22 @@ slice.>
 > inner hexagon — in domain terms** (`AvailabilityClaim` succeeds / `BookingConfirmed`
 > is published / the ledger accrues once), never the Angular button, the Stripe
 > redirect, or the HTTP status alone; tech-specific assertions belong in adapter-level
-> tests (Cockburn 2005). This keeps ACs stable across UI/payment-adapter churn and
+> tests. This keeps ACs stable across UI/payment-adapter churn and
 > reusable from any driving adapter.
+>
+> **These ACs ARE the pre-agreed seams — `tdd` writes no test at an unconfirmed seam,
+> and this section is where they get confirmed.** Each AC's *Pinned by* names the test,
+> and *Seam* names the public boundary it observes through — the port/interface/route,
+> not the class under test. For a backend AC the inner-hexagon rule usually settles it
+> (the `api/` or `spi/` port); **say it anyway**, and for a frontend AC say it always,
+> since "the inner hexagon" doesn't name one. Prefer an existing seam to a new one, and
+> the highest one that still reaches the behavior — fewer seams is better. A phase that
+> discovers it needs a seam this section didn't name stops and adds it here first.
+> "Confirmed" happens when this doc is agreed at the Plan gate — that approval IS `tdd`'s
+> confirm-with-the-user step; implementation doesn't re-ask. (Plan docs agreed before
+> 2026-08-31 predate the *Seam* field — forward-only; see `riviera-plan-doc` step 1.)
 
-- [ ] **AC-1:** Given <precondition>, when <action>, then <observable outcome>. *Pinned by:* `<TestClassName>.<testMethodName>`
+- [ ] **AC-1:** Given <precondition>, when <action>, then <observable outcome>. *Seam:* `<port / interface / route observed through>` · *Pinned by:* `<TestClassName>.<testMethodName>`
 - [ ] **AC-2:** ...
 
 ## Non-goals
@@ -73,11 +85,9 @@ slice.>
 |---|---|---|
 | e.g. "re-reads the whole queue after every accept/decline (reconcile)" | dropped → **restored** | was replaced by a local-only card removal; add it back |
 
-> Case history — **O6 #176**: the plan said "restyle only," but the new Requests tab replaced
-> StaffDaily's post-action **reconcile** with a local card removal — a *dropped* behavior that
-> read as *preserved*. The workflow review found it plus 5 siblings (stale queue, frozen clock,
-> badge races) as **14 findings**, ~40% of the build effort spent re-fixing. One ledger row at
-> plan time would have pre-empted the whole class.
+> Case history — **#176**: a "restyle only" claim hid a dropped reconcile behavior; one
+> ledger row at plan time would have pre-empted 14 findings (told in full in `riviera-sdlc`
+> `references/case-history.md`).
 
 ## Risk register
 
@@ -125,8 +135,8 @@ Resolved entries move under a `### Resolved` sub-heading with the outcome + SHA.
   DO NOTHING` claim | other — and why>
 - **Pool rule (invariant #3):** <how online bookings are restricted to online-pool
   sets>
-- **Cutoff rule (invariant #4):** <how same-day booking is prevented; cutoff time +
-  timezone>
+- **Cutoff rule (invariant #4):** <how the venue's `sales_close` fence on day D holds,
+  `Europe/Tirane` — and, if cancellation is in scope, its separate evening-before boundary>
 - **Pinning test:** `<ConcurrentReservationIT.<method>>` — proves two concurrent
   reservations of the same `(set, date)` cannot both succeed.
 
@@ -153,22 +163,20 @@ Resolved entries move under a `### Resolved` sub-heading with the outcome + SHA.
 
 | # | Event | Published by | Payload (ids) | Subscribers | Sync/async | Pinned by test |
 |---|---|---|---|---|---|---|
-| EV-1 | `BookingConfirmed` | `booking` | `{ bookingId, setId, venueId, bookingDate }` | `availability`, `payout` | async `AFTER_COMMIT` | `<…>` |
+| EV-1 | `BookingConfirmed` | `booking` | `{ bookingId, setId, venueId, bookingDate }` | `payout`, `notification` | async `AFTER_COMMIT` | `<…>` |
 
 ### Module ownership (§4a)
 
 > **Required whenever the slice adds or moves behavior.** For each new or changed
-> capability, state which module owns it and why, checked against
-> `RESPONSIBILITIES.md`. The justification must cite the owner's **Job** line *and*
-> confirm the capability is **not** on another module's **Not My Job** list. This
-> is the plan-time boundary gate: a capability that lands on some module's
-> Not-My-Job list, or that two modules both claim, is a boundary error to resolve
-> **before** code — catching a misplacement here is a sentence; at review it's a
-> diff. Pay special attention to the two decision-vs-execution splits (`booking`
-> decides refunds / `payment` executes; `venue` stores the commission rate /
-> `payout` computes) and the Need-To-Know rule (a subscriber gets ids, never a
-> foreign aggregate). If the slice touches only one module and adds no cross-module
-> interaction, a one-line "all in `<module>`, no boundary change" suffices.
+> capability, state which module owns it and why: the justification cites the owner's
+> **Job** line *and* confirms the capability is **not** on another module's **Not My
+> Job** list (`RESPONSIBILITIES.md`). A capability on some module's Not-My-Job list, or
+> that two modules both claim, is resolved **before** code — a misplacement caught here
+> is a sentence; at review it's a diff. Pay special attention to the two
+> decision-vs-execution splits (`booking` decides refunds / `payment` executes; `venue`
+> stores the commission rate / `payout` computes) and the Need-To-Know rule (a
+> subscriber gets ids, never a foreign aggregate). Single module, no cross-module
+> interaction → a one-line "all in `<module>`, no boundary change" suffices.
 > `riviera-review-overlay` **RV-BE-11** re-checks this table against the diff.
 
 | Capability (what the slice adds/changes) | Owner module | Justification |
@@ -253,18 +261,15 @@ Skill-routing gate for what the fix touches *before* editing).
 
 > Map files to be created/modified before defining tasks.
 >
-> **Every path in the diff, including the one-line ones — and this is machine-checked.** Listing
-> only the interesting files was a review finding on five consecutive slices (#438, #522, #524,
-> #525, #526), and the paths that fall out are always the same shape: a registry entry, a
-> comment-only freshness fix, a docs-sweep file. Since #533 CI fails the PR on any path the diff
-> changed and this section does not list. Run it yourself before pushing — it is the check, not a
-> reminder to do the check by hand:
+> **Every path in the diff, including the one-line ones — and this is machine-checked.** CI
+> fails the PR on any path the diff changed and this section does not list. Run it
+> yourself before pushing — it is the check, not a reminder to do the check by hand:
 >
 > ```bash
 > node scripts/check-plan-file-structure.mjs --diff origin/main
 > ```
 >
-> Since #654 it judges untracked paths as well as the diff, so a file you have written but not
+> It judges untracked paths as well as the diff, so a file you have written but not
 > staged is caught too. **Stage or commit this plan doc first** — `git add` is what marks it as part
 > of the change, and with the doc merely written the guard short-circuits and passes whatever the
 > section says. A file you never intend to commit belongs behind an ignore rule (`.git/info/exclude`
@@ -311,8 +316,8 @@ Population `<the mechanism, e.g. "every script that invokes git">` → enumerate
 candidates `<list>` → decision `<fix all / subset / skip + why>`. Append to the
 Generalization-audit log below.
 
-> **The population is defined by mechanism, not by resemblance** (#641; the full rule:
-> the generalization-pass block in `riviera-plan-doc`). The recorded command must be the one that
+> **The population is defined by mechanism, not by resemblance** (case history: #641; the
+> rule: `riviera-plan-doc` execution-time step 1). The recorded command must be the one that
 > *found* the population, not one that confirmed the members you had already guessed.
 
 - [ ] **Step 6: Commit** — `git commit -m "<imperative subject> (#NN)"`
@@ -324,7 +329,7 @@ Generalization-audit log below.
 ## Generalization-audit log
 
 > Append-only. One row per bug-fix / pattern-introducing phase. **Population** names the
-> mechanism swept and how it was enumerated (mechanism-not-resemblance — #641, Step 5).
+> mechanism swept and how it was enumerated (mechanism-not-resemblance — Step 5).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|

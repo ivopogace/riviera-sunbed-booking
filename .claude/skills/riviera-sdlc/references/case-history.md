@@ -1,8 +1,8 @@
 # Case history — the incidents behind the rules
 
-Every oddly specific rule in riviera-sdlc earned its specificity from one of these.
-Elsewhere in the skill they are cited as "(case history: #NNN)" — this file is the one
-place they are told in full. Read it when you want the why behind a gate.
+Every oddly specific rule in the riviera workflow skills earned its specificity from one
+of these. Elsewhere they are cited as "(case history: #NNN)" — this file is the one place
+they are told in full. Read it when you want the why behind a gate.
 
 ## #122 / #127 — red pushes rode along unnoticed (2026-07-02)
 
@@ -63,6 +63,25 @@ one-line staleness patches the code PR could have carried. Lesson: run the
 `riviera-docs-freshness` staleness grep **pre-merge** (over `origin/main...HEAD`) and fold
 the patches into the code PR itself; a second docs PR is a cost, not a habit.
 
+## O6 #176 — the "restyle only" claim that dropped a behavior
+
+The O6 plan said "restyle only," but the new Requests tab replaced StaffDaily's
+post-action **reconcile** with a local card removal — a *dropped* behavior that read as
+*preserved*. The workflow review found it plus 5 siblings (stale queue, frozen clock,
+badge races) as **14 findings**, ~40% of the build effort spent re-fixing. Lesson: on any
+slice that retires or replaces a surface, fill the plan doc's Behavior-parity ledger
+early, behavior by behavior — one row at plan time would have pre-empted the whole class.
+
+## #641 — the generalization audit that enumerated by resemblance
+
+PR #618's audit asked whether its defect held for "the other two guards", answering "all
+three" — there were **four**: whole-file `check-comment-only.mjs` invokes git like its
+siblings but did not *resemble* them, was never enumerated, and carried every defect for
+eight further PRs. `git ls-files 'scripts/*.mjs' | xargs grep -l "execFileSync('git'"`
+would have returned four on day one. Lesson: enumerate the audit population by
+**mechanism**, with a command that *finds* it — never by resemblance (the rule:
+`riviera-plan-doc`, execution-time step 1).
+
 ## PR #318 — the false-clean Sonar read (2026-07-25)
 
 The first `api/issues/search` read on PR #318 showed **0 issues** — because no analysis
@@ -71,7 +90,9 @@ existed yet, which is byte-for-byte identical to a genuinely clean PR. The real 
 could have pinned the stale "clean" answer across the whole gate. Lesson: never accept a
 zero issue count without the tells in `pr-gates.md` §2 step 2 — a **non-empty** `measures`
 array, a `success` conclusion on the `SonarCloud Code Analysis` check-run, and a
-cache-bust on every re-read.
+cache-bust on every re-read. (The trap once had a second origin — a duplicate
+push-triggered Sonar run whose skipped check-run could land last and mask the real one —
+removed by #418; the `needs:` cause remains.)
 
 ## #326→PR #347, #346→PR #352, #351→PR #354 — three docs-only close-out PRs
 

@@ -1,29 +1,29 @@
 ---
 name: riviera-review-overlay
-description: Project-specific review overlay for the riviera-sunbed-booking repo. Layers onto an active code review (the code-review plugin's /code-review, /review, or another active review engine) to add the RV-BE/RV-FE/RV-CT bank items built from the CLAUDE.md invariants — availability, payments, Modulith boundaries, money/timezone, per-venue authorization. Load whenever reviewing a diff or PR in this repo; it adds bank items, it does not run a review on its own.
+description: Project-specific review overlay for the riviera-sunbed-booking repo. Layers onto an active code review (the code-review plugin's /code-review, or another active review engine) to add the RV-BE/RV-FE/RV-CT bank items built from the CLAUDE.md invariants — availability, payments, Modulith boundaries, money/timezone, per-venue authorization. Load whenever reviewing a diff or PR in this repo; it adds bank items, it does not run a review on its own.
 ---
 
 # Riviera review overlay
 
 ## Purpose
 
-A code review (today the `code-review` plugin's `/code-review` / `/review`;
-historically the superpowers `*-review-interview` skills) walks its own generic
+A code review (today the `code-review` plugin's `/code-review`, or the harness's
+built-in `code-review` skill as its degraded fallback) walks its own generic
 FE/BE/contract banks. This overlay layers in the **riviera-specific** items — the
-`CLAUDE.md` invariants turned into checkable review gates (cited, never restated). It is **content**, not a workflow: bank items, severity hints, and
-verification commands contributed to an active review.
+`CLAUDE.md` invariants turned into checkable review gates (cited, never restated). It
+is **content**, not a workflow: bank items, severity hints, and verification commands
+contributed to an active review.
 
 ## Activation
 
-Load when **both** hold: a review is **active** (`/code-review` / `/review`, or
-whatever review engine is running), **and** the work is in the
+Load when **both** hold: a review is **active** (`/code-review`, or whatever
+review engine is running), **and** the work is in the
 riviera-sunbed-booking repo (a `CLAUDE.md` with the riviera invariants /
 `.claude/skills/riviera-*`, or an `AGENTS.md`/`CLAUDE.md` referencing
 `ai.riviera.platform.*` modules). This overlay **never runs alone** — it layers
 onto an active review; honor an explicit user invoke by starting the review first.
 In the `riviera-sdlc` flow, starting the review is your duty — via the invocation
-ladder in riviera-sdlc's `references/pr-gates.md` §1 (`/review <PR>` only as the
-degraded fallback); see riviera-sdlc's **Review gate**.
+ladder in riviera-sdlc's `references/pr-gates.md` §1.
 `/security-review` doesn't auto-load this overlay; consult the reference files directly.
 
 When loaded, announce: *"riviera-review-overlay loaded. Adding project-specific bank items."*
@@ -41,21 +41,13 @@ frontend-only review never pays for the backend bank:
   error body) — even with no frontend file touched — also load `references/fe-be-contract.md`.
 - **Frontend diff** → `references/frontend-conventions.md` — Angular standards,
   beach-map stale-availability handling, money/date rendering, no client secrets,
-  **RV-FE-8** (no *new* cross-feature folder import — the FE mirror of RV-BE-3;
-  the frozen set is `riviera-frontend`'s residual table: five behavioral edges
-  left after #489 moved the vocabulary to `shared/`), and **RV-FE-9** (a
-  transition that destroys the focused element moves focus — the repo's
-  most-repeated bug class, fifteen instances across #604/#614/#616/#621/#625.
-  One of the guard's two rules gates, the other only advises, and both have
-  shapes they cannot match — the item is what covers those), and **RV-FE-10**
-  (a live region outlives the content it announces — a region created together
-  with its message announces nothing, and the text being present means every
-  spec reading it passes either way; #741 shipped that on eight surfaces), and
-  **RV-FE-11** (an inline field error names its control via `[appFieldErrorFor]`,
-  and `aria-invalid` claims the *entered value* is wrong — never merely that a
-  write was refused; #823's gate found both halves missed, and the
-  Playwright-vs-CDP accname trap that made two reviewers report a 14-site defect
-  that was not there).
+  **RV-FE-8** (no *new* cross-feature folder import — the FE mirror of RV-BE-3),
+  **RV-FE-9** (a transition that destroys the focused element moves focus — the
+  repo's most-repeated bug class, and the guard's blind spots are exactly what the
+  item covers), **RV-FE-10** (a live region must outlive the content it announces),
+  and **RV-FE-11** (an inline field error names its control, and `aria-invalid`
+  claims the *entered value* is wrong — never merely that a write was refused).
+  Each item's full mechanics, guard postures, and case history live in the file.
 - **Fullstack diff** → both of the above, plus `references/fe-be-contract.md` —
   API typing, money/date on the wire, webhook-vs-redirect, idempotency.
 
@@ -83,8 +75,8 @@ method, or field is the repo's documented convention (`riviera-java-conventions`
 `api/` surface depends on it) and stays as long as it earns its length. Applies to what the diff
 writes; don't reflow untouched comments to satisfy it.
 
-**Don't walk this by hand — run the guard** (#529, after the item was raised on eight consecutive
-PRs): `node scripts/check-inline-comments.mjs --diff origin/main` lists every multi-line inline
+**Don't walk this by hand — run the guard:**
+`node scripts/check-inline-comments.mjs --diff origin/main` lists every multi-line inline
 comment the diff wrote, and the same check runs from a `PostToolUse` hook while the author edits
 and as a CI job on the PR. A clean run discharges the mechanical half of this item.
 
@@ -92,28 +84,25 @@ What it does **not** cover, which is what this item is still for:
 
 - **`#` files** (shell, YAML, `.properties`) and **SQL `--`** are outside the tool's four languages
   — `#` because every such file here carries multi-line header prose as its convention, SQL because
-  F-6 on PR #522 declined exactly that, citing `V9__payout_ledger.sql`. Judge these by eye, and
-  lean toward leaving them alone.
+  a review finding declined exactly that (PR #522, `V9__payout_ledger.sql`). Judge these by eye,
+  and lean toward leaving them alone.
 - **A one-line comment that shouldn't exist at all.** The rule's other half is "default to zero
   inline comments in a method"; the guard counts lines, it cannot weigh whether the *why* was
   already available from the code.
 
-The guard is diff-scoped by construction, so it will never flag the pre-existing multi-line blocks
-in `SecurityConfig` or `tailwind.css` — and neither should you.
+The guard is diff-scoped by construction — pre-existing multi-line blocks are not findings.
 
 ## RV-STYLE-2 — formatting is `prettier --check`'s job, not the reviewer's
 
 `frontend/.prettierrc` is enforced whole-scope: the frontend job's Format step runs bare
-`prettier --check src e2e`, and the tree has been clean since #631's one-time reformat (recorded
-in `.git-blame-ignore-revs`; it retired #615's diff-scoped wrapper, whose line-scoping existed
-only for the then-drifted tree). So a formatting comment on a frontend diff is either redundant
-with a gate that already ran or wrong:
+`prettier --check src e2e` over a clean tree (the one-time reformat is recorded in
+`.git-blame-ignore-revs`). So a formatting comment on a frontend diff is either
+redundant with a gate that already ran or wrong:
 
 - **Don't hand-flag `printWidth`, quote style, or wrapping** in `frontend/src` or `frontend/e2e`.
   If a line were really misformatted, the Format step would have failed the PR and named the
-  file — the raised-and-fixed round trip on PR #520 and the raised-and-rejected one on PR #612
-  are the two this gate exists to retire. A dirty file is fixed with `npm run format` (or a
-  scoped `npx prettier --write <file>`), never by a review comment.
+  file. A dirty file is fixed
+  with `npm run format` (or a scoped `npx prettier --write <file>`), never by a review comment.
 
 Outside that scope, hands off for two different reasons: `scripts/`, `docs/`, and `platform/`
 have no Prettier config at all (`resolveConfig` returns null there), while `frontend/`'s own
@@ -142,7 +131,7 @@ changed), and `npm test` is Vitest-in-jsdom — there is no `--browsers=ChromeHe
 
 | Thought | Reality |
 |---|---|
-| "`gradlew.bat` flipped CRLF→LF — that's corruption, revert it." | Check `.gitattributes` at every level (incl. `platform/.gitattributes`) first: `*.bat text eol=crlf` stores the blob **LF** and checks out CRLF, so an LF blob is the **correct** normalized form — don't "revert" it (git re-normalizes on `add`). Only a wrong **working-tree** EOL is a real finding (PR #37). |
+| "`gradlew.bat` flipped CRLF→LF — that's corruption, revert it." | Check `.gitattributes` at every level (incl. `platform/.gitattributes`) first: `*.bat text eol=crlf` stores the blob **LF** and checks out CRLF, so an LF blob is the **correct** normalized form — don't "revert" it (git re-normalizes on `add`). Only a wrong **working-tree** EOL is a real finding. |
 
 The authoring-idiom red flags (JPA/Lombok, float money, JVM-default-zone time,
 cross-module service calls, multi-line comments, …) live in the full table in
@@ -172,5 +161,5 @@ Surface these in the output — the overlay recommends, it does not execute:
   JDBC adapter) → `riviera-java-conventions`; the overlay flags the breach.
 
 Not for use outside the riviera-sunbed-booking repo — the items assume its invariants.
-`riviera-sdlc` loads this overlay at its Review gate; `triage` manages the issue/PR
-lifecycle around the review.
+`riviera-sdlc` loads this overlay at its Review gate; `triage` manages the **issue**
+lifecycle around the review (PRs are not a triage surface here — `docs/agents/issue-tracker.md`).

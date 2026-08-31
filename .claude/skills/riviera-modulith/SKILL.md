@@ -1,15 +1,14 @@
 ---
 name: riviera-modulith
 description: >-
-  The Spring Modulith STRUCTURE authority for riviera-sunbed-booking — module package layout, the
-  published surfaces (api/vocabulary/events/spi), @ApplicationModule/allowedDependencies,
-  port-vs-event collaboration, the ApplicationModules.verify() contract, the Event Publication
-  Registry, and module-scoped tests. Load BEFORE creating or modifying ANY backend Java in
-  platform/ — trigger on "add a module", "expose this to another module", "wire an event between
-  X and Y", "where does this class go", "why does ModularityTests fail", or any work in the venue /
-  availability / booking / payment / payout / customer / operator modules. Concrete mechanics
-  for invariants #11 and #1 (canonical in CLAUDE.md). Pairs with riviera-java-conventions,
-  codebase-design, and postgres.
+  The Spring Modulith STRUCTURE authority for riviera-sunbed-booking — module package layout,
+  the published surfaces (api/vocabulary/events/spi), the
+  @ApplicationModule/allowedDependencies + ApplicationModules.verify() contract, port-vs-event
+  collaboration, the Event Publication Registry, and module-scoped tests. Load BEFORE creating
+  or modifying ANY backend Java in platform/ — trigger on "add a module", "expose this to
+  another module", "wire an event between X and Y", "where does this class go", or "why does
+  ModularityTests fail". Concrete mechanics for invariants #11 and #1 (canonical in CLAUDE.md).
+  Pairs with riviera-java-conventions, codebase-design, and postgres.
 ---
 
 # Riviera Spring Modulith (hexagonal, JDBC-only)

@@ -1,14 +1,11 @@
 # Riviera backend overlay items
 
 Repo-specific backend bank items. Loaded by `riviera-review-overlay` and layered
-onto whatever generic backend bank the active review engine runs (today: the
-`code-review` plugin) — walked after it.
+onto whatever generic backend bank the active review engine runs — walked after it.
 
-Item format mirrors the generic banks: gate → follow-up → default severity → skill
-framing; items moved in from the overlay SKILL.md body (RV-BE-3c, RV-BE-9..12) and
-RV-BE-18 keep the compact prose form (statement → default severity → authority). Item IDs are
-historical, not sequential — see the note at RV-BE-9. Invariant numbers reference
-`CLAUDE.md`.
+Item format: gate → follow-up → default severity → skill framing; some items use a
+compact prose form instead. **Item IDs are historical, not sequential — never
+renumber.** Invariant numbers reference `CLAUDE.md`.
 
 ## Always-run (when scope is BE or Full-stack)
 
@@ -32,7 +29,7 @@ holdable by at most one party per date, even under concurrent requests?
   concurrently and asserts exactly one wins.
 - **Request-to-Book** adds two more guarded write paths on the same row: a
   **pending hold** when the request is placed, and a **release** on any of its three
-  terminal legs — venue decline, expiry sweep, or the guest's own withdraw (#123). A
+  terminal legs — venue decline, expiry sweep, or the guest's own withdraw. A
   pending hold blocks other reservations of that `(set, date)` exactly like a confirmed
   booking; each terminal leg frees it. Treat both as first-class write paths subject to
   the same single-winner guarantee.
@@ -45,9 +42,6 @@ missing concurrency test on a guarded path.
 **Skill framing:**
 - Pre-impl: "List every write path to the availability row. For each: which lock /
   atomic claim guarantees single-winner? Which test proves it?"
-- Peer-review: "Trace the reservation SQL. Is there a unique constraint AND a lock
-  or `ON CONFLICT`? Is there a concurrent test? If not, this is the double-booking
-  bug."
 
 ---
 
@@ -67,10 +61,6 @@ mapping), not ORM-managed.
 
 **Default severity:** **Blocker** for a JPA starter on the classpath or any
 `@Entity`; Major for `JpaRepository`.
-**Skill framing:**
-- Pre-impl: "Confirm the persistence approach is JDBC. No JPA starter, no entities."
-- Peer-review: "Is `JdbcOnlyArchitectureTests` green? Then read the build-file diff —
-  any `data-jpa`/Hibernate dependency is a finding on its own."
 
 ---
 
@@ -93,11 +83,6 @@ direction judgment, which is RV-BE-3b. Layout mechanics: invariant #11 +
 
 **Default severity:** **Blocker** for a cross-module non-`api/` import; Major for a
 missing `@ApplicationModule`.
-**Skill framing:**
-- Pre-impl: "Map cross-module dependencies — each is which `api/` port or which
-  event?"
-- Peer-review: "Is `ModularityTests` green? Then judge the seams it can't: right
-  collaboration kind (port vs event), right surface (RV-BE-3b)."
 
 ---
 
@@ -124,16 +109,13 @@ others *call* in `api/`, and a *driven* port another module *implements* in `spi
 leaked out of `application/`. This is `verify()`-legal either way, so the review gate
 is the only thing that catches it — api-vs-spi is semantic, not mechanically detectable.
 **Skill framing:**
-- Pre-impl: "For each new cross-module interface: does the other module CALL it (→ `api`)
-  or IMPLEMENT it (→ `spi`)? Who needs which named interface granted?"
 - Peer-review: "Find new `@NamedInterface` types and cross-module `implements`. Is any
   `api/` interface implemented by another module? Move it to `spi/`. Are `spi` grants
   limited to the implementor?"
-- Deeper mechanics: `riviera-modulith` (the *`api` vs `spi`* section).
 
 ---
 
-### RV-BE-3c. Published-surface placement — ports vs vocabulary vs events (#95)
+### RV-BE-3c. Published-surface placement — ports vs vocabulary vs events
 
 *Check when the published surface or domain tagging changes.* Complements RV-BE-3b
 (api/spi). A typed id / value record or a published event must not be added to a
@@ -143,8 +125,8 @@ god-port (instead of the role-named `SetBookingFacts`/`VenueRates` split) is a
 finding, default **Major** — but a further **tourist read** is not: the rule asserts
 dependency direction, not a frozen method list, and `VenueApiRoleSplitTests`'s Javadoc
 states that distinction outright. Raising it on a tourist read is a false positive
-(#760's `availabilityBetween` is the first live counterexample). This is enforced by `PublishedSurfacePlacementArchitectureTests`
-(landed with issue #95: api/spi = non-sealed interfaces only, events = records
+(#760's `availabilityBetween` is the live counterexample). This is enforced by `PublishedSurfacePlacementArchitectureTests`
+(api/spi = non-sealed interfaces only, events = records
 only, vocabulary = no plain interfaces, cross-module listener params in the owner's
 events surface) — verify that rule passes and judge the cases it can't (is a new
 type genuinely vocabulary?). An event class move must ship an `event_type` Flyway
@@ -164,9 +146,6 @@ rewrite (Event Publication Registry) — see V18.
   rolled-back transaction publishes nothing. (Payload rules: invariant #11.)
 
 **Default severity:** Major for a non-id payload; Minor for an over-broad payload.
-**Skill framing:**
-- Peer-review: "For each new event: payload fields — all ids? Any aggregate or
-  mutable business field embedded?"
 
 ---
 
@@ -202,9 +181,6 @@ the JVM default zone?
 
 **Default severity:** Major for JVM-default-zone logic on cutoff/booking-date; Minor
 for cosmetic local-time persistence.
-**Skill framing:**
-- Peer-review: "Find date/cutoff math. Is the zone explicit (`Europe/Tirane`)? Is
-  storage UTC? Any `LocalDateTime.now()` without a zone?"
 
 ---
 
@@ -247,16 +223,8 @@ reversing it?
 
 **Default severity:** **Blocker** for double-accrual or missing reversal; Major for
 hardcoded commission.
-**Skill framing:**
-- Peer-review: "Confirm the accrual is idempotent per booking and that a refund
-  reverses it. Trace where commission rate comes from."
 
 ---
-
-> **Item IDs are historical, not sequential** — an item keeps the ID it entered the
-> bank with. RV-BE-9..12 below moved here from the overlay SKILL.md body with their
-> IDs intact; the file's earlier, unrelated 9..12 were renumbered to RV-BE-14..17.
-> Do not renumber.
 
 ### RV-BE-9. Per-venue authorization / BOLA (invariant #13)
 
@@ -265,16 +233,16 @@ Any diff that touches a **venue-scoped** endpoint or service
 staff availability, weather refund) must verify the **authenticated operator owns
 the path `venueId`** — and that the check sits in the **application service**, not
 the controller alone. The check is the `operator` module's `assertOwns` consulted
-from the application service (shipped #73/#74, pinned by `CrossVenueDenialIT`) —
+from the application service (pinned by `CrossVenueDenialIT`) —
 verify any **new** venue-scoped surface calls it too, and that no driving adapter
 bypasses it. A shared role is necessary but not sufficient (OWASP API #1, BOLA) —
 default **Blocker** whenever a venue-scoped surface is touched. Platform-wide
-`/api/admin/**` is role-gated and exempt — and since #528 that gate is machine-checked
-rather than read: `AdminSurfaceRoleGateTest` discovers the mapped `/api/admin/**`
+`/api/admin/**` is role-gated and exempt — and that gate is machine-checked rather than
+read: `AdminSurfaceRoleGateTest` discovers the mapped `/api/admin/**`
 endpoints and fails the build unless each refuses both non-admin principal types, so a
 new admin endpoint needs its `hasRole(ADMIN_ROLE)` matcher and there is no allow-list to
-opt out through. (Authority: invariant #13.) Since #115 the
-denial is uniform: `403 NOT_VENUE_OWNER` **before any existence check**, even for a
+opt out through. (Authority: invariant #13.) The denial is
+uniform: `403 NOT_VENUE_OWNER` **before any existence check**, even for a
 nonexistent venue — a 404 that leaks the existence of an unowned venue is a finding.
 
 ---
@@ -291,14 +259,13 @@ A controller introducing a bespoke `{"error": …}` body or a per-controller
 **condition**, not the remedy. A `detail` written as user-facing copy — a remedy
 ("Reload and try again"), a consequence ("…so it can't be removed"), UI navigation
 ("Switch to Edit sets…") — duplicates wording the client already owns and renders,
-reaches no user, and drifts (#567 → #607 → #610). Default **Minor**. Two traps when a
+reaches no user, and drifts (#610). Default **Minor**. Two traps when a
 diff *fixes* one: shortening it into a restatement of the `code` (which carries nothing
 RFC 7807 asks `detail` to carry), and shortening it into something **untrue** of the
 broadest arm the code serves.
 
-**No call site is exempt any more** — #644 swept the tree and fixed all ten remedy-voiced
-call sites, so a `detail` in remedy voice is now a plain finding wherever it appears. Two
-things to check that a diff can hide, both of which #644 hit:
+**No call site is exempt** — the #644 sweep cleared the tree, so a `detail` in remedy
+voice is a plain finding wherever it appears. Two things to check that a diff can hide:
 
 - **A code emitted from more than one call site must carry one string**, and the pin belongs
   on the *pair* — `CurrentPasswordDetailTwinTest` compares two live responses to each other,
@@ -389,8 +356,6 @@ mis-slice inside a module). Authority: `ADR-0007` + `riviera-modulith`.
   matters: invariant #7.)
 
 **Default severity:** Major for a predictable code; Minor for logging it.
-**Skill framing:**
-- Peer-review: "How is the booking code generated? Random or derived from an id?"
 
 ---
 
@@ -407,9 +372,6 @@ server, not just hidden in the UI?
 - Cutoff time + zone come from config (default 18:00 `Europe/Tirane`).
 
 **Default severity:** Major for UI-only enforcement of either rule.
-**Skill framing:**
-- Peer-review: "Can a direct API call book a walk-in-pool set or a same-day date?
-  Where is the server-side guard?"
 
 ---
 
@@ -426,13 +388,6 @@ server, not just hidden in the UI?
 
 **Default severity:** Major for client-supplied refund amounts; Minor for duplicated
 thresholds.
-**Skill framing:**
-- Pre-impl: "List the refund triggers (cutoff, post-cutoff, weather). For each:
-  where is eligibility + amount computed, and from which single source of the
-  threshold values?"
-- Peer-review: "Trace the refund path. Does the server compute eligibility and
-  amount from booking state + policy, or does the client supply the amount? Is the
-  weather refund an explicit admin action?"
 
 ---
 
@@ -459,16 +414,16 @@ unsanitized untrusted text in logs or unguarded deserialization.
 *Check when the diff touches a credential change, an account-lifecycle transition,
 or session machinery.* The shipped ordering guarantees must hold: (a) the
 principal's sessions are revoked **at the edge, synchronously**
-(`PrincipalSessionRevoker`) — deliberately not an event (#128); (b) the revoke
+(`PrincipalSessionRevoker`) — deliberately not an event; (b) the revoke
 **brackets** the state change — before it (keyed by a status-guarded pre-read:
 `OperatorLifecycle#usernameInStatus`, `CustomerAccountRecovery#emailForResetToken`)
-AND after — so a transient revoke failure is retry-recoverable (#357); (c) a
+AND after — so a transient revoke failure is retry-recoverable; (c) a
 self-service password change revokes the *other* sessions before the hash write and
-re-issues the surviving session under a new id via `SessionIdentity#rotate` (#344;
-post-#359 rotate carries the attributes over, hard-DELETEs the old row, and creates
-a fresh one — pinned by `SessionIdentityTest`); (d) a rate-limit budget guarding
+re-issues the surviving session under a new id via `SessionIdentity#rotate` (rotate
+carries the attributes over, hard-DELETEs the old row, and creates a fresh one —
+pinned by `SessionIdentityTest`); (d) a rate-limit budget guarding
 **authenticated** work refunds a request denied 401/403 before the work, while
-login budgets still charge (#343). Default **Blocker**. (Authority: the CLAUDE.md
+login budgets still charge. Default **Blocker**. (Authority: the CLAUDE.md
 `operator` module note; plan docs `session-revocation.md`,
 `session-revoke-ordering-remaining-surfaces.md`,
 `password-change-atomicity-session-rotation.md`, `session-rotation-lost-update.md`,
@@ -493,6 +448,3 @@ constraints that enforce invariants exist in SQL (not just app code)?
 
 **Default severity:** Blocker for the availability uniqueness missing at the DB
 level; Major for unversioned schema change.
-**Skill framing:**
-- Peer-review: "Is there a migration? Does the DB enforce the availability
-  uniqueness, or only the service layer?"

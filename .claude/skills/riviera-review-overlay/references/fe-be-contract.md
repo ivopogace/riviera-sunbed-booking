@@ -1,8 +1,8 @@
 # Riviera FE↔BE contract overlay items
 
 Repo-specific full-stack contract bank items. Loaded by `riviera-review-overlay`
-and layered onto whatever generic contract bank the active review engine runs
-(today: the `code-review` plugin) — walked after it.
+and layered onto whatever generic contract bank the active review engine runs —
+walked after it.
 
 Activates when the parent skill's contract bank activates (Full-stack scope OR a
 contract change). Invariant numbers reference `CLAUDE.md`.
@@ -26,11 +26,10 @@ typed services, with the backend DTO as the single source of shape?
 
 **Default severity:** Major for `as any` on a contract response; Major for a stale
 hand-stubbed type.
-**What the linter already covers (since #632) — so review effort goes where it doesn't.**
-An explicit `as any` was never this item's hard part: `no-explicit-any` ships in
-`tseslint.configs.recommended` and has always failed the build. What #632's type-aware flip
-added is the **unsafe-`any` family** (`no-unsafe-assignment`/`-member-access`/`-argument`/
-`-call`/`-return`), which catches `any` that *leaks in* from an untyped library return and is
+**What the linter already covers — so review effort goes where it doesn't.**
+`no-explicit-any` ships in `tseslint.configs.recommended` and fails the build, and the
+type-aware **unsafe-`any` family** (`no-unsafe-assignment`/`-member-access`/`-argument`/
+`-call`/`-return`) catches `any` that *leaks in* from an untyped library return and is
 then read — the shape no grep finds, because nobody wrote the word `any`.
 
 What stays a **review** item is the half a type system cannot see: whether the FE type is
@@ -59,9 +58,6 @@ fully typed, and simply **wrong** about the wire passes every rule above. That d
 
 **Default severity:** Major for float money on the wire or a day-shifting date
 encoding.
-**Skill framing:**
-- Peer-review: "Inspect the JSON for amounts and dates. Minor-units integer? Plain
-  `LocalDate`? Any timestamp standing in for a calendar day?"
 
 ---
 
@@ -82,8 +78,6 @@ with the client redirect treated as UX only?
 **Default severity:** **Blocker** for a client-asserted confirmation; this is a
 money/trust correctness bug.
 **Skill framing:**
-- Pre-impl: "Draw the payment sequence: who confirms the booking, and from what
-  signal? It must be the verified webhook."
 - Peer-review: "Follow the confirm path across FE and BE. Does anything but the
   verified webhook set CONFIRMED?"
 
@@ -104,9 +98,6 @@ money/trust correctness bug.
   no-op.
 
 **Default severity:** Major for an unguarded double-submit path.
-**Skill framing:**
-- Peer-review: "What happens on a double-click or a network-retry of 'Book & pay'?
-  Two bookings? Two charges?"
 
 ---
 
@@ -127,6 +118,3 @@ machine-readable `code` the FE branches on?
 
 **Default severity:** Major for conflicts surfacing as 500s or a body outside the
 ProblemDetail contract; Minor for a missing friendly message.
-**Skill framing:**
-- Peer-review: "List the business error responses. ProblemDetail with a stable
-  `code`? Does the FE handle `SET_TAKEN` by refreshing rather than erroring?"

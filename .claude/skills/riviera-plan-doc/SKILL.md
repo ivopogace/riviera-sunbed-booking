@@ -1,6 +1,6 @@
 ---
 name: riviera-plan-doc
-description: Use at the plan stage of riviera-sdlc, or whenever writing or executing a plan for riviera-sunbed-booking work. Adds project-specific plan-doc discipline — mandatory testable acceptance criteria, a risk register, an open-questions register, and dedicated sections for the Spring-Modulith modules/events touched, the availability single-source-of-truth invariant, and the payment/payout flow. Pairs with the plan-doc template at references/plan-doc-template.md. The execution engine is Pocock implement + tdd (installed); the superpowers writing-plans/executing-plans plugin also works if present.
+description: Use at the plan stage of riviera-sdlc, or whenever writing or executing a plan for riviera-sunbed-booking work. Adds project-specific plan-doc discipline — mandatory testable acceptance criteria, a risk register, an open-questions register, and dedicated sections for the Spring-Modulith modules/events touched, the availability single-source-of-truth invariant, and the payment/payout flow. Pairs with the plan-doc template at references/plan-doc-template.md. The execution engine is tdd at the plan's named seams (/implement is the human's entry command, not a model route); the superpowers writing-plans/executing-plans plugin also works if present.
 ---
 
 # Riviera Plan Doc
@@ -8,15 +8,10 @@ description: Use at the plan stage of riviera-sdlc, or whenever writing or execu
 ## Overview
 
 A project-local **plan-doc discipline** layered on the active planning/execution
-engine — here `riviera-sdlc` driving Pocock's `implement` + `tdd` (superpowers
-`writing-plans`/`executing-plans` also work if installed). It does not replace the
+engine (`riviera-sdlc` driving `implement` + `tdd`). It does not replace the
 engine; it adds the plan-doc structure this marketplace needs, with
-`references/plan-doc-template.md` as the **single home of section guidance**.
-
-Riviera is greenfield — no backlog of post-mortems — so this skill is
-**preventive**, built from the risks the design surfaced; the invariants at stake
-(#1 JDBC-only, #2 availability, #8 payments, #11 module boundaries) are canonical
-in `CLAUDE.md`.
+`references/plan-doc-template.md` as the **single home of section guidance**. It is
+**preventive** — built from the risks the design surfaced, not from post-mortems.
 
 Load at the **plan stage** when starting a riviera feature, and again when picking
 up a riviera plan to **execute** in a fresh session.
@@ -53,17 +48,23 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    loaded skill + one phrase on what it changed in **Skills consulted**, and keep it
    current: re-run the gate whenever a phase enters an area the plan didn't anticipate.
    The template pre-fills the line's five constant entries (the routing table's
-   "Anything, always" row — that table stays the authority, so the two cannot drift):
-   RV-PROC-1 caught an omission on six consecutive slices when the line was free prose —
-   not six careless authors but a template asking a question whose answer is partly
-   constant, so the author now **edits rather than recalls** (case history:
-   `riviera-sdlc` `references/case-history.md` #447).
+   "Anything, always" row stays the authority), so the author **edits rather than
+   recalls** (case history: #447).
 
 1. **Acceptance criteria before phase 0:** convert the spec's user stories (or the
    GitHub issue) into testable ACs per the template (Given/When/Then, named test
-   class, written at the inner hexagon).
+   class, written at the inner hexagon). **Each AC names its seam** — `tdd` writes no
+   test at an unconfirmed seam, and this section is where the confirmation happens, so
+   an unnamed seam blocks phase 0 exactly as a missing AC does. Forward-only: plan docs
+   agreed before 2026-08-31 predate the *Seam* field — when re-entering one, name the
+   seam for the AC you are about to pin; don't halt over the rest.
 2. **Risk register + Open Questions before phase 0:** fill both sections per the
    template — its blockquote carries the risk categories that already matter here.
+   An open question the slice itself can answer may be discharged directly — `research`
+   for docs/API legwork, `prototype` for a shape that has to be felt (spike rules in its
+   localization) — closing the register entry with the note or verdict as its citation.
+   One the slice cannot answer is fog: escalate per `riviera-sdlc`'s issue-intake-gate,
+   never park it in the register.
 3. **Availability & concurrency:** if the feature touches booking, the beach map,
    or `availability`, fill the section per the template, stating how invariant #2
    (no double-sold set) is upheld — the highest-leverage section in the plan.
@@ -75,13 +76,14 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
 5. **Payment & payout:** if money moves, fill the section per the template — name
    the model (collect-only, **no Stripe Connect**) — and load `riviera-stripe-payments`.
 6. **Decompose into PR-sized phases.** Each phase merges to the feature branch and
-   is independently reviewable; prefer a TDD red-green-refactor shape per task.
+   is independently reviewable; prefer a TDD red-green shape per task, at seams named
+   in the plan (`tdd` keeps refactoring in the review stage, out of the loop).
 7. **Behavior-parity ledger — if the slice retires or replaces an existing surface.**
    Do this **early** (it shapes the ACs and Non-goals): fill the template's
    Behavior-parity ledger — enumerate the OLD surface's behaviors and mark each
    **preserved / changed / dropped (with reason)**. A "restyle/refactor only, no
    behavior change" claim is **not self-justifying** — verify it behavior-by-behavior
-   here. (Case history: O6 #176 — told in the template's ledger blockquote.)
+   here. (Case history: #176.)
 
 ## Workflow additions at execution time
 
@@ -97,15 +99,7 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    reads a `@Profile`), then enumerate every member of that population with a command,
    then judge each member. The search command in the log is the evidence: it should be
    the one that *found* the population, not one that confirmed the members you had
-   already guessed.
-
-   > **Case history (#641).** PR #618 fixed five false-clean defects across the repo's
-   > guards, and its audit log twice asks whether a defect is "true of the other two
-   > guards as well", answering "all three" both times. There were **four**:
-   > `check-comment-only.mjs` invokes git exactly like its siblings, but it is whole-file
-   > rather than diff-scoped, so it did not resemble them and was never enumerated. It
-   > carried every one of those defects for eight further PRs. `git ls-files 'scripts/*.mjs'
-   > | xargs grep -l "execFileSync\('git'" ` would have returned four on day one.
+   already guessed. (Case history: #641.)
 2. **Use AskUserQuestion for forks the evidence can't settle** — anything that
    changes the availability strategy, a module boundary, the payment flow, or a
    public `api/` port. Decide naming/style yourself.
@@ -118,9 +112,8 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    ```
 
    The sharpest trap: **the plan doc itself must be staged or committed** — merely written, the
-   guard short-circuits and passes. Everything else (#654 untracked-path judging, #533 CI
-   enforcement, the five-consecutive-slices history, the accepted path idioms): the template's
-   File-structure blockquote.
+   guard short-circuits and passes. Everything else (untracked-path judging, CI
+   enforcement, the accepted path idioms): the template's File-structure blockquote.
 4. **Scope test runs to the smallest set that proves the change** — the run recipes
    live in `riviera-local-debug`; load it before the session's first build/test invocation.
 
@@ -146,8 +139,7 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
 - Trivial changes (one-line fix, copy tweak, dependency bump).
 - Throwaway spikes (mark the branch as such and skip the plan doc).
 
-If unsure, load it anyway — an unnecessary plan doc costs one file; a missing one
-on a feature that touches availability or payments costs a trust-breaking bug.
+If unsure, load it anyway.
 
 ## Integration
 
@@ -157,11 +149,7 @@ on a feature that touches availability or payments costs a trust-breaking bug.
 - **Template:** `references/plan-doc-template.md` — every section's guidance lives there.
 - **Upstream:** the design spec in `docs/superpowers/specs/` (the source of
   intent); `grilling` when requirements are genuinely ambiguous.
-- **Co-load per the `riviera-sdlc` Skill-routing table** (the authority): `postgres`
-  (migrations), `codebase-design` + `domain-modeling` (module seams & vocabulary),
-  `riviera-java-conventions` (backend Java idioms), `riviera-stripe-payments` (money).
-- `riviera-frontend` + `angular-developer` — for frontend surfaces (structure /
-  folder placement, then Angular standards); consult the latter's `references/`
-  for signals, forms, routing, and testing detail.
+- **Co-load** per the `riviera-sdlc` Skill-routing table — the authority; workflow
+  step 0 runs it, so no list is repeated here.
 - **At the review gate:** `riviera-review-overlay` — RV-BE-11 re-checks the
   Module-ownership table against the diff; RV-PROC-1 re-checks *Skills consulted*.
