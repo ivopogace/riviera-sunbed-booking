@@ -58,11 +58,9 @@ const BACK_INK = '#0a4f5e'; // --riv-back-ink (.btn-back text)
 const DARK_BACK_INK = '#b7dfe9';
 const BACK_HOVER_FILL: Glass = { color: WHITE, alpha: 0.75 }; // --riv-wash-hover (.btn-back:hover)
 const DARK_BACK_HOVER_FILL: Glass = { color: WHITE, alpha: 0.16 };
-// --riv-wash-hover-border: --riv-back-ink at 45% per theme (issue #839).
-const BACK_HOVER_BORDER: Glass = { color: hexToRgb(BACK_INK.slice(1)), alpha: 0.45 };
-const DARK_BACK_HOVER_BORDER: Glass = { color: hexToRgb(DARK_BACK_INK.slice(1)), alpha: 0.45 };
-// Decorative (like --riv-danger-border), held below the 1.4.11 3:1 floor — pins it against fading out.
-const HOVER_BORDER_FLOOR = 2.2;
+// --riv-wash-hover-border: the button's own affordance boundary, tuned per theme to clear 3:1 (#839).
+const BACK_HOVER_BORDER: Glass = { color: hexToRgb(BACK_INK.slice(1)), alpha: 0.6 };
+const DARK_BACK_HOVER_BORDER: Glass = { color: hexToRgb(DARK_BACK_INK.slice(1)), alpha: 0.55 };
 
 // The AA-safe dark-teal header gradient stops (= --riv-cta-grad), carrying solid white ink — used
 // by the header AND the primary CTA. Theme-independent (the header teal does not vary by theme).
@@ -184,7 +182,7 @@ describe.each(THEMES)(
       }
     });
 
-    it("Back button's hover border reads against its hover fill (WCAG 1.4.11, issue #839)", () => {
+    it("Back button's hover border marks its own affordance boundary at 3:1 against its hover fill (WCAG 1.4.11, issue #839)", () => {
       for (const stop of theme.stops) {
         const panel = surfaceOver(theme.panel, stop);
         const hoverFill = composite(theme.backHoverFill.color, theme.backHoverFill.alpha, panel);
@@ -194,7 +192,7 @@ describe.each(THEMES)(
           hoverFill,
         );
         expect(contrastRatio(rgbToHex(border), rgbToHex(hoverFill))).toBeGreaterThanOrEqual(
-          HOVER_BORDER_FLOOR,
+          AA_LARGE,
         );
       }
     });

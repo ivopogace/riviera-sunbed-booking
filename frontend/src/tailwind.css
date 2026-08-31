@@ -234,18 +234,22 @@
   --riv-pill-fill: #ffffff;
 
   /** Translucent white washes over glass (segmented option cards, dialog close chip, the
-      dialog Back button, the dashed code inset) + the near-opaque dialog panel itself.
-      The dark theme swaps them for faint light-on-slate washes.
-      --riv-wash-hover-border is --riv-back-ink at 45% (rgba(10, 79, 94, 0.45)) — the dialog
-      Back button's hover-only border. Pre-composed rgba, like --riv-danger-*: a Tailwind
-      `/opacity` modifier compiles to color-mix() and changes the computed value. Declared here
-      rather than folded into --riv-back-ink because the ink itself stays solid; only the
-      border wants the tint. The dark theme's value is the SAME 45% formula over its own
-      --riv-back-ink (#b7dfe9), not this literal — issue #839. */
+      dialog Back button, the dashed code inset) + the near-opaque dialog panel itself. The
+      dark theme swaps `--riv-wash-fill/-border/-hover` for faint light-on-slate washes;
+      `--riv-wash-hover-border` below is its own case (next comment), not one of those three.
+      --riv-wash-hover-border is the dialog Back button's own hover-only boundary — its
+      SOLE visible border on hover, so it is an affordance boundary like
+      --riv-danger-action-border, not decorative chrome like --riv-danger-border, and is
+      held to the same WCAG 1.4.11 >=3:1 floor. It is --riv-back-ink tinted, at whatever
+      alpha clears 3:1 against --riv-wash-hover in THIS theme (light: 0.6; not one shared
+      formula, the same per-theme tuning --riv-danger-action-border got at #834/#837).
+      Pre-composed rgba, like --riv-danger-*: a Tailwind `/opacity` modifier compiles to
+      color-mix() and changes the computed value. Proof: booking-dialog.contrast.spec.ts's
+      "hover border marks the boundary at 3:1" test — issue #839. */
   --riv-wash-fill: rgba(255, 255, 255, 0.5);
   --riv-wash-border: rgba(255, 255, 255, 0.7);
   --riv-wash-hover: rgba(255, 255, 255, 0.75);
-  --riv-wash-hover-border: rgba(10, 79, 94, 0.45);
+  --riv-wash-hover-border: rgba(10, 79, 94, 0.6);
   --riv-inset-fill: rgba(255, 255, 255, 0.4);
   --riv-dialog-glass: rgba(255, 255, 255, 0.82);
   --riv-back-ink: #0a4f5e;
@@ -419,8 +423,8 @@
   --riv-wash-fill: rgba(255, 255, 255, 0.08);
   --riv-wash-border: rgba(255, 255, 255, 0.28);
   --riv-wash-hover: rgba(255, 255, 255, 0.16);
-  /* This theme's --riv-back-ink (#b7dfe9) at 45%, not the base block's literal — issue #839. */
-  --riv-wash-hover-border: rgba(183, 223, 233, 0.45);
+  /* This theme's own --riv-back-ink (#b7dfe9), tuned to clear 3:1 here — issue #839. */
+  --riv-wash-hover-border: rgba(183, 223, 233, 0.55);
   --riv-inset-fill: rgba(255, 255, 255, 0.08);
   --riv-dialog-glass: rgba(16, 26, 46, 0.94);
   --riv-back-ink: #b7dfe9;
