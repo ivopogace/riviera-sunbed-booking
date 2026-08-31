@@ -287,16 +287,16 @@ N/A — no contract change. No endpoint, DTO, or wire shape is touched.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window as the
 > change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `implement — phase 1 done, entering phase 2`
 
-**Next action:** Phase 1 step 1 — add the AC-4/AC-5 sweep tests to the guard spec and watch them
-fail on the three unmigrated sites.
+**Next action:** Phase 2 step 1 — write `e2e/console-negative-ink.e2e.ts` and watch it fail on the
+missing `ledger-net` locator.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Register the token, its mirror, and its declaration guard | ✅ | `<phase-0>` |
-| 1 — Migrate the three sites and reconcile the downstream guards | ⏳ | |
-| 2 — Prove the render and the porcelain pin (mocked e2e) | | |
+| 0 — Register the token, its mirror, and its declaration guard | ✅ | `56e1fd8` |
+| 1 — Migrate the three sites and reconcile the downstream guards | ✅ | `<phase-1>` |
+| 2 — Prove the render and the porcelain pin (mocked e2e) | ⏳ | |
 | 3 — Ledger class-R row + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -448,6 +448,7 @@ Modify `frontend/src/app/operator/payouts-tab.html` (the `data-testid="ledger-ne
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-08-31 | phase 0 (new pattern: a second token registered for a value another token already carries) | **Every registered token whose declared value coincides with another token's** — the mechanism the whole class-R question is about. Enumerated by extracting every `--riv-*: #hex;` declaration and asking which hex values appear more than once, rather than by listing the coincidences already in mind | `grep -oP '^\s*--riv-[a-z0-9-]+:\s*\K#[0-9a-f]{3,8}' src/tailwind.css \| sort \| uniq -d` | 13 duplicated values. Three are **role** coincidences inside one theme and each already has a distinctness guard: `#0a6e85` (#848), `#a3160e` (#850 + #854), and `#a3372a` — this slice's. Six are the same token declared once per theme block (`#7cd7e8`, `#ffa9a1`, `#f2f7fa`, `#8fd6e2`, `#ffffff`, `#0a2a33`), not coincidences at all. **Two are unguarded role coincidences**: `#0a4f5e` (`--riv-solid-btn-ink` / `--riv-back-ink` / `--riv-map-rail-ink`) and `#0f7d8c` (`--riv-tile-available-ink` / `--riv-tile-focus`) | **No action in this slice.** Both unguarded pairs are pre-existing, already-tokenised positions — nothing in this diff creates or widens them, and neither is class R's (whose row is the plain-literal `#a3372a` ink form). Fixing them here would be a second family in one slice. Recorded so the audit's finding is not lost |
+| 2026-08-31 | phase 1 (migration sweep) | **Every file in the tree that restates the literal `#a3372a`, in code or in prose** — the mechanism a role-scoped migration can leave behind, enumerated tree-wide over `src` + `e2e` rather than from the three files the ticket named. This is what surfaced `payout-statement.spec.ts`'s fixture and `solid-btn-tokens.contrast.spec.ts`'s `OUT_OF_FAMILY` guard, neither of which the issue lists | `grep -rn 'a3372a' src e2e \| sed 's/:.*//' \| sort \| uniq -c \| sort -rn` | 9 files after the migration | **Every remaining restatement has a named owner, so none is orphaned:** `tailwind.css` ×2 (the two declarations, asserted to stay two by AC-6) · `glass-tokens.ts` ×3 (one `hexToRgb` per token, by design) · `console-negative-token.contrast.spec.ts` ×3 (a *role* sweep must name the literal it excludes) · `solid-btn-tokens.contrast.spec.ts` ×5 (#851's guard — narrowed by this slice, AC-10) · `payouts-tab.html` ×1 (#852's `/opacity` tints, asserted present by AC-5) · `failure-panel.ts` ×2 + `booking-pay.ts` ×1 (#858's class-F medallions) · `solid-btn-token-skin.e2e.ts` ×1 (the button token's own pin, untouched by design) · `set-editor.contrast.spec.ts` ×1 (a true *value* statement in an otherwise-untouched file — declined as widening, recorded in Non-goals). No action |
 
 ---
 

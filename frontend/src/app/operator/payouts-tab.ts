@@ -132,7 +132,7 @@ export class PayoutsTab {
         grossStr: money(e.grossMinor, currency),
         commissionStr: money(e.commissionMinor, currency),
         netStr: money(sign * e.netMinor, currency),
-        netClass: reversal ? 'text-[#a3372a]' : 'text-riv-console-accent-ink',
+        netClass: reversal ? 'text-riv-console-negative-ink' : 'text-riv-console-accent-ink',
       };
     });
   });

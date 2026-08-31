@@ -34,7 +34,7 @@ describe('PayoutStatement (#173)', () => {
       grossStr: '€25',
       commissionStr: '€3.75',
       netStr: '-€21.25',
-      netClass: 'text-[#a3372a]',
+      netClass: 'text-riv-console-negative-ink',
     },
   ];
 

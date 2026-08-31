@@ -97,9 +97,10 @@ const GLOBAL_ROLES = [/#f4f6f7/i, /#e7ebec/i, /rgba\(200,\s*90,\s*60,\s*0\.5\)/i
  * wrongly demand those change too:
  *
  * <ul>
- *   <li>`#a3372a` has five other homes (`shared/failure-panel`, two `operator/payouts-tab` roles,
- *       `operator/daily-view-tab`, `booking/booking-pay`) — the over-claim #851 exists to avoid,
- *       and `payouts-tab.html`'s `/opacity` form is #852's;
+ *   <li>`#a3372a` has other homes — the over-claim #851 exists to avoid. Three remain since #864
+ *       moved the console's three PLAIN inks onto `--riv-console-negative-ink`: the two class-F
+ *       medallions (`shared/failure-panel`, `booking/booking-pay`, both #858's), and
+ *       `payouts-tab.html`'s `/opacity` form, which is #852's;
  *   <li>`border-[rgba(255,255,255,0.7)]` also skins `auth/auth-page`'s back button (over a
  *       translucent fill, not this solid one) and `venue/availability-calendar`'s popover.
  * </ul>
@@ -114,14 +115,18 @@ const SCOPED_ROLES = [/#a3372a/i, /border-\[rgba\(255,\s*255,\s*255,\s*0\.7\)\]/
 /**
  * The out-of-family `#a3372a` positions, by file. Asserted POSITIVELY: the sweep proving the family
  * moved is only half the claim, and this is the half that proves it did not overreach — the same
- * check the issue's AC calls for. Seven positions across these five files (`payouts-tab.html`
- * carries three on one element: border, fill and text).
+ * check the issue's AC calls for.
+ *
+ * <p>The list shrinks as the other tickets holding these positions land, and each removal is a
+ * migration this guard is watching for, never a relaxation: #864 took `operator/payouts-tab.ts`
+ * and `operator/daily-view-tab.html` off it by moving the console's PLAIN inks onto
+ * `--riv-console-negative-ink`. `payouts-tab.html` stays because its `/opacity` chip tints (#852's)
+ * do — the same element, a different position. One entry per line so the next removal is a
+ * deletion rather than a rewrite.
  */
 const OUT_OF_FAMILY = [
   'shared/failure-panel.ts',
-  'operator/payouts-tab.ts',
   'operator/payouts-tab.html',
-  'operator/daily-view-tab.html',
   'booking/booking-pay.ts',
 ];
 

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { AA_NORMAL, contrastRatio, rgbToHex } from '../../testing/contrast';
@@ -70,6 +70,31 @@ function cardSurface(stop: (typeof PORCELAIN_STOPS)[number]): string {
   return rgbToHex(surfaceOver(PORCELAIN_CARD_GLASS, stop));
 }
 
+/**
+ * This token's literal, matched **by role rather than by value**. `#a3372a` is emphatically not
+ * ours alone — it is `--riv-solid-btn-danger-ink`'s declared value, it paints two class-F
+ * medallions (#858), and the audit's class O carries it as `/opacity` chrome on the very element
+ * this token's reason-chip site sits in (#852). Only the plain INK role in `operator/` belongs to
+ * this token, so that is what the sweep matches: a bare value match would fail on sites this
+ * slice must not touch, and would silently do #852's work.
+ */
+const LITERAL_ROLE = /text-\[#a3372a\]/i;
+
+/** The reason chip's `/opacity` positions — #852's half, asserted PRESENT so an overreach fails. */
+const CHIP_TINTS = [/border-\[#a3372a\]\/28/i, /bg-\[#a3372a\]\/12/i];
+
+/**
+ * Every console source still painting that role — templates are inline `.ts` here, so both
+ * extensions are swept. Paths, not sources: the assertion names the file to fix instead of
+ * dumping the component that failed it.
+ */
+function consoleFilesPaintingTheLiteral(): readonly string[] {
+  const root = join(process.cwd(), 'src/app/operator');
+  return readdirSync(root, { recursive: true, encoding: 'utf8' })
+    .filter((path) => /\.(ts|html)$/.test(path) && !path.endsWith('.spec.ts'))
+    .filter((path) => LITERAL_ROLE.test(readFileSync(join(root, path), 'utf8')));
+}
+
 describe('Console negative-ink token (theme invariance + role distinctness, #864)', () => {
   it('clears AA over every porcelain stop the console paints it on', () => {
     for (const stop of PORCELAIN_STOPS) {
@@ -119,5 +144,15 @@ describe('Console negative-ink token (theme invariance + role distinctness, #864
         `the themed red's dark value over ${rgbToHex(stop)}`,
       ).toBeLessThan(AA_NORMAL);
     }
+  });
+
+  it('leaves no console file painting the ink as a literal', () => {
+    expect(consoleFilesPaintingTheLiteral()).toEqual([]);
+  });
+
+  it('leaves #852’s `/opacity` tints on the reason chip untouched', () => {
+    const chip = readFileSync(join(process.cwd(), 'src/app/operator/payouts-tab.html'), 'utf8');
+
+    expect(CHIP_TINTS.filter((tint) => !tint.test(chip))).toEqual([]);
   });
 });
