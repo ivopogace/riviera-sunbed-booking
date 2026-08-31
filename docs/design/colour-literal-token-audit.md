@@ -4,7 +4,7 @@
 **Source of intent:** [#836](https://github.com/ivopogace/riviera-sunbed-booking/issues/836),
 the generalization-audit residue from #829 (PR #833). Prior slices that cut families out
 of this population: **#829** (the negative/red admin family, PR #833), **#835** (the accent
-teal ink + tint family, PR #838).
+teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR #856).
 
 > **This file is not a design record.** `docs/design/README.md` governs the `.dc.html`
 > artboards — approved-look snapshots that are deliberately *never* rewritten to track the
@@ -63,7 +63,7 @@ actually generated, and nothing more.
 
 | Family | n | Token | Verdict | Status |
 |---|---:|---|---|---|
-| `text-[#a3160e]` in `operator/` (9 files) | 32 | `--riv-error-ink` | **migrate** — hosts are porcelain-pinned, where the token resolves `#a3160e` | **slice cut → #855** |
+| `text-[#a3160e]` in `operator/` (9 files) | 32 | `--riv-error-ink` | **migrate** — hosts are porcelain-pinned, where the token resolves `#a3160e` | **done — #855, PR #856** |
 | `#0a6e85` in `operator/` | 16 | `--riv-pop-accent` | **migrate, but name the role first** — value-correct, role wrong: `--riv-pop-accent` is the *popover* accent. Either register a console-accent token or widen that token's contract | open → #848 |
 | `#0a2a33` (`text-`) | 5 | `--riv-ink` / `--riv-card-ink` / `--riv-pop-ink` | **migrate** — but three tokens share the value, so each site must be assigned to the one whose *surface* it sits on | open → #849 |
 | `rgba(12,42,51,·)` inks/borders (`.66`, `.78`, `.14`, `.1`) | 9 | `--riv-ink-faint`, `--riv-card-ink-soft`, `--riv-chip-border`, `--riv-pop-divider` | **migrate** — same one-value-many-tokens caveat | open → #849 |

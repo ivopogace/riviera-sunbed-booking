@@ -111,7 +111,7 @@ dependency order with #836 as native parent)
       › `the operator home keeps its porcelain error ink under a dark document theme`.
       **Mutation-checked:** flipping the expected value to the dark token's `rgb(255, 169, 161)`
       fails both — so the assertion discriminates rather than passing vacuously.
-- [ ] **AC-5:** Given `main` at merge time, when
+- [x] **AC-5:** Given `main` at merge time, when
       `grep -rn 'text-\[#a3160e\]' frontend/src/app/operator` is run, then it returns nothing.
       The `bg-[#a3160e]`, `/opacity` and `booking/` forms are deliberately still present — they
       are #854, #852 and #850 — so the grep is scoped to the migrated form, not the value.
@@ -164,8 +164,8 @@ dependency order with #836 as native parent)
 | R-2 | A site is migrated that is actually one of the three excluded sub-populations, silently changing dark-theme paint or a computed value | med | high | The migration is scoped by **form**, not by value: only plain `text-[#a3160e]` under `operator/`, matched with a negative lookahead on `/` so an `/opacity` form cannot be swept in by substring. AC-5's grep is the same form; the excluded forms' baseline counts are re-asserted after the sweep | claude | closed |
 | R-3 | The eight operator contrast specs keep restating `#a3160e` and drift from the token later | med | med | Phase 1 repoints them at `glass-tokens.ts` **before** any component moves (#835's R-5, which this slice inherits as a known pattern rather than rediscovering) | claude | closed |
 | R-4 | `text-riv-error-ink` generates no utility, so the class changes and the paint does not | low | high | The utility is already live (`--color-riv-error-ink` is mapped at `tailwind.css:53` and consumed today by `admin/`, `auth/`, `shared/`), but AC-3's first test asserts the emitted rule set contains `.text-riv-error-ink` **and** `toHaveCSS` resolves it in a real render; unit specs cannot see either | claude | closed |
-| R-5 | The audit doc lands in `docs/design/`, whose README states its files are records that are **never** maintained — a reader following the README would apply the `as-built diverges` pointer convention to a ledger that must instead be brought up to date | med | med | The README gains an explicit exception section naming this file and its opposite contract; the ledger's own header states it too, from the other side | claude | open |
-| R-6 | The ledger's issue numbers go stale as families are cut, leaving a decision record that points at the wrong tickets | med | low | Every child issue's ACs include "update the ledger's row to `done` with this PR, **in this PR**" — the same close-out rule the plan-doc template applies to itself | claude | open |
+| R-5 | The audit doc lands in `docs/design/`, whose README states its files are records that are **never** maintained — a reader following the README would apply the `as-built diverges` pointer convention to a ledger that must instead be brought up to date | med | med | The README gains an explicit exception section naming this file and its opposite contract; the ledger's own header states it too, from the other side | claude | closed |
+| R-6 | The ledger's issue numbers go stale as families are cut, leaving a decision record that points at the wrong tickets | med | low | Every child issue's ACs include "update the ledger's row to `done` with this PR, **in this PR**" — the same close-out rule the plan-doc template applies to itself | claude | closed — T-1's row is marked `done` in this commit, which is the rule's first exercise |
 
 ## Open questions / Assumptions
 
@@ -241,12 +241,11 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — fixing findings` — the slice is built and the full frontend gate
-passed locally (lint, format, 2113 unit tests, 325 mocked e2e). PR #856 is ready for review; the
-`/code-review` fan-out ran and four of its five findings are fixed.
+**Stage pointer:** `merge close-out` — DONE. CI, CodeQL and the Sonar gate are all green on the
+final head; the review gate ran in full and every finding is closed.
 
-**Next action:** confirm the last reviewer's result, then re-read the **Sonar gate against the
-final head** — its current green comment was analysed against the docs-only `4029d04` (F-2).
+**Next action:** merge via PR #856, then the post-merge GitHub-only items — verify #836 and #855
+closed, and confirm the PR-activity subscription ended.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -254,7 +253,7 @@ final head** — its current green comment was analysed against the docs-only `4
 | 1 — Repoint the operator contrast specs at `glass-tokens.ts` | ✅ | (this commit) |
 | 2 — Migrate the 32 sites to `text-riv-error-ink` | ✅ | (this commit) |
 | 3 — Mocked e2e: computed value, light and forced-dark | ✅ | (this commit) |
-| 4 — Verification + close-out | ⏳ | full FE gate green locally; review-gate fixes `df0604e`, `34a51ee`, `93f7d59` |
+| 4 — Verification + close-out | ✅ | review-gate fixes `df0604e`, `34a51ee`, `93f7d59`, `004e574`; close-out in this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -269,7 +268,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-4 | review (git-history sweep) | `set-editor.contrast.spec.ts:28`'s comment called `#a3160e` "the refund-red the payouts ledger already uses" — wrong (the payouts refund red is `#a3372a`; `#a3160e` is that tab's *load-error* ink). Pre-existing, but it documents the exact line this diff rewrites, and once the constant read `ERROR_INK` the comment contradicted its own identifier. Corrected in place — the line was already in the diff, so this is not widening | fixed-in-`34a51ee` |
 | F-5 | review (comment-compliance sweep) | Six operator contrast specs' TSDoc headers and `it()` titles still described the ink as the literal `#a3160e` while naming sibling inks by token in the same sentence. AC-2's protection had landed in the **code** (the specs import `ERROR_INK`) but not the **prose**, so a future `--riv-error-ink` retune would leave the titles describing a colour the token no longer holds, with the assertions still passing. Prose repointed at the token name. The four remaining `#a3160e` mentions in `requests-tab` are correct and now annotated — they name the `/opacity` tint (#852) and the `bg-` fill (#854), which **are** still literals | fixed-in-`93f7d59` |
 | F-6 | docs-freshness (close-out sweep) | The F-3 fix **deleted** where the #829 precedent says **relocate**. `docs/plans/admin-error-ink-tokens.md:329` records the identical TSDoc finding on PR #833, fixed *on maintainer instruction* by §6d's own remedy — keep the one-sentence point-of-use warning and add a one-line `Rationale: docs/plans/<slug>.md` pointer, "nothing was lost, only moved" (the shape `tailwind.css:184`, `:207`, `:403` all carry). The spec kept its warning but not the pointer; added | fixed-in-`004e574` |
-| F-2 | sonar gate (self-found reading the gate's own false-clean warning) | SonarCloud's "Quality Gate passed / 0 New issues / 0.0% Duplication" comment was analysed against `4029d04` — the **docs-only** phase 0 commit — so it says nothing about the migration or the e2e. Re-read against the final head before merge | open |
+| F-2 | sonar gate (self-found reading the gate's own false-clean warning) | SonarCloud's "Quality Gate passed / 0 New issues / 0.0% Duplication" comment was analysed against `4029d04` — the **docs-only** phase 0 commit — so it says nothing about the migration or the e2e. Re-read against the final head before merge | **closed** — re-read against the final head `7d4844f`: `SonarCloud Code Analysis` is a check-run on that SHA and concluded `success`, and `new_lines` is now **32** rather than absent, which is what distinguishes a real analysis from an unanalysed PR. Issue list **0**, hotspots **0**, `new_duplicated_blocks` **0**. `new_lines_to_cover` is 0 — templates, e2e and spec files carry no coverable lines — so the ≥80% new-code-coverage bar is vacuous here and correctly passes |
 
 ---
 
@@ -290,13 +289,13 @@ Skill-routing gate for what the fix touches *before* editing).
 **Files:** Create `docs/design/colour-literal-token-audit.md` · Modify `docs/design/README.md` ·
 Create `docs/plans/operator-error-ink-tokens.md`
 
-- [ ] **Step 1:** Enumerate by mechanism (#836's own grep), group by *value*, cross-reference every
+- [x] **Step 1:** Enumerate by mechanism (#836's own grep), group by *value*, cross-reference every
       value against the registered token set, and record utility form / folder / `/opacity` /
       variant per site.
-- [ ] **Step 2:** Sort the families into the five classes and write the verdict per family.
-- [ ] **Step 3:** File the eight child issues with #836 as native parent; backfill their real
+- [x] **Step 2:** Sort the families into the five classes and write the verdict per family.
+- [x] **Step 3:** File the eight child issues with #836 as native parent; backfill their real
       numbers into the ledger.
-- [ ] **Step 4:** Commit — `git commit -m "Record the colour-literal audit and cut its slices (#836)"`
+- [x] **Step 4:** Commit — `git commit -m "Record the colour-literal audit and cut its slices (#836)"`
 
 ## Phase 1 — Repoint the operator contrast specs at the token mirror
 
@@ -357,11 +356,13 @@ Create `docs/plans/operator-error-ink-tokens.md`
 
 ## Phase 4 — Verification and close-out
 
-- [ ] Run the AC verification commands below.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main`
-- [ ] `npm run lint && npm run format:check`
-- [ ] Mark the PR ready for review; run the Review gate, then the Sonar gate.
-- [ ] Finalize this Execution status in the PR's own last commit, citing `merged via PR #NN`.
+- [x] Ran the AC verification commands below.
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean (plus the other three
+      diff-scoped guards: inline-comments, focus-posture, touch-target).
+- [x] `npm run lint && npm run format:check` → clean. Full local gate: **2113** unit tests,
+      **325** mocked e2e, all green.
+- [x] Marked PR #856 ready for review; ran the Review gate, then the Sonar gate.
+- [x] Finalized this Execution status in the PR's own last commit — **merged via PR #856**.
 
 ---
 
@@ -392,21 +393,22 @@ Create `docs/plans/operator-error-ink-tokens.md`
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (N/A justified); invariant #2 untouched.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section filled (N/A, frontend-only).
-- [ ] **Payment/payout** section filled (N/A justified).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (N/A justified); invariant #2 untouched.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section filled (N/A, frontend-only).
+- [x] **Payment/payout** section filled (N/A justified).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — merged via PR #856.
+- [x] **The review gate ran in full** — rung 1 of the ladder (`Skill("code-review:code-review")`),
+      five-agent fan-out over `origin/main...HEAD`, with `riviera-review-overlay` layered on top.
+      Six findings (F-1 … F-6), all closed. Recorded on the PR as a review comment.
