@@ -241,7 +241,7 @@ check, and confirm the analysis actually ran rather than reading a false-clean z
 | 1 — Merge the declaration + rename the four sites, green | ✅ | `c564c46` |
 | 2 — The computed-style proofs + the mutation check | ✅ | `a233a08` |
 | 3 — Docs, ledger row and close-out | ✅ | `31da33b` |
-| Review-gate fixes (F-1…F-6) | ✅ | `<review-fixes>` |
+| Review-gate fixes (F-1…F-6) | ✅ | `33f4a0a` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
