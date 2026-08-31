@@ -5,10 +5,9 @@ description: >
   slice, an epic's merge span, or main since the last audit), walk the substrate-doc map
   (CLAUDE.md, CONTEXT.md, RESPONSIBILITIES.md, docs/adr/, plan-doc final states,
   docs/design/, the .claude/skills/riviera-* skills) and flag or patch any stated fact the
-  diff contradicts —
-  including the ones it cannot show, via the counting sweep, when the slice makes the Nth
-  instance of something that previously had N−1 (a listener, counter, event, module,
-  profile, transport, sweep) and every doc saying "the two X" goes stale outside the diff.
+  diff contradicts — including, via the counting sweep, the facts outside the diff that go
+  stale when the slice makes the Nth instance of something (a listener, counter, event,
+  module, profile, transport, sweep) and every doc saying "the two X" is now wrong.
   Load it at merge close-out step 5 (riviera-sdlc), at every epic close-out, or whenever a
   change might invalidate something a substrate doc states.
 ---
