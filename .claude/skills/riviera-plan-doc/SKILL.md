@@ -8,14 +8,9 @@ description: Use at the plan stage of riviera-sdlc, or whenever writing or execu
 ## Overview
 
 A project-local **plan-doc discipline** layered on the active planning/execution
-engine — here `riviera-sdlc` driving Pocock's `implement` + `tdd` (superpowers
-`writing-plans`/`executing-plans` also work if installed). It does not replace the
+engine (`riviera-sdlc` driving `implement` + `tdd`). It does not replace the
 engine; it adds the plan-doc structure this marketplace needs, with
 `references/plan-doc-template.md` as the **single home of section guidance**.
-
-This skill is **preventive** — built from the risks the design surfaced, not from
-post-mortems; the invariants at stake (#1 JDBC-only, #2 availability, #8 payments,
-#11 module boundaries) are canonical in `CLAUDE.md`.
 
 Load at the **plan stage** when starting a riviera feature, and again when picking
 up a riviera plan to **execute** in a fresh session.
@@ -52,9 +47,8 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    loaded skill + one phrase on what it changed in **Skills consulted**, and keep it
    current: re-run the gate whenever a phase enters an area the plan didn't anticipate.
    The template pre-fills the line's five constant entries (the routing table's
-   "Anything, always" row — that table stays the authority, so the two cannot drift),
-   so the author **edits rather than recalls** — free prose lost an entry on six
-   consecutive slices (case history: `riviera-sdlc` `references/case-history.md` #447).
+   "Anything, always" row stays the authority), so the author **edits rather than
+   recalls** (case history: #447).
 
 1. **Acceptance criteria before phase 0:** convert the spec's user stories (or the
    GitHub issue) into testable ACs per the template (Given/When/Then, named test
@@ -88,7 +82,7 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    Behavior-parity ledger — enumerate the OLD surface's behaviors and mark each
    **preserved / changed / dropped (with reason)**. A "restyle/refactor only, no
    behavior change" claim is **not self-justifying** — verify it behavior-by-behavior
-   here. (Case history: O6 #176 — told in the template's ledger blockquote.)
+   here. (Case history: #176.)
 
 ## Workflow additions at execution time
 
@@ -104,15 +98,7 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    reads a `@Profile`), then enumerate every member of that population with a command,
    then judge each member. The search command in the log is the evidence: it should be
    the one that *found* the population, not one that confirmed the members you had
-   already guessed.
-
-   > **Incident #641 (its full telling lives here, not in `case-history.md` — that file
-   > is scoped to `riviera-sdlc`'s rules).** PR #618's audit asked whether its defect held for "the
-   > other two guards", answering "all three" — there were **four**: whole-file
-   > `check-comment-only.mjs` invokes git like its siblings but did not *resemble* them,
-   > was never enumerated, and carried every defect for eight further PRs.
-   > `git ls-files 'scripts/*.mjs' | xargs grep -l "execFileSync\('git'"` would have
-   > returned four on day one.
+   already guessed. (Case history: #641.)
 2. **Use AskUserQuestion for forks the evidence can't settle** — anything that
    changes the availability strategy, a module boundary, the payment flow, or a
    public `api/` port. Decide naming/style yourself.
@@ -125,7 +111,7 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    ```
 
    The sharpest trap: **the plan doc itself must be staged or committed** — merely written, the
-   guard short-circuits and passes. Everything else (#654 untracked-path judging, #533 CI
+   guard short-circuits and passes. Everything else (untracked-path judging, CI
    enforcement, the accepted path idioms): the template's File-structure blockquote.
 4. **Scope test runs to the smallest set that proves the change** — the run recipes
    live in `riviera-local-debug`; load it before the session's first build/test invocation.
@@ -152,8 +138,7 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
 - Trivial changes (one-line fix, copy tweak, dependency bump).
 - Throwaway spikes (mark the branch as such and skip the plan doc).
 
-If unsure, load it anyway — an unnecessary plan doc costs one file; a missing one
-on a feature that touches availability or payments costs a trust-breaking bug.
+If unsure, load it anyway.
 
 ## Integration
 

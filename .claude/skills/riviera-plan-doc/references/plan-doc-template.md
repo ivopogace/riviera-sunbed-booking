@@ -30,8 +30,7 @@ here means the plan is not ready. `N/A — <reason>` only for a truly single-are
 slice.>
 
 > **The five leading entries are pre-filled on purpose — extend them, don't replace them**
-> (#447: pre-fill the constant so the author edits rather than recalls; full rationale:
-> `riviera-plan-doc` workflow step 0). Fill every parenthesis with what the skill actually
+> (case history: #447; the rule: `riviera-plan-doc` workflow step 0). Fill every parenthesis with what the skill actually
 > did — a name with a fixed label is cargo cult; RV-PROC-1 checks the line against the diff
 > either way. Keep `riviera-docs-freshness`'s parenthesis **explicit — `ran` (range +
 > findings) or `N/A — <reason>`**: "not listed" and "not applicable" read the same in a diff.
@@ -47,7 +46,7 @@ slice.>
 > inner hexagon — in domain terms** (`AvailabilityClaim` succeeds / `BookingConfirmed`
 > is published / the ledger accrues once), never the Angular button, the Stripe
 > redirect, or the HTTP status alone; tech-specific assertions belong in adapter-level
-> tests (Cockburn 2005). This keeps ACs stable across UI/payment-adapter churn and
+> tests. This keeps ACs stable across UI/payment-adapter churn and
 > reusable from any driving adapter.
 >
 > **These ACs ARE the pre-agreed seams — `tdd` writes no test at an unconfirmed seam,
@@ -86,11 +85,9 @@ slice.>
 |---|---|---|
 | e.g. "re-reads the whole queue after every accept/decline (reconcile)" | dropped → **restored** | was replaced by a local-only card removal; add it back |
 
-> Case history — **O6 #176**: the plan said "restyle only," but the new Requests tab replaced
-> StaffDaily's post-action **reconcile** with a local card removal — a *dropped* behavior that
-> read as *preserved*. The workflow review found it plus 5 siblings (stale queue, frozen clock,
-> badge races) as **14 findings**, ~40% of the build effort spent re-fixing. One ledger row at
-> plan time would have pre-empted the whole class.
+> Case history — **#176**: a "restyle only" claim hid a dropped reconcile behavior; one
+> ledger row at plan time would have pre-empted 14 findings (told in full in `riviera-sdlc`
+> `references/case-history.md`).
 
 ## Risk register
 
@@ -264,17 +261,15 @@ Skill-routing gate for what the fix touches *before* editing).
 
 > Map files to be created/modified before defining tasks.
 >
-> **Every path in the diff, including the one-line ones — and this is machine-checked.** Listing
-> only the interesting files was a recurring review finding, and the paths that fall out are
-> always the same shape: a registry entry, a comment-only freshness fix, a docs-sweep file. CI
-> fails the PR on any path the diff changed and this section does not list (#533). Run it
+> **Every path in the diff, including the one-line ones — and this is machine-checked.** CI
+> fails the PR on any path the diff changed and this section does not list. Run it
 > yourself before pushing — it is the check, not a reminder to do the check by hand:
 >
 > ```bash
 > node scripts/check-plan-file-structure.mjs --diff origin/main
 > ```
 >
-> It judges untracked paths as well as the diff (#654), so a file you have written but not
+> It judges untracked paths as well as the diff, so a file you have written but not
 > staged is caught too. **Stage or commit this plan doc first** — `git add` is what marks it as part
 > of the change, and with the doc merely written the guard short-circuits and passes whatever the
 > section says. A file you never intend to commit belongs behind an ignore rule (`.git/info/exclude`
@@ -321,8 +316,8 @@ Population `<the mechanism, e.g. "every script that invokes git">` → enumerate
 candidates `<list>` → decision `<fix all / subset / skip + why>`. Append to the
 Generalization-audit log below.
 
-> **The population is defined by mechanism, not by resemblance** (#641; the full rule:
-> the generalization-pass block in `riviera-plan-doc`). The recorded command must be the one that
+> **The population is defined by mechanism, not by resemblance** (case history: #641; the
+> rule: `riviera-plan-doc` execution-time step 1). The recorded command must be the one that
 > *found* the population, not one that confirmed the members you had already guessed.
 
 - [ ] **Step 6: Commit** — `git commit -m "<imperative subject> (#NN)"`
@@ -334,7 +329,7 @@ Generalization-audit log below.
 ## Generalization-audit log
 
 > Append-only. One row per bug-fix / pattern-introducing phase. **Population** names the
-> mechanism swept and how it was enumerated (mechanism-not-resemblance — #641, Step 5).
+> mechanism swept and how it was enumerated (mechanism-not-resemblance — Step 5).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
