@@ -51,48 +51,48 @@ session addendum). The literal `feature/*` branch is deliberately not created.
 
 > Frontend slice, so every AC names its seam explicitly.
 
-- [ ] **AC-1:** Given the five new tokens, when `tailwind.css` is read as text, then each is
+- [x] **AC-1:** Given the five new tokens, when `tailwind.css` is read as text, then each is
       declared **exactly once** and that declaration sits in the base block
       (`:root, [data-riv-theme='porcelain']`), so no theme block can override it.
       *Seam:* `src/tailwind.css` as text (the `theme-boot.spec.ts` drift-guard pattern —
       jsdom maths cannot see an added dark override) · *Pinned by:*
       `solid-btn-tokens.contrast.spec.ts` › "declares each token exactly once" +
       "declares the family in the base block".
-- [ ] **AC-2:** Given both inks of the family, when composited on **both** the resting fill
+- [x] **AC-2:** Given both inks of the family, when composited on **both** the resting fill
       and the hover fill, then all four pairs clear WCAG AA (4.5:1) — measured 8.45 / 7.63
       (teal) and 6.17 / 5.58 (danger). *Seam:* `src/testing/contrast.ts` `contrastRatio`
       over `src/testing/glass-tokens.ts` · *Pinned by:*
       `solid-btn-tokens.contrast.spec.ts` › "both inks clear AA on both fills".
-- [ ] **AC-3:** Given the themed inks that were the alternative to inventing this family,
+- [x] **AC-3:** Given the themed inks that were the alternative to inventing this family,
       when composited on the fixed fill, then they fall **below** AA — `--riv-danger-ink`
       at 1.69:1 and `--riv-accent-ink` at 1.52:1 — keeping the reason for the decision in
       the tree rather than only in a comment. *Seam:* same as AC-2 · *Pinned by:*
       `solid-btn-tokens.contrast.spec.ts` › "the themed inks would not — which is why the
       family exists".
-- [ ] **AC-4:** Given the whole `src/app` tree, when swept for this family's literals **by
+- [x] **AC-4:** Given the whole `src/app` tree, when swept for this family's literals **by
       role** (`#f4f6f7`, `#e7ebec`, `text-[#a3372a]`, `border-[rgba(200,90,60,0.5)]`, and
       the outline buttons' `border-[rgba(255,255,255,0.7)]`), then no non-spec component
       file still paints one. *Seam:* `readdirSync(src/app, {recursive:true})` over
       `.ts`/`.html` · *Pinned by:* `solid-btn-tokens.contrast.spec.ts` › "leaves no
       component painting the family as a literal".
-- [ ] **AC-5:** Given the six out-of-family `#a3372a` sites, when the same sweep runs, then
+- [x] **AC-5:** Given the six out-of-family `#a3372a` sites, when the same sweep runs, then
       each is **still present** — the half that proves the sweep did not overreach.
       *Seam:* the same tree read, asserted positively by path ·
       *Pinned by:* `solid-btn-tokens.contrast.spec.ts` › "leaves the out-of-family
       `#a3372a` sites untouched".
-- [ ] **AC-6:** Given a real browser render, when the booking-view Cancel/Keep buttons are
+- [x] **AC-6:** Given a real browser render, when the booking-view Cancel/Keep buttons are
       shown, then their computed `background-color`, `border-color` and `color` equal the
       registered values, the hover fill applies on hover, and **all of it is unchanged
       under a forced `dark` document theme**. *Seam:* the `/booking/:code` route in the
       mocked Playwright suite, read through `toHaveCSS` · *Pinned by:*
       `e2e/solid-btn-token-skin.e2e.ts`.
-- [ ] **AC-7:** Given each registered token, when the page loads, then the token resolves on
+- [x] **AC-7:** Given each registered token, when the page loads, then the token resolves on
       `document.documentElement` **and** its `@theme inline` row generated the utility class
       — a token declared without its row generates no utility, so the class stays in the
       markup and the paint silently does not change. *Seam:* `document.styleSheets` walked
       for the utility selectors · *Pinned by:* `e2e/solid-btn-token-skin.e2e.ts` › "every
       registered token is declared and generates its utility".
-- [ ] **AC-8:** Given the audit ledger, when the F-2 row is read at merge, then it reads
+- [x] **AC-8:** Given the audit ledger, when the F-2 row is read at merge, then it reads
       `done — #851, PR #NN`. *Seam:* `docs/design/colour-literal-token-audit.md` ·
       *Pinned by:* review (a doc row, not a test — stated so rather than faked with one).
 
@@ -197,18 +197,19 @@ N/A — no API shape changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `PR ready for review — review gate + Sonar gate due`
 
-**Next action:** Phase 4 — flip the ledger's F-2 row to done, run the file-structure
-guard, mark the PR ready for review.
+**Next action:** Run the review gate (`/code-review` per `references/pr-gates.md` §1 +
+`riviera-review-overlay`), then the Sonar gate's issue list. Close-out step 4 rewrites
+`merged via PR #859` here before the merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the family spec, red | ✅ | `8023378` |
 | 1 — declare the tokens + `@theme` rows, green | ✅ | `7b453f2` |
 | 2 — repaint the three components onto them | ✅ | `6b8fb29` |
-| 3 — the mocked e2e (+ mutation check) | ✅ | `<phase-3>` |
-| 4 — ledger row + close-out | ⏳ | |
+| 3 — the mocked e2e (+ mutation check) | ✅ | `6703ad6` |
+| 4 — ledger row + close-out | ✅ | `<phase-4>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -228,6 +229,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/booking/booking-view.ts` — `BTN_OUTLINE` + the two outline variants onto tokens
 - `frontend/src/app/booking/review-panel.ts` — same
 - `frontend/src/app/booking/my-bookings.ts` — `rowRetry` onto the same tokens
+- `frontend/src/app/booking/booking-view.contrast.spec.ts|my-bookings.contrast.spec.ts|review-panel.contrast.spec.ts` — the three sibling specs stop hand-copying `'#a3372a'` and take `SOLID_BTN_DANGER_INK` from the mirror; titles/docblocks stop naming the fill by literal
 - `frontend/e2e/solid-btn-token-skin.e2e.ts` — the computed-style proof under a forced dark theme
 - `docs/design/colour-literal-token-audit.md` — F-2 row → done
 
@@ -237,36 +239,36 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Create `frontend/src/app/booking/solid-btn-tokens.contrast.spec.ts` · Modify `frontend/src/testing/glass-tokens.ts`
 
-- [ ] **Step 1:** Add the three mirrors to `glass-tokens.ts`, extending the existing
+- [x] **Step 1:** Add the three mirrors to `glass-tokens.ts`, extending the existing
       `--riv-solid-btn-ink` comment block rather than opening a new one.
-- [ ] **Step 2:** Write the spec, modelled on `form-error-tokens.contrast.spec.ts`: the AA
+- [x] **Step 2:** Write the spec, modelled on `form-error-tokens.contrast.spec.ts`: the AA
       pairs (AC-2), the themed-ink bounds (AC-3), single-declaration + base-block (AC-1),
       and the **two-sided** sweep — no in-family literal left (AC-4) **and** the six
       out-of-family sites still present (AC-5).
-- [ ] **Step 3: Run it, verify it fails** — `npm test -- solid-btn-tokens` → FAIL: the
+- [x] **Step 3: Run it, verify it fails** — `npm test -- solid-btn-tokens` → FAIL: the
       tokens are not declared yet (`declarationsOf(...)` returns `[]`).
-- [ ] **Step 4: Commit** — `git commit -m "Pin the solid outline-button family's contrast and invariance (#851)"`
+- [x] **Step 4: Commit** — `git commit -m "Pin the solid outline-button family's contrast and invariance (#851)"`
 
 ## Phase 1 — Declare the tokens, green
 
 **Files:** Modify `frontend/src/tailwind.css`
 
-- [ ] **Step 1:** Declare the five tokens in the base block, immediately after
+- [x] **Step 1:** Declare the five tokens in the base block, immediately after
       `--riv-solid-btn-ink`, **with the reason at the declaration** — naming the measured
       1.69:1 / 1.52:1 drift, and citing this plan + #851.
-- [ ] **Step 2:** Add the five `@color-riv-solid-btn-*` rows to `@theme inline`.
-- [ ] **Step 3: Run it, verify it passes** — `npm test -- solid-btn-tokens` → the four
+- [x] **Step 2:** Add the five `@color-riv-solid-btn-*` rows to `@theme inline`.
+- [x] **Step 3: Run it, verify it passes** — `npm test -- solid-btn-tokens` → the four
       token tests PASS; the two sweep tests still FAIL (components not repainted yet).
-- [ ] **Step 4: Commit.**
+- [x] **Step 4: Commit.**
 
 ## Phase 2 — Repaint the three components
 
 **Files:** Modify `booking-view.ts`, `review-panel.ts`, `my-bookings.ts`
 
-- [ ] **Step 1:** Swap each literal for its utility. No other edit in these files.
-- [ ] **Step 2: Run** — `npm test -- solid-btn-tokens booking-view review-panel my-bookings`
+- [x] **Step 1:** Swap each literal for its utility. No other edit in these files.
+- [x] **Step 2: Run** — `npm test -- solid-btn-tokens booking-view review-panel my-bookings`
       → all PASS, sweep included.
-- [ ] **Step 3: Generalization-audit pass.**
+- [x] **Step 3: Generalization-audit pass.**
 
 Population `every colour position of the outline-button skin, enumerated by grepping each
 literal's ROLE across src/` → enumerate
@@ -275,32 +277,32 @@ literal's ROLE across src/` → enumerate
 roles), the 13 unrelated `rgba(255,255,255,0.7)`, and `btnDanger`'s `0.4` alpha. Append to
 the log below.
 
-- [ ] **Step 4:** `npm run lint && npm run format:check` → clean.
-- [ ] **Step 5: Commit.**
+- [x] **Step 4:** `npm run lint && npm run format:check` → clean.
+- [x] **Step 5: Commit.**
 
 ## Phase 3 — The mocked e2e
 
 **Files:** Create `frontend/e2e/solid-btn-token-skin.e2e.ts`
 
-- [ ] **Step 1:** Model on `form-error-token-skin.e2e.ts`: the registry/utility-generation
+- [x] **Step 1:** Model on `form-error-token-skin.e2e.ts`: the registry/utility-generation
       test (AC-7), the computed-skin test incl. `hover` (AC-6), and the forced-`dark`
       repeat.
-- [ ] **Step 2: Run** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- solid-btn` → PASS.
+- [x] **Step 2: Run** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- solid-btn` → PASS.
 - [x] **Step 3: Mutation-check (R-5).** Two mutations, both observed:
       (1) `--riv-solid-btn-fill` → `#ff0000` → **3 failed**; (2) the `--color-riv-solid-btn-border`
       `@theme inline` row deleted → **3 failed**, with `border-riv-solid-btn-border` still present
       in the failing element's class list — the silent no-paint of R-3, caught. Restored → 3 passed.
-- [ ] **Step 4: Commit.**
+- [x] **Step 4: Commit.**
 
 ## Phase 4 — Ledger row + close-out
 
 **Files:** Modify `docs/design/colour-literal-token-audit.md`, this plan
 
-- [ ] **Step 1:** F-2 row → `done — #851, PR #NN`.
-- [ ] **Step 2:** Finalize Execution status (stage DONE, phases ✅, `merged via PR #NN`).
-- [ ] **Step 3:** `git add` everything, then
+- [x] **Step 1:** F-2 row → `done — #851, PR #NN`.
+- [x] **Step 2:** Finalize Execution status (stage DONE, phases ✅, `merged via PR #NN`).
+- [x] **Step 3:** `git add` everything, then
       `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
-- [ ] **Step 4: Commit.**
+- [x] **Step 4: Commit.**
 
 ---
 
@@ -314,9 +316,9 @@ the log below.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-5:** `npm test -- solid-btn-tokens` → 6 passing.
-- [ ] **AC-6, AC-7:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- solid-btn` → 3 passing, mutation-checked.
-- [ ] **AC-8:** ledger F-2 row reads `done`.
+- [x] **AC-1..AC-5:** `npx ng test --watch=false --include="src/app/booking/solid-btn-tokens.contrast.spec.ts"` → **7 passing**. Verified at `6b8fb29`.
+- [x] **AC-6, AC-7:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts solid-btn` → **3 passing**, mutation-checked twice. Verified at `6703ad6`.
+- [x] **AC-8:** ledger F-2 row reads `done — #851, PR #859`, with n corrected 9 → 13.
 
 ## Self-review checklist (before merge / PR)
 

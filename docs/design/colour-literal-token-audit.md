@@ -79,7 +79,7 @@ These families must move **as a pair**, onto tokens declared **once** with no da
 | Family | n | Verdict | Status |
 |---|---:|---|---|
 | Form-error skin: `bg-[#f6e8e7]` + `text-[#a3160e]` (`booking-dialog:311`, `booking-pay:255`, `my-bookings:290`) | 6 | **new theme-invariant token pair.** The themed `--riv-error-ink` is *wrong* here — it resolves `#ffa9a1` in dark, over a fill that stays `#f6e8e7`: light on light | **done — #850, PR #857** |
-| Solid outline-button skin: `#f4f6f7` fill, `#e7ebec` hover, `rgba(255,255,255,0.7)` border, `#a3372a` danger ink | 9 | **new theme-invariant tokens**, one family. Its teal ink already moved to `--riv-solid-btn-ink` in #835 | open → #851 (recorded on #836 by the maintainer) |
+| Solid outline-button skin: `#f4f6f7` fill, `#e7ebec` hover, `rgba(255,255,255,0.7)` border, `#a3372a` danger ink (+ the `rgba(200,90,60,0.5)` danger border) | 13 | **new theme-invariant tokens**, one family. Its teal ink already moved to `--riv-solid-btn-ink` in #835. The themed alternatives measure 1.69:1 (`--riv-danger-ink`) and 1.52:1 (`--riv-accent-ink`) over the fixed fill | **done — #851, PR #859.** n corrected 9 → 13: the danger border was uncounted, and the `rgba(255,255,255,0.7)` border sits on all three buttons (on the `btnOutline` variant, not the shared `BTN_OUTLINE` base) |
 
 ### Class O — `/opacity` modifier: tokenising is a computed-value change
 
