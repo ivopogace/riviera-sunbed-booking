@@ -5,7 +5,8 @@
 the generalization-audit residue from #829 (PR #833). Prior slices that cut families out
 of this population: **#829** (the negative/red admin family, PR #833), **#835** (the accent
 teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR #856),
-**#850** (the tourist form-error skin's theme-invariant pair, PR #857).
+**#850** (the tourist form-error skin's theme-invariant pair, PR #857), **#851** (the solid
+outline-button skin's theme-invariant family, PR #859).
 
 > **This file is not a design record.** `docs/design/README.md` governs the `.dc.html`
 > artboards — approved-look snapshots that are deliberately *never* rewritten to track the
@@ -18,7 +19,7 @@ teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR
 `riviera-tailwind` is explicit that components consume `--riv-*` tokens and never palette
 literals, and that a colour position uses the **named** utility once the token is registered.
 287 positions predate or sidestep that. But "migrate all 287" is the wrong instruction, and
-the two slices already cut prove why: #835's central finding was that one literal (`#0a4f5e`)
+the slices already cut prove why: #835's central finding was that one literal (`#0a4f5e`)
 was **not one role** — it split three ways by *what it is painted on*, and each part wanted a
 different answer. A find-and-replace would have flipped an ink light-on-light in dark mode.
 
@@ -79,7 +80,7 @@ These families must move **as a pair**, onto tokens declared **once** with no da
 | Family | n | Verdict | Status |
 |---|---:|---|---|
 | Form-error skin: `bg-[#f6e8e7]` + `text-[#a3160e]` (`booking-dialog:311`, `booking-pay:255`, `my-bookings:290`) | 6 | **new theme-invariant token pair.** The themed `--riv-error-ink` is *wrong* here — it resolves `#ffa9a1` in dark, over a fill that stays `#f6e8e7`: light on light | **done — #850, PR #857** |
-| Solid outline-button skin: `#f4f6f7` fill, `#e7ebec` hover, `rgba(255,255,255,0.7)` border, `#a3372a` danger ink | 9 | **new theme-invariant tokens**, one family. Its teal ink already moved to `--riv-solid-btn-ink` in #835 | open → #851 (recorded on #836 by the maintainer) |
+| Solid outline-button skin: `#f4f6f7` fill, `#e7ebec` hover, `rgba(255,255,255,0.7)` border, `#a3372a` danger ink (+ the `rgba(200,90,60,0.5)` danger border) | 13 | **new theme-invariant tokens**, one family. Its teal ink already moved to `--riv-solid-btn-ink` in #835. The themed alternatives measure 1.69:1 (`--riv-danger-ink`) and 1.52:1 (`--riv-accent-ink`) over the fixed fill | **done — #851, PR #859.** n corrected 9 → 13: the danger border was uncounted, and the `rgba(255,255,255,0.7)` border sits on all three buttons (on the `btnOutline` variant, not the shared `BTN_OUTLINE` base) |
 
 ### Class O — `/opacity` modifier: tokenising is a computed-value change
 

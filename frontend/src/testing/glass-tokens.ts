@@ -81,11 +81,25 @@ export const ACCENT_CHIP_BORDER: Glass = { color: hexToRgb('0e8aa8'), alpha: 0.7
 export const ACCENT_TRACK: Glass = { color: hexToRgb('2bb8d4'), alpha: 0.25 };
 export const ACCENT_STRONG: Rgb = hexToRgb('0e8aa8');
 
-/** `--riv-solid-btn-ink` and the two fixed fills it is pinned to. Theme-invariant: the fills do
- *  not theme either, so a themed ink here would drift light-on-light in the dark theme. */
+/** The `--riv-solid-btn-*` family: the skin of the outline buttons (booking-view / review-panel
+ *  Cancel-Keep-Edit-Remove, my-bookings Retry). Theme-invariant as a WHOLE, not just the ink — the
+ *  fills do not theme, so nothing painted over them may either: the themed `--riv-danger-ink`
+ *  resolves DARK_ERROR_INK over SOLID_BTN_FILL at 1.69:1, light on light. `--riv-solid-btn-ink`
+ *  landed at #835; the rest of the family at #851. Guarded by
+ *  `booking/solid-btn-tokens.contrast.spec.ts`. */
 export const SOLID_BTN_INK: Rgb = hexToRgb('0a4f5e');
 export const SOLID_BTN_FILL: Rgb = hexToRgb('f4f6f7');
 export const SOLID_BTN_HOVER: Rgb = hexToRgb('e7ebec');
+export const SOLID_BTN_DANGER_INK: Rgb = hexToRgb('a3372a');
+/** The two outline borders — non-text chrome (WCAG 1.4.11), and MEASURED rather than waved off:
+ *  composited over the fill they reach 1.06:1 (neutral) and 1.90:1 (danger), so neither is the
+ *  affordance boundary and neither clears 3:1. Unchanged values, carried across by #851 as-is; the
+ *  fill's own 1.02:1 against the card glass says this is the glass aesthetic's boundary question,
+ *  not this skin's — the same finding `--riv-accent-*` records at ~1.5:1, tracked at #834. Raising
+ *  it needs a darker hue, not more alpha. Mirrored here for the declaration guard and the e2e's
+ *  computed-style read. */
+export const SOLID_BTN_BORDER: Glass = { color: WHITE, alpha: 0.7 };
+export const SOLID_BTN_DANGER_BORDER: Glass = { color: hexToRgb('c85a3c'), alpha: 0.5 };
 
 /** `--riv-form-error-fill` / `--riv-form-error-ink` — the three tourist error banners' skin (#850).
  *  Theme-invariant as a PAIR: the fill is a solid composite that does not theme, so the themed

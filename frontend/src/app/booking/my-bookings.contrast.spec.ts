@@ -66,8 +66,8 @@ describe('My bookings — solid-fill controls (WCAG AA, issue #139)', () => {
     }
   });
 
-  /** The ink is --riv-solid-btn-ink, theme-invariant because its #f4f6f7 fill is too. */
-  it('the Retry outline ink meets AA on its solid #f4f6f7 fill', () => {
+  /** The ink is --riv-solid-btn-ink, theme-invariant because its fill is too. */
+  it('the Retry outline ink meets AA on its solid fill', () => {
     expect(contrastRatio(rgbToHex(SOLID_BTN_INK), rgbToHex(SOLID_BTN_FILL))).toBeGreaterThanOrEqual(
       AA_NORMAL,
     );

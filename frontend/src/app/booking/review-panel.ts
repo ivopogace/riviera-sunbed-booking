@@ -27,7 +27,7 @@ const NAME_TOO_LONG = `Keep the name to ${REVIEW_DISPLAY_NAME_MAX} characters or
 
 const BTN =
   'cursor-pointer rounded-[14px] px-[18px] py-[11px] text-[14px] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-65';
-const BTN_OUTLINE = `${BTN} border-[1.5px] bg-[#f4f6f7] font-semibold [transition:background_0.15s_ease] hover:bg-[#e7ebec]`;
+const BTN_OUTLINE = `${BTN} border-[1.5px] bg-riv-solid-btn-fill font-semibold [transition:background_0.15s_ease] hover:bg-riv-solid-btn-hover`;
 
 /**
  * The panel's Tailwind recipes. Stated here rather than imported from the booking view: that view
@@ -46,8 +46,8 @@ const CLS = {
     'resize-y rounded-[11px] px-3 py-2 text-[14px] focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink',
   fieldError: 'text-[12px] font-semibold text-riv-error-ink',
   actions: 'mt-3.5 flex flex-wrap gap-2.5',
-  btnOutline: `${BTN_OUTLINE} border-[rgba(255,255,255,0.7)] text-riv-solid-btn-ink`,
-  btnOutlineDanger: `${BTN_OUTLINE} border-[rgba(200,90,60,0.5)] text-[#a3372a]`,
+  btnOutline: `${BTN_OUTLINE} border-riv-solid-btn-border text-riv-solid-btn-ink`,
+  btnOutlineDanger: `${BTN_OUTLINE} border-riv-solid-btn-danger-border text-riv-solid-btn-danger-ink`,
   ownCard: 'rounded-[16px] border border-riv-card-track bg-riv-wash-fill px-[15px] py-3',
   ownStars: 'm-0 text-[17px] leading-none tracking-[0.14em] text-riv-accent-ink',
   ownName: 'mx-0 mt-2 mb-0 text-[13px] font-bold text-riv-card-ink',

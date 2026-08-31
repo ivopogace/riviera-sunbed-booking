@@ -14,6 +14,7 @@ import {
   PORCELAIN_STOPS,
   RIVIERA_CARD_GLASS,
   RIVIERA_STOPS,
+  SOLID_BTN_DANGER_INK,
   SOLID_BTN_FILL,
   SOLID_BTN_INK,
   expectAaOverStops,
@@ -92,9 +93,9 @@ describe.each(THEMES)('Review panel — the own-review wash (WCAG AA) — $name'
 });
 
 describe('Review panel — outline buttons (solid fill, WCAG AA)', () => {
-  /** The teal ink is --riv-solid-btn-ink, theme-invariant because its #f4f6f7 fill is too. */
-  it('the edit and remove inks meet AA on the solid #f4f6f7 fill', () => {
-    for (const ink of [rgbToHex(SOLID_BTN_INK), '#a3372a']) {
+  /** Both inks are --riv-solid-btn-*, theme-invariant because the fill under them is too. */
+  it('the edit and remove inks meet AA on the solid fill', () => {
+    for (const ink of [SOLID_BTN_INK, SOLID_BTN_DANGER_INK].map(rgbToHex)) {
       expect(contrastRatio(ink, rgbToHex(SOLID_BTN_FILL)), ink).toBeGreaterThanOrEqual(AA_NORMAL);
     }
   });
