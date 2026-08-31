@@ -183,8 +183,16 @@ Vary by theme in this order of preference:
    forbids the ink from theming — the themed `--riv-error-ink` over it measures 1.54:1. The unit is
    the whole skin, not one position: a fixed fill pins every ink and border on it
    (`--riv-solid-btn-*`), and the pinning runs in **whichever direction the fixed position sits** —
-   at `--riv-solid-fill-*` the fixed ink (`text-white`) is what pins its fills. Group such a family
-   by **form, not value**, and reject a coincidental token on its **role** before its value. This is
+   at `--riv-solid-fill-*` the fixed ink (`text-white`) is what pins its fills. #848 is the **third**
+   ground, and the one where nothing pins anything: a token whose entire population sits inside a
+   subtree that pins its own theme (`--riv-console-accent-ink`, under the operator console's
+   `data-riv-theme="porcelain"` host) has a dark branch that is unreachable *by construction* — no
+   render can produce it, so a dark value would be an unverifiable claim rather than a drift risk,
+   and the slice's own e2e cannot tell such a token from a themed one. Note what that buys and what
+   it costs: the host's pin becomes load-bearing, so the guard spec asserts the declaration stays
+   **single**, and un-pinning that host later is a decision that has to come back to the token.
+   Group such a family by **form, not value**, and reject a coincidental token on its **role**
+   before its value. This is
    Tailwind's own documented multi-theme pattern (docs: Colors § "Referencing other
    variables" — plain vars per `:root`/attribute scope, mapped via `@theme inline`;
    `inline` is what keeps the utility emitting `var(--riv-*)` so per-scope overrides and

@@ -51,9 +51,12 @@ claim into a per-position verdict across twelve sites and three painted-on surfa
 (at the plan's named seams — and it is what made phase 2 honest: unlike T-1, this slice has a
 **genuine red**, the `SURVIVORS` guard, so the phase order is driven by it rather than by a
 staged one) · `riviera-review-overlay` (review gate — due at ready-for-review; RV-FE-E2E owns
-the phase-4 spec's suite placement) · `riviera-docs-freshness` (**pending** — due at merge
-close-out over `origin/main..HEAD`; the counting sweep matters here because this slice makes
-the **fourth** declared-once token family, and the registry comment block names them) ·
+the phase-4 spec's suite placement) · `riviera-docs-freshness` (**ran** over `origin/main..HEAD`,
+**2 findings, both patched** — F-1 and F-2 in the register below. The counting sweep's own
+phrasings came back clean: every "the two X" / "the three X" left in the substrate is about a
+different subject and stays true. What it did not catch is the instructive part — F-2 is a stale
+*enumeration of grounds*, not a count, so the sweep's N−1 phrasings cannot match it, and it took
+the prior-PR-comment pass to surface. This slice makes the **fifth** declared-once token family) ·
 `riviera-tailwind` (token-first styling: a new token gets its `@theme inline` row or the utility
 silently never generates; the **named** utility once registered; "a theme-invariant token is a
 decision to write down, never an omission", which is why the declaration carries its reason and
@@ -288,9 +291,9 @@ component, signal, form, control-flow or DI surface changes, so the v22 posture 
 
 ## Execution status
 
-**Stage pointer:** `PR #863 open as draft — phases 0–5 done, awaiting the CI gate, then ready-for-review`
+**Stage pointer:** `review gate run (3 findings, all fixed) — awaiting CI on the head, then the Sonar gate`
 
-**Next action:** confirm the CI run on this push is green, then mark PR #863 ready for review, which makes the Review and Sonar gates due.
+**Next action:** confirm CI is green on the head carrying the finding fixes, then run the Sonar gate per `riviera-sdlc` `references/pr-gates.md` §2 — pull the reported new-issue + duplication list from the API rather than reading pass/fail.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -309,14 +312,28 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | *(none yet)* | — |
+| F-1 | review gate (prior-PR-comment pass) | `docs/design/colour-literal-token-audit.md`'s prior-slices list omits **#861 (PR #862)**, which has landed and is credited in the class-R row further down. The **same omission class** the maintainer flagged on #859 (review finding 4: the list "listed #829/#835/#855/#850 but not #851") — a slice edits that sentence to add itself and doesn't backfill the sibling that landed since. | fixed-in-`<docs-fix>` |
+| F-2 | review gate (prior-PR-comment pass) | `.claude/skills/riviera-tailwind/SKILL.md` enumerates **two** grounds for a declared-once token (a fixed surface pins its ink; a fixed ink pins its fills). This slice's ground is a mechanically distinct **third** — nothing pins anything; the *host* pins the theme, so the dark branch is unreachable by construction. Same class as #859's review finding 2, where #835 and #850 had each extended that paragraph in their own commit and #851 had not. | fixed-in-`<docs-fix>` |
+| F-3 | review gate (git-history pass) | `app.contrast.spec.ts`'s new `DARK_POP_ACCENT` import broke the file's otherwise-alphabetical order. Cosmetic, below the review's own reporting bar, and no lint rule orders these — fixed as convention-matching, not as a defect. | fixed-in-`d776673` |
+
+**Review-gate outcome:** `/code-review` ran the full five-agent fan-out on PR #863 (CLAUDE.md
+compliance incl. RV-STYLE-1/2, RV-FE-8, RV-PROC-1 and the riviera-tailwind conventions; shallow
+bug scan; git-history context; prior-PR comments; code-comment guidance). Three agents returned
+clean; the history pass returned F-3; the prior-PR pass returned F-1 and F-2. It also confirmed
+the recurrence it was told to hunt for did **not** happen: #856's finding that a spec title still
+named the old literal does not repeat here — every `it()`/`describe()` title and doc comment
+across the six repointed specs names the token, and the surviving raw `#0a6e85` occurrences are
+all legitimate (the declaration, the two mirrors, and the two role-matching regexes).
 
 ---
 
 ## File structure
 
 - `docs/plans/console-accent-ink-token.md` — this plan.
-- `docs/design/colour-literal-token-audit.md` — the T-2 row to `done` with the Option-A reason.
+- `docs/design/colour-literal-token-audit.md` — the T-2 row to `done` with the Option-A reason, the
+  new class-R row for the refund-red inks (G-1), and the prior-slices list backfilled with #861 (F-1).
+- `.claude/skills/riviera-tailwind/SKILL.md` — the theme-invariant-token paragraph gains this
+  slice's third ground (F-2).
 - `frontend/src/tailwind.css` — the token declaration (base block, with its reason) + the
   `@theme inline` row that generates the utility.
 - `frontend/src/testing/glass-tokens.ts` — the `CONSOLE_ACCENT_INK` mirror, plus the light

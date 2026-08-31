@@ -7,7 +7,8 @@ of this population: **#829** (the negative/red admin family, PR #833), **#835** 
 teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR #856),
 **#850** (the tourist form-error skin's theme-invariant pair, PR #857), **#851** (the solid
 outline-button skin's theme-invariant family, PR #859), **#854** (the nine solid button/badge
-fills under fixed white ink, PR #860), **#848** (the operator console's accent ink, PR #863).
+fills under fixed white ink, PR #860), **#861** (merging that family's two brand teals onto one,
+PR #862), **#848** (the operator console's accent ink, PR #863).
 
 > **This file is not a design record.** `docs/design/README.md` governs the `.dc.html`
 > artboards — approved-look snapshots that are deliberately *never* rewritten to track the
