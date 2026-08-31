@@ -3,8 +3,9 @@ name: riviera-docs-freshness
 description: >
   Substrate-doc staleness audit for riviera-sunbed-booking — given a git range (a merged
   slice, an epic's merge span, or main since the last audit), walk the substrate-doc map
-  (CLAUDE.md, CONTEXT.md, RESPONSIBILITIES.md, docs/adr/, plan-doc final states, the
-  .claude/skills/riviera-* skills) and flag or patch any stated fact the diff contradicts —
+  (CLAUDE.md, CONTEXT.md, RESPONSIBILITIES.md, docs/adr/, plan-doc final states,
+  docs/design/, the .claude/skills/riviera-* skills) and flag or patch any stated fact the
+  diff contradicts —
   including the ones it cannot show, via the counting sweep, when the slice makes the Nth
   instance of something that previously had N−1 (a listener, counter, event, module,
   profile, transport, sweep) and every doc saying "the two X" goes stale outside the diff.
@@ -37,6 +38,7 @@ a stale fact there propagates into every future plan and review.
 | `RESPONSIBILITIES.md` | each module's Job / Not-My-Job lists, shipped-state notes | behavior moves between modules, an edge concern changes shape |
 | `docs/adr/*` | decision + consequences paragraphs | a decision gets re-decided (needs an amendment note, never silent contradiction) |
 | `docs/plans/*` (final states) | execution-status tables, "Resolved" sections | only the CURRENT slice's plan — historical plans are records, not living docs |
+| `docs/design/*.dc.html` | copy/behavior a design record depicts that shipped code has since changed (cutoff wording, retired icons, superseded flows) | a slice ships copy/behavior that diverges from what an artboard shows — per `docs/design/README.md`, add a one-line `<!-- as-built diverges — see #NNN -->` pointer next to the diverged line; never rewrite the artboard's copy in place |
 | `.claude/skills/riviera-*/SKILL.md` | **concrete file names, class names, endpoints, and example tables** inside skills | a rename/removal of anything a skill cites as an example |
 | `docs/agents/*`, `README.md`, `CONTRIBUTING.md` | run recipes, label sets, env vars | build/tooling changes |
 | `docs/deploy/*`, `docs/runbooks/*` | deploy-pipeline shape, hosting/service names, env vars, ops procedures | a CD/hosting change, a rotated secret's name, a new or changed operational mechanism |
@@ -51,7 +53,7 @@ a stale fact there propagates into every future plan and review.
 
    **2a — the rename/removal grep.** For every renamed/removed identifier or
    superseded mechanism, grep the substrate-doc set for the OLD name/wording (e.g.
-   `grep -rn "<old>" CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents .claude/skills`).
+   `grep -rn "<old>" CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents docs/design .claude/skills`).
    A hit in a historical record (an old plan doc, a PR body, an ADR's *history* section) is
    fine; a hit in a **stated present-tense fact** is a finding.
 

@@ -87,7 +87,8 @@ class RequestPaymentDueMailListener {
 			case BookingMailFacts.Resolved booking -> mails.sendPaymentDue(booking.toEmail(),
 					new PaymentDueMail(booking.bookingCode(), booking.venueName(), event.bookingDate(),
 							event.payBy(), event.amountMinor(), event.currency(),
-							links.forBooking(booking.bookingCode())));
+							links.forBooking(booking.bookingCode()),
+							event.cancellationWindowAtBirth(), event.lateCancelRefundBps()));
 		}
 	}
 

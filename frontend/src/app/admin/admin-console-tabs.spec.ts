@@ -106,8 +106,8 @@ describe('AdminConsoleTabs', () => {
   it('does not light Operators while Email is open', async () => {
     const fixture = await renderAt('/admin/email');
 
-    expect(tab(fixture, 'admin-tab-operators').className).not.toContain('riv-tab-active');
-    expect(tab(fixture, 'admin-tab-email').className).toContain('riv-tab-active');
+    expect(tab(fixture, 'admin-tab-operators').getAttribute('aria-current')).toBeNull();
+    expect(tab(fixture, 'admin-tab-email').getAttribute('aria-current')).toBe('page');
   });
 
   /**

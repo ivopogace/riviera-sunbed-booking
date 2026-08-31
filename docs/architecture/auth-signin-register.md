@@ -111,10 +111,14 @@ Same shape as `StubPaymentGateway` vs `StripePaymentGateway`:
 
 Operators touch real venues and money, so no open self-signup:
 registration creates a **PENDING** operator account; a platform admin approves →
-**ACTIVE**. Approved operators create venues they then own
-(**creator-owns-on-create** on `POST /api/venues` — the documented #74 follow-up),
-which finally retires the owns-all **bootstrap operator**. Invariant #13 continues
-to be enforced in the application services.
+**ACTIVE**. Since #694 the PENDING account signs in immediately (the frontend
+auto-signs-in with the just-entered credentials after the session-less `202`) and
+uses the full console — **creator-owns-on-create** on `POST /api/venues` (the
+documented #74 follow-up) applies from PENDING, and what approval gates is
+**tourist visibility** (#693), not access. `SUSPENDED`/`REJECTED` cannot
+authenticate, and reject/suspend revoke live sessions. The owns-all **bootstrap
+operator** stays retired. Invariant #13 continues to be enforced in the
+application services.
 
 ### D-6: Email flows — mocked mailer, same stub pattern
 

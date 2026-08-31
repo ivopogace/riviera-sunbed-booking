@@ -56,10 +56,12 @@ async function submit(fixture: ComponentFixture<OperatorPassword>): Promise<void
   fixture.detectChanges();
 }
 
+function query(fixture: ComponentFixture<OperatorPassword>, testid: string): HTMLElement | null {
+  return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testid}"]`);
+}
+
 function text(fixture: ComponentFixture<OperatorPassword>, testid: string): string | undefined {
-  return (fixture.nativeElement as HTMLElement)
-    .querySelector(`[data-testid="${testid}"]`)
-    ?.textContent?.trim();
+  return query(fixture, testid)?.textContent?.trim();
 }
 
 describe('OperatorPassword (self-service credential rotation, #326)', () => {
@@ -72,7 +74,7 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
 
     expect(auth.changePassword).toHaveBeenCalledWith('current-pass1', 'rotated-pass2');
     expect(text(fixture, 'oppw-notice')).toContain('signed out');
-    expect(text(fixture, 'oppw-error')).toBe('');
+    expect(query(fixture, 'oppw-error')).toBeNull();
   });
 
   // A password may legitimately carry leading/trailing spaces; trimming would lock such an account
@@ -170,20 +172,47 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
     expect(text(fixture, 'oppw-error')).toContain('session');
   });
 
-  // Live regions must pre-exist their content, or the announcement is commonly dropped entirely.
-  it('keeps both live regions in the DOM before there is anything to announce', async () => {
+  // A polite region must pre-exist its content, or the announcement is commonly dropped entirely.
+  it('keeps the polite notice mounted before there is anything to announce', async () => {
     const fixture = await render(authStub('changed'));
 
-    const notice = (fixture.nativeElement as HTMLElement).querySelector(
-      '[data-testid="oppw-notice"]',
-    );
-    const error = (fixture.nativeElement as HTMLElement).querySelector(
-      '[data-testid="oppw-error"]',
-    );
+    const notice = query(fixture, 'oppw-notice');
     expect(notice?.getAttribute('role')).toBe('status');
-    expect(error?.getAttribute('role')).toBe('alert');
     expect(notice?.textContent?.trim()).toBe('');
-    expect(error?.textContent?.trim()).toBe('');
+  });
+
+  // The assertive half is the opposite: an alert is announced when it is inserted.
+  it('mounts no alert region before there is anything to announce', async () => {
+    const fixture = await render(authStub('changed'));
+
+    expect(query(fixture, 'oppw-error')).toBeNull();
+  });
+
+  /**
+   * RV-FE-9 on a surface that asserted focus nowhere: `revealOutcome()` is the whole reason the
+   * outcome reaches a keyboard user, and gating the error on its message moves the element that
+   * lookup has to find from always-present to just-created. Both specs were verified to fail with
+   * the `revealOutcome()` calls removed, not assumed to.
+   */
+  it('focuses the error it just inserted, not the body', async () => {
+    const fixture = await render(authStub('invalid-current'));
+
+    setModel(fixture, 'wrong', 'rotated-pass2');
+    await submit(fixture);
+
+    const error = query(fixture, 'oppw-error');
+    expect(error?.getAttribute('role')).toBe('alert');
+    expect(document.activeElement).toBe(error);
+  });
+
+  it('focuses the success notice and mounts no alert', async () => {
+    const fixture = await render(authStub('changed'));
+
+    setModel(fixture, 'current-pass1', 'rotated-pass2');
+    await submit(fixture);
+
+    expect(query(fixture, 'oppw-error')).toBeNull();
+    expect(document.activeElement).toBe(query(fixture, 'oppw-notice'));
   });
 
   it('clears the fields on success so the entered password is not left on screen', async () => {

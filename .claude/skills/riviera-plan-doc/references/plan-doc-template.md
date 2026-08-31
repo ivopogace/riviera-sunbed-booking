@@ -28,23 +28,12 @@ a11y). Must cover every area the diff touches — a migration in scope with no `
 here means the plan is not ready. `N/A — <reason>` only for a truly single-area trivial
 slice.>
 
-> **The five leading entries are pre-filled on purpose — extend them, don't replace them.**
-> The `riviera-sdlc` routing table's **"Anything, always"** row is due on essentially
-> every slice — that table is the authority for its contents; this line pre-fills them
-> rather than re-listing them, so the two cannot drift. But an author filling it in is
-> thinking about the *routed* skills, so something falls off the line — RV-PROC-1 caught an
-> omission here on **six consecutive slices**, which is not six mistakes but a template
-> asking a question whose answer is partly constant (case history: `riviera-sdlc`
-> `references/case-history.md` #447). The fix is to make the
-> author **edit rather than recall**. Each pre-filled entry still carries a parenthesis you
-> must fill with what it actually did — a name with a fixed label attached is cargo cult,
-> and RV-PROC-1 checks the line against the diff either way.
->
-> Keep `riviera-docs-freshness`'s parenthesis **explicit — `ran` (range + findings) or
-> `N/A — <reason>`**: "not listed" and "not applicable" are indistinguishable in a diff,
-> so a skipped run and an inapplicable one read the same. (`tdd` and `riviera-plan-doc`
-> are pre-filled prophylactically — neither has actually been flagged missing; they are
-> here because the row names them, not because they have an incident.)
+> **The five leading entries are pre-filled on purpose — extend them, don't replace them**
+> (#447: pre-fill the constant so the author edits rather than recalls; full rationale:
+> `riviera-plan-doc` workflow step 0). Fill every parenthesis with what the skill actually
+> did — a name with a fixed label is cargo cult; RV-PROC-1 checks the line against the diff
+> either way. Keep `riviera-docs-freshness`'s parenthesis **explicit — `ran` (range +
+> findings) or `N/A — <reason>`**: "not listed" and "not applicable" read the same in a diff.
 
 **Branch:** `<feature|bugfix>/<short-slug>` <must exist in git before phase 0>
 
@@ -53,17 +42,12 @@ slice.>
 ## Acceptance criteria (testable)
 
 > **Mandatory before phase 0.** Each item is "Given X, when Y, then Z" and names a
-> test class. Prose is not an AC. **Write each AC against the application boundary —
-> the inner hexagon — not the outside technology.** Cockburn's 2005 ports-and-adapters
-> article: *"use cases should generally be written at the application boundary (the
-> inner hexagon), to specify the functions and events supported by the application,
-> regardless of external technology."* So phrase the AC in domain terms
-> (`AvailabilityClaim` succeeds / `BookingConfirmed` is published / the ledger
-> accrues once) rather than in terms of the Angular button, the Stripe redirect, or
-> the HTTP status alone. Tech-specific assertions belong in an adapter-level test,
-> not in the core AC — this keeps the criteria shorter, stable across
-> UI/payment-adapter churn, and reusable from any driving adapter (test harness,
-> GUI, future app-to-app).
+> test class. Prose is not an AC. **Write each AC at the application boundary — the
+> inner hexagon — in domain terms** (`AvailabilityClaim` succeeds / `BookingConfirmed`
+> is published / the ledger accrues once), never the Angular button, the Stripe
+> redirect, or the HTTP status alone; tech-specific assertions belong in adapter-level
+> tests (Cockburn 2005). This keeps ACs stable across UI/payment-adapter churn and
+> reusable from any driving adapter.
 
 - [ ] **AC-1:** Given <precondition>, when <action>, then <observable outcome>. *Pinned by:* `<TestClassName>.<testMethodName>`
 - [ ] **AC-2:** ...
@@ -106,13 +90,11 @@ slice.>
 > endpoint (an operator must only reach their own venue's data — BOLA; if the slice
 > touches `/api/venues/{venueId}/**`, the payout ledger, staff bookings, or
 > beach-map edit, state how ownership is verified in the application service), and
-> any temptation toward JPA or Stripe Connect. If the slice adds or changes a
-> request DTO or an endpoint's error responses, note the error-contract expectation
-> (centralized `ProblemDetail`, not a per-controller `{"error": …}` body —
-> `riviera-java-conventions` §6b). If the slice adds a Flyway migration, the plan
-> may only claim `V<n>` after verifying the number is free on `main` AND unclaimed
-> by any open PR's diff — and it names who renumbers if a parallel slice merges
-> first (default: whoever merges second).
+> any temptation toward JPA or Stripe Connect. A new/changed request DTO or error
+> response → note the error-contract expectation (`riviera-java-conventions` §6b). A
+> Flyway migration → claim `V<n>` only per the in-flight check in `riviera-sdlc`
+> `references/issue-intake-gate.md` (free on `main` AND unclaimed by open PRs; name
+> who renumbers).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
@@ -231,23 +213,19 @@ detail in the in-repo `angular-developer` skill's `references/`.)
 
 ## Execution status
 
-> **This section is the session-recovery anchor.** Long sessions get compacted
-> (summarized) and lose fine-grained state; a fresh session starts with none.
-> Everything a resuming session needs lives HERE, committed — never only in the
-> conversation. After a context compaction, in a fresh session, or whenever unsure
-> where the work stands: re-read this section (plus the current stage's
-> `riviera-sdlc` reference file) before acting. Update it in the SAME commit window
-> as the change it records — at every phase boundary AND every SDLC stage
-> transition (plan → implement → CI → PR → review → sonar → merge).
+> **This section is the session-recovery anchor.** Everything a resuming session needs
+> lives HERE, committed — never only in the conversation. After a compaction, in a fresh
+> session, or whenever unsure: re-read it (plus the current stage's `riviera-sdlc`
+> reference file) before acting. Update it in the SAME commit window as the change it
+> records — the same commit or the immediately-following one, nothing unrelated between;
+> covers every plan-doc update incl. *Skills consulted* — at every phase boundary and
+> SDLC stage transition (why: `riviera-sdlc` §Context hygiene).
 >
-> **Finalize this section BEFORE the merge, in the PR's own last commit** — stage pointer
-> DONE, every phase row ✅ with its commit, Open Questions empty, every risk row closed with
-> its outcome, AC pin-names matching the tests that shipped. Record **`merged via PR #NN`,
-> never a merge SHA**: the squash SHA cannot exist before the merge, so citing it guarantees
-> a second docs-only PR, while the PR number is knowable the moment you open it (the SHA is
-> one `git log --grep "(#NN)"` away). Three consecutive slices paid that tax (case history:
-> `riviera-sdlc` `references/case-history.md`, the *three docs-only close-out PRs* entry).
-> Details: `riviera-sdlc` `references/pr-gates.md` §3 step 4.
+> **Finalize BEFORE the merge, in the PR's own last commit** — stage pointer DONE, phase
+> rows ✅ with commits, Open Questions empty, risk rows closed, AC pin-names matching the
+> shipped tests. Record **`merged via PR #NN`, never a merge SHA** — the SHA guarantees a
+> second docs-only PR (case history + details: `riviera-sdlc` `references/pr-gates.md`
+> §3 step 4).
 
 **Stage pointer:** <current `riviera-sdlc` stage, e.g. `implement (phase 2)` /
 `review gate — fixing findings` / `sonar gate` / `merge close-out step 3`>
@@ -333,12 +311,9 @@ Population `<the mechanism, e.g. "every script that invokes git">` → enumerate
 candidates `<list>` → decision `<fix all / subset / skip + why>`. Append to the
 Generalization-audit log below.
 
-> **The population is defined by mechanism, not by resemblance.** Listing the places that
-> *look like* the one you just fixed draws only on what you already had in mind, so the
-> instance you never thought of stays invisible and the audit comes back clean. Name the
-> mechanism the defect needs, enumerate its members with a command, then judge each. The
-> command you record is the evidence — it must be the one that *found* the population, not
-> one that confirmed the members you had already guessed (case history: #641).
+> **The population is defined by mechanism, not by resemblance** (#641; the full rule:
+> the generalization-pass block in `riviera-plan-doc`). The recorded command must be the one that
+> *found* the population, not one that confirmed the members you had already guessed.
 
 - [ ] **Step 6: Commit** — `git commit -m "<imperative subject> (#NN)"`
 
@@ -349,8 +324,7 @@ Generalization-audit log below.
 ## Generalization-audit log
 
 > Append-only. One row per bug-fix / pattern-introducing phase. **Population** names the
-> mechanism swept and how it was enumerated; a row whose population is "the other X like
-> this one" is the shape that misses things (Step 5).
+> mechanism swept and how it was enumerated (mechanism-not-resemblance — #641, Step 5).
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|

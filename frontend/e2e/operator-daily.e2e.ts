@@ -59,10 +59,13 @@ function wideVenue(name: string, availability: 'FREE' | 'TAKEN') {
 }
 
 /** Session + shell reads mocked; a `marked` set makes the mark/release round-trip survive reconcile. */
-async function mockDaily(page: Page): Promise<void> {
+async function mockDaily(page: Page): Promise<{ patches: import('@playwright/test').Request[] }> {
   const marked = new Set<number>();
+  const patches: import('@playwright/test').Request[] = [];
   let sessionLive = false;
   let guestArrived = false;
+  // The standing sales close (#794): the kill switch's PATCH flips it; the map's salesOpen follows.
+  let salesClose = '23:59';
   await page.route(/\/api\/auth\/me$/, (route) =>
     sessionLive
       ? route.fulfill({ json: PRINCIPAL })
@@ -107,9 +110,38 @@ async function mockDaily(page: Page): Promise<void> {
       ],
     }),
   );
-  // The venue map: sets 2 + 4 are always TAKEN (online-held); a marked set reads TAKEN too.
-  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+  // The owner profile read: the kill switch's GET half — carries the standing salesClose (#794).
+  await page.route(/\/api\/venues\/1\/profile$/, (route) =>
     route.fulfill({
+      json: {
+        name: 'Miramar Beach Club',
+        beach: 'Ksamil',
+        region: 'Albanian Riviera',
+        description: 'Loungers on the shore.',
+        bookingMode: 'INSTANT',
+        bookingCutoff: '18:00',
+        salesClose,
+        commissionBps: 1500,
+        payoutCurrency: 'EUR',
+        amenities: ['WIFI'],
+        distanceToWaterM: 20,
+        version: 3,
+        photos: {
+          cover: { previewUrl: null },
+          sunbeds: { previewUrl: null },
+          bar: { previewUrl: null },
+        },
+      },
+    }),
+  );
+  // The venue map GET (sets 2 + 4 online-held); a PATCH here is the kill switch's write → 204.
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => {
+    if (route.request().method() === 'PATCH') {
+      patches.push(route.request());
+      salesClose = (route.request().postDataJSON() as { salesClose: string }).salesClose;
+      return route.fulfill({ status: 204, body: '' });
+    }
+    return route.fulfill({
       json: {
         id: 1,
         name: 'Miramar Beach Club',
@@ -120,6 +152,7 @@ async function mockDaily(page: Page): Promise<void> {
         reviewsCount: 12,
         bookingMode: 'INSTANT',
         fromPrice: { minorUnits: 3000, currency: 'EUR' },
+        salesOpen: salesClose !== '00:01',
         sets: [1, 2, 3, 4].map((id) =>
           seat(
             id,
@@ -129,8 +162,8 @@ async function mockDaily(page: Page): Promise<void> {
           ),
         ),
       },
-    }),
-  );
+    });
+  });
   await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
     route.fulfill({ json: [] }),
   );
@@ -144,6 +177,7 @@ async function mockDaily(page: Page): Promise<void> {
       },
     }),
   );
+  return { patches };
 }
 
 test.use({ colorScheme: 'dark' });
@@ -170,6 +204,12 @@ test('shows tile states + arrival codes, and marks a walk-in that survives the r
   await expect(page.locator('[data-set-id="1"]')).toHaveAttribute('data-state', 'FREE');
   await expect(page.locator('[data-set-id="2"]')).toHaveAttribute('data-state', 'BOOKED_ONLINE');
 
+  // Every tile shows its position number beside the state glyph — the walk-in affordance (#686).
+  const visibleTileText = (setId: number) =>
+    page.locator(`[data-set-id="${setId}"] > [aria-hidden="true"]`);
+  await expect(visibleTileText(1)).toHaveText(['1']);
+  await expect(visibleTileText(2)).toHaveText(['●', '2']);
+
   // The UNPAID hold (set 4, no confirmed booking) is locked — never a tappable walk-in ✓.
   await expect(page.locator('[data-set-id="4"]')).toHaveAttribute('data-state', 'BOOKED_ONLINE');
 
@@ -186,6 +226,7 @@ test('shows tile states + arrival codes, and marks a walk-in that survives the r
   // Tap the free set 1 → mark walk-in; after the reconcile it stays walk-in marked.
   await page.locator('[data-set-id="1"]').click();
   await expect(page.locator('[data-set-id="1"]')).toHaveAttribute('data-state', 'STAFF_MARKED');
+  await expect(visibleTileText(1)).toHaveText(['✓', '1']);
 });
 
 test('checks a guest in by QR scan — single-use, announced, and the row stays flagged (#583)', async ({
@@ -321,4 +362,86 @@ test('a fully-sold day keeps the scrolling map keyboard-reachable (#605)', async
 
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'daily view, fully sold at 390px');
+});
+
+/**
+ * A venue whose operator has drawn no layout renders 0 sets, and the map card framed that with the
+ * canvas's two orientation banners and nothing between them. This is the state every newly
+ * created venue is in, and the operator is the one who can fix it — so the card ends in the tab
+ * that fixes it, and the chrome that decoded the missing tiles goes with them.
+ */
+test('explains a zero-set day and links to the Beach map tab (#718)', async ({ page }) => {
+  await mockDaily(page);
+  await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
+    route.fulfill({ json: { ...wideVenue('Blank Bay', 'FREE'), sets: [] } }),
+  );
+  await page.route(/\/api\/venues\/1\/availability(\?.*)?$/, (route) =>
+    route.fulfill({ json: [] }),
+  );
+  await page.route(/\/api\/venues\/1\/bookings(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.goto('/operator/1');
+  await signInAndOpenDaily(page);
+
+  await expect(page.getByTestId('daily-map-empty')).toBeVisible();
+  await expect(page.getByTestId('daily-tile')).toHaveCount(0);
+  await expect(page.getByLabel('Legend')).toHaveCount(0);
+  await expect(page.getByTestId('daily-availability')).toHaveText('No sets on the map yet');
+
+  // The 44px floor: <a> is outside check-touch-target's scope, so the rendered box is the proof.
+  const box = (await page.getByTestId('daily-map-empty-link').boundingBox())!;
+  expect(box.height, 'empty-state link height').toBeGreaterThanOrEqual(44);
+  expect(box.width, 'empty-state link width').toBeGreaterThanOrEqual(44);
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'daily view with no sets');
+
+  await page.getByTestId('daily-map-empty-link').click();
+  await expect(page).toHaveURL(/\/operator\/1\/beach-map/);
+});
+
+test('one tap closes today’s online sales via the standing setting, effective on reconcile (#794, + axe)', async ({
+  page,
+}) => {
+  const { patches } = await mockDaily(page);
+  await page.goto('/operator/1');
+  await signInAndOpenDaily(page);
+
+  // Opening the confirm REPLACES the trigger and moves focus onto the destructive button.
+  await page.getByTestId('daily-close-sales').click();
+  const panel = page.getByTestId('daily-close-sales-confirm-panel');
+  await expect(panel).toContainText('effective immediately');
+  await expect(panel).toContainText('stays closed for future days');
+  await expect(page.getByTestId('daily-close-sales')).toHaveCount(0);
+  await expect(page.getByTestId('daily-close-sales-confirm')).toBeFocused();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'daily view with the close-sales confirm open');
+
+  // Backing out restores the trigger and returns focus to it.
+  await page.getByTestId('daily-close-sales-cancel').click();
+  await expect(page.getByTestId('daily-close-sales-confirm-panel')).toHaveCount(0);
+  await expect(page.getByTestId('daily-close-sales')).toBeFocused();
+
+  // Re-open and go through with it.
+  await page.getByTestId('daily-close-sales').click();
+  await page.getByTestId('daily-close-sales-confirm').click();
+
+  // The outcome notice announces the standing nature of the change and takes focus (settled leg)...
+  await expect(page.getByTestId('daily-notice')).toContainText('closed');
+  await expect(page.getByTestId('daily-notice')).toBeFocused();
+  await expect(page.getByTestId('daily-notice')).toContainText('future days');
+  // ...the wire carried the full-replace body with the flipped setting...
+  expect(patches).toHaveLength(1);
+  const body = patches[0].postDataJSON() as {
+    salesClose?: string;
+    name?: string;
+    expectedVersion?: number;
+  };
+  expect(body.salesClose).toBe('00:01');
+  expect(body.name).toBe('Miramar Beach Club'); // untouched profile fields survive the kill switch
+  expect(body.expectedVersion).toBe(3); // the fresh GET's version guards the read-modify-write
+  // ...and the reconciled header now shows the static closed line instead of the button.
+  await expect(page.getByTestId('daily-sales-closed')).toBeVisible();
+  await expect(page.getByTestId('daily-close-sales')).toHaveCount(0);
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'daily view after closing sales');
 });

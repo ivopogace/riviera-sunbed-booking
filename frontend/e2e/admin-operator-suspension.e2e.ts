@@ -11,22 +11,34 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  * suspension revokes the target's session — so the spec is self-contained and runs in CI
  * (`npm run test:e2e:a11y`). The server-side revocation itself is proven against a real session store
  * by `OperatorSuspensionRevocationIT`; this spec proves the console drives it correctly.
+ *
+ * <p>The self-suspend test also carries two computed-style assertions on the SILENT notice, which
+ * look unrelated and are not: `admin-ops-notice`'s class ended in `empty:hidden` until #828 deleted
+ * it as **dead code, not a restyle**. `:empty` matches only an element with no child nodes, and
+ * `{{ notice() }}` on its own line leaves a whitespace text node, so the utility never once
+ * applied — measured here at `display: block` while the utility was still in place, which is why
+ * removing it changed nothing. That test is the only one on this surface that reaches /admin with
+ * no lifecycle action behind it, so it is the only place the notice is genuinely empty. No unit
+ * spec can adjudicate any of it: jsdom's nwsapi and Chromium disagree about `:empty` in opposite
+ * directions.
  */
 
 const ADMIN = { username: 'operator', password: 'admin-pw' };
 const OP = { username: 'zoe', password: 'zoe-pw-12345', contactEmail: 'zoe@venue.example' };
 
-/** Register + approve an operator, leaving the admin signed in on the admin surface. */
+/** Register (auto-signed-in while PENDING) + approve, leaving the admin signed in on /admin. */
 async function seedApprovedOperator(page: import('@playwright/test').Page): Promise<void> {
+  const signIn = new OperatorSignInPage(page);
   await page.goto('/operator/register');
   await page.getByLabel('Username', { exact: true }).fill(OP.username);
   await page.getByLabel('Contact email', { exact: true }).fill(OP.contactEmail);
   await page.getByLabel('Password', { exact: true }).fill(OP.password);
   await page.getByRole('button', { name: /^(Request account|Submitting)/ }).click();
-  await expect(page.getByTestId('auth-pending')).toBeVisible();
+  await expect(page.getByTestId('pending-approval-banner')).toBeVisible();
+  await signIn.signOut();
 
   await page.goto('/operator');
-  await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
+  await signIn.signIn(ADMIN.username, ADMIN.password);
   await page.goto('/admin');
   await page.getByRole('button', { name: 'Approve' }).click();
   await expect(page.getByTestId('admin-ops-empty')).toBeVisible();
@@ -87,6 +99,12 @@ test('the admin is offered no way to suspend its own account', async ({ page }) 
   await page.goto('/admin');
 
   // The server refuses a self-suspend (409 CANNOT_SUSPEND_SELF); the console doesn't offer the action.
+  // Pins the deleted `empty:hidden` as a no-op (#828) — see this file's header.
+  const silent = page.getByTestId('admin-ops-notice');
+  await expect(silent).toHaveText('');
+  await expect(silent).toHaveCSS('display', 'block');
+  await expect(silent).toHaveCSS('margin-top', '16px');
+
   const ownRow = page.getByTestId('admin-account-row').filter({ hasText: ADMIN.username });
   await expect(ownRow.getByText('This is you')).toBeVisible();
   await expect(ownRow.getByRole('button', { name: 'Suspend' })).toHaveCount(0);

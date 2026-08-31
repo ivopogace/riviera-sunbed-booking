@@ -1,7 +1,7 @@
 <section class="mx-auto w-full max-w-[560px] px-5 py-4" data-testid="pricing-tab">
   <section appCardGlass class="rounded-[24px] px-[22px] py-5">
-    <h2 class="text-[16px] font-bold text-(--riv-card-ink)">Row pricing</h2>
-    <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-(--riv-card-ink-soft)">
+    <h2 class="text-[16px] font-bold text-riv-card-ink">Row pricing</h2>
+    <p class="mt-1 mb-3.5 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
       Full-day price per set (2 loungers + umbrella), charged in EUR. Applies to every set in the
       row.
     </p>
@@ -9,22 +9,22 @@
     @if (rows().length > 0) {
       @for (row of rows(); track row.label) {
         <div
-          class="flex items-center gap-3 border-b border-(--riv-card-border) py-2"
+          class="flex items-center gap-3 border-b border-riv-card-border py-2"
           data-testid="pricing-row"
           [attr.data-row]="row.label"
         >
           <span
-            class="inline-flex h-[26px] w-[26px] flex-shrink-0 items-center justify-center rounded-[8px] bg-(--riv-chip-bg) text-[12px] font-bold text-(--riv-card-ink)"
+            class="inline-flex h-[26px] w-[26px] flex-shrink-0 items-center justify-center rounded-[8px] bg-riv-chip-bg text-[12px] font-bold text-riv-card-ink"
             >{{ row.label }}</span
           >
-          <span class="flex-1 text-[13px] text-(--riv-card-ink-soft)"
+          <span class="flex-1 text-[13px] text-riv-card-ink-soft"
             >{{ row.desc }}
             @if (row.mixed) {
-              <strong class="text-(--riv-card-ink)"> · mixed prices</strong>
+              <strong class="text-riv-card-ink"> · mixed prices</strong>
             }
           </span>
           <div class="flex items-center gap-1.5">
-            <span class="text-[14px] text-(--riv-card-ink-soft)" aria-hidden="true">€</span>
+            <span class="text-[14px] text-riv-card-ink-soft" aria-hidden="true">€</span>
             <input
               type="number"
               min="0"
@@ -36,7 +36,8 @@
               [attr.data-testid]="'pricing-input-' + row.label"
               [attr.aria-label]="'Full-day price for row ' + row.label + ', in euros'"
               appTouchTarget
-              class="w-[88px] rounded-[11px] border border-(--riv-card-border) bg-white/60 px-2.5 py-2 text-right text-[14.5px] font-semibold text-(--riv-card-ink) read-only:opacity-60"
+              class="w-[88px] rounded-[11px] border border-riv-card-border bg-white/60 px-2.5 py-2 text-right text-[14.5px] font-semibold text-riv-card-ink read-only:opacity-60"
+              #priceControl
             />
           </div>
         </div>
@@ -50,6 +51,8 @@
         @if (errorRow(); as err) {
           @if (err.label === row.label) {
             <span
+              [appFieldErrorFor]="priceControl"
+              [appFieldErrorForInvalidValue]="valueIsInvalid(err.code)"
               class="block py-1 text-right text-[11.5px] font-semibold text-[#a3160e]"
               role="alert"
               [attr.data-testid]="'pricing-error-' + row.label"
@@ -72,7 +75,7 @@
         </app-stale-write-banner>
       }
 
-      <p class="mt-3 text-[12px] text-(--riv-card-ink-soft)">
+      <p class="mt-3 text-[12px] text-riv-card-ink-soft">
         Projected full-day take if every online set sells:
         <strong class="text-[#0a6e85]" data-testid="pricing-projected">{{ projected() }}</strong>
       </p>
@@ -86,7 +89,7 @@
       </p>
     } @else if (loaded()) {
       <p
-        class="px-3 py-10 text-center text-[13px] text-(--riv-card-ink-soft)"
+        class="px-3 py-10 text-center text-[13px] text-riv-card-ink-soft"
         data-testid="pricing-empty"
       >
         No sets yet. Generate a layout in the Beach map tab, then set row prices here.

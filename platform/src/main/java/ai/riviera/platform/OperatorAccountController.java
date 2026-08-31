@@ -133,7 +133,8 @@ class OperatorAccountController {
 			return ApiProblem.response(HttpStatus.BAD_REQUEST, "INVALID_CURRENT_PASSWORD",
 					"The current password is incorrect.");
 		}
-		if (!existing.get().active()) {
+		// The login set: whoever may hold a session may rotate its own credential; others are refused.
+		if (!OperatorUserDetailsService.MAY_AUTHENTICATE.contains(existing.get().status())) {
 			return ApiProblem.response(HttpStatus.CONFLICT, "ACCOUNT_NOT_ACTIVE",
 					"This account is not active.");
 		}

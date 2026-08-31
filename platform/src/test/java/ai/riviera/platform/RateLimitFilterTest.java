@@ -35,9 +35,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -68,6 +70,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 		"riviera.ratelimit.max-tracked-keys=100000",
 })
 class RateLimitFilterTest {
+
+	private static final String REVIEW_PATH = "/api/bookings/{code}/review";
+	private static final String REVIEW_BODY = "{\"stars\":4,\"displayName\":\"Ana\"}";
 
 	private static final String ALLOWED_ORIGIN = "https://ivopogace.github.io";
 	private static final String CREATE_BODY = """
@@ -174,6 +179,36 @@ class RateLimitFilterTest {
 				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
 	}
 
+	/**
+	 * Submit, edit and delete are one resource behind one credential, so all three draw the same
+	 * per-code budget. A verb the classifier misses would spend no token and still reach the
+	 * controller — the withdraw lesson, one path along.
+	 */
+	@Test
+	void everyReviewVerbSpendsTheSamePerCodeBudget() throws Exception {
+		// Distinct IPs, so only the shared per-code bucket (capacity 2) can trip the third call.
+		mvc.perform(post(REVIEW_PATH, "rvcode-S").with(fromIp("10.23.0.1"))
+						.contentType(MediaType.APPLICATION_JSON).content(REVIEW_BODY))
+				.andExpect(status().isNotFound());
+		mvc.perform(put(REVIEW_PATH, "rvcode-S").with(fromIp("10.23.0.2"))
+						.contentType(MediaType.APPLICATION_JSON).content(REVIEW_BODY))
+				.andExpect(status().isNotFound());
+		mvc.perform(delete(REVIEW_PATH, "rvcode-S").with(fromIp("10.23.0.3")))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
+	/** The review budget is the SAME per-code bucket as the view's — one secret, one budget. */
+	@Test
+	void aReviewDeleteAndTheViewShareOneCodeBudget() throws Exception {
+		viewFromIp("10.24.0.1", "rvshare-T").andExpect(status().isNotFound());
+		mvc.perform(delete(REVIEW_PATH, "rvshare-T").with(fromIp("10.24.0.2")))
+				.andExpect(status().isNotFound());
+		mvc.perform(delete(REVIEW_PATH, "rvshare-T").with(fromIp("10.24.0.3")))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+	}
+
 	private ResultActions withdrawFromIp(String ip, String code) throws Exception {
 		// No csrf() on purpose (the path is exempt): an allowed attempt is a 404, a 429 is the limiter.
 		return mvc.perform(post("/api/bookings/{code}/withdraw", code).with(fromIp(ip)));
@@ -187,6 +222,21 @@ class RateLimitFilterTest {
 
 		// A different code from a fresh IP is unaffected.
 		viewFromIp("10.4.0.4", "kcode-W").andExpect(status().isNotFound());
+	}
+
+	/**
+	 * The pre-reserve terms read (#795) matches the {@code /api/bookings/{code}} template but its
+	 * literal segment is no code: keyed as one it would be a single platform-wide bucket every
+	 * tourist's disclosure drains. It must spend per-IP only, exactly like create.
+	 */
+	@Test
+	void cancellationTermsReadNeverSpendsTheSharedCodeBucket() throws Exception {
+		// Distinct IPs isolate the code dimension: a shared code bucket (capacity 2) would 429 the third.
+		for (String ip : new String[] {"10.22.0.1", "10.22.0.2", "10.22.0.3"}) {
+			mvc.perform(get("/api/bookings/cancellation-terms")
+							.param("setId", "1").param("date", "2030-01-01").with(fromIp(ip)))
+					.andExpect(status().isNotFound());
+		}
 	}
 
 	@Test

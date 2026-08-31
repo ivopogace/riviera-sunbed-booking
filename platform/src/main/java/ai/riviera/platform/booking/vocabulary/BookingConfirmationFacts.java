@@ -32,7 +32,12 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * @param code the arrival code the mail carries (invariant #7 — never logged, never in an event)
  * @param customerId the guest-contact link an address is resolved from via {@code customer::api}
  * @param everConfirmed whether this booking ever reached {@code CONFIRMED}
+ * @param cancellationWindowAtBirth the window in force at the booking's creation (#795), re-derived
+ *        from the venue's current cutoff — bounded, documented drift after a cutoff edit; null when
+ *        it cannot be classified (unknown set), which renders no disclosure
+ * @param lateCancelRefundBps the venue's late share the disclosure promises; 0 outside LATE
  */
 public record BookingConfirmationFacts(SetId setId, LocalDate bookingDate, long amountMinor,
-		String currency, String code, CustomerId customerId, boolean everConfirmed) {
+		String currency, String code, CustomerId customerId, boolean everConfirmed,
+		CancellationWindow cancellationWindowAtBirth, int lateCancelRefundBps) {
 }

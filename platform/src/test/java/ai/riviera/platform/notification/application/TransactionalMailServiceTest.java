@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicReference;
 
 import ai.riviera.platform.booking.vocabulary.RefundReason;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.shared.ObservabilityMetrics;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -57,13 +58,14 @@ class TransactionalMailServiceTest {
 	private static final URI LINK = URI.create("https://riviera.example/account/reset?token=t");
 	private static final URI SIGN_IN_LINK = URI.create("https://riviera.example/account/sign-in");
 	private static final BookingConfirmationMail CONFIRMATION = new BookingConfirmationMail(
-			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR");
+			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR",
+			CancellationWindow.FREE, 0);
 	private static final BookingCancellationMail CANCELLATION = new BookingCancellationMail(
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1), 4500, "EUR", RefundReason.POLICY);
 	private static final PaymentDueMail PAYMENT_DUE = new PaymentDueMail(
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1),
 			Instant.parse("2026-07-31T18:00:00Z"), 4500, "EUR",
-			URI.create("https://riviera.example/booking/CODE1234"));
+			URI.create("https://riviera.example/booking/CODE1234"), CancellationWindow.FREE, 0);
 	private static final RequestDeclinedMail DECLINED = new RequestDeclinedMail(
 			"CODE1234", "Vala Beach", LocalDate.of(2026, 8, 1),
 			URI.create("https://riviera.example/booking/CODE1234"));

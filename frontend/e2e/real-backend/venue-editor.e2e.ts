@@ -56,8 +56,8 @@ test.describe('venue onboarding — real backend, real Postgres', () => {
   });
 
   test('the onboarding form has no serious axe violations (real render)', async ({ page }) => {
+    // signInOperator only submits: awaiting the heading settles the session round-trip.
     await signInOperator(page);
-    await page.goto('/operator?create=1');
     await expect(page.getByRole('heading', { name: 'Venue details' })).toBeVisible();
 
     // Mirror the a11y suite's bar (shared policy): WCAG 2 A/AA, gate on serious + critical.

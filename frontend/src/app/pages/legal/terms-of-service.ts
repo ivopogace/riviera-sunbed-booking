@@ -10,12 +10,13 @@ import { CardGlass } from '../../shared/card-glass';
  * + [bracketed] placeholder entities until the counsel text lands (pinned by
  * `terms-of-service.spec.ts`); swapping it in is a copy-only edit.
  *
- * <p>The booking terms restate only server-enforced rules, generically: bookings close and free
- * cancellation ends the evening before the booking day (invariant #4 — no clock time is stated,
- * since the backend makes the cutoff configurable per venue and the tourist UI shows only a
- * display default), after the cutoff the refund is none-or-partial per the venue's configured
- * share, computed server-side and shown in the booking view (invariant #10), and the booking
- * code is the guest's bearer credential (invariant #7).
+ * <p>The booking terms restate only server-enforced rules, generically: online sales for a day
+ * close at a venue-set time up to and including that day, while free cancellation keeps its own,
+ * separate evening-before deadline (invariant #4 — no clock time is stated, since both are
+ * configurable per venue and the tourist UI shows only a display default); after that deadline
+ * the refund is none-or-partial per the venue's configured share, computed server-side and shown
+ * in the booking view (invariant #10); and the booking code is the guest's bearer credential
+ * (invariant #7).
  */
 @Component({
   selector: 'app-terms-of-service',

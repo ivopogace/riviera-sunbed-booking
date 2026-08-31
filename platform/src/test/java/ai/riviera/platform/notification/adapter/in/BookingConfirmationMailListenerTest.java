@@ -5,6 +5,7 @@ import java.util.List;
 
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.BookingMailFacts;
 import ai.riviera.platform.notification.application.BookingMailFactsService;
@@ -74,7 +75,7 @@ class BookingConfirmationMailListenerTest {
 	private static final String EMAIL = "tourist@example.com";
 
 	private static final BookingConfirmed EVENT = new BookingConfirmed(BOOKING_ID, new VenueId(3L),
-			SET_ID, LocalDate.of(2026, 8, 1), 4500, "EUR");
+			SET_ID, LocalDate.of(2026, 8, 1), 4500, "EUR", CancellationWindow.LATE, 2500);
 	private static final BookingMailFacts.Resolved FACTS =
 			new BookingMailFacts.Resolved(EMAIL, CODE, "Vala Beach", "A", 3);
 
@@ -142,7 +143,26 @@ class BookingConfirmationMailListenerTest {
 		listener.on(EVENT);
 
 		verify(mails).sendBookingConfirmation(EMAIL, new BookingConfirmationMail(
-				CODE, "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR"));
+				CODE, "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR",
+				CancellationWindow.LATE, 2500));
+	}
+
+	/**
+	 * #795 AC-7 — permanent, not a deploy-window hack: a {@code BookingConfirmed} publication
+	 * serialized before the window fields existed deserializes with a null window and 0 bps
+	 * (Jackson's absent-field defaults for an enum and a primitive), and the listener passes
+	 * exactly that through so no transport renders a disclosure line for it.
+	 */
+	@Test
+	void legacyPayloadWithoutWindowRendersNoDisclosure() {
+		BookingConfirmed legacy = new BookingConfirmed(BOOKING_ID, new VenueId(3L),
+				SET_ID, LocalDate.of(2026, 8, 1), 4500, "EUR", null, 0);
+		givenTheFactsAre(FACTS);
+
+		assertThatCode(() -> listener.on(legacy)).doesNotThrowAnyException();
+
+		verify(mails).sendBookingConfirmation(EMAIL, new BookingConfirmationMail(
+				CODE, "Vala Beach", LocalDate.of(2026, 8, 1), "A", 3, 4500, "EUR", null, 0));
 	}
 
 	/**

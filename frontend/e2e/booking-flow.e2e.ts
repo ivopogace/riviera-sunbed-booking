@@ -96,6 +96,8 @@ const AWAITING_DETAIL = {
   beforeCutoff: true,
   refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
   refundedAmount: null,
+  // The wire always carries a panel; a stay nobody checked in is the reason there is no form.
+  reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
 /** A terminal CANCELLED detail as an arriving guest sees it — the cases differ only in these. */
@@ -129,6 +131,8 @@ test.beforeEach(async ({ page }) => {
 test('booking flow is accessible end-to-end', async ({ page }) => {
   await page.goto('/venues/1');
   await expect(page.getByRole('heading', { name: 'Miramar Beach Club' })).toBeVisible();
+  // An INSTANT venue's map footer keeps booking wording (#703).
+  await expect(page.getByTestId('beach-grid')).toContainText('Pick any free set to book it');
   await expectNoSeriousAxeViolations(page, 'beach map');
 
   // Keyboard-select the free online set (the seat-picker must be operable by keyboard).

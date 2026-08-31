@@ -1,7 +1,9 @@
 package ai.riviera.platform.booking.adapter.in;
 
 import java.net.URI;
+import java.time.LocalDate;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.riviera.platform.shared.ApiProblem;
@@ -21,9 +24,11 @@ import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
 import ai.riviera.platform.booking.application.request.WithdrawOutcome;
 import ai.riviera.platform.booking.application.request.WithdrawRequest;
+import ai.riviera.platform.booking.application.cancel.QuoteCancellationTerms;
 import ai.riviera.platform.booking.application.reserve.CreateBooking;
 import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
+import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**
  * Public tourist booking endpoint (U3). Driving adapter — depends only on the
@@ -50,14 +55,30 @@ class BookingController {
 	private final CancelBooking cancelBooking;
 	private final WithdrawRequest withdrawRequest;
 	private final CurrentCustomer currentCustomer;
+	private final QuoteCancellationTerms cancellationTerms;
 
 	BookingController(CreateBooking createBooking, ViewBooking viewBooking, CancelBooking cancelBooking,
-			WithdrawRequest withdrawRequest, CurrentCustomer currentCustomer) {
+			WithdrawRequest withdrawRequest, CurrentCustomer currentCustomer,
+			QuoteCancellationTerms cancellationTerms) {
 		this.createBooking = createBooking;
 		this.viewBooking = viewBooking;
 		this.cancelBooking = cancelBooking;
 		this.withdrawRequest = withdrawRequest;
 		this.currentCustomer = currentCustomer;
+		this.cancellationTerms = cancellationTerms;
+	}
+
+	/**
+	 * The pre-reserve cancellation-terms quote for a set + date (#795) — a public tourist read (the
+	 * venue-map-read precedent; invariant #13 targets operator surfaces). The literal segment ranks
+	 * above the sibling {@code /{code}} template, so neither route shadows the other.
+	 */
+	@GetMapping("/cancellation-terms")
+	ResponseEntity<?> cancellationTerms(@RequestParam long setId,
+			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+		return cancellationTerms.terms(new SetId(setId), date)
+				.<ResponseEntity<?>>map(terms -> ResponseEntity.ok(CancellationTermsView.of(terms)))
+				.orElseGet(() -> error(HttpStatus.NOT_FOUND, "NO_SUCH_SET", "No such set."));
 	}
 
 	/**
@@ -156,8 +177,6 @@ class BookingController {
 	private static final URI BOOKINGS_PATH = URI.create("/api/bookings");
 
 	private static ResponseEntity<ProblemDetail> error(HttpStatus status, String code, String detail) {
-		ProblemDetail problem = ApiProblem.of(status, code, detail);
-		problem.setInstance(BOOKINGS_PATH);
-		return ResponseEntity.status(status).body(problem);
+		return ApiProblem.responseAt(status, code, detail, BOOKINGS_PATH);
 	}
 }

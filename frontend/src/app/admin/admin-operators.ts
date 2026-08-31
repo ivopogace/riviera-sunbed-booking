@@ -1,5 +1,4 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
@@ -7,7 +6,6 @@ import { CardGlass } from '../shared/card-glass';
 import { ConfirmWithReason } from '../shared/confirm-with-reason';
 import { focusMover } from '../shared/focus-after-render';
 import { AdminConsoleStats } from './admin-console-stats';
-import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminOperatorsService } from './admin-operators.service';
 import { OperatorAccountView, PendingOperatorView } from './admin.model';
 
@@ -28,237 +26,201 @@ import { TouchTarget } from '../shared/touch-target';
  *
  * <p>The signed-in admin's own row offers no Suspend at all: the server refuses a self-suspend with
  * {@code 409 CANNOT_SUSPEND_SELF} and that refusal is the real authority — this just avoids offering
- * an action that cannot succeed. Likewise the whole page self-gates on {@link OperatorAuth} for UX
- * while the backend `/api/admin/**` role gate does the actual enforcing. Porcelain-themed to match the
- * operator console.
+ * an action that cannot succeed. Likewise the surrounding {@code AdminConsole} shell self-gates on
+ * {@link OperatorAuth} for UX while the backend `/api/admin/**` role gate does the actual enforcing,
+ * so this component only ever renders once both have passed.
  */
 @Component({
   selector: 'app-admin-operators',
-  imports: [
-    RouterLink,
-    CardGlass,
-    AdminConsoleTabs,
-    AdminConsoleStats,
-    ConfirmWithReason,
-    BusyAction,
-    TouchTarget,
-  ],
-  host: { 'data-riv-theme': 'porcelain' },
+  imports: [CardGlass, AdminConsoleStats, ConfirmWithReason, BusyAction, TouchTarget],
   template: `
-    <section class="mx-auto max-w-[720px] px-4 py-10" aria-labelledby="admin-ops-title">
-      <h1 id="admin-ops-title" class="text-[24px] font-semibold text-(--riv-ink)">Operators</h1>
+    <p
+      class="mt-4 text-[15px] text-riv-ink-soft"
+      role="status"
+      aria-live="polite"
+      tabindex="-1"
+      data-testid="admin-ops-notice"
+    >
+      {{ notice() }}
+    </p>
+    <app-admin-console-stats
+      [pendingCount]="pendingCount()"
+      [activeCount]="activeCount()"
+      [suspendedCount]="suspendedCount()"
+    />
 
-      @if (auth.restoring()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-ops-restoring">
-          Loading…
-        </p>
-      } @else if (!auth.signedIn()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-ops-signed-out">
-          Sign in as an admin to review pending registrations.
-          <a
-            routerLink="/account/sign-in"
-            [queryParams]="{ audience: 'operator', returnUrl: '/admin' }"
-            class="font-semibold underline"
-            >Sign in</a
-          >
-        </p>
-      } @else if (!auth.isAdmin()) {
-        <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-ops-forbidden">
-          You don't have access to this page.
+    @if (loading()) {
+      <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-ops-loading">Loading…</p>
+    } @else if (loadError()) {
+      <p class="mt-4 text-[15px] text-riv-error-ink" role="alert" data-testid="admin-ops-error">
+        Something went wrong loading operators.
+        <button
+          type="button"
+          data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
+          class="font-semibold underline"
+          (click)="reload()"
+        >
+          Retry
+        </button>
+      </p>
+    } @else {
+      <h2 class="mt-8 text-[18px] font-semibold text-riv-ink" id="admin-pending-title">
+        Awaiting approval
+      </h2>
+
+      @if (pending().length === 0) {
+        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-ops-empty">
+          No operators are awaiting approval.
         </p>
       } @else {
-        <app-admin-console-tabs label="Admin console sections" />
-        <p
-          class="mt-4 text-[15px] text-(--riv-ink-soft) empty:hidden"
-          role="status"
-          aria-live="polite"
-          tabindex="-1"
-          data-testid="admin-ops-notice"
+        <ul
+          class="mt-5 flex flex-col gap-3"
+          aria-labelledby="admin-pending-title"
+          data-testid="admin-ops-list"
         >
-          {{ notice() }}
-        </p>
-        <app-admin-console-stats
-          [pendingCount]="pendingCount()"
-          [activeCount]="activeCount()"
-          [suspendedCount]="suspendedCount()"
-        />
-
-        @if (loading()) {
-          <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-ops-loading">
-            Loading…
-          </p>
-        } @else if (loadError()) {
-          <p class="mt-4 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-ops-error">
-            Something went wrong loading operators.
-            <button
-              type="button"
-              data-touch-exempt="control inside a sentence (WCAG 2.5.5 inline exception)"
-              class="font-semibold underline"
-              (click)="reload()"
+          @for (op of pending(); track op.id) {
+            <li
+              appCardGlass
+              class="flex flex-wrap items-center justify-between gap-3 rounded-[14px] p-4"
+              data-testid="admin-op-row"
             >
-              Retry
-            </button>
-          </p>
-        } @else {
-          <h2 class="mt-8 text-[18px] font-semibold text-(--riv-ink)" id="admin-pending-title">
-            Awaiting approval
-          </h2>
-
-          @if (pending().length === 0) {
-            <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-ops-empty">
-              No operators are awaiting approval.
-            </p>
-          } @else {
-            <ul
-              class="mt-5 flex flex-col gap-3"
-              aria-labelledby="admin-pending-title"
-              data-testid="admin-ops-list"
-            >
-              @for (op of pending(); track op.id) {
-                <li
-                  appCardGlass
-                  class="flex flex-wrap items-center justify-between gap-3 rounded-[14px] p-4"
-                  data-testid="admin-op-row"
+              <div class="min-w-0">
+                <p class="truncate text-[16px] font-semibold text-riv-card-ink">
+                  {{ op.username }}
+                </p>
+                <p class="truncate text-[14px] text-riv-card-ink-soft">
+                  {{ op.contactEmail }}
+                </p>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  appTouchTarget
+                  type="button"
+                  [attr.data-testid]="'admin-approve-' + op.id"
+                  [appBusy]="actingId() !== undefined"
+                  (click)="approve(op.id)"
+                  class="rounded-[10px] bg-(image:--riv-cta-grad) px-4 py-2 text-[14px] font-semibold text-white aria-disabled:opacity-60"
                 >
-                  <div class="min-w-0">
-                    <p class="truncate text-[16px] font-semibold text-(--riv-card-ink)">
-                      {{ op.username }}
-                    </p>
-                    <p class="truncate text-[14px] text-(--riv-card-ink-soft)">
-                      {{ op.contactEmail }}
-                    </p>
-                  </div>
-                  <div class="flex gap-2">
-                    <button
-                      appTouchTarget
-                      type="button"
-                      [attr.data-testid]="'admin-approve-' + op.id"
-                      [appBusy]="actingId() !== undefined"
-                      (click)="approve(op.id)"
-                      class="rounded-[10px] bg-(image:--riv-cta-grad) px-4 py-2 text-[14px] font-semibold text-white aria-disabled:opacity-60"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      appTouchTarget
-                      type="button"
-                      [attr.data-testid]="'admin-reject-' + op.id"
-                      [appBusy]="actingId() !== undefined"
-                      (click)="reject(op.id)"
-                      class="rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-60"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </li>
-              }
-            </ul>
-          }
-
-          <h2 class="mt-10 text-[18px] font-semibold text-(--riv-ink)" id="admin-accounts-title">
-            Operator accounts
-          </h2>
-          <p class="mt-1 text-[14px] text-(--riv-ink-soft)">
-            Suspending an operator signs it out on every device and blocks it from signing in again.
-            Reinstating restores access, but not the old sessions.
-          </p>
-
-          @if (accounts().length === 0) {
-            <p class="mt-4 text-[15px] text-(--riv-ink-soft)" data-testid="admin-accounts-empty">
-              No operator accounts yet.
-            </p>
-          } @else {
-            <ul
-              class="mt-5 flex flex-col gap-3"
-              aria-labelledby="admin-accounts-title"
-              data-testid="admin-accounts-list"
-            >
-              @for (op of accounts(); track op.id) {
-                <li
-                  appCardGlass
-                  class="flex flex-wrap items-center justify-between gap-3 rounded-[14px] p-4"
-                  data-testid="admin-account-row"
+                  Approve
+                </button>
+                <button
+                  appTouchTarget
+                  type="button"
+                  [attr.data-testid]="'admin-reject-' + op.id"
+                  [appBusy]="actingId() !== undefined"
+                  (click)="reject(op.id)"
+                  class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:opacity-60"
                 >
-                  <div class="min-w-0">
-                    <p class="truncate text-[16px] font-semibold text-(--riv-card-ink)">
-                      {{ op.username }}
-                      @if (op.admin) {
-                        <span
-                          class="ml-2 rounded-[6px] border border-(--riv-field-border) px-1.5 py-0.5 text-[12px] font-medium text-(--riv-card-ink-soft)"
-                          >Admin</span
-                        >
-                      }
-                      @if (op.suspended) {
-                        <span
-                          class="ml-2 rounded-[6px] border border-[#b3261e] px-1.5 py-0.5 text-[12px] font-medium text-[#b3261e]"
-                          [attr.data-testid]="'admin-suspended-badge-' + op.id"
-                          >Suspended</span
-                        >
-                      }
-                    </p>
-                    <p class="truncate text-[14px] text-(--riv-card-ink-soft)">
-                      {{ op.contactEmail ?? '—' }}
-                    </p>
-                  </div>
-
-                  @if (isSelf(op)) {
-                    <p
-                      class="text-[14px] text-(--riv-card-ink-soft)"
-                      [attr.data-testid]="'admin-self-' + op.id"
-                    >
-                      This is you
-                    </p>
-                  } @else if (op.suspended) {
-                    <button
-                      appTouchTarget
-                      type="button"
-                      [attr.data-testid]="'admin-reinstate-' + op.id"
-                      [appBusy]="actingId() !== undefined"
-                      (click)="reinstate(op.id)"
-                      class="rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-60"
-                    >
-                      Reinstate
-                    </button>
-                  } @else if (confirmingId() === op.id) {
-                    <app-confirm-with-reason
-                      label="Confirm suspension"
-                      [prompt]="'Suspend ' + op.username + '?'"
-                      [promptTestId]="'admin-suspend-prompt-' + op.id"
-                      [reasonId]="'admin-suspend-reason-' + op.id"
-                      reasonPlaceholder="e.g. repeated guest reports — sets not honored"
-                      confirmLabel="Suspend"
-                      cancelLabel="Cancel"
-                      [panelTestId]="'admin-suspend-panel-' + op.id"
-                      [confirmTestId]="'admin-suspend-confirm-' + op.id"
-                      [cancelTestId]="'admin-suspend-cancel-' + op.id"
-                      [busy]="actingId() !== undefined"
-                      [(reason)]="suspendReason"
-                      (confirmed)="suspend(op.id)"
-                      (cancelled)="cancelSuspend(op.id)"
-                    />
-                  } @else {
-                    <button
-                      appTouchTarget
-                      type="button"
-                      [attr.data-testid]="'admin-suspend-' + op.id"
-                      [appBusy]="actingId() !== undefined"
-                      (click)="askToSuspend(op.id)"
-                      class="rounded-[10px] border border-(--riv-field-border) px-4 py-2 text-[14px] font-semibold text-(--riv-card-ink) aria-disabled:opacity-60"
-                    >
-                      Suspend
-                    </button>
-                  }
-                </li>
-              }
-            </ul>
+                  Reject
+                </button>
+              </div>
+            </li>
           }
-        }
+        </ul>
       }
-    </section>
+
+      <h2 class="mt-10 text-[18px] font-semibold text-riv-ink" id="admin-accounts-title">
+        Operator accounts
+      </h2>
+      <p class="mt-1 text-[14px] text-riv-ink-soft">
+        Suspending an operator signs it out on every device and blocks it from signing in again.
+        Reinstating restores access, but not the old sessions.
+      </p>
+
+      @if (accounts().length === 0) {
+        <p class="mt-4 text-[15px] text-riv-ink-soft" data-testid="admin-accounts-empty">
+          No operator accounts yet.
+        </p>
+      } @else {
+        <ul
+          class="mt-5 flex flex-col gap-3"
+          aria-labelledby="admin-accounts-title"
+          data-testid="admin-accounts-list"
+        >
+          @for (op of accounts(); track op.id) {
+            <li
+              appCardGlass
+              class="flex flex-wrap items-center justify-between gap-3 rounded-[14px] p-4"
+              data-testid="admin-account-row"
+            >
+              <div class="min-w-0">
+                <p class="truncate text-[16px] font-semibold text-riv-card-ink">
+                  {{ op.username }}
+                  @if (op.admin) {
+                    <span
+                      class="ml-2 rounded-[6px] border border-riv-field-border px-1.5 py-0.5 text-[12px] font-medium text-riv-card-ink-soft"
+                      >Admin</span
+                    >
+                  }
+                  @if (op.suspended) {
+                    <span
+                      class="ml-2 rounded-[6px] border border-riv-error-ink px-1.5 py-0.5 text-[12px] font-medium text-riv-error-ink"
+                      [attr.data-testid]="'admin-suspended-badge-' + op.id"
+                      >Suspended</span
+                    >
+                  }
+                </p>
+                <p class="truncate text-[14px] text-riv-card-ink-soft">
+                  {{ op.contactEmail ?? '—' }}
+                </p>
+              </div>
+
+              @if (isSelf(op)) {
+                <p
+                  class="text-[14px] text-riv-card-ink-soft"
+                  [attr.data-testid]="'admin-self-' + op.id"
+                >
+                  This is you
+                </p>
+              } @else if (op.suspended) {
+                <button
+                  appTouchTarget
+                  type="button"
+                  [attr.data-testid]="'admin-reinstate-' + op.id"
+                  [appBusy]="actingId() !== undefined"
+                  (click)="reinstate(op.id)"
+                  class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:opacity-60"
+                >
+                  Reinstate
+                </button>
+              } @else if (confirmingId() === op.id) {
+                <app-confirm-with-reason
+                  label="Confirm suspension"
+                  [prompt]="'Suspend ' + op.username + '?'"
+                  [promptTestId]="'admin-suspend-prompt-' + op.id"
+                  [reasonId]="'admin-suspend-reason-' + op.id"
+                  reasonPlaceholder="e.g. repeated guest reports — sets not honored"
+                  confirmLabel="Suspend"
+                  cancelLabel="Cancel"
+                  [panelTestId]="'admin-suspend-panel-' + op.id"
+                  [confirmTestId]="'admin-suspend-confirm-' + op.id"
+                  [cancelTestId]="'admin-suspend-cancel-' + op.id"
+                  [busy]="actingId() !== undefined"
+                  [(reason)]="suspendReason"
+                  (confirmed)="suspend(op.id)"
+                  (cancelled)="cancelSuspend(op.id)"
+                />
+              } @else {
+                <button
+                  appTouchTarget
+                  type="button"
+                  [attr.data-testid]="'admin-suspend-' + op.id"
+                  [appBusy]="actingId() !== undefined"
+                  (click)="askToSuspend(op.id)"
+                  class="rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:opacity-60"
+                >
+                  Suspend
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      }
+    }
   `,
 })
 export class AdminOperators {
-  protected readonly auth = inject(OperatorAuth);
+  private readonly auth = inject(OperatorAuth);
   private readonly service = inject(AdminOperatorsService);
   private readonly focusAfterRender = focusMover();
 

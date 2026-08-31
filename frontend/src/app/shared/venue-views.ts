@@ -68,13 +68,55 @@ export interface VenueMapView {
   readonly setVersion?: number;
   /** The cover photo's serving URLs, or `null`/absent — the banner then keeps its gradient. */
   readonly coverPhoto?: CoverPhotoView | null;
+  /**
+   * The beach-map banner's slideshow: one banner-sized serving URL per occupied photo slot in
+   * slot order (cover, sunbeds, bar), possibly empty. Optional because test doubles and older
+   * payloads may omit it; the band then falls back to `coverPhoto` alone.
+   */
+  readonly photos?: readonly string[];
+  /**
+   * Whether online sales for the selected date are open right now — the server's sales-window
+   * verdict (invariant #4), display only; the reserve path enforces the real fence. Optional
+   * because test doubles and older payloads may omit it; only an explicit `false` renders the
+   * closed state.
+   */
+  readonly salesOpen?: boolean;
+  /**
+   * The venue's own sales-close setting — a display-copy key only: wording branches on the
+   * value and never compares it with a clock; {@link salesOpen} stays the open/closed verdict.
+   * Optional because test doubles and older payloads may omit it; absent renders no note.
+   */
+  readonly salesClose?: SalesCloseTime;
 }
+
+/**
+ * The venue's on-day sales-close choice (invariant #4): exactly the three server-vocabulary
+ * wall-clock tokens, `"HH:mm"` in Europe/Tirane. `00:01` opts the venue out of same-day online
+ * sales, `16:00` is the default, `23:59` keeps today bookable all day. The wire keeps this shape
+ * in both directions, so the FE never parses times.
+ */
+export type SalesCloseTime = '00:01' | '16:00' | '23:59';
 
 /**
  * A venue's set availability on a chosen day, as a count (mirrors the backend
  * `AvailabilitySummary`): `free` of `total` sets are not yet taken for the date.
  */
 export interface AvailabilitySummary {
+  readonly free: number;
+  readonly total: number;
+}
+
+/**
+ * One day of a venue's availability calendar (`GET /api/venues/{id}/availability-calendar`,
+ * mirrors the backend `DailyAvailabilityView`): the civil day as an ISO `YYYY-MM-DD` string in
+ * `Europe/Tirane` (invariant #6), and how many of the venue's sets are free on it.
+ *
+ * <p>`total` spans **both** pools, so the pair is a "how busy is this day" signal and not a count
+ * of online-bookable sets. It is a **snapshot, never a hold** — a day showing free capacity can be
+ * full by the time a set is claimed, and only the claim decides (invariant #2).
+ */
+export interface DailyAvailability {
+  readonly date: string;
   readonly free: number;
   readonly total: number;
 }
@@ -104,6 +146,18 @@ export interface VenueSummary {
   readonly availability: AvailabilitySummary;
   /** The cover photo's serving URLs, or `null`/absent — the card then keeps its gradient. */
   readonly coverPhoto?: CoverPhotoView | null;
+  /**
+   * The Discover card's slideshow: one card-sized serving URL per occupied photo slot in
+   * slot order (cover, sunbeds, bar), possibly empty. Optional because test doubles and older
+   * payloads may omit it; the card then falls back to `coverPhoto` alone.
+   */
+  readonly photos?: readonly string[];
+  /**
+   * Whether online sales for the selected date are open right now — the server's sales-window
+   * verdict (invariant #4), display only; the reserve path enforces the real fence. Optional
+   * because test doubles and older payloads may omit it; only an explicit `false` badges the card.
+   */
+  readonly salesOpen?: boolean;
 }
 
 /**

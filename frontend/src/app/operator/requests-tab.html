@@ -1,7 +1,7 @@
 <section class="mx-auto w-full max-w-[760px] px-5 py-4" data-testid="requests-tab">
   <header class="mb-1.5">
-    <h1 class="text-[19px] font-bold tracking-[-0.01em] text-(--riv-card-ink)">Booking requests</h1>
-    <p class="mt-1 max-w-[520px] text-[13px] leading-[1.5] text-(--riv-card-ink-soft)">
+    <h1 class="text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink">Booking requests</h1>
+    <p class="mt-1 max-w-[520px] text-[13px] leading-[1.5] text-riv-card-ink-soft">
       Guests requested these sets on your Request-to-Book venue. Accept to send them to payment, or
       decline. Requests expire if not answered in time.
     </p>
@@ -12,21 +12,71 @@
          venue") copy — card-ink over the light panel is AA-proven, and a green success box would
          misread on a failure. -->
     <output
-      class="mt-3 block rounded-[12px] border border-(--riv-card-border) bg-white/70 px-3.5 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink)"
+      class="mt-3 block rounded-[12px] border border-riv-card-border bg-white/70 px-3.5 py-2.5 text-[13.5px] font-semibold text-riv-card-ink"
       aria-live="polite"
       data-testid="requests-notice"
       >{{ msg }}</output
     >
   }
 
+  <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
+  <app-load-announcer
+    [loading]="!loaded()"
+    [ready]="loaded() && !loadError()"
+    loadingLabel="Loading requests…"
+    readyLabel="Requests loaded."
+  />
+
   @if (!loaded()) {
-    <p
-      class="px-5 py-10 text-center text-[13px] text-(--riv-card-ink-soft)"
-      aria-live="polite"
-      data-testid="requests-loading"
-    >
-      Loading requests…
-    </p>
+    <!-- Mirrors the queue's cards so nothing jumps when it lands; the announcer above owns the words (#744). -->
+    <div class="mt-3.5 flex flex-col gap-3" aria-hidden="true" inert data-testid="requests-loading">
+      @for (card of skeletonCards; track card) {
+        <div appCardGlass class="rounded-[22px] px-5 py-[18px]" data-testid="request-skeleton-card">
+          <div class="flex flex-wrap items-start gap-3.5">
+            <span class="min-w-[200px] flex-1">
+              <span
+                appSkeletonBlock
+                class="bg-riv-card-track block h-[22px] w-[58%] rounded-[6px]"
+              ></span>
+              <span class="mt-2.5 flex flex-wrap gap-3.5">
+                <span
+                  appSkeletonBlock
+                  class="bg-riv-card-track block h-[19px] w-[164px] rounded-[6px]"
+                ></span>
+                <span
+                  appSkeletonBlock
+                  class="bg-riv-card-track block h-[19px] w-[104px] rounded-[6px]"
+                ></span>
+                <span
+                  appSkeletonBlock
+                  class="bg-riv-card-track block h-[19px] w-[86px] rounded-[6px]"
+                ></span>
+              </span>
+            </span>
+            <span class="flex flex-shrink-0 flex-col items-end">
+              <span
+                appSkeletonBlock
+                class="bg-riv-card-track block h-[26px] w-[88px] rounded-full"
+              ></span>
+              <span
+                appSkeletonBlock
+                class="bg-riv-card-track mt-1.5 block h-[17px] w-[122px] rounded-[6px]"
+              ></span>
+            </span>
+          </div>
+          <div class="mt-3.5 flex flex-wrap gap-2.5 border-t border-riv-card-border pt-3.5">
+            <span
+              appSkeletonBlock
+              class="bg-riv-card-track block h-11 min-w-[130px] flex-1 rounded-[13px]"
+            ></span>
+            <span
+              appSkeletonBlock
+              class="bg-riv-card-track block h-11 w-[104px] rounded-[13px]"
+            ></span>
+          </div>
+        </div>
+      }
+    </div>
   } @else if (loadError()) {
     <p
       class="mx-auto mt-6 max-w-md rounded-[16px] border border-[#a3160e]/30 bg-white/70 px-5 py-4 text-center text-[13px] font-semibold text-[#a3160e]"
@@ -37,7 +87,7 @@
     </p>
   } @else if (rows().length === 0) {
     <div
-      class="mt-3.5 rounded-[24px] border border-(--riv-card-border) bg-white/50 px-[26px] py-[52px] text-center"
+      class="mt-3.5 rounded-[24px] border border-riv-card-border bg-white/50 px-[26px] py-[52px] text-center"
       data-testid="requests-empty"
     >
       <span
@@ -45,8 +95,8 @@
         aria-hidden="true"
         >✓</span
       >
-      <h2 class="text-[18px] font-bold text-(--riv-card-ink)">All caught up</h2>
-      <p class="mt-1.5 text-[13.5px] text-(--riv-card-ink-soft)">
+      <h2 class="text-[18px] font-bold text-riv-card-ink">All caught up</h2>
+      <p class="mt-1.5 text-[13.5px] text-riv-card-ink-soft">
         No pending requests right now. New ones land here with a badge on the tab.
       </p>
     </div>
@@ -57,10 +107,10 @@
           <article appCardGlass class="rounded-[22px] px-5 py-[18px]" data-testid="request-card">
             <div class="flex flex-wrap items-start gap-3.5">
               <div class="min-w-[200px] flex-1">
-                <span class="text-[16.5px] font-bold text-(--riv-card-ink)">{{ row.guest }}</span>
-                <div class="mt-2.5 flex flex-wrap gap-3.5 text-[13px] text-(--riv-card-ink-soft)">
+                <span class="text-[16.5px] font-bold text-riv-card-ink">{{ row.guest }}</span>
+                <div class="mt-2.5 flex flex-wrap gap-3.5 text-[13px] text-riv-card-ink-soft">
                   <span
-                    >Set <strong class="text-(--riv-card-ink)">{{ row.setLabel }}</strong> ·
+                    >Set <strong class="text-riv-card-ink">{{ row.setLabel }}</strong> ·
                     {{ row.tierName }}</span
                   >
                   <span>{{ row.dateLabel }}</span>
@@ -79,7 +129,7 @@
                   </span>
                 }
                 @if (!isExpired(row.bookingId)) {
-                  <span class="mt-1.5 block text-[11.5px] text-(--riv-card-ink-faint)"
+                  <span class="mt-1.5 block text-[11.5px] text-riv-card-ink-faint"
                     >Respond by {{ row.respondByStr }}</span
                   >
                 }
@@ -88,7 +138,7 @@
 
             @if (isExpired(row.bookingId)) {
               <div
-                class="mt-3.5 flex flex-wrap items-center justify-between gap-3 border-t border-(--riv-card-border) pt-3.5"
+                class="mt-3.5 flex flex-wrap items-center justify-between gap-3 border-t border-riv-card-border pt-3.5"
                 data-testid="expired-race"
               >
                 <output
@@ -100,7 +150,7 @@
                 <button
                   type="button"
                   appTouchTarget
-                  class="rounded-[12px] border border-(--riv-card-border) bg-white/70 px-4 py-2.5 text-[13px] font-semibold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white motion-reduce:transition-none"
+                  class="rounded-[12px] border border-riv-card-border bg-white/70 px-4 py-2.5 text-[13px] font-semibold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-white motion-reduce:transition-none"
                   data-testid="dismiss-expired"
                   (click)="onDismissExpired(row)"
                 >
@@ -109,10 +159,10 @@
               </div>
             } @else if (inDecline(row.bookingId)) {
               <div
-                class="mt-3.5 border-t border-(--riv-card-border) pt-3.5"
+                class="mt-3.5 border-t border-riv-card-border pt-3.5"
                 data-testid="decline-confirm"
               >
-                <p class="mb-2.5 text-[13.5px] font-semibold text-(--riv-card-ink)">
+                <p class="mb-2.5 text-[13.5px] font-semibold text-riv-card-ink">
                   Decline this request? {{ row.guest }} will be notified and won’t be charged.
                 </p>
                 <div class="flex flex-wrap gap-2.5">
@@ -129,7 +179,7 @@
                   <button
                     type="button"
                     appTouchTarget
-                    class="rounded-[13px] border border-(--riv-card-border) bg-white/60 px-5 py-[11px] text-[14px] font-semibold text-(--riv-card-ink)"
+                    class="rounded-[13px] border border-riv-card-border bg-white/60 px-5 py-[11px] text-[14px] font-semibold text-riv-card-ink"
                     (click)="onCancelDecline(row)"
                   >
                     Keep it
@@ -137,7 +187,7 @@
                 </div>
               </div>
             } @else {
-              <div class="mt-3.5 flex flex-wrap gap-2.5 border-t border-(--riv-card-border) pt-3.5">
+              <div class="mt-3.5 flex flex-wrap gap-2.5 border-t border-riv-card-border pt-3.5">
                 <button
                   type="button"
                   appTouchTarget

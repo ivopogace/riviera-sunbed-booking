@@ -34,7 +34,7 @@ describe('failure-panel directives', () => {
 
   it('composes the card-glass surface into the panel', () => {
     const panel = root().querySelector('[data-testid="panel"]')!;
-    expect(panel.classList.contains('bg-(--riv-card-glass)')).toBe(true);
+    expect(panel.classList.contains('bg-riv-card-glass')).toBe(true);
     expect(panel.classList.contains('rounded-[26px]')).toBe(true);
   });
 });

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 
@@ -6,15 +6,26 @@ import { expectNoSeriousAxeViolations } from './support/axe';
  * Real-render audit of the beach map's pan-vs-select distinction. A big
  * venue overflows the map viewport, so the tile grid pans horizontally by mouse drag. The pin:
  * a plain click on a free tile opens the booking dialog, but a drag-pan release does NOT — and
- * the row-code/price side columns stay fixed while the tiles pan. The API is mocked (`page.route`),
- * so the suite is CI-safe with no backend (like booking-flow.e2e.ts). Runs axe over the map.
+ * the row-code/price side columns stay fixed while the tiles pan. Also pins the #672 restyle as
+ * rendered (computed styles, not class lists): the sea→sand wash, the edge fade mask + scroll
+ * snap on the pan viewport, per-zone price chips, ghost-taken tiles, and the walk-in treatment.
+ * The API is mocked (`page.route`), so the suite is CI-safe with no backend (like
+ * booking-flow.e2e.ts). Runs axe over the map.
  */
 
-const ROWS = [
-  { label: 'Front row · Sea view', tier: 'PREMIUM', price: 5000 },
-  { label: 'Row 2', tier: 'STANDARD', price: 4000 },
-  { label: 'Row 3', tier: 'STANDARD', price: 3500 },
-  { label: 'Row 4 · Back', tier: 'STANDARD', price: 3000 },
+const ROWS: {
+  label: string;
+  tier: string;
+  pool: string;
+  price: number;
+  lastSetPrice?: number;
+}[] = [
+  { label: 'Front row · Sea view', tier: 'PREMIUM', pool: 'ONLINE', price: 5000 },
+  { label: 'Row 2', tier: 'STANDARD', pool: 'ONLINE', price: 4000 },
+  // Row 3 is mixed-price (one repriced set), so its rail chip must render the span (#689).
+  { label: 'Row 3', tier: 'STANDARD', pool: 'ONLINE', price: 3500, lastSetPrice: 4500 },
+  { label: 'Row 4 · Back', tier: 'STANDARD', pool: 'ONLINE', price: 3000 },
+  { label: 'Row 5 · Walk-in', tier: 'STANDARD', pool: 'WALK_IN', price: 3000 },
 ];
 
 interface MapSet {
@@ -40,11 +51,14 @@ function wideVenue() {
         rowLabel: row.label,
         positionNo: p,
         tier: row.tier,
-        pool: 'ONLINE',
-        price: { minorUnits: row.price, currency: 'EUR' },
+        pool: row.pool,
+        price: {
+          minorUnits: p === 20 ? (row.lastSetPrice ?? row.price) : row.price,
+          currency: 'EUR',
+        },
         gridX: p,
         gridY: r + 1,
-        availability: p % 7 === 0 ? 'TAKEN' : 'FREE', // a few taken; the rest bookable
+        availability: p % 7 === 0 ? 'TAKEN' : 'FREE', // a few taken per row; the rest free
       });
     }
   });
@@ -62,8 +76,229 @@ function wideVenue() {
   };
 }
 
+/**
+ * A venue that FITS the #700 desktop breakout: 14 columns is the width the issue names, and the
+ * 1100px card renders it whole — 15 is the first width that pans, measured at 1280 (14 clears by
+ * 13px, 15 misses by 49px). Five rows keeps it under the wash scroller's 532px cap, so "no hint"
+ * means no hint on either axis.
+ *
+ * <p>That boundary is now the SAME for every price vocabulary, which is what {@link bareFitVenue}
+ * pins. It did not use to be: before #751 a bare-amount rail measured 52px rather than this
+ * fixture's 112.66px chip, so such a venue fit at 15 and panned only at 16 while this one already
+ * panned at 15. The reservation costs the bare venue that extra column and buys one boundary.
+ */
+function fitVenue() {
+  const sets: MapSet[] = [];
+  let id = 0;
+  for (let r = 1; r <= 5; r++) {
+    for (let p = 1; p <= 14; p++) {
+      id += 1;
+      sets.push({
+        id,
+        rowLabel: `Row ${r}`,
+        positionNo: p,
+        tier: r === 1 ? 'PREMIUM' : 'STANDARD',
+        pool: 'ONLINE',
+        price: { minorUnits: r === 1 ? 5000 : 3000, currency: 'EUR' },
+        gridX: p,
+        gridY: r,
+        availability: 'FREE',
+      });
+    }
+  }
+  return {
+    id: 3,
+    name: 'Snug Cove',
+    beach: 'Borsh',
+    region: 'Albanian Riviera',
+    description: 'A beach that fits a desktop screen whole.',
+    ratingTenths: 46,
+    reviewsCount: 34,
+    bookingMode: 'INSTANT',
+    fromPrice: { minorUnits: 3000, currency: 'EUR' },
+    sets,
+  };
+}
+
+/**
+ * A 5 × 6 venue whose front row carries `frontRowLabel` verbatim — the fixtures for the rail's
+ * width cap. Everything else is identical between them, so a rail or viewport difference between
+ * two of these can only come from the label.
+ */
+function labelledVenue(id: number, name: string, frontRowLabel: string) {
+  const sets: MapSet[] = [];
+  let n = 0;
+  for (let r = 1; r <= 5; r++) {
+    for (let p = 1; p <= 6; p++) {
+      n += 1;
+      sets.push({
+        id: n,
+        rowLabel: r === 1 ? frontRowLabel : `Row ${r}`,
+        positionNo: p,
+        tier: r === 1 ? 'PREMIUM' : 'STANDARD',
+        pool: 'ONLINE',
+        price: { minorUnits: r === 1 ? 5000 : 3000, currency: 'EUR' },
+        gridX: p,
+        gridY: r,
+        availability: 'FREE',
+      });
+    }
+  }
+  return {
+    id,
+    name,
+    beach: 'Himarë',
+    region: 'Albanian Riviera',
+    description: 'A venue with a lot to say about its front row.',
+    ratingTenths: 45,
+    reviewsCount: 12,
+    bookingMode: 'INSTANT',
+    fromPrice: { minorUnits: 3000, currency: 'EUR' },
+    sets,
+  };
+}
+
+/**
+ * The fits-whole venue that actually PAYS for the price rail's 92px reservation (#751): 14
+ * columns, and every zone a bare amount, so its rail is the reservation rather than a chip. The
+ * premium front row of {@link fitVenue} rails at 112.66px and is therefore already wider than the
+ * floor — it would pass this test without the reservation ever being spent, which is exactly the
+ * fixture-shaped blind spot that lets a widened rail land unnoticed.
+ */
+function bareFitVenue() {
+  const sets: MapSet[] = [];
+  let id = 0;
+  for (let r = 1; r <= 5; r++) {
+    for (let p = 1; p <= 14; p++) {
+      id += 1;
+      sets.push({
+        id,
+        rowLabel: `Row ${r}`,
+        positionNo: p,
+        tier: 'STANDARD',
+        pool: 'ONLINE',
+        price: { minorUnits: 3000, currency: 'EUR' },
+        gridX: p,
+        gridY: r,
+        availability: 'FREE',
+      });
+    }
+  }
+  return {
+    id: 6,
+    name: 'Plain Cove',
+    beach: 'Qeparo',
+    region: 'Albanian Riviera',
+    description: 'A beach that fits a desktop screen whole, and prices every row the same.',
+    ratingTenths: 44,
+    reviewsCount: 18,
+    bookingMode: 'INSTANT',
+    fromPrice: { minorUnits: 3000, currency: 'EUR' },
+    sets,
+  };
+}
+
+/**
+ * One column past {@link bareFitVenue}: the width at which a bare-amount rail stops fitting since
+ * #751. Same shape otherwise, so the only variable between the two tests is the column count.
+ */
+function barePanVenue() {
+  const sets: MapSet[] = [];
+  let id = 0;
+  for (let r = 1; r <= 5; r++) {
+    for (let p = 1; p <= 15; p++) {
+      id += 1;
+      sets.push({
+        id,
+        rowLabel: `Row ${r}`,
+        positionNo: p,
+        tier: 'STANDARD',
+        pool: 'ONLINE',
+        price: { minorUnits: 3000, currency: 'EUR' },
+        gridX: p,
+        gridY: r,
+        availability: 'FREE',
+      });
+    }
+  }
+  return {
+    id: 7,
+    name: 'Wide Plain',
+    beach: 'Qeparo',
+    region: 'Albanian Riviera',
+    description: 'A beach one column past what a desktop screen shows whole.',
+    ratingTenths: 43,
+    reviewsCount: 11,
+    bookingMode: 'INSTANT',
+    fromPrice: { minorUnits: 3000, currency: 'EUR' },
+    sets,
+  };
+}
+
+/** The pan viewport's overflow state and the three affordances gated on it. */
+async function panState(page: Page) {
+  return page.getByTestId('map-pan').evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return {
+      overflows: el.scrollWidth > el.clientWidth + 1,
+      masked: cs.maskImage !== 'none',
+      scrollPaddingLeft: cs.scrollPaddingLeft,
+    };
+  });
+}
+
+/** A venue tall enough (12 rows) that the wash scroller overflows its 532px cap. */
+function tallVenue() {
+  const sets: MapSet[] = [];
+  let id = 0;
+  for (let r = 1; r <= 12; r++) {
+    for (let p = 1; p <= 20; p++) {
+      id += 1;
+      sets.push({
+        id,
+        rowLabel: `Row ${r}`,
+        positionNo: p,
+        tier: r === 1 ? 'PREMIUM' : 'STANDARD',
+        pool: 'ONLINE',
+        price: { minorUnits: r === 1 ? 5000 : 3000, currency: 'EUR' },
+        gridX: p,
+        gridY: r,
+        availability: 'FREE',
+      });
+    }
+  }
+  return {
+    id: 2,
+    name: 'Tall Bay',
+    beach: 'Dhërmi',
+    region: 'Albanian Riviera',
+    description: 'A deep beach — the map pans on both axes.',
+    ratingTenths: 45,
+    reviewsCount: 80,
+    bookingMode: 'INSTANT',
+    fromPrice: { minorUnits: 3000, currency: 'EUR' },
+    sets,
+  };
+}
+
 test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: wideVenue() }));
+  await page.route(/\/api\/venues\/2(\?.*)?$/, (route) => route.fulfill({ json: tallVenue() }));
+  await page.route(/\/api\/venues\/3(\?.*)?$/, (route) => route.fulfill({ json: fitVenue() }));
+  await page.route(/\/api\/venues\/4(\?.*)?$/, (route) =>
+    route.fulfill({ json: labelledVenue(4, 'Wordy Bay', 'Front row sea view') }),
+  );
+  await page.route(/\/api\/venues\/5(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: labelledVenue(
+        5,
+        'Wordier Bay',
+        'Front row sea view sunset side with the good cabanas and the quiet end',
+      ),
+    }),
+  );
+  await page.route(/\/api\/venues\/6(\?.*)?$/, (route) => route.fulfill({ json: bareFitVenue() }));
+  await page.route(/\/api\/venues\/7(\?.*)?$/, (route) => route.fulfill({ json: barePanVenue() }));
 });
 
 test('a plain click on a free tile opens the booking dialog (and the map is accessible)', async ({
@@ -83,7 +318,7 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
   expect(headBg).not.toBe('rgba(0, 0, 0, 0)');
   expect(headBg).not.toBe('transparent');
 
-  // The row-code side labels (A–D) render as the v3 design's subtle chips — a filled, rounded pill,
+  // The row-name side labels render as the v3 design's subtle chips — a filled, rounded pill,
   // not bare text (design-comparison follow-up). Guards that the chip fill/radius isn't dropped.
   const chip = await page
     .getByTestId('row-code')
@@ -101,6 +336,47 @@ test('a plain click on a free tile opens the booking dialog (and the map is acce
   const photoY = (await page.locator('.photo-band').boundingBox())!.y;
   const bannerY = (await page.locator('.sea-banner').boundingBox())!.y;
   expect(photoY).toBeLessThan(bannerY);
+
+  // The sea→sand wash actually paints the map scroller (#672) — computed style, not class list.
+  const wash = await page
+    .locator('[data-riv-scroller]')
+    .first()
+    .evaluate((el) => getComputedStyle(el).backgroundImage);
+  expect(wash).toContain('linear-gradient');
+
+  // The grid card keeps its elevation (#674: the frame swap silently dropped the drop shadow).
+  const frameShadow = await page
+    .getByTestId('beach-grid')
+    .evaluate((el) => getComputedStyle(el).boxShadow);
+  expect(frameShadow).toContain('rgba(7, 42, 58, 0.28)');
+
+  // One chip per zone (#672), Row 3's span (#689); a chip adds only tier/channel words (#724).
+  await expect(page.getByTestId('row-price')).toHaveText([
+    '€50 · Front row',
+    '€40',
+    '€35–€45',
+    '€30',
+    '€30 · at venue',
+  ]);
+
+  // Taken sets are ghosts (#672): translucent FILL + dashed outline — group opacity broke AA.
+  const ghost = await page
+    .locator('.set-tile.taken')
+    .first()
+    .evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { bg: cs.backgroundColor, borderStyle: cs.borderTopStyle };
+    });
+  // Last number before ')' is the alpha in rgba()/oklab()/color() alike; an opaque rgb() fails.
+  const ghostAlpha = Number(/([\d.]+)\)$/.exec(ghost.bg)?.[1] ?? '1');
+  expect(ghostAlpha).toBeLessThan(0.5);
+  expect(ghost.borderStyle).toBe('dashed');
+
+  // Free walk-in sets: distinct tiles, never tap targets, and named in the legend (#672).
+  const walkins = page.locator('.set-tile.walkin');
+  await expect(walkins).toHaveCount(18); // row 5's 20 sets minus its 2 taken ones
+  await expect(walkins.first().locator('button')).toHaveCount(0);
+  await expect(page.getByRole('list', { name: 'Legend' })).toContainText('Walk-in only');
 
   await expectNoSeriousAxeViolations(page, 'beach map (wide, pannable)');
 
@@ -121,6 +397,19 @@ test('a drag-pan release over a tile pans the map but does NOT open the dialog; 
   const rowCode = page.getByTestId('row-code').first();
   const codeXBefore = (await rowCode.boundingBox())!.x;
   const scrollBefore = await pan.evaluate((el) => el.scrollLeft);
+
+  // The #672 edge fade + scroll snap are applied — the drag below proves they don't break panning.
+  const viewport = await pan.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { mask: cs.maskImage, snap: cs.scrollSnapType };
+  });
+  expect(viewport.mask).toContain('linear-gradient');
+  expect(viewport.snap).toContain('x');
+
+  // At rest the leading tile sits PAST the 16px fade (inner padding), not half-faded inside it.
+  const panBox = (await pan.boundingBox())!;
+  const firstTileBox = (await page.locator('.set-tile').first().boundingBox())!;
+  expect(firstTileBox.x - panBox.x).toBeGreaterThanOrEqual(16);
 
   // Drag horizontally across the tile grid (down → move → up), well past the 6px threshold and
   // staying inside the scroller (a drag off its edge would end the pan early via mouseleave).
@@ -151,4 +440,338 @@ test('a drag-pan release over a tile pans the map but does NOT open the dialog; 
     .first()
     .click();
   await expect(page.getByRole('dialog')).toBeVisible();
+});
+
+test('a vertical drag pans the wash scroller — rails ride along — and its release opens no dialog (#676)', async ({
+  page,
+}) => {
+  await page.goto('/venues/2');
+  await expect(page.getByRole('heading', { name: 'Tall Bay' })).toBeVisible();
+
+  // The wash scroller (the OUTER [data-riv-scroller]) is the vertical axis's scroll target.
+  const wash = page.locator('[data-riv-scroller]').first();
+  await expect.poll(() => wash.evaluate((el) => el.scrollHeight > el.clientHeight + 1)).toBe(true);
+
+  // Anchor mid-map (row H = 8 of 12); hover() scrolls it into view, so measure baselines afterwards.
+  const anchor = page.getByRole('button', { name: /^Row 8 · spot 11,/ });
+  await anchor.hover();
+  const scrollBefore = await wash.evaluate((el) => el.scrollTop);
+  const chipYBefore = (await page.getByTestId('row-code').first().boundingBox())!.y;
+
+  // Drag mostly-vertically (x fixed): up 120px past the 6px threshold, staying inside the map.
+  const box = (await anchor.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const startY = box.y + box.height / 2;
+  await page.mouse.down();
+  await page.mouse.move(x, startY - 40, { steps: 6 });
+  await page.mouse.move(x, startY - 120, { steps: 12 });
+  await page.mouse.up();
+
+  // The wash scrolled down...
+  const scrollAfter = await wash.evaluate((el) => el.scrollTop);
+  expect(scrollAfter).toBeGreaterThan(scrollBefore);
+  // ...the vertical-drag release over a tile did NOT open the booking dialog...
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // ...and the row-code rail scrolled WITH the tiles — it lives inside the wash scroller.
+  const chipYAfter = (await page.getByTestId('row-code').first().boundingBox())!.y;
+  expect(Math.abs(chipYBefore - chipYAfter - (scrollAfter - scrollBefore))).toBeLessThan(2);
+
+  // A genuine click afterwards still opens the dialog (the suppression is one-shot).
+  await page
+    .getByRole('button', { name: /Select to book/ })
+    .first()
+    .click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+});
+
+test('a 14-column map fits whole at a desktop viewport — no pan, no hint (#700)', async ({
+  page,
+}) => {
+  // Already the suite's default; pinned explicitly because 1280 is this test's whole subject.
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/venues/3');
+  await expect(page.getByRole('heading', { name: 'Snug Cove' })).toBeVisible();
+  // Wait for the grid itself: the pan state is only meaningful once tiles have laid out.
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+  // AC-1's two facts. Both are first-paint-true, so the breakpoint test owns the affordances.
+  expect((await panState(page)).overflows).toBe(false);
+  await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
+
+  // The header now matches the map's 1100px breakout too (#765) — both widen together.
+  const card = (await page.getByTestId('beach-grid').boundingBox())!;
+  const head = (await page.locator('.map-head').boundingBox())!;
+  const banner = (await page.locator('.sea-banner').boundingBox())!;
+  const legend = (await page.getByRole('list', { name: 'Legend' }).boundingBox())!;
+  expect(card.width).toBeCloseTo(head.width, 0);
+  expect(legend.width).toBeCloseTo(banner.width, 0);
+  // Within a couple px, not exact — the legend carries its own border the plain header box doesn't.
+  expect(Math.abs(legend.width - head.width)).toBeLessThan(3);
+  // The design canvas's number, pinned — the margin derives from it, so a shell edit can't drift it.
+  expect(card.width).toBeCloseTo(1100, 0);
+
+  // A symmetric breakout, not a shift — the wider card stays centred on the header's axis.
+  expect(card.x + card.width / 2).toBeCloseTo(head.x + head.width / 2, 0);
+
+  // A vw-derived width would overrun the page by the scrollbar's width; this one must not.
+  const pageOverflowsX = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  );
+  expect(pageOverflowsX).toBe(false);
+
+  await expectNoSeriousAxeViolations(page, 'beach map (fits whole, desktop breakout)');
+
+  // The map still books: fitting the screen changes layout, never the tile interaction.
+  await page
+    .getByRole('button', { name: /Select to book/ })
+    .first()
+    .click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+});
+
+test('a 14-column map fits whole even when its price rail is the reservation, not a chip (#751)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/venues/6');
+  await expect(page.getByRole('heading', { name: 'Plain Cove' })).toBeVisible();
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+  // The #700 guarantee, on the venue whose rail the reservation actually widens (52 → 92px).
+  expect((await panState(page)).overflows).toBe(false);
+  await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
+
+  // And it clears by a margin, not by a pixel — the number a future widening has to spend.
+  const slack = await page.getByTestId('map-pan').evaluate((el) => {
+    const grid = el.querySelector<HTMLElement>('[data-map-grid]')!;
+    const style = getComputedStyle(grid);
+    const content =
+      grid.scrollWidth -
+      (Number.parseFloat(style.paddingLeft) || 0) -
+      (Number.parseFloat(style.paddingRight) || 0);
+    return el.clientWidth - content;
+  });
+  expect(
+    slack,
+    `the fits-whole margin left after the 92px reservation (${slack}px)`,
+  ).toBeGreaterThan(24);
+});
+
+test('15 columns is the fits-whole boundary, for a bare price rail as much as a chip (#751)', async ({
+  page,
+}) => {
+  // The column the reservation costs: AC-5 measures 14, the side of the boundary that passes.
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/venues/7');
+  await expect(page.getByRole('heading', { name: 'Wide Plain' })).toBeVisible();
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+  expect((await panState(page)).overflows).toBe(true);
+  await expect(page.getByTestId('scroll-hint')).toBeVisible();
+
+  // The point of the reservation: the bare rail and the chip rail now agree on where that is.
+  const railWidth = (await page.getByTestId('price-col').boundingBox())!.width;
+  expect(railWidth, 'the bare rail renders at the reservation, not its 52px floor').toBeCloseTo(
+    92,
+    0,
+  );
+});
+
+test('a venue too wide for the breakout still pans at a desktop viewport (#700)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/venues/1');
+  await expect(page.getByRole('heading', { name: 'Panorama Bay' })).toBeVisible();
+
+  // The hint first — it shares the measurement with `.pannable`, so its arrival un-races the read.
+  await expect(page.getByTestId('scroll-hint')).toBeVisible();
+
+  // 20 columns outgrow even the widened card, so the pan affordances stay exactly as before.
+  const state = await panState(page);
+  expect(state.overflows).toBe(true);
+  expect(state.masked).toBe(true);
+  expect(state.scrollPaddingLeft).toBe('16px');
+});
+
+test('the pan affordances follow the viewport across the breakout breakpoint (#700)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/venues/3');
+  await expect(page.getByRole('heading', { name: 'Snug Cove' })).toBeVisible();
+  await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
+
+  // Below the breakpoint the card drops back to the shell width, so the same map now overflows.
+  await page.setViewportSize({ width: 900, height: 720 });
+  await expect(page.getByTestId('scroll-hint')).toBeVisible();
+  await expect
+    .poll(() => panState(page))
+    .toEqual({ overflows: true, masked: true, scrollPaddingLeft: '16px' });
+
+  // Mobile: unchanged behaviour — the map pans and says so.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByTestId('scroll-hint')).toBeVisible();
+  await expect.poll(async () => (await panState(page)).overflows).toBe(true);
+
+  // Widening back past the breakpoint fits the map again, and the cue goes away with the need.
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await expect(page.getByTestId('scroll-hint')).toHaveCount(0);
+  await expect
+    .poll(() => panState(page))
+    .toEqual({ overflows: false, masked: false, scrollPaddingLeft: 'auto' });
+});
+
+/** The tile states the legend explains, in render order (mirrors `venue/map-tile.ts`). */
+const TILE_STATES = ['available', 'premium', 'walkin', 'taken'] as const;
+
+/** What a tile or a swatch actually looks like — computed, never the class list (#701 AC-4). */
+async function face(locator: Locator) {
+  return locator.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return {
+      backgroundColor: cs.backgroundColor,
+      backgroundImage: cs.backgroundImage,
+      borderTopColor: cs.borderTopColor,
+      borderTopStyle: cs.borderTopStyle,
+      color: cs.color,
+    };
+  });
+}
+
+test('the legend leads the map card on mobile — decoded before the first tile row (#701)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 760 });
+  await page.goto('/venues/1');
+  await expect(page.getByRole('heading', { name: 'Panorama Bay' })).toBeVisible();
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+  const legend = (await page.getByRole('list', { name: 'Legend' }).boundingBox())!;
+  const firstTile = (await page.getByTestId('set-tile').first().boundingBox())!;
+  // The whole point: the colours are decoded above the grid, never past it.
+  expect(legend.y + legend.height).toBeLessThanOrEqual(firstTile.y + 1);
+  expect(legend.height).toBeGreaterThan(0);
+
+  // R-3: the band's margins cancel the banner's and the wash's, so the wash starts where it ends.
+  const wash = (await page
+    .locator('[data-testid="beach-grid"] [data-riv-scroller]')
+    .first()
+    .boundingBox())!;
+  expect(wash.y).toBeCloseTo(legend.y + legend.height, 0);
+
+  // One screen: reaching the grid is what reveals the legend, never scrolling past it.
+  await page.getByTestId('beach-grid').evaluate((el) => el.scrollIntoView({ block: 'start' }));
+  const shownLegend = (await page.getByRole('list', { name: 'Legend' }).boundingBox())!;
+  const shownTile = (await page.getByTestId('set-tile').first().boundingBox())!;
+  expect(shownLegend.y).toBeGreaterThanOrEqual(0);
+  expect(shownLegend.y + shownLegend.height).toBeLessThanOrEqual(760);
+  expect(shownTile.y + shownTile.height).toBeLessThanOrEqual(760);
+});
+
+test('a free walk-in tile is hatched, a premium tile is not (#701)', async ({ page }) => {
+  await page.goto('/venues/1');
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+  const walkin = await face(page.locator('.set-tile[data-state="walkin"]').first());
+  const premium = await face(page.locator('.set-tile[data-state="premium"]').first());
+
+  // More than a fill tint apart: the one state that means "you cannot book this online" is hatched.
+  expect(walkin.backgroundImage).toContain('repeating-linear-gradient');
+  expect(walkin.backgroundImage).toContain('135deg');
+  expect(premium.backgroundImage).toBe('none');
+  expect(walkin.backgroundColor).not.toBe(premium.backgroundColor);
+  expect(walkin.borderTopColor).not.toBe(premium.borderTopColor);
+});
+
+test("the legend band is painted the wash's own first stop, so swatches share the tiles' ground (#701)", async ({
+  page,
+}) => {
+  await page.goto('/venues/1');
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+  const bandDisplay = await page
+    .getByTestId('legend-band')
+    .evaluate((el) => getComputedStyle(el).display);
+  const washTopStop = await page
+    .locator('[data-testid="beach-grid"] [data-riv-scroller]')
+    .first()
+    .evaluate((el) => /rgba?\([^)]*\)/.exec(getComputedStyle(el).backgroundImage)?.[0]);
+
+  expect(bandDisplay).not.toBe('none');
+  // A translucent swatch only looks like its tile if it composites over the same ground.
+  const bandBg = await page
+    .getByRole('list', { name: 'Legend' })
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(bandBg).toBe(washTopStop);
+});
+
+test('every legend swatch declares exactly what the tile it stands for declares (#701)', async ({
+  page,
+}) => {
+  await page.goto('/venues/1');
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+
+  // Exhaustiveness guard: a fifth tile state adds a fifth swatch and fails this count.
+  await expect(page.locator('[aria-label="Legend"] [data-state]')).toHaveCount(TILE_STATES.length);
+  for (const state of TILE_STATES) {
+    const swatch = page.locator(`[aria-label="Legend"] [data-state="${state}"]`);
+    const tile = page.locator(`.set-tile[data-state="${state}"]`).first();
+    await expect(swatch).toHaveCount(1);
+    expect(await face(swatch), `the ${state} swatch`).toEqual(await face(tile));
+  }
+  // The ghost swatch keeps the dashed outline that marks "taken" on the grid.
+  expect(
+    (await face(page.locator('[aria-label="Legend"] [data-state="taken"]'))).borderTopStyle,
+  ).toBe('dashed');
+});
+
+/** The row-name rail's first chip and the tile viewport, as the browser lays them out. */
+async function railAndViewport(page: Page) {
+  const chip = page.getByTestId('row-code').first();
+  const box = (await chip.boundingBox())!;
+  const viewport = (await page.getByTestId('map-pan').boundingBox())!;
+  return {
+    chipWidth: box.width,
+    chipText: await chip.textContent(),
+    viewportWidth: viewport.width,
+    truncated: await chip.locator('span').evaluate((el) => el.scrollWidth > el.clientWidth),
+    chipRight: box.x + box.width,
+  };
+}
+
+test('a long row name truncates in the left rail instead of eating the tile grid (#724)', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 760 });
+
+  await page.goto('/venues/4');
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+  const wordy = await railAndViewport(page);
+
+  await page.goto('/venues/5');
+  await expect(page.getByTestId('set-tile').first()).toBeVisible();
+  const wordier = await railAndViewport(page);
+
+  // The rail chip shows the venue's own row name — the identity every other surface prints (#724)…
+  expect(wordy.chipText).toContain('Front row');
+  expect(wordier.chipText).toContain('Front row');
+  // …under a hard cap: a label almost four times longer buys not one pixel of rail…
+  expect(wordy.chipWidth).toBeLessThanOrEqual(104);
+  expect(wordier.chipWidth).toBeCloseTo(wordy.chipWidth, 0);
+  // …so it costs the tiles nothing, and the grid keeps at least three columns of spots visible.
+  expect(wordier.viewportWidth).toBeCloseTo(wordy.viewportWidth, 0);
+  expect(wordier.viewportWidth).toBeGreaterThanOrEqual(135);
+  // What gives instead is the text — ellipsis inside the chip, never overflow outside it.
+  expect(wordier.truncated).toBe(true);
+  // …and only overflowing text: a short real name renders whole, so rows stay distinct (#724 I-1).
+  const shortChip = page.getByTestId('row-code').nth(1);
+  await expect(shortChip).toHaveText('Row 2');
+  expect(await shortChip.locator('span').evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(
+    false,
+  );
+  const card = (await page.getByTestId('beach-grid').boundingBox())!;
+  expect(wordier.chipRight).toBeLessThanOrEqual(card.x + card.width);
+
+  await expectNoSeriousAxeViolations(page, 'beach map (long row names, mobile)');
 });

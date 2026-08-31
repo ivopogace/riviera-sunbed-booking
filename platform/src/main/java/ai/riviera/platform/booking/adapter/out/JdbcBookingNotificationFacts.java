@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.booking.api.BookingNotificationFacts;
+import ai.riviera.platform.booking.application.cancel.CancellationPolicy;
 import ai.riviera.platform.booking.vocabulary.BookingConfirmationFacts;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.BookingNotificationInfo;
@@ -24,9 +25,11 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 
 	private final JdbcClient jdbc;
+	private final CancellationPolicy cancellationPolicy;
 
-	JdbcBookingNotificationFacts(JdbcClient jdbc) {
+	JdbcBookingNotificationFacts(JdbcClient jdbc, CancellationPolicy cancellationPolicy) {
 		this.jdbc = jdbc;
+		this.cancellationPolicy = cancellationPolicy;
 	}
 
 	@Override
@@ -45,18 +48,33 @@ class JdbcBookingNotificationFacts implements BookingNotificationFacts {
 		// confirmed_at, not status — see BookingConfirmationFacts#everConfirmed for why.
 		return jdbc.sql("""
 				SELECT set_id, booking_date, amount_minor, amount_currency, code, customer_id,
-				       confirmed_at IS NOT NULL AS ever_confirmed
+				       confirmed_at IS NOT NULL AS ever_confirmed, created_at
 				FROM booking WHERE id = :id
 				""")
 				.param("id", bookingId.value())
-				.query((rs, rowNum) -> new BookingConfirmationFacts(
-						new SetId(rs.getLong("set_id")),
-						rs.getObject("booking_date", LocalDate.class),
-						rs.getLong("amount_minor"),
-						rs.getString("amount_currency"),
-						rs.getString("code"),
-						new CustomerId(rs.getLong("customer_id")),
-						rs.getBoolean("ever_confirmed")))
+				.query((rs, rowNum) -> factsOf(rs))
 				.optional();
+	}
+
+	/**
+	 * A resend has no event payload, so the window-at-birth is re-derived here from the venue's
+	 * current cutoff via {@code CancellationPolicy} — bounded, documented drift after a cutoff edit
+	 * (#795); the automatic listener's stamped event stays the record of what was first sent.
+	 */
+	private BookingConfirmationFacts factsOf(java.sql.ResultSet rs) throws java.sql.SQLException {
+		SetId setId = new SetId(rs.getLong("set_id"));
+		LocalDate bookingDate = rs.getObject("booking_date", LocalDate.class);
+		Optional<CancellationPolicy.BirthTerms> birth = cancellationPolicy.windowAtBirth(
+				setId, bookingDate, rs.getTimestamp("created_at").toInstant());
+		return new BookingConfirmationFacts(
+				setId,
+				bookingDate,
+				rs.getLong("amount_minor"),
+				rs.getString("amount_currency"),
+				rs.getString("code"),
+				new CustomerId(rs.getLong("customer_id")),
+				rs.getBoolean("ever_confirmed"),
+				birth.map(CancellationPolicy.BirthTerms::window).orElse(null),
+				birth.map(CancellationPolicy.BirthTerms::lateCancelRefundBps).orElse(0));
 	}
 }

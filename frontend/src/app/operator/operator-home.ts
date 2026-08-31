@@ -16,6 +16,7 @@ import { OwnedVenue, OwnedVenues } from '../core/owned-venues';
 import { landingRouteFor, safeReturnUrl } from '../shared/auth-landing';
 import { CardGlass } from '../shared/card-glass';
 import { RetryButton } from '../shared/retry-button';
+import { PendingApprovalBanner } from './pending-approval-banner';
 import { VenueCreateCard } from './venue-create-card';
 
 /**
@@ -36,23 +37,24 @@ import { VenueCreateCard } from './venue-create-card';
  */
 @Component({
   selector: 'app-operator-home',
-  imports: [RouterLink, CardGlass, RetryButton, VenueCreateCard],
+  imports: [RouterLink, CardGlass, RetryButton, PendingApprovalBanner, VenueCreateCard],
   host: { 'data-riv-theme': 'porcelain' },
   template: `
     <section
       class="mx-auto flex min-h-[70vh] max-w-[520px] flex-col justify-center px-4 py-10"
       aria-labelledby="operator-home-title"
     >
+      <app-pending-approval-banner />
       @if (failed()) {
         <div
           appCardGlass
           class="rounded-[20px] p-6 shadow-[0_12px_44px_rgba(12,42,51,0.14)]"
           data-testid="operator-home-error"
         >
-          <h1 id="operator-home-title" class="m-0 text-[22px] font-semibold text-(--riv-card-ink)">
+          <h1 id="operator-home-title" class="m-0 text-[22px] font-semibold text-riv-card-ink">
             We couldn’t load your venues
           </h1>
-          <p class="mt-2 mb-4 text-[15px] text-(--riv-card-ink-soft)">
+          <p class="mt-2 mb-4 text-[15px] text-riv-card-ink-soft">
             Your session is fine — the venue list just didn’t load. Try again.
           </p>
           <app-retry-button testId="operator-home-retry" (retry)="load()" />
@@ -61,11 +63,11 @@ import { VenueCreateCard } from './venue-create-card';
         <h1
           id="operator-home-title"
           tabindex="-1"
-          class="m-0 mb-1 text-[22px] font-semibold text-(--riv-ink) outline-none"
+          class="m-0 mb-1 text-[22px] font-semibold text-riv-ink outline-none"
         >
           {{ zeroState() ? 'Create your venue' : 'Add another venue' }}
         </h1>
-        <p class="mt-0 mb-4 text-[15px] text-(--riv-ink-soft)">
+        <p class="mt-0 mb-4 text-[15px] text-riv-ink-soft">
           {{
             zeroState()
               ? 'Welcome to Riviera — set up your venue to start taking bookings.'
@@ -82,11 +84,11 @@ import { VenueCreateCard } from './venue-create-card';
           <h1
             id="operator-home-title"
             tabindex="-1"
-            class="m-0 text-[22px] font-semibold text-(--riv-card-ink) outline-none"
+            class="m-0 text-[22px] font-semibold text-riv-card-ink outline-none"
           >
             Choose a venue
           </h1>
-          <p class="mt-2 mb-4 text-[15px] text-(--riv-card-ink-soft)">
+          <p class="mt-2 mb-4 text-[15px] text-riv-card-ink-soft">
             You manage {{ venues().length }} venues. Pick the one to open.
           </p>
           <ul class="m-0 flex list-none flex-col gap-2 p-0">
@@ -94,12 +96,10 @@ import { VenueCreateCard } from './venue-create-card';
               <li>
                 <a
                   [routerLink]="['/operator', venue.id]"
-                  class="flex flex-col gap-0.5 rounded-[14px] border border-(--riv-field-border) bg-(--riv-field-fill) px-4 py-3 no-underline transition-colors hover:bg-white motion-reduce:transition-none"
+                  class="flex flex-col gap-0.5 rounded-[14px] border border-riv-field-border bg-riv-field-fill px-4 py-3 no-underline transition-colors hover:bg-white motion-reduce:transition-none"
                 >
-                  <span class="text-[15px] font-semibold text-(--riv-card-ink)">{{
-                    venue.name
-                  }}</span>
-                  <span class="text-[13px] text-(--riv-card-ink-faint)">{{ venue.beach }}</span>
+                  <span class="text-[15px] font-semibold text-riv-card-ink">{{ venue.name }}</span>
+                  <span class="text-[13px] text-riv-card-ink-faint">{{ venue.beach }}</span>
                 </a>
               </li>
             }
@@ -107,14 +107,14 @@ import { VenueCreateCard } from './venue-create-card';
           <a
             routerLink="/operator"
             [queryParams]="{ create: '1' }"
-            class="mt-3 inline-block text-[13.5px] font-semibold text-(--riv-card-ink) underline"
+            class="mt-3 inline-block text-[13.5px] font-semibold text-riv-card-ink underline"
             data-testid="operator-home-add-venue"
             >Add another venue</a
           >
         </div>
       } @else {
         <output
-          class="text-center text-[15px] text-(--riv-card-ink-soft)"
+          class="text-center text-[15px] text-riv-card-ink-soft"
           data-testid="operator-home-loading"
           >Opening your console…</output
         >

@@ -67,6 +67,8 @@ class AdminPhotoTakedownIT {
 	private static final String ADMIN_PW = "test-operator-pw";
 	private static final String PLAIN_OPERATOR = "takedown-plain-op";
 	private static final String PLAIN_OPERATOR_PW = "plain-op-pw";
+	/** Owns the fixture venues (nobody in the cast does), keeping them tourist-visible (#693). */
+	private static final String BYSTANDER_OWNER = "takedown-bystander-owner";
 	private static final String TAKEDOWN_PATH = "/api/admin/venues/{v}/photos/{slot}";
 	private static final String SERVE_PATH = "/api/venues/{v}/photos/{h}";
 
@@ -82,11 +84,14 @@ class AdminPhotoTakedownIT {
 	PasswordEncoder encoder;
 
 	@BeforeEach
-	void provisionAPlainOperator() {
-		jdbc.sql("DELETE FROM operator_venue WHERE operator_id IN "
-				+ "(SELECT id FROM operator WHERE username = :u)").param("u", PLAIN_OPERATOR).update();
-		jdbc.sql("DELETE FROM operator WHERE username = :u").param("u", PLAIN_OPERATOR).update();
+	void provisionOperators() {
+		for (String username : List.of(PLAIN_OPERATOR, BYSTANDER_OWNER)) {
+			jdbc.sql("DELETE FROM operator_venue WHERE operator_id IN "
+					+ "(SELECT id FROM operator WHERE username = :u)").param("u", username).update();
+			jdbc.sql("DELETE FROM operator WHERE username = :u").param("u", username).update();
+		}
 		provisioning.provision(PLAIN_OPERATOR, encoder.encode(PLAIN_OPERATOR_PW));
+		provisioning.provision(BYSTANDER_OWNER, encoder.encode("bystander-owner-pw"));
 	}
 
 	private Cookie adminSession() throws Exception {
@@ -98,8 +103,9 @@ class AdminPhotoTakedownIT {
 	}
 
 	/**
-	 * A fresh venue owned by nobody, holding a complete COVER photo. No {@code operator_venue} row is
-	 * written for it — not for the admin either — so every takedown here is genuinely cross-venue.
+	 * A fresh venue holding a complete COVER photo, owned by the bystander {@code ACTIVE} operator —
+	 * never by the admin or the plain operator, so every takedown here is genuinely cross-venue,
+	 * while the ACTIVE owner keeps the venue in the tourist reads this class asserts on (#693).
 	 */
 	private VenueId newVenueWithCover(String cardHash, String bannerHash) {
 		long id = jdbc.sql("""
@@ -107,6 +113,9 @@ class AdminPhotoTakedownIT {
 				VALUES ('Takedown IT Venue', 'Test Beach', 'Test Region', 'INSTANT', 1500, 'EUR')
 				RETURNING id
 				""").query(Long.class).single();
+		jdbc.sql("INSERT INTO operator_venue (venue_id, operator_id) "
+						+ "SELECT :v, id FROM operator WHERE username = :u")
+				.param("v", id).param("u", BYSTANDER_OWNER).update();
 		VenueId venue = new VenueId(id);
 		storage.replace(venue, PhotoSlot.COVER, new ProcessedPhoto(List.of(
 				variant(PhotoSurface.CARD, cardHash),

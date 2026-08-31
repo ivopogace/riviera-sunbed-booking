@@ -18,11 +18,12 @@ model in `docs/architecture/domain-model.md`.
 - **Venue photo** — venue profile media (#142): one image per photo slot, uploaded by the venue's
   operator, validated server-side (JPEG/PNG/WebP, ≤25 MB, real-bytes magic check, decompression-bomb
   guard), EXIF-stripped, and persisted only as its resized variants (the full-res upload is
-  discarded — ADR-0008). Only the **cover** slot is tourist-surfaced.
-- **Photo slot** — one of a venue's three fixed photo positions: `COVER` (shown on the Discover
-  card + beach-map banner), `SUNBEDS`, `BAR` (never tourist-surfaced — visible to the venue's own
-  operator and, since #511, to a platform admin moderating them). At most one photo per
-  `(venue, slot)`; uploading again replaces the slot; deleting erases metadata + bytes in one
+  discarded — ADR-0008). Every occupied slot is tourist-surfaced in the photo slideshows on the
+  Discover card and the beach-map banner band; the **cover** leads both.
+- **Photo slot** — one of a venue's three fixed photo positions: `COVER` (the first slide of both
+  tourist slideshows), `SUNBEDS`, `BAR` (the later slides — and, as always, visible to the
+  venue's own operator and, since #511, to a platform admin moderating them). At most one photo
+  per `(venue, slot)`; uploading again replaces the slot; deleting erases metadata + bytes in one
   transaction.
 - **Photo takedown** — the **platform admin's** removal of any venue's photo by `(venue, slot)`
   (#504) — the "remove" half of the report-and-remove moderation stance (ADR-0013, #230). Same
@@ -43,6 +44,11 @@ model in `docs/architecture/domain-model.md`.
   each served by its **content hash** at a public URL (`/api/venues/{venueId}/photos/{hash}`);
   a replace mints new hashes → new URLs, and a removed variant stops being served rather than
   outliving its removal in caches.
+- **Venue visibility** — whether tourists can discover and book a venue: a venue is
+  **visible iff its owning operator is `ACTIVE`** (#693) — derived, never a flag. Hidden
+  means absent from the tourist list, 404 on the map and availability-calendar reads, and both
+  booking paths refused;
+  an unowned venue is hidden (fail-closed). Bookings sold while visible keep working.
 - **Beach map** — a venue's visual layout: rows and individual set positions.
 - **Set position** — one spot on the beach map (e.g. Row A, position 3), flagged
   by tier and pool, with its own price.
@@ -62,6 +68,12 @@ model in `docs/architecture/domain-model.md`.
 - **Availability** — the live state of one set on one date: `FREE`,
   `BOOKED_ONLINE`, or `STAFF_MARKED` (walk-in). The single source of truth that the
   beach map renders. Keyed by `(set, date)`.
+- **Availability calendar** — how many of a venue's sets are free on each day across a
+  window of dates, as counts rather than per-set state. A different question from
+  **Availability** above, which is one set on one date: the calendar answers *which days
+  are worth choosing*, so a tourist picks a date already knowing the answer instead of
+  learning it after the map redraws. **A snapshot, never a hold** — a day showing free
+  capacity can be full by the time a set is claimed; only the claim decides.
 - **Booking** — a tourist's reservation of a specific set for a specific date, with
   a status, a price paid, a booking code, and a cancellation deadline.
 - **Booking status** — the lifecycle state of a booking. Canonical set (mirrored 1:1
@@ -76,10 +88,10 @@ model in `docs/architecture/domain-model.md`.
   ways, one per party who can end it: the venue **declines** (`DECLINED`), nobody answers by
   the response deadline (`EXPIRED`), or the guest **withdraws** it (`WITHDRAWN`). Each frees
   the soft-hold. The deadline is
-  min(request + `booking.request.expiry-window`, the evening-before cutoff); after accept
-  the guest has min(accept + `booking.request.pay-window`, the service day's opening) to pay
-  before the abandoned sweep cancels — capped, so a request accepted the evening before can
-  never be paid into the day it was booked for (invariant #4).
+  min(request + `booking.request.expiry-window`, the venue's sales close); after accept
+  the guest has min(accept + `booking.request.pay-window`, the end of the service day) to pay
+  before the abandoned sweep cancels — never past the day's end, because once the day is
+  over there is nothing left to buy (invariant #4).
 - **Withdraw** — the guest's own retraction of their pending request, before the venue has
   decided (`WITHDRAWN`). Distinct from **cancel**, which ends a *confirmed* booking and carries
   a refund decision: a withdrawn request was never charged, so there is nothing to refund.
@@ -94,8 +106,13 @@ model in `docs/architecture/domain-model.md`.
   every money read that counts a delivered stay counts a no-show too. The one exception is
   the admin **weather refund**, which reaches a no-show on purpose: on a washed-out day
   those are the guests who stayed home because of the storm.
-- **Cutoff** — the moment online bookings for a day close (default 18:00 the
-  evening before, `Europe/Tirane`). Doubles as the free-cancellation deadline.
+- **Sales close** — the moment a venue's online sales for a date close, on the date
+  itself: a per-venue setting fixed at one of three wall-clock values (00:01 opts the
+  venue out of same-day sales, 16:00 the default, or 23:59), `Europe/Tirane`. The point
+  past which a booking can no longer be created for that date (invariant #4).
+- **Cutoff** — the evening-before wall-clock boundary (default 18:00, `Europe/Tirane`,
+  per-venue configurable). Governs free cancellation only — it no longer gates whether
+  a booking can be created; that is sales close's job.
 - **Booking mode** — how a venue accepts bookings: **Instant Book** (auto-confirm)
   or **Request-to-Book** (venue accepts/declines first).
 
@@ -109,8 +126,9 @@ model in `docs/architecture/domain-model.md`.
   commission (O8 #177).
 - **Rate schedule** — the per-venue record of which commission rate applied to bookings served on
   which dates. A change is **forward-only**: it pins the rate it supersedes and takes effect for
-  reporting from the next service date, so a day already sold never re-prices and the payout ledger
-  it must agree with is never rewritten (invariant #9). A venue whose rate has never changed has no
+  reporting from the current service date (`Europe/Tirane`), so today's takings answer the same
+  rate new accruals apply while a day already past never re-prices, and the payout ledger it must
+  agree with is never rewritten (invariant #9). A venue whose rate has never changed has no
   schedule at all — its live rate is what applied throughout.
 - **Payout ledger** — the per-venue record of what is owed (booking amounts minus
   commission), entry-per-booking, reversed on refund.
@@ -134,10 +152,20 @@ model in `docs/architecture/domain-model.md`.
   share), or **none** (after the cutoff, the venue offering 0 bps). Always computed
   server-side, and only within the **cancellation window**.
 - **Cancellation window** — how long a confirmed booking may be cancelled at all:
-  from booking until `00:00 Europe/Tirane` on the service date. Once the service day
-  opens the window is **closed** — the cancellation is refused outright (not refunded
-  at a tier), because the guest can already be consuming the stay. The venue's own
-  weather refund is outside the window and stays available for past dates.
+  from booking until `00:00 Europe/Tirane` on the service date, in three named phases
+  (`booking.vocabulary.CancellationWindow`): **FREE** (before the cutoff — the *full*
+  refund tier), **LATE** (cutoff passed, service day not open — the *partial*/*none*
+  tier), **CLOSED** (the service day has opened — the cancellation is refused outright,
+  not refunded at a tier, because the guest can already be consuming the stay). The
+  venue's own weather refund is outside the window and stays available for past dates.
+- **Window at birth** — the cancellation-window phase in force at the instant a booking
+  was created. Stamped on `BookingConfirmed`/`BookingPaymentDue` and their mails —
+  immutable once stamped, even if the venue later edits its cutoff. The code-gated view
+  and the admin resend re-derive it from the venue's current cutoff on each read
+  (bounded, documented drift; the stamped events stay the record of what was first sent).
+- **Last-minute booking** — a booking born past its free-cancellation deadline (window
+  at birth LATE or CLOSED). The guest-facing copy "non-refundable last-minute booking"
+  is reserved for CLOSED-born bookings, where no cancellation is possible at all.
 
 ## Demand (tourist side)
 
@@ -182,6 +210,29 @@ model in `docs/architecture/domain-model.md`.
   basis (#101 Slice 2). Proactive where **erasure** is reactive, but it writes the same **tombstone**.
   It touches guest contacts only, never accounts, and never the retained financial records.
 
+## Reviews
+
+- **Review** — a tourist's verdict on one delivered stay: a star rating of 1–5, an optional bounded
+  comment, and the **display name** it is attributed to, recorded against the booking that stay was
+  made under. **One per booking** — a stay carries at most one, enforced by the database. It is a
+  *verified-stay* review: only a booking the venue actually checked in can carry one, which is what
+  makes the aggregate resistant to gaming.
+- **Display name** — the name a review is shown under, chosen by its author rather than read off
+  their account. It is required on every review written since slice 2 of the reviews epic, defaults
+  to the first name on the booking contact, and is the only identity a review ever carries — the
+  `review` module never learns who the guest is.
+- **Review window** — how long a delivered stay stays reviewable. It opens at **check-in** and closes
+  60 days later. Inside it the author may change or remove their own review; outside it a stay is
+  refused a rating and an existing one is frozen. The refusal is the server's — the surfaces render
+  from its answer, never from the booking's status.
+- **Frozen review** — a review whose window has closed: still readable by its author, no longer
+  changeable or removable. Distinct from a **closed window with no review**, where there is nothing
+  to show and nothing left to write; the two say opposite things on screen.
+- **Aggregate rating** — a venue's public score: the **mean of its visible reviews**, carried in
+  **tenths** (4.5 stars is 45 — integer arithmetic, never floating point, the money discipline
+  applied to the rating) alongside the count it is over. A venue with no reviews reads 0/0 and is
+  shown as **New**, never "0.0".
+
 ## Transactional mail
 
 - **Suppression list** — the platform's do-not-mail record: the addresses no transactional mail
@@ -211,6 +262,12 @@ model in `docs/architecture/domain-model.md`.
   this venue?"*. Every venue-scoped operation (beach-map edit, staff bookings, staff
   availability, weather refund, payout ledger) verifies it in the application service and
   returns **403** on a mismatch (object-level authorization, not role-level — invariant #13).
+- **Operator approval** — a platform admin's decision on a self-registered (`PENDING`) operator:
+  approve (→ `ACTIVE`) or reject (→ `REJECTED`, terminal). Since #694 a `PENDING` operator already
+  signs in and uses the **entire** operator console — registering flows straight into it, and the
+  venue it creates is its own — so approval gates **venue visibility** (whether tourists see and
+  can book its venues), never console access. Rejection locks the account out and ends any live
+  session it holds. `SUSPENDED` and `REJECTED` accounts cannot sign in.
 - **Bootstrap operator** — the seeded `operator` account. **Retired as owns-all in #115** and
   **demoted to the platform admin** (`is_admin`): it no longer owns every venue — V29 dropped
   `owns_all_venues` and backfilled the venues it previously reached to it — and now approves operator
@@ -219,6 +276,8 @@ model in `docs/architecture/domain-model.md`.
   (creator-owns-on-create).
 - **Suspension / operator reinstatement** — an admin putting an `ACTIVE` operator account out of
   action (`SUSPENDED`) and later returning it to `ACTIVE`. Either transition kills that operator's
-  live sessions immediately, so a suspension takes effect now rather than at their next sign-in.
+  live sessions immediately, so a suspension takes effect now rather than at their next sign-in —
+  and, since #693, flips their venues' **venue visibility** (hidden while suspended, shown again
+  on reinstatement; bookings already sold keep working either way).
   An admin cannot suspend itself. Distinct from **reinstatement** in *Transactional mail* above,
   which lifts a suppressed email address and has nothing to do with sign-in.

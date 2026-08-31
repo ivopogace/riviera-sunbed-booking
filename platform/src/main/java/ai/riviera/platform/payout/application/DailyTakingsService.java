@@ -25,15 +25,16 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  * <strong>before</strong> reading any financial data, so one venue's takings never leak to another
  * operator. The figure is indicative per service date — it reads booking amounts, never the ledger.
  *
- * <p><strong>The rate is read by service date, not live</strong> (A7, epic #348). Reading
+ * <p><strong>The rate is read by service date, not live.</strong> Reading
  * {@code VenueRates#commissionBps} here meant a rate change silently re-split every <em>past</em> day
  * at the new rate, while {@code payout_ledger_entry} kept the {@code commissionMinor} it had accrued
  * for those same days. Invariant #9 makes the ledger right — history is never repriced and past
  * statements stay as sent — so this read asks for the rate that applied on the date being reported.
- * The accrual path is unaffected and still reads the live rate at accrual time, which is what
- * fixes each entry permanently. Agreement with the ledger is close but not exact by construction (the
- * ledger is per booking at accrual, this is one rate per service date); what it guarantees is that a
- * past date's figure never changes.
+ * The accrual path is unaffected and still reads the live rate at accrual time, which is what fixes
+ * each entry permanently; a change schedules from the current service date, so today's figure follows
+ * the same live rate its new accruals apply. Agreement with the ledger is close but not exact by
+ * construction (the ledger is per booking at accrual, this is one rate per service date); what it
+ * guarantees is that a past date's figure never changes.
  */
 @Service
 class DailyTakingsService implements ViewDailyTakings {
