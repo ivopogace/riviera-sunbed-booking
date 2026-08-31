@@ -56,33 +56,34 @@ the existing display-name one).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the review form with no star picked, when the guest submits, then
+- [x] **AC-1:** Given the review form with no star picked, when the guest submits, then
   `app-star-rating`'s `role="radiogroup"` element carries `aria-describedby` naming an
   inline error and `aria-invalid="true"`, and the error text is "Pick a star rating."
   *Pinned by:* `star-rating.spec.ts` › `describes itself with the required error once a
   submit is attempted with nothing picked`.
-- [ ] **AC-2:** Given that error showing, when a star is then picked, then the error
+- [x] **AC-2:** Given that error showing, when a star is then picked, then the error
   element is removed and the radiogroup no longer carries `aria-describedby`/
   `aria-invalid`. *Pinned by:* `star-rating.spec.ts` › `stops describing itself once a
   star is picked`.
-- [ ] **AC-3:** Given no submit attempted yet, when the form first renders with nothing
+- [x] **AC-3:** Given no submit attempted yet, when the form first renders with nothing
   picked, then no error shows (the field is invalid from the first render, but the gate
   is submit-attempted, matching the comment/display-name fields). *Pinned by:*
   `star-rating.spec.ts` › `shows no error before a submit is attempted`.
-- [ ] **AC-4:** Given the review panel, when no star is picked and submit is pressed,
+- [x] **AC-4:** Given the review panel, when no star is picked and submit is pressed,
   then nothing is sent, the panel does **not** emit a separate "blocked" event, and the
   booking page's shared result region stays empty — the inline error is the only
   surface. *Pinned by:* `review-panel.spec.ts` › `sends nothing and shows the inline
-  error when no star is picked` and `booking-view.spec.ts` › `shows the inline star
+  error when no star is picked` and `describes the radiogroup by its own error, and
+  stops once a star is picked`, plus `booking-view.spec.ts` › `shows the inline star
   error, not the shared result region, when no star is picked`.
-- [ ] **AC-5:** Given a real browser, when the review form is submitted with no star
+- [x] **AC-5:** Given a real browser, when the review form is submitted with no star
   picked, then the radiogroup's accessible description equals the rendered error text.
   *Pinned by:* `e2e/review-a-stay.e2e.ts` › `an unrated submit describes the radiogroup
   itself to assistive technology`.
-- [ ] **AC-6:** Given the touched surfaces, when their existing axe specs run, then no
+- [x] **AC-6:** Given the touched surfaces, when their existing axe specs run, then no
   new critical/serious violation is reported. *Pinned by:* `star-rating.spec.ts`'s and
   `review-panel.spec.ts`'s existing `expectNoAxeViolations` calls, re-run with a star
-  missing.
+  missing, plus the e2e's `expectNoSeriousAxeViolations`.
 
 ## Non-goals
 
@@ -108,15 +109,19 @@ annoyance"):
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | **`FormValueControl`'s optional `invalid`/`errors` inputs might not be auto-wired the way the docs example shows**, if the installed `@angular/forms/signals` build differs. | low | med | Verified against angular.dev v22 docs via the angular-cli MCP (not training memory, per `frontend/.claude/CLAUDE.md`); `star-rating.spec.ts`'s phase-0 test proves it directly against the installed package, not assumed. | plan | open — closes when phase 0's test passes against the real form |
-| R-2 | **Removing the `blocked` output breaks a caller this session didn't find.** | low | low | Grepped: `blocked` has exactly one producer (`review-panel.ts`) and one consumer (`booking-view.ts`'s `(blocked)` binding + `blockReview()`), both touched in this same slice. | plan | closed — confirmed by grep before editing |
-| R-3 | **The wrapping `<div>` added around the radiogroup changes `app-star-rating`'s only call site's spacing.** | low | low | `review-panel.ts`'s `<app-star-rating>` line carries no margin classes of its own today; the new wrapper only adds `flex flex-col gap-1.5` for the error's own line, matching the sibling fields' `cls.field` gap. No visual regression expected; `review-panel.contrast.spec.ts` re-run unchanged proves the ink, not the layout — call out in self-review if a screenshot is warranted. | plan | open — re-check visually if the app is run |
+| R-1 | **`FormValueControl`'s optional `invalid`/`errors` inputs might not be auto-wired the way the docs example shows**, if the installed `@angular/forms/signals` build differs. | low | med | Verified against angular.dev v22 docs via the angular-cli MCP (not training memory, per `frontend/.claude/CLAUDE.md`); `star-rating.spec.ts`'s phase-0 test proves it directly against the installed package, not assumed. | plan | closed — phase 0's test passed first run against the real, installed `@angular/forms/signals` (commit `74dfb80`) |
+| R-2 | **Removing the `blocked` output breaks a caller this session didn't find.** | low | low | Grepped: `blocked` has exactly one producer (`review-panel.ts`) and one consumer (`booking-view.ts`'s `(blocked)` binding + `blockReview()`), both touched in this same slice. | plan | closed — confirmed by grep before editing; the compiler itself proved it (removing the emitter without the consumer edit failed to build) |
+| R-3 | **The wrapping `<div>` added around the radiogroup changes `app-star-rating`'s only call site's spacing.** | low | low | `review-panel.ts`'s `<app-star-rating>` line carries no margin classes of its own today; the new wrapper only adds `flex flex-col gap-1.5` for the error's own line, matching the sibling fields' `cls.field` gap. `review-panel.contrast.spec.ts` re-run unchanged proves the ink is right; no dev server was run in this session to screenshot the layout. | plan | open — no visual regression is expected (the wrapper only changes vertical layout when the error shows, which is new content, not a reflow of existing content), but this is not screenshot-verified; flag for a human glance if one is convenient |
 
 ## Open questions / Assumptions
 
-- **Assumption:** No other component binds `[formField]` to `app-star-rating` today
+`None open.`
+
+### Resolved
+
+- **Assumption — held.** No other component binds `[formField]` to `app-star-rating`
   (confirmed by grep — only `review-panel.ts` and `star-rating.spec.ts`), so widening its
-  markup carries no other blast radius. — *Owner:* plan · *Resolves by:* phase 0.
+  markup carried no other blast radius. Re-confirmed on the finished tree.
 
 ## Availability & concurrency (invariant #2)
 
@@ -154,15 +159,25 @@ has nothing to migrate.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 3 next (e2e + close-out)`.
+**Stage pointer:** `implement complete — the review gate and Sonar gate have not run in
+this session (no PR was opened; see below)`.
 
-**Next action:** add the AC-5 case to `review-a-stay.e2e.ts` and annotate OQ-2's resolution.
+**Next action:** none for this session. If a PR is opened for this branch, run the
+Review and Sonar gates per `riviera-sdlc` `references/pr-gates.md` before merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `StarRating` renders its own inline error (AC-1..AC-3, AC-6) | ✅ | `74dfb80` |
-| 1+2 — `ReviewPanel` wires `submitAttempted` down and drops `blocked`; `BookingView` drops the dead routing (AC-4) — **landed as one commit**, not two: removing `blocked` and its consumer are one compiler-checked unit (deleting the emitter without the consumer edit does not compile), so phase 1's step 3 and phase 2's step 3 could not land as separate green states | ✅ | (pending) |
-| 3 — e2e (AC-5) + close-out | | |
+| 1+2 — `ReviewPanel` wires `submitAttempted` down and drops `blocked`; `BookingView` drops the dead routing (AC-4) — **landed as one commit**, not two: removing `blocked` and its consumer are one compiler-checked unit (deleting the emitter without the consumer edit does not compile), so phase 1's step 3 and phase 2's step 3 could not land as separate green states | ✅ | `f3ecba0` |
+| 3 — e2e (AC-5) + close-out | ✅ | (this commit) |
+
+**Not done in this session, by instruction:** the task instructions for this session
+(`riviera-sdlc` PR stage) direct opening a draft PR as soon as phase 0 lands, and running
+the Review + Sonar gates before merge. This session's own operating instructions say not
+to create a pull request unless the user explicitly asks for one, and no such request was
+made — so the branch is pushed with all phases green, but **no PR exists, and neither the
+Review gate nor the Sonar gate has run.** Do not treat this plan's phase table as a merge
+signal; that only happens once a PR is opened and both gates are cleared.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -194,15 +209,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/app/shared/star-rating.ts` · Test `frontend/src/app/shared/star-rating.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — extend `star-rating.spec.ts`'s host to add
+- [x] **Step 1: Write the failing test** — extend `star-rating.spec.ts`'s host to add
   `required(path.stars, { message: 'Pick a star rating.' })` (already present) and a
   `submitAttempted` signal bound to `[submitAttempted]`; assert AC-1..AC-3.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- star-rating` → FAIL (no error element, `invalid`/`errors`/`submitAttempted` inputs don't exist yet).
-- [ ] **Step 3: Minimal implementation** — add the three input signals and the `@if` error block, associated via a `#radiogroup` template ref.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- star-rating` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population `every FormValueControl in frontend/src/app` (there is exactly one: `star-rating.ts` itself), so no sibling site exists to sweep. Recorded below.
-- [ ] **Step 6: Commit** — `git commit -m "Give app-star-rating its own inline required error (#825)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 2: Run it, verify it fails** — `npm test -- star-rating` → FAIL (no error element, `invalid`/`errors`/`submitAttempted` inputs don't exist yet).
+- [x] **Step 3: Minimal implementation** — add the three input signals and the `@if` error block, associated via a `#radiogroup` template ref.
+- [x] **Step 4: Run it, verify it passes** — `npm test -- star-rating` → PASS.
+- [x] **Step 5: Generalization-audit pass** — population `every FormValueControl in frontend/src/app` (there is exactly one: `star-rating.ts` itself), so no sibling site exists to sweep. Recorded below.
+- [x] **Step 6: Commit** — `git commit -m "Give app-star-rating its own inline required error (#825)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -210,13 +225,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/app/booking/review-panel.ts` · Test `frontend/src/app/booking/review-panel.spec.ts`
 
-- [ ] **Step 1:** Update `review-panel.spec.ts`: remove the `blocked` output assertions, add the inline-error assertion for the stars field (mirroring the comment/display-name pattern already in the file) — red.
-- [ ] **Step 2:** Run `npm test -- review-panel` → FAIL.
-- [ ] **Step 3:** Bind `[submitAttempted]="submitAttempted()"` on `<app-star-rating>`; remove the `blocked` output, its emission in `send()`, and drop `export` from `REVIEW_REQUIRED` (no longer consumed outside the file).
-- [ ] **Step 4:** Run `npm test -- review-panel` → PASS, then its `*.contrast.spec.ts`.
-- [ ] **Step 5:** Generalization audit — n/a, single call site.
-- [ ] **Step 6: Commit** — `git commit -m "Stop funnelling the star-rating error through review-panel's blocked output (#825)"`
-- [ ] **Step 7:** Update execution status.
+- [x] **Step 1:** Update `review-panel.spec.ts`: remove the `blocked` output assertions, add the inline-error assertion for the stars field (mirroring the comment/display-name pattern already in the file) — red.
+- [x] **Step 2:** Run `npm test -- review-panel` → FAIL.
+- [x] **Step 3:** Bind `[submitAttempted]="submitAttempted()"` on `<app-star-rating>`; remove the `blocked` output, its emission in `send()`, and drop `export` from `REVIEW_REQUIRED` (no longer consumed outside the file).
+- [x] **Step 4:** Run `npm test -- review-panel` → PASS, then its `*.contrast.spec.ts`.
+- [x] **Step 5:** Generalization audit — n/a, single call site.
+- [x] **Step 6: Commit** — `git commit -m "Stop funnelling the star-rating error through review-panel's blocked output (#825)"`
+- [x] **Step 7:** Update execution status.
 
 ---
 
@@ -224,13 +239,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/app/booking/booking-view.ts` · Test `frontend/src/app/booking/booking-view.spec.ts`
 
-- [ ] **Step 1:** Update the "refuses to submit with no star picked" test to assert the inline error shows and `#review-result` stays empty — red (still asserts the old routing).
-- [ ] **Step 2:** Run `npm test -- booking-view` → FAIL.
-- [ ] **Step 3:** Remove the `(blocked)="blockReview($event)"` binding and the now-dead `blockReview()` method.
-- [ ] **Step 4:** Run `npm test -- booking-view` → PASS, then its `*.a11y.spec.ts`/`*.contrast.spec.ts`.
-- [ ] **Step 5:** Generalization audit — n/a.
-- [ ] **Step 6: Commit** — `git commit -m "Remove the dead blocked-review routing from BookingView (#825)"`
-- [ ] **Step 7:** Update execution status.
+- [x] **Step 1:** Update the "refuses to submit with no star picked" test to assert the inline error shows and `#review-result` stays empty — red (still asserts the old routing).
+- [x] **Step 2:** Run `npm test -- booking-view` → FAIL.
+- [x] **Step 3:** Remove the `(blocked)="blockReview($event)"` binding and the now-dead `blockReview()` method.
+- [x] **Step 4:** Run `npm test -- booking-view` → PASS, then its `*.a11y.spec.ts`/`*.contrast.spec.ts`.
+- [x] **Step 5:** Generalization audit — n/a.
+- [x] **Step 6: Commit** — `git commit -m "Remove the dead blocked-review routing from BookingView (#825)"`
+- [x] **Step 7:** Update execution status.
 
 ---
 
@@ -238,11 +253,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/e2e/review-a-stay.e2e.ts` · `docs/plans/field-error-aria-association.md`
 
-- [ ] **Step 1:** Add the AC-5 case to `review-a-stay.e2e.ts`: submit with no star picked, assert `toHaveAccessibleDescription` on the radiogroup and `aria-invalid="true"`.
-- [ ] **Step 2:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- review-a-stay`.
-- [ ] **Step 3:** Annotate OQ-2's row in `field-error-aria-association.md` to its resolution (closed by #825).
-- [ ] **Step 4: Commit** — `git commit -m "Cover the star-rating inline error in the mocked e2e suite and close out OQ-2 (#825)"`
-- [ ] **Step 5:** Finalize execution status.
+- [x] **Step 1:** Add the AC-5 case to `review-a-stay.e2e.ts`: submit with no star picked, assert `toHaveAccessibleDescription` on the radiogroup and `aria-invalid="true"`.
+- [x] **Step 2:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- review-a-stay`.
+- [x] **Step 3:** Annotate OQ-2's row in `field-error-aria-association.md` to its resolution (closed by #825).
+- [x] **Step 4: Commit** — `git commit -m "Cover the star-rating inline error in the mocked e2e suite and close out OQ-2 (#825)"`
+- [x] **Step 5:** Finalize execution status.
 
 ---
 
@@ -257,32 +272,43 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-3:** `star-rating.spec.ts` — to be filled with the commit sha once green.
-- [ ] **AC-4:** `review-panel.spec.ts` + `booking-view.spec.ts` — to be filled.
-- [ ] **AC-5:** `review-a-stay.e2e.ts` — to be filled.
-- [ ] **AC-6:** existing axe specs re-run — to be filled.
+- [x] **AC-1..AC-3, AC-6 (unit half):** `star-rating.spec.ts` — **18 passed** at `74dfb80`,
+  including the three new `describe('the inline required error', …)` cases and a fourth
+  axe check with the error showing.
+- [x] **AC-4:** `review-panel.spec.ts` — **26 passed** and `booking-view.spec.ts` —
+  **78 passed**, both at `f3ecba0`.
+- [x] **AC-5, AC-6 (e2e half):** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx
+  playwright test --config=playwright.a11y.config.ts review-a-stay` → **5 passed**,
+  including `an unrated submit describes the radiogroup itself to assistive technology`.
+- [x] **Regression:** `npx ng test --watch=false --include="src/app/booking/**/*.spec.ts"
+  --include="src/app/shared/**/*.spec.ts"` → **762 passed** across 77 files.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — vacuous, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6); booking codes untouched (invariant #7).
-- [ ] No Flyway migration needed (invariant #12); no venue-scoped authorization change (invariant #13).
-- [ ] **Frontend** standards met: `shared/` placement unchanged, `input()` API, no new SCSS.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` green with this doc staged.
-- [ ] `npm run lint` and `npm run format:check` green over `src` and `e2e`.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR/session**, citing how it shipped.
-- [ ] **The review gate ran in full**, or its absence is stated honestly.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — vacuous, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6); booking codes untouched (invariant #7).
+- [x] No Flyway migration needed (invariant #12); no venue-scoped authorization change (invariant #13).
+- [x] **Frontend** standards met: `shared/` placement unchanged, `input()` API, no new SCSS.
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` green with this doc staged.
+- [x] `npm run lint` and `npm run format:check` green over `src` and `e2e`.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows (R-3 is open but not stale — it's a stated,
+  reasoned residual, not a forgotten item); Open Questions empty.
+- [x] **Close-out written in this session's own commits** — no PR exists for this branch
+  (by this session's operating instructions, not by omission), so there is nothing to cite
+  as "merged via PR #NN"; the branch `claude/sdlc-825-25yipe` carries all phases green.
+- [ ] **The review gate ran in full.** **Not run in this session** — no PR was opened
+  (see Execution status), so the `/code-review` invocation ladder was never reached. This
+  box is deliberately left unticked rather than substituted with a self-review.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
