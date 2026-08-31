@@ -141,7 +141,7 @@ for `feature/solid-fill-teal-merge`** (`riviera-sdlc` §Remote/cloud session add
 |---|---|---|---|---|---|---|
 | R-1 | The three repainted sites lose contrast: white ink goes 7.24:1 → **5.86:1** | certain (maths) | low | 5.86 clears AA (4.5) with margin at every one of them — all three are bold text, the smallest 11.5px. The family spec's floor is `AA_NORMAL` and stays the gate (AC-3). AAA was never claimed for this family | agent | accepted — measured, above floor |
 | R-2 | A half-done rename leaves `bg-riv-solid-fill-action` in markup: the class survives, the utility does not, and the fill silently vanishes with **no unit spec able to see it** | med | high | AC-2's sweep bans the string tree-wide, and the e2e's utility-generation test asserts exactly the surviving utilities exist as real CSS selectors (AC-5) | agent | open → closes at phase 2 |
-| R-3 | An over-eager sweep for `#0a5f74` breaks its six legitimate non-fill roles (CTA stops, rings, inks) | med | high | The family spec's `SURVIVORS` list asserts **positively** that each file still paints it (AC-8); the sweep regex keeps its `bg-` discriminator | agent | open → closes at phase 1 |
+| R-3 | An over-eager sweep for `#0a5f74` breaks its six legitimate non-fill roles (CTA stops, rings, inks) | med | high | The family spec's `SURVIVORS` list asserts **positively** that each file still paints it (AC-8); the sweep regex keeps its `bg-` discriminator | agent | **closed** — green at phase 1, all six files still paint it |
 | R-4 | `semantic-chip`'s `border-[#2f7d92]` was picked against the deeper fill; against the lighter one it separates less (1.54:1 → **1.248:1**) | certain (maths) | low | Decorative, and not the boundary WCAG 1.4.11 cares about: the chip is identified against the **card**, and the new fill sits at 5.39:1 there — far past the 3:1 non-text floor. Recorded, not acted on (Non-goals) | agent | accepted — measured, no floor crossed |
 | R-5 | The rendered value is duplicated in **three** e2e files by design (`discovery-flow` keeps a deliberate second copy so it stays a black-box check); missing one leaves CI red, or worse, a stale-but-green literal | med | med | Enumerated by mechanism, not by memory: `grep -rn '10, 95, 116' frontend/` is the command that found the population (three hits), recorded in the Generalization-audit log | agent | open → closes at phase 2 |
 | R-6 | #848 (T-2, the 16 `#0a6e85` **`text-` ink** sites) touches `requests-tab.html` and `payouts-tab.html`, the same two files this slice edits | low | med | No open PR exists on the repo today (checked at plan time), so there is nothing to collide with now. The edits are in different utility forms (`bg-` here, `text-` there) and different lines; **whoever merges second merges `main` in and re-runs the family spec.** Do not run the two concurrently | agent | open → re-check before PR |
@@ -218,16 +218,16 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — merge the declaration in `tailwind.css` (+ its `@theme inline` rows and
-the answered comment) and rename the four `bg-riv-solid-fill-action` sites, turning the four red
-assertions green.
+**Next action:** Phase 2 — enumerate the rendered-value population by mechanism
+(`grep -rn '10, 95, 116' frontend/`), repin the three e2e files, run `test:e2e:a11y`, and
+mutation-check the forced-dark assertion.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The merged registry, red | ✅ | `<phase-0>` |
-| 1 — Merge the declaration + rename the four sites, green | | |
+| 1 — Merge the declaration + rename the four sites, green | ✅ | `<phase-1>` |
 | 2 — The computed-style proofs + the mutation check | | |
 | 3 — Docs, ledger row and close-out | | |
 
@@ -324,7 +324,7 @@ it('retires the -action name and the question it deferred', () => {
 **Files:** Modify `frontend/src/tailwind.css` · Modify the four `operator/` sites · Modify their
 three contrast specs · Modify `frontend/src/testing/chip-fills.ts`
 
-- [ ] **Step 1: The declaration.** Collapse the two tokens and their `@theme inline` rows, and
+- [x] **Step 1: The declaration.** Collapse the two tokens and their `@theme inline` rows, and
       rewrite the tail of the family comment so it states the answer:
 
 ```css
@@ -345,23 +345,27 @@ three contrast specs · Modify `frontend/src/testing/chip-fills.ts`
   --riv-solid-fill-danger: #a3160e;
 ```
 
-- [ ] **Step 2: The four renames** — `bg-riv-solid-fill-action` → `bg-riv-solid-fill-brand` in
+- [x] **Step 2: The four renames** — `bg-riv-solid-fill-action` → `bg-riv-solid-fill-brand` in
       `requests-tab.html:194`, `payouts-tab.html:114`, `daily-view-tab.ts:609`,
       `daily-view-tab.html:280`; and `hover:bg-riv-solid-fill-action-hover` →
       `hover:bg-riv-solid-fill-brand-hover` in `payouts-tab.html:114`. Then the three consumer
       contrast specs' `SOLID_FILL_ACTION` import → `SOLID_FILL_BRAND`.
 
-- [ ] **Step 3: Run the scoped unit suite** —
-      `npm test -- src/app/shared src/app/operator src/testing` → PASS, including the `SURVIVORS`
-      sweep (R-3) and `confirm-panel.spec.ts`'s untouched `bg-riv-solid-fill-brand` assertion.
+- [x] **Step 3: Run the scoped unit suite** —
+      `npx ng test --watch=false --include="src/app/shared/**/*.spec.ts" --include="src/app/operator/**/*.spec.ts"`
+      → **98 files, 903 tests, all green** — including the `SURVIVORS` sweep (R-3),
+      `confirm-panel.spec.ts`'s untouched `bg-riv-solid-fill-brand` assertion, and the three
+      `semantic-chip` assertions that follow the mirror.
 
-- [ ] **Step 4: Lint + format** — `npm run lint && npm run format:check`.
+- [x] **Step 4: Lint + format** — `npm run lint` (exit 0; the one warning is a pre-existing unused
+      `eslint-disable` in `camera-qr-scanner.spec.ts`, untouched by this diff, landed with the
+      typescript-eslint bump `1af69b3`) and `npm run format:check` → clean.
 
-- [ ] **Step 5: Generalization-audit pass** — deferred to phase 2 with the e2e sweep.
+- [x] **Step 5: Generalization-audit pass** — deferred to phase 2 with the e2e sweep.
 
-- [ ] **Step 6: Commit** — `git commit -m "Merge the two solid-fill teals onto #0a6e85 (#861)"`
+- [x] **Step 6: Commit** — `git commit -m "Merge the two solid-fill teals onto #0a6e85 (#861)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 

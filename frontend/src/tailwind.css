@@ -70,9 +70,8 @@
   --color-riv-solid-btn-border: var(--riv-solid-btn-border);
   --color-riv-solid-btn-danger-ink: var(--riv-solid-btn-danger-ink);
   --color-riv-solid-btn-danger-border: var(--riv-solid-btn-danger-border);
-  --color-riv-solid-fill-action: var(--riv-solid-fill-action);
-  --color-riv-solid-fill-action-hover: var(--riv-solid-fill-action-hover);
   --color-riv-solid-fill-brand: var(--riv-solid-fill-brand);
+  --color-riv-solid-fill-brand-hover: var(--riv-solid-fill-brand-hover);
   --color-riv-solid-fill-danger: var(--riv-solid-fill-danger);
   --color-riv-card-track: var(--riv-card-track);
 
@@ -266,25 +265,33 @@
   --riv-form-error-ink: #a3160e;
 
   /** The nine solid button/badge fills that carry FIXED WHITE INK (#854), across operator/ and the
-      two shared/ components. Grouped by FORM, not by value — three literals, one job.
+      two shared/ components. Grouped by FORM, not by value — two literals since #861, one job.
 
       Theme-invariant BY DESIGN, for the reverse of --riv-solid-btn-* and --riv-form-error- above:
       there a fixed fill pinned its inks; here the INK is fixed (`text-white`, which cannot theme),
-      so it pins its fills. White clears AA on all four (5.86 / 7.35 / 7.24 / 7.84). confirm-panel
+      so it pins its fills. White clears AA on all three (5.86 / 7.35 / 7.84). confirm-panel
       and semantic-chip live in shared/, so a themed fill here restyles them per mounting host.
 
       Neither coincidental token is the answer, and both coincide exactly: --riv-error-ink IS
       #a3160e but is an INK and themes to #ffa9a1 (white on it, 1.84:1); --riv-pop-accent IS #0a6e85
-      but is the popover accent (#848) and themes to #7cd7e8 (1.65:1). #0a5f74 is only a gradient
-      STOP inside --riv-cta-grad. No ink token: `text-white` already cannot theme.
+      but is the popover accent (#848) and themes to #7cd7e8 (1.65:1). No ink token: `text-white`
+      already cannot theme.
 
-      -action and -brand are near-duplicates with no role separating them; #861 settles whether they
-      are one colour or two.
+      ONE brand teal, not two (#861). -action (#0a6e85) and -brand (#0a5f74) were the same job —
+      solid fill under fixed white ink — with no role between them: buttons wore both, chips wore
+      both, and operator-console.html:70's badge took the deeper one beside lighter-teal buttons in
+      one porcelain-pinned shell. They merged onto #0a6e85, which is the design's brand teal (42
+      uses across the four docs/design canvases; #0a5f74 appears in NONE of them — it is the
+      AA-darkened end STOP of --riv-cta-grad, eyedropped into three flat fills). It is also the only
+      direction the hover survives: #0a5f74 against -brand-hover #0a5e72 is 1.016:1, one colour to
+      the eye. Cost, accepted: white ink at the three repainted sites goes 7.24:1 to 5.86:1, clear
+      of AA. #0a5f74 keeps its non-fill roles (both --riv-cta-grad stops, the editor selection
+      rings, three booking/ inks) — merged as a FILL, not deleted as a value.
       Proof: shared/solid-fill-tokens.contrast.spec.ts + solid-fill-token-skin.e2e.ts.
-      Rationale: docs/plans/solid-fill-token-family.md. */
-  --riv-solid-fill-action: #0a6e85;
-  --riv-solid-fill-action-hover: #0a5e72;
-  --riv-solid-fill-brand: #0a5f74;
+      Rationale: docs/plans/solid-fill-teal-merge.md (the merge), then
+      docs/plans/solid-fill-token-family.md (the family). */
+  --riv-solid-fill-brand: #0a6e85;
+  --riv-solid-fill-brand-hover: #0a5e72;
   --riv-solid-fill-danger: #a3160e;
 
   /** The near-opaque popover surface (theme picker, account menu, mobile sheet — app.ts POP)

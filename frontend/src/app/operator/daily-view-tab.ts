@@ -606,7 +606,7 @@ export class DailyViewTab {
   protected tileClass(set: SetView): string {
     switch (this.stateOf(set)) {
       case 'STAFF_MARKED':
-        return 'border-transparent bg-riv-solid-fill-action text-white';
+        return 'border-transparent bg-riv-solid-fill-brand text-white';
       case 'BOOKED_ONLINE':
         return 'border-[#0c2a33]/15 bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.28)_0_3px,rgba(12,42,51,0.1)_3px_6px)] text-riv-card-ink';
       default:
