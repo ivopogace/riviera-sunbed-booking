@@ -34,11 +34,8 @@ Every riviera feature large enough to need a plan doc gets:
 - **A branch** named `<feature|bugfix>/<short-slug>`, existing before phase 0.
 - **A live Execution-status section** — stage pointer + next action, a status row
   per phase, and the findings register — updated in the **same commit window** as
-  the change it records (the same commit or the immediately-following one, nothing
-  unrelated between; the rule covers every plan-doc update, incl. *Skills
-  consulted*) and at every SDLC stage transition. It is the **session-recovery
-  anchor**: after a context compaction or in a fresh session, re-read it before
-  acting (the template's blockquote carries the rule; `riviera-sdlc` §Context
+  the change it records, at every stage transition. It is the session-recovery
+  anchor (the template's blockquote carries the rule; `riviera-sdlc` §Context
   hygiene carries the why).
 - **An empty Open Questions / Assumptions section by the time "done" is claimed**,
   or remaining items each cite a follow-up issue.
@@ -55,6 +52,12 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    corrections only after the design is anchored, no longer cheap. Record every
    loaded skill + one phrase on what it changed in **Skills consulted**, and keep it
    current: re-run the gate whenever a phase enters an area the plan didn't anticipate.
+   The template pre-fills the line's five constant entries (the routing table's
+   "Anything, always" row — that table stays the authority, so the two cannot drift):
+   RV-PROC-1 caught an omission on six consecutive slices when the line was free prose —
+   not six careless authors but a template asking a question whose answer is partly
+   constant, so the author now **edits rather than recalls** (case history:
+   `riviera-sdlc` `references/case-history.md` #447).
 
 1. **Acceptance criteria before phase 0:** convert the spec's user stories (or the
    GitHub issue) into testable ACs per the template (Given/When/Then, named test
@@ -114,19 +117,10 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    node scripts/check-plan-file-structure.mjs --diff origin/main
    ```
 
-   Since #654 it judges untracked paths too, so a file you have written but not staged is caught —
-   the likeliest omission of all. **The plan doc itself must be staged or committed** for the guard
-   to run at all: `git add` is what says *this doc belongs to this change*, and with the doc merely
-   written the check short-circuits and passes. A file you never intend to commit belongs behind an
-   ignore rule — `.git/info/exclude` for a personal scratch path, `.gitignore` repo-wide.
-
-   It reports every path the diff changed that the section omits, and CI fails the PR on the same
-   comparison (#533, a step in the `Repo hygiene (diff-scoped)` job, named `Inline comments
-   (RV-STYLE-1)` until #539). Undercounting this section
-   was a review finding on five consecutive slices — the omissions are never the interesting files,
-   they are the registry entry and the docs-sweep file, which is exactly what a resuming session
-   cannot infer from the code. Details and the accepted path idioms: the template's File-structure
-   blockquote.
+   The sharpest trap: **the plan doc itself must be staged or committed** — merely written, the
+   guard short-circuits and passes. Everything else (#654 untracked-path judging, #533 CI
+   enforcement, the five-consecutive-slices history, the accepted path idioms): the template's
+   File-structure blockquote.
 4. **Scope test runs to the smallest set that proves the change** — the run recipes
    live in `riviera-local-debug`; load it before the session's first build/test invocation.
 

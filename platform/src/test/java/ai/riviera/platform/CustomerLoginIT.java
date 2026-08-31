@@ -73,7 +73,8 @@ class CustomerLoginIT {
 		mvc.perform(get("/api/auth/me").cookie(session))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.username").value(EMAIL))
-				.andExpect(jsonPath("$.principalType").value("CUSTOMER"));
+				.andExpect(jsonPath("$.principalType").value("CUSTOMER"))
+				.andExpect(jsonPath("$.operatorStatus").isEmpty());
 	}
 
 	@Test

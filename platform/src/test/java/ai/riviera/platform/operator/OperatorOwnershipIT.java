@@ -27,8 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
  * Testcontainers Postgres — the real {@link VenueOwnership}/{@link OperatorDirectory} beans over
  * {@code JdbcOperators} and the schema. Seeds synthetic per-venue operators over fresh venues, and
  * proves {@code assertOwns}/{@link VenueOwnership#assignOwner} pass/deny correctly, {@code ownedVenues}
- * returns the explicit mapping, and {@code operatorFor} resolves an ACTIVE username but not an
- * unknown/suspended one. With the owns-all bootstrap retired, the seeded {@code operator} owns
+ * returns the explicit mapping, and {@code operatorFor} resolves the may-operate set (ACTIVE and
+ * PENDING) but not an unknown/suspended/rejected one. With the owns-all bootstrap retired, the seeded {@code operator} owns
  * only its <em>backfilled</em> venue (Miramar, V29), not an arbitrary one.
  */
 @EnabledIfDockerAvailable
@@ -142,10 +142,20 @@ class OperatorOwnershipIT {
 	}
 
 	@Test
-	void operatorForRejectsUnknownAndSuspendedUsernames() {
+	void operatorForResolvesAPendingUsername() {
+		// The may-operate set: a PENDING operator resolves, so the console works before approval.
+		insertOperator("pending-e", "PENDING");
+
+		assertTrue(directory.operatorFor("pending-e").isPresent());
+	}
+
+	@Test
+	void operatorForRejectsUnknownSuspendedAndRejectedUsernames() {
 		insertOperator("suspended-d", "SUSPENDED");
+		insertOperator("rejected-d", "REJECTED");
 
 		assertTrue(directory.operatorFor("no-such-operator").isEmpty());
 		assertTrue(directory.operatorFor("suspended-d").isEmpty());
+		assertTrue(directory.operatorFor("rejected-d").isEmpty());
 	}
 }

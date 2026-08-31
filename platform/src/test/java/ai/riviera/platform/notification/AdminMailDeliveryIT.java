@@ -23,6 +23,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.adapter.out.MockMailer;
 import ai.riviera.platform.notification.adapter.out.SentEmail;
 import ai.riviera.platform.notification.application.EmailSuppressions;
@@ -156,6 +157,10 @@ class AdminMailDeliveryIT {
 		assertThat(mailer.lastTo(email).orElseThrow().confirmation().bookingCode())
 				.as("the same arrival code, rebuilt from the booking's own facts")
 				.isEqualTo("MDRSND01");
+		assertThat(mailer.lastTo(email).orElseThrow().confirmation().cancellationWindowAtBirth())
+				.as("the resend re-derives the birth window from the current cutoff (#795 S-6); "
+						+ "an advance-born booking reads FREE")
+				.isEqualTo(CancellationWindow.FREE);
 		lookup(email)
 				.andExpect(jsonPath("$.bookings[0].attempts[0].source").value("ADMIN_RESEND"))
 				.andExpect(jsonPath("$.bookings[0].attempts[0].outcome").value("SENT"))
@@ -248,7 +253,7 @@ class AdminMailDeliveryIT {
 	private void confirm(long bookingId, SetRef set, LocalDate date, long amountMinor) {
 		new TransactionTemplate(txManager).executeWithoutResult(status -> publisher.publishEvent(
 				new BookingConfirmed(new BookingId(bookingId), new VenueId(set.venueId()),
-						new SetId(set.setId()), date, amountMinor, "EUR")));
+						new SetId(set.setId()), date, amountMinor, "EUR", CancellationWindow.FREE, 0)));
 	}
 
 	private void awaitNoOutstandingConfirmationPublication() {

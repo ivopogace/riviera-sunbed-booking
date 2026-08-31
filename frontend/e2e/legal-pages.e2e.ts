@@ -51,13 +51,21 @@ const VENUES = [
 ];
 
 test.describe('legal documents', () => {
-  // Pin dark so the riviera sweep really audits riviera (headless defaults light → porcelain).
+  // Pin dark so the boot sweep really audits the dark theme (headless defaults light → porcelain).
   test.use({ colorScheme: 'dark' });
 
-  test('privacy page renders the draft document, axe-clean in both themes', async ({ page }) => {
+  test('privacy page renders the draft document, axe-clean in all three themes', async ({
+    page,
+  }) => {
     await page.goto('/legal/privacy');
     await expect(page.getByRole('heading', { name: 'Privacy Policy' })).toBeVisible();
     await expect(page.getByTestId('legal-draft-banner')).toContainText('Draft');
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
+    await settle(page);
+    await expectNoSeriousAxeViolations(page, 'privacy page (dark)');
+
+    await page.getByTestId('theme-toggle').click();
+    await page.getByTestId('theme-option-riviera').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
     await settle(page);
     await expectNoSeriousAxeViolations(page, 'privacy page (riviera)');

@@ -27,6 +27,8 @@ const VENUE = {
   distanceToWaterM: 15,
   availability: { free: 4, total: 6 },
   coverPhoto: null,
+  // A multi-photo slideshow so the home sweep measures the card's step controls.
+  photos: ['/api/venues/1/photos/aa01', '/api/venues/1/photos/cc03', '/api/venues/1/photos/dd04'],
   sets: Array.from({ length: 6 }, (_, i) => ({
     id: i + 1,
     rowLabel: i < 3 ? 'Front row · Sea view' : 'Second row',
@@ -53,6 +55,8 @@ const BOOKING = {
   beforeCutoff: true,
   refundIfCancelledNow: { minorUnits: 4500, currency: 'EUR' },
   refundedAmount: null,
+  // The wire always carries a panel; a stay nobody checked in is the reason there is no form.
+  reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
 async function mockTourist(page: Page): Promise<void> {
@@ -61,6 +65,16 @@ async function mockTourist(page: Page): Promise<void> {
   );
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE }));
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: [VENUE] }));
+  await page.route(/\/api\/venues\/1\/photos\/[0-9a-f]+$/, (route) =>
+    route.fulfill({
+      // A 1×1 PNG so the slideshow <img>s genuinely load under the sweep.
+      body: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        'base64',
+      ),
+      contentType: 'image/png',
+    }),
+  );
   await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
     route.fulfill({ json: BOOKING }),
   );
@@ -173,6 +187,52 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await expect(page.getByTestId('booking-code')).toBeVisible();
 
     await expectTouchTargets(page, 'booking detail');
+  });
+
+  test('booking detail — a delivered stay offering the review form', async ({ page }) => {
+    // Its own case: the radios and the two text fields exist only here.
+    await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
+      route.fulfill({
+        json: {
+          ...BOOKING,
+          status: 'COMPLETED',
+          cancellable: false,
+          reviewPanel: {
+            kind: 'ELIGIBLE',
+            windowClosesAt: '2026-07-31T16:00:00Z',
+            nameSuggestion: 'Ana',
+          },
+        },
+      }),
+    );
+    await page.goto('/booking/WXYZ345678');
+    await expect(page.getByTestId('review-panel')).toBeVisible();
+
+    await expectTouchTargets(page, 'booking detail with the review form');
+  });
+
+  test('booking detail — the guest’s own review, with its edit and remove controls', async ({
+    page,
+  }) => {
+    await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
+      route.fulfill({
+        json: {
+          ...BOOKING,
+          status: 'COMPLETED',
+          cancellable: false,
+          reviewPanel: {
+            kind: 'ALREADY_REVIEWED',
+            review: { stars: 4, comment: 'Great sunbeds', displayName: 'Ana' },
+            windowClosesAt: '2026-07-31T16:00:00Z',
+          },
+        },
+      }),
+    );
+    await page.goto('/booking/WXYZ345678');
+    await page.getByTestId('start-delete-review').click();
+    await expect(page.getByTestId('confirm-delete-review')).toBeVisible();
+
+    await expectTouchTargets(page, 'booking detail with the review removal confirmation');
   });
   test('venue detail — the booking dialog open', async ({ page }) => {
     await page.goto('/venues/1');

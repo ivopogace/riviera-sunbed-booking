@@ -196,35 +196,32 @@ describe('AdminMailOutbox', () => {
     const fixture = await render(authStub(), service);
 
     expect(has(fixture, 'admin-outbox-error')).toBe(true);
+    // Names its own outbox: both pages once said "the outbox", naming neither.
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="admin-outbox-error"]')
+        ?.textContent,
+    ).toContain('the email outbox');
     expect(has(fixture, 'admin-outbox-resubmit')).toBe(false);
   });
 
-  it('offers no lever to a non-admin operator (AC-9)', async () => {
+  /** The gate itself (forbidden/signed-out/restoring markup) moved to `AdminConsole`; this
+   *  component's own defensive guard — redundant once the shell's gate is in place, but harmless
+   *  to keep — still must not load when the admin session says no (AC-9). */
+  it('does not load for a signed-in non-admin (AC-9)', async () => {
     const service = serviceStub();
-
-    const fixture = await render(authStub({ isAdmin: false }), service);
-
-    expect(has(fixture, 'admin-outbox-forbidden')).toBe(true);
-    expect(has(fixture, 'admin-outbox-resubmit')).toBe(false);
+    await render(authStub({ isAdmin: false }), service);
     expect(service.status).not.toHaveBeenCalled();
   });
 
-  it('offers no lever, and no tab strip, to a signed-out visitor (AC-9)', async () => {
+  it('does not load for a signed-out visitor (AC-9)', async () => {
     const service = serviceStub();
-
-    const fixture = await render(authStub({ signedIn: false, isAdmin: false }), service);
-
-    expect(has(fixture, 'admin-outbox-signed-out')).toBe(true);
-    expect(has(fixture, 'admin-outbox-resubmit')).toBe(false);
-    expect(has(fixture, 'admin-tab-email')).toBe(false);
+    await render(authStub({ signedIn: false, isAdmin: false }), service);
+    expect(service.status).not.toHaveBeenCalled();
   });
 
-  it('waits for session restore before deciding anything', async () => {
+  it('does not load while the session is still restoring', async () => {
     const service = serviceStub();
-
-    const fixture = await render(authStub({ restoring: true }), service);
-
-    expect(has(fixture, 'admin-outbox-restoring')).toBe(true);
+    await render(authStub({ restoring: true }), service);
     expect(service.status).not.toHaveBeenCalled();
   });
 });

@@ -8,13 +8,16 @@ import { OperatorAuth, OperatorPasswordChangeResult } from '../core/operator-aut
 import { OperatorPassword } from './operator-password';
 
 /**
- * Structural a11y audit for the operator password-change page. Both outcome states are audited,
- * not just the clean form: each renders a live region that only exists after a submit — the success
- * notice (`role="status"`) and the failure message (`role="alert"`) — so auditing the initial render
- * alone would never see either.
+ * Structural a11y audit for the operator password-change page. Both outcome states are audited, not
+ * just the clean form, because each speaks through a live region that says nothing until a submit
+ * lands — and the two regions reach that point by opposite routes (#828). The success notice
+ * (`role="status"`) is mounted from the first render and stays mounted: a polite region has to
+ * pre-exist the text it announces. The failure message (`role="alert"`) is the reverse — an alert is
+ * announced when it is **inserted**, so it exists only while it has something to say, and auditing
+ * the initial render would not find it at all.
  *
- * (Colour contrast is proven by `auth-page.contrast.spec.ts`, which covers the shared `auth.scss`
- * card tokens this page reuses; axe cannot measure contrast under jsdom.)
+ * (Colour contrast is proven by `auth-page.contrast.spec.ts`, which covers the shared card-glass
+ * tokens this page reuses; axe cannot measure contrast under jsdom.)
  */
 describe('OperatorPassword a11y (#326)', () => {
   let fixture: ComponentFixture<OperatorPassword>;

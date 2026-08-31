@@ -1,12 +1,24 @@
-import { Component, effect, inject, signal, untracked } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChildren,
+} from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { OperatorActions } from './operator-actions';
+import { LegalFooter } from '../shared/legal-footer';
 import {
   ActivatedRoute,
+  NavigationEnd,
   Router,
   RouterLink,
   RouterLinkActive,
   RouterOutlet,
 } from '@angular/router';
-import { Observable } from 'rxjs';
+import { Observable, filter, map } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { todayBookingDate } from '../shared/booking-date';
@@ -16,6 +28,7 @@ import { TouchTarget } from '../shared/touch-target';
 import { ConsoleStatsStrip } from './console-stats-strip';
 import { ConsoleVenueMap } from './console-venue-map';
 import { OperatorConsoleService } from './operator-console.service';
+import { PendingApprovalBanner } from './pending-approval-banner';
 import { PendingRequestsStore } from './pending-requests-store';
 
 /** A console tab: its child-route path, its label, and whether it carries the live Requests badge. */
@@ -44,10 +57,21 @@ interface ConsoleTab {
  */
 @Component({
   selector: 'app-operator-console',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, ConsoleStatsStrip, TouchTarget],
+  imports: [
+    OperatorActions,
+    LegalFooter,
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    ConsoleStatsStrip,
+    PendingApprovalBanner,
+    TouchTarget,
+  ],
   templateUrl: './operator-console.html',
-  styleUrl: './operator-console.scss',
-  host: { 'data-riv-theme': 'porcelain' },
+  host: {
+    'data-riv-theme': 'porcelain',
+    class: 'block min-h-full bg-(image:--riv-bg) text-riv-ink font-riv',
+  },
 })
 export class OperatorConsole {
   private readonly route = inject(ActivatedRoute);
@@ -83,6 +107,19 @@ export class OperatorConsole {
    *  after an A→B→A switch, so continuations compare this instead. */
   private epoch = 0;
 
+  /** The pill anchors, in tab order — used to scroll the active one into the scrolling row's
+   *  viewport so it's visible without the operator having to scroll manually. */
+  private readonly tabLinks = viewChildren<ElementRef<HTMLAnchorElement>>('tabLink');
+  /** The active child route's path, reactive to navigation — the tab-nav counterpart of
+   *  `routerLinkActive`, read here to drive the scroll-into-view rather than a CSS class. */
+  private readonly currentTabPath = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map(() => this.route.snapshot.firstChild?.routeConfig?.path),
+    ),
+    { initialValue: this.route.snapshot.firstChild?.routeConfig?.path },
+  );
+
   constructor() {
     // Load per session (the async /me restore resolves late) AND per venue param.
     effect(() => {
@@ -90,6 +127,15 @@ export class OperatorConsole {
       if (this.operator.signedIn() && id !== undefined) {
         untracked(() => this.load(id));
       }
+    });
+
+    // Scroll the active tab into view on load/switch — the row scrolls instead of wrapping (#710).
+    effect(() => {
+      const path = this.currentTabPath();
+      const links = this.tabLinks();
+      const index = this.tabs.findIndex((tab) => tab.path === path);
+      // Optional-called: jsdom doesn't implement it, and it's not worth failing a test over.
+      links[index]?.nativeElement.scrollIntoView?.({ inline: 'nearest', block: 'nearest' });
     });
   }
 

@@ -3,6 +3,7 @@ package ai.riviera.platform.venue.application;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -16,8 +17,11 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
  */
 public interface Venues {
 
-	/** Insert a venue and return its generated id. */
-	long insertVenue(NewVenueCommand command);
+	/**
+	 * Insert a venue and return its generated id. {@code commissionBps} is the rate the caller
+	 * stamps — the platform default from {@link VenueCreationProperties}, never client input.
+	 */
+	long insertVenue(NewVenueCommand command, int commissionBps);
 
 	/** Whether a venue with this id exists. */
 	boolean venueExists(VenueId venueId);
@@ -25,10 +29,10 @@ public interface Venues {
 	/**
 	 * Lock the venue row and read its current {@code set_version} optimistic-concurrency token —
 	 * {@code SELECT set_version FROM venue WHERE id = :id FOR UPDATE}. The token is the SEPARATE counter
-	 * for the two operator set-position writes (beach-map replace + per-row reprice), distinct from the
+	 * for the operator set-position writes (beach-map replace, per-row reprice, per-row rename), distinct from the
 	 * profile {@code version}. The caller (having pre-checked existence) compares the returned value
 	 * to the loaded {@code expectedVersion}: a mismatch means another writer advanced it since the load →
-	 * STALE_WRITE. This is the <strong>first</strong> lock both set-writes take — before
+	 * STALE_WRITE. This is the <strong>first</strong> lock every set-write takes — before
 	 * {@link #lockSetsOfVenue}'s / {@link #repriceRow}'s {@code set_position} locks — so both acquire the
 	 * venue row before its set rows (one consistent order → no deadlock, R-1). Crucially it does NOT
 	 * increment: the token is advanced by {@link #incrementSetVersion} <strong>only on the success path</strong>,
@@ -39,8 +43,8 @@ public interface Venues {
 
 	/**
 	 * Advance the venue's {@code set_version} by one — {@code UPDATE venue SET set_version =
-	 * set_version + 1 WHERE id = :id} — called ONLY after a set-write commits (the layout was replaced /
-	 * the row repriced). The caller already holds the venue row lock from {@link #lockAndReadSetVersion},
+	 * set_version + 1 WHERE id = :id} — called ONLY after a set-write commits (the layout was replaced,
+	 * the row repriced or renamed). The caller already holds the venue row lock from {@link #lockAndReadSetVersion},
 	 * so this is race-free; a concurrent writer blocked on that lock re-reads the advanced value and gets
 	 * STALE_WRITE.
 	 */
@@ -97,6 +101,23 @@ public interface Venues {
 	 * venue has no set with that row label, so the caller returns {@code NO_SUCH_ROW}.
 	 */
 	int repriceRow(VenueId venueId, RowPriceCommand command);
+
+	/**
+	 * Every distinct {@code row_label} on the venue's map. One read answers both questions a rename
+	 * asks — does the row being renamed exist, and does another row already carry the requested label —
+	 * so the two cannot disagree about the map, and the same-label carve-out stays in the service where
+	 * it is testable rather than folded into SQL. A venue has at most a couple of dozen rows.
+	 */
+	Set<String> distinctRowLabels(VenueId venueId);
+
+	/**
+	 * Rename every set in a row of the venue in one non-destructive {@code UPDATE}: overwrite
+	 * {@code row_label} for every {@code set_position} carrying {@code command.rowLabel()}. Touches no
+	 * other column, so set identity, pool, coordinates, price and any {@code set_availability} hold
+	 * survive. Returns the number of set rows changed — {@code 0} means the venue has no set with that
+	 * row label, so the caller returns {@code NO_SUCH_ROW}.
+	 */
+	int renameRow(VenueId venueId, RowNameCommand command);
 
 	/**
 	 * The ids of every set currently on the venue's map, <strong>without locking</strong> — the

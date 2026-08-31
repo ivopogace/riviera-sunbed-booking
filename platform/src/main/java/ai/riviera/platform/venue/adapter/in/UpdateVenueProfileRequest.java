@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.application.VenueProfileCommand;
 
@@ -14,12 +15,14 @@ import ai.riviera.platform.venue.application.VenueProfileCommand;
  * the original amenities + distance fields). It carries the operator-editable fields —
  * {@code name}/{@code beach}/{@code region}/{@code description}, {@code bookingMode}
  * ({@code INSTANT}|{@code REQUEST}), {@code bookingCutoff} ({@code "HH:mm"} in {@code Europe/Tirane}),
+ * {@code salesClose} (required; exactly {@code "00:01"}|{@code "16:00"}|{@code "23:59"}),
  * the full amenity set (codes from the fixed {@link Amenity} catalogue), and the optional
  * distance-to-water in metres. <strong>Commission and payout currency are read-only and absent</strong>
  * — the write cannot touch them.
  *
- * <p>{@link #toCommand()} parses each amenity code to {@link Amenity} and the cutoff to a
- * {@link LocalTime}; a bad/null amenity code or a malformed time is an {@link IllegalArgumentException}
+ * <p>{@link #toCommand()} parses each amenity code to {@link Amenity}, the cutoff to a
+ * {@link LocalTime}, and the sales close to a {@link SalesClose}; a bad/null amenity code, a
+ * malformed time, or an off-vocabulary sales close is an {@link IllegalArgumentException}
  * → {@code 400 INVALID_REQUEST} (the one error contract, §6b). The remaining edge invariants
  * (required text, known mode, positive distance) are delegated to {@link VenueProfileCommand}.
  *
@@ -32,15 +35,15 @@ import ai.riviera.platform.venue.application.VenueProfileCommand;
  * {@code 400} rather than letting it match a fresh venue and re-open the last-write-wins hole.
  */
 record UpdateVenueProfileRequest(String name, String beach, String region, String description,
-		String bookingMode, String bookingCutoff, List<String> amenities, Integer distanceToWaterM,
-		Long expectedVersion) {
+		String bookingMode, String bookingCutoff, String salesClose, List<String> amenities,
+		Integer distanceToWaterM, Long expectedVersion) {
 
 	VenueProfileCommand toCommand() {
 		Set<Amenity> parsed = (amenities == null ? List.<String>of() : amenities).stream()
 				.map(UpdateVenueProfileRequest::parseCode)
 				.collect(Collectors.toUnmodifiableSet());
 		return new VenueProfileCommand(name, beach, region, description, bookingMode,
-				parseCutoff(bookingCutoff), parsed, distanceToWaterM);
+				parseCutoff(bookingCutoff), parseSalesClose(salesClose), parsed, distanceToWaterM);
 	}
 
 	private static Amenity parseCode(String code) {
@@ -65,6 +68,19 @@ record UpdateVenueProfileRequest(String name, String beach, String region, Strin
 		}
 		catch (DateTimeParseException malformed) {
 			throw new IllegalArgumentException("bookingCutoff must be a valid time of day (HH:mm)");
+		}
+	}
+
+	private static SalesClose parseSalesClose(String raw) {
+		if (raw == null) {
+			throw new IllegalArgumentException("salesClose is required");
+		}
+		try {
+			return SalesClose.fromTime(LocalTime.parse(raw));
+		}
+		catch (DateTimeParseException malformed) {
+			// Same message as fromTime's: the caller learns the vocabulary, not the parse mechanics.
+			throw new IllegalArgumentException("salesClose must be one of 00:01, 16:00, 23:59");
 		}
 	}
 }

@@ -180,6 +180,18 @@ class CrossVenueDenialIT {
 	}
 
 	@Test
+	void rowRenameByNonOwnerIs403() throws Exception {
+		// Venue-scoped like every beach-map write: denied before the version read (invariant #13).
+		actingAs(operatorA);
+		mvc.perform(put("/api/venues/{v}/rows/{r}/name", MIRAMAR, "A").cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"newLabel\":\"Back row\",\"expectedVersion\":0}"))
+				.andExpect(status().isForbidden())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("NOT_VENUE_OWNER"));
+	}
+
+	@Test
 	void staffBookingsReadByNonOwnerIs403() throws Exception {
 		actingAs(operatorA);
 		mvc.perform(get("/api/venues/{v}/bookings", MIRAMAR).cookie(operatorSession))
@@ -192,8 +204,8 @@ class CrossVenueDenialIT {
 	 *  The owning-venue counterpart edits a fresh venue, so {@code expectedVersion} 0 matches. */
 	private static final String FULL_PROFILE_BODY = """
 			{"name":"Edited","beach":"Ksamil","region":"Riviera","description":"x",
-			 "bookingMode":"INSTANT","bookingCutoff":"18:00","amenities":["BEACH_BAR"],
-			 "distanceToWaterM":15,"expectedVersion":0}
+			 "bookingMode":"INSTANT","bookingCutoff":"18:00","salesClose":"16:00",
+			 "amenities":["BEACH_BAR"],"distanceToWaterM":15,"expectedVersion":0}
 			""";
 
 	@Test
@@ -475,7 +487,7 @@ class CrossVenueDenialIT {
 		actingAs(operatorA);
 		String venueBody = """
 				{"name":"A New Venue","beach":"Ksamil","region":"Riviera","description":"x",
-				 "bookingMode":"INSTANT","commissionBps":1500,"payoutCurrency":"EUR","bookingCutoff":"18:00"}
+				 "bookingMode":"INSTANT","payoutCurrency":"EUR","bookingCutoff":"18:00"}
 				""";
 		// Any ACTIVE operator may create (role-gated, no prior owner to check) → 201.
 		mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())
@@ -491,7 +503,7 @@ class CrossVenueDenialIT {
 		actingAs(operatorA);
 		String venueBody = """
 				{"name":"A Owned-On-Create Venue","beach":"Ksamil","region":"Riviera","description":"x",
-				 "bookingMode":"INSTANT","commissionBps":1500,"payoutCurrency":"EUR","bookingCutoff":"18:00"}
+				 "bookingMode":"INSTANT","payoutCurrency":"EUR","bookingCutoff":"18:00"}
 				""";
 		MvcResult created = mvc.perform(post("/api/venues").cookie(operatorSession).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(venueBody))

@@ -15,6 +15,14 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  * <p>The bootstrap admin's refusal gets its own test: it is the one branch with no customer
  * analogue, and the point of rendering it (rather than hiding the link) is that the operator is
  * TOLD why — which only a real-render spec can check.
+ *
+ * <p>It also carries a margin assertion on the silent notice, which looks out of place and is not:
+ * `cls.notice` used to end in `empty:mb-0`, and #828 deleted it as **dead code, not a restyle**.
+ * Angular leaves a whitespace text node inside an interpolated `<p>`, and `:empty` matches only an
+ * element whose children are all *empty* text nodes — so the utility never once applied. No unit
+ * spec can pin that: jsdom's nwsapi and Chromium disagree about `:empty` in opposite directions
+ * (nwsapi calls a zero-length text node non-empty; Chromium calls it empty). Only a real render
+ * settles it, so the proof that the margin did not move lives here.
  */
 
 const OLD_PASSWORD = 'old-operator-pw';
@@ -33,6 +41,8 @@ test('operator changes its own password from the console, and the new credential
   // The entry point is the console header link — not a URL only a maintainer would know.
   await page.getByTestId('oc-change-password').click();
   await expect(page.getByTestId('oppw-username')).toContainText('operator');
+  // Pins the deleted `empty:mb-0` as a no-op, not a restyle (#828) — see this file's header.
+  await expect(page.getByTestId('oppw-notice')).toHaveCSS('margin-bottom', '20px');
   await expectNoSeriousAxeViolations(page, 'operator change-password form');
 
   // Wrong current password: a named error, and nothing is rotated.
@@ -41,6 +51,8 @@ test('operator changes its own password from the console, and the new credential
   await page.getByTestId('oppw-submit').click();
   await expect(page.getByTestId('oppw-error')).toContainText('current password is incorrect');
   await expect(page.getByTestId('oppw-notice')).toHaveText('');
+  // RV-FE-9 in a real browser: the failure arm keeps focus off the silent notice above the form.
+  await expect(page.getByTestId('oppw-error')).toBeFocused();
   await expectNoSeriousAxeViolations(page, 'wrong current password');
 
   // Right current password: the confirmation must name the other-devices sign-out.
@@ -50,7 +62,8 @@ test('operator changes its own password from the console, and the new credential
   await expect(page.getByTestId('oppw-notice')).toContainText(
     'Any other devices signed in as you have been signed out',
   );
-  await expect(page.getByTestId('oppw-error')).toHaveText('');
+  await expect(page.getByTestId('oppw-error')).toHaveCount(0);
+  await expect(page.getByTestId('oppw-notice')).toBeFocused();
   await expectNoSeriousAxeViolations(page, 'password changed');
 
   // Both secrets are cleared from the DOM once the change lands.

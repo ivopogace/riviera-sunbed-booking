@@ -6,8 +6,8 @@ The boundary-declaration mechanics behind the SKILL.md body. Everything here is 
 ## Declaring a module
 
 Each module declares a display name **and an explicit `allowedDependencies` deny-list** — this is
-**already true of every module in `main`** (`booking`, `availability`, `payout`, `venue`,
-`payment`, `customer`, `operator` all set it), not a future tightening. Keep it that way:
+**already true of all nine bounded-context modules in `main`**, not a future tightening. Keep it
+that way:
 
 ```java
 @org.springframework.modulith.ApplicationModule(

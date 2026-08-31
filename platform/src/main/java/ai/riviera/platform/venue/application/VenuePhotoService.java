@@ -48,7 +48,7 @@ class VenuePhotoService implements VenuePhotos, VenuePhotoModeration {
 		// through a multi-second decode/resize of a 25MB upload and starve unrelated requests.
 		// Atomicity lives where it's needed: the adapter's replace() is itself @Transactional.
 		ownership.assertOwns(operator, new VenueRef(venueId.value())); // invariant #13 — FIRST, before any work
-		return switch (processor.process(image, slot)) {
+		return switch (processor.process(image)) {
 			case PhotoProcessingResult.Processed(var photo) -> {
 				storage.replace(venueId, slot, photo);
 				yield new PhotoUploadResult.Stored(metadataOf(slot, photo));

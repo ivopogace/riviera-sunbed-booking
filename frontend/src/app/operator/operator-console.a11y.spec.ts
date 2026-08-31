@@ -11,9 +11,10 @@ import { VenueMapView } from '../shared/venue-views';
 import { OperatorConsole } from './operator-console';
 
 /**
- * Automated axe-core audit of the operator console shell: the signed-out sign-in card
- * and the signed-in porcelain shell (header + pill tabs + Requests badge). Colour contrast is proven
- * deterministically in `operator-console.contrast.spec.ts` — axe cannot measure contrast under jsdom.
+ * Automated axe-core audit of the operator console shell: the signed-in porcelain shell
+ * (header + pill tabs + Requests badge). Sign-in lives behind `operatorSessionGuard`, not in this
+ * shell. Colour contrast is proven deterministically in `operator-console.contrast.spec.ts` — axe
+ * cannot measure contrast under jsdom.
  */
 const BASE = environment.apiBaseUrl;
 const VENUE = 1;

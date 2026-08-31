@@ -1,7 +1,10 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
+import { DESCRIPTIVE_CHIPS } from '../../testing/chip-fills';
 import { AmenityChip } from './amenity-chip';
+
+const [NEUTRAL, WATER] = DESCRIPTIVE_CHIPS;
 
 @Component({
   imports: [AmenityChip],
@@ -27,7 +30,8 @@ describe('AmenityChip', () => {
     const { plain } = chips();
     expect(plain.classList.contains('amenity-chip')).toBe(true);
     expect(plain.classList.contains('amenity-chip--water')).toBe(false);
-    expect(plain.classList.contains('bg-[#eef2f4]')).toBe(true);
+    expect(plain.classList.contains(`bg-[${NEUTRAL.fill}]`)).toBe(true);
+    expect(plain.classList.contains(`text-[${NEUTRAL.ink}]`)).toBe(true);
     expect(plain.classList.contains('font-semibold')).toBe(true);
   });
 
@@ -35,9 +39,20 @@ describe('AmenityChip', () => {
     const { water } = chips();
     expect(water.classList.contains('amenity-chip')).toBe(true);
     expect(water.classList.contains('amenity-chip--water')).toBe(true);
-    expect(water.classList.contains('bg-[#d7eef4]')).toBe(true);
+    expect(water.classList.contains(`bg-[${WATER.fill}]`)).toBe(true);
+    expect(water.classList.contains(`text-[${WATER.ink}]`)).toBe(true);
     expect(water.classList.contains('font-bold')).toBe(true);
     // The neutral fill must NOT leak onto the water variant.
-    expect(water.classList.contains('bg-[#eef2f4]')).toBe(false);
+    expect(water.classList.contains(`bg-[${NEUTRAL.fill}]`)).toBe(false);
+  });
+
+  it('renders exactly the fills the shared descriptive list records — no more, no fewer', () => {
+    // Set equality, not a count: it catches a list entry no variant renders AND a rendered fill the list omits, which a length check cannot. The filter is `bg-` rather than `bg-[` on purpose — a `bg-white/60` beside the opaque fill is exactly the translucency amenities.contrast.spec.ts assumes away, and a bracket-only filter would not see it. What no spec here can see is a variant it never renders: `water` is the only axis today and it is boolean, so a third one means a new input, and rendering it here is part of adding it.
+    const { plain, water } = chips();
+    const rendered = [plain, water]
+      .flatMap((element) => [...element.classList])
+      .filter((name) => name.startsWith('bg-'))
+      .sort();
+    expect(rendered).toEqual(DESCRIPTIVE_CHIPS.map((chip) => `bg-[${chip.fill}]`).sort());
   });
 });

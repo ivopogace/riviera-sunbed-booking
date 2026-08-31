@@ -25,13 +25,13 @@ import { TouchTarget } from '../shared/touch-target';
       'flex flex-col gap-2 rounded-[14px] border border-[#d97706] bg-[#f59e0b]/[0.14] px-3.5 py-3',
   },
   template: `
-    <span class="text-[12.5px] leading-[1.5] font-semibold text-(--riv-card-ink)">
+    <span class="text-[12.5px] leading-[1.5] font-semibold text-riv-card-ink">
       <ng-content />
     </span>
     <button
       appTouchTarget
       type="button"
-      class="self-start rounded-[12px] border border-(--riv-card-border) bg-white/70 px-4 py-2 text-[13px] font-bold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white/90 aria-disabled:opacity-50"
+      class="self-start rounded-[12px] border border-riv-card-border bg-white/70 px-4 py-2 text-[13px] font-bold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-white/90 aria-disabled:opacity-50"
       [attr.data-testid]="reloadTestId()"
       [appBusy]="reloading()"
       (click)="reload.emit()"

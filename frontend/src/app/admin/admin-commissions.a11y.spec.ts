@@ -11,12 +11,14 @@ import { VenueCommissionView } from './admin.model';
 /**
  * Structural axe audit of the admin console's Commissions tab: the tab strip, the
  * venue cards, the explainer's heading hierarchy (an `h2` over six `h3` sections under the page's
- * one `h1`), the polite live region, and — with the editor open — two labelled fields and an alert
- * region that exists before it ever carries text.
+ * one `h1`), the polite live region, and — with the editor open — two labelled fields.
  *
- * <p>Audited **with the editor open** as well as closed, because that is where the extra semantics
- * live and it is the state an admin actually reads before moving a commercial term. Contrast is not
- * measurable by axe under jsdom; the e2e proves it against a real render.
+ * <p>Audited in three states — closed, editor open, and editor showing a validation error. The
+ * error element is mounted only while the error exists, so its association with the rate field
+ * lasts exactly as long as the error does (#826); the earlier always-mounted alert region is gone.
+ * The open and erroring states are where the extra semantics live, and they are what an admin
+ * actually reads before moving a commercial term. Contrast is not measurable by axe under jsdom;
+ * the e2e proves it against a real render.
  */
 const authStub = {
   restoring: signal(false),
@@ -85,5 +87,27 @@ describe('AdminCommissions a11y', () => {
     await settle(fixture);
 
     await expectNoAxeViolations(fixture.nativeElement as HTMLElement);
+  });
+
+  /** The third state: the one that carries the extra semantics an association adds. */
+  it('has no axe violations while a rate editor shows a validation error', async () => {
+    const fixture = await renderTab();
+    const host = fixture.nativeElement as HTMLElement;
+
+    host.querySelector<HTMLElement>('[data-testid="admin-commission-edit-7"]')!.click();
+    fixture.detectChanges();
+    await settle(fixture);
+    const field = host.querySelector<HTMLInputElement>(
+      '[data-testid="admin-commission-percent-7"]',
+    )!;
+    field.value = '101';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    host.querySelector<HTMLElement>('[data-testid="admin-commission-save-7"]')!.click();
+    fixture.detectChanges();
+    await settle(fixture);
+
+    expect(host.querySelector('[data-testid="admin-commission-percent-error-7"]')).not.toBeNull();
+    await expectNoAxeViolations(host);
   });
 });

@@ -28,6 +28,7 @@ describe('VenueCreateCard a11y (#278)', () => {
     http
       .expectOne((r) => r.url.includes('/api/auth/me'))
       .flush({ username: 'operator', principalType: 'OPERATOR' });
+    http.expectOne((r) => r.url.includes('/api/venue-defaults')).flush({ commissionBps: 500 });
     await fixture.whenStable();
     fixture.detectChanges();
   });
@@ -42,10 +43,7 @@ describe('VenueCreateCard a11y (#278)', () => {
     await expectNoAxeViolations(host());
   });
 
-  it('the failed-submit state (commission parse error alert) has no axe violations', async () => {
-    const commission = host().querySelector<HTMLInputElement>('input[inputmode="numeric"]')!;
-    commission.value = '15.5';
-    commission.dispatchEvent(new Event('input', { bubbles: true }));
+  it('the failed-submit state (server rejection alert) has no axe violations', async () => {
     for (const [testid, value] of [
       ['venue-create-name', 'Sunset Bar'],
       ['venue-create-beach', 'Ksamil'],
@@ -57,6 +55,10 @@ describe('VenueCreateCard a11y (#278)', () => {
     }
     fixture.detectChanges();
     host().querySelector<HTMLButtonElement>('[data-testid="venue-create-submit"]')!.click();
+    await fixture.whenStable();
+    http
+      .expectOne((r) => r.method === 'POST' && r.url.includes('/api/venues'))
+      .flush({ code: 'INVALID_REQUEST' }, { status: 400, statusText: 'Bad Request' });
     await fixture.whenStable();
     fixture.detectChanges();
 

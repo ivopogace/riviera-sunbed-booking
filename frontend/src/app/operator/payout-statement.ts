@@ -38,11 +38,11 @@ import { LedgerRow } from './operator-console.model';
       (keydown.shift.tab)="trapFocus($event, true)"
     >
       <div class="flex items-center justify-between gap-3 border-b border-[#0c2a33]/10 px-6 py-4">
-        <span class="text-[13px] font-semibold text-(--riv-card-ink-soft)">Payout statement</span>
+        <span class="text-[13px] font-semibold text-riv-card-ink-soft">Payout statement</span>
         <button
           type="button"
           appTouchTarget
-          class="rounded-full border border-[#0c2a33]/14 bg-[#0c2a33]/5 px-3.5 py-1.5 text-[13px] font-semibold text-[#0a4f5e]"
+          class="rounded-full border border-[#0c2a33]/14 bg-[#0c2a33]/5 px-3.5 py-1.5 text-[13px] font-semibold text-riv-accent-ink"
           data-testid="statement-close"
           (click)="dismissed.emit()"
         >
@@ -52,26 +52,26 @@ import { LedgerRow } from './operator-console.model';
       <div class="px-7 py-6">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <span class="text-[17px] font-bold text-(--riv-card-ink)">Riviera</span>
-            <p class="mt-2 text-[12.5px] leading-[1.5] text-(--riv-card-ink-soft)">
+            <span class="text-[17px] font-bold text-riv-card-ink">Riviera</span>
+            <p class="mt-2 text-[12.5px] leading-[1.5] text-riv-card-ink-soft">
               Bank-transfer payout statement
             </p>
           </div>
-          <div class="text-right text-[12.5px] leading-[1.6] text-(--riv-card-ink-soft)">
-            <div class="text-[14px] font-bold text-(--riv-card-ink)">Your venue</div>
+          <div class="text-right text-[12.5px] leading-[1.6] text-riv-card-ink-soft">
+            <div class="text-[14px] font-bold text-riv-card-ink">Your venue</div>
             <div>Current period</div>
             <div>Currency {{ currency() }}</div>
           </div>
         </div>
 
-        <div class="mt-5 overflow-hidden rounded-[14px] border border-[#0c2a33]/12">
+        <div class="mt-5 overflow-x-auto rounded-[14px] border border-[#0c2a33]/12">
           <table class="w-full border-collapse text-[12.5px]">
             <caption class="sr-only">
               Statement entries
             </caption>
             <thead>
               <tr
-                class="bg-[#0c2a33]/4 text-[10.5px] uppercase tracking-[0.06em] text-(--riv-card-ink-soft)"
+                class="bg-[#0c2a33]/4 text-[10.5px] uppercase tracking-[0.06em] text-riv-card-ink-soft"
               >
                 <th scope="col" class="px-3.5 py-2.5 text-left font-bold">Date</th>
                 <th scope="col" class="px-3.5 py-2.5 text-left font-bold">Booking</th>
@@ -82,16 +82,16 @@ import { LedgerRow } from './operator-console.model';
             <tbody>
               @for (row of rows(); track $index) {
                 <tr class="border-t border-[#0c2a33]/7">
-                  <td class="whitespace-nowrap px-3.5 py-2.5 text-(--riv-card-ink-soft)">
+                  <td class="whitespace-nowrap px-3.5 py-2.5 text-riv-card-ink-soft">
                     {{ row.dateLabel }}
                   </td>
                   <td class="px-3.5 py-2.5">
-                    <strong class="tracking-[0.03em] text-(--riv-card-ink)">{{ row.ref }}</strong>
+                    <strong class="tracking-[0.03em] text-riv-card-ink">{{ row.ref }}</strong>
                     @if (row.reasonLabel) {
-                      <span class="text-(--riv-card-ink-soft)"> {{ row.reasonLabel }}</span>
+                      <span class="text-riv-card-ink-soft"> {{ row.reasonLabel }}</span>
                     }
                   </td>
-                  <td class="whitespace-nowrap px-3.5 py-2.5 text-right text-(--riv-card-ink-soft)">
+                  <td class="whitespace-nowrap px-3.5 py-2.5 text-right text-riv-card-ink-soft">
                     {{ row.commissionStr }}
                   </td>
                   <td
@@ -104,7 +104,7 @@ import { LedgerRow } from './operator-console.model';
               }
               <tr class="border-t-2 border-[#0c2a33]/14 bg-[#2bb8d4]/6">
                 <td class="px-3.5 py-3"></td>
-                <td class="px-3.5 py-3 font-bold text-(--riv-card-ink)">Total due</td>
+                <td class="px-3.5 py-3 font-bold text-riv-card-ink">Total due</td>
                 <td class="px-3.5 py-3"></td>
                 <td
                   class="whitespace-nowrap px-3.5 py-3 text-right text-[15px] font-bold text-[#0a6e85]"
@@ -120,24 +120,23 @@ import { LedgerRow } from './operator-console.model';
         <div
           class="mt-4 rounded-[14px] border border-dashed border-[#0c2a33]/20 bg-[#0c2a33]/4 px-4 py-3.5"
         >
-          <span
-            class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+          <span class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
             >Transfer to</span
           >
           <div class="mt-1.5 flex justify-between gap-3 text-[13px]">
-            <span class="text-(--riv-card-ink-soft)">Beneficiary</span
-            ><strong class="text-(--riv-card-ink)">Your venue</strong>
+            <span class="text-riv-card-ink-soft">Beneficiary</span
+            ><strong class="text-riv-card-ink">Your venue</strong>
           </div>
           <div class="mt-1 flex justify-between gap-3 text-[13px]">
-            <span class="text-(--riv-card-ink-soft)">IBAN</span
-            ><strong class="text-(--riv-card-ink)">Assigned at settlement</strong>
+            <span class="text-riv-card-ink-soft">IBAN</span
+            ><strong class="text-riv-card-ink">Assigned at settlement</strong>
           </div>
           <div class="mt-1 flex justify-between gap-3 text-[13px]">
-            <span class="text-(--riv-card-ink-soft)">Reference</span
-            ><strong class="text-(--riv-card-ink)">Assigned at settlement</strong>
+            <span class="text-riv-card-ink-soft">Reference</span
+            ><strong class="text-riv-card-ink">Assigned at settlement</strong>
           </div>
         </div>
-        <p class="mt-3.5 text-[11.5px] leading-[1.5] text-(--riv-card-ink-faint)">
+        <p class="mt-3.5 text-[11.5px] leading-[1.5] text-riv-card-ink-faint">
           Payouts are batched and settled manually by bank transfer at period end. Refund reversals
           are netted into the total above. Amounts in {{ currency() }}.
         </p>

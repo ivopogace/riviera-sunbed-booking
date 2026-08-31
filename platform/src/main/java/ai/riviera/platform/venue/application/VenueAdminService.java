@@ -21,27 +21,25 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 /**
- * The venue write use cases: onboard a venue (U7), edit its beach-map layout (U7), and edit its
+ * The venue edit use cases: edit a venue's beach-map layout (U7) and its
  * profile fields — amenities + distance-to-water. Package-private — the public seams
- * are the {@link OnboardVenue} / {@link EditBeachMap} / {@link EditVenueProfile} ports (invariant #11);
+ * are the {@link EditBeachMap} / {@link EditVenueProfile} ports (invariant #11);
  * one implementation, but the ports give the web adapter a clean, mockable entry point. The hard
- * command validation lives in the command records ({@link NewVenueCommand} / {@link SetCommand});
+ * command validation lives in the command records ({@link SetCommand});
  * this service owns the orchestration: existence checks, conflict→{@link SetRejection} mapping,
  * and the transactional write through {@link Venues}. The DB UNIQUE constraints (V2/V12) are the
- * race-safe backstop behind the pre-checks.
+ * race-safe backstop behind the pre-checks. Venue creation is its own conversation —
+ * {@link OnboardVenueService}.
  *
  * <p>Each venue-scoped edit is guarded: the first act of {@code addSet}/{@code editSet}/
  * {@code removeSet}/{@code updateProfile} is {@link VenueOwnership#assertOwns} on the acting
  * {@link OperatorId}, so an operator cannot touch another operator's venue (invariant #13, BOLA) —
  * the check is here in the application service, not the controller, so no driving adapter can
- * bypass it. {@code onboard} (venue creation) has no path {@code venueId} to check against — instead
- * it <em>writes</em> ownership: the creating operator is recorded as the new venue's owner in the same
- * transaction (creator-owns-on-create), so a create-then-edit flow works and no venue is ever
- * left unowned.
+ * bypass it.
  */
 @Service
 class VenueAdminService
-		implements OnboardVenue, EditBeachMap, EditVenueProfile, ViewVenueProfile, ListOwnedVenues {
+		implements EditBeachMap, EditVenueProfile, ViewVenueProfile, ListOwnedVenues {
 
 	private static final ZoneId TIRANE = ZoneId.of("Europe/Tirane");
 
@@ -58,17 +56,6 @@ class VenueAdminService
 		this.availability = availability;
 		this.bookings = bookings;
 		this.clock = clock;
-	}
-
-	@Override
-	@Transactional
-	public VenueId onboard(OperatorId creator, NewVenueCommand command) {
-		VenueId id = new VenueId(venues.insertVenue(command));
-		// Creator-owns-on-create (invariant #13): record ownership atomically with the insert.
-		// If this write fails the whole create rolls back — a venue is never left owned by no one, and
-		// the creator is never 403'd on the venue it just made.
-		ownership.assignOwner(creator, new VenueRef(id.value()));
-		return id;
 	}
 
 	@Override
@@ -166,11 +153,12 @@ class VenueAdminService
 
 	/**
 	 * Whether a hold on any of these sets is still ahead — dated today or later in
-	 * {@code Europe/Tirane} (invariant #6). The availability arm <em>all three</em> layout writes
-	 * share: a hold whose day has passed can neither be stranded by a move nor be lost by a delete
-	 * that matters, and no write path can add one behind this cutoff (invariant #4 closes the sale
-	 * the evening before, and a staff mark refuses a past date) — which is why the probe stays
-	 * race-safe under the row locks. Callers must already hold those locks.
+	 * {@code Europe/Tirane} (invariant #6). The availability arm the three <em>claim-probing</em> layout
+	 * writes share ({@code editSet}, {@code removeSet}, {@code replaceLayout} — the display-only reprice
+	 * and rename probe nothing): a hold whose day has passed can neither be stranded by a move nor be lost by a delete
+	 * that matters, and no write path can add one behind this cutoff (a past date is never
+	 * claimable — a booking reserve rejects it and a staff mark refuses it, invariant #4) — which is
+	 * why the probe stays race-safe under the row locks. Callers must already hold those locks.
 	 */
 	private boolean hasLiveHold(Collection<SetId> setIds) {
 		return availability.anyClaimsFrom(setIds, LocalDate.now(clock.withZone(TIRANE)));
@@ -228,6 +216,40 @@ class VenueAdminService
 
 	@Override
 	@Transactional
+	public ChangeOutcome renameRow(OperatorId operator, VenueId venueId, long expectedVersion,
+			RowNameCommand command) {
+		// Ownership first — fail closed before any read/write (invariant #13, BOLA).
+		ownership.assertOwns(operator, new VenueRef(venueId.value()));
+		if (!venues.venueExists(venueId)) {
+			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_VENUE);
+		}
+		// Same token, lock and order as repriceRow — no new lock edge, and only one racer off a value wins.
+		if (venues.lockAndReadSetVersion(venueId) != expectedVersion) {
+			return new ChangeOutcome.Rejected(SetRejection.STALE_WRITE);
+		}
+		Set<String> labels = venues.distinctRowLabels(venueId);
+		// Existence first: a rename of a row that is gone must say so, not blame the target label.
+		if (!labels.contains(command.rowLabel())) {
+			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_ROW);
+		}
+		if (command.newLabel().equals(command.rowLabel())) {
+			// Nothing to write: spending the shared token here would stale every other tab for free.
+			return ChangeOutcome.Applied.APPLIED;
+		}
+		// Broader than the UNIQUE index, which misses a shared label whose position numbers never collide.
+		if (labels.contains(command.newLabel())) {
+			return new ChangeOutcome.Rejected(SetRejection.ROW_NAME_TAKEN);
+		}
+		// Rows-affected still guards: a concurrent removeSet can empty the row after the label read.
+		if (venues.renameRow(venueId, command) == 0) {
+			return new ChangeOutcome.Rejected(SetRejection.NO_SUCH_ROW);
+		}
+		venues.incrementSetVersion(venueId); // advance the token iff a row was actually renamed
+		return ChangeOutcome.Applied.APPLIED;
+	}
+
+	@Override
+	@Transactional
 	public ReplaceLayoutOutcome replaceLayout(OperatorId operator, VenueId venueId, long expectedVersion,
 			LayoutCommand command) {
 		// Ownership first — fail closed before any read/write (invariant #13, BOLA).
@@ -244,6 +266,9 @@ class VenueAdminService
 		Optional<Venues.Conflict> internal = command.duplicateWithin();
 		if (internal.isPresent()) {
 			return new ReplaceLayoutOutcome.Rejected(toReplaceRejection(internal.get()));
+		}
+		if (command.splitsRowLabel()) {
+			return new ReplaceLayoutOutcome.Rejected(ReplaceRejection.ROW_NAME_TAKEN);
 		}
 		// Optimistic lock — take the venue row lock and read set_version BEFORE lockSetsOfVenue's
 		// FOR UPDATE. Both set-writes acquire the venue row first, then their set rows: one consistent order

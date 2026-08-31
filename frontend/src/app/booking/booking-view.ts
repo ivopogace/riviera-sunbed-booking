@@ -1,8 +1,9 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { HttpErrorResponse } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
 import { problemCodeOf } from '../shared/api-error';
 import { formatBookingDate } from '../shared/booking-date-label';
@@ -14,8 +15,9 @@ import { formatMoney, MoneyView } from '../shared/money';
 import { StatusChip } from '../shared/status-chip';
 import { BusyAction } from '../shared/busy-action';
 import { BookingQr } from './booking-qr';
-import { BookingDetail, Cancellation } from './booking.model';
+import { BookingDetail, Cancellation, SubmitReviewRequest } from './booking.model';
 import { BookingService } from './booking.service';
+import { ReviewPanel } from './review-panel';
 
 import { TouchTarget } from '../shared/touch-target';
 
@@ -26,22 +28,47 @@ const CARD_SURFACE =
 const BANNER =
   'mx-0 mt-[18px] mb-1 rounded-[20px] border px-[18px] py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]';
 const BTN =
-  'cursor-pointer rounded-[14px] px-[18px] py-[11px] text-[14px] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink) aria-disabled:cursor-not-allowed aria-disabled:opacity-65';
+  'cursor-pointer rounded-[14px] px-[18px] py-[11px] text-[14px] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-65';
 const BTN_OUTLINE = `${BTN} border-[1.5px] bg-[#f4f6f7] font-semibold [transition:background_0.15s_ease] hover:bg-[#e7ebec]`;
 const LINK =
-  'text-[14.5px] font-semibold text-(--riv-accent-ink) underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)';
+  'text-[14.5px] font-semibold text-riv-accent-ink underline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink';
 
 /** The neutral terminal-outcome treatment, shared by the expired and cancelled banners. */
 const BANNER_NEUTRAL = `${BANNER} border-[#dde1e3] bg-[#f0f2f3]`;
 const EYEBROW_NEUTRAL = 'text-[#4f5f67]';
 
+/**
+ * The review refusals that are settled facts: a retry can never change them, and each one means the
+ * server's panel has moved on from the one on screen. Stated once, so the copy and the re-read that
+ * follows it can never name different codes.
+ */
+const REVIEW_REFUSALS = new Map<string, string>([
+  ['REVIEW_ALREADY_SUBMITTED', 'This stay has already been rated.'],
+  ['REVIEW_WINDOW_CLOSED', 'The window for rating this stay has closed.'],
+  ['BOOKING_NOT_COMPLETED', 'You can rate a stay once you’ve been checked in.'],
+  ['NO_SUCH_REVIEW', 'This stay no longer carries a review.'],
+  ['NO_SUCH_BOOKING', 'We couldn’t find a booking for that code.'],
+]);
+
+const REVIEW_RETRY = 'We couldn’t save your review. Please try again.';
+
+/** The settled refusal this error carries, or `undefined` for anything worth retrying. */
+function reviewRefusal(error: unknown): string | undefined {
+  return error instanceof HttpErrorResponse
+    ? REVIEW_REFUSALS.get(problemCodeOf(error) ?? '')
+    : undefined;
+}
+
 /** The repeated Tailwind recipes of this view — see {@link BookingView} for why they live here. */
 const CLS = {
   card: `${CARD_SURFACE} mx-auto my-8 max-w-[560px] px-[26px] pt-[26px] pb-6`,
   stateCard: `${CARD_SURFACE} mx-auto my-8 max-w-[460px] px-[30px] py-10 text-center`,
-  title: 'm-0 text-[28px] font-bold tracking-[-0.02em] text-(--riv-card-ink)',
-  stateTitle: 'mx-0 mt-0 mb-2 text-[22px] font-bold tracking-[-0.02em] text-(--riv-card-ink)',
-  lead: 'mx-0 mt-0 mb-[18px] text-[14.5px] leading-[1.5] text-(--riv-card-ink-soft)',
+  // The outline twins cls.result's: a booking→booking swap parks a keyboard guest's focus here.
+  title:
+    'm-0 text-[28px] font-bold tracking-[-0.02em] text-riv-card-ink focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
+  stateTitle:
+    'mx-0 mt-0 mb-2 text-[22px] font-bold tracking-[-0.02em] text-riv-card-ink focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
+  lead: 'mx-0 mt-0 mb-[18px] text-[14.5px] leading-[1.5] text-riv-card-ink-soft',
   link: `${LINK} inline-flex items-center`,
   linkBack: `${LINK} mt-[18px] inline-flex items-center`,
   bannerAwaiting: `${BANNER} border-[#bfe6ee] bg-[#ddf4f8]`,
@@ -60,19 +87,18 @@ const CLS = {
   eyebrowWithdrawn: 'text-[#5c5470]',
   eyebrowCancelled: EYEBROW_NEUTRAL,
   bannerBody: 'mx-0 mt-1.5 mb-0 text-[14px] leading-[1.5] text-[#334a52] [&_strong]:text-[#0a2a33]',
-  row: 'flex items-center justify-between gap-3 border-b border-(--riv-card-track) py-2.5 text-[14.5px] last:border-b-0',
-  rowLabel: 'text-(--riv-card-ink-soft)',
-  rowValue: 'm-0 text-right font-bold text-(--riv-card-ink)',
-  rowAmount: 'm-0 text-right font-bold text-(--riv-accent-ink)',
-  // `empty:hidden` is the twin of the retired `.result:empty` — both regions render an empty <p>.
-  // The outline shows a keyboard guest where a settled cancel/withdrawal parked their focus.
+  row: 'flex items-center justify-between gap-3 border-b border-riv-card-track py-2.5 text-[14.5px] last:border-b-0',
+  rowLabel: 'text-riv-card-ink-soft',
+  rowValue: 'm-0 text-right font-bold text-riv-card-ink',
+  rowAmount: 'm-0 text-right font-bold text-riv-accent-ink',
+  // `empty:hidden` twins the retired `.result:empty`; the outline shows where a settled cancel/withdraw/review parked a keyboard guest's focus.
   result:
-    'mx-0 mt-4 mb-0 text-[13.5px] leading-[1.5] font-semibold text-(--riv-accent-ink) empty:hidden focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-(--riv-accent-ink)',
-  confirmQ: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-(--riv-card-ink)',
+    'mx-0 mt-4 mb-0 text-[13.5px] leading-[1.5] font-semibold text-riv-accent-ink empty:hidden focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
+  confirmQ: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-riv-card-ink',
   confirmQOnBanner: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-[#334a52]',
   actions: 'flex flex-wrap gap-2.5',
   btnDanger: `${BTN} border border-[rgba(200,90,60,0.4)] bg-[linear-gradient(180deg,#c14a2c,#a83c25)] font-bold text-white shadow-[0_8px_20px_rgba(179,67,42,0.4)] [transition:filter_0.15s_ease] hover:brightness-[1.08]`,
-  btnOutline: `${BTN_OUTLINE} border-[rgba(255,255,255,0.7)] text-[#0a4f5e]`,
+  btnOutline: `${BTN_OUTLINE} border-[rgba(255,255,255,0.7)] text-riv-solid-btn-ink`,
   btnOutlineDanger: `${BTN_OUTLINE} border-[rgba(200,90,60,0.5)] text-[#a3372a]`,
   btnCta:
     'mt-3.5 block w-full cursor-pointer rounded-[16px] border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-[15px] text-center text-[15.5px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:brightness-[1.06] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white aria-disabled:cursor-not-allowed aria-disabled:opacity-65',
@@ -111,11 +137,11 @@ const CLS = {
  */
 @Component({
   selector: 'app-booking-view',
-  imports: [RouterLink, CardGlass, StatusChip, BookingQr, BusyAction, TouchTarget],
+  imports: [RouterLink, CardGlass, StatusChip, BookingQr, BusyAction, TouchTarget, ReviewPanel],
   template: `
     @if (notFound()) {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title">
-        <h1 id="bv-title" [class]="cls.stateTitle">Booking not found</h1>
+        <h1 id="bv-title" data-testid="bv-title" [class]="cls.stateTitle">Booking not found</h1>
         <p [class]="cls.lead">
           We couldn’t find a booking for that code. Check the code and try again.
         </p>
@@ -123,14 +149,16 @@ const CLS = {
       </section>
     } @else if (failed()) {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title">
-        <h1 id="bv-title" [class]="cls.stateTitle">Couldn’t load your booking</h1>
+        <h1 id="bv-title" data-testid="bv-title" [class]="cls.stateTitle">
+          Couldn’t load your booking
+        </h1>
         <p [class]="cls.lead">Something went wrong. Please try again in a moment.</p>
         <a appTouchTarget routerLink="/" [class]="cls.link">Back to home</a>
       </section>
     } @else if (booking(); as b) {
       <section [class]="cls.card" appCardGlass aria-labelledby="bv-title">
         <div class="flex items-center justify-between gap-3">
-          <h1 id="bv-title" [class]="cls.title">Your booking</h1>
+          <h1 id="bv-title" data-testid="bv-title" [class]="cls.title">Your booking</h1>
           <span>
             <!-- Restores the "Status: X" context the removed dl row gave assistive tech. -->
             <span class="sr-only">Booking status:</span>
@@ -185,7 +213,7 @@ const CLS = {
                   Payment window closed
                 </h2>
                 <p [class]="cls.bannerBody">
-                  {{ dateLabel(b.bookingDate) }} has already started, so this booking
+                  The payment deadline for this booking has passed, so it
                   <strong>can no longer be paid</strong> and stays unconfirmed. If you completed a
                   payment in the last few minutes, reload this page — it may still be confirming.
                 </p>
@@ -333,13 +361,13 @@ const CLS = {
         }
 
         <div
-          class="mx-0 mt-[18px] mb-4 rounded-[18px] border border-dashed border-(--riv-field-border) bg-[rgba(255,255,255,0.4)] p-[15px]"
+          class="mx-0 mt-[18px] mb-4 rounded-[18px] border border-dashed border-riv-field-border bg-riv-inset-fill p-[15px]"
           data-testid="booking-code"
         >
-          <span class="block text-[11px] tracking-[0.16em] text-(--riv-card-ink-soft) uppercase">
+          <span class="block text-[11px] tracking-[0.16em] text-riv-card-ink-soft uppercase">
             Booking code
           </span>
-          <div class="mt-[5px] text-[27px] font-bold tracking-[0.12em] text-(--riv-accent-ink)">
+          <div class="mt-[5px] text-[27px] font-bold tracking-[0.12em] text-riv-accent-ink">
             {{ b.code }}
           </div>
           @if (b.status === 'CONFIRMED') {
@@ -347,7 +375,7 @@ const CLS = {
               <app-booking-qr [code]="b.code" />
             </div>
           }
-          <p class="mx-0 mt-2 mb-0 text-[12px] leading-[1.4] text-(--riv-card-ink-soft)">
+          <p class="mx-0 mt-2 mb-0 text-[12px] leading-[1.4] text-riv-card-ink-soft">
             Show this code to staff when you arrive to claim your set.
           </p>
         </div>
@@ -418,17 +446,14 @@ const CLS = {
 
         @if (b.cancellable && !cancellation()) {
           <section
-            class="mt-5 border-t border-(--riv-card-track) pt-[18px]"
+            class="mt-5 border-t border-riv-card-track pt-[18px]"
             aria-labelledby="cancel-title"
           >
-            <h2
-              id="cancel-title"
-              class="mx-0 mt-0 mb-1.5 text-[16px] font-bold text-(--riv-card-ink)"
-            >
+            <h2 id="cancel-title" class="mx-0 mt-0 mb-1.5 text-[16px] font-bold text-riv-card-ink">
               Cancel this booking
             </h2>
             <p
-              class="mx-0 mt-0 mb-3.5 text-[13.5px] leading-[1.5] text-(--riv-card-ink-soft)"
+              class="mx-0 mt-0 mb-3.5 text-[13.5px] leading-[1.5] text-riv-card-ink-soft"
               data-testid="refund-terms"
             >
               {{ refundTerms(b) }}
@@ -470,17 +495,51 @@ const CLS = {
               </button>
             }
           </section>
+        } @else if (showLastMinuteNote(b)) {
+          <section class="mt-5 border-t border-riv-card-track pt-[18px]" aria-label="Cancellation">
+            <p
+              class="mx-0 my-0 text-[13.5px] leading-[1.5] text-riv-card-ink-soft"
+              data-testid="last-minute-note"
+            >
+              {{ lastMinuteNote(b) }}
+            </p>
+          </section>
         }
+
+        <!-- Outside the panel on purpose: scoped to it, the success message would unmount with it. -->
+        <p
+          [class]="cls.result"
+          role="status"
+          aria-live="polite"
+          tabindex="-1"
+          data-testid="review-result"
+        >
+          @if (reviewSuccess(); as msg) {
+            {{ msg }}
+          } @else if (reviewRejection(); as msg) {
+            {{ msg }}
+          }
+        </p>
+
+        <app-review-panel
+          [panel]="b.reviewPanel"
+          [bookingStatus]="b.status"
+          [venueName]="b.venueName"
+          [busy]="submittingReview()"
+          (submitted)="sendReview($event)"
+          (updated)="sendReviewUpdate($event)"
+          (deleted)="sendReviewDelete()"
+        />
 
         <a appTouchTarget routerLink="/" [class]="cls.linkBack">Back to home</a>
       </section>
     } @else {
       <section [class]="cls.stateCard" appCardGlass aria-labelledby="bv-title" aria-busy="true">
-        <h1 id="bv-title" [class]="cls.stateTitle">Loading your booking…</h1>
+        <h1 id="bv-title" data-testid="bv-title" [class]="cls.stateTitle">Loading your booking…</h1>
       </section>
     }
   `,
-  host: { class: 'block text-(--riv-card-ink)' },
+  host: { class: 'block text-riv-card-ink' },
 })
 export class BookingView {
   /** The repeated Tailwind recipes (see {@link CLS}), exposed to the template. */
@@ -505,8 +564,19 @@ export class BookingView {
   /** The server says the venue already answered — a retry can never succeed (the withdraw twin of {@link cancelWindowClosed}). */
   protected readonly withdrawNotPending = signal(false);
   protected readonly withdrawn = signal(false);
+  protected readonly submittingReview = signal(false);
+  /** What the last successful review write did — the panel that produced it is gone by then. */
+  protected readonly reviewSuccess = signal<string | undefined>(undefined);
+  /** What the server refused a review write for — a missing rating shows its own inline error instead. */
+  protected readonly reviewRejection = signal<string | undefined>(undefined);
 
   private readonly focusAfterRender = focusMover();
+
+  /** Set by a booking→booking param swap; the load outcome that renders next consumes it (RV-FE-9). */
+  private refocusTitle = false;
+
+  /** Absent until the detail loads — the panel lives inside the loaded-booking branch. */
+  private readonly reviewPanel = viewChild(ReviewPanel);
 
   private code = '';
 
@@ -515,8 +585,12 @@ export class BookingView {
 
   constructor() {
     // React to route `code`, not the snapshot — the find modal makes booking→booking nav real; the sync emit loads initially.
+    let initialEmit = true;
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       this.code = params.get('code') ?? '';
+      // A swap tears down whatever held focus, so the next settled card's title takes it.
+      this.refocusTitle = !initialEmit;
+      initialEmit = false;
       // Reset the per-booking view state before (re)loading the new code.
       this.booking.set(undefined);
       this.notFound.set(false);
@@ -531,12 +605,23 @@ export class BookingView {
       this.withdrawFailed.set(false);
       this.withdrawNotPending.set(false);
       this.withdrawn.set(false);
+      this.submittingReview.set(false);
+      this.reviewSuccess.set(undefined);
+      this.reviewRejection.set(undefined);
       if (this.code) {
         this.load();
       } else {
         this.notFound.set(true);
+        this.refocusTitleIfSwapped();
       }
     });
+  }
+
+  private refocusTitleIfSwapped(): void {
+    if (this.refocusTitle) {
+      this.refocusTitle = false;
+      this.focusAfterRender('bv-title');
+    }
   }
 
   /**
@@ -551,11 +636,15 @@ export class BookingView {
       const prefetched = this.bookings.takePrefetched(this.code);
       if (prefetched) {
         this.booking.set(prefetched);
+        this.refocusTitleIfSwapped();
         return;
       }
     }
     this.bookings.getByCode(this.code).subscribe({
-      next: (b) => this.booking.set(b),
+      next: (b) => {
+        this.booking.set(b);
+        this.refocusTitleIfSwapped();
+      },
       error: (e: unknown) => {
         if (isRefresh) {
           return;
@@ -565,6 +654,7 @@ export class BookingView {
         } else {
           this.failed.set(true);
         }
+        this.refocusTitleIfSwapped();
       },
     });
   }
@@ -582,6 +672,59 @@ export class BookingView {
   protected keepBooking(): void {
     this.confirming.set(false);
     this.focusAfterRender('start-cancel');
+  }
+
+  protected sendReview(review: SubmitReviewRequest): void {
+    this.writeReview(this.bookings.review(this.code, review), 'Thanks for reviewing your stay.');
+  }
+
+  protected sendReviewUpdate(review: SubmitReviewRequest): void {
+    this.writeReview(
+      this.bookings.updateReview(this.code, review),
+      'Your review has been updated.',
+    );
+  }
+
+  protected sendReviewDelete(): void {
+    this.writeReview(this.bookings.deleteReview(this.code), 'Your review has been removed.');
+  }
+
+  /**
+   * Send one review write and narrate it. None of the three carries a body, so the new state comes
+   * from a re-read — which replaces the panel with whatever the server now says it should be —
+   * rather than from a local patch.
+   */
+  private writeReview(write: Observable<void>, success: string): void {
+    if (this.submittingReview()) {
+      return;
+    }
+    // A new attempt supersedes the last outcome, or a stale line hides this one's.
+    this.reviewRejection.set(undefined);
+    this.reviewSuccess.set(undefined);
+    this.submittingReview.set(true);
+    write.subscribe({
+      next: () => {
+        this.reviewSuccess.set(success);
+        this.submittingReview.set(false);
+        // Not left to the re-read: a refresh may fail, and its edit/confirm mode would outlive the write.
+        this.reviewPanel()?.settle();
+        // The refresh below is async, so focus aims at the result this write populates synchronously.
+        this.focusAfterRender('review-result');
+        this.load(true);
+      },
+      error: (e: unknown) => {
+        const refusal = reviewRefusal(e);
+        this.reviewRejection.set(refusal ?? REVIEW_RETRY);
+        this.submittingReview.set(false);
+        if (refusal) {
+          // The server moved on, so the panel on screen is stale — re-read rather than offer it again.
+          this.reviewPanel()?.settle();
+          this.load(true);
+          this.focusAfterRender('review-result');
+        }
+        // A retryable failure keeps the pressed control alive; the polite region announces unmoved.
+      },
+    });
   }
 
   protected confirmCancel(): void {
@@ -725,6 +868,24 @@ export class BookingView {
       paymentIntentId: payment.paymentIntentId,
     });
     await this.router.navigate(['/booking/pay']);
+  }
+
+  /**
+   * Whether to present the booking as a non-refundable last-minute booking (#795): CLOSED-born and
+   * still live. FREE/LATE-born bookings whose window has since closed keep rendering nothing here
+   * (parity with the old blank state); a cancelled or spent booking has nothing to disclose — and
+   * neither does a PENDING_REQUEST, whose withdraw affordance would contradict the note.
+   */
+  protected showLastMinuteNote(b: BookingDetail): boolean {
+    const live = b.status === 'CONFIRMED' || b.status === 'AWAITING_PAYMENT';
+    return live && b.cancellationWindowAtBirth === 'CLOSED' && !this.cancellation();
+  }
+
+  /** The note keeps the checkout's "once paid" qualifier while the booking is still unpaid. */
+  protected lastMinuteNote(b: BookingDetail): string {
+    return b.status === 'AWAITING_PAYMENT'
+      ? 'Non-refundable last-minute booking — it can’t be cancelled once paid.'
+      : 'Non-refundable last-minute booking — it can’t be cancelled.';
   }
 
   /** Refund-terms copy for a still-cancellable booking (server-computed values, invariant #10). */

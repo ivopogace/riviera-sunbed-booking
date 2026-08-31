@@ -1,8 +1,11 @@
 /**
  * Operator bounded context (invariant #13) — operator accounts and the operator↔venue
- * ownership mapping. Its one job for the rest of the system: answer <em>"does this operator
- * own this venue?"</em> so every venue-scoped application service can enforce object-level
- * authorization (BOLA, OWASP API #1) and reject a mismatch with {@code 403}.
+ * ownership mapping. Its two questions for the rest of the system: <em>"does this operator
+ * own this venue?"</em>, so every venue-scoped application service can enforce object-level
+ * authorization (BOLA, OWASP API #1) and reject a mismatch with {@code 403}; and
+ * <em>"does this venue have an {@code ACTIVE} owner?"</em>, the tourist-visibility rule
+ * {@code venue} and {@code booking} fence discovery and new bookings with
+ * ({@link ai.riviera.platform.operator.api.VenueVisibility}).
  *
  * <p><strong>Built directly in the ADR-0007 target shape</strong> (this module is the
  * reference build): top-level {@code api} named interface + a flat hexagon beneath

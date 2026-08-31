@@ -45,18 +45,18 @@ import { CardGlass } from './card-glass';
       class="riv-stat flex flex-col gap-0.5 rounded-[16px] px-3.5 py-3 shadow-[0_1px_2px_rgba(7,42,58,0.06)]"
     >
       <span
-        class="riv-stat-label text-[11px] font-bold uppercase tracking-[0.1em] text-(--riv-card-ink-faint)"
+        class="riv-stat-label text-[11px] font-bold uppercase tracking-[0.1em] text-riv-card-ink-faint"
         >{{ label() }}</span
       >
       <div
-        class="riv-stat-value text-[27px] font-bold text-(--riv-card-ink)"
+        class="riv-stat-value text-[27px] font-bold text-riv-card-ink"
         [attr.data-testid]="valueTestId()"
       >
         <ng-content />
       </div>
       @if (sub(); as caption) {
         <span
-          class="riv-stat-sub text-[11.5px] text-(--riv-card-ink-soft)"
+          class="riv-stat-sub text-[11.5px] text-riv-card-ink-soft"
           [attr.data-testid]="subTestId()"
           >{{ caption }}</span
         >

@@ -15,6 +15,7 @@ import {
   CreateBookingResult,
   PaymentHandoff,
   RequestedBooking,
+  SubmitReviewRequest,
 } from './booking.model';
 import { BookingService, bookingErrorOf } from './booking.service';
 
@@ -84,6 +85,8 @@ const DETAIL: BookingDetail = {
   emailWithheld: false,
   payWindowClosed: false,
   cancelReason: null,
+  cancellationWindowAtBirth: 'FREE',
+  reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
 describe('BookingService', () => {
@@ -126,8 +129,10 @@ describe('BookingService', () => {
     const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings`);
     req.flush(AWAITING, { status: 202, statusText: 'Accepted' });
 
-    expect(received).toEqual({ kind: 'awaiting', awaiting: AWAITING });
-    expect(service.lastAwaitingPayment()).toEqual(AWAITING);
+    // The service stamps the (absent) checkout quote as an explicit null (#795).
+    const stamped = { ...AWAITING, cancellationTerms: null };
+    expect(received).toEqual({ kind: 'awaiting', awaiting: stamped });
+    expect(service.lastAwaitingPayment()).toEqual(stamped);
     expect(service.lastConfirmation()).toBeUndefined();
   });
 
@@ -266,6 +271,8 @@ describe('BookingService', () => {
       emailWithheld: false,
       payWindowClosed: false,
       cancelReason: null,
+      cancellationWindowAtBirth: 'FREE',
+      reviewPanel: { kind: 'NOT_COMPLETED' },
     };
     let received: BookingDetail | undefined;
     service.getByCode('ABCD234567').subscribe((d) => (received = d));
@@ -274,6 +281,46 @@ describe('BookingService', () => {
     expect(req.request.method).toBe('GET');
     req.flush(detail);
     expect(received).toEqual(detail);
+  });
+
+  it('review POSTs the written review to the code-gated review endpoint', () => {
+    const review: SubmitReviewRequest = { stars: 4, comment: 'Great sunbeds', displayName: 'Ana' };
+    let completed = false;
+    service.review('ABCD234567', review).subscribe(() => (completed = true));
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings/ABCD234567/review`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(review);
+    req.flush(null);
+    expect(completed).toBe(true);
+  });
+
+  it('updateReview PUTs the rewritten review to the same endpoint', () => {
+    const review: SubmitReviewRequest = { stars: 2, comment: null, displayName: 'Ana K' };
+    let completed = false;
+    service.updateReview('ABCD234567', review).subscribe(() => (completed = true));
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings/ABCD234567/review`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual(review);
+    req.flush(null);
+    expect(completed).toBe(true);
+  });
+
+  it('deleteReview DELETEs that endpoint', () => {
+    let completed = false;
+    service.deleteReview('ABCD234567').subscribe(() => (completed = true));
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings/ABCD234567/review`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(null);
+    expect(completed).toBe(true);
+  });
+
+  it('percent-encodes the booking code in every review verb', () => {
+    service.deleteReview('a/b?c').subscribe();
+
+    httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings/a%2Fb%3Fc/review`).flush(null);
   });
 
   it('cancel POSTs to the cancel endpoint with no body-supplied amount', () => {

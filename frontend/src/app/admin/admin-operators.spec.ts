@@ -343,24 +343,19 @@ describe('AdminOperators', () => {
     expect(host.querySelector('[data-testid="admin-suspend-7"]')).not.toBeNull();
   });
 
-  it('shows the forbidden notice for a signed-in non-admin and never loads', async () => {
+  /** The gate itself (forbidden/signed-out/restoring markup) moved to `AdminConsole`; this
+   *  component's own defensive guard — which the shell's gate makes redundant in production but
+   *  costs nothing to keep — still must not load when the admin session says no. */
+  it('does not load for a signed-in non-admin', async () => {
     const service = serviceStub(rows);
-    const fixture = await render(authStub({ signedIn: true, isAdmin: false }), service);
-
+    await render(authStub({ signedIn: true, isAdmin: false }), service);
     expect(service.pending).not.toHaveBeenCalled();
-    expect(
-      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="admin-ops-forbidden"]'),
-    ).not.toBeNull();
   });
 
-  it('prompts to sign in when signed out', async () => {
+  it('does not load for a signed-out visitor', async () => {
     const service = serviceStub(rows);
-    const fixture = await render(authStub({ signedIn: false, isAdmin: false }), service);
-
+    await render(authStub({ signedIn: false, isAdmin: false }), service);
     expect(service.pending).not.toHaveBeenCalled();
-    expect(
-      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="admin-ops-signed-out"]'),
-    ).not.toBeNull();
   });
 });
 
@@ -405,15 +400,12 @@ describe('AdminOperators stat strip (A9, #348)', () => {
     expect(tile(fixture, 'admin-stat-pending')).toBe('0');
   });
 
-  it('renders the strip above the queue but below the tab strip', async () => {
+  it('renders the strip above the queue', async () => {
     const fixture = await render(authStub({ isAdmin: true }), serviceStub([], accounts));
     const host = fixture.nativeElement as HTMLElement;
-    const order = [
-      ...host.querySelectorAll('nav, [data-testid="admin-stats"], #admin-pending-title'),
-    ];
+    const order = [...host.querySelectorAll('[data-testid="admin-stats"], #admin-pending-title')];
 
     expect(order.map((el) => el.getAttribute('data-testid') ?? el.tagName)).toEqual([
-      'NAV',
       'admin-stats',
       'H2',
     ]);

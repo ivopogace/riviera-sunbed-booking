@@ -45,14 +45,16 @@ export async function mockAuthApi(
 
   await page.route(/\/api\/auth\/me$/, (route) =>
     signedIn
-      ? route.fulfill({ json: { username, principalType: 'OPERATOR' } })
+      ? route.fulfill({ json: { username, principalType: 'OPERATOR', operatorStatus: 'ACTIVE' } })
       : route.fulfill(problem(401, 'Unauthorized', 'UNAUTHENTICATED')),
   );
   await page.route(/\/api\/auth\/operator\/login$/, (route) => {
     const body = route.request().postDataJSON() as { username?: string; password?: string };
     if (body.username === username && body.password === password) {
       signedIn = true;
-      return route.fulfill({ json: { username, principalType: 'OPERATOR' } });
+      return route.fulfill({
+        json: { username, principalType: 'OPERATOR', operatorStatus: 'ACTIVE' },
+      });
     }
     return route.fulfill(problem(401, 'Unauthorized', 'INVALID_CREDENTIALS'));
   });
@@ -178,10 +180,11 @@ export async function mockCustomerAuthApi(
  *
  * - `POST /api/auth/operator/register` always answers a byte-identical `202 {status:'PENDING'}`
  *   (non-enumeration, D-8); only a fresh username adds a PENDING row (carrying its password + contact
- *   email). No session is established — a PENDING operator cannot sign in.
- * - `POST /api/auth/operator/login` accepts the fixed ADMIN account (→ `admin:true`) and any APPROVED
- *   operator's own password (→ `admin:false`); everything else is the generic 401. `/api/auth/me`
- *   reflects the session incl. the `admin` flag the FE gates the approval surface on.
+ *   email). No session is established by the 202 itself — the FE follows up with a normal sign-in.
+ * - `POST /api/auth/operator/login` accepts the fixed ADMIN account (→ `admin:true`), any PENDING
+ *   registration's own password (#694), and any APPROVED operator's own password; everything else
+ *   is the generic 401. `/api/auth/me` reflects the session incl. the `admin` flag and the
+ *   `operatorStatus` the pending-approval notice keys on.
  * - `GET /api/admin/operators` lists the pending queue (admin only); `POST …/{id}/approve` moves that
  *   operator to APPROVED (so its login now works) and `…/{id}/reject` drops it (stays unable to log in);
  *   both `204`, unknown id `404`.
@@ -211,10 +214,11 @@ export async function mockOperatorLifecycleApi(
   const pending: PendingOp[] = [];
   /** Decided accounts (ACTIVE + SUSPENDED) — what `GET /api/admin/operators/accounts` returns. */
   const accounts: AccountOp[] = [];
-  /** Login works only for a decided, NOT-suspended account whose password matches. */
+  /** Login works for a PENDING registration or a decided, NOT-suspended account (#694). */
   const canSignIn = (username: string, password: string | undefined): boolean =>
     !!password &&
-    accounts.some((a) => a.username === username && !a.suspended && a.password === password);
+    (pending.some((p) => p.username === username && p.password === password) ||
+      accounts.some((a) => a.username === username && !a.suspended && a.password === password));
   let nextOpId = 1;
   let nextVenueId = 100;
   let session: { username: string; admin: boolean } | undefined;
@@ -229,9 +233,16 @@ export async function mockOperatorLifecycleApi(
     suspended: false,
   });
 
+  const statusOf = (username: string): string =>
+    pending.some((p) => p.username === username) ? 'PENDING' : 'ACTIVE';
   const principal = () =>
     session
-      ? { username: session.username, principalType: 'OPERATOR', admin: session.admin }
+      ? {
+          username: session.username,
+          principalType: 'OPERATOR',
+          admin: session.admin,
+          operatorStatus: statusOf(session.username),
+        }
       : undefined;
 
   await page.route(/\/api\/auth\/me$/, (route) =>
@@ -297,9 +308,9 @@ export async function mockOperatorLifecycleApi(
     if (idx === -1) {
       return route.fulfill(problem(404, 'Not Found', 'NO_SUCH_OPERATOR'));
     }
+    const op = pending[idx];
     if (approve) {
-      const op = pending[idx];
-      // Approval makes it a decided account — login enabled, and now listed under /accounts.
+      // Approval makes it a decided account — now listed under /accounts; a live session survives.
       accounts.push({
         id: op.id,
         username: op.username,
@@ -308,6 +319,8 @@ export async function mockOperatorLifecycleApi(
         admin: false,
         suspended: false,
       });
+    } else if (session.username === op.username) {
+      session = undefined; // rejection REVOKES the target's live session, as the server does (#694)
     }
     pending.splice(idx, 1); // approved or rejected → leaves the pending queue
     return route.fulfill({ status: 204 });

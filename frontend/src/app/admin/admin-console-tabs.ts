@@ -1,5 +1,7 @@
-import { Component, input } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, ElementRef, effect, inject, input, viewChildren } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { filter, map } from 'rxjs';
 
 import { TouchTarget } from '../shared/touch-target';
 
@@ -34,21 +36,20 @@ export const ADMIN_CONSOLE_TAB_ORDER = [
  * (`docs/design/riviera-admin-console.dc.html`): porcelain glass pills, the active one lifted.
  *
  * <p><strong>Routed tabs, not local state.</strong> The canvas models tabs as a `tab` state field
- * because it is a single demo page; here each tab is its own lazy route, so it is deep-linkable,
- * back-button-correct, and only the tab you opened is downloaded — the operator console's shape
- * minus the layout component.
+ * because it is a single demo page; here each tab is its own child route of {@code AdminConsole},
+ * so it is deep-linkable, back-button-correct, and only the tab you opened is downloaded — the
+ * operator console's own shape (`riviera-frontend`: "the one nested child-route tree... follow
+ * that shape for further tabbed sub-apps"). Mounted once by the shell and kept alive across tab
+ * switches, so its scroll position is never lost or reset.
  *
- * <p><strong>Why still no layout component, and no grouping.</strong> Measured at 360px
- * against the real pills, the wrap costs 2 rows at five tabs and 3 rows at <em>seven</em> (today's
- * count) as well as at six and eight alike, never clipping and never scrolling sideways at any
- * width — so absorbing every planned tab is free, and the alternatives all cost more than they save.
- * Grouping degenerates: the natural
- * clusters put Operators and Privacy alone in groups of one. An overflow menu buys ~48px by hiding
- * admin surfaces and can strand `aria-current` inside a collapsed menu. Shrinking the pills trades
- * away touch target they do not have to spare — they sit on WCAG 2.5.5's 44px floor (#605).
- * The trigger to revisit is a <strong>ninth</strong> tab: that is where 360px reaches four rows and
- * where new tabs would join existing clusters instead of forming singleton ones.
- * `e2e/admin-console-tabs.e2e.ts` fails if the budget is ever exceeded.
+ * <p><strong>Scrolls, doesn't wrap.</strong> Originally a flat wrapping strip (measured to stay
+ * within 3 rows at 360px through 8 tabs, never scrolling sideways) — moved to a single scrolling
+ * row, matching the operator console's own tab bar (`operator-console.html`, #710) so the two navs
+ * behave the same rather than diverging on which one happened to get uneven labels first. An
+ * overflow menu was rejected for the same reason #710 rejected it there: it can strand
+ * `aria-current` inside a collapsed menu. The active tab auto-scrolls into view on load and on every
+ * switch, via the same `tabLink`/`scrollIntoView` mechanism. `e2e/admin-console-tabs.e2e.ts` pins the
+ * scrolling-row shape.
  *
  * <p><strong>Which tabs exist is a backend question.</strong> This strip lists what ships, which is
  * why Photos appears here without appearing on the canvas at all: the canvas's Privacy tab
@@ -56,23 +57,27 @@ export const ADMIN_CONSOLE_TAB_ORDER = [
  * different job. The canvas's own five-tab strip predates four of the tabs that ship and is not the
  * target IA.
  *
- * <p>Rendered only inside each page's admin-authorized branch, so a signed-out visitor is never told
- * which admin surfaces exist. The active tab carries `aria-current="page"`, which is what makes the
- * lift visible to assistive tech rather than to sighted users alone.
+ * <p>Rendered only inside {@code AdminConsole}'s authorized branch, so a signed-out visitor is never
+ * told which admin surfaces exist. The active tab carries `aria-current="page"`, which is what makes
+ * the lift visible to assistive tech rather than to sighted users alone.
  */
 @Component({
   selector: 'app-admin-console-tabs',
   imports: [RouterLink, RouterLinkActive, TouchTarget],
   template: `
-    <nav class="mt-3 mb-1 flex flex-wrap gap-x-2 gap-y-1.5" [attr.aria-label]="label()">
+    <nav
+      class="mt-3 mb-1 flex w-full flex-nowrap items-center gap-2 overflow-x-auto scroll-px-1 px-1 py-1 [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-16px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-16px),transparent)] scrollbar-none"
+      [attr.aria-label]="label()"
+    >
       @for (tab of tabs; track tab.path) {
         <a
+          #tabLink
           [routerLink]="tab.path"
-          routerLinkActive="riv-tab-active bg-white/85 text-[#0a4f5e] border-white/95 shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff]"
+          routerLinkActive
           [routerLinkActiveOptions]="{ exact: true }"
           ariaCurrentWhenActive="page"
           appTouchTarget
-          class="riv-tab inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/45 px-[18px] py-[9px] text-[13.5px] font-semibold text-(--riv-ink-soft) backdrop-blur-[10px] [transition:background_0.15s_ease] hover:bg-white/65"
+          class="riv-tab inline-flex shrink-0 items-center gap-2 rounded-full border border-white/70 bg-white/45 px-[18px] py-[9px] text-[13.5px] font-semibold text-riv-ink-soft backdrop-blur-[10px] [transition:background_0.15s_ease] hover:bg-white/65 aria-[current=page]:border-white/95 aria-[current=page]:bg-white/85 aria-[current=page]:text-riv-accent-ink aria-[current=page]:shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff]"
           [attr.data-testid]="tab.testId"
           >{{ tab.label }}</a
         >
@@ -93,4 +98,26 @@ export class AdminConsoleTabs {
     { path: '/admin/privacy', label: 'Privacy', testId: 'admin-tab-privacy' },
     { path: '/admin/audit', label: 'Audit', testId: 'admin-tab-audit' },
   ];
+
+  private readonly router = inject(Router);
+  /** The pill anchors, in tab order — used to scroll the active one into the scrolling row's
+   *  viewport so it's visible without the admin having to scroll manually. */
+  private readonly tabLinks = viewChildren<ElementRef<HTMLAnchorElement>>('tabLink');
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map(() => this.router.url),
+    ),
+    { initialValue: this.router.url },
+  );
+
+  constructor() {
+    // Scroll the active tab into view on load/switch — the row scrolls instead of wrapping.
+    effect(() => {
+      const url = this.currentUrl();
+      const links = this.tabLinks();
+      const index = this.tabs.findIndex((tab) => tab.path === url);
+      links[index]?.nativeElement.scrollIntoView?.({ inline: 'nearest', block: 'nearest' });
+    });
+  }
 }

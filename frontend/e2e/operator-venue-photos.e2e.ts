@@ -26,6 +26,7 @@ const PROFILE = {
   description: 'Loungers on the shore.',
   bookingMode: 'INSTANT',
   bookingCutoff: '18:00',
+  salesClose: '16:00',
   commissionBps: 1500,
   payoutCurrency: 'EUR',
   amenities: ['WIFI'],

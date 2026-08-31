@@ -14,7 +14,7 @@ import { Directive } from '@angular/core';
   selector: '[appPanelGlass]',
   host: {
     class:
-      'bg-(--riv-header-glass) backdrop-blur-[22px] backdrop-saturate-[1.7] border border-(--riv-header-border)',
+      'bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7] border border-riv-header-border',
   },
 })
 export class PanelGlass {}

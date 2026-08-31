@@ -23,20 +23,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <ol>
  * <li><strong>The write does two things with one value.</strong> It sets the <em>live</em> rate — what
- * the next accrual reads at decision time — and schedules that same rate from <em>tomorrow</em> for
- * the per-service-date reporting read. Same bps, different date ranges. A write that did only the
- * first would leave the takings strip repricing history; only the second would leave accruals on the
- * old rate forever.</li>
- * <li><strong>"Tomorrow" is a civil date in {@code Europe/Tirane}</strong> (invariant #6), computed
+ * the next accrual reads at decision time — and schedules that same rate from <em>today</em> for
+ * the per-service-date reporting read. Same bps, different jobs. A write that did only the
+ * first would leave the takings strip reporting a rate no new accrual applies; only the second
+ * would leave accruals on the old rate forever.</li>
+ * <li><strong>"Today" is a civil date in {@code Europe/Tirane}</strong> (invariant #6), computed
  * from the injected UTC clock — never {@code LocalDate.now()}. The boundary case is the point: late
- * UTC evening is already the next day in Tirane, so the effective date must be two calendar days on
- * from the UTC date, not one.</li>
+ * UTC evening is already the next day in Tirane, so the effective date must be one calendar day on
+ * from the UTC date, not the same.</li>
  * </ol>
  *
- * <p>Effective-from is <strong>tomorrow rather than today</strong> because invariant #4 closes a
- * service day's bookings the evening before: today's bookings have all already accrued, so a change
- * effective today would be wrong by construction. Nothing about the effective date comes from the
- * request — the schedule is forward-only, so no call can reprice a day already sold (invariant #9).
+ * <p>Effective-from is <strong>today rather than tomorrow</strong> because same-day sales stay open
+ * until the venue's sales close (invariant #4): a booking confirmed after the change accrues at the
+ * new live rate, so today's reporting must answer that same rate or the strip and the ledger would
+ * disagree for the rest of the day. Nothing about the effective date comes from the request — the
+ * schedule is forward-only, so no call can reprice a day already sold (invariant #9).
  */
 class VenueCommissionServiceTest {
 
@@ -45,12 +46,12 @@ class VenueCommissionServiceTest {
 
 	/** Midday UTC on 2026-08-05, which is the same civil day in Tirane (UTC+2 in August). */
 	private static final Clock MIDDAY = Clock.fixed(Instant.parse("2026-08-05T12:00:00Z"), ZoneOffset.UTC);
-	/** 22:30 UTC on 2026-08-05 — already 2026-08-06 in Tirane, so "tomorrow" is the 7th. */
+	/** 22:30 UTC on 2026-08-05 — already 2026-08-06 in Tirane, so "today" is the 6th. */
 	private static final Clock LATE_UTC_EVENING =
 			Clock.fixed(Instant.parse("2026-08-05T22:30:00Z"), ZoneOffset.UTC);
 
 	@Test
-	void writeUpdatesTheLiveRateAndSchedulesItFromTomorrow() {
+	void writeUpdatesTheLiveRateAndSchedulesItFromToday() {
 		FakeCommissionRateStore store = storeWith(VENUE, 1500);
 		VenueCommissionService service = new VenueCommissionService(store, MIDDAY);
 
@@ -61,20 +62,21 @@ class VenueCommissionServiceTest {
 		assertEquals(2000, updated.get().commissionBps());
 		assertEquals(2000, store.liveRates.get(VENUE.value()),
 				"the live rate is what the next accrual reads at decision time");
-		assertEquals(List.of(new Scheduled(VENUE.value(), LocalDate.of(2026, 8, 6), 2000)),
+		assertEquals(List.of(new Scheduled(VENUE.value(), LocalDate.of(2026, 8, 5), 2000)),
 				store.scheduled,
-				"the same rate is scheduled from tomorrow, so past service dates keep theirs");
+				"the same rate is scheduled from today, so its reporting matches the live rate "
+						+ "while the pinned floor keeps every past service date on its own");
 	}
 
 	@Test
-	void tomorrowIsReckonedInTiraneNotUtc() {
+	void todayIsReckonedInTiraneNotUtc() {
 		FakeCommissionRateStore store = storeWith(VENUE, 1500);
 		VenueCommissionService service = new VenueCommissionService(store, LATE_UTC_EVENING);
 
 		service.setCommission(VENUE, new CommissionRateCommand(2000));
 
-		assertEquals(LocalDate.of(2026, 8, 7), store.scheduled.getFirst().effectiveFrom(),
-				"22:30 UTC is already the 6th in Tirane, so tomorrow is the 7th (invariant #6)");
+		assertEquals(LocalDate.of(2026, 8, 6), store.scheduled.getFirst().effectiveFrom(),
+				"22:30 UTC is still the 5th in UTC but already the 6th in Tirane (invariant #6)");
 	}
 
 	/**

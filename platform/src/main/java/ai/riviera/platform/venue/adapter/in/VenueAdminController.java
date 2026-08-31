@@ -102,7 +102,7 @@ class VenueAdminController {
 			@RequestBody CreateVenueRequest request) {
 		// Creator-owns-on-create (invariant #13): resolve the authenticated operator and hand it
 		// to the service, which records ownership in the same transaction as the insert. Create is still
-		// role-gated only (any ACTIVE operator may create) — there is no prior owner to check against.
+		// role-gated only (any resolvable operator may create) — there is no prior owner to check against.
 		OperatorId creator = currentOperator.require(authentication);
 		// Conversion wraps here and below: bad request input stays a 400, a service IAE stays a 500.
 		var command = InvalidApiRequestException.parsing(request::toCommand);
@@ -219,6 +219,17 @@ class VenueAdminController {
 		return toResponse(editBeachMap.repriceRow(operator, new VenueId(venueId), expectedVersion, command));
 	}
 
+	@PutMapping("/{venueId}/rows/{rowLabel}/name")
+	ResponseEntity<?> renameRow(Authentication authentication, @PathVariable long venueId,
+			@PathVariable String rowLabel, @RequestBody RowNameRequest request) {
+		OperatorId operator = currentOperator.require(authentication);
+		// A missing token is a 400 before the write, never a silent 0 — as on the reprice above.
+		long expectedVersion = InvalidApiRequestException
+				.parsing(() -> ExpectedVersion.require(request.expectedVersion()));
+		var command = InvalidApiRequestException.parsing(() -> request.toCommand(rowLabel));
+		return toResponse(editBeachMap.renameRow(operator, new VenueId(venueId), expectedVersion, command));
+	}
+
 	private static ResponseEntity<?> toResponse(ChangeOutcome outcome) {
 		return switch (outcome) {
 			case ChangeOutcome.Applied ignored -> ResponseEntity.noContent().build();
@@ -242,6 +253,8 @@ class VenueAdminController {
 					"Another set already occupies this grid cell.");
 			case DUPLICATE_POSITION -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"Another set already has this row and position.");
+			case ROW_NAME_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
+					"Another row on this venue already has that name.");
 		};
 	}
 
@@ -257,6 +270,8 @@ class VenueAdminController {
 					"Two sets occupy the same grid cell.");
 			case DUPLICATE_POSITION -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
 					"Two sets share the same row and position.");
+			case ROW_NAME_TAKEN -> ApiProblem.response(HttpStatus.CONFLICT, reason.name(),
+					"Two rows in this layout share the same name.");
 			case EMPTY_LAYOUT -> ApiProblem.response(HttpStatus.BAD_REQUEST, reason.name(),
 					"A layout must have at least one set.");
 			case LAYOUT_TOO_LARGE -> ApiProblem.response(HttpStatus.BAD_REQUEST, reason.name(),

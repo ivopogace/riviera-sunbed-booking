@@ -15,6 +15,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingPaymentDue;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -69,7 +70,7 @@ class PaymentDueAnnouncerIT {
 		announcer.announce(new BookingPaymentDue(new BookingId(876_543_210L), new VenueId(1),
 				new SetId(1), LocalDate.of(2029, 9, 9),
 				Instant.now().plus(Duration.ofHours(12)).truncatedTo(ChronoUnit.MILLIS),
-				AMOUNT_MINOR, "EUR"));
+				AMOUNT_MINOR, "EUR", CancellationWindow.CLOSED, 0));
 
 		assertThat(publicationsForThisEvent())
 				.as("no row means @Transactional did not apply, so the after-commit listener never ran "

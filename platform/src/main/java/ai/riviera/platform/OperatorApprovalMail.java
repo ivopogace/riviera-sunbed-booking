@@ -9,8 +9,9 @@ import ai.riviera.platform.notification.api.MailSender;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 
 /**
- * Tells a self-registered operator that a platform admin approved it. Until this
- * slice the only signal was retrying sign-in until it stopped failing.
+ * Tells a self-registered operator that a platform admin approved it: its venues are
+ * now tourist-visible. Console access never waited on approval, so the news is the visibility flip,
+ * not the ability to sign in.
  *
  * <p><strong>Edge machinery, like every other mail decision</strong> (RV-BE-11): the {@code operator}
  * module owns the {@code PENDING → ACTIVE} transition and knows nothing about mail; {@code notification}

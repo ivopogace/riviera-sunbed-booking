@@ -13,6 +13,10 @@ import ai.riviera.platform.venue.vocabulary.SetId;
  * consumer role (issue #94) so callers depend only on the surface they use. Consumed by
  * {@code booking} (reserve, cancel, view) and {@code availability} (claim pool check,
  * staff mark).
+ *
+ * <p>Deliberately <strong>not</strong> fenced by tourist visibility ({@code
+ * operator.api.VenueVisibility}): sold-booking paths — cancel, view, mails, staff marks —
+ * must keep answering for a hidden venue's sets. The reserve path applies the fence itself.
  */
 public interface SetBookingFacts {
 
@@ -33,11 +37,11 @@ public interface SetBookingFacts {
 	Optional<String> poolForClaim(SetId setId);
 
 	/**
-	 * The booking-relevant facts about a set (pool, price, owning venue, evening-before
-	 * cutoff), or empty if no set has that id. Consumed by the {@code booking} module (U3)
-	 * to enforce the pool rule (invariant #3), record the amount (invariant #5), and compute
-	 * the cutoff (invariant #4) — in one lookup, without touching venue's tables (invariant
-	 * #11).
+	 * The booking-relevant facts about a set (pool, price, owning venue, sales close,
+	 * evening-before cutoff), or empty if no set has that id. Consumed by the {@code booking}
+	 * module (U3) to enforce the pool rule (invariant #3), record the amount (invariant #5),
+	 * and gate/compute the day's boundaries (invariant #4) — in one lookup, without touching
+	 * venue's tables (invariant #11).
 	 */
 	Optional<SetBookingInfo> setBookingInfo(SetId setId);
 

@@ -50,10 +50,11 @@ public record AbandonedPaymentProperties(Duration ttl) {
 
 	/**
 	 * 96× the shipped 15 minutes. The TTL is the only thing that returns an abandoned set to the pool,
-	 * and bookings close the evening before the date they are for (invariant #4) — so past a day a
-	 * booking created near that cutoff is never swept before its own booking date, and the set is dead
-	 * for the one day it could have been sold. Beyond this the sweep still runs; it just can no longer
-	 * do the job its Javadoc claims ("short enough to free an abandoned set the same day").
+	 * and a venue's sales window for a date can run to the day itself (invariant #4) — so a
+	 * same-day-born {@code AWAITING_PAYMENT} booking is reachable by no other sweep arm: past this
+	 * TTL it is never swept before its own booking date, and the set is dead for the one day it could
+	 * have been sold. Beyond this the sweep still runs; it just can no longer do the job its Javadoc
+	 * claims ("short enough to free an abandoned set the same day").
 	 */
 	static final Duration MAX_TTL = Duration.ofHours(24);
 

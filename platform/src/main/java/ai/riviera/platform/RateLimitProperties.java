@@ -16,8 +16,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * payment-confirmation poll budget (~20 GETs / 30s) so a real payer is never throttled (ADR-0006).
  *
  * @param enabled        master switch; when false no request is ever rate-limited
- * @param perIp          per-client-IP bucket, applied to all four booking endpoints
- * @param perCode        per-booking-code bucket for the three code-keyed endpoints, which share one
+ * @param perIp          per-client-IP bucket, applied to all eight booking endpoints
+ * @param perCode        per-booking-code bucket for the six code-keyed endpoints, which share one
  *                       budget per code — the same secret
  * @param login          per-client-IP bucket for the session logins, deliberately stricter than the
  *                       booking budget and on its own dimension, so tightening one never starves the

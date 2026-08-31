@@ -13,6 +13,8 @@ export interface AuthPrincipal {
   readonly emailVerified?: boolean | null;
   /** Platform-admin flag — `true` for an operator with `ROLE_ADMIN`; the FE gates the approval surface on it. */
   readonly admin?: boolean;
+  /** Operator lifecycle status (`PENDING` | `ACTIVE`) — operator-only; `null` for a customer principal. */
+  readonly operatorStatus?: string | null;
 }
 
 /** How a sign-in attempt ended, for the surface to translate into a message. */
@@ -59,6 +61,13 @@ export abstract class SessionAuth {
 
   /** True while the initial current-principal restore is in flight (surfaces can hold rendering). */
   readonly restoring = signal(true);
+  /**
+   * True when the startup `GET /api/auth/me` restore ended in something other than a `401` — a
+   * transport/server failure this tab cannot tell apart from "signed out" on {@link signedIn} alone.
+   * A signed-out visitor and an unreachable backend must not render or announce identically
+   * (issue #745): a surface that needs the distinction reads this alongside `signedIn`.
+   */
+  readonly restoreFailed = signal(false);
   /** Whether a session of THIS principal type is established (as far as this tab knows). */
   readonly signedIn = computed(() => this.principal() !== undefined);
   /** The signed-in principal's name (operator username / customer email), or undefined. */
@@ -67,6 +76,8 @@ export abstract class SessionAuth {
   readonly emailVerified = computed(() => this.principal()?.emailVerified ?? undefined);
   /** Whether the signed-in principal is a platform admin; false when signed out / not admin. */
   readonly isAdmin = computed(() => this.principal()?.admin ?? false);
+  /** The raw signed-in principal, for subclass-specific reads; undefined when signed out. */
+  protected readonly currentPrincipal = this.principal.asReadonly();
 
   /** The principal type this service owns; a `/me` principal is adopted only when it matches. */
   protected abstract readonly principalType: string;
@@ -145,8 +156,10 @@ export abstract class SessionAuth {
   protected async restore(): Promise<void> {
     try {
       this.adopt(await firstValueFrom(this.http.get<AuthPrincipal>(`${AUTH_API}/me`)));
-    } catch {
+      this.restoreFailed.set(false);
+    } catch (error) {
       this.principal.set(undefined); // 401 = signed out (expected state, not an error)
+      this.restoreFailed.set(!(error instanceof HttpErrorResponse && error.status === 401));
     } finally {
       this.restoring.set(false);
     }

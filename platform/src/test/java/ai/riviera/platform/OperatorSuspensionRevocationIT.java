@@ -152,7 +152,7 @@ class OperatorSuspensionRevocationIT {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
 						{"name": "%s", "beach": "Test Beach", "region": "Test Region",
-						 "bookingMode": "INSTANT", "commissionBps": 1500, "payoutCurrency": "EUR"}"""
+						 "bookingMode": "INSTANT", "payoutCurrency": "EUR"}"""
 						.formatted(name));
 	}
 

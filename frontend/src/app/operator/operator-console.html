@@ -1,10 +1,20 @@
 @if (venueId() === undefined) {
-  <main class="oc-signin">
-    <div class="oc-signin-card">
-      <h1 class="oc-signin-title" data-testid="oc-invalid-venue">Venue not found</h1>
-      <p class="oc-signin-intro">
+  <main class="oc-signin mx-auto w-full max-w-[440px] px-6 py-[72px]">
+    <div
+      class="oc-signin-card flex flex-col gap-3.5 rounded-[22px] border border-[rgba(12,42,51,0.1)] bg-white px-[26px] py-7 shadow-[0_20px_50px_rgba(7,42,58,0.14)]"
+    >
+      <h1
+        class="oc-signin-title text-[24px] font-bold tracking-[-0.02em] text-riv-ink"
+        data-testid="oc-invalid-venue"
+      >
+        Venue not found
+      </h1>
+      <p class="oc-signin-intro mb-1 text-[14px] leading-[1.55] text-riv-ink-soft">
         This operator console link isn’t valid. Check the address, or
-        <a class="oc-create-venue" routerLink="/operator" [queryParams]="{ create: '1' }"
+        <a
+          class="oc-create-venue inline-flex min-h-11 items-center text-[13px] font-semibold text-riv-ink no-underline hover:underline"
+          routerLink="/operator"
+          [queryParams]="{ create: '1' }"
           >create a venue</a
         >.
       </p>
@@ -12,85 +22,74 @@
   </main>
 } @else {
   <!-- No sign-in gate here: operatorSessionGuard owns it and awaits the session restore, so this shell only renders signed-in. -->
-  <div class="oc-shell">
-    <header class="oc-header" data-testid="oc-header">
-      <div class="oc-header-inner">
-        <div class="oc-brand">
-          <span class="oc-wordmark">Riviera <span class="oc-wordmark-op">Operator</span></span>
-          <span class="oc-venue-title" data-testid="oc-venue-title">{{
-            venueName() ?? 'Your venue'
-          }}</span>
+  <div class="oc-shell flex min-h-screen flex-col">
+    <header
+      class="oc-header sticky top-0 z-20 border-b border-b-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7]"
+      data-testid="oc-header"
+    >
+      <div
+        class="oc-header-inner mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-4 px-6 py-3"
+      >
+        <div class="oc-brand flex flex-col leading-[1.15]">
+          <span class="oc-wordmark text-[19px] font-bold tracking-[-0.01em] text-riv-ink"
+            >Riviera
+            <span class="oc-wordmark-op font-medium text-riv-ink-soft">Operator</span></span
+          >
+          <span
+            class="oc-venue-title mt-1 text-[10px] font-semibold tracking-[0.2em] uppercase text-riv-ink-faint"
+            data-testid="oc-venue-title"
+            >{{ venueName() ?? 'Your venue' }}</span
+          >
         </div>
-        <div class="oc-header-right">
-          <!-- Venue creation lives in the operator home's create state; keep it reachable here. -->
-          <a
-            class="oc-create-venue"
-            data-testid="oc-create-venue"
-            routerLink="/operator"
-            [queryParams]="{ create: '1' }"
-            >Create a venue</a
-          >
-          @if (operator.isAdmin()) {
-            <!-- Platform-admin operator-approval surface; shown only to an ADMIN principal. -->
-            <a class="oc-create-venue" data-testid="oc-admin-link" routerLink="/admin">Admin</a>
-          }
-          <!-- Self-service credential rotation. Shown to every operator, incl. the bootstrap admin, whose refusal the page explains. -->
-          <a
-            class="oc-create-venue"
-            data-testid="oc-change-password"
-            routerLink="/account/operator-password"
-            >Change password</a
-          >
-          <span class="oc-signed-in-as" data-testid="oc-signed-in-as"
-            >Signed in as <strong>{{ operator.username() }}</strong></span
-          >
-          <button
-            type="button"
-            appTouchTarget
-            class="cursor-pointer rounded-full border border-[rgba(12,42,51,0.14)] bg-white px-3.75 py-1.75 font-sans text-[13px] font-semibold text-(--riv-ink) shadow-[0_1px_2px_rgba(7,42,58,0.08)] transition-colors hover:bg-[#eef1f2] motion-reduce:transition-none"
-            data-testid="oc-signout"
-            (click)="onSignOut()"
-          >
-            Sign out
-          </button>
+        <div class="oc-header-right flex flex-wrap items-center gap-3.5">
+          <app-operator-actions testIdPrefix="oc" (signOut)="onSignOut()" />
         </div>
       </div>
     </header>
 
     <app-console-stats-strip [venueId]="venueId()!" [venue]="venue()" />
 
-    <nav class="oc-tabs" data-testid="oc-tabs" aria-label="Operator console sections">
+    <nav
+      class="oc-tabs mx-auto flex w-full max-w-[1120px] flex-nowrap items-center gap-2 overflow-x-auto scroll-px-6 scroll-smooth px-6 pt-3.5 pb-1 [mask-image:linear-gradient(to_right,transparent,black_24px,black_calc(100%_-_24px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_24px,black_calc(100%_-_24px),transparent)] scrollbar-none"
+      data-testid="oc-tabs"
+      aria-label="Operator console sections"
+    >
       @for (tab of tabs; track tab.path) {
+        <!-- Active pill: opaque white + dark ink (css:S7924-safe solid fill), via aria-current's compound selector — a competing utility in the routerLinkActive string would resolve by stylesheet order. -->
         <a
-          class="oc-tab"
+          #tabLink
+          appTouchTarget
+          class="inline-flex shrink-0 items-center gap-[7px] rounded-full border border-transparent px-[15px] py-2 text-[13.5px] font-semibold text-riv-ink-soft no-underline hover:text-riv-ink aria-[current=page]:border-[rgba(12,42,51,0.1)] aria-[current=page]:bg-white aria-[current=page]:text-riv-ink aria-[current=page]:shadow-[0_2px_8px_rgba(7,42,58,0.1)]"
           [routerLink]="['/operator', venueId(), tab.path]"
-          routerLinkActive="oc-tab--active"
+          routerLinkActive
           ariaCurrentWhenActive="page"
         >
           <span class="oc-tab-label">{{ tab.label }}</span>
           @if (tab.badge && requestsCount() > 0) {
-            <span class="oc-badge" data-testid="oc-requests-badge">{{ requestsCount() }}</span>
+            <span
+              class="oc-badge inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0a5f74] px-1.5 text-[11.5px] font-bold leading-none text-white"
+              data-testid="oc-requests-badge"
+              >{{ requestsCount() }}</span
+            >
           }
         </a>
       }
     </nav>
 
-    <main class="oc-main">
+    <!-- Wider than the 1120px header/tabs/footer so the beach-map tab's grid can fit-to-width (#709); every other tab's own narrower section max-width keeps it visually unchanged. -->
+    <main class="oc-main mx-auto w-full max-w-[1300px] flex-1 px-6 pt-5 pb-10">
+      <app-pending-approval-banner />
       <router-outlet />
     </main>
 
     <footer
-      class="border-t border-(--riv-header-border) bg-(--riv-header-glass) backdrop-blur-[22px] backdrop-saturate-[1.7]"
+      class="border-t border-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7]"
       data-testid="oc-footer"
     >
       <div
-        class="mx-auto max-w-[1120px] px-6 py-4 text-[13px] text-(--riv-ink-soft)"
-        data-touch-exempt="links inside a sentence (WCAG 2.5.5 inline exception)"
-      >
-        © Riviera Sunbed Booking ·
-        <a class="underline" href="/legal/privacy" target="_blank" rel="noopener">Privacy</a> ·
-        <a class="underline" href="/legal/terms" target="_blank" rel="noopener">Terms</a>
-      </div>
+        appLegalFooter
+        class="mx-auto max-w-[1120px] px-6 py-4 text-[13px] text-riv-ink-soft"
+      ></div>
     </footer>
   </div>
 }

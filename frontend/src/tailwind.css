@@ -1,1 +1,503 @@
+/*
+ * The one global stylesheet: Tailwind + the Liquid Glass design tokens (design: the v2 tourist
+ * export, superseded in-repo by docs/design/riviera-sunbeds-liquid-glass-v3.dc.html — every
+ * "(design: …)" note below cites it).
+ *
+ * Themes are CSS custom properties scoped by `data-riv-theme` on <html> — at runtime the
+ * attribute is written only by core/theme.ts; the index.html inline seed pre-paints the same
+ * value before Angular boots (drift-pinned by theme-boot.spec.ts). Components consume tokens,
+ * never palette literals; a palette change is one block here + one row in core/theme.ts. The set
+ * is three: porcelain (light, the default and the base block below), riviera (the branded dark
+ * teal), and dark (neutral slate, the OS-dark default) — widened from the original fixed-at-two
+ * decision (#143) by the theme restructure.
+ *
+ * The `@theme inline` block registers the tokens with Tailwind, so components consume them as
+ * first-class utilities (`text-riv-ink`, `bg-riv-card-glass`, `font-riv`, …). It maps utility
+ * names onto the runtime `--riv-*` variables; the values themselves stay in the plain per-theme
+ * blocks below, because `@theme` emits onto `:root` only and the switching (and the porcelain
+ * subtree pinning) needs the `[data-riv-theme]` cascade.
+ *
+ * Deviation from the design file, on purpose: the riviera header glass is a DARK tint
+ * (design: white 0.13) because white ink on the gradient's light top stops fails WCAG AA;
+ * the dark tint keeps the glass look and passes (pinned by app.contrast.spec.ts).
+ */
+
 @import 'tailwindcss';
+
+/** `inline` is load-bearing: it makes each utility emit `var(--riv-*)` at the call site, so the
+    value re-resolves under a porcelain-pinned SUBTREE host. The non-inline form would compute
+    the mapping once on `:root` and inherit that value past any inner `[data-riv-theme]`. Image
+    tokens (gradients/scrims) have no theme namespace — they stay `bg-(image:--riv-*)`. */
+@theme inline {
+  --font-riv: var(--riv-font);
+
+  --color-riv-ink: var(--riv-ink);
+  --color-riv-ink-soft: var(--riv-ink-soft);
+  --color-riv-ink-faint: var(--riv-ink-faint);
+  --color-riv-chip-bg: var(--riv-chip-bg);
+  --color-riv-chip-border: var(--riv-chip-border);
+  --color-riv-track-bg: var(--riv-track-bg);
+
+  --color-riv-header-glass: var(--riv-header-glass);
+  --color-riv-header-border: var(--riv-header-border);
+
+  --color-riv-card-glass: var(--riv-card-glass);
+  --color-riv-card-border: var(--riv-card-border);
+  --color-riv-card-ink: var(--riv-card-ink);
+  --color-riv-card-ink-soft: var(--riv-card-ink-soft);
+  --color-riv-card-ink-faint: var(--riv-card-ink-faint);
+  --color-riv-accent-ink: var(--riv-accent-ink);
+  --color-riv-field-border: var(--riv-field-border);
+  --color-riv-field-fill: var(--riv-field-fill);
+  --color-riv-field-solid: var(--riv-field-solid);
+  --color-riv-error-ink: var(--riv-error-ink);
+  --color-riv-danger-ink: var(--riv-danger-ink);
+  --color-riv-danger-fill: var(--riv-danger-fill);
+  --color-riv-danger-border: var(--riv-danger-border);
+  --color-riv-danger-action-fill: var(--riv-danger-action-fill);
+  --color-riv-danger-action-border: var(--riv-danger-action-border);
+  --color-riv-accent-fill: var(--riv-accent-fill);
+  --color-riv-accent-border: var(--riv-accent-border);
+  --color-riv-accent-chip-fill: var(--riv-accent-chip-fill);
+  --color-riv-accent-chip-border: var(--riv-accent-chip-border);
+  --color-riv-accent-track: var(--riv-accent-track);
+  --color-riv-accent-strong: var(--riv-accent-strong);
+  --color-riv-solid-btn-ink: var(--riv-solid-btn-ink);
+  --color-riv-card-track: var(--riv-card-track);
+
+  --color-riv-pop-surface: var(--riv-pop-surface);
+  --color-riv-pop-border: var(--riv-pop-border);
+  --color-riv-pop-ink: var(--riv-pop-ink);
+  --color-riv-pop-ink-soft: var(--riv-pop-ink-soft);
+  --color-riv-pop-accent: var(--riv-pop-accent);
+  --color-riv-pop-hover: var(--riv-pop-hover);
+  --color-riv-pop-divider: var(--riv-pop-divider);
+  --color-riv-pill-fill: var(--riv-pill-fill);
+
+  --color-riv-wash-fill: var(--riv-wash-fill);
+  --color-riv-wash-border: var(--riv-wash-border);
+  --color-riv-wash-hover: var(--riv-wash-hover);
+  --color-riv-wash-hover-border: var(--riv-wash-hover-border);
+  --color-riv-inset-fill: var(--riv-inset-fill);
+  --color-riv-dialog-glass: var(--riv-dialog-glass);
+  --color-riv-back-ink: var(--riv-back-ink);
+
+  --color-riv-map-sea: var(--riv-map-sea);
+  --color-riv-map-mid: var(--riv-map-mid);
+  --color-riv-map-sand: var(--riv-map-sand);
+  --color-riv-map-rail-fill: var(--riv-map-rail-fill);
+  --color-riv-map-rail-ink: var(--riv-map-rail-ink);
+  --color-riv-map-chip-fill: var(--riv-map-chip-fill);
+  --color-riv-map-chip-border: var(--riv-map-chip-border);
+  --color-riv-map-frame-border: var(--riv-map-frame-border);
+  --color-riv-tile-available-fill: var(--riv-tile-available-fill);
+  --color-riv-tile-available-border: var(--riv-tile-available-border);
+  --color-riv-tile-available-ink: var(--riv-tile-available-ink);
+  --color-riv-tile-premium-fill: var(--riv-tile-premium-fill);
+  --color-riv-tile-premium-border: var(--riv-tile-premium-border);
+  --color-riv-tile-premium-ink: var(--riv-tile-premium-ink);
+  --color-riv-tile-walkin-fill: var(--riv-tile-walkin-fill);
+  --color-riv-tile-walkin-hatch: var(--riv-tile-walkin-hatch);
+  --color-riv-tile-walkin-border: var(--riv-tile-walkin-border);
+  --color-riv-tile-walkin-ink: var(--riv-tile-walkin-ink);
+  --color-riv-tile-taken-fill: var(--riv-tile-taken-fill);
+  --color-riv-tile-taken-border: var(--riv-tile-taken-border);
+  --color-riv-tile-taken-ink: var(--riv-tile-taken-ink);
+  --color-riv-tile-hover: var(--riv-tile-hover);
+  --color-riv-tile-focus: var(--riv-tile-focus);
+  --color-riv-photo-ink: var(--riv-photo-ink);
+  --color-riv-photo-chrome: var(--riv-photo-chrome);
+  --color-riv-photo-chrome-edge: var(--riv-photo-chrome-edge);
+  --color-riv-mode-chip-glass: var(--riv-mode-chip-glass);
+
+  --shadow-riv-pop: var(--riv-pop-shadow);
+  --text-shadow-riv-hero: var(--riv-hero-shadow);
+}
+
+:root,
+[data-riv-theme='porcelain'] {
+  /* the attribute selector also matches porcelain-pinned subtree hosts, keeping them light */
+  color-scheme: light;
+
+  --riv-font:
+    -apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+
+  --riv-bg:
+    radial-gradient(110% 70% at 8% 2%, #ffffff 0%, rgba(255, 255, 255, 0) 54%),
+    radial-gradient(100% 80% at 94% 0%, #eef6f8 0%, rgba(238, 246, 248, 0) 46%),
+    radial-gradient(130% 120% at 80% 106%, #cfeaf2 0%, rgba(207, 234, 242, 0) 60%),
+    linear-gradient(165deg, #fbfdfe 0%, #eef5f7 50%, #dfeef2 100%);
+  --riv-blob-1: radial-gradient(circle, #ffffff 0%, rgba(255, 255, 255, 0) 70%);
+  --riv-blob-2: radial-gradient(circle, #bfe6f0 0%, rgba(191, 230, 240, 0) 70%);
+
+  --riv-ink: #0a2a33;
+  --riv-ink-soft: rgba(12, 42, 51, 0.7);
+  /* 0.66 (design: 0.5): AA on the porcelain header glass (app.contrast.spec.ts) */
+  --riv-ink-faint: rgba(12, 42, 51, 0.66);
+  --riv-chip-bg: rgba(12, 42, 51, 0.05);
+  --riv-chip-border: rgba(12, 42, 51, 0.14);
+  --riv-hero-shadow: none;
+  /** The riviera-only hero wash (Discover) — `none` here and in dark: their stops carry the
+      hero ink AA bare, so only riviera's block sets the gradient (the #679 SCSS holdout,
+      retired to this token). Its fades are PX-anchored (34px top / 40px bottom) to the hero's
+      theme-shared padding in home.html, so the text always rests on the solid ~0.72 core at
+      any content height; AA over the gradient's light top stops is pinned in
+      home.contrast.spec.ts. Deliberately the hero ONLY — every other dark riviera surface
+      keeps the frosted panel; don't spread the scrim by reflex. */
+  --riv-hero-scrim: none;
+  --riv-track-bg: rgba(12, 42, 51, 0.12);
+
+  --riv-header-glass: rgba(255, 255, 255, 0.6);
+  --riv-header-border: rgba(255, 255, 255, 0.7);
+
+  /** CTA buttons carry white body-size text, so both stops must clear AA (4.5:1). The design's
+      brighter #2bb8d4→#0e8aa8 only reaches 2.4–4.0:1 white; darkened for AA (pinned by the
+      CTA_STOPS case in home.contrast.spec.ts). --riv-bar-grad stays bright — it's the availability
+      fill, decorative, text-free. Theme-invariant: the dark blocks below inherit both. */
+  --riv-cta-grad: linear-gradient(180deg, #0c7288, #0a5f74);
+  --riv-bar-grad: linear-gradient(90deg, #2bb8d4, #0e8aa8);
+
+  /** Card surfaces (consumed by the glass panels/cards). Declared in
+      this base block, so they are theme-invariant unless a theme block overrides them
+      (riviera overrides only --riv-card-glass; dark inverts the whole family — see its block).
+      0.55 matches the design: porcelain's light stops let the dark card inks reach AA at the
+      design's airier alpha — see home.contrast.spec.ts. */
+  --riv-card-glass: rgba(255, 255, 255, 0.55);
+  --riv-card-border: rgba(255, 255, 255, 0.6);
+  --riv-card-ink: #0a2a33;
+  /* 0.78 / 0.72 (tourist design: 0.7 / 0.55): AA over the composited card glass (home.contrast.spec.ts) */
+  --riv-card-ink-soft: rgba(12, 42, 51, 0.78);
+  --riv-card-ink-faint: rgba(12, 42, 51, 0.72);
+  /* #085a6e (design: #0a6e85): AA for 16px-bold prices on the riviera card glass */
+  --riv-accent-ink: #085a6e;
+  /* dark tint (design: white border): input boundary needs 3:1 (WCAG 1.4.11) */
+  --riv-field-border: rgba(12, 42, 51, 0.55);
+  --riv-field-fill: rgba(255, 255, 255, 0.55);
+  /* native form chrome (autofill, caret, calendar) per FIELD, not per document — dark themes the fields */
+  --riv-field-scheme: light;
+  /* the venue-map date field's near-opaque fill (deliberately not --riv-field-fill; see its spec) */
+  --riv-field-solid: rgba(255, 255, 255, 0.9);
+  --riv-error-ink: #a3160e;
+  /** The erasure confirm panel's danger treatment: a tinted panel plus a stronger tinted
+      action inside it. Keep these pre-composed rgba, like --riv-field-border — a Tailwind
+      `/opacity` modifier compiles to color-mix() and changes the computed value. AA-proven by
+      admin-console.contrast.spec.ts. Rationale: docs/plans/admin-error-ink-tokens.md.
+      --riv-danger-action-border is the Erase button's affordance boundary and is held to WCAG
+      1.4.11 (>=3:1 against the panel fill, all porcelain stops) — issue #834. --riv-danger-border
+      is a decorative container edge (the fill + heading already carry the panel's meaning) and is
+      deliberately NOT held to that floor. */
+  --riv-danger-ink: #8f2c22;
+  --riv-danger-fill: rgba(179, 54, 43, 0.06);
+  --riv-danger-border: rgba(179, 54, 43, 0.35);
+  --riv-danger-action-fill: rgba(179, 54, 43, 0.1);
+  --riv-danger-action-border: rgba(179, 54, 43, 0.75);
+
+  /** The `--riv-accent-*` tint family: the brand teal (the --riv-photo-grad stops #2bb8d4 and
+      #0e8aa8) as the three tinted treatments that paint POSITIVE state — the info panel, the
+      selected chip, and the pay spinner's track. Pre-composed rgba, like --riv-danger-* above,
+      because a Tailwind `/opacity` modifier compiles to color-mix() and changes the computed
+      value. The ink on all of them is --riv-accent-ink.
+
+      Declared ONCE, with no dark counterpart, and that is deliberate: these tints painted the
+      same literal in every theme before they were tokens, so a dark override would be a silent
+      restyle rather than a sweep. Whether the brand tints should follow the theme is a real
+      question and a separate one. AA-proven by accent-tokens.contrast.spec.ts; the `*-border`
+      pair is non-text chrome (WCAG 1.4.11) and reaches only ~1.5:1 — raising it needs a darker
+      hue, not more alpha, and belongs with the danger panel's identical boundary (#834).
+      Rationale: docs/plans/accent-teal-token-sweep.md */
+  --riv-accent-fill: rgba(43, 184, 212, 0.12);
+  --riv-accent-border: rgba(14, 138, 168, 0.35);
+  --riv-accent-chip-fill: rgba(43, 184, 212, 0.18);
+  --riv-accent-chip-border: rgba(14, 138, 168, 0.75);
+  --riv-accent-track: rgba(43, 184, 212, 0.25);
+  --riv-accent-strong: #0e8aa8;
+
+  /** Ink for the solid outline buttons (booking-view / review-panel Cancel-Keep-Edit-Remove,
+      my-bookings Retry). Theme-invariant BY DESIGN, unlike --riv-accent-ink: the #f4f6f7 fill it
+      sits on does not theme either, and booking-view.contrast.spec.ts already pins the rule that
+      a themed ink over a fixed fill drifts between themes. Giving this a dark value would flip it
+      light-on-light. The fill/hover/border literals around it are #836's. */
+  --riv-solid-btn-ink: #0a4f5e;
+  --riv-card-track: rgba(12, 42, 51, 0.12);
+
+  /** The near-opaque popover surface (theme picker, account menu, mobile sheet — app.ts POP)
+      and the segmented-control fills (shared/segmented-control.ts). Light values here; the
+      dark theme swaps the whole family so the shell chrome follows the theme. */
+  --riv-pop-surface: rgba(255, 255, 255, 0.92);
+  --riv-pop-border: rgba(255, 255, 255, 0.7);
+  --riv-pop-ink: #0a2a33;
+  --riv-pop-ink-soft: rgba(12, 42, 51, 0.7);
+  --riv-pop-accent: #0a6e85;
+  --riv-pop-hover: rgba(12, 42, 51, 0.06);
+  --riv-pop-divider: rgba(12, 42, 51, 0.1);
+  --riv-pop-shadow: 0 22px 54px rgba(6, 30, 40, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --riv-pill-fill: #ffffff;
+
+  /** Translucent white washes over glass (segmented option cards, dialog close chip, the
+      dialog Back button, the dashed code inset) + the near-opaque dialog panel itself. The
+      dark theme swaps `--riv-wash-fill/-border/-hover` for faint light-on-slate washes;
+      `--riv-wash-hover-border` below is its own case (next comment), not one of those three.
+      --riv-wash-hover-border is the dialog Back button's own hover-only boundary — its
+      SOLE visible border on hover, so it is an affordance boundary like
+      --riv-danger-action-border, not decorative chrome like --riv-danger-border, and is
+      held to the same WCAG 1.4.11 >=3:1 floor. It is --riv-back-ink tinted, at whatever
+      alpha clears 3:1 against --riv-wash-hover in THIS theme (light: 0.6; not one shared
+      formula, the same per-theme tuning --riv-danger-action-border got at #834/#837).
+      Pre-composed rgba, like --riv-danger-*: a Tailwind `/opacity` modifier compiles to
+      color-mix() and changes the computed value. Proof: booking-dialog.contrast.spec.ts's
+      "hover border marks the boundary at 3:1" test — issue #839. */
+  --riv-wash-fill: rgba(255, 255, 255, 0.5);
+  --riv-wash-border: rgba(255, 255, 255, 0.7);
+  --riv-wash-hover: rgba(255, 255, 255, 0.75);
+  --riv-wash-hover-border: rgba(10, 79, 94, 0.6);
+  --riv-inset-fill: rgba(255, 255, 255, 0.4);
+  --riv-dialog-glass: rgba(255, 255, 255, 0.82);
+  --riv-back-ink: #0a4f5e;
+
+  /** The beach-map daylight palette (shared/beach-map-canvas + venue/map-tile): the sea→sand
+      wash, the rail/price chips, and the per-state tile vocabulary. Daylight in the light themes
+      and on every porcelain-pinned operator surface; the dark theme swaps in the night values in
+      its block. AA proofs: venue-map.contrast.spec.ts, per ink family. */
+  --riv-map-sea: #cfeef6;
+  --riv-map-mid: #e7f5f1;
+  --riv-map-sand: #f6eedb;
+  --riv-map-rail-fill: rgba(255, 255, 255, 0.6);
+  --riv-map-rail-ink: #0a4f5e;
+  --riv-map-chip-fill: rgba(255, 255, 255, 0.8);
+  --riv-map-chip-border: #cfe3df;
+  --riv-map-frame-border: rgba(12, 42, 51, 0.25);
+  --riv-tile-available-fill: rgba(255, 255, 255, 0.75);
+  --riv-tile-available-border: #bfe3df;
+  --riv-tile-available-ink: #0f7d8c;
+  --riv-tile-premium-fill: rgba(251, 241, 217, 0.85);
+  --riv-tile-premium-border: #e6c483;
+  --riv-tile-premium-ink: #875911;
+  --riv-tile-walkin-fill: rgba(239, 224, 189, 0.6);
+  --riv-tile-walkin-hatch: rgba(95, 77, 42, 0.16);
+  --riv-tile-walkin-border: #c8ab62;
+  --riv-tile-walkin-ink: #5f4d2a;
+  --riv-tile-taken-fill: rgba(255, 255, 255, 0.2);
+  --riv-tile-taken-border: #6b7d77;
+  --riv-tile-taken-ink: #566560;
+  --riv-tile-hover: #e6f6f3;
+  --riv-tile-focus: #0f7d8c;
+  --riv-photo-grad: linear-gradient(162deg, #2bb8d4 0%, #0e8aa8 70%, #0e8aa8 100%);
+  /** The scrim reaches alpha 0.68 at its three-quarter stop (the design file has no scrim): the
+      location overlay's text band, sitting in the lower tenth of the photo, needs a backing of at
+      least 0.68 for white ink to clear AA over ANY cover photo — since issue 142 the band backs a
+      real image, so the worst case is a pure-white photo, not the gradient's light stop (which the
+      earlier 0.5 floor came from; see the issue-135 review history). Geometry is asserted by
+      home.contrast.spec.ts. */
+  --riv-photo-scrim: linear-gradient(
+    180deg,
+    rgba(13, 40, 40, 0) 42%,
+    rgba(13, 40, 40, 0.2) 66%,
+    rgba(13, 40, 40, 0.68) 75%,
+    rgba(13, 40, 40, 0.8) 100%
+  );
+  --riv-photo-ink: #ffffff;
+  /** Slideshow chrome over an ARBITRARY uploaded photo (#704). The step chips and the dot rail
+      sit above the scrim, so they cannot borrow its backing — they carry their own, and both are
+      proven at 3:1 (WCAG 1.4.11) over the worst case any photo can present (pure white AND pure
+      black) by shared/photo-slideshow.contrast.spec.ts. --riv-photo-chrome backs the dot rail
+      (a white dot on a pure-white photo is 1:1 without it); --riv-photo-chrome-edge draws the
+      step chip's boundary, which the earlier white --riv-card-border could not do over a light
+      photo. Theme-invariant on purpose: a photo is not themed. */
+  --riv-photo-chrome: rgba(13, 40, 40, 0.7);
+  --riv-photo-chrome-edge: rgba(12, 42, 51, 0.6);
+  /** 0.85 (design: 0.7): the chip backs the accent ink over ANY cover photo — a dark
+      photo under a 0.7 white glass leaves the accent below AA; 0.85 clears it even over black.
+      Named for the Discover mode chip, which no longer wears it: #705 gave the mode chip an
+      opaque fill (shared/semantic-chip.ts), which needs no backing at all. The token stays for
+      the slideshow step chips on both hosts, which is now its whole population — rename it only
+      together with those call sites and its test-side mirror, testing/glass-tokens.ts, which is
+      where the value is copied (shared/photo-slideshow.contrast.spec.ts imports it from there,
+      and is the one spec left doing so). */
+  --riv-mode-chip-glass: rgba(255, 255, 255, 0.85);
+}
+
+[data-riv-theme='riviera'] {
+  /* Native UI follows the dark palette; the light-styled fields opt back out via --riv-field-scheme */
+  color-scheme: dark;
+
+  --riv-bg:
+    radial-gradient(110% 70% at 8% 2%, #93e6f2 0%, rgba(147, 230, 242, 0) 52%),
+    radial-gradient(100% 80% at 94% 0%, #ffe2b0 0%, rgba(255, 226, 176, 0) 44%),
+    radial-gradient(130% 120% at 80% 106%, #0a5e93 0%, rgba(10, 94, 147, 0) 58%),
+    linear-gradient(165deg, #38b6d2 0%, #0f7f94 46%, #0a4f6e 100%);
+  --riv-blob-1: radial-gradient(circle, #ffd896 0%, rgba(255, 216, 150, 0) 70%);
+  --riv-blob-2: radial-gradient(circle, #52d7ec 0%, rgba(82, 215, 236, 0) 70%);
+
+  --riv-ink: #ffffff;
+  --riv-ink-soft: rgba(255, 255, 255, 0.86);
+  /* 0.8 (design: 0.72): worst-case header stop #ffe2b0 needs ≥4.5:1 (app.contrast.spec.ts) */
+  --riv-ink-faint: rgba(255, 255, 255, 0.8);
+  --riv-chip-bg: rgba(255, 255, 255, 0.16);
+  --riv-chip-border: rgba(255, 255, 255, 0.3);
+  --riv-hero-shadow: 0 2px 36px rgba(6, 40, 55, 0.32);
+  /* A borderless soft dark wash — no card / rim / blur / shadow (see the base block's note) */
+  --riv-hero-scrim: linear-gradient(
+    to bottom,
+    rgba(8, 38, 52, 0) 0,
+    rgba(8, 38, 52, 0.72) 34px,
+    rgba(8, 38, 52, 0.72) calc(100% - 40px),
+    rgba(8, 38, 52, 0) 100%
+  );
+  --riv-track-bg: rgba(255, 255, 255, 0.25);
+
+  /* dark glass (see header note above): #0a2c3f at 72% over the lightest bg stop still ≥ AA vs white ink */
+  --riv-header-glass: rgba(10, 44, 63, 0.72);
+  --riv-header-border: rgba(255, 255, 255, 0.22);
+
+  /** 0.78 (design: 0.55): the darkest riviera stop needs the extra opacity for the dark
+      card inks to reach AA — see home.contrast.spec.ts. */
+  --riv-card-glass: rgba(255, 255, 255, 0.78);
+}
+
+[data-riv-theme='dark'] {
+  /* Native UI and the fields are both dark here (--riv-field-scheme below stays dark) */
+  color-scheme: dark;
+
+  /** Neutral slate — no design-file counterpart: derived from riviera's token structure with the
+      teal gradient swapped for slate stops; every stop is dark enough that the white ink set
+      clears AA bare (no hero scrim needed — --riv-hero-scrim stays the base block's none). AA proof:
+      the DARK_* rows in testing/glass-tokens.ts + the per-page contrast specs. */
+  --riv-bg:
+    radial-gradient(110% 70% at 8% 2%, #3b4a5f 0%, rgba(59, 74, 95, 0) 52%),
+    radial-gradient(100% 80% at 94% 0%, #2a3648 0%, rgba(42, 54, 72, 0) 44%),
+    radial-gradient(130% 120% at 80% 106%, #0b1120 0%, rgba(11, 17, 32, 0) 58%),
+    linear-gradient(165deg, #33415a 0%, #1e293b 46%, #0f172a 100%);
+  --riv-blob-1: radial-gradient(circle, #64748b 0%, rgba(100, 116, 139, 0) 70%);
+  --riv-blob-2: radial-gradient(circle, #475569 0%, rgba(71, 85, 105, 0) 70%);
+
+  --riv-ink: #ffffff;
+  --riv-ink-soft: rgba(255, 255, 255, 0.86);
+  --riv-ink-faint: rgba(255, 255, 255, 0.8);
+  --riv-chip-bg: rgba(255, 255, 255, 0.16);
+  --riv-chip-border: rgba(255, 255, 255, 0.3);
+  --riv-hero-shadow: 0 2px 36px rgba(2, 8, 20, 0.5);
+  --riv-track-bg: rgba(255, 255, 255, 0.25);
+
+  --riv-header-glass: rgba(15, 23, 42, 0.72);
+  --riv-header-border: rgba(255, 255, 255, 0.22);
+
+  /** Fully dark surfaces (maintainer decision, 2026-08-25): unlike riviera, whose cards stay
+      white glass, the dark theme inverts the whole card family — dark slate glass, light inks,
+      a light accent, dark fields with light borders, and the popover family below. Every pair
+      is AA-proven by the DARK_* rows in testing/glass-tokens.ts + the per-page contrast specs. */
+  /** 0.86, not airier: axe composites the translucent card over an ASSUMED white page (it cannot
+      resolve the gradient), so the card must stay dark even on that fiction (the S7924 posture). */
+  --riv-card-glass: rgba(16, 26, 46, 0.86);
+  --riv-card-border: rgba(255, 255, 255, 0.16);
+  --riv-card-ink: #f2f7fa;
+  --riv-card-ink-soft: rgba(242, 247, 250, 0.78);
+  --riv-card-ink-faint: rgba(242, 247, 250, 0.72);
+  --riv-accent-ink: #7cd7e8;
+  --riv-field-border: rgba(255, 255, 255, 0.5);
+  --riv-field-fill: rgba(2, 10, 22, 0.45);
+  --riv-field-scheme: dark;
+  --riv-field-solid: rgba(15, 23, 42, 0.92);
+  --riv-error-ink: #ffa9a1;
+  /** The ink matches --riv-error-ink here; that is the intended value, so do not collapse the
+      duplication. `riviera` gets no block: its cards stay white glass, so it inherits the
+      porcelain values. Rationale: docs/plans/admin-error-ink-tokens.md */
+  --riv-danger-ink: #ffa9a1;
+  --riv-danger-fill: rgba(255, 138, 122, 0.1);
+  --riv-danger-border: rgba(255, 138, 122, 0.42);
+  --riv-danger-action-fill: rgba(255, 138, 122, 0.16);
+  --riv-danger-action-border: rgba(255, 138, 122, 0.66);
+  --riv-card-track: rgba(255, 255, 255, 0.18);
+
+  /* The no-photo placeholder follows the theme (the photo scrim/chrome stay photo-proof). */
+  --riv-photo-grad: linear-gradient(162deg, #3b4a5f 0%, #24314a 70%, #1a2438 100%);
+
+  --riv-pop-surface: rgba(16, 26, 46, 0.96);
+  --riv-pop-border: rgba(255, 255, 255, 0.16);
+  --riv-pop-ink: #f2f7fa;
+  --riv-pop-ink-soft: rgba(242, 247, 250, 0.75);
+  --riv-pop-accent: #7cd7e8;
+  --riv-pop-hover: rgba(255, 255, 255, 0.08);
+  --riv-pop-divider: rgba(255, 255, 255, 0.14);
+  --riv-pop-shadow: 0 22px 54px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --riv-pill-fill: #101a2e;
+  --riv-wash-fill: rgba(255, 255, 255, 0.08);
+  --riv-wash-border: rgba(255, 255, 255, 0.28);
+  --riv-wash-hover: rgba(255, 255, 255, 0.16);
+  /* This theme's own --riv-back-ink (#b7dfe9), tuned to clear 3:1 here — issue #839. */
+  --riv-wash-hover-border: rgba(183, 223, 233, 0.55);
+  --riv-inset-fill: rgba(255, 255, 255, 0.08);
+  --riv-dialog-glass: rgba(16, 26, 46, 0.94);
+  --riv-back-ink: #b7dfe9;
+
+  /** The night beach map: dark sea→dusk sand, faint light tile glass with light inks. The
+      hatch runs at 0.14 (day: 0.16) — 0.16 drops the walk-in numeral to 4.33:1 on the stripe. */
+  --riv-map-sea: #14303c;
+  --riv-map-mid: #1c2f33;
+  --riv-map-sand: #2b2a22;
+  --riv-map-rail-fill: rgba(255, 255, 255, 0.1);
+  --riv-map-rail-ink: #9adde8;
+  --riv-map-chip-fill: rgba(255, 255, 255, 0.12);
+  --riv-map-chip-border: rgba(255, 255, 255, 0.25);
+  --riv-map-frame-border: rgba(255, 255, 255, 0.22);
+  --riv-tile-available-fill: rgba(255, 255, 255, 0.1);
+  --riv-tile-available-border: rgba(143, 214, 226, 0.45);
+  --riv-tile-available-ink: #8fd6e2;
+  --riv-tile-premium-fill: rgba(230, 196, 131, 0.18);
+  --riv-tile-premium-border: #c8ab62;
+  --riv-tile-premium-ink: #ecd09a;
+  --riv-tile-walkin-fill: rgba(239, 224, 189, 0.12);
+  --riv-tile-walkin-hatch: rgba(229, 211, 168, 0.14);
+  --riv-tile-walkin-border: #a08a50;
+  --riv-tile-walkin-ink: #e5d3a8;
+  --riv-tile-taken-fill: rgba(255, 255, 255, 0.05);
+  --riv-tile-taken-border: #7d8f89;
+  --riv-tile-taken-ink: #a7b5b0;
+  --riv-tile-hover: rgba(255, 255, 255, 0.14);
+  --riv-tile-focus: #8fd6e2;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--riv-font);
+  color: var(--riv-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- animation ---- */
+
+/** Deliberately OUTSIDE `@theme`: keyframes declared inside it are only emitted when their
+    `--animate-*` token is used, and these are consumed by name from arbitrary animation
+    utilities; each consumer carries its own motion-reduce guard. */
+@keyframes riv-drift {
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(40px, -30px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes riv-pop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pay-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

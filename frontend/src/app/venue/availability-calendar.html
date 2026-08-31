@@ -1,0 +1,134 @@
+<!-- A real <dialog>, opened declaratively: showModal() would give a native trap and the top layer,
+     but jsdom has neither, so the unit suite would be testing a fiction. The app's own trap runs.
+     `static` is load-bearing: the UA stylesheet gives <dialog> position:absolute with left:0, which
+     takes it out of the host's flex centring and pins it to the viewport's left edge. -->
+<dialog
+  open
+  tabindex="-1"
+  class="static m-0 w-full max-w-[352px] animate-[riv-pop_0.2s_ease] rounded-[22px] border border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.97)] p-4 text-[#0a2a33] shadow-[0_24px_58px_rgba(6,30,40,0.42),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none"
+  aria-modal="true"
+  aria-label="Choose a booking date"
+  data-testid="availability-calendar"
+  (click)="$event.stopPropagation()"
+  (keydown.tab)="trapFocus($event, false)"
+  (keydown.shift.tab)="trapFocus($event, true)"
+>
+  <header class="flex items-center justify-between gap-1">
+    <button
+      appTouchTarget
+      type="button"
+      class="flex cursor-pointer items-center justify-center rounded-[12px] text-[19px] leading-none text-[#0a3f4e] hover:bg-[rgba(12,42,51,0.07)] aria-disabled:cursor-default aria-disabled:text-[rgba(12,42,51,0.35)] aria-disabled:hover:bg-transparent"
+      data-testid="calendar-prev"
+      aria-label="Previous month"
+      [attr.aria-disabled]="atEarliestMonth() ? 'true' : null"
+      (click)="stepMonth(-1)"
+    >
+      &#8249;
+    </button>
+
+    <p
+      class="text-[15px] font-bold tracking-[0.01em]"
+      data-testid="calendar-month"
+      aria-live="polite"
+    >
+      {{ monthLabel() }}
+    </p>
+
+    <button
+      appTouchTarget
+      type="button"
+      class="flex cursor-pointer items-center justify-center rounded-[12px] text-[19px] leading-none text-[#0a3f4e] hover:bg-[rgba(12,42,51,0.07)]"
+      data-testid="calendar-next"
+      aria-label="Next month"
+      (click)="stepMonth(1)"
+    >
+      &#8250;
+    </button>
+  </header>
+
+  <table
+    class="mt-2 w-full table-fixed border-collapse"
+    role="grid"
+    [attr.aria-label]="monthLabel()"
+  >
+    <thead>
+      <tr role="row">
+        @for (weekday of weekdays; track weekday.short) {
+          <th
+            class="pb-1 text-[11px] font-bold tracking-[0.06em] text-[rgba(12,42,51,0.72)] uppercase"
+            role="columnheader"
+            scope="col"
+          >
+            <span aria-hidden="true">{{ weekday.short }}</span>
+            <span class="sr-only">{{ weekday.long }}</span>
+          </th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (week of weeks(); track $index) {
+        <tr role="row">
+          @for (cell of week; track $index) {
+            <td
+              class="p-[1px] align-top"
+              role="gridcell"
+              [attr.aria-selected]="cell ? cell.selected : null"
+            >
+              @if (cell) {
+                <button
+                  appTouchTarget
+                  type="button"
+                  class="flex w-full cursor-pointer flex-col items-center justify-center gap-[3px] rounded-[10px] border border-transparent px-0 py-1 text-[14px] font-semibold text-[#0a2a33] focus-visible:outline-[3px] focus-visible:outline-offset-[-1px] aria-disabled:cursor-default aria-disabled:text-[rgba(12,42,51,0.4)]"
+                  [class]="cell.tint"
+                  [attr.data-date]="cell.iso"
+                  [attr.data-state]="cell.state"
+                  [attr.aria-label]="cell.name"
+                  [attr.aria-disabled]="cell.selectable ? null : 'true'"
+                  [attr.tabindex]="cell.focused ? 0 : -1"
+                  (click)="choose(cell)"
+                  (keydown)="onDayKeydown($event, cell.iso)"
+                >
+                  {{ cell.dayOfMonth }}
+                  <span
+                    class="block h-[3px] w-[22px] overflow-hidden rounded-full bg-[#6f8a91]"
+                    [class.invisible]="!cell.showsBar"
+                    aria-hidden="true"
+                  >
+                    <span
+                      class="block h-full rounded-full bg-[#0a3f4e]"
+                      data-testid="day-bar"
+                      [style.width]="cell.barPercent"
+                    ></span>
+                  </span>
+                </button>
+              }
+            </td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  @if (countsFailed()) {
+    <p
+      class="mt-2 text-[11.5px] leading-[1.4] text-[rgba(12,42,51,0.78)]"
+      data-testid="calendar-counts-failed"
+      role="alert"
+    >
+      How busy each day is could not be loaded — you can still pick any day.
+    </p>
+  } @else {
+    <p class="mt-2 text-[11.5px] leading-[1.4] text-[rgba(12,42,51,0.78)]">
+      The bar under each day is how many sets were free when this was read — a picture of the day,
+      not a hold. A set is yours only once you book it.
+    </p>
+  }
+
+  <!-- Outside every branch on purpose: a live region must outlive the transition it announces (#741). -->
+  <app-load-announcer
+    [loading]="countsLoading()"
+    [ready]="!countsFailed()"
+    loadingLabel="Loading how busy each day is…"
+    [readyLabel]="monthLabel() + ' availability loaded.'"
+  />
+</dialog>

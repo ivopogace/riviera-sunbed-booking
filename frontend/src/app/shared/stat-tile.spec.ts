@@ -57,7 +57,7 @@ describe('StatTile', () => {
     const tile = host.querySelector('.riv-stat')!;
 
     expect(tile.tagName).toBe('ARTICLE');
-    expect(tile.className).toContain('bg-(--riv-card-glass)');
+    expect(tile.className).toContain('bg-riv-card-glass');
   });
 
   it('collapses its own host so the article is the strip grid item', () => {

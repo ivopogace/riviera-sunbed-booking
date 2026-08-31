@@ -6,7 +6,8 @@ description: The Angular frontend STRUCTURE authority for riviera-sunbed-booking
 # Riviera frontend structure
 
 This is the **frontend counterpart of `riviera-modulith`**: it owns the *where*,
-not the *how*. `angular-developer` (+ the angular-cli MCP `get_best_practices`)
+not the *how*. `angular-developer` (+ the angular-cli MCP: `get_best_practices` for the
+version posture, `search_documentation` for API truth when behavior is uncertain)
 owns component/service/routing/signals technique; `frontend/.claude/CLAUDE.md`
 owns the language idioms (standalone, signals, Signal Forms, `@Service`,
 `inject()`); `riviera-review-overlay` RV-FE-* checks the result. Load this skill
@@ -21,7 +22,7 @@ cheap here and expensive at review.
 | `shared/` | **Pure, stateless utilities and presentational primitives**: no HTTP, no app state — including the published API-view vocabulary (backend-vocabulary mirrors like `venue-views.ts`, `amenities.ts`, `booking-status.ts`) | nothing app-internal (`environments/` is config, not app code — see note below) | `money.ts`, `venue-views.ts` |
 | `pages/` | **Static/marketing routes** with no domain logic | `core/`, `shared/` | `pages/home/` |
 | Feature folders (`booking/`, `venue/`, `operator/`, `auth/`, `admin/`, …) | One user-facing domain area: its components, its models, its HTTP service | `core/`, `shared/` — **never another feature folder** | `booking/booking-view.ts`, `venue/venue.service.ts` |
-| `environments/` | `apiBaseUrl` + public config (e.g. `stripePublishableKey`) | — | see Environment rules |
+| `environments/` (at `frontend/src/environments/` — a *sibling* of `app/`, in the table for completeness) | `apiBaseUrl` + public config (e.g. `stripePublishableKey`) | — | see Environment rules |
 
 **Import direction is one-way:** features → `core`/`shared`; `core` → `shared`;
 `shared` → nothing. When two features need the same thing, promote it: pure →
@@ -39,27 +40,12 @@ but config-dependent, so without this note it had no legal address at all.)
 
 ### The residual cross-feature imports — five, behavioral, frozen (#489)
 
-**The placement debt is paid.** #488 recorded thirty-three cross-feature imports
-across twenty-one files; #489 moved the published API-view vocabulary that caused
-twenty-eight of them out of `venue/` (decision + rationale:
-`docs/plans/vocabulary-out-of-venue.md`). The split by kind it chose:
-
-- **`shared/venue-views.ts`** (was `venue/venue.model.ts`) — the venue-owned
-  API-view vocabulary, the FE mirror of the backend's `venue::vocabulary`
-  published surface (the #95 shape in spirit). The `venue` feature remains its
-  **editor of record** — changes ride venue API slices — following the exact
-  precedent of `amenities.ts`/`booking-status.ts`, both already
-  backend-vocabulary mirrors living in `shared/`.
-- **`MoneyView` → `shared/money.ts`** — platform money vocabulary (invariant #5)
-  colocated with its renderer/parser, the one home of the euros↔minor boundary
-  (the #371 kernel shape).
-- **`shared/booking-date.ts`**, **`shared/photo-url.ts`** — genuinely
-  cross-cutting pure helpers (#371 shape).
-
-On the frontend the #95-vs-#371 distinction **collapses at the address level**:
-there is no `allowedDependencies` analogue, and the one-way rule leaves `shared/`
-as the only stratum every consumer may import — so the split is expressed in file
-grain and documented ownership, not folder taxonomy.
+**The placement debt is paid.** #489 moved the published API-view vocabulary out
+of `venue/` into `shared/` (`venue-views.ts`, `money.ts`, `booking-date.ts`,
+`photo-url.ts`); the `venue` feature remains **editor of record** for its mirror,
+per the `amenities.ts`/`booking-status.ts` precedent. The split's rationale and
+kind-by-kind decision: `docs/plans/vocabulary-out-of-venue.md` (history: #488 the
+diagnosis, PR #490 the review record).
 
 **What remains — frozen by `riviera-review-overlay` RV-FE-8** (a *new* edge is a
 Major finding, Blocker if `shared/`- or `core/`-directed; a pre-existing edge
@@ -77,8 +63,7 @@ component edge — and each needs its own argument on its merits (e.g. promoting
 `VenueService` to `core/`, or inverting the dialog edge); never a blanket
 "features may import features" rule, which could not absolve the `pages/` edge
 anyway. With the set this small, mechanical ESLint pinning is the natural
-follow-up (deliberately not added by #489). History: #488 (the diagnosis), PR
-#490 (the review record), #489 (the move).
+follow-up (deliberately not added by #489).
 
 **New feature = new folder.** The auth epic (#108) added `auth/` as a feature
 folder: **one audience-aware sign-in card** (`auth/auth-page.ts` at
@@ -143,10 +128,14 @@ The only place providers are wired:
 ## Theming & design tokens (Liquid Glass, epic #133)
 
 - **Themes are CSS custom properties** (`--riv-*`) scoped by `data-riv-theme` on
-  `<html>`, declared per theme in `src/styles.scss`. The **document-level**
+  `<html>`, declared per theme in `src/tailwind.css`. At runtime the **document-level**
   attribute is written **only** by `core/theme.ts` (`ThemeService`: signal +
-  localStorage + `prefers-color-scheme` fallback; the theme registry lives there
-  as data). **Exception — a subtree may pin its own theme** by setting
+  localStorage + `prefers-color-scheme` fallback — followed live on OS flips when
+  no choice is stored; the theme registry lives there as data). The one non-runtime
+  writer is the `index.html` inline seed (#675), which pre-paints the same value
+  before Angular boots with the same resolution order — the two are drift-pinned
+  by `core/theme-boot.spec.ts`; extend `ThemeService`'s resolution only together
+  with the seed. **Exception — a subtree may pin its own theme** by setting
   `data-riv-theme` on its own host element (the attribute selector re-scopes the
   `--riv-*` tokens for that subtree): the **operator console** (#170) is always
   porcelain via a `host: { 'data-riv-theme': 'porcelain' }` binding, which does
@@ -154,10 +143,15 @@ The only place providers are wired:
   choice is preserved. Local pinning like this is fine; writing the **document**
   attribute stays `ThemeService`-only.
 - **The token registry lives in two places, and only two**: a palette change is
-  one CSS block in `styles.scss` + one registry row in `core/theme.ts`, zero
-  component edits. The theme set is fixed at two — one dark, one light (#143
-  closed not-planned 2026-08-01). Restyle slices add page-surface tokens there (e.g. the T2
-  `--riv-card-*` card-glass set) so later slices reuse them.
+  one CSS block in `tailwind.css` + one registry row in `core/theme.ts`, zero
+  component edits. A **new** token additionally gets a `@theme inline` mapping in
+  the same `tailwind.css`, which is what makes it a first-class utility
+  (`bg-riv-…`/`text-riv-…`). The theme set is three — `porcelain` (light, the default and
+  the `:root` base block), `riviera` (branded dark teal, switcher-only), and
+  `dark` (neutral slate, the OS-dark resolution) — widened from the original
+  fixed-at-two decision (#143) by the theme restructure. Restyle slices add
+  page-surface tokens there (e.g. the T2 `--riv-card-*` card-glass set) so
+  later slices reuse them.
 - **HOW to consume the tokens** — token-first styling, the `:host-context`
   escape hatch, and the composited-contrast proofs (helpers in
   `src/testing/contrast.ts`) — is `riviera-tailwind`'s call.
@@ -190,10 +184,9 @@ The only place providers are wired:
 ## External reference
 
 [Ismaestro/angular-example-app](https://github.com/Ismaestro/angular-example-app)
-uses the same `core/`/`shared/`/feature taxonomy. Two deliberate deltas: **adopt
-its `features/` wrapper only past ~8–10 top-level feature folders** (mechanical
-move; update this skill then); and do **not** import its JWT-auth pattern — the
-auth decision is ADR'd (`docs/architecture/auth-signin-register.md` D-1).
+shares this taxonomy. Two deliberate deltas: adopt its `features/` wrapper only
+past ~8–10 top-level feature folders, and never its JWT-auth pattern (ADR'd:
+`docs/architecture/auth-signin-register.md` D-1).
 
 ## When NOT to apply
 

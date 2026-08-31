@@ -6,6 +6,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { expectNoAxeViolations } from '../../testing/axe';
+import { calendarDays } from '../../testing/calendar-days';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueMap } from './venue-map';
 
@@ -116,10 +117,65 @@ describe('VenueMap accessibility (axe)', () => {
     await expectNoAxeViolations(host());
   });
 
-  it('has no violations in the loading state', async () => {
-    const req = expectVenueRequest(); // pending → component shows the loading message
+  it('has no violations when online sales for the date have closed', async () => {
+    expectVenueRequest().flush({ ...fixture(), salesOpen: false });
     await fixtureRef.whenStable();
     await expectNoAxeViolations(host());
+  });
+
+  it('has no violations with the venue sales-close note rendered (#804)', async () => {
+    expectVenueRequest().flush({ ...fixture(), salesClose: '16:00' });
+    await fixtureRef.whenStable();
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no violations with the availability calendar open (#761)', async () => {
+    expectVenueRequest().flush(fixture());
+    await fixtureRef.whenStable();
+    fixtureRef.detectChanges();
+
+    host().querySelector<HTMLButtonElement>('[data-testid="map-date"]')!.click();
+    fixtureRef.detectChanges();
+    await fixtureRef.whenStable();
+
+    const calendar = httpMock.expectOne((req) => req.url.endsWith('/availability-calendar'));
+    // `free` needs over a quarter of the sets, so a naive `% 4` of 30 never reaches that tint.
+    const spread = [
+      { free: 0, total: 30 },
+      { free: 4, total: 30 },
+      { free: 30, total: 30 },
+    ];
+    calendar.flush(
+      calendarDays(
+        calendar.request.params.get('from')!,
+        calendar.request.params.get('to')!,
+        (index) => spread[index % spread.length],
+      ),
+    );
+    fixtureRef.detectChanges();
+    await fixtureRef.whenStable();
+
+    expect(host().querySelector('[data-testid="availability-calendar"]')).not.toBeNull();
+    for (const state of ['free', 'low', 'full']) {
+      expect(host().querySelector(`button[data-state="${state}"]`)).not.toBeNull();
+    }
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no violations on a venue with no sets (#717)', async () => {
+    expectVenueRequest().flush({ ...fixture(), sets: [], fromPrice: null });
+    await fixtureRef.whenStable();
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no violations in the loading state — the skeleton hides no focusable node (#744)', async () => {
+    const req = expectVenueRequest(); // pending → the component shows its skeleton
+    await fixtureRef.whenStable();
+
+    const loading = host().querySelector('[data-testid="map-loading"]')!;
+    expect(loading.querySelectorAll('[data-testid="map-skeleton-tile"]').length).toBeGreaterThan(0);
+    await expectNoAxeViolations(host());
+
     req.flush(fixture()); // settle the request so httpMock.verify() is clean
   });
 

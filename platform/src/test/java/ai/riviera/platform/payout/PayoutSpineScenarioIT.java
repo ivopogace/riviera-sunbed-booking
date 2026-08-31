@@ -15,6 +15,7 @@ import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -70,7 +71,8 @@ class PayoutSpineScenarioIT {
 	void confirmationAccruesPayoutThroughTheRegistry(Scenario scenario) {
 		Ref b = insertConfirmedBooking("SPINE00001");
 		BookingConfirmed event = new BookingConfirmed(new BookingId(b.bookingId()),
-				new VenueId(b.venueId()), new SetId(b.setId()), LocalDate.of(2029, 8, 1), 4500L, "EUR");
+				new VenueId(b.venueId()), new SetId(b.setId()), LocalDate.of(2029, 8, 1), 4500L, "EUR",
+				CancellationWindow.FREE, 0);
 
 		scenario.publish(event)
 				.andWaitAtMost(WAIT)

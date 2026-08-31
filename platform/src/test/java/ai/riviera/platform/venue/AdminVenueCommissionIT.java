@@ -114,9 +114,9 @@ class AdminVenueCommissionIT {
 				.as("the live rate moves at once — the next accrual applies it")
 				.isEqualTo(2000);
 		assertThat(scheduledFrom(venueId, 2000))
-				.as("the new rate is scheduled from tomorrow in Europe/Tirane, never today: today's "
-						+ "bookings closed the evening before (invariant #4) and already accrued")
-				.isEqualTo(LocalDate.now(TIRANE).plusDays(1));
+				.as("the new rate is scheduled from today in Europe/Tirane: same-day sales stay open "
+						+ "(invariant #4), so today's reporting must match the live rate accruals use")
+				.isEqualTo(LocalDate.now(TIRANE));
 		assertThat(scheduledFrom(venueId, 1500))
 				.as("and the superseded rate is pinned back to the floor, so no past day reprices")
 				.isEqualTo(LocalDate.of(1970, 1, 1));
@@ -159,8 +159,8 @@ class AdminVenueCommissionIT {
 						.content("""
 								{"name":"A7 Owner Venue","beach":"Test Beach","region":"Test Region",
 								 "description":null,"bookingMode":"INSTANT","bookingCutoff":"18:00",
-								 "amenities":[],"distanceToWaterM":null,"commissionBps":100,
-								 "expectedVersion":0}
+								 "salesClose":"16:00","amenities":[],"distanceToWaterM":null,
+								 "commissionBps":100,"expectedVersion":0}
 								"""))
 				.andExpect(status().isNoContent());
 

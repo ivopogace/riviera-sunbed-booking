@@ -23,8 +23,8 @@ import org.springframework.http.ResponseEntity;
  * pinned here: Spring auto-fills a null {@code instance} with the raw request URI at
  * serialization, and on the code-scoped paths ({@code /api/bookings/{code}…}) that URI IS the
  * bearer credential. Every factory-built problem therefore starts at {@link #REDACTED_INSTANCE};
- * a caller may override it with a known-safe, more informative URI (as {@code BookingController}
- * does with its collection path).
+ * a caller may override it with a known-safe, more informative URI via {@link #responseAt} (as the
+ * code-gated controllers do with the {@code /api/bookings} collection path).
  */
 public final class ApiProblem {
 
@@ -51,5 +51,29 @@ public final class ApiProblem {
 	/** The common controller shape: the problem body wrapped in a {@link ResponseEntity}. */
 	public static ResponseEntity<ProblemDetail> response(HttpStatus status, String code, String detail) {
 		return ResponseEntity.status(status).body(of(status, code, detail));
+	}
+
+	/**
+	 * The same response, with {@code instance} set to a known-safe {@code at} instead of
+	 * {@link #REDACTED_INSTANCE} — more informative than the placeholder, and still never the
+	 * request URI.
+	 *
+	 * <p>This is the override the class doc describes, kept here rather than in each controller: the
+	 * <strong>code-scoped</strong> paths are served from two modules now ({@code booking}'s
+	 * view/cancel/withdraw and {@code review}'s submit), and a redaction rule copied per module is one
+	 * a later change can fix in one place and miss in the other — re-opening the invariant-#7 leak the
+	 * pinning exists to close. Pass a <strong>constant</strong> URI: deriving one from the request is
+	 * what this exists to stop.
+	 *
+	 * <p>It does not yet serve every {@code instance} override in the codebase —
+	 * {@code StaffBookingController} builds a venue-scoped path and adds an extension property, which
+	 * this signature cannot carry. That path is operator-authenticated and its {@code venueId} is not
+	 * a credential, so it is out of scope here rather than an oversight.
+	 */
+	public static ResponseEntity<ProblemDetail> responseAt(HttpStatus status, String code, String detail,
+			URI at) {
+		ProblemDetail problem = of(status, code, detail);
+		problem.setInstance(at);
+		return ResponseEntity.status(status).body(problem);
 	}
 }

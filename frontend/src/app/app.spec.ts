@@ -83,14 +83,14 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(el.querySelector('router-outlet')).not.toBeNull();
   });
 
-  it('theme pill opens the picker listing both themes; picking one switches the document theme', () => {
+  it('theme pill opens the picker listing all three themes; picking one switches the document theme', () => {
     const { fixture, el } = shell();
 
     el.querySelector<HTMLButtonElement>('[data-testid="theme-toggle"]')!.click();
     fixture.detectChanges();
 
     const options = el.querySelectorAll('[data-testid^="theme-option-"]');
-    expect(options).toHaveLength(2);
+    expect(options).toHaveLength(3);
 
     el.querySelector<HTMLButtonElement>('[data-testid="theme-option-porcelain"]')!.click();
     fixture.detectChanges();
@@ -524,12 +524,19 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     'operator',
     'account/operator-password',
     'admin',
-    'admin/commissions',
-    'admin/email',
-    'admin/refunds',
-    'admin/photos',
-    'admin/privacy',
-    'admin/audit',
+  ];
+
+  /** The admin console's tab child routes, nested under `admin` (`AdminConsole`) — they inherit
+   *  `operatorChrome` from the parent chain (`app.ts`'s root→leaf walk) rather than each
+   *  carrying the flag themselves. */
+  const ADMIN_TAB_CHILD_PATHS = [
+    '',
+    'commissions',
+    'email',
+    'refunds',
+    'photos',
+    'privacy',
+    'audit',
   ];
 
   it('marks every not-yet-restyled tourist route with the compat surface (flipped per slice)', () => {
@@ -554,6 +561,23 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
       expect(route?.data?.['operatorConsole'], `route '${path}' console flag`).toBeUndefined();
       // Operator surfaces left the tourist binary but must never re-acquire the compat surface.
       expect(route?.data?.['legacySurface'], `route '${path}' legacy flag`).toBeUndefined();
+    }
+  });
+
+  it("admin's tab children inherit the shell's operator chrome rather than carrying their own", () => {
+    const admin = routes.find((r) => r.path === 'admin');
+    for (const path of ADMIN_TAB_CHILD_PATHS) {
+      const child = admin?.children?.find((c) => c.path === path);
+      expect(child?.data?.['adminTab'], `admin child '${path}' adminTab data`).toBeDefined();
+      expect(
+        child?.data?.['operatorChrome'],
+        `admin child '${path}' operatorChrome flag`,
+      ).toBeUndefined();
+      expect(
+        child?.data?.['operatorConsole'],
+        `admin child '${path}' console flag`,
+      ).toBeUndefined();
+      expect(child?.data?.['legacySurface'], `admin child '${path}' legacy flag`).toBeUndefined();
     }
   });
 

@@ -20,6 +20,7 @@ import com.icegreen.greenmail.util.ServerSetupTest;
 import jakarta.mail.internet.MimeMessage;
 
 import ai.riviera.platform.booking.vocabulary.RefundReason;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.application.BookingCancellationMail;
 import ai.riviera.platform.notification.application.BookingConfirmationMail;
 import ai.riviera.platform.notification.application.PaymentDueMail;
@@ -48,7 +49,8 @@ class SmtpMailerIT {
 	private static final Instant DEADLINE = Instant.parse("2026-08-14T18:30:00Z");
 
 	private static final BookingConfirmationMail CONFIRMATION = new BookingConfirmationMail(
-			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), "A", 3, 2500, "EUR");
+			BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15), "Front row · Sea view", 3, 2500, "EUR",
+			CancellationWindow.FREE, 0);
 
 	@RegisterExtension
 	static GreenMailExtension greenMail = new GreenMailExtension(ServerSetupTest.SMTP);
@@ -89,9 +91,55 @@ class SmtpMailerIT {
 
 		assertThat(message.isMimeType("text/plain")).as("plain text, no HTML/tracking (ADR-0011)").isTrue();
 		String body = message.getContent().toString();
-		assertThat(body).contains(BOOKING_CODE, "Miramar Beach", "15 August 2026", "Row A, position 3",
-				"EUR 25.00");
+		assertThat(body).contains(BOOKING_CODE, "Miramar Beach", "15 August 2026",
+				"Front row · Sea view, position 3", "EUR 25.00");
+		assertThat(body)
+				.as("the spot line renders the row label as the operator wrote it (#723) — no 'Row ' prefix")
+				.doesNotContain("Row Front row");
 		assertThat(body).doesNotContain("<html", "<img", "http://track", "utm_");
+		assertThat(body)
+				.as("a FREE-born booking gets no disclosure line (#795 AC-5 absent case)")
+				.doesNotContain("non-refundable", "past free cancellation");
+	}
+
+	/** The #795 disclosure branches, rendered — only CLOSED may claim the booking can't be cancelled. */
+	@Test
+	void rendersTheBornPastFreeCancellationDisclosure() throws Exception {
+		mailer().sendBookingConfirmation(TO, withBirthWindow(CancellationWindow.CLOSED, 0));
+		assertThat(theOnlyReceivedMessage().getContent().toString())
+				.contains("non-refundable last-minute booking");
+		greenMail.purgeEmailFromAllMailboxes();
+
+		// LATE at 0 bps is still cancellable (refund NONE), so the copy must not say otherwise.
+		mailer().sendBookingConfirmation(TO, withBirthWindow(CancellationWindow.LATE, 0));
+		String lateAtZero = theOnlyReceivedMessage().getContent().toString();
+		assertThat(lateAtZero).contains("past free cancellation — no refund if cancelled");
+		assertThat(lateAtZero).doesNotContain("can't be cancelled", "last-minute");
+		greenMail.purgeEmailFromAllMailboxes();
+
+		mailer().sendBookingConfirmation(TO, withBirthWindow(CancellationWindow.LATE, 2250));
+		assertThat(theOnlyReceivedMessage().getContent().toString())
+				.contains("cancelling refunds only 22.5% of the price");
+		greenMail.purgeEmailFromAllMailboxes();
+
+		// Null = a pre-#795 registry payload: tolerated forever, renders nothing (AC-7).
+		mailer().sendBookingConfirmation(TO, withBirthWindow(null, 0));
+		assertThat(theOnlyReceivedMessage().getContent().toString())
+				.doesNotContain("non-refundable", "past free cancellation");
+	}
+
+	@Test
+	void rendersTheDisclosureOnThePaymentDueMailToo() throws Exception {
+		mailer().sendPaymentDue(TO, new PaymentDueMail(BOOKING_CODE, "Miramar Beach",
+				LocalDate.of(2026, 8, 15), DEADLINE, 2500, "EUR", PAY_LINK,
+				CancellationWindow.CLOSED, 0));
+		assertThat(theOnlyReceivedMessage().getContent().toString())
+				.contains("non-refundable last-minute booking");
+	}
+
+	private static BookingConfirmationMail withBirthWindow(CancellationWindow window, int lateBps) {
+		return new BookingConfirmationMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15),
+				"Front row · Sea view", 3, 2500, "EUR", window, lateBps);
 	}
 
 	@Test
@@ -248,7 +296,7 @@ class SmtpMailerIT {
 
 	private static PaymentDueMail paymentDue() {
 		return new PaymentDueMail(BOOKING_CODE, "Miramar Beach", LocalDate.of(2026, 8, 15),
-				DEADLINE, 2500, "EUR", PAY_LINK);
+				DEADLINE, 2500, "EUR", PAY_LINK, CancellationWindow.FREE, 0);
 	}
 
 	private static BookingCancellationMail cancellation(long refundMinor, RefundReason reason) {
@@ -257,10 +305,10 @@ class SmtpMailerIT {
 	}
 
 	/**
-	 * The operator-approval notice (#375). Asserted through the same lens as every other kind — one
-	 * plain-text message, right recipient, right subject, the link exactly as handed in — because the
-	 * one thing that differs about this kind (its link is public, not a bearer credential) changes
-	 * nothing the transport is responsible for.
+	 * The operator-approval notice (#375, reworded by #693). Asserted through the same lens as every
+	 * other kind — one plain-text message, right recipient, right subject, the link exactly as handed
+	 * in — plus the approval's real news since #693: the operator's venues are now live for tourists.
+	 * The liveness copy is phrased to hold for an operator that owns no venue yet at approval time.
 	 */
 	@Test
 	void deliversOperatorApprovedEmailOverSmtp() throws Exception {
@@ -273,6 +321,9 @@ class SmtpMailerIT {
 		assertThat(message.isMimeType("text/plain")).as("plain text, no HTML/tracking (ADR-0011)").isTrue();
 		String body = message.getContent().toString();
 		assertThat(body).contains(signInLink.toString());
+		assertThat(body).as("the #693 news: approval makes the venues tourist-visible")
+				.contains("live and bookable by tourists")
+				.contains("goes live as soon as you create it");
 		assertThat(body).doesNotContain("<html", "<img", "http://track", "utm_");
 	}
 
@@ -280,7 +331,7 @@ class SmtpMailerIT {
 	void aVenueNameCarryingNewlinesCannotInjectHeaders() throws Exception {
 		BookingConfirmationMail injected = new BookingConfirmationMail(BOOKING_CODE,
 				"Evil\r\nBcc: attacker@example.com\r\nX-Injected: yes", LocalDate.of(2026, 8, 15),
-				"A", 3, 2500, "EUR");
+				"A", 3, 2500, "EUR", CancellationWindow.FREE, 0);
 
 		mailer().sendBookingConfirmation(TO, injected);
 

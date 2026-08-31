@@ -1,4 +1,3 @@
-import { NgOptimizedImage } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
@@ -11,11 +10,17 @@ import {
 import { AmenityChip } from '../../shared/amenity-chip';
 import { CardGlass } from '../../shared/card-glass';
 import { FAILURE_DIRECTIVES } from '../../shared/failure-panel';
+import { FieldGlass } from '../../shared/field-glass';
+import { LoadAnnouncer } from '../../shared/load-announcer';
+import { focusMover } from '../../shared/focus-after-render';
 import { formatMoney } from '../../shared/money';
 import { formatBookingDate } from '../../shared/booking-date-label';
 import { PanelGlass } from '../../shared/panel-glass';
-import { isRated, ratingScore } from '../../shared/rating';
+import { PhotoSlideshow } from '../../shared/photo-slideshow';
+import { slideshowPhotos } from '../../shared/photo-url';
+import { isRated, ratingScore, reviewsLabel } from '../../shared/rating';
 import { RetryButton } from '../../shared/retry-button';
+import { SemanticChip } from '../../shared/semantic-chip';
 import { defaultBookingDate } from '../../shared/booking-date';
 import { TouchTarget } from '../../shared/touch-target';
 import { VenueSummary } from '../../shared/venue-views';
@@ -32,11 +37,13 @@ interface VenueCard {
   readonly name: string;
   readonly beach: string;
   readonly region: string;
-  readonly coverPhoto: VenueSummary['coverPhoto'];
+  /** The slideshow's photo URLs in slot order (cover first); empty → the gradient placeholder. */
+  readonly photos: readonly string[];
   readonly modeLabel: string;
   readonly isRated: boolean;
   readonly rating: string;
-  readonly reviewsCount: number;
+  /** The count with its noun already agreed — "1 review", "2 reviews" (shared/rating.ts). */
+  readonly reviewsLabel: string;
   readonly water: string | null;
   readonly amenities: readonly { readonly code: Amenity; readonly label: string }[];
   readonly freePercent: number;
@@ -44,6 +51,8 @@ interface VenueCard {
   readonly priceLabel: string | null;
   readonly free: number;
   readonly total: number;
+  /** True when the server's verdict says online sales for the selected date have closed. */
+  readonly salesClosed: boolean;
   /** The single accessible name carrying every card fact (nothing conveyed by layout alone). */
   readonly ariaLabel: string;
 }
@@ -51,25 +60,30 @@ interface VenueCard {
 /**
  * Tourist venue discovery — the app's landing page (`/`).
  * Hero + one glass filter bar (beach/region/date with the live result count inside) + glass venue
- * cards (the cover photo when uploaded, else the gradient placeholder; mode chip, rating,
- * availability bar), each a link to the beach map at `/venues/:id`. The date drives the per-venue availability count (invariant #2). Money is
- * rendered from integer minor units (invariant #5); every card fact is conveyed as text, not
- * colour alone (WCAG AA). Loading, empty, and error states are distinct.
+ * cards (a crossfading slideshow of the venue's uploaded photos when any exist — stepped by
+ * controls layered OUTSIDE the card link, never nested in it — else the gradient placeholder;
+ * mode chip, rating, availability bar), each a link to the beach map at `/venues/:id`. The date
+ * drives the per-venue availability count (invariant #2). Money is rendered from integer minor
+ * units (invariant #5); every card fact is conveyed as text, not colour alone (WCAG AA). Loading
+ * (a pulsing skeleton grid), empty, and error states are distinct.
  */
 @Component({
   selector: 'app-home',
   imports: [
-    NgOptimizedImage,
     RouterLink,
     RetryButton,
     PanelGlass,
+    PhotoSlideshow,
     CardGlass,
     AmenityChip,
+    SemanticChip,
+    FieldGlass,
+    LoadAnnouncer,
     TouchTarget,
     ...FAILURE_DIRECTIVES,
   ],
+  host: { class: 'block text-riv-card-ink' },
   templateUrl: './home.html',
-  styleUrl: './home.scss',
 })
 export class Home {
   private readonly venueService = inject(VenueService);
@@ -78,13 +92,24 @@ export class Home {
   protected readonly venues = signal<VenueSummary[] | undefined>(undefined);
   protected readonly failed = signal(false);
 
+  /**
+   * In flight: no response yet and no failure. Named here rather than derived in the template so
+   * the announcer's phase is one reviewable expression (and cannot drift from the `@if` chain).
+   */
+  protected readonly loading = computed(() => !this.failed() && this.venues() === undefined);
+
   /** Current filter selection. Empty string = "all" (no constraint). */
   protected readonly beach = signal('');
   protected readonly region = signal('');
   /**
-   * The earliest selectable booking date — tomorrow in Europe/Tirane. Backs the date input's `min`
-   * and clamps a hand-typed date so past/today dates can't be presented as bookable (an
+   * The earliest selectable booking date — today in Europe/Tirane. Backs the date input's
+   * `min` and clamps a hand-typed date so a past date can't be presented as bookable (an
    * invariant #4 display guardrail; the server stays authoritative for the real cutoff).
+   *
+   * <p>Computed once at construction, not re-derived per interaction (unlike `venue-map`'s
+   * per-route-reset floor): a page left open across Tirane midnight can still offer yesterday
+   * client-side until the next navigation. Accepted residual — the server refuses `BOOKING_CLOSED`
+   * regardless.
    */
   protected readonly minDate = defaultBookingDate(new Date());
   /** The day availability is counted for (ISO YYYY-MM-DD); defaults to the earliest bookable date. */
@@ -93,6 +118,9 @@ export class Home {
   /** Distinct beaches/regions for the filter selects, captured once from the unfiltered catalogue. */
   protected readonly beaches = signal<readonly string[]>([]);
   protected readonly regions = signal<readonly string[]>([]);
+
+  /** The skeleton grid renders this many placeholder cards while a request is in flight. */
+  protected readonly skeletons = [0, 1, 2, 3, 4, 5] as const;
 
   /** True only once a response has arrived and it is empty (distinct from the loading state). */
   protected readonly isEmpty = computed(() => {
@@ -115,6 +143,8 @@ export class Home {
 
   /** Guards against an earlier slow response overwriting a newer one (last-writer-wins). */
   private lastRequest = '';
+
+  private readonly focusAfterRender = focusMover();
 
   /**
    * The fetch to repeat when Retry is pressed — the *failed* request, not a fixed one: an
@@ -210,9 +240,14 @@ export class Home {
     this.reload();
   }
 
-  /** Retry the load that failed (the failure panel's "Try again" button). */
+  /**
+   * Retry the load that failed (the failure panel's "Try again" button). Retry destroys the panel
+   * holding the pressed button (WCAG 2.4.3), so focus moves to the count block — which survives
+   * every list state, outliving the loading → grid/error transitions too.
+   */
   protected onRetryDiscover(): void {
     this.lastLoad();
+    this.focusAfterRender('results');
   }
 
   /** The selected date rendered for display (e.g. "Tue 30 Jun 2026"). */
@@ -233,8 +268,12 @@ export class Home {
       .slice(0, 3)
       .map((code) => ({ code, label: amenityLabel(code) }));
     const priceLabel = venue.fromPrice ? formatMoney(venue.fromPrice) : null;
+    const photos = slideshowPhotos(venue, 'card');
     const { free, total } = venue.availability;
     const freePercent = total === 0 ? 0 : Math.round((free / total) * 100);
+
+    // Only an explicit false is "closed" — an older payload without the verdict stays unbadged.
+    const salesClosed = venue.salesOpen === false;
 
     const price = priceLabel ? `, from ${priceLabel} per set` : '';
     const waterText = water ? `${water}. ` : '';
@@ -242,9 +281,11 @@ export class Home {
       ? `Amenities: ${amenities.map((a) => a.label).join(', ')}. `
       : '';
     const ratingText = rated ? `rated ${rating} out of 5` : 'no reviews yet';
+    // The card body is aria-hidden, so the closed state must ride the accessible name too.
+    const closedText = salesClosed ? ', online sales for today have closed' : '';
     const ariaLabel =
       `${venue.name}, ${venue.beach} · ${venue.region}, ${ratingText}${price}, ` +
-      `${free} of ${total} sets free on ${dateLabel}. ` +
+      `${free} of ${total} sets free on ${dateLabel}${closedText}. ` +
       `${waterText}${amenitiesText}` +
       `View beach map.`;
 
@@ -253,17 +294,18 @@ export class Home {
       name: venue.name,
       beach: venue.beach,
       region: venue.region,
-      coverPhoto: venue.coverPhoto,
+      photos,
       modeLabel: venue.bookingMode === 'INSTANT' ? 'Instant Book' : 'Request to Book',
       isRated: rated,
       rating,
-      reviewsCount: venue.reviewsCount,
+      reviewsLabel: reviewsLabel(venue.reviewsCount),
       water,
       amenities,
       freePercent,
       priceLabel,
       free,
       total,
+      salesClosed,
       ariaLabel,
     };
   }

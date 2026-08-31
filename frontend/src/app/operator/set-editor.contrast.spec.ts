@@ -1,4 +1,4 @@
-import { AA_NORMAL, contrastRatio, rgbToHex } from '../../testing/contrast';
+import { AA_LARGE, AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
@@ -6,20 +6,34 @@ import {
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
+  WASH_STOPS,
   expectAaOverStops,
 } from '../../testing/glass-tokens';
 
 /**
  * WCAG-AA contrast guard for the per-set beach-map editor (#600). Same porcelain host and
  * `appCardGlass` panel as the bulk editor beside it, so the shared ink pairs are re-proven here rather
- * than assumed; what is new is the destructive **Remove** ink and the armed-move surface. Grid cells
- * carry no text — state is colour AND a per-cell `aria-label` — so only the text pairs need AA.
+ * than assumed; what is new is the destructive **Remove** ink and the armed-move surface. Since
+ * #677 the grid sits on the shared canvas's sea→sand wash: the BeachCell fill/border pairs over the
+ * wash, and the #709 tile-number ink over every cell kind's own fill, are proven once in
+ * `layout-editor.contrast.spec.ts` (the identical directive + template pattern) — not re-proven
+ * here. What is new to THIS surface is the selection ring, distinct from keyboard focus (#709),
+ * proven 3:1 (1.4.11) below over every wash stop AND every occupied tile's own worst fill — a
+ * selected cell is never a bare gap.
  */
 
 // --riv-cta-grad stops (the AA-safe darkened teal shared with every CTA); Save/Add sit on these.
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
 // The refund-red the payouts ledger already uses, here as the Remove ink and the error message.
 const DESTRUCTIVE_INK = '#a3160e';
+// set-editor.html: `ring-[#0a5f74]` on the selected cell — not the design's brighter #0e8aa8, which fails 3:1 on the premium tile's own gold fill.
+const SELECTION_RING = '#0a5f74';
+// beach-cell.ts CELL_CLASS: the premium tile's own gradient — a selected premium set sits on this.
+const PREMIUM_FILL_STOPS = ['#ffe3a3', '#f4c05a'];
+// beach-cell.ts CELL_CLASS: the standard tile's white @ 0.85 over the wash.
+const STANDARD_FILL_ALPHA = 0.85;
+// beach-cell.ts CELL_CLASS: the walk-in hatch's lighter band (worst case) — a CARD_INK tint over the wash.
+const WALKIN_LIGHT_BAND_ALPHA = 0.12;
 
 describe('SetEditor porcelain contrast (WCAG AA, #600)', () => {
   it('panel heading, selection line and toggle labels (--riv-card-ink) meet AA on the card glass', () => {
@@ -56,6 +70,31 @@ describe('SetEditor porcelain contrast (WCAG AA, #600)', () => {
     expect(contrastRatio('#7a4a08', '#fff4e0')).toBeGreaterThanOrEqual(AA_NORMAL);
     // "Remove set" is white on the solid destructive fill, not the outlined variant.
     expect(contrastRatio('#ffffff', DESTRUCTIVE_INK)).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+
+  it('the selection ring marks the picked cell at 3:1 over every wash stop and tile fill (WCAG 1.4.11, #709)', () => {
+    for (const stop of WASH_STOPS) {
+      const wash = rgbToHex(stop);
+      expect(contrastRatio(SELECTION_RING, wash), `over wash stop ${wash}`).toBeGreaterThanOrEqual(
+        AA_LARGE,
+      );
+      const standard = rgbToHex(composite([255, 255, 255], STANDARD_FILL_ALPHA, stop));
+      expect(
+        contrastRatio(SELECTION_RING, standard),
+        `over standard tile on ${wash}`,
+      ).toBeGreaterThanOrEqual(AA_LARGE);
+      const walkin = rgbToHex(composite(CARD_INK, WALKIN_LIGHT_BAND_ALPHA, stop));
+      expect(
+        contrastRatio(SELECTION_RING, walkin),
+        `over walk-in tile on ${wash}`,
+      ).toBeGreaterThanOrEqual(AA_LARGE);
+    }
+    for (const stop of PREMIUM_FILL_STOPS) {
+      expect(
+        contrastRatio(SELECTION_RING, stop),
+        `over premium tile fill ${stop}`,
+      ).toBeGreaterThanOrEqual(AA_LARGE);
+    }
   });
 
   it('the armed-move banner keeps card ink over its tinted surface', () => {

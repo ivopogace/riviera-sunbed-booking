@@ -21,11 +21,11 @@ describe('PanelGlass', () => {
   it('applies the panel-glass surface utilities to the host', () => {
     const el = host();
     for (const cls of [
-      'bg-(--riv-header-glass)',
+      'bg-riv-header-glass',
       'backdrop-blur-[22px]',
       'backdrop-saturate-[1.7]',
       'border',
-      'border-(--riv-header-border)',
+      'border-riv-header-border',
     ]) {
       expect(el.classList.contains(cls)).toBe(true);
     }

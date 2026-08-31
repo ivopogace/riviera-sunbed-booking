@@ -141,3 +141,14 @@ column, any pre-publication gating, a vision-API screening call at upload, and a
   the remove half, so the platform now has a takedown lever with no written policy governing when to
   pull it — an admin can delete any venue's photo and nothing states the grounds. Writing the stance
   down is what makes that lever accountable rather than merely available.
+
+## Amendment (2026-08-17, #694)
+
+Premise 1 weakened again: a `PENDING` operator now signs in, owns the venue it creates, and can
+upload photos **before** any human has looked at the account — approval gates tourist visibility,
+not console access. The human gate this ADR leans on still stands, but it has moved: from "before
+the upload can exist" to "before tourists can see it". A PENDING-owned venue is invisible and
+unbookable until approval (the #693 fence), and its photos surface only through those fenced venue
+reads, so no unvetted upload reaches a tourist ahead of the same admin decision as before. The
+report-and-remove posture and the #504 takedown lever are unchanged; #230's re-check triggers apply
+to this shape of the gate exactly as they did to the old one.

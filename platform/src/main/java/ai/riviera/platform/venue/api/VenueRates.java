@@ -50,11 +50,12 @@ public interface VenueRates {
 	 * <p>Always resolves for a venue that exists; empty means "no such venue", never "no rate scheduled
 	 * yet". A venue whose rate has never changed has no schedule and answers from its live rate, which
 	 * is exactly what applied; from its first change onward the change pins the superseded rate back to
-	 * an epoch floor, so every date it could have sold on is covered. It is <strong>not</strong> exact
-	 * agreement with the ledger and does not claim to be — the ledger's commission is per booking at
-	 * accrual, this is one rate per day, so a booking confirmed before a change but served after it
-	 * accrued at the old rate while this answers the new one. What it guarantees is that a past date's
-	 * figure never changes.
+	 * an epoch floor, so every date it could have sold on is covered. A change schedules from the
+	 * <em>current</em> service date, so today's answer moves with the live rate. It is
+	 * <strong>not</strong> exact agreement with the ledger and does not claim to be — the ledger's
+	 * commission is per booking at accrual, this is one rate per day, so bookings accrued before a
+	 * change keep their old-rate entries while this answers the new rate from the change's own service
+	 * date onward. What it guarantees is that a past date's figure never changes.
 	 */
 	OptionalInt commissionBpsOn(VenueId id, LocalDate serviceDate);
 

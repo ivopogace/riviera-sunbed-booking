@@ -47,7 +47,15 @@ frontend-only review never pays for the backend bank:
   transition that destroys the focused element moves focus — the repo's
   most-repeated bug class, fifteen instances across #604/#614/#616/#621/#625.
   One of the guard's two rules gates, the other only advises, and both have
-  shapes they cannot match — the item is what covers those).
+  shapes they cannot match — the item is what covers those), and **RV-FE-10**
+  (a live region outlives the content it announces — a region created together
+  with its message announces nothing, and the text being present means every
+  spec reading it passes either way; #741 shipped that on eight surfaces), and
+  **RV-FE-11** (an inline field error names its control via `[appFieldErrorFor]`,
+  and `aria-invalid` claims the *entered value* is wrong — never merely that a
+  write was refused; #823's gate found both halves missed, and the
+  Playwright-vs-CDP accname trap that made two reviewers report a 14-site defect
+  that was not there).
 - **Fullstack diff** → both of the above, plus `references/fe-be-contract.md` —
   API typing, money/date on the wire, webhook-vs-redirect, idempotency.
 
@@ -91,7 +99,7 @@ What it does **not** cover, which is what this item is still for:
   already available from the code.
 
 The guard is diff-scoped by construction, so it will never flag the pre-existing multi-line blocks
-in `SecurityConfig` or `styles.scss` — and neither should you.
+in `SecurityConfig` or `tailwind.css` — and neither should you.
 
 ## RV-STYLE-2 — formatting is `prettier --check`'s job, not the reviewer's
 
@@ -126,25 +134,14 @@ Re-walk on **every re-review, including review-fix commits** — fixes change th
 
 ## Verification commands surfaced
 
-Backend:
-- `./gradlew build` — no JPA on the classpath (a build pulling
-  `spring-boot-starter-data-jpa` is itself a finding)
-- `./gradlew test --tests "<package>.<ClassName>"` for targeted tests; `--tests
-  "*ModularityTests*"` if module structure changed (Modulith verification is a test, not a Gradle task)
-
-Frontend (run in `frontend/`):
-- `npm run lint`; `npm run build` if production-build risk
-- `npm test` — Vitest via `@angular/build:unit-test` (Angular 22+), once in jsdom;
-  NOT Karma — there is no `--browsers=ChromeHeadless` flag
+The command set is CLAUDE.md §Commands. Two review-specific notes: Modulith verification is
+a **test**, not a Gradle task (`./gradlew test --tests "*ModularityTests*"` when structure
+changed), and `npm test` is Vitest-in-jsdom — there is no `--browsers=ChromeHeadless` flag.
 
 ## Red flags specific to this repo
 
 | Thought | Reality |
 |---|---|
-| "Two reservations rarely collide; a check-then-insert is fine." | Check-then-insert races. Needs a unique constraint + row lock / `ON CONFLICT` (invariant #2). |
-| "The frontend confirmed payment, mark the booking paid." | Confirm only on a signature-verified webhook (invariant #8). |
-| "I'll use Stripe Connect to pay the venue." | No Connect (invariant #8) — collect-only + manual BKT payout (invariant #9). |
-| "Booking codes can be sequential ids." | Unguessable bearer credential (invariant #7). |
 | "`gradlew.bat` flipped CRLF→LF — that's corruption, revert it." | Check `.gitattributes` at every level (incl. `platform/.gitattributes`) first: `*.bat text eol=crlf` stores the blob **LF** and checks out CRLF, so an LF blob is the **correct** normalized form — don't "revert" it (git re-normalizes on `add`). Only a wrong **working-tree** EOL is a real finding (PR #37). |
 
 The authoring-idiom red flags (JPA/Lombok, float money, JVM-default-zone time,
