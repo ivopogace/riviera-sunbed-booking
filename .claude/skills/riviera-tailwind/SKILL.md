@@ -163,8 +163,15 @@ Vary by theme in this order of preference:
    `font-riv`); only image tokens (gradients/scrims, no theme namespace) keep the
    arbitrary form `bg-(image:--riv-*)`, and a raw `var(--riv-*)` remains right inside a
    composite arbitrary value (a `color-mix(…)` ring, a hand-built gradient). Reach for a
-   token first; add one if none fits — declared per theme AND mapped in `@theme inline`
-   (where tokens are declared per theme is `riviera-frontend`'s theming section). This is
+   token first; add one if none fits — mapped in `@theme inline`, and declared per theme
+   **unless the value deliberately does not switch** (where tokens are declared per theme
+   is `riviera-frontend`'s theming section). The exception is narrow but real, and #835
+   shipped both halves of it: a token painted over a surface that itself does not theme
+   (`--riv-solid-btn-ink` on the fixed `#f4f6f7` outline-button fill) would drift
+   light-on-light if it switched, and a tint family that painted one literal in every theme
+   before it was tokenised (`--riv-accent-*`) gains a silent restyle the day someone adds a
+   dark override. Both are declared once, in the base block, with the reason at the
+   declaration — a theme-invariant token is a decision to write down, never an omission. This is
    Tailwind's own documented multi-theme pattern (docs: Colors § "Referencing other
    variables" — plain vars per `:root`/attribute scope, mapped via `@theme inline`;
    `inline` is what keeps the utility emitting `var(--riv-*)` so per-scope overrides and

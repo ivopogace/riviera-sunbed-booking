@@ -84,7 +84,7 @@ import { TouchTarget } from '../shared/touch-target';
         <button
           appTouchTarget
           type="button"
-          class="mt-4 inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-[#0a4f5e] shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+          class="mt-4 inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-riv-accent-ink shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
           [appBusy]="lever.busy()"
           (click)="lever.resubmit()"
           data-testid="admin-outbox-resubmit"

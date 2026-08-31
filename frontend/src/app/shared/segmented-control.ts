@@ -163,7 +163,7 @@ export class SegmentedControl<T extends string> {
     return (
       `${base} rounded-[18px] border-[1.5px] px-[15px] py-3.5 text-left text-riv-card-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] ` +
       (selected
-        ? 'bg-[rgba(43,184,212,0.16)] border-[rgba(14,138,168,0.75)]'
+        ? 'bg-riv-accent-chip-fill border-riv-accent-chip-border'
         : 'bg-riv-wash-fill border-riv-wash-border')
     );
   }

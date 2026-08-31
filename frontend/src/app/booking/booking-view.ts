@@ -98,7 +98,7 @@ const CLS = {
   confirmQOnBanner: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-[#334a52]',
   actions: 'flex flex-wrap gap-2.5',
   btnDanger: `${BTN} border border-[rgba(200,90,60,0.4)] bg-[linear-gradient(180deg,#c14a2c,#a83c25)] font-bold text-white shadow-[0_8px_20px_rgba(179,67,42,0.4)] [transition:filter_0.15s_ease] hover:brightness-[1.08]`,
-  btnOutline: `${BTN_OUTLINE} border-[rgba(255,255,255,0.7)] text-[#0a4f5e]`,
+  btnOutline: `${BTN_OUTLINE} border-[rgba(255,255,255,0.7)] text-riv-solid-btn-ink`,
   btnOutlineDanger: `${BTN_OUTLINE} border-[rgba(200,90,60,0.5)] text-[#a3372a]`,
   btnCta:
     'mt-3.5 block w-full cursor-pointer rounded-[16px] border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-[15px] text-center text-[15.5px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:brightness-[1.06] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white aria-disabled:cursor-not-allowed aria-disabled:opacity-65',

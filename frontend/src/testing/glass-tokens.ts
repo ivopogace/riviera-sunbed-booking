@@ -68,6 +68,23 @@ export const DARK_DANGER_FILL: Glass = { color: hexToRgb('ff8a7a'), alpha: 0.1 }
 export const DARK_DANGER_BORDER: Glass = { color: hexToRgb('ff8a7a'), alpha: 0.42 };
 export const DARK_DANGER_ACTION_FILL: Glass = { color: hexToRgb('ff8a7a'), alpha: 0.16 };
 export const DARK_DANGER_ACTION_BORDER: Glass = { color: hexToRgb('ff8a7a'), alpha: 0.66 };
+/** The `--riv-accent-*` tint family (#835) — the brand teal as the three POSITIVE-state tinted
+ *  treatments: the info panel, the selected chip, and the pay spinner's track. No dark mirror
+ *  exists on purpose; the tokens are declared once and paint the same value in every theme.
+ *  The `*_BORDER` values are non-text chrome (WCAG 1.4.11) — see the spec header. */
+export const ACCENT_FILL: Glass = { color: hexToRgb('2bb8d4'), alpha: 0.12 };
+export const ACCENT_BORDER: Glass = { color: hexToRgb('0e8aa8'), alpha: 0.35 };
+export const ACCENT_CHIP_FILL: Glass = { color: hexToRgb('2bb8d4'), alpha: 0.18 };
+export const ACCENT_CHIP_BORDER: Glass = { color: hexToRgb('0e8aa8'), alpha: 0.75 };
+export const ACCENT_TRACK: Glass = { color: hexToRgb('2bb8d4'), alpha: 0.25 };
+export const ACCENT_STRONG: Rgb = hexToRgb('0e8aa8');
+
+/** `--riv-solid-btn-ink` and the two fixed fills it is pinned to. Theme-invariant: the fills do
+ *  not theme either, so a themed ink here would drift light-on-light in the dark theme. */
+export const SOLID_BTN_INK: Rgb = hexToRgb('0a4f5e');
+export const SOLID_BTN_FILL: Rgb = hexToRgb('f4f6f7');
+export const SOLID_BTN_HOVER: Rgb = hexToRgb('e7ebec');
+
 /** `--riv-card-ink-soft` alpha over the card glass. */
 export const CARD_INK_SOFT_ALPHA = 0.78;
 /** `--riv-card-ink-faint` alpha over the card glass. */
