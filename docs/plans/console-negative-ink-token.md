@@ -54,8 +54,10 @@ claim is wrong, since #858 edits the same guard array) · `riviera-plan-doc` (th
 the behavior-parity ledger that pinned "computed colour identical before and after" as a claim to
 verify, not assume) · `tdd` (guard-spec-first at the four named seams; each phase red before green)
 · `riviera-review-overlay` (review gate — RV-FE-E2E placed the render proof in the CI-run mocked
-suite; ran at ready-for-review) · `riviera-docs-freshness` (**ran** over the slice's merge range at
-close-out — see Execution status) · `riviera-tailwind` (token-first styling: a new token is one
+suite; ran at ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main..HEAD` at phase 3 — **0 findings**: nothing
+was renamed, and the counting sweep's only live candidate, `riviera-tailwind`'s "#848 adds a third
+ground", counts *grounds* for theme-invariance, not instances of one, so a second member of that
+ground falsifies nothing) · `riviera-tailwind` (token-first styling: a new token is one
 base-block declaration + one `@theme inline` row consumed through its named utility, and a
 theme-invariant token is a decision written at the declaration, never an omission) ·
 `riviera-frontend` (placement: the token registry is `tailwind.css`, the mirror is
@@ -287,17 +289,18 @@ N/A — no contract change. No endpoint, DTO, or wire shape is touched.
 > **This section is the session-recovery anchor.** Update it in the SAME commit window as the
 > change it records, at every phase boundary and SDLC stage transition.
 
-**Stage pointer:** `implement — phase 2 done, entering phase 3`
+**Stage pointer:** `PR — marking ready for review; review gate due`
 
-**Next action:** Phase 3 step 1 — move the ledger's class-R row to `done` with PR #866 and record
-the settled name/family answer.
+**Next action:** Mark PR #866 ready for review, then run the review gate per `riviera-sdlc`
+`references/pr-gates.md` §1, followed by the Sonar gate. Finalize this section, the AC-verification
+table and the self-review checklist in this PR's last commit before merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Register the token, its mirror, and its declaration guard | ✅ | `56e1fd8` |
 | 1 — Migrate the three sites and reconcile the downstream guards | ✅ | `ba07e59` |
-| 2 — Prove the render and the porcelain pin (mocked e2e) | ✅ | `<phase-2>` |
-| 3 — Ledger class-R row + close-out | ⏳ | |
+| 2 — Prove the render and the porcelain pin (mocked e2e) | ✅ | `5f9443d` |
+| 3 — Ledger class-R row + close-out | ⏳ | `<phase-3>` — row landed; close-out finalizes pre-merge |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
