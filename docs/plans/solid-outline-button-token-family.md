@@ -197,16 +197,16 @@ N/A — no API shape changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — declare the five tokens + their `@theme inline` rows in
-`tailwind.css`, turning the three declaration guards green.
+**Next action:** Phase 2 — repaint `booking-view.ts`, `review-panel.ts` and
+`my-bookings.ts` onto the utilities, turning the last sweep test green.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the family spec, red | ✅ | `<phase-0>` |
-| 1 — declare the tokens + `@theme` rows, green | ⏳ | |
-| 2 — repaint the three components onto them | | |
+| 0 — the family spec, red | ✅ | `8023378` |
+| 1 — declare the tokens + `@theme` rows, green | ✅ | `<phase-1>` |
+| 2 — repaint the three components onto them | ⏳ | |
 | 3 — the mocked e2e (+ mutation check) | | |
 | 4 — ledger row + close-out | | |
 

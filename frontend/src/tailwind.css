@@ -65,6 +65,11 @@
   --color-riv-accent-track: var(--riv-accent-track);
   --color-riv-accent-strong: var(--riv-accent-strong);
   --color-riv-solid-btn-ink: var(--riv-solid-btn-ink);
+  --color-riv-solid-btn-fill: var(--riv-solid-btn-fill);
+  --color-riv-solid-btn-hover: var(--riv-solid-btn-hover);
+  --color-riv-solid-btn-border: var(--riv-solid-btn-border);
+  --color-riv-solid-btn-danger-ink: var(--riv-solid-btn-danger-ink);
+  --color-riv-solid-btn-danger-border: var(--riv-solid-btn-danger-border);
   --color-riv-card-track: var(--riv-card-track);
 
   --color-riv-pop-surface: var(--riv-pop-surface);
@@ -214,12 +219,27 @@
   --riv-accent-track: rgba(43, 184, 212, 0.25);
   --riv-accent-strong: #0e8aa8;
 
-  /** Ink for the solid outline buttons (booking-view / review-panel Cancel-Keep-Edit-Remove,
-      my-bookings Retry). Theme-invariant BY DESIGN, unlike --riv-accent-ink: the #f4f6f7 fill it
-      sits on does not theme either, and booking-view.contrast.spec.ts already pins the rule that
-      a themed ink over a fixed fill drifts between themes. Giving this a dark value would flip it
-      light-on-light. The fill/hover/border literals around it are #836's. */
+  /** The solid outline-button skin (booking-view / review-panel Cancel-Keep-Edit-Remove,
+      my-bookings Retry). Theme-invariant BY DESIGN, unlike --riv-accent-ink, and as a WHOLE
+      FAMILY rather than an ink alone: the fills do not theme, so nothing painted over them may
+      either. Giving any of these a dark value flips the button light-on-light — measured, over
+      the resting fill: the themed --riv-danger-ink resolves #ffa9a1 at 1.69:1 and --riv-accent-ink
+      at 1.52:1, against the 6.17:1 and 8.45:1 the fixed inks below reach. The same call, and the
+      same failure, as --riv-form-error-* below (1.54:1).
+
+      The ink landed at #835 over fills that were still literals; #851 completes the family. Order
+      matters only for reading: fill and hover are the surfaces, the two inks sit on them, and the
+      two borders are non-text chrome (WCAG 1.4.11), carried here so the skin has ONE home.
+      Proof: solid-btn-tokens.contrast.spec.ts (the four AA pairs, the themed-ink bounds, and the
+      single-declaration guard that is the only thing able to see a dark override) +
+      solid-btn-token-skin.e2e.ts (the computed skin under a forced dark document theme).
+      Rationale: docs/plans/solid-outline-button-token-family.md, issues #835 + #851. */
   --riv-solid-btn-ink: #0a4f5e;
+  --riv-solid-btn-fill: #f4f6f7;
+  --riv-solid-btn-hover: #e7ebec;
+  --riv-solid-btn-border: rgba(255, 255, 255, 0.7);
+  --riv-solid-btn-danger-ink: #a3372a;
+  --riv-solid-btn-danger-border: rgba(200, 90, 60, 0.5);
   --riv-card-track: rgba(12, 42, 51, 0.12);
 
   /** The form-error skin worn by the three tourist error banners (booking-dialog, booking-pay,
