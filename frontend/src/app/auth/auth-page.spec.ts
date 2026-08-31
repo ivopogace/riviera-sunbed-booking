@@ -96,6 +96,8 @@ describe('AuthPage', () => {
     const input = el<HTMLInputElement>(testId);
     input.value = value;
     input.dispatchEvent(new Event('input'));
+    // Signal Forms only writes the DOM on a render pass; force one so a typed value isn't lost.
+    fixture.detectChanges();
   }
 
   async function submit(): Promise<void> {
