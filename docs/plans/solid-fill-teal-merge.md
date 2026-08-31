@@ -67,45 +67,45 @@ for `feature/solid-fill-teal-merge`** (`riviera-sdlc` §Remote/cloud session add
 
 > Frontend slice, so every AC names its seam explicitly.
 
-- [ ] **AC-1:** Given the merged family, when `src/tailwind.css` is read as text, then
+- [x] **AC-1:** Given the merged family, when `src/tailwind.css` is read as text, then
       `--riv-solid-fill-brand` declares `#0a6e85` and `--riv-solid-fill-brand-hover` declares
       `#0a5e72`, each exactly once and inside the base block. *Seam:* the `--riv-solid-fill-*`
       declarations in `src/tailwind.css`, read as text · *Pinned by:*
       `solid-fill-tokens.contrast.spec.ts` › "declares the values this test mirror carries" +
       "declares each token exactly once" + "declares the family in the base block"
-- [ ] **AC-2:** Given the `-action` name is retired, when the frontend tree and the stylesheet are
+- [x] **AC-2:** Given the `-action` name is retired, when the frontend tree and the stylesheet are
       swept, then no `--riv-solid-fill-action`, `--color-riv-solid-fill-action`,
       `bg-riv-solid-fill-action` or `hover:bg-riv-solid-fill-action-hover` remains anywhere under
       `frontend/`, and the declaration comment no longer defers the question to #861. *Seam:* a
       source sweep over `src/tailwind.css` + `src/app/**` + `src/testing/**` + `e2e/**` ·
       *Pinned by:* `solid-fill-tokens.contrast.spec.ts` › "retires the -action name and the
       question it deferred"
-- [ ] **AC-3:** Given white ink is fixed on every member, when the family's ratios are computed,
+- [x] **AC-3:** Given white ink is fixed on every member, when the family's ratios are computed,
       then each clears AA (4.5:1) — the merged fill at **5.86:1**, its hover at 7.35:1, danger at
       7.84:1. *Seam:* the `SOLID_FILL_*` mirror in `src/testing/glass-tokens.ts` · *Pinned by:*
       `solid-fill-tokens.contrast.spec.ts` › "white ink clears AA on every fill in the family"
-- [ ] **AC-4:** Given the three repainted sites, when each is rendered in a real browser, then its
+- [x] **AC-4:** Given the three repainted sites, when each is rendered in a real browser, then its
       computed `background-color` is `rgb(10, 110, 133)` — the semantic chip on a discovery card,
       the layout editor's primary confirm button, and (by the same token) the console badge.
       *Seam:* the rendered box (`toHaveCSS`) · *Pinned by:* `solid-fill-token-skin.e2e.ts` › "the
       brand fill paints the semantic chip…" + "…and the shared confirm panel the brand fill";
       `discovery-flow.e2e.ts` (`SEMANTIC_FILL`); `layout-editor.e2e.ts` (confirm-yes)
-- [ ] **AC-5:** Given the four sites whose paint does **not** move, when each is rendered after the
+- [x] **AC-5:** Given the four sites whose paint does **not** move, when each is rendered after the
       rename, then its computed `background-color` is still `rgb(10, 110, 133)` — proving the
       utility rename did not silently drop a fill. *Seam:* the rendered box (`toHaveCSS`) ·
       *Pinned by:* `solid-fill-token-skin.e2e.ts` › "the console paints the brand fill, hover
       included" + "every registered token is declared and generates its utility"
-- [ ] **AC-6:** Given a forced `dark` document theme, when the semantic chip is rendered on a
+- [x] **AC-6:** Given a forced `dark` document theme, when the semantic chip is rendered on a
       surface that follows the document theme, then its fill is unchanged at `rgb(10, 110, 133)`.
       Mutation-checked: adding a dark override for the token must turn this red. *Seam:* the
       rendered box under `addInitScript` · *Pinned by:* `solid-fill-token-skin.e2e.ts` › "and does
       not move under a dark document theme"
-- [ ] **AC-7:** Given the payouts export button, when it is hovered, then its fill moves to
+- [x] **AC-7:** Given the payouts export button, when it is hovered, then its fill moves to
       `rgb(10, 94, 114)` — a step that survives the merge (1.254:1 from the resting fill) and would
       not have survived the other direction (1.016:1). *Seam:* the hovered box (`toHaveCSS` after
       `.hover()`) · *Pinned by:* `solid-fill-token-skin.e2e.ts` › "the console paints the brand
       fill, hover included"
-- [ ] **AC-8:** Given `#0a5f74` keeps six legitimate **non-fill** roles (CTA gradient stops, the
+- [x] **AC-8:** Given `#0a5f74` keeps six legitimate **non-fill** roles (CTA gradient stops, the
       editor selection ring, the amenity-chip/booking inks), when the family sweep runs, then every
       one of those files still paints it. *Seam:* the `SURVIVORS` sweep over `src/app/**` ·
       *Pinned by:* `solid-fill-tokens.contrast.spec.ts` › "leaves the non-fill roles of the same
@@ -229,11 +229,25 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, re-verifying; sonar gate next`
+**Stage pointer:** `all gates green — awaiting the maintainer's merge`
 
-**Next action:** Confirm CI green on the fix commit, then pull the SonarCloud issue + duplication
-list for PR #862 on the final head (per `references/pr-gates.md` §2 — a green gate is not the
-check, and confirm the analysis actually ran rather than reading a false-clean zero).
+**Next action:** Merge PR #862 (the maintainer's call — not taken autonomously), then the close-out
+checklist. Nothing is outstanding on the branch.
+
+**Gate record (`references/pr-gates.md`):**
+
+- **CI** — green on `7616401`, all eight checks: Backend, Frontend (lint + test + build, which runs
+  the whole mocked e2e suite), Repo hygiene, both CodeQL analyses, both Sonar jobs. The one local
+  full-suite failure (`customer-password.e2e.ts`, phase 2 step 3) did **not** recur in CI on either
+  head — confirming it as the ordering flake it looked like, not something this slice caused.
+- **Review** — ran in full via the §1 ladder, rung 1: `/code-review`'s five-agent fan-out over
+  `origin/main...HEAD` with `riviera-review-overlay` layered on. Six findings (F-1…F-6), all fixed
+  in `33f4a0a` and re-verified; the record is posted on the PR.
+- **Sonar** — the *list*, not the conclusion, per §2's "green is necessary, NOT sufficient":
+  `api/issues/search` **total 0**, `api/hotspots/search` **0**, `new_duplicated_blocks` **0**,
+  `new_duplicated_lines_density` **0.0%**, `new_coverage` **100%** (bar: ≥80%). False-clean check
+  cleared: `new_lines` = **26**, so an analysis genuinely ran, and the `SonarCloud Code Analysis`
+  check-run concluded `success` on this head.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -242,6 +256,7 @@ check, and confirm the analysis actually ran rather than reading a false-clean z
 | 2 — The computed-style proofs + the mutation check | ✅ | `a233a08` |
 | 3 — Docs, ledger row and close-out | ✅ | `31da33b` |
 | Review-gate fixes (F-1…F-6) | ✅ | `33f4a0a` |
+| Close-out (gates recorded) | ✅ | `ff03cd4` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -463,8 +478,8 @@ three contrast specs · Modify `frontend/src/testing/chip-fills.ts`
 
 - [x] **Step 6: Commit** — `git commit -m "Record the teal merge in the ledger and the sibling plan docs (#861)"`
 
-- [ ] **Step 7: Finalize the execution status** in the PR's own last commit, citing
-      `merged via PR #NN`.
+- [x] **Step 7: Finalize the execution status** in the PR's own last commit, citing
+      **merged via PR #862**.
 
 ---
 
@@ -515,6 +530,6 @@ All eight verified at `a233a08`; the unit runs at `c564c46`, the e2e runs at `a2
       no component logic touched.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `references/pr-gates.md` §1 ladder *plus*
-      `riviera-review-overlay`.
+- [x] **Close-out written in THIS PR**, citing **merged via PR #862** — no docs-only follow-up needed.
+- [x] **The review gate ran in full** — the `references/pr-gates.md` §1 ladder (rung 1) *plus*
+      `riviera-review-overlay`; six findings fixed and re-verified.
