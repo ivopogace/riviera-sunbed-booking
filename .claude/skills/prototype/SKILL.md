@@ -19,9 +19,10 @@ description: Build a throwaway prototype to answer a design question. Use when t
 >   spine invariant — a float euro amount (#5), a check-then-insert availability claim
 >   (#2), a client-confirmed payment (#8). Prototyping the wrong shape convincingly is
 >   the failure mode; the throwaway code is not.
-> - **Capture** (rule 6): push the spike branch, leave a context pointer on the decision
->   ticket, and record the verdict + the question it settled there. `wayfinder` links it
->   as the ticket's asset.
+> - **Capture** (rule 6): push the spike branch and record the verdict + the question it
+>   settled — on the `wayfinder` decision ticket when one exists (it links the branch as
+>   the ticket's asset), otherwise in the asking plan doc's Open Questions register. A
+>   spike fired from a slice plan needs no map (`riviera-sdlc`'s Plan row routes it).
 
 A prototype is **throwaway code that answers a question**. The question decides the shape.
 

@@ -10,6 +10,10 @@ description: Investigate a question against high-trust primary sources and captu
 >   `research/<slug>` branch, otherwise the feature branch. It is a **primary source, not
 >   a decision**: when the decision lands, the durable form is an ADR (`docs/adr/`, if
 >   hard-to-reverse) or the plan doc, and the note stays as the citation behind it.
+> - **Routed from two places** (`riviera-sdlc`): a `wayfinder` research ticket
+>   (cross-session decision), or a slice plan's Open Questions register when the slice
+>   can answer the question itself — the latter needs no map; close the register entry
+>   with the note as its citation.
 > - **Subagents are expected here.** This skill *is* the delegated-reading path — its
 >   background agent is the point, and `wayfinder` fires several in parallel while
 >   charting. A session-level "don't spawn subagents" instruction is a reason to ask,

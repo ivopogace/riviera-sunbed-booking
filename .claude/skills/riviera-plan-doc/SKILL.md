@@ -68,6 +68,11 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    seam for the AC you are about to pin; don't halt over the rest.
 2. **Risk register + Open Questions before phase 0:** fill both sections per the
    template — its blockquote carries the risk categories that already matter here.
+   An open question the slice itself can answer may be discharged directly — `research`
+   for docs/API legwork, `prototype` for a shape that has to be felt (spike rules in its
+   localization) — closing the register entry with the note or verdict as its citation.
+   One the slice cannot answer is fog: escalate per `riviera-sdlc`'s issue-intake-gate,
+   never park it in the register.
 3. **Availability & concurrency:** if the feature touches booking, the beach map,
    or `availability`, fill the section per the template, stating how invariant #2
    (no double-sold set) is upheld — the highest-leverage section in the plan.
