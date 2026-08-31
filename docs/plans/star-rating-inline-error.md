@@ -159,11 +159,21 @@ has nothing to migrate.
 
 ## Execution status
 
-**Stage pointer:** `implement complete — the review gate and Sonar gate have not run in
-this session (no PR was opened; see below)`.
+**Stage pointer:** `review gate run and its one finding fixed — Sonar gate pending on
+the PR's own analysis; merge next once both are clear`.
 
-**Next action:** none for this session. If a PR is opened for this branch, run the
-Review and Sonar gates per `riviera-sdlc` `references/pr-gates.md` before merge.
+**Next action:** pull the SonarCloud issue+duplication list for PR #841 from the API,
+confirm CI is green, then merge.
+
+**PR:** [#841](https://github.com/ivopogace/riviera-sunbed-booking/pull/841), opened
+against `main`.
+
+**Review gate — ran in full.** Invoked via `Skill("code-review:code-review")` (rung 1 of
+the invocation ladder succeeded), with `riviera-review-overlay` (`references/frontend-conventions.md`,
+loaded for this frontend-only diff) walked on top. Five parallel review agents: CLAUDE.md/RV-FE-*
+compliance, a bug scan, git-history/precedent, prior-PR (#823/#816) carried-over concerns, and
+in-file code-comment consistency. Four reported no issues; the fifth found F-1 (below), fixed in
+commit `0844f62`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -185,6 +195,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review gate (`/code-review` PR #841, code-comment-consistency agent) | `booking-view.ts`'s `reviewRejection` doc comment ("the panel's own refusal, or what the server said") went stale: this PR removes the only code path that ever set it from the panel's own refusal (`ReviewPanel.blocked` → `blockReview()`), leaving only the HTTP-error-handler write. Verified independently by grepping every write site. | **fixed** — reworded to "What the server refused a review write for — a missing rating shows its own inline error instead." Comment-only; no behavior change. Re-verified: `booking-view.spec.ts` 78 passed, lint/format/inline-comment guard clean. Commit `0844f62` |
 
 ---
 
@@ -304,11 +315,8 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows (R-3 is open but not stale — it's a stated,
   reasoned residual, not a forgotten item); Open Questions empty.
-- [x] **Close-out written in this session's own commits** — no PR exists for this branch
-  (by this session's operating instructions, not by omission), so there is nothing to cite
-  as "merged via PR #NN"; the branch `claude/sdlc-825-25yipe` carries all phases green.
-- [ ] **The review gate ran in full.** **Not run in this session** — no PR was opened
-  (see Execution status), so the `/code-review` invocation ladder was never reached. This
-  box is deliberately left unticked rather than substituted with a self-review.
+- [ ] **Close-out written in this PR** — pending: cite `merged via PR #841` once merged.
+- [x] **The review gate ran in full** — `Skill("code-review:code-review")` (rung 1) plus
+  `riviera-review-overlay`, five-agent fan-out. One finding (F-1), fixed and re-verified.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
