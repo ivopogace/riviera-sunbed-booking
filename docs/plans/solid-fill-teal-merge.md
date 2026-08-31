@@ -256,7 +256,7 @@ checklist. Nothing is outstanding on the branch.
 | 2 — The computed-style proofs + the mutation check | ✅ | `a233a08` |
 | 3 — Docs, ledger row and close-out | ✅ | `31da33b` |
 | Review-gate fixes (F-1…F-6) | ✅ | `33f4a0a` |
-| Close-out (gates recorded) | ✅ | `ff03cd4` |
+| Close-out (gates recorded) | ✅ | `40f1d25` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
