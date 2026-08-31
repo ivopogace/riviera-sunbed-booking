@@ -54,7 +54,7 @@ the wrapper cannot self-provision there and the full test task can OOM the sandb
 npm ci
 npm start                # dev server on :4200
 npm run lint             # ESLint (type-aware presets)
-npm run format:check     # Prettier over frontend/src + frontend/e2e (`npm run format` to apply)
+npm run format:check     # Prettier over frontend/src + frontend/e2e + vitest-base.config.ts (`npm run format` to apply)
 npm test                 # Vitest unit tests, runs once in jsdom
 npm run test:a11y        # axe + contrast unit specs only
 npm run test:e2e         # Playwright — local-only REAL-backend suite (frontend/e2e/real-backend/)
@@ -63,12 +63,13 @@ npm run build
 ```
 
 **CI/CD** (`.github/workflows/`): `ci.yml` runs the backend build/test, the
-frontend lint/format/test/build + mocked e2e, five hygiene checks under
+frontend lint/format/test/build + mocked e2e, five of the six hygiene checks under
 `scripts/check-*.mjs` (four diff-scoped — inline comments, plan-doc file
 structure, focus posture, touch-target declaration, most with a local
 `PostToolUse` half; the plan-doc one also judges untracked paths, #654 — plus
 the standing-tree cloud Node pin, whose mirror is
-`docs/agents/cloud-environment.md`), and a SonarCloud scan per PR. The Sonar merge bar is
+`docs/agents/cloud-environment.md`; the sixth script, `check-comment-only.mjs`,
+is a by-hand verifier, not a CI gate), and a SonarCloud scan per PR. The Sonar merge bar is
 stricter than the default gate: **0 new issues, 0 duplicated blocks, ≥80%
 new-code coverage** — review the issue list, not just the pass/fail
 (`riviera-sdlc` enforces this). `codeql.yml` scans; `deploy.yml` deploys the
