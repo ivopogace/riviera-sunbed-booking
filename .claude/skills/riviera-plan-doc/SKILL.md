@@ -10,7 +10,8 @@ description: Use at the plan stage of riviera-sdlc, or whenever writing or execu
 A project-local **plan-doc discipline** layered on the active planning/execution
 engine (`riviera-sdlc` driving `implement` + `tdd`). It does not replace the
 engine; it adds the plan-doc structure this marketplace needs, with
-`references/plan-doc-template.md` as the **single home of section guidance**.
+`references/plan-doc-template.md` as the **single home of section guidance**. It is
+**preventive** — built from the risks the design surfaced, not from post-mortems.
 
 Load at the **plan stage** when starting a riviera feature, and again when picking
 up a riviera plan to **execute** in a fresh session.

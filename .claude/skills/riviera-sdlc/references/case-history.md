@@ -90,7 +90,9 @@ existed yet, which is byte-for-byte identical to a genuinely clean PR. The real 
 could have pinned the stale "clean" answer across the whole gate. Lesson: never accept a
 zero issue count without the tells in `pr-gates.md` §2 step 2 — a **non-empty** `measures`
 array, a `success` conclusion on the `SonarCloud Code Analysis` check-run, and a
-cache-bust on every re-read.
+cache-bust on every re-read. (The trap once had a second origin — a duplicate
+push-triggered Sonar run whose skipped check-run could land last and mask the real one —
+removed by #418; the `needs:` cause remains.)
 
 ## #326→PR #347, #346→PR #352, #351→PR #354 — three docs-only close-out PRs
 

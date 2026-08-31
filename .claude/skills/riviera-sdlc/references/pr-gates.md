@@ -171,6 +171,8 @@ Missing any one means the slice is still in flight — say so rather than report
    > workflow's own `SonarCloud scan` job is **not** the gate: it `needs:
    > [backend, frontend]`, so a red build skips it, no analysis is uploaded, and the app
    > check never appears at all — a `skipped` there means *unanalyzed*, not *clean*.
+   > (#418 removed the trap's second origin, a duplicate push-triggered run; the `needs:`
+   > cause remains.)
    > Compounding it: `WebFetch` caches responses for **15 minutes** — cache-bust on every
    > re-read, or one early read persists as a stale "clean" answer across the whole gate.
    > (Case history: PR #318.)
