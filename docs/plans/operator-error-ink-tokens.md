@@ -84,13 +84,13 @@ ledger, published in dependency order with #836 as native parent)
       value while the components paint the new one (#835's R-5, made structural).
       *Seam:* `src/testing/glass-tokens.ts`'s export surface.
       *Pinned by:* the phase-1 verification grep, recorded in *Acceptance-criteria verification*.
-- [ ] **AC-3:** Given a running app, when each migrated operator surface is rendered, then its
+- [x] **AC-3:** Given a running app, when each migrated operator surface is rendered, then its
       computed `color` equals `rgb(163, 22, 14)` — the error mode this catches is a class whose
       utility was never generated, which leaves the markup intact and the paint unchanged, and
       which no unit spec can see.
       *Seam:* the rendered operator console at `/operator/:venueId/**` (mocked e2e).
       *Pinned by:* `operator-error-ink.e2e.ts` › `the operator console error ink resolves to the registered token value`
-- [ ] **AC-4:** Given the document theme forced to `dark`, when an operator error surface is
+- [x] **AC-4:** Given the document theme forced to `dark`, when an operator error surface is
       rendered, then its ink **still** resolves `rgb(163, 22, 14)` — the whole safety argument for
       putting a *themed* token on these 32 sites is that their console pins porcelain, and AC-1
       proves porcelain only. Both console hosts are driven (`operator-home` and `operator-console`
@@ -98,7 +98,9 @@ ledger, published in dependency order with #836 as native parent)
       other — #835 closed this too early and had to reopen it as F-4).
       *Seam:* the same rendered console, with `localStorage` seeded to the `dark` theme.
       *Pinned by:* `operator-error-ink.e2e.ts` › `the console keeps its porcelain error ink under a dark document theme`,
-      › `the operator home keeps its porcelain error ink under a dark document theme`
+      › `the operator home keeps its porcelain error ink under a dark document theme`.
+      **Mutation-checked:** flipping the expected value to the dark token's `rgb(255, 169, 161)`
+      fails both — so the assertion discriminates rather than passing vacuously.
 - [ ] **AC-5:** Given `main` at merge time, when
       `grep -rn 'text-\[#a3160e\]' frontend/src/app/operator` is run, then it returns nothing.
       The `bg-[#a3160e]`, `/opacity` and `booking/` forms are deliberately still present — they
@@ -148,10 +150,10 @@ ledger, published in dependency order with #836 as native parent)
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A migrated operator component is rendered **outside** a porcelain-pinned host, so the themed token resolves `#ffa9a1` and the error ink flips light-on-white | low | high | All nine files verified inside the pin (`operator-console.ts:72`, `operator-home.ts:41`, plus `app.ts:50`'s operator-chrome pin); AC-4 drives **both** host bindings against a forced `dark` document theme, because they pin porcelain separately | claude | open |
+| R-1 | A migrated operator component is rendered **outside** a porcelain-pinned host, so the themed token resolves `#ffa9a1` and the error ink flips light-on-white | low | high | All nine files verified inside the pin (`operator-console.ts:72`, `operator-home.ts:41`, plus `app.ts:50`'s operator-chrome pin); AC-4 drives **both** host bindings against a forced `dark` document theme, because they pin porcelain separately — and the assertion is mutation-checked against the dark token's value, so it cannot pass vacuously | claude | closed |
 | R-2 | A site is migrated that is actually one of the three excluded sub-populations, silently changing dark-theme paint or a computed value | med | high | The migration is scoped by **form**, not by value: only plain `text-[#a3160e]` under `operator/`, matched with a negative lookahead on `/` so an `/opacity` form cannot be swept in by substring. AC-5's grep is the same form; the excluded forms' baseline counts are re-asserted after the sweep | claude | closed |
 | R-3 | The eight operator contrast specs keep restating `#a3160e` and drift from the token later | med | med | Phase 1 repoints them at `glass-tokens.ts` **before** any component moves (#835's R-5, which this slice inherits as a known pattern rather than rediscovering) | claude | closed |
-| R-4 | `text-riv-error-ink` generates no utility, so the class changes and the paint does not | low | high | The utility is already live (`--color-riv-error-ink` is mapped at `tailwind.css:53` and consumed today by `admin/`, `auth/`, `shared/`), but AC-3's `toHaveCSS` in a real render is the detector regardless; unit specs cannot see it | claude | open |
+| R-4 | `text-riv-error-ink` generates no utility, so the class changes and the paint does not | low | high | The utility is already live (`--color-riv-error-ink` is mapped at `tailwind.css:53` and consumed today by `admin/`, `auth/`, `shared/`), but AC-3's first test asserts the emitted rule set contains `.text-riv-error-ink` **and** `toHaveCSS` resolves it in a real render; unit specs cannot see either | claude | closed |
 | R-5 | The audit doc lands in `docs/design/`, whose README states its files are records that are **never** maintained — a reader following the README would apply the `as-built diverges` pointer convention to a ledger that must instead be brought up to date | med | med | The README gains an explicit exception section naming this file and its opposite contract; the ledger's own header states it too, from the other side | claude | open |
 | R-6 | The ledger's issue numbers go stale as families are cut, leaving a decision record that points at the wrong tickets | med | low | Every child issue's ACs include "update the ledger's row to `done` with this PR, **in this PR**" — the same close-out rule the plan-doc template applies to itself | claude | open |
 
@@ -229,19 +231,19 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)` — ledger + issues shipped, draft PR #856 open and watched,
-specs repointed at the mirror, all 32 positions migrated.
+**Stage pointer:** `implement (phase 4)` — all five ACs that have tests are green; the slice is
+built.
 
-**Next action:** write `frontend/e2e/operator-error-ink.e2e.ts` — the computed-value guard (AC-3)
-and the forced-dark subtree proof against **both** porcelain host bindings (AC-4).
+**Next action:** run the full frontend gate (lint, format, unit, mocked e2e), mark PR #856 ready
+for review, then run the Review and Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Audit ledger + child issues + plan doc | ✅ | `4029d04` |
 | 1 — Repoint the operator contrast specs at `glass-tokens.ts` | ✅ | (this commit) |
 | 2 — Migrate the 32 sites to `text-riv-error-ink` | ✅ | (this commit) |
-| 3 — Mocked e2e: computed value, light and forced-dark | ⏳ | |
-| 4 — Verification + close-out | | |
+| 3 — Mocked e2e: computed value, light and forced-dark | ✅ | (this commit) |
+| 4 — Verification + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -322,13 +324,20 @@ Create `docs/plans/operator-error-ink-tokens.md`
 
 **Files:** Create `frontend/e2e/operator-error-ink.e2e.ts`
 
-- [ ] **Step 1:** Assert the computed `color` is `rgb(163, 22, 14)` on a rendered operator error
-      surface (AC-3).
-- [ ] **Step 2:** Seed `localStorage` to the `dark` theme and assert the ink holds — for **both**
-      the console and the operator-home host bindings (AC-4).
-- [ ] **Step 3: Run it** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- operator-error-ink`
-- [ ] **Step 4: Commit** — `git commit -m "Pin the operator error ink against a real render (#855)"`
-- [ ] **Step 5: Update plan-doc execution status** in the same commit window.
+- [x] **Step 1:** Assert the token is declared **and its utility was generated** (the R-4 detector,
+      read off the emitted rules because `@theme inline` writes no `:root` alias), then that the
+      computed `color` is `rgb(163, 22, 14)` on the rendered venue load error (AC-3).
+- [x] **Step 2:** Seed `localStorage` to the `dark` theme and assert the ink holds — for **both**
+      host bindings: the console (`venue-load-error`) and operator home (`venue-create-error`) (AC-4).
+- [x] **Step 3: Run it** —
+      `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts operator-error-ink`
+      → 4 passed. Two driving bugs found and fixed on the way: the venue tab loads
+      `/api/venues/{id}/profile`, not `/api/venues/{id}`, and the create form's submit stays
+      disabled until region and description are filled too.
+- [x] **Step 4: Mutation-check** — expected value flipped to the dark token's `rgb(255, 169, 161)`;
+      both dark-theme tests fail, confirming they discriminate. Reverted.
+- [x] **Step 5: Commit** — `Pin the operator error ink against a real render (#855)`
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ## Phase 4 — Verification and close-out
 
@@ -357,7 +366,8 @@ Create `docs/plans/operator-error-ink-tokens.md`
 - [x] **AC-1 / AC-2:** `npx ng test --watch=false --include="src/app/operator/*.contrast.spec.ts"`
       → 10 files, 70 tests, PASS. `grep -rn "'#a3160e'" frontend/src/app/operator/*.contrast.spec.ts`
       → no results. Verified at phase 1.
-- [ ] **AC-3 / AC-4:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- operator-error-ink` → PASS.
+- [x] **AC-3 / AC-4:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts operator-error-ink`
+      → 4 passed, and mutation-checked. Verified at phase 3.
 - [x] **AC-5:** `grep -rn 'text-\[#a3160e\]' frontend/src/app/operator` → no results. The excluded
       forms still return their baseline counts (2 `bg-` plain, 7 `/opacity`, 3 `booking/` `text-`),
       which is the half of AC-5 that proves the sweep did not overreach. Verified at phase 2.
