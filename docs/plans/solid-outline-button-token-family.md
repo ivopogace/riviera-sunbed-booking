@@ -7,8 +7,8 @@
 **Goal:** Move the solid outline-button skin's five remaining colour positions — resting
 fill, hover fill, neutral border, danger border, danger ink — onto `--riv-solid-btn-*`
 tokens declared **once** in `tailwind.css`'s base block with no dark override, completing
-the family `--riv-solid-btn-ink` opened at #835, without touching the six out-of-family
-`#a3372a` sites.
+the family `--riv-solid-btn-ink` opened at #835, without touching the out-of-family
+`#a3372a` sites (seven positions across five files).
 
 **Architecture:** The single significant decision is **theme-invariance as a family, not a
 pair** — `riviera-tailwind` §Styling-across-the-themes tier 1's narrow exception, and the
@@ -39,7 +39,10 @@ and not another jsdom spec) · `riviera-frontend` (placement: the family spec is
 suite, and `src/testing/glass-tokens.ts` is the shared mirror) · `playwright-cli` (e2e
 authoring — `toHaveCSS` on the computed box, `addInitScript` for the forced dark theme) ·
 `riviera-local-debug` (scoped `npm test`/`test:e2e:a11y` runs, and the
-`PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` cloud recipe).
+`PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` cloud recipe) · `angular-developer`
+(**N/A — no component logic changed**: the diff is class strings and CSS custom properties, so
+no signals/DI/control-flow API is in play. Named rather than omitted, per the RV-PROC-1 gap
+#856's review flagged and #857 corrected the same way).
 
 **Branch:** `claude/sdlc-851-g494xa` — **the cloud session's designated remote branch
 stands in for `feature/solid-outline-button-token-family`** (`riviera-sdlc` §Remote/cloud
@@ -75,7 +78,7 @@ session addendum). The literal `feature/*` branch is deliberately not created.
       file still paints one. *Seam:* `readdirSync(src/app, {recursive:true})` over
       `.ts`/`.html` · *Pinned by:* `solid-btn-tokens.contrast.spec.ts` › "leaves no
       component painting the family as a literal".
-- [x] **AC-5:** Given the six out-of-family `#a3372a` sites, when the same sweep runs, then
+- [x] **AC-5:** Given the seven out-of-family `#a3372a` positions across five files, when the same sweep runs, then
       each is **still present** — the half that proves the sweep did not overreach.
       *Seam:* the same tree read, asserted positively by path ·
       *Pinned by:* `solid-btn-tokens.contrast.spec.ts` › "leaves the out-of-family
@@ -98,7 +101,7 @@ session addendum). The literal `feature/*` branch is deliberately not created.
 
 ## Non-goals
 
-- **The six out-of-family `#a3372a` sites.** `shared/failure-panel.ts`,
+- **The out-of-family `#a3372a` positions — seven of them, across five files.** `shared/failure-panel.ts`,
   `operator/payouts-tab.ts:135`, `operator/daily-view-tab.html:352`,
   `booking/booking-pay.ts:210`, and `operator/payouts-tab.html:236` (an `/opacity` form —
   **#852's**, and tokenising it would change the computed value). AC-5 enforces this.
@@ -134,7 +137,7 @@ session addendum). The literal `feature/*` branch is deliberately not created.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | **The issue's "correction #2" is itself wrong** — it states `rgba(255,255,255,0.7)` "appears exactly once, inlined on `my-bookings.ts:205`" and asks which border `my-bookings` should carry. A grep shows it on **all three** outline buttons (`booking-view.ts:101`, `review-panel.ts:49`, `my-bookings.ts:205`): it sits on the `btnOutline` **variant**, not in the shared `BTN_OUTLINE` base, which is why reading the base alone missed it. Planning to the issue's text would have left a family-wide border untokenised and invented a fake divergence to "reconcile" | — | med | Treat the border as family-wide (`--riv-solid-btn-border`); AC-4 sweeps all three roles. The audit ledger's own F-2 row already lists this border as a family member with n=9 (3 fill + 3 hover + 3 border), so the ledger and the code agree and only the issue body drifted | agent | **resolved at plan time** — recorded here, in the PR, and as a comment on #851 |
-| R-2 | A value-blind sweep of `#a3372a` hits 6 out-of-family sites (the over-claim the issue itself flags) | med | high | Match **by role**, never by bare value — the `LITERAL_ROLES` pattern #850 established (`text-\[#a3372a\]`, not `#a3372a`); AC-5 asserts the six survivors positively | agent | open → closed by AC-5 |
+| R-2 | A value-blind sweep of `#a3372a` hits the out-of-family sites (the over-claim the issue itself flags) | med | high | Match **by role**, never by bare value — the `LITERAL_ROLES` pattern #850 established (`text-\[#a3372a\]`, not `#a3372a`); AC-5 asserts the five surviving files positively | agent | open → closed by AC-5 |
 | R-3 | A token declared without its `@theme inline` row generates **no utility**: the class stays in the markup, the paint silently reverts to unstyled, and every jsdom spec still passes | med | high | AC-7 walks `document.styleSheets` in a real browser for each utility selector — #850's first e2e test, kept for the same reason | agent | **closed** — and demonstrated: phase 3's mutation 2 deleted exactly that row and the e2e went red |
 | R-4 | A later slice adds a `dark` override "for consistency", silently flipping these buttons light-on-light | med | high | AC-1's single-declaration + base-block guards fail on the added declaration; AC-3 keeps the measured counter-evidence in the tree; the reason is written at the declaration itself | agent | open → closed by AC-1/AC-3 |
 | R-5 | The e2e passes vacuously (selector never matches, or asserts a value that was already the default) | med | med | Mutation-check before commit | agent | **closed** — phase 3 step 3: both mutations turned all 3 tests red, restore returned green |
@@ -174,7 +177,7 @@ N/A — no backend behavior added or moved.
 
 ## Payment & payout (invariants #5, #8, #9, #10)
 
-N/A — no money moves. `booking-pay.ts:210` is one of the six sites this slice must **not**
+N/A — no money moves. `booking-pay.ts:210` is one of the sites this slice must **not**
 touch (Non-goals), which is the only way payment code appears in this slice at all.
 
 ## Angular — frontend surfaces touched
@@ -217,6 +220,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review gate (history reviewer) **and** `riviera-docs-freshness` pre-merge smoke, found independently | `.claude/skills/riviera-tailwind/SKILL.md:176` still described `--riv-solid-btn-ink` as sitting on "the fixed `#f4f6f7` outline-button fill" — a present-tense fact this slice falsifies, the fill now being a token. Both #835 and #850 extended that same paragraph in their own commit; this slice had not | **fixed** — reworded, and the paragraph now records #851 completing the family |
+| F-2 | `riviera-docs-freshness` counting sweep | `docs/design/colour-literal-token-audit.md:22` said "the two slices already cut" — five are now cut, and the sentence's argument never needed the count | **fixed** — count dropped |
+| F-3 | `riviera-docs-freshness` rename grep | The audit ledger's prior-slices index listed #829/#835/#855/#850 but not #851 | **fixed** — index extended |
+| F-4 | review gate (prior-PR reviewer) | The two new border tokens were waved off as "non-text chrome, so no contrast assertion" — a **category-level exemption without a measurement**, which is exactly what PR #838's own review found to be a real WCAG 1.4.11 regression, and which #840 raised again | **fixed** — measured instead of assumed: 1.06:1 (neutral) and 1.90:1 (danger) over the fill, recorded at both declarations. Neither clears 3:1, but the fill itself is 1.02:1 against the card glass, so the boundary is the glass aesthetic's open question, already tracked at **#834** — not this slice's to change. Values carried across unchanged, per the parity ledger |
+| F-5 | review gate (prior-PR reviewer, RV-PROC-1) | *Skills consulted* omitted `angular-developer` entirely — not even as N/A. The same gap #856's review flagged, and which #857 corrected by naming it N/A with its reason | **fixed** — named, N/A with the reason |
+| F-6 | review gate (comment reviewer) | The plan said "the **six** out-of-family `#a3372a` sites" in seven places — inherited from the issue body, and contradicted by this plan's own generalization-audit log, which correctly counted **seven positions across five files** | **fixed** — all seven occurrences corrected; the spec's `OUT_OF_FAMILY` array was already right (it asserts presence per file, never a count), so no test changed |
 
 ---
 
@@ -231,7 +240,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/booking/my-bookings.ts` — `rowRetry` onto the same tokens
 - `frontend/src/app/booking/booking-view.contrast.spec.ts|my-bookings.contrast.spec.ts|review-panel.contrast.spec.ts` — the three sibling specs stop hand-copying `'#a3372a'` and take `SOLID_BTN_DANGER_INK` from the mirror; titles/docblocks stop naming the fill by literal
 - `frontend/e2e/solid-btn-token-skin.e2e.ts` — the computed-style proof under a forced dark theme
-- `docs/design/colour-literal-token-audit.md` — F-2 row → done
+- `docs/design/colour-literal-token-audit.md` — F-2 row → done; the prior-slices index gains #851, and "the two slices already cut" loses a count the staleness sweep falsified
+- `.claude/skills/riviera-tailwind/SKILL.md` — the tier-1 worked example stops calling the fill a literal, and records #851 completing the family (the same paragraph #835 and #850 each extended)
 
 ---
 
@@ -243,8 +253,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
       `--riv-solid-btn-ink` comment block rather than opening a new one.
 - [x] **Step 2:** Write the spec, modelled on `form-error-tokens.contrast.spec.ts`: the AA
       pairs (AC-2), the themed-ink bounds (AC-3), single-declaration + base-block (AC-1),
-      and the **two-sided** sweep — no in-family literal left (AC-4) **and** the six
-      out-of-family sites still present (AC-5).
+      and the **two-sided** sweep — no in-family literal left (AC-4) **and** the five
+      out-of-family files still present (AC-5).
 - [x] **Step 3: Run it, verify it fails** — `npm test -- solid-btn-tokens` → FAIL: the
       tokens are not declared yet (`declarationsOf(...)` returns `[]`).
 - [x] **Step 4: Commit** — `git commit -m "Pin the solid outline-button family's contrast and invariance (#851)"`

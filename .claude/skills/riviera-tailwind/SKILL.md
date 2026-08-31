@@ -173,14 +173,17 @@ Vary by theme in this order of preference:
    **unless the value deliberately does not switch** (where tokens are declared per theme
    is `riviera-frontend`'s theming section). The exception is narrow but real, and #835
    shipped both halves of it: a token painted over a surface that itself does not theme
-   (`--riv-solid-btn-ink` on the fixed `#f4f6f7` outline-button fill) would drift
+   (`--riv-solid-btn-ink` on the outline-button fill, fixed at `#f4f6f7`) would drift
    light-on-light if it switched, and a tint family that painted one literal in every theme
    before it was tokenised (`--riv-accent-*`) gains a silent restyle the day someone adds a
    dark override. Both are declared once, in the base block, with the reason at the
    declaration — a theme-invariant token is a decision to write down, never an omission. #850
    is the first half again, and the worked example to copy: the form-error banners' fill and ink
    move as a **pair** (`--riv-form-error-fill`/`-ink`), because it is the fill's own fixedness that
-   forbids the ink from theming — the themed `--riv-error-ink` over it measures 1.54:1. This is
+   forbids the ink from theming — the themed `--riv-error-ink` over it measures 1.54:1. #851 then
+   completed the FIRST family the same way: once a skin's fill is fixed, its border and its danger
+   ink are pinned to it too, so `--riv-solid-btn-*` is declared as a whole (the themed
+   `--riv-danger-ink` over that fill measures 1.69:1) — the unit is the skin, not the pair. This is
    Tailwind's own documented multi-theme pattern (docs: Colors § "Referencing other
    variables" — plain vars per `:root`/attribute scope, mapped via `@theme inline`;
    `inline` is what keeps the utility emitting `var(--riv-*)` so per-scope overrides and

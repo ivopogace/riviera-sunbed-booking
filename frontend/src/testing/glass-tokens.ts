@@ -91,8 +91,13 @@ export const SOLID_BTN_INK: Rgb = hexToRgb('0a4f5e');
 export const SOLID_BTN_FILL: Rgb = hexToRgb('f4f6f7');
 export const SOLID_BTN_HOVER: Rgb = hexToRgb('e7ebec');
 export const SOLID_BTN_DANGER_INK: Rgb = hexToRgb('a3372a');
-/** The two outline borders. Non-text chrome (WCAG 1.4.11), so they carry no contrast assertion —
- *  they are mirrored for the declaration guard and the e2e's computed-style read. */
+/** The two outline borders — non-text chrome (WCAG 1.4.11), and MEASURED rather than waved off:
+ *  composited over the fill they reach 1.06:1 (neutral) and 1.90:1 (danger), so neither is the
+ *  affordance boundary and neither clears 3:1. Unchanged values, carried across by #851 as-is; the
+ *  fill's own 1.02:1 against the card glass says this is the glass aesthetic's boundary question,
+ *  not this skin's — the same finding `--riv-accent-*` records at ~1.5:1, tracked at #834. Raising
+ *  it needs a darker hue, not more alpha. Mirrored here for the declaration guard and the e2e's
+ *  computed-style read. */
 export const SOLID_BTN_BORDER: Glass = { color: WHITE, alpha: 0.7 };
 export const SOLID_BTN_DANGER_BORDER: Glass = { color: hexToRgb('c85a3c'), alpha: 0.5 };
 

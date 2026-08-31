@@ -229,7 +229,11 @@
 
       The ink landed at #835 over fills that were still literals; #851 completes the family. Order
       matters only for reading: fill and hover are the surfaces, the two inks sit on them, and the
-      two borders are non-text chrome (WCAG 1.4.11), carried here so the skin has ONE home.
+      two borders are non-text chrome (WCAG 1.4.11), carried here so the skin has ONE home. Those
+      borders are measured, not assumed exempt: 1.06:1 (neutral) and 1.90:1 (danger) over the fill,
+      neither clearing 3:1 — but the fill itself is only 1.02:1 against the card glass, so the
+      boundary question is the glass aesthetic's, not this skin's. Same finding as --riv-accent-*
+      above (~1.5:1), same tracking issue (#834); #851 carries the values across unchanged.
       Proof: solid-btn-tokens.contrast.spec.ts (the four AA pairs, the themed-ink bounds, and the
       single-declaration guard that is the only thing able to see a dark override) +
       solid-btn-token-skin.e2e.ts (the computed skin under a forced dark document theme).

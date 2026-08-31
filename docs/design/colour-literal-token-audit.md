@@ -5,7 +5,8 @@
 the generalization-audit residue from #829 (PR #833). Prior slices that cut families out
 of this population: **#829** (the negative/red admin family, PR #833), **#835** (the accent
 teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR #856),
-**#850** (the tourist form-error skin's theme-invariant pair, PR #857).
+**#850** (the tourist form-error skin's theme-invariant pair, PR #857), **#851** (the solid
+outline-button skin's theme-invariant family, PR #859).
 
 > **This file is not a design record.** `docs/design/README.md` governs the `.dc.html`
 > artboards — approved-look snapshots that are deliberately *never* rewritten to track the
@@ -18,7 +19,7 @@ teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR
 `riviera-tailwind` is explicit that components consume `--riv-*` tokens and never palette
 literals, and that a colour position uses the **named** utility once the token is registered.
 287 positions predate or sidestep that. But "migrate all 287" is the wrong instruction, and
-the two slices already cut prove why: #835's central finding was that one literal (`#0a4f5e`)
+the slices already cut prove why: #835's central finding was that one literal (`#0a4f5e`)
 was **not one role** — it split three ways by *what it is painted on*, and each part wanted a
 different answer. A find-and-replace would have flipped an ink light-on-light in dark mode.
 
