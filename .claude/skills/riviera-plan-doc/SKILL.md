@@ -13,10 +13,9 @@ engine — here `riviera-sdlc` driving Pocock's `implement` + `tdd` (superpowers
 engine; it adds the plan-doc structure this marketplace needs, with
 `references/plan-doc-template.md` as the **single home of section guidance**.
 
-Riviera is greenfield — no backlog of post-mortems — so this skill is
-**preventive**, built from the risks the design surfaced; the invariants at stake
-(#1 JDBC-only, #2 availability, #8 payments, #11 module boundaries) are canonical
-in `CLAUDE.md`.
+The invariants at stake (#1 JDBC-only, #2 availability, #8 payments, #11 module
+boundaries) are canonical in `CLAUDE.md`; the incidents behind the discipline live
+in `riviera-sdlc` `references/case-history.md`.
 
 Load at the **plan stage** when starting a riviera feature, and again when picking
 up a riviera plan to **execute** in a fresh session.
@@ -53,11 +52,9 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    loaded skill + one phrase on what it changed in **Skills consulted**, and keep it
    current: re-run the gate whenever a phase enters an area the plan didn't anticipate.
    The template pre-fills the line's five constant entries (the routing table's
-   "Anything, always" row — that table stays the authority, so the two cannot drift):
-   RV-PROC-1 caught an omission on six consecutive slices when the line was free prose —
-   not six careless authors but a template asking a question whose answer is partly
-   constant, so the author now **edits rather than recalls** (case history:
-   `riviera-sdlc` `references/case-history.md` #447).
+   "Anything, always" row — that table stays the authority, so the two cannot drift),
+   so the author **edits rather than recalls** — free prose lost an entry on six
+   consecutive slices (case history: `riviera-sdlc` `references/case-history.md` #447).
 
 1. **Acceptance criteria before phase 0:** convert the spec's user stories (or the
    GitHub issue) into testable ACs per the template (Given/When/Then, named test
@@ -109,13 +106,12 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
    the one that *found* the population, not one that confirmed the members you had
    already guessed.
 
-   > **Case history (#641).** PR #618 fixed five false-clean defects across the repo's
-   > guards, and its audit log twice asks whether a defect is "true of the other two
-   > guards as well", answering "all three" both times. There were **four**:
-   > `check-comment-only.mjs` invokes git exactly like its siblings, but it is whole-file
-   > rather than diff-scoped, so it did not resemble them and was never enumerated. It
-   > carried every one of those defects for eight further PRs. `git ls-files 'scripts/*.mjs'
-   > | xargs grep -l "execFileSync\('git'" ` would have returned four on day one.
+   > **Case history (#641).** PR #618's audit asked whether its defect held for "the
+   > other two guards", answering "all three" — there were **four**: whole-file
+   > `check-comment-only.mjs` invokes git like its siblings but did not *resemble* them,
+   > was never enumerated, and carried every defect for eight further PRs.
+   > `git ls-files 'scripts/*.mjs' | xargs grep -l "execFileSync\('git'"` would have
+   > returned four on day one.
 2. **Use AskUserQuestion for forks the evidence can't settle** — anything that
    changes the availability strategy, a module boundary, the payment flow, or a
    public `api/` port. Decide naming/style yourself.
@@ -167,11 +163,7 @@ on a feature that touches availability or payments costs a trust-breaking bug.
 - **Template:** `references/plan-doc-template.md` — every section's guidance lives there.
 - **Upstream:** the design spec in `docs/superpowers/specs/` (the source of
   intent); `grilling` when requirements are genuinely ambiguous.
-- **Co-load per the `riviera-sdlc` Skill-routing table** (the authority): `postgres`
-  (migrations), `codebase-design` + `domain-modeling` (module seams & vocabulary),
-  `riviera-java-conventions` (backend Java idioms), `riviera-stripe-payments` (money).
-- `riviera-frontend` + `angular-developer` — for frontend surfaces (structure /
-  folder placement, then Angular standards); consult the latter's `references/`
-  for signals, forms, routing, and testing detail.
+- **Co-load** per the `riviera-sdlc` Skill-routing table — the authority; workflow
+  step 0 runs it, so no list is repeated here.
 - **At the review gate:** `riviera-review-overlay` — RV-BE-11 re-checks the
   Module-ownership table against the diff; RV-PROC-1 re-checks *Skills consulted*.

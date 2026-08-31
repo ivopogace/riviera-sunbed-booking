@@ -1,8 +1,9 @@
 # <Feature Title> Implementation Plan
 
-> **For agentic workers:** to implement this plan use `implement` + `tdd` (installed),
-> or the superpowers `subagent-driven-development`/`executing-plans` skills if present
-> task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** to implement this plan use `tdd` at the plan's named seams
+> (`/implement` is the human's entry command — `riviera-sdlc`'s Implement row is the
+> model's route), or the superpowers `subagent-driven-development`/`executing-plans`
+> skills if present task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 > **Riviera discipline baked into this template:** the Availability & concurrency,
 > Spring-Modulith, and Payment & payout sections are first-class spec sections, not
@@ -137,8 +138,8 @@ Resolved entries move under a `### Resolved` sub-heading with the outcome + SHA.
   DO NOTHING` claim | other — and why>
 - **Pool rule (invariant #3):** <how online bookings are restricted to online-pool
   sets>
-- **Cutoff rule (invariant #4):** <how same-day booking is prevented; cutoff time +
-  timezone>
+- **Cutoff rule (invariant #4):** <how the venue's `sales_close` fence on day D holds,
+  `Europe/Tirane` — and, if cancellation is in scope, its separate evening-before boundary>
 - **Pinning test:** `<ConcurrentReservationIT.<method>>` — proves two concurrent
   reservations of the same `(set, date)` cannot both succeed.
 
@@ -165,22 +166,20 @@ Resolved entries move under a `### Resolved` sub-heading with the outcome + SHA.
 
 | # | Event | Published by | Payload (ids) | Subscribers | Sync/async | Pinned by test |
 |---|---|---|---|---|---|---|
-| EV-1 | `BookingConfirmed` | `booking` | `{ bookingId, setId, venueId, bookingDate }` | `availability`, `payout` | async `AFTER_COMMIT` | `<…>` |
+| EV-1 | `BookingConfirmed` | `booking` | `{ bookingId, setId, venueId, bookingDate }` | `payout`, `notification` | async `AFTER_COMMIT` | `<…>` |
 
 ### Module ownership (§4a)
 
 > **Required whenever the slice adds or moves behavior.** For each new or changed
-> capability, state which module owns it and why, checked against
-> `RESPONSIBILITIES.md`. The justification must cite the owner's **Job** line *and*
-> confirm the capability is **not** on another module's **Not My Job** list. This
-> is the plan-time boundary gate: a capability that lands on some module's
-> Not-My-Job list, or that two modules both claim, is a boundary error to resolve
-> **before** code — catching a misplacement here is a sentence; at review it's a
-> diff. Pay special attention to the two decision-vs-execution splits (`booking`
-> decides refunds / `payment` executes; `venue` stores the commission rate /
-> `payout` computes) and the Need-To-Know rule (a subscriber gets ids, never a
-> foreign aggregate). If the slice touches only one module and adds no cross-module
-> interaction, a one-line "all in `<module>`, no boundary change" suffices.
+> capability, state which module owns it and why: the justification cites the owner's
+> **Job** line *and* confirms the capability is **not** on another module's **Not My
+> Job** list (`RESPONSIBILITIES.md`). A capability on some module's Not-My-Job list, or
+> that two modules both claim, is resolved **before** code — a misplacement caught here
+> is a sentence; at review it's a diff. Pay special attention to the two
+> decision-vs-execution splits (`booking` decides refunds / `payment` executes; `venue`
+> stores the commission rate / `payout` computes) and the Need-To-Know rule (a
+> subscriber gets ids, never a foreign aggregate). Single module, no cross-module
+> interaction → a one-line "all in `<module>`, no boundary change" suffices.
 > `riviera-review-overlay` **RV-BE-11** re-checks this table against the diff.
 
 | Capability (what the slice adds/changes) | Owner module | Justification |
