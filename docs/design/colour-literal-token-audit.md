@@ -4,7 +4,8 @@
 **Source of intent:** [#836](https://github.com/ivopogace/riviera-sunbed-booking/issues/836),
 the generalization-audit residue from #829 (PR #833). Prior slices that cut families out
 of this population: **#829** (the negative/red admin family, PR #833), **#835** (the accent
-teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR #856).
+teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR #856),
+**#850** (the tourist form-error skin's theme-invariant pair, PR #857).
 
 > **This file is not a design record.** `docs/design/README.md` governs the `.dc.html`
 > artboards — approved-look snapshots that are deliberately *never* rewritten to track the
@@ -77,7 +78,7 @@ These families must move **as a pair**, onto tokens declared **once** with no da
 
 | Family | n | Verdict | Status |
 |---|---:|---|---|
-| Form-error skin: `bg-[#f6e8e7]` + `text-[#a3160e]` (`booking-dialog:311`, `booking-pay:255`, `my-bookings:290`) | 6 | **new theme-invariant token pair.** The themed `--riv-error-ink` is *wrong* here — it resolves `#ffa9a1` in dark, over a fill that stays `#f6e8e7`: light on light | open → #850 |
+| Form-error skin: `bg-[#f6e8e7]` + `text-[#a3160e]` (`booking-dialog:311`, `booking-pay:255`, `my-bookings:290`) | 6 | **new theme-invariant token pair.** The themed `--riv-error-ink` is *wrong* here — it resolves `#ffa9a1` in dark, over a fill that stays `#f6e8e7`: light on light | **done — #850, PR #857** |
 | Solid outline-button skin: `#f4f6f7` fill, `#e7ebec` hover, `rgba(255,255,255,0.7)` border, `#a3372a` danger ink | 9 | **new theme-invariant tokens**, one family. Its teal ink already moved to `--riv-solid-btn-ink` in #835 | open → #851 (recorded on #836 by the maintainer) |
 
 ### Class O — `/opacity` modifier: tokenising is a computed-value change

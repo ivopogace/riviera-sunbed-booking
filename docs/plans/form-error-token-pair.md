@@ -27,13 +27,14 @@ written is unsatisfiable, since the value must live in `tailwind.css`; see Open 
 · `riviera-plan-doc` (this template — forced the Behavior-parity ledger, which is what surfaced the
 `ERROR_RED`-conflation risk R-3) · `tdd` (each phase red-first at the seams named below) ·
 `riviera-review-overlay` (review gate — runs at ready-for-review) · `riviera-docs-freshness`
-(close-out — due, the slice changes what the audit ledger and the token-count facts state) ·
+(**ran** over `origin/main...HEAD`, 2 findings, both patched — the audit ledger's prior-slices
+enumeration and `riviera-tailwind`'s theme-invariant exemplar catalogue) ·
 `riviera-tailwind` (the theme-invariant-token rule and its two in-tree precedents `--riv-solid-btn-ink`
 / `--riv-accent-*`; also the `@theme inline` requirement without which the utility never generates,
 and the "prove no drift by computed style, never the class list" rule that shapes AC-3) ·
 `riviera-frontend` (token registry lives in `tailwind.css` + `core/theme.ts` only; the new spec
 colocates in `booking/` beside its consumers; the e2e belongs in the CI-safe mocked suite
-`frontend/e2e/`) · `playwright-cli` (mocked-e2e authoring — pending, loads at phase 2) ·
+`frontend/e2e/`) · `playwright-cli` (mocked-e2e authoring — the registry + emitted-utility walk modelled on `accent-token-inks.e2e.ts`) ·
 `riviera-local-debug` (cloud-session `npm` recipe + scoped-test discipline — loads before the first
 test run) · `angular-developer` (`N/A — no component logic changes; the diff is class strings only`)
 
@@ -120,7 +121,7 @@ for `feature/form-error-token-pair`** per `riviera-sdlc` §Remote/cloud session 
 | R-1 | The `@theme inline` rows are omitted or misspelled: the utility never generates, the class stays in the markup, and the banner silently loses its skin — invisible to any class-list check | med | high | AC-5's e2e walks the document's emitted `CSSStyleRule` selectors and asserts both utilities exist (the `accent-token-inks.e2e.ts` pattern, which exists because this exact failure is otherwise undetectable) | claude | **closed** — guard falsified in phase 2: deleting one `@theme inline` row turns all three e2e tests red |
 | R-2 | A later slice adds a `dark:` override for the pair "for consistency", flipping the ink to `#ffa9a1` over the fixed fill — 1.54:1, the exact drift this slice exists to prevent | med | high | AC-2's stylesheet drift guard fails the build if either name appears in a themed block; plus the reason written at the declaration | claude | **closed** — `e13368f` (the single-declaration + base-block tests) |
 | R-3 | Rewiring `booking-dialog.contrast.spec.ts` conflates the two reds: its `ERROR_RED` currently serves both the **themed** `.field-error` ink and the **invariant** banner ink. Pointing the field-error at the new invariant token would silently stop testing the dark theme's `#ffa9a1` | med | med | Explicit split in phase 1: `LIGHT_SURFACES.error` → `ERROR_INK`, dark theme keeps `DARK_ERROR_INK`, banner test → `FORM_ERROR_*`. Called out in the parity ledger so review can check rather than re-derive | claude | **closed** — `6197c64`: the light themes read `ERROR_INK`, the dark theme still reads `DARK_ERROR_INK` |
-| R-4 | Visual drift the contrast maths cannot see (a wrong-but-still-AA colour, a dropped utility) | low | med | `riviera-tailwind`'s hard rule: AC-4 diffs **computed styles** via `toHaveCSS`, not the class list | claude | **closed** — `<phase-2>`: `rgb(246, 232, 231)` / `rgb(163, 22, 14)` pinned on a real render, in both the default and a forced `dark` theme |
+| R-4 | Visual drift the contrast maths cannot see (a wrong-but-still-AA colour, a dropped utility) | low | med | `riviera-tailwind`'s hard rule: AC-4 diffs **computed styles** via `toHaveCSS`, not the class list | claude | **closed** — `9a7b54c`: `rgb(246, 232, 231)` / `rgb(163, 22, 14)` pinned on a real render, in both the default and a forced `dark` theme |
 | R-5 | The three banners' literals are re-introduced by a later slice because nothing forbids them | low | low | AC-1's grep-style assertion in the family spec fails on any component-source occurrence, matched **by role** so the other audit classes stay out of it (audit log, phase 0) | claude | **closed** — `6197c64` |
 | R-6 | In-flight collision with a sibling class-F/class-T slice touching `tailwind.css` or `glass-tokens.ts` | low | low | Checked at intake: **zero open PRs** on the repo, and #855/PR #856 (the only recently-merged sibling) is on `main` and is a Non-goal here. No Flyway number to claim — frontend-only slice | claude | **closed** — verified at plan time |
 
@@ -189,10 +190,10 @@ components stay theme-agnostic and name no theme.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)` — draft PR #857 open, CI running.
+**Stage pointer:** `review gate` — draft PR #857, phases 0–3 built, docs-freshness run.
 
-**Next action:** Tick the ledger's F-1 row to `done — #850, PR #857`, then mark the PR ready for
-review, which is what makes the Review and Sonar gates due (`pr-gates.md`).
+**Next action:** Mark PR #857 ready for review (which is what makes the Review and Sonar gates due
+per `pr-gates.md`), run the review gate via the §1 invocation ladder, then work the Sonar issue list.
 
 > **Push cadence:** phase 0's literal guard is deliberately red until phase 1 lands, so the branch is
 > pushed — and the draft PR opened, which is what makes CI run at all — at the **end of phase 1**,
@@ -202,8 +203,8 @@ review, which is what makes the Review and Sonar gates due (`pr-gates.md`).
 |-------|--------|---------|
 | 0 — Declare the theme-invariant pair + its family spec | ✅ | `e13368f` |
 | 1 — Migrate the three banners and rewire the three contrast specs | ✅ | `6197c64` |
-| 2 — Mocked e2e: registry, utility generation, computed skin under a forced dark theme | ✅ | `<phase-2>` |
-| 3 — Ledger row + close-out | ⏳ | |
+| 2 — Mocked e2e: registry, utility generation, computed skin under a forced dark theme | ✅ | `9a7b54c` |
+| 3 — Ledger row + close-out | ⏳ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -219,7 +220,8 @@ at Implement per the `riviera-sdlc` re-entry rule.
 ## File structure
 
 - `docs/plans/form-error-token-pair.md` — this plan doc
-- `docs/design/colour-literal-token-audit.md` — the F-1 row moves to `done` (AC-7)
+- `docs/design/colour-literal-token-audit.md` — the F-1 row moves to `done` (AC-7), and the header's prior-slices enumeration gains #850 (docs-freshness finding 1)
+- `.claude/skills/riviera-tailwind/SKILL.md` — the theme-invariant exemplar catalogue cites this pair (docs-freshness finding 2)
 - `frontend/src/tailwind.css` — the two `@theme inline` rows + the base-block declaration with its reason
 - `frontend/src/testing/glass-tokens.ts` — `FORM_ERROR_FILL` / `FORM_ERROR_INK`, the one test-side mirror
 - `frontend/src/app/booking/booking-dialog.ts` — banner class string + the retired template comment
@@ -327,30 +329,30 @@ at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npm test -- form-error-tokens` → the literal test passes. Verified at `<sha>`.
-- [ ] **AC-2:** `npm test -- form-error-tokens` → the drift-guard tests pass. Verified at `<sha>`.
-- [ ] **AC-3:** `npm test -- form-error-tokens` → AA + the bounding test pass. Verified at `<sha>`.
-- [ ] **AC-4:** `npm run test:e2e:a11y -- form-error-token-skin` → both theme runs pass. Verified at `<sha>`.
-- [ ] **AC-5:** same run → the utility-generation test passes. Verified at `<sha>`.
-- [ ] **AC-6:** `npm test -- booking-dialog booking-pay my-bookings` → pass, no local literal left. Verified at `<sha>`.
-- [ ] **AC-7:** `git show` the ledger diff → F-1 reads `done`. Verified at `<sha>`.
+- [x] **AC-1:** `ng test --include="src/app/booking/form-error-tokens.contrast.spec.ts"` → *leaves no component painting the pair as a literal* passes. Verified at `6197c64`.
+- [x] **AC-2:** same run → the three declaration/drift-guard tests pass. Verified at `e13368f`.
+- [x] **AC-3:** same run → *the pair clears AA* (6.58:1) + *the themed error ink would not* (1.54:1) pass. Verified at `e13368f`.
+- [x] **AC-4:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts form-error-token-skin` → 3 passed, both theme runs included. Verified at `9a7b54c`.
+- [x] **AC-5:** same run → *every registered token is declared and generates its utility* passes, and was **falsified** by deleting one `@theme inline` row (all 3 turn red). Verified at `9a7b54c`.
+- [x] **AC-6:** `ng test --include="src/app/booking/*.contrast.spec.ts"` → 10 files / 134 tests pass, no local `ERROR_FILL` left. Verified at `6197c64`.
+- [x] **AC-7:** `git show` the ledger diff → F-1 reads `**done — #850, PR #857**`. Verified in this commit.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy (invariant #10) — N/A.
-- [ ] Timezone (invariant #6) — N/A.
-- [ ] Booking codes (invariant #7) — N/A.
-- [ ] Flyway migration (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met: named utilities not raw `var()`, components theme-agnostic, no `as any`.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy (invariant #10) — N/A.
+- [x] Timezone (invariant #6) — N/A.
+- [x] Booking codes (invariant #7) — N/A.
+- [x] Flyway migration (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met: named utilities not raw `var()`, components theme-agnostic, no `as any`.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
 - [ ] **Close-out written in THIS PR** — the plan doc's final state cites `merged via PR #NN`.
 - [ ] **The review gate ran in full** — the `pr-gates.md` §1 ladder *plus* `riviera-review-overlay`.
