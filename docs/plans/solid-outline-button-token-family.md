@@ -137,11 +137,11 @@ session addendum). The literal `feature/*` branch is deliberately not created.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | **The issue's "correction #2" is itself wrong** — it states `rgba(255,255,255,0.7)` "appears exactly once, inlined on `my-bookings.ts:205`" and asks which border `my-bookings` should carry. A grep shows it on **all three** outline buttons (`booking-view.ts:101`, `review-panel.ts:49`, `my-bookings.ts:205`): it sits on the `btnOutline` **variant**, not in the shared `BTN_OUTLINE` base, which is why reading the base alone missed it. Planning to the issue's text would have left a family-wide border untokenised and invented a fake divergence to "reconcile" | — | med | Treat the border as family-wide (`--riv-solid-btn-border`); AC-4 sweeps all three roles. The audit ledger's own F-2 row already lists this border as a family member with n=9 (3 fill + 3 hover + 3 border), so the ledger and the code agree and only the issue body drifted | agent | **resolved at plan time** — recorded here, in the PR, and as a comment on #851 |
-| R-2 | A value-blind sweep of `#a3372a` hits the out-of-family sites (the over-claim the issue itself flags) | med | high | Match **by role**, never by bare value — the `LITERAL_ROLES` pattern #850 established (`text-\[#a3372a\]`, not `#a3372a`); AC-5 asserts the five surviving files positively | agent | open → closed by AC-5 |
+| R-2 | A value-blind sweep of `#a3372a` hits the out-of-family sites (the over-claim the issue itself flags) | med | high | Match **by role**, never by bare value — the `LITERAL_ROLES` pattern #850 established (`text-\[#a3372a\]`, not `#a3372a`); AC-5 asserts the five surviving files positively | agent | **closed** — AC-5 passes; the five files still paint `#a3372a` |
 | R-3 | A token declared without its `@theme inline` row generates **no utility**: the class stays in the markup, the paint silently reverts to unstyled, and every jsdom spec still passes | med | high | AC-7 walks `document.styleSheets` in a real browser for each utility selector — #850's first e2e test, kept for the same reason | agent | **closed** — and demonstrated: phase 3's mutation 2 deleted exactly that row and the e2e went red |
-| R-4 | A later slice adds a `dark` override "for consistency", silently flipping these buttons light-on-light | med | high | AC-1's single-declaration + base-block guards fail on the added declaration; AC-3 keeps the measured counter-evidence in the tree; the reason is written at the declaration itself | agent | open → closed by AC-1/AC-3 |
+| R-4 | A later slice adds a `dark` override "for consistency", silently flipping these buttons light-on-light | med | high | AC-1's single-declaration + base-block guards fail on the added declaration; AC-3 keeps the measured counter-evidence in the tree; the reason is written at the declaration itself | agent | **closed** — AC-1 and AC-3 pass |
 | R-5 | The e2e passes vacuously (selector never matches, or asserts a value that was already the default) | med | med | Mutation-check before commit | agent | **closed** — phase 3 step 3: both mutations turned all 3 tests red, restore returned green |
-| R-6 | `check-plan-file-structure.mjs` short-circuits because this plan doc is written but unstaged, passing whatever this section says | high | low | `git add` the plan doc before running the guard; run it as the last step before every push | agent | open → closed per phase |
+| R-6 | `check-plan-file-structure.mjs` short-circuits because this plan doc is written but unstaged, passing whatever this section says | high | low | `git add` the plan doc before running the guard; run it as the last step before every push | agent | **closed** — guard run clean before every push; it caught the three missing sibling-spec paths and, later, the skill file |
 
 ## Open questions / Assumptions
 
@@ -200,11 +200,10 @@ N/A — no API shape changes.
 
 ## Execution status
 
-**Stage pointer:** `PR ready for review — review gate + Sonar gate due`
+**Stage pointer:** `merge close-out — DONE pending the CI + Sonar gates on the final head`
 
-**Next action:** Run the review gate (`/code-review` per `references/pr-gates.md` §1 +
-`riviera-review-overlay`), then the Sonar gate's issue list. Close-out step 4 rewrites
-`merged via PR #859` here before the merge.
+**Next action:** Confirm CI green and the Sonar reported-issue list empty on the final head,
+then merge. Everything else is done — **merged via PR #859**.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -212,7 +211,8 @@ N/A — no API shape changes.
 | 1 — declare the tokens + `@theme` rows, green | ✅ | `7b453f2` |
 | 2 — repaint the three components onto them | ✅ | `6b8fb29` |
 | 3 — the mocked e2e (+ mutation check) | ✅ | `6703ad6` |
-| 4 — ledger row + close-out | ✅ | `<phase-4>` |
+| 4 — ledger row + close-out | ✅ | `3e94a1d` |
+| 5 — review + staleness findings (F-1..F-6) | ✅ | `97bee23` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -309,7 +309,7 @@ the log below.
 **Files:** Modify `docs/design/colour-literal-token-audit.md`, this plan
 
 - [x] **Step 1:** F-2 row → `done — #851, PR #NN`.
-- [x] **Step 2:** Finalize Execution status (stage DONE, phases ✅, `merged via PR #NN`).
+- [x] **Step 2:** Finalize Execution status (stage DONE, phases ✅, **merged via PR #859**).
 - [x] **Step 3:** `git add` everything, then
       `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
 - [x] **Step 4: Commit.**
@@ -332,20 +332,20 @@ the log below.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy (invariant #10) — N/A.
-- [ ] Timezone (invariant #6) — N/A.
-- [ ] Booking codes (invariant #7) — N/A.
-- [ ] Flyway (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met; components stay theme-agnostic; no `as any`.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** per `references/pr-gates.md` §1 + `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy (invariant #10) — N/A.
+- [x] Timezone (invariant #6) — N/A.
+- [x] Booking codes (invariant #7) — N/A.
+- [x] Flyway (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met; components stay theme-agnostic; no `as any`.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR**, citing `merged via PR #859`.
+- [x] **The review gate ran in full** — `code-review` plugin rung 1 (5-reviewer fan-out, medium effort) + `riviera-review-overlay`, plus a `riviera-docs-freshness` pre-merge smoke. 6 findings, all fixed in `97bee23`; recorded on the PR.
