@@ -44,14 +44,16 @@ per-site verdict, and the Non-goals that fence #834 and #836 off) · `tdd` (phas
 the contrast spec red against `glass-tokens.ts` constants that do not exist yet, so every
 token value is gated by AA maths before a single component moves) · `riviera-review-overlay`
 (review gate — due at ready-for-review; RV-FE-E2E owns the suite placement of the phase-4
-spec) · `riviera-docs-freshness` (**due at merge close-out step 5** over this slice's own
-merge range, and it has a real target: `grep -rln '0a4f5e\|2bb8d4' docs/` returns four
-`docs/design/*.dc.html` exports plus five prior plan docs. The design exports are the
-design *source* and are not restated by this slice; the prior plan docs are their own
-slices' historical records and are not rewritten. What the audit must actually check is
-the **counting sweep** — this slice makes `--riv-accent-*` a family of six where the
-registry previously had one accent token, so any doc saying "the accent ink" in the
-singular goes stale outside the diff) · `riviera-tailwind` (token-first styling: the named
+spec) · `riviera-docs-freshness` (**ran** over `origin/main..HEAD`, **5 findings, all patched**:
+four `docs/design/*.dc.html` artboard lines this slice diverged from — the admin active tab
+pill, its status panel, the erasure-success heading, the operator amenity chip — each given
+the README's one-line `as-built diverges` pointer rather than being edited in place; plus
+`riviera-tailwind` §Styling-across-the-themes, whose "add one if none fits — **declared per
+theme**" was a false universal the moment this slice shipped seven deliberately
+theme-invariant tokens, and which a later session following literally would have used to
+add dark overrides that silently restyle five tourist surfaces. The counting sweep and the
+rename grep both came back clean — "the token registry lives in two places" and "the
+two-suite e2e split" stay true) · `riviera-tailwind` (token-first styling: the named
 utility once a token is registered, the rejection of Tailwind's `/opacity` modifier because
 it compiles to `color-mix()` and changes the computed value — R-3 — and the
 no-visual-drift computed-style rule that shapes AC-6) · `riviera-frontend` (placement: the
@@ -255,6 +257,8 @@ duplication list and clear every entry.
 | 3 — The tint family → the accent tint tokens | ✅ | |
 | 4 — Computed-style verification + the e2e pin | ✅ | |
 | 5 — Mechanism re-grep, follow-up issue, close-out | ✅ | |
+| 6 — Review-gate fixes (F-1…F-4) | ✅ | `9f5983f` |
+| 7 — Docs-freshness audit + patches | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -300,6 +304,10 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/shared/outcome-card.ts` — chip fill
 - `frontend/src/app/shared/segmented-control.ts` — selected chip fill/border
 - `frontend/e2e/accent-token-inks.e2e.ts` — the computed-style pin (new)
+- `.claude/skills/riviera-tailwind/SKILL.md` — the per-theme-declaration rule, qualified
+  for theme-invariant tokens (docs-freshness finding)
+- `docs/design/riviera-admin-console.dc.html`, `docs/design/riviera-operator-console-v2.dc.html`
+  — `as-built diverges` pointers on the four lines this slice moved (docs-freshness)
 
 ---
 
@@ -468,8 +476,8 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND
       findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
-      `merged via PR #NN`, so no docs-only follow-up PR is needed after the merge.
+- [x] **Close-out written in THIS PR** — this plan doc's final state is committed here, to be
+      **merged via PR #838**, so no docs-only follow-up PR is needed after the merge.
 - [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
 
