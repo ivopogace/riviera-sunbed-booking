@@ -189,10 +189,11 @@ components stay theme-agnostic and name no theme.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Migrate the three banner class strings onto the utilities and rewire the three
-contrast specs onto the mirror (minding R-3), which is what turns the family spec's sixth test green.
+**Next action:** Open the draft PR (the first push — CI fires on the `pull_request` event only),
+then write `e2e/form-error-token-skin.e2e.ts`: the token registry + emitted-utility walk, and the
+computed skin on `[data-testid="dialog-error"]` under both the default and a forced `dark` theme.
 
 > **Push cadence:** phase 0's literal guard is deliberately red until phase 1 lands, so the branch is
 > pushed — and the draft PR opened, which is what makes CI run at all — at the **end of phase 1**,
@@ -200,9 +201,9 @@ contrast specs onto the mirror (minding R-3), which is what turns the family spe
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Declare the theme-invariant pair + its family spec | ✅ | `<phase-0>` |
-| 1 — Migrate the three banners and rewire the three contrast specs | ⏳ | |
-| 2 — Mocked e2e: registry, utility generation, computed skin under a forced dark theme | | |
+| 0 — Declare the theme-invariant pair + its family spec | ✅ | `e13368f` |
+| 1 — Migrate the three banners and rewire the three contrast specs | ✅ | `<phase-1>` |
+| 2 — Mocked e2e: registry, utility generation, computed skin under a forced dark theme | ⏳ | |
 | 3 — Ledger row + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

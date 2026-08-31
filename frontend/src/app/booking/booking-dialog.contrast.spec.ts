@@ -18,8 +18,11 @@ import {
   DARK_FIELD_FILL,
   DARK_STOPS,
   DARK_WASH_FILL,
+  ERROR_INK,
   FIELD_BORDER_ALPHA,
   FIELD_FILL_ALPHA,
+  FORM_ERROR_FILL,
+  FORM_ERROR_INK,
   Glass,
   INK_DARK,
   PORCELAIN_STOPS,
@@ -52,8 +55,6 @@ import {
 const DIALOG_GLASS: Glass = { color: WHITE, alpha: 0.82 }; // --riv-dialog-glass
 const BACK_FILL: Glass = { color: WHITE, alpha: 0.5 }; // --riv-wash-fill (.btn-back)
 const ACCENT = '#085a6e'; // --riv-accent-ink (price, total)
-const ERROR_RED = '#a3160e'; // --riv-error-ink (.field-error) + .form-error ink (solid fill below)
-const ERROR_FILL = '#f6e8e7'; // .form-error solid light-pink box (composite of the old rgba(163,22,14,.1) tint)
 const BACK_INK = '#0a4f5e'; // --riv-back-ink (.btn-back text)
 const DARK_BACK_INK = '#b7dfe9';
 const BACK_HOVER_FILL: Glass = { color: WHITE, alpha: 0.75 }; // --riv-wash-hover (.btn-back:hover)
@@ -86,7 +87,7 @@ const LIGHT_SURFACES = {
   ink: INK_DARK,
   inkBase: CARD_INK,
   accent: hexToRgb(ACCENT.slice(1)),
-  error: hexToRgb(ERROR_RED.slice(1)),
+  error: ERROR_INK,
   fieldFill: { color: WHITE, alpha: FIELD_FILL_ALPHA },
   fieldBorder: { color: CARD_INK, alpha: FIELD_BORDER_ALPHA },
   backFill: BACK_FILL,
@@ -129,9 +130,12 @@ describe('Booking dialog — theme-independent header + CTA (WCAG AA, issue #137
   });
 
   it('form-error red meets AA on its solid light-pink fill (theme-independent, static-analysis safe)', () => {
-    // .form-error now sits on an opaque #f6e8e7 box (was a translucent red tint), so the pair is a
-    // single fixed hex in both themes — a real ~6.6:1, not the ~1:1 the analyser saw on the tint.
-    expect(contrastRatio(ERROR_RED, ERROR_FILL)).toBeGreaterThanOrEqual(AA_NORMAL);
+    // The banner is --riv-form-error-* (#850), NOT the themed --riv-error-ink the .field-error
+    // above wears: an opaque box in every theme, so a real ~6.6:1 rather than the ~1:1 the
+    // analyser saw on the old tint. The invariance itself is form-error-tokens.contrast.spec.ts's.
+    expect(
+      contrastRatio(rgbToHex(FORM_ERROR_INK), rgbToHex(FORM_ERROR_FILL)),
+    ).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });
 
