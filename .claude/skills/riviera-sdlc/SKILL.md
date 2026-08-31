@@ -27,10 +27,8 @@ and a change **re-enters the loop at Implement**: run the **Skill-routing gate**
 the fix touches (load that area's skills per the routing table below, *before* editing),
 build it test-first (`tdd`), get CI green again, and have the changed surface re-reviewed.
 Being small, or arriving after a green CI or a finished review, is **not** an exemption —
-the single most common process miss is treating a post-review or post-Sonar fix as exempt:
-a migration patched without `postgres`, an Angular tweak without `angular-developer` + the
-MCP, a backend edit without `riviera-modulith`. Everywhere else this skill says "re-enters
-at Implement", it means this paragraph.
+the single most common process miss is treating a post-review or post-Sonar fix as exempt.
+Everywhere else this skill says "re-enters at Implement", it means this paragraph.
 
 | Stage | What happens | Driving skill(s) |
 |---|---|---|
@@ -39,7 +37,7 @@ at Implement", it means this paragraph.
 | **Plan** | Write the plan doc: testable ACs, risk register, and — if booking/availability/money is touched — how the invariant holds. Map the affected surface (modules + events + blast radius) by grepping the modules and their published surfaces (an Explore agent for anything broad) — evidence for the plan's *modules/events touched* section and the Detect step below. Entering at an existing issue? Grill it first — procedure: `references/issue-intake-gate.md`. An open question the slice itself can answer routes straight to `research` (docs/API legwork) or `prototype` (spike) — no map needed; only a cross-session decision is fog and escalates to `wayfinder` (the intake gate's test). Then the Skill-routing gate. | `riviera-plan-doc` (owner) + `grilling` + `research`/`prototype` (slice-answerable open questions) + both gates |
 | **Implement** | Build the slice test-first, one behavior at a time, at seams named in the plan. Re-run the Skill-routing gate for each area you touch. | `tdd` + the Skill-routing gate (below). `implement` is the **human's** entry command (`/implement`) — model-invocation is disabled on it upstream, so never route to it and never re-enact it from memory; it hands off to exactly this row |
 | **CI gate** | Every push to an **open PR** builds both apps, runs tests, scans (CodeQL + Dependabot + SonarCloud). Green required. After any push that claims a phase green, check that push's run before starting the next phase (red-TDD and labeled-partial pushes exempt) — full-suite-only failures surface only here (case history: #122/#127). | GitHub Actions; red → `diagnosing-bugs` |
-| **PR** | **Open the PR as a draft as soon as the first phase commit exists** — CI fires on the `pull_request` event only (`push` is scoped to `main`, #417), so a branch with no PR gets **no CI at all**; `opened` gates the first push, `synchronize` every later one. A draft is a CI vehicle, not a request to review. When the slice is built: merge the latest `origin/main` in with full phase discipline (routing gate for what the integration touches, scoped tests, honest commit), then mark **ready for review** — which is what makes the Review and Sonar gates due (`references/pr-gates.md`). | `triage` (issue lifecycle — issues only in this repo; PRs go through normal review) |
+| **PR** | **Open the PR as a draft as soon as the first phase commit exists** — CI fires on the `pull_request` event only (`push` is scoped to `main`), so a branch with no PR gets **no CI at all**; `opened` gates the first push, `synchronize` every later one. A draft is a CI vehicle, not a request to review. When the slice is built: merge the latest `origin/main` in with full phase discipline (routing gate for what the integration touches, scoped tests, honest commit), then mark **ready for review** — which is what makes the Review and Sonar gates due (`references/pr-gates.md`). | `triage` (issue lifecycle — issues only in this repo; PRs go through normal review) |
 | **Review** | **Mandatory gate**, due at ready-for-review. Start `/code-review` (a subagent fan-out) via the **invocation ladder** in `references/pr-gates.md` §1 — **the overlay alone is NOT the review**, and a blocked rung is declared in the PR, never silently substituted (§1 owns the ladder, the fallback, and the no-rung rule). Review the diff against the invariants; each fix re-enters at Implement. Green CI is not a substitute. | `riviera-review-overlay` + `/code-review` |
 | **Sonar gate** | **Mandatory gate (PR-time; Sonar analyzes PRs + `main` only).** A green gate is not the check — pull the reported new-issue + duplication list from the API and fix every entry before merge; logic-changing findings re-enter at Implement (re-entry rule) — procedure: `references/pr-gates.md` §2. | SonarCloud + `diagnosing-bugs` for a genuine defect |
 | **Merge** | Only after green CI + Review gate run + Sonar gate green **and** its issue list cleared + findings resolved through the loop → merge, then run the close-out checklist — procedure: `references/pr-gates.md` §3. | the Merge close-out (`references/pr-gates.md`) |
@@ -54,7 +52,7 @@ from fighting the loop: `references/epic-front-end.md`.
 
 ## Skill-routing gate (mandatory — load *before* you write)
 
-> This is a **gate, not a suggestion.** Before you author a plan section or a line of
+> Before you author a plan section or a line of
 > code for an area, you **MUST load that area's skill(s) first** and **announce which
 > you loaded**. The `area:*` label (see `docs/agents/triage-labels.md`) is only the
 > starting hint — the real trigger is **what the change actually touches**, and one slice
@@ -72,7 +70,7 @@ from fighting the loop: `references/epic-front-end.md`.
 | **A user-facing frontend flow / behaviour** (any component / route / form / service change a user can observe, or anything under `frontend/e2e/`) | **`playwright-cli`** (official `@playwright/cli` skill — drive the flow, scaffold a best-practice spec, mock requests, generate from actions) | every frontend slice ships e2e coverage authored to Playwright best practice — not an afterthought. **Which of the two suites a spec belongs in is `riviera-review-overlay` RV-FE-E2E's call** — the generic skill cannot know that split; consult it when placing the spec |
 | **Scaffolding a new app** | **`angular-new-app`** (FE) | correct `ng new` flags + structure |
 | **Running builds/tests locally** (the first `./gradlew` / `gradle` / `npm test` of the session, or diagnosing a local build failure) | **`riviera-local-debug`** | cloud-session Gradle/JDK/proxy recipe, scoped-test discipline, the local-OOM and Docker-skip constraints — instead of rediscovering them mid-slice |
-| **Anything, always** | **`riviera-plan-doc`** (plan) · **`tdd`** (build) · **`riviera-review-overlay`** (review) · **`riviera-docs-freshness`** (close-out — due whenever the slice changes something a substrate doc *states*, which is most slices) | the always-on spine. The plan-doc template **pre-fills these in `Skills consulted`** so the constant part is edited rather than recalled — RV-PROC-1 kept catching entries lost from free prose (case history: #447) |
+| **Anything, always** | **`riviera-plan-doc`** (plan) · **`tdd`** (build) · **`riviera-review-overlay`** (review) · **`riviera-docs-freshness`** (close-out — due whenever the slice changes something a substrate doc *states*, which is most slices) | the always-on spine. The plan-doc template **pre-fills these in `Skills consulted`** so the constant part is edited rather than recalled (case history: #447) |
 
 **How the gate runs — three steps, every time:**
 
@@ -85,11 +83,8 @@ from fighting the loop: `references/epic-front-end.md`.
    > **An empty search result is not evidence of absence** — confirm any negative with
    > `git ls-files` (`CLAUDE.md` § *Searching the codebase* — the `.gitignore` `out/` trap).
 2. **Load + announce.** Load each triggered skill **before** authoring that part and say
-   so out loud, e.g. *"Loaded `postgres` (migration V2), `codebase-design` (venue seam),
-   `angular-developer` + angular-cli MCP (beach-map component)."* If you wrote the
-   migration before loading `postgres`, the gate already failed — redo it. A frontend
-   slice loads `angular-developer` + the angular-cli MCP **and** `playwright-cli` (so the
-   slice ships best-practice e2e coverage, not just a component).
+   so out loud, naming each loaded skill and the part it covers. If you wrote the
+   migration before loading `postgres`, the gate already failed — redo it.
 3. **Record.** Name each loaded skill and what it changed in the plan doc's **Skills
    consulted** line (one phrase each). `riviera-review-overlay` checks that line against
    the diff: a migration in the diff with no `postgres` in *Skills consulted* is a finding.
@@ -105,7 +100,7 @@ doubt, load it.
 
 1. **One vertical slice per issue/PR.** A slice cuts through every layer (DB → API → UI → tests) and is demoable on its own — never a horizontal layer.
 2. **Branch per issue:** `feature/<slug>` or `bugfix/<slug>` off `main`; reference `#NN` in commits.
-3. **The CI gate is non-negotiable — and it runs per push, not per PR.** Which is why the PR is opened as a **draft as soon as the first phase commit exists** — the PR row (The loop) owns the why (#417). Red → `diagnosing-bugs`.
+3. **The CI gate is non-negotiable — and it runs per push, not per PR.** Which is why the PR is opened as a **draft as soon as the first phase commit exists** — the PR row (The loop) owns the why. Red → `diagnosing-bugs`.
 4. **The review gate is non-negotiable too — and "ran" means `/code-review` actually ran** (`references/pr-gates.md` §1).
 5. **The plan owns the invariants.** If the slice touches booking, availability, or money, the plan doc states how the invariant holds, and review checks it.
 6. **Right-size it.** A one-line/copy fix skips the plan doc; a spine-touching feature does not. (A code change still gets the review gate — proportional to size.)
@@ -126,9 +121,7 @@ doubt, load it.
 A long SDLC run fills the context window; the harness then **compacts** (summarizes) the
 conversation and continues. Compaction is lossy in exactly the places this pipeline is
 strict — which stage you're in, which gates already ran, the open findings, the loaded
-skills' actual content — and lost gate state is how drift ships: a post-review fix that
-skips the routing gate, a forgotten Sonar issue list, a merge without close-out. The
-defense is not "use less context"; it is **the conversation is never the state store**:
+skills' actual content. The defense is **the conversation is never the state store**:
 
 1. **The plan doc's Execution status section is the state store** — stage pointer, next
    action, phase table, findings register — committed at every phase boundary and every
@@ -140,8 +133,8 @@ defense is not "use less context"; it is **the conversation is never the state s
    Never run a gate from the summary's memory of its procedure.
 3. **Re-load rule.** A compaction is a new area-entry for the Skill-routing gate: re-load
    the routed skills for whatever you touch next — a skill loaded before compaction may
-   survive only as a summary sentence, and trusting that sentence is how an invariant-#11
-   violation ships at hour three. Re-loading is cheap.
+   survive only as a summary sentence; never trust that sentence as the skill. Re-loading
+   is cheap.
 4. **Keep bulk reads out of the main thread.** What fills context fastest is tool output,
    not skills. Delegate self-contained heavy reading to subagents that return conclusions:
    the review gate (`/code-review` already runs one), the Sonar issue-list triage,
@@ -153,8 +146,7 @@ defense is not "use less context"; it is **the conversation is never the state s
    session needs (the issue-intake gate is the entry procedure), and the PR + plan doc is
    everything the review/sonar/merge session needs. When context runs high near a gate,
    finish the current phase, commit the Execution status, and continue in a fresh
-   session — drift risk peaks exactly when the strictest gates run, and a fresh session
-   with a current plan doc beats a compacted one every time.
+   session.
 
 ## Remote / cloud session addendum
 
@@ -208,20 +200,17 @@ enable, add, or deny the `idea` server yourself (the settings rules in that file
 ## Integration
 
 The loop table and the Skill-routing gate above ARE the skill map — there is no separate
-list to maintain. Vendored craft skills (Matt Pocock, MIT) are tracked in
-`skills-lock.json`; three of them are not routed above: `improve-codebase-architecture`
-(deepening existing code outside slice work), `grill-me` (the `grilling` alias), and
-`implement`, which the Implement row names only as the human's entry command, never a route.
+list to maintain. Vendored craft skills are tracked in `skills-lock.json`.
 `research` + `prototype` are routed twice — by the Plan row, for open questions a slice can
 answer itself, and by `wayfinder` as decision-ticket types when it cannot.
 
-**Three skills are human-invoke-only** — `implement`, `grill-me`, and
-`improve-codebase-architecture` carry upstream's `disable-model-invocation: true`, so the
-Skill tool refuses them and forbids re-enacting their workflow by other means. That flag is
-**kept deliberately** (the lockfile records why per skill): each is a *human's* entry
-command whose body this repo already encodes more precisely, so routing to one would be a
-dead edge. Everything they cover is reachable through the rows above — `implement` → this
-table's Implement row, `grill-me` → `grilling`. Don't drop the flag to "fix" a refusal.
+**Three vendored skills are human-invoke-only, never a route** — `implement` (the Implement
+row names it only as the human's entry command), `grill-me` (the `grilling` alias), and
+`improve-codebase-architecture` (deepening existing code outside slice work) carry
+upstream's `disable-model-invocation: true`, kept deliberately (the lockfile records why
+per skill), so the Skill tool refuses them and forbids re-enacting their workflow by other
+means. Everything they cover is reachable through the rows above — `implement` → the
+Implement row, `grill-me` → `grilling`. Don't drop the flag to "fix" a refusal.
 
 ## References
 
@@ -231,8 +220,8 @@ table's Implement row, `grill-me` → `grilling`. Don't drop the flag to "fix" a
 - `references/issue-intake-gate.md` — read at plan entry whenever work starts from an
   existing issue: grill checklist, in-flight/Flyway-number check, module-ownership check.
 - `references/pr-gates.md` — read when the PR is marked **ready for review** (not when the
-  draft opens, #417): the Review gate, the
-  SonarCloud gate (API URLs, triage rules), and the Merge close-out checklist.
+  draft opens): the Review gate, the SonarCloud gate (API URLs, triage rules), and the
+  Merge close-out checklist.
 - `references/idea-mcp.md` — read only when `mcp__idea__*` tools are present: per-stage
   payoffs and the settings rules for the JetBrains `idea` MCP server.
 - `references/case-history.md` — the incidents behind the rules, told once in full; read
