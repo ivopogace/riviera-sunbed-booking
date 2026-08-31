@@ -36,7 +36,7 @@ This is the JVM analogue of how `scripts/start-dockerd.sh` trusts the same CA fo
 ## Building locally on a repo-scoped session (Gradle wrapper unreachable)
 
 On a session whose **GitHub scope is limited to this repo**, the pinned Gradle wrapper
-**cannot self-provision**: `services.gradle.org/distributions/gradle-9.6.1-bin.zip`
+**cannot self-provision**: `services.gradle.org/distributions/gradle-9.7.1-bin.zip`
 **307-redirects to the `gradle/gradle-distributions` GitHub repo**, which the repo-scope
 proxy blocks with `403 {"message":"...not enabled for this session..."}`. Likewise the
 setup hook's Temurin JDK (from `adoptium/temurin25-binaries`) 403s — which is why
@@ -44,7 +44,8 @@ setup hook's Temurin JDK (from `adoptium/temurin25-binaries`) 403s — which is 
 `corretto.aws` (network-allowlisted, not GitHub-gated), landing a JDK at `/opt/jdk-25`.
 
 **Do NOT change the wrapper's `distributionUrl`** — CI has full GitHub access and depends
-on the pinned 9.6.1 + JDK 25. Local builds use the **pre-installed system Gradle 8.14.x**
+on the pinned version (9.7.1 as of 2026-08-31 — `platform/gradle/wrapper/gradle-wrapper.properties`
+is the source of truth) + JDK 25. Local builds use the **pre-installed system Gradle 8.14.x**
 instead. One catch: **Gradle 8.14.x cannot _run_ on JDK 25** (`Unsupported class file major
 version 69`). So run its daemon on **JDK 21** and point the **toolchain** at `/opt/jdk-25`:
 
