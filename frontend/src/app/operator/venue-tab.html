@@ -11,7 +11,7 @@
   } @else if (loadError()) {
     <p
       appCardGlass
-      class="rounded-[24px] px-[22px] py-10 text-center text-[13px] text-[#a3160e]"
+      class="rounded-[24px] px-[22px] py-10 text-center text-[13px] text-riv-error-ink"
       role="alert"
       data-testid="venue-load-error"
     >
@@ -40,7 +40,7 @@
             @if (detailsForm.name().touched() && detailsForm.name().errors().length) {
               <span
                 [appFieldErrorFor]="nameControl"
-                class="text-[11.5px] font-semibold text-[#a3160e]"
+                class="text-[11.5px] font-semibold text-riv-error-ink"
                 role="alert"
                 >{{ detailsForm.name().errors()[0].message }}</span
               >
@@ -61,7 +61,7 @@
               @if (detailsForm.beach().touched() && detailsForm.beach().errors().length) {
                 <span
                   [appFieldErrorFor]="beachControl"
-                  class="text-[11.5px] font-semibold text-[#a3160e]"
+                  class="text-[11.5px] font-semibold text-riv-error-ink"
                   role="alert"
                   >{{ detailsForm.beach().errors()[0].message }}</span
                 >
@@ -80,7 +80,7 @@
               @if (detailsForm.region().touched() && detailsForm.region().errors().length) {
                 <span
                   [appFieldErrorFor]="regionControl"
-                  class="text-[11.5px] font-semibold text-[#a3160e]"
+                  class="text-[11.5px] font-semibold text-riv-error-ink"
                   role="alert"
                   >{{ detailsForm.region().errors()[0].message }}</span
                 >
@@ -160,7 +160,7 @@
           }
           @if (errorMessage(); as msg) {
             <span
-              class="text-[11.5px] font-semibold text-[#a3160e]"
+              class="text-[11.5px] font-semibold text-riv-error-ink"
               role="alert"
               data-testid="venue-error"
               >{{ msg }}</span
@@ -243,7 +243,7 @@
                     <button
                       type="button"
                       appTouchTarget
-                      class="rounded-[12px] border border-riv-card-border bg-white/50 px-3.5 py-1.5 text-[12.5px] font-bold text-[#a3160e] [transition:background_0.15s_ease] hover:bg-white/80 aria-disabled:opacity-50"
+                      class="rounded-[12px] border border-riv-card-border bg-white/50 px-3.5 py-1.5 text-[12.5px] font-bold text-riv-error-ink [transition:background_0.15s_ease] hover:bg-white/80 aria-disabled:opacity-50"
                       [attr.data-testid]="'photo-remove-' + slot.key"
                       [appBusy]="slotUi()[slot.key].busy"
                       (click)="onPhotoRemove(slot.key)"
@@ -255,7 +255,7 @@
 
                 @if (photoErrorMessage(slot.key); as msg) {
                   <span
-                    class="text-[11.5px] font-semibold text-[#a3160e]"
+                    class="text-[11.5px] font-semibold text-riv-error-ink"
                     role="alert"
                     [attr.data-testid]="'photo-error-' + slot.key"
                     >{{ msg }}</span
@@ -312,7 +312,7 @@
             @if (distanceError()) {
               <span
                 [appFieldErrorFor]="distanceControl"
-                class="text-[11.5px] font-semibold text-[#a3160e]"
+                class="text-[11.5px] font-semibold text-riv-error-ink"
                 role="alert"
                 data-testid="venue-distance-error"
                 >Enter a whole number of metres, or leave it blank.</span

@@ -11,7 +11,7 @@
 
   @if (errorMessage(); as msg) {
     <p
-      class="mb-3 text-[12.5px] font-semibold text-[#a3160e]"
+      class="mb-3 text-[12.5px] font-semibold text-riv-error-ink"
       role="alert"
       data-testid="venue-create-error"
     >
@@ -38,7 +38,7 @@
         @if (venueForm.name().touched() && venueForm.name().errors().length) {
           <span
             [appFieldErrorFor]="nameControl"
-            class="text-[11.5px] font-semibold text-[#a3160e]"
+            class="text-[11.5px] font-semibold text-riv-error-ink"
             role="alert"
             >{{ venueForm.name().errors()[0].message }}</span
           >
@@ -59,7 +59,7 @@
           @if (venueForm.beach().touched() && venueForm.beach().errors().length) {
             <span
               [appFieldErrorFor]="beachControl"
-              class="text-[11.5px] font-semibold text-[#a3160e]"
+              class="text-[11.5px] font-semibold text-riv-error-ink"
               role="alert"
               >{{ venueForm.beach().errors()[0].message }}</span
             >
@@ -78,7 +78,7 @@
           @if (venueForm.region().touched() && venueForm.region().errors().length) {
             <span
               [appFieldErrorFor]="regionControl"
-              class="text-[11.5px] font-semibold text-[#a3160e]"
+              class="text-[11.5px] font-semibold text-riv-error-ink"
               role="alert"
               >{{ venueForm.region().errors()[0].message }}</span
             >
@@ -118,7 +118,7 @@
           @if (venueForm.payoutCurrency().touched() && venueForm.payoutCurrency().errors().length) {
             <span
               [appFieldErrorFor]="payoutCurrencyControl"
-              class="text-[11.5px] font-semibold text-[#a3160e]"
+              class="text-[11.5px] font-semibold text-riv-error-ink"
               role="alert"
               >{{ venueForm.payoutCurrency().errors()[0].message }}</span
             >

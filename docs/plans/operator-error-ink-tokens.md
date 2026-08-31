@@ -149,7 +149,7 @@ ledger, published in dependency order with #836 as native parent)
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | A migrated operator component is rendered **outside** a porcelain-pinned host, so the themed token resolves `#ffa9a1` and the error ink flips light-on-white | low | high | All nine files verified inside the pin (`operator-console.ts:72`, `operator-home.ts:41`, plus `app.ts:50`'s operator-chrome pin); AC-4 drives **both** host bindings against a forced `dark` document theme, because they pin porcelain separately | claude | open |
-| R-2 | A site is migrated that is actually one of the three excluded sub-populations, silently changing dark-theme paint or a computed value | med | high | The migration is scoped by **form**, not by value: only plain `text-[#a3160e]` under `operator/`. AC-5's grep is the same form. `bg-`, `/opacity` and `booking/` are untouched and their literals deliberately remain | claude | open |
+| R-2 | A site is migrated that is actually one of the three excluded sub-populations, silently changing dark-theme paint or a computed value | med | high | The migration is scoped by **form**, not by value: only plain `text-[#a3160e]` under `operator/`, matched with a negative lookahead on `/` so an `/opacity` form cannot be swept in by substring. AC-5's grep is the same form; the excluded forms' baseline counts are re-asserted after the sweep | claude | closed |
 | R-3 | The eight operator contrast specs keep restating `#a3160e` and drift from the token later | med | med | Phase 1 repoints them at `glass-tokens.ts` **before** any component moves (#835's R-5, which this slice inherits as a known pattern rather than rediscovering) | claude | closed |
 | R-4 | `text-riv-error-ink` generates no utility, so the class changes and the paint does not | low | high | The utility is already live (`--color-riv-error-ink` is mapped at `tailwind.css:53` and consumed today by `admin/`, `auth/`, `shared/`), but AC-3's `toHaveCSS` in a real render is the detector regardless; unit specs cannot see it | claude | open |
 | R-5 | The audit doc lands in `docs/design/`, whose README states its files are records that are **never** maintained — a reader following the README would apply the `as-built diverges` pointer convention to a ledger that must instead be brought up to date | med | med | The README gains an explicit exception section naming this file and its opposite contract; the ledger's own header states it too, from the other side | claude | open |
@@ -229,18 +229,18 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)` — ledger + issues shipped, draft PR #856 open and watched,
-contrast specs repointed at the token mirror.
+**Stage pointer:** `implement (phase 3)` — ledger + issues shipped, draft PR #856 open and watched,
+specs repointed at the mirror, all 32 positions migrated.
 
-**Next action:** migrate the 32 plain `text-[#a3160e]` positions under `operator/` to
-`text-riv-error-ink`, leaving `bg-`, `/opacity` and `booking/` untouched.
+**Next action:** write `frontend/e2e/operator-error-ink.e2e.ts` — the computed-value guard (AC-3)
+and the forced-dark subtree proof against **both** porcelain host bindings (AC-4).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Audit ledger + child issues + plan doc | ✅ | `4029d04` |
 | 1 — Repoint the operator contrast specs at `glass-tokens.ts` | ✅ | (this commit) |
-| 2 — Migrate the 32 sites to `text-riv-error-ink` | ⏳ | |
-| 3 — Mocked e2e: computed value, light and forced-dark | | |
+| 2 — Migrate the 32 sites to `text-riv-error-ink` | ✅ | (this commit) |
+| 3 — Mocked e2e: computed value, light and forced-dark | ⏳ | |
 | 4 — Verification + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -308,13 +308,15 @@ Create `docs/plans/operator-error-ink-tokens.md`
 
 **Files:** Modify the eight operator `.html` files + `booking-cutoff-field.ts`
 
-- [ ] **Step 1:** Replace **only** plain `text-[#a3160e]` with `text-riv-error-ink` under
-      `operator/`. Leave `bg-`, `/opacity` and `booking/` untouched (R-2).
-- [ ] **Step 2:** Run the operator unit + contrast specs.
-- [ ] **Step 3:** Verify AC-5's grep returns nothing, and that the excluded forms still return
-      their expected counts.
-- [ ] **Step 4: Commit** — `git commit -m "Paint the operator console's error ink from the token registry (#855)"`
-- [ ] **Step 5: Update plan-doc execution status** in the same commit window.
+- [x] **Step 1:** Replaced **only** plain `text-[#a3160e]` with `text-riv-error-ink` under
+      `operator/` — 32 positions, matched with a negative lookahead on `/` so an `/opacity` form
+      could not be swept in by substring (R-2).
+- [x] **Step 2:** `npx ng test --watch=false --include="src/app/operator/**/*.spec.ts"` →
+      50 files, 539 tests, PASS.
+- [x] **Step 3:** AC-5's grep returns nothing; the three excluded forms still return their
+      baseline counts (2 `bg-` plain, 7 `/opacity`, 3 `booking/` `text-`).
+- [x] **Step 4: Commit** — `Paint the operator console's error ink from the token registry (#855)`
+- [x] **Step 5: Update plan-doc execution status** in the same commit window.
 
 ## Phase 3 — Prove the plumbing in a real render
 
@@ -356,7 +358,9 @@ Create `docs/plans/operator-error-ink-tokens.md`
       → 10 files, 70 tests, PASS. `grep -rn "'#a3160e'" frontend/src/app/operator/*.contrast.spec.ts`
       → no results. Verified at phase 1.
 - [ ] **AC-3 / AC-4:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- operator-error-ink` → PASS.
-- [ ] **AC-5:** `grep -rn 'text-\[#a3160e\]' frontend/src/app/operator` → no results.
+- [x] **AC-5:** `grep -rn 'text-\[#a3160e\]' frontend/src/app/operator` → no results. The excluded
+      forms still return their baseline counts (2 `bg-` plain, 7 `/opacity`, 3 `booking/` `text-`),
+      which is the half of AC-5 that proves the sweep did not overreach. Verified at phase 2.
 - [x] **AC-6:** `docs/design/colour-literal-token-audit.md` committed; every open family row cites
       a live issue.
 

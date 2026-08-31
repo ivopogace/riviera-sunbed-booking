@@ -73,7 +73,7 @@
   </section>
 } @else if (loadError()) {
   <p
-    class="mx-auto mt-6 max-w-md rounded-[16px] border border-[#a3160e]/30 bg-white/70 px-5 py-4 text-center text-[13px] font-semibold text-[#a3160e]"
+    class="mx-auto mt-6 max-w-md rounded-[16px] border border-[#a3160e]/30 bg-white/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
     role="alert"
     data-testid="daily-load-error"
   >
@@ -173,7 +173,7 @@
       }
       @if (notice(); as msg) {
         <output
-          class="mt-3 block text-[13px] font-semibold text-[#a3160e]"
+          class="mt-3 block text-[13px] font-semibold text-riv-error-ink"
           aria-live="polite"
           tabindex="-1"
           data-testid="daily-notice"
