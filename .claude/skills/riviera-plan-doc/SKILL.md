@@ -75,7 +75,8 @@ or, for smaller items, a **GitHub issue**; reference `#NN` in commits and the pl
 5. **Payment & payout:** if money moves, fill the section per the template — name
    the model (collect-only, **no Stripe Connect**) — and load `riviera-stripe-payments`.
 6. **Decompose into PR-sized phases.** Each phase merges to the feature branch and
-   is independently reviewable; prefer a TDD red-green-refactor shape per task.
+   is independently reviewable; prefer a TDD red-green shape per task, at seams named
+   in the plan (`tdd` keeps refactoring in the review stage, out of the loop).
 7. **Behavior-parity ledger — if the slice retires or replaces an existing surface.**
    Do this **early** (it shapes the ACs and Non-goals): fill the template's
    Behavior-parity ledger — enumerate the OLD surface's behaviors and mark each

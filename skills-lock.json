@@ -19,84 +19,98 @@
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/productivity/grilling/SKILL.md",
-      "ref": "main",
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
       "vendored": true
     },
     "grill-me": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/productivity/grill-me/SKILL.md",
-      "ref": "main",
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
       "vendored": true
     },
     "to-issues": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/to-issues/SKILL.md",
-      "ref": "main",
-      "vendored": "verbatim + cherry-picked two improvements from the newer engineering/to-tickets: native blocking-link wiring (second pass) and expand→contract sequencing for wide refactors"
+      "ref": "e84f5be0-era to-issues (upstream path since renamed to skills/engineering/to-tickets)",
+      "vendored": "verbatim + cherry-picked two improvements from the newer engineering/to-tickets: native blocking-link wiring (second pass) and expand→contract sequencing for wide refactors. DELIBERATELY NOT refreshed at the 2026-08-31 sweep: upstream renamed the skill to-tickets and swapped 'issue' for 'ticket' throughout, which fights this repo's GitHub-issue vocabulary; the only other upstream change was dropping the 'work the frontier one ticket at a time with implement' line, which we keep."
     },
     "to-spec": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/to-spec/SKILL.md",
-      "ref": "main",
-      "vendored": "verbatim body + a riviera localization note (epic-vs-slice altitude, GitHub-MCP tracker + triage-labels, feeds to-issues)"
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "vendored": "verbatim body + a riviera localization note (epic-vs-slice altitude, GitHub-MCP tracker + triage-labels, feeds to-issues) + template tags flattened to headings; upstream disable-model-invocation dropped so the skill stays listable. Localization rebased onto the current upstream body 2026-08-31."
     },
     "wayfinder": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/wayfinder/SKILL.md",
-      "ref": "main",
-      "vendored": "verbatim body + a riviera localization note (foggy-epics-only, GitHub-MCP tracker + wayfinder:* labels, research/prototype subagent substitution, map-vs-plan-doc state-store boundary); upstream agents/openai.yaml dropped"
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "vendored": "verbatim body + a riviera localization note (foggy-epics-only, GitHub-MCP tracker + wayfinder:* labels, map-vs-plan-doc state-store boundary); upstream agents/openai.yaml dropped, as is disable-model-invocation. Localization rebased onto the current upstream body 2026-08-31, and the research/prototype substitution bullet retired now that both skills are vendored."
     },
     "implement": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/implement/SKILL.md",
-      "ref": "main",
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
       "vendored": true
     },
     "tdd": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/tdd/SKILL.md",
-      "ref": "main",
-      "vendored": true
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "vendored": "verbatim — SKILL.md + mocking.md + tests.md. refactoring.md was deleted upstream (refactoring moved out of the red-green loop into the review stage) and is deleted here too; CONTRIBUTING.md and riviera-plan-doc were reworded to match."
     },
     "diagnosing-bugs": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
-      "ref": "main",
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
       "vendored": true
     },
     "codebase-design": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/codebase-design/SKILL.md",
-      "ref": "main",
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
       "vendored": true
     },
     "domain-modeling": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
-      "ref": "main",
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
       "vendored": true
+    },
+    "research": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/research/SKILL.md",
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "vendored": "verbatim; upstream agents/openai.yaml dropped. Vendored 2026-08-31 for wayfinder's research decision-ticket type, which previously had to be substituted with a bare Explore subagent."
+    },
+    "prototype": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/prototype/SKILL.md",
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "vendored": "verbatim — SKILL.md + LOGIC.md + UI.md; upstream agents/openai.yaml dropped. Vendored 2026-08-31 for wayfinder's prototype decision-ticket type, which previously had to be substituted with a bare spike branch."
     },
     "triage": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/triage/SKILL.md",
-      "ref": "main",
-      "vendored": true
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+      "vendored": "verbatim body (SKILL.md + AGENT-BRIEF.md + OUT-OF-SCOPE.md) + a riviera localization note (GitHub-MCP tracker + label mapping, issues-only — no PR triage surface); upstream disable-model-invocation dropped. This entry read `true` before 2026-08-31; it was never verbatim."
     },
     "improve-codebase-architecture": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
-      "ref": "main",
+      "ref": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
       "vendored": true
     },
     "postgres": {

@@ -49,7 +49,7 @@ the state/category/area labels above.
 | Label | Meaning |
 |---|---|
 | `wayfinder:map` | The map issue — the effort's shared index of decisions + frontier. |
-| `wayfinder:research` | Decision ticket resolved by reading docs/APIs (AFK — `Explore`/`general-purpose` subagent; no `/research` skill here). |
-| `wayfinder:prototype` | Decision ticket resolved by a cheap rough artifact (HITL — a throwaway spike branch; no `/prototype` skill here). |
+| `wayfinder:research` | Decision ticket resolved by reading docs/APIs (AFK — the vendored `research` skill, in a subagent). |
+| `wayfinder:prototype` | Decision ticket resolved by a cheap rough artifact (HITL — the vendored `prototype` skill; its throwaway code lands on a spike branch, never main). |
 | `wayfinder:grilling` | Decision ticket resolved by conversation (HITL — `grilling` + `domain-modeling`). The default. |
 | `wayfinder:task` | Manual work that must happen before a decision can be made (provision access, move data). |

@@ -227,8 +227,9 @@ including the developer machine's).
 
 The loop table and the Skill-routing gate above ARE the skill map — there is no separate
 list to maintain. Vendored craft skills (Matt Pocock, MIT) are tracked in
-`skills-lock.json`; two of them are not routed above: `improve-codebase-architecture`
-(deepening existing code outside slice work) and `grill-me` (the `grilling` alias).
+`skills-lock.json`; four of them are not routed above: `improve-codebase-architecture`
+(deepening existing code outside slice work), `grill-me` (the `grilling` alias), and
+`research` + `prototype`, which only `wayfinder` routes — as decision-ticket types.
 
 ## References
 
