@@ -20,6 +20,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.notification.adapter.out.MockMailer;
 import ai.riviera.platform.notification.adapter.out.SentEmail;
 import ai.riviera.platform.notification.application.BookingLinks;
@@ -243,6 +244,29 @@ class RequestPaymentDueMailIT {
 				.param("module", "ai.riviera.platform.notification.%")
 				.query(String.class).list())
 				.containsExactly(BookingMailFixtures.PAYMENT_DUE_LISTENER_ID);
+	}
+
+	/**
+	 * #795 AC-6: a same-day request accepted before the venue's sales close is disclosed as a
+	 * non-refundable last-minute booking in its payment-due mail. The CLOSED-stamped event is
+	 * published directly; {@code RespondToRequestServiceTest} pins the accept-path stamping.
+	 */
+	@Test
+	void sameDayAcceptCarriesNonRefundableDisclosure() {
+		SetRef set = onlineSet();
+		LocalDate date = LocalDate.of(2029, 8, 17);
+		String guest = "same-day-pay@example.com";
+
+		long bookingId = fixtures.seedBooking(new BookingMailFixtures.SetRef(set.setId(), set.venueId()),
+				"PAYSAME1", date, guest, 8317L, "AWAITING_PAYMENT");
+		fixtures.publishInTransaction(fixtures.paymentDueOf(
+				new BookingMailFixtures.SetRef(set.setId(), set.venueId()), bookingId, date, 8317L,
+				Instant.now().plus(Duration.ofHours(6)).truncatedTo(ChronoUnit.MILLIS),
+				CancellationWindow.CLOSED, 0));
+
+		Awaitility.await().atMost(WAIT).until(() -> countTo(guest) == 1L);
+		assertThat(mailer.lastTo(guest).orElseThrow().paymentDue().cancellationWindowAtBirth())
+				.isEqualTo(CancellationWindow.CLOSED);
 	}
 
 	private double abandonedCount() {

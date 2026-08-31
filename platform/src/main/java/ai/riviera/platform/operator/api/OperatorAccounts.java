@@ -11,10 +11,10 @@ import ai.riviera.platform.operator.vocabulary.OperatorCredential;
  * <em>storage</em> (account identity); it does <strong>not</strong> encode or verify the hash — that
  * is the edge's password-checking machinery (RV-BE-11, {@code RESPONSIBILITIES.md}).
  *
- * <p>Returns an account <em>regardless of status</em> (with the {@code active} flag reflecting
- * {@code ACTIVE}) so the edge can disable a {@code SUSPENDED} login via the framework's pre-auth
- * check, and empty only when no such username exists. Distinct from {@link OperatorDirectory}, which
- * answers the ownership-resolution question (ACTIVE username → {@link OperatorId}).
+ * <p>Returns an account <em>regardless of status</em> (carrying its lifecycle status token) so the
+ * edge can apply its may-authenticate set via the framework's pre-auth check, and empty only when no
+ * such username exists. Distinct from {@link OperatorDirectory}, which answers the
+ * ownership-resolution question (username → {@link OperatorId}).
  */
 public interface OperatorAccounts {
 

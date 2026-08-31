@@ -13,7 +13,7 @@ import {
  * (porcelain `--riv-card-glass` = white @ 0.55), so every ink sits over that glass composited over
  * the console's porcelain background stops. The label uses `--riv-card-ink-faint` (0.72) —
  * deliberately brighter than the design file's `rgba(12,42,51,0.5)`, which would fail AA. Values
- * mirror `styles.scss`; a token edit there must re-pass here.
+ * mirror `tailwind.css`; a token edit there must re-pass here.
  */
 
 describe('ConsoleStatsStrip porcelain contrast (WCAG AA, #171)', () => {

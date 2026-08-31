@@ -1,4 +1,4 @@
-import { isRated, ratingScore } from './rating';
+import { isRated, ratingScore, reviewsLabel } from './rating';
 
 describe('rating helpers', () => {
   describe('isRated', () => {
@@ -22,5 +22,17 @@ describe('rating helpers', () => {
       expect(ratingScore(41)).toBe('4.1');
       expect(ratingScore(50)).toBe('5.0');
     });
+  });
+});
+
+describe('reviewsLabel', () => {
+  it('agrees the noun with the count', () => {
+    expect(reviewsLabel(1)).toBe('1 review');
+    expect(reviewsLabel(2)).toBe('2 reviews');
+    expect(reviewsLabel(326)).toBe('326 reviews');
+  });
+
+  it('is plural at zero, which no rated surface renders anyway', () => {
+    expect(reviewsLabel(0)).toBe('0 reviews');
   });
 });

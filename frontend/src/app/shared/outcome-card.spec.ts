@@ -65,7 +65,7 @@ describe('OutcomeCard', () => {
 
   it('sits on the shared card-glass surface', () => {
     // Reuses the AA-proven token set rather than a private translucent fill.
-    expect(card().classList.contains('bg-(--riv-card-glass)')).toBe(true);
-    expect(card().classList.contains('text-(--riv-card-ink)')).toBe(true);
+    expect(card().classList.contains('bg-riv-card-glass')).toBe(true);
+    expect(card().classList.contains('text-riv-card-ink')).toBe(true);
   });
 });

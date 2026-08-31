@@ -75,6 +75,26 @@ describe('Home accessibility (axe)', () => {
     await expectNoAxeViolations(host());
   });
 
+  it('has no violations when a card carries the photo slideshow (labelled controls outside the link)', async () => {
+    const [first, second] = venues();
+    listRequest().flush([
+      { ...first, photos: ['/api/venues/1/photos/aa01', '/api/venues/1/photos/cc03'] },
+      second,
+    ]);
+    await fixture.whenStable();
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no violations when a venue is badged sales-closed for today', async () => {
+    const [closed, open] = venues();
+    listRequest().flush([
+      { ...closed, salesOpen: false },
+      { ...open, salesOpen: true },
+    ]);
+    await fixture.whenStable();
+    await expectNoAxeViolations(host());
+  });
+
   it('has no violations in the loading state', async () => {
     const req = listRequest(); // pending → loading message
     await fixture.whenStable();

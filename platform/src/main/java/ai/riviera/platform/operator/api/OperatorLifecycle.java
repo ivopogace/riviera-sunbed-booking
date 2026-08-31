@@ -7,6 +7,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorAccount;
 import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
+import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
 
 /**
@@ -37,16 +38,18 @@ public interface OperatorLifecycle {
 	List<OperatorAccount> accounts();
 
 	/**
-	 * The username of the ACTIVE operator with this id, or empty if there is none (unknown, PENDING,
-	 * REJECTED, or already SUSPENDED) — the same ACTIVE-only rule the ownership resolution applies.
+	 * The username of the operator with this id when it is in {@code expected} status, or empty
+	 * (unknown or in any other status).
 	 *
-	 * <p>A pure query that exists for one reason (#357): {@link #suspend} can only name the principal
-	 * <em>after</em> it has committed, so the edge could revoke that operator's sessions only afterwards
-	 * — and a transient revoke failure then left a suspended operator's sessions alive while the admin's
-	 * retry drew {@link OperatorLifecycleOutcome.WrongStatus}. Knowing the username up front lets the
-	 * edge revoke first, so a failure there leaves the account ACTIVE and the retry does both.
+	 * <p>A pure query that exists for one reason: a session-revoking transition ({@link #suspend},
+	 * {@link #reject}) can only name the principal <em>after</em> it has committed, so the edge could
+	 * revoke that operator's sessions only afterwards — and a transient revoke failure then left the
+	 * account's sessions alive while the admin's retry drew a wrong-status refusal. Knowing the
+	 * username up front lets the edge revoke first, so a failure there leaves the account in its
+	 * prior status and the retry does both. The {@code expected} guard keeps the pre-read as precise
+	 * as the transition it precedes — a wrong-status target revokes nothing.
 	 */
-	Optional<String> activeUsername(OperatorId operatorId);
+	Optional<String> usernameInStatus(OperatorId operatorId, OperatorStatus expected);
 
 	/**
 	 * Approve the PENDING operator with this id → ACTIVE (it can now sign in). Returns
@@ -59,8 +62,9 @@ public interface OperatorLifecycle {
 	ApprovalOutcome approve(OperatorId operatorId);
 
 	/**
-	 * Reject the PENDING operator with this id → REJECTED (it still cannot sign in). Returns
-	 * {@link ApprovalOutcome.Rejected} / {@link ApprovalOutcome.NotPending} /
+	 * Reject the PENDING operator with this id → REJECTED (it can no longer sign in). Returns
+	 * {@link ApprovalOutcome.Rejected} carrying the username — a PENDING operator can hold a live
+	 * session, so the caller must revoke it — / {@link ApprovalOutcome.NotPending} /
 	 * {@link ApprovalOutcome.NoSuchOperator}, mirroring {@link #approve} — but note the asymmetry:
 	 * a rejection carries no address, because this slice deliberately sends the applicant nothing.
 	 */

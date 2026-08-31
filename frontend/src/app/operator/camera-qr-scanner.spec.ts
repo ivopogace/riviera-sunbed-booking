@@ -102,6 +102,7 @@ describe('CameraQrScanner', () => {
     video.fire('loadedmetadata');
     await pending;
 
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- video.play is a vi.fn() mock, not a bound native method
     expect(video.play).toHaveBeenCalledTimes(2);
     scanner.stop();
   });

@@ -95,8 +95,11 @@ describe('AuthPage a11y (#277)', () => {
     await expectNoAxeViolations(host);
   });
 
-  it('has no serious violations on the pending-approval landed card', async () => {
+  it('has no serious violations on the submitted fallback card', async () => {
+    // The card renders only when the post-register auto-sign-in cannot complete (#694).
     const host = await render({ audience: 'operator', mode: 'register' });
+    const operator = TestBed.inject(OperatorAuth) as unknown as ReturnType<typeof stubAuth>;
+    operator.signIn.mockResolvedValue('error');
     for (const [testId, value] of [
       ['auth-identifier', 'sereno'],
       ['auth-contact-email', 'ops@sereno.al'],

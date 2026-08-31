@@ -390,16 +390,13 @@ describe('AdminVenuePhotos', () => {
     expect(document.activeElement).toBe(byTestId(fixture, 'admin-photo-slot-cover'));
   });
 
-  it('self-gates on the admin session', async () => {
+  /** The gate itself (forbidden markup) moved to `AdminConsole`; this component's own defensive
+   *  guard — redundant once the shell's gate is in place, but harmless to keep — still must not
+   *  load when the admin session says no. */
+  it('does not load when the admin session is not confirmed', async () => {
     const service = serviceStub();
-    const fixture = await render(authStub({ isAdmin: false }), service);
+    await render(authStub({ isAdmin: false }), service);
 
-    expect(byTestId(fixture, 'admin-photos-forbidden')).not.toBeNull();
-    expect(byTestId(fixture, 'admin-photos-venue')).toBeNull();
-    // A signed-out visitor is never told which admin surfaces exist.
-    expect(
-      (fixture.nativeElement as HTMLElement).querySelector('app-admin-console-tabs'),
-    ).toBeNull();
     expect(service.venues).not.toHaveBeenCalled();
   });
 

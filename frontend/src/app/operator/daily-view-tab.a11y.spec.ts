@@ -14,7 +14,8 @@ import { QrScanner } from './qr-scanner';
  * Structural a11y audit for the Daily view tab. Each actionable tile is a labelled
  * `<button>` (`aria-label` names row, position, tier, price and the tap action) and each locked tile
  * a labelled `<span>`, so tile STATE is conveyed by an accessible name, not colour alone. axe runs
- * over the populated grid + arrivals and the empty arrivals state. (Contrast is proven by
+ * over the populated grid + arrivals, the empty arrivals state, and the zero-set map card — whose
+ * empty state adds a heading and a link where the grid would be. (Contrast is proven by
  * `daily-view-tab.contrast.spec.ts` — axe can't measure it under jsdom.)
  */
 describe('DailyViewTab a11y (#175)', () => {
@@ -26,6 +27,12 @@ describe('DailyViewTab a11y (#175)', () => {
     bookings: { setId: number; code: string }[],
     states: { setId: number; state: string }[] = [],
   ): void {
+    mount();
+    settle(sets, bookings, states);
+  }
+
+  /** Mount the tab and settle only the session read, so the tab is left mid-load. */
+  function mount(): void {
     TestBed.configureTestingModule({
       imports: [DailyViewTab],
       providers: [
@@ -51,6 +58,14 @@ describe('DailyViewTab a11y (#175)', () => {
     http
       .expectOne((r) => r.url.includes('/api/auth/me'))
       .flush({ code: 'UNAUTHENTICATED' }, { status: 401, statusText: 'Unauthorized' });
+  }
+
+  /** Flush the tab's three load GETs, moving it from skeleton to content. */
+  function settle(
+    sets: SetView[],
+    bookings: { setId: number; code: string }[],
+    states: { setId: number; state: string }[],
+  ): void {
     http
       .expectOne((r) => r.method === 'GET' && r.url.includes('/api/venues/1/bookings'))
       .flush(bookings);
@@ -94,6 +109,33 @@ describe('DailyViewTab a11y (#175)', () => {
   it('has no axe violations with an empty arrivals list', async () => {
     render([seat(1, 'A', 1, 'STANDARD', 'WALK_IN', 'FREE')], []);
     await expectNoAxeViolations(host());
+  });
+
+  it('has no axe violations on a venue with no sets (#718)', async () => {
+    render([], []);
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no axe violations with the close-sales confirm open (#794)', async () => {
+    render([seat(1, 'A', 1, 'PREMIUM', 'ONLINE', 'FREE')], []);
+
+    host().querySelector<HTMLButtonElement>('[data-testid="daily-close-sales"]')!.click();
+    fixture.detectChanges();
+    expect(host().querySelector('[data-testid="daily-close-sales-confirm-panel"]')).toBeTruthy();
+
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no axe violations while the read is in flight — the skeleton hides no tab stop (#744)', async () => {
+    mount();
+
+    const loading = host().querySelector('[data-testid="daily-loading"]')!;
+    expect(loading.querySelectorAll('[data-testid="daily-skeleton-tile"]').length).toBeGreaterThan(
+      0,
+    );
+    await expectNoAxeViolations(host());
+
+    settle([seat(1, 'A', 1, 'STANDARD', 'WALK_IN', 'FREE')], [], []);
   });
 });
 

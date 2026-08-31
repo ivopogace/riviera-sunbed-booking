@@ -42,7 +42,8 @@ reference `CLAUDE.md`.
 
 ### RV-FE-7. Styling is Tailwind, shared via directives, with no rendered drift (`riviera-tailwind`)
 **Gate:** Does new/changed styling follow the project's Tailwind conventions?
-- [ ] Tailwind utilities (SCSS is being retired) — new component styling isn't a fresh `.scss`
+- [ ] Tailwind utilities by default — new component styling isn't a fresh `.scss` **unless justified** (Tailwind-expressible → Tailwind; SCSS needs its stated why — the retired `home.scss` scrim is the historical precedent, none remain in-tree)
+- [ ] **migrate-on-touch:** a component the diff touches that still carries legacy component SCSS had that styling migrated to Tailwind in this same slice — or the SCSS is a justified holdout (with its stated why), or the defer was **maintainer-approved** (asked via `AskUserQuestion`, recorded with a follow-up issue — never self-granted; `riviera-tailwind` owns the rule + checklist)
 - [ ] a reused surface/element is a shared directive/component (`shared/*-glass.ts`, `retry-button.ts`), **not** `@apply`/`@utility`
 - [ ] a class a spec queries (`.set-tile.premium`, `.amenity-chip`, `.failure-title`, …) is retained as an inert marker after its styling moved to utilities
 - [ ] a restyle/migration proves **no rendered drift** with a computed-style diff, not just the class list (the `*.contrast.spec.ts` are pure maths and can't see it)
@@ -195,14 +196,9 @@ in the **suite that will actually run it**?
 > real-backend suite (`frontend/e2e/real-backend/`, boots Spring Boot + Flyway Postgres,
 > `playwright.config.ts`). Render/a11y/interaction → mocked suite (so CI covers it);
 > wiring / real HTTP status / DB UNIQUE constraint / cross-feature round-trip → real-backend
-> suite. A spec must live in exactly one tree. **In cloud sessions** a Chromium is
-> pre-installed under `/opt/pw-browsers` and you must **not** `playwright install` there — but
-> the pinned `@playwright/test` generally wants a *newer* revision than the image ships (as of
-> #164: it looked for `chromium_headless_shell-1228`, the image had 1194), so a bare run fails
-> with "Executable doesn't exist". Point it at the shipped build instead of downloading:
-> `PW_CHROMIUM_EXECUTABLE=$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome | tail -1) npm run test:e2e:a11y`.
-> Both configs honour that variable; on local machines they fall back to Playwright's own
-> browser resolution.
+> suite. A spec must live in exactly one tree. **In cloud sessions** never `playwright
+> install` — a Chromium is pre-installed and both configs take `PW_CHROMIUM_EXECUTABLE`; the
+> run recipe and the revision-mismatch trap (#164) live in `riviera-local-debug`.
 
 **Follow-up:**
 - A frontend flow change with **no** e2e consideration, or a backend-only spec dropped into
@@ -367,3 +363,114 @@ server error). Not a finding at all for a BUSY-1 shape — CI already failed it 
   three the guard is blind to: does this component already move focus somewhere *else* (so FOCUS-1
   exempts it), is anything torn down here that isn't a confirm branch at all, and does any disabled
   field start its own write?"
+
+---
+
+### RV-FE-10. A live region outlives the content it announces (#741)
+**Gate:** Does every `aria-live` / `role="status"` / `<output>` region the diff writes **already
+exist in the DOM before the text it announces changes**?
+- [ ] the region is **outside** the `@if`/`@switch` branch it describes — a region created together
+      with its message announces nothing on most screen-reader/browser combinations
+- [ ] only the **content** branches; the element does not
+- [ ] a *loading* surface uses `shared/load-announcer.ts` (`app-load-announcer`) rather than a
+      hand-rolled region — one shape, one place to fix
+- [ ] the surface has exactly **one** source for a given sentence: the skeleton or visible
+      "Loading…" copy beside an announcer is `aria-hidden="true"`, and a `readyLabel` is empty
+      wherever a persistent count region already speaks the outcome
+- [ ] `readyLabel` is a **static** sentence, not a live count — a count re-announces on every later
+      mutation (a date change, an accepted request)
+- [ ] the "loaded" signal is **fail-safe**: the call site says when it *reached its loaded branch*
+      (`[ready]`), never when it failed. A "did it fail?" flag makes silence conditional on
+      remembering every non-success exit, and the exits are always more numerous than they look —
+      a 404, a partial read, a signed-out visitor, a post-erasure state. Enumerate the branches of
+      the surface's `@if` chain and check the binding is true in exactly one of them
+- [ ] the spec asserts **element identity across the transition**, not the presence of text
+
+> **The trap this item exists for:** the text is always there, so a spec that reads it passes either
+> way, and both the assertion and the comment beside it end up claiming an announcement nobody
+> proved. #741 shipped that shape on **eight** surfaces at once — three of them named in the ticket,
+> five found only by enumerating the mechanism (`grep -rn 'aria-live\|role="status"\|<output>'
+> frontend/src`). `booking/booking-pay.ts`'s `pay-status` region and the #717/#718 count regions had
+> the rule right the whole time; the loading surfaces never adopted it. angular.dev says the same
+> thing under `@defer` › *Keep accessibility in mind*.
+>
+> **The fail-open trap, paid for once already.** PR #743's own review gate caught the `[ready]`
+> rule above the hard way: the first cut took a `[failed]` flag, and three of eight call sites had
+> a non-success exit nobody had thought to bind — the beach map's 404, My bookings' failed account
+> read, the account page's signed-out visitor — each announcing "…loaded." over a panel saying the
+> opposite. Announcing the failure itself is a *different* item: the house pattern is
+> `role="alert"` on the failure panel, insertion being the one case a live region is reliably
+> announced without a prior mutation. **Read the branch; never assume the panels handle it** — and
+> read what kind of region it is, because two shapes announce nothing: a `role="status"` panel born
+> holding its text, and no role at all. Read the *right* branch, too: an `alert` elsewhere in the
+> file may belong to a submit or a delete flow, not to the load. Where the load's non-success
+> branch is silent, `role="alert"` on the panel already in the diff is usually the right fix.
+> What is **not** is a live region **per row** of a list — assertive, one interruption per failure,
+> and re-announced when a re-sort moves the node; PR #743 shipped that for one round and reverted
+> it. This item deliberately records **no inventory of which panels carry a role today** — that
+> decays between reviews. Count when you review.
+>
+> **Ask whether the spec was mutation-checked.** Moving the region back inside its branch must fail
+> it, and so must widening `[ready]` past the loaded branch — a passing assertion that cannot fail
+> is the same false comfort in a new place (worked examples, all mutation-checked in PR #743:
+> `requests-tab.spec.ts`, `e2e/loading-announcements.e2e.ts`, and the three `[ready]` specs in
+> `venue-map.spec.ts` / `my-bookings.spec.ts` / `set-password.spec.ts`).
+
+**Default severity:** **Major** — a loading state that says nothing is a WCAG AA failure on a shipped
+surface, and it is invisible to every automated check including axe. **Blocker** when the region is
+the *only* signal a state changed (a status a sighted user also cannot see). **Minor** where a
+persistent sibling region already announces the same outcome and the new one is merely redundant.
+**Skill framing:**
+- Peer-review: "For each live region in this diff: is the element still there before and after the
+  change it announces, or is it created along with its message? Which single region owns each
+  sentence on that surface — and does anything else repeat it? What does it say when the load fails?"
+
+---
+
+### RV-FE-11. An inline field error names its control, and `aria-invalid` means the value is wrong (#821)
+**Gate:** Does every inline, field-scoped error the diff writes carry **both** `role="alert"` and
+`[appFieldErrorFor]` naming its control — and does its `aria-invalid` claim match what actually failed?
+- [ ] the error element carries `[appFieldErrorFor]="<ctl>"` (`shared/field-error-for.ts`), never a
+      hand-written `aria-describedby` — a dangling reference is only an axe *incomplete*, and
+      `expectNoAxeViolations` (unit **and** `e2e/support/axe.ts`) reads `violations` only, so CI is
+      structurally blind to both a missing and a rotted association
+- [ ] the directive sits on the **error element**, taking the control's template ref, so the
+      association's lifetime is the error's own. A ref declared inside a `@for` body resolves per
+      embedded view — that is what keeps a loop-scoped error off its sibling rows
+- [ ] **`aria-invalid` is a claim about the entered value (ARIA21), not about the request.** An error
+      that reports a failed *write* — a 403, a vanished row, an expired session — binds
+      `[appFieldErrorForInvalidValue]="false"`. Ask what the user would have to *retype* to fix it;
+      if the answer is "nothing", the control is described but not marked invalid
+- [ ] the error is genuinely **field-scoped**. Form-, page- and **action**-level banners name no
+      single control and stay alert-only — describing a button or a `class="hidden"` file input is
+      the action-error pattern, not field validation
+- [ ] a control that already carries a hint keeps it **first**: the directive appends, and
+      announcement order follows the attribute's token order, not DOM order
+- [ ] the spec asserts the **take and the release**, not the release alone — an absence-only
+      assertion passes just as well when nothing was ever written
+
+> **Two traps, both paid for on #823's review gate.** The first is the `aria-invalid` half: the
+> mechanism is so mechanical to apply that a *write*-outcome error gets swept in with the validation
+> ones, and the spec then pins the wrong semantics (a 403 asserting `aria-invalid="true"` on a value
+> the app had already reverted to the server's own). The second is measuring the result with the
+> wrong tool: **Playwright's `toHaveAccessibleName` / `ariaSnapshot` use its own JS reimplementation
+> of accname, which disagrees with the browser.** On `<label><span>Name</span><input><span
+> role="alert">…</span></label>` Playwright folds the alert into the name; Chromium's real AX tree
+> (CDP `Accessibility.getPartialAXTree`) does not. Two review agents called a 14-site defect off the
+> Playwright reading. When an accname question is load-bearing, read the **CDP tree** — that is what
+> a screen reader consumes — and treat `toHaveAccessibleDescription` as the assertion that does hold.
+
+**Follow-up:**
+- Nothing machine-checks this one: there is no guard script and axe cannot see it, so it is a
+  read-the-diff item in a way RV-FE-9 and RV-FE-10 are not.
+- The convention itself: `frontend/.claude/CLAUDE.md` § *Accessibility Requirements*. The directive's
+  own TSDoc records its three limits (no `aria-invalid` refcount; preservation assumes a **static**
+  `aria-describedby`, not an `[attr.]` binding; ids are process-monotonic, so never assert a literal).
+
+**Default severity:** **Major** — an unassociated field error is a WCAG 3.3.1 gap invisible to CI.
+**Minor** for an `aria-invalid` over-claim on an operator-only surface; **Blocker** if a hand-written
+association ships on a tourist-facing form, where the reference can rot unseen.
+**Skill framing:**
+- Peer-review: "For each inline error in this diff: which control names it, and would that control
+  still name it if the error re-rendered somewhere else? What would the user retype to clear it — and
+  if the answer is nothing, why is it marked invalid?"

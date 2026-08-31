@@ -137,7 +137,7 @@ class BeachMapReplaceIT {
 	private long createVenue(String name) throws Exception {
 		String body = """
 				{"name":"%s","beach":"Ksamil","region":"Riviera","description":"x",
-				 "bookingMode":"INSTANT","commissionBps":1500,"payoutCurrency":"EUR","bookingCutoff":"18:00"}
+				 "bookingMode":"INSTANT","payoutCurrency":"EUR","bookingCutoff":"18:00"}
 				""".formatted(name);
 		MvcResult result = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 						.post("/api/venues").cookie(operatorSession).with(csrf())
@@ -184,6 +184,31 @@ class BeachMapReplaceIT {
 				.andExpect(jsonPath("$.sets[5].rowLabel").value("B"))
 				.andExpect(jsonPath("$.sets[5].tier").value("STANDARD"))
 				.andExpect(jsonPath("$.fromPrice.minorUnits").value(2000));
+	}
+
+	@Test
+	void descriptiveRowLabelRoundTrips() throws Exception {
+		// #723 AC-2: a row name at the 40-character bound round-trips to the tourist map read.
+		long venue = createVenue("Named Rows Club");
+		String atBound = "Under the pines · far from the beach bar";
+
+		putLayout(venue, layout(0, cell(atBound, 1, "STANDARD", "ONLINE", 3000, 1, 1)), 204);
+
+		mvc.perform(get("/api/venues/{id}", venue))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.sets[0].rowLabel").value(atBound));
+	}
+
+	@Test
+	void overlongRowLabelIs400() throws Exception {
+		// #723 AC-1: a 41-character row name is refused at the command edge (§6b), before the V43 CHECK.
+		long venue = createVenue("Overlong Row Club");
+
+		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(layout(0, cell("x".repeat(41), 1, "STANDARD", "ONLINE", 3000, 1, 1))))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 	}
 
 	@Test
@@ -347,6 +372,21 @@ class BeachMapReplaceIT {
 								cell("B", 2, "STANDARD", "ONLINE", 2000, 1, 1)))) // same grid cell (1,1)
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("CELL_TAKEN"));
+	}
+
+	@Test
+	void rejectsRowLabelSharedByTwoGridRows() throws Exception {
+		long venue = createVenue("Split Club");
+		// The #728 reproducer: gap-cell numbering keeps every (row_label, position_no) pair unique.
+		mvc.perform(put("/api/venues/{v}/beach-map", venue).cookie(operatorSession).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(layout(0,
+								cell("A", 2, "PREMIUM", "ONLINE", 3500, 2, 1),
+								cell("A", 3, "PREMIUM", "ONLINE", 3500, 3, 1),
+								cell("A", 1, "STANDARD", "ONLINE", 2000, 1, 2))))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("ROW_NAME_TAKEN"));
+		assertEquals(List.of(), setIds(venue), "a refused replace must write nothing");
 	}
 
 	/**

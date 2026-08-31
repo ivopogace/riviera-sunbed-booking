@@ -2,6 +2,8 @@ package ai.riviera.platform.booking.domain;
 
 import org.junit.jupiter.api.Test;
 
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**

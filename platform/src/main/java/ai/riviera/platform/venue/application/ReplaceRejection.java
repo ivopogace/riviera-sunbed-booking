@@ -5,7 +5,8 @@ package ai.riviera.platform.venue.application;
  * caller-handled failures of {@link EditBeachMap#replaceLayout}. Returned as a value, not thrown
  * (riviera-java-conventions: typed outcomes). The REST adapter maps each to one HTTP status:
  * {@code NO_SUCH_VENUE}→404, {@code LAYOUT_IN_USE}/{@code STALE_WRITE}→409,
- * {@code DUPLICATE_POSITION}/{@code CELL_TAKEN}→409, {@code EMPTY_LAYOUT}/{@code LAYOUT_TOO_LARGE}→400.
+ * {@code DUPLICATE_POSITION}/{@code CELL_TAKEN}/{@code ROW_NAME_TAKEN}→409,
+ * {@code EMPTY_LAYOUT}/{@code LAYOUT_TOO_LARGE}→400.
  */
 public enum ReplaceRejection {
 
@@ -28,6 +29,15 @@ public enum ReplaceRejection {
 	DUPLICATE_POSITION,
 	/** Two submitted cells share the same {@code (grid_x, grid_y)} cell. */
 	CELL_TAKEN,
+	/**
+	 * One submitted {@code rowLabel} appears under two distinct {@code gridY} values, so two physical
+	 * rows would share a name. The replace-path twin of {@code SetRejection.ROW_NAME_TAKEN}, caught
+	 * within the batch: gap-cell position numbering can keep every {@code (row_label, position_no)}
+	 * pair unique, which the database accepts — but the tourist map, the price rail and the pricing
+	 * tab all group sets by label, so the two rows would silently read as one. Maps to 409
+	 * {@code ROW_NAME_TAKEN}.
+	 */
+	ROW_NAME_TAKEN,
 	/** The submitted layout has no sets — an empty replace would silently wipe the map, so it is refused. */
 	EMPTY_LAYOUT,
 	/** The submitted layout exceeds the maximum grid size ({@link LayoutCommand#MAX_SETS} sets). */

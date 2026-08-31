@@ -80,7 +80,8 @@ class BookingConfirmationResendService implements BookingConfirmationResend {
 		try {
 			outcome = mails.sendBookingConfirmation(resolved.toEmail(), new BookingConfirmationMail(
 					resolved.bookingCode(), resolved.venueName(), booking.bookingDate(),
-					resolved.rowLabel(), resolved.positionNo(), booking.amountMinor(), booking.currency()));
+					resolved.rowLabel(), resolved.positionNo(), booking.amountMinor(), booking.currency(),
+					booking.cancellationWindowAtBirth(), booking.lateCancelRefundBps()));
 		}
 		catch (RuntimeException e) {
 			attempts.recordAttempt(bookingId, MailAttemptSource.ADMIN_RESEND,

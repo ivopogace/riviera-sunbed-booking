@@ -1,20 +1,85 @@
 <section class="mx-auto w-full max-w-[920px] px-5 py-4" data-testid="payouts-tab">
   <header class="mb-1.5">
-    <h1 class="text-[19px] font-bold tracking-[-0.01em] text-(--riv-card-ink)">Payouts</h1>
-    <p class="mt-1 max-w-[560px] text-[13px] leading-[1.5] text-(--riv-card-ink-soft)">
+    <h1 class="text-[19px] font-bold tracking-[-0.01em] text-riv-card-ink">Payouts</h1>
+    <p class="mt-1 max-w-[560px] text-[13px] leading-[1.5] text-riv-card-ink-soft">
       What the platform owes your venue — each confirmed booking accrues its net after commission;
       refunds reverse it. Settled manually by bank transfer at the end of each period.
     </p>
   </header>
 
+  <!-- Above the @if on purpose: a live region must outlive the branch it describes (#741). -->
+  <app-load-announcer
+    [loading]="!loaded()"
+    [ready]="loaded() && loadErrorMsg() === undefined"
+    loadingLabel="Loading payouts…"
+    readyLabel="Payouts loaded."
+  />
+
   @if (!loaded()) {
-    <p
-      class="px-5 py-10 text-center text-[13px] text-(--riv-card-ink-soft)"
-      aria-live="polite"
-      data-testid="payouts-loading"
-    >
-      Loading payouts…
-    </p>
+    <!-- Mirrors the hero and the ledger so nothing jumps when they land; the announcer above owns the words (#744). -->
+    <div aria-hidden="true" inert data-testid="payouts-loading">
+      <div appCardGlass class="rounded-[24px] px-6 py-5" data-testid="payout-skeleton-hero">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <span class="block">
+            <span
+              appSkeletonBlock
+              class="bg-riv-card-track block h-[16px] w-[104px] rounded-[6px]"
+            ></span>
+            <span
+              appSkeletonBlock
+              class="bg-riv-card-track mt-1 block h-[34px] w-[168px] rounded-[8px]"
+            ></span>
+            <span
+              appSkeletonBlock
+              class="bg-riv-card-track mt-1.5 block h-[19px] w-[210px] rounded-[6px]"
+            ></span>
+          </span>
+          <span
+            appSkeletonBlock
+            class="bg-riv-card-track block h-12 w-[148px] rounded-[13px]"
+          ></span>
+        </div>
+      </div>
+
+      <div appCardGlass class="mt-3.5 rounded-[20px] px-[18px] py-4">
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <span class="flex flex-col gap-1.5">
+            <span
+              appSkeletonBlock
+              class="bg-riv-card-track block h-[16px] w-[210px] rounded-[6px]"
+            ></span>
+            <span
+              appSkeletonBlock
+              class="bg-riv-card-track block h-11 w-[168px] rounded-[12px]"
+            ></span>
+          </span>
+          <span
+            appSkeletonBlock
+            class="bg-riv-card-track block h-11 w-[152px] rounded-[12px]"
+          ></span>
+        </div>
+      </div>
+
+      <div appCardGlass class="mt-3.5 overflow-hidden rounded-[24px] px-1.5 py-1.5">
+        <span class="block px-3.5 py-2.5">
+          <span
+            appSkeletonBlock
+            class="bg-riv-card-track block h-[15px] w-[62%] rounded-[6px]"
+          ></span>
+        </span>
+        @for (row of skeletonRows; track row) {
+          <span
+            class="block border-t border-riv-card-border px-3.5 py-3"
+            data-testid="ledger-skeleton-row"
+          >
+            <span
+              appSkeletonBlock
+              class="bg-riv-card-track block h-[19px] w-full rounded-[6px]"
+            ></span>
+          </span>
+        }
+      </div>
+    </div>
   } @else if (loadErrorMsg(); as msg) {
     <p
       class="mx-auto mt-6 max-w-md rounded-[16px] border border-[#a3160e]/30 bg-white/70 px-5 py-4 text-center text-[13px] font-semibold text-[#a3160e]"
@@ -28,8 +93,7 @@
     <section appCardGlass class="rounded-[24px] px-6 py-5" data-testid="payout-hero">
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <span
-            class="text-[11px] font-bold uppercase tracking-[0.12em] text-(--riv-card-ink-faint)"
+          <span class="text-[11px] font-bold uppercase tracking-[0.12em] text-riv-card-ink-faint"
             >Owed to you</span
           >
           <div
@@ -39,7 +103,7 @@
             {{ owedStr() }}
           </div>
           <span
-            class="mt-1.5 block text-[12.5px] text-(--riv-card-ink-soft)"
+            class="mt-1.5 block text-[12.5px] text-riv-card-ink-soft"
             data-testid="payout-counts"
             >Net after commission · {{ countsLabel() }}</span
           >
@@ -58,7 +122,7 @@
 
     @if (notice(); as msg) {
       <output
-        class="mt-3 block rounded-[12px] border border-(--riv-card-border) bg-white/70 px-3.5 py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink)"
+        class="mt-3 block rounded-[12px] border border-riv-card-border bg-white/70 px-3.5 py-2.5 text-[13.5px] font-semibold text-riv-card-ink"
         aria-live="polite"
         tabindex="-1"
         data-testid="payouts-notice"
@@ -71,14 +135,13 @@
     <section appCardGlass class="mt-3.5 rounded-[20px] px-[18px] py-4" data-testid="weather-panel">
       <div class="flex flex-wrap items-end justify-between gap-3">
         <label class="flex flex-col gap-1.5">
-          <span
-            class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-(--riv-card-ink-faint)"
+          <span class="text-[10.5px] font-bold uppercase tracking-[0.08em] text-riv-card-ink-faint"
             >Weather refund — washed-out day</span
           >
           <input
             type="date"
             appTouchTarget
-            class="rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[11px] py-[9px] text-[15px] text-(--riv-card-ink)"
+            class="rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
             data-testid="weather-date"
             [value]="selectedDate()"
             (change)="onDateChange($event)"
@@ -88,7 +151,7 @@
           <button
             type="button"
             appTouchTarget
-            class="rounded-[12px] border border-(--riv-card-border) bg-white/60 px-4 py-[9px] text-[13.5px] font-semibold text-(--riv-card-ink) [transition:background_0.15s_ease] hover:bg-white motion-reduce:transition-none"
+            class="rounded-[12px] border border-riv-card-border bg-white/60 px-4 py-[9px] text-[13.5px] font-semibold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-white motion-reduce:transition-none"
             data-testid="weather-trigger"
             (click)="onWeatherRefund()"
           >
@@ -102,7 +165,7 @@
           class="mt-3.5 rounded-[16px] border border-[#d9861a]/40 bg-[#f0aa2e]/10 px-4 py-3.5"
           data-testid="weather-confirm"
         >
-          <p class="mb-2.5 text-[13.5px] leading-[1.5] text-(--riv-card-ink)">
+          <p class="mb-2.5 text-[13.5px] leading-[1.5] text-riv-card-ink">
             <strong>Weather refund for {{ selectedDateLabel() }}?</strong> This is an exception — it
             cancels and fully refunds <em>every</em> confirmed online booking for that day and posts
             the reversals against your payout. Use it only when weather stopped guests visiting.
@@ -121,7 +184,7 @@
             <button
               type="button"
               appTouchTarget
-              class="rounded-[12px] border border-(--riv-card-border) bg-white/60 px-[18px] py-2.5 text-[13.5px] font-semibold text-(--riv-card-ink)"
+              class="rounded-[12px] border border-riv-card-border bg-white/60 px-[18px] py-2.5 text-[13.5px] font-semibold text-riv-card-ink"
               data-testid="weather-cancel-btn"
               [appBusy]="refunding()"
               (click)="onCancelWeather()"
@@ -135,11 +198,11 @@
 
     @if (isEmpty()) {
       <div
-        class="mt-3.5 rounded-[24px] border border-(--riv-card-border) bg-white/50 px-[26px] py-[52px] text-center"
+        class="mt-3.5 rounded-[24px] border border-riv-card-border bg-white/50 px-[26px] py-[52px] text-center"
         data-testid="payouts-empty"
       >
-        <h2 class="text-[18px] font-bold text-(--riv-card-ink)">Nothing owed yet</h2>
-        <p class="mt-1.5 text-[13.5px] text-(--riv-card-ink-soft)">
+        <h2 class="text-[18px] font-bold text-riv-card-ink">Nothing owed yet</h2>
+        <p class="mt-1.5 text-[13.5px] text-riv-card-ink-soft">
           Confirmed bookings will accrue here. You’re paid by bank transfer at the end of the
           period.
         </p>
@@ -152,7 +215,7 @@
               Payout ledger — accruals and refund reversals
             </caption>
             <thead>
-              <tr class="text-[10.5px] uppercase tracking-[0.08em] text-(--riv-card-ink-faint)">
+              <tr class="text-[10.5px] uppercase tracking-[0.08em] text-riv-card-ink-faint">
                 <th scope="col" class="px-3.5 py-2.5 text-left font-bold">Date</th>
                 <th scope="col" class="px-3.5 py-2.5 text-left font-bold">Booking</th>
                 <th scope="col" class="px-3.5 py-2.5 text-right font-bold">Gross</th>
@@ -162,14 +225,12 @@
             </thead>
             <tbody>
               @for (row of rows(); track $index) {
-                <tr class="border-t border-(--riv-card-border)" data-testid="ledger-row">
-                  <td class="whitespace-nowrap px-3.5 py-3 text-(--riv-card-ink-soft)">
+                <tr class="border-t border-riv-card-border" data-testid="ledger-row">
+                  <td class="whitespace-nowrap px-3.5 py-3 text-riv-card-ink-soft">
                     {{ row.dateLabel }}
                   </td>
                   <td class="px-3.5 py-3">
-                    <span class="font-bold tracking-[0.03em] text-(--riv-card-ink)">{{
-                      row.ref
-                    }}</span>
+                    <span class="font-bold tracking-[0.03em] text-riv-card-ink">{{ row.ref }}</span>
                     @if (row.isReversal) {
                       <span
                         class="ml-2 inline-flex rounded-[7px] border border-[#a3372a]/28 bg-[#a3372a]/12 px-1.5 py-0.5 text-[11px] font-bold text-[#a3372a]"
@@ -178,10 +239,10 @@
                       >
                     }
                   </td>
-                  <td class="whitespace-nowrap px-3.5 py-3 text-right text-(--riv-card-ink)">
+                  <td class="whitespace-nowrap px-3.5 py-3 text-right text-riv-card-ink">
                     {{ row.grossStr }}
                   </td>
-                  <td class="whitespace-nowrap px-3.5 py-3 text-right text-(--riv-card-ink-soft)">
+                  <td class="whitespace-nowrap px-3.5 py-3 text-right text-riv-card-ink-soft">
                     {{ row.commissionStr }}
                   </td>
                   <td
@@ -194,15 +255,13 @@
               }
             </tbody>
             <tfoot>
-              <tr class="border-t-2 border-(--riv-card-border)" data-testid="period-total">
+              <tr class="border-t-2 border-riv-card-border" data-testid="period-total">
                 <td class="px-3.5 py-3"></td>
-                <td class="px-3.5 py-3 font-bold text-(--riv-card-ink)">
-                  Period total (owed to you)
-                </td>
-                <td class="whitespace-nowrap px-3.5 py-3 text-right text-(--riv-card-ink-soft)">
+                <td class="px-3.5 py-3 font-bold text-riv-card-ink">Period total (owed to you)</td>
+                <td class="whitespace-nowrap px-3.5 py-3 text-right text-riv-card-ink-soft">
                   {{ grossTotalStr() }}
                 </td>
-                <td class="whitespace-nowrap px-3.5 py-3 text-right text-(--riv-card-ink-soft)">
+                <td class="whitespace-nowrap px-3.5 py-3 text-right text-riv-card-ink-soft">
                   {{ commissionTotalStr() }}
                 </td>
                 <td
@@ -216,7 +275,7 @@
           </table>
         </div>
       </section>
-      <p class="mx-1 mt-2 text-[12px] leading-[1.45] text-(--riv-card-ink-faint)">
+      <p class="mx-1 mt-2 text-[12px] leading-[1.45] text-riv-card-ink-faint">
         Refund reversals are shown as negative lines. Payouts are settled manually via bank transfer
         at the end of each period.
       </p>

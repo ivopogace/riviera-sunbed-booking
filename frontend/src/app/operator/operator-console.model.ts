@@ -98,6 +98,23 @@ export type RepriceErrorCode =
   | 'UNKNOWN';
 
 /**
+ * A known per-row rename failure, mapped from the RFC-7807 `code` for operator-facing copy.
+ * `ROW_NAME_TAKEN` is the rename path's 409 — another row already carries the requested label, which
+ * would merge the two wherever sets are grouped by label (the bulk replace answers the same code for
+ * a label split within its batch); `STALE_WRITE` is the venue-level 409 the editor's reload banner
+ * owns, not a per-row error.
+ */
+export type RowNameErrorCode =
+  | 'NOT_VENUE_OWNER'
+  | 'NO_SUCH_ROW'
+  | 'NO_SUCH_VENUE'
+  | 'INVALID_REQUEST'
+  | 'ROW_NAME_TAKEN'
+  | 'STALE_WRITE'
+  | 'UNAUTHORIZED'
+  | 'UNKNOWN';
+
+/**
  * One booking in the Daily view's arrivals list (`GET /api/venues/{id}/bookings?date`) — which set
  * it holds, its arrival code, and its `status`: `CONFIRMED` (expected), `COMPLETED` (scanned in) or
  * `NO_SHOW` (the service day passed unscanned), so a past day still lists who was booked. The code
@@ -285,12 +302,16 @@ export type LayoutErrorCode =
   | 'CONFLICT'
   | 'UNKNOWN';
 
+/** The three-value on-day close: the one definition lives with the tourist mirror in `shared/`. */
+export type { SalesCloseTime } from '../shared/venue-views';
+import type { SalesCloseTime } from '../shared/venue-views';
+
 /**
  * The operator's own view of a venue's admin profile (`GET /api/venues/{id}/profile`): the editable core
  * plus the two read-only display fields, {@link commissionBps} (the platform's cut, invariant #9; the
  * form shows it as a %) and {@link payoutCurrency}. {@link bookingCutoff} is `"HH:mm"` in Europe/Tirane
- * (invariants #4/#6). Not the public tourist map view — this carries commission, so its endpoint is
- * operator-gated rather than the anonymous read.
+ * (invariants #4/#6); {@link salesClose} is the three-value on-day close. Not the public tourist map
+ * view — this carries commission, so its endpoint is operator-gated rather than the anonymous read.
  */
 export interface VenueProfileView {
   readonly name: string;
@@ -299,6 +320,7 @@ export interface VenueProfileView {
   readonly description: string;
   readonly bookingMode: BookingMode;
   readonly bookingCutoff: string;
+  readonly salesClose: SalesCloseTime;
   readonly commissionBps: number;
   readonly payoutCurrency: string;
   readonly amenities: readonly Amenity[];
@@ -332,9 +354,31 @@ export interface VenueProfileUpdate {
   readonly description: string;
   readonly bookingMode: BookingMode;
   readonly bookingCutoff: string;
+  readonly salesClose: SalesCloseTime;
   readonly amenities: readonly Amenity[];
   readonly distanceToWaterM: number | null;
   readonly expectedVersion: number;
+}
+
+/**
+ * The full-replace {@link VenueProfileUpdate} that would re-save `view` unchanged: every editable
+ * field mapped faithfully (photos are not profile-write fields; `expectedVersion` echoes the view's
+ * `version`). The venue tab's save and the daily view's close-sales write both build on it, so the
+ * profile→write mapping cannot drift between the two surfaces.
+ */
+export function toProfileUpdate(view: VenueProfileView): VenueProfileUpdate {
+  return {
+    name: view.name,
+    beach: view.beach,
+    region: view.region,
+    description: view.description,
+    bookingMode: view.bookingMode,
+    bookingCutoff: view.bookingCutoff,
+    salesClose: view.salesClose,
+    amenities: view.amenities,
+    distanceToWaterM: view.distanceToWaterM,
+    expectedVersion: view.version,
+  };
 }
 
 /**

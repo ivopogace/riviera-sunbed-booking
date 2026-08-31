@@ -76,7 +76,6 @@ describe('AdminOperators accessibility (axe)', () => {
     const fixture = await render();
     const host = fixture.nativeElement as HTMLElement;
 
-    expect(host.querySelector('#admin-ops-title')?.textContent).toContain('Operators');
     expect(host.querySelector('[data-testid="admin-ops-list"]')).not.toBeNull();
     expect(host.querySelector('[data-testid="admin-approve-7"]')).not.toBeNull();
     expect(host.querySelector('[data-testid="admin-reject-7"]')).not.toBeNull();

@@ -2,6 +2,9 @@ import { AA_NORMAL, contrastRatio } from '../../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
+  DARK_CARD_GLASS,
+  DARK_CARD_INK,
+  DARK_STOPS,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
@@ -21,16 +24,17 @@ const BANNER_FILL = '#fcf0d9'; // solid amber (withheld-email-notice precedent)
 const BANNER_INK = '#8a5410';
 
 describe('Legal pages contrast (computed AA)', () => {
-  for (const [theme, glass, stops] of [
-    ['riviera', RIVIERA_CARD_GLASS, RIVIERA_STOPS],
-    ['porcelain', PORCELAIN_CARD_GLASS, PORCELAIN_STOPS],
+  for (const [theme, glass, stops, ink, inkBase] of [
+    ['riviera', RIVIERA_CARD_GLASS, RIVIERA_STOPS, INK_DARK, CARD_INK],
+    ['porcelain', PORCELAIN_CARD_GLASS, PORCELAIN_STOPS, INK_DARK, CARD_INK],
+    ['dark', DARK_CARD_GLASS, DARK_STOPS, DARK_CARD_INK, DARK_CARD_INK],
   ] as const) {
     it(`body ink meets AA on the ${theme} card glass over every stop`, () => {
-      expectAaOverStops(INK_DARK, 1, glass, stops);
+      expectAaOverStops(ink, 1, glass, stops);
     });
 
     it(`soft ink (headings meta) meets AA on the ${theme} card glass over every stop`, () => {
-      expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, glass, stops);
+      expectAaOverStops(inkBase, CARD_INK_SOFT_ALPHA, glass, stops);
     });
   }
 

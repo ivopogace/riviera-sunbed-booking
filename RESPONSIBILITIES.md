@@ -7,8 +7,8 @@ it owns and — more usefully — what it must **refuse to own**. When a boundar
 ambiguous in a plan or review, this is the tie-breaker.
 
 Modules: `venue`, `availability`, `booking`, `payment`, `payout`, `customer`,
-`operator`, and `notification` (#382). Cross-module collaboration is **events for
-state changes, `api/` ports for queries** (invariant #11).
+`operator`, `notification` (#382), and `review` (#811). Cross-module collaboration is
+**events for state changes, `api/` ports for queries** (invariant #11).
 
 The **structural** subset of these boundaries is machine-enforced — see
 [Machine-checked vs review-checked](#machine-checked-vs-review-checked) at the end
@@ -83,6 +83,13 @@ layout, set positions, the online-vs-walk-in pool assignment for each set, prici
 booking mode (Instant / Request), venue photos, and the commission rate over time. The
 standing rules:
 
+- **The tourist catalogue reads are visibility-fenced** (#693): all three `VenueCatalog`
+  reads (list + map + availability calendar) consult `operator.api.VenueVisibility` inside the
+  adapter, so a venue whose owning operator is not `ACTIVE` is absent from the list and 404 on
+  the map and the calendar — indistinguishable from nonexistent. `SetBookingFacts` is deliberately **unfenced**: its
+  consumers include sold-booking paths (cancel, view, mails, staff marks) that must keep
+  answering for a hidden venue's sets; the reserve path applies the fence itself in
+  `booking`. The anonymous content-hash photo read stays unfenced (accepted, #693 intake).
 - **Venue photos** (#142, ADR-0008): per-slot upload/replace/delete, processing, `bytea`
   storage behind the module-internal `PhotoStorage` port, and the public content-hash
   serving read.
@@ -98,13 +105,24 @@ standing rules:
   ports run the same single cascading delete, and a takedown removes one **slot**, not one
   image: byte-identical variants in another slot keep serving; each published slot is its
   own takedown.
+- **I store the rating aggregate; `review` computes it** (#811). `rating_tenths` /
+  `reviews_count` are my columns and I stay their **only** writer — but I own neither the
+  arithmetic nor the policy behind them. On `review.events.ReviewsChanged` my listener re-reads
+  the whole answer through `review.api.VenueRatingSummary` and overwrites: a **full recompute**,
+  never an increment, which is what makes an at-least-once redelivery converge. Nothing but the
+  venue id is taken off the event (the `BookingConfirmedPayoutListener` commission-rate
+  discipline). This split mirrors the commission one exactly — I store the *values*, another
+  module owns the rule — and it is **review-checked, not machine-checked**: no ArchUnit rule
+  guards this table the way `ResponsibilitiesArchitectureTests` guards `set_availability`.
 - **A layout write that a live claim depends on is refused** (#567/#599/#602). Scope
   follows what the write destroys: the bulk replace deletes every set, so it asks the
   venue-wide question (`LAYOUT_IN_USE`); `editSet`/`removeSet` touch one set, so they ask
-  the set-scoped one (`SET_IN_USE`) under `SELECT … FOR UPDATE` on that row.
-  - *Availability arm — symmetric, and the relief is total:* every write asks the one
-    question — is a hold on these sets dated today or later — through the single
-    `hasLiveHold` predicate (`SetAvailabilityLookup` publishes no date-agnostic probe at
+  the set-scoped one (`SET_IN_USE`) under `SELECT … FOR UPDATE` on that row. The two
+  **row-scoped display writes** — `repriceRow` and `renameRow` (#726) — destroy nothing, so
+  they ask **no claim question at all** and stay available on a venue that has sold.
+  - *Availability arm — symmetric, and the relief is total:* every **claim-probing** write
+    (`editSet`, `removeSet`, the replace) asks the one question — is a hold on these sets
+    dated today or later — through the single `hasLiveHold` predicate (`SetAvailabilityLookup` publishes no date-agnostic probe at
     all), so no write blocks on a hold that has been honoured: last season's walk-in mark
     freezes nothing.
   - *Booking arm — asymmetric, forced by the schema:* `removeSet` and the replace refuse
@@ -118,14 +136,29 @@ standing rules:
     declined option 2). Consequence, **by design**: a venue with one ancient *cancelled*
     booking answers `LAYOUT_IN_USE` on delete/regenerate forever; only the edit is
     relieved of it.
-  - The narrowed probes are race-safe not by breadth: invariant #4 plus the staff mark's
-    `DATE_IN_PAST` refusal mean **no write path can create a hold behind the cutoff**, so
+  - The narrowed probes are race-safe not by breadth: a past date is never claimable — a
+    booking reserve rejects it and the staff mark's `DATE_IN_PAST` refusal does too — so
     the range they stopped asking about is one nothing can be written into.
   - Which statuses are live is `booking`'s call (`BookingStatus#isTerminal`, reached
     through `BookingPresence#hasLiveBookings`); `venue` never enumerates booking statuses.
-    Price and tier stay editable on a claimed set — a booking's charge is snapshotted at
-    reserve time (the same call `repriceRow` already makes), so a reprice can never alter
-    it.
+    Price, tier and the row's **name** stay editable on a claimed set — a booking's charge
+    is snapshotted at reserve time (the same call `repriceRow` already makes), so a reprice
+    can never alter it, and `row_label` lives on `set_position` alone, so nothing snapshots
+    it either. Consequence of the rename, **accepted by design** (#726): a guest already
+    booked into the row reads the new name live — in their booking view and in any resent
+    confirmation — while the mail already in their inbox keeps the old one. A venue renaming
+    a row is renaming the physical row, so the live read is the truthful one and the guest's
+    row+position pair still addresses the same sunbeds.
+  - A rename is refused only for a reason of its own: `ROW_NAME_TAKEN` when another row
+    already carries the requested label. Broader than the `set_position_cell_uniq` backstop
+    on purpose — two rows can share a label with no `(row_label, position_no)` pair
+    colliding, which the database accepts, but the tourist map, the price rail and the
+    pricing tab all group sets by label, so the two physical rows would silently read as
+    one. Renaming a row to the label it already carries is a permitted no-op. The bulk
+    replace enforces the same one-label-one-physical-row rule within its submitted batch
+    (`ReplaceRejection.ROW_NAME_TAKEN`, #728) — gap-cell position numbering can otherwise
+    keep every `(row_label, position_no)` pair unique while two grid rows share a label,
+    which the single-set `addSet`/`editSet` paths do not yet check (surfaced on #728).
   - Because the pool is **mutable** layout data, `SetBookingFacts#poolForClaim` is a
     **locking** read — `FOR KEY SHARE`, the weakest lock that conflicts with the edit's
     `FOR UPDATE`, and the very lock the claim's own insert takes for its FK check. It is
@@ -141,10 +174,50 @@ standing rules:
   its own `VenueCommissionAdministration` port (same reason as `VenuePhotoModeration`:
   `EditVenueProfile` stays uniformly `assertOwns`-first), and it is **forward-only by
   construction** — it pins the superseded rate back to an epoch floor, moves the live
-  column, and schedules the new rate from tomorrow (`Europe/Tirane`) — so no past service
-  date reprices and no ledger entry is touched (invariant #9). The asymmetry it preserves:
+  column, and schedules the new rate from the **current** service date (`Europe/Tirane`) —
+  so no past service date reprices and no ledger entry is touched (invariant #9). The
+  schedule started *tomorrow* until #798: that rested on invariant #4's retired
+  evening-before close ("today's bookings have all accrued"), a premise #791's same-day
+  sales broke — a mid-day change then had same-day bookings accruing at the new live rate
+  while the takings strip reported the old scheduled rate until midnight. Starting today
+  makes `commissionBpsOn(today)` track the live rate, so the two reads cannot disagree on
+  the current date; bookings accrued *before* the change remain the documented
+  per-booking-vs-per-day approximation. (V39's migration header still argues the retired
+  tomorrow rule — it is an applied, checksum-immutable historical document; this paragraph
+  supersedes it.) The asymmetry it preserves:
   the *owner's* profile PATCH still cannot write the rate at all (O8 #177) — a venue does
   not set its own commission.
+- **The per-venue sales-close setting** (`sales_close`, V44, invariant #4): a fixed-vocabulary
+  wall-clock time (`00:01`/`16:00`/`23:59`, `Europe/Tirane`) naming when a venue's online sales
+  for a date close, on the date itself — the fact `SetBookingFacts#setBookingInfo` carries to
+  `booking`'s reserve path (`BookingCutoff#salesCloseAt`) so it can gate creation without
+  reaching into my tables. **Owner-editable since #794**: the choice is a required field of the
+  profile full-replace PATCH and an optional one on create (absent → 16:00), spoken on the write
+  path as the `venue/domain/SalesClose` enum — the single Java mirror of the V44 CHECK, so an
+  off-vocabulary value is a §6b `400` at the edge and unrepresentable past it; the read model and
+  the cross-module carriers keep `LocalTime` (the fence does time arithmetic; the three-ness is my
+  write concern). The console's daily-view "close today's online sales now" is the same write —
+  no per-day override, no second endpoint — leaving the commission rate above and the payout
+  currency as the two owner-write-proof fields the PATCH still mirrors. Since #793 the two
+  tourist catalogue reads
+  (list + map) also *project* the open/closed verdict for the selected date as an additive
+  `salesOpen` field, consulted through my **third** `spi` driven port — `SalesWindow`,
+  implemented by `booking` beside `SetAvailabilityLookup` and `BookingPresence` — with one
+  request-scoped instant per read, so verdicts within one response cannot disagree. The port
+  returns the *verdict*, never a close instant: I store the time and display the answer;
+  `booking` keeps the rule and its boundary semantics, so no second source of truth exists.
+  Since #804 the map read additionally projects my stored close value itself (`salesClose`,
+  `HH:mm`) as a display-copy key for the venue surface's own-rule note — the value crosses no
+  module boundary and clients never compare it with a clock; `salesOpen` stays the verdict.
+- **The tourist availability calendar** (`GET /api/venues/{venueId}/availability-calendar?from=&to=`,
+  #760; public, window-capped at the edge): I own the set total and therefore
+  `free = total − taken` and the gap fill for days nobody has touched; `availability` answers
+  the taken count per day through my `spi` (`SetAvailabilityLookup#takenCountsBetween`). The
+  path deliberately does not reuse the `/availability` segment below — that one is the
+  operator-only per-set state read, and sharing it would either publish the hold split or
+  operator-gate the tourist read. The counts are a snapshot, never a hold: the claim still
+  decides (invariant #2), and the read answers past days too, because it reports availability,
+  not bookability.
 - **The signed-in operator's own-venues read model** (`GET /api/venues/mine`, S9 #277): I
   ask `operator::api` for the ownership set and join the names, because naming venues is
   my job and `operator → venue` would cycle.
@@ -166,6 +239,9 @@ standing rules:
 - Deciding *which* venues an operator owns, or authorizing them → **`operator`** (it owns the
   mapping and answers the question; since #277 I *render* that answer as named summaries, but the
   set itself is always its call)
+- Deciding what a venue's rating *is* — who may review, for how long, and what the mean rounds
+  to → **`review`** (#811). I hold the resulting numbers and nothing else: no review row, no
+  window, no rounding rule
 
 ---
 
@@ -173,16 +249,18 @@ standing rules:
 **Job:** Own the single source-of-truth state per `(set, date)` — free / booked-online /
 staff-marked. Be the **only writer** of that table. Claim a set atomically so it can
 never be double-sold. Answer the read-side facts through `venue::spi`
-(`SetAvailabilityLookup`): the state-agnostic taken-set overlay for the public map (#44)
-and, since #207, the per-set **state tokens** (`statesOn`) behind the owner's daily
-availability read — `venue` composes; I answer state.
+(`SetAvailabilityLookup`): the state-agnostic taken-set overlay for the public map (#44);
+since #207 the per-set **state tokens** (`statesOn`) behind the owner's daily availability
+read; and since #760 the **taken count per day** over a window (`takenCountsBetween`) behind
+the tourist date calendar — I answer how many are held, never how many exist, because the set
+total is `venue`'s. Throughout: `venue` composes; I answer state.
 
 **Not My Job:**
 - The venue layout, which sets exist, or their positions → **`venue`** (I reference
   sets by id; I don't own them)
 - *Why* a set is taken — which booking, who paid → **`booking`** (I record *that*
   `(set, date)` is claimed, not the booking behind it)
-- Deciding whether bookings are even open for a date (the same-day cutoff) →
+- Deciding whether bookings are even open for a date (the venue's sales close) →
   **`booking`** owns that rule; I only hold state
 - Pricing → **`venue`**; payment → **`payment`**
 
@@ -213,20 +291,52 @@ re-claimable (invariant #2). The arrivals list and daily takings count `COMPLETE
 The guest-cancel guard stays `CONFIRMED`-only (a delivered stay is never reclaimed); the **admin
 weather refund does not** — it admits `NO_SHOW` on its own `cancelForWeather` transition, because
 the storm is only known afterwards, by which time the sweep has marked exactly the guests who
-stayed home. That split is why the two share no port method. Enforce the cancellation policy and the same-day cutoff — **both of the
-day's boundaries**, since `BookingCutoff` owns the service day's opening as well as the
-evening-before close. That second boundary fences the *pay* path as well as the cancel path
-(#576): the guest's deadline is `min(accepted_at + pay-window, service-day open)`, the
-abandoned sweep carries a third, disjoint `booking_date` arm so a set stops being held
-unsellable into its own service day, and the code-gated view withholds the `clientSecret`
-past it. **The confirm path is deliberately not fenced.** A guest already holding a live
-`clientSecret` who pays between midnight and the next sweep run still confirms. Refusing
-without refunding would strand the money on an `AWAITING_PAYMENT` booking the sweep can never
-release (`NotCancellable` forever), and refunding cannot reuse `BookingCancelled`: a
+stayed home. That split is why the two share no port method. Enforce the cancellation policy and
+own all of the day's boundaries on `BookingCutoff` (#791, re-homed to the `application/` root
+at #792 as the module-wide day-boundary authority): `salesCloseAt` — the venue's
+own sales-close setting, per date, which gates whether a booking can be *created* at all and,
+since #792, caps a pending request's **response deadline** (`min(created + expiry-window, D at
+sales close)`, invariant #4); since #793 the same `isBookable` fence also answers the tourist
+browse through `venue.spi.SalesWindow` (the `BookingCutoffSalesWindow` adapter) — same
+authority, second consumer, display-only: the browse verdict never gates anything, the
+reserve path keeps enforcing independently — `freeCancellationEndsAt`, the older evening-before boundary, now
+cancellation-only — `serviceDayOpensAt`, midnight opening the stay, the cancellation window's
+outer fence — and `serviceDayEndsAt`, the next midnight, the pay deadline's outer bound. The
+*pay* path fences on **the pay deadline having passed** (#792, replacing the #576 day-open
+family): an accepted `AWAITING_PAYMENT` booking's deadline is `min(accepted_at + pay-window,
+end of service day)` — the same instant the payment-due mail promises — and a **never-accepted**
+one's is the end of its service day, with its TTL (`AbandonedPaymentProperties`) the sweep's
+earlier backstop, never a view fence. The abandoned sweep's `booking_date` arm reaps any
+`AWAITING_PAYMENT` row whose service day has **ended** (`BookingCutoff.lastEndedServiceDay`;
+the SQL re-derives the deadline as an accepted, pinned mirror of `RequestWindows#payDeadline` —
+the mail ≡ sweep identity is `RequestWindowsTest`'s contract), and the code-gated view withholds
+the `clientSecret` once the same deadline has passed (`ViewBookingService`, reading
+`accepted_at`).
+**The confirm path is deliberately not fenced** (pinned by
+`JdbcBookingsTransitionIT.confirmSucceedsAfterThePayDeadlineHasPassed`). A guest already holding
+a live `clientSecret` who pays past the deadline but before the next sweep run still confirms.
+Refusing without refunding would strand the money on an `AWAITING_PAYMENT` booking the sweep can
+never release (`NotCancellable` forever), and refunding cannot reuse `BookingCancelled`: a
 never-confirmed booking has no `ACCRUAL`, so `payout`'s listener would defer that publication
 permanently and hold `riviera.outbox.pending` non-zero. The residual is a sub-sweep-interval
 race the guest opts into and is paid for with the full stay.
-Orchestrate the reserve → pay → confirm flow across `availability` and `payment`.
+Quote **pre-reserve cancellation terms** and stamp the **window at birth** (#795, pure
+disclosure — no policy change): `CancellationPolicy` — still the single home of the window
+rule — answers the public tourist read `GET /api/bookings/cancellation-terms` behind the
+`QuoteCancellationTerms` driving port (`terms`: window now, free-cancellation deadline,
+late share), and classifies `windowAtBirth` from the booking's `created_at` via
+`BookingCutoff.cancellationWindow`'s at-instant overload. Both publication sites stamp
+`cancellationWindowAtBirth` + `lateCancelRefundBps` onto `BookingConfirmed` and
+`BookingPaymentDue` — facts fixed at the moment, the `amountMinor` posture, so a later
+cutoff edit can't rewrite a sent mail; a pre-#795 payload deserializes to a null window
+and every consumer renders no disclosure for null, forever. The code-gated view and the
+admin-resend facts re-derive the same field from the venue's *current* cutoff on each
+read (bounded, documented drift — the stamped events stay the record of what was first
+sent; only they are immutable).
+Orchestrate the reserve → pay → confirm flow across `availability` and `payment` — since
+#693 refusing both reserve paths (Instant and Request) for a hidden venue's set before any
+claim, via `operator.api.VenueVisibility`, answering `NO_SUCH_SET` so hidden reads as
+nonexistent; no post-reserve leg (view, cancel, check-in, sweeps) consults visibility.
 Own the request lifecycle's three terminal legs on `RequestReleaseService` — decline,
 the expiry sweep, and the guest's own **withdraw** (#123): withdraw is authorized by the
 booking **code** alone (the only request command with no ownership check) and guarded by
@@ -309,6 +419,15 @@ sits in the outbox.
 - The **retention window** or the contact scrub → **`customer`** (#101 Slice 2). I answer only the
   *fact* "does this guest have a booking on/after date D", via `customer.spi.GuestBookingHistory`
   — I hold no retention policy and never write a `customer` row
+- **Review policy** — eligibility, the 60-day window, one-per-booking, the aggregate math →
+  **`review`** (#811, ADR-0015), the same sentence-shape as `GuestBookingHistory` above. I answer
+  only the *fact* "was this stay checked in, and when", via `review.spi.CompletedStays`, and I
+  never expose `BookingStatus` doing it — the presence of a `CompletedStay` **is** the completed
+  fact. The **review panel** on my code-gated read is mine to *carry* (the view contract is mine)
+  but not to *decide*: the verdict comes from `review.api.ReviewEligibility`, so a form can never
+  be offered for a stay the submit would refuse. The display-name suggestion beside it is mine —
+  the first name off the contact I already resolve through `customer.api.CustomerLookup`, so
+  `review` never learns the guest's identity to prefill its own form
 - Authorizing which operator may view staff bookings → **`operator`**
 - Deciding whether a confirmation email will be sent, or knowing any address → **`notification`**
   (suppression) and **`customer`** (the contact). Since #390 I *expose* the withheld fact on a
@@ -580,12 +699,26 @@ into **`notification`** (#382), which the edge drives through `notification::api
 **Job:** Own operator accounts — incl. their **admin-driven lifecycle state**
 (`PENDING`→`ACTIVE`/`REJECTED` on approval #115; `ACTIVE`⇄`SUSPENDED` on suspend/reinstate
 #128) and the `is_admin` platform-admin flag — and the **operator↔venue ownership mapping**,
-now writable (creator-owns-on-create). Answer four things for the rest of the system: *does
+now writable (creator-owns-on-create). Answer five things for the rest of the system: *does
 this operator own this venue?*, *which operators are awaiting approval?*, *which accounts
-exist for an admin to act on?* (invariant #13), and — since #357 — *what is the ACTIVE
-operator with this id called?*, so the edge can revoke its sessions **before** a suspension
-commits rather than only after. A suspension **keeps** the operator's
-`operator_venue` rows — it is reversible, and ownership resolves ACTIVE-only anyway.
+exist for an admin to act on?* (invariant #13), — since #357 — *what is the operator with
+this id called, if it is in the status the caller expects?* (`usernameInStatus`), so the edge
+can revoke its sessions **before** a session-revoking transition (suspend, and since #694
+reject) commits rather than only after, and — since #693 — *does this venue have an `ACTIVE`
+owner?* (`VenueVisibility`, the one home of the platform rule *a venue is visible to
+tourists iff its owning operator is ACTIVE*; a venue with no ownership row answers no,
+fail-closed). `venue` fences its catalogue reads with it and `booking` its reserve path;
+sold-booking paths never consult it. **Since #694 the single `ACTIVE` predicate is three
+explicit sets, each at its owner:** the edge's may-authenticate set (`ACTIVE`+`PENDING` —
+approval gates tourist visibility, not console access), ownership resolution's may-operate
+set (`ACTIVE`+`PENDING`, `OperatorDirectory` — a `PENDING` operator owns and works what it
+creates), and the tourist-visible set (`ACTIVE` only, `VenueVisibility` — deliberately NOT
+widened). The published status token (`OperatorStatus`, promoted to `vocabulary/`) is what
+lets each predicate live with its owner. A suspension **keeps** the operator's
+`operator_venue` rows — it is reversible, and a suspended operator resolves to nothing
+either way — but it does hide the operator's venues from tourists until reinstatement
+(#693). `ApprovalOutcome.Rejected` carries the username for the same reason `Changed` does:
+a `PENDING` operator can hold a live session, and the edge must revoke it.
 
 Since #375 an approval also **reports the approved operator's stored contact email**, on
 `ApprovalOutcome.Approved` — the same move `OperatorLifecycleOutcome.Changed` made for the username,
@@ -613,11 +746,11 @@ it — composing and sending a mail — is emphatically not (below).
   verifies the old password, encodes the new one, and calls the `setPassword` I already
   published. That is the boundary working, not a gap in it.
 - **Invalidating live sessions** when an account loses the right to them (suspension,
-  credential rotation, an operator changing its own password #326) → the **platform edge**
+  rejection #694, credential rotation, an operator changing its own password #326) → the **platform edge**
   (`PrincipalSessionRevoker`, #128). I report *that the transition happened* and *whose* it
   was; deleting `SPRING_SESSION` rows is session machinery and I never import
   `org.springframework.session`
-- **Telling an approved operator that it can now sign in** (#375) → the **platform edge**
+- **Telling an approved operator that its venues are now live** (#375; copy reworded by #693) → the **platform edge**
   (`OperatorApprovalMail`) driving **`notification`**. Same split as the line above, and for the same
   reason: I report *that the approval happened* and *which address it registered with*; deciding to
   mail, building the sign-in link, and delivering it are not mine. I import no mail type
@@ -712,11 +845,16 @@ list and the delivery log below are the module's two pieces of owned state.
 
 - The **registry-borne booking mails**, all assembled from `booking`/`venue`/`customer`
   published ports (ids only) by one module-internal resolver: the `BookingConfirmed`
-  confirmation (#371); the `BookingCancelled` cancellation/refund record (#374) — one
+  confirmation (#371) — since #795 carrying the booking's `cancellationWindowAtBirth` +
+  `lateCancelRefundBps` off the event, **rendered, never decided**: CLOSED gets the
+  non-refundable last-minute line, LATE the past-free-cancellation line (partial share at
+  bps > 0, no-refund at 0 — LATE stays cancellable, so only CLOSED claims it can't be),
+  FREE or null (a pre-#795 registry payload, tolerated forever) nothing; the `BookingCancelled` cancellation/refund record (#374) — one
   listener covering every cancellation channel, tourist self-service and operator weather
   refund alike, because it subscribes to the fact rather than to either caller, and
   **rendering** the server-computed refund (invariant #10), never deciding it; the
-  `BookingPaymentDue` notice (#373) — the listener decides nothing about *whether*
+  `BookingPaymentDue` notice (#373), carrying the same #795 birth-window disclosure on the
+  same rules — the listener decides nothing about *whether*
   payment is owed: `booking` settles that by publishing the fact only on the accept
   branch where money is genuinely outstanding (a failed PaymentIntent reverts the booking
   to `PENDING_REQUEST`), which a status read here could not learn without racing the
@@ -819,6 +957,71 @@ list and the delivery log below are the module's two pieces of owned state.
 pinned by `CompositionRootDisciplineTests`), V31 rewriting the registry `listener_id` for the
 moved listener, and the V32 suppression list enforced on both vehicles.
 
+## `review`
+**Job:** Own everything about a tourist's verdict on a delivered stay — the review record
+(stars, comment and display name; one per booking), who may leave one, change one or remove one
+and until when, and the arithmetic that turns a venue's reviews into a score. The standing rules:
+
+- **I am a leaf** (ADR-0015): `allowedDependencies = { "shared" }`, the `operator`/`customer`
+  posture. The two facts I need from elsewhere both arrive by **inversion**, never by an
+  outbound edge — `review.spi.CompletedStays` (implemented by `booking`) tells me a stay was
+  checked in and when, and `review.events.ReviewsChanged` carries my "your aggregate moved"
+  outward for `venue` to act on. Calling `booking::api` — or listening to a `BookingCompleted`
+  event — would close the cycle `venue → review → booking → venue`, since `booking` already
+  depends on `venue`. That is why check-in keeps its "publishes no event" stance and eligibility
+  is a **pull** at view/submit time: a guest checked in a second ago is eligible a second ago.
+- **I publish my own typed ids** (`VenueRef`, `BookingRef`) rather than borrowing `venue`'s or
+  `booking`'s — the `operator.vocabulary.VenueRef` precedent, and what keeps the grant list at
+  `shared` alone.
+- **One review per booking is the database's answer, not mine.** `UNIQUE (booking_id)` plus an
+  atomic `INSERT … ON CONFLICT DO NOTHING` whose row count *is* the outcome — the discipline
+  invariant #2 mandates for availability, applied to this module's own concurrency point. A lost
+  race is ordinary flow (`AlreadyReviewed`), never an exception. Edit and delete answer the same
+  way: they address the row by `booking_id` and report rows-affected, so an edit racing a delete
+  resolves as `NoSuchReview` rather than as a duplicate or a throw. A delete frees the slot, so a
+  stay whose window is still open becomes reviewable again — "one per booking" is a standing
+  constraint, not a one-shot.
+- **The fence order is stated once, as domain policy.** `domain/ReviewGate` is a pure function —
+  unknown stay, never checked in, window closed, already rated, eligible — and both the lifecycle
+  service and the panel read consult it. "Rated and frozen reads as frozen" is therefore true by
+  construction, not by two services being kept in step.
+- **The mean is integer and its rounding is written down where the division happens**
+  (`AggregateRating`): `(10 × Σstars + count / 2) / count`, half-up, with zero reviews
+  short-circuiting to `0/0` — the invariant-#5 money discipline borrowed for the rating. No
+  `double` anywhere in the math, and the mean is taken in the domain rather than in SQL so a
+  test can reach it.
+- **My two `api` ports are split by consumer role** (#94): `VenueRatingSummary` answers `venue`'s
+  question about its own aggregate, `ReviewEligibility` answers `booking`'s about one stay — with
+  the sealed `ReviewPanel`, whose variants carry exactly their own data and split a *frozen* review
+  from a window nobody ever wrote in. The whole lifecycle (submit, edit, delete) stays one
+  **internal** `application` port, `ReviewLifecycle`, whose only caller is my own REST adapter (the
+  `booking.ViewBooking` precedent), so neither consumer can reach the write surface.
+- **The booking code is the whole authorization** (invariant #7). All three verbs on
+  `/api/bookings/{code}/review` — `POST`, `PUT`, `DELETE` — are `permitAll` and share one per-code
+  rate-limit budget with the view / cancel / withdraw legs: they are all guesses at the same
+  secret. The code is never logged and never reaches an error body: `instance` is pinned to the
+  constant `/api/bookings`.
+
+**Not My Job:**
+- Writing `venue.rating_tenths` / `reviews_count` → **`venue`** (I compute the values and
+  announce that they moved; it stores them and stays its table's only writer)
+- Deciding a stay was delivered, or owning `completed_at` → **`booking`** (check-in is its
+  lifecycle transition; I only ask the resulting fact through my `spi` port, and I never see
+  `BookingStatus`)
+- Displaying a rating, ordering Discover by it, or the "New" treatment → **`venue`** and the
+  frontend (my numbers, their surfaces — the display contract was untouched by #811)
+- The guest's identity → **`customer`**. A review is attached to a *booking*, not a person. The
+  display name I store is a **label the author chose**, handed to me on the write; I never resolve a
+  customer to a name, and the form's prefill suggestion is `booking`'s to derive
+- Login, sessions, CSRF, rate-limit wiring → the platform **edge** (RV-BE-11)
+
+**Shipped** (#811 slice 1, #812 slice 2 of epic #810): the module, V45 (`review` table + the
+demo-seed supersede) and V46 (comment, display name, `updated_at`), the code-gated submit / edit /
+delete endpoints, `ReviewGate` as the one statement of the fence order, the sealed `ReviewPanel` on
+`booking`'s read model (which retired the `reviewable` flag and `ReviewState` from the published
+surface), and `venue`'s first `adapter/in` listener. The venue-page review list, moderation and the
+**erasure hook for the review PII this slice introduced** are later slices of #810.
+
 ## `shared` (not a bounded context)
 
 The **Shared Kernel** (Evans, DDD ch. 14), extracted from the root package in #371 —
@@ -908,6 +1111,8 @@ sufficient.
 | `availability` is the **only writer** (and direct reader) of `set_availability` — invariant #2 | `ResponsibilitiesArchitectureTests` (sole-writer bytecode scan) |
 | Only `payment` talks to Stripe — the SDK is unreachable elsewhere | `ResponsibilitiesArchitectureTests` (Stripe-reach rule) |
 | Events carry technical ids/values, never foreign aggregates — invariant #11 Need-To-Know | `ResponsibilitiesArchitectureTests` (id-based-events rule) |
+| `review` is the **only writer** (and direct reader) of the `review` table — #811 | `ResponsibilitiesArchitectureTests` (SQL-shaped review-table scan; the bare name would match the module's package string in every consumer) |
+| Only `venue` names `rating_tenths` / `reviews_count` — "I store the aggregate; `review` computes it" (#811) | `ResponsibilitiesArchitectureTests` (rating-columns sole-writer scan) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
 | No module reaches another's `application`/`domain`/`adapter` internals; `allowedDependencies` deny-lists hold | `ModularityTests` (`ApplicationModules.verify()`) |
 | The ADR-0007 package shape; published-surface kinds (`api`/`spi`/`vocabulary`/`events`); the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |
@@ -930,6 +1135,11 @@ review item RV-BE-11):
 - A refund **policy** reimplemented inside `payment` (only `booking` decides
   whether/how much to refund; `payment` executes).
 - Commission **math** inside `venue` (it stores the rate; only `payout` computes).
+- Review **policy** (eligibility, the window, the rounding rule) leaking into `venue` —
+  the twin of the commission split. The *SQL* half of this boundary graduated to
+  machine-checked above (a second writer of the rating columns, or outside SQL against
+  the `review` table, now fails the build); the *policy* half still needs no illegal
+  import and stays review-checked (ADR-0015).
 - A booking-lifecycle decision creeping into `availability` (it holds state, not the
   cutoff rule), or any other capability landing on a module's Not-My-Job list without
   crossing a package boundary.

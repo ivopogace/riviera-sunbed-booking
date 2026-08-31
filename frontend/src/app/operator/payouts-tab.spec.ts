@@ -90,6 +90,60 @@ describe('PayoutsTab (#173) — ledger', () => {
 
   afterEach(() => http.verify());
 
+  it('announces through one region that survives loading → loaded (#741)', () => {
+    configure();
+    const el = fixture.nativeElement as HTMLElement;
+    const announcer = el.querySelector('[data-testid="load-announcer"]')!;
+    expect(announcer.textContent?.trim()).toBe('Loading payouts…');
+    // The visible copy is decoration; the announcer alone carries the words.
+    expect(el.querySelector('[data-testid="payouts-loading"]')!.getAttribute('aria-hidden')).toBe(
+      'true',
+    );
+
+    flushLedger(ledger());
+
+    // Same node, mutated text: the mechanism that makes a live region speak.
+    expect(el.querySelector('[data-testid="load-announcer"]')).toBe(announcer);
+    expect(announcer.textContent?.trim()).toBe('Payouts loaded.');
+  });
+
+  it('renders a skeleton hero and ledger rows while the read is in flight (#744)', () => {
+    configure();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const loading = el.querySelector('[data-testid="payouts-loading"]')!;
+    expect(loading.querySelector('[data-testid="payout-skeleton-hero"]')).not.toBeNull();
+    expect(loading.querySelectorAll('[data-testid="ledger-skeleton-row"]').length).toBeGreaterThan(
+      0,
+    );
+    // The hero is the tallest block the read lands, so it is the one the skeleton must hold open.
+    expect(loading.textContent).not.toContain('Loading payouts');
+
+    flushLedger(ledger());
+
+    expect(el.querySelector('[data-testid="payouts-loading"]')).toBeNull();
+    expect(el.querySelector('[data-testid="ledger-skeleton-row"]')).toBeNull();
+  });
+
+  it('the payouts skeleton is decorative and motion-reduce safe (#744)', () => {
+    configure();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const loading = el.querySelector('[data-testid="payouts-loading"]')!;
+    expect(loading.getAttribute('aria-hidden')).toBe('true');
+    expect(loading.getAttribute('aria-live')).toBeNull();
+    expect(loading.querySelector('[tabindex]')).toBeNull();
+    expect(loading.hasAttribute('inert')).toBe(true);
+
+    const blocks = loading.querySelectorAll('.animate-pulse');
+    expect(blocks.length).toBeGreaterThan(0);
+    for (const block of blocks) {
+      expect(block.classList.contains('motion-reduce:animate-none')).toBe(true);
+    }
+
+    flushLedger(ledger());
+  });
+
   function byId(id: string): HTMLElement | null {
     return host.querySelector<HTMLElement>(`[data-testid="${id}"]`);
   }

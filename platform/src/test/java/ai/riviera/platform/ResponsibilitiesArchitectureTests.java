@@ -4,6 +4,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
@@ -44,6 +45,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *       (generics and arrays unwrapped) is a primitive, a {@code java.*} type, or a published
  *       {@code vocabulary} type; never an aggregate from any {@code domain} package (the
  *       Need-To-Know half of invariant #11).</li>
+ *   <li><strong>Sole-writer, review table (#811):</strong> no class outside the {@code review}
+ *       module carries SQL against the {@code review} table. The bare table name is useless as a
+ *       token — every legitimate consumer of review's published surfaces has the module's package
+ *       name in its constant pool — so this rule keys on <em>SQL-shaped</em> references instead:
+ *       an SQL keyword ({@code FROM}/{@code INTO}/{@code UPDATE}/{@code JOIN}/{@code TABLE})
+ *       followed by the whole-word table name.</li>
+ *   <li><strong>Sole-writer, venue rating columns (#811):</strong> {@code rating_tenths} /
+ *       {@code reviews_count} are referenced only inside {@code venue} — the mechanical form of
+ *       §venue's "I store the rating aggregate; {@code review} computes it": {@code review}
+ *       announces via {@code ReviewsChanged} and answers via its aggregate port; only {@code venue}
+ *       names its columns. Same whole-word constant-pool scan as rule 1.</li>
  * </ol>
  *
  * <p><strong>Necessary, not sufficient.</strong> These rules encode only the <em>structural</em>
@@ -79,6 +91,20 @@ class ResponsibilitiesArchitectureTests {
 
 	/** The Stripe SDK's root package — matched with a package boundary, so {@code com.stripefoo} is not it. */
 	private static final String STRIPE_SDK_ROOT = "com.stripe";
+
+	/** The one module that may run SQL against the {@code review} table (#811, ADR-0015). */
+	private static final String REVIEW_MODULE = "review";
+
+	/** SQL-shaped reference to the {@code review} table: keyword + whole-word table name.
+	 * The bare name would false-positive on the module's own package string in every consumer. */
+	private static final Pattern REVIEW_TABLE_SQL =
+			Pattern.compile("(?i)\\b(?:from|into|update|join|table)\\s+review(?![_\\p{Alnum}])");
+
+	/** The one module that may name its rating columns (§venue: it stores, {@code review} computes). */
+	private static final String VENUE_MODULE = "venue";
+
+	/** The venue-owned aggregate columns no other module may reference (#811). */
+	private static final List<String> RATING_COLUMNS = List.of("rating_tenths", "reviews_count");
 
 	private static final String EVENTS_SURFACE = "events";
 	private static final String VOCABULARY_SURFACE = "vocabulary";
@@ -216,6 +242,82 @@ class ResponsibilitiesArchitectureTests {
 						+ violations);
 	}
 
+	// ---- rule 4: review is the sole toucher of the review table (#811) ---------------------
+
+	@Test
+	void reviewTableIsTouchedOnlyInsideTheReviewModule() {
+		List<String> violations = reviewTableViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
+		assertNoViolations(
+				"RESPONSIBILITIES.md fitness-function violations (review sole-writer, #811)",
+				violations);
+	}
+
+	/** Guards against a vacuously-green scan: review's own adapter DOES carry the table's SQL. */
+	@Test
+	void theReviewModuleItselfTouchesItsTable() {
+		boolean reviewReferencesTable = false;
+		for (JavaClass type : PRODUCTION_CLASSES) {
+			if (REVIEW_MODULE.equals(moduleOf(type, PRODUCTION_BASE)) && referencesReviewTableSql(type)) {
+				reviewReferencesTable = true;
+				break;
+			}
+		}
+		assertTrue(reviewReferencesTable,
+				"expected at least one review class to carry SQL against the review table — "
+						+ "otherwise the sole-writer scan proves nothing");
+	}
+
+	/** The negative proof (red run): outside SQL against the table is rejected — and the
+	 * fixture review module's own SQL is NOT (the exclusion path works). */
+	@Test
+	void outsideReviewTableFixtureIsRejected() {
+		List<String> violations = reviewTableViolations(FIXTURE_CLASSES, FIXTURE_BASE);
+		assertTrue(violations.stream().anyMatch(v -> v.contains("RogueReviewTableReader")),
+				"Expected the review sole-writer scan to reject the fixture outside reader, but got: "
+						+ violations);
+		assertFalse(violations.stream().anyMatch(v -> v.contains("FixtureJdbcReviews")),
+				"The fixture review module's own SQL must not be flagged, but got: " + violations);
+	}
+
+	// ---- rule 5: venue is the sole toucher of its rating columns (#811) ---------------------
+
+	@Test
+	void ratingColumnsAreTouchedOnlyInsideTheVenueModule() {
+		List<String> violations = ratingColumnViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
+		assertNoViolations(
+				"RESPONSIBILITIES.md fitness-function violations (venue rating-columns sole-writer, #811)",
+				violations);
+	}
+
+	/** Guards against a vacuously-green scan: venue's own adapters DO name the columns. */
+	@Test
+	void theVenueModuleItselfWritesTheRatingColumns() {
+		boolean venueReferencesColumns = false;
+		for (JavaClass type : PRODUCTION_CLASSES) {
+			if (VENUE_MODULE.equals(moduleOf(type, PRODUCTION_BASE))
+					&& !ratingColumnsIn(type).isEmpty()) {
+				venueReferencesColumns = true;
+				break;
+			}
+		}
+		assertTrue(venueReferencesColumns,
+				"expected at least one venue class to reference the rating columns — "
+						+ "otherwise the sole-writer scan proves nothing");
+	}
+
+	/** The negative proof (red run): an outside writer of the columns is rejected — and the
+	 * fixture venue module's own write is NOT (the exclusion path works). */
+	@Test
+	void outsideRatingColumnFixtureIsRejected() {
+		List<String> violations = ratingColumnViolations(FIXTURE_CLASSES, FIXTURE_BASE);
+		assertTrue(violations.stream().anyMatch(v -> v.contains("RogueRatingColumnWriter")),
+				"Expected the rating-columns scan to reject the fixture outside writer, but got: "
+						+ violations);
+		assertFalse(violations.stream().anyMatch(v -> v.contains("FixtureVenueRatingWriter")),
+				"The fixture venue module's own column write must not be flagged, but got: "
+						+ violations);
+	}
+
 	// ---- violation collectors (parameterized so fixtures prove the red case) ---------------
 
 	private static List<String> availabilityTableViolations(JavaClasses classes, String base) {
@@ -235,8 +337,55 @@ class ResponsibilitiesArchitectureTests {
 	}
 
 	private static boolean referencesAvailabilityTable(JavaClass type) {
-		return compiledBytecodeOf(type).map(ResponsibilitiesArchitectureTests::containsTableName)
+		return compiledBytecodeOf(type)
+				.map(bytecode -> containsWholeWord(bytecode, AVAILABILITY_TABLE))
 				.orElse(false);
+	}
+
+	private static List<String> reviewTableViolations(JavaClasses classes, String base) {
+		List<String> violations = new ArrayList<>();
+		for (JavaClass type : classes) {
+			if (REVIEW_MODULE.equals(moduleOf(type, base))) {
+				continue;
+			}
+			if (referencesReviewTableSql(type)) {
+				violations.add(type.getName() + " carries SQL against the 'review' table — the "
+						+ "review module is its only writer AND reader (#811 / RESPONSIBILITIES.md); "
+						+ "other modules go through review's published ports (api/spi) or its "
+						+ "ReviewsChanged event, never at the table");
+			}
+		}
+		return violations;
+	}
+
+	private static boolean referencesReviewTableSql(JavaClass type) {
+		return compiledBytecodeOf(type)
+				.map(bytecode -> REVIEW_TABLE_SQL.matcher(bytecode).find())
+				.orElse(false);
+	}
+
+	private static List<String> ratingColumnViolations(JavaClasses classes, String base) {
+		List<String> violations = new ArrayList<>();
+		for (JavaClass type : classes) {
+			if (VENUE_MODULE.equals(moduleOf(type, base))) {
+				continue;
+			}
+			for (String column : ratingColumnsIn(type)) {
+				violations.add(type.getName() + " references the venue column '" + column
+						+ "' — venue stores the rating aggregate and stays its columns' only "
+						+ "writer; review computes the values and announces them via "
+						+ "ReviewsChanged (#811 / RESPONSIBILITIES.md §venue)");
+			}
+		}
+		return violations;
+	}
+
+	private static List<String> ratingColumnsIn(JavaClass type) {
+		return compiledBytecodeOf(type)
+				.map(bytecode -> RATING_COLUMNS.stream()
+						.filter(column -> containsWholeWord(bytecode, column))
+						.toList())
+				.orElse(List.of());
 	}
 
 	/** The class's compiled bytes via its ArchUnit source URI — no hardcoded build paths; the
@@ -248,18 +397,18 @@ class ResponsibilitiesArchitectureTests {
 				.map(uri -> bytecode(Path.of(uri)));
 	}
 
-	/** Whole-word match: the table name bounded by non-identifier characters, so a different
+	/** Whole-word match: the token bounded by non-identifier characters, so a different
 	 * identifier merely containing it (reset_availability, set_availability_audit) is not hit. */
-	private static boolean containsTableName(String bytecode) {
-		int index = bytecode.indexOf(AVAILABILITY_TABLE);
+	private static boolean containsWholeWord(String bytecode, String token) {
+		int index = bytecode.indexOf(token);
 		while (index >= 0) {
 			char before = index == 0 ? '\0' : bytecode.charAt(index - 1);
-			int end = index + AVAILABILITY_TABLE.length();
+			int end = index + token.length();
 			char after = end >= bytecode.length() ? '\0' : bytecode.charAt(end);
 			if (!isIdentifierChar(before) && !isIdentifierChar(after)) {
 				return true;
 			}
-			index = bytecode.indexOf(AVAILABILITY_TABLE, index + 1);
+			index = bytecode.indexOf(token, index + 1);
 		}
 		return false;
 	}

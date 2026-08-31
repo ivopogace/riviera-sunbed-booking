@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking.application.request;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -91,6 +92,6 @@ class WithdrawRequestServiceTest {
 
 	private static BookingRecord confirmedRecord() {
 		return new BookingRecord(BOOKING_ID, CODE, BookingStatus.CONFIRMED, new VenueId(1), SET,
-				new CustomerId(5), BOOKING_DATE, 4500L, "EUR", null, null, null, null);
+				new CustomerId(5), BOOKING_DATE, 4500L, "EUR", null, null, null, null, Instant.EPOCH, null);
 	}
 }

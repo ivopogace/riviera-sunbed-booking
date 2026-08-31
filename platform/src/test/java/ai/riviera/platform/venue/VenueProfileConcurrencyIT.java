@@ -24,6 +24,7 @@ import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.venue.application.EditVenueProfile;
 import ai.riviera.platform.venue.application.ProfileUpdateOutcome;
 import ai.riviera.platform.venue.application.VenueProfileCommand;
+import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -102,7 +103,7 @@ class VenueProfileConcurrencyIT {
 
 	private static VenueProfileCommand command(String name) {
 		return new VenueProfileCommand(name, "Ksamil", "Riviera", "desc", "INSTANT",
-				LocalTime.of(18, 0), Set.of(), null);
+				LocalTime.of(18, 0), SalesClose.MID_AFTERNOON, Set.of(), null);
 	}
 
 	private long insertVenue() {

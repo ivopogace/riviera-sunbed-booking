@@ -4,7 +4,7 @@ import { firstValueFrom, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { apiPhotoUrl } from '../shared/photo-url';
-import { PhotoSlotKey, VenueSummary } from '../shared/venue-views';
+import { PhotoSlotKey } from '../shared/venue-views';
 import { AdminPhotoSlotView, AdminVenuePhotosView } from './admin.model';
 
 /** The slot order the surface renders — the backend's `PhotoSlot` declaration order. */
@@ -19,7 +19,16 @@ interface AdminVenuePhotosResponse {
   readonly photos: Readonly<Record<PhotoSlotKey, { readonly previewUrl: string | null }>>;
 }
 
-/** A venue as the picker needs it — the public catalogue's row, narrowed to what a moderator reads. */
+/** `GET /api/admin/venues`, narrowed to the picker's fields — the response's other fields are ignored. */
+interface AdminVenuesResponse {
+  readonly venues: readonly {
+    readonly venueId: number;
+    readonly name: string;
+    readonly beach: string;
+  }[];
+}
+
+/** A venue as the picker needs it — the admin venue list's row, narrowed to what a moderator reads. */
 export interface ModerationVenue {
   readonly id: number;
   readonly name: string;
@@ -30,15 +39,13 @@ export interface ModerationVenue {
  * HTTP client for the admin console's Photos tab. Stateless: the session cookie + CSRF header
  * are added by {@link apiSessionInterceptor}, and the component holds the page state.
  *
- * <p>The venue list comes from the **public** catalogue (`GET /api/venues`), and stays there now that
- * an admin venue read does exist (`GET /api/admin/venues`, which the Commissions tab uses).
- * Keeping this picker on the catalogue is a need-to-know call, not inertia: the admin read carries
- * each venue's `commissionBps`, a commercial term a photo moderator has no business reading, and
- * routing moderation through it would put the platform's cut on a content-moderation surface for no
- * gain. The catalogue is also complete — public data, every venue, no publish filter — so nothing is
- * hidden from a moderator by staying on it. It is requested here rather than through the `venue`
- * feature's own service because `admin/` may not import another feature (RV-FE-8) — only the *types*
- * are shared, from `shared/venue-views`.
+ * <p>The venue list comes from the **admin** venue read (`GET /api/admin/venues`, the Commissions
+ * tab's endpoint), not the public catalogue: since #693 the catalogue hides every venue whose owning
+ * operator is not `ACTIVE` — exactly the venues a moderator must still reach. The admin read is
+ * platform-wide and unfiltered. It does carry each venue's `commissionBps`, but the same `ADMIN`
+ * role already reads that figure on the Commissions tab, so nothing new is exposed — this picker
+ * simply ignores the field. The response is narrowed here rather than through another feature's
+ * service (RV-FE-8).
  *
  * <p>The two moderation calls are ADMIN-gated server-side and deliberately ownership-free: they are
  * the only reads/writes on a venue's photos that answer for a venue the caller does not own.
@@ -48,12 +55,16 @@ export class AdminVenuePhotosService {
   private readonly http = inject(HttpClient);
   private readonly base = environment.apiBaseUrl;
 
-  /** Every venue, for the picker. Ordered by the catalogue (rating, then name). */
+  /** Every venue — hidden ones included — for the picker, in the admin list's order. */
   venues(): Promise<readonly ModerationVenue[]> {
     return firstValueFrom(
       this.http
-        .get<readonly VenueSummary[]>(`${this.base}/api/venues`)
-        .pipe(map((venues) => venues.map(({ id, name, beach }) => ({ id, name, beach })))),
+        .get<AdminVenuesResponse>(`${this.base}/api/admin/venues`)
+        .pipe(
+          map(({ venues }) =>
+            venues.map(({ venueId, name, beach }) => ({ id: venueId, name, beach })),
+          ),
+        ),
     );
   }
 

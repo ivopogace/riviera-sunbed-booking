@@ -13,7 +13,7 @@ import {
  * operator surface (`OperatorHome` pins the theme); it reuses the venue-tab form idiom: headings +
  * field labels + input values in `--riv-card-ink` on `appCardGlass`, sub-copy in
  * `--riv-card-ink-soft`, field/create errors in `#a3160e`, and the submit CTA's solid white ink on
- * the AA-safe `--riv-cta-grad` teal stops. Values mirror the template + `styles.scss`; a token edit
+ * the AA-safe `--riv-cta-grad` teal stops. Values mirror the template + `tailwind.css`; a token edit
  * there must re-pass here.
  */
 

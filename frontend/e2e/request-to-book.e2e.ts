@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
-import { settle } from './support/booking-dialog';
+import { completeDialog, settle } from './support/booking-dialog';
 
 /**
  * Real-render a11y + behaviour audit of the Request-to-Book flow: REQUEST-mode beach map → 2-step
@@ -80,6 +80,8 @@ const DETAIL_BASE = {
   requestExpiresAt: '2026-11-30T16:00:00Z',
   payment: null,
   payWindowClosed: false,
+  // The wire always carries a panel; a stay nobody checked in is the reason there is no form.
+  reviewPanel: { kind: 'NOT_COMPLETED' },
 };
 
 test.beforeEach(async ({ page }) => {
@@ -96,6 +98,10 @@ test('request-to-book: request dialog → 202 PENDING_REQUEST → request-sent �
 
   await page.goto('/venues/1');
   await expect(page.getByRole('heading', { name: 'Miramar Beach Club' })).toBeVisible();
+  // A REQUEST venue explains the no-charge deal on the map, before the tourist commits to a spot (#703).
+  await expect(page.getByTestId('beach-grid')).toContainText(
+    'Pick a set to request it — you pay only once Miramar Beach Club accepts.',
+  );
   await page
     .getByRole('button', { name: /Select to book/ })
     .first()
@@ -129,6 +135,56 @@ test('request-to-book: request dialog → 202 PENDING_REQUEST → request-sent �
   await expect(page).toHaveURL(new RegExp(`/booking/${CODE}`));
   await expect(page.getByTestId('request-pending')).toContainText('Waiting for the venue');
   await expectNoSeriousAxeViolations(page, 'booking view (pending request)');
+});
+
+test('same-day request: today is offered at a Request venue and the accepted booking is payable (#792)', async ({
+  page,
+}) => {
+  // Fixed at 12:00 Tirane (CEST) — before any sales close, so "today" is deterministic.
+  const TODAY = '2026-08-30';
+  await page.clock.setFixedTime(new Date(`${TODAY}T10:00:00Z`));
+  const salesClose = `${TODAY}T14:00:00Z`;
+  let requestedDate = '';
+  await page.route('**/api/bookings', (route) => {
+    requestedDate = (route.request().postDataJSON() as { bookingDate: string }).bookingDate;
+    return route.fulfill({
+      status: 202,
+      json: { ...REQUESTED, bookingDate: TODAY, requestExpiresAt: salesClose },
+    });
+  });
+  // The venue accepts before its close: the guest returns to a payable same-day booking.
+  await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
+    route.fulfill({
+      json: {
+        ...DETAIL_BASE,
+        bookingDate: TODAY,
+        status: 'AWAITING_PAYMENT',
+        withdrawable: false,
+        requestExpiresAt: salesClose,
+        payment: { clientSecret: 'pi_123_secret_abc', paymentIntentId: 'pi_123' },
+      },
+    }),
+  );
+
+  // The map defaults to today (its floor) — no client-side gate steers a Request venue off it.
+  await page.goto('/venues/1');
+  await page
+    .getByRole('button', { name: /Select to book/ })
+    .first()
+    .click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await completeDialog(dialog, 'Send request');
+
+  await expect(page).toHaveURL(/\/booking\/requested/);
+  expect(requestedDate).toBe(TODAY);
+
+  // After the accept, the same-day booking offers Pay now — the pay window runs to its deadline.
+  await page.goto(`/booking/${CODE}`);
+  await expect(page.getByTestId('request-accepted')).toContainText('Request accepted');
+  await expect(page.getByTestId('pay-now')).toBeVisible();
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'booking view (same-day accepted request)');
 });
 
 test('accepted request: Pay now → fake Stripe → poll to CONFIRMED (invariant #8)', async ({
@@ -352,7 +408,7 @@ test('an expired request shows terminal no-charge copy', async ({ page }) => {
   await expectNoSeriousAxeViolations(page, 'booking view (expired request)');
 });
 
-test('an accepted request whose service day has opened cannot be paid', async ({ page }) => {
+test('an accepted request whose pay deadline has passed cannot be paid', async ({ page }) => {
   await page.route(new RegExp(`/api/bookings/${CODE}(\\?.*)?$`), (route) =>
     route.fulfill({
       json: {

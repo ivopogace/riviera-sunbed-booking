@@ -13,6 +13,7 @@ import ai.riviera.platform.operator.vocabulary.ApprovalOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorId;
 import ai.riviera.platform.operator.vocabulary.OperatorLifecycleOutcome;
 import ai.riviera.platform.operator.vocabulary.OperatorRegistrationOutcome;
+import ai.riviera.platform.operator.vocabulary.OperatorStatus;
 import ai.riviera.platform.operator.vocabulary.PendingOperator;
 
 /**
@@ -66,8 +67,8 @@ class OperatorRegistrationService implements OperatorRegistration, OperatorLifec
 
 	@Override
 	@Transactional(readOnly = true)
-	public Optional<String> activeUsername(OperatorId operatorId) {
-		return operators.activeUsernameById(operatorId);
+	public Optional<String> usernameInStatus(OperatorId operatorId, OperatorStatus expected) {
+		return operators.usernameByIdInStatus(operatorId, expected);
 	}
 
 	@Override

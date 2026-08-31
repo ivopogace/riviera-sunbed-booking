@@ -1,3 +1,5 @@
+import { plural } from './plural';
+
 /**
  * Rating helpers shared by the home venue card and the venue-map header. A venue with
  * no reviews yet is "new / unrated", never "rated 0.0" — `isRated` gates that decision in one place
@@ -18,4 +20,13 @@ export function isRated(venue: RatingView): boolean {
 /** The star score as a one-decimal display string (48 → "4.8"); only meaningful when `isRated`. */
 export function ratingScore(ratingTenths: number): string {
   return (ratingTenths / 10).toFixed(1);
+}
+
+/**
+ * The review count with its noun agreed ("1 review", "2 reviews"). A single review is the first
+ * state every venue reaches, so the plural-only form is not a rare edge — it is what a venue reads
+ * the moment it stops being "New".
+ */
+export function reviewsLabel(reviewsCount: number): string {
+  return plural(reviewsCount, 'review');
 }

@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Verifies the U7 layout-integrity constraints (Flyway V12, issue #7): the beach-map editor
+ * Verifies the layout-integrity constraints (Flyway V12 + the V43 row-label bound): the beach-map editor
  * is a write surface, so a venue's set positions must not collide on a grid cell and must use
  * positive coordinates. The read-only U1 seed never collided; an operator dragging sets onto a
  * grid can. These constraints (invariant #12) are the layout analogue of invariant #2's
@@ -77,6 +77,19 @@ class BeachMapLayoutMigrationIT {
 		DataIntegrityViolationException rejected = assertThrows(DataIntegrityViolationException.class,
 				() -> insertSet(MIRAMAR, 97, 3, 0));
 		assertThat(rejected).isNotNull(); // set_position_grid_y_check
+	}
+
+	@Test
+	void rejectsAnOverlongRowLabel() {
+		// #723: row_label is operator-authored, so V43 bounds it — char_length(row_label) <= 40.
+		String overlong = "x".repeat(41);
+		DataIntegrityViolationException rejected = assertThrows(DataIntegrityViolationException.class,
+				() -> jdbc.update("""
+						INSERT INTO set_position (venue_id, row_label, position_no, tier, pool,
+						                          price_minor, price_currency, grid_x, grid_y)
+						VALUES (?, ?, 96, 'STANDARD', 'ONLINE', 2500, 'EUR', 30, 30)
+						""", MIRAMAR, overlong));
+		assertThat(rejected.getMessage()).contains("set_position_row_label_check");
 	}
 
 	@Test

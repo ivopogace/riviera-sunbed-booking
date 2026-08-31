@@ -15,6 +15,7 @@ import ai.riviera.platform.booking.events.BookingPaymentDue;
 import ai.riviera.platform.booking.events.BookingRequestDeclined;
 import ai.riviera.platform.booking.events.BookingRequestExpired;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.booking.vocabulary.RefundReason;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -120,8 +121,14 @@ public final class BookingMailFixtures {
 	}
 
 	public BookingConfirmed confirmationOf(SetRef set, long bookingId, LocalDate date, long amountMinor) {
+		return confirmationOf(set, bookingId, date, amountMinor, CancellationWindow.FREE, 0);
+	}
+
+	/** The stamped form (#795): callers pinning the disclosure pass the birth window explicitly. */
+	public BookingConfirmed confirmationOf(SetRef set, long bookingId, LocalDate date, long amountMinor,
+			CancellationWindow windowAtBirth, int lateCancelRefundBps) {
 		return new BookingConfirmed(new BookingId(bookingId), new VenueId(set.venueId()),
-				new SetId(set.setId()), date, amountMinor, "EUR");
+				new SetId(set.setId()), date, amountMinor, "EUR", windowAtBirth, lateCancelRefundBps);
 	}
 
 	/**
@@ -142,8 +149,14 @@ public final class BookingMailFixtures {
 	 */
 	public BookingPaymentDue paymentDueOf(SetRef set, long bookingId, LocalDate date, long amountMinor,
 			Instant payBy) {
+		return paymentDueOf(set, bookingId, date, amountMinor, payBy, CancellationWindow.FREE, 0);
+	}
+
+	/** The stamped form (#795): callers pinning the disclosure pass the birth window explicitly. */
+	public BookingPaymentDue paymentDueOf(SetRef set, long bookingId, LocalDate date, long amountMinor,
+			Instant payBy, CancellationWindow windowAtBirth, int lateCancelRefundBps) {
 		return new BookingPaymentDue(new BookingId(bookingId), new VenueId(set.venueId()),
-				new SetId(set.setId()), date, payBy, amountMinor, "EUR");
+				new SetId(set.setId()), date, payBy, amountMinor, "EUR", windowAtBirth, lateCancelRefundBps);
 	}
 
 	/** The decline fact an IT publishes to drive the mail; the date is the matching fragment. */

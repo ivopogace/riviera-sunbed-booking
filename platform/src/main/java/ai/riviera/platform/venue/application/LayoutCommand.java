@@ -1,7 +1,9 @@
 package ai.riviera.platform.venue.application;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -11,7 +13,8 @@ import java.util.Set;
  * element is a {@link SetCommand}, already range/token-validated by its own compact constructor (tier,
  * pool, integer minor-unit price, 1-based coordinates), so this record only adds the whole-layout
  * concerns the single-set path never had: it must be non-empty, bounded in size, and internally
- * consistent (no two cells claim the same grid cell or the same row+position).
+ * consistent (no two cells claim the same grid cell or the same row+position, no row label spans two
+ * grid rows).
  *
  * <p>Generate-time defaults (row A priced as front-row premium, later rows standard) are the
  * <em>frontend's</em> concern — the client builds the full grid and this command persists exactly what
@@ -54,5 +57,22 @@ public record LayoutCommand(List<SetCommand> sets) {
 			}
 		}
 		return Optional.empty();
+	}
+
+	/**
+	 * Whether one {@code rowLabel} appears under two distinct {@code gridY} values — two physical rows
+	 * sharing a name, which every label-grouping surface would merge into one. The batch twin of the
+	 * rename path's {@code ROW_NAME_TAKEN} rule; not a {@link Venues.Conflict} because no DB constraint
+	 * can see it (gap-cell numbering keeps every {@code (row_label, position_no)} pair unique).
+	 */
+	boolean splitsRowLabel() {
+		Map<String, Integer> rowOf = new HashMap<>();
+		for (SetCommand c : sets) {
+			Integer first = rowOf.putIfAbsent(c.rowLabel(), c.gridY());
+			if (first != null && first != c.gridY()) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

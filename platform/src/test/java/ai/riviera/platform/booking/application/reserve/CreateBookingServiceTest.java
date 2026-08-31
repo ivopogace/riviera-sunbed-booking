@@ -1,6 +1,6 @@
 package ai.riviera.platform.booking.application.reserve;
 
-import ai.riviera.platform.booking.application.cancel.BookingCutoff;
+import ai.riviera.platform.booking.application.BookingCutoff;
 
 import java.time.*;
 import java.util.ArrayList;
@@ -30,6 +30,8 @@ import ai.riviera.platform.booking.domain.BookingStatus;
 import ai.riviera.platform.customer.api.CustomerDirectory;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
+import ai.riviera.platform.operator.api.VenueVisibility;
+import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.payment.api.CheckoutPort;
 import ai.riviera.platform.payment.vocabulary.PaymentOutcome;
 import ai.riviera.platform.venue.api.SetBookingFacts;
@@ -67,7 +69,7 @@ class CreateBookingServiceTest {
 
 	private SetBookingInfo set(String pool, BookingMode mode) {
 		return new SetBookingInfo(SET, new VenueId(1), "Miramar", "Front row", 2, pool,
-				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), mode);
+				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0), mode);
 	}
 
 	private static final RequestWindows WINDOWS =
@@ -75,12 +77,22 @@ class CreateBookingServiceTest {
 
 	private CreateBookingService service(SetBookingInfo info, AvailabilityClaim claim,
 			CheckoutPort checkout, BookingCodeGenerator codes) {
+		return service(info, claim, checkout, codes, true);
+	}
+
+	private CreateBookingService service(SetBookingInfo info, AvailabilityClaim claim,
+			CheckoutPort checkout, BookingCodeGenerator codes, boolean venueVisible) {
+		return service(info, claim, checkout, codes, venueVisible, CLOCK);
+	}
+
+	private CreateBookingService service(SetBookingInfo info, AvailabilityClaim claim,
+			CheckoutPort checkout, BookingCodeGenerator codes, boolean venueVisible, Clock clock) {
 		SetBookingFacts catalog = new FakeCatalog(info);
 		CustomerDirectory customers = _ -> new CustomerId(99);
-		ReserveSetService reservation = new ReserveSetService(catalog, claim, customers, bookings,
-				codes, new BookingCutoff(CLOCK), WINDOWS, CLOCK);
+		ReserveSetService reservation = new ReserveSetService(catalog, claim, visibility(venueVisible),
+				customers, bookings, codes, new BookingCutoff(clock), WINDOWS, clock);
 		return new CreateBookingService(reservation, checkout, confirmer, release, confirmationMail,
-				collection, CLOCK);
+				collection, clock);
 	}
 
 	private CreateBookingCommand command() {
@@ -220,7 +232,8 @@ class CreateBookingServiceTest {
 		SetBookingFacts catalog = new FakeCatalog(set("ONLINE"));
 		CustomerDirectory customers = _ -> new CustomerId(1);
 		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
-				customers, collidingOnce, codes::removeFirst, new BookingCutoff(CLOCK), WINDOWS, CLOCK);
+				visibility(true), customers, collidingOnce, codes::removeFirst,
+				new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		var service = new CreateBookingService(reservation,
 				(_, _) -> new PaymentOutcome.Succeeded("ok"), confirmer, release, confirmationMail,
 				collection, CLOCK);
@@ -293,7 +306,8 @@ class CreateBookingServiceTest {
 		SetBookingFacts catalog = new FakeCatalog(set("ONLINE"));
 		CustomerDirectory customers = contact -> new CustomerId(7);
 		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
-				customers, bookings, () -> "CODE12345C", new BookingCutoff(CLOCK), WINDOWS, CLOCK);
+				visibility(true), customers, bookings, () -> "CODE12345C",
+				new BookingCutoff(CLOCK), WINDOWS, CLOCK);
 		CreateBookingService service = new CreateBookingService(reservation,
 				(ref, money) -> new PaymentOutcome.Succeeded("ok"), failingConfirm, release,
 				confirmationMail, collection, CLOCK);
@@ -332,20 +346,19 @@ class CreateBookingServiceTest {
 	}
 
 	@Test
-	void requestDeadlineCappedAtCutoff() {
-		// Invariant #4: the response deadline never extends past the evening-before cutoff —
-		// for a next-day booking, min(now + 24h, cutoff) is the cutoff instant (18:00 Europe/Tirane = 17:00Z).
+	void requestDeadlineUncappedTwoDaysOut() {
+		// The accept deadline caps at D's sales close, far enough off two days out to stay uncapped.
 		CreateBookingService service = service(
 				set("ONLINE", BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE002");
 
 		BookingOutcome outcome = service.create(
-				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 2), GUEST));
+				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 3), GUEST));
 
 		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
-		assertEquals(Instant.parse("2026-11-01T17:00:00Z"), requested.requestExpiresAt(),
-				"deadline capped at the evening-before 18:00 Europe/Tirane cutoff");
+		assertEquals(Instant.parse("2026-11-02T09:00:00Z"), requested.requestExpiresAt(),
+				"uncapped: now + 24h is well before D's 00:00 Europe/Tirane open");
 	}
 
 	@Test
@@ -391,6 +404,54 @@ class CreateBookingServiceTest {
 		assertTrue(confirmer.confirmed.isEmpty(), "a thrown payment confirms nothing");
 	}
 
+	/** A fixed-answer visibility fake (#693) — the real rule lives in operator's JDBC adapter. */
+	private static VenueVisibility visibility(boolean visible) {
+		return new VenueVisibility() {
+			@Override
+			public boolean isVisible(VenueRef venue) {
+				return visible;
+			}
+
+			@Override
+			public java.util.Set<VenueRef> visibleAmong(Collection<VenueRef> venues) {
+				return visible ? java.util.Set.copyOf(venues) : java.util.Set.of();
+			}
+		};
+	}
+
+	/** A claim port that fails the test if any claim is attempted (#693: refuse before claiming). */
+	private static AvailabilityClaim neverClaiming() {
+		return new AvailabilityClaim() {
+			@Override
+			public ClaimOutcome claim(SetId setId, LocalDate bookingDate) {
+				throw new AssertionError("claim must not be attempted for a hidden venue");
+			}
+
+			@Override
+			public void release(SetId setId, LocalDate bookingDate) {
+				throw new AssertionError("release must not be attempted for a hidden venue");
+			}
+		};
+	}
+
+	@Test
+	void instantReserveRefusedForHiddenVenue() {
+		CreateBookingService service = service(set("ONLINE"), neverClaiming(),
+				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X", false);
+
+		assertSame(BookingOutcome.Rejected.NO_SUCH_SET, service.create(command()));
+		assertTrue(bookings.inserted.isEmpty(), "no booking row for a hidden venue");
+	}
+
+	@Test
+	void requestReserveRefusedForHiddenVenue() {
+		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST), neverClaiming(),
+				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X", false);
+
+		assertSame(BookingOutcome.Rejected.NO_SUCH_SET, service.create(command()));
+		assertTrue(bookings.inserted.isEmpty(), "no pending request for a hidden venue");
+	}
+
 	@Test
 	void rejectsWalkInPool() {
 		CreateBookingService service = service(set("WALK_IN"),
@@ -416,6 +477,98 @@ class CreateBookingServiceTest {
 		BookingOutcome outcome = service.create(
 				new CreateBookingCommand(SET, LocalDate.of(2026, 10, 1), GUEST));
 		assertSame(BookingOutcome.Rejected.BOOKING_CLOSED, outcome);
+	}
+
+	@Test
+	void sameDayInstantReserveBeforeClose() {
+		// AC-4: "now" is 10:00 Tirane; a 16:00 sales close still allows booking TODAY (#791).
+		Clock beforeClose = Clock.fixed(Instant.parse("2026-11-01T09:00:00Z"), ZoneId.of("UTC"));
+		CreateBookingService service = service(set("ONLINE"), claiming(ClaimOutcome.CLAIMED),
+				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "CODE234567", true, beforeClose);
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 1), GUEST));
+
+		assertInstanceOf(BookingOutcome.Confirmed.class, outcome, "same-day reserve + pay succeeds");
+	}
+
+	@Test
+	void sameDayInstantRejectedAtClose() {
+		// AC-4: exactly at the venue's 16:00 sales close (15:00Z = 16:00 CET), the same date is closed.
+		Clock atClose = Clock.fixed(Instant.parse("2026-11-01T15:00:00Z"), ZoneId.of("UTC"));
+		CreateBookingService service = service(set("ONLINE"), claiming(ClaimOutcome.CLAIMED),
+				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X", true, atClose);
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 1), GUEST));
+
+		assertSame(BookingOutcome.Rejected.BOOKING_CLOSED, outcome);
+	}
+
+	@Test
+	void sameDayRequestSucceedsBeforeSalesClose() {
+		// AC-5 (#792): the temporary gate is gone — today is requestable until the venue's close.
+		Clock beforeClose = Clock.fixed(Instant.parse("2026-11-01T09:00:00Z"), ZoneId.of("UTC"));
+		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
+				claiming(ClaimOutcome.CLAIMED),
+				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE004", true, beforeClose);
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 1), GUEST));
+
+		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
+		assertEquals(Instant.parse("2026-11-01T15:00:00Z"), requested.requestExpiresAt(),
+				"a same-day request's deadline caps at today's 16:00 sales close, Europe/Tirane (CET)");
+	}
+
+	@Test
+	void requestFenceAndDeadlineShareOneClockReading() {
+		// A close crossing between two reads would admit a request already past its own deadline.
+		var reads = new java.util.concurrent.atomic.AtomicInteger();
+		Clock counting = new Clock() {
+			@Override
+			public ZoneId getZone() {
+				return ZoneId.of("UTC");
+			}
+
+			@Override
+			public Clock withZone(ZoneId zone) {
+				return this;
+			}
+
+			@Override
+			public Instant instant() {
+				reads.incrementAndGet();
+				return Instant.parse("2026-11-01T09:00:00Z");
+			}
+		};
+		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
+				claiming(ClaimOutcome.CLAIMED),
+				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE005", true, counting);
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 1), GUEST));
+
+		assertInstanceOf(BookingOutcome.Requested.class, outcome);
+		assertEquals(1, reads.get(),
+				"the sales-close fence and the response deadline must classify the same instant");
+	}
+
+	@Test
+	void requestDeadlineCappedAtSalesClose() {
+		// AC-1 (#792): a near-term request's response deadline caps at D's own sales close.
+		Clock eveningBefore = Clock.fixed(Instant.parse("2026-11-01T19:00:00Z"), ZoneId.of("UTC"));
+		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
+				claiming(ClaimOutcome.CLAIMED),
+				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE003", true, eveningBefore);
+
+		BookingOutcome outcome = service.create(
+				new CreateBookingCommand(SET, LocalDate.of(2026, 11, 2), GUEST));
+
+		BookingOutcome.Requested requested = assertInstanceOf(BookingOutcome.Requested.class, outcome);
+		assertEquals(Instant.parse("2026-11-02T15:00:00Z"), requested.requestExpiresAt(),
+				"capped at the venue's 16:00 sales close on D, Europe/Tirane (CET) — an accept past "
+						+ "the close would sell a window the venue has already shut");
 	}
 
 	@Test

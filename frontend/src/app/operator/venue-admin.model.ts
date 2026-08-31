@@ -7,17 +7,25 @@ import { BookingMode } from '../shared/venue-views';
  * `operator/operator-console.model.ts`). No `any` anywhere.
  */
 
-/** `POST /api/venues` body — create a venue. Rating/reviews are server-defaulted to zero. */
+/**
+ * `POST /api/venues` body — create a venue. Rating/reviews are server-defaulted to zero, and
+ * there is deliberately no commission field: the platform stamps its default rate server-side
+ * (a body carrying one is rejected `400`).
+ */
 export interface CreateVenueRequest {
   readonly name: string;
   readonly beach: string;
   readonly region: string;
   readonly description: string;
   readonly bookingMode: BookingMode;
-  readonly commissionBps: number;
   readonly payoutCurrency: string;
   /** Evening-before cutoff, `HH:mm` Europe/Tirane (invariant #4/#6). */
   readonly bookingCutoff: string;
+}
+
+/** `GET /api/venue-defaults` — the platform terms the create path stamps (bps, invariant #5). */
+export interface VenueDefaults {
+  readonly commissionBps: number;
 }
 
 /** `201` response from a create — the new technical id. */

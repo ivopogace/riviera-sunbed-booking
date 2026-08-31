@@ -71,12 +71,9 @@ before modeling one.
 
 ### 4. Module seams (invariant #11) — structure is `riviera-modulith`'s call
 
-- Cross-module collaboration is the other module's **published surface** — its `api/` port
-  (queries / sync commands) or its `events/` records (state changes, id-based payloads) —
-  never an import of another module's `application.*` / `adapter.*` / `domain`. Which
-  package a class belongs in, the api/vocabulary/events/spi split, and the ADR-0007
-  two-template shape are owned by **`riviera-modulith`** — load it before creating or
-  moving any class.
+- Which package a class belongs in, the api/vocabulary/events/spi split, the ADR-0007
+  two-template shape, and how modules collaborate (published surfaces only — invariant
+  #11) are owned by **`riviera-modulith`** — load it before creating or moving any class.
 - A single implementation behind a port is fine (a hypothetical seam) — don't invent an
   extra application-service layer just to have one (see `codebase-design`).
 
@@ -134,11 +131,10 @@ machine-readable **`code`** extension, built in exactly two places: **`ApiProble
 factory for the wire shape — controllers use it when a typed-outcome `switch` rejects) and
 **`ApiErrorHandler`** (the **single** `@RestControllerAdvice` for everything thrown).
 **Per-controller `@ExceptionHandler`s are forbidden** — `ErrorContractArchitectureTests` enforces.
-Never leak internals into `detail`: no booking code (invariant #7), no exception message. And
-**`detail` states the condition, not the remedy** — user-facing wording belongs to the client, which
-switches on `code`; a `detail` written as UI copy is a second copy of that wording with nothing
-keeping the two in sync. Full mechanics, that rule's drift history, the status map, and the #97
-no-`@Valid` decision: `references/error-contract.md`.
+Never leak internals into `detail` (no booking code — invariant #7 — no exception message), and
+**`detail` states the condition, not the remedy** (user-facing wording is the client's, keyed on
+`code`). Full mechanics, that rule's drift history, the status map, and the #97 no-`@Valid`
+decision: `references/error-contract.md`.
 
 ### 6c. Comments: one line, or none (authoring side of RV-STYLE-1)
 
@@ -160,42 +156,22 @@ prose gets written and then deleted. This section exists so the first draft is a
 from a `PostToolUse` hook on every `Write`/`Edit`, so a multi-line inline comment comes back as
 feedback on the edit that wrote it; CI re-runs it over the PR diff. Run it by hand with
 `node scripts/check-inline-comments.mjs --files <path…>`, or over a whole branch with
-`--diff origin/main`. Three things about its scope, so nobody "fixes" a deliberate gap:
-
-- **Diff-scoped for anything git already tracks.** It judges only lines a diff *added*. The existing
-  tree carries many pre-existing multi-line inline comments that read as established convention in
-  their own files; a repo-wide gate would go red on day one and get switched off. Don't reflow
-  untouched comments. The one exception is a file git has **never seen**, which `--files` and the
-  hook judge whole (#619): a new file has no diff against `HEAD`, so the diff-scoped path called it
-  clean — and a new file is the commonest way a violation enters the tree. Every line in it is
-  yours, so there is nothing of anyone else's to bury you in.
-- **Four languages, by comment syntax:** `.java`, `.ts`/`.tsx`/`.js`/`.mjs`/`.cjs`, `.scss`/`.css`,
-  `.html`. **Not** `#` files (shell, YAML, `.properties`) — every one of those in this repo carries
-  multi-line `#` header prose as its documented convention — and **not** SQL `--`, which #522's
-  finding F-6 declined by precedent, citing `V9__payout_ledger.sql`.
-- **Two exemptions beyond the doc-comment carve-out:** a block comment standing before any code is
-  the file's header (`styles.scss` opens with one), and only whole-line comments merge into a
-  block, so a trailing comment never pairs with the next line's.
-- **One deliberate false negative — do not "fix" it.** A violation must be something the diff
-  *wrote*: it groups only **added** comment lines, and flags a block comment only when the diff
-  wrote its **opening** line. So appending a second line to a comment that was already there
-  reads as a one-line addition and passes. The alternative — grouping every adjacent comment line
-  and then asking whether any was added — flags a whole pre-existing block because you parked one
-  compliant one-liner beneath it, quoting text you never wrote. `SecurityConfig` alone carries 25
-  such blocks. That false positive is how the gate gets switched off; the false negative just
-  leaves the case to review, which is what RV-STYLE-1 is still for. (Found at this slice's own
-  review gate, after the guard shipped with the bug it exists to prevent.)
+`--diff origin/main`. Its scope is deliberately bounded: diff-scoped for tracked files
+(whole-file for brand-new ones, #619); four languages by comment syntax (`.java`, the
+`.ts`/`.js` family, `.scss`/`.css`, `.html` — **not** `#` files and **not** SQL `--`);
+two structural exemptions; and one recorded false negative. **Every one of those gaps is
+deliberate** (#619, #522 F-6, the false-negative record) — read
+`references/inline-comment-guard.md` before "fixing" any of them.
 
 The guard is a floor, not the rule: it cannot see a one-line comment that says nothing, and the
 rule's "default to zero inline comments" half is still yours. RV-STYLE-1 remains the review item.
 
 ### 6d. Javadoc: the contract, not the changelog
 
-§6c pushes prose *out* of method bodies and into Javadoc, and for four years said nothing about
-what happens once it lands there. It accumulated: 42% of `platform/src/main` was comment lines,
-11,269 of them Javadoc, and only 53 of 1,280 blocks carried a `@param`/`@return`/`@throws`. The
-overwhelming majority was **decision archaeology** — issue numbers, what the code used to be, which
-alternative was rejected — restated at every call site. This section is the missing half of §6c.
+§6c pushes prose *out* of method bodies and into Javadoc; this section is the missing half —
+what happens once it lands there. What accumulated before it existed was overwhelmingly
+**decision archaeology** — issue numbers, what the code used to be, which alternative was
+rejected — restated at every call site (the census: `docs/plans/comment-volume-trim.md`).
 
 **Javadoc answers what a caller must know.** What this is, what it guarantees, and what would
 surprise someone using it. Not how it came to be.
@@ -220,9 +196,8 @@ surprise someone using it. Not how it came to be.
 budget is the signal to ask whether the excess is contract (keep, and the budget is advisory) or
 archaeology (relocate). A 40-line constant doc is never contract.
 
-Nothing machine-enforces this — there is no Checkstyle Javadoc rule and no eslint-jsdoc, by
-choice: a line budget would push authors to write six useless lines as readily as it stops them
-writing sixty. It is a review item, and the frontend twin lives in `frontend/.claude/CLAUDE.md`.
+Nothing machine-enforces this, by choice (a line budget invites six useless lines as readily as
+it stops sixty); it is a review item, and the frontend twin lives in `frontend/.claude/CLAUDE.md`.
 
 ### 7. Money & time (invariants #5, #6 — canonical in CLAUDE.md)
 
@@ -234,9 +209,9 @@ belongs to `riviera-stripe-payments`.
 
 - Don't hand-roll thread pools in application code. The concurrency guarantees come from the
   DB (unique constraint + `INSERT … ON CONFLICT`), not from Java locks (invariant #2).
-- Virtual threads are a deliberate, deferred config decision (see the discussion in
-  `docs/` / PRs) — the real scaling knob is the Hikari pool. Don't flip
-  `spring.threads.virtual.enabled` casually.
+- Virtual threads are a deliberate, deferred config decision (the discussion:
+  `docs/plans/scheduled-sweep-bounds.md`) — the real scaling knob is the Hikari pool.
+  Don't flip `spring.threads.virtual.enabled` casually.
 - In tests, `ExecutorService` is `AutoCloseable` (Java 19+) — use try-with-resources.
 
 ### 9. Tests
@@ -299,6 +274,8 @@ belongs to `riviera-stripe-payments`.
 
 - **`references/error-contract.md`** — `ApiProblem`/`ApiErrorHandler` mechanics, the status map,
   `ErrorContractArchitectureTests`, and the #97 validation decision behind §6b.
+- **`references/inline-comment-guard.md`** — the §6c guard's scope, exemptions, and the
+  deliberate false-negative record; read before "fixing" any of its gaps.
 - **`riviera-modulith/references/persistence-jdbc.md`** — the canonical Spring Data JDBC
   aggregate rules behind §1a, and the `JdbcClient` adapter pattern behind §1.
 - **`riviera-modulith/references/testing.md`** — the Modulith/Testcontainers test harness behind §9.

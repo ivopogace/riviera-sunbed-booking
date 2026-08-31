@@ -16,6 +16,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
@@ -109,7 +110,7 @@ class EventRegistryDurabilityIT {
 
 		new TransactionTemplate(txManager).executeWithoutResult(status -> publisher.publishEvent(
 				new BookingConfirmed(new BookingId(bookingId), new VenueId(set[1]), new SetId(set[0]),
-						date, DISTINCTIVE_AMOUNT_MINOR, "EUR")));
+						date, DISTINCTIVE_AMOUNT_MINOR, "EUR", CancellationWindow.FREE, 0)));
 
 		Awaitility.await().atMost(WAIT)
 				.until(() -> publicationsIn("event_publication_archive") > 0);

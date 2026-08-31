@@ -40,8 +40,7 @@ class BookingServiceIT {
 
 	private SetId freeOnlineSet() {
 		// An online set with no availability row yet for the test date.
-		return new SetId(jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id DESC LIMIT 1")
-				.query(Long.class).single());
+		return new SetId(VisibleOnlineSets.newest(jdbc).id());
 	}
 
 	private LocalDate farFutureDate() {

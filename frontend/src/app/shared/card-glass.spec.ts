@@ -21,10 +21,10 @@ describe('CardGlass', () => {
   it('applies the card-glass surface utilities to the host', () => {
     const el = host();
     for (const cls of [
-      'bg-(--riv-card-glass)',
+      'bg-riv-card-glass',
       'border',
-      'border-(--riv-card-border)',
-      'text-(--riv-card-ink)',
+      'border-riv-card-border',
+      'text-riv-card-ink',
     ]) {
       expect(el.classList.contains(cls)).toBe(true);
     }

@@ -5,7 +5,7 @@ import java.util.Set;
 /**
  * The validated intent to place or re-place one set position on a venue's beach map (U7) —
  * used by both {@link EditBeachMap#addSet} and {@link EditBeachMap#editSet} (the editor is
- * incremental per-set CRUD). Its compact constructor enforces the same invariants the V2/V12
+ * incremental per-set CRUD). Its compact constructor enforces the same invariants the V2/V12/V43
  * CHECK constraints enforce in the database, so a malformed set is rejected at the boundary:
  * {@code tier}/{@code pool} are the exact tokens the DB stores (a set is in exactly one
  * pool — invariant #3), {@code priceMinor} is integer minor units + an ISO-4217 currency
@@ -18,7 +18,8 @@ public record SetCommand(String rowLabel, int positionNo, String tier, String po
 	private static final Set<String> POOLS = Set.of("ONLINE", "WALK_IN");
 
 	public SetCommand {
-		VenueFieldValidation.requireText(rowLabel, "rowLabel");
+		rowLabel = VenueFieldValidation.strip(rowLabel);
+		VenueFieldValidation.requireText(rowLabel, "rowLabel", VenueFieldValidation.MAX_ROW_LABEL_LENGTH);
 		if (positionNo < 1) {
 			throw new IllegalArgumentException("positionNo must be >= 1");
 		}

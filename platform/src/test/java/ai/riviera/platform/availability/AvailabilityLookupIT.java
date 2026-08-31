@@ -21,12 +21,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Verifies the date-aware availability lookup behind the live beach map: a set with
+ * Verifies the date-aware availability lookup behind the beach map, the owner's daily view and the
+ * tourist availability calendar: a set with
  * a {@code set_availability} row for a date is taken on that date and free on another; a set
  * with no row is free; any state ({@code BOOKED_ONLINE} / {@code STAFF_MARKED}) counts as taken;
  * an empty input is handled without a query. This is the read side of the dependency-inverted
  * {@link SetAvailabilityLookup} port (declared in {@code venue.spi}, implemented by
- * {@code availability}). Real Postgres + seed via Testcontainers. Each test uses a distinct date
+ * {@code availability}). Real Postgres + seed via Testcontainers. Each test isolates on a distinct
+ * date — or, for the ranged reads whose result depends on days they did not seed, a distinct set —
  * so methods stay independent (the context/DB is shared).
  */
 @EnabledIfDockerAvailable
@@ -43,6 +45,27 @@ class AvailabilityLookupIT {
 	private List<SetId> firstThreeOnlineSets() {
 		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id LIMIT 3")
 				.query(Long.class).list().stream().map(SetId::new).toList();
+	}
+
+	/**
+	 * A set trio no other test in this class touches. The range read is the only method here whose
+	 * result depends on days it was not itself asked to seed, so it seeds its own sets rather than
+	 * sharing the first three.
+	 */
+	private List<SetId> calendarSets() {
+		return jdbc.sql("SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id OFFSET 3 LIMIT 3")
+				.query(Long.class).list().stream().map(SetId::new).toList();
+	}
+
+	/**
+	 * A set no other test in this class touches, for the other ranged-predicate method: like the
+	 * range read, {@code anyClaimsFrom} answers over {@code booking_date >= :from}, so a sibling's
+	 * hold on a later day would decide its result.
+	 */
+	private SetId claimProbeSet() {
+		return new SetId(jdbc.sql(
+				"SELECT id FROM set_position WHERE pool = 'ONLINE' ORDER BY id OFFSET 6 LIMIT 1")
+				.query(Long.class).single());
 	}
 
 	private void mark(SetId set, LocalDate date, String state) {
@@ -117,8 +140,7 @@ class AvailabilityLookupIT {
 
 	@Test
 	void anyClaimsFromCountsOnlyHoldsOnOrAfterTheCutoff() {
-		List<SetId> sets = firstThreeOnlineSets();
-		SetId held = sets.get(0);
+		SetId held = claimProbeSet();
 		LocalDate cutoff = LocalDate.of(2026, 11, 20);
 		mark(held, cutoff.minusDays(1), "STAFF_MARKED");
 
@@ -139,5 +161,53 @@ class AvailabilityLookupIT {
 	@Test
 	void statesOnEmptyInputYieldsEmptyResultWithoutAQuery() {
 		assertEquals(Map.of(), lookup.statesOn(List.of(), LocalDate.of(2026, 11, 9)));
+	}
+
+	@Test
+	void takenCountsBetweenCountsHoldsPerDayAndOmitsUntouchedDays() {
+		List<SetId> sets = calendarSets();
+		LocalDate busy = LocalDate.of(2026, 11, 11);
+		LocalDate quiet = LocalDate.of(2026, 11, 12);
+		mark(sets.get(0), busy, "BOOKED_ONLINE");
+		mark(sets.get(1), busy, "STAFF_MARKED");
+		mark(sets.get(2), quiet, "BOOKED_ONLINE");
+
+		Map<LocalDate, Integer> counts = lookup.takenCountsBetween(
+				sets, LocalDate.of(2026, 11, 10), quiet);
+
+		assertEquals(Map.of(busy, 2, quiet, 1), counts,
+				"both hold states count; a day with no rows is absent, not zero-valued");
+	}
+
+	@Test
+	void takenCountsBetweenIsInclusiveOfBothBoundsAndExcludesOutside() {
+		List<SetId> sets = calendarSets();
+		SetId held = sets.getFirst();
+		LocalDate from = LocalDate.of(2026, 11, 14);
+		LocalDate to = LocalDate.of(2026, 11, 15);
+		mark(held, from.minusDays(1), "BOOKED_ONLINE");
+		mark(held, from, "BOOKED_ONLINE");
+		mark(held, to, "BOOKED_ONLINE");
+		mark(held, to.plusDays(1), "BOOKED_ONLINE");
+
+		assertEquals(Map.of(from, 1, to, 1), lookup.takenCountsBetween(sets, from, to),
+				"both bounds count; the days either side never leak in");
+	}
+
+	@Test
+	void takenCountsBetweenIgnoresSetsOutsideTheAskedList() {
+		List<SetId> sets = calendarSets();
+		LocalDate date = LocalDate.of(2026, 11, 17);
+		mark(sets.get(0), date, "BOOKED_ONLINE");
+		mark(sets.get(1), date, "BOOKED_ONLINE");
+
+		assertEquals(Map.of(date, 1), lookup.takenCountsBetween(List.of(sets.get(0)), date, date),
+				"only the asked set is counted");
+	}
+
+	@Test
+	void takenCountsBetweenEmptyInputYieldsEmptyResultWithoutAQuery() {
+		assertEquals(Map.of(), lookup.takenCountsBetween(
+				List.of(), LocalDate.of(2026, 11, 10), LocalDate.of(2026, 11, 18)));
 	}
 }

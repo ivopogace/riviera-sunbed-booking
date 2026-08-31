@@ -1,8 +1,10 @@
 package ai.riviera.platform.venue;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -12,6 +14,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.hamcrest.Matchers.contains;
@@ -26,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Miramar venue: shape, integer-minor-unit money (invariant #5), 404 for an unknown id, public
  * access, and — the date-aware behaviour — that each set's availability is sourced
  * per-{@code (set, date)} from {@code set_availability} (invariant #2), with the date
- * defaulting to tomorrow in {@code Europe/Tirane}. Testcontainers Postgres, so it runs in CI;
+ * defaulting to today in {@code Europe/Tirane}. Testcontainers Postgres, so it runs in CI;
  * skipped where Docker is absent.
  */
 @EnabledIfDockerAvailable
@@ -63,7 +66,8 @@ class VenueReadControllerIT {
 				.andExpect(jsonPath("$.id").value((int) MIRAMAR))
 				.andExpect(jsonPath("$.name").value("Miramar Beach Club"))
 				.andExpect(jsonPath("$.beach").value("Ksamil"))
-				.andExpect(jsonPath("$.ratingTenths").value(48))
+				// V45 superseded the seed's fabricated 4.8/326: unreviewed venues read 0/0 ("New").
+				.andExpect(jsonPath("$.ratingTenths").value(0))
 				.andExpect(jsonPath("$.bookingMode").value("INSTANT"))
 				.andExpect(jsonPath("$.sets.length()").value(24));
 	}
@@ -129,12 +133,12 @@ class VenueReadControllerIT {
 	}
 
 	@Test
-	void defaultsToTomorrowTirane() throws Exception {
-		// AC-3: no date param ⇒ tomorrow in Europe/Tirane. Book a set for that exact date and
+	void defaultsToTodayTirane() throws Exception {
+		// AC-3: no date param ⇒ today in Europe/Tirane. Book a set for that exact date and
 		// confirm the param-less read renders it TAKEN.
 		long set = anyOnlineSet();
-		LocalDate tomorrow = LocalDate.now(TIRANE).plusDays(1);
-		book(set, tomorrow);
+		LocalDate today = LocalDate.now(TIRANE);
+		book(set, today);
 
 		mvc.perform(get("/api/venues/{id}", MIRAMAR))
 				.andExpect(status().isOk())
@@ -154,6 +158,7 @@ class VenueReadControllerIT {
 					.andExpect(jsonPath("$.amenities")
 							.value(contains("BEACH_BAR", "FREE_PARKING", "SHOWERS")));
 		} finally {
+			jdbc.sql("DELETE FROM operator_venue WHERE venue_id = :id").param("id", id).update();
 			jdbc.sql("DELETE FROM venue WHERE id = :id").param("id", id).update();
 		}
 	}
@@ -168,6 +173,60 @@ class VenueReadControllerIT {
 				.andExpect(jsonPath("$.distanceToWaterM").value(nullValue()));
 	}
 
+	@Test
+	void mapCarriesSalesOpenForSelectedDate() throws Exception {
+		// #793 AC-3: a 00:01 opt-out venue's map reads closed for today, open for tomorrow.
+		LocalTime now = LocalTime.now(TIRANE);
+		Assumptions.assumeTrue(now.isAfter(LocalTime.of(0, 2)) && now.isBefore(LocalTime.of(23, 58)),
+				"skipped near midnight — today would roll over or the verdict flip mid-test");
+		long id = insertOptOutVenue();
+		LocalDate today = LocalDate.now(TIRANE);
+		try {
+			mvc.perform(get("/api/venues/{id}", id).param("date", today.toString()))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.salesOpen").value(false));
+
+			mvc.perform(get("/api/venues/{id}", id).param("date", today.plusDays(1).toString()))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.salesOpen").value(true));
+		} finally {
+			jdbc.sql("DELETE FROM operator_venue WHERE venue_id = :id").param("id", id).update();
+			jdbc.sql("DELETE FROM venue WHERE id = :id").param("id", id).update();
+		}
+	}
+
+	@Test
+	void mapCarriesSalesCloseValue() throws Exception {
+		// #804 AC-1: the venue's own close value rides beside the salesOpen verdict, as HH:mm.
+		mvc.perform(get("/api/venues/{id}", MIRAMAR))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.salesClose").value("16:00"));
+
+		long id = insertOptOutVenue();
+		try {
+			mvc.perform(get("/api/venues/{id}", id))
+					.andExpect(status().isOk())
+					.andExpect(jsonPath("$.salesClose").value("00:01"));
+		} finally {
+			jdbc.sql("DELETE FROM operator_venue WHERE venue_id = :id").param("id", id).update();
+			jdbc.sql("DELETE FROM venue WHERE id = :id").param("id", id).update();
+		}
+	}
+
+	/** A visible venue at the 00:01 sales-close opt-out — deterministically closed for today. */
+	private long insertOptOutVenue() {
+		long id = jdbc.sql("""
+				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency,
+				                   sales_close)
+				VALUES ('Sales-closed map venue IT', 'Sales close beach IT', 'Sales close IT region',
+				        'INSTANT', 1500, 'EUR', '00:01')
+				RETURNING id
+				""").query(Long.class).single();
+		OwnershipFixtures.grantToBootstrap(jdbc, id);
+		return id;
+	}
+
+	/** Owned by the bootstrap ACTIVE operator — the tourist map read hides ownerless venues (#693). */
 	private long insertVenueWithAmenities(int distanceToWaterM, String... amenities) {
 		long id = jdbc.sql("""
 				INSERT INTO venue (name, beach, region, booking_mode, commission_bps, payout_currency,
@@ -176,6 +235,7 @@ class VenueReadControllerIT {
 				        'EUR', :d)
 				RETURNING id
 				""").param("d", distanceToWaterM).query(Long.class).single();
+		OwnershipFixtures.grantToBootstrap(jdbc, id);
 		for (String amenity : amenities) {
 			jdbc.sql("INSERT INTO venue_amenity (venue_id, amenity) VALUES (:v, :a)")
 					.param("v", id).param("a", amenity).update();

@@ -40,10 +40,10 @@ import { TouchTarget } from '../shared/touch-target';
       data-testid="admin-delivery-card"
       aria-labelledby="admin-delivery-heading"
     >
-      <h2 id="admin-delivery-heading" class="text-[16px] font-semibold text-(--riv-card-ink)">
+      <h2 id="admin-delivery-heading" class="text-[16px] font-semibold text-riv-card-ink">
         Booking confirmation delivery
       </h2>
-      <p id="admin-delivery-intro" class="mt-2 text-[15px] text-(--riv-card-ink)">
+      <p id="admin-delivery-intro" class="mt-2 text-[15px] text-riv-card-ink">
         Look up a tourist's bookings by the email address they booked with, and resend a
         confirmation that never arrived.
       </p>
@@ -54,7 +54,7 @@ import { TouchTarget } from '../shared/touch-target';
         novalidate
       >
         <label class="flex flex-col gap-1">
-          <span class="text-[13.5px] font-semibold text-(--riv-card-ink)">Email address</span>
+          <span class="text-[13.5px] font-semibold text-riv-card-ink">Email address</span>
           <input
             appTouchTarget
             type="email"
@@ -64,13 +64,13 @@ import { TouchTarget } from '../shared/touch-target';
             autocapitalize="off"
             spellcheck="false"
             aria-describedby="admin-delivery-intro"
-            class="w-[280px] max-w-full rounded-[10px] border border-white/70 bg-white/85 px-3 py-2 text-[14px] text-[#0a4f5e] [transition:border-color_0.15s_ease] focus-visible:border-[#0a4f5e]"
+            class="w-[280px] max-w-full rounded-[10px] border border-white/70 bg-white/85 px-3 py-2 text-[14px] text-riv-accent-ink [transition:border-color_0.15s_ease] focus-visible:border-riv-accent-ink"
           />
         </label>
         <button
           appTouchTarget
           type="submit"
-          class="inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-[#0a4f5e] shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+          class="inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-riv-accent-ink shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
           [appBusy]="searching()"
           data-testid="admin-delivery-lookup"
         >
@@ -79,13 +79,17 @@ import { TouchTarget } from '../shared/touch-target';
       </form>
 
       @if (lookupError()) {
-        <p class="mt-3 text-[15px] text-[#b3261e]" role="alert" data-testid="admin-delivery-error">
+        <p
+          class="mt-3 text-[15px] text-riv-error-ink"
+          role="alert"
+          data-testid="admin-delivery-error"
+        >
           Something went wrong looking that up.
         </p>
       }
 
       @if (searched() && bookings().length === 0) {
-        <p class="mt-4 text-[15px] text-(--riv-card-ink)" data-testid="admin-delivery-empty">
+        <p class="mt-4 text-[15px] text-riv-card-ink" data-testid="admin-delivery-empty">
           No bookings for that address.
         </p>
       }
@@ -97,14 +101,14 @@ import { TouchTarget } from '../shared/touch-target';
               class="rounded-[12px] border border-white/70 bg-white/55 p-4"
               data-testid="admin-delivery-booking"
             >
-              <p class="text-[15px] font-semibold text-(--riv-card-ink)">
+              <p class="text-[15px] font-semibold text-riv-card-ink">
                 {{ booking.venueName }} · {{ formatDate(booking.bookingDate) }}
               </p>
 
               @if (booking.attempts.length > 0) {
                 <ul class="mt-2 flex flex-col gap-1" data-testid="admin-delivery-attempts">
                   @for (attempt of booking.attempts; track $index) {
-                    <li class="text-[14px] text-(--riv-card-ink)">
+                    <li class="text-[14px] text-riv-card-ink">
                       {{ describeSource(attempt) }} · {{ describeOutcome(attempt) }} ·
                       {{ formatMoment(attempt.attemptedAt) }}
                     </li>
@@ -112,16 +116,13 @@ import { TouchTarget } from '../shared/touch-target';
                 </ul>
               } @else if (booking.everConfirmed) {
                 <p
-                  class="mt-2 text-[14px] text-(--riv-card-ink)"
+                  class="mt-2 text-[14px] text-riv-card-ink"
                   data-testid="admin-delivery-no-record"
                 >
                   No delivery recorded for this booking.
                 </p>
               } @else {
-                <p
-                  class="mt-2 text-[14px] text-(--riv-card-ink)"
-                  data-testid="admin-delivery-not-due"
-                >
+                <p class="mt-2 text-[14px] text-riv-card-ink" data-testid="admin-delivery-not-due">
                   Never confirmed, so no confirmation email was due.
                 </p>
               }
@@ -129,7 +130,7 @@ import { TouchTarget } from '../shared/touch-target';
               <button
                 appTouchTarget
                 type="button"
-                class="mt-3 inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-[#0a4f5e] shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                class="mt-3 inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-riv-accent-ink shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
                 [appBusy]="resending() !== undefined"
                 (click)="onResend(booking.bookingId)"
                 [attr.data-testid]="'admin-delivery-resend-' + booking.bookingId"
@@ -142,7 +143,7 @@ import { TouchTarget } from '../shared/touch-target';
       }
 
       <p
-        class="mt-4 min-h-[1.5rem] text-[15px] text-(--riv-card-ink)"
+        class="mt-4 min-h-[1.5rem] text-[15px] text-riv-card-ink"
         role="status"
         aria-live="polite"
         data-testid="admin-delivery-notice"

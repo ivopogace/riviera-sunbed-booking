@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, httpResource, HttpResourceRef } from '@angular/common/http';
 import { Service, computed, inject, signal } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
@@ -11,11 +11,13 @@ import {
   BookingDetail,
   BookingErrorCode,
   Cancellation,
+  CancellationTerms,
   CreateBookingRequest,
   CreateBookingResult,
   MyBookingSummary,
   PaymentHandoff,
   RequestedBooking,
+  SubmitReviewRequest,
   Withdrawal,
 } from './booking.model';
 
@@ -62,7 +64,28 @@ export class BookingService {
 
   private readonly prefetched = signal<BookingDetail | undefined>(undefined);
 
-  createBooking(request: CreateBookingRequest): Observable<CreateBookingResult> {
+  /**
+   * The pre-reserve terms for booking `setId` on `date` (`GET /api/bookings/cancellation-terms`),
+   * as an `httpResource` so the dialog re-quotes reactively when its `(setId, date)` pair changes.
+   * A factory rather than a shared resource: each dialog owns its lifecycle, created in the
+   * caller's injection context; `httpResource` goes through the HTTP stack, so `api-session`
+   * and its sibling interceptors apply (a bare `resource()` + `fetch` would bypass them).
+   */
+  cancellationTerms(
+    params: () => { setId: number; date: string } | undefined,
+  ): HttpResourceRef<CancellationTerms | undefined> {
+    return httpResource<CancellationTerms>(() => {
+      const p = params();
+      return p
+        ? `${environment.apiBaseUrl}/api/bookings/cancellation-terms?setId=${p.setId}&date=${p.date}`
+        : undefined;
+    });
+  }
+
+  createBooking(
+    request: CreateBookingRequest,
+    termsAtCheckout?: CancellationTerms,
+  ): Observable<CreateBookingResult> {
     return this.http
       .post<BookingConfirmation | AwaitingPayment | RequestedBooking>(
         `${environment.apiBaseUrl}/api/bookings`,
@@ -82,7 +105,11 @@ export class BookingService {
               this.handoff.set({ kind: 'requested', requested });
               return { kind: 'requested', requested };
             }
-            const awaiting = response.body as AwaitingPayment;
+            // The checkout's quoted terms ride the hand-off so the pay page repeats them (#795).
+            const awaiting = {
+              ...(response.body as AwaitingPayment),
+              cancellationTerms: termsAtCheckout ?? null,
+            };
             this.handoff.set({ kind: 'awaiting', awaiting });
             return { kind: 'awaiting', awaiting };
           }
@@ -167,6 +194,29 @@ export class BookingService {
       `${environment.apiBaseUrl}/api/bookings/${encodeURIComponent(code)}/withdraw`,
       {},
     );
+  }
+
+  /**
+   * Rate a delivered stay by code (`POST /api/bookings/{code}/review`). The `201` carries no body —
+   * the new state lives on the booking, so the caller re-reads it rather than patching locally.
+   * Eligibility is the server's call (invariant #7: the code is the whole authorization).
+   */
+  review(code: string, review: SubmitReviewRequest): Observable<void> {
+    return this.http.post<void>(this.reviewUrl(code), review);
+  }
+
+  /** Rewrite the review already recorded against this stay (`PUT`); `204`, no body. */
+  updateReview(code: string, review: SubmitReviewRequest): Observable<void> {
+    return this.http.put<void>(this.reviewUrl(code), review);
+  }
+
+  /** Remove the review recorded against this stay (`DELETE`); `204`, no body. */
+  deleteReview(code: string): Observable<void> {
+    return this.http.delete<void>(this.reviewUrl(code));
+  }
+
+  private reviewUrl(code: string): string {
+    return `${environment.apiBaseUrl}/api/bookings/${encodeURIComponent(code)}/review`;
   }
 }
 
