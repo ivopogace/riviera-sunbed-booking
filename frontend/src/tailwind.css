@@ -286,10 +286,9 @@
       operator console pins itself porcelain, but semantic-chip's tourist mounts do not — which is
       the surface solid-fill-token-skin.e2e.ts forces to `dark`.
 
-      -action and -brand are two near-duplicate teals with no role separating them (the console's
-      badge takes the deeper one while its own buttons take the lighter). Very likely drift, NOT
-      merged here: that would be a visual change at three sites, which a migration slice does not
-      make unilaterally. Tracked as a follow-up, like #0c2a33 vs #0a2a33 in the ledger's class O.
+      -action and -brand are two near-duplicate teals with no role separating them: the console's
+      badge takes the deeper one while its own buttons take the lighter. There is no rule for
+      picking between them — #861 settles whether they are one colour or two.
 
       No ink token: `text-white` already cannot theme, so one would add a declaration without
       removing a literal. One member owes no contrast pair at all — daily-view-tab's legend swatch

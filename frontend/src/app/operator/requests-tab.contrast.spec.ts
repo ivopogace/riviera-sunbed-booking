@@ -18,7 +18,7 @@ import {
  * cards use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text pairs: the heading, guest name,
  * set-label + confirm/dismiss/keep-it copy use `--riv-card-ink`; the intro/meta/empty sub-copy use
  * `--riv-card-ink-soft` (0.78); "Respond by" uses `--riv-card-ink-faint` (0.72); the price value uses
- * the console teal `#0a6e85` (still a literal — class F, #848); the urgency chip + decline text +
+ * the console teal `#0a6e85` (still a literal — class T, #848); the urgency chip + decline text +
  * expired-race + load-error use the alert red `--riv-error-ink` (also the urgency-chip text over its
  * own `#a3160e`@0.10 tint, a class-O modifier left to #852). The primary buttons put white on
  * `--riv-solid-fill-action` (accept) / `--riv-solid-fill-danger` (confirm-decline), tokenised at #854.

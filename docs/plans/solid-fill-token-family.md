@@ -122,7 +122,7 @@ The literal `feature/*` branch is deliberately not created.
   `booking-dialog` gradient stops, and every `bg-[#a3160e]/·` tint (class **O**, #852).
   Splitting by **form** is the whole correction this re-cut ticket exists for; AC-5 enforces
   that they survive.
-- **`border-[#2f7d92]` on `semantic-chip.ts:48`.** The chip's own edge: one consumer, an
+- **`border-[#2f7d92]` on `semantic-chip.ts:49`.** The chip's own edge: one consumer, an
   unmeasured non-text chrome value, already a fixed literal (so it carries no theme-invariance
   risk), and not a row in the ledger's class R. It belongs to whichever slice names chip
   chrome — not to a family defined as *fills*. `semantic-chip.spec.ts`'s set equality keeps
@@ -259,9 +259,9 @@ N/A — no API surface changes.
 
 ## Execution status
 
-**Stage pointer:** `review gate`
+**Stage pointer:** `review gate — findings fixed, re-verifying`
 
-**Next action:** run the review gate on PR #860, then the Sonar gate.
+**Next action:** push the finding fixes, confirm CI green, then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -295,7 +295,12 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate (agents 1 + 4) | Narrated decision history in five doc comments — `riviera-java-conventions` §6d, whose frontend twin is `frontend/.claude/CLAUDE.md`. The line the siblings adjudicated: a **bare** `(#nnn)` citation is house style and stays; narrated before/after prose is the finding | **fixed** — the five reworded to state the contract (what the token is, that no rule picks between `-action` and `-brand`, that #861 settles it). Bare citations kept, per PR #856/#857's adjudication |
+| F-2 | review gate (agent 4) | `requests-tab.contrast.spec.ts:21` — a line **this diff rewrote** miscites `#848` as class **F**; the ledger puts it under class **T** (line 70, beneath the Class T heading at line 60) | **fixed** — and the same miscitation in the new spec's `SURVIVORS` comment, which the agent did not see, fixed with it |
+| F-3 | review gate (agent 4) | The legend swatch's contrast exemption was asserted, not reasoned — the sibling PR #859 was burned by exactly that shape | **fixed** — the spec header now states why WCAG 1.4.11 does not bite: the `<li>` reads "Walk-in marked" beside the swatch, so colour is not the sole carrier |
+| F-4 | review gate (agent 5) | The plan's G-2 claimed "all four move"; `semantic-chip.contrast.spec.ts` has zero changes in the diff, and AC-9 correctly named only three — the doc contradicted itself | **fixed** — G-2 and the audit log now say three, and say why the fourth passing unchanged is the point |
+| F-5 | review gate (agent 3) | Three pre-existing specs (`daily-view-tab`, `payouts-tab`, `operator-console` contrast specs) assert AA against a **hardcoded hex** for sites this PR tokenised, so they would stay green while the token drifted from the paint | **fixed** — migrated to the `glass-tokens` mirror, fill roles only. The generalization-audit log gains the row: phase 2 enumerated by *class*, and these specs name no class |
+| F-6 | review gate (agent 5) | The plan's Non-goals cited `semantic-chip.ts:48`; this diff's own reformat wrapped the host string and moved the cited literal to `:49` | **fixed** |
 
 ---
 
@@ -315,6 +320,9 @@ Skill-routing gate for what the fix touches *before* editing).
 - `frontend/src/app/operator/daily-view-tab.ts|.html` — selected chip + legend swatch
 - `frontend/src/app/operator/operator-console.html` — the badge fill
 - `frontend/e2e/solid-fill-token-skin.e2e.ts` — the computed-skin e2e (new)
+- `frontend/src/app/operator/{daily-view-tab,payouts-tab,operator-console}.contrast.spec.ts` —
+  review finding F-5: three pre-existing AA assertions on hardcoded hexes of repainted sites,
+  migrated to the token mirror (fill roles only)
 - `.claude/skills/riviera-tailwind/SKILL.md` — the theme-invariance rule gains the converse
   direction this slice is the case for (docs-freshness)
 
@@ -388,6 +396,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | 0 | Every `.ts`/`.html` under `src/app` painting one of the three values in ANY role | `grep -rn "0a6e85\|a3160e\|0a5f74" src/app --include=*.ts --include=*.html` | 40 positions found; the `bg-` subset is 9 (+1 hover). The rest are `text-`, `ring-`, `border-` and gradient stops — other classes, other slices. Split by form; both halves asserted (AC-4 and AC-5). |
 | 2 | Every spec pinning one of the repainted classes by literal | `grep -rn "bg-\[#0a6e85\]\|bg-\[#a3160e\]\|bg-\[#0a5f74\]\|SEMANTIC_CHIP" src --include=*.spec.ts` + the `chip-fills.ts` mirror's own consumers | Four files, not the two the issue named — grill finding G-2. All moved. |
 | 3 | Every `shared/` component in the family, and whether its host theme actually varies | `grep -rn "app-confirm-panel\|appSemanticChip" src/app` then `grep -n data-riv-theme` on each mount's shell | `ConfirmPanel`: 2 mounts, both porcelain-pinned. `SemanticChip`: 5 mounts, none pinned. Drove where the forced-dark assertion sits — G-1, then confirmed by the mutation check. |
+| 4 (review, F-5) | Every spec asserting AA against a **hardcoded hex** of a repainted site — the mechanism phase 2's class-scoped sweep missed, since these specs never mention a class | `grep -rn "#0a6e85\\|#0a5f74" src/app --include=*.contrast.spec.ts` | Three more: `daily-view-tab`, `payouts-tab`, `operator-console`. Each would have stayed green while the token drifted from the paint. Migrated to the mirror — but only the **fill** roles: `payouts-tab.contrast.spec.ts:58`'s `TEAL` is the `text-` ink (class T, #848's) and stays a literal. |
 | 4 | Every substrate doc stating a fact about the theme-invariant families | `grep -rn "riv-solid-btn\|riv-form-error\|theme-invariant" .claude/skills docs CLAUDE.md` | Two stale: the ledger's prior-slices line, and `riviera-tailwind`'s rule, which stated the pinning in one direction only. Both patched here. |
 
 ## Acceptance-criteria verification (final)

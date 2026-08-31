@@ -12,6 +12,7 @@ import {
   WHITE,
   expectAaOverStops,
   surfaceOver,
+  SOLID_FILL_ACTION,
 } from '../../testing/glass-tokens';
 
 /**
@@ -26,7 +27,7 @@ import {
  * The FREE tile's number is proven AA composited over the wash's worst-case stops; the locked
  * tile's number is proven over its striped fill's worst case, the darker stripe (the `●` beside it
  * stays `aria-hidden` decorative — state is carried by sr-only text); the filled STAFF_MARKED
- * tile — white text on the `#0a6e85` teal, also its legend swatch — is wash-independent. The
+ * tile — white text on `--riv-solid-fill-action`, also its legend swatch — is wash-independent. The
  * zero-set empty state introduces no colour: its heading is `--riv-card-ink` and its copy
  * `--riv-card-ink-soft`, both already proven on this card glass, and its link is white on the
  * `--riv-cta-grad` stops the sibling operator CTAs prove. Values
@@ -69,8 +70,8 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
     }
   });
 
-  it('the marked-tile glyph + legend swatch (white on #0a6e85) meet AA', () => {
-    expect(contrastRatio('#ffffff', '#0a6e85')).toBeGreaterThanOrEqual(AA_NORMAL);
+  it('the marked-tile glyph + legend swatch (white on --riv-solid-fill-action) meet AA', () => {
+    expect(contrastRatio('#ffffff', rgbToHex(SOLID_FILL_ACTION))).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
   it('the FREE tile position number (--riv-card-ink on white/85) meets AA over every wash stop (#686)', () => {

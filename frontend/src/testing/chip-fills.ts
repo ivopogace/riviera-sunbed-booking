@@ -28,8 +28,8 @@
  *
  * <p>Three ties are weaker than the rest, and saying so is cheaper than discovering it. The semantic
  * ink is Tailwind's named `text-white`, which cannot be interpolated from a hex, so its spec pins
- * the mirror with a literal equality instead. Since #854 the semantic FILL is a named utility for
- * the same reason, so {@link ChipFill.fillClass} carries the class and the hex is inherited from
+ * the mirror with a literal equality instead. The semantic FILL is a named utility for the same
+ * reason (#854), so {@link ChipFill.fillClass} carries the class and the hex is inherited from
  * `glass-tokens.ts` rather than restated — one link longer, but still unbroken. And no spec can see
  * a variant it never renders:
  * `water` is the amenity chip's only axis and it is boolean, so a third variant means a new input —

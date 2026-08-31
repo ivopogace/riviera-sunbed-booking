@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { SEMANTIC_CHIP } from '../../testing/chip-fills';
 import { SemanticChip } from './semantic-chip';
 
-/** The class the fill renders through — a named utility since #854, a `bg-[#…]` literal before it. */
+/** The class the fill renders through: the recipe's own `fillClass`, or its interpolated hex. */
 const FILL_CLASS = SEMANTIC_CHIP.fillClass ?? `bg-[${SEMANTIC_CHIP.fill}]`;
 
 @Component({

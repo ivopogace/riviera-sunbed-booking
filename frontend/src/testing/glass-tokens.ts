@@ -102,8 +102,8 @@ export const SOLID_BTN_BORDER: Glass = { color: WHITE, alpha: 0.7 };
 export const SOLID_BTN_DANGER_BORDER: Glass = { color: hexToRgb('c85a3c'), alpha: 0.5 };
 
 /** The `--riv-solid-fill-*` family (#854, class R-2 of the colour-literal audit): the nine solid
- *  button/badge fills that carry FIXED WHITE INK. Grouped by FORM, not by value — three literals
- *  doing one job — which is the correction that re-cut the issue.
+ *  button/badge fills that carry FIXED WHITE INK. Grouped by FORM, not by value: three literals
+ *  doing one job.
  *
  *  <p>Theme-invariant for the same reason as the two families above: the ink over them is Tailwind's
  *  named `text-white` and cannot theme, so the fills may not either. Both coincidental tokens do
@@ -111,10 +111,9 @@ export const SOLID_BTN_DANGER_BORDER: Glass = { color: hexToRgb('c85a3c'), alpha
  *  `SOLID_FILL_DANGER`) resolves DARK_ERROR_INK, and `--riv-pop-accent` (same value as
  *  `SOLID_FILL_ACTION`) resolves DARK_POP_ACCENT; white ink on either is light on light.
  *
- *  <p>ACTION and BRAND are two near-duplicate brand teals with no role separating them — the
- *  console's badge takes the deeper one while its neighbouring buttons take the lighter. Very
- *  likely drift, deliberately NOT merged here: that would be a visual change at three sites, which
- *  a migration slice does not make unilaterally. Tracked as a follow-up.
+ *  <p>ACTION and BRAND are two near-duplicate brand teals with no role separating them; there is no
+ *  rule for picking between them. The reasoning, and the question #861 settles, sit at their
+ *  declaration in `tailwind.css` rather than being restated here.
  *
  *  <p>Guarded by `shared/solid-fill-tokens.contrast.spec.ts`. */
 export const SOLID_FILL_ACTION: Rgb = hexToRgb('0a6e85');

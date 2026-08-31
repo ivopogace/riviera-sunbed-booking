@@ -18,8 +18,8 @@ import {
  * components.
  *
  * <p>The family is grouped by FORM, not by value: three different literals doing one job. Grouping
- * by value is what the issue's first cut did, and it both split this family across two tickets and
- * swept in four `text-` inks that are a different class entirely.
+ * by value instead splits one skin across tickets and sweeps in the `text-` inks carrying the same
+ * values, which are a different audit class — hence the `bg-` discriminator on the sweep below.
  *
  * <p>THEME-INVARIANT, and that is the decision rather than an omission. The ink is Tailwind's named
  * `text-white`, which cannot theme, so a fill under it may not either. Both coincidental tokens do
@@ -38,6 +38,8 @@ import {
  * <p>One member owes no contrast assertion: `operator/daily-view-tab.html`'s legend swatch is an
  * `aria-hidden` 13px square with no text at all. It takes the same fill token because it is the
  * same colour doing the same job, but there is no ink to pair it with, so none is invented for it.
+ * WCAG 1.4.11 does not bite either — the swatch is not the sole carrier of its meaning, since the
+ * `<li>` it sits in reads "Walk-in marked" beside it.
  */
 
 /** Vitest runs with cwd = `frontend/`. */
@@ -101,7 +103,7 @@ const FILL_ROLES = [
  * after this slice, in a role that is not a solid fill.
  */
 const SURVIVORS: readonly (readonly [string, string])[] = [
-  // `#0a6e85` as a `text-` ink — class F, and the four `operator/` sites #848 is settling.
+  // `#0a6e85` as a `text-` ink — class T, the `operator/` sites #848 is settling.
   ['operator/set-editor.html', '#0a6e85'],
   ['operator/payout-statement.ts', '#0a6e85'],
   ['operator/layout-editor.html', '#0a6e85'],
