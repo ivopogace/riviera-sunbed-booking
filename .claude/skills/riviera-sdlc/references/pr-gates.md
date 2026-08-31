@@ -6,7 +6,7 @@ canonical statement lives in SKILL.md ("The loop"); this file cites it rather th
 restating it.
 
 > **Not when the draft opens.** The draft PR that exists from the first phase commit is a
-> CI vehicle, not a request to review (SKILL.md, PR row — #417). Both gates below are due
+> CI vehicle, not a request to review (SKILL.md, PR row). Both gates below are due
 > at **ready-for-review**: running them against a half-built draft burns the gate on work
 > that is about to change.
 
