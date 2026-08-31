@@ -55,8 +55,14 @@ list" rule that shapes AC-3) · `riviera-frontend` (placement: the registry is t
 `tailwind.css` + `core/theme.ts` pair and needs **no** `core/theme.ts` row here since no token is
 added; the new e2e goes in the CI-safe mocked suite) · `riviera-local-debug` (cloud-session recipe:
 scoped Vitest runs, and `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` for the mocked
-Playwright suite — never `playwright install`) · `to-issues` (the eight child issues cut from the
-ledger, published in dependency order with #836 as native parent)
+Playwright suite — never `playwright install`) · `playwright-cli` (phase 3 — web-first `toHaveCSS`
+against a real render is the only thing that separates a working token from a class that generated
+no utility; also the test-id-over-CSS locator posture the spec follows) · `angular-developer` +
+angular-cli MCP (`list_projects` → `styleLanguage: css`, confirming migrate-on-touch is moot;
+`get_best_practices` v22 → **no Angular API is touched**: every edit is a static `class` attribute
+in a template or an inline template string, so nothing here reaches components, signals, forms,
+control flow or DI) · `to-issues` (the eight child issues cut from the ledger, published in
+dependency order with #836 as native parent)
 
 **Branch:** `claude/sdlc-836-01ky0v` — **cloud-session substitution** for
 `feature/operator-error-ink-tokens`, per `riviera-sdlc` § *Remote / cloud session addendum*.
@@ -253,7 +259,8 @@ Skill-routing gate for what the fix touches *before* editing).
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| _(none yet)_ | | | |
+| F-1 | review (RV-PROC-1, self-found walking the overlay) | *Skills consulted* omitted **`playwright-cli`** and **`angular-developer`** + the angular-cli MCP, though the diff adds an e2e spec and edits nine templates. `playwright-cli` was in fact loaded before phase 3 — the line, not the routing, was wrong; `angular-developer` had not been consulted at all | fixed-in-`0f6e9a1` — consulted both for real (not merely listed) and recorded what each confirmed |
+| F-2 | sonar gate (self-found reading the gate's own false-clean warning) | SonarCloud's "Quality Gate passed / 0 New issues / 0.0% Duplication" comment was analysed against `4029d04` — the **docs-only** phase 0 commit — so it says nothing about the migration or the e2e. Re-read against the final head before merge | open |
 
 ---
 
