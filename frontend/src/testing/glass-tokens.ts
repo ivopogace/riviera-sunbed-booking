@@ -101,21 +101,11 @@ export const SOLID_BTN_DANGER_INK: Rgb = hexToRgb('a3372a');
 export const SOLID_BTN_BORDER: Glass = { color: WHITE, alpha: 0.7 };
 export const SOLID_BTN_DANGER_BORDER: Glass = { color: hexToRgb('c85a3c'), alpha: 0.5 };
 
-/** The `--riv-solid-fill-*` family (#854, class R-2 of the colour-literal audit): the nine solid
- *  button/badge fills that carry FIXED WHITE INK. Grouped by FORM, not by value: three literals
- *  doing one job.
- *
- *  <p>Theme-invariant for the same reason as the two families above: the ink over them is Tailwind's
- *  named `text-white` and cannot theme, so the fills may not either. Both coincidental tokens do
- *  theme, which is exactly why neither is the answer — `--riv-error-ink` (same value as
- *  `SOLID_FILL_DANGER`) resolves DARK_ERROR_INK, and `--riv-pop-accent` (same value as
- *  `SOLID_FILL_ACTION`) resolves DARK_POP_ACCENT; white ink on either is light on light.
- *
- *  <p>ACTION and BRAND are two near-duplicate brand teals with no role separating them; there is no
- *  rule for picking between them. The reasoning, and the question #861 settles, sit at their
- *  declaration in `tailwind.css` rather than being restated here.
- *
- *  <p>Guarded by `shared/solid-fill-tokens.contrast.spec.ts`. */
+/** The `--riv-solid-fill-*` family (#854): the nine solid button/badge fills carrying FIXED WHITE
+ *  INK, grouped by FORM rather than value. Theme-invariant — the ink cannot theme, so the fills may
+ *  not either; both coincidental tokens (`--riv-error-ink`, `--riv-pop-accent`) do theme, which is
+ *  why neither is the answer. Full reasoning sits at the declaration in `tailwind.css`.
+ *  Guarded by `shared/solid-fill-tokens.contrast.spec.ts`. */
 export const SOLID_FILL_ACTION: Rgb = hexToRgb('0a6e85');
 export const SOLID_FILL_ACTION_HOVER: Rgb = hexToRgb('0a5e72');
 export const SOLID_FILL_BRAND: Rgb = hexToRgb('0a5f74');

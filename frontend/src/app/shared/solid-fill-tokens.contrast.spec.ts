@@ -13,33 +13,21 @@ import {
 } from '../../testing/glass-tokens';
 
 /**
- * Guard for the `--riv-solid-fill-*` family (#854, class R-2 of the colour-literal audit) — the
- * nine solid button/badge fills that carry fixed white ink, across `operator/` and two `shared/`
- * components.
+ * Guard for the `--riv-solid-fill-*` family (#854) — the nine solid button/badge fills carrying
+ * fixed white ink, across `operator/` and two `shared/` components.
  *
- * <p>The family is grouped by FORM, not by value: three different literals doing one job. Grouping
- * by value instead splits one skin across tickets and sweeps in the `text-` inks carrying the same
- * values, which are a different audit class — hence the `bg-` discriminator on the sweep below.
+ * <p>The sweep keys on the `bg-` form, not the bare value: the same three literals also appear as
+ * `text-` inks, `ring-`s and gradient stops, which are other audit classes and other slices' work.
  *
- * <p>THEME-INVARIANT, and that is the decision rather than an omission. The ink is Tailwind's named
- * `text-white`, which cannot theme, so a fill under it may not either. Both coincidental tokens do
- * theme, which is precisely why neither is the answer: `--riv-error-ink` carries the same value as
- * the danger fill and resolves `#ffa9a1` in the dark theme, and `--riv-pop-accent` carries the
- * action fill's value and resolves `#7cd7e8`. White on either is light on light — the second test
- * measures both, so the reason survives the decision (the shape #850 and #851 established).
- *
- * <p>Which makes the invariance itself the thing to protect, and jsdom maths cannot see it: a dark
- * override added later would leave every ratio here passing. So the declaration tests read
- * `src/tailwind.css` as text (the `core/theme-boot.spec.ts` drift-guard pattern) and assert each
- * token is declared once, in the base block, at the value this mirror carries. The cross-theme
- * proof against a real render — where the cascade, not a regex, decides — is
+ * <p>The declaration tests read `src/tailwind.css` as TEXT (the `core/theme-boot.spec.ts` pattern)
+ * rather than doing maths, because jsdom cannot see the thing worth protecting: a dark override
+ * added later would leave every ratio here passing. The cross-theme proof against a real render is
  * `e2e/solid-fill-token-skin.e2e.ts`.
  *
  * <p>One member owes no contrast assertion: `operator/daily-view-tab.html`'s legend swatch is an
- * `aria-hidden` 13px square with no text at all. It takes the same fill token because it is the
- * same colour doing the same job, but there is no ink to pair it with, so none is invented for it.
- * WCAG 1.4.11 does not bite either — the swatch is not the sole carrier of its meaning, since the
- * `<li>` it sits in reads "Walk-in marked" beside it.
+ * `aria-hidden` square with no text, so there is no ink to pair it with. WCAG 1.4.11 does not bite
+ * either — the `<li>` it sits in reads "Walk-in marked" beside it, so colour is not the sole
+ * carrier.
  */
 
 /** Vitest runs with cwd = `frontend/`. */

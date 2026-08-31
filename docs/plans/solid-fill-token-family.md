@@ -259,9 +259,9 @@ N/A — no API surface changes.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, re-verifying`
+**Stage pointer:** `merge gate — all gates green, awaiting maintainer go-ahead`
 
-**Next action:** push the finding fixes, confirm CI green, then the Sonar gate.
+**Next action:** maintainer decides on merge (`main` auto-deploys to production).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -293,6 +293,13 @@ falsifiable assertion sits on `semantic-chip` instead.
 Every fix re-enters at Implement per the `riviera-sdlc` re-entry rule (run the
 Skill-routing gate for what the fix touches *before* editing).
 
+**Gate results** (head `989e579`): CI ✅ all six checks. Review ✅ — `pr-gates.md` §1 rung 1
+(`code-review:code-review`, five-agent fan-out) + `riviera-review-overlay`; six findings, all fixed
+below. Sonar ✅ **and its list cleared** — `api/issues/search` total **0**, hotspots **0**, and the
+false-clean read ruled out: `measures` is populated (`new_lines` **106**) and `SonarCloud Code
+Analysis` concluded `success`. `new_coverage` **100.0%** (bar ≥80%), `new_duplicated_blocks` **0**,
+`new_bugs`/`new_vulnerabilities`/`new_code_smells` **0**.
+
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | review gate (agents 1 + 4) | Narrated decision history in five doc comments — `riviera-java-conventions` §6d, whose frontend twin is `frontend/.claude/CLAUDE.md`. The line the siblings adjudicated: a **bare** `(#nnn)` citation is house style and stays; narrated before/after prose is the finding | **fixed** — the five reworded to state the contract (what the token is, that no rule picks between `-action` and `-brand`, that #861 settles it). Bare citations kept, per PR #856/#857's adjudication |
@@ -301,6 +308,7 @@ Skill-routing gate for what the fix touches *before* editing).
 | F-4 | review gate (agent 5) | The plan's G-2 claimed "all four move"; `semantic-chip.contrast.spec.ts` has zero changes in the diff, and AC-9 correctly named only three — the doc contradicted itself | **fixed** — G-2 and the audit log now say three, and say why the fourth passing unchanged is the point |
 | F-5 | review gate (agent 3) | Three pre-existing specs (`daily-view-tab`, `payouts-tab`, `operator-console` contrast specs) assert AA against a **hardcoded hex** for sites this PR tokenised, so they would stay green while the token drifted from the paint | **fixed** — migrated to the `glass-tokens` mirror, fill roles only. The generalization-audit log gains the row: phase 2 enumerated by *class*, and these specs name no class |
 | F-6 | review gate (agent 5) | The plan's Non-goals cited `semantic-chip.ts:48`; this diff's own reformat wrapped the host string and moved the cited literal to `:49` | **fixed** |
+| F-7 | maintainer | The new prose over-explained: `riviera-tailwind`'s addition, the token declaration comment, and the two test-mirror headers carried case narration ("nine fills across three literals", "two lessons from that grouping") where a future reader needs rules | **fixed** — trimmed to the rules and the non-obvious warnings: skill 8→4 lines, declaration 31→17, mirror 15→5, spec header 29→16. Nothing load-bearing dropped (the `bg-` discriminator, the read-CSS-as-text reason, the 1.4.11 note and the #861 pointer all stay) |
 
 ---
 
