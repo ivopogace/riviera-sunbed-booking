@@ -7,6 +7,8 @@ import {
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
+  SOLID_FILL_ACTION,
+  SOLID_FILL_DANGER,
   expectAaOverStops,
   surfaceOver,
 } from '../../testing/glass-tokens';
@@ -16,9 +18,10 @@ import {
  * cards use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text pairs: the heading, guest name,
  * set-label + confirm/dismiss/keep-it copy use `--riv-card-ink`; the intro/meta/empty sub-copy use
  * `--riv-card-ink-soft` (0.78); "Respond by" uses `--riv-card-ink-faint` (0.72); the price value uses
- * the console teal `#0a6e85`; the urgency chip + decline text + expired-race + load-error use the alert
- * the alert red `--riv-error-ink` (also the urgency-chip text over its own `#a3160e`@0.10 tint). The primary buttons put
- * white on solid `#0a6e85` (accept) / `#a3160e` (confirm-decline) — both still literals (#848, #854).
+ * the console teal `#0a6e85` (still a literal — class F, #848); the urgency chip + decline text +
+ * expired-race + load-error use the alert red `--riv-error-ink` (also the urgency-chip text over its
+ * own `#a3160e`@0.10 tint, a class-O modifier left to #852). The primary buttons put white on
+ * `--riv-solid-fill-action` (accept) / `--riv-solid-fill-danger` (confirm-decline), tokenised at #854.
  *
  * <p>The design mock's lighter teal→teal gradient (`#2bb8d4`) and raw ambers fail AA on their light
  * stops, so this tab deliberately uses the console's proven `#0a6e85` / `--riv-error-ink` inks instead (the
@@ -76,8 +79,9 @@ describe('RequestsTab porcelain contrast (WCAG AA, #176)', () => {
     }
   });
 
-  it('the primary buttons (white on solid #0a6e85 accept / #a3160e confirm-decline) meet AA', () => {
-    expect(contrastRatio('#ffffff', TEAL)).toBeGreaterThanOrEqual(AA_NORMAL);
-    expect(contrastRatio('#ffffff', ALERT)).toBeGreaterThanOrEqual(AA_NORMAL);
+  it('the primary buttons (white on the --riv-solid-fill-* accept / confirm-decline fills) meet AA', () => {
+    // Both fills are this tab's members of the #854 family; the family's own AA proof, its theme-invariance guard and the sweep that keeps them off literals are shared/solid-fill-tokens.contrast.spec.ts.
+    expect(contrastRatio('#ffffff', rgbToHex(SOLID_FILL_ACTION))).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrastRatio('#ffffff', rgbToHex(SOLID_FILL_DANGER))).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });

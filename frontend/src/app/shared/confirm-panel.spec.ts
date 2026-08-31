@@ -81,12 +81,12 @@ describe('ConfirmPanel (#604)', () => {
   });
 
   it('carries the destructive ink by default and the primary ink on request', () => {
-    expect(byId('yes').className).toContain('bg-[#a3160e]');
+    expect(byId('yes').className).toContain('bg-riv-solid-fill-danger');
 
     fixture.componentInstance.tone.set('primary');
     fixture.detectChanges();
 
-    expect(byId('yes').className).toContain('bg-[#0a5f74]');
+    expect(byId('yes').className).toContain('bg-riv-solid-fill-brand');
   });
 
   it('keeps the warning surface both consumers already ship', () => {

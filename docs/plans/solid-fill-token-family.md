@@ -259,16 +259,16 @@ N/A — no API surface changes.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** repaint the nine fills and update the four pinned specs.
+**Next action:** write `e2e/solid-fill-token-skin.e2e.ts`, then run the AC-8 mutation check.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The family spec, red | ✅ | (this commit) |
 | 1 — Declare the tokens, green | ✅ | (this commit) |
-| 2 — Repaint the nine sites + the pinned specs | ⏳ | |
-| 3 — The mocked e2e + the mutation check | | |
+| 2 — Repaint the nine sites + the pinned specs | ✅ | (this commit) |
+| 3 — The mocked e2e + the mutation check | ⏳ | |
 | 4 — Ledger row + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

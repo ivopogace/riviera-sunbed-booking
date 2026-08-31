@@ -6,8 +6,9 @@ import { TouchTarget } from './touch-target';
 export type ConfirmTone = 'destructive' | 'primary';
 
 const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
-  destructive: 'rounded-[10px] bg-[#a3160e] px-4 py-1.5 text-[12.5px] font-bold text-white',
-  primary: 'rounded-[10px] bg-[#0a5f74] px-4 py-1.5 text-[12.5px] font-bold text-white',
+  destructive:
+    'rounded-[10px] bg-riv-solid-fill-danger px-4 py-1.5 text-[12.5px] font-bold text-white',
+  primary: 'rounded-[10px] bg-riv-solid-fill-brand px-4 py-1.5 text-[12.5px] font-bold text-white',
 };
 
 /**
