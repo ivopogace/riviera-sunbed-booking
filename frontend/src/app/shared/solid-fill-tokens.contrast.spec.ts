@@ -154,8 +154,7 @@ describe('Solid fill token family (WCAG AA + theme invariance, #854)', () => {
   });
 
   it('retires the -action name and the question it deferred (#861)', () => {
-    // The merge's own failure mode: a class survives its token. Tailwind then generates no rule,
-    // the markup still reads `bg-riv-solid-fill-action`, and the box silently paints nothing.
+    // The merge's own failure mode: a class outliving its token paints nothing, silently.
     expect(STYLESHEET).not.toMatch(/--(color-)?riv-solid-fill-action/);
     expect(
       componentSources().filter((path) => read(path).includes('riv-solid-fill-action')),

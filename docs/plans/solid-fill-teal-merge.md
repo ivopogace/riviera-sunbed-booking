@@ -36,7 +36,9 @@ ledger is what forced the four *unchanged-paint* sites to be enumerated beside t
 ones — the rename is the half of this diff that can silently drop a paint) · `tdd` (phase 0 writes
 the merged registry into the mirror + family spec and watches it go red against `tailwind.css`) ·
 `riviera-review-overlay` (review gate — due at ready-for-review) · `riviera-docs-freshness`
-(close-out, phase 3 — three docs state the retired value as a fact) · `riviera-tailwind` (the
+(**ran** over `origin/main...HEAD` at phase 3 — 3 findings, all patched: the audit ledger's R-2 row,
+G-4's answer in the #854 plan doc, and an as-built pointer on `semantic-chips.md`; the counting
+sweep also caught two stale counts inside the token declaration itself, fixed at phase 1) · `riviera-tailwind` (the
 theme-invariance exception and its "reason at the declaration" rule — the declaration comment
 must now *answer* the question it currently poses; and "the unit is the whole skin, not one
 position", which is why the hover moves with the fill it belongs to rather than being left on the
@@ -144,7 +146,7 @@ for `feature/solid-fill-teal-merge`** (`riviera-sdlc` §Remote/cloud session add
 | R-3 | An over-eager sweep for `#0a5f74` breaks its six legitimate non-fill roles (CTA stops, rings, inks) | med | high | The family spec's `SURVIVORS` list asserts **positively** that each file still paints it (AC-8); the sweep regex keeps its `bg-` discriminator | agent | **closed** — green at phase 1, all six files still paint it |
 | R-4 | `semantic-chip`'s `border-[#2f7d92]` was picked against the deeper fill; against the lighter one it separates less (1.54:1 → **1.248:1**) | certain (maths) | low | Decorative, and not the boundary WCAG 1.4.11 cares about: the chip is identified against the **card**, and the new fill sits at 5.39:1 there — far past the 3:1 non-text floor. Recorded, not acted on (Non-goals) | agent | accepted — measured, no floor crossed |
 | R-5 | The rendered value is duplicated in **three** e2e files by design (`discovery-flow` keeps a deliberate second copy so it stays a black-box check); missing one leaves CI red, or worse, a stale-but-green literal | med | med | Enumerated by mechanism, not by memory: `grep -rn '10, 95, 116' frontend/` is the command that found the population (three hits), recorded in the Generalization-audit log | agent | **closed** — three found, three repinned, suite green |
-| R-6 | #848 (T-2, the 16 `#0a6e85` **`text-` ink** sites) touches `requests-tab.html` and `payouts-tab.html`, the same two files this slice edits | low | med | No open PR exists on the repo today (checked at plan time), so there is nothing to collide with now. The edits are in different utility forms (`bg-` here, `text-` there) and different lines; **whoever merges second merges `main` in and re-runs the family spec.** Do not run the two concurrently | agent | open → re-check before PR |
+| R-6 | #848 (T-2, the 16 `#0a6e85` **`text-` ink** sites) touches `requests-tab.html` and `payouts-tab.html`, the same two files this slice edits | low | med | No open PR exists on the repo today (checked at plan time), so there is nothing to collide with now. The edits are in different utility forms (`bg-` here, `text-` there) and different lines; **whoever merges second merges `main` in and re-runs the family spec.** Do not run the two concurrently | agent | **closed** — re-checked at phase 3: still no open PR on the repo, so nothing to collide with. #848 stays an issue; whoever starts it merges `main` in first |
 | R-7 | No Flyway migration, no backend, no `V<n>` to claim | n/a | n/a | Frontend-only slice | — | N/A |
 
 ## Open questions / Assumptions
@@ -152,12 +154,15 @@ for `feature/solid-fill-teal-merge`** (`riviera-sdlc` §Remote/cloud session add
 > Grill findings from the issue-intake gate (`riviera-sdlc` §issue-intake-gate), run against the
 > code as it stands at `54995ec`.
 
-- **Assumption:** the four `-action` sites are content to be called `-brand`. They are: the
-  surviving token names a *form* (a solid brand fill under fixed white ink), which is what the
-  family was grouped by in the first place — and "action" was never true of three of them.
-  *Owner:* agent · *Resolves by:* phase 1, where the rename lands and the specs read.
+_None open._
 
 ### Resolved
+
+- **Assumption (closed at phase 1, `<phase-1>`):** the four `-action` sites are content to be
+  called `-brand`. They are — the surviving token names a *form* (a solid brand fill under fixed
+  white ink), which is what the family was grouped by in the first place, and "action" was never
+  true of three of them (a day-state chip, an `aria-hidden` legend swatch, a count badge). All four
+  renamed sites read correctly and their specs are green.
 
 - **The decision itself — merge, onto `#0a6e85`.** Put to the maintainer with three options and
   the evidence below; **merge onto `#0a6e85`** chosen (2026-08-31, this session).
@@ -218,18 +223,17 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `PR — ready for review; review gate due`
 
-**Next action:** Phase 3 — the ledger row, G-4's answer in the #854 plan doc, the
-`semantic-chips.md` as-built pointer, the `riviera-docs-freshness` sweep, and the file-structure
-guard.
+**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1 (the
+`/code-review` ladder plus `riviera-review-overlay`), then the Sonar gate's issue list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The merged registry, red | ✅ | `<phase-0>` |
 | 1 — Merge the declaration + rename the four sites, green | ✅ | `<phase-1>` |
 | 2 — The computed-style proofs + the mutation check | ✅ | `<phase-2>` |
-| 3 — Docs, ledger row and close-out | | |
+| 3 — Docs, ledger row and close-out | ✅ | `<phase-3>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -410,24 +414,31 @@ three contrast specs · Modify `frontend/src/testing/chip-fills.ts`
 **Files:** Modify `docs/design/colour-literal-token-audit.md` ·
 `docs/plans/solid-fill-token-family.md` · `docs/plans/semantic-chips.md` · this plan doc
 
-- [ ] **Step 1: The ledger.** The R-2 row's `done` stands; note the follow-up merge and this PR
+- [x] **Step 1: The ledger.** The R-2 row's `done` stands; note the follow-up merge and this PR
       beside it, so a reader of the class-R table sees the family ended at one teal.
 
-- [ ] **Step 2: G-4's answer.** In `docs/plans/solid-fill-token-family.md`, the G-4 entry currently
+- [x] **Step 2: G-4's answer.** In `docs/plans/solid-fill-token-family.md`, the G-4 entry currently
       ends "issue #861 records the question" — extend it with the answer and this PR. History is
       not rewritten; the outcome is appended.
 
-- [ ] **Step 3: The stale fact.** `docs/plans/semantic-chips.md:16` states the chip fill **is** the
+- [x] **Step 3: The stale fact.** `docs/plans/semantic-chips.md:16` states the chip fill **is** the
       `--riv-cta-grad` dark stop. That was true and is no longer; add the as-built pointer per
       `docs/design/README.md`'s convention rather than editing the historical claim.
 
-- [ ] **Step 4: `riviera-docs-freshness`** over `origin/main...HEAD`, including the counting sweep
-      — the family drops from four tokens to three, so any doc saying "the four" is now wrong.
+- [x] **Step 4: `riviera-docs-freshness`** over `origin/main...HEAD`, both sweeps. **3 findings,
+      all patched** (steps 1–3 above are them). The counting sweep's own catch was inside the diff:
+      the surviving declaration comment still said "three literals" and "White clears AA on all four
+      (5.86 / 7.35 / 7.24 / 7.84)" — both false the moment the fourth value left; fixed at phase 1.
+      Re-run after the fix round: clean. Deliberately **not** patched, per the skill's scope
+      discipline: the parity-ledger rows in `shared-confirm-panel.md` and
+      `scss-tailwind-operator-console.md` that record `#0a5f74` — those are records of what those
+      slices preserved at the time, not present-tense claims. `semantic-chips.md` differs because
+      its sentence sits in **Architecture** and reads as a current fact, so it got the pointer.
 
-- [ ] **Step 5: File-structure guard** — `node scripts/check-plan-file-structure.mjs --diff origin/main`
+- [x] **Step 5: File-structure guard** — `node scripts/check-plan-file-structure.mjs --diff origin/main`
       with this doc staged.
 
-- [ ] **Step 6: Commit** — `git commit -m "Record the teal merge in the ledger and the sibling plan docs (#861)"`
+- [x] **Step 6: Commit** — `git commit -m "Record the teal merge in the ledger and the sibling plan docs (#861)"`
 
 - [ ] **Step 7: Finalize the execution status** in the PR's own last commit, citing
       `merged via PR #NN`.
@@ -444,33 +455,42 @@ three contrast specs · Modify `frontend/src/testing/chip-fills.ts`
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npm test -- src/app/shared/solid-fill-tokens.contrast.spec.ts` → PASS.
-- [ ] **AC-2:** same run → "retires the -action name and the question it deferred" PASS.
-- [ ] **AC-3:** same run → "white ink clears AA on every fill in the family" PASS.
-- [ ] **AC-4:** `npm run test:e2e:a11y` → the three repainted assertions PASS.
-- [ ] **AC-5:** same run → console + utility-generation assertions PASS.
-- [ ] **AC-6:** same run PASS **and** the phase-2 mutation turns it RED.
-- [ ] **AC-7:** same run → hover assertion PASS.
-- [ ] **AC-8:** `npm test -- src/app/shared/solid-fill-tokens.contrast.spec.ts` → `SURVIVORS` PASS.
+All eight verified at `<phase-2>`; the unit runs at `<phase-1>`, the e2e runs at `<phase-2>`.
+
+- [x] **AC-1:** `npx ng test --watch=false --include="src/app/shared/solid-fill-tokens.contrast.spec.ts"`
+      → 8/8 PASS, including the value, single-declaration and base-block assertions.
+- [x] **AC-2:** same run → "retires the -action name and the question it deferred (#861)" PASS.
+- [x] **AC-3:** same run → "white ink clears AA on every fill in the family" PASS (5.86 / 7.35 / 7.84).
+- [x] **AC-4:** `playwright --config=playwright.a11y.config.ts` → `solid-fill-token-skin` 5/5,
+      `discovery-flow` + `layout-editor` 22/22; all three now assert `rgb(10, 110, 133)`.
+- [x] **AC-5:** same run → "the console paints the brand fill, hover included" and "every registered
+      token is declared and generates its utility" PASS — the rename dropped no paint.
+- [x] **AC-6:** same run PASS, **and the mutation turned it RED alone** (`unexpected value
+      "rgb(124, 215, 232)"`), with the unit guard catching it independently.
+- [x] **AC-7:** same run → resting `rgb(10, 110, 133)` → hovered `rgb(10, 94, 114)` PASS.
+- [x] **AC-8:** the family spec's `SURVIVORS` sweep PASS — all six non-fill files still paint `#0a5f74`.
+- Whole-suite context: `src/app/shared` + `src/app/operator` = **903 unit tests green**; the mocked
+  e2e suite = **335 green, 1 unrelated** (`customer-password.e2e.ts`, green in isolation — phase 2
+  step 3).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy (invariant #10) — N/A.
-- [ ] Timezone (invariant #6) — N/A.
-- [ ] Booking codes (invariant #7) — N/A.
-- [ ] Flyway (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met: named token utilities, no arbitrary fill values reintroduced,
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy (invariant #10) — N/A.
+- [x] Timezone (invariant #6) — N/A.
+- [x] Booking codes (invariant #7) — N/A.
+- [x] Flyway (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met: named token utilities, no arbitrary fill values reintroduced,
       no component logic touched.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
 - [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — the `references/pr-gates.md` §1 ladder *plus*
       `riviera-review-overlay`.
