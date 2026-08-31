@@ -180,12 +180,16 @@
   /** The erasure confirm panel's danger treatment: a tinted panel plus a stronger tinted
       action inside it. Keep these pre-composed rgba, like --riv-field-border — a Tailwind
       `/opacity` modifier compiles to color-mix() and changes the computed value. AA-proven by
-      admin-console.contrast.spec.ts. Rationale: docs/plans/admin-error-ink-tokens.md */
+      admin-console.contrast.spec.ts. Rationale: docs/plans/admin-error-ink-tokens.md.
+      --riv-danger-action-border is the Erase button's affordance boundary and is held to WCAG
+      1.4.11 (>=3:1 against the panel fill, all porcelain stops) — issue #834. --riv-danger-border
+      is a decorative container edge (the fill + heading already carry the panel's meaning) and is
+      deliberately NOT held to that floor. */
   --riv-danger-ink: #8f2c22;
   --riv-danger-fill: rgba(179, 54, 43, 0.06);
   --riv-danger-border: rgba(179, 54, 43, 0.35);
   --riv-danger-action-fill: rgba(179, 54, 43, 0.1);
-  --riv-danger-action-border: rgba(179, 54, 43, 0.6);
+  --riv-danger-action-border: rgba(179, 54, 43, 0.75);
 
   /** The `--riv-accent-*` tint family: the brand teal (the --riv-photo-grad stops #2bb8d4 and
       #0e8aa8) as the three tinted treatments that paint POSITIVE state — the info panel, the

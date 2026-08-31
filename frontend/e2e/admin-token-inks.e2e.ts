@@ -11,7 +11,9 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  * from a working token.
  *
  * <p>One representative element per family, since a token resolves the same way everywhere: the
- * error ink, the danger panel's fill and border, and the danger ink on the action inside it.
+ * error ink, the danger panel's fill and border, and the danger ink and border on the action
+ * inside it — the last is the Erase button's WCAG 1.4.11 affordance boundary (issue #834), so
+ * its rendered value is asserted, not just its contrast math.
  *
  * <p>The last test pins the subtree resolution `@theme inline` buys: each utility carries
  * `var(--riv-*)` rather than a resolved value, so a subtree pinning its own `data-riv-theme`
@@ -23,6 +25,7 @@ const DANGER_INK = 'rgb(143, 44, 34)';
 const DANGER_FILL = 'rgba(179, 54, 43, 0.06)';
 const DANGER_BORDER = 'rgba(179, 54, 43, 0.35)';
 const DANGER_ACTION_FILL = 'rgba(179, 54, 43, 0.1)';
+const DANGER_ACTION_BORDER = 'rgba(179, 54, 43, 0.75)';
 
 async function signIn(page: Page): Promise<void> {
   await page.goto('/operator');
@@ -89,6 +92,7 @@ test.describe('the admin console paints its inks from the token registry', () =>
     const erase = page.getByTestId('admin-privacy-confirm');
     await expect(erase).toHaveCSS('color', DANGER_INK);
     await expect(erase).toHaveCSS('background-color', DANGER_ACTION_FILL);
+    await expect(erase).toHaveCSS('border-top-color', DANGER_ACTION_BORDER);
   });
 
   test('the console keeps its porcelain inks under a dark document theme', async ({ page }) => {
