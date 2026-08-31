@@ -1,8 +1,9 @@
-import { AA_NORMAL, composite, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
+import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  ERROR_INK,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
@@ -26,8 +27,8 @@ import {
  */
 
 const TEAL = '#0a6e85';
-const ALERT = '#a3160e';
-const ALERT_RGB = hexToRgb(ALERT);
+const ALERT = rgbToHex(ERROR_INK);
+const ALERT_RGB = ERROR_INK;
 
 /** The card-glass surface composited over a porcelain background stop. */
 function cardSurface(stop: (typeof PORCELAIN_STOPS)[number]): string {

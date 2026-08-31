@@ -3,6 +3,7 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  ERROR_INK,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
@@ -25,7 +26,7 @@ import {
 // --riv-cta-grad stops (the AA-safe darkened teal shared with every CTA); Save/Add sit on these.
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
 // The refund-red the payouts ledger already uses, here as the Remove ink and the error message.
-const DESTRUCTIVE_INK = '#a3160e';
+const DESTRUCTIVE_INK = rgbToHex(ERROR_INK);
 // set-editor.html: `ring-[#0a5f74]` on the selected cell — not the design's brighter #0e8aa8, which fails 3:1 on the premium tile's own gold fill.
 const SELECTION_RING = '#0a5f74';
 // beach-cell.ts CELL_CLASS: the premium tile's own gradient — a selected premium set sits on this.

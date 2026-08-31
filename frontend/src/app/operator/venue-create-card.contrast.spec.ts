@@ -2,6 +2,7 @@ import { AA_NORMAL, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
+  ERROR_INK,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
@@ -17,7 +18,7 @@ import {
  * there must re-pass here.
  */
 
-const ERROR_INK = '#a3160e';
+const ERROR_HEX = rgbToHex(ERROR_INK);
 /** The AA-safe dark-teal CTA gradient stops (= --riv-cta-grad), carrying solid white ink. */
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
 
@@ -33,7 +34,7 @@ describe('VenueCreateCard porcelain contrast (WCAG AA, #278)', () => {
   it('field + create error ink (#a3160e) meets AA over every porcelain stop', () => {
     for (const stop of PORCELAIN_STOPS) {
       expect(
-        contrastRatio(ERROR_INK, rgbToHex(stop)),
+        contrastRatio(ERROR_HEX, rgbToHex(stop)),
         `error over ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
     }

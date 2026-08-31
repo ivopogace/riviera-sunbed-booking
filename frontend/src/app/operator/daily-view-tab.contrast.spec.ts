@@ -3,6 +3,7 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  ERROR_INK,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_CHIP,
@@ -38,6 +39,8 @@ const FREE_TILE_FILL = { color: WHITE, alpha: 0.85 };
 const LOCKED_STRIPE_FILL = { color: CARD_INK, alpha: 0.28 };
 // --riv-cta-grad stops (the AA-safe darkened teal shared with every CTA); the empty-state link sits on these.
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
+
+const ERROR_HEX = rgbToHex(ERROR_INK);
 
 describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
   it('headings + labels + arrivals + availability counts (--riv-card-ink) meet AA on the card glass', () => {
@@ -87,7 +90,7 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
   it('the write-failure notice + load-error ink (#a3160e) meet AA over every porcelain stop', () => {
     for (const stop of PORCELAIN_STOPS) {
       expect(
-        contrastRatio('#a3160e', rgbToHex(stop)),
+        contrastRatio(ERROR_HEX, rgbToHex(stop)),
         `error over ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
     }

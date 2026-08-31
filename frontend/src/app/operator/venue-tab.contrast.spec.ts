@@ -4,6 +4,7 @@ import {
   ACCENT_INK,
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
+  ERROR_INK,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
@@ -23,7 +24,7 @@ import {
  */
 
 const ACCENT_TEAL = '#0a6e85';
-const ERROR_INK = '#a3160e';
+const ERROR_HEX = rgbToHex(ERROR_INK);
 /** The stale-write banner: an amber wash (#f59e0b @ 0.14) over the card glass; ink is --riv-card-ink. */
 const BANNER_TINT: [number, number, number] = [245, 158, 11];
 const BANNER_TINT_ALPHA = 0.14;
@@ -63,7 +64,7 @@ describe('VenueTab porcelain contrast (WCAG AA, #177)', () => {
   it('save/load error ink (#a3160e) meets AA over every porcelain stop', () => {
     for (const stop of PORCELAIN_STOPS) {
       expect(
-        contrastRatio(ERROR_INK, rgbToHex(stop)),
+        contrastRatio(ERROR_HEX, rgbToHex(stop)),
         `error over ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
     }

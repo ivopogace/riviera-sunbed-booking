@@ -2,6 +2,7 @@ import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/con
 import {
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
+  ERROR_INK,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_CHIP,
@@ -19,6 +20,8 @@ import {
  * `bg-white/60`, so `--riv-card-ink` over the plain card glass is the worst case for them too.
  * Values mirror the template + `tailwind.css`; a token edit there must re-pass here.
  */
+
+const ERROR_HEX = rgbToHex(ERROR_INK);
 
 describe('PricingTab porcelain contrast (WCAG AA, #174)', () => {
   it('heading + input value (--riv-card-ink) meet AA on the card glass', () => {
@@ -56,7 +59,7 @@ describe('PricingTab porcelain contrast (WCAG AA, #174)', () => {
   it('reprice error ink (#a3160e) meets AA over every porcelain stop', () => {
     for (const stop of PORCELAIN_STOPS) {
       expect(
-        contrastRatio('#a3160e', rgbToHex(stop)),
+        contrastRatio(ERROR_HEX, rgbToHex(stop)),
         `error over ${rgbToHex(stop)}`,
       ).toBeGreaterThanOrEqual(AA_NORMAL);
     }

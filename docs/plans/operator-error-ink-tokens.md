@@ -40,9 +40,11 @@ caught #836's stale count, and what turned "migrate 336 sites" into five classes
 proof burdens; it also split the `#a3160e` family itself into four sub-populations, three of which
 this slice must *not* touch) · `riviera-plan-doc` (this template — the Behavior-parity ledger is
 what converts "styling only" from a claim into a per-position verdict, and the Non-goals fence off
-the three excluded `#a3160e` sub-populations) · `tdd` (phase 1 writes the contrast spec red against
-a `glass-tokens.ts` re-export the operator specs do not use yet, so the token identity is gated
-before any component moves) · `riviera-review-overlay` (review gate — due at ready-for-review;
+the three excluded `#a3160e` sub-populations) · `tdd` (at the plan's named seams — and it is what
+surfaced OQ-E: asking "what test goes red here?" showed the planned ninth contrast spec had no
+red to offer, because eight specs already assert the same thing. This slice is byte-identical by
+construction, so its tests are honest **guards**, not red-first drivers, and the plan says so
+rather than staging a fake red) · `riviera-review-overlay` (review gate — due at ready-for-review;
 RV-FE-E2E owns the phase-3 spec's suite placement) · `riviera-docs-freshness` (close-out — **due**,
 range `origin/main..HEAD`; the slice adds a maintained doc to a folder whose README says its files
 are never maintained, which is exactly the kind of stated fact a sweep must catch) · `riviera-tailwind`
@@ -67,13 +69,16 @@ ledger, published in dependency order with #836 as native parent)
 > this slice, so the unit spec's job is *identity* (the token is what the specs think it is)
 > and the e2e's job is *plumbing* (the utility exists and resolves).
 
-- [ ] **AC-1:** Given the porcelain console surfaces the operator error ink lands on (the bare
+- [x] **AC-1:** Given the porcelain console surfaces the operator error ink lands on (the bare
       porcelain stops, the card glass, the `white/70` alert panel), when `--riv-error-ink`'s
       registered value is painted on each, then every pair meets WCAG AA 4.5:1.
       *Seam:* the `ERROR_INK` constant exported by `src/testing/glass-tokens.ts` — the token
       registry's test-side mirror, not any component.
-      *Pinned by:* `operator-error-ink.contrast.spec.ts` › `the console error ink meets AA on every porcelain surface it lands on`
-- [ ] **AC-2:** Given the seven operator contrast specs that restate `#a3160e` as a local
+      *Pinned by:* the **eight existing** operator `*.contrast.spec.ts` files, which already assert
+      this per tab and now read the value from the mirror (see OQ-E). A ninth consolidated spec was
+      planned and dropped: it would have restated eight passing assertions, which the Sonar
+      duplication bar rejects and which reuse-over-addition rejects anyway.
+- [x] **AC-2:** Given the **eight** operator contrast specs that restate `#a3160e` as a local
       constant, when each is read, then it imports the value from `glass-tokens.ts` rather than
       restating the literal — so a future token change cannot leave the specs asserting the old
       value while the components paint the new one (#835's R-5, made structural).
@@ -100,7 +105,7 @@ ledger, published in dependency order with #836 as native parent)
       are #854, #852 and #850 — so the grep is scoped to the migrated form, not the value.
       *Seam:* the working tree.
       *Pinned by:* the phase-4 verification command, recorded in *Acceptance-criteria verification*.
-- [ ] **AC-6:** Given `docs/design/colour-literal-token-audit.md`, when a reader asks "is family
+- [x] **AC-6:** Given `docs/design/colour-literal-token-audit.md`, when a reader asks "is family
       X tokenisable, and what does its slice owe?", then the answer is in the ledger with its
       reasoning, and every open family carries a live issue number.
       *Seam:* the committed doc.
@@ -145,7 +150,7 @@ ledger, published in dependency order with #836 as native parent)
 |---|---|---|---|---|---|---|
 | R-1 | A migrated operator component is rendered **outside** a porcelain-pinned host, so the themed token resolves `#ffa9a1` and the error ink flips light-on-white | low | high | All nine files verified inside the pin (`operator-console.ts:72`, `operator-home.ts:41`, plus `app.ts:50`'s operator-chrome pin); AC-4 drives **both** host bindings against a forced `dark` document theme, because they pin porcelain separately | claude | open |
 | R-2 | A site is migrated that is actually one of the three excluded sub-populations, silently changing dark-theme paint or a computed value | med | high | The migration is scoped by **form**, not by value: only plain `text-[#a3160e]` under `operator/`. AC-5's grep is the same form. `bg-`, `/opacity` and `booking/` are untouched and their literals deliberately remain | claude | open |
-| R-3 | The seven operator contrast specs keep restating `#a3160e` and drift from the token later | med | med | Phase 1 repoints them at `glass-tokens.ts` **before** any component moves (#835's R-5, which this slice inherits as a known pattern rather than rediscovering) | claude | open |
+| R-3 | The eight operator contrast specs keep restating `#a3160e` and drift from the token later | med | med | Phase 1 repoints them at `glass-tokens.ts` **before** any component moves (#835's R-5, which this slice inherits as a known pattern rather than rediscovering) | claude | closed |
 | R-4 | `text-riv-error-ink` generates no utility, so the class changes and the paint does not | low | high | The utility is already live (`--color-riv-error-ink` is mapped at `tailwind.css:53` and consumed today by `admin/`, `auth/`, `shared/`), but AC-3's `toHaveCSS` in a real render is the detector regardless; unit specs cannot see it | claude | open |
 | R-5 | The audit doc lands in `docs/design/`, whose README states its files are records that are **never** maintained — a reader following the README would apply the `as-built diverges` pointer convention to a ledger that must instead be brought up to date | med | med | The README gains an explicit exception section naming this file and its opposite contract; the ledger's own header states it too, from the other side | claude | open |
 | R-6 | The ledger's issue numbers go stale as families are cut, leaving a decision record that points at the wrong tickets | med | low | Every child issue's ACs include "update the ledger's row to `done` with this PR, **in this PR**" — the same close-out rule the plan-doc template applies to itself | claude | open |
@@ -174,6 +179,10 @@ _None open._
   folder's README declaring its contents unmaintained records. Resolved by making the exception
   explicit in the README rather than by relocating the file — the doc reasons about the design
   substrate and belongs beside it. Recorded as R-5.
+- **OQ-E — does the slice need a new consolidated contrast spec?** No. All eight operator tabs
+  already assert the error ink's AA over their own surfaces; a ninth file would restate eight
+  passing assertions, which the Sonar duplication bar rejects. AC-1 is pinned by the existing
+  eight, now reading the token mirror — which is the assertion that was actually missing.
 - **OQ-D — how many child issues?** Seven, one per family, plus this slice's own. Confirmed with
   the maintainer; the alternatives (four class-level tickets, or none) were rejected because a
   class mixes families needing separate design calls, which a grabber would have to re-derive.
@@ -220,16 +229,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan` — plan doc authored, about to open the draft PR and enter Implement.
+**Stage pointer:** `implement (phase 2)` — ledger + issues shipped, draft PR #856 open and watched,
+contrast specs repointed at the token mirror.
 
-**Next action:** commit phase 0 (ledger + child issues + this plan doc), push, open the draft PR
-so CI fires, then start phase 1 (`glass-tokens` re-point, red).
+**Next action:** migrate the 32 plain `text-[#a3160e]` positions under `operator/` to
+`text-riv-error-ink`, leaving `bg-`, `/opacity` and `booking/` untouched.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Audit ledger + child issues + plan doc | | |
-| 1 — Repoint the operator contrast specs at `glass-tokens.ts` (red → green) | | |
-| 2 — Migrate the 32 sites to `text-riv-error-ink` | | |
+| 0 — Audit ledger + child issues + plan doc | ✅ | `4029d04` |
+| 1 — Repoint the operator contrast specs at `glass-tokens.ts` | ✅ | (this commit) |
+| 2 — Migrate the 32 sites to `text-riv-error-ink` | ⏳ | |
 | 3 — Mocked e2e: computed value, light and forced-dark | | |
 | 4 — Verification + close-out | | |
 
@@ -250,8 +260,6 @@ Skill-routing gate for what the fix touches *before* editing).
 - `docs/design/colour-literal-token-audit.md` — the per-family verdict ledger (#836's deliverable)
 - `docs/design/README.md` — the exception section naming the ledger as maintained, not a record
 - `docs/plans/operator-error-ink-tokens.md` — this plan
-- `frontend/src/testing/glass-tokens.ts` — the hex mirror the operator contrast specs read
-- `frontend/src/app/operator/operator-error-ink.contrast.spec.ts` — AC-1
 - `frontend/src/app/operator/{venue-tab,layout-editor,venue-create-card,requests-tab,set-editor,daily-view-tab,pricing-tab,payouts-tab}.html` — the migrated positions
 - `frontend/src/app/operator/booking-cutoff-field.ts` — the one inline-template position
 - `frontend/src/app/operator/{daily-view-tab,layout-editor,payouts-tab,pricing-tab,requests-tab,set-editor,venue-create-card,venue-tab}.contrast.spec.ts` — repointed at `glass-tokens.ts`
@@ -277,16 +285,24 @@ Create `docs/plans/operator-error-ink-tokens.md`
 **Files:** Modify `frontend/src/testing/glass-tokens.ts` · Modify the seven operator
 `*.contrast.spec.ts` · Create `frontend/src/app/operator/operator-error-ink.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — `operator-error-ink.contrast.spec.ts`, asserting the
-      token value clears AA on every porcelain surface the console lands it on, reading the value
-      from `glass-tokens.ts` (AC-1).
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/operator/operator-error-ink.contrast.spec.ts`
-- [ ] **Step 3: Minimal implementation** — export the hex form from `glass-tokens.ts` and repoint
-      the seven specs' local constants at it (AC-2).
-- [ ] **Step 4: Run it, verify it passes** — the new spec, then the seven repointed ones.
-- [ ] **Step 5: Generalization-audit pass** — see the log below.
-- [ ] **Step 6: Commit** — `git commit -m "Read the operator error ink from the token mirror (#855)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+> **Correction made during execution (OQ-E).** The planned new consolidated contrast spec was
+> dropped: all eight operator tabs *already* assert the error ink's AA, so a ninth file would have
+> been eight duplicated assertions. The real R-3 work — and the whole of AC-2 — is repointing those
+> eight at the mirror, which is what this phase does.
+
+- [x] **Step 1:** Repoint all eight specs' local constants (`ALERT`, `DESTRUCTIVE_INK`,
+      `ERROR_INK`, and three inline literals) at `glass-tokens.ts`'s `ERROR_INK`, via the
+      established `rgbToHex(TOKEN)` idiom `venue-tab.contrast.spec.ts` already uses for
+      `ACCENT_INK`. No new export: the mirror's convention is `Rgb` + `rgbToHex()` at the call site.
+- [x] **Step 2:** Drop `hexToRgb` from `requests-tab.contrast.spec.ts` — repointing `ALERT_RGB`
+      straight at the `Rgb` mirror left the import unused.
+- [x] **Step 3: Run them, verify they pass** —
+      `npx ng test --watch=false --include="src/app/operator/*.contrast.spec.ts"` → 10 files,
+      70 tests, all green. The value is identical; only its source changed, so green is the
+      correct outcome and the assertion is now drift-proof.
+- [x] **Step 4: Generalization-audit pass** — see the log below.
+- [x] **Step 5: Commit** — `Read the operator error ink from the token mirror (#855)`
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ## Phase 2 — Migrate the 32 positions
 
@@ -336,11 +352,12 @@ Create `docs/plans/operator-error-ink-tokens.md`
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npx vitest run src/app/operator/operator-error-ink.contrast.spec.ts` → PASS.
-- [ ] **AC-2:** `grep -rn "'#a3160e'" frontend/src/app/operator/*.contrast.spec.ts` → no results.
+- [x] **AC-1 / AC-2:** `npx ng test --watch=false --include="src/app/operator/*.contrast.spec.ts"`
+      → 10 files, 70 tests, PASS. `grep -rn "'#a3160e'" frontend/src/app/operator/*.contrast.spec.ts`
+      → no results. Verified at phase 1.
 - [ ] **AC-3 / AC-4:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- operator-error-ink` → PASS.
 - [ ] **AC-5:** `grep -rn 'text-\[#a3160e\]' frontend/src/app/operator` → no results.
-- [ ] **AC-6:** `docs/design/colour-literal-token-audit.md` committed; every open family row cites
+- [x] **AC-6:** `docs/design/colour-literal-token-audit.md` committed; every open family row cites
       a live issue.
 
 ## Self-review checklist (before merge / PR)

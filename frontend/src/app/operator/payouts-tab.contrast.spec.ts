@@ -3,6 +3,7 @@ import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
+  ERROR_INK,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
@@ -28,7 +29,7 @@ import {
 
 const TEAL = '#0a6e85';
 const REVERSAL = '#a3372a';
-const ALERT = '#a3160e';
+const ALERT = rgbToHex(ERROR_INK);
 const WEATHER_BTN = '#9a6410';
 const REVERSAL_RGB = hexToRgb(REVERSAL);
 const WEATHER_TINT = hexToRgb('f0aa2e');
