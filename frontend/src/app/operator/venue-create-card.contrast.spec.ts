@@ -13,7 +13,7 @@ import {
  * WCAG-AA contrast guard for the create-venue card. The card renders only on the porcelain
  * operator surface (`OperatorHome` pins the theme); it reuses the venue-tab form idiom: headings +
  * field labels + input values in `--riv-card-ink` on `appCardGlass`, sub-copy in
- * `--riv-card-ink-soft`, field/create errors in `#a3160e`, and the submit CTA's solid white ink on
+ * `--riv-card-ink-soft`, field/create errors in `--riv-error-ink`, and the submit CTA's solid white ink on
  * the AA-safe `--riv-cta-grad` teal stops. Values mirror the template + `tailwind.css`; a token edit
  * there must re-pass here.
  */
@@ -31,7 +31,7 @@ describe('VenueCreateCard porcelain contrast (WCAG AA, #278)', () => {
     expectAaOverStops(CARD_INK, CARD_INK_SOFT_ALPHA, PORCELAIN_CARD_GLASS, PORCELAIN_STOPS);
   });
 
-  it('field + create error ink (#a3160e) meets AA over every porcelain stop', () => {
+  it('field + create error ink (--riv-error-ink) meets AA over every porcelain stop', () => {
     for (const stop of PORCELAIN_STOPS) {
       expect(
         contrastRatio(ERROR_HEX, rgbToHex(stop)),

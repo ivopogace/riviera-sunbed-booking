@@ -18,7 +18,7 @@ import {
  * headings + field labels + input values use `--riv-card-ink`; sub-copy, soft labels and the
  * INACTIVE amenity chip use `--riv-card-ink-soft` (0.78) — an inactive chip sits on a lighter
  * `bg-white/50`, so `--riv-card-ink-soft` over the plain card glass is its worst case too. The
- * commission % + "Saved" notice use the AA-safe teal `#0a6e85`; the save/load error uses `#a3160e`;
+ * commission % + "Saved" notice use the AA-safe teal `#0a6e85`; the save/load error uses `--riv-error-ink`;
  * the ACTIVE amenity chip reads both its ink and its tint from the `--riv-accent-*` registry (#835).
  * Values mirror the template + `tailwind.css`; a token edit there must re-pass here.
  */
@@ -61,7 +61,7 @@ describe('VenueTab porcelain contrast (WCAG AA, #177)', () => {
     }
   });
 
-  it('save/load error ink (#a3160e) meets AA over every porcelain stop', () => {
+  it('save/load error ink (--riv-error-ink) meets AA over every porcelain stop', () => {
     for (const stop of PORCELAIN_STOPS) {
       expect(
         contrastRatio(ERROR_HEX, rgbToHex(stop)),

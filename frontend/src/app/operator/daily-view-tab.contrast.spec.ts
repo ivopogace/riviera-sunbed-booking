@@ -19,7 +19,7 @@ import {
  * host); its date + arrivals panels use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text
  * pairs: the headings, date labels, arrivals labels and the availability strong counts use
  * `--riv-card-ink`; the helper/availability text uses `--riv-card-ink-soft` (0.78); the "Date"
- * mini-label uses `--riv-card-ink-faint` (0.72); the write-failure notice + load-error use `#a3160e`.
+ * mini-label uses `--riv-card-ink-faint` (0.72); the write-failure notice + load-error use `--riv-error-ink`.
  * The arrival-code chip ink (`--riv-card-ink`) sits over `--riv-chip-bg` over the card glass.
  * Since #672 slice 2 the grid sits on the shared canvas's sea→sand wash (rail-chip inks proven in
  * `venue-map.contrast.spec.ts`); since #686 every tile's visible text is its *position number*.
@@ -87,7 +87,7 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
     }
   });
 
-  it('the write-failure notice + load-error ink (#a3160e) meet AA over every porcelain stop', () => {
+  it('the write-failure notice + load-error ink (--riv-error-ink) meet AA over every porcelain stop', () => {
     for (const stop of PORCELAIN_STOPS) {
       expect(
         contrastRatio(ERROR_HEX, rgbToHex(stop)),

@@ -16,7 +16,7 @@ import {
  * its panel uses `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text pairs: the heading + row
  * label chip + € input value use `--riv-card-ink`; the subheader, tier descriptions, € symbol and
  * projected label use `--riv-card-ink-soft` (0.78); the projected figure + "Saved" notice use the
- * AA-safe teal `#0a6e85`; the reprice error uses `#a3160e`. The number inputs sit on a lighter
+ * AA-safe teal `#0a6e85`; the reprice error uses `--riv-error-ink`. The number inputs sit on a lighter
  * `bg-white/60`, so `--riv-card-ink` over the plain card glass is the worst case for them too.
  * Values mirror the template + `tailwind.css`; a token edit there must re-pass here.
  */
@@ -56,7 +56,7 @@ describe('PricingTab porcelain contrast (WCAG AA, #174)', () => {
     }
   });
 
-  it('reprice error ink (#a3160e) meets AA over every porcelain stop', () => {
+  it('reprice error ink (--riv-error-ink) meets AA over every porcelain stop', () => {
     for (const stop of PORCELAIN_STOPS) {
       expect(
         contrastRatio(ERROR_HEX, rgbToHex(stop)),
