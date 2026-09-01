@@ -352,7 +352,9 @@
         }
         <output
           class="m-0 block text-[13px] leading-[1.45] font-semibold empty:hidden"
-          [class]="checkInNotice()?.tone === 'ok' ? 'text-riv-accent-ink' : 'text-[#a3372a]'"
+          [class]="
+            checkInNotice()?.tone === 'ok' ? 'text-riv-accent-ink' : 'text-riv-console-negative-ink'
+          "
           data-testid="checkin-result"
           >{{ checkInNotice()?.text }}</output
         >

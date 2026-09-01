@@ -129,6 +129,19 @@ export const POP_ACCENT: Rgb = hexToRgb('0a6e85');
  *  declaration in `tailwind.css`. Guarded by `operator/console-accent-token.contrast.spec.ts`. */
 export const CONSOLE_ACCENT_INK: Rgb = hexToRgb('0a6e85');
 
+/** `--riv-console-negative-ink` (#864) — the operator console's negative ink: the reversal net
+ *  and its reason chip on the Payouts tab, the failed-check-in notice on the Daily view. The
+ *  `negative` pole of the `--riv-console-*-ink` pair; the two share a host, a surface and a
+ *  theme-invariance ground, but not a declaration and not a guard.
+ *  Its own token despite equalling `SOLID_BTN_DANGER_INK` — that one is the outline BUTTON's ink
+ *  on the button's own fixed fill (#851), and `#a3372a`'s `/opacity` tints on the very element
+ *  the reason chip is stay #852's. Same value, three roles, and the themed reds are no answer
+ *  either: DARK_ERROR_INK over the console's card glass measures 1.84:1. Theme-invariant: every
+ *  consumer is a child of the porcelain-pinned `operator-console`, so a dark branch would be
+ *  unreachable. Full reasoning sits at the declaration in `tailwind.css`. Guarded by
+ *  `operator/console-negative-token.contrast.spec.ts`. */
+export const CONSOLE_NEGATIVE_INK: Rgb = hexToRgb('a3372a');
+
 /** `--riv-form-error-fill` / `--riv-form-error-ink` — the three tourist error banners' skin (#850).
  *  Theme-invariant as a PAIR: the fill is a solid composite that does not theme, so the themed
  *  `--riv-error-ink` over it would resolve DARK_ERROR_INK at 1.54:1. Guarded by

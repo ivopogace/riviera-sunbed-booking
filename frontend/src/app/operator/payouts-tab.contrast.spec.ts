@@ -4,6 +4,7 @@ import {
   CARD_INK_FAINT_ALPHA,
   CARD_INK_SOFT_ALPHA,
   CONSOLE_ACCENT_INK,
+  CONSOLE_NEGATIVE_INK,
   ERROR_INK,
   INK_DARK,
   PORCELAIN_CARD_GLASS,
@@ -19,8 +20,11 @@ import {
  * (`#<bookingId>` reference, gross), period-total label and statement ink use `--riv-card-ink`; the
  * intro/dates/commission/empty sub-copy use `--riv-card-ink-soft` (0.78); the "Owed to you" label,
  * column headers and footnote use `--riv-card-ink-faint` (0.72). The owed figure + accrual net use the
- * console accent ink `--riv-console-accent-ink`; reversal net + the reason chip use refund-red `#a3372a` (also over its own
- * `#a3372a`@0.12 tint); the load-error uses the alert red `--riv-error-ink`. Solid buttons put white on `--riv-solid-fill-brand`
+ * console accent ink `--riv-console-accent-ink`; reversal net + the reason chip use the console's negative ink
+ * `--riv-console-negative-ink` (the chip also over its own tint of that same value at 0.12 — at 5.05:1 the lowest
+ * pair that ink lands in anywhere, which is why the measurement lives here; the tab's own lowest is the weather
+ * button's white on `#9a6410` at 4.99:1); the load-error uses the alert red `--riv-error-ink`.
+ * Solid buttons put white on `--riv-solid-fill-brand`
  * (statement) and on a **darkened** amber `#9a6410` (weather confirm).
  *
  * <p>The design mock's amber `#d9861a`/`#f0aa2e` with white text fails AA on white; per the
@@ -30,10 +34,10 @@ import {
  */
 
 const TEAL = rgbToHex(CONSOLE_ACCENT_INK);
-const REVERSAL = '#a3372a';
+const REVERSAL = rgbToHex(CONSOLE_NEGATIVE_INK);
 const ALERT = rgbToHex(ERROR_INK);
 const WEATHER_BTN = '#9a6410';
-const REVERSAL_RGB = hexToRgb(REVERSAL);
+const REVERSAL_RGB = CONSOLE_NEGATIVE_INK;
 const WEATHER_TINT = hexToRgb('f0aa2e');
 
 /** The card-glass surface composited over a porcelain background stop. */
@@ -63,7 +67,7 @@ describe('PayoutsTab porcelain contrast (WCAG AA, #173)', () => {
     }
   });
 
-  it('the reversal net (refund-red #a3372a) meets AA on the card glass', () => {
+  it('the reversal net (--riv-console-negative-ink) meets AA on the card glass', () => {
     for (const stop of PORCELAIN_STOPS) {
       expect(
         contrastRatio(REVERSAL, cardSurface(stop)),
@@ -72,7 +76,7 @@ describe('PayoutsTab porcelain contrast (WCAG AA, #173)', () => {
     }
   });
 
-  it('the reason-chip text (#a3372a) meets AA over its own #a3372a@0.12 tint on the card glass', () => {
+  it('the reason-chip text (--riv-console-negative-ink) meets AA over its own @0.12 tint on the card glass', () => {
     for (const stop of PORCELAIN_STOPS) {
       const chip = composite(REVERSAL_RGB, 0.12, surfaceOver(PORCELAIN_CARD_GLASS, stop));
       expect(
