@@ -189,18 +189,18 @@ N/A — no contract change. No request URL, method, body, or header changes; bot
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Adopt `<app-confirm-panel>` in `payouts-tab`, drop the `<em>every</em>`
-emphasis per the ledger, and update `payouts-tab.contrast.spec.ts` to reference
-`SOLID_FILL_WARN` instead of the `#9a6410` literal (Phase 2, Step 3).
+**Next action:** Add e2e role/accessible-name assertions to `operator-daily.e2e.ts` +
+`operator-payouts.e2e.ts`, extend `solid-fill-token-skin.e2e.ts`, then close the
+`docs/design/colour-literal-token-audit.md` ledger row (Phase 3).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `shared/confirm-panel`: `headline` + `busy` + `warn` tone | ✅ | (pending commit) |
-| 1 — Adopt in `daily-view-tab` | ✅ | (pending commit) |
-| 2 — Adopt in `payouts-tab` + retire the `#9a6410` literal (token family) | ⏳ | |
-| 3 — e2e coverage (ARIA + token no-drift) + full verification | | |
+| 0 — `shared/confirm-panel`: `headline` + `busy` + `warn` tone | ✅ | `ef7615a` |
+| 1 — Adopt in `daily-view-tab` | ✅ | `ef7615a` |
+| 2 — Adopt in `payouts-tab` + retire the `#9a6410` literal (token family) | ✅ | (pending commit) |
+| 3 — e2e coverage (ARIA + token no-drift) + full verification | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

@@ -3,8 +3,8 @@ import { ActivatedRoute } from '@angular/router';
 
 import { OperatorAuth, SESSION_EXPIRED_MESSAGE } from '../core/operator-auth';
 import { plural } from '../shared/plural';
-import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { ConfirmPanel } from '../shared/confirm-panel';
 import { SkeletonBlock } from '../shared/skeleton-block';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { focusMover } from '../shared/focus-after-render';
@@ -41,7 +41,7 @@ import { PayoutStatement } from './payout-statement';
  */
 @Component({
   selector: 'app-payouts-tab',
-  imports: [CardGlass, LoadAnnouncer, SkeletonBlock, PayoutStatement, BusyAction, TouchTarget],
+  imports: [CardGlass, LoadAnnouncer, SkeletonBlock, PayoutStatement, TouchTarget, ConfirmPanel],
   templateUrl: './payouts-tab.html',
 })
 export class PayoutsTab {
@@ -190,11 +190,11 @@ export class PayoutsTab {
     this.notice.set(undefined);
   }
 
-  /** Open the amber weather-refund confirm (two-step — the actual refund is server-decided + executed). */
+  /** Open the amber weather-refund confirm (two-step — the actual refund is server-decided +
+   *  executed). Focus-in is `app-confirm-panel`'s own job (WCAG 2.4.3); this only opens it. */
   protected onWeatherRefund(): void {
     this.notice.set(undefined);
     this.weatherConfirm.set(true);
-    this.focusAfterRender('weather-confirm-btn');
   }
 
   protected onCancelWeather(): void {

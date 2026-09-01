@@ -161,38 +161,19 @@
       </div>
 
       @if (weatherConfirm()) {
-        <div
-          class="mt-3.5 rounded-[16px] border border-riv-warn-edge/60 bg-riv-warn-fill px-4 py-3.5"
-          data-testid="weather-confirm"
-        >
-          <p class="mb-2.5 text-[13.5px] leading-[1.5] text-riv-card-ink">
-            <strong>Weather refund for {{ selectedDateLabel() }}?</strong> This is an exception — it
-            cancels and fully refunds <em>every</em> confirmed online booking for that day and posts
-            the reversals against your payout. Use it only when weather stopped guests visiting.
-          </p>
-          <div class="flex flex-wrap gap-2.5">
-            <button
-              type="button"
-              appTouchTarget
-              class="rounded-[12px] bg-[#9a6410] px-[18px] py-2.5 text-[13.5px] font-bold text-white aria-disabled:opacity-60"
-              data-testid="weather-confirm-btn"
-              [appBusy]="refunding()"
-              (click)="onConfirmWeather()"
-            >
-              Issue full weather refund
-            </button>
-            <button
-              type="button"
-              appTouchTarget
-              class="rounded-[12px] border border-riv-card-border bg-white/60 px-[18px] py-2.5 text-[13.5px] font-semibold text-riv-card-ink"
-              data-testid="weather-cancel-btn"
-              [appBusy]="refunding()"
-              (click)="onCancelWeather()"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <app-confirm-panel
+          [label]="'Weather refund for ' + selectedDateLabel() + '?'"
+          [headline]="'Weather refund for ' + selectedDateLabel() + '?'"
+          message="This is an exception — it cancels and fully refunds every confirmed online booking for that day and posts the reversals against your payout. Use it only when weather stopped guests visiting."
+          confirmLabel="Issue full weather refund"
+          tone="warn"
+          [busy]="refunding()"
+          panelTestId="weather-confirm"
+          confirmTestId="weather-confirm-btn"
+          cancelTestId="weather-cancel-btn"
+          (confirmed)="onConfirmWeather()"
+          (cancelled)="onCancelWeather()"
+        />
       }
     </section>
 

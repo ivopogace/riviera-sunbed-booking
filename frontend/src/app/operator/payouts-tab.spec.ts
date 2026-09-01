@@ -296,6 +296,18 @@ describe('PayoutsTab (#173) — ledger', () => {
     http.expectNone((r) => r.method === 'POST');
   });
 
+  it('exposes the weather confirm as an alertdialog with an accessible name (#881)', () => {
+    render(ledger());
+    const date = dateValue();
+
+    byId('weather-trigger')!.click();
+    fixture.detectChanges();
+
+    const panel = byId('weather-confirm')!;
+    expect(panel.getAttribute('role')).toBe('alertdialog');
+    expect(panel.getAttribute('aria-label')).toBe(`Weather refund for ${formatCivilDate(date)}?`);
+  });
+
   it('confirming POSTs the selected date, reports the outcome, and re-reads the ledger for the reversal', () => {
     render(ledger({ netOwedMinor: 3825, entries: [entry({ bookingId: 11 })] }));
     const date = dateValue();

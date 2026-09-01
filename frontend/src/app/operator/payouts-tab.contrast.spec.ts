@@ -1,4 +1,4 @@
-import { AA_NORMAL, composite, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
+import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
@@ -10,6 +10,9 @@ import {
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
   SOLID_FILL_BRAND,
+  SOLID_FILL_WARN,
+  WARN_FILL,
+  WARN_INK,
   expectAaOverStops,
   surfaceOver,
 } from '../../testing/glass-tokens';
@@ -23,22 +26,22 @@ import {
  * console accent ink `--riv-console-accent-ink`; reversal net + the reason chip use the console's negative ink
  * `--riv-console-negative-ink` (the chip also over its own tint of that same value at 0.10, 0.12 before the ladder (#879) — the lowest
  * pair that ink lands in anywhere, which is why the measurement lives here; the tab's own lowest is the weather
- * button's white on `#9a6410` at 4.99:1); the load-error uses the alert red `--riv-error-ink`.
+ * button's white on `--riv-solid-fill-warn` at 4.99:1); the load-error uses the alert red `--riv-error-ink`.
  * Solid buttons put white on `--riv-solid-fill-brand`
- * (statement) and on a **darkened** amber `#9a6410` (weather confirm).
+ * (statement) and on `--riv-solid-fill-warn` (weather confirm).
  *
- * <p>The design mock's amber `#d9861a`/`#f0aa2e` with white text fails AA on white; per the
- * `riviera-tailwind` "deviate-from-design-for-AA-with-a-note" rule the confirm **button** uses the
- * darker `#9a6410` (white passes), while the amber `#f0aa2e`@0.10 stays as a decorative **tint** behind
- * `--riv-card-ink` copy (dark ink, ample contrast). Values mirror the template; a colour edit re-passes here.
+ * <p>Since #881 the weather confirm renders via `shared/confirm-panel`'s `warn` tone: the button
+ * fill is the registered `--riv-solid-fill-warn` token (still the darkened amber `#9a6410` — white
+ * passes AA where the design mock's `#d9861a`/`#f0aa2e` would not), and the confirm copy's ink is
+ * the component's own `--riv-warn-ink` over `--riv-warn-fill`, the exact pairing #879 measured at
+ * 6.86:1. Values mirror the token registry; a token edit there re-passes here.
  */
 
 const TEAL = rgbToHex(CONSOLE_ACCENT_INK);
 const REVERSAL = rgbToHex(CONSOLE_NEGATIVE_INK);
 const ALERT = rgbToHex(ERROR_INK);
-const WEATHER_BTN = '#9a6410';
+const WEATHER_BTN = rgbToHex(SOLID_FILL_WARN);
 const REVERSAL_RGB = CONSOLE_NEGATIVE_INK;
-const WEATHER_TINT = hexToRgb('f0aa2e');
 
 /** The card-glass surface composited over a porcelain background stop. */
 function cardSurface(stop: (typeof PORCELAIN_STOPS)[number]): string {
@@ -95,17 +98,14 @@ describe('PayoutsTab porcelain contrast (WCAG AA, #173)', () => {
     }
   });
 
-  it('the weather-confirm copy (--riv-card-ink) meets AA over the #f0aa2e@0.10 confirm tint', () => {
-    for (const stop of PORCELAIN_STOPS) {
-      const tint = composite(WEATHER_TINT, 0.1, surfaceOver(PORCELAIN_CARD_GLASS, stop));
-      expect(
-        contrastRatio(rgbToHex(INK_DARK), rgbToHex(tint)),
-        `ink over amber tint ${rgbToHex(stop)}`,
-      ).toBeGreaterThanOrEqual(AA_NORMAL);
-    }
+  it('the weather-confirm copy (--riv-warn-ink) meets AA over its own --riv-warn-fill (#881)', () => {
+    // Rendered via shared/confirm-panel since #881 — the same pairing #879 proved at 6.86:1.
+    expect(contrastRatio(rgbToHex(WARN_INK), rgbToHex(WARN_FILL))).toBeGreaterThanOrEqual(
+      AA_NORMAL,
+    );
   });
 
-  it('the solid buttons (white on --riv-solid-fill-brand statement / darkened amber #9a6410 confirm) meet AA', () => {
+  it('the solid buttons (white on --riv-solid-fill-brand statement / --riv-solid-fill-warn confirm) meet AA', () => {
     expect(contrastRatio('#ffffff', rgbToHex(SOLID_FILL_BRAND))).toBeGreaterThanOrEqual(AA_NORMAL);
     expect(contrastRatio('#ffffff', WEATHER_BTN)).toBeGreaterThanOrEqual(AA_NORMAL);
   });
