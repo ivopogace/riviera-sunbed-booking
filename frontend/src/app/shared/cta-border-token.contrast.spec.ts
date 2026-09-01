@@ -6,6 +6,8 @@ import {
   CTA_BORDER,
   CTA_GRAD_STOPS,
   DARK_CARD_BORDER,
+  DARK_CARD_GLASS,
+  DARK_STOPS,
   DIALOG_CLOSE_FILL,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
@@ -40,6 +42,15 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * <p>What jsdom maths cannot see is a dark override added later — every ratio here would still
  * pass. So the declaration tests read `src/tailwind.css` as text via `testing/stylesheet-tokens`.
  * The proof where the cascade rather than a regex decides is `e2e/cta-border-token-skin.e2e.ts`.
+ *
+ * <p><strong>Scope widened at #876, past this one token.</strong> Two tests here are TREE-WIDE
+ * governance for `docs/design/non-text-contrast.md` rather than guards on `--riv-cta-border`: one
+ * sweeps every `#834` citation under `src` for a deferral to that closed issue, the other sweeps
+ * for a `forced-color-adjust` opt-out, which is the precondition rule 3 rests on. They live here
+ * because this file already owned the source-sweep machinery (`allSources`, extended to
+ * `sweptSources`), so a reader who trips one of them is in the right file — but the failure will
+ * name a path anywhere in the tree, not this token. That widening is stated here deliberately,
+ * the call `admin-console.contrast.spec.ts` made when it took on 1.4.11 rows past its text pairs.
  */
 const REGISTRY = {
   '--riv-cta-border': 'rgba(255, 255, 255, 0.4)',
@@ -50,6 +61,17 @@ const FIXED_FILLS = [
   ['--riv-cta-grad top stop', CTA_GRAD_STOPS[0]],
   ['--riv-cta-grad bottom stop', CTA_GRAD_STOPS[1]],
   ['booking-dialog close button', DIALOG_CLOSE_FILL],
+] as const;
+
+/**
+ * Every theme's card glass with the background stops it composites over — the hosts a CTA button
+ * sits on. The light two are the population the #853 affordance test already used; #876 adds the
+ * dark theme, whose numbers had lived only in prose until then.
+ */
+const THEMED_CARD_GLASS = [
+  ['porcelain', PORCELAIN_CARD_GLASS, PORCELAIN_STOPS],
+  ['riviera', RIVIERA_CARD_GLASS, RIVIERA_STOPS],
+  ['dark', DARK_CARD_GLASS, DARK_STOPS],
 ] as const;
 
 /**
@@ -72,6 +94,20 @@ const RETIRED_POSITIONS: readonly string[] = [
 const OUT_OF_FAMILY = { path: 'app.html', literal: 'inset_0_1px_0_rgba(255,255,255,0.4)' } as const;
 
 const APP_ROOT = join(process.cwd(), 'src/app');
+const SRC_ROOT = join(process.cwd(), 'src');
+
+/**
+ * The #834 citations that record what that issue actually completed — the erasure panel's Erase
+ * button, raised to 3:1 by PR #837 — rather than deferring anything to it. Each is pinned by a
+ * distinguishing phrase, not by filename, so a new deferral written into one of these files still
+ * fails the guard (#876 risk R-2).
+ */
+const HISTORICAL_834: readonly { path: string; phrase: string }[] = [
+  { path: 'tailwind.css', phrase: '>=3:1 against the panel fill, all porcelain stops' },
+  { path: 'tailwind.css', phrase: 'the same per-theme tuning --riv-danger-action-border got' },
+  { path: 'testing/glass-tokens.ts', phrase: "see the contrast spec's header" },
+  { path: 'app/admin/admin-console.contrast.spec.ts', phrase: 'deliberately left unasserted' },
+];
 
 /** This file, the one source that may legitimately name the retired positions — it is the sweep. */
 const SELF = 'shared/cta-border-token.contrast.spec.ts';
@@ -89,6 +125,31 @@ function allSources(): readonly string[] {
 
 function read(path: string): string {
   return readFileSync(join(APP_ROOT, path), 'utf8');
+}
+
+/**
+ * Every file that can carry a token comment, addressed relative to `src` — the `src/app` tree plus
+ * the two homes outside it that the token prose actually lives in. A sweep scoped to `src/app`
+ * would have missed both, which is where all six deferring families sit.
+ */
+function sweptSources(): readonly { path: string; text: string }[] {
+  const paths = [
+    ...allSources().map((path) => `app/${path.replaceAll('\\', '/')}`),
+    'tailwind.css',
+    'testing/glass-tokens.ts',
+  ];
+
+  return paths.map((path) => ({ path, text: readFileSync(join(SRC_ROOT, path), 'utf8') }));
+}
+
+/** Every line naming `citation`, across the swept sources. */
+function citationsOf(citation: string): readonly { path: string; line: string }[] {
+  return sweptSources().flatMap(({ path, text }) =>
+    text
+      .split('\n')
+      .filter((line) => line.includes(citation))
+      .map((line) => ({ path, line })),
+  );
 }
 
 /** The hairline as it actually paints: composited over the opaque fill it sits on. */
@@ -147,6 +208,83 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
         }
       }
     }
+  });
+
+  /**
+   * #876's correction, and the reason no palette change was needed. The ticket measured the CTA
+   * fill against the card glass and read 2.23-3.16:1 in the dark theme as a 1.4.11 failure — but
+   * the hairline sits BETWEEN those two, so that pairing is not an adjacency. Measured against the
+   * colour each layer actually abuts, the boundary clears 3:1 in every theme, and WHICH layer
+   * carries it swaps: the fill is a fixed mid-teal, so light glass makes the fill the contrasting
+   * half and dark glass makes the white hairline it. Rule 1 of docs/design/non-text-contrast.md.
+   */
+  it('the boundary against the host card clears 3:1 in every theme — the fill carries it in light, the hairline in dark', () => {
+    for (const [theme, glass, stops] of THEMED_CARD_GLASS) {
+      for (const stop of stops) {
+        const behind = surfaceOver(glass, stop);
+        for (const fill of CTA_GRAD_STOPS) {
+          const byFill = contrastRatio(rgbToHex(fill), rgbToHex(behind));
+          const hairline = composite([255, 255, 255], CTA_BORDER.alpha, fill);
+          const byHairline = contrastRatio(rgbToHex(hairline), rgbToHex(behind));
+          expect(
+            Math.max(byFill, byHairline),
+            `${theme} over stop ${rgbToHex(stop)}: neither the fill (${byFill.toFixed(2)}) nor the hairline (${byHairline.toFixed(2)}) abuts the card at 3:1`,
+          ).toBeGreaterThanOrEqual(AA_LARGE);
+          expect(
+            theme === 'dark' ? byHairline : byFill,
+            `${theme} over stop ${rgbToHex(stop)}: the expected carrier for this theme`,
+          ).toBeGreaterThanOrEqual(AA_LARGE);
+        }
+      }
+    }
+  });
+
+  /**
+   * The number #876 reported, kept under assertion rather than deleted as wrong — it is real, and
+   * a future slice re-deriving it should find the pairing already named. What it is NOT is the
+   * 1.4.11 comparison: the test above measures the adjacency.
+   */
+  it('the fill-vs-glass pairing #876 reported is not the adjacent pair', () => {
+    const [, darkGlass, darkStops] = THEMED_CARD_GLASS.find(([theme]) => theme === 'dark')!;
+    const ratios = darkStops.flatMap((stop) =>
+      CTA_GRAD_STOPS.map((fill) =>
+        contrastRatio(rgbToHex(fill), rgbToHex(surfaceOver(darkGlass, stop))),
+      ),
+    );
+    expect(Math.min(...ratios), 'the worst stop, which is what falls under 3:1').toBeLessThan(
+      AA_LARGE,
+    );
+    expect(Math.min(...ratios), "the band's floor").toBeGreaterThan(2.2);
+    expect(Math.max(...ratios), "the band's ceiling").toBeLessThan(3.2);
+  });
+
+  /**
+   * #876: the sub-3:1 chrome question had been deferred four times to #834, an issue scoped to the
+   * erasure panel that closed 2026-08-31 — so every deferral pointed at a closed issue. The rule
+   * now lives at docs/design/non-text-contrast.md, which cannot close. Citations recording what
+   * #834 actually completed are history and stay; each is named below, so a fresh deferral cannot
+   * be absorbed by appending a filename.
+   */
+  it('no token comment defers a live 1.4.11 question to the closed #834', () => {
+    const offenders = citationsOf('#834').filter(
+      ({ path, line }) => !HISTORICAL_834.some((e) => e.path === path && line.includes(e.phrase)),
+    );
+
+    expect(offenders.map(({ path, line }) => `${path}: ${line.trim()}`)).toEqual([]);
+  });
+
+  /**
+   * The precondition rule 3 of docs/design/non-text-contrast.md rests on: the exempt families all
+   * paint a real `border`, and nothing opts out of forced-colors, so the user agent repaints those
+   * boundaries in OS high-contrast mode whatever alpha we chose. If this ever goes red, that clause
+   * is void for the opted-out surface and rule 2 has to carry the exemption alone.
+   */
+  it('nothing opts out of forced-colors, which is what the fallback clause rests on', () => {
+    const optOuts = sweptSources().filter(({ text }) =>
+      /forced-color-adjust(-none|:\s*none)/.test(text),
+    );
+
+    expect(optOuts.map(({ path }) => path)).toEqual([]);
   });
 
   it('a themed border would fade over fills that do not theme', () => {

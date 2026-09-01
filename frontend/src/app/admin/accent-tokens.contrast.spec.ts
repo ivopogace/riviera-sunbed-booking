@@ -8,6 +8,7 @@ import {
 } from '../../testing/contrast';
 import {
   ACCENT_BORDER,
+  ACCENT_CHIP_BORDER,
   ACCENT_CHIP_FILL,
   ACCENT_FILL,
   ACCENT_INK,
@@ -49,7 +50,8 @@ import {
  * ~1.6:1 and no alpha of this hue would reach 3:1, so normalising three drifted alphas onto one
  * token can only move it within a band that already fails. The last two tests say where it moves —
  * up on porcelain, DOWN on the dark card glass — rather than claiming a single direction. Raising
- * it to compliance is #834's, which owns the danger panel's identical boundary.
+ * it to compliance is not this spec's question: the pair is decorative under
+ * docs/design/non-text-contrast.md rule 2, the panel ink and chip label carrying the identity.
  */
 
 /** The teal ink these sites painted before the migration, kept for the bounding test. */
@@ -124,6 +126,31 @@ describe('Accent token family contrast (WCAG AA, #835)', () => {
         ratio(ACCENT_STRONG, glass),
         `chip border over ${rgbToHex(glass)}`,
       ).toBeGreaterThanOrEqual(AA_LARGE);
+    }
+  });
+
+  /**
+   * `--riv-accent-chip-border` is the family's fourth non-text boundary and the one nothing
+   * measured until #876 — the test above asserts `--riv-accent-strong`, the OPAQUE border the
+   * amenity chip wears, which is a different token on a different component. This 0.75-alpha
+   * one is worn by `shared/segmented-control.ts`'s selected option, where it clears 3:1 against
+   * neither adjacent colour in the light themes. Exempt under docs/design/non-text-contrast.md
+   * rule 2 — the option's own bold label carries the identity — and measured here rather than
+   * assumed, which is that rule's second condition.
+   */
+  it('the segmented option border is measured, not assumed exempt', () => {
+    for (const [surface, glassToken, stops] of [
+      ['porcelain', PORCELAIN_CARD_GLASS, PORCELAIN_STOPS],
+      ['dark', DARK_CARD_GLASS, DARK_STOPS],
+    ] as const) {
+      for (const stop of stops) {
+        const glass = layer(glassToken, stop);
+        const fill = layer(ACCENT_CHIP_FILL, glass);
+        const border = layer(ACCENT_CHIP_BORDER, fill);
+
+        expect(ratio(border, fill), `${surface}: over its own fill`).toBeLessThan(AA_LARGE);
+        expect(ratio(border, fill), `${surface}: the measured band's floor`).toBeGreaterThan(1.9);
+      }
     }
   });
 

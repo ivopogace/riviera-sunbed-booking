@@ -207,10 +207,11 @@
 
       Theme-invariant BY DESIGN, the --riv-solid-btn-* call: a fixed surface pins what is painted on
       it. Declared ONCE, no dark override. Non-text chrome (WCAG 1.4.11) at 2.08-2.48:1 over its own
-      fills — decorative, and measured rather than assumed exempt: the CTA fill is what carries the
-      affordance boundary, 3.80-7.24:1 against the card glass in the light themes and 2.23-3.16:1 in
-      the dark, whose shortfall is the glass aesthetic's question, tracked at #834 alongside the
-      identical --riv-solid-btn-* and --riv-accent-* findings.
+      fills — decorative, and measured rather than assumed exempt. WHICH layer carries the
+      affordance boundary against the host card swaps by theme (#876): the fill in the light themes,
+      3.80-7.24:1 against the card glass, and THIS hairline in the dark, 5.52-6.77:1. The fill's
+      2.23-3.16:1 there is a pairing with a surface it does not touch — this hairline sits between
+      them. Rule 1 of docs/design/non-text-contrast.md.
       Proof: shared/cta-border-token.contrast.spec.ts (the declaration guard, the measured exemption
       and the themed-alternative bound) + e2e/cta-border-token-skin.e2e.ts (the computed border under
       a forced dark document theme, and that the element tracks the token rather than a literal of
@@ -262,8 +263,9 @@
       same literal in every theme before they were tokens, so a dark override would be a silent
       restyle rather than a sweep. Whether the brand tints should follow the theme is a real
       question and a separate one. AA-proven by accent-tokens.contrast.spec.ts; the `*-border`
-      pair is non-text chrome (WCAG 1.4.11) and reaches only ~1.5:1 — raising it needs a darker
-      hue, not more alpha, and belongs with the danger panel's identical boundary (#834).
+      pair is non-text chrome (WCAG 1.4.11) and reaches only ~1.5:1 — raising it would need a
+      darker hue, not more alpha. Decorative under docs/design/non-text-contrast.md rule 2: the
+      panel's ink and the chip's label carry the identity, both at AA over these tints.
       Rationale: docs/plans/accent-teal-token-sweep.md */
   --riv-accent-fill: rgba(43, 184, 212, 0.12);
   --riv-accent-border: rgba(14, 138, 168, 0.35);
@@ -284,9 +286,11 @@
       matters only for reading: fill and hover are the surfaces, the two inks sit on them, and the
       two borders are non-text chrome (WCAG 1.4.11), carried here so the skin has ONE home. Those
       borders are measured, not assumed exempt: 1.06:1 (neutral) and 1.90:1 (danger) over the fill,
-      neither clearing 3:1 — but the fill itself is only 1.02:1 against the card glass, so the
-      boundary question is the glass aesthetic's, not this skin's. Same finding as --riv-accent-*
-      above (~1.5:1), same tracking issue (#834); #851 carries the values across unchanged.
+      neither clearing 3:1 — and the fill itself is only 1.02:1 against the card glass, so no layer
+      of this skin abuts its host at 3:1 in the light themes. Decorative under
+      docs/design/non-text-contrast.md rule 2: the two inks above carry the identity at 6.17:1 and
+      8.45:1. Same finding as --riv-accent-* above (~1.5:1); #851 carries the values across
+      unchanged.
       Proof: solid-btn-tokens.contrast.spec.ts (the four AA pairs, the themed-ink bounds, and the
       single-declaration guard that is the only thing able to see a dark override) +
       solid-btn-token-skin.e2e.ts (the computed skin under a forced dark document theme).
@@ -418,8 +422,9 @@
       each re-cut around.
 
       The negative state's border is non-text chrome (WCAG 1.4.11) on a decorative glyph, measured
-      at 1.24:1 over its own fill — the same finding --riv-solid-btn-* records at 1.06:1/1.90:1
-      against the same tracking issue (#834), carried across unchanged. The positive and waiting
+      at 1.24:1 over its own fill — the same measured finding --riv-solid-btn-* records at
+      1.06:1/1.90:1, exempt under docs/design/non-text-contrast.md rule 2a (a decorative glyph, not
+      a control: the card's heading carries the meaning) and carried across unchanged. The positive and waiting
       states get no border token: theirs is rgba(255,255,255,0.6), class R's glass border (#853).
       Proof: shared/fixed-fill-token-skins.contrast.spec.ts (the AA floors, the themed-ink bounds,
       the aria-hidden exemption, and the single-declaration guard that is the only thing able to see
@@ -479,7 +484,8 @@
       Named --riv-amenity-*, NOT --riv-chip-*: that prefix is already the shell chip's
       (--riv-chip-bg, --riv-chip-border), and one hyphen apart is not a distinction — #864's own
       naming argument. The borders are non-text chrome (WCAG 1.4.11), measured at 1.15:1 and 1.17:1
-      over their own fills; same finding and same tracking issue (#834) as --riv-solid-btn-*.
+      over their own fills — the same finding as --riv-solid-btn-*, decorative under
+      docs/design/non-text-contrast.md rule 2 (each tag's own label carries it).
       Proof: shared/fixed-fill-token-skins.contrast.spec.ts (the AA pairs, the themed-ink bounds and
       the single-declaration guard) + shared/amenities.contrast.spec.ts (the same pairs against the
       rendered chip, via testing/chip-fills.ts) + e2e/fixed-fill-state-skins.e2e.ts.

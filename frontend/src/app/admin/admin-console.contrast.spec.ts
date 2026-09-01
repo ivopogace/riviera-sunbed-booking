@@ -40,6 +40,9 @@ import {
  * boundary that reads as an affordance, and is held to 3:1 against the panel fill. The panel's
  * own edge (`--riv-danger-border`) is a decorative container edge whose meaning is already
  * carried by the fill and the heading, and is deliberately left unasserted — issue #834.
+ * That citation is HISTORY, not a deferral: that issue raised the Erase button's border (PR #837)
+ * and closed. The general sub-3:1 question it once accumulated lives at
+ * docs/design/non-text-contrast.md, and this panel edge is exempt there under rule 2.
  */
 
 const OUTGOING_ERROR_INK: Rgb = [0xb3, 0x26, 0x1e];
