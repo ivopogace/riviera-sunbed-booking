@@ -222,7 +222,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI (mocked e2e, run 3147) | `console-negative-ink.e2e.ts` pinned the reason chip's outgoing `/ 0.12`. The same phase-0 fallout the full unit suite caught twice, in the one suite scoped runs had not covered | fixed-in-`17c7f8d` (phase 2), then re-verified by running the WHOLE mocked e2e suite before the phase-2 push — which is what found it locally |
+| F-2 | CI (repo hygiene, run 3147) | **RV-STYLE-1** — seven multi-line `//` comments across phases 0–2. "An inline comment is one line, or it is not written." | fixed: all seven converted to TSDoc blocks, which the rule exempts. All five hygiene guards now run locally before every push |
 
 ---
 

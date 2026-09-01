@@ -38,11 +38,11 @@ const TILE_NUMBER_INK = '#0c2a33';
 const PREMIUM_FILL_STOPS = ['#ffe3a3', '#f4c05a'];
 // beach-cell.ts CELL_CLASS: the standard tile's white @ 0.85 over the wash.
 const STANDARD_FILL_ALPHA = 0.85;
-// tailwind.css --riv-walkin-hatch: the hatch's two band alphas (#879). Asserted over BOTH rather
-// than over a nominated "worst case" — which band is worst depends on the ink being measured, and
-// a spec that picks one is one refactor away from measuring the wrong surface. Before #879 these
-// were per-site (30/12 here, 35/12 at the layout editor, 28/10 on the Daily view); they are now one
-// declaration, so one constant pair serves every consumer.
+/** `tailwind.css` `--riv-walkin-hatch`: the hatch's two band alphas (#879). Asserted over BOTH
+ *  rather than over a nominated "worst case" — which band is worst depends on the ink being
+ *  measured, and a spec that picks one is one refactor away from measuring the wrong surface.
+ *  Before #879 these were per-site (30/12 here, 35/12 at the layout editor, 28/10 on the Daily
+ *  view); they are now one declaration, so one constant pair serves every consumer. */
 const WALKIN_BAND_ALPHAS = [0.3, 0.1] as const;
 
 const ERROR_HEX = rgbToHex(ERROR_INK);

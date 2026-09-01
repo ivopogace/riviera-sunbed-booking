@@ -37,10 +37,12 @@ const CLASS_O_TINTS = {
   '--riv-select-tint': '#2bb8d4',
   '--riv-select-edge': '#0e8aa8',
   '--riv-alert-tint': '#a3160e',
-  // The merged amber family (#879): --riv-warn-tint and --riv-confirm-warn-* collapsed into these,
-  // together with class F-4's --riv-notice-banner-*. Its own AA, invariance and retired-name proofs
-  // are shared/warn-token-skin.contrast.spec.ts + e2e/warn-token-skin.e2e.ts; what it owes HERE is
-  // only what every class-O token owes — a declaration and a generated utility.
+  /**
+   * The merged amber family (#879): `--riv-warn-tint` and `--riv-confirm-warn-*` collapsed into
+   * these, together with class F-4's `--riv-notice-banner-*`. Its own AA, invariance and
+   * retired-name proofs are `shared/warn-token-skin.contrast.spec.ts` + `e2e/warn-token-skin.e2e.ts`;
+   * what it owes HERE is only what every class-O token owes — a declaration and a generated utility.
+   */
   '--riv-warn-edge': '#e0a03a',
   '--riv-warn-fill': '#fff4e0',
   '--riv-warn-ink': '#7a4a08',

@@ -303,9 +303,11 @@ test('grows the grid to add a lounger, moves it, then removes it', async ({ page
   await cell(page, 3, 1).click();
   await page.getByTestId('set-move').click();
   await expect(page.getByTestId('set-move-armed')).toBeVisible();
-  // The armed panel's fill is the ladder's (#879) last move: --riv-select-tint /12 -> /10. Asserted
-  // here rather than in class-o-tint-tokens.e2e.ts because arming a move is this spec's own
-  // sequence, and a second copy of it would be the more expensive of the two proofs.
+  /**
+   * The armed panel's fill is the ladder's (#879) last move: `--riv-select-tint` /12 -> /10.
+   * Asserted here rather than in `class-o-tint-tokens.e2e.ts` because arming a move is this spec's
+   * own sequence, and a second copy of it would be the more expensive of the two proofs.
+   */
   await expect(page.getByTestId('set-move-armed')).toHaveCSS(
     'background-color',
     await page.evaluate(() => {

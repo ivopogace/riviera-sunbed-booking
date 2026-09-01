@@ -181,11 +181,13 @@ test('generates a grid, paints a walk-in set, and saves the whole layout in one 
   await expect(page.getByTestId('layout-cell').first()).toHaveAttribute('data-state', 'walkin');
   await expect(page.getByTestId('layout-count-walkin')).toHaveText('1');
 
-  // The mirror, made real (#879). This swatch called itself a mirror of the cell variant while
-  // painting 35%/12% against the cell's 30%/12%; both now resolve one --riv-walkin-hatch. Compared
-  // as COMPUTED values, not as the token's text — `bg-(image:--riv-walkin-hatch)` would read equal
-  // on both even if the cascade handed one of them a different declaration. Arming Standard is what
-  // re-renders the walk-in tool's swatch, since the armed tool shows a selection ring instead.
+  /**
+   * The mirror, made real (#879). This swatch called itself a mirror of the cell variant while
+   * painting 35%/12% against the cell's 30%/12%; both now resolve one `--riv-walkin-hatch`. Compared
+   * as COMPUTED values, not as the token's text — `bg-(image:--riv-walkin-hatch)` would read equal on
+   * both even if the cascade handed one of them a different declaration. Arming Standard is what
+   * re-renders the walk-in tool's swatch, since the armed tool shows a selection ring instead.
+   */
   await page.getByTestId('layout-tool-standard').click();
   const paintedCell = page.getByTestId('layout-cell').first();
   const walkinSwatch = page.getByTestId('layout-tool-walkin').locator('span[aria-hidden="true"]');
