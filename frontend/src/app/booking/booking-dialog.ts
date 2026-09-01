@@ -114,10 +114,14 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               [attr.data-testid]="'step-' + s.n"
               [attr.aria-current]="s.active ? 'step' : null"
             >
-              <!-- Decorative number (aria-hidden) — the label carries the meaning, so the circle tints are 1.4.11-exempt. Inactive #2c7789 = the AA-safe muted teal (white 5.1:1; static-analysis safe). -->
+              <!-- Decorative number (aria-hidden) — the label carries the meaning, so the circle tints are 1.4.11-exempt. The pair is the theme-invariant --riv-step-* skin (#858): each state's white half cannot theme and pins the other, so only the two non-white halves are tokens. Idle --riv-step-idle-fill = the AA-safe muted teal (white 5.1:1; static-analysis safe). -->
               <span
                 class="step-num flex size-[22px] shrink-0 items-center justify-center rounded-[50%] text-[12px] font-bold"
-                [class]="s.active ? 'bg-white text-[#0a5f74]' : 'bg-[#2c7789] text-white'"
+                [class]="
+                  s.active
+                    ? 'bg-white text-riv-step-active-ink'
+                    : 'bg-riv-step-idle-fill text-white'
+                "
                 aria-hidden="true"
                 >{{ s.n }}</span
               >

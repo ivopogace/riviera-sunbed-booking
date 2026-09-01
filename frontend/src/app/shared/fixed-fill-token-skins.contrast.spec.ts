@@ -13,6 +13,10 @@ import {
   DARK_ACCENT_INK,
   DARK_CARD_INK,
   DARK_ERROR_INK,
+  STEP_ACTIVE_FILL,
+  STEP_ACTIVE_INK,
+  STEP_IDLE_FILL,
+  STEP_IDLE_INK,
   MEDALLION_NEGATIVE_BORDER,
   MEDALLION_NEGATIVE_FILL,
   MEDALLION_NEGATIVE_INK,
@@ -70,7 +74,19 @@ const AMENITY = {
   '--riv-amenity-water-border': rgbToHex(AMENITY_WATER_BORDER),
 } as const;
 
-const REGISTRY: Record<string, string> = { ...MEDALLION, ...AMENITY };
+/**
+ * Deliberately asymmetric — two tokens for two states, not four. Each state already has one
+ * unthemeable half pinning the other, and in OPPOSITE directions: the active state's fill is
+ * `bg-white` and the idle state's ink is `text-white`. A token for either would add a name without
+ * adding a guarantee, which is the call `--riv-solid-fill-*` records as "No ink token: `text-white`
+ * already cannot theme".
+ */
+const STEP = {
+  '--riv-step-active-ink': rgbToHex(STEP_ACTIVE_INK),
+  '--riv-step-idle-fill': rgbToHex(STEP_IDLE_FILL),
+} as const;
+
+const REGISTRY: Record<string, string> = { ...MEDALLION, ...AMENITY, ...STEP };
 
 /**
  * The three values this family now paints **exclusively**, so a tree-wide sweep is exactly right
@@ -108,6 +124,14 @@ const MIGRATED_SITES: readonly {
     gone: ['#0a5f74', '#d7eef4', '#b9e0ea', '#2f4a54', '#eef2f4', '#dbe4e7'],
     // The marker classes the specs and two e2e query survive the restyle (riviera-tailwind rule 2).
     kept: ['amenity-chip', 'amenity-chip--water'],
+  },
+  {
+    path: 'booking/booking-dialog.ts',
+    gone: ['text-[#0a5f74]', 'bg-[#2c7789]'],
+    // `#0a5f74` survives HERE, in the header gradient — the one site where the value this slice
+    // migrates as an ink is also painted in a role it does not own, in the same file. That is why
+    // this site's `gone` list matches roles rather than bare values, unlike every other row.
+    kept: ['linear-gradient(160deg,#0c7288,#0a5f74)', 'step-num'],
   },
 ];
 
@@ -274,5 +298,41 @@ describe('Fixed-fill state skins — the amenity chip (#858)', () => {
       ['bg-riv-amenity-tag-fill', 'text-riv-amenity-tag-ink'],
       ['bg-riv-amenity-water-fill', 'text-riv-amenity-water-ink'],
     ]);
+  });
+});
+
+describe('Fixed-fill state skins — the dialog step badge (#858)', () => {
+  it('both states clear AA, and neither is required to', () => {
+    // The badge is `aria-hidden` — the sibling `.step-label` carries the step's meaning — so the
+    // ratios are a floor these values happen to clear, not a bar they are held to. Stated, because
+    // the alternative is inventing a contrast pair for a decorative numeral.
+    expect(
+      contrastRatio(rgbToHex(STEP_ACTIVE_INK), rgbToHex(STEP_ACTIVE_FILL)),
+      'active',
+    ).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(
+      contrastRatio(rgbToHex(STEP_IDLE_INK), rgbToHex(STEP_IDLE_FILL)),
+      'idle',
+    ).toBeGreaterThanOrEqual(AA_NORMAL);
+
+    expect(read('booking/booking-dialog.ts')).toMatch(/step-num[\s\S]{0,400}aria-hidden="true"/);
+  });
+
+  it('the themed alternative would not — which is why the pair is invariant', () => {
+    expect(
+      contrastRatio(rgbToHex(DARK_ACCENT_INK), rgbToHex(STEP_ACTIVE_FILL)),
+      'dark --riv-accent-ink on the white active fill',
+    ).toBeLessThan(AA_NORMAL);
+  });
+
+  it('takes only the half of each state that is not already unthemeable', () => {
+    // The asymmetry IS the design: `bg-white` and `text-white` cannot theme, so they pin their
+    // partners and need no tokens. Pinned so a later "for symmetry" pass has to argue with a test.
+    expect(Object.keys(STEP)).toEqual(['--riv-step-active-ink', '--riv-step-idle-fill']);
+    expect(rgbToHex(STEP_ACTIVE_FILL)).toBe(rgbToHex(STEP_IDLE_INK));
+
+    const dialog = read('booking/booking-dialog.ts');
+    expect(dialog, 'the active fill is still bg-white').toContain('bg-white');
+    expect(dialog, 'the idle ink is still text-white').toContain('text-white');
   });
 });

@@ -234,18 +234,19 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** extend `shared/fixed-fill-token-skins.contrast.spec.ts` with the step block (red),
-then declare `--riv-step-active-ink` + `--riv-step-idle-fill` and migrate `booking-dialog.ts:120`.
+**Next action:** write `e2e/fixed-fill-state-skins.e2e.ts` — the CSSOM utility sweep over all 15
+tokens plus the three skins' `toHaveCSS` under the default and a forced `dark` theme — then
+mutation-check it.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — extract the token-guard helpers | ✅ | `fda89a8` |
 | 1 — the outcome-medallion family | ✅ | `c72ff26` |
 | 2 — the amenity-chip family | ✅ | `6a70f4c` |
-| 3 — the dialog step-badge family | ⏳ | |
-| 4 — the forced-dark computed-style e2e | | |
+| 3 — the dialog step-badge family | ✅ | `<phase-3>` |
+| 4 — the forced-dark computed-style e2e | ⏳ | |
 | 5 — ledger + follow-up issues + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -418,15 +419,15 @@ states are pinned from opposite directions (both directions the `--riv-solid-btn
 In dark, `--riv-accent-ink` on the active white fill is **1.65:1**. The badge is `aria-hidden` (the
 sibling `.step-label` carries the meaning), so it owes no AA assertion — stated, not invented.
 
-- [ ] **Step 1: Write the failing guard** — extend `fixed-fill-token-skins.contrast.spec.ts` with the
+- [x] **Step 1: Write the failing guard** — extend `fixed-fill-token-skins.contrast.spec.ts` with the
       step block and the asymmetry's reason as a test-name-level assertion of the exemption.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- --run fixed-fill-token-skins` → FAIL on the two undeclared tokens.
-- [ ] **Step 3: Minimal implementation** — two declarations + two `@theme inline` rows + two mirrors;
+- [x] **Step 2: Run it, verify it fails** — `npm test -- --run fixed-fill-token-skins` → FAIL on the two undeclared tokens.
+- [x] **Step 3: Minimal implementation** — two declarations + two `@theme inline` rows + two mirrors;
       migrate the `[class]` ternary, retaining `.step-num` and the existing explanatory comment
       (updated so it names the tokens rather than the raw hexes).
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- --run fixed-fill-token-skins booking-dialog` → PASS
-- [ ] **Step 5: Commit** — `git commit -m "Give the booking dialog's step badge a theme-invariant token pair (#858)"`
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — `npm test -- --run fixed-fill-token-skins booking-dialog` → PASS
+- [x] **Step 5: Commit** — `git commit -m "Give the booking dialog's step badge a theme-invariant token pair (#858)"`
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ---
 

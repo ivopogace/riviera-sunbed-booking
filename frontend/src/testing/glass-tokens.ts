@@ -300,3 +300,23 @@ export const AMENITY_TAG_BORDER: Rgb = hexToRgb('dbe4e7');
 export const AMENITY_WATER_INK: Rgb = hexToRgb('0a5f74');
 export const AMENITY_WATER_FILL: Rgb = hexToRgb('d7eef4');
 export const AMENITY_WATER_BORDER: Rgb = hexToRgb('b9e0ea');
+
+/** The `--riv-step-*` pair (#858, class F-3): `booking-dialog`'s step-number badge, the decorative
+ *  `aria-hidden` numeral in the dialog's teal header. Two states, one `[class]` ternary.
+ *
+ *  Deliberately TWO tokens for two states rather than four, because each state already has one
+ *  unthemeable half pinning the other — and in opposite directions. The active state's fill is
+ *  `bg-white`; the idle state's ink is `text-white`. Naming either would add a declaration without
+ *  removing a literal or adding a guarantee, the call `--riv-solid-fill-*` already records.
+ *
+ *  Theme-invariant: the fixed halves pin the tokenised ones, and the dialog is a tourist surface
+ *  that themes. The themed --riv-accent-ink resolves DARK_ACCENT_INK at 1.65:1 over the white active
+ *  fill. Shipped: 7.24:1 active, 5.11:1 idle — a floor these values happen to clear, since the badge
+ *  is aria-hidden and owes no AA assertion. Full reasoning sits at the declaration in
+ *  `tailwind.css`. Guarded by `shared/fixed-fill-token-skins.contrast.spec.ts`. */
+export const STEP_ACTIVE_INK: Rgb = hexToRgb('0a5f74');
+export const STEP_IDLE_FILL: Rgb = hexToRgb('2c7789');
+/** The two unthemeable halves, mirrored so the AA floors above have constants rather than literals.
+ *  Not tokens, and that is the point — see the pair's header. */
+export const STEP_ACTIVE_FILL: Rgb = WHITE;
+export const STEP_IDLE_INK: Rgb = WHITE;

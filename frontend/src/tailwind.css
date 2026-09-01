@@ -90,6 +90,9 @@
   --color-riv-amenity-water-ink: var(--riv-amenity-water-ink);
   --color-riv-amenity-water-fill: var(--riv-amenity-water-fill);
   --color-riv-amenity-water-border: var(--riv-amenity-water-border);
+
+  --color-riv-step-active-ink: var(--riv-step-active-ink);
+  --color-riv-step-idle-fill: var(--riv-step-idle-fill);
   --color-riv-card-track: var(--riv-card-track);
 
   --color-riv-pop-surface: var(--riv-pop-surface);
@@ -428,6 +431,30 @@
   --riv-amenity-water-ink: #0a5f74;
   --riv-amenity-water-fill: #d7eef4;
   --riv-amenity-water-border: #b9e0ea;
+
+  /** The booking dialog's STEP BADGE (#858, class F-3) — the decorative aria-hidden numeral in the
+      teal dialog header, active and idle. One `[class]` ternary, two states.
+
+      TWO tokens for two states, not four, and the asymmetry is the design rather than an oversight:
+      each state already carries one unthemeable half that pins the other, in OPPOSITE directions.
+      The active state's fill is `bg-white`, so it pins the ink; the idle state's ink is
+      `text-white`, so it pins the fill. Naming either white would add a declaration without removing
+      a literal or adding a guarantee — the same call --riv-solid-fill-* records above ("No ink
+      token: `text-white` already cannot theme"), taken here twice in the two directions at once.
+
+      Theme-invariant for that reason: the dialog is a tourist surface that themes, and the themed
+      --riv-accent-ink resolves #7cd7e8 at 1.65:1 over the white active fill. Shipped: 7.24:1 active,
+      5.11:1 idle — a floor these values happen to clear, not a bar they are held to, since the badge
+      is aria-hidden and the sibling `.step-label` carries the step's meaning.
+
+      This is the ONE file where a value the slice migrates as an ink is also painted in a role the
+      slice does not own: the header gradient's `#0a5f74` stop, which duplicates --riv-cta-grad and
+      is that token's question, not this one's. The guard matches roles rather than bare values here
+      for exactly that reason.
+      Proof: shared/fixed-fill-token-skins.contrast.spec.ts + e2e/fixed-fill-state-skins.e2e.ts.
+      Rationale: docs/plans/fixed-fill-state-skins.md, issue #858. */
+  --riv-step-active-ink: #0a5f74;
+  --riv-step-idle-fill: #2c7789;
 
   /** The near-opaque popover surface (theme picker, account menu, mobile sheet — app.ts POP)
       and the segmented-control fills (shared/segmented-control.ts). Light values here; the
