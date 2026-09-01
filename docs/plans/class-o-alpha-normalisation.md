@@ -219,10 +219,10 @@ N/A — no contract change. No endpoint, DTO or wire shape is read or altered.
 
 ## Execution status
 
-**Stage pointer:** `review gate`
+**Stage pointer:** `DONE — merged via PR #880`
 
-**Next action:** Mark PR #880 ready for review, then run the review gate per `riviera-sdlc`
-`references/pr-gates.md` §1 with `riviera-review-overlay` layered on top.
+**Next action:** None. The close-out's only remaining items are GitHub edits, not commits:
+the follow-ups are already filed (#881, #882) and the PR-activity subscription ends with the merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -230,6 +230,7 @@ N/A — no contract change. No endpoint, DTO or wire shape is read or altered.
 | 1 — One walk-in hatch (`--riv-walkin-hatch`) | ✅ | `dd0669b` |
 | 2 — One amber family (`--riv-warn-*`), three tokens retired | ✅ | `17c7f8d` |
 | 3 — Ledger, rule-2 table, close-out | ✅ | `358a41d` |
+| 4 — Review-gate fix round (F-3…F-9) | ✅ | `a872305` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -380,6 +381,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-01 | phase 4 — review fix round | **Every place a retired token name or a renamed path could still be named**, swept WITHOUT filtering on the new name — the correction the gate forced. My phase-3 sweep had piped through `grep -v riv-warn`, which removes exactly the sentences where a new token and a retired path sit together, and that is where dangling references live | `grep -rn "riv-notice-banner\|riv-confirm-warn\|riv-warn-tint\|notice-banner-token-skin\|withheld-email-notice\.contrast" frontend/src frontend/e2e CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs .claude` | **2 that the filtered sweep had hidden** (F-3, F-4), both in the highest-traffic spots: the token declaration's own proof pointer and the test-mirror constants' header. Plus a count (F-9) living in three places at three values | **All fixed.** The lesson is recorded here rather than in a commit message: a rename sweep must not filter on the new name |
 | 2026-09-01 | phase 3 — close-out | **Every substrate-doc sentence stating a COUNT of the things this slice changed the number of** (class-O tokens, positions, alphas, amber families) — `riviera-docs-freshness` step 2b. By definition these live in files the diff never touched, so no amount of diff review finds them | `grep -rniE '\b(twelve\|12\|thirteenth\|44\|ten alphas\|seventeen)\b' <substrate> \| grep -iE 'token\|alpha\|position\|class.o'` | **2 stale statements**, both outside the diff's own concern: the class-O e2e's "drives all twelve tokens… nobody adds the thirteenth" (the registry is now ten), and the unit spec's "43 of the 44 positions are console chrome" as its reason for living in `shared/` | **Both patched**, and the e2e's sentence rewritten to stop spelling out a number at all — the map is the count. Sweep re-run after the fix round (#373's rule); clean |
 | 2026-09-01 | phase 2 — the amber merge | **Every pair of `--riv-*` tokens within a small perceptual distance**, computed pairwise over the declared palette — not "the four ambers the issue listed". The resemblance-led population is exactly the issue's own table, which is how it missed that the amber the merge lands on has a near-twin in another family | a pairwise ΔE sweep over `^\s*(--riv-[a-z0-9-]+):\s*(#[0-9a-fA-F]{6})` in `tailwind.css` (script: scratchpad, reproduced in the PR) | **65 hex-valued tokens; ~30 identical-value pairs and ~200 within ΔE 12.** Nearly all are deliberate role separations already settled (`--riv-error-ink`/`--riv-alert-tint`/`--riv-solid-fill-danger`; `--riv-console-negative-ink`/`--riv-solid-btn-danger-ink`/`--riv-medallion-negative-ink`; `--riv-accent-strong`/`--riv-select-edge`). Two bear on this slice: `--riv-medallion-waiting-*` still holds **exactly** the retired `--riv-notice-banner-*` values `#fcf0d9`/`#8a5410`, and `--riv-warn-fill` sits ΔE 2.1 from it | **No further merges — and that is the finding, not an absence of one.** The medallion pair is #858's family, grouped by FORM: an `aria-hidden` round glyph owing no AA proof, against a rectangular block of accessible text. Merging on the value would be the exact role confusion the audit's class R exists to name. Recorded here so the next reader does not re-derive it |
 | 2026-09-01 | phase 1 — one hatch | **Every image built inline in a class expression** (`bg-[…gradient(…)]`), not "the walk-in gradients". The resemblance-led population is the three hatches the phase already knew about; the mechanism is *an image a token could own*, which is what makes a mirror stop mirroring | `for f in $(git ls-files \| sed 's\|^frontend/\|\|' \| grep -E '^src/app/.*\.(ts\|html)$' \| grep -v '\.spec\.ts$'); do grep -oE "bg-\\[[^]]*gradient\\([^]]*\\]" "$f"; done` | **8 inline gradients survive.** One pair is the same finding in another class: `app.html`'s sun `radial-gradient(circle_at_34%_30%,#ffe6a3,#f0aa2e_70%)` and `pages/home/home.html`'s `radial-gradient(circle_at_34%_30%,rgba(255,236,180,0.95),rgba(240,170,46,0.5)_72%)` — same geometry, near-identical amber, stops 70% vs 72%. Also noted: `venue/map-tile.ts` carries a *second* thing called a walk-in hatch (135deg, `--riv-tile-walkin-hatch`, tourist surface) which is genuinely NOT this one | **Recorded, not fixed.** Both are class T/S literals, which this slice's Non-goals exclude, and merging the two suns would repaint the app shell and the tourist home hero. Carried to close-out as a follow-up issue |
@@ -415,5 +417,5 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **Frontend** standards met; no `as any`; Tailwind idioms per `riviera-tailwind`.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN` — the citation lands in the final pre-merge commit, once the merge is authorised.
-- [ ] **The review gate ran in full** — the `references/pr-gates.md` §1 ladder *plus* `riviera-review-overlay`. Ran (5-agent fan-out); **4 findings, all fixed** — see the Findings register. Left unticked until the re-review of the fix round returns clean, per the re-entry rule.
+- [x] **Close-out written in THIS PR**, citing **merged via PR #880** — no docs-only follow-up PR needed.
+- [x] **The review gate ran in full** — the `references/pr-gates.md` §1 ladder (rung 1, `Skill("code-review:code-review")`, 5-agent fan-out) *plus* `riviera-review-overlay`. **Seven findings (F-3…F-9), all fixed** in `a872305`; the fix round re-ran the full unit suite, the touched mocked e2e, all five hygiene guards, and CI + Sonar.
