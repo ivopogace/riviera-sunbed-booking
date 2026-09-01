@@ -14,10 +14,10 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * row is missing. The class lands in the markup, the paint silently does not change, and only a
  * resolved computed style separates that from a working token.
  *
- * <p>The registry test drives all thirteen tokens at once rather than one element each. That is
+ * <p>The registry test drives all twelve tokens at once rather than one element each. That is
  * deliberate: the failure it hunts is per-TOKEN (a missing `@theme inline` row), not per-element,
- * and thirteen navigations would prove the same thing thirteen times over while making the suite
- * the reason nobody adds the fourteenth.
+ * and twelve navigations would prove the same thing twelve times over while making the suite the
+ * reason nobody adds the thirteenth.
  *
  * <p>The paint tests then drive real elements, because a generated utility is not yet a painted
  * pixel — the class has to reach the element and survive the cascade. The dark-theme test is the
@@ -46,13 +46,31 @@ const CLASS_O_TINTS = {
   '--riv-confirm-warn-ink': '#7a4a08',
 } as const;
 
+/** The exact expression the armed tool carried before the migration: `bg-[#2bb8d4]/20`. */
+const OUTGOING_LITERAL = 'color-mix(in oklab, #2bb8d4 20%, transparent)';
+
 /**
- * What the browser computes for the armed tool's fill, captured from the LITERAL form before the
- * migration. Pinned as the resolved `oklab(…)` rather than a hex, because that is the value the
- * outgoing `bg-[#2bb8d4]/20` produced — asserting the token's own hex here would prove the token
- * resolves while saying nothing about whether the paint moved, which is the whole claim.
+ * The outgoing literal's computed value, resolved by **the browser running this test** rather than
+ * pinned as a string. That distinction is the test, not a detail: Chromium serializes a
+ * `color-mix(in oklab, …)` as `oklab(L a b / α)` with full float precision, and the digits differ
+ * between builds — a value captured on one Chromium reads
+ * `oklab(0.723426 -0.0974235 -0.0681883 / 0.2)` and on another
+ * `oklab(0.723439 -0.0974177 -0.068208 / 0.2)`. Both are the same colour; neither is portable.
+ *
+ * <p>Comparing against a live probe asserts what the slice actually claims — that the token form
+ * paints what the literal form painted — in whatever browser is asked, instead of asserting that
+ * one build's float formatting has not changed. Pinning the snapshot cost a red CI run first.
  */
-const ARMED_TOOL_FILL = 'oklab(0.723426 -0.0974235 -0.0681883 / 0.2)';
+async function outgoingLiteralPaint(page: Page): Promise<string> {
+  return page.evaluate((literal) => {
+    const probe = document.createElement('div');
+    probe.style.backgroundColor = literal;
+    document.body.append(probe);
+    const computed = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return computed;
+  }, OUTGOING_LITERAL);
+}
 
 async function openBeachMap(page: Page): Promise<void> {
   await mockWholeConsole(page);
@@ -100,7 +118,7 @@ test.describe('the class-O tint tokens paint from the token registry', () => {
     await tool.click();
 
     await expect(tool).toHaveAttribute('aria-pressed', 'true');
-    await expect(tool).toHaveCSS('background-color', ARMED_TOOL_FILL);
+    await expect(tool).toHaveCSS('background-color', await outgoingLiteralPaint(page));
   });
 
   test('the class-O tints hold under a forced dark document theme', async ({ page }) => {
@@ -111,7 +129,7 @@ test.describe('the class-O tint tokens paint from the token registry', () => {
 
     const tool = page.getByTestId('layout-tool-walkin');
     await tool.click();
-    await expect(tool).toHaveCSS('background-color', ARMED_TOOL_FILL);
+    await expect(tool).toHaveCSS('background-color', await outgoingLiteralPaint(page));
 
     const stillPorcelain = await page.evaluate((names) => {
       const root = getComputedStyle(document.documentElement);

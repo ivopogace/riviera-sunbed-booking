@@ -219,6 +219,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | CI (`3fec9e1`, phase 2) | `booking/solid-btn-tokens.contrast.spec.ts` › "leaves the out-of-family #a3372a sites untouched" went red: phase 2 migrated `payouts-tab.html`'s `#a3372a` tints, and that spec's `OUT_OF_FAMILY` asserts the literal is still painted there. **My scoped test run could not have caught it** — I ran `operator/*.spec.ts` + `shared/*.spec.ts`, and this spec lives in `booking/`. Found independently in phase 3 when the scope widened to `src/app/**`, so the fix was already pushed before the CI event arrived. The lesson is the scoping, not the fix: a token slice's blast radius is every spec that names the value, which is not a folder | fixed-in-`9f2e11b` |
+| F-2 | CI (`6ecfcc4`) | My own `e2e/class-o-tint-tokens.e2e.ts` went red on both paint tests. It pinned the armed tool's fill as the literal string `oklab(0.723426 -0.0974235 -0.0681883 / 0.2)`, captured from this sandbox's Chromium; CI's build serializes the same colour as `oklab(0.723439 -0.0974177 -0.068208 / 0.2)`. Same paint, different float precision — and my local run passed because it used the binary that produced the snapshot. **Fixed by removing the snapshot, not by adding a tolerance:** the test now renders the outgoing literal (`color-mix(in oklab, #2bb8d4 20%, transparent)`) as a probe in the same page and compares against it, which asserts the claim the slice actually makes — the token form paints what the literal painted — in whatever browser runs it. Negative control re-run: a one-digit change to `--riv-select-tint` still reddens all three tests | fixed-in-`35bfbcc` |
 
 ---
 
@@ -467,6 +468,15 @@ three become tokens (`--riv-notice-edge`, `--riv-notice-fill`, `--riv-notice-ink
 | the per-token literal sweep | its matcher was broken on first write (a regex built by string surgery dropped the `#`) | it passed for the wrong reason, silently — which is why "the sweep must be able to fail" exists |
 | the mixing guard | one gradient stop reverted to `rgba(12,42,51,0.28)` | red on exactly that expression |
 | the e2e | one `@theme inline` row deleted | the armed tool painted `rgba(0, 0, 0, 0)` and all three tests reddened — the precise R-1 failure |
+| the e2e, after F-2 | `--riv-select-tint` changed by one digit | all three red — the live probe still catches a wrong value, so build-independence cost no strictness |
+
+> **The pattern in this slice's own mistakes, worth naming:** three of the four defects — the
+> string-surgery regex, the emptied `OUT_OF_FAMILY` list, and F-2's pinned snapshot — were **guards
+> that would have passed for the wrong reason**, staying green while proving nothing. None was a
+> wrong assertion; each was an assertion that had quietly stopped being about anything. That is the
+> failure mode a token-migration slice is most exposed to, because nearly every check it writes is
+> of the form "this literal is gone" — a claim an empty result satisfies whether or not the search
+> works. Every guard here is now paired with a proof that it can fail.
 
 ## Self-review checklist (before merge / PR)
 
