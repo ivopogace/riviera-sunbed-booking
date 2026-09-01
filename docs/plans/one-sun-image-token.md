@@ -44,13 +44,13 @@ for `feature/one-sun-image-token` (`riviera-sdlc` § Remote/cloud session addend
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given `src/tailwind.css`, when the stylesheet is read as text, then
+- [x] **AC-1:** Given `src/tailwind.css`, when the stylesheet is read as text, then
   `--riv-sun-grad` is declared exactly once and that declaration sits in the base block, so no
   theme block can override it. *Seam:* `src/tailwind.css` as text via
   `testing/stylesheet-tokens.ts` (`declarationsOf`, `baseBlock`) · *Pinned by:*
   `sun-token.contrast.spec.ts` › `declares one sun, in the base block`
 
-- [ ] **AC-2:** Given every non-spec `.ts`/`.html` under `src/app`, when swept for a radial
+- [x] **AC-2:** Given every non-spec `.ts`/`.html` under `src/app`, when swept for a radial
   gradient built inline from the sun's own amber family, then no file rebuilds one — the sweep
   reports the paths to fix, not the sources. *Seam:* the app-source sweep over `src/app`
   (`class-o-tint-tokens.contrast.spec.ts`'s `appSources()` pattern) · *Pinned by:*
@@ -74,7 +74,7 @@ for `feature/one-sun-image-token` (`riviera-sdlc` § Remote/cloud session addend
   `[data-testid="map-banner-empty"]` at `/venues/1` · *Pinned by:* `e2e/sun-token.e2e.ts` › `the
   band does not move — the merged value is the one it already had`
 
-- [ ] **AC-6:** Given a photo-less venue card, when the location text's contrast floor is
+- [x] **AC-6:** Given a photo-less venue card, when the location text's contrast floor is
   computed against its worst-case backdrop, then the floor is unchanged by this slice — the
   white-photo worst case (`#ffffff`) still bounds the sun's brightest stop (`#fff6da`). *Seam:*
   the composited-contrast maths in `src/testing/contrast.ts` · *Pinned by:*
@@ -111,10 +111,10 @@ for `feature/one-sun-image-token` (`riviera-sdlc` § Remote/cloud session addend
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The brighter, fully-opaque card sun raises the backdrop under the card's location text and breaks its AA floor | low | high | The floor is already computed against a **white** photo, which bounds `#fff6da`; AC-6 keeps `home.contrast.spec.ts` green **unmodified** — if it needs editing to pass, the floor moved and the slice stops | Claude | open |
+| R-1 | The brighter, fully-opaque card sun raises the backdrop under the card's location text and breaks its AA floor | low | high | The floor is already computed against a **white** photo, which bounds `#fff6da`; AC-6 keeps `home.contrast.spec.ts` green **unmodified** — if it needs editing to pass, the floor moved and the slice stops | Claude | **closed** — phase 0: `home.contrast.spec.ts` green, unmodified in the diff |
 | R-2 | A later slice adds a `[data-riv-theme='dark']` override of `--riv-sun-grad`, silently re-introducing per-theme drift that no contrast maths can see | med | med | AC-1's single-declaration + base-block guard reads the stylesheet as text — the only check able to see an override added later (`stylesheet-tokens.ts`'s stated reason) | Claude | open |
-| R-3 | AC-2's sweep is written so it can only pass — a regex that stops matching yields `[]` and the assertion passes for the wrong reason | med | high | A meta-test asserts the sweep's pattern **does** match the pre-merge literals, the trap `class-o-tint-tokens.contrast.spec.ts` documents hitting ("a helper that fails OPEN") | Claude | open |
-| R-4 | `venue-map.spec.ts`'s `not.toContain('rgba')` assertion is deleted rather than rehomed, dropping #704's guarantee | med | high | Behavior-parity ledger row marks it **changed, not dropped**; AC-4 re-establishes it in a real render across all three consumers | Claude | open |
+| R-3 | AC-2's sweep is written so it can only pass — a regex that stops matching yields `[]` and the assertion passes for the wrong reason | med | high | A meta-test asserts the sweep's pattern **does** match the pre-merge literals, the trap `class-o-tint-tokens.contrast.spec.ts` documents hitting ("a helper that fails OPEN") | Claude | **closed** — phase 0: `has a sweep that can actually fail`, green while the other three were red |
+| R-4 | `venue-map.spec.ts`'s `not.toContain('rgba')` assertion is deleted rather than rehomed, dropping #704's guarantee | med | high | Behavior-parity ledger row marks it **changed, not dropped**; AC-4 re-establishes it in a real render across all three consumers | Claude | phase 0 rehomed it as a consumes-the-token assertion; closes when AC-4 lands in phase 1 |
 | R-5 | Flyway version collision with an in-flight PR | n/a | n/a | N/A — no migration in this slice | — | closed |
 
 ## Open questions / Assumptions
@@ -167,15 +167,15 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 step 1 — write `sun-token.contrast.spec.ts` red against the
-three inline gradients still in the tree.
+**Next action:** Phase 1 step 1 — write `e2e/sun-token.e2e.ts` reading the three
+computed `background-image`s in a real render.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the token, the three consumers, the unit guard | | |
-| 1 — the mocked-e2e computed-style proof | | |
+| 0 — the token, the three consumers, the unit guard | ✅ | `<phase-0>` |
+| 1 — the mocked-e2e computed-style proof | ⏳ | |
 | 2 — record the answer in the audit doc + docs freshness | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -290,7 +290,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-09-01 | intake grill (pre-phase-0) | every image built inline in a class expression — the mechanism, not the ambers the issue named | `for f in $(git ls-files \| sed 's\|^frontend/\|\|' \| grep -E '^src/app/.*\.(ts\|html)$' \| grep -v '\.spec\.ts$'); do grep -oE "bg-\[[^]]*gradient\([^]]*\]" "$f" \| sed "s\|^\|${f}: \|"; done` | 8 | 3 are suns (the issue named 2 of them) → merged; the other 5 are per-site and out of scope |
+| 2026-09-01 | phase 0 | every image built inline in a class expression — the mechanism, not the ambers the issue named | `for f in $(git ls-files \| sed 's\|^frontend/\|\|' \| grep -E '^src/app/.*\.(ts\|html)$' \| grep -v '\.spec\.ts$'); do grep -oE "bg-\[[^]]*gradient\([^]]*\]" "$f" \| sed "s\|^\|${f}: \|"; done` | 8 → 5 after the merge | 3 were suns (the issue named 2) → merged onto `--riv-sun-grad`; the surviving 5 are linear/repeating-linear, none a sun, each per-site → out of scope per the issue |
 
 ---
 

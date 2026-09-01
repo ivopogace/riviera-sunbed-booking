@@ -37,11 +37,11 @@
               contain
             />
             @if (v.photos.length === 0) {
-              <!-- A deliberate warm sun over the sea gradient, its stops OPAQUE on purpose: the earlier translucent disc composited against the cyan beneath it and landed as a flat pale-green blob (#704). The glow stays translucent — a halo is meant to take the sea's colour. -->
+              <!-- The shared sun (#882), opaque so it cannot composite against the cyan the way #704's translucent disc did; the glow stays translucent because a halo is meant to take the sea's colour. -->
               <span
                 aria-hidden="true"
                 data-testid="map-banner-empty"
-                class="absolute top-[42%] left-1/2 size-[68px] min-[1024px]:size-[96px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_38%_30%,#fff6da_0%,#ffd97a_42%,#f6b23f_76%,#e89a26_100%)] shadow-[0_0_44px_14px_rgba(255,199,105,0.4)]"
+                class="absolute top-[42%] left-1/2 size-[68px] min-[1024px]:size-[96px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-(image:--riv-sun-grad) shadow-[0_0_44px_14px_rgba(255,199,105,0.4)]"
               ></span>
             }
             <span aria-hidden="true" class="absolute inset-0 bg-(image:--riv-photo-scrim)"></span>

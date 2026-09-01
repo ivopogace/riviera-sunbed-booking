@@ -510,9 +510,10 @@
   /** The beach-map PREMIUM cell (class O, #852): its boundary, and the fill that boundary sits on.
       The gradient is an image token because it is BYTE-IDENTICAL at both consumers -- the cell
       variant and the layout editor's tool swatch, which the code calls its mirror -- and one
-      declaration is the only thing that keeps a mirror mirroring. (Its walk-in sibling is not an
-      image token: those three gradients differ by alpha per site, so rule B keeps the alpha at the
-      call site there.) */
+      declaration is the only thing that keeps a mirror mirroring. (#852 concluded its walk-in
+      sibling could NOT be one, because "those three gradients differ by alpha per site". #879
+      overturned that -- the difference per site was the bug, not the reason -- and the next block
+      is the resulting --riv-walkin-hatch.) */
   --riv-premium-edge: #b47814;
   --riv-premium-grad: linear-gradient(180deg, #ffe3a3, #f4c05a);
 
@@ -735,6 +736,41 @@
     rgba(13, 40, 40, 0.8) 100%
   );
   --riv-photo-ink: #ffffff;
+  /** THE SUN (#882) -- one declaration for all three that paint it: the app shell's brand mark
+      beside the wordmark, the Discover card's no-photo empty state, and the beach map's photo-band
+      empty state.
+
+      THREE renderings, and #882 named two of them. Re-running its own audit -- every image built
+      inline in a class expression, the MECHANISM rather than the ambers it had noticed -- returned
+      the third, which the issue had filed as per-site: the map band's. That one shares the card's
+      ROLE exactly (photos.length === 0, over --riv-photo-grad, under --riv-photo-scrim, anchored
+      top-42% centred), so the three split 1/2 by role rather than 2 by value and the pairing the
+      issue proposed was not the one the code had. One declaration for the --riv-premium-grad /
+      --riv-walkin-hatch reason: a mirror stays a mirror only while there is one thing to mirror.
+
+      THESE VALUES because they were the only ones already tuned against the cyan they sit on. The
+      card's stops were translucent and composited to rgb(211,221,181) at the centre and
+      rgb(117,162,126) at the outer stop over --riv-photo-grad -- an olive orb, not a sun, its
+      green channel above its red at both -- which is exactly the "flat pale-green blob"
+      #704 diagnosed and fixed at the map alone. So the merge moves the map not at all, the 32px
+      brand mark imperceptibly, and the card from broken to right.
+
+      THEME-INVARIANT on #704's ground generalized: every stop is OPAQUE, so the sun composites
+      against nothing and cannot take a themed backdrop's colour. That is load-bearing here rather
+      than incidental -- --riv-photo-grad has a dark override, so the translucent form was not
+      merely wrong once, it was wrong differently per theme. Declared ONCE, no dark override.
+
+      Proof: shared/sun-token.contrast.spec.ts (the single declaration, the adopted values, and the
+      tree-wide sweep that no source rebuilds one inline) + e2e/sun-token.e2e.ts (the three
+      computed background-images in a real render, where the cascade rather than a regex decides).
+      Rationale: docs/design/colour-literal-token-audit.md, issue #882. */
+  --riv-sun-grad: radial-gradient(
+    circle at 38% 30%,
+    #fff6da 0%,
+    #ffd97a 42%,
+    #f6b23f 76%,
+    #e89a26 100%
+  );
   /** Slideshow chrome over an ARBITRARY uploaded photo (#704). The step chips and the dot rail
       sit above the scrim, so they cannot borrow its backing — they carry their own, and both are
       proven at 3:1 (WCAG 1.4.11) over the worst case any photo can present (pure white AND pure
