@@ -212,6 +212,30 @@ describe('Class-O tint tokens (rule B: the modifier stays, the literal becomes a
     expect(offLadder).toEqual([]);
   });
 
+  /**
+   * The walk-in hatch, as ONE declaration (#879). Three renderings called themselves the same
+   * thing and were not: `beach-cell` painted 30%/12%, `layout-editor`'s tool swatch 35%/12% under a
+   * comment claiming it mirrors the cell, and `daily-view-tab`'s tile + legend 28%/10%. Rule B had
+   * no reason to notice — each was internally consistent, and the drift only reads as drift once
+   * the three sit in one place.
+   *
+   * <p>An image token for the same reason `--riv-premium-grad` is one (#852): a mirror stays a
+   * mirror only while there is one declaration to mirror. The class-O ladder alone would not have
+   * fixed this — snapping all three to ladder values still leaves three definitions free to drift
+   * apart again on the next touch.
+   */
+  it('declares one walk-in hatch, and no site rebuilds it inline', () => {
+    expect(declarationsOf('--riv-walkin-hatch'), 'the hatch declarations').toHaveLength(1);
+    expect(baseBlock(), 'the hatch in the base block').toContain('--riv-walkin-hatch:');
+
+    const inlineHatch = /repeating-linear-gradient\(45deg[^)]*var\(--riv-console-tint\)/i;
+    const rebuilt = appSources().filter((path) =>
+      inlineHatch.test(readFileSync(join(APP, path), 'utf8')),
+    );
+
+    expect(rebuilt, 'sources rebuilding the hatch inline').toEqual([]);
+  });
+
   describe.each(CLASS_O_TINTS)('$token', ({ token, value }) => {
     it('is declared exactly once, so no theme block can override it', () => {
       expect(declarationsOf(token), `${token} declarations`).toHaveLength(1);

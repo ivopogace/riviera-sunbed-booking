@@ -478,6 +478,25 @@
   --riv-premium-edge: #b47814;
   --riv-premium-grad: linear-gradient(180deg, #ffe3a3, #f4c05a);
 
+  /** The beach-map WALK-IN cell's hatch (#879). An image token for the same reason
+      --riv-premium-grad is one -- one declaration is the only thing that keeps a mirror mirroring
+      -- and #852 was wrong to conclude its walk-in sibling could not be one. That call rested on
+      "those three gradients differ by alpha per site", which was true and was the bug: the three
+      renderings of ONE thing were 30%/12% (the cell), 35%/12% (the layout editor's tool swatch,
+      under a comment calling it a mirror of the cell) and 28%/10% (the Daily view's tile and its
+      legend key). Rule B had no reason to notice -- each site was internally consistent, and the
+      drift only reads as drift once the three sit in one place.
+
+      30%/10% are the ladder's values (#879): the dense band rounds down from 30/35/28, the light
+      one from 12/12/10. Proof: shared/class-o-tint-tokens.contrast.spec.ts (one declaration, and no
+      source rebuilding it inline) + the per-surface AA specs that composite over its darker band
+      (operator/daily-view-tab.contrast.spec.ts, operator/set-editor.contrast.spec.ts). */
+  --riv-walkin-hatch: repeating-linear-gradient(
+    45deg,
+    color-mix(in oklab, var(--riv-console-tint) 30%, transparent) 0 3px,
+    color-mix(in oklab, var(--riv-console-tint) 10%, transparent) 3px 6px
+  );
+
   /** `shared/confirm-panel`'s warning surface (class O, #852), taken WHOLE. Only the edge is class
       O; the fill and ink are class S, and they share one host string with it -- so migrating the
       edge alone would leave a named utility beside two hex literals in one expression, which is

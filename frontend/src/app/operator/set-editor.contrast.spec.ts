@@ -34,8 +34,12 @@ const SELECTION_RING = '#0a5f74';
 const PREMIUM_FILL_STOPS = ['#ffe3a3', '#f4c05a'];
 // beach-cell.ts CELL_CLASS: the standard tile's white @ 0.85 over the wash.
 const STANDARD_FILL_ALPHA = 0.85;
-// beach-cell.ts CELL_CLASS: the walk-in hatch's lighter band (worst case) — a CARD_INK tint over the wash.
-const WALKIN_LIGHT_BAND_ALPHA = 0.12;
+// tailwind.css --riv-walkin-hatch: the hatch's two band alphas (#879). Asserted over BOTH rather
+// than over a nominated "worst case" — which band is worst depends on the ink being measured, and
+// a spec that picks one is one refactor away from measuring the wrong surface. Before #879 these
+// were per-site (30/12 here, 35/12 at the layout editor, 28/10 on the Daily view); they are now one
+// declaration, so one constant pair serves every consumer.
+const WALKIN_BAND_ALPHAS = [0.3, 0.1] as const;
 
 describe('SetEditor porcelain contrast (WCAG AA, #600)', () => {
   it('panel heading, selection line and toggle labels (--riv-card-ink) meet AA on the card glass', () => {
@@ -86,11 +90,13 @@ describe('SetEditor porcelain contrast (WCAG AA, #600)', () => {
         contrastRatio(SELECTION_RING, standard),
         `over standard tile on ${wash}`,
       ).toBeGreaterThanOrEqual(AA_LARGE);
-      const walkin = rgbToHex(composite(CARD_INK, WALKIN_LIGHT_BAND_ALPHA, stop));
-      expect(
-        contrastRatio(SELECTION_RING, walkin),
-        `over walk-in tile on ${wash}`,
-      ).toBeGreaterThanOrEqual(AA_LARGE);
+      for (const band of WALKIN_BAND_ALPHAS) {
+        const walkin = rgbToHex(composite(CARD_INK, band, stop));
+        expect(
+          contrastRatio(SELECTION_RING, walkin),
+          `over walk-in tile (band ${band}) on ${wash}`,
+        ).toBeGreaterThanOrEqual(AA_LARGE);
+      }
     }
     for (const stop of PREMIUM_FILL_STOPS) {
       expect(

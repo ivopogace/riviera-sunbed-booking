@@ -21,8 +21,7 @@ export const CELL_STATE_DESC: Record<CellState, string> = {
 const CELL_CLASS: Record<CellState, string> = {
   premium: 'border-riv-premium-edge/40 bg-(image:--riv-premium-grad)',
   standard: 'border-riv-console-tint/15 bg-white/85',
-  walkin:
-    'border-riv-console-tint/15 bg-[repeating-linear-gradient(45deg,color-mix(in_oklab,var(--riv-console-tint)_30%,transparent)_0_3px,color-mix(in_oklab,var(--riv-console-tint)_12%,transparent)_3px_6px)]',
+  walkin: 'border-riv-console-tint/15 bg-(image:--riv-walkin-hatch)',
   // 0.55, not 0.35: the gap cell's identity is its border alone, proven 3:1 over the canvas wash.
   gap: 'border-dashed border-riv-console-tint/55 bg-transparent',
 };

@@ -203,16 +203,16 @@ N/A — no contract change. No endpoint, DTO or wire shape is read or altered.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Declare `--riv-walkin-hatch` red-first — add the "no source rebuilds the hatch
-inline" sweep to `shared/class-o-tint-tokens.contrast.spec.ts`, watch it name the four sites.
+**Next action:** Declare `--riv-warn-{edge,fill,ink}` red-first — add the merged-family declaration
+guard + the retired-token sweep, watch them fail, then repaint the six amber surfaces.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The ladder: every class-O alpha a multiple of 5 | ✅ | `fb3ac50` |
-| 1 — One walk-in hatch (`--riv-walkin-hatch`) | ⏳ | |
-| 2 — One amber family (`--riv-warn-*`), three tokens retired | | |
+| 1 — One walk-in hatch (`--riv-walkin-hatch`) | ✅ | `<phase-1>` |
+| 2 — One amber family (`--riv-warn-*`), three tokens retired | ⏳ | |
 | 3 — Ledger, rule-2 table, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -243,6 +243,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/requests-tab.html` — `positive-tint/12` → `/10`
 - `frontend/src/app/operator/beach-cell.ts|.spec.ts` — hatch → token; `/55` exemption re-asserted (AC-3)
 - `frontend/src/app/operator/layout-editor.ts` — swatch hatch → token
+- `frontend/src/app/operator/layout-editor.contrast.spec.ts` — both hatch bands asserted, not a nominated worst case
+- `frontend/src/app/operator/set-editor.contrast.spec.ts` — same
+- `frontend/e2e/layout-editor.e2e.ts` — the cell-vs-swatch mirror proof, where the paint sequence already lives (AC-4)
 - `frontend/src/app/operator/daily-view-tab.ts|.html` — tile + legend hatch → token; warn panel + trigger button repaint
 - `frontend/src/app/operator/daily-view-tab.contrast.spec.ts` — the rule-2 assertion for the trigger button (AC-7)
 - `frontend/src/app/operator/payouts-tab.html` — warn panel repaint
@@ -342,6 +345,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-01 | phase 1 — one hatch | **Every image built inline in a class expression** (`bg-[…gradient(…)]`), not "the walk-in gradients". The resemblance-led population is the three hatches the phase already knew about; the mechanism is *an image a token could own*, which is what makes a mirror stop mirroring | `for f in $(git ls-files \| sed 's\|^frontend/\|\|' \| grep -E '^src/app/.*\.(ts\|html)$' \| grep -v '\.spec\.ts$'); do grep -oE "bg-\\[[^]]*gradient\\([^]]*\\]" "$f"; done` | **8 inline gradients survive.** One pair is the same finding in another class: `app.html`'s sun `radial-gradient(circle_at_34%_30%,#ffe6a3,#f0aa2e_70%)` and `pages/home/home.html`'s `radial-gradient(circle_at_34%_30%,rgba(255,236,180,0.95),rgba(240,170,46,0.5)_72%)` — same geometry, near-identical amber, stops 70% vs 72%. Also noted: `venue/map-tile.ts` carries a *second* thing called a walk-in hatch (135deg, `--riv-tile-walkin-hatch`, tourist surface) which is genuinely NOT this one | **Recorded, not fixed.** Both are class T/S literals, which this slice's Non-goals exclude, and merging the two suns would repaint the app shell and the tourist home hero. Carried to close-out as a follow-up issue |
 | 2026-09-01 | phase 0 — the ladder | **Every `--riv-*` token painted with an `/opacity` modifier**, not "the tokens in `CLASS_O_TINTS`". The resemblance-led population would have been the nine sites the ladder sweep already named; the mechanism is the *form* (`/α` on a token), which is what class O is defined by | `for f in $(git ls-files \| grep -E '^frontend/src/app/.*\.(ts\|html)$' \| grep -v '\.spec\.ts$'); do grep -oE "(text\|bg\|border\|from\|to\|via)-(riv-[a-z-]+\|\[#[0-9a-fA-F]+\])/[0-9]+" "$f" \| while read -r m; do a=${m##*/}; [ $((a % 5)) -ne 0 ] && echo "$f: $m"; done; done` | **2 beyond the plan's nine** — `payouts-tab.html`'s reason chip at `border-riv-console-negative-ink/28` + `bg-riv-console-negative-ink/12`. Class-O positions (ledger row: "*reuses* `--riv-console-negative-ink`") whose token lives outside `CLASS_O_TINTS`, so an array-scoped sweep walked straight past them | **Fixed all.** Widened `offLadderIn` from the token array to the form `-riv-[a-z-]+/α`; moved the chip to `/30`+`/10`; updated its three proofs (`console-negative-token` CHIP_TINTS, `payouts-tab.contrast` AA at 0.10, and the two `OUT_OF_FAMILY` guards, **rewritten not deleted** per the ledger's own rule) |
 
 ---

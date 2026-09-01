@@ -36,8 +36,9 @@ import {
 
 // The FREE tile fill (`bg-white/85`, daily-view-tab.ts tileClass).
 const FREE_TILE_FILL = { color: WHITE, alpha: 0.85 };
-// The locked tile's worst-case fill: the striped gradient's darker rgba(12,42,51,0.28) band.
-const LOCKED_STRIPE_FILL = { color: CARD_INK, alpha: 0.28 };
+// The locked tile's worst-case fill: --riv-walkin-hatch's darker band, a CARD_INK tint. 0.30 since
+// #879 gave the hatch one declaration (this tile painted 0.28 of its own before).
+const LOCKED_STRIPE_FILL = { color: CARD_INK, alpha: 0.3 };
 // --riv-cta-grad stops (the AA-safe darkened teal shared with every CTA); the empty-state link sits on these.
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
 
