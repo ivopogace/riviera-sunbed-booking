@@ -9,7 +9,7 @@ teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR
 outline-button skin's theme-invariant family, PR #859), **#854** (the nine solid button/badge
 fills under fixed white ink, PR #860), **#861** (merging that family's two brand teals onto one,
 PR #862), **#848** (the operator console's accent ink, PR #863), **#864** (the console's negative
-ink, PR #866), **#858** (the three fixed-fill state skins, PR #867), **#869** (`outcome-card`'s two tone glyphs onto the medallion skin, PR #871), **#870** (the beach-map zoom toggle's fixed-pair-over-a-themed-host, PR #873), **#868** (the amber notice banner's theme-invariant pair, PR #874), **#853** (the CTA hairline's own border token, PR #875).
+ink, PR #866), **#858** (the three fixed-fill state skins, PR #867), **#869** (`outcome-card`'s two tone glyphs onto the medallion skin, PR #871), **#870** (the beach-map zoom toggle's fixed-pair-over-a-themed-host, PR #873), **#868** (the amber notice banner's theme-invariant pair, PR #874), **#853** (the CTA hairline's own border token, PR #875), **#852** (all of class **O** — the `/opacity`-modifier positions — settled on rule B and closed, PR #878).
 
 > **This file is not a design record.** `docs/design/README.md` governs the `.dc.html`
 > artboards — approved-look snapshots that are deliberately *never* rewritten to track the
@@ -178,20 +178,88 @@ These families must move **as a pair**, onto tokens declared **once** with no da
 > own below rather than a silent omission: the amber **notice banner**, `shared/outcome-card.ts`'s
 > tone glyphs, and — already covered — `requests-tab`'s green medallion.
 
-### Class O — `/opacity` modifier: tokenising is a computed-value change
+### Class O — `/opacity` modifier: **settled on rule B, and done**
 
-**44 of the 287 positions carry Tailwind's `/opacity` modifier** (`bg-[#2bb8d4]/20`). That
-compiles to `color-mix()`, so replacing the literal with a pre-composed `rgba()` token — the
-form `--riv-danger-*` and `--riv-accent-*` set the precedent for — is *not* a substitution:
-it changes the computed value. Every family here owes the before/after computed-style diff
-#835 used, and none is a candidate for a mechanical pass.
+**44 positions carried Tailwind's `/opacity` modifier** (`bg-[#2bb8d4]/20`). This class was held
+back on the premise that tokenising one *changes the computed value*, so none was a candidate for
+a mechanical pass and every family owed a before/after diff. **That premise was wrong**, and
+correcting it is what let the class close in one slice.
 
-| Family | n | Note | Status |
+Tailwind compiles `bg-[#2bb8d4]/20` to `color-mix(in oklab, #2bb8d4 20%, transparent)` — the
+**literal form already produces a `color-mix()`** — and compiles `bg-riv-select-tint/20` to the same
+expression with `var(--riv-select-tint)` in the colour slot. Measured in Chromium across the 29
+(colour × alpha) pairs this class actually contained, over five host colours: `color-mix` and a
+pre-composed `rgba()` composite **byte-identically, 145/145**. So neither of the options this
+class was stuck between moved a pixel, and the choice was never about visual risk.
+
+**The rule, for any future `/opacity` position: the modifier stays at the call site, and the
+literal inside it becomes a token.** One token per base colour, no alpha baked in.
+
+Why B rather than pre-composing an `rgba()` token per (colour × alpha) pair, the form
+`--riv-danger-*` and `--riv-accent-*` set the precedent for:
+
+- **It preserves the computed-style string, not just the paint.** Pre-composing flips every
+  `toHaveCSS` on these sites from `oklab(…)` to `rgba(…)`; B leaves the assertions untouched.
+- **The alpha stays beside the comment that explains it.** `beach-cell`'s aisle boundary is
+  `/55` and not `/35` for a stated 1.4.11 reason; pre-composing moves the number away from its why.
+- **It does not multiply tokens by drift.** `#0c2a33` alone carries ten distinct alphas across
+  seventeen sites, so A would have registered ten tokens for one colour.
+- **It expresses a reuse A could not.** `payouts-tab`'s reason chip takes
+  `--riv-console-negative-ink` — the ink token already on that element — for its border and fill,
+  because there the value coincidence *is* a role match.
+
+**The one behavioural difference, stated rather than left to be discovered.** For a `var()`-valued
+colour Tailwind emits an extra fallback declaration *outside* its
+`@supports (color: color-mix(in lab, red, red))` guard, and that fallback is the **fully opaque**
+colour (an unresolvable `var()` inside `color-mix()` collapses to the base colour — traced in
+`tailwindcss/dist/lib.js`). The literal form emits no fallback at all. It paints only where
+`color-mix()` is unsupported, which is below Tailwind v4's own documented floor — its
+compatibility page names **Chrome 111 / Safari 16.4 / Firefox 128** — so every other v4 utility is
+equally undefined there. Worth knowing before writing `bg-riv-x/α` on a surface where an opaque
+fallback would be harmful.
+
+**What the documentation says: nothing.** Tailwind's *Colors* page states only that the modifier
+"sets the alpha channel of the color" and never says what it compiles to; its *Referencing other
+variables* section documents `@theme inline` with per-scope `:root` overrides — this repo's exact
+pattern — with no caveat about combining the two. Angular's v22 docs return zero results for
+colour-token and contrast queries, the same silence `non-text-contrast.md` records. The compiler
+settled this, not the docs.
+
+| Family | n | Token(s) | Status |
 |---|---:|---|---|
-| `#0c2a33/·` in `operator/` | 17 | Also a **near-duplicate**: `#0c2a33` is `rgb(12,42,51)`, the base of the `--riv-ink-*` rgba family, but `--riv-ink` itself is `#0a2a33`. Decide whether the two-unit difference is intent or drift before tokenising | open → #852 |
-| `#2bb8d4/·` + `#0e8aa8/·` (map/editor selection chrome) | 8 | Already enumerated on #836 by the maintainer | open → #852 |
-| `#a3160e/·` (borders `/25 /30 /40 /50`, fill `/10`) | 7 | The alert-red's tint half; the ink half is class T | open → #852 |
-| `#d9861a/·`, `#f0aa2e/·`, `#0e6e46/·`, `#a3372a/·` | 9 | Amber + green status tints | open → #852 |
+| `#0c2a33/·` in `operator/` | 17 | `--riv-console-tint` | **done — #852, PR #878** |
+| `#2bb8d4/·` + `#0e8aa8/·` (map/editor selection chrome) | 8 | `--riv-select-tint`, `--riv-select-edge` | **done — #852, PR #878** |
+| `#a3160e/·` (borders `/25 /30 /40 /50`, fill `/10`) | 7 | `--riv-alert-tint` | **done — #852, PR #878** |
+| `#d9861a/·`, `#f0aa2e/·`, `#0e6e46/·` | 7 | `--riv-warn-edge`, `--riv-warn-tint`, `--riv-positive-tint` | **done — #852, PR #878** |
+| `#a3372a/·` (`payouts-tab`'s reason chip) | 2 | *reuses* `--riv-console-negative-ink` | **done — #852, PR #878** |
+| `#061e28/45` (`payout-statement`'s backdrop) | 1 | `--riv-console-scrim` | **done — #852, PR #878** |
+| `#b47814/40` (`beach-cell`'s premium border) | 1 | `--riv-premium-edge` | **done — #852, PR #878** |
+| `#e0a03a/60` (`confirm-panel`'s edge) | 1 | `--riv-confirm-warn-edge` | **done — #852, PR #878** |
+
+> **The last three rows did not exist before #852.** This section's table enumerated **41** of its
+> own 44 positions — `#061e28/45`, `#b47814/40` and `#e0a03a/60` appeared in no family row, so a
+> reader working the table to completion would have left three behind. Found by running the
+> population command with the `]/α` suffix rather than by reading the rows.
+
+**Three skins came with the migration**, because #858's take-the-ternary-whole rule forbids leaving
+a named utility beside a literal in one expression: `beach-cell`'s `CELL_CLASS` (its walk-in
+gradient painted the same base colour raw, its premium gradient became the shared
+`--riv-premium-grad` image token), the selected/unselected ternaries in `set-editor` and
+`layout-editor` (whose selected branch paired a class-O fill with a *plain* `#0e8aa8` border), and
+`shared/confirm-panel`'s warning surface (whose class-O edge shares a host string with a class-S
+fill and ink). Generalizing that rule by **mechanism** — class expressions naming a class-O token
+*and* a raw literal of its own value — also turned up `daily-view-tab`'s BOOKED_ONLINE tile and the
+two swatches mirroring it, which no reading of the four family rows would have surfaced. It is now
+a standing test rather than a habit.
+
+**Left deliberately undone, with its own issue — [#879](https://github.com/ivopogace/riviera-sunbed-booking/issues/879): normalising the alphas.** Rule B preserves every
+per-site alpha, which is the right default for a migration and the wrong end state for a palette.
+The drift is real and now visible in one place: `--riv-console-tint` is painted at ten alphas, the
+amber treatment wears **four** distinct base colours (`#d9861a`, `#f0aa2e`, `#b47814`, `#e0a03a`),
+`--riv-confirm-warn-*` near-duplicates `--riv-notice-banner-*` at both of its positions, and the
+two walk-in gradients the code calls mirrors of each other are 30%/12% against 35%/12%. That is a
+deliberate visual change with its own budget, and it is a much cheaper argument to have against
+tokens than it was against literals.
 
 ### Class R — role mismatch: the value matches a token whose *role* is different
 
@@ -205,7 +273,7 @@ does not. Each needs its own token, not the coincidental one.
 | The white **inset-highlight** ramp inside composite shadows (`shadow-[…inset_0_1px_0_rgba(255,255,255,α)]`) | 48 | `--riv-inset-fill` (the α = 0.4 member only) | Split out of the row above by **#853**, which deliberately left it. Same coincidence, third role: an inner highlight LINE, not a border and not a fill — and it is one member of an eight-alpha ramp (0.25 / 0.4 / 0.5 / 0.6 / 0.7 / 0.8 / 0.85 / 0.9), so tokenising the one that happens to match would leave a named var beside seven literals in the same idiom. Not in this file's population command either (it requires `#`/`rgba(` immediately after `[`). Wants a **ramp** named by depth, which is a palette pass, not a migration | open |
 | White **0.6** borders (`outcome-card`, `request-confirmation`, `booking-pay`, `booking-confirmation` ×2) | 5 | `--riv-card-border` (light value) | Recorded by **#853**, whose neighbour it is; `testing/glass-tokens.ts` pointed these at that issue, which was never their family. Role matches this time — a border pointed at a border token — so the question is the **surface**, and it splits: four sit on fixed medallion/badge fills (a themed border would drift, the #853 answer) and one is the confirmation `<dl>`'s edge on the now-themed inset fill (where `--riv-card-border` may be exactly right) | open |
 | `#8a5410` warn ink, `#8a3a2a`, `#0a5e7a`, `#334a52`, … | ~20 | — | No token at all; these are genuine new-token candidates once their role is named | open |
-| Plain `text-[#a3372a]` refund-red inks in `operator/` (`payouts-tab.ts` + `.html`, `daily-view-tab.html`) | 3 | `--riv-solid-btn-danger-ink` | **Migrated onto its own token, `--riv-console-negative-ink`, not the coincidental one.** That token is the outline **button**'s ink, pinned to the button's own non-theming fill (#851); these three are console inks on card glass — different role, different surface, so the same fork #848 settled, whose mechanical answer is the precedent rather than a re-derivation. **Family:** a `--riv-console-*-ink` pair with the accent ink — same host, surface and theme-invariance ground — but in **naming only**: separate declarations (each declared once, which is the whole guard) and separate guard specs, because the two distinctness arguments share nothing (`#0a6e85` has three roles; this one is separated from a button ink and from #852's tints of its own value). **Name:** `negative`, not `danger` — `danger` is that button token's own word and `--riv-danger-*`/`--riv-error-ink` are the tourist alert families, so `danger` would leave the two confusable roles one hyphen apart; `negative` names what the three sites share, a negative outcome, and reads as one axis beside the accent pole at `payouts-tab.ts:135`. The chip tint (5.05:1) is the lowest pair and was measured, not assumed. Found by #848's generalization sweep, which enumerated the plain ink form by mechanism; the `/opacity` tints (#852) and the button ink (#851) already had rows, the ink form had none. **Corrected by #858:** `failure-panel` and `booking-pay` left the `OUT_OF_FAMILY` guard for `--riv-medallion-negative-ink` — their `#a3372a` is a decorative medallion ink, a fourth role — so `payouts-tab.html`'s `/opacity` tints (#852's) are the array's last entry | **done — #864, PR #866** |
+| Plain `text-[#a3372a]` refund-red inks in `operator/` (`payouts-tab.ts` + `.html`, `daily-view-tab.html`) | 3 | `--riv-solid-btn-danger-ink` | **Migrated onto its own token, `--riv-console-negative-ink`, not the coincidental one.** That token is the outline **button**'s ink, pinned to the button's own non-theming fill (#851); these three are console inks on card glass — different role, different surface, so the same fork #848 settled, whose mechanical answer is the precedent rather than a re-derivation. **Family:** a `--riv-console-*-ink` pair with the accent ink — same host, surface and theme-invariance ground — but in **naming only**: separate declarations (each declared once, which is the whole guard) and separate guard specs, because the two distinctness arguments share nothing (`#0a6e85` has three roles; this one is separated from a button ink and from #852's tints of its own value). **Name:** `negative`, not `danger` — `danger` is that button token's own word and `--riv-danger-*`/`--riv-error-ink` are the tourist alert families, so `danger` would leave the two confusable roles one hyphen apart; `negative` names what the three sites share, a negative outcome, and reads as one axis beside the accent pole at `payouts-tab.ts:135`. The chip tint (5.05:1) is the lowest pair and was measured, not assumed. Found by #848's generalization sweep, which enumerated the plain ink form by mechanism; the `/opacity` tints (#852) and the button ink (#851) already had rows, the ink form had none. **Corrected by #858:** `failure-panel` and `booking-pay` left the `OUT_OF_FAMILY` guard for `--riv-medallion-negative-ink` — their `#a3372a` is a decorative medallion ink, a fourth role — so `payouts-tab.html`'s `/opacity` tints are the array's last entry. **Resolved by #852:** those tints turned out to belong to this very token — same element, same meaning — so they were migrated ONTO it rather than to one of their own, and the fourth role never materialised as a fifth token. The guard's last entry stays, rewritten to the token form rather than deleted: it records a paint #851 must not have taken, not the notation that paint wears | **done — #864, PR #866** |
 
 ### Class S — per-state palettes and one-offs: exempt for now
 
@@ -249,9 +317,19 @@ Each family becomes its own issue and its own PR, largest inconsistency first. T
 
 ## Should the exemption classes become a lint rule?
 
-Not yet — #836's step 4, deliberately deferred. A rule is worth writing when the residue is
-a **boundary** rather than a backlog. Today classes T + F + O + R are ~120 positions of live
-work; class S is a palette design pass nobody has scheduled. Revisit once T, F and R are
-`done` and the remaining literals are all class S and the one class-1 exemption — at that
-point the rule is "a colour literal must sit inside an arbitrary variant expression or carry
-a recorded deviation", which is checkable and would hold.
+Not yet for the population as a whole — #836's step 4, deliberately deferred. A rule is worth
+writing when the residue is a **boundary** rather than a backlog. Classes T + F + R are still live
+work; class S is a palette design pass nobody has scheduled. Revisit once T, F and R are `done` and
+the remaining literals are all class S and the one class-1 exemption — at that point the rule is
+"a colour literal must sit inside an arbitrary variant expression or carry a recorded deviation",
+which is checkable and would hold.
+
+**Class O is already there, and is the worked example of what "a boundary" means.** #852 did not
+just migrate its 44 positions; it left a test that fails on **any** `/opacity` colour literal
+anywhere in `frontend/src` — including one of a colour no token covers, which is the property that
+separates a boundary from a backlog. Two more standing checks came with it, both generalizations of
+mistakes the slice made and caught: no class expression may name a class-O token *and* a raw
+literal of its own value (a half-migrated per-state branch), and a positive "still painted here"
+list may not be empty (an emptied guard passes vacuously). When T, F and R close, this is the shape
+the whole rule can take — a `check-*.mjs` in the same family as the other hygiene guards rather
+than a new kind of thing.

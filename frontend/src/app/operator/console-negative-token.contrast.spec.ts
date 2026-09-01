@@ -21,8 +21,10 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * <p>The sibling of `console-accent-token.contrast.spec.ts`, and deliberately a SEPARATE file
  * rather than a second half of it: the two tokens share a host, a surface and a theme-invariance
  * ground, but their role-distinctness arguments have nothing in common — that one separates three
- * roles carrying `#0a6e85`, this one separates a console ink from the outline BUTTON's ink and from
- * the `/opacity` tints of the same value that stay #852's.
+ * roles carrying `#0a6e85`, this one separates a console ink from the outline BUTTON's ink. The
+ * third role it was separated from — the reason chip's `/opacity` tints of the same value — has
+ * since (#852) been migrated onto this token rather than away from it: same element, same meaning,
+ * so there the value coincidence was a role match after all.
  *
  * <p>What this file owns is the part no per-tab AA spec can see — that the token is a token, and
  * stays the one it claims to be. The ink is THEME-INVARIANT by decision rather than by omission:

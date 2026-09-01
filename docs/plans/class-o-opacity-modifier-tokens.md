@@ -28,9 +28,10 @@ ledger's own table never listed) · `riviera-plan-doc` (this template — forced
 ledger, which is what surfaced that three sibling specs assert these literals *present* and will go
 red) · `tdd` (each family is red-green at the three seams named in the ACs: the stylesheet source,
 the rendered class list, the composited paint) · `riviera-review-overlay` (review gate — due at
-ready-for-review) · `riviera-docs-freshness` (**ran** — phase 4, over the slice's own merge range;
-the counting sweep matters here because sibling specs and the ledger both state "#852's" as
-*pending* work) · `riviera-tailwind` (the `@theme inline` + per-theme-`:root` registration shape,
+ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main..HEAD` — **7 findings, all patched**;
+the rename sweep caught six statements still calling class O pending, and one that was already
+false before this slice: `console-accent-token.contrast.spec.ts` claimed class O carried `#0a6e85`
+as `/opacity` selection chrome, which it never did) · `riviera-tailwind` (the `@theme inline` + per-theme-`:root` registration shape,
 the theme-invariant-is-a-decision rule, and the #858 take-the-ternary-whole rule — which is what
 widened the slice past the 44 positions onto three entangled skins) · `riviera-frontend` (token
 registry lives in exactly two places — `tailwind.css` and `core/theme.ts`; specs colocate with the
@@ -57,20 +58,20 @@ for `feature/class-o-opacity-modifier-tokens` (`riviera-sdlc` § *Remote / cloud
 > (`toHaveCSS`, mocked e2e) — the only thing that catches a token declared without its
 > `@theme inline` row, where the class stays in the markup and the paint silently does not change.
 
-- [ ] **AC-1:** Given the eleven class-O base colours, when `src/tailwind.css` is read as text, then each token is declared **exactly once** and that declaration sits in the base block (`:root, [data-riv-theme='porcelain']`), and each carries its `@theme inline` row. *Seam:* S1 — `src/tailwind.css` via `stylesheet-tokens.ts` · *Pinned by:* `shared/class-o-tint-tokens.contrast.spec.ts` › "every class-O token is declared once, in the base block, with its @theme inline row"
-- [ ] **AC-2:** Given the population command in `colour-literal-token-audit.md` § *The population*, when it is run over `frontend/src` excluding `*.spec.ts`, then **zero** results carry a `/opacity` modifier. *Seam:* S2 — the source tree, swept by the ledger's own command · *Pinned by:* `shared/class-o-tint-tokens.contrast.spec.ts` › "no `/opacity` colour literal survives in frontend/src"
-- [ ] **AC-3:** Given a set-editor tier button in its selected state, when it renders in a real browser, then its `background-color` computes to exactly the value `bg-[#2bb8d4]/20` produced before this slice. *Seam:* S3 — `toHaveCSS` on the rendered element · *Pinned by:* `e2e/class-o-tint-tokens.e2e.ts` › "the selected tier button's tint is byte-identical to its pre-token paint"
-- [ ] **AC-4:** Given the operator console pins porcelain and every class-O site sits inside it or on a fixed-white host, when the document theme is forced to `dark`, then every migrated position's computed colour is **unchanged** from its porcelain value. *Seam:* S3 — forced `data-riv-theme="dark"` on the document, `toHaveCSS` on the same elements · *Pinned by:* `e2e/class-o-tint-tokens.e2e.ts` › "the class-O tints hold under a forced dark document theme"
-- [ ] **AC-5:** Given `beach-cell.ts`'s `CELL_CLASS` and `shared/confirm-panel.ts`'s tone palette are per-state maps whose other branches carry literals outside class O, when the slice lands, then **no branch of either map mixes a named utility with a hex literal**. *Seam:* S2 — the rendered class list of each variant · *Pinned by:* `beach-cell.spec.ts` › "every cell state paints from tokens only"; `confirm-panel.spec.ts` › "the warning surface paints from tokens only"
-- [ ] **AC-6:** Given the ledger's class-O section, when the slice merges, then its four family rows read `done` with this PR, the section states rule **B** with the measurement behind it, and the three previously-unlisted positions (`#061e28`, `#b47814`, `#e0a03a`) appear as rows. *Seam:* the committed `docs/design/colour-literal-token-audit.md` · *Pinned by:* review-gate read (no automated pin — a docs assertion; `check-plan-file-structure.mjs` pins that the file is in the diff)
+- [x] **AC-1:** Given the **twelve** class-O base colours, when `src/tailwind.css` is read as text, then each token is declared **exactly once** and that declaration sits in the base block (`:root, [data-riv-theme='porcelain']`), and each carries its `@theme inline` row. *Seam:* S1 — `src/tailwind.css` via `stylesheet-tokens.ts` · *Pinned by:* `shared/class-o-tint-tokens.contrast.spec.ts` › per-token "is declared exactly once…", "is declared in the base block…", "declares the value this test mirror carries", "is mapped in `@theme inline`…"
+- [x] **AC-2:** Given the population command in `colour-literal-token-audit.md` § *The population*, when it is run over `frontend/src` excluding `*.spec.ts`, then **zero** results carry a `/opacity` modifier. *Seam:* S2 — the source tree, swept by the ledger's own command · *Pinned by:* `shared/class-o-tint-tokens.contrast.spec.ts` › "leaves no `/opacity` colour literal anywhere in the app sources" (the form) + per-token "leaves no app source painting its base colour as an `/opacity` literal" (the values), with "recognises the `/opacity` form, and only it — the sweep must be able to fail" proving the matcher itself
+- [x] **AC-3:** Given the layout editor's armed tool (the same `bg-…/20` expression the set-editor's selected tier carries), when it renders in a real browser, then its `background-color` computes to exactly the `oklab(0.723426 -0.0974235 -0.0681883 / 0.2)` that `bg-[#2bb8d4]/20` produced before this slice. *Seam:* S3 — `toHaveCSS` on the rendered element · *Pinned by:* `e2e/class-o-tint-tokens.e2e.ts` › "the armed tool's tint is byte-identical to its pre-token paint", with "every token is declared, and every utility built on it is generated" covering all twelve
+- [x] **AC-4:** Given the operator console pins porcelain and every class-O site sits inside it or on a fixed-white host, when the document theme is forced to `dark`, then every migrated position's computed colour is **unchanged** from its porcelain value. *Seam:* S3 — forced `data-riv-theme="dark"` on the document, `toHaveCSS` on the same elements · *Pinned by:* `e2e/class-o-tint-tokens.e2e.ts` › "the class-O tints hold under a forced dark document theme"
+- [x] **AC-5:** Given `beach-cell.ts`'s `CELL_CLASS` and `shared/confirm-panel.ts`'s tone palette are per-state maps whose other branches carry literals outside class O, when the slice lands, then **no branch of either map mixes a named utility with a hex literal**. *Seam:* S2 — the class expression itself · *Pinned by:* `shared/class-o-tint-tokens.contrast.spec.ts` › per-token "is never named in the same class expression as a raw literal of its own value" — **generalized past what this AC asked for.** The AC named two maps; the test enumerates the mechanism, and found two more sites in files the AC never mentioned. `beach-cell.spec.ts` › "emits exactly the class string the layout editor carried before the extraction" and `confirm-panel.spec.ts` › "keeps the warning surface both consumers already ship" pin the two named maps' own strings
+- [x] **AC-6:** Given the ledger's class-O section, when the slice merges, then its family rows read `done` with this PR (**eight rows now, not four** — the four families split by token, plus the three positions the section never listed), the section states rule **B** with the measurement behind it, and the lint-rule section records that class O is now a boundary rather than a backlog. *Seam:* the committed `docs/design/colour-literal-token-audit.md` · *Pinned by:* review-gate read (no automated pin — a docs assertion; `check-plan-file-structure.mjs` pins that the file is in the diff)
 
 ## Non-goals
 
 - **Normalising the alphas (option C).** `#0c2a33` alone carries ten distinct alphas across
   seventeen sites (`/4 /5 /7 /10 /12 /14 /15 /20 /45 /55`) and the amber family is four distinct
   base colours. That is real drift, and it is a **deliberate visual change** with its own budget —
-  it becomes a follow-up issue in phase 4, argued against tokens instead of literals, which is the
-  cheaper argument. Settled with the maintainer at plan time.
+  cut as **#879**, argued against tokens instead of literals, which is the cheaper argument.
+  Settled with the maintainer at plan time.
 - **Fixing `--riv-ink`'s two-unit gap.** `--riv-ink` is `#0a2a33` while its own siblings
   `--riv-ink-soft`/`--riv-ink-faint` are `rgba(12, 42, 51, …)` = `#0c2a33`. The gap is inside that
   family, not introduced by these sites; touching it would restyle every muted ink in the app.
@@ -104,29 +105,29 @@ for `feature/class-o-opacity-modifier-tokens` (`riviera-sdlc` § *Remote / cloud
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A token is registered in the `:root` block but its `@theme inline` row is forgotten — the class stays in the markup and the paint silently does not change; no unit spec can see it | med | high | AC-1 asserts the `@theme inline` row per token from the stylesheet source (S1), and AC-3/AC-4 prove the real paint in a browser (S3). This is the documented failure mode of every prior token slice (#848, #858, #864) | claude | open |
-| R-2 | The sweep reaches a position of the **same value but a different role** — `#a3160e` is also `--riv-solid-fill-danger` and light-theme `--riv-error-ink`; `#0e8aa8` is `--riv-accent-strong`; `#a3372a` is `--riv-solid-btn-danger-ink` | high | high | Match **by form, not by value**: every sweep regex requires the `]/α` modifier, which is class O's discriminator. The sibling specs' `(?!\/)` lookaheads are the mirror image of the same discipline and stay in place as a cross-check | claude | open |
-| R-3 | A token *themes* by accident (declared outside the base block, or a later slice adds a dark override), flipping a hairline on a fixed-white host to near-invisible | low | high | Every host here is fixed: the console pins porcelain (`host: { 'data-riv-theme': 'porcelain' }`), `payout-statement`'s panel is `bg-white`. AC-1 pins single-declaration-in-base-block from the stylesheet **source** (jsdom maths cannot see this); AC-4 proves it against a forced dark document | claude | open |
-| R-4 | The opaque `@supports` fallback paints on a browser inside the project's declared support window | low | med | The project's effective browserslist (Angular default, unoverridden) has **chrome 109** as its floor; `color-mix()` needs 111, which is also Tailwind v4's own documented floor ("designed for … Chrome 111"). So the two versions in the gap are already outside the framework's support, and every other v4 utility is equally undefined there. Recorded in the ledger; widening the browserslist is a Non-goal | claude | open |
-| R-5 | Taking the entangled skins whole (AC-5) drags in positions that are class **S** (`confirm-panel`'s tone palette) or outside the population entirely (`beach-cell`'s two gradients), quietly widening the diff past the ticket | high | low | Deliberate and maintainer-approved. Bounded to exactly three skins — `beach-cell.CELL_CLASS`, `confirm-panel`'s warning surface, and the two selected/unselected ternaries in `set-editor.html`/`layout-editor.html` — each named in *File structure*, each because it has **at least one class-O position** in the same expression. No fourth skin is taken | claude | open |
-| R-6 | The ledger's class-O row count (41 enumerated) disagrees with its own headline (44), so a family is migrated and the ledger still reads `open` | med | low | Phase 4 rewrites the section against the population command's live output, not against the existing rows; AC-6 pins the outcome. The three orphans are already identified: `#061e28/45`, `#b47814/40`, `#e0a03a/60` | claude | open |
+| R-1 | A token is registered in the `:root` block but its `@theme inline` row is forgotten — the class stays in the markup and the paint silently does not change; no unit spec can see it | med | high | AC-1 asserts the `@theme inline` row per token from the stylesheet source (S1), and AC-3/AC-4 prove the real paint in a browser (S3). This is the documented failure mode of every prior token slice (#848, #858, #864) | claude | **closed** — the e2e was proven able to catch it: deleting one `@theme inline` row turns the armed tool `rgba(0, 0, 0, 0)` and reddens all three tests |
+| R-2 | The sweep reaches a position of the **same value but a different role** — `#a3160e` is also `--riv-solid-fill-danger` and light-theme `--riv-error-ink`; `#0e8aa8` is `--riv-accent-strong`; `#a3372a` is `--riv-solid-btn-danger-ink` | high | high | Match **by form, not by value**: every sweep regex requires the `]/α` modifier, which is class O's discriminator. The sibling specs' `(?!\/)` lookaheads are the mirror image of the same discipline and stay in place as a cross-check | claude | **closed** — every sweep matches the `]/α` form; the sibling `(?!\/)` lookaheads stayed and cross-checked it |
+| R-3 | A token *themes* by accident (declared outside the base block, or a later slice adds a dark override), flipping a hairline on a fixed-white host to near-invisible | low | high | Every host here is fixed: the console pins porcelain (`host: { 'data-riv-theme': 'porcelain' }`), `payout-statement`'s panel is `bg-white`. AC-1 pins single-declaration-in-base-block from the stylesheet **source** (jsdom maths cannot see this); AC-4 proves it against a forced dark document | claude | **closed** — all twelve declared once, in the base block; AC-4 green under a forced dark document |
+| R-4 | The opaque `@supports` fallback paints on a browser inside the project's declared support window | low | med | The project's effective browserslist (Angular default, unoverridden) has **chrome 109** as its floor; `color-mix()` needs 111, which is also Tailwind v4's own documented floor ("designed for … Chrome 111"). So the two versions in the gap are already outside the framework's support, and every other v4 utility is equally undefined there. Recorded in the ledger; widening the browserslist is a Non-goal | claude | **closed** — bounded and written into the ledger; below Tailwind v4's own Chrome-111 floor |
+| R-5 | Taking the entangled skins whole (AC-5) drags in positions that are class **S** (`confirm-panel`'s tone palette) or outside the population entirely (`beach-cell`'s two gradients), quietly widening the diff past the ticket | high | low | Deliberate and maintainer-approved. Bounded to exactly three skins — `beach-cell.CELL_CLASS`, `confirm-panel`'s warning surface, and the two selected/unselected ternaries in `set-editor.html`/`layout-editor.html` — each named in *File structure*, each because it has **at least one class-O position** in the same expression. No fourth skin is taken | claude | **closed** — three skins taken, each named; the mechanism sweep found two more sites and they were taken too, which widened the diff by four positions beyond the 44 |
+| R-6 | The ledger's class-O row count (41 enumerated) disagrees with its own headline (44), so a family is migrated and the ledger still reads `open` | med | low | Phase 4 rewrites the section against the population command's live output, not against the existing rows; AC-6 pins the outcome. The three orphans are already identified: `#061e28/45`, `#b47814/40`, `#e0a03a/60` | claude | **closed** — the section was rewritten against the population command; the three orphans are rows |
 | R-7 | No Flyway migration, no backend, no API shape change — the usual collision risks do not apply | — | — | N/A — no `V<n>` claimed; no open PR overlap (this is the only open branch) | claude | closed at plan time |
 
 ## Open questions / Assumptions
 
-- **Assumption:** `#2bb8d4`/`#0e8aa8` selection chrome gets its **own** tokens rather than reusing
-  `--riv-accent-*`, whose values it coincides with (`--riv-accent-strong` *is* `#0e8aa8`). Ground:
-  role before value — `--riv-accent-*` is the tourist-side accent tint family (info panel, selected
-  chip, pay spinner track); these are operator-console selection chrome on a porcelain-pinned host.
-  The same fork #848, #858 and #864 each resolved the same way. — *Owner:* claude · *Resolves by:*
-  phase 1 (the token's declaration comment carries the argument, as those three do)
-- **Assumption:** `#a3372a`'s two class-O positions **do** reuse `--riv-console-negative-ink`
-  rather than getting a token of their own — same value, same host, same element, and genuinely the
-  same role (the reason chip's border and fill under that ink). This is a reuse the role rule
-  *permits*, not a coincidence it forbids, and it is the one place rule B expresses something rule A
-  could not. — *Owner:* claude · *Resolves by:* phase 2
+*(empty — every entry below is resolved.)*
 
 ### Resolved
+
+- **Assumption → confirmed (phase 1, `ef8aad8`):** the `#2bb8d4`/`#0e8aa8` selection chrome got its
+  **own** tokens rather than reusing `--riv-accent-*`, whose values it coincides with. Role before
+  value: `--riv-accent-*` is the tourist accent tint family, these are console selection state, and
+  `@theme inline` resolves at the point of use, so the reuse would route one through the other's
+  variable. The argument sits at `--riv-select-edge`'s declaration, as #848/#858/#864 each did.
+- **Assumption → confirmed (phase 2, `3fec9e1`):** `#a3372a`'s two class-O positions **do** reuse
+  `--riv-console-negative-ink`. Same value, host, element and role — the reason chip's border and
+  fill under the ink that token already paints. The one place in class O where the value
+  coincidence is a role match, and the one thing rule B expresses that rule A could not.
 
 - **Open question (the ticket's own A/B/C):** settled as **B now, C as a follow-up**, with the
   maintainer at plan time. The ticket's premise — "replacing the literal with a pre-composed
@@ -198,18 +199,18 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3 done, phase 4 next)`
+**Stage pointer:** `PR ready-for-review — the Review and Sonar gates are now due`
 
-**Next action:** phase 4 — rewrite the ledger's class-O section on rule B, cut the option-C
-follow-up issue, run `riviera-docs-freshness`, then mark PR #878 ready for review.
+**Next action:** run the Review gate on PR #878 per `references/pr-gates.md` §1, then the Sonar
+gate; every finding re-enters at Implement.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the rule + the console-tint family (18 positions) | ✅ | `f3ed82c` |
 | 1 — selection chrome, `#2bb8d4` + `#0e8aa8` (8 + 2 whole-ternary) | ✅ | `ef8aad8` |
 | 2 — the red families, `#a3160e` (7) + `#a3372a` (2) | ✅ | `3fec9e1` |
-| 3 — amber + green tints (9) and the two entangled skins | ✅ | next commit |
-| 4 — ledger, the option-C follow-up issue, docs freshness | | |
+| 3 — amber + green tints (9) and the two entangled skins | ✅ | `9f2e11b` |
+| 4 — ledger, the option-C follow-up issue, docs freshness | ✅ | next commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -260,7 +261,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   In `shared/`, not `operator/`: the sweep is tree-wide and `shared/confirm-panel.ts` carries one of
   the 44 — same home, same reason, as `solid-fill-tokens.contrast.spec.ts` (`riviera-frontend`).
 - `frontend/e2e/class-o-tint-tokens.e2e.ts` — **new.** The AC-3/AC-4 proof.
-- `frontend/src/testing/glass-tokens.ts` — the new tint bases added to the one test-side mirror.
+- `frontend/src/testing/glass-tokens.ts` — the new tint bases added to the one test-side mirror,
+  and its `#a3372a` paragraph corrected (docs-freshness).
+- `frontend/src/app/operator/requests-tab.contrast.spec.ts`,
+  `frontend/src/app/operator/console-accent-token.contrast.spec.ts`,
+  `frontend/src/app/booking/form-error-tokens.contrast.spec.ts` — TSDoc statements calling class O
+  *pending*, corrected by the phase-4 docs-freshness sweep. The `console-accent-token` one was
+  already false before this slice: it claimed class O carried `#0a6e85` as `/opacity` selection
+  chrome, and `#0a6e85` has no `/opacity` position anywhere in the tree.
 
 ---
 
@@ -280,24 +288,24 @@ omission):
 | `--riv-console-tint` | `#0c2a33` | the console's neutral tint base — hairlines, inset fills and one sheet backdrop, all on porcelain-pinned or fixed-white hosts. The rgba base of `--riv-ink-soft`/`-faint`, and deliberately **not** `--riv-ink` (`#0a2a33`, and it themes to white) | 17 |
 | `--riv-console-scrim` | `#061e28` | the payout-statement modal backdrop | 1 |
 
-- [ ] **Step 1: Write the failing test** — `class-o-tint-tokens.contrast.spec.ts`, at seam S1 +
+- [x] **Step 1: Write the failing test** — `class-o-tint-tokens.contrast.spec.ts`, at seam S1 +
       S2: both tokens declared exactly once, inside `baseBlock()`, each with its
       `--color-riv-*` `@theme inline` row; and the ledger's population command, run over
       `frontend/src` excluding `*.spec.ts`, returns **zero** `]/α` results for `#0c2a33`/`#061e28`.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- class-o-tint-tokens` → FAIL
+- [x] **Step 2: Run it, verify it fails** — `npm test -- class-o-tint-tokens` → FAIL
       (`--riv-console-tint` has 0 declarations; the sweep finds 18 surviving literals).
-- [ ] **Step 3: Minimal implementation** — declare both tokens + their `@theme inline` rows;
+- [x] **Step 3: Minimal implementation** — declare both tokens + their `@theme inline` rows;
       rewrite the 18 positions to `border-riv-console-tint/15` &c., alpha unchanged at every site.
       `beach-cell.ts`'s `CELL_CLASS` is taken **whole** per AC-5 (its two gradients too), and
       `beach-cell.spec.ts`'s `PRE_MOVE_CELL_CLASS` restated to match.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- class-o-tint-tokens beach-cell
+- [x] **Step 4: Run it, verify it passes** — `npm test -- class-o-tint-tokens beach-cell
       payout-statement daily-view-tab layout-editor set-editor` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: *every colour position carrying
+- [x] **Step 5: Generalization-audit pass** — population: *every colour position carrying
       Tailwind's `/opacity` modifier*, enumerated by the ledger's own command with the `]/[0-9.]+`
       suffix appended (**not** by listing the files this phase touched — that is the resemblance
       trap). Append the row and the command to the log.
-- [ ] **Step 6: Commit** — `git commit -m "Settle class O on rule B and tokenise the console tint family (#852)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Settle class O on rule B and tokenise the console tint family (#852)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 > Scope: `npm test -- <names>` only. Never the bare suite (`riviera-local-debug`).
 
@@ -319,18 +327,18 @@ The two selected/unselected ternaries (`set-editor.html:182`, `layout-editor.htm
 #858's take-the-ternary-whole rule makes it this phase's, since leaving it would put a named utility
 beside a hex literal in one string.
 
-- [ ] **Step 1: Write the failing test** — extend the guard: both tokens single + in the base block
+- [x] **Step 1: Write the failing test** — extend the guard: both tokens single + in the base block
       + `@theme inline`; the sweep returns zero for both values in **either** form (with or without
       the modifier), which is what proves the ternaries were taken whole.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- class-o-tint-tokens` → FAIL.
-- [ ] **Step 3: Minimal implementation** — declare both, with the role-before-value argument at
+- [x] **Step 2: Run it, verify it fails** — `npm test -- class-o-tint-tokens` → FAIL.
+- [x] **Step 3: Minimal implementation** — declare both, with the role-before-value argument at
       `--riv-select-edge`'s declaration; rewrite all 10 positions.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- class-o-tint-tokens set-editor layout-editor payout-statement` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: *every per-state class ternary or map that
+- [x] **Step 4: Run it, verify it passes** — `npm test -- class-o-tint-tokens set-editor layout-editor payout-statement` → PASS.
+- [x] **Step 5: Generalization-audit pass** — population: *every per-state class ternary or map that
       mixes a class-O position with a non-class-O sibling in one expression* (the mechanism AC-5
       exists for). Enumerate; judge each.
-- [ ] **Step 6: Commit** — `git commit -m "Tokenise the console's selection chrome (#852)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Tokenise the console's selection chrome (#852)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -353,17 +361,17 @@ asserts the token forms present — same guard, updated frontier (behaviour-pari
 `(?!\/)` discriminators stay (R-2 depends on them), but the reason it gives for them is this
 slice's disproved premise.
 
-- [ ] **Step 1: Write the failing test** — guard extended for `--riv-alert-tint`; `CHIP_TINTS`
+- [x] **Step 1: Write the failing test** — guard extended for `--riv-alert-tint`; `CHIP_TINTS`
       inverted to the token form.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- class-o-tint-tokens console-negative-token` → FAIL.
-- [ ] **Step 3: Minimal implementation** — declare `--riv-alert-tint`; rewrite the 7 `#a3160e`
+- [x] **Step 2: Run it, verify it fails** — `npm test -- class-o-tint-tokens console-negative-token` → FAIL.
+- [x] **Step 3: Minimal implementation** — declare `--riv-alert-tint`; rewrite the 7 `#a3160e`
       positions and the 2 `#a3372a` positions; correct the two spec comments.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- class-o-tint-tokens console-negative-token solid-fill-tokens requests-tab payouts-tab daily-view-tab set-editor` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: *every spec that pins a class-O literal
+- [x] **Step 4: Run it, verify it passes** — `npm test -- class-o-tint-tokens console-negative-token solid-fill-tokens requests-tab payouts-tab daily-view-tab set-editor` → PASS.
+- [x] **Step 5: Generalization-audit pass** — population: *every spec that pins a class-O literal
       as a present-tense guard*, enumerated by grepping the spec tree for the `]/α` form (this is
       how row 6 of the parity ledger was found, and it may have siblings).
-- [ ] **Step 6: Commit** — `git commit -m "Tokenise the alert-red and console-negative tints (#852)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Tokenise the alert-red and console-negative tints (#852)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -390,20 +398,20 @@ the option-C follow-up (phase 4), not resolved here.
 three become tokens (`--riv-notice-edge`, `--riv-notice-fill`, `--riv-notice-ink`) and
 `confirm-panel.spec.ts`'s pin widens to the ink.
 
-- [ ] **Step 1: Write the failing test** — guard extended for all five (plus the two whole-skin
+- [x] **Step 1: Write the failing test** — guard extended for all five (plus the two whole-skin
       companions); the ledger's population command over `frontend/src` now returns **zero**
       `/opacity` results tree-wide (AC-2's final form).
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- class-o-tint-tokens confirm-panel` → FAIL.
-- [ ] **Step 3: Minimal implementation** — declare the tokens; rewrite the 9 positions and take the
+- [x] **Step 2: Run it, verify it fails** — `npm test -- class-o-tint-tokens confirm-panel` → FAIL.
+- [x] **Step 3: Minimal implementation** — declare the tokens; rewrite the 9 positions and take the
       confirm-panel surface whole.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- class-o-tint-tokens confirm-panel beach-cell daily-view-tab payouts-tab requests-tab` → PASS, then the e2e:
+- [x] **Step 4: Run it, verify it passes** — `npm test -- class-o-tint-tokens confirm-panel beach-cell daily-view-tab payouts-tab requests-tab` → PASS, then the e2e:
       `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- class-o-tint-tokens`
       → AC-3 + AC-4 green (the only proof that catches a missing `@theme inline` row).
-- [ ] **Step 5: Generalization-audit pass** — population: *every registered `--riv-*` token whose
+- [x] **Step 5: Generalization-audit pass** — population: *every registered `--riv-*` token whose
       family has more than one base colour for one treatment* (the mechanism behind the four
       ambers), enumerated from `tailwind.css` rather than from memory. Feeds phase 4's issue.
-- [ ] **Step 6: Commit** — `git commit -m "Tokenise the amber and green status tints (#852)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Tokenise the amber and green status tints (#852)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -412,20 +420,20 @@ three become tokens (`--riv-notice-edge`, `--riv-notice-fill`, `--riv-notice-ink
 **Files:** Modify `docs/design/colour-literal-token-audit.md`,
 `docs/plans/class-o-opacity-modifier-tokens.md`
 
-- [ ] **Step 1:** Rewrite the ledger's **class-O** section: state rule **B** and the three pieces of
+- [x] **Step 1:** Rewrite the ledger's **class-O** section: state rule **B** and the three pieces of
       evidence behind it (compiler output, the 145/145 composite measurement, the `@supports`
       fallback and its Chrome-111 bound), all four family rows → `done` with this PR, and add rows
       for `#061e28`, `#b47814`, `#e0a03a` — the three positions the section's own table never listed
       (R-6). Update the head-of-file "prior slices" paragraph.
-- [ ] **Step 2:** Open the **option-C** follow-up issue: normalise the alphas per treatment, now
+- [x] **Step 2:** Open the **option-C** follow-up issue: normalise the alphas per treatment, now
       argued against tokens instead of literals. It cites this ledger section as the settled rule
       and carries the two sharpest inputs — `#0c2a33`'s ten alphas across seventeen sites, and the
       four amber base colours across seven.
-- [ ] **Step 3:** Run **`riviera-docs-freshness`** over this slice's range. The counting sweep is
+- [x] **Step 3:** Run **`riviera-docs-freshness`** over this slice's range. The counting sweep is
       the point: several sibling specs and the ledger describe class O as *pending* work
       ("#852's", "must survive this sweep untouched"), and `solid-fill-tokens.contrast.spec.ts`
       states the disproved premise as fact.
-- [ ] **Step 4:** Finalize the Execution status **in this PR's last commit** — stage pointer DONE,
+- [x] **Step 4:** Finalize the Execution status **in this PR's last commit** — stage pointer DONE,
       phase rows ✅, Open Questions empty, risk rows closed, `merged via PR #NN` (never a merge SHA).
 
 ---
@@ -444,12 +452,20 @@ three become tokens (`--riv-notice-edge`, `--riv-notice-fill`, `--riv-notice-ink
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `npm test -- class-o-tint-tokens` → the declaration/`@theme inline` assertions pass. Verified at commit `<sha>`.
-- [ ] **AC-2:** Run the ledger's population command with the `]/[0-9.]+` suffix over `frontend/src` → **0** results outside `*.spec.ts`. Verified at commit `<sha>`.
-- [ ] **AC-3:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- class-o-tint-tokens` → the `toHaveCSS` pre/post paint assertions pass. Verified at commit `<sha>`.
-- [ ] **AC-4:** Same run → the forced-dark assertions pass. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `npm test -- beach-cell confirm-panel` → no branch mixes a named utility with a literal. Verified at commit `<sha>`.
-- [ ] **AC-6:** Read `docs/design/colour-literal-token-audit.md` § *Class O* at HEAD. Verified at commit `<sha>`.
+- [x] **AC-1:** Run `npx ng test --watch=false --include="src/app/shared/class-o-tint-tokens.contrast.spec.ts"` (from `frontend/`) → 62 assertions across the twelve tokens pass. Verified at `9f2e11b`.
+- [x] **AC-2:** Same run → "leaves no `/opacity` colour literal anywhere in the app sources" passes; the ledger's population command with the `]/α` suffix returns 0 outside `*.spec.ts`. Verified at `9f2e11b`.
+- [x] **AC-3:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts class-o-tint-tokens` → 3 passed; the armed tool computes `oklab(0.723426 -0.0974235 -0.0681883 / 0.2)`, the value the literal produced. Verified at `9f2e11b`.
+- [x] **AC-4:** Same run → the forced-dark test passes. Verified at `9f2e11b`.
+- [x] **AC-5:** Run `npx ng test --watch=false --include="src/app/**/*.spec.ts"` → 2268 passed, including the per-token mixing guard. Verified at `9f2e11b`.
+- [x] **AC-6:** Read `docs/design/colour-literal-token-audit.md` § *Class O* at HEAD. Verified in phase 4.
+
+**Negative controls — every guard in this slice was proven able to fail before being trusted:**
+
+| Guard | How it was falsified | What it showed |
+|---|---|---|
+| the per-token literal sweep | its matcher was broken on first write (a regex built by string surgery dropped the `#`) | it passed for the wrong reason, silently — which is why "the sweep must be able to fail" exists |
+| the mixing guard | one gradient stop reverted to `rgba(12,42,51,0.28)` | red on exactly that expression |
+| the e2e | one `@theme inline` row deleted | the armed tool painted `rgba(0, 0, 0, 0)` and all three tests reddened — the precise R-1 failure |
 
 ## Self-review checklist (before merge / PR)
 
