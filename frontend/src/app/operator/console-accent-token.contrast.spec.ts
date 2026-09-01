@@ -8,6 +8,7 @@ import {
   PORCELAIN_STOPS,
   SOLID_FILL_BRAND,
 } from '../../testing/glass-tokens';
+import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
  * Guard for `--riv-console-accent-ink` (#848, class T of the colour-literal audit) — the operator
@@ -33,25 +34,7 @@ import {
  * decides — is `e2e/console-accent-ink.e2e.ts`.
  */
 
-/** Vitest runs with cwd = `frontend/`. */
-const STYLESHEET = readFileSync(join(process.cwd(), 'src/tailwind.css'), 'utf8');
-
 const TOKEN = '--riv-console-accent-ink';
-
-/** The base block — `:root, [data-riv-theme='porcelain']`, the only legal home for the token. */
-function baseBlock(): string {
-  const open = STYLESHEET.indexOf("\n:root,\n[data-riv-theme='porcelain'] {");
-  if (open === -1) {
-    throw new Error('src/tailwind.css no longer opens its base block as `:root, porcelain`');
-  }
-  return STYLESHEET.slice(open, STYLESHEET.indexOf('\n}', open));
-}
-
-/** Every `--name: value;` declaration of `name`, anywhere in the stylesheet. */
-function declarationsOf(name: string): readonly string[] {
-  const pattern = new RegExp(`^[ \\t]*${name}:\\s*([^;]+);`, 'gm');
-  return [...STYLESHEET.matchAll(pattern)].map((match) => match[1].trim());
-}
 
 /**
  * The `@theme inline` row that turns the token into the `text-riv-console-accent-ink` utility.

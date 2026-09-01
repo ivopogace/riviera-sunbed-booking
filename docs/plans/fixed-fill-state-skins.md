@@ -147,7 +147,7 @@ recipe; loaded before the session's first `npm` invocation)
 | R-1 | A token is declared but its `@theme inline` row is forgotten → the utility never generates, the class sits inert in the markup and the paint silently reverts to inherited/transparent. No unit spec can see this. | med | high | AC-6's CSSOM check walks `document.styleSheets` for each expected `.bg-riv-*`/`.text-riv-*`/`.border-riv-*` selector — the #850 precedent, kept verbatim | agent | open |
 | R-2 | The literal sweep (AC-3) matches **by value** and so fails on the eight deliberately-untouched homes of `#0a5f74`, `#a3372a`, `#8a5410` and `#fcf0d9` — or, worse, tempts the implementer to migrate them | high | med | Sweep **by role**, the #850 `LITERAL_ROLES` pattern: `text-[#0a5f74]` not `#0a5f74`; and pair it with a positive `OUT_OF_FAMILY`-style assertion (AC-3's second test) that the out-of-scope homes still paint theirs | agent | open |
 | R-3 | `booking/solid-btn-tokens.contrast.spec.ts`'s `OUT_OF_FAMILY` array goes red the moment `failure-panel`/`booking-pay` stop painting `#a3372a` — it asserts positively that they still do | **certain** | high | AC-7: narrow the array *and* the docblock prose in the same commit as the migration. Flagged by #864's hand-off comment on the issue; verified against the tree, not just the prose | agent | open |
-| R-4 | Sonar's **0 new duplicated blocks** bar: this slice writes the **sixth** copy of the `STYLESHEET`/`baseBlock()`/`declarationsOf()` guard helpers, ~15 identical lines | high | med | Phase 0 extracts them to `src/testing/stylesheet-tokens.ts` and moves the five existing guards onto it — the slice then *removes* duplication instead of adding the copy that would trip the gate | agent | open |
+| R-4 | Sonar's **0 new duplicated blocks** bar: this slice writes the **sixth** copy of the `STYLESHEET`/`baseBlock()`/`declarationsOf()` guard helpers, ~15 identical lines | high | med | Phase 0 extracts them to `src/testing/stylesheet-tokens.ts` and moves the five existing guards onto it — the slice then *removes* duplication instead of adding the copy that would trip the gate | agent | **closed** — phase 0; the same 38 assertions pass before and after |
 | R-5 | Naming collision: `--riv-chip-bg`/`--riv-chip-border` already exist for a *different* chip | med | low | The amenity family is named `--riv-amenity-*`, not `--riv-chip-*`; the medallion follows the `--riv-tile-<state>-<role>` triple precedent | agent | open |
 | R-6 | The `#fcf0d9`/`#8a5410` pair is tokenised as `--riv-medallion-waiting-*` while three other files keep it as a literal for a different form → a future reader reuses the medallion token on the notice banner | med | med | The reason is written **at the declaration** (the `--riv-console-negative-ink` docblock form), the out-of-family homes are pinned by AC-3's positive test, and the notice-banner family gets its own ledger row + follow-up issue | agent | open |
 | R-7 | Scope creep: the medallion form recurs in `outcome-card`, `requests-tab` and the notice banners | high | med | Non-goals fixes the boundary explicitly, each exclusion with its reason; the two genuine families found become ledger rows + issues rather than silent omissions | agent | open |
@@ -231,15 +231,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan — committing the plan doc, then implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** commit this plan doc on `claude/sdlc-858-d5rsea`, then start phase 0 (extract the
-guard helpers to `src/testing/stylesheet-tokens.ts`).
+**Next action:** write the failing medallion block of
+`shared/fixed-fill-token-skins.contrast.spec.ts`, then declare the seven `--riv-medallion-*` tokens.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — extract the token-guard helpers | | |
-| 1 — the outcome-medallion family | | |
+| 0 — extract the token-guard helpers | ✅ | `<phase-0>` |
+| 1 — the outcome-medallion family | ⏳ | |
 | 2 — the amenity-chip family | | |
 | 3 — the dialog step-badge family | | |
 | 4 — the forced-dark computed-style e2e | | |
@@ -288,16 +288,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `declarationsOf()`, byte-identical each time (~15 lines). Writing a sixth copy is what would trip
 Sonar's 0-new-duplicated-blocks bar (R-4); extracting at the sixth use removes five copies instead.
 
-- [ ] **Step 1:** Create `src/testing/stylesheet-tokens.ts` exporting `STYLESHEET`, `baseBlock()`
+- [x] **Step 1:** Create `src/testing/stylesheet-tokens.ts` exporting `STYLESHEET`, `baseBlock()`
       and `declarationsOf(name)` verbatim from the existing guards, with a docblock naming the
       pattern (`core/theme-boot.spec.ts`'s drift-guard shape) and why it is read as text.
-- [ ] **Step 2: Run the five existing guards, verify they still pass** —
+- [x] **Step 2: Run the five existing guards, verify they still pass** —
       `npm test -- --run form-error-tokens solid-btn-tokens solid-fill-tokens console-accent-token console-negative-token`
       → PASS (this phase is a pure refactor; the tests are the safety net, not a new red)
-- [ ] **Step 3:** Delete the five local copies, importing from `../../testing/stylesheet-tokens`.
-- [ ] **Step 4: Re-run the same five** → PASS, byte-identical assertions.
-- [ ] **Step 5: Commit** — `git commit -m "Extract the token-guard stylesheet helpers at their sixth use (#858)"`
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+- [x] **Step 3:** Delete the five local copies, importing from `../../testing/stylesheet-tokens`.
+- [x] **Step 4: Re-run the same five** → PASS, byte-identical assertions.
+- [x] **Step 5: Commit** — `git commit -m "Extract the token-guard stylesheet helpers at their sixth use (#858)"`
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ---
 

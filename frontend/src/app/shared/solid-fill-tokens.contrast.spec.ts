@@ -10,6 +10,7 @@ import {
   SOLID_FILL_DANGER,
   SOLID_FILL_INK,
 } from '../../testing/glass-tokens';
+import { STYLESHEET, baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
  * Guard for the `--riv-solid-fill-*` family (#854) — the nine solid button/badge fills carrying
@@ -34,30 +35,12 @@ import {
  * carrier.
  */
 
-/** Vitest runs with cwd = `frontend/`. */
-const STYLESHEET = readFileSync(join(process.cwd(), 'src/tailwind.css'), 'utf8');
-
 /** The whole family, with the value `tailwind.css` is expected to declare for it. */
 const FAMILY = {
   '--riv-solid-fill-brand': rgbToHex(SOLID_FILL_BRAND),
   '--riv-solid-fill-brand-hover': rgbToHex(SOLID_FILL_BRAND_HOVER),
   '--riv-solid-fill-danger': rgbToHex(SOLID_FILL_DANGER),
 } as const;
-
-/** The base block — `:root, [data-riv-theme='porcelain']`, the only legal home for the family. */
-function baseBlock(): string {
-  const open = STYLESHEET.indexOf("\n:root,\n[data-riv-theme='porcelain'] {");
-  if (open === -1) {
-    throw new Error('src/tailwind.css no longer opens its base block as `:root, porcelain`');
-  }
-  return STYLESHEET.slice(open, STYLESHEET.indexOf('\n}', open));
-}
-
-/** Every `--name: value;` declaration of `name`, anywhere in the stylesheet. */
-function declarationsOf(name: string): readonly string[] {
-  const pattern = new RegExp(`^[ \\t]*${name}:\\s*([^;]+);`, 'gm');
-  return [...STYLESHEET.matchAll(pattern)].map((match) => match[1].trim());
-}
 
 const APP = join(process.cwd(), 'src/app');
 

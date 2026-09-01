@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { AA_NORMAL, contrastRatio, rgbToHex } from '../../testing/contrast';
 import { DARK_ERROR_INK, FORM_ERROR_FILL, FORM_ERROR_INK } from '../../testing/glass-tokens';
+import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
  * Guard for the `--riv-form-error-*` pair (#850, class F-1 of the colour-literal audit) — the
@@ -21,29 +22,11 @@ import { DARK_ERROR_INK, FORM_ERROR_FILL, FORM_ERROR_INK } from '../../testing/g
  * where the cascade, not a regex, decides — is `e2e/form-error-token-skin.e2e.ts`.
  */
 
-/** Vitest runs with cwd = `frontend/`. */
-const STYLESHEET = readFileSync(join(process.cwd(), 'src/tailwind.css'), 'utf8');
-
 /** The pair, with the value `tailwind.css` is expected to declare for it. */
 const PAIR = {
   '--riv-form-error-fill': rgbToHex(FORM_ERROR_FILL),
   '--riv-form-error-ink': rgbToHex(FORM_ERROR_INK),
 } as const;
-
-/** The base block — `:root, [data-riv-theme='porcelain']`, the only legal home for the pair. */
-function baseBlock(): string {
-  const open = STYLESHEET.indexOf("\n:root,\n[data-riv-theme='porcelain'] {");
-  if (open === -1) {
-    throw new Error('src/tailwind.css no longer opens its base block as `:root, porcelain`');
-  }
-  return STYLESHEET.slice(open, STYLESHEET.indexOf('\n}', open));
-}
-
-/** Every `--name: value;` declaration of `name`, anywhere in the stylesheet. */
-function declarationsOf(name: string): readonly string[] {
-  const pattern = new RegExp(`^[ \\t]*${name}:\\s*([^;]+);`, 'gm');
-  return [...STYLESHEET.matchAll(pattern)].map((match) => match[1].trim());
-}
 
 /**
  * This family's literals, matched **by role rather than by value**. `#f6e8e7` is the fill and
