@@ -147,13 +147,13 @@ recipe; loaded before the session's first `npm` invocation)
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A token is declared but its `@theme inline` row is forgotten → the utility never generates, the class sits inert in the markup and the paint silently reverts to inherited/transparent. No unit spec can see this. | med | high | AC-6's CSSOM check walks `document.styleSheets` for each expected `.bg-riv-*`/`.text-riv-*`/`.border-riv-*` selector — the #850 precedent, kept verbatim | agent | open |
-| R-2 | The literal sweep (AC-3) matches **by value** and so fails on the eight deliberately-untouched homes of `#0a5f74`, `#a3372a`, `#8a5410` and `#fcf0d9` — or, worse, tempts the implementer to migrate them | high | med | Sweep **by role**, the #850 `LITERAL_ROLES` pattern: `text-[#0a5f74]` not `#0a5f74`; and pair it with a positive `OUT_OF_FAMILY`-style assertion (AC-3's second test) that the out-of-scope homes still paint theirs | agent | open |
+| R-1 | ~~A token is declared but its `@theme inline` row is forgotten → the utility never generates, the class sits inert in the markup and the paint silently reverts to inherited/transparent. No unit spec can see this. | med | high | AC-6's CSSOM check walks `document.styleSheets` for each expected `.bg-riv-*`/`.text-riv-*`/`.border-riv-*` selector — the #850 precedent, kept verbatim | agent | **closed** — phase 4, and mutation-checked |
+| R-2 | ~~The literal sweep (AC-3) matches **by value** and so fails on the eight deliberately-untouched homes of `#0a5f74`, `#a3372a`, `#8a5410` and `#fcf0d9` — or, worse, tempts the implementer to migrate them | high | med | Sweep **by role**, the #850 `LITERAL_ROLES` pattern: `text-[#0a5f74]` not `#0a5f74`; and pair it with a positive `OUT_OF_FAMILY`-style assertion (AC-3's second test) that the out-of-scope homes still paint theirs | agent | **closed** — phase 1, where a first draft of the sweep *did* over-reach onto the notice banners and forced the exclusive-vs-site-scoped split now in the spec |
 | R-3 | A positive over-reach guard goes red the moment a listed file stops painting the value it pins | **certain** | high | AC-7: narrow the array *and* the docblock prose in the same commit as the migration. #864's hand-off comment named **one** such guard (`solid-btn-tokens`' `OUT_OF_FAMILY`); phase 1's regression run found a **second** the plan had not anticipated — `solid-fill-tokens`' `SURVIVORS`, #854's `#0a5f74` list. Both are now in AC-7. The lesson generalises: after migrating a value, re-run the *whole* `src/app` unit suite, not only the specs the diff names — a positive guard lives in the file of the ticket that *kept* the value, not the one that moves it | agent | **closed** — phase 1 |
 | R-4 | Sonar's **0 new duplicated blocks** bar: this slice writes the **sixth** copy of the `STYLESHEET`/`baseBlock()`/`declarationsOf()` guard helpers, ~15 identical lines | high | med | Phase 0 extracts them to `src/testing/stylesheet-tokens.ts` and moves the five existing guards onto it — the slice then *removes* duplication instead of adding the copy that would trip the gate | agent | **closed** — phase 0; the same 38 assertions pass before and after |
-| R-5 | Naming collision: `--riv-chip-bg`/`--riv-chip-border` already exist for a *different* chip | med | low | The amenity family is named `--riv-amenity-*`, not `--riv-chip-*`; the medallion follows the `--riv-tile-<state>-<role>` triple precedent | agent | open |
-| R-6 | The `#fcf0d9`/`#8a5410` pair is tokenised as `--riv-medallion-waiting-*` while three other files keep it as a literal for a different form → a future reader reuses the medallion token on the notice banner | med | med | The reason is written **at the declaration** (the `--riv-console-negative-ink` docblock form), the out-of-family homes are pinned by AC-3's positive test, and the notice-banner family gets its own ledger row + follow-up issue | agent | open |
-| R-7 | Scope creep: the medallion form recurs in `outcome-card`, `requests-tab` and the notice banners | high | med | Non-goals fixes the boundary explicitly, each exclusion with its reason; the two genuine families found become ledger rows + issues rather than silent omissions | agent | open |
+| R-5 | Naming collision: `--riv-chip-bg`/`--riv-chip-border` already exist for a *different* chip | med | low | The amenity family is named `--riv-amenity-*`, not `--riv-chip-*`; the medallion follows the `--riv-tile-<state>-<role>` triple precedent | agent | **closed** |
+| R-6 | The `#fcf0d9`/`#8a5410` pair is tokenised as `--riv-medallion-waiting-*` while three other files keep it as a literal for a different form → a future reader reuses the medallion token on the notice banner | med | med | The reason is written **at the declaration** (the `--riv-console-negative-ink` docblock form), the out-of-family homes are pinned by AC-3's positive test, and the notice-banner family gets its own ledger row + follow-up issue | agent | **closed** |
+| R-7 | Scope creep: the medallion form recurs in `outcome-card`, `requests-tab` and the notice banners | high | med | Non-goals fixes the boundary explicitly, each exclusion with its reason; the two genuine families found become ledger rows + issues rather than silent omissions | agent | **closed** |
 
 ## Open questions / Assumptions
 
@@ -234,11 +234,10 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5)`
 
-**Next action:** write `e2e/fixed-fill-state-skins.e2e.ts` — the CSSOM utility sweep over all 15
-tokens plus the three skins' `toHaveCSS` under the default and a forced `dark` theme — then
-mutation-check it.
+**Next action:** update `docs/design/colour-literal-token-audit.md` — F-3 `done`, class R `#0a5f74`
+split, class S amenity row retired, three new rows — then file the follow-up issues and close out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -246,8 +245,8 @@ mutation-check it.
 | 1 — the outcome-medallion family | ✅ | `c72ff26` |
 | 2 — the amenity-chip family | ✅ | `6a70f4c` |
 | 3 — the dialog step-badge family | ✅ | `6923f7b` |
-| 4 — the forced-dark computed-style e2e | ⏳ | |
-| 5 — ledger + follow-up issues + close-out | | |
+| 4 — the forced-dark computed-style e2e | ✅ | `<phase-4>` |
+| 5 — ledger + follow-up issues + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -445,16 +444,26 @@ row, where the class stays in the markup and the paint silently does not change,
 actually resolving under `data-riv-theme="dark"`. `shared/amenity-chip.ts` and
 `shared/failure-panel.ts` are mounted by hosts of differing themes, so this is the check that matters.
 
-- [ ] **Step 1: Write the spec** — three tests: AC-6's CSSOM utility-generation sweep over all
-      fifteen tokens; the three skins' `toHaveCSS` under the default theme; the same three under
-      `localStorage.setItem('riviera-theme', 'dark')` with `html[data-riv-theme=dark]` asserted first.
-- [ ] **Step 2: Run it** — `npm run test:e2e:a11y -- fixed-fill-state-skins` → PASS
-- [ ] **Step 3: Mutation-check it** (AC-5 says "mutation-checked" — a green e2e that would stay green
-      under a broken token proves nothing). Temporarily add
-      `[data-riv-theme='dark'] { --riv-medallion-positive-ink: #7cd7e8; }` to `tailwind.css`, re-run →
-      the dark test must **FAIL**; then revert and re-run → PASS. Record both outcomes in the log.
-- [ ] **Step 4: Commit** — `git commit -m "Prove the three fixed-fill skins hold under a forced dark theme (#858)"`
-- [ ] **Step 5: Update plan-doc execution status** in the same commit window.
+- [x] **Step 1: Write the spec** — landed as **six tests × two themes = 12**, not "three tests",
+      because the natural shape here is a `for (const theme of ['porcelain', 'dark'])` loop over the
+      whole describe: every assertion then runs against the same expected value in both legs, so a
+      skin that *moved* between them fails rather than needing a separate dark-only test. The six:
+      AC-6's CSSOM utility sweep over all fifteen tokens; the amenity chip's two variants; the step
+      badge's two states; the positive medallion (via the confirmation); the **waiting** medallion
+      (via `request-confirmation`, the REQUEST-mode `202` leg — without it the waiting pair would be
+      declared and mapped but never proven to reach a rendered element); and the negative medallion
+      via `.failure-icon`, `shared/`'s own directive.
+- [x] **Step 2: Run it** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- fixed-fill-state-skins` → **12 passed** (the env var is `riviera-local-debug`'s cloud-session recipe for the mocked config)
+- [x] **Step 3: Mutation-check it.** Added `--riv-medallion-positive-ink: #7cd7e8` and
+      `--riv-amenity-water-ink: #7cd7e8` to the `[data-riv-theme='dark']` block. Result: **3 dark
+      tests failed** (the token-declaration sweep, the amenity chip, the confirmation medallion) and
+      **all 6 porcelain tests still passed** — which is the half that matters, since it shows the
+      dark leg observes the cascade rather than passing vacuously. The **unit** guard caught it too:
+      `declares each token exactly once` → `expected [ '#0a5f74', '#7cd7e8' ] to have a length of 1`.
+      Reverted with `git checkout src/tailwind.css` (a hand-revert left a stray blank line), re-run →
+      12 passed, 15 unit assertions passed, `git diff` clean.
+- [x] **Step 4: Commit** — `git commit -m "Prove the three fixed-fill skins hold under a forced dark theme (#858)"`
+- [x] **Step 5: Update plan-doc execution status** in the same commit window.
 
 ---
 
