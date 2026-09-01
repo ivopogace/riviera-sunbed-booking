@@ -3,7 +3,7 @@ import { afterNextRender, Component, ElementRef, input, output, viewChild } from
 import { BusyAction } from './busy-action';
 import { TouchTarget } from './touch-target';
 
-/** Which ink the confirm button carries — the three the operator console ships (#881 adds `warn`). */
+/** Which ink the confirm button carries — the three the operator console ships. */
 export type ConfirmTone = 'destructive' | 'primary' | 'warn';
 
 const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
@@ -24,8 +24,8 @@ const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
  * Focus back **out** is the caller's, via `focusMover()` — this component is gone by then.
  *
  * <p>Why two components rather than one with a variant, and why no projected content:
- * `docs/plans/shared-confirm-panel.md`. `headline` (#881) is plain text too, for the same
- * reason — an optional bold lead sentence ahead of `message`, never markup.
+ * `docs/plans/shared-confirm-panel.md`. `headline` is plain text too, for the same reason —
+ * an optional bold lead sentence ahead of `message`, never markup.
  */
 @Component({
   imports: [TouchTarget, BusyAction],
