@@ -183,7 +183,7 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 | 0 — the token, the three consumers, the unit guard | ✅ | `b93044c` |
 | 1 — the mocked-e2e computed-style proof | ✅ | `dc214d4` |
 | 2 — record the answer in the audit doc | ✅ | `dc214d4` |
-| 3 — review-gate findings F-1..F-3 | ✅ | `FIXSHA` |
+| 3 — review-gate findings F-1..F-3 | ✅ | `859ce7d` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -191,9 +191,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review gate (bug scan) | The sweep's meta-test exercised the matcher but never `appSources()`, so a broken enumeration would still pass `[]` vacuously — the exact fail-open the docblock claimed to close | fixed-in-`FIXSHA` — the meta-test now pins that the enumeration reaches all three sun sites; verified by breaking the filter (the sweep passed, the meta-test failed) |
-| F-2 | review gate (prior-PR feedback) | Doc comments over §6d budget, carrying issue numbers and decision history — the same shape reviews on PR #878 and #883 trimmed on this file family | fixed-in-`FIXSHA` — token comment 27→6 lines, spec docblock 25→9, e2e docblock 14→7; narration relocated to the audit-doc section, pointers kept |
-| F-3 | review gate (comment compliance) | Audit doc said the slice removes **two** `rgba(240,170,46,…)` positions; the card sun carried **one** (its other stop was a different colour family) | fixed-in-`FIXSHA` |
+| F-1 | review gate (bug scan) | The sweep's meta-test exercised the matcher but never `appSources()`, so a broken enumeration would still pass `[]` vacuously — the exact fail-open the docblock claimed to close | fixed-in-`859ce7d` — the meta-test now pins that the enumeration reaches all three sun sites; verified by breaking the filter (the sweep passed, the meta-test failed) |
+| F-2 | review gate (prior-PR feedback) | Doc comments over §6d budget, carrying issue numbers and decision history — the same shape reviews on PR #878 and #883 trimmed on this file family | fixed-in-`859ce7d` — token comment 27→6 lines, spec docblock 25→9, e2e docblock 14→7; narration relocated to the audit-doc section, pointers kept |
+| F-3 | review gate (comment compliance) | Audit doc said the slice removes **two** `rgba(240,170,46,…)` positions; the card sun carried **one** (its other stop was a different colour family) | fixed-in-`859ce7d` |
 
 ---
 
