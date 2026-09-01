@@ -236,8 +236,8 @@ N/A — no contract change.
 |-------|--------|---------|
 | 0 — the rule doc + ledger repoint | ✅ | `f232a1b` |
 | 1 — the CTA adjacent-colour assertions (AC-1, AC-2) | ✅ | `bab733d` |
-| 2 — the stale-deferral guard, then the repointing it forces green (AC-3) | ✅ | `<phase-23>` |
-| 3 — the forced-colors precondition guard + its doc clause (AC-4) | ✅ | `<phase-23>` — **landed with phase 2**, both guards being one edit to one file; kept as separate ACs |
+| 2 — the stale-deferral guard, then the repointing it forces green (AC-3) | ✅ | `443a1a0` |
+| 3 — the forced-colors precondition guard + its doc clause (AC-4) | ✅ | `443a1a0` — **landed with phase 2**, both guards being one edit to one file; kept as separate ACs |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
