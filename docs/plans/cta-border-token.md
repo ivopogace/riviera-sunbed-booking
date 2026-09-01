@@ -24,7 +24,7 @@ it is measured, not asserted: dark `--riv-card-border`'s white 0.16 over these f
 "no literal remains" wording) · `riviera-plan-doc` (this template — forced the behavior-parity
 ledger, which is where the dark-theme `<dl>` AA failure surfaced) · `tdd` (each phase is red at the
 e2e/unit seam named in its AC before the migration lands) · `riviera-review-overlay` (review gate —
-runs at ready-for-review) · `riviera-docs-freshness` (**ran** — see merge close-out, step 5) ·
+runs at ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main..HEAD` — **0 findings**: no substrate doc names `--riv-inset-fill` or this literal, and the counting sweep's two hits (`riviera-frontend`'s "two-suite e2e split" and "token registry lives in two places") stay true — the second counts *themes* in `core/theme.ts`, not tokens, so a new token does not touch it) ·
 `riviera-tailwind` (the theme-invariant-token rule, "consume through the named utility", and the
 family-by-form cut that keeps the inset-highlight shadows out) · `riviera-frontend` (token registry
 lives in `tailwind.css` + `@theme inline`; the cross-folder guard spec belongs in `shared/`) ·
@@ -119,23 +119,24 @@ lives in `tailwind.css` + `@theme inline`; the cross-folder guard spec belongs i
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A token declared without its `@theme inline` row generates **no utility**: the class stays in the markup and the paint silently reverts to the browser default. No unit spec can see this | med | high | AC-4's mocked e2e reads the computed `border-color` on a real render — the ledger's own step 4 | agent | open |
-| R-2 | Someone later adds a `--riv-cta-border` dark override, silently restyling 16 buttons; every contrast ratio in the guard would still pass, because they are computed from the mirror | med | med | AC-1's single-declaration guard reads `tailwind.css` **as text** (`testing/stylesheet-tokens`), plus AC-4's forced-dark e2e where the cascade decides | agent | open |
-| R-3 | The `bg-` site is *not* really `--riv-inset-fill` and the migration restyles it | low | med | Judged individually (issue AC 1): it is a translucent white inset block on the themed card glass, 17 lines above a sibling that already uses the token in the same component. AC-5 measures the outcome rather than assuming it | agent | open |
-| R-4 | The 16 borders are not one family — the dialog close button sits on `#31798a`, not the gradient | low | med | Same **form** (a white hairline bevel on a fixed teal action surface) and the same theme-invariance ground; AC-2 measures all three fills, not just the gradient. Grouping by form rather than value is the ledger's own rule | agent | open |
-| R-5 | Merge conflict with a sibling `#836` slice touching `tailwind.css` / `glass-tokens.ts` | med | low | Both are append-mostly; merge `origin/main` before ready-for-review. No Flyway number is in play (frontend-only slice) | agent | open |
+| R-1 | A token declared without its `@theme inline` row generates **no utility**: the class stays in the markup and the paint silently reverts to the browser default. No unit spec can see this | med | high | AC-4's mocked e2e reads the computed `border-color` on a real render — the ledger's own step 4 | agent | closed — `e2e/cta-border-token-skin.e2e.ts` asserts the generated utility AND, via the sentinel re-point, that the element consumes the token |
+| R-2 | Someone later adds a `--riv-cta-border` dark override, silently restyling 16 buttons; every contrast ratio in the guard would still pass, because they are computed from the mirror | med | med | AC-1's single-declaration guard reads `tailwind.css` **as text** (`testing/stylesheet-tokens`), plus AC-4's forced-dark e2e where the cascade decides | agent | closed — the single-declaration guard plus the forced-dark e2e leg |
+| R-3 | The `bg-` site is *not* really `--riv-inset-fill` and the migration restyles it | low | med | Judged individually (issue AC 1): it is a translucent white inset block on the themed card glass, 17 lines above a sibling that already uses the token in the same component. AC-5 measures the outcome rather than assuming it | agent | closed — measured: the migration takes the list's dark-theme inks from 2.62–3.29:1 to 7.71–8.60:1 |
+| R-4 | The 16 borders are not one family — the dialog close button sits on `#31798a`, not the gradient | low | med | Same **form** (a white hairline bevel on a fixed teal action surface) and the same theme-invariance ground; AC-2 measures all three fills, not just the gradient. Grouping by form rather than value is the ledger's own rule | agent | closed — all three fills measured in `cta-border-token.contrast.spec.ts` |
+| R-5 | Merge conflict with a sibling `#836` slice touching `tailwind.css` / `glass-tokens.ts` | med | low | Both are append-mostly; merge `origin/main` before ready-for-review. No Flyway number is in play (frontend-only slice) | agent | closed — merged `origin/main` before ready-for-review; no Flyway number in play |
 
 ## Open questions / Assumptions
 
-- **Assumption:** `--riv-cta-grad` is genuinely theme-invariant, so the border on it must be too —
-  *Resolves by:* phase 0 (`declarationsOf('--riv-cta-grad')` returns exactly one entry; asserted
-  alongside AC-1).
-- **Assumption:** naming the token `--riv-cta-border` (beside `--riv-cta-grad`) rather than after
-  the close button's own teal is the right cut, the close button being the same bevel on the same
-  kind of surface — a naming call the plan-doc skill leaves to the implementer. *Resolves by:*
-  the review gate.
+None open.
 
 ### Resolved
+
+- **Assumption (closed, phase 0):** `--riv-cta-grad` is genuinely theme-invariant, so the border on
+  it must be too. Confirmed — `declarationsOf('--riv-cta-grad')` returns exactly one entry, asserted
+  in `cta-border-token.contrast.spec.ts`.
+- **Assumption (closed, review gate):** naming the token `--riv-cta-border` beside `--riv-cta-grad`
+  rather than after the close button's own teal. Carried; the close button is the same bevel on the
+  same kind of fixed teal surface, and one token beats two names one hyphen apart (#864's argument).
 
 - **Open question (issue drift, closed at intake):** the issue and the ledger both say "15 of 17
   borders; 2 are `bg-`". The ledger's own population command returns **16 borders and 1 `bg-`**.
@@ -181,16 +182,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `PR — ready for review; review + Sonar gates due`
 
-**Next action:** Phase 3 — update the audit ledger's class-R row 1 and add the two residue rows.
+**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Register the token + its guard spec | ✅ | see phase-0 commit |
 | 1 — Migrate the 16 border sites + the render proof | ✅ | see phase-1 commit |
 | 2 — Migrate the `bg-` site onto `--riv-inset-fill` | ✅ | see phase-2 commit |
-| 3 — Ledger + mirror close-out | ⏳ | |
+| 3 — Ledger + mirror close-out | ✅ | see phase-3 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -286,33 +287,37 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-01 | phase 1 — the new pattern (a token for a value that coincides with an existing token of another role) | Every position painting a **white-alpha literal as chrome** in `frontend/src`, not just the borders this issue named — the mechanism is "a translucent-white literal standing in for a token", and enumerating it by mechanism is what surfaced the two adjacent families the issue's resemblance-led list could not | `grep -rnoE '(text\|bg\|border\|fill\|stroke\|shadow)-\[rgba\(255, ?255, ?255, ?0\.[0-9]+\)\]' src --include=*.ts --include=*.html` and `grep -rnoE 'inset_0_1px_0_rgba\(255,255,255,0\.[0-9]+\)' src` | **17** at 0.4 (this slice) · **5** at 0.6 in `border-` positions · **48** across eight alphas inside composite `inset` shadows | Migrated the 17. The other two are separate families by role and are recorded as their own ledger rows rather than swept — the 48-member ramp wants a depth-named palette pass, and the five 0.6 borders split by surface (four on fixed fills, one on a themed one) |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/2/3:** `npx vitest run src/app/shared/cta-border-token.contrast.spec.ts` → PASS.
-- [ ] **AC-4:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts cta-border-token-skin` → PASS.
-- [ ] **AC-5:** `npx vitest run src/app/booking/booking-confirmation.contrast.spec.ts` → PASS.
-- [ ] **AC-6:** `grep -rnoE '(text|bg|border|fill|stroke|shadow)-\[rgba\(255, ?255, ?255, ?0\.4\)\]' frontend/src --include=*.ts --include=*.html` → no output.
-- [ ] **AC-7:** ledger row reads `done` with this PR.
+- [x] **AC-1/2/3/6:** `npx ng test --watch=false --include="src/app/shared/cta-border-token.contrast.spec.ts"` → 9 passed.
+- [x] **AC-4:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts cta-border-token-skin` → 5 passed.
+- [x] **AC-5:** `npx ng test --watch=false --include="src/app/booking/booking-confirmation.contrast.spec.ts"` → 14 passed.
+- [x] **AC-6 (independent of the spec):** `grep -rnoE '(text|bg|border|fill|stroke|shadow)-\[rgba\(255, ?255, ?255, ?0\.4\)\]' frontend/src --include=*.ts --include=*.html` → no output.
+- [x] **AC-7:** the ledger's class-R row 1 reads `done — #853, PR #875`.
+- [x] **Whole-suite regression:** `npm test` → 204 files / 2195 tests passed; `npm run lint` → exit 0
+      (one pre-existing warning in `operator/camera-qr-scanner.spec.ts`, outside this diff);
+      `npm run format:check` → clean.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, no backend code.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy (invariant #10) — N/A.
-- [ ] Timezone (invariant #6) — N/A.
-- [ ] Booking codes (invariant #7) — N/A.
-- [ ] Flyway (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met: named utilities, no fresh SCSS, no `as any`.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, no backend code.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy (invariant #10) — N/A.
+- [x] Timezone (invariant #6) — N/A.
+- [x] Booking codes (invariant #7) — N/A.
+- [x] Flyway (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met: named utilities, no fresh SCSS, no `as any`.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — this doc's final state, citing `merged via PR #875`.
 - [ ] **The review gate ran in full** per the invocation ladder plus `riviera-review-overlay`.
