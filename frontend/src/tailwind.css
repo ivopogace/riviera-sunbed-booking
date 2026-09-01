@@ -120,6 +120,12 @@
   --color-riv-map-chip-fill: var(--riv-map-chip-fill);
   --color-riv-map-chip-border: var(--riv-map-chip-border);
   --color-riv-map-frame-border: var(--riv-map-frame-border);
+  --color-riv-map-zoom-selected-fill: var(--riv-map-zoom-selected-fill);
+  --color-riv-map-zoom-selected-border: var(--riv-map-zoom-selected-border);
+  --color-riv-map-zoom-selected-ink: var(--riv-map-zoom-selected-ink);
+  --color-riv-map-zoom-idle-fill: var(--riv-map-zoom-idle-fill);
+  --color-riv-map-zoom-idle-border: var(--riv-map-zoom-idle-border);
+  --color-riv-map-zoom-idle-ink: var(--riv-map-zoom-idle-ink);
   --color-riv-tile-available-fill: var(--riv-tile-available-fill);
   --color-riv-tile-available-border: var(--riv-tile-available-border);
   --color-riv-tile-available-ink: var(--riv-tile-available-ink);
@@ -509,6 +515,20 @@
   --riv-map-chip-fill: rgba(255, 255, 255, 0.8);
   --riv-map-chip-border: #cfe3df;
   --riv-map-frame-border: rgba(12, 42, 51, 0.25);
+  /** The Fit/100% zoom toggle (#870, class F): both states used to pin a fixed hex ink over a
+      fixed rgba fill on this same wash, invisible in the dark theme (1.16-1.22:1) — unlike the
+      rail/chip pair above, the toggle never followed the wash's own theming. Per-theme like them
+      now, not a theme-invariant pair: the surface it sits on themes, so the ink should too. AA
+      proof: shared/beach-map-canvas.contrast.spec.ts, over both wash families. The idle ink
+      coincides with --riv-map-rail-ink in both themes — a different role (a toggle state, not a
+      row-label chip) on its own token, not the coincidental one, per this file's own --riv-map-*
+      / --riv-tile-* precedent (colour-literal-token-audit.md class R). */
+  --riv-map-zoom-selected-fill: rgba(255, 255, 255, 0.8);
+  --riv-map-zoom-selected-border: #0e7a89;
+  --riv-map-zoom-selected-ink: #0a2a33;
+  --riv-map-zoom-idle-fill: rgba(255, 255, 255, 0.6);
+  --riv-map-zoom-idle-border: rgba(12, 42, 51, 0.55);
+  --riv-map-zoom-idle-ink: #0a4f5e;
   --riv-tile-available-fill: rgba(255, 255, 255, 0.75);
   --riv-tile-available-border: #bfe3df;
   --riv-tile-available-ink: #0f7d8c;
@@ -682,6 +702,12 @@
   --riv-map-chip-fill: rgba(255, 255, 255, 0.12);
   --riv-map-chip-border: rgba(255, 255, 255, 0.25);
   --riv-map-frame-border: rgba(255, 255, 255, 0.22);
+  --riv-map-zoom-selected-fill: rgba(255, 255, 255, 0.16);
+  --riv-map-zoom-selected-border: #8fd6e2;
+  --riv-map-zoom-selected-ink: #8fd6e2;
+  --riv-map-zoom-idle-fill: rgba(255, 255, 255, 0.1);
+  --riv-map-zoom-idle-border: rgba(255, 255, 255, 0.45);
+  --riv-map-zoom-idle-ink: #9adde8;
   --riv-tile-available-fill: rgba(255, 255, 255, 0.1);
   --riv-tile-available-border: rgba(143, 214, 226, 0.45);
   --riv-tile-available-ink: #8fd6e2;

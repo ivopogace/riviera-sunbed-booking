@@ -17,8 +17,8 @@
             class="rounded-full px-2.5 py-1 text-[10.5px] font-bold"
             [class]="
               zoomMode() === 'fit'
-                ? 'bg-[rgba(14,122,137,0.12)] border-[1.5px] border-[#0e7a89] text-[#0a2a33]'
-                : 'bg-white/70 border border-[rgba(12,42,51,0.14)] text-[rgba(12,42,51,0.66)]'
+                ? 'bg-riv-map-zoom-selected-fill border-[1.5px] border-riv-map-zoom-selected-border text-riv-map-zoom-selected-ink'
+                : 'bg-riv-map-zoom-idle-fill border border-riv-map-zoom-idle-border text-riv-map-zoom-idle-ink'
             "
           >
             Fit
@@ -32,8 +32,8 @@
             class="rounded-full px-2.5 py-1 text-[10.5px] font-bold"
             [class]="
               zoomMode() === 'full'
-                ? 'bg-[rgba(14,122,137,0.12)] border-[1.5px] border-[#0e7a89] text-[#0a2a33]'
-                : 'bg-white/70 border border-[rgba(12,42,51,0.14)] text-[rgba(12,42,51,0.66)]'
+                ? 'bg-riv-map-zoom-selected-fill border-[1.5px] border-riv-map-zoom-selected-border text-riv-map-zoom-selected-ink'
+                : 'bg-riv-map-zoom-idle-fill border border-riv-map-zoom-idle-border text-riv-map-zoom-idle-ink'
             "
           >
             100%
