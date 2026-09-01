@@ -246,7 +246,7 @@ N/A — no contract change.
 | 2 — the amenity-chip family | ✅ | `6a70f4c` |
 | 3 — the dialog step-badge family | ✅ | `6923f7b` |
 | 4 — the forced-dark computed-style e2e | ✅ | `89fcc50` |
-| 5 — ledger + follow-up issues + close-out | ✅ | `<phase-5>` |
+| 5 — ledger + follow-up issues + close-out | ✅ | `f930000` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
