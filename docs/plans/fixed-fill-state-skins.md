@@ -243,7 +243,7 @@ then declare `--riv-step-active-ink` + `--riv-step-idle-fill` and migrate `booki
 |-------|--------|---------|
 | 0 — extract the token-guard helpers | ✅ | `fda89a8` |
 | 1 — the outcome-medallion family | ✅ | `c72ff26` |
-| 2 — the amenity-chip family | ✅ | `<phase-2>` |
+| 2 — the amenity-chip family | ✅ | `6a70f4c` |
 | 3 — the dialog step-badge family | ⏳ | |
 | 4 — the forced-dark computed-style e2e | | |
 | 5 — ledger + follow-up issues + close-out | | |
