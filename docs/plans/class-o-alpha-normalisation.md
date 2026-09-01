@@ -211,7 +211,7 @@ guard + the retired-token sweep, watch them fail, then repaint the six amber sur
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The ladder: every class-O alpha a multiple of 5 | ✅ | `fb3ac50` |
-| 1 — One walk-in hatch (`--riv-walkin-hatch`) | ✅ | `<phase-1>` |
+| 1 — One walk-in hatch (`--riv-walkin-hatch`) | ✅ | `dd0669b` |
 | 2 — One amber family (`--riv-warn-*`), three tokens retired | ⏳ | |
 | 3 — Ledger, rule-2 table, close-out | | |
 
