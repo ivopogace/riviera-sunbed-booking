@@ -32,7 +32,7 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * outcome medallion, the amenity chip and the booking dialog's step badge.
  *
  * <p>All three are per-state skins whose fills are fixed literals on hosts that DO theme (none of
- * the eight sites pins porcelain — the only `data-riv-theme` host bindings in the tree are the
+ * the nine sites pins porcelain — the only `data-riv-theme` host bindings in the tree are the
  * admin and operator consoles). So the #850 trap applies verbatim: a themed ink over a fill that
  * stays pale resolves light-on-light in the dark theme. Measured rather than assumed — see the
  * themed-alternative test, which keeps every bound in the tree so the reason survives the decision.
@@ -89,11 +89,16 @@ const STEP = {
 const REGISTRY: Record<string, string> = { ...MEDALLION, ...AMENITY, ...STEP };
 
 /**
- * The three values this family now paints **exclusively**, so a tree-wide sweep is exactly right
- * for them: after this slice nothing else in `src/app` may carry one, and a future component that
- * does is a new painter to argue about rather than a false alarm.
+ * Values no component in `src/app` may carry, so a tree-wide sweep is exactly right for them.
+ *
+ * <p>Two different grounds reach the same assertion, and the distinction is worth keeping. The
+ * first three this family paints **exclusively** — a future component carrying one is a new painter
+ * to argue about rather than a false alarm. `#a86a12` is here for the opposite reason (#869): it is
+ * **retired**, not owned. It was `outcome-card`'s one-off `pending` ink, the app's single use of
+ * the value, and the artboards' amber — and convergence onto `--riv-medallion-waiting-ink` leaves
+ * it painting nothing at all. Sweeping it keeps it from creeping back as a literal.
  */
-const EXCLUSIVE_LITERALS: readonly RegExp[] = [/#d9f2f7/i, /#f7e8e4/i, /#eecdc4/i];
+const EXCLUSIVE_LITERALS: readonly RegExp[] = [/#d9f2f7/i, /#f7e8e4/i, /#eecdc4/i, /#a86a12/i];
 
 /**
  * The other migrated values are NOT exclusive, so they get a **site-scoped** sweep instead — and
@@ -129,6 +134,20 @@ const MIGRATED_SITES: readonly {
     kept: ['amenity-chip', 'amenity-chip--water'],
   },
   {
+    // #869 (class F-5). Asserted as UTILITY strings rather than bare values — the `booking-dialog`
+    // form — because the component's docblock now *names* the two accent tokens it stopped
+    // consuming, and a bare-value sweep would read that explanation as a relapse.
+    path: 'shared/outcome-card.ts',
+    gone: [
+      'bg-[rgba(240,170,46,0.2)]',
+      'text-[#a86a12]',
+      'bg-riv-accent-chip-fill',
+      'text-riv-accent-ink',
+    ],
+    // The marker three unit specs query the glyph by (riviera-tailwind rule 2).
+    kept: ['data-riv-outcome-glyph'],
+  },
+  {
     path: 'booking/booking-dialog.ts',
     gone: ['text-[#0a5f74]', 'bg-[#2c7789]'],
     kept: ['linear-gradient(160deg,#0c7288,#0a5f74)', 'step-num'],
@@ -147,6 +166,12 @@ const OUT_OF_FAMILY: readonly { readonly path: string; readonly literal: string 
   { path: 'shared/status-chip.ts', literal: '#8a5410' },
   { path: 'booking/booking-view.ts', literal: '#8a5410' },
   { path: 'operator/payouts-tab.html', literal: '#a3372a' },
+  // #869's four: `rgba(240,170,46,…)` at four other alphas, on four forms that are not medallions.
+  // The `pending` glyph's own tint was the fifth, and the only one this family had any claim on.
+  { path: 'operator/pending-approval-banner.ts', literal: 'rgba(240,170,46,0.14)' },
+  { path: 'booking/booking-dialog.ts', literal: 'rgba(240,170,46,0.12)' },
+  { path: 'app.html', literal: 'rgba(240,170,46,0.5)' },
+  { path: 'pages/home/home.html', literal: 'rgba(240,170,46,0.5)' },
   { path: 'operator/set-editor.html', literal: '#0a5f74' },
   { path: 'operator/layout-editor.html', literal: '#0a5f74' },
 ];
@@ -200,6 +225,7 @@ describe('Fixed-fill state skins — the outcome medallion (#858)', () => {
       'booking/booking-pay.ts',
       'booking/request-confirmation.ts',
       'shared/failure-panel.ts',
+      'shared/outcome-card.ts',
     ];
 
     for (const path of sites) {
@@ -234,7 +260,7 @@ describe('Fixed-fill state skins — the outcome medallion (#858)', () => {
     }
   });
 
-  it('leaves no component anywhere painting the three now-exclusive literals', () => {
+  it('leaves no component anywhere painting the exclusive or retired literals', () => {
     const offenders = componentSources().filter((path) =>
       EXCLUSIVE_LITERALS.some((literal) => literal.test(read(path))),
     );

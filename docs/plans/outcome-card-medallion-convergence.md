@@ -58,14 +58,14 @@ session addendum*). The literal `feature/…` branch is deliberately not created
       *Seam:* the `--riv-*` token values the glyph consumes, read through `testing/glass-tokens.ts`
       · *Pinned by:* `auth-page.contrast.spec.ts` › `the outcome-card tone glyphs clear the
       non-text floor on this theme's card`
-- [ ] **AC-2:** Given a rendered auth page under `porcelain` and under `dark`, when the
+- [x] **AC-2:** Given a rendered auth page under `porcelain` and under `dark`, when the
       signed-in card and the pending card are shown, then each tone glyph's computed
       `background-color`/`color` equal the registered medallion pair — **the same rgb() in both
       themes**. *Seam:* the `/account/sign-in` route's rendered DOM ·
       *Pinned by:* `e2e/fixed-fill-state-skins.e2e.ts` › `the signed-in medallion paints the
       registered positive state` + `the submitted-for-approval medallion paints the registered
       waiting state`
-- [ ] **AC-3:** Given the migrated source, when the tree is swept, then `shared/outcome-card.ts`
+- [x] **AC-3:** Given the migrated source, when the tree is swept, then `shared/outcome-card.ts`
       contains neither `rgba(240,170,46,0.2)` nor `#a86a12` nor `riv-accent-chip-fill` nor
       `riv-accent-ink`, and `#a86a12` appears **nowhere** under `src/app` — while
       `rgba(240,170,46,…)`'s four out-of-family homes keep theirs.
@@ -118,9 +118,9 @@ session addendum*). The literal `feature/…` branch is deliberately not created
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | The dark-theme repaint is judged wrong once seen (a pale medallion punched into a dark card) | med | med | Enumerated in the behavior-parity ledger before any code, and the maintainer chose this option knowing it; the two e2e legs make the shipped value inspectable | ivopogace | open |
-| R-2 | The `rgba(240,170,46,…)` sweep over-reaches onto the four out-of-family homes (`pending-approval-banner`, `booking-dialog`'s mode note, `app.html`'s sun, `home.html`'s photo sun) | med | med | `OUT_OF_FAMILY` gains rows asserting each keeps its literal — the positive half of the sweep #851 invented; only `#a86a12` (single-site) joins `EXCLUSIVE_LITERALS` | — | open |
+| R-2 | The `rgba(240,170,46,…)` sweep over-reaches onto the four out-of-family homes (`pending-approval-banner`, `booking-dialog`'s mode note, `app.html`'s sun, `home.html`'s photo sun) | med | med | `OUT_OF_FAMILY` gains rows asserting each keeps its literal — the positive half of the sweep #851 invented; only `#a86a12` (single-site) joins `EXCLUSIVE_LITERALS` | — | **closed** in phase 1 — all four rows added and green |
 | R-3 | The floor test is written so it passes today, proving nothing | med | high | Phase 0 runs it RED first and records the exact failing number before any component edit | — | **closed** — RED confirmed at `riviera` 2.82:1 (stop `#0a4f6e`) and `dark` 2.46:1 (stop `#3b4a5f`), matching the hand-computed research values; green after the convergence |
-| R-4 | The e2e's `pending` leg is unreachable — the stage needs register-202-then-signin-transport-failure | low | med | Path confirmed in `auth-page.ts:505-532`: a non-401/429 sign-in failure maps to `'error'` and falls through to `submittedForApproval.set(true)`. Mockable as a 500 on the sign-in POST | — | open |
+| R-4 | The e2e's `pending` leg is unreachable — the stage needs register-202-then-signin-transport-failure | low | med | Path confirmed in `auth-page.ts:505-532`: a non-401/429 sign-in failure maps to `'error'` and falls through to `submittedForApproval.set(true)`. Mockable as a 500 on the sign-in POST | — | **closed** in phase 1 — the leg renders and asserts in both themes |
 | R-5 | Frontend-only slice, so no Flyway version to claim and no backend collision surface | — | — | N/A by construction | — | closed |
 
 ## Open questions / Assumptions
@@ -187,16 +187,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `implement — phases 0–1 done, entering phase 2`
 
-**Next action:** extend `fixed-fill-token-skins.contrast.spec.ts`'s sweeps with `outcome-card`, then
-add the two rendered auth legs to `e2e/fixed-fill-state-skins.e2e.ts`.
+**Next action:** the substrate — the ledger's F-5 row, the six artboard pointers, and the verdict
+at the `--riv-medallion-*` declaration.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the decorative-glyph floor, RED → convergence, GREEN | ✅ | |
-| 1 — the token-registry guards (sweep + two rendered legs) | ⏳ | |
-| 2 — the substrate: ledger row, artboard pointers, declaration notes | | |
+| 1 — the token-registry guards (sweep + two rendered legs) | ✅ | |
+| 2 — the substrate: ledger row, artboard pointers, declaration notes | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
