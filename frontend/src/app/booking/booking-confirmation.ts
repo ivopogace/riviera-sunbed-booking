@@ -49,7 +49,7 @@ const CLS = {
         </p>
 
         <dl
-          class="mb-3.5 rounded-[18px] border border-[rgba(255,255,255,0.6)] bg-[rgba(255,255,255,0.4)] px-4 py-3.5 text-left"
+          class="mb-3.5 rounded-[18px] border border-[rgba(255,255,255,0.6)] bg-riv-inset-fill px-4 py-3.5 text-left"
         >
           <div class="flex items-center justify-between gap-3 py-[5px] text-[13.5px]">
             <dt class="text-riv-card-ink-soft">Includes</dt>

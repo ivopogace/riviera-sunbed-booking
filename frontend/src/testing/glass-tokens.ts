@@ -48,8 +48,12 @@ export const DARK_FIELD_BORDER: Glass = { color: WHITE, alpha: 0.5 };
 export const DARK_CARD_TRACK: Glass = { color: WHITE, alpha: 0.18 };
 /** `--riv-dialog-glass` per ink family (light themes: white 0.82). */
 export const DARK_DIALOG_GLASS: Glass = { color: hexToRgb('101a2e'), alpha: 0.94 };
-/** Dark `--riv-wash-fill` / `--riv-inset-fill` (light themes: white 0.5 / 0.4). */
+/** Dark `--riv-wash-fill` / `--riv-inset-fill` (light themes: white 0.5 / INSET_FILL below). */
 export const DARK_WASH_FILL: Glass = { color: WHITE, alpha: 0.08 };
+/** `--riv-inset-fill` on the light themes — the translucent white inset panels inside the
+ *  booking cards. Its dark counterpart is DARK_WASH_FILL above, and the gap between the two is
+ *  the whole reason a BORDER of the same light value needs its own token (CTA_BORDER, #853). */
+export const INSET_FILL: Glass = { color: WHITE, alpha: 0.4 };
 
 /** The `--riv-danger-*` set — the erasure confirm panel's tinted danger treatment: a panel tint
  *  over the card glass, then a stronger action tint over the panel. Light themes here; the dark

@@ -181,17 +181,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Phase 2 — add the dark-theme AA record to `booking-confirmation.contrast.spec.ts`,
-then migrate the `bg-` site onto `bg-riv-inset-fill`.
+**Next action:** Phase 3 — update the audit ledger's class-R row 1 and add the two residue rows.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Register the token + its guard spec | ✅ | see phase-0 commit |
 | 1 — Migrate the 16 border sites + the render proof | ✅ | see phase-1 commit |
-| 2 — Migrate the `bg-` site onto `--riv-inset-fill` | ⏳ | |
-| 3 — Ledger + mirror close-out | | |
+| 2 — Migrate the `bg-` site onto `--riv-inset-fill` | ✅ | see phase-2 commit |
+| 3 — Ledger + mirror close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -256,12 +255,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/app/booking/booking-confirmation.ts`,
 `frontend/src/app/booking/booking-confirmation.contrast.spec.ts`,
-`frontend/e2e/cta-border-token-skin.e2e.ts`
+`frontend/src/testing/glass-tokens.ts`
 
-- [ ] **Step 1:** Add AC-5's dark-theme AA assertion to `booking-confirmation.contrast.spec.ts`
-      (the inks over the inset fill), and the `<dl>`'s computed-background case to the e2e.
-- [ ] **Step 2:** Run both → the e2e case FAILS (the literal paints `rgba(255, 255, 255, 0.4)`
-      under a dark theme).
+- [x] **Step 1:** Add AC-5's dark-theme AA assertion to `booking-confirmation.contrast.spec.ts`
+      — the inks over the inset fill, plus the retired literal's bound kept in the tree.
+      **No e2e case for this site:** `--riv-inset-fill` is already registered and already consumed
+      by four sibling panels, so the "declared without its `@theme inline` row" risk (R-1) does not
+      apply here and a render would prove nothing the sweep does not. The red→green for this site is
+      the sweep test.
+- [x] **Step 2:** `npx ng test --include="src/app/shared/cta-border-token.contrast.spec.ts"` → the
+      sweep FAILS naming `booking/booking-confirmation.ts`.
 - [ ] **Step 3:** Replace `bg-[rgba(255,255,255,0.4)]` with `bg-riv-inset-fill`.
 - [ ] **Step 4:** Re-run → PASS.
 - [ ] **Steps 5–7:** As phase 0.
