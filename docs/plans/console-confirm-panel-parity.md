@@ -190,13 +190,19 @@ N/A — no contract change. No request URL, method, body, or header changes; bot
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `CI gate — PR #883 open (draft), awaiting CI`
+**Stage pointer:** `merge close-out`
 
-**Next action:** Once CI is green on PR #883, run the review-gate invocation ladder
-(`riviera-sdlc` `references/pr-gates.md` §1), mark the PR ready for review, and run the
-Sonar gate per §2.
+**Next action:** Merge PR #883, then run the merge close-out checklist (`riviera-sdlc`
+`references/pr-gates.md` §3) — issue close, docs-freshness, subscription teardown.
 
-**PR:** #883 (draft) — https://github.com/ivopogace/riviera-sunbed-booking/pull/883
+**PR:** #883 (ready for review) — https://github.com/ivopogace/riviera-sunbed-booking/pull/883
+
+**Gates:** CI green on head `d1d8d039` (Backend, Frontend, Repo hygiene, CodeQL ×2, all
+green) · review gate run (`code-review` plugin, medium effort, 5-agent fan-out +
+`riviera-review-overlay`) — 2 real findings (F-1, F-2), both fixed and pushed; 1 observation
+rejected as non-actionable (F-3) · Sonar gate green **with the reported list actually
+pulled** via the API (not just the badge): 0 new issues, 0 duplicated blocks, 92.3% new-code
+coverage.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -212,6 +218,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (`code-review` 5-agent fan-out, medium effort, in-file-comment-compliance agent) | `tailwind.css`'s `--riv-warn-*` family docblock (not touched by the diff) still called the console's two confirm panels "hand-rolled" — stale against this slice's own change. `warn-token-skin.contrast.spec.ts`'s docblock had already been corrected; this one was missed | fixed-in-`872a115b` |
+| F-2 | review (prior-PR-precedent agent) | `shared/confirm-panel.ts`'s class docblock and `ConfirmTone`'s doc comment each gained a bare issue-number citation (`(#881)`) — `frontend/.claude/CLAUDE.md`'s comment rule (canonical: `riviera-java-conventions` §6d) states TSDoc carries the contract, not the changelog, no issue numbers; neither doc comment cited one before this slice | fixed-in-`d1d8d039` |
+| F-3 | review (git-history-context agent) | Observation, not a defect: the two new consumers set `label` (accessible name) to the exact same sentence as the visible `headline`, where `layout-editor`/`set-editor` deliberately use a short label distinct from their visible copy | rejected — a stylistic choice, not a rule violation; nothing in `docs/plans/shared-confirm-panel.md` or the component's own contract requires a distinct label, and the agent itself found no precedent forbidding it |
 
 ---
 
