@@ -238,7 +238,7 @@ N/A — no contract change.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — extract the token-guard helpers | ✅ | `<phase-0>` |
+| 0 — extract the token-guard helpers | ✅ | `fda89a8` |
 | 1 — the outcome-medallion family | ⏳ | |
 | 2 — the amenity-chip family | | |
 | 3 — the dialog step-badge family | | |
