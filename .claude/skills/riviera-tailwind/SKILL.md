@@ -2,9 +2,9 @@
 name: riviera-tailwind
 description: >-
   How to write Tailwind v4 in frontend/: directive sharing (no @apply), test-hook classes,
-  the touch-target floor, tokens across the three themes, no-drift proofs, migrate-on-
-  touch. Load BEFORE styling anything under frontend/src — Tailwind is the default and
-  SCSS needs a stated justification.
+  the touch-target floor, tokens across the three themes, no-drift proofs,
+  migrate-on-touch. Load BEFORE styling anything under frontend/src — Tailwind is the
+  default and SCSS needs a stated justification.
 ---
 
 # Riviera Tailwind conventions

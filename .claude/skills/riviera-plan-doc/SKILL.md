@@ -2,9 +2,9 @@
 name: riviera-plan-doc
 description: >-
   Plan-doc discipline for riviera-sunbed-booking: testable ACs with named seams, risk and
-  open-question registers, the Modulith/availability/payment sections, the Execution-
-  status state store. Load at the riviera-sdlc plan stage or when executing an existing
-  plan in docs/plans/.
+  open-question registers, the Modulith/availability/payment sections, the
+  Execution-status state store. Load at the riviera-sdlc plan stage or when executing an
+  existing plan in docs/plans/.
 ---
 
 # Riviera Plan Doc
