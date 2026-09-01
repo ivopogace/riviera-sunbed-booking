@@ -54,7 +54,9 @@ export interface ChipFill {
    * The class the fill is painted through, when that is no longer derivable from {@link fill} by
    * interpolation — i.e. once the recipe has been tokenised and paints a named utility instead of a
    * `bg-[#…]` arbitrary value. Absent means the recipe is still a literal and `bg-[${fill}]` is the
-   * class, which is how the amenity chips (class S of the colour-literal audit) still work.
+   * class. Every recipe here is tokenised as of #858 — the amenity chips last, which also retired
+   * their class-S row in the colour-literal audit: a two-variant tag is class F's shape, not a
+   * per-state palette. The field stays optional for the next recipe added before its own migration.
    */
   readonly fillClass?: string;
   /**

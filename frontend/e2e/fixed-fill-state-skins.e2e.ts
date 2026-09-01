@@ -19,6 +19,14 @@ import { completeDialog } from './support/booking-dialog';
  * and `shared/failure-panel.ts` are mounted by hosts of differing themes, so this is the check that
  * matters. Every assertion runs twice, once per theme, against the same expected value: a skin that
  * moved between the two legs is precisely the drift the tokens forbid.
+ *
+ * <p>Six surfaces, because the family has to be proven where it actually renders: the amenity chip's
+ * two variants, the step badge's two states, and the medallion's three — positive via the booking
+ * confirmation, negative via `shared/`'s own `appFailureIcon`, and **waiting** via
+ * `request-confirmation`'s REQUEST-mode `202`. That last leg exists because #858 never enumerated
+ * the waiting state; it was found by sweeping the medallion FORM rather than the ticket's value
+ * list, and without a rendered assertion its pair would be declared and mapped but never proven to
+ * reach an element.
  */
 
 /** Every token the slice registers, with the value `tailwind.css` declares for it. */
@@ -189,8 +197,7 @@ for (const theme of ['porcelain', 'dark'] as const) {
       await expect(water).toHaveCSS('color', RGB.waterInk);
       await expect(water).toHaveCSS('border-color', RGB.waterBorder);
 
-      // The neutral sibling — the half #858 did not enumerate, and the half that proves the
-      // ternary moved whole rather than one branch at a time.
+      // The neutral sibling: the half that proves the ternary moved whole, not one branch at a time.
       const tag = page.locator('.amenity-chip:not(.amenity-chip--water)').first();
       await expect(tag).toBeVisible();
       await expect(tag).toHaveCSS('background-color', RGB.tagFill);
@@ -231,10 +238,7 @@ for (const theme of ['porcelain', 'dark'] as const) {
     });
 
     test('the request medallion paints the registered waiting state', async ({ page }) => {
-      // The third state, and the one #858 never enumerated: `request-confirmation`'s ⏳ is the amber
-      // twin of `booking-pay`'s waiting branch, found by sweeping the medallion FORM rather than the
-      // ticket's value list. Without this leg the waiting pair would be declared and mapped but
-      // never proven to reach a rendered element.
+      // Without this leg the waiting pair is declared and mapped, but never proven to reach a render.
       await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
         route.fulfill({ json: REQUEST_VENUE }),
       );
@@ -250,16 +254,14 @@ for (const theme of ['porcelain', 'dark'] as const) {
       await completeDialog(page.getByRole('dialog'), 'Send request');
 
       await expect(page).toHaveURL(/\/booking\/requested/);
-      // `hasText: '⏳'` would match the info box's own hourglass, which is NOT the medallion; the
-      // badge's glyph is the envelope. Scoped to the card's first child for that reason.
+      // `hasText: '⏳'` would match the info box's hourglass; the badge's own glyph is the envelope.
       const medallion = page.locator('[aria-hidden="true"]').filter({ hasText: '✉' }).first();
       await expect(medallion).toHaveCSS('background-color', RGB.waitingFill);
       await expect(medallion).toHaveCSS('color', RGB.waitingInk);
     });
 
     test('the failure icon paints the registered negative state', async ({ page }) => {
-      // `appFailureIcon` in `shared/` is the medallion's negative state worn by a directive that
-      // Discover and the beach map both mount — the clearest case for invariance in the family.
+      // `appFailureIcon` is this state worn by a directive Discover and the beach map both mount.
       await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ status: 500 }));
       await page.goto('/venues/1');
 

@@ -106,6 +106,9 @@ const EXCLUSIVE_LITERALS: readonly RegExp[] = [/#d9f2f7/i, /#f7e8e4/i, /#eecdc4/
  * class-string adjacency alone would break the first time a formatter reordered a utility.
  *
  * <p>So each migrated site names what must be **gone** from it and what must be **kept** in it.
+ * `booking-dialog` is the one site whose `gone` list matches ROLES rather than bare values: its
+ * header gradient keeps a `#0a5f74` stop, so the value it loses as an ink survives in a role this
+ * slice does not own, in the same file.
  */
 const MIGRATED_SITES: readonly {
   readonly path: string;
@@ -128,9 +131,6 @@ const MIGRATED_SITES: readonly {
   {
     path: 'booking/booking-dialog.ts',
     gone: ['text-[#0a5f74]', 'bg-[#2c7789]'],
-    // `#0a5f74` survives HERE, in the header gradient — the one site where the value this slice
-    // migrates as an ink is also painted in a role it does not own, in the same file. That is why
-    // this site's `gone` list matches roles rather than bare values, unlike every other row.
     kept: ['linear-gradient(160deg,#0c7288,#0a5f74)', 'step-num'],
   },
 ];
@@ -194,9 +194,7 @@ describe('Fixed-fill state skins — the outcome medallion (#858)', () => {
   });
 
   it('states the aria-hidden exemption rather than inventing a contrast pair for it', () => {
-    // All five medallion sites render a decorative glyph with `aria-hidden="true"`, so none owes an
-    // AA assertion — the AA test above is a floor the values happen to clear, not a requirement
-    // they are held to. The claim is asserted against the sources so it cannot rot silently.
+    // Asserted against the sources, so the exemption cannot rot into an unchecked claim.
     const sites = [
       'booking/booking-confirmation.ts',
       'booking/booking-pay.ts',
@@ -258,9 +256,6 @@ describe('Fixed-fill state skins — the outcome medallion (#858)', () => {
   });
 
   it('leaves the out-of-family homes of these values untouched', () => {
-    // The half of the sweep that proves it did not over-reach. Each of these paints one of the
-    // migrated VALUES in a role this slice does not own; if a later sweep takes one, this goes red
-    // and the ledger row has to be argued rather than assumed.
     for (const { path, literal } of OUT_OF_FAMILY) {
       expect(read(path), `${path} still paints ${literal}`).toContain(literal);
     }
@@ -269,10 +264,7 @@ describe('Fixed-fill state skins — the outcome medallion (#858)', () => {
 
 describe('Fixed-fill state skins — the amenity chip (#858)', () => {
   it("both variants clear AA — the slice's ONLY sites that owe one", () => {
-    // Every other position this slice migrates is an `aria-hidden` glyph. The chip is the exception:
-    // it carries the amenity name and the "Xm to water" distance as real text, on a directive that
-    // `shared/` mounts from hosts of differing themes. Its recipes live in `testing/chip-fills.ts`
-    // so `shared/amenities.contrast.spec.ts` proves the same pairs against the rendered chip.
+    // Recipes from `testing/chip-fills.ts`, so `amenities.contrast.spec.ts` proves the same pairs.
     for (const { name, ink, fill } of DESCRIPTIVE_CHIPS) {
       expect(contrastRatio(ink, fill), name).toBeGreaterThanOrEqual(AA_NORMAL);
     }
@@ -290,9 +282,6 @@ describe('Fixed-fill state skins — the amenity chip (#858)', () => {
   });
 
   it('keeps the two variants as ONE family, cut by form', () => {
-    // The chip's water ink is what #858 enumerated; its neutral sibling is the same three roles in
-    // the same `computed()` ternary. Migrating one and leaving the other a literal is the mis-cut
-    // this ticket exists to undo, so the family is both variants or neither.
     expect(Object.keys(AMENITY)).toHaveLength(6);
     expect(DESCRIPTIVE_CHIPS.map((chip) => [chip.fillClass, chip.inkClass])).toEqual([
       ['bg-riv-amenity-tag-fill', 'text-riv-amenity-tag-ink'],
@@ -303,9 +292,6 @@ describe('Fixed-fill state skins — the amenity chip (#858)', () => {
 
 describe('Fixed-fill state skins — the dialog step badge (#858)', () => {
   it('both states clear AA, and neither is required to', () => {
-    // The badge is `aria-hidden` — the sibling `.step-label` carries the step's meaning — so the
-    // ratios are a floor these values happen to clear, not a bar they are held to. Stated, because
-    // the alternative is inventing a contrast pair for a decorative numeral.
     expect(
       contrastRatio(rgbToHex(STEP_ACTIVE_INK), rgbToHex(STEP_ACTIVE_FILL)),
       'active',
@@ -326,8 +312,6 @@ describe('Fixed-fill state skins — the dialog step badge (#858)', () => {
   });
 
   it('takes only the half of each state that is not already unthemeable', () => {
-    // The asymmetry IS the design: `bg-white` and `text-white` cannot theme, so they pin their
-    // partners and need no tokens. Pinned so a later "for symmetry" pass has to argue with a test.
     expect(Object.keys(STEP)).toEqual(['--riv-step-active-ink', '--riv-step-idle-fill']);
     expect(rgbToHex(STEP_ACTIVE_FILL)).toBe(rgbToHex(STEP_IDLE_INK));
 

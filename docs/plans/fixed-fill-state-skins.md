@@ -254,7 +254,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | CI — `Repo hygiene (diff-scoped)`, red on every push; independently found by the review gate's CLAUDE.md agent | **RV-STYLE-1**: the slice wrote **12 multi-line inline comments** (4 in the e2e, 7 in the guard spec, 1 on `appFailureIcon`). Doc comments are exempt; `//` blocks inside a body are not | fixed — `failure-panel`'s became a TSDoc block on the directive (which is what it always was); the guard spec's and the e2e's substance moved into the file docblocks and the rest shortened to one line |
+| F-2 | Review gate — prior-PR-comments agent | `testing/chip-fills.ts`'s `ChipFill.fillClass` TSDoc still called the amenity chips "still a literal … class S of the colour-literal audit", which this PR's own diff falsifies twice. **A phase-2 edit to that exact sentence silently no-op'd** — its `str.replace` carried no assertion, unlike every other edit in the slice. Recurrence of PR #862's finding #1: a declaration comment the change made false | fixed — sentence rewritten; a repo-wide sweep confirms it was the only surviving stale claim |
 
 ---
 
