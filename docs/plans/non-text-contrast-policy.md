@@ -66,8 +66,10 @@ it everywhere; also confirmed the `@theme inline` multi-theme pattern against Ta
 Colors § "Referencing other variables", and the `/opacity` → `color-mix(in oklab, …,
 transparent)` compilation against the v4 announcement — the two Tailwind facts the ledger's
 class O and these token comments rest on) · `riviera-frontend` (placement: the rule is design
-substrate under `docs/design/`, beside the ledger that cites it; the new assertions extend the
-**existing** `shared/cta-border-token.contrast.spec.ts` rather than adding a file) ·
+substrate under `docs/design/`, beside the ledger that cites it; the new assertions extend two
+**existing** specs rather than adding a file — `shared/cta-border-token.contrast.spec.ts`, and at
+the review gate `admin/accent-tokens.contrast.spec.ts`, which despite its folder is scoped to the
+whole `--riv-accent-*` **token family**, so the segmented control's border belongs to it) ·
 `angular-developer` + the **angular-cli MCP** (`search_documentation` v22 for
 `"color contrast"` and `"WCAG contrast ratio styling colors accessibility"` — **0 results
 both**; Angular's a11y guide is ARIA/native-elements/focus-management only and defers colour
