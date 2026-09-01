@@ -93,9 +93,9 @@ addendum).
       dark".
 
 - [ ] **AC-2:** Given the same maths, when the CTA fill alone is measured against the card
-      glass in the **dark** theme, then it records 2.23–3.16:1 — below 3:1 — and the test
-      states that this pairing is not the 1.4.11 comparison because the hairline lies between
-      the two. *Seam:* as AC-1 · *Pinned by:* `cta-border-token.contrast.spec.ts` › "the
+      glass in the **dark** theme, then it records a 2.23–3.16:1 band whose **floor is under
+      3:1** — the failure #876 reported is real at the worst stop — and the test states that this
+      pairing is nonetheless not the 1.4.11 comparison, because the hairline lies between the two. *Seam:* as AC-1 · *Pinned by:* `cta-border-token.contrast.spec.ts` › "the
       fill-vs-glass pairing #876 reported is not the adjacent pair".
 
 - [ ] **AC-3:** Given `frontend/src` read as text, when every `#834` citation is enumerated,
@@ -228,14 +228,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — add the CTA adjacent-colour assertions (AC-1, AC-2) to `app/shared/cta-border-token.contrast.spec.ts`.
+**Next action:** Phase 2 — write the stale-deferral guard (red), then repoint the six token families and `accent-tokens.contrast.spec.ts:52` at the rule doc (green).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the rule doc + ledger repoint | ✅ | `<phase-0>` |
-| 1 — the CTA adjacent-colour assertions (AC-1, AC-2) | | |
+| 0 — the rule doc + ledger repoint | ✅ | `f232a1b` |
+| 1 — the CTA adjacent-colour assertions (AC-1, AC-2) | ✅ | `<phase-1>` |
 | 2 — the stale-deferral guard, then the repointing it forces green (AC-3) | | |
 | 3 — the forced-colors precondition guard + its doc clause (AC-4) | | |
 
@@ -249,6 +249,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-4 | phase 0 (counting sweep, in situ) | `docs/design/README.md` calls the ledger "the one exception" to the design-record convention; this slice adds a second maintained `.md` | fixed in phase 0 |
 | F-2 | intake grill | The issue's family list is incomplete: `--riv-amenity-tag-border` (1.15:1) and `--riv-amenity-water-border` (1.17:1) cite #834 at `tailwind.css:482` and `glass-tokens.ts:323` and are unlisted — six families, not five | open → covered by AC-3's enumeration |
 | F-3 | intake grill | Two **spec** files carry #834 pointers the issue does not mention; `accent-tokens.contrast.spec.ts:52` ("Raising it to compliance is #834's") is a live forward deferral, `admin-console.contrast.spec.ts:42` is history | open → AC-3 splits them: repoint the first, allow-list the second |
+| F-5 | phase 1 (self-inflicted) | AC-2 as first written asserted the whole 2.23–3.16 band under 3:1; only the **floor** is. The test caught it — the AC wording was loose, not the measurement | fixed in phase 1 |
 
 ---
 

@@ -6,6 +6,8 @@ import {
   CTA_BORDER,
   CTA_GRAD_STOPS,
   DARK_CARD_BORDER,
+  DARK_CARD_GLASS,
+  DARK_STOPS,
   DIALOG_CLOSE_FILL,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
@@ -50,6 +52,17 @@ const FIXED_FILLS = [
   ['--riv-cta-grad top stop', CTA_GRAD_STOPS[0]],
   ['--riv-cta-grad bottom stop', CTA_GRAD_STOPS[1]],
   ['booking-dialog close button', DIALOG_CLOSE_FILL],
+] as const;
+
+/**
+ * Every theme's card glass with the background stops it composites over — the hosts a CTA button
+ * sits on. The light two are the population the #853 affordance test already used; #876 adds the
+ * dark theme, whose numbers had lived only in prose until then.
+ */
+const THEMED_CARD_GLASS = [
+  ['porcelain', PORCELAIN_CARD_GLASS, PORCELAIN_STOPS],
+  ['riviera', RIVIERA_CARD_GLASS, RIVIERA_STOPS],
+  ['dark', DARK_CARD_GLASS, DARK_STOPS],
 ] as const;
 
 /**
@@ -147,6 +160,54 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
         }
       }
     }
+  });
+
+  /**
+   * #876's correction, and the reason no palette change was needed. The ticket measured the CTA
+   * fill against the card glass and read 2.23-3.16:1 in the dark theme as a 1.4.11 failure — but
+   * the hairline sits BETWEEN those two, so that pairing is not an adjacency. Measured against the
+   * colour each layer actually abuts, the boundary clears 3:1 in every theme, and WHICH layer
+   * carries it swaps: the fill is a fixed mid-teal, so light glass makes the fill the contrasting
+   * half and dark glass makes the white hairline it. Rule 1 of docs/design/non-text-contrast.md.
+   */
+  it('the boundary against the host card clears 3:1 in every theme — the fill carries it in light, the hairline in dark', () => {
+    for (const [theme, glass, stops] of THEMED_CARD_GLASS) {
+      for (const stop of stops) {
+        const behind = surfaceOver(glass, stop);
+        for (const fill of CTA_GRAD_STOPS) {
+          const byFill = contrastRatio(rgbToHex(fill), rgbToHex(behind));
+          const hairline = composite([255, 255, 255], CTA_BORDER.alpha, fill);
+          const byHairline = contrastRatio(rgbToHex(hairline), rgbToHex(behind));
+          expect(
+            Math.max(byFill, byHairline),
+            `${theme} over stop ${rgbToHex(stop)}: neither the fill (${byFill.toFixed(2)}) nor the hairline (${byHairline.toFixed(2)}) abuts the card at 3:1`,
+          ).toBeGreaterThanOrEqual(AA_LARGE);
+          expect(
+            theme === 'dark' ? byHairline : byFill,
+            `${theme} over stop ${rgbToHex(stop)}: the expected carrier for this theme`,
+          ).toBeGreaterThanOrEqual(AA_LARGE);
+        }
+      }
+    }
+  });
+
+  /**
+   * The number #876 reported, kept under assertion rather than deleted as wrong — it is real, and
+   * a future slice re-deriving it should find the pairing already named. What it is NOT is the
+   * 1.4.11 comparison: the test above measures the adjacency.
+   */
+  it('the fill-vs-glass pairing #876 reported is not the adjacent pair', () => {
+    const [, darkGlass, darkStops] = THEMED_CARD_GLASS.find(([theme]) => theme === 'dark')!;
+    const ratios = darkStops.flatMap((stop) =>
+      CTA_GRAD_STOPS.map((fill) =>
+        contrastRatio(rgbToHex(fill), rgbToHex(surfaceOver(darkGlass, stop))),
+      ),
+    );
+    expect(Math.min(...ratios), 'the worst stop, which is what falls under 3:1').toBeLessThan(
+      AA_LARGE,
+    );
+    expect(Math.min(...ratios), "the band's floor").toBeGreaterThan(2.2);
+    expect(Math.max(...ratios), "the band's ceiling").toBeLessThan(3.2);
   });
 
   it('a themed border would fade over fills that do not theme', () => {
