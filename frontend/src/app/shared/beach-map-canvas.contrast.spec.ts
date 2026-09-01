@@ -4,10 +4,24 @@ import {
   Rgb,
   composite,
   contrastRatio,
-  hexToRgb,
   rgbToHex,
 } from '../../testing/contrast';
-import { DARK_WASH_STOPS, WASH_STOPS } from '../../testing/glass-tokens';
+import {
+  DARK_MAP_ZOOM_IDLE_BORDER,
+  DARK_MAP_ZOOM_IDLE_FILL,
+  DARK_MAP_ZOOM_IDLE_INK,
+  DARK_MAP_ZOOM_SELECTED_ACCENT,
+  DARK_MAP_ZOOM_SELECTED_FILL,
+  DARK_WASH_STOPS,
+  Glass,
+  MAP_ZOOM_IDLE_BORDER,
+  MAP_ZOOM_IDLE_FILL,
+  MAP_ZOOM_IDLE_INK,
+  MAP_ZOOM_SELECTED_BORDER,
+  MAP_ZOOM_SELECTED_FILL,
+  MAP_ZOOM_SELECTED_INK,
+  WASH_STOPS,
+} from '../../testing/glass-tokens';
 
 /**
  * WCAG-AA contrast guard for the shared beach-map canvas's own chrome — currently just the
@@ -29,10 +43,8 @@ import { DARK_WASH_STOPS, WASH_STOPS } from '../../testing/glass-tokens';
 
 interface ZoomState {
   readonly name: string;
-  readonly fill: Rgb;
-  readonly fillAlpha: number;
-  readonly border: Rgb;
-  readonly borderAlpha: number;
+  readonly fill: Glass;
+  readonly border: Glass;
   readonly ink: Rgb;
 }
 
@@ -49,19 +61,15 @@ const FAMILIES: readonly ZoomFamily[] = [
     states: [
       {
         name: 'selected',
-        fill: hexToRgb('ffffff'),
-        fillAlpha: 0.8,
-        border: hexToRgb('0e7a89'),
-        borderAlpha: 1,
-        ink: hexToRgb('0a2a33'),
+        fill: MAP_ZOOM_SELECTED_FILL,
+        border: { color: MAP_ZOOM_SELECTED_BORDER, alpha: 1 },
+        ink: MAP_ZOOM_SELECTED_INK,
       },
       {
         name: 'idle',
-        fill: hexToRgb('ffffff'),
-        fillAlpha: 0.6,
-        border: hexToRgb('0c2a33'),
-        borderAlpha: 0.55,
-        ink: hexToRgb('0a4f5e'),
+        fill: MAP_ZOOM_IDLE_FILL,
+        border: MAP_ZOOM_IDLE_BORDER,
+        ink: MAP_ZOOM_IDLE_INK,
       },
     ],
   },
@@ -71,19 +79,15 @@ const FAMILIES: readonly ZoomFamily[] = [
     states: [
       {
         name: 'selected',
-        fill: hexToRgb('ffffff'),
-        fillAlpha: 0.16,
-        border: hexToRgb('8fd6e2'),
-        borderAlpha: 1,
-        ink: hexToRgb('8fd6e2'),
+        fill: DARK_MAP_ZOOM_SELECTED_FILL,
+        border: { color: DARK_MAP_ZOOM_SELECTED_ACCENT, alpha: 1 },
+        ink: DARK_MAP_ZOOM_SELECTED_ACCENT,
       },
       {
         name: 'idle',
-        fill: hexToRgb('ffffff'),
-        fillAlpha: 0.1,
-        border: hexToRgb('ffffff'),
-        borderAlpha: 0.45,
-        ink: hexToRgb('9adde8'),
+        fill: DARK_MAP_ZOOM_IDLE_FILL,
+        border: DARK_MAP_ZOOM_IDLE_BORDER,
+        ink: DARK_MAP_ZOOM_IDLE_INK,
       },
     ],
   },
@@ -94,7 +98,7 @@ describe.each(FAMILIES)('Beach-map zoom toggle contrast — $name family (issue 
     '$name state: "Fit"/"100%" ink meets AA 4.5:1 over every wash stop',
     (state) => {
       for (const stop of family.washStops) {
-        const surface = composite(state.fill, state.fillAlpha, stop);
+        const surface = composite(state.fill.color, state.fill.alpha, stop);
         expect(
           contrastRatio(rgbToHex(state.ink), rgbToHex(surface)),
           `over stop ${rgbToHex(stop)}`,
@@ -107,8 +111,8 @@ describe.each(FAMILIES)('Beach-map zoom toggle contrast — $name family (issue 
     '$name state: the border marks the button boundary at 3:1 (WCAG 1.4.11)',
     (state) => {
       for (const stop of family.washStops) {
-        const surface = composite(state.fill, state.fillAlpha, stop);
-        const border = composite(state.border, state.borderAlpha, surface);
+        const surface = composite(state.fill.color, state.fill.alpha, stop);
+        const border = composite(state.border.color, state.border.alpha, surface);
         expect(
           contrastRatio(rgbToHex(border), rgbToHex(surface)),
           `over stop ${rgbToHex(stop)}`,

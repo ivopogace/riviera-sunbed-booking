@@ -515,14 +515,12 @@
   --riv-map-chip-fill: rgba(255, 255, 255, 0.8);
   --riv-map-chip-border: #cfe3df;
   --riv-map-frame-border: rgba(12, 42, 51, 0.25);
-  /** The Fit/100% zoom toggle (#870, class F): both states used to pin a fixed hex ink over a
-      fixed rgba fill on this same wash, invisible in the dark theme (1.16-1.22:1) — unlike the
-      rail/chip pair above, the toggle never followed the wash's own theming. Per-theme like them
-      now, not a theme-invariant pair: the surface it sits on themes, so the ink should too. AA
-      proof: shared/beach-map-canvas.contrast.spec.ts, over both wash families. The idle ink
-      coincides with --riv-map-rail-ink in both themes — a different role (a toggle state, not a
-      row-label chip) on its own token, not the coincidental one, per this file's own --riv-map-*
-      / --riv-tile-* precedent (colour-literal-token-audit.md class R). */
+  /** The Fit/100% zoom toggle's pair (#870, class F): per-theme, like the rail/chip pairs above —
+      not theme-invariant, because it is this WASH that themes, not a fixed fill. AA proof:
+      shared/beach-map-canvas.contrast.spec.ts, over both wash families. The idle ink coincides
+      with --riv-map-rail-ink in both themes — a different role (a toggle state, not a row-label
+      chip), so its own token rather than the coincidental one, per colour-literal-token-audit.md
+      class R. Rationale: docs/design/colour-literal-token-audit.md, issue #870. */
   --riv-map-zoom-selected-fill: rgba(255, 255, 255, 0.8);
   --riv-map-zoom-selected-border: #0e7a89;
   --riv-map-zoom-selected-ink: #0a2a33;

@@ -183,6 +183,26 @@ export const WASH_STOPS: readonly Rgb[] = ['cfeef6', 'e7f5f1', 'f6eedb'].map(hex
 /** The night wash — the dark theme's `--riv-map-sea/mid/sand`. */
 export const DARK_WASH_STOPS: readonly Rgb[] = ['14303c', '1c2f33', '2b2a22'].map(hexToRgb);
 
+/** The `--riv-map-zoom-{selected,idle}-*` pair (#870, class F): the Fit/100% zoom toggle's two
+ *  states, on the same wash the rail/chip pairs above sit on. Unlike this file's usual class-F
+ *  shape (a themed ink drifting over a fixed fill), both halves here were fixed literals and the
+ *  WASH itself themes — so the fix is a per-theme pair, not a theme-invariant one. The idle ink
+ *  coincides with `--riv-map-rail-ink`'s value in both themes; a different role (a toggle state,
+ *  not a row-label chip), so its own token rather than the coincidental one, per
+ *  colour-literal-token-audit.md class R. Proof: shared/beach-map-canvas.contrast.spec.ts. */
+export const MAP_ZOOM_SELECTED_BORDER: Rgb = hexToRgb('0e7a89');
+export const MAP_ZOOM_SELECTED_INK: Rgb = hexToRgb('0a2a33');
+export const MAP_ZOOM_IDLE_INK: Rgb = hexToRgb('0a4f5e');
+export const MAP_ZOOM_SELECTED_FILL: Glass = { color: WHITE, alpha: 0.8 };
+export const MAP_ZOOM_IDLE_FILL: Glass = { color: WHITE, alpha: 0.6 };
+export const MAP_ZOOM_IDLE_BORDER: Glass = { color: CARD_INK, alpha: 0.55 };
+/** The night wash's zoom-toggle pair — the selected state's border and ink coincide (`#8fd6e2`). */
+export const DARK_MAP_ZOOM_SELECTED_ACCENT: Rgb = hexToRgb('8fd6e2');
+export const DARK_MAP_ZOOM_IDLE_INK: Rgb = hexToRgb('9adde8');
+export const DARK_MAP_ZOOM_SELECTED_FILL: Glass = { color: WHITE, alpha: 0.16 };
+export const DARK_MAP_ZOOM_IDLE_FILL: Glass = { color: WHITE, alpha: 0.1 };
+export const DARK_MAP_ZOOM_IDLE_BORDER: Glass = { color: WHITE, alpha: 0.45 };
+
 /** Worst-case background-gradient stops a glass surface can sit over, per theme. */
 export const RIVIERA_STOPS: readonly Rgb[] = ['93e6f2', 'ffe2b0', '38b6d2', '0a4f6e'].map(hexToRgb);
 export const PORCELAIN_STOPS: readonly Rgb[] = ['ffffff', 'eef6f8', 'cfeaf2', 'dfeef2'].map(
