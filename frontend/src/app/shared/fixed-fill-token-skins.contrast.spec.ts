@@ -169,12 +169,13 @@ const OUT_OF_FAMILY: readonly { readonly path: string; readonly literal: string 
   { path: 'shared/status-chip.ts', literal: '#8a5410' },
   { path: 'booking/booking-view.ts', literal: '#8a5410' },
   { path: 'operator/payouts-tab.html', literal: 'riv-console-negative-ink/30' },
-  /** `rgba(240,170,46,…)` at four other alphas, on four forms that are not medallions — the
-   *  over-reach a value-led sweep of the retired `pending` tint would make. */
+  /** `rgba(240,170,46,…)` at three other alphas, on three forms that are not medallions — the
+   *  over-reach a value-led sweep of the retired `pending` tint would make. A fourth stood in
+   *  `pages/home/home.html` until that paint was removed outright: a row goes only when its paint
+   *  is gone from the tree, never when the paint survives under another notation. */
   { path: 'operator/pending-approval-banner.ts', literal: 'rgba(240,170,46,0.14)' },
   { path: 'booking/booking-dialog.ts', literal: 'rgba(240,170,46,0.12)' },
   { path: 'app.html', literal: 'rgba(240,170,46,0.5)' },
-  { path: 'pages/home/home.html', literal: 'rgba(240,170,46,0.5)' },
   { path: 'operator/set-editor.html', literal: '#0a5f74' },
   { path: 'operator/layout-editor.html', literal: '#0a5f74' },
 ];

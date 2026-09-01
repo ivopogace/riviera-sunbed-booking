@@ -510,9 +510,10 @@
   /** The beach-map PREMIUM cell (class O, #852): its boundary, and the fill that boundary sits on.
       The gradient is an image token because it is BYTE-IDENTICAL at both consumers -- the cell
       variant and the layout editor's tool swatch, which the code calls its mirror -- and one
-      declaration is the only thing that keeps a mirror mirroring. (Its walk-in sibling is not an
-      image token: those three gradients differ by alpha per site, so rule B keeps the alpha at the
-      call site there.) */
+      declaration is the only thing that keeps a mirror mirroring. (#852 concluded its walk-in
+      sibling could NOT be one, because "those three gradients differ by alpha per site". #879
+      overturned that -- the difference per site was the bug, not the reason -- and the next block
+      is the resulting --riv-walkin-hatch.) */
   --riv-premium-edge: #b47814;
   --riv-premium-grad: linear-gradient(180deg, #ffe3a3, #f4c05a);
 
@@ -735,6 +736,19 @@
     rgba(13, 40, 40, 0.8) 100%
   );
   --riv-photo-ink: #ffffff;
+  /** THE ONE SUN: the app shell's brand mark, and both photo-less empty states (the Discover
+      card and the beach-map band). Every stop is OPAQUE and must stay so -- a translucent stop
+      composites against the themed --riv-photo-grad beneath it and reads pale green. Declared
+      once, no dark override: an opaque fill takes no colour from what it covers, so it needs none.
+      Proof: shared/sun-token.contrast.spec.ts + e2e/sun-token.e2e.ts.
+      Rationale: docs/design/colour-literal-token-audit.md, issue #882. */
+  --riv-sun-grad: radial-gradient(
+    circle at 38% 30%,
+    #fff6da 0%,
+    #ffd97a 42%,
+    #f6b23f 76%,
+    #e89a26 100%
+  );
   /** Slideshow chrome over an ARBITRARY uploaded photo (#704). The step chips and the dot rail
       sit above the scrim, so they cannot borrow its backing — they carry their own, and both are
       proven at 3:1 (WCAG 1.4.11) over the worst case any photo can present (pure white AND pure

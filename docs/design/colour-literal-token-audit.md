@@ -9,7 +9,7 @@ teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR
 outline-button skin's theme-invariant family, PR #859), **#854** (the nine solid button/badge
 fills under fixed white ink, PR #860), **#861** (merging that family's two brand teals onto one,
 PR #862), **#848** (the operator console's accent ink, PR #863), **#864** (the console's negative
-ink, PR #866), **#858** (the three fixed-fill state skins, PR #867), **#869** (`outcome-card`'s two tone glyphs onto the medallion skin, PR #871), **#870** (the beach-map zoom toggle's fixed-pair-over-a-themed-host, PR #873), **#868** (the amber notice banner's theme-invariant pair, PR #874), **#853** (the CTA hairline's own border token, PR #875), **#852** (all of class **O** — the `/opacity`-modifier positions — settled on rule B and closed, PR #878), **#879** (class **O**'s values: the multiple-of-five alpha ladder, one `--riv-walkin-hatch`, and the three amber families merged into `--riv-warn-{edge,fill,ink}`, PR #880), **#881** (the console confirm buttons' `#9a6410` onto a fourth `--riv-solid-fill-*` member, `-warn`, PR #883).
+ink, PR #866), **#858** (the three fixed-fill state skins, PR #867), **#869** (`outcome-card`'s two tone glyphs onto the medallion skin, PR #871), **#870** (the beach-map zoom toggle's fixed-pair-over-a-themed-host, PR #873), **#868** (the amber notice banner's theme-invariant pair, PR #874), **#853** (the CTA hairline's own border token, PR #875), **#852** (all of class **O** — the `/opacity`-modifier positions — settled on rule B and closed, PR #878), **#879** (class **O**'s values: the multiple-of-five alpha ladder, one `--riv-walkin-hatch`, and the three amber families merged into `--riv-warn-{edge,fill,ink}`, PR #880), **#881** (the console confirm buttons' `#9a6410` onto a fourth `--riv-solid-fill-*` member, `-warn`, PR #883), **#882** (the three inline suns onto one `--riv-sun-grad`, and the card sun's compositing defect with them).
 
 > **This file is not a design record.** `docs/design/README.md` governs the `.dc.html`
 > artboards — approved-look snapshots that are deliberately *never* rewritten to track the
@@ -368,6 +368,73 @@ a *state palette* is a different question from tokenising an ink: it wants one t
 bar (`#b3261e` on solid white, both themes). The reason is written at `app.ts:59–69` — it is
 a safety notice about a session that may still be open on a shared device, so legibility
 outranks theme harmony. **Exemption class 1.** Measured 6.5:1, past AA. Do not sweep it.
+
+### The inline image gradients — one declaration, three times running
+
+Not a colour class: these positions are **images**, built inline in a class expression rather than
+named by a token. The ledger records them because the same finding has now landed three times, and
+the third one arrived with a bug attached.
+
+| Image | Consumers before | Now | Slice |
+|---|---:|---|---|
+| beach-map premium cell | 2 | `--riv-premium-grad` | #852, PR #878 |
+| beach-map walk-in hatch | 3 | `--riv-walkin-hatch` | #879, PR #880 |
+| the sun | 3 | `--riv-sun-grad` | **#882** |
+
+**#882 is the one to read, because the issue that opened it named the wrong pair.** It filed two
+suns — the app shell's brand mark and the Discover card's empty state — and set the other six
+inline gradients aside as per-site. Re-running its own enumeration returned a third the audit had
+walked past: `venue-map`'s photo-band empty state. That one shares the *card's* role exactly —
+`photos.length === 0`, over `--riv-photo-grad`, under `--riv-photo-scrim`, anchored top-42%
+centred — while the brand mark is identity chrome. So the three split **1/2 by role**, not 2 by
+value, and the pairing the ticket proposed was not the one the code had.
+
+**The lesson repeats and should stop needing to be re-learnt: enumerate by mechanism, judge by
+role.** #879 said the same thing about the hatch. The mechanism here is "an image built inline in a
+class expression"; it is what returns the member you had not noticed, because the two you *had*
+noticed share a notation and the one you missed does not.
+
+**The merge was not cosmetic at one consumer.** The card sun's stops were translucent, so they
+composited against the cyan beneath instead of covering it — rgb(211,221,181) at the centre and
+rgb(117,162,126) at the outer stop, green channel above red at both. It rendered as an olive orb,
+not a sun. That is precisely the "flat pale-green blob" **#704** diagnosed and fixed — applied to
+the map alone, with `venue-map.spec.ts` asserting every-stop-opaque while its sibling consumer
+kept the very shape the assertion existed to forbid. **A rule enforced at one of a value's
+consumers is not enforced.** The token is where such a rule can be stated once; the assertion has
+moved there, and now covers all three.
+
+**Which values won, and why that made the merge cheap.** The map's, because they were the only
+ones already tuned against the surface they sit on. A prototype rendered all three under each
+candidate (branch `spike/882-sun-merge`): at 32 px the brand mark is indistinguishable between the
+paints, on the map's paint the 96 px band is byte-identical, and the card is the only site that
+moves — from broken to right. Adopting the *broken* consumer's notation, or splitting the
+difference, would have moved two correct sites to fix one.
+
+**`--riv-premium-edge`'s fork did not apply here, and that is worth stating rather than assuming.**
+Role beats value settled #848, #858, #864 and #879 the other way — a tier identity is not a
+warning — and by that rule the brand mark, being identity chrome, had a claim to stay out. It was
+merged anyway, on evidence rather than by exception: the rule exists because a coincidental value
+match drags a role somewhere it does not belong, and here the maintainer's call was that one sun is
+one thing across the product. The prototype is what made that decidable — the brand mark does not
+move, so the merge costs the identity nothing.
+
+**Theme-invariance, and why it is load-bearing rather than incidental.** Every stop is opaque, so
+the sun composites against nothing and cannot take a themed backdrop's colour. `--riv-photo-grad`
+*does* have a dark override, which means the translucent form was not merely wrong once — it was
+wrong differently per theme. Declared once in the base block, no dark override; the single-
+declaration guard is the only thing able to see one added later.
+
+Proof: `shared/sun-token.contrast.spec.ts` (one declaration, the adopted values, and the tree-wide
+sweep that no source rebuilds a sun inline, with a meta-test so the sweep cannot pass vacuously) +
+`e2e/sun-token.e2e.ts` (the three computed `background-image`s in a real render).
+
+**Residue.** The enumeration now returns five inline gradients, none of them a sun: `booking-dialog`,
+`booking-view`, `beach-grid-frame`, `beach-map-canvas` and `map-tile`. Each is genuinely per-site,
+and the last two already build from `--riv-*` vars. This slice also removes one `rgba(240,170,46,…)`
+position from the population — the card sun's outer stop — which is why `fixed-fill-token-skins`'s
+out-of-family row for `pages/home/home.html` was retired rather than rewritten: the paint it guarded
+is gone, not renamed. (Its inner stop, `rgba(255,236,180,0.95)`, was a different colour family and
+carried no row.)
 
 ## How to cut a slice from this ledger
 

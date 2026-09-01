@@ -351,15 +351,13 @@ describe('VenueMap', () => {
     flushVenue();
   });
 
-  it('paints the no-photo empty state as an opaque warm sun (#704)', async () => {
+  it('paints the no-photo empty state with the shared sun (#704, #882)', async () => {
     flushVenue(); // the fixture has no photos
     await settle();
 
     const sun = el().querySelector('[data-testid="map-banner-empty"]')!;
-    const fill = /bg-\[radial-gradient\(([^\]]*)\)\]/.exec(sun.className)?.[1];
-    // Every stop opaque: an alpha stop composites against the cyan band and reads pale green.
-    expect(fill).toBeDefined();
-    expect(fill).not.toContain('rgba');
+    // #704's every-stop-opaque rule moved to the token, covering all three consumers at once.
+    expect(sun.className).toContain('bg-(image:--riv-sun-grad)');
     expect(sun.className).toContain('min-[1024px]:size-[96px]');
   });
 
