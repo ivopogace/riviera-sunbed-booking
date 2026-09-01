@@ -104,7 +104,7 @@ import { LedgerRow } from './operator-console.model';
                   </td>
                 </tr>
               }
-              <tr class="border-t-2 border-riv-console-tint/14 bg-[#2bb8d4]/6">
+              <tr class="border-t-2 border-riv-console-tint/14 bg-riv-select-tint/6">
                 <td class="px-3.5 py-3"></td>
                 <td class="px-3.5 py-3 font-bold text-riv-card-ink">Total due</td>
                 <td class="px-3.5 py-3"></td>

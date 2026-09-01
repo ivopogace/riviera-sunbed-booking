@@ -198,15 +198,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0 done, phase 1 next)`
+**Stage pointer:** `implement (phase 1 done, phase 2 next)`
 
-**Next action:** open the draft PR so CI has a vehicle, then phase 1 — the selection chrome
-(`#2bb8d4` + `#0e8aa8`), taking the two selected/unselected ternaries whole.
+**Next action:** phase 2 — the red families (`#a3160e`, `#a3372a`), inverting
+`console-negative-token.contrast.spec.ts`'s `CHIP_TINTS` guard to the token form.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the rule + the console-tint family (18 positions) | ✅ | `434f64d` |
-| 1 — selection chrome, `#2bb8d4` + `#0e8aa8` (8 + 2 whole-ternary) | | |
+| 0 — the rule + the console-tint family (18 positions) | ✅ | `f3ed82c` |
+| 1 — selection chrome, `#2bb8d4` + `#0e8aa8` (8 + 2 whole-ternary) | ✅ | next commit |
 | 2 — the red families, `#a3160e` (7) + `#a3372a` (2) | | |
 | 3 — amber + green tints (9) and the two entangled skins | | |
 | 4 — ledger, the option-C follow-up issue, docs freshness | | |
@@ -238,6 +238,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/payouts-tab.html` — 5 positions.
 - `frontend/src/app/operator/set-editor.html` — 8 positions (incl. the selected-tier ternary taken whole).
 - `frontend/src/app/operator/layout-editor.html` — 3 positions (incl. the active-tool ternary taken whole).
+- `frontend/src/app/operator/layout-editor.ts` — `SWATCH_CLASS.walkin`'s gradient stops, which the
+  code calls a mirror of `beach-cell`'s cell variants (phase 1's generalization finding).
 - `frontend/src/app/shared/confirm-panel.ts` — the warning surface taken whole (border + fill + ink).
 - `frontend/src/app/shared/confirm-panel.spec.ts` — the pin restated in token form and widened to the ink.
 - `frontend/src/app/operator/console-negative-token.contrast.spec.ts` — `CHIP_TINTS` inverted to the
@@ -425,6 +427,7 @@ three become tokens (`--riv-notice-edge`, `--riv-notice-fill`, `--riv-notice-ink
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-01 | phase 1 | A `repeating-linear-gradient` painting a class-O base colour as RAW `rgba()` stops — enumerated as *class expressions naming a class-O token AND a raw literal of its own value*, not as "maps that look like `beach-cell`'s" | `grep -rnoE "'[^']*riv-console-tint[^']*'\|\"[^\"]*riv-console-tint[^\"]*\"" src/app --include=*.ts --include=*.html \| grep -v spec.ts \| grep -iE '#[0-9a-f]{3,8}\|rgba?\('` | 1 mixing (`daily-view-tab.ts:611`), + 3 siblings by construction (`daily-view-tab.html:287`, the legend swatch it mirrors; `layout-editor.ts:85`, `SWATCH_CLASS.walkin`, which the code calls a mirror of `beach-cell`'s cell variants) | All 4 tokenised. Leaving `layout-editor`'s declared mirror literal while `beach-cell`'s was tokenised would have introduced NEW drift, which is the trap this sweep exists to avoid. Measured first: 20 comparisons over 5 hosts, 0 pixel differences. Generalized into a standing test — *never named in the same class expression as a raw literal of its own value* — and that test was proven able to fail before being trusted. Recorded for option C: the two `walkin` gradients already disagree (`beach-cell` 30%/12% vs `layout-editor` 35%/12%) despite the mirror claim |
 | 2026-09-01 | plan (issue-intake grill) | Every colour position carrying Tailwind's `/opacity` modifier — the mechanism, not the four families the ticket named | `grep -rnoE '(text\|bg\|border\|fill\|stroke\|shadow\|from\|to\|via)-\[(#[0-9a-fA-F]{3,8}\|rgba?\([^]]*\))\]/[0-9.]+' src --include=*.ts --include=*.html \| grep -v '\.spec\.ts'` | 44 (29 distinct colour × alpha pairs, 11 base colours) | Found the **three the ledger's own class-O table never listed** — `#061e28/45`, `#b47814/40`, `#e0a03a/60` (41 enumerated vs a 44 headline). Widened the population command past the ledger's own by adding the gradient-stop utilities (`from`/`to`/`via`) — it returned no extra members, so the ledger's narrower command was not under-counting for that reason |
 
 ---

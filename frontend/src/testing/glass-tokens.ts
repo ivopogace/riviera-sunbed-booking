@@ -403,4 +403,11 @@ export const CLASS_O_TINTS: readonly { readonly token: string; readonly value: s
   { token: '--riv-console-tint', value: '#0c2a33' },
   /** The payout-statement modal backdrop. */
   { token: '--riv-console-scrim', value: '#061e28' },
+  /** The console's selection chrome — the set-editor's selected tier and armed-move panel, the
+   *  layout editor's active tool. Its own pair, NOT `--riv-accent-fill`/`--riv-accent-strong`,
+   *  whose values these are: that family is the TOURIST accent tint (info panel, selected chip,
+   *  pay spinner track), this one is operator-console selection state. The same fork #848, #858
+   *  and #864 each resolved the same way — role before value. */
+  { token: '--riv-select-tint', value: '#2bb8d4' },
+  { token: '--riv-select-edge', value: '#0e8aa8' },
 ];

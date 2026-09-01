@@ -76,6 +76,22 @@ function filesPaintingLiteral(value: string): readonly string[] {
   return appSources().filter((path) => literal.test(readFileSync(join(APP, path), 'utf8')));
 }
 
+/**
+ * One class expression — a quoted string in a `.ts` class map or ternary, a `class="…"` in a
+ * template. The unit that matters for the mixing rule below, because a FILE may legitimately hold
+ * both forms: `set-editor.html` paints a plain `text-[#0c2a33]` ink (class T, another slice's) two
+ * elements away from a `border-riv-console-tint/15`. Only sharing one expression is the fault.
+ */
+function classExpressions(source: string): readonly string[] {
+  return [...source.matchAll(/'([^'\n]*)'|"([^"\n]*)"/g)].map((m) => m[1] ?? m[2]);
+}
+
+/** A raw painting of one base colour, in either notation Tailwind accepts inside an expression. */
+function rawLiteralOf(value: string): RegExp {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(value.slice(i, i + 2), 16));
+  return new RegExp(`${value}|rgba?\\(\\s*${r},\\s*${g},\\s*${b}\\b`, 'i');
+}
+
 describe('Class-O tint tokens (rule B: the modifier stays, the literal becomes a token — #852)', () => {
   /**
    * The sweep below asserts an EMPTY list, so it passes both when the migration is complete and
@@ -115,6 +131,30 @@ describe('Class-O tint tokens (rule B: the modifier stays, the literal becomes a
 
     it('leaves no app source painting its base colour as an `/opacity` literal', () => {
       expect(filesPaintingLiteral(value)).toEqual([]);
+    });
+
+    /**
+     * The generalized form of the take-the-skin-whole rule (#858), and the reason it is a test
+     * rather than a habit: a per-state map or ternary that names the token in one position and
+     * writes the same colour raw in another is half-migrated, and reads as two colours to the next
+     * person. Enumerating the mechanism — not the maps that resembled the first one found — is
+     * what turned up `daily-view-tab`'s BOOKED_ONLINE tile, whose gradient painted this value raw
+     * beside its own tokenised border.
+     *
+     * <p>Scoped to expressions rather than files on purpose: the same file may legitimately paint
+     * this colour as a plain class-T ink elsewhere, which is another slice's work.
+     */
+    it('is never named in the same class expression as a raw literal of its own value', () => {
+      const raw = rawLiteralOf(value);
+      const utility = new RegExp(`-riv-${token.slice('--riv-'.length)}\\b`);
+
+      const mixed = appSources().flatMap((path) =>
+        classExpressions(readFileSync(join(APP, path), 'utf8'))
+          .filter((expression) => utility.test(expression) && raw.test(expression))
+          .map(() => path),
+      );
+
+      expect(mixed).toEqual([]);
     });
   });
 });

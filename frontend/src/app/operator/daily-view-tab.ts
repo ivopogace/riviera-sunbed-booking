@@ -608,7 +608,7 @@ export class DailyViewTab {
       case 'STAFF_MARKED':
         return 'border-transparent bg-riv-solid-fill-brand text-white';
       case 'BOOKED_ONLINE':
-        return 'border-riv-console-tint/15 bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.28)_0_3px,rgba(12,42,51,0.1)_3px_6px)] text-riv-card-ink';
+        return 'border-riv-console-tint/15 bg-[repeating-linear-gradient(45deg,color-mix(in_oklab,var(--riv-console-tint)_28%,transparent)_0_3px,color-mix(in_oklab,var(--riv-console-tint)_10%,transparent)_3px_6px)] text-riv-card-ink';
       default:
         return 'border-riv-console-tint/15 bg-white/85 text-riv-card-ink';
     }

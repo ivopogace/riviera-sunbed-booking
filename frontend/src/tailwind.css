@@ -80,6 +80,8 @@
   --color-riv-console-negative-ink: var(--riv-console-negative-ink);
   --color-riv-console-tint: var(--riv-console-tint);
   --color-riv-console-scrim: var(--riv-console-scrim);
+  --color-riv-select-tint: var(--riv-select-tint);
+  --color-riv-select-edge: var(--riv-select-edge);
 
   --color-riv-medallion-positive-fill: var(--riv-medallion-positive-fill);
   --color-riv-medallion-positive-ink: var(--riv-medallion-positive-ink);
@@ -428,6 +430,23 @@
       two backdrops in the console are two different values today (this one and the set-editor
       sheet's), which rule B preserves rather than silently merges. */
   --riv-console-scrim: #061e28;
+
+  /** The console's SELECTION chrome (class O, #852): the set-editor's selected tier button and
+      armed-move panel, the layout editor's active tool. A fill and its boundary, migrated as one
+      because both live in the same selected/unselected class ternary — tokenising the fill alone
+      would leave a named utility beside a hex literal in one expression (#858's rule).
+
+      Its own pair, NOT a reuse of --riv-accent-fill/--riv-accent-strong, which carry exactly these
+      two values. That family is the TOURIST accent tint — the info panel's edge, the segmented
+      control's selected chip, the pay spinner's track — and `@theme inline` resolves a utility at
+      the point of use, so reusing it would route the console's selection state through the
+      variable the tourist tint family owns, with nothing scoping the two apart. Role before value:
+      the same fork #848, #858 and #864 each resolved this way.
+
+      --riv-select-edge also appears WITHOUT a modifier (the selected tier's 1.5px border), which is
+      why it is a plain base colour rather than a pre-composed tint: rule B's form serves both. */
+  --riv-select-tint: #2bb8d4;
+  --riv-select-edge: #0e8aa8;
 
   /** The OUTCOME MEDALLION (#858, class F-3) — the round, centred, `aria-hidden` glyph that a
       landed booking state renders: booking-confirmation's ✓, booking-pay's ✓/⏳/✕,

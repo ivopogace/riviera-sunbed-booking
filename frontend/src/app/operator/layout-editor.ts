@@ -82,7 +82,7 @@ const SWATCH_CLASS: Record<CellState, string> = {
   premium: 'bg-[linear-gradient(180deg,#ffe3a3,#f4c05a)]',
   standard: 'bg-white/85',
   walkin:
-    'bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.35)_0_3px,rgba(12,42,51,0.12)_3px_6px)]',
+    'bg-[repeating-linear-gradient(45deg,color-mix(in_oklab,var(--riv-console-tint)_35%,transparent)_0_3px,color-mix(in_oklab,var(--riv-console-tint)_12%,transparent)_3px_6px)]',
   gap: 'bg-transparent',
 };
 
