@@ -411,10 +411,9 @@ pre-Phase-3 tree); the touched e2e specs run individually green
 `node scripts/check-plan-file-structure.mjs --diff origin/main`,
 `check-inline-comments.mjs --diff origin/main`, `check-touch-target.mjs --all`, and
 `check-focus-posture.mjs --diff origin/main` all clean. The full mocked
-`test:e2e:a11y` suite (all ~165+ specs) was kicked off in the background to catch any
-cross-spec interaction; its result was not yet back when this checkpoint was written —
-re-run it and update this line before claiming the PR ready for review if it hasn't
-landed by then.
+`PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` suite →
+**379 passed** (9.6m) — no cross-spec interaction from the confirm-panel adoption or the
+`warn-token-skin.contrast.spec.ts` `SITES` change.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
