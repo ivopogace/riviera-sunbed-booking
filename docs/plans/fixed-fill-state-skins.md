@@ -234,10 +234,12 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `sonar gate — 1 issue found under a PASSING gate, fixed; awaiting re-analysis`
+**Stage pointer:** `DONE — merged via PR #867`
 
-**Next action:** confirm the re-analysis reports 0 issues on the new head, then the merge close-out
-(step 4: `merged via PR #867`).
+**Next action:** none. Both gates ran and are clear; the close-out is written in this PR's own last
+commit, so no docs-only follow-up is needed. Post-merge items are GitHub-only: nothing to tick on
+the parent epic (#836 is closed and F-3 was not a checklist line), and the two deferred families are
+already filed as **#868** and **#869**.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -569,10 +571,17 @@ actually resolving under `data-riv-theme="dark"`. `shared/amenity-chip.ts` and
       fourth-role correction; class S's amenity row retired; F-4/F-5 rows filed as **#868**/**#869**.
       Prose has no executable pin — stated, not implied.
 
-**Sonar gate:** quality gate **passed**, and the reported list was **not** empty — `1 New issue`
-(`typescript:S7780`), fixed rather than accepted; 93.1% coverage on new code, **0.0% duplication**
-(R-4's mitigation: phase 0's extraction meant the slice removed five copies instead of writing a
-sixth), 0 security hotspots.
+**Sonar gate:** the first analysis **passed while reporting `1 New issue`** (`typescript:S7780`) —
+the green-is-not-sufficient case the procedure names; fixed rather than accepted, and the
+re-analysis reports **0 New issues**. 93.1% coverage on new code, **0.0% duplication** (R-4's
+mitigation: phase 0's extraction meant the slice removed five copies instead of writing a sixth),
+0 security hotspots. An earlier read returned `total: 0` with **empty `measures`** — the documented
+false-clean, since the scan job `needs: [backend, frontend]`; treated as *unanalyzed*, not clean.
+
+**CI at the final head (`4744cf8`):** all 8 checks green — Backend, Frontend, Repo hygiene, CodeQL,
+both CodeQL analyses, SonarCloud scan + Code Analysis.
+
+**Merged via PR #867.**
 
 **Whole-suite runs at the close-out commit:** `npx ng test --watch=false` → **2160 passed** ·
 `npm run test:e2e:a11y` → **358 passed** · `npm run lint` → 0 errors · `npm run format:check` → clean ·
