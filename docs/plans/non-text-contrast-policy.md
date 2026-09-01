@@ -215,7 +215,6 @@ under discussion; no payment path, amount, or ledger entry is read or written.)
 |---|---|---|---|---|---|
 | FE-1 | `app/shared/cta-border-token.contrast.spec.ts` | existing | Vitest unit spec (jsdom) | none — pure maths over the `testing/glass-tokens` mirror | none |
 | FE-2 | `app/admin/accent-tokens.contrast.spec.ts` | existing | Vitest unit spec | none — comment repoint only | none |
-| FE-3 | `app/admin/admin-console.contrast.spec.ts` | existing | Vitest unit spec | none — comment repoint only | none |
 
 **Standards:** no component, service, route, or template is created or modified, so the
 standalone/`inject()`/signal-API standards have no surface here. The two new assertions follow
@@ -228,9 +227,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `CI gate — draft PR #877 open, awaiting the first run`
+**Stage pointer:** `review gate — PR #877 ready for review, fixing findings`
 
-**Next action:** Wait for PR #877's first CI run. `origin/main` is already an ancestor of this branch, so no merge is due. When CI is green, mark the PR ready for review — that is what makes the Review and Sonar gates due.
+**Next action:** Finish the review gate — three of five review agents still reporting. CI was green on `252490f` (all 8 checks) and the Sonar gate passed with 0 new issues / 0 duplication.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -250,6 +249,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-2 | intake grill | The issue's family list is incomplete: `--riv-amenity-tag-border` (1.15:1) and `--riv-amenity-water-border` (1.17:1) cite #834 at `tailwind.css:482` and `glass-tokens.ts:323` and are unlisted — six families, not five | open → covered by AC-3's enumeration |
 | F-3 | intake grill | Two **spec** files carry #834 pointers the issue does not mention; `accent-tokens.contrast.spec.ts:52` ("Raising it to compliance is #834's") is a live forward deferral, `admin-console.contrast.spec.ts:42` is history | open → AC-3 splits them: repoint the first, allow-list the second |
 | F-5 | phase 1 (self-inflicted) | AC-2 as first written asserted the whole 2.23–3.16 band under 3:1; only the **floor** is. The test caught it — the AC wording was loose, not the measurement | fixed in phase 1 |
+| F-7 | review gate (agent 2 — shallow bug scan) | `docs/design/README.md` carried a duplicated phrase from the phase-0 edit: "is a **maintained ledger** — a **maintained ledger** of which hex/rgba" | fixed in `a483db0` |
+| F-8 | review gate (agents 1 + 2, independently) | The plan doc's FE-3 row and File-structure section claimed an `admin-console.contrast.spec.ts` edit the diff never made — the file is deliberately left alone, its citation being history pinned by the allow-list. The file-structure guard does not flag this direction, so CI stayed green | fixed in `a483db0` |
 | F-6 | phase 2 (self-caught, pre-commit) | The medallion border was first repointed at **rule 2**, but it is an `aria-hidden` decorative glyph, not a control identified by its content — a different 1.4.11 ground. Blurring them would let anything pale claim the exemption | fixed in phase 2: the doc gained **rule 2a** and both medallion citations name it |
 
 ---
@@ -272,8 +273,6 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   `--riv-wash-hover-border`) intact and allow-listed.
 - `frontend/src/testing/glass-tokens.ts` — the same repointing over its four citation sites.
 - `frontend/src/app/admin/accent-tokens.contrast.spec.ts` — repoint the live deferral at :52.
-- `frontend/src/app/admin/admin-console.contrast.spec.ts` — clarify that its #834 reference is
-  the completed erasure-panel decision, so the allow-list entry is self-evident.
 - `frontend/src/app/shared/cta-border-token.contrast.spec.ts` — the AC-1/AC-2 adjacent-colour
   assertions and the AC-3/AC-4 source guards.
 
@@ -319,8 +318,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Test `frontend/src/app/shared/cta-border-token.contrast.spec.ts` · Modify
 `frontend/src/tailwind.css` · `frontend/src/testing/glass-tokens.ts` ·
-`frontend/src/app/admin/accent-tokens.contrast.spec.ts` ·
-`frontend/src/app/admin/admin-console.contrast.spec.ts`
+`frontend/src/app/admin/accent-tokens.contrast.spec.ts`
 
 - [ ] **Step 1: Write the failing test** — enumerate every `#834` citation under
       `frontend/src` via `allSources()`; fail on any not in the history allow-list.
@@ -330,6 +328,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [ ] **Step 3: Repoint** each of them at `docs/design/non-text-contrast.md`, preserving every
       measured number already in the comment. **Touch no declaration.**
 - [ ] **Step 4: Run it, verify it passes** — `npm test -- cta-border-token accent-tokens admin-console` → PASS.
+      (`admin-console` is run but **not edited**: its #834 citation is history and stays as written,
+      pinned by the allow-list. Running it proves the allow-list matches the unedited text.)
 - [ ] **Step 5: Generalization-audit pass.** Population: *every in-tree citation of a GitHub
       issue as a present-tense tracking home for an unresolved question* — the mechanism
       #876 is an instance of, not just #834. Enumerate with

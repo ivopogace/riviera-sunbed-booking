@@ -27,7 +27,7 @@ artboard line, never silently drift past it.
 Everything above governs the `.dc.html` **records**. Two `.md` files here are the
 opposite kind of thing, and neither takes the `as-built diverges` convention.
 
-`colour-literal-token-audit.md` (#836) is a **maintained ledger** — a **maintained ledger** of which hex/rgba
+`colour-literal-token-audit.md` (#836) is a **maintained ledger** of which hex/rgba
 positions in `frontend/src` want `--riv-*` tokens, and the verdict per family. It
 *is* rewritten to track the shipped app: every slice that cuts a family updates
 that family's row with its PR. It sits here because it reasons about the design
