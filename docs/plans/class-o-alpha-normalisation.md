@@ -218,7 +218,7 @@ N/A — no contract change. No endpoint, DTO or wire shape is read or altered.
 | 0 — The ladder: every class-O alpha a multiple of 5 | ✅ | `fb3ac50` |
 | 1 — One walk-in hatch (`--riv-walkin-hatch`) | ✅ | `dd0669b` |
 | 2 — One amber family (`--riv-warn-*`), three tokens retired | ✅ | `17c7f8d` |
-| 3 — Ledger, rule-2 table, close-out | ✅ | `<phase-3>` |
+| 3 — Ledger, rule-2 table, close-out | ✅ | `358a41d` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
