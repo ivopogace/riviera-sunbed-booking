@@ -21,8 +21,10 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * <p>The sibling of `console-accent-token.contrast.spec.ts`, and deliberately a SEPARATE file
  * rather than a second half of it: the two tokens share a host, a surface and a theme-invariance
  * ground, but their role-distinctness arguments have nothing in common — that one separates three
- * roles carrying `#0a6e85`, this one separates a console ink from the outline BUTTON's ink and from
- * the `/opacity` tints of the same value that stay #852's.
+ * roles carrying `#0a6e85`, this one separates a console ink from the outline BUTTON's ink. The
+ * third role it was separated from — the reason chip's `/opacity` tints of the same value — has
+ * since (#852) been migrated onto this token rather than away from it: same element, same meaning,
+ * so there the value coincidence was a role match after all.
  *
  * <p>What this file owns is the part no per-tab AA spec can see — that the token is a token, and
  * stays the one it claims to be. The ink is THEME-INVARIANT by decision rather than by omission:
@@ -57,14 +59,22 @@ function cardSurface(stop: (typeof PORCELAIN_STOPS)[number]): string {
  * This token's literal, matched **by role rather than by value**. `#a3372a` is emphatically not
  * ours alone — it is `--riv-solid-btn-danger-ink`'s declared value, it paints two class-F
  * medallions (#858), and the audit's class O carries it as `/opacity` chrome on the very element
- * this token's reason-chip site sits in (#852). Only the plain INK role in `operator/` belongs to
- * this token, so that is what the sweep matches: a bare value match would fail on sites this
- * slice must not touch, and would silently do #852's work.
+ * this token's reason-chip site sits in (#852, since migrated onto this same token). Only the
+ * plain INK role in `operator/` belongs to this sweep, so that is what it matches: a bare value
+ * match would fail on sites #864 must not touch, and would silently have done #852's work.
  */
 const LITERAL_ROLE = /text-\[#a3372a\]/i;
 
-/** The reason chip's `/opacity` positions — #852's half, asserted PRESENT so an overreach fails. */
-const CHIP_TINTS = [/border-\[#a3372a\]\/28/i, /bg-\[#a3372a\]\/12/i];
+/**
+ * The reason chip's `/opacity` positions, asserted PRESENT so an overreach fails. They were #852's
+ * half and are now migrated, and the FORM they take is that slice's finding rather than a detail:
+ * a `/opacity` literal and the same colour named through a token compile to the same
+ * `color-mix(in oklab, …, transparent)`, so the chip's tints could simply take this token — the
+ * one place in class O where the value coincidence IS a role match, since the chip's border, fill
+ * and ink are one element's one meaning. The guard's job is unchanged: this file owns the ink, and
+ * the tints must be visible to it, whichever notation they wear.
+ */
+const CHIP_TINTS = [/border-riv-console-negative-ink\/28/i, /bg-riv-console-negative-ink\/12/i];
 
 /**
  * Every console source still painting that role — templates are inline `.ts` here, so both
@@ -133,7 +143,7 @@ describe('Console negative-ink token (theme invariance + role distinctness, #864
     expect(consoleFilesPaintingTheLiteral()).toEqual([]);
   });
 
-  it('leaves #852’s `/opacity` tints on the reason chip untouched', () => {
+  it('keeps the reason chip’s `/opacity` tints in view, on this same token (#852)', () => {
     const chip = readFileSync(join(process.cwd(), 'src/app/operator/payouts-tab.html'), 'utf8');
 
     expect(CHIP_TINTS.filter((tint) => !tint.test(chip))).toEqual([]);

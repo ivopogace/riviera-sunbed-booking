@@ -112,7 +112,7 @@
       <!-- Docks right of the canvas on desktop; on a phone it's a bottom sheet instead (#715). -->
       @if (hasSelection() || sweepIds()) {
         <div
-          class="fixed inset-0 z-20 bg-[#0c2a33]/45 lg:hidden"
+          class="fixed inset-0 z-20 bg-riv-console-tint/45 lg:hidden"
           data-testid="sheet-backdrop"
           (click)="dismissSheet()"
           (keydown.escape)="dismissSheet()"
@@ -179,7 +179,7 @@
                   class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-50"
                   [class]="
                     batchDraft().tier === tier.key
-                      ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
+                      ? 'border-[1.5px] border-riv-select-edge bg-riv-select-tint/20'
                       : 'border border-riv-card-border bg-white/45'
                   "
                 >
@@ -207,7 +207,7 @@
                   class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-50"
                   [class]="
                     batchDraft().pool === pool.key
-                      ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
+                      ? 'border-[1.5px] border-riv-select-edge bg-riv-select-tint/20'
                       : 'border border-riv-card-border bg-white/45'
                   "
                 >
@@ -326,7 +326,7 @@
                   class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-50"
                   [class]="
                     draft().tier === tier.key
-                      ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
+                      ? 'border-[1.5px] border-riv-select-edge bg-riv-select-tint/20'
                       : 'border border-riv-card-border bg-white/45'
                   "
                 >
@@ -354,7 +354,7 @@
                   class="flex-1 rounded-[13px] px-3 py-2.5 text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-50"
                   [class]="
                     draft().pool === pool.key
-                      ? 'border-[1.5px] border-[#0e8aa8] bg-[#2bb8d4]/20'
+                      ? 'border-[1.5px] border-riv-select-edge bg-riv-select-tint/20'
                       : 'border border-riv-card-border bg-white/45'
                   "
                 >
@@ -425,7 +425,7 @@
                 (click)="askRemove()"
                 [appBusy]="busy()"
                 data-testid="set-remove"
-                class="rounded-[14px] border border-[#a3160e]/40 px-4 py-2.5 text-[13.5px] font-bold text-riv-error-ink aria-disabled:opacity-50"
+                class="rounded-[14px] border border-riv-alert-tint/40 px-4 py-2.5 text-[13.5px] font-bold text-riv-error-ink aria-disabled:opacity-50"
               >
                 Remove
               </button>
@@ -443,7 +443,7 @@
 
             @if (armed()) {
               <div
-                class="mt-3 rounded-[12px] border border-[#0e8aa8]/50 bg-[#2bb8d4]/12 px-3 py-2.5"
+                class="mt-3 rounded-[12px] border border-riv-select-edge/50 bg-riv-select-tint/12 px-3 py-2.5"
                 data-testid="set-move-armed"
               >
                 <output class="block text-[12.5px] font-semibold leading-[1.45] text-riv-card-ink">

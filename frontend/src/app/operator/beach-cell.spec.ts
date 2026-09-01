@@ -6,18 +6,27 @@ import { SetView } from '../shared/venue-views';
 
 /**
  * The shared beach-map cell styling, extracted from the layout editor so the bulk grid and the
- * per-set grid cannot drift apart (#600). These strings are the NO-DRIFT PIN: each is byte-identical
- * to the `CELL_CLASS` entry the layout editor carried before the move, so the extraction is
- * verifiable rather than eyeballed. One deliberate departure since: the gap border darkened
- * `/35` → `/55` so the aisle boundary is 3:1 composited over the shared canvas wash (#672 slice 2,
- * pinned in `layout-editor.contrast.spec.ts`).
+ * per-set grid cannot drift apart (#600). These strings are the NO-DRIFT PIN: each restates the
+ * `CELL_CLASS` entry the layout editor carried before the move, so the extraction is verifiable
+ * rather than eyeballed. Two deliberate departures since: the gap border darkened `/35` → `/55` so
+ * the aisle boundary is 3:1 composited over the shared canvas wash (#672 slice 2, pinned in
+ * `layout-editor.contrast.spec.ts`), and #852 tokenised the `#0c2a33` positions — the ones this map
+ * paints with an `/opacity` modifier AND the two raw stops inside the walk-in gradient, since a
+ * per-state map may not mix a named utility with a literal of the same value in one branch.
+ *
+ * <p>So the pin is no longer byte-identical to the pre-move strings, and could not stay so without
+ * pinning the migration out. What it still guarantees is what it was written for: that the two
+ * grids render ONE map, and that no slice restyles a cell while claiming to move it. The paint is
+ * unchanged either way — `border-riv-console-tint/15` compiles to the same
+ * `color-mix(in oklab, …, transparent)` the literal did, measured byte-identical over five hosts
+ * (`shared/class-o-tint-tokens.contrast.spec.ts`, `e2e/class-o-tint-tokens.e2e.ts`).
  */
 const PRE_MOVE_CELL_CLASS: Record<CellState, string> = {
-  premium: 'border-[#b47814]/40 bg-[linear-gradient(180deg,#ffe3a3,#f4c05a)]',
-  standard: 'border-[#0c2a33]/15 bg-white/85',
+  premium: 'border-riv-premium-edge/40 bg-(image:--riv-premium-grad)',
+  standard: 'border-riv-console-tint/15 bg-white/85',
   walkin:
-    'border-[#0c2a33]/15 bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.3)_0_3px,rgba(12,42,51,0.12)_3px_6px)]',
-  gap: 'border-dashed border-[#0c2a33]/55 bg-transparent',
+    'border-riv-console-tint/15 bg-[repeating-linear-gradient(45deg,color-mix(in_oklab,var(--riv-console-tint)_30%,transparent)_0_3px,color-mix(in_oklab,var(--riv-console-tint)_12%,transparent)_3px_6px)]',
+  gap: 'border-dashed border-riv-console-tint/55 bg-transparent',
 };
 
 @Component({

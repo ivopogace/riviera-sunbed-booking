@@ -138,8 +138,9 @@ export const CONSOLE_ACCENT_INK: Rgb = hexToRgb('0a6e85');
  *  `negative` pole of the `--riv-console-*-ink` pair; the two share a host, a surface and a
  *  theme-invariance ground, but not a declaration and not a guard.
  *  Its own token despite equalling `SOLID_BTN_DANGER_INK` — that one is the outline BUTTON's ink
- *  on the button's own fixed fill (#851), and `#a3372a`'s `/opacity` tints on the very element
- *  the reason chip is stay #852's. Same value, three roles, and the themed reds are no answer
+ *  on the button's own fixed fill (#851). The reason chip's own `/opacity` tints were the third
+ *  role and have since (#852) been migrated onto THIS token, which is where they belonged: same
+ *  element, same meaning. Same value, three roles, and the themed reds are no answer
  *  either: DARK_ERROR_INK over the console's card glass measures 1.84:1. Theme-invariant: every
  *  consumer is a child of the porcelain-pinned `operator-console`, so a dark branch would be
  *  unreachable. Full reasoning sits at the declaration in `tailwind.css`. Guarded by
@@ -377,3 +378,58 @@ export const DIALOG_CLOSE_FILL: Rgb = hexToRgb('31798a');
 /** The dark theme's `--riv-card-border` (light themes: white 0.6) — mirrored as the themed
  *  alternative CTA_BORDER is measured against. */
 export const DARK_CARD_BORDER: Glass = { color: WHITE, alpha: 0.16 };
+
+/** The **class-O tint tokens** (#852): the base colour behind every position carrying Tailwind's
+ *  `/opacity` modifier. The audit's class O is settled on rule **B** — the modifier stays at the
+ *  call site and the literal inside it becomes a token — because `bg-[#2bb8d4]/20` and
+ *  `bg-riv-select-tint/20` compile to the SAME `color-mix(in oklab, … , transparent)` expression;
+ *  measured, 29 (colour x alpha) pairs over 5 host colours composite byte-identically. So the
+ *  mirror carries one value per base colour and no alpha: the alpha is per-site, and stays beside
+ *  the comment explaining it (`beach-cell`'s `/55`-not-`/35` aisle boundary is the worked example).
+ *
+ *  Every one is THEME-INVARIANT by decision rather than omission — each consumer is either a child
+ *  of `operator-console`, whose host pins porcelain, or sits on a fixed-white panel — so the
+ *  single-declaration guard is the whole protection. Guarded by
+ *  `shared/class-o-tint-tokens.contrast.spec.ts`; proven against a real render, in a forced dark
+ *  document, by `e2e/class-o-tint-tokens.e2e.ts`. Per-surface AA/1.4.11 ratios stay with their
+ *  elements — this slice moves no pixel, so none of them changed.
+ *
+ *  NOT a palette: several of these values coincide with a registered token of a DIFFERENT role
+ *  (`#0e8aa8` is `--riv-accent-strong`, `#a3160e` is `--riv-solid-fill-danger`), and the audit's
+ *  class R exists for exactly that. Role before value — see each declaration in `tailwind.css`. */
+export const CLASS_O_TINTS: readonly { readonly token: string; readonly value: string }[] = [
+  /** The console's neutral tint base — hairlines, inset fills, one sheet backdrop. The rgba base of
+   *  `--riv-ink-soft`/`--riv-ink-faint` (CARD_INK above), and deliberately NOT `--riv-ink`, which
+   *  is `#0a2a33` and themes to white. */
+  { token: '--riv-console-tint', value: '#0c2a33' },
+  /** The payout-statement modal backdrop. */
+  { token: '--riv-console-scrim', value: '#061e28' },
+  /** The console's selection chrome — the set-editor's selected tier and armed-move panel, the
+   *  layout editor's active tool. Its own pair, NOT `--riv-accent-fill`/`--riv-accent-strong`,
+   *  whose values these are: that family is the TOURIST accent tint (info panel, selected chip,
+   *  pay spinner track), this one is operator-console selection state. The same fork #848, #858
+   *  and #864 each resolved the same way — role before value. */
+  { token: '--riv-select-tint', value: '#2bb8d4' },
+  { token: '--riv-select-edge', value: '#0e8aa8' },
+  /** The request/urgency chrome's tint base — the Requests tab's urgency chip and decline edge,
+   *  the Daily view's and Payouts tab's alert borders, the set-editor's destructive panel. Its own
+   *  token: `--riv-solid-fill-danger` carries this value as a SOLID fill under fixed white ink,
+   *  and `--riv-error-ink` carries it as an ink that themes to `#ffa9a1`. Neither is a tint. */
+  { token: '--riv-alert-tint', value: '#a3160e' },
+  /** The sales-close / weather-refund confirm panel: its edge and its fill. Two base colours for
+   *  one treatment, which rule B preserves and does not merge — see the option-C follow-up. */
+  { token: '--riv-warn-edge', value: '#d9861a' },
+  { token: '--riv-warn-tint', value: '#f0aa2e' },
+  /** The Requests tab's accepted medallion — border, fill AND ink off one base colour, taken as
+   *  one expression because that is what the element is. */
+  { token: '--riv-positive-tint', value: '#0e6e46' },
+  /** The beach-map premium cell's boundary, over `--riv-premium-grad`. */
+  { token: '--riv-premium-edge', value: '#b47814' },
+  /** `shared/confirm-panel`'s warning surface, taken whole (#858's rule): the class-O edge could
+   *  not move without its fill and ink, which are class S and would have been left as literals in
+   *  the same host string. A near-duplicate of `--riv-notice-banner-*` (`#fcf0d9`/`#8a5410`) at
+   *  both positions — recorded, not merged: merging is a visual change. */
+  { token: '--riv-confirm-warn-edge', value: '#e0a03a' },
+  { token: '--riv-confirm-warn-fill', value: '#fff4e0' },
+  { token: '--riv-confirm-warn-ink', value: '#7a4a08' },
+];

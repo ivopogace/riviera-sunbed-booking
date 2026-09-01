@@ -31,8 +31,9 @@ const PAIR = {
 /**
  * This family's literals, matched **by role rather than by value**. `#f6e8e7` is the fill and
  * occurs nowhere else, so any form of it is ours. `#a3160e` is not ours alone: the audit's class R
- * paints it as a `bg-` fill under white ink (#854) and class O as `border-`/`/opacity` tints
- * (#852), both deliberate Non-goals here. Only the INK role belongs to this pair, so that is what
+ * paints it as a `bg-` fill under white ink (#854), and class O painted it as `/opacity` tints
+ * until #852 moved those onto `--riv-alert-tint` — both deliberate Non-goals here, and the second
+ * is now a token rather than a literal. Only the INK role belongs to this pair, so that is what
  * the sweep matches — a bare value match would fail on eight sites this slice must not touch.
  */
 const LITERAL_ROLES = [/#f6e8e7/i, /text-\[#a3160e\]/i];

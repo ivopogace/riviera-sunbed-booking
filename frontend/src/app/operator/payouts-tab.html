@@ -82,7 +82,7 @@
     </div>
   } @else if (loadErrorMsg(); as msg) {
     <p
-      class="mx-auto mt-6 max-w-md rounded-[16px] border border-[#a3160e]/30 bg-white/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
+      class="mx-auto mt-6 max-w-md rounded-[16px] border border-riv-alert-tint/30 bg-white/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
       role="alert"
       data-testid="payouts-load-error"
     >
@@ -162,7 +162,7 @@
 
       @if (weatherConfirm()) {
         <div
-          class="mt-3.5 rounded-[16px] border border-[#d9861a]/40 bg-[#f0aa2e]/10 px-4 py-3.5"
+          class="mt-3.5 rounded-[16px] border border-riv-warn-edge/40 bg-riv-warn-tint/10 px-4 py-3.5"
           data-testid="weather-confirm"
         >
           <p class="mb-2.5 text-[13.5px] leading-[1.5] text-riv-card-ink">
@@ -233,7 +233,7 @@
                     <span class="font-bold tracking-[0.03em] text-riv-card-ink">{{ row.ref }}</span>
                     @if (row.isReversal) {
                       <span
-                        class="ml-2 inline-flex rounded-[7px] border border-[#a3372a]/28 bg-[#a3372a]/12 px-1.5 py-0.5 text-[11px] font-bold text-riv-console-negative-ink"
+                        class="ml-2 inline-flex rounded-[7px] border border-riv-console-negative-ink/28 bg-riv-console-negative-ink/12 px-1.5 py-0.5 text-[11px] font-bold text-riv-console-negative-ink"
                         data-testid="ledger-reason"
                         >{{ row.reasonLabel }}</span
                       >

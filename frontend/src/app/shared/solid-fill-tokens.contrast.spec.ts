@@ -69,9 +69,14 @@ function read(path: string): string {
  * safe to run tree-wide: all three values also appear as `text-` inks, `ring-`s, `border-`s and
  * gradient stops, which are other classes of the audit and other slices' work.
  *
- * <p>The trailing `(?!\/)` is the second discriminator: `bg-[#a3160e]/10` is `requests-tab`'s
- * urgency-chip tint, class O, whose `/opacity` modifier compiles to `color-mix()` — tokenising it
- * would change the computed value, so it is #852's and must survive this sweep untouched.
+ * <p>The trailing `(?!\/)` is the second discriminator: `bg-[#a3160e]/10` was `requests-tab`'s
+ * urgency-chip tint, class O and #852's, which had to survive this sweep untouched. It still must,
+ * and the lookahead still earns its place — but not for the reason written here originally. That
+ * read "tokenising it would change the computed value", and #852 measured otherwise: the literal
+ * form ALREADY compiles to `color-mix()`, the token form compiles to the same expression, and the
+ * two composite byte-identically. The real ground is the one this whole constant rests on — a
+ * tint is not a FILL, so it belongs to a different token (`--riv-alert-tint`) whichever way it is
+ * written.
  */
 const FILL_ROLES = [
   /bg-\[#0a6e85\](?!\/)/i,
@@ -98,6 +103,14 @@ const FILL_ROLES = [
  * `--riv-amenity-water-ink`. `booking-dialog.ts` stays — its remaining `#0a5f74` is the header
  * gradient's stop, which is `--riv-cta-grad`'s own duplication and nobody's ink. Those tokens'
  * guard is `shared/fixed-fill-token-skins.contrast.spec.ts`.
+ *
+ * <p>`#a3160e` is the third, and now the list holds no rows at all for it: #852 moved its four
+ * class-O tint files onto `--riv-alert-tint`. `--riv-solid-fill-danger` remains a separate
+ * declaration of the same value in the fill role, which is what the `FILL_ROLES` sweep above
+ * still proves; the tints' guard is `shared/class-o-tint-tokens.contrast.spec.ts`. An EMPTY list
+ * is the one state this constant cannot distinguish from a vacuous pass, so the test below
+ * asserts it is non-empty as well — the day the last survivor migrates, that assertion is the
+ * prompt to retire the list rather than let it quietly stop checking anything.
  */
 const SURVIVORS: readonly (readonly [string, string])[] = [
   // `#0a6e85`'s eight console-ink rows left with #848 — see this list's header.
@@ -105,11 +118,7 @@ const SURVIVORS: readonly (readonly [string, string])[] = [
   ['operator/set-editor.html', '#0a5f74'],
   ['operator/layout-editor.html', '#0a5f74'],
   ['booking/booking-dialog.ts', '#0a5f74'],
-  // `#a3160e` as `/opacity` tints and borders — class O, #852's.
-  ['operator/set-editor.html', '#a3160e'],
-  ['operator/requests-tab.html', '#a3160e'],
-  ['operator/payouts-tab.html', '#a3160e'],
-  ['operator/daily-view-tab.html', '#a3160e'],
+  // `#a3160e`'s four class-O rows left with #852 — see this list's header.
 ];
 
 describe('Solid fill token family (WCAG AA + theme invariance, #854)', () => {
@@ -175,6 +184,7 @@ describe('Solid fill token family (WCAG AA + theme invariance, #854)', () => {
   it('leaves the non-fill roles of the same three values untouched', () => {
     const stillPainting = SURVIVORS.filter(([path, value]) => read(path).includes(value));
 
+    expect(SURVIVORS.length, 'an empty survivor list would pass vacuously').toBeGreaterThan(0);
     expect(stillPainting).toEqual(SURVIVORS);
   });
 });

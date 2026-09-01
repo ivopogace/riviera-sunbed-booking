@@ -79,7 +79,7 @@
     </div>
   } @else if (loadError()) {
     <p
-      class="mx-auto mt-6 max-w-md rounded-[16px] border border-[#a3160e]/30 bg-white/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
+      class="mx-auto mt-6 max-w-md rounded-[16px] border border-riv-alert-tint/30 bg-white/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
       role="alert"
       data-testid="requests-load-error"
     >
@@ -91,7 +91,7 @@
       data-testid="requests-empty"
     >
       <span
-        class="mx-auto mb-3.5 flex h-[52px] w-[52px] items-center justify-center rounded-full border border-[#0e6e46]/30 bg-[#0e6e46]/12 text-[24px] text-[#0e6e46]"
+        class="mx-auto mb-3.5 flex h-[52px] w-[52px] items-center justify-center rounded-full border border-riv-positive-tint/30 bg-riv-positive-tint/12 text-[24px] text-riv-positive-tint"
         aria-hidden="true"
         >✓</span
       >
@@ -123,7 +123,7 @@
               <div class="flex-shrink-0 text-right">
                 @if (row.urgent && !isExpired(row.bookingId)) {
                   <span
-                    class="inline-flex items-center gap-1.5 rounded-full border border-[#a3160e]/25 bg-[#a3160e]/10 px-2.5 py-1 text-[12px] font-bold text-riv-error-ink"
+                    class="inline-flex items-center gap-1.5 rounded-full border border-riv-alert-tint/25 bg-riv-alert-tint/10 px-2.5 py-1 text-[12px] font-bold text-riv-error-ink"
                     data-testid="urgency-chip"
                   >
                     <span aria-hidden="true">⏰</span>{{ row.timeLeft }}
@@ -202,7 +202,7 @@
                 <button
                   type="button"
                   appTouchTarget
-                  class="rounded-[13px] border border-[#a3160e]/50 bg-white/50 px-5 py-[11px] text-[14px] font-semibold text-riv-error-ink aria-disabled:opacity-60"
+                  class="rounded-[13px] border border-riv-alert-tint/50 bg-white/50 px-5 py-[11px] text-[14px] font-semibold text-riv-error-ink aria-disabled:opacity-60"
                   [appBusy]="isDeciding(row.bookingId)"
                   [attr.aria-label]="declineLabel(row)"
                   (click)="onDecline(row)"

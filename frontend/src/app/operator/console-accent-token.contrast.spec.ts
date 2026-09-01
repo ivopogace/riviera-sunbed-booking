@@ -48,10 +48,15 @@ function themeRow(): readonly string[] {
 
 /**
  * This token's literal, matched **by role rather than by value**. `#0a6e85` is emphatically not
- * ours alone — it is `--riv-solid-fill-brand`'s and `--riv-pop-accent`'s declared value, it paints
- * `app.html`'s popover accent, and the audit's class O carries it as `/opacity` selection chrome
- * (#852). Only the plain INK role in `operator/` belongs to this token, so that is what the sweep
- * matches: a bare value match would fail on sites this slice must not touch.
+ * ours alone — it is `--riv-solid-fill-brand`'s and `--riv-pop-accent`'s declared value, and it
+ * paints `app.html`'s popover accent. Only the plain INK role in `operator/` belongs to this
+ * token, so that is what the sweep matches: a bare value match would fail on sites this slice must
+ * not touch.
+ *
+ * <p>This paragraph also claimed class O carried `#0a6e85` as `/opacity` selection chrome. It never
+ * did — the console's selection chrome is `#2bb8d4`/`#0e8aa8`, now `--riv-select-tint`/`-edge`, and
+ * `#0a6e85` has no `/opacity` position anywhere in the tree. Corrected by #852's docs sweep, which
+ * could check the claim because that slice enumerated the class-O population by form.
  */
 const LITERAL_ROLE = /text-\[#0a6e85\]/i;
 

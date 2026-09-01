@@ -19,12 +19,12 @@ export const CELL_STATE_DESC: Record<CellState, string> = {
 
 /** Per-state background + border classes. Geometry (size, radius) stays with the consumer. */
 const CELL_CLASS: Record<CellState, string> = {
-  premium: 'border-[#b47814]/40 bg-[linear-gradient(180deg,#ffe3a3,#f4c05a)]',
-  standard: 'border-[#0c2a33]/15 bg-white/85',
+  premium: 'border-riv-premium-edge/40 bg-(image:--riv-premium-grad)',
+  standard: 'border-riv-console-tint/15 bg-white/85',
   walkin:
-    'border-[#0c2a33]/15 bg-[repeating-linear-gradient(45deg,rgba(12,42,51,0.3)_0_3px,rgba(12,42,51,0.12)_3px_6px)]',
+    'border-riv-console-tint/15 bg-[repeating-linear-gradient(45deg,color-mix(in_oklab,var(--riv-console-tint)_30%,transparent)_0_3px,color-mix(in_oklab,var(--riv-console-tint)_12%,transparent)_3px_6px)]',
   // 0.55, not 0.35: the gap cell's identity is its border alone, proven 3:1 over the canvas wash.
-  gap: 'border-dashed border-[#0c2a33]/55 bg-transparent',
+  gap: 'border-dashed border-riv-console-tint/55 bg-transparent',
 };
 
 /**

@@ -30,10 +30,13 @@ const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
     role: 'alertdialog',
     '[attr.aria-label]': 'label()',
     '[attr.data-testid]': 'panelTestId()',
-    class: 'mt-3 block rounded-[12px] border border-[#e0a03a]/60 bg-[#fff4e0] px-3 py-2.5',
+    class:
+      'mt-3 block rounded-[12px] border border-riv-confirm-warn-edge/60 bg-riv-confirm-warn-fill px-3 py-2.5',
   },
   template: `
-    <p class="text-[12.5px] font-semibold leading-[1.45] text-[#7a4a08]">{{ message() }}</p>
+    <p class="text-[12.5px] font-semibold leading-[1.45] text-riv-confirm-warn-ink">
+      {{ message() }}
+    </p>
     <div class="mt-2 flex flex-wrap gap-2">
       <button
         appTouchTarget

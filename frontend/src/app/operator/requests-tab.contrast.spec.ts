@@ -21,7 +21,7 @@ import {
  * `--riv-card-ink-soft` (0.78); "Respond by" uses `--riv-card-ink-faint` (0.72); the price value uses
  * the console accent ink `--riv-console-accent-ink` (#848); the urgency chip + decline text +
  * expired-race + load-error use the alert red `--riv-error-ink` (also the urgency-chip text over its
- * own `#a3160e`@0.10 tint, a class-O modifier left to #852). The primary buttons put white on
+ * own `--riv-alert-tint`@0.10 tint, tokenised at #852). The primary buttons put white on
  * `--riv-solid-fill-brand` (accept) / `--riv-solid-fill-danger` (confirm-decline), tokenised at #854.
  *
  * <p>The design mock's lighter teal→teal gradient (`#2bb8d4`) and raw ambers fail AA on their light
