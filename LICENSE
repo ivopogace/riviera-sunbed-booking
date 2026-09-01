@@ -1,0 +1,94 @@
+Riviera Sunbed Booking — Proprietary Software License
+SPDX-License-Identifier: LicenseRef-Proprietary
+
+Copyright (c) 2026 Ivo Pogace. All rights reserved.
+
+
+1. Definitions
+
+   "Software" means everything in this repository: source code, configuration,
+   database migrations, build and deployment scripts, documentation, design
+   files, and assets, in every version and branch.
+
+   "Owner" means Ivo Pogace, the copyright holder.
+
+
+2. No license granted
+
+   The Software is proprietary and confidential. No right or license — express,
+   implied, by estoppel, or otherwise — is granted to any person or entity
+   except under a separate written agreement signed by the Owner. Access to
+   this repository, including public read access, grants no rights to the
+   Software itself.
+
+
+3. Restrictions
+
+   Without the Owner's prior written permission, you may not:
+
+   a. copy, reproduce, or redistribute the Software, in whole or in part;
+   b. modify the Software or create derivative works from it;
+   c. use the Software, or any part of it, in any product, service, or
+      internal system, whether or not commercial;
+   d. host, deploy, or operate the Software, or offer it as a service;
+   e. sell, rent, lease, sublicense, or otherwise transfer the Software;
+   f. reuse its designs, database schema, API contracts, or documentation as
+      the basis for another implementation;
+   g. use the Software as training data for machine-learning or AI models; or
+   h. remove, obscure, or alter this notice or any copyright notice.
+
+
+4. Permitted use
+
+   You may view and read the Software for the sole purpose of evaluating it or
+   reviewing contributions to it. Any other use requires written permission.
+
+
+5. Contributions
+
+   Contributions are accepted only from people authorized by the Owner. By
+   submitting a contribution (a pull request, patch, issue attachment, or any
+   other means), you grant the Owner a perpetual, worldwide, irrevocable,
+   royalty-free, sublicensable license to use, reproduce, modify, distribute,
+   and otherwise exploit that contribution as part of the Software, and you
+   confirm you have the right to grant it. Contributions carry no expectation
+   of a license back to the contributor beyond the terms above.
+
+
+6. Third-party components
+
+   The Software depends on third-party libraries and tools that are licensed
+   separately by their own copyright holders. This license covers only the
+   original work in this repository; it does not extend to, restrict, or
+   supersede the terms of any third-party component.
+
+
+7. Trademarks
+
+   This license grants no rights in the "Riviera Sunbed Booking" name, logo,
+   branding, or visual identity.
+
+
+8. No warranty
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+
+9. Limitation of liability
+
+   IN NO EVENT SHALL THE OWNER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING
+   FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+   DEALINGS IN THE SOFTWARE.
+
+
+10. Termination
+
+    Any use outside the terms above terminates all permissions under section 4
+    immediately and automatically, and the Owner reserves every remedy
+    available at law.
+
+
+Permission requests: contact the Owner through GitHub (@ivopogace).
