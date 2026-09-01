@@ -92,16 +92,20 @@ const FILL_ROLES = [
  * separate declaration of the same value in a different role. Read the shrunk list as that slice
  * landing, never as #854 having over-reached after all; the ink's own guard is
  * `operator/console-accent-token.contrast.spec.ts`.
+ *
+ * <p>`#0a5f74` shrinks the same way and for the same reason: #858 moved the two booking OUTCOME
+ * MEDALLIONS onto `--riv-medallion-positive-ink` and the amenity chip's water variant onto
+ * `--riv-amenity-water-ink`. `booking-dialog.ts` stays — its remaining `#0a5f74` is the header
+ * gradient's stop, which is `--riv-cta-grad`'s own duplication and nobody's ink. Those tokens'
+ * guard is `shared/fixed-fill-token-skins.contrast.spec.ts`.
  */
 const SURVIVORS: readonly (readonly [string, string])[] = [
   // `#0a6e85`'s eight console-ink rows left with #848 — see this list's header.
-  // `#0a5f74` as a `text-` ink, a selection `ring-`, and the dialog head's gradient stop.
+  // `#0a5f74` as a `text-` ink, two selection `ring-`s, and the dialog head's gradient stop.
   ['shared/amenity-chip.ts', '#0a5f74'],
   ['operator/set-editor.html', '#0a5f74'],
   ['operator/layout-editor.html', '#0a5f74'],
   ['booking/booking-dialog.ts', '#0a5f74'],
-  ['booking/booking-pay.ts', '#0a5f74'],
-  ['booking/booking-confirmation.ts', '#0a5f74'],
   // `#a3160e` as `/opacity` tints and borders — class O, #852's.
   ['operator/set-editor.html', '#a3160e'],
   ['operator/requests-tab.html', '#a3160e'],

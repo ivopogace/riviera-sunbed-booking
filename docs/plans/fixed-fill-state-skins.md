@@ -88,12 +88,15 @@ recipe; loaded before the session's first `npm` invocation)
       on `documentElement` **and** its `@theme inline` row generated the utility class the components
       consume — the failure a class-list assertion cannot see. *Seam:* the rendered page (the
       CSSOM) · *Pinned by:* `e2e/fixed-fill-state-skins.e2e.ts` › `'every registered token is declared and generates its utility'`
-- [ ] **AC-7:** Given `booking/solid-btn-tokens.contrast.spec.ts`'s `OUT_OF_FAMILY` guard — which
-      asserts **positively** that each listed file still paints `#a3372a` — when this slice migrates
-      `shared/failure-panel.ts` and `booking/booking-pay.ts`, then both are removed from that array
-      **and** from the docblock prose above it, leaving only `operator/payouts-tab.html` (#852's
-      `/opacity` tints). *Seam:* `src/app/booking/solid-btn-tokens.contrast.spec.ts` · *Pinned by:*
-      that spec's own `'the literal survives only outside the family'` test, green after the edit
+- [ ] **AC-7:** Given the **two** positive over-reach guards that assert a listed file *still*
+      paints a value this slice migrates, when the migration lands, then both are narrowed in the
+      same commit, array **and** docblock prose: `solid-btn-tokens.contrast.spec.ts`'s
+      `OUT_OF_FAMILY` (`#a3372a`) drops `shared/failure-panel.ts` + `booking/booking-pay.ts`, leaving
+      only `operator/payouts-tab.html` (#852's tints); `solid-fill-tokens.contrast.spec.ts`'s
+      `SURVIVORS` (`#0a5f74`) drops `booking/booking-pay.ts`, `booking/booking-confirmation.ts` and
+      `shared/amenity-chip.ts`, keeping `booking/booking-dialog.ts` for its gradient stop. *Seam:*
+      those two spec files · *Pinned by:* their own `'the literal survives only outside the family'`
+      and `'leaves the non-fill roles of the same three values untouched'` tests, green after the edits
 - [ ] **AC-8:** Given the ledger, when the slice merges, then class F's "inks on fixed fills" row is
       `done` with this PR **and** carries the how-many-pairs answer with its reasoning; class R's
       `#0a5f74` row reflects the 3-fills/4-inks split; class S's `shared/amenity-chip.ts` row is
@@ -146,7 +149,7 @@ recipe; loaded before the session's first `npm` invocation)
 |---|---|---|---|---|---|---|
 | R-1 | A token is declared but its `@theme inline` row is forgotten → the utility never generates, the class sits inert in the markup and the paint silently reverts to inherited/transparent. No unit spec can see this. | med | high | AC-6's CSSOM check walks `document.styleSheets` for each expected `.bg-riv-*`/`.text-riv-*`/`.border-riv-*` selector — the #850 precedent, kept verbatim | agent | open |
 | R-2 | The literal sweep (AC-3) matches **by value** and so fails on the eight deliberately-untouched homes of `#0a5f74`, `#a3372a`, `#8a5410` and `#fcf0d9` — or, worse, tempts the implementer to migrate them | high | med | Sweep **by role**, the #850 `LITERAL_ROLES` pattern: `text-[#0a5f74]` not `#0a5f74`; and pair it with a positive `OUT_OF_FAMILY`-style assertion (AC-3's second test) that the out-of-scope homes still paint theirs | agent | open |
-| R-3 | `booking/solid-btn-tokens.contrast.spec.ts`'s `OUT_OF_FAMILY` array goes red the moment `failure-panel`/`booking-pay` stop painting `#a3372a` — it asserts positively that they still do | **certain** | high | AC-7: narrow the array *and* the docblock prose in the same commit as the migration. Flagged by #864's hand-off comment on the issue; verified against the tree, not just the prose | agent | open |
+| R-3 | A positive over-reach guard goes red the moment a listed file stops painting the value it pins | **certain** | high | AC-7: narrow the array *and* the docblock prose in the same commit as the migration. #864's hand-off comment named **one** such guard (`solid-btn-tokens`' `OUT_OF_FAMILY`); phase 1's regression run found a **second** the plan had not anticipated — `solid-fill-tokens`' `SURVIVORS`, #854's `#0a5f74` list. Both are now in AC-7. The lesson generalises: after migrating a value, re-run the *whole* `src/app` unit suite, not only the specs the diff names — a positive guard lives in the file of the ticket that *kept* the value, not the one that moves it | agent | **closed** — phase 1 |
 | R-4 | Sonar's **0 new duplicated blocks** bar: this slice writes the **sixth** copy of the `STYLESHEET`/`baseBlock()`/`declarationsOf()` guard helpers, ~15 identical lines | high | med | Phase 0 extracts them to `src/testing/stylesheet-tokens.ts` and moves the five existing guards onto it — the slice then *removes* duplication instead of adding the copy that would trip the gate | agent | **closed** — phase 0; the same 38 assertions pass before and after |
 | R-5 | Naming collision: `--riv-chip-bg`/`--riv-chip-border` already exist for a *different* chip | med | low | The amenity family is named `--riv-amenity-*`, not `--riv-chip-*`; the medallion follows the `--riv-tile-<state>-<role>` triple precedent | agent | open |
 | R-6 | The `#fcf0d9`/`#8a5410` pair is tokenised as `--riv-medallion-waiting-*` while three other files keep it as a literal for a different form → a future reader reuses the medallion token on the notice banner | med | med | The reason is written **at the declaration** (the `--riv-console-negative-ink` docblock form), the out-of-family homes are pinned by AC-3's positive test, and the notice-banner family gets its own ledger row + follow-up issue | agent | open |
@@ -231,16 +234,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** write the failing medallion block of
-`shared/fixed-fill-token-skins.contrast.spec.ts`, then declare the seven `--riv-medallion-*` tokens.
+**Next action:** extend `shared/fixed-fill-token-skins.contrast.spec.ts` with the amenity block
+(red), then declare the six `--riv-amenity-*` tokens and migrate `amenity-chip.ts`'s ternary.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — extract the token-guard helpers | ✅ | `fda89a8` |
-| 1 — the outcome-medallion family | ⏳ | |
-| 2 — the amenity-chip family | | |
+| 1 — the outcome-medallion family | ✅ | `<phase-1>` |
+| 2 — the amenity-chip family | ⏳ | |
 | 3 — the dialog step-badge family | | |
 | 4 — the forced-dark computed-style e2e | | |
 | 5 — ledger + follow-up issues + close-out | | |
@@ -322,25 +325,30 @@ decorative outcome glyph on a card):
 the negative fill is **1.54:1** — the exact number #850 measured on its own family — and on the
 waiting fill **1.63:1**. All three are light-on-light.
 
-- [ ] **Step 1: Write the failing guard** — create
+- [x] **Step 1: Write the failing guard** — create
       `shared/fixed-fill-token-skins.contrast.spec.ts` with the medallion block: the AA/exemption
       tests, the themed-alternative bounds above, the single-declaration + base-block + mirrored-value
       tests, and the role-scoped literal sweep with its positive out-of-family counterpart.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- --run fixed-fill-token-skins` → FAIL:
+- [x] **Step 2: Run it, verify it fails** — `npm test -- --run fixed-fill-token-skins` → FAIL:
       `--riv-medallion-positive-fill declarations: expected length 0 to be 1`
-- [ ] **Step 3: Minimal implementation** — declare the seven tokens in `tailwind.css`'s base block
+- [x] **Step 3: Minimal implementation** — declare the seven tokens in `tailwind.css`'s base block
       with a docblock in the `--riv-console-negative-ink` form (what the family is, why invariant,
       the measured numbers, the rejected coincidental tokens, the proof files); add seven
       `@theme inline` rows; add the seven mirrors to `glass-tokens.ts`; migrate the five sites.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- --run fixed-fill-token-skins booking-pay booking-confirmation request-confirmation failure-panel` → PASS
-- [ ] **Step 5: Discharge AC-7** — remove `shared/failure-panel.ts` and `booking/booking-pay.ts` from
+- [x] **Step 4: Run it, verify it passes** — `npm test -- --run fixed-fill-token-skins booking-pay booking-confirmation request-confirmation failure-panel` → PASS
+- [x] **Step 5: Discharge AC-7** — remove `shared/failure-panel.ts` and `booking/booking-pay.ts` from
       `solid-btn-tokens.contrast.spec.ts`'s `OUT_OF_FAMILY` array (leaving `operator/payouts-tab.html`
       alone) **and** correct the docblock prose above it to match the tree. Run
       `npm test -- --run solid-btn-tokens` → PASS.
-- [ ] **Step 6: Generalization-audit pass** — recorded in the log below; the population is the
+      **Found during the phase's regression run:** a **second** positive guard the plan had not
+      anticipated — `solid-fill-tokens.contrast.spec.ts`'s `SURVIVORS` (#854's `#0a5f74` list), which
+      asserts `booking-pay.ts` and `booking-confirmation.ts` still paint it. Both rows removed with
+      the same "read the shrunk list as that slice landing" narration the `#0a6e85` shrink already
+      carries; `booking-dialog.ts` kept for its gradient stop. AC-7 and R-3 broadened to cover both.
+- [x] **Step 6: Generalization-audit pass** — recorded in the log below; the population is the
       medallion **form**, not the ticket's value list.
-- [ ] **Step 7: Commit** — `git commit -m "Give the outcome medallion a theme-invariant per-state token family (#858)"`
-- [ ] **Step 8: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Commit** — `git commit -m "Give the outcome medallion a theme-invariant per-state token family (#858)"`
+- [x] **Step 8: Update plan-doc execution status** in the same commit window.
 
 > **R-8 — the borders.** `#eecdc4` on `#f7e8e4` measures **1.24:1**, under 3:1. It is non-text chrome
 > (WCAG 1.4.11) on an `aria-hidden` glyph, and the same finding `--riv-solid-btn-*` recorded at

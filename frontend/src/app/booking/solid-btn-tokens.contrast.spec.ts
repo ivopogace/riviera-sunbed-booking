@@ -101,17 +101,15 @@ const SCOPED_ROLES = [/#a3372a/i, /border-\[rgba\(255,\s*255,\s*255,\s*0\.7\)\]/
  * check the issue's AC calls for.
  *
  * <p>The list shrinks as the other tickets holding these positions land, and each removal is a
- * migration this guard is watching for, never a relaxation: #864 took `operator/payouts-tab.ts`
+ * migration this guard is watching for, never a relaxation. #864 took `operator/payouts-tab.ts`
  * and `operator/daily-view-tab.html` off it by moving the console's PLAIN inks onto
- * `--riv-console-negative-ink`. `payouts-tab.html` stays because its `/opacity` chip tints (#852's)
- * do — the same element, a different position. One entry per line so the next removal is a
- * deletion rather than a rewrite.
+ * `--riv-console-negative-ink`; #858 then took `shared/failure-panel.ts` and
+ * `booking/booking-pay.ts` by moving their decorative outcome medallions onto
+ * `--riv-medallion-negative-ink`. `payouts-tab.html` is the last entry and stays because its
+ * `/opacity` chip tints (#852's) do — the same element, a different position. One entry per line so
+ * the next removal is a deletion rather than a rewrite.
  */
-const OUT_OF_FAMILY = [
-  'shared/failure-panel.ts',
-  'operator/payouts-tab.html',
-  'booking/booking-pay.ts',
-];
+const OUT_OF_FAMILY = ['operator/payouts-tab.html'];
 
 describe('Solid outline-button token family (WCAG AA + theme invariance, #851)', () => {
   it('both inks clear AA on both fills', () => {

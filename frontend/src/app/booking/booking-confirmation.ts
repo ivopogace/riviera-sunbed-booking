@@ -38,7 +38,7 @@ const CLS = {
     @if (confirmation(); as c) {
       <section [class]="cls.card" appCardGlass aria-labelledby="confirmation-title">
         <div
-          class="mx-auto mb-[18px] flex h-16 w-16 items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] bg-[#d9f2f7] text-[30px] text-[#0a5f74] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+          class="mx-auto mb-[18px] flex h-16 w-16 items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] bg-riv-medallion-positive-fill text-[30px] text-riv-medallion-positive-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
           aria-hidden="true"
         >
           ✓

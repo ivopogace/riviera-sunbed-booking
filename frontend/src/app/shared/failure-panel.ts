@@ -18,13 +18,15 @@ import { Directive } from '@angular/core';
 })
 export class FailurePanel {}
 
-// Decorative danger badge (aria-hidden; the heading carries the meaning). Solid light-peach fill
-// so #a3372a clears contrast unambiguously (css:S7924).
+// Decorative danger badge (aria-hidden — supplied by every call site; the heading carries the
+// meaning). Wears the --riv-medallion-negative-* state of the outcome-medallion skin (#858): a
+// solid, theme-invariant light-peach fill so the ink clears contrast unambiguously (css:S7924),
+// and one that cannot drift when this directive is mounted by hosts of differing themes.
 @Directive({
   selector: '[appFailureIcon]',
   host: {
     class:
-      'failure-icon flex items-center justify-center w-14 h-14 mx-auto mb-4 rounded-full bg-[#f7e8e4] border border-[#eecdc4] text-[#a3372a] text-[26px]',
+      'failure-icon flex items-center justify-center w-14 h-14 mx-auto mb-4 rounded-full bg-riv-medallion-negative-fill border border-riv-medallion-negative-border text-riv-medallion-negative-ink text-[26px]',
   },
 })
 export class FailureIcon {}
