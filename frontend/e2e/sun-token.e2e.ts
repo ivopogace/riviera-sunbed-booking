@@ -1,20 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * The three suns paint from one `--riv-sun-grad` declaration (#882).
+ * The three suns paint from one `--riv-sun-grad`, proved where the cascade decides rather than
+ * where a regex does: all three computed `background-image`s equal, the card opaque, and the band
+ * byte-identical to the literal it carried before the merge.
  *
- * <p>The companion to `shared/sun-token.contrast.spec.ts`, which owns what the stylesheet SAYS —
- * one declaration, in the base block, carrying #704's values, with no source rebuilding a sun
- * inline. What it cannot own is what the cascade DOES: a token consumed through a class that never
- * reaches the element, or an override added later, leaves the source assertions green while the
- * paint silently differs. Only a resolved computed style separates those.
- *
- * <p>Three claims, one per test. That all three sites resolve the SAME image is the merge itself.
- * That the card's is opaque is #704's rule, which had been fixed at the map alone — its translucent
- * stops composited to rgb(117,162,126) over `--riv-photo-grad` and read as an olive orb. That the
- * band's is byte-identical to the literal it carried before is the no-drift proof owed by the
- * consumer whose values were adopted, and it is resolved by the browser running the test rather
- * than pinned as a guessed serialization.
+ * <p>Companion to `shared/sun-token.contrast.spec.ts`, which owns what the stylesheet says. A
+ * token consumed through a class that never reaches the element leaves that one green.
  */
 
 /** Both venues photo-less, so the card empty state renders; the map read is photo-less too. */

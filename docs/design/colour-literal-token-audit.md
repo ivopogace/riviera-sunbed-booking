@@ -430,10 +430,11 @@ sweep that no source rebuilds a sun inline, with a meta-test so the sweep cannot
 
 **Residue.** The enumeration now returns five inline gradients, none of them a sun: `booking-dialog`,
 `booking-view`, `beach-grid-frame`, `beach-map-canvas` and `map-tile`. Each is genuinely per-site,
-and the last two already build from `--riv-*` vars. This slice also removes two `rgba(240,170,46,…)`
-positions from the population — the card sun's stops — which is why `fixed-fill-token-skins`'s
+and the last two already build from `--riv-*` vars. This slice also removes one `rgba(240,170,46,…)`
+position from the population — the card sun's outer stop — which is why `fixed-fill-token-skins`'s
 out-of-family row for `pages/home/home.html` was retired rather than rewritten: the paint it guarded
-is gone, not renamed.
+is gone, not renamed. (Its inner stop, `rgba(255,236,180,0.95)`, was a different colour family and
+carried no row.)
 
 ## How to cut a slice from this ledger
 

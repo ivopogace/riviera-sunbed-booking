@@ -35,7 +35,8 @@ that answered the design question with a real render rather than an argument) ·
 declaration) · `riviera-frontend` (the tree-wide guard spec belongs in `shared/`, not `venue/`;
 the CI-safe mocked suite is where the computed-style proof lives) · `riviera-local-debug`
 (scoped Vitest + `PW_CHROMIUM_EXECUTABLE` for the mocked e2e) · `playwright-cli` (authoring the
-computed-style e2e).
+computed-style e2e) · `riviera-java-conventions` (loaded at the review-fix round — §6d is the
+canonical comment rule the F-2 trim applied, frontend twin included).
 
 **Branch:** `claude/sdlc-882-u5bby2` — the cloud session's designated remote branch stands in
 for `feature/one-sun-image-token` (`riviera-sdlc` § Remote/cloud session addendum).
@@ -119,16 +120,6 @@ for `feature/one-sun-image-token` (`riviera-sdlc` § Remote/cloud session addend
 
 ## Open questions / Assumptions
 
-- **Open question:** May the draft PR be opened? `riviera-sdlc` wants one as soon as the first
-  phase commit exists — CI fires on the `pull_request` event only, so the pushed branch gets no
-  CI run until a PR exists — but this session's operating rules forbid opening a PR unless the
-  user asks. — *Owner:* the maintainer · *Resolves by:* a yes/no in the session; the Review and
-  Sonar gates are blocked on it, nothing else is.
-- **Open question:** May `spike/882-sun-merge` be pushed? `prototype` captures a spike as a
-  primary source on its own branch, and both this plan and issue #882 cite it; the same operating
-  rules bar pushing any branch but the designated one, and the container is ephemeral. — *Owner:*
-  the maintainer · *Resolves by:* a yes/no in the session.
-
 ### Resolved
 
 - **Open question:** Are the app shell's sun and the home one meant to be the same sun?
@@ -136,6 +127,11 @@ for `feature/one-sun-image-token` (`riviera-sdlc` § Remote/cloud session addend
   role. Discharged by `prototype` (branch `spike/882-sun-merge`), which rendered all three under
   each candidate in the real app; the maintainer's call on that evidence was **merge all three**.
   Recorded on issue #882.
+- **Open question:** May the PR be opened? — *Resolved:* the maintainer authorised it and asked
+  for the flow driven to merge. Opened as **PR #885**, ready for review.
+- **Open question:** May `spike/882-sun-merge` be pushed? — *Resolved:* not authorised, so not
+  pushed. The spike's verdict — the only thing `prototype` says graduates — is captured in the
+  audit-doc section and on issue #882, so nothing depends on the branch surviving.
 - **Open question:** Which paint does the merged token carry? — *Resolved:* the map's opaque
   4-stop. Two of three consumers then do not move (byte-identical band, imperceptible 32 px brand
   mark) and #704's already-tuned values become the single declaration. Maintainer confirmed.
@@ -177,16 +173,17 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement complete — pushed; PR not opened (see Open questions)`
+**Stage pointer:** `review gate run (3 findings, all fixed) — awaiting CI + Sonar on the fix round`
 
-**Next action:** Open the draft PR so CI runs, then the Review + Sonar gates. CI fires on
-the `pull_request` event only, so the pushed branch gets no CI run until a PR exists.
+**Next action:** Confirm CI green and pull the SonarCloud issue + duplication list for PR
+#885; then the merge close-out (`pr-gates.md` §3).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the token, the three consumers, the unit guard | ✅ | `b93044c` |
 | 1 — the mocked-e2e computed-style proof | ✅ | `dc214d4` |
 | 2 — record the answer in the audit doc | ✅ | `dc214d4` |
+| 3 — review-gate findings F-1..F-3 | ✅ | `FIXSHA` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -194,6 +191,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review gate (bug scan) | The sweep's meta-test exercised the matcher but never `appSources()`, so a broken enumeration would still pass `[]` vacuously — the exact fail-open the docblock claimed to close | fixed-in-`FIXSHA` — the meta-test now pins that the enumeration reaches all three sun sites; verified by breaking the filter (the sweep passed, the meta-test failed) |
+| F-2 | review gate (prior-PR feedback) | Doc comments over §6d budget, carrying issue numbers and decision history — the same shape reviews on PR #878 and #883 trimmed on this file family | fixed-in-`FIXSHA` — token comment 27→6 lines, spec docblock 25→9, e2e docblock 14→7; narration relocated to the audit-doc section, pointers kept |
+| F-3 | review gate (comment compliance) | Audit doc said the slice removes **two** `rgba(240,170,46,…)` positions; the card sun carried **one** (its other stop was a different colour family) | fixed-in-`FIXSHA` |
 
 ---
 
