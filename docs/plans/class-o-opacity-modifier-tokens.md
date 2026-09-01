@@ -198,17 +198,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2 done, phase 3 next)`
+**Stage pointer:** `implement (phase 3 done, phase 4 next)`
 
-**Next action:** phase 3 — the amber and green tints, taking `confirm-panel`'s warning
-surface whole; then the e2e (AC-3/AC-4), which is the only proof of a missing `@theme inline` row.
+**Next action:** phase 4 — rewrite the ledger's class-O section on rule B, cut the option-C
+follow-up issue, run `riviera-docs-freshness`, then mark PR #878 ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the rule + the console-tint family (18 positions) | ✅ | `f3ed82c` |
 | 1 — selection chrome, `#2bb8d4` + `#0e8aa8` (8 + 2 whole-ternary) | ✅ | `ef8aad8` |
-| 2 — the red families, `#a3160e` (7) + `#a3372a` (2) | ✅ | next commit |
-| 3 — amber + green tints (9) and the two entangled skins | | |
+| 2 — the red families, `#a3160e` (7) + `#a3372a` (2) | ✅ | `3fec9e1` |
+| 3 — amber + green tints (9) and the two entangled skins | ✅ | next commit |
 | 4 — ledger, the option-C follow-up issue, docs freshness | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -242,6 +242,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   code calls a mirror of `beach-cell`'s cell variants (phase 1's generalization finding).
 - `frontend/src/app/shared/confirm-panel.ts` — the warning surface taken whole (border + fill + ink).
 - `frontend/src/app/shared/confirm-panel.spec.ts` — the pin restated in token form and widened to the ink.
+- `frontend/src/app/booking/solid-btn-tokens.contrast.spec.ts` — `OUT_OF_FAMILY`'s last row
+  rewritten to the token form rather than deleted (same ground as the `fixed-fill` row), plus the
+  non-empty assertion an emptied positive list needs.
+- `frontend/e2e/console-negative-ink.e2e.ts` — the comment describing the `/opacity` compile as
+  hex-only, corrected: the token form compiles identically, which is this slice's finding.
 - `frontend/src/app/operator/console-negative-token.contrast.spec.ts` — `CHIP_TINTS` inverted to the
   token form (behaviour-parity row 6).
 - `frontend/src/app/shared/solid-fill-tokens.contrast.spec.ts` — the `(?!\/)` lookahead comment

@@ -121,7 +121,7 @@ test.describe('the operator console negative ink paints from the token registry'
     await expect(chip).toBeVisible();
     await expect(chip).toHaveCSS('color', CONSOLE_NEGATIVE_INK);
 
-    // v4 renders `/opacity` on an arbitrary hex as `color-mix(in oklab, …)` — pin #852's alpha.
+    // v4 renders `/opacity` as `color-mix(in oklab, …)` on hex or token alike — pin #852's alpha.
     const tint = await chip.evaluate((el) => getComputedStyle(el).backgroundColor);
     expect(tint, 'the chip tint').toMatch(/\/ 0\.12\)$/);
   });

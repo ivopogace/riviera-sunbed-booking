@@ -22,7 +22,7 @@ import { SetView } from '../shared/venue-views';
  * (`shared/class-o-tint-tokens.contrast.spec.ts`, `e2e/class-o-tint-tokens.e2e.ts`).
  */
 const PRE_MOVE_CELL_CLASS: Record<CellState, string> = {
-  premium: 'border-[#b47814]/40 bg-[linear-gradient(180deg,#ffe3a3,#f4c05a)]',
+  premium: 'border-riv-premium-edge/40 bg-(image:--riv-premium-grad)',
   standard: 'border-riv-console-tint/15 bg-white/85',
   walkin:
     'border-riv-console-tint/15 bg-[repeating-linear-gradient(45deg,color-mix(in_oklab,var(--riv-console-tint)_30%,transparent)_0_3px,color-mix(in_oklab,var(--riv-console-tint)_12%,transparent)_3px_6px)]',

@@ -415,4 +415,20 @@ export const CLASS_O_TINTS: readonly { readonly token: string; readonly value: s
    *  token: `--riv-solid-fill-danger` carries this value as a SOLID fill under fixed white ink,
    *  and `--riv-error-ink` carries it as an ink that themes to `#ffa9a1`. Neither is a tint. */
   { token: '--riv-alert-tint', value: '#a3160e' },
+  /** The sales-close / weather-refund confirm panel: its edge and its fill. Two base colours for
+   *  one treatment, which rule B preserves and does not merge — see the option-C follow-up. */
+  { token: '--riv-warn-edge', value: '#d9861a' },
+  { token: '--riv-warn-tint', value: '#f0aa2e' },
+  /** The Requests tab's accepted medallion — border, fill AND ink off one base colour, taken as
+   *  one expression because that is what the element is. */
+  { token: '--riv-positive-tint', value: '#0e6e46' },
+  /** The beach-map premium cell's boundary, over `--riv-premium-grad`. */
+  { token: '--riv-premium-edge', value: '#b47814' },
+  /** `shared/confirm-panel`'s warning surface, taken whole (#858's rule): the class-O edge could
+   *  not move without its fill and ink, which are class S and would have been left as literals in
+   *  the same host string. A near-duplicate of `--riv-notice-banner-*` (`#fcf0d9`/`#8a5410`) at
+   *  both positions — recorded, not merged: merging is a visual change. */
+  { token: '--riv-confirm-warn-edge', value: '#e0a03a' },
+  { token: '--riv-confirm-warn-fill', value: '#fff4e0' },
+  { token: '--riv-confirm-warn-ink', value: '#7a4a08' },
 ];

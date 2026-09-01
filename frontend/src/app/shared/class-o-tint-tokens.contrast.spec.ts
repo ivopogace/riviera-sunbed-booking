@@ -109,6 +109,27 @@ describe('Class-O tint tokens (rule B: the modifier stays, the literal becomes a
     expect(literal.test('border-riv-console-tint/15')).toBe(false);
   });
 
+  /**
+   * Class O, closed. The per-token sweeps below each police one base colour; this one polices the
+   * FORM, so a *new* `/opacity` literal of a colour no token covers fails too. That is what turns
+   * the audit's class O from a backlog into a boundary — the state its "should the exemption
+   * classes become a lint rule?" section says a rule becomes worth writing in.
+   *
+   * <p>The pattern is the ledger's own population command, plus the `]/α` suffix.
+   */
+  it('leaves no `/opacity` colour literal anywhere in the app sources', () => {
+    const anyLiteral = new RegExp(
+      `${COLOUR_UTILITIES}-\\[(?:#[0-9a-fA-F]{3,8}|rgba?\\([^\\]]*\\))\\]/[0-9.]+`,
+      'i',
+    );
+
+    const survivors = appSources().filter((path) =>
+      anyLiteral.test(readFileSync(join(APP, path), 'utf8')),
+    );
+
+    expect(survivors).toEqual([]);
+  });
+
   describe.each(CLASS_O_TINTS)('$token', ({ token, value }) => {
     it('is declared exactly once, so no theme block can override it', () => {
       expect(declarationsOf(token), `${token} declarations`).toHaveLength(1);

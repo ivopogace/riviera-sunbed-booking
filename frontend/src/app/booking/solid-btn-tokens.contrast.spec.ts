@@ -80,10 +80,11 @@ const GLOBAL_ROLES = [/#f4f6f7/i, /#e7ebec/i, /rgba\(200,\s*90,\s*60,\s*0\.5\)/i
  * wrongly demand those change too:
  *
  * <ul>
- *   <li>`#a3372a` has other homes — the over-claim #851 exists to avoid. Three remain since #864
- *       moved the console's three PLAIN inks onto `--riv-console-negative-ink`: the two class-F
- *       medallions (`shared/failure-panel`, `booking/booking-pay`, both #858's), and
- *       `payouts-tab.html`'s `/opacity` form, which is #852's;
+ *   <li>`#a3372a` has other homes — the over-claim #851 exists to avoid. Two remain as LITERALS
+ *       since #864 moved the console's three plain inks onto `--riv-console-negative-ink` and #852
+ *       moved `payouts-tab.html`'s `/opacity` tints onto that same token: the two class-F
+ *       medallions (`shared/failure-panel`, `booking/booking-pay`, both #858's). The paint the
+ *       list below watches is unchanged — only its notation moved;
  *   <li>`border-[rgba(255,255,255,0.7)]` also skins `auth/auth-page`'s back button (over a
  *       translucent fill, not this solid one) and `venue/availability-calendar`'s popover.
  * </ul>
@@ -105,11 +106,18 @@ const SCOPED_ROLES = [/#a3372a/i, /border-\[rgba\(255,\s*255,\s*255,\s*0\.7\)\]/
  * and `operator/daily-view-tab.html` off it by moving the console's PLAIN inks onto
  * `--riv-console-negative-ink`; #858 then took `shared/failure-panel.ts` and
  * `booking/booking-pay.ts` by moving their decorative outcome medallions onto
- * `--riv-medallion-negative-ink`. `payouts-tab.html` is the last entry and stays because its
- * `/opacity` chip tints (#852's) do — the same element, a different position. One entry per line so
- * the next removal is a deletion rather than a rewrite.
+ * `--riv-medallion-negative-ink`. `payouts-tab.html` is the last entry and stays.
+ *
+ * <p>It stays as a REWRITE rather than a deletion, which is the one case the "next removal is a
+ * deletion" note above did not anticipate. #852 did not take that position away from this file's
+ * concern — it moved the chip's `/opacity` tints onto `--riv-console-negative-ink`, the ink token
+ * already on that same element. The paint is still there and #851 still did not reach it, so the
+ * entry tracks the paint in its new notation. Deleting it would have emptied the list, and an
+ * empty positive list passes vacuously — which is why the assertion below now checks for that too.
  */
-const OUT_OF_FAMILY = ['operator/payouts-tab.html'];
+const OUT_OF_FAMILY = [
+  { path: 'operator/payouts-tab.html', paints: /riv-console-negative-ink\/(?:28|12)/i },
+];
 
 describe('Solid outline-button token family (WCAG AA + theme invariance, #851)', () => {
   it('both inks clear AA on both fills', () => {
@@ -164,8 +172,12 @@ describe('Solid outline-button token family (WCAG AA + theme invariance, #851)',
   });
 
   it('leaves the out-of-family #a3372a sites untouched', () => {
-    const stillPainting = OUT_OF_FAMILY.filter((path) => /#a3372a/i.test(read(path)));
+    const stillPainting = OUT_OF_FAMILY.filter((entry) => entry.paints.test(read(entry.path)));
 
+    expect(
+      OUT_OF_FAMILY.length,
+      'an empty out-of-family list would pass vacuously',
+    ).toBeGreaterThan(0);
     expect(stillPainting).toEqual(OUT_OF_FAMILY);
   });
 });
