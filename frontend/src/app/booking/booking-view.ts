@@ -101,7 +101,7 @@ const CLS = {
   btnOutline: `${BTN_OUTLINE} border-riv-solid-btn-border text-riv-solid-btn-ink`,
   btnOutlineDanger: `${BTN_OUTLINE} border-riv-solid-btn-danger-border text-riv-solid-btn-danger-ink`,
   btnCta:
-    'mt-3.5 block w-full cursor-pointer rounded-[16px] border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-[15px] text-center text-[15.5px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:brightness-[1.06] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white aria-disabled:cursor-not-allowed aria-disabled:opacity-65',
+    'mt-3.5 block w-full cursor-pointer rounded-[16px] border border-riv-cta-border bg-(image:--riv-cta-grad) p-[15px] text-center text-[15.5px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:brightness-[1.06] motion-reduce:transition-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white aria-disabled:cursor-not-allowed aria-disabled:opacity-65',
 } as const;
 
 /**

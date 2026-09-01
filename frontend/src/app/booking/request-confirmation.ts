@@ -26,7 +26,7 @@ const CLS = {
   code: 'mt-1.25 text-[26px] font-bold tracking-[0.12em] text-riv-accent-ink',
   status: 'm-0 mb-4.5 text-[13px] font-semibold text-riv-card-ink-soft',
   primary:
-    'block w-full rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-3.5 text-[15px] font-bold text-white no-underline shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
+    'block w-full rounded-2xl border border-riv-cta-border bg-(image:--riv-cta-grad) p-3.5 text-[15px] font-bold text-white no-underline shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
   link: 'mt-3 inline-block text-[14.5px] font-semibold text-riv-accent-ink focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
 } as const;
 

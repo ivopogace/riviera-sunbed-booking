@@ -75,6 +75,7 @@
   --color-riv-solid-fill-brand: var(--riv-solid-fill-brand);
   --color-riv-solid-fill-brand-hover: var(--riv-solid-fill-brand-hover);
   --color-riv-solid-fill-danger: var(--riv-solid-fill-danger);
+  --color-riv-cta-border: var(--riv-cta-border);
   --color-riv-console-accent-ink: var(--riv-console-accent-ink);
   --color-riv-console-negative-ink: var(--riv-console-negative-ink);
 
@@ -194,6 +195,27 @@
       fill, decorative, text-free. Theme-invariant: the dark blocks below inherit both. */
   --riv-cta-grad: linear-gradient(180deg, #0c7288, #0a5f74);
   --riv-bar-grad: linear-gradient(90deg, #2bb8d4, #0e8aa8);
+
+  /** The CTA button's white hairline bevel (#853, class R) — 16 positions across auth/, booking/
+      and shared/, on --riv-cta-grad above and on booking-dialog's #31798a close button.
+
+      Do NOT reach for --riv-inset-fill, whose value it equals: that is a FILL, and it resolves
+      white 0.08 in the dark theme, so a border pointed at it would confuse the role AND move the
+      paint. Do NOT model it on --riv-card-border either — that token themes because the card glass
+      under it themes, whereas every surface here is fixed; its dark value over these fills is
+      1.35-1.46:1, a hairline that all but vanishes over a fill that never moves.
+
+      Theme-invariant BY DESIGN, the --riv-solid-btn-* call: a fixed surface pins what is painted on
+      it. Declared ONCE, no dark override. Non-text chrome (WCAG 1.4.11) at 2.08-2.48:1 over its own
+      fills — decorative, and measured rather than assumed exempt: the CTA fill is what carries the
+      affordance boundary, 3.80-7.24:1 against the card glass in the light themes and 2.23-3.16:1 in
+      the dark, whose shortfall is the glass aesthetic's question, tracked at #834 alongside the
+      identical --riv-solid-btn-* and --riv-accent-* findings.
+      Proof: shared/cta-border-token.contrast.spec.ts (the declaration guard, the measured exemption
+      and the themed-alternative bound) + e2e/cta-border-token-skin.e2e.ts (the computed border under
+      a forced dark document theme, and that the element tracks the token rather than a literal of
+      the same value). Rationale: docs/design/colour-literal-token-audit.md class R, issue #853. */
+  --riv-cta-border: rgba(255, 255, 255, 0.4);
 
   /** Card surfaces (consumed by the glass panels/cards). Declared in
       this base block, so they are theme-invariant unless a theme block overrides them

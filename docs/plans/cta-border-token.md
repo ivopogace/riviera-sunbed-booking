@@ -1,0 +1,350 @@
+# CTA border token (`--riv-cta-border`) Implementation Plan
+
+**Goal:** Retire the 17 `rgba(255,255,255,0.4)` literals in `auth/`, `booking/` and `shared/`
+by registering **one new border token** for the 16 that are a white hairline on a *fixed* teal
+action surface, and migrating the single `bg-` site onto the existing `--riv-inset-fill` —
+which also repairs a dark-theme AA failure that literal was causing.
+
+**Architecture:** The single significant decision is that the new border token is
+**theme-invariant, declared once**, and *not* modelled on `--riv-card-border` as issue #853
+suggested. `--riv-card-border` themes because the card glass under it themes; every one of these
+16 borders sits on a surface that does **not** theme (`--riv-cta-grad`, declared once in the base
+block and inherited by all three themes, and `booking-dialog`'s `#31798a` close button). That is
+the class-F rule the ledger already records — a fixed surface pins everything painted on it — and
+it is measured, not asserted: dark `--riv-card-border`'s white 0.16 over these fills is
+**1.35–1.46:1**, i.e. the hairline all but disappears over a fill that never moves.
+
+**Persistence:** N/A — frontend styling only; no tables, no migrations (invariants #1/#12 untouched).
+
+**Source of intent:** GitHub issue [#853](https://github.com/ivopogace/riviera-sunbed-booking/issues/853)
+(class **R**, row 1 of `docs/design/colour-literal-token-audit.md`); parent epic #836.
+
+**Skills consulted:** `riviera-sdlc` (routing + the issue-intake grill gate — caught the
+15/2 → 16/1 miscount, the wrong `--riv-card-border` precedent, and the AC's over-broad
+"no literal remains" wording) · `riviera-plan-doc` (this template — forced the behavior-parity
+ledger, which is where the dark-theme `<dl>` AA failure surfaced) · `tdd` (each phase is red at the
+e2e/unit seam named in its AC before the migration lands) · `riviera-review-overlay` (review gate —
+runs at ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main..HEAD` — **0 findings**: no substrate doc names `--riv-inset-fill` or this literal, and the counting sweep's two hits (`riviera-frontend`'s "two-suite e2e split" and "token registry lives in two places") stay true — the second counts *themes* in `core/theme.ts`, not tokens, so a new token does not touch it) ·
+`riviera-tailwind` (the theme-invariant-token rule, "consume through the named utility", and the
+family-by-form cut that keeps the inset-highlight shadows out) · `riviera-frontend` (token registry
+lives in `tailwind.css` + `@theme inline`; the cross-folder guard spec belongs in `shared/`) ·
+`playwright-cli` + `riviera-review-overlay` RV-FE-E2E (the render proof is a **mocked** e2e in
+`frontend/e2e/`, not the real-backend suite) · `riviera-local-debug` (scoped `npm test` /
+`PW_CHROMIUM_EXECUTABLE=…` for the mocked e2e in a cloud session).
+
+**Branch:** `claude/sdlc-853-jciimj` — the cloud session's designated branch **stands in for**
+`feature/cta-border-token` (`riviera-sdlc` § Remote/cloud session addendum).
+
+---
+
+## Acceptance criteria (testable)
+
+- [x] **AC-1:** Given `src/tailwind.css`, when the stylesheet is read as text, then
+      `--riv-cta-border` is declared **exactly once**, in the base
+      (`:root, [data-riv-theme='porcelain']`) block, at `rgba(255, 255, 255, 0.4)` — no theme
+      block overrides it. *Seam:* the `tailwind.css` source, via `testing/stylesheet-tokens`
+      (`baseBlock` / `declarationsOf`) · *Pinned by:*
+      `cta-border-token.contrast.spec.ts` › "is declared exactly once, so no theme can
+      override it" + "is declared in the base block, where it resolves for all three themes" +
+      "declares the value this test mirror carries".
+
+- [x] **AC-2:** Given the token composited over each surface it lands on (`--riv-cta-grad`'s two
+      stops `#0c7288`/`#0a5f74` and the dialog close button's `#31798a`), when its contrast against
+      that fill is computed, then every value is **below** WCAG 1.4.11's 3:1 and the number is
+      recorded — this border is decorative chrome, not the affordance boundary, and is exempt for a
+      *measured* reason, the `--riv-solid-btn-border` precedent. *Seam:* `testing/contrast`
+      composited maths over the `testing/glass-tokens` mirror · *Pinned by:*
+      `cta-border-token.contrast.spec.ts` › "is decorative chrome, measured rather than assumed
+      exempt", with "is not the affordance boundary — the fill carries it, in both light themes"
+      recording what does carry it.
+
+- [x] **AC-3:** Given the themed alternative issue #853 proposed (`--riv-card-border`), when its
+      **dark** value is composited over the same three fixed fills, then it measures ≤ 1.5:1 —
+      the bound that makes the single declaration a decision rather than an omission. *Seam:* as
+      AC-2 · *Pinned by:* `cta-border-token.contrast.spec.ts` › "a themed border would fade over
+      fills that do not theme".
+
+- [x] **AC-4:** Given the sign-in page rendered in a real browser, when the theme is porcelain
+      **and** when the document theme is forced to `dark`, then the primary submit button's
+      computed `border-color` is `rgb(255, 255, 255)` at alpha `0.4` in both — proving the
+      `@theme inline` row generated the utility and that the value does not move.
+      *Seam:* the rendered page at `/account/sign-in` (`getByTestId('auth-submit')`) ·
+      *Pinned by:* `e2e/cta-border-token-skin.e2e.ts`.
+
+- [x] **AC-5:** Given `booking-confirmation`'s summary `<dl>` in the **dark** theme, when its fill
+      comes from `--riv-inset-fill` rather than the white-0.4 literal, then its two inks clear AA
+      4.5:1 over every dark background stop (they measure **3.12–3.29:1** and **2.62–2.81:1**
+      today — a live failure). *Seam:* `testing/contrast` composited maths over the
+      `testing/glass-tokens` mirror · *Pinned by:*
+      `booking-confirmation.contrast.spec.ts` › "both inks meet AA on the inset fill over the
+      card glass" (per theme) + "a fixed white 0.4 fill put the dark theme under AA, which is why
+      the token themes".
+
+- [x] **AC-6:** Given the whole `frontend/src` tree, when the audit ledger's own population command
+      is run for this value, then **no** `rgba(255,255,255,0.4)` remains in a
+      `(text|bg|border|fill|stroke|shadow)-[…]` position outside `*.spec.ts`. *Seam:* the working
+      tree, by grep · *Pinned by:* `cta-border-token.contrast.spec.ts` › "leaves no component
+      painting the retired literal positions" + "leaves the inset-highlight ramp alone, which is a
+      different family", plus the AC-verification grep below. Deliberately not a new lint rule —
+      the ledger defers that to #836 step 4.
+
+- [x] **AC-7:** Given `docs/design/colour-literal-token-audit.md`, when this PR merges, then class
+      **R** row 1 reads `done` with this PR number, its miscounted split is corrected in place, and
+      the residue this slice deliberately does not take carries its own row. *Seam:* the ledger file
+      · *Pinned by:* review (no test — it is a document).
+
+## Non-goals
+
+- **The inset-highlight shadows.** `app.html:161`'s `shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]`
+  holds this value too, so AC-6's wording in the issue ("no literal remains") technically reaches
+  it. It is deliberately **out of scope**: a different role (an inner highlight inside a composite
+  shadow, not a border), a different folder (the app shell, outside the issue's three), and it is
+  not in the ledger's population at all — the population regex requires `#`/`rgba(` immediately
+  after `[`. It is also one member of a three-value ramp (0.4 / 0.5 / 0.7) used in the same idiom
+  across the tree, so tokenising this member alone is exactly the partial cut the ledger warns
+  against. Recorded as a new ledger row instead.
+- **The `rgba(255,255,255,0.6)` white borders.** A neighbouring family (it equals light
+  `--riv-card-border`) that `testing/glass-tokens.ts` currently mis-attributes to *this* issue.
+  Its pointer is corrected and the family gets its own ledger row; migrating it is not this slice.
+- **Retuning the CTA gradient.** AC-2's maths surfaced that in the **dark** theme the CTA fill
+  itself sits at 2.23–3.16:1 against the dark card glass (both light themes clear 3:1 comfortably —
+  3.80–7.24). Both ranges are over the same population, the two `--riv-cta-grad` stops the spec's
+  affordance test iterates; `booking-dialog`'s close button is not on the card glass at all (its
+  own host is the dialog's teal header gradient, 1.12–1.46:1) and is deliberately not mixed in.
+  That is the fill's boundary question, not the border's, and it is the same
+  glass-aesthetic finding `--riv-solid-btn-*` and `--riv-accent-*` already record against tracking
+  issue **#834**. Recorded, not fixed here.
+- No component restructuring, no new directive, no touch-target or focus changes.
+
+## Behavior-parity ledger
+
+| Old-surface behavior | Verdict | How the new surface does it, or why it's gone |
+|---|---|---|
+| 16 sites paint a `rgba(255,255,255,0.4)` border in all three themes | **preserved** (byte-identical) | `border-riv-cta-border`, declared once at the same value — the light-theme paint and all three themes' paint are unchanged |
+| `booking-confirmation`'s `<dl>` paints a `rgba(255,255,255,0.4)` fill in all three themes | **changed** | Now `bg-riv-inset-fill`: identical in the two light themes (both 0.4), **white 0.08 in the dark theme**. Deliberate — the literal was leaving that list's inks at 2.62–3.29:1, below AA; its four sibling inset panels in the same components already use this token |
+| `booking-confirmation`'s `<dl>` keeps its `rgba(255,255,255,0.6)` border | **preserved** | Untouched — a different value and a different family (see Non-goals) |
+| Every migrated element keeps its radius, padding, shadow, focus ring and transition | **preserved** | Only the colour position changes in each class string; the e2e reads computed style, not the class list |
+
+## Risk register
+
+| # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
+|---|---|---|---|---|---|---|
+| R-1 | A token declared without its `@theme inline` row generates **no utility**: the class stays in the markup and the paint silently reverts to the browser default. No unit spec can see this | med | high | AC-4's mocked e2e reads the computed `border-color` on a real render — the ledger's own step 4 | agent | closed — `e2e/cta-border-token-skin.e2e.ts` asserts the generated utility AND, via the sentinel re-point, that the element consumes the token |
+| R-2 | Someone later adds a `--riv-cta-border` dark override, silently restyling 16 buttons; every contrast ratio in the guard would still pass, because they are computed from the mirror | med | med | AC-1's single-declaration guard reads `tailwind.css` **as text** (`testing/stylesheet-tokens`), plus AC-4's forced-dark e2e where the cascade decides | agent | closed — the single-declaration guard plus the forced-dark e2e leg |
+| R-3 | The `bg-` site is *not* really `--riv-inset-fill` and the migration restyles it | low | med | Judged individually (issue AC 1): it is a translucent white inset block on the themed card glass, 17 lines above a sibling that already uses the token in the same component. AC-5 measures the outcome rather than assuming it | agent | closed — measured: the migration takes the list's dark-theme inks from 2.62–3.29:1 to 7.71–8.60:1 |
+| R-4 | The 16 borders are not one family — the dialog close button sits on `#31798a`, not the gradient | low | med | Same **form** (a white hairline bevel on a fixed teal action surface) and the same theme-invariance ground; AC-2 measures all three fills, not just the gradient. Grouping by form rather than value is the ledger's own rule | agent | closed — all three fills measured in `cta-border-token.contrast.spec.ts` |
+| R-5 | Merge conflict with a sibling `#836` slice touching `tailwind.css` / `glass-tokens.ts` | med | low | Both are append-mostly; merge `origin/main` before ready-for-review. No Flyway number is in play (frontend-only slice) | agent | closed — merged `origin/main` before ready-for-review; no Flyway number in play |
+
+## Open questions / Assumptions
+
+None open.
+
+### Resolved
+
+- **Assumption (closed, phase 0):** `--riv-cta-grad` is genuinely theme-invariant, so the border on
+  it must be too. Confirmed — `declarationsOf('--riv-cta-grad')` returns exactly one entry, asserted
+  in `cta-border-token.contrast.spec.ts`.
+- **Assumption (closed, review gate):** naming the token `--riv-cta-border` beside `--riv-cta-grad`
+  rather than after the close button's own teal. Carried; the close button is the same bevel on the
+  same kind of fixed teal surface, and one token beats two names one hyphen apart (#864's argument).
+
+- **Open question (issue drift, closed at intake):** the issue and the ledger both say "15 of 17
+  borders; 2 are `bg-`". The ledger's own population command returns **16 borders and 1 `bg-`**.
+  Planned against the enumeration, and the ledger row is corrected in this PR (AC-7).
+- **Open question (issue drift, closed at intake):** the issue names `--riv-card-border` as "the
+  closest existing precedent for how such a border themes". Rejected on evidence — see
+  *Architecture* and AC-3.
+
+## Availability & concurrency (invariant #2)
+
+N/A — does not affect availability. No booking, beach-map or `availability` code is touched; the
+slice changes colour positions in class strings and one CSS token block.
+
+## Spring Modulith — modules, interfaces, events
+
+N/A — frontend-only. No file under `platform/` is touched.
+
+## Payment & payout (invariants #5, #8, #9, #10)
+
+N/A — no payment in scope. `booking-pay.ts` is touched only at a `border-` colour position.
+
+## Angular — frontend surfaces touched
+
+| # | Surface | Existing/new | Type | State/reactivity | Forms |
+|---|---|---|---|---|---|
+| FE-1 | `src/tailwind.css` | existing | token registry (`@theme inline` row + base-block declaration) | — | — |
+| FE-2 | 15 CTA-gradient sites in `auth/` (6), `booking/` (8), `shared/` (1) | existing | class strings only | unchanged | unchanged |
+| FE-3 | `booking/booking-dialog.ts:85` — the close button on `#31798a` | existing | class string only | unchanged | unchanged |
+| FE-4 | `booking/booking-confirmation.ts:52` — the summary `<dl>` | existing | class string only | unchanged | unchanged |
+| FE-5 | `src/testing/glass-tokens.ts` | existing | the one test-side token mirror | — | — |
+| FE-6 | `shared/cta-border-token.contrast.spec.ts` | new | Vitest guard spec | — | — |
+| FE-7 | `e2e/cta-border-token-skin.e2e.ts` | new | mocked Playwright spec (CI-safe suite) | — | — |
+
+**Standards:** no component logic changes; every migrated position consumes the token through its
+**named utility** (`border-riv-cta-border`, `bg-riv-inset-fill`), never `var(--riv-*)` in an
+arbitrary value — `riviera-tailwind` rule "tokens do the switching". The guard spec lives in
+`shared/` because the family spans three feature folders and `shared/` is the neutral home
+(`riviera-frontend` § folder taxonomy).
+
+## FE↔BE contract
+
+N/A — no contract change.
+
+## Execution status
+
+**Stage pointer:** `merge — all gates passed; awaiting the maintainer's merge`
+
+**Next action:** None for the agent — merge is the maintainer's call. After the merge, run the
+`riviera-sdlc` close-out checklist (`references/pr-gates.md` §3) and close #853.
+
+**Gate record (head `ce46f7a`):** CI green on every check — Backend, Frontend, Repo hygiene, CodeQL
+(both analyses), SonarCloud. Review gate ran at ladder rung 1 (`code-review:code-review`, 5-agent
+fan-out) plus `riviera-review-overlay`; six findings, all fixed in `ce46f7a` and recorded above.
+**Sonar gate: green with the reported list actually pulled and confirmed empty** — 62 new lines,
+0 issues, 0 hotspots, 0 duplicated blocks, **100% new-code coverage**, and all six quality-gate
+conditions OK. The analysis is confirmed to exist (`new_lines` has a value) and the
+`SonarCloud Code Analysis` check-run concluded `success`, so this is not the `total: 0`
+false-clean read `references/pr-gates.md` §2 warns about.
+
+| Phase | Status | Commits |
+|-------|--------|---------|
+| 0 — Register the token + its guard spec | ✅ | see phase-0 commit |
+| 1 — Migrate the 16 border sites + the render proof | ✅ | see phase-1 commit |
+| 2 — Migrate the `bg-` site onto `--riv-inset-fill` | ✅ | see phase-2 commit |
+| 3 — Ledger + mirror close-out | ✅ | see phase-3 commit |
+
+Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Findings register**
+
+| # | Source (review / sonar / CI) | Finding | Status |
+|---|---|---|---|
+| F-1 | review (agent 4 — prior-PR comments) | The `tailwind.css` declaration comment carried decision-history narrative with no `Rationale:` pointer, and `glass-tokens.ts` restated the same argument verbatim — the finding #862 (f.3) and #871 (f.1) each corrected | fixed — declaration recut to the `--riv-notice-banner-*` shape (contract, the two "do NOT reach for" warnings, proof, `Rationale:` pointer); the mirror now points at it instead of repeating it |
+| F-2 | review (agent 4 — prior-PR comments) | The retirement sweep's source helper excluded `*.spec.ts` wholesale — the construct #862 (f.2) found blind to stale token prose living in a spec file | fixed — widened to every source under `src/app` except the sweep itself, the `SELF` pattern `shared/solid-fill-tokens.contrast.spec.ts` already carries. Still green, so no spec prose names the retired positions |
+| F-3 | review (agent 4 — prior-PR comments) | Plan-doc bookkeeping, the #871 (f.5) finding: phase-step and AC checkboxes left unticked against a ✅ execution status, and three `Pinned by` entries paraphrased rather than naming the shipped test titles | fixed — boxes reconciled, every `Pinned by` now quotes the verbatim `it(...)` titles |
+| F-4 | review (agent 5 — code-comment guidance) | **A real error in this slice's own figures.** The affordance-boundary claim mixed two fill populations: `3.80–7.24:1` light was computed over the two `--riv-cta-grad` stops, `2.23–3.54:1` dark over those *plus* `booking-dialog`'s close-button fill — presented as parallel measurements | fixed — both ranges are now over the two gradient stops the spec's own affordance test iterates: light `3.80–7.24:1`, dark `2.23–3.16:1`. Corrected in `tailwind.css`, the ledger and this plan; the close button's own host (the dialog's teal header gradient, 1.12–1.46:1) is named separately rather than mixed in |
+| F-5 | review (agent 5 — code-comment guidance) | The two 1.4.11 assertions carried failure-phrasing messages (`"above the 1.4.11 floor"` on a `toBeLessThan`), which reads as contradicting the check | fixed — relabelled as context labels, the convention every other `expect(value, …)` in the suite uses |
+| F-6 | review (agent 5 — code-comment guidance) | `booking-confirmation.contrast.spec.ts`'s file header described only the single-layer card-glass pattern, not the two-layer `<dl>` tests this slice adds | fixed — header now names the second layer and why it mattered |
+
+---
+
+## File structure
+
+- `docs/plans/cta-border-token.md` — this plan.
+- `docs/design/colour-literal-token-audit.md` — class R row 1 → `done`; the corrected split; the
+  two residue rows (the inset-highlight ramp, the white-0.6 border family).
+- `frontend/src/tailwind.css` — the `@theme inline` row and the base-block declaration with its
+  reason.
+- `frontend/src/testing/glass-tokens.ts` — the `CTA_BORDER` mirror + the three fixed fills it lands
+  on; the corrected `#853` pointer in the medallion-border comment.
+- `frontend/src/app/shared/cta-border-token.contrast.spec.ts` — the declaration, exemption and
+  themed-alternative guards.
+- `frontend/e2e/cta-border-token-skin.e2e.ts` — the computed-style proof, porcelain + forced dark.
+- `frontend/src/app/booking/booking-confirmation.contrast.spec.ts` — AC-5's dark-theme AA record.
+- `frontend/src/app/auth/{auth-page,forgot-password,operator-password,reset-password,set-password}.ts` — border sites.
+- `frontend/src/app/booking/{booking-confirmation,booking-dialog,booking-pay,booking-view,find-booking,manage-booking-link,my-bookings,request-confirmation}.ts` — border sites (+ the one `bg-` site).
+- `frontend/src/app/shared/retry-button.ts` — border site.
+
+---
+
+## Phase 0 — Register the token + its guard spec
+
+**Files:** Create `frontend/src/app/shared/cta-border-token.contrast.spec.ts` · Modify
+`frontend/src/tailwind.css`, `frontend/src/testing/glass-tokens.ts`
+
+- [x] **Step 1:** Write `cta-border-token.contrast.spec.ts` — the single-declaration guard (AC-1),
+      the measured-exemption record (AC-2), and the themed-alternative bound (AC-3), all sourcing
+      values from `testing/glass-tokens.ts`.
+- [x] **Step 2:** `npx vitest run src/app/shared/cta-border-token.contrast.spec.ts` → FAIL
+      (`--riv-cta-border` has no declaration).
+- [x] **Step 3:** Add `--color-riv-cta-border: var(--riv-cta-border);` to `@theme inline` and
+      `--riv-cta-border: rgba(255, 255, 255, 0.4);` to the base block beside `--riv-cta-grad`, with
+      the reason at the declaration.
+- [x] **Step 4:** Same command → PASS.
+- [x] **Step 5:** Generalization-audit pass (below).
+- [x] **Step 6/7:** Commit + update this section.
+
+## Phase 1 — Migrate the 16 border sites + the render proof
+
+**Files:** Create `frontend/e2e/cta-border-token-skin.e2e.ts` · Modify the 14 component files
+
+- [x] **Step 1:** Write the e2e (AC-4): the declaration+utility-generation test, the porcelain
+      render, and the forced-`dark` render.
+- [x] **Step 2:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test
+      --config playwright.a11y.config.ts cta-border-token-skin` → FAIL (the utility does not exist
+      on the element; the literal is still painted).
+- [x] **Step 3:** Replace `border-[rgba(255,255,255,0.4)]` with `border-riv-cta-border` at all 16
+      positions.
+- [x] **Step 4:** Same command → PASS.
+- [x] **Steps 5–7:** As phase 0.
+
+## Phase 2 — Migrate the `bg-` site onto `--riv-inset-fill`
+
+**Files:** Modify `frontend/src/app/booking/booking-confirmation.ts`,
+`frontend/src/app/booking/booking-confirmation.contrast.spec.ts`,
+`frontend/src/testing/glass-tokens.ts`
+
+- [x] **Step 1:** Add AC-5's dark-theme AA assertion to `booking-confirmation.contrast.spec.ts`
+      — the inks over the inset fill, plus the retired literal's bound kept in the tree.
+      **No e2e case for this site:** `--riv-inset-fill` is already registered and already consumed
+      by four sibling panels, so the "declared without its `@theme inline` row" risk (R-1) does not
+      apply here and a render would prove nothing the sweep does not. The red→green for this site is
+      the sweep test.
+- [x] **Step 2:** `npx ng test --include="src/app/shared/cta-border-token.contrast.spec.ts"` → the
+      sweep FAILS naming `booking/booking-confirmation.ts`.
+- [x] **Step 3:** Replace `bg-[rgba(255,255,255,0.4)]` with `bg-riv-inset-fill`.
+- [x] **Step 4:** Re-run → PASS.
+- [x] **Steps 5–7:** As phase 0.
+
+## Phase 3 — Ledger + mirror close-out
+
+**Files:** Modify `docs/design/colour-literal-token-audit.md`,
+`frontend/src/testing/glass-tokens.ts`, `docs/plans/cta-border-token.md`
+
+- [x] **Step 1:** Mark class R row 1 `done — #853, PR #NN`, correct the 15/2 split to 16/1, and add
+      the two residue rows.
+- [x] **Step 2:** Correct the `#853` pointer in the `MEDALLION_NEGATIVE_BORDER` comment.
+- [x] **Step 3:** `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
+- [x] **Step 4:** Commit + finalize this Execution status.
+
+---
+
+## Generalization-audit log
+
+| Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
+|---|---|---|---|---|---|
+| 2026-09-01 | phase 1 — the new pattern (a token for a value that coincides with an existing token of another role) | Every position painting a **white-alpha literal as chrome** in `frontend/src`, not just the borders this issue named — the mechanism is "a translucent-white literal standing in for a token", and enumerating it by mechanism is what surfaced the two adjacent families the issue's resemblance-led list could not | `grep -rnoE '(text\|bg\|border\|fill\|stroke\|shadow)-\[rgba\(255, ?255, ?255, ?0\.[0-9]+\)\]' src --include=*.ts --include=*.html` and `grep -rnoE 'inset_0_1px_0_rgba\(255,255,255,0\.[0-9]+\)' src` | **17** at 0.4 (this slice) · **5** at 0.6 in `border-` positions · **48** across eight alphas inside composite `inset` shadows | Migrated the 17. The other two are separate families by role and are recorded as their own ledger rows rather than swept — the 48-member ramp wants a depth-named palette pass, and the five 0.6 borders split by surface (four on fixed fills, one on a themed one) |
+
+---
+
+## Acceptance-criteria verification (final)
+
+- [x] **AC-1/2/3/6:** `npx ng test --watch=false --include="src/app/shared/cta-border-token.contrast.spec.ts"` → 9 passed.
+- [x] **AC-4:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts cta-border-token-skin` → 5 passed.
+- [x] **AC-5:** `npx ng test --watch=false --include="src/app/booking/booking-confirmation.contrast.spec.ts"` → 14 passed.
+- [x] **AC-6 (independent of the spec):** `grep -rnoE '(text|bg|border|fill|stroke|shadow)-\[rgba\(255, ?255, ?255, ?0\.4\)\]' frontend/src --include=*.ts --include=*.html` → no output.
+- [x] **AC-7:** the ledger's class-R row 1 reads `done — #853, PR #875`.
+- [x] **Whole-suite regression:** `npm test` → 204 files / 2195 tests passed; `npm run lint` → exit 0
+      (one pre-existing warning in `operator/camera-qr-scanner.spec.ts`, outside this diff);
+      `npm run format:check` → clean.
+
+## Self-review checklist (before merge / PR)
+
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, no backend code.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy (invariant #10) — N/A.
+- [x] Timezone (invariant #6) — N/A.
+- [x] Booking codes (invariant #7) — N/A.
+- [x] Flyway (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met: named utilities, no fresh SCSS, no `as any`.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — this doc's final state, citing `merged via PR #875`.
+- [x] **The review gate ran in full** — ladder rung 1 (`Skill("code-review:code-review")`, 5-agent
+      fan-out) plus `riviera-review-overlay`; six findings, all fixed above.

@@ -98,7 +98,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-c
               outcomeCta
               [routerLink]="landedCtaLink()"
               data-testid="auth-signed-in-cta"
-              class="block rounded-[16px] border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) px-4 py-3.5 text-[15px] font-bold text-white no-underline shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)]"
+              class="block rounded-[16px] border border-riv-cta-border bg-(image:--riv-cta-grad) px-4 py-3.5 text-[15px] font-bold text-white no-underline shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)]"
               >{{ landedCtaLabel() }}</a
             >
           </app-outcome-card>
@@ -242,7 +242,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-c
                 type="submit"
                 data-testid="auth-submit"
                 [appBusy]="submitting()"
-                class="mt-0.5 cursor-pointer rounded-[16px] border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) px-4 py-3.5 text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] transition aria-disabled:opacity-60 motion-reduce:transition-none"
+                class="mt-0.5 cursor-pointer rounded-[16px] border border-riv-cta-border bg-(image:--riv-cta-grad) px-4 py-3.5 text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] transition aria-disabled:opacity-60 motion-reduce:transition-none"
               >
                 {{ submitLabel() }}
               </button>

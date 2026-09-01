@@ -49,7 +49,7 @@ const CLS = {
         </p>
 
         <dl
-          class="mb-3.5 rounded-[18px] border border-[rgba(255,255,255,0.6)] bg-[rgba(255,255,255,0.4)] px-4 py-3.5 text-left"
+          class="mb-3.5 rounded-[18px] border border-[rgba(255,255,255,0.6)] bg-riv-inset-fill px-4 py-3.5 text-left"
         >
           <div class="flex items-center justify-between gap-3 py-[5px] text-[13.5px]">
             <dt class="text-riv-card-ink-soft">Includes</dt>
@@ -91,7 +91,7 @@ const CLS = {
 
         <a
           routerLink="/"
-          class="block w-full rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-3.5 text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
+          class="block w-full rounded-2xl border border-riv-cta-border bg-(image:--riv-cta-grad) p-3.5 text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink"
           >Back to the beach</a
         >
         <app-manage-booking-link [code]="c.code" variant="link" />

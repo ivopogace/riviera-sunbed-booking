@@ -32,7 +32,7 @@ const CLS = {
     'font-[inherit] text-[18px] font-bold tracking-[0.1em] uppercase text-riv-card-ink bg-riv-field-fill border border-riv-field-border rounded-[14px] px-[15px] py-[13px] placeholder:font-semibold placeholder:text-riv-card-ink-soft focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink',
   error: 'mt-2.5 text-[13px] font-semibold text-riv-error-ink',
   submit:
-    'mt-4 w-full p-[13px] rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) text-white font-[inherit] font-bold text-[15px] cursor-pointer shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] motion-safe:[transition:filter_0.15s_ease] motion-reduce:transition-none aria-disabled:cursor-default aria-disabled:opacity-70 hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white',
+    'mt-4 w-full p-[13px] rounded-2xl border border-riv-cta-border bg-(image:--riv-cta-grad) text-white font-[inherit] font-bold text-[15px] cursor-pointer shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] motion-safe:[transition:filter_0.15s_ease] motion-reduce:transition-none aria-disabled:cursor-default aria-disabled:opacity-70 hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white',
 } as const;
 
 /**
