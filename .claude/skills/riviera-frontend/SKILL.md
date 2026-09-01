@@ -1,6 +1,10 @@
 ---
 name: riviera-frontend
-description: Angular structure authority for frontend/: folder taxonomy (core/shared/pages/features), import direction, routing, app.config wiring, theming ownership, the two-suite e2e split. Load BEFORE creating or modifying any file under frontend/src or frontend/e2e — which folder a file lands in is this skill's call.
+description: >-
+  Angular structure authority for frontend/: folder taxonomy (core/shared/pages/features),
+  import direction, routing, app.config wiring, theming ownership, the two-suite e2e
+  split. Load BEFORE creating or modifying any file under frontend/src or frontend/e2e —
+  which folder a file lands in is this skill's call.
 ---
 
 # Riviera frontend structure

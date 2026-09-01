@@ -62,7 +62,8 @@ npm run build
 lint/format/test/build + mocked e2e, the hygiene checks under `scripts/check-*.mjs`
 (diff-scoped: inline comments, plan-doc file structure, focus posture, touch-target
 declaration — most also run as a local `PostToolUse` hook; plus the standing-tree cloud
-Node pin), and a SonarCloud scan per PR. The Sonar merge bar: **0 new issues, 0 duplicated
+Node pin; the sixth script, `check-comment-only.mjs`, is a by-hand verifier, not a CI gate),
+and a SonarCloud scan per PR. The Sonar merge bar: **0 new issues, 0 duplicated
 blocks, ≥80% new-code coverage** — review the issue list, not just the pass/fail
 (`riviera-sdlc` enforces this). `codeql.yml` scans; `deploy.yml` deploys the single backend
 image (which serves the SPA) to Render from `main` (Render + Neon, ADR-0004; `docs/deploy/`).

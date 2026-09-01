@@ -1,6 +1,10 @@
 ---
 name: riviera-modulith
-description: Spring Modulith structure authority for platform/: module layout, published surfaces (api/vocabulary/events/spi), allowedDependencies + verify(), port-vs-event. Load BEFORE creating or modifying any backend Java — "add a module", "expose this to another module", "where does this class go", "why does ModularityTests fail".
+description: >-
+  Spring Modulith structure authority for platform/: module layout, published surfaces
+  (api/vocabulary/events/spi), allowedDependencies + verify(), port-vs-event. Load BEFORE
+  creating or modifying any backend Java — "add a module", "expose this to another
+  module", "where does this class go", "why does ModularityTests fail".
 ---
 
 # Riviera Spring Modulith (hexagonal, JDBC-only)

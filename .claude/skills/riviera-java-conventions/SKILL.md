@@ -1,6 +1,9 @@
 ---
 name: riviera-java-conventions
-description: Java idioms for platform/ (Java 25, Spring Boot 4): JDBC-only, records, no Lombok, constructor injection, typed outcomes, the error contract, comment rules. Load BEFORE writing or refactoring any Java — class, record, port, service, adapter, event, or test.
+description: >-
+  Java idioms for platform/ (Java 25, Spring Boot 4): JDBC-only, records, no Lombok,
+  constructor injection, typed outcomes, the error contract, comment rules. Load BEFORE
+  writing or refactoring any Java — class, record, port, service, adapter, event, or test.
 ---
 
 # Riviera Java conventions

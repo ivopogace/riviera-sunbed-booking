@@ -1,6 +1,10 @@
 ---
 name: riviera-local-debug
-description: How to build and test riviera-sunbed-booking locally, especially in a Claude Code cloud session (the Gradle wrapper cannot self-provision, the full test task OOMs, Testcontainers need the hook's dockerd). Load BEFORE the session's first ./gradlew, gradle, or npm invocation, or when a local build/test fails.
+description: >-
+  How to build and test riviera-sunbed-booking locally, especially in a Claude Code cloud
+  session (the Gradle wrapper cannot self-provision, the full test task OOMs,
+  Testcontainers need the hook's dockerd). Load BEFORE the session's first ./gradlew,
+  gradle, or npm invocation, or when a local build/test fails.
 ---
 
 # Riviera local debug — build & test recipes

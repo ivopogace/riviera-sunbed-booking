@@ -1,6 +1,9 @@
 ---
 name: riviera-sdlc
-description: The development loop for riviera-sunbed-booking (refine → issue → plan → implement → CI → review → merge) and which skill drives each stage. Load when starting or continuing feature work here, picking up a GitHub issue, or asked how we work.
+description: >-
+  The development loop for riviera-sunbed-booking (refine → issue → plan → implement → CI
+  → review → merge) and which skill drives each stage. Load when starting or continuing
+  feature work here, picking up a GitHub issue, or asked how we work.
 ---
 
 # Riviera SDLC workflow
@@ -36,7 +39,9 @@ green CI or a finished review, is not an exemption.
 | **Sonar gate** | Mandatory gate (PR-time; Sonar analyzes PRs + `main` only). A green gate is not the check — pull the reported new-issue + duplication list from the API and fix every entry before merge (`references/pr-gates.md` §2). | SonarCloud + `diagnosing-bugs` for a genuine defect |
 | **Merge** | Only after green CI + Review gate run + Sonar gate green with its list cleared + findings resolved through the loop → merge, then the close-out checklist (`references/pr-gates.md` §3). | the Merge close-out |
 
-**Epic front-end (multi-slice epics only).** `wayfinder` (foggy epics: a `wayfinder:map`
+### Epic front-end (multi-slice epics only)
+
+`wayfinder` (foggy epics: a `wayfinder:map`
 issue of *decision* tickets, one resolved per session) → `to-spec` (one committed epic issue:
 Problem / Solution / numbered User Stories / Implementation Decisions / Testing Seams / Out of
 scope) → `to-issues` (the normal Issue stage, slicing the spec's user stories). Two

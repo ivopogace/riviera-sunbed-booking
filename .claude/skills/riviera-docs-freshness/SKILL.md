@@ -1,6 +1,10 @@
 ---
 name: riviera-docs-freshness
-description: Staleness audit of the substrate docs (CLAUDE.md, CONTEXT.md, RESPONSIBILITIES.md, ADRs, riviera-* skills, source Javadoc) over a git range, including the counting sweep for "the two X" facts. Load at merge close-out step 5, at epic close-out, or whenever a change might invalidate something a substrate doc states.
+description: >-
+  Staleness audit of the substrate docs (CLAUDE.md, CONTEXT.md, RESPONSIBILITIES.md, ADRs,
+  riviera-* skills, source Javadoc) over a git range, including the counting sweep for
+  "the two X" facts. Load at merge close-out step 5, at epic close-out, or whenever a
+  change might invalidate something a substrate doc states.
 ---
 
 # Riviera docs freshness

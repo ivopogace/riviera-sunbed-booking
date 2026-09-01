@@ -1,6 +1,9 @@
 ---
 name: riviera-review-overlay
-description: Riviera-specific review bank items (RV-BE/RV-FE/RV-CT/RV-STYLE/RV-PROC) layered onto an active /code-review. Load whenever reviewing a diff or PR in this repo; it adds items to a running review, it does not run one.
+description: >-
+  Riviera-specific review bank items (RV-BE/RV-FE/RV-CT/RV-STYLE/RV-PROC) layered onto an
+  active /code-review. Load whenever reviewing a diff or PR in this repo; it adds items to
+  a running review, it does not run one.
 ---
 
 # Riviera review overlay

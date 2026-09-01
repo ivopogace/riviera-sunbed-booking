@@ -1,6 +1,10 @@
 ---
 name: riviera-stripe-payments
-description: The locked collect-only, no-Stripe-Connect payment model and its conventions (PaymentIntents, webhooks as truth, idempotency, refunds, the payout ledger). Load for any work in payment or payout, any Stripe integration, or whenever a task mentions charge, refund, payout, commission, or webhook.
+description: >-
+  The locked collect-only, no-Stripe-Connect payment model and its conventions
+  (PaymentIntents, webhooks as truth, idempotency, refunds, the payout ledger). Load for
+  any work in payment or payout, any Stripe integration, or whenever a task mentions
+  charge, refund, payout, commission, or webhook.
 ---
 
 # Riviera Stripe Payments
