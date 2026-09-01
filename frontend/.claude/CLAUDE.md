@@ -1,4 +1,3 @@
-
 You are an expert in TypeScript, Angular, and scalable web application development. You write functional, maintainable, performant, and accessible code following Angular and TypeScript best practices.
 
 ## TypeScript Best Practices
@@ -16,47 +15,45 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Implement lazy loading for feature routes
 - Do NOT use the `@HostBinding` and `@HostListener` decorators. Put host bindings inside the `host` object of the `@Component` or `@Directive` decorator instead
 - Use `NgOptimizedImage` for all static images (not for inline base64 images).
-- **Uncertain about an Angular API's behavior** (signals, `linkedSignal`, forms, lifecycle,
+- Uncertain about an Angular API's behavior (signals, `linkedSignal`, forms, lifecycle,
   router)? Verify against angular.dev via the angular-cli MCP's `search_documentation`
-  (version 22) — never from memory; training data trails a v22 codebase. Same when a review
-  finding hinges on a framework-behavior claim.
+  (version 22) — never from memory. Same when a review finding hinges on a
+  framework-behavior claim.
 
 ## Accessibility Requirements
 
-- It MUST pass all AXE checks and all WCAG AA minimums (focus management, color
-  contrast, ARIA attributes).
+- It MUST pass all AXE checks and all WCAG AA minimums (focus management, color contrast,
+  ARIA attributes).
 - **A busy `<button>` uses `[appBusy]` (`shared/busy-action.ts`), never `[disabled]`** —
   disabling the pressed control strands focus on `<body>` (WCAG 2.4.3). Inputs and
   validity/state-disabled controls keep `[disabled]`. A field that commits itself via
   `(change)`/`(blur)` uses `[readonly]` where readonly applies (text-entry types +
-  `<textarea>`); the inert kinds (`<select>`, checkbox, radio, `file`, `range`,
-  `color`) serialize in the handler instead of locking. The full decision table:
-  `riviera-review-overlay` `references/frontend-conventions.md`.
-- **A transition that destroys the focused element must move focus deliberately**,
-  via `shared/focus-after-render.ts`'s `focusMover()`, on all three legs — open,
-  back-out, and settled. A focus-trapped modal's teardown counts as a surface.
-  This is the repo's most-repeated bug class; reviewed as RV-FE-9.
+  `<textarea>`); the inert kinds (`<select>`, checkbox, radio, `file`, `range`, `color`)
+  serialize in the handler instead of locking. The full decision table:
+  `riviera-review-overlay` `references/frontend-conventions.md` (RV-FE-9).
+- **A transition that destroys the focused element must move focus deliberately**, via
+  `shared/focus-after-render.ts`'s `focusMover()`, on all three legs — open, back-out, and
+  settled. A focus-trapped modal's teardown counts as a surface. Reviewed as RV-FE-9.
 - **An inline field error carries `role="alert"` AND `[appFieldErrorFor]` naming its
   control** (`shared/field-error-for.ts`): the alert announces on appearance, the
   association is what a screen-reader user hears on re-focus. The directive goes on the
-  **error element**, taking the control's template ref, so its lifetime *is* the error's
-  own — a hand-written `aria-describedby` for a field error is a review finding, because
-  a dangling reference is only an axe *incomplete* and `expectNoAxeViolations` does not
-  fail on it. It also stamps `aria-invalid="true"`, which is a claim about the **entered
-  value** (ARIA21), so an error reporting a failed *write* — a 403, an expired session —
-  binds `[appFieldErrorForInvalidValue]="false"` and is described without being marked
-  invalid. Form-, page- and **action**-level banners name no single control and stay
-  alert-only (`photo-error-{slot}`, `admin-commission-error-*`). Reviewed as RV-FE-11.
+  error element, taking the control's template ref, so its lifetime is the error's own — a
+  hand-written `aria-describedby` for a field error is a review finding (a dangling
+  reference is only an axe *incomplete*, which `expectNoAxeViolations` does not fail on).
+  It also stamps `aria-invalid="true"`, which is a claim about the entered value (ARIA21),
+  so an error reporting a failed *write* — a 403, an expired session — binds
+  `[appFieldErrorForInvalidValue]="false"`. Form-, page- and action-level banners name no
+  single control and stay alert-only (`photo-error-{slot}`, `admin-commission-error-*`).
+  Reviewed as RV-FE-11.
 - **Every interactive control declares the 44 × 44 px floor**: `[appTouchTarget]`
   (`shared/touch-target.ts`), or `data-touch-exempt="<reason>"` on the control or an
-  ancestor (three documented exemption classes — see `riviera-tailwind`). `<a>` is
-  out of scope by design.
-- **Guards enforce these while you type** (`PostToolUse` hooks + CI, diff-scoped):
-  `scripts/check-focus-posture.mjs` — the BUSY rules fail a build (novel busy-flag
-  names: extend its `BUSY_STEMS`, don't work around it); FOCUS-1 is advisory, so
-  treat a reported line as a prompt to check the three legs yourself — and
-  `scripts/check-touch-target.mjs` — TT-1/TT-2 fail a build, but a green guard proves
-  a declaration exists, not a rendered size; `frontend/e2e/touch-targets*.e2e.ts`
+  ancestor (three documented exemption classes — `riviera-tailwind`). `<a>` is out of
+  scope by design.
+- **Guards** (`PostToolUse` hooks + CI, diff-scoped): `scripts/check-focus-posture.mjs` —
+  the BUSY rules fail a build (novel busy-flag names: extend its `BUSY_STEMS`, don't work
+  around it); FOCUS-1 is advisory, so treat a reported line as a prompt to check the three
+  legs yourself. `scripts/check-touch-target.mjs` — TT-1/TT-2 fail a build, but a green
+  guard proves a declaration exists, not a rendered size; `frontend/e2e/touch-targets*.e2e.ts`
   measures. Run either by hand with `--files <path…>` or `--all`.
 
 ### Components
@@ -86,45 +83,41 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 
 ## Styling
 
-- Tailwind v4 is the **default for new styling**: whenever Tailwind can express it, style
-  with utilities, not SCSS. SCSS is not obsolete — it stays legitimate for what Tailwind
-  can't express cleanly (the retired `home.scss` scrim is the historical example — none
-  remain in-tree), with the justification stated; an
-  **unjustified** fresh `.scss` is a review finding. **Migrate on touch:** a slice that
-  touches a component still carrying legacy SCSS migrates that styling to Tailwind in the
-  same slice; deferral only by **asking the maintainer** (`AskUserQuestion`), recorded
-  with a follow-up issue — `riviera-tailwind` owns the rule. Load **`riviera-tailwind`**
-  before styling anything.
+- Tailwind v4 is the default: whenever Tailwind can express it, style with utilities, not
+  SCSS. SCSS stays legitimate for what Tailwind can't express cleanly, with the
+  justification stated; an unjustified fresh `.scss` is a review finding. **Migrate on
+  touch:** a slice that touches a component still carrying legacy SCSS migrates that
+  styling to Tailwind in the same slice; deferral only by asking the maintainer
+  (`AskUserQuestion`), recorded with a follow-up issue. Load **`riviera-tailwind`** before
+  styling anything.
 
 ## Comments
 
-- **Inline comments are one line, or they are not written**; default to zero per
-  function. TSDoc on a documented surface is exempt, but states the contract, not the
-  changelog (no issue numbers, no decision history). Canonical statement:
-  `riviera-java-conventions` §6c–6d. Reviewed as RV-STYLE-1 and enforced by
-  `scripts/check-inline-comments.mjs` (`PostToolUse` hook + CI; diff-scoped for
-  tracked files, whole-file for new ones).
+- **Inline comments are one line, or they are not written**; default to zero per function.
+  TSDoc on a documented surface is exempt, but states the contract, not the changelog (no
+  issue numbers, no decision history) — `riviera-java-conventions` §6c–6d. Reviewed as
+  RV-STYLE-1 and enforced by `scripts/check-inline-comments.mjs` (`PostToolUse` hook + CI;
+  diff-scoped for tracked files, whole-file for new ones).
 
 ## Unit tests
 
-- **The Vitest clock is frozen** at Monday 2026-06-15 midday Europe/Tirane, before
-  **every test file** (`src/test-setup.ts`): `new Date()` in a spec is deterministic,
-  never the machine's real calendar. Never write a spec that needs the real "today".
-  Only `Date` is faked, so real timers already work — a spec needing **full** fake
-  timers calls `vi.useFakeTimers()` and restores with **`freezeClock()`**
-  (**`src/testing/freeze-clock.ts`**), never `vi.useRealTimers()`: that unfakes `Date` as
-  well and leaves every later test in the file on the machine calendar. Two guards, not a
-  convention — `no-restricted-syntax` fails the lint on `vi.useRealTimers()` anywhere
-  under `src/`, and `src/test-setup.ts`'s `afterEach` fails the **exact test** that leaves
-  the clock off the frozen instant.
+- **The Vitest clock is frozen** at Monday 2026-06-15 midday Europe/Tirane, before every
+  test file (`src/test-setup.ts`): `new Date()` in a spec is deterministic. Never write a
+  spec that needs the real "today". Only `Date` is faked, so real timers work — a spec
+  needing full fake timers calls `vi.useFakeTimers()` and restores with `freezeClock()`
+  (`src/testing/freeze-clock.ts`), never `vi.useRealTimers()`: that unfakes `Date` as well
+  and leaves every later test in the file on the machine calendar. Two guards:
+  `no-restricted-syntax` fails the lint on `vi.useRealTimers()` anywhere under `src/`, and
+  `src/test-setup.ts`'s `afterEach` fails the exact test that leaves the clock off the
+  frozen instant.
 - **The setup file is registered in `vitest-base.config.ts`, not `angular.json`.** The
   builder pre-bundles its `setupFiles` as esbuild entry points, and an entry point is a
-  re-export shim whenever it is shared *or* coverage is on (CI runs only the coverage
-  variant) — so Vitest's per-file re-import reaches the shim and the body behind it runs
-  **once per worker process**, handing each file whatever the last one left on the clock
-  (ADR-0014, #663). Don't move it back; `freeze-clock.spec.ts` fails if you do. Shared
-  test helpers live in `src/testing/`, and `freeze-clock.ts` must stay **stateless** —
-  specs import it, so it lives in a chunk evaluated once per worker.
+  re-export shim whenever it is shared or coverage is on (CI runs only the coverage
+  variant) — so the body behind it runs once per worker process, handing each file
+  whatever the last one left on the clock (ADR-0014). Don't move it back;
+  `freeze-clock.spec.ts` fails if you do. Shared test helpers live in `src/testing/`, and
+  `freeze-clock.ts` must stay stateless — specs import it, so it lives in a chunk
+  evaluated once per worker.
 - **`isolate` stays `false`** (the `@angular/build:unit-test` default): test files in a
   worker share one jsdom and one module graph. `src/test-setup.ts` re-establishes the
   global posture per file; anything else a spec mutates globally, it restores itself.

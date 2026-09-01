@@ -1,47 +1,28 @@
 # Riviera FE↔BE contract overlay items
 
-Repo-specific full-stack contract bank items. Loaded by `riviera-review-overlay`
-and layered onto whatever generic contract bank the active review engine runs —
-walked after it.
-
-Activates when the parent skill's contract bank activates (Full-stack scope OR a
-contract change). Invariant numbers reference `CLAUDE.md`.
-
-## Items
+Repo-specific full-stack contract bank items, layered onto the active review engine's
+generic contract bank and walked after it. Activates on Full-stack scope OR a contract
+change. Invariant numbers reference `CLAUDE.md`.
 
 ### RV-CT-1. API typing — no `as any`, no hand-stubbed DTOs
-**Gate:** Does the Angular client consume the API through generated or explicitly
-typed services, with the backend DTO as the single source of shape?
+**Gate:** Does the Angular client consume the API through generated or explicitly typed
+services, with the backend DTO as the single source of shape?
 - [ ] no contract change
 - [ ] client typed from the backend contract (generated from OpenAPI, or a typed service mirroring the DTO)
 - [ ] `as any` / untyped `any` on a response (violation)
 - [ ] frontend interface silently diverges from the backend DTO (drift)
 
 **Follow-up:**
-- If an OpenAPI-generated client is used, regenerate after a backend contract change
-  and commit the regenerated client with the consumer in the same PR; never hand-edit
-  generated files.
-- If typing by hand, the DTO is authoritative — keep one definition, don't let FE and
-  BE compute the shape independently.
+- A generated client is regenerated after a backend contract change and committed with the
+  consumer in the same PR; never hand-edit generated files.
+- Hand-typed: the DTO is authoritative — one definition.
+- The linter already fails the build on `no-explicit-any` and the type-aware unsafe-`any`
+  family (`no-unsafe-assignment`/`-member-access`/`-argument`/`-call`/`-return`), so
+  review effort goes to what a type system cannot see: whether the FE type is *truthful*
+  about the backend DTO. Compare field by field.
 
 **Default severity:** Major for `as any` on a contract response; Major for a stale
 hand-stubbed type.
-**What the linter already covers — so review effort goes where it doesn't.**
-`no-explicit-any` ships in `tseslint.configs.recommended` and fails the build, and the
-type-aware **unsafe-`any` family** (`no-unsafe-assignment`/`-member-access`/`-argument`/
-`-call`/`-return`) catches `any` that *leaks in* from an untyped library return and is
-then read — the shape no grep finds, because nobody wrote the word `any`.
-
-What stays a **review** item is the half a type system cannot see: whether the FE type is
-*truthful* about the backend DTO. A hand-written interface that is internally consistent,
-fully typed, and simply **wrong** about the wire passes every rule above. That drift — not
-`as any` — is what this item is now for.
-
-**Skill framing:**
-- Pre-impl: "How will the FE be typed against this endpoint — generated or
-  hand-typed? Capture the regenerate step as a phase if generated."
-- Peer-review: "Compare the FE type against the BE DTO field by field — the linter
-  already rejects `as any` and leaked `any`, so drift is what is left to catch."
 
 ---
 
@@ -52,34 +33,23 @@ fully typed, and simply **wrong** about the wire passes every rule above. That d
 - [ ] booking date as ISO `LocalDate` (`YYYY-MM-DD`), not a timestamp
 - [ ] a date sent as a full `Instant` that can shift the calendar day across zones (violation)
 
-**Follow-up:**
-- Agree once, both sides honor it; the money and calendar-date rules are canonical
-  in invariants #5 and #6 — check against them, don't re-derive.
-
-**Default severity:** Major for float money on the wire or a day-shifting date
-encoding.
+**Default severity:** Major for float money on the wire or a day-shifting date encoding.
 
 ---
 
 ### RV-CT-3. Payment confirmation flow — webhook is truth, redirect is UX (invariant #8)
-**Gate:** Is the end-to-end payment flow confirmed by a server-side verified webhook,
-with the client redirect treated as UX only?
+**Gate:** Is the end-to-end payment flow confirmed by a server-side verified webhook, with
+the client redirect treated as UX only?
 - [ ] no payment flow change
 - [ ] booking confirmed server-side on a verified webhook; FE shows a finalizing→confirmed state reconciled from the server
 - [ ] FE marks the booking confirmed purely from the Stripe redirect (violation)
 - [ ] FE polls/loads the server booking state to confirm (acceptable)
 
-**Follow-up:**
-- The redirect can be lost (closed tab, retries). The booking's confirmed state lives
-  on the server, set by the webhook. The FE reads that state; it doesn't assert it.
-- This is the same invariant from both ends — pair with RV-BE-7 (backend) and
-  RV-FE-4 (frontend).
+**Follow-up:** the redirect can be lost (closed tab, retries); the confirmed state lives on
+the server, set by the webhook. Follow the confirm path across FE and BE: does anything
+but the verified webhook set CONFIRMED? Pair with RV-BE-7 and RV-FE-4.
 
-**Default severity:** **Blocker** for a client-asserted confirmation; this is a
-money/trust correctness bug.
-**Skill framing:**
-- Peer-review: "Follow the confirm path across FE and BE. Does anything but the
-  verified webhook set CONFIRMED?"
+**Default severity:** **Blocker** for a client-asserted confirmation.
 
 ---
 
@@ -87,34 +57,28 @@ money/trust correctness bug.
 **Gate:** Are reserve-and-pay actions safe against double submission and retries?
 - [ ] booking creation is idempotent or guarded against double-submit
 - [ ] a retried/duplicated submit can create two bookings or two charges (violation)
-- [ ] the FE disables/locks the submit while in flight
+- [ ] the FE locks the submit while in flight
 - [ ] backend dedupes via the availability claim (invariant #2) and the Stripe idempotency key (invariant #8)
 
-**Follow-up:**
-- The availability single-winner guarantee (RV-BE-1) already stops two confirmed
-  bookings for the same set; ensure the *same user* double-clicking doesn't create a
-  duplicate booking/charge either.
-- FE locks the button during the request; BE keys the operation so a retry is a
-  no-op.
+**Follow-up:** the availability single-winner guarantee (RV-BE-1) stops two confirmed
+bookings for the same set; ensure the *same user* double-clicking doesn't create a
+duplicate booking/charge either.
 
 **Default severity:** Major for an unguarded double-submit path.
 
 ---
 
 ### RV-CT-5. Error contract is consistent and surfaced
-**Gate:** Do business errors follow the shipped RFC-7807 contract, with a stable
-machine-readable `code` the FE branches on?
+**Gate:** Do business errors follow the RFC-7807 contract, with a stable machine-readable
+`code` the FE branches on?
 - [ ] business errors are `ProblemDetail` (`application/problem+json`) with the `code` extension (e.g. `409 SET_TAKEN`, `BOOKING_CLOSED`, `NOT_ONLINE_POOL`)
 - [ ] domain conflicts surface as generic 500s or a bespoke `{"error": …}` body (violation)
 - [ ] FE shows a raw error string instead of a user-meaningful message
 - [ ] a new business rejection ships without its own `code` the FE can explain
 
-**Follow-up:**
-- The contract is shipped and centralized (RV-BE-10): `ApiProblem` +
-  `ApiErrorHandler` build every error body — mechanics in
-  `riviera-java-conventions/references/error-contract.md`.
-- The FE maps each `code` to a helpful message and, for `SET_TAKEN`, refreshes the
-  map (RV-FE-2).
+**Follow-up:** `ApiProblem` + `ApiErrorHandler` build every error body
+(`riviera-java-conventions/references/error-contract.md`); the FE maps each `code` to a
+message and, for `SET_TAKEN`, refreshes the map (RV-FE-2).
 
 **Default severity:** Major for conflicts surfacing as 500s or a body outside the
 ProblemDetail contract; Minor for a missing friendly message.
