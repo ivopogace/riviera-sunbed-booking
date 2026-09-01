@@ -14,10 +14,12 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * row is missing. The class lands in the markup, the paint silently does not change, and only a
  * resolved computed style separates that from a working token.
  *
- * <p>The registry test drives all twelve tokens at once rather than one element each. That is
- * deliberate: the failure it hunts is per-TOKEN (a missing `@theme inline` row), not per-element,
- * and twelve navigations would prove the same thing twelve times over while making the suite the
- * reason nobody adds the thirteenth.
+ * <p>The registry test drives every token at once rather than one element each. That is deliberate:
+ * the failure it hunts is per-TOKEN (a missing `@theme inline` row), not per-element, so one
+ * navigation per token would prove the same thing N times over while making the suite the reason
+ * nobody adds the next one. Counted in the map rather than in this sentence on purpose — #879 took
+ * the registry from twelve tokens to ten by merging the ambers, which would have falsified a
+ * spelled-out number here.
  *
  * <p>The paint tests then drive real elements, because a generated utility is not yet a painted
  * pixel — the class has to reach the element and survive the cascade. The dark-theme test is the

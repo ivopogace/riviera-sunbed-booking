@@ -101,11 +101,19 @@ number-bearing surface, not two.
 | `--riv-accent-chip-border` (`shared/segmented-control.ts`'s selected option — **not** the amenity chip, which wears the opaque `--riv-accent-strong` and clears 3:1) | `app/admin/accent-tokens.contrast.spec.ts` |
 | `--riv-medallion-negative-border` (**rule 2a** — `aria-hidden` glyph, its outcome card's heading carries the meaning) | `app/shared/fixed-fill-token-skins.contrast.spec.ts` |
 | `--riv-amenity-tag-border`, `--riv-amenity-water-border` | `app/shared/fixed-fill-token-skins.contrast.spec.ts` (`amenities.contrast.spec.ts` is the same family's ink/fill text pairs, not these borders) |
+| `--riv-warn-edge/50` on `daily-view-tab`'s close-sales trigger — the button's own label carries the identity | `app/operator/daily-view-tab.contrast.spec.ts` |
 
 `booking-dialog`'s `#31798a` close button is the sharpest case and is covered here rather than
 by rule 1: on its own teal header gradient the fill reaches 1.12–1.46:1 and the hairline
 2.33–3.03:1, so only the darker header stop clears 3:1 by adjacency. Its identity rests on the
 white `×` glyph at 4.96:1 — condition 1, met.
+
+The close-sales trigger is the family that shows how one gets **found** rather than introduced.
+#879's alpha ladder moved `--riv-warn-edge` from `#d9861a` to `#e0a03a`, taking that hairline from
+1.65:1 to 1.48:1 on its own `white/60` fill — but it was sub-3:1 at *both* values and carried no
+entry here at all. The slice did not create the exemption; it made one visible that had never been
+written down. Worth remembering when a palette change looks like it is "introducing" a 1.4.11
+problem: check what the outgoing value measured first.
 
 **What this rule is not.** It is not a blanket exemption for chrome that happens to be pale,
 and adding a family to the table above needs the same three conditions demonstrated, in an

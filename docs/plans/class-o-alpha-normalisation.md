@@ -29,7 +29,7 @@ amber merge a role match rather than a value coincidence) · `riviera-plan-doc` 
 forced the behaviour-parity ledger, which is where the sub-3:1 trigger-button edge surfaced) ·
 `tdd` (each phase moves the guard spec's expected value first, watches it go red, then moves the
 token) · `riviera-review-overlay` (review gate — run at ready-for-review) ·
-`riviera-docs-freshness` (**ran** over the slice range at close-out — see Execution status) ·
+`riviera-docs-freshness` (**ran** over `origin/main...HEAD`, **2 findings, both patched** — the counting sweep caught `class-o-tint-tokens.e2e.ts` still saying it drives "all twelve tokens… nobody adds the thirteenth" when the amber merge took the registry to ten, and the same file family's "43 of the 44 positions are console chrome" reason for living in `shared/`, which the merge made plainly rather than technically true. Neither was in the diff's own files) ·
 `riviera-tailwind` (theme-invariance rationale: the merged amber family inherits **#868's**
 fixed-fill-pins-its-ink argument, not class O's unreachable-dark-branch one, because the legal
 pages and the withheld-email notice render under all three document themes; also the
@@ -131,20 +131,25 @@ lineage — use `origin/main` for every diff and merge-base.
 | R-1 | The amber merge repaints **tourist-facing** legal pages + booking notice — surfaces #879 never scoped | high (certain) | med | Scope widening is the maintainer's explicit answer to the plan-gate question, recorded here. AA measured in the *improving* direction (5.54→6.86); e2e forces a dark document theme to prove the fixed pair still holds | maintainer | accepted at plan gate |
 | R-2 | The merged token's theme-invariance loses its justification: class O's ground ("every consumer is under the porcelain-pinned console") is **false** for legal pages | med | high | Carry #868's ground onto the merged declaration and make it primary; keep the single-declaration guard; the dark-document e2e is the proof that survives a later override | agent | **closed** — the rationale is rewritten at the declaration and in `shared/warn-token-skin.contrast.spec.ts`; `e2e/warn-token-skin.e2e.ts` proves it under a forced `dark` document theme |
 | R-3 | A `toHaveCSS` elsewhere in the suite pins an outgoing literal and fails silently late (full-suite-only, the #122/#127 shape) | med | med | Grep the whole `e2e/` + `src/` tree for each outgoing value before each phase's commit; CI's mocked e2e is the backstop, checked per push | agent | **materialised and closed in phase 0** — the full suite (not the scoped runs) caught two `OUT_OF_FAMILY` guards pinning the chip's `/28`+`/12`; both rewritten. Every phase since ran the full unit suite before commit |
-| R-4 | Retiring three token names leaves dangling prose references (`cta-border-token-skin.e2e.ts:7`, `legal-pages.contrast.spec.ts:22` name `--riv-notice-banner-*` in comments) | high | low | Both listed in File structure; `riviera-docs-freshness` at close-out is the second net | agent | open |
+| R-4 | Retiring three token names leaves dangling prose references (`cta-border-token-skin.e2e.ts:7`, `legal-pages.contrast.spec.ts:22` name `--riv-notice-banner-*` in comments) | high | low | Both listed in File structure; `riviera-docs-freshness` at close-out is the second net | agent | **closed** — both patched, plus a third the grep found (`warn-token-skin.contrast.spec.ts` pointed at the e2e's pre-rename path) and a fourth (the ladder meta-test used a retired token as its on-ladder example) |
 | R-5 | The ladder assertion is written so it passes vacuously (the emptied-guard trap #852 already hit once) | med | high | A companion meta-test asserting the ladder matcher *rejects* an off-ladder alpha — the same pairing `class-o-tint-tokens.contrast.spec.ts` already uses for its form sweep | agent | **closed** — the meta-test shipped in phase 0 and grew a case in the generalization audit; `warn-token-skin.contrast.spec.ts` carries the same pairing (a positive "paints the merged family" sweep beside the negative one) |
-| R-6 | `check-plan-file-structure.mjs` fails on an unlisted path | med | low | Run `node scripts/check-plan-file-structure.mjs --diff origin/main` before every push, with this doc **staged** | agent | open |
+| R-6 | `check-plan-file-structure.mjs` fails on an unlisted path | med | low | Run `node scripts/check-plan-file-structure.mjs --diff origin/main` before every push, with this doc **staged** | agent | **closed** — caught locally twice (phases 0 and 1) and never reached CI. All five hygiene guards now run locally before each push, after RV-STYLE-1 did reach it (F-2) |
 | R-7 | No Flyway number to claim, no backend, no money, no availability write | — | — | N/A by construction | — | closed |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the porcelain page background composites to effectively white under the
-  console's card glass, so the before/after channel deltas computed at plan time
-  (max 7/255) are the true ones. *Owner:* agent · *Resolves by:* phase 0 — the e2e reads real
-  computed styles, which supersede the arithmetic.
+*(empty — every entry resolved below.)*
 
 ### Resolved
 
+- **Assumption: the porcelain page background composites to effectively white under the console's
+  card glass, so the plan-time channel deltas (max 7/255) are the true ones.** → **Confirmed and
+  superseded.** `e2e/class-o-tint-tokens.e2e.ts` asserts every moved position against a live
+  browser probe of both its old and its new value, so the arithmetic is no longer load-bearing.
+  Resolved in phase 0, `fb3ac50`.
+- **The plan said nine positions move; the prose said eight.** → The sweep settled it at **nine**
+  (the prose under-tallied `/14`, which it listed twice), and the generalization audit then took it
+  to **eleven** by finding the reason chip. Corrected everywhere. Resolved in phase 0, `fb3ac50`.
 - **Which alpha scale?** → **multiples of five**, maintainer's call at the plan gate. Chosen
   because every other class-O alpha already sits on it, so it moves 8 sites by ≤3 points and
   `beach-cell`'s load-bearing `/55` needs no exemption from the *rule* (only a named note).
@@ -203,18 +208,17 @@ N/A — no contract change. No endpoint, DTO or wire shape is read or altered.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `review gate`
 
-**Next action:** Record the ladder beside rule B in the audit ledger's class-O section, add the
-close-sales trigger to `non-text-contrast.md`'s rule-2 family table, and fix the two dangling
-`--riv-notice-banner-*` prose references (R-4).
+**Next action:** Mark PR #880 ready for review, then run the review gate per `riviera-sdlc`
+`references/pr-gates.md` §1 with `riviera-review-overlay` layered on top.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The ladder: every class-O alpha a multiple of 5 | ✅ | `fb3ac50` |
 | 1 — One walk-in hatch (`--riv-walkin-hatch`) | ✅ | `dd0669b` |
 | 2 — One amber family (`--riv-warn-*`), three tokens retired | ✅ | `17c7f8d` |
-| 3 — Ledger, rule-2 table, close-out | ⏳ | |
+| 3 — Ledger, rule-2 table, close-out | ✅ | `<phase-3>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -350,6 +354,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-01 | phase 3 — close-out | **Every substrate-doc sentence stating a COUNT of the things this slice changed the number of** (class-O tokens, positions, alphas, amber families) — `riviera-docs-freshness` step 2b. By definition these live in files the diff never touched, so no amount of diff review finds them | `grep -rniE '\b(twelve\|12\|thirteenth\|44\|ten alphas\|seventeen)\b' <substrate> \| grep -iE 'token\|alpha\|position\|class.o'` | **2 stale statements**, both outside the diff's own concern: the class-O e2e's "drives all twelve tokens… nobody adds the thirteenth" (the registry is now ten), and the unit spec's "43 of the 44 positions are console chrome" as its reason for living in `shared/` | **Both patched**, and the e2e's sentence rewritten to stop spelling out a number at all — the map is the count. Sweep re-run after the fix round (#373's rule); clean |
 | 2026-09-01 | phase 2 — the amber merge | **Every pair of `--riv-*` tokens within a small perceptual distance**, computed pairwise over the declared palette — not "the four ambers the issue listed". The resemblance-led population is exactly the issue's own table, which is how it missed that the amber the merge lands on has a near-twin in another family | a pairwise ΔE sweep over `^\s*(--riv-[a-z0-9-]+):\s*(#[0-9a-fA-F]{6})` in `tailwind.css` (script: scratchpad, reproduced in the PR) | **65 hex-valued tokens; ~30 identical-value pairs and ~200 within ΔE 12.** Nearly all are deliberate role separations already settled (`--riv-error-ink`/`--riv-alert-tint`/`--riv-solid-fill-danger`; `--riv-console-negative-ink`/`--riv-solid-btn-danger-ink`/`--riv-medallion-negative-ink`; `--riv-accent-strong`/`--riv-select-edge`). Two bear on this slice: `--riv-medallion-waiting-*` still holds **exactly** the retired `--riv-notice-banner-*` values `#fcf0d9`/`#8a5410`, and `--riv-warn-fill` sits ΔE 2.1 from it | **No further merges — and that is the finding, not an absence of one.** The medallion pair is #858's family, grouped by FORM: an `aria-hidden` round glyph owing no AA proof, against a rectangular block of accessible text. Merging on the value would be the exact role confusion the audit's class R exists to name. Recorded here so the next reader does not re-derive it |
 | 2026-09-01 | phase 1 — one hatch | **Every image built inline in a class expression** (`bg-[…gradient(…)]`), not "the walk-in gradients". The resemblance-led population is the three hatches the phase already knew about; the mechanism is *an image a token could own*, which is what makes a mirror stop mirroring | `for f in $(git ls-files \| sed 's\|^frontend/\|\|' \| grep -E '^src/app/.*\.(ts\|html)$' \| grep -v '\.spec\.ts$'); do grep -oE "bg-\\[[^]]*gradient\\([^]]*\\]" "$f"; done` | **8 inline gradients survive.** One pair is the same finding in another class: `app.html`'s sun `radial-gradient(circle_at_34%_30%,#ffe6a3,#f0aa2e_70%)` and `pages/home/home.html`'s `radial-gradient(circle_at_34%_30%,rgba(255,236,180,0.95),rgba(240,170,46,0.5)_72%)` — same geometry, near-identical amber, stops 70% vs 72%. Also noted: `venue/map-tile.ts` carries a *second* thing called a walk-in hatch (135deg, `--riv-tile-walkin-hatch`, tourist surface) which is genuinely NOT this one | **Recorded, not fixed.** Both are class T/S literals, which this slice's Non-goals exclude, and merging the two suns would repaint the app shell and the tourist home hero. Carried to close-out as a follow-up issue |
 | 2026-09-01 | phase 0 — the ladder | **Every `--riv-*` token painted with an `/opacity` modifier**, not "the tokens in `CLASS_O_TINTS`". The resemblance-led population would have been the nine sites the ladder sweep already named; the mechanism is the *form* (`/α` on a token), which is what class O is defined by | `for f in $(git ls-files \| grep -E '^frontend/src/app/.*\.(ts\|html)$' \| grep -v '\.spec\.ts$'); do grep -oE "(text\|bg\|border\|from\|to\|via)-(riv-[a-z-]+\|\[#[0-9a-fA-F]+\])/[0-9]+" "$f" \| while read -r m; do a=${m##*/}; [ $((a % 5)) -ne 0 ] && echo "$f: $m"; done; done` | **2 beyond the plan's nine** — `payouts-tab.html`'s reason chip at `border-riv-console-negative-ink/28` + `bg-riv-console-negative-ink/12`. Class-O positions (ledger row: "*reuses* `--riv-console-negative-ink`") whose token lives outside `CLASS_O_TINTS`, so an array-scoped sweep walked straight past them | **Fixed all.** Widened `offLadderIn` from the token array to the form `-riv-[a-z-]+/α`; moved the chip to `/30`+`/10`; updated its three proofs (`console-negative-token` CHIP_TINTS, `payouts-tab.contrast` AA at 0.10, and the two `OUT_OF_FAMILY` guards, **rewritten not deleted** per the ledger's own rule) |

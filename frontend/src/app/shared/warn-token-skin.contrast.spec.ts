@@ -37,7 +37,7 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * <p>It lives in `shared/` rather than beside any one consumer because the population is tree-wide —
  * the same home, and the same reason, as `class-o-tint-tokens.contrast.spec.ts` and
  * `solid-fill-tokens.contrast.spec.ts`. The cross-theme proof against a real render, where the
- * cascade rather than a regex decides, is `e2e/notice-banner-token-skin.e2e.ts`.
+ * cascade rather than a regex decides, is `e2e/warn-token-skin.e2e.ts`.
  */
 
 const FAMILY = {

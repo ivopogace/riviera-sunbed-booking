@@ -4,7 +4,8 @@ import { mockCustomerAuthApi } from './support/auth-mocks';
 
 /**
  * The CTA hairline paints from the token registry, asserted against a real render (#853) — the
- * `--riv-notice-banner-*` / `--riv-form-error-*` precedent applied to `--riv-cta-border`.
+ * `--riv-warn-*` / `--riv-form-error-*` precedent applied to `--riv-cta-border` (that first
+ * family was `--riv-notice-banner-*` when this was written; #879 merged it into `--riv-warn-*`).
  *
  * <p>The computed style is what is checked, never the class list. A token declared without its
  * `@theme inline` row generates no utility at all: the class stays in the markup, the paint

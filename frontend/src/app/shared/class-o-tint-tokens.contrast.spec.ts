@@ -25,9 +25,11 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * reads the component sources, and the cross-theme proof against a real render — where the cascade
  * rather than a regex decides — is `e2e/class-o-tint-tokens.e2e.ts`.
  *
- * <p>It lives in `shared/` rather than `operator/` because the population it sweeps is tree-wide:
- * 43 of the 44 positions are console chrome, but `shared/confirm-panel.ts` carries the 44th, and
- * the final sweep has to be able to fail on any of them. Same home, and the same reason, as
+ * <p>It lives in `shared/` rather than `operator/` because the population it sweeps is tree-wide.
+ * At #852 that was nearly a technicality — all but one of the 44 positions were console chrome, and
+ * `shared/confirm-panel.ts` carried the last. #879 made it plainly true: merging the ambers pulled
+ * `pages/legal/` and `booking/withheld-email-notice.ts` into the same family, so the sweep now has
+ * to be able to fail in four areas rather than one. Same home, and the same reason, as
  * `solid-fill-tokens.contrast.spec.ts`.
  *
  * <p>Per-surface AA/1.4.11 proofs are NOT here. They stay with their elements, in the tab and
@@ -194,7 +196,7 @@ describe('Class-O tint tokens (rule B: the modifier stays, the literal becomes a
 
     expect(offLadderIn('border-riv-console-tint/15 bg-riv-console-tint/5')).toEqual([]);
     expect(offLadderIn('border-dashed border-riv-console-tint/55')).toEqual([]);
-    expect(offLadderIn('border-riv-confirm-warn-edge/60')).toEqual([]);
+    expect(offLadderIn('border-riv-warn-edge/60')).toEqual([]);
     expect(offLadderIn('bg-white/85')).toEqual([]);
   });
 

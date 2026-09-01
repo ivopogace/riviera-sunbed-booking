@@ -9,7 +9,7 @@ teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR
 outline-button skin's theme-invariant family, PR #859), **#854** (the nine solid button/badge
 fills under fixed white ink, PR #860), **#861** (merging that family's two brand teals onto one,
 PR #862), **#848** (the operator console's accent ink, PR #863), **#864** (the console's negative
-ink, PR #866), **#858** (the three fixed-fill state skins, PR #867), **#869** (`outcome-card`'s two tone glyphs onto the medallion skin, PR #871), **#870** (the beach-map zoom toggle's fixed-pair-over-a-themed-host, PR #873), **#868** (the amber notice banner's theme-invariant pair, PR #874), **#853** (the CTA hairline's own border token, PR #875), **#852** (all of class **O** — the `/opacity`-modifier positions — settled on rule B and closed, PR #878).
+ink, PR #866), **#858** (the three fixed-fill state skins, PR #867), **#869** (`outcome-card`'s two tone glyphs onto the medallion skin, PR #871), **#870** (the beach-map zoom toggle's fixed-pair-over-a-themed-host, PR #873), **#868** (the amber notice banner's theme-invariant pair, PR #874), **#853** (the CTA hairline's own border token, PR #875), **#852** (all of class **O** — the `/opacity`-modifier positions — settled on rule B and closed, PR #878), **#879** (class **O**'s values: the multiple-of-five alpha ladder, one `--riv-walkin-hatch`, and the three amber families merged into `--riv-warn-{edge,fill,ink}`, PR #880).
 
 > **This file is not a design record.** `docs/design/README.md` governs the `.dc.html`
 > artboards — approved-look snapshots that are deliberately *never* rewritten to track the
@@ -84,7 +84,7 @@ These families must move **as a pair**, onto tokens declared **once** with no da
 |---|---:|---|---|
 | Form-error skin: `bg-[#f6e8e7]` + `text-[#a3160e]` (`booking-dialog:311`, `booking-pay:255`, `my-bookings:290`) | 6 | **new theme-invariant token pair.** The themed `--riv-error-ink` is *wrong* here — it resolves `#ffa9a1` in dark, over a fill that stays `#f6e8e7`: light on light | **done — #850, PR #857** |
 | Fixed-fill **state skins** on themeable hosts: the outcome medallion, the amenity chip, the dialog step badge | 15 | **Three families, cut by FORM, with the per-state class ternary as the atomic unit.** The how-many-pairs answer, and the reasoning, are in the note below this table | **done — #858, PR #867** (`--riv-medallion-*`, `--riv-amenity-*`, `--riv-step-*`). n corrected 6 → 15 across 8 sites |
-| Amber **notice banner**: `bg-[#fcf0d9]` + `text-[#8a5410]` (`withheld-email-notice:29`, `privacy-policy.html`, `terms-of-service.html`) | 6 | **the same pair as the medallion's waiting state, on a different FORM** — a rectangular block with *accessible text*, so unlike the medallion it genuinely owes AA (5.54:1 today). Surfaced by #858's out-of-family sweep, which had to name these sites to prove it did not over-reach onto them. Wants its own theme-invariant pair; do **not** reuse `--riv-medallion-waiting-*`, whose whole population is decorative | **done — #868, PR #874** (`--riv-notice-banner-*`) |
+| Amber **notice banner**: `bg-[#fcf0d9]` + `text-[#8a5410]` (`withheld-email-notice:29`, `privacy-policy.html`, `terms-of-service.html`) | 6 | **the same pair as the medallion's waiting state, on a different FORM** — a rectangular block with *accessible text*, so unlike the medallion it genuinely owes AA (5.54:1 today). Surfaced by #858's out-of-family sweep, which had to name these sites to prove it did not over-reach onto them. Wants its own theme-invariant pair; do **not** reuse `--riv-medallion-waiting-*`, whose whole population is decorative | **done — #868, PR #874** (`--riv-notice-banner-*`), then **merged into `--riv-warn-{edge,fill,ink}` — #879, PR #880**: the same amber advisory treatment as class O's two confirm-panel families, so all three collapsed. Still NOT `--riv-medallion-waiting-*`, which keeps `#fcf0d9`/`#8a5410` — that remains a different FORM, and merging on the value would be the class-R confusion this file exists to name |
 | `shared/outcome-card.ts`'s two tone glyphs | 2 | **the medallion FORM again — and the intake grill inverted the question.** Answer: converge. See the note below the table; n corrected 4 → 2 (the border and inset shadow counted here are class R's #853, not this family's) | **done — #869, PR #871** |
 | Beach-map **zoom toggle**: `bg-[rgba(14,122,137,0.12)]`/`bg-white/70` + `border-[#0e7a89]`/`border-[rgba(12,42,51,0.14)]` + `text-[#0a2a33]`/`text-[rgba(12,42,51,0.66)]` (`shared/beach-map-canvas.html:20,35`) | 2 | **not this table's usual shape — a fixed PAIR (ink and fill both pinned) over a host that themes, not a themed ink over a fixed fill.** Found by #869's own generalization sweep enumerating the mechanism rather than the medallion form (see the note below the table). The wash it sits on already carries a per-theme pair for its rail/chip siblings (`--riv-map-rail-*`, `--riv-map-chip-*`), so the fix follows that precedent rather than the theme-invariant one: **new per-theme token pairs**, `--riv-map-zoom-{selected,idle}-{fill,border,ink}`, declared once per theme like the wash itself. Measured (worst wash stop): selected ink 11.18→1.16:1 dark before, 14.53:1 light / 5.14:1 dark after; idle ink 4.88→3.77:1 dark before, 8.45:1 light / 6.69:1 dark after; both borders newly proven at 3:1 (WCAG 1.4.11), not carried across as an accepted miss | **done — #870, PR #873** |
 | Solid outline-button skin: `#f4f6f7` fill, `#e7ebec` hover, `rgba(255,255,255,0.7)` border, `#a3372a` danger ink (+ the `rgba(200,90,60,0.5)` danger border) | 13 | **new theme-invariant tokens**, one family. Its teal ink already moved to `--riv-solid-btn-ink` in #835. The themed alternatives measure 1.69:1 (`--riv-danger-ink`) and 1.52:1 (`--riv-accent-ink`) over the fixed fill | **done — #851, PR #859.** n corrected 9 → 13: the danger border was uncounted, and the `rgba(255,255,255,0.7)` border sits on all three buttons (on the `btnOutline` variant, not the shared `BTN_OUTLINE` base) |
@@ -178,7 +178,7 @@ These families must move **as a pair**, onto tokens declared **once** with no da
 > own below rather than a silent omission: the amber **notice banner**, `shared/outcome-card.ts`'s
 > tone glyphs, and — already covered — `requests-tab`'s green medallion.
 
-### Class O — `/opacity` modifier: **settled on rule B, and done**
+### Class O — `/opacity` modifier: **settled on rule B, normalised by the ladder, and done**
 
 **44 positions carried Tailwind's `/opacity` modifier** (`bg-[#2bb8d4]/20`). This class was held
 back on the premise that tokenising one *changes the computed value*, so none was a candidate for
@@ -194,6 +194,77 @@ class was stuck between moved a pixel, and the choice was never about visual ris
 
 **The rule, for any future `/opacity` position: the modifier stays at the call site, and the
 literal inside it becomes a token.** One token per base colour, no alpha baked in.
+
+**And the alpha it carries is a multiple of five** — rule B's companion, added by **#879** (option
+C, PR #880). B preserved every per-site alpha, which is the right default for a migration and the
+wrong end state for a palette; the ladder is what collapses the drift B preserved. It is
+deliberately a constraint on the **alphas**, not a new token shape: pre-composing one token per
+(colour × alpha) pair would flip every `toHaveCSS` on these sites from `oklab()` to `rgba()` and
+move each alpha away from the comment explaining it — the same two objections that chose B over A.
+
+Five, because every class-O alpha except **nine** already sat on it. So the whole normalisation
+moved nine positions by at most 3 points, and — the part that made it cheap — it cost `beach-cell`'s
+aisle boundary nothing: that `/55` is load-bearing (0.55 and not 0.35, for a stated 1.4.11 reason)
+and 55 is already on the ladder, so the rule never had to carve an exemption for the one value that
+could not move. It is named and pinned anyway, in `beach-cell.spec.ts`, because the ladder is a rule
+about alphas and that alpha is a rule about contrast; a future re-cut that did not know the second
+rule existed would otherwise be free to round it.
+
+| Site | Position | Before | After |
+|---|---|---:|---:|
+| `payout-statement` | table header row + empty-state fill | `/4` ×2 | `/5` |
+| `payout-statement` | table row separator | `/7` | `/10` |
+| `payout-statement` | table outer border | `/12` | `/15` |
+| `payout-statement` | close chip border + total-row rule | `/14` ×2 | `/15` |
+| `payout-statement` | total-row fill (`--riv-select-tint`) | `/6` | `/5` |
+| `set-editor` | armed-move panel fill (`--riv-select-tint`) | `/12` | `/10` |
+| `requests-tab` | accepted-medallion fill (`--riv-positive-tint`) | `/12` | `/10` |
+| `payouts-tab` | reason-chip border + fill (`--riv-console-negative-ink`) | `/28`, `/12` | `/30`, `/10` |
+| **`beach-cell`** | **aisle boundary — load-bearing, 1.4.11** | **`/55`** | **`/55`, exempt** |
+
+> **The last row of that table is the one worth reading twice.** The reason-chip pair was *not* in
+> the plan's enumeration, and no reading of this section's family rows would have surfaced it: the
+> chip **reuses** `--riv-console-negative-ink` (the row three above says so), a token the class-O
+> array does not hold, so a sweep scoped to that array reported the ladder complete while walking
+> straight past two off-ladder positions. Found by enumerating the **form** — any `--riv-*` token
+> wearing an `/opacity` modifier — which is what class O is actually defined by. The guard is now
+> written that way, so the next reuse is caught by construction.
+
+**Two more collapses came with the ladder, both of them things the code claimed and did not do.**
+
+*The walk-in hatch was a three-way.* `beach-cell` painted 30%/12%, `layout-editor`'s tool swatch
+35%/12% **under a comment calling it a mirror of the cell**, and `daily-view-tab`'s tile and legend
+28%/10%. Rule B had no reason to notice — each site was internally consistent, and the drift only
+reads as drift once the three sit in one place. All three are now one `--riv-walkin-hatch` image
+token at 30%/10%, the `--riv-premium-grad` precedent: one declaration is the only thing that keeps a
+mirror mirroring. #852 concluded the walk-in sibling could not be an image token because "those
+three gradients differ by alpha per site" — which was true, and was the bug.
+
+*The ambers were four tokens and three roles.* `--riv-warn-edge`/`--riv-warn-tint` painted the
+console's two confirm panels; `--riv-confirm-warn-*` painted `shared/confirm-panel`. Those two are
+**one role in two paints** — the console panels are hand-rolled twins of that component, same job,
+different markup — which is what makes the merge a role match rather than a value coincidence.
+`--riv-notice-banner-*` (class F-4, #868) joined them, because an amber advisory is one treatment
+whichever surface carries it. The result is `--riv-warn-{edge,fill,ink}` = `#e0a03a`/`#fff4e0`/`#7a4a08`
+— confirm-panel's values, chosen because they are the **higher-contrast** pair (6.86:1 against the
+notice banner's 5.54:1), so all six surfaces moved the safe way and confirm-panel itself did not move
+at all. **`--riv-premium-edge` stayed out**: a beach-map *tier identity* over a gold gradient is not
+a warning, and role beats value — the fork #848, #858 and #864 each resolved the same way.
+
+> **The merged family's theme-invariance argument changed hands, which is the durable lesson.** As a
+> class-O token it rested on "every consumer is a child of `operator-console`, whose host pins
+> porcelain, so a dark branch is unreachable". Absorbing the notice banner made that ground **false**
+> — the legal pages and `withheld-email-notice` are tourist surfaces that render under all three
+> document themes. What holds instead is #868's, and it is the stronger claim: a **fixed fill pins
+> every ink on it**, whichever theme the page is in. When a token family grows, re-check that its
+> invariance argument still covers the new members; a single declaration that keeps its old reason is
+> a claim nobody has re-proved.
+
+**One exemption this slice created, by moving a value onto it.** `daily-view-tab`'s close-sales
+trigger button carries `--riv-warn-edge/50` on its own `white/60` fill: 1.65:1 before the merge,
+1.48:1 after. Both sub-3:1, and the position carried no entry anywhere — so the ladder did not create
+this exemption, it **found one nobody had written down**. It is now a recorded family under
+`non-text-contrast.md` **rule 2**, with all three conditions demonstrated in an assertion.
 
 Why B rather than pre-composing an `rgba()` token per (colour × alpha) pair, the form
 `--riv-danger-*` and `--riv-accent-*` set the precedent for:
@@ -230,11 +301,11 @@ settled this, not the docs.
 | `#0c2a33/·` in `operator/` | 17 | `--riv-console-tint` | **done — #852, PR #878** |
 | `#2bb8d4/·` + `#0e8aa8/·` (map/editor selection chrome) | 8 | `--riv-select-tint`, `--riv-select-edge` | **done — #852, PR #878** |
 | `#a3160e/·` (borders `/25 /30 /40 /50`, fill `/10`) | 7 | `--riv-alert-tint` | **done — #852, PR #878** |
-| `#d9861a/·`, `#f0aa2e/·`, `#0e6e46/·` | 7 | `--riv-warn-edge`, `--riv-warn-tint`, `--riv-positive-tint` | **done — #852, PR #878** |
+| `#d9861a/·`, `#f0aa2e/·`, `#0e6e46/·` | 7 | `--riv-warn-edge`, ~~`--riv-warn-tint`~~, `--riv-positive-tint` | **done — #852, PR #878**; the two ambers merged into `--riv-warn-{edge,fill,ink}` — **#879, PR #880** |
 | `#a3372a/·` (`payouts-tab`'s reason chip) | 2 | *reuses* `--riv-console-negative-ink` | **done — #852, PR #878** |
 | `#061e28/45` (`payout-statement`'s backdrop) | 1 | `--riv-console-scrim` | **done — #852, PR #878** |
 | `#b47814/40` (`beach-cell`'s premium border) | 1 | `--riv-premium-edge` | **done — #852, PR #878** |
-| `#e0a03a/60` (`confirm-panel`'s edge) | 1 | `--riv-confirm-warn-edge` | **done — #852, PR #878** |
+| `#e0a03a/60` (`confirm-panel`'s edge) | 1 | ~~`--riv-confirm-warn-edge`~~ → `--riv-warn-edge` | **done — #852, PR #878**; merged — **#879, PR #880** |
 
 > **The last three rows did not exist before #852.** This section's table enumerated **41** of its
 > own 44 positions — `#061e28/45`, `#b47814/40` and `#e0a03a/60` appeared in no family row, so a
@@ -252,14 +323,13 @@ fill and ink). Generalizing that rule by **mechanism** — class expressions nam
 two swatches mirroring it, which no reading of the four family rows would have surfaced. It is now
 a standing test rather than a habit.
 
-**Left deliberately undone, with its own issue — [#879](https://github.com/ivopogace/riviera-sunbed-booking/issues/879): normalising the alphas.** Rule B preserves every
-per-site alpha, which is the right default for a migration and the wrong end state for a palette.
-The drift is real and now visible in one place: `--riv-console-tint` is painted at ten alphas, the
-amber treatment wears **four** distinct base colours (`#d9861a`, `#f0aa2e`, `#b47814`, `#e0a03a`),
-`--riv-confirm-warn-*` near-duplicates `--riv-notice-banner-*` at both of its positions, and the
-two walk-in gradients the code calls mirrors of each other are 30%/12% against 35%/12%. That is a
-deliberate visual change with its own budget, and it is a much cheaper argument to have against
-tokens than it was against literals.
+**Class O is closed, both halves.** #852 settled the form (rule B) and #879 settled the values (the
+ladder + the two collapses above). What class O now leaves behind is a **boundary rather than a
+backlog**, and it is four standing checks, not one: no `/opacity` colour literal anywhere in
+`frontend/src`; no `/opacity` alpha off the multiple-of-five ladder, on any `--riv-*` token; no class
+expression naming a class-O token beside a raw literal of its own value; and no positive
+"still painted here" list allowed to be empty. Each of the last three is a generalization of a
+mistake one of the two slices made and caught.
 
 ### Class R — role mismatch: the value matches a token whose *role* is different
 
