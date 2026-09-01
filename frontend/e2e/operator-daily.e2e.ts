@@ -411,6 +411,9 @@ test('one tap closes today’s online sales via the standing setting, effective 
   const panel = page.getByTestId('daily-close-sales-confirm-panel');
   await expect(panel).toContainText('effective immediately');
   await expect(panel).toContainText('stays closed for future days');
+  // Rendered via shared/confirm-panel (#881): an alertdialog with a non-empty accessible name.
+  await expect(panel).toHaveAttribute('role', 'alertdialog');
+  await expect(panel).toHaveAccessibleName('Close today’s online sales?');
   await expect(page.getByTestId('daily-close-sales')).toHaveCount(0);
   await expect(page.getByTestId('daily-close-sales-confirm')).toBeFocused();
   await settle(page);

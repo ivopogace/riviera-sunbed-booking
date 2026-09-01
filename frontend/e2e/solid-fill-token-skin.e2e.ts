@@ -15,8 +15,9 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * <p><strong>Where the forced-dark proof lives, and why not on the confirm button.</strong> The
  * issue asks for the cross-theme assertion on a rendered confirm button, because `ConfirmPanel`
  * lives in `shared/` and its host theme varies with whoever mounts it. Today it does not vary:
- * both mounts are inside `operator-console`, which pins `data-riv-theme="porcelain"` on its own
- * host and so re-scopes every `--riv-*` token for that subtree. A confirm button asserted under a
+ * every mount (including the `warn`-tone pair added at #881) is inside `operator-console`, which
+ * pins `data-riv-theme="porcelain"` on its own host and so re-scopes every `--riv-*` token for
+ * that subtree. A confirm button asserted under a
  * forced `dark` document would therefore hold its fill EVEN IF the token had a dark override —
  * proof of the pin, not of the family.
  *
@@ -31,6 +32,8 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
 const BRAND = 'rgb(10, 110, 133)';
 const BRAND_HOVER = 'rgb(10, 94, 114)';
 const DANGER = 'rgb(163, 22, 14)';
+/** The console confirm buttons' darkened amber (#881) — `shared/confirm-panel`'s `warn` tone. */
+const WARN = 'rgb(154, 100, 16)';
 const WHITE = 'rgb(255, 255, 255)';
 
 /** Every token the family registers, with the value `tailwind.css` declares for it. */
@@ -38,6 +41,7 @@ const REGISTRY = {
   '--riv-solid-fill-brand': '#0a6e85',
   '--riv-solid-fill-brand-hover': '#0a5e72',
   '--riv-solid-fill-danger': '#a3160e',
+  '--riv-solid-fill-warn': '#9a6410',
 } as const;
 
 /**
@@ -45,7 +49,7 @@ const REGISTRY = {
  * The hover fill is deliberately absent: it compiles to `.hover\:bg-…:hover`, not a bare class
  * selector, so it is proven where it actually matters — the hovered box, in the console test.
  */
-const UTILITIES = ['bg-riv-solid-fill-brand', 'bg-riv-solid-fill-danger'];
+const UTILITIES = ['bg-riv-solid-fill-brand', 'bg-riv-solid-fill-danger', 'bg-riv-solid-fill-warn'];
 
 /** One venue card, enough for the discovery grid to render its semantic mode chip. */
 const VENUES = [
@@ -166,5 +170,17 @@ test.describe('the solid fill family paints from the token registry', () => {
     const confirmRegen = page.getByTestId('layout-confirm-yes');
     await expect(confirmRegen).toHaveCSS('background-color', BRAND);
     await expect(confirmRegen).toHaveCSS('color', WHITE);
+  });
+
+  test('the shared confirm panel paints the warn fill on the close-sales confirm (#881)', async ({
+    page,
+  }) => {
+    await mockWholeConsole(page);
+    await openConsoleTab(page, 'daily');
+
+    await page.getByTestId('daily-close-sales').click();
+    const confirmClose = page.getByTestId('daily-close-sales-confirm');
+    await expect(confirmClose).toHaveCSS('background-color', WARN);
+    await expect(confirmClose).toHaveCSS('color', WHITE);
   });
 });

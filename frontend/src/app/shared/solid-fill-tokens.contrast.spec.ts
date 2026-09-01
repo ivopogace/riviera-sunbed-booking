@@ -9,16 +9,20 @@ import {
   SOLID_FILL_BRAND_HOVER,
   SOLID_FILL_DANGER,
   SOLID_FILL_INK,
+  SOLID_FILL_WARN,
 } from '../../testing/glass-tokens';
 import { STYLESHEET, baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
- * Guard for the `--riv-solid-fill-*` family (#854) — the nine solid button/badge fills carrying
+ * Guard for the `--riv-solid-fill-*` family (#854) — the ten solid button/badge fills carrying
  * fixed white ink, across `operator/` and two `shared/` components.
  *
- * <p>Nine sites, two values since #861: seven wear `-brand`, two wear `-danger`. The retired
- * `-action` name is swept for below, prose included — a class naming a token that no longer
- * exists paints nothing, silently, which no ratio here can see.
+ * <p>Ten sites, three values since #881: seven wear `-brand`, two wear `-danger`, one wears
+ * `-warn` — `shared/confirm-panel.ts`'s own tone map, the only place the class string is written;
+ * its two consumers (the console's close-sales and weather-refund confirms) select it via the
+ * `tone="warn"` input, never the class directly. The retired `-action` name is swept for below,
+ * prose included — a class naming a token that no longer exists paints nothing, silently, which no
+ * ratio here can see.
  *
  * <p>The sweep keys on the `bg-` form, not the bare value: all three literals — the merged-away
  * #0a5f74 included — also appear as `text-` inks, `ring-`s and gradient stops, which are other
@@ -40,6 +44,7 @@ const FAMILY = {
   '--riv-solid-fill-brand': rgbToHex(SOLID_FILL_BRAND),
   '--riv-solid-fill-brand-hover': rgbToHex(SOLID_FILL_BRAND_HOVER),
   '--riv-solid-fill-danger': rgbToHex(SOLID_FILL_DANGER),
+  '--riv-solid-fill-warn': rgbToHex(SOLID_FILL_WARN),
 } as const;
 
 const APP = join(process.cwd(), 'src/app');
@@ -83,6 +88,7 @@ const FILL_ROLES = [
   /bg-\[#0a5e72\](?!\/)/i,
   /bg-\[#0a5f74\](?!\/)/i,
   /bg-\[#a3160e\](?!\/)/i,
+  /bg-\[#9a6410\](?!\/)/i,
 ];
 
 /**
@@ -124,7 +130,12 @@ const SURVIVORS: readonly (readonly [string, string])[] = [
 describe('Solid fill token family (WCAG AA + theme invariance, #854)', () => {
   it('white ink clears AA on every fill in the family', () => {
     // The legend swatch has no row: `aria-hidden`, no text, so no ink to pair it with (see header).
-    for (const fill of [SOLID_FILL_BRAND, SOLID_FILL_BRAND_HOVER, SOLID_FILL_DANGER]) {
+    for (const fill of [
+      SOLID_FILL_BRAND,
+      SOLID_FILL_BRAND_HOVER,
+      SOLID_FILL_DANGER,
+      SOLID_FILL_WARN,
+    ]) {
       expect(
         contrastRatio(rgbToHex(SOLID_FILL_INK), rgbToHex(fill)),
         `white on ${rgbToHex(fill)}`,

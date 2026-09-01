@@ -923,6 +923,17 @@ describe('DailyViewTab (#175)', () => {
     http.expectNone((r) => r.url.endsWith('/api/venues/1/profile'));
   });
 
+  it('exposes the close-sales confirm as an alertdialog with an accessible name (#881)', () => {
+    render();
+
+    byId('daily-close-sales').click();
+    fixture.detectChanges();
+
+    const panel = byId('daily-close-sales-confirm-panel');
+    expect(panel.getAttribute('role')).toBe('alertdialog');
+    expect(panel.getAttribute('aria-label')).toBe('Close today’s online sales?');
+  });
+
   it('a lost 409 race says try again and re-reads the day (#794, R-1)', async () => {
     render();
 

@@ -200,7 +200,11 @@ test('renders the ledger + owed, opens the statement, and issues a per-date weat
   // Weather refund: confirm-gated (no call until confirmed), whole-day, server-decided; the reversal
   // then appears on the re-read (a second reason chip) and the owed follows the server's new figure.
   await page.getByTestId('weather-trigger').click();
-  await expect(page.getByTestId('weather-confirm')).toBeVisible();
+  const weatherConfirm = page.getByTestId('weather-confirm');
+  await expect(weatherConfirm).toBeVisible();
+  // Rendered via shared/confirm-panel (#881): an alertdialog with a non-empty accessible name.
+  await expect(weatherConfirm).toHaveAttribute('role', 'alertdialog');
+  await expect(weatherConfirm).toHaveAccessibleName(/^Weather refund for .+\?$/);
   await page.getByTestId('weather-confirm-btn').click();
   await expect(page.getByTestId('payouts-notice')).toContainText('refund issued');
   await expect(page.getByTestId('ledger-reason')).toHaveCount(2); // the new WEATHER reversal joined

@@ -138,38 +138,19 @@
         }
       }
       @if (closeSalesConfirm()) {
-        <div
-          class="mt-3.5 rounded-[16px] border border-riv-warn-edge/60 bg-riv-warn-fill px-4 py-3.5"
-          data-testid="daily-close-sales-confirm-panel"
-        >
-          <p class="mb-2.5 text-[13.5px] leading-[1.5] text-riv-card-ink">
-            <strong>Close today’s online sales?</strong> Tourists can no longer book any set for
-            today, effective immediately. This sets your standing sales close to 00:01, so it stays
-            closed for future days until you change it back in Venue &amp; commodities.
-          </p>
-          <div class="flex flex-wrap gap-2.5">
-            <button
-              type="button"
-              appTouchTarget
-              class="rounded-[12px] bg-[#9a6410] px-[18px] py-2.5 text-[13.5px] font-bold text-white aria-disabled:opacity-60"
-              data-testid="daily-close-sales-confirm"
-              [appBusy]="closeSalesBusy()"
-              (click)="onConfirmCloseSales()"
-            >
-              Close today’s sales
-            </button>
-            <button
-              type="button"
-              appTouchTarget
-              class="rounded-[12px] border border-riv-card-border bg-white/60 px-[18px] py-2.5 text-[13.5px] font-semibold text-riv-card-ink"
-              data-testid="daily-close-sales-cancel"
-              [appBusy]="closeSalesBusy()"
-              (click)="onCancelCloseSales()"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <app-confirm-panel
+          label="Close today’s online sales?"
+          headline="Close today’s online sales?"
+          message="Tourists can no longer book any set for today, effective immediately. This sets your standing sales close to 00:01, so it stays closed for future days until you change it back in Venue &amp; commodities."
+          confirmLabel="Close today’s sales"
+          tone="warn"
+          [busy]="closeSalesBusy()"
+          panelTestId="daily-close-sales-confirm-panel"
+          confirmTestId="daily-close-sales-confirm"
+          cancelTestId="daily-close-sales-cancel"
+          (confirmed)="onConfirmCloseSales()"
+          (cancelled)="onCancelCloseSales()"
+        />
       }
       @if (notice(); as msg) {
         <output

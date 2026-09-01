@@ -7,10 +7,11 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
  * Guard for the merged **amber warn family** `--riv-warn-{edge,fill,ink}` (#879) — one skin for
- * every amber advisory surface in the tree: `shared/confirm-panel`'s `alertdialog`, the two
- * hand-rolled confirm panels on the operator console's Daily-view and Payouts tabs (and the trigger
- * button that opens the first), the two legal pages' standing draft banner, and
- * `booking/withheld-email-notice`.
+ * every amber advisory surface in the tree: `shared/confirm-panel`'s `alertdialog` (used by
+ * `set-editor`/`layout-editor` from the start, and — since #881 — by the operator console's
+ * Daily-view close-sales and Payouts weather-refund confirms too, which used to hand-roll their
+ * own copy of this same skin), the Daily-view trigger button that opens the first of those, the two
+ * legal pages' standing draft banner, and `booking/withheld-email-notice`.
  *
  * <p><strong>Three token families collapsed into this one, and one deliberately did not.</strong>
  * `--riv-warn-edge`/`--riv-warn-tint` (class O, #852) painted the console's two confirm panels;
@@ -56,11 +57,17 @@ const RETIRED = [
   '--riv-notice-banner-ink',
 ];
 
-/** Every site the merged family paints — three families' worth, now one list. */
+/**
+ * Every site the merged family paints — three families' worth, now one list.
+ *
+ * <p>`operator/payouts-tab.html` dropped out at #881: its weather-refund confirm now renders
+ * entirely through `shared/confirm-panel.ts` (already listed), so it no longer paints the skin
+ * itself. `operator/daily-view-tab.html` stays — its close-sales *trigger* button (not the confirm,
+ * which adopted the same component) still carries its own `border-riv-warn-edge/50` hairline.
+ */
 const SITES = [
   'shared/confirm-panel.ts',
   'operator/daily-view-tab.html',
-  'operator/payouts-tab.html',
   'booking/withheld-email-notice.ts',
   'pages/legal/privacy-policy.html',
   'pages/legal/terms-of-service.html',
