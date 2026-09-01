@@ -57,8 +57,8 @@ for `feature/class-o-opacity-modifier-tokens` (`riviera-sdlc` § *Remote / cloud
 > (`toHaveCSS`, mocked e2e) — the only thing that catches a token declared without its
 > `@theme inline` row, where the class stays in the markup and the paint silently does not change.
 
-- [ ] **AC-1:** Given the eleven class-O base colours, when `src/tailwind.css` is read as text, then each token is declared **exactly once** and that declaration sits in the base block (`:root, [data-riv-theme='porcelain']`), and each carries its `@theme inline` row. *Seam:* S1 — `src/tailwind.css` via `stylesheet-tokens.ts` · *Pinned by:* `class-o-tint-tokens.contrast.spec.ts` › "every class-O token is declared once, in the base block, with its @theme inline row"
-- [ ] **AC-2:** Given the population command in `colour-literal-token-audit.md` § *The population*, when it is run over `frontend/src` excluding `*.spec.ts`, then **zero** results carry a `/opacity` modifier. *Seam:* S2 — the source tree, swept by the ledger's own command · *Pinned by:* `class-o-tint-tokens.contrast.spec.ts` › "no `/opacity` colour literal survives in frontend/src"
+- [ ] **AC-1:** Given the eleven class-O base colours, when `src/tailwind.css` is read as text, then each token is declared **exactly once** and that declaration sits in the base block (`:root, [data-riv-theme='porcelain']`), and each carries its `@theme inline` row. *Seam:* S1 — `src/tailwind.css` via `stylesheet-tokens.ts` · *Pinned by:* `shared/class-o-tint-tokens.contrast.spec.ts` › "every class-O token is declared once, in the base block, with its @theme inline row"
+- [ ] **AC-2:** Given the population command in `colour-literal-token-audit.md` § *The population*, when it is run over `frontend/src` excluding `*.spec.ts`, then **zero** results carry a `/opacity` modifier. *Seam:* S2 — the source tree, swept by the ledger's own command · *Pinned by:* `shared/class-o-tint-tokens.contrast.spec.ts` › "no `/opacity` colour literal survives in frontend/src"
 - [ ] **AC-3:** Given a set-editor tier button in its selected state, when it renders in a real browser, then its `background-color` computes to exactly the value `bg-[#2bb8d4]/20` produced before this slice. *Seam:* S3 — `toHaveCSS` on the rendered element · *Pinned by:* `e2e/class-o-tint-tokens.e2e.ts` › "the selected tier button's tint is byte-identical to its pre-token paint"
 - [ ] **AC-4:** Given the operator console pins porcelain and every class-O site sits inside it or on a fixed-white host, when the document theme is forced to `dark`, then every migrated position's computed colour is **unchanged** from its porcelain value. *Seam:* S3 — forced `data-riv-theme="dark"` on the document, `toHaveCSS` on the same elements · *Pinned by:* `e2e/class-o-tint-tokens.e2e.ts` › "the class-O tints hold under a forced dark document theme"
 - [ ] **AC-5:** Given `beach-cell.ts`'s `CELL_CLASS` and `shared/confirm-panel.ts`'s tone palette are per-state maps whose other branches carry literals outside class O, when the slice lands, then **no branch of either map mixes a named utility with a hex literal**. *Seam:* S2 — the rendered class list of each variant · *Pinned by:* `beach-cell.spec.ts` › "every cell state paints from tokens only"; `confirm-panel.spec.ts` › "the warning surface paints from tokens only"
@@ -184,7 +184,7 @@ this slice changes only how its hairlines and tints are declared.
 | FE-4 | `operator/set-editor.html`, `layout-editor.html` | existing | templates | — | — |
 | FE-5 | `operator/daily-view-tab.{ts,html}`, `requests-tab.html`, `payouts-tab.html` | existing | templates + inline template | — | — |
 | FE-6 | `shared/confirm-panel.ts` | existing | standalone component (`role="alertdialog"`) | signals | — |
-| FE-7 | `operator/class-o-tint-tokens.contrast.spec.ts` | **new** | unit spec (stylesheet-source guard + sweep) | — | — |
+| FE-7 | `shared/class-o-tint-tokens.contrast.spec.ts` | **new** | unit spec (stylesheet-source guard + sweep) | — | — |
 | FE-8 | `e2e/class-o-tint-tokens.e2e.ts` | **new** | mocked Playwright spec (`toHaveCSS`, forced dark) | — | — |
 
 **Standards:** no component API changes — every edit is a class string. The token registry stays in
@@ -198,14 +198,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan — awaiting agreement` (ACs and seams written; no phase started)
+**Stage pointer:** `implement (phase 0 done, phase 1 next)`
 
-**Next action:** commit this plan doc, open the draft PR so CI has a vehicle, then start phase 0
-(the `#0c2a33` + `#061e28` family, 18 positions) red-first at seam S1.
+**Next action:** open the draft PR so CI has a vehicle, then phase 1 — the selection chrome
+(`#2bb8d4` + `#0e8aa8`), taking the two selected/unselected ternaries whole.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the rule + the console-tint family (18 positions) | | |
+| 0 — the rule + the console-tint family (18 positions) | ✅ | `434f64d` |
 | 1 — selection chrome, `#2bb8d4` + `#0e8aa8` (8 + 2 whole-ternary) | | |
 | 2 — the red families, `#a3160e` (7) + `#a3372a` (2) | | |
 | 3 — amber + green tints (9) and the two entangled skins | | |
@@ -244,7 +244,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   token form (behaviour-parity row 6).
 - `frontend/src/app/shared/solid-fill-tokens.contrast.spec.ts` — the `(?!\/)` lookahead comment
   corrected: the reason it gave for excluding `bg-[#a3160e]/10` is the premise this slice disproved.
-- `frontend/src/app/operator/class-o-tint-tokens.contrast.spec.ts` — **new.** The AC-1/AC-2 guard.
+- `frontend/src/app/shared/class-o-tint-tokens.contrast.spec.ts` — **new.** The AC-1/AC-2 guard.
+  In `shared/`, not `operator/`: the sweep is tree-wide and `shared/confirm-panel.ts` carries one of
+  the 44 — same home, same reason, as `solid-fill-tokens.contrast.spec.ts` (`riviera-frontend`).
 - `frontend/e2e/class-o-tint-tokens.e2e.ts` — **new.** The AC-3/AC-4 proof.
 - `frontend/src/testing/glass-tokens.ts` — the new tint bases added to the one test-side mirror.
 
@@ -252,7 +254,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 0 — The rule, and the console-tint family (18 positions)
 
-**Files:** Create `frontend/src/app/operator/class-o-tint-tokens.contrast.spec.ts` ·
+**Files:** Create `frontend/src/app/shared/class-o-tint-tokens.contrast.spec.ts` ·
 Modify `frontend/src/tailwind.css`, `operator/payout-statement.ts`, `operator/beach-cell.ts`,
 `operator/beach-cell.spec.ts`, `operator/daily-view-tab.ts|.html`, `operator/set-editor.html`,
 `operator/layout-editor.html`, `src/testing/glass-tokens.ts`
@@ -293,7 +295,7 @@ omission):
 
 **Files:** Modify `frontend/src/tailwind.css`, `operator/set-editor.html`,
 `operator/layout-editor.html`, `operator/payout-statement.ts`,
-`operator/class-o-tint-tokens.contrast.spec.ts`
+`shared/class-o-tint-tokens.contrast.spec.ts`
 
 | Token | Value | Role |
 |---|---|---|
@@ -325,7 +327,7 @@ beside a hex literal in one string.
 **Files:** Modify `frontend/src/tailwind.css`, `operator/requests-tab.html`,
 `operator/daily-view-tab.html`, `operator/payouts-tab.html`, `operator/set-editor.html`,
 `operator/console-negative-token.contrast.spec.ts`,
-`shared/solid-fill-tokens.contrast.spec.ts`, `operator/class-o-tint-tokens.contrast.spec.ts`
+`shared/solid-fill-tokens.contrast.spec.ts`, `shared/class-o-tint-tokens.contrast.spec.ts`
 
 | Token | Value | Role |
 |---|---|---|
@@ -358,7 +360,7 @@ slice's disproved premise.
 **Files:** Modify `frontend/src/tailwind.css`, `operator/daily-view-tab.html`,
 `operator/payouts-tab.html`, `operator/requests-tab.html`, `operator/beach-cell.ts`,
 `shared/confirm-panel.ts`, `shared/confirm-panel.spec.ts`,
-`operator/class-o-tint-tokens.contrast.spec.ts`
+`shared/class-o-tint-tokens.contrast.spec.ts`
 
 | Token | Value | Sites |
 |---|---|---|

@@ -112,7 +112,7 @@
       <!-- Docks right of the canvas on desktop; on a phone it's a bottom sheet instead (#715). -->
       @if (hasSelection() || sweepIds()) {
         <div
-          class="fixed inset-0 z-20 bg-[#0c2a33]/45 lg:hidden"
+          class="fixed inset-0 z-20 bg-riv-console-tint/45 lg:hidden"
           data-testid="sheet-backdrop"
           (click)="dismissSheet()"
           (keydown.escape)="dismissSheet()"

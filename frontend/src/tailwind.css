@@ -78,6 +78,8 @@
   --color-riv-cta-border: var(--riv-cta-border);
   --color-riv-console-accent-ink: var(--riv-console-accent-ink);
   --color-riv-console-negative-ink: var(--riv-console-negative-ink);
+  --color-riv-console-tint: var(--riv-console-tint);
+  --color-riv-console-scrim: var(--riv-console-scrim);
 
   --color-riv-medallion-positive-fill: var(--riv-medallion-positive-fill);
   --color-riv-medallion-positive-ink: var(--riv-medallion-positive-ink);
@@ -386,6 +388,46 @@
       chip tint, the lowest pair at 5.05:1 + console-negative-ink.e2e.ts.
       Rationale: docs/plans/console-negative-ink-token.md, issue #864. */
   --riv-console-negative-ink: #a3372a;
+
+  /** The CLASS-O TINT tokens (#852) — the base colour behind a colour position that carries
+      Tailwind's `/opacity` modifier. The audit's class O had been held back on the premise that
+      tokenising such a position changes the computed value. It does not: Tailwind compiles
+      `bg-[#2bb8d4]/20` to `color-mix(in oklab, #2bb8d4 20%, transparent)`, so the LITERAL form
+      already produces a color-mix, and `bg-riv-select-tint/20` compiles to the same expression
+      with `var(--riv-select-tint)` in the colour slot. Measured against a real render: 29
+      (colour x alpha) pairs over 5 host colours, 145/145 byte-identical composites.
+
+      So the rule is B — the modifier stays at the CALL SITE and the literal inside it becomes a
+      token. One token per base colour, no alpha baked in: the alpha is a per-site treatment
+      decision and belongs beside the comment explaining it (beach-cell's `/55`-not-`/35` aisle
+      boundary is the worked example). Normalising the alphas is a deliberate visual change and
+      is its own issue.
+
+      The one behavioural difference, stated rather than discovered later: for a var()-valued
+      colour Tailwind emits an extra fallback declaration OUTSIDE its
+      `@supports (color: color-mix(in lab, red, red))` guard, and that fallback is the FULLY
+      OPAQUE colour. It paints only where color-mix() is unsupported, which is below Tailwind
+      v4's own documented floor (Chrome 111), so every other utility in this file is equally
+      undefined there.
+
+      All THEME-INVARIANT, declared once, by decision: every consumer is either a child of
+      `operator-console`, whose host pins porcelain, or sits on a fixed-white panel — so a dark
+      branch is unreachable and a dark value would be an unverifiable claim.
+      Proof: shared/class-o-tint-tokens.contrast.spec.ts (single-declaration + the tree-wide
+      literal sweep) + e2e/class-o-tint-tokens.e2e.ts (the real paint, incl. a forced dark
+      document). Rationale: docs/plans/class-o-opacity-modifier-tokens.md, issue #852.
+
+      --riv-console-tint is the console's neutral tint base: hairlines, inset fills and the
+      set-editor's mobile sheet backdrop. It is the rgba base of --riv-ink-soft/--riv-ink-faint
+      (both rgba(12, 42, 51, .)), and deliberately NOT --riv-ink, which is #0a2a33 AND themes to
+      white — a themed hairline would vanish on payout-statement's fixed-white panel. The
+      two-unit gap between --riv-ink and its own soft/faint members predates these sites and is
+      not theirs to close. */
+  --riv-console-tint: #0c2a33;
+  /** The payout-statement modal backdrop. Its own colour rather than --riv-console-tint's: the
+      two backdrops in the console are two different values today (this one and the set-editor
+      sheet's), which rule B preserves rather than silently merges. */
+  --riv-console-scrim: #061e28;
 
   /** The OUTCOME MEDALLION (#858, class F-3) — the round, centred, `aria-hidden` glyph that a
       landed booking state renders: booking-confirmation's ✓, booking-pay's ✓/⏳/✕,
