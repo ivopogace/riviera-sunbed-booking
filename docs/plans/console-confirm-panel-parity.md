@@ -190,11 +190,13 @@ N/A — no contract change. No request URL, method, body, or header changes; bot
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement (phase 3) — ready to commit, then PR + review gate`
+**Stage pointer:** `CI gate — PR #883 open (draft), awaiting CI`
 
-**Next action:** Commit Phase 3, open the PR (draft first, since CI only fires on
-`pull_request`), run the review-gate invocation ladder (`riviera-sdlc`
-`references/pr-gates.md` §1) once the phase is pushed.
+**Next action:** Once CI is green on PR #883, run the review-gate invocation ladder
+(`riviera-sdlc` `references/pr-gates.md` §1), mark the PR ready for review, and run the
+Sonar gate per §2.
+
+**PR:** #883 (draft) — https://github.com/ivopogace/riviera-sunbed-booking/pull/883
 
 | Phase | Status | Commits |
 |-------|--------|---------|
