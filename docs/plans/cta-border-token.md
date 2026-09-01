@@ -192,10 +192,19 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed; Sonar gate next`
+**Stage pointer:** `merge — all gates passed; awaiting the maintainer's merge`
 
-**Next action:** Re-check CI on the fix commit, then pull the SonarCloud issue + duplication list
-for PR #875 and clear every entry.
+**Next action:** None for the agent — merge is the maintainer's call. After the merge, run the
+`riviera-sdlc` close-out checklist (`references/pr-gates.md` §3) and close #853.
+
+**Gate record (head `ce46f7a`):** CI green on every check — Backend, Frontend, Repo hygiene, CodeQL
+(both analyses), SonarCloud. Review gate ran at ladder rung 1 (`code-review:code-review`, 5-agent
+fan-out) plus `riviera-review-overlay`; six findings, all fixed in `ce46f7a` and recorded above.
+**Sonar gate: green with the reported list actually pulled and confirmed empty** — 62 new lines,
+0 issues, 0 hotspots, 0 duplicated blocks, **100% new-code coverage**, and all six quality-gate
+conditions OK. The analysis is confirmed to exist (`new_lines` has a value) and the
+`SonarCloud Code Analysis` check-run concluded `success`, so this is not the `total: 0`
+false-clean read `references/pr-gates.md` §2 warns about.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
