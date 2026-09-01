@@ -91,9 +91,9 @@ describe('ConfirmPanel (#604)', () => {
 
   it('keeps the warning surface both consumers already ship', () => {
     // Pinned so no slice can silently restyle either caller; the RATIOS stay the contrast specs'.
-    expect(byId('panel').className).toContain('bg-riv-confirm-warn-fill');
-    expect(byId('panel').className).toContain('border-riv-confirm-warn-edge/60');
-    expect(byId('panel').querySelector('p')!.className).toContain('text-riv-confirm-warn-ink');
+    expect(byId('panel').className).toContain('bg-riv-warn-fill');
+    expect(byId('panel').className).toContain('border-riv-warn-edge/60');
+    expect(byId('panel').querySelector('p')!.className).toContain('text-riv-warn-ink');
   });
 
   it('gives both actions a 44px-tall touch target', () => {

@@ -1,37 +1,40 @@
 import { expect, test } from '@playwright/test';
 
 /**
- * The amber notice-banner skin paints from the token registry, asserted against a real render
- * (#868) — the `--riv-form-error-*` / `--riv-medallion-*` precedent applied to the
- * `--riv-notice-banner-*` pair.
+ * The merged amber WARN skin paints from the token registry, asserted against a real render
+ * (#879, absorbing #868's `--riv-notice-banner-*`) — the `--riv-form-error-*` / `--riv-medallion-*`
+ * precedent applied to `--riv-warn-{edge,fill,ink}`.
  *
- * <p>The computed style is what is checked, never the class list. A `--riv-notice-banner-*`
- * declared without its `@theme inline` row generates no utility at all: the class stays in the
- * markup, the paint silently does not change, and nothing but a resolved value separates that
- * from a working token. The first test catches that for both tokens by asking whether Tailwind
- * emitted the rule.
+ * <p>The computed style is what is checked, never the class list. A `--riv-warn-*` declared without
+ * its `@theme inline` row generates no utility at all: the class stays in the markup, the paint
+ * silently does not change, and nothing but a resolved value separates that from a working token.
+ * The first test catches that for all three tokens by asking whether Tailwind emitted the rule.
  *
- * <p>The last test is the one this slice exists for. The pair is theme-INVARIANT — the fill does
- * not theme, so a themed ink over it would resolve `#ffa9a1` at 1.63:1, light on light. The unit
- * spec (`booking/withheld-email-notice.contrast.spec.ts`) proves that by reading `tailwind.css` as
- * text, which is a regex over a stylesheet; here the cascade itself decides, under a real `dark`
- * document theme. `pages/legal/privacy` is the cheapest render of the pair — the banner needs no
- * booking state — and both legal pages plus `withheld-email-notice` wear the identical skin.
+ * <p>The dark-theme test is the one this file exists for, and #879 made it matter MORE rather than
+ * less. The family is theme-INVARIANT because its fill is fixed, so a themed ink over it would
+ * resolve `#ffa9a1` at 1.63:1, light on light. Before the merge, the console half of this family
+ * could lean on a second argument — every consumer sat under the porcelain-pinned
+ * `operator-console`, so a dark branch was unreachable. After the merge that argument is gone: the
+ * legal pages and `withheld-email-notice` are tourist surfaces that really do render under `dark`.
+ * The fixed-fill argument is the only one left, and this is where the cascade rather than a regex
+ * proves it. `pages/legal/privacy` is the cheapest render — the banner needs no booking state — and
+ * both legal pages plus `withheld-email-notice` wear the identical skin.
  */
 
-const FILL = 'rgb(252, 240, 217)';
-const INK = 'rgb(138, 84, 16)';
+const FILL = 'rgb(255, 244, 224)';
+const INK = 'rgb(122, 74, 8)';
 
-/** Every token the slice registers, with the value `tailwind.css` declares for it. */
+/** Every token the family registers, with the value `tailwind.css` declares for it. */
 const REGISTRY = {
-  '--riv-notice-banner-fill': '#fcf0d9',
-  '--riv-notice-banner-ink': '#8a5410',
+  '--riv-warn-edge': '#e0a03a',
+  '--riv-warn-fill': '#fff4e0',
+  '--riv-warn-ink': '#7a4a08',
 } as const;
 
 /** The utility each token is consumed through, which only exists if its `@theme inline` row does. */
-const UTILITIES = ['bg-riv-notice-banner-fill', 'text-riv-notice-banner-ink'];
+const UTILITIES = ['bg-riv-warn-fill', 'text-riv-warn-ink'];
 
-test.describe('the notice-banner skin paints from the token registry', () => {
+test.describe('the merged warn skin paints from the token registry', () => {
   test('every registered token is declared and generates its utility', async ({ page }) => {
     await page.goto('/');
 

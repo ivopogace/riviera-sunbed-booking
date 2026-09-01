@@ -6,8 +6,8 @@ import {
   DARK_CARD_INK,
   DARK_STOPS,
   INK_DARK,
-  NOTICE_BANNER_FILL,
-  NOTICE_BANNER_INK,
+  WARN_FILL,
+  WARN_INK,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
   RIVIERA_CARD_GLASS,
@@ -19,9 +19,10 @@ import {
  * Deterministic AA maths for the two draft legal pages' shared surface:
  * body/soft card inks on the card glass (constants from `glass-tokens.ts`, the one test-side
  * token mirror) over each theme's worst-case gradient stops, plus the solid amber draft banner —
- * the `--riv-notice-banner-*` pair (#868), whose own AA proof, themed-ink bound and declaration
- * guards live at `booking/withheld-email-notice.contrast.spec.ts` so this spec only reads the
- * mirror rather than restating the literal.
+ * the merged `--riv-warn-*` family (#879, which absorbed #868's `--riv-notice-banner-*`), whose own
+ * AA proof, themed-ink bound and declaration guards live at
+ * `shared/warn-token-skin.contrast.spec.ts`, so this spec only reads the mirror rather than
+ * restating the literal.
  */
 
 describe('Legal pages contrast (computed AA)', () => {
@@ -40,8 +41,8 @@ describe('Legal pages contrast (computed AA)', () => {
   }
 
   it('draft-banner ink meets AA on its solid amber fill', () => {
-    expect(
-      contrastRatio(rgbToHex(NOTICE_BANNER_INK), rgbToHex(NOTICE_BANNER_FILL)),
-    ).toBeGreaterThanOrEqual(AA_NORMAL);
+    expect(contrastRatio(rgbToHex(WARN_INK), rgbToHex(WARN_FILL))).toBeGreaterThanOrEqual(
+      AA_NORMAL,
+    );
   });
 });

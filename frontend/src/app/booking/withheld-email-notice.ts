@@ -26,7 +26,7 @@ import { Component } from '@angular/core';
   selector: 'app-withheld-email-notice',
   template: `
     <p
-      class="mt-[10px] rounded-[12px] bg-riv-notice-banner-fill px-[12px] py-[10px] text-left text-[12px] leading-[1.45] text-riv-notice-banner-ink"
+      class="mt-[10px] rounded-[12px] bg-riv-warn-fill px-[12px] py-[10px] text-left text-[12px] leading-[1.45] text-riv-warn-ink"
       data-testid="email-withheld"
     >
       <strong class="font-bold">We couldn’t email you.</strong> We weren’t able to send a

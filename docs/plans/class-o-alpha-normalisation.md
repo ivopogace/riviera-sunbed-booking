@@ -129,10 +129,10 @@ lineage — use `origin/main` for every diff and merge-base.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | The amber merge repaints **tourist-facing** legal pages + booking notice — surfaces #879 never scoped | high (certain) | med | Scope widening is the maintainer's explicit answer to the plan-gate question, recorded here. AA measured in the *improving* direction (5.54→6.86); e2e forces a dark document theme to prove the fixed pair still holds | maintainer | accepted at plan gate |
-| R-2 | The merged token's theme-invariance loses its justification: class O's ground ("every consumer is under the porcelain-pinned console") is **false** for legal pages | med | high | Carry #868's ground onto the merged declaration and make it primary; keep the single-declaration guard; the dark-document e2e is the proof that survives a later override | agent | open |
-| R-3 | A `toHaveCSS` elsewhere in the suite pins an outgoing literal and fails silently late (full-suite-only, the #122/#127 shape) | med | med | Grep the whole `e2e/` + `src/` tree for each outgoing value before each phase's commit; CI's mocked e2e is the backstop, checked per push | agent | open |
+| R-2 | The merged token's theme-invariance loses its justification: class O's ground ("every consumer is under the porcelain-pinned console") is **false** for legal pages | med | high | Carry #868's ground onto the merged declaration and make it primary; keep the single-declaration guard; the dark-document e2e is the proof that survives a later override | agent | **closed** — the rationale is rewritten at the declaration and in `shared/warn-token-skin.contrast.spec.ts`; `e2e/warn-token-skin.e2e.ts` proves it under a forced `dark` document theme |
+| R-3 | A `toHaveCSS` elsewhere in the suite pins an outgoing literal and fails silently late (full-suite-only, the #122/#127 shape) | med | med | Grep the whole `e2e/` + `src/` tree for each outgoing value before each phase's commit; CI's mocked e2e is the backstop, checked per push | agent | **materialised and closed in phase 0** — the full suite (not the scoped runs) caught two `OUT_OF_FAMILY` guards pinning the chip's `/28`+`/12`; both rewritten. Every phase since ran the full unit suite before commit |
 | R-4 | Retiring three token names leaves dangling prose references (`cta-border-token-skin.e2e.ts:7`, `legal-pages.contrast.spec.ts:22` name `--riv-notice-banner-*` in comments) | high | low | Both listed in File structure; `riviera-docs-freshness` at close-out is the second net | agent | open |
-| R-5 | The ladder assertion is written so it passes vacuously (the emptied-guard trap #852 already hit once) | med | high | A companion meta-test asserting the ladder matcher *rejects* an off-ladder alpha — the same pairing `class-o-tint-tokens.contrast.spec.ts` already uses for its form sweep | agent | open |
+| R-5 | The ladder assertion is written so it passes vacuously (the emptied-guard trap #852 already hit once) | med | high | A companion meta-test asserting the ladder matcher *rejects* an off-ladder alpha — the same pairing `class-o-tint-tokens.contrast.spec.ts` already uses for its form sweep | agent | **closed** — the meta-test shipped in phase 0 and grew a case in the generalization audit; `warn-token-skin.contrast.spec.ts` carries the same pairing (a positive "paints the merged family" sweep beside the negative one) |
 | R-6 | `check-plan-file-structure.mjs` fails on an unlisted path | med | low | Run `node scripts/check-plan-file-structure.mjs --diff origin/main` before every push, with this doc **staged** | agent | open |
 | R-7 | No Flyway number to claim, no backend, no money, no availability write | — | — | N/A by construction | — | closed |
 
@@ -203,17 +203,18 @@ N/A — no contract change. No endpoint, DTO or wire shape is read or altered.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Declare `--riv-warn-{edge,fill,ink}` red-first — add the merged-family declaration
-guard + the retired-token sweep, watch them fail, then repaint the six amber surfaces.
+**Next action:** Record the ladder beside rule B in the audit ledger's class-O section, add the
+close-sales trigger to `non-text-contrast.md`'s rule-2 family table, and fix the two dangling
+`--riv-notice-banner-*` prose references (R-4).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — The ladder: every class-O alpha a multiple of 5 | ✅ | `fb3ac50` |
 | 1 — One walk-in hatch (`--riv-walkin-hatch`) | ✅ | `dd0669b` |
-| 2 — One amber family (`--riv-warn-*`), three tokens retired | ⏳ | |
-| 3 — Ledger, rule-2 table, close-out | | |
+| 2 — One amber family (`--riv-warn-*`), three tokens retired | ✅ | `<phase-2>` |
+| 3 — Ledger, rule-2 table, close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -250,12 +251,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/daily-view-tab.contrast.spec.ts` — the rule-2 assertion for the trigger button (AC-7)
 - `frontend/src/app/operator/payouts-tab.html` — warn panel repaint
 - `frontend/src/app/shared/confirm-panel.ts|.spec.ts` — merged token names
-- `frontend/src/app/booking/withheld-email-notice.ts|.contrast.spec.ts` — merged token; the AA before/after assertion (AC-6)
+- `frontend/src/app/booking/withheld-email-notice.ts` — merged token
+- `frontend/src/app/booking/withheld-email-notice.contrast.spec.ts` — **deleted**; its AA, invariance and site guards move to the family's tree-wide home below
+- `frontend/src/app/shared/warn-token-skin.contrast.spec.ts` — **new**: the merged family's home guard (AA, the beats-what-it-replaced comparison, themed-ink bound, retired-name sweep, all six sites) — in `shared/` because the population is tree-wide (AC-5, AC-6)
+- `frontend/e2e/warn-token-skin.e2e.ts` — **renamed** from `notice-banner-token-skin.e2e.ts`; retargeted at the merged family, forced-dark proof kept (R-2)
 - `frontend/src/app/pages/legal/terms-of-service.html` — merged token
 - `frontend/src/app/pages/legal/privacy-policy.html` — merged token
 - `frontend/src/app/pages/legal/legal-pages.contrast.spec.ts` — retired-name prose reference (R-4)
 - `frontend/e2e/class-o-tint-tokens.e2e.ts` — registry map, the ladder + hatch paint assertions (AC-2, AC-4)
-- `frontend/e2e/notice-banner-token-skin.e2e.ts` — merged token, forced-dark proof (R-2)
+- `frontend/e2e/console-negative-ink.e2e.ts` — the reason chip tint pin moved to the ladder (phase-0 audit fallout, caught by the whole mocked e2e suite)
 - `frontend/e2e/cta-border-token-skin.e2e.ts` — retired-name prose reference (R-4)
 
 ---
@@ -345,6 +349,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-01 | phase 2 — the amber merge | **Every pair of `--riv-*` tokens within a small perceptual distance**, computed pairwise over the declared palette — not "the four ambers the issue listed". The resemblance-led population is exactly the issue's own table, which is how it missed that the amber the merge lands on has a near-twin in another family | a pairwise ΔE sweep over `^\s*(--riv-[a-z0-9-]+):\s*(#[0-9a-fA-F]{6})` in `tailwind.css` (script: scratchpad, reproduced in the PR) | **65 hex-valued tokens; ~30 identical-value pairs and ~200 within ΔE 12.** Nearly all are deliberate role separations already settled (`--riv-error-ink`/`--riv-alert-tint`/`--riv-solid-fill-danger`; `--riv-console-negative-ink`/`--riv-solid-btn-danger-ink`/`--riv-medallion-negative-ink`; `--riv-accent-strong`/`--riv-select-edge`). Two bear on this slice: `--riv-medallion-waiting-*` still holds **exactly** the retired `--riv-notice-banner-*` values `#fcf0d9`/`#8a5410`, and `--riv-warn-fill` sits ΔE 2.1 from it | **No further merges — and that is the finding, not an absence of one.** The medallion pair is #858's family, grouped by FORM: an `aria-hidden` round glyph owing no AA proof, against a rectangular block of accessible text. Merging on the value would be the exact role confusion the audit's class R exists to name. Recorded here so the next reader does not re-derive it |
 | 2026-09-01 | phase 1 — one hatch | **Every image built inline in a class expression** (`bg-[…gradient(…)]`), not "the walk-in gradients". The resemblance-led population is the three hatches the phase already knew about; the mechanism is *an image a token could own*, which is what makes a mirror stop mirroring | `for f in $(git ls-files \| sed 's\|^frontend/\|\|' \| grep -E '^src/app/.*\.(ts\|html)$' \| grep -v '\.spec\.ts$'); do grep -oE "bg-\\[[^]]*gradient\\([^]]*\\]" "$f"; done` | **8 inline gradients survive.** One pair is the same finding in another class: `app.html`'s sun `radial-gradient(circle_at_34%_30%,#ffe6a3,#f0aa2e_70%)` and `pages/home/home.html`'s `radial-gradient(circle_at_34%_30%,rgba(255,236,180,0.95),rgba(240,170,46,0.5)_72%)` — same geometry, near-identical amber, stops 70% vs 72%. Also noted: `venue/map-tile.ts` carries a *second* thing called a walk-in hatch (135deg, `--riv-tile-walkin-hatch`, tourist surface) which is genuinely NOT this one | **Recorded, not fixed.** Both are class T/S literals, which this slice's Non-goals exclude, and merging the two suns would repaint the app shell and the tourist home hero. Carried to close-out as a follow-up issue |
 | 2026-09-01 | phase 0 — the ladder | **Every `--riv-*` token painted with an `/opacity` modifier**, not "the tokens in `CLASS_O_TINTS`". The resemblance-led population would have been the nine sites the ladder sweep already named; the mechanism is the *form* (`/α` on a token), which is what class O is defined by | `for f in $(git ls-files \| grep -E '^frontend/src/app/.*\.(ts\|html)$' \| grep -v '\.spec\.ts$'); do grep -oE "(text\|bg\|border\|from\|to\|via)-(riv-[a-z-]+\|\[#[0-9a-fA-F]+\])/[0-9]+" "$f" \| while read -r m; do a=${m##*/}; [ $((a % 5)) -ne 0 ] && echo "$f: $m"; done; done` | **2 beyond the plan's nine** — `payouts-tab.html`'s reason chip at `border-riv-console-negative-ink/28` + `bg-riv-console-negative-ink/12`. Class-O positions (ledger row: "*reuses* `--riv-console-negative-ink`") whose token lives outside `CLASS_O_TINTS`, so an array-scoped sweep walked straight past them | **Fixed all.** Widened `offLadderIn` from the token array to the form `-riv-[a-z-]+/α`; moved the chip to `/30`+`/10`; updated its three proofs (`console-negative-token` CHIP_TINTS, `payouts-tab.contrast` AA at 0.10, and the two `OUT_OF_FAMILY` guards, **rewritten not deleted** per the ledger's own rule) |
 

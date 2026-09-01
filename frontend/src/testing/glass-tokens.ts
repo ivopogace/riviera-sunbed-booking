@@ -361,8 +361,9 @@ export const STEP_IDLE_INK: Rgb = WHITE;
  *  themes, so the themed `--riv-error-ink`/`--riv-danger-ink` drift — both resolve DARK_ERROR_INK
  *  (`#ffa9a1`) in the dark theme, 1.63:1 over a fill that stays `#fcf0d9`. Full reasoning sits at
  *  the declaration in `tailwind.css`. Guarded by `booking/withheld-email-notice.contrast.spec.ts`. */
-export const NOTICE_BANNER_FILL: Rgb = hexToRgb('fcf0d9');
-export const NOTICE_BANNER_INK: Rgb = hexToRgb('8a5410');
+export const WARN_EDGE: Rgb = hexToRgb('e0a03a');
+export const WARN_FILL: Rgb = hexToRgb('fff4e0');
+export const WARN_INK: Rgb = hexToRgb('7a4a08');
 
 /** `--riv-cta-border` (#853, class R): the white hairline bevel on the primary CTA button — 16
  *  positions across `auth/`, `booking/` and `shared/`, grouped by FORM: one bevel, one kind of
@@ -416,20 +417,19 @@ export const CLASS_O_TINTS: readonly { readonly token: string; readonly value: s
    *  token: `--riv-solid-fill-danger` carries this value as a SOLID fill under fixed white ink,
    *  and `--riv-error-ink` carries it as an ink that themes to `#ffa9a1`. Neither is a tint. */
   { token: '--riv-alert-tint', value: '#a3160e' },
-  /** The sales-close / weather-refund confirm panel: its edge and its fill. Two base colours for
-   *  one treatment, which rule B preserves and does not merge — see the option-C follow-up. */
-  { token: '--riv-warn-edge', value: '#d9861a' },
-  { token: '--riv-warn-tint', value: '#f0aa2e' },
+  /** The merged amber WARN family (#879): one skin for every amber advisory surface — the two
+   *  hand-rolled console confirm panels and the trigger button that opens one, `shared/confirm-panel`,
+   *  the two legal pages' draft banner and `booking/withheld-email-notice`. Absorbed the class-O
+   *  `--riv-warn-tint`/`--riv-confirm-warn-*` AND class F-4's `--riv-notice-banner-*`, so this
+   *  family spans two of the audit's classes; `--riv-premium-edge` stayed out as a tier identity,
+   *  not a warning. Its AA, invariance and retired-name proofs are
+   *  `shared/warn-token-skin.contrast.spec.ts` — this array only carries the class-O half. */
+  { token: '--riv-warn-edge', value: '#e0a03a' },
+  { token: '--riv-warn-fill', value: '#fff4e0' },
+  { token: '--riv-warn-ink', value: '#7a4a08' },
   /** The Requests tab's accepted medallion — border, fill AND ink off one base colour, taken as
    *  one expression because that is what the element is. */
   { token: '--riv-positive-tint', value: '#0e6e46' },
   /** The beach-map premium cell's boundary, over `--riv-premium-grad`. */
   { token: '--riv-premium-edge', value: '#b47814' },
-  /** `shared/confirm-panel`'s warning surface, taken whole (#858's rule): the class-O edge could
-   *  not move without its fill and ink, which are class S and would have been left as literals in
-   *  the same host string. A near-duplicate of `--riv-notice-banner-*` (`#fcf0d9`/`#8a5410`) at
-   *  both positions — recorded, not merged: merging is a visual change. */
-  { token: '--riv-confirm-warn-edge', value: '#e0a03a' },
-  { token: '--riv-confirm-warn-fill', value: '#fff4e0' },
-  { token: '--riv-confirm-warn-ink', value: '#7a4a08' },
 ];
