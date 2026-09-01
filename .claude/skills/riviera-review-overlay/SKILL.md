@@ -1,165 +1,105 @@
 ---
 name: riviera-review-overlay
-description: Project-specific review overlay for the riviera-sunbed-booking repo. Layers onto an active code review (the code-review plugin's /code-review, or another active review engine) to add the RV-BE/RV-FE/RV-CT bank items built from the CLAUDE.md invariants — availability, payments, Modulith boundaries, money/timezone, per-venue authorization. Load whenever reviewing a diff or PR in this repo; it adds bank items, it does not run a review on its own.
+description: >-
+  Riviera-specific review bank items (RV-BE/RV-FE/RV-CT/RV-STYLE/RV-PROC) layered onto an
+  active /code-review. Load whenever reviewing a diff or PR in this repo; it adds items to
+  a running review, it does not run one.
 ---
 
 # Riviera review overlay
 
-## Purpose
-
-A code review (today the `code-review` plugin's `/code-review`, or the harness's
-built-in `code-review` skill as its degraded fallback) walks its own generic
-FE/BE/contract banks. This overlay layers in the **riviera-specific** items — the
-`CLAUDE.md` invariants turned into checkable review gates (cited, never restated). It
-is **content**, not a workflow: bank items, severity hints, and verification commands
-contributed to an active review.
-
-## Activation
-
-Load when **both** hold: a review is **active** (`/code-review`, or whatever
-review engine is running), **and** the work is in the
-riviera-sunbed-booking repo (a `CLAUDE.md` with the riviera invariants /
-`.claude/skills/riviera-*`, or an `AGENTS.md`/`CLAUDE.md` referencing
-`ai.riviera.platform.*` modules). This overlay **never runs alone** — it layers
-onto an active review; honor an explicit user invoke by starting the review first.
-In the `riviera-sdlc` flow, starting the review is your duty — via the invocation
-ladder in riviera-sdlc's `references/pr-gates.md` §1.
+Bank items, severity hints, and verification commands contributed to an active review. It
+is content, not a workflow: it never runs alone. Load when a review is active (`/code-review`
+or another engine) and the work is in this repo; on an explicit user invoke, start the
+review first (the invocation ladder in `riviera-sdlc` `references/pr-gates.md` §1).
 `/security-review` doesn't auto-load this overlay; consult the reference files directly.
 
 When loaded, announce: *"riviera-review-overlay loaded. Adding project-specific bank items."*
 
-## What the overlay adds — reference files loaded by scope
+## Reference files, loaded by the diff's scope
 
-Three reference files hold the bank items, loaded **by the diff's scope** so a
-frontend-only review never pays for the backend bank:
-
-- **Backend diff** → `references/backend-conventions.md` — the full backend bank
-  (RV-BE-1..18: JDBC-only, Modulith boundaries, availability/concurrency,
-  money/timezone, auth, error contract, responsibility placement, package shape,
-  Flyway, session lifecycle).
-  If the diff changes any **wire shape** (an endpoint, a request/response DTO, an
-  error body) — even with no frontend file touched — also load `references/fe-be-contract.md`.
-- **Frontend diff** → `references/frontend-conventions.md` — Angular standards,
-  beach-map stale-availability handling, money/date rendering, no client secrets,
-  **RV-FE-8** (no *new* cross-feature folder import — the FE mirror of RV-BE-3),
-  **RV-FE-9** (a transition that destroys the focused element moves focus — the
-  repo's most-repeated bug class, and the guard's blind spots are exactly what the
-  item covers), **RV-FE-10** (a live region must outlive the content it announces),
-  and **RV-FE-11** (an inline field error names its control, and `aria-invalid`
-  claims the *entered value* is wrong — never merely that a write was refused).
-  Each item's full mechanics, guard postures, and case history live in the file.
-- **Fullstack diff** → both of the above, plus `references/fe-be-contract.md` —
-  API typing, money/date on the wire, webhook-vs-redirect, idempotency.
+- **Backend diff** → `references/backend-conventions.md` (RV-BE-1..18: JDBC-only, Modulith
+  boundaries, availability/concurrency, money/timezone, auth, error contract, responsibility
+  placement, package shape, Flyway, session lifecycle). If the diff changes any wire shape
+  (an endpoint, a DTO, an error body) — even with no frontend file touched — also load
+  `references/fe-be-contract.md`.
+- **Frontend diff** → `references/frontend-conventions.md` (Angular standards, Tailwind,
+  forms, beach-map stale-availability handling, money/date rendering, no client secrets,
+  e2e suite placement, RV-FE-8 no new cross-feature import, RV-FE-9 focus moves on
+  destroy, RV-FE-10 live regions outlive their content, RV-FE-11 field errors name their
+  control).
+- **Fullstack diff** → both, plus `references/fe-be-contract.md`.
 
 ## Highest-stakes items (call them out every time)
 
-- **RV-BE-1 Availability single-source-of-truth (invariant #2).** Checked first on
-  any diff touching `booking`/`availability`/the beach map — a miss is the
-  double-booking bug. Default **Blocker**. Full item: `references/backend-conventions.md`.
-- **RV-CT-3 / RV-BE-7 Payment confirmation source (invariant #8).** A booking is
-  confirmed only on a signature-verified webhook, never the client redirect. Default
-  **Blocker**. Full items: `references/fe-be-contract.md` / `references/backend-conventions.md`.
+- **RV-BE-1 Availability single-source-of-truth (invariant #2).** Checked first on any
+  diff touching `booking`/`availability`/the beach map. Default **Blocker**.
+- **RV-CT-3 / RV-BE-7 Payment confirmation source (invariant #8).** A booking is confirmed
+  only on a signature-verified webhook, never the client redirect. Default **Blocker**.
 - **RV-BE-9 Per-venue authorization / BOLA (invariant #13).** A touched venue-scoped
-  surface must verify the operator owns the path `venueId` in the **application service**
-  (`assertOwns`, pinned by `CrossVenueDenialIT`). Default **Blocker**. Full item: `references/backend-conventions.md`.
+  surface verifies the operator owns the path `venueId` in the application service
+  (`assertOwns`, pinned by `CrossVenueDenialIT`). Default **Blocker**.
 
 ## RV-STYLE-1 — inline comments are one-liners, or they are not written
 
-An inline code comment must fit on **one line**. If it doesn't fit, don't write it — cut it, or make
-the code say it instead (a named constant, an extracted function, a clearer signature). A multi-line
-inline comment in the diff is a **Minor** finding; the fix is to shorten it to one line or delete it.
+An inline comment (`//`, `#`, `/* … */`, `<!-- … -->` inside a body, template, or between
+statements) must fit on one line; otherwise cut it or make the code say it. A multi-line
+inline comment the diff wrote is a **Minor** finding. Doc comments (Javadoc/TSDoc on a type,
+port, method, or field) are exempt. Don't reflow untouched comments.
 
-Scope: **inline comments** — `//` / `#` / `/* … */` / `<!-- … -->` sitting inside a body, a template,
-or between statements. **Doc comments are exempt**: Javadoc/TSDoc (`/** … */`) on a type, port,
-method, or field is the repo's documented convention (`riviera-java-conventions`, and every module's
-`api/` surface depends on it) and stays as long as it earns its length. Applies to what the diff
-writes; don't reflow untouched comments to satisfy it.
-
-**Don't walk this by hand — run the guard:**
-`node scripts/check-inline-comments.mjs --diff origin/main` lists every multi-line inline
-comment the diff wrote, and the same check runs from a `PostToolUse` hook while the author edits
-and as a CI job on the PR. A clean run discharges the mechanical half of this item.
-
-What it does **not** cover, which is what this item is still for:
-
-- **`#` files** (shell, YAML, `.properties`) and **SQL `--`** are outside the tool's four languages
-  — `#` because every such file here carries multi-line header prose as its convention, SQL because
-  a review finding declined exactly that (PR #522, `V9__payout_ledger.sql`). Judge these by eye,
-  and lean toward leaving them alone.
-- **A one-line comment that shouldn't exist at all.** The rule's other half is "default to zero
-  inline comments in a method"; the guard counts lines, it cannot weigh whether the *why* was
-  already available from the code.
-
-The guard is diff-scoped by construction — pre-existing multi-line blocks are not findings.
+Run the guard rather than walking it by hand: `node scripts/check-inline-comments.mjs
+--diff origin/main` (also a `PostToolUse` hook and a CI job). It is diff-scoped; a clean run
+discharges the mechanical half. What it does not cover: `#` files (shell, YAML,
+`.properties`) and SQL `--` — judge by eye and lean toward leaving them alone — and a
+one-line comment that shouldn't exist at all (the rule's other half is "default to zero
+inline comments in a method").
 
 ## RV-STYLE-2 — formatting is `prettier --check`'s job, not the reviewer's
 
-`frontend/.prettierrc` is enforced whole-scope: the frontend job's Format step runs bare
-`prettier --check src e2e` over a clean tree (the one-time reformat is recorded in
-`.git-blame-ignore-revs`). So a formatting comment on a frontend diff is either
-redundant with a gate that already ran or wrong:
-
-- **Don't hand-flag `printWidth`, quote style, or wrapping** in `frontend/src` or `frontend/e2e`.
-  If a line were really misformatted, the Format step would have failed the PR and named the
-  file. A dirty file is fixed
-  with `npm run format` (or a scoped `npx prettier --write <file>`), never by a review comment.
-
-Outside that scope, hands off for two different reasons: `scripts/`, `docs/`, and `platform/`
-have no Prettier config at all (`resolveConfig` returns null there), while `frontend/`'s own
-root files (`angular.json`, `README.md`, the Playwright configs) *do* resolve the config but
-are tool- or prose-owned and deliberately excluded from the checked scope — and listed in
-`.prettierignore` so an ad-hoc `prettier --write .` cannot rewrite them. Either way, formatting
-there is a matter of matching the surrounding file — judge it by eye, and lean toward leaving
-it alone.
+The frontend job's Format step runs `prettier --check src e2e` whole-scope, so don't
+hand-flag `printWidth`, quote style, or wrapping in `frontend/src` or `frontend/e2e` — a
+misformatted line would have failed the PR. A dirty file is fixed with `npm run format`,
+never by a review comment. Outside that scope (`scripts/`, `docs/`, `platform/`, and
+`frontend/`'s root files — tool- or prose-owned, listed in `.prettierignore`), formatting
+is a matter of matching the surrounding file; judge by eye, lean toward leaving it alone.
 
 ## RV-PROC-1 — skill-routing gate honored (when a plan doc is in scope)
 
-Cross-check the plan doc's **Skills consulted** line against what the diff actually
-touches, per the `riviera-sdlc` **Skill-routing table** — that table is the
-authority; do not re-list it here. A touched area with no matching skill listed (or
-no such line at all) is a **Major** finding — the design was likely anchored from
-first principles; load the missing skill, re-vet that section, update the line.
-Re-walk on **every re-review, including review-fix commits** — fixes change the diff.
+Cross-check the plan doc's **Skills consulted** line against what the diff touches, per
+the `riviera-sdlc` Skill-routing table. A touched area with no matching skill listed (or no
+such line) is a **Major** finding — load the missing skill, re-vet that section, update the
+line. Re-walk on every re-review, including review-fix commits.
 
-## Verification commands surfaced
+## Verification commands
 
-The command set is CLAUDE.md §Commands. Two review-specific notes: Modulith verification is
-a **test**, not a Gradle task (`./gradlew test --tests "*ModularityTests*"` when structure
-changed), and `npm test` is Vitest-in-jsdom — there is no `--browsers=ChromeHeadless` flag.
+The command set is CLAUDE.md §Commands. Modulith verification is a test, not a Gradle task
+(`./gradlew test --tests "*ModularityTests*"` when structure changed); `npm test` is
+Vitest-in-jsdom — there is no `--browsers=ChromeHeadless` flag.
 
 ## Red flags specific to this repo
 
 | Thought | Reality |
 |---|---|
-| "`gradlew.bat` flipped CRLF→LF — that's corruption, revert it." | Check `.gitattributes` at every level (incl. `platform/.gitattributes`) first: `*.bat text eol=crlf` stores the blob **LF** and checks out CRLF, so an LF blob is the **correct** normalized form — don't "revert" it (git re-normalizes on `add`). Only a wrong **working-tree** EOL is a real finding. |
+| "`gradlew.bat` flipped CRLF→LF — that's corruption, revert it." | Check `.gitattributes` at every level (incl. `platform/.gitattributes`) first: `*.bat text eol=crlf` stores the blob LF and checks out CRLF, so an LF blob is the correct normalized form. Only a wrong working-tree EOL is a finding. |
 
 The authoring-idiom red flags (JPA/Lombok, float money, JVM-default-zone time,
-cross-module service calls, multi-line comments, …) live in the full table in
-`riviera-java-conventions` — stated once there, checked here via the bank items.
+cross-module service calls, multi-line comments) live in `riviera-java-conventions`.
 
 ## Output integration & done criteria
 
-- Pre-impl checklist: fill the single top-level `### Riviera overlay (if loaded)`
-  section (after the FE↔BE contract section), one bullet per item, ✅/❓/⛔. Peer-review
-  notes: fill the `### Riviera overlay` subsection under `## Convention checks`; append `### Recommended riviera skills` on any hand-off.
-- Done when every item in the scope-loaded reference files is checked (✅/❓/⛔
-  pre-impl, ✅/❌/➖ peer-review) and the three highest-stakes items are addressed
-  whenever their domain is touched.
-- RV-BE-11 checked whenever the diff adds or moves behavior (plan's Module-ownership
-  table reconciled against where the code landed); RV-BE-12 whenever it adds or
-  moves packages (ADR-0007 two-template layout).
-- Hand-offs listed if they apply; verification commands included when relevant.
+- Pre-impl checklist: fill the single top-level `### Riviera overlay (if loaded)` section
+  (after the FE↔BE contract section), one bullet per item, ✅/❓/⛔. Peer-review notes: fill
+  the `### Riviera overlay` subsection under `## Convention checks`; append
+  `### Recommended riviera skills` on any hand-off.
+- Done when every item in the scope-loaded reference files is checked and the three
+  highest-stakes items are addressed whenever their domain is touched.
+- RV-BE-11 checked whenever the diff adds or moves behavior (plan's Module-ownership table
+  reconciled against where the code landed); RV-BE-12 whenever it adds or moves packages.
 
-## Hand-offs & integration
+## Hand-offs
 
-Surface these in the output — the overlay recommends, it does not execute:
-
-- Payment/payout details → `riviera-stripe-payments` (holds the rationale).
-- Plan-doc discipline gaps (missing AC, stale execution status) → `riviera-plan-doc`.
-- Module-boundary questions → `codebase-design`; the invariant #11 gate here is the check.
-- Java idiom violations (JPA, Lombok, field injection, `null` from a port, a public
-  JDBC adapter) → `riviera-java-conventions`; the overlay flags the breach.
-
-Not for use outside the riviera-sunbed-booking repo — the items assume its invariants.
-`riviera-sdlc` loads this overlay at its Review gate; `triage` manages the **issue**
-lifecycle around the review (PRs are not a triage surface here — `docs/agents/issue-tracker.md`).
+The overlay recommends, it does not execute: payment/payout details →
+`riviera-stripe-payments`; plan-doc gaps (missing AC, stale execution status) →
+`riviera-plan-doc`; module-boundary questions → `codebase-design`; Java idiom violations →
+`riviera-java-conventions`. `triage` manages the issue lifecycle around the review (PRs
+are not a triage surface — `docs/agents/issue-tracker.md`).

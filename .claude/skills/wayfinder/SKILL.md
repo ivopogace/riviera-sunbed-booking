@@ -7,7 +7,7 @@ description: Plan a huge chunk of work (more than one agent session can hold) as
 > - **Use it only for a genuinely foggy epic** — destination clear, route not; when
 >   `to-issues` can already cut clean vertical slices (the common case here), skip
 >   straight to `to-spec` / `to-issues`. The trigger, the handoff chain, and the
->   altitude + state-store boundaries: `riviera-sdlc` `references/epic-front-end.md`.
+>   altitude + state-store boundaries: `riviera-sdlc` SKILL.md § *Epic front-end*.
 > - **Tracker ops** (map issue, sub-issue tickets, native blocking, frontier query) =
 >   GitHub. The **"Wayfinding operations" section the body below asks for** is
 >   `docs/agents/issue-tracker.md` § *Wayfinding operations* (including the `gh api`

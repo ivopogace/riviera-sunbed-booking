@@ -1,14 +1,9 @@
 ---
 name: riviera-docs-freshness
-description: >
-  Substrate-doc staleness audit for riviera-sunbed-booking — given a git range (a merged
-  slice, an epic's merge span, or main since the last audit), walk the substrate-doc map
-  (CLAUDE.md, CONTEXT.md, RESPONSIBILITIES.md, docs/adr/, plan-doc final states,
-  docs/design/, the .claude/skills/riviera-* skills) and flag or patch any stated fact the
-  diff contradicts — including, via the counting sweep, the facts outside the diff that go
-  stale when the slice makes the Nth instance of something (a listener, counter, event,
-  module, profile, transport, sweep) and every doc saying "the two X" is now wrong.
-  Load it at merge close-out step 5 (riviera-sdlc), at every epic close-out, or whenever a
+description: >-
+  Staleness audit of the substrate docs (CLAUDE.md, CONTEXT.md, RESPONSIBILITIES.md, ADRs,
+  riviera-* skills, source Javadoc) over a git range, including the counting sweep for
+  "the two X" facts. Load at merge close-out step 5, at epic close-out, or whenever a
   change might invalidate something a substrate doc states.
 ---
 
@@ -16,16 +11,14 @@ description: >
 
 **Announce at start:** "Running riviera-docs-freshness over `<range>`."
 
-The systematic backstop behind `riviera-sdlc`'s merge close-out step 5 (cautionary tale:
-epic #72 shipped ten slices while three substrate docs kept describing the pre-epic world —
-`riviera-sdlc` `references/case-history.md`). Docs the agents load every session are
-**load-bearing** — a stale fact there propagates into every future plan and review.
+Docs the agents load every session are load-bearing — a stale fact there propagates into
+every future plan and review.
 
 ## Inputs
 
-- **A git range** — e.g. `origin/main...HEAD` (a slice's own diff, pre-merge),
-  `<last-audit-sha>..main`, or an epic's merge span. When unspecified, default to
-  `origin/main...HEAD` if on a branch, else ask for the range.
+A git range — `origin/main...HEAD` (a slice's own diff, pre-merge), `<last-audit-sha>..main`,
+or an epic's merge span. When unspecified, default to `origin/main...HEAD` if on a branch,
+else ask for the range.
 
 ## The substrate-doc map (what can go stale)
 
@@ -36,39 +29,33 @@ epic #72 shipped ten slices while three substrate docs kept describing the pre-e
 | `RESPONSIBILITIES.md` | each module's Job / Not-My-Job lists, shipped-state notes | behavior moves between modules, an edge concern changes shape |
 | `docs/adr/*` | decision + consequences paragraphs | a decision gets re-decided (needs an amendment note, never silent contradiction) |
 | `docs/plans/*` (final states) | execution-status tables, "Resolved" sections | only the CURRENT slice's plan — historical plans are records, not living docs |
-| `docs/design/*.dc.html` | copy/behavior a design record depicts that shipped code has since changed (cutoff wording, retired icons, superseded flows) | a slice ships copy/behavior that diverges from what an artboard shows — per `docs/design/README.md`, add a one-line `<!-- as-built diverges — see #NNN -->` pointer next to the diverged line; never rewrite the artboard's copy in place |
-| `docs/design/*.md` — the **maintained** files, today `colour-literal-token-audit.md` and `non-text-contrast.md` (#876) | ledger rows still marked open for a family that shipped; a rule's family table citing a spec that does not measure what it claims | opposite treatment to the artboards above: these ARE rewritten to track the app, so correct them in place — `docs/design/README.md` states which files are which |
-| `.claude/skills/riviera-*/SKILL.md` | **concrete file names, class names, endpoints, and example tables** inside skills | a rename/removal of anything a skill cites as an example |
+| `docs/design/*.dc.html` | copy/behavior a design record depicts that shipped code has since changed | a slice ships copy/behavior that diverges from an artboard — per `docs/design/README.md`, add a one-line `<!-- as-built diverges — see #NNN -->` pointer next to the diverged line; never rewrite the artboard's copy in place |
+| `docs/design/*.md` — the maintained files (`colour-literal-token-audit.md`, `non-text-contrast.md`) | ledger rows still marked open for a family that shipped; a rule's family table citing a spec that does not measure what it claims | these ARE rewritten to track the app — correct them in place; `docs/design/README.md` states which files are which |
+| `.claude/skills/riviera-*/SKILL.md` | concrete file names, class names, endpoints, and example tables inside skills | a rename/removal of anything a skill cites as an example |
 | `docs/agents/*`, `README.md`, `CONTRIBUTING.md` | run recipes, label sets, env vars | build/tooling changes |
 | `docs/deploy/*`, `docs/runbooks/*` | deploy-pipeline shape, hosting/service names, env vars, ops procedures | a CD/hosting change, a rotated secret's name, a new or changed operational mechanism |
-| `platform/src/**` — **Javadoc, `package-info.java`, and test-assertion descriptions** | counts and enumerations of things the code owns ("the two booking kinds", "the first of the two counters", "not just the two that exist today") | the **counting sweep**'s territory (step 2b): a slice that adds the Nth of something. Source prose is in the map for this reason alone — it is what the next reader believes; the rest of the code is the reviewer's job, not this skill's |
+| `platform/src/**` — Javadoc, `package-info.java`, and test-assertion descriptions | counts and enumerations of things the code owns ("the two booking kinds", "not just the two that exist today") | the counting sweep's territory (step 2b). Source prose is in the map because it is what the next reader believes; the rest of the code is the reviewer's job |
 
 ## Procedure
 
 1. **Summarize the diff's fact-changes.** `git diff --stat <range>` for shape, then read
-   the diff for *renames, removals, mechanism swaps, new modules/endpoints/skills, changed
-   value sets*. Each is a candidate invalidator; note it as "fact F changed: old → new."
+   the diff for renames, removals, mechanism swaps, new modules/endpoints/skills, changed
+   value sets. Note each as "fact F changed: old → new."
 2. **Grep the substrate — twice: once for what got renamed, once for what got counted.**
 
-   **2a — the rename/removal grep.** For every renamed/removed identifier or
-   superseded mechanism, grep the substrate-doc set for the OLD name/wording (e.g.
-   `grep -rn "<old>" CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents docs/design .claude/skills`).
-   A hit in a historical record (an old plan doc, a PR body, an ADR's *history* section) is
-   fine; a hit in a **stated present-tense fact** is a finding.
+   **2a — the rename/removal grep.** For every renamed/removed identifier or superseded
+   mechanism, grep the substrate-doc set for the OLD name/wording
+   (`grep -rn "<old>" CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents docs/design .claude/skills`).
+   A hit in a historical record (an old plan doc, a PR body, an ADR's history section) is
+   fine; a hit in a stated present-tense fact is a finding.
 
-   **2b — the counting sweep.** Trigger: *this slice made the **Nth** instance of something
-   that previously had **N−1*** — a listener, a metric/counter, an event, a module, a
-   profile, a transport, a scheduled sweep, an endpoint in a named set. Every sentence that
-   said "the two X", "both X", "the first of the two", "five mail counters" is now false.
-
-   **Why it needs its own step: the diff cannot reveal these.** By definition the stale
-   statement lives in a file the slice never touched, so reviewing the changed files —
-   however carefully, however structurally — *cannot* find one. Only a repo-wide grep for
-   the **count** can, and it is seconds against a class of error that otherwise ships.
-
-   Grep the **words**, not the new identifier — in two steps, because the phrasings alone
-   are far too broad repo-wide and collapse to a readable list only once filtered by the
-   vocabulary of the thing that grew.
+   **2b — the counting sweep.** Trigger: this slice made the **Nth** instance of something
+   that previously had N−1 — a listener, a metric/counter, an event, a module, a profile, a
+   transport, a scheduled sweep, an endpoint in a named set. Every sentence that said "the
+   two X", "both X", "the first of the two", "five mail counters" is now false, and by
+   definition it lives in a file the slice never touched — reviewing the changed files
+   cannot find it. Grep the words, not the new identifier, in two steps (the phrasings alone
+   are too broad repo-wide):
 
    ```bash
    # 1. phrasings of N−1 — ordinal and cardinal, spelled-out and digit
@@ -79,48 +66,36 @@ epic #72 shipped ten slices while three substrate docs kept describing the pre-e
      | grep -iE 'mail|listener|counter'
    ```
 
-   Then **read every hit** — this is judgement, not a lint (which is why #447 ruled out
-   automating it): most hits are "two" of some *other* subject and stay true, and
-   historical narrative legitimately keeps saying "two" (Scope discipline, below).
-   **Javadoc and test-assertion descriptions count as stated facts** — they are what the
-   next reader believes.
-
-   Case history: **#373** falsified **sixteen** statements — diff review surfaced six, the
-   other **ten** only via this substrate grep, in a second round. **Re-run the sweep after
-   the fix round** — #373's own fix made a test's Javadoc stale within the hour. The
-   itemized sixteen: `riviera-sdlc` `references/case-history.md` (#447).
+   Read every hit — this is judgement, not a lint: most hits are "two" of some other
+   subject and stay true, and historical narrative legitimately keeps saying "two". Javadoc
+   and test-assertion descriptions count as stated facts. **Re-run the sweep after the fix
+   round** — a fix round routinely makes a test's Javadoc stale.
 3. **Walk the map top-down for the reverse direction.** Skim each substrate doc's claims
-   that TOUCH the diff's area (the module table row, the skill's example table, the
+   that touch the diff's area (the module table row, the skill's example table, the
    glossary entries) and ask: does the diff make any stated sentence false, even where no
    identifier matches (e.g. "operators authenticate per request" after a session switch)?
 4. **Patch or flag.** Small factual fixes (a filename in a skill's example table, a
    shipped-note, a mechanism phrase) → patch in place, same commit window. Anything that
    changes a decision's substance (an ADR consequence, an invariant's wording) → flag to
-   the human with the exact sentence and the contradiction; never silently rewrite
-   decisions.
+   the human with the exact sentence and the contradiction; never silently rewrite decisions.
 5. **Report.** One line per finding: `doc:line — stated fact — contradicted by — action
-   (patched/flagged)`. Zero findings is a valid result — say so explicitly. Record the
-   run (range + findings) in the slice's plan doc or the epic close-out comment.
+   (patched/flagged)`. Zero findings is a valid result — say so explicitly. Record the run
+   (range + findings) in the slice's plan doc or the epic close-out comment.
 
 ## Scope discipline
 
-- **Present-tense facts only.** Historical narrative ("#74 shipped per-operator
-  credentials") stays true forever; don't churn it.
-- **In-repo docs only.** GitHub issue bodies are records of intent at creation time —
-  the Issue-intake grill gate owns those, not this skill.
+- **Present-tense facts only.** Historical narrative stays true forever; don't churn it.
+- **In-repo docs only.** GitHub issue bodies are records of intent at creation time — the
+  issue-intake grill gate owns those.
 - **Don't restate, verify.** This skill never adds new documentation; it only reconciles
-  existing statements with reality. New docs are the slice's job.
+  existing statements with reality.
 
 ## When to run
 
 - **Merge close-out step 5** (`riviera-sdlc`) — over the merged PR's range, when the slice
   changed something a substrate doc states.
-- **Epic close-out** — over the epic's full merge span (the systematic sweep).
+- **Epic close-out** — over the epic's full merge span.
 - **Pre-merge smoke** — over `origin/main...HEAD` when a slice knowingly renames/moves
-  things (cheapest moment to catch the skill/table references).
+  things (the cheapest moment to catch the skill/table references).
 
-## Integration
-
-- **`riviera-sdlc`** — merge close-out step 5 delegates the mechanical sweep here.
-- **`riviera-plan-doc`** — the run's findings land in the plan's review note.
-- **`domain-modeling`** — owns *changing* `CONTEXT.md`/ADRs; this skill only detects the drift.
+`domain-modeling` owns changing `CONTEXT.md`/ADRs; this skill only detects the drift.

@@ -40,7 +40,7 @@ actually touches, not the label.
 ## Wayfinding (planning — the `wayfinder` skill)
 
 Used only when charting a **foggy epic** with `wayfinder` (trigger + chain:
-`riviera-sdlc` `references/epic-front-end.md`). These label the map issue and its
+`riviera-sdlc` SKILL.md § *Epic front-end*). These label the map issue and its
 **decision** tickets — questions whose resolution is a decision, not build slices. They
 live only for the charting phase; execution tickets use the state/category/area labels
 above.

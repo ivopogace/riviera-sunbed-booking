@@ -1,19 +1,16 @@
 # Testing & documentation (Modulith)
 
 Spring Modulith adds three things over plain Spring Boot tests: the structural contract,
-module-scoped bootstrap, and an async-event DSL. Our DB-touching tests run on **Testcontainers
-Postgres** (`@SpringBootTest` + `@Import(TestcontainersConfiguration.class)` +
+module-scoped bootstrap, and an async-event DSL. DB-touching tests run on Testcontainers
+Postgres (`@SpringBootTest` + `@Import(TestcontainersConfiguration.class)` +
 `@EnabledIfDockerAvailable`); the structural test needs neither Spring nor Docker.
+Dependency (present): `testImplementation "org.springframework.modulith:spring-modulith-starter-test"`.
 
-Dependency (already present): `testImplementation "org.springframework.modulith:spring-modulith-starter-test"`,
-versions via the `spring-modulith-bom`.
+## The structural test (the contract)
 
-## The structural test (the contract — already exists)
-
-`ai.riviera.platform.ModularityTests` is the one test that defines "correct structure." Keep it
-green; never weaken it to make a change pass. It is pure structural analysis — no Spring context,
-no DB, so it runs without Docker. When it fails, read the message literally — it names the
-offending class and the broken rule — and fix the **structure**, not the test.
+`ai.riviera.platform.ModularityTests` defines "correct structure." Keep it green; never
+weaken it to make a change pass. Pure structural analysis — no Spring context, no DB. When
+it fails, read the message literally and fix the structure, not the test.
 
 ```java
 class ModularityTests {
@@ -31,10 +28,10 @@ Debug the detected arrangement with `modules.forEach(System.out::println)`. Run 
 
 ## Module-scoped integration tests (`@ApplicationModuleTest`)
 
-`@ApplicationModuleTest` bootstraps only the module the test sits in (place the class in the module
-package), so a failure points at one module instead of the whole app. Use it for module-internal
-wiring; for the highest-stakes DB invariants we still use full `@SpringBootTest` Testcontainers ITs
-(e.g. `ConcurrentReservationIT` proving invariant #2 against real Postgres).
+`@ApplicationModuleTest` bootstraps only the module the test sits in (place the class in
+the module package). Use it for module-internal wiring; for the highest-stakes DB
+invariants use full `@SpringBootTest` Testcontainers ITs (`ConcurrentReservationIT` proving
+invariant #2 against real Postgres).
 
 ```java
 package ai.riviera.platform.booking;   // test sits in the module package
@@ -42,19 +39,17 @@ package ai.riviera.platform.booking;   // test sits in the module package
 @ApplicationModuleTest                  // add @Import(TestcontainersConfiguration.class) + @EnabledIfDockerAvailable if it needs the DB
 class BookingModuleTests {
     @Autowired CreateBooking createBooking;        // an inbound port of this module
-    @MockitoBean CheckoutPort checkout;            // stub an api/ collaborator — note @MockitoBean, NOT @MockBean
+    @MockitoBean CheckoutPort checkout;            // stub an api/ collaborator — @MockitoBean, NOT @MockBean
 }
 ```
 
-Bootstrap modes: `@ApplicationModuleTest(mode = STANDALONE | DIRECT_DEPENDENCIES | ALL_DEPENDENCIES)`.
-Prefer the narrowest that works — needing `ALL_DEPENDENCIES` signals excess coupling (prefer events).
-Per project convention (`riviera-java-conventions` §9) don't mock what you can test for real cheaply;
-reserve doubles for true seams.
+Bootstrap modes: `@ApplicationModuleTest(mode = STANDALONE | DIRECT_DEPENDENCIES |
+ALL_DEPENDENCIES)`. Prefer the narrowest that works — needing `ALL_DEPENDENCIES` signals
+excess coupling. Don't mock what you can test for real cheaply (`riviera-java-conventions` §9).
 
-## Verifying published events (U5+)
+## Verifying published events
 
-Inject `PublishedEvents` / `AssertablePublishedEvents` and match on the **typed id** the payload
-carries (which is all it should carry):
+Inject `PublishedEvents` / `AssertablePublishedEvents` and match on the typed id:
 
 ```java
 @Test
@@ -66,12 +61,12 @@ void publishesBookingConfirmed(AssertablePublishedEvents events) {
 }
 ```
 
-### Synchronous events — plain Spring `@RecordApplicationEvents` (the U4 variant)
+### Synchronous events — plain Spring `@RecordApplicationEvents`
 
-`PublishedEvents`/`Scenario` are Spring Modulith helpers oriented at the **async** registry path. For
-a **synchronous `@EventListener`** seam (U4's `payment` → `booking`), the event is published on the
-test thread inside the request, so plain-Spring `@RecordApplicationEvents` + `ApplicationEvents` is the
-simplest assertion — no Modulith wiring needed. This is what `StripeWebhookIT` does:
+`PublishedEvents`/`Scenario` target the async registry path. For a synchronous
+`@EventListener` seam (`payment` → `booking`), the event is published on the test thread
+inside the request, so plain-Spring `@RecordApplicationEvents` + `ApplicationEvents` is the
+simplest assertion (`StripeWebhookIT`):
 
 ```java
 @SpringBootTest
@@ -89,14 +84,13 @@ class StripeWebhookIT {
 }
 ```
 
-To prove the listener's **effect** end-to-end (not just that the event fired), publish the event
-directly and assert the DB transition — see `PaymentEventListenerIT` (`publisher.publishEvent(new
-PaymentConfirmed(...))` → booking row `CONFIRMED`; `PaymentCanceled` → `CANCELLED` + claim released).
+To prove the listener's effect end-to-end, publish the event directly and assert the DB
+transition — `PaymentEventListenerIT` (`publisher.publishEvent(new PaymentConfirmed(...))`
+→ booking row `CONFIRMED`; `PaymentCanceled` → `CANCELLED` + claim released).
 
 ## Scenario DSL (async flows — the event spine)
 
-`Scenario` is a fluent stimulus → async-outcome DSL; inject it as a test-method parameter. Ideal for
-asserting the U5 spine (confirm → payout accrued; cancel → ledger reversed + refund kicked off).
+`Scenario` is a fluent stimulus → async-outcome DSL; inject it as a test-method parameter.
 
 ```java
 @Test
@@ -108,14 +102,14 @@ void confirmingBookingAccruesPayout(Scenario scenario) {
 }
 ```
 
-**Known footgun:** the `andWaitForEventOfType(...)` form may need the class to carry `@SpringBootTest`
-**and** `@EnableScenarios` for event-completion wiring (`@EnableScenarios` is easy to miss). If a wait
-hangs, add it; bound waits with `andWaitAtMost(Duration)`.
+Footgun: `andWaitForEventOfType(...)` may need the class to carry `@SpringBootTest` and
+`@EnableScenarios` for event-completion wiring. If a wait hangs, add it; bound waits with
+`andWaitAtMost(Duration)`.
 
 ## Documentation generation (optional, useful at review)
 
-`Documenter` renders the module arrangement (PlantUML, the per-module canvas, the event catalog) to
-`build/`. Run from a test to make boundary drift visible in review:
+`Documenter` renders the module arrangement (PlantUML, the per-module canvas, the event
+catalog) to `build/`:
 
 ```java
 @Test
@@ -128,6 +122,5 @@ void writeDocumentation() {
 
 ## Hexagonal layering is already enforced
 
-No jMolecules adoption needed: `PackageShapeArchitectureTests` (Assertion 4) already enforces the
-hexagon's dependency direction on top of `ModularityTests`' module boundaries — the layering is
-machine-locked today, not a future tightening.
+`PackageShapeArchitectureTests` (Assertion 4) enforces the hexagon's dependency direction
+on top of `ModularityTests`' module boundaries; no jMolecules adoption needed.
