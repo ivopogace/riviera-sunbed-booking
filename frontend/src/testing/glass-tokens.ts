@@ -248,10 +248,10 @@ export function expectAaOverStops(
 
 /** The `--riv-medallion-*` family (#858, class F-3): the round, centred, `aria-hidden` outcome
  *  glyph in its three states — `booking-confirmation`'s ✓, `booking-pay`'s ✓/⏳/✕,
- *  `request-confirmation`'s ✉ and `appFailureIcon`'s ⚠ or 🏖 (the glyph is per site and carries no
- *  meaning; every one is `aria-hidden`).
+ *  `request-confirmation`'s ✉, `appFailureIcon`'s ⚠ or 🏖, and since #869 `outcome-card`'s ✓/⏳
+ *  (the glyph is per site and carries no meaning; every one is `aria-hidden`).
  *
- *  Grouped by FORM rather than value, the `--riv-solid-fill-*` precedent: the same five sites carry
+ *  Grouped by FORM rather than value, the `--riv-solid-fill-*` precedent: these sites carry
  *  three different pairs, and two of the three values coincide with families that are NOT this one
  *  — `#0a5f74` also paints three `bg-` fills (#854/#861) and a `--riv-cta-grad` stop, `#a3372a` is
  *  also `SOLID_BTN_DANGER_INK` and `CONSOLE_NEGATIVE_INK`, and `#fcf0d9`/`#8a5410` is also the
@@ -278,7 +278,7 @@ export const MEDALLION_NEGATIVE_BORDER: Rgb = hexToRgb('eecdc4');
  *  neutral amenity tag and the accent "Xm to water" tag — each an ink, an opaque fill and a border.
  *
  *  The **only** positions this slice migrates that carry accessible text, so the only ones that owe
- *  an AA assertion; the five medallion sites and the dialog's step badge are all `aria-hidden`. The
+ *  an AA assertion; the medallion sites and the dialog's step badge are all `aria-hidden`. The
  *  recipes themselves live in `testing/chip-fills.ts`, where `shared/amenities.contrast.spec.ts`
  *  proves them against the rendered chip; these constants are the declaration mirror.
  *

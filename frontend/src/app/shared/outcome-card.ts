@@ -19,6 +19,8 @@ let nextHeadingId = 0;
  *
  * Sits on {@link CardGlass} so it inherits the AA-proven `--riv-card-*` token set instead of a
  * private translucent fill; the composited maths lives in the consumer's `*.contrast.spec.ts`.
+ * The tone glyph itself is the opposite — an opaque, theme-invariant skin; see
+ * {@link OutcomeCard.glyphClasses}.
  */
 @Component({
   selector: 'app-outcome-card',
@@ -54,12 +56,21 @@ export class OutcomeCard {
 
   protected readonly glyph = computed(() => (this.tone() === 'pending' ? '⏳' : '✓'));
 
-  // The circle is decorative (aria-hidden), so its tint is exempt from the text-contrast minimum.
+  /**
+   * Both tones wear the `--riv-medallion-*` skin, so this glyph is the same paint as
+   * `booking-confirmation`'s ✓ and `request-confirmation`'s ✉. They do NOT theme, and must not: the
+   * fills are fixed, and a themed ink over a fixed fill drifts (dark `--riv-accent-ink` over the
+   * positive fill is 1.41:1). Decorative (`aria-hidden`), so exempt from the AA text minimum but
+   * held to 3:1 in `auth/auth-page.contrast.spec.ts`. Take the ternary whole — one branch tokenised
+   * leaves a named utility beside a hex literal in one expression.
+   *
+   * Rationale: docs/plans/outcome-card-medallion-convergence.md.
+   */
   protected readonly glyphClasses = computed(
     () =>
       'mx-auto mb-[18px] flex h-[66px] w-[66px] items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] text-[30px] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] ' +
       (this.tone() === 'pending'
-        ? 'bg-[rgba(240,170,46,0.2)] text-[#a86a12]'
-        : 'bg-riv-accent-chip-fill text-riv-accent-ink'),
+        ? 'bg-riv-medallion-waiting-fill text-riv-medallion-waiting-ink'
+        : 'bg-riv-medallion-positive-fill text-riv-medallion-positive-ink'),
   );
 }

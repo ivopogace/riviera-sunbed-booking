@@ -23,6 +23,10 @@ import {
   DARK_STOPS,
   DARK_WASH_FILL,
   FIELD_BORDER_ALPHA,
+  MEDALLION_POSITIVE_FILL,
+  MEDALLION_POSITIVE_INK,
+  MEDALLION_WAITING_FILL,
+  MEDALLION_WAITING_INK,
   FIELD_FILL_ALPHA,
   Glass,
   INK_DARK,
@@ -45,13 +49,36 @@ import {
  * two variants: the pill track (a dark tint over the card glass, with a solid-white selected pill)
  * and the option cards (a teal tint when selected, a white wash when not).
  *
- * Deliberately excluded (WCAG 1.4.3 incidental / decorative): the outcome-card tone glyphs, which
- * are `aria-hidden` — the heading carries the meaning.
+ * The outcome-card tone glyphs are `aria-hidden` — the heading carries the meaning — so WCAG 1.4.3
+ * exempts them from the AA text minimum. They are not exempt from being *legible*: the glyph row
+ * below holds them to 1.4.11's 3:1. It is the only guard in the tree that composites a glyph's own
+ * fill onto THIS theme's card, which is the failure shape it exists for — a fixed ink over a fill
+ * the theme moves underneath it.
  */
 
 const ACCENT = hexToRgb('085a6e'); // --riv-accent-ink (light themes)
 const ERROR_INK = hexToRgb('a3160e'); // --riv-error-ink (light themes; was #8c2b22 pre-token)
 const CTA_STOPS = ['#0c7288', '#0a5f74']; // --riv-cta-grad, both stops (submit + landed CTA)
+
+/**
+ * shared/outcome-card.ts's two tone glyphs, wearing the `--riv-medallion-*` skin.
+ *
+ * <p>ONE array shared by all three themes, and the shape is the claim: both pairs are opaque and
+ * theme-invariant, so `alpha: 1` collapses the composite below to the fill itself and every theme
+ * reads the same number. A per-theme row here would mean a glyph whose paint depends on its host.
+ */
+const TONE_GLYPHS: readonly ToneGlyph[] = [
+  {
+    tone: 'success',
+    ink: MEDALLION_POSITIVE_INK,
+    fill: { color: MEDALLION_POSITIVE_FILL, alpha: 1 },
+  },
+  {
+    tone: 'pending',
+    ink: MEDALLION_WAITING_INK,
+    fill: { color: MEDALLION_WAITING_FILL, alpha: 1 },
+  },
+];
 
 /** segmented-control.ts card variant: --riv-accent-chip-fill over --riv-wash-fill. */
 const OPTION_SELECTED: Glass = ACCENT_CHIP_FILL;
@@ -70,6 +97,14 @@ interface Theme {
   readonly track: Glass; // --riv-card-track tint over the card
   readonly pillFill: Rgb; // --riv-pill-fill (opaque selected pill)
   readonly optionUnselected: Glass; // --riv-wash-fill over the card
+  readonly toneGlyphs: readonly ToneGlyph[]; // outcome-card's two decorative medallions
+}
+
+/** One outcome-card tone: the ink, and the fill it sits on before the card is composited in. */
+interface ToneGlyph {
+  readonly tone: string;
+  readonly ink: Rgb;
+  readonly fill: Glass;
 }
 
 const THEMES: readonly Theme[] = [
@@ -86,6 +121,7 @@ const THEMES: readonly Theme[] = [
     track: { color: CARD_INK, alpha: CARD_TRACK_ALPHA },
     pillFill: WHITE,
     optionUnselected: LIGHT_WASH,
+    toneGlyphs: TONE_GLYPHS,
   },
   {
     name: 'porcelain',
@@ -100,6 +136,7 @@ const THEMES: readonly Theme[] = [
     track: { color: CARD_INK, alpha: CARD_TRACK_ALPHA },
     pillFill: WHITE,
     optionUnselected: LIGHT_WASH,
+    toneGlyphs: TONE_GLYPHS,
   },
   {
     name: 'dark',
@@ -114,6 +151,7 @@ const THEMES: readonly Theme[] = [
     track: DARK_CARD_TRACK,
     pillFill: hexToRgb('101a2e'),
     optionUnselected: DARK_WASH_FILL,
+    toneGlyphs: TONE_GLYPHS,
   },
 ];
 
@@ -178,6 +216,21 @@ describe.each(THEMES)('AuthPage contrast — $name', (theme: Theme) => {
     expect(contrastRatio(rgbToHex(theme.accent), rgbToHex(theme.pillFill))).toBeGreaterThanOrEqual(
       AA_NORMAL,
     );
+  });
+
+  it('the outcome-card tone glyphs clear the 3:1 non-text floor on the card (WCAG 1.4.11)', () => {
+    /** Per stop even though today's fills are opaque (so the composite is a no-op): the loop is
+     *  what still measures a translucent fill against the themed card if one is ever written. */
+    for (const glyph of theme.toneGlyphs) {
+      for (const stop of theme.stops) {
+        const card = surfaceOver(theme.cardGlass, stop);
+        const fill = composite(glyph.fill.color, glyph.fill.alpha, card);
+        expect(
+          contrastRatio(rgbToHex(glyph.ink), rgbToHex(fill)),
+          `${glyph.tone} glyph over stop ${rgbToHex(stop)}`,
+        ).toBeGreaterThanOrEqual(AA_LARGE);
+      }
+    }
   });
 
   it('option-card label and blurb are AA on both option fills', () => {

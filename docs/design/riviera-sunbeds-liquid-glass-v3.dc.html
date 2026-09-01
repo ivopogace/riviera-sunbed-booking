@@ -535,6 +535,7 @@
   <sc-if value="{{ showConfirmed }}" hint-placeholder-val="{{ false }}">
     <div onClick="{{ onDone }}" style="position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(6,30,40,0.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:rivFade .2s ease;">
       <div onClick="{{ stop }}" style="width:100%;max-width:400px;background:rgba(255,255,255,0.72);-webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%);border-radius:34px;border:1px solid rgba(255,255,255,0.7);box-shadow:0 40px 90px rgba(6,30,40,0.5),inset 0 1px 0 rgba(255,255,255,0.9);text-align:center;padding:36px 30px 30px;animation:rivPop .26s cubic-bezier(.2,.7,.2,1);">
+        <!-- as-built diverges — see #869: the shipped medallion took the opaque-fill retune (--riv-medallion-*), this tint is the approved look -->
         <div style="width:64px;height:64px;border-radius:50%;background:rgba(43,184,212,0.18);border:1px solid rgba(255,255,255,0.6);color:#0a6e85;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 18px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7);">&#10003;</div>
         <h2 style="font-weight:700;font-size:30px;letter-spacing:-0.02em;margin:0 0 8px;color:#0a2a33;">You&rsquo;re booked.</h2>
         <p style="color:rgba(12,42,51,0.62);margin:0 0 18px;font-size:15px;line-height:1.45;">Set {{ dialog.seat }} at {{ dialog.venueName }}<br>on {{ dateLabel }}.</p>
@@ -639,6 +640,7 @@
 
             <sc-if value="{{ payTaken }}" hint-placeholder-val="{{ false }}">
               <div style="text-align:center;padding:30px 10px 18px;">
+                <!-- as-built diverges — see #869: the shipped medallion took the opaque-fill retune (--riv-medallion-*), this tint is the approved look -->
                 <div style="width:60px;height:60px;border-radius:50%;background:rgba(240,170,46,0.18);border:1px solid rgba(240,170,46,0.4);color:#a86a12;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 16px;">&#9888;</div>
                 <h1 style="font-weight:700;font-size:22px;letter-spacing:-0.02em;color:#0a2a33;margin:0 0 8px;">Someone just booked this set</h1>
                 <p style="font-size:14px;line-height:1.55;color:rgba(12,42,51,0.62);margin:0 auto 20px;max-width:360px;">This set was taken by another guest while you were paying, so we stopped the charge &mdash; <strong style="color:#0a2a33;">you weren&rsquo;t charged anything</strong>. Head back to the map and pick another spot.</p>
@@ -673,6 +675,7 @@
   <sc-if value="{{ showRequestSent }}" hint-placeholder-val="{{ false }}">
     <div onClick="{{ onRequestDone }}" style="position:fixed;inset:0;z-index:55;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(6,30,40,0.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:rivFade .2s ease;">
       <div onClick="{{ stop }}" data-riv-scroller data-screen-label="Request sent" style="width:100%;max-width:410px;max-height:calc(100vh - 40px);overflow-y:auto;background:rgba(255,255,255,0.74);-webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%);border-radius:34px;border:1px solid rgba(255,255,255,0.7);box-shadow:0 40px 90px rgba(6,30,40,0.5),inset 0 1px 0 rgba(255,255,255,0.9);text-align:center;padding:34px 30px 28px;animation:rivPop .26s cubic-bezier(.2,.7,.2,1);">
+        <!-- as-built diverges — see #869: the shipped medallion took the opaque-fill retune (--riv-medallion-*), this tint is the approved look -->
         <div style="width:64px;height:64px;border-radius:50%;background:rgba(240,170,46,0.18);border:1px solid rgba(255,255,255,0.6);color:#a86a12;display:flex;align-items:center;justify-content:center;font-size:29px;margin:0 auto 18px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7);">&#9993;</div>
         <h2 style="font-weight:700;font-size:27px;letter-spacing:-0.02em;margin:0 0 8px;color:#0a2a33;">Request sent</h2>
         <p style="color:rgba(12,42,51,0.64);margin:0 0 18px;font-size:14.5px;line-height:1.5;">Set {{ reqSeat }} at {{ reqVenueName }} on {{ reqDateLabel }} is a <strong style="color:#0a2a33;">Request to Book</strong> venue. The host needs to accept before you pay &mdash; <strong style="color:#0a2a33;">you haven&rsquo;t been charged</strong>.</p>

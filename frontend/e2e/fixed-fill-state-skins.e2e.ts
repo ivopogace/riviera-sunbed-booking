@@ -20,6 +20,10 @@ import { completeDialog } from './support/booking-dialog';
  * matters. Every assertion runs twice, once per theme, against the same expected value: a skin that
  * moved between the two legs is precisely the drift the tokens forbid.
  *
+ * <p>`shared/outcome-card.ts`'s two tone glyphs are proven here too, via the auth page's two landed
+ * states. They are the legs where the both-themes loop carries the whole assertion rather than
+ * corroborating it: every other site's paint was already invariant before it was tokenised.
+ *
  * <p>Six surfaces, because the family has to be proven where it actually renders: the amenity chip's
  * two variants, the step badge's two states, and the medallion's three — positive via the booking
  * confirmation, negative via `shared/`'s own `appFailureIcon`, and **waiting** via
@@ -259,6 +263,53 @@ for (const theme of ['porcelain', 'dark'] as const) {
       const medallion = page.locator('[aria-hidden="true"]').filter({ hasText: '✉' }).first();
       await expect(medallion).toHaveCSS('background-color', RGB.waitingFill);
       await expect(medallion).toHaveCSS('color', RGB.waitingInk);
+    });
+
+    test('the signed-in outcome card paints the registered positive state', async ({ page }) => {
+      /** Already-signed-in + a visit to the sign-in route is the whole precondition: `stage()`
+       *  reads the restored session and swaps in the landed card (auth-page.ts). */
+      await page.route(/\/api\/auth\/me$/, (route) =>
+        route.fulfill({ json: { username: 'tourist@example.com', principalType: 'CUSTOMER' } }),
+      );
+
+      await page.goto('/account/sign-in');
+      const card = page.getByTestId('auth-signed-in');
+      await expect(card).toBeVisible();
+
+      const glyph = card.locator('[data-riv-outcome-glyph]');
+      await expect(glyph).toHaveCSS('background-color', RGB.positiveFill);
+      await expect(glyph).toHaveCSS('color', RGB.positiveInk);
+    });
+
+    test('the submitted-for-approval outcome card paints the registered waiting state', async ({
+      page,
+    }) => {
+      /** The narrow path to this card (auth-page.ts): the D-8 202 is session-less, so the page
+       *  follows up with a normal sign-in — and only a failure that is NEITHER 401 nor 429 falls
+       *  through to the submitted card rather than to an error message. */
+      await page.route(/\/api\/auth\/me$/, (route) =>
+        route.fulfill({
+          status: 401,
+          json: { title: 'Unauthorized', status: 401, code: 'UNAUTHENTICATED' },
+        }),
+      );
+      await page.route(/\/api\/auth\/operator\/register$/, (route) =>
+        route.fulfill({ status: 202, json: { status: 'PENDING' } }),
+      );
+      await page.route(/\/api\/auth\/operator\/login$/, (route) => route.fulfill({ status: 500 }));
+
+      await page.goto('/operator/register');
+      await page.getByLabel('Username', { exact: true }).fill('newop');
+      await page.getByLabel('Contact email', { exact: true }).fill('newop@venue.example');
+      await page.getByLabel('Password', { exact: true }).fill('newop-pw-123');
+      await page.getByRole('button', { name: /^(Request account|Submitting)/ }).click();
+
+      const card = page.getByTestId('auth-pending');
+      await expect(card).toBeVisible();
+
+      const glyph = card.locator('[data-riv-outcome-glyph]');
+      await expect(glyph).toHaveCSS('background-color', RGB.waitingFill);
+      await expect(glyph).toHaveCSS('color', RGB.waitingInk);
     });
 
     test('the failure icon paints the registered negative state', async ({ page }) => {

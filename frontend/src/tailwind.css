@@ -355,8 +355,8 @@
 
   /** The OUTCOME MEDALLION (#858, class F-3) — the round, centred, `aria-hidden` glyph that a
       landed booking state renders: booking-confirmation's ✓, booking-pay's ✓/⏳/✕,
-      request-confirmation's ✉ and appFailureIcon's ⚠ or 🏖. Five sites, three states, one form.
-      The glyph is per site and carries no meaning — every one is aria-hidden.
+      request-confirmation's ✉, appFailureIcon's ⚠ or 🏖 and outcome-card's ✓/⏳. Three states, one
+      form. The glyph is per site and carries no meaning — every one is aria-hidden.
 
       Grouped by FORM, not by value — the --riv-solid-fill-* precedent, and here the alternative was
       actively wrong: the six inks #858 enumerated carry two values across three different forms
@@ -374,9 +374,11 @@
       the negative fill — the very number #850 measured on its own family — and 1.63:1 over the
       waiting fill. The shipped pairs are 6.20 / 5.54 / 5.62:1.
 
-      None of the five owes an AA assertion at all: every one is aria-hidden, with the meaning on the
-      neighbouring heading or label. The ratios above are a floor these values happen to clear, and
-      that exemption is stated rather than dressed up as a requirement.
+      No site owes an AA assertion: every glyph is aria-hidden, with the meaning on the
+      neighbouring heading or label, so the ratios above are a floor these values happen to clear.
+      They are still held to WCAG 1.4.11's 3:1 — outcome-card's two in auth-page.contrast.spec.ts,
+      which is the one guard that composites a glyph fill onto the card it sits on. Write a
+      TRANSLUCENT fill here and that guard is what catches it.
 
       Do NOT reach for a coincidental token for any of the three. --riv-accent-ink IS #0a5f74's
       neighbourhood and themes; --riv-solid-btn-danger-ink and --riv-console-negative-ink ARE
@@ -392,7 +394,9 @@
       Proof: shared/fixed-fill-token-skins.contrast.spec.ts (the AA floors, the themed-ink bounds,
       the aria-hidden exemption, and the single-declaration guard that is the only thing able to see
       a later dark override) + e2e/fixed-fill-state-skins.e2e.ts (the computed skin under a forced
-      dark document theme). Rationale: docs/plans/fixed-fill-state-skins.md, issue #858. */
+      dark document theme). Rationale: docs/plans/fixed-fill-state-skins.md;
+      docs/plans/outcome-card-medallion-convergence.md; docs/design/colour-literal-token-audit.md
+      §F-3, §F-5 (why these values and not the artboards' tints, and what converging cost). */
   --riv-medallion-positive-fill: #d9f2f7;
   --riv-medallion-positive-ink: #0a5f74;
   --riv-medallion-waiting-fill: #fcf0d9;
