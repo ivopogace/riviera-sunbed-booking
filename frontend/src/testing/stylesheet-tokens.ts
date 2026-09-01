@@ -32,6 +32,6 @@ export function baseBlock(): string {
 
 /** Every `--name: value;` declaration of `name`, anywhere in the stylesheet. */
 export function declarationsOf(name: string): readonly string[] {
-  const pattern = new RegExp(`^[ \\t]*${name}:\\s*([^;]+);`, 'gm');
+  const pattern = new RegExp(String.raw`^[ \t]*${name}:\s*([^;]+);`, 'gm');
   return [...STYLESHEET.matchAll(pattern)].map((match) => match[1].trim());
 }

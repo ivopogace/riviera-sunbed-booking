@@ -234,10 +234,10 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `sonar gate — review gate complete (6 findings, all fixed)`
+**Stage pointer:** `sonar gate — 1 issue found under a PASSING gate, fixed; awaiting re-analysis`
 
-**Next action:** pull the SonarCloud issue + duplication list for PR #867 (a green gate is not the
-check) and clear every entry; then the merge close-out.
+**Next action:** confirm the re-analysis reports 0 issues on the new head, then the merge close-out
+(step 4: `merged via PR #867`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -258,6 +258,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-2 | Review gate — prior-PR-comments agent | `testing/chip-fills.ts`'s `ChipFill.fillClass` TSDoc still called the amenity chips "still a literal … class S of the colour-literal audit", which this PR's own diff falsifies twice. **A phase-2 edit to that exact sentence silently no-op'd** — its `str.replace` carried no assertion, unlike every other edit in the slice. Recurrence of PR #862's finding #1: a declaration comment the change made false | fixed — sentence rewritten; a repo-wide sweep confirms it was the only surviving stale claim |
 | F-3 | Review gate — code-comments agent | **A glyph claimed in four places is the wrong one.** `request-confirmation`'s medallion renders **✉**, not ⏳ — the ⏳ is its *neighbouring info-box icon*. Claimed as ⏳ in `tailwind.css`, `glass-tokens.ts`, the plan doc, and an e2e comment that **contradicted its own sibling comment fifteen lines below**, which correctly said "the badge's glyph is the envelope". Nothing pinned it: the test matches ✉ and passes | fixed — all four corrected, and the docblocks now say the glyph is per site and carries no meaning (every one is `aria-hidden`), so the claim stops being load-bearing |
 | F-4 | Review gate — code-comments agent | **A measured number is wrong by 0.02.** `DARK_CARD_INK` (`#f2f7fa`) over the amenity tag fill is **1.04:1**, not the 1.02:1 claimed in `tailwind.css`, `amenity-chip.ts`, `glass-tokens.ts` and both docs. Cause: the plan-stage measurement used `#eaf6f8` — a guess at the dark card ink — instead of reading the real `--riv-card-ink` from the stylesheet, and the wrong figure propagated. No test pins it (the bound only has to be *under* AA, which both figures are) | fixed — recomputed against the declared value and corrected in all five places; the agent independently re-derived the slice's other **15** ratios and found them exact |
+| F-7 | **Sonar gate** — `typescript:S7780`, MINOR code smell, `testing/stylesheet-tokens.ts:35` | "`String.raw` should be used to avoid escaping `\`." The gate **passed** with this reported — the exact green-is-not-sufficient case the procedure names. Notable: the line is byte-identical to what all five guard specs carried before phase 0; extracting it made pre-existing code count as *new* | fixed — `String.raw` template, verified to produce a byte-identical `RegExp.source`. An in-code fix that also satisfies the analyzer, per the gate's "prefer the fix that reaches literally zero" rule — not a won't-fix |
 | F-6 | Review gate — git-history agent | **The plan doc's own close-out gate was never run.** Phase 5's row said ✅ while its steps 6–8, all 8 AC-verification lines and the entire self-review checklist sat `- [ ]` with the template's literal `<sha>` placeholders. The sibling slices (#848/#864) both carry those sections fully ticked with real SHAs and the note "every line below was run at the close-out commit". Sharpest part of the finding: this is **the same class as F-1 and F-2** — a status claim nothing asserts — occurring inside the register that records them | fixed — every AC re-run at `2baaa96` and recorded with its actual command and result; the checklist ticked honestly, with the two genuinely-open items (Sonar gate, `merged via PR #NN`) left to the close-out commit rather than pre-ticked |
 | F-5 | Review gate — code-comments agent | The `--riv-solid-fill-*` docblock (#854/#861, untouched by this diff) says `#0a5f74` "still paints … three booking/ inks" — true of the value, but after this slice those three are named tokens, so a reader following the sentence hunts for literals that are gone. A docs-freshness miss: my sweep grepped for renamed identifiers and counts, not for sentences a *tokenisation* makes misleading | fixed — the sentence now names where the three went (`--riv-medallion-positive-ink` ×2, `--riv-step-active-ink`) and that the value survives through a declaration rather than a literal |
 
@@ -567,6 +568,11 @@ actually resolving under `data-riv-theme="dark"`. `shared/amenity-chip.ts` and
       note; class R's `#0a5f74` row carries the 3-fills/4-inks split and its `#a3372a` row the
       fourth-role correction; class S's amenity row retired; F-4/F-5 rows filed as **#868**/**#869**.
       Prose has no executable pin — stated, not implied.
+
+**Sonar gate:** quality gate **passed**, and the reported list was **not** empty — `1 New issue`
+(`typescript:S7780`), fixed rather than accepted; 93.1% coverage on new code, **0.0% duplication**
+(R-4's mitigation: phase 0's extraction meant the slice removed five copies instead of writing a
+sixth), 0 security hotspots.
 
 **Whole-suite runs at the close-out commit:** `npx ng test --watch=false` → **2160 passed** ·
 `npm run test:e2e:a11y` → **358 passed** · `npm run lint` → 0 errors · `npm run format:check` → clean ·
