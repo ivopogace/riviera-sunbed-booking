@@ -2,8 +2,16 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { AA_NORMAL, contrastRatio, rgbToHex } from '../../testing/contrast';
+import { DESCRIPTIVE_CHIPS } from '../../testing/chip-fills';
 import {
+  AMENITY_TAG_BORDER,
+  AMENITY_TAG_FILL,
+  AMENITY_TAG_INK,
+  AMENITY_WATER_BORDER,
+  AMENITY_WATER_FILL,
+  AMENITY_WATER_INK,
   DARK_ACCENT_INK,
+  DARK_CARD_INK,
   DARK_ERROR_INK,
   MEDALLION_NEGATIVE_BORDER,
   MEDALLION_NEGATIVE_FILL,
@@ -53,7 +61,16 @@ const MEDALLION = {
   '--riv-medallion-negative-border': rgbToHex(MEDALLION_NEGATIVE_BORDER),
 } as const;
 
-const REGISTRY: Record<string, string> = { ...MEDALLION };
+const AMENITY = {
+  '--riv-amenity-tag-ink': rgbToHex(AMENITY_TAG_INK),
+  '--riv-amenity-tag-fill': rgbToHex(AMENITY_TAG_FILL),
+  '--riv-amenity-tag-border': rgbToHex(AMENITY_TAG_BORDER),
+  '--riv-amenity-water-ink': rgbToHex(AMENITY_WATER_INK),
+  '--riv-amenity-water-fill': rgbToHex(AMENITY_WATER_FILL),
+  '--riv-amenity-water-border': rgbToHex(AMENITY_WATER_BORDER),
+} as const;
+
+const REGISTRY: Record<string, string> = { ...MEDALLION, ...AMENITY };
 
 /**
  * The three values this family now paints **exclusively**, so a tree-wide sweep is exactly right
@@ -86,6 +103,12 @@ const MIGRATED_SITES: readonly {
   },
   { path: 'booking/request-confirmation.ts', gone: ['#fcf0d9', '#8a5410'] },
   { path: 'shared/failure-panel.ts', gone: ['#f7e8e4', '#eecdc4', '#a3372a'] },
+  {
+    path: 'shared/amenity-chip.ts',
+    gone: ['#0a5f74', '#d7eef4', '#b9e0ea', '#2f4a54', '#eef2f4', '#dbe4e7'],
+    // The marker classes the specs and two e2e query survive the restyle (riviera-tailwind rule 2).
+    kept: ['amenity-chip', 'amenity-chip--water'],
+  },
 ];
 
 /**
@@ -217,5 +240,39 @@ describe('Fixed-fill state skins — the outcome medallion (#858)', () => {
     for (const { path, literal } of OUT_OF_FAMILY) {
       expect(read(path), `${path} still paints ${literal}`).toContain(literal);
     }
+  });
+});
+
+describe('Fixed-fill state skins — the amenity chip (#858)', () => {
+  it("both variants clear AA — the slice's ONLY sites that owe one", () => {
+    // Every other position this slice migrates is an `aria-hidden` glyph. The chip is the exception:
+    // it carries the amenity name and the "Xm to water" distance as real text, on a directive that
+    // `shared/` mounts from hosts of differing themes. Its recipes live in `testing/chip-fills.ts`
+    // so `shared/amenities.contrast.spec.ts` proves the same pairs against the rendered chip.
+    for (const { name, ink, fill } of DESCRIPTIVE_CHIPS) {
+      expect(contrastRatio(ink, fill), name).toBeGreaterThanOrEqual(AA_NORMAL);
+    }
+  });
+
+  it('the themed alternative would not — which is why the family is invariant', () => {
+    expect(
+      contrastRatio(rgbToHex(DARK_ACCENT_INK), rgbToHex(AMENITY_WATER_FILL)),
+      'dark --riv-accent-ink over the water fill',
+    ).toBeLessThan(AA_NORMAL);
+    expect(
+      contrastRatio(rgbToHex(DARK_CARD_INK), rgbToHex(AMENITY_TAG_FILL)),
+      'dark --riv-card-ink over the tag fill',
+    ).toBeLessThan(AA_NORMAL);
+  });
+
+  it('keeps the two variants as ONE family, cut by form', () => {
+    // The chip's water ink is what #858 enumerated; its neutral sibling is the same three roles in
+    // the same `computed()` ternary. Migrating one and leaving the other a literal is the mis-cut
+    // this ticket exists to undo, so the family is both variants or neither.
+    expect(Object.keys(AMENITY)).toHaveLength(6);
+    expect(DESCRIPTIVE_CHIPS.map((chip) => [chip.fillClass, chip.inkClass])).toEqual([
+      ['bg-riv-amenity-tag-fill', 'text-riv-amenity-tag-ink'],
+      ['bg-riv-amenity-water-fill', 'text-riv-amenity-water-ink'],
+    ]);
   });
 });

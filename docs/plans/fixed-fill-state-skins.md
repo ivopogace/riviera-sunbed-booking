@@ -234,17 +234,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** extend `shared/fixed-fill-token-skins.contrast.spec.ts` with the amenity block
-(red), then declare the six `--riv-amenity-*` tokens and migrate `amenity-chip.ts`'s ternary.
+**Next action:** extend `shared/fixed-fill-token-skins.contrast.spec.ts` with the step block (red),
+then declare `--riv-step-active-ink` + `--riv-step-idle-fill` and migrate `booking-dialog.ts:120`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — extract the token-guard helpers | ✅ | `fda89a8` |
 | 1 — the outcome-medallion family | ✅ | `c72ff26` |
-| 2 — the amenity-chip family | ⏳ | |
-| 3 — the dialog step-badge family | | |
+| 2 — the amenity-chip family | ✅ | `<phase-2>` |
+| 3 — the dialog step-badge family | ⏳ | |
 | 4 — the forced-dark computed-style e2e | | |
 | 5 — ledger + follow-up issues + close-out | | |
 
@@ -380,18 +380,24 @@ colour-literal audit". They are not — class S is the *nine-state* `status-chip
 pass; a two-variant tag whose ink+fill+border sit on themeable hosts is class F's shape exactly.
 Corrected in phase 5.
 
-- [ ] **Step 1: Write the failing guard** — extend `fixed-fill-token-skins.contrast.spec.ts` with the
+- [x] **Step 1: Write the failing guard** — extend `fixed-fill-token-skins.contrast.spec.ts` with the
       amenity block, including the AA assertions for both variants (AC-4's non-decorative half).
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- --run fixed-fill-token-skins` → FAIL on the
+- [x] **Step 2: Run it, verify it fails** — `npm test -- --run fixed-fill-token-skins` → FAIL on the
       six undeclared tokens.
-- [ ] **Step 3: Minimal implementation** — six declarations + six `@theme inline` rows + six mirrors;
+- [x] **Step 3: Minimal implementation** — six declarations + six `@theme inline` rows + six mirrors;
       migrate `amenity-chip.ts`'s `computed()` ternary, retaining the `amenity-chip` and
       `amenity-chip--water` marker classes; give `chip-fills.ts`'s two `DESCRIPTIVE_CHIPS` recipes
       their `fillClass`, reading the values from the mirrors (the #854 `SEMANTIC_CHIP` precedent), and
       correct its "class S" docblock sentence.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- --run fixed-fill-token-skins amenities amenity-chip venue-map` → PASS
-- [ ] **Step 5: Commit** — `git commit -m "Give the amenity chip's two variants a theme-invariant token family (#858)"`
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+      **Two follow-ons the phase surfaced:** `ChipFill` needed an **`inkClass`** to match `fillClass`
+      — `SEMANTIC_CHIP`'s ink is the static `text-white`, so #854 never needed the field, and
+      `amenity-chip.spec.ts` was interpolating `text-[${ink}]`. With both fields present the recipe
+      stays the single source and no assertion in that spec had to be rewritten (the
+      `semantic-chip.spec.ts` `?? bg-[…]` idiom, extended). And `solid-fill-tokens`' `SURVIVORS`
+      dropped its `shared/amenity-chip.ts` row — phase 2's share of AC-7.
+- [x] **Step 4: Run it, verify it passes** — `npm test -- --run fixed-fill-token-skins amenities amenity-chip venue-map` → PASS
+- [x] **Step 5: Commit** — `git commit -m "Give the amenity chip's two variants a theme-invariant token family (#858)"`
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ---
 

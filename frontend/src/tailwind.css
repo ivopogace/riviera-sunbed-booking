@@ -83,6 +83,13 @@
   --color-riv-medallion-negative-fill: var(--riv-medallion-negative-fill);
   --color-riv-medallion-negative-ink: var(--riv-medallion-negative-ink);
   --color-riv-medallion-negative-border: var(--riv-medallion-negative-border);
+
+  --color-riv-amenity-tag-ink: var(--riv-amenity-tag-ink);
+  --color-riv-amenity-tag-fill: var(--riv-amenity-tag-fill);
+  --color-riv-amenity-tag-border: var(--riv-amenity-tag-border);
+  --color-riv-amenity-water-ink: var(--riv-amenity-water-ink);
+  --color-riv-amenity-water-fill: var(--riv-amenity-water-fill);
+  --color-riv-amenity-water-border: var(--riv-amenity-water-border);
   --color-riv-card-track: var(--riv-card-track);
 
   --color-riv-pop-surface: var(--riv-pop-surface);
@@ -387,6 +394,40 @@
   --riv-medallion-negative-fill: #f7e8e4;
   --riv-medallion-negative-ink: #a3372a;
   --riv-medallion-negative-border: #eecdc4;
+
+  /** The AMENITY CHIP's two variants (#858, class F-3) — shared/amenity-chip.ts's neutral amenity
+      tag and its accent "Xm to water" tag. Six positions, one component, one `computed()` ternary.
+
+      The ONLY positions #858 migrates that carry accessible text, and so the only ones owing an AA
+      assertion: 8.37:1 (tag) and 6.00:1 (water). Every other position in the slice is an
+      aria-hidden glyph.
+
+      Theme-invariant BY DESIGN — the fills are fixed and `shared/` mounts this directive from hosts
+      of DIFFERING themes (the light Discover card and the dark glass map header), which is exactly
+      the drift a themed ink would introduce: --riv-accent-ink resolves #7cd7e8 at 1.37:1 over the
+      water fill, and --riv-card-ink resolves #f2f7fa at 1.02:1 over the tag fill. Neither is a
+      hypothetical: the directive already renders in both places today.
+
+      BOTH variants, or neither. #858 enumerated only the water ink, but the two variants are the
+      same three roles in the same ternary, so migrating one would leave a named utility beside a hex
+      literal in one expression — the mis-cut the ticket exists to undo. This also retires the
+      audit's class-S row for this component: a two-variant tag is not the nine-state palette design
+      pass class S defers, it is class F's shape exactly.
+
+      Named --riv-amenity-*, NOT --riv-chip-*: that prefix is already the shell chip's
+      (--riv-chip-bg, --riv-chip-border), and one hyphen apart is not a distinction — #864's own
+      naming argument. The borders are non-text chrome (WCAG 1.4.11), measured at 1.15:1 and 1.17:1
+      over their own fills; same finding and same tracking issue (#834) as --riv-solid-btn-*.
+      Proof: shared/fixed-fill-token-skins.contrast.spec.ts (the AA pairs, the themed-ink bounds and
+      the single-declaration guard) + shared/amenities.contrast.spec.ts (the same pairs against the
+      rendered chip, via testing/chip-fills.ts) + e2e/fixed-fill-state-skins.e2e.ts.
+      Rationale: docs/plans/fixed-fill-state-skins.md, issue #858. */
+  --riv-amenity-tag-ink: #2f4a54;
+  --riv-amenity-tag-fill: #eef2f4;
+  --riv-amenity-tag-border: #dbe4e7;
+  --riv-amenity-water-ink: #0a5f74;
+  --riv-amenity-water-fill: #d7eef4;
+  --riv-amenity-water-border: #b9e0ea;
 
   /** The near-opaque popover surface (theme picker, account menu, mobile sheet — app.ts POP)
       and the segmented-control fills (shared/segmented-control.ts). Light values here; the

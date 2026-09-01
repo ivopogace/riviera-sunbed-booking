@@ -6,6 +6,16 @@ import { AmenityChip } from './amenity-chip';
 
 const [NEUTRAL, WATER] = DESCRIPTIVE_CHIPS;
 
+/**
+ * The classes a recipe renders through: its own `fillClass`/`inkClass` once tokenised, else the
+ * interpolated hex. The `semantic-chip.spec.ts` idiom — the recipe stays the single source, so
+ * #858's move onto `--riv-amenity-*` needed no assertion rewritten here.
+ */
+const fillClass = (chip: (typeof DESCRIPTIVE_CHIPS)[number]): string =>
+  chip.fillClass ?? `bg-[${chip.fill}]`;
+const inkClass = (chip: (typeof DESCRIPTIVE_CHIPS)[number]): string =>
+  chip.inkClass ?? `text-[${chip.ink}]`;
+
 @Component({
   imports: [AmenityChip],
   template: `
@@ -30,8 +40,8 @@ describe('AmenityChip', () => {
     const { plain } = chips();
     expect(plain.classList.contains('amenity-chip')).toBe(true);
     expect(plain.classList.contains('amenity-chip--water')).toBe(false);
-    expect(plain.classList.contains(`bg-[${NEUTRAL.fill}]`)).toBe(true);
-    expect(plain.classList.contains(`text-[${NEUTRAL.ink}]`)).toBe(true);
+    expect(plain.classList.contains(fillClass(NEUTRAL))).toBe(true);
+    expect(plain.classList.contains(inkClass(NEUTRAL))).toBe(true);
     expect(plain.classList.contains('font-semibold')).toBe(true);
   });
 
@@ -39,11 +49,11 @@ describe('AmenityChip', () => {
     const { water } = chips();
     expect(water.classList.contains('amenity-chip')).toBe(true);
     expect(water.classList.contains('amenity-chip--water')).toBe(true);
-    expect(water.classList.contains(`bg-[${WATER.fill}]`)).toBe(true);
-    expect(water.classList.contains(`text-[${WATER.ink}]`)).toBe(true);
+    expect(water.classList.contains(fillClass(WATER))).toBe(true);
+    expect(water.classList.contains(inkClass(WATER))).toBe(true);
     expect(water.classList.contains('font-bold')).toBe(true);
     // The neutral fill must NOT leak onto the water variant.
-    expect(water.classList.contains(`bg-[${NEUTRAL.fill}]`)).toBe(false);
+    expect(water.classList.contains(fillClass(NEUTRAL))).toBe(false);
   });
 
   it('renders exactly the fills the shared descriptive list records — no more, no fewer', () => {
@@ -53,6 +63,6 @@ describe('AmenityChip', () => {
       .flatMap((element) => [...element.classList])
       .filter((name) => name.startsWith('bg-'))
       .sort();
-    expect(rendered).toEqual(DESCRIPTIVE_CHIPS.map((chip) => `bg-[${chip.fill}]`).sort());
+    expect(rendered).toEqual(DESCRIPTIVE_CHIPS.map(fillClass).sort());
   });
 });

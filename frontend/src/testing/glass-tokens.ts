@@ -272,3 +272,31 @@ export const MEDALLION_NEGATIVE_INK: Rgb = hexToRgb('a3372a');
  *  The positive and waiting states have no border token — theirs is `rgba(255,255,255,0.6)`, the
  *  glass border of class R's own family (#853), and not this slice's. */
 export const MEDALLION_NEGATIVE_BORDER: Rgb = hexToRgb('eecdc4');
+
+/** The `--riv-amenity-*` family (#858, class F-3): `shared/amenity-chip.ts`'s two variants — the
+ *  neutral amenity tag and the accent "Xm to water" tag — each an ink, an opaque fill and a border.
+ *
+ *  The **only** positions this slice migrates that carry accessible text, so the only ones that owe
+ *  an AA assertion; the five medallion sites and the dialog's step badge are all `aria-hidden`. The
+ *  recipes themselves live in `testing/chip-fills.ts`, where `shared/amenities.contrast.spec.ts`
+ *  proves them against the rendered chip; these constants are the declaration mirror.
+ *
+ *  Both variants or neither: they are the same three roles in the same `computed()` ternary, and
+ *  migrating one would be the mis-cut #858 exists to undo. Named `--riv-amenity-*` rather than
+ *  `--riv-chip-*` because that prefix is already the shell chip's (`--riv-chip-bg`,
+ *  `--riv-chip-border`) — one hyphen apart is not a distinction, #864's own naming argument.
+ *
+ *  Theme-invariant: the fills are fixed and `shared/` mounts this directive from the Discover card
+ *  and the dark glass map header alike, so a themed ink drifts — DARK_ACCENT_INK over the water fill
+ *  is 1.37:1 and DARK_CARD_INK over the tag fill 1.02:1, against the shipped 6.00 and 8.37:1. Full
+ *  reasoning sits at the declaration in `tailwind.css`. Guarded by
+ *  `shared/fixed-fill-token-skins.contrast.spec.ts`.
+ *
+ *  The borders are non-text chrome (WCAG 1.4.11), measured at 1.15:1 and 1.17:1 over their own
+ *  fills — the same finding, and the same tracking issue (#834), as `--riv-solid-btn-*`. */
+export const AMENITY_TAG_INK: Rgb = hexToRgb('2f4a54');
+export const AMENITY_TAG_FILL: Rgb = hexToRgb('eef2f4');
+export const AMENITY_TAG_BORDER: Rgb = hexToRgb('dbe4e7');
+export const AMENITY_WATER_INK: Rgb = hexToRgb('0a5f74');
+export const AMENITY_WATER_FILL: Rgb = hexToRgb('d7eef4');
+export const AMENITY_WATER_BORDER: Rgb = hexToRgb('b9e0ea');

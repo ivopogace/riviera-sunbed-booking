@@ -101,8 +101,7 @@ const FILL_ROLES = [
  */
 const SURVIVORS: readonly (readonly [string, string])[] = [
   // `#0a6e85`'s eight console-ink rows left with #848 — see this list's header.
-  // `#0a5f74` as a `text-` ink, two selection `ring-`s, and the dialog head's gradient stop.
-  ['shared/amenity-chip.ts', '#0a5f74'],
+  // `#0a5f74` as two selection `ring-`s and the dialog head's gradient stop.
   ['operator/set-editor.html', '#0a5f74'],
   ['operator/layout-editor.html', '#0a5f74'],
   ['booking/booking-dialog.ts', '#0a5f74'],

@@ -37,7 +37,13 @@
  */
 
 import { rgbToHex } from './contrast';
-import { SOLID_FILL_BRAND } from './glass-tokens';
+import {
+  AMENITY_TAG_FILL,
+  AMENITY_TAG_INK,
+  AMENITY_WATER_FILL,
+  AMENITY_WATER_INK,
+  SOLID_FILL_BRAND,
+} from './glass-tokens';
 
 /** A chip recipe: the ink, and the opaque fill it sits on. Values mirror the directives' host classes. */
 export interface ChipFill {
@@ -51,12 +57,41 @@ export interface ChipFill {
    * class, which is how the amenity chips (class S of the colour-literal audit) still work.
    */
   readonly fillClass?: string;
+  /**
+   * The class the INK is painted through, on the same terms as {@link fillClass}: absent means the
+   * recipe is still a literal and `text-[${ink}]` is the class. Added at #858, when the amenity
+   * recipes became the first tokenised ones whose ink is not a static utility — `SEMANTIC_CHIP`'s
+   * is `text-white`, which needed no field.
+   */
+  readonly inkClass?: string;
 }
 
-/** `shared/amenity-chip.ts` — what the VENUE says about itself. */
+/**
+ * `shared/amenity-chip.ts` — what the VENUE says about itself.
+ *
+ * <p>Tokenised at #858 onto the theme-invariant `--riv-amenity-*` family, so the hexes are no longer
+ * tied to what renders by interpolation and are taken from the family mirror instead — the
+ * `SEMANTIC_CHIP` precedent below. `shared/fixed-fill-token-skins.contrast.spec.ts` ties those
+ * values to the declaration in `tailwind.css`, so the chain from here to the paint is unbroken.
+ *
+ * <p>These are the ONLY sites #858 migrated that carry accessible text, which is why the AA proof
+ * `shared/amenities.contrast.spec.ts` runs over them matters rather than being a formality.
+ */
 export const DESCRIPTIVE_CHIPS: readonly ChipFill[] = [
-  { name: 'amenity-chip (neutral tag)', ink: '#2f4a54', fill: '#eef2f4' },
-  { name: 'amenity-chip--water (to-water accent)', ink: '#0a5f74', fill: '#d7eef4' },
+  {
+    name: 'amenity-chip (neutral tag)',
+    ink: rgbToHex(AMENITY_TAG_INK),
+    fill: rgbToHex(AMENITY_TAG_FILL),
+    fillClass: 'bg-riv-amenity-tag-fill',
+    inkClass: 'text-riv-amenity-tag-ink',
+  },
+  {
+    name: 'amenity-chip--water (to-water accent)',
+    ink: rgbToHex(AMENITY_WATER_INK),
+    fill: rgbToHex(AMENITY_WATER_FILL),
+    fillClass: 'bg-riv-amenity-water-fill',
+    inkClass: 'text-riv-amenity-water-ink',
+  },
 ];
 
 /**
