@@ -204,7 +204,9 @@ contract is a finding. Default **Minor** (Major if it diverges the wire shape).
 **Also check the `detail` string's voice**, which nothing machine-checks: it states the
 **condition**, not the remedy. A `detail` written as user-facing copy — a remedy ("Reload
 and try again"), a consequence ("…so it can't be removed"), UI navigation ("Switch to Edit
-sets…") — duplicates wording the client owns and drifts. Default **Minor**. Two traps when
+sets…") — duplicates wording the client owns and drifts. **No call site is exempt** — the
+tree is already clean, so a `detail` in remedy voice is a fresh finding wherever it appears,
+never inherited debt. Default **Minor**. Two traps when
 a diff *fixes* one: shortening it into a restatement of the `code`, and shortening it into
 something untrue of the broadest arm the code serves. Also:
 - **A code emitted from more than one call site carries one string**, pinned on the pair

@@ -29,7 +29,8 @@ kept in sync by nothing.
   characterize* ("has a booking or a hold" is true of sets the server happily edits, since a
   hold whose day has passed locks nothing). "has a booking or a **current** hold" is the
   narrowest statement true at every arm.
-- **Scope is every `detail` in remedy voice**, whether or not a client mapper duplicates it
+- **No remedy-voiced `detail` is left in the tree, and none is exempt.** Scope is every
+  `detail` in remedy voice, whether or not a client mapper duplicates it
   (`RATE_LIMITED` and `CANNOT_SUSPEND_SELF` have no client `code`→copy mapper and are still
   in scope). Enumerate call sites by mechanism, not phrase: `grep -rn "ApiProblem\."
   platform/src/main` unrolled through each controller's local `problem(...)`/`error(...)`
