@@ -181,15 +181,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write `shared/cta-border-token.contrast.spec.ts` red, then register
-`--riv-cta-border` in `tailwind.css`.
+**Next action:** Phase 1 — write `e2e/cta-border-token-skin.e2e.ts` plus the two sweep tests red,
+then migrate the 16 border sites onto `border-riv-cta-border`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Register the token + its guard spec | | |
-| 1 — Migrate the 16 border sites + the render proof | | |
+| 0 — Register the token + its guard spec | ✅ | see phase-0 commit |
+| 1 — Migrate the 16 border sites + the render proof | ⏳ | |
 | 2 — Migrate the `bg-` site onto `--riv-inset-fill` | | |
 | 3 — Ledger + mirror close-out | | |
 
