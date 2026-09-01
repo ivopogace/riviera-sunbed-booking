@@ -36,7 +36,10 @@ pages and the withheld-email notice render under all three document themes; also
 take-the-skin-whole rule for the repainted panels) · `riviera-frontend` (confirmed the token
 registry has only **two** homes here — `tailwind.css` + `testing/glass-tokens.ts`; `core/theme.ts`
 carries the switcher registry only, so no row there) · `playwright-cli` (the mocked-suite
-`toHaveCSS` before/after diffs that are AC-2's evidence)
+`toHaveCSS` before/after diffs that are AC-2's evidence) · `riviera-local-debug` (the cloud-session
+recipes every phase ran on: `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` for the mocked e2e,
+and its **full-suite-only failure class** — which is exactly how phases 0 and 2 caught the three
+guards that scoped runs could not see)
 
 **Branch:** `claude/sdlc-879-8a5l2p` — **the cloud session's designated branch stands in for
 `feature/class-o-alpha-normalisation`** (`riviera-sdlc` § Remote/cloud session addendum). Branched
@@ -47,47 +50,55 @@ lineage — use `origin/main` for every diff and merge-base.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the class-O token population, when the guard sweep runs, then **no**
+- [x] **AC-1:** Given the class-O token population, when the guard sweep runs, then **no**
       `/opacity` position in `frontend/src` carries an alpha that is not a multiple of 5, and the
       meta-test proves the new assertion can fail. *Seam:* the tree-wide source sweep in
       `shared/class-o-tint-tokens.contrast.spec.ts` (the same seam #852's boundary guard uses) ·
-      *Pinned by:* `class-o-tint-tokens.contrast.spec.ts` → `'every /opacity alpha sits on the
-      multiple-of-five ladder'` + `'recognises an off-ladder alpha — the ladder sweep must be able
-      to fail'`
-- [ ] **AC-2:** Given each of the 8 ladder-moved positions, when its element is rendered in the
-      mocked e2e, then its computed colour equals the **new** ladder value and the assertion
-      records the outgoing one beside it. *Seam:* `page.locator(...).toHaveCSS()` against a real
-      render in `e2e/class-o-tint-tokens.e2e.ts` · *Pinned by:* `class-o-tint-tokens.e2e.ts` →
-      `'the ladder-moved positions paint their new alpha'`
-- [ ] **AC-3:** Given `beach-cell`'s aisle boundary, when the ladder sweep and the cell spec run,
+      *Pinned by:* `shared/class-o-tint-tokens.contrast.spec.ts` → ``'carries no `/opacity` alpha
+      off the multiple-of-five ladder'`` + `'recognises an off-ladder alpha, and only it — the
+      ladder sweep must be able to fail'`
+- [x] **AC-2:** Given each of the **11** ladder-moved positions, when its element is rendered in
+      the mocked e2e, then its computed colour equals the **new** ladder value and differs from a
+      live probe of the outgoing one. *Seam:* `page.locator(...).toHaveCSS()` against a real render
+      · *Pinned by:* `e2e/class-o-tint-tokens.e2e.ts` → `'the ladder-moved positions paint their
+      new alpha on the payout statement'` + `'the ladder-moved medallion fill paints its new
+      alpha'`; the armed-move panel in `e2e/operator-set-editing.e2e.ts` → `'grows the grid to add
+      a lounger, moves it, then removes it'`, where the arm sequence already lives
+- [x] **AC-3:** Given `beach-cell`'s aisle boundary, when the ladder sweep and the cell spec run,
       then its alpha is still exactly `/55` and is named in the spec as load-bearing with its
       WCAG 1.4.11 reason. *Seam:* the `CELL_CLASS` map's `gap` entry · *Pinned by:*
-      `beach-cell.spec.ts` → `'keeps the aisle boundary at /55, off the collapse'`
-- [ ] **AC-4:** Given the three walk-in hatch renderings, when each is rendered, then all three
+      `operator/beach-cell.spec.ts` → `'keeps the aisle boundary at /55, off the ladder's
+      collapse'`
+- [x] **AC-4:** Given the three walk-in hatch renderings, when each is rendered, then all three
       resolve to **one** `--riv-walkin-hatch` declaration and no source paints a
       `repeating-linear-gradient(45deg` of `--riv-console-tint` inline. *Seam:* the
       `--riv-walkin-hatch` image token + a tree-wide source sweep · *Pinned by:*
-      `class-o-tint-tokens.contrast.spec.ts` → `'declares one walk-in hatch, and no site rebuilds
-      it inline'`; painted by `class-o-tint-tokens.e2e.ts` → `'the three walk-in renderings share
-      one hatch'`
-- [ ] **AC-5:** Given the six amber surfaces, when each is rendered, then every one paints
+      `shared/class-o-tint-tokens.contrast.spec.ts` → `'declares one walk-in hatch, and no site
+      rebuilds it inline'`; painted by `e2e/layout-editor.e2e.ts` → `'generates a grid, paints a
+      walk-in set, and saves the whole layout in one PUT (+ axe)'`, which compares the painted cell
+      against the tool swatch as computed values — asserted there rather than in the class-O e2e
+      because generating a grid is that spec's own sequence
+- [x] **AC-5:** Given the six amber surfaces, when each is rendered, then every one paints
       `--riv-warn-{edge,fill,ink}` and the tokens `--riv-warn-tint`, `--riv-confirm-warn-*` and
       `--riv-notice-banner-*` no longer exist in `tailwind.css`. *Seam:* the `@theme inline` row +
       base-block declaration read as text by `testing/stylesheet-tokens.ts` · *Pinned by:*
-      `class-o-tint-tokens.contrast.spec.ts` → `'declares one amber family, and no retired amber
-      token survives'`
-- [ ] **AC-6:** Given the merged amber ink on the merged amber fill, when contrast is computed,
+      `shared/warn-token-skin.contrast.spec.ts` → `'leaves none of the three retired families
+      declared'` + `'leaves no site painting any retired family as a literal'` + `'paints the
+      merged family at every one of its sites'` (the positive half, so a mistyped path cannot
+      satisfy the negative sweeps vacuously)
+- [x] **AC-6:** Given the merged amber ink on the merged amber fill, when contrast is computed,
       then it is **≥ 4.5:1** and no surface's outgoing ratio is reduced below a floor it cleared.
       *Seam:* `src/testing/contrast.ts`'s composited-ratio helper · *Pinned by:*
-      `withheld-email-notice.contrast.spec.ts` → `'the merged amber pair clears AA, above the
-      outgoing pair'` (measured: 5.54:1 → **6.86:1**)
-- [ ] **AC-7:** Given `daily-view-tab`'s close-sales trigger button, when its edge is measured
+      `shared/warn-token-skin.contrast.spec.ts` → `'the warn ink meets AA on its solid amber fill'`
+      + `'beats the notice banner pair it replaced, so every moved surface moved the safe way'`
+      (measured: 5.54:1 → **6.86:1**)
+- [x] **AC-7:** Given `daily-view-tab`'s close-sales trigger button, when its edge is measured
       against its own fill, then the sub-3:1 result is recorded in an assertion and the button is
       listed in `docs/design/non-text-contrast.md`'s rule-2 family table with all three conditions
       demonstrated. *Seam:* the rule-2 families table + its named spec · *Pinned by:*
-      `daily-view-tab.contrast.spec.ts` → `'the close-sales trigger is identified by its label,
-      not its edge'` (edge 1.65:1 → 1.48:1; label 15.0:1, condition 1 met)
-- [ ] **AC-8:** Given the ledger, when class O's section is read, then it records the chosen scale
+      `operator/daily-view-tab.contrast.spec.ts` → `'the close-sales trigger is identified by its
+      label, not its edge (1.4.11 rule 2)'` (edge 1.65:1 → 1.48:1; label past AA, condition 1 met)
+- [x] **AC-8:** Given the ledger, when class O's section is read, then it records the chosen scale
       beside rule B, a per-site before/after table for all moved positions, and the named
       exemption. *Seam:* `docs/design/colour-literal-token-audit.md` § Class O · *Pinned by:*
       review-gate reading + `riviera-docs-freshness` at close-out (prose — no test)
@@ -228,6 +239,21 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|
 | F-1 | CI (mocked e2e, run 3147) | `console-negative-ink.e2e.ts` pinned the reason chip's outgoing `/ 0.12`. The same phase-0 fallout the full unit suite caught twice, in the one suite scoped runs had not covered | fixed-in-`17c7f8d` (phase 2), then re-verified by running the WHOLE mocked e2e suite before the phase-2 push — which is what found it locally |
 | F-2 | CI (repo hygiene, run 3147) | **RV-STYLE-1** — seven multi-line `//` comments across phases 0–2. "An inline comment is one line, or it is not written." | fixed: all seven converted to TSDoc blocks, which the rule exempts. All five hygiene guards now run locally before every push |
+| F-3 | review gate (bug scan) | `tailwind.css`'s `--riv-warn-*` declaration — the family's **own** proof pointer — still cited `e2e/notice-banner-token-skin.e2e.ts`, the pre-rename path | fixed |
+| F-4 | review gate (bug scan + CLAUDE.md) | `testing/glass-tokens.ts`'s header above `WARN_EDGE/FILL/INK` was the pre-merge `NOTICE_BANNER` comment **verbatim** — wrong token name, wrong values, wrong ratio, and pointing at the spec this PR deletes | fixed: rewritten to the merged family, incl. the invariance-ground substitution |
+| F-5 | review gate (prior-PR comments) | Every AC and phase-step checkbox left `- [ ]` against a ✅ execution status — **the #871 f.5 / #875 f.6 finding, third recurrence** | fixed: all reconciled; the only two left open are the two that are genuinely not yet true, each with its reason written in |
+| F-6 | review gate (prior-PR comments) | Six of eight AC `Pinned by` citations were paraphrases, and three named the **wrong file** — one a test removed during phase 1, one a spec this PR deletes | fixed: every pin now quotes the verbatim shipped `it(...)` title in the file that holds it |
+| F-7 | review gate (CLAUDE.md adherence) | **RV-PROC-1** — `riviera-local-debug` missing from *Skills consulted*, in a cloud-session slice that ran its recipes every phase | fixed |
+| F-8 | review gate (comment guidance) | `class-o-tint-tokens.contrast.spec.ts`'s header still gave "every consumer sits under the porcelain-pinned console, so a dark branch is unreachable" as the registry-wide invariance ground — **false for `--riv-warn-*` since the merge**, and contradicted by this slice's own paragraph three lines below it | fixed: the header now names the exception and points at the #868 ground that replaces it |
+| F-9 | review gate (comment guidance) | The moved-position count existed in **three places at three values** — "eight" in the spec comment, "nine" in the ledger, "eleven" in the PR body. Eleven is right (nine from the ladder sweep's first red, plus the two from the generalization audit); the ledger's own before/after rows already summed to it | fixed: both prose sites corrected to eleven **with the 9+2 provenance**, so the number carries its own derivation rather than being restated |
+
+> **What F-3 through F-7 have in common is worth recording.** Four of the five are *stale prose*,
+> and my own `riviera-docs-freshness` pass reported clean over the same range one commit earlier.
+> It missed them because its 2a grep filtered the results by `grep -v riv-warn` — which removed
+> exactly the comments that mention both the new name and a retired path. **A rename sweep must not
+> filter on the new name**; the dangling references live where old and new sit in the same
+> sentence. The counting sweep (2b) worked as designed and found two real hits, so the failure was
+> in 2a's construction, not the procedure.
 
 ---
 
@@ -273,23 +299,23 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/app/shared/class-o-tint-tokens.contrast.spec.ts` · `frontend/src/app/operator/payout-statement.ts` · `frontend/src/app/operator/set-editor.html` · `frontend/src/app/operator/requests-tab.html` · `frontend/src/app/operator/beach-cell.spec.ts` · `frontend/e2e/class-o-tint-tokens.e2e.ts`
 
-- [ ] **Step 1: Write the failing test** — the ladder sweep plus the meta-test that proves it can
+- [x] **Step 1: Write the failing test** — the ladder sweep plus the meta-test that proves it can
       fail (R-5). Enumerates by **mechanism** (`-riv-<class-O token>/<alpha>` anywhere in app
       sources), not by the sites already known.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- class-o-tint-tokens` → FAIL naming the 8
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include="…class-o-tint-tokens…"` → FAILED naming **9** off-ladder positions (the plan's prose said 8 — it under-tallied `/14`, which it listed twice; the sweep settled it).
       off-ladder positions (`console-tint/4 ×2`, `/7`, `/12`, `/14 ×2`, `select-tint/6`, `/12`,
       `positive-tint/12`).
-- [ ] **Step 3: Minimal implementation** — move exactly those alphas: `/4→/5`, `/7→/10`,
+- [x] **Step 3: Minimal implementation** — move exactly those alphas: `/4→/5`, `/7→/10`,
       `/12→/15` (console-tint outer border), `/14→/15`, `select-tint /6→/5`, `/12→/10`,
       `positive-tint /12→/10`. **Do not touch** `/15`, `/20`, `/25`, `/30`, `/40`, `/45`, `/50`,
       `/55`, `/60`.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- class-o-tint-tokens beach-cell payout-statement` → PASS
-- [ ] **Step 5: Generalization-audit pass** — population: *every* `/opacity` position in app
+- [x] **Step 4: Run it, verify it passes** — the four specs above → PASS (192 tests).
+- [x] **Step 5: Generalization-audit pass** — population: *every* `/opacity` position in app
       sources, not just the class-O tokens' (an off-ladder alpha on `bg-white/85` would be
       invisible to a token-scoped sweep). Enumerate, then decide whether the ladder is class-O-only
       or tree-wide, and record the decision.
-- [ ] **Step 6: Commit** — `git commit -m "Put every class-O alpha on the multiple-of-five ladder (#879)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Put every class-O alpha on the multiple-of-five ladder (#879)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -297,20 +323,20 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/tailwind.css` · `frontend/src/app/operator/beach-cell.ts|.spec.ts` · `frontend/src/app/operator/layout-editor.ts` · `frontend/src/app/operator/daily-view-tab.ts|.html` · `frontend/src/app/shared/class-o-tint-tokens.contrast.spec.ts` · `frontend/e2e/class-o-tint-tokens.e2e.ts`
 
-- [ ] **Step 1: Write the failing test** — a sweep asserting no app source rebuilds a
+- [x] **Step 1: Write the failing test** — a sweep asserting no app source rebuilds a
       `repeating-linear-gradient(45deg,…--riv-console-tint…)` inline, plus the single-declaration
       guard for `--riv-walkin-hatch` (AC-4).
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- class-o-tint-tokens` → FAIL listing
+- [x] **Step 2: Run it, verify it fails** — `npm test -- class-o-tint-tokens` → FAIL listing
       `beach-cell.ts`, `layout-editor.ts`, `daily-view-tab.ts`, `daily-view-tab.html`.
-- [ ] **Step 3: Minimal implementation** — declare `--riv-walkin-hatch` at 30%/10% beside
+- [x] **Step 3: Minimal implementation** — declare `--riv-walkin-hatch` at 30%/10% beside
       `--riv-premium-grad` (same rationale paragraph), consume it as
       `bg-(image:--riv-walkin-hatch)` at all four sites; delete the now-false "mirrors the cell
       variants" caveat in `layout-editor.ts` since it becomes true.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- class-o-tint-tokens beach-cell layout-editor daily-view-tab` → PASS
-- [ ] **Step 5: Generalization-audit pass** — population: every *image* the tree builds inline
+- [x] **Step 4: Run it, verify it passes** — `npm test -- class-o-tint-tokens beach-cell layout-editor daily-view-tab` → PASS
+- [x] **Step 5: Generalization-audit pass** — population: every *image* the tree builds inline
       that a token could own (mechanism: `bg-[` + `gradient(`), not just the 45deg hatch.
-- [ ] **Step 6: Commit** — `git commit -m "Give the walk-in hatch one declaration, so the mirrors mirror (#879)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Give the walk-in hatch one declaration, so the mirrors mirror (#879)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -318,21 +344,21 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/tailwind.css` · `frontend/src/testing/glass-tokens.ts` · `frontend/src/app/shared/confirm-panel.ts|.spec.ts` · `frontend/src/app/operator/daily-view-tab.html` · `frontend/src/app/operator/daily-view-tab.contrast.spec.ts` · `frontend/src/app/operator/payouts-tab.html` · `frontend/src/app/booking/withheld-email-notice.ts|.contrast.spec.ts` · `frontend/src/app/pages/legal/*.html` · `frontend/e2e/notice-banner-token-skin.e2e.ts` · `frontend/e2e/class-o-tint-tokens.e2e.ts`
 
-- [ ] **Step 1: Write the failing test** — the merged-family declaration guard + the
+- [x] **Step 1: Write the failing test** — the merged-family declaration guard + the
       retired-token sweep (AC-5), the AA before/after assertion (AC-6), and the rule-2
       trigger-button assertion (AC-7).
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- class-o-tint-tokens withheld-email-notice daily-view-tab` → FAIL: `--riv-warn-fill` undeclared, three retired tokens still present.
-- [ ] **Step 3: Minimal implementation** — declare `--riv-warn-{edge,fill,ink}` =
+- [x] **Step 2: Run it, verify it fails** — the new `warn-token-skin` guard → **6 of 10 red** (the 4 that passed are the pure AA maths, which is right).
+- [x] **Step 3: Minimal implementation** — declare `--riv-warn-{edge,fill,ink}` =
       `#e0a03a`/`#fff4e0`/`#7a4a08` with **#868's** fixed-fill rationale as the primary ground
       (R-2); delete `--riv-warn-tint`, `--riv-confirm-warn-*`, `--riv-notice-banner-*`; repaint the
       six surfaces; take each panel's class expression **whole** (#858's rule) so no named utility
       is left beside a literal.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- confirm-panel withheld-email-notice legal-pages daily-view-tab payouts-tab class-o-tint-tokens` → PASS, then `npm run test:e2e:a11y -- class-o-tint-tokens notice-banner-token-skin` → PASS
-- [ ] **Step 5: Generalization-audit pass** — population: every token pair in `tailwind.css` whose
+- [x] **Step 4: Run it, verify it passes** — the merged-family specs → PASS, then the mocked e2e → PASS.
+- [x] **Step 5: Generalization-audit pass** — population: every token pair in `tailwind.css` whose
       declared values are within a small ΔE of another pair's (mechanism: compare all declared
       hex values pairwise), not just the ambers the issue listed.
-- [ ] **Step 6: Commit** — `git commit -m "Merge the amber treatments into one warn family (#879)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Merge the amber treatments into one warn family (#879)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -340,13 +366,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `docs/design/colour-literal-token-audit.md` · `docs/design/non-text-contrast.md` · `frontend/src/app/pages/legal/legal-pages.contrast.spec.ts` · `frontend/e2e/cta-border-token-skin.e2e.ts` · this plan
 
-- [ ] **Step 1** — Record the ladder beside rule B in § Class O, with the per-site before/after
+- [x] **Step 1** — Record the ladder beside rule B in § Class O, with the per-site before/after
       table (AC-8) and `/55` named as the exemption.
-- [ ] **Step 2** — Add the close-sales trigger button to `non-text-contrast.md`'s rule-2 family
+- [x] **Step 2** — Add the close-sales trigger button to `non-text-contrast.md`'s rule-2 family
       table with its measuring spec (AC-7).
-- [ ] **Step 3** — Fix the two dangling `--riv-notice-banner-*` prose references (R-4).
-- [ ] **Step 4** — `node scripts/check-plan-file-structure.mjs --diff origin/main` (this doc staged) → PASS
-- [ ] **Step 5: Commit** — `git commit -m "Record the class-O alpha ladder and the amber merge (#879)"`
+- [x] **Step 3** — Fix the two dangling `--riv-notice-banner-*` prose references (R-4).
+- [x] **Step 4** — `node scripts/check-plan-file-structure.mjs --diff origin/main` (this doc staged) → PASS
+- [x] **Step 5: Commit** — `git commit -m "Record the class-O alpha ladder and the amber merge (#879)"`
 
 ---
 
@@ -363,31 +389,31 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npm test -- class-o-tint-tokens` → ladder sweep + meta-test PASS.
-- [ ] **AC-2:** `npm run test:e2e:a11y -- class-o-tint-tokens` → all 8 moved positions assert their new computed colour.
-- [ ] **AC-3:** `npm test -- beach-cell` → `/55` asserted, named load-bearing.
-- [ ] **AC-4:** `npm test -- class-o-tint-tokens` + e2e → one hatch declaration, no inline rebuild.
-- [ ] **AC-5:** `npm test -- class-o-tint-tokens` → merged family declared, three retired tokens absent.
-- [ ] **AC-6:** `npm test -- withheld-email-notice` → ≥ 4.5:1, and above the outgoing ratio.
-- [ ] **AC-7:** `npm test -- daily-view-tab` → rule-2 conditions asserted; table row present.
-- [ ] **AC-8:** review-gate read of § Class O + `riviera-docs-freshness` at close-out.
+- [x] **AC-1:** `npm test -- class-o-tint-tokens` → ladder sweep + meta-test PASS.
+- [x] **AC-2:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → the moved positions assert their new computed colour against a live probe of both values.
+- [x] **AC-3:** `npm test -- beach-cell` → `/55` asserted, named load-bearing.
+- [x] **AC-4:** the class-O guard + `e2e/layout-editor.e2e.ts` → one hatch declaration, no inline rebuild, cell and swatch computed-equal.
+- [x] **AC-5:** the `warn-token-skin` guard → merged family declared, all three retired families absent.
+- [x] **AC-6:** `npx ng test --watch=false --include="src/app/shared/warn-token-skin.contrast.spec.ts"` → ≥ 4.5:1, and strictly above the outgoing ratio.
+- [x] **AC-7:** `npm test -- daily-view-tab` → rule-2 conditions asserted; table row present.
+- [x] **AC-8:** review-gate read of § Class O + `riviera-docs-freshness` at close-out.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (justified N/A); invariant #2 untouched.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A, no logic touched.
-- [ ] **Modulith** section filled (N/A — frontend-only).
-- [ ] **Payment/payout** section filled (N/A).
-- [ ] Refund policy enforced server-side (invariant #10) — untouched.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met; no `as any`; Tailwind idioms per `riviera-tailwind`.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `references/pr-gates.md` §1 ladder *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (justified N/A); invariant #2 untouched.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, no logic touched.
+- [x] **Modulith** section filled (N/A — frontend-only).
+- [x] **Payment/payout** section filled (N/A).
+- [x] Refund policy enforced server-side (invariant #10) — untouched.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met; no `as any`; Tailwind idioms per `riviera-tailwind`.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN` — the citation lands in the final pre-merge commit, once the merge is authorised.
+- [ ] **The review gate ran in full** — the `references/pr-gates.md` §1 ladder *plus* `riviera-review-overlay`. Ran (5-agent fan-out); **4 findings, all fixed** — see the Findings register. Left unticked until the re-review of the fix round returns clean, per the re-entry rule.

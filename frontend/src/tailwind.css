@@ -484,7 +484,7 @@
       Proof: shared/warn-token-skin.contrast.spec.ts (the AA pair, the beats-what-it-replaced
       comparison, the failing themed-ink bound, the retired-name sweep and the single-declaration
       guard that is the only thing able to see a later dark override) +
-      e2e/notice-banner-token-skin.e2e.ts (the computed skin under a forced dark document theme).
+      e2e/warn-token-skin.e2e.ts (the computed skin under a forced dark document theme).
       Rationale: docs/design/colour-literal-token-audit.md § Class O, issue #879. */
   --riv-warn-edge: #e0a03a;
   --riv-warn-fill: #fff4e0;

@@ -202,8 +202,9 @@ deliberately a constraint on the **alphas**, not a new token shape: pre-composin
 (colour × alpha) pair would flip every `toHaveCSS` on these sites from `oklab()` to `rgba()` and
 move each alpha away from the comment explaining it — the same two objections that chose B over A.
 
-Five, because every class-O alpha except **nine** already sat on it. So the whole normalisation
-moved nine positions by at most 3 points, and — the part that made it cheap — it cost `beach-cell`'s
+Five, because all but **eleven** class-O alphas already sat on it — nine the ladder sweep named on
+its first red, plus the two below that only the generalization audit could reach. So the whole
+normalisation moved eleven positions by at most 3 points, and — the part that made it cheap — it cost `beach-cell`'s
 aisle boundary nothing: that `/55` is load-bearing (0.55 and not 0.35, for a stated 1.4.11 reason)
 and 55 is already on the ladder, so the rule never had to carve an exemption for the one value that
 could not move. It is named and pinned anyway, in `beach-cell.spec.ts`, because the ladder is a rule

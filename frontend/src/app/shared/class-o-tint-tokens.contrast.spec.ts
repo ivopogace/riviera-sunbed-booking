@@ -17,10 +17,15 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * becomes a token**. One token per base colour; the alpha stays where the comment explaining it is.
  *
  * <p>What this file owns is the part no per-surface AA spec can see — that each base colour is a
- * token, is declared ONCE, and stays theme-invariant. Every consumer sits either inside
- * `operator-console` (whose host pins porcelain) or on a fixed-white panel, so a dark branch would
- * be unreachable by construction and jsdom maths could not see one added later: every ratio in the
- * tree would still pass. So the declaration tests read `src/tailwind.css` as text (the
+ * token, is declared ONCE, and stays theme-invariant. For most of the registry the ground for that
+ * is reachability: the consumer sits inside `operator-console` (whose host pins porcelain) or on a
+ * fixed-white panel, so a dark branch is unreachable by construction. **`--riv-warn-*` is the
+ * exception, since #879**: merging the ambers pulled `pages/legal/` and `booking/withheld-email-notice.ts`
+ * into that family, and those are tourist surfaces that really do render under a dark document
+ * theme. Its invariance rests on the stronger, #868 ground instead — a fixed fill pins every ink on
+ * it — argued at the declaration and in `shared/warn-token-skin.contrast.spec.ts`, and proved
+ * against a real forced-dark render by `e2e/warn-token-skin.e2e.ts`. Either way jsdom maths could
+ * not see an override added later: every ratio in the tree would still pass. So the declaration tests read `src/tailwind.css` as text (the
  * `core/theme-boot.spec.ts` drift-guard pattern, via `testing/stylesheet-tokens.ts`), the sweep
  * reads the component sources, and the cross-theme proof against a real render — where the cascade
  * rather than a regex decides — is `e2e/class-o-tint-tokens.e2e.ts`.
@@ -106,8 +111,10 @@ function rawLiteralOf(value: string): RegExp {
  * sites from `oklab()` to `rgba()` and move each alpha away from the comment explaining it — the
  * same two objections that chose B over A in the first place.
  *
- * <p>Five was chosen because every class-O alpha except eight ALREADY sat on it, so the whole
- * normalisation moves 8 positions by at most 3 points (max channel delta 7/255, measured). It also
+ * <p>Five was chosen because all but ELEVEN class-O alphas already sat on it, so the whole
+ * normalisation moves eleven positions by at most 3 points (max channel delta 7/255, measured) —
+ * nine that this sweep named on its first red, plus the two the generalization audit added when it
+ * widened from the token array to the form. It also
  * costs `beach-cell`'s aisle boundary nothing: that `/55` is load-bearing — 0.55 and not 0.35 for a
  * stated WCAG 1.4.11 reason — and it is a multiple of five already, so the rule never had to carve
  * an exemption for the one value that could not move.
