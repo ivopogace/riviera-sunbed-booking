@@ -30,6 +30,10 @@ import {
  * card-glass surface on the bare themed gradient, so every pair is the EFFECTIVE colour
  * composited over the theme's worst-case stops (the venue-map pattern). Mirrors
  * `booking-confirmation.ts`. The ✓ badge is decorative (aria-hidden) — 1.4.11-exempt.
+ *
+ * <p>One surface needs a SECOND layer and has its own describes at the foot of this file: the
+ * summary `<dl>` sits on an inset fill over the card glass, and compositing its inks on the card
+ * glass alone is what hid a dark-theme AA failure until #853.
  */
 
 const ACCENT = '#085a6e'; // --riv-accent-ink (Paid, big code, link)

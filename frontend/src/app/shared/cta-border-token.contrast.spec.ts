@@ -73,10 +73,17 @@ const OUT_OF_FAMILY = { path: 'app.html', literal: 'inset_0_1px_0_rgba(255,255,2
 
 const APP_ROOT = join(process.cwd(), 'src/app');
 
-/** Every component source — templates are inline `.ts` here, so both extensions are swept. */
-function componentSources(): readonly string[] {
+/** This file, the one source that may legitimately name the retired positions — it is the sweep. */
+const SELF = 'shared/cta-border-token.contrast.spec.ts';
+
+/**
+ * Every source under `src/app` except this one — templates are inline `.ts` here, so both
+ * extensions are swept, and specs are IN scope: #862 found stale token prose hiding in a spec file
+ * that a `*.spec.ts`-excluding sweep could not see.
+ */
+function allSources(): readonly string[] {
   return readdirSync(APP_ROOT, { recursive: true, encoding: 'utf8' }).filter(
-    (path) => /\.(ts|html)$/.test(path) && !path.endsWith('.spec.ts'),
+    (path) => /\.(ts|html)$/.test(path) && path.replaceAll('\\', '/') !== SELF,
   );
 }
 
@@ -118,8 +125,8 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
   it('is decorative chrome, measured rather than assumed exempt', () => {
     for (const [surface, fill] of FIXED_FILLS) {
       const ratio = borderOver(fill, CTA_BORDER.alpha);
-      expect(ratio, `${surface}: above the 1.4.11 floor`).toBeLessThan(AA_LARGE);
-      expect(ratio, `${surface}: below the measured band`).toBeGreaterThan(2);
+      expect(ratio, `${surface}: WCAG 1.4.11 exemption`).toBeLessThan(AA_LARGE);
+      expect(ratio, `${surface}: the measured band's floor`).toBeGreaterThan(2);
     }
   });
 
@@ -149,7 +156,7 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
   });
 
   it('leaves no component painting the retired literal positions', () => {
-    const offenders = componentSources().filter((path) =>
+    const offenders = allSources().filter((path) =>
       RETIRED_POSITIONS.some((position) => read(path).includes(position)),
     );
 

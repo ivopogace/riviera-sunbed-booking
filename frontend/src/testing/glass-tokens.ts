@@ -362,20 +362,10 @@ export const NOTICE_BANNER_FILL: Rgb = hexToRgb('fcf0d9');
 export const NOTICE_BANNER_INK: Rgb = hexToRgb('8a5410');
 
 /** `--riv-cta-border` (#853, class R): the white hairline bevel on the primary CTA button — 16
- *  positions across `auth/`, `booking/` and `shared/`, on the `--riv-cta-grad` stops below and on
- *  `booking-dialog`'s `#31798a` close button. Grouped by FORM, not by component: one bevel, one
- *  kind of fixed teal action surface, one ground for invariance.
- *
- *  Its own token despite equalling `--riv-inset-fill` — that one is a FILL and resolves white 0.08
- *  in the dark theme, so a border pointed at it would confuse the role and move the paint.
- *  Theme-invariant, and NOT on `--riv-card-border`'s model as #853 proposed: that token themes
- *  because the card glass under it themes, whereas every surface here is fixed. Measured — the
- *  dark `--riv-card-border` (DARK_CARD_BORDER below) over these fills is 1.35-1.46:1.
- *
- *  Non-text chrome (WCAG 1.4.11) at 2.08-2.48:1 over its own fills, measured rather than waved off,
- *  the same finding and tracking issue (#834) as SOLID_BTN_BORDER; the CTA fill itself carries the
- *  affordance boundary (3.80-7.24:1 against the card glass in both light themes). Full reasoning
- *  sits at the declaration in `tailwind.css`. Guarded by
+ *  positions across `auth/`, `booking/` and `shared/`, grouped by FORM: one bevel, one kind of
+ *  fixed teal action surface (the `--riv-cta-grad` stops and `booking-dialog`'s close-button fill).
+ *  Theme-invariant, so the mirror is one value rather than a per-theme pair; the alternatives it
+ *  rejects, and the ratios behind them, sit at the declaration in `tailwind.css`. Guarded by
  *  `shared/cta-border-token.contrast.spec.ts`. */
 export const CTA_BORDER: Glass = { color: WHITE, alpha: 0.4 };
 /** `--riv-cta-grad`'s two stops as opaque surfaces — what the hairline composites over. */
