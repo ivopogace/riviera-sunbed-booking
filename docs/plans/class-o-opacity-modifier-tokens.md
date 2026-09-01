@@ -199,10 +199,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, re-review + Sonar re-read due on the new head`
+**Stage pointer:** `DONE — merged via PR #878`
 
-**Next action:** post the review outcome on #878, then re-read the Sonar gate against the NEW
-head (the earlier read was against `42f1c83`) before merge.
+**Next action:** none — merge close-out steps 1-3 and 6-7 are GitHub edits, not commits.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -210,7 +209,7 @@ head (the earlier read was against `42f1c83`) before merge.
 | 1 — selection chrome, `#2bb8d4` + `#0e8aa8` (8 + 2 whole-ternary) | ✅ | `ef8aad8` |
 | 2 — the red families, `#a3160e` (7) + `#a3372a` (2) | ✅ | `3fec9e1` |
 | 3 — amber + green tints (9) and the two entangled skins | ✅ | `9f2e11b` |
-| 4 — ledger, the option-C follow-up issue, docs freshness | ✅ | next commit |
+| 4 — ledger, the option-C follow-up issue, docs freshness | ✅ | `a21eae8` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -483,24 +482,27 @@ three become tokens (`--riv-notice-edge`, `--riv-notice-fill`, `--riv-notice-ink
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2) — no write path in scope.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section justified N/A (invariant #11) — no backend file in the diff.
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9) — display surfaces only.
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met: tokens registered in `tailwind.css` only, theme-invariance
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2) — no write path in scope.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section justified N/A (invariant #11) — no backend file in the diff.
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9) — display surfaces only.
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met: tokens registered in `tailwind.css` only, theme-invariance
       declared as a decision with its reason, inert marker classes and `data-testid`s retained,
       no `as any`.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final plan-doc state committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `references/pr-gates.md` §1 ladder *plus*
-      `riviera-review-overlay`, not the overlay alone.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` passes with the plan doc **staged**.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — this is that commit; slice **merged via PR #878**.
+- [x] **The review gate ran in full** — `Skill("code-review:code-review")` (ladder rung 1, the
+      plugin workflow) at **high** effort, with `riviera-review-overlay` layered on: five parallel
+      agents (invariants/overlay, diff bug scan, git-history intent, prior-PR comments, comment
+      truth). Three findings scored >=80 and were fixed (F-3, F-4, F-5); agents 1 and 3 found
+      none. Outcome posted on the PR.
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` passes with the plan doc **staged**.
