@@ -228,13 +228,13 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Write `docs/design/non-text-contrast.md`, then repoint the ledger's two citations and correct F-1.
+**Next action:** Phase 1 — add the CTA adjacent-colour assertions (AC-1, AC-2) to `app/shared/cta-border-token.contrast.spec.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the rule doc + ledger repoint | ⏳ | |
+| 0 — the rule doc + ledger repoint | ✅ | `<phase-0>` |
 | 1 — the CTA adjacent-colour assertions (AC-1, AC-2) | | |
 | 2 — the stale-deferral guard, then the repointing it forces green (AC-3) | | |
 | 3 — the forced-colors precondition guard + its doc clause (AC-4) | | |
@@ -245,7 +245,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | intake grill (docs-freshness counting sweep, pre-identified) | `docs/plans/admin-error-ink-tokens.md:297` states "The three follow-up issues stay open: **#834** …" — #834 closed 2026-08-31, so the sentence is false at HEAD | open → fixed in phase 0 |
+| F-1 | intake grill (docs-freshness counting sweep, pre-identified) | `docs/plans/admin-error-ink-tokens.md:297` states "The three follow-up issues stay open: **#834** …" — #834 closed 2026-08-31, so the sentence is false at HEAD | fixed in phase 0 |
+| F-4 | phase 0 (counting sweep, in situ) | `docs/design/README.md` calls the ledger "the one exception" to the design-record convention; this slice adds a second maintained `.md` | fixed in phase 0 |
 | F-2 | intake grill | The issue's family list is incomplete: `--riv-amenity-tag-border` (1.15:1) and `--riv-amenity-water-border` (1.17:1) cite #834 at `tailwind.css:482` and `glass-tokens.ts:323` and are unlisted — six families, not five | open → covered by AC-3's enumeration |
 | F-3 | intake grill | Two **spec** files carry #834 pointers the issue does not mention; `accent-tokens.contrast.spec.ts:52` ("Raising it to compliance is #834's") is a live forward deferral, `admin-console.contrast.spec.ts:42` is history | open → AC-3 splits them: repoint the first, allow-list the second |
 
@@ -255,6 +256,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - `docs/design/non-text-contrast.md` — **new.** The named rule, its forced-colors clause, the
   adjacent-colour reading, and the per-family index pointing at each measuring spec.
+- `docs/design/README.md` — **found mid-phase-0.** It declares `colour-literal-token-audit.md`
+  "the one exception" to the design-record convention; a second maintained `.md` makes that
+  sentence false, so the section becomes "the exceptions" and gains a paragraph for the new
+  rule. Exactly the counting-sweep shape `riviera-docs-freshness` warns about.
 - `docs/design/colour-literal-token-audit.md` — repoint the two #834 citations (the class-R row
   at :202 and the F-3/F-5 measured-borders note at :127) at the new rule.
 - `docs/plans/admin-error-ink-tokens.md` — one line (:297): #834 is closed, not open (F-1).

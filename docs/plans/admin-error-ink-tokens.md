@@ -294,9 +294,11 @@ per the `riviera-sdlc` re-entry rule — routing gate re-run for what the fix to
 §6d read before editing, then `format:check`, the four contrast tests and `lint` re-run
 green. Recorded on the PR as issue comment `5471842303`.
 
-**Next action:** None — the slice is merged. The three follow-up issues stay open: **#834**
-(R-3's sub-3:1 boundaries), **#835** (the `#0a4f5e` teal sweep), **#836** (the app-wide
-literal residue).
+**Next action:** None — the slice is merged. Of the three follow-up issues, **#834**
+(R-3's sub-3:1 boundaries) closed 2026-08-31 — its erasure-panel scope completed by PR
+#837, and the *general* sub-3:1 question it had informally accumulated now lives at
+`docs/design/non-text-contrast.md` (#876). **#835** (the `#0a4f5e` teal sweep) and
+**#836** (the app-wide literal residue) stay open.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
