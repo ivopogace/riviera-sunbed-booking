@@ -58,8 +58,10 @@ unlisted — and that two **spec** files carry pointers, one of them a live defe
 (phase 2's guard is genuinely red — 9 stale citations — before the repointing turns it green,
 and it bit again at the review gate on a citation of my own, F-14; phases 1 and 3 are honest
 characterization, flagged as such) · `riviera-review-overlay`
-(review gate — runs at ready-for-review) · `riviera-docs-freshness` (due at close-out over
-`origin/main..HEAD`; the counting sweep already has one pre-identified target — see F-1) ·
+(review gate — runs at ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD` as the
+pre-merge smoke — **1 finding, patched**: its own substrate map listed only the `.dc.html`
+artboards, missing the maintained `.md` files this slice makes two of. The counting sweep's four
+"the one exception" hits were read and three are unrelated subjects that stay true) ·
 `riviera-tailwind` (the theme-invariant-token rule and "a fixed surface pins what is painted
 on it", which is *why* the two boundary carriers swap between themes rather than one carrying
 it everywhere; also confirmed the `@theme inline` multi-theme pattern against Tailwind's own
@@ -231,9 +233,24 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, awaiting CI on the fix push`
+**Stage pointer:** `merge close-out — steps 4 and 5 done pre-merge; awaiting the maintainer's merge of PR #877`
 
-**Next action:** All five review agents reported; 14 findings recorded, all fixed. Confirm CI is green on the fix push, re-check the Sonar gate on the new head, then post the review comment and close out.
+**Next action:** None in-repo — the close-out is written here, in this PR. After the merge only the two GitHub-side items remain: verify #876 closed (the PR body's `Closes #876` should do it), and this slice belongs to no tracking epic so there is no checklist to tick.
+
+> **Gates, all green on head `6c4e8fa`:** CI 8/8 checks · review gate run (`riviera-review-overlay`
+> + the `code-review` plugin's five-agent fan-out; record: PR #877 comment `5494441772`) · Sonar
+> quality gate passed with its **list pulled from the API, not the badge** — `issues/search`
+> total 0, `new_duplicated_blocks` 0, `new_duplicated_lines_density` 0.0, and the false-clean
+> guard satisfied (`measures` populated, `new_lines` 24). `new_coverage` is absent rather than
+> low: the 24 new lines are docs, comments and test code, so there are no coverable new lines and
+> the ≥80% condition does not apply — recorded as not-applicable, never as "met".
+>
+> **`riviera-docs-freshness` ran** over `origin/main...HEAD` (pre-merge smoke): **1 finding,
+> patched** — its own substrate map named only `docs/design/*.dc.html`, so a future run would not
+> have known to check the maintained `.md` files beside them. The counting sweep's four hits were
+> read: three are "the one exception" about unrelated subjects and stay true, the fourth is this
+> slice's own README fix. No substrate doc outside `docs/design/` states anything about 1.4.11,
+> non-text contrast, or #834.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -277,6 +294,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   at :202 and the F-3/F-5 measured-borders note at :127) at the new rule.
 - `docs/plans/admin-error-ink-tokens.md` — one line (:297): #834 is closed, not open (F-1).
 - `docs/plans/non-text-contrast-policy.md` — this plan doc.
+- `.claude/skills/riviera-docs-freshness/SKILL.md` — **the close-out sweep's own finding.** Its
+  substrate map named only `docs/design/*.dc.html`, so a future run would not have known to check
+  the maintained `.md` files beside them — which this slice makes two of.
 - `frontend/src/tailwind.css` — repoint the deferral citations above `--riv-cta-border`,
   `--riv-accent-*`, `--riv-solid-btn-*`, `--riv-medallion-negative-border` and
   `--riv-amenity-*-border`; leave the two history citations (`--riv-danger-*`,
@@ -404,6 +424,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **Frontend** standards met; no token value moved (verified via the Behavior-parity ledger).
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final state committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
-      `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] **Close-out written in THIS PR** — final state committed here; **merged via PR #877** (no merge SHA, per the pre-merge rule).
+- [x] **The review gate ran in full** — rung 1 of the invocation ladder
+      (`Skill("code-review:code-review")`, the five-agent fan-out) *plus* `riviera-review-overlay`.
+      Not a degraded mode; 14 findings, all fixed, recorded on the PR.
