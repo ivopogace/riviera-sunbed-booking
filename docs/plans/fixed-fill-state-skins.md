@@ -245,7 +245,7 @@ split, class S amenity row retired, three new rows — then file the follow-up i
 | 1 — the outcome-medallion family | ✅ | `c72ff26` |
 | 2 — the amenity-chip family | ✅ | `6a70f4c` |
 | 3 — the dialog step-badge family | ✅ | `6923f7b` |
-| 4 — the forced-dark computed-style e2e | ✅ | `<phase-4>` |
+| 4 — the forced-dark computed-style e2e | ✅ | `89fcc50` |
 | 5 — ledger + follow-up issues + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
