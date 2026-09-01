@@ -174,6 +174,7 @@ untouched; this slice only changes how its confirmation renders and what fires t
 | FE-8 | `tailwind.css` | existing | token registry | adds `--riv-solid-fill-warn` + its `@theme inline` row, in the existing `--riv-solid-fill-*` doc comment | — |
 | FE-9 | `e2e/solid-fill-token-skin.e2e.ts` | existing | mocked e2e | extends `REGISTRY`/`UTILITIES`, asserts the weather button paints from the token | — |
 | FE-10 | `e2e/operator-daily.e2e.ts`, `e2e/operator-payouts.e2e.ts` | existing | mocked e2e | new `role="alertdialog"` + accessible-name assertions | — |
+| FE-11 | `shared/warn-token-skin.contrast.spec.ts` | existing | contrast spec | drops `payouts-tab.html` from its `SITES` positive-paint check (found only once Phase 2 landed — its weather confirm no longer paints the warn skin directly) | — |
 
 **Standards:** standalone components, `inject()`, `@if`/`@for`, `input()`/`output()` signal
 APIs, no `ChangeDetectionStrategy.OnPush` (default), no `standalone: true` (default), host
@@ -189,18 +190,18 @@ N/A — no contract change. No request URL, method, body, or header changes; bot
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 3) — ready to commit, then PR + review gate`
 
-**Next action:** Add e2e role/accessible-name assertions to `operator-daily.e2e.ts` +
-`operator-payouts.e2e.ts`, extend `solid-fill-token-skin.e2e.ts`, then close the
-`docs/design/colour-literal-token-audit.md` ledger row (Phase 3).
+**Next action:** Commit Phase 3, open the PR (draft first, since CI only fires on
+`pull_request`), run the review-gate invocation ladder (`riviera-sdlc`
+`references/pr-gates.md` §1) once the phase is pushed.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `shared/confirm-panel`: `headline` + `busy` + `warn` tone | ✅ | `ef7615a` |
 | 1 — Adopt in `daily-view-tab` | ✅ | `ef7615a` |
-| 2 — Adopt in `payouts-tab` + retire the `#9a6410` literal (token family) | ✅ | (pending commit) |
-| 3 — e2e coverage (ARIA + token no-drift) + full verification | ⏳ | |
+| 2 — Adopt in `payouts-tab` + retire the `#9a6410` literal (token family) | ✅ | `1d1a79d` |
+| 3 — e2e coverage (ARIA + token no-drift) + full verification | ✅ | (pending commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -232,6 +233,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/e2e/solid-fill-token-skin.e2e.ts` — registry/utility extension + assertion
 - `frontend/e2e/operator-daily.e2e.ts` — alertdialog role + accessible-name assertions
 - `frontend/e2e/operator-payouts.e2e.ts` — alertdialog role + accessible-name assertions
+- `frontend/src/app/shared/warn-token-skin.contrast.spec.ts` — drops `operator/payouts-tab.html`
+  from `SITES`: its weather confirm no longer paints the warn skin itself, only through
+  `shared/confirm-panel.ts` (already listed)
 - `docs/design/colour-literal-token-audit.md` — close the `#9a6410` class-T row
 
 ---
@@ -382,11 +386,33 @@ it('exposes the close-sales confirm as an alertdialog with an accessible name', 
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npm test -- daily-view-tab payouts-tab` + the e2e role/name assertions.
-- [ ] **AC-2:** the existing focus specs, unmodified, still green.
-- [ ] **AC-3:** `npm test -- confirm-panel` → the busy case.
-- [ ] **AC-4:** `npm test -- solid-fill-tokens` + `solid-fill-token-skin.e2e.ts`.
-- [ ] **AC-5:** the ledger row, read at close-out.
+- [x] **AC-1:** `ng test --include="src/app/operator/daily-view-tab.spec.ts"` +
+      `--include="src/app/operator/payouts-tab.spec.ts"` → both green, including the new
+      alertdialog/accessible-name cases; `playwright test operator-daily operator-payouts`
+      → 11 passed, incl. the new `role`/`toHaveAccessibleName` assertions.
+- [x] **AC-2:** the pre-existing focus specs (`daily-view-tab.spec.ts`'s `'moves focus…'`/
+      `'returns focus…'`, `payouts-tab.spec.ts`'s equivalents, and both files' e2e
+      `toBeFocused()` assertions) all green, unmodified.
+- [x] **AC-3:** `ng test --include="src/app/shared/confirm-panel.spec.ts"` → 14 passed,
+      incl. `'blocks confirm and cancel while busy…'`.
+- [x] **AC-4:** `ng test --include="src/app/shared/solid-fill-tokens.contrast.spec.ts"` → 8
+      passed; `playwright test solid-fill-token-skin` → 6 passed incl. the new warn-fill
+      render assertion.
+- [x] **AC-5:** `docs/design/colour-literal-token-audit.md`'s class-T table carries the
+      closed `#9a6410` → `--riv-solid-fill-warn` row.
+
+Full verification at Phase 3: `npm run lint` (0 errors, 1 pre-existing unrelated warning);
+`npm run format:check` clean; `npm test` → **2277 passed (205 files)**; `npm run build`
+succeeds (the bundle-budget warning is pre-existing, confirmed unchanged against the
+pre-Phase-3 tree); the touched e2e specs run individually green
+(`operator-daily`/`operator-payouts`: 11 passed; `solid-fill-token-skin`: 6 passed).
+`node scripts/check-plan-file-structure.mjs --diff origin/main`,
+`check-inline-comments.mjs --diff origin/main`, `check-touch-target.mjs --all`, and
+`check-focus-posture.mjs --diff origin/main` all clean. The full mocked
+`test:e2e:a11y` suite (all ~165+ specs) was kicked off in the background to catch any
+cross-spec interaction; its result was not yet back when this checkpoint was written —
+re-run it and update this line before claiming the PR ready for review if it hasn't
+landed by then.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
