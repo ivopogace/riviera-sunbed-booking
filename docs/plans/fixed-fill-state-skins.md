@@ -246,7 +246,7 @@ check) and clear every entry; then the merge close-out.
 | 2 — the amenity-chip family | ✅ | `6a70f4c` |
 | 3 — the dialog step-badge family | ✅ | `6923f7b` |
 | 4 — the forced-dark computed-style e2e | ✅ | `89fcc50` |
-| 5 — ledger + follow-up issues + close-out | ✅ | `f930000` · close-out completed in `<close-out>` |
+| 5 — ledger + follow-up issues + close-out | ✅ | `f930000` · close-out completed in `e098350a` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
