@@ -185,8 +185,8 @@ the `pull_request` event only, so the pushed branch gets no CI run until a PR ex
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the token, the three consumers, the unit guard | ✅ | `b93044c` |
-| 1 — the mocked-e2e computed-style proof | ✅ | `PHASE1SHA` |
-| 2 — record the answer in the audit doc | ✅ | `PHASE1SHA` |
+| 1 — the mocked-e2e computed-style proof | ✅ | `dc214d4` |
+| 2 — record the answer in the audit doc | ✅ | `dc214d4` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -311,9 +311,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - [x] **AC-1:** Run `npx ng test --watch=false --include="src/app/shared/sun-token.contrast.spec.ts"` → 4 passed. Verified at commit `b93044c`.
 - [x] **AC-2:** Same command → 4 passed (sweep + meta-test). Verified at commit `b93044c`.
-- [x] **AC-3:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- sun-token` → 3 passed. Verified at commit `PHASE1SHA`.
-- [x] **AC-4:** Same command → 3 passed. Verified at commit `PHASE1SHA`.
-- [x] **AC-5:** Same command → 3 passed. Verified at commit `PHASE1SHA`.
+- [x] **AC-3:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- sun-token` → 3 passed. Verified at commit `dc214d4`.
+- [x] **AC-4:** Same command → 3 passed. Verified at commit `dc214d4`.
+- [x] **AC-5:** Same command → 3 passed. Verified at commit `dc214d4`.
 - [x] **AC-6:** Run `npx ng test --watch=false --include="src/app/pages/home/home.contrast.spec.ts"` → PASS, with the file absent from the diff. Verified at commit `b93044c`.
 
 ## Self-review checklist (before merge / PR)
