@@ -298,8 +298,10 @@
       already cannot theme.
 
       ONE brand teal (#861): -action and -brand had no role between them and merged onto #0a6e85.
-      #0a5f74 is retired as a FILL only — it still paints both --riv-cta-grad stops, the editor
-      selection rings and three booking/ inks. Do not re-darken this fill to #0a5f74: it sits
+      #0a5f74 is retired as a FILL only — it still paints both --riv-cta-grad stops and the editor
+      selection rings. Its three booking/ ink positions became tokens at #858
+      (--riv-medallion-positive-ink ×2, --riv-step-active-ink), so the value survives there through
+      a declaration rather than a literal; the shared/ amenity ink went the same way. Do not re-darken this fill to #0a5f74: it sits
       1.016:1 from -brand-hover, which erases the hover.
       Proof: shared/solid-fill-tokens.contrast.spec.ts + solid-fill-token-skin.e2e.ts.
       Rationale: docs/plans/solid-fill-teal-merge.md, then
@@ -353,7 +355,8 @@
 
   /** The OUTCOME MEDALLION (#858, class F-3) — the round, centred, `aria-hidden` glyph that a
       landed booking state renders: booking-confirmation's ✓, booking-pay's ✓/⏳/✕,
-      request-confirmation's ⏳ and appFailureIcon's ⚠. Five sites, three states, one form.
+      request-confirmation's ✉ and appFailureIcon's ⚠ or 🏖. Five sites, three states, one form.
+      The glyph is per site and carries no meaning — every one is aria-hidden.
 
       Grouped by FORM, not by value — the --riv-solid-fill-* precedent, and here the alternative was
       actively wrong: the six inks #858 enumerated carry two values across three different forms
@@ -408,7 +411,7 @@
       Theme-invariant BY DESIGN — the fills are fixed and `shared/` mounts this directive from hosts
       of DIFFERING themes (the light Discover card and the dark glass map header), which is exactly
       the drift a themed ink would introduce: --riv-accent-ink resolves #7cd7e8 at 1.37:1 over the
-      water fill, and --riv-card-ink resolves #f2f7fa at 1.02:1 over the tag fill. Neither is a
+      water fill, and --riv-card-ink resolves #f2f7fa at 1.04:1 over the tag fill. Neither is a
       hypothetical: the directive already renders in both places today.
 
       BOTH variants, or neither. #858 enumerated only the water ink, but the two variants are the

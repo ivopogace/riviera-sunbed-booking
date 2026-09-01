@@ -121,7 +121,7 @@ These families must move **as a pair**, onto tokens declared **once** with no da
 >
 > **Measured, per AC-1** (current : the themed alternative resolved in dark):
 > medallion positive 6.20 : 1.41 · waiting 5.54 : 1.63 · negative 5.62 : **1.54** (the very number
-> #850 measured) · amenity tag 8.37 : ~1.02 · water 6.00 : 1.37 · step active 7.24 : 1.65 · step idle
+> #850 measured) · amenity tag 8.37 : 1.04 · water 6.00 : 1.37 · step active 7.24 : 1.65 · step idle
 > 5.11 (white on the fill, which cannot theme). Borders, non-text chrome under 3:1 and carried across
 > unchanged against #834: 1.24 / 1.15 / 1.17.
 >

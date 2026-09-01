@@ -23,7 +23,8 @@ import { completeDialog } from './support/booking-dialog';
  * <p>Six surfaces, because the family has to be proven where it actually renders: the amenity chip's
  * two variants, the step badge's two states, and the medallion's three — positive via the booking
  * confirmation, negative via `shared/`'s own `appFailureIcon`, and **waiting** via
- * `request-confirmation`'s REQUEST-mode `202`. That last leg exists because #858 never enumerated
+ * `request-confirmation`'s REQUEST-mode `202` — whose badge glyph is the envelope, not the
+ * hourglass its neighbouring info box carries. That last leg exists because #858 never enumerated
  * the waiting state; it was found by sweeping the medallion FORM rather than the ticket's value
  * list, and without a rendered assertion its pair would be declared and mapped but never proven to
  * reach an element.

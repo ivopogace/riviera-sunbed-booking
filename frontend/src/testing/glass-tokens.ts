@@ -248,7 +248,8 @@ export function expectAaOverStops(
 
 /** The `--riv-medallion-*` family (#858, class F-3): the round, centred, `aria-hidden` outcome
  *  glyph in its three states — `booking-confirmation`'s ✓, `booking-pay`'s ✓/⏳/✕,
- *  `request-confirmation`'s ⏳ and `appFailureIcon`'s ⚠.
+ *  `request-confirmation`'s ✉ and `appFailureIcon`'s ⚠ or 🏖 (the glyph is per site and carries no
+ *  meaning; every one is `aria-hidden`).
  *
  *  Grouped by FORM rather than value, the `--riv-solid-fill-*` precedent: the same five sites carry
  *  three different pairs, and two of the three values coincide with families that are NOT this one
@@ -288,7 +289,7 @@ export const MEDALLION_NEGATIVE_BORDER: Rgb = hexToRgb('eecdc4');
  *
  *  Theme-invariant: the fills are fixed and `shared/` mounts this directive from the Discover card
  *  and the dark glass map header alike, so a themed ink drifts — DARK_ACCENT_INK over the water fill
- *  is 1.37:1 and DARK_CARD_INK over the tag fill 1.02:1, against the shipped 6.00 and 8.37:1. Full
+ *  is 1.37:1 and DARK_CARD_INK over the tag fill 1.04:1, against the shipped 6.00 and 8.37:1. Full
  *  reasoning sits at the declaration in `tailwind.css`. Guarded by
  *  `shared/fixed-fill-token-skins.contrast.spec.ts`.
  *

@@ -7,7 +7,7 @@ import { booleanAttribute, computed, Directive, input } from '@angular/core';
  * every ink/fill pair is proven AA in `shared/amenities.contrast.spec.ts`). Both variants wear the
  * theme-invariant `--riv-amenity-*` family since #858: mounting from hosts of differing themes is
  * precisely why nothing here may theme — a themed ink over these fixed fills resolves light on
- * light (1.37:1 / 1.02:1 in the dark theme). The reasoning sits at the declaration in
+ * light (1.37:1 / 1.04:1 in the dark theme). The reasoning sits at the declaration in
  * `tailwind.css`; the guard is `shared/fixed-fill-token-skins.contrast.spec.ts`. The `water` variant is
  * the accent "Xm to water" tag. A variant directive, not a mixin (see `shared/retry-button.ts`).
  *
