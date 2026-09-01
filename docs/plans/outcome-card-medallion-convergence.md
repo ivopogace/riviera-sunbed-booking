@@ -72,7 +72,7 @@ session addendum*). The literal `feature/…` branch is deliberately not created
       *Seam:* the component sources, swept as text · *Pinned by:*
       `fixed-fill-token-skins.contrast.spec.ts` › the `MIGRATED_SITES` / `EXCLUSIVE_LITERALS` /
       `OUT_OF_FAMILY` sweeps
-- [ ] **AC-4:** Given the decision is made, when the substrate is read, then the ledger's F-5 row
+- [x] **AC-4:** Given the decision is made, when the substrate is read, then the ledger's F-5 row
       reads `done` with this PR, the six diverged artboard lines each carry an
       `as-built diverges — see #869` pointer, and the verdict is stated at the
       `--riv-medallion-*` declaration in `tailwind.css`. *Seam:* the substrate docs themselves ·
@@ -117,7 +117,7 @@ session addendum*). The literal `feature/…` branch is deliberately not created
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The dark-theme repaint is judged wrong once seen (a pale medallion punched into a dark card) | med | med | Enumerated in the behavior-parity ledger before any code, and the maintainer chose this option knowing it; the two e2e legs make the shipped value inspectable | ivopogace | open |
+| R-1 | The dark-theme repaint is judged wrong once seen (a pale medallion punched into a dark card) | med | med | Enumerated in the behavior-parity ledger before any code, and the maintainer chose this option knowing it; the two e2e legs make the shipped value inspectable | ivopogace | **open — the one row that stays open until the repaint is eyeballed.** It is a judgement, not a defect: every test passes either way |
 | R-2 | The `rgba(240,170,46,…)` sweep over-reaches onto the four out-of-family homes (`pending-approval-banner`, `booking-dialog`'s mode note, `app.html`'s sun, `home.html`'s photo sun) | med | med | `OUT_OF_FAMILY` gains rows asserting each keeps its literal — the positive half of the sweep #851 invented; only `#a86a12` (single-site) joins `EXCLUSIVE_LITERALS` | — | **closed** in phase 1 — all four rows added and green |
 | R-3 | The floor test is written so it passes today, proving nothing | med | high | Phase 0 runs it RED first and records the exact failing number before any component edit | — | **closed** — RED confirmed at `riviera` 2.82:1 (stop `#0a4f6e`) and `dark` 2.46:1 (stop `#3b4a5f`), matching the hand-computed research values; green after the convergence |
 | R-4 | The e2e's `pending` leg is unreachable — the stage needs register-202-then-signin-transport-failure | low | med | Path confirmed in `auth-page.ts:505-532`: a non-401/429 sign-in failure maps to `'error'` and falls through to `submittedForApproval.set(true)`. Mockable as a 500 on the sign-in POST | — | **closed** in phase 1 — the leg renders and asserts in both themes |
@@ -187,16 +187,18 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement — phases 0–1 done, entering phase 2`
+**Stage pointer:** `implement — all three phases done; awaiting the PR so the CI gate can run`
 
-**Next action:** the substrate — the ledger's F-5 row, the six artboard pointers, and the verdict
-at the `--riv-medallion-*` declaration.
+**Next action:** open the draft PR (CI fires on the `pull_request` event only, so the branch gets
+no CI until one exists), then run the Review gate and the Sonar gate per
+`riviera-sdlc` `references/pr-gates.md`. Local verification is complete: 2169 unit tests,
+569 a11y/contrast, 29 affected e2e in both themes, lint, format and a production build.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the decorative-glyph floor, RED → convergence, GREEN | ✅ | |
 | 1 — the token-registry guards (sweep + two rendered legs) | ✅ | |
-| 2 — the substrate: ledger row, artboard pointers, declaration notes | ⏳ | |
+| 2 — the substrate: ledger row, artboard pointers, declaration notes | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -321,21 +323,21 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, no backend in the diff.
-- [ ] **Availability** section justified N/A (invariant #2) — no availability write path in scope.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section justified N/A (invariant #11) — frontend-only.
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy (invariant #10) — N/A.
-- [ ] Timezone (invariant #6) — N/A.
-- [ ] Booking codes (invariant #7) — N/A.
-- [ ] Flyway (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met; no `as any`; the `riviera-tailwind` named-utility rule honored
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, no backend in the diff.
+- [x] **Availability** section justified N/A (invariant #2) — no availability write path in scope.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section justified N/A (invariant #11) — frontend-only.
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy (invariant #10) — N/A.
+- [x] Timezone (invariant #6) — N/A.
+- [x] Booking codes (invariant #7) — N/A.
+- [x] Flyway (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met; no `as any`; the `riviera-tailwind` named-utility rule honored
       (both branches use `bg-riv-*`/`text-riv-*`, no arbitrary values left).
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
 - [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** per `references/pr-gates.md` §1 plus `riviera-review-overlay`.

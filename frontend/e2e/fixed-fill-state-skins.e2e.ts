@@ -270,8 +270,8 @@ for (const theme of ['porcelain', 'dark'] as const) {
     });
 
     test('the signed-in outcome card paints the registered positive state', async ({ page }) => {
-      // Already-signed-in + a visit to the sign-in route is the whole precondition: `stage()` reads
-      // the restored session and swaps in the landed card (auth-page.ts).
+      /** Already-signed-in + a visit to the sign-in route is the whole precondition: `stage()`
+       *  reads the restored session and swaps in the landed card (auth-page.ts). */
       await page.route(/\/api\/auth\/me$/, (route) =>
         route.fulfill({ json: { username: 'tourist@example.com', principalType: 'CUSTOMER' } }),
       );
@@ -288,9 +288,9 @@ for (const theme of ['porcelain', 'dark'] as const) {
     test('the submitted-for-approval outcome card paints the registered waiting state', async ({
       page,
     }) => {
-      // The narrow path to this card (auth-page.ts): the D-8 202 is session-less, so the page
-      // follows up with a normal sign-in — and only a failure that is NEITHER 401 nor 429 falls
-      // through to the submitted card rather than to an error message.
+      /** The narrow path to this card (auth-page.ts): the D-8 202 is session-less, so the page
+       *  follows up with a normal sign-in — and only a failure that is NEITHER 401 nor 429 falls
+       *  through to the submitted card rather than to an error message. */
       await page.route(/\/api\/auth\/me$/, (route) =>
         route.fulfill({
           status: 401,

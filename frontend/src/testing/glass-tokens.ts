@@ -248,11 +248,20 @@ export function expectAaOverStops(
 
 /** The `--riv-medallion-*` family (#858, class F-3): the round, centred, `aria-hidden` outcome
  *  glyph in its three states — `booking-confirmation`'s ✓, `booking-pay`'s ✓/⏳/✕,
- *  `request-confirmation`'s ✉ and `appFailureIcon`'s ⚠ or 🏖 (the glyph is per site and carries no
- *  meaning; every one is `aria-hidden`).
+ *  `request-confirmation`'s ✉, `appFailureIcon`'s ⚠ or 🏖, and since #869 `outcome-card`'s ✓/⏳
+ *  (the glyph is per site and carries no meaning; every one is `aria-hidden`).
  *
- *  Grouped by FORM rather than value, the `--riv-solid-fill-*` precedent: the same five sites carry
- *  three different pairs, and two of the three values coincide with families that are NOT this one
+ *  SEVEN sites, not five. #869 (class F-5) brought in the last two: `outcome-card` painted the
+ *  medallion form a third way and was left alone by #858, a zero-computed-style-movement slice,
+ *  because converging it is a visible repaint. The evidence that settled it runs opposite to the
+ *  ticket's framing — `docs/design`'s artboards drew every medallion as a translucent tint, and
+ *  NONE of the values below appears in them, so this family carries the as-built paint and
+ *  `outcome-card` was the faithful holdout. The verdict ratifies the as-built; the full argument,
+ *  and what it cost (the app's only correctly-theming medallion), sits at the declaration in
+ *  `tailwind.css`.
+ *
+ *  Grouped by FORM rather than value, the `--riv-solid-fill-*` precedent: the original five sites
+ *  carried three different pairs, and two of the three values coincide with families that are NOT this one
  *  — `#0a5f74` also paints three `bg-` fills (#854/#861) and a `--riv-cta-grad` stop, `#a3372a` is
  *  also `SOLID_BTN_DANGER_INK` and `CONSOLE_NEGATIVE_INK`, and `#fcf0d9`/`#8a5410` is also the
  *  amber NOTICE BANNER's pair, a different form with accessible text.

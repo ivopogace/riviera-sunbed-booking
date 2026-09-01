@@ -134,9 +134,9 @@ const MIGRATED_SITES: readonly {
     kept: ['amenity-chip', 'amenity-chip--water'],
   },
   {
-    // #869 (class F-5). Asserted as UTILITY strings rather than bare values — the `booking-dialog`
-    // form — because the component's docblock now *names* the two accent tokens it stopped
-    // consuming, and a bare-value sweep would read that explanation as a relapse.
+    /** #869 (class F-5). Asserted as UTILITY strings rather than bare values — the
+     *  `booking-dialog` form — because the component's docblock now *names* the two accent tokens
+     *  it stopped consuming, and a bare-value sweep would read that explanation as a relapse. */
     path: 'shared/outcome-card.ts',
     gone: [
       'bg-[rgba(240,170,46,0.2)]',
@@ -166,8 +166,9 @@ const OUT_OF_FAMILY: readonly { readonly path: string; readonly literal: string 
   { path: 'shared/status-chip.ts', literal: '#8a5410' },
   { path: 'booking/booking-view.ts', literal: '#8a5410' },
   { path: 'operator/payouts-tab.html', literal: '#a3372a' },
-  // #869's four: `rgba(240,170,46,…)` at four other alphas, on four forms that are not medallions.
-  // The `pending` glyph's own tint was the fifth, and the only one this family had any claim on.
+  /** #869's four: `rgba(240,170,46,…)` at four other alphas, on four forms that are not
+   *  medallions. The `pending` glyph's own tint was the fifth, and the only one this family had
+   *  any claim on. */
   { path: 'operator/pending-approval-banner.ts', literal: 'rgba(240,170,46,0.14)' },
   { path: 'booking/booking-dialog.ts', literal: 'rgba(240,170,46,0.12)' },
   { path: 'app.html', literal: 'rgba(240,170,46,0.5)' },

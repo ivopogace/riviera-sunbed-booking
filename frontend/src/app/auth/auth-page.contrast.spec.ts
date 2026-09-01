@@ -222,8 +222,8 @@ describe.each(THEMES)('AuthPage contrast — $name', (theme: Theme) => {
   });
 
   it('the outcome-card tone glyphs clear the 3:1 non-text floor on the card (WCAG 1.4.11)', () => {
-    // aria-hidden buys the AA exemption (spec header), never a pass on legibility. Composited per
-    // stop because a TRANSLUCENT glyph fill resolves against the card, and the card themes.
+    /** aria-hidden buys the AA exemption (spec header), never a pass on legibility. Composited
+     *  per stop because a TRANSLUCENT glyph fill resolves against the card, and the card themes. */
     for (const glyph of theme.toneGlyphs) {
       for (const stop of theme.stops) {
         const card = surfaceOver(theme.cardGlass, stop);
