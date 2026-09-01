@@ -80,11 +80,13 @@ const GLOBAL_ROLES = [/#f4f6f7/i, /#e7ebec/i, /rgba\(200,\s*90,\s*60,\s*0\.5\)/i
  * wrongly demand those change too:
  *
  * <ul>
- *   <li>`#a3372a` has other homes — the over-claim #851 exists to avoid. Two remain as LITERALS
- *       since #864 moved the console's three plain inks onto `--riv-console-negative-ink` and #852
- *       moved `payouts-tab.html`'s `/opacity` tints onto that same token: the two class-F
- *       medallions (`shared/failure-panel`, `booking/booking-pay`, both #858's). The paint the
- *       list below watches is unchanged — only its notation moved;
+ *   <li>`#a3372a` has other homes — the over-claim #851 exists to avoid. **None of them is a
+ *       literal any more**: #864 moved the console's three plain inks onto
+ *       `--riv-console-negative-ink`, #858 moved the two class-F medallions
+ *       (`shared/failure-panel`, `booking/booking-pay`) onto `--riv-medallion-negative-*`, and
+ *       #852 moved `payouts-tab.html`'s `/opacity` tints onto the console ink. The value is still
+ *       painted in all of them; only its notation moved, which is why the scope below stays the
+ *       family's own three components rather than becoming a tree-wide value sweep;
  *   <li>`border-[rgba(255,255,255,0.7)]` also skins `auth/auth-page`'s back button (over a
  *       translucent fill, not this solid one) and `venue/availability-calendar`'s popover.
  * </ul>
