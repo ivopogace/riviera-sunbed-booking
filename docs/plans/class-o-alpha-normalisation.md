@@ -210,7 +210,7 @@ inline" sweep to `shared/class-o-tint-tokens.contrast.spec.ts`, watch it name th
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The ladder: every class-O alpha a multiple of 5 | ✅ | `<phase-0>` |
+| 0 — The ladder: every class-O alpha a multiple of 5 | ✅ | `fb3ac50` |
 | 1 — One walk-in hatch (`--riv-walkin-hatch`) | ⏳ | |
 | 2 — One amber family (`--riv-warn-*`), three tokens retired | | |
 | 3 — Ledger, rule-2 table, close-out | | |
