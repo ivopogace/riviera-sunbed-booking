@@ -9,7 +9,7 @@ teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR
 outline-button skin's theme-invariant family, PR #859), **#854** (the nine solid button/badge
 fills under fixed white ink, PR #860), **#861** (merging that family's two brand teals onto one,
 PR #862), **#848** (the operator console's accent ink, PR #863), **#864** (the console's negative
-ink, PR #866).
+ink, PR #866), **#858** (the three fixed-fill state skins, PR #867).
 
 > **This file is not a design record.** `docs/design/README.md` governs the `.dc.html`
 > artboards — approved-look snapshots that are deliberately *never* rewritten to track the
@@ -83,8 +83,51 @@ These families must move **as a pair**, onto tokens declared **once** with no da
 | Family | n | Verdict | Status |
 |---|---:|---|---|
 | Form-error skin: `bg-[#f6e8e7]` + `text-[#a3160e]` (`booking-dialog:311`, `booking-pay:255`, `my-bookings:290`) | 6 | **new theme-invariant token pair.** The themed `--riv-error-ink` is *wrong* here — it resolves `#ffa9a1` in dark, over a fill that stays `#f6e8e7`: light on light | **done — #850, PR #857** |
-| Inks on fixed fills, themeable hosts: `#0a5f74` on `#d7eef4`/`white`/`#d9f2f7` (`amenity-chip`, `booking-dialog`, `booking-pay:114`, `booking-confirmation`) + `#a3372a` on `#f7e8e4` (`booking-pay:210`, `failure-panel`) | 6 | **the #850 trap, unfixed** — a themed ink over a fixed fill drifts, and none of these hosts pins porcelain. Wants theme-invariant pairs; the slice owes the measurement, not the pattern's reputation. `--riv-solid-btn-danger-ink` is NOT the answer for the `#a3372a` half despite matching exactly: it is the outline *button*'s ink on the button's own fill. **How many pairs** is the open question — two values over four fills, but `booking-pay:114` and `:210` are the same medallion in two states | open → #858 |
+| Fixed-fill **state skins** on themeable hosts: the outcome medallion, the amenity chip, the dialog step badge | 15 | **Three families, cut by FORM, with the per-state class ternary as the atomic unit.** The how-many-pairs answer, and the reasoning, are in the note below this table | **done — #858, PR #867** (`--riv-medallion-*`, `--riv-amenity-*`, `--riv-step-*`). n corrected 6 → 15 across 8 sites |
+| Amber **notice banner**: `bg-[#fcf0d9]` + `text-[#8a5410]` (`withheld-email-notice:29`, `privacy-policy.html`, `terms-of-service.html`) | 6 | **the same pair as the medallion's waiting state, on a different FORM** — a rectangular block with *accessible text*, so unlike the medallion it genuinely owes AA (5.54:1 today). Surfaced by #858's out-of-family sweep, which had to name these sites to prove it did not over-reach onto them. Wants its own theme-invariant pair; do **not** reuse `--riv-medallion-waiting-*`, whose whole population is decorative | open → #868 |
+| `shared/outcome-card.ts`'s two tone glyphs | 4 | **the medallion FORM again, painted three different ways.** Its `success` tone already uses the *themed* `--riv-accent-chip-fill`/`--riv-accent-ink`; its `pending` tone is `rgba(240,170,46,0.2)` + a one-off `#a86a12`. Converging it onto `--riv-medallion-*` would be a **visual change**, which is why #858 (a zero-drift slice) left it. The question is a design one — should the three landed-state surfaces look alike? — not a migration | open → #869 |
 | Solid outline-button skin: `#f4f6f7` fill, `#e7ebec` hover, `rgba(255,255,255,0.7)` border, `#a3372a` danger ink (+ the `rgba(200,90,60,0.5)` danger border) | 13 | **new theme-invariant tokens**, one family. Its teal ink already moved to `--riv-solid-btn-ink` in #835. The themed alternatives measure 1.69:1 (`--riv-danger-ink`) and 1.52:1 (`--riv-accent-ink`) over the fixed fill | **done — #851, PR #859.** n corrected 9 → 13: the danger border was uncounted, and the `rgba(255,255,255,0.7)` border sits on all three buttons (on the `btnOutline` variant, not the shared `BTN_OUTLINE` base) |
+
+
+> **F-3's how-many-pairs answer (#858).** The ticket asked whether its six inks were "one skin with
+> per-state values, or genuinely separate pairs", and warned against assuming a shared ink value
+> means a shared role. The answer is **three families**, and the cut runs on two rules:
+>
+> 1. **By form, never by value.** The six inks carry two values across **three different forms** — a
+>    round decorative outcome medallion, a labelled amenity tag, and a numeral step badge on the
+>    dialog's teal header. A value-led cut would have merged three roles and split each of them; it
+>    is the same fork #848 and #864 each settled, and the `--riv-solid-fill-*` "grouped by FORM"
+>    precedent applied a third time.
+> 2. **A per-state class ternary is atomic.** Three of the six sit inside `[class]` or `computed()`
+>    ternaries whose *sibling branch* is also a literal. Tokenising one branch leaves
+>    `state() === 'awaiting' ? 'bg-[#fcf0d9] text-[#8a5410]' : 'bg-riv-medallion-positive-fill …'` —
+>    a worse artifact than either whole option, and the exact mis-cut #858 was itself re-cut to undo.
+>
+> **Three corrections to the ticket, found by the intake grill and the generalization sweep:**
+>
+> - **Five of the six inks are `aria-hidden`, not three.** `booking-dialog:120` is not "the active
+>   segmented-control segment" — it is the decorative step **number** badge, with the meaning on the
+>   sibling `.step-label`. And `failure-panel:27` **is** exempt after all: all three call sites
+>   (`venue-map.html:350`, `:360`, `home.html:124`) pass `aria-hidden="true"`. So the **amenity chip
+>   is the only AA-owing site in the whole class**, which is why it stayed in scope — dropping it
+>   would have left a slice of pure exemptions with no AA proof at all.
+> - **The medallion population is five sites, not four.** Enumerating the medallion *form* (a
+>   `rounded-full` centred box of ~52–66px) rather than the ticket's value list found
+>   `request-confirmation.ts:15`, the amber twin of `booking-pay:114`'s waiting branch. The ticket
+>   could not have found it by value: its ink is `#8a5410`, neither of the two it enumerated.
+> - **The amenity chip is class F, not class S.** `testing/chip-fills.ts` filed it under class S;
+>   a *two-variant* tag whose ink+fill+border sit on themeable hosts is class F's shape exactly.
+>   Class S is the *nine-state* `status-chip` palette — a design pass, which this is not.
+>
+> **Measured, per AC-1** (current : the themed alternative resolved in dark):
+> medallion positive 6.20 : 1.41 · waiting 5.54 : 1.63 · negative 5.62 : **1.54** (the very number
+> #850 measured) · amenity tag 8.37 : ~1.02 · water 6.00 : 1.37 · step active 7.24 : 1.65 · step idle
+> 5.11 (white on the fill, which cannot theme). Borders, non-text chrome under 3:1 and carried across
+> unchanged against #834: 1.24 / 1.15 / 1.17.
+>
+> **Three families the sweep surfaced that #858 deliberately did not take**, each now a row of its
+> own below rather than a silent omission: the amber **notice banner**, `shared/outcome-card.ts`'s
+> tone glyphs, and — already covered — `requests-tab`'s green medallion.
 
 ### Class O — `/opacity` modifier: tokenising is a computed-value change
 
@@ -109,9 +152,9 @@ does not. Each needs its own token, not the coincidental one.
 | Family | n | Coincides with | Why not that token | Status |
 |---|---:|---|---|---|
 | `border-[rgba(255,255,255,0.4)]` (15 of 17; 2 are `bg-`) | 17 | `--riv-inset-fill` | That is a **fill** token (dark theme: `rgba(255,255,255,0.08)`). A border wants a border token; none of this value exists | open → #853 |
-| Solid fills under fixed white ink: `bg-[#0a6e85]` ×4, `bg-[#0a5f74]` ×3, `bg-[#a3160e]` ×2 | 9 | `--riv-pop-accent`, `--riv-cta-grad` (end stop), `--riv-error-ink` | Three coincidences, one form. An **ink** token and a **popover accent** used as fills, and a gradient stop that is not a fill token — and all three *theme*, while the white ink over them cannot | **done — #854, PR #860** (`--riv-solid-fill-*`), then **merged to one teal — #861, PR #862**: `-action` and `-brand` had no role between them, so the family is `#0a6e85` + `#a3160e` and the three `#0a5f74` fills were repainted |
+| Solid fills under fixed white ink: `bg-[#0a6e85]` ×4, `bg-[#0a5f74]` ×3, `bg-[#a3160e]` ×2 | 9 | `--riv-pop-accent`, `--riv-cta-grad` (end stop), `--riv-error-ink` | Three coincidences, one form. An **ink** token and a **popover accent** used as fills, and a gradient stop that is not a fill token — and all three *theme*, while the white ink over them cannot | **done — #854, PR #860** (`--riv-solid-fill-*`), then **merged to one teal — #861, PR #862**: `-action` and `-brand` had no role between them, so the family is `#0a6e85` + `#a3160e` and the three `#0a5f74` fills were repainted. **`#0a5f74`'s full split, settled by #858:** 3 fills (this row) + 4 inks, of which three are now `--riv-medallion-positive-ink`, `--riv-amenity-water-ink` and `--riv-step-active-ink`, and the fourth is `booking-dialog:79`'s gradient stop, which duplicates `--riv-cta-grad` and is that token's question |
 | `#8a5410` warn ink, `#8a3a2a`, `#0a5e7a`, `#334a52`, … | ~20 | — | No token at all; these are genuine new-token candidates once their role is named | open |
-| Plain `text-[#a3372a]` refund-red inks in `operator/` (`payouts-tab.ts` + `.html`, `daily-view-tab.html`) | 3 | `--riv-solid-btn-danger-ink` | **Migrated onto its own token, `--riv-console-negative-ink`, not the coincidental one.** That token is the outline **button**'s ink, pinned to the button's own non-theming fill (#851); these three are console inks on card glass — different role, different surface, so the same fork #848 settled, whose mechanical answer is the precedent rather than a re-derivation. **Family:** a `--riv-console-*-ink` pair with the accent ink — same host, surface and theme-invariance ground — but in **naming only**: separate declarations (each declared once, which is the whole guard) and separate guard specs, because the two distinctness arguments share nothing (`#0a6e85` has three roles; this one is separated from a button ink and from #852's tints of its own value). **Name:** `negative`, not `danger` — `danger` is that button token's own word and `--riv-danger-*`/`--riv-error-ink` are the tourist alert families, so `danger` would leave the two confusable roles one hyphen apart; `negative` names what the three sites share, a negative outcome, and reads as one axis beside the accent pole at `payouts-tab.ts:135`. The chip tint (5.05:1) is the lowest pair and was measured, not assumed. Found by #848's generalization sweep, which enumerated the plain ink form by mechanism; the `/opacity` tints (#852) and the button ink (#851) already had rows, the ink form had none | **done — #864, PR #866** |
+| Plain `text-[#a3372a]` refund-red inks in `operator/` (`payouts-tab.ts` + `.html`, `daily-view-tab.html`) | 3 | `--riv-solid-btn-danger-ink` | **Migrated onto its own token, `--riv-console-negative-ink`, not the coincidental one.** That token is the outline **button**'s ink, pinned to the button's own non-theming fill (#851); these three are console inks on card glass — different role, different surface, so the same fork #848 settled, whose mechanical answer is the precedent rather than a re-derivation. **Family:** a `--riv-console-*-ink` pair with the accent ink — same host, surface and theme-invariance ground — but in **naming only**: separate declarations (each declared once, which is the whole guard) and separate guard specs, because the two distinctness arguments share nothing (`#0a6e85` has three roles; this one is separated from a button ink and from #852's tints of its own value). **Name:** `negative`, not `danger` — `danger` is that button token's own word and `--riv-danger-*`/`--riv-error-ink` are the tourist alert families, so `danger` would leave the two confusable roles one hyphen apart; `negative` names what the three sites share, a negative outcome, and reads as one axis beside the accent pole at `payouts-tab.ts:135`. The chip tint (5.05:1) is the lowest pair and was measured, not assumed. Found by #848's generalization sweep, which enumerated the plain ink form by mechanism; the `/opacity` tints (#852) and the button ink (#851) already had rows, the ink form had none. **Corrected by #858:** `failure-panel` and `booking-pay` left the `OUT_OF_FAMILY` guard for `--riv-medallion-negative-ink` — their `#a3372a` is a decorative medallion ink, a fourth role — so `payouts-tab.html`'s `/opacity` tints (#852's) are the array's last entry | **done — #864, PR #866** |
 
 ### Class S — per-state palettes and one-offs: exempt for now
 
@@ -124,7 +167,7 @@ a *state palette* is a different question from tokenising an ink: it wants one t
 |---|---:|---|
 | `shared/status-chip.ts` | 17 | Nine per-state fill/border/ink triples |
 | `booking/booking-view.ts` | 12 | Per-status panel palettes |
-| `shared/amenity-chip.ts` | 5 | |
+| ~~`shared/amenity-chip.ts`~~ | ~~5~~ | **Retired — this row was wrong.** A two-variant tag is class F's shape, not a per-state palette; tokenised as `--riv-amenity-{tag,water}-*` by **#858, PR #867** |
 | `venue/availability-calendar.html` | 5 | |
 | `venue/day-availability.ts` | 3 | |
 | `shared/confirm-panel.ts` | 3 | Tone palettes |

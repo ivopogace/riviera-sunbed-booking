@@ -197,7 +197,9 @@ Missing any one means the slice is still in flight — say so rather than report
      analyzer can't composite the rgba glass over the gradient, so a pair the
      `*.contrast.spec.ts` proves AA still flags. Fix it the way
      `frontend/src/app/shared/failure-panel.ts` (`failure-icon`) does: **swap the
-     translucent fill for its solid composited equivalent** (nudging the ink to clear
+     translucent fill for its solid composited equivalent** (since #858 that solid value lives at
+     the `--riv-medallion-negative-fill` declaration rather than at the call site, but the fix is
+     the same one) (nudging the ink to clear
      4.5:1 outright); decorative `aria-hidden` glyphs get the same treatment. Only when a
      code fix would genuinely degrade the design do you **mark it resolved in SonarCloud
      with a written rationale** (or open a follow-up issue) — and record that decision in

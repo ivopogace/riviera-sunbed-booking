@@ -234,10 +234,10 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `PR — ready for review; review + Sonar gates due`
 
-**Next action:** update `docs/design/colour-literal-token-audit.md` — F-3 `done`, class R `#0a5f74`
-split, class S amenity row retired, three new rows — then file the follow-up issues and close out.
+**Next action:** mark PR #867 ready for review, then run the review gate per
+`riviera-sdlc` `references/pr-gates.md` §1, then the Sonar gate's issue list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -246,7 +246,7 @@ split, class S amenity row retired, three new rows — then file the follow-up i
 | 2 — the amenity-chip family | ✅ | `6a70f4c` |
 | 3 — the dialog step-badge family | ✅ | `6923f7b` |
 | 4 — the forced-dark computed-style e2e | ✅ | `89fcc50` |
-| 5 — ledger + follow-up issues + close-out | ⏳ | |
+| 5 — ledger + follow-up issues + close-out | ✅ | `<phase-5>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -275,7 +275,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/fixed-fill-token-skins.contrast.spec.ts` — **new**: the single guard for all three families
 - `frontend/src/app/booking/solid-btn-tokens.contrast.spec.ts` — narrow `OUT_OF_FAMILY` to one entry + the docblock prose (AC-7); move onto the extracted helpers
 - `frontend/src/app/booking/form-error-tokens.contrast.spec.ts` — move onto the extracted helpers
-- `frontend/src/app/shared/solid-fill-tokens.contrast.spec.ts` — move onto the extracted helpers
+- `frontend/src/app/shared/solid-fill-tokens.contrast.spec.ts` — move onto the extracted helpers; narrow the `SURVIVORS` `#0a5f74` list (AC-7's second half)
+- `frontend/src/app/shared/amenity-chip.spec.ts` — read the recipe's `fillClass`/`inkClass` instead of interpolating the hex
+- `.claude/skills/riviera-tailwind/SKILL.md` — §Styling-across-the-themes gains the ternary-atomicity rule (docs-freshness)
+- `.claude/skills/riviera-sdlc/references/pr-gates.md` — the `failure-icon` css:S7924 citation now points at the token declaration (docs-freshness)
 - `frontend/src/app/operator/console-accent-token.contrast.spec.ts` — move onto the extracted helpers
 - `frontend/src/app/operator/console-negative-token.contrast.spec.ts` — move onto the extracted helpers
 - `frontend/e2e/fixed-fill-state-skins.e2e.ts` — **new**: the mocked forced-dark computed-style proof
@@ -471,29 +474,42 @@ actually resolving under `data-riv-theme="dark"`. `shared/amenity-chip.ts` and
 
 **Files:** Modify `docs/design/colour-literal-token-audit.md`
 
-- [ ] **Step 1: F-3's row → `done`, with the how-many-pairs answer** (AC-8): three families cut by
+- [x] **Step 1: F-3's row → `done`, with the how-many-pairs answer** (AC-8): three families cut by
       form; the ternary-atomicity rule; the five-not-three `aria-hidden` correction; the amenity chip
       as the only AA-owing member; `request-confirmation` found by the mechanism sweep. n corrected
       6 → 15 positions across 8 sites.
-- [ ] **Step 2: Correct class R's `#0a5f74` row** to the 3-fills / 4-inks split (the three fills are
+- [x] **Step 2: Correct class R's `#0a5f74` row** to the 3-fills / 4-inks split (the three fills are
       #854/#861's; of the four inks, three are now `--riv-medallion-positive-ink`,
       `--riv-amenity-water-ink` and `--riv-step-active-ink`, and the fourth is `booking-dialog:79`'s
       gradient stop, which stays with `--riv-cta-grad`). Correct the class-R `#a3372a` row to note
       that `failure-panel` and `booking-pay` left for `--riv-medallion-negative-ink`, leaving
       `payouts-tab` (#852) as the only remaining `OUT_OF_FAMILY` entry.
-- [ ] **Step 3: Retire class S's `shared/amenity-chip.ts` row** — a two-variant tag is class F's
+- [x] **Step 3: Retire class S's `shared/amenity-chip.ts` row** — a two-variant tag is class F's
       shape, not a nine-state palette design pass. Its five distinct values are now tokenised.
-- [ ] **Step 4: File three new rows + follow-up issues** for what the sweep surfaced and this slice
-      deliberately did not take: (a) the **amber notice-banner** class-F pair (`withheld-email-notice`
-      + the two legal pages, `#fcf0d9`/`#8a5410` — the medallion's values on a different form, with
-      accessible text so it *does* owe AA); (b) **`shared/outcome-card.ts`'s two tone glyphs** — the
-      medallion form painted from themed tokens and an `/opacity` tint, whose convergence onto
-      `--riv-medallion-*` is a **visual** decision; (c) `operator/requests-tab.html:94`'s green
-      medallion, noted as class O under #852 rather than a new row if #852 already covers it.
-- [ ] **Step 5: `riviera-docs-freshness`** over the slice's range — the counting sweep matters here:
-      the ledger's "five classes" prose, `riviera-tailwind`'s §Styling-across-the-themes worked-example
-      list (which names #850 as *the* example and now has four more), and any doc saying "the two
-      theme-invariant families".
+- [x] **Step 4: Filed as two rows + two issues** — **#868** (F-4, the amber notice banner: the
+      medallion's exact waiting pair on a different form, with accessible text, so unlike the
+      medallion it *does* owe AA; its PR must also drop those three rows from this slice's
+      `OUT_OF_FAMILY` array or that guard goes red) and **#869** (F-5, `shared/outcome-card.ts`'s
+      tone glyphs: the medallion form painted a third way, whose convergence is a **visual**
+      decision, so `question`/`area:design` rather than `ready-for-agent`). The third candidate —
+      `operator/requests-tab.html:94`'s green medallion — got a Non-goal line instead of a row: it is
+      `/opacity` tints already covered by #852, inside the porcelain-pinned console, so it has no
+      drift to fix.
+- [x] **Step 5: `riviera-docs-freshness`** — **ran** over `origin/main..claude/sdlc-858-d5rsea`,
+      **2 findings, both patched**:
+      1. `.claude/skills/riviera-tailwind/SKILL.md:190` — §Styling-across-the-themes enumerated three
+         grounds for theme-invariance and named #850 as *the* worked example, but carried no rule for
+         the **unit** when the skin is stateful. Patched with #858's ternary-atomicity rule and the
+         form-over-enumeration sweep, plus the three families as the stateful worked example.
+      2. `.claude/skills/riviera-sdlc/references/pr-gates.md:199` — cites `failure-panel.ts`'s
+         `failure-icon` as the css:S7924 worked fix ("swap the translucent fill for its solid
+         composited equivalent"). Still true, but the solid value now lives at the token declaration
+         rather than the call site; patched with that hop so the citation stays followable.
+      The **counting sweep** (`the two|three …` narrowed to token/theme/family/chip vocabulary) found
+      **no** falsified statement: the four hits are ADR-0005's refund pair, `riviera-frontend`'s
+      two-suite e2e split and two-place token registry, and two `riviera-stripe-payments` sentences —
+      all unrelated subjects, all still true. `core/theme.ts` carries no per-token rows, so the
+      "registry lives in two places" sentence is unaffected by a token addition.
 - [ ] **Step 6: Finalize the Execution status** — stage pointer DONE, phase rows ✅ with commits,
       Open Questions empty, risk rows closed, AC pin-names matching the shipped tests, and
       `merged via PR #NN` (never a merge SHA).
