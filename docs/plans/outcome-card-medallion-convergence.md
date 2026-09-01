@@ -31,7 +31,9 @@ ticket's premise is inverted and that its class-O attribution is wrong) · `rivi
 (this template — forced the behavior-parity ledger, which is what made the visual diff an
 enumerated list rather than a sentence) · `tdd` (the decorative-glyph floor is written RED
 against today's 2.46:1 before the convergence makes it green) · `riviera-review-overlay`
-(review gate — due at ready-for-review; RV-FE-E2E owns the two-suite placement call below) ·
+(review gate — **ran** on PR #871 at high effort via ladder rung 1, five findings F-1..F-5, all
+fixed in `2b607ca`; its RV-FE-E2E owns the two-suite placement call below, and RV-STYLE-1's guard
+is clean) ·
 `riviera-docs-freshness` (**ran** at close-out over the slice's own range — see phase 2, which
 is that sweep's output: the ledger row, the six artboard pointers, the `glass-tokens.ts`
 population count, and the `tailwind.css` declaration note) · `riviera-tailwind` (styling
@@ -41,7 +43,10 @@ clause are why both tones move together rather than only the defective one) · `
 `playwright-cli` + the mocked-suite convention (the two rendered legs; the auth landed states
 had **no** e2e coverage at all before this slice) · `angular-developer` + the angular-cli MCP
 `search_documentation` (host-element / CSS-custom-property styling guidance — confirmed the
-existing `computed()` class-string shape is the idiomatic v22 form and needs no rework).
+existing `computed()` class-string shape is the idiomatic v22 form and needs no rework) ·
+`frontend/.claude/CLAUDE.md` § Comments + `riviera-java-conventions` §6d, its canonical statement
+(the review-fix round's doc-comment trim was made against that rule — no Java in the diff, but §6d
+is where the frontend twin points, so it is named here rather than left implicit).
 
 **Branch:** `claude/sdlc-869-research-92e6x6` — the cloud session's **designated remote branch**
 standing in for `feature/outcome-card-medallion-convergence` (`riviera-sdlc` § *Remote / cloud
@@ -188,18 +193,28 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings F-1..F-5 fixed, re-validating before the Sonar gate`
+**Stage pointer:** `merge gate — all three gates passed on 2b607ca; awaiting the maintainer's
+look at the dark-theme repaint (risk R-1) before merge`
 
-**Next action:** open the draft PR (CI fires on the `pull_request` event only, so the branch gets
-no CI until one exists), then run the Review gate and the Sonar gate per
-`riviera-sdlc` `references/pr-gates.md`. Local verification is complete: 2169 unit tests,
-569 a11y/contrast, 29 affected e2e in both themes, lint, format and a production build.
+**Next action:** maintainer decision on R-1 (the one row this slice cannot close for itself — the
+repaint is a judgement, and every test passes either way). On approval: merge, then the close-out
+checklist (`references/pr-gates.md` §3) — issue #869 closes via the PR, #870 already filed, and
+the docs-freshness sweep is already folded in as phase 2.
+
+**Gate results on `2b607ca`:** CI 8/8 green. Review gate ran in full (ladder rung 1, high effort):
+five findings, all fixed, comment posted. Sonar gate green **and its reported list actually
+pulled** — 0 issues, 0 hotspots, 0 bugs, 0 smells, 0 duplicated blocks, gate conditions 5/5 OK.
+The analysis is real, not a false clean (`new_lines: 28`); `new_coverage` reads 0.0% but
+`new_lines_to_cover` is 0, so the ≥80% condition is inapplicable and Sonar omits it from the gate
+entirely — the slice's only executable change is a class-string swap the unit and e2e specs both
+exercise.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the decorative-glyph floor, RED → convergence, GREEN | ✅ | |
 | 1 — the token-registry guards (sweep + two rendered legs) | ✅ | |
 | 2 — the substrate: ledger row, artboard pointers, declaration notes | ✅ | |
+| 3 — review-gate findings F-1..F-5 | ✅ | `2b607ca` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -350,4 +365,4 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions empty.
 - [x] **Close-out written in THIS PR**, citing `merged via PR #871`.
-- [ ] **The review gate ran in full** per `references/pr-gates.md` §1 plus `riviera-review-overlay`.
+- [x] **The review gate ran in full** per `references/pr-gates.md` §1 plus `riviera-review-overlay` — rung 1 (the plugin workflow), high effort; five findings, all fixed and re-validated.
