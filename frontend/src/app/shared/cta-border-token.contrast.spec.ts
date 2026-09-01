@@ -85,6 +85,20 @@ const RETIRED_POSITIONS: readonly string[] = [
 const OUT_OF_FAMILY = { path: 'app.html', literal: 'inset_0_1px_0_rgba(255,255,255,0.4)' } as const;
 
 const APP_ROOT = join(process.cwd(), 'src/app');
+const SRC_ROOT = join(process.cwd(), 'src');
+
+/**
+ * The #834 citations that record what that issue actually completed — the erasure panel's Erase
+ * button, raised to 3:1 by PR #837 — rather than deferring anything to it. Each is pinned by a
+ * distinguishing phrase, not by filename, so a new deferral written into one of these files still
+ * fails the guard (#876 risk R-2).
+ */
+const HISTORICAL_834: readonly { path: string; phrase: string }[] = [
+  { path: 'tailwind.css', phrase: '>=3:1 against the panel fill, all porcelain stops' },
+  { path: 'tailwind.css', phrase: 'the same per-theme tuning --riv-danger-action-border got' },
+  { path: 'testing/glass-tokens.ts', phrase: "see the contrast spec's header" },
+  { path: 'app/admin/admin-console.contrast.spec.ts', phrase: 'deliberately left unasserted' },
+];
 
 /** This file, the one source that may legitimately name the retired positions — it is the sweep. */
 const SELF = 'shared/cta-border-token.contrast.spec.ts';
@@ -102,6 +116,31 @@ function allSources(): readonly string[] {
 
 function read(path: string): string {
   return readFileSync(join(APP_ROOT, path), 'utf8');
+}
+
+/**
+ * Every file that can carry a token comment, addressed relative to `src` — the `src/app` tree plus
+ * the two homes outside it that the token prose actually lives in. A sweep scoped to `src/app`
+ * would have missed both, which is where all six deferring families sit.
+ */
+function sweptSources(): readonly { path: string; text: string }[] {
+  const paths = [
+    ...allSources().map((path) => `app/${path.replaceAll('\\', '/')}`),
+    'tailwind.css',
+    'testing/glass-tokens.ts',
+  ];
+
+  return paths.map((path) => ({ path, text: readFileSync(join(SRC_ROOT, path), 'utf8') }));
+}
+
+/** Every line naming `citation`, across the swept sources. */
+function citationsOf(citation: string): readonly { path: string; line: string }[] {
+  return sweptSources().flatMap(({ path, text }) =>
+    text
+      .split('\n')
+      .filter((line) => line.includes(citation))
+      .map((line) => ({ path, line })),
+  );
 }
 
 /** The hairline as it actually paints: composited over the opaque fill it sits on. */
@@ -208,6 +247,35 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
     );
     expect(Math.min(...ratios), "the band's floor").toBeGreaterThan(2.2);
     expect(Math.max(...ratios), "the band's ceiling").toBeLessThan(3.2);
+  });
+
+  /**
+   * #876: the sub-3:1 chrome question had been deferred four times to #834, an issue scoped to the
+   * erasure panel that closed 2026-08-31 — so every deferral pointed at a closed issue. The rule
+   * now lives at docs/design/non-text-contrast.md, which cannot close. Citations recording what
+   * #834 actually completed are history and stay; each is named below, so a fresh deferral cannot
+   * be absorbed by appending a filename.
+   */
+  it('no token comment defers a live 1.4.11 question to the closed #834', () => {
+    const offenders = citationsOf('#834').filter(
+      ({ path, line }) => !HISTORICAL_834.some((e) => e.path === path && line.includes(e.phrase)),
+    );
+
+    expect(offenders.map(({ path, line }) => `${path}: ${line.trim()}`)).toEqual([]);
+  });
+
+  /**
+   * The precondition rule 3 of docs/design/non-text-contrast.md rests on: the exempt families all
+   * paint a real `border`, and nothing opts out of forced-colors, so the user agent repaints those
+   * boundaries in OS high-contrast mode whatever alpha we chose. If this ever goes red, that clause
+   * is void for the opted-out surface and rule 2 has to carry the exemption alone.
+   */
+  it('nothing opts out of forced-colors, which is what the fallback clause rests on', () => {
+    const optOuts = sweptSources().filter(({ text }) =>
+      /forced-color-adjust(-none|:\s*none)/.test(text),
+    );
+
+    expect(optOuts.map(({ path }) => path)).toEqual([]);
   });
 
   it('a themed border would fade over fills that do not theme', () => {

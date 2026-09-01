@@ -99,8 +99,8 @@ export const SOLID_BTN_DANGER_INK: Rgb = hexToRgb('a3372a');
  *  composited over the fill they reach 1.06:1 (neutral) and 1.90:1 (danger), so neither is the
  *  affordance boundary and neither clears 3:1. Unchanged values, carried across by #851 as-is; the
  *  fill's own 1.02:1 against the card glass says this is the glass aesthetic's boundary question,
- *  not this skin's — the same finding `--riv-accent-*` records at ~1.5:1, tracked at #834. Raising
- *  it needs a darker hue, not more alpha. Mirrored here for the declaration guard and the e2e's
+ *  not this skin's — the same finding `--riv-accent-*` records at ~1.5:1. Decorative under
+ *  docs/design/non-text-contrast.md rule 2; raising it would need a darker hue, not more alpha. Mirrored here for the declaration guard and the e2e's
  *  computed-style read. */
 export const SOLID_BTN_BORDER: Glass = { color: WHITE, alpha: 0.7 };
 export const SOLID_BTN_DANGER_BORDER: Glass = { color: hexToRgb('c85a3c'), alpha: 0.5 };
@@ -293,7 +293,8 @@ export const MEDALLION_NEGATIVE_FILL: Rgb = hexToRgb('f7e8e4');
 export const MEDALLION_NEGATIVE_INK: Rgb = hexToRgb('a3372a');
 /** The negative state's border — non-text chrome (WCAG 1.4.11) on a decorative glyph, and MEASURED
  *  rather than waved off: 1.24:1 over its own fill, under 3:1. The same finding `--riv-solid-btn-*`
- *  records at 1.06:1/1.90:1 against the same tracking issue (#834); carried across unchanged.
+ *  records at 1.06:1/1.90:1; exempt under docs/design/non-text-contrast.md rule 2a, a decorative
+ *  glyph rather than a control. Carried across unchanged.
  *  The positive and waiting states have no border token — theirs is `rgba(255,255,255,0.6)`, the
  *  light `--riv-card-border` value carried as a literal. A neighbouring family of `CTA_BORDER`
  *  below but not the same one (#853 is the 0.4 hairline), and not this slice's either; it has its
@@ -320,7 +321,8 @@ export const MEDALLION_NEGATIVE_BORDER: Rgb = hexToRgb('eecdc4');
  *  `shared/fixed-fill-token-skins.contrast.spec.ts`.
  *
  *  The borders are non-text chrome (WCAG 1.4.11), measured at 1.15:1 and 1.17:1 over their own
- *  fills — the same finding, and the same tracking issue (#834), as `--riv-solid-btn-*`. */
+ *  fills — the same finding as `--riv-solid-btn-*`, decorative under
+ *  docs/design/non-text-contrast.md rule 2. */
 export const AMENITY_TAG_INK: Rgb = hexToRgb('2f4a54');
 export const AMENITY_TAG_FILL: Rgb = hexToRgb('eef2f4');
 export const AMENITY_TAG_BORDER: Rgb = hexToRgb('dbe4e7');

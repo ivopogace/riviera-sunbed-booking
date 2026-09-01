@@ -49,7 +49,8 @@ import {
  * ~1.6:1 and no alpha of this hue would reach 3:1, so normalising three drifted alphas onto one
  * token can only move it within a band that already fails. The last two tests say where it moves —
  * up on porcelain, DOWN on the dark card glass — rather than claiming a single direction. Raising
- * it to compliance is #834's, which owns the danger panel's identical boundary.
+ * it to compliance is not this spec's question: the pair is decorative under
+ * docs/design/non-text-contrast.md rule 2, the panel ink and chip label carrying the identity.
  */
 
 /** The teal ink these sites painted before the migration, kept for the bounding test. */

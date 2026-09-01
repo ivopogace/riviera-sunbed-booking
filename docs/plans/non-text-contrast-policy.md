@@ -228,16 +228,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `PR — opening the draft, then ready-for-review`
 
-**Next action:** Phase 2 — write the stale-deferral guard (red), then repoint the six token families and `accent-tokens.contrast.spec.ts:52` at the rule doc (green).
+**Next action:** Open the draft PR (CI fires on the `pull_request` event only), then merge `origin/main` and mark ready for review, which is what makes the Review + Sonar gates due.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the rule doc + ledger repoint | ✅ | `f232a1b` |
-| 1 — the CTA adjacent-colour assertions (AC-1, AC-2) | ✅ | `<phase-1>` |
-| 2 — the stale-deferral guard, then the repointing it forces green (AC-3) | | |
-| 3 — the forced-colors precondition guard + its doc clause (AC-4) | | |
+| 1 — the CTA adjacent-colour assertions (AC-1, AC-2) | ✅ | `bab733d` |
+| 2 — the stale-deferral guard, then the repointing it forces green (AC-3) | ✅ | `<phase-23>` |
+| 3 — the forced-colors precondition guard + its doc clause (AC-4) | ✅ | `<phase-23>` — **landed with phase 2**, both guards being one edit to one file; kept as separate ACs |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -250,6 +250,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-2 | intake grill | The issue's family list is incomplete: `--riv-amenity-tag-border` (1.15:1) and `--riv-amenity-water-border` (1.17:1) cite #834 at `tailwind.css:482` and `glass-tokens.ts:323` and are unlisted — six families, not five | open → covered by AC-3's enumeration |
 | F-3 | intake grill | Two **spec** files carry #834 pointers the issue does not mention; `accent-tokens.contrast.spec.ts:52` ("Raising it to compliance is #834's") is a live forward deferral, `admin-console.contrast.spec.ts:42` is history | open → AC-3 splits them: repoint the first, allow-list the second |
 | F-5 | phase 1 (self-inflicted) | AC-2 as first written asserted the whole 2.23–3.16 band under 3:1; only the **floor** is. The test caught it — the AC wording was loose, not the measurement | fixed in phase 1 |
+| F-6 | phase 2 (self-caught, pre-commit) | The medallion border was first repointed at **rule 2**, but it is an `aria-hidden` decorative glyph, not a control identified by its content — a different 1.4.11 ground. Blurring them would let anything pale claim the exemption | fixed in phase 2: the doc gained **rule 2a** and both medallion citations name it |
 
 ---
 

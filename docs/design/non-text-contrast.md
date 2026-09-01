@@ -81,6 +81,13 @@ Three conditions, all required:
    an assertion. "Decorative" is a conclusion drawn from a measurement, not a way to skip one.
 3. **The control paints a real `border`** — which is what makes rule 3 apply to it.
 
+**A decorative graphic is a different ground, and keeps its own name.** 1.4.11 reaches *user
+interface components* and *meaningful* graphics; an `aria-hidden` ornament whose meaning is
+carried by a labelled sibling is outside the criterion altogether, by its own "pure decoration"
+carve-out. Do not cite rule 2 for one — rule 2 is about a **control** identified by its content,
+and blurring the two would let anything pale claim the exemption. Cite **rule 2a** instead, and
+demonstrate the same second condition: the number is still measured.
+
 ### The families this rule covers
 
 Each links to the spec that owns its arithmetic. **Do not restate ratios here** — one
@@ -90,7 +97,7 @@ number-bearing surface, not two.
 |---|---|
 | `--riv-solid-btn-border`, `--riv-solid-btn-danger-border` | `app/booking/solid-btn-tokens.contrast.spec.ts` |
 | `--riv-accent-border`, `--riv-accent-chip-border` | `app/admin/accent-tokens.contrast.spec.ts` |
-| `--riv-medallion-negative-border` | `app/shared/fixed-fill-token-skins.contrast.spec.ts` |
+| `--riv-medallion-negative-border` (**rule 2a** — `aria-hidden` glyph, its outcome card's heading carries the meaning) | `app/shared/fixed-fill-token-skins.contrast.spec.ts` |
 | `--riv-amenity-tag-border`, `--riv-amenity-water-border` | `app/shared/fixed-fill-token-skins.contrast.spec.ts`, `app/shared/amenities.contrast.spec.ts` |
 
 `booking-dialog`'s `#31798a` close button is the sharpest case and is covered here rather than
@@ -120,7 +127,7 @@ not force those.
 
 The precondition is guarded, not assumed:
 `app/shared/cta-border-token.contrast.spec.ts` › "nothing opts out of forced-colors, which is
-what the exemption's fallback clause rests on" fails if any future slice writes
+what the fallback clause rests on" fails if any future slice writes
 `forced-color-adjust-none`. If that guard ever goes red, this rule's third clause is void for
 the opted-out surface and that surface needs rule 2 re-argued on conditions 1 and 2 alone.
 
