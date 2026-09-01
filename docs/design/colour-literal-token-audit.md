@@ -9,7 +9,7 @@ teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR
 outline-button skin's theme-invariant family, PR #859), **#854** (the nine solid button/badge
 fills under fixed white ink, PR #860), **#861** (merging that family's two brand teals onto one,
 PR #862), **#848** (the operator console's accent ink, PR #863), **#864** (the console's negative
-ink, PR #866), **#858** (the three fixed-fill state skins, PR #867), **#869** (`outcome-card`'s two tone glyphs onto the medallion skin, PR #NN).
+ink, PR #866), **#858** (the three fixed-fill state skins, PR #867), **#869** (`outcome-card`'s two tone glyphs onto the medallion skin, PR #871).
 
 > **This file is not a design record.** `docs/design/README.md` governs the `.dc.html`
 > artboards — approved-look snapshots that are deliberately *never* rewritten to track the
@@ -85,7 +85,7 @@ These families must move **as a pair**, onto tokens declared **once** with no da
 | Form-error skin: `bg-[#f6e8e7]` + `text-[#a3160e]` (`booking-dialog:311`, `booking-pay:255`, `my-bookings:290`) | 6 | **new theme-invariant token pair.** The themed `--riv-error-ink` is *wrong* here — it resolves `#ffa9a1` in dark, over a fill that stays `#f6e8e7`: light on light | **done — #850, PR #857** |
 | Fixed-fill **state skins** on themeable hosts: the outcome medallion, the amenity chip, the dialog step badge | 15 | **Three families, cut by FORM, with the per-state class ternary as the atomic unit.** The how-many-pairs answer, and the reasoning, are in the note below this table | **done — #858, PR #867** (`--riv-medallion-*`, `--riv-amenity-*`, `--riv-step-*`). n corrected 6 → 15 across 8 sites |
 | Amber **notice banner**: `bg-[#fcf0d9]` + `text-[#8a5410]` (`withheld-email-notice:29`, `privacy-policy.html`, `terms-of-service.html`) | 6 | **the same pair as the medallion's waiting state, on a different FORM** — a rectangular block with *accessible text*, so unlike the medallion it genuinely owes AA (5.54:1 today). Surfaced by #858's out-of-family sweep, which had to name these sites to prove it did not over-reach onto them. Wants its own theme-invariant pair; do **not** reuse `--riv-medallion-waiting-*`, whose whole population is decorative | open → #868 |
-| `shared/outcome-card.ts`'s two tone glyphs | 2 | **the medallion FORM again — and the intake grill inverted the question.** Answer: converge. See the note below the table; n corrected 4 → 2 (the border and inset shadow counted here are class R's #853, not this family's) | **done — #869, PR #NN** |
+| `shared/outcome-card.ts`'s two tone glyphs | 2 | **the medallion FORM again — and the intake grill inverted the question.** Answer: converge. See the note below the table; n corrected 4 → 2 (the border and inset shadow counted here are class R's #853, not this family's) | **done — #869, PR #871** |
 | Solid outline-button skin: `#f4f6f7` fill, `#e7ebec` hover, `rgba(255,255,255,0.7)` border, `#a3372a` danger ink (+ the `rgba(200,90,60,0.5)` danger border) | 13 | **new theme-invariant tokens**, one family. Its teal ink already moved to `--riv-solid-btn-ink` in #835. The themed alternatives measure 1.69:1 (`--riv-danger-ink`) and 1.52:1 (`--riv-accent-ink`) over the fixed fill | **done — #851, PR #859.** n corrected 9 → 13: the danger border was uncounted, and the `rgba(255,255,255,0.7)` border sits on all three buttons (on the `btnOutline` variant, not the shared `BTN_OUTLINE` base) |
 
 
@@ -129,8 +129,8 @@ These families must move **as a pair**, onto tokens declared **once** with no da
 > whether the three landed-state surfaces should look alike, framing `outcome-card` as a third way
 > that broke ranks. The intake grill checked that framing against `docs/design/` and found it
 > **inverted**: the artboards drew *every* medallion as a translucent brand tint —
-> `rgba(43,184,212,0.18)`/`#0a6e85` positive (`riviera-sign-in.dc.html:127,136`,
-> `…v3.dc.html:538`), `rgba(240,170,46,0.18–0.2)`/`#a86a12` waiting (`:145`, `:642,676`) — and
+> `rgba(43,184,212,0.18)`/`#0a6e85` positive (`riviera-sign-in.dc.html:128,138`,
+> `…v3.dc.html:539`), `rgba(240,170,46,0.18–0.2)`/`#a86a12` waiting (`:148`, `:644,679`) — and
 > **`#a86a12` appears 11 times across three artboards while `#8a5410`, `#fcf0d9` and `#d9f2f7`
 > appear zero times in any of them.** So `--riv-medallion-*` tokenised the *drifted* values and
 > `outcome-card` was the one site still painting the approved look.

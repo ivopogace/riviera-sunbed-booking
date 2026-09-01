@@ -20,13 +20,9 @@ import { completeDialog } from './support/booking-dialog';
  * matters. Every assertion runs twice, once per theme, against the same expected value: a skin that
  * moved between the two legs is precisely the drift the tokens forbid.
  *
- * <p>#869 adds the seventh and eighth: `shared/outcome-card.ts`'s two tone glyphs, which used to
- * paint the medallion FORM a third way — a themed teal tint for `success`, a fixed `#a86a12` over
- * an amber tint for `pending`. The auth page's landed states had **no** e2e coverage at all before
- * this slice, which is part of how the pending tone reached 2.46:1 in dark unnoticed. These two
- * legs are also the only ones where the both-themes loop is the whole assertion rather than a
- * corroboration: for every other site the paint was already invariant, while these two genuinely
- * moved per theme until now.
+ * <p>`shared/outcome-card.ts`'s two tone glyphs are proven here too, via the auth page's two landed
+ * states. They are the legs where the both-themes loop carries the whole assertion rather than
+ * corroborating it: every other site's paint was already invariant before it was tokenised.
  *
  * <p>Six surfaces, because the family has to be proven where it actually renders: the amenity chip's
  * two variants, the step badge's two states, and the medallion's three — positive via the booking

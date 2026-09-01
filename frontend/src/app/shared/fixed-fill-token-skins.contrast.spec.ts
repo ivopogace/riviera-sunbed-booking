@@ -91,12 +91,9 @@ const REGISTRY: Record<string, string> = { ...MEDALLION, ...AMENITY, ...STEP };
 /**
  * Values no component in `src/app` may carry, so a tree-wide sweep is exactly right for them.
  *
- * <p>Two different grounds reach the same assertion, and the distinction is worth keeping. The
- * first three this family paints **exclusively** — a future component carrying one is a new painter
- * to argue about rather than a false alarm. `#a86a12` is here for the opposite reason (#869): it is
- * **retired**, not owned. It was `outcome-card`'s one-off `pending` ink, the app's single use of
- * the value, and the artboards' amber — and convergence onto `--riv-medallion-waiting-ink` leaves
- * it painting nothing at all. Sweeping it keeps it from creeping back as a literal.
+ * <p>Two grounds reach the same assertion. The first three this family paints **exclusively** — a
+ * future component carrying one is a new painter to argue about, not a false alarm. `#a86a12` is
+ * the opposite: **retired**, owned by nothing, swept so it cannot creep back as a literal.
  */
 const EXCLUSIVE_LITERALS: readonly RegExp[] = [/#d9f2f7/i, /#f7e8e4/i, /#eecdc4/i, /#a86a12/i];
 
@@ -134,9 +131,9 @@ const MIGRATED_SITES: readonly {
     kept: ['amenity-chip', 'amenity-chip--water'],
   },
   {
-    /** #869 (class F-5). Asserted as UTILITY strings rather than bare values — the
-     *  `booking-dialog` form — because the component's docblock now *names* the two accent tokens
-     *  it stopped consuming, and a bare-value sweep would read that explanation as a relapse. */
+    /** Asserted as UTILITY strings, not bare values — the `booking-dialog` form — because the
+     *  component's docblock names the accent tokens it no longer consumes, and a bare-value sweep
+     *  would read that mention as a relapse. */
     path: 'shared/outcome-card.ts',
     gone: [
       'bg-[rgba(240,170,46,0.2)]',
@@ -166,9 +163,8 @@ const OUT_OF_FAMILY: readonly { readonly path: string; readonly literal: string 
   { path: 'shared/status-chip.ts', literal: '#8a5410' },
   { path: 'booking/booking-view.ts', literal: '#8a5410' },
   { path: 'operator/payouts-tab.html', literal: '#a3372a' },
-  /** #869's four: `rgba(240,170,46,…)` at four other alphas, on four forms that are not
-   *  medallions. The `pending` glyph's own tint was the fifth, and the only one this family had
-   *  any claim on. */
+  /** `rgba(240,170,46,…)` at four other alphas, on four forms that are not medallions — the
+   *  over-reach a value-led sweep of the retired `pending` tint would make. */
   { path: 'operator/pending-approval-banner.ts', literal: 'rgba(240,170,46,0.14)' },
   { path: 'booking/booking-dialog.ts', literal: 'rgba(240,170,46,0.12)' },
   { path: 'app.html', literal: 'rgba(240,170,46,0.5)' },

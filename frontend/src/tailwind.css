@@ -355,8 +355,8 @@
 
   /** The OUTCOME MEDALLION (#858, class F-3) — the round, centred, `aria-hidden` glyph that a
       landed booking state renders: booking-confirmation's ✓, booking-pay's ✓/⏳/✕,
-      request-confirmation's ✉ and appFailureIcon's ⚠ or 🏖. Five sites, three states, one form.
-      The glyph is per site and carries no meaning — every one is aria-hidden.
+      request-confirmation's ✉, appFailureIcon's ⚠ or 🏖 and outcome-card's ✓/⏳. Three states, one
+      form. The glyph is per site and carries no meaning — every one is aria-hidden.
 
       Grouped by FORM, not by value — the --riv-solid-fill-* precedent, and here the alternative was
       actively wrong: the six inks #858 enumerated carry two values across three different forms
@@ -374,32 +374,11 @@
       the negative fill — the very number #850 measured on its own family — and 1.63:1 over the
       waiting fill. The shipped pairs are 6.20 / 5.54 / 5.62:1.
 
-      None of the seven owes an AA assertion at all: every one is aria-hidden, with the meaning on
-      the neighbouring heading or label. The ratios above are a floor these values happen to clear.
-      #869 changed what that exemption MEANS, though not its scope: WCAG 1.4.3 still exempts every
-      one from the AA text minimum, but the two outcome-card glyphs are now held to 1.4.11's 3:1 in
-      auth/auth-page.contrast.spec.ts. The exemption had been doubling as an absence of proof, and
-      that is precisely how the pending glyph reached 2.46:1 in the dark theme without a red test.
-
-      THE #869 VERDICT (class F-5) — the two outcome-card glyphs joined this family, and the reason
-      is worth keeping because the evidence points the other way. docs/design's artboards drew EVERY
-      medallion as a translucent brand tint: rgba(43,184,212,0.18)/#0a6e85 for the positive state
-      (riviera-sign-in.dc.html:127,136; …v3.dc.html:538) and rgba(240,170,46,0.18–0.2)/#a86a12 for
-      the waiting one (:145; :642,676). Not one of the seven values below appears anywhere in those
-      records. So these tokens carry the AS-BUILT paint, not the approved one: four sites took the
-      opaque-fill S7924 retune (the treatment shared/status-chip.ts states outright — a solid fill
-      lets both the WCAG maths and the analyzer compute contrast, and keeps it theme-independent)
-      and outcome-card never did, because nothing forced it: its glyph is aria-hidden and owed no AA.
-      #869 RATIFIES the retune as the design rather than reversing it — one medallion vocabulary,
-      and the artboard lines carry `as-built diverges` pointers per docs/design/README.md.
-
-      What that cost, recorded so a later sweep does not rediscover it as a bug: outcome-card's
-      success tone used to theme CORRECTLY. Its fill was --riv-accent-chip-fill, a translucent tint
-      whose composite resolved against the themed card glass, and its ink was the themed
-      --riv-accent-ink — both halves moving together, 4.83–6.67:1 light and 7.03–7.69:1 dark. It was
-      the app's ONLY theming medallion, and it is deliberately gone. The pending tone was the
-      opposite and was simply broken: a FIXED #a86a12 over a tint that composited onto that same
-      themed card, so 2.82:1 on riviera and 2.46:1 in dark.
+      No site owes an AA assertion: every glyph is aria-hidden, with the meaning on the
+      neighbouring heading or label, so the ratios above are a floor these values happen to clear.
+      They are still held to WCAG 1.4.11's 3:1 — outcome-card's two in auth-page.contrast.spec.ts,
+      which is the one guard that composites a glyph fill onto the card it sits on. Write a
+      TRANSLUCENT fill here and that guard is what catches it.
 
       Do NOT reach for a coincidental token for any of the three. --riv-accent-ink IS #0a5f74's
       neighbourhood and themes; --riv-solid-btn-danger-ink and --riv-console-negative-ink ARE
@@ -415,10 +394,9 @@
       Proof: shared/fixed-fill-token-skins.contrast.spec.ts (the AA floors, the themed-ink bounds,
       the aria-hidden exemption, and the single-declaration guard that is the only thing able to see
       a later dark override) + e2e/fixed-fill-state-skins.e2e.ts (the computed skin under a forced
-      dark document theme; #869's two auth legs are the only ones where the both-themes loop is the
-      whole assertion, since every other site was already invariant before it was tokenised).
-      Rationale: docs/plans/fixed-fill-state-skins.md, issue #858;
-      docs/plans/outcome-card-medallion-convergence.md, issue #869. */
+      dark document theme). Rationale: docs/plans/fixed-fill-state-skins.md;
+      docs/plans/outcome-card-medallion-convergence.md; docs/design/colour-literal-token-audit.md
+      §F-3, §F-5 (why these values and not the artboards' tints, and what converging cost). */
   --riv-medallion-positive-fill: #d9f2f7;
   --riv-medallion-positive-ink: #0a5f74;
   --riv-medallion-waiting-fill: #fcf0d9;

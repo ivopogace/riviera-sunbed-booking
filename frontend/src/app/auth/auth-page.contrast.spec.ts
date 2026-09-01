@@ -50,11 +50,10 @@ import {
  * and the option cards (a teal tint when selected, a white wash when not).
  *
  * The outcome-card tone glyphs are `aria-hidden` — the heading carries the meaning — so WCAG 1.4.3
- * exempts them from the AA text minimum, and #858's posture across the whole medallion family is
- * carried here unchanged. They are NOT exempt from being *legible*, and that half used to go
- * unasserted: the glyph row below holds them to 1.4.11's 3:1 non-text floor. It is the only guard
- * in the tree that composites a glyph's own fill onto THIS theme's card, which is the exact shape
- * of the failure it exists for — a fixed ink over a fill the theme moves underneath it (#869).
+ * exempts them from the AA text minimum. They are not exempt from being *legible*: the glyph row
+ * below holds them to 1.4.11's 3:1. It is the only guard in the tree that composites a glyph's own
+ * fill onto THIS theme's card, which is the failure shape it exists for — a fixed ink over a fill
+ * the theme moves underneath it.
  */
 
 const ACCENT = hexToRgb('085a6e'); // --riv-accent-ink (light themes)
@@ -62,13 +61,11 @@ const ERROR_INK = hexToRgb('a3160e'); // --riv-error-ink (light themes; was #8c2
 const CTA_STOPS = ['#0c7288', '#0a5f74']; // --riv-cta-grad, both stops (submit + landed CTA)
 
 /**
- * shared/outcome-card.ts's two tone glyphs, wearing the `--riv-medallion-*` skin since #869.
+ * shared/outcome-card.ts's two tone glyphs, wearing the `--riv-medallion-*` skin.
  *
- * <p>ONE array shared by all three themes rather than a row per theme, and the shape is the claim:
- * both pairs are opaque and theme-invariant, so `alpha: 1` makes the composite below collapse to
- * the fill itself and every theme reads the same number. Before #869 this had to be per-theme —
- * the `success` ink was `--riv-accent-ink` over a translucent tint, and the `pending` ink was a
- * one-off `#a86a12` fixed over one, which is the pairing that measured 2.46:1 in dark.
+ * <p>ONE array shared by all three themes, and the shape is the claim: both pairs are opaque and
+ * theme-invariant, so `alpha: 1` collapses the composite below to the fill itself and every theme
+ * reads the same number. A per-theme row here would mean a glyph whose paint depends on its host.
  */
 const TONE_GLYPHS: readonly ToneGlyph[] = [
   {
@@ -222,8 +219,8 @@ describe.each(THEMES)('AuthPage contrast — $name', (theme: Theme) => {
   });
 
   it('the outcome-card tone glyphs clear the 3:1 non-text floor on the card (WCAG 1.4.11)', () => {
-    /** aria-hidden buys the AA exemption (spec header), never a pass on legibility. Composited
-     *  per stop because a TRANSLUCENT glyph fill resolves against the card, and the card themes. */
+    /** Per stop even though today's fills are opaque (so the composite is a no-op): the loop is
+     *  what still measures a translucent fill against the themed card if one is ever written. */
     for (const glyph of theme.toneGlyphs) {
       for (const stop of theme.stops) {
         const card = surfaceOver(theme.cardGlass, stop);
