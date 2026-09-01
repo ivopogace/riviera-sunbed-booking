@@ -1,14 +1,17 @@
 import { afterNextRender, Component, ElementRef, input, output, viewChild } from '@angular/core';
 
+import { BusyAction } from './busy-action';
 import { TouchTarget } from './touch-target';
 
-/** Which ink the confirm button carries — the two the operator console already ships. */
-export type ConfirmTone = 'destructive' | 'primary';
+/** Which ink the confirm button carries — the three the operator console ships (#881 adds `warn`). */
+export type ConfirmTone = 'destructive' | 'primary' | 'warn';
 
 const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
   destructive:
-    'rounded-[10px] bg-riv-solid-fill-danger px-4 py-1.5 text-[12.5px] font-bold text-white',
-  primary: 'rounded-[10px] bg-riv-solid-fill-brand px-4 py-1.5 text-[12.5px] font-bold text-white',
+    'rounded-[10px] bg-riv-solid-fill-danger px-4 py-1.5 text-[12.5px] font-bold text-white aria-disabled:opacity-60',
+  primary:
+    'rounded-[10px] bg-riv-solid-fill-brand px-4 py-1.5 text-[12.5px] font-bold text-white aria-disabled:opacity-60',
+  warn: 'rounded-[10px] bg-riv-solid-fill-warn px-4 py-1.5 text-[12.5px] font-bold text-white aria-disabled:opacity-60',
 };
 
 /**
@@ -21,10 +24,11 @@ const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
  * Focus back **out** is the caller's, via `focusMover()` — this component is gone by then.
  *
  * <p>Why two components rather than one with a variant, and why no projected content:
- * `docs/plans/shared-confirm-panel.md`.
+ * `docs/plans/shared-confirm-panel.md`. `headline` (#881) is plain text too, for the same
+ * reason — an optional bold lead sentence ahead of `message`, never markup.
  */
 @Component({
-  imports: [TouchTarget],
+  imports: [TouchTarget, BusyAction],
   selector: 'app-confirm-panel',
   host: {
     role: 'alertdialog',
@@ -34,6 +38,9 @@ const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
   },
   template: `
     <p class="text-[12.5px] font-semibold leading-[1.45] text-riv-warn-ink">
+      @if (headline(); as h) {
+        <strong>{{ h }}</strong>
+      }
       {{ message() }}
     </p>
     <div class="mt-2 flex flex-wrap gap-2">
@@ -43,6 +50,7 @@ const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
         type="button"
         [class]="confirmClass()"
         [attr.data-testid]="confirmTestId()"
+        [appBusy]="busy()"
         (click)="confirmed.emit()"
       >
         {{ confirmLabel() }}
@@ -50,8 +58,9 @@ const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
       <button
         appTouchTarget
         type="button"
-        class="rounded-[10px] border border-riv-card-border px-4 py-1.5 text-[12.5px] font-semibold text-riv-card-ink"
+        class="rounded-[10px] border border-riv-card-border px-4 py-1.5 text-[12.5px] font-semibold text-riv-card-ink aria-disabled:opacity-60"
         [attr.data-testid]="cancelTestId()"
+        [appBusy]="busy()"
         (click)="cancelled.emit()"
       >
         Cancel
@@ -62,10 +71,14 @@ const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
 export class ConfirmPanel {
   /** The dialog's accessible name. */
   readonly label = input.required<string>();
+  /** An optional bold lead sentence, rendered before `message` — plain text, never markup. */
+  readonly headline = input<string>();
   /** The warning shown above the actions — what confirming will destroy. */
   readonly message = input.required<string>();
   readonly confirmLabel = input.required<string>();
   readonly tone = input<ConfirmTone>('destructive');
+  /** True while the caller's write is in flight — blocks both actions (neither is safe mid-write). */
+  readonly busy = input(false);
   readonly panelTestId = input.required<string>();
   readonly confirmTestId = input.required<string>();
   readonly cancelTestId = input.required<string>();

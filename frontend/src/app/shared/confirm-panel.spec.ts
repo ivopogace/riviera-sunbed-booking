@@ -17,8 +17,10 @@ import { ConfirmPanel } from './confirm-panel';
       <app-confirm-panel
         label="Confirm remove set"
         message="Remove row A position 1 from the map?"
+        [headline]="headline()"
         confirmLabel="Remove set"
         [tone]="tone()"
+        [busy]="busy()"
         panelTestId="panel"
         confirmTestId="yes"
         cancelTestId="no"
@@ -30,7 +32,9 @@ import { ConfirmPanel } from './confirm-panel';
 })
 class ConfirmPanelHost {
   readonly open = signal(false);
-  readonly tone = signal<'destructive' | 'primary'>('destructive');
+  readonly tone = signal<'destructive' | 'primary' | 'warn'>('destructive');
+  readonly headline = signal<string | undefined>(undefined);
+  readonly busy = signal(false);
   confirmed = 0;
   cancelled = 0;
 }
@@ -99,5 +103,40 @@ describe('ConfirmPanel (#604)', () => {
   it('gives both actions a 44px-tall touch target', () => {
     expect(byId('yes').className).toContain('min-h-11');
     expect(byId('no').className).toContain('min-h-11');
+  });
+
+  it('renders an optional bold headline before the message (#881)', () => {
+    fixture.componentInstance.headline.set('Close today’s online sales?');
+    fixture.detectChanges();
+
+    const panel = byId('panel');
+    expect(panel.querySelector('strong')!.textContent).toBe('Close today’s online sales?');
+    expect(panel.textContent).toContain('Remove row A position 1 from the map?');
+  });
+
+  it('omits the headline strong element when no headline is given', () => {
+    expect(byId('panel').querySelector('strong')).toBeNull();
+  });
+
+  it('carries the warn ink on request (#881)', () => {
+    fixture.componentInstance.tone.set('warn');
+    fixture.detectChanges();
+
+    expect(byId('yes').className).toContain('bg-riv-solid-fill-warn');
+  });
+
+  it('blocks confirm and cancel while busy, without disabling via [disabled] (#881)', () => {
+    fixture.componentInstance.busy.set(true);
+    fixture.detectChanges();
+
+    expect(byId('yes').getAttribute('aria-disabled')).toBe('true');
+    expect(byId('no').getAttribute('aria-disabled')).toBe('true');
+    expect(byId('yes').hasAttribute('disabled')).toBe(false);
+    expect(byId('no').hasAttribute('disabled')).toBe(false);
+
+    byId('yes').click();
+    byId('no').click();
+    expect(fixture.componentInstance.confirmed).toBe(0);
+    expect(fixture.componentInstance.cancelled).toBe(0);
   });
 });

@@ -24,6 +24,7 @@ import {
 } from '../shared/availability-grid';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { ConfirmPanel } from '../shared/confirm-panel';
 import { focusMover } from '../shared/focus-after-render';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { MapSkeletonGrid } from '../shared/map-skeleton-grid';
@@ -143,6 +144,7 @@ interface CheckInNotice {
     BusyAction,
     TouchTarget,
     RouterLink,
+    ConfirmPanel,
   ],
   templateUrl: './daily-view-tab.html',
 })
@@ -433,11 +435,11 @@ export class DailyViewTab {
     this.load();
   }
 
-  /** Open the amber close-sales confirm (two-step — the write is the confirm's job). */
+  /** Open the amber close-sales confirm (two-step — the write is the confirm's job). Focus-in is
+   *  `app-confirm-panel`'s own job (WCAG 2.4.3); this only opens it. */
   protected onCloseSales(): void {
     this.notice.set(undefined);
     this.closeSalesConfirm.set(true);
-    this.focusAfterRender('daily-close-sales-confirm');
   }
 
   protected onCancelCloseSales(): void {
