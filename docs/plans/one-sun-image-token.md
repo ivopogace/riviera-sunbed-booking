@@ -28,7 +28,7 @@ issue pairs the wrong two suns and that a third exists) · `riviera-plan-doc` (t
 forced the behavior-parity ledger that surfaced `venue-map.spec.ts`'s rgba assertion needing a
 new home) · `tdd` (each phase red→green at the seams below) · `riviera-review-overlay` (review
 gate — runs at ready-for-review) · `riviera-docs-freshness` (**ran** over the slice range at
-close-out, findings recorded in the Generalization-audit log) · `prototype` (built the spike
+**ran** over `origin/main...HEAD`, 8 findings, all patched — see the close-out note) · `prototype` (built the spike
 that answered the design question with a real render rather than an argument) ·
 `riviera-tailwind` (image tokens keep the `bg-(image:--riv-*)` arbitrary form and need no
 `@theme inline` row; the single-declaration + no-drift proofs; theme-invariance argued at the
@@ -173,10 +173,10 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `review gate run (3 findings, all fixed) — awaiting CI + Sonar on the fix round`
+**Stage pointer:** `DONE — merged via PR #885`
 
-**Next action:** Confirm CI green and pull the SonarCloud issue + duplication list for PR
-#885; then the merge close-out (`pr-gates.md` §3).
+**Next action:** None. Close-out complete: CI green, review gate run (3 findings, all fixed),
+Sonar gate green with its list pulled and empty, docs-freshness run.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -184,8 +184,18 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 | 1 — the mocked-e2e computed-style proof | ✅ | `dc214d4` |
 | 2 — record the answer in the audit doc | ✅ | `dc214d4` |
 | 3 — review-gate findings F-1..F-3 | ✅ | `859ce7d` |
+| 4 — close-out: docs-freshness pointers + final state | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Docs-freshness note** — run over `origin/main...HEAD` at close-out. 2a (rename/removal grep
+over the substrate): the only hits for the retired paints are the `.dc.html` design records and
+historical narrative in the audit ledger, which stays true. 2b (counting sweep): this slice makes
+the **third** image token (`--riv-premium-grad`, `--riv-walkin-hatch`, `--riv-sun-grad`) — swept
+for "the two image tokens" phrasings across the substrate and `frontend/src`; no doc stated a
+count, so nothing went stale. Step 3 (reverse walk): no substrate doc states a fact about the sun.
+**8 findings, all patched:** the eight artboard lines above. The audit ledger is a maintained file
+and was corrected in place, not pointer-noted, per `docs/design/README.md`.
 
 **Findings register**
 
@@ -215,6 +225,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   for `pages/home/home.html`, whose guarded paint this slice removes rather than renames
 - `frontend/e2e/sun-token.e2e.ts` — the computed-style proof across all three surfaces
 - `docs/design/colour-literal-token-audit.md` — record the answer, per the issue's AC-1
+- `docs/design/riviera-sunbeds-liquid-glass-v3.dc.html` · `riviera-operator-console-v2.dc.html` ·
+  `riviera-admin-console.dc.html` · `riviera-sign-in.dc.html` — one `as-built diverges` pointer per
+  depicted sun (8), per `docs/design/README.md`: an artboard is a record, never edited in place
 
 ---
 
@@ -303,6 +316,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-01 | phase 0 | every image built inline in a class expression — the mechanism, not the ambers the issue named | `for f in $(git ls-files \| sed 's\|^frontend/\|\|' \| grep -E '^src/app/.*\.(ts\|html)$' \| grep -v '\.spec\.ts$'); do grep -oE "bg-\[[^]]*gradient\([^]]*\]" "$f" \| sed "s\|^\|${f}: \|"; done` | 8 → 5 after the merge | 3 were suns (the issue named 2) → merged onto `--riv-sun-grad`; the surviving 5 are linear/repeating-linear, none a sun, each per-site → out of scope per the issue |
+| 2026-09-01 | close-out | every design artboard depicting a sun — the `.dc.html` records are in the docs-freshness substrate map, and none is in the diff, so only a sweep of the records themselves finds them | `grep -rn "radial-gradient(circle at 3[48]% 30%" docs/design/*.dc.html` | 8, across 4 artboards | One `as-built diverges — see #882` pointer per line, per `docs/design/README.md` — a record is never edited in place |
 | 2026-09-01 | phase 1 | every guard asserting that a source still paints one of the literals this slice removes — enumerated by running the whole unit suite rather than by grepping for what I expected to break | `npx ng test --watch=false` | 1 — `fixed-fill-token-skins.contrast.spec.ts`'s `OUT_OF_FAMILY` row for `pages/home/home.html` | Row retired with the reason recorded at the site: its guarded paint is **gone**, not renamed, which is the case that rewrites a row instead. The other three `rgba(240,170,46,…)` rows still stand |
 
 ---
@@ -318,20 +332,20 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — n/a, frontend-only.
-- [ ] **Availability** section justified N/A (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — n/a.
-- [ ] **Modulith** section justified N/A (invariant #11).
-- [ ] **Payment/payout** section justified N/A (invariants #5, #8, #9).
-- [ ] Refund policy (invariant #10) — n/a.
-- [ ] Timezone (invariant #6) — n/a.
-- [ ] Booking codes (invariant #7) — n/a.
-- [ ] Flyway migration (invariant #12) — n/a, no schema change.
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — n/a, frontend-only.
+- [x] **Availability** section justified N/A (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — n/a.
+- [x] **Modulith** section justified N/A (invariant #11).
+- [x] **Payment/payout** section justified N/A (invariants #5, #8, #9).
+- [x] Refund policy (invariant #10) — n/a.
+- [x] Timezone (invariant #6) — n/a.
+- [x] Booking codes (invariant #7) — n/a.
+- [x] Flyway migration (invariant #12) — n/a, no schema change.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, **merged via PR #885**.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.

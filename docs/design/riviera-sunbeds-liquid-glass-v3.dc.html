@@ -32,6 +32,7 @@
   <header style="position:sticky;top:0;z-index:20;background:rgba(255,255,255,0.13);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);border-bottom:1px solid rgba(255,255,255,0.22);box-shadow:0 8px 30px rgba(6,38,52,0.14);">
     <div style="position:relative;width:100%;max-width:1080px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
       <div onClick="{{ onBack }}" style="display:flex;align-items:center;gap:12px;cursor:pointer;">
+        <!-- as-built diverges — see #882: the suns now paint from one --riv-sun-grad token -->
         <span style="width:32px;height:32px;border-radius:50%;background:radial-gradient(circle at 34% 30%, #ffe6a3, #f0aa2e 70%);box-shadow:0 0 0 4px rgba(255,255,255,0.18),0 4px 14px rgba(240,170,46,0.5);display:block;"></span>
         <span style="display:flex;flex-direction:column;line-height:1;">
           <span style="font-size:21px;font-weight:700;letter-spacing:-0.01em;color:{{ ink }};">Riviera</span>
@@ -177,6 +178,7 @@
         <li style="list-style:none;">
           <div onClick="{{ card.onOpen }}" style="cursor:pointer;display:flex;flex-direction:column;height:100%;background:rgba(255,255,255,0.55);-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);border:1px solid rgba(255,255,255,0.6);border-radius:28px;overflow:hidden;box-shadow:0 12px 40px rgba(7,42,58,0.26),inset 0 1px 0 rgba(255,255,255,0.8);transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;" style-hover="transform:translateY(-5px);box-shadow:0 26px 60px rgba(7,42,58,0.4),inset 0 1px 0 rgba(255,255,255,0.9);border-color:rgba(255,255,255,0.85);">
             <div style="position:relative;height:150px;background:{{ photoGrad }};">
+              <!-- as-built diverges — see #882: the suns now paint from one --riv-sun-grad token -->
               <span style="position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 34% 30%, rgba(255,236,180,0.95), rgba(240,170,46,0.5) 72%);filter:blur(0.5px);opacity:.85;pointer-events:none;"></span>
               <span style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(13,40,40,0) 42%,rgba(13,40,40,0.16) 66%,rgba(13,40,40,0.58) 100%);"></span>
               <!-- as-built diverges — see #705 (the mode chip is a semantic chip now: opaque accent fill, white ink, no glass backing); design record left as drawn, docs/design/README.md -->
@@ -255,6 +257,7 @@
 
     <!-- as-built diverges — see #704 (the band moved above the count into the glass header, grew to 264px on desktop, and its sun's stops went opaque); design record left as drawn, docs/design/README.md -->
     <div style="position:relative;margin-top:20px;height:210px;border-radius:24px;overflow:hidden;background:{{ photoGrad }};border:1px solid rgba(255,255,255,0.4);box-shadow:0 12px 40px rgba(7,42,58,0.3);">
+      <!-- as-built diverges — see #882: the suns now paint from one --riv-sun-grad token -->
       <span style="position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:74px;height:74px;border-radius:50%;background:radial-gradient(circle at 34% 30%, rgba(255,236,180,0.95), rgba(240,170,46,0.5) 72%);filter:blur(0.5px);opacity:.85;pointer-events:none;"></span>
       <span style="position:absolute;left:0;right:0;bottom:44px;text-align:center;font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.85);pointer-events:none;">Venue photos coming soon</span>
       <span style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(13,40,40,0) 55%,rgba(13,40,40,0.42) 100%);"></span>
@@ -562,6 +565,7 @@
       <header style="position:sticky;top:0;z-index:2;background:rgba(255,255,255,0.14);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);border-bottom:1px solid rgba(255,255,255,0.22);">
         <div style="width:100%;max-width:920px;margin:0 auto;padding:13px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
           <div style="display:flex;align-items:center;gap:11px;">
+            <!-- as-built diverges — see #882: the suns now paint from one --riv-sun-grad token -->
             <span style="width:28px;height:28px;border-radius:50%;background:radial-gradient(circle at 34% 30%, #ffe6a3, #f0aa2e 70%);box-shadow:0 0 0 3px rgba(255,255,255,0.18);display:block;"></span>
             <span style="display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:{{ ink }};">Secure checkout <span style="font-weight:500;opacity:.8;">&middot; Riviera</span></span>
           </div>
