@@ -282,8 +282,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/booking/form-error-tokens.contrast.spec.ts` — move onto the extracted helpers
 - `frontend/src/app/shared/solid-fill-tokens.contrast.spec.ts` — move onto the extracted helpers; narrow the `SURVIVORS` `#0a5f74` list (AC-7's second half)
 - `frontend/src/app/shared/amenity-chip.spec.ts` — read the recipe's `fillClass`/`inkClass` instead of interpolating the hex
-- `.claude/skills/riviera-tailwind/SKILL.md` — §Styling-across-the-themes gains the ternary-atomicity rule (docs-freshness)
-- `.claude/skills/riviera-sdlc/references/pr-gates.md` — the `failure-icon` css:S7924 citation now points at the token declaration (docs-freshness)
+- `.claude/skills/riviera-tailwind/SKILL.md` — §Styling-across-the-themes gains the ternary-atomicity rule, one sentence (docs-freshness)
 - `frontend/src/app/operator/console-accent-token.contrast.spec.ts` — move onto the extracted helpers
 - `frontend/src/app/operator/console-negative-token.contrast.spec.ts` — move onto the extracted helpers
 - `frontend/e2e/fixed-fill-state-skins.e2e.ts` — **new**: the mocked forced-dark computed-style proof
@@ -501,15 +500,15 @@ actually resolving under `data-riv-theme="dark"`. `shared/amenity-chip.ts` and
       `/opacity` tints already covered by #852, inside the porcelain-pinned console, so it has no
       drift to fix.
 - [x] **Step 5: `riviera-docs-freshness`** — **ran** over `origin/main..claude/sdlc-858-d5rsea`,
-      **2 findings, both patched**:
+      **2 findings, 1 patched, 1 rejected as noise**:
       1. `.claude/skills/riviera-tailwind/SKILL.md:190` — §Styling-across-the-themes enumerated three
-         grounds for theme-invariance and named #850 as *the* worked example, but carried no rule for
-         the **unit** when the skin is stateful. Patched with #858's ternary-atomicity rule and the
-         form-over-enumeration sweep, plus the three families as the stateful worked example.
-      2. `.claude/skills/riviera-sdlc/references/pr-gates.md:199` — cites `failure-panel.ts`'s
-         `failure-icon` as the css:S7924 worked fix ("swap the translucent fill for its solid
-         composited equivalent"). Still true, but the solid value now lives at the token declaration
-         rather than the call site; patched with that hop so the citation stays followable.
+         grounds for theme-invariance but carried no rule for the **unit** when the skin is stateful.
+         Patched with one sentence: take a per-state class ternary whole.
+      2. `.claude/skills/riviera-sdlc/references/pr-gates.md:199` — considered and **rejected**. The
+         `failure-icon` css:S7924 citation is still accurate; noting that the solid value moved to a
+         token declaration adds a fact the reader never acts on. A skill earns its length by
+         changing what the next agent *does*, so a patch that only makes a citation more precise is
+         a cost with no payoff — this one was written, then reverted.
       The **counting sweep** (`the two|three …` narrowed to token/theme/family/chip vocabulary) found
       **no** falsified statement: the four hits are ADR-0005's refund pair, `riviera-frontend`'s
       two-suite e2e split and two-place token registry, and two `riviera-stripe-payments` sentences —

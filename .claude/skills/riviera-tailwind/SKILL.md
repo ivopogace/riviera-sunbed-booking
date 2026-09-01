@@ -188,16 +188,8 @@ Vary by theme in this order of preference:
    subtree** (`--riv-console-accent-ink`, under the console's porcelain host) has an unreachable
    dark branch, so a dark value is an unverifiable claim — guard the single declaration, since
    nothing else can see a later override. Group such a family by **form, not value**, and reject a
-   coincidental token on its **role** before its value. #858 adds the
-   **unit** rule the three grounds leave open: a **per-state class ternary is atomic**. Three of its
-   six enumerated inks sat inside `[class]`/`computed()` ternaries whose *sibling* branch was also a
-   literal, so migrating one branch would leave `state() === 'awaiting' ? 'bg-[#fcf0d9]
-   text-[#8a5410]' : 'bg-riv-medallion-positive-fill …'` — a named utility beside a hex literal in
-   one expression, worse than either whole option. Take the ternary whole, and let that decide the
-   family's edge before the ticket's enumeration does: #858's own sweep by **form** (not by the
-   values its ticket listed) found a fifth medallion site the ticket never named. Its three families
-   (`--riv-medallion-*` per-state, `--riv-amenity-*` per-variant, `--riv-step-*`) are the worked
-   example for a *stateful* skin, as `--riv-form-error-*` is for a flat one. This is
+   coincidental token on its **role** before its value. And take a **per-state class ternary whole**
+   (#858): tokenising one branch leaves a named utility beside a hex literal in one expression. This is
    Tailwind's own documented multi-theme pattern (docs: Colors § "Referencing other
    variables" — plain vars per `:root`/attribute scope, mapped via `@theme inline`;
    `inline` is what keeps the utility emitting `var(--riv-*)` so per-scope overrides and
