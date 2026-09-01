@@ -122,7 +122,7 @@ session addendum*). The literal `feature/…` branch is deliberately not created
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The dark-theme repaint is judged wrong once seen (a pale medallion punched into a dark card) | med | med | Enumerated in the behavior-parity ledger before any code, and the maintainer chose this option knowing it; the two e2e legs make the shipped value inspectable | ivopogace | **open — the one row that stays open until the repaint is eyeballed.** It is a judgement, not a defect: every test passes either way |
+| R-1 | The dark-theme repaint is judged wrong once seen (a pale medallion punched into a dark card) | med | med | Enumerated in the behavior-parity ledger before any code, and the maintainer chose this option knowing it; the two e2e legs make the shipped value inspectable | ivopogace | **closed — accepted at the merge gate (2026-09-01)**, offered as a pre-merge visual check and waived. Not a defect either way; the behavior-parity ledger above is the record of exactly what changed, and `fixed-fill-state-skins.e2e.ts` pins the shipped values in both themes if it is ever revisited |
 | R-2 | The `rgba(240,170,46,…)` sweep over-reaches onto the four out-of-family homes (`pending-approval-banner`, `booking-dialog`'s mode note, `app.html`'s sun, `home.html`'s photo sun) | med | med | `OUT_OF_FAMILY` gains rows asserting each keeps its literal — the positive half of the sweep #851 invented; only `#a86a12` (single-site) joins `EXCLUSIVE_LITERALS` | — | **closed** in phase 1 — all four rows added and green |
 | R-3 | The floor test is written so it passes today, proving nothing | med | high | Phase 0 runs it RED first and records the exact failing number before any component edit | — | **closed** — RED confirmed at `riviera` 2.82:1 (stop `#0a4f6e`) and `dark` 2.46:1 (stop `#3b4a5f`), matching the hand-computed research values; green after the convergence |
 | R-4 | The e2e's `pending` leg is unreachable — the stage needs register-202-then-signin-transport-failure | low | med | Path confirmed in `auth-page.ts:505-532`: a non-401/429 sign-in failure maps to `'error'` and falls through to `submittedForApproval.set(true)`. Mockable as a 500 on the sign-in POST | — | **closed** in phase 1 — the leg renders and asserts in both themes |
@@ -193,13 +193,12 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `merge gate — all three gates passed on 2b607ca; awaiting the maintainer's
-look at the dark-theme repaint (risk R-1) before merge`
+**Stage pointer:** `merge — all gates passed, R-1 accepted; merging via PR #871`
 
-**Next action:** maintainer decision on R-1 (the one row this slice cannot close for itself — the
-repaint is a judgement, and every test passes either way). On approval: merge, then the close-out
-checklist (`references/pr-gates.md` §3) — issue #869 closes via the PR, #870 already filed, and
-the docs-freshness sweep is already folded in as phase 2.
+**Next action:** none in-repo. Post-merge items are GitHub edits only (`references/pr-gates.md`
+§3): confirm #869 closed by the PR, #870 already filed and carrying the deferred finding, and the
+PR-activity subscription ended. The docs-freshness sweep is already folded in as phase 2, so there
+is no docs-only follow-up PR.
 
 **Gate results on `2b607ca`:** CI 8/8 green. Review gate ran in full (ladder rung 1, high effort):
 five findings, all fixed, comment posted. Sonar gate green **and its reported list actually
