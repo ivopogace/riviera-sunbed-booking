@@ -181,16 +181,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — write `e2e/cta-border-token-skin.e2e.ts` plus the two sweep tests red,
-then migrate the 16 border sites onto `border-riv-cta-border`.
+**Next action:** Phase 2 — add the dark-theme AA record to `booking-confirmation.contrast.spec.ts`,
+then migrate the `bg-` site onto `bg-riv-inset-fill`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Register the token + its guard spec | ✅ | see phase-0 commit |
-| 1 — Migrate the 16 border sites + the render proof | ⏳ | |
-| 2 — Migrate the `bg-` site onto `--riv-inset-fill` | | |
+| 1 — Migrate the 16 border sites + the render proof | ✅ | see phase-1 commit |
+| 2 — Migrate the `bg-` site onto `--riv-inset-fill` | ⏳ | |
 | 3 — Ledger + mirror close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.

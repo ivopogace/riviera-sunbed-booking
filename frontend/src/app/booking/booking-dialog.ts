@@ -82,7 +82,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
         <button
           appTouchTarget
           type="button"
-          class="dialog-close absolute top-[14px] right-[14px] flex size-[30px] cursor-pointer items-center justify-center rounded-full border border-[rgba(255,255,255,0.4)] bg-[#31798a] text-[15px] leading-none text-white motion-safe:[transition:filter_0.15s_ease] hover:brightness-[1.12] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
+          class="dialog-close absolute top-[14px] right-[14px] flex size-[30px] cursor-pointer items-center justify-center rounded-full border border-riv-cta-border bg-[#31798a] text-[15px] leading-none text-white motion-safe:[transition:filter_0.15s_ease] hover:brightness-[1.12] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white"
           data-testid="dialog-close"
           aria-label="Close"
           (click)="requestClose()"
@@ -336,7 +336,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
           <button
             appTouchTarget
             type="submit"
-            class="btn-primary flex-1 cursor-pointer rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-[14px] text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] motion-safe:[transition:filter_0.15s_ease] hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-default disabled:opacity-70"
+            class="btn-primary flex-1 cursor-pointer rounded-2xl border border-riv-cta-border bg-(image:--riv-cta-grad) p-[14px] text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] motion-safe:[transition:filter_0.15s_ease] hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-default disabled:opacity-70"
             data-testid="dialog-primary"
             [appBusy]="submitting()"
           >

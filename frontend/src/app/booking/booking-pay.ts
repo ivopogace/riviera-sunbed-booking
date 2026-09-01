@@ -326,7 +326,7 @@ const CLS = {
               <button
                 appTouchTarget
                 type="button"
-                class="mt-4 block w-full cursor-pointer rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) p-[15px] text-center text-[15px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink disabled:cursor-default disabled:opacity-70 motion-reduce:transition-none"
+                class="mt-4 block w-full cursor-pointer rounded-2xl border border-riv-cta-border bg-(image:--riv-cta-grad) p-[15px] text-center text-[15px] font-bold text-white shadow-[0_12px_28px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] [transition:filter_0.15s_ease] hover:enabled:brightness-[1.06] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink disabled:cursor-default disabled:opacity-70 motion-reduce:transition-none"
                 (click)="pay()"
                 [appBusy]="paying()"
                 data-testid="pay-button"

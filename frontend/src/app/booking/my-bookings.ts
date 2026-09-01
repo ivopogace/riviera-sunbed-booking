@@ -188,7 +188,7 @@ const EMPTY_CARD =
 /** The `[appBusy]` control's own aria-disabled skin (`shared/busy-action.ts`), shared by both retry buttons. */
 const BUSY_SKIN = 'aria-disabled:cursor-not-allowed aria-disabled:opacity-60';
 const CTA =
-  'inline-flex min-h-11 cursor-pointer items-center rounded-2xl border border-[rgba(255,255,255,0.4)] bg-(image:--riv-cta-grad) px-[26px] py-[13px] text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white';
+  'inline-flex min-h-11 cursor-pointer items-center rounded-2xl border border-riv-cta-border bg-(image:--riv-cta-grad) px-[26px] py-[13px] text-[15px] font-bold text-white shadow-[0_10px_26px_rgba(11,120,150,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-white';
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {

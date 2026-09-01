@@ -1,3 +1,6 @@
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { AA_LARGE, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   CTA_BORDER,
@@ -48,6 +51,38 @@ const FIXED_FILLS = [
   ['--riv-cta-grad bottom stop', CTA_GRAD_STOPS[1]],
   ['booking-dialog close button', DIALOG_CLOSE_FILL],
 ] as const;
+
+/**
+ * The literal positions this slice retires. Swept as UTILITY strings rather than bare values, the
+ * `booking-dialog` form: the same `rgba(255,255,255,0.4)` survives in the tree inside composite
+ * `inset` shadows, a different role that class R does not own.
+ */
+const RETIRED_POSITIONS: readonly string[] = [
+  'border-[rgba(255,255,255,0.4)]',
+  'bg-[rgba(255,255,255,0.4)]',
+];
+
+/**
+ * The home of this value the slice deliberately leaves alone, asserted POSITIVELY — the
+ * `OUT_OF_FAMILY` mechanism, the only thing able to show the sweep did not over-reach.
+ * `app.html`'s theme chip carries the value as the inner highlight of a composite shadow: one
+ * member of a 0.4/0.5/0.7 ramp used in the same idiom tree-wide, so tokenising it alone would be
+ * the partial cut the audit ledger warns against. It has its own ledger row instead.
+ */
+const OUT_OF_FAMILY = { path: 'app.html', literal: 'inset_0_1px_0_rgba(255,255,255,0.4)' } as const;
+
+const APP_ROOT = join(process.cwd(), 'src/app');
+
+/** Every component source — templates are inline `.ts` here, so both extensions are swept. */
+function componentSources(): readonly string[] {
+  return readdirSync(APP_ROOT, { recursive: true, encoding: 'utf8' }).filter(
+    (path) => /\.(ts|html)$/.test(path) && !path.endsWith('.spec.ts'),
+  );
+}
+
+function read(path: string): string {
+  return readFileSync(join(APP_ROOT, path), 'utf8');
+}
 
 /** The hairline as it actually paints: composited over the opaque fill it sits on. */
 function borderOver(fill: readonly [number, number, number], alpha: number): number {
@@ -111,5 +146,17 @@ describe('--riv-cta-border — the CTA hairline (#853)', () => {
     for (const [surface, fill] of FIXED_FILLS) {
       expect(borderOver(fill, DARK_CARD_BORDER.alpha), surface).toBeLessThanOrEqual(1.5);
     }
+  });
+
+  it('leaves no component painting the retired literal positions', () => {
+    const offenders = componentSources().filter((path) =>
+      RETIRED_POSITIONS.some((position) => read(path).includes(position)),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('leaves the inset-highlight ramp alone, which is a different family', () => {
+    expect(read(OUT_OF_FAMILY.path)).toContain(OUT_OF_FAMILY.literal);
   });
 });
