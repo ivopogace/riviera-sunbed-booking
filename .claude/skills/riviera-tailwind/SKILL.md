@@ -1,12 +1,6 @@
 ---
 name: riviera-tailwind
-description: >-
-  The how-to-write-Tailwind authority for the riviera-sunbed-booking frontend (Tailwind v4,
-  Angular 22). Load BEFORE styling ANYTHING under frontend/src — a new component or HTML
-  template, a restyle, or an SCSS→Tailwind migration — whether or not Tailwind was the
-  plan: Tailwind is the default, and SCSS needs a stated justification. Complements
-  riviera-frontend (which folder a file goes in) and angular-developer (generic
-  Angular+Tailwind technique); RV-FE-* checks the result.
+description: How to write Tailwind v4 in frontend/: directive sharing (no @apply), test-hook classes, the touch-target floor, tokens across the three themes, no-drift proofs, migrate-on-touch. Load BEFORE styling anything under frontend/src — Tailwind is the default and SCSS needs a stated justification.
 ---
 
 # Riviera Tailwind conventions

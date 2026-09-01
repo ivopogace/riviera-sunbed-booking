@@ -1,13 +1,6 @@
 ---
 name: riviera-java-conventions
-description: >-
-  The Java language-level conventions for riviera-sunbed-booking backend code (Java 25,
-  Spring Boot 4, Spring Modulith). Load BEFORE writing or refactoring any Java — a class,
-  record, port, service, JDBC adapter, event, or test — it encodes the idioms that push
-  Claude off its Spring-tutorial defaults (JDBC-only with no JPA/Hibernate, no Lombok,
-  records, constructor injection, typed outcomes, Java 25 features). Pairs with
-  codebase-design (seam shape) and postgres (SQL); the numbered invariants live in CLAUDE.md
-  and are checked by riviera-review-overlay.
+description: Java idioms for platform/ (Java 25, Spring Boot 4): JDBC-only, records, no Lombok, constructor injection, typed outcomes, the error contract, comment rules. Load BEFORE writing or refactoring any Java — class, record, port, service, adapter, event, or test.
 ---
 
 # Riviera Java conventions

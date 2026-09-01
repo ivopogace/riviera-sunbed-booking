@@ -1,13 +1,6 @@
 ---
 name: riviera-frontend
-description: >-
-  The Angular frontend STRUCTURE authority for riviera-sunbed-booking — folder taxonomy
-  (core/ vs feature vs shared/ vs pages/), import direction + the cross-feature-import debt
-  ledger, the flat lazy-route convention, interceptor/guard/auth-state placement, the
-  DI-token adapter-swap pattern, environment config, and the two-suite e2e split. Load
-  BEFORE creating or modifying ANY file under frontend/src or frontend/e2e — which folder a
-  file lands in is this skill's call. Pairs with angular-developer (HOW to write it) and
-  frontend/.claude/CLAUDE.md (language idioms); RV-FE-* checks the result.
+description: Angular structure authority for frontend/: folder taxonomy (core/shared/pages/features), import direction, routing, app.config wiring, theming ownership, the two-suite e2e split. Load BEFORE creating or modifying any file under frontend/src or frontend/e2e — which folder a file lands in is this skill's call.
 ---
 
 # Riviera frontend structure

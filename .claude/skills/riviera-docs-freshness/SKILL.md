@@ -1,15 +1,6 @@
 ---
 name: riviera-docs-freshness
-description: >
-  Substrate-doc staleness audit for riviera-sunbed-booking — given a git range (a merged
-  slice, an epic's merge span, or main since the last audit), walk the substrate-doc map
-  (CLAUDE.md, CONTEXT.md, RESPONSIBILITIES.md, docs/adr/, plan-doc final states,
-  docs/design/, the .claude/skills/riviera-* skills) and flag or patch any stated fact the
-  diff contradicts — including, via the counting sweep, the facts outside the diff that go
-  stale when the slice makes the Nth instance of something (a listener, counter, event,
-  module, profile, transport, sweep) and every doc saying "the two X" is now wrong.
-  Load it at merge close-out step 5 (riviera-sdlc), at every epic close-out, or whenever a
-  change might invalidate something a substrate doc states.
+description: Staleness audit of the substrate docs (CLAUDE.md, CONTEXT.md, RESPONSIBILITIES.md, ADRs, riviera-* skills, source Javadoc) over a git range, including the counting sweep for "the two X" facts. Load at merge close-out step 5, at epic close-out, or whenever a change might invalidate something a substrate doc states.
 ---
 
 # Riviera docs freshness

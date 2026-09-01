@@ -1,6 +1,6 @@
 ---
 name: riviera-plan-doc
-description: Use at the plan stage of riviera-sdlc, or whenever writing or executing a plan for riviera-sunbed-booking work. Adds project-specific plan-doc discipline — mandatory testable acceptance criteria, a risk register, an open-questions register, and dedicated sections for the Spring-Modulith modules/events touched, the availability single-source-of-truth invariant, and the payment/payout flow. Pairs with the plan-doc template at references/plan-doc-template.md. The execution engine is tdd at the plan's named seams (/implement is the human's entry command, not a model route); the superpowers writing-plans/executing-plans plugin also works if present.
+description: Plan-doc discipline for riviera-sunbed-booking: testable ACs with named seams, risk and open-question registers, the Modulith/availability/payment sections, the Execution-status state store. Load at the riviera-sdlc plan stage or when executing an existing plan in docs/plans/.
 ---
 
 # Riviera Plan Doc

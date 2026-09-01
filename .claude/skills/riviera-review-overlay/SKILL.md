@@ -1,6 +1,6 @@
 ---
 name: riviera-review-overlay
-description: Project-specific review overlay for the riviera-sunbed-booking repo. Layers onto an active code review (the code-review plugin's /code-review, or another active review engine) to add the RV-BE/RV-FE/RV-CT bank items built from the CLAUDE.md invariants — availability, payments, Modulith boundaries, money/timezone, per-venue authorization. Load whenever reviewing a diff or PR in this repo; it adds bank items, it does not run a review on its own.
+description: Riviera-specific review bank items (RV-BE/RV-FE/RV-CT/RV-STYLE/RV-PROC) layered onto an active /code-review. Load whenever reviewing a diff or PR in this repo; it adds items to a running review, it does not run one.
 ---
 
 # Riviera review overlay

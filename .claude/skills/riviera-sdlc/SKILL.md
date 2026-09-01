@@ -1,6 +1,6 @@
 ---
 name: riviera-sdlc
-description: The software development life cycle loop for riviera-sunbed-booking. Load it when starting or continuing feature work in this repo — it routes each stage of the pipeline (refine → issue → plan → implement → CI → review → merge) to the right skill, including frontend/backend skill routing, and points to the domain substrate (CONTEXT.md, docs/adr, docs/agents). Use when the user says "let's build/work on <use case>", picks up a GitHub issue, or asks how we work here.
+description: The development loop for riviera-sunbed-booking (refine → issue → plan → implement → CI → review → merge) and which skill drives each stage. Load when starting or continuing feature work here, picking up a GitHub issue, or asked how we work.
 ---
 
 # Riviera SDLC workflow
