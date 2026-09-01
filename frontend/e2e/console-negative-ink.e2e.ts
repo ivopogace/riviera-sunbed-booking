@@ -121,9 +121,14 @@ test.describe('the operator console negative ink paints from the token registry'
     await expect(chip).toBeVisible();
     await expect(chip).toHaveCSS('color', CONSOLE_NEGATIVE_INK);
 
-    // v4 renders `/opacity` as `color-mix(in oklab, …)` on hex or token alike — pin #852's alpha.
+    /**
+     * v4 renders `/opacity` as `color-mix(in oklab, …)` on hex or token alike — pin the alpha.
+     * 0.10 since #879's ladder; #852 left it at 0.12, which the ladder's own sweep missed until the
+     * generalization audit widened it from the `CLASS_O_TINTS` array to the FORM (any `riv-` token
+     * wearing a modifier) — this chip reuses `--riv-console-negative-ink`, which that array never held.
+     */
     const tint = await chip.evaluate((el) => getComputedStyle(el).backgroundColor);
-    expect(tint, 'the chip tint').toMatch(/\/ 0\.12\)$/);
+    expect(tint, 'the chip tint').toMatch(/\/ 0\.1\)$/);
   });
 
   test('the failed check-in notice resolves to the registered token value', async ({ page }) => {

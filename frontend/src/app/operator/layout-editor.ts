@@ -77,12 +77,13 @@ const TOOL_LABEL: Record<CellState, string> = {
   gap: 'Gap / aisle',
 };
 
-/** Per-tool swatch background classes (mirrors the cell variants, sized by the swatch element). */
+/** Per-tool swatch background classes (mirrors the cell variants, sized by the swatch element).
+ *  The walk-in mirror is now literal rather than aspirational: this swatch painted 35%/12%
+ *  against the cell's 30%/12% until #879 gave both one `--riv-walkin-hatch` declaration. */
 const SWATCH_CLASS: Record<CellState, string> = {
   premium: 'bg-(image:--riv-premium-grad)',
   standard: 'bg-white/85',
-  walkin:
-    'bg-[repeating-linear-gradient(45deg,color-mix(in_oklab,var(--riv-console-tint)_35%,transparent)_0_3px,color-mix(in_oklab,var(--riv-console-tint)_12%,transparent)_3px_6px)]',
+  walkin: 'bg-(image:--riv-walkin-hatch)',
   gap: 'bg-transparent',
 };
 

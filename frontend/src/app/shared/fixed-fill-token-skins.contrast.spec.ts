@@ -161,12 +161,14 @@ const MIGRATED_SITES: readonly {
  * `#a3372a` is the first: #852 moved the reason chip's `/opacity` tints onto
  * `--riv-console-negative-ink`, the ink token already on that same element, so the value is still
  * painted there and #858 still did not reach it. Deleting the row instead would quietly narrow
- * what this list proves.
+ * what this list proves. Rewritten a second time by #879's alpha ladder (`/28` -> `/30`), which is
+ * the same move again and the reason the rule is worth stating rather than re-deriving: the alpha
+ * a paint wears is notation, and this row is about the paint.
  */
 const OUT_OF_FAMILY: readonly { readonly path: string; readonly literal: string }[] = [
   { path: 'shared/status-chip.ts', literal: '#8a5410' },
   { path: 'booking/booking-view.ts', literal: '#8a5410' },
-  { path: 'operator/payouts-tab.html', literal: 'riv-console-negative-ink/28' },
+  { path: 'operator/payouts-tab.html', literal: 'riv-console-negative-ink/30' },
   /** `rgba(240,170,46,…)` at four other alphas, on four forms that are not medallions — the
    *  over-reach a value-led sweep of the retired `pending` tint would make. */
   { path: 'operator/pending-approval-banner.ts', literal: 'rgba(240,170,46,0.14)' },

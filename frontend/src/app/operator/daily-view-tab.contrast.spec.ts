@@ -1,4 +1,4 @@
-import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
+import { AA_LARGE, AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   CARD_INK,
   CARD_INK_FAINT_ALPHA,
@@ -13,6 +13,7 @@ import {
   expectAaOverStops,
   surfaceOver,
   SOLID_FILL_BRAND,
+  WARN_EDGE,
 } from '../../testing/glass-tokens';
 
 /**
@@ -36,8 +37,12 @@ import {
 
 // The FREE tile fill (`bg-white/85`, daily-view-tab.ts tileClass).
 const FREE_TILE_FILL = { color: WHITE, alpha: 0.85 };
-// The locked tile's worst-case fill: the striped gradient's darker rgba(12,42,51,0.28) band.
-const LOCKED_STRIPE_FILL = { color: CARD_INK, alpha: 0.28 };
+/** The locked tile's worst-case fill: `--riv-walkin-hatch`'s darker band, a `CARD_INK` tint. 0.30
+ *  since #879 gave the hatch one declaration (this tile painted 0.28 of its own before). */
+const LOCKED_STRIPE_FILL = { color: CARD_INK, alpha: 0.3 };
+// The close-sales trigger button: --riv-warn-edge/50 hairline on its own `bg-white/60` fill.
+const TRIGGER_EDGE_ALPHA = 0.5;
+const TRIGGER_FILL_ALPHA = 0.6;
 // --riv-cta-grad stops (the AA-safe darkened teal shared with every CTA); the empty-state link sits on these.
 const CTA_STOPS = ['#0c7288', '#0a5f74'];
 
@@ -115,5 +120,43 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
 
   it('the close-sales confirm button (white on darkened amber #9a6410) meets AA (#794)', () => {
     expect(contrastRatio('#ffffff', '#9a6410')).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+
+  /**
+   * The close-sales trigger's amber hairline, recorded under **rule 2** of
+   * `docs/design/non-text-contrast.md` (#879). Its edge does not clear 3:1 against its own fill and
+   * does not need to: this is a filled control whose identity is carried by its own label, so
+   * 1.4.11's "required to identify" does not reach the boundary. All three of rule 2's conditions,
+   * demonstrated rather than asserted in prose:
+   *
+   * <ol>
+   *   <li>the label carries the identity — `--riv-card-ink` on the button's own `white/60` fill,
+   *       measured at AA below;
+   *   <li>the number is measured, not waved off — the edge ratio is computed and bounded, so a
+   *       later slice that *worsens* it has to come through this test;
+   *   <li>the control paints a real `border`, which is what makes rule 3 (forced-colors) its
+   *       fallback.
+   * </ol>
+   *
+   * <p>It became a recorded family because #879 moved the value (`#d9861a` -> `#e0a03a`, 1.65:1 ->
+   * 1.48:1 on this fill). The position was already sub-3:1 before the merge and carried no entry —
+   * so the ladder did not create this exemption, it found one that was never written down.
+   */
+  it('the close-sales trigger is identified by its label, not its edge (1.4.11 rule 2)', () => {
+    for (const stop of PORCELAIN_STOPS) {
+      const fill = composite(WHITE, TRIGGER_FILL_ALPHA, surfaceOver(PORCELAIN_CARD_GLASS, stop));
+      const edge = composite(WARN_EDGE, TRIGGER_EDGE_ALPHA, fill);
+
+      // 1. The label carries the identity, at AA on the button's own fill.
+      expect(
+        contrastRatio(rgbToHex(CARD_INK), rgbToHex(fill)),
+        `trigger label over ${rgbToHex(stop)}`,
+      ).toBeGreaterThanOrEqual(AA_NORMAL);
+
+      // 2. The edge's own ratio is measured and bounded — decorative is a conclusion, not a skip.
+      const edgeRatio = contrastRatio(rgbToHex(edge), rgbToHex(fill));
+      expect(edgeRatio, `trigger edge over ${rgbToHex(stop)}`).toBeLessThan(AA_LARGE);
+      expect(edgeRatio, `trigger edge over ${rgbToHex(stop)}`).toBeGreaterThan(1.4);
+    }
   });
 });

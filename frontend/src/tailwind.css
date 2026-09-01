@@ -53,8 +53,6 @@
   --color-riv-error-ink: var(--riv-error-ink);
   --color-riv-form-error-fill: var(--riv-form-error-fill);
   --color-riv-form-error-ink: var(--riv-form-error-ink);
-  --color-riv-notice-banner-fill: var(--riv-notice-banner-fill);
-  --color-riv-notice-banner-ink: var(--riv-notice-banner-ink);
   --color-riv-danger-ink: var(--riv-danger-ink);
   --color-riv-danger-fill: var(--riv-danger-fill);
   --color-riv-danger-border: var(--riv-danger-border);
@@ -84,12 +82,10 @@
   --color-riv-select-edge: var(--riv-select-edge);
   --color-riv-alert-tint: var(--riv-alert-tint);
   --color-riv-warn-edge: var(--riv-warn-edge);
-  --color-riv-warn-tint: var(--riv-warn-tint);
+  --color-riv-warn-fill: var(--riv-warn-fill);
+  --color-riv-warn-ink: var(--riv-warn-ink);
   --color-riv-positive-tint: var(--riv-positive-tint);
   --color-riv-premium-edge: var(--riv-premium-edge);
-  --color-riv-confirm-warn-edge: var(--riv-confirm-warn-edge);
-  --color-riv-confirm-warn-fill: var(--riv-confirm-warn-fill);
-  --color-riv-confirm-warn-ink: var(--riv-confirm-warn-ink);
 
   --color-riv-medallion-positive-fill: var(--riv-medallion-positive-fill);
   --color-riv-medallion-positive-ink: var(--riv-medallion-positive-ink);
@@ -457,12 +453,42 @@
       one is meant. Same fork, same answer, as the two --riv-console-*-ink tokens. */
   --riv-alert-tint: #a3160e;
 
-  /** The console's WARN pair (class O, #852): the sales-close confirm panel on the Daily view and
-      the weather-refund confirm on the Payouts tab -- one treatment wearing two base colours, an
-      edge and a fill. Rule B preserves that rather than merging it; normalising the four ambers
-      this file now carries is a deliberate visual change and its own issue. */
-  --riv-warn-edge: #d9861a;
-  --riv-warn-tint: #f0aa2e;
+  /** The AMBER WARN family (#879) -- one skin for every amber advisory surface in the tree:
+      shared/confirm-panel's `alertdialog`, the two hand-rolled confirm panels on the console's
+      Daily-view and Payouts tabs plus the trigger button that opens the first, the two legal pages'
+      standing draft banner, and booking/withheld-email-notice.
+
+      THREE families collapsed here, and one deliberately did not. --riv-warn-edge/-tint (class O,
+      #852) painted the console's two confirm panels at #d9861a/#f0aa2e; --riv-confirm-warn-* (class
+      O, #852) painted the shared component doing the SAME JOB in different markup;
+      --riv-notice-banner-* (class F-4, #868) painted the standing banners at #fcf0d9/#8a5410. The
+      first two were one role in two paints -- the console panels are hand-rolled twins of
+      confirm-panel -- and the third joined them because an amber advisory is one treatment
+      whichever surface carries it. --riv-premium-edge stayed OUT: it is a beach-map TIER identity
+      over a gold gradient, not a warning, and role beats value (the fork #848, #858 and #864 each
+      resolved the same way).
+
+      These values rather than the notice banner's because they are the higher-contrast pair --
+      6.86:1 against 5.54:1 -- so every surface the merge moved, moved the safe way, and
+      confirm-panel itself did not move at all.
+
+      THEME-INVARIANT, and note that the ARGUMENT changed hands. As a class-O token this rested on
+      "every consumer is a child of operator-console, whose host pins porcelain, so a dark branch is
+      unreachable". That ground is now FALSE -- the legal pages and the withheld-email notice are
+      tourist surfaces rendering under all three document themes. What holds instead is #868's, and
+      it is the stronger claim: the fill is FIXED, so a themed ink over it drifts
+      (--riv-error-ink/--riv-danger-ink both resolve #ffa9a1 in dark, 1.63:1 over this fill). A
+      fixed fill pins every ink on it, whichever theme the page is in. Declared ONCE, no dark
+      override.
+
+      Proof: shared/warn-token-skin.contrast.spec.ts (the AA pair, the beats-what-it-replaced
+      comparison, the failing themed-ink bound, the retired-name sweep and the single-declaration
+      guard that is the only thing able to see a later dark override) +
+      e2e/warn-token-skin.e2e.ts (the computed skin under a forced dark document theme).
+      Rationale: docs/design/colour-literal-token-audit.md § Class O, issue #879. */
+  --riv-warn-edge: #e0a03a;
+  --riv-warn-fill: #fff4e0;
+  --riv-warn-ink: #7a4a08;
 
   /** The Requests tab's ACCEPTED medallion (class O, #852). One base colour in three roles on one
       element -- border, fill and ink -- so it is one token and one expression: tokenising the two
@@ -478,19 +504,24 @@
   --riv-premium-edge: #b47814;
   --riv-premium-grad: linear-gradient(180deg, #ffe3a3, #f4c05a);
 
-  /** `shared/confirm-panel`'s warning surface (class O, #852), taken WHOLE. Only the edge is class
-      O; the fill and ink are class S, and they share one host string with it -- so migrating the
-      edge alone would leave a named utility beside two hex literals in one expression, which is
-      the shape #858 ruled against.
+  /** The beach-map WALK-IN cell's hatch (#879). An image token for the same reason
+      --riv-premium-grad is one -- one declaration is the only thing that keeps a mirror mirroring
+      -- and #852 was wrong to conclude its walk-in sibling could not be one. That call rested on
+      "those three gradients differ by alpha per site", which was true and was the bug: the three
+      renderings of ONE thing were 30%/12% (the cell), 35%/12% (the layout editor's tool swatch,
+      under a comment calling it a mirror of the cell) and 28%/10% (the Daily view's tile and its
+      legend key). Rule B had no reason to notice -- each site was internally consistent, and the
+      drift only reads as drift once the three sit in one place.
 
-      Deliberately NOT --riv-notice-banner-*, which it near-duplicates (#fcf0d9 / #8a5410 against
-      #fff4e0 / #7a4a08). Those are two different surfaces -- that one a page-level standing
-      banner, this one an inline `alertdialog` -- and merging them would move pixels on one of
-      them, which this slice does not do. The near-duplication is recorded for the alpha/palette
-      normalisation issue rather than silently resolved here. */
-  --riv-confirm-warn-edge: #e0a03a;
-  --riv-confirm-warn-fill: #fff4e0;
-  --riv-confirm-warn-ink: #7a4a08;
+      30%/10% are the ladder's values (#879): the dense band rounds down from 30/35/28, the light
+      one from 12/12/10. Proof: shared/class-o-tint-tokens.contrast.spec.ts (one declaration, and no
+      source rebuilding it inline) + the per-surface AA specs that composite over its darker band
+      (operator/daily-view-tab.contrast.spec.ts, operator/set-editor.contrast.spec.ts). */
+  --riv-walkin-hatch: repeating-linear-gradient(
+    45deg,
+    color-mix(in oklab, var(--riv-console-tint) 30%, transparent) 0 3px,
+    color-mix(in oklab, var(--riv-console-tint) 10%, transparent) 3px 6px
+  );
 
   /** The OUTCOME MEDALLION (#858, class F-3) — the round, centred, `aria-hidden` glyph that a
       landed booking state renders: booking-confirmation's ✓, booking-pay's ✓/⏳/✕,
@@ -544,28 +575,6 @@
   --riv-medallion-negative-fill: #f7e8e4;
   --riv-medallion-negative-ink: #a3372a;
   --riv-medallion-negative-border: #eecdc4;
-
-  /** The amber NOTICE BANNER (#868, class F-4) — withheld-email-notice's "we couldn't email you"
-      notice and the two legal pages' standing draft banner. The medallion-waiting pair's exact
-      value (#fcf0d9/#8a5410) above, on a different FORM: a rectangular block of ACCESSIBLE TEXT,
-      not a round aria-hidden glyph — so unlike --riv-medallion-waiting-*, this family genuinely
-      owes an AA assertion, and clears it at 5.54:1.
-
-      Do NOT reach for --riv-medallion-waiting-*: its declaration states plainly that no site in
-      its population owes an AA assertion, which would leave a load-bearing ratio resting on a
-      token an exemption. Do NOT reach for --riv-error-ink/--riv-danger-ink either — both resolve
-      #ffa9a1 in the dark theme, 1.63:1 over a fill that stays #fcf0d9, the exact drift
-      --riv-form-error-* above exists to prevent.
-
-      Theme-invariant BY DESIGN, and a PAIR for that reason — the --riv-form-error-* call: the
-      fill is fixed and every host (withheld-email-notice, both legal pages) DOES theme, so a
-      themed ink drifts light-on-light. Declared ONCE, no dark override.
-      Proof: booking/withheld-email-notice.contrast.spec.ts (the AA pair, the failing themed-ink
-      bound, and the single-declaration guard that is the only thing able to see a later dark
-      override) + e2e/notice-banner-token-skin.e2e.ts (the computed skin under a forced dark
-      document theme). Rationale: docs/design/colour-literal-token-audit.md §F-4, issue #868. */
-  --riv-notice-banner-fill: #fcf0d9;
-  --riv-notice-banner-ink: #8a5410;
 
   /** The AMENITY CHIP's two variants (#858, class F-3) — shared/amenity-chip.ts's neutral amenity
       tag and its accent "Xm to water" tag. Six positions, one component, one `computed()` ternary.

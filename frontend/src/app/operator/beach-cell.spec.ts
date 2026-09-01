@@ -12,7 +12,10 @@ import { SetView } from '../shared/venue-views';
  * the aisle boundary is 3:1 composited over the shared canvas wash (#672 slice 2, pinned in
  * `layout-editor.contrast.spec.ts`), and #852 tokenised the `#0c2a33` positions — the ones this map
  * paints with an `/opacity` modifier AND the two raw stops inside the walk-in gradient, since a
- * per-state map may not mix a named utility with a literal of the same value in one branch.
+ * per-state map may not mix a named utility with a literal of the same value in one branch. Then
+ * #879 took the walk-in gradient whole: its two stops were 30%/12% here and 35%/12% at the layout
+ * editor's "mirror" swatch, so the hatch became one `--riv-walkin-hatch` image token and this entry
+ * names the token rather than the stops.
  *
  * <p>So the pin is no longer byte-identical to the pre-move strings, and could not stay so without
  * pinning the migration out. What it still guarantees is what it was written for: that the two
@@ -24,8 +27,7 @@ import { SetView } from '../shared/venue-views';
 const PRE_MOVE_CELL_CLASS: Record<CellState, string> = {
   premium: 'border-riv-premium-edge/40 bg-(image:--riv-premium-grad)',
   standard: 'border-riv-console-tint/15 bg-white/85',
-  walkin:
-    'border-riv-console-tint/15 bg-[repeating-linear-gradient(45deg,color-mix(in_oklab,var(--riv-console-tint)_30%,transparent)_0_3px,color-mix(in_oklab,var(--riv-console-tint)_12%,transparent)_3px_6px)]',
+  walkin: 'border-riv-console-tint/15 bg-(image:--riv-walkin-hatch)',
   gap: 'border-dashed border-riv-console-tint/55 bg-transparent',
 };
 
@@ -65,6 +67,32 @@ describe('BeachCell (#600)', () => {
         expect(button.classList.contains(token)).toBe(true);
       }
     }
+  });
+
+  /**
+   * The aisle boundary is the one class-O alpha that could not be normalised (#879). `/55` is not
+   * what someone typed — it is 0.55 and not 0.35 because the gap cell's identity is its border
+   * ALONE (no fill, `bg-transparent`), and only at 0.55 does that border clear 3:1 composited over
+   * the shared canvas wash, WCAG 1.4.11 (#672 slice 2; the ratio itself is measured in
+   * `layout-editor.contrast.spec.ts`, which is where it belongs — one number-bearing surface).
+   *
+   * <p>It needed no exemption from the multiple-of-five ladder, because 55 is already on it. That
+   * is a coincidence worth a test rather than a comment: the ladder is a rule about alphas and this
+   * alpha is a rule about contrast, and a future re-cut of the ladder that did not know the second
+   * rule existed would be free to round this one anywhere. This test is what makes it not free.
+   */
+  it('keeps the aisle boundary at /55, off the ladder’s collapse', () => {
+    const { host, component, detect } = render();
+    component.state.set('gap');
+    detect();
+    const button = host.querySelector('button')!;
+
+    expect(button.classList.contains('border-riv-console-tint/55')).toBe(true);
+    expect(button.classList.contains('bg-transparent')).toBe(true);
+    expect(
+      [...button.classList].filter((c) => /^(bg|border)-riv-console-tint\//.test(c)),
+      'the gap cell paints exactly one console-tint position — its border',
+    ).toEqual(['border-riv-console-tint/55']);
   });
 
   it('keeps the consumer’s own geometry classes beside the variant classes', () => {
