@@ -56,14 +56,14 @@ remote addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the Daily view tab's close-sales trigger and the Payouts tab's weather
+- [x] **AC-1:** Given the Daily view tab's close-sales trigger and the Payouts tab's weather
   trigger, when either is activated, then the confirmation renders as `<app-confirm-panel>`
   with `role="alertdialog"` and a non-empty accessible name naming the action (not a plain
   `<div>`). *Seam:* `ConfirmPanel`'s host contract (`label`/`panelTestId` inputs) · *Pinned
   by:* `daily-view-tab.spec.ts` › `'exposes the close-sales confirm as an alertdialog with an
   accessible name'`, `payouts-tab.spec.ts` › `'exposes the weather confirm as an alertdialog
   with an accessible name'`, `e2e/operator-daily.e2e.ts`, `e2e/operator-payouts.e2e.ts`
-- [ ] **AC-2:** Given either confirm panel, when it opens, is cancelled, or is confirmed,
+- [x] **AC-2:** Given either confirm panel, when it opens, is cancelled, or is confirmed,
   then keyboard focus moves onto the confirm button on open and back to the trigger on
   cancel (already true today via `focusMover()`; this AC re-pins it against the new
   `<app-confirm-panel>` markup so the refactor cannot silently regress it). *Seam:*
@@ -71,18 +71,18 @@ remote addendum).
   *Pinned by:* the existing `daily-view-tab.spec.ts` › `'moves focus to the confirm button…'`
   / `'returns focus to the trigger…'` and `operator-daily.e2e.ts` /
   `operator-payouts.e2e.ts`'s existing `toBeFocused()` assertions, kept green
-- [ ] **AC-3:** Given either panel's confirm action in flight (`closeSalesBusy()` /
+- [x] **AC-3:** Given either panel's confirm action in flight (`closeSalesBusy()` /
   `refunding()`), when the operator would tap Confirm or Cancel again, then both controls
   reject the click (no double-submit, no premature dismissal) exactly as before the
   refactor. *Seam:* `ConfirmPanel`'s new `busy` input → `appBusy` on both buttons · *Pinned
   by:* `confirm-panel.spec.ts` › `'blocks confirm and cancel while busy'`
-- [ ] **AC-4:** Given the two panels' confirm buttons, when rendered, then neither paints
+- [x] **AC-4:** Given the two panels' confirm buttons, when rendered, then neither paints
   `bg-[#9a6410]` as a literal — both consume `bg-riv-solid-fill-warn`, a registered
   theme-invariant token whose white-ink pairing clears WCAG AA. *Seam:* the
   `--riv-solid-fill-*` token family · *Pinned by:*
   `shared/solid-fill-tokens.contrast.spec.ts` (extended), `e2e/solid-fill-token-skin.e2e.ts`
   (extended)
-- [ ] **AC-5:** Given the merge, then `docs/design/colour-literal-token-audit.md` records
+- [x] **AC-5:** Given the merge, then `docs/design/colour-literal-token-audit.md` records
   `#9a6410` as a closed class-T family. *Seam:* the ledger file itself · *Pinned by:* review
   reading (prose, no test) + `riviera-docs-freshness` at close-out
 
@@ -123,25 +123,26 @@ remote addendum).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Widening `ConfirmPanel`'s `busy` input the way `ConfirmWithReason` does it (confirm-only) would silently drop the existing "cancel also disabled while busy" behavior on both consumers | med | med | `busy` applies `[appBusy]` to **both** buttons in `ConfirmPanel`; `ConfirmWithReason` is untouched, so the two components keep their own established semantics. Behavior-parity ledger row records the choice | Ivo | open — pinned by AC-3's spec |
-| R-2 | Adding a `headline` input could tempt a future caller to pass arbitrary markup through it, reopening the projected-content question R-1 of `shared-confirm-panel.md` already closed | low | low | `headline` stays `input<string>()`, interpolated exactly like `message` — no `innerHTML`, no `<ng-content>`. TSDoc states it is plain text | Ivo | open |
+| R-1 | Widening `ConfirmPanel`'s `busy` input the way `ConfirmWithReason` does it (confirm-only) would silently drop the existing "cancel also disabled while busy" behavior on both consumers | med | med | `busy` applies `[appBusy]` to **both** buttons in `ConfirmPanel`; `ConfirmWithReason` is untouched, so the two components keep their own established semantics. Behavior-parity ledger row records the choice | Ivo | **closed** — `confirm-panel.spec.ts` › `'blocks confirm and cancel while busy…'` (AC-3) green |
+| R-2 | Adding a `headline` input could tempt a future caller to pass arbitrary markup through it, reopening the projected-content question R-1 of `shared-confirm-panel.md` already closed | low | low | `headline` stays `input<string>()`, interpolated exactly like `message` — no `innerHTML`, no `<ng-content>`. TSDoc states it is plain text | Ivo | **closed** — shipped as designed; the review gate found no drift from this (confirm-panel.ts's docblock states the constraint) |
 | R-3 | Moving the message ink from `--riv-card-ink` to `--riv-warn-ink` could fail AA over the panel's own fill if #879's measurement doesn't transfer | low | high | `--riv-warn-ink`/`--riv-warn-fill` is the exact pairing #879 proved at 6.86:1 in `shared/warn-token-skin.contrast.spec.ts` — no new measurement needed, just confirmed unchanged | Ivo | closed — pairing pre-proven, no new literal introduced |
-| R-4 | `bg-[#9a6410]` might still linger in a third site this slice doesn't grep for, leaving `solid-fill-tokens.contrast.spec.ts`'s "no component paints the family as a literal" sweep to catch it late | low | low | `FILL_ROLES` sweep is tree-wide (`componentSources()` over all of `src/app`), not scoped to the two touched files — it is the generalization check for this exact population | Ivo | open — closed by Phase 2's Step 5 |
+| R-4 | `bg-[#9a6410]` might still linger in a third site this slice doesn't grep for, leaving `solid-fill-tokens.contrast.spec.ts`'s "no component paints the family as a literal" sweep to catch it late | low | low | `FILL_ROLES` sweep is tree-wide (`componentSources()` over all of `src/app`), not scoped to the two touched files — it is the generalization check for this exact population | Ivo | **closed** — the sweep's own test (`shared/solid-fill-tokens.contrast.spec.ts` › `'leaves no component painting the family as a literal'`) passed at Phase 3, and Phase 3's own `grep -rn "9a6410"` found no survivor outside this plan's prose and the (updated) contrast-spec comments |
 
 ## Open questions / Assumptions
 
+None outstanding.
+
+### Resolved
+
 - **Assumption:** the issue's focus-management framing ("neither hand-rolled panel does
   either") is stale — both already call `focusMover()` for all three legs, added by
-  `f3a9e48` (#795/#803), well after the issue's premise. Confirmed by reading
-  `daily-view-tab.ts`/`payouts-tab.ts` and their existing green focus specs in both the unit
-  and e2e suites. The remaining, real gap is the ARIA role/name and the markup/token
-  duplication. — *Owner:* Ivo · *Resolves by:* recorded here at plan time; AC-1/AC-2 reflect
-  the corrected scope.
+  `f3a9e48` (#795/#803), well after the issue's premise. — **Resolved at plan time**: confirmed
+  by reading `daily-view-tab.ts`/`payouts-tab.ts` and their existing green focus specs in both
+  the unit and e2e suites. The remaining, real gap was the ARIA role/name and the markup/token
+  duplication, which AC-1/AC-2 target.
 - **Assumption:** dropping the `<em>every</em>` mid-sentence emphasis (payouts) is an
   acceptable minor visual change rather than something that needs its own component slot. —
-  *Owner:* Ivo · *Resolves by:* Phase 1, recorded in the ledger above.
-
-Resolved entries move under a `### Resolved` sub-heading with the outcome + SHA.
+  **Resolved in Phase 2** (`1d1a79d`). Shipped and recorded in the behavior-parity ledger.
 
 ## Availability & concurrency (invariant #2)
 
@@ -190,15 +191,15 @@ N/A — no contract change. No request URL, method, body, or header changes; bot
 > **This section is the session-recovery anchor.** Re-read it (plus the current stage's
 > `riviera-sdlc` reference file) after any compaction or in a fresh session, before acting.
 
-**Stage pointer:** `merge close-out`
+**Stage pointer:** `DONE — merged via PR #883`
 
-**Next action:** Merge PR #883, then run the merge close-out checklist (`riviera-sdlc`
-`references/pr-gates.md` §3) — issue close, docs-freshness, subscription teardown.
+**Next action:** None. All gates cleared; remaining items are GitHub-side (close #881, which
+the PR's `Closes` line does; unsubscribe the PR-activity watch post-merge).
 
-**PR:** #883 (ready for review) — https://github.com/ivopogace/riviera-sunbed-booking/pull/883
+**PR:** #883 (`merged via PR #883`) — https://github.com/ivopogace/riviera-sunbed-booking/pull/883
 
-**Gates:** CI green on head `d1d8d039` (Backend, Frontend, Repo hygiene, CodeQL ×2, all
-green) · review gate run (`code-review` plugin, medium effort, 5-agent fan-out +
+**Gates:** CI green on head `5adfdef4` (Backend, Frontend, Repo hygiene, CodeQL ×2, SonarCloud
+×2, all green) · review gate run (`code-review` plugin, medium effort, 5-agent fan-out +
 `riviera-review-overlay`) — 2 real findings (F-1, F-2), both fixed and pushed; 1 observation
 rejected as non-actionable (F-3) · Sonar gate green **with the reported list actually
 pulled** via the API (not just the badge): 0 new issues, 0 duplicated blocks, 92.3% new-code
@@ -209,7 +210,8 @@ coverage.
 | 0 — `shared/confirm-panel`: `headline` + `busy` + `warn` tone | ✅ | `ef7615a` |
 | 1 — Adopt in `daily-view-tab` | ✅ | `ef7615a` |
 | 2 — Adopt in `payouts-tab` + retire the `#9a6410` literal (token family) | ✅ | `1d1a79d` |
-| 3 — e2e coverage (ARIA + token no-drift) + full verification | ✅ | (pending commit) |
+| 3 — e2e coverage (ARIA + token no-drift) + full verification | ✅ | `872a115b` |
+| 4 — review-gate fixes (F-1, F-2) | ✅ | `872a115b`, `d1d8d039` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -256,7 +258,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Modify `frontend/src/app/shared/confirm-panel.ts` · Test
 `frontend/src/app/shared/confirm-panel.spec.ts`
 
-- [ ] **Step 1: Write the failing specs** — a `headline` case (renders `<strong>` before the
+- [x] **Step 1: Write the failing specs** — a `headline` case (renders `<strong>` before the
       message), a `warn` tone case (button paints `bg-riv-solid-fill-warn`), and a `busy`
       case (both buttons carry `aria-disabled` and reject a click).
 
@@ -284,19 +286,19 @@ it('blocks confirm and cancel while busy', () => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- confirm-panel` → FAIL (no `headline`/
+- [x] **Step 2: Run it, verify it fails** — `npm test -- confirm-panel` → FAIL (no `headline`/
       `busy` input, no `warn` tone).
-- [ ] **Step 3: Implement** — add `readonly headline = input<string>();`, `readonly busy =
+- [x] **Step 3: Implement** — add `readonly headline = input<string>();`, `readonly busy =
       input(false);`, extend `ConfirmTone` to `'destructive' | 'primary' | 'warn'` and
       `CONFIRM_BUTTON` with a `warn` entry (`bg-riv-solid-fill-warn`), render `@if
       (headline(); as h) { <strong>{{ h }}</strong> }` before `{{ message() }}`, bind
       `[appBusy]="busy()"` on both buttons, import `BusyAction`.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- confirm-panel` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — grep every `ConfirmPanel` consumer
+- [x] **Step 4: Run it, verify it passes** — `npm test -- confirm-panel` → PASS.
+- [x] **Step 5: Generalization-audit pass** — grep every `ConfirmPanel` consumer
       (`grep -rln "app-confirm-panel" frontend/src/app`) to confirm `layout-editor` and
       `set-editor` are unaffected (no `headline`/`busy` binding, default `false`/`undefined`).
-- [ ] **Step 6: Commit** — `git commit -m "Add headline, busy and a warn tone to shared/confirm-panel (#881)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Add headline, busy and a warn tone to shared/confirm-panel (#881)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -304,7 +306,7 @@ it('blocks confirm and cancel while busy', () => {
 
 **Files:** Modify `frontend/src/app/operator/daily-view-tab.ts|.html|.spec.ts`
 
-- [ ] **Step 1: Write the failing spec** — `'exposes the close-sales confirm as an
+- [x] **Step 1: Write the failing spec** — `'exposes the close-sales confirm as an
       alertdialog with an accessible name'`.
 
 ```ts
@@ -318,21 +320,21 @@ it('exposes the close-sales confirm as an alertdialog with an accessible name', 
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- daily-view-tab` → FAIL (no `role`
+- [x] **Step 2: Run it, verify it fails** — `npm test -- daily-view-tab` → FAIL (no `role`
       attribute on the plain `<div>`).
-- [ ] **Step 3: Implement** — replace the confirm `<div>` with `<app-confirm-panel>`
+- [x] **Step 3: Implement** — replace the confirm `<div>` with `<app-confirm-panel>`
       (`label`/`headline` = the bold lead, `message` = the remaining copy, `tone="warn"`,
       `[busy]="closeSalesBusy()"`, the three existing `data-testid`s preserved), import
       `ConfirmPanel` into the component's `imports`, and remove the now-redundant
       `this.focusAfterRender('daily-close-sales-confirm')` call from `onCloseSales()` (the
       component focuses its own confirm button on creation).
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- daily-view-tab` → PASS; re-run the
+- [x] **Step 4: Run it, verify it passes** — `npm test -- daily-view-tab` → PASS; re-run the
       existing focus specs (`'moves focus to the confirm button…'`,
       `'returns focus to the trigger…'`) to confirm they stay green unmodified.
-- [ ] **Step 5: Generalization-audit pass** — confirm no other operator surface still
+- [x] **Step 5: Generalization-audit pass** — confirm no other operator surface still
       hand-rolls this exact amber-card shape (`grep -rn "border-riv-warn-edge" frontend/src/app/operator`).
-- [ ] **Step 6: Commit** — `git commit -m "Adopt shared/confirm-panel for the close-sales confirm (#881)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Adopt shared/confirm-panel for the close-sales confirm (#881)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -343,11 +345,11 @@ it('exposes the close-sales confirm as an alertdialog with an accessible name', 
 `frontend/src/testing/glass-tokens.ts`, `frontend/src/app/shared/solid-fill-tokens.contrast.spec.ts`,
 `frontend/src/tailwind.css`
 
-- [ ] **Step 1: Write the failing spec** — the payouts mirror of Phase 1's Step 1, plus a
+- [x] **Step 1: Write the failing spec** — the payouts mirror of Phase 1's Step 1, plus a
       `solid-fill-tokens.contrast.spec.ts` case for the new `warn` member.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- payouts-tab solid-fill-tokens` →
+- [x] **Step 2: Run it, verify it fails** — `npm test -- payouts-tab solid-fill-tokens` →
       FAIL (no `--riv-solid-fill-warn` declared yet).
-- [ ] **Step 3: Implement** — declare `--riv-solid-fill-warn: #9a6410;` + its `@theme
+- [x] **Step 3: Implement** — declare `--riv-solid-fill-warn: #9a6410;` + its `@theme
       inline` row in `tailwind.css` (in the existing `--riv-solid-fill-*` doc comment, noting
       the third member and issue #881), add `SOLID_FILL_WARN` to `glass-tokens.ts`, extend
       `solid-fill-tokens.contrast.spec.ts`'s `FAMILY`/`FILL_ROLES`/AA loop, adopt
@@ -355,12 +357,12 @@ it('exposes the close-sales confirm as an alertdialog with an accessible name', 
       ledger), remove the redundant open-leg `focusAfterRender` call from
       `onWeatherRefund()`, and update both contrast specs to import `SOLID_FILL_WARN`
       instead of the `'#9a6410'` string literal.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- payouts-tab daily-view-tab solid-fill-tokens confirm-panel` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — `grep -rn "9a6410" frontend/src frontend/e2e docs` to
+- [x] **Step 4: Run it, verify it passes** — `npm test -- payouts-tab daily-view-tab solid-fill-tokens confirm-panel` → PASS.
+- [x] **Step 5: Generalization-audit pass** — `grep -rn "9a6410" frontend/src frontend/e2e docs` to
       confirm no literal survives outside this plan's own prose and the (updated) contrast-spec
       comments.
-- [ ] **Step 6: Commit** — `git commit -m "Adopt shared/confirm-panel for the weather-refund confirm; retire the #9a6410 literal (#881)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Adopt shared/confirm-panel for the weather-refund confirm; retire the #9a6410 literal (#881)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -369,20 +371,20 @@ it('exposes the close-sales confirm as an alertdialog with an accessible name', 
 **Files:** Modify `frontend/e2e/operator-daily.e2e.ts`, `frontend/e2e/operator-payouts.e2e.ts`,
 `frontend/e2e/solid-fill-token-skin.e2e.ts`, `docs/design/colour-literal-token-audit.md`
 
-- [ ] **Step 1: Write the failing e2e** — add `role`/accessible-name assertions to both
+- [x] **Step 1: Write the failing e2e** — add `role`/accessible-name assertions to both
       existing confirm-flow tests, and extend `solid-fill-token-skin.e2e.ts`'s `REGISTRY`/
       `UTILITIES` plus one assertion that the weather-confirm button now paints
       `rgb(154, 100, 16)` via the token.
-- [ ] **Step 2: Run it, verify it fails/passes appropriately** —
+- [x] **Step 2: Run it, verify it fails/passes appropriately** —
       `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- operator-daily operator-payouts solid-fill-token-skin`.
-- [ ] **Step 3: Full verification** — `npm run lint`, `npm run format:check`, `npm test`,
+- [x] **Step 3: Full verification** — `npm run lint`, `npm run format:check`, `npm test`,
       `npm run build`, the e2e command above.
-- [ ] **Step 4: Update the ledger** — `docs/design/colour-literal-token-audit.md`'s
+- [x] **Step 4: Update the ledger** — `docs/design/colour-literal-token-audit.md`'s
       `#9a6410` row: mark done, citing this plan + issue #881.
-- [ ] **Step 5: Reconcile the File-structure section** —
+- [x] **Step 5: Reconcile the File-structure section** —
       `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [ ] **Step 6: Commit** — `git commit -m "Cover the confirm-panel adoption end to end; close the #9a6410 ledger row (#881)"`
-- [ ] **Step 7: Update plan-doc execution status**; mark ready for review.
+- [x] **Step 6: Commit** — `git commit -m "Cover the confirm-panel adoption end to end; close the #9a6410 ledger row (#881)"`
+- [x] **Step 7: Update plan-doc execution status**; mark ready for review.
 
 ---
 
@@ -428,23 +430,23 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, frontend-only.
-- [ ] **Availability** section filled (justified N/A); invariant #2 untouched.
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A.
-- [ ] **Modulith** section filled (N/A, frontend-only); no new cross-feature FE import (RV-FE-8).
-- [ ] **Payment/payout** section filled (N/A).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A.
-- [ ] **Frontend** standards met; no `as any`; every `data-testid` preserved.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder plus
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, frontend-only.
+- [x] **Availability** section filled (justified N/A); invariant #2 untouched.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A.
+- [x] **Modulith** section filled (N/A, frontend-only); no new cross-feature FE import (RV-FE-8).
+- [x] **Payment/payout** section filled (N/A).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A.
+- [x] **Frontend** standards met; no `as any`; every `data-testid` preserved.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR**, citing `merged via PR #883`.
+- [x] **The review gate ran in full** — the `riviera-sdlc` `references/pr-gates.md` §1 ladder plus
       `riviera-review-overlay`, not the overlay alone.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
