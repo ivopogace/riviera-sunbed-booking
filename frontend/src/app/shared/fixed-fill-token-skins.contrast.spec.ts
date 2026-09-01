@@ -157,9 +157,6 @@ const MIGRATED_SITES: readonly {
  * narrowed: a sweep that only proves absence cannot prove it did not over-reach.
  */
 const OUT_OF_FAMILY: readonly { readonly path: string; readonly literal: string }[] = [
-  { path: 'booking/withheld-email-notice.ts', literal: '#fcf0d9' },
-  { path: 'pages/legal/privacy-policy.html', literal: '#fcf0d9' },
-  { path: 'pages/legal/terms-of-service.html', literal: '#fcf0d9' },
   { path: 'shared/status-chip.ts', literal: '#8a5410' },
   { path: 'booking/booking-view.ts', literal: '#8a5410' },
   { path: 'operator/payouts-tab.html', literal: '#a3372a' },
