@@ -74,7 +74,7 @@ const LITERAL_ROLE = /text-\[#a3372a\]/i;
  * and ink are one element's one meaning. The guard's job is unchanged: this file owns the ink, and
  * the tints must be visible to it, whichever notation they wear.
  */
-const CHIP_TINTS = [/border-riv-console-negative-ink\/28/i, /bg-riv-console-negative-ink\/12/i];
+const CHIP_TINTS = [/border-riv-console-negative-ink\/30/i, /bg-riv-console-negative-ink\/10/i];
 
 /**
  * Every console source still painting that role — templates are inline `.ts` here, so both

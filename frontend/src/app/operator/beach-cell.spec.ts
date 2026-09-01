@@ -67,6 +67,32 @@ describe('BeachCell (#600)', () => {
     }
   });
 
+  /**
+   * The aisle boundary is the one class-O alpha that could not be normalised (#879). `/55` is not
+   * what someone typed — it is 0.55 and not 0.35 because the gap cell's identity is its border
+   * ALONE (no fill, `bg-transparent`), and only at 0.55 does that border clear 3:1 composited over
+   * the shared canvas wash, WCAG 1.4.11 (#672 slice 2; the ratio itself is measured in
+   * `layout-editor.contrast.spec.ts`, which is where it belongs — one number-bearing surface).
+   *
+   * <p>It needed no exemption from the multiple-of-five ladder, because 55 is already on it. That
+   * is a coincidence worth a test rather than a comment: the ladder is a rule about alphas and this
+   * alpha is a rule about contrast, and a future re-cut of the ladder that did not know the second
+   * rule existed would be free to round this one anywhere. This test is what makes it not free.
+   */
+  it('keeps the aisle boundary at /55, off the ladder’s collapse', () => {
+    const { host, component, detect } = render();
+    component.state.set('gap');
+    detect();
+    const button = host.querySelector('button')!;
+
+    expect(button.classList.contains('border-riv-console-tint/55')).toBe(true);
+    expect(button.classList.contains('bg-transparent')).toBe(true);
+    expect(
+      [...button.classList].filter((c) => /^(bg|border)-riv-console-tint\//.test(c)),
+      'the gap cell paints exactly one console-tint position — its border',
+    ).toEqual(['border-riv-console-tint/55']);
+  });
+
   it('keeps the consumer’s own geometry classes beside the variant classes', () => {
     const { host } = render();
     const button = host.querySelector('button')!;

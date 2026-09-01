@@ -116,9 +116,12 @@ const SCOPED_ROLES = [/#a3372a/i, /border-\[rgba\(255,\s*255,\s*255,\s*0\.7\)\]/
  * already on that same element. The paint is still there and #851 still did not reach it, so the
  * entry tracks the paint in its new notation. Deleting it would have emptied the list, and an
  * empty positive list passes vacuously — which is why the assertion below now checks for that too.
+ *
+ * <p>Rewritten again by #879's alpha ladder (`/28`+`/12` -> `/30`+`/10`). Same rule, second
+ * application: the notation moved, the paint did not, so the row moves with it.
  */
 const OUT_OF_FAMILY = [
-  { path: 'operator/payouts-tab.html', paints: /riv-console-negative-ink\/(?:28|12)/i },
+  { path: 'operator/payouts-tab.html', paints: /riv-console-negative-ink\/(?:30|10)/i },
 ];
 
 describe('Solid outline-button token family (WCAG AA + theme invariance, #851)', () => {

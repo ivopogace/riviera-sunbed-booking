@@ -92,6 +92,52 @@ function rawLiteralOf(value: string): RegExp {
   return new RegExp(`${value}|rgba?\\(\\s*${r},\\s*${g},\\s*${b}\\b`, 'i');
 }
 
+/**
+ * The **ladder** (#879, option C of the audit's class O): every class-O `/opacity` alpha is a
+ * multiple of five.
+ *
+ * <p>Rule B (#852) tokenised all 44 positions while preserving each site's alpha exactly — the
+ * right default for a migration, and the wrong end state for a palette: it left
+ * `--riv-console-tint` painted at ten alphas across seventeen sites. The ladder is what collapses
+ * that, and it is deliberately expressed as a constraint on the alphas rather than as a new token
+ * shape. Pre-composing one token per (colour x alpha) pair would flip every `toHaveCSS` on these
+ * sites from `oklab()` to `rgba()` and move each alpha away from the comment explaining it — the
+ * same two objections that chose B over A in the first place.
+ *
+ * <p>Five was chosen because every class-O alpha except eight ALREADY sat on it, so the whole
+ * normalisation moves 8 positions by at most 3 points (max channel delta 7/255, measured). It also
+ * costs `beach-cell`'s aisle boundary nothing: that `/55` is load-bearing — 0.55 and not 0.35 for a
+ * stated WCAG 1.4.11 reason — and it is a multiple of five already, so the rule never had to carve
+ * an exemption for the one value that could not move.
+ */
+const LADDER_STEP = 5;
+
+/**
+ * Every `--riv-*` `/opacity` position in one source whose alpha is NOT on the ladder, as the matched
+ * utility text so the failure names what to change rather than the file that held it.
+ *
+ * <p><strong>Scoped by FORM — any `riv-` token wearing a modifier — not by membership of
+ * `CLASS_O_TINTS`.</strong> That is the correction the generalization audit forced, and it is worth
+ * stating because the narrower version looked right: class O is defined by the `/α` modifier, and
+ * two of its 44 positions deliberately reuse a token this array does not hold. `payouts-tab`'s
+ * reason chip takes `--riv-console-negative-ink` — the ink token already on that element, because
+ * there the value coincidence IS a role match (#864) — so an array-scoped sweep walked straight
+ * past its `/28` and `/12` while reporting the ladder complete. Enumerating by the mechanism the
+ * rule is actually about is what found them.
+ *
+ * <p>A pure function of a string on purpose: the sweep below asserts an EMPTY list, so the only
+ * thing that can tell a finished normalisation from a broken matcher is a test that drives this
+ * directly with a known-bad input. That is the meta-test beside it — the pairing this file already
+ * uses for its form sweep, and the trap #852 hit once with an emptied guard passing vacuously.
+ */
+function offLadderIn(source: string): readonly string[] {
+  const position = new RegExp(`${COLOUR_UTILITIES}-riv-[a-z-]+/([0-9.]+)`, 'g');
+
+  return [...source.matchAll(position)]
+    .filter(([, alpha]) => Number(alpha) % LADDER_STEP !== 0)
+    .map(([match]) => match);
+}
+
 describe('Class-O tint tokens (rule B: the modifier stays, the literal becomes a token — #852)', () => {
   /**
    * The sweep below asserts an EMPTY list, so it passes both when the migration is complete and
@@ -128,6 +174,42 @@ describe('Class-O tint tokens (rule B: the modifier stays, the literal becomes a
     );
 
     expect(survivors).toEqual([]);
+  });
+
+  /**
+   * The ladder's meta-test (#879). `offLadderIn` is driven with known-bad and known-good inputs
+   * because the sweep after it asserts `[]` and would pass just as happily on a matcher that
+   * stopped matching. It also pins the two boundaries the ladder rests on: `/55` is ON the ladder
+   * (so the aisle boundary needs no exemption), and a colour outside class O is not this sweep's
+   * business — `bg-white/85` belongs to whatever slice eventually names white's ladder.
+   */
+  it('recognises an off-ladder alpha, and only it — the ladder sweep must be able to fail', () => {
+    expect(offLadderIn('border-riv-console-tint/14')).toEqual(['border-riv-console-tint/14']);
+    expect(offLadderIn('bg-riv-console-tint/4')).toEqual(['bg-riv-console-tint/4']);
+    expect(offLadderIn('bg-riv-select-tint/6')).toEqual(['bg-riv-select-tint/6']);
+    // The audit's correction, pinned: a class-O position on a token outside CLASS_O_TINTS.
+    expect(offLadderIn('bg-riv-console-negative-ink/12')).toEqual([
+      'bg-riv-console-negative-ink/12',
+    ]);
+
+    expect(offLadderIn('border-riv-console-tint/15 bg-riv-console-tint/5')).toEqual([]);
+    expect(offLadderIn('border-dashed border-riv-console-tint/55')).toEqual([]);
+    expect(offLadderIn('border-riv-confirm-warn-edge/60')).toEqual([]);
+    expect(offLadderIn('bg-white/85')).toEqual([]);
+  });
+
+  /**
+   * Class O's alphas, normalised (#879). The companion to the form sweep above: that one says a
+   * `/opacity` position must name a token, this one says the alpha it carries must sit on the
+   * ladder. Together they are the whole boundary — a new position can be neither an untokenised
+   * literal nor a freshly-invented alpha.
+   */
+  it('carries no `/opacity` alpha off the multiple-of-five ladder', () => {
+    const offLadder = appSources().flatMap((path) =>
+      offLadderIn(readFileSync(join(APP, path), 'utf8')).map((match) => `${path}: ${match}`),
+    );
+
+    expect(offLadder).toEqual([]);
   });
 
   describe.each(CLASS_O_TINTS)('$token', ({ token, value }) => {

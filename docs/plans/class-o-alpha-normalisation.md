@@ -203,15 +203,15 @@ N/A — no contract change. No endpoint, DTO or wire shape is read or altered.
 
 ## Execution status
 
-**Stage pointer:** `plan — authored, awaiting first phase`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Load `riviera-local-debug`, then start phase 0 by adding the red ladder
-assertion + its meta-test to `shared/class-o-tint-tokens.contrast.spec.ts`.
+**Next action:** Declare `--riv-walkin-hatch` red-first — add the "no source rebuilds the hatch
+inline" sweep to `shared/class-o-tint-tokens.contrast.spec.ts`, watch it name the four sites.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — The ladder: every class-O alpha a multiple of 5 | | |
-| 1 — One walk-in hatch (`--riv-walkin-hatch`) | | |
+| 0 — The ladder: every class-O alpha a multiple of 5 | ✅ | `<phase-0>` |
+| 1 — One walk-in hatch (`--riv-walkin-hatch`) | ⏳ | |
 | 2 — One amber family (`--riv-warn-*`), three tokens retired | | |
 | 3 — Ledger, rule-2 table, close-out | | |
 
@@ -234,6 +234,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/testing/glass-tokens.ts` — `CLASS_O_TINTS` rows, `NOTICE_BANNER_*` constants
 - `frontend/src/app/shared/class-o-tint-tokens.contrast.spec.ts` — ladder sweep + meta-test, hatch sweep, retired-token sweep (AC-1, AC-4, AC-5)
 - `frontend/src/app/operator/payout-statement.ts` — 6 ladder moves
+- `frontend/src/app/operator/payouts-tab.contrast.spec.ts` — the reason chip's AA proof re-measured at 0.10 (phase-0 generalization audit)
+- `frontend/src/app/operator/console-negative-token.contrast.spec.ts` — `CHIP_TINTS` moved to `/30`+`/10` (same audit)
+- `frontend/src/app/booking/solid-btn-tokens.contrast.spec.ts` — `OUT_OF_FAMILY` row rewritten to the ladder notation, not deleted (same audit)
+- `frontend/src/app/shared/fixed-fill-token-skins.contrast.spec.ts` — same rewrite, same reason
+- `frontend/e2e/operator-set-editing.e2e.ts` — the armed panel's ladder move asserted where its arm sequence already lives (AC-2)
 - `frontend/src/app/operator/set-editor.html` — `select-tint/12` → `/10`
 - `frontend/src/app/operator/requests-tab.html` — `positive-tint/12` → `/10`
 - `frontend/src/app/operator/beach-cell.ts|.spec.ts` — hatch → token; `/55` exemption re-asserted (AC-3)
@@ -337,6 +342,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-01 | phase 0 — the ladder | **Every `--riv-*` token painted with an `/opacity` modifier**, not "the tokens in `CLASS_O_TINTS`". The resemblance-led population would have been the nine sites the ladder sweep already named; the mechanism is the *form* (`/α` on a token), which is what class O is defined by | `for f in $(git ls-files \| grep -E '^frontend/src/app/.*\.(ts\|html)$' \| grep -v '\.spec\.ts$'); do grep -oE "(text\|bg\|border\|from\|to\|via)-(riv-[a-z-]+\|\[#[0-9a-fA-F]+\])/[0-9]+" "$f" \| while read -r m; do a=${m##*/}; [ $((a % 5)) -ne 0 ] && echo "$f: $m"; done; done` | **2 beyond the plan's nine** — `payouts-tab.html`'s reason chip at `border-riv-console-negative-ink/28` + `bg-riv-console-negative-ink/12`. Class-O positions (ledger row: "*reuses* `--riv-console-negative-ink`") whose token lives outside `CLASS_O_TINTS`, so an array-scoped sweep walked straight past them | **Fixed all.** Widened `offLadderIn` from the token array to the form `-riv-[a-z-]+/α`; moved the chip to `/30`+`/10`; updated its three proofs (`console-negative-token` CHIP_TINTS, `payouts-tab.contrast` AA at 0.10, and the two `OUT_OF_FAMILY` guards, **rewritten not deleted** per the ledger's own rule) |
 
 ---
 

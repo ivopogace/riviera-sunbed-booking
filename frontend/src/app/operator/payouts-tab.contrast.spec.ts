@@ -21,7 +21,7 @@ import {
  * intro/dates/commission/empty sub-copy use `--riv-card-ink-soft` (0.78); the "Owed to you" label,
  * column headers and footnote use `--riv-card-ink-faint` (0.72). The owed figure + accrual net use the
  * console accent ink `--riv-console-accent-ink`; reversal net + the reason chip use the console's negative ink
- * `--riv-console-negative-ink` (the chip also over its own tint of that same value at 0.12 — at 5.05:1 the lowest
+ * `--riv-console-negative-ink` (the chip also over its own tint of that same value at 0.10, 0.12 before the ladder (#879) — the lowest
  * pair that ink lands in anywhere, which is why the measurement lives here; the tab's own lowest is the weather
  * button's white on `#9a6410` at 4.99:1); the load-error uses the alert red `--riv-error-ink`.
  * Solid buttons put white on `--riv-solid-fill-brand`
@@ -76,9 +76,9 @@ describe('PayoutsTab porcelain contrast (WCAG AA, #173)', () => {
     }
   });
 
-  it('the reason-chip text (--riv-console-negative-ink) meets AA over its own @0.12 tint on the card glass', () => {
+  it('the reason-chip text (--riv-console-negative-ink) meets AA over its own @0.10 tint on the card glass', () => {
     for (const stop of PORCELAIN_STOPS) {
-      const chip = composite(REVERSAL_RGB, 0.12, surfaceOver(PORCELAIN_CARD_GLASS, stop));
+      const chip = composite(REVERSAL_RGB, 0.1, surfaceOver(PORCELAIN_CARD_GLASS, stop));
       expect(
         contrastRatio(REVERSAL, rgbToHex(chip)),
         `chip over ${rgbToHex(stop)}`,

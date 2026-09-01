@@ -61,7 +61,7 @@ const OUTGOING_LITERAL = 'color-mix(in oklab, #2bb8d4 20%, transparent)';
  * paints what the literal form painted — in whatever browser is asked, instead of asserting that
  * one build's float formatting has not changed. Pinning the snapshot cost a red CI run first.
  */
-async function outgoingLiteralPaint(page: Page): Promise<string> {
+async function probePaint(page: Page, expression: string): Promise<string> {
   return page.evaluate((literal) => {
     const probe = document.createElement('div');
     probe.style.backgroundColor = literal;
@@ -69,7 +69,39 @@ async function outgoingLiteralPaint(page: Page): Promise<string> {
     const computed = getComputedStyle(probe).backgroundColor;
     probe.remove();
     return computed;
-  }, OUTGOING_LITERAL);
+  }, expression);
+}
+
+async function outgoingLiteralPaint(page: Page): Promise<string> {
+  return probePaint(page, OUTGOING_LITERAL);
+}
+
+/**
+ * What `bg-riv-<token>/<alpha>` paints, resolved by the browser under test — the same live-probe
+ * discipline as `outgoingLiteralPaint`, generalized so the ladder's before/after pairs can both be
+ * asked for. Never pin either side as a string: Chromium serializes `color-mix(in oklab, …)` with
+ * build-dependent float precision, so a captured snapshot is not portable across Chromium builds.
+ */
+async function tintPaint(page: Page, base: string, alphaPercent: number): Promise<string> {
+  return probePaint(page, `color-mix(in oklab, ${base} ${alphaPercent}%, transparent)`);
+}
+
+/**
+ * One ladder move (#879): a position's computed paint must equal its NEW alpha and differ from its
+ * OLD one. Asserting both halves is what makes this a before/after diff rather than a restatement
+ * of the source — an assertion that only checked the new value would pass just as well against a
+ * site nobody moved, and the whole proof class O owed for option C is that the pixels moved where
+ * the ledger says they moved and nowhere else.
+ */
+async function expectLadderMove(
+  page: Page,
+  locator: ReturnType<Page['locator']>,
+  property: string,
+  base: string,
+  { from, to }: { from: number; to: number },
+): Promise<void> {
+  await expect(locator).toHaveCSS(property, await tintPaint(page, base, to));
+  expect(await tintPaint(page, base, from)).not.toBe(await tintPaint(page, base, to));
 }
 
 async function openBeachMap(page: Page): Promise<void> {
@@ -119,6 +151,77 @@ test.describe('the class-O tint tokens paint from the token registry', () => {
 
     await expect(tool).toHaveAttribute('aria-pressed', 'true');
     await expect(tool).toHaveCSS('background-color', await outgoingLiteralPaint(page));
+  });
+
+  /**
+   * The ladder's before/after diff on the payout statement (#879) — the surface that carried the
+   * worst of the drift rule B preserved: five of the nine off-ladder positions were in this one
+   * modal, at `/4 /7 /12 /14` of `--riv-console-tint` plus `/6` of `--riv-select-tint`.
+   *
+   * <p>Selected by semantic structure (`thead`, `tbody tr`, the wrapper that has the table) rather
+   * than by adding six `data-testid`s to a table that needs none — the elements a statement is made
+   * of are stable in a way an added hook would only restate.
+   */
+  test('the ladder-moved positions paint their new alpha on the payout statement', async ({
+    page,
+  }) => {
+    await mockWholeConsole(page);
+    await page.goto('/operator/1');
+    await signInAsOperator(page);
+    await page.goto('/operator/1/payouts');
+
+    await page.getByTestId('statement-open').click();
+    const statement = page.getByTestId('payout-statement');
+    await expect(statement).toBeVisible();
+
+    const tint = CLASS_O_TINTS['--riv-console-tint'];
+
+    await expectLadderMove(page, page.getByTestId('statement-close'), 'border-top-color', tint, {
+      from: 14,
+      to: 15,
+    });
+    await expectLadderMove(page, statement.locator('div:has(> table)'), 'border-top-color', tint, {
+      from: 12,
+      to: 15,
+    });
+    await expectLadderMove(page, statement.locator('thead tr'), 'background-color', tint, {
+      from: 4,
+      to: 5,
+    });
+    await expectLadderMove(page, statement.locator('tbody tr').first(), 'border-top-color', tint, {
+      from: 7,
+      to: 10,
+    });
+
+    const totalRow = statement.locator('tbody tr').last();
+    await expectLadderMove(page, totalRow, 'border-top-color', tint, { from: 14, to: 15 });
+    await expectLadderMove(page, totalRow, 'background-color', CLASS_O_TINTS['--riv-select-tint'], {
+      from: 6,
+      to: 5,
+    });
+  });
+
+  /**
+   * The Requests tab's accepted medallion, the ladder's one move outside the console's neutral and
+   * selection chrome (#879). Its border is `/30` and stays — only the fill moved — which is the
+   * shape the ladder is meant to produce: a position moves because its alpha was invented, not
+   * because its neighbour moved.
+   */
+  test('the ladder-moved medallion fill paints its new alpha', async ({ page }) => {
+    await mockWholeConsole(page);
+    await page.route(/\/api\/venues\/1\/booking-requests(\?.*)?$/, (route) =>
+      route.fulfill({ json: [] }),
+    );
+    await page.goto('/operator/1');
+    await signInAsOperator(page);
+    await page.goto('/operator/1/requests');
+
+    const medallion = page.getByTestId('requests-empty').locator('span.rounded-full').first();
+    await expect(medallion).toBeVisible();
+
+    const positive = CLASS_O_TINTS['--riv-positive-tint'];
+    await expectLadderMove(page, medallion, 'background-color', positive, { from: 12, to: 10 });
+    await expect(medallion).toHaveCSS('border-top-color', await tintPaint(page, positive, 30));
   });
 
   test('the class-O tints hold under a forced dark document theme', async ({ page }) => {
