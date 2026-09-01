@@ -159,7 +159,7 @@ addendum).
 | R-2 | AC-3's allow-list becomes a rubber stamp — a future slice adds a fresh deferral to #834 and simply appends it to the list | med | med | The allow-list enumerates **exact** sites (file + the sentence's distinguishing phrase), not file names, so a new deferral cannot be absorbed silently; the rule doc says appending requires the same argument #834's own citations have | agent | open |
 | R-3 | A 1px hairline carrying the dark-theme boundary is thin — 1.4.11 sets no minimum thickness (unlike 2.4.11/2.4.13 for focus), so the reading is defensible but not free | low | med | Record the thinness as a stated caveat in the rule doc rather than omitting it; the CTA additionally carries a `focus-visible` outline at 3px and a white bold label at 5.56–7.24:1, neither of which the boundary question depends on | agent | open |
 | R-4 | The rule doc drifts from the specs' numbers | low | med | Architecture decision: the doc cites spec **names**, never ratios. There is one number-bearing surface, not two | agent | closed by design |
-| R-5 | Merge conflict with a sibling #836 slice touching `tailwind.css` / `glass-tokens.ts` | med | low | Comment-only edits, append-nothing; merge `origin/main` before ready-for-review. No Flyway number in play (frontend + docs only) | agent | open |
+| R-5 | Merge conflict with a sibling #836 slice touching `tailwind.css` / `glass-tokens.ts` | med | low | Comment-only edits, append-nothing; merge `origin/main` before ready-for-review. No Flyway number in play (frontend + docs only) | agent | closed — `origin/main` (`c055bcd`) is already an ancestor of this branch at PR-open; re-check before marking ready |
 | R-6 | The forced-colors clause overstates what forced-colors mode guarantees — it forces `border-color`, but a boundary carried by a gradient or `box-shadow` is not equivalently rescued | med | med | The clause is scoped in the doc to families that paint a real `border` (all six do), and AC-4 guards the opt-out precondition. The CTA's gradient fill is explicitly *not* leaned on for this clause — its boundary is settled by AC-1 instead | agent | open |
 
 ## Open questions / Assumptions
@@ -228,9 +228,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR — opening the draft, then ready-for-review`
+**Stage pointer:** `CI gate — draft PR #877 open, awaiting the first run`
 
-**Next action:** Open the draft PR (CI fires on the `pull_request` event only), then merge `origin/main` and mark ready for review, which is what makes the Review + Sonar gates due.
+**Next action:** Wait for PR #877's first CI run. `origin/main` is already an ancestor of this branch, so no merge is due. When CI is green, mark the PR ready for review — that is what makes the Review and Sonar gates due.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
