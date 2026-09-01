@@ -169,12 +169,14 @@ const OUT_OF_FAMILY: readonly { readonly path: string; readonly literal: string 
   { path: 'shared/status-chip.ts', literal: '#8a5410' },
   { path: 'booking/booking-view.ts', literal: '#8a5410' },
   { path: 'operator/payouts-tab.html', literal: 'riv-console-negative-ink/30' },
-  /** `rgba(240,170,46,…)` at four other alphas, on four forms that are not medallions — the
-   *  over-reach a value-led sweep of the retired `pending` tint would make. */
+  /** `rgba(240,170,46,…)` at three other alphas, on three forms that are not medallions — the
+   *  over-reach a value-led sweep of the retired `pending` tint would make. A fourth sat in
+   *  `pages/home/home.html`: the card sun's outer stop, which #882 removed rather than repainted,
+   *  because compositing it over the sea gradient was the defect. Its row is gone because its
+   *  PAINT is gone — not absorbed into a family, which is the case that rewrites a row instead. */
   { path: 'operator/pending-approval-banner.ts', literal: 'rgba(240,170,46,0.14)' },
   { path: 'booking/booking-dialog.ts', literal: 'rgba(240,170,46,0.12)' },
   { path: 'app.html', literal: 'rgba(240,170,46,0.5)' },
-  { path: 'pages/home/home.html', literal: 'rgba(240,170,46,0.5)' },
   { path: 'operator/set-editor.html', literal: '#0a5f74' },
   { path: 'operator/layout-editor.html', literal: '#0a5f74' },
 ];

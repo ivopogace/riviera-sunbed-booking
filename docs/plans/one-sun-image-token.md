@@ -56,19 +56,19 @@ for `feature/one-sun-image-token` (`riviera-sdlc` § Remote/cloud session addend
   (`class-o-tint-tokens.contrast.spec.ts`'s `appSources()` pattern) · *Pinned by:*
   `sun-token.contrast.spec.ts` › `no source rebuilds a sun inline`
 
-- [ ] **AC-3:** Given the brand mark, a photo-less venue card and a photo-less venue-map band
+- [x] **AC-3:** Given the brand mark, a photo-less venue card and a photo-less venue-map band
   rendered in a real browser, when each element's `background-image` is read from
   `getComputedStyle`, then all three resolve to the same value. *Seam:* the rendered DOM at `/`
   and `/venues/1` (mocked API) · *Pinned by:* `e2e/sun-token.e2e.ts` › `all three suns resolve
   one computed background-image`
 
-- [ ] **AC-4:** Given the home venue card's `.photo-sun` in a real render, when its computed
+- [x] **AC-4:** Given the home venue card's `.photo-sun` in a real render, when its computed
   `background-image` and `opacity` are read, then the image contains no `rgba(` stop and the
   opacity is `1` — the sun covers the cyan instead of compositing green against it. *Seam:* the
   rendered `.photo-sun` at `/` · *Pinned by:* `e2e/sun-token.e2e.ts` › `the card sun is opaque,
   so it cannot composite against the sea`
 
-- [ ] **AC-5:** Given the venue-map band's sun, when its computed `background-image` is compared
+- [x] **AC-5:** Given the venue-map band's sun, when its computed `background-image` is compared
   against the literal it carried before this slice, then the two are equal — the merge moves no
   pixel at the consumer whose values were adopted. *Seam:* the rendered
   `[data-testid="map-banner-empty"]` at `/venues/1` · *Pinned by:* `e2e/sun-token.e2e.ts` › `the
@@ -112,12 +112,22 @@ for `feature/one-sun-image-token` (`riviera-sdlc` § Remote/cloud session addend
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | The brighter, fully-opaque card sun raises the backdrop under the card's location text and breaks its AA floor | low | high | The floor is already computed against a **white** photo, which bounds `#fff6da`; AC-6 keeps `home.contrast.spec.ts` green **unmodified** — if it needs editing to pass, the floor moved and the slice stops | Claude | **closed** — phase 0: `home.contrast.spec.ts` green, unmodified in the diff |
-| R-2 | A later slice adds a `[data-riv-theme='dark']` override of `--riv-sun-grad`, silently re-introducing per-theme drift that no contrast maths can see | med | med | AC-1's single-declaration + base-block guard reads the stylesheet as text — the only check able to see an override added later (`stylesheet-tokens.ts`'s stated reason) | Claude | open |
+| R-2 | A later slice adds a `[data-riv-theme='dark']` override of `--riv-sun-grad`, silently re-introducing per-theme drift that no contrast maths can see | med | med | AC-1's single-declaration + base-block guard reads the stylesheet as text — the only check able to see an override added later (`stylesheet-tokens.ts`'s stated reason) | Claude | **closed** — phase 0 |
 | R-3 | AC-2's sweep is written so it can only pass — a regex that stops matching yields `[]` and the assertion passes for the wrong reason | med | high | A meta-test asserts the sweep's pattern **does** match the pre-merge literals, the trap `class-o-tint-tokens.contrast.spec.ts` documents hitting ("a helper that fails OPEN") | Claude | **closed** — phase 0: `has a sweep that can actually fail`, green while the other three were red |
-| R-4 | `venue-map.spec.ts`'s `not.toContain('rgba')` assertion is deleted rather than rehomed, dropping #704's guarantee | med | high | Behavior-parity ledger row marks it **changed, not dropped**; AC-4 re-establishes it in a real render across all three consumers | Claude | phase 0 rehomed it as a consumes-the-token assertion; closes when AC-4 lands in phase 1 |
+| R-4 | `venue-map.spec.ts`'s `not.toContain('rgba')` assertion is deleted rather than rehomed, dropping #704's guarantee | med | high | Behavior-parity ledger row marks it **changed, not dropped**; AC-4 re-establishes it in a real render across all three consumers | Claude | **closed** — phase 1: AC-4 asserts it in a real render, across all three consumers |
 | R-5 | Flyway version collision with an in-flight PR | n/a | n/a | N/A — no migration in this slice | — | closed |
 
 ## Open questions / Assumptions
+
+- **Open question:** May the draft PR be opened? `riviera-sdlc` wants one as soon as the first
+  phase commit exists — CI fires on the `pull_request` event only, so the pushed branch gets no
+  CI run until a PR exists — but this session's operating rules forbid opening a PR unless the
+  user asks. — *Owner:* the maintainer · *Resolves by:* a yes/no in the session; the Review and
+  Sonar gates are blocked on it, nothing else is.
+- **Open question:** May `spike/882-sun-merge` be pushed? `prototype` captures a spike as a
+  primary source on its own branch, and both this plan and issue #882 cite it; the same operating
+  rules bar pushing any branch but the designated one, and the container is ephemeral. — *Owner:*
+  the maintainer · *Resolves by:* a yes/no in the session.
 
 ### Resolved
 
@@ -167,16 +177,16 @@ N/A — no contract change. No endpoint, DTO or wire shape is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement complete — pushed; PR not opened (see Open questions)`
 
-**Next action:** Phase 1 step 1 — write `e2e/sun-token.e2e.ts` reading the three
-computed `background-image`s in a real render.
+**Next action:** Open the draft PR so CI runs, then the Review + Sonar gates. CI fires on
+the `pull_request` event only, so the pushed branch gets no CI run until a PR exists.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the token, the three consumers, the unit guard | ✅ | `<phase-0>` |
-| 1 — the mocked-e2e computed-style proof | ⏳ | |
-| 2 — record the answer in the audit doc + docs freshness | | |
+| 0 — the token, the three consumers, the unit guard | ✅ | `b93044c` |
+| 1 — the mocked-e2e computed-style proof | ✅ | `PHASE1SHA` |
+| 2 — record the answer in the audit doc | ✅ | `PHASE1SHA` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -201,6 +211,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   consumes-the-token assertion
 - `frontend/src/app/shared/sun-token.contrast.spec.ts` — the single-declaration + no-inline-rebuild
   guard, with its fails-open meta-test
+- `frontend/src/app/shared/fixed-fill-token-skins.contrast.spec.ts` — retire the out-of-family row
+  for `pages/home/home.html`, whose guarded paint this slice removes rather than renames
 - `frontend/e2e/sun-token.e2e.ts` — the computed-style proof across all three surfaces
 - `docs/design/colour-literal-token-audit.md` — record the answer, per the issue's AC-1
 
@@ -291,17 +303,18 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-01 | phase 0 | every image built inline in a class expression — the mechanism, not the ambers the issue named | `for f in $(git ls-files \| sed 's\|^frontend/\|\|' \| grep -E '^src/app/.*\.(ts\|html)$' \| grep -v '\.spec\.ts$'); do grep -oE "bg-\[[^]]*gradient\([^]]*\]" "$f" \| sed "s\|^\|${f}: \|"; done` | 8 → 5 after the merge | 3 were suns (the issue named 2) → merged onto `--riv-sun-grad`; the surviving 5 are linear/repeating-linear, none a sun, each per-site → out of scope per the issue |
+| 2026-09-01 | phase 1 | every guard asserting that a source still paints one of the literals this slice removes — enumerated by running the whole unit suite rather than by grepping for what I expected to break | `npx ng test --watch=false` | 1 — `fixed-fill-token-skins.contrast.spec.ts`'s `OUT_OF_FAMILY` row for `pages/home/home.html` | Row retired with the reason recorded at the site: its guarded paint is **gone**, not renamed, which is the case that rewrites a row instead. The other three `rgba(240,170,46,…)` rows still stand |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `npm test -- --run src/app/shared/sun-token.contrast.spec.ts` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** Run `npm test -- --run src/app/shared/sun-token.contrast.spec.ts` → PASS (sweep + meta-test). Verified at commit `<sha>`.
-- [ ] **AC-3:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- sun-token` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** Same command → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** Same command → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** Run `npm test -- --run src/app/pages/home/home.contrast.spec.ts` → PASS with the file unmodified in the diff. Verified at commit `<sha>`.
+- [x] **AC-1:** Run `npx ng test --watch=false --include="src/app/shared/sun-token.contrast.spec.ts"` → 4 passed. Verified at commit `b93044c`.
+- [x] **AC-2:** Same command → 4 passed (sweep + meta-test). Verified at commit `b93044c`.
+- [x] **AC-3:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- sun-token` → 3 passed. Verified at commit `PHASE1SHA`.
+- [x] **AC-4:** Same command → 3 passed. Verified at commit `PHASE1SHA`.
+- [x] **AC-5:** Same command → 3 passed. Verified at commit `PHASE1SHA`.
+- [x] **AC-6:** Run `npx ng test --watch=false --include="src/app/pages/home/home.contrast.spec.ts"` → PASS, with the file absent from the diff. Verified at commit `b93044c`.
 
 ## Self-review checklist (before merge / PR)
 
