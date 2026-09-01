@@ -82,6 +82,7 @@
   --color-riv-console-scrim: var(--riv-console-scrim);
   --color-riv-select-tint: var(--riv-select-tint);
   --color-riv-select-edge: var(--riv-select-edge);
+  --color-riv-alert-tint: var(--riv-alert-tint);
 
   --color-riv-medallion-positive-fill: var(--riv-medallion-positive-fill);
   --color-riv-medallion-positive-ink: var(--riv-medallion-positive-ink);
@@ -447,6 +448,16 @@
       why it is a plain base colour rather than a pre-composed tint: rule B's form serves both. */
   --riv-select-tint: #2bb8d4;
   --riv-select-edge: #0e8aa8;
+
+  /** The console's ALERT tint (class O, #852): the Requests tab's urgency chip and decline edge,
+      the Daily view's and Payouts tab's alert borders, the set-editor's destructive panel.
+
+      Its own token, though this value is already declared twice under other roles, because neither
+      is a tint: --riv-solid-fill-danger is a SOLID fill carrying fixed white ink (#854/#861), and
+      --riv-error-ink is an INK that themes -- it resolves #ffa9a1 in the dark theme, which as a
+      hairline on the console's porcelain-pinned card glass would be a pale pink line where a red
+      one is meant. Same fork, same answer, as the two --riv-console-*-ink tokens. */
+  --riv-alert-tint: #a3160e;
 
   /** The OUTCOME MEDALLION (#858, class F-3) — the round, centred, `aria-hidden` glyph that a
       landed booking state renders: booking-confirmation's ✓, booking-pay's ✓/⏳/✕,

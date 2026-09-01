@@ -57,14 +57,22 @@ function cardSurface(stop: (typeof PORCELAIN_STOPS)[number]): string {
  * This token's literal, matched **by role rather than by value**. `#a3372a` is emphatically not
  * ours alone — it is `--riv-solid-btn-danger-ink`'s declared value, it paints two class-F
  * medallions (#858), and the audit's class O carries it as `/opacity` chrome on the very element
- * this token's reason-chip site sits in (#852). Only the plain INK role in `operator/` belongs to
- * this token, so that is what the sweep matches: a bare value match would fail on sites this
- * slice must not touch, and would silently do #852's work.
+ * this token's reason-chip site sits in (#852, since migrated onto this same token). Only the
+ * plain INK role in `operator/` belongs to this sweep, so that is what it matches: a bare value
+ * match would fail on sites #864 must not touch, and would silently have done #852's work.
  */
 const LITERAL_ROLE = /text-\[#a3372a\]/i;
 
-/** The reason chip's `/opacity` positions — #852's half, asserted PRESENT so an overreach fails. */
-const CHIP_TINTS = [/border-\[#a3372a\]\/28/i, /bg-\[#a3372a\]\/12/i];
+/**
+ * The reason chip's `/opacity` positions, asserted PRESENT so an overreach fails. They were #852's
+ * half and are now migrated, and the FORM they take is that slice's finding rather than a detail:
+ * a `/opacity` literal and the same colour named through a token compile to the same
+ * `color-mix(in oklab, …, transparent)`, so the chip's tints could simply take this token — the
+ * one place in class O where the value coincidence IS a role match, since the chip's border, fill
+ * and ink are one element's one meaning. The guard's job is unchanged: this file owns the ink, and
+ * the tints must be visible to it, whichever notation they wear.
+ */
+const CHIP_TINTS = [/border-riv-console-negative-ink\/28/i, /bg-riv-console-negative-ink\/12/i];
 
 /**
  * Every console source still painting that role — templates are inline `.ts` here, so both
@@ -133,7 +141,7 @@ describe('Console negative-ink token (theme invariance + role distinctness, #864
     expect(consoleFilesPaintingTheLiteral()).toEqual([]);
   });
 
-  it('leaves #852’s `/opacity` tints on the reason chip untouched', () => {
+  it('keeps the reason chip’s `/opacity` tints in view, on this same token (#852)', () => {
     const chip = readFileSync(join(process.cwd(), 'src/app/operator/payouts-tab.html'), 'utf8');
 
     expect(CHIP_TINTS.filter((tint) => !tint.test(chip))).toEqual([]);

@@ -155,11 +155,18 @@ const MIGRATED_SITES: readonly {
  * The homes of these same values that this slice deliberately leaves alone, each with the ticket
  * that owns it. Asserted POSITIVELY — the `OUT_OF_FAMILY` mechanism #851 invented and #864
  * narrowed: a sweep that only proves absence cannot prove it did not over-reach.
+ *
+ * <p>A row records a PAINT this slice must not have taken, not the notation that paint wears — so
+ * a later slice tokenising one rewrites the row rather than deleting it. `payouts-tab`'s
+ * `#a3372a` is the first: #852 moved the reason chip's `/opacity` tints onto
+ * `--riv-console-negative-ink`, the ink token already on that same element, so the value is still
+ * painted there and #858 still did not reach it. Deleting the row instead would quietly narrow
+ * what this list proves.
  */
 const OUT_OF_FAMILY: readonly { readonly path: string; readonly literal: string }[] = [
   { path: 'shared/status-chip.ts', literal: '#8a5410' },
   { path: 'booking/booking-view.ts', literal: '#8a5410' },
-  { path: 'operator/payouts-tab.html', literal: '#a3372a' },
+  { path: 'operator/payouts-tab.html', literal: 'riv-console-negative-ink/28' },
   /** `rgba(240,170,46,…)` at four other alphas, on four forms that are not medallions — the
    *  over-reach a value-led sweep of the retired `pending` tint would make. */
   { path: 'operator/pending-approval-banner.ts', literal: 'rgba(240,170,46,0.14)' },

@@ -198,16 +198,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1 done, phase 2 next)`
+**Stage pointer:** `implement (phase 2 done, phase 3 next)`
 
-**Next action:** phase 2 — the red families (`#a3160e`, `#a3372a`), inverting
-`console-negative-token.contrast.spec.ts`'s `CHIP_TINTS` guard to the token form.
+**Next action:** phase 3 — the amber and green tints, taking `confirm-panel`'s warning
+surface whole; then the e2e (AC-3/AC-4), which is the only proof of a missing `@theme inline` row.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the rule + the console-tint family (18 positions) | ✅ | `f3ed82c` |
-| 1 — selection chrome, `#2bb8d4` + `#0e8aa8` (8 + 2 whole-ternary) | ✅ | next commit |
-| 2 — the red families, `#a3160e` (7) + `#a3372a` (2) | | |
+| 1 — selection chrome, `#2bb8d4` + `#0e8aa8` (8 + 2 whole-ternary) | ✅ | `ef8aad8` |
+| 2 — the red families, `#a3160e` (7) + `#a3372a` (2) | ✅ | next commit |
 | 3 — amber + green tints (9) and the two entangled skins | | |
 | 4 — ledger, the option-C follow-up issue, docs freshness | | |
 
@@ -245,7 +245,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/operator/console-negative-token.contrast.spec.ts` — `CHIP_TINTS` inverted to the
   token form (behaviour-parity row 6).
 - `frontend/src/app/shared/solid-fill-tokens.contrast.spec.ts` — the `(?!\/)` lookahead comment
-  corrected: the reason it gave for excluding `bg-[#a3160e]/10` is the premise this slice disproved.
+  corrected (the reason it gave for excluding `bg-[#a3160e]/10` is the premise this slice
+  disproved), its four `#a3160e` `SURVIVORS` rows retired, and a non-empty assertion added so an
+  emptied list cannot pass vacuously.
+- `frontend/src/app/shared/fixed-fill-token-skins.contrast.spec.ts` — `OUT_OF_FAMILY`'s
+  `payouts-tab` row rewritten to the token form rather than deleted: it records a paint #858 must
+  not have taken, and that paint is still there.
 - `frontend/src/app/shared/class-o-tint-tokens.contrast.spec.ts` — **new.** The AC-1/AC-2 guard.
   In `shared/`, not `operator/`: the sweep is tree-wide and `shared/confirm-panel.ts` carries one of
   the 44 — same home, same reason, as `solid-fill-tokens.contrast.spec.ts` (`riviera-frontend`).

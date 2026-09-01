@@ -410,4 +410,9 @@ export const CLASS_O_TINTS: readonly { readonly token: string; readonly value: s
    *  and #864 each resolved the same way — role before value. */
   { token: '--riv-select-tint', value: '#2bb8d4' },
   { token: '--riv-select-edge', value: '#0e8aa8' },
+  /** The request/urgency chrome's tint base — the Requests tab's urgency chip and decline edge,
+   *  the Daily view's and Payouts tab's alert borders, the set-editor's destructive panel. Its own
+   *  token: `--riv-solid-fill-danger` carries this value as a SOLID fill under fixed white ink,
+   *  and `--riv-error-ink` carries it as an ink that themes to `#ffa9a1`. Neither is a tint. */
+  { token: '--riv-alert-tint', value: '#a3160e' },
 ];
