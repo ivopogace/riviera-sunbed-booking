@@ -53,6 +53,8 @@
   --color-riv-error-ink: var(--riv-error-ink);
   --color-riv-form-error-fill: var(--riv-form-error-fill);
   --color-riv-form-error-ink: var(--riv-form-error-ink);
+  --color-riv-notice-banner-fill: var(--riv-notice-banner-fill);
+  --color-riv-notice-banner-ink: var(--riv-notice-banner-ink);
   --color-riv-danger-ink: var(--riv-danger-ink);
   --color-riv-danger-fill: var(--riv-danger-fill);
   --color-riv-danger-border: var(--riv-danger-border);
@@ -410,6 +412,28 @@
   --riv-medallion-negative-fill: #f7e8e4;
   --riv-medallion-negative-ink: #a3372a;
   --riv-medallion-negative-border: #eecdc4;
+
+  /** The amber NOTICE BANNER (#868, class F-4) — withheld-email-notice's "we couldn't email you"
+      notice and the two legal pages' standing draft banner. The medallion-waiting pair's exact
+      value (#fcf0d9/#8a5410) above, on a different FORM: a rectangular block of ACCESSIBLE TEXT,
+      not a round aria-hidden glyph — so unlike --riv-medallion-waiting-*, this family genuinely
+      owes an AA assertion, and clears it at 5.54:1.
+
+      Do NOT reach for --riv-medallion-waiting-*: its declaration states plainly that no site in
+      its population owes an AA assertion, which would leave a load-bearing ratio resting on a
+      token an exemption. Do NOT reach for --riv-error-ink/--riv-danger-ink either — both resolve
+      #ffa9a1 in the dark theme, 1.63:1 over a fill that stays #fcf0d9, the exact drift
+      --riv-form-error-* above exists to prevent.
+
+      Theme-invariant BY DESIGN, and a PAIR for that reason — the --riv-form-error-* call: the
+      fill is fixed and every host (withheld-email-notice, both legal pages) DOES theme, so a
+      themed ink drifts light-on-light. Declared ONCE, no dark override.
+      Proof: booking/withheld-email-notice.contrast.spec.ts (the AA pair, the failing themed-ink
+      bound, and the single-declaration guard that is the only thing able to see a later dark
+      override) + e2e/notice-banner-token-skin.e2e.ts (the computed skin under a forced dark
+      document theme). Rationale: docs/design/colour-literal-token-audit.md §F-4, issue #868. */
+  --riv-notice-banner-fill: #fcf0d9;
+  --riv-notice-banner-ink: #8a5410;
 
   /** The AMENITY CHIP's two variants (#858, class F-3) — shared/amenity-chip.ts's neutral amenity
       tag and its accent "Xm to water" tag. Six positions, one component, one `computed()` ternary.

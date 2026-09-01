@@ -341,3 +341,16 @@ export const STEP_IDLE_FILL: Rgb = hexToRgb('2c7789');
  *  Not tokens, and that is the point — see the pair's header. */
 export const STEP_ACTIVE_FILL: Rgb = WHITE;
 export const STEP_IDLE_INK: Rgb = WHITE;
+
+/** The `--riv-notice-banner-*` pair (#868, class F-4): the amber notice banner —
+ *  `withheld-email-notice`'s "we couldn't email you" notice and the two legal pages' standing
+ *  draft banner. The medallion-waiting pair's exact value, on a different FORM: a rectangular
+ *  block of accessible text, so unlike `--riv-medallion-waiting-*` this family genuinely owes AA
+ *  (5.54:1) rather than being exempt as decorative.
+ *
+ *  Theme-invariant as a PAIR, the `--riv-form-error-*` call: the fill is fixed and every host
+ *  themes, so the themed `--riv-error-ink`/`--riv-danger-ink` drift — both resolve DARK_ERROR_INK
+ *  (`#ffa9a1`) in the dark theme, 1.63:1 over a fill that stays `#fcf0d9`. Full reasoning sits at
+ *  the declaration in `tailwind.css`. Guarded by `booking/withheld-email-notice.contrast.spec.ts`. */
+export const NOTICE_BANNER_FILL: Rgb = hexToRgb('fcf0d9');
+export const NOTICE_BANNER_INK: Rgb = hexToRgb('8a5410');
