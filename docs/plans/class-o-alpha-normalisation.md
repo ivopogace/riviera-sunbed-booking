@@ -213,7 +213,7 @@ close-sales trigger to `non-text-contrast.md`'s rule-2 family table, and fix the
 |-------|--------|---------|
 | 0 — The ladder: every class-O alpha a multiple of 5 | ✅ | `fb3ac50` |
 | 1 — One walk-in hatch (`--riv-walkin-hatch`) | ✅ | `dd0669b` |
-| 2 — One amber family (`--riv-warn-*`), three tokens retired | ✅ | `<phase-2>` |
+| 2 — One amber family (`--riv-warn-*`), three tokens retired | ✅ | `17c7f8d` |
 | 3 — Ledger, rule-2 table, close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
