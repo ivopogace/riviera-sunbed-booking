@@ -42,6 +42,15 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * <p>What jsdom maths cannot see is a dark override added later — every ratio here would still
  * pass. So the declaration tests read `src/tailwind.css` as text via `testing/stylesheet-tokens`.
  * The proof where the cascade rather than a regex decides is `e2e/cta-border-token-skin.e2e.ts`.
+ *
+ * <p><strong>Scope widened at #876, past this one token.</strong> Two tests here are TREE-WIDE
+ * governance for `docs/design/non-text-contrast.md` rather than guards on `--riv-cta-border`: one
+ * sweeps every `#834` citation under `src` for a deferral to that closed issue, the other sweeps
+ * for a `forced-color-adjust` opt-out, which is the precondition rule 3 rests on. They live here
+ * because this file already owned the source-sweep machinery (`allSources`, extended to
+ * `sweptSources`), so a reader who trips one of them is in the right file — but the failure will
+ * name a path anywhere in the tree, not this token. That widening is stated here deliberately,
+ * the call `admin-console.contrast.spec.ts` made when it took on 1.4.11 rows past its text pairs.
  */
 const REGISTRY = {
   '--riv-cta-border': 'rgba(255, 255, 255, 0.4)',

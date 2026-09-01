@@ -48,7 +48,8 @@ fill is a fixed mid-teal that the themes move *around* rather than *with*:
 
 Ratios are deliberately **not** restated here. They live in
 `app/shared/cta-border-token.contrast.spec.ts` › "the boundary against the host card clears
-3:1 in every theme", which is the one place they can go stale loudly.
+3:1 in every theme — the fill carries it in light, the hairline in dark", which is the one
+place they can go stale loudly.
 
 **Corollary, worth stating because it closed #876's second option:** on a dark host, a
 boundary cannot be raised by *darkening*. The dark theme's lightest card composite is
@@ -96,9 +97,10 @@ number-bearing surface, not two.
 | Family | Measured by |
 |---|---|
 | `--riv-solid-btn-border`, `--riv-solid-btn-danger-border` | `app/booking/solid-btn-tokens.contrast.spec.ts` |
-| `--riv-accent-border`, `--riv-accent-chip-border` | `app/admin/accent-tokens.contrast.spec.ts` |
+| `--riv-accent-border` (the info panel's edge) | `app/admin/accent-tokens.contrast.spec.ts` |
+| `--riv-accent-chip-border` (`shared/segmented-control.ts`'s selected option — **not** the amenity chip, which wears the opaque `--riv-accent-strong` and clears 3:1) | `app/admin/accent-tokens.contrast.spec.ts` |
 | `--riv-medallion-negative-border` (**rule 2a** — `aria-hidden` glyph, its outcome card's heading carries the meaning) | `app/shared/fixed-fill-token-skins.contrast.spec.ts` |
-| `--riv-amenity-tag-border`, `--riv-amenity-water-border` | `app/shared/fixed-fill-token-skins.contrast.spec.ts`, `app/shared/amenities.contrast.spec.ts` |
+| `--riv-amenity-tag-border`, `--riv-amenity-water-border` | `app/shared/fixed-fill-token-skins.contrast.spec.ts` (`amenities.contrast.spec.ts` is the same family's ink/fill text pairs, not these borders) |
 
 `booking-dialog`'s `#31798a` close button is the sharpest case and is covered here rather than
 by rule 1: on its own teal header gradient the fill reaches 1.12–1.46:1 and the hairline

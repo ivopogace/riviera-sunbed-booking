@@ -82,7 +82,7 @@ addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the CTA's two `--riv-cta-grad` stops composited over each theme's card
+- [x] **AC-1:** Given the CTA's two `--riv-cta-grad` stops composited over each theme's card
       glass on each of that theme's four background stops, when the boundary is measured
       against the **adjacent** colour — the fill where the fill abuts the glass, the
       `--riv-cta-border` hairline where the hairline does — then at every stop in all three
@@ -92,13 +92,13 @@ addendum).
       host card clears 3:1 in every theme — the fill carries it in light, the hairline in
       dark".
 
-- [ ] **AC-2:** Given the same maths, when the CTA fill alone is measured against the card
+- [x] **AC-2:** Given the same maths, when the CTA fill alone is measured against the card
       glass in the **dark** theme, then it records a 2.23–3.16:1 band whose **floor is under
       3:1** — the failure #876 reported is real at the worst stop — and the test states that this
       pairing is nonetheless not the 1.4.11 comparison, because the hairline lies between the two. *Seam:* as AC-1 · *Pinned by:* `cta-border-token.contrast.spec.ts` › "the
       fill-vs-glass pairing #876 reported is not the adjacent pair".
 
-- [ ] **AC-3:** Given `frontend/src` read as text, when every `#834` citation is enumerated,
+- [x] **AC-3:** Given `frontend/src` read as text, when every `#834` citation is enumerated,
       then no citation remains that defers a *live* question to it — each such site instead
       names `docs/design/non-text-contrast.md`, and the citations that record #834's own
       completed work (the erasure panel) are permitted to remain by an explicit allow-list
@@ -107,14 +107,14 @@ addendum).
       `cta-border-token.contrast.spec.ts` › "no token comment defers a live 1.4.11 question to
       the closed #834".
 
-- [ ] **AC-4:** Given `frontend/src` read as text, when `forced-color-adjust` is searched for,
+- [x] **AC-4:** Given `frontend/src` read as text, when `forced-color-adjust` is searched for,
       then **no** site opts out (`forced-color-adjust-none` / `forced-color-adjust: none`) —
       the precondition the rule's forced-colors clause rests on, so that the clause fails loudly
       if a future slice opts a surface out. *Seam:* as AC-3 · *Pinned by:*
       `cta-border-token.contrast.spec.ts` › "nothing opts out of forced-colors, which is what
-      the exemption's fallback clause rests on".
+      the fallback clause rests on".
 
-- [ ] **AC-5:** Given `docs/design/non-text-contrast.md`, when it is read, then it states the
+- [x] **AC-5:** Given `docs/design/non-text-contrast.md`, when it is read, then it states the
       rule in one named sentence, lists each exempt family with a link to the spec that
       measures it (no restated ratios), records the forced-colors clause, and states the
       adjacent-colour reading that AC-1 pins. *Seam:* the file itself · *Pinned by:* review —
@@ -251,6 +251,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-5 | phase 1 (self-inflicted) | AC-2 as first written asserted the whole 2.23–3.16 band under 3:1; only the **floor** is. The test caught it — the AC wording was loose, not the measurement | fixed in phase 1 |
 | F-7 | review gate (agent 2 — shallow bug scan) | `docs/design/README.md` carried a duplicated phrase from the phase-0 edit: "is a **maintained ledger** — a **maintained ledger** of which hex/rgba" | fixed in `a483db0` |
 | F-8 | review gate (agents 1 + 2, independently) | The plan doc's FE-3 row and File-structure section claimed an `admin-console.contrast.spec.ts` edit the diff never made — the file is deliberately left alone, its citation being history pinned by the allow-list. The file-structure guard does not flag this direction, so CI stayed green | fixed in `a483db0` |
+| F-9 | review gate (agent 4 — prior-PR comments) | AC-4's *Pinned by* paraphrased the shipped test title ("the exemption's fallback clause"); the `it(...)` says "the fallback clause". Exactly the class #871 f.5 and #875 f.6 flagged | fixed in `<review-2>` |
+| F-10 | review gate (agent 4) | Phase table marked ✅ while every step/AC checkbox stayed unticked, the AC-verification block still held `<sha>` placeholders (against the doc's own "no placeholders" item), and the generalization-audit log row was blank — **its sweep had never actually been run**. Run now: population = every in-tree citation of an issue as a present-tense tracking home; no other stale deferral found | fixed in `<review-2>` |
+| F-11 | review gate (agent 5 — comment guidance) | **The most substantive finding.** The rule doc's family table cited `accent-tokens.contrast.spec.ts` for `--riv-accent-chip-border` and `amenities.contrast.spec.ts` for the amenity borders. Neither measures those tokens: the accent spec asserts the *opaque* `--riv-accent-strong` (the amenity chip's border, which clears 3:1), and `ACCENT_CHIP_BORDER` — worn by `shared/segmented-control.ts` — was referenced nowhere but its own declaration. So the doc claimed a measurement that did not exist, breaking rule 2's own condition 2 | fixed in `<review-2>`: the missing assertion was **added** (2.34–2.48:1 porcelain over its own fill), and both citations corrected, rather than softening the table |
+| F-12 | review gate (agent 5) | The rule doc truncated a test title it quoted, so the citation was not `grep`-able verbatim — the doc's own "one place they can go stale loudly" claim depends on it being so | fixed in `<review-2>` |
+| F-13 | review gate (agent 5) | `cta-border-token.contrast.spec.ts`'s header still described a single-token guard while the file had become the tree-wide enforcement point for two policy sweeps — the drift `admin-console.contrast.spec.ts` handled correctly when it widened its own stated scope | fixed in `<review-2>` |
+| F-14 | self-caught while fixing F-13's sibling | The clarifying edit to `admin-console.contrast.spec.ts` added a second `#834` line, and the new guard **failed on it** — the allow-list pins a phrase, not a filename, so a fresh citation in an allow-listed file is still caught. Reworded to "that issue". R-2 behaving exactly as designed | fixed in `<review-2>` |
 | F-6 | phase 2 (self-caught, pre-commit) | The medallion border was first repointed at **rule 2**, but it is an `aria-hidden` decorative glyph, not a control identified by its content — a different 1.4.11 ground. Blurring them would let anything pale claim the exemption | fixed in phase 2: the doc gained **rule 2a** and both medallion citations name it |
 
 ---
@@ -284,14 +290,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `docs/design/colour-literal-token-audit.md:127,202` · Modify
 `docs/plans/admin-error-ink-tokens.md:297`
 
-- [ ] **Step 1:** Write `docs/design/non-text-contrast.md` — the rule in one named sentence;
+- [x] **Step 1:** Write `docs/design/non-text-contrast.md` — the rule in one named sentence;
       the adjacent-colour reading with the CTA as its worked example; the forced-colors clause
       scoped to families painting a real `border`; the thinness caveat (R-3); the primary-source
       caveat (R-1); and a family index citing each measuring spec **by name, with no restated
       ratios** (R-4).
-- [ ] **Step 2:** Repoint the ledger's two citations and correct F-1's one-line falsehood.
-- [ ] **Step 3: Commit** — `git commit -m "Give the sub-3:1 non-text chrome question a live home (#876)"`
-- [ ] **Step 4:** Update this plan doc's Execution status in the same commit window.
+- [x] **Step 2:** Repoint the ledger's two citations and correct F-1's one-line falsehood.
+- [x] **Step 3: Commit** — `git commit -m "Give the sub-3:1 non-text chrome question a live home (#876)"`
+- [x] **Step 4:** Update this plan doc's Execution status in the same commit window.
 
 > Docs-only phase: no test to run red. The rule doc is AC-5, which is review-verified by
 > design — deliberately not faked into an assertion.
@@ -300,19 +306,19 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Test `frontend/src/app/shared/cta-border-token.contrast.spec.ts`
 
-- [ ] **Step 1:** Write both tests, reusing the existing affordance test's theme tuples and
+- [x] **Step 1:** Write both tests, reusing the existing affordance test's theme tuples and
       extending them with the dark theme (`DARK_CARD_GLASS` + `DARK_STOPS`).
-- [ ] **Step 2: Run** — `npm test -- cta-border-token` (per `riviera-local-debug`'s scoped
+- [x] **Step 2: Run** — `npm test -- cta-border-token` (per `riviera-local-debug`'s scoped
       discipline).
-- [ ] **Step 3:** Verify the numbers land where the grill measured them: light carriers
+- [x] **Step 3:** Verify the numbers land where the grill measured them: light carriers
       5.03–7.24 / 3.80–6.90, dark hairline 5.52–6.77, dark fill 2.23–3.16.
 
 > **Honest labelling:** this phase is **characterization, not red-green.** The values already
 > comply; the tests bring an unasserted boundary under assertion for the first time. Do not
 > dress it up as a red test — say so in the commit body.
 
-- [ ] **Step 4: Commit** — `git commit -m "Assert the CTA boundary against the colour it is actually adjacent to (#876)"`
-- [ ] **Step 5:** Update Execution status.
+- [x] **Step 4: Commit** — `git commit -m "Assert the CTA boundary against the colour it is actually adjacent to (#876)"`
+- [x] **Step 5:** Update Execution status.
 
 ## Phase 2 — The stale-deferral guard, then the repointing (AC-3)
 
@@ -320,39 +326,39 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `frontend/src/tailwind.css` · `frontend/src/testing/glass-tokens.ts` ·
 `frontend/src/app/admin/accent-tokens.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — enumerate every `#834` citation under
+- [x] **Step 1: Write the failing test** — enumerate every `#834` citation under
       `frontend/src` via `allSources()`; fail on any not in the history allow-list.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- cta-border-token` → FAIL listing the
+- [x] **Step 2: Run it, verify it fails** — `npm test -- cta-border-token` → FAIL listing the
       live deferrals (expected: the six token families across `tailwind.css` +
       `glass-tokens.ts`, plus `accent-tokens.contrast.spec.ts:52`).
-- [ ] **Step 3: Repoint** each of them at `docs/design/non-text-contrast.md`, preserving every
+- [x] **Step 3: Repoint** each of them at `docs/design/non-text-contrast.md`, preserving every
       measured number already in the comment. **Touch no declaration.**
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- cta-border-token accent-tokens admin-console` → PASS.
+- [x] **Step 4: Run it, verify it passes** — `npm test -- cta-border-token accent-tokens admin-console` → PASS.
       (`admin-console` is run but **not edited**: its #834 citation is history and stays as written,
       pinned by the allow-list. Running it proves the allow-list matches the unedited text.)
-- [ ] **Step 5: Generalization-audit pass.** Population: *every in-tree citation of a GitHub
+- [x] **Step 5: Generalization-audit pass.** Population: *every in-tree citation of a GitHub
       issue as a present-tense tracking home for an unresolved question* — the mechanism
       #876 is an instance of, not just #834. Enumerate with
       `grep -rnoE '#[0-9]{3,4}' frontend/src docs/design | sort -u`, then check each cited
       issue's state via `mcp__github__issue_read`. Record the verdict per closed-but-cited
       issue in the log below.
-- [ ] **Step 6: Commit** — `git commit -m "Repoint the six deferring token families at the written rule (#876)"`
-- [ ] **Step 7:** Update Execution status.
+- [x] **Step 6: Commit** — `git commit -m "Repoint the six deferring token families at the written rule (#876)"`
+- [x] **Step 7:** Update Execution status.
 
 ## Phase 3 — The forced-colors precondition guard (AC-4)
 
 **Files:** Test `frontend/src/app/shared/cta-border-token.contrast.spec.ts` · Modify
 `docs/design/non-text-contrast.md`
 
-- [ ] **Step 1:** Write the guard asserting no `forced-color-adjust-none` /
+- [x] **Step 1:** Write the guard asserting no `forced-color-adjust-none` /
       `forced-color-adjust: none` under `frontend/src`.
-- [ ] **Step 2: Run** — `npm test -- cta-border-token` → PASS (characterization again: the
+- [x] **Step 2: Run** — `npm test -- cta-border-token` → PASS (characterization again: the
       precondition holds today; the guard exists so it fails loudly when a future slice opts a
       surface out and quietly invalidates the clause).
-- [ ] **Step 3:** Cross-reference the guard by name from the rule doc's forced-colors clause,
+- [x] **Step 3:** Cross-reference the guard by name from the rule doc's forced-colors clause,
       so the clause and its proof point at each other.
-- [ ] **Step 4: Commit** — `git commit -m "Guard the precondition the forced-colors clause rests on (#876)"`
-- [ ] **Step 5:** Update Execution status; run
+- [x] **Step 4: Commit** — `git commit -m "Guard the precondition the forced-colors clause rests on (#876)"`
+- [x] **Step 5:** Update Execution status; run
       `node scripts/check-plan-file-structure.mjs --diff origin/main`.
 
 ---
@@ -361,35 +367,39 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| | phase 2 step 5 | Every in-tree citation of a GitHub issue as a present-tense tracking home for an unresolved question | `grep -rnoE '#[0-9]{3,4}' frontend/src docs/design \| sort -u`, then `issue_read` each | | |
+| 2026-09-01 | phase 2 step 5 (run late — caught by review agent 4, F-10) | Every in-tree citation of an issue as a **present-tense tracking home** for an unresolved question. Enumerating bare `#NNNN` returns ~180 hits that are mostly correct historical attribution plus hex-colour false positives, so the population is cut by the deferral *phrasing* that makes a citation present-tense | `grep -rniE '(tracked (at\|by)\|tracking issue\|deferred to\|defers to\|owns the\|belongs with\|stay open\|remains open\|open tracking)[^.]*#[0-9]{3,4}' frontend/src docs/design` | 11, all false positives — the `owns the announcement/words (#741)` family is an element owning an aria-live announcement, a different sense of "owns", with the issue as attribution | No action. After this slice's repointing, no present-tense deferral to any issue remains in `frontend/src` |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `npm test -- cta-border-token` → the adjacent-carrier test passes in all three themes. Verified at commit `<sha>`.
-- [ ] **AC-2:** Same run → the fill-vs-glass test records 2.23–3.16:1 in dark and states why it is not the comparison. Verified at commit `<sha>`.
-- [ ] **AC-3:** Same run → the stale-deferral guard passes with the history allow-list. Verified at commit `<sha>`.
-- [ ] **AC-4:** Same run → the forced-colors precondition guard passes. Verified at commit `<sha>`.
-- [ ] **AC-5:** Review-verified — the rule doc states the rule, the clause, both caveats, and cites specs rather than ratios.
+> Verified by one scoped run over the six specs this slice touches or cites:
+> `npm test -- --include=src/app/shared/cta-border-token.contrast.spec.ts --include=src/app/admin/accent-tokens.contrast.spec.ts --include=src/app/admin/admin-console.contrast.spec.ts --include=src/app/shared/fixed-fill-token-skins.contrast.spec.ts --include=src/app/booking/solid-btn-tokens.contrast.spec.ts --include=src/app/shared/amenities.contrast.spec.ts`
+> → **6 files, 49 tests, all passing** at `<review-2>`.
+
+- [x] **AC-1:** the adjacent-carrier test passes in all three themes.
+- [x] **AC-2:** the fill-vs-glass test records the 2.23–3.16:1 band, floor under 3:1, and states why it is not the comparison.
+- [x] **AC-3:** the stale-deferral guard passes with the history allow-list — and demonstrably still bites (F-14).
+- [x] **AC-4:** the forced-colors precondition guard passes.
+- [x] **AC-5:** Review-verified — the rule doc states the rule, the clause, both caveats, and cites specs rather than ratios.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test (AC-5 excepted and stated).
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1) — N/A, no backend file in scope.
-- [ ] **Availability** section filled — `N/A`, justified (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking path touched.
-- [ ] **Modulith** section filled — `N/A — frontend-only` (invariant #11).
-- [ ] **Payment/payout** section filled — `N/A`, justified (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met; no token value moved (verified via the Behavior-parity ledger).
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test (AC-5 excepted and stated).
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1) — N/A, no backend file in scope.
+- [x] **Availability** section filled — `N/A`, justified (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking path touched.
+- [x] **Modulith** section filled — `N/A — frontend-only` (invariant #11).
+- [x] **Payment/payout** section filled — `N/A`, justified (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met; no token value moved (verified via the Behavior-parity ledger).
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR** — final state committed here, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
