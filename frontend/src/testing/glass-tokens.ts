@@ -245,3 +245,79 @@ export function expectAaOverStops(
     ).toBeGreaterThanOrEqual(threshold);
   }
 }
+
+/** The `--riv-medallion-*` family (#858, class F-3): the round, centred, `aria-hidden` outcome
+ *  glyph in its three states — `booking-confirmation`'s ✓, `booking-pay`'s ✓/⏳/✕,
+ *  `request-confirmation`'s ✉ and `appFailureIcon`'s ⚠ or 🏖 (the glyph is per site and carries no
+ *  meaning; every one is `aria-hidden`).
+ *
+ *  Grouped by FORM rather than value, the `--riv-solid-fill-*` precedent: the same five sites carry
+ *  three different pairs, and two of the three values coincide with families that are NOT this one
+ *  — `#0a5f74` also paints three `bg-` fills (#854/#861) and a `--riv-cta-grad` stop, `#a3372a` is
+ *  also `SOLID_BTN_DANGER_INK` and `CONSOLE_NEGATIVE_INK`, and `#fcf0d9`/`#8a5410` is also the
+ *  amber NOTICE BANNER's pair, a different form with accessible text.
+ *
+ *  Theme-invariant as three PAIRS: the fills are fixed and the hosts theme, so a themed ink drifts
+ *  — DARK_ACCENT_INK over the positive fill is 1.41:1 and DARK_ERROR_INK over the negative fill is
+ *  1.54:1, the same number #850 measured. Full reasoning sits at the declaration in `tailwind.css`.
+ *  Guarded by `shared/fixed-fill-token-skins.contrast.spec.ts`. */
+export const MEDALLION_POSITIVE_FILL: Rgb = hexToRgb('d9f2f7');
+export const MEDALLION_POSITIVE_INK: Rgb = hexToRgb('0a5f74');
+export const MEDALLION_WAITING_FILL: Rgb = hexToRgb('fcf0d9');
+export const MEDALLION_WAITING_INK: Rgb = hexToRgb('8a5410');
+export const MEDALLION_NEGATIVE_FILL: Rgb = hexToRgb('f7e8e4');
+export const MEDALLION_NEGATIVE_INK: Rgb = hexToRgb('a3372a');
+/** The negative state's border — non-text chrome (WCAG 1.4.11) on a decorative glyph, and MEASURED
+ *  rather than waved off: 1.24:1 over its own fill, under 3:1. The same finding `--riv-solid-btn-*`
+ *  records at 1.06:1/1.90:1 against the same tracking issue (#834); carried across unchanged.
+ *  The positive and waiting states have no border token — theirs is `rgba(255,255,255,0.6)`, the
+ *  glass border of class R's own family (#853), and not this slice's. */
+export const MEDALLION_NEGATIVE_BORDER: Rgb = hexToRgb('eecdc4');
+
+/** The `--riv-amenity-*` family (#858, class F-3): `shared/amenity-chip.ts`'s two variants — the
+ *  neutral amenity tag and the accent "Xm to water" tag — each an ink, an opaque fill and a border.
+ *
+ *  The **only** positions this slice migrates that carry accessible text, so the only ones that owe
+ *  an AA assertion; the five medallion sites and the dialog's step badge are all `aria-hidden`. The
+ *  recipes themselves live in `testing/chip-fills.ts`, where `shared/amenities.contrast.spec.ts`
+ *  proves them against the rendered chip; these constants are the declaration mirror.
+ *
+ *  Both variants or neither: they are the same three roles in the same `computed()` ternary, and
+ *  migrating one would be the mis-cut #858 exists to undo. Named `--riv-amenity-*` rather than
+ *  `--riv-chip-*` because that prefix is already the shell chip's (`--riv-chip-bg`,
+ *  `--riv-chip-border`) — one hyphen apart is not a distinction, #864's own naming argument.
+ *
+ *  Theme-invariant: the fills are fixed and `shared/` mounts this directive from the Discover card
+ *  and the dark glass map header alike, so a themed ink drifts — DARK_ACCENT_INK over the water fill
+ *  is 1.37:1 and DARK_CARD_INK over the tag fill 1.04:1, against the shipped 6.00 and 8.37:1. Full
+ *  reasoning sits at the declaration in `tailwind.css`. Guarded by
+ *  `shared/fixed-fill-token-skins.contrast.spec.ts`.
+ *
+ *  The borders are non-text chrome (WCAG 1.4.11), measured at 1.15:1 and 1.17:1 over their own
+ *  fills — the same finding, and the same tracking issue (#834), as `--riv-solid-btn-*`. */
+export const AMENITY_TAG_INK: Rgb = hexToRgb('2f4a54');
+export const AMENITY_TAG_FILL: Rgb = hexToRgb('eef2f4');
+export const AMENITY_TAG_BORDER: Rgb = hexToRgb('dbe4e7');
+export const AMENITY_WATER_INK: Rgb = hexToRgb('0a5f74');
+export const AMENITY_WATER_FILL: Rgb = hexToRgb('d7eef4');
+export const AMENITY_WATER_BORDER: Rgb = hexToRgb('b9e0ea');
+
+/** The `--riv-step-*` pair (#858, class F-3): `booking-dialog`'s step-number badge, the decorative
+ *  `aria-hidden` numeral in the dialog's teal header. Two states, one `[class]` ternary.
+ *
+ *  Deliberately TWO tokens for two states rather than four, because each state already has one
+ *  unthemeable half pinning the other — and in opposite directions. The active state's fill is
+ *  `bg-white`; the idle state's ink is `text-white`. Naming either would add a declaration without
+ *  removing a literal or adding a guarantee, the call `--riv-solid-fill-*` already records.
+ *
+ *  Theme-invariant: the fixed halves pin the tokenised ones, and the dialog is a tourist surface
+ *  that themes. The themed --riv-accent-ink resolves DARK_ACCENT_INK at 1.65:1 over the white active
+ *  fill. Shipped: 7.24:1 active, 5.11:1 idle — a floor these values happen to clear, since the badge
+ *  is aria-hidden and owes no AA assertion. Full reasoning sits at the declaration in
+ *  `tailwind.css`. Guarded by `shared/fixed-fill-token-skins.contrast.spec.ts`. */
+export const STEP_ACTIVE_INK: Rgb = hexToRgb('0a5f74');
+export const STEP_IDLE_FILL: Rgb = hexToRgb('2c7789');
+/** The two unthemeable halves, mirrored so the AA floors above have constants rather than literals.
+ *  Not tokens, and that is the point — see the pair's header. */
+export const STEP_ACTIVE_FILL: Rgb = WHITE;
+export const STEP_IDLE_INK: Rgb = WHITE;

@@ -75,6 +75,24 @@
   --color-riv-solid-fill-danger: var(--riv-solid-fill-danger);
   --color-riv-console-accent-ink: var(--riv-console-accent-ink);
   --color-riv-console-negative-ink: var(--riv-console-negative-ink);
+
+  --color-riv-medallion-positive-fill: var(--riv-medallion-positive-fill);
+  --color-riv-medallion-positive-ink: var(--riv-medallion-positive-ink);
+  --color-riv-medallion-waiting-fill: var(--riv-medallion-waiting-fill);
+  --color-riv-medallion-waiting-ink: var(--riv-medallion-waiting-ink);
+  --color-riv-medallion-negative-fill: var(--riv-medallion-negative-fill);
+  --color-riv-medallion-negative-ink: var(--riv-medallion-negative-ink);
+  --color-riv-medallion-negative-border: var(--riv-medallion-negative-border);
+
+  --color-riv-amenity-tag-ink: var(--riv-amenity-tag-ink);
+  --color-riv-amenity-tag-fill: var(--riv-amenity-tag-fill);
+  --color-riv-amenity-tag-border: var(--riv-amenity-tag-border);
+  --color-riv-amenity-water-ink: var(--riv-amenity-water-ink);
+  --color-riv-amenity-water-fill: var(--riv-amenity-water-fill);
+  --color-riv-amenity-water-border: var(--riv-amenity-water-border);
+
+  --color-riv-step-active-ink: var(--riv-step-active-ink);
+  --color-riv-step-idle-fill: var(--riv-step-idle-fill);
   --color-riv-card-track: var(--riv-card-track);
 
   --color-riv-pop-surface: var(--riv-pop-surface);
@@ -280,8 +298,10 @@
       already cannot theme.
 
       ONE brand teal (#861): -action and -brand had no role between them and merged onto #0a6e85.
-      #0a5f74 is retired as a FILL only — it still paints both --riv-cta-grad stops, the editor
-      selection rings and three booking/ inks. Do not re-darken this fill to #0a5f74: it sits
+      #0a5f74 is retired as a FILL only — it still paints both --riv-cta-grad stops and the editor
+      selection rings. Its three booking/ ink positions became tokens at #858
+      (--riv-medallion-positive-ink ×2, --riv-step-active-ink), so the value survives there through
+      a declaration rather than a literal; the shared/ amenity ink went the same way. Do not re-darken this fill to #0a5f74: it sits
       1.016:1 from -brand-hover, which erases the hover.
       Proof: shared/solid-fill-tokens.contrast.spec.ts + solid-fill-token-skin.e2e.ts.
       Rationale: docs/plans/solid-fill-teal-merge.md, then
@@ -332,6 +352,112 @@
       chip tint, the lowest pair at 5.05:1 + console-negative-ink.e2e.ts.
       Rationale: docs/plans/console-negative-ink-token.md, issue #864. */
   --riv-console-negative-ink: #a3372a;
+
+  /** The OUTCOME MEDALLION (#858, class F-3) — the round, centred, `aria-hidden` glyph that a
+      landed booking state renders: booking-confirmation's ✓, booking-pay's ✓/⏳/✕,
+      request-confirmation's ✉ and appFailureIcon's ⚠ or 🏖. Five sites, three states, one form.
+      The glyph is per site and carries no meaning — every one is aria-hidden.
+
+      Grouped by FORM, not by value — the --riv-solid-fill-* precedent, and here the alternative was
+      actively wrong: the six inks #858 enumerated carry two values across three different forms
+      (this medallion, the amenity chip, the dialog's step badge), so a value-led cut would have
+      merged three roles and split this one. Within the form the unit is the whole per-state class
+      TERNARY: booking-pay's single [class] expression carries the amber waiting state beside the
+      teal confirmed one, so migrating half of it would leave a named utility next to a hex literal
+      in the same expression.
+
+      Theme-invariant BY DESIGN, as three PAIRS — the same call as --riv-form-error-* and
+      --riv-solid-btn-* above, and for the same reason: the fills are fixed and every host DOES
+      theme (no medallion site pins porcelain; the only data-riv-theme host bindings in the tree are
+      the admin and operator consoles). Measured, not assumed: the themed --riv-accent-ink resolves
+      #7cd7e8 at 1.41:1 over the positive fill, and --riv-error-ink resolves #ffa9a1 at 1.54:1 over
+      the negative fill — the very number #850 measured on its own family — and 1.63:1 over the
+      waiting fill. The shipped pairs are 6.20 / 5.54 / 5.62:1.
+
+      None of the five owes an AA assertion at all: every one is aria-hidden, with the meaning on the
+      neighbouring heading or label. The ratios above are a floor these values happen to clear, and
+      that exemption is stated rather than dressed up as a requirement.
+
+      Do NOT reach for a coincidental token for any of the three. --riv-accent-ink IS #0a5f74's
+      neighbourhood and themes; --riv-solid-btn-danger-ink and --riv-console-negative-ink ARE
+      #a3372a and are theme-invariant, which makes them look free — but they are the outline
+      BUTTON's ink on its own #f4f6f7 fill (#851) and the operator console's ink on card glass
+      (#864). Same value, different role, different surface: the class-R trap #848 and #864 were
+      each re-cut around.
+
+      The negative state's border is non-text chrome (WCAG 1.4.11) on a decorative glyph, measured
+      at 1.24:1 over its own fill — the same finding --riv-solid-btn-* records at 1.06:1/1.90:1
+      against the same tracking issue (#834), carried across unchanged. The positive and waiting
+      states get no border token: theirs is rgba(255,255,255,0.6), class R's glass border (#853).
+      Proof: shared/fixed-fill-token-skins.contrast.spec.ts (the AA floors, the themed-ink bounds,
+      the aria-hidden exemption, and the single-declaration guard that is the only thing able to see
+      a later dark override) + e2e/fixed-fill-state-skins.e2e.ts (the computed skin under a forced
+      dark document theme). Rationale: docs/plans/fixed-fill-state-skins.md, issue #858. */
+  --riv-medallion-positive-fill: #d9f2f7;
+  --riv-medallion-positive-ink: #0a5f74;
+  --riv-medallion-waiting-fill: #fcf0d9;
+  --riv-medallion-waiting-ink: #8a5410;
+  --riv-medallion-negative-fill: #f7e8e4;
+  --riv-medallion-negative-ink: #a3372a;
+  --riv-medallion-negative-border: #eecdc4;
+
+  /** The AMENITY CHIP's two variants (#858, class F-3) — shared/amenity-chip.ts's neutral amenity
+      tag and its accent "Xm to water" tag. Six positions, one component, one `computed()` ternary.
+
+      The ONLY positions #858 migrates that carry accessible text, and so the only ones owing an AA
+      assertion: 8.37:1 (tag) and 6.00:1 (water). Every other position in the slice is an
+      aria-hidden glyph.
+
+      Theme-invariant BY DESIGN — the fills are fixed and `shared/` mounts this directive from hosts
+      of DIFFERING themes (the light Discover card and the dark glass map header), which is exactly
+      the drift a themed ink would introduce: --riv-accent-ink resolves #7cd7e8 at 1.37:1 over the
+      water fill, and --riv-card-ink resolves #f2f7fa at 1.04:1 over the tag fill. Neither is a
+      hypothetical: the directive already renders in both places today.
+
+      BOTH variants, or neither. #858 enumerated only the water ink, but the two variants are the
+      same three roles in the same ternary, so migrating one would leave a named utility beside a hex
+      literal in one expression — the mis-cut the ticket exists to undo. This also retires the
+      audit's class-S row for this component: a two-variant tag is not the nine-state palette design
+      pass class S defers, it is class F's shape exactly.
+
+      Named --riv-amenity-*, NOT --riv-chip-*: that prefix is already the shell chip's
+      (--riv-chip-bg, --riv-chip-border), and one hyphen apart is not a distinction — #864's own
+      naming argument. The borders are non-text chrome (WCAG 1.4.11), measured at 1.15:1 and 1.17:1
+      over their own fills; same finding and same tracking issue (#834) as --riv-solid-btn-*.
+      Proof: shared/fixed-fill-token-skins.contrast.spec.ts (the AA pairs, the themed-ink bounds and
+      the single-declaration guard) + shared/amenities.contrast.spec.ts (the same pairs against the
+      rendered chip, via testing/chip-fills.ts) + e2e/fixed-fill-state-skins.e2e.ts.
+      Rationale: docs/plans/fixed-fill-state-skins.md, issue #858. */
+  --riv-amenity-tag-ink: #2f4a54;
+  --riv-amenity-tag-fill: #eef2f4;
+  --riv-amenity-tag-border: #dbe4e7;
+  --riv-amenity-water-ink: #0a5f74;
+  --riv-amenity-water-fill: #d7eef4;
+  --riv-amenity-water-border: #b9e0ea;
+
+  /** The booking dialog's STEP BADGE (#858, class F-3) — the decorative aria-hidden numeral in the
+      teal dialog header, active and idle. One `[class]` ternary, two states.
+
+      TWO tokens for two states, not four, and the asymmetry is the design rather than an oversight:
+      each state already carries one unthemeable half that pins the other, in OPPOSITE directions.
+      The active state's fill is `bg-white`, so it pins the ink; the idle state's ink is
+      `text-white`, so it pins the fill. Naming either white would add a declaration without removing
+      a literal or adding a guarantee — the same call --riv-solid-fill-* records above ("No ink
+      token: `text-white` already cannot theme"), taken here twice in the two directions at once.
+
+      Theme-invariant for that reason: the dialog is a tourist surface that themes, and the themed
+      --riv-accent-ink resolves #7cd7e8 at 1.65:1 over the white active fill. Shipped: 7.24:1 active,
+      5.11:1 idle — a floor these values happen to clear, not a bar they are held to, since the badge
+      is aria-hidden and the sibling `.step-label` carries the step's meaning.
+
+      This is the ONE file where a value the slice migrates as an ink is also painted in a role the
+      slice does not own: the header gradient's `#0a5f74` stop, which duplicates --riv-cta-grad and
+      is that token's question, not this one's. The guard matches roles rather than bare values here
+      for exactly that reason.
+      Proof: shared/fixed-fill-token-skins.contrast.spec.ts + e2e/fixed-fill-state-skins.e2e.ts.
+      Rationale: docs/plans/fixed-fill-state-skins.md, issue #858. */
+  --riv-step-active-ink: #0a5f74;
+  --riv-step-idle-fill: #2c7789;
 
   /** The near-opaque popover surface (theme picker, account menu, mobile sheet — app.ts POP)
       and the segmented-control fills (shared/segmented-control.ts). Light values here; the

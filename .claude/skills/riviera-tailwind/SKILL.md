@@ -188,7 +188,8 @@ Vary by theme in this order of preference:
    subtree** (`--riv-console-accent-ink`, under the console's porcelain host) has an unreachable
    dark branch, so a dark value is an unverifiable claim — guard the single declaration, since
    nothing else can see a later override. Group such a family by **form, not value**, and reject a
-   coincidental token on its **role** before its value. This is
+   coincidental token on its **role** before its value. And take a **per-state class ternary whole**
+   (#858): tokenising one branch leaves a named utility beside a hex literal in one expression. This is
    Tailwind's own documented multi-theme pattern (docs: Colors § "Referencing other
    variables" — plain vars per `:root`/attribute scope, mapped via `@theme inline`;
    `inline` is what keeps the utility emitting `var(--riv-*)` so per-scope overrides and

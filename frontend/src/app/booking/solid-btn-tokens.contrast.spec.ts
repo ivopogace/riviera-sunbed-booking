@@ -13,6 +13,7 @@ import {
   SOLID_BTN_INK,
   type Glass,
 } from '../../testing/glass-tokens';
+import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
  * Guard for the `--riv-solid-btn-*` family (#851, class F-2 of the colour-literal audit) — the skin
@@ -34,9 +35,6 @@ import {
  * against a real render — where the cascade, not a regex, decides — is `e2e/solid-btn-token-skin.e2e.ts`.
  */
 
-/** Vitest runs with cwd = `frontend/`. */
-const STYLESHEET = readFileSync(join(process.cwd(), 'src/tailwind.css'), 'utf8');
-
 /** How `tailwind.css` writes an rgba token (spaced, unlike a Tailwind arbitrary value). */
 function cssRgba({ color, alpha }: Glass): string {
   return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`;
@@ -55,21 +53,6 @@ const FAMILY = {
   '--riv-solid-btn-danger-ink': rgbToHex(SOLID_BTN_DANGER_INK),
   '--riv-solid-btn-danger-border': cssRgba(SOLID_BTN_DANGER_BORDER),
 } as const;
-
-/** The base block — `:root, [data-riv-theme='porcelain']`, the only legal home for the family. */
-function baseBlock(): string {
-  const open = STYLESHEET.indexOf("\n:root,\n[data-riv-theme='porcelain'] {");
-  if (open === -1) {
-    throw new Error('src/tailwind.css no longer opens its base block as `:root, porcelain`');
-  }
-  return STYLESHEET.slice(open, STYLESHEET.indexOf('\n}', open));
-}
-
-/** Every `--name: value;` declaration of `name`, anywhere in the stylesheet. */
-function declarationsOf(name: string): readonly string[] {
-  const pattern = new RegExp(`^[ \\t]*${name}:\\s*([^;]+);`, 'gm');
-  return [...STYLESHEET.matchAll(pattern)].map((match) => match[1].trim());
-}
 
 const APP = join(process.cwd(), 'src/app');
 
@@ -118,17 +101,15 @@ const SCOPED_ROLES = [/#a3372a/i, /border-\[rgba\(255,\s*255,\s*255,\s*0\.7\)\]/
  * check the issue's AC calls for.
  *
  * <p>The list shrinks as the other tickets holding these positions land, and each removal is a
- * migration this guard is watching for, never a relaxation: #864 took `operator/payouts-tab.ts`
+ * migration this guard is watching for, never a relaxation. #864 took `operator/payouts-tab.ts`
  * and `operator/daily-view-tab.html` off it by moving the console's PLAIN inks onto
- * `--riv-console-negative-ink`. `payouts-tab.html` stays because its `/opacity` chip tints (#852's)
- * do — the same element, a different position. One entry per line so the next removal is a
- * deletion rather than a rewrite.
+ * `--riv-console-negative-ink`; #858 then took `shared/failure-panel.ts` and
+ * `booking/booking-pay.ts` by moving their decorative outcome medallions onto
+ * `--riv-medallion-negative-ink`. `payouts-tab.html` is the last entry and stays because its
+ * `/opacity` chip tints (#852's) do — the same element, a different position. One entry per line so
+ * the next removal is a deletion rather than a rewrite.
  */
-const OUT_OF_FAMILY = [
-  'shared/failure-panel.ts',
-  'operator/payouts-tab.html',
-  'booking/booking-pay.ts',
-];
+const OUT_OF_FAMILY = ['operator/payouts-tab.html'];
 
 describe('Solid outline-button token family (WCAG AA + theme invariance, #851)', () => {
   it('both inks clear AA on both fills', () => {

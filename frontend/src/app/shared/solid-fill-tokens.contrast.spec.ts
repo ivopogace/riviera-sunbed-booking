@@ -10,6 +10,7 @@ import {
   SOLID_FILL_DANGER,
   SOLID_FILL_INK,
 } from '../../testing/glass-tokens';
+import { STYLESHEET, baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
  * Guard for the `--riv-solid-fill-*` family (#854) — the nine solid button/badge fills carrying
@@ -34,30 +35,12 @@ import {
  * carrier.
  */
 
-/** Vitest runs with cwd = `frontend/`. */
-const STYLESHEET = readFileSync(join(process.cwd(), 'src/tailwind.css'), 'utf8');
-
 /** The whole family, with the value `tailwind.css` is expected to declare for it. */
 const FAMILY = {
   '--riv-solid-fill-brand': rgbToHex(SOLID_FILL_BRAND),
   '--riv-solid-fill-brand-hover': rgbToHex(SOLID_FILL_BRAND_HOVER),
   '--riv-solid-fill-danger': rgbToHex(SOLID_FILL_DANGER),
 } as const;
-
-/** The base block — `:root, [data-riv-theme='porcelain']`, the only legal home for the family. */
-function baseBlock(): string {
-  const open = STYLESHEET.indexOf("\n:root,\n[data-riv-theme='porcelain'] {");
-  if (open === -1) {
-    throw new Error('src/tailwind.css no longer opens its base block as `:root, porcelain`');
-  }
-  return STYLESHEET.slice(open, STYLESHEET.indexOf('\n}', open));
-}
-
-/** Every `--name: value;` declaration of `name`, anywhere in the stylesheet. */
-function declarationsOf(name: string): readonly string[] {
-  const pattern = new RegExp(`^[ \\t]*${name}:\\s*([^;]+);`, 'gm');
-  return [...STYLESHEET.matchAll(pattern)].map((match) => match[1].trim());
-}
 
 const APP = join(process.cwd(), 'src/app');
 
@@ -109,16 +92,19 @@ const FILL_ROLES = [
  * separate declaration of the same value in a different role. Read the shrunk list as that slice
  * landing, never as #854 having over-reached after all; the ink's own guard is
  * `operator/console-accent-token.contrast.spec.ts`.
+ *
+ * <p>`#0a5f74` shrinks the same way and for the same reason: #858 moved the two booking OUTCOME
+ * MEDALLIONS onto `--riv-medallion-positive-ink` and the amenity chip's water variant onto
+ * `--riv-amenity-water-ink`. `booking-dialog.ts` stays — its remaining `#0a5f74` is the header
+ * gradient's stop, which is `--riv-cta-grad`'s own duplication and nobody's ink. Those tokens'
+ * guard is `shared/fixed-fill-token-skins.contrast.spec.ts`.
  */
 const SURVIVORS: readonly (readonly [string, string])[] = [
   // `#0a6e85`'s eight console-ink rows left with #848 — see this list's header.
-  // `#0a5f74` as a `text-` ink, a selection `ring-`, and the dialog head's gradient stop.
-  ['shared/amenity-chip.ts', '#0a5f74'],
+  // `#0a5f74` as two selection `ring-`s and the dialog head's gradient stop.
   ['operator/set-editor.html', '#0a5f74'],
   ['operator/layout-editor.html', '#0a5f74'],
   ['booking/booking-dialog.ts', '#0a5f74'],
-  ['booking/booking-pay.ts', '#0a5f74'],
-  ['booking/booking-confirmation.ts', '#0a5f74'],
   // `#a3160e` as `/opacity` tints and borders — class O, #852's.
   ['operator/set-editor.html', '#a3160e'],
   ['operator/requests-tab.html', '#a3160e'],

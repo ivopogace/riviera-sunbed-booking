@@ -111,7 +111,9 @@ const CLS = {
         <div
           class="mx-auto mb-[18px] flex h-16 w-16 items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] text-[30px] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
           [class]="
-            state() === 'awaiting' ? 'bg-[#fcf0d9] text-[#8a5410]' : 'bg-[#d9f2f7] text-[#0a5f74]'
+            state() === 'awaiting'
+              ? 'bg-riv-medallion-waiting-fill text-riv-medallion-waiting-ink'
+              : 'bg-riv-medallion-positive-fill text-riv-medallion-positive-ink'
           "
           aria-hidden="true"
         >
@@ -207,7 +209,7 @@ const CLS = {
               @case ('error') {
                 @if (terminalError()) {
                   <div
-                    class="mx-auto mt-1.5 mb-4 flex h-[60px] w-[60px] items-center justify-center rounded-full border border-[#eecdc4] bg-[#f7e8e4] text-[28px] text-[#a3372a]"
+                    class="mx-auto mt-1.5 mb-4 flex h-[60px] w-[60px] items-center justify-center rounded-full border border-riv-medallion-negative-border bg-riv-medallion-negative-fill text-[28px] text-riv-medallion-negative-ink"
                     aria-hidden="true"
                   >
                     ✕

@@ -12,7 +12,7 @@ const CLS = {
   card: 'mx-auto my-8 max-w-[410px] rounded-[30px] px-7.5 pt-8.5 pb-7 text-center shadow-[0_18px_50px_rgba(7,42,58,0.28),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[30px] backdrop-saturate-[1.8]',
   // The only badge rendered here is the amber "waiting" variant — the design's plain badge is unused.
   badge:
-    'mx-auto mb-4.5 flex size-16 items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] bg-[#fcf0d9] text-[29px] text-[#8a5410] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]',
+    'mx-auto mb-4.5 flex size-16 items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] bg-riv-medallion-waiting-fill text-[29px] text-riv-medallion-waiting-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]',
   h1: 'm-0 mb-2 text-[27px] font-bold tracking-[-0.02em] text-riv-card-ink',
   lead: 'm-0 mb-4.5 text-[14.5px] leading-[1.5] text-riv-card-ink-soft',
   strong: 'text-riv-card-ink',
