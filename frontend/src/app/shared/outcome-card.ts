@@ -19,6 +19,8 @@ let nextHeadingId = 0;
  *
  * Sits on {@link CardGlass} so it inherits the AA-proven `--riv-card-*` token set instead of a
  * private translucent fill; the composited maths lives in the consumer's `*.contrast.spec.ts`.
+ * The tone glyph itself is the opposite — an opaque, theme-invariant skin that owes the card
+ * nothing; see {@link OutcomeCard.glyphClasses}.
  */
 @Component({
   selector: 'app-outcome-card',
@@ -54,12 +56,28 @@ export class OutcomeCard {
 
   protected readonly glyph = computed(() => (this.tone() === 'pending' ? '⏳' : '✓'));
 
-  // The circle is decorative (aria-hidden), so its tint is exempt from the text-contrast minimum.
+  /**
+   * The circle is decorative (`aria-hidden`), so WCAG 1.4.3 exempts it from the AA *text* minimum —
+   * it is still held to 1.4.11's 3:1 in `auth/auth-page.contrast.spec.ts`, which is what caught the
+   * pre-#869 `pending` tone at 2.46:1 in dark.
+   *
+   * <p>Both tones wear the `--riv-medallion-*` skin (#858), so this card's glyph is the same paint
+   * as `booking-confirmation`'s ✓ and `request-confirmation`'s ✉ rather than a third recipe. They
+   * therefore **do not theme**, and that is the point rather than an oversight: the fills are fixed,
+   * and #858's argument is that an ink over a fixed fill must not theme (dark `--riv-accent-ink`
+   * over the positive fill measures 1.41:1). Note what convergence cost — the `success` tone used
+   * to theme *correctly*, because `--riv-accent-chip-fill` is a translucent tint that resolved
+   * against the themed card. That was the app's only theming medallion, and #869 traded it for one
+   * medallion vocabulary; the reasoning is at the token declaration in `tailwind.css`.
+   *
+   * <p>The ternary moves whole. Tokenising one branch would leave a named utility beside a hex
+   * literal in one expression — the mis-cut #858 was itself re-cut to undo.
+   */
   protected readonly glyphClasses = computed(
     () =>
       'mx-auto mb-[18px] flex h-[66px] w-[66px] items-center justify-center rounded-full border border-[rgba(255,255,255,0.6)] text-[30px] shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] ' +
       (this.tone() === 'pending'
-        ? 'bg-[rgba(240,170,46,0.2)] text-[#a86a12]'
-        : 'bg-riv-accent-chip-fill text-riv-accent-ink'),
+        ? 'bg-riv-medallion-waiting-fill text-riv-medallion-waiting-ink'
+        : 'bg-riv-medallion-positive-fill text-riv-medallion-positive-ink'),
   );
 }

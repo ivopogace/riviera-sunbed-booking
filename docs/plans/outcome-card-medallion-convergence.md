@@ -51,7 +51,7 @@ session addendum*). The literal `feature/…` branch is deliberately not created
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the `porcelain`, `riviera` and `dark` themes, when the `success` and
+- [x] **AC-1:** Given the `porcelain`, `riviera` and `dark` themes, when the `success` and
       `pending` tone glyphs' inks are composited over their own fills as those fills resolve on
       that theme's card, then every pair clears 3:1 (WCAG 1.4.11, the non-text floor a decorative
       glyph owes). Today the `pending` pair reads **2.46:1 in dark** and this AC fails.
@@ -88,6 +88,9 @@ session addendum*). The literal `feature/…` branch is deliberately not created
   inside the porcelain-pinned operator console, so no theme drift to fix. Stays class O's (#852).
 - **The amber notice banner** (#868) — the medallion's exact waiting pair on a different form,
   with accessible text. Its own family, its own ticket.
+- **The zoom toggle's dark-theme AA failure (#870)**, found by this slice's generalization audit.
+  A different family (accessible text on a labelled control, over the map wash rather than the card
+  glass) and a different proof; folding it in would widen the PR past the finding it was opened for.
 - **`--riv-accent-chip-fill` / `--riv-accent-ink`.** `outcome-card` stops consuming them; both
   keep other consumers (the segmented control's selected option card, links, the mode toggle) and
   are not touched.
@@ -116,7 +119,7 @@ session addendum*). The literal `feature/…` branch is deliberately not created
 |---|---|---|---|---|---|---|
 | R-1 | The dark-theme repaint is judged wrong once seen (a pale medallion punched into a dark card) | med | med | Enumerated in the behavior-parity ledger before any code, and the maintainer chose this option knowing it; the two e2e legs make the shipped value inspectable | ivopogace | open |
 | R-2 | The `rgba(240,170,46,…)` sweep over-reaches onto the four out-of-family homes (`pending-approval-banner`, `booking-dialog`'s mode note, `app.html`'s sun, `home.html`'s photo sun) | med | med | `OUT_OF_FAMILY` gains rows asserting each keeps its literal — the positive half of the sweep #851 invented; only `#a86a12` (single-site) joins `EXCLUSIVE_LITERALS` | — | open |
-| R-3 | The floor test is written so it passes today, proving nothing | med | high | Phase 0 runs it RED first and records the exact failing number (2.46:1, dark) before any component edit | — | open |
+| R-3 | The floor test is written so it passes today, proving nothing | med | high | Phase 0 runs it RED first and records the exact failing number before any component edit | — | **closed** — RED confirmed at `riviera` 2.82:1 (stop `#0a4f6e`) and `dark` 2.46:1 (stop `#3b4a5f`), matching the hand-computed research values; green after the convergence |
 | R-4 | The e2e's `pending` leg is unreachable — the stage needs register-202-then-signin-transport-failure | low | med | Path confirmed in `auth-page.ts:505-532`: a non-401/429 sign-in failure maps to `'error'` and falls through to `submittedForApproval.set(true)`. Mockable as a 500 on the sign-in POST | — | open |
 | R-5 | Frontend-only slice, so no Flyway version to claim and no backend collision surface | — | — | N/A by construction | — | closed |
 
@@ -184,15 +187,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** write the RED decorative-glyph floor assertion in `auth-page.contrast.spec.ts`
-and record its exact failing number before touching `outcome-card.ts`.
+**Next action:** extend `fixed-fill-token-skins.contrast.spec.ts`'s sweeps with `outcome-card`, then
+add the two rendered auth legs to `e2e/fixed-fill-state-skins.e2e.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the decorative-glyph floor, RED → convergence, GREEN | | |
-| 1 — the token-registry guards (sweep + two rendered legs) | | |
+| 0 — the decorative-glyph floor, RED → convergence, GREEN | ✅ | |
+| 1 — the token-registry guards (sweep + two rendered legs) | ⏳ | |
 | 2 — the substrate: ledger row, artboard pointers, declaration notes | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -225,29 +228,31 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Modify `frontend/src/app/auth/auth-page.contrast.spec.ts` · Modify
 `frontend/src/app/shared/outcome-card.ts`
 
-- [ ] **Step 1: Write the failing test** — model each tone glyph as an ink over a `Glass` fill so
+- [x] **Step 1: Write the failing test** — model each tone glyph as an ink over a `Glass` fill so
       the *test* stays fixed while convergence changes only the data (alpha 0.2 → 1). This is the
       guard shape the drift needed: it is the only spec that composites a glyph fill onto **this
       theme's** card.
 
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- auth-page.contrast` → FAIL on the dark
+- [x] **Step 2: Run it, verify it fails** — `npm test -- auth-page.contrast` → FAIL on the dark
       leg, `pending glyph over stop #… — expected 2.46 to be >= 3`
 
-- [ ] **Step 3: Minimal implementation** — swap the two branches of `glyphClasses()` onto
+- [x] **Step 3: Minimal implementation** — swap the two branches of `glyphClasses()` onto
       `bg-riv-medallion-positive-fill text-riv-medallion-positive-ink` and
       `bg-riv-medallion-waiting-fill text-riv-medallion-waiting-ink`, update the spec's Theme rows
       to the opaque pairs, and rewrite the component docblock's tone paragraph to state the
       convergence and that the tones no longer theme.
 
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- auth-page.contrast outcome-card` → PASS
+- [x] **Step 4: Run it, verify it passes** — `npm test -- auth-page.contrast outcome-card` → PASS
 
-- [ ] **Step 5: Generalization-audit pass** — population: *every `aria-hidden` decorative glyph
-      whose ink is a literal or fixed token while its fill is translucent (so the fill composites
-      onto a themeable host)*. Enumerate, judge, record in the log below.
+- [x] **Step 5: Generalization-audit pass** — the population was widened past the plan's own
+      wording: *every `aria-hidden` decorative glyph* would have been resemblance, and the real
+      mechanism is **a fixed ink over a translucent fill on a themeable host**, decorative or not.
+      Six sites, one defect (**#870**, worse than this one — accessible text at 1.2:1 in dark).
+      Full table in the Generalization-audit log below.
 
-- [ ] **Step 6: Commit** — `git commit -m "Converge outcome-card's tone glyphs onto the medallion skin (#869)"`
+- [x] **Step 6: Commit** — `git commit -m "Converge outcome-card's tone glyphs onto the medallion skin (#869)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -294,6 +299,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-01 | phase 0 — the `pending` glyph's 2.46:1 dark reading | **A fixed hex ink sharing a class string with a translucent fill**, so the ink is pinned while its effective fill composites onto a host the theme moves. Named as the mechanism the defect needs, *not* as "other medallions" — which is what made it reach past the medallion form entirely | `grep -rnE '(bg-\[rgba\(\|bg-\[#[0-9a-fA-F]{3,8}\]/\|bg-riv-[a-z-]+/)' frontend/src/app --include=*.ts --include=*.html \| grep -E 'text-\[#' \| grep -v '\.spec\.'` | 6 | **1 real defect → filed as #870**; 5 cleared with reasons (below) |
+
+**Judgements, one per site — a clean audit has to say why, not just how many:**
+
+| Site | Verdict |
+|---|---|
+| `shared/beach-map-canvas.html:20,35` (the #713 Fit/100% zoom toggle) | **Defect, and worse than the one that started the sweep** — accessible text (`Fit`/`100%`), so AA 4.5:1, not 1.4.11's 3:1. Both branches pin their ink over the sea→sand wash, which themes (`DARK_WASH_STOPS`). Measured: selected **1.16–1.22:1** on the dark wash, unselected **3.77–3.82:1**. No contrast spec covers the control at all. Out of this slice's family (a labelled toggle, not a medallion; needs `venue-map.contrast.spec.ts`'s per-family wash maths) → **#870** |
+| `operator/requests-tab.html:94` | Cleared — porcelain-pinned operator console, no themeable host. Already class O's (#852) and this slice's stated non-goal |
+| `venue/availability-calendar.html:8` | Cleared — `rgba(255,255,255,0.97)` is 97% opaque, and `availability-calendar.contrast.spec.ts` already proves the popover's surfaces as opaque |
+| `venue/availability-calendar.html:20,40` | Cleared — a `hover:` tint over that same near-opaque popover, not over a themed host |
 
 ---
 
