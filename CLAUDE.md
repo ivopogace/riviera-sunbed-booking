@@ -117,12 +117,14 @@ reuse**; the bar and per-type grounds are `RESPONSIBILITIES.md` §`shared`.
 Cross-module collaboration is **events for state changes, `api/` ports for
 queries** (invariant #11). The availability write happens synchronously at
 claim time via `availability`'s `AvailabilityClaim` port — `availability` has
-no event listener. Six published events: `BookingConfirmed` and
-`BookingCancelled` fan out to `payout` and `notification` (and `booking`'s own
-`BookingCancelled` listener drives the refund); `BookingPaymentDue`,
-`BookingRequestDeclined`, and `BookingRequestExpired` go to `notification`
-only; `ReviewsChanged` goes to `venue`, whose listener recomputes its own
-rating columns. Publication-site rationale: `RESPONSIBILITIES.md`.
+no event listener. Eight published events: `PaymentConfirmed` and
+`PaymentCanceled` drive `booking`'s state machine (confirm; cancel and release
+the claim); `BookingConfirmed` and `BookingCancelled` fan out to `payout` and
+`notification` (and `booking`'s own `BookingCancelled` listener drives the
+refund); `BookingPaymentDue`, `BookingRequestDeclined`, and
+`BookingRequestExpired` go to `notification` only; `ReviewsChanged` goes to
+`venue`, whose listener recomputes its own rating columns. Publication-site
+rationale: `RESPONSIBILITIES.md`.
 
 Settled platform-edge rules (detail: `RESPONSIBILITIES.md` + `docs/plans/`):
 server-side sessions (Spring Session JDBC) with **two principal types**; all
