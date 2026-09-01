@@ -55,8 +55,9 @@ issue's "five families" is **six** — `--riv-amenity-{tag,water}-border` cite #
 unlisted — and that two **spec** files carry pointers, one of them a live deferral) ·
 `riviera-plan-doc` (this template — forced the Behavior-parity ledger, which is where the
 "no visual change" claim gets verified position-by-position rather than asserted) · `tdd`
-(phase 2's guard is genuinely red — 12 stale citations exist — before the repointing turns it
-green; phases 1 and 3 are honest characterization, flagged as such) · `riviera-review-overlay`
+(phase 2's guard is genuinely red — 9 stale citations — before the repointing turns it green,
+and it bit again at the review gate on a citation of my own, F-14; phases 1 and 3 are honest
+characterization, flagged as such) · `riviera-review-overlay`
 (review gate — runs at ready-for-review) · `riviera-docs-freshness` (due at close-out over
 `origin/main..HEAD`; the counting sweep already has one pre-identified target — see F-1) ·
 `riviera-tailwind` (the theme-invariant-token rule and "a fixed surface pins what is painted
@@ -72,7 +73,8 @@ substrate under `docs/design/`, beside the ledger that cites it; the new asserti
 both**; Angular's a11y guide is ARIA/native-elements/focus-management only and defers colour
 entirely, and the repo's `angular.configs.templateAccessibility` preset has no contrast rule.
 That absence is load-bearing: it is why this judgement has to be written down by hand) ·
-`riviera-local-debug` (scoped `npm test` for the two touched spec files in a cloud session).
+`riviera-local-debug` (scoped `npm test` over the six specs this slice touches or cites, in a
+cloud session — never the bare full suite).
 
 **Branch:** `claude/tailwind-angular-mcp-docs-j6y0aq` — the cloud session's designated branch
 **stands in for** `feature/non-text-contrast-policy` (`riviera-sdlc` § Remote/cloud session
@@ -227,9 +229,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — PR #877 ready for review, fixing findings`
+**Stage pointer:** `review gate — findings fixed, awaiting CI on the fix push`
 
-**Next action:** Finish the review gate — three of five review agents still reporting. CI was green on `252490f` (all 8 checks) and the Sonar gate passed with 0 new issues / 0 duplication.
+**Next action:** All five review agents reported; 14 findings recorded, all fixed. Confirm CI is green on the fix push, re-check the Sonar gate on the new head, then post the review comment and close out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -251,12 +253,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-5 | phase 1 (self-inflicted) | AC-2 as first written asserted the whole 2.23–3.16 band under 3:1; only the **floor** is. The test caught it — the AC wording was loose, not the measurement | fixed in phase 1 |
 | F-7 | review gate (agent 2 — shallow bug scan) | `docs/design/README.md` carried a duplicated phrase from the phase-0 edit: "is a **maintained ledger** — a **maintained ledger** of which hex/rgba" | fixed in `a483db0` |
 | F-8 | review gate (agents 1 + 2, independently) | The plan doc's FE-3 row and File-structure section claimed an `admin-console.contrast.spec.ts` edit the diff never made — the file is deliberately left alone, its citation being history pinned by the allow-list. The file-structure guard does not flag this direction, so CI stayed green | fixed in `a483db0` |
-| F-9 | review gate (agent 4 — prior-PR comments) | AC-4's *Pinned by* paraphrased the shipped test title ("the exemption's fallback clause"); the `it(...)` says "the fallback clause". Exactly the class #871 f.5 and #875 f.6 flagged | fixed in `<review-2>` |
-| F-10 | review gate (agent 4) | Phase table marked ✅ while every step/AC checkbox stayed unticked, the AC-verification block still held `<sha>` placeholders (against the doc's own "no placeholders" item), and the generalization-audit log row was blank — **its sweep had never actually been run**. Run now: population = every in-tree citation of an issue as a present-tense tracking home; no other stale deferral found | fixed in `<review-2>` |
-| F-11 | review gate (agent 5 — comment guidance) | **The most substantive finding.** The rule doc's family table cited `accent-tokens.contrast.spec.ts` for `--riv-accent-chip-border` and `amenities.contrast.spec.ts` for the amenity borders. Neither measures those tokens: the accent spec asserts the *opaque* `--riv-accent-strong` (the amenity chip's border, which clears 3:1), and `ACCENT_CHIP_BORDER` — worn by `shared/segmented-control.ts` — was referenced nowhere but its own declaration. So the doc claimed a measurement that did not exist, breaking rule 2's own condition 2 | fixed in `<review-2>`: the missing assertion was **added** (2.34–2.48:1 porcelain over its own fill), and both citations corrected, rather than softening the table |
-| F-12 | review gate (agent 5) | The rule doc truncated a test title it quoted, so the citation was not `grep`-able verbatim — the doc's own "one place they can go stale loudly" claim depends on it being so | fixed in `<review-2>` |
-| F-13 | review gate (agent 5) | `cta-border-token.contrast.spec.ts`'s header still described a single-token guard while the file had become the tree-wide enforcement point for two policy sweeps — the drift `admin-console.contrast.spec.ts` handled correctly when it widened its own stated scope | fixed in `<review-2>` |
-| F-14 | self-caught while fixing F-13's sibling | The clarifying edit to `admin-console.contrast.spec.ts` added a second `#834` line, and the new guard **failed on it** — the allow-list pins a phrase, not a filename, so a fresh citation in an allow-listed file is still caught. Reworded to "that issue". R-2 behaving exactly as designed | fixed in `<review-2>` |
+| F-9 | review gate (agent 4 — prior-PR comments) | AC-4's *Pinned by* paraphrased the shipped test title ("the exemption's fallback clause"); the `it(...)` says "the fallback clause". Exactly the class #871 f.5 and #875 f.6 flagged | fixed in `e3ae54b` |
+| F-10 | review gate (agent 4) | Phase table marked ✅ while every step/AC checkbox stayed unticked, the AC-verification block still held `<sha>` placeholders (against the doc's own "no placeholders" item), and the generalization-audit log row was blank — **its sweep had never actually been run**. Run now: population = every in-tree citation of an issue as a present-tense tracking home; no other stale deferral found | fixed in `e3ae54b` |
+| F-11 | review gate (agent 5 — comment guidance) | **The most substantive finding.** The rule doc's family table cited `accent-tokens.contrast.spec.ts` for `--riv-accent-chip-border` and `amenities.contrast.spec.ts` for the amenity borders. Neither measures those tokens: the accent spec asserts the *opaque* `--riv-accent-strong` (the amenity chip's border, which clears 3:1), and `ACCENT_CHIP_BORDER` — worn by `shared/segmented-control.ts` — was referenced nowhere but its own declaration. So the doc claimed a measurement that did not exist, breaking rule 2's own condition 2 | fixed in `e3ae54b`: the missing assertion was **added** (2.34–2.48:1 porcelain over its own fill), and both citations corrected, rather than softening the table |
+| F-12 | review gate (agent 5) | The rule doc truncated a test title it quoted, so the citation was not `grep`-able verbatim — the doc's own "one place they can go stale loudly" claim depends on it being so | fixed in `e3ae54b` |
+| F-13 | review gate (agent 5) | `cta-border-token.contrast.spec.ts`'s header still described a single-token guard while the file had become the tree-wide enforcement point for two policy sweeps — the drift `admin-console.contrast.spec.ts` handled correctly when it widened its own stated scope | fixed in `e3ae54b` |
+| F-14 | self-caught while fixing F-13's sibling | The clarifying edit to `admin-console.contrast.spec.ts` added a second `#834` line, and the new guard **failed on it** — the allow-list pins a phrase, not a filename, so a fresh citation in an allow-listed file is still caught. Reworded to "that issue". R-2 behaving exactly as designed | fixed in `e3ae54b` |
 | F-6 | phase 2 (self-caught, pre-commit) | The medallion border was first repointed at **rule 2**, but it is an `aria-hidden` decorative glyph, not a control identified by its content — a different 1.4.11 ground. Blurring them would let anything pale claim the exemption | fixed in phase 2: the doc gained **rule 2a** and both medallion citations name it |
 
 ---
@@ -375,7 +377,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 > Verified by one scoped run over the six specs this slice touches or cites:
 > `npm test -- --include=src/app/shared/cta-border-token.contrast.spec.ts --include=src/app/admin/accent-tokens.contrast.spec.ts --include=src/app/admin/admin-console.contrast.spec.ts --include=src/app/shared/fixed-fill-token-skins.contrast.spec.ts --include=src/app/booking/solid-btn-tokens.contrast.spec.ts --include=src/app/shared/amenities.contrast.spec.ts`
-> → **6 files, 49 tests, all passing** at `<review-2>`.
+> → **6 files, 49 tests, all passing** at `e3ae54b`.
 
 - [x] **AC-1:** the adjacent-carrier test passes in all three themes.
 - [x] **AC-2:** the fill-vs-glass test records the 2.23–3.16:1 band, floor under 3:1, and states why it is not the comparison.
