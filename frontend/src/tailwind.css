@@ -464,9 +464,11 @@
   --riv-alert-tint: #a3160e;
 
   /** The AMBER WARN family (#879) -- one skin for every amber advisory surface in the tree:
-      shared/confirm-panel's `alertdialog`, the two hand-rolled confirm panels on the console's
-      Daily-view and Payouts tabs plus the trigger button that opens the first, the two legal pages'
-      standing draft banner, and booking/withheld-email-notice.
+      shared/confirm-panel's `alertdialog` (used by set-editor/layout-editor from the start, and --
+      since #881 -- by the console's Daily-view close-sales and Payouts weather-refund confirms too,
+      which used to hand-roll their own copy of this same skin), the Daily-view trigger button that
+      opens the first of those, the two legal pages' standing draft banner, and
+      booking/withheld-email-notice.
 
       THREE families collapsed here, and one deliberately did not. --riv-warn-edge/-tint (class O,
       #852) painted the console's two confirm panels at #d9861a/#f0aa2e; --riv-confirm-warn-* (class
