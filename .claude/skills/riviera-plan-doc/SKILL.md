@@ -9,7 +9,8 @@ description: >-
 
 # Riviera Plan Doc
 
-Plan-doc discipline layered on `riviera-sdlc` driving `tdd`.
+Plan-doc discipline layered on `riviera-sdlc` driving `tdd`. It is **preventive** — built
+from the risks the design surfaced, not from post-mortems.
 `references/plan-doc-template.md` is the single home of section guidance. Load at the plan
 stage, and again when picking up a plan to execute in a fresh session.
 
