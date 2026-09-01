@@ -19,6 +19,11 @@ The full product design lives in
 [`docs/superpowers/specs/`](docs/superpowers/specs/) — read it when you need the
 *why* behind a decision.
 
+Two more you'll reach for constantly rather than read front-to-back:
+[`CONTEXT.md`](CONTEXT.md) is the domain glossary, and
+[`RESPONSIBILITIES.md`](RESPONSIBILITIES.md) holds the per-module contracts,
+settled rules, and history — **read a module's § there before you change it.**
+
 ## 2. Current state & setup
 
 The full stack is built and deployed **same-origin**: Spring bundles the Angular SPA into its
@@ -60,9 +65,10 @@ git rm --cached -r .   # drop the index; the files stay on disk
 git reset --hard       # rewrite every one of them, now LF
 ```
 
-Only `frontend/src` and `frontend/e2e` are gated, so `npm run format` from `frontend/` is
-enough if you'd rather leave the rest alone. Either way, check with
-`git ls-files --eol frontend/src` — every row should read `w/lf`.
+Only `frontend/src`, `frontend/e2e`, and `vitest-base.config.ts` are gated, so
+`npm run format` from `frontend/` is enough if you'd rather leave the rest alone.
+Either way, check with `git ls-files --eol frontend/src` — every row should read
+`w/lf`.
 
 **Commits are gated too.** `npm ci` in `frontend/` installs a husky `pre-commit` hook
 ([`.husky/pre-commit`](.husky/pre-commit)) that runs lint-staged over the files you staged,
@@ -93,10 +99,19 @@ We build in thin **vertical slices** — one path through every layer
 | **Plan** | A plan doc in `docs/plans/<slug>.md` with testable acceptance criteria, a risk register, and — if booking/availability is touched — exactly how invariant #2 is upheld. | `riviera-plan-doc` |
 | **Slice** | Break the plan into independently-grabbable vertical slices. | `to-issues` |
 | **Build** | Test-first, red→green, one behavior at a time, at seams agreed before the first test. Refactoring belongs to Review, not the loop. | `tdd` |
-| **Review** | The 13 invariants become checkable gates; availability & payment-source are Blockers. | `riviera-review-overlay` |
+| **Review** | The 13 invariants become checkable gates; availability & payment-source are Blockers. The Sonar merge bar is stricter than the default gate: **0 new issues, 0 duplicated blocks, ≥80% new-code coverage** — read the issue list, not just pass/fail. | `riviera-review-overlay` |
 
 Keep it right-sized: a one-line fix doesn't need a plan doc. A feature that touches
 booking, availability, or money does.
+
+**CI runs guards you can't guess from the framework docs.** Alongside the backend
+and frontend jobs, a `Repo hygiene (diff-scoped)` job hard-gates your diff with
+[`scripts/check-*.mjs`](scripts/): no multi-line inline comments (RV-STYLE-1), each
+plan doc lists the files its diff changed (#533), no stranded focus postures (#621),
+touch targets declared (#648), and the cloud setup script's Node pin still matching
+[`.nvmrc`](.nvmrc) (#659). Run any of them locally the way CI does —
+`node scripts/check-inline-comments.mjs --diff origin/main` — and note the first
+four only judge *your diff*, so they stay quiet until you've committed something.
 
 ## 4. Branching & commits
 
@@ -129,11 +144,19 @@ These are the rules a reviewer will block on. Canonical text + rationale in
   `application.*`/`domain.*`/`adapter.*`.
 - **#12 Schema changes go through Flyway** — versioned forward migrations under
   `src/main/resources/db/migration`. No hand-run DDL.
+- **#13 Venue-scoped operations verify the actor owns the venue.** Object-level, not
+  role-level: on every `/api/venues/{venueId}/**` operation the authenticated
+  operator must own the path `venueId` (`403` otherwise), checked in the
+  **application service** so no driving adapter can bypass it. The `OPERATOR` role is
+  necessary, never sufficient.
 
 ## 6. Using Claude Code in this repo
 
-This repo ships **repo-scoped skills** (under `.claude/skills/`, tracked in
-`skills-lock.json`) that load automatically when you work here with Claude Code:
+This repo ships **repo-scoped skills** under [`.claude/skills/`](.claude/skills/)
+that load automatically when you work here with Claude Code. The ten `riviera-*`
+ones are written for this project; the rest are vendored from upstream and pinned in
+[`skills-lock.json`](skills-lock.json) (refresh them through that file, don't hand-edit
+a vendored skill):
 
 - **`riviera-sdlc`** — the spec-driven-development orchestrator; routes each stage
   (refine → issue → plan → implement → CI → review → merge) to the right skill.
@@ -145,6 +168,15 @@ This repo ships **repo-scoped skills** (under `.claude/skills/`, tracked in
   outcomes, Java 25); load before writing/refactoring any Java.
 - **`riviera-modulith`** — the Spring Modulith structure authority (module layout,
   `api/` boundaries, events vs ports); load before any backend structural change.
+- **`riviera-frontend`** — the frontend structure authority (which folder a file
+  belongs in, import direction, lazy routes); load before adding or moving anything
+  under `frontend/src` or `frontend/e2e`.
+- **`riviera-tailwind`** — how to write the styling (Tailwind v4 is the default;
+  SCSS needs a stated justification); load before styling anything.
+- **`riviera-local-debug`** — the build/test recipes, including the cloud-session
+  and single-test variants; load before the session's first `./gradlew` or `npm`.
+- **`riviera-docs-freshness`** — the staleness audit for these substrate docs; load
+  at merge close-out and at every epic close-out.
 - **`angular-new-app` / `angular-developer`** — scaffolding and Angular standards.
 
 `CLAUDE.md` is the canonical, always-current list of project skills.
@@ -159,3 +191,11 @@ invariants honest.
 - "Why is it this way?" → the design spec in `docs/superpowers/specs/`.
 - "Is this allowed?" → `CLAUDE.md` invariants; if still unsure, ask before building
   — a wrong call on availability or payments is expensive to unwind.
+
+## 8. Licensing
+
+This repo is **proprietary** — see [`LICENSE`](LICENSE). Contributions are accepted
+only from people authorized by the owner, and by opening a pull request you grant the
+owner the rights set out in section 5 of that file. If you're adding a dependency,
+check its license is compatible with shipping it in a closed-source product, and say
+which license it carries in the PR.
