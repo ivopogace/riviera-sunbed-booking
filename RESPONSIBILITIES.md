@@ -1007,6 +1007,27 @@ and until when, and the arithmetic that turns a venue's reviews into a score. Th
   review from a window nobody ever wrote in. The whole lifecycle (submit, edit, delete) stays one
   **internal** `application` port, `ReviewLifecycle`, whose only caller is my own REST adapter (the
   `booking.ViewBooking` precedent), so neither consumer can reach the write surface.
+- **A takedown is a reversible soft flag, and it is mine.** `review.hidden_at` (`NULL` = visible,
+  V48) is the moderation state ADR-0013's report-and-remove posture needs; the platform admin's
+  `ReviewModeration` port — an **internal** `application` port like `ReviewLifecycle`, whose only
+  caller is my own `AdminReviewController` under `/api/admin/**` — hides and un-hides by review id and
+  lists every review of a venue, hidden and star-only rows included, on the same `ReviewCursor` keyset
+  page. Both verbs are one conditional `UPDATE … RETURNING venue_id` whose row is the outcome, so a
+  repeat is `AlreadyApplied` and publishes nothing; a real flip publishes `ReviewsChanged`, and
+  `venue`'s recompute excludes the hidden row by re-reading me. The port is deliberately
+  ownership-free (invariant #13's admin exemption is the whole authorization: the role gate lives in
+  `SecurityConfig`, the audit row in `AdminAuditFilter`, the review id legible in the path), and it
+  must reach venues the public list refuses — a suspended owner's.
+- **The visibility predicate lives in exactly two statements**, `totalsFor` and `newestListedBefore`
+  in `JdbcReviews` (`hidden_at IS NULL`): the aggregate and the public list. The author's own
+  read-back (`findFor`) and the admin's moderation list see a hidden row on purpose.
+- **A hidden review is frozen for its author.** `ReviewGate` answers `HIDDEN` *before* the window
+  (a hidden review past its window reads "removed", never "stays as written"); the panel is
+  `ReviewPanel.Hidden(review)` — still readable, marked as removed from public view — and edit, delete
+  and resubmit are refused (`AmendOutcome.Hidden` → `409 REVIEW_HIDDEN`; the slot stays taken).
+  Refusing the *delete* is what makes the takedown survive the guest's window mechanics: a delete would
+  free the one-per-booking slot and a resubmit would claim a fresh, visible row. Un-hide hands the
+  author their window rights back if the window is still open.
 - **A listed review is a visible review that carries a comment**, and the list is a keyset page
   (#813): newest first by review id (assigned at claim, so insertion order), ten per page — the
   port's contract, not the caller's knob — with `ReviewCursor` naming "older than this review" and
@@ -1015,9 +1036,8 @@ and until when, and the arithmetic that turns a venue's reviews into a score. Th
   recorded on the row as `stay_date` (the booking's service date, carried in through
   `CompletedStay` at claim time — a stay fact, not identity) and leaves the store as a `YearMonth`:
   no published type carries the day, because a month places a stay in a season and a day would
-  place a guest at the venue. **Visibility is not yet a column**: moderation is a later slice, and
-  the predicate lands in exactly two `WHERE`s — `newestListedBefore` and `totalsFor` — named as such
-  in `JdbcReviews`. Who may *see* the list at all is the caller's fence, never mine (I am a leaf).
+  place a guest at the venue. Who may *see* the list at all is the caller's fence, never mine (I am
+  a leaf).
 - **The booking code is the whole authorization** (invariant #7). All three verbs on
   `/api/bookings/{code}/review` — `POST`, `PUT`, `DELETE` — are `permitAll` and share one per-code
   rate-limit budget with the view / cancel / withdraw legs: they are all guesses at the same
@@ -1035,17 +1055,21 @@ and until when, and the arithmetic that turns a venue's reviews into a score. Th
 - The guest's identity → **`customer`**. A review is attached to a *booking*, not a person. The
   display name I store is a **label the author chose**, handed to me on the write; I never resolve a
   customer to a name, and the form's prefill suggestion is `booking`'s to derive
-- Login, sessions, CSRF, rate-limit wiring → the platform **edge** (RV-BE-11)
+- Login, sessions, CSRF, rate-limit wiring, the ADMIN role gate and the admin audit record → the
+  platform **edge** (RV-BE-11)
+- Deciding *whether* a review deserves a takedown → the **platform admin** (publish-first,
+  report-and-remove; I offer no queue and no reporting)
 
-**Shipped** (#811 slice 1, #812 slice 2, #813 slice 3 of epic #810): the module, V45 (`review`
-table + the demo-seed supersede), V46 (comment, display name, `updated_at`) and V47 (`stay_date`,
-backfilled from the booking, and the `(venue_id, id)` listing index), the code-gated submit / edit /
-delete endpoints, `ReviewGate` as the one statement of the fence order, the sealed `ReviewPanel` on
-`booking`'s read model (which retired the `reviewable` flag and `ReviewState` from the published
-surface), `venue`'s first `adapter/in` listener, and the public list read (`ListedReviews`, carried
-by `venue` on `GET /api/venues/{venueId}/reviews`). Moderation — and with it the visibility
-predicate the list read is written to receive — and the **erasure hook for the review PII slice 2
-introduced** (#820) are later slices of #810.
+**Shipped** (#811 slice 1, #812 slice 2, #813 slice 3, #814 slice 4 of epic #810): the module, V45
+(`review` table + the demo-seed supersede), V46 (comment, display name, `updated_at`), V47
+(`stay_date`, backfilled from the booking, and the `(venue_id, id)` listing index) and V48
+(`hidden_at`), the code-gated submit / edit / delete endpoints, `ReviewGate` as the one statement of
+the fence order, the sealed `ReviewPanel` on `booking`'s read model (which retired the `reviewable`
+flag and `ReviewState` from the published surface), `venue`'s first `adapter/in` listener, the public
+list read (`ListedReviews`, carried by `venue` on `GET /api/venues/{venueId}/reviews`), and the admin
+takedown (`ReviewModeration`, `GET /api/admin/venues/{venueId}/reviews`,
+`POST /api/admin/reviews/{id}/hide|unhide`, the `HIDDEN` verdict). The **erasure hook for the review
+PII slice 2 introduced** (#815) is the last slice of #810.
 
 ## `shared` (not a bounded context)
 

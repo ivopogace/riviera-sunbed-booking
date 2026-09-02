@@ -8,7 +8,8 @@ import { CardGlass } from '../shared/card-glass';
 import { ConfirmWithReason } from '../shared/confirm-with-reason';
 import { focusMover } from '../shared/focus-after-render';
 import { PhotoSlotKey } from '../shared/venue-views';
-import { AdminVenuePhotosService, ModerationVenue } from './admin-venue-photos.service';
+import { AdminVenuePhotosService } from './admin-venue-photos.service';
+import { AdminVenuesService, ModerationVenue } from './admin-venues.service';
 import { AdminPhotoSlotView } from './admin.model';
 
 import { TouchTarget } from '../shared/touch-target';
@@ -26,8 +27,8 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
  * CSRF token, which is not a thing anyone does from a phone when a report arrives by email.
  *
  * <p><strong>Why a venue picker at all.</strong> The admin holds no venue, so there is no "my venues"
- * to land in; a report names a venue and the moderator finds it. The list is the public catalogue —
- * public data, every venue, no publish filter — so no admin venue endpoint had to be invented.
+ * to land in; a report names a venue and the moderator finds it. The list is the admin venue read,
+ * shared with the Reviews tab through {@link AdminVenuesService}.
  *
  * <p><strong>Every slot renders, occupied or not.</strong> Emptiness is the null preview URL,
  * so a takedown just empties its slot in place — no re-fetch, and the grid never
@@ -169,6 +170,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
 export class AdminVenuePhotos {
   private readonly auth = inject(OperatorAuth);
   private readonly service = inject(AdminVenuePhotosService);
+  private readonly venueList = inject(AdminVenuesService);
   private readonly focusAfterRender = focusMover();
 
   protected readonly venues = signal<readonly ModerationVenue[]>([]);
@@ -320,7 +322,7 @@ export class AdminVenuePhotos {
 
   private async loadVenues(): Promise<void> {
     try {
-      this.venues.set(await this.service.venues());
+      this.venues.set(await this.venueList.venues());
     } catch {
       this.loadError.set(true);
     }

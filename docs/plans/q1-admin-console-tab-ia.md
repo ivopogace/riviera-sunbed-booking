@@ -111,8 +111,9 @@ The canonical order, derived from what each tab *is* rather than when it shipped
 | 4 | Email | outbox re-drive lever | shipped |
 | 5 | Refunds | outbox re-drive lever (shares `OutboxLever` with Email) | shipped |
 | 6 | Photos | content moderation (ADR-0013) | shipped |
-| 7 | Privacy | data-subject erasure | **A3** |
-| 8 | Audit | the record of all of the above; last because it is the meta-tab | shipped |
+| 7 | Reviews | content moderation, the review half (#814) — beside Photos, the other takedown | shipped |
+| 8 | Privacy | data-subject erasure | **A3** |
+| 9 | Audit | the record of all of the above; last because it is the meta-tab | shipped |
 
 **The five shipped tabs are already in this order** — filtering the eight to what ships yields
 exactly today's `Operators, Email, Refunds, Photos, Audit`. So the visible strip does not move

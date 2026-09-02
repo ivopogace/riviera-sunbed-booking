@@ -120,13 +120,13 @@ reused; copy differs from the photo takedown because hide is reversible) · `pla
   renders, then it shows the guest's own review under a "removed from public view" note with
   no edit or delete control. *Seam:* `app-review-panel`'s `panel` input · *Pinned by:*
   `review-panel.spec.ts` ("a hidden review is shown read-only with the removal note")
-- [ ] **AC-11:** Given the mocked e2e stack with a venue at 4.5 over 2 reviews, when the
+- [x] **AC-11:** Given the mocked e2e stack with a venue at 4.5 over 2 reviews, when the
   admin hides one review from `/admin/reviews`, then the venue page header reads the new
   score/count and the list no longer shows that review; when the admin hides the other, then
   the header reads "New"; when the admin un-hides one, then it is back. *Seam:* the
   `/admin/reviews` page + the public `/venues/:id` page over stateful route mocks · *Pinned
   by:* `frontend/e2e/admin-reviews.e2e.ts` ("hide → public surfaces update → un-hide restores")
-- [ ] **AC-12:** Given the admin Reviews tab in its list, confirm and notice states, when axe
+- [x] **AC-12:** Given the admin Reviews tab in its list, confirm and notice states, when axe
   runs and the touch-target sweep measures it, then no serious violation and every control
   meets 44×44. *Seam:* the rendered page · *Pinned by:* `admin-reviews.a11y.spec.ts`,
   `admin-reviews.e2e.ts` (axe at three states), `touch-targets-admin.e2e.ts` (the new row)
@@ -165,12 +165,12 @@ Reviews tab shares it.
 | R-4 | A missing `SecurityConfig` matcher lets `anyRequest().authenticated()` admit a plain OPERATOR to the new routes | low | high | Three explicit `hasRole(ADMIN)` matchers; `AdminSurfaceRoleGateTest` discovers every `/api/admin/**` mapping and probes OPERATOR + CUSTOMER — a missed matcher fails the build; `AdminReviewTakedownIT.takedownIsAdminOnly` proves it over the real chain | agent | **closed (phase 3)** — both pins green; the plain operator is `403` on all three routes |
 | R-5 | `WebSliceStubs` lacks the new `ReviewModeration` port → every `@WebMvcTest` slice fails to boot | high | low | Phase 3 adds the inert stub with the controller (the coverage test's `DECLARED_REACHABLE` lists only role-free routes, so it needs no row) | agent | **closed (phase 3)** — four web slices boot green with the stub |
 | R-6 | Hide/un-hide redelivered or double-clicked → duplicate `ReviewsChanged` or drift | med | low | The write is `UPDATE … WHERE id = :id AND hidden_at IS NULL RETURNING venue_id` (mirror for un-hide): rows-affected is the outcome, a no-op publishes nothing, and the listener's recompute is a full re-read either way | agent | **closed (phase 1)** — `ReviewModerationServiceTest` pins one event per flip, `ReviewModerationFlowIT` the conditional update for real |
-| R-7 | The aggregate is eventually consistent (ADR-0015): the admin's next read may precede the recompute | med | low | Same posture as submit; the admin tab does not render the score. The e2e is mocked, so no timing; `VenueRatingRecomputeIT` awaits the row | agent | open |
+| R-7 | The aggregate is eventually consistent (ADR-0015): the admin's next read may precede the recompute | med | low | Same posture as submit; the admin tab does not render the score. The e2e is mocked, so no timing; `VenueRatingRecomputeIT` awaits the row | agent | **closed (phase 4)** — the tab renders no score; the IT awaits the recompute |
 | R-8 | Error-contract drift on the new 4xx paths (§6b) | low | med | `404 NO_SUCH_REVIEW` and `409 REVIEW_HIDDEN` through `ApiProblem` from exhaustive switches; the review-side `409` keeps `instance` pinned to `/api/bookings` (invariant #7); `ErrorContractArchitectureTests` stays green | agent | **closed (phase 3)** — `unknownReviewIs404` reads problem+json with the code, `aHiddenReviewIsAConflict` pins the instance, the architecture test is green |
 | R-9 | Adding `ReviewPanel.Hidden` breaks the exhaustive switches in `booking`'s `BookingDetailView` and the frontend `@switch` silently (a missing `kind`) | high | low | The Java switch is exhaustive → compile error → `"HIDDEN"` added with its own test; the TS union gains the member so the template's `@switch` is type-checked; `review-panel.spec.ts` pins the case | agent | **closed (phase 2)** — `ViewBookingServiceTest.everyPanel` carries `Hidden`; the TS spec caught the one non-exhaustive site (`own`) |
 | R-10 | `Reviews.findFor` changes shape → the `FakeReviews` in the service tests stop compiling | high | low | Same phase (2): every implementor found by `grep -rn "implements Reviews"` updated in the commit (`WebSliceStubs` holds no `Reviews` stub — phase 1's audit) | agent | **closed (phase 2)** — all five implementors moved to `Optional<StoredReview>`; `existsFor` retired |
-| R-11 | The touch-target sweep and `admin-console-tabs.e2e.ts` hit an unmocked `/api/admin/venues/*/reviews` | med | low | `support/admin-console.mocks.ts` gains the read; `touch-targets-admin.e2e.ts` gains the Reviews row (list + confirm states) | agent | open |
-| R-12 | The Reviews tab lands out of slot in `ADMIN_CONSOLE_TAB_ORDER` and fails the subsequence pin | low | low | Inserted after Photos (moderation surfaces adjacent), the IA contract updated in `q1-admin-console-tab-ia.md`'s order | agent | open |
+| R-11 | The touch-target sweep and `admin-console-tabs.e2e.ts` hit an unmocked `/api/admin/venues/*/reviews` | med | low | `support/admin-console.mocks.ts` gains the read; `touch-targets-admin.e2e.ts` gains the Reviews row (list + confirm states) | agent | **closed (phase 4)** — both sweeps green with the read mocked |
+| R-12 | The Reviews tab lands out of slot in `ADMIN_CONSOLE_TAB_ORDER` and fails the subsequence pin | low | low | Inserted after Photos (moderation surfaces adjacent), the IA contract updated in `q1-admin-console-tab-ia.md`'s order | agent | **closed (phase 4)** — `admin-console-tabs.spec.ts` green; the IA table carries the row |
 | R-13 | A hidden review's `display_name`/`comment` still reach the admin (by design) but must never reach the public list — the admin read must not be reachable without ADMIN | low | high | The admin list is served only by the `/api/admin/**` route (R-4); the public read keeps its predicate (R-3) | agent | **closed (phase 3)** — R-3 and R-4 both closed |
 
 ## Open questions / Assumptions
@@ -202,10 +202,18 @@ Reviews tab shares it.
 - **Decision D-6 — plan:** hide/un-hide are **idempotent** at the port (`Applied` /
   `AlreadyApplied` / `NoSuchReview`); the wire answers `204` for both applied states, so a
   double-click or a retried request is harmless and audited as what it was.
-- **Assumption A-1:** `ConfirmWithReason` is reused for **hide** (the reason feeds the audit
-  header, the photo precedent), with copy that does not say "cannot be undone"; **un-hide**
-  is a single button with no confirm — it restores, it does not destroy. — *Owner:* agent ·
-  *Resolves by:* phase 4 (a11y spec + e2e)
+- **Assumption A-1 — held** (phase 4): `ConfirmWithReason` is reused for **hide** (the reason
+  feeds the audit header, the photo precedent), with copy that does not say "cannot be undone"
+  (`admin-reviews.spec.ts` pins the absence); **un-hide** is a single button with no confirm —
+  it restores, it does not destroy.
+- **Assumption A-4 — recorded** (phase 4): after a `204` the row **flips in place** (the photos
+  tab's empty-the-slot idiom) rather than re-reading the venue — the server answers no body, and
+  a re-read would drop every page the admin had shown. The "hidden since" moment is the press; the
+  e2e's "survives re-reading the venue" case proves the server's state is what comes back.
+- **Assumption A-5 — held** (phase 4): the hidden chip paints the existing `--riv-danger-*`
+  family (`border-riv-danger-border bg-riv-danger-fill text-riv-danger-ink`), whose porcelain
+  card-glass contrast `admin-console.contrast.spec.ts` already pins — no new ink, no new
+  contrast spec.
 - **Assumption A-2 — held** (phase 0): the `venue` listener needs no change —
   `RecomputeVenueRating` re-reads `VenueRatingSummary`, whose store read gained the predicate;
   `VenueRatingRecomputeIT.aHiddenSoleReviewReturnsTheVenueToNew` is green with zero `venue` edits.
@@ -271,7 +279,7 @@ N/A — no payment in scope.
 
 | # | Surface | Existing/new | Type | State/reactivity | Forms |
 |---|---|---|---|---|---|
-| FE-1 | `admin/admin-reviews.ts` | **new** | standalone `app-admin-reviews`, inline template | signals `venues`, `selectedVenueId`, `entries`, `nextCursor`, `confirming` (a review id or `undefined`), `reason`, `loading`, `loadError`, `busy`, `notice`; a `loadGeneration` counter and `reportOnlyIfStillViewing` guard (the photos-page idioms); `focusMover()` back onto the row after hide/un-hide, onto the notice on failure | the `ConfirmWithReason` reason (`model`) |
+| FE-1 | `admin/admin-reviews.ts` | **new** | standalone `app-admin-reviews`, inline template | signals `venues`, `selectedVenueId`, `entries`, `nextCursor`, `confirming` (a review id or `undefined`), `reason`, `loading`, `loadError`, `busy`, `notice`; a `loadGeneration` counter and `reportOnlyIfStillViewing` guard (the photos-page idioms); the row flips in place on a `204` (A-4); `focusMover()` back onto the row after hide/un-hide, onto the notice on failure, onto the first appended row after Show more | the `ConfirmWithReason` reason (`model`) |
 | FE-2 | `admin/admin-reviews.service.ts` | **new** | `@Service()` | `reviews(venueId, cursor?)`, `hide(reviewId, reason?)`, `unhide(reviewId)` — the `X-Audit-Reason` header plumbing copied from the photos service | — |
 | FE-3 | `admin/admin-venues.service.ts` | **new** (promoted) | `@Service()` | `venues(): Promise<readonly ModerationVenue[]>` — moved from `admin-venue-photos.service.ts`; both tabs inject it | — |
 | FE-4 | `admin/admin-venue-photos.service.ts` + `.ts` + specs | existing | service + page | drop `venues()`; the page injects `AdminVenuesService` | — |
@@ -280,7 +288,7 @@ N/A — no payment in scope.
 | FE-7 | `app.routes.ts` | existing | routes | `admin/reviews` child with its `AdminTabRouteData` (`admin-reviews-title`, sign-in copy "Sign in as an admin to moderate reviews.", the three test ids) | — |
 | FE-8 | `booking/review-panel.ts` | existing | component | `@case ('HIDDEN')`: heading + `review-hidden-note` + the own-review template, no actions | — |
 | FE-9 | `booking/booking.model.ts` | existing | types | `ReviewPanel` union gains `{ kind: 'HIDDEN'; review: OwnReviewView }` | — |
-| FE-10 | `admin/admin-reviews.spec.ts`, `.a11y.spec.ts`, `admin-reviews.service.spec.ts`, `admin-venues.service.spec.ts`; `booking/review-panel.spec.ts` (+ `.contrast.spec.ts` if a new ink appears — none planned) | new + existing | Vitest | | |
+| FE-10 | `admin/admin-reviews.spec.ts`, `.a11y.spec.ts`, `admin-reviews.service.spec.ts`, `admin-venues.service.spec.ts`; `booking/review-panel.spec.ts` (no new ink — A-5) | new + existing | Vitest | | |
 
 **Standards:** standalone, `inject()`, `@if`/`@for` (`track entry.id`), signals. The tab's
 list is a `<ul role="list">` of `appCardGlass` rows (`tabindex="-1"`, `data-testid="admin-review-{id}"`),
@@ -333,9 +341,10 @@ Venue picker `<select data-testid="admin-reviews-venue">`, the photos tab's mark
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)` — draft PR #898 open as the CI vehicle
+**Stage pointer:** `PR — merge origin/main, mark #898 ready for review`
 
-**Next action:** phase 4 — the admin Reviews tab, red first on `admin-reviews.spec.ts`.
+**Next action:** merge `origin/main` with phase discipline, mark PR #898 ready for review, then
+the Review and Sonar gates (`references/pr-gates.md`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -343,7 +352,7 @@ Venue picker `<select data-testid="admin-reviews-venue">`, the photos tab's mark
 | 1 — `ReviewModeration`: hide / un-hide / admin list, `ReviewsChanged` | ✅ | `Hide and un-hide a review through the review module's moderation port (#814)` |
 | 2 — the author's fence: `HIDDEN` in the gate, the panel, the amend outcome, the booking page | ✅ | `Freeze a hidden review for its author and show it as removed from public view (#814)` |
 | 3 — the admin REST edge: controller, matchers, stubs, audit pin | ✅ | `Serve the admin review list and the hide/un-hide takedown under /api/admin (#814)` |
-| 4 — the admin Reviews tab, the mocked journey, docs, close-out prep | ⏳ | |
+| 4 — the admin Reviews tab, the mocked journey, docs, close-out prep | ✅ | `Add the admin Reviews tab: hide and un-hide with grounds, and cover the takedown end to end (#814)` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -397,7 +406,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/test/java/ai/riviera/platform/AdminSurfaceRoleGateTest.java` — the list read joins the cross-module anchors
 - `platform/src/test/java/ai/riviera/platform/ReviewFixtures.java` — `hiddenReview(...)` / `hide(reviewId)` seeder
 - `frontend/src/app/admin/admin-venues.service.ts` + `admin-venues.service.spec.ts` — new (promoted `venues()`)
-- `frontend/src/app/admin/admin-venue-photos.service.ts` + `admin-venue-photos.service.spec.ts` + `admin-venue-photos.ts` + `admin-venue-photos.spec.ts` — use the promoted service
+- `frontend/src/app/admin/admin-venue-photos.service.ts` + `admin-venue-photos.service.spec.ts` + `admin-venue-photos.ts` + `admin-venue-photos.spec.ts` + `admin-venue-photos.a11y.spec.ts` — use the promoted service; the service spec now pins `slots()` and the takedown header
+- `frontend/src/app/admin/admin-moment.ts` — `formatMoment`, shared by the Audit and Reviews tabs
+- `frontend/src/app/admin/admin-audit.ts` — uses the shared helper
 - `frontend/src/app/admin/admin-reviews.service.ts` + `admin-reviews.service.spec.ts` — new
 - `frontend/src/app/admin/admin-reviews.ts` + `admin-reviews.spec.ts` + `admin-reviews.a11y.spec.ts` — new
 - `frontend/src/app/admin/admin.model.ts` — the two wire types
@@ -409,11 +420,10 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/e2e/admin-reviews.e2e.ts` — new mocked journey
 - `frontend/e2e/support/admin-console.mocks.ts` — the reviews read
 - `frontend/e2e/touch-targets-admin.e2e.ts` — the Reviews row + confirm state
-- `frontend/e2e/admin-console-tabs.e2e.ts` — the tab, if it enumerates tabs
 - `RESPONSIBILITIES.md` — §review (moderation, the predicate landed, the author's fence, the admin surface), §venue (no change — states the listener now excludes hidden by re-read)
 - `CONTEXT.md` — **Review takedown**, **Hidden review**
 - `CLAUDE.md` — the `review` row names moderation
-- `docs/plans/q1-admin-console-tab-ia.md` — the tab order gains Reviews (if the order is stated there)
+- `docs/plans/q1-admin-console-tab-ia.md` — the tab order gains Reviews
 
 ---
 
@@ -544,7 +554,7 @@ booking-detail DTO test, `review-panel.spec.ts`
 `e2e/admin-reviews.e2e.ts` · Modify `admin-venue-photos.service.ts` (+ spec + page + spec),
 `admin.model.ts`, `admin-console-tabs.ts` (+ spec), `app.routes.ts`,
 `e2e/support/admin-console.mocks.ts`, `e2e/touch-targets-admin.e2e.ts`,
-`e2e/admin-console-tabs.e2e.ts` (if it enumerates), `RESPONSIBILITIES.md`, `CONTEXT.md`,
+`RESPONSIBILITIES.md`, `CONTEXT.md`,
 `CLAUDE.md`, `q1-admin-console-tab-ia.md`
 
 - [ ] **Step 1: Failing tests** — `admin-reviews.spec.ts`: renders a venue's rows with the
@@ -578,6 +588,7 @@ booking-detail DTO test, `review-panel.spec.ts`
 | 2026-09-02 | phase 1 (the widened `Reviews` port) | every implementor of `Reviews` | `grep -rln "implements Reviews\b" platform/src` | 5: JdbcReviews.java, ListedReviewsServiceTest.java, ReviewEligibilityServiceTest.java, ReviewLifecycleServiceTest.java, ReviewModerationServiceTest.java | all five carry the four new methods in the same commit (the fakes throw `UnsupportedOperationException` where moderation is out of their use case) |
 | 2026-09-02 | phase 2 (the `HIDDEN` verdict) | every site that branches on `ReviewState`, `ReviewPanel` or `AmendOutcome` (Java: exhaustive switches, found by the compiler) and every TS site narrowing `reviewPanel.kind` | `grep -rln "case ReviewPanel\.\|case AmendOutcome\.\|case NO_SUCH_STAY" platform/src/main`; `grep -rn "kind === '" frontend/src/app --include=*.ts` | Java: `ReviewLifecycleService`, `ReviewEligibilityService`, `ReviewController`, `BookingDetailView`; TS: `review-panel.ts` (`seedFor`, `own`, `deadline`), `booking-view.ts`'s refusal map | every Java arm added (the compiler refused the build until each was); in TS `own` gained `HIDDEN` (the spec caught the 0-star render), `seedFor`/`deadline` correctly exclude it, the refusal map gained `REVIEW_HIDDEN` |
 | 2026-09-02 | phase 3 (a new port every web slice must find) | every `@WebMvcTest` slice that boots the full controller set through `WebSliceStubs` | `grep -rln "WebSliceStubs" platform/src/test` | 4 run in the phase (`ReviewControllerTest`, `VenueReviewsControllerTest`, `AdminSurfaceRoleGateTest`, `EndpointRoleGateCoverageTest`) of the slices found | all boot green with the inert `ReviewModeration` stub; CI runs the rest |
+| 2026-09-02 | phase 4 (a new admin route every console sweep mounts) | every e2e helper that mocks the whole admin console on mount, and every spec that walks the console's routes | `grep -rln "mockWholeAdminConsole\|/api/admin/venues" frontend/e2e` | `support/admin-console.mocks.ts`, `touch-targets-admin.e2e.ts`, `admin-console-tabs.e2e.ts` (uses the lifecycle mock only — no admin reads), `admin-venue-photos.e2e.ts` (its own venue mock) | the console mock gained the reviews read; the touch sweep gained the Reviews row and its confirm state; the others need nothing |
 
 ---
 

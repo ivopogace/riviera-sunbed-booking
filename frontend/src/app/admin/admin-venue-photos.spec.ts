@@ -6,6 +6,7 @@ import { Mock, vi } from 'vitest';
 import { OperatorAuth } from '../core/operator-auth';
 import { AdminVenuePhotos } from './admin-venue-photos';
 import { AdminVenuePhotosService } from './admin-venue-photos.service';
+import { AdminVenuesService } from './admin-venues.service';
 import { AdminVenuePhotosView } from './admin.model';
 
 /**
@@ -44,13 +45,15 @@ function photosOf(coverUrl: string | null, venueId = 7): AdminVenuePhotosView {
   };
 }
 
+function venuesStub(): { venues: Mock<AdminVenuesService['venues']> } {
+  return { venues: vi.fn(() => Promise.resolve(VENUES)) };
+}
+
 function serviceStub(): {
-  venues: Mock<AdminVenuePhotosService['venues']>;
   slots: Mock<AdminVenuePhotosService['slots']>;
   takedown: Mock<AdminVenuePhotosService['takedown']>;
 } {
   return {
-    venues: vi.fn(() => Promise.resolve(VENUES)),
     slots: vi.fn((venueId: number) =>
       Promise.resolve(photosOf(`/api/venues/${venueId}/photos/beef01`, venueId)),
     ),
@@ -82,12 +85,14 @@ async function settle(fixture: ComponentFixture<AdminVenuePhotos>): Promise<void
 async function render(
   auth: OperatorAuth,
   service: ReturnType<typeof serviceStub>,
+  venues: ReturnType<typeof venuesStub> = venuesStub(),
 ): Promise<ComponentFixture<AdminVenuePhotos>> {
   await TestBed.configureTestingModule({
     imports: [AdminVenuePhotos],
     providers: [
       provideRouter([]),
       { provide: OperatorAuth, useValue: auth },
+      { provide: AdminVenuesService, useValue: venues },
       { provide: AdminVenuePhotosService, useValue: service },
     ],
   }).compileComponents();
@@ -394,10 +399,10 @@ describe('AdminVenuePhotos', () => {
    *  guard — redundant once the shell's gate is in place, but harmless to keep — still must not
    *  load when the admin session says no. */
   it('does not load when the admin session is not confirmed', async () => {
-    const service = serviceStub();
-    await render(authStub({ isAdmin: false }), service);
+    const venues = venuesStub();
+    await render(authStub({ isAdmin: false }), serviceStub(), venues);
 
-    expect(service.venues).not.toHaveBeenCalled();
+    expect(venues.venues).not.toHaveBeenCalled();
   });
 
   it('offers a retry when the slots fail to load', async () => {

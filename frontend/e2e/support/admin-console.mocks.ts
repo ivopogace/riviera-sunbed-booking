@@ -15,7 +15,7 @@ const VENUES = [
 ];
 
 /**
- * Every `/api/admin/**` read the seven console routes make on mount, on top of the shared operator
+ * Every `/api/admin/**` read the eight console routes make on mount, on top of the shared operator
  * lifecycle mock. Breadth-first and read-only, the admin twin of `operator-console.mocks.ts`: the
  * touch-target sweep walks each route and measures, it never writes.
  */
@@ -71,6 +71,33 @@ export async function mockWholeAdminConsole(page: Page): Promise<void> {
   );
   await page.route(/\/api\/venues\/\d+\/photos\/[0-9a-f]+$/, (route) =>
     route.fulfill({ body: TINY_IMAGE, contentType: 'image/jpeg' }),
+  );
+  await page.route(/\/api\/admin\/venues\/(\d+)\/reviews(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: {
+        reviews: [
+          {
+            id: 31,
+            stars: 5,
+            displayName: 'Ana',
+            stayedIn: '2026-07',
+            comment: 'Great sunbeds.',
+            createdAt: '2026-07-02T08:00:00Z',
+            hiddenAt: null,
+          },
+          {
+            id: 30,
+            stars: 1,
+            displayName: 'Ben',
+            stayedIn: '2026-07',
+            comment: 'Spam',
+            createdAt: '2026-07-01T18:00:00Z',
+            hiddenAt: '2026-07-03T09:00:00Z',
+          },
+        ],
+        nextCursor: 30,
+      },
+    }),
   );
   await page.route(/\/api\/admin\/audit$/, (route) =>
     route.fulfill({
