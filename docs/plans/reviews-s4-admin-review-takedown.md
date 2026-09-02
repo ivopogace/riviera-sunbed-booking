@@ -344,6 +344,8 @@ Venue picker `<select data-testid="admin-reviews-venue">`, the photos tab's mark
 
 **Next action:** none — the merge close-out (`references/pr-gates.md` §3): issue #814 closed by the PR, epic #810's sub-issue ticked, subscription ended.
 
+**Gates on head `e031725`** (the last code-bearing commit; the close-out commit after it is docs-only): CI green (backend build + test with the Testcontainers ITs run, frontend lint + test + build + the mocked e2e, hygiene, CodeQL); SonarCloud quality gate passed with the API list at **0 issues** (`new_bugs` 0, `new_vulnerabilities` 0, `new_code_smells` 0, `new_security_hotspots` 0, `new_duplicated_blocks` 0, `new_coverage` 91.2% over 1148 new lines) — confirmed through `api/issues/search` (total 0) and `api/measures/component` on the analyzed SHA, not the badge; review gate run in full (above); `riviera-docs-freshness` ran twice (6 findings patched, then 0).
+
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V48 `hidden_at` + the visibility predicate | ✅ | `Hide reviews from the aggregate and the public list by a nullable hidden_at (#814)` |
@@ -376,6 +378,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-6 | review (overlay RV-FE-9 spirit, Minor) | a failed un-hide moved focus onto the notice although the pressed Un-hide button survives — only the hide leg destroys its control | fixed — the un-hide failure keeps focus where it is and lets the `role=status` region announce; `admin-reviews.spec.ts` pins it |
 | F-7 | `riviera-docs-freshness` over `origin/main...HEAD` | six present-tense counts in files the diff never touched — `AdminAuditLog` Javadoc ("span five modules"), `admin-console-tabs.spec.ts` ("at most eight tabs"), `admin-privacy.e2e.ts` + `admin-console-stats.e2e.ts` ("seven tabs"), and the admin-console artboard's stated order (no Reviews) | fixed — counts updated; the artboard gets the `as-built diverges — see #814` pointer, never a rewrite |
 | F-8 | Sonar (`new_duplicated_blocks` 1, 22 lines, `admin-reviews.ts` ↔ `admin-venue-photos.ts`) | the venue-picker scaffolding both moderation tabs carried — the list and selection signals, the once-per-session load effect, the in-flight generation counter | fixed — extracted as `admin/moderation-venue-picker.ts` (`moderationVenuePicker()`, the `focusMover()` factory shape); both tabs compose it and their specs stay green; the picker has its own spec |
+| F-9 | sonar (re-analysis on `e031725`) | 0 new issues, 0 duplicated blocks, 91.2% new-code coverage — the F-8 extraction cleared the one duplicated block | closed |
 | F-3 | review (git-history walker) | `q1-admin-console-tab-ia.md`'s summary sentence ("filtering the eight … five shipped tabs") contradicted the table it summarizes once the Reviews row landed | fixed — the paragraph is dated to decision time with a note naming the later row |
 
 ---
