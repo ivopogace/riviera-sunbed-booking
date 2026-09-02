@@ -187,6 +187,17 @@ docs/design/non-text-contrast.md rule 2 (the label carries the identity), measur
 rather than assumed exempt. Proof: <spec name>.
 ```
 
+**A state fill cites two adjacencies, not one** — the template above is a boundary's shape, and
+copying it literally for a hover, active or selected fill silently drops one of the two
+measurements rule 2 requires of it (see `--riv-console-btn-hover` above):
+
+```
+Non-text chrome (WCAG 1.4.11) at <measured>:1 over <the resting state it replaces> and
+<measured>:1 over <the surface it sits on> — decorative under
+docs/design/non-text-contrast.md rule 2 (the label carries the identity at <measured>:1
+on this fill), measured rather than assumed exempt. Proof: <spec name>.
+```
+
 Citing a **closed issue** as a present-tense tracking home is what #876 existed to fix; don't
 reintroduce it. Citations of #834 that record the erasure-panel work it actually completed are
 history and stay as they are.

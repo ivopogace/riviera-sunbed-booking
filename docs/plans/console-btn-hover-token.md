@@ -13,9 +13,9 @@ button's own skin, and write down the 1.4.11 ground that position has never carr
 **Architecture:** The single most significant decision is a **refusal to merge**: this fill
 does *not* join `--riv-solid-btn-{fill,hover}`, the same shape one layer over. Three grounds,
 each mechanical rather than aesthetic — (a) the two skins' resting **and** hover fills differ
-(`#ffffff`/`#eef1f2` vs `#f4f6f7`/`#e7ebec`), so adopting the pair moves three painted
-positions: a **repaint**, which #849 established wants its own design slice and not a
-migration whose claim is that no pixel moves; (b) the two are **inverse constructions** — a
+(`#ffffff`/`#eef1f2` vs `#f4f6f7`/`#e7ebec`), so adopting the pair moves **two** painted
+positions to migrate one: a **repaint**, which #849 established wants its own design slice and
+not a migration whose claim is that no pixel moves; (b) the two are **inverse constructions** — a
 grey chip with a *white* `0.7` bevel on themeable card glass, against a white pill with a
 *dark* `rgba(12,42,51,0.14)` hairline on porcelain header glass — so borrowing the fills while
 keeping opposite borders and inks would leave a family whose only shared member is a fill,
@@ -82,7 +82,7 @@ bare-class-selector sweep can see it either).
       tourist pair" cannot look the same in a diff. *Seam:* `src/tailwind.css` read as text via
       `testing/stylesheet-tokens.ts` · *Pinned by:*
       `fixed-ink-tokens.contrast.spec.ts` › `the console button hover fill (#887)` › `refuses
-      the solid-btn pair on values, not on assertion`
+      the solid-btn pair on its values, not on assertion`
 - [x] **AC-2:** Given `--riv-console-btn-hover`, when the stylesheet is read, then it is declared
       **exactly once**, in the base block, with the value `#eef1f2`, and mapped in `@theme
       inline` as `--color-riv-console-btn-hover: var(--riv-console-btn-hover)` — the same four
@@ -104,23 +104,23 @@ bare-class-selector sweep can see it either).
 - [x] **AC-4:** Given the operator console rendered in a real browser, when the sign-out button
       is **hovered**, then its computed `background-color` is `rgb(238, 241, 242)` — the one
       position no declaration sweep can reach. *Seam:* the rendered `oc-signout` box ·
-      *Pinned by:* `e2e/fixed-ink-token-recut.e2e.ts` › `the console paints both hairlines from
-      their own tokens (#849), and the button's hover fill from its own (#887)`
+      *Pinned by:* `e2e/fixed-ink-token-recut.e2e.ts` › `the console paints both hairlines, and
+      the button's hover fill, from their own tokens (#849, #887)`
 - [x] **AC-5:** Given the hover fill, when measured, then the button's label clears **AA** on it
       (13.29:1), and the two boundaries it forms — against the button's resting `#ffffff` fill
       (1.14:1) and against the porcelain header glass over each background stop (1.04–1.14:1) —
       are recorded **below 3:1**, so the exemption is a conclusion drawn from a measurement.
       *Seam:* the `testing/glass-tokens.ts` mirror + `testing/contrast.ts` maths · *Pinned by:*
       `fixed-ink-tokens.contrast.spec.ts` › `the console button hover fill (#887)` › `the label
-      carries the identity at AA on the hovered fill` + `records that the hover state's own
-      boundaries do not reach the 1.4.11 bar, so the exemption is load-bearing`
+      carries the identity at AA on the hovered fill` + `records that the hover state does not
+      reach the 1.4.11 bar, so the exemption is load-bearing`
 - [x] **AC-6:** Given the button's **resting** fill, when the slice lands, then it is still
       `bg-white` and has gained no token — #849's own answer on this same surface (it tokenised
       the hairlines bounding the console's white fills and left the fills alone), and the idiom
       of the other 11 `hover:bg-white`/`bg-white` sites in the tree. Asserted so the omission
       reads as a decision rather than a half-migrated skin. *Seam:* the source sweep ·
       *Pinned by:* `fixed-ink-tokens.contrast.spec.ts` › `the console button hover fill (#887)`
-      › `leaves the resting fill as bg-white, which is the surface's own precedent`
+      › `leaves the resting fill as bg-white, the precedent of the surface it sits on`
 - [x] **AC-7 (documentation, no test):** The ledger's class-R residue note for this position
       reads `done` with this PR, and `docs/design/non-text-contrast.md` carries the family row
       plus the state-vs-boundary reading the hover fill needs. Stated as untested rather than
@@ -214,10 +214,10 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — fixing findings (F-1, F-2 fixed; agents 3–5 outstanding)`
+**Stage pointer:** `review gate — all five agents reported, F-1..F-9 fixed; awaiting CI + the Sonar gate on the new head`
 
-**Next action:** Collect the remaining review-agent reports, fix anything they raise, push the
-fix round, then the Sonar gate once CI and the analysis land on the new head.
+**Next action:** Wait for CI + the SonarCloud analysis on the fix-round head, then pull the
+Sonar new-issue and duplication lists (a green gate is not the check) and clear every entry.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -234,6 +234,13 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 |---|---|---|---|
 | F-1 | review gate (agent 1, CLAUDE.md/overlay pass) | **RV-PROC-1, Major.** The routing table's Angular-frontend row fires on any component styling change, and this diff edits `operator-actions.ts`'s class string — but *Skills consulted* listed neither `angular-developer` nor the angular-cli MCP. The gate's own remedy applies: load, re-vet, update the line | fixed — skill loaded, `get_best_practices` consulted for this workspace, `operator-actions.ts` re-vetted against the v22 guide (compliant; a static `class` attribute is outside everything the guide covers), *Skills consulted* updated with what it actually did |
 | F-2 | review gate (agent 2, bug scan) | **Vacuous positive guard, Major.** AC-3 cited `the sites` › `%s paints its family` as proving the site paints the new utility. It does not: its regex `/-riv-(calendar\|banner\|console-card-border\|console-btn-border)-?/` was already satisfied by the pre-existing `border-riv-console-btn-border`, so it would pass unchanged if the migration were reverted. Exactly the ledger's "no positive still-painted-here list allowed to be empty" failure, one layer in: the list is non-empty but says nothing about this token | fixed — a token-specific positive (`paints the hover fill through its named utility, not a literal`) added to the `#887` describe, with its docstring recording why widening the shared regex is not the fix; AC-3 re-pointed at both halves |
+| F-3 | review gate (agent 4, prior-PR feedback) | **Doc comment narrates decision history, Major.** The new `--riv-console-btn-hover` declaration ran 19 lines against its sibling's 8, restating the whole refusal argument that already lives in this plan's Architecture section and the ledger's class-R note. `frontend/.claude/CLAUDE.md`: a doc comment "states the contract, not the changelog". Reviewers trimmed exactly this class on #862, #871, #875, #878, #883, #885 and #886 — the immediately preceding PR | fixed — trimmed to 10 lines: contract, the one live warning (not `--riv-solid-btn-hover`, and why in one clause), the measured 1.4.11 numbers with their rule citation, and `Rationale:`/`Proof:` pointers. The inverse-construction and theme-invariance-ground arguments are now pointed at, not restated |
+| F-4 | review gate (agent 4, prior-PR feedback) | **Paraphrased `Pinned by` citations, Minor.** Four ACs named test titles that differ from the shipped `it(...)`/`test(...)` strings — "on values" for "on its values", an inserted "own boundaries", a reworded e2e title. The recurring class flagged on #871, #875 and #877 | fixed — all four re-quoted verbatim against the shipped titles |
+| F-5 | review gate (agent 4, prior-PR feedback) | **Plan-doc self-review checklist unticked against an all-✅ phase table, Minor.** Every merged plan doc in this repo has these boxes ticked at ready-for-review, leaving only the review-gate line open until the gate finishes. Same class as #859, #863, #871, #875 | fixed — ticked what is actually true; the review-gate box stays open until the gate closes, and the close-out box until the final commit |
+| F-6 | review gate (agent 3, git-history pass) | **Miscount in the plan's own justification, Minor.** Architecture said adopting the solid-btn pair "moves three painted positions" while `tailwind.css` and the ledger both correctly said two (resting fill + hover fill). Not grounded in any cited history — a typo in the number the whole refusal rests on | fixed — "two painted positions to migrate one", matching the other two artifacts |
+| F-7 | self-caught while fixing F-3 | **A trimmed comment impersonated a declaration.** Re-wrapping the token comment put `--riv-solid-btn-hover:` at the start of a line, and `declarationsOf()` reads `tailwind.css` as TEXT — so `refuses the solid-btn pair on its values` saw two declarations of a token declared once and failed. The guard catching its own family's comment is the guard working, but the footgun is worth writing down: **never follow a `--riv-*` name with a colon in prose inside `tailwind.css`** | fixed — reworded to "the --riv-solid-btn-hover pair, which rests on…", no colon after the name |
+| F-8 | review gate (agent 5, comment-compliance pass) | **Ledger header not extended, Minor.** `colour-literal-token-audit.md`'s "Prior slices that cut families out of this population" line names every closed slice, unbroken through #849/PR #886, but this slice's own closure was only written into the class-R note further down | fixed — `#887 … PR #889` appended, keeping the header a complete index of the population's reductions |
+| F-9 | review gate (agent 5, comment-compliance pass) | **The citation template does not cover the shape this slice introduced, Major-in-effect.** `non-text-contrast.md`'s "How to cite this file" block is single-adjacency (`over its own fill`), but the same PR's new prose establishes that a *state* fill has two adjacencies and both belong in the assertion. A future author copying the canonical template literally for the next state-coloured token would emit a citation missing one required measurement — the doc teaching two different things in two places | fixed — a second, state-fill template added beside the boundary one, with a line saying why copying the boundary shape drops a measurement. The token comment this slice ships already follows the two-adjacency form, so template and practice now agree |
 
 ---
 
@@ -335,20 +342,20 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test (AC-7 excepted, declared untested).
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test (AC-7 excepted, declared untested).
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
