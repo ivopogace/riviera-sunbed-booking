@@ -79,15 +79,21 @@ for `bugfix/shell-overlay-initial-navigation`.
   view. *Seam:* the mocked Playwright suite against the running SPA · *Pinned by:*
   `frontend/e2e/find-a-booking.e2e.ts` › the found-code flow (existing, unchanged)
 - [x] **AC-5:** Given a reader of `frontend/e2e/support/shell.ts`, when they read its header,
-  then `awaitRoutedPage` is still exported and used by every opener, and the header states
-  that the wait is the test's own precondition (and still covers the post-sign-in redirect)
-  rather than describing an app bug that is now fixed. *Seam:* the file's exported API +
+  then `awaitRoutedPage` is still exported and used by every opener, and the header says the wait
+  is what makes an opener deterministic — a guard-redirected first load still closes overlays —
+  rather than describing an app bug that is now fixed. It explicitly does NOT claim to cover the
+  post-sign-in redirect, which each spec awaits itself (F-2). *Seam:* the file's exported API +
   header comment · *Verified by:* review gate (RV-FE-E2E / RV-STYLE-1), no test asserts prose.
 - [x] **AC-6:** Given the subscription in `app.ts`, when it is read, then a single-line inline
   comment names the rule ("the navigation an overlay was opened during is not the user leaving
   the page").
   *Seam:* the source line · *Verified by:* `node scripts/check-inline-comments.mjs --diff
   origin/main` (RV-STYLE-1 guard) + review gate.
+- [x] **AC-8:** Given an overlay opened while a navigation to a **different** route is in flight,
+  when that navigation completes, then the overlay is still rendered — the widening declared in
+  the section below, held to a spec rather than to prose (F-7). *Seam:* as AC-1 · *Pinned by:*
+  `app.spec.ts` › `keeps an overlay open across a navigation to a different route it was opened
+  during (#892)`
 
 ## Declared behaviour change beyond the issue's letter
 
@@ -130,7 +136,7 @@ N/A — no surface is retired or replaced; one guard is added to an existing sub
 | R-2 | The guard swallows a close it should perform (a real navigation to the same URL) | low | med | The router emits `NavigationSkipped`, not `NavigationEnd`, for a same-URL re-navigation — already relied on and pinned by the existing `#351` "activated on the page it points at" spec, which closes the popover from the link handler instead | claude | closed — that spec is green unchanged |
 | R-3 | The guard swallows a close the user asked for, stranding an overlay | med | high | Realised as F-1 at the review gate, on the URL rule; the id rule cannot, because a navigation the user raises from inside an overlay always carries an id other than the one recorded when it opened. AC-7 pins it | claude | closed — AC-7 green, red against the old guard |
 | R-4 | The four overlay-open paths each have to record the in-flight navigation, and a new overlay could forget to | low | med | One private `markOverlayRaised()` called from all four handlers, so the rule has a single home; a forgotten call fails open (the overlay closes on navigation, today's behaviour) rather than stranding an overlay | claude | closed — no new dependency; `Location` is no longer injected at all |
-| R-6 | A later slice adds a tourist-header link to an operator/admin route, and a skipped navigation tears out an open popover's markup, stranding focus on `document.body` (WCAG 2.4.3) | low | med | Unreachable today (every tourist-header `routerLink` targets a tourist route). The skip's precondition is stated in the constructor TSDoc so the next author meets it there; the fix at that point is to close the popovers on the chrome switch, not to extend this rule | claude | open — documented, no code change; deliberately not pre-solved (F-8) |
+| R-6 | A later slice adds a tourist-header link to an operator/admin route, and a skipped navigation tears out an open popover's markup, stranding focus on `document.body` (WCAG 2.4.3) | low | med | Unreachable today (every tourist-header `routerLink` targets a tourist route). The skip's precondition is stated in the constructor TSDoc so the next author meets it there; the fix at that point is to close the popovers on the chrome switch, not to extend this rule | claude | closed — documented in the constructor TSDoc; deliberately not pre-solved (F-8), and unreachable on today's routes |
 | R-5 | The e2e suite's `awaitRoutedPage` masks a regression of this fix (the app-side bug could come back unnoticed) | med | med | AC-1 is the unit-level pin and does not depend on the e2e timing; the e2e wait stays for its own reasons (AC-5) | claude | closed — AC-1 pins the app side without the e2e timing |
 
 ## Open questions / Assumptions
@@ -198,15 +204,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — F-1 fixed, re-entering CI before the Sonar gate`
+**Stage pointer:** `DONE — merged via PR #894`
 
-**Next action:** confirm CI green on the F-1 fix push, then pull the SonarCloud new-issue +
-duplication list for PR #894 per `riviera-sdlc` `references/pr-gates.md` §2.
+**Next action:** none; the slice is complete. Close-out steps 1–3 and 6 are GitHub-side (issue
+#892 closes via the PR, no parent epic, nothing deferred, subscription ends with the merge).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Keep overlays open on the navigation they were opened during | ✅ | `e5f26bd`, F-1 fix in (this commit) |
-| 1 — Re-point the e2e helper's header comment | ✅ | `c42a25e`, corrected in (this commit) |
+| 0 — Keep overlays open across the navigation they were opened during | ✅ | `e5f26bd` (URL rule, withdrawn) → `9450930` (navigation identity) → `52a38a5` (F-4) → `a43201c` (F-7/F-9/F-10) → `8f4c19c` (F-11) |
+| 1 — Re-point the e2e helper's header comment | ✅ | `c42a25e`, corrected for F-2 in `9450930` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -371,29 +377,35 @@ called from all four overlay-raising handlers (`openFind`, `toggleMenu`, `toggle
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `npx ng test --no-watch --include="src/app/app.spec.ts"` → the `#892` spec passes. Verified at commit `<sha>`.
-- [ ] **AC-2:** same command → the `#148` spec passes with its body unchanged (`git diff` shows no edit inside it). Verified at commit `<sha>`.
-- [ ] **AC-3:** same command → the `#351` spec passes with its body unchanged. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run the mocked e2e for `find-a-booking.e2e.ts` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-5:** `git diff` on `frontend/e2e/support/shell.ts` shows the header re-pointed and `awaitRoutedPage` still exported/used. Verified at commit `<sha>`.
-- [ ] **AC-6:** Run `node scripts/check-inline-comments.mjs --diff origin/main` → clean. Verified at commit `<sha>`.
+All verified at `8f4c19c`: 36 specs in `app.spec.ts`, 56 across the three shell spec files, 49
+mocked e2e specs, and the Sonar gate clean from the API (0 issues, 0 hotspots, 0 duplicated
+blocks, 100% new-code coverage over 49 new lines).
+
+- [x] **AC-1:** `npx ng test --no-watch --include="src/app/app.spec.ts"` → the keep-open `#892` spec passes; with the guard deleted it fails (`expected null not to be null`), so it pins the bug rather than merely passing.
+- [x] **AC-7:** Same command → the supersede `#892` spec passes; against the withdrawn URL-equality guard it fails. Removing its chunk gate times the spec out, so its in-flight precondition is real (F-10).
+- [x] **AC-2:** Same command → the `#148` spec passes with its body unchanged (`git diff origin/main...HEAD` shows no edit inside it).
+- [x] **AC-3:** Same command → the `#351` spec passes with its body unchanged.
+- [x] **AC-4:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts find-a-booking.e2e.ts theme-shell.e2e.ts customer-password.e2e.ts touch-targets-tourist.e2e.ts discovery-flow.e2e.ts legal-pages.e2e.ts erasure.e2e.ts` → 49 passed, including the found-code flow and the `#351` account-menu navigation specs.
+- [x] **AC-5:** `frontend/e2e/support/shell.ts` keeps `awaitRoutedPage` exported and used by every opener; its header was restated for F-2 and each claim re-verified against `@angular/router` 22.0.7.
+- [x] **AC-6:** `node scripts/check-inline-comments.mjs --diff origin/main` → clean; the subscription carries the one-line rule.
+- [x] **AC-8 (the widening, F-7):** Same Vitest command → the third `#892` spec passes, holding the theme picker open across a pending navigation to a different route.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
