@@ -249,7 +249,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | review gate — RV-STYLE-1 (`check-inline-comments.mjs --diff origin/main`) | Three multi-line inline comments written by this diff: two in `e2e/fixed-ink-token-recut.e2e.ts` and one in `booking-view.contrast.spec.ts`. Minor | fixed — the two e2e ones shortened to one line, the spec's promoted to TSDoc (exempt); guard re-run clean |
+| F-1 | review gate — RV-STYLE-1 (`check-inline-comments.mjs --diff origin/main`), independently confirmed by CI's `Repo hygiene (diff-scoped)` job failing on `9883e86` | Three multi-line inline comments written by this diff: two in `e2e/fixed-ink-token-recut.e2e.ts` and one in `booking-view.contrast.spec.ts`. Minor | fixed in `44b9c73` — the two e2e ones shortened to one line, the spec's promoted to TSDoc (exempt); guard re-run clean, e2e re-run 8/8 |
 
 ---
 
