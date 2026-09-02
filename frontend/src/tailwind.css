@@ -157,6 +157,12 @@
   --color-riv-photo-chrome: var(--riv-photo-chrome);
   --color-riv-photo-chrome-edge: var(--riv-photo-chrome-edge);
   --color-riv-mode-chip-glass: var(--riv-mode-chip-glass);
+  --color-riv-calendar-glass: var(--riv-calendar-glass);
+  --color-riv-calendar-ink: var(--riv-calendar-ink);
+  --color-riv-calendar-ink-soft: var(--riv-calendar-ink-soft);
+  --color-riv-calendar-ink-faint: var(--riv-calendar-ink-faint);
+  --color-riv-calendar-ink-disabled: var(--riv-calendar-ink-disabled);
+  --color-riv-calendar-hover: var(--riv-calendar-hover);
 
   --shadow-riv-pop: var(--riv-pop-shadow);
   --text-shadow-riv-hero: var(--riv-hero-shadow);
@@ -767,6 +773,33 @@
       where the value is copied (shared/photo-slideshow.contrast.spec.ts imports it from there,
       and is the one spec left doing so). */
   --riv-mode-chip-glass: rgba(255, 255, 255, 0.85);
+
+  /** The availability calendar's popover and the dark-ink ramp it pins (#849, class F).
+      Theme-invariant because the SURFACE is: --riv-calendar-glass is a near-opaque white
+      <dialog> fill on a venue page that themes freely, so the pinning runs fill → ink, the
+      --riv-solid-btn-* direction — declared once here, and a dark override would be the
+      light-on-light drift class F exists to prevent.
+
+      This is the family #849 filed as class T, asking which of --riv-ink, --riv-card-ink or
+      --riv-pop-ink each site wanted, because all three carry #0a2a33. The answer is none of
+      them: they resolve #ffffff / #f2f7fa in dark, which measures under AA on this glass and
+      on every day tint. Following the ticket would have shipped the bug it was written to
+      prevent, invisible in porcelain where all three agree. Measured in
+      shared/fixed-ink-tokens.contrast.spec.ts; reasoning per site in
+      docs/design/colour-literal-token-audit.md.
+
+      --riv-calendar-ink serves TWO surfaces — this glass and the four opaque day tints in
+      testing/calendar-tints.ts, which reads its ink from the same mirror rather than
+      restating the literal. --riv-calendar-ink-disabled merges the nav arrow's old 0.35 with
+      the day cell's 0.4 at the higher-contrast of the two, so the one site that moved moved
+      the safe way (#879's tie-break). --riv-calendar-hover is not an /opacity modifier, so
+      #879's multiple-of-five ladder does not reach it; carried across unmoved. */
+  --riv-calendar-glass: rgba(255, 255, 255, 0.97);
+  --riv-calendar-ink: #0a2a33;
+  --riv-calendar-ink-soft: rgba(12, 42, 51, 0.78);
+  --riv-calendar-ink-faint: rgba(12, 42, 51, 0.72);
+  --riv-calendar-ink-disabled: rgba(12, 42, 51, 0.4);
+  --riv-calendar-hover: rgba(12, 42, 51, 0.07);
 }
 
 [data-riv-theme='riviera'] {

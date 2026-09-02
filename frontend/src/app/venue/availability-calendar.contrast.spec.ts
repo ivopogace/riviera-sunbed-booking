@@ -9,6 +9,10 @@ import {
 } from '../../testing/contrast';
 import { CALENDAR_BAR, CALENDAR_SELECTED, CALENDAR_TINTS } from '../../testing/calendar-tints';
 import {
+  CALENDAR_GLASS,
+  CALENDAR_INK,
+  CALENDAR_INK_FAINT,
+  CALENDAR_INK_SOFT,
   DARK_STOPS,
   PORCELAIN_STOPS,
   RIVIERA_STOPS,
@@ -36,14 +40,20 @@ import {
  * discrimination at all.
  */
 
-/** The popover's own surface: near-opaque white, so the composite barely moves per theme. */
-const POPOVER_GLASS = { color: hexToRgb('ffffff'), alpha: 0.97 };
+/**
+ * The popover's own surface: near-opaque white, so the composite barely moves per theme.
+ *
+ * <p>Since #849 this — and the ink ramp below — are `--riv-calendar-*` tokens rather than
+ * literals, so both are read from `testing/glass-tokens.ts` instead of restated here. A spec that
+ * hand-copies a token's value goes green against a retune it never saw (#835's R-5).
+ */
+const POPOVER_GLASS = CALENDAR_GLASS;
 
 /** The inks the popover chrome sets on that surface: [name, hex, alpha]. */
 const CHROME_INKS: readonly [string, string, number][] = [
-  ['the month heading', '0a2a33', 1],
-  ['the weekday column headers', '0c2a33', 0.72],
-  ['the footer note', '0c2a33', 0.78],
+  ['the month heading', rgbToHex(CALENDAR_INK), 1],
+  ['the weekday column headers', rgbToHex(CALENDAR_INK_FAINT.color), CALENDAR_INK_FAINT.alpha],
+  ['the footer note', rgbToHex(CALENDAR_INK_SOFT.color), CALENDAR_INK_SOFT.alpha],
 ];
 
 const THEMES: readonly [string, readonly Rgb[]][] = [

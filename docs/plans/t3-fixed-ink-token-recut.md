@@ -163,8 +163,8 @@ construction, which AC-5's `toHaveCSS` assertions are what prove.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The day-cell ink is mirrored in `testing/calendar-tints.ts` as a literal; tokenising the markup alone leaves the spec restating a value it no longer reads — #835's R-5, silent staleness | high | med | `CALENDAR_TINTS[].ink` reads the `glass-tokens.ts` mirror; `calendar-tints.ts`'s own doc comment already calls itself the one mirror | claude | open |
-| R-2 | The existing `availability-calendar.contrast.spec.ts` hard-codes `POPOVER_GLASS` and `CHROME_INKS` — the same restatement, one file over | high | med | both read the mirror; the spec keeps its three-theme composite, only its source of values changes | claude | open |
+| R-1 | The day-cell ink is mirrored in `testing/calendar-tints.ts` as a literal; tokenising the markup alone leaves the spec restating a value it no longer reads — #835's R-5, silent staleness | high | med | `CALENDAR_TINTS[].ink` reads the `glass-tokens.ts` mirror; `calendar-tints.ts`'s own doc comment already calls itself the one mirror | claude | closed — phase 0 |
+| R-2 | The existing `availability-calendar.contrast.spec.ts` hard-codes `POPOVER_GLASS` and `CHROME_INKS` — the same restatement, one file over | high | med | both read the mirror; the spec keeps its three-theme composite, only its source of values changes | claude | closed — phase 0 |
 | R-3 | Carrying `.72/.4/.35/.07` and the `0.97` fill beyond the ticket's listed forms grows the diff past what #849 describes | med | low | bounded to **one component's dark-ink ramp**, justified per position in the table above, recorded in the ledger as an `n corrected` note the way every sibling row does | claude | open |
 | R-4 | `0.35 → 0.4` is a real repaint, and a repaint hidden inside a migration is how a slice loses trust | med | med | stated in the plan, asserted as a strict comparison in the guard spec, and named in the ledger row | claude | open |
 | R-5 | Ten new tokens is a large single-declaration surface; one added dark override later silently reverses a theme-invariance claim | med | high | AC-3's `declarationsOf(...)` length-1 assertion per token, plus the base-block assertion — the `stylesheet-tokens.ts` guard pattern | claude | open |
@@ -228,14 +228,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write `fixed-ink-tokens.contrast.spec.ts` red against the
-un-migrated markup, then declare the calendar family in `tailwind.css`.
+**Next action:** Phase 1 — extend the guard spec with the banner family (red), then declare
+`--riv-banner-body-ink` / `--riv-banner-strong-ink` and migrate `booking-view.ts:89,98`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the calendar's fixed-glass ink ramp | | |
+| 0 — the calendar's fixed-glass ink ramp | ✅ | |
 | 1 — the booking-view banner body pair | | |
 | 2 — the two porcelain-pinned console borders | | |
 | 3 — the cross-theme real-render proof (mocked e2e) | | |
@@ -330,6 +330,9 @@ The only seam that can see R-6 and a wrong cascade. Both themes; the operator fa
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-02 | phase 0 | **A class expression naming a `--riv-calendar-*` utility beside a raw colour literal** — #852's third standing check, the half-migrated-ternary shape | `grep -rn 'riv-calendar' src/app --include=*.html --include=*.ts \| grep -E '\[(#\|rgba\()'` | 3 (`availability-calendar.html:8,20,40`) | **none of the three is a violation**: the literals beside the tokens are `rgba(255,255,255,·)` (#853's white border + inset-highlight ramps) and `#0a3f4e` (the nav-arrow / `CALENDAR_TINTS.ring` family). Different colour families, both fenced as Non-goals. The check is about a literal **of the token's own value**; recorded because a reader seeing three hits should not have to re-derive that |
+| 2026-09-02 | phase 0 | **Any other surface painted a near-opaque white fill** — i.e. a sibling of the calendar popover that would want the same fill→ink pinning | `grep -rn '255,255,255,0\.9[0-9]\|255, 255, 255, 0\.9[0-9]' src/app src/tailwind.css` | 1 (`--riv-pop-surface`, `rgba(255,255,255,0.92)`) | **not folded in, and worth the note.** `--riv-pop-surface` is the account/theme popover's surface and it **themes** (dark: `rgba(16,26,46,0.96)`) with `--riv-pop-ink` on it. So the app already has a popover treatment that handles dark correctly, and the fair question is whether the calendar's `<dialog>` should adopt it rather than be pinned light forever. That is a **repaint** — it would turn the calendar dark in the dark theme — not a migration, so it is out of a slice whose whole claim is that no pixel moves. Filed as an adjacent-not-taken in the ledger so the next sweep does not read its absence as an oversight |
+| 2026-09-02 | phase 0 | **Any surviving literal of the migrated values, tree-wide** — the absence half of AC-4, run as a command rather than trusted to the site list | `grep -rnoE '(text\|bg\|border)-\[(#0a2a33\|rgba\(12,42,51,0\.(78\|72\|4\|35\|07)\))\]' src --include=*.ts --include=*.html \| grep -v '\.spec\.ts'` | 1 (`booking-view.ts:89`) | expected — that is phase 1's site. Re-run at the end of phase 2 must return zero |
 
 ---
 

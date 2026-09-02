@@ -442,3 +442,31 @@ export const CLASS_O_TINTS: readonly { readonly token: string; readonly value: s
   /** The beach-map premium cell's boundary, over `--riv-premium-grad`. */
   { token: '--riv-premium-edge', value: '#b47814' },
 ];
+
+/** The availability calendar's own popover surface (`venue/availability-calendar.html:8`) and the
+ *  dark-ink ramp it pins — `--riv-calendar-*` (#849, class F).
+ *
+ *  Theme-invariant because the SURFACE is: a near-opaque white `<dialog>` fill on a host that
+ *  themes freely, so the pinning runs fill → ink, the `--riv-solid-btn-*` direction. This is the
+ *  family #849 filed as class T, proposing `--riv-ink`/`--riv-card-ink`/`--riv-pop-ink` because all
+ *  three carry `#0a2a33`. None of them can: they resolve `#ffffff` and `#f2f7fa` in dark, measured
+ *  at under AA on this glass and on every day tint in
+ *  `shared/fixed-ink-tokens.contrast.spec.ts`.
+ *
+ *  The primary ink serves two surfaces, not one — the popover glass AND the four opaque
+ *  `CALENDAR_TINTS` fills the day cells wear — so `calendar-tints.ts` reads its ink from here
+ *  rather than restating the literal (#835's R-5). One token, proven on both. */
+export const CALENDAR_GLASS: Glass = { color: WHITE, alpha: 0.97 };
+export const CALENDAR_INK: Rgb = INK_DARK;
+export const CALENDAR_INK_SOFT: Glass = { color: CARD_INK, alpha: 0.78 };
+export const CALENDAR_INK_FAINT: Glass = { color: CARD_INK, alpha: 0.72 };
+/** Merged from the nav arrow's 0.35 and the day cell's 0.4 at the HIGHER-contrast of the two, so
+ *  the one site that moves moves the safe way (#879's tie-break). Clears no contrast bar and is
+ *  not required to — every site wearing it is `aria-disabled`, which WCAG 2.2 SC 1.4.3 exempts as
+ *  an inactive component. The incidental clause, NOT non-text-contrast.md rule 2 (that one is
+ *  about a control's chrome, and this is text). Measured either way, both directions, in
+ *  `shared/fixed-ink-tokens.contrast.spec.ts`. */
+export const CALENDAR_INK_DISABLED: Glass = { color: CARD_INK, alpha: 0.4 };
+/** The month-step buttons' hover wash. Not an `/opacity` modifier, so #879's multiple-of-five
+ *  ladder — a rule about class-O alphas — does not reach it; carried across unmoved. */
+export const CALENDAR_HOVER: Glass = { color: CARD_INK, alpha: 0.07 };
