@@ -452,7 +452,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 `JdbcReviews.java` (two `WHERE`s), `ReviewFixtures.java`, `ReviewMigrationIT.java`,
 `VenueRatingRecomputeIT.java`
 
-- [ ] **Step 1: Write the failing tests** — `ReviewFixtures.hide(long reviewId)` sets
+- [x] **Step 1: Write the failing tests** — `ReviewFixtures.hide(long reviewId)` sets
   `hidden_at = now()` by SQL (the fixture, not the port — the port arrives in phase 1);
   `ReviewModerationFlowIT.hiddenReviewsLeaveTheAggregate` seeds 4★, 5★ visible and 1★
   hidden and asserts `summary.summaryFor(venue)` is `RatingSummary(45, 2)`;
@@ -472,12 +472,12 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 ALTER TABLE review ADD COLUMN hidden_at TIMESTAMPTZ NULL;   -- UTC instant (invariant #6)
 ```
 
-- [ ] **Step 2: Run, verify red** — `gradle --no-daemon --console=plain test --tests "*ReviewModerationFlowIT*"` → FAIL (`RatingSummary(37, 3)` — the hidden row still counts)
-- [ ] **Step 3: Minimal implementation** — the migration; `totalsFor`'s `WHERE venue_id = :venue AND hidden_at IS NULL`; `newestListedBefore`'s `WHERE venue_id = :venue AND hidden_at IS NULL AND comment IS NOT NULL AND id < :before`; the `JdbcReviews` Javadoc paragraph rewritten to state where the predicate lives.
-- [ ] **Step 4: Run, verify green** — the two ITs + `ReviewMigrationIT` + `ReviewListingFlowIT` + `ReviewSubmitFlowIT` (the fixture) → PASS
-- [ ] **Step 5: Generalization audit** — population: every SQL statement that reads the `review` table (`grep -rn "FROM review\|UPDATE review\|INTO review" platform/src`) → decide per statement whether it is a *public* read (needs the predicate) or an *own/admin* read (must not).
-- [ ] **Step 6: Commit** — `Hide reviews from the aggregate and the public list by a nullable hidden_at (#814)`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 2: Run, verify red** — `gradle --no-daemon --console=plain test --tests "*ReviewModerationFlowIT*"` → FAIL (`RatingSummary(37, 3)` — the hidden row still counts)
+- [x] **Step 3: Minimal implementation** — the migration; `totalsFor`'s `WHERE venue_id = :venue AND hidden_at IS NULL`; `newestListedBefore`'s `WHERE venue_id = :venue AND hidden_at IS NULL AND comment IS NOT NULL AND id < :before`; the `JdbcReviews` Javadoc paragraph rewritten to state where the predicate lives.
+- [x] **Step 4: Run, verify green** — the two ITs + `ReviewMigrationIT` + `ReviewListingFlowIT` + `ReviewSubmitFlowIT` (the fixture) → PASS
+- [x] **Step 5: Generalization audit** — population: every SQL statement that reads the `review` table (`grep -rn "FROM review\|UPDATE review\|INTO review" platform/src`) → decide per statement whether it is a *public* read (needs the predicate) or an *own/admin* read (must not).
+- [x] **Step 6: Commit** — `Hide reviews from the aggregate and the public list by a nullable hidden_at (#814)`
+- [x] **Step 7: Update Execution status.**
 
 ## Phase 1 — `ReviewModeration`: hide / un-hide / admin list
 
@@ -487,7 +487,7 @@ ALTER TABLE review ADD COLUMN hidden_at TIMESTAMPTZ NULL;   -- UTC instant (inva
 `ReviewModerationFlowIT.java`, the three `FakeReviews`, `WebSliceStubs.java` (only if a
 `Reviews` stub exists there), `vocabulary/package-info.java`
 
-- [ ] **Step 1: Failing tests** — `ReviewModerationServiceTest.hidePublishesOnceAndIsIdempotent`
+- [x] **Step 1: Failing tests** — `ReviewModerationServiceTest.hidePublishesOnceAndIsIdempotent`
   (fake store; first `hide` → `Applied` + one `ReviewsChanged(venue)` captured on a recording
   `ApplicationEventPublisher`; second → `AlreadyApplied`, still one event),
   `unhidePublishesOnceAndIsIdempotent`, `hidingAnUnknownReviewIsNoSuchReview`;
@@ -510,12 +510,12 @@ public interface ReviewModeration {
   SQL: `UPDATE review SET hidden_at = :at WHERE id = :id AND hidden_at IS NULL RETURNING venue_id`
   and the `IS NOT NULL` / `= NULL` mirror.
 
-- [ ] **Step 2: Run, verify red** — `--tests "*ReviewModerationServiceTest*"` → compile failure on the missing port (the honest red for a new seam), then assertion failures.
-- [ ] **Step 3: Minimal implementation** — the service (`@Transactional` on hide/unhide, publishes only on `Optional.isPresent()`), the adapter statements, `ModerationPage.next()` on the `ReviewCursor.after` idiom, `PAGE_SIZE` shared with `ListedReviewsService` by a package-private constant.
-- [ ] **Step 4: Green** — the unit test + `ReviewModerationFlowIT` → PASS; then the structural net (`ModularityTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `JdbcOnlyArchitectureTests`).
-- [ ] **Step 5: Generalization audit** — population: every implementor of `Reviews` (`grep -rn "implements Reviews" platform/src`) updated in this commit.
-- [ ] **Step 6: Commit** — `Hide and un-hide a review through the review module's moderation port (#814)`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 2: Run, verify red** — `--tests "*ReviewModerationServiceTest*"` → compile failure on the missing port (the honest red for a new seam), then assertion failures.
+- [x] **Step 3: Minimal implementation** — the service (`@Transactional` on hide/unhide, publishes only on `Optional.isPresent()`), the adapter statements, `ModerationPage.next()` on the `ReviewCursor.after` idiom, `PAGE_SIZE` shared with `ListedReviewsService` by a package-private constant.
+- [x] **Step 4: Green** — the unit test + `ReviewModerationFlowIT` → PASS; then the structural net (`ModularityTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `JdbcOnlyArchitectureTests`).
+- [x] **Step 5: Generalization audit** — population: every implementor of `Reviews` (`grep -rn "implements Reviews" platform/src`) updated in this commit.
+- [x] **Step 6: Commit** — `Hide and un-hide a review through the review module's moderation port (#814)`
+- [x] **Step 7: Update Execution status.**
 
 ## Phase 2 — the author's fence: `HIDDEN` in the gate, the panel, the amend outcome, the booking page
 
@@ -526,7 +526,7 @@ public interface ReviewModeration {
 `ReviewLifecycleServiceTest`, `ReviewEligibilityServiceTest`, `ReviewControllerTest`, the
 booking-detail DTO test, `review-panel.spec.ts`
 
-- [ ] **Step 1: Failing tests** — `ReviewGateTest.aHiddenReviewReadsAsHiddenEvenPastTheWindow`
+- [x] **Step 1: Failing tests** — `ReviewGateTest.aHiddenReviewReadsAsHiddenEvenPastTheWindow`
   (`stateOf(true, COMPLETED_LONG_AGO, ReviewSlot.HIDDEN, now)` → `HIDDEN`; and inside the
   window → `HIDDEN`); `ReviewLifecycleServiceTest.aHiddenReviewCannotBeEditedOrRemoved`
   (edit → `AmendOutcome.Hidden`, delete → `AmendOutcome.Hidden`, store untouched, no event;
@@ -536,12 +536,12 @@ booking-detail DTO test, `review-panel.spec.ts`
   null; `review-panel.spec.ts` "a hidden review is shown read-only with the removal note"
   (own-review card present, `review-hidden-note` present, no `edit-review` /
   `start-delete-review`).
-- [ ] **Step 2: Red** — `--tests "*ReviewGateTest*"` → compile failure on `ReviewSlot`, then the assertions.
-- [ ] **Step 3: Minimal implementation** — `ReviewGate.stateOf(boolean bookingExists, Instant completedAt, ReviewSlot slot, Instant now)`: unknown → not completed → `slot == HIDDEN` → window → `slot == TAKEN ? ALREADY_REVIEWED : ELIGIBLE`; `Reviews.findFor` → `Optional<StoredReview>`; both services derive the slot from it (`existsFor` retired); the `HIDDEN` arms; `ReviewController.amended` gains `case AmendOutcome.Hidden ignored -> error(CONFLICT, "REVIEW_HIDDEN", "This review has been removed from public view.")`; `BookingDetailView` `"HIDDEN"`; the TS union + `@case ('HIDDEN')` with A-3's copy.
-- [ ] **Step 4: Green** — the five Java test classes + `ReviewSubmitFlowIT` + `ReviewLifecycleFlowIT` (the fixture and the real gate) → PASS; `npm test -- review-panel` → PASS; `npm run lint`, `npm run format:check`.
-- [ ] **Step 5: Generalization audit** — population: every exhaustive `switch` over `ReviewState`, `ReviewPanel`, `AmendOutcome` and every TS site narrowing `reviewPanel.kind` (`grep -rn "ReviewState\.\|case ReviewPanel\.\|AmendOutcome\.\|kind === '" platform/src frontend/src`) — the compiler finds the Java ones; the TS ones are checked by hand (`booking-view.ts`'s outcome narration).
-- [ ] **Step 6: Commit** — `Freeze a hidden review for its author and show it as removed from public view (#814)`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 2: Red** — `--tests "*ReviewGateTest*"` → compile failure on `ReviewSlot`, then the assertions.
+- [x] **Step 3: Minimal implementation** — `ReviewGate.stateOf(boolean bookingExists, Instant completedAt, ReviewSlot slot, Instant now)`: unknown → not completed → `slot == HIDDEN` → window → `slot == TAKEN ? ALREADY_REVIEWED : ELIGIBLE`; `Reviews.findFor` → `Optional<StoredReview>`; both services derive the slot from it (`existsFor` retired); the `HIDDEN` arms; `ReviewController.amended` gains `case AmendOutcome.Hidden ignored -> error(CONFLICT, "REVIEW_HIDDEN", "This review has been removed from public view.")`; `BookingDetailView` `"HIDDEN"`; the TS union + `@case ('HIDDEN')` with A-3's copy.
+- [x] **Step 4: Green** — the five Java test classes + `ReviewSubmitFlowIT` + `ReviewLifecycleFlowIT` (the fixture and the real gate) → PASS; `npm test -- review-panel` → PASS; `npm run lint`, `npm run format:check`.
+- [x] **Step 5: Generalization audit** — population: every exhaustive `switch` over `ReviewState`, `ReviewPanel`, `AmendOutcome` and every TS site narrowing `reviewPanel.kind` (`grep -rn "ReviewState\.\|case ReviewPanel\.\|AmendOutcome\.\|kind === '" platform/src frontend/src`) — the compiler finds the Java ones; the TS ones are checked by hand (`booking-view.ts`'s outcome narration).
+- [x] **Step 6: Commit** — `Freeze a hidden review for its author and show it as removed from public view (#814)`
+- [x] **Step 7: Update Execution status.**
 
 ## Phase 3 — the admin REST edge
 
@@ -549,7 +549,7 @@ booking-detail DTO test, `review-panel.spec.ts`
 `AdminReviewTakedownIT.java` · Modify `SecurityConfig.java`, `WebSliceStubs.java`,
 `EndpointRoleGateCoverageTest.java`, `review/package-info.java`
 
-- [ ] **Step 1: Failing tests** — `AdminReviewTakedownIT` (`@SpringBootTest` + MockMvc, the
+- [x] **Step 1: Failing tests** — `AdminReviewTakedownIT` (`@SpringBootTest` + MockMvc, the
   `AdminPhotoTakedownIT` cast: bootstrap admin, a plain operator provisioned per test,
   `SessionLoginSupport.operatorSession`, `csrf()`): `adminHidesAndUnhides` (list shows
   `hiddenAt` null → `POST …/hide` 204 → list shows `hiddenAt` set and the public
@@ -559,12 +559,12 @@ booking-detail DTO test, `review-panel.spec.ts`
   `hideAndUnhideAreAudited` (two rows: `POST /api/admin/reviews/{id}/hide` with the header's
   sanitized reason, `POST …/unhide` with `reason` null, both `204`, actor the admin username),
   `rejectsANonPositiveCursor`.
-- [ ] **Step 2: Red** — `--tests "*AdminReviewTakedownIT*"` → `404`s (no mapping).
-- [ ] **Step 3: Minimal implementation** — `AdminReviewController` (`@RequestMapping("/api/admin")`, package-private, depends only on `ReviewModeration`; the cursor parse copied from `VenueReadController.reviews`; exhaustive switch over `ModerationOutcome` → `204`/`204`/`404`); `AdminReviewsResponse` (`reviews[]` + `nextCursor`, `stayedIn` as `YYYY-MM`); `SecurityConfig` constants `ADMIN_VENUE_REVIEWS_PATH = "/api/admin/venues/*/reviews"`, `ADMIN_REVIEW_HIDE_PATH = "/api/admin/reviews/*/hide"`, `ADMIN_REVIEW_UNHIDE_PATH = "/api/admin/reviews/*/unhide"` + three `hasRole(ADMIN_ROLE)` matchers; the inert `ReviewModeration` stub; the three `DECLARED_REACHABLE` rows.
-- [ ] **Step 4: Green** — the IT + `AdminSurfaceRoleGateTest` + `EndpointRoleGateCoverageTest` + `AdminAuditTrailIT` + `ErrorContractArchitectureTests` + the structural net → PASS.
-- [ ] **Step 5: Generalization audit** — population: every `@WebMvcTest` slice that boots the full controller set (`grep -rln "WebSliceStubs" platform/src/test`) boots green with the new stub — run two (`VenueReviewsControllerTest`, `ReviewControllerTest`).
-- [ ] **Step 6: Commit** — `Serve the admin review list and the hide/un-hide takedown under /api/admin (#814)`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 2: Red** — `--tests "*AdminReviewTakedownIT*"` → `404`s (no mapping).
+- [x] **Step 3: Minimal implementation** — `AdminReviewController` (`@RequestMapping("/api/admin")`, package-private, depends only on `ReviewModeration`; the cursor parse copied from `VenueReadController.reviews`; exhaustive switch over `ModerationOutcome` → `204`/`204`/`404`); `AdminReviewsResponse` (`reviews[]` + `nextCursor`, `stayedIn` as `YYYY-MM`); `SecurityConfig` constants `ADMIN_VENUE_REVIEWS_PATH = "/api/admin/venues/*/reviews"`, `ADMIN_REVIEW_HIDE_PATH = "/api/admin/reviews/*/hide"`, `ADMIN_REVIEW_UNHIDE_PATH = "/api/admin/reviews/*/unhide"` + three `hasRole(ADMIN_ROLE)` matchers; the inert `ReviewModeration` stub; the three `DECLARED_REACHABLE` rows.
+- [x] **Step 4: Green** — the IT + `AdminSurfaceRoleGateTest` + `EndpointRoleGateCoverageTest` + `AdminAuditTrailIT` + `ErrorContractArchitectureTests` + the structural net → PASS.
+- [x] **Step 5: Generalization audit** — population: every `@WebMvcTest` slice that boots the full controller set (`grep -rln "WebSliceStubs" platform/src/test`) boots green with the new stub — run two (`VenueReviewsControllerTest`, `ReviewControllerTest`).
+- [x] **Step 6: Commit** — `Serve the admin review list and the hide/un-hide takedown under /api/admin (#814)`
+- [x] **Step 7: Update Execution status.**
 
 ## Phase 4 — the admin Reviews tab, the mocked journey, docs
 
@@ -576,7 +576,7 @@ booking-detail DTO test, `review-panel.spec.ts`
 `RESPONSIBILITIES.md`, `CONTEXT.md`,
 `CLAUDE.md`, `q1-admin-console-tab-ia.md`
 
-- [ ] **Step 1: Failing tests** — `admin-reviews.spec.ts`: renders a venue's rows with the
+- [x] **Step 1: Failing tests** — `admin-reviews.spec.ts`: renders a venue's rows with the
   hidden chip on the hidden one; hide requires the confirmation and passes the typed reason
   to `hide(id, reason)`; does not carry a reason into the next hide; un-hide calls
   `unhide(id)` with no confirmation; after either the row re-renders from the server's
@@ -589,13 +589,13 @@ booking-detail DTO test, `review-panel.spec.ts`
   local map; `/api/venues/7` and `/api/venues/7/reviews` derived from the same map so the
   public surfaces move) — the AC-11 journey with axe at list / confirm / notice, the
   signed-out visitor, the failure leg, computed CSS on the hidden chip.
-- [ ] **Step 2: Red** — `npm test -- admin-reviews` → module not found; the e2e → tab missing.
-- [ ] **Step 3: Minimal implementation** — FE-1..FE-7 per the Angular section.
-- [ ] **Step 4: Green** — `npm test` (touched specs + the a11y suite), `npm run lint`, `npm run format:check`, `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts admin-reviews admin-console-tabs touch-targets-admin admin-venue-photos review-lifecycle` → PASS; `node scripts/check-touch-target.mjs --files …`, `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [ ] **Step 5: Generalization audit** — population: every e2e helper that mocks the whole admin console on mount (`grep -rln "mockWholeAdminConsole\|/api/admin/venues" frontend/e2e`) carries the reviews read.
-- [ ] **Step 6: Docs** — RESPONSIBILITIES §review (moderation state, the predicate landed in the two named `WHERE`s, the author's fence, the admin surface and why it is module-hosted, the `Shipped` line), CONTEXT.md, CLAUDE.md row, the tab-IA order.
-- [ ] **Step 7: Commit** — `Add the admin Reviews tab: hide and un-hide with grounds, and cover the takedown end to end (#814)`
-- [ ] **Step 8: Update Execution status**; merge `origin/main`; mark the PR ready for review → the gates (`references/pr-gates.md`).
+- [x] **Step 2: Red** — `npm test -- admin-reviews` → module not found; the e2e → tab missing.
+- [x] **Step 3: Minimal implementation** — FE-1..FE-7 per the Angular section.
+- [x] **Step 4: Green** — `npm test` (touched specs + the a11y suite), `npm run lint`, `npm run format:check`, `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts admin-reviews admin-console-tabs touch-targets-admin admin-venue-photos review-lifecycle` → PASS; `node scripts/check-touch-target.mjs --files …`, `node scripts/check-plan-file-structure.mjs --diff origin/main`.
+- [x] **Step 5: Generalization audit** — population: every e2e helper that mocks the whole admin console on mount (`grep -rln "mockWholeAdminConsole\|/api/admin/venues" frontend/e2e`) carries the reviews read.
+- [x] **Step 6: Docs** — RESPONSIBILITIES §review (moderation state, the predicate landed in the two named `WHERE`s, the author's fence, the admin surface and why it is module-hosted, the `Shipped` line), CONTEXT.md, CLAUDE.md row, the tab-IA order.
+- [x] **Step 7: Commit** — `Add the admin Reviews tab: hide and un-hide with grounds, and cover the takedown end to end (#814)`
+- [x] **Step 8: Update Execution status**; merge `origin/main`; mark the PR ready for review → the gates (`references/pr-gates.md`).
 
 ---
 
