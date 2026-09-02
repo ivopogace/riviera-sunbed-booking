@@ -229,19 +229,27 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR #886 — review gate RUN (5 findings, 4 fixed, 1 not upheld); awaiting CI on 6d1691e, then the Sonar gate`
+**Stage pointer:** `DONE — all gates passed; merged via PR #886`
 
-**Next action:** When CI on `6d1691e` is green, run the Sonar gate — pull the new-issue and
-duplication list from the API (project `ivopogace_riviera-sunbed-booking`, `pullRequest=886`),
-confirm an analysis actually exists before believing a zero, and clear every entry.
+**Next action:** None — merge `PR #886`. CI green (8/8 on `f3cf0b5`), review gate run, Sonar
+gate green with its list pulled and empty.
+
+**Sonar gate (PR #886).** Pulled from the API rather than read off the badge, per
+`pr-gates.md` §2: `new_lines` **102** (so an analysis exists — the precondition that separates a
+clean PR from an unanalyzed one), issues **0**, security hotspots to review **0**, `new_coverage`
+**100.0%**, `new_duplicated_lines_density` **0.0%**, `new_duplicated_blocks` **0**, and the
+`SonarCloud Code Analysis` check-run `success`. Nothing to clear. The recurring `css:S7924`
+false positive this repo sees on translucent glass did not fire: the new alpha inks are declared
+as custom properties, not in a rule the analyzer can pair with a background.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the calendar's fixed-glass ink ramp | ✅ | |
-| 1 — the booking-view banner body pair | ✅ | |
-| 2 — the two porcelain-pinned console borders | ✅ | |
-| 3 — the cross-theme real-render proof (mocked e2e) | ✅ | |
-| 4 — ledger re-cut + close-out | ✅ | |
+| 0 — the calendar's fixed-glass ink ramp | ✅ | `371b802` |
+| 1 — the booking-view banner body pair | ✅ | `459d143` |
+| 2 — the two porcelain-pinned console borders | ✅ | `4b69714` |
+| 3 — the cross-theme real-render proof (mocked e2e) | ✅ | `f8a4d57` |
+| 4 — ledger re-cut + close-out | ✅ | `dd66bf2`, `159cca4`, `9883e86` |
+| review-gate fixes (F-1..F-5) | ✅ | `44b9c73`, `a4fc22a`, `6d1691e`, `f3cf0b5` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -374,7 +382,7 @@ The only seam that can see R-6 and a wrong cascade. Both themes; the operator fa
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [x] **Close-out written in THIS PR** — this commit is the plan doc's final state, citing `merged via PR #886`.
 - [x] **The review gate ran in full** — `code-review` plugin (rung 1) + `riviera-review-overlay`; five findings recorded below, four fixed and one examined and not upheld. Result comment: PR #886 issuecomment-5504828636.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
