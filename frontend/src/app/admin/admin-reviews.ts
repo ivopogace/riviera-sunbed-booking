@@ -375,10 +375,10 @@ export class AdminReviews {
         this.focusAfterRender(`admin-review-${entry.id}`);
       });
     } catch {
-      this.reportOnlyIfStillViewing(venue, () => {
-        this.notice.set('Could not un-hide the review. Nothing was changed.');
-        this.focusAfterRender('admin-reviews-notice');
-      });
+      // Nothing was destroyed: the pressed button survives, so focus stays and the status announces.
+      this.reportOnlyIfStillViewing(venue, () =>
+        this.notice.set('Could not un-hide the review. Nothing was changed.'),
+      );
     } finally {
       this.busy.set(false);
     }

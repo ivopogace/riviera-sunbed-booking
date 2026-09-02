@@ -364,6 +364,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-1 | review (prior-PR carry-over walker) | `admin-console-tabs.spec.ts` was not extended for the new tab — no `admin/reviews` route in its router config, no `href` pin, no "marks Reviews as current" case, which every prior tab addition (#511, #507, #460) added | fixed — all three added |
 | F-2 | review (prior-PR carry-over walker) | `app.spec.ts`'s `ADMIN_TAB_CHILD_PATHS` enumeration lacked `reviews`, so the structural guard never checked the new route's `adminTab` data | fixed — `'reviews'` added |
 | F-4 | CI (frontend job, head `0922fbd`) | `admin-privacy.e2e.ts` pins the strip's last three labels as `Photos, Privacy, Audit` — the Reviews tab now sits between | fixed — `Reviews, Privacy, Audit`, slot 8 |
+| F-5 | review (comment-compliance walker) | `AdminSurfaceRoleGateTest`'s anchor Javadoc counted five entries across five owners and promised "a new admin endpoint needs no edit here" — this PR added a sixth anchor for the `review` module | fixed — six across six, and the sentence now says a module's *first* admin surface adds one |
+| F-6 | review (overlay RV-FE-9 spirit, Minor) | a failed un-hide moved focus onto the notice although the pressed Un-hide button survives — only the hide leg destroys its control | fixed — the un-hide failure keeps focus where it is and lets the `role=status` region announce; `admin-reviews.spec.ts` pins it |
 | F-3 | review (git-history walker) | `q1-admin-console-tab-ia.md`'s summary sentence ("filtering the eight … five shipped tabs") contradicted the table it summarizes once the Reviews row landed | fixed — the paragraph is dated to decision time with a note naming the later row |
 
 ---

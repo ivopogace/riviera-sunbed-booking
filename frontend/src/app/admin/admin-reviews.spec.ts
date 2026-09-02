@@ -256,6 +256,22 @@ describe('AdminReviews', () => {
     expect(document.activeElement).toBe(byTestId(fixture, 'admin-reviews-notice'));
   });
 
+  it('keeps focus on Un-hide when an un-hide fails — the control survives, the status narrates', async () => {
+    const service = serviceStub();
+    service.unhide.mockRejectedValue(new Error('nope'));
+    const fixture = await render(authStub(), service);
+    await pickVenue(fixture, 7);
+
+    const button = byTestId<HTMLButtonElement>(fixture, 'admin-review-unhide-30')!;
+    button.focus();
+    click(fixture, 'admin-review-unhide-30');
+    await settle(fixture);
+
+    expect(byTestId(fixture, 'admin-review-hidden-30')).not.toBeNull();
+    expect(byTestId(fixture, 'admin-reviews-notice')?.textContent).toContain('Could not un-hide');
+    expect(document.activeElement).toBe(byTestId(fixture, 'admin-review-unhide-30'));
+  });
+
   it('appends the next page behind Show more and drops the control on the last page', async () => {
     const service = serviceStub();
     service.reviews.mockImplementation((_venueId: number, cursor?: number) =>
