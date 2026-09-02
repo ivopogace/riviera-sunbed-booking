@@ -139,7 +139,11 @@ describe('VenueMap', () => {
     httpMock = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => httpMock.verify());
+  afterEach(() => {
+    // The review section is its own component with its own request; its states are its own spec's.
+    httpMock.match((req) => req.url.endsWith('/reviews'));
+    httpMock.verify();
+  });
 
   /**
    * Settle pending renders after flushing the booking dialog's pre-reserve terms quote (#795) —
@@ -1522,7 +1526,11 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
     httpMock = TestBed.inject(HttpTestingController);
   }
 
-  afterEach(() => httpMock.verify());
+  afterEach(() => {
+    // The review section is its own component with its own request; its states are its own spec's.
+    httpMock.match((req) => req.url.endsWith('/reviews'));
+    httpMock.verify();
+  });
 
   /** The suite-level settle(), rebound to this block's own fixture/httpMock pair. */
   async function settle(): Promise<void> {

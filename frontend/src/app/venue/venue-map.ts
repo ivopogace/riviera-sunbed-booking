@@ -31,6 +31,7 @@ import { routeIdParam } from '../shared/parent-venue-id';
 import { spotLabel, tierSentenceLabel } from '../shared/set-label';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { AvailabilityCalendar } from './availability-calendar';
+import { VenueReviews } from './venue-reviews';
 import { VenueService } from './venue.service';
 
 import { TouchTarget } from '../shared/touch-target';
@@ -106,6 +107,7 @@ interface VenueHeader {
   selector: 'app-venue-map',
   imports: [
     BookingDialog,
+    VenueReviews,
     RetryButton,
     PanelGlass,
     PhotoGalleryGrid,

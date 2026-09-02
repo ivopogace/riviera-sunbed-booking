@@ -167,3 +167,25 @@ export interface VenueSummary {
  * feature-to-feature import is exactly the edge RV-FE-8 freezes.
  */
 export type PhotoSlotKey = 'cover' | 'sunbeds' | 'bar';
+
+/**
+ * One listed review on the venue page (`GET /api/venues/{id}/reviews`). `stayedIn` is an ISO
+ * year-month (`2026-07`) and never a day; `displayName` is `null` only for a row written before
+ * display names were required, which the section attributes to "A guest".
+ */
+export interface VenueReviewEntry {
+  readonly id: number;
+  readonly stars: number;
+  readonly displayName: string | null;
+  readonly stayedIn: string;
+  readonly comment: string;
+}
+
+/**
+ * One page of a venue's listed reviews, newest first. `nextCursor` is passed back as the
+ * `cursor` param for the next older page; `null` ends the list.
+ */
+export interface VenueReviewsPage {
+  readonly reviews: readonly VenueReviewEntry[];
+  readonly nextCursor: number | null;
+}

@@ -3,7 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
-import { DailyAvailability } from '../shared/venue-views';
+import { DailyAvailability, VenueReviewsPage } from '../shared/venue-views';
 import { VenueService } from './venue.service';
 
 /**
@@ -24,6 +24,44 @@ describe('VenueService', () => {
   });
 
   afterEach(() => httpMock.verify());
+
+  describe('reviews', () => {
+    it('asks the reviews path with no cursor for the first page', () => {
+      service.reviews(7).subscribe();
+
+      const request = httpMock.expectOne(
+        (req) => req.url === `${environment.apiBaseUrl}/api/venues/7/reviews`,
+      );
+
+      expect(request.request.method).toBe('GET');
+      expect(request.request.params.has('cursor')).toBe(false);
+      request.flush({ reviews: [], nextCursor: null });
+    });
+
+    it('passes the cursor back as the cursor param for a later page', () => {
+      service.reviews(7, 41).subscribe();
+
+      const request = httpMock.expectOne((req) => req.url.endsWith('/api/venues/7/reviews'));
+
+      expect(request.request.params.get('cursor')).toBe('41');
+      request.flush({ reviews: [], nextCursor: null });
+    });
+
+    it('passes the page through untouched', () => {
+      const body: VenueReviewsPage = {
+        reviews: [{ id: 41, stars: 4, displayName: 'Ana', stayedIn: '2026-07', comment: 'Great' }],
+        nextCursor: 41,
+      };
+      let received: VenueReviewsPage | undefined;
+
+      service.reviews(7).subscribe((page) => {
+        received = page;
+      });
+      httpMock.expectOne((req) => req.url.endsWith('/api/venues/7/reviews')).flush(body);
+
+      expect(received).toEqual(body);
+    });
+  });
 
   describe('availabilityCalendar', () => {
     it('asks the calendar path for the caller-chosen inclusive window', () => {

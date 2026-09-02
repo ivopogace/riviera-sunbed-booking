@@ -1,4 +1,4 @@
-import { isRated, ratingScore, reviewsLabel } from './rating';
+import { isRated, ratingScore, reviewsLabel, starGlyphs, starsOutOfFive } from './rating';
 
 describe('rating helpers', () => {
   describe('isRated', () => {
@@ -34,5 +34,19 @@ describe('reviewsLabel', () => {
 
   it('is plural at zero, which no rated surface renders anyway', () => {
     expect(reviewsLabel(0)).toBe('0 reviews');
+  });
+});
+
+describe('starGlyphs', () => {
+  it('fills the given stars and leaves the rest hollow, five in all', () => {
+    expect(starGlyphs(4)).toBe('★★★★☆');
+    expect(starGlyphs(1)).toBe('★☆☆☆☆');
+    expect(starGlyphs(5)).toBe('★★★★★');
+  });
+});
+
+describe('starsOutOfFive', () => {
+  it('names the rating the way the review panel announces it', () => {
+    expect(starsOutOfFive(4)).toBe('4 out of 5 stars');
   });
 });

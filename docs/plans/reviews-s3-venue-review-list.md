@@ -160,9 +160,9 @@ panel's existing spec.)
 | R-3 | The exact stay day leaks (privacy: the issue mandates month/year only) | low | med | Reduced to `YearMonth` in `JdbcReviews`'s row mapper — no published type carries a `LocalDate`; wire field `stayedIn: "YYYY-MM"`; `VenueReviewsControllerTest.servesTheStayAsYearMonthOnly` asserts the shape | agent | **closed (phases 1–2)** — `ListedReview.stayedIn` is a `YearMonth`, the wire carries `2026-07` and no `stayDate` field |
 | R-4 | V47 backfill: a production `review` row with no matching booking date | very low | high | `booking_id` is a `NOT NULL` FK, so the `UPDATE … FROM booking` join covers every row; `SET NOT NULL` afterwards fails the migration loudly rather than shipping a null. `ReviewMigrationIT.requiresAStayDate` pins the constraint | agent | **closed (phase 0)** — V47 backfills then locks; the constraint test is green |
 | R-5 | Widening `CompletedStay` (the `spi` vocabulary) breaks `booking`'s adapter and the two service-test fakes | high | low | Same phase (0): `JdbcCompletedStays` selects `booking_date`; both fakes rebuilt; `Reviews.claim` deepens to `claim(CompletedStay, ReviewSubmission, Instant)` so no caller threads a seventh parameter | agent | **closed (phase 0)** — every constructor/implementor found by the audit below was updated in the same commit; 70 review + recompute tests green |
-| R-6 | `venue-map.spec.ts` / `venue-map.a11y.spec.ts` fail on `httpMock.verify()` because the embedded child now issues a `/reviews` request | high | low | Drain it: `httpMock.match((r) => r.url.endsWith('/reviews'))` before `verify()` in both `afterEach`s; the child's own specs cover its states | agent | open |
+| R-6 | `venue-map.spec.ts` / `venue-map.a11y.spec.ts` fail on `httpMock.verify()` because the embedded child now issues a `/reviews` request | high | low | Drain it: `httpMock.match((r) => r.url.endsWith('/reviews'))` before `verify()` in both `afterEach`s; the child's own specs cover its states | agent | **closed (phase 3)** — three `afterEach` sites drain it; 165 tests green across the touched specs |
 | R-7 | Legacy mocked e2e specs that render `/venues/1` without a `/reviews` mock now show the section's failure state; the touch-target sweep never sees the "Show more" button | med | low | The failure state is quiet (one line + the shared retry button, itself `[appTouchTarget]`); `touch-targets-tourist.e2e.ts`'s venue-detail case gains a two-page mock so the sweep measures the control | agent | open |
-| R-8 | "Show more" removes itself after the last page → focus stranded on `<body>` (WCAG 2.4.3, RV-FE-9) | high | med | `focusMover()` to the first newly-appended entry whenever the control leaves; pinned in `venue-reviews.spec.ts` and the e2e | agent | open |
+| R-8 | "Show more" removes itself after the last page → focus stranded on `<body>` (WCAG 2.4.3, RV-FE-9) | high | med | `focusMover()` to the first newly-appended entry whenever the control leaves; pinned in `venue-reviews.spec.ts` and the e2e | agent | **closed (phase 3)** — the last-page and retry cases both move focus onto the first new `<li>` (`document.activeElement` pinned); the e2e re-proves it in phase 4 |
 | R-9 | Dropping `review_venue_id_idx` slows the aggregate recompute | low | low | The replacement `(venue_id, id)` composite serves `WHERE venue_id = ?` through its prefix; the old index becomes a duplicate prefix (`postgres` index-optimization) | agent | **closed (phase 0)** — `review_venue_listing_idx (venue_id, id)` replaces it in V47; `VenueRatingRecomputeIT` green |
 | R-10 | Error-contract drift on the new 4xx paths (§6b) | low | med | `InvalidApiRequestException` for a non-positive cursor; the binder's own `400` for a malformed one (the calendar read's `rejectsAMalformedDate` precedent); `404` via `ResponseEntity.notFound()`; `ErrorContractArchitectureTests` stays green | agent | **closed (phase 2)** — `rejectsANonPositiveCursor` reads `INVALID_REQUEST`, `rejectsAMalformedCursor` is a `400`, the architecture test is green |
 | R-11 | `WebSliceStubs` lacks the new `ListVenueReviews` port → every `@WebMvcTest` slice fails to boot | high | low | Phase 2 adds the inert stub together with the controller; `EndpointRoleGateCoverageTest.DECLARED_REACHABLE` gains the route | agent | **closed (phase 2)** — stub + coverage row landed with the controller; the calendar and role-gate slices boot green |
@@ -360,16 +360,16 @@ the entries are star rows, not a score.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** phase 3 — red on `venue-reviews.spec.ts`, `rating.spec.ts`, `stay-month.spec.ts`, `venue.service.spec.ts`. Draft PR: #897.
+**Next action:** phase 4 — the mocked e2e journey `frontend/e2e/venue-reviews.e2e.ts`, the touch-target sweep's reviews mock, the substrate docs. Draft PR: #897.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V47 stay date through the claim | ✅ | `Store the stay date on the review row, backfilled from the booking (#813)` |
 | 1 — `review.api.ListedReviews` + the keyset read | ✅ | `Publish a cursor page of a venue's listed reviews from the review module (#813)` |
 | 2 — `venue`: fence, endpoint, DTO, edge rows | ✅ | `Serve a venue's listed reviews publicly behind the tourist-visibility fence (#813)` |
-| 3 — frontend: `app-venue-reviews` on the venue page | | |
+| 3 — frontend: `app-venue-reviews` on the venue page | ✅ | `Render a venue's guest reviews below the beach map with a Show-more cursor (#813)` |
 | 4 — mocked e2e, touch-target coverage, docs, close-out prep | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -744,6 +744,8 @@ Modify `shared/rating.ts` + spec, `shared/venue-views.ts`, `booking/review-panel
 | 2026-09-02 | phase 0 — `CompletedStay` widened, `Reviews.claim`/`update` reshaped, `stay_date NOT NULL` | every constructor of `CompletedStay`, every implementor/caller of `Reviews.claim`/`update`, every raw `INSERT INTO review` | `grep -rn "new CompletedStay(\|reviews\.claim(\|reviews\.update(\|INSERT INTO review\b" platform/src` | `JdbcCompletedStays`, `ReviewLifecycleService`, `JdbcReviews`, the two service-test fakes, `ReviewMigrationIT`, `VenueRatingRecomputeIT`, `FixtureJdbcReviews` | all updated except `FixtureJdbcReviews` — an architecture-test token fixture that never executes its SQL |
 | 2026-09-02 | phase 1 — the listing `WHERE` is where the future visibility predicate lands | every SQL statement against `review` in production code | `grep -rn "FROM review\|INTO review" platform/src/main` | `JdbcReviews` only (claim, update, delete, findFor, totalsFor, existsFor, newestListedBefore) | no code change; the adapter Javadoc names `newestListedBefore` and `totalsFor` as the predicate's two homes (A-2) |
 | 2026-09-02 | phase 2 — a public `GET /api/venues/{venueId}/…` read added | every tourist read mapping on the venue module's public controller | `grep -n "GetMapping" platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueReadController.java` | `listVenues`, `getVenue`, `availabilityCalendar`, `reviews` | the three existing reads fence through `VenueCatalog`'s adapter; the new one fences in its own service — same rule, no further change |
+| 2026-09-02 | phase 3 — a star-glyph helper needed outside `booking/` | every private star-glyph builder | `grep -rn "'★'.repeat" frontend/src` | `booking/review-panel.ts` (one) | promoted to `shared/rating.ts` as `starGlyphs` + `starsOutOfFive`; the panel imports them, its spec unchanged and green |
+| 2026-09-02 | phase 3 — a second `app-load-announcer` on the venue page | every strict `load-announcer` locator | `grep -rn "load-announcer" frontend/src frontend/e2e` | `venue-map.spec.ts` (identity check), `loading-announcements.e2e.ts` (strict `getByTestId`) | the section carries its own `role="status"` region (`venue-reviews-status`) instead, so the page keeps exactly one load announcer |
 
 ---
 
