@@ -78,6 +78,14 @@ states the decisions and traps the code can't show you.
      the `prefers-reduced-motion` guard.
    - Gradient CSS-var background = `bg-(image:--riv-photo-grad)`; bare `bg-(--x)` is a *color*.
    - `host: { style: '--foo: …' }` for a static custom property that drives layout.
+6. **The focus indicator has one baseline, and no control turns it off.** Every
+   `button:focus-visible` gets the 3px `--riv-accent-ink` ring from the `@layer base` rule in
+   `src/tailwind.css`, so a button carries `focus-visible:` utilities only to change the
+   colour (a host that does not theme: `outline-white` on fixed dark, `outline-current` on the
+   fixed-white sign-out bar) or the offset (an inset ring inside an `overflow-hidden` clip).
+   Never `outline-none`, `outline-hidden`, `outline-0` or `[outline:none]` on a control —
+   `app/shared/focus-ring-baseline.spec.ts` fails the build naming the path. Keep the rule
+   inside `@layer base`. Rationale: `docs/plans/focus-ring-baseline.md`, issue #890.
 
 ## Icons — inline SVG, shared as a component
 
@@ -208,6 +216,7 @@ way. Checklist: `references/scss-migration.md`.
 | "This control can't be 44 px, the layout won't allow it." | Then the layout is the bug. `data-touch-exempt` is for inline prose links, third-party iframes and box-less controls. |
 | "`check-touch-target` is green, so the floor holds." | It only proves someone declared something. It never measures a box, and never looks at `<a>`. |
 | "`bg-(--riv-photo-grad)` for the gradient." | That's a color. Use `bg-(image:--riv-photo-grad)`. |
+| "`outline-none`, I'll draw my own focus state." | The baseline ring is the only indicator many buttons have; the guard fails on a control. Override its colour or offset with `focus-visible:` utilities instead. |
 
 ## When NOT to use
 

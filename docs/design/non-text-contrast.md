@@ -132,8 +132,11 @@ hover-capability query, which its 1.4.11 ground rests on (#887)" reads the condi
 compiled stylesheet. (Beware the near-miss: a bare, ungated `.bg-riv-console-btn-hover` rule exists
 beside it, because Tailwind's extractor reads the undecorated candidate out of the same class
 string. It wears nothing and paints no state; a sweep that matched it would prove the opposite of
-what it looked like.) The button's focus indicator is a separate question, and today an unstyled
-one — named here so a later slice finds the gap written down rather than implied away. And the separation is
+what it looked like.) The button's focus indicator is a separate question, settled by
+[#890](https://github.com/ivopogace/riviera-sunbed-booking/issues/890): every `<button>` paints the
+project's 3px `--riv-accent-ink` ring from the `@layer base` rule in `tailwind.css`, this one
+included, so the indicator is no longer the user-agent default (guard:
+`app/shared/focus-ring-baseline.spec.ts`; render: `e2e/focus-ring-baseline.e2e.ts`). And the separation is
 not an outlier this project has never accepted: it is at least that of `--riv-solid-btn-fill` →
 `--riv-solid-btn-hover`, the settled family two rows up. That comparison is asserted, not
 asserted-here — `app/shared/fixed-ink-tokens.contrast.spec.ts` › "separates from its resting fill

@@ -35,3 +35,22 @@ export function declarationsOf(name: string): readonly string[] {
   const pattern = new RegExp(String.raw`^[ \t]*${name}:\s*([^;]+);`, 'gm');
   return [...STYLESHEET.matchAll(pattern)].map((match) => match[1].trim());
 }
+
+/**
+ * The `@layer base { … }` block, where the stylesheet's element defaults live. Brace-counted,
+ * because the block nests rules; throws rather than matching nothing if the block is missing.
+ */
+export function baseLayerBlock(): string {
+  const open = STYLESHEET.indexOf('\n@layer base {');
+  if (open === -1) {
+    throw new Error('src/tailwind.css declares no `@layer base` block');
+  }
+  let depth = 0;
+  for (let i = STYLESHEET.indexOf('{', open); i < STYLESHEET.length; i++) {
+    if (STYLESHEET[i] === '{') depth++;
+    if (STYLESHEET[i] === '}' && --depth === 0) {
+      return STYLESHEET.slice(open, i + 1);
+    }
+  }
+  throw new Error('src/tailwind.css leaves its `@layer base` block unclosed');
+}

@@ -31,7 +31,7 @@ import { TouchTarget } from './touch-target';
       <button
         type="button"
         appTouchTarget
-        class="relative col-span-2 row-span-2 block h-full w-full cursor-zoom-in overflow-hidden bg-(image:--riv-photo-grad)"
+        class="relative col-span-2 row-span-2 block h-full w-full cursor-zoom-in overflow-hidden bg-(image:--riv-photo-grad) focus-visible:-outline-offset-[3px] focus-visible:outline-white"
         data-testid="gallery-photo-0"
         [attr.aria-label]="tileLabel(0)"
         (click)="opened.emit(0)"
@@ -56,7 +56,7 @@ import { TouchTarget } from './touch-target';
         <button
           type="button"
           appTouchTarget
-          class="relative col-start-3 row-start-1 block h-full w-full cursor-zoom-in overflow-hidden bg-(image:--riv-photo-grad)"
+          class="relative col-start-3 row-start-1 block h-full w-full cursor-zoom-in overflow-hidden bg-(image:--riv-photo-grad) focus-visible:-outline-offset-[3px] focus-visible:outline-white"
           [class.row-span-2]="!photos()[2]"
           data-testid="gallery-photo-1"
           [attr.aria-label]="tileLabel(1)"
@@ -81,7 +81,7 @@ import { TouchTarget } from './touch-target';
         <button
           type="button"
           appTouchTarget
-          class="relative col-start-3 row-start-2 block h-full w-full cursor-zoom-in overflow-hidden bg-(image:--riv-photo-grad)"
+          class="relative col-start-3 row-start-2 block h-full w-full cursor-zoom-in overflow-hidden bg-(image:--riv-photo-grad) focus-visible:-outline-offset-[3px] focus-visible:outline-white"
           data-testid="gallery-photo-2"
           [attr.aria-label]="tileLabel(2)"
           (click)="opened.emit(2)"

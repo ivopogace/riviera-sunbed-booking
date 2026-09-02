@@ -69,4 +69,16 @@ describe('PhotoGalleryGrid', () => {
       expect(img.classList.contains('object-cover')).toBe(false);
     }
   });
+
+  it('paints its focus ring inside the clipped tile, in white over the photo', () => {
+    create(['/a', '/b', '/c']);
+
+    for (const index of [0, 1, 2]) {
+      const tile = el().querySelector(`[data-testid="gallery-photo-${index}"]`)!;
+      expect(tile.classList.contains('focus-visible:-outline-offset-[3px]'), `tile ${index}`).toBe(
+        true,
+      );
+      expect(tile.classList.contains('focus-visible:outline-white'), `tile ${index}`).toBe(true);
+    }
+  });
 });
