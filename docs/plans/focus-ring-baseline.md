@@ -200,14 +200,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan — doc committed; opening the draft PR`
+**Stage pointer:** `implement (phase 1)` — draft PR #895 open
 
-**Next action:** Phase 0 — write `focus-ring-baseline.spec.ts` red, then the `@layer base` rule.
+**Next action:** Phase 1 — gallery spec red, `e2e/focus-ring-baseline.e2e.ts` red, then the tile utilities.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — guard spec + `@layer base` rule | | |
-| 1 — gallery inset ring + mocked e2e | | |
+| 0 — guard spec + `@layer base` rule | ✅ | recorded at the Phase 1 commit |
+| 1 — gallery inset ring + mocked e2e | ⏳ | |
 | 2 — docs: design note, ledger row, skill rule, CLAUDE.md bullet | | |
 | 3 — merge main, ready-for-review, review + Sonar gates | | |
 
@@ -420,6 +420,7 @@ the merge close-out §3.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-02 | Phase 0 — the base rule paints an offset-2 ring, which an `overflow-hidden` ancestor clips | buttons inside an `overflow-hidden` ancestor; enumerated by file, then each host read for what it actually encloses | `grep -rln overflow-hidden frontend/src/app --include=*.ts --include=*.html \| grep -v spec` → 12 files, then `<button` lines per file | `app.html` (the clipped box is the `z-[-1]` background layer, no button inside) · `venue-map.html` (photo-band button already inset; set tiles carry their own ring) · `availability-calendar.html` (a 3px bar inside the button) · `booking-dialog.ts`, `home.html`, `photo-lightbox.ts` (explicit sites, absolutely-positioned ≥6px from the clipped edge) · `payouts-tab.html` (both clipped cards enclose skeletons/rows, not the two buttons) · `admin-venue-photos.ts` (clips only the `<img>`) · `payout-statement.ts` (Close sits in a `px-6 py-4` header; a 5px ring fits) · **`photo-gallery-grid.ts`: three `h-full w-full` tiles flush to a `rounded-[26px] overflow-hidden` grid — clipped** | fix the gallery grid at the primitive (Phase 1); nothing else |
 
 ---
 

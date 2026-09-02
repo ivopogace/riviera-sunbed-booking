@@ -970,6 +970,20 @@
   --riv-tile-focus: #8fd6e2;
 }
 
+/** The focus-indicator baseline (#890). Preflight resets no outline, so a button without a
+    `focus-visible:` utility showed the user-agent ring — half the tree, with nothing recording
+    that as intended. This rule makes the project's 3px ring the default for every `<button>`.
+    It MUST live in `@layer base`: utilities sit in a later layer, so a site's own
+    `focus-visible:outline-white` (fixed-dark hosts) or `-outline-offset-[3px]` (clipped tiles)
+    keeps winning deterministically; un-layered, it would beat them all. Guard:
+    app/shared/focus-ring-baseline.spec.ts; render proof: e2e/focus-ring-baseline.e2e.ts. */
+@layer base {
+  button:focus-visible {
+    outline: 3px solid var(--riv-accent-ink);
+    outline-offset: 2px;
+  }
+}
+
 html,
 body {
   margin: 0;
