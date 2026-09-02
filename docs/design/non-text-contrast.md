@@ -122,10 +122,18 @@ answer it, and all three hold — the button's own "Sign out" label clears AA on
 the numbers are measured in the spec above rather than waved off, and the control paints a real
 `border`, which is what brings rule 3 to it.
 
-Two things narrow the residual risk, and neither is offered as the argument. A pointer hover is
-unavailable to keyboard and touch users altogether, so it cannot be what identifies this control
-*to them*; the button's focus indicator is a separate question, and today an unstyled one — named
-here so a later slice finds the gap written down rather than implied away. And the separation is
+Two things narrow the residual risk, and neither is offered as the argument. The first is
+mechanical rather than a claim about pointer semantics: Tailwind v4 compiles `hover:` to
+`@media (hover: hover) { .hover\:bg-…:hover }`, so where the device reports no hover capability the
+rule that paints this state never enters the cascade. It cannot be what identifies the control to a
+keyboard or touch user, because for them it is not there. Asserted rather than asserted-here —
+`frontend/e2e/fixed-ink-token-recut.e2e.ts` › "compiles the state it paints behind a
+hover-capability query, which its 1.4.11 ground rests on (#887)" reads the condition off the
+compiled stylesheet. (Beware the near-miss: a bare, ungated `.bg-riv-console-btn-hover` rule exists
+beside it, because Tailwind's extractor reads the undecorated candidate out of the same class
+string. It wears nothing and paints no state; a sweep that matched it would prove the opposite of
+what it looked like.) The button's focus indicator is a separate question, and today an unstyled
+one — named here so a later slice finds the gap written down rather than implied away. And the separation is
 not an outlier this project has never accepted: it is at least that of `--riv-solid-btn-fill` →
 `--riv-solid-btn-hover`, the settled family two rows up. That comparison is asserted, not
 asserted-here — `app/shared/fixed-ink-tokens.contrast.spec.ts` › "separates from its resting fill

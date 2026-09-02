@@ -49,14 +49,19 @@ role before its value"; a theme-pinned-subtree token is declared once in the bas
 the reason at the declaration; `hover:` already compiles under `@media (hover:hover)` in v4) ·
 `riviera-frontend` (the family's guard stays in `shared/`, its mirror in
 `testing/glass-tokens.ts`, its render proof in the CI-safe mocked suite; a new token gets a
-`@theme inline` mapping) · `angular-developer` + the angular-cli MCP `get_best_practices`
+`@theme inline` mapping) · `angular-developer` + the angular-cli MCP `get_best_practices` and `search_documentation`
 (**added at the review gate, finding F-1** — the routing table's Angular-frontend row fires on any
 component styling change and this line had skipped it. Re-vetted `operator-actions.ts` against the
 v22 guide: signal `input.required()`/`output()`, `computed()`, `inject()`, inline template, `host`
 object, no `ngClass`/`ngStyle`, no `standalone: true`, no explicit `OnPush`. The diff edits a static
 `class` attribute only, so nothing in the guide is implicated and no code changed — recorded because
 "the row did not apply" and "the row was never run" are indistinguishable in a diff, which is the
-whole point of RV-PROC-1) · `playwright-cli` (the hovered-box assertion in the mocked suite) ·
+whole point of RV-PROC-1. A later verification pass added `search_documentation` + angular.dev: the
+utility reaches this component's inline template only because emulated encapsulation scopes a
+component's OWN `styles`/`styleUrl` and not a global stylesheet — "global styles defined outside of
+a component may still affect elements inside a component with emulated encapsulation" — and the
+button's `class` is fully static, so Angular's no-guaranteed-order caveat for merged class bindings
+does not reach it) · `playwright-cli` (the hovered-box assertion in the mocked suite) ·
 `riviera-local-debug` (scoped Vitest/Playwright invocations, `PW_CHROMIUM_EXECUTABLE` for the
 mocked config in this cloud session)
 
@@ -241,6 +246,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-7 | self-caught while fixing F-3 | **A trimmed comment impersonated a declaration.** Re-wrapping the token comment put `--riv-solid-btn-hover:` at the start of a line, and `declarationsOf()` reads `tailwind.css` as TEXT — so `refuses the solid-btn pair on its values` saw two declarations of a token declared once and failed. The guard catching its own family's comment is the guard working, but the footgun is worth writing down: **never follow a `--riv-*` name with a colon in prose inside `tailwind.css`** | fixed — reworded to "the --riv-solid-btn-hover pair, which rests on…", no colon after the name |
 | F-8 | review gate (agent 5, comment-compliance pass) | **Ledger header not extended, Minor.** `colour-literal-token-audit.md`'s "Prior slices that cut families out of this population" line names every closed slice, unbroken through #849/PR #886, but this slice's own closure was only written into the class-R note further down | fixed — `#887 … PR #889` appended, keeping the header a complete index of the population's reductions |
 | F-9 | review gate (agent 5, comment-compliance pass) | **The citation template does not cover the shape this slice introduced, Major-in-effect.** `non-text-contrast.md`'s "How to cite this file" block is single-adjacency (`over its own fill`), but the same PR's new prose establishes that a *state* fill has two adjacencies and both belong in the assertion. A future author copying the canonical template literally for the next state-coloured token would emit a citation missing one required measurement — the doc teaching two different things in two places | fixed — a second, state-fill template added beside the boundary one, with a line saying why copying the boundary shape drops a measurement. The token comment this slice ships already follows the two-adjacency form, so template and practice now agree |
+| F-10 | doc verification pass (Tailwind + angular.dev primary docs, at the maintainer's ask) | **An a11y ground shipped as an assertion when it was a checkable fact.** `non-text-contrast.md` rested part of the exemption on "a pointer hover is unavailable to keyboard and touch users" — true, but written as a claim about pointer semantics. The Tailwind v4 docs give the mechanism: `hover:` compiles to `@media (hover: hover) { .hover\:bg-…:hover }`, so the painting rule is absent from the cascade entirely on a device without hover capability | fixed — the doc now states the mechanism and cites a new e2e assertion that reads the condition off the compiled stylesheet. **Writing that assertion falsified my first version of it:** a bare, ungated `.bg-riv-console-btn-hover` rule also exists (Tailwind's extractor reads the undecorated candidate out of the same class string), so "every rule mentioning the token is hover-gated" is false. Scoped to the rule that paints the state, and the e2e's `UTILITIES` docstring — which claimed a variant token compiles "rather than a bare `.class`" — corrected to match |
 
 ---
 

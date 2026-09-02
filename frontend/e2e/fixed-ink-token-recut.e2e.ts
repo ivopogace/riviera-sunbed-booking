@@ -43,7 +43,9 @@ const REGISTRY = {
  * The utility each token is consumed through, which exists only if its `@theme inline` row does.
  *
  * <p>Four of the eleven are absent, all for the same reason: they are consumed through a VARIANT, so
- * Tailwind compiles them to a compound selector rather than a bare `.class` this sweep can match —
+ * the rule that actually paints them is a compound selector this sweep cannot match. (A bare `.class`
+ * may exist beside it — Tailwind's extractor reads the undecorated candidate out of the same class
+ * string — but it wears nothing and paints no state, so matching it would prove nothing.) —
  * `--riv-calendar-hover` and `--riv-console-btn-hover` as `.hover\:bg-…:hover`,
  * `--riv-calendar-ink-disabled` as `.aria-disabled\:text-…[aria-disabled="true"]`, and
  * `--riv-banner-strong-ink` as `.\[\&_strong\]\:text-… strong`. Each is instead proven on the
@@ -238,6 +240,48 @@ test('the calendar disables past days in the fixed ramp, not a themed one (#849)
 
   await expect(disabled).toBeVisible();
   await expect(disabled).toHaveCSS('color', INK_DISABLED);
+});
+
+/**
+ * The pointer-only reach of this state, made mechanical rather than asserted. `non-text-contrast.md`
+ * rests part of the hover fill's 1.4.11 exemption on hover being unavailable to keyboard and touch
+ * users, and in Tailwind v4 that is not a claim about pointer semantics but a compiled fact: the
+ * variant emits `@media (hover: hover) { .hover\:bg-…:hover }`, so where the device reports no
+ * hover capability the rule that paints this state never enters the cascade at all. The stylesheet
+ * is the only place that is observable — the hovered box below runs in a desktop Chromium, which
+ * reports `hover: hover` and therefore exercises the other branch.
+ *
+ * <p>Scoped to the `:hover` rule deliberately. A BARE `.bg-riv-console-btn-hover` rule also exists
+ * and is not gated: Tailwind's extractor reads `bg-riv-console-btn-hover` out of the class string as
+ * a candidate in its own right, so the utility is generated alongside the variant one. Nothing wears
+ * it, and it paints no state — asserting over every rule mentioning the token would fail on that
+ * artifact and prove nothing.
+ */
+test('compiles the state it paints behind a hover-capability query, which its 1.4.11 ground rests on (#887)', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  const conditions = await page.evaluate(() => {
+    const found: string[] = [];
+    const walk = (rules: CSSRuleList, condition: string): void => {
+      for (const rule of rules) {
+        if (
+          rule instanceof CSSStyleRule &&
+          rule.selectorText.endsWith('bg-riv-console-btn-hover:hover')
+        ) {
+          found.push(condition);
+        }
+        const nested = (rule as CSSGroupingRule).cssRules;
+        if (nested) walk(nested, rule instanceof CSSMediaRule ? rule.conditionText : condition);
+      }
+    };
+    for (const sheet of document.styleSheets) walk(sheet.cssRules, '');
+    return found;
+  });
+
+  expect(conditions.length, 'the hover-variant rule is generated at all').toBe(1);
+  expect(conditions[0].replaceAll(' ', '')).toContain('hover:hover');
 });
 
 test("the console paints both hairlines, and the button's hover fill, from their own tokens (#849, #887)", async ({
