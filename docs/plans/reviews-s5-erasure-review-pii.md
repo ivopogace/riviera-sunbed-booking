@@ -48,7 +48,8 @@ the same scoped non-goal ADR-0010 already records; and that the hidden review mu
 tombstoned too) · `riviera-plan-doc` (this template — forced decisions D-1..D-6 to be
 written down before phase 0, and the outcome rule D-4) · `tdd` (each phase is one seam:
 the review port, the customer→booking→review chain, the sweep) · `riviera-review-overlay`
-(review gate — due at ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD` after phase 3's docs sweep, 9
+(review gate — **ran** at ready-for-review with `code-review:code-review` at high effort: five
+reviewers + the overlay walk, one finding (F-1, a Javadoc overclaim), fixed) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD` after phase 3's docs sweep, 9
 findings: 6 patched — the runbook's sweep log line and its idempotence property, `EraseOutcome`'s
 Javadoc (a reviews-only scrub is `ERASED`), `customer.api`'s package inventory, the scheduler's
 "every scrub" Javadoc, and a self-contradicting CONTEXT.md sentence; 3 ADR flags handled as
@@ -186,29 +187,32 @@ return type widens from "did it / how many" to "which".
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The review step commits while the contact scrub rolls back (or vice versa) — a half-erasure | low | high | the review reach is a synchronous port call inside the existing `@Transactional` erasure / sweep; all three adapters share the one `DataSource`, so one transaction; `AccountErasureIT` asserts the review and the contact together | agent | open |
-| R-2 | `ModularityTests` cycle or grant failure from the new ports | low | med | `customer` declares `spi` (already granted to `booking`); `review` adds an `api` port (already granted to `booking`); no module's list changes — the structural net runs in phase 1 | agent | open |
-| R-3 | The aggregate or the stored venue rating drifts after a tombstone | low | high | D-3: no column the aggregate reads changes; AC-3 pins the stored columns and the absence of `ReviewsChanged` | agent | open |
-| R-4 | A subject's reviews are missed: the account path forgets guest bookings sharing the email, or the sweep forgets the reviews of a guest it scrubbed | med | high | the service reaches reviews through *both* subject kinds on `eraseAccount` (account id + the guest ids the tombstone returned) and through both on `eraseByEmail`; the sweep hands the exact scrubbed id list on; AC-4/5/7/8 | agent | open |
-| R-5 | An empty `IN (…)` list is invalid SQL (the `JdbcGuestBookingHistory` lesson) | med | low | every adapter short-circuits an empty collection before binding; the service never calls with an empty guest list (AC-6/7) | agent | open |
-| R-6 | Log forging / PII in the erasure log | low | med | the added fields are counts and technical ids only (`riviera-java-conventions` §10) | agent | open |
-| R-7 | The sweep's review `UPDATE` runs on the unbounded client | low | low | deliberate — it is a scrub write inside the sweep transaction, the `JdbcAccountErasure` rationale ("a half-applied batch is worth less than a slow one"); the sweep's *entry reads* stay bounded; `ScheduledWorkArchitectureTest` counts `@Scheduled` methods, of which this adds none | agent | open |
-| R-8 | Docs that count or enumerate go stale (three `api` ports; "erasure is a single-module operation"; the runbook table; "null only for pre-slice-2") | high | low | phase 3 sweeps each; `riviera-docs-freshness` runs over the range | agent | open |
+| R-1 | The review step commits while the contact scrub rolls back (or vice versa) — a half-erasure | low | high | the review reach is a synchronous port call inside the existing `@Transactional` erasure / sweep; all three adapters share the one `DataSource`, so one transaction; `AccountErasureIT` asserts the review and the contact together | agent | closed — `AccountErasureIT`/`GuestContactRetentionIT` assert the review and the contact in one transaction; no listener, no second transaction |
+| R-2 | `ModularityTests` cycle or grant failure from the new ports | low | med | `customer` declares `spi` (already granted to `booking`); `review` adds an `api` port (already granted to `booking`); no module's list changes — the structural net runs in phase 1 | agent | closed — structural net green at phases 0, 1 and the review; no grant changed |
+| R-3 | The aggregate or the stored venue rating drifts after a tombstone | low | high | D-3: no column the aggregate reads changes; AC-3 pins the stored columns and the absence of `ReviewsChanged` | agent | closed — `ReviewTombstoneFlowIT.tombstoningPublishesNothingAndLeavesTheStoredRating` |
+| R-4 | A subject's reviews are missed: the account path forgets guest bookings sharing the email, or the sweep forgets the reviews of a guest it scrubbed | med | high | the service reaches reviews through *both* subject kinds on `eraseAccount` (account id + the guest ids the tombstone returned) and through both on `eraseByEmail`; the sweep hands the exact scrubbed id list on; AC-4/5/7/8 | agent | closed — AC-4/5/7/8 pinned; both subject kinds reached on `eraseAccount` and `eraseByEmail` |
+| R-5 | An empty `IN (…)` list is invalid SQL (the `JdbcGuestBookingHistory` lesson) | med | low | every adapter short-circuits an empty collection before binding; the service never calls with an empty guest list (AC-6/7) | agent | closed — both adapters short-circuit an empty collection; the service never calls with an empty list (unit-pinned) |
+| R-6 | Log forging / PII in the erasure log | low | med | the added fields are counts and technical ids only (`riviera-java-conventions` §10) | agent | closed — the log lines carry counts and ids only (reviewers #1/#2 confirmed) |
+| R-7 | The sweep's review `UPDATE` runs on the unbounded client | low | low | deliberate — it is a scrub write inside the sweep transaction, the `JdbcAccountErasure` rationale ("a half-applied batch is worth less than a slow one"); the sweep's *entry reads* stay bounded; `ScheduledWorkArchitectureTest` counts `@Scheduled` methods, of which this adds none | agent | closed — deliberate; `ScheduledWorkArchitectureTest` counts `@Scheduled` methods (none added) |
+| R-8 | Docs that count or enumerate go stale (three `api` ports; "erasure is a single-module operation"; the runbook table; "null only for pre-slice-2") | high | low | phase 3 sweeps each; `riviera-docs-freshness` runs over the range | agent | closed — `riviera-docs-freshness` ran (9 findings, all handled) |
 
 ## Open questions / Assumptions
 
+> **Mandatory. Work is NOT done while this has unresolved entries.**
+
+None open.
+
+### Resolved
+
 - **Assumption:** the neutral label stays the frontend's existing "A guest" (D-2) rather
-  than a stored literal; the issue's "blanked to a neutral label" is satisfied by a blank
-  column plus the label the presentation layer already applies. — *Owner:* agent ·
-  *Resolves by:* the review gate (the maintainer can overrule at the PR)
-- **Assumption:** the sweep's return value keeps meaning "contacts tombstoned" (its
-  scheduler logs and the existing ITs read it that way); reviews are a second logged count.
-  — *Owner:* agent · *Resolves by:* phase 2
-- **Assumption (docs-freshness flags):** the three ADR passages the audit flagged as
-  decision-substance — ADR-0012's "erasure continues to touch only `customer`-owned rows",
-  ADR-0015's consequence counting the `api` ports, and ADR-0010's "all scrub SQL lives in one
-  adapter" bullet — carry an amendment note each (the ADRs' own "*Amended by #NNN*" style) rather
-  than a rewrite; none changes the decision itself. — *Owner:* maintainer · *Resolves by:* the review gate
+  than a stored literal. — *Resolved:* held through the review gate; the maintainer can still
+  overrule by follow-up, but the PR shipped it (PR #899).
+- **Assumption:** the sweep's return value keeps meaning "contacts tombstoned"; reviews are a
+  second logged count. — *Resolved:* phase 2 (`ExpireGuestContactsServiceTest`, the runbook's log
+  line updated).
+- **Assumption (docs-freshness flags):** the three ADR passages (ADR-0012's "only `customer`-owned
+  rows", ADR-0015's port count, ADR-0010's "one adapter" bullet) carry amendment notes rather than
+  rewrites. — *Resolved:* shipped as amendment notes in PR #899; none changes a decision.
 
 ## Availability & concurrency (invariant #2)
 
@@ -271,18 +275,17 @@ already the wire types on every surface; a tombstoned review is one more row sha
 
 ## Execution status
 
-**Stage pointer:** `review gate — ran; sonar gate pending` — PR #899 ready for review; CI on the head pending.
+**Stage pointer:** `DONE` — merged via PR #899 (review gate ran, Sonar gate cleared, CI green).
 
-**Next action:** wait for CI + the SonarCloud analysis on the head, pull the Sonar issue list
-(`references/pr-gates.md` §2), clear it, then the merge close-out (§3): final Execution status in
-the PR's last commit, citing `merged via PR #899`.
+**Next action:** none — the slice is closed out; epic #810's last slice. Post-merge GitHub edits only
+(issue #815 closed by the PR, the epic's sub-issue summary reads 5/5).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `review.api.ReviewTombstones` + `JdbcReviewTombstones` | ✅ | phase-0 commit |
 | 1 — `customer.spi.ReviewErasure`, `booking`'s adapter, the erasure services reach | ✅ | phase-1 commit |
 | 2 — the retention sweep reaches reviews | ✅ | phase-2 commit |
-| 3 — docs, merge `origin/main`, ready for review, the gates | ⏳ | |
+| 3 — docs, merge `origin/main`, ready for review, the gates | ✅ | merged via PR #899 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -291,6 +294,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-2 | sonar | SonarCloud on PR #899: analysis present (315 new lines), 0 new issues, 0 security hotspots, 0 duplicated blocks, 96.1% new-code coverage — nothing to clear | closed |
 | F-1 | review (`code-review:code-review`, high, 5 reviewers + overlay; reviewer #5, scored 50) | `ReviewErasure.eraseForAccount` Javadoc said the account's reviews are reached "on every erasure, tombstoned or not" — true of the self-service by-id path only; the admin by-email path cannot resolve a tombstoned account (placeholder email), the D-4 non-goal | fixed-in-the review-fix commit: the Javadoc names the asymmetry; ADR-0010's amendment paragraph says *self-service* / *admin-by-email* explicitly |
 
 ---
@@ -409,8 +413,8 @@ TS doc comments
 - [x] **Step 2:** CONTEXT.md **Review tombstone**; CLAUDE.md `customer` + `review` rows; ADR-0010 amendment note (status line + a dated paragraph: the scrub reaches `review` through an inverted port, still one transaction, still no FK relaxation); runbook table row `review.display_name` / `comment` → `NULL` / `NULL` ("a review is attached to a booking; the star stays in the aggregate").
 - [x] **Step 3:** the three TS doc comments; `npm run lint`, `npm run format:check` (comment-only, but the guard runs).
 - [x] **Step 4:** `riviera-docs-freshness` over `origin/main...HEAD`; `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [ ] **Step 5: Commit** — `Record that erasure now reaches review PII: responsibilities, glossary, ADR-0010 amendment, runbook (#815)`
-- [ ] **Step 6:** merge `origin/main`; mark the PR ready for review → the gates (`references/pr-gates.md`); update Execution status.
+- [x] **Step 5: Commit** — `Record that erasure now reaches review PII: responsibilities, glossary, ADR-0010 amendment, runbook (#815)`
+- [x] **Step 6:** merge `origin/main`; mark the PR ready for review → the gates (`references/pr-gates.md`); update Execution status.
 
 ---
 
@@ -440,22 +444,22 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
