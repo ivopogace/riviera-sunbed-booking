@@ -454,7 +454,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 `Reviews`, `JdbcReviews`, `ReviewLifecycleService`, `ReviewFixtures`, both service-test
 fakes · Test `ReviewMigrationIT`, `ReviewSubmitFlowIT`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```java
 // ReviewMigrationIT
@@ -488,9 +488,9 @@ void recordsTheStayDate() {
 }
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*ReviewMigrationIT*" --tests "*ReviewSubmitFlowIT*"` → FAIL (`column "stay_date" does not exist` / the insert without it succeeds)
+- [x] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*ReviewMigrationIT*" --tests "*ReviewSubmitFlowIT*"` → FAIL (`column "stay_date" does not exist` / the insert without it succeeds)
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```sql
 -- V47__review_stay_date.sql
@@ -514,10 +514,10 @@ boolean update(BookingRef booking, ReviewSubmission submission, Instant at);
 selects `booking_date`; `ReviewFixtures.booking` keeps its 2026-07-01 date; both fakes
 implement the new signatures.
 
-- [ ] **Step 4: Run it, verify it passes** — the two ITs + `--tests "*review.application*"` → PASS
-- [ ] **Step 5: Generalization-audit pass** — population "every constructor call of `CompletedStay` / every implementor of `Reviews`": `grep -rn "new CompletedStay(\|implements Reviews" platform/src` → fix all.
-- [ ] **Step 6: Commit** — `Store the stay date on the review row, backfilled from the booking (#813)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 4: Run it, verify it passes** — the two ITs + `--tests "*review.application*"` → PASS
+- [x] **Step 5: Generalization-audit pass** — population "every constructor call of `CompletedStay` / every implementor of `Reviews`": `grep -rn "new CompletedStay(\|implements Reviews" platform/src` → fix all.
+- [x] **Step 6: Commit** — `Store the stay date on the review row, backfilled from the booking (#813)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -528,7 +528,7 @@ implement the new signatures.
 `Reviews`, `JdbcReviews`, `ReviewFixtures` (a `review(...)` seeder), the three
 `package-info.java` inventories
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```java
 // ListedReviewsServiceTest — a fake Reviews answering a canned list
@@ -579,9 +579,9 @@ void listsTheStayAsAMonth() { /* stayedIn == YearMonth.of(2026, 7); displayName 
 void listsOnlyTheVenuesOwnReviews() { /* a second venue's commented review is absent */ }
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `--tests "*ListedReviewsServiceTest*" --tests "*ReviewListingFlowIT*"` → compile FAIL (types absent)
+- [x] **Step 2: Run it, verify it fails** — `--tests "*ListedReviewsServiceTest*" --tests "*ReviewListingFlowIT*"` → compile FAIL (types absent)
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```java
 // JdbcReviews
@@ -613,10 +613,10 @@ public ReviewPage pageFor(VenueRef venue, ReviewCursor from) {
 }
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — the two classes + `--tests "*review*"` → PASS
-- [ ] **Step 5: Generalization-audit pass** — population "every SQL statement against `review`" (`grep -rn "FROM review\|INTO review" platform/src/main`): the moderation predicate's future homes are `newestListedBefore` and `totalsFor` — named in the Javadoc, no code change.
-- [ ] **Step 6: Commit** — `Publish a cursor page of a venue's listed reviews from the review module (#813)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 4: Run it, verify it passes** — the two classes + `--tests "*review*"` → PASS
+- [x] **Step 5: Generalization-audit pass** — population "every SQL statement against `review`" (`grep -rn "FROM review\|INTO review" platform/src/main`): the moderation predicate's future homes are `newestListedBefore` and `totalsFor` — named in the Javadoc, no code change.
+- [x] **Step 6: Commit** — `Publish a cursor page of a venue's listed reviews from the review module (#813)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -626,7 +626,7 @@ public ReviewPage pageFor(VenueRef venue, ReviewCursor from) {
 `ListVenueReviewsServiceTest`, `VenueReviewsControllerTest` · Modify `VenueReadController`,
 `WebSliceStubs`, `EndpointRoleGateCoverageTest`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```java
 // ListVenueReviewsServiceTest
@@ -667,9 +667,9 @@ void servesTheStayAsYearMonthOnly() {
 @Test void isPublicAndDoesNotUngateTheOperatorRead() { /* 200 anonymous; GET /api/venues/{id}/availability → 401 */ }
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `--tests "*ListVenueReviewsServiceTest*" --tests "*VenueReviewsControllerTest*"` → compile FAIL
+- [x] **Step 2: Run it, verify it fails** — `--tests "*ListVenueReviewsServiceTest*" --tests "*VenueReviewsControllerTest*"` → compile FAIL
 
-- [ ] **Step 3: Minimal implementation**
+- [x] **Step 3: Minimal implementation**
 
 ```java
 // ListVenueReviewsService — package-private, read-only
@@ -698,10 +698,10 @@ ResponseEntity<VenueReviewsResponse> reviews(@PathVariable long venueId,
 `WebSliceStubs` gains `ListVenueReviews listVenueReviews() { return (_, _) -> Optional.empty(); }`;
 `DECLARED_REACHABLE` gains `"GET /api/venues/{venueId}/reviews"`.
 
-- [ ] **Step 4: Run it, verify it passes** — the two classes + the structural net (`*ModularityTests*`, `*JdbcOnlyArchitectureTests*`, `*PackageShapeArchitectureTests*`, `*PublishedSurfacePlacementArchitectureTests*`, `*ResponsibilitiesArchitectureTests*`, `*EndpointRoleGateCoverageTest*`, `*ErrorContractArchitectureTests*`) → PASS
-- [ ] **Step 5: Generalization-audit pass** — population "every public `GET /api/venues/{venueId}/…` read" (`grep -n "GetMapping" venue/adapter/in/*.java`): each already fences through `VenueCatalog`; the new one fences in its own service — consistent, no further change.
-- [ ] **Step 6: Commit** — `Serve a venue's listed reviews publicly behind the tourist-visibility fence (#813)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 4: Run it, verify it passes** — the two classes + the structural net (`*ModularityTests*`, `*JdbcOnlyArchitectureTests*`, `*PackageShapeArchitectureTests*`, `*PublishedSurfacePlacementArchitectureTests*`, `*ResponsibilitiesArchitectureTests*`, `*EndpointRoleGateCoverageTest*`, `*ErrorContractArchitectureTests*`) → PASS
+- [x] **Step 5: Generalization-audit pass** — population "every public `GET /api/venues/{venueId}/…` read" (`grep -n "GetMapping" venue/adapter/in/*.java`): each already fences through `VenueCatalog`; the new one fences in its own service — consistent, no further change.
+- [x] **Step 6: Commit** — `Serve a venue's listed reviews publicly behind the tourist-visibility fence (#813)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -711,7 +711,7 @@ ResponseEntity<VenueReviewsResponse> reviews(@PathVariable long venueId,
 Modify `shared/rating.ts` + spec, `shared/venue-views.ts`, `booking/review-panel.ts`,
 `venue/venue.service.ts` + spec, `venue/venue-map.html` + `.ts` + its two specs
 
-- [ ] **Step 1: Write the failing tests** — `venue-reviews.spec.ts`: renders the first page
+- [x] **Step 1: Write the failing tests** — `venue-reviews.spec.ts`: renders the first page
   (stars `role="img"` "4 out of 5 stars", name, "July 2026", comment, `track` by id);
   "Show more reviews" requests `?cursor=<last id>` and **appends**; the control leaves on a
   short page and focus lands on the first new `<li>`; a `null` `displayName` reads "A
@@ -720,14 +720,14 @@ Modify `shared/rating.ts` + spec, `shared/venue-views.ts`, `booking/review-panel
   `rating.spec.ts`: `starGlyphs(4) === '★★★★☆'`, `starsOutOfFive(4) === '4 out of 5
   stars'`. `stay-month.spec.ts`: `'2026-07' → 'July 2026'`. `venue.service.spec.ts`: the
   URL and the `cursor` param (absent on the first page).
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- venue-reviews rating stay-month venue.service` → FAIL
-- [ ] **Step 3: Minimal implementation** — the component per the Angular section; the
+- [x] **Step 2: Run it, verify it fails** — `npm test -- venue-reviews rating stay-month venue.service` → FAIL
+- [x] **Step 3: Minimal implementation** — the component per the Angular section; the
   embed in `venue-map.html` after `</app-beach-map-canvas>`; the two venue-map specs drain
   `/reviews` before `verify()`.
-- [ ] **Step 4: Run it, verify it passes** — `npm test`, `npm run lint`, `npm run format:check`, `npm run test:a11y` → PASS
-- [ ] **Step 5: Generalization-audit pass** — population "every private star-glyph helper" (`grep -rn "'★'.repeat" frontend/src`): promoted to `shared/rating.ts`, one definition.
-- [ ] **Step 6: Commit** — `Render a venue's guest reviews below the beach map with a Show-more cursor (#813)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 4: Run it, verify it passes** — `npm test`, `npm run lint`, `npm run format:check`, `npm run test:a11y` → PASS
+- [x] **Step 5: Generalization-audit pass** — population "every private star-glyph helper" (`grep -rn "'★'.repeat" frontend/src`): promoted to `shared/rating.ts`, one definition.
+- [x] **Step 6: Commit** — `Render a venue's guest reviews below the beach map with a Show-more cursor (#813)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -737,16 +737,16 @@ Modify `shared/rating.ts` + spec, `shared/venue-views.ts`, `booking/review-panel
 `frontend/e2e/touch-targets-tourist.e2e.ts`, `RESPONSIBILITIES.md`, `CONTEXT.md`,
 `CLAUDE.md`, this plan
 
-- [ ] **Step 1: Write the journey** — a two-page mock branching on `cursor`: read page 1
+- [x] **Step 1: Write the journey** — a two-page mock branching on `cursor`: read page 1
   (axe), press "Show more reviews", page 2 appended, control gone, focus on the first new
   entry (axe); a rated venue with an empty list shows the header aggregate + the empty
   state (axe); a `/reviews` 500 shows the failure line and retry recovers.
-- [ ] **Step 2: Run it** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts venue-reviews touch-targets-tourist` → PASS
-- [ ] **Step 3: Docs** — RESPONSIBILITIES §review (the `ListedReviews` port, `stay_date`,
+- [x] **Step 2: Run it** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts venue-reviews touch-targets-tourist` → PASS
+- [x] **Step 3: Docs** — RESPONSIBILITIES §review (the `ListedReviews` port, `stay_date`,
   A-2's predicate home, Shipped ¶) + §venue (carries + fences the list); CONTEXT.md terms;
   CLAUDE.md review row.
-- [ ] **Step 4: Commit** — `Cover the venue review list end to end and record it in the substrate docs (#813)`
-- [ ] **Step 5: Update plan-doc execution status;** merge `origin/main`; mark the PR ready for review.
+- [x] **Step 4: Commit** — `Cover the venue review list end to end and record it in the substrate docs (#813)`
+- [x] **Step 5: Update plan-doc execution status;** merge `origin/main`; mark the PR ready for review.
 
 ---
 
