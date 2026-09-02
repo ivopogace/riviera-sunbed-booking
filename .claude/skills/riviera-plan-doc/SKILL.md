@@ -25,6 +25,10 @@ stage, and again when picking up a plan to execute in a fresh session.
   records, at every stage transition. It is the session-recovery anchor.
 - **An empty Open Questions / Assumptions section by the time "done" is claimed**, or
   remaining items each cite a follow-up issue.
+- **A lifetime that ends at merge.** The plan doc is deleted at the next close-out after its
+  PR merges (`riviera-docs-freshness` § *Plan-doc retirement*), so nothing durable cites its
+  path — cite the issue or PR — and rationale a later slice needs goes on the issue, the
+  ADR, or the Javadoc, not only in the plan.
 
 Intent comes from the spec in `docs/superpowers/specs/` or a GitHub issue; reference `#NN`
 in commits and the plan doc.

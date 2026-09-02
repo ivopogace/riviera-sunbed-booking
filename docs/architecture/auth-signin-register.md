@@ -140,7 +140,7 @@ expiring, and stored hashed (they are bearer credentials, invariant #7 posture).
 > the S4 F-1 gap** (an SSO-only, password-less account gains a password) via an
 > authenticated set-password while signed in **and** the token-proven reset flow —
 > never an unauthenticated register-time UPSERT (an account-takeover vector). Slice
-> plan: `docs/plans/s8-email-verification-password-reset.md`.
+> plan: #113.
 
 ### D-7: Same-site FE/BE hosting is an architectural requirement (dev now, prod hoster later)
 

@@ -155,7 +155,7 @@ Money is integer minor units + ISO currency; time is UTC `Instant`, with booking
 - Don't hand-roll thread pools in application code. The concurrency guarantees come from
   the DB (unique constraint + `INSERT … ON CONFLICT`), not Java locks (invariant #2).
 - Virtual threads are a deliberate, deferred config decision
-  (`docs/plans/scheduled-sweep-bounds.md`) — the real scaling knob is the Hikari pool.
+  (#395) — the real scaling knob is the Hikari pool.
   Don't flip `spring.threads.virtual.enabled` casually.
 - In tests, `ExecutorService` is `AutoCloseable` — use try-with-resources.
 

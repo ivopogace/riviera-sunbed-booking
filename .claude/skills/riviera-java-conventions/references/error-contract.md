@@ -89,4 +89,4 @@ throwing `IllegalArgumentException`, translated at the controller's conversion b
 mapped once by the advice. `spring-boot-starter-validation`/`@Valid` was deliberately not
 adopted (the checks are parse/cross-field logic; annotations would split validation across
 two mechanisms; explicit code in records is the house idiom). Reversible in one dependency
-line if the DTO count ever makes annotations pay — `docs/plans/error-contract-problemdetail.md`.
+line if the DTO count ever makes annotations pay — #97.

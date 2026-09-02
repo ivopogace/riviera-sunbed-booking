@@ -26,9 +26,9 @@ else ask for the range.
 |---|---|---|
 | `CLAUDE.md` (+ `frontend/.claude/CLAUDE.md`) | module table + shipped/planned notes, invariant wording, the skills list, provisional decisions; frontend idioms/styling posture in the nested file | a module ships/graduates, an auth/payment mechanism changes, a new skill lands, a frontend idiom is re-decided |
 | `CONTEXT.md` | glossary terms, canonical value sets (statuses, pools), flow descriptions | a new domain term, a renamed status, a changed flow |
-| `RESPONSIBILITIES.md` | each module's Job / Not-My-Job lists, shipped-state notes | behavior moves between modules, an edge concern changes shape |
+| `RESPONSIBILITIES.md` | each module's Job / Not-My-Job lists, shipped-state notes, the invariants' long form, the platform-edge rules | behavior moves between modules, an edge concern changes shape |
 | `docs/adr/*` | decision + consequences paragraphs | a decision gets re-decided (needs an amendment note, never silent contradiction) |
-| `docs/plans/*` (final states) | execution-status tables, "Resolved" sections | only the CURRENT slice's plan — historical plans are records, not living docs |
+| `docs/plans/*` | the in-flight slice's execution-status table | only the CURRENT slice's plan exists; a merged slice's plan is deleted at the next close-out of any kind (*Plan-doc retirement*, below), never audited as history |
 | `docs/design/*.dc.html` | copy/behavior a design record depicts that shipped code has since changed | a slice ships copy/behavior that diverges from an artboard — per `docs/design/README.md`, add a one-line `<!-- as-built diverges — see #NNN -->` pointer next to the diverged line; never rewrite the artboard's copy in place |
 | `docs/design/*.md` — the maintained files (`colour-literal-token-audit.md`, `non-text-contrast.md`) | ledger rows still marked open for a family that shipped; a rule's family table citing a spec that does not measure what it claims | these ARE rewritten to track the app — correct them in place; `docs/design/README.md` states which files are which |
 | `.claude/skills/riviera-*/SKILL.md` | concrete file names, class names, endpoints, and example tables inside skills | a rename/removal of anything a skill cites as an example |
@@ -89,6 +89,24 @@ else ask for the range.
   issue-intake grill gate owns those.
 - **Don't restate, verify.** This skill never adds new documentation; it only reconciles
   existing statements with reality.
+
+## Plan-doc retirement (every close-out)
+
+A plan doc is working state: it carries the slice from plan to merge, and afterwards it
+only costs every later search tokens. It cannot be deleted in its own PR (a review or merge
+session reads it until the merge), so the trigger is **the next close-out of any kind** —
+any later slice's merge close-out or an epic close-out. Whoever runs a close-out deletes
+every plan in `docs/plans/` whose PR has already merged, in the code PR being closed out:
+
+1. `git rm` the plan doc and any `docs/plans/<slug>/` asset directory.
+2. Repoint every citation to the issue or PR: grep the slug across the tree outside
+   `docs/plans/` — Javadoc, TSDoc, `tailwind.css`, the skills, ADRs and runbooks all cite
+   plans by path or by bare slug.
+3. Anything only the plan recorded that a later slice needs (a deferred-residual
+   disposition, a rejected alternative, an operational list) moves first — to the issue that
+   owns it, the ADR, or the Javadoc of the class it constrains — in the same commit.
+4. Note the sweep in the close-out comment. The file stays recoverable by slug:
+   `git log --all --diff-filter=D -- 'docs/plans/<slug>.md'`.
 
 ## When to run
 

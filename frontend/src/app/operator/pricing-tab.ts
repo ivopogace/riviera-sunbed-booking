@@ -68,7 +68,7 @@ export class PricingTab {
   /** True while a reprice PUT is in flight. The single shared `set_version` token cannot admit two
    *  concurrent reprices (the second would false-conflict), so a save serializes edits: the row inputs
    *  go **`readonly`** — not `disabled`, which would blur the field the commit came from — and a
-   *  `change` that slips through anyway is ignored. Why: `docs/plans/focus-posture-bank-item.md`. */
+   *  `change` that slips through anyway is ignored. Why: the stranded-focus item in `riviera-review-overlay` (#621). */
   protected readonly saving = signal(false);
   /** The last row saved and the last per-row error — sequential edits, per-row so a fail is scoped. */
   protected readonly savedRow = signal<string | null>(null);

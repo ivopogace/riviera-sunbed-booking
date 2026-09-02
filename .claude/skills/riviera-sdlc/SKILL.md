@@ -96,9 +96,11 @@ compaction, is a new area-entry: re-load. When in doubt, load it.
    not. A code change still gets the review gate, proportional to size.
 5. **An existing issue gets grilled before it gets planned** — entering at a written ticket
    skips Refine (`references/issue-intake-gate.md`).
-6. **Source-of-intent documents live in the repo, not the conversation.** Any plan, spec,
-   or improvement plan that issues or ADRs reference is committed (`docs/architecture/`,
-   `docs/plans/`) before or with the artifacts that cite it.
+6. **Source-of-intent documents live in the repo, not the conversation.** Any spec or
+   improvement plan that issues or ADRs reference is committed (`docs/architecture/`) before
+   or with the artifacts that cite it. A plan doc lives in `docs/plans/` only
+   until the next close-out after its PR merges, so durable artifacts cite the issue or PR,
+   never a plan path.
 7. **The conversation is never the state store** — progress lives in the plan doc's
    Execution status section (Context hygiene, below).
 

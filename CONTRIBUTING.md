@@ -104,6 +104,19 @@ We build in thin **vertical slices** — one path through every layer
 Keep it right-sized: a one-line fix doesn't need a plan doc. A feature that touches
 booking, availability, or money does.
 
+A plan doc is working state, not a record. It is committed so the work can be followed as
+it lands, and deleted at the next close-out after its PR merges (any later slice's merge
+close-out or an epic close-out) with its citations repointed to the issue
+or PR (`riviera-docs-freshness` § *Plan-doc retirement*). Rationale worth keeping lives on
+the issue, in an ADR, or in the Javadoc/TSDoc of the code it constrains.
+
+**Merging needs seven green required checks.** The `Riviera Rule Set` ruleset on `main`
+requires these status-check contexts by exact name: `Backend (build + test)`,
+`Frontend (lint + test + build)`, `Repo hygiene (diff-scoped)`, `Analyze (java-kotlin)`,
+`Analyze (javascript-typescript)`, `CodeQL`, and `SonarCloud Code Analysis`. Renaming a
+job in `ci.yml` without the matching ruleset edit makes every PR unmergeable (#413/#420,
+#539), which is why those job names carry DO-NOT-RENAME comments.
+
 **CI runs guards you can't guess from the framework docs.** Alongside the backend
 and frontend jobs, a `Repo hygiene (diff-scoped)` job hard-gates your diff with
 [`scripts/check-*.mjs`](scripts/): no multi-line inline comments (RV-STYLE-1), each

@@ -29,7 +29,7 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * the console stopped pinning porcelain. Both sites carry their own dark-theme test, for the same
  * reason the porcelain ones are separate: independent lazy route children. The declaration guard in
  * `operator/console-negative-token.contrast.spec.ts` is what watches the override itself.
- * Rationale: docs/plans/console-negative-ink-token.md.
+ * Rationale: #864 (PR #866).
  */
 
 /** `--riv-console-negative-ink` as the base block declares it — the console pin keeps it in force. */

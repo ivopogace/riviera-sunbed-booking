@@ -12,7 +12,7 @@ import { VenueCreateCard } from './venue-create-card';
 
 /**
  * Venue creation inside the operator console — the retired /venue-admin editor's create
- * behavior, ledgered row by row in docs/plans/create-venue-into-console.md. Everything the old
+ * behavior, ledgered row by row on PR #505 (#278). Everything the old
  * page did on this path is pinned here as preserved, except the success state, which now
  * navigates straight into the new venue's beach-map tab instead of rendering a "created" card.
  */

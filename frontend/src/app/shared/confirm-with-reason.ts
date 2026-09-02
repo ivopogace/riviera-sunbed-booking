@@ -22,7 +22,7 @@ import { TouchTarget } from './touch-target';
  *
  * <p><strong>Keep the `@if` outside</strong>: it is created and destroyed with the confirmation,
  * which is what lets it focus its own confirm button on the way in (WCAG 2.4.3). Focus back **out**
- * is the caller's, via `focusMover()`. Fuller rationale: `docs/plans/shared-confirm-panel.md`.
+ * is the caller's, via `focusMover()`. Fuller rationale: #604 (PR #612).
  */
 @Component({
   selector: 'app-confirm-with-reason',

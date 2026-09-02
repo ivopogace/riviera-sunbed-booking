@@ -24,7 +24,7 @@ const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
  * Focus back **out** is the caller's, via `focusMover()` — this component is gone by then.
  *
  * <p>Why two components rather than one with a variant, and why no projected content:
- * `docs/plans/shared-confirm-panel.md`. `headline` is plain text too, for the same reason —
+ * #604 (PR #612). `headline` is plain text too, for the same reason —
  * an optional bold lead sentence ahead of `message`, never markup.
  */
 @Component({

@@ -40,7 +40,7 @@ against `apiBaseUrl`) — may read `environments/environment`. That does not loo
 The published API-view vocabulary lives in `shared/` (`venue-views.ts`, `money.ts`,
 `booking-date.ts`, `photo-url.ts`); the `venue` feature remains editor of record for its
 mirror, per the `amenities.ts`/`booking-status.ts` precedent
-(`docs/plans/vocabulary-out-of-venue.md`). What remains is frozen by
+(#489, PR #494). What remains is frozen by
 `riviera-review-overlay` RV-FE-8 (a *new* edge is a Major finding, Blocker if `shared/`-
 or `core/`-directed; a pre-existing edge moved or consolidated is not; shrink this table in
 the same PR that shrinks the code):

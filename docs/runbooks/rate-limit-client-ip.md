@@ -204,4 +204,4 @@ check; or whenever the probe regresses to a high non-`429` count with the env va
 
 - `docs/deploy/cd-pipeline.md` — the deployed environment variables.
 - `docs/deploy/production-hardening.md` — the forward-headers posture.
-- `docs/plans/issue-286-durable-client-ip.md`, `docs/plans/issue-129-trusted-proxy-rate-limit.md`.
+- The slices that built it: #129, then #286.

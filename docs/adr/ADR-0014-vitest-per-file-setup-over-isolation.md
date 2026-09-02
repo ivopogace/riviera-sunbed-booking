@@ -4,7 +4,7 @@
 - **Date:** 2026-08-14
 - **Relates to:** #663 (this decision's issue), #662 (the flake that exposed it, and the
   `freezeClock()` restore convention it introduced), #572 (the `console-stats-strip` assertion that
-  went red), `frontend/.claude/CLAUDE.md` § *Unit tests*, `docs/plans/vitest-per-file-setup.md`
+  went red), `frontend/.claude/CLAUDE.md` § *Unit tests*, PR #664
 
 ## Context
 
