@@ -341,10 +341,10 @@ Venue picker `<select data-testid="admin-reviews-venue">`, the photos tab's mark
 
 ## Execution status
 
-**Stage pointer:** `review gate — fixing findings` (PR #898 ready for review)
+**Stage pointer:** `sonar gate` (PR #898 ready for review; review gate run, findings fixed)
 
-**Next action:** finish the review gate (reviewer #5's walk, the confidence scores, the PR
-comment), then the Sonar list on the fixed head.
+**Next action:** post the review comment, then pull the Sonar list on head `ccc8347` once CI is
+green; then the merge close-out (`references/pr-gates.md` §3).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -355,6 +355,16 @@ comment), then the Sonar list on the fixed head.
 | 4 — the admin Reviews tab, the mocked journey, docs, close-out prep | ✅ | `Add the admin Reviews tab: hide and un-hide with grounds, and cover the takedown end to end (#814)` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Review gate (2026-09-02):** `/code-review:code-review` (plugin skill, ladder rung 1 — the
+`Skill` call succeeded) at **high** effort (authorization touched) with `riviera-review-overlay`
+layered on: five plugin reviewers (CLAUDE.md adherence + RV-BE walk, shallow bug scan,
+git-history regression, prior-PR comment carry-over, code-comment compliance + RV-FE/RV-CT walk)
+plus RV-PROC-1. Findings F-1..F-3 and F-5..F-6 below, all fixed in the same session; the Haiku
+confidence scores were 75 / 100 / 75 / 75 / 100, so the posted comment lists the two ≥ 80
+(F-2, F-6) and the register here carries all five. Skills re-loaded for the fix round:
+`riviera-frontend` + `angular-developer` (the focus leg and the two structural specs),
+`riviera-java-conventions` (the Javadoc contract).
 
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding. Every fix
 re-enters at Implement per the `riviera-sdlc` re-entry rule.
