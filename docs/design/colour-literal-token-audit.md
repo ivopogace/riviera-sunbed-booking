@@ -83,7 +83,7 @@ actually generated, and nothing more.
 > the enumeration is step 0 of any slice cut from this file, not a formality.
 >
 > **And none of the 8 was class T.** Class T's definition requires "a surface where the token's
-> per-theme resolution is correct". Every surviving site fails exactly that clause: five sit on the
+> per-theme resolution is correct". Every surviving site fails exactly that clause: four sit on the
 > availability calendar's own `rgba(255,255,255,0.97)` `<dialog>` fill or on its four **opaque** day
 > tints, one on `booking-view`'s six fixed banner fills, and the three operator borders coincide
 > with tokens whose *role* is different. The three candidates agree in porcelain and diverge to
@@ -101,12 +101,16 @@ actually generated, and nothing more.
 > candidate tokens end the slice byte-identical — without that, "we chose our own tokens" and "we
 > quietly widened `--riv-card-ink`" look the same in a diff.
 >
-> **Two scope movements, both forced by standing rules rather than chosen.** The calendar's
-> weekday-header `0.72`, its two disabled inks and its hover wash came in because #852's third
-> boundary check forbids leaving a named utility beside a raw literal of its own family in one class
-> expression — `text-riv-calendar-ink … aria-disabled:text-[rgba(12,42,51,0.4)]` is exactly that
-> artifact. And `booking-view`'s `#334a52` body ink came in with the strong ink it shares a class
-> string with (maintainer, 2026-09-02). The per-banner **eyebrow** inks did *not*: six values across
+> **Two scope movements, and they were forced by two different rules — not one.** The calendar's
+> two disabled inks and its hover wash came in because #852's third boundary check forbids leaving a
+> named utility beside a raw literal of its own family in one class expression:
+> `text-riv-calendar-ink … aria-disabled:text-[rgba(12,42,51,0.4)]` is exactly that artifact. The
+> weekday-header `0.72` is **not** that case and should not be filed under it — its `<th>` carries no
+> other member of the family, so nothing in its expression triggers the check. What forced it is the
+> spec: `availability-calendar.contrast.spec.ts` already modelled `.72` and `.78` as one `CHROME_INKS`
+> set, and splitting a set across a token and a literal breaks the shape the spec reads it through.
+> And `booking-view`'s `#334a52` body ink came in with the strong ink it shares a class string with
+> (maintainer, 2026-09-02). The per-banner **eyebrow** inks did *not*: six values across
 > six states is class S's per-state palette, they live in their own constants, and a test now asserts
 > they stay literal so the omission reads as a decision.
 >
@@ -135,7 +139,7 @@ These families must move **as a pair**, onto tokens declared **once** with no da
 | `shared/outcome-card.ts`'s two tone glyphs | 2 | **the medallion FORM again — and the intake grill inverted the question.** Answer: converge. See the note below the table; n corrected 4 → 2 (the border and inset shadow counted here are class R's #853, not this family's) | **done — #869, PR #871** |
 | Beach-map **zoom toggle**: `bg-[rgba(14,122,137,0.12)]`/`bg-white/70` + `border-[#0e7a89]`/`border-[rgba(12,42,51,0.14)]` + `text-[#0a2a33]`/`text-[rgba(12,42,51,0.66)]` (`shared/beach-map-canvas.html:20,35`) | 2 | **not this table's usual shape — a fixed PAIR (ink and fill both pinned) over a host that themes, not a themed ink over a fixed fill.** Found by #869's own generalization sweep enumerating the mechanism rather than the medallion form (see the note below the table). The wash it sits on already carries a per-theme pair for its rail/chip siblings (`--riv-map-rail-*`, `--riv-map-chip-*`), so the fix follows that precedent rather than the theme-invariant one: **new per-theme token pairs**, `--riv-map-zoom-{selected,idle}-{fill,border,ink}`, declared once per theme like the wash itself. Measured (worst wash stop): selected ink 11.18→1.16:1 dark before, 14.53:1 light / 5.14:1 dark after; idle ink 4.88→3.77:1 dark before, 8.45:1 light / 6.69:1 dark after; both borders newly proven at 3:1 (WCAG 1.4.11), not carried across as an accepted miss | **done — #870, PR #873** |
 | **Availability-calendar ink ramp**: `#0a2a33` ×2, `rgba(12,42,51,·)` at `.78` ×2, `.72`, `.4`, `.35`, `.07` ×2, over its own `rgba(255,255,255,0.97)` `<dialog>` fill (`availability-calendar.html`) | 10 | **new theme-invariant family**, `--riv-calendar-{glass,ink,ink-soft,ink-faint,ink-disabled,hover}`. Arrived here from class T — see the note above the table. The fill is tokenised too, because a family whose anchor stays a literal is a claim nobody can guard; `--riv-calendar-ink` serves **two** surfaces (the glass and the four opaque day tints), so `testing/calendar-tints.ts` reads it from the one mirror rather than restating it (#835's R-5) | **done — #849, PR #886.** n corrected 5 → 10; the extra five are the take-the-whole-expression positions the note explains |
-| **booking-view banner prose**: `text-[#334a52]` + `[&_strong]:text-[#0a2a33]` (`booking-view.ts:89`) and `confirmQOnBanner` (`:98`), over six fixed banner fills | 3 | **new theme-invariant pair**, `--riv-banner-{body,strong}-ink`. The sharpest case for T-3's refusal: `--riv-card-ink`'s dark `#f2f7fa` on the neutral banner's `#f0f2f3` is under 1.5:1. The per-banner **eyebrow** inks stay out — class S's per-state palette, and asserted as staying out | **done — #849, PR #886.** n corrected 1 → 3: `#334a52` was uncounted (it shares the strong ink's class string) and appears at `:98` too |
+| **booking-view banner prose**: `text-[#334a52]` + `[&_strong]:text-[#0a2a33]` (`booking-view.ts:89`) and `confirmQOnBanner` (`:99`), over six fixed banner fills | 3 | **new theme-invariant pair**, `--riv-banner-{body,strong}-ink`. The sharpest case for T-3's refusal: `--riv-card-ink`'s dark `#f2f7fa` on the neutral banner's `#f0f2f3` is under 1.5:1. The per-banner **eyebrow** inks stay out — class S's per-state palette, and asserted as staying out | **done — #849, PR #886.** n corrected 1 → 3: `#334a52` was uncounted (it shares the strong ink's class string) and appears at `:99` too |
 | Solid outline-button skin: `#f4f6f7` fill, `#e7ebec` hover, `rgba(255,255,255,0.7)` border, `#a3372a` danger ink (+ the `rgba(200,90,60,0.5)` danger border) | 13 | **new theme-invariant tokens**, one family. Its teal ink already moved to `--riv-solid-btn-ink` in #835. The themed alternatives measure 1.69:1 (`--riv-danger-ink`) and 1.52:1 (`--riv-accent-ink`) over the fixed fill | **done — #851, PR #859.** n corrected 9 → 13: the danger border was uncounted, and the `rgba(255,255,255,0.7)` border sits on all three buttons (on the `btnOutline` variant, not the shared `BTN_OUTLINE` base) |
 
 
