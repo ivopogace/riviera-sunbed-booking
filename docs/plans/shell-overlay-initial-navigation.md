@@ -11,7 +11,7 @@ that actually changes the URL, so the initial lazy-load navigation no longer shu
 overlay the user opened while the first route's chunk was still in flight.
 
 **Architecture:** When an overlay goes up, the shell records the id of the navigation then in
-flight (`router.getCurrentNavigation()?.id`, `0` when the router is idle); the `NavigationEnd`
+flight (`router.currentNavigation()?.id`, `0` when the router is idle); the `NavigationEnd`
 subscription skips the close for exactly that navigation. The discriminator is navigation
 IDENTITY, not the URL: "the navigation that was already running when you opened this" is the
 thing the user did not do, whatever URL it lands on. Rejected alternatives: comparing
@@ -38,7 +38,10 @@ states the shell's overlay-close rule, and the slice creates no Nth-of-something
 service — it is shell-local state, not a cross-cutting singleton; Q-4) · `angular-developer` +
 `@angular/router` 22.0.7 sources (pinned four behaviours the design turns on: the
 `lastSuccessfulNavigation`-before-`NavigationEnd` ordering, `NavigationStart` preceding a
-non-awaited `navigate()`, and config vs guard redirects keeping/re-issuing the navigation id) ·
+non-awaited `navigate()`, config vs guard redirects keeping/re-issuing the navigation id, and —
+via the MCP's `search_documentation` — that `getCurrentNavigation()` is deprecated in v22 in
+favour of the `currentNavigation` signal, whose documented "null when idle" contract is exactly
+what the guard needs) ·
 `riviera-local-debug` (scoped Vitest runs via `ng test --include`, `PW_CHROMIUM_EXECUTABLE` for
 the mocked e2e) · `playwright-cli` (the e2e half: `awaitRoutedPage` stays; its header is the
 only e2e change, restated after F-2) · `riviera-tailwind` (N/A — no styling in scope)
@@ -194,6 +197,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 |---|---|---|---|
 | F-1 | review gate (`/code-review` high — two independent agents reproduced it) | The URL-equality guard swallows a close the guest asked for. Deep-linked to `/booking/ABC` with the chunk in flight, they open Find a booking and submit `ABC`: `router.navigate` is not same-URL-ignored (nothing has completed for `currentUrlTree` to match), so it supersedes, resolves `navigated === true`, and ends on `/booking/ABC` — equal to the seed. The shell skips the close, and `find-booking.ts:191` has no self-close on that branch, so the modal freezes on "Opening…" with the focus trap holding focus in a dead dialog (the WCAG 2.4.3 hand-off #148 established) | fixed — guard re-cut on navigation identity; pinned by AC-7, proven red against the withdrawn rule |
 | F-2 | review gate | Three claims in the rewritten `e2e/support/shell.ts` header were wrong: `awaitRoutedPage` does not cover the post-sign-in redirect (`customer-password.e2e.ts:57-58` awaits that itself), "no longer closes overlays on the initial navigation" is over-broad for guard-redirected first loads, and "asserting about the page under it" is not what the theme-picker callers assert | fixed — header restated against Q-3's probe |
+| F-4 | angular.dev v22 docs (angular-cli MCP `search_documentation`) | The fix first read `router.getCurrentNavigation()`, deprecated since 20.2 in favour of the `currentNavigation` signal. The signal's documented contract — "the current Navigation when the router is navigating, null when idle" — is precisely the guard's premise, so the swap also documents the rule | fixed — reads `router.currentNavigation()?.id`; the 35 shell specs stay green |
 | F-3 | review-fix guard run | Two of the new spec comments were multi-line inline comments (RV-STYLE-1) | fixed — both cut to one line; `check-inline-comments.mjs` clean |
 
 ---

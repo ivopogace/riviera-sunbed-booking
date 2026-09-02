@@ -186,7 +186,7 @@ export class App {
   /** Remember which navigation, if any, is mid-flight as an overlay goes up — its completion is the
    *  page the guest is already on finishing its render, not a departure from it. */
   private markOverlayRaised(): void {
-    this.overlayNavId = this.router.getCurrentNavigation()?.id ?? 0;
+    this.overlayNavId = this.router.currentNavigation()?.id ?? 0;
   }
 
   /** Open the find-a-booking modal, closing any open nav popover and recording the focus-return
