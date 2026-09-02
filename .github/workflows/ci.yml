@@ -72,9 +72,9 @@ jobs:
     # sequencing that lands the pair without an unmergeable window).
     name: Frontend (lint + test + build)
     runs-on: ubuntu-latest
-    # Observed green: ~11 min with the a11y e2e on one worker (8.7 min of it that step alone; npm ci +
-    # lint + Vitest + Playwright install + prod build are ~2.5 min together). The e2e config now runs
-    # 4 workers in CI, measured at 1.6x on the step, so expect ~7 min.
+    # Observed green: ~9 min (npm ci + lint + Vitest + Playwright install + prod build are ~2.5 min
+    # together; the a11y e2e step is ~7 min on 4 workers, down from ~8.7 min on one — the runner's
+    # 4 vCPUs contend harder than the 1.6x measured locally).
     timeout-minutes: 20
     defaults:
       run:
