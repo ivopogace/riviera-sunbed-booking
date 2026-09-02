@@ -49,7 +49,14 @@ role before its value"; a theme-pinned-subtree token is declared once in the bas
 the reason at the declaration; `hover:` already compiles under `@media (hover:hover)` in v4) ·
 `riviera-frontend` (the family's guard stays in `shared/`, its mirror in
 `testing/glass-tokens.ts`, its render proof in the CI-safe mocked suite; a new token gets a
-`@theme inline` mapping) · `playwright-cli` (the hovered-box assertion in the mocked suite) ·
+`@theme inline` mapping) · `angular-developer` + the angular-cli MCP `get_best_practices`
+(**added at the review gate, finding F-1** — the routing table's Angular-frontend row fires on any
+component styling change and this line had skipped it. Re-vetted `operator-actions.ts` against the
+v22 guide: signal `input.required()`/`output()`, `computed()`, `inject()`, inline template, `host`
+object, no `ngClass`/`ngStyle`, no `standalone: true`, no explicit `OnPush`. The diff edits a static
+`class` attribute only, so nothing in the guide is implicated and no code changed — recorded because
+"the row did not apply" and "the row was never run" are indistinguishable in a diff, which is the
+whole point of RV-PROC-1) · `playwright-cli` (the hovered-box assertion in the mocked suite) ·
 `riviera-local-debug` (scoped Vitest/Playwright invocations, `PW_CHROMIUM_EXECUTABLE` for the
 mocked config in this cloud session)
 
@@ -83,11 +90,17 @@ bare-class-selector sweep can see it either).
       · *Pinned by:* `fixed-ink-tokens.contrast.spec.ts` › `the stylesheet contract` (the four
       existing cases, with the token added to `CONSOLE_FAMILY`)
 - [x] **AC-3:** Given `frontend/src`, when swept for the migrated literal, then no bare `#eef1f2`
-      remains outside `*.spec.ts`, and `operator/operator-actions.ts` paints a
-      `-riv-console-btn-` family utility. *Seam:* the source sweep over the site list ·
-      *Pinned by:* `fixed-ink-tokens.contrast.spec.ts` › `the sites` (`%s paints no migrated
-      literal` with `#eef1f2` added to `MIGRATED_LITERALS`, and its positive `%s paints its
-      family` half)
+      remains outside `*.spec.ts`, and `operator/operator-actions.ts` paints **this token's** named
+      utility. *Seam:* the source sweep over the site list · *Pinned by:*
+      `fixed-ink-tokens.contrast.spec.ts` › `the sites` › `%s paints no migrated literal` (with
+      `#eef1f2` added to `MIGRATED_LITERALS`) for the negative half, and
+      › `the console button hover fill (#887)` › `paints the hover fill through its named utility,
+      not a literal` for the positive half. **Corrected at the review gate (F-2):** this AC first
+      cited `the sites` › `%s paints its family` as the positive pin, which was wrong — that
+      regex was already satisfied by the `border-riv-console-btn-border` the site carried before
+      this slice, so it gave the migration zero signal. It is a per-site "some family is painted"
+      check and structurally cannot say which; widening its alternation would not fix that, since
+      one matching branch satisfies the whole regex.
 - [x] **AC-4:** Given the operator console rendered in a real browser, when the sign-out button
       is **hovered**, then its computed `background-color` is `rgb(238, 241, 242)` — the one
       position no declaration sweep can reach. *Seam:* the rendered `oc-signout` box ·
@@ -201,10 +214,10 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR #889 — marking ready for review, then the Review gate`
+**Stage pointer:** `review gate — fixing findings (F-1, F-2 fixed; agents 3–5 outstanding)`
 
-**Next action:** Mark PR #889 ready for review, then run the Review gate per
-`riviera-sdlc` `references/pr-gates.md` §1 with `riviera-review-overlay` layered on.
+**Next action:** Collect the remaining review-agent reports, fix anything they raise, push the
+fix round, then the Sonar gate once CI and the analysis land on the new head.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -219,7 +232,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate (agent 1, CLAUDE.md/overlay pass) | **RV-PROC-1, Major.** The routing table's Angular-frontend row fires on any component styling change, and this diff edits `operator-actions.ts`'s class string — but *Skills consulted* listed neither `angular-developer` nor the angular-cli MCP. The gate's own remedy applies: load, re-vet, update the line | fixed — skill loaded, `get_best_practices` consulted for this workspace, `operator-actions.ts` re-vetted against the v22 guide (compliant; a static `class` attribute is outside everything the guide covers), *Skills consulted* updated with what it actually did |
+| F-2 | review gate (agent 2, bug scan) | **Vacuous positive guard, Major.** AC-3 cited `the sites` › `%s paints its family` as proving the site paints the new utility. It does not: its regex `/-riv-(calendar\|banner\|console-card-border\|console-btn-border)-?/` was already satisfied by the pre-existing `border-riv-console-btn-border`, so it would pass unchanged if the migration were reverted. Exactly the ledger's "no positive still-painted-here list allowed to be empty" failure, one layer in: the list is non-empty but says nothing about this token | fixed — a token-specific positive (`paints the hover fill through its named utility, not a literal`) added to the `#887` describe, with its docstring recording why widening the shared regex is not the fix; AC-3 re-pointed at both halves |
 
 ---
 

@@ -341,6 +341,18 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
     });
 
     /**
+     * The positive half, token-specific — and it needs to be here rather than left to `the sites`
+     * below, whose `%s paints its family` regex this site ALREADY satisfied through the
+     * `border-riv-console-btn-border` it carried before this slice. That test is a per-site check
+     * that some family is painted; it is structurally unable to say which, so on its own it gave
+     * this migration zero signal. Widening its alternation would not have helped: one matching
+     * branch satisfies the whole regex.
+     */
+    it('paints the hover fill through its named utility, not a literal', () => {
+      expect(read('operator/operator-actions.ts')).toContain('hover:bg-riv-console-btn-hover');
+    });
+
+    /**
      * The other half of the role decision, asserted so the omission reads as one. The button's
      * resting fill stays a Tailwind named colour: it is outside the ledger's population, it is the
      * idiom of every other white surface in this console, and #849 — which tokenised the hairlines
