@@ -295,15 +295,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0 committed; next: phase 1)`
+**Stage pointer:** `implement (phases 0–1 committed; next: phase 2)`
 
-**Next action:** Phase 1 step 1 — flip `e2e/fixed-ink-token-recut.e2e.ts`'s calendar tests to
-per-theme values and open the draft PR.
+**Next action:** Phase 2 step 1 — the ledger verdict, the class-S rows, and the overlay-families
+section in `docs/design/colour-literal-token-audit.md`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the tokens, the migrated markup, the unit guards | ✅ | the commit carrying this row |
-| 1 — the real-render proof under both themes | | |
+| 0 — the tokens, the migrated markup, the unit guards | ✅ | `432fb15` |
+| 1 — the real-render proof under both themes | ✅ | the commit carrying this row |
 | 2 — the ledger verdict and the overlay-families fact | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -360,31 +360,30 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 `frontend/src/app/shared/fixed-ink-tokens.contrast.spec.ts` ·
 `frontend/src/app/app.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing guards** — the pop mirrors in `glass-tokens.ts` and the
+- [x] **Step 1: Write the failing guards** — the pop mirrors in `glass-tokens.ts` and the
       per-palette mirror in `calendar-tints.ts` first (the specs read from them), then: the
       calendar contrast spec's `the stylesheet contract` (two declarations per token, values,
-      `@theme inline` rows, the six retired names absent), `the %s palette` (AC-4 per palette),
-      `the popover chrome` (AC-1 consumption + AC-2 over stops), `the light palette keeps…`
+      `@theme inline` rows, the six retired names absent), `the $name palette` (AC-4 per
+      palette), `the popover chrome` (AC-1 consumption + AC-2 over stops), `the light palette`
       (AC-7); the day spec's mirror as token utilities (AC-5); the calendar spec's class
       assertions; `fixed-ink-tokens.contrast.spec.ts` without its calendar section;
-      `app.contrast.spec.ts` on the shared mirror.
-- [ ] **Step 2: Run them, verify they fail** — `cd frontend && npx vitest run
-      src/app/venue/availability-calendar.contrast.spec.ts src/app/venue/day-availability.spec.ts`
-      → FAIL: `--riv-calendar-free-fill declarations` length 0, the site still paints
-      `bg-[#dff0e4]`.
-- [ ] **Step 3: Minimal implementation** — the token declarations in both blocks with the
+      `app.contrast.spec.ts` on the shared mirror. `stylesheet-tokens.ts` gained
+      `themeBlock(theme)` so the contract can say *which* block a declaration sits in.
+- [x] **Step 2: Run them, verify they fail** — `cd frontend && npx ng test --watch=false
+      --include=…` over the five specs → 32 failed: every `--riv-calendar-*` declaration list
+      empty, the template not wearing `bg-riv-pop-surface`, both sources still painting
+      `#0a3f4e`. (Bare `npx vitest run` bypasses the builder's setup and is not the command.)
+- [x] **Step 3: Minimal implementation** — the token declarations in both blocks with the
       reason at the declaration, the `@theme inline` rows, the six retired declarations and
       rows removed, the template and the two constants onto the utilities.
-- [ ] **Step 4: Run them, verify they pass** — the same command → PASS; then broaden to
-      `npx vitest run src/app/venue src/app/shared/fixed-ink-tokens.contrast.spec.ts
-      src/app/app.contrast.spec.ts`, then `npm run lint` and `npm run format:check`.
-- [ ] **Step 5: Generalization-audit pass** — the population is "every overlay surface in
-      `frontend/src` and which family it paints": enumerate by the mechanism (a `<dialog>` or
-      a `role="dialog"`/`riv-*-pop` box with a near-opaque fill) and record the three families
-      and their consumers in the audit log below — this is the "three overlay families" fact
-      AC-8 writes down.
-- [ ] **Step 6: Commit** — `git commit -m "Theme the availability calendar as a popover, with a dark day-cell palette (#888)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run them, verify they pass** — the same command → 173 passed; broadened to
+      `--include="src/app/venue/*.spec.ts"` → 284 passed; Prettier + ESLint clean on every
+      touched file; the three diff-scoped hygiene guards clean against `origin/main`.
+- [x] **Step 5: Generalization-audit pass** — appended below: the overlay surfaces enumerated
+      by mechanism; two themed families, the calendar un-pinned, two overlays outside the
+      families for stated reasons.
+- [x] **Step 6: Commit** — `432fb15`.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -392,23 +391,24 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Test `frontend/e2e/fixed-ink-token-recut.e2e.ts`
 
-- [ ] **Step 1: Write the assertions** — drop the six calendar rows from `REGISTRY` and the
-      four calendar utilities from `UTILITIES`; add a per-theme `CALENDAR` registry (the
+- [x] **Step 1: Write the assertions** — dropped the six calendar rows from `REGISTRY` and the
+      four calendar utilities from `UTILITIES`; added the per-theme `CALENDAR` registry (the
       eight day-cell tokens + `--riv-pop-ink-disabled` at each theme's value) asserted at the
-      document root under each theme; rewrite `the calendar popover paints the same fixed
+      document root under each theme; rewrote `the calendar popover paints the same fixed
       ramp under ${theme}` as `the calendar popover follows the theme under ${theme} (#888)`
-      with each theme's expected computed values, plus the chosen cell's `box-shadow`; make
-      the disabled-day test per theme. Update the file header: the calendar has left the
-      fixed-ink group and stays here because this is the file that renders it in both themes.
-- [ ] **Step 2: Verify it fails the honest way** — with one dark-block declaration
-      commented out (`--riv-calendar-free-fill`), the dark leg reads the light fill → FAIL;
-      restore.
-- [ ] **Step 3: Run it, verify it passes** — `cd frontend &&
+      with each theme's expected computed values, the bar pair, the accent glyph, and the
+      chosen cell's `box-shadow`; the disabled-day test runs per theme. The file header
+      records that the calendar has left the fixed-ink group and stays here because this is
+      the file that renders it in both themes.
+- [x] **Step 2: Verify it fails the honest way** — with the dark block's
+      `--riv-calendar-free-fill` declaration commented out, the dark leg read the light fill
+      (`rgb(223, 240, 228)` where `rgb(31, 63, 48)` was expected) → FAIL; restored.
+- [x] **Step 3: Run it, verify it passes** — `cd frontend &&
       PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test
       --config=playwright.a11y.config.ts e2e/fixed-ink-token-recut.e2e.ts
-      e2e/availability-calendar.e2e.ts` → PASS.
-- [ ] **Step 4: Commit** — `git commit -m "Prove the themed calendar popover on the rendered box under both themes (#888)"`
-- [ ] **Step 5: Update plan-doc execution status.**
+      e2e/availability-calendar.e2e.ts` → 19 passed.
+- [x] **Step 4: Commit** — `git commit -m "Prove the themed calendar popover on the rendered box under both themes (#888)"`
+- [x] **Step 5: Update plan-doc execution status.**
 
 ---
 
