@@ -239,7 +239,7 @@ tourist and a walk-in can never both hold the same set.
 - Native iOS/Android apps.
 - Phase 2 areas (Ksamil, Sarandë, beyond).
 - Automated/scheduled venue payouts and reconciliation.
-- Reviews & ratings beyond a basic score; loyalty/credits. *(Epic #810 executes this: #811 shipped the verified-stay star rating and the aggregate write path; comments and the venue-page review section follow in later slices.)*
+- Reviews & ratings beyond a basic score; loyalty/credits. *(Epic #810 executed this, all five slices merged: verified-stay star rating + aggregate (#811), comment/display name + own-review lifecycle (#812), venue-page review list (#813), admin takedown (#814), erasure reach (#815).)*
 - Half-day bookings, multi-day, dynamic/seasonal pricing.
 - Push notifications, weather-forecast auto-refund automation.
 

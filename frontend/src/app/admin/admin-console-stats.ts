@@ -13,12 +13,12 @@ import { VenueCommissionView } from './admin.model';
  *
  * <p><strong>Where it renders, and why not everywhere.</strong> The design canvas draws the stats
  * once, above the tab strip, on every screen — because the canvas is a single demo page. Here the
- * console is seven independent lazy routes with no layout component, a shape the console's routing
+ * console is eight independent lazy routes with no layout component, a shape the console's routing
  * decision chose deliberately and gave one revisit trigger: a <em>ninth</em> tab. So this strip
  * renders on the console <em>home</em> only, and <em>below</em> the tabs. Below, because with the strip on one page
  * only, putting it above would shift the pills down on `/admin` and back up on every other tab — the
  * control you just clicked would move. The day a layout component lands on that trigger, this strip
- * moves into it and becomes shell-wide for free; until then, seven copies each re-reading three
+ * moves into it and becomes shell-wide for free; until then, eight copies each re-reading three
  * endpoints per navigation is the wrong trade.
  *
  * <p><strong>The mean rate is not the platform's take rate, and says so.</strong> Nothing on the wire

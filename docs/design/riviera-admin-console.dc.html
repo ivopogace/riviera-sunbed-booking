@@ -28,7 +28,8 @@
   ⚠ CORRECTION (2026-08-06, #348 A9) — THE STAT STRIP IS NOT DRAWN WHERE IT SHIPS.
   This canvas renders the stats ONCE, ABOVE the tab strip, on EVERY screen — which it can do because
   it is a single demo page. The console is seven independent lazy routes with NO layout component, a
-  shape Q1 chose deliberately and gave one revisit trigger: a NINTH tab. So A9 ships the strip on the
+  shape Q1 chose deliberately and gave one revisit trigger: a NINTH tab.
+  (as-built diverges — see #814: eight routes since Reviews shipped; the ninth-tab trigger has not fired) So A9 ships the strip on the
   console HOME only and BELOW the tabs — below, because with the strip on one page only, putting it
   above would shift the pills down on /admin and back up on every other tab, moving the control the
   admin just clicked. When a layout component lands on Q1's trigger, the strip moves into it and

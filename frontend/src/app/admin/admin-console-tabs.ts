@@ -55,7 +55,7 @@ export const ADMIN_CONSOLE_TAB_ORDER = [
  * <p><strong>Which tabs exist is a backend question.</strong> This strip lists what ships, which is
  * why Photos appears here without appearing on the canvas at all: the canvas's Privacy tab
  * is scoped to GDPR data-subject erasure (built as drawn), and content moderation is a
- * different job. The canvas's own five-tab strip predates four of the tabs that ship and is not the
+ * different job. The canvas's own five-tab strip predates five of the tabs that ship and is not the
  * target IA.
  *
  * <p>Rendered only inside {@code AdminConsole}'s authorized branch, so a signed-out visitor is never

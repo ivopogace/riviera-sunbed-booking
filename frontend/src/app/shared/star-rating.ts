@@ -13,7 +13,7 @@ const STARS = [1, 2, 3, 4, 5] as const;
  * Implementing {@link FormValueControl} is what makes `[formField]="form.stars"` work: the `value`
  * model is two-way-bound by the `Field` directive, so this control only ever *displays* state and
  * proposes changes — validation lives in the form schema, never here. That also makes it a drop-in
- * field for a richer review form later, rather than a widget the panel has to wire by hand.
+ * field for the review panel's form, rather than a widget the panel has to wire by hand.
  *
  * Keyboard follows the radiogroup pattern rather than the button-list default, cloned from
  * {@link SegmentedControl}: **roving tabindex** (exactly one stop in the page's tab order — the

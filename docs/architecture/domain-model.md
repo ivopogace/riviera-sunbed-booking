@@ -20,7 +20,7 @@
 
 ## 1. Bounded context map
 
-The eight Spring-Modulith modules and how they collaborate. **Solid arrows = domain
+The nine Spring-Modulith modules and how they collaborate. **Solid arrows = domain
 events** (state changes). **Dotted arrows = `api/` port queries** (reads). Modules
 never import each other's internals — only `api/` ports or events (invariant #11).
 
@@ -52,11 +52,18 @@ graph TB
     subgraph operator["operator — per-venue authorization (#13)"]
         OP["Operator<br/>«aggregate root»"]
     end
+    subgraph review["review — leaf, ADR-0015"]
+        REV["Review<br/>«aggregate root»"]
+    end
 
     PAY -- "PaymentConfirmed / PaymentCanceled" --> BOOK
     BOOK -- "BookingConfirmed" --> LEDG
     BOOK -- "BookingConfirmed (confirmation mail)" --> notification
     BOOK -- "BookingCancelled (proportional reversal)" --> LEDG
+    REV -- "ReviewsChanged (venue recomputes its rating columns)" --> VEN
+    VEN -. "aggregate (VenueRatingSummary), listed page (ListedReviews)" .-> REV
+    BOOK -. "review panel (ReviewEligibility)" .-> REV
+    REV -. "checked-in stay (spi CompletedStays)" .-> BOOK
 
     BOOK -. "claim / release (set, date)" .-> AVAIL
     BOOK -. "refund (RefundPort)" .-> PAY
@@ -145,7 +152,8 @@ classDiagram
         +Beach beach
         +String description
         +List~PhotoRef~ photos
-        +Rating rating
+        +int ratingTenths
+        +int reviewsCount
         +BookingMode mode
         +CommissionRate commissionRate
         +Currency payoutCurrency
