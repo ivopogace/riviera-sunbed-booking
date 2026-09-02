@@ -44,6 +44,8 @@ const surfaceRoutes = [
   { path: 'operator-chrome', component: BlankPage, data: { operatorChrome: true } },
   // The operator chrome's sign-out navigates here; a resolvable target keeps that await clean.
   { path: 'account/sign-in', component: BlankPage },
+  // The URL a fresh shell reports as shown, so a spec can replay the initial navigation's shape.
+  { path: '', component: BlankPage },
 ];
 
 describe('App (Liquid Glass shell, issue #134)', () => {
@@ -323,6 +325,24 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(el.querySelector('app-find-booking')).toBeNull();
     // Focus lands on the main content region, not document.body (review finding [4], WCAG 2.4.3).
     expect(document.activeElement).toBe(el.querySelector('main'));
+  });
+
+  it('keeps an overlay open when the initial navigation lands on the URL the shell already shows (#892)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+
+    el.querySelector<HTMLButtonElement>('[data-testid="find-open"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const focused = document.activeElement;
+    expect(el.querySelector('app-find-booking')).not.toBeNull();
+
+    // The initial lazy-load navigation's shape: it ends on the URL the shell already shows.
+    await router.navigate(['/']);
+    fixture.detectChanges();
+
+    expect(el.querySelector('app-find-booking')).not.toBeNull();
+    expect(document.activeElement).toBe(focused);
   });
 
   it('moves focus to main when a navigation closes the account menu (a11y, #351)', async () => {

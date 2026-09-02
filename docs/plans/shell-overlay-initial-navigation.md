@@ -47,18 +47,18 @@ for `bugfix/shell-overlay-initial-navigation`.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a freshly constructed shell with the find-a-booking modal open and no
+- [x] **AC-1:** Given a freshly constructed shell with the find-a-booking modal open and no
   navigation yet having moved it off the URL it loaded at, when the router completes a
   navigation whose `urlAfterRedirects` equals that URL (the initial lazy-load navigation's
   shape), then the modal is still rendered and `document.activeElement` is the element that
   held focus before the navigation. *Seam:* the `app-root` shell observed through `Router`
   navigation + rendered DOM · *Pinned by:* `app.spec.ts` › `keeps an overlay open when the
   initial navigation lands on the URL the shell already shows (#892)`
-- [ ] **AC-2:** Given the find-a-booking modal is open, when the router navigates to a
+- [x] **AC-2:** Given the find-a-booking modal is open, when the router navigates to a
   different URL, then the modal is removed and focus moves to `main` (WCAG 2.4.3) —
   unchanged behaviour. *Seam:* same as AC-1 · *Pinned by:* `app.spec.ts` › `closes the Find a
   booking modal on navigation and moves focus to main (a11y, #148)` (existing, body unchanged)
-- [ ] **AC-3:** Given the signed-in account menu is open and holds focus, when the router
+- [x] **AC-3:** Given the signed-in account menu is open and holds focus, when the router
   navigates to a different URL, then the menu is removed and focus moves to `main` —
   unchanged behaviour. *Seam:* same as AC-1 · *Pinned by:* `app.spec.ts` › `moves focus to
   main when a navigation closes the account menu (a11y, #351)` (existing, body unchanged)
@@ -71,7 +71,7 @@ for `bugfix/shell-overlay-initial-navigation`.
   that the wait is the test's own precondition (and still covers the post-sign-in redirect)
   rather than describing an app bug that is now fixed. *Seam:* the file's exported API +
   header comment · *Verified by:* review gate (RV-FE-E2E / RV-STYLE-1), no test asserts prose.
-- [ ] **AC-6:** Given the subscription in `app.ts`, when it is read, then a single-line inline
+- [x] **AC-6:** Given the subscription in `app.ts`, when it is read, then a single-line inline
   comment names the rule ("only a navigation that changes the URL closes the overlays").
   *Seam:* the source line · *Verified by:* `node scripts/check-inline-comments.mjs --diff
   origin/main` (RV-STYLE-1 guard) + review gate.
@@ -96,10 +96,10 @@ N/A — no surface is retired or replaced; one guard is added to an existing sub
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The seed and `urlAfterRedirects` are serialised differently (`Location.path(true)` returns `''` at construction, not `'/'`), so the guard never matches and the bug is not fixed | high | high | Seed through `router.serializeUrl(router.parseUrl(...))` so both sides are `DefaultUrlSerializer` output; AC-1 fails if they disagree | claude | open |
-| R-2 | The guard swallows a close it should perform (a real navigation to the same URL) | low | med | The router emits `NavigationSkipped`, not `NavigationEnd`, for a same-URL re-navigation — already relied on and pinned by the existing `#351` "activated on the page it points at" spec, which closes the popover from the link handler instead | claude | open |
-| R-3 | Seeding from the document URL makes the two existing close-on-navigation specs flaky through jsdom URL carry-over between specs | med | high | Probed: Angular's TestBed platform location does not move `window.location` on `router.navigate`, so the seed is `''`→`/` in every spec; AC-2/AC-3 run unchanged as the regression proof | claude | open |
-| R-4 | `inject(Location)` in the shell drags a new dependency into a component that had none | low | low | `Location` is `@angular/common`'s router-facing service already provided by `provideRouter`; no new provider, no new import in `app.config.ts` | claude | open |
+| R-1 | The seed and `urlAfterRedirects` are serialised differently (`Location.path(true)` returns `''` at construction, not `'/'`), so the guard never matches and the bug is not fixed | high | high | Seed through `router.serializeUrl(router.parseUrl(...))` so both sides are `DefaultUrlSerializer` output; AC-1 fails if they disagree | claude | closed — `Location.path(true)` really does return `''`; the serializer round-trip makes it `/`, AC-1 green in `a340272`+ |
+| R-2 | The guard swallows a close it should perform (a real navigation to the same URL) | low | med | The router emits `NavigationSkipped`, not `NavigationEnd`, for a same-URL re-navigation — already relied on and pinned by the existing `#351` "activated on the page it points at" spec, which closes the popover from the link handler instead | claude | closed — that spec is green unchanged |
+| R-3 | Seeding from the document URL makes the two existing close-on-navigation specs flaky through jsdom URL carry-over between specs | med | high | Probed: Angular's TestBed platform location does not move `window.location` on `router.navigate`, so the seed is `''`→`/` in every spec; AC-2/AC-3 run unchanged as the regression proof | claude | closed — both green, bodies untouched |
+| R-4 | `inject(Location)` in the shell drags a new dependency into a component that had none | low | low | `Location` is `@angular/common`'s router-facing service already provided by `provideRouter`; no new provider, no new import in `app.config.ts` | claude | closed — no provider change needed |
 | R-5 | The e2e suite's `awaitRoutedPage` masks a regression of this fix (the app-side bug could come back unnoticed) | med | med | AC-1 is the unit-level pin and does not depend on the e2e timing; the e2e wait stays for its own reasons (AC-5) | claude | open |
 
 ## Open questions / Assumptions
@@ -157,15 +157,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** write the AC-1 spec in `app.spec.ts`, run it, watch it fail on the overlay
-being closed.
+**Next action:** re-point `frontend/e2e/support/shell.ts`'s header comment at the test's own
+precondition (AC-5), then run the mocked e2e for `find-a-booking.e2e.ts` (AC-4).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Keep overlays open on a same-URL navigation | | |
-| 1 — Re-point the e2e helper's header comment | | |
+| 0 — Keep overlays open on a same-URL navigation | ✅ | (this commit) |
+| 1 — Re-point the e2e helper's header comment | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -192,7 +192,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `frontend/src/app/app.ts` · Test `frontend/src/app/app.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — add a `''` route to `surfaceRoutes`, then:
+- [x] **Step 1: Write the failing test** — add a `''` route to `surfaceRoutes`, then:
 
 ```ts
 it('keeps an overlay open when the initial navigation lands on the URL the shell already shows (#892)', async () => {
@@ -214,10 +214,10 @@ it('keeps an overlay open when the initial navigation lands on the URL the shell
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `npx ng test --no-watch --include="src/app/app.spec.ts"`
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --no-watch --include="src/app/app.spec.ts"`
   → FAIL: `expected null not to be null` (the subscription closed the modal).
 
-- [ ] **Step 3: Minimal implementation** in `app.ts`:
+- [x] **Step 3: Minimal implementation** in `app.ts`:
 
 ```ts
 private readonly location = inject(Location);
@@ -239,18 +239,18 @@ and in the subscription:
 });
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — `npx ng test --no-watch --include="src/app/app.spec.ts"` → PASS,
+- [x] **Step 4: Run it, verify it passes** — `npx ng test --no-watch --include="src/app/app.spec.ts"` → PASS,
   with the `#148` and `#351` close-on-navigation specs still green (AC-2, AC-3).
 
 > Scope (end-of-phase regression): the whole `app.spec.ts` file, plus `app.a11y.spec.ts` /
 > `app.contrast.spec.ts` if either renders the shell.
 
-- [ ] **Step 5: Generalization-audit pass** — population: every `NavigationEnd` subscriber in the
+- [x] **Step 5: Generalization-audit pass** — population: every `NavigationEnd` subscriber in the
   frontend (the mechanism that can fire on the initial navigation).
 
-- [ ] **Step 6: Commit** — `git commit -m "Keep shell overlays open across the initial navigation (#892)"`
+- [x] **Step 6: Commit** — `git commit -m "Keep shell overlays open across the initial navigation (#892)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -281,6 +281,7 @@ and in the subscription:
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-02 | phase 0 (#892 fix) | Every frontend subscriber to the router's `NavigationEnd` — the mechanism that also fires for the initial navigation and can therefore act on something the user did not do | `grep -rn "NavigationEnd\|router.events\|lastSuccessfulNavigation" frontend/src --include=*.ts \| grep -v ".spec.ts"` | 6 subscriptions: `app.ts` (routeChrome + the overlay close), `admin-console.ts` (×2), `admin-console-tabs.ts`, `operator-chrome.ts`, `operator-console.ts` | Fixed 1. The other five are pure derivations of the current route (active tab, current url, chrome flags) that the initial navigation *should* update; only the overlay close tears down transient UI the user opened, so the population of the defect is one |
 
 ---
 

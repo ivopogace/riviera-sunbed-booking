@@ -1,3 +1,4 @@
+import { Location } from '@angular/common';
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { LegalFooter } from './shared/legal-footer';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -69,6 +70,9 @@ export class App {
    */
   protected readonly signOutNotice = inject(SignOutNotice);
   private readonly router = inject(Router);
+  private readonly location = inject(Location);
+  /** The URL the shell is showing, seeded from the document so a deep-linked first load counts. */
+  private shownUrl = this.router.serializeUrl(this.router.parseUrl(this.location.path(true)));
 
   protected readonly menuOpen = signal(false);
   protected readonly themeOpen = signal(false);
@@ -141,16 +145,33 @@ export class App {
     return operatorChrome ? 'operator' : 'tourist';
   });
 
+  /**
+   * Wires the close-on-navigation rule: a navigation that CHANGES the url carries the user off the
+   * page they opened an overlay on — a found booking code navigates to `/booking/:code`, so the find
+   * modal must not linger over the detail view — and closes all four.
+   *
+   * <p>A navigation that lands on the url already shown does not: the header is interactive before
+   * the first route's lazily loaded chunk has activated (`provideRouter`'s default
+   * `enabledNonBlocking` initial navigation), and the `NavigationEnd` closing that window is not
+   * something the user did — it must not shut a menu they just opened. The shown url is tracked
+   * here rather than read back from the browser, whose url the router has already moved by the time
+   * the event arrives (`urlUpdateStrategy: 'deferred'`).
+   *
+   * <p>The close performs no focus restore: the destination page takes focus, and restoring is only
+   * for an on-page dismiss.
+   */
   constructor() {
-    // Any successful navigation closes the shell overlays — in particular, a found booking code
-    // navigates to /booking/:code, so the find modal must not linger over the detail view. No focus
-    // restore here: the destination page takes focus (restore is only for an on-page dismiss).
+    // Only a navigation that changes the URL closes the shell overlays.
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
         takeUntilDestroyed(),
       )
-      .subscribe(() => {
+      .subscribe((event) => {
+        if (event.urlAfterRedirects === this.shownUrl) {
+          return;
+        }
+        this.shownUrl = event.urlAfterRedirects;
         // Both overlays hold focus in markup this navigation destroys (find modal, account menu).
         const overlayHeldFocus = this.findOpen() || this.accountOpen();
         this.findOpen.set(false);
