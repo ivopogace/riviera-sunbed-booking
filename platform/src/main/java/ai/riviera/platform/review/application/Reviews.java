@@ -8,6 +8,7 @@ import ai.riviera.platform.review.vocabulary.BookingRef;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
 import ai.riviera.platform.review.vocabulary.ListedReview;
 import ai.riviera.platform.review.vocabulary.OwnReview;
+import ai.riviera.platform.review.vocabulary.ReviewRef;
 import ai.riviera.platform.review.vocabulary.VenueRef;
 
 /**
@@ -59,4 +60,29 @@ public interface Reviews {
 	 * whether another follows is the service's arithmetic.
 	 */
 	List<ListedReview> newestListedBefore(VenueRef venue, long beforeId, int limit);
+
+	/**
+	 * Take this review out of public view, stamping {@code at} as when it left.
+	 *
+	 * @return the venue whose aggregate just moved, or empty when the review was already hidden or
+	 *         does not exist — the conditional update's row count is the answer
+	 */
+	Optional<VenueRef> hide(ReviewRef review, Instant at);
+
+	/**
+	 * Put this review back into public view.
+	 *
+	 * @return the venue whose aggregate just moved, or empty when the review was already visible or
+	 *         does not exist
+	 */
+	Optional<VenueRef> unhide(ReviewRef review);
+
+	/** Whether any review answers to this id, hidden or not. */
+	boolean existsById(ReviewRef review);
+
+	/**
+	 * Up to {@code limit} of {@code venue}'s reviews as the admin sees them — every row, hidden and
+	 * star-only ones included — with an id below {@code beforeId}, newest first.
+	 */
+	List<ModeratedReview> newestForModerationBefore(VenueRef venue, long beforeId, int limit);
 }

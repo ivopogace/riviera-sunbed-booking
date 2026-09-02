@@ -74,12 +74,12 @@ reused; copy differs from the photo takedown because hide is reversible) · `pla
 - [x] **AC-2:** Given a venue with a visible commented review and a hidden commented review,
   when the public page is read, then only the visible one is listed. *Seam:*
   `review.api.ListedReviews` · *Pinned by:* `ReviewModerationFlowIT.hiddenReviewsLeaveTheList`
-- [ ] **AC-3:** Given a visible review, when it is hidden, then the outcome is `Applied` and
+- [x] **AC-3:** Given a visible review, when it is hidden, then the outcome is `Applied` and
   exactly one `ReviewsChanged(venue)` is published; when it is hidden again, then the outcome
   is `AlreadyApplied` and nothing is published (idempotent, converging). *Seam:*
   `review.application.ReviewModeration` (the admin adapter's port) · *Pinned by:*
   `ReviewModerationServiceTest.hidePublishesOnceAndIsIdempotent`
-- [ ] **AC-4:** Given a hidden review, when it is un-hidden, then it is back in both the
+- [x] **AC-4:** Given a hidden review, when it is un-hidden, then it is back in both the
   aggregate and the list, and a second un-hide is `AlreadyApplied`. *Seam:*
   `ReviewModeration` + `VenueRatingSummary` + `ListedReviews` · *Pinned by:*
   `ReviewModerationFlowIT.unhideRestoresBothSurfaces`,
@@ -88,7 +88,7 @@ reused; copy differs from the photo takedown because hide is reversible) · `pla
   `ReviewsChanged`, then its stored columns read `0/0` — the "New" rendering. *Seam:*
   `review.events.ReviewsChanged` → `venue`'s listener → the venue row · *Pinned by:*
   `VenueRatingRecomputeIT.aHiddenSoleReviewReturnsTheVenueToNew`
-- [ ] **AC-6:** Given a venue with a visible commented review, a star-only review and a hidden
+- [x] **AC-6:** Given a venue with a visible commented review, a star-only review and a hidden
   review, when the admin list is read, then all three appear newest first, each with its
   `hiddenAt` (`null` for visible), ten per page with a cursor to the next. *Seam:*
   `ReviewModeration#pageFor` · *Pinned by:* `ReviewModerationFlowIT.adminListShowsEveryReviewMarked`
@@ -163,11 +163,11 @@ Reviews tab shares it.
 | R-3 | The predicate lands in one `WHERE` but not the other (list hides, aggregate still counts) | med | high | Both `WHERE`s in one commit (phase 0), each with its own pin (AC-1, AC-2); `JdbcReviews` Javadoc rewritten to state the predicate lives in exactly those two statements | agent | **closed (phase 0)** — both pins green, the audit above enumerates the seven statements |
 | R-4 | A missing `SecurityConfig` matcher lets `anyRequest().authenticated()` admit a plain OPERATOR to the new routes | low | high | Three explicit `hasRole(ADMIN)` matchers; `AdminSurfaceRoleGateTest` discovers every `/api/admin/**` mapping and probes OPERATOR + CUSTOMER — a missed matcher fails the build; `AdminReviewTakedownIT.takedownIsAdminOnly` proves it over the real chain | agent | open |
 | R-5 | `WebSliceStubs` lacks the new `ReviewModeration` port → every `@WebMvcTest` slice fails to boot | high | low | Phase 3 adds the inert stub with the controller; `EndpointRoleGateCoverageTest.DECLARED_REACHABLE` gains the three routes | agent | open |
-| R-6 | Hide/un-hide redelivered or double-clicked → duplicate `ReviewsChanged` or drift | med | low | The write is `UPDATE … WHERE id = :id AND hidden_at IS NULL RETURNING venue_id` (mirror for un-hide): rows-affected is the outcome, a no-op publishes nothing, and the listener's recompute is a full re-read either way | agent | open |
+| R-6 | Hide/un-hide redelivered or double-clicked → duplicate `ReviewsChanged` or drift | med | low | The write is `UPDATE … WHERE id = :id AND hidden_at IS NULL RETURNING venue_id` (mirror for un-hide): rows-affected is the outcome, a no-op publishes nothing, and the listener's recompute is a full re-read either way | agent | **closed (phase 1)** — `ReviewModerationServiceTest` pins one event per flip, `ReviewModerationFlowIT` the conditional update for real |
 | R-7 | The aggregate is eventually consistent (ADR-0015): the admin's next read may precede the recompute | med | low | Same posture as submit; the admin tab does not render the score. The e2e is mocked, so no timing; `VenueRatingRecomputeIT` awaits the row | agent | open |
 | R-8 | Error-contract drift on the new 4xx paths (§6b) | low | med | `404 NO_SUCH_REVIEW` and `409 REVIEW_HIDDEN` through `ApiProblem` from exhaustive switches; the review-side `409` keeps `instance` pinned to `/api/bookings` (invariant #7); `ErrorContractArchitectureTests` stays green | agent | open |
 | R-9 | Adding `ReviewPanel.Hidden` breaks the exhaustive switches in `booking`'s `BookingDetailView` and the frontend `@switch` silently (a missing `kind`) | high | low | The Java switch is exhaustive → compile error → `"HIDDEN"` added with its own test; the TS union gains the member so the template's `@switch` is type-checked; `review-panel.spec.ts` pins the case | agent | open |
-| R-10 | `Reviews.findFor` changes shape → the three `FakeReviews` in the service tests and `WebSliceStubs` stop compiling | high | low | Same phase (2): every implementor found by `grep -rn "implements Reviews"` updated in the commit | agent | open |
+| R-10 | `Reviews.findFor` changes shape → the `FakeReviews` in the service tests stop compiling | high | low | Same phase (2): every implementor found by `grep -rn "implements Reviews"` updated in the commit (`WebSliceStubs` holds no `Reviews` stub — phase 1's audit) | agent | open |
 | R-11 | The touch-target sweep and `admin-console-tabs.e2e.ts` hit an unmocked `/api/admin/venues/*/reviews` | med | low | `support/admin-console.mocks.ts` gains the read; `touch-targets-admin.e2e.ts` gains the Reviews row (list + confirm states) | agent | open |
 | R-12 | The Reviews tab lands out of slot in `ADMIN_CONSOLE_TAB_ORDER` and fails the subsequence pin | low | low | Inserted after Photos (moderation surfaces adjacent), the IA contract updated in `q1-admin-console-tab-ia.md`'s order | agent | open |
 | R-13 | A hidden review's `display_name`/`comment` still reach the admin (by design) but must never reach the public list — the admin read must not be reachable without ADMIN | low | high | The admin list is served only by the `/api/admin/**` route (R-4); the public read keeps its predicate (R-3) | agent | open |
@@ -331,16 +331,16 @@ Venue picker `<select data-testid="admin-reviews-venue">`, the photos tab's mark
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)` — draft PR #898 open as the CI vehicle
+**Stage pointer:** `implement (phase 2)` — draft PR #898 open as the CI vehicle
 
-**Next action:** phase 1 — `ReviewModeration` port, red first on
-`ReviewModerationServiceTest.hidePublishesOnceAndIsIdempotent`.
+**Next action:** phase 2 — the author's fence, red first on
+`ReviewGateTest.aHiddenReviewReadsAsHiddenEvenPastTheWindow`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V48 `hidden_at` + the visibility predicate | ✅ | `Hide reviews from the aggregate and the public list by a nullable hidden_at (#814)` |
-| 1 — `ReviewModeration`: hide / un-hide / admin list, `ReviewsChanged` | ⏳ | |
-| 2 — the author's fence: `HIDDEN` in the gate, the panel, the amend outcome, the booking page | | |
+| 1 — `ReviewModeration`: hide / un-hide / admin list, `ReviewsChanged` | ✅ | `Hide and un-hide a review through the review module's moderation port (#814)` |
+| 2 — the author's fence: `HIDDEN` in the gate, the panel, the amend outcome, the booking page | ⏳ | |
 | 3 — the admin REST edge: controller, matchers, stubs, audit pin | | |
 | 4 — the admin Reviews tab, the mocked journey, docs, close-out prep | | |
 
@@ -573,6 +573,7 @@ booking-detail DTO test, `review-panel.spec.ts`
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-02 | phase 0 (the predicate) | every production SQL statement that touches the `review` table | `grep -rn "FROM review\b\|UPDATE review\b\|INTO review\b\|DELETE FROM review\b" platform/src/main` | 7, all in `JdbcReviews`: claim, update, delete, `findFor`, `totalsFor`, `existsFor`, `newestListedBefore` | predicate on the two **public** reads (`totalsFor`, `newestListedBefore`) only; the author's read-back (`findFor`, `existsFor`) and the writes address the row by `booking_id` and must keep seeing a hidden row — phase 2 relies on that |
+| 2026-09-02 | phase 1 (the widened `Reviews` port) | every implementor of `Reviews` | `grep -rln "implements Reviews\b" platform/src` | 5: JdbcReviews.java, ListedReviewsServiceTest.java, ReviewEligibilityServiceTest.java, ReviewLifecycleServiceTest.java, ReviewModerationServiceTest.java | all five carry the four new methods in the same commit (the fakes throw `UnsupportedOperationException` where moderation is out of their use case) |
 
 ---
 
@@ -582,7 +583,7 @@ booking-detail DTO test, `review-panel.spec.ts`
 - [ ] **AC-2:** same class → PASS.
 - [ ] **AC-3 / AC-4:** `gradle test --tests "*ReviewModerationServiceTest*" --tests "*ReviewModerationFlowIT*"` → PASS.
 - [ ] **AC-5:** `gradle test --tests "*VenueRatingRecomputeIT*"` → PASS.
-- [ ] **AC-6:** `gradle test --tests "*ReviewModerationFlowIT*"` → PASS.
+- [x] **AC-6:** `gradle test --tests "*ReviewModerationFlowIT*"` → PASS.
 - [ ] **AC-7 / AC-8:** `gradle test --tests "*AdminReviewTakedownIT*" --tests "*AdminSurfaceRoleGateTest*" --tests "*EndpointRoleGateCoverageTest*"` → PASS.
 - [ ] **AC-9:** `gradle test --tests "*ReviewGateTest*" --tests "*ReviewLifecycleServiceTest*" --tests "*ReviewEligibilityServiceTest*" --tests "*ReviewControllerTest*"` → PASS.
 - [ ] **AC-10:** `npm test -- review-panel` → PASS.

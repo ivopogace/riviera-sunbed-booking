@@ -20,6 +20,7 @@ import ai.riviera.platform.review.vocabulary.CompletedStay;
 import ai.riviera.platform.review.vocabulary.ListedReview;
 import ai.riviera.platform.review.vocabulary.OwnReview;
 import ai.riviera.platform.review.vocabulary.ReviewPanel;
+import ai.riviera.platform.review.vocabulary.ReviewRef;
 import ai.riviera.platform.review.vocabulary.VenueRef;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -153,6 +154,26 @@ class ReviewEligibilityServiceTest {
 		@Override
 		public List<ListedReview> newestListedBefore(VenueRef venue, long beforeId, int limit) {
 			throw new UnsupportedOperationException("the eligibility read never lists");
+		}
+
+		@Override
+		public Optional<VenueRef> hide(ReviewRef review, Instant at) {
+			throw new UnsupportedOperationException("the eligibility read never moderates");
+		}
+
+		@Override
+		public Optional<VenueRef> unhide(ReviewRef review) {
+			throw new UnsupportedOperationException("the eligibility read never moderates");
+		}
+
+		@Override
+		public boolean existsById(ReviewRef review) {
+			throw new UnsupportedOperationException("the eligibility read never moderates");
+		}
+
+		@Override
+		public List<ModeratedReview> newestForModerationBefore(VenueRef venue, long beforeId, int limit) {
+			throw new UnsupportedOperationException("the eligibility read never moderates");
 		}
 	}
 }

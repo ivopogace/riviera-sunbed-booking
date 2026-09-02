@@ -140,5 +140,25 @@ class ListedReviewsServiceTest {
 		public boolean existsFor(BookingRef booking) {
 			throw new UnsupportedOperationException("the listing read never reads one review");
 		}
+
+		@Override
+		public Optional<VenueRef> hide(ReviewRef review, Instant at) {
+			throw new UnsupportedOperationException("the listing read never moderates");
+		}
+
+		@Override
+		public Optional<VenueRef> unhide(ReviewRef review) {
+			throw new UnsupportedOperationException("the listing read never moderates");
+		}
+
+		@Override
+		public boolean existsById(ReviewRef review) {
+			throw new UnsupportedOperationException("the listing read never moderates");
+		}
+
+		@Override
+		public List<ModeratedReview> newestForModerationBefore(VenueRef venue, long beforeId, int limit) {
+			throw new UnsupportedOperationException("the listing read never moderates");
+		}
 	}
 }
