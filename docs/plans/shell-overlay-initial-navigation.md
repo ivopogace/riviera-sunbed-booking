@@ -62,11 +62,11 @@ for `bugfix/shell-overlay-initial-navigation`.
   navigates to a different URL, then the menu is removed and focus moves to `main` —
   unchanged behaviour. *Seam:* same as AC-1 · *Pinned by:* `app.spec.ts` › `moves focus to
   main when a navigation closes the account menu (a11y, #351)` (existing, body unchanged)
-- [ ] **AC-4:** Given the find modal is open with a known booking code, when the code is
+- [x] **AC-4:** Given the find modal is open with a known booking code, when the code is
   submitted and the app navigates to `/booking/:code`, then the modal is gone from the detail
   view. *Seam:* the mocked Playwright suite against the running SPA · *Pinned by:*
   `frontend/e2e/find-a-booking.e2e.ts` › the found-code flow (existing, unchanged)
-- [ ] **AC-5:** Given a reader of `frontend/e2e/support/shell.ts`, when they read its header,
+- [x] **AC-5:** Given a reader of `frontend/e2e/support/shell.ts`, when they read its header,
   then `awaitRoutedPage` is still exported and used by every opener, and the header states
   that the wait is the test's own precondition (and still covers the post-sign-in redirect)
   rather than describing an app bug that is now fixed. *Seam:* the file's exported API +
@@ -100,7 +100,7 @@ N/A — no surface is retired or replaced; one guard is added to an existing sub
 | R-2 | The guard swallows a close it should perform (a real navigation to the same URL) | low | med | The router emits `NavigationSkipped`, not `NavigationEnd`, for a same-URL re-navigation — already relied on and pinned by the existing `#351` "activated on the page it points at" spec, which closes the popover from the link handler instead | claude | closed — that spec is green unchanged |
 | R-3 | Seeding from the document URL makes the two existing close-on-navigation specs flaky through jsdom URL carry-over between specs | med | high | Probed: Angular's TestBed platform location does not move `window.location` on `router.navigate`, so the seed is `''`→`/` in every spec; AC-2/AC-3 run unchanged as the regression proof | claude | closed — both green, bodies untouched |
 | R-4 | `inject(Location)` in the shell drags a new dependency into a component that had none | low | low | `Location` is `@angular/common`'s router-facing service already provided by `provideRouter`; no new provider, no new import in `app.config.ts` | claude | closed — no provider change needed |
-| R-5 | The e2e suite's `awaitRoutedPage` masks a regression of this fix (the app-side bug could come back unnoticed) | med | med | AC-1 is the unit-level pin and does not depend on the e2e timing; the e2e wait stays for its own reasons (AC-5) | claude | open |
+| R-5 | The e2e suite's `awaitRoutedPage` masks a regression of this fix (the app-side bug could come back unnoticed) | med | med | AC-1 is the unit-level pin and does not depend on the e2e timing; the e2e wait stays for its own reasons (AC-5) | claude | closed — AC-1 pins the app side without the e2e timing |
 
 ## Open questions / Assumptions
 
@@ -157,15 +157,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `PR — draft opened, awaiting CI before the review gate`
 
-**Next action:** re-point `frontend/e2e/support/shell.ts`'s header comment at the test's own
-precondition (AC-5), then run the mocked e2e for `find-a-booking.e2e.ts` (AC-4).
+**Next action:** check the draft PR's CI run, then mark it ready for review and run the review
+gate per `riviera-sdlc` `references/pr-gates.md` §1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Keep overlays open on a same-URL navigation | ✅ | (this commit) |
-| 1 — Re-point the e2e helper's header comment | ⏳ | |
+| 0 — Keep overlays open on a same-URL navigation | ✅ | `e5f26bd` |
+| 1 — Re-point the e2e helper's header comment | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -258,19 +258,19 @@ and in the subscription:
 
 **Files:** Modify `frontend/e2e/support/shell.ts`
 
-- [ ] **Step 1: No new test** — AC-5 is a comment/API-shape criterion; the proof that the helper
+- [x] **Step 1: No new test** — AC-5 is a comment/API-shape criterion; the proof that the helper
   still works is the mocked suite staying green (AC-4 included).
 
-- [ ] **Step 2: Edit** the header so it states the wait is the spec's own precondition (the routed
+- [x] **Step 2: Edit** the header so it states the wait is the spec's own precondition (the routed
   page must be in the outlet before its trigger is clicked) and still covers the post-sign-in
   redirect, and drop the sentence describing the app closing overlays it opened in that window.
 
-- [ ] **Step 3: Run** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`
+- [x] **Step 3: Run** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`
   scoped to `find-a-booking.e2e.ts` + `theme-shell.e2e.ts` → PASS (AC-4).
 
-- [ ] **Step 4: Commit** — `git commit -m "Re-point the e2e shell helper's header at the test precondition (#892)"`
+- [x] **Step 4: Commit** — `git commit -m "Re-point the e2e shell helper's header at the test precondition (#892)"`
 
-- [ ] **Step 5: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Update plan-doc execution status** in the same commit window.
 
 ---
 
