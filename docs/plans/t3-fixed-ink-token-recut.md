@@ -229,7 +229,7 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft opened, awaiting CI; review + Sonar gates next`
+**Stage pointer:** `PR #886 (draft) — awaiting first CI run; review + Sonar gates next`
 
 **Next action:** Check this push's CI run, then run the Review gate per
 `riviera-sdlc` `references/pr-gates.md` §1, then the Sonar gate's issue list.
@@ -349,7 +349,7 @@ The only seam that can see R-6 and a wrong cascade. Both themes; the operator fa
 - [x] **AC-3:** Run `npm test -- --run fixed-ink-tokens` → single declaration, base block, `@theme inline`.
 - [x] **AC-4:** Run `npm test -- --run fixed-ink-tokens` → the absence sweep and the positive list.
 - [x] **AC-5:** Run `npm run test:e2e:a11y -- fixed-ink-token-recut` → both themes green.
-- [x] **AC-6:** The ledger's T-3 rows read `done — #849, PR #NN` with the re-classification.
+- [x] **AC-6:** The ledger's T-3 rows read `done — #849, PR #886` with the re-classification.
 
 ## Self-review checklist (before merge / PR)
 
