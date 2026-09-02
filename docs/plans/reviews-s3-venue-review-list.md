@@ -85,28 +85,28 @@ remote addendum).
 > Written at the application boundary — the inner hexagon — in domain terms; adapter-level
 > assertions live in the controller/e2e tests that mirror them.
 
-- [ ] **AC-1:** Given a venue with 11 commented reviews, when the first page is read, then
+- [x] **AC-1:** Given a venue with 11 commented reviews, when the first page is read, then
   it carries the 10 newest (by review id, descending), each with stars, display name, stay
   month and comment, and a cursor; reading the page at that cursor yields the 11th and no
   cursor. *Seam:* `review.api.ListedReviews#pageFor(VenueRef, ReviewCursor)` · *Pinned by:*
   `ReviewListingFlowIT.pagesNewestFirstPastTheFirstPage`,
   `ListedReviewsServiceTest.aFullPageCarriesTheNextCursor`,
   `ListedReviewsServiceTest.aShortPageCarriesNoCursor`
-- [ ] **AC-2:** Given a venue with two commented reviews and one star-only review, when the
+- [x] **AC-2:** Given a venue with two commented reviews and one star-only review, when the
   page is read and the aggregate is read, then the page lists two and the aggregate counts
   three. *Seam:* `review.api.ListedReviews` + `review.api.VenueRatingSummary` · *Pinned by:*
   `ReviewListingFlowIT.starOnlyReviewsCountButAreNotListed`
-- [ ] **AC-3:** Given a review of a stay on 2026-07-01, when it is listed, then its stay
+- [x] **AC-3:** Given a review of a stay on 2026-07-01, when it is listed, then its stay
   reads as the month `2026-07` and nothing finer, on the port and on the wire. *Seam:*
   `review.api.ListedReviews` (`YearMonth`) + `GET /api/venues/{venueId}/reviews`
   (`stayedIn: "2026-07"`) · *Pinned by:* `ReviewListingFlowIT.listsTheStayAsAMonth`,
   `VenueReviewsControllerTest.servesTheStayAsYearMonthOnly`
-- [ ] **AC-4:** Given a venue whose reviews are all star-only, when the venue page renders,
+- [x] **AC-4:** Given a venue whose reviews are all star-only, when the venue page renders,
   then the header shows the aggregate and the review section shows its quiet empty state.
   *Seam:* `app-venue-reviews` (`[venueId]` input + the mocked `/reviews` route) · *Pinned by:*
   `venue-reviews.spec.ts` ("renders the quiet empty state on an empty first page"),
   `frontend/e2e/venue-reviews.e2e.ts` ("a rated venue with no written reviews")
-- [ ] **AC-5:** Given no credential, when the list is read for a visible venue, then it is
+- [x] **AC-5:** Given no credential, when the list is read for a visible venue, then it is
   served; for a venue whose owner is not `ACTIVE` (or that does not exist) it is `404`,
   indistinguishable from the map read's answer; and the operator-only read one segment away
   stays `401`. *Seam:* `venue.application.ListVenueReviews#pageFor(VenueId, ReviewCursor)`
@@ -114,16 +114,16 @@ remote addendum).
   `ListVenueReviewsServiceTest.fencesOnTouristVisibility`,
   `VenueReviewsControllerTest.anInvisibleVenueIs404`,
   `VenueReviewsControllerTest.isPublicAndDoesNotUngateTheOperatorRead`
-- [ ] **AC-6:** Given a review row claimed through the lifecycle, when it is written, then
+- [x] **AC-6:** Given a review row claimed through the lifecycle, when it is written, then
   it carries the stay's booking date, and a row without one is refused by the schema.
   *Seam:* `review.application.ReviewLifecycle#submit` + the `review` table · *Pinned by:*
   `ReviewSubmitFlowIT.recordsTheStayDate`, `ReviewMigrationIT.requiresAStayDate`
-- [ ] **AC-7:** Given a non-positive or non-numeric `cursor`, when the list is read, then
+- [x] **AC-7:** Given a non-positive or non-numeric `cursor`, when the list is read, then
   it is refused `400 INVALID_REQUEST` before the port is called. *Seam:* `GET
   /api/venues/{venueId}/reviews?cursor=` · *Pinned by:*
   `VenueReviewsControllerTest.rejectsANonPositiveCursor`,
   `VenueReviewsControllerTest.rejectsAMalformedCursor`
-- [ ] **AC-8:** Given the mocked e2e environment with two pages, when a tourist opens the
+- [x] **AC-8:** Given the mocked e2e environment with two pages, when a tourist opens the
   venue page, then the section lists the first page (stars announced as "N out of 5 stars",
   display name, "July 2026", comment); pressing "Show more reviews" appends the second
   page, the control leaves, focus lands on the first newly-listed review, and axe passes
@@ -359,9 +359,11 @@ the entries are star rows, not a score.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed; awaiting CI + Sonar on the fix head`
+**Stage pointer:** `merged via PR #897`
 
-**Next action:** post the review-gate comment on PR #897; when CI and the Sonar analysis on the fix head are green with an empty issue list, finalize this section (`merged via PR #897`) and merge.
+**Next action:** none — the merge close-out (`references/pr-gates.md` §3): issue #813 closed by the PR, epic #810's sub-issue ticked, subscription ended.
+
+**Gates on the final head `906b3ae`:** CI green (backend build + test with the Testcontainers ITs run, frontend lint + test + build, hygiene, CodeQL); SonarCloud quality gate passed with the API list at **0 issues** (`new_code_smells` 0, `new_bugs` 0, `new_vulnerabilities` 0, `new_security_hotspots` 0, `new_duplicated_blocks` 0, `new_coverage` 96.0% over 663 new lines); review gate run in full (above). `riviera-docs-freshness` ran over `origin/main...HEAD` (1 finding, ADR-0015 amended).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -386,6 +388,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-4 | review (CLAUDE.md walker → RV-FE-9) | A failed "Show more" destroys the pressed control by flipping to the failure branch with no focus move — the success leg moved focus, the failure leg did not | fixed — the error handler moves focus onto the failure line whenever a control was pressed (`pressed`); `venue-reviews.spec.ts` pins `document.activeElement` on that path |
 | F-5 | review (comment-compliance walker, scored 75) | `operator.api.VenueVisibility`'s Javadoc enumerated its fencing consumers and the review list became a third | fixed — the Javadoc names the four fenced tourist reads |
 | F-6 | review (overlay RV-FE-10, Minor) | The visible "Loading reviews…" line beside the section's `role="status"` region was a second unhidden source of the same sentence | fixed — `aria-hidden="true"` on the visible line, the house pattern (`set-password.ts`, `my-bookings.ts`) |
+| F-8 | sonar (re-analysis on `906b3ae`) | 0 new issues, 0 duplicated blocks, 96.0% new-code coverage — confirmed through `api/issues/search` (total 0) and `api/measures/component` (`new_lines` 663), not the badge | closed |
 | F-7 | review (overlay RV-FE-10, Minor) | No spec pinned the status region's identity across a transition, so moving it inside a branch would not fail a test | fixed — the "Show more" spec captures the node before the first load and asserts `toBe` after the append |
 
 ---
@@ -775,22 +778,22 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
