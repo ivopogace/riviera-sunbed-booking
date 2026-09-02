@@ -176,8 +176,8 @@ and `platform/.gitignore` ignores `out/` — also the name of every hexagonal `a
 package. Confirm any negative with `git ls-files '*/adapter/out/*.java'` before concluding
 a class doesn't exist.
 
-**`docs/plans/` holds only in-flight work.** A plan doc is deleted at the next epic
-close-out (`riviera-docs-freshness` § *Plan-doc retirement*); code and docs cite the issue
+**`docs/plans/` holds only in-flight work.** A plan doc is deleted at the next close-out
+after its PR merges (`riviera-docs-freshness` § *Plan-doc retirement*); code and docs cite the issue
 or PR, never a plan path. Don't read old plans for rationale — it is on the issue, the PR,
 the ADRs, and the Javadoc/TSDoc. A retired plan is recoverable by slug:
 `git log --all --diff-filter=D -- 'docs/plans/<slug>.md'`.

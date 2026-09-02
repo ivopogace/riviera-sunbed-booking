@@ -105,7 +105,8 @@ Keep it right-sized: a one-line fix doesn't need a plan doc. A feature that touc
 booking, availability, or money does.
 
 A plan doc is working state, not a record. It is committed so the work can be followed as
-it lands, and deleted at the next epic close-out with its citations repointed to the issue
+it lands, and deleted at the next close-out after its PR merges (any later slice's merge
+close-out or an epic close-out) with its citations repointed to the issue
 or PR (`riviera-docs-freshness` § *Plan-doc retirement*). Rationale worth keeping lives on
 the issue, in an ADR, or in the Javadoc/TSDoc of the code it constrains.
 

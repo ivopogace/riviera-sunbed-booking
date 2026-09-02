@@ -26,7 +26,7 @@ stage, and again when picking up a plan to execute in a fresh session.
 - **An empty Open Questions / Assumptions section by the time "done" is claimed**, or
   remaining items each cite a follow-up issue.
 - **A lifetime that ends at merge.** The plan doc is working state: it is deleted at the next
-  epic close-out (`riviera-docs-freshness` § *Plan-doc retirement*), so nothing durable —
+  close-out of any kind (`riviera-docs-freshness` § *Plan-doc retirement*), so nothing durable —
   code comments, ADRs, skills — cites its path; cite the issue or PR. Anything only the plan
   records and a later slice needs goes to that issue, the ADR, or the Javadoc first.
 

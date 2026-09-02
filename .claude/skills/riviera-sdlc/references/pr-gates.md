@@ -146,8 +146,10 @@ and duplications below its fail thresholds. Pull the actual list and fix every e
    docs-only PR + CI cycle. After this step there is no post-merge repo commit; the only
    post-merge items are GitHub edits (steps 2 and 3). If you find yourself opening a
    docs-only PR to finish a close-out, step 4 was skipped. The plan doc then lives until the
-   epic close-out, where it is deleted (`riviera-docs-freshness` § *Plan-doc retirement*) —
-   so code and docs cite the issue or PR, never its path.
+   next close-out of any kind, where it is deleted (`riviera-docs-freshness` § *Plan-doc
+   retirement*) — so code and docs cite the issue or PR, never its path. Part of **this**
+   close-out, in the PR's own last commit: `git rm` every plan in `docs/plans/` whose PR has
+   already merged and repoint its citations; a standalone slice needs no epic to be swept.
 5. **Substrate-doc staleness check — run `riviera-docs-freshness`** if the slice changed
    something `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, an ADR, or a `riviera-*`
    skill states (a module's status, the package shape, a canonical value set, an ownership

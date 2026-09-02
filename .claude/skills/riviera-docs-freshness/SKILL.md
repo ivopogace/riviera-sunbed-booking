@@ -28,7 +28,7 @@ else ask for the range.
 | `CONTEXT.md` | glossary terms, canonical value sets (statuses, pools), flow descriptions | a new domain term, a renamed status, a changed flow |
 | `RESPONSIBILITIES.md` | each module's Job / Not-My-Job lists, shipped-state notes, the invariants' long form, the platform-edge rules | behavior moves between modules, an edge concern changes shape |
 | `docs/adr/*` | decision + consequences paragraphs | a decision gets re-decided (needs an amendment note, never silent contradiction) |
-| `docs/plans/*` | the in-flight slice's execution-status table | only the CURRENT slice's plan exists; a merged slice's plan is deleted at epic close-out (*Plan-doc retirement*, below), never audited as history |
+| `docs/plans/*` | the in-flight slice's execution-status table | only the CURRENT slice's plan exists; a merged slice's plan is deleted at the next close-out of any kind (*Plan-doc retirement*, below), never audited as history |
 | `docs/design/*.dc.html` | copy/behavior a design record depicts that shipped code has since changed | a slice ships copy/behavior that diverges from an artboard — per `docs/design/README.md`, add a one-line `<!-- as-built diverges — see #NNN -->` pointer next to the diverged line; never rewrite the artboard's copy in place |
 | `docs/design/*.md` — the maintained files (`colour-literal-token-audit.md`, `non-text-contrast.md`) | ledger rows still marked open for a family that shipped; a rule's family table citing a spec that does not measure what it claims | these ARE rewritten to track the app — correct them in place; `docs/design/README.md` states which files are which |
 | `.claude/skills/riviera-*/SKILL.md` | concrete file names, class names, endpoints, and example tables inside skills | a rename/removal of anything a skill cites as an example |
@@ -90,12 +90,15 @@ else ask for the range.
 - **Don't restate, verify.** This skill never adds new documentation; it only reconciles
   existing statements with reality.
 
-## Plan-doc retirement (epic close-out)
+## Plan-doc retirement (every close-out)
 
 A plan doc is working state, not a record: it carries the slice from plan to merge and then
-stops earning the tokens every later search spends on it. At each epic close-out, delete the
-plan docs of every slice merged since the last sweep (a standalone slice's plan rides along
-with the next sweep):
+stops earning the tokens every later search spends on it. A merged plan cannot be deleted
+in its own PR (the plan doc is the state store a review or merge session reads until the
+merge), so the trigger is **the next close-out of any kind** — the merge close-out of any
+later slice, or an epic close-out: whoever runs a close-out deletes every plan in
+`docs/plans/` whose PR has already merged, in the code PR they are closing out. Epics are
+not required; the folder holds only the slices in flight at any moment.
 
 1. `git rm` the plan doc and any `docs/plans/<slug>/` asset directory.
 2. Repoint every citation to the issue or PR: grep the slug across the tree outside
@@ -104,7 +107,7 @@ with the next sweep):
 3. Anything only the plan recorded that a later slice needs (a deferred-residual
    disposition, a rejected alternative, an operational list) moves first — to the issue that
    owns it, the ADR, or the Javadoc of the class it constrains — in the same commit.
-4. Note the sweep in the epic close-out comment. The file stays recoverable by slug:
+4. Note the sweep in the close-out comment. The file stays recoverable by slug:
    `git log --all --diff-filter=D -- 'docs/plans/<slug>.md'`.
 
 ## When to run
