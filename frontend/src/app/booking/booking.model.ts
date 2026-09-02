@@ -178,7 +178,8 @@ export interface OwnReviewView {
  * a flag and hoping the neighbouring fields are set.
  *
  * `FROZEN` and `WINDOW_CLOSED` are deliberately distinct: one is a verdict still worth reading, the
- * other a window nobody ever wrote in, and the two need opposite words on screen.
+ * other a window nobody ever wrote in, and the two need opposite words on screen. `HIDDEN` is a
+ * verdict a platform admin took out of public view: readable by its author, changeable by nobody.
  */
 export type ReviewPanel =
   | {
@@ -192,6 +193,7 @@ export type ReviewPanel =
       readonly windowClosesAt: string;
     }
   | { readonly kind: 'FROZEN'; readonly review: OwnReviewView }
+  | { readonly kind: 'HIDDEN'; readonly review: OwnReviewView }
   | { readonly kind: 'WINDOW_CLOSED' }
   | { readonly kind: 'NOT_COMPLETED' };
 

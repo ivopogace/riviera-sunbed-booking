@@ -11,7 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * The fence order, one case per state. This is where the order is pinned for every surface that
  * consults it — the write path and the code-gated read both call {@code stateOf}, so a case proved
- * here holds for both rather than being asserted twice in two service tests.
+ * here holds for both rather than being asserted twice in two service tests. A hidden review is
+ * decided before the window: "removed from public view" outranks "stays as written".
  */
 class ReviewGateTest {
 
@@ -21,39 +22,46 @@ class ReviewGateTest {
 
 	@Test
 	void aCheckedInUnratedStayInsideTheWindowIsEligible() {
-		assertEquals(ReviewState.ELIGIBLE, ReviewGate.stateOf(true, YESTERDAY, false, NOW));
+		assertEquals(ReviewState.ELIGIBLE, ReviewGate.stateOf(true, YESTERDAY, ReviewSlot.EMPTY, NOW));
 	}
 
 	@Test
 	void aRatedStayInsideTheWindowIsAlreadyReviewed() {
-		assertEquals(ReviewState.ALREADY_REVIEWED, ReviewGate.stateOf(true, YESTERDAY, true, NOW));
+		assertEquals(ReviewState.ALREADY_REVIEWED, ReviewGate.stateOf(true, YESTERDAY, ReviewSlot.TAKEN, NOW));
 	}
 
 	@Test
 	void aStayCheckedInBeyondTheWindowIsFrozen() {
 		assertEquals(ReviewState.WINDOW_CLOSED,
-				ReviewGate.stateOf(true, BEYOND_THE_WINDOW, false, NOW));
+				ReviewGate.stateOf(true, BEYOND_THE_WINDOW, ReviewSlot.EMPTY, NOW));
 	}
 
 	@Test
 	void ratedAndFrozenReadsAsFrozen() {
 		assertEquals(ReviewState.WINDOW_CLOSED,
-				ReviewGate.stateOf(true, BEYOND_THE_WINDOW, true, NOW));
+				ReviewGate.stateOf(true, BEYOND_THE_WINDOW, ReviewSlot.TAKEN, NOW));
+	}
+
+	@Test
+	void aHiddenReviewReadsAsHiddenEvenPastTheWindow() {
+		assertEquals(ReviewState.HIDDEN, ReviewGate.stateOf(true, YESTERDAY, ReviewSlot.HIDDEN, NOW));
+		assertEquals(ReviewState.HIDDEN,
+				ReviewGate.stateOf(true, BEYOND_THE_WINDOW, ReviewSlot.HIDDEN, NOW));
 	}
 
 	@Test
 	void aBookingThatWasNeverCheckedInIsNotCompleted() {
-		assertEquals(ReviewState.NOT_COMPLETED, ReviewGate.stateOf(true, null, false, NOW));
+		assertEquals(ReviewState.NOT_COMPLETED, ReviewGate.stateOf(true, null, ReviewSlot.EMPTY, NOW));
 	}
 
 	@Test
 	void aCodeNoBookingAnswersToIsNoSuchStay() {
-		assertEquals(ReviewState.NO_SUCH_STAY, ReviewGate.stateOf(false, null, false, NOW));
+		assertEquals(ReviewState.NO_SUCH_STAY, ReviewGate.stateOf(false, null, ReviewSlot.EMPTY, NOW));
 	}
 
 	@Test
 	void theWindowsLastInstantIsStillOpen() {
 		assertEquals(ReviewState.ELIGIBLE,
-				ReviewGate.stateOf(true, NOW.minus(ReviewWindow.WINDOW), false, NOW));
+				ReviewGate.stateOf(true, NOW.minus(ReviewWindow.WINDOW), ReviewSlot.EMPTY, NOW));
 	}
 }

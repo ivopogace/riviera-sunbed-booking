@@ -156,6 +156,19 @@ class VenueRatingRecomputeIT {
 	}
 
 	@Test
+	void aHiddenSoleReviewReturnsTheVenueToNew() {
+		long venueId = fixtures.venue("Recompute Hidden");
+		String code = review(venueId, 5);
+		announce(venueId);
+		awaitRating(venueId, 50, 1);
+
+		fixtures.hide(reviewIdFor(code));
+		announce(venueId);
+
+		awaitRating(venueId, 0, 0);
+	}
+
+	@Test
 	void aVenueWithNoReviewsRecomputesBackToNew() {
 		long venueId = fixtures.venue("Recompute Empty");
 
@@ -181,6 +194,11 @@ class VenueRatingRecomputeIT {
 				.param("stars", stars).param("createdAt", Timestamp.from(Instant.now()))
 				.update();
 		return code;
+	}
+
+	private long reviewIdFor(String code) {
+		return jdbc.sql("SELECT id FROM review WHERE booking_id = :id")
+				.param("id", fixtures.bookingIdOf(code)).query(Long.class).single();
 	}
 
 	private void deleteReviewFor(String code) {

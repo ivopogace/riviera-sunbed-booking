@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import ai.riviera.platform.review.api.ReviewEligibility;
 import ai.riviera.platform.review.domain.ReviewGate;
+import ai.riviera.platform.review.domain.ReviewSlot;
 import ai.riviera.platform.review.domain.ReviewWindow;
 import ai.riviera.platform.review.spi.CompletedStays;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
@@ -40,12 +41,14 @@ class ReviewEligibilityService implements ReviewEligibility {
 	@Override
 	public ReviewPanel panelFor(String bookingCode) {
 		Optional<CompletedStay> found = stays.byCode(bookingCode);
-		Optional<OwnReview> review = found.flatMap(stay -> reviews.findFor(stay.booking()));
+		Optional<StoredReview> stored = found.flatMap(stay -> reviews.findFor(stay.booking()));
+		Optional<OwnReview> review = stored.map(StoredReview::review);
 		return switch (ReviewGate.stateOf(found.isPresent() || stays.existsByCode(bookingCode),
-				found.map(CompletedStay::completedAt).orElse(null), review.isPresent(),
-				clock.instant())) {
+				found.map(CompletedStay::completedAt).orElse(null),
+				stored.map(StoredReview::slot).orElse(ReviewSlot.EMPTY), clock.instant())) {
 			case NO_SUCH_STAY -> new ReviewPanel.NoSuchStay();
 			case NOT_COMPLETED -> new ReviewPanel.NotCompleted();
+			case HIDDEN -> new ReviewPanel.Hidden(review.orElseThrow());
 			case WINDOW_CLOSED -> review.<ReviewPanel>map(ReviewPanel.Frozen::new)
 					.orElseGet(ReviewPanel.WindowClosed::new);
 			case ALREADY_REVIEWED ->

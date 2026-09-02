@@ -155,3 +155,30 @@ export interface AdminVenuePhotosView {
   readonly venueId: number;
   readonly slots: readonly AdminPhotoSlotView[];
 }
+
+/**
+ * One review under moderation; mirrors the backend `AdminReviewsResponse.ReviewEntry`. Everything
+ * the public sees plus the rows it never does: `comment` is `null` for a star-only review,
+ * `hiddenAt` is an ISO instant once an admin has hidden the review and `null` while it is in
+ * public view — visibility IS the null instant, so there is no boolean to keep in step.
+ * `stayedIn` is an ISO year-month, never a day.
+ */
+export interface AdminReviewEntryView {
+  readonly id: number;
+  readonly stars: number;
+  readonly displayName: string | null;
+  readonly stayedIn: string;
+  readonly comment: string | null;
+  readonly createdAt: string;
+  readonly hiddenAt: string | null;
+}
+
+/**
+ * One page of a venue's reviews for moderation, newest first; mirrors the backend
+ * `AdminReviewsResponse`. `nextCursor` is passed back as `?cursor=` for the next older page and is
+ * `null` when this page ends the list.
+ */
+export interface AdminReviewsPage {
+  readonly reviews: readonly AdminReviewEntryView[];
+  readonly nextCursor: number | null;
+}

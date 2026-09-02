@@ -145,6 +145,22 @@ const adminTabRoutes: Routes = [
     },
   },
   {
+    path: 'reviews',
+    loadComponent: () => import('./admin/admin-reviews').then((m) => m.AdminReviews),
+    title: 'Reviews — Riviera',
+    data: {
+      adminTab: {
+        title: 'Reviews',
+        titleId: 'admin-reviews-title',
+        maxWidthClass: 'max-w-[860px]',
+        signInCopy: 'Sign in as an admin to moderate reviews.',
+        restoringTestId: 'admin-reviews-restoring',
+        signedOutTestId: 'admin-reviews-signed-out',
+        forbiddenTestId: 'admin-reviews-forbidden',
+      } satisfies AdminTabRouteData,
+    },
+  },
+  {
     path: 'privacy',
     loadComponent: () => import('./admin/admin-privacy').then((m) => m.AdminPrivacy),
     title: 'Privacy — Riviera',

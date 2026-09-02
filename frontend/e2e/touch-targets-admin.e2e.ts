@@ -31,6 +31,7 @@ test.describe('44px touch targets on the admin console at a phone width', () => 
     { path: '/admin/email', marker: 'admin-outbox-card', label: 'admin mail outbox' },
     { path: '/admin/refunds', marker: 'admin-refunds-card', label: 'admin refund outbox' },
     { path: '/admin/photos', marker: 'admin-photos-venue', label: 'admin venue photos' },
+    { path: '/admin/reviews', marker: 'admin-reviews-venue', label: 'admin reviews' },
     { path: '/admin/privacy', marker: 'admin-privacy-form', label: 'admin privacy' },
     { path: '/admin/audit', marker: 'admin-audit-card', label: 'admin audit' },
   ];
@@ -72,6 +73,23 @@ test.describe('44px touch targets on the admin console — gated states', () => 
     await expect(page.getByTestId('admin-suspend-panel-12')).toBeVisible();
 
     await expectTouchTargets(page, 'admin operators (suspend confirm)');
+  });
+
+  test('reviews — a venue’s rows with Hide, Un-hide and Show more, then the hide confirm', async ({
+    page,
+  }) => {
+    await signIn(page);
+    await page.goto('/admin/reviews');
+    await page.getByTestId('admin-reviews-venue').selectOption('7');
+    await expect(page.getByTestId('admin-review-hide-31')).toBeVisible();
+
+    // Measure Hide, Un-hide and Show more BEFORE opening the confirm, which replaces Hide.
+    await expectTouchTargets(page, 'admin reviews (rows)');
+
+    await page.getByTestId('admin-review-hide-31').click();
+    await expect(page.getByTestId('admin-review-confirm-panel-31')).toBeVisible();
+
+    await expectTouchTargets(page, 'admin reviews (hide confirm)');
   });
 
   test('venue photos — an occupied slot, then its takedown confirm', async ({ page }) => {

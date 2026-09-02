@@ -25,6 +25,13 @@ public sealed interface ReviewPanel {
 	record Frozen(OwnReview review) implements ReviewPanel {
 	}
 
+	/**
+	 * Rated, then taken out of public view by a platform admin: the author may still read it, and it
+	 * neither counts toward the venue nor can be changed or removed — whatever the window says.
+	 */
+	record Hidden(OwnReview review) implements ReviewPanel {
+	}
+
 	/** Never rated, and past the window — there is nothing to show and nothing left to write. */
 	record WindowClosed() implements ReviewPanel {
 	}

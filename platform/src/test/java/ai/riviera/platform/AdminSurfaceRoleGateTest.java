@@ -80,18 +80,19 @@ class AdminSurfaceRoleGateTest {
 
 	/**
 	 * Anchors proving the discovery reached every module that owns admin endpoints — the application
-	 * root plus {@code venue}, {@code notification}, {@code payout} and {@code booking}.
+	 * root plus {@code venue}, {@code review}, {@code notification}, {@code payout} and {@code booking}.
 	 *
 	 * <p>This is the guard's own vacuity check, and the reason it is not simply a full hand-written
 	 * list: a sweep that discovers <em>nothing</em> passes every assertion below trivially, so if
 	 * {@code @WebMvcTest} ever stopped registering the module {@code adapter/in} controllers this class
-	 * would go quietly green while verifying nothing at all. Five entries across five owners catch that
-	 * without becoming a list somebody has to remember to extend — a new admin endpoint needs no edit
-	 * here.
+	 * would go quietly green while verifying nothing at all. Six entries across six owners catch that
+	 * without becoming a list somebody has to remember to extend — a new admin endpoint in a module
+	 * already anchored needs no edit here; only a module's <em>first</em> admin surface adds one.
 	 */
 	private static final Set<String> CROSS_MODULE_ANCHORS = Set.of(
 			"GET /api/admin/audit",
 			"GET /api/admin/venues/{venueId}/photos",
+			"GET /api/admin/venues/{venueId}/reviews",
 			"GET /api/admin/mail-outbox",
 			"GET /api/admin/payout-batches",
 			"GET /api/admin/refund-outbox");

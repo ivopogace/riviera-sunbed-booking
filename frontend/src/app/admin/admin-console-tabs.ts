@@ -27,6 +27,7 @@ export const ADMIN_CONSOLE_TAB_ORDER = [
   'Email',
   'Refunds',
   'Photos',
+  'Reviews',
   'Privacy',
   'Audit',
 ] as const;
@@ -95,6 +96,7 @@ export class AdminConsoleTabs {
     { path: '/admin/email', label: 'Email', testId: 'admin-tab-email' },
     { path: '/admin/refunds', label: 'Refunds', testId: 'admin-tab-refunds' },
     { path: '/admin/photos', label: 'Photos', testId: 'admin-tab-photos' },
+    { path: '/admin/reviews', label: 'Reviews', testId: 'admin-tab-reviews' },
     { path: '/admin/privacy', label: 'Privacy', testId: 'admin-tab-privacy' },
     { path: '/admin/audit', label: 'Audit', testId: 'admin-tab-audit' },
   ];

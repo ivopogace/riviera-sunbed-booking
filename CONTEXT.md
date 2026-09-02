@@ -234,6 +234,13 @@ model in `docs/architecture/domain-model.md`.
   empty list at once. The list reads newest first, ten at a time.
 - **Stay month** — the month and year of the stay a review is about, the only precision the public
   ever sees: a month places a stay in a season, a day would place a guest at the venue.
+- **Review takedown** — the **platform admin's** reversible removal of a review from public view:
+  the review leaves the venue page's list and the aggregate rating the moment it is hidden, and
+  returns to both when un-hidden. A takedown is a flag, never a deletion, and is recorded in the
+  admin audit trail. Publish-first: nothing is moderated before it is shown.
+- **Hidden review** — a review under a takedown, as its author sees it on their booking page: still
+  readable, marked as removed from public view, and frozen — it can no longer be changed or removed
+  by its author, whatever the review window says, until it is un-hidden.
 - **Aggregate rating** — a venue's public score: the **mean of its visible reviews**, carried in
   **tenths** (4.5 stars is 45 — integer arithmetic, never floating point, the money discipline
   applied to the rating) alongside the count it is over. A venue with no reviews reads 0/0 and is

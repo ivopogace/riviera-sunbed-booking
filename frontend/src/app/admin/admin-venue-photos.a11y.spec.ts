@@ -6,6 +6,7 @@ import { expectNoAxeViolations } from '../../testing/axe';
 import { OperatorAuth } from '../core/operator-auth';
 import { AdminVenuePhotos } from './admin-venue-photos';
 import { AdminVenuePhotosService } from './admin-venue-photos.service';
+import { AdminVenuesService } from './admin-venues.service';
 import { AdminVenuePhotosView } from './admin.model';
 
 /**
@@ -34,9 +35,12 @@ const PHOTOS: AdminVenuePhotosView = {
   ],
 };
 
+const venuesStub: Partial<AdminVenuesService> = {
+  venues: () => Promise.resolve([{ id: 7, name: 'Bora Bora Beach', beach: 'Dhërmi' }]),
+};
+
 function serviceStub(): Partial<AdminVenuePhotosService> {
   return {
-    venues: () => Promise.resolve([{ id: 7, name: 'Bora Bora Beach', beach: 'Dhërmi' }]),
     slots: () => Promise.resolve(PHOTOS),
     takedown: () => Promise.resolve(undefined),
   };
@@ -54,6 +58,7 @@ async function renderWithVenuePicked(): Promise<ComponentFixture<AdminVenuePhoto
     providers: [
       provideRouter([]),
       { provide: OperatorAuth, useValue: authStub },
+      { provide: AdminVenuesService, useValue: venuesStub },
       { provide: AdminVenuePhotosService, useValue: serviceStub() },
     ],
   }).compileComponents();

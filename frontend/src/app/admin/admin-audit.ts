@@ -11,6 +11,7 @@ import {
 import { OperatorAuth } from '../core/operator-auth';
 import { CardGlass } from '../shared/card-glass';
 import { AdminAuditService } from './admin-audit.service';
+import { formatMoment } from './admin-moment';
 import { AdminAuditEntryView } from './admin.model';
 
 /**
@@ -159,15 +160,5 @@ export class AdminAudit {
     }
   }
 
-  /** An ISO instant as the moment an admin reads it — Europe/Tirane, the platform's civil zone. */
-  protected formatMoment(isoInstant: string): string {
-    return new Date(isoInstant).toLocaleString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Europe/Tirane',
-    });
-  }
+  protected readonly formatMoment = formatMoment;
 }

@@ -85,7 +85,8 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
 
 /**
  * The booking page's review section: the rating form, the guest's own verdict with its edit and
- * delete affordances, a frozen verdict, and — for every stay that can carry none — the reason why.
+ * delete affordances, a frozen or hidden verdict, and — for every stay that can carry none — the
+ * reason why.
  *
  * <p>It renders by exhaustive `@switch` over the server's review panel, never over the booking
  * status: every fence behind the panel is the review module's, and a stay stops being reviewable
@@ -187,6 +188,16 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
           <p [class]="cls.note" data-testid="review-frozen-note">
             Reviews can be changed for 60 days after your stay. That window has closed, so this one
             stays as you wrote it.
+          </p>
+          <ng-container [ngTemplateOutlet]="ownReviewTemplate" />
+        </section>
+      }
+      @case ('HIDDEN') {
+        <section [class]="cls.section" aria-labelledby="review-title" data-testid="review-panel">
+          <h2 id="review-title" [class]="cls.title">Your review</h2>
+          <p [class]="cls.note" data-testid="review-hidden-note">
+            This review was removed from public view by the platform. It no longer counts toward the
+            venue’s rating and can’t be changed.
           </p>
           <ng-container [ngTemplateOutlet]="ownReviewTemplate" />
         </section>
@@ -351,7 +362,9 @@ export class ReviewPanel {
 
   protected readonly own = computed<OwnReviewView | undefined>(() => {
     const panel = this.panel();
-    return panel.kind === 'ALREADY_REVIEWED' || panel.kind === 'FROZEN' ? panel.review : undefined;
+    return panel.kind === 'ALREADY_REVIEWED' || panel.kind === 'FROZEN' || panel.kind === 'HIDDEN'
+      ? panel.review
+      : undefined;
   });
 
   protected readonly ownStars = computed(() => starGlyphs(this.own()?.stars ?? 0));

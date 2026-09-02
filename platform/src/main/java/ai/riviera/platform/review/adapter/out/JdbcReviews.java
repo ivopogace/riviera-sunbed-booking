@@ -10,7 +10,9 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import ai.riviera.platform.review.application.ModeratedReview;
 import ai.riviera.platform.review.application.ReviewSubmission;
+import ai.riviera.platform.review.application.StoredReview;
 import ai.riviera.platform.review.application.ReviewTotals;
 import ai.riviera.platform.review.application.Reviews;
 import ai.riviera.platform.review.vocabulary.BookingRef;
@@ -33,26 +35,33 @@ import ai.riviera.platform.review.vocabulary.VenueRef;
  * <p>The aggregate read is the counterpart: one grouped scan of a venue's rows, served by the
  * prefix of {@code review_venue_listing_idx}. It returns raw totals — the mean and its rounding stay
  * in the domain. The listing read seeks the same index newest-first and keeps a row only when it
- * carries a comment; a review's visibility is not yet a column, so this {@code WHERE} and the
- * aggregate's are where that predicate lands when it is.
+ * carries a comment. Both are public reads, and both — and only they — carry the visibility
+ * predicate {@code hidden_at IS NULL}: a hidden review counts for nothing on the venue page, while
+ * its author's own read-back and the admin's moderation list still see it.
  *
  * <p>Edit and delete address the row by {@code booking_id} and answer with their rows-affected count
  * for the same reason: two amends racing each other resolve in the database, and the loser reads as
- * "no such review" rather than throwing.
+ * "no such review" rather than throwing. Hide and un-hide are the admin's twins by review id: each
+ * is one conditional update that returns the venue only when the row actually flipped, so a repeat
+ * is a no-op the caller can tell apart from a missing row.
  */
 @Repository
 class JdbcReviews implements Reviews {
 
-	/** Named once, per the {@code JdbcBookings} bind-parameter convention — five call sites bind it. */
+	/** Named once, per the {@code JdbcBookings} bind-parameter convention — four call sites bind it. */
 	private static final String PARAM_BOOKING = "booking";
 	private static final String PARAM_VENUE = "venue";
 	private static final String PARAM_STARS = "stars";
 	private static final String PARAM_COMMENT = "comment";
+	private static final String PARAM_ID = "id";
+	private static final String PARAM_BEFORE = "before";
+	private static final String PARAM_LIMIT = "limit";
 
 	/** The columns, kept apart from the bind parameters above: the two coincide by name, not by rule. */
 	private static final String COL_STARS = "stars";
 	private static final String COL_COMMENT = "comment";
 	private static final String COL_DISPLAY_NAME = "display_name";
+	private static final String COL_STAY_DATE = "stay_date";
 
 	private final JdbcClient jdbc;
 
@@ -104,13 +113,14 @@ class JdbcReviews implements Reviews {
 	}
 
 	@Override
-	public Optional<OwnReview> findFor(BookingRef booking) {
+	public Optional<StoredReview> findFor(BookingRef booking) {
 		return jdbc.sql("""
-				SELECT stars, comment, display_name FROM review WHERE booking_id = :booking
+				SELECT stars, comment, display_name, hidden_at FROM review WHERE booking_id = :booking
 				""")
 				.param(PARAM_BOOKING, booking.value())
-				.query((rs, rowNum) -> new OwnReview(rs.getInt(COL_STARS), rs.getString(COL_COMMENT),
-						rs.getString(COL_DISPLAY_NAME)))
+				.query((rs, rowNum) -> new StoredReview(new OwnReview(rs.getInt(COL_STARS),
+						rs.getString(COL_COMMENT), rs.getString(COL_DISPLAY_NAME)),
+						rs.getTimestamp("hidden_at") != null))
 				.optional();
 	}
 
@@ -118,7 +128,7 @@ class JdbcReviews implements Reviews {
 	public ReviewTotals totalsFor(VenueRef venue) {
 		return jdbc.sql("""
 				SELECT count(*) AS review_count, COALESCE(sum(stars), 0) AS star_total
-				FROM review WHERE venue_id = :venue
+				FROM review WHERE venue_id = :venue AND hidden_at IS NULL
 				""")
 				.param(PARAM_VENUE, venue.value())
 				.query((rs, rowNum) -> new ReviewTotals(rs.getInt("review_count"),
@@ -127,12 +137,58 @@ class JdbcReviews implements Reviews {
 	}
 
 	@Override
-	public boolean existsFor(BookingRef booking) {
-		return Boolean.TRUE.equals(jdbc.sql(
-				"SELECT EXISTS (SELECT 1 FROM review WHERE booking_id = :booking)")
-				.param(PARAM_BOOKING, booking.value())
+	public Optional<VenueRef> hide(ReviewRef review, Instant at) {
+		return jdbc.sql("""
+				UPDATE review SET hidden_at = :hiddenAt
+				WHERE id = :id AND hidden_at IS NULL
+				RETURNING venue_id
+				""")
+				.param(PARAM_ID, review.value())
+				.param("hiddenAt", Timestamp.from(at))
+				.query(Long.class).optional().map(VenueRef::new);
+	}
+
+	@Override
+	public Optional<VenueRef> unhide(ReviewRef review) {
+		return jdbc.sql("""
+				UPDATE review SET hidden_at = NULL
+				WHERE id = :id AND hidden_at IS NOT NULL
+				RETURNING venue_id
+				""")
+				.param(PARAM_ID, review.value())
+				.query(Long.class).optional().map(VenueRef::new);
+	}
+
+	@Override
+	public boolean existsById(ReviewRef review) {
+		return Boolean.TRUE.equals(jdbc.sql("SELECT EXISTS (SELECT 1 FROM review WHERE id = :id)")
+				.param(PARAM_ID, review.value())
 				.query(Boolean.class)
 				.single());
+	}
+
+	@Override
+	public List<ModeratedReview> newestForModerationBefore(VenueRef venue, long beforeId, int limit) {
+		return jdbc.sql("""
+				SELECT id, stars, display_name, stay_date, comment, created_at, hidden_at
+				FROM review
+				WHERE venue_id = :venue AND id < :before
+				ORDER BY id DESC
+				LIMIT :limit
+				""")
+				.param(PARAM_VENUE, venue.value())
+				.param(PARAM_BEFORE, beforeId)
+				.param(PARAM_LIMIT, limit)
+				.query((rs, rowNum) -> new ModeratedReview(new ReviewRef(rs.getLong("id")),
+						rs.getInt(COL_STARS), rs.getString(COL_DISPLAY_NAME),
+						YearMonth.from(rs.getObject(COL_STAY_DATE, LocalDate.class)),
+						rs.getString(COL_COMMENT), rs.getTimestamp("created_at").toInstant(),
+						instantOrNull(rs.getTimestamp("hidden_at"))))
+				.list();
+	}
+
+	private static Instant instantOrNull(Timestamp timestamp) {
+		return timestamp == null ? null : timestamp.toInstant();
 	}
 
 	@Override
@@ -140,16 +196,16 @@ class JdbcReviews implements Reviews {
 		return jdbc.sql("""
 				SELECT id, stars, display_name, stay_date, comment
 				FROM review
-				WHERE venue_id = :venue AND comment IS NOT NULL AND id < :before
+				WHERE venue_id = :venue AND hidden_at IS NULL AND comment IS NOT NULL AND id < :before
 				ORDER BY id DESC
 				LIMIT :limit
 				""")
 				.param(PARAM_VENUE, venue.value())
-				.param("before", beforeId)
-				.param("limit", limit)
+				.param(PARAM_BEFORE, beforeId)
+				.param(PARAM_LIMIT, limit)
 				.query((rs, rowNum) -> new ListedReview(new ReviewRef(rs.getLong("id")),
 						rs.getInt(COL_STARS), rs.getString(COL_DISPLAY_NAME),
-						YearMonth.from(rs.getObject("stay_date", LocalDate.class)),
+						YearMonth.from(rs.getObject(COL_STAY_DATE, LocalDate.class)),
 						rs.getString(COL_COMMENT)))
 				.list();
 	}

@@ -10,7 +10,7 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  * audit trail, and is told an outcome that reveals nothing about whether the address was known.
  *
  * Run at **360px**, the project's small-screen bar, because the canvas's two-column layout has to
- * collapse there and the strip is at seven tabs with Privacy in it — the narrow viewport is the honest
+ * collapse there and the strip is at eight tabs with Privacy in it — the narrow viewport is the honest
  * place to prove both still fit.
  *
  * The erasure endpoint is mocked below so the spec is self-contained and runs in CI
@@ -218,7 +218,7 @@ test('the failure banner lands in reserved space, so the panel absorbs part of i
   expect((await confirm.boundingBox())?.y).toBe(clean.confirm?.y);
 });
 
-test('the tab strip marks Privacy in slot 7 and never scrolls sideways at 360px', async ({
+test('the tab strip marks Privacy in slot 8 and never scrolls sideways at 360px', async ({
   page,
 }) => {
   await mockOperatorLifecycleApi(page, { admin: ADMIN });
@@ -229,12 +229,12 @@ test('the tab strip marks Privacy in slot 7 and never scrolls sideways at 360px'
   await expect(privacy).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('admin-tab-photos')).not.toHaveAttribute('aria-current', 'page');
 
-  // The console's tab-order decision put Privacy after Photos and before Audit; the strip is where that is visible.
+  // The console's tab-order decision put Privacy after the moderation pair and before Audit.
   const labels = await page
     .getByRole('navigation', { name: 'Admin console sections' })
     .getByRole('link')
     .allInnerTexts();
-  expect(labels.slice(-3)).toEqual(['Photos', 'Privacy', 'Audit']);
+  expect(labels.slice(-3)).toEqual(['Reviews', 'Privacy', 'Audit']);
 
   const scrollsSideways = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,

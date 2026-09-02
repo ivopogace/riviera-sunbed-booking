@@ -11,7 +11,7 @@ import java.util.List;
  * non-goal).
  *
  * <p>Composition-root state, not a module's: the {@code /api/admin} namespace's controllers span
- * five modules and the root, so the accountability record over the whole namespace has no bounded
+ * six modules and the root, so the accountability record over the whole namespace has no bounded
  * context to live in — the same reasoning that keeps {@code RateLimitFilter} and the session
  * machinery at the edge (RV-BE-11), and the same edge-owned-table precedent as
  * {@code SPRING_SESSION}. An edge-internal seam, not a module surface: implemented by

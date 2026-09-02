@@ -70,6 +70,8 @@ class ReviewController {
 					error(HttpStatus.NOT_FOUND, "NO_SUCH_REVIEW", "This stay carries no review.");
 			case AmendOutcome.NotEligible ignored -> notCheckedIn();
 			case AmendOutcome.WindowClosed ignored -> windowClosed();
+			case AmendOutcome.Hidden ignored ->
+					error(HttpStatus.CONFLICT, "REVIEW_HIDDEN", "This review has been removed from public view.");
 		};
 	}
 

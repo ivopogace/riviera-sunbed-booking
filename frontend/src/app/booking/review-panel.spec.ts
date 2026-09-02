@@ -341,6 +341,20 @@ describe('ReviewPanel', () => {
     });
   });
 
+  describe('HIDDEN', () => {
+    it('shows the review read-only, marked as removed from public view', async () => {
+      const r = render({ kind: 'HIDDEN', review: OWN });
+
+      expect(r.find('review-hidden-note')?.textContent).toContain('removed from public view');
+      expect(r.find('own-review-stars')?.getAttribute('aria-label')).toBe('4 out of 5 stars');
+      expect(r.find('own-review-comment')?.textContent).toContain('Great sunbeds');
+      expect(r.find('edit-review')).toBeNull();
+      expect(r.find('start-delete-review')).toBeNull();
+      expect(r.find('review-comment')).toBeNull();
+      await expectNoAxeViolations(r.host);
+    });
+  });
+
   describe('WINDOW_CLOSED', () => {
     it('says the window has closed and offers nothing to write', async () => {
       const r = render({ kind: 'WINDOW_CLOSED' });

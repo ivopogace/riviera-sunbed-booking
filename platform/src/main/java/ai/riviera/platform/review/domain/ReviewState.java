@@ -20,6 +20,9 @@ public enum ReviewState {
 	/** Checked in, but more than the review window ago — the verdict is frozen. */
 	WINDOW_CLOSED,
 
+	/** A platform admin has taken the review out of public view; its author may read it, not change it. */
+	HIDDEN,
+
 	/** No booking answers to that code. Callers map this to the shared non-enumerating 404. */
 	NO_SUCH_STAY
 }

@@ -88,6 +88,22 @@ class ReviewControllerTest {
 	}
 
 	@Test
+	void aHiddenReviewIsAConflict() throws Exception {
+		when(reviewLifecycle.edit(any(), any())).thenReturn(new AmendOutcome.Hidden());
+		when(reviewLifecycle.delete(any())).thenReturn(new AmendOutcome.Hidden());
+
+		// Its own code: the class's shared one sits at the per-code rate budget for one test run.
+		mvc.perform(put(REVIEW, "RVWHIDDEN7").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"stars\":4,\"comment\":\"Great sunbeds\",\"displayName\":\"Ana\"}"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("REVIEW_HIDDEN"))
+				.andExpect(jsonPath("$.instance").value("/api/bookings"));
+		mvc.perform(delete(REVIEW, "RVWHIDDEN7").with(csrf()))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("REVIEW_HIDDEN"));
+	}
+
+	@Test
 	void aSecondReviewIsAConflict() throws Exception {
 		when(reviewLifecycle.submit(any(), any())).thenReturn(new SubmitOutcome.AlreadyReviewed());
 

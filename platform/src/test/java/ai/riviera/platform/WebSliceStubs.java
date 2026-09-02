@@ -129,10 +129,16 @@ import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueFilter;
 import ai.riviera.platform.review.api.ReviewEligibility;
+import ai.riviera.platform.review.application.ModerationPage;
 import ai.riviera.platform.review.application.ReviewLifecycle;
+import ai.riviera.platform.review.application.ReviewModeration;
 import ai.riviera.platform.review.application.ReviewSubmission;
 import ai.riviera.platform.review.vocabulary.AmendOutcome;
+import ai.riviera.platform.review.vocabulary.ModerationOutcome;
+import ai.riviera.platform.review.vocabulary.ReviewCursor;
 import ai.riviera.platform.review.vocabulary.ReviewPanel;
+import ai.riviera.platform.review.vocabulary.ReviewRef;
+import ai.riviera.platform.review.vocabulary.VenueRef;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueMapView;
@@ -974,5 +980,30 @@ class WebSliceStubs {
 	@Bean
 	ReviewEligibility reviewEligibility() {
 		return _ -> new ReviewPanel.NoSuchStay();
+	}
+
+	/**
+	 * The moderation port {@code AdminReviewController} registers with — inert, so the web slice
+	 * exercises routing and the {@code ADMIN} gate, never storage.
+	 */
+	@Bean
+	ReviewModeration reviewModeration() {
+		return new ReviewModeration() {
+
+			@Override
+			public ModerationPage pageFor(VenueRef venue, ReviewCursor from) {
+				return new ModerationPage(List.of(), false);
+			}
+
+			@Override
+			public ModerationOutcome hide(ReviewRef review) {
+				return new ModerationOutcome.NoSuchReview();
+			}
+
+			@Override
+			public ModerationOutcome unhide(ReviewRef review) {
+				return new ModerationOutcome.NoSuchReview();
+			}
+		};
 	}
 }
