@@ -442,6 +442,7 @@ a *state palette* is a different question from tokenising an ink: it wants one t
 | ~~`shared/amenity-chip.ts`~~ | ~~5~~ | **Retired — this row was wrong.** A two-variant tag is class F's shape, not a per-state palette; tokenised as `--riv-amenity-{tag,water}-*` by **#858, PR #867** |
 | `venue/availability-calendar.html` | 5 | |
 | `venue/day-availability.ts` | 3 | |
+| `venue/day-availability.ts` — `focus-visible:outline-[#0a3f4e]` ×4 | 1 | **Outside the population command** — its prefix set is `(text\|bg\|border\|fill\|stroke\|shadow)-\[`, so `outline-` was never enumerated; surfaced by [#890](https://github.com/ivopogace/riviera-sunbed-booking/issues/890)'s focus-ring sweep, which left it alone (a colour change is a repaint, not a migration). A focus-ring colour over the calendar's fixed `--riv-calendar-glass`, so class F's shape once cut; neither `--riv-accent-ink` (`#085a6e`, the ring everywhere else) nor `--riv-tile-focus` matches it. **Open** |
 | `shared/confirm-panel.ts` | 3 | Tone palettes |
 | others (11 components) | ~14 | |
 

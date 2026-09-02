@@ -21,6 +21,9 @@ import { baseLayerBlock, STYLESHEET } from '../../testing/stylesheet-tokens';
  */
 const APP_ROOT = join(process.cwd(), 'src/app');
 
+/** The design doc that recorded the sign-out button's indicator as unstyled before this baseline. */
+const DESIGN_DOC = join(process.cwd(), '../docs/design/non-text-contrast.md');
+
 /** This file, the one source allowed to spell the suppression tokens — it is the sweep. */
 const SELF = 'shared/focus-ring-baseline.spec.ts';
 
@@ -88,5 +91,12 @@ describe('the focus-ring baseline (#890)', () => {
     });
 
     expect(offenders).toEqual([]);
+  });
+
+  it('the design doc no longer records the indicator as unstyled', () => {
+    const doc = readFileSync(DESIGN_DOC, 'utf8');
+
+    expect(doc).not.toContain('today an unstyled');
+    expect(doc).toContain('focus-ring-baseline');
   });
 });

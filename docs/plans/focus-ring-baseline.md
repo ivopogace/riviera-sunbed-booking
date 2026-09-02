@@ -65,41 +65,41 @@ Tailwind v4 docs (`adding-custom-styles`, `preflight`, `outline-style` — `outl
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (the named answer):** Given the compiled stylesheet, when `src/tailwind.css` is read as
+- [x] **AC-1 (the named answer):** Given the compiled stylesheet, when `src/tailwind.css` is read as
       text, then it declares exactly one `button:focus-visible` rule, inside `@layer base`, painting
       `outline: 3px solid var(--riv-accent-ink)` with `outline-offset: 2px`. *Seam:* `src/tailwind.css`
       read through `testing/stylesheet-tokens.ts` (`baseLayerBlock()`) · *Pinned by:*
       `focus-ring-baseline.spec.ts` › "declares the baseline ring once, inside @layer base".
-- [ ] **AC-2 (one ring width tree-wide):** Given every source under `src/app`, when the
+- [x] **AC-2 (one ring width tree-wide):** Given every source under `src/app`, when the
       `focus-visible:outline-[<n>px]` utilities are enumerated, then every one is `3px` — the base
       rule and the explicit sites agree. *Seam:* the `src/app` source tree · *Pinned by:*
       `focus-ring-baseline.spec.ts` › "every explicit ring is the same 3px the baseline paints".
-- [ ] **AC-3 (the guard):** Given every `.ts`/`.html` under `src/app`, when a source suppresses an
+- [x] **AC-3 (the guard):** Given every `.ts`/`.html` under `src/app`, when a source suppresses an
       outline (`outline-none`, `outline-hidden`, `outline-0`, `outline: none`) on a control
       (`button`, `a`, `input`, `select`, `textarea`, `summary`), then the spec fails naming the path;
       the two programmatically-focused `<h1>`s in `operator-home.ts` stay legal because a heading is
       not a control. *Seam:* the `src/app` source tree · *Pinned by:* `focus-ring-baseline.spec.ts`
       › "no control suppresses its outline — the baseline is the only indicator half the tree has".
-- [ ] **AC-4 (clipped tiles):** Given the gallery grid's three tile buttons inside their
+- [x] **AC-4 (clipped tiles):** Given the gallery grid's three tile buttons inside their
       `overflow-hidden rounded-[26px]` host, when rendered, then each carries the inset white ring
       utilities (`focus-visible:-outline-offset-[3px] focus-visible:outline-white`) so the ring paints
       inside the clip. *Seam:* `PhotoGalleryGrid`'s rendered template · *Pinned by:*
       `photo-gallery-grid.spec.ts` › "paints its focus ring inside the clipped tile, in white over the photo".
-- [ ] **AC-5 (rendered proof, migrated control):** Given the operator console with the sign-out
+- [x] **AC-5 (rendered proof, migrated control):** Given the operator console with the sign-out
       button (`oc-signout`, the issue's origin, carrying no `focus-visible:` utility), when it is
       focused, then Chromium computes `outline-width: 3px`, `outline-style: solid`,
       `outline-color: rgb(8, 90, 110)`, `outline-offset: 2px`, and before focus `outline-style: none`.
       *Seam:* the mocked console route `/operator/1/beach-map` · *Pinned by:*
       `e2e/focus-ring-baseline.e2e.ts` › "a button with no focus utility paints the baseline ring".
-- [ ] **AC-6 (rendered proof, override still wins):** Given the photo lightbox's close button
+- [x] **AC-6 (rendered proof, override still wins):** Given the photo lightbox's close button
       (`focus-visible:outline-white`, fixed-dark host), when focused, then `outline-color` is
       `rgb(255, 255, 255)` and `outline-width` `3px` — the utilities layer beats the baseline.
       *Seam:* `/venues/1` with the mocked 3-photo venue · *Pinned by:*
       `e2e/focus-ring-baseline.e2e.ts` › "a site that names its own ring colour still wins".
-- [ ] **AC-7 (rendered proof, inset tile):** Given `gallery-photo-0`, when focused, then
+- [x] **AC-7 (rendered proof, inset tile):** Given `gallery-photo-0`, when focused, then
       `outline-offset: -3px` and `outline-color: rgb(255, 255, 255)`. *Seam:* `/venues/1` as above ·
       *Pinned by:* `e2e/focus-ring-baseline.e2e.ts` › "the clipped gallery tile paints its ring inset".
-- [ ] **AC-8 (docs settled):** `docs/design/non-text-contrast.md` no longer calls the sign-out
+- [x] **AC-8 (docs settled):** `docs/design/non-text-contrast.md` no longer calls the sign-out
       button's focus indicator "today an unstyled one"; it names the baseline and this issue.
       *Seam:* the doc text · *Pinned by:* `focus-ring-baseline.spec.ts` › "the design doc no longer
       records the indicator as unstyled" (a text sweep, the `#834` precedent).
@@ -200,16 +200,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)` — draft PR #895 open
+**Stage pointer:** `PR — marking #895 ready for review; review gate + Sonar gate due`
 
-**Next action:** Phase 2 — add the AC-8 doc sweep to the guard spec (red), then settle the four docs.
+**Next action:** Phase 3 — mark PR #895 ready, run `Skill("code-review:code-review")` + `riviera-review-overlay`, then the Sonar list, then `riviera-docs-freshness`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — guard spec + `@layer base` rule | ✅ | `df74334` |
-| 1 — gallery inset ring + mocked e2e | ✅ | recorded at the Phase 2 commit |
-| 2 — docs: design note, ledger row, skill rule, CLAUDE.md bullet | ⏳ | |
-| 3 — merge main, ready-for-review, review + Sonar gates | | |
+| 1 — gallery inset ring + mocked e2e | ✅ | `0e65126` |
+| 2 — docs: design note, ledger row, skill rule, CLAUDE.md bullet | ✅ | recorded at the Phase 3 commit |
+| 3 — merge main, ready-for-review, review + Sonar gates | ⏳ | `origin/main` had not moved at ready-for-review (`git log HEAD..origin/main` empty) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -426,9 +426,9 @@ the merge close-out §3.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..3, AC-8:** `cd frontend && npx vitest run src/app/shared/focus-ring-baseline.spec.ts` → PASS.
-- [ ] **AC-4:** `npx vitest run src/app/shared/photo-gallery-grid.spec.ts` → PASS.
-- [ ] **AC-5..7:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts e2e/focus-ring-baseline.e2e.ts` → PASS.
+- [x] **AC-1..3, AC-8:** `cd frontend && npx ng test --include src/app/shared/focus-ring-baseline.spec.ts` → 4 passed. Verified at Phase 2 (AC-1..3 at `df74334`).
+- [x] **AC-4:** `npx ng test --include src/app/shared/photo-gallery-grid.spec.ts` → PASS. Verified at `0e65126`.
+- [x] **AC-5..7:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts e2e/focus-ring-baseline.e2e.ts` → 3 passed. Verified at `0e65126`.
 
 ## Self-review checklist (before merge / PR)
 

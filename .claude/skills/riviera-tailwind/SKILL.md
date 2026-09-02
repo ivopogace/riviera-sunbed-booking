@@ -78,6 +78,19 @@ states the decisions and traps the code can't show you.
      the `prefers-reduced-motion` guard.
    - Gradient CSS-var background = `bg-(image:--riv-photo-grad)`; bare `bg-(--x)` is a *color*.
    - `host: { style: '--foo: …' }` for a static custom property that drives layout.
+6. **The focus indicator has one baseline, and no control turns it off.** `src/tailwind.css`
+   paints `outline: 3px solid var(--riv-accent-ink); outline-offset: 2px` on every
+   `button:focus-visible` from a rule inside `@layer base` — the project's own Preflight
+   extension, the one place a native-element default belongs (Tailwind orders `theme, base,
+   components, utilities`, so a site's own `focus-visible:outline-white` on a fixed-dark host,
+   or `focus-visible:-outline-offset-[3px]` inside an `overflow-hidden` clip, keeps winning
+   deterministically; the same override on a directive host class would be rule 3's coin
+   flip). So a button needs no `focus-visible:` utilities unless its host or clip demands a
+   different colour or offset. Never write `outline-none`, `outline-hidden`, `outline-0` or
+   `[outline:none]` on a control — `app/shared/focus-ring-baseline.spec.ts` fails the build
+   naming the path (a programmatically-focused heading may). The rule must stay inside
+   `@layer base`: un-layered, it would beat every utility. Render proof:
+   `e2e/focus-ring-baseline.e2e.ts`; plan: `docs/plans/focus-ring-baseline.md`.
 
 ## Icons — inline SVG, shared as a component
 
@@ -208,6 +221,7 @@ way. Checklist: `references/scss-migration.md`.
 | "This control can't be 44 px, the layout won't allow it." | Then the layout is the bug. `data-touch-exempt` is for inline prose links, third-party iframes and box-less controls. |
 | "`check-touch-target` is green, so the floor holds." | It only proves someone declared something. It never measures a box, and never looks at `<a>`. |
 | "`bg-(--riv-photo-grad)` for the gradient." | That's a color. Use `bg-(image:--riv-photo-grad)`. |
+| "`outline-none`, I'll draw my own focus state." | The baseline ring is the only indicator many buttons have; the guard fails on a control. Override its colour or offset with `focus-visible:` utilities instead. |
 
 ## When NOT to use
 

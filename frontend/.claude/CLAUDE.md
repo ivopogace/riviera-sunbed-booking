@@ -49,6 +49,11 @@ You are an expert in TypeScript, Angular, and scalable web application developme
   (`shared/touch-target.ts`), or `data-touch-exempt="<reason>"` on the control or an
   ancestor (three documented exemption classes — `riviera-tailwind`). `<a>` is out of
   scope by design.
+- **Every `<button>` shows the 3px `--riv-accent-ink` focus ring from `tailwind.css`'s
+  `@layer base` rule** — no `focus-visible:` utilities needed unless a fixed-dark host wants
+  `outline-white` or an `overflow-hidden` clip wants an inset offset. Never `outline-none` /
+  `outline-hidden` on a control: `shared/focus-ring-baseline.spec.ts` fails the build
+  (`riviera-tailwind` rule 6).
 - **Guards** (`PostToolUse` hooks + CI, diff-scoped): `scripts/check-focus-posture.mjs` —
   the BUSY rules fail a build (novel busy-flag names: extend its `BUSY_STEMS`, don't work
   around it); FOCUS-1 is advisory, so treat a reported line as a prompt to check the three
