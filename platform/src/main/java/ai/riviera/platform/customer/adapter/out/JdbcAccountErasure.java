@@ -30,8 +30,9 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
  * <p>Since Slice 2 the same adapter also serves the automated retention sweep: the candidate read
  * applies the two gates {@code customer} can evaluate on its own tables (row age, and no live
  * {@code customer_account} claiming the email), and the by-id scrub reuses the identical guest tombstone —
- * shared as {@link #GUEST_TOMBSTONE} so request-erasure and retention-erasure cannot drift apart. All of it
- * is {@code SELECT}/{@code UPDATE} over existing columns, so the slice needs no migration.
+ * shared as {@link #GUEST_TOMBSTONE} so request-erasure and retention-erasure cannot drift apart. The
+ * by-email scrubs answer the ids they tombstoned ({@code RETURNING id}), which is how the service knows
+ * whose reviews to reach next. All of it is {@code SELECT}/{@code UPDATE} over existing columns.
  */
 @Repository
 class JdbcAccountErasure implements AccountErasureStore {
@@ -116,20 +117,21 @@ class JdbcAccountErasure implements AccountErasureStore {
 	}
 
 	@Override
-	public boolean eraseAccountByEmail(String normalizedEmail) {
+	public Optional<CustomerAccountId> eraseAccountByEmail(String normalizedEmail) {
 		return jdbc.sql("SELECT id FROM customer_account WHERE email = :email AND erased_at IS NULL")
 				.param(EMAIL, normalizedEmail)
 				.query(Long.class)
 				.optional()
-				.map(id -> eraseAccountById(new CustomerAccountId(id)))
-				.orElse(false);
+				.map(CustomerAccountId::new)
+				.filter(this::eraseAccountById);
 	}
 
 	@Override
-	public int eraseGuestByEmail(String normalizedEmail) {
-		return jdbc.sql(GUEST_TOMBSTONE + "WHERE email = :email AND erased_at IS NULL")
+	public List<CustomerId> eraseGuestByEmail(String normalizedEmail) {
+		return jdbc.sql(GUEST_TOMBSTONE + "WHERE email = :email AND erased_at IS NULL RETURNING id")
 				.param(EMAIL, normalizedEmail)
-				.update();
+				.query((rs, rowNum) -> new CustomerId(rs.getLong("id")))
+				.list();
 	}
 
 	@Override

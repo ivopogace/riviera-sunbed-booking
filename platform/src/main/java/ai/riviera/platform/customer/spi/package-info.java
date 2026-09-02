@@ -10,8 +10,10 @@
  *
  * <p>Holds {@link GuestBookingHistory}, implemented by the {@code booking} module so the retention sweep
  * can ask "does this guest still have a recent booking?" without customer depending on
- * booking — which would cycle, since {@code booking} already depends on {@code customer::api}. Same shape
- * as {@code venue.spi.BookingPresence}. Grant {@code customer::spi} only to the implementing module;
+ * booking — which would cycle, since {@code booking} already depends on {@code customer::api} — and
+ * {@link ReviewErasure}, implemented by {@code booking} too, so erasure and the sweep can have the subject's
+ * reviews tombstoned without customer knowing a booking or a review. Same shape as
+ * {@code venue.spi.BookingPresence}. Grant {@code customer::spi} only to the implementing module;
  * callers that merely use customer use {@code customer::api}.
  */
 @org.springframework.modulith.NamedInterface("spi")

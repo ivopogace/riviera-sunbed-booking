@@ -185,12 +185,12 @@ class ExpireGuestContactsServiceTest {
 		}
 
 		@Override
-		public boolean eraseAccountByEmail(String normalizedEmail) {
+		public Optional<CustomerAccountId> eraseAccountByEmail(String normalizedEmail) {
 			throw new UnsupportedOperationException("not exercised by the retention spec");
 		}
 
 		@Override
-		public int eraseGuestByEmail(String normalizedEmail) {
+		public List<CustomerId> eraseGuestByEmail(String normalizedEmail) {
 			throw new UnsupportedOperationException("not exercised by the retention spec");
 		}
 	}

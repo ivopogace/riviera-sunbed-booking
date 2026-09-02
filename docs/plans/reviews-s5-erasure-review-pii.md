@@ -121,23 +121,23 @@ at a time).
   reviews are tombstoned, then no `ReviewsChanged` is published and the stored columns are
   unchanged. *Seam:* `ReviewTombstones` + the `venue` row · *Pinned by:*
   `ReviewTombstoneFlowIT.tombstoningPublishesNothingAndLeavesTheStoredRating`
-- [ ] **AC-4:** Given a customer account with one account-linked booking and one guest-contact
+- [x] **AC-4:** Given a customer account with one account-linked booking and one guest-contact
   booking sharing its email, each reviewed with a name and a comment, when
   `AccountErasure.eraseAccount` runs, then both reviews are tombstoned, both stars remain,
   the venue aggregate is unchanged, and the retained booking/payment/payout rows are
   untouched. *Seam:* `customer.api.AccountErasure` · *Pinned by:*
   `AccountErasureIT.eraseAccountTombstonesTheSubjectsReviews`
-- [ ] **AC-5:** Given a guest with no account whose booking is reviewed, when
+- [x] **AC-5:** Given a guest with no account whose booking is reviewed, when
   `AccountErasure.eraseByEmail` runs with that email, then the review is tombstoned. *Seam:*
   `customer.api.AccountErasure` · *Pinned by:* `AccountErasureIT.adminEraseByEmailTombstonesTheGuestsReviews`
-- [ ] **AC-6:** Given an already-erased account whose account-linked booking gained a named
+- [x] **AC-6:** Given an already-erased account whose account-linked booking gained a named
   review afterwards, when `eraseAccount` runs again, then the review is tombstoned and the
   outcome is `ERASED`; when it runs a third time, then nothing changes and the outcome is
   `ALREADY_ERASED`; the service asks the review port once per subject kind per call, never
   for an empty guest list. *Seam:* `AccountErasure` over a fake `ReviewErasure` ·
   *Pinned by:* `AccountErasureServiceTest.eraseAccountReachesReviewsOfBothSubjectsAndIsIdempotent`,
   `AccountErasureServiceTest.eraseByEmailReachesTheGuestsAndTheAccountsReviews`,
-  `AccountErasureIT.eraseAccountIsIdempotent` (extended: the review stays as tombstoned)
+  `AccountErasureIT.eraseAccountTombstonesTheSubjectsReviews` (its second erasure: `ALREADY_ERASED`, the review stays tombstoned)
 - [ ] **AC-7:** Given the retention sweep scrubs two expired guests and retains one, when it
   runs, then `ReviewErasure.eraseForGuests` is called once with exactly the two scrubbed ids,
   and not at all when nothing was scrubbed. *Seam:* `customer.application.ExpireGuestContacts`
@@ -148,7 +148,7 @@ at a time).
   the sweep runs, then the review is tombstoned, its star and the venue aggregate are
   unchanged, and the financial rows are untouched. *Seam:* `ExpireGuestContacts` · *Pinned
   by:* `GuestContactRetentionIT.scrubsTheExpiredGuestsReviewsToo`
-- [ ] **AC-9:** Given the module graph after this slice, when `ApplicationModules.verify()`
+- [x] **AC-9:** Given the module graph after this slice, when `ApplicationModules.verify()`
   and the package-shape / published-surface tests run, then they pass with no
   `allowedDependencies` change on any module. *Seam:* the module structure · *Pinned by:*
   `ModularityTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`
@@ -263,16 +263,16 @@ already the wire types on every surface; a tombstoned review is one more row sha
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)` — phase 0 merged to the branch; draft PR #899 open.
+**Stage pointer:** `implement (phase 2)` — phases 0–1 on the branch; draft PR #899 open.
 
-**Next action:** phase 1 — `AccountErasureServiceTest` red at the `customer.spi.ReviewErasure`
-seam (the fake port), then the `booking` adapter and the store-port deepening (D-5).
+**Next action:** phase 2 — `ExpireGuestContactsServiceTest` red on the sweep's `ReviewErasure`
+constructor arg, then `GuestContactRetentionIT.scrubsTheExpiredGuestsReviewsToo`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `review.api.ReviewTombstones` + `JdbcReviewTombstones` | ✅ | phase-0 commit |
-| 1 — `customer.spi.ReviewErasure`, `booking`'s adapter, the erasure services reach | ⏳ | |
-| 2 — the retention sweep reaches reviews | | |
+| 1 — `customer.spi.ReviewErasure`, `booking`'s adapter, the erasure services reach | ✅ | phase-1 commit |
+| 2 — the retention sweep reaches reviews | ⏳ | |
 | 3 — docs, merge `origin/main`, ready for review, the gates | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -356,7 +356,7 @@ public interface ReviewTombstones {
 `AccountErasure.java`, `customer/spi/package-info.java`, `customer/package-info.java`,
 `booking/package-info.java` · Test `AccountErasureServiceTest.java`, `AccountErasureIT.java`
 
-- [ ] **Step 1: Failing tests** — `AccountErasureServiceTest` gains a `FakeReviewErasure`
+- [x] **Step 1: Failing tests** — `AccountErasureServiceTest` gains a `FakeReviewErasure`
   (records each call's ids; answers a configurable count) and the two AC-6 tests; the
   `FakeErasureStore` follows D-5. `AccountErasureIT` gains AC-4 and AC-5 and extends
   `eraseAccountIsIdempotent` with a review that stays tombstoned.
@@ -368,12 +368,12 @@ public interface ReviewErasure {
 }
 ```
 
-- [ ] **Step 2: Run, verify red** — `--tests "*AccountErasureServiceTest*"` → compile failure on the missing port, then assertions.
-- [ ] **Step 3: Minimal implementation** — the port; `BookingReviewErasure` (`@Repository`, package-private, `JdbcClient` + `ReviewTombstones`; `SELECT id FROM booking WHERE customer_id IN (:guests)` / `WHERE account_id = :account`; empty guard); `JdbcAccountErasure` returns ids (`RETURNING id`); the service: `eraseAccount` → account by id, guests by email, then `eraseForAccount(accountId) + eraseForGuests(guests)` (skipping an empty list), outcome per D-4; `eraseByEmail` → account by email (`Optional` id), guests by email, the same two reaches; the log lines gain `scrubbedReviews=`.
-- [ ] **Step 4: Green** — the unit test + `AccountErasureIT` → PASS; then the structural net (`ModularityTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `JdbcOnlyArchitectureTests`).
-- [ ] **Step 5: Generalization audit** — population: every implementor of `AccountErasureStore` (`grep -rln "implements AccountErasureStore" platform/src`) follows D-5; every consumer of `eraseGuestByEmail` / `eraseAccountByEmail` (`grep -rn "eraseGuestByEmail\|eraseAccountByEmail" platform/src`).
-- [ ] **Step 6: Commit** — `Reach a data subject's reviews from erasure through booking's inverted customer.spi port (#815)`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 2: Run, verify red** — `--tests "*AccountErasureServiceTest*"` → compile failure on the missing port, then assertions.
+- [x] **Step 3: Minimal implementation** — the port; `BookingReviewErasure` (`@Repository`, package-private, `JdbcClient` + `ReviewTombstones`; `SELECT id FROM booking WHERE customer_id IN (:guests)` / `WHERE account_id = :account`; empty guard); `JdbcAccountErasure` returns ids (`RETURNING id`); the service: `eraseAccount` → account by id, guests by email, then `eraseForAccount(accountId) + eraseForGuests(guests)` (skipping an empty list), outcome per D-4; `eraseByEmail` → account by email (`Optional` id), guests by email, the same two reaches; the log lines gain `scrubbedReviews=`.
+- [x] **Step 4: Green** — the unit test + `AccountErasureIT` → PASS; then the structural net (`ModularityTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `JdbcOnlyArchitectureTests`).
+- [x] **Step 5: Generalization audit** — population: every implementor of `AccountErasureStore` (`grep -rln "implements AccountErasureStore" platform/src`) follows D-5; every consumer of `eraseGuestByEmail` / `eraseAccountByEmail` (`grep -rn "eraseGuestByEmail\|eraseAccountByEmail" platform/src`).
+- [x] **Step 6: Commit** — `Reach a data subject's reviews from erasure through booking's inverted customer.spi port (#815)`
+- [x] **Step 7: Update Execution status.**
 
 ## Phase 2 — the retention sweep reaches reviews
 
@@ -406,6 +406,8 @@ TS doc comments
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-02 | phase 1 (the widened `AccountErasureStore` port, D-5) | every implementor of `AccountErasureStore` and every caller of the two by-email scrubs | `grep -rln "implements AccountErasureStore" platform/src`; `grep -rn "eraseGuestByEmail\|eraseAccountByEmail" platform/src` | 3 implementors (`JdbcAccountErasure` + the two test fakes); callers: `AccountErasureService` only | all three follow the new return types in this commit; the sweep's fake keeps throwing for the two it never exercises |
+| 2026-09-02 | phase 1 (a `//` block the guard now sees) | every multi-line `//` block in a file this slice touches | `node scripts/check-inline-comments.mjs --files <touched>` | 1: the grant rationale in `booking/package-info.java` (pre-existing, flagged once touched) | moved into the package Javadoc, which is exempt and where a grant's why belongs |
 | 2026-09-02 | phase 0 (a second writer of review PII) | every production SQL statement that touches the `review` table | `grep -rn "FROM review\b\|UPDATE review\b\|INTO review\b\|DELETE FROM review\b" platform/src/main` | 10 in `JdbcReviews` + the new `JdbcReviewTombstones` (+ V47's backfill) | the only PII writes besides the tombstone are the author's own claim/update — new data the subject supplies, not erasure's to cover; no other statement needs the tombstone's shape |
 
 ---
@@ -413,11 +415,11 @@ TS doc comments
 ## Acceptance-criteria verification (final)
 
 - [x] **AC-1 / AC-2 / AC-3:** `gradle test --tests "*ReviewTombstoneFlowIT*"` → PASS (3, skipped 0). Verified at phase 0.
-- [ ] **AC-4 / AC-5:** `gradle test --tests "*AccountErasureIT*"` → PASS.
-- [ ] **AC-6:** `gradle test --tests "*AccountErasureServiceTest*"` → PASS.
+- [x] **AC-4 / AC-5:** `gradle test --tests "*AccountErasureIT*"` → PASS (7, skipped 0). Verified at phase 1.
+- [x] **AC-6:** `gradle test --tests "*AccountErasureServiceTest*"` → PASS (8). Verified at phase 1.
 - [ ] **AC-7:** `gradle test --tests "*ExpireGuestContactsServiceTest*"` → PASS.
 - [ ] **AC-8:** `gradle test --tests "*GuestContactRetentionIT*"` → PASS.
-- [ ] **AC-9:** the structural net → PASS.
+- [x] **AC-9:** the structural net → PASS (`ModularityTests` 1, `PackageShapeArchitectureTests` 4, `PublishedSurfacePlacementArchitectureTests` 11, `JdbcOnlyArchitectureTests` 2). Verified at phases 0 and 1.
 - [ ] **AC-10:** `npm test -- admin-reviews venue-reviews` → PASS (the existing pins).
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
