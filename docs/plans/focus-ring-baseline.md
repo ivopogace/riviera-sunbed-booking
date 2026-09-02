@@ -42,8 +42,8 @@ clipped-ring case in `photo-gallery-grid`) · `riviera-plan-doc` (this template 
 behavior-parity ledger, which is what made "the UA default is replaced, explicit rings are
 preserved" a checked claim rather than a hope) · `tdd` (each phase red-first: the guard spec
 before the rule, the gallery spec before the tile edit, the e2e written before the run) ·
-`riviera-review-overlay` (review gate — due at ready-for-review, Phase 3) ·
-`riviera-docs-freshness` (**ran** over `origin/main..HEAD` at Phase 3 — see Execution status) ·
+`riviera-review-overlay` (review gate — **ran** at ready-for-review via `Skill("code-review:code-review")`, 5 reviewers + scoring; 3 findings, F-1..F-3, all fixed) ·
+`riviera-docs-freshness` (**ran** over `origin/main...HEAD` at ready-for-review — 1 finding, historical: `console-btn-hover-token.md`'s Non-goals note describes the gap as it stood at #887; left as a record) ·
 `grilling` (the intake round: verdict / seam / population / tiles — answers recorded under
 Open questions › Resolved) · `riviera-local-debug` (cloud-session recipes: scoped Vitest runs,
 `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium` for the mocked e2e) · `riviera-frontend`
@@ -90,15 +90,22 @@ Tailwind v4 docs (`adding-custom-styles`, `preflight`, `outline-style` — `outl
       focused, then Chromium computes `outline-width: 3px`, `outline-style: solid`,
       `outline-color: rgb(8, 90, 110)`, `outline-offset: 2px`, and before focus `outline-style: none`.
       *Seam:* the mocked console route `/operator/1/beach-map` · *Pinned by:*
-      `e2e/focus-ring-baseline.e2e.ts` › "a button with no focus utility paints the baseline ring".
+      `e2e/focus-ring-baseline.e2e.ts` › "a button with no focus utility paints the baseline ring (#890)".
 - [x] **AC-6 (rendered proof, override still wins):** Given the photo lightbox's close button
       (`focus-visible:outline-white`, fixed-dark host), when focused, then `outline-color` is
       `rgb(255, 255, 255)` and `outline-width` `3px` — the utilities layer beats the baseline.
       *Seam:* `/venues/1` with the mocked 3-photo venue · *Pinned by:*
-      `e2e/focus-ring-baseline.e2e.ts` › "a site that names its own ring colour still wins".
+      `e2e/focus-ring-baseline.e2e.ts` › "a site that names its own ring colour still wins — the utilities layer beats base (#890)".
 - [x] **AC-7 (rendered proof, inset tile):** Given `gallery-photo-0`, when focused, then
       `outline-offset: -3px` and `outline-color: rgb(255, 255, 255)`. *Seam:* `/venues/1` as above ·
-      *Pinned by:* `e2e/focus-ring-baseline.e2e.ts` › "the clipped gallery tile paints its ring inset".
+      *Pinned by:* `e2e/focus-ring-baseline.e2e.ts` › "the clipped gallery tile paints its ring inset, in white over the photo (#890)".
+- [x] **AC-9 (fixed-light host):** Given the sign-out warning bar — fixed white with `#b3261e` ink in
+      every theme — when its two buttons are focused under the dark theme, then the ring is the bar's own
+      ink (`outline-current`), not the themed `#7cd7e8` that would sit under 2:1 on white. *Seam:* `app.html`
+      read as text + the tourist shell at `/` under `data-riv-theme="dark"` · *Pinned by:*
+      `focus-ring-baseline.spec.ts` › "the buttons on the fixed-white sign-out bar pin the ring to their own
+      ink, which clears 3:1" and `e2e/focus-ring-baseline.e2e.ts` › "the fixed-white sign-out bar keeps a
+      3:1 ring in the dark theme (#890)".
 - [x] **AC-8 (docs settled):** `docs/design/non-text-contrast.md` no longer calls the sign-out
       button's focus indicator "today an unstyled one"; it names the baseline and this issue.
       *Seam:* the doc text · *Pinned by:* `focus-ring-baseline.spec.ts` › "the design doc no longer
@@ -145,7 +152,8 @@ must be shown preserved.
 | R-3 | A future slice writes `outline-none`/`outline-hidden` on a control to silence the ring for visual reasons, removing the only indicator | med | high | AC-3's sweep fails the build naming the path; the tailwind skill's Red flags list gains the item | this slice | open |
 | R-4 | `:focus-visible` after programmatic `.focus()` does not match in the e2e, making AC-5 flaky | **hit** | med | It did not match on the console: signing in clicks, and Chromium treats script focus after a pointer interaction as pointer-driven. The test steps off the button and back with `Tab` / `Shift+Tab`, which always matches; the two tourist tests keep the plain-navigation `.focus()` posture. Resting state pinned first in all three | this slice | closed — Phase 1 |
 | R-5 | The base rule's 2px offset ring on a button sitting flush against a card edge overlaps neighbours | low | low | visual only; the 60 explicit sites already use offset-2 on the same hosts | this slice | accepted |
-| R-6 | Two Playwright workers + a new spec file push the mocked suite over CI's budget | low | low | one short file, three tests; the suite is ~5 min at 2 workers | this slice | accepted |
+| R-6 | Two Playwright workers + a new spec file push the mocked suite over CI's budget | low | low | one short file, four tests; the suite is ~5 min at 2 workers | this slice | accepted |
+| R-7 | A button on a host that does NOT follow the theme gets the themed ring: on a fixed-white host the dark theme's `#7cd7e8` accent ink sits under 2:1 | **hit** (review F-1) | high | The sign-out bar's two buttons pin the ring to their own fixed ink with `focus-visible:outline-current` (AC-9, unit + dark-theme e2e). Population swept by mechanism — see the audit log | this slice | closed — review fix |
 
 ## Open questions / Assumptions
 
@@ -200,9 +208,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR — marking #895 ready for review; review gate + Sonar gate due`
+**Stage pointer:** `review gate — findings fixed, re-pushed; Sonar gate next`
 
-**Next action:** Phase 3 — mark PR #895 ready, run `Skill("code-review:code-review")` + `riviera-review-overlay`, then the Sonar list, then `riviera-docs-freshness`.
+**Next action:** Check CI on the fix push, pull the SonarCloud issue list for PR #895, then finalise this section (`merged via PR #895`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -217,6 +225,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (history reviewer) | The themed baseline ring on the fixed-white sign-out bar resolves `#7cd7e8` on white in dark (~1.65:1) — a 2.4.11/1.4.11 regression on the tourist shell (the consoles are porcelain-pinned, so the e2e never saw it) | fixed — `focus-visible:outline-current` on both bar buttons; AC-9 unit + dark-theme e2e; R-7 |
+| F-2 | review (prior-PR reviewer) | The cascade-layer rationale restated in three places, and the `tailwind.css` comment missing the `Rationale:` pointer the file's token comments carry (#862/#871/#875/#878/#883/#885/#886 precedent) — the maintainer raised the same point on the skill + CLAUDE.md prose | fixed — one full explanation in `tailwind.css` (+ pointer); skill rule 6 and the CLAUDE.md bullet cut to the contract; `baseLayerBlock()` doc to its contract |
+| F-3 | review (prior-PR reviewer) | Three `Pinned by` citations paraphrased the e2e titles (#871/#875/#877 precedent) | fixed — verbatim |
 
 ---
 
@@ -224,6 +235,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - `docs/plans/focus-ring-baseline.md` — this plan.
 - `frontend/src/tailwind.css` — the `@layer base` `button:focus-visible` rule + its rationale comment.
+- `frontend/src/app/app.html` — the sign-out bar's two buttons pin the ring to their own ink (`outline-current`).
 - `frontend/src/testing/stylesheet-tokens.ts` — `baseLayerBlock()`: the `@layer base { … }` block as text.
 - `frontend/src/app/shared/focus-ring-baseline.spec.ts` — AC-1/2/3/8 guards.
 - `frontend/src/app/shared/photo-gallery-grid.ts` — inset white ring utilities on the three tiles.
@@ -421,6 +433,7 @@ the merge close-out §3.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-02 | Phase 0 — the base rule paints an offset-2 ring, which an `overflow-hidden` ancestor clips | buttons inside an `overflow-hidden` ancestor; enumerated by file, then each host read for what it actually encloses | `grep -rln overflow-hidden frontend/src/app --include=*.ts --include=*.html \| grep -v spec` → 12 files, then `<button` lines per file | `app.html` (the clipped box is the `z-[-1]` background layer, no button inside) · `venue-map.html` (photo-band button already inset; set tiles carry their own ring) · `availability-calendar.html` (a 3px bar inside the button) · `booking-dialog.ts`, `home.html`, `photo-lightbox.ts` (explicit sites, absolutely-positioned ≥6px from the clipped edge) · `payouts-tab.html` (both clipped cards enclose skeletons/rows, not the two buttons) · `admin-venue-photos.ts` (clips only the `<img>`) · `payout-statement.ts` (Close sits in a `px-6 py-4` header; a 5px ring fits) · **`photo-gallery-grid.ts`: three `h-full w-full` tiles flush to a `rounded-[26px] overflow-hidden` grid — clipped** | fix the gallery grid at the primitive (Phase 1); nothing else |
+| 2026-09-02 | review fix F-1 — the themed ring on a host that does not follow the theme | buttons whose ring paints over a FIXED (non-theming) light fill outside the porcelain-pinned consoles; enumerated by the fills, then each host read for what it encloses | `grep -rlE 'bg-white\b\|bg-\[#f[0-9a-f]{5}\]\|bg-\[rgba\(255' frontend/src/app --include=*.ts --include=*.html \| grep -v spec \| grep -v '^frontend/src/app/\(operator\|admin\)'` → 11 files, then `<button` per file | **`app.html`: the sign-out bar (fixed white, both themes) — its two buttons had no ring colour: fixed** · `booking-view.ts`: buttons inside the fixed-fill banners carry explicit rings already (`btnCta` white; the outline skins on `BTN`/`BTN_OUTLINE`) — pre-existing explicit sites, not this baseline's paint, out of scope · `auth-page.ts`, `booking-pay.ts`, `home.html`, `photo-slideshow.ts`, `booking-dialog.ts`: the near-white literal is the BUTTON's own fill on a themed host, or an explicit ring; the ring paints over the themed host · `confirm-with-reason.ts`: admin-only (pinned) · `day-availability.ts`, `status-chip.ts`, `booking-qr.ts`: no button, or explicit `outline-[#0a3f4e]` (the ledger row) | pin the bar's ring to its own ink; the calendar's four hex rings are the same mechanism, already explicit — their ledger row now says so |
 
 ---
 

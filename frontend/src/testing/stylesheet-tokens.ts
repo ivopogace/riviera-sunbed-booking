@@ -37,10 +37,8 @@ export function declarationsOf(name: string): readonly string[] {
 }
 
 /**
- * The `@layer base { … }` block — the only legal home for an element default that per-site
- * utilities must still be able to override (Tailwind orders `theme, base, components, utilities`,
- * so a rule outside every layer would beat them all). Brace-counted, because the block nests
- * rules; throws rather than matching nothing if the block is missing.
+ * The `@layer base { … }` block, where the stylesheet's element defaults live. Brace-counted,
+ * because the block nests rules; throws rather than matching nothing if the block is missing.
  */
 export function baseLayerBlock(): string {
   const open = STYLESHEET.indexOf('\n@layer base {');

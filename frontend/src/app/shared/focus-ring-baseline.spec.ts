@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { AA_LARGE, contrastRatio } from '../../testing/contrast';
 import { baseLayerBlock, STYLESHEET } from '../../testing/stylesheet-tokens';
 
 /**
@@ -29,6 +30,19 @@ const SELF = 'shared/focus-ring-baseline.spec.ts';
 
 /** The natively focusable tags a suppression is never acceptable on; a heading is not one. */
 const CONTROL_TAGS = new Set(['button', 'a', 'input', 'select', 'textarea', 'summary']);
+
+/**
+ * The one button host that does not follow the theme: the sign-out warning bar, fixed white with
+ * `#b3261e` ink in every theme (`app.ts` records the deviation). The themed baseline ring resolves
+ * `#7cd7e8` in dark, which on white is under 2:1 — so its buttons pin the ring to their own ink.
+ */
+const FIXED_LIGHT_HOST = {
+  path: 'app.html',
+  buttons: ['sign-out-retry', 'sign-out-dismiss'],
+  ring: 'focus-visible:outline-current',
+  ink: '#b3261e',
+  fill: '#ffffff',
+} as const;
 
 /** Every way a class string or arbitrary property can turn the indicator off. */
 const SUPPRESSION = /outline-none|outline-hidden|outline-0\b|outline:\s*none/g;
@@ -98,5 +112,19 @@ describe('the focus-ring baseline (#890)', () => {
 
     expect(doc).not.toContain('today an unstyled');
     expect(doc).toContain('focus-ring-baseline');
+  });
+
+  it('the buttons on the fixed-white sign-out bar pin the ring to their own ink, which clears 3:1', () => {
+    const html = read(FIXED_LIGHT_HOST.path);
+
+    for (const id of FIXED_LIGHT_HOST.buttons) {
+      const button = /<button\b[^>]*>/g
+        .exec(html.slice(html.indexOf(`data-testid="${id}"`) - 400))
+        ?.at(0);
+      expect(button, id).toContain(FIXED_LIGHT_HOST.ring);
+    }
+    expect(contrastRatio(FIXED_LIGHT_HOST.ink, FIXED_LIGHT_HOST.fill)).toBeGreaterThanOrEqual(
+      AA_LARGE,
+    );
   });
 });

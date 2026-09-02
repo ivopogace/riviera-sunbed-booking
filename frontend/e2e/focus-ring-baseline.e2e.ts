@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
+import { openShellOverlay } from './support/shell';
 
 /**
  * Real-render proof for the focus-ring baseline (#890): the `@layer base` rule in `tailwind.css`
@@ -66,6 +67,8 @@ const VENUE_MAP = {
 /** `--riv-accent-ink` in porcelain, as Chromium reports it. */
 const ACCENT_INK = 'rgb(8, 90, 110)';
 const WHITE = 'rgb(255, 255, 255)';
+/** The sign-out bar's fixed `#b3261e` ink, which its buttons' ring now borrows via `outline-current`. */
+const NOTICE_INK = 'rgb(179, 38, 30)';
 
 async function mockVenueWithGallery(page: Page): Promise<void> {
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE_MAP }));
@@ -126,4 +129,36 @@ test('the clipped gallery tile paints its ring inset, in white over the photo (#
   await expect(hero).toHaveCSS('outline-width', '3px');
   await expect(hero).toHaveCSS('outline-offset', '-3px');
   await expect(hero).toHaveCSS('outline-color', WHITE);
+});
+
+/**
+ * The one host that does not follow the theme. The bar is fixed white in dark too, where the themed
+ * baseline ring would resolve `#7cd7e8` — under 2:1 on white — so its buttons pin the ring to their
+ * own ink. Proven under the dark theme on the tourist shell, the only shell that is not porcelain-
+ * pinned; the notice renders only after a failed sign-out, so the sweep raises one.
+ */
+test('the fixed-white sign-out bar keeps a 3:1 ring in the dark theme (#890)', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('riviera-theme', 'dark'));
+  await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: [] }));
+  await page.route(/\/api\/auth\/me$/, (route) =>
+    route.fulfill({
+      json: { username: 'guest@example.com', principalType: 'CUSTOMER', emailVerified: true },
+    }),
+  );
+  await page.route(/\/api\/auth\/logout$/, (route) => route.abort('failed'));
+  await page.setViewportSize({ width: 390, height: 780 });
+
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
+  await openShellOverlay(page, 'menu-toggle');
+  await page.getByTestId('nav-signout-mobile').click();
+
+  const retry = page.getByTestId('sign-out-retry');
+  await expect(retry).toBeVisible();
+  await retry.focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  await expect(retry).toBeFocused();
+  await expect(retry).toHaveCSS('outline-width', '3px');
+  await expect(retry).toHaveCSS('outline-color', NOTICE_INK);
 });
