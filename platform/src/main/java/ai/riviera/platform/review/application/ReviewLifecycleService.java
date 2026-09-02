@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.review.domain.ReviewGate;
+import ai.riviera.platform.review.domain.ReviewSlot;
 import ai.riviera.platform.review.domain.Stars;
 import ai.riviera.platform.review.events.ReviewsChanged;
 import ai.riviera.platform.review.spi.CompletedStays;
@@ -60,7 +61,7 @@ class ReviewLifecycleService implements ReviewLifecycle {
 			case NO_SUCH_STAY -> new SubmitOutcome.NoSuchStay();
 			case NOT_COMPLETED -> new SubmitOutcome.NotEligible();
 			case WINDOW_CLOSED -> new SubmitOutcome.WindowClosed();
-			case ALREADY_REVIEWED -> new SubmitOutcome.AlreadyReviewed();
+			case ALREADY_REVIEWED, HIDDEN -> new SubmitOutcome.AlreadyReviewed();
 			case ELIGIBLE -> claim(found.orElseThrow(), submission, now);
 		};
 	}
@@ -92,6 +93,7 @@ class ReviewLifecycleService implements ReviewLifecycle {
 			case NO_SUCH_STAY -> new AmendOutcome.NoSuchStay();
 			case NOT_COMPLETED -> new AmendOutcome.NotEligible();
 			case WINDOW_CLOSED -> new AmendOutcome.WindowClosed();
+			case HIDDEN -> new AmendOutcome.Hidden();
 			case ELIGIBLE -> new AmendOutcome.NoSuchReview();
 			case ALREADY_REVIEWED -> write(found.orElseThrow(), write, now);
 		};
@@ -114,9 +116,10 @@ class ReviewLifecycleService implements ReviewLifecycle {
 	}
 
 	private ReviewState stateOf(String bookingCode, Optional<CompletedStay> found, Instant now) {
+		ReviewSlot slot = found.flatMap(stay -> reviews.findFor(stay.booking()))
+				.map(StoredReview::slot).orElse(ReviewSlot.EMPTY);
 		return ReviewGate.stateOf(found.isPresent() || stays.existsByCode(bookingCode),
-				found.map(CompletedStay::completedAt).orElse(null),
-				found.isPresent() && reviews.existsFor(found.get().booking()), now);
+				found.map(CompletedStay::completedAt).orElse(null), slot, now);
 	}
 
 	/**

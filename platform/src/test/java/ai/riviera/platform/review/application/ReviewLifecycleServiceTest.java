@@ -205,7 +205,22 @@ class ReviewLifecycleServiceTest {
 
 		assertEquals(new AmendOutcome.WindowClosed(), service.delete(CODE));
 
-		assertTrue(reviews.existsFor(BOOKING), "a frozen verdict stands");
+		assertTrue(reviews.stored.containsKey(BOOKING), "a frozen verdict stands");
+		assertTrue(events.published.isEmpty());
+	}
+
+	@Test
+	void aHiddenReviewCannotBeEditedOrRemoved() {
+		stays.completed(CODE, BOOKING, VENUE, NOW.minus(Duration.ofDays(1)));
+		service.submit(CODE, COMMENTED);
+		reviews.hidden.add(BOOKING);
+		events.published.clear();
+
+		assertEquals(new AmendOutcome.Hidden(), service.edit(CODE, new ReviewSubmission(5, null, "Ana")));
+		assertEquals(new AmendOutcome.Hidden(), service.delete(CODE));
+		assertEquals(new SubmitOutcome.AlreadyReviewed(), service.submit(CODE, COMMENTED));
+
+		assertEquals(new OwnReview(4, "Great sunbeds", "Ana"), reviews.stored.get(BOOKING));
 		assertTrue(events.published.isEmpty());
 	}
 
@@ -271,6 +286,7 @@ class ReviewLifecycleServiceTest {
 	private static final class FakeReviews implements Reviews {
 
 		private final Map<BookingRef, OwnReview> stored = new LinkedHashMap<>();
+		private final Set<BookingRef> hidden = new HashSet<>();
 		private final List<Recorded> writes = new ArrayList<>();
 
 		@Override
@@ -299,8 +315,9 @@ class ReviewLifecycleServiceTest {
 		}
 
 		@Override
-		public Optional<OwnReview> findFor(BookingRef booking) {
-			return Optional.ofNullable(stored.get(booking));
+		public Optional<StoredReview> findFor(BookingRef booking) {
+			return Optional.ofNullable(stored.get(booking))
+					.map(review -> new StoredReview(review, hidden.contains(booking)));
 		}
 
 		@Override
@@ -308,10 +325,6 @@ class ReviewLifecycleServiceTest {
 			throw new UnsupportedOperationException("the lifecycle never aggregates");
 		}
 
-		@Override
-		public boolean existsFor(BookingRef booking) {
-			return stored.containsKey(booking);
-		}
 
 		@Override
 		public List<ListedReview> newestListedBefore(VenueRef venue, long beforeId, int limit) {

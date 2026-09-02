@@ -65,6 +65,8 @@ record BookingDetailView(String code, String status, long venueId, String venueN
 						new ReviewPanelView("ALREADY_REVIEWED", closesAt, OwnReviewView.of(review), null);
 				case ReviewPanel.Frozen(OwnReview review) ->
 						new ReviewPanelView("FROZEN", null, OwnReviewView.of(review), null);
+				case ReviewPanel.Hidden(OwnReview review) ->
+						new ReviewPanelView("HIDDEN", null, OwnReviewView.of(review), null);
 				case ReviewPanel.WindowClosed ignored -> new ReviewPanelView("WINDOW_CLOSED", null, null, null);
 				case ReviewPanel.NotCompleted ignored -> new ReviewPanelView("NOT_COMPLETED", null, null, null);
 				case ReviewPanel.NoSuchStay ignored -> throw new IllegalStateException(

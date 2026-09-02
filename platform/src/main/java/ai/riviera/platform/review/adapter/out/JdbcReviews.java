@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import ai.riviera.platform.review.application.ModeratedReview;
 import ai.riviera.platform.review.application.ReviewSubmission;
+import ai.riviera.platform.review.application.StoredReview;
 import ai.riviera.platform.review.application.ReviewTotals;
 import ai.riviera.platform.review.application.Reviews;
 import ai.riviera.platform.review.vocabulary.BookingRef;
@@ -47,7 +48,7 @@ import ai.riviera.platform.review.vocabulary.VenueRef;
 @Repository
 class JdbcReviews implements Reviews {
 
-	/** Named once, per the {@code JdbcBookings} bind-parameter convention — every call site binds it. */
+	/** Named once, per the {@code JdbcBookings} bind-parameter convention — four call sites bind it. */
 	private static final String PARAM_BOOKING = "booking";
 	private static final String PARAM_VENUE = "venue";
 	private static final String PARAM_STARS = "stars";
@@ -112,13 +113,14 @@ class JdbcReviews implements Reviews {
 	}
 
 	@Override
-	public Optional<OwnReview> findFor(BookingRef booking) {
+	public Optional<StoredReview> findFor(BookingRef booking) {
 		return jdbc.sql("""
-				SELECT stars, comment, display_name FROM review WHERE booking_id = :booking
+				SELECT stars, comment, display_name, hidden_at FROM review WHERE booking_id = :booking
 				""")
 				.param(PARAM_BOOKING, booking.value())
-				.query((rs, rowNum) -> new OwnReview(rs.getInt(COL_STARS), rs.getString(COL_COMMENT),
-						rs.getString(COL_DISPLAY_NAME)))
+				.query((rs, rowNum) -> new StoredReview(new OwnReview(rs.getInt(COL_STARS),
+						rs.getString(COL_COMMENT), rs.getString(COL_DISPLAY_NAME)),
+						rs.getTimestamp("hidden_at") != null))
 				.optional();
 	}
 
@@ -132,15 +134,6 @@ class JdbcReviews implements Reviews {
 				.query((rs, rowNum) -> new ReviewTotals(rs.getInt("review_count"),
 						rs.getLong("star_total")))
 				.single();
-	}
-
-	@Override
-	public boolean existsFor(BookingRef booking) {
-		return Boolean.TRUE.equals(jdbc.sql(
-				"SELECT EXISTS (SELECT 1 FROM review WHERE booking_id = :booking)")
-				.param(PARAM_BOOKING, booking.value())
-				.query(Boolean.class)
-				.single());
 	}
 
 	@Override

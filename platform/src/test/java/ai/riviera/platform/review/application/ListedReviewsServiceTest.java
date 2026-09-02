@@ -12,7 +12,6 @@ import ai.riviera.platform.review.api.ListedReviews;
 import ai.riviera.platform.review.vocabulary.BookingRef;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
 import ai.riviera.platform.review.vocabulary.ListedReview;
-import ai.riviera.platform.review.vocabulary.OwnReview;
 import ai.riviera.platform.review.vocabulary.ReviewCursor;
 import ai.riviera.platform.review.vocabulary.ReviewPage;
 import ai.riviera.platform.review.vocabulary.ReviewRef;
@@ -127,7 +126,7 @@ class ListedReviewsServiceTest {
 		}
 
 		@Override
-		public Optional<OwnReview> findFor(BookingRef booking) {
+		public Optional<StoredReview> findFor(BookingRef booking) {
 			throw new UnsupportedOperationException("the listing read never reads one review");
 		}
 
@@ -136,10 +135,6 @@ class ListedReviewsServiceTest {
 			throw new UnsupportedOperationException("the listing read never aggregates");
 		}
 
-		@Override
-		public boolean existsFor(BookingRef booking) {
-			throw new UnsupportedOperationException("the listing read never reads one review");
-		}
 
 		@Override
 		public Optional<VenueRef> hide(ReviewRef review, Instant at) {

@@ -7,7 +7,6 @@ import java.util.Optional;
 import ai.riviera.platform.review.vocabulary.BookingRef;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
 import ai.riviera.platform.review.vocabulary.ListedReview;
-import ai.riviera.platform.review.vocabulary.OwnReview;
 import ai.riviera.platform.review.vocabulary.ReviewRef;
 import ai.riviera.platform.review.vocabulary.VenueRef;
 
@@ -45,14 +44,15 @@ public interface Reviews {
 	 */
 	boolean delete(BookingRef booking);
 
-	/** This booking's stored review, as its author reads it back — empty when there is none. */
-	Optional<OwnReview> findFor(BookingRef booking);
+	/**
+	 * This booking's stored review — what its author wrote and whether an admin has hidden it — or
+	 * empty when there is none. The author's read-back and the amend fences both go through here, so
+	 * a hidden row is still found; only the public reads leave it out.
+	 */
+	Optional<StoredReview> findFor(BookingRef booking);
 
 	/** What this venue's review rows add up to right now — {@code 0/0} when it has none. */
 	ReviewTotals totalsFor(VenueRef venue);
-
-	/** Whether this booking's one review slot is already taken. */
-	boolean existsFor(BookingRef booking);
 
 	/**
 	 * Up to {@code limit} of {@code venue}'s listed reviews — the ones carrying a comment — with an

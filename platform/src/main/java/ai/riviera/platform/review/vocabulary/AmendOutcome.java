@@ -33,4 +33,8 @@ public sealed interface AmendOutcome {
 	/** The stay is amendable, but carries no review to amend — including a lost race with a delete. */
 	record NoSuchReview() implements AmendOutcome {
 	}
+
+	/** A platform admin has hidden the review; it is frozen for its author until un-hidden. */
+	record Hidden() implements AmendOutcome {
+	}
 }

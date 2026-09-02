@@ -18,7 +18,6 @@ import ai.riviera.platform.review.vocabulary.BookingRef;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
 import ai.riviera.platform.review.vocabulary.ListedReview;
 import ai.riviera.platform.review.vocabulary.ModerationOutcome;
-import ai.riviera.platform.review.vocabulary.OwnReview;
 import ai.riviera.platform.review.vocabulary.ReviewCursor;
 import ai.riviera.platform.review.vocabulary.ReviewRef;
 import ai.riviera.platform.review.vocabulary.VenueRef;
@@ -160,7 +159,7 @@ class ReviewModerationServiceTest {
 		}
 
 		@Override
-		public Optional<OwnReview> findFor(BookingRef booking) {
+		public Optional<StoredReview> findFor(BookingRef booking) {
 			throw new UnsupportedOperationException("moderation never reads by booking");
 		}
 
@@ -169,10 +168,6 @@ class ReviewModerationServiceTest {
 			throw new UnsupportedOperationException("moderation never aggregates");
 		}
 
-		@Override
-		public boolean existsFor(BookingRef booking) {
-			throw new UnsupportedOperationException("moderation never reads by booking");
-		}
 
 		@Override
 		public List<ListedReview> newestListedBefore(VenueRef venue, long beforeId, int limit) {

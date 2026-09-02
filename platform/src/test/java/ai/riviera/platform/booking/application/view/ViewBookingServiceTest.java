@@ -96,7 +96,7 @@ class ViewBookingServiceTest {
 		OwnReview own = new OwnReview(4, "Great sunbeds", "Ana");
 		return java.util.stream.Stream.of(new ReviewPanel.Eligible(closes),
 				new ReviewPanel.AlreadyReviewed(own, closes), new ReviewPanel.Frozen(own),
-				new ReviewPanel.WindowClosed(), new ReviewPanel.NotCompleted());
+				new ReviewPanel.Hidden(own), new ReviewPanel.WindowClosed(), new ReviewPanel.NotCompleted());
 	}
 
 	@Test

@@ -6,9 +6,11 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -74,6 +76,15 @@ class ReviewEligibilityServiceTest {
 	}
 
 	@Test
+	void aHiddenReviewPanelsAsHidden() {
+		stays.completed(CODE, LONG_AGO);
+		reviews.stored.put(BOOKING, OWN);
+		reviews.hidden.add(BOOKING);
+
+		assertEquals(new ReviewPanel.Hidden(OWN), eligibility.panelFor(CODE));
+	}
+
+	@Test
 	void anUnratedStayPastItsWindowIsSimplyClosed() {
 		stays.completed(CODE, LONG_AGO);
 
@@ -120,6 +131,7 @@ class ReviewEligibilityServiceTest {
 	private static final class FakeReviews implements Reviews {
 
 		private final Map<BookingRef, OwnReview> stored = new HashMap<>();
+		private final Set<BookingRef> hidden = new HashSet<>();
 
 		@Override
 		public boolean claim(CompletedStay stay, ReviewSubmission submission, Instant at) {
@@ -137,8 +149,9 @@ class ReviewEligibilityServiceTest {
 		}
 
 		@Override
-		public Optional<OwnReview> findFor(BookingRef booking) {
-			return Optional.ofNullable(stored.get(booking));
+		public Optional<StoredReview> findFor(BookingRef booking) {
+			return Optional.ofNullable(stored.get(booking))
+					.map(review -> new StoredReview(review, hidden.contains(booking)));
 		}
 
 		@Override
@@ -146,10 +159,6 @@ class ReviewEligibilityServiceTest {
 			throw new UnsupportedOperationException("the eligibility read never aggregates");
 		}
 
-		@Override
-		public boolean existsFor(BookingRef booking) {
-			return stored.containsKey(booking);
-		}
 
 		@Override
 		public List<ListedReview> newestListedBefore(VenueRef venue, long beforeId, int limit) {
