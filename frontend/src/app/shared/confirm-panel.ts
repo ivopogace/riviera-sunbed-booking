@@ -23,8 +23,9 @@ const CONFIRM_BUTTON: Record<ConfirmTone, string> = {
  * confirmation, which is what lets it focus its own confirm button on the way in (WCAG 2.4.3).
  * Focus back **out** is the caller's, via `focusMover()` — this component is gone by then.
  *
- * <p>Why two components rather than one with a variant, and why no projected content:
- * RV-FE-9 in `riviera-review-overlay`. `headline` is plain text too, for the same reason —
+ * <p>Two components rather than one with a variant, because the confirm surfaces are two
+ * families rather than one near-identical set; no projected content, because the panel must
+ * own everything focusable inside it. `headline` is plain text too, for the same reason —
  * an optional bold lead sentence ahead of `message`, never markup.
  */
 @Component({

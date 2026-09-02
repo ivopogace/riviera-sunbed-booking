@@ -48,9 +48,11 @@ plus the cleartext `domain` part; entries still survive erasure, deliberately.**
   the row rather than removing it; `isSuppressed` is `email_key = ? AND reinstated_at IS NULL`.
   The row, its `first_suppressed_at` and its `reason` survive, so a repeated reinstate→re-bounce
   cycle stays visible; a later bounce re-suppresses through the ordinary upsert, which clears the
-  flag. The remedy for an address that hard-bounced for a transient reason (a full mailbox, a
-  domain that came back). **A hard `DELETE` on this table remains a defect.** Reinstatement is an
-  admin judgment call, never automatic and never an erasure side-effect; there is deliberately no
+  flag. This is the remedy for an address that hard-bounced for a transient reason (a full
+  mailbox, a domain that came back); without it the only fix was a hand-run `DELETE`, which
+  would have destroyed the very record this ADR set out to keep. **A hard `DELETE` on this
+  table remains a defect.** Reinstatement is an admin judgment call, never automatic and never
+  an erasure side-effect; there is deliberately no
   self-service un-suppress — a complainer lifting their own suppression through a public endpoint
   would be both an abuse vector and an enumeration oracle.
 - **The hash is still personal data.** A peppered HMAC is pseudonymization, not anonymization —

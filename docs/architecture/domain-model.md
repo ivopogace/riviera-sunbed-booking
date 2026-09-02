@@ -154,7 +154,7 @@ classDiagram
         +BookingMode mode
         +CommissionRate commissionRate
         +Currency payoutCurrency
-        +LocalTime cancellationCutoff
+        +LocalTime bookingCutoff
         +LocalTime salesClose
     }
     class BeachMap {
@@ -199,7 +199,8 @@ classDiagram
     BeachMap ..> Venue : venueId
 ```
 
-> `cancellationCutoff` defaults to 18:00 and `salesClose` to 16:00, both `Europe/Tirane`
+> `bookingCutoff` (the free-cancellation cutoff) defaults to 18:00 and `salesClose` to 16:00,
+> both `Europe/Tirane`
 > (invariants #4, #6). `pool`
 > keeps online and walk-in sets physically separate (invariant #3) — an online
 > booking can only target an `ONLINE` set.
