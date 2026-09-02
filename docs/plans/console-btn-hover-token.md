@@ -88,7 +88,7 @@ bare-class-selector sweep can see it either).
       *Pinned by:* `fixed-ink-tokens.contrast.spec.ts` › `the sites` (`%s paints no migrated
       literal` with `#eef1f2` added to `MIGRATED_LITERALS`, and its positive `%s paints its
       family` half)
-- [ ] **AC-4:** Given the operator console rendered in a real browser, when the sign-out button
+- [x] **AC-4:** Given the operator console rendered in a real browser, when the sign-out button
       is **hovered**, then its computed `background-color` is `rgb(238, 241, 242)` — the one
       position no declaration sweep can reach. *Seam:* the rendered `oc-signout` box ·
       *Pinned by:* `e2e/fixed-ink-token-recut.e2e.ts` › `the console paints both hairlines from
@@ -138,12 +138,12 @@ asserted by AC-4 against the same value the literal produced.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The token is declared but its `@theme inline` row is forgotten — the utility never generates, the class stays in the markup, and the hover silently stops painting | med | high | AC-2's `@theme inline` guard **and** AC-4's hovered-box assertion; a hover fill has no bare class selector, so the render proof is the only one that can see it | agent | open |
+| R-1 | The token is declared but its `@theme inline` row is forgotten — the utility never generates, the class stays in the markup, and the hover silently stops painting | med | high | AC-2's `@theme inline` guard **and** AC-4's hovered-box assertion; a hover fill has no bare class selector, so the render proof is the only one that can see it | agent | closed — phase 1, and **demonstrated rather than argued**: with the `@theme inline` row commented out the hovered box reads `rgb(255, 255, 255)` while the class string is untouched, exactly this row's failure mode |
 | R-2 | A later slice adds a `[data-riv-theme='dark']` override for the token — every ratio computed from the mirror still passes, because the mirror is not the cascade | low | med | AC-2's single-declaration guard, which reads `tailwind.css` as text (`testing/stylesheet-tokens.ts`) | agent | closed — phase 0 |
 | R-3 | A later sweep silently collapses this fill onto `--riv-solid-btn-hover`, repainting the console button and inheriting the tourist skin's grounds | med | med | AC-1 asserts the pair unchanged **and** unequal to this skin's fills; the refusal is written at the declaration | agent | closed — phase 0 |
 | R-4 | A later 1.4.11 sweep reads the 1.04–1.14:1 hover boundary as a violation this slice introduced, and "fixes" it by darkening the fill | med | med | AC-5 records both ratios as measurements, and `non-text-contrast.md` gains the family row — #879's close-sales-trigger lesson: check what the outgoing value measured first | agent | open |
-| R-5 | Extending #849's spec and e2e files reads as scope creep into a closed slice | low | low | The family's home is where the family's guard is (`--riv-console-btn-border` lives in both files); both docstrings are updated to name #887 alongside #849, and the plan records the choice | agent | open |
-| R-6 | The e2e's `.hover()` races the `transition-colors` animation and reads the resting fill | low | med | Playwright's `toHaveCSS` retries until timeout, so it settles on the transitioned value; the solid-btn suite's hover assertions use exactly this shape | agent | open |
+| R-5 | Extending #849's spec and e2e files reads as scope creep into a closed slice | low | low | The family's home is where the family's guard is (`--riv-console-btn-border` lives in both files); both docstrings are updated to name #887 alongside #849, and the plan records the choice | agent | closed — phases 0–1 |
+| R-6 | The e2e's `.hover()` races the `transition-colors` animation and reads the resting fill | low | med | Playwright's `toHaveCSS` retries until timeout, so it settles on the transitioned value; the solid-btn suite's hover assertions use exactly this shape | agent | closed — phase 1, green on the full-file run |
 
 ## Open questions / Assumptions
 
@@ -199,16 +199,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — add the hovered-box assertion to `e2e/fixed-ink-token-recut.e2e.ts`
-and run it against the mocked Playwright config.
+**Next action:** Phase 2 — add the family row + the state-vs-boundary reading to
+`docs/design/non-text-contrast.md`, and flip the ledger's class-R residue note to `done`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the token, its guards and the migrated site | ✅ | this commit |
-| 1 — the real-render hover proof | ⏳ | |
-| 2 — the ledger row and the 1.4.11 ground | | |
+| 0 — the token, its guards and the migrated site | ✅ | `336d0fd` |
+| 1 — the real-render hover proof | ✅ | this commit |
+| 2 — the ledger row and the 1.4.11 ground | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -268,20 +268,20 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Test `frontend/e2e/fixed-ink-token-recut.e2e.ts`
 
-- [ ] **Step 1: Write the failing assertion** — add `--riv-console-btn-hover` to `REGISTRY`
+- [x] **Step 1: Write the failing assertion** — add `--riv-console-btn-hover` to `REGISTRY`
       (absent from `UTILITIES` for the reason the file already states: a variant-consumed token
       compiles to a compound selector), and extend the console test with `await signOut.hover()`
       + `toHaveCSS('background-color', 'rgb(238, 241, 242)')`.
-- [ ] **Step 2: Run it, verify it fails on the pre-token build** — proven in phase 0's order:
+- [x] **Step 2: Run it, verify it fails on the pre-token build** — proven in phase 0's order:
       the assertion is written against the token, which phase 0 introduced, so the honest red
       here is the `REGISTRY` row against a stale build. Verify by running the spec with the
       `@theme inline` row commented out → FAIL with the utility ungenerated and the hovered box
       still `rgb(255, 255, 255)`; restore, then green.
-- [ ] **Step 3: Run it, verify it passes** — `cd frontend &&
+- [x] **Step 3: Run it, verify it passes** — `cd frontend &&
       PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test
       --config=playwright.a11y.config.ts e2e/fixed-ink-token-recut.e2e.ts` → PASS.
-- [ ] **Step 4: Commit** — `git commit -m "Prove the console hover fill on the hovered box (#887)"`
-- [ ] **Step 5: Update plan-doc execution status.**
+- [x] **Step 4: Commit** — `git commit -m "Prove the console hover fill on the hovered box (#887)"`
+- [x] **Step 5: Update plan-doc execution status.**
 
 ---
 
@@ -314,7 +314,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 ## Acceptance-criteria verification (final)
 
 - [ ] **AC-1..AC-3, AC-5, AC-6:** Run `cd frontend && npx vitest run src/app/shared/fixed-ink-tokens.contrast.spec.ts` → all green. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `cd frontend && PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts e2e/fixed-ink-token-recut.e2e.ts` → all green. Verified at commit `<sha>`.
+- [x] **AC-4:** Run `cd frontend && PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts e2e/fixed-ink-token-recut.e2e.ts` → 8 passed, and verified failing (`rgb(255, 255, 255)`) with the `@theme inline` row removed.
 - [ ] **AC-7:** Verified by diff inspection (no test — stated as such in the AC).
 
 ## Self-review checklist (before merge / PR)
