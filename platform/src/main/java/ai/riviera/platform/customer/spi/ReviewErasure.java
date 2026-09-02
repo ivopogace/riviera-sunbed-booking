@@ -34,9 +34,10 @@ public interface ReviewErasure {
 	int eraseForGuests(Collection<CustomerId> guests);
 
 	/**
-	 * As {@link #eraseForGuests} for every review of the bookings made under this account. Reached
-	 * on every erasure of the account, tombstoned or not, so a review written after an earlier
-	 * erasure is scrubbed by the next one.
+	 * As {@link #eraseForGuests} for every review of the bookings made under this account. The
+	 * self-service path reaches it by id on every erasure, tombstoned or not, so a review written
+	 * after an earlier erasure is scrubbed by the next one; the admin path resolves the account by
+	 * its live email, so once tombstoned it is out of reach there, like a tombstoned guest.
 	 *
 	 * @return how many reviews changed
 	 */

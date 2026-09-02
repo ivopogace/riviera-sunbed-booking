@@ -104,9 +104,10 @@ would leave the subject's chosen name and words standing on a venue page.
   adapter") had a purpose this keeps: a half-erasure must never commit. An erasure *event* was
   rejected for that reason — it would move the review step outside the transaction.
 - **The by-email scrubs now answer the ids they tombstoned** (`RETURNING id`), which is how the
-  service knows whose reviews to reach. The account's reviews are reached on every erasure of the
-  account (by id), so a review written after an earlier erasure is scrubbed by the next one; reviews
-  on a tombstoned *guest*'s bookings are not re-reachable by a repeat admin-by-email erasure, since
-  the placeholder email matches nothing — the same scoped non-goal as the diverging-email guest above.
+  service knows whose reviews to reach. The account's reviews are reached on every *self-service*
+  erasure of the account (by id), so a review written after an earlier erasure is scrubbed by the
+  next one; a repeat *admin-by-email* erasure re-reaches neither an already-tombstoned account nor
+  reviews on a tombstoned guest's bookings, since the placeholder email matches nothing — the same
+  scoped non-goal as the diverging-email guest above.
 - **Not a takedown, not a freeze.** The review is not hidden and its author (still holding the
   booking code) may write again inside the review window; that is fresh data of their own.

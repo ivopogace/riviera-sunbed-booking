@@ -271,10 +271,11 @@ already the wire types on every surface; a tombstoned review is one more row sha
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)` — phases 0–2 on the branch; draft PR #899 open.
+**Stage pointer:** `review gate — ran; sonar gate pending` — PR #899 ready for review; CI on the head pending.
 
-**Next action:** phase 3 — the docs sweep (RESPONSIBILITIES, CONTEXT, CLAUDE, ADR-0010 amendment,
-runbook, the three TS comments), `riviera-docs-freshness`, merge `origin/main`, ready for review.
+**Next action:** wait for CI + the SonarCloud analysis on the head, pull the Sonar issue list
+(`references/pr-gates.md` §2), clear it, then the merge close-out (§3): final Execution status in
+the PR's last commit, citing `merged via PR #899`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -290,6 +291,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (`code-review:code-review`, high, 5 reviewers + overlay; reviewer #5, scored 50) | `ReviewErasure.eraseForAccount` Javadoc said the account's reviews are reached "on every erasure, tombstoned or not" — true of the self-service by-id path only; the admin by-email path cannot resolve a tombstoned account (placeholder email), the D-4 non-goal | fixed-in-the review-fix commit: the Javadoc names the asymmetry; ADR-0010's amendment paragraph says *self-service* / *admin-by-email* explicitly |
 
 ---
 
