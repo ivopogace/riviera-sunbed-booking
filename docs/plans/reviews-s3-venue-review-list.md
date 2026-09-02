@@ -358,9 +358,9 @@ the entries are star rows, not a score.
 
 ## Execution status
 
-**Stage pointer:** `PR — merging origin/main, then ready for review`
+**Stage pointer:** `review gate — findings fixed; awaiting CI + Sonar on the fix head`
 
-**Next action:** merge `origin/main` with full phase discipline, mark PR #897 ready for review, run the Review gate (`references/pr-gates.md` §1).
+**Next action:** post the review-gate comment on PR #897; when CI and the Sonar analysis on the fix head are green with an empty issue list, finalize this section (`merged via PR #897`) and merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -372,6 +372,8 @@ the entries are star rows, not a score.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
+**Review gate (2026-09-02):** `/code-review:code-review` (plugin skill, ladder rung 1 — the `Skill` call succeeded) at **high** effort with `riviera-review-overlay` layered on: five plugin reviewers (CLAUDE.md adherence, shallow bug scan, git-history regression, prior-PR comment carry-over, code-comment compliance) plus one overlay walk per side (RV-BE-1..18 + RV-PROC-1; RV-FE-1..11, RV-FE-E2E, RV-CT-1..5 + RV-PROC-1). Findings F-4..F-7 below, all fixed in the same session; the Haiku confidence scores were 75/75 for the two plugin findings, so the posted comment's ≥80 list is empty and the record lives here and in the PR comment. Skills re-loaded for the fix round: `riviera-frontend` + `angular-developer` (the focus and live-region legs), `riviera-java-conventions` (the Javadoc contract).
+
 **Findings register** — one row per review-gate, Sonar-gate, or red-CI finding. Every fix
 re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
@@ -381,6 +383,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-2 | Sonar (java:S1612, minor) | `VenueReviewsResponse.from` used a lambda where `ReviewCursor::beforeId` reads | fixed |
 | F-3 | Sonar (java:S1192, critical smell) | `JdbcReviews` bound the `"venue"` parameter as a literal in three statements | fixed — `PARAM_VENUE`, beside `PARAM_BOOKING` |
 | F-4 | review (CLAUDE.md walker → RV-FE-9) | A failed "Show more" destroys the pressed control by flipping to the failure branch with no focus move — the success leg moved focus, the failure leg did not | fixed — the error handler moves focus onto the failure line whenever a control was pressed (`pressed`); `venue-reviews.spec.ts` pins `document.activeElement` on that path |
+| F-5 | review (comment-compliance walker, scored 75) | `operator.api.VenueVisibility`'s Javadoc enumerated its fencing consumers and the review list became a third | fixed — the Javadoc names the four fenced tourist reads |
+| F-6 | review (overlay RV-FE-10, Minor) | The visible "Loading reviews…" line beside the section's `role="status"` region was a second unhidden source of the same sentence | fixed — `aria-hidden="true"` on the visible line, the house pattern (`set-password.ts`, `my-bookings.ts`) |
+| F-7 | review (overlay RV-FE-10, Minor) | No spec pinned the status region's identity across a transition, so moving it inside a branch would not fail a test | fixed — the "Show more" spec captures the node before the first load and asserts `toBe` after the append |
 
 ---
 
@@ -406,6 +411,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/main/java/ai/riviera/platform/venue/application/ListVenueReviewsService.java` — new; the fence
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueReadController.java` — `reviews` mapping
 - `platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueReviewsResponse.java` — new DTO
+- `platform/src/main/java/ai/riviera/platform/operator/api/VenueVisibility.java` — Javadoc names the review list among the fenced tourist reads (F-5)
 - `platform/src/test/java/ai/riviera/platform/review/ReviewMigrationIT.java` — `requiresAStayDate`; fixtures carry `stay_date`
 - `platform/src/test/java/ai/riviera/platform/review/ReviewSubmitFlowIT.java` — `recordsTheStayDate`
 - `platform/src/test/java/ai/riviera/platform/review/ReviewListingFlowIT.java` — new

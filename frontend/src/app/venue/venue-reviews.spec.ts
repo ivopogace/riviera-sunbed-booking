@@ -129,12 +129,18 @@ describe('VenueReviews', () => {
 
   it('"Show more" asks for the page after the cursor and appends it below the first', async () => {
     const r = render();
+    const status = r.find('venue-reviews-status');
+    expect(status?.textContent).toContain('Loading reviews');
     await r.flush({ reviews: [ANA], nextCursor: 41 });
     expect(r.find('venue-reviews-more')).not.toBeNull();
 
     r.click('venue-reviews-more');
     expect(r.find('venue-reviews-more')?.getAttribute('aria-disabled')).toBe('true');
     await r.flush({ reviews: [BEN], nextCursor: 40 }, 41);
+
+    // One region across loading → listed → appended: the same node, mutated text (RV-FE-10).
+    expect(r.find('venue-reviews-status')).toBe(status);
+    expect(status?.textContent).toContain('Showing 2 reviews');
 
     expect(r.entries().map((e) => e.getAttribute('data-testid'))).toEqual([
       'review-entry-41',

@@ -73,7 +73,9 @@ const CLS = {
       </h2>
 
       @if (loading() && !loadedOnce()) {
-        <p [class]="cls.note" data-testid="venue-reviews-loading">Loading reviews…</p>
+        <p [class]="cls.note" aria-hidden="true" data-testid="venue-reviews-loading">
+          Loading reviews…
+        </p>
       }
 
       @if (entries().length > 0) {
