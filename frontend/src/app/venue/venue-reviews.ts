@@ -192,6 +192,8 @@ export class VenueReviews {
 
   private fetch(cursor: number | undefined, retrying: boolean, id = this.venueId()): void {
     const epoch = ++this.epoch;
+    // A pressed control ("Show more", retry) is destroyed by either outcome; the first load pressed none.
+    const pressed = retrying || cursor !== undefined;
     this.loading.set(true);
     this.failed.set(false);
     this.venues.reviews(id, cursor).subscribe({
@@ -204,9 +206,8 @@ export class VenueReviews {
         this.nextCursor.set(page.nextCursor);
         this.loading.set(false);
         this.loadedOnce.set(true);
-        // The control that was pressed is gone: the retry always, "Show more" on the last page.
-        const controlLeft = retrying || (cursor !== undefined && page.nextCursor === null);
-        if (controlLeft) {
+        // The pressed control is gone: the retry always, "Show more" on the last page.
+        if (retrying || (pressed && page.nextCursor === null)) {
           this.moveFocus(
             added.length > 0 ? `review-entry-${added[0].id}` : 'venue-reviews-heading',
             'venue-reviews-heading',
@@ -219,6 +220,9 @@ export class VenueReviews {
         }
         this.loading.set(false);
         this.failed.set(true);
+        if (pressed) {
+          this.moveFocus('venue-reviews-error');
+        }
       },
     });
   }

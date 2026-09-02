@@ -45,6 +45,7 @@ class JdbcReviews implements Reviews {
 
 	/** Named once, per the {@code JdbcBookings} bind-parameter convention — five call sites bind it. */
 	private static final String PARAM_BOOKING = "booking";
+	private static final String PARAM_VENUE = "venue";
 	private static final String PARAM_STARS = "stars";
 	private static final String PARAM_COMMENT = "comment";
 
@@ -68,7 +69,7 @@ class JdbcReviews implements Reviews {
 				ON CONFLICT (booking_id) DO NOTHING
 				""")
 				.param(PARAM_BOOKING, stay.booking().value())
-				.param("venue", stay.venue().value())
+				.param(PARAM_VENUE, stay.venue().value())
 				.param("stayDate", stay.stayedOn())
 				.param(PARAM_STARS, submission.stars())
 				.param(PARAM_COMMENT, submission.comment())
@@ -119,7 +120,7 @@ class JdbcReviews implements Reviews {
 				SELECT count(*) AS review_count, COALESCE(sum(stars), 0) AS star_total
 				FROM review WHERE venue_id = :venue
 				""")
-				.param("venue", venue.value())
+				.param(PARAM_VENUE, venue.value())
 				.query((rs, rowNum) -> new ReviewTotals(rs.getInt("review_count"),
 						rs.getLong("star_total")))
 				.single();
@@ -143,7 +144,7 @@ class JdbcReviews implements Reviews {
 				ORDER BY id DESC
 				LIMIT :limit
 				""")
-				.param("venue", venue.value())
+				.param(PARAM_VENUE, venue.value())
 				.param("before", beforeId)
 				.param("limit", limit)
 				.query((rs, rowNum) -> new ListedReview(new ReviewRef(rs.getLong("id")),

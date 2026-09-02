@@ -377,6 +377,10 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (frontend job, head `1dde17a`) | `venue-map-switch.spec.ts` verifies through a controller named `http`, so the phase-3 drain (which matched `httpMock.verify()`) missed it: two open `/reviews` requests failed `verify()` | fixed — the population was re-enumerated by mechanism (every spec importing `VenueMap` that calls `.verify()`) and all three sites drain `/reviews` |
+| F-2 | Sonar (java:S1612, minor) | `VenueReviewsResponse.from` used a lambda where `ReviewCursor::beforeId` reads | fixed |
+| F-3 | Sonar (java:S1192, critical smell) | `JdbcReviews` bound the `"venue"` parameter as a literal in three statements | fixed — `PARAM_VENUE`, beside `PARAM_BOOKING` |
+| F-4 | review (CLAUDE.md walker → RV-FE-9) | A failed "Show more" destroys the pressed control by flipping to the failure branch with no focus move — the success leg moved focus, the failure leg did not | fixed — the error handler moves focus onto the failure line whenever a control was pressed (`pressed`); `venue-reviews.spec.ts` pins `document.activeElement` on that path |
 
 ---
 
@@ -424,7 +428,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/venue/venue-reviews.a11y.spec.ts` — new
 - `frontend/src/app/venue/venue-reviews.contrast.spec.ts` — new
 - `frontend/src/app/venue/venue-map.html` + `venue-map.ts` — embed
-- `frontend/src/app/venue/venue-map.spec.ts` + `venue-map.a11y.spec.ts` — drain the child's request
+- `frontend/src/app/venue/venue-map.spec.ts` + `venue-map.a11y.spec.ts` + `venue-map-switch.spec.ts` — drain the child's request
 - `frontend/e2e/venue-reviews.e2e.ts` — new mocked journey
 - `frontend/e2e/touch-targets-tourist.e2e.ts` — a two-page reviews mock on the venue-detail case
 - `RESPONSIBILITIES.md` — §review (the list read, `stay_date`, A-2), §venue (carries + fences the list)
@@ -744,6 +748,7 @@ Modify `shared/rating.ts` + spec, `shared/venue-views.ts`, `booking/review-panel
 | 2026-09-02 | phase 2 — a public `GET /api/venues/{venueId}/…` read added | every tourist read mapping on the venue module's public controller | `grep -n "GetMapping" platform/src/main/java/ai/riviera/platform/venue/adapter/in/VenueReadController.java` | `listVenues`, `getVenue`, `availabilityCalendar`, `reviews` | the three existing reads fence through `VenueCatalog`'s adapter; the new one fences in its own service — same rule, no further change |
 | 2026-09-02 | phase 3 — a star-glyph helper needed outside `booking/` | every private star-glyph builder | `grep -rn "'★'.repeat" frontend/src` | `booking/review-panel.ts` (one) | promoted to `shared/rating.ts` as `starGlyphs` + `starsOutOfFive`; the panel imports them, its spec unchanged and green |
 | 2026-09-02 | phase 3 — a second `app-load-announcer` on the venue page | every strict `load-announcer` locator | `grep -rn "load-announcer" frontend/src frontend/e2e` | `venue-map.spec.ts` (identity check), `loading-announcements.e2e.ts` (strict `getByTestId`) | the section carries its own `role="status"` region (`venue-reviews-status`) instead, so the page keeps exactly one load announcer |
+| 2026-09-02 | F-1 — a spec's `verify()` failed on the section's request | every spec that renders `VenueMap` and verifies an `HttpTestingController` (the mechanism, not the file name) | `grep -rln "from './venue-map'\|from '../venue/venue-map'" frontend/src --include=*.spec.ts \| xargs grep -ln '\.verify()'` | `venue-map.spec.ts`, `venue-map.a11y.spec.ts`, `venue-map-switch.spec.ts` | the third was undrained (its controller is named `http`); all three now drain `/reviews` before `verify()` |
 
 ---
 

@@ -188,7 +188,7 @@ describe('VenueReviews', () => {
     expect(document.activeElement).toBe(r.find('review-entry-41'));
   });
 
-  it('a failed "Show more" keeps what was listed and retries from the same cursor', async () => {
+  it('a failed "Show more" keeps what was listed, focuses the failure line, and retries from the same cursor', async () => {
     const r = render();
     await r.flush({ reviews: [ANA], nextCursor: 41 });
     r.click('venue-reviews-more');
@@ -197,6 +197,7 @@ describe('VenueReviews', () => {
     expect(r.entries()).toHaveLength(1);
     expect(r.find('venue-reviews-error')).not.toBeNull();
     expect(r.find('venue-reviews-more')).toBeNull();
+    expect(document.activeElement).toBe(r.find('venue-reviews-error'));
 
     r.click('venue-reviews-retry');
     await r.flush({ reviews: [BEN], nextCursor: null }, 41);

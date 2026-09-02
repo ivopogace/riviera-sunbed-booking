@@ -3,6 +3,7 @@ package ai.riviera.platform.venue.adapter.in;
 import java.util.List;
 
 import ai.riviera.platform.review.vocabulary.ListedReview;
+import ai.riviera.platform.review.vocabulary.ReviewCursor;
 import ai.riviera.platform.review.vocabulary.ReviewPage;
 
 /**
@@ -27,6 +28,6 @@ record VenueReviewsResponse(List<ReviewEntry> reviews, Long nextCursor) {
 
 	static VenueReviewsResponse from(ReviewPage page) {
 		return new VenueReviewsResponse(page.reviews().stream().map(ReviewEntry::from).toList(),
-				page.next().map(cursor -> cursor.beforeId()).orElse(null));
+				page.next().map(ReviewCursor::beforeId).orElse(null));
 	}
 }
