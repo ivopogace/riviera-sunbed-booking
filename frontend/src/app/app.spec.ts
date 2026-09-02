@@ -599,6 +599,7 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     'email',
     'refunds',
     'photos',
+    'reviews',
     'privacy',
     'audit',
   ];

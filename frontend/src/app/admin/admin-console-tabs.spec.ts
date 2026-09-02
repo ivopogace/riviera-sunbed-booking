@@ -23,6 +23,7 @@ async function renderAt(url: string): Promise<ComponentFixture<TabsHost>> {
         { path: 'admin/email', component: Blank },
         { path: 'admin/refunds', component: Blank },
         { path: 'admin/photos', component: Blank },
+        { path: 'admin/reviews', component: Blank },
         { path: 'admin/audit', component: Blank },
       ]),
     ],
@@ -59,6 +60,7 @@ describe('AdminConsoleTabs', () => {
     expect(tab(fixture, 'admin-tab-email').getAttribute('href')).toBe('/admin/email');
     expect(tab(fixture, 'admin-tab-refunds').getAttribute('href')).toBe('/admin/refunds');
     expect(tab(fixture, 'admin-tab-photos').getAttribute('href')).toBe('/admin/photos');
+    expect(tab(fixture, 'admin-tab-reviews').getAttribute('href')).toBe('/admin/reviews');
     expect(tab(fixture, 'admin-tab-audit').getAttribute('href')).toBe('/admin/audit');
   });
 
@@ -81,6 +83,14 @@ describe('AdminConsoleTabs', () => {
     expect(tab(fixture, 'admin-tab-photos').getAttribute('aria-current')).toBe('page');
     expect(tab(fixture, 'admin-tab-operators').getAttribute('aria-current')).toBeNull();
     expect(tab(fixture, 'admin-tab-refunds').getAttribute('aria-current')).toBeNull();
+  });
+
+  it('marks the Reviews tab as current on /admin/reviews, and not its Photos neighbour', async () => {
+    const fixture = await renderAt('/admin/reviews');
+
+    expect(tab(fixture, 'admin-tab-reviews').getAttribute('aria-current')).toBe('page');
+    expect(tab(fixture, 'admin-tab-photos').getAttribute('aria-current')).toBeNull();
+    expect(tab(fixture, 'admin-tab-operators').getAttribute('aria-current')).toBeNull();
   });
 
   it('marks the Audit tab as current on /admin/audit (#507)', async () => {

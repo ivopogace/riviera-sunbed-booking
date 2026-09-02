@@ -115,6 +115,9 @@ The canonical order, derived from what each tab *is* rather than when it shipped
 | 8 | Privacy | data-subject erasure | **A3** |
 | 9 | Audit | the record of all of the above; last because it is the meta-tab | shipped |
 
+> Row 7 (Reviews) joined the table when #814 shipped the review takedown beside Photos; the
+> paragraph below describes the strip as it stood at decision time, with eight slots.
+
 **The five shipped tabs are already in this order** — filtering the eight to what ships yields
 exactly today's `Operators, Email, Refunds, Photos, Audit`. So the visible strip does not move
 today; what lands is the *rule*, plus the tests that stop A8/A3/A6 from appending by ship date the

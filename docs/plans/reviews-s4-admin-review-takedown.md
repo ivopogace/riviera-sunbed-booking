@@ -341,10 +341,10 @@ Venue picker `<select data-testid="admin-reviews-venue">`, the photos tab's mark
 
 ## Execution status
 
-**Stage pointer:** `PR — merge origin/main, mark #898 ready for review`
+**Stage pointer:** `review gate — fixing findings` (PR #898 ready for review)
 
-**Next action:** merge `origin/main` with phase discipline, mark PR #898 ready for review, then
-the Review and Sonar gates (`references/pr-gates.md`).
+**Next action:** finish the review gate (reviewer #5's walk, the confidence scores, the PR
+comment), then the Sonar list on the fixed head.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -361,6 +361,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (prior-PR carry-over walker) | `admin-console-tabs.spec.ts` was not extended for the new tab — no `admin/reviews` route in its router config, no `href` pin, no "marks Reviews as current" case, which every prior tab addition (#511, #507, #460) added | fixed — all three added |
+| F-2 | review (prior-PR carry-over walker) | `app.spec.ts`'s `ADMIN_TAB_CHILD_PATHS` enumeration lacked `reviews`, so the structural guard never checked the new route's `adminTab` data | fixed — `'reviews'` added |
+| F-3 | review (git-history walker) | `q1-admin-console-tab-ia.md`'s summary sentence ("filtering the eight … five shipped tabs") contradicted the table it summarizes once the Reviews row landed | fixed — the paragraph is dated to decision time with a note naming the later row |
 
 ---
 
@@ -414,6 +417,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/admin/admin.model.ts` — the two wire types
 - `frontend/src/app/admin/admin-console-tabs.ts` + `admin-console-tabs.spec.ts` — the Reviews tab
 - `frontend/src/app/app.routes.ts` — `admin/reviews`
+- `frontend/src/app/app.spec.ts` — `ADMIN_TAB_CHILD_PATHS` gains `reviews` (F-2)
 - `frontend/src/app/booking/booking.model.ts` — the `HIDDEN` member
 - `frontend/src/app/booking/review-panel.ts` + `review-panel.spec.ts` — the `HIDDEN` case
 - `frontend/src/app/booking/booking-view.ts` — the `REVIEW_HIDDEN` refusal narration
