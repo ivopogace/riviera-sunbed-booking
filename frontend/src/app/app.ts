@@ -193,16 +193,22 @@ export class App {
       });
   }
 
-  /** Remember which navigation, if any, is already under way as an overlay goes up; `0` when the
-   *  router is idle, an id no navigation carries (they start at 1). */
-  private markOverlayRaised(): void {
+  /**
+   * Record the navigation already under way, if any, as a header control changes an overlay's
+   * state; `0` when the router is idle, an id no navigation carries (they start at 1).
+   *
+   * <p>The three toggles call this on the lowering half too, which is inert: navigation ids are
+   * monotonic per `Router`, so a value recorded while nothing is open can never equal a LATER
+   * `NavigationEnd`'s id, and the close it would skip is a no-op anyway.
+   */
+  private notePendingNavigation(): void {
     this.overlayNavId = this.router.currentNavigation()?.id ?? 0;
   }
 
   /** Open the find-a-booking modal, closing any open nav popover and recording the focus-return
    *  target (the desktop trigger, or the hamburger when opened from the collapsing mobile menu). */
   protected openFind(fromMobile: boolean): void {
-    this.markOverlayRaised();
+    this.notePendingNavigation();
     this.findReturn = (fromMobile ? this.menuButton() : this.findButton())?.nativeElement ?? null;
     this.menuOpen.set(false);
     this.themeOpen.set(false);
@@ -217,18 +223,14 @@ export class App {
   }
 
   protected toggleMenu(): void {
-    if (!this.menuOpen()) {
-      this.markOverlayRaised();
-    }
+    this.notePendingNavigation();
     this.themeOpen.set(false);
     this.accountOpen.set(false);
     this.menuOpen.update((open) => !open);
   }
 
   protected toggleThemePicker(): void {
-    if (!this.themeOpen()) {
-      this.markOverlayRaised();
-    }
+    this.notePendingNavigation();
     this.menuOpen.set(false);
     this.accountOpen.set(false);
     this.themeOpen.update((open) => !open);
@@ -236,9 +238,7 @@ export class App {
 
   /** Toggle the signed-in account menu; only one header popover is open at a time. */
   protected toggleAccountMenu(): void {
-    if (!this.accountOpen()) {
-      this.markOverlayRaised();
-    }
+    this.notePendingNavigation();
     this.menuOpen.set(false);
     this.themeOpen.set(false);
     this.accountOpen.update((open) => !open);
