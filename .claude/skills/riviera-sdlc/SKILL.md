@@ -99,8 +99,8 @@ compaction, is a new area-entry: re-load. When in doubt, load it.
 6. **Source-of-intent documents live in the repo, not the conversation.** Any spec or
    improvement plan that issues or ADRs reference is committed (`docs/architecture/`) before
    or with the artifacts that cite it. A plan doc lives in `docs/plans/` only
-   until the next close-out after its PR merges, so durable artifacts cite the issue or PR,
-   never a plan path.
+   until the next close-out after its PR merges, so durable artifacts never cite a plan path
+   (docs cite the issue or PR; doc comments point at `RESPONSIBILITIES.md` or an ADR, §6d).
 7. **The conversation is never the state store** — progress lives in the plan doc's
    Execution status section (Context hygiene, below).
 

@@ -1,11 +1,8 @@
 # ADR-0015: `review` is a leaf module — eligibility inverts through an SPI port, aggregation goes out as an event
 
-- **Status:** Accepted (the epic delegated the ADR judgment to slice 1; the wiring was pinned by the
-  boundary analysis in epic #810's pre-implementation addendum, 2026-08-29, and the
-  `BookingCompleted` alternative was re-examined and rejected at the maintainer's request the same
-  day)
+- **Status:** Accepted
 - **Date:** 2026-08-29
-- **Relates to:** #810 (the tourist-reviews epic), #811 (slice 1 — this decision's slice), ADR-0007
+- **Relates to:** #810 (the tourist-reviews epic), #811 (this decision's slice), ADR-0007
   (the graduated hexagonal module shape this follows), invariant #11 (Modulith boundaries are
   hexagonal and id-based), invariant #2 (the claim discipline this borrows for review uniqueness)
 
@@ -71,22 +68,24 @@ documented "publishes no event" stance, and the slice still uses an event where 
 
 ## Consequences
 
-- The SQL half of the `review → venue` boundary is **machine-checked** (hardened at review-gate
-  finding F-6, same PR): `ResponsibilitiesArchitectureTests` fails the build on any reference to
+- The SQL half of the `review → venue` boundary is **machine-checked**: `ResponsibilitiesArchitectureTests` fails the build on any reference to
   `rating_tenths`/`reviews_count` outside `venue` and on SQL-shaped references to the `review`
   table outside `review` — the `set_availability` sole-writer mechanism, fixture-proven. The
   *policy* half (eligibility, window, rounding leaking into `venue`) needs no illegal import and
   stays review-checked via the RESPONSIBILITIES §`venue` line and RV-BE-11.
 - **The aggregate is eventually consistent by design.** A submit returns before its venue row moves.
   Every surface reads the stored columns, so a guest can see their own rating land a moment later.
-- **The `api` ports are split by consumer role** (`VenueRatingSummary` for `venue`,
-  `ReviewEligibility` for `booking`), so neither consumer sees the submit surface — that stays an
-  internal `application` port whose only caller is review's own REST adapter. *Amended by #813:* a
-  third port, `ListedReviews`, answers `venue`'s other question — the public page of commented
-  reviews — and the leaf posture is what put that endpoint in `venue`: the tourist-visibility fence
-  is `operator`'s rule consumed by `venue`, and `review` cannot consult `operator` without ceasing to
-  be a leaf. *Amended by #815:* a fourth port, `ReviewTombstones`, is the module's one published
-  *write* — the erasure reach `booking` drives for `customer` (ADR-0010's amendment): a scrub, never
-  a delete, publishing no `ReviewsChanged` because the aggregate is unchanged by construction. The
-  leaf posture held: `customer` cannot call `review` either, so `booking` — already granted both —
-  bridges the two.
+- **The `api` ports are split by consumer role:** `VenueRatingSummary` (`venue`'s aggregate),
+  `ListedReviews` (`venue`'s public page of commented reviews — the endpoint lives in `venue`
+  because the tourist-visibility fence is `operator`'s rule consumed by `venue`, and `review` cannot
+  consult `operator` without ceasing to be a leaf), `ReviewEligibility` (`booking`'s question about
+  one stay), and `ReviewTombstones`, the module's one published *write* — the erasure reach
+  `booking` drives for `customer` (ADR-0010): a scrub, never a delete, publishing no
+  `ReviewsChanged` because the aggregate is unchanged by construction. `customer` cannot call
+  `review` either, so `booking` — granted both — bridges the two. The submit surface stays an
+  internal `application` port whose only caller is review's own REST adapter.
+
+## Amendment log
+
+- #813 — the `ListedReviews` port and the public list endpoint carried by `venue`.
+- #815 — the `ReviewTombstones` write port for erasure.

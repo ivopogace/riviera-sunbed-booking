@@ -141,9 +141,6 @@ function draftForNewCell(gridY: number): SetDraft {
  * exactly as the server still has it: the grid re-renders only from the parent's re-read, which
  * {@link changed} asks for. Selection and draft are `linkedSignal`s over {@link sets}, so that
  * re-read re-seeds them instead of stranding an edit whose basis has moved.
- *
- * <p>Rationale for the reactive-only guard discovery, the no-`expectedVersion` writes and the
- * venue-switch guard: #567 (PR #603).
  */
 @Component({
   selector: 'app-set-editor',

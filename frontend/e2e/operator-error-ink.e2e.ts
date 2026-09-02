@@ -22,7 +22,7 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  * must survive a `dark` DOCUMENT theme. The unit contrast specs prove porcelain and cannot see this.
  * Both hosts are driven, because `operator-console.ts` and `operator-home.ts` pin porcelain through
  * two SEPARATE host bindings: one passing is not evidence about the other.
- * Rationale: #836 (PR #856).
+ * Rationale: #855 (PR #856).
  */
 
 /** `--riv-error-ink` as the light themes declare it, which the porcelain pin keeps in force. */

@@ -12,7 +12,7 @@ import { Directive, ElementRef, inject, input } from '@angular/core';
  * starts the write**; a control that starts its own write needs a different lock, which varies by
  * control kind — see the carve-out in `frontend/.claude/CLAUDE.md`. Every submit handler keeps its
  * re-entrancy guard. Carries no styling; each consumer keeps its own `aria-disabled:` utility.
- * Why a capture-phase listener: #616.
+ * Why a capture-phase listener: RV-FE-9 in `riviera-review-overlay`.
  */
 @Directive({
   selector: '[appBusy]',

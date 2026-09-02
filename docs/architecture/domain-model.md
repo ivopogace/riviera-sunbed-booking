@@ -5,14 +5,11 @@
 > `docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md` and the
 > invariants in `/CLAUDE.md` (referenced below as "invariant #N").
 >
-> Implementation status: the **Instant-Book path is built end-to-end** (U1–U9 + the
-> launch-safe epic #72) — real Stripe with signature-verified webhooks, the event spine
-> (`PaymentConfirmed`/`PaymentCanceled` → `booking`; `BookingConfirmed`/`BookingCancelled`
-> → `payout`) wired through the Modulith Event Publication Registry, the payout ledger,
-> and the `operator` module with per-venue authorization (invariant #13).
-> **Request-to-Book is built** (issue #98) — soft-hold on the shared availability claim,
-> operator accept/decline (payment-request-on-accept), the request-expiry sweep, and the
-> pay-on-accept guest view. For as-built status per slice, see the closed issues and PRs.
+> Both booking modes are built end-to-end: Instant Book (signature-verified webhooks, the
+> event spine through the Modulith Event Publication Registry, the payout ledger, per-venue
+> authorization) and Request-to-Book (soft-hold on the shared availability claim, operator
+> accept/decline with payment-request-on-accept, the request-expiry sweep). Where a diagram
+> and the code disagree, the code and `RESPONSIBILITIES.md` win.
 >
 > All diagrams are [Mermaid](https://mermaid.js.org/) and render on GitHub.
 
@@ -46,7 +43,7 @@ graph TB
         LEDG["PayoutLedgerEntry<br/>«aggregate root»"]
         BATCH["PayoutBatch<br/>«aggregate root»"]
     end
-    subgraph notification["notification — no aggregate; owns email_suppression (#382)"]
+    subgraph notification["notification — no aggregate; owns email_suppression"]
     end
 
     subgraph operator["operator — per-venue authorization (#13)"]
@@ -129,8 +126,8 @@ graph LR
 ```
 
 > v1 scope note: weather refund and payout reporting are **manual/admin** (invariant
-> #10, spec §6 & §10). No same-day booking — bookings close the evening before
-> (invariant #4).
+> #10). A date sells until the venue's own sales close on the day itself (invariant #4);
+> the evening-before cutoff governs free cancellation only.
 
 ---
 
@@ -157,7 +154,8 @@ classDiagram
         +BookingMode mode
         +CommissionRate commissionRate
         +Currency payoutCurrency
-        +LocalTime bookingCutoff
+        +LocalTime cancellationCutoff
+        +LocalTime salesClose
     }
     class BeachMap {
         <<aggregateRoot>>
@@ -201,7 +199,8 @@ classDiagram
     BeachMap ..> Venue : venueId
 ```
 
-> `bookingCutoff` defaults to 18:00 `Europe/Tirane` (invariant #4, #6). `pool`
+> `cancellationCutoff` defaults to 18:00 and `salesClose` to 16:00, both `Europe/Tirane`
+> (invariants #4, #6). `pool`
 > keeps online and walk-in sets physically separate (invariant #3) — an online
 > booking can only target an `ONLINE` set.
 
@@ -229,7 +228,7 @@ classDiagram
 
 > Identity is the pair **(setId, bookingDate)**. A DB `UNIQUE(set_id, booking_date)`
 > constraint plus a claim guarantees **at most one party per set per date**
-> (invariant #2). The implemented mechanism (V4 + `JdbcAvailabilityClaim`) is an
+> (invariant #2). The implemented mechanism (`JdbcAvailabilityClaim`) is an
 > atomic `INSERT ... ON CONFLICT DO NOTHING` (FREE = no row), chosen over
 > `SELECT ... FOR UPDATE`. This module is the *only* writer of this table — both
 > online bookings and staff taps go through it.
@@ -274,11 +273,9 @@ classDiagram
 > `BookingCode` is an unguessable bearer credential — ≥ 8 random base32 chars,
 > never sequential, treated as a secret in logs (invariant #7). `cancellationDeadline`
 > is the evening-before cutoff, computed in `Europe/Tirane`, stored UTC (invariant #4, #6).
->
-> **As built (#98, V19):** the enum + `booking.status` CHECK hold all eight states shown.
-> `EXPIRED` is reserved for a request the venue never answered (deadline sweep);
-> an abandoned `AWAITING_PAYMENT` booking — instant, or an accepted-but-unpaid request
-> past its pay-window — is swept to `CANCELLED`, exactly as before #98.
+> The enum and the `booking.status` CHECK hold all nine states shown. `EXPIRED` is a request
+> the venue never answered (deadline sweep); an abandoned `AWAITING_PAYMENT` booking —
+> instant, or an accepted-but-unpaid request past its pay-window — is swept to `CANCELLED`.
 
 ### 3.4 `payment`
 
@@ -384,7 +381,9 @@ classDiagram
     Customer --> Email : email
 ```
 
-> Intentionally light — guest checkout with an email is acceptable (spec §4.1).
+> Intentionally light — guest checkout with an email is acceptable. The customer **account**
+> (`CustomerAccount`, own table, no FK to the guest row) is the second aggregate; see
+> `RESPONSIBILITIES.md` §`customer`.
 
 ---
 
@@ -423,7 +422,7 @@ sequenceDiagram
     end
 ```
 
-> **As-built (U4/U5, shipped):** the claim is synchronous at reserve time and the row
+> As built: the claim is synchronous at reserve time and the row
 > is written as `BOOKED_ONLINE` immediately — the reserve transaction **commits before
 > the Stripe call**, so no row lock spans the network round-trip. `PaymentConfirmed`
 > (webhook-driven) moves the booking to `CONFIRMED`; `PaymentCanceled` moves it to
@@ -479,7 +478,7 @@ stateDiagram-v2
     AWAITING_PAYMENT --> CANCELLED: abandoned payment swept (instant TTL / pay-window)
     AWAITING_PAYMENT --> PENDING_REQUEST: payment-request issuance failed (compensating revert)
     PENDING_REQUEST --> EXPIRED: response deadline passed (sweep)
-    PENDING_REQUEST --> WITHDRAWN: guest retracts the request (#123)
+    PENDING_REQUEST --> WITHDRAWN: guest retracts the request
     CONFIRMED --> CANCELLED: tourist cancel / weather refund
     CONFIRMED --> COMPLETED: day passed, guest arrived
     CONFIRMED --> NO_SHOW: day passed, no arrival
@@ -491,14 +490,13 @@ stateDiagram-v2
     NO_SHOW --> [*]
 ```
 
-> **As built (#98):** both entry legs exist. An abandoned payment ends in `CANCELLED`
-> (instant: TTL from creation; accepted request: pay-window from `accepted_at`);
-> `EXPIRED` means the venue never answered before the request deadline (min(request +
-> expiry-window, evening-before cutoff)), and `WITHDRAWN` (#123) means the guest retracted
-> the request themselves — one terminal state per party who can end a pending request. The
-> soft-hold is the same `BOOKED_ONLINE` availability row as any online booking (§6.2
-> unchanged — availability records *that* a set is held, never *why*); all three terminal
-> legs release it.
+> Both entry legs exist. An abandoned payment ends in `CANCELLED` (instant: TTL from
+> creation; accepted request: pay-window from `accepted_at`, never past the service day's
+> end); `EXPIRED` means the venue never answered before the request deadline (min(request +
+> expiry-window, the venue's sales close on the date)), and `WITHDRAWN` means the guest
+> retracted the request themselves — one terminal state per party who can end a pending
+> request. The soft-hold is the same `BOOKED_ONLINE` availability row as any online booking
+> (availability records *that* a set is held, never *why*); all three terminal legs release it.
 
 ### 6.2 Set availability per (set, date)
 

@@ -663,7 +663,7 @@ export class BookingView {
 
   /**
    * Open the cancel confirmation. Every focus move on both confirm surfaces, and why it lands
-   * where it does (WCAG 2.4.3): #614.
+   * where it does (WCAG 2.4.3): RV-FE-9 in `riviera-review-overlay`.
    */
   protected startCancel(): void {
     this.confirming.set(true);

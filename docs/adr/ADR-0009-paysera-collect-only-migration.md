@@ -112,9 +112,9 @@ Provider landscape (researched 2026-07-22):
   "allow test payments" flag (no separate sandbox) and needs a publicly reachable webhook
   URL — document the recipe in `docs/agents/` when the adapter lands.
 - **Doc follow-ups on acceptance:** mark ADR-0002 *Superseded by ADR-0009*; remove the
-  payout-currency provisional decision from `CLAUDE.md` and re-word invariant #8's "Stripe
-  webhooks" to gateway-neutral; rewrite the `riviera-stripe-payments` skill as the
-  gateway-neutral payments skill with Paysera specifics.
+  payout-currency provisional decision from `CLAUDE.md` and re-word invariant #8 to
+  gateway-neutral; rewrite the `riviera-stripe-payments` skill as the gateway-neutral payments
+  skill with Paysera specifics.
 - A future implementer must **not**: confirm a booking from a redirect; reach for a
   split/sub-merchant product (re-open this ADR instead if a provider verifiably onboards
   Albanian sellers); introduce currency conversion anywhere in the app; or pay a venue

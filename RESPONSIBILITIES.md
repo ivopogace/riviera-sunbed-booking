@@ -689,6 +689,19 @@ invariant #7):
 - The provider bounce/complaint **feed** into the suppression list → a follow-up slice
   (needs provider setup); today nothing writes the list
 
+**The withheld-flag probe** (read before wiring the first writer of the suppression list). The
+`emailWithheld` flag on the code-gated booking read makes a populated list an expensive suppression
+oracle: an attacker books with a victim's address, pays, reads the flag, then cancels before the
+invariant-#4 cutoff for a full refund. Three facts bound it. Nothing writes the table today
+(reinstatement only lifts a row), so the probe returns zero bits until the bounce/complaint feed
+lands — that feed is the residual's trigger. A dedicated rate-limit budget would not bind: the
+attack's real limiter is one real gateway payment plus one claimed `(set, date)` per probe, and
+any capacity that leaves the pay page's legitimate poll alone (ADR-0006) sits orders of magnitude
+above that floor. And passing the flag only through the post-payment hand-off is no option under a
+collecting gateway: the code-gated read *is* the hand-off, and the prober is the payer, so one read
+is all a probe needs. The two-part gate (`CONFIRMED` **and** `payment.api.CollectionGuarantee`) is
+what keeps the flag inert wherever the gateway does not collect before confirming.
+
 ## `review`
 **Job:** Own everything about a tourist's verdict on a delivered stay — the review record
 (stars, comment and display name; one per booking), who may leave one, change one or

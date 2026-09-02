@@ -2,20 +2,19 @@
 
 - **Status:** Accepted
 - **Date:** 2026-08-14
-- **Relates to:** #663 (this decision's issue), #662 (the flake that exposed it, and the
-  `freezeClock()` restore convention it introduced), #572 (the `console-stats-strip` assertion that
-  went red), `frontend/.claude/CLAUDE.md` § *Unit tests*, PR #664
+- **Relates to:** #663 (this decision's issue), #662 (the flake that exposed it),
+  `frontend/.claude/CLAUDE.md` § *Unit tests*
 
 ## Context
 
 `frontend/src/test-setup.ts` freezes `Date` at a fixed instant so no spec can depend on the
 machine's calendar. The contract everyone read into it was **"this runs before every test file"**.
 
-It did not. #662 traced a CI flake to a spec that ended on `vi.useRealTimers()` and handed the real
-calendar to a *later file*, and closed it by exporting `freezeClock()` and calling that at the seven
-restore sites. That fixed the symptom while leaving the premise unexplained — and if setup really
-runs once per worker, then every global a spec mutates leaks the same way and the clock is merely
-the leak with a visible symptom.
+It did not. A CI flake traced to a spec that ended on `vi.useRealTimers()` and handed the real
+calendar to a *later file*; exporting `freezeClock()` and calling it at every restore site fixed
+the symptom while leaving the premise unexplained — and if setup really runs once per worker, then
+every global a spec mutates leaks the same way and the clock is merely the leak with a visible
+symptom.
 
 ### What the measurement says
 
@@ -23,8 +22,8 @@ Instrumenting the setup body with a per-process counter, over the real suite:
 
 | Configuration | Setup body executions | Wall clock |
 |---|---|---|
-| As shipped by #662, `npm test` | **3** — one per worker process | ~14 s |
-| As shipped by #662, `--isolate` | 157 — one per file | ~97 s |
+| Before this ADR, `npm test` | **3** — one per worker process | ~14 s |
+| Before this ADR, `--isolate` | 157 — one per file | ~97 s |
 | This ADR, `npm test` | **158** — one per file | ~14 s |
 | This ADR, `npm run test:coverage` (what CI runs) | **158** — one per file | ~20 s |
 
@@ -37,14 +36,14 @@ what breaks it.
 Two independent paths turn that entry into a re-export shim, and Vitest's invalidation reaches only
 the shim, never the already-evaluated module behind it:
 
-1. **A second importer.** #662 exported `freezeClock` to three specs, which made the module *shared*
+1. **A second importer.** Exporting `freezeClock` to specs made the module *shared*
    between entry points, so esbuild hoisted its body into a chunk:
    `__vite_ssr_exportName__("freezeClock", …); await __vite_ssr_import__("/chunk-5XKCZ4NE.js")`.
 2. **Coverage — unconditionally, for every entry point.** The builder's in-memory loader emits
    `import "./setup-test-setup.js";` as the whole module whenever `coverage.enabled`, so that the
    real file can be excluded from the coverage report. CI's frontend job runs **only**
-   `npm run test:coverage`, so this path alone would have kept the freeze per-worker in the exact
-   place #662's flake happened — no arrangement of the source files can avoid it.
+   `npm run test:coverage`, so this path alone would have kept the freeze per-worker — no
+   arrangement of the source files can avoid it.
 
 ## Decision
 

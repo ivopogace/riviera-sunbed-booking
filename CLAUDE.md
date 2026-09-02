@@ -58,7 +58,8 @@ npm run build
 
 **CI/CD** (`.github/workflows/`): `ci.yml` runs the backend build/test, the frontend
 lint/format/test/build + mocked e2e, the diff-scoped hygiene guards `scripts/check-*.mjs`
-(most also run as a local `PostToolUse` hook), and a SonarCloud scan per PR. The Sonar
+(most also run as a local `PostToolUse` hook; `check-comment-only.mjs` is a by-hand verifier,
+not a CI gate), and a SonarCloud scan per PR. The Sonar
 merge bar is **0 new issues, 0 duplicated blocks, ≥80% new-code coverage** — review the
 issue list, not just the pass/fail. `codeql.yml` scans; `deploy.yml` deploys the single
 backend image (which serves the SPA) to Render from `main` (ADR-0004; `docs/deploy/`).
@@ -177,7 +178,7 @@ package. Confirm any negative with `git ls-files '*/adapter/out/*.java'` before 
 a class doesn't exist.
 
 **`docs/plans/` holds only in-flight work.** A plan doc is deleted at the next close-out
-after its PR merges (`riviera-docs-freshness` § *Plan-doc retirement*); code and docs cite the issue
-or PR, never a plan path. Don't read old plans for rationale — it is on the issue, the PR,
+after its PR merges (`riviera-docs-freshness` § *Plan-doc retirement*); docs cite the issue or PR and
+doc comments point at `RESPONSIBILITIES.md` or an ADR, never a plan path. Don't read old plans for rationale — it is on the issue, the PR,
 the ADRs, and the Javadoc/TSDoc. A retired plan is recoverable by slug:
 `git log --all --diff-filter=D -- 'docs/plans/<slug>.md'`.

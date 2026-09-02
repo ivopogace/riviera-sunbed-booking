@@ -63,8 +63,6 @@ export class OutcomeCard {
    * positive fill is 1.41:1). Decorative (`aria-hidden`), so exempt from the AA text minimum but
    * held to 3:1 in `auth/auth-page.contrast.spec.ts`. Take the ternary whole — one branch tokenised
    * leaves a named utility beside a hex literal in one expression.
-   *
-   * Rationale: PR #871.
    */
   protected readonly glyphClasses = computed(
     () =>

@@ -42,14 +42,9 @@ public interface EmailSuppressions {
 	 * books with a victim's address, pays, reads the flag, then cancels before the invariant-#4 cutoff
 	 * for a full refund. A second precondition must also hold, so this alone does not open it — the flag
 	 * stays inert wherever {@code payment.api.CollectionGuarantee} reports that the wired gateway does
-	 * not collect before confirming. The probe was assessed and deferred onto #372 (#400 item 2); its
-	 * implementer needs three facts before wiring a writer. Nothing writes this table today (#391's
-	 * reinstatement only lifts a row), so the probe returns zero bits until the bounce/complaint feed
-	 * lands. A dedicated rate-limit budget would not bind: the attack's real limiter is one Stripe
-	 * payment plus one claimed {@code (set, date)} per probe, and any capacity that leaves the pay
-	 * page's legitimate poll alone (ADR-0006) sits orders of magnitude above that floor. And passing
-	 * the flag only through the post-payment hand-off is no option under {@code stripe}: the code-gated
-	 * read <em>is</em> the hand-off, and the prober is the payer, so one read is all a probe needs.
+	 * not collect before confirming. Before wiring a writer, read {@code RESPONSIBILITIES.md}
+	 * §{@code notification} (<em>the withheld-flag probe</em>): it records why the probe is inert today
+	 * and why neither a rate-limit budget nor a narrower hand-off would close it.
 	 */
 	void suppress(String email, SuppressionReason reason, Instant at);
 
