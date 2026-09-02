@@ -6,7 +6,8 @@
  * {@link SsoAccountProvisioning} (resolve-or-create the account behind an external SSO identity),
  * {@link CustomerAccountRecovery} (email-verification + password-recovery token lifecycle +
  * authenticated set-password), and {@link AccountErasure} (right-to-erasure: scrub-in-place of
- * account + guest-contact PII, retaining the statutory-retention financial rows). The value types these
+ * account + guest-contact PII and, through {@code customer.spi.ReviewErasure}, the subject's review PII,
+ * retaining the statutory-retention financial rows). The value types these
  * ports speak ({@code GuestContact}, {@code CustomerId},
  * {@code CustomerAccountCredential}, {@code RegistrationOutcome}, {@code CustomerAccountId},
  * {@code SsoProvider}, {@code VerifyEmailOutcome}, {@code ResetPasswordOutcome}) live in the sibling

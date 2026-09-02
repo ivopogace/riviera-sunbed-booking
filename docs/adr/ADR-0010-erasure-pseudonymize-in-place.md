@@ -44,7 +44,8 @@ Two erasure shapes were possible:
 - `booking`, `payment`, and `payout_ledger_entry` are **never touched**. The payout ledger holds no
   PII by design (venue-ids, booking-ids, money — RESPONSIBILITIES `payout` Not-My-Job), so severing
   the personal link cannot affect its auditability or exactly-once accrual (invariant #9 preserved).
-- All scrub SQL lives in **one** `customer`-module adapter (`JdbcAccountErasure` behind the internal
+- *(Superseded in part by the amendment below: the review scrub lives in `review`'s own adapter.)*
+  All scrub SQL lives in **one** `customer`-module adapter (`JdbcAccountErasure` behind the internal
   `AccountErasureStore` port) so "what erasure touches" has a single home. Every scrub is guarded on
   `erased_at IS NULL` → **idempotent**. The account and guest identities are matched independently
   (by id / by email), because D-6 forbids an FK between them.

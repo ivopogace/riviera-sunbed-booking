@@ -20,7 +20,8 @@ import ai.riviera.platform.customer.application.ExpireGuestContacts;
  * cannot fire. Pinned by {@code GuestContactRetentionSchedulerConfigTest}.
  *
  * <p>{@code fixedDelay} so runs never overlap on this instance; multi-instance safety needs no distributed
- * lock — every scrub is a guarded {@code UPDATE … WHERE id = :id AND erased_at IS NULL}, so at most one
+ * lock — every contact scrub is a guarded {@code UPDATE … WHERE id = :id AND erased_at IS NULL} (and the
+ * review tombstone it carries matches only a row still holding a name or comment), so at most one
  * runner can tombstone a given row and a concurrent run is a no-op. Lockless-on-one-instance is the
  * documented deployment posture (improvement-plan D1/D3). The default cadence is deliberately slack: a
  * retention window is measured in years, so nothing is gained by sweeping often, and {@code initial-delay}

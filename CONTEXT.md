@@ -209,8 +209,8 @@ model in `docs/architecture/domain-model.md`.
   the window (invariant #6).
 - **Retention sweep** — the scheduled job that tombstones guest contacts with no remaining retention
   basis (#101 Slice 2). Proactive where **erasure** is reactive, but it writes the same **tombstone**
-  — on the contact and, since #815, on the contact's reviews. It touches guest contacts only, never
-  accounts, and never the retained financial records.
+  — on the contact and, since #815, on the contact's reviews. It touches guest contacts (and the
+  reviews on their bookings) only, never accounts, and never the retained financial records.
 
 ## Reviews
 

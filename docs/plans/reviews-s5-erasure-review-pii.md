@@ -48,10 +48,13 @@ the same scoped non-goal ADR-0010 already records; and that the hidden review mu
 tombstoned too) · `riviera-plan-doc` (this template — forced decisions D-1..D-6 to be
 written down before phase 0, and the outcome rule D-4) · `tdd` (each phase is one seam:
 the review port, the customer→booking→review chain, the sweep) · `riviera-review-overlay`
-(review gate — due at ready-for-review) · `riviera-docs-freshness` (**due at phase 3** —
-the "three `api` ports" count in RESPONSIBILITIES §review, ADR-0010's "single-module
-operation" consequence, the runbook's what-erasure-touches table, and every Javadoc /
-TS comment that says a null display name means only "pre-slice-2") · `postgres` (no new
+(review gate — due at ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD` after phase 3's docs sweep, 9
+findings: 6 patched — the runbook's sweep log line and its idempotence property, `EraseOutcome`'s
+Javadoc (a reviews-only scrub is `ERASED`), `customer.api`'s package inventory, the scheduler's
+"every scrub" Javadoc, and a self-contradicting CONTEXT.md sentence; 3 ADR flags handled as
+amendment notes in the ADR's own style, listed under Open questions for the maintainer to veto:
+ADR-0012's "erasure touches only `customer`-owned rows", ADR-0015's port count ("*Amended by
+#815:* a fourth port"), and the superseded-in-part pointer on ADR-0010's "one adapter" bullet) · `postgres` (no new
 column — a marker nothing reads is a column nothing needs; `UPDATE … RETURNING id` to hand
 ids back from the tombstone; the `IN (:list)` reads sit on the two existing FK indexes)
 · `riviera-modulith` (the port is `spi` on the consumer, `api` on the provider, per the
@@ -152,7 +155,7 @@ at a time).
   and the package-shape / published-surface tests run, then they pass with no
   `allowedDependencies` change on any module. *Seam:* the module structure · *Pinned by:*
   `ModularityTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`
-- [ ] **AC-10:** Given the admin list and the venue page receive a review with `displayName`
+- [x] **AC-10:** Given the admin list and the venue page receive a review with `displayName`
   `null`, when they render, then the name reads "A guest" — the already-shipped pins, cited
   not re-written. *Seam:* the two components' inputs · *Pinned by:*
   `admin-reviews.spec.ts` ("A guest" on the nameless row), `venue-reviews.spec.ts`
@@ -201,6 +204,11 @@ return type widens from "did it / how many" to "which".
 - **Assumption:** the sweep's return value keeps meaning "contacts tombstoned" (its
   scheduler logs and the existing ITs read it that way); reviews are a second logged count.
   — *Owner:* agent · *Resolves by:* phase 2
+- **Assumption (docs-freshness flags):** the three ADR passages the audit flagged as
+  decision-substance — ADR-0012's "erasure continues to touch only `customer`-owned rows",
+  ADR-0015's consequence counting the `api` ports, and ADR-0010's "all scrub SQL lives in one
+  adapter" bullet — carry an amendment note each (the ADRs' own "*Amended by #NNN*" style) rather
+  than a rewrite; none changes the decision itself. — *Owner:* maintainer · *Resolves by:* the review gate
 
 ## Availability & concurrency (invariant #2)
 
@@ -317,6 +325,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `CLAUDE.md` — the `customer` and `review` rows
 - `docs/adr/ADR-0010-erasure-pseudonymize-in-place.md` — amendment note: erasure now reaches `review` through an inverted port
 - `docs/runbooks/data-erasure.md` — the what-erasure-touches table gains the review row
+- `docs/adr/ADR-0012-email-suppression-hashed-key.md` · `docs/adr/ADR-0015-review-leaf-module.md` — amendment notes from the docs-freshness run (erasure now reaches `review`; a fourth `api` port)
+- `platform/src/main/java/ai/riviera/platform/customer/vocabulary/EraseOutcome.java` · `customer/api/package-info.java` · `customer/adapter/in/GuestContactRetentionScheduler.java` — Javadoc patched by the docs-freshness run (a reviews-only scrub is `ERASED`; the inventory names the review reach; "every scrub" now covers the review tombstone)
 
 ---
 
@@ -393,10 +403,10 @@ public interface ReviewErasure {
 **Files:** `RESPONSIBILITIES.md`, `CONTEXT.md`, `CLAUDE.md`, ADR-0010, the runbook, the three
 TS doc comments
 
-- [ ] **Step 1:** RESPONSIBILITIES §customer (Job: erasure and the sweep reach the reviews through `customer.spi.ReviewErasure`; Not-My-Job: resolving my subjects to bookings → `booking`, blanking a review → `review`; Shipped), §booking (the second `customer.spi` fact-and-act it answers), §review (the tombstone; **four** `api` ports; a null `display_name` now means "never given or erased"; Shipped).
-- [ ] **Step 2:** CONTEXT.md **Review tombstone**; CLAUDE.md `customer` + `review` rows; ADR-0010 amendment note (status line + a dated paragraph: the scrub reaches `review` through an inverted port, still one transaction, still no FK relaxation); runbook table row `review.display_name` / `comment` → `NULL` / `NULL` ("a review is attached to a booking; the star stays in the aggregate").
-- [ ] **Step 3:** the three TS doc comments; `npm run lint`, `npm run format:check` (comment-only, but the guard runs).
-- [ ] **Step 4:** `riviera-docs-freshness` over `origin/main...HEAD`; `node scripts/check-plan-file-structure.mjs --diff origin/main`.
+- [x] **Step 1:** RESPONSIBILITIES §customer (Job: erasure and the sweep reach the reviews through `customer.spi.ReviewErasure`; Not-My-Job: resolving my subjects to bookings → `booking`, blanking a review → `review`; Shipped), §booking (the second `customer.spi` fact-and-act it answers), §review (the tombstone; **four** `api` ports; a null `display_name` now means "never given or erased"; Shipped).
+- [x] **Step 2:** CONTEXT.md **Review tombstone**; CLAUDE.md `customer` + `review` rows; ADR-0010 amendment note (status line + a dated paragraph: the scrub reaches `review` through an inverted port, still one transaction, still no FK relaxation); runbook table row `review.display_name` / `comment` → `NULL` / `NULL` ("a review is attached to a booking; the star stays in the aggregate").
+- [x] **Step 3:** the three TS doc comments; `npm run lint`, `npm run format:check` (comment-only, but the guard runs).
+- [x] **Step 4:** `riviera-docs-freshness` over `origin/main...HEAD`; `node scripts/check-plan-file-structure.mjs --diff origin/main`.
 - [ ] **Step 5: Commit** — `Record that erasure now reaches review PII: responsibilities, glossary, ADR-0010 amendment, runbook (#815)`
 - [ ] **Step 6:** merge `origin/main`; mark the PR ready for review → the gates (`references/pr-gates.md`); update Execution status.
 
@@ -406,6 +416,7 @@ TS doc comments
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-02 | phase 3 (`riviera-docs-freshness`, counting sweep) | every sentence counting the `api`/`spi` ports or enumerating what erasure touches | pass 3 of the audit: `grep -rniE '\b(three\|3\|two\|2\|one\|1) (\`?api\`?\|\`?spi\`?\|driven\|driving\|published\|cross-module)( \|-)?ports?\b\|…' <substrate + platform/src + frontend/src>` (the full three-pass command set is in the PR's review note) | 9 findings (6 stated facts, 3 ADR consequences); kept as true: `booking.api`'s "three ports", `venue.spi`'s "third", `notification`'s "three ports", `ScheduledQueryTimeoutIT`'s "two entry reads" | patched / amended as recorded in *Skills consulted* |
 | 2026-09-02 | phase 2 (the sweep's return value) | every caller of `ExpireGuestContacts#sweep` and every reader of its count | `grep -rn "\.sweep()" platform/src --include=*.java` (filtered to the customer port; the `booking` hits are the no-show / request sweeps) | 1 production caller, `GuestContactRetentionScheduler`, which logs the count; `GuestContactRetentionIT` and the unit spec assert it | the meaning "contacts tombstoned" holds; reviews ride as a second logged count (D-4) |
 | 2026-09-02 | phase 1 (the widened `AccountErasureStore` port, D-5) | every implementor of `AccountErasureStore` and every caller of the two by-email scrubs | `grep -rln "implements AccountErasureStore" platform/src`; `grep -rn "eraseGuestByEmail\|eraseAccountByEmail" platform/src` | 3 implementors (`JdbcAccountErasure` + the two test fakes); callers: `AccountErasureService` only | all three follow the new return types in this commit; the sweep's fake keeps throwing for the two it never exercises |
 | 2026-09-02 | phase 1 (a `//` block the guard now sees) | every multi-line `//` block in a file this slice touches | `node scripts/check-inline-comments.mjs --files <touched>` | 1: the grant rationale in `booking/package-info.java` (pre-existing, flagged once touched) | moved into the package Javadoc, which is exempt and where a grant's why belongs |
@@ -421,7 +432,7 @@ TS doc comments
 - [x] **AC-7:** `gradle test --tests "*ExpireGuestContactsServiceTest*"` → PASS (9). Verified at phase 2.
 - [x] **AC-8:** `gradle test --tests "*GuestContactRetentionIT*"` → PASS (6, skipped 0). Verified at phase 2.
 - [x] **AC-9:** the structural net → PASS (`ModularityTests` 1, `PackageShapeArchitectureTests` 4, `PublishedSurfacePlacementArchitectureTests` 11, `JdbcOnlyArchitectureTests` 2). Verified at phases 0 and 1.
-- [ ] **AC-10:** `npm test -- admin-reviews venue-reviews` → PASS (the existing pins).
+- [x] **AC-10:** `ng test --include=src/app/admin/admin-reviews.spec.ts --include=src/app/venue/venue-reviews.spec.ts` → PASS (21). Verified at phase 3.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 

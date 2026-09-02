@@ -155,7 +155,7 @@ All under `customer.retention.*` in `application.properties`:
 
    If that count surprises you, **stop** — the window is wrong. Erasure is irreversible.
 4. Set `customer.retention.enabled=true` and deploy. The first run happens `initial-delay` after startup.
-5. Confirm from the logs: `retention sweep scrubbed N expired guest contact(s) with cutoff YYYY-MM-DD`.
+5. Confirm from the logs: `retention sweep scrubbed N expired guest contact(s) and M review(s) with cutoff YYYY-MM-DD`.
    The line carries counts and the cutoff only — never an email, name, phone, or booking code.
 
 **To stop it**, set `enabled=false` and redeploy; already-tombstoned rows stay tombstoned (there is no
@@ -163,8 +163,9 @@ un-erase — see ADR-0010).
 
 ### Safety properties
 
-- **Idempotent.** Every scrub is `UPDATE … WHERE id = :id AND erased_at IS NULL`, and tombstoned rows are
-  not candidates, so re-running scrubs nothing and never re-stamps `erased_at`.
+- **Idempotent.** Every contact scrub is `UPDATE … WHERE id = :id AND erased_at IS NULL` and the review
+  tombstone matches only a row still carrying a name or a comment; tombstoned rows are not candidates, so
+  re-running scrubs nothing and never re-stamps `erased_at`.
 - **No distributed lock needed.** `fixedDelay` means a run never overlaps itself on one instance, and the
   guarded `UPDATE` means at most one runner can tombstone a given row — so an overlap with a Slice-1
   erasure of the same row is safe too, whichever lands first.
