@@ -68,7 +68,7 @@ without its `@theme inline` row generates no utility at all; the class stays in 
 the paint silently does not change — and a hover fill compiles to `.hover\:bg-…:hover`, so no
 bare-class-selector sweep can see it either).
 
-- [ ] **AC-1:** Given the console button's skin and the same-shaped `--riv-solid-btn-{fill,hover}`
+- [x] **AC-1:** Given the console button's skin and the same-shaped `--riv-solid-btn-{fill,hover}`
       pair, when the slice lands, then `--riv-solid-btn-fill` and `--riv-solid-btn-hover` are
       byte-identical to their pre-slice values **and** neither equals the console button's
       resting or hover fill — so "we chose our own token" and "we quietly collapsed onto the
@@ -76,13 +76,13 @@ bare-class-selector sweep can see it either).
       `testing/stylesheet-tokens.ts` · *Pinned by:*
       `fixed-ink-tokens.contrast.spec.ts` › `the console button hover fill (#887)` › `refuses
       the solid-btn pair on values, not on assertion`
-- [ ] **AC-2:** Given `--riv-console-btn-hover`, when the stylesheet is read, then it is declared
+- [x] **AC-2:** Given `--riv-console-btn-hover`, when the stylesheet is read, then it is declared
       **exactly once**, in the base block, with the value `#eef1f2`, and mapped in `@theme
       inline` as `--color-riv-console-btn-hover: var(--riv-console-btn-hover)` — the same four
       guards `--riv-console-btn-border` already carries. *Seam:* `src/tailwind.css` read as text
       · *Pinned by:* `fixed-ink-tokens.contrast.spec.ts` › `the stylesheet contract` (the four
       existing cases, with the token added to `CONSOLE_FAMILY`)
-- [ ] **AC-3:** Given `frontend/src`, when swept for the migrated literal, then no bare `#eef1f2`
+- [x] **AC-3:** Given `frontend/src`, when swept for the migrated literal, then no bare `#eef1f2`
       remains outside `*.spec.ts`, and `operator/operator-actions.ts` paints a
       `-riv-console-btn-` family utility. *Seam:* the source sweep over the site list ·
       *Pinned by:* `fixed-ink-tokens.contrast.spec.ts` › `the sites` (`%s paints no migrated
@@ -93,7 +93,7 @@ bare-class-selector sweep can see it either).
       position no declaration sweep can reach. *Seam:* the rendered `oc-signout` box ·
       *Pinned by:* `e2e/fixed-ink-token-recut.e2e.ts` › `the console paints both hairlines from
       their own tokens (#849), and the button's hover fill from its own (#887)`
-- [ ] **AC-5:** Given the hover fill, when measured, then the button's label clears **AA** on it
+- [x] **AC-5:** Given the hover fill, when measured, then the button's label clears **AA** on it
       (13.29:1), and the two boundaries it forms — against the button's resting `#ffffff` fill
       (1.14:1) and against the porcelain header glass over each background stop (1.04–1.14:1) —
       are recorded **below 3:1**, so the exemption is a conclusion drawn from a measurement.
@@ -101,7 +101,7 @@ bare-class-selector sweep can see it either).
       `fixed-ink-tokens.contrast.spec.ts` › `the console button hover fill (#887)` › `the label
       carries the identity at AA on the hovered fill` + `records that the hover state's own
       boundaries do not reach the 1.4.11 bar, so the exemption is load-bearing`
-- [ ] **AC-6:** Given the button's **resting** fill, when the slice lands, then it is still
+- [x] **AC-6:** Given the button's **resting** fill, when the slice lands, then it is still
       `bg-white` and has gained no token — #849's own answer on this same surface (it tokenised
       the hairlines bounding the console's white fills and left the fills alone), and the idiom
       of the other 11 `hover:bg-white`/`bg-white` sites in the tree. Asserted so the omission
@@ -139,8 +139,8 @@ asserted by AC-4 against the same value the literal produced.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | The token is declared but its `@theme inline` row is forgotten — the utility never generates, the class stays in the markup, and the hover silently stops painting | med | high | AC-2's `@theme inline` guard **and** AC-4's hovered-box assertion; a hover fill has no bare class selector, so the render proof is the only one that can see it | agent | open |
-| R-2 | A later slice adds a `[data-riv-theme='dark']` override for the token — every ratio computed from the mirror still passes, because the mirror is not the cascade | low | med | AC-2's single-declaration guard, which reads `tailwind.css` as text (`testing/stylesheet-tokens.ts`) | agent | open |
-| R-3 | A later sweep silently collapses this fill onto `--riv-solid-btn-hover`, repainting the console button and inheriting the tourist skin's grounds | med | med | AC-1 asserts the pair unchanged **and** unequal to this skin's fills; the refusal is written at the declaration | agent | open |
+| R-2 | A later slice adds a `[data-riv-theme='dark']` override for the token — every ratio computed from the mirror still passes, because the mirror is not the cascade | low | med | AC-2's single-declaration guard, which reads `tailwind.css` as text (`testing/stylesheet-tokens.ts`) | agent | closed — phase 0 |
+| R-3 | A later sweep silently collapses this fill onto `--riv-solid-btn-hover`, repainting the console button and inheriting the tourist skin's grounds | med | med | AC-1 asserts the pair unchanged **and** unequal to this skin's fills; the refusal is written at the declaration | agent | closed — phase 0 |
 | R-4 | A later 1.4.11 sweep reads the 1.04–1.14:1 hover boundary as a violation this slice introduced, and "fixes" it by darkening the fill | med | med | AC-5 records both ratios as measurements, and `non-text-contrast.md` gains the family row — #879's close-sales-trigger lesson: check what the outgoing value measured first | agent | open |
 | R-5 | Extending #849's spec and e2e files reads as scope creep into a closed slice | low | low | The family's home is where the family's guard is (`--riv-console-btn-border` lives in both files); both docstrings are updated to name #887 alongside #849, and the plan records the choice | agent | open |
 | R-6 | The e2e's `.hover()` races the `transition-colors` animation and reads the resting fill | low | med | Playwright's `toHaveCSS` retries until timeout, so it settles on the transitioned value; the solid-btn suite's hover assertions use exactly this shape | agent | open |
@@ -199,15 +199,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write the red guards in `shared/fixed-ink-tokens.contrast.spec.ts`
-against the un-migrated markup, before the token exists.
+**Next action:** Phase 1 — add the hovered-box assertion to `e2e/fixed-ink-token-recut.e2e.ts`
+and run it against the mocked Playwright config.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the token, its guards and the migrated site | | |
-| 1 — the real-render hover proof | | |
+| 0 — the token, its guards and the migrated site | ✅ | this commit |
+| 1 — the real-render hover proof | ⏳ | |
 | 2 — the ledger row and the 1.4.11 ground | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -245,22 +245,22 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 `frontend/src/app/shared/fixed-ink-tokens.contrast.spec.ts` ·
 `frontend/src/app/operator/operator-console.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing guards** — extend `CONSOLE_FAMILY` with
+- [x] **Step 1: Write the failing guards** — extend `CONSOLE_FAMILY` with
       `'--riv-console-btn-hover'`, add `#eef1f2` to `MIGRATED_LITERALS`, and add the
       `the console button hover fill (#887)` describe (the refused merge, the AA label, the two
       sub-3:1 boundaries, the recorded `bg-white`).
-- [ ] **Step 2: Run them, verify they fail** — `cd frontend && npx vitest run
+- [x] **Step 2: Run them, verify they fail** — `cd frontend && npx vitest run
       src/app/shared/fixed-ink-tokens.contrast.spec.ts` → FAIL: `--riv-console-btn-hover
       declarations` length 0, and `operator-actions.ts still paints #eef1f2`.
-- [ ] **Step 3: Minimal implementation** — declare the token in the base block beside
+- [x] **Step 3: Minimal implementation** — declare the token in the base block beside
       `--riv-console-btn-border` with the reason at the declaration, add its `@theme inline`
       row, export `CONSOLE_BTN_HOVER` from `glass-tokens.ts`, and swap the class string to
       `hover:bg-riv-console-btn-hover`.
-- [ ] **Step 4: Run them, verify they pass** — the same command → PASS; then broaden to
+- [x] **Step 4: Run them, verify they pass** — the same command → PASS; then broaden to
       `npx vitest run src/app/shared src/app/operator` for the touched folders.
-- [ ] **Step 5: Generalization-audit pass** — append the `hover:bg-` population row below.
-- [ ] **Step 6: Commit** — `git commit -m "Give the console sign-out hover fill its own token (#887)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 5: Generalization-audit pass** — appended the `hover:bg-` population row below.
+- [x] **Step 6: Commit** — `git commit -m "Give the console sign-out hover fill its own token (#887)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -307,6 +307,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-02 | phase 0 | **Every hover fill in `frontend/src`, by the mechanism that paints one** — the `hover:bg-` variant — rather than by resembling the one the ticket names. Run before the migration, so it is the command that FOUND the population and not one confirming a guess | `grep -rho "hover:bg-[^ \"'\`]*" frontend/src --include=*.ts --include=*.html \| sort \| uniq -c \| sort -rn` | 16 distinct forms, 30 occurrences | **1 site, and the ticket's "population of one" is confirmed rather than assumed.** 15 of the 16 forms are already token-consuming (`hover:bg-riv-*`, 9 forms) or Tailwind named colours with an optional `/opacity` (`hover:bg-white` ×11, `/90`, `/85`, `/80`, `/65`, `/50`, `black/70`, `transparent`), which are outside the ledger's population by its own definition. The sixteenth is `hover:bg-[#eef1f2]` — migrated here. Nothing generalizes: there is no second site to fix and no pattern to sweep, which is itself the finding |
 
 ---
 

@@ -16,6 +16,7 @@ import {
   BANNER_STRONG_INK,
   CALENDAR_GLASS,
   CONSOLE_BTN_BORDER,
+  CONSOLE_BTN_HOVER,
   CONSOLE_CARD_BORDER,
   CALENDAR_HOVER,
   CALENDAR_INK,
@@ -25,6 +26,8 @@ import {
   DARK_CARD_INK,
   DARK_STOPS,
   Glass,
+  INK_DARK,
+  PORCELAIN_HEADER_GLASS,
   PORCELAIN_STOPS,
   RIVIERA_STOPS,
   WHITE,
@@ -63,10 +66,11 @@ const BANNER_FAMILY = {
   '--riv-banner-strong-ink': rgbToHex(BANNER_STRONG_INK),
 } as const;
 
-/** The console's two white-surface hairlines. */
+/** The console's two white-surface hairlines, and the sign-out button's hover fill (#887). */
 const CONSOLE_FAMILY = {
   '--riv-console-card-border': cssValue(CONSOLE_CARD_BORDER),
   '--riv-console-btn-border': cssValue(CONSOLE_BTN_BORDER),
+  '--riv-console-btn-hover': rgbToHex(CONSOLE_BTN_HOVER),
 } as const;
 
 const THEMES: readonly [string, readonly Rgb[]][] = [
@@ -86,6 +90,7 @@ const MIGRATED_LITERALS = [
   'rgba(255,255,255,0.97)',
   'rgba(12,42,51,0.1)',
   'rgba(12,42,51,0.14)',
+  '#eef1f2',
 ];
 
 const APP_ROOT = join(process.cwd(), 'src/app');
@@ -265,6 +270,72 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
     it('keeps the coincidental tokens themed and separate, which is why these exist', () => {
       expect(declarationsOf('--riv-pop-divider')).toHaveLength(2);
       expect(declarationsOf('--riv-chip-border')).toHaveLength(3);
+    });
+  });
+
+  describe('the console button hover fill (#887)', () => {
+    const HOVER = rgbToHex(CONSOLE_BTN_HOVER);
+
+    /**
+     * Condition 1 of `non-text-contrast.md` rule 2, on the fill the rule is being claimed for
+     * rather than on the resting one: the button's own label is what identifies it, so the two
+     * sub-3:1 boundaries below are decorative. Measured on the HOVERED fill because that is the
+     * state whose ground this slice is recording.
+     */
+    it('the label carries the identity at AA on the hovered fill', () => {
+      expect(contrastRatio(rgbToHex(INK_DARK), HOVER)).toBeGreaterThanOrEqual(AA_NORMAL);
+      expect(contrastRatio(rgbToHex(INK_DARK), HOVER)).toBeCloseTo(13.29, 2);
+    });
+
+    /**
+     * Condition 2, and the reason this slice exists rather than being a rename: a hover fill forms
+     * two boundaries — against the state it replaces and against the surface it sits on — and
+     * neither reaches 3:1. Pinned as measurements, so a later sweep reading them as a violation
+     * this slice introduced can see they were never anything else (#879's close-sales lesson).
+     */
+    it('records that the hover state does not reach the 1.4.11 bar, so the exemption is load-bearing', () => {
+      expect(contrastRatio(HOVER, rgbToHex(WHITE))).toBeCloseTo(1.14, 2);
+      expect(contrastRatio(HOVER, rgbToHex(WHITE))).toBeLessThan(AA_LARGE);
+
+      for (const stop of PORCELAIN_STOPS) {
+        const glass = rgbToHex(surfaceOver(PORCELAIN_HEADER_GLASS, stop));
+        const ratio = contrastRatio(HOVER, glass);
+
+        expect(ratio, `over ${glass}`).toBeLessThan(AA_LARGE);
+        expect(ratio, `over ${glass}`).toBeGreaterThanOrEqual(1.04);
+        expect(ratio, `over ${glass}`).toBeLessThanOrEqual(1.14);
+      }
+    });
+
+    /**
+     * The refusal, made mechanical — the same shape as "leaves the three candidate tokens exactly
+     * as it found them" above. `--riv-solid-btn-{fill,hover}` is the same skin one layer over, and
+     * collapsing onto it would be a REPAINT: its resting fill is not this button's, so the merge
+     * moves two positions rather than migrating one. Without this, "we gave the console button its
+     * own token" and "we quietly adopted the tourist pair" look identical in a diff.
+     */
+    it('refuses the solid-btn pair on its values, not on assertion', () => {
+      expect(declarationsOf('--riv-solid-btn-fill')).toEqual(['#f4f6f7']);
+      expect(declarationsOf('--riv-solid-btn-hover')).toEqual(['#e7ebec']);
+
+      expect(declarationsOf('--riv-solid-btn-fill')[0], 'the resting fills differ').not.toBe(
+        rgbToHex(WHITE),
+      );
+      expect(declarationsOf('--riv-solid-btn-hover')[0], 'the hover fills differ').not.toBe(HOVER);
+    });
+
+    /**
+     * The other half of the role decision, asserted so the omission reads as one. The button's
+     * resting fill stays a Tailwind named colour: it is outside the ledger's population, it is the
+     * idiom of every other white surface in this console, and #849 — which tokenised the hairlines
+     * bounding exactly these fills — deliberately left the fills alone. A later slice that gives it
+     * `--riv-console-btn-fill` has to argue with this test rather than tidy past it.
+     */
+    it('leaves the resting fill as bg-white, the precedent of the surface it sits on', () => {
+      const source = read('operator/operator-actions.ts');
+
+      expect(source, 'the resting fill is still the named colour').toContain('bg-white');
+      expect(source, 'no fill token was invented for it').not.toContain('bg-riv-console-btn-fill');
     });
   });
 
