@@ -167,6 +167,7 @@
   --color-riv-banner-strong-ink: var(--riv-banner-strong-ink);
   --color-riv-console-card-border: var(--riv-console-card-border);
   --color-riv-console-btn-border: var(--riv-console-btn-border);
+  --color-riv-console-btn-hover: var(--riv-console-btn-hover);
 
   --shadow-riv-pop: var(--riv-pop-shadow);
   --text-shadow-riv-hero: var(--riv-hero-shadow);
@@ -809,6 +810,18 @@
       Proof: shared/fixed-ink-tokens.contrast.spec.ts. */
   --riv-console-card-border: rgba(12, 42, 51, 0.1);
   --riv-console-btn-border: rgba(12, 42, 51, 0.14);
+
+  /** The sign-out button's hover fill, the third member of the skin above. Deliberately not the
+      --riv-solid-btn-hover pair, which rests on #f4f6f7 where this button rests on #ffffff, so
+      adopting it would repaint rather than migrate. The resting fill stays `bg-white` and takes no
+      token of its own. Declared once — every consumer sits under a porcelain-pinned host, so a
+      dark branch is unreachable. Non-text chrome (WCAG 1.4.11) at 1.14:1 over that resting fill and
+      1.04–1.14:1 over the header glass, decorative under docs/design/non-text-contrast.md rule 2
+      (the button's own label carries the identity at 13.29:1 here), measured rather than assumed
+      exempt. Rationale: docs/design/colour-literal-token-audit.md (class R), issue #887.
+      Proof: shared/fixed-ink-tokens.contrast.spec.ts + e2e/fixed-ink-token-recut.e2e.ts (the
+      hovered box, the only place a `.hover\:bg-…:hover` rule can be seen). */
+  --riv-console-btn-hover: #eef1f2;
 }
 
 [data-riv-theme='riviera'] {

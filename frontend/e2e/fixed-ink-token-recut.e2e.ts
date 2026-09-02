@@ -13,7 +13,12 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * that the value does not move is the test. The two console families sit under a porcelain-pinned
  * host, so their dark branch is proven at the document root instead.
  *
- * <p>Rationale: `docs/design/colour-literal-token-audit.md` (class T-3).
+ * <p>The console button's hover fill (#887) joined the border family here rather than in a file of
+ * its own, because the family's render proof is where the family lives. It is also the sharpest
+ * case for this file's whole reason to exist: a hover fill has no bare class selector at all, so
+ * the hovered box is the ONLY place its `@theme inline` row can be observed.
+ *
+ * <p>Rationale: `docs/design/colour-literal-token-audit.md` (class T-3, and class R for #887).
  */
 
 const VENUE_ID = 4;
@@ -31,18 +36,22 @@ const REGISTRY = {
   '--riv-banner-strong-ink': '#0a2a33',
   '--riv-console-card-border': 'rgba(12, 42, 51, 0.1)',
   '--riv-console-btn-border': 'rgba(12, 42, 51, 0.14)',
+  '--riv-console-btn-hover': '#eef1f2',
 } as const;
 
 /**
  * The utility each token is consumed through, which exists only if its `@theme inline` row does.
  *
- * <p>Three of the ten are absent, all for the same reason: they are consumed through a VARIANT, so
- * Tailwind compiles them to a compound selector rather than a bare `.class` this sweep can match —
- * `--riv-calendar-hover` as `.hover\:bg-…:hover`, `--riv-calendar-ink-disabled` as
- * `.aria-disabled\:text-…[aria-disabled="true"]`, and `--riv-banner-strong-ink` as
- * `.\[\&_strong\]\:text-… strong`. Each is instead proven on the rendered box further down —
- * the hovered month-step button, the past day cell, and the banner's `<strong>` — which is the
- * stronger proof anyway, since it exercises the variant as well as the `@theme inline` row.
+ * <p>Four of the eleven are absent, all for the same reason: they are consumed through a VARIANT, so
+ * the rule that actually paints them is a compound selector this sweep cannot match. (A bare `.class`
+ * may exist beside it — Tailwind's extractor reads the undecorated candidate out of the same class
+ * string — but it wears nothing and paints no state, so matching it would prove nothing.) —
+ * `--riv-calendar-hover` and `--riv-console-btn-hover` as `.hover\:bg-…:hover`,
+ * `--riv-calendar-ink-disabled` as `.aria-disabled\:text-…[aria-disabled="true"]`, and
+ * `--riv-banner-strong-ink` as `.\[\&_strong\]\:text-… strong`. Each is instead proven on the
+ * rendered box further down — the hovered month-step button, the hovered sign-out button, the past
+ * day cell, and the banner's `<strong>` — which is the stronger proof anyway, since it exercises
+ * the variant as well as the `@theme inline` row.
  */
 const UTILITIES = [
   'bg-riv-calendar-glass',
@@ -61,6 +70,7 @@ const INK_FAINT = 'rgba(12, 42, 51, 0.72)';
 const INK_DISABLED = 'rgba(12, 42, 51, 0.4)';
 const GLASS = 'rgba(255, 255, 255, 0.97)';
 const BANNER_BODY = 'rgb(51, 74, 82)';
+const CONSOLE_BTN_HOVER = 'rgb(238, 241, 242)';
 
 const THEMES = ['porcelain', 'dark'] as const;
 
@@ -232,7 +242,51 @@ test('the calendar disables past days in the fixed ramp, not a themed one (#849)
   await expect(disabled).toHaveCSS('color', INK_DISABLED);
 });
 
-test('the console paints both hairlines from their own tokens (#849)', async ({ page }) => {
+/**
+ * The pointer-only reach of this state, made mechanical rather than asserted. `non-text-contrast.md`
+ * rests part of the hover fill's 1.4.11 exemption on hover being unavailable to keyboard and touch
+ * users, and in Tailwind v4 that is not a claim about pointer semantics but a compiled fact: the
+ * variant emits `@media (hover: hover) { .hover\:bg-…:hover }`, so where the device reports no
+ * hover capability the rule that paints this state never enters the cascade at all. The stylesheet
+ * is the only place that is observable — the hovered box below runs in a desktop Chromium, which
+ * reports `hover: hover` and therefore exercises the other branch.
+ *
+ * <p>Scoped to the `:hover` rule deliberately. A BARE `.bg-riv-console-btn-hover` rule also exists
+ * and is not gated: Tailwind's extractor reads `bg-riv-console-btn-hover` out of the class string as
+ * a candidate in its own right, so the utility is generated alongside the variant one. Nothing wears
+ * it, and it paints no state — asserting over every rule mentioning the token would fail on that
+ * artifact and prove nothing.
+ */
+test('compiles the state it paints behind a hover-capability query, which its 1.4.11 ground rests on (#887)', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  const conditions = await page.evaluate(() => {
+    const found: string[] = [];
+    const walk = (rules: CSSRuleList, condition: string): void => {
+      for (const rule of rules) {
+        if (
+          rule instanceof CSSStyleRule &&
+          rule.selectorText.endsWith('bg-riv-console-btn-hover:hover')
+        ) {
+          found.push(condition);
+        }
+        const nested = (rule as CSSGroupingRule).cssRules;
+        if (nested) walk(nested, rule instanceof CSSMediaRule ? rule.conditionText : condition);
+      }
+    };
+    for (const sheet of document.styleSheets) walk(sheet.cssRules, '');
+    return found;
+  });
+
+  expect(conditions.length, 'the hover-variant rule is generated at all').toBe(1);
+  expect(conditions[0].replaceAll(' ', '')).toContain('hover:hover');
+});
+
+test("the console paints both hairlines, and the button's hover fill, from their own tokens (#849, #887)", async ({
+  page,
+}) => {
   await mockWholeConsole(page);
   await page.goto('/operator/1/beach-map');
   await signInAsOperator(page);
@@ -244,4 +298,9 @@ test('the console paints both hairlines from their own tokens (#849)', async ({ 
   const signOut = page.getByTestId('oc-signout');
   await expect(signOut).toBeVisible();
   await expect(signOut).toHaveCSS('border-color', 'rgba(12, 42, 51, 0.14)');
+
+  // The resting fill is the named colour the skin deliberately kept; only the hover state is a token.
+  await expect(signOut).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await signOut.hover();
+  await expect(signOut).toHaveCSS('background-color', CONSOLE_BTN_HOVER);
 });

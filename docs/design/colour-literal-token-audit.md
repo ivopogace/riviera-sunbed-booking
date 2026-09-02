@@ -9,7 +9,7 @@ teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR
 outline-button skin's theme-invariant family, PR #859), **#854** (the nine solid button/badge
 fills under fixed white ink, PR #860), **#861** (merging that family's two brand teals onto one,
 PR #862), **#848** (the operator console's accent ink, PR #863), **#864** (the console's negative
-ink, PR #866), **#858** (the three fixed-fill state skins, PR #867), **#869** (`outcome-card`'s two tone glyphs onto the medallion skin, PR #871), **#870** (the beach-map zoom toggle's fixed-pair-over-a-themed-host, PR #873), **#868** (the amber notice banner's theme-invariant pair, PR #874), **#853** (the CTA hairline's own border token, PR #875), **#852** (all of class **O** — the `/opacity`-modifier positions — settled on rule B and closed, PR #878), **#879** (class **O**'s values: the multiple-of-five alpha ladder, one `--riv-walkin-hatch`, and the three amber families merged into `--riv-warn-{edge,fill,ink}`, PR #880), **#881** (the console confirm buttons' `#9a6410` onto a fourth `--riv-solid-fill-*` member, `-warn`, PR #883), **#882** (the three inline suns onto one `--riv-sun-grad`, and the card sun's compositing defect with them, PR #885), **#849** (class **T-3** re-cut: its population is class F and class R, and the class-T family is empty — PR #886).
+ink, PR #866), **#858** (the three fixed-fill state skins, PR #867), **#869** (`outcome-card`'s two tone glyphs onto the medallion skin, PR #871), **#870** (the beach-map zoom toggle's fixed-pair-over-a-themed-host, PR #873), **#868** (the amber notice banner's theme-invariant pair, PR #874), **#853** (the CTA hairline's own border token, PR #875), **#852** (all of class **O** — the `/opacity`-modifier positions — settled on rule B and closed, PR #878), **#879** (class **O**'s values: the multiple-of-five alpha ladder, one `--riv-walkin-hatch`, and the three amber families merged into `--riv-warn-{edge,fill,ink}`, PR #880), **#881** (the console confirm buttons' `#9a6410` onto a fourth `--riv-solid-fill-*` member, `-warn`, PR #883), **#882** (the three inline suns onto one `--riv-sun-grad`, and the card sun's compositing defect with them, PR #885), **#849** (class **T-3** re-cut: its population is class F and class R, and the class-T family is empty — PR #886), **#887** (that re-cut's own class-**R** residue: the console sign-out button's hover fill, the tree's last `hover:bg-[#hex]` literal, PR #889).
 
 > **This file is not a design record.** `docs/design/README.md` governs the `.dc.html`
 > artboards — approved-look snapshots that are deliberately *never* rewritten to track the
@@ -407,6 +407,19 @@ does not. Each needs its own token, not the coincidental one.
 >   sign-out button's new border token. Not a violation of #852's beside-a-literal check (different
 >   value, different role), and not in #849's population, which is the `#0a2a33` / `rgba(12,42,51,·)`
 >   values. It is a genuine "no token at all" candidate with no row anywhere — it has one now.
+>   **done — #887, PR #889** (`--riv-console-btn-hover`), and the verdict is a *refusal* rather than
+>   a placement: the ticket asked whether this skin is `--riv-solid-btn-{fill,hover}` in different
+>   markup, and it is not. Adopting that pair repaints, because its resting fill is `#f4f6f7` where
+>   this button's is `#ffffff` — two positions moved to migrate one, and #849's whole claim is that
+>   no pixel moves. FORM separates them anyway, the same argument that kept `--riv-console-btn-border`
+>   off `--riv-chip-border`: a grey chip with a **white** `0.7` bevel on themeable card glass is the
+>   inverse construction of a white pill with a **dark** hairline on porcelain header glass, and
+>   their theme-invariance rests on different grounds (a fixed fill that would drift a themed ink,
+>   versus a porcelain-pinned host with no reachable dark branch) — #864's bar for sharing a name.
+>   So it joins the `--riv-console-btn-*` skin as its third member. The **resting** fill stays
+>   `bg-white` and gained no token, #849's own answer on this surface, asserted so the omission
+>   reads as a decision. Its 1.4.11 ground, which no slice had ever recorded, is now a row in
+>   `non-text-contrast.md` — the first there that is a **state** rather than a boundary.
 > - **Whether the calendar popover should adopt `--riv-pop-surface`/`--riv-pop-ink` instead of being
 >   pinned light forever.** The app already has a popover treatment that themes correctly
 >   (`rgba(255,255,255,0.92)` → `rgba(16,26,46,0.96)` with light inks), and the calendar's `<dialog>`

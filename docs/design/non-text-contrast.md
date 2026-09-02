@@ -103,6 +103,7 @@ number-bearing surface, not two.
 | `--riv-amenity-tag-border`, `--riv-amenity-water-border` | `app/shared/fixed-fill-token-skins.contrast.spec.ts` (`amenities.contrast.spec.ts` is the same family's ink/fill text pairs, not these borders) |
 | `--riv-warn-edge/50` on `daily-view-tab`'s close-sales trigger — the button's own label carries the identity | `app/operator/daily-view-tab.contrast.spec.ts` |
 | `--riv-console-btn-border` (the console's sign-out button) and `--riv-console-card-border` on the **active tab pill** — each control's own label carries the identity | `app/shared/fixed-ink-tokens.contrast.spec.ts` |
+| `--riv-console-btn-hover` (that same button's hover fill) — a **state**, not a boundary; read below before citing this row | `app/shared/fixed-ink-tokens.contrast.spec.ts` |
 
 `--riv-console-card-border`'s **other** consumer is not a control at all: it is the edge of the
 console's "Venue not found" card, a `<div>`. It is listed above only for the tab pill; the card's
@@ -111,6 +112,38 @@ edge is outside 1.4.11 rather than exempt under rule 2 — the criterion reaches
 hairline. Named here rather than left to be re-derived, because a family whose two consumers sit on
 different grounds is exactly where a later sweep files the whole thing under the wrong one. Both
 values are measured in the same spec either way (#849).
+
+**`--riv-console-btn-hover` is the first entry here that is not a boundary at all**, and it is
+listed rather than left out because the criterion does not let it be. 1.4.11 reaches visual
+information required to identify components *and states*, so a hover fill is in scope on its
+face — and both boundaries it forms are far under 3:1: against the resting white it replaces,
+and against the porcelain header glass it sits on. Rule 2's three conditions are still what
+answer it, and all three hold — the button's own "Sign out" label clears AA on the hovered fill,
+the numbers are measured in the spec above rather than waved off, and the control paints a real
+`border`, which is what brings rule 3 to it.
+
+Two things narrow the residual risk, and neither is offered as the argument. The first is
+mechanical rather than a claim about pointer semantics: Tailwind v4 compiles `hover:` to
+`@media (hover: hover) { .hover\:bg-…:hover }`, so where the device reports no hover capability the
+rule that paints this state never enters the cascade. It cannot be what identifies the control to a
+keyboard or touch user, because for them it is not there. Asserted rather than asserted-here —
+`frontend/e2e/fixed-ink-token-recut.e2e.ts` › "compiles the state it paints behind a
+hover-capability query, which its 1.4.11 ground rests on (#887)" reads the condition off the
+compiled stylesheet. (Beware the near-miss: a bare, ungated `.bg-riv-console-btn-hover` rule exists
+beside it, because Tailwind's extractor reads the undecorated candidate out of the same class
+string. It wears nothing and paints no state; a sweep that matched it would prove the opposite of
+what it looked like.) The button's focus indicator is a separate question, and today an unstyled
+one — named here so a later slice finds the gap written down rather than implied away. And the separation is
+not an outlier this project has never accepted: it is at least that of `--riv-solid-btn-fill` →
+`--riv-solid-btn-hover`, the settled family two rows up. That comparison is asserted, not
+asserted-here — `app/shared/fixed-ink-tokens.contrast.spec.ts` › "separates from its resting fill
+at least as well as the settled solid-btn family does" reads both sides out of `tailwind.css`, so
+retuning either family moves the claim instead of stranding a stale number in this file.
+
+**The general shape, worth keeping when the next state-coloured token arrives:** a hover, active
+or selected fill is judged on the same three conditions as a border. What changes is only which
+adjacency you measure — a state fill has two (the state it replaces, and the surface it sits on),
+and both belong in the assertion.
 
 `booking-dialog`'s `#31798a` close button is the sharpest case and is covered here rather than
 by rule 1: on its own teal header gradient the fill reaches 1.12–1.46:1 and the hairline
@@ -160,6 +193,17 @@ A token comment that previously deferred to an issue now names the rule:
 Non-text chrome (WCAG 1.4.11) at <measured>:1 over its own fill — decorative under
 docs/design/non-text-contrast.md rule 2 (the label carries the identity), measured
 rather than assumed exempt. Proof: <spec name>.
+```
+
+**A state fill cites two adjacencies, not one** — the template above is a boundary's shape, and
+copying it literally for a hover, active or selected fill silently drops one of the two
+measurements rule 2 requires of it (see `--riv-console-btn-hover` above):
+
+```
+Non-text chrome (WCAG 1.4.11) at <measured>:1 over <the resting state it replaces> and
+<measured>:1 over <the surface it sits on> — decorative under
+docs/design/non-text-contrast.md rule 2 (the label carries the identity at <measured>:1
+on this fill), measured rather than assumed exempt. Proof: <spec name>.
 ```
 
 Citing a **closed issue** as a present-tense tracking home is what #876 existed to fix; don't

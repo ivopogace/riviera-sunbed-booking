@@ -1,5 +1,6 @@
 import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
+  CONSOLE_BTN_HOVER,
   INK_DARK,
   PORCELAIN_HEADER_GLASS,
   PORCELAIN_STOPS,
@@ -21,7 +22,7 @@ import {
 const WHITE = '#ffffff';
 const INK = '#0a2a33'; // --riv-ink (porcelain)
 const BADGE_FILL = rgbToHex(SOLID_FILL_BRAND);
-const SIGNOUT_HOVER_FILL = '#eef1f2';
+const SIGNOUT_HOVER_FILL = rgbToHex(CONSOLE_BTN_HOVER);
 
 describe('OperatorConsole porcelain contrast (WCAG AA, #170)', () => {
   it('header wordmark ink meets AA on the porcelain header glass', () => {
