@@ -7,9 +7,11 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import ai.riviera.platform.review.application.ReviewSubmission;
 import ai.riviera.platform.review.application.ReviewTotals;
 import ai.riviera.platform.review.application.Reviews;
 import ai.riviera.platform.review.vocabulary.BookingRef;
+import ai.riviera.platform.review.vocabulary.CompletedStay;
 import ai.riviera.platform.review.vocabulary.OwnReview;
 import ai.riviera.platform.review.vocabulary.VenueRef;
 
@@ -49,26 +51,26 @@ class JdbcReviews implements Reviews {
 	}
 
 	@Override
-	public boolean claim(BookingRef booking, VenueRef venue, int stars, String comment,
-			String displayName, Instant at) {
+	public boolean claim(CompletedStay stay, ReviewSubmission submission, Instant at) {
 		int inserted = jdbc.sql("""
-				INSERT INTO review (booking_id, venue_id, stars, comment, display_name, created_at)
-				VALUES (:booking, :venue, :stars, :comment, :displayName, :createdAt)
+				INSERT INTO review (booking_id, venue_id, stay_date, stars, comment, display_name,
+				                    created_at)
+				VALUES (:booking, :venue, :stayDate, :stars, :comment, :displayName, :createdAt)
 				ON CONFLICT (booking_id) DO NOTHING
 				""")
-				.param(PARAM_BOOKING, booking.value())
-				.param("venue", venue.value())
-				.param(PARAM_STARS, stars)
-				.param(PARAM_COMMENT, comment)
-				.param("displayName", displayName)
+				.param(PARAM_BOOKING, stay.booking().value())
+				.param("venue", stay.venue().value())
+				.param("stayDate", stay.stayedOn())
+				.param(PARAM_STARS, submission.stars())
+				.param(PARAM_COMMENT, submission.comment())
+				.param("displayName", submission.displayName())
 				.param("createdAt", Timestamp.from(at))
 				.update();
 		return inserted == 1;
 	}
 
 	@Override
-	public boolean update(BookingRef booking, int stars, String comment, String displayName,
-			Instant at) {
+	public boolean update(BookingRef booking, ReviewSubmission submission, Instant at) {
 		int updated = jdbc.sql("""
 				UPDATE review
 				SET stars = :stars, comment = :comment, display_name = :displayName,
@@ -76,9 +78,9 @@ class JdbcReviews implements Reviews {
 				WHERE booking_id = :booking
 				""")
 				.param(PARAM_BOOKING, booking.value())
-				.param(PARAM_STARS, stars)
-				.param(PARAM_COMMENT, comment)
-				.param("displayName", displayName)
+				.param(PARAM_STARS, submission.stars())
+				.param(PARAM_COMMENT, submission.comment())
+				.param("displayName", submission.displayName())
 				.param("updatedAt", Timestamp.from(at))
 				.update();
 		return updated == 1;

@@ -1,6 +1,7 @@
 package ai.riviera.platform.review;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -86,6 +87,18 @@ class ReviewSubmitFlowIT {
 				lifecycle.submit(code, new ReviewSubmission(4, "Great sunbeds", "Ana")));
 
 		assertThat(storedReview(code)).containsExactly("4", "Great sunbeds", "Ana");
+	}
+
+	@Test
+	void recordsTheStayDate() {
+		long venueId = fixtures.venue("Submit Flow Stay Date");
+		String code = fixtures.completedBooking(venueId, Instant.now().minus(1, ChronoUnit.DAYS));
+
+		assertEquals(new SubmitOutcome.Submitted(), lifecycle.submit(code, stars(5)));
+
+		assertThat(jdbc.sql("SELECT stay_date FROM review WHERE booking_id = :id")
+				.param("id", fixtures.bookingIdOf(code)).query(LocalDate.class).single())
+				.isEqualTo(LocalDate.of(2026, 7, 1));
 	}
 
 	@Test

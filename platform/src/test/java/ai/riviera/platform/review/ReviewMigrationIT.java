@@ -86,6 +86,22 @@ class ReviewMigrationIT {
 	}
 
 	@Test
+	void requiresAStayDate() {
+		long venueId = seedVenue("Review Migration Stay Date");
+		long bookingId = seedCompletedBooking(venueId);
+
+		DataIntegrityViolationException rejected = assertThrows(DataIntegrityViolationException.class,
+				() -> jdbc.sql("""
+						INSERT INTO review (booking_id, venue_id, stars, created_at)
+						VALUES (:booking, :venue, 4, :createdAt)
+						""")
+						.param("booking", bookingId).param("venue", venueId)
+						.param("createdAt", Timestamp.from(Instant.parse("2026-07-02T08:00:00Z")))
+						.update());
+		assertThat(rejected.getMessage()).contains("stay_date");
+	}
+
+	@Test
 	void resetsTheSeededRatingToZero() {
 		// Scoped to the seeded row, not the table: sibling ITs recompute venues in this container.
 		int[] miramar = jdbc.sql(
@@ -139,10 +155,12 @@ class ReviewMigrationIT {
 	private void insertReview(long bookingId, long venueId, int stars, String comment,
 			String displayName) {
 		jdbc.sql("""
-				INSERT INTO review (booking_id, venue_id, stars, comment, display_name, created_at)
-				VALUES (:booking, :venue, :stars, :comment, :displayName, :createdAt)
+				INSERT INTO review (booking_id, venue_id, stay_date, stars, comment, display_name,
+				                    created_at)
+				VALUES (:booking, :venue, :stayDate, :stars, :comment, :displayName, :createdAt)
 				""")
-				.param("booking", bookingId).param("venue", venueId).param("stars", stars)
+				.param("booking", bookingId).param("venue", venueId)
+				.param("stayDate", LocalDate.of(2026, 7, 1)).param("stars", stars)
 				.param("comment", comment).param("displayName", displayName)
 				.param("createdAt", Timestamp.from(Instant.parse("2026-07-02T08:00:00Z")))
 				.update();

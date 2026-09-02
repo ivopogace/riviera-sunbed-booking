@@ -158,12 +158,12 @@ panel's existing spec.)
 | R-1 | Flyway V47 collision with in-flight work | low | high | Checked 2026-09-02: V46 highest on `main`, **zero** open PRs. If one appears, this branch renumbers (merges second) | agent | open |
 | R-2 | The list is served for a venue tourists cannot see (suspended / unowned owner), leaking a catalogue read the map read hides | med | med | The fence lives in `venue`'s application service `ListVenueReviewsService` (not the controller), consulting `operator.api.VenueVisibility` exactly as `JdbcVenueCatalog.findVenueMap` does; empty → `404`. `ListVenueReviewsServiceTest` + `VenueReviewsControllerTest.anInvisibleVenueIs404` | agent | open |
 | R-3 | The exact stay day leaks (privacy: the issue mandates month/year only) | low | med | Reduced to `YearMonth` in `JdbcReviews`'s row mapper — no published type carries a `LocalDate`; wire field `stayedIn: "YYYY-MM"`; `VenueReviewsControllerTest.servesTheStayAsYearMonthOnly` asserts the shape | agent | open |
-| R-4 | V47 backfill: a production `review` row with no matching booking date | very low | high | `booking_id` is a `NOT NULL` FK, so the `UPDATE … FROM booking` join covers every row; `SET NOT NULL` afterwards fails the migration loudly rather than shipping a null. `ReviewMigrationIT.requiresAStayDate` pins the constraint | agent | open |
-| R-5 | Widening `CompletedStay` (the `spi` vocabulary) breaks `booking`'s adapter and the two service-test fakes | high | low | Same phase (0): `JdbcCompletedStays` selects `booking_date`; both fakes rebuilt; `Reviews.claim` deepens to `claim(CompletedStay, ReviewSubmission, Instant)` so no caller threads a seventh parameter | agent | open |
+| R-4 | V47 backfill: a production `review` row with no matching booking date | very low | high | `booking_id` is a `NOT NULL` FK, so the `UPDATE … FROM booking` join covers every row; `SET NOT NULL` afterwards fails the migration loudly rather than shipping a null. `ReviewMigrationIT.requiresAStayDate` pins the constraint | agent | **closed (phase 0)** — V47 backfills then locks; the constraint test is green |
+| R-5 | Widening `CompletedStay` (the `spi` vocabulary) breaks `booking`'s adapter and the two service-test fakes | high | low | Same phase (0): `JdbcCompletedStays` selects `booking_date`; both fakes rebuilt; `Reviews.claim` deepens to `claim(CompletedStay, ReviewSubmission, Instant)` so no caller threads a seventh parameter | agent | **closed (phase 0)** — every constructor/implementor found by the audit below was updated in the same commit; 70 review + recompute tests green |
 | R-6 | `venue-map.spec.ts` / `venue-map.a11y.spec.ts` fail on `httpMock.verify()` because the embedded child now issues a `/reviews` request | high | low | Drain it: `httpMock.match((r) => r.url.endsWith('/reviews'))` before `verify()` in both `afterEach`s; the child's own specs cover its states | agent | open |
 | R-7 | Legacy mocked e2e specs that render `/venues/1` without a `/reviews` mock now show the section's failure state; the touch-target sweep never sees the "Show more" button | med | low | The failure state is quiet (one line + the shared retry button, itself `[appTouchTarget]`); `touch-targets-tourist.e2e.ts`'s venue-detail case gains a two-page mock so the sweep measures the control | agent | open |
 | R-8 | "Show more" removes itself after the last page → focus stranded on `<body>` (WCAG 2.4.3, RV-FE-9) | high | med | `focusMover()` to the first newly-appended entry whenever the control leaves; pinned in `venue-reviews.spec.ts` and the e2e | agent | open |
-| R-9 | Dropping `review_venue_id_idx` slows the aggregate recompute | low | low | The replacement `(venue_id, id)` composite serves `WHERE venue_id = ?` through its prefix; the old index becomes a duplicate prefix (`postgres` index-optimization) | agent | open |
+| R-9 | Dropping `review_venue_id_idx` slows the aggregate recompute | low | low | The replacement `(venue_id, id)` composite serves `WHERE venue_id = ?` through its prefix; the old index becomes a duplicate prefix (`postgres` index-optimization) | agent | **closed (phase 0)** — `review_venue_listing_idx (venue_id, id)` replaces it in V47; `VenueRatingRecomputeIT` green |
 | R-10 | Error-contract drift on the new 4xx paths (§6b) | low | med | `InvalidApiRequestException` for a non-positive cursor; the binder's own `400` for a malformed one (the calendar read's `rejectsAMalformedDate` precedent); `404` via `ResponseEntity.notFound()`; `ErrorContractArchitectureTests` stays green | agent | open |
 | R-11 | `WebSliceStubs` lacks the new `ListVenueReviews` port → every `@WebMvcTest` slice fails to boot | high | low | Phase 2 adds the inert stub together with the controller; `EndpointRoleGateCoverageTest.DECLARED_REACHABLE` gains the route | agent | open |
 
@@ -360,13 +360,13 @@ the entries are star rows, not a score.
 
 ## Execution status
 
-**Stage pointer:** `plan — doc committed, opening the draft PR`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** phase 0 — red on `ReviewMigrationIT.requiresAStayDate`.
+**Next action:** phase 1 — red on `ListedReviewsServiceTest` + `ReviewListingFlowIT`; open the draft PR on the phase-0 push.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — V47 stay date through the claim | | |
+| 0 — V47 stay date through the claim | ✅ | `Store the stay date on the review row, backfilled from the booking (#813)` |
 | 1 — `review.api.ListedReviews` + the keyset read | | |
 | 2 — `venue`: fence, endpoint, DTO, edge rows | | |
 | 3 — frontend: `app-venue-reviews` on the venue page | | |
@@ -410,6 +410,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/test/java/ai/riviera/platform/review/application/ListedReviewsServiceTest.java` — new
 - `platform/src/test/java/ai/riviera/platform/review/application/ReviewLifecycleServiceTest.java` — fakes follow the new shapes
 - `platform/src/test/java/ai/riviera/platform/review/application/ReviewEligibilityServiceTest.java` — fakes follow the new shapes
+- `platform/src/test/java/ai/riviera/platform/venue/VenueRatingRecomputeIT.java` — its raw review insert carries `stay_date`
 - `platform/src/test/java/ai/riviera/platform/venue/application/ListVenueReviewsServiceTest.java` — new
 - `platform/src/test/java/ai/riviera/platform/VenueReviewsControllerTest.java` — new
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — `ListVenueReviews` stub
@@ -740,6 +741,7 @@ Modify `shared/rating.ts` + spec, `shared/venue-views.ts`, `booking/review-panel
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-02 | phase 0 — `CompletedStay` widened, `Reviews.claim`/`update` reshaped, `stay_date NOT NULL` | every constructor of `CompletedStay`, every implementor/caller of `Reviews.claim`/`update`, every raw `INSERT INTO review` | `grep -rn "new CompletedStay(\|reviews\.claim(\|reviews\.update(\|INSERT INTO review\b" platform/src` | `JdbcCompletedStays`, `ReviewLifecycleService`, `JdbcReviews`, the two service-test fakes, `ReviewMigrationIT`, `VenueRatingRecomputeIT`, `FixtureJdbcReviews` | all updated except `FixtureJdbcReviews` — an architecture-test token fixture that never executes its SQL |
 
 ---
 
