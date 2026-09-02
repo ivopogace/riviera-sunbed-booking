@@ -4,26 +4,16 @@ import { settle } from './support/booking-dialog';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 
 /**
- * Real-render proof for the four families #849's re-cut produced (`--riv-calendar-*`,
- * `--riv-banner-*-ink`, `--riv-console-{card,btn}-border`).
+ * Real-render proof for the four fixed-ink families. Two failures live here and nowhere else: a
+ * token declared without its `@theme inline` row generates no utility at all — the class stays in
+ * the markup and the paint silently does not change — and the cascade under a real document theme
+ * is not something the unit guard, which reads `tailwind.css` as text, can see.
  *
- * <p>Two failures live here and nowhere else. A token declared without its `@theme inline` row
- * generates no utility at all — the class stays in the markup, the paint silently does not change,
- * and every unit spec still passes because they compute ratios from a mirror rather than from the
- * cascade. And the cascade under a REAL document theme is not something
- * `shared/fixed-ink-tokens.contrast.spec.ts` can see: it reads `tailwind.css` as text.
+ * <p>The calendar and the banner are asserted under BOTH themes against the same expected value:
+ * that the value does not move is the test. The two console families sit under a porcelain-pinned
+ * host, so their dark branch is proven at the document root instead.
  *
- * <p><strong>The dark leg is the point of the slice, not a formality.</strong> #849 asked for these
- * sites to be routed through `--riv-ink` / `--riv-card-ink` / `--riv-pop-ink`, all three of which
- * carry `#0a2a33` in porcelain and diverge to `#ffffff` / `#f2f7fa` in dark. Had the ticket been
- * followed, every assertion below would still pass under porcelain and the dark ones would return
- * near-white ink on a near-white fill. So the calendar and the banner are each asserted in BOTH
- * themes, against the same expected value — that the value does not move IS the test.
- *
- * <p>The two console families are the #870 case: their consumers are children of a porcelain-pinned
- * host, so the dark branch is unreachable through a real render. The first test proves they resolve
- * at the document root under a forced dark theme regardless; the console test proves the reachable
- * porcelain render.
+ * <p>Rationale: `docs/design/colour-literal-token-audit.md` (class T-3).
  */
 
 const VENUE_ID = 4;
@@ -45,8 +35,14 @@ const REGISTRY = {
 
 /**
  * The utility each token is consumed through, which exists only if its `@theme inline` row does.
- * `--riv-calendar-hover` is absent on purpose: it compiles to `.hover\:bg-…:hover`, not a bare
- * class selector, so it is proven on the hovered box in the calendar test instead.
+ *
+ * <p>Three of the ten are absent, all for the same reason: they are consumed through a VARIANT, so
+ * Tailwind compiles them to a compound selector rather than a bare `.class` this sweep can match —
+ * `--riv-calendar-hover` as `.hover\:bg-…:hover`, `--riv-calendar-ink-disabled` as
+ * `.aria-disabled\:text-…[aria-disabled="true"]`, and `--riv-banner-strong-ink` as
+ * `.\[\&_strong\]\:text-… strong`. Each is instead proven on the rendered box further down —
+ * the hovered month-step button, the past day cell, and the banner's `<strong>` — which is the
+ * stronger proof anyway, since it exercises the variant as well as the `@theme inline` row.
  */
 const UTILITIES = [
   'bg-riv-calendar-glass',
@@ -194,7 +190,7 @@ for (const theme of THEMES) {
     await expect(page.getByTestId('calendar-month')).toHaveCSS('color', INK);
     await expect(dialog.locator('th').first()).toHaveCSS('color', INK_FAINT);
     await expect(dialog.locator('p.text-riv-calendar-ink-soft')).toHaveCSS('color', INK_SOFT);
-    // A BOOKABLE day: this month's first cell is past, and wears the disabled ink instead.
+    // Skips this month's past cells, which wear the disabled ink the test below asserts.
     await expect(dialog.locator('button[data-date]:not([aria-disabled="true"])').first()).toHaveCSS(
       'color',
       INK,

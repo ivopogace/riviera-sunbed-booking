@@ -443,47 +443,23 @@ export const CLASS_O_TINTS: readonly { readonly token: string; readonly value: s
   { token: '--riv-premium-edge', value: '#b47814' },
 ];
 
-/** The availability calendar's own popover surface (`venue/availability-calendar.html:8`) and the
- *  dark-ink ramp it pins — `--riv-calendar-*` (#849, class F).
- *
- *  Theme-invariant because the SURFACE is: a near-opaque white `<dialog>` fill on a host that
- *  themes freely, so the pinning runs fill → ink, the `--riv-solid-btn-*` direction. This is the
- *  family #849 filed as class T, proposing `--riv-ink`/`--riv-card-ink`/`--riv-pop-ink` because all
- *  three carry `#0a2a33`. None of them can: they resolve `#ffffff` and `#f2f7fa` in dark, measured
- *  at under AA on this glass and on every day tint in
- *  `shared/fixed-ink-tokens.contrast.spec.ts`.
- *
- *  The primary ink serves two surfaces, not one — the popover glass AND the four opaque
- *  `CALENDAR_TINTS` fills the day cells wear — so `calendar-tints.ts` reads its ink from here
- *  rather than restating the literal (#835's R-5). One token, proven on both. */
+/** `--riv-calendar-*`: the calendar popover's fixed surface and the ink ramp it pins. The primary
+ *  ink serves two surfaces — this glass and the opaque CALENDAR_TINTS fills — so calendar-tints.ts
+ *  reads it from here. Rationale: docs/design/colour-literal-token-audit.md (class T-3). */
 export const CALENDAR_GLASS: Glass = { color: WHITE, alpha: 0.97 };
 export const CALENDAR_INK: Rgb = INK_DARK;
 export const CALENDAR_INK_SOFT: Glass = { color: CARD_INK, alpha: 0.78 };
 export const CALENDAR_INK_FAINT: Glass = { color: CARD_INK, alpha: 0.72 };
-/** Merged from the nav arrow's 0.35 and the day cell's 0.4 at the HIGHER-contrast of the two, so
- *  the one site that moves moves the safe way (#879's tie-break). Clears no contrast bar and is
- *  not required to — every site wearing it is `aria-disabled`, which WCAG 2.2 SC 1.4.3 exempts as
- *  an inactive component. The incidental clause, NOT non-text-contrast.md rule 2 (that one is
- *  about a control's chrome, and this is text). Measured either way, both directions, in
- *  `shared/fixed-ink-tokens.contrast.spec.ts`. */
+/** Clears no contrast bar and need not: every site wearing it is aria-disabled, which WCAG 1.4.3
+ *  exempts. NOT non-text-contrast.md rule 2 — that rule is about a control's chrome, this is text. */
 export const CALENDAR_INK_DISABLED: Glass = { color: CARD_INK, alpha: 0.4 };
-/** The month-step buttons' hover wash. Not an `/opacity` modifier, so #879's multiple-of-five
- *  ladder — a rule about class-O alphas — does not reach it; carried across unmoved. */
+/** The month-step buttons' hover wash. Not an /opacity modifier, so the alpha ladder does not
+ *  reach it. */
 export const CALENDAR_HOVER: Glass = { color: CARD_INK, alpha: 0.07 };
 
-/** `booking/booking-view.ts`'s banner body prose — `--riv-banner-{body,strong}-ink` (#849, class F).
- *
- *  The six status banners each paint their own FIXED fill (`#ddf4f8`, `#fdf5e6`, `#faefec`,
- *  `#f0f2f3`, `#f0eef6`), so the pinning runs fill → ink and this pair is declared once. The
- *  per-banner EYEBROW inks are a different unit — six values across six states is class S's
- *  per-state palette, and they live in their own constants rather than in `bannerBody`'s class
- *  string, so no take-the-whole-expression rule reaches them.
- *
- *  `--riv-banner-strong-ink` carries #0a2a33, the value #849 wanted to route through
- *  `--riv-card-ink`. Same refusal as the calendar family, and a sharper one: the card ink's dark
- *  value `#f2f7fa` on the neutral banner's `#f0f2f3` is very nearly white on white. Declared
- *  separately from `--riv-calendar-ink` despite the shared value — different family, different
- *  surface, and one declaration per family is the whole guard (#864's precedent). */
+/** `--riv-banner-*-ink`: booking-view's status-banner prose, pinned by six fixed banner fills. The
+ *  per-banner eyebrow inks are a separate per-state palette and are not this family.
+ *  Rationale: docs/design/colour-literal-token-audit.md (class F). */
 export const BANNER_BODY_INK: Rgb = hexToRgb('334a52');
 export const BANNER_STRONG_INK: Rgb = INK_DARK;
 /** The six fixed banner fills the pair is pinned by, in `CLS.banner*` order. */
@@ -491,25 +467,9 @@ export const BANNER_FILLS: readonly Rgb[] = ['ddf4f8', 'fdf5e6', 'faefec', 'f0f2
   hexToRgb,
 );
 
-/** The operator console's two white-surface hairlines — `--riv-console-{card,btn}-border` (#849,
- *  class R).
- *
- *  Value-correct, role wrong, the #848/#864 fork a third time. `rgba(12,42,51,0.1)` is
- *  `--riv-pop-divider`, whose whole population is one rule inside the account popover
- *  (`app.html:296`); `rgba(12,42,51,0.14)` is `--riv-chip-border`, the tourist shell chip's edge
- *  over the themed `--riv-chip-bg`. Both resolve correctly under the console's porcelain pin
- *  today, so neither is a rendering bug — the objection is mechanical: `@theme inline` resolves
- *  `var(--riv-*)` at the point of use, so retuning the popover or the tourist chip would silently
- *  move console chrome that has nothing to do with either.
- *
- *  Two tokens rather than one, and the 0.04 between them is not the reason — form is. The card
- *  border bounds a SURFACE (the sign-in card, the active tab pill); the button border is a
- *  control's own affordance boundary, which `--riv-wash-hover-border` already treats as a
- *  different kind of thing. Merging them would have meant repainting one to match the other, for
- *  a similarity that is only a value.
- *
- *  Declared once each: every consumer is a child of a porcelain-pinned host — `operator-console`'s
- *  own `data-riv-theme` binding, and `app.ts`'s subtree pin on every `operatorChrome` route — so a
- *  dark branch is unreachable by construction and a dark value would be an unverifiable claim. */
+/** `--riv-console-{card,btn}-border`: the console's two white-surface hairlines. Their own tokens
+ *  rather than the same-valued --riv-pop-divider / --riv-chip-border, which carry different roles
+ *  and theme overrides; two of them because a surface boundary and a control's affordance boundary
+ *  are different forms. Rationale: docs/design/colour-literal-token-audit.md (class R). */
 export const CONSOLE_CARD_BORDER: Glass = { color: CARD_INK, alpha: 0.1 };
 export const CONSOLE_BTN_BORDER: Glass = { color: CARD_INK, alpha: 0.14 };

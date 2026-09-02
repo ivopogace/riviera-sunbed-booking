@@ -778,26 +778,13 @@
       and is the one spec left doing so). */
   --riv-mode-chip-glass: rgba(255, 255, 255, 0.85);
 
-  /** The availability calendar's popover and the dark-ink ramp it pins (#849, class F).
-      Theme-invariant because the SURFACE is: --riv-calendar-glass is a near-opaque white
-      <dialog> fill on a venue page that themes freely, so the pinning runs fill → ink, the
-      --riv-solid-btn-* direction — declared once here, and a dark override would be the
-      light-on-light drift class F exists to prevent.
-
-      This is the family #849 filed as class T, asking which of --riv-ink, --riv-card-ink or
-      --riv-pop-ink each site wanted, because all three carry #0a2a33. The answer is none of
-      them: they resolve #ffffff / #f2f7fa in dark, which measures under AA on this glass and
-      on every day tint. Following the ticket would have shipped the bug it was written to
-      prevent, invisible in porcelain where all three agree. Measured in
-      shared/fixed-ink-tokens.contrast.spec.ts; reasoning per site in
-      docs/design/colour-literal-token-audit.md.
-
-      --riv-calendar-ink serves TWO surfaces — this glass and the four opaque day tints in
-      testing/calendar-tints.ts, which reads its ink from the same mirror rather than
-      restating the literal. --riv-calendar-ink-disabled merges the nav arrow's old 0.35 with
-      the day cell's 0.4 at the higher-contrast of the two, so the one site that moved moved
-      the safe way (#879's tie-break). --riv-calendar-hover is not an /opacity modifier, so
-      #879's multiple-of-five ladder does not reach it; carried across unmoved. */
+  /** The availability calendar's popover surface and the dark-ink ramp it pins. Theme-invariant:
+      the <dialog> fill is fixed on a page that themes, so the pinning runs fill -> ink and a dark
+      override would be light-on-light. --riv-calendar-ink also paints the opaque day tints, so
+      testing/calendar-tints.ts reads it from the mirror rather than restating it. -ink-disabled
+      clears no contrast bar and need not: every site wearing it is aria-disabled, which WCAG 1.4.3
+      exempts. Rationale: docs/design/colour-literal-token-audit.md (class T-3).
+      Proof: shared/fixed-ink-tokens.contrast.spec.ts. */
   --riv-calendar-glass: rgba(255, 255, 255, 0.97);
   --riv-calendar-ink: #0a2a33;
   --riv-calendar-ink-soft: rgba(12, 42, 51, 0.78);
@@ -805,43 +792,21 @@
   --riv-calendar-ink-disabled: rgba(12, 42, 51, 0.4);
   --riv-calendar-hover: rgba(12, 42, 51, 0.07);
 
-  /** booking-view's status-banner prose (#849, class F). Each of the six banners paints its own
-      FIXED fill (#ddf4f8, #fdf5e6, #faefec, #f0f2f3, #f0eef6), so the pinning runs fill -> ink
-      and this pair is declared once. The per-banner EYEBROW inks are NOT part of it: six values
-      across six states is class S's per-state palette, and they sit in their own constants rather
-      than in bannerBody's class string, so no take-the-whole-expression rule reaches them.
-
-      --riv-banner-strong-ink carries the #0a2a33 that #849 wanted routed through --riv-card-ink,
-      and is the sharpest case for the refusal: that token's dark value #f2f7fa over the neutral
-      banner's #f0f2f3 is very nearly white on white. Declared separately from --riv-calendar-ink
-      despite the shared value — different family, different surface, and one declaration per
-      family is the whole guard (#864's precedent, which kept two console inks apart for the same
-      reason). */
+  /** booking-view's status-banner prose. Theme-invariant: all six banner fills are fixed, so a
+      themed ink over them drifts. The per-banner eyebrow inks are a separate per-state palette and
+      stay literal. Rationale: docs/design/colour-literal-token-audit.md (class F).
+      Proof: shared/fixed-ink-tokens.contrast.spec.ts. */
   --riv-banner-body-ink: #334a52;
   --riv-banner-strong-ink: #0a2a33;
 
-  /** The operator console's two white-surface hairlines (#849, class R) — value-correct, role
-      wrong, the #848/#864 fork a third time. rgba(12,42,51,0.1) is --riv-pop-divider, whose whole
-      population is ONE rule inside the account popover (app.html:296); rgba(12,42,51,0.14) is
-      --riv-chip-border, the tourist shell chip's edge over the themed --riv-chip-bg. Both resolve
-      correctly under the console's porcelain pin today, so neither was a rendering bug — the
-      objection is mechanical: @theme inline resolves var(--riv-*) at the point of use, so
-      retuning the popover or the tourist chip would silently move console chrome.
-
-      Two tokens, and the 0.04 between them is not why — FORM is. -card-border bounds a surface
-      (the sign-in card, the active tab pill); -btn-border is a control's own affordance boundary,
-      the distinction --riv-wash-hover-border already draws. Merging would have meant repainting
-      one for a similarity that is only a value.
-
-      Declared once each: every consumer is a child of a porcelain-pinned host —
-      operator-console's own data-riv-theme binding, and app.ts's subtree pin on every
-      operatorChrome route — so a dark branch is unreachable and a dark value would be an
-      unverifiable claim. Non-text chrome (WCAG 1.4.11) at 1.21:1 / 1.32:1 over the white fills they
-      bound - decorative under docs/design/non-text-contrast.md rule 2 (each control's own label
-      carries the identity), measured rather than assumed exempt. The card border's OTHER consumer,
-      the "Venue not found" card's edge, is outside 1.4.11 rather than exempt under rule 2 - it is
-      a <div>, and nothing about that card is identified by its hairline. Proof:
-      shared/fixed-ink-tokens.contrast.spec.ts. */
+  /** The operator console's two white-surface hairlines. Their own tokens, not the same-valued
+      --riv-pop-divider / --riv-chip-border, whose roles and theme overrides are different; two of
+      them because a surface boundary and a control's affordance boundary are different forms.
+      Declared once — every consumer sits under a porcelain-pinned host. Non-text chrome at
+      1.21:1 / 1.32:1 over their white fills, decorative under docs/design/non-text-contrast.md
+      rule 2; the "Venue not found" card's edge is outside 1.4.11 rather than exempt under it.
+      Rationale: docs/design/colour-literal-token-audit.md (class R).
+      Proof: shared/fixed-ink-tokens.contrast.spec.ts. */
   --riv-console-card-border: rgba(12, 42, 51, 0.1);
   --riv-console-btn-border: rgba(12, 42, 51, 0.14);
 }

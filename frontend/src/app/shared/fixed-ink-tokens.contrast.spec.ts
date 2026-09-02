@@ -9,7 +9,7 @@ import {
   contrastRatio,
   rgbToHex,
 } from '../../testing/contrast';
-import { CALENDAR_TINTS } from '../../testing/calendar-tints';
+import { CALENDAR_BAR, CALENDAR_TINTS } from '../../testing/calendar-tints';
 import {
   BANNER_BODY_INK,
   BANNER_FILLS,
@@ -34,31 +34,17 @@ import {
 import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
- * Guard for the families #849 (class T-3) turned out to need — and for the refusal that defines
- * them.
+ * Guard for the four fixed-fill and role-mismatch ink families, and for the refusal that defines
+ * them: none of these sites can take `--riv-ink`, `--riv-card-ink` or `--riv-pop-ink`, because
+ * every one sits on a fill that does not theme. The three agree in porcelain and diverge in dark,
+ * so the failure is invisible to any porcelain-only check — which is why it is measured here
+ * rather than asserted.
  *
- * <p><strong>The ticket asked the wrong question, and the answer is worth stating before the
- * assertions.</strong> #849 enumerated fourteen `#0a2a33` / `rgba(12,42,51,·)` positions whose
- * value already equalled a registered token, and asked which of `--riv-ink`, `--riv-card-ink` or
- * `--riv-pop-ink` each one wanted. Two things were wrong with it. Six of the fourteen no longer
- * exist — #870 (PR #873) consumed them with the beach-map zoom toggle, taking the whole
- * `rgba(12,42,51,0.66)` family with it. And of the eight that survive, **not one can take any of
- * the three**: every one sits on a fill that does not theme, so a themed ink over it drifts
- * light-on-light in dark — class F's failure mode, the very bug the ticket was written to prevent,
- * reached by following the ticket. `the ticket's candidate tokens would fail on every one of these
- * surfaces` is that claim, measured.
+ * <p>Lives in `shared/` because the population spans `venue/`, `booking/` and `operator/`, the same
+ * reason as `warn-token-skin.contrast.spec.ts`. The complementary proof, where the cascade rather
+ * than a regex decides, is `e2e/fixed-ink-token-recut.e2e.ts`.
  *
- * <p>So the population is not class T at all. It is class **F** (a fixed fill pins every ink on
- * it — the `--riv-solid-btn-ink` precedent) and class **R** (a value coincidence over a role
- * mismatch — the fork #848, #858, #864 and #879 each resolved the same way). This file guards the
- * four families that replaced the three candidates, and `docs/design/colour-literal-token-audit.md`
- * carries the reasoning per site.
- *
- * <p>It lives in `shared/` rather than beside any one consumer because the population spans
- * `venue/`, `booking/` and `operator/` — the same home, and the same reason, as
- * `warn-token-skin.contrast.spec.ts` and `fixed-fill-token-skins.contrast.spec.ts`. The
- * complementary proof, where the cascade rather than a regex decides, is
- * `e2e/fixed-ink-token-recut.e2e.ts`.
+ * <p>Rationale: `docs/design/colour-literal-token-audit.md` (class T-3).
  */
 
 /** The calendar's own popover surface and the dark-ink ramp it pins. */
@@ -114,12 +100,7 @@ function cssValue({ color, alpha }: Glass): string {
 }
 
 describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', () => {
-  /**
-   * The whole slice's premise in one test. Written over the candidates' DARK values because that
-   * is the only branch where they diverge: all three resolve `#0a2a33` in porcelain, which is
-   * exactly why the ticket read them as interchangeable and why a byte-identical substitution
-   * would have shipped a bug no porcelain screenshot could show.
-   */
+  /** Over the candidates' DARK values: porcelain is where all three agree and hide the fault. */
   describe("the ticket's candidate tokens would fail on every one of these surfaces", () => {
     const CANDIDATES: readonly [string, string][] = [
       ['--riv-card-ink / --riv-pop-ink (dark: #f2f7fa)', rgbToHex(DARK_CARD_INK)],
@@ -168,22 +149,9 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
     );
 
     /**
-     * The disabled ink is the one position in this family that clears no bar, and the honest
-     * reading is that it is not required to. WCAG 2.2 SC 1.4.3 exempts "text that is part of an
-     * inactive user interface component" outright, and 1.4.11 carves out inactive components the
-     * same way; every site wearing this token is `aria-disabled="true"`. That the control stays
-     * focusable (the repo prefers `aria-disabled` to `disabled` so focus is never stranded) does
-     * not make it active — it is still an inactive component, announced as one.
-     *
-     * <p>This is NOT `non-text-contrast.md` rule 2 or 2a. Those are about a control's chrome
-     * being decorative because its content carries the identity; this is text, and the ground is
-     * the criterion's own incidental clause. The file warns against blurring the two, so the
-     * ground is named rather than borrowed.
-     *
-     * <p>Nothing here is new — the outgoing literals measured 2.05–2.38:1 and were never asserted
-     * at all. The migration is what made the number visible, so it is pinned in both directions:
-     * a retune that pushes it past 3:1 should retire the exemption rather than inherit it, and one
-     * that drops it toward invisibility fails.
+     * Clears no bar and need not: every site wearing it is `aria-disabled`, which WCAG 1.4.3
+     * exempts as an inactive component. Pinned in BOTH directions so a retune past 3:1 retires the
+     * exemption rather than inheriting it, and one toward invisibility fails.
      */
     it.each(THEMES)(
       'the disabled ink stays legible-but-weakened on the %s stops, its whole job',
@@ -207,11 +175,22 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
     });
 
     /**
-     * The one deliberate repaint in the slice. The nav arrow's disabled ink was `0.35` and the day
-     * cell's `0.4` — 0.05 apart for no stated reason, the drift #879's alpha ladder exists to
-     * collapse. They merge at the HIGHER-contrast of the two, so the site that moves moves the safe
-     * way and the other does not move at all. A comparison, not a threshold: "still clears 3:1"
-     * would have been true of the losing choice too, and would not say why this one was picked.
+     * `#0a3f4e` stays a literal beside these tokens on the month-step buttons, which reads at a
+     * glance like a half-migrated pair and is not one: it is the calendar's ACCENT — the same value
+     * as every `CALENDAR_TINTS.ring` and the capacity bar's fill — so it is a different family with
+     * its own surfaces, not the base branch of this ramp. Asserted so the omission is a decision.
+     */
+    it('leaves the accent family literal, since it is a different family and not this ramp', () => {
+      const source = read('venue/availability-calendar.html');
+
+      expect(source, 'the month-step buttons still paint the accent').toContain('text-[#0a3f4e]');
+      expect(CALENDAR_TINTS.every((tint) => tint.ring === '#0a3f4e')).toBe(true);
+      expect(CALENDAR_BAR.fill).toBe('#0a3f4e');
+    });
+
+    /**
+     * The slice's one deliberate repaint, asserted as a comparison rather than a threshold: a
+     * threshold would have been true of the losing choice too and would not say why 0.4 was picked.
      */
     it('merges the two disabled alphas at the higher-contrast of them', () => {
       const surface = surfaceOver(CALENDAR_GLASS, PORCELAIN_STOPS[0]);
@@ -234,11 +213,7 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
       },
     );
 
-    /**
-     * The refusal at its sharpest. `--riv-card-ink`'s dark value on the neutral banner is not
-     * merely under AA — it is very nearly white on white, which is what "a latent dark-theme bug"
-     * means concretely.
-     */
+    /** The refusal at its sharpest: not merely under AA, but very nearly white on white. */
     it.each(BANNER_FILLS.map((fill) => [rgbToHex(fill), fill] as const))(
       'the candidate card ink would be near-invisible on the %s banner fill',
       (hex) => {
