@@ -406,14 +406,20 @@ does not. Each needs its own token, not the coincidental one.
 > - **`operator-actions.ts:54`'s `bg-[#eef1f2]` hover fill**, sitting in the same class string as the
 >   sign-out button's new border token. Not a violation of #852's beside-a-literal check (different
 >   value, different role), and not in #849's population, which is the `#0a2a33` / `rgba(12,42,51,·)`
->   values. It is a genuine "no token at all" candidate with no row anywhere — it has one now.
+>   values. It is a genuine "no token at all" candidate with no row anywhere — it has one now, and
+>   the enumeration that found it also establishes it is the **only** `hover:bg-[#hex]` literal left
+>   in the tree → **#887**.
 > - **Whether the calendar popover should adopt `--riv-pop-surface`/`--riv-pop-ink` instead of being
 >   pinned light forever.** The app already has a popover treatment that themes correctly
 >   (`rgba(255,255,255,0.92)` → `rgba(16,26,46,0.96)` with light inks), and the calendar's `<dialog>`
 >   is arguably the same thing. Found by enumerating near-opaque white fills rather than by reading
 >   the family rows. Not folded in because it is a **repaint** — it would turn the calendar dark in
 >   the dark theme — and #849 is a migration whose entire claim is that no pixel moves. It wants a
->   design decision and its own slice.
+>   design decision and its own slice → **#888**, which also records the sharper form of the
+>   finding: the app has **three** overlay-surface families (`--riv-pop-surface`,
+>   `--riv-dialog-glass`, `--riv-calendar-glass`) and the calendar is the only one that does not
+>   theme. And the decision is not a token swap — the four opaque `CALENDAR_TINTS` are pale by
+>   design, so moving the glass means retuning the whole day-cell palette.
 
 ### Class S — per-state palettes and one-offs: exempt for now
 
