@@ -147,9 +147,9 @@ must be shown preserved.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The rule lands un-layered (next to `html, body`) and beats every per-site `outline-white`, turning fixed-dark rings teal | med | high | AC-1 asserts the rule is INSIDE `@layer base`; AC-6 measures the override winning in a real render | this slice | open |
-| R-2 | A button inside an `overflow-hidden` ancestor gets a clipped, invisible ring (the gallery grid case, and any future one) | med | med | gallery tiles get the inset ring at the primitive (AC-4/AC-7); other clipped hosts are enumerated in the generalization audit and judged | this slice | open |
-| R-3 | A future slice writes `outline-none`/`outline-hidden` on a control to silence the ring for visual reasons, removing the only indicator | med | high | AC-3's sweep fails the build naming the path; the tailwind skill's Red flags list gains the item | this slice | open |
+| R-1 | The rule lands un-layered (next to `html, body`) and beats every per-site `outline-white`, turning fixed-dark rings teal | med | high | AC-1 asserts the rule is INSIDE `@layer base`; AC-6 measures the override winning in a real render | this slice | closed — AC-1 + AC-6 green at `0e65126` |
+| R-2 | A button inside an `overflow-hidden` ancestor gets a clipped, invisible ring (the gallery grid case, and any future one) | med | med | gallery tiles get the inset ring at the primitive (AC-4/AC-7); other clipped hosts are enumerated in the generalization audit and judged | this slice | closed — audit row 1; AC-4/AC-7 green |
+| R-3 | A future slice writes `outline-none`/`outline-hidden` on a control to silence the ring for visual reasons, removing the only indicator | med | high | AC-3's sweep fails the build naming the path; the tailwind skill's Red flags list gains the item | this slice | closed — AC-3 green; rule 6 + red flag landed at `be19839` |
 | R-4 | `:focus-visible` after programmatic `.focus()` does not match in the e2e, making AC-5 flaky | **hit** | med | It did not match on the console: signing in clicks, and Chromium treats script focus after a pointer interaction as pointer-driven. The test steps off the button and back with `Tab` / `Shift+Tab`, which always matches; the two tourist tests keep the plain-navigation `.focus()` posture. Resting state pinned first in all three | this slice | closed — Phase 1 |
 | R-5 | The base rule's 2px offset ring on a button sitting flush against a card edge overlaps neighbours | low | low | visual only; the 60 explicit sites already use offset-2 on the same hosts | this slice | accepted |
 | R-6 | Two Playwright workers + a new spec file push the mocked suite over CI's budget | low | low | one short file, four tests; the suite is ~5 min at 2 workers | this slice | accepted |
@@ -208,16 +208,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings fixed, re-pushed; Sonar gate next`
+**Stage pointer:** `DONE — merged via PR #895` (close-out written pre-merge, in the PR's last commit)
 
-**Next action:** Check CI on the fix push, pull the SonarCloud issue list for PR #895, then finalise this section (`merged via PR #895`).
+**Next action:** none in the repo — merge PR #895 once its final head is green; the remaining close-out items (issue closed by `Closes #890`, subscription ended) are GitHub-side.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — guard spec + `@layer base` rule | ✅ | `df74334` |
 | 1 — gallery inset ring + mocked e2e | ✅ | `0e65126` |
-| 2 — docs: design note, ledger row, skill rule, CLAUDE.md bullet | ✅ | recorded at the Phase 3 commit |
-| 3 — merge main, ready-for-review, review + Sonar gates | ⏳ | `origin/main` had not moved at ready-for-review (`git log HEAD..origin/main` empty) |
+| 2 — docs: design note, ledger row, skill rule, CLAUDE.md bullet | ✅ | `be19839` |
+| 3 — merge main, ready-for-review, review + Sonar gates | ✅ | `origin/main` had not moved at ready-for-review (`git log HEAD..origin/main` empty); review fixes `84b5874a`; this close-out commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -228,6 +228,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | review (history reviewer) | The themed baseline ring on the fixed-white sign-out bar resolves `#7cd7e8` on white in dark (~1.65:1) — a 2.4.11/1.4.11 regression on the tourist shell (the consoles are porcelain-pinned, so the e2e never saw it) | fixed — `focus-visible:outline-current` on both bar buttons; AC-9 unit + dark-theme e2e; R-7 |
 | F-2 | review (prior-PR reviewer) | The cascade-layer rationale restated in three places, and the `tailwind.css` comment missing the `Rationale:` pointer the file's token comments carry (#862/#871/#875/#878/#883/#885/#886 precedent) — the maintainer raised the same point on the skill + CLAUDE.md prose | fixed — one full explanation in `tailwind.css` (+ pointer); skill rule 6 and the CLAUDE.md bullet cut to the contract; `baseLayerBlock()` doc to its contract |
 | F-3 | review (prior-PR reviewer) | Three `Pinned by` citations paraphrased the e2e titles (#871/#875/#877 precedent) | fixed — verbatim |
+| F-4 | sonar | Analysis at `be19839`: 0 new issues, 0 security hotspots, 0 duplicated blocks, 82.4% new-code coverage (38 new lines) — list pulled from the API, not just the gate badge; the final head's re-analysis is read off the PR's SonarCloud check before merge | clean |
 
 ---
 
@@ -442,23 +443,24 @@ the merge close-out §3.
 - [x] **AC-1..3, AC-8:** `cd frontend && npx ng test --include src/app/shared/focus-ring-baseline.spec.ts` → 4 passed. Verified at Phase 2 (AC-1..3 at `df74334`).
 - [x] **AC-4:** `npx ng test --include src/app/shared/photo-gallery-grid.spec.ts` → PASS. Verified at `0e65126`.
 - [x] **AC-5..7:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts e2e/focus-ring-baseline.e2e.ts` → 3 passed. Verified at `0e65126`.
+- [x] **AC-9:** the same two commands → the guard spec 5 passed, the e2e 4 passed. Verified at `84b5874a`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
