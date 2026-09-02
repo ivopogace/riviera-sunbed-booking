@@ -15,37 +15,35 @@ model in `docs/architecture/domain-model.md`.
   order-insensitive subset, validated server-side against the catalogue (an unknown tag → 400).
 - **Distance to water** — how far a venue's sunbeds sit from the shoreline: an optional positive
   integer in metres (rendered "15m to water").
-- **Venue photo** — venue profile media (#142): one image per photo slot, uploaded by the venue's
+- **Venue photo** — venue profile media: one image per photo slot, uploaded by the venue's
   operator, validated server-side (JPEG/PNG/WebP, ≤25 MB, real-bytes magic check, decompression-bomb
   guard), EXIF-stripped, and persisted only as its resized variants (the full-res upload is
   discarded — ADR-0008). Every occupied slot is tourist-surfaced in the photo slideshows on the
   Discover card and the beach-map banner band; the **cover** leads both.
 - **Photo slot** — one of a venue's three fixed photo positions: `COVER` (the first slide of both
   tourist slideshows), `SUNBEDS`, `BAR` (the later slides — and, as always, visible to the
-  venue's own operator and, since #511, to a platform admin moderating them). At most one photo
+  venue's own operator and to a platform admin moderating them). At most one photo
   per `(venue, slot)`; uploading again replaces the slot; deleting erases metadata + bytes in one
   transaction.
-- **Photo takedown** — the **platform admin's** removal of any venue's photo by `(venue, slot)`
-  (#504) — the "remove" half of the report-and-remove moderation stance (ADR-0013, #230). Same
+- **Photo takedown** — the **platform admin's** removal of any venue's photo by `(venue, slot)` —
+  the "remove" half of the report-and-remove moderation stance (ADR-0013). Same
   single-transaction erase as the operator's own delete, driven through the same storage call, but
   role-gated on the platform-admin flag (`is_admin`) instead of venue ownership: it exists precisely
   to reach a venue the actor does **not** own, which the venue-scoped delete refuses with `403
   NOT_VENUE_OWNER`. Scoped to one **slot**, not one image — the same picture published in a second
   slot keeps serving from that slot's variants, so each published slot is its own takedown.
-- **Photo moderation** — the platform admin's read-then-remove pair over any venue's photos (#511):
+- **Photo moderation** — the platform admin's read-then-remove pair over any venue's photos:
   the **Photo takedown** above plus the slot read that makes it operable
   (`GET /api/admin/venues/{venueId}/photos`). Both are ownership-free by design and share one port
-  named for that posture. The read exists because the only other per-slot view is the venue-scoped
-  operator profile, which answers a non-owner `403 NOT_VENUE_OWNER` — so before #511 an admin could
-  delete a photo it had no way to look at. It answers **every** slot, empty ones as a null preview
-  URL, and answers identically for an unknown venue, so it reports nothing about which venues exist.
+  named for that posture. The read answers **every** slot, empty ones as a null preview URL, and
+  answers identically for an unknown venue, so it reports nothing about which venues exist.
 - **Photo variant** — one stored rendition of a venue photo for a display surface: `CARD`
   (≤640×384), `BANNER` (≤1280×480), `PREVIEW` (≤480×360) — fit-within-resized progressive JPEGs,
   each served by its **content hash** at a public URL (`/api/venues/{venueId}/photos/{hash}`);
   a replace mints new hashes → new URLs, and a removed variant stops being served rather than
   outliving its removal in caches.
 - **Venue visibility** — whether tourists can discover and book a venue: a venue is
-  **visible iff its owning operator is `ACTIVE`** (#693) — derived, never a flag. Hidden
+  **visible iff its owning operator is `ACTIVE`** — derived, never a flag. Hidden
   means absent from the tourist list, 404 on the map and availability-calendar reads, and both
   booking paths refused;
   an unowned venue is hidden (fail-closed). Bookings sold while visible keep working.
@@ -79,8 +77,8 @@ model in `docs/architecture/domain-model.md`.
 - **Booking status** — the lifecycle state of a booking. Canonical set (mirrored 1:1
   by the `booking.status` CHECK constraint, V19 — keep enum and SQL in lockstep):
   `PENDING_REQUEST`, `AWAITING_PAYMENT`, `CONFIRMED`, `CANCELLED`, `COMPLETED`,
-  `NO_SHOW`, `DECLINED`, `EXPIRED` (Request-to-Book, shipped by #98), `WITHDRAWN`
-  (the guest's own retraction of a pending request, #123 — V37).
+  `NO_SHOW`, `DECLINED`, `EXPIRED` (Request-to-Book), `WITHDRAWN` (the guest's own
+  retraction of a pending request).
 - **Pending request / soft-hold** — a Request-to-Book booking awaiting the venue's
   decision (`PENDING_REQUEST`): it claims the same `availability(set, date)` row as any
   online booking (invariant #2) — the soft-hold — but no PaymentIntent exists and no card
@@ -119,11 +117,11 @@ model in `docs/architecture/domain-model.md`.
 ## Money
 
 - **Commission** — the platform's per-booking cut; rate stored per venue, in exact-integer basis
-  points. Two readings of "the rate", and which one applies depends on the question (A7 #348):
+  points. Two readings of "the rate", and which one applies depends on the question:
   the **live rate** governs every *decision* made from now on (an accrual, a refund computation),
   while the **rate schedule** records which service dates a rate applied to, for figures that
   describe days already sold. Only the platform admin may change it — a venue does not set its own
-  commission (O8 #177).
+  commission.
 - **Rate schedule** — the per-venue record of which commission rate applied to bookings served on
   which dates. A change is **forward-only**: it pins the rate it supersedes and takes effect for
   reporting from the current service date (`Europe/Tirane`), so today's takings answer the same
@@ -170,24 +168,23 @@ model in `docs/architecture/domain-model.md`.
 ## Demand (tourist side)
 
 - **Tourist / Customer** — the person booking a set. Guest checkout (email only) is
-  allowed; an **account** is optional (S2 #111).
+  allowed; an **account** is optional.
 - **Customer account** — a registered tourist identity (email + opaque credential hash) for
   register / sign-in via a server-side session. Deliberately **separate** from the
   guest-checkout contact row (no foreign key): registering never auto-claims a guest email's
-  past bookings — back-linking guest bookings is a **permanent non-goal** (design D-6, amended
-  at S8). The account's credential hash is stored by `customer`; all login machinery lives at
+  past bookings — back-linking guest bookings is a **permanent non-goal**. The account's credential hash is stored by `customer`; all login machinery lives at
   the platform edge (RV-BE-11).
 - **Email verification** — a soft, non-blocking signal that a customer account's email was
-  proven owned (`email_verified`, S8 #113). Set by visiting a tokenized link mailed at
+  proven owned (`email_verified`). Set by visiting a tokenized link mailed at
   registration, or granted automatically for SSO-created accounts (provider-verified).
   Informational in v1 — it gates no sign-in or booking.
 - **Recovery token** — a single-use, expiring, **hashed** bearer credential mailed to an
   account's email for one of two purposes: **verify-email** or **reset-password**
-  (`customer_account_token`, S8 #113). Treated like a secret (invariant #7); consumed on redeem.
+  (`customer_account_token`). Treated like a secret (invariant #7); consumed on redeem.
 - **Data subject** — the identified person behind the PII (the tourist), the party who exercises
   the right to **erasure** (GDPR Art 17 / Law 9887). Distinct from the technical `customer` /
   `customer_account` rows that hold their data.
-- **Erasure** — honouring a data subject's right to be forgotten (#101). Because bookings are
+- **Erasure** — honouring a data subject's right to be forgotten. Because bookings are
   retained tax records (the **statutory-retention exception**, GDPR Art 17(3)(b)), erasure does not
   delete rows — it **pseudonymizes in place** the `customer` + `customer_account` PII, deletes the
   transient SSO identities + recovery tokens, and leaves a **review tombstone** on every review of the
@@ -208,8 +205,8 @@ model in `docs/architecture/domain-model.md`.
   **legal** determination rather than an engineering one. The cutoff is *today in `Europe/Tirane`* minus
   the window (invariant #6).
 - **Retention sweep** — the scheduled job that tombstones guest contacts with no remaining retention
-  basis (#101 Slice 2). Proactive where **erasure** is reactive, but it writes the same **tombstone**
-  — on the contact and, since #815, on the contact's reviews. It touches guest contacts (and the
+  basis. Proactive where **erasure** is reactive, but it writes the same **tombstone**
+  — on the contact and on the contact's reviews. It touches guest contacts (and the
   reviews on their bookings) only, never accounts, and never the retained financial records.
 
 ## Reviews
@@ -220,7 +217,7 @@ model in `docs/architecture/domain-model.md`.
   *verified-stay* review: only a booking the venue actually checked in can carry one, which is what
   makes the aggregate resistant to gaming.
 - **Display name** — the name a review is shown under, chosen by its author rather than read off
-  their account. It is required on every review written since slice 2 of the reviews epic, defaults
+  their account. It is required on every review, defaults
   to the first name on the booking contact, and is the only identity a review ever carries — the
   `review` module never learns who the guest is.
 - **Review window** — how long a delivered stay stays reviewable. It opens at **check-in** and closes
@@ -284,21 +281,19 @@ model in `docs/architecture/domain-model.md`.
   availability, weather refund, payout ledger) verifies it in the application service and
   returns **403** on a mismatch (object-level authorization, not role-level — invariant #13).
 - **Operator approval** — a platform admin's decision on a self-registered (`PENDING`) operator:
-  approve (→ `ACTIVE`) or reject (→ `REJECTED`, terminal). Since #694 a `PENDING` operator already
+  approve (→ `ACTIVE`) or reject (→ `REJECTED`, terminal). A `PENDING` operator already
   signs in and uses the **entire** operator console — registering flows straight into it, and the
   venue it creates is its own — so approval gates **venue visibility** (whether tourists see and
   can book its venues), never console access. Rejection locks the account out and ends any live
   session it holds. `SUSPENDED` and `REJECTED` accounts cannot sign in.
-- **Bootstrap operator** — the seeded `operator` account. **Retired as owns-all in #115** and
-  **demoted to the platform admin** (`is_admin`): it no longer owns every venue — V29 dropped
-  `owns_all_venues` and backfilled the venues it previously reached to it — and now approves operator
-  self-registrations via the ADMIN-gated `/api/admin/operators`. Unlocked by `RIVIERA_OPERATOR_PASSWORD`
-  (no new prod secret). Every operator is now strictly per-venue, owning what it creates
-  (creator-owns-on-create).
+- **Bootstrap operator** — the seeded `operator` account, which is the platform admin
+  (`is_admin`): it owns no venues and approves operator self-registrations via the ADMIN-gated
+  `/api/admin/operators`. Unlocked by `RIVIERA_OPERATOR_PASSWORD`. Every operator is strictly
+  per-venue, owning what it creates (creator-owns-on-create).
 - **Suspension / operator reinstatement** — an admin putting an `ACTIVE` operator account out of
   action (`SUSPENDED`) and later returning it to `ACTIVE`. Either transition kills that operator's
   live sessions immediately, so a suspension takes effect now rather than at their next sign-in —
-  and, since #693, flips their venues' **venue visibility** (hidden while suspended, shown again
+  and flips their venues' **venue visibility** (hidden while suspended, shown again
   on reinstatement; bookings already sold keep working either way).
   An admin cannot suspend itself. Distinct from **reinstatement** in *Transactional mail* above,
   which lifts a suppressed email address and has nothing to do with sign-in.
