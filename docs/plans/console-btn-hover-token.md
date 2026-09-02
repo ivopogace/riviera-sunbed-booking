@@ -108,7 +108,7 @@ bare-class-selector sweep can see it either).
       reads as a decision rather than a half-migrated skin. *Seam:* the source sweep ·
       *Pinned by:* `fixed-ink-tokens.contrast.spec.ts` › `the console button hover fill (#887)`
       › `leaves the resting fill as bg-white, which is the surface's own precedent`
-- [ ] **AC-7 (documentation, no test):** The ledger's class-R residue note for this position
+- [x] **AC-7 (documentation, no test):** The ledger's class-R residue note for this position
       reads `done` with this PR, and `docs/design/non-text-contrast.md` carries the family row
       plus the state-vs-boundary reading the hover fill needs. Stated as untested rather than
       given a fake pin: it is verified by diff inspection at the Self-review checklist and by
@@ -126,7 +126,9 @@ bare-class-selector sweep can see it either).
 - **The two other open class-R rows** (the white inset-highlight ramp, the white `0.6` borders)
   and the calendar-popover repaint question #849 parked. Untouched.
 - **A new rule in `non-text-contrast.md`.** The hover fill lands under the existing rule 2; the
-  doc gains a row and one clarifying paragraph, not a fourth rule.
+  doc gains a row and the prose that makes the state-vs-boundary reading citable, not a fourth
+  rule. (As built: the row, two paragraphs, and a three-line "general shape" note for the next
+  state-coloured token — still rule 2, no new rule.)
 
 ## Behavior-parity ledger (retirement / replacement slices only)
 
@@ -141,7 +143,7 @@ asserted by AC-4 against the same value the literal produced.
 | R-1 | The token is declared but its `@theme inline` row is forgotten — the utility never generates, the class stays in the markup, and the hover silently stops painting | med | high | AC-2's `@theme inline` guard **and** AC-4's hovered-box assertion; a hover fill has no bare class selector, so the render proof is the only one that can see it | agent | closed — phase 1, and **demonstrated rather than argued**: with the `@theme inline` row commented out the hovered box reads `rgb(255, 255, 255)` while the class string is untouched, exactly this row's failure mode |
 | R-2 | A later slice adds a `[data-riv-theme='dark']` override for the token — every ratio computed from the mirror still passes, because the mirror is not the cascade | low | med | AC-2's single-declaration guard, which reads `tailwind.css` as text (`testing/stylesheet-tokens.ts`) | agent | closed — phase 0 |
 | R-3 | A later sweep silently collapses this fill onto `--riv-solid-btn-hover`, repainting the console button and inheriting the tourist skin's grounds | med | med | AC-1 asserts the pair unchanged **and** unequal to this skin's fills; the refusal is written at the declaration | agent | closed — phase 0 |
-| R-4 | A later 1.4.11 sweep reads the 1.04–1.14:1 hover boundary as a violation this slice introduced, and "fixes" it by darkening the fill | med | med | AC-5 records both ratios as measurements, and `non-text-contrast.md` gains the family row — #879's close-sales-trigger lesson: check what the outgoing value measured first | agent | open |
+| R-4 | A later 1.4.11 sweep reads the 1.04–1.14:1 hover boundary as a violation this slice introduced, and "fixes" it by darkening the fill | med | med | AC-5 records both ratios as measurements, and `non-text-contrast.md` gains the family row — #879's close-sales-trigger lesson: check what the outgoing value measured first | agent | closed — phase 2. The doc's "do not restate ratios here" rule turned the one prose comparison the paragraph wanted (this delta vs the settled solid-btn family's) into an assertion reading both sides out of `tailwind.css`, so retuning either family moves the claim rather than stranding a stale number |
 | R-5 | Extending #849's spec and e2e files reads as scope creep into a closed slice | low | low | The family's home is where the family's guard is (`--riv-console-btn-border` lives in both files); both docstrings are updated to name #887 alongside #849, and the plan records the choice | agent | closed — phases 0–1 |
 | R-6 | The e2e's `.hover()` races the `transition-colors` animation and reads the resting fill | low | med | Playwright's `toHaveCSS` retries until timeout, so it settles on the transitioned value; the solid-btn suite's hover assertions use exactly this shape | agent | closed — phase 1, green on the full-file run |
 
@@ -199,16 +201,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `PR #889 — marking ready for review, then the Review gate`
 
-**Next action:** Phase 2 — add the family row + the state-vs-boundary reading to
-`docs/design/non-text-contrast.md`, and flip the ledger's class-R residue note to `done`.
+**Next action:** Mark PR #889 ready for review, then run the Review gate per
+`riviera-sdlc` `references/pr-gates.md` §1 with `riviera-review-overlay` layered on.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the token, its guards and the migrated site | ✅ | `336d0fd` |
-| 1 — the real-render hover proof | ✅ | this commit |
-| 2 — the ledger row and the 1.4.11 ground | ⏳ | |
+| 1 — the real-render hover proof | ✅ | `5fc12a2` |
+| 2 — the ledger row and the 1.4.11 ground | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -289,14 +291,14 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `docs/design/non-text-contrast.md` · `docs/design/colour-literal-token-audit.md`
 
-- [ ] **Step 1:** Add `--riv-console-btn-hover` to `non-text-contrast.md`'s rule-2 family table,
+- [x] **Step 1:** Add `--riv-console-btn-hover` to `non-text-contrast.md`'s rule-2 family table,
       pointing at `app/shared/fixed-ink-tokens.contrast.spec.ts`, with the paragraph that makes
       the **state**-vs-boundary reading explicit (1.4.11 reaches states; the hover fill is a
       pointer-only supplementary affordance and never the sole indicator of anything).
-- [ ] **Step 2:** Rewrite the ledger's class-R residue note for this position to `done — #887,
+- [x] **Step 2:** Rewrite the ledger's class-R residue note for this position to `done — #887,
       PR #NN`, recording the refused merge as the verdict rather than the absence of one.
-- [ ] **Step 3: Commit** — `git commit -m "Record the console hover fill's role and 1.4.11 ground (#887)"`
-- [ ] **Step 4: Update plan-doc execution status.**
+- [x] **Step 3: Commit** — `git commit -m "Record the console hover fill's role and 1.4.11 ground (#887)"`
+- [x] **Step 4: Update plan-doc execution status.**
 
 ---
 
@@ -313,9 +315,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-3, AC-5, AC-6:** Run `cd frontend && npx vitest run src/app/shared/fixed-ink-tokens.contrast.spec.ts` → all green. Verified at commit `<sha>`.
+- [x] **AC-1..AC-3, AC-5, AC-6:** Run `cd frontend && npx ng test --watch=false --include="src/app/shared/fixed-ink-tokens.contrast.spec.ts"` → 65 passed.
 - [x] **AC-4:** Run `cd frontend && PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts e2e/fixed-ink-token-recut.e2e.ts` → 8 passed, and verified failing (`rgb(255, 255, 255)`) with the `@theme inline` row removed.
-- [ ] **AC-7:** Verified by diff inspection (no test — stated as such in the AC).
+- [x] **AC-7:** Verified by diff inspection (no test — stated as such in the AC).
 
 ## Self-review checklist (before merge / PR)
 

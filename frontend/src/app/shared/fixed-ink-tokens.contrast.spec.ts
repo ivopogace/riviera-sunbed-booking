@@ -308,6 +308,22 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
     });
 
     /**
+     * The hover delta stated as a COMPARISON rather than a threshold, the shape the calendar's
+     * merged disabled alphas already use here: a bare "1.14:1" would be equally true of a value
+     * this skin should not have, and prose carrying it would go stale silently. Both sides are
+     * read from the stylesheet, so the claim `non-text-contrast.md` makes — that this state
+     * separates at least as well as the settled family one layer over — cannot drift from it.
+     */
+    it('separates from its resting fill at least as well as the settled solid-btn family does', () => {
+      const solidDelta = contrastRatio(
+        declarationsOf('--riv-solid-btn-fill')[0],
+        declarationsOf('--riv-solid-btn-hover')[0],
+      );
+
+      expect(contrastRatio(HOVER, rgbToHex(WHITE))).toBeGreaterThan(solidDelta);
+    });
+
+    /**
      * The refusal, made mechanical — the same shape as "leaves the three candidate tokens exactly
      * as it found them" above. `--riv-solid-btn-{fill,hover}` is the same skin one layer over, and
      * collapsing onto it would be a REPAINT: its resting fill is not this button's, so the merge

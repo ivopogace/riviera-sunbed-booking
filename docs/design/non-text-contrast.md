@@ -103,6 +103,7 @@ number-bearing surface, not two.
 | `--riv-amenity-tag-border`, `--riv-amenity-water-border` | `app/shared/fixed-fill-token-skins.contrast.spec.ts` (`amenities.contrast.spec.ts` is the same family's ink/fill text pairs, not these borders) |
 | `--riv-warn-edge/50` on `daily-view-tab`'s close-sales trigger — the button's own label carries the identity | `app/operator/daily-view-tab.contrast.spec.ts` |
 | `--riv-console-btn-border` (the console's sign-out button) and `--riv-console-card-border` on the **active tab pill** — each control's own label carries the identity | `app/shared/fixed-ink-tokens.contrast.spec.ts` |
+| `--riv-console-btn-hover` (that same button's hover fill) — a **state**, not a boundary; read below before citing this row | `app/shared/fixed-ink-tokens.contrast.spec.ts` |
 
 `--riv-console-card-border`'s **other** consumer is not a control at all: it is the edge of the
 console's "Venue not found" card, a `<div>`. It is listed above only for the tab pill; the card's
@@ -111,6 +112,30 @@ edge is outside 1.4.11 rather than exempt under rule 2 — the criterion reaches
 hairline. Named here rather than left to be re-derived, because a family whose two consumers sit on
 different grounds is exactly where a later sweep files the whole thing under the wrong one. Both
 values are measured in the same spec either way (#849).
+
+**`--riv-console-btn-hover` is the first entry here that is not a boundary at all**, and it is
+listed rather than left out because the criterion does not let it be. 1.4.11 reaches visual
+information required to identify components *and states*, so a hover fill is in scope on its
+face — and both boundaries it forms are far under 3:1: against the resting white it replaces,
+and against the porcelain header glass it sits on. Rule 2's three conditions are still what
+answer it, and all three hold — the button's own "Sign out" label clears AA on the hovered fill,
+the numbers are measured in the spec above rather than waved off, and the control paints a real
+`border`, which is what brings rule 3 to it.
+
+Two things narrow the residual risk, and neither is offered as the argument. A pointer hover is
+unavailable to keyboard and touch users altogether, so it cannot be what identifies this control
+*to them*; the button's focus indicator is a separate question, and today an unstyled one — named
+here so a later slice finds the gap written down rather than implied away. And the separation is
+not an outlier this project has never accepted: it is at least that of `--riv-solid-btn-fill` →
+`--riv-solid-btn-hover`, the settled family two rows up. That comparison is asserted, not
+asserted-here — `app/shared/fixed-ink-tokens.contrast.spec.ts` › "separates from its resting fill
+at least as well as the settled solid-btn family does" reads both sides out of `tailwind.css`, so
+retuning either family moves the claim instead of stranding a stale number in this file.
+
+**The general shape, worth keeping when the next state-coloured token arrives:** a hover, active
+or selected fill is judged on the same three conditions as a border. What changes is only which
+adjacency you measure — a state fill has two (the state it replaces, and the surface it sits on),
+and both belong in the assertion.
 
 `booking-dialog`'s `#31798a` close button is the sharpest case and is covered here rather than
 by rule 1: on its own teal header gradient the fill reaches 1.12–1.46:1 and the hairline

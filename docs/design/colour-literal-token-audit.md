@@ -407,6 +407,19 @@ does not. Each needs its own token, not the coincidental one.
 >   sign-out button's new border token. Not a violation of #852's beside-a-literal check (different
 >   value, different role), and not in #849's population, which is the `#0a2a33` / `rgba(12,42,51,·)`
 >   values. It is a genuine "no token at all" candidate with no row anywhere — it has one now.
+>   **done — #887, PR #889** (`--riv-console-btn-hover`), and the verdict is a *refusal* rather than
+>   a placement: the ticket asked whether this skin is `--riv-solid-btn-{fill,hover}` in different
+>   markup, and it is not. Adopting that pair repaints, because its resting fill is `#f4f6f7` where
+>   this button's is `#ffffff` — two positions moved to migrate one, and #849's whole claim is that
+>   no pixel moves. FORM separates them anyway, the same argument that kept `--riv-console-btn-border`
+>   off `--riv-chip-border`: a grey chip with a **white** `0.7` bevel on themeable card glass is the
+>   inverse construction of a white pill with a **dark** hairline on porcelain header glass, and
+>   their theme-invariance rests on different grounds (a fixed fill that would drift a themed ink,
+>   versus a porcelain-pinned host with no reachable dark branch) — #864's bar for sharing a name.
+>   So it joins the `--riv-console-btn-*` skin as its third member. The **resting** fill stays
+>   `bg-white` and gained no token, #849's own answer on this surface, asserted so the omission
+>   reads as a decision. Its 1.4.11 ground, which no slice had ever recorded, is now a row in
+>   `non-text-contrast.md` — the first there that is a **state** rather than a boundary.
 > - **Whether the calendar popover should adopt `--riv-pop-surface`/`--riv-pop-ink` instead of being
 >   pinned light forever.** The app already has a popover treatment that themes correctly
 >   (`rgba(255,255,255,0.92)` → `rgba(16,26,46,0.96)` with light inks), and the calendar's `<dialog>`
