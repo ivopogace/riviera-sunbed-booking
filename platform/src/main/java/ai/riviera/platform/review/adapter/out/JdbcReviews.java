@@ -33,8 +33,9 @@ import ai.riviera.platform.review.vocabulary.VenueRef;
  * <p>The aggregate read is the counterpart: one grouped scan of a venue's rows, served by the
  * prefix of {@code review_venue_listing_idx}. It returns raw totals — the mean and its rounding stay
  * in the domain. The listing read seeks the same index newest-first and keeps a row only when it
- * carries a comment; a review's visibility is not yet a column, so this {@code WHERE} and the
- * aggregate's are where that predicate lands when it is.
+ * carries a comment. Both are public reads, and both — and only they — carry the visibility
+ * predicate {@code hidden_at IS NULL}: a hidden review counts for nothing on the venue page, while
+ * its author's own read-back and the admin's moderation list still see it.
  *
  * <p>Edit and delete address the row by {@code booking_id} and answer with their rows-affected count
  * for the same reason: two amends racing each other resolve in the database, and the loser reads as
@@ -118,7 +119,7 @@ class JdbcReviews implements Reviews {
 	public ReviewTotals totalsFor(VenueRef venue) {
 		return jdbc.sql("""
 				SELECT count(*) AS review_count, COALESCE(sum(stars), 0) AS star_total
-				FROM review WHERE venue_id = :venue
+				FROM review WHERE venue_id = :venue AND hidden_at IS NULL
 				""")
 				.param(PARAM_VENUE, venue.value())
 				.query((rs, rowNum) -> new ReviewTotals(rs.getInt("review_count"),
@@ -140,7 +141,7 @@ class JdbcReviews implements Reviews {
 		return jdbc.sql("""
 				SELECT id, stars, display_name, stay_date, comment
 				FROM review
-				WHERE venue_id = :venue AND comment IS NOT NULL AND id < :before
+				WHERE venue_id = :venue AND hidden_at IS NULL AND comment IS NOT NULL AND id < :before
 				ORDER BY id DESC
 				LIMIT :limit
 				""")

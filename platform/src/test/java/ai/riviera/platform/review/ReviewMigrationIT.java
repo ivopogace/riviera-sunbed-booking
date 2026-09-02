@@ -20,8 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Verifies the {@code review} table's constraints: V45's two invariants — at most one review
- * per booking (the DB half of AC-2) and stars bounded 1..5 — plus the demo-seed supersede (AC-7), and
- * V46's length bounds on the free-text comment and display name.
+ * per booking (the DB half of AC-2) and stars bounded 1..5 — plus the demo-seed supersede (AC-7),
+ * V46's length bounds on the free-text comment and display name, and V48's nullable moderation
+ * instant, absent until a takedown stamps it.
  *
  * <p>The supersede is checked on the <strong>seeded</strong> row, the only one that carried a
  * fabricated rating, rather than as a count over the whole table: sibling ITs share this container
@@ -83,6 +84,21 @@ class ReviewMigrationIT {
 
 		assertThat(jdbc.sql("SELECT count(*) FROM review WHERE venue_id = :v")
 				.param("v", venueId).query(Long.class).single()).isEqualTo(1L);
+	}
+
+	@Test
+	void aReviewIsVisibleUntilHidden() {
+		long venueId = seedVenue("Review Migration Hidden");
+		long bookingId = seedCompletedBooking(venueId);
+		insertReview(bookingId, venueId, 4);
+
+		assertThat(jdbc.sql("SELECT hidden_at FROM review WHERE booking_id = :booking")
+				.param("booking", bookingId).query(Timestamp.class).optional()).isEmpty();
+
+		int hidden = jdbc.sql("UPDATE review SET hidden_at = :at WHERE booking_id = :booking")
+				.param("booking", bookingId)
+				.param("at", Timestamp.from(Instant.parse("2026-07-03T09:00:00Z"))).update();
+		assertThat(hidden).isEqualTo(1);
 	}
 
 	@Test

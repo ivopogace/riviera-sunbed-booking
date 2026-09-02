@@ -85,6 +85,12 @@ public final class ReviewFixtures {
 				.query(Long.class).single();
 	}
 
+	/** Take the review with this id out of public view, the way an admin takedown leaves the row. */
+	public void hide(long reviewId) {
+		jdbc.sql("UPDATE review SET hidden_at = :hiddenAt WHERE id = :id")
+				.param("id", reviewId).param("hiddenAt", Timestamp.from(Instant.now())).update();
+	}
+
 	public long bookingIdOf(String code) {
 		return jdbc.sql("SELECT id FROM booking WHERE code = :code")
 				.param("code", code).query(Long.class).single();
