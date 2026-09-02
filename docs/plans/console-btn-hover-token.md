@@ -43,7 +43,11 @@ forced the seam-per-AC split across stylesheet source / contrast mirror / real r
 Non-goals fence around the resting `bg-white` and the `--riv-solid-btn-*` pair) · `tdd` (each
 guard is written red against the un-migrated markup before the token exists) ·
 `riviera-review-overlay` (review gate — runs at ready-for-review) · `riviera-docs-freshness`
-(close-out — due, since the slice changes what `non-text-contrast.md` and the ledger state) ·
+(**ran** over `origin/main...HEAD` at close-out, **0 findings** — the counting sweep's two hits are
+both still true: `riviera-frontend`'s "token registry lives in two places" is per-THEME
+(`core/theme.ts` carries the three switcher options, not per-token rows, so a new token owes it
+nothing), and `riviera-tailwind`'s "three themes" is untouched. The two maintained design docs are
+corrected in place by this slice rather than left to the audit) ·
 `riviera-tailwind` ("group such a family by form, not value; reject a coincidental token on its
 role before its value"; a theme-pinned-subtree token is declared once in the base block with
 the reason at the declaration; `hover:` already compiles under `@media (hover:hover)` in v4) ·
@@ -217,18 +221,31 @@ its `computed()` id map and its `class: 'contents'` host; nothing about its Type
 
 N/A — no contract change.
 
+## Sonar gate
+
+Pulled from the API rather than read off the badge, and the zero confirmed real before being
+believed (`pr-gates.md` §2: `api/issues/search` returns `total: 0` for an *unanalyzed* PR too).
+On head `ef5ad8b`: `new_lines: 20` — so measures are populated and an analysis exists — with
+`new_bugs`, `new_vulnerabilities`, `new_code_smells`, `new_security_hotspots`,
+`new_duplicated_blocks` all **0**, `new_duplicated_lines_density` **0.0%**, `new_coverage`
+**100.0%**, and the `SonarCloud Code Analysis` check-run concluded `success`. Issue list empty
+(`total: 0`). Nothing to clear.
+
 ## Execution status
 
-**Stage pointer:** `review gate — all five agents reported, F-1..F-9 fixed; awaiting CI + the Sonar gate on the new head`
+**Stage pointer:** `merge close-out — gates all green; awaiting the maintainer's merge decision`
 
-**Next action:** Wait for CI + the SonarCloud analysis on the fix-round head, then pull the
-Sonar new-issue and duplication lists (a green gate is not the check) and clear every entry.
+**Next action:** None outstanding in the repo. Merging PR #889 deploys `main` to Render
+(`deploy.yml`), so the merge itself is the maintainer's call; close-out steps 1–3 and 6 (issue
+closed, epic tick, deferred findings, subscription) follow the merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the token, its guards and the migrated site | ✅ | `336d0fd` |
 | 1 — the real-render hover proof | ✅ | `5fc12a2` |
-| 2 — the ledger row and the 1.4.11 ground | ✅ | this commit |
+| 2 — the ledger row and the 1.4.11 ground | ✅ | `c8549e3` |
+| review-gate fix rounds (F-1..F-9) | ✅ | `0d8b922`, `2c7f875` |
+| doc-verification round (F-10) | ✅ | `ef5ad8b` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -363,5 +380,5 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] **Close-out written in THIS PR** — this is that commit; the slice merges via **PR #889**.
+- [x] **The review gate ran in full** — rung 1 of the ladder (`Skill("code-review:code-review")`) with `riviera-review-overlay` layered on: a five-agent fan-out at HIGH effort, all five reported, findings F-1..F-9 fixed in-branch. F-10 came from a later primary-doc verification pass.
