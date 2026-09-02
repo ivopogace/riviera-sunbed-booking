@@ -265,7 +265,7 @@
   /** The erasure confirm panel's danger treatment: a tinted panel plus a stronger tinted
       action inside it. Keep these pre-composed rgba, like --riv-field-border — a Tailwind
       `/opacity` modifier compiles to color-mix() and changes the computed value. AA-proven by
-      admin-console.contrast.spec.ts. Rationale: PR #833.
+      admin-console.contrast.spec.ts. Rationale: docs/design/colour-literal-token-audit.md.
       --riv-danger-action-border is the Erase button's affordance boundary and is held to WCAG
       1.4.11 (>=3:1 against the panel fill, all porcelain stops) — issue #834. --riv-danger-border
       is a decorative container edge (the fill + heading already carry the panel's meaning) and is
@@ -289,7 +289,7 @@
       pair is non-text chrome (WCAG 1.4.11) and reaches only ~1.5:1 — raising it would need a
       darker hue, not more alpha. Decorative under docs/design/non-text-contrast.md rule 2: the
       panel's ink and the chip's label carry the identity, both at AA over these tints.
-      Rationale: PR #838 */
+      Rationale: docs/design/colour-literal-token-audit.md */
   --riv-accent-fill: rgba(43, 184, 212, 0.12);
   --riv-accent-border: rgba(14, 138, 168, 0.35);
   --riv-accent-chip-fill: rgba(43, 184, 212, 0.18);
@@ -317,7 +317,7 @@
       Proof: solid-btn-tokens.contrast.spec.ts (the four AA pairs, the themed-ink bounds, and the
       single-declaration guard that is the only thing able to see a dark override) +
       solid-btn-token-skin.e2e.ts (the computed skin under a forced dark document theme).
-      Rationale: issues #835 + #851 (PR #859). */
+      Rationale: issues #835 + #851. */
   --riv-solid-btn-ink: #0a4f5e;
   --riv-solid-btn-fill: #f4f6f7;
   --riv-solid-btn-hover: #e7ebec;
@@ -368,8 +368,8 @@
       button fill under the family's fixed white ink — so it joins here rather than starting a new
       family; role beats value, same call the family itself has made twice already.
       Proof: shared/solid-fill-tokens.contrast.spec.ts + solid-fill-token-skin.e2e.ts.
-      Rationale: PR #862 (solid fill teal merge), then
-      the solid-fill token-family slice, then PR #883 (console confirm-panel parity)
+      Rationale: the solid-fill teal merge, then the solid-fill token family, then
+      the console confirm-panel parity slice
       (issue #881). */
   --riv-solid-fill-brand: #0a6e85;
   --riv-solid-fill-brand-hover: #0a5e72;
@@ -592,8 +592,8 @@
       Proof: shared/fixed-fill-token-skins.contrast.spec.ts (the AA floors, the themed-ink bounds,
       the aria-hidden exemption, and the single-declaration guard that is the only thing able to see
       a later dark override) + e2e/fixed-fill-state-skins.e2e.ts (the computed skin under a forced
-      dark document theme). Rationale: issue #858 (PR #867);
-      PR #871 (outcome-card medallion convergence); docs/design/colour-literal-token-audit.md
+      dark document theme). Rationale: issue #858;
+      the outcome-card medallion convergence; docs/design/colour-literal-token-audit.md
       §F-3, §F-5 (why these values and not the artboards' tints, and what converging cost). */
   --riv-medallion-positive-fill: #d9f2f7;
   --riv-medallion-positive-ink: #0a5f74;
@@ -630,7 +630,7 @@
       Proof: shared/fixed-fill-token-skins.contrast.spec.ts (the AA pairs, the themed-ink bounds and
       the single-declaration guard) + shared/amenities.contrast.spec.ts (the same pairs against the
       rendered chip, via testing/chip-fills.ts) + e2e/fixed-fill-state-skins.e2e.ts.
-      Rationale: issue #858 (PR #867). */
+      Rationale: issue #858. */
   --riv-amenity-tag-ink: #2f4a54;
   --riv-amenity-tag-fill: #eef2f4;
   --riv-amenity-tag-border: #dbe4e7;
@@ -658,7 +658,7 @@
       is that token's question, not this one's. The guard matches roles rather than bare values here
       for exactly that reason.
       Proof: shared/fixed-fill-token-skins.contrast.spec.ts + e2e/fixed-fill-state-skins.e2e.ts.
-      Rationale: issue #858 (PR #867). */
+      Rationale: issue #858. */
   --riv-step-active-ink: #0a5f74;
   --riv-step-idle-fill: #2c7789;
 
@@ -921,7 +921,7 @@
   --riv-error-ink: #ffa9a1;
   /** The ink matches --riv-error-ink here; that is the intended value, so do not collapse the
       duplication. `riviera` gets no block: its cards stay white glass, so it inherits the
-      porcelain values. Rationale: PR #833 */
+      porcelain values. Rationale: docs/design/colour-literal-token-audit.md */
   --riv-danger-ink: #ffa9a1;
   --riv-danger-fill: rgba(255, 138, 122, 0.1);
   --riv-danger-border: rgba(255, 138, 122, 0.42);

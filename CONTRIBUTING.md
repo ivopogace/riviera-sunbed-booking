@@ -107,8 +107,9 @@ booking, availability, or money does.
 A plan doc is working state, not a record. It is committed so the work can be followed as
 it lands, and deleted at the next close-out after its PR merges (any later slice's merge
 close-out or an epic close-out) with its citations repointed to the issue
-or PR (`riviera-docs-freshness` § *Plan-doc retirement*). Rationale worth keeping lives on
-the issue, in an ADR, or in the Javadoc/TSDoc of the code it constrains.
+or PR (`riviera-docs-freshness` § *Plan-doc retirement*). Rationale worth keeping lives in
+`RESPONSIBILITIES.md` or an ADR, with a one-line pointer from the Javadoc/TSDoc it constrains
+(never an issue number there — `riviera-java-conventions` §6d), or on the issue.
 
 **Merging needs seven green required checks.** The `Riviera Rule Set` ruleset on `main`
 requires these status-check contexts by exact name: `Backend (build + test)`,

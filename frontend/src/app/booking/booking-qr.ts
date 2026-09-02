@@ -5,8 +5,8 @@ import { toString as qrSvg } from 'qrcode';
 /**
  * Renders a booking as a scannable QR image encoding the absolute `/booking/{code}` URL, so a
  * phone camera lands on the booking page and the console scanner reads the code out of it.
- * Client-side only — an SVG data URL via a static, canvas-free `qrcode` import (rationale:
- * PR #585, finding F-3); the code travels nowhere new (invariant #7). The
+ * Client-side only — an SVG data URL via a static, canvas-free `qrcode` import; the
+ * code travels nowhere new (invariant #7). The
  * white tile keeps the QR's quiet zone on glass and porcelain; `alt` names the booking (WCAG AA).
  */
 /** One shared options object so the spec can reproduce the exact expected SVG. */

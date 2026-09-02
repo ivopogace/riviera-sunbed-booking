@@ -147,7 +147,8 @@ and duplications below its fail thresholds. Pull the actual list and fix every e
    post-merge items are GitHub edits (steps 2 and 3). If you find yourself opening a
    docs-only PR to finish a close-out, step 4 was skipped. In the same last commit,
    `git rm` every plan in `docs/plans/` whose PR has already merged and repoint its
-   citations to the issue or PR (`riviera-docs-freshness` § *Plan-doc retirement*); no
+   citations — docs to the issue or PR, doc comments to `RESPONSIBILITIES.md` or an ADR, §6d
+   (`riviera-docs-freshness` § *Plan-doc retirement*); no
    epic is needed for that sweep.
 5. **Substrate-doc staleness check — run `riviera-docs-freshness`** if the slice changed
    something `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, an ADR, or a `riviera-*`

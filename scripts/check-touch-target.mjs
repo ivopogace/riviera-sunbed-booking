@@ -1,6 +1,6 @@
 /**
- * Diff-scoped guard for the 44 × 44 px touch-target floor's **declaration** (#648), the static half
- * of the mechanism #605 (PR #647) put in place.
+ * Diff-scoped guard for the 44 × 44 px touch-target floor's **declaration**, the static half
+ * of the mechanism `riviera-tailwind` describes.
  *
  * - **TT-1** — a judged control declares neither `appTouchTarget` nor a `data-touch-exempt` on
  *   itself or an ancestor. It cannot know whether the rendered box is 44 px; it knows whether

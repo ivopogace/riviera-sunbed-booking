@@ -12,7 +12,9 @@ import { Directive, ElementRef, inject, input } from '@angular/core';
  * starts the write**; a control that starts its own write needs a different lock, which varies by
  * control kind — see the carve-out in `frontend/.claude/CLAUDE.md`. Every submit handler keeps its
  * re-entrancy guard. Carries no styling; each consumer keeps its own `aria-disabled:` utility.
- * Why a capture-phase listener: #616.
+ * A native capture-phase listener rather than a host binding: Angular coalesces same-element
+ * same-event listeners into one native listener and walks its own chain, so a host listener's
+ * `stopImmediatePropagation` could not stop the click from reaching the consumer's handler.
  */
 @Directive({
   selector: '[appBusy]',

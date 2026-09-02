@@ -22,7 +22,7 @@ import { TouchTarget } from './touch-target';
  *
  * <p><strong>Keep the `@if` outside</strong>: it is created and destroyed with the confirmation,
  * which is what lets it focus its own confirm button on the way in (WCAG 2.4.3). Focus back **out**
- * is the caller's, via `focusMover()`. Fuller rationale: #604 (PR #612).
+ * is the caller's, via `focusMover()`. Fuller rationale: RV-FE-9 in `riviera-review-overlay`.
  */
 @Component({
   selector: 'app-confirm-with-reason',

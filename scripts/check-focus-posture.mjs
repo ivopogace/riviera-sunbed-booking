@@ -22,8 +22,8 @@
  *
  * BUSY-1 discriminates on a curated busy-flag vocabulary rather than on a state/validity allow-list,
  * because the two error directions are not symmetric — a false negative leaves the status quo, a
- * false positive fails a build on correct code. Rationale, the known limits, and the review round
- * that set most of them: #621.
+ * false positive fails a build on correct code. Rationale and the known limits: RV-FE-9 in
+ * `riviera-review-overlay`.
  */
 
 import { readFileSync } from 'node:fs';
@@ -52,7 +52,7 @@ const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
  * approximated over source: five components in this app move focus with a plain `.focus()`, and each
  * widening of the predicate trades a false positive for a false negative. It still runs, still
  * reports, and still found the two live bugs #621's slice fixed — it just advises rather than blocks.
- * Decision and the three review rounds behind it: #621.
+ * Decision: RV-FE-9 in `riviera-review-overlay`.
  */
 const GATING = new Set(['BUSY-1', 'BUSY-2']);
 

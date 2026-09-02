@@ -99,12 +99,15 @@ any later slice's merge close-out or an epic close-out. Whoever runs a close-out
 every plan in `docs/plans/` whose PR has already merged, in the code PR being closed out:
 
 1. `git rm` the plan doc and any `docs/plans/<slug>/` asset directory.
-2. Repoint every citation to the issue or PR: grep the slug across the tree outside
-   `docs/plans/` — Javadoc, TSDoc, `tailwind.css`, the skills, ADRs and runbooks all cite
-   plans by path or by bare slug.
+2. Repoint every citation: grep the slug across the tree outside `docs/plans/` — Javadoc,
+   TSDoc, `tailwind.css`, the skills, ADRs and runbooks all cite plans by path or by bare
+   slug. Markdown docs and e2e/spec headers cite the issue or PR; a Javadoc/TSDoc citation
+   becomes a one-line pointer to the `RESPONSIBILITIES.md` section, ADR or skill that holds
+   the rationale — never an issue number there (`riviera-java-conventions` §6d).
 3. Anything only the plan recorded that a later slice needs (a deferred-residual
-   disposition, a rejected alternative, an operational list) moves first — to the issue that
-   owns it, the ADR, or the Javadoc of the class it constrains — in the same commit.
+   disposition, a rejected alternative, an operational list) moves first — to the
+   `RESPONSIBILITIES.md` section or ADR that owns it, with a pointer from the Javadoc it
+   constrains (§6d: the contract, not the history), or to the issue — in the same commit.
 4. Note the sweep in the close-out comment. The file stays recoverable by slug:
    `git log --all --diff-filter=D -- 'docs/plans/<slug>.md'`.
 

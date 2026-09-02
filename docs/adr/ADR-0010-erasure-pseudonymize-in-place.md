@@ -1,10 +1,9 @@
 # ADR-0010: Right-to-erasure is pseudonymize-in-place under statutory retention
 
-- **Status:** Accepted (realized by #101 Slice 1); amended 2026-09-02 by #815 (the scrub reaches
-  `review` — see *Amendment*)
+- **Status:** Accepted
 - **Date:** 2026-07-24
-- **Relates to:** invariant #9 (payout-ledger auditability), invariant #1 (JDBC-only), D-6
-  (account identity is separate from the guest-contact row), #100 (structured audit logging)
+- **Relates to:** #101 (this decision's issue), invariant #9 (payout-ledger auditability), invariant
+  #1 (JDBC-only), D-6 (account identity is separate from the guest-contact row)
 
 ## Context
 
@@ -44,16 +43,28 @@ Two erasure shapes were possible:
 - `booking`, `payment`, and `payout_ledger_entry` are **never touched**. The payout ledger holds no
   PII by design (venue-ids, booking-ids, money — RESPONSIBILITIES `payout` Not-My-Job), so severing
   the personal link cannot affect its auditability or exactly-once accrual (invariant #9 preserved).
-- *(Superseded in part by the amendment below: the review scrub lives in `review`'s own adapter.)*
-  All scrub SQL lives in **one** `customer`-module adapter (`JdbcAccountErasure` behind the internal
+- All scrub SQL for `customer`'s own rows lives in **one** adapter (`JdbcAccountErasure` behind the internal
   `AccountErasureStore` port) so "what erasure touches" has a single home. Every scrub is guarded on
   `erased_at IS NULL` → **idempotent**. The account and guest identities are matched independently
   (by id / by email), because D-6 forbids an FK between them.
+- **The scrub reaches review PII through an inverted port, inside the same transaction.** Reviews
+  put personal data outside `customer`'s tables — a display name and a free-text comment, attached
+  to a **booking**, not a person. Every review of the subject's bookings has `display_name` and
+  `comment` set to `NULL`; `stars`, `hidden_at` and the timestamps are untouched, so the aggregate
+  is unchanged by construction and no `ReviewsChanged` is published; without a comment the review
+  leaves the public list under the star-only rule. `customer` declares
+  `customer.spi.ReviewErasure`; `booking` — the only module that can both resolve a subject to
+  bookings and reach `review`'s published surface — implements it in `adapter/out` and calls
+  `review.api.ReviewTombstones`; `review` blanks its own rows. Both leaves stay leaves, and no new
+  grant is added. The by-email scrubs answer the ids they tombstoned (`RETURNING id`), which is
+  how the service knows whose reviews to reach. An erasure *event* was rejected because it would
+  move the review step outside the transaction, and a half-erasure must never commit. Not a
+  takedown, not a freeze: the review is not hidden, and its author (still holding the booking
+  code) may write again inside the review window.
 - Two authenticated edge surfaces drive the published `customer.api.AccountErasure` port:
   self-service `POST /api/me/erasure` (CUSTOMER, session-scoped) and admin `POST /api/admin/erasure`
-  (ADMIN, by email). The edge revokes the subject's sessions (`PrincipalSessionRevoker`, generalized
-  from `CustomerSessionRevoker` in #128 to serve both principal types) and records
-  the event via the #100 structured logger with technical ids only — never PII or a booking code.
+  (ADMIN, by email). The edge revokes the subject's sessions (`PrincipalSessionRevoker`) and records
+  the event via the structured logger with technical ids only — never PII or a booking code.
 - **Backups** hold pre-erasure copies erasure cannot reach; that is handled operationally, not in
   code — a bounded backup-retention window plus re-applying `erased_at`-flagged erasures on any
   restore (documented in `docs/runbooks/data-erasure.md`).
@@ -65,10 +76,12 @@ Two erasure shapes were possible:
   obligations are met simultaneously.
 - Guest-contact rows whose email diverges from the erased account's email are **not** reached by a
   single self-service call (D-6 leaves no link but the booking's `customer_id`); the admin-by-email
-  path and the future retention job (Slice 2) cover them. Recorded as a scoped non-goal.
+  path and the retention sweep cover them. Likewise a repeat *admin-by-email* erasure re-reaches
+  neither an already-tombstoned account nor reviews on a tombstoned guest's bookings, since the
+  placeholder email matches nothing. Recorded as scoped non-goals.
 - A future implementer must **not** relax the `booking` FKs to `SET NULL`/`CASCADE`, add a hard
   `DELETE` of a customer/account row, or move PII into the ledger — any of which re-opens this ADR.
-- No new prod secret, no schema-destructive DDL; V30 adds only the marker column.
+- No new prod secret, no schema-destructive DDL; the migration adds only the marker column.
 
 ## Alternatives considered
 
@@ -78,36 +91,12 @@ Two erasure shapes were possible:
   legal-obligation exception) and breaks invariant #9.
 - **A dedicated `erasure_request` register table for accountability.** Deferred: `erased_at` + the
   #100 structured audit log satisfy accountability for v1 without a new table; add one only if
-  counsel wants an in-DB register (recorded in the plan doc's Open questions).
+  counsel wants an in-DB register.
 - **Scrub across modules via cross-module ports (touch `booking` to null `account_id`).** Rejected:
   unnecessary — tombstoning the `customer`-owned rows keeps every FK valid, so erasure stays a
-  single-module operation with no new cross-module coupling. *(Superseded in part by the amendment
-  below once a second module came to hold PII.)*
+  single-module operation with no new cross-module coupling — until a second module came to hold
+  PII, when the inverted port above was the minimal reach.
 
-## Amendment (2026-09-02, #815): the scrub reaches review PII through an inverted port
+## Amendment log
 
-Reviews (#812) put personal data outside `customer`'s tables for the first time: a display name and
-a free-text comment, attached to a **booking**, not a person. Erasure that stopped at `customer`
-would leave the subject's chosen name and words standing on a venue page.
-
-- **The tombstone extends, the shape does not change.** Every review of the subject's bookings has
-  `display_name` and `comment` set to `NULL`; `stars`, `hidden_at` and the timestamps are untouched.
-  The star identifies nobody and is the venue's earned score, so it keeps counting (the aggregate is
-  unchanged by construction and no `ReviewsChanged` is published); without a comment the review
-  leaves the public list under the star-only rule. Still pseudonymize-in-place, still no row deleted,
-  still no FK relaxed.
-- **The reach is synchronous and inverted, with no new grant.** `customer` declares
-  `customer.spi.ReviewErasure`; `booking` — the only module that can both resolve a subject to
-  bookings and reach `review`'s published surface — implements it in `adapter/out` and calls
-  `review.api.ReviewTombstones`; `review` blanks its own rows. Both leaves stay leaves. It runs
-  inside the erasure / sweep transaction, because the decision above ("all scrub SQL … one
-  adapter") had a purpose this keeps: a half-erasure must never commit. An erasure *event* was
-  rejected for that reason — it would move the review step outside the transaction.
-- **The by-email scrubs now answer the ids they tombstoned** (`RETURNING id`), which is how the
-  service knows whose reviews to reach. The account's reviews are reached on every *self-service*
-  erasure of the account (by id), so a review written after an earlier erasure is scrubbed by the
-  next one; a repeat *admin-by-email* erasure re-reaches neither an already-tombstoned account nor
-  reviews on a tombstoned guest's bookings, since the placeholder email matches nothing — the same
-  scoped non-goal as the diverging-email guest above.
-- **Not a takedown, not a freeze.** The review is not hidden and its author (still holding the
-  booking code) may write again inside the review window; that is fresh data of their own.
+- 2026-09-02, #815 — the scrub reaches review PII through `customer.spi.ReviewErasure`.

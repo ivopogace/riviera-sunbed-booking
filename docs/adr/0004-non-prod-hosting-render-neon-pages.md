@@ -1,141 +1,97 @@
-# ADR-0004: Non-prod hosting on Render + Neon + GitHub Pages
+# ADR-0004: Non-prod hosting on Render + Neon, same-origin SPA; prod target Hetzner
 
-- **Status:** Accepted — **Amended 2026-07-09 (issue #110)**: the frontend moves from GitHub
-  Pages to **same-origin** hosting (the backend serves the SPA); **Amended 2026-07-24**: the
-  deferred DSGVO-conform PROD hosting target is now **Hetzner** (EU). See the amendment sections.
+- **Status:** Accepted
 - **Date:** 2026-06-27
 
 ## Context
 
-The project needs a continuously-deployed **non-prod / demo** environment during the
-learning and dummy-data phase: somewhere the Angular frontend and the Spring Boot
-backend actually run so changes merged to `main` are exercised end-to-end. The
-priorities at this stage are **zero cost, lowest setup friction, and GitHub-Actions-native
-deployment** — not production hardening.
+The project needs a continuously-deployed **non-prod / demo** environment: somewhere the Angular
+frontend and the Spring Boot backend actually run so changes merged to `main` are exercised
+end-to-end. The priorities at this stage are **zero cost, lowest setup friction, and
+GitHub-Actions-native deployment** — not production hardening.
 
-Crucially, the data in this phase is **dummy/test data only**. There is no real EU
-personal data, so the DSGVO (GDPR) data-residency posture we will eventually need does
-**not** govern this choice yet. That requirement is real but deferred (see below).
+The data in this phase is **dummy/test data only**. There is no real EU personal data, so the
+DSGVO (GDPR) data-residency posture we will eventually need does **not** govern this choice yet.
+That requirement is real but deferred (see the prod plan below).
 
 ## Decision
 
 For the **non-prod** environment we deploy to an all-free, GitHub-native stack:
 
-- **Frontend → GitHub Pages.** Free static hosting, published straight from a GitHub
-  Actions workflow. Built with `--base-href=/riviera-sunbed-booking/` for the repo
-  subpath, with a `404.html` copy of `index.html` so SPA deep links don't hard-404.
-  *(Superseded for the dev/demo env by the #110 amendment below — the frontend is now
-  served **same-origin** by the backend; GitHub Pages is retired.)*
-- **Backend → Render** free web service, deployed as a **Docker** image Render builds
-  from the multi-stage `platform/Dockerfile` (JDK 25 Temurin build → slim JRE runtime).
-  Simplest GitHub-connected Spring Boot deploy. Trade-off accepted: free instances
-  **cold-start** after idle.
-- **Database → Neon** free serverless Postgres. Unlike Render's / Railway's expiring
-  free databases, Neon's free tier is **persistent** and scales to zero. The backend
-  reaches it over SSL via `SPRING_DATASOURCE_*` env vars; Flyway runs migrations on boot.
+- **Backend → Render** free web service, deployed as a **Docker** image Render builds from the
+  multi-stage `platform/Dockerfile` (JDK 25 Temurin build → slim JRE runtime). Trade-off
+  accepted: free instances **cold-start** after idle.
+- **Frontend → same origin, served by the backend.** The Angular app is built in a Node stage of
+  `platform/Dockerfile` and baked into the backend jar's `classpath:/static/`, so the **single
+  Render web service** serves both the SPA shell and `/api/**` from one origin
+  (`riviera-sunbed-booking.onrender.com`). The public-shell authorization lives in a dedicated
+  Spring Security filter chain (`SecurityConfig`, ordered after the `/api/**` + `/actuator/**`
+  chain); deep links are served `index.html` by `SpaWebConfig`. Same-origin is a **requirement of
+  the auth design**, not a convenience: session cookies (`SESSION` / `XSRF-TOKEN`, `SameSite=Lax`)
+  need the SPA and `/api/**` same-site in every deployed environment, and a cross-site pair
+  (`*.github.io` + `*.onrender.com`) fails sign-in with a `403` CSRF error before credentials are
+  checked, Safari's ITP most aggressively.
+- **Database → Neon** free serverless Postgres. Unlike Render's / Railway's expiring free
+  databases, Neon's free tier is **persistent** and scales to zero. The backend reaches it over
+  SSL via `SPRING_DATASOURCE_*` env vars; Flyway runs migrations on boot.
 
-Deployment is **gated on a green CI run on `main`** (a separate `deploy.yml` triggered by
-`workflow_run` on the `CI` workflow, only when its conclusion is `success`), so a red
-build never deploys. No credential is committed — datasource and deploy secrets live only
-in GitHub Actions secrets/variables. Operational details: `docs/deploy/cd-pipeline.md`.
+Deployment is **gated on a green CI run on `main`** (`deploy.yml`, triggered by `workflow_run` on
+the `CI` workflow only when its conclusion is `success`), so a red build never deploys. No
+credential is committed — datasource and deploy secrets live only in GitHub Actions
+secrets/variables. Operational details: `docs/deploy/cd-pipeline.md`.
 
 ## Consequences
 
-- We get a live, auto-updating demo environment at no cost, wired entirely through
-  GitHub Actions, with the CI gate preventing broken deploys.
-- **Render and Neon are US-incorporated.** This is acceptable **only** because the data
-  is dummy/test. It is explicitly **not** the data-sovereignty posture required before
-  real EU personal data is processed.
-- Render free-tier cold starts make the first request after idle slow (seconds), and the
-  first Docker build is slow; the post-deploy health poll tolerates this.
-- The frontend's backend URL is baked in at build time (static site). It defaults to the
-  expected Render host and is overridable via the `BACKEND_API_URL` repo variable.
-- **Single instance only.** This deploy runs the backend as **one** instance, and must until
-  scale-out preconditions are met. Rate-limit buckets are in-process (per this ADR's low-friction,
-  no-extra-infra posture) and two scheduler sweeps are lockless-on-one-runner, so a second instance
-  weakens rate limits and races duplicate Stripe cancels. The concrete failure modes and the
-  precondition list (ShedLock on every sweep + shared-store rate-limit state) live in the deploy
-  runbook: [production-hardening.md → *Single instance only*](../deploy/production-hardening.md#single-instance-only--do-not-scale-out-yet-the-two-lockless-sweeps--rate-limit-buckets)
-  (improvement-plan D3, issue #99).
+- A live, auto-updating demo environment at no cost, wired entirely through GitHub Actions, with
+  the CI gate preventing broken deploys.
+- **Render and Neon are US-incorporated.** Acceptable **only** because the data is dummy/test. It
+  is explicitly **not** the data-sovereignty posture required before real EU personal data is
+  processed.
+- Render free-tier cold starts make the first request after idle slow (seconds), and the JVM
+  service serving the SPA means a cold start also delays the first HTML; a frontend change
+  rebuilds the backend image. Accepted for a demo.
+- **Single instance only.** The backend runs as **one** instance, and must until scale-out
+  preconditions are met: rate-limit buckets are in-process and the scheduler sweeps are
+  lockless-on-one-runner, so a second instance weakens rate limits and races duplicate gateway
+  cancels. Failure modes and the precondition list (ShedLock on every sweep + shared-store
+  rate-limit state) live in
+  [production-hardening.md → *Single instance only*](../deploy/production-hardening.md#single-instance-only--do-not-scale-out-yet-the-two-lockless-sweeps--rate-limit-buckets).
 
-## DSGVO-conform PROD plan (deferred)
+## DSGVO-conform PROD plan: Hetzner (planned, not implemented)
 
-Before processing **real personal data** in production, hosting moves to a
-**DSGVO-sovereign / EU-based** provider (e.g. Hetzner, Scaleway, Clever Cloud, or an
-EU region with a Data Processing Agreement and EU data residency). That migration —
-covering the database, the backend runtime, and any logs/backups — is tracked as a
-**separate PROD-hardening issue** and is a precondition of the real launch, not part of
-this non-prod pipeline.
+Before processing **real personal data** in production, hosting moves to **Hetzner** (EU regions —
+Nuremberg / Falkenstein / Helsinki), alongside the payments + entity migration to Paysera and an
+Albanian sh.p.k. (ADR-0009). The cutover is its own PROD-hardening epic, contingent on ADR-0009
+flipping to Accepted and the prod entity existing; Render + Neon + same-origin remain the non-prod
+stack until then.
+
+- **Database is self-managed on Hetzner.** Hetzner has no managed-Postgres PaaS, so backups +
+  point-in-time recovery must be **built and operated** (WAL archiving + base backups via
+  pgBackRest/WAL-G to EU object storage, encrypted + retained) — the GDPR/backups work in #101.
+- **Carry-forward requirements, binding on Hetzner:** SPA + `/api/**` from **one origin** or
+  same-registrable-domain subdomains (`app.…` / `api.…`) — anything cross-site re-breaks the
+  session cookie; an **EU region** + a Hetzner DPA; and the single-instance → scale-out
+  preconditions before running more than one instance.
+- This move resolves the "US-incorporated" caveat above — for **prod**. The payments side is
+  ADR-0009's concern; they are the two halves of the same prod-readiness step.
 
 ## Alternatives considered
 
-- **Railway / Fly.io for the backend** — comparable free tiers, but Render's
-  Docker-from-Git flow + deploy hook is the lowest-friction GitHub-native path here.
-- **Render Postgres / Railway Postgres** — rejected: their free databases **expire**;
-  Neon's free tier persists, which matters even for a demo.
-- **Going straight to EU-sovereign hosting now** — rejected for this phase:
-  over-engineering for dummy data and slower to stand up. Correctly deferred to PROD.
-- **Bundling the Angular app into the Spring Boot jar (single deploy)** — rejected:
-  loses the free static-hosting/CDN benefit of Pages and couples FE/BE release cadence.
-  *(Reversed for the dev/demo env by the #110 amendment below — the same-origin requirement
-  outweighs those benefits here.)*
+- **Railway / Fly.io for the backend** — comparable free tiers, but Render's Docker-from-Git flow
+  + deploy hook is the lowest-friction GitHub-native path.
+- **Render Postgres / Railway Postgres** — rejected: their free databases **expire**; Neon's
+  persists, which matters even for a demo.
+- **Going straight to EU-sovereign hosting now** — rejected for this phase: over-engineering for
+  dummy data and slower to stand up. Correctly deferred to PROD.
+- **Frontend on GitHub Pages** (the original decision) — retired: cross-site with the API, which
+  breaks session cookies (above). It had free static hosting and independent release cadence, both
+  given up for the same-origin requirement.
+- **A Render static site with a `/api/*` rewrite-proxy** — tried first and abandoned: a static
+  site cannot reverse-proxy to another `*.onrender.com` service; the rewrite matches but returns
+  an empty `200` that never reaches the backend. A separate Caddy/nginx proxy service works but
+  adds a running service; a custom domain with `app.`/`api.` subdomains needs a domain.
 
-## Amendment (2026-07-09, issue #110): same-origin frontend (Spring serves the SPA)
+## Amendment log
 
-The **frontend → GitHub Pages** decision is superseded for the dev/demo env. Session cookies
-(S1, issue #109) require the SPA and `/api/**` to be **same-site in every deployed
-environment**; Pages (`*.github.io`) and the API (`*.onrender.com`) are cross-site, so the
-`SESSION` / `XSRF-TOKEN` cookies were dropped by the browser (Safari's ITP most aggressively)
-and sign-in failed with a **403 CSRF error before credentials were even checked**.
-
-**What changed:** the Angular app is now built in a Node stage of `platform/Dockerfile` and
-baked into the backend jar's `classpath:/static/`, so the **single Render web service** serves
-both the SPA shell and `/api/**` from one origin (`riviera-sunbed-booking.onrender.com`). The
-public-shell authorization lives in a dedicated Spring Security filter chain (`SecurityConfig`,
-ordered after the `/api/**` + `/actuator/**` chain, which keeps its rules verbatim); deep links
-are served `index.html` by `SpaWebConfig`. **No auth-model change** — `.spa()` CSRF and the
-`SameSite=Lax` cookies were already correct; they only needed same-origin. GitHub Pages is
-retired and CD collapses to the one backend deploy.
-
-**Why not a static-site rewrite-proxy (the first attempt):** a Render **static site** cannot
-reverse-proxy `/api/*` to another `*.onrender.com` service — the rewrite matches but returns an
-empty `200` that never reaches the backend (verified 2026-07-09: backend direct returns venue
-JSON, the proxied path returns `Content-Length: 0` with no backend headers; confirmed against
-Render docs + community reports). A separate Caddy/nginx proxy **web service** works but adds a
-running service; a custom domain with `app.`/`api.` subdomains needs a domain. For a dev/demo
-env, one service with no new infrastructure wins.
-
-**Consequence — loses the CDN / independent-cadence benefits** the original "Bundling…"
-rejection valued: the JVM service serves the SPA (a free-tier cold start now also delays the
-first HTML), and a frontend change rebuilds the backend image. Accepted for a demo — these are
-exactly why this stays **dev/demo-only**.
-
-**Prod-hoster selection criterion (carry-forward):** the future DSGVO-conform prod hoster
-**must** serve the SPA and `/api/**` from **one origin** (a reverse proxy) or from
-**same-registrable-domain subdomains** (`app.…` / `api.…`) — anything cross-site re-breaks the
-session cookie. This is now a hard requirement on that deferred migration, not a nicety.
-
-## Amendment (2026-07-24): prod-hosting target is Hetzner (EU-sovereign)
-
-The **DSGVO-conform PROD plan** deferred above now has a chosen provider: **Hetzner** (EU
-regions — Nuremberg / Falkenstein / Helsinki). This formalizes the "e.g. Hetzner, Scaleway,
-Clever Cloud" example into the direction, alongside the payments + entity migration to
-**Paysera + an Albanian sh.p.k.** (ADR-0009).
-
-- **Status: planned / not yet implemented.** This records the direction only. The actual cutover
-  is its own **PROD-hardening epic** and is contingent on ADR-0009 flipping to Accepted (Paysera
-  KYC + Albanian counsel sign-off) and the prod entity existing. Render + Neon + same-origin
-  remain the **non-prod / demo** stack until then.
-- **Database is self-managed on Hetzner.** Hetzner has no managed-Postgres PaaS, so — unlike
-  Neon's managed PITR — backups + point-in-time recovery must be **built and operated** (WAL
-  archiving + base backups via pgBackRest/WAL-G to EU object storage, encrypted + retained). This
-  lands in the GDPR/backups issue **#101**, whose backup AC was upgraded from *confirm* to
-  *implement* accordingly.
-- **Carry-forward requirements, now binding on Hetzner:** SPA + `/api/**` from **one origin** or
-  same-registrable-domain subdomains (the session-cookie rule from the #110 amendment above); an
-  **EU region** + a Hetzner DPA (GDPR data residency, #101); and the single-instance → scale-out
-  preconditions (ShedLock on both sweeps + a shared rate-limit store, D3/#99) before running more
-  than one instance.
-- **Consequence:** the "Render and Neon are US-incorporated … not the data-sovereignty posture"
-  caveat above is resolved by this move — for **prod**. The payments side (Stripe → Paysera) is
-  ADR-0009's concern, not this ADR's; they are the two halves of the same prod-readiness step.
+- 2026-07-09, #110 — the frontend moved from GitHub Pages to same-origin hosting by the backend.
+- 2026-07-24 — the deferred DSGVO-conform prod target became Hetzner.

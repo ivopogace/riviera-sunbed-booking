@@ -6,8 +6,8 @@
  * the detectors; this one covers the git front-end and the `main` around it, which is where all five
  * false cleans PR #618 fixed actually lived.
  *
- * Each regression case names, in its own doc comment, the edit that makes it fail — the mutation
- * proof recorded in `docs/plans/guard-cli-coverage.md`. A case never observed failing is decoration.
+ * Each regression case names, in its own doc comment, the edit that makes it fail — its mutation
+ * proof. A case never observed failing is decoration.
  */
 
 import test from 'node:test';

@@ -5,77 +5,54 @@
 
 ## Context
 
-The booking **code** is an unguessable bearer credential (invariant #7: ≥8 random base32
-chars, never logged by the app). Two public, unauthenticated endpoints are keyed solely on
-it, with the code carried as a **path variable**:
+The booking **code** is an unguessable bearer credential (invariant #7). Public, unauthenticated
+endpoints are keyed solely on it, with the code carried as a **path variable**:
+`GET /api/bookings/{code}` (detail + server-computed refund terms) and the `cancel`, `withdraw`
+and `review` verbs beneath it. A credential in the request line can land in reverse-proxy/CDN
+access logs, browser history, and `Referer` headers — outside the app's "never log the code"
+discipline. Issue #56 asked whether the code stays in the path or moves to a header / POST body.
 
-- `GET /api/bookings/{code}` — booking detail + server-computed refund terms (U6).
-- `POST /api/bookings/{code}/cancel` — cancel + refund (U6).
-
-The U6 review gate (#11) flagged that a credential in the request line can land in
-reverse-proxy/CDN access logs, browser history, and `Referer` headers — outside the app's
-"never log the code" discipline. Issue **#56** asks us to **decide and record** whether the
-code stays in the path or moves to a header / POST body, weighing the logging-exposure risk
-against REST/UX and the existing consumers.
-
-The path is not a greenfield choice: the **merged frontend** already depends on
-`GET /api/bookings/{code}` —
-- the U4-FE payment flow (`booking-pay.ts`, issue #50) **polls** it ~20×/30s to await
-  webhook-driven confirmation,
-- `booking-view.ts` reads it for the view/cancel page,
-- the booking-confirmation deep-link (`/booking/:code`) is a bookmarkable path URL.
-
-Moving the code out of the path would be a breaking change across all three.
+The path is not a greenfield choice: the frontend depends on `GET /api/bookings/{code}` — the
+payment flow **polls** it (~20×/30s) to await webhook-driven confirmation, the view/cancel page
+reads it, and the booking-confirmation deep-link (`/booking/:code`) is a bookmarkable path URL.
 
 ## Decision
 
-**Keep the booking code in the URL path for v1.** Do **not** move it to a header or POST
-body now. Mitigate the logging-exposure residual with:
+**Keep the booking code in the URL path for v1.** Do **not** move it to a header or POST body.
+Mitigate the logging-exposure residual with:
 
-1. **App-level discipline** — the application never logs the code (invariant #7); it is
-   treated as a secret in our own logs.
-2. **Rate limiting** (issue #56) — per-IP + per-code throttling on the public booking-code
-   endpoints raises the cost of the `200`/`404` confirmation oracle.
+1. **App-level discipline** — the application never logs the code (invariant #7) and never
+   echoes it in an error body.
+2. **Rate limiting** — per-IP + per-code throttling on the public booking-code endpoints raises
+   the cost of the `200`/`404` confirmation oracle. Per-IP keying uses `ClientIpResolver`: the
+   `X-Forwarded-For` walk is honored only when the socket peer is a trusted proxy
+   (`riviera.ratelimit.trusted-proxies`), and behind a trusted peer the resolver prefers a
+   configurable edge-supplied client-IP header (`riviera.ratelimit.client-ip-header`, shipped
+   `CF-Connecting-IP`), because `*.onrender.com` is Cloudflare-fronted and the hop Render appends
+   is a per-request-varying edge node, not the client. From any other peer the header is ignored.
 3. **Entropy** — ≥40 bits of base32 makes enumeration impractical regardless of transport.
 
-The clean transport fix (move the credential out of URL-based logs entirely) is **bundled
-with the real authentication model** that will replace the `SecurityConfig` placeholder
-(issue #56 AC-3), not done piecemeal here.
+The clean transport fix (move the credential out of URL-based logs entirely) is bundled with a
+future authentication model for the guest flow, not done piecemeal.
 
 ## Consequences
 
-- **Backend-only slice.** The rate-limit hardening (issue #56) lands with no frontend change;
-  the merged polling/view/deep-link keep working.
-- **Residual exposure remains** at the reverse-proxy / CDN / browser-history / `Referer`
-  layer — accepted for v1 (non-prod, dummy data per ADR-0004), to be closed with the auth
-  model before real personal data is processed.
-- **`X-Forwarded-For` is trusted for per-IP keying** without a trusted-proxy allowlist (single
-  Render instance, ADR-0004); a forged header can dodge the per-IP limit. The per-code limit
-  and code entropy back it up; a proper proxy-trust config is part of the same auth-model
-  follow-up.
-  - **Resolved 2026-07-22 by issue #129.** `ClientIpResolver` now takes a trusted-proxy CIDR
-    list (`riviera.ratelimit.trusted-proxies`): the header is honored only when the socket peer
-    is a trusted proxy, and the key is then the right-most *untrusted* hop — the one Render
-    appends and a client therefore cannot forge. From any other peer the header is ignored
-    outright. This closed the bypass for all seven per-IP dimensions at once (booking, operator
-    login/register, customer login/register, SSO, recovery). The URL contract was **not**
-    touched, as the bullet below requires.
-  - **Amended 2026-07-22 by issue #286.** The hop Render appends is not the client:
-    `*.onrender.com` is Cloudflare-fronted, so it is a public, per-request-varying **edge
-    node**, and keying on it gave one client ~14 buckets while unrelated clients behind one
-    edge shared one. Behind a trusted peer the resolver now prefers a configurable
-    edge-supplied client-IP header (`riviera.ratelimit.client-ip-header`, shipped default
-    `CF-Connecting-IP`) and keeps the walk above as the fallback. The bypass closure described
-    above is unchanged — both paths are gated on the same trusted-peer check.
-- A future implementer must not silently "fix" this by changing the URL contract — that
-  breaks the merged FE and belongs with the auth model.
+- **Residual exposure remains** at the reverse-proxy / CDN / browser-history / `Referer` layer —
+  accepted for v1, to be closed with the auth model before real personal data is processed.
+- A future implementer must not silently "fix" this by changing the URL contract — that breaks
+  the frontend's polling, view and deep-link, and belongs with the auth model.
 
 ## Alternatives considered
 
 - **Move the code to a request header (e.g. `X-Booking-Code`)** — keeps it out of URL-based
-  logs/`Referer`, but breaks the merged FE (polling, view, the bookmarkable deep-link) and
-  loses REST-style deep-linking. Rejected for v1; reconsider with the auth model.
+  logs/`Referer`, but breaks the merged frontend and loses REST-style deep-linking. Rejected for
+  v1; reconsider with the auth model.
 - **Hybrid: GET keeps the path, cancel moves the code to the POST body** — only the
-  state-changing call is de-pathed; still touches the FE cancel call for a partial reduction.
-  Rejected: inconsistent surface for marginal benefit while the path GET (the higher-volume,
-  polled endpoint) still carries the code.
+  state-changing call is de-pathed. Rejected: inconsistent surface for marginal benefit while
+  the path GET (the higher-volume, polled endpoint) still carries the code.
+
+## Amendment log
+
+- 2026-07-22, #129 — trusted-proxy CIDR list for the `X-Forwarded-For` walk, closing the
+  forged-header bypass on every per-IP dimension.
+- 2026-07-22, #286 — the edge-supplied client-IP header preferred behind a trusted peer.

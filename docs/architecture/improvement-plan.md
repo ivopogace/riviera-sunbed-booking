@@ -1,218 +1,87 @@
 # Riviera Sunbed Booking — Improvement Plan
 
-> **What this is.** A single, sequenced improvement plan grounded in direct inspection of the `main` source tree, folding together the threads we've worked through: (1) go-live readiness, (2) Modulith/DDD/hexagonal architecture refinements, and (3) the new `operator` module the multi-operator launch forces. It opens with an honest snapshot of the current state, then lays out the work in priority order with explicit triggers and trade-offs.
-
----
-
-## Part 1 — Current state of the code (as inspected)
-
-> **Dated baseline — as assessed 2026-07-01 (#93's snapshot of `main`), deliberately left
-> un-refreshed.** This part records what motivated the plan, so its facts are frozen at
-> assessment time: the module count ("six"), LOC figures, and gap list are all of that date.
-> The tree has since grown — `operator` (#73), `notification` (#382), the `shared` kernel
-> (#371) — and several gaps below are marked shipped in Part 2. `CLAUDE.md` owns the current
-> module list. *(Decision recorded per #319, Option A.)*
-
-### What's genuinely strong
-
-The codebase is well past scaffold quality and ahead of its own `docs/`. The architecture is disciplined and the hard parts are done correctly.
-
-**Module structure.** Six Spring Modulith modules — `venue` (1,294 LOC), `availability` (486), `booking` (2,426), `payment` (1,072), `payout` (1,054), `customer` (122) — each with `@ApplicationModule` and **explicit deny-by-default `allowedDependencies`**, plus `@NamedInterface` for `api` and `spi`. The dependency graph is acyclic and the directions are right: `payment` and `venue` depend on nothing; `booking` depends on `venue::api`/`availability::api`/`payment::api`/`customer::api`; `payout` depends only on `booking::api`/`venue::api`. The event direction is correct — `booking` listens to `payment` events, `payout` listens to `booking` events, never the reverse (verified: `payment` imports no `booking` types).
-
-**Concurrency / no-double-booking (invariant #2).** `JdbcAvailabilityClaim` uses atomic `INSERT … ON CONFLICT (set_id, booking_date) DO NOTHING` behind a `UNIQUE(set_id, booking_date)` constraint (`V4`), rows-affected deciding the winner — no `SELECT … FOR UPDATE`. `ReserveSetService` validates, claims, and inserts the `AWAITING_PAYMENT` booking in one committed transaction **before** any Stripe call, so no row lock is held across the network round-trip. Backed by `ConcurrentClaimIT`, `ConcurrentReservationIT`, `StaffMarkVsOnlineClaimConcurrencyIT`.
-
-**Money path.** Real Stripe (`StripePaymentGateway`, `stripe` profile): PaymentIntents with deterministic idempotency keys (`booking-<id>-pi`), `withLostResponseReplay` that replays a create once on `ApiConnectionException` to recover work orphaned by a lost response (shared by the intent and refund paths), refunds/cancels with their own keys reading authoritative Stripe state first — the refund's read being what keeps it at-most-once past the idempotency key's ~24h lifetime (#569). The webhook (`StripeWebhookController`) verifies the signature on the raw body, dedupes on Stripe `event.id` via `ON CONFLICT`, runs in one transaction, and treats `payment_failed` as non-terminal. Source of truth is the webhook, never the client (invariant #8).
-
-**Event spine / outbox.** `ConfirmBookingService` publishes `BookingConfirmed` from a single seam shared by the stub and webhook paths. Consumers use `@ApplicationModuleListener` (async, after-commit, own transaction). The Modulith JDBC registry is configured well: `completion-mode=archive`, `republish-outstanding-events-on-restart=true`, schema owned by Flyway (`V8`, verbatim Modulith 2.1 v2 structure), not auto-initialized.
-
-**Abandonment.** No `HELD` state needed — the claim writes `BOOKED_ONLINE` directly; `AbandonedBookingSweepService` (15-min TTL, `stripe` profile) cancels the PaymentIntent first, then releases only on an authoritative `Canceled` outcome via the same guarded `UPDATE … RETURNING` path the webhook uses, so sweep and webhook can never double-act.
-
-**Value objects.** `VenueId`, `BookingId`, `SetId` are immutable records; `Money` is a record validating non-negative minor units + currency in its canonical constructor (invariant #5). Cross-module references are id-only.
-
-**Cross-cutting.** Per-IP + per-code token-bucket rate limiting (`RateLimitFilter`); CORS from config; codes never logged; Stripe errors log codes only. Architecture is fitness-tested: `ModularityTests` (`ApplicationModules.verify()`), `JdbcOnlyArchitectureTests`, `NoStripeConnectArchitectureTest`. Multi-stage Dockerfile runs non-root with `MaxRAMPercentage`.
-
-### Where the strain and gaps are
-
-1. **Authorization is a single shared `OPERATOR` account with no per-venue ownership.** Every venue-scoped endpoint (`VenueAdminController`, `StaffBookingController`, `AdminPayoutLedgerController`, staff availability, weather refund) takes `venueId` from the path and authorizes on role alone. Verified by reading the controllers: nothing checks that the authenticated operator owns the path venue. With multiple operators, operator A can read/modify operator B's bookings (including codes), payout ledger, and beach map by changing the id. This is OWASP API #1 (BOLA).
-
-2. **`VenueCatalog` is a god-port.** One `venue::api` interface now carries seven methods serving four different consumers (tourist read model, availability's pool check, booking's reserve facts, payout/booking's rate config). Coarser dependency arrows than the actual coupling.
-
-3. **Published `api` packages mix two axes.** Ports ("call-me" interfaces) cohabit with published domain vocabulary (value objects, identifiers, events) under one named interface — the "`api` is becoming a domain package day by day" drift.
-
-4. **Request-to-Book is not implemented.** ~~`PENDING_REQUEST`/`DECLINED` exist in the enum~~ *(stale claim — they did NOT exist until #98; the enum matched V5's five states)*. **Shipped by #98:** `PENDING_REQUEST`/`DECLINED`/`EXPIRED` states (V19), accept/decline (operator-authorized), the host-response-deadline sweep, and payment-request-on-accept.
-
-5. **Validation and error handling are ad-hoc.** No `spring-boot-starter-validation` anywhere (confirmed: zero `jakarta.validation`/`@Valid` usages). DTOs validate by hand in `toCommand()` throwing `IllegalArgumentException`; each controller maps it with a local `@ExceptionHandler`. Error bodies are `{"error": CODE}` maps, not RFC-7807 `ProblemDetail`. It works, but it's per-controller boilerplate with no consistent error contract.
-
-6. **No actuator/production hardening.** No `management.*` config — health is exposed but there's no readiness/liveness split, no endpoint lockdown, no graceful shutdown.
-
-7. **Single-instance assumptions are load-bearing and undocumented.** In-memory rate-limit buckets (ADR-0004) and the lockless sweep are both correct only on one instance. Two instances → duplicate Stripe cancels + per-instance rate limits.
-
----
-
-## Part 2 — Improvement plan
-
-The work splits into four workstreams. **A** (launch safety) and **B** (the architecture refactor) should interleave, because the `operator` module is both a launch blocker *and* the cleanest demonstration of the refactored conventions. **C** (enforcement) lands during **B** to lock the new structure in. **D** is product scope.
-
-### Workstream A — Launch blockers (multi-operator)
-
-**A1. Introduce the `operator` module and enforce per-venue ownership.** *(P0, gating)*
-
-This is the headline launch blocker and it doubles as the seventh module that the architecture refactor will model. Design:
-- A new `operator` (or `identity`) Modulith module owning operator accounts and the operator↔venue ownership mapping. It is *not* `venue` (that's layout/pricing), *not* `customer` (that's tourist guest-checkout).
-- Publish a minimal query port in `operator::api` — `OwnsVenue(operatorId, venueId) → boolean`, or `ownedVenues(operatorId) → Set<VenueId>`.
-- Enforce ownership in the **application service** of every venue-scoped command/query (not the controller), so no adapter can bypass it; reject non-ownership with `403`. Platform-wide admin (`/api/admin/payout-batches`) stays role-gated.
-- Replace the single `InMemoryUserDetailsManager` operator with real per-operator credentials (the delegating password encoder is already in place); add provisioning/rotation.
-- **Tests are part of the deliverable**: for every venue-scoped endpoint, operator A → operator B's id → assert `403`. This is the one weakness of the row-discriminator model and must be tested deliberately.
-- Optional defence-in-depth, deferrable to P1: PostgreSQL Row-Level Security keyed on the operator's venue set, so a forgotten `WHERE venue_id = ?` is a non-event.
-
-**A2. Secrets, TLS, credential model.** *(P0)* Per-operator credentials with rotation; TLS termination in front of the app; Stripe live keys + webhook secret + DB creds injected as environment secrets (the config already expects this — confirm the deploy wiring).
-
-**A3. Actuator / production-readiness.** *(P0, small)* Split readiness/liveness probes; lock down actuator exposure (health public, rest authenticated or separate port); add `server.shutdown=graceful` with a drain timeout so in-flight bookings/webhooks finish on deploy.
-
-### Workstream B — Architecture refinement
-
-**B1. Split `VenueCatalog` by consumer role.** *(High value, low risk — do early)*
-
-Break the god-port into role-named interfaces inside `venue::api`; implementations don't move, you're only narrowing what each consumer imports:
-- `VenueCatalog` → tourist read model (`findVenueMap`, `listVenues`)
-- `SetBookingFacts` → `setBookingInfo`, `poolOf` (consumed by `booking` and `availability`)
-- `VenueRates` → `commissionBps`, `lateCancelRefundBps` (consumed by `payout`, `booking`)
-
-This makes the `ModularityTests` dependency arrows honest — `availability` then depends only on the pool-check surface, not the whole catalog.
-
-**B2. Separate published vocabulary and events from ports.** *(Directly addresses the `api`-drift)*
-
-Restructure each module's published surface into distinct named interfaces along the two axes that are currently fused:
-- `api` → ports only ("call-me" interfaces)
-- a vocabulary named interface (e.g. `api.types` or `vocabulary`) → value objects + identifiers (`Money`, `VenueId`, …)
-- an events named interface (e.g. `events`) → published domain events (`BookingConfirmed`, `PaymentConfirmed`, …)
-
-This lets a listener-only consumer (`payout`) depend on `booking::events` without importing `booking`'s command surface, and it's the structural half of fixing the drift. The enforcement half is C2.
-
-**B3. Decide and document module-split triggers for `booking`.** *(No action now — set the trigger)*
-
-`booking` is already the largest module and will grow with Request-to-Book and the ownership checks. Don't split it now (it's cohesive around the lifecycle). Watch two seams: cancellation/refund policy (`CancellationPolicy`, `RefundPolicy`, weather refunds) and the staff/operational read side (`DailyBookingsService`, staff controllers). **Trigger to extract:** Request-to-Book pushing `booking` past ~3,500 LOC, or a third distinct scheduler appearing.
-
-> **B3 resolution (2026-07-31, #463): the LOC clause fired at 5,735 raw LOC — decision: re-set the
-> trigger, don't split.** The raw number stopped measuring what B3 set it to watch:
-> comment/blank-stripped **code** is 2,750 LOC — 52% of the module is the house-style rationale
-> javadoc, and ~580 more raw lines are boot-validated properties/config classes — so raw LOC now
-> tracks documentation discipline, not conceptual load (`venue`, for comparison: 3,711 raw /
-> 2,067 code). Decisively: extracting *both* watched seams (refund execution ~800 raw, staff read
-> side ~250 raw) would still leave `booking` at ~4,700 raw — the trigger's own prescribed
-> consequence cannot restore its condition, which convicts the number, not the module. On B3's own
-> cohesion test the growth is lifecycle-shaped: Request-to-Book (#98) added *states of the same
-> `Booking` aggregate*; account linkage (epic #108) is a nullable column plus a principal-scoped
-> read; the #380/#390 notification/admin reads read booking-owned data, which must live with the
-> data; the #404 refund executor is bulkhead infrastructure for booking's own listener on its own
-> event. The scheduler alarm — B3's actual cohesion signal — has **not** fired (still two).
-> Extraction also carries real one-time costs for zero new enforcement: the registry listener id
-> is the FQCN (`RegistryRefundOutbox.REFUND_LISTENER_ID`; a move needs a roll-forward registry
-> migration, the V18 lesson) plus re-keying `RefundListenerExecutorArchitectureTest`,
-> `RefundOutboxScopeIT`, and `allowedDependencies` — buying a boundary the module already
-> enforces internally (five `application` subpackages; the refund seam's own executor, shed
-> metric, and admin re-drive lever, each pinned by an arch test).
->
-> **The re-set trigger — split `booking` when any of:**
-> 1. **Code size:** comment/blank-stripped main-source code passes **~4,000 LOC** (2,750 today;
->    measure: `find platform/src/main/java/ai/riviera/platform/booking -name '*.java' -exec cat {} + | grep -vE '^\s*$|^\s*//|^\s*/?\*' | wc -l`).
->    Raw LOC is deliberately no longer a clause.
-> 2. **A third distinct scheduler** appears (unchanged from the original trigger).
-> 3. **A non-lifecycle concern lands** — anything that is not a state, a read, or a post-commit
->    errand of the `Booking` aggregate.
-> 4. **The refund-execution seam deepens** — it acquires its own persistent state (e.g. a refund
->    table) or a second consumer of its surface.
->
-> **The designated first cut when it fires:** the refund-execution seam (the `BookingCancelled`
-> listener + bounded executor + shed metric + admin re-drive). Its boundary is already the
-> crispest — own executor, metrics, and admin lever, and `BookingCancelled` already carries the
-> settled refund facts — and the extracted module reuses `payout`'s proven listener-only shape on
-> `booking::events`, differing in what the listener does: it drives `payment::api`, where
-> `payout`'s listeners are DB-only. The staff/operational read side is **not** part of
-> that cut; it belongs to B4's read-model trigger. Chart the extraction through the normal SDLC
-> (`to-spec` → `to-issues`); the registry-migration and arch-test re-keying costs above are its
-> known first slices.
-
-**B4. Read-model module (deferred, trigger-based).** The `venue → availability` inversion via `venue::spi` is correctly reasoned and tested — leave it. *If* the dated read side grows more overlays (pricing seasons, weather holds, promotions), introduce a dedicated query module depending on both `venue::api` and `availability::api` that owns the composed browse/map views, collapsing the inversion. Over-engineering today; note it as a trigger.
-
-### Workstream C — Enforcement (extend the existing ArchUnit fitness tests)
-
-The structural moves in B (splitting `VenueCatalog`, separating ports from vocabulary and events) are only durable if a test fails when someone violates them. The repo already enforces architecture with hand-written rules (`JdbcOnlyArchitectureTests`) and Spring Modulith's `ModularityTests` — extend that same baseline rather than adding a new dependency. Sequence this **during** workstream B: land each structural move green first, then add the rule that locks it in (never debug a refactor and a new rule's false positives at once).
-
-**C1. The published-surface placement rule.** *(Highest-leverage for the `api`-drift)* Add an ArchUnit rule (alongside `JdbcOnlyArchitectureTests`) that enforces the B2 split: a ports `api/` named interface must contain only interfaces (ports), not value/record types; published events live only in the events named interface; published vocabulary (typed ids, value records) lives only in the vocabulary surface. Key the rule off package/naming conventions (e.g. the `events` / vocabulary package names from B2) since there's no annotation taxonomy to match on. This converts "the `api` package is becoming a domain package" from a review judgment call into a build failure — exactly while B2 is drawing those lines.
-
-**C2. Keep the role split honest.** Add a rule (or extend `ModularityTests` expectations) that prevents new methods being piled onto the `VenueCatalog` god-port after the B1 role-split — e.g. assert the role-named interfaces (`SetBookingFacts`, `VenueRates`) are the home for their respective concerns, so a regression is caught.
-
-**C3. The cross-venue authorization test is the enforcement that matters most.** The single most important fitness function added in this plan is **not** an architecture rule — it's the A1 cross-venue denial test matrix (operator A → operator B's id → `403`) for every venue-scoped endpoint. Treat it as part of the enforcement baseline: it must exist and stay green for the multi-operator invariant (#13) to hold.
-
-**C4. Encode the machine-checkable half of `RESPONSIBILITIES.md`.** `RESPONSIBILITIES.md` (Job / Not-My-Job per module) has a **structural** subset that ArchUnit can enforce — convert those to fitness functions so the boundaries don't rely on review memory:
-- **Sole-writer:** no class outside `availability` writes the `(set, date)` state table (the mechanical form of "`availability` is the only writer" / invariant #2).
-- **No forbidden reach:** `booking` (and every non-`payment` module) must not import the Stripe SDK or `payment.infrastructure`; no module imports another module's `domain`/internal packages (only its `api/`). Much of this is already `ApplicationModules.verify()`; add the Stripe-import rule explicitly.
-- **Id-based events:** event record components in the events named interfaces are id/value types, not aggregates from any `domain` package (the Need-To-Know / invariant #11 boundary).
-
-What ArchUnit **cannot** encode is the **semantic** half — a refund *policy* reimplemented inside `payment`, commission *math* inside `venue` — because those need no illegal import. That half is the job of the plan-time Module-ownership table (plan-doc §4a) and review item **RV-BE-11**. State this split explicitly so no one assumes green ArchUnit means boundaries are fully enforced: the fitness functions are necessary, not sufficient.
-
-**C5. Encode the package-shape (ADR-0007), after migration completes.** Once the restructure to the two-template layout has landed for every module, add an ArchUnit rule (alongside `JdbcOnlyArchitectureTests`) that locks the shape so it can't regress:
-- **Allowed top-level set** — each module's top-level packages ⊆ `{api, spi, vocabulary, events, application, domain, adapter}` (widened from `{api, spi, application, domain, adapter}` by ADR-0007 Amendment 1); a thin (serviceless) module ⊆ `{api, vocabulary?, adapter/out}`. Fails a lingering `infrastructure/` or a reintroduced `application/in`|`application/out`.
-- **Adapter direction, not technology** — under `adapter/`, the immediate children are `in`/`out` (technology may nest below); no top-level `adapter/rest`|`jdbc`|`event`.
-- **`api`/`spi` top-level** — the `@NamedInterface` packages are direct children of the module, never nested under `application`.
-- **Hexagon direction** — `application`/`domain` must not depend on `adapter.*` (adapters depend inward, never the reverse).
-
-Sequence this **last** — enforcing the shape before the migration is done just means fighting a rule mid-move. The thin-vs-full *judgment* stays review-only (`riviera-review-overlay` RV-BE-12); C5 is the structural half. This is the fitness function for `ADR-0007`, exactly as C4 is for `RESPONSIBILITIES.md`.
-
-**On DDD-stereotype tooling:** a library-based approach (annotating aggregates/value objects/events and verifying them) was considered and **deliberately not adopted** — the existing hand-written ArchUnit + `ModularityTests` baseline already covers what this project needs, and the structural rules above are expressible without a new dependency in the runtime/build. Don't reintroduce one for this.
-
-### Workstream D — Product scope and post-launch hardening
-
-**D1. Request-to-Book.** *(shipped — issue #98: soft-hold on the shared availability claim, operator accept/decline with `assertOwns`, lockless deadline sweep + pay-window on the abandoned sweep's second clock, payment-request-on-accept reusing the Elements/webhook spine)* *(was: P0 or P1 — your product call)* If a venue can launch Instant-only, defer and ship the flows you have. If it must be live day one: accept/decline endpoints (operator-authorized via A1), a soft-hold on `PENDING_REQUEST`, a host-response-deadline sweep mirroring the abandoned-payment sweep, and the post-accept PaymentIntent leg (the `AWAITING_PAYMENT`-onward machinery already exists and is reused unchanged). Note: the existing sweep is lockless-on-one-instance; build the new deadline sweep the same way and document the same constraint, or add ShedLock now if you expect to scale.
-
-**D2. Consistent validation + error contract.** *(P1)* Either adopt `spring-boot-starter-validation` with `@Valid` on DTOs, or keep the explicit-validation style but centralize it. Replace the per-controller `{"error": CODE}` + local `@ExceptionHandler` with one `@RestControllerAdvice` emitting RFC-7807 `ProblemDetail` with stable error codes. Removes boilerplate and gives clients one error shape.
-> **Shipped by #97:** `ApiProblem` factory + single `ApiErrorHandler` advice (RFC-7807 + `code` extension, locked by `ErrorContractArchitectureTests`); validation stays centralized-explicit (`toCommand()`, no Bean Validation starter — decision recorded in `riviera-java-conventions` §6b); Angular + the mocked e2e suite parse the `code` extension.
-
-**D3. Document the single-instance constraint; plan for scale-out.** *(P1)* Add a "do not run more than one instance until X" note to the deploy runbook. Before any horizontal scale: ShedLock on both sweeps, and move rate-limit state to a shared store (Redis).
-
-**D4. Observability.** *(P1)* Structured JSON logging with correlation ids; Micrometer/Prometheus metrics; alerts on incomplete `event_publication` rows (the outbox backlog), failed refunds, and webhook 5xx.
-> **Shipped by #100:** Boot 4 native structured JSON logging (env-gated `logging.structured.format.console=ecs`) + a per-request `CorrelationIdFilter` (MDC + `X-Correlation-Id`, log-injection-safe); an **authenticated** `/actuator/prometheus` that preserves the #75 lockdown (only `health` stays public); the three signals as a `riviera.outbox.pending` gauge, a `riviera.refunds.failed` counter, and the standard `http.server.requests` webhook-5xx slice; and an in-app `@Scheduled` money-path self-check that logs a structured **ERROR** alert (the single-instance route — Grafana Cloud scrape documented as the upgrade). No migration. Runbook: `docs/runbooks/observability.md`.
-
-**D5. GDPR / legal + backups.** *(P1)* Privacy policy + terms at checkout; retention schedule; right-to-erasure workflow (with the statutory-retention exception for tax/payment records); DPAs with Stripe and the host. Confirm automated Postgres backups + PITR on the deploy plan and run one restore drill. (Code-side PII hygiene is already good.)
-> **Partially shipped (#101 stays open):** right-to-erasure (Slice 1, PR #316 — ADR-0010
-> scrub-in-place tombstone keeping the statutory-retention financial records, V30, self-service
-> + admin endpoints, `docs/runbooks/data-erasure.md`) and the automated retention sweep
-> (Slice 2, PR #318 — three-gate no-live-basis check, ships **disabled** pending counsel's
-> retention window) and the checkout privacy/terms links (Slice 3, shipped as clearly-marked
-> **draft** documents via PR #464 — swapping in the counsel texts is a copy-only edit).
-> Remaining: the human-gated legal texts + DPAs (re-pointed 2026-07-24 at the Albanian
-> sh.p.k. + Paysera + Hetzner direction, ADR-0009), and backups/PITR — now **self-managed on
-> the Hetzner hosting move** (ADR-0004's deferred EU-sovereign cutover, its own epic), no
-> longer a "confirm the managed plan" item.
-
-**D6. Disputes + reconciliation.** *(P1/P2)* Handle `charge.dispute.created`; daily reconciliation sweep against Stripe events with a recovery script.
-> **Re-pointed onto Paysera (2026-07-24) — blocked by #284 (ADR-0009):** the migration removes
-> the Stripe adapter/webhook/SDK outright, so building this against Stripe is throwaway.
-> Implement as #284's reconciliation/dispute slice against Paysera's event catalogue +
-> transaction API; the invariant-#8 net is gateway-neutral, only the adapter changes (#102).
-
----
-
-## Part 3 — Sequencing
-
-**Milestone 1 — Launch-safe for multi-operator.** A1 (operator module + per-venue ownership + denial tests), A2 (secrets/TLS), A3 (actuator). D1 only if Request-to-Book must be live. This is the minimum to put multiple operators on real money safely.
-
-**Milestone 2 — Architecture clean-up, enforced.** B1 (split `VenueCatalog`) → B2 (separate vocabulary/events) → C1 (published-surface placement rule) → C2 (keep the role split honest). Land each structural move green under existing rules before adding the matching rule that locks it in. The new `operator` module from M1 gets the conventions applied as the reference example.
-
-**Milestone 3 — Production hardening.** D2 (validation/error contract), D3 (scale-out readiness), D4 (observability), D5 (GDPR/backups), D6 (disputes/reconciliation). Parallelizable; none blocks a single-instance soft launch.
-
-**Standing triggers (not scheduled):** B3 (split `booking` — the re-set clauses in Part 2 B3: ~4,000 *code* LOC, a third scheduler, a non-lifecycle concern, or the refund seam deepening), B4 (read-model module if dated reads grow), and scale-out work (the moment a second instance is on the table).
-
-> **B3 trigger status:** the original ~3,500-raw-LOC clause fired 2026-07-31 (5,735 raw) and was
-> resolved by #463 as **re-set, not split** — raw LOC mostly measured the house javadoc style,
-> the growth was lifecycle-cohesive, and the scheduler alarm never fired. The re-set clauses and
-> full rationale are in Part 2 B3; the refund-execution seam is the designated first cut if a
-> re-set clause fires.
-
----
-
-## Caveats
-- Grounded in direct inspection of the uploaded `main` archive; class names, SQL, config, and the absence of `jakarta.validation` are quoted from the actual source. I read the money-path, concurrency, security, config, and the venue/payout/booking controllers and value types in full, and spot-checked the rest; a file I didn't open could shift a P1 detail but not the priority order.
-- The Request-to-Book P0/P1 call is a product decision, not a safety one — everything else here is ordered by launch safety for the confirmed multi-operator scenario.
-- Stripe/PCI specifics (SAQ A via Elements) and GDPR specifics should be confirmed with the Stripe Dashboard PCI wizard and counsel respectively, given EU tourist PII.
+> **What this is.** The sequenced improvement plan grounded in an inspection of `main` on
+> 2026-07-01, folding together go-live readiness, the Modulith/DDD/hexagonal refinements, and the
+> `operator` module the multi-operator launch forced. Most of it has shipped; what remains here is
+> the status of each workstream and the **standing triggers** that still govern future work.
+> `CLAUDE.md` owns the current module list and invariants; `RESPONSIBILITIES.md` the per-module
+> contracts.
+
+## Baseline (2026-07-01) and where each gap went
+
+The inspection found the architecture disciplined and the hard parts done correctly — an acyclic
+Modulith with deny-by-default `allowedDependencies`, the atomic `INSERT … ON CONFLICT` claim
+(invariant #2), webhook-as-truth payments with idempotency keys (invariant #8), a Flyway-owned
+Event Publication Registry, fitness-tested boundaries — and seven gaps:
+
+| Gap found | Outcome |
+|---|---|
+| Authorization was a single shared `OPERATOR` account with no per-venue ownership (OWASP API #1, BOLA) | **Shipped**: the `operator` module, `assertOwns` → `403` in every venue-scoped application service, the cross-venue denial matrix (`CrossVenueDenialIT`), per-operator credentials, self-registration with admin approval (invariant #13) |
+| `VenueCatalog` was a god-port serving four consumers | **Shipped** (#95): split by consumer role — `VenueCatalog`, `SetBookingFacts`, `VenueRates`, … — locked by `VenueApiRoleSplitTests` |
+| Published `api` packages mixed ports with vocabulary and events | **Shipped** (#95, ADR-0007 Amendment 1): `api/` ports, `vocabulary/`, `events/`, `spi/`; locked by `PublishedSurfacePlacementArchitectureTests` |
+| Request-to-Book not implemented | **Shipped** (#98): soft-hold on the shared claim, accept/decline, the deadline sweep, payment-request-on-accept |
+| Validation and error handling ad-hoc, `{"error": CODE}` bodies | **Shipped** (#97): `ApiProblem` + one `ApiErrorHandler` advice (RFC-7807 + `code` extension, locked by `ErrorContractArchitectureTests`); validation stays centralized-explicit (`riviera-java-conventions` §6b) |
+| No actuator / production hardening | **Shipped** (#75, #100): actuator lockdown (only `health` public), authenticated `/actuator/prometheus`, structured JSON logging + correlation ids, the money-path alert self-check (`docs/runbooks/observability.md`) |
+| Single-instance assumptions load-bearing and undocumented | **Documented** (D3): [production-hardening.md → *Single instance only*](../deploy/production-hardening.md); scale-out preconditions below |
+
+## Workstreams
+
+**A — Launch blockers (multi-operator).** Shipped in full: A1 (`operator` module + ownership +
+denial tests), A2 (per-operator credentials, secrets as deploy-environment variables), A3
+(actuator, graceful shutdown).
+
+**B — Architecture refinement.** B1 (`VenueCatalog` role split) and B2 (published-surface split)
+shipped. B3 and B4 are standing triggers (below).
+
+**C — Enforcement.** All five landed as fitness tests: C1 `PublishedSurfacePlacementArchitectureTests`,
+C2 `VenueApiRoleSplitTests`, C3 the cross-venue denial matrix, C4 `ResponsibilitiesArchitectureTests`
+(sole-writer, Stripe-reach, id-based events), C5 `PackageShapeArchitectureTests`. The split between
+what these encode and what stays review-only is `RESPONSIBILITIES.md` § *Machine-checked vs
+review-checked*. A DDD-stereotype library (annotate aggregates/events and verify them) was
+considered and **deliberately not adopted** — the hand-written ArchUnit + `ModularityTests`
+baseline covers what this project needs. Don't reintroduce one.
+
+**D — Product scope and post-launch hardening.**
+- D1 Request-to-Book — shipped (#98).
+- D2 Validation + error contract — shipped (#97).
+- D3 Single-instance constraint — documented; scale-out is a standing trigger (below).
+- D4 Observability — shipped (#100).
+- D5 GDPR / legal + backups — **partially shipped, #101 stays open**: right-to-erasure (ADR-0010),
+  the retention sweep (ships **disabled** pending counsel's retention window), checkout
+  privacy/terms links as clearly-marked **draft** documents. Remaining: the human-gated legal
+  texts + DPAs (Albanian sh.p.k. + Paysera + Hetzner direction, ADR-0009), and backups/PITR, now
+  **self-managed on the Hetzner move** (ADR-0004).
+- D6 Disputes + reconciliation — **blocked by #284 (ADR-0009)**: the Paysera migration removes the
+  Stripe adapter outright, so this is built against Paysera's event catalogue + transaction API;
+  the invariant-#8 net is gateway-neutral, only the adapter changes.
+
+## Standing triggers (not scheduled)
+
+**B3 — split `booking` when any of:**
+1. Comment/blank-stripped main-source code passes **~4,000 LOC** (measure:
+   `find platform/src/main/java/ai/riviera/platform/booking -name '*.java' -exec cat {} + | grep -vE '^\s*$|^\s*//|^\s*/?\*' | wc -l`).
+   Raw LOC is deliberately not a clause: half the module is the house-style rationale Javadoc, so
+   raw LOC tracks documentation discipline, not conceptual load (the original ~3,500-raw-LOC clause
+   fired at 5,735 raw / 2,750 code and was re-set, not acted on — #463).
+2. A **third distinct scheduler** appears.
+3. A **non-lifecycle concern lands** — anything that is not a state, a read, or a post-commit
+   errand of the `Booking` aggregate.
+4. **The refund-execution seam deepens** — it acquires its own persistent state (a refund table) or
+   a second consumer of its surface.
+
+The designated first cut when it fires: the refund-execution seam (the `BookingCancelled` listener
++ bounded executor + shed metric + admin re-drive), whose boundary is already the crispest and
+which reuses `payout`'s listener-only shape on `booking::events`. Known first slices: the registry
+listener id is the FQCN (`RegistryRefundOutbox.REFUND_LISTENER_ID`, so a move needs a roll-forward
+registry migration — the `V18` precedent) plus re-keying `RefundListenerExecutorArchitectureTest`,
+`RefundOutboxScopeIT` and `allowedDependencies`. The staff/operational read side is **not** part
+of that cut; it belongs to B4. Chart the extraction through the normal SDLC (`to-spec` →
+`to-issues`).
+
+**B4 — a read-model module** if the dated read side grows more overlays (pricing seasons, weather
+holds, promotions): a query module depending on `venue::api` and `availability::api` that owns the
+composed browse/map views, collapsing the `venue::spi` inversion. Over-engineering until then.
+
+**Scale-out** — the moment a second instance is on the table: ShedLock on every sweep and
+rate-limit state in a shared store (Redis) first; the concrete failure modes are in
+`docs/deploy/production-hardening.md`.

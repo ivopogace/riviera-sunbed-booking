@@ -27,8 +27,9 @@ stage, and again when picking up a plan to execute in a fresh session.
   remaining items each cite a follow-up issue.
 - **A lifetime that ends at merge.** The plan doc is deleted at the next close-out after its
   PR merges (`riviera-docs-freshness` § *Plan-doc retirement*), so nothing durable cites its
-  path — cite the issue or PR — and rationale a later slice needs goes on the issue, the
-  ADR, or the Javadoc, not only in the plan.
+  path: docs cite the issue or PR, doc comments point at `RESPONSIBILITIES.md` or an ADR
+  (`riviera-java-conventions` §6d), and rationale a later slice needs goes there first, not
+  only in the plan.
 
 Intent comes from the spec in `docs/superpowers/specs/` or a GitHub issue; reference `#NN`
 in commits and the plan doc.

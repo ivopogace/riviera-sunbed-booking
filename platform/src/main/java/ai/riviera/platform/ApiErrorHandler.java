@@ -41,13 +41,13 @@ import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
  *       {@code toCommand()} conversion, bad enum / period tokens, the password policy →
  *       {@code 400 INVALID_REQUEST}. The detail is generic on purpose: an exception message may echo
  *       internals or user input, and validation style is centralized-explicit per the §6b decision
- *       (#97).</li>
+ *       ({@code riviera-java-conventions}).</li>
  *   <li>{@link DuplicateKeyException} — a unique constraint beat a pre-check in a race
  *       (e.g. the V2/V12 layout UNIQUE) → {@code 409 CONFLICT}, not 500: the constraint is the
  *       correctness guarantee (invariant #12). Logged at WARN so the race stays diagnosable.</li>
  * </ul>
  *
- * <p><strong>Deliberately unmapped</strong> (#118): a raw
+ * <p><strong>Deliberately unmapped</strong>: a raw
  * {@link IllegalArgumentException} and a non-duplicate
  * {@link org.springframework.dao.DataIntegrityViolationException} signal server-side defects — a
  * domain invariant tripping on stored data, a schema/FK/NOT-NULL bug — and propagate to the
