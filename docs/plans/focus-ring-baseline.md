@@ -143,7 +143,7 @@ must be shown preserved.
 | R-1 | The rule lands un-layered (next to `html, body`) and beats every per-site `outline-white`, turning fixed-dark rings teal | med | high | AC-1 asserts the rule is INSIDE `@layer base`; AC-6 measures the override winning in a real render | this slice | open |
 | R-2 | A button inside an `overflow-hidden` ancestor gets a clipped, invisible ring (the gallery grid case, and any future one) | med | med | gallery tiles get the inset ring at the primitive (AC-4/AC-7); other clipped hosts are enumerated in the generalization audit and judged | this slice | open |
 | R-3 | A future slice writes `outline-none`/`outline-hidden` on a control to silence the ring for visual reasons, removing the only indicator | med | high | AC-3's sweep fails the build naming the path; the tailwind skill's Red flags list gains the item | this slice | open |
-| R-4 | `:focus-visible` after programmatic `.focus()` does not match in the e2e, making AC-5 flaky | low | med | precedent `discover-photos.e2e.ts` › map-date already asserts `outline-width: 3px` after `.focus()` in this suite; assert `outline-style: none` before focus so the assertion is about the state, not a constant | this slice | open |
+| R-4 | `:focus-visible` after programmatic `.focus()` does not match in the e2e, making AC-5 flaky | **hit** | med | It did not match on the console: signing in clicks, and Chromium treats script focus after a pointer interaction as pointer-driven. The test steps off the button and back with `Tab` / `Shift+Tab`, which always matches; the two tourist tests keep the plain-navigation `.focus()` posture. Resting state pinned first in all three | this slice | closed — Phase 1 |
 | R-5 | The base rule's 2px offset ring on a button sitting flush against a card edge overlaps neighbours | low | low | visual only; the 60 explicit sites already use offset-2 on the same hosts | this slice | accepted |
 | R-6 | Two Playwright workers + a new spec file push the mocked suite over CI's budget | low | low | one short file, three tests; the suite is ~5 min at 2 workers | this slice | accepted |
 
@@ -161,8 +161,8 @@ must be shown preserved.
   as controls.
 - **Gallery tiles (Q4):** inset white ring at the primitive — maintainer, intake round.
 - **Assumption:** Chromium's `:focus-visible` matches after script `.focus()` on a button when
-  no pointer interaction preceded it — the mocked suite's `discover-photos.e2e.ts` relies on the
-  same behaviour today. Verified at Phase 1's green run.
+  no pointer interaction preceded it — verified at Phase 1's green run for the two tourist tests;
+  refuted for the console test, where the sign-in click precedes it (R-4, keyboard step added).
 
 ## Availability & concurrency (invariant #2)
 
@@ -200,15 +200,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)` — draft PR #895 open
+**Stage pointer:** `implement (phase 2)` — draft PR #895 open
 
-**Next action:** Phase 1 — gallery spec red, `e2e/focus-ring-baseline.e2e.ts` red, then the tile utilities.
+**Next action:** Phase 2 — add the AC-8 doc sweep to the guard spec (red), then settle the four docs.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — guard spec + `@layer base` rule | ✅ | recorded at the Phase 1 commit |
-| 1 — gallery inset ring + mocked e2e | ⏳ | |
-| 2 — docs: design note, ledger row, skill rule, CLAUDE.md bullet | | |
+| 0 — guard spec + `@layer base` rule | ✅ | `df74334` |
+| 1 — gallery inset ring + mocked e2e | ✅ | recorded at the Phase 2 commit |
+| 2 — docs: design note, ledger row, skill rule, CLAUDE.md bullet | ⏳ | |
 | 3 — merge main, ready-for-review, review + Sonar gates | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
