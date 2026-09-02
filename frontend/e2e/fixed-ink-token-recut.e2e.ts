@@ -194,15 +194,13 @@ for (const theme of THEMES) {
     await expect(page.getByTestId('calendar-month')).toHaveCSS('color', INK);
     await expect(dialog.locator('th').first()).toHaveCSS('color', INK_FAINT);
     await expect(dialog.locator('p.text-riv-calendar-ink-soft')).toHaveCSS('color', INK_SOFT);
-    // Explicitly a BOOKABLE day: the first cell of this month is in the past and correctly
-    // wears the disabled ink, which the dedicated test below asserts.
+    // A BOOKABLE day: this month's first cell is past, and wears the disabled ink instead.
     await expect(dialog.locator('button[data-date]:not([aria-disabled="true"])').first()).toHaveCSS(
       'color',
       INK,
     );
 
-    // The only site wearing the hover wash, so it is proven hovered. Deliberately `next` and not
-    // `prev`: at the earliest month `prev` is aria-disabled, where `hover:bg-transparent` wins.
+    // `next`, not `prev`: at the earliest month `prev` is aria-disabled, where the wash is off.
     const next = page.getByTestId('calendar-next');
     await next.hover();
     await expect(next).toHaveCSS('background-color', 'rgba(12, 42, 51, 0.07)');

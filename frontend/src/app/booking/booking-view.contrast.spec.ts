@@ -76,8 +76,10 @@ const BANNERS: readonly [name: string, fill: string, eyebrow: string][] = [
   ['withdrawn', '#f0eef6', '#5c5470'],
   ['cancelled', '#f0f2f3', '#4f5f67'],
 ];
-// Since #849 both are `--riv-banner-*-ink` tokens, so they are read from the one mirror rather
-// than restated here — a hand-copied value goes green against a retune it never saw.
+/**
+ * Both are `--riv-banner-*-ink` tokens since #849, so they are read from the one mirror rather
+ * than restated here — a hand-copied value goes green against a retune it never saw.
+ */
 const BANNER_BODY = rgbToHex(BANNER_BODY_INK);
 const BANNER_STRONG = rgbToHex(BANNER_STRONG_INK);
 
