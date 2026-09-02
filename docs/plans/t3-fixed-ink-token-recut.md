@@ -229,10 +229,11 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR #886 (draft) — awaiting first CI run; review + Sonar gates next`
+**Stage pointer:** `PR #886 — review gate RUN (5 findings, 4 fixed, 1 not upheld); awaiting CI on 6d1691e, then the Sonar gate`
 
-**Next action:** Check this push's CI run, then run the Review gate per
-`riviera-sdlc` `references/pr-gates.md` §1, then the Sonar gate's issue list.
+**Next action:** When CI on `6d1691e` is green, run the Sonar gate — pull the new-issue and
+duplication list from the API (project `ivopogace_riviera-sunbed-booking`, `pullRequest=886`),
+confirm an analysis actually exists before believing a zero, and clear every entry.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -374,6 +375,6 @@ The only seam that can see R-6 and a wrong cascade. Both themes; the operator fa
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] **The review gate ran in full** — `code-review` plugin (rung 1) + `riviera-review-overlay`; five findings recorded below, four fixed and one examined and not upheld. Result comment: PR #886 issuecomment-5504828636.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
