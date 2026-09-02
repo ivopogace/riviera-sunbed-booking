@@ -295,16 +295,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phases 0–1 committed; next: phase 2)`
+**Stage pointer:** `PR — draft #896 open; phases 0–2 committed; next: merge origin/main, mark ready for review`
 
-**Next action:** Phase 2 step 1 — the ledger verdict, the class-S rows, and the overlay-families
-section in `docs/design/colour-literal-token-audit.md`.
+**Next action:** Check the draft's CI run, merge latest `origin/main` in, mark #896 ready for
+review, then run the Review gate (`references/pr-gates.md` §1) and the Sonar gate (§2).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the tokens, the migrated markup, the unit guards | ✅ | `432fb15` |
-| 1 — the real-render proof under both themes | ✅ | the commit carrying this row |
-| 2 — the ledger verdict and the overlay-families fact | | |
+| 1 — the real-render proof under both themes | ✅ | `c58b782` |
+| 2 — the ledger verdict and the overlay-families fact | ✅ | the commit carrying this row |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -416,14 +416,15 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `docs/design/colour-literal-token-audit.md`
 
-- [ ] **Step 1:** Rewrite the "adjacent, deliberately not taken" calendar note under class T-3
-      to `done — #888, PR #NN` with the verdict; mark the two class-S calendar rows and the
-      open `outline-[#0a3f4e]` row `done` the same way; append `#888` to the header's index.
-- [ ] **Step 2:** Add a short section, `## The overlay surfaces — three families, all themed`,
-      naming `--riv-pop-*` (menus + the calendar), `--riv-dialog-glass` (booking dialog,
-      find-a-booking), and the retired pinned family, so the question is not rediscovered.
-- [ ] **Step 3: Commit** — `git commit -m "Record the calendar popover verdict and the three overlay families (#888)"`
-- [ ] **Step 4: Update plan-doc execution status.**
+- [x] **Step 1:** Rewrote the "adjacent, deliberately not taken" calendar note under class T-3
+      to `done — #888, PR #896` with the verdict; marked the two class-S calendar rows and the
+      open `outline-[#0a3f4e]` row `done` the same way; appended `#888` to the header's index;
+      the lint-rule paragraph now records class S as begun rather than unscheduled.
+- [x] **Step 2:** Added `## The overlay surfaces — three families, and the one that was pinned`
+      — the five overlays by mechanism, the two families, the calendar's move, and the two
+      out-of-family overlays with their recorded reasons.
+- [x] **Step 3: Commit** — `git commit -m "Record the calendar popover verdict and the three overlay families (#888)"`
+- [x] **Step 4: Update plan-doc execution status.**
 
 ---
 
