@@ -4,34 +4,35 @@ import { settle } from './support/booking-dialog';
 import { mockWholeConsole, signInAsOperator } from './support/operator-console.mocks';
 
 /**
- * Real-render proof for the four fixed-ink families. Two failures live here and nowhere else: a
- * token declared without its `@theme inline` row generates no utility at all — the class stays in
- * the markup and the paint silently does not change — and the cascade under a real document theme
- * is not something the unit guard, which reads `tailwind.css` as text, can see.
+ * Real-render proof for the fixed-ink families, and for the availability calendar that left them.
+ * Two failures live here and nowhere else: a token declared without its `@theme inline` row
+ * generates no utility at all — the class stays in the markup and the paint silently does not
+ * change — and the cascade under a real document theme is not something the unit guard, which
+ * reads `tailwind.css` as text, can see.
  *
- * <p>The calendar and the banner are asserted under BOTH themes against the same expected value:
- * that the value does not move is the test. The two console families sit under a porcelain-pinned
- * host, so their dark branch is proven at the document root instead.
+ * <p>The banner is asserted under BOTH themes against the same expected value: that the value does
+ * not move is the test. The two console families sit under a porcelain-pinned host, so their dark
+ * branch is proven at the document root instead.
+ *
+ * <p>The calendar is asserted under both themes against each theme's OWN value — the inverse claim
+ * on the same box. It was the fourth fixed family here until #888 made it a `--riv-pop-*` consumer
+ * with a themed, still-opaque day-cell palette; it stays in this file because this is the file that
+ * already renders it under both document themes.
  *
  * <p>The console button's hover fill (#887) joined the border family here rather than in a file of
  * its own, because the family's render proof is where the family lives. It is also the sharpest
  * case for this file's whole reason to exist: a hover fill has no bare class selector at all, so
  * the hovered box is the ONLY place its `@theme inline` row can be observed.
  *
- * <p>Rationale: `docs/design/colour-literal-token-audit.md` (class T-3, and class R for #887).
+ * <p>Rationale: `docs/design/colour-literal-token-audit.md` (class T-3, class R for #887, and the
+ * calendar verdict for #888).
  */
 
 const VENUE_ID = 4;
 const CODE = 'RIV7K2QX';
 
-/** The authored value of every token the re-cut registered, as `getPropertyValue` returns it. */
+/** The authored value of every theme-invariant token the re-cut registered, as `getPropertyValue` returns it. */
 const REGISTRY = {
-  '--riv-calendar-glass': 'rgba(255, 255, 255, 0.97)',
-  '--riv-calendar-ink': '#0a2a33',
-  '--riv-calendar-ink-soft': 'rgba(12, 42, 51, 0.78)',
-  '--riv-calendar-ink-faint': 'rgba(12, 42, 51, 0.72)',
-  '--riv-calendar-ink-disabled': 'rgba(12, 42, 51, 0.4)',
-  '--riv-calendar-hover': 'rgba(12, 42, 51, 0.07)',
   '--riv-banner-body-ink': '#334a52',
   '--riv-banner-strong-ink': '#0a2a33',
   '--riv-console-card-border': 'rgba(12, 42, 51, 0.1)',
@@ -40,39 +41,98 @@ const REGISTRY = {
 } as const;
 
 /**
+ * The calendar's themed tokens per document theme, as authored: asserted at the document root, and
+ * — through `rgb()` below — on the day-cell boxes, so a value and its render are one number.
+ */
+const THEMED_TOKENS = {
+  porcelain: {
+    '--riv-calendar-free-fill': '#dff0e4',
+    '--riv-calendar-low-fill': '#fdeecc',
+    '--riv-calendar-full-fill': '#fae9e9',
+    '--riv-calendar-unknown-fill': '#ffffff',
+    '--riv-calendar-accent': '#0a3f4e',
+    '--riv-calendar-selected-ring': '#085a6e',
+    '--riv-calendar-bar-fill': '#0a3f4e',
+    '--riv-calendar-bar-track': '#6f8a91',
+    '--riv-pop-ink-disabled': 'rgba(12, 42, 51, 0.4)',
+  },
+  dark: {
+    '--riv-calendar-free-fill': '#1f3f30',
+    '--riv-calendar-low-fill': '#4a3a16',
+    '--riv-calendar-full-fill': '#4d2429',
+    '--riv-calendar-unknown-fill': '#1c2740',
+    '--riv-calendar-accent': '#9adde8',
+    '--riv-calendar-selected-ring': '#7cd7e8',
+    '--riv-calendar-bar-fill': '#e6f4f8',
+    '--riv-calendar-bar-track': '#758a9a',
+    '--riv-pop-ink-disabled': 'rgba(242, 247, 250, 0.32)',
+  },
+} as const;
+
+/** The popover chrome the calendar consumes, per theme, as Chromium reports it on the box. */
+const CHROME = {
+  porcelain: {
+    surface: 'rgba(255, 255, 255, 0.92)',
+    border: 'rgba(255, 255, 255, 0.7)',
+    shadow: 'rgba(6, 30, 40, 0.4)',
+    ink: 'rgb(10, 42, 51)',
+    inkSoft: 'rgba(12, 42, 51, 0.7)',
+    inkDisabled: 'rgba(12, 42, 51, 0.4)',
+    hover: 'rgba(12, 42, 51, 0.06)',
+  },
+  dark: {
+    surface: 'rgba(16, 26, 46, 0.96)',
+    border: 'rgba(255, 255, 255, 0.16)',
+    shadow: 'rgba(0, 0, 0, 0.55)',
+    ink: 'rgb(242, 247, 250)',
+    inkSoft: 'rgba(242, 247, 250, 0.75)',
+    inkDisabled: 'rgba(242, 247, 250, 0.32)',
+    hover: 'rgba(255, 255, 255, 0.08)',
+  },
+} as const;
+
+/** An authored `#rrggbb`, as Chromium reports it. */
+function rgb(hex: string): string {
+  const value = Number.parseInt(hex.slice(1), 16);
+  return `rgb(${value >> 16}, ${(value >> 8) & 0xff}, ${value & 0xff})`;
+}
+
+/**
  * The utility each token is consumed through, which exists only if its `@theme inline` row does.
  *
- * <p>Four of the eleven are absent, all for the same reason: they are consumed through a VARIANT, so
- * the rule that actually paints them is a compound selector this sweep cannot match. (A bare `.class`
+ * <p>Some tokens are absent, all for the same reason: they are consumed through a VARIANT, so the
+ * rule that actually paints them is a compound selector this sweep cannot match. (A bare `.class`
  * may exist beside it — Tailwind's extractor reads the undecorated candidate out of the same class
  * string — but it wears nothing and paints no state, so matching it would prove nothing.) —
- * `--riv-calendar-hover` and `--riv-console-btn-hover` as `.hover\:bg-…:hover`,
- * `--riv-calendar-ink-disabled` as `.aria-disabled\:text-…[aria-disabled="true"]`, and
- * `--riv-banner-strong-ink` as `.\[\&_strong\]\:text-… strong`. Each is instead proven on the
- * rendered box further down — the hovered month-step button, the hovered sign-out button, the past
- * day cell, and the banner's `<strong>` — which is the stronger proof anyway, since it exercises
- * the variant as well as the `@theme inline` row.
+ * `--riv-console-btn-hover` as `.hover\:bg-…:hover`, `--riv-pop-ink-disabled` as
+ * `.aria-disabled\:text-…[aria-disabled="true"]`, `--riv-calendar-accent`'s ring half as
+ * `.focus-visible\:outline-…:focus-visible`, `--riv-calendar-selected-ring` through a `var()`
+ * inside an arbitrary shadow, and `--riv-banner-strong-ink` as `.\[\&_strong\]\:text-… strong`.
+ * Each is instead proven on the rendered box further down — the hovered sign-out button, the past
+ * day cell, the chosen day's ring, and the banner's `<strong>` — which is the stronger proof
+ * anyway, since it exercises the variant as well as the `@theme inline` row.
  */
 const UTILITIES = [
-  'bg-riv-calendar-glass',
-  'text-riv-calendar-ink',
-  'text-riv-calendar-ink-soft',
-  'text-riv-calendar-ink-faint',
   'text-riv-banner-body-ink',
   'border-riv-console-card-border',
   'border-riv-console-btn-border',
+  'bg-riv-calendar-free-fill',
+  'bg-riv-calendar-bar-fill',
+  'bg-riv-calendar-bar-track',
+  'text-riv-calendar-accent',
 ];
 
 /** The computed forms of the authored values above, as Chromium reports them. */
 const INK = 'rgb(10, 42, 51)';
-const INK_SOFT = 'rgba(12, 42, 51, 0.78)';
-const INK_FAINT = 'rgba(12, 42, 51, 0.72)';
-const INK_DISABLED = 'rgba(12, 42, 51, 0.4)';
-const GLASS = 'rgba(255, 255, 255, 0.97)';
 const BANNER_BODY = 'rgb(51, 74, 82)';
 const CONSOLE_BTN_HOVER = 'rgb(238, 241, 242)';
 
 const THEMES = ['porcelain', 'dark'] as const;
+
+/** Matches a computed `box-shadow` whose colour is `rgb`, whatever Chromium does with the rest. */
+function shadowIn(rgb: string): RegExp {
+  return new RegExp(rgb.replaceAll(/[()]/g, String.raw`\$&`));
+}
 
 async function forceTheme(page: Page, theme: (typeof THEMES)[number]): Promise<void> {
   await page.addInitScript((value) => localStorage.setItem('riviera-theme', value), theme);
@@ -174,6 +234,16 @@ for (const theme of THEMES) {
       );
     }
 
+    const themed = THEMED_TOKENS[theme];
+    const resolved = await page.evaluate((names) => {
+      const style = getComputedStyle(document.documentElement);
+      return names.map((name) => [name, style.getPropertyValue(name).trim()] as const);
+    }, Object.keys(themed));
+
+    for (const [name, value] of resolved) {
+      expect(value, `${name} resolves under ${theme}`).toBe(themed[name as keyof typeof themed]);
+    }
+
     const generated = await page.evaluate((classes) => {
       const selectors = new Set<string>();
       const walk = (rules: CSSRuleList): void => {
@@ -190,26 +260,58 @@ for (const theme of THEMES) {
     expect(generated.sort()).toEqual([...UTILITIES].sort());
   });
 
-  test(`the calendar popover paints the same fixed ramp under ${theme} (#849)`, async ({
-    page,
-  }) => {
+  test(`the calendar popover follows the theme under ${theme} (#888)`, async ({ page }) => {
     await forceTheme(page, theme);
     const dialog = await openCalendar(page);
+    const chrome = CHROME[theme];
+    const tokens = THEMED_TOKENS[theme];
 
-    await expect(dialog).toHaveCSS('background-color', GLASS);
-    await expect(page.getByTestId('calendar-month')).toHaveCSS('color', INK);
-    await expect(dialog.locator('th').first()).toHaveCSS('color', INK_FAINT);
-    await expect(dialog.locator('p.text-riv-calendar-ink-soft')).toHaveCSS('color', INK_SOFT);
+    await expect(dialog).toHaveCSS('background-color', chrome.surface);
+    await expect(dialog).toHaveCSS('border-color', chrome.border);
+    await expect(dialog).toHaveCSS('box-shadow', shadowIn(chrome.shadow));
+    await expect(page.getByTestId('calendar-month')).toHaveCSS('color', chrome.ink);
+    await expect(dialog.locator('th').first()).toHaveCSS('color', chrome.inkSoft);
+    await expect(dialog.locator('p.text-riv-pop-ink-soft')).toHaveCSS('color', chrome.inkSoft);
+
     // Skips this month's past cells, which wear the disabled ink the test below asserts.
-    await expect(dialog.locator('button[data-date]:not([aria-disabled="true"])').first()).toHaveCSS(
-      'color',
-      INK,
+    const free = dialog
+      .locator('button[data-date][data-state="free"]:not([aria-disabled="true"])')
+      .first();
+    await expect(free).toHaveCSS('color', chrome.ink);
+    await expect(free).toHaveCSS('background-color', rgb(tokens['--riv-calendar-free-fill']));
+    const bar = free.getByTestId('day-bar');
+    await expect(bar).toHaveCSS('background-color', rgb(tokens['--riv-calendar-bar-fill']));
+    await expect(bar.locator('..')).toHaveCSS(
+      'background-color',
+      rgb(tokens['--riv-calendar-bar-track']),
+    );
+
+    const chosen = dialog.locator('[role="gridcell"][aria-selected="true"] button');
+    await expect(chosen).toHaveCSS(
+      'box-shadow',
+      shadowIn(rgb(tokens['--riv-calendar-selected-ring'])),
     );
 
     // `next`, not `prev`: at the earliest month `prev` is aria-disabled, where the wash is off.
     const next = page.getByTestId('calendar-next');
+    await expect(next).toHaveCSS('color', rgb(tokens['--riv-calendar-accent']));
     await next.hover();
-    await expect(next).toHaveCSS('background-color', 'rgba(12, 42, 51, 0.07)');
+    await expect(next).toHaveCSS('background-color', chrome.hover);
+  });
+
+  /**
+   * The calendar's disabled day ink: it needs a month whose earlier days are already past, which
+   * the fixed clock above supplies, and the value is the theme's own.
+   */
+  test(`the calendar disables past days in the theme's weakened ink under ${theme} (#888)`, async ({
+    page,
+  }) => {
+    await forceTheme(page, theme);
+    const dialog = await openCalendar(page);
+    const disabled = dialog.locator('button[data-date][aria-disabled="true"]').first();
+
+    await expect(disabled).toBeVisible();
+    await expect(disabled).toHaveCSS('color', CHROME[theme].inkDisabled);
   });
 
   test(`the pending banner paints the same fixed pair under ${theme} (#849)`, async ({ page }) => {
@@ -226,21 +328,6 @@ for (const theme of THEMES) {
     await expect(banner.locator('strong').first()).toHaveCSS('color', INK);
   });
 }
-
-/**
- * The calendar's disabled day ink, asserted once rather than per theme: it needs a month whose
- * earlier days are already past, which the fixed clock above supplies, and the value is
- * theme-invariant for the same reason as everything else in the family.
- */
-test('the calendar disables past days in the fixed ramp, not a themed one (#849)', async ({
-  page,
-}) => {
-  const dialog = await openCalendar(page);
-  const disabled = dialog.locator('button[data-date][aria-disabled="true"]').first();
-
-  await expect(disabled).toBeVisible();
-  await expect(disabled).toHaveCSS('color', INK_DISABLED);
-});
 
 /**
  * The pointer-only reach of this state, made mechanical rather than asserted. `non-text-contrast.md`

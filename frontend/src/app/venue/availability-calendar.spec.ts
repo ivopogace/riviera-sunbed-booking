@@ -4,7 +4,7 @@ import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
-import { CALENDAR_BAR } from '../../testing/calendar-tints';
+import { CALENDAR_TOKENS, fillUtility } from '../../testing/calendar-tints';
 import { uniformDays } from '../../testing/calendar-days';
 import { AvailabilityCalendar } from './availability-calendar';
 
@@ -118,10 +118,12 @@ describe('AvailabilityCalendar', () => {
 
       const june = dom().querySelectorAll('button[data-date^="2026-06-"]');
       expect(june).toHaveLength(30);
-      expect(dayButton('2026-06-21')!.className).toContain('bg-[#dff0e4]');
+      expect(dayButton('2026-06-21')!.className).toContain('bg-riv-calendar-free-fill');
       // The chosen day keeps its tint and gains a ring: selection must not cost the signal.
-      expect(dayButton('2026-06-20')!.className).toContain('bg-[#dff0e4]');
-      expect(dayButton('2026-06-20')!.className).toContain('shadow-[inset_0_0_0_2px_#085a6e]');
+      expect(dayButton('2026-06-20')!.className).toContain('bg-riv-calendar-free-fill');
+      expect(dayButton('2026-06-20')!.className).toContain(
+        'shadow-[inset_0_0_0_2px_var(--riv-calendar-selected-ring)]',
+      );
       expect(
         dayButton('2026-06-21')!.querySelector<HTMLElement>('[data-testid="day-bar"]')!.style.width,
       ).toBe('50%');
@@ -153,8 +155,8 @@ describe('AvailabilityCalendar', () => {
       const fill = dayButton('2026-06-21')!.querySelector<HTMLElement>('[data-testid="day-bar"]')!;
 
       // Ties the rendered bar to the mirror, so the 1.4.11 proofs cannot outlive the template.
-      expect(fill.className).toContain(`bg-[${CALENDAR_BAR.fill}]`);
-      expect(fill.parentElement!.className).toContain(`bg-[${CALENDAR_BAR.track}]`);
+      expect(fill.className).toContain(fillUtility(CALENDAR_TOKENS.barFill));
+      expect(fill.parentElement!.className).toContain(fillUtility(CALENDAR_TOKENS.barTrack));
     });
 
     it('opens on the month of the selected day', async () => {
@@ -199,7 +201,7 @@ describe('AvailabilityCalendar', () => {
       expect(july.request.params.get('to')).toBe('2026-07-31');
       await flush(july, 0, 30);
       expect(monthLabel()).toContain('July 2026');
-      expect(dayButton('2026-07-10')!.className).toContain('bg-[#fae9e9]');
+      expect(dayButton('2026-07-10')!.className).toContain('bg-riv-calendar-full-fill');
     });
 
     it('will not step back past the month holding the earliest bookable day', async () => {
@@ -226,7 +228,7 @@ describe('AvailabilityCalendar', () => {
       await fixture.whenStable();
 
       expect(monthLabel()).toContain('August 2026');
-      expect(dayButton('2026-08-10')!.className).toContain('bg-[#fdeecc]');
+      expect(dayButton('2026-08-10')!.className).toContain('bg-riv-calendar-low-fill');
     });
   });
 

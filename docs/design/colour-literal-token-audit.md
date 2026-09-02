@@ -9,7 +9,7 @@ teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR
 outline-button skin's theme-invariant family, PR #859), **#854** (the nine solid button/badge
 fills under fixed white ink, PR #860), **#861** (merging that family's two brand teals onto one,
 PR #862), **#848** (the operator console's accent ink, PR #863), **#864** (the console's negative
-ink, PR #866), **#858** (the three fixed-fill state skins, PR #867), **#869** (`outcome-card`'s two tone glyphs onto the medallion skin, PR #871), **#870** (the beach-map zoom toggle's fixed-pair-over-a-themed-host, PR #873), **#868** (the amber notice banner's theme-invariant pair, PR #874), **#853** (the CTA hairline's own border token, PR #875), **#852** (all of class **O** — the `/opacity`-modifier positions — settled on rule B and closed, PR #878), **#879** (class **O**'s values: the multiple-of-five alpha ladder, one `--riv-walkin-hatch`, and the three amber families merged into `--riv-warn-{edge,fill,ink}`, PR #880), **#881** (the console confirm buttons' `#9a6410` onto a fourth `--riv-solid-fill-*` member, `-warn`, PR #883), **#882** (the three inline suns onto one `--riv-sun-grad`, and the card sun's compositing defect with them, PR #885), **#849** (class **T-3** re-cut: its population is class F and class R, and the class-T family is empty — PR #886), **#887** (that re-cut's own class-**R** residue: the console sign-out button's hover fill, the tree's last `hover:bg-[#hex]` literal, PR #889).
+ink, PR #866), **#858** (the three fixed-fill state skins, PR #867), **#869** (`outcome-card`'s two tone glyphs onto the medallion skin, PR #871), **#870** (the beach-map zoom toggle's fixed-pair-over-a-themed-host, PR #873), **#868** (the amber notice banner's theme-invariant pair, PR #874), **#853** (the CTA hairline's own border token, PR #875), **#852** (all of class **O** — the `/opacity`-modifier positions — settled on rule B and closed, PR #878), **#879** (class **O**'s values: the multiple-of-five alpha ladder, one `--riv-walkin-hatch`, and the three amber families merged into `--riv-warn-{edge,fill,ink}`, PR #880), **#881** (the console confirm buttons' `#9a6410` onto a fourth `--riv-solid-fill-*` member, `-warn`, PR #883), **#882** (the three inline suns onto one `--riv-sun-grad`, and the card sun's compositing defect with them, PR #885), **#849** (class **T-3** re-cut: its population is class F and class R, and the class-T family is empty — PR #886), **#887** (that re-cut's own class-**R** residue: the console sign-out button's hover fill, the tree's last `hover:bg-[#hex]` literal, PR #889), **#888** (the availability calendar's popover verdict — *adopt*: the pinned class-T-3 calendar ramp retires into `--riv-pop-*`, and the class-**S** day-cell palette becomes eight themed opaque tokens, PR #896).
 
 > **This file is not a design record.** `docs/design/README.md` governs the `.dc.html`
 > artboards — approved-look snapshots that are deliberately *never* rewritten to track the
@@ -138,7 +138,7 @@ These families must move **as a pair**, onto tokens declared **once** with no da
 | Amber **notice banner**: `bg-[#fcf0d9]` + `text-[#8a5410]` (`withheld-email-notice:29`, `privacy-policy.html`, `terms-of-service.html`) | 6 | **the same pair as the medallion's waiting state, on a different FORM** — a rectangular block with *accessible text*, so unlike the medallion it genuinely owes AA (5.54:1 today). Surfaced by #858's out-of-family sweep, which had to name these sites to prove it did not over-reach onto them. Wants its own theme-invariant pair; do **not** reuse `--riv-medallion-waiting-*`, whose whole population is decorative | **done — #868, PR #874** (`--riv-notice-banner-*`), then **merged into `--riv-warn-{edge,fill,ink}` — #879, PR #880**: the same amber advisory treatment as class O's two confirm-panel families, so all three collapsed. Still NOT `--riv-medallion-waiting-*`, which keeps `#fcf0d9`/`#8a5410` — that remains a different FORM, and merging on the value would be the class-R confusion this file exists to name |
 | `shared/outcome-card.ts`'s two tone glyphs | 2 | **the medallion FORM again — and the intake grill inverted the question.** Answer: converge. See the note below the table; n corrected 4 → 2 (the border and inset shadow counted here are class R's #853, not this family's) | **done — #869, PR #871** |
 | Beach-map **zoom toggle**: `bg-[rgba(14,122,137,0.12)]`/`bg-white/70` + `border-[#0e7a89]`/`border-[rgba(12,42,51,0.14)]` + `text-[#0a2a33]`/`text-[rgba(12,42,51,0.66)]` (`shared/beach-map-canvas.html:20,35`) | 2 | **not this table's usual shape — a fixed PAIR (ink and fill both pinned) over a host that themes, not a themed ink over a fixed fill.** Found by #869's own generalization sweep enumerating the mechanism rather than the medallion form (see the note below the table). The wash it sits on already carries a per-theme pair for its rail/chip siblings (`--riv-map-rail-*`, `--riv-map-chip-*`), so the fix follows that precedent rather than the theme-invariant one: **new per-theme token pairs**, `--riv-map-zoom-{selected,idle}-{fill,border,ink}`, declared once per theme like the wash itself. Measured (worst wash stop): selected ink 11.18→1.16:1 dark before, 14.53:1 light / 5.14:1 dark after; idle ink 4.88→3.77:1 dark before, 8.45:1 light / 6.69:1 dark after; both borders newly proven at 3:1 (WCAG 1.4.11), not carried across as an accepted miss | **done — #870, PR #873** |
-| **Availability-calendar ink ramp**: `#0a2a33` ×2, `rgba(12,42,51,·)` at `.78` ×2, `.72`, `.4`, `.35`, `.07` ×2, over its own `rgba(255,255,255,0.97)` `<dialog>` fill (`availability-calendar.html`) | 10 | **new theme-invariant family**, `--riv-calendar-{glass,ink,ink-soft,ink-faint,ink-disabled,hover}`. Arrived here from class T — see the note above the table. The fill is tokenised too, because a family whose anchor stays a literal is a claim nobody can guard; `--riv-calendar-ink` serves **two** surfaces (the glass and the four opaque day tints), so `testing/calendar-tints.ts` reads it from the one mirror rather than restating it (#835's R-5) | **done — #849, PR #886.** n corrected 5 → 10; the extra five are the take-the-whole-expression positions the note explains |
+| **Availability-calendar ink ramp**: `#0a2a33` ×2, `rgba(12,42,51,·)` at `.78` ×2, `.72`, `.4`, `.35`, `.07` ×2, over its own `rgba(255,255,255,0.97)` `<dialog>` fill (`availability-calendar.html`) | 10 | **new theme-invariant family**, `--riv-calendar-{glass,ink,ink-soft,ink-faint,ink-disabled,hover}`. Arrived here from class T — see the note above the table. The fill is tokenised too, because a family whose anchor stays a literal is a claim nobody can guard; `--riv-calendar-ink` serves **two** surfaces (the glass and the four opaque day tints), so `testing/calendar-tints.ts` reads it from the one mirror rather than restating it (#835's R-5) | **done — #849, PR #886.** n corrected 5 → 10; the extra five are the take-the-whole-expression positions the note explains. **Superseded by #888, PR #896:** the family retired into `--riv-pop-*` when the calendar adopted the themed popover treatment — see the class-S rows and *The overlay surfaces* |
 | **booking-view banner prose**: `text-[#334a52]` + `[&_strong]:text-[#0a2a33]` (`booking-view.ts:89`) and `confirmQOnBanner` (`:99`), over six fixed banner fills | 3 | **new theme-invariant pair**, `--riv-banner-{body,strong}-ink`. The sharpest case for T-3's refusal: `--riv-card-ink`'s dark `#f2f7fa` on the neutral banner's `#f0f2f3` is under 1.5:1. The per-banner **eyebrow** inks stay out — class S's per-state palette, and asserted as staying out | **done — #849, PR #886.** n corrected 1 → 3: `#334a52` was uncounted (it shares the strong ink's class string) and appears at `:99` too |
 | Solid outline-button skin: `#f4f6f7` fill, `#e7ebec` hover, `rgba(255,255,255,0.7)` border, `#a3372a` danger ink (+ the `rgba(200,90,60,0.5)` danger border) | 13 | **new theme-invariant tokens**, one family. Its teal ink already moved to `--riv-solid-btn-ink` in #835. The themed alternatives measure 1.69:1 (`--riv-danger-ink`) and 1.52:1 (`--riv-accent-ink`) over the fixed fill | **done — #851, PR #859.** n corrected 9 → 13: the danger border was uncounted, and the `rgba(255,255,255,0.7)` border sits on all three buttons (on the `btnOutline` variant, not the shared `BTN_OUTLINE` base) |
 
@@ -425,8 +425,17 @@ does not. Each needs its own token, not the coincidental one.
 >   (`rgba(255,255,255,0.92)` → `rgba(16,26,46,0.96)` with light inks), and the calendar's `<dialog>`
 >   is arguably the same thing. Found by enumerating near-opaque white fills rather than by reading
 >   the family rows. Not folded in because it is a **repaint** — it would turn the calendar dark in
->   the dark theme — and #849 is a migration whose entire claim is that no pixel moves. It wants a
->   design decision and its own slice.
+>   the dark theme — and #849 is a migration whose entire claim is that no pixel moves.
+>   **done — #888, PR #896, and the verdict is *adopt*** (maintainer, 2026-09-02): the calendar is a
+>   `--riv-pop-*` consumer in every theme; the six `--riv-calendar-{glass,ink,ink-soft,ink-faint,
+>   ink-disabled,hover}` tokens this row registered are retired (the popover family gained
+>   `--riv-pop-ink-disabled` for the calendar's `aria-disabled` sites); and the coupling the ticket
+>   named — the four opaque day tints — is answered by keeping them **opaque and theming them**: one
+>   set in the base block, one in the `dark` block, so each contrast proof stays a plain pair and
+>   the count merely doubles. The light themes keep every day-cell colour; the light-theme chrome
+>   moves by the popover family's own values (glass 0.97 → 0.92, the two soft inks → 0.7, the hover
+>   wash → 0.06), enumerated in `docs/plans/calendar-popover-theming.md`'s parity ledger. The
+>   whole-tree fact this settled is written down below, under *The overlay surfaces*.
 
 ### Class S — per-state palettes and one-offs: exempt for now
 
@@ -440,9 +449,9 @@ a *state palette* is a different question from tokenising an ink: it wants one t
 | `shared/status-chip.ts` | 17 | Nine per-state fill/border/ink triples |
 | `booking/booking-view.ts` | 12 | Per-status panel palettes |
 | ~~`shared/amenity-chip.ts`~~ | ~~5~~ | **Retired — this row was wrong.** A two-variant tag is class F's shape, not a per-state palette; tokenised as `--riv-amenity-{tag,water}-*` by **#858, PR #867** |
-| `venue/availability-calendar.html` | 5 | |
-| `venue/day-availability.ts` | 3 | |
-| `venue/day-availability.ts` — `focus-visible:outline-[#0a3f4e]` ×4 | 1 | **Outside the population command** — its prefix set is `(text\|bg\|border\|fill\|stroke\|shadow)-\[`, so `outline-` was never enumerated; surfaced by [#890](https://github.com/ivopogace/riviera-sunbed-booking/issues/890)'s focus-ring sweep, which left it alone (a colour change is a repaint, not a migration). A focus-ring colour over the calendar's fixed `--riv-calendar-glass`, so class F's shape once cut — and load-bearing, not decorative: the themed `--riv-accent-ink` resolves `#7cd7e8` in dark, under 2:1 on that glass, the same reason the sign-out bar's buttons pin their ring with `outline-current` (#890). Neither `--riv-accent-ink` nor `--riv-tile-focus` matches the value. **Open** |
+| ~~`venue/availability-calendar.html`~~ | ~~5~~ | **done — #888, PR #896.** The month-step glyphs, the bar fill and the bar track onto `--riv-calendar-{accent,bar-fill,bar-track}`; the `<dialog>`'s border and shadow onto `--riv-pop-{border,shadow}` — all themed |
+| ~~`venue/day-availability.ts`~~ | ~~3~~ | **done — #888, PR #896.** The first class-S palette actually cut: four opaque per-state fills onto `--riv-calendar-{free,low,full,unknown}-fill`, declared once in the base block and once in the `dark` block (a second opaque set, so each proof stays a plain pair), and the chosen-day ring onto `--riv-calendar-selected-ring` through a `var()` inside the inset shadow. Mirror: `testing/calendar-tints.ts`; proof: `venue/availability-calendar.contrast.spec.ts` |
+| ~~`venue/day-availability.ts` — `focus-visible:outline-[#0a3f4e]` ×4~~ | ~~1~~ | **Outside the population command** — its prefix set is `(text\|bg\|border\|fill\|stroke\|shadow)-\[`, so `outline-` was never enumerated; surfaced by [#890](https://github.com/ivopogace/riviera-sunbed-booking/issues/890)'s focus-ring sweep, which left it alone (a colour change is a repaint, not a migration). **done — #888, PR #896**: the ring is `--riv-calendar-accent`, themed with the popover it sits in (`#0a3f4e` light, `#9adde8` dark) — and still deliberately not `--riv-accent-ink`, though that would now clear 3:1 on every fill in both palettes: it coincides with the chosen-day ring's value in both (`#085a6e` light, `#7cd7e8` dark), and a focused chosen cell must not wear one colour twice |
 | `shared/confirm-panel.ts` | 3 | Tone palettes |
 | others (11 components) | ~14 | |
 
@@ -518,6 +527,31 @@ out-of-family row for `pages/home/home.html` was retired rather than rewritten: 
 is gone, not renamed. (Its inner stop, `rgba(255,236,180,0.95)`, was a different colour family and
 carried no row.)
 
+## The overlay surfaces — three families, and the one that was pinned
+
+Written down so the question #849 parked and #888 answered is not rediscovered a third time. The
+population is every overlay in `frontend/src/app`, enumerated by the mechanism that makes one (a
+`<dialog>`, a `role="dialog"`/`role="menu"` box, an `aria-modal`, or one of the family fills), not
+by resemblance — the command is in `docs/plans/calendar-popover-theming.md`'s generalization-audit
+log.
+
+| Overlay | Family | Porcelain | Dark |
+|---|---|---|---|
+| theme picker, account menu, mobile sheet (`app.ts` `POP`) | `--riv-pop-*` | white `0.92`, dark ink | slate `0.96`, light ink |
+| **availability calendar `<dialog>`** (`venue/availability-calendar.html`) | `--riv-pop-*` **since #888**; before it, the pinned `--riv-calendar-*` ramp #849 registered | white `0.92`, dark ink, light opaque day tints | slate `0.96`, light ink, **dark opaque day tints** (`--riv-calendar-*`, declared in both blocks) |
+| booking dialog, find-a-booking (`booking/`) | `--riv-dialog-glass` | white `0.82` | slate `0.94` |
+| payout statement (`operator/payout-statement.ts`) | none — `bg-white` under the console's porcelain-pinned host | white | unreachable (the host pins porcelain) |
+| photo lightbox (`shared/photo-lightbox.ts`) | none — a fixed `rgba(4,18,24,0.86)` scrim over a photo | photo-proof dark | photo-proof dark |
+
+So the overlay families were three — two that themed and one pinned light — and are now **two**,
+both themed: the calendar was the only surface outside them that a tourist could reach in the dark
+theme, and nobody had decided it should be. The 2026-08-25 restructure note's claim in
+`2026-07-02-liquid-glass-redesign-note.md` — "the dark theme inverts the whole surface family
+(dark cards/dialogs/popovers/fields, light inks)" — is true of the shipped app since #888. The two
+out-of-family overlays are so for reasons the tree already records (a porcelain-pinned host; a
+photo-proof scrim), not by omission. `riviera` is not a column because it redeclares no overlay
+token: its popovers are the base block's white glass by that theme's design.
+
 ## How to cut a slice from this ledger
 
 Each family becomes its own issue and its own PR, largest inconsistency first. The pattern
@@ -545,7 +579,7 @@ Each family becomes its own issue and its own PR, largest inconsistency first. T
 
 Not yet for the population as a whole — #836's step 4, deliberately deferred. A rule is worth
 writing when the residue is a **boundary** rather than a backlog. Classes T + F + R are still live
-work; class S is a palette design pass nobody has scheduled. Revisit once T, F and R are `done` and
+work; class S is a palette design pass of which #888's calendar cut is the first. Revisit once T, F and R are `done` and
 the remaining literals are all class S and the one class-1 exemption — at that point the rule is
 "a colour literal must sit inside an arbitrary variant expression or carry a recorded deviation",
 which is checkable and would hold.

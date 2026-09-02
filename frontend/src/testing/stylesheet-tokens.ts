@@ -30,6 +30,18 @@ export function baseBlock(): string {
   return STYLESHEET.slice(open, STYLESHEET.indexOf('\n}', open));
 }
 
+/**
+ * A theme's override block — `[data-riv-theme='<theme>'] { … }` — where a themed token declares
+ * the value that theme paints. Throws rather than matching nothing if the block is missing.
+ */
+export function themeBlock(theme: 'riviera' | 'dark'): string {
+  const open = STYLESHEET.indexOf(`\n[data-riv-theme='${theme}'] {`);
+  if (open === -1) {
+    throw new Error(`src/tailwind.css declares no [data-riv-theme='${theme}'] block`);
+  }
+  return STYLESHEET.slice(open, STYLESHEET.indexOf('\n}', open));
+}
+
 /** Every `--name: value;` declaration of `name`, anywhere in the stylesheet. */
 export function declarationsOf(name: string): readonly string[] {
   const pattern = new RegExp(String.raw`^[ \t]*${name}:\s*([^;]+);`, 'gm');

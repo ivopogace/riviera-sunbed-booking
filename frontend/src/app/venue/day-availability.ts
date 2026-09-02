@@ -16,25 +16,26 @@ const LOW_FRACTION = 0.25;
 
 /**
  * The opaque fill each state wears, in the `map-tile.ts` shape and for the same reason: one home
- * for what a day looks like, so no second hand-copied set of literals can drift from it.
+ * for what a day looks like, so no second hand-copied set of tokens can drift from it.
  *
- * <p>Each entry carries its own focus-ring colour. The ring cannot be one shared value on the
- * base class: the chosen day's accent is dark and the tints are pale, so no single ring reads on
- * both, and two competing `outline-color` utilities on one element resolve by stylesheet order
- * rather than class order. One ring per fill, on the fill's own class, is the only arrangement
- * that is deterministic.
+ * <p>Each entry carries its own focus-ring utility rather than the base class carrying one: two
+ * competing `outline-color` utilities on one element resolve by stylesheet order rather than class
+ * order, so one ring per fill, on the fill's own class, is the only arrangement that is
+ * deterministic. The ring is the calendar's own accent and not the `@layer base` ring's
+ * `--riv-accent-ink`: that value coincides with the chosen day's ring in both palettes, and a
+ * focused chosen cell must not wear one colour twice.
  *
- * <p>The fills are **solid, not translucent** — deliberately. A calendar day composited over a
- * theme-dependent glass would need its contrast proved once per theme and once per surface; an
- * opaque fill makes the proof a plain ink/fill pair that holds on both themes by construction
- * (`availability-calendar.contrast.spec.ts`). Their test-side mirror is
- * `src/testing/calendar-tints.ts`.
+ * <p>The fills are **opaque, not translucent** — deliberately, and in both palettes. A calendar
+ * day composited over a theme-dependent glass would need its contrast proved once per theme and
+ * once per surface; an opaque fill makes the proof a plain ink/fill pair, so theming the palette
+ * doubled the pairs and nothing else (`availability-calendar.contrast.spec.ts`). The values live in
+ * `tailwind.css`, one set per palette; their test-side mirror is `src/testing/calendar-tints.ts`.
  */
 export const DAY_TINT_CLASS: Record<DayAvailabilityState, string> = {
-  free: 'bg-[#dff0e4] focus-visible:outline-[#0a3f4e]',
-  low: 'bg-[#fdeecc] focus-visible:outline-[#0a3f4e]',
-  full: 'bg-[#fae9e9] focus-visible:outline-[#0a3f4e]',
-  unknown: 'bg-white focus-visible:outline-[#0a3f4e]',
+  free: 'bg-riv-calendar-free-fill focus-visible:outline-riv-calendar-accent',
+  low: 'bg-riv-calendar-low-fill focus-visible:outline-riv-calendar-accent',
+  full: 'bg-riv-calendar-full-fill focus-visible:outline-riv-calendar-accent',
+  unknown: 'bg-riv-calendar-unknown-fill focus-visible:outline-riv-calendar-accent',
 };
 
 /**
@@ -48,7 +49,8 @@ export const DAY_TINT_CLASS: Record<DayAvailabilityState, string> = {
  * `gridcell` that owns it, so the button has nothing to key a variant off. It uses `box-shadow`
  * rather than a border so the ring costs no layout, and leaves `outline` to the focus ring.
  */
-export const DAY_SELECTED_CLASS = 'shadow-[inset_0_0_0_2px_#085a6e] font-bold';
+export const DAY_SELECTED_CLASS =
+  'shadow-[inset_0_0_0_2px_var(--riv-calendar-selected-ring)] font-bold';
 
 /**
  * The phrases a day speaks when it has no integers to speak. A day that HAS readable counts says
