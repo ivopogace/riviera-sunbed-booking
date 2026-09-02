@@ -96,6 +96,14 @@ auto-falls-back to that path when `PW_CHROMIUM_EXECUTABLE` is unset; the mocked 
 (`playwright.a11y.config.ts`) honours only the env var — run it as
 `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`.
 
+**Workers: leave the pinned 2.** The mocked config runs 2 workers everywhere, and the cloud
+sandbox is where that number was measured (PR #891): the full suite took 571s on 1 worker,
+314s on 2, and 330–357s on 4 — the sandbox reports 4 vCPUs but saturates at two Chromiums, and
+on 4 the per-test median doubled (1.3s → 2.8s) with the slowest tests stretching toward the
+60s timeout. Expect a full run to take ~5–6 min; if a run is much slower, check whether another
+build or browser is sharing the CPU before suspecting the tests. `--workers=N` overrides for a
+measurement; never run more than 2 to "speed up" a green check.
+
 ## Running the stack
 
 There is no supported single-command local stack in a cloud sandbox. The one workaround is
