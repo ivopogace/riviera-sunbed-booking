@@ -26,20 +26,22 @@ already flipped for the current navigation when subscribers see the event — Q-
 **Source of intent:** GitHub issue #892 (follow-up recorded by PR #891's Scope notes).
 
 **Skills consulted:** `riviera-sdlc` (routing + the issue-intake grill gate — confirmed no open
-PRs and no in-flight overlap, and forced the seam question "how does a unit spec produce an
-initial-navigation-shaped `NavigationEnd`?" before any code) · `riviera-plan-doc` (this template
-— forced the seam per AC and the rejected-alternatives note above) · `tdd` (red spec for the
-new keep-open behaviour before the guard in `app.ts`; the two existing close-on-navigation
-specs are the regression half) · `riviera-review-overlay` (review gate — ran at
-ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main..HEAD`, see close-out)
-· `riviera-frontend` (placement: the rule stays in the shell component `app.ts`, no new
-`core/` service — it is shell-local state, not a cross-cutting singleton) ·
-`angular-developer` + angular-cli MCP / `@angular/router` 22.0.7 sources (pinned the
-`lastSuccessfulNavigation`-before-`NavigationEnd` ordering and `Location.path(true)`'s
-un-normalised `''` at construction) · `riviera-local-debug` (scoped Vitest runs via
-`ng test --include`, `PW_CHROMIUM_EXECUTABLE` for the mocked e2e) · `playwright-cli`
-(the e2e half: `awaitRoutedPage` stays, its header comment is the only e2e change) ·
-`riviera-tailwind` (N/A — no styling in scope)
+PRs and no in-flight overlap; its re-entry rule sent the F-1 fix back through Implement rather
+than patching it at the review gate) · `riviera-plan-doc` (this template — forced the seam per
+AC, and the rejected-alternatives note that made F-1's mechanism swap legible) · `tdd` (each
+spec proven red before it went green: the keep-open one against an unguarded subscription, the
+supersede one against the withdrawn URL rule) · `riviera-review-overlay` (review gate — ran at
+ready-for-review and again on the F-1 fix; RV-STYLE-1 caught F-3, RV-PROC-1 caught this line's
+own stale parentheses) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD`, 0 findings — no substrate doc
+states the shell's overlay-close rule, and the slice creates no Nth-of-something) ·
+`riviera-frontend` (placement: the rule stays in the shell component `app.ts`, no new `core/`
+service — it is shell-local state, not a cross-cutting singleton; Q-4) · `angular-developer` +
+`@angular/router` 22.0.7 sources (pinned four behaviours the design turns on: the
+`lastSuccessfulNavigation`-before-`NavigationEnd` ordering, `NavigationStart` preceding a
+non-awaited `navigate()`, and config vs guard redirects keeping/re-issuing the navigation id) ·
+`riviera-local-debug` (scoped Vitest runs via `ng test --include`, `PW_CHROMIUM_EXECUTABLE` for
+the mocked e2e) · `playwright-cli` (the e2e half: `awaitRoutedPage` stays; its header is the
+only e2e change, restated after F-2) · `riviera-tailwind` (N/A — no styling in scope)
 
 **Branch:** `claude/sdlc-892-o837s0` — the cloud session's designated remote branch stands in
 for `bugfix/shell-overlay-initial-navigation`.
