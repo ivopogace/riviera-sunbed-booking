@@ -161,6 +161,13 @@ export class App {
    *
    * <p>The close performs no focus restore: the destination page takes focus, and restoring is only
    * for an on-page dismiss.
+   *
+   * <p><strong>Precondition of the skip:</strong> a skipped navigation must not destroy the open
+   * overlay's markup. The three popovers render inside `app.html`'s
+   * `@if (shellChrome() === 'tourist')`, so a destination on operator or admin chrome would tear
+   * them out while their signals stayed true, stranding focus on `document.body`. No tourist-header
+   * link targets such a route today. Adding the first one means closing the popovers on the chrome
+   * switch, not relying on this rule.
    */
   constructor() {
     // The navigation an overlay was opened during is not the user leaving the page.
@@ -210,14 +217,18 @@ export class App {
   }
 
   protected toggleMenu(): void {
-    this.markOverlayRaised();
+    if (!this.menuOpen()) {
+      this.markOverlayRaised();
+    }
     this.themeOpen.set(false);
     this.accountOpen.set(false);
     this.menuOpen.update((open) => !open);
   }
 
   protected toggleThemePicker(): void {
-    this.markOverlayRaised();
+    if (!this.themeOpen()) {
+      this.markOverlayRaised();
+    }
     this.menuOpen.set(false);
     this.accountOpen.set(false);
     this.themeOpen.update((open) => !open);
@@ -225,7 +236,9 @@ export class App {
 
   /** Toggle the signed-in account menu; only one header popover is open at a time. */
   protected toggleAccountMenu(): void {
-    this.markOverlayRaised();
+    if (!this.accountOpen()) {
+      this.markOverlayRaised();
+    }
     this.menuOpen.set(false);
     this.themeOpen.set(false);
     this.accountOpen.update((open) => !open);
