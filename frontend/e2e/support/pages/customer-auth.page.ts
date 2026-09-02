@@ -1,5 +1,7 @@
 import { expect, Locator, Page } from '@playwright/test';
 
+import { openAccountMenu } from '../shell';
+
 /**
  * Page Object for the customer auth flow — the tourist-side twin of
  * {@link OperatorSignInPage}. Unlike the operator sign-in card, this spans the shell header
@@ -70,7 +72,7 @@ export class CustomerAuthPage {
 
   /** Reveal the signed-in controls — they live behind the account disclosure. */
   async openAccountMenu(): Promise<void> {
-    await this.signedInAs.click();
+    await openAccountMenu(this.page);
   }
 
   async signOut(): Promise<void> {

@@ -72,7 +72,9 @@ jobs:
     # sequencing that lands the pair without an unmergeable window).
     name: Frontend (lint + test + build)
     runs-on: ubuntu-latest
-    # Observed green: ~4 min (npm ci + lint + Vitest + Playwright install + a11y e2e + prod build).
+    # Observed green: ~9 min (npm ci + lint + Vitest + Playwright install + prod build are ~2.5 min
+    # together; the a11y e2e step is ~7 min on 2 workers, down from ~8.7 min on one — 4 workers
+    # measured the same, the runner's vCPUs saturate at two Chromiums).
     timeout-minutes: 20
     defaults:
       run:

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { openAccountMenu } from './support/shell';
 import { expectNoSeriousAxeViolations } from './support/axe';
 
 /**
@@ -15,7 +16,7 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 /** Reach the account page the way a tourist does — through the header, not a URL. */
 async function gotoAccount(page: Page): Promise<void> {
   await page.goto('/');
-  await page.getByTestId('nav-user').click();
+  await openAccountMenu(page);
   await page.getByTestId('nav-account-link').click();
 }
 

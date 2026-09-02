@@ -96,6 +96,9 @@ auto-falls-back to that path when `PW_CHROMIUM_EXECUTABLE` is unset; the mocked 
 (`playwright.a11y.config.ts`) honours only the env var — run it as
 `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`.
 
+Leave the pinned 2 workers alone — the sandbox saturates at two Chromiums and more only slows
+the run (measurements in the config header). A full run takes ~5 min.
+
 ## Running the stack
 
 There is no supported single-command local stack in a cloud sandbox. The one workaround is

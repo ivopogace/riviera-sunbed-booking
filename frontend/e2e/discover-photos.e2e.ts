@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { openShellOverlay } from './support/shell';
 import { settle } from './support/booking-dialog';
 
 /**
@@ -181,7 +182,7 @@ test('the slideshow chrome carries its own backing over the photo, in both theme
   await expectNoSeriousAxeViolations(page, 'photo lightbox (default theme)');
   await page.getByTestId('lightbox-close').click();
 
-  await page.getByTestId('theme-toggle').click();
+  await openShellOverlay(page, 'theme-toggle');
   await page.getByTestId('theme-option-porcelain').click();
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
   await page.getByTestId('gallery-photo-0').click();

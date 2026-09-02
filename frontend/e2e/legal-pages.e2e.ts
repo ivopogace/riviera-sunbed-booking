@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { openShellOverlay } from './support/shell';
 import { settle } from './support/booking-dialog';
 
 /**
@@ -64,13 +65,13 @@ test.describe('legal documents', () => {
     await settle(page);
     await expectNoSeriousAxeViolations(page, 'privacy page (dark)');
 
-    await page.getByTestId('theme-toggle').click();
+    await openShellOverlay(page, 'theme-toggle');
     await page.getByTestId('theme-option-riviera').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
     await settle(page);
     await expectNoSeriousAxeViolations(page, 'privacy page (riviera)');
 
-    await page.getByTestId('theme-toggle').click();
+    await openShellOverlay(page, 'theme-toggle');
     await page.getByTestId('theme-option-porcelain').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
     await settle(page);
