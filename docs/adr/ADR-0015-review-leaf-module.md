@@ -85,4 +85,8 @@ documented "publishes no event" stance, and the slice still uses an event where 
   third port, `ListedReviews`, answers `venue`'s other question — the public page of commented
   reviews — and the leaf posture is what put that endpoint in `venue`: the tourist-visibility fence
   is `operator`'s rule consumed by `venue`, and `review` cannot consult `operator` without ceasing to
-  be a leaf.
+  be a leaf. *Amended by #815:* a fourth port, `ReviewTombstones`, is the module's one published
+  *write* — the erasure reach `booking` drives for `customer` (ADR-0010's amendment): a scrub, never
+  a delete, publishing no `ReviewsChanged` because the aggregate is unchanged by construction. The
+  leaf posture held: `customer` cannot call `review` either, so `booking` — already granted both —
+  bridges the two.

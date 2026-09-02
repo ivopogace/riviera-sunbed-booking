@@ -158,8 +158,10 @@ export interface AdminVenuePhotosView {
 
 /**
  * One review under moderation; mirrors the backend `AdminReviewsResponse.ReviewEntry`. Everything
- * the public sees plus the rows it never does: `comment` is `null` for a star-only review,
- * `hiddenAt` is an ISO instant once an admin has hidden the review and `null` while it is in
+ * the public sees plus the rows it never does: `comment` is `null` for a star-only review and
+ * both `comment` and `displayName` are `null` once its author's erasure has tombstoned it (the
+ * tab attributes such a row to "A guest"); `hiddenAt` is an ISO instant once an admin has hidden
+ * the review and `null` while it is in
  * public view — visibility IS the null instant, so there is no boolean to keep in step.
  * `stayedIn` is an ISO year-month, never a day.
  */

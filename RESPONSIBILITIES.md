@@ -428,7 +428,10 @@ sits in the outbox.
 - Storing guest contact details → **`customer`**
 - The **retention window** or the contact scrub → **`customer`** (#101 Slice 2). I answer only the
   *fact* "does this guest have a booking on/after date D", via `customer.spi.GuestBookingHistory`
-  — I hold no retention policy and never write a `customer` row
+  — I hold no retention policy and never write a `customer` row. Its twin, `customer.spi.ReviewErasure`
+  (#815), is the one *act* I perform for `customer`: resolve the erased subject's guest / account ids to
+  booking ids from my own table and hand them to `review.api.ReviewTombstones` — I decide nothing about
+  who is erased and never write a `review` row
 - **Review policy** — eligibility, the 60-day window, one-per-booking, the aggregate math →
   **`review`** (#811, ADR-0015), the same sentence-shape as `GuestBookingHistory` above. I answer
   only the *fact* "was this stay checked in, and when", via `review.spi.CompletedStays`, and I
@@ -666,7 +669,11 @@ retaining the booking/payment/payout records under the **statutory-retention exc
 **retention policy** too (#101 Slice 2): the configured **retention window**, the decision of
 which guest contacts have no remaining **retention basis**, and the sweep that tombstones them.
 Retention is the same PII-lifecycle concern over the same rows as erasure, so it lives here —
-I ask `booking` for the recency *fact*, but the window and the scrub are mine.
+I ask `booking` for the recency *fact*, but the window and the scrub are mine. Since #815 both
+flows also reach the one PII-bearing row outside my tables — the **review** a subject wrote — through
+`customer.spi.ReviewErasure`, inside the same transaction: I decide *that* a subject's reviews are
+tombstoned and hand on the guest / account ids my by-email scrubs return; `booking` (which implements
+the port) resolves those to bookings and `review` blanks its own rows. I never learn a booking id.
 Since #386 I also own the **canonical form of an email address** (`customer.vocabulary.Emails`) —
 the platform's one definition, used by my own services, by the platform edge, and by
 `notification`, where it is the input contract of the suppression key's HMAC. It lives here
@@ -678,6 +685,9 @@ because the canonical form of an address is identity vocabulary, and it could *n
 - Knowing whether a guest still has a recent booking → **`booking`** (it owns the table; I
   declare `customer.spi.GuestBookingHistory` and it implements the fact — a dependency
   inversion, because a direct `customer → booking` call would cycle)
+- Resolving an erased subject to their bookings → **`booking`**; blanking a review's name and
+  comment → **`review`** (the same inversion: I declare `customer.spi.ReviewErasure`, `booking`
+  implements it and calls `review.api.ReviewTombstones`; I hold neither a booking nor a review id)
 - Operator accounts or staff logins → **`operator`** (I am the *tourist*; `operator`
   is the *venue's* people)
 - Marketing → out of scope
@@ -701,7 +711,10 @@ reset token unlock?*, resolved **without consuming** it, so the edge can revoke 
 sessions before the reset writes anything. Email verification is **soft/non-blocking** (v1). Still no Spring Security type
 inside the module (`CustomerAuthPlacementTests` green); the token digest and
 recovery/set-password endpoints stay at the platform edge (RV-BE-11); mail transport moved
-into **`notification`** (#382), which the edge drives through `notification::api`.
+into **`notification`** (#382), which the edge drives through `notification::api`. **#815** (reviews
+slice 5) extended erasure and the retention sweep to the review PII: `customer.spi.ReviewErasure`
+(implemented by `booking`), the by-email scrubs answering the ids they tombstoned, and the review
+count on the erasure log line — no migration, no grant change.
 
 ---
 
@@ -1000,13 +1013,27 @@ and until when, and the arithmetic that turns a venue's reviews into a score. Th
   short-circuiting to `0/0` — the invariant-#5 money discipline borrowed for the rating. No
   `double` anywhere in the math, and the mean is taken in the domain rather than in SQL so a
   test can reach it.
-- **My three `api` ports are split by consumer role** (#94): `VenueRatingSummary` answers `venue`'s
+- **My four `api` ports are split by consumer role** (#94): `VenueRatingSummary` answers `venue`'s
   question about its own aggregate, `ListedReviews` answers `venue`'s other question — the page of
-  *listed* reviews for its public page — and `ReviewEligibility` answers `booking`'s about one stay
+  *listed* reviews for its public page — `ReviewEligibility` answers `booking`'s about one stay
   — with the sealed `ReviewPanel`, whose variants carry exactly their own data and split a *frozen*
-  review from a window nobody ever wrote in. The whole lifecycle (submit, edit, delete) stays one
-  **internal** `application` port, `ReviewLifecycle`, whose only caller is my own REST adapter (the
-  `booking.ViewBooking` precedent), so neither consumer can reach the write surface.
+  review from a window nobody ever wrote in — and `ReviewTombstones` takes `booking`'s one command,
+  the erasure reach (below). The whole lifecycle (submit, edit, delete) stays one **internal**
+  `application` port, `ReviewLifecycle`, whose only caller is my own REST adapter (the
+  `booking.ViewBooking` precedent), so no consumer can reach the author's write surface.
+- **A review tombstone is erasure's mark, and it keeps the star** (#815, ADR-0010 as amended).
+  `ReviewTombstones.tombstone(bookings)` is one conditional `UPDATE` by `booking_id` — `display_name`
+  and `comment` to `NULL`, nothing else — whose rows-affected count is the answer, so a repeat is `0`.
+  It is the only published write, and it is a scrub, never a delete: the one-per-booking slot stays
+  taken and `stars` / `hidden_at` / the timestamps stay put, so the aggregate is unchanged by
+  construction and **no `ReviewsChanged` is announced**. A tombstoned review carries no comment, so
+  it leaves the public list on the star-only rule and keeps counting in the score; the admin list and
+  the author's own read-back still see it, nameless — a `NULL` `display_name` now means "never given
+  *or* erased", and the frontend's "A guest" fallback is the neutral label on both. It is not frozen
+  for its author: the booking code stays the authorization and the window the window, so a subject
+  who writes again inside it is supplying fresh data of their own. Who is erased, and when, is
+  `customer`'s call, reaching me through `booking` (`customer.spi.ReviewErasure`), so my grant list
+  stays at `shared`.
 - **A takedown is a reversible soft flag, and it is mine.** `review.hidden_at` (`NULL` = visible,
   V48) is the moderation state ADR-0013's report-and-remove posture needs; the platform admin's
   `ReviewModeration` port — an **internal** `application` port like `ReviewLifecycle`, whose only
@@ -1059,6 +1086,9 @@ and until when, and the arithmetic that turns a venue's reviews into a score. Th
   platform **edge** (RV-BE-11)
 - Deciding *whether* a review deserves a takedown → the **platform admin** (publish-first,
   report-and-remove; I offer no queue and no reporting)
+- Deciding *that* a data subject's reviews are erased, or which bookings are theirs → **`customer`**
+  (the erasure and retention decisions) and **`booking`** (subject → booking ids); I am handed booking
+  refs and blank my own rows
 
 **Shipped** (#811 slice 1, #812 slice 2, #813 slice 3, #814 slice 4 of epic #810): the module, V45
 (`review` table + the demo-seed supersede), V46 (comment, display name, `updated_at`), V47
@@ -1068,8 +1098,10 @@ the fence order, the sealed `ReviewPanel` on `booking`'s read model (which retir
 flag and `ReviewState` from the published surface), `venue`'s first `adapter/in` listener, the public
 list read (`ListedReviews`, carried by `venue` on `GET /api/venues/{venueId}/reviews`), and the admin
 takedown (`ReviewModeration`, `GET /api/admin/venues/{venueId}/reviews`,
-`POST /api/admin/reviews/{id}/hide|unhide`, the `HIDDEN` verdict). The **erasure hook for the review
-PII slice 2 introduced** (#815) is the last slice of #810.
+`POST /api/admin/reviews/{id}/hide|unhide`, the `HIDDEN` verdict). **#815 (slice 5, the last of #810)**
+added the erasure reach: `review.api.ReviewTombstones`, implemented directly by
+`JdbcReviewTombstones` (no service — one statement, no policy), driven by `booking` for `customer`'s
+erasure and retention sweep.
 
 ## `shared` (not a bounded context)
 

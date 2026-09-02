@@ -18,6 +18,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import ai.riviera.platform.customer.spi.GuestBookingHistory;
+import ai.riviera.platform.customer.spi.ReviewErasure;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 
@@ -25,8 +26,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Unit spec for the retention-sweep decision logic (Slice 2 of #101), against hand fakes of the
- * {@link AccountErasureStore} and {@link GuestBookingHistory} ports and a fixed {@link Clock} (no Spring,
- * no DB) — the {@code AccountErasureServiceTest} pattern.
+ * {@link AccountErasureStore}, {@link GuestBookingHistory} and {@link ReviewErasure} ports and a fixed
+ * {@link Clock} (no Spring, no DB) — the {@code AccountErasureServiceTest} pattern.
  *
  * <p>The fixed instant is deliberately <strong>22:30 UTC</strong>, which is already the <em>next</em> day in
  * {@code Europe/Tirane} (UTC+2 in July). A sweep that reasoned in UTC — or in the JVM default zone — would
@@ -48,11 +49,35 @@ class ExpireGuestContactsServiceTest {
 
 	private final FakeRetentionStore store = new FakeRetentionStore();
 	private final FakeGuestBookingHistory history = new FakeGuestBookingHistory();
+	private final FakeReviewErasure reviews = new FakeReviewErasure();
 	private final ExpireGuestContactsService service = service(500);
 
 	private ExpireGuestContactsService service(int batchSize) {
-		return new ExpireGuestContactsService(store, history, new RetentionWindow(Period.ofYears(2), batchSize),
-				FIXED);
+		return new ExpireGuestContactsService(store, history, reviews,
+				new RetentionWindow(Period.ofYears(2), batchSize), FIXED);
+	}
+
+	@Test
+	void sweepTombstonesTheScrubbedGuestsReviewsInOneCall() {
+		CustomerId first = store.liveGuest();
+		CustomerId retained = store.liveGuest();
+		CustomerId second = store.liveGuest();
+		history.lastBooking(retained, LocalDate.of(2099, 1, 1));
+
+		assertThat(service.sweep()).isEqualTo(2);
+
+		assertThat(reviews.guestBatches()).as("exactly the scrubbed guests, once, in one batch")
+				.containsExactly(List.of(first, second));
+	}
+
+	@Test
+	void sweepWithNothingScrubbedNeverReachesReviews() {
+		CustomerId retained = store.liveGuest();
+		history.lastBooking(retained, LocalDate.of(2099, 1, 1));
+
+		assertThat(service.sweep()).isZero();
+
+		assertThat(reviews.guestBatches()).isEmpty();
 	}
 
 	@Test
@@ -185,12 +210,12 @@ class ExpireGuestContactsServiceTest {
 		}
 
 		@Override
-		public boolean eraseAccountByEmail(String normalizedEmail) {
+		public Optional<CustomerAccountId> eraseAccountByEmail(String normalizedEmail) {
 			throw new UnsupportedOperationException("not exercised by the retention spec");
 		}
 
 		@Override
-		public int eraseGuestByEmail(String normalizedEmail) {
+		public List<CustomerId> eraseGuestByEmail(String normalizedEmail) {
 			throw new UnsupportedOperationException("not exercised by the retention spec");
 		}
 	}
@@ -225,6 +250,26 @@ class ExpireGuestContactsServiceTest {
 				}
 			}
 			return inBasis;
+		}
+	}
+
+	/** Records each batch of guests whose reviews the sweep asked to have tombstoned. */
+	private static final class FakeReviewErasure implements ReviewErasure {
+		private final List<List<CustomerId>> guestBatches = new ArrayList<>();
+
+		List<List<CustomerId>> guestBatches() {
+			return guestBatches;
+		}
+
+		@Override
+		public int eraseForGuests(Collection<CustomerId> guests) {
+			guestBatches.add(List.copyOf(guests));
+			return guests.size();
+		}
+
+		@Override
+		public int eraseForAccount(CustomerAccountId account) {
+			throw new UnsupportedOperationException("the sweep never erases by account");
 		}
 	}
 }

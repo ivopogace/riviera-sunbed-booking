@@ -12,7 +12,9 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
  * published named interface), implemented by {@code adapter/out}'s {@code JdbcAccountErasure}
  * (invariant #1 — JDBC only). Deliberately a single port spanning every PII-bearing {@code customer}
  * table ({@code customer}, {@code customer_account}, {@code customer_sso_identity},
- * {@code customer_account_token}), so "what erasure touches" lives in exactly one adapter.
+ * {@code customer_account_token}), so "what erasure touches" in this module lives in exactly one
+ * adapter; the one PII-bearing row outside it, the review, is reached through
+ * {@link ai.riviera.platform.customer.spi.ReviewErasure} with the ids the by-email scrubs answer.
  *
  * <p>Every scrub is idempotent — it acts only on a live row ({@code erased_at IS NULL}) — and is
  * <strong>tombstone-in-place</strong>, never a hard delete of a row a retained booking references
@@ -31,15 +33,18 @@ public interface AccountErasureStore {
 	 */
 	boolean eraseAccountById(CustomerAccountId accountId);
 
-	/** As {@link #eraseAccountById} but selecting the account by its live, normalized email. */
-	boolean eraseAccountByEmail(String normalizedEmail);
+	/**
+	 * As {@link #eraseAccountById} but selecting the account by its live, normalized email. Returns the id
+	 * of the account scrubbed, or empty when no live account carries that email.
+	 */
+	Optional<CustomerAccountId> eraseAccountByEmail(String normalizedEmail);
 
 	/**
 	 * Tombstone every live guest {@code customer} row with this normalized email (email → non-PII
 	 * placeholder, {@code full_name}/{@code phone} → {@code 'ERASED'}, {@code erased_at} → now). Returns the
-	 * number of rows scrubbed.
+	 * ids of the rows scrubbed — empty when none was live.
 	 */
-	int eraseGuestByEmail(String normalizedEmail);
+	List<CustomerId> eraseGuestByEmail(String normalizedEmail);
 
 	/**
 	 * Guest {@code customer} rows the automated retention sweep (Slice 2 of #101) may consider scrubbing:

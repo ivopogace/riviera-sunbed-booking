@@ -25,8 +25,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Verifies the automated retention sweep (Slice 2 of #101) against real Postgres via Testcontainers.
  * Proves what the unit spec cannot: the real candidate/scrub SQL, the dependency-inverted
  * {@code customer.spi.GuestBookingHistory} seam resolved through the Spring context (implemented in
- * {@code booking}), the live-account gate, and above all that the retained booking / payment / payout
- * financial rows survive a retention scrub unchanged (statutory-retention exception, invariant #9).
+ * {@code booking}), the live-account gate, that the scrub reaches the expired guest's reviews through the
+ * sibling {@code customer.spi.ReviewErasure} seam (name and comment gone, star kept), and above all that the
+ * retained booking / payment / payout financial rows survive a retention scrub unchanged
+ * (statutory-retention exception, invariant #9).
  *
  * <p>Runs against the shipped default window ({@code P10Y}) — the sweep <em>service</em> is always wired;
  * only the scheduler that fires it is disabled by default. A shared container is reused across ITs, so
@@ -83,6 +85,28 @@ class GuestContactRetentionIT {
 		assertThat(string("SELECT status FROM payment WHERE booking_ref = ?", bookingId)).isEqualTo("SUCCEEDED");
 		assertThat(count("SELECT count(*) FROM payout_ledger_entry WHERE booking_id = ? AND net_minor = 3825",
 				bookingId)).isEqualTo(1);
+	}
+
+	@Test
+	void scrubsTheExpiredGuestsReviewsToo() {
+		long customerId = insertAgedGuest("retention-it-reviewed@example.com");
+		long venueId = seededVenueId();
+		long bookingId = insertBooking("RETREVIEWED1", venueId, seededSetId(venueId), customerId,
+				LocalDate.of(2015, 8, 2));
+		jdbc.update("""
+				INSERT INTO review (booking_id, venue_id, stay_date, stars, comment, display_name, created_at)
+				VALUES (?, ?, ?, 4, 'Long ago, lovely', 'Old Guest', NOW())
+				""", bookingId, venueId, Date.valueOf(LocalDate.of(2015, 8, 2)));
+
+		assertThat(sweep.sweep()).isPositive();
+
+		assertThat(timestamp("SELECT erased_at FROM customer WHERE id = ?", customerId)).isNotNull();
+		assertThat(jdbc.queryForObject("SELECT stars FROM review WHERE booking_id = ?", Integer.class, bookingId))
+				.as("the star keeps counting").isEqualTo(4);
+		assertThat(string("SELECT comment FROM review WHERE booking_id = ?", bookingId)).isNull();
+		assertThat(string("SELECT display_name FROM review WHERE booking_id = ?", bookingId)).isNull();
+		assertThat(count("SELECT count(*) FROM booking WHERE id = ? AND customer_id = ?", bookingId, customerId))
+				.isEqualTo(1);
 	}
 
 	@Test

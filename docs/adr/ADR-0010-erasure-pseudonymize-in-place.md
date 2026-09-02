@@ -1,6 +1,7 @@
 # ADR-0010: Right-to-erasure is pseudonymize-in-place under statutory retention
 
-- **Status:** Accepted (realized by #101 Slice 1)
+- **Status:** Accepted (realized by #101 Slice 1); amended 2026-09-02 by #815 (the scrub reaches
+  `review` — see *Amendment*)
 - **Date:** 2026-07-24
 - **Relates to:** invariant #9 (payout-ledger auditability), invariant #1 (JDBC-only), D-6
   (account identity is separate from the guest-contact row), #100 (structured audit logging)
@@ -43,7 +44,8 @@ Two erasure shapes were possible:
 - `booking`, `payment`, and `payout_ledger_entry` are **never touched**. The payout ledger holds no
   PII by design (venue-ids, booking-ids, money — RESPONSIBILITIES `payout` Not-My-Job), so severing
   the personal link cannot affect its auditability or exactly-once accrual (invariant #9 preserved).
-- All scrub SQL lives in **one** `customer`-module adapter (`JdbcAccountErasure` behind the internal
+- *(Superseded in part by the amendment below: the review scrub lives in `review`'s own adapter.)*
+  All scrub SQL lives in **one** `customer`-module adapter (`JdbcAccountErasure` behind the internal
   `AccountErasureStore` port) so "what erasure touches" has a single home. Every scrub is guarded on
   `erased_at IS NULL` → **idempotent**. The account and guest identities are matched independently
   (by id / by email), because D-6 forbids an FK between them.
@@ -79,4 +81,33 @@ Two erasure shapes were possible:
   counsel wants an in-DB register (recorded in the plan doc's Open questions).
 - **Scrub across modules via cross-module ports (touch `booking` to null `account_id`).** Rejected:
   unnecessary — tombstoning the `customer`-owned rows keeps every FK valid, so erasure stays a
-  single-module operation with no new cross-module coupling.
+  single-module operation with no new cross-module coupling. *(Superseded in part by the amendment
+  below once a second module came to hold PII.)*
+
+## Amendment (2026-09-02, #815): the scrub reaches review PII through an inverted port
+
+Reviews (#812) put personal data outside `customer`'s tables for the first time: a display name and
+a free-text comment, attached to a **booking**, not a person. Erasure that stopped at `customer`
+would leave the subject's chosen name and words standing on a venue page.
+
+- **The tombstone extends, the shape does not change.** Every review of the subject's bookings has
+  `display_name` and `comment` set to `NULL`; `stars`, `hidden_at` and the timestamps are untouched.
+  The star identifies nobody and is the venue's earned score, so it keeps counting (the aggregate is
+  unchanged by construction and no `ReviewsChanged` is published); without a comment the review
+  leaves the public list under the star-only rule. Still pseudonymize-in-place, still no row deleted,
+  still no FK relaxed.
+- **The reach is synchronous and inverted, with no new grant.** `customer` declares
+  `customer.spi.ReviewErasure`; `booking` — the only module that can both resolve a subject to
+  bookings and reach `review`'s published surface — implements it in `adapter/out` and calls
+  `review.api.ReviewTombstones`; `review` blanks its own rows. Both leaves stay leaves. It runs
+  inside the erasure / sweep transaction, because the decision above ("all scrub SQL … one
+  adapter") had a purpose this keeps: a half-erasure must never commit. An erasure *event* was
+  rejected for that reason — it would move the review step outside the transaction.
+- **The by-email scrubs now answer the ids they tombstoned** (`RETURNING id`), which is how the
+  service knows whose reviews to reach. The account's reviews are reached on every *self-service*
+  erasure of the account (by id), so a review written after an earlier erasure is scrubbed by the
+  next one; a repeat *admin-by-email* erasure re-reaches neither an already-tombstoned account nor
+  reviews on a tombstoned guest's bookings, since the placeholder email matches nothing — the same
+  scoped non-goal as the diverging-email guest above.
+- **Not a takedown, not a freeze.** The review is not hidden and its author (still holding the
+  booking code) may write again inside the review window; that is fresh data of their own.

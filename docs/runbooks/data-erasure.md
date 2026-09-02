@@ -17,6 +17,7 @@ references (`booking.customer_id` / `account_id` are `ON DELETE RESTRICT`).
 | `customer.email` / `full_name` / `phone` | tombstoned (`erased+<id>@erased.invalid` / `ERASED` / `ERASED`), `erased_at` set | guest-contact PII |
 | `customer_sso_identity` rows | **deleted** | transient credential (provider subject + email) |
 | `customer_account_token` rows | **deleted** | transient bearer digests |
+| `review.display_name` / `review.comment` on every review of the subject's bookings | tombstoned (`NULL` / `NULL`), the star kept | review PII (#815); the star identifies nobody and keeps counting in the venue's aggregate — the review drops out of the public list (no comment) and reads as "A guest" on the admin list |
 | server-side sessions for the subject | **revoked** (`PrincipalSessionRevoker`), before *and* after the scrub | the subject is signed out everywhere; revoking first means a failed revoke leaves the data intact and the retry works, revoking again afterwards stops a sign-in landing in between from outliving the erasure (#357) |
 | `booking`, `payment`, `payout_ledger_entry` | **untouched** | statutory-retention exception (tax/accounting; GDPR Art 17(3)(b)); the ledger holds no PII, so auditability (invariant #9) is preserved |
 
@@ -92,7 +93,9 @@ contacts the platform no longer has a lawful basis to hold, satisfying GDPR stor
 ### What it scrubs — and what it never touches
 
 It scrubs **guest `customer` rows only** (`email` / `full_name` / `phone` → the same tombstone as an
-erasure, `erased_at` set). It does **not** touch `customer_account` rows: scrubbing an account is de-facto
+erasure, `erased_at` set) and, in the same transaction, the **reviews** of those guests' bookings (display
+name and comment → `NULL`, star kept — the same review tombstone as an erasure, #815). It does **not**
+touch `customer_account` rows: scrubbing an account is de-facto
 account deletion, which needs advance notice by email, and the mailer is still mocked (→ **#255**).
 `booking`, `payment` and `payout_ledger_entry` are **never** touched — the statutory-retention exception,
 exactly as for a requested erasure (invariant #9).
@@ -152,7 +155,7 @@ All under `customer.retention.*` in `application.properties`:
 
    If that count surprises you, **stop** — the window is wrong. Erasure is irreversible.
 4. Set `customer.retention.enabled=true` and deploy. The first run happens `initial-delay` after startup.
-5. Confirm from the logs: `retention sweep scrubbed N expired guest contact(s) with cutoff YYYY-MM-DD`.
+5. Confirm from the logs: `retention sweep scrubbed N expired guest contact(s) and M review(s) with cutoff YYYY-MM-DD`.
    The line carries counts and the cutoff only — never an email, name, phone, or booking code.
 
 **To stop it**, set `enabled=false` and redeploy; already-tombstoned rows stay tombstoned (there is no
@@ -160,8 +163,9 @@ un-erase — see ADR-0010).
 
 ### Safety properties
 
-- **Idempotent.** Every scrub is `UPDATE … WHERE id = :id AND erased_at IS NULL`, and tombstoned rows are
-  not candidates, so re-running scrubs nothing and never re-stamps `erased_at`.
+- **Idempotent.** Every contact scrub is `UPDATE … WHERE id = :id AND erased_at IS NULL` and the review
+  tombstone matches only a row still carrying a name or a comment; tombstoned rows are not candidates, so
+  re-running scrubs nothing and never re-stamps `erased_at`.
 - **No distributed lock needed.** `fixedDelay` means a run never overlaps itself on one instance, and the
   guarded `UPDATE` means at most one runner can tombstone a given row — so an overlap with a Slice-1
   erasure of the same row is safe too, whichever lands first.

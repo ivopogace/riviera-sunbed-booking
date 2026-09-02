@@ -84,7 +84,9 @@ plus the cleartext `domain` part; entries still survive erasure, deliberately.**
   this requires (retention of pseudonymized suppression data, basis Art. 6(1)(f)) is owed by
   the #101 work.
 - No coupling to ADR-0010's scrub is added: erasure continues to touch only `customer`-owned
-  rows. `customer` and `notification` stay strangers.
+  rows. `customer` and `notification` stay strangers. *(Amended by #815: erasure now also reaches
+  `review`'s rows through `customer.spi.ReviewErasure` — ADR-0010's amendment; the suppression table
+  is still never touched, and `customer` and `notification` remain strangers.)*
 
 ## Consequences
 

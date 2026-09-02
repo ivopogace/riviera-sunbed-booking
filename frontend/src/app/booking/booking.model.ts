@@ -165,7 +165,7 @@ export interface BookingDetail {
   readonly reviewPanel: ReviewPanel;
 }
 
-/** A stored review as its author reads it back; both texts are null on a star-only row. */
+/** A stored review as its author reads it back; both texts are null on a star-only row, and on one an erasure has tombstoned. */
 export interface OwnReviewView {
   readonly stars: number;
   readonly comment: string | null;
