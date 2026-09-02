@@ -10,8 +10,8 @@ platform takes a commission per booking and pays venues out manually.
 > frontend (`frontend/`), served same-origin by the backend since #110 (Spring bundles
 > the SPA into its image) at [riviera-sunbed-booking.onrender.com](https://riviera-sunbed-booking.onrender.com).
 > Both Liquid Glass restyle epics are complete — tourist (#133) and operator console
-> (#141) — as are customer accounts (sign-in, SSO, GDPR erasure). In flight: tourist
-> reviews (#810), the design-token colour audit, the real transactional mailer
+> (#141) — as are customer accounts (sign-in, SSO, GDPR erasure) and tourist reviews
+> (#810). In flight: the design-token colour audit, the real transactional mailer
 > (#367), and the Stripe → Paysera payment migration (#284, ADR-0009). Per-slice
 > status lives in [`docs/plans/`](docs/plans/); what's next lives in the issue
 > tracker. If you're here to contribute, start with
