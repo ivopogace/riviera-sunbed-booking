@@ -14,8 +14,9 @@ import { defineConfig, devices } from '@playwright/test';
  * `PLAYWRIGHT_BROWSERS_PATH`; CI runs `npx playwright install chromium` first.
  *
  * Parallelism: every spec mocks its API per page and shares nothing, so files run on parallel
- * workers. CI gets 4 (the `ubuntu-latest` runner's vCPU count — measured 571s → 357s, per-test
- * time 2.4x under contention, so more workers buy nothing there); locally Playwright's default
+ * workers. CI gets 2 — a measurement against the 4-worker run (PR #891: 4 workers took the step
+ * from 8.7 to 7.0 min on the `ubuntu-latest` runner, well short of the 1.6x seen on a 4-core
+ * sandbox, so the runner's vCPUs contend harder than real cores); locally Playwright's default
  * (half the cores) applies. Tests within one file stay in order (`fullyParallel: false`): the
  * suite was authored under a single worker, and the intra-file split adds ~2% for a wider
  * timing surface.
@@ -29,7 +30,7 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 4 : undefined,
+  workers: process.env.CI ? 2 : undefined,
   reporter: process.env.CI ? 'list' : 'line',
   use: {
     baseURL: 'http://localhost:4200',
