@@ -1,7 +1,7 @@
 @if (venueId() === undefined) {
   <main class="oc-signin mx-auto w-full max-w-[440px] px-6 py-[72px]">
     <div
-      class="oc-signin-card flex flex-col gap-3.5 rounded-[22px] border border-[rgba(12,42,51,0.1)] bg-white px-[26px] py-7 shadow-[0_20px_50px_rgba(7,42,58,0.14)]"
+      class="oc-signin-card flex flex-col gap-3.5 rounded-[22px] border border-riv-console-card-border bg-white px-[26px] py-7 shadow-[0_20px_50px_rgba(7,42,58,0.14)]"
     >
       <h1
         class="oc-signin-title text-[24px] font-bold tracking-[-0.02em] text-riv-ink"
@@ -59,7 +59,7 @@
         <a
           #tabLink
           appTouchTarget
-          class="inline-flex shrink-0 items-center gap-[7px] rounded-full border border-transparent px-[15px] py-2 text-[13.5px] font-semibold text-riv-ink-soft no-underline hover:text-riv-ink aria-[current=page]:border-[rgba(12,42,51,0.1)] aria-[current=page]:bg-white aria-[current=page]:text-riv-ink aria-[current=page]:shadow-[0_2px_8px_rgba(7,42,58,0.1)]"
+          class="inline-flex shrink-0 items-center gap-[7px] rounded-full border border-transparent px-[15px] py-2 text-[13.5px] font-semibold text-riv-ink-soft no-underline hover:text-riv-ink aria-[current=page]:border-riv-console-card-border aria-[current=page]:bg-white aria-[current=page]:text-riv-ink aria-[current=page]:shadow-[0_2px_8px_rgba(7,42,58,0.1)]"
           [routerLink]="['/operator', venueId(), tab.path]"
           routerLinkActive
           ariaCurrentWhenActive="page"

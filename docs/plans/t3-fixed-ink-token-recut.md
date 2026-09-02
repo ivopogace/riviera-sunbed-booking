@@ -228,16 +228,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** Phase 2 — declare `--riv-console-card-border` / `--riv-console-btn-border` and
-migrate `operator-console.html:4,62` and `operator-actions.ts:54`.
+**Next action:** Phase 3 — write `e2e/fixed-ink-token-recut.e2e.ts`: the ten tokens at the
+document root under porcelain and dark, plus the reachable consumers' computed styles.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the calendar's fixed-glass ink ramp | ✅ | |
 | 1 — the booking-view banner body pair | ✅ | |
-| 2 — the two porcelain-pinned console borders | | |
+| 2 — the two porcelain-pinned console borders | ✅ | |
 | 3 — the cross-theme real-render proof (mocked e2e) | | |
 | 4 — ledger re-cut + close-out | | |
 
@@ -332,7 +332,8 @@ The only seam that can see R-6 and a wrong cascade. Both themes; the operator fa
 |---|---|---|---|---|---|
 | 2026-09-02 | phase 0 | **A class expression naming a `--riv-calendar-*` utility beside a raw colour literal** — #852's third standing check, the half-migrated-ternary shape | `grep -rn 'riv-calendar' src/app --include=*.html --include=*.ts \| grep -E '\[(#\|rgba\()'` | 3 (`availability-calendar.html:8,20,40`) | **none of the three is a violation**: the literals beside the tokens are `rgba(255,255,255,·)` (#853's white border + inset-highlight ramps) and `#0a3f4e` (the nav-arrow / `CALENDAR_TINTS.ring` family). Different colour families, both fenced as Non-goals. The check is about a literal **of the token's own value**; recorded because a reader seeing three hits should not have to re-derive that |
 | 2026-09-02 | phase 0 | **Any other surface painted a near-opaque white fill** — i.e. a sibling of the calendar popover that would want the same fill→ink pinning | `grep -rn '255,255,255,0\.9[0-9]\|255, 255, 255, 0\.9[0-9]' src/app src/tailwind.css` | 1 (`--riv-pop-surface`, `rgba(255,255,255,0.92)`) | **not folded in, and worth the note.** `--riv-pop-surface` is the account/theme popover's surface and it **themes** (dark: `rgba(16,26,46,0.96)`) with `--riv-pop-ink` on it. So the app already has a popover treatment that handles dark correctly, and the fair question is whether the calendar's `<dialog>` should adopt it rather than be pinned light forever. That is a **repaint** — it would turn the calendar dark in the dark theme — not a migration, so it is out of a slice whose whole claim is that no pixel moves. Filed as an adjacent-not-taken in the ledger so the next sweep does not read its absence as an oversight |
-| 2026-09-02 | phase 0 | **Any surviving literal of the migrated values, tree-wide** — the absence half of AC-4, run as a command rather than trusted to the site list | `grep -rnoE '(text\|bg\|border)-\[(#0a2a33\|rgba\(12,42,51,0\.(78\|72\|4\|35\|07)\))\]' src --include=*.ts --include=*.html \| grep -v '\.spec\.ts'` | 1 (`booking-view.ts:89`) | expected — that is phase 1's site. Re-run at the end of phase 2 must return zero |
+| 2026-09-02 | phase 2 | **A class expression naming a re-cut token beside a raw literal** — the same standing check, re-run over the two families added since phase 0 | `grep -rn 'riv-console-card-border\|riv-console-btn-border\|riv-banner-' src/app --include=*.html --include=*.ts \| grep -E '\[(#\|rgba\()'` | 1 (`operator-actions.ts:54`, `bg-[#eef1f2]`) | **not a violation, and found rather than assumed.** `#eef1f2` is the sign-out button's hover fill — a different value and a different role from the border beside it, so the check does not fire. It is a genuine class-R "no token at all" candidate with no row anywhere in the ledger, but it is not in #849's population (which is the `#0a2a33` / `rgba(12,42,51,·)` values), and inventing `--riv-console-btn-hover` for it would be widening the slice. Filed in the ledger as residue so the next sweep finds it written down |
+| 2026-09-02 | phase 0 | **Any surviving literal of the migrated values, tree-wide** — the absence half of AC-4, run as a command rather than trusted to the site list | `grep -rnoE '(text\|bg\|border)-\[(#0a2a33\|rgba\(12,42,51,0\.(78\|72\|4\|35\|07)\))\]' src --include=*.ts --include=*.html \| grep -v '\.spec\.ts'` | 1 (`booking-view.ts:89`) | expected — that is phase 1's site. **Re-run at the end of phase 2 returned zero**, over the full migrated value set including the two border alphas |
 
 ---
 

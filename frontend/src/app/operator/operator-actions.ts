@@ -51,7 +51,7 @@ import { TouchTarget } from '../shared/touch-target';
     <button
       type="button"
       appTouchTarget
-      class="cursor-pointer rounded-full border border-[rgba(12,42,51,0.14)] bg-white px-3.75 py-1.75 font-sans text-[13px] font-semibold text-riv-ink shadow-[0_1px_2px_rgba(7,42,58,0.08)] transition-colors hover:bg-[#eef1f2] motion-reduce:transition-none"
+      class="cursor-pointer rounded-full border border-riv-console-btn-border bg-white px-3.75 py-1.75 font-sans text-[13px] font-semibold text-riv-ink shadow-[0_1px_2px_rgba(7,42,58,0.08)] transition-colors hover:bg-[#eef1f2] motion-reduce:transition-none"
       [attr.data-testid]="ids().signout"
       (click)="signOut.emit()"
     >

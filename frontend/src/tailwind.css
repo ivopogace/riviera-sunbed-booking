@@ -165,6 +165,8 @@
   --color-riv-calendar-hover: var(--riv-calendar-hover);
   --color-riv-banner-body-ink: var(--riv-banner-body-ink);
   --color-riv-banner-strong-ink: var(--riv-banner-strong-ink);
+  --color-riv-console-card-border: var(--riv-console-card-border);
+  --color-riv-console-btn-border: var(--riv-console-btn-border);
 
   --shadow-riv-pop: var(--riv-pop-shadow);
   --text-shadow-riv-hero: var(--riv-hero-shadow);
@@ -817,6 +819,27 @@
       reason). */
   --riv-banner-body-ink: #334a52;
   --riv-banner-strong-ink: #0a2a33;
+
+  /** The operator console's two white-surface hairlines (#849, class R) — value-correct, role
+      wrong, the #848/#864 fork a third time. rgba(12,42,51,0.1) is --riv-pop-divider, whose whole
+      population is ONE rule inside the account popover (app.html:296); rgba(12,42,51,0.14) is
+      --riv-chip-border, the tourist shell chip's edge over the themed --riv-chip-bg. Both resolve
+      correctly under the console's porcelain pin today, so neither was a rendering bug — the
+      objection is mechanical: @theme inline resolves var(--riv-*) at the point of use, so
+      retuning the popover or the tourist chip would silently move console chrome.
+
+      Two tokens, and the 0.04 between them is not why — FORM is. -card-border bounds a surface
+      (the sign-in card, the active tab pill); -btn-border is a control's own affordance boundary,
+      the distinction --riv-wash-hover-border already draws. Merging would have meant repainting
+      one for a similarity that is only a value.
+
+      Declared once each: every consumer is a child of a porcelain-pinned host —
+      operator-console's own data-riv-theme binding, and app.ts's subtree pin on every
+      operatorChrome route — so a dark branch is unreachable and a dark value would be an
+      unverifiable claim. Non-text chrome (WCAG 1.4.11) over the white fills they bound, measured
+      rather than assumed exempt in shared/fixed-ink-tokens.contrast.spec.ts. */
+  --riv-console-card-border: rgba(12, 42, 51, 0.1);
+  --riv-console-btn-border: rgba(12, 42, 51, 0.14);
 }
 
 [data-riv-theme='riviera'] {

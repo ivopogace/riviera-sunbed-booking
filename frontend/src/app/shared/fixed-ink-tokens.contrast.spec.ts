@@ -15,6 +15,8 @@ import {
   BANNER_FILLS,
   BANNER_STRONG_INK,
   CALENDAR_GLASS,
+  CONSOLE_BTN_BORDER,
+  CONSOLE_CARD_BORDER,
   CALENDAR_HOVER,
   CALENDAR_INK,
   CALENDAR_INK_DISABLED,
@@ -75,6 +77,12 @@ const BANNER_FAMILY = {
   '--riv-banner-strong-ink': rgbToHex(BANNER_STRONG_INK),
 } as const;
 
+/** The console's two white-surface hairlines. */
+const CONSOLE_FAMILY = {
+  '--riv-console-card-border': cssValue(CONSOLE_CARD_BORDER),
+  '--riv-console-btn-border': cssValue(CONSOLE_BTN_BORDER),
+} as const;
+
 const THEMES: readonly [string, readonly Rgb[]][] = [
   ['riviera', RIVIERA_STOPS],
   ['porcelain', PORCELAIN_STOPS],
@@ -90,6 +98,8 @@ const MIGRATED_LITERALS = [
   'rgba(12,42,51,0.35)',
   'rgba(12,42,51,0.07)',
   'rgba(255,255,255,0.97)',
+  'rgba(12,42,51,0.1)',
+  'rgba(12,42,51,0.14)',
 ];
 
 const APP_ROOT = join(process.cwd(), 'src/app');
@@ -246,8 +256,36 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
     });
   });
 
+  describe('the console border families', () => {
+    /**
+     * Both hairlines bound an opaque white fill, so there is no compositing and no per-theme case:
+     * one plain pair each. Non-text chrome under WCAG 1.4.11 — measured rather than assumed
+     * exempt, `non-text-contrast.md`'s second condition.
+     */
+    it.each([
+      ['the card border', CONSOLE_CARD_BORDER],
+      ['the button border', CONSOLE_BTN_BORDER],
+    ] as const)('%s is measured against the white fill it bounds', (_name, border) => {
+      const ratio = inkRatio(border, WHITE);
+
+      expect(ratio).toBeGreaterThan(1);
+      expect(ratio).toBeLessThan(AA_LARGE);
+    });
+
+    /**
+     * The role objection, made mechanical. These two tokens must not BE the coincidental ones —
+     * if a later slice collapses them back onto `--riv-pop-divider` or `--riv-chip-border`, the
+     * console inherits the popover's and the tourist chip's theme overrides, which is the whole
+     * thing #849's re-cut refused.
+     */
+    it('keeps the coincidental tokens themed and separate, which is why these exist', () => {
+      expect(declarationsOf('--riv-pop-divider')).toHaveLength(2);
+      expect(declarationsOf('--riv-chip-border')).toHaveLength(3);
+    });
+  });
+
   describe('the stylesheet contract', () => {
-    const ALL = { ...CALENDAR_FAMILY, ...BANNER_FAMILY };
+    const ALL = { ...CALENDAR_FAMILY, ...BANNER_FAMILY, ...CONSOLE_FAMILY };
 
     it('declares each token exactly once, so no theme block can override it', () => {
       for (const name of Object.keys(ALL)) {
@@ -291,7 +329,12 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
   });
 
   describe('the sites', () => {
-    const SITES = ['venue/availability-calendar.html', 'booking/booking-view.ts'];
+    const SITES = [
+      'venue/availability-calendar.html',
+      'booking/booking-view.ts',
+      'operator/operator-console.html',
+      'operator/operator-actions.ts',
+    ];
 
     it.each(SITES)('%s paints no migrated literal', (path) => {
       const source = read(path).toLowerCase().replaceAll(' ', '');
@@ -307,7 +350,7 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
      */
     it.each(SITES)('%s paints its family', (path) => {
       expect(read(path), `${path} paints a re-cut family`).toMatch(
-        /-riv-(calendar|banner|console-card-border|console-btn-border)/,
+        /-riv-(calendar|banner|console-card-border|console-btn-border)-?/,
       );
     });
   });

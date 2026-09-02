@@ -490,3 +490,26 @@ export const BANNER_STRONG_INK: Rgb = INK_DARK;
 export const BANNER_FILLS: readonly Rgb[] = ['ddf4f8', 'fdf5e6', 'faefec', 'f0f2f3', 'f0eef6'].map(
   hexToRgb,
 );
+
+/** The operator console's two white-surface hairlines — `--riv-console-{card,btn}-border` (#849,
+ *  class R).
+ *
+ *  Value-correct, role wrong, the #848/#864 fork a third time. `rgba(12,42,51,0.1)` is
+ *  `--riv-pop-divider`, whose whole population is one rule inside the account popover
+ *  (`app.html:296`); `rgba(12,42,51,0.14)` is `--riv-chip-border`, the tourist shell chip's edge
+ *  over the themed `--riv-chip-bg`. Both resolve correctly under the console's porcelain pin
+ *  today, so neither is a rendering bug — the objection is mechanical: `@theme inline` resolves
+ *  `var(--riv-*)` at the point of use, so retuning the popover or the tourist chip would silently
+ *  move console chrome that has nothing to do with either.
+ *
+ *  Two tokens rather than one, and the 0.04 between them is not the reason — form is. The card
+ *  border bounds a SURFACE (the sign-in card, the active tab pill); the button border is a
+ *  control's own affordance boundary, which `--riv-wash-hover-border` already treats as a
+ *  different kind of thing. Merging them would have meant repainting one to match the other, for
+ *  a similarity that is only a value.
+ *
+ *  Declared once each: every consumer is a child of a porcelain-pinned host — `operator-console`'s
+ *  own `data-riv-theme` binding, and `app.ts`'s subtree pin on every `operatorChrome` route — so a
+ *  dark branch is unreachable by construction and a dark value would be an unverifiable claim. */
+export const CONSOLE_CARD_BORDER: Glass = { color: CARD_INK, alpha: 0.1 };
+export const CONSOLE_BTN_BORDER: Glass = { color: CARD_INK, alpha: 0.14 };
