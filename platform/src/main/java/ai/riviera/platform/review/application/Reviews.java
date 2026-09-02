@@ -1,10 +1,12 @@
 package ai.riviera.platform.review.application;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import ai.riviera.platform.review.vocabulary.BookingRef;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
+import ai.riviera.platform.review.vocabulary.ListedReview;
 import ai.riviera.platform.review.vocabulary.OwnReview;
 import ai.riviera.platform.review.vocabulary.VenueRef;
 
@@ -50,4 +52,11 @@ public interface Reviews {
 
 	/** Whether this booking's one review slot is already taken. */
 	boolean existsFor(BookingRef booking);
+
+	/**
+	 * Up to {@code limit} of {@code venue}'s listed reviews — the ones carrying a comment — with an
+	 * id below {@code beforeId}, newest first. The store answers rows; how many make a page and
+	 * whether another follows is the service's arithmetic.
+	 */
+	List<ListedReview> newestListedBefore(VenueRef venue, long beforeId, int limit);
 }

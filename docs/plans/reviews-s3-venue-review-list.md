@@ -360,14 +360,14 @@ the entries are star rows, not a score.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** phase 1 — red on `ListedReviewsServiceTest` + `ReviewListingFlowIT`; open the draft PR on the phase-0 push.
+**Next action:** phase 2 — red on `ListVenueReviewsServiceTest` + `VenueReviewsControllerTest`. Draft PR: #897.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V47 stay date through the claim | ✅ | `Store the stay date on the review row, backfilled from the booking (#813)` |
-| 1 — `review.api.ListedReviews` + the keyset read | | |
+| 1 — `review.api.ListedReviews` + the keyset read | ✅ | `Publish a cursor page of a venue's listed reviews from the review module (#813)` |
 | 2 — `venue`: fence, endpoint, DTO, edge rows | | |
 | 3 — frontend: `app-venue-reviews` on the venue page | | |
 | 4 — mocked e2e, touch-target coverage, docs, close-out prep | | |
@@ -415,7 +415,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/test/java/ai/riviera/platform/VenueReviewsControllerTest.java` — new
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — `ListVenueReviews` stub
 - `platform/src/test/java/ai/riviera/platform/EndpointRoleGateCoverageTest.java` — the route
-- `platform/src/test/java/ai/riviera/platform/ReviewFixtures.java` — `review(...)` seeder; bookings carry a stay date parameter
+- `platform/src/test/java/ai/riviera/platform/ReviewFixtures.java` — `review(...)` seeder (venue + stay date taken from the booking row)
 - `frontend/src/app/shared/rating.ts` + `rating.spec.ts` — `starGlyphs`, `starsOutOfFive`
 - `frontend/src/app/shared/stay-month.ts` + `stay-month.spec.ts` — new
 - `frontend/src/app/shared/venue-views.ts` — the two wire types
@@ -742,6 +742,7 @@ Modify `shared/rating.ts` + spec, `shared/venue-views.ts`, `booking/review-panel
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-02 | phase 0 — `CompletedStay` widened, `Reviews.claim`/`update` reshaped, `stay_date NOT NULL` | every constructor of `CompletedStay`, every implementor/caller of `Reviews.claim`/`update`, every raw `INSERT INTO review` | `grep -rn "new CompletedStay(\|reviews\.claim(\|reviews\.update(\|INSERT INTO review\b" platform/src` | `JdbcCompletedStays`, `ReviewLifecycleService`, `JdbcReviews`, the two service-test fakes, `ReviewMigrationIT`, `VenueRatingRecomputeIT`, `FixtureJdbcReviews` | all updated except `FixtureJdbcReviews` — an architecture-test token fixture that never executes its SQL |
+| 2026-09-02 | phase 1 — the listing `WHERE` is where the future visibility predicate lands | every SQL statement against `review` in production code | `grep -rn "FROM review\|INTO review" platform/src/main` | `JdbcReviews` only (claim, update, delete, findFor, totalsFor, existsFor, newestListedBefore) | no code change; the adapter Javadoc names `newestListedBefore` and `totalsFor` as the predicate's two homes (A-2) |
 
 ---
 

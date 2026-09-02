@@ -1,8 +1,8 @@
 /**
  * Review bounded context — the tourist's verdict on a delivered stay: the review record (stars,
  * comment and display name; one per booking), the eligibility and 60-day window policy, the
- * author's own submit/edit/delete lifecycle inside it, and the aggregate rating math.
- * Aggregate root: {@code Review}.
+ * author's own submit/edit/delete lifecycle inside it, the aggregate rating math, and the public
+ * page of listed (commented, visible) reviews a venue shows. Aggregate root: {@code Review}.
  *
  * <p><strong>Leaf module, deny-by-default:</strong> {@code allowedDependencies = { "shared" }},
  * the {@code operator}/{@code customer} posture — everything points <em>into</em> this module.

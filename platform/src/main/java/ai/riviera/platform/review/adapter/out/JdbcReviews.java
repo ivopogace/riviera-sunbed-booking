@@ -2,6 +2,9 @@ package ai.riviera.platform.review.adapter.out;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -12,7 +15,9 @@ import ai.riviera.platform.review.application.ReviewTotals;
 import ai.riviera.platform.review.application.Reviews;
 import ai.riviera.platform.review.vocabulary.BookingRef;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
+import ai.riviera.platform.review.vocabulary.ListedReview;
 import ai.riviera.platform.review.vocabulary.OwnReview;
+import ai.riviera.platform.review.vocabulary.ReviewRef;
 import ai.riviera.platform.review.vocabulary.VenueRef;
 
 /**
@@ -25,8 +30,11 @@ import ai.riviera.platform.review.vocabulary.VenueRef;
  * the row's creation <em>is</em> the claim there is no read-then-write window between the two
  * (the {@code JdbcAvailabilityClaim} discipline).
  *
- * <p>The aggregate read is the counterpart: one grouped scan of a venue's rows, served by
- * {@code review_venue_id_idx}. It returns raw totals — the mean and its rounding stay in the domain.
+ * <p>The aggregate read is the counterpart: one grouped scan of a venue's rows, served by the
+ * prefix of {@code review_venue_listing_idx}. It returns raw totals — the mean and its rounding stay
+ * in the domain. The listing read seeks the same index newest-first and keeps a row only when it
+ * carries a comment; a review's visibility is not yet a column, so this {@code WHERE} and the
+ * aggregate's are where that predicate lands when it is.
  *
  * <p>Edit and delete address the row by {@code booking_id} and answer with their rows-affected count
  * for the same reason: two amends racing each other resolve in the database, and the loser reads as
@@ -43,6 +51,7 @@ class JdbcReviews implements Reviews {
 	/** The columns, kept apart from the bind parameters above: the two coincide by name, not by rule. */
 	private static final String COL_STARS = "stars";
 	private static final String COL_COMMENT = "comment";
+	private static final String COL_DISPLAY_NAME = "display_name";
 
 	private final JdbcClient jdbc;
 
@@ -100,7 +109,7 @@ class JdbcReviews implements Reviews {
 				""")
 				.param(PARAM_BOOKING, booking.value())
 				.query((rs, rowNum) -> new OwnReview(rs.getInt(COL_STARS), rs.getString(COL_COMMENT),
-						rs.getString("display_name")))
+						rs.getString(COL_DISPLAY_NAME)))
 				.optional();
 	}
 
@@ -123,5 +132,24 @@ class JdbcReviews implements Reviews {
 				.param(PARAM_BOOKING, booking.value())
 				.query(Boolean.class)
 				.single());
+	}
+
+	@Override
+	public List<ListedReview> newestListedBefore(VenueRef venue, long beforeId, int limit) {
+		return jdbc.sql("""
+				SELECT id, stars, display_name, stay_date, comment
+				FROM review
+				WHERE venue_id = :venue AND comment IS NOT NULL AND id < :before
+				ORDER BY id DESC
+				LIMIT :limit
+				""")
+				.param("venue", venue.value())
+				.param("before", beforeId)
+				.param("limit", limit)
+				.query((rs, rowNum) -> new ListedReview(new ReviewRef(rs.getLong("id")),
+						rs.getInt(COL_STARS), rs.getString(COL_DISPLAY_NAME),
+						YearMonth.from(rs.getObject("stay_date", LocalDate.class)),
+						rs.getString(COL_COMMENT)))
+				.list();
 	}
 }

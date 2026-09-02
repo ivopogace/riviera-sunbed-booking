@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -16,6 +17,7 @@ import ai.riviera.platform.review.domain.ReviewWindow;
 import ai.riviera.platform.review.spi.CompletedStays;
 import ai.riviera.platform.review.vocabulary.BookingRef;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
+import ai.riviera.platform.review.vocabulary.ListedReview;
 import ai.riviera.platform.review.vocabulary.OwnReview;
 import ai.riviera.platform.review.vocabulary.ReviewPanel;
 import ai.riviera.platform.review.vocabulary.VenueRef;
@@ -146,6 +148,11 @@ class ReviewEligibilityServiceTest {
 		@Override
 		public boolean existsFor(BookingRef booking) {
 			return stored.containsKey(booking);
+		}
+
+		@Override
+		public List<ListedReview> newestListedBefore(VenueRef venue, long beforeId, int limit) {
+			throw new UnsupportedOperationException("the eligibility read never lists");
 		}
 	}
 }

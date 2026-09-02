@@ -22,6 +22,7 @@ import ai.riviera.platform.review.spi.CompletedStays;
 import ai.riviera.platform.review.vocabulary.AmendOutcome;
 import ai.riviera.platform.review.vocabulary.BookingRef;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
+import ai.riviera.platform.review.vocabulary.ListedReview;
 import ai.riviera.platform.review.vocabulary.OwnReview;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 import ai.riviera.platform.review.vocabulary.VenueRef;
@@ -309,6 +310,11 @@ class ReviewLifecycleServiceTest {
 		@Override
 		public boolean existsFor(BookingRef booking) {
 			return stored.containsKey(booking);
+		}
+
+		@Override
+		public List<ListedReview> newestListedBefore(VenueRef venue, long beforeId, int limit) {
+			throw new UnsupportedOperationException("the lifecycle never lists");
 		}
 
 		private static OwnReview asStored(ReviewSubmission submission) {
