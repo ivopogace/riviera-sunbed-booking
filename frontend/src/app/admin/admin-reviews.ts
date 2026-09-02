@@ -1,6 +1,5 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 
-import { OperatorAuth } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmWithReason } from '../shared/confirm-with-reason';
@@ -10,8 +9,9 @@ import { formatStayMonth } from '../shared/stay-month';
 import { TouchTarget } from '../shared/touch-target';
 import { formatMoment } from './admin-moment';
 import { AdminReviewsService } from './admin-reviews.service';
-import { AdminVenuesService, ModerationVenue } from './admin-venues.service';
+import { ModerationVenue } from './admin-venues.service';
 import { AdminReviewEntryView } from './admin.model';
+import { moderationVenuePicker } from './moderation-venue-picker';
 
 const BTN =
   'rounded-[10px] border border-riv-field-border px-4 py-2 text-[14px] font-semibold text-riv-card-ink aria-disabled:cursor-not-allowed aria-disabled:opacity-60';
@@ -51,20 +51,20 @@ const BTN =
         appTouchTarget
         id="admin-reviews-venue-select"
         data-testid="admin-reviews-venue"
-        [value]="selectedVenueId() ?? ''"
+        [value]="picker.selectedVenueId() ?? ''"
         (change)="onVenuePicked($event)"
         class="mt-1 w-full max-w-[420px] rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[15px] text-riv-ink"
       >
         <option value="">Choose a venue…</option>
-        @for (venue of venues(); track venue.id) {
+        @for (venue of picker.venues(); track venue.id) {
           <option [value]="venue.id">{{ venue.name }} — {{ venue.beach }}</option>
         }
       </select>
     </div>
 
-    @if (loading() && entries().length === 0) {
+    @if (picker.loading() && entries().length === 0) {
       <p class="mt-6 text-[15px] text-riv-ink-soft" data-testid="admin-reviews-loading">Loading…</p>
-    } @else if (loadError()) {
+    } @else if (picker.loadError()) {
       <p class="mt-6 text-[15px] text-riv-error-ink" role="alert" data-testid="admin-reviews-error">
         Something went wrong loading this venue's reviews.
         <button
@@ -77,7 +77,7 @@ const BTN =
           Retry
         </button>
       </p>
-    } @else if (selectedVenue(); as venue) {
+    } @else if (picker.selectedVenue(); as venue) {
       @if (entries().length === 0) {
         <p class="mt-6 text-[15px] text-riv-ink-soft" data-testid="admin-reviews-empty">
           No reviews yet for {{ venue.name }}.
@@ -182,11 +182,11 @@ const BTN =
             appTouchTarget
             type="button"
             data-testid="admin-reviews-more"
-            [appBusy]="loading()"
+            [appBusy]="picker.loading()"
             (click)="loadMore()"
             class="mt-4 ${BTN}"
           >
-            {{ loading() ? 'Loading…' : 'Show more reviews' }}
+            {{ picker.loading() ? 'Loading…' : 'Show more reviews' }}
           </button>
         }
       }
@@ -204,38 +204,16 @@ const BTN =
   `,
 })
 export class AdminReviews {
-  private readonly auth = inject(OperatorAuth);
-  private readonly venueList = inject(AdminVenuesService);
   private readonly service = inject(AdminReviewsService);
   private readonly focusAfterRender = focusMover();
 
-  protected readonly venues = signal<readonly ModerationVenue[]>([]);
-  protected readonly selectedVenueId = signal<number | undefined>(undefined);
+  protected readonly picker = moderationVenuePicker();
   protected readonly entries = signal<readonly AdminReviewEntryView[]>([]);
   protected readonly nextCursor = signal<number | null>(null);
   protected readonly confirming = signal<number | undefined>(undefined);
   protected readonly reason = signal('');
-  protected readonly loading = signal(false);
-  protected readonly loadError = signal(false);
   protected readonly busy = signal(false);
   protected readonly notice = signal('');
-
-  protected readonly selectedVenue = computed(() =>
-    this.venues().find((venue) => venue.id === this.selectedVenueId()),
-  );
-
-  private loaded = false;
-  private loadGeneration = 0;
-
-  constructor() {
-    // Load the venue list once the admin session is confirmed (restore settled + ROLE_ADMIN present).
-    effect(() => {
-      if (!this.auth.restoring() && this.auth.isAdmin() && !this.loaded) {
-        this.loaded = true;
-        void this.loadVenues();
-      }
-    });
-  }
 
   protected glyphs(entry: AdminReviewEntryView): string {
     return starGlyphs(entry.stars);
@@ -280,14 +258,12 @@ export class AdminReviews {
   }
 
   protected onVenuePicked(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    this.abandonInFlightLoad();
-    this.selectedVenueId.set(value === '' ? undefined : Number(value));
+    const picked = this.picker.pick(event);
     this.confirming.set(undefined);
     this.notice.set('');
     this.entries.set([]);
     this.nextCursor.set(null);
-    if (value !== '') {
+    if (picked !== undefined) {
       void this.loadReviews();
     }
   }
@@ -300,22 +276,22 @@ export class AdminReviews {
 
   protected async loadMore(): Promise<void> {
     const cursor = this.nextCursor();
-    if (cursor !== null && !this.loading()) {
+    if (cursor !== null && !this.picker.loading()) {
       await this.loadPage(cursor);
     }
   }
 
   private async loadPage(cursor: number | undefined): Promise<void> {
-    const venueId = this.selectedVenueId();
+    const venueId = this.picker.selectedVenueId();
     if (venueId === undefined) {
       return;
     }
-    const generation = ++this.loadGeneration;
-    this.loading.set(true);
-    this.loadError.set(false);
+    const ticket = this.picker.beginLoad();
+    this.picker.loading.set(true);
+    this.picker.loadError.set(false);
     try {
       const page = await this.service.reviews(venueId, cursor);
-      if (generation !== this.loadGeneration) {
+      if (!this.picker.isCurrent(ticket)) {
         return;
       }
       const first = page.reviews[0];
@@ -326,21 +302,14 @@ export class AdminReviews {
         this.focusAfterRender(`admin-review-${first.id}`);
       }
     } catch {
-      if (generation === this.loadGeneration) {
-        this.loadError.set(true);
+      if (this.picker.isCurrent(ticket)) {
+        this.picker.loadError.set(true);
       }
     } finally {
-      if (generation === this.loadGeneration) {
-        this.loading.set(false);
+      if (this.picker.isCurrent(ticket)) {
+        this.picker.loading.set(false);
       }
     }
-  }
-
-  /** Retire whatever load is in flight; the staleness test is this counter, not the venue id. */
-  private abandonInFlightLoad(): void {
-    this.loadGeneration++;
-    this.loading.set(false);
-    this.loadError.set(false);
   }
 
   protected async hide(venue: ModerationVenue, entry: AdminReviewEntryView): Promise<void> {
@@ -348,13 +317,13 @@ export class AdminReviews {
     const grounds = this.reason().trim();
     try {
       await (grounds === '' ? this.service.hide(entry.id) : this.service.hide(entry.id, grounds));
-      this.reportOnlyIfStillViewing(venue, () => {
+      this.ifStillViewing(venue, () => {
         this.flip(entry.id, new Date().toISOString());
         this.notice.set(`Hid ${possessive(entry)} review of ${venue.name}.`);
         this.focusAfterRender(`admin-review-${entry.id}`);
       });
     } catch {
-      this.reportOnlyIfStillViewing(venue, () => {
+      this.ifStillViewing(venue, () => {
         this.notice.set('Could not hide the review. Nothing was changed.');
         this.focusAfterRender('admin-reviews-notice');
       });
@@ -369,14 +338,14 @@ export class AdminReviews {
     this.busy.set(true);
     try {
       await this.service.unhide(entry.id);
-      this.reportOnlyIfStillViewing(venue, () => {
+      this.ifStillViewing(venue, () => {
         this.flip(entry.id, null);
         this.notice.set(`${capitalised(possessive(entry))} review is back in public view.`);
         this.focusAfterRender(`admin-review-${entry.id}`);
       });
     } catch {
       // Nothing was destroyed: the pressed button survives, so focus stays and the status announces.
-      this.reportOnlyIfStillViewing(venue, () =>
+      this.ifStillViewing(venue, () =>
         this.notice.set('Could not un-hide the review. Nothing was changed.'),
       );
     } finally {
@@ -389,19 +358,10 @@ export class AdminReviews {
       entries.map((each) => (each.id === reviewId ? { ...each, hiddenAt } : each)),
     );
   }
-
   /** Apply an action's outcome only while its own venue is still on screen — never under another's name. */
-  private reportOnlyIfStillViewing(venue: ModerationVenue, apply: () => void): void {
-    if (this.selectedVenueId() === venue.id) {
+  private ifStillViewing(venue: ModerationVenue, apply: () => void): void {
+    if (this.picker.isViewing(venue)) {
       apply();
-    }
-  }
-
-  private async loadVenues(): Promise<void> {
-    try {
-      this.venues.set(await this.venueList.venues());
-    } catch {
-      this.loadError.set(true);
     }
   }
 }

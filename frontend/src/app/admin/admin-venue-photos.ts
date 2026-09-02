@@ -1,16 +1,16 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 
 import { NgOptimizedImage } from '@angular/common';
 
-import { OperatorAuth } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { ConfirmWithReason } from '../shared/confirm-with-reason';
 import { focusMover } from '../shared/focus-after-render';
 import { PhotoSlotKey } from '../shared/venue-views';
 import { AdminVenuePhotosService } from './admin-venue-photos.service';
-import { AdminVenuesService, ModerationVenue } from './admin-venues.service';
+import { ModerationVenue } from './admin-venues.service';
 import { AdminPhotoSlotView } from './admin.model';
+import { moderationVenuePicker } from './moderation-venue-picker';
 
 import { TouchTarget } from '../shared/touch-target';
 
@@ -62,20 +62,20 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
         appTouchTarget
         id="admin-photos-venue-select"
         data-testid="admin-photos-venue"
-        [value]="selectedVenueId() ?? ''"
+        [value]="picker.selectedVenueId() ?? ''"
         (change)="onVenuePicked($event)"
         class="mt-1 w-full max-w-[420px] rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[15px] text-riv-ink"
       >
         <option value="">Choose a venue…</option>
-        @for (venue of venues(); track venue.id) {
+        @for (venue of picker.venues(); track venue.id) {
           <option [value]="venue.id">{{ venue.name }} — {{ venue.beach }}</option>
         }
       </select>
     </div>
 
-    @if (loading()) {
+    @if (picker.loading()) {
       <p class="mt-6 text-[15px] text-riv-ink-soft" data-testid="admin-photos-loading">Loading…</p>
-    } @else if (loadError()) {
+    } @else if (picker.loadError()) {
       <p class="mt-6 text-[15px] text-riv-error-ink" role="alert" data-testid="admin-photos-error">
         Something went wrong loading this venue's photos.
         <button
@@ -88,7 +88,7 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
           Retry
         </button>
       </p>
-    } @else if (selectedVenue(); as venue) {
+    } @else if (picker.selectedVenue(); as venue) {
       <ul role="list" class="mt-6 grid gap-4 sm:grid-cols-3">
         @for (slot of slots(); track slot.slot) {
           <li
@@ -168,37 +168,15 @@ const SLOT_LABELS: Readonly<Record<PhotoSlotKey, string>> = {
   `,
 })
 export class AdminVenuePhotos {
-  private readonly auth = inject(OperatorAuth);
   private readonly service = inject(AdminVenuePhotosService);
-  private readonly venueList = inject(AdminVenuesService);
   private readonly focusAfterRender = focusMover();
 
-  protected readonly venues = signal<readonly ModerationVenue[]>([]);
-  protected readonly selectedVenueId = signal<number | undefined>(undefined);
+  protected readonly picker = moderationVenuePicker();
   protected readonly slots = signal<readonly AdminPhotoSlotView[]>([]);
   protected readonly confirming = signal<PhotoSlotKey | undefined>(undefined);
   protected readonly reason = signal('');
-  protected readonly loading = signal(false);
-  protected readonly loadError = signal(false);
   protected readonly busy = signal(false);
   protected readonly notice = signal('');
-
-  protected readonly selectedVenue = computed(() =>
-    this.venues().find((venue) => venue.id === this.selectedVenueId()),
-  );
-
-  private loaded = false;
-  private loadGeneration = 0;
-
-  constructor() {
-    // Load the catalogue once the admin session is confirmed (restore settled + ROLE_ADMIN present).
-    effect(() => {
-      if (!this.auth.restoring() && this.auth.isAdmin() && !this.loaded) {
-        this.loaded = true;
-        void this.loadVenues();
-      }
-    });
-  }
 
   protected label(slot: PhotoSlotKey): string {
     return SLOT_LABELS[slot];
@@ -228,56 +206,38 @@ export class AdminVenuePhotos {
   }
 
   protected onVenuePicked(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    this.abandonInFlightLoad();
-    this.selectedVenueId.set(value === '' ? undefined : Number(value));
+    const picked = this.picker.pick(event);
     this.confirming.set(undefined);
     this.notice.set('');
     this.slots.set([]);
-    if (value !== '') {
+    if (picked !== undefined) {
       void this.loadSlots();
     }
   }
 
   protected async loadSlots(): Promise<void> {
-    const venueId = this.selectedVenueId();
+    const venueId = this.picker.selectedVenueId();
     if (venueId === undefined) {
       return;
     }
-    const generation = ++this.loadGeneration;
-    this.loading.set(true);
-    this.loadError.set(false);
+    const ticket = this.picker.beginLoad();
+    this.picker.loading.set(true);
+    this.picker.loadError.set(false);
     try {
       const loaded = await this.service.slots(venueId);
-      if (generation !== this.loadGeneration) {
+      if (!this.picker.isCurrent(ticket)) {
         return;
       }
       this.slots.set(loaded.slots);
     } catch {
-      if (generation === this.loadGeneration) {
-        this.loadError.set(true);
+      if (this.picker.isCurrent(ticket)) {
+        this.picker.loadError.set(true);
       }
     } finally {
-      if (generation === this.loadGeneration) {
-        this.loading.set(false);
+      if (this.picker.isCurrent(ticket)) {
+        this.picker.loading.set(false);
       }
     }
-  }
-
-  /**
-   * Retire whatever load is in flight and clear its pending state.
-   *
-   * <p>The staleness test is a <strong>generation counter, not the selected venue id</strong>, and the
-   * difference is not academic: an id check calls a response current whenever its venue is on screen,
-   * so leaving venue 7 and coming back re-requests it and the *older* of the two answers can land
-   * last and win. Only "is this the newest request I issued" is actually monotonic. Clearing
-   * `loading` here is the other half — deselecting back to "Choose a venue…" issues no new request,
-   * so nothing else would ever turn the spinner off.
-   */
-  private abandonInFlightLoad(): void {
-    this.loadGeneration++;
-    this.loading.set(false);
-    this.loadError.set(false);
   }
 
   protected async remove(venue: ModerationVenue, slot: PhotoSlotKey): Promise<void> {
@@ -288,7 +248,7 @@ export class AdminVenuePhotos {
       await (grounds === ''
         ? this.service.takedown(venue.id, slot)
         : this.service.takedown(venue.id, slot, grounds));
-      this.reportOnlyIfStillViewing(venue, () => {
+      this.ifStillViewing(venue, () => {
         // Empty the slot in place: the read model already says emptiness is the null URL.
         this.slots.update((slots) =>
           slots.map((each) => (each.slot === slot ? { ...each, previewUrl: null } : each)),
@@ -297,7 +257,7 @@ export class AdminVenuePhotos {
         this.focusAfterRender(`admin-photo-slot-${slot}`);
       });
     } catch {
-      this.reportOnlyIfStillViewing(venue, () => {
+      this.ifStillViewing(venue, () => {
         this.notice.set(`Could not remove the ${this.label(slot)} photo. Nothing was changed.`);
         // The `finally` destroys the confirmation whether or not the takedown worked.
         this.focusAfterRender('admin-photos-notice');
@@ -308,23 +268,10 @@ export class AdminVenuePhotos {
       this.busy.set(false);
     }
   }
-
-  /**
-   * Apply a takedown's outcome only while its own venue is still on screen. Without this guard a
-   * removal that settles after the admin switched venues would blank the *new* venue's same-named
-   * slot — showing a live photo as gone — and narrate the old venue's name under the new venue's UI.
-   */
-  private reportOnlyIfStillViewing(venue: ModerationVenue, apply: () => void): void {
-    if (this.selectedVenueId() === venue.id) {
+  /** Apply an action's outcome only while its own venue is still on screen — never under another's name. */
+  private ifStillViewing(venue: ModerationVenue, apply: () => void): void {
+    if (this.picker.isViewing(venue)) {
       apply();
-    }
-  }
-
-  private async loadVenues(): Promise<void> {
-    try {
-      this.venues.set(await this.venueList.venues());
-    } catch {
-      this.loadError.set(true);
     }
   }
 }
