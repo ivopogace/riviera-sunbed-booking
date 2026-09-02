@@ -688,6 +688,7 @@
       and the cell focus ring; the chosen day's ring is its own colour so a focused chosen cell
       does not wear one colour twice. The bar's two boundaries (fill on track, track on each
       tint) are held to WCAG 1.4.11's 3:1 in both palettes. Mirror: testing/calendar-tints.ts.
+      Rationale: docs/design/colour-literal-token-audit.md (class S, and "The overlay surfaces").
       Proof: venue/availability-calendar.contrast.spec.ts. */
   --riv-calendar-free-fill: #dff0e4;
   --riv-calendar-low-fill: #fdeecc;

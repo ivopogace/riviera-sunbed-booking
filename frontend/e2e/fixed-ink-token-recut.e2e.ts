@@ -41,57 +41,61 @@ const REGISTRY = {
 } as const;
 
 /**
- * The calendar's themed tokens and the popover chrome it consumes, per document theme: the authored
- * value at the document root, and the computed form Chromium reports on the rendered box.
+ * The calendar's themed tokens per document theme, as authored: asserted at the document root, and
+ * — through `rgb()` below — on the day-cell boxes, so a value and its render are one number.
  */
-const CALENDAR = {
+const THEMED_TOKENS = {
   porcelain: {
-    registry: {
-      '--riv-calendar-free-fill': '#dff0e4',
-      '--riv-calendar-low-fill': '#fdeecc',
-      '--riv-calendar-full-fill': '#fae9e9',
-      '--riv-calendar-unknown-fill': '#ffffff',
-      '--riv-calendar-accent': '#0a3f4e',
-      '--riv-calendar-selected-ring': '#085a6e',
-      '--riv-calendar-bar-fill': '#0a3f4e',
-      '--riv-calendar-bar-track': '#6f8a91',
-      '--riv-pop-ink-disabled': 'rgba(12, 42, 51, 0.4)',
-    },
+    '--riv-calendar-free-fill': '#dff0e4',
+    '--riv-calendar-low-fill': '#fdeecc',
+    '--riv-calendar-full-fill': '#fae9e9',
+    '--riv-calendar-unknown-fill': '#ffffff',
+    '--riv-calendar-accent': '#0a3f4e',
+    '--riv-calendar-selected-ring': '#085a6e',
+    '--riv-calendar-bar-fill': '#0a3f4e',
+    '--riv-calendar-bar-track': '#6f8a91',
+    '--riv-pop-ink-disabled': 'rgba(12, 42, 51, 0.4)',
+  },
+  dark: {
+    '--riv-calendar-free-fill': '#1f3f30',
+    '--riv-calendar-low-fill': '#4a3a16',
+    '--riv-calendar-full-fill': '#4d2429',
+    '--riv-calendar-unknown-fill': '#1c2740',
+    '--riv-calendar-accent': '#9adde8',
+    '--riv-calendar-selected-ring': '#7cd7e8',
+    '--riv-calendar-bar-fill': '#e6f4f8',
+    '--riv-calendar-bar-track': '#758a9a',
+    '--riv-pop-ink-disabled': 'rgba(242, 247, 250, 0.32)',
+  },
+} as const;
+
+/** The popover chrome the calendar consumes, per theme, as Chromium reports it on the box. */
+const CHROME = {
+  porcelain: {
     surface: 'rgba(255, 255, 255, 0.92)',
+    border: 'rgba(255, 255, 255, 0.7)',
+    shadow: 'rgba(6, 30, 40, 0.4)',
     ink: 'rgb(10, 42, 51)',
     inkSoft: 'rgba(12, 42, 51, 0.7)',
     inkDisabled: 'rgba(12, 42, 51, 0.4)',
     hover: 'rgba(12, 42, 51, 0.06)',
-    freeFill: 'rgb(223, 240, 228)',
-    accent: 'rgb(10, 63, 78)',
-    selectedRing: 'rgb(8, 90, 110)',
-    barFill: 'rgb(10, 63, 78)',
-    barTrack: 'rgb(111, 138, 145)',
   },
   dark: {
-    registry: {
-      '--riv-calendar-free-fill': '#1f3f30',
-      '--riv-calendar-low-fill': '#4a3a16',
-      '--riv-calendar-full-fill': '#4d2429',
-      '--riv-calendar-unknown-fill': '#1c2740',
-      '--riv-calendar-accent': '#9adde8',
-      '--riv-calendar-selected-ring': '#7cd7e8',
-      '--riv-calendar-bar-fill': '#e6f4f8',
-      '--riv-calendar-bar-track': '#758a9a',
-      '--riv-pop-ink-disabled': 'rgba(242, 247, 250, 0.32)',
-    },
     surface: 'rgba(16, 26, 46, 0.96)',
+    border: 'rgba(255, 255, 255, 0.16)',
+    shadow: 'rgba(0, 0, 0, 0.55)',
     ink: 'rgb(242, 247, 250)',
     inkSoft: 'rgba(242, 247, 250, 0.75)',
     inkDisabled: 'rgba(242, 247, 250, 0.32)',
     hover: 'rgba(255, 255, 255, 0.08)',
-    freeFill: 'rgb(31, 63, 48)',
-    accent: 'rgb(154, 221, 232)',
-    selectedRing: 'rgb(124, 215, 232)',
-    barFill: 'rgb(230, 244, 248)',
-    barTrack: 'rgb(117, 138, 154)',
   },
 } as const;
+
+/** An authored `#rrggbb`, as Chromium reports it. */
+function rgb(hex: string): string {
+  const value = Number.parseInt(hex.slice(1), 16);
+  return `rgb(${value >> 16}, ${(value >> 8) & 0xff}, ${value & 0xff})`;
+}
 
 /**
  * The utility each token is consumed through, which exists only if its `@theme inline` row does.
@@ -230,7 +234,7 @@ for (const theme of THEMES) {
       );
     }
 
-    const themed = CALENDAR[theme].registry;
+    const themed = THEMED_TOKENS[theme];
     const resolved = await page.evaluate((names) => {
       const style = getComputedStyle(document.documentElement);
       return names.map((name) => [name, style.getPropertyValue(name).trim()] as const);
@@ -259,31 +263,40 @@ for (const theme of THEMES) {
   test(`the calendar popover follows the theme under ${theme} (#888)`, async ({ page }) => {
     await forceTheme(page, theme);
     const dialog = await openCalendar(page);
-    const expected = CALENDAR[theme];
+    const chrome = CHROME[theme];
+    const tokens = THEMED_TOKENS[theme];
 
-    await expect(dialog).toHaveCSS('background-color', expected.surface);
-    await expect(page.getByTestId('calendar-month')).toHaveCSS('color', expected.ink);
-    await expect(dialog.locator('th').first()).toHaveCSS('color', expected.inkSoft);
-    await expect(dialog.locator('p.text-riv-pop-ink-soft')).toHaveCSS('color', expected.inkSoft);
+    await expect(dialog).toHaveCSS('background-color', chrome.surface);
+    await expect(dialog).toHaveCSS('border-color', chrome.border);
+    await expect(dialog).toHaveCSS('box-shadow', shadowIn(chrome.shadow));
+    await expect(page.getByTestId('calendar-month')).toHaveCSS('color', chrome.ink);
+    await expect(dialog.locator('th').first()).toHaveCSS('color', chrome.inkSoft);
+    await expect(dialog.locator('p.text-riv-pop-ink-soft')).toHaveCSS('color', chrome.inkSoft);
 
     // Skips this month's past cells, which wear the disabled ink the test below asserts.
     const free = dialog
       .locator('button[data-date][data-state="free"]:not([aria-disabled="true"])')
       .first();
-    await expect(free).toHaveCSS('color', expected.ink);
-    await expect(free).toHaveCSS('background-color', expected.freeFill);
+    await expect(free).toHaveCSS('color', chrome.ink);
+    await expect(free).toHaveCSS('background-color', rgb(tokens['--riv-calendar-free-fill']));
     const bar = free.getByTestId('day-bar');
-    await expect(bar).toHaveCSS('background-color', expected.barFill);
-    await expect(bar.locator('..')).toHaveCSS('background-color', expected.barTrack);
+    await expect(bar).toHaveCSS('background-color', rgb(tokens['--riv-calendar-bar-fill']));
+    await expect(bar.locator('..')).toHaveCSS(
+      'background-color',
+      rgb(tokens['--riv-calendar-bar-track']),
+    );
 
     const chosen = dialog.locator('[role="gridcell"][aria-selected="true"] button');
-    await expect(chosen).toHaveCSS('box-shadow', shadowIn(expected.selectedRing));
+    await expect(chosen).toHaveCSS(
+      'box-shadow',
+      shadowIn(rgb(tokens['--riv-calendar-selected-ring'])),
+    );
 
     // `next`, not `prev`: at the earliest month `prev` is aria-disabled, where the wash is off.
     const next = page.getByTestId('calendar-next');
-    await expect(next).toHaveCSS('color', expected.accent);
+    await expect(next).toHaveCSS('color', rgb(tokens['--riv-calendar-accent']));
     await next.hover();
-    await expect(next).toHaveCSS('background-color', expected.hover);
+    await expect(next).toHaveCSS('background-color', chrome.hover);
   });
 
   /**
@@ -298,7 +311,7 @@ for (const theme of THEMES) {
     const disabled = dialog.locator('button[data-date][aria-disabled="true"]').first();
 
     await expect(disabled).toBeVisible();
-    await expect(disabled).toHaveCSS('color', CALENDAR[theme].inkDisabled);
+    await expect(disabled).toHaveCSS('color', CHROME[theme].inkDisabled);
   });
 
   test(`the pending banner paints the same fixed pair under ${theme} (#849)`, async ({ page }) => {

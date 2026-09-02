@@ -22,8 +22,8 @@ const LOW_FRACTION = 0.25;
  * competing `outline-color` utilities on one element resolve by stylesheet order rather than class
  * order, so one ring per fill, on the fill's own class, is the only arrangement that is
  * deterministic. The ring is the calendar's own accent and not the `@layer base` ring's
- * `--riv-accent-ink`: that value is the chosen day's ring in the light themes, and a focused
- * chosen cell must not wear one colour twice.
+ * `--riv-accent-ink`: that value coincides with the chosen day's ring in both palettes, and a
+ * focused chosen cell must not wear one colour twice.
  *
  * <p>The fills are **opaque, not translucent** — deliberately, and in both palettes. A calendar
  * day composited over a theme-dependent glass would need its contrast proved once per theme and

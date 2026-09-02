@@ -33,12 +33,27 @@ import {
   RIVIERA_STOPS,
 } from './glass-tokens';
 
+/** The four day states, in `DAY_AVAILABILITY_STATES` order, each with the token carrying its fill. */
+const TINT_ROLES = [
+  { state: 'free', name: 'free (plenty free)', token: '--riv-calendar-free-fill' },
+  { state: 'low', name: 'low (few left)', token: '--riv-calendar-low-fill' },
+  { state: 'full', name: 'full (fully booked)', token: '--riv-calendar-full-fill' },
+  { state: 'unknown', name: 'unknown (counts unavailable)', token: '--riv-calendar-unknown-fill' },
+] as const;
+
+type TintState = (typeof TINT_ROLES)[number]['state'];
+
 /** One day state's opaque fill and the token that carries it. */
 export interface CalendarTint {
-  readonly state: 'free' | 'low' | 'full' | 'unknown';
+  readonly state: TintState;
   readonly name: string;
   readonly token: string;
   readonly fill: string;
+}
+
+/** The four tints of one palette: the shared roles, each wearing that palette's fill. */
+function tints(fills: Readonly<Record<TintState, string>>): readonly CalendarTint[] {
+  return TINT_ROLES.map((role) => ({ ...role, fill: fills[role.state] }));
 }
 
 /**
@@ -91,27 +106,7 @@ export const CALENDAR_PALETTE: CalendarPalette = {
   ink: rgbToHex(POP_INK),
   inkSoft: POP_INK_SOFT,
   inkDisabled: POP_INK_DISABLED,
-  tints: [
-    {
-      state: 'free',
-      name: 'free (plenty free)',
-      token: '--riv-calendar-free-fill',
-      fill: '#dff0e4',
-    },
-    { state: 'low', name: 'low (few left)', token: '--riv-calendar-low-fill', fill: '#fdeecc' },
-    {
-      state: 'full',
-      name: 'full (fully booked)',
-      token: '--riv-calendar-full-fill',
-      fill: '#fae9e9',
-    },
-    {
-      state: 'unknown',
-      name: 'unknown (counts unavailable)',
-      token: '--riv-calendar-unknown-fill',
-      fill: '#ffffff',
-    },
-  ],
+  tints: tints({ free: '#dff0e4', low: '#fdeecc', full: '#fae9e9', unknown: '#ffffff' }),
   accent: '#0a3f4e',
   selectedRing: '#085a6e',
   bar: { fill: '#0a3f4e', track: '#6f8a91' },
@@ -125,27 +120,7 @@ export const DARK_CALENDAR_PALETTE: CalendarPalette = {
   ink: rgbToHex(DARK_POP_INK),
   inkSoft: DARK_POP_INK_SOFT,
   inkDisabled: DARK_POP_INK_DISABLED,
-  tints: [
-    {
-      state: 'free',
-      name: 'free (plenty free)',
-      token: '--riv-calendar-free-fill',
-      fill: '#1f3f30',
-    },
-    { state: 'low', name: 'low (few left)', token: '--riv-calendar-low-fill', fill: '#4a3a16' },
-    {
-      state: 'full',
-      name: 'full (fully booked)',
-      token: '--riv-calendar-full-fill',
-      fill: '#4d2429',
-    },
-    {
-      state: 'unknown',
-      name: 'unknown (counts unavailable)',
-      token: '--riv-calendar-unknown-fill',
-      fill: '#1c2740',
-    },
-  ],
+  tints: tints({ free: '#1f3f30', low: '#4a3a16', full: '#4d2429', unknown: '#1c2740' }),
   accent: '#9adde8',
   selectedRing: '#7cd7e8',
   bar: { fill: '#e6f4f8', track: '#758a9a' },

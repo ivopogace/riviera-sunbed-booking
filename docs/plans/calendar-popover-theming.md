@@ -86,8 +86,8 @@ document theme, which no unit spec can see).
       `aria-disabled:text-riv-pop-ink-disabled`. *Seam:* the stylesheet + the template, read
       as text (`testing/stylesheet-tokens.ts`). *Pinned by:*
       `availability-calendar.contrast.spec.ts` › `the popover chrome` › `retires the pinned
-      ramp and consumes the popover family` + `fixed-ink-tokens.contrast.spec.ts` › `the
-      sites` › `venue/availability-calendar.html paints no migrated literal`
+      ramp and consumes the popover family` + `%s paints no literal the palette carries` (over
+      `venue/availability-calendar.html` and `venue/day-availability.ts`)
 - [x] **AC-2:** Given the popover chrome in each theme, when `--riv-pop-ink` and
       `--riv-pop-ink-soft` are composited on `--riv-pop-surface` over that theme's worst-case
       gradient stops (light values over `PORCELAIN_STOPS` and `RIVIERA_STOPS`, dark values
@@ -95,7 +95,7 @@ document theme, which no unit spec can see).
       legible-but-weakened band (above 2:1, below 3:1, weaker than the primary ink) in each —
       so the `aria-disabled` exemption stays load-bearing in both directions. *Seam:* the
       `testing/glass-tokens.ts` mirror + `testing/contrast.ts`. *Pinned by:*
-      `availability-calendar.contrast.spec.ts` › `the popover chrome over the %s background`
+      `availability-calendar.contrast.spec.ts` › `the popover chrome under the $name palette`
 - [x] **AC-3:** Given the eight `--riv-calendar-*` tokens and `--riv-pop-ink-disabled`, when
       `src/tailwind.css` is read as text, then each is declared **exactly twice** — once in
       the base block (`:root, [data-riv-theme='porcelain']`) and once in the
@@ -109,7 +109,8 @@ document theme, which no unit spec can see).
       fill reads ≥ 3:1 on its track and the track ≥ 3:1 on each non-`unknown` fill; and the
       accent (the month-step glyphs) reads AA on the popover surface over that palette's
       stops. *Seam:* `testing/calendar-tints.ts` + `testing/glass-tokens.ts`. *Pinned by:*
-      `availability-calendar.contrast.spec.ts` › `the %s palette`
+      `availability-calendar.contrast.spec.ts` › `the $name palette (opaque, so each proof is
+      one pair)`
 - [x] **AC-5:** Given `venue/day-availability.ts`, when `DAY_TINT_CLASS` and
       `DAY_SELECTED_CLASS` are compared with the mirror, then the tint record renders exactly
       the fill utilities the mirror's tokens name (a set, not a subset), every entry carries
@@ -118,14 +119,16 @@ document theme, which no unit spec can see).
       `day-availability.spec.ts` › `the tint mirror`
 - [x] **AC-6:** Given a real Chromium render of `/venues/:id` with the calendar open, when
       the document theme is forced **porcelain** and then **dark**, then the `<dialog>`'s
-      `background-color`, the month heading's `color`, a weekday header's `color`, the
+      `background-color`, `border-color` and `box-shadow`, the month heading's `color`, a
+      weekday header's `color`, the
       footer note's `color`, a bookable `free` cell's `background-color`, a month-step glyph's
       `color`, its hovered `background-color`, a past cell's `color`, and the chosen cell's
       `box-shadow` each report that theme's value — different values under the two themes,
       which is the inverse of the claim #849's test made on the same box. *Seam:* the mocked
       route `/venues/:id` + `/api/venues/:id/availability-calendar`. *Pinned by:*
       `e2e/fixed-ink-token-recut.e2e.ts` › `the calendar popover follows the theme under
-      ${theme} (#888)` + `the calendar disables past days in the theme's weakened ink (#888)`
+      ${theme} (#888)` + `the calendar disables past days in the theme's weakened ink under
+      ${theme} (#888)`
 - [x] **AC-7:** Given the light palette, when its values are read, then the four fills, the
       accent, the chosen-day ring, and the bar pair are byte-identical to the literals the
       tree paints today (`#dff0e4`, `#fdeecc`, `#fae9e9`, `#ffffff`; `#0a3f4e`; `#085a6e`;
@@ -170,8 +173,9 @@ the light track's `#6f8a91` (3.00:1 — on the line).
 **Why the accent is not `--riv-accent-ink`.** The `@layer base` focus ring already paints
 `--riv-accent-ink`, and its values (`#085a6e` light, `#7cd7e8` dark) would clear 3:1 on
 every fill in both palettes — so the calendar *could* drop its ring override and take the
-baseline. It does not, because the chosen-day ring is `#085a6e` in the light themes, and a
-focused chosen cell would then wear one colour twice (a 3px outline and a 2px inset ring),
+baseline. It does not, because `--riv-accent-ink` coincides with the chosen-day ring in both
+palettes (`#085a6e` light, `#7cd7e8` dark), and a focused chosen cell would then wear one
+colour twice (a 3px outline and a 2px inset ring),
 which is the distinguishability `availability-calendar.contrast.spec.ts` has asserted since
 #761. The calendar keeps its own accent and the two rings stay distinct in both palettes.
 
@@ -293,18 +297,29 @@ region; nothing about its TypeScript moves.
 
 N/A — no contract change.
 
+## Sonar gate
+
+Pulled from the API, not read off the badge (`pr-gates.md` §2). First analysis, head
+`06adf5f`: `new_lines` 245, `new_bugs` 0, `new_vulnerabilities` 0, `new_code_smells` 0,
+`new_security_hotspots` 0, `new_coverage` 91.3%, issue list empty (`total: 0`) — and the gate
+**ERROR** on `new_duplicated_lines_density` 20.4% / `new_duplicated_blocks` 2, both in
+`testing/calendar-tints.ts` (F-8). The re-analysis after the fix round is recorded below when
+it lands.
+
 ## Execution status
 
-**Stage pointer:** `PR — draft #896 open; phases 0–2 committed; next: merge origin/main, mark ready for review`
+**Stage pointer:** `review gate + sonar gate — fix round pushed; awaiting the re-analysis`
 
-**Next action:** Check the draft's CI run, merge latest `origin/main` in, mark #896 ready for
-review, then run the Review gate (`references/pr-gates.md` §1) and the Sonar gate (§2).
+**Next action:** Once CI re-runs on the fix commit, re-pull the Sonar measures and issue list
+(`pr-gates.md` §2) and confirm `new_duplicated_blocks` is 0; then the PR waits on the
+maintainer's review of the rendered dark palette.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the tokens, the migrated markup, the unit guards | ✅ | `432fb15` |
 | 1 — the real-render proof under both themes | ✅ | `c58b782` |
-| 2 — the ledger verdict and the overlay-families fact | ✅ | the commit carrying this row |
+| 2 — the ledger verdict and the overlay-families fact | ✅ | `69e7c68` |
+| review-gate + Sonar-gate fix round (F-1..F-8) | ✅ | the commit carrying this row |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -313,6 +328,14 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review gate (agent 1, CLAUDE.md/overlay pass) | **RV-FE-7, Minor.** The e2e proved the `<dialog>`'s `background-color` under both themes but never read its `border-color` or `box-shadow`, although the migration retunes both (`border-riv-pop-border`, `shadow-riv-pop`) and the parity ledger records them as changing under dark; the unit spec only sees the class string | fixed — both asserted per theme on the rendered box; AC-6 lists them |
+| F-2 | review gate (agent 4, prior-PR feedback) | **Stale `Pinned by`, scored 100.** AC-1 cited `fixed-ink-tokens.contrast.spec.ts › the sites › venue/availability-calendar.html paints no migrated literal`, a test instance this very diff removes (the calendar left that spec's `SITES`) | fixed — re-pointed at the calendar spec's `%s paints no literal the palette carries` |
+| F-3 | review gate (agent 4) | **Paraphrased `Pinned by`, Minor** (the F-4 class of `console-btn-hover-token.md`). AC-2 cited `the popover chrome over the %s background`; the shipped describe is `the popover chrome under the $name palette` | fixed — re-quoted verbatim |
+| F-4 | review gate (agent 4) | Same class: AC-4 cited `the %s palette`; shipped is `the $name palette (opaque, so each proof is one pair)` | fixed — re-quoted verbatim |
+| F-5 | review gate (agent 4) | Same class: AC-6's second citation dropped `under ${theme}` from the e2e title | fixed — re-quoted verbatim |
+| F-6 | review gate (agent 4) | **Missing `Rationale:` pointer, Minor** (recurs from #895's finding 2). The new `--riv-calendar-*` family comment in `tailwind.css` ended with `Mirror:`/`Proof:` but no `Rationale:`, unlike every sibling family and the calendar comment it replaces | fixed — points at the ledger's class S and "The overlay surfaces" section |
+| F-7 | self-caught from agent 3's history pass | The "why not `--riv-accent-ink`" reasoning in `day-availability.ts`, the plan and the ledger said the coincidence with the chosen-day ring holds "in the light themes"; measured, it holds in **both** palettes (`#7cd7e8` in dark too), so the reason was understated | fixed — all three say "in both palettes" |
+| F-8 | Sonar gate (head `06adf5f`) | **Quality gate ERROR: `new_duplicated_lines_density` 20.4% > 3%, `new_duplicated_blocks` 2** — both in `testing/calendar-tints.ts`: the light and dark palettes each spelled out the four tint records (`state`/`name`/`token`/`fill`), 25 identical-shape lines twice. Issues 0, coverage 91.3%, hotspots 0 | fixed — the four roles live once in `TINT_ROLES`; each palette supplies only its fills through `tints({...})`. The e2e's two per-theme objects, which the same push grew by the F-1 rows, were split below the duplication floor pre-emptively (`THEMED_TOKENS` + `CHROME`, cell colours derived from the authored hex through `rgb()`) |
 
 ---
 
