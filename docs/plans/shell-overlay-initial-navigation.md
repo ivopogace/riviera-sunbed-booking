@@ -6,9 +6,9 @@
 > concurrency, Spring-Modulith, and Payment & payout sections are spec sections, not
 > documentation. Invariant numbers refer to `CLAUDE.md`.
 
-**Goal:** The shell's close-every-overlay-on-`NavigationEnd` rule fires only for a navigation
-that actually changes the URL, so the initial lazy-load navigation no longer shuts a header
-overlay the user opened while the first route's chunk was still in flight.
+**Goal:** The shell's close-every-overlay-on-`NavigationEnd` rule no longer fires for a navigation
+that was already under way when the overlay went up, so the initial lazy-load navigation stops
+shutting a header overlay the user opened while the first route's chunk was still in flight.
 
 **Architecture:** When an overlay goes up, the shell records the id of the navigation then in
 flight (`router.currentNavigation()?.id`, `0` when the router is idle); the `NavigationEnd`
@@ -84,9 +84,26 @@ for `bugfix/shell-overlay-initial-navigation`.
   rather than describing an app bug that is now fixed. *Seam:* the file's exported API +
   header comment · *Verified by:* review gate (RV-FE-E2E / RV-STYLE-1), no test asserts prose.
 - [x] **AC-6:** Given the subscription in `app.ts`, when it is read, then a single-line inline
-  comment names the rule ("only a navigation that changes the URL closes the overlays").
+  comment names the rule ("the navigation an overlay was opened during is not the user leaving
+  the page").
   *Seam:* the source line · *Verified by:* `node scripts/check-inline-comments.mjs --diff
   origin/main` (RV-STYLE-1 guard) + review gate.
+
+## Declared behaviour change beyond the issue's letter
+
+Issue #892 asks for the rule to spare "the one that finishes rendering the page they are already
+on". The shipped rule spares **any navigation already under way when the overlay went up**, which
+is slightly wider: the header's `routerLink="/my-bookings"` (a lazy route, and no `closeMenus()`
+on that anchor) means a guest who clicks it and then opens the theme picker while the chunk loads
+now keeps the picker open onto `/my-bookings`, where `main` closed it.
+
+Kept deliberately, for two reasons. It is the same principle the issue is built on — the guest
+opened that overlay *after* the navigation was already running, so its completion is still not an
+act of theirs — and every shell overlay (theme picker, account menu, mobile menu, find modal) is
+chrome that stays meaningful on any page, so nothing is stranded over content it does not belong
+to. The WCAG 2.4.3 hand-off is unaffected: it only runs when the close runs, and an overlay that
+survives is still mounted and still holds focus legitimately. Narrowing to the literal reading is
+not available anyway — "is this the initial navigation?" has no reliable answer (Q-1, Q-2, Q-3).
 
 ## Non-goals
 
@@ -140,9 +157,9 @@ N/A — no surface is retired or replaced; one guard is added to an existing sub
   a "skip the first `NavigationEnd`" rule would break the existing specs? **Yes it would** —
   probed: with bare `provideRouter`, `router.navigated` is `false` and no `NavigationEnd` has
   been emitted when the fixture is created, so a spec's own `router.navigate(...)` *is* the
-  first one. This is why the rule compares URLs instead of counting navigations, and why
-  AC-1 navigates to `/` (a real router navigation whose `urlAfterRedirects` is `/`, matching
-  the seed) rather than pushing a synthetic event into `router.events`.
+  first one. So no "skip the first navigation" rule is expressible in a spec, which is why AC-1
+  instead leaves a real navigation suspended on a lazy chunk the spec lands on demand — the race
+  as the guest meets it, rather than a synthetic event pushed into `router.events`.
 
 ## Availability & concurrency (invariant #2)
 
@@ -197,6 +214,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 |---|---|---|---|
 | F-1 | review gate (`/code-review` high — two independent agents reproduced it) | The URL-equality guard swallows a close the guest asked for. Deep-linked to `/booking/ABC` with the chunk in flight, they open Find a booking and submit `ABC`: `router.navigate` is not same-URL-ignored (nothing has completed for `currentUrlTree` to match), so it supersedes, resolves `navigated === true`, and ends on `/booking/ABC` — equal to the seed. The shell skips the close, and `find-booking.ts:191` has no self-close on that branch, so the modal freezes on "Opening…" with the focus trap holding focus in a dead dialog (the WCAG 2.4.3 hand-off #148 established) | fixed — guard re-cut on navigation identity; pinned by AC-7, proven red against the withdrawn rule |
 | F-2 | review gate | Three claims in the rewritten `e2e/support/shell.ts` header were wrong: `awaitRoutedPage` does not cover the post-sign-in redirect (`customer-password.e2e.ts:57-58` awaits that itself), "no longer closes overlays on the initial navigation" is over-broad for guard-redirected first loads, and "asserting about the page under it" is not what the theme-picker callers assert | fixed — header restated against Q-3's probe |
+| F-5 | re-review (comment accuracy, disproved by a probe) | `markOverlayRaised`'s doc claimed the completing navigation is "the page the guest is already on finishing its render" — false whenever it targets a different URL, which is reachable through the header's own `routerLink="/my-bookings"`. The behaviour is kept; the justification was wrong and the widening undeclared | fixed — doc restated, and the widening now has its own plan section above Non-goals |
+| F-6 | re-review (plan-doc accuracy) | The plan's Goal, AC-6's quoted rule, Q-2's closing sentence and the whole of Phase 0 still described the withdrawn URL rule — a reader following Phase 0 would have rebuilt the bug F-1 removed | fixed — all four rewritten against the shipped implementation |
 | F-4 | angular.dev v22 docs (angular-cli MCP `search_documentation`) | The fix first read `router.getCurrentNavigation()`, deprecated since 20.2 in favour of the `currentNavigation` signal. The signal's documented contract — "the current Navigation when the router is navigating, null when idle" — is precisely the guard's premise, so the swap also documents the rule | fixed — reads `router.currentNavigation()?.id`; the 35 shell specs stay green |
 | F-3 | review-fix guard run | Two of the new spec comments were multi-line inline comments (RV-STYLE-1) | fixed — both cut to one line; `check-inline-comments.mjs` clean |
 
@@ -212,25 +231,26 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ---
 
-## Phase 0 — Keep overlays open on a same-URL navigation
+## Phase 0 — Keep overlays open across the navigation they were opened during
 
 **Files:** Modify `frontend/src/app/app.ts` · Test `frontend/src/app/app.spec.ts`
 
-- [x] **Step 1: Write the failing test** — add a `''` route to `surfaceRoutes`, then:
+- [x] **Step 1: Write the failing tests** — add a `''` route whose chunk a spec lands on demand, then:
 
 ```ts
-it('keeps an overlay open when the initial navigation lands on the URL the shell already shows (#892)', async () => {
+it('keeps an overlay open when the navigation it was opened during completes (#892)', async () => {
   const { fixture, el } = shell();
   const router = TestBed.inject(Router);
 
+  // The header goes interactive with the first route's chunk still in flight.
+  const pending = router.navigate(['/']);
   el.querySelector<HTMLButtonElement>('[data-testid="find-open"]')!.click();
   fixture.detectChanges();
-  await fixture.whenStable();
   const focused = document.activeElement;
   expect(el.querySelector('app-find-booking')).not.toBeNull();
 
-  // The shape of the initial lazy-load navigation: it ends on the URL the shell loaded at.
-  await router.navigate(['/']);
+  landLazyChunk();
+  await pending;
   fixture.detectChanges();
 
   expect(el.querySelector('app-find-booking')).not.toBeNull();
@@ -238,27 +258,58 @@ it('keeps an overlay open when the initial navigation lands on the URL the shell
 });
 ```
 
-- [x] **Step 2: Run it, verify it fails** — `npx ng test --no-watch --include="src/app/app.spec.ts"`
-  → FAIL: `expected null not to be null` (the subscription closed the modal).
-
-- [x] **Step 3: Minimal implementation** in `app.ts`:
+and the companion that stops the guard from swallowing a departure the guest DID ask for
+(AC-7 — the shape F-1 was found on):
 
 ```ts
-private readonly location = inject(Location);
-/** The URL the shell is showing; seeded from the document so a deep-linked first load counts too. */
-private shownUrl = this.router.serializeUrl(this.router.parseUrl(this.location.path(true)));
+it('closes an overlay when a navigation raised from inside it supersedes the pending one (#892)', async () => {
+  const { fixture, el } = shell();
+  const router = TestBed.inject(Router);
+
+  const pending = router.navigate(['/']);
+  el.querySelector<HTMLButtonElement>('[data-testid="find-open"]')!.click();
+  fixture.detectChanges();
+  expect(el.querySelector('app-find-booking')).not.toBeNull();
+
+  // find-booking's move on a found code: it supersedes the pending nav onto the very same url.
+  const resubmitted = router.navigate(['/']);
+  landLazyChunk();
+  await Promise.all([pending, resubmitted]);
+  fixture.detectChanges();
+
+  expect(el.querySelector('app-find-booking')).toBeNull();
+  expect(document.activeElement).toBe(el.querySelector('main'));
+});
 ```
 
-and in the subscription:
+- [x] **Step 2: Run each, verify it fails for the right reason** —
+  `npx ng test --no-watch --include="src/app/app.spec.ts"`. The keep-open spec fails against an
+  unguarded subscription (`expected null not to be null` — the modal was closed); the supersede
+  spec fails against the withdrawn URL-equality guard (the modal was left open). Both proofs
+  were run by reverting `app.ts` in place.
+
+- [x] **Step 3: Minimal implementation** in `app.ts` — no new injection; the router is already there:
+
+```ts
+/** The navigation already in flight when the open overlay was raised; 0 when the router was idle. */
+private overlayNavId = 0;
+
+/** Remember which navigation, if any, is already under way as an overlay goes up; `0` when the
+ *  router is idle, an id no navigation carries (they start at 1). */
+private markOverlayRaised(): void {
+  this.overlayNavId = this.router.currentNavigation()?.id ?? 0;
+}
+```
+
+called from all four overlay-raising handlers (`openFind`, `toggleMenu`, `toggleThemePicker`,
+`toggleAccountMenu`), and in the subscription:
 
 ```ts
 .subscribe((event) => {
-  // Only a navigation that changes the URL closes the overlays — the initial lazy-load
-  // navigation lands on the URL already shown and must not shut a just-opened menu.
-  if (event.urlAfterRedirects === this.shownUrl) {
+  // The navigation an overlay was opened during is not the user leaving the page.
+  if (event.id === this.overlayNavId) {
     return;
   }
-  this.shownUrl = event.urlAfterRedirects;
   ...
 });
 ```

@@ -152,6 +152,9 @@ export class App {
    * The header is interactive before the first route's lazily loaded chunk has activated
    * (`provideRouter`'s default `enabledNonBlocking` initial navigation), so the `NavigationEnd`
    * closing that window is not something the user did and must not shut a menu they just opened.
+   * That reasoning is about a navigation being ALREADY UNDER WAY, not about it being the first or
+   * about where it lands: a guest who opens the theme picker while a nav link they clicked is still
+   * loading keeps it open onto the destination too, deliberately.
    * Identity is the navigation id, not the url: a url comparison would also swallow a navigation
    * the guest DID start from inside the overlay onto the page they deep-linked to, which supersedes
    * the pending one under a new id and leaves {@link FindBooking} waiting on a close that never comes.
@@ -183,8 +186,8 @@ export class App {
       });
   }
 
-  /** Remember which navigation, if any, is mid-flight as an overlay goes up — its completion is the
-   *  page the guest is already on finishing its render, not a departure from it. */
+  /** Remember which navigation, if any, is already under way as an overlay goes up; `0` when the
+   *  router is idle, an id no navigation carries (they start at 1). */
   private markOverlayRaised(): void {
     this.overlayNavId = this.router.currentNavigation()?.id ?? 0;
   }
