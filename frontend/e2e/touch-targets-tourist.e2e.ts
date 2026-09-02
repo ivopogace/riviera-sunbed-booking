@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { completeDialog } from './support/booking-dialog';
+import { openShellOverlay } from './support/shell';
 import { expectTouchTargets } from './support/touch-targets';
 
 /**
@@ -118,7 +119,7 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await page.route(/\/api\/auth\/logout$/, (route) => route.abort('failed'));
 
     await page.goto('/');
-    await page.getByTestId('menu-toggle').click();
+    await openShellOverlay(page, 'menu-toggle');
     await page.getByTestId('nav-signout-mobile').click();
     await expect(page.getByTestId('sign-out-warning')).toBeVisible();
 
@@ -248,11 +249,11 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
   test('the mobile menu, and the find-a-booking dialog behind it', async ({ page }) => {
     await page.goto('/');
     // At 390px the desktop nav is hidden; the menu is the only route to these controls.
-    await page.getByTestId('menu-toggle').click();
+    await openShellOverlay(page, 'menu-toggle');
     await expect(page.getByTestId('find-open-mobile')).toBeVisible();
     await expectTouchTargets(page, 'tourist mobile menu');
 
-    await page.getByTestId('find-open-mobile').click();
+    await openShellOverlay(page, 'find-open-mobile');
     await expect(page.getByRole('dialog')).toBeVisible();
 
     await expectTouchTargets(page, 'find a booking');

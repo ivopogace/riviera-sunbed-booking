@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { openAccountMenu } from './support/shell';
 import { mockCustomerRecoveryApi } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 
@@ -34,13 +35,13 @@ async function signIn(page: Page, password: string): Promise<void> {
 
 /** Reach the account page through the shell's account menu, not by URL. */
 async function gotoAccount(page: Page): Promise<void> {
-  await page.getByTestId('nav-user').click();
+  await openAccountMenu(page);
   await page.getByTestId('nav-account-link').click();
 }
 
 /** Sign out — the control lives inside the account menu. */
 async function signOut(page: Page): Promise<void> {
-  await page.getByTestId('nav-user').click();
+  await openAccountMenu(page);
   await page.getByTestId('nav-signout').click();
 }
 
@@ -53,6 +54,8 @@ test('a signed-in tourist changes their password, and the new credential replace
   });
 
   await signIn(page, OLD_PASSWORD);
+  // Let the post-sign-in redirect land first: its NavigationEnd closes any menu opened before it.
+  await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId('nav-user')).toContainText(EMAIL);
 
   await gotoAccount(page);

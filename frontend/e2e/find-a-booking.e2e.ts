@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { openShellOverlay } from './support/shell';
 import { settle } from './support/booking-dialog';
 
 /**
@@ -63,12 +64,12 @@ test('finds a booking by code and opens its detail view (+ axe, riviera)', async
 
   await page.goto('/');
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
-  await page.getByTestId('theme-toggle').click();
+  await openShellOverlay(page, 'theme-toggle');
   await page.getByTestId('theme-option-riviera').click();
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
 
   // Open the modal from the desktop nav; the code input takes focus.
-  await page.getByTestId('find-open').click();
+  await openShellOverlay(page, 'find-open');
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   await expect(page.getByTestId('find-code')).toBeFocused();
@@ -102,7 +103,7 @@ test('a CLOSED-born booking shows the last-minute state and no cancel section (#
   );
 
   await page.goto('/');
-  await page.getByTestId('find-open').click();
+  await openShellOverlay(page, 'find-open');
   await page.getByTestId('find-code').fill(CODE);
   await page.getByTestId('find-submit').click();
 
@@ -118,11 +119,11 @@ test('a CLOSED-born booking shows the last-minute state and no cancel section (#
 
 test('audits the open find modal in the porcelain theme', async ({ page }) => {
   await page.goto('/');
-  await page.getByTestId('theme-toggle').click();
+  await openShellOverlay(page, 'theme-toggle');
   await page.getByTestId('theme-option-porcelain').click();
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
 
-  await page.getByTestId('find-open').click();
+  await openShellOverlay(page, 'find-open');
   await expect(page.getByRole('dialog')).toBeVisible();
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'find modal (porcelain)');
@@ -139,7 +140,7 @@ test('shows an inline error for an unknown code and does not navigate (+ axe)', 
   );
 
   await page.goto('/');
-  await page.getByTestId('find-open').click();
+  await openShellOverlay(page, 'find-open');
   await page.getByTestId('find-code').fill('ZZZZ999999');
   await page.getByTestId('find-submit').click();
 

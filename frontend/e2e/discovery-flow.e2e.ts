@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { openShellOverlay } from './support/shell';
 
 /**
  * Real-render a11y audit of the venue-discovery landing page (design §4.1 steps 1–2):
@@ -306,7 +307,7 @@ test('an unrated venue shows a "New" state (no ★ 0.0) on the card and map, acc
   await expect(headerSemantic.last()).toHaveCSS('color', SEMANTIC_INK);
 
   // Theme-invariant on purpose: the fill is an opaque literal, not a --riv-* token, so a theme flip must not move it.
-  await page.getByTestId('theme-toggle').click();
+  await openShellOverlay(page, 'theme-toggle');
   await page.getByTestId('theme-option-porcelain').click();
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
   await expect(headerSemantic.first()).toHaveCSS('background-color', SEMANTIC_FILL);

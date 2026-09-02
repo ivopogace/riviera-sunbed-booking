@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { openAccountMenu as openMenu, openShellOverlay } from './support/shell';
 import { expectNoSeriousAxeViolations } from './support/axe';
 
 /**
@@ -37,7 +38,7 @@ test.describe('theme persistence', () => {
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
 
     // Riviera is switcher-only now (never an OS resolution), so picking it proves persistence.
-    await page.getByTestId('theme-toggle').click();
+    await openShellOverlay(page, 'theme-toggle');
     await page.getByTestId('theme-option-riviera').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
 
@@ -58,7 +59,7 @@ test.describe('hero scrim token', () => {
 
     expect(await heroBg()).toBe('none');
 
-    await page.getByTestId('theme-toggle').click();
+    await openShellOverlay(page, 'theme-toggle');
     await page.getByTestId('theme-option-riviera').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
     const rivieraBg = await heroBg();
@@ -66,7 +67,7 @@ test.describe('hero scrim token', () => {
     expect(rivieraBg).toContain('rgba(8, 38, 52, 0.72) 34px');
     expect(rivieraBg).toContain('calc(100% - 40px)');
 
-    await page.getByTestId('theme-toggle').click();
+    await openShellOverlay(page, 'theme-toggle');
     await page.getByTestId('theme-option-porcelain').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
     expect(await heroBg()).toBe('none');
@@ -87,12 +88,12 @@ test.describe('per-theme color-scheme (#675)', () => {
     await expect(page.getByTestId('filter-date')).toHaveCSS('color-scheme', 'dark');
 
     // Riviera keeps LIGHT fields under its dark document — the per-field token opts them out.
-    await page.getByTestId('theme-toggle').click();
+    await openShellOverlay(page, 'theme-toggle');
     await page.getByTestId('theme-option-riviera').click();
     await expect(page.locator('html')).toHaveCSS('color-scheme', 'dark');
     await expect(page.getByTestId('filter-date')).toHaveCSS('color-scheme', 'light');
 
-    await page.getByTestId('theme-toggle').click();
+    await openShellOverlay(page, 'theme-toggle');
     await page.getByTestId('theme-option-porcelain').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
     await expect(page.locator('html')).toHaveCSS('color-scheme', 'light');
@@ -126,7 +127,7 @@ test.describe('axe sweeps', () => {
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
     await expectNoSeriousAxeViolations(page, 'dark shell');
 
-    await page.getByTestId('theme-toggle').click();
+    await openShellOverlay(page, 'theme-toggle');
     // Let the pop-in animation finish — axe samples computed colours, and mid-fade opacity
     // reads as washed-out text (a false contrast failure).
     await page
@@ -138,7 +139,7 @@ test.describe('axe sweeps', () => {
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
     await expectNoSeriousAxeViolations(page, 'riviera shell');
 
-    await page.getByTestId('theme-toggle').click();
+    await openShellOverlay(page, 'theme-toggle');
     await page.getByTestId('theme-option-porcelain').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
     await expectNoSeriousAxeViolations(page, 'porcelain shell');
@@ -157,7 +158,7 @@ test.describe('mobile viewport', () => {
     await expect(toggle).toBeVisible();
     await expect(page.getByTestId('theme-toggle')).toBeHidden(); // desktop nav collapsed
 
-    await toggle.click();
+    await openShellOverlay(page, 'menu-toggle');
     await expect(page.getByTestId('mobile-menu')).toBeVisible();
 
     // Containing-block pin: the dim backdrop must cover the viewport, not just
@@ -172,7 +173,7 @@ test.describe('mobile viewport', () => {
     await expect(page.getByTestId('mobile-menu')).toBeHidden();
     await expect(toggle).toBeFocused();
 
-    await toggle.click();
+    await openShellOverlay(page, 'menu-toggle');
     await expectNoSeriousAxeViolations(page, 'mobile menu open');
     await page.getByRole('button', { name: 'Porcelain' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
@@ -195,7 +196,7 @@ test.describe('account menu', () => {
 
   /** Open the menu and let the pop-in settle, so axe never samples a mid-fade colour. */
   async function openAccountMenu(page: import('@playwright/test').Page): Promise<void> {
-    await page.getByTestId('nav-user').click();
+    await openMenu(page);
     await page
       .locator('.riv-account-pop')
       .evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
@@ -287,7 +288,7 @@ test.describe('account menu', () => {
     test('the mobile menu offers the same account destination (#351)', async ({ page }) => {
       await page.goto('/');
 
-      await page.getByTestId('menu-toggle').click();
+      await openShellOverlay(page, 'menu-toggle');
       await expect(page.getByTestId('nav-user-mobile')).toContainText(EMAIL);
       await expectNoSeriousAxeViolations(page, 'mobile menu with the account group');
 
