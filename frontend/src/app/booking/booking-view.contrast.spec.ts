@@ -1,5 +1,7 @@
 import { AA_NORMAL, Rgb, contrastRatio, hexToRgb, rgbToHex } from '../../testing/contrast';
 import {
+  BANNER_BODY_INK,
+  BANNER_STRONG_INK,
   CARD_INK,
   CARD_INK_SOFT_ALPHA,
   DARK_ACCENT_INK,
@@ -74,8 +76,10 @@ const BANNERS: readonly [name: string, fill: string, eyebrow: string][] = [
   ['withdrawn', '#f0eef6', '#5c5470'],
   ['cancelled', '#f0f2f3', '#4f5f67'],
 ];
-const BANNER_BODY = '#334a52';
-const BANNER_STRONG = '#0a2a33';
+// Since #849 both are `--riv-banner-*-ink` tokens, so they are read from the one mirror rather
+// than restated here — a hand-copied value goes green against a retune it never saw.
+const BANNER_BODY = rgbToHex(BANNER_BODY_INK);
+const BANNER_STRONG = rgbToHex(BANNER_STRONG_INK);
 
 describe('Booking view — status banners (solid fills, WCAG AA, issue #138)', () => {
   it.each(BANNERS)(

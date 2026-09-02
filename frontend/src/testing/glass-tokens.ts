@@ -470,3 +470,23 @@ export const CALENDAR_INK_DISABLED: Glass = { color: CARD_INK, alpha: 0.4 };
 /** The month-step buttons' hover wash. Not an `/opacity` modifier, so #879's multiple-of-five
  *  ladder — a rule about class-O alphas — does not reach it; carried across unmoved. */
 export const CALENDAR_HOVER: Glass = { color: CARD_INK, alpha: 0.07 };
+
+/** `booking/booking-view.ts`'s banner body prose — `--riv-banner-{body,strong}-ink` (#849, class F).
+ *
+ *  The six status banners each paint their own FIXED fill (`#ddf4f8`, `#fdf5e6`, `#faefec`,
+ *  `#f0f2f3`, `#f0eef6`), so the pinning runs fill → ink and this pair is declared once. The
+ *  per-banner EYEBROW inks are a different unit — six values across six states is class S's
+ *  per-state palette, and they live in their own constants rather than in `bannerBody`'s class
+ *  string, so no take-the-whole-expression rule reaches them.
+ *
+ *  `--riv-banner-strong-ink` carries #0a2a33, the value #849 wanted to route through
+ *  `--riv-card-ink`. Same refusal as the calendar family, and a sharper one: the card ink's dark
+ *  value `#f2f7fa` on the neutral banner's `#f0f2f3` is very nearly white on white. Declared
+ *  separately from `--riv-calendar-ink` despite the shared value — different family, different
+ *  surface, and one declaration per family is the whole guard (#864's precedent). */
+export const BANNER_BODY_INK: Rgb = hexToRgb('334a52');
+export const BANNER_STRONG_INK: Rgb = INK_DARK;
+/** The six fixed banner fills the pair is pinned by, in `CLS.banner*` order. */
+export const BANNER_FILLS: readonly Rgb[] = ['ddf4f8', 'fdf5e6', 'faefec', 'f0f2f3', 'f0eef6'].map(
+  hexToRgb,
+);

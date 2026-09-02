@@ -11,6 +11,9 @@ import {
 } from '../../testing/contrast';
 import { CALENDAR_TINTS } from '../../testing/calendar-tints';
 import {
+  BANNER_BODY_INK,
+  BANNER_FILLS,
+  BANNER_STRONG_INK,
   CALENDAR_GLASS,
   CALENDAR_HOVER,
   CALENDAR_INK,
@@ -64,6 +67,12 @@ const CALENDAR_FAMILY = {
   '--riv-calendar-ink-faint': cssValue(CALENDAR_INK_FAINT),
   '--riv-calendar-ink-disabled': cssValue(CALENDAR_INK_DISABLED),
   '--riv-calendar-hover': cssValue(CALENDAR_HOVER),
+} as const;
+
+/** `booking-view`'s banner prose and the six fixed fills that pin it. */
+const BANNER_FAMILY = {
+  '--riv-banner-body-ink': rgbToHex(BANNER_BODY_INK),
+  '--riv-banner-strong-ink': rgbToHex(BANNER_STRONG_INK),
 } as const;
 
 const THEMES: readonly [string, readonly Rgb[]][] = [
@@ -202,8 +211,43 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
     });
   });
 
+  describe('the banner family', () => {
+    it.each(BANNER_FILLS.map((fill) => [rgbToHex(fill), fill] as const))(
+      'both inks clear AA on the %s banner fill',
+      (hex) => {
+        expect(contrastRatio(rgbToHex(BANNER_BODY_INK), hex), 'body').toBeGreaterThanOrEqual(
+          AA_NORMAL,
+        );
+        expect(contrastRatio(rgbToHex(BANNER_STRONG_INK), hex), 'strong').toBeGreaterThanOrEqual(
+          AA_NORMAL,
+        );
+      },
+    );
+
+    /**
+     * The refusal at its sharpest. `--riv-card-ink`'s dark value on the neutral banner is not
+     * merely under AA — it is very nearly white on white, which is what "a latent dark-theme bug"
+     * means concretely.
+     */
+    it.each(BANNER_FILLS.map((fill) => [rgbToHex(fill), fill] as const))(
+      'the candidate card ink would be near-invisible on the %s banner fill',
+      (hex) => {
+        expect(contrastRatio(rgbToHex(DARK_CARD_INK), hex)).toBeLessThan(1.5);
+      },
+    );
+
+    /**
+     * The eyebrow inks are deliberately NOT in this family — six values across six states is class
+     * S's per-state palette. Asserted so the omission reads as a decision: if a later slice folds
+     * them in, this is the test that has to be argued with.
+     */
+    it('leaves the per-state eyebrow inks as literals, a class-S palette this family does not claim', () => {
+      expect(read('booking/booking-view.ts')).toMatch(/eyebrowPending: 'text-\[#8a5410\]'/);
+    });
+  });
+
   describe('the stylesheet contract', () => {
-    const ALL = { ...CALENDAR_FAMILY };
+    const ALL = { ...CALENDAR_FAMILY, ...BANNER_FAMILY };
 
     it('declares each token exactly once, so no theme block can override it', () => {
       for (const name of Object.keys(ALL)) {
@@ -247,7 +291,7 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
   });
 
   describe('the sites', () => {
-    const SITES = ['venue/availability-calendar.html'];
+    const SITES = ['venue/availability-calendar.html', 'booking/booking-view.ts'];
 
     it.each(SITES)('%s paints no migrated literal', (path) => {
       const source = read(path).toLowerCase().replaceAll(' ', '');

@@ -86,7 +86,8 @@ const CLS = {
   eyebrowExpired: EYEBROW_NEUTRAL,
   eyebrowWithdrawn: 'text-[#5c5470]',
   eyebrowCancelled: EYEBROW_NEUTRAL,
-  bannerBody: 'mx-0 mt-1.5 mb-0 text-[14px] leading-[1.5] text-[#334a52] [&_strong]:text-[#0a2a33]',
+  bannerBody:
+    'mx-0 mt-1.5 mb-0 text-[14px] leading-[1.5] text-riv-banner-body-ink [&_strong]:text-riv-banner-strong-ink',
   row: 'flex items-center justify-between gap-3 border-b border-riv-card-track py-2.5 text-[14.5px] last:border-b-0',
   rowLabel: 'text-riv-card-ink-soft',
   rowValue: 'm-0 text-right font-bold text-riv-card-ink',
@@ -95,7 +96,7 @@ const CLS = {
   result:
     'mx-0 mt-4 mb-0 text-[13.5px] leading-[1.5] font-semibold text-riv-accent-ink empty:hidden focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-riv-accent-ink',
   confirmQ: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-riv-card-ink',
-  confirmQOnBanner: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-[#334a52]',
+  confirmQOnBanner: 'mx-0 mt-0 mb-3 text-[14px] font-semibold text-riv-banner-body-ink',
   actions: 'flex flex-wrap gap-2.5',
   btnDanger: `${BTN} border border-[rgba(200,90,60,0.4)] bg-[linear-gradient(180deg,#c14a2c,#a83c25)] font-bold text-white shadow-[0_8px_20px_rgba(179,67,42,0.4)] [transition:filter_0.15s_ease] hover:brightness-[1.08]`,
   btnOutline: `${BTN_OUTLINE} border-riv-solid-btn-border text-riv-solid-btn-ink`,

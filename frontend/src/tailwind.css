@@ -163,6 +163,8 @@
   --color-riv-calendar-ink-faint: var(--riv-calendar-ink-faint);
   --color-riv-calendar-ink-disabled: var(--riv-calendar-ink-disabled);
   --color-riv-calendar-hover: var(--riv-calendar-hover);
+  --color-riv-banner-body-ink: var(--riv-banner-body-ink);
+  --color-riv-banner-strong-ink: var(--riv-banner-strong-ink);
 
   --shadow-riv-pop: var(--riv-pop-shadow);
   --text-shadow-riv-hero: var(--riv-hero-shadow);
@@ -800,6 +802,21 @@
   --riv-calendar-ink-faint: rgba(12, 42, 51, 0.72);
   --riv-calendar-ink-disabled: rgba(12, 42, 51, 0.4);
   --riv-calendar-hover: rgba(12, 42, 51, 0.07);
+
+  /** booking-view's status-banner prose (#849, class F). Each of the six banners paints its own
+      FIXED fill (#ddf4f8, #fdf5e6, #faefec, #f0f2f3, #f0eef6), so the pinning runs fill -> ink
+      and this pair is declared once. The per-banner EYEBROW inks are NOT part of it: six values
+      across six states is class S's per-state palette, and they sit in their own constants rather
+      than in bannerBody's class string, so no take-the-whole-expression rule reaches them.
+
+      --riv-banner-strong-ink carries the #0a2a33 that #849 wanted routed through --riv-card-ink,
+      and is the sharpest case for the refusal: that token's dark value #f2f7fa over the neutral
+      banner's #f0f2f3 is very nearly white on white. Declared separately from --riv-calendar-ink
+      despite the shared value — different family, different surface, and one declaration per
+      family is the whole guard (#864's precedent, which kept two console inks apart for the same
+      reason). */
+  --riv-banner-body-ink: #334a52;
+  --riv-banner-strong-ink: #0a2a33;
 }
 
 [data-riv-theme='riviera'] {

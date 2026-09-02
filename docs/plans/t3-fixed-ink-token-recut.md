@@ -228,15 +228,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — extend the guard spec with the banner family (red), then declare
-`--riv-banner-body-ink` / `--riv-banner-strong-ink` and migrate `booking-view.ts:89,98`.
+**Next action:** Phase 2 — declare `--riv-console-card-border` / `--riv-console-btn-border` and
+migrate `operator-console.html:4,62` and `operator-actions.ts:54`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the calendar's fixed-glass ink ramp | ✅ | |
-| 1 — the booking-view banner body pair | | |
+| 1 — the booking-view banner body pair | ✅ | |
 | 2 — the two porcelain-pinned console borders | | |
 | 3 — the cross-theme real-render proof (mocked e2e) | | |
 | 4 — ledger re-cut + close-out | | |
