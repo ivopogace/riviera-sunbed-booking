@@ -105,19 +105,19 @@ at a time).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a venue with two commented, named reviews and one star-only named review
+- [x] **AC-1:** Given a venue with two commented, named reviews and one star-only named review
   (one of the commented ones hidden), when `ReviewTombstones.tombstone` is called with all
   three bookings, then it answers `3`, every row reads `display_name IS NULL AND comment IS
   NULL` with its stars and `hidden_at` intact, and a second call answers `0`. *Seam:*
   `review.api.ReviewTombstones` · *Pinned by:* `ReviewTombstoneFlowIT.tombstoneBlanksNameAndCommentOnceAndKeepsTheStars`
-- [ ] **AC-2:** Given a venue at `RatingSummary(45, 2)` whose two reviews are commented, when
+- [x] **AC-2:** Given a venue at `RatingSummary(45, 2)` whose two reviews are commented, when
   both are tombstoned, then the aggregate still reads `RatingSummary(45, 2)`, the public list
   is empty, the admin page lists both with `displayName` and `comment` `null`, and the
   author's panel is `ReviewPanel.AlreadyReviewed` carrying a nameless, commentless
   `OwnReview` (the slot stays taken — D-6). *Seam:* `ReviewTombstones` + `VenueRatingSummary` + `ListedReviews` +
   `ReviewModeration#pageFor` + `ReviewEligibility` · *Pinned by:*
   `ReviewTombstoneFlowIT.aTombstonedReviewLeavesTheListAndStaysInTheScore`
-- [ ] **AC-3:** Given a venue's stored rating columns recomputed from its reviews, when those
+- [x] **AC-3:** Given a venue's stored rating columns recomputed from its reviews, when those
   reviews are tombstoned, then no `ReviewsChanged` is published and the stored columns are
   unchanged. *Seam:* `ReviewTombstones` + the `venue` row · *Pinned by:*
   `ReviewTombstoneFlowIT.tombstoningPublishesNothingAndLeavesTheStoredRating`
@@ -263,15 +263,15 @@ already the wire types on every surface; a tombstoned review is one more row sha
 
 ## Execution status
 
-**Stage pointer:** `plan` — plan doc written, grill folded in; phase 0 next.
+**Stage pointer:** `implement (phase 1)` — phase 0 merged to the branch; draft PR #899 open.
 
-**Next action:** commit this doc, push, open the draft PR (CI vehicle), then phase 0 —
-`ReviewTombstoneFlowIT` red at the `ReviewTombstones` seam.
+**Next action:** phase 1 — `AccountErasureServiceTest` red at the `customer.spi.ReviewErasure`
+seam (the fake port), then the `booking` adapter and the store-port deepening (D-5).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `review.api.ReviewTombstones` + `JdbcReviewTombstones` | | |
-| 1 — `customer.spi.ReviewErasure`, `booking`'s adapter, the erasure services reach | | |
+| 0 — `review.api.ReviewTombstones` + `JdbcReviewTombstones` | ✅ | phase-0 commit |
+| 1 — `customer.spi.ReviewErasure`, `booking`'s adapter, the erasure services reach | ⏳ | |
 | 2 — the retention sweep reaches reviews | | |
 | 3 — docs, merge `origin/main`, ready for review, the gates | | |
 
@@ -326,7 +326,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 `ReviewTombstoneFlowIT.java` · Modify `review/api/package-info.java`,
 `review/package-info.java`, the three null-name Javadocs
 
-- [ ] **Step 1: Write the failing tests** — `ReviewTombstoneFlowIT` (the
+- [x] **Step 1: Write the failing tests** — `ReviewTombstoneFlowIT` (the
   `ReviewModerationFlowIT` cast: `@EnabledIfDockerAvailable`, `@Import(TestcontainersConfiguration.class)`,
   `@SpringBootTest`, `ReviewFixtures`): AC-1 (three rows incl. a hidden one → `3`, then `0`,
   stars and `hidden_at` intact), AC-2 (aggregate unchanged, `ListedReviews` page empty, the
@@ -342,12 +342,12 @@ public interface ReviewTombstones {
 }
 ```
 
-- [ ] **Step 2: Run, verify red** — `gradle --no-daemon --console=plain test --tests "*ReviewTombstoneFlowIT*"` → compile failure on the missing port (the honest red for a new seam)
-- [ ] **Step 3: Minimal implementation** — `JdbcReviewTombstones` (`@Repository`, package-private, empty-collection short-circuit, `UPDATE review SET display_name = NULL, comment = NULL WHERE booking_id IN (:bookings) AND (display_name IS NOT NULL OR comment IS NOT NULL)` → rows affected); the `api` inventory.
-- [ ] **Step 4: Run, verify green** — the IT + `ReviewListingFlowIT` + `ReviewModerationFlowIT` → PASS
-- [ ] **Step 5: Generalization audit** — population: every production SQL statement that touches `review` (`grep -rn "FROM review\b\|UPDATE review\b\|INTO review\b\|DELETE FROM review\b" platform/src/main`) → is any *other* statement a PII write that erasure must also cover? (claim/update write the author's own new data — not erasure's).
-- [ ] **Step 6: Commit** — `Blank a review's display name and comment through the review module's tombstone port (#815)`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 2: Run, verify red** — `gradle --no-daemon --console=plain test --tests "*ReviewTombstoneFlowIT*"` → compile failure on the missing port (the honest red for a new seam) — observed; then one red on fixture timing: a 2026-07-01 check-in is past the 60-day window today, so the panel read `Frozen` (carrying the nameless review) — the test now checks that stay in an hour ago
+- [x] **Step 3: Minimal implementation** — `JdbcReviewTombstones` (`@Repository`, package-private, empty-collection short-circuit, `UPDATE review SET display_name = NULL, comment = NULL WHERE booking_id IN (:bookings) AND (display_name IS NOT NULL OR comment IS NOT NULL)` → rows affected); the `api` inventory.
+- [x] **Step 4: Run, verify green** — the IT + `ReviewListingFlowIT` + `ReviewModerationFlowIT` → PASS
+- [x] **Step 5: Generalization audit** — population: every production SQL statement that touches `review` (`grep -rn "FROM review\b\|UPDATE review\b\|INTO review\b\|DELETE FROM review\b" platform/src/main`) → is any *other* statement a PII write that erasure must also cover? (claim/update write the author's own new data — not erasure's).
+- [x] **Step 6: Commit** — `Blank a review's display name and comment through the review module's tombstone port (#815)`
+- [x] **Step 7: Update Execution status.**
 
 ## Phase 1 — `customer.spi.ReviewErasure`, `booking`'s adapter, the erasure service reach
 
@@ -406,12 +406,13 @@ TS doc comments
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-02 | phase 0 (a second writer of review PII) | every production SQL statement that touches the `review` table | `grep -rn "FROM review\b\|UPDATE review\b\|INTO review\b\|DELETE FROM review\b" platform/src/main` | 10 in `JdbcReviews` + the new `JdbcReviewTombstones` (+ V47's backfill) | the only PII writes besides the tombstone are the author's own claim/update — new data the subject supplies, not erasure's to cover; no other statement needs the tombstone's shape |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 / AC-2 / AC-3:** `gradle test --tests "*ReviewTombstoneFlowIT*"` → PASS.
+- [x] **AC-1 / AC-2 / AC-3:** `gradle test --tests "*ReviewTombstoneFlowIT*"` → PASS (3, skipped 0). Verified at phase 0.
 - [ ] **AC-4 / AC-5:** `gradle test --tests "*AccountErasureIT*"` → PASS.
 - [ ] **AC-6:** `gradle test --tests "*AccountErasureServiceTest*"` → PASS.
 - [ ] **AC-7:** `gradle test --tests "*ExpireGuestContactsServiceTest*"` → PASS.
