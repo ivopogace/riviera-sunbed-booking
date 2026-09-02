@@ -3,6 +3,7 @@ package ai.riviera.platform.customer.application;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.customer.spi.GuestBookingHistory;
+import ai.riviera.platform.customer.spi.ReviewErasure;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 
 /**
@@ -22,7 +24,8 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
  * the row itself is older than the window and no live {@code customer_account} claims its email (both
  * applied by the candidate query, in SQL), and no booking of that guest falls on or after the cutoff (the
  * dependency-inverted {@link GuestBookingHistory} fact, answered by {@code booking}). The window and the
- * decision are {@code customer}'s; {@code booking} holds no retention policy.
+ * decision are {@code customer}'s; {@code booking} holds no retention policy. The contacts a run scrubs
+ * have their reviews tombstoned in the same transaction through {@link ReviewErasure}, one call per batch.
  *
  * <p>The cutoff is a civil date reasoned in {@code Europe/Tirane} from the injected UTC {@link Clock}
  * (invariant #6) — never the JVM default zone. The boundary is <em>inclusive-retain</em>: a booking exactly
@@ -43,13 +46,15 @@ class ExpireGuestContactsService implements ExpireGuestContacts {
 
 	private final AccountErasureStore store;
 	private final GuestBookingHistory history;
+	private final ReviewErasure reviews;
 	private final RetentionWindow retention;
 	private final Clock clock;
 
-	ExpireGuestContactsService(AccountErasureStore store, GuestBookingHistory history, RetentionWindow retention,
-			Clock clock) {
+	ExpireGuestContactsService(AccountErasureStore store, GuestBookingHistory history, ReviewErasure reviews,
+			RetentionWindow retention, Clock clock) {
 		this.store = store;
 		this.history = history;
+		this.reviews = reviews;
 		this.retention = retention;
 		this.clock = clock;
 	}
@@ -64,15 +69,18 @@ class ExpireGuestContactsService implements ExpireGuestContacts {
 			return 0;
 		}
 		Set<CustomerId> stillInBasis = history.withBookingOnOrAfter(candidates, cutoff);
-		int scrubbed = 0;
+		List<CustomerId> scrubbed = new ArrayList<>();
 		for (CustomerId candidate : candidates) {
 			if (!stillInBasis.contains(candidate) && store.eraseGuestById(candidate)) {
-				scrubbed++;
+				scrubbed.add(candidate);
 			}
 		}
-		if (scrubbed > 0) {
-			log.info("retention sweep scrubbed {} expired guest contact(s) with cutoff {}", scrubbed, cutoff);
+		if (scrubbed.isEmpty()) {
+			return 0;
 		}
-		return scrubbed;
+		int reviewsScrubbed = reviews.eraseForGuests(scrubbed);
+		log.info("retention sweep scrubbed {} expired guest contact(s) and {} review(s) with cutoff {}",
+				scrubbed.size(), reviewsScrubbed, cutoff);
+		return scrubbed.size();
 	}
 }

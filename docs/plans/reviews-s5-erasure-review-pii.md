@@ -138,13 +138,13 @@ at a time).
   *Pinned by:* `AccountErasureServiceTest.eraseAccountReachesReviewsOfBothSubjectsAndIsIdempotent`,
   `AccountErasureServiceTest.eraseByEmailReachesTheGuestsAndTheAccountsReviews`,
   `AccountErasureIT.eraseAccountTombstonesTheSubjectsReviews` (its second erasure: `ALREADY_ERASED`, the review stays tombstoned)
-- [ ] **AC-7:** Given the retention sweep scrubs two expired guests and retains one, when it
+- [x] **AC-7:** Given the retention sweep scrubs two expired guests and retains one, when it
   runs, then `ReviewErasure.eraseForGuests` is called once with exactly the two scrubbed ids,
   and not at all when nothing was scrubbed. *Seam:* `customer.application.ExpireGuestContacts`
   over a fake `ReviewErasure` · *Pinned by:*
   `ExpireGuestContactsServiceTest.sweepTombstonesTheScrubbedGuestsReviewsInOneCall`,
   `ExpireGuestContactsServiceTest.sweepWithNothingScrubbedNeverReachesReviews`
-- [ ] **AC-8:** Given an expired guest whose booking is reviewed with a name and comment, when
+- [x] **AC-8:** Given an expired guest whose booking is reviewed with a name and comment, when
   the sweep runs, then the review is tombstoned, its star and the venue aggregate are
   unchanged, and the financial rows are untouched. *Seam:* `ExpireGuestContacts` · *Pinned
   by:* `GuestContactRetentionIT.scrubsTheExpiredGuestsReviewsToo`
@@ -263,17 +263,17 @@ already the wire types on every surface; a tombstoned review is one more row sha
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)` — phases 0–1 on the branch; draft PR #899 open.
+**Stage pointer:** `implement (phase 3)` — phases 0–2 on the branch; draft PR #899 open.
 
-**Next action:** phase 2 — `ExpireGuestContactsServiceTest` red on the sweep's `ReviewErasure`
-constructor arg, then `GuestContactRetentionIT.scrubsTheExpiredGuestsReviewsToo`.
+**Next action:** phase 3 — the docs sweep (RESPONSIBILITIES, CONTEXT, CLAUDE, ADR-0010 amendment,
+runbook, the three TS comments), `riviera-docs-freshness`, merge `origin/main`, ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `review.api.ReviewTombstones` + `JdbcReviewTombstones` | ✅ | phase-0 commit |
 | 1 — `customer.spi.ReviewErasure`, `booking`'s adapter, the erasure services reach | ✅ | phase-1 commit |
-| 2 — the retention sweep reaches reviews | ⏳ | |
-| 3 — docs, merge `origin/main`, ready for review, the gates | | |
+| 2 — the retention sweep reaches reviews | ✅ | phase-2 commit |
+| 3 — docs, merge `origin/main`, ready for review, the gates | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -380,13 +380,13 @@ public interface ReviewErasure {
 **Files:** Modify `ExpireGuestContactsService.java`, `ExpireGuestContacts.java` · Test
 `ExpireGuestContactsServiceTest.java`, `GuestContactRetentionIT.java`
 
-- [ ] **Step 1: Failing tests** — AC-7's two unit tests (the `FakeReviewErasure` shared shape); AC-8's IT (an aged guest with a reviewed 2015 booking → sweep → the review is nameless and commentless, the star and the aggregate unchanged, the financial rows untouched).
-- [ ] **Step 2: Red** — `--tests "*ExpireGuestContactsServiceTest*"` → compile failure on the new constructor arg, then assertions.
-- [ ] **Step 3: Minimal implementation** — collect the scrubbed ids; one `eraseForGuests` call when non-empty; the log line carries both counts.
-- [ ] **Step 4: Green** — the unit test + `GuestContactRetentionIT` + `GuestContactRetentionSchedulerConfigTest` → PASS.
-- [ ] **Step 5: Generalization audit** — population: every caller of `ExpireGuestContacts#sweep` and every reader of its return value (`grep -rn "\.sweep()" platform/src`) — the meaning "contacts tombstoned" holds.
-- [ ] **Step 6: Commit** — `Tombstone the reviews of every guest contact the retention sweep expires (#815)`
-- [ ] **Step 7: Update Execution status.**
+- [x] **Step 1: Failing tests** — AC-7's two unit tests (the `FakeReviewErasure` shared shape); AC-8's IT (an aged guest with a reviewed 2015 booking → sweep → the review is nameless and commentless, the star and the aggregate unchanged, the financial rows untouched).
+- [x] **Step 2: Red** — `--tests "*ExpireGuestContactsServiceTest*"` → compile failure on the new constructor arg, then assertions.
+- [x] **Step 3: Minimal implementation** — collect the scrubbed ids; one `eraseForGuests` call when non-empty; the log line carries both counts.
+- [x] **Step 4: Green** — the unit test + `GuestContactRetentionIT` + `GuestContactRetentionSchedulerConfigTest` → PASS.
+- [x] **Step 5: Generalization audit** — population: every caller of `ExpireGuestContacts#sweep` and every reader of its return value (`grep -rn "\.sweep()" platform/src`) — the meaning "contacts tombstoned" holds.
+- [x] **Step 6: Commit** — `Tombstone the reviews of every guest contact the retention sweep expires (#815)`
+- [x] **Step 7: Update Execution status.**
 
 ## Phase 3 — docs, merge `origin/main`, ready for review, the gates
 
@@ -406,6 +406,7 @@ TS doc comments
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-02 | phase 2 (the sweep's return value) | every caller of `ExpireGuestContacts#sweep` and every reader of its count | `grep -rn "\.sweep()" platform/src --include=*.java` (filtered to the customer port; the `booking` hits are the no-show / request sweeps) | 1 production caller, `GuestContactRetentionScheduler`, which logs the count; `GuestContactRetentionIT` and the unit spec assert it | the meaning "contacts tombstoned" holds; reviews ride as a second logged count (D-4) |
 | 2026-09-02 | phase 1 (the widened `AccountErasureStore` port, D-5) | every implementor of `AccountErasureStore` and every caller of the two by-email scrubs | `grep -rln "implements AccountErasureStore" platform/src`; `grep -rn "eraseGuestByEmail\|eraseAccountByEmail" platform/src` | 3 implementors (`JdbcAccountErasure` + the two test fakes); callers: `AccountErasureService` only | all three follow the new return types in this commit; the sweep's fake keeps throwing for the two it never exercises |
 | 2026-09-02 | phase 1 (a `//` block the guard now sees) | every multi-line `//` block in a file this slice touches | `node scripts/check-inline-comments.mjs --files <touched>` | 1: the grant rationale in `booking/package-info.java` (pre-existing, flagged once touched) | moved into the package Javadoc, which is exempt and where a grant's why belongs |
 | 2026-09-02 | phase 0 (a second writer of review PII) | every production SQL statement that touches the `review` table | `grep -rn "FROM review\b\|UPDATE review\b\|INTO review\b\|DELETE FROM review\b" platform/src/main` | 10 in `JdbcReviews` + the new `JdbcReviewTombstones` (+ V47's backfill) | the only PII writes besides the tombstone are the author's own claim/update — new data the subject supplies, not erasure's to cover; no other statement needs the tombstone's shape |
@@ -417,8 +418,8 @@ TS doc comments
 - [x] **AC-1 / AC-2 / AC-3:** `gradle test --tests "*ReviewTombstoneFlowIT*"` → PASS (3, skipped 0). Verified at phase 0.
 - [x] **AC-4 / AC-5:** `gradle test --tests "*AccountErasureIT*"` → PASS (7, skipped 0). Verified at phase 1.
 - [x] **AC-6:** `gradle test --tests "*AccountErasureServiceTest*"` → PASS (8). Verified at phase 1.
-- [ ] **AC-7:** `gradle test --tests "*ExpireGuestContactsServiceTest*"` → PASS.
-- [ ] **AC-8:** `gradle test --tests "*GuestContactRetentionIT*"` → PASS.
+- [x] **AC-7:** `gradle test --tests "*ExpireGuestContactsServiceTest*"` → PASS (9). Verified at phase 2.
+- [x] **AC-8:** `gradle test --tests "*GuestContactRetentionIT*"` → PASS (6, skipped 0). Verified at phase 2.
 - [x] **AC-9:** the structural net → PASS (`ModularityTests` 1, `PackageShapeArchitectureTests` 4, `PublishedSurfacePlacementArchitectureTests` 11, `JdbcOnlyArchitectureTests` 2). Verified at phases 0 and 1.
 - [ ] **AC-10:** `npm test -- admin-reviews venue-reviews` → PASS (the existing pins).
 
