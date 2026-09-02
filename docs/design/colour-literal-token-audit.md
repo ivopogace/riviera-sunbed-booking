@@ -434,7 +434,7 @@ does not. Each needs its own token, not the coincidental one.
 >   set in the base block, one in the `dark` block, so each contrast proof stays a plain pair and
 >   the count merely doubles. The light themes keep every day-cell colour; the light-theme chrome
 >   moves by the popover family's own values (glass 0.97 → 0.92, the two soft inks → 0.7, the hover
->   wash → 0.06), enumerated in `docs/plans/calendar-popover-theming.md`'s parity ledger. The
+>   wash → 0.06), enumerated in the #888 plan doc's parity ledger (retired; git history). The
 >   whole-tree fact this settled is written down below, under *The overlay surfaces*.
 
 ### Class S — per-state palettes and one-offs: exempt for now
@@ -532,7 +532,7 @@ carried no row.)
 Written down so the question #849 parked and #888 answered is not rediscovered a third time. The
 population is every overlay in `frontend/src/app`, enumerated by the mechanism that makes one (a
 `<dialog>`, a `role="dialog"`/`role="menu"` box, an `aria-modal`, or one of the family fills), not
-by resemblance — the command is in `docs/plans/calendar-popover-theming.md`'s generalization-audit
+by resemblance — the command is in the #888 plan doc's generalization-audit
 log.
 
 | Overlay | Family | Porcelain | Dark |

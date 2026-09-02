@@ -29,7 +29,7 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * on — that nothing in the cascade repaints them when the document theme changes — which is what
  * would break if a later slice gave one a dark override. The declaration guard in
  * `shared/class-o-tint-tokens.contrast.spec.ts` is what watches the override itself.
- * Rationale: docs/plans/class-o-opacity-modifier-tokens.md.
+ * Rationale: #852 (PR #878).
  */
 
 /** The registry as `tailwind.css`'s base block declares it. Mirrors `testing/glass-tokens.ts`. */

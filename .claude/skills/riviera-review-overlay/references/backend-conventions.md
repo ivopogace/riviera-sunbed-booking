@@ -335,10 +335,8 @@ change revokes the *other* sessions before the hash write and re-issues the surv
 session under a new id via `SessionIdentity#rotate` (carries attributes over, hard-DELETEs
 the old row, creates a fresh one — pinned by `SessionIdentityTest`); (d) a rate-limit
 budget guarding **authenticated** work refunds a request denied 401/403 before the work,
-while login budgets still charge. Default **Blocker**. (Plan docs: `session-revocation.md`,
-`session-revoke-ordering-remaining-surfaces.md`,
-`password-change-atomicity-session-rotation.md`, `session-rotation-lost-update.md`,
-`credential-change-rate-limit-keying.md`.)
+while login budgets still charge. Default **Blocker**. (Slices: the session-revocation slice,
+#344, #359, PR #361, PR #363.)
 
 ---
 

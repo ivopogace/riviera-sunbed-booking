@@ -12,7 +12,7 @@
 > and the `operator` module with per-venue authorization (invariant #13).
 > **Request-to-Book is built** (issue #98) — soft-hold on the shared availability claim,
 > operator accept/decline (payment-request-on-accept), the request-expiry sweep, and the
-> pay-on-accept guest view. For as-built status per slice, see `docs/plans/`.
+> pay-on-accept guest view. For as-built status per slice, see the closed issues and PRs.
 >
 > All diagrams are [Mermaid](https://mermaid.js.org/) and render on GitHub.
 

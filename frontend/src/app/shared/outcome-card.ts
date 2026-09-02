@@ -64,7 +64,7 @@ export class OutcomeCard {
    * held to 3:1 in `auth/auth-page.contrast.spec.ts`. Take the ternary whole — one branch tokenised
    * leaves a named utility beside a hex literal in one expression.
    *
-   * Rationale: docs/plans/outcome-card-medallion-convergence.md.
+   * Rationale: PR #871.
    */
   protected readonly glyphClasses = computed(
     () =>

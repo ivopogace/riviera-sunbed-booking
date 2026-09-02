@@ -266,9 +266,9 @@ and surfaces stay optional per kind — no forced empty packages. Notably `booki
 `booking::events` + `booking::vocabulary` — never a command surface. `customer` (still thin when this
 amendment was written) is `api/` + `vocabulary/` + `adapter/out/`; it has since graduated to full.
 
-`allowedDependencies` grants are per-surface and least-privilege (see the grant matrix in
-`docs/plans/issue-95-published-surface-split.md`). Because the Event Publication Registry persists
-event FQCNs, the move shipped with `V18__event_publication_event_type_moves.sql`.
+`allowedDependencies` grants are per-surface and least-privilege (the grant matrix is the
+modules' `allowedDependencies` declarations, settled by #95). Because the Event Publication
+Registry persists event FQCNs, the move shipped with `V18__event_publication_event_type_moves.sql`.
 
 **Enforcement added (C1):** `PublishedSurfacePlacementArchitectureTests` — api/spi hold only
 non-sealed interfaces; events surfaces hold only records; vocabulary surfaces hold no plain

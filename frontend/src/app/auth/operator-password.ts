@@ -204,7 +204,7 @@ export class OperatorPassword {
    * error is what just spoke. Neither arm needs an emptiness guard, and `:empty` could not provide
    * one: this runs only from `fail()` or the success branch, so the region it finds has just been
    * given its message, and an interpolation always leaves a text node.
-   * Rationale: `docs/plans/action-alert-lifetime.md`.
+   * Rationale: #828.
    */
   private revealOutcome(): void {
     // afterNextRender, not queueMicrotask: it is bound to this component's injector, so a pending

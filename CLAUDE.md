@@ -78,8 +78,8 @@ Line endings are pinned LF by the root `.gitattributes`.
   frontend work).
 - `frontend/e2e/` — the CI-safe mocked Playwright suite; `frontend/e2e/real-backend/` —
   the local-only real-backend suite.
-- `docs/` — `architecture/`, `adr/` (decisions), `design/`, `plans/` (per-slice plan
-  docs), `research/` (findings behind decisions), `agents/` (issue-tracker conventions +
+- `docs/` — `architecture/`, `adr/` (decisions), `design/`, `plans/` (in-flight plan
+  docs only), `research/` (findings behind decisions), `agents/` (issue-tracker conventions +
   runbooks), `deploy/` + `runbooks/`, `superpowers/specs/` (product design).
 
 ## Bounded contexts (Spring Modulith modules)
@@ -119,7 +119,7 @@ drives the refund); `BookingPaymentDue`, `BookingRequestDeclined`, and
 `BookingRequestExpired` go to `notification` only; `ReviewsChanged` goes to `venue`, whose
 listener recomputes its own rating columns.
 
-Settled platform-edge rules (detail: `RESPONSIBILITIES.md` + `docs/plans/`): server-side
+Settled platform-edge rules (detail: `RESPONSIBILITIES.md`): server-side
 sessions (Spring Session JDBC) with **two principal types**; all login/session machinery
 lives at the edge, never in modules; customer-account identity is separate from the guest
 row — no FK, no back-linking of past guest bookings, ever; auth endpoints are
@@ -223,3 +223,10 @@ engine the `riviera-*` skills specialize; they are tracked in `skills-lock.json`
 and `platform/.gitignore` ignores `out/` — also the name of every hexagonal `adapter/out`
 package. Confirm any negative with `git ls-files '*/adapter/out/*.java'` before concluding
 a class doesn't exist.
+
+**`docs/plans/` holds only in-flight work.** A plan doc lives from the plan stage until its
+slice's PR merges and is deleted at the next epic close-out (`riviera-docs-freshness`
+§ *Plan-doc retirement*); code and docs cite the issue or PR, never a plan path. Don't read
+or search old plans for rationale — it is on the issue, the PR, the ADRs, and the
+Javadoc/TSDoc. A retired plan is recoverable by slug:
+`git log --all --diff-filter=D -- 'docs/plans/<slug>.md'`.

@@ -339,7 +339,7 @@ export class AdminOperators {
    * Run a decision, then RECONCILE the queue from the server (never a local-only card removal), and
    * land the admin on the notice — which the reconcile makes necessary, since it destroys whatever
    * focus was on. The name is read **before** the action, because the reconcile removes the row
-   * holding it. Why the notice rather than the row: `docs/plans/confirm-focus-busy-posture.md`.
+   * holding it. Why the notice rather than the row: #616.
    */
   private async act(id: number, action: () => Promise<void>, outcome: string): Promise<void> {
     if (this.actingId() !== undefined) {

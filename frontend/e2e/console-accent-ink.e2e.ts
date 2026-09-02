@@ -27,7 +27,7 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * changes — which is exactly what would break if a later slice gave the token a dark override and
  * the console stopped pinning porcelain. The declaration guard in
  * `operator/console-accent-token.contrast.spec.ts` is what watches the override itself.
- * Rationale: docs/plans/console-accent-ink-token.md.
+ * Rationale: #848.
  */
 
 /** `--riv-console-accent-ink` as the base block declares it — the console pin keeps it in force. */

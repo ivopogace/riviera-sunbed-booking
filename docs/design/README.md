@@ -11,8 +11,7 @@ later slice changes behavior the artboard depicted (e.g. cutoff-copy wording,
 an icon retired in favor of a shared component), the artboard line is left as
 drawn and gets a one-line `<!-- as-built diverges — see #NNN -->` pointer to
 the issue/PR that changed the shipped surface, rather than being edited in
-place. `docs/plans/*` final states follow the same pointer convention when a
-plan cites a design line that's since drifted.
+place.
 
 If a screen gets genuinely redesigned, that's a **new export** (new file or a
 new dated intake note), not an edit to the existing record — same pattern as

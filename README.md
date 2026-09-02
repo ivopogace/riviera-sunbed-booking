@@ -13,7 +13,7 @@ platform takes a commission per booking and pays venues out manually.
 > (#141) — as are customer accounts (sign-in, SSO, GDPR erasure) and tourist reviews
 > (#810). In flight: the design-token colour audit, the real transactional mailer
 > (#367), and the Stripe → Paysera payment migration (#284, ADR-0009). Per-slice
-> status lives in [`docs/plans/`](docs/plans/); what's next lives in the issue
+> history lives on the closed issues and PRs; what's next lives in the issue
 > tracker. If you're here to contribute, start with
 > [`CONTRIBUTING.md`](CONTRIBUTING.md).
 

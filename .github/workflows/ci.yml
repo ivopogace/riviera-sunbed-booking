@@ -64,7 +64,7 @@ jobs:
 
   frontend:
     # DO NOT RENAME. Like `Repo hygiene (diff-scoped)` below, this string is a required status-check
-    # CONTEXT in the `Riviera Rule Set` ruleset (`docs/plans/ci-pipeline.md` records the list), so a
+    # CONTEXT in the `Riviera Rule Set` ruleset (`CONTRIBUTING.md` records the list), so a
     # rename here removes a check the ruleset still expects and every pull request becomes
     # unmergeable — the #413/#420 failure. Since #615 the job also runs a hard formatting gate, so
     # the name now undersells it; that is deliberate. Correcting it means editing the ruleset in the
@@ -149,7 +149,7 @@ jobs:
   repo-hygiene:
     # DO NOT RENAME. This string is a required status-check CONTEXT in the `Riviera Rule Set`
     # ruleset (#534 added the seventh context as `Inline comments (RV-STYLE-1)`; #539 renamed it
-    # to this string; `docs/plans/ci-pipeline.md` records the list). A ruleset names its contexts
+    # to this string; `CONTRIBUTING.md` records the list). A ruleset names its contexts
     # explicitly, so renaming the job here removes a check the ruleset still expects, and EVERY
     # pull request becomes unmergeable — the `405 … N of N required status checks are expected`
     # failure #413/#420 already paid for once. Renaming means editing the ruleset in the same
@@ -239,7 +239,7 @@ jobs:
         # component MOVES FOCUS, a runtime property approximated over source, and three review passes
         # each found a fresh false positive in that predicate. A gate that fails correct code is the
         # one error direction this job cannot afford (#529's lesson, restated by #533's R-2), so the
-        # rule advises instead. Rationale: `docs/plans/focus-posture-guard.md`.
+        # rule advises instead. Rationale: #621.
         if: ${{ !cancelled() }}
         run: node scripts/check-focus-posture.mjs --diff origin/${{ github.event.pull_request.base.ref }}
 

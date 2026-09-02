@@ -663,7 +663,7 @@ export class BookingView {
 
   /**
    * Open the cancel confirmation. Every focus move on both confirm surfaces, and why it lands
-   * where it does (WCAG 2.4.3): `docs/plans/booking-view-confirm-focus.md`.
+   * where it does (WCAG 2.4.3): #614.
    */
   protected startCancel(): void {
     this.confirming.set(true);

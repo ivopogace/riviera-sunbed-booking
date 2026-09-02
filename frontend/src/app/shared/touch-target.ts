@@ -9,7 +9,7 @@ import { Directive } from '@angular/core';
  * resolve by stylesheet order, not class order. So on an `<a>` still `display: inline` this is a
  * silent no-op — pair it with `inline-flex items-center`. The proof is never the class list;
  * `frontend/e2e/touch-targets.e2e.ts` measures the rendered box. A genuinely exempt control carries
- * `data-touch-exempt="<reason>"` instead. Rationale: `docs/plans/touch-target-floor.md`.
+ * `data-touch-exempt="<reason>"` instead. Rationale: #605 (PR #647).
  */
 @Directive({
   selector: '[appTouchTarget]',

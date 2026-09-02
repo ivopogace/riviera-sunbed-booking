@@ -235,8 +235,7 @@ hook + CI step) carries rules in two opposite postures:
    settle-time focus move there. `(input)` is excluded as draft-sync.
 
 **Follow-up:**
-- The convention: `frontend/.claude/CLAUDE.md`. Recurring instances: the focus plan docs
-  under `docs/plans/`.
+- The convention: `frontend/.claude/CLAUDE.md`. Recurring instances: #604, #614, #616, #621.
 - A jsdom spec is not evidence for a busy-window claim — jsdom does not implement
   unfocus-on-disable. A claim about a *disabled* control needs a Chromium leg; a claim about
   a *destroyed* one may be pinned in jsdom.

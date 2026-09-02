@@ -63,8 +63,7 @@ states the decisions and traps the code can't show you.
      to fix.
    - The guard `scripts/check-touch-target.mjs` (`PostToolUse` hook + CI; by hand `--files
      <path…>` or `--all`) gates the *declaration* only (TT-1/TT-2) — a green guard is not a
-     measured box, and `<a>` is out of its scope. Plan docs: `docs/plans/touch-target-floor.md`,
-     `docs/plans/touch-target-guard.md`.
+     measured box, and `<a>` is out of its scope. Slices: #605 (the floor), #648 (the guard).
 5. **Idiom quick-reference** (match the exemplars):
    - `text-[14px]`, not `text-sm` — named sizes bundle a `line-height` and drift.
    - Arbitrary variants for what utilities don't cover (no plugins — locked stack):
@@ -85,7 +84,7 @@ states the decisions and traps the code can't show you.
    fixed-white sign-out bar) or the offset (an inset ring inside an `overflow-hidden` clip).
    Never `outline-none`, `outline-hidden`, `outline-0` or `[outline:none]` on a control —
    `app/shared/focus-ring-baseline.spec.ts` fails the build naming the path. Keep the rule
-   inside `@layer base`. Rationale: `docs/plans/focus-ring-baseline.md`, issue #890.
+   inside `@layer base`. Rationale: issue #890.
 
 ## Icons — inline SVG, shared as a component
 

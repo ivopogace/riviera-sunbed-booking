@@ -22,8 +22,7 @@
   source of truth. Grouping and an overflow menu were both considered and rejected — measured at
   360px the wrap costs 3 rows at seven tabs AND at eight, never clipping, so absorbing every planned
   tab is free while the alternatives cost a navigation level, a hidden surface, or touch target the
-  40px pills do not have to spare. Full reasoning: the Q1 comment on #348 and
-  docs/plans/q1-admin-console-tab-ia.md.
+  40px pills do not have to spare. Full reasoning: the Q1 comment on #348 and PR #524.
 
   ⚠ CORRECTION (2026-08-06, #348 A9) — THE STAT STRIP IS NOT DRAWN WHERE IT SHIPS.
   This canvas renders the stats ONCE, ABOVE the tab strip, on EVERY screen — which it can do because
@@ -38,8 +37,7 @@
   payout tiles belonging to A6, which is blocked on A5/#284. And "avg commission" ships as
   "mean rate N%" with a note stating it is an equal average of venue rates, NOT the platform's
   effective take — nothing on the wire supports the booking-weighted figure a bare "avg" implies.
-  Source of truth: frontend/src/app/admin/admin-console-stats.ts and
-  docs/plans/a9-admin-console-stat-strip.md.
+  Source of truth: frontend/src/app/admin/admin-console-stats.ts and PR #527.
 
   EVERYTHING ELSE IN THIS HEADER STILL STANDS — the endpoint map and the payout decision
   list below are binding.

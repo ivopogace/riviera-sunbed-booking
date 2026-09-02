@@ -145,7 +145,9 @@ and duplications below its fail thresholds. Pull the actual list and fix every e
    post-merge commit on `main` is not available to cloud agents, so it degrades into a
    docs-only PR + CI cycle. After this step there is no post-merge repo commit; the only
    post-merge items are GitHub edits (steps 2 and 3). If you find yourself opening a
-   docs-only PR to finish a close-out, step 4 was skipped.
+   docs-only PR to finish a close-out, step 4 was skipped. The plan doc then lives until the
+   epic close-out, where it is deleted (`riviera-docs-freshness` § *Plan-doc retirement*) —
+   so code and docs cite the issue or PR, never its path.
 5. **Substrate-doc staleness check — run `riviera-docs-freshness`** if the slice changed
    something `CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, an ADR, or a `riviera-*`
    skill states (a module's status, the package shape, a canonical value set, an ownership

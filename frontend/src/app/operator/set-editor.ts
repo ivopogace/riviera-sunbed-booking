@@ -143,7 +143,7 @@ function draftForNewCell(gridY: number): SetDraft {
  * re-read re-seeds them instead of stranding an edit whose basis has moved.
  *
  * <p>Rationale for the reactive-only guard discovery, the no-`expectedVersion` writes and the
- * venue-switch guard: `docs/plans/per-set-beach-map-editing.md`.
+ * venue-switch guard: #567 (PR #603).
  */
 @Component({
   selector: 'app-set-editor',

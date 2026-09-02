@@ -265,7 +265,7 @@
   /** The erasure confirm panel's danger treatment: a tinted panel plus a stronger tinted
       action inside it. Keep these pre-composed rgba, like --riv-field-border — a Tailwind
       `/opacity` modifier compiles to color-mix() and changes the computed value. AA-proven by
-      admin-console.contrast.spec.ts. Rationale: docs/plans/admin-error-ink-tokens.md.
+      admin-console.contrast.spec.ts. Rationale: PR #833.
       --riv-danger-action-border is the Erase button's affordance boundary and is held to WCAG
       1.4.11 (>=3:1 against the panel fill, all porcelain stops) — issue #834. --riv-danger-border
       is a decorative container edge (the fill + heading already carry the panel's meaning) and is
@@ -289,7 +289,7 @@
       pair is non-text chrome (WCAG 1.4.11) and reaches only ~1.5:1 — raising it would need a
       darker hue, not more alpha. Decorative under docs/design/non-text-contrast.md rule 2: the
       panel's ink and the chip's label carry the identity, both at AA over these tints.
-      Rationale: docs/plans/accent-teal-token-sweep.md */
+      Rationale: PR #838 */
   --riv-accent-fill: rgba(43, 184, 212, 0.12);
   --riv-accent-border: rgba(14, 138, 168, 0.35);
   --riv-accent-chip-fill: rgba(43, 184, 212, 0.18);
@@ -317,7 +317,7 @@
       Proof: solid-btn-tokens.contrast.spec.ts (the four AA pairs, the themed-ink bounds, and the
       single-declaration guard that is the only thing able to see a dark override) +
       solid-btn-token-skin.e2e.ts (the computed skin under a forced dark document theme).
-      Rationale: docs/plans/solid-outline-button-token-family.md, issues #835 + #851. */
+      Rationale: issues #835 + #851 (PR #859). */
   --riv-solid-btn-ink: #0a4f5e;
   --riv-solid-btn-fill: #f4f6f7;
   --riv-solid-btn-hover: #e7ebec;
@@ -337,7 +337,7 @@
       to each other and move together; giving either a dark override reintroduces exactly that
       drift. Proof: form-error-tokens.contrast.spec.ts (the AA pair, the failing themed-ink bound,
       and the single-declaration guard) + form-error-token-skin.e2e.ts (the computed skin under a
-      forced dark document theme). Rationale: docs/plans/form-error-token-pair.md, issue #850. */
+      forced dark document theme). Rationale: issue #850. */
   --riv-form-error-fill: #f6e8e7;
   --riv-form-error-ink: #a3160e;
 
@@ -368,8 +368,8 @@
       button fill under the family's fixed white ink — so it joins here rather than starting a new
       family; role beats value, same call the family itself has made twice already.
       Proof: shared/solid-fill-tokens.contrast.spec.ts + solid-fill-token-skin.e2e.ts.
-      Rationale: docs/plans/solid-fill-teal-merge.md, then
-      docs/plans/solid-fill-token-family.md, then docs/plans/console-confirm-panel-parity.md
+      Rationale: PR #862 (solid fill teal merge), then
+      the solid-fill token-family slice, then PR #883 (console confirm-panel parity)
       (issue #881). */
   --riv-solid-fill-brand: #0a6e85;
   --riv-solid-fill-brand-hover: #0a5e72;
@@ -392,7 +392,7 @@
       Proof: operator/console-accent-token.contrast.spec.ts (the single-declaration guard, the only
       thing able to see a dark override) + the six operator *.contrast.spec.ts AA proofs +
       console-accent-ink.e2e.ts.
-      Rationale: docs/plans/console-accent-ink-token.md, issue #848. */
+      Rationale: issue #848. */
   --riv-console-accent-ink: #0a6e85;
 
   /** The operator console's NEGATIVE ink — the reversal net and its reason chip on the Payouts
@@ -416,7 +416,7 @@
       Proof: operator/console-negative-token.contrast.spec.ts (the single-declaration guard, the
       only thing able to see a dark override) + payouts-tab.contrast.spec.ts's AA proofs for the
       chip tint, the lowest pair at 5.05:1 + console-negative-ink.e2e.ts.
-      Rationale: docs/plans/console-negative-ink-token.md, issue #864. */
+      Rationale: issue #864. */
   --riv-console-negative-ink: #a3372a;
 
   /** The CLASS-O TINT tokens (#852) — the base colour behind any colour position that carries
@@ -439,7 +439,7 @@
       row, and the tree-wide literal sweep) + e2e/class-o-tint-tokens.e2e.ts (the real paint,
       incl. a forced dark document).
       Rationale, and the measurement that settled the rule: docs/design/colour-literal-token-audit.md
-      § Class O, docs/plans/class-o-opacity-modifier-tokens.md, issue #852.
+      § Class O, issue #852.
 
       --riv-console-tint is the console's neutral tint base: hairlines, inset fills and the
       set-editor's mobile sheet backdrop. It is the rgba base of --riv-ink-soft/--riv-ink-faint,
@@ -592,8 +592,8 @@
       Proof: shared/fixed-fill-token-skins.contrast.spec.ts (the AA floors, the themed-ink bounds,
       the aria-hidden exemption, and the single-declaration guard that is the only thing able to see
       a later dark override) + e2e/fixed-fill-state-skins.e2e.ts (the computed skin under a forced
-      dark document theme). Rationale: docs/plans/fixed-fill-state-skins.md;
-      docs/plans/outcome-card-medallion-convergence.md; docs/design/colour-literal-token-audit.md
+      dark document theme). Rationale: issue #858 (PR #867);
+      PR #871 (outcome-card medallion convergence); docs/design/colour-literal-token-audit.md
       §F-3, §F-5 (why these values and not the artboards' tints, and what converging cost). */
   --riv-medallion-positive-fill: #d9f2f7;
   --riv-medallion-positive-ink: #0a5f74;
@@ -630,7 +630,7 @@
       Proof: shared/fixed-fill-token-skins.contrast.spec.ts (the AA pairs, the themed-ink bounds and
       the single-declaration guard) + shared/amenities.contrast.spec.ts (the same pairs against the
       rendered chip, via testing/chip-fills.ts) + e2e/fixed-fill-state-skins.e2e.ts.
-      Rationale: docs/plans/fixed-fill-state-skins.md, issue #858. */
+      Rationale: issue #858 (PR #867). */
   --riv-amenity-tag-ink: #2f4a54;
   --riv-amenity-tag-fill: #eef2f4;
   --riv-amenity-tag-border: #dbe4e7;
@@ -658,7 +658,7 @@
       is that token's question, not this one's. The guard matches roles rather than bare values here
       for exactly that reason.
       Proof: shared/fixed-fill-token-skins.contrast.spec.ts + e2e/fixed-fill-state-skins.e2e.ts.
-      Rationale: docs/plans/fixed-fill-state-skins.md, issue #858. */
+      Rationale: issue #858 (PR #867). */
   --riv-step-active-ink: #0a5f74;
   --riv-step-idle-fill: #2c7789;
 
@@ -921,7 +921,7 @@
   --riv-error-ink: #ffa9a1;
   /** The ink matches --riv-error-ink here; that is the intended value, so do not collapse the
       duplication. `riviera` gets no block: its cards stay white glass, so it inherits the
-      porcelain values. Rationale: docs/plans/admin-error-ink-tokens.md */
+      porcelain values. Rationale: PR #833 */
   --riv-danger-ink: #ffa9a1;
   --riv-danger-fill: rgba(255, 138, 122, 0.1);
   --riv-danger-border: rgba(255, 138, 122, 0.42);
@@ -1001,7 +1001,7 @@
     where the themed ink would fade to under 2:1 in dark) or offset (`-outline-offset-[3px]`
     inside a clip) keeps winning deterministically; un-layered, it would beat them all. Guard:
     app/shared/focus-ring-baseline.spec.ts; render: e2e/focus-ring-baseline.e2e.ts.
-    Rationale: docs/plans/focus-ring-baseline.md, issue #890. */
+    Rationale: issue #890. */
 @layer base {
   button:focus-visible {
     outline: 3px solid var(--riv-accent-ink);
