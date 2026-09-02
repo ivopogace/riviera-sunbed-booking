@@ -9,56 +9,40 @@ import {
   contrastRatio,
   rgbToHex,
 } from '../../testing/contrast';
-import { CALENDAR_BAR, CALENDAR_TINTS } from '../../testing/calendar-tints';
 import {
   BANNER_BODY_INK,
   BANNER_FILLS,
   BANNER_STRONG_INK,
-  CALENDAR_GLASS,
   CONSOLE_BTN_BORDER,
   CONSOLE_BTN_HOVER,
   CONSOLE_CARD_BORDER,
-  CALENDAR_HOVER,
-  CALENDAR_INK,
-  CALENDAR_INK_DISABLED,
-  CALENDAR_INK_FAINT,
-  CALENDAR_INK_SOFT,
   DARK_CARD_INK,
-  DARK_STOPS,
   Glass,
   INK_DARK,
   PORCELAIN_HEADER_GLASS,
   PORCELAIN_STOPS,
-  RIVIERA_STOPS,
   WHITE,
-  expectAaOverStops,
   surfaceOver,
 } from '../../testing/glass-tokens';
 import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
- * Guard for the four fixed-fill and role-mismatch ink families, and for the refusal that defines
- * them: none of these sites can take `--riv-ink`, `--riv-card-ink` or `--riv-pop-ink`, because
- * every one sits on a fill that does not theme. The three agree in porcelain and diverge in dark,
- * so the failure is invisible to any porcelain-only check — which is why it is measured here
- * rather than asserted.
+ * Guard for the fixed-fill and role-mismatch ink families, and for the refusal that defines them:
+ * none of these sites can take `--riv-ink`, `--riv-card-ink` or `--riv-pop-ink`, because every
+ * one sits on a fill that does not theme. The three agree in porcelain and diverge in dark, so the
+ * failure is invisible to any porcelain-only check — which is why it is measured here rather than
+ * asserted.
  *
- * <p>Lives in `shared/` because the population spans `venue/`, `booking/` and `operator/`, the same
- * reason as `warn-token-skin.contrast.spec.ts`. The complementary proof, where the cascade rather
- * than a regex decides, is `e2e/fixed-ink-token-recut.e2e.ts`.
+ * <p>The availability calendar was the fourth family here until #888 un-pinned its fill: it is a
+ * `--riv-pop-*` consumer now, and its themed palette is guarded where it lives,
+ * `venue/availability-calendar.contrast.spec.ts`.
+ *
+ * <p>Lives in `shared/` because the population spans `booking/` and `operator/`, the same reason
+ * as `warn-token-skin.contrast.spec.ts`. The complementary proof, where the cascade rather than a
+ * regex decides, is `e2e/fixed-ink-token-recut.e2e.ts`.
  *
  * <p>Rationale: `docs/design/colour-literal-token-audit.md` (class T-3).
  */
-
-/** The calendar's own popover surface and the dark-ink ramp it pins. */
-const CALENDAR_FAMILY = {
-  '--riv-calendar-glass': cssValue(CALENDAR_GLASS),
-  '--riv-calendar-ink': rgbToHex(CALENDAR_INK),
-  '--riv-calendar-ink-soft': cssValue(CALENDAR_INK_SOFT),
-  '--riv-calendar-ink-faint': cssValue(CALENDAR_INK_FAINT),
-  '--riv-calendar-ink-disabled': cssValue(CALENDAR_INK_DISABLED),
-  '--riv-calendar-hover': cssValue(CALENDAR_HOVER),
-} as const;
 
 /** `booking-view`'s banner prose and the six fixed fills that pin it. */
 const BANNER_FAMILY = {
@@ -73,25 +57,8 @@ const CONSOLE_FAMILY = {
   '--riv-console-btn-hover': rgbToHex(CONSOLE_BTN_HOVER),
 } as const;
 
-const THEMES: readonly [string, readonly Rgb[]][] = [
-  ['riviera', RIVIERA_STOPS],
-  ['porcelain', PORCELAIN_STOPS],
-  ['dark', DARK_STOPS],
-];
-
 /** The literals every migrated site must have stopped painting. */
-const MIGRATED_LITERALS = [
-  '#0a2a33',
-  'rgba(12,42,51,0.78)',
-  'rgba(12,42,51,0.72)',
-  'rgba(12,42,51,0.4)',
-  'rgba(12,42,51,0.35)',
-  'rgba(12,42,51,0.07)',
-  'rgba(255,255,255,0.97)',
-  'rgba(12,42,51,0.1)',
-  'rgba(12,42,51,0.14)',
-  '#eef1f2',
-];
+const MIGRATED_LITERALS = ['#0a2a33', 'rgba(12,42,51,0.1)', 'rgba(12,42,51,0.14)', '#eef1f2'];
 
 const APP_ROOT = join(process.cwd(), 'src/app');
 
@@ -105,106 +72,6 @@ function cssValue({ color, alpha }: Glass): string {
 }
 
 describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', () => {
-  /** Over the candidates' DARK values: porcelain is where all three agree and hide the fault. */
-  describe("the ticket's candidate tokens would fail on every one of these surfaces", () => {
-    const CANDIDATES: readonly [string, string][] = [
-      ['--riv-card-ink / --riv-pop-ink (dark: #f2f7fa)', rgbToHex(DARK_CARD_INK)],
-      ['--riv-ink (riviera and dark: #ffffff)', rgbToHex(WHITE)],
-    ];
-
-    describe.each(CANDIDATES)('%s', (_name, ink) => {
-      it.each(THEMES)('is below AA on the calendar popover over the %s stops', (_theme, stops) => {
-        for (const stop of stops) {
-          const surface = rgbToHex(surfaceOver(CALENDAR_GLASS, stop));
-          expect(contrastRatio(ink, surface), `over ${surface}`).toBeLessThan(AA_NORMAL);
-        }
-      });
-
-      it.each(CALENDAR_TINTS)('is below AA on the $name day fill', ({ fill }) => {
-        expect(contrastRatio(ink, fill)).toBeLessThan(AA_NORMAL);
-      });
-    });
-  });
-
-  describe('the calendar family', () => {
-    it.each(THEMES)(
-      'the primary ink clears AA on the popover glass over the %s stops',
-      (_theme, stops) => {
-        expectAaOverStops(CALENDAR_INK, 1, CALENDAR_GLASS, stops);
-      },
-    );
-
-    it.each(THEMES)(
-      'the footer note clears AA on the popover glass over the %s stops',
-      (_theme, stops) => {
-        expectAaOverStops(CALENDAR_INK_SOFT.color, CALENDAR_INK_SOFT.alpha, CALENDAR_GLASS, stops);
-      },
-    );
-
-    it.each(THEMES)(
-      'the weekday headers clear AA on the popover glass over the %s stops',
-      (_theme, stops) => {
-        expectAaOverStops(
-          CALENDAR_INK_FAINT.color,
-          CALENDAR_INK_FAINT.alpha,
-          CALENDAR_GLASS,
-          stops,
-        );
-      },
-    );
-
-    /**
-     * Clears no bar and need not: every site wearing it is `aria-disabled`, which WCAG 1.4.3
-     * exempts as an inactive component. Pinned in BOTH directions so a retune past 3:1 retires the
-     * exemption rather than inheriting it, and one toward invisibility fails.
-     */
-    it.each(THEMES)(
-      'the disabled ink stays legible-but-weakened on the %s stops, its whole job',
-      (_theme, stops) => {
-        for (const stop of stops) {
-          const surface = surfaceOver(CALENDAR_GLASS, stop);
-          const disabled = inkRatio(CALENDAR_INK_DISABLED, surface);
-
-          expect(disabled, `over ${rgbToHex(stop)}`).toBeGreaterThan(2);
-          expect(disabled, `over ${rgbToHex(stop)}`).toBeLessThan(AA_LARGE);
-          expect(
-            disabled,
-            `disabled must read weaker than active over ${rgbToHex(stop)}`,
-          ).toBeLessThan(contrastRatio(rgbToHex(CALENDAR_INK), rgbToHex(surface)));
-        }
-      },
-    );
-
-    it.each(CALENDAR_TINTS)('the primary ink clears AA on the $name day fill', ({ fill }) => {
-      expect(contrastRatio(rgbToHex(CALENDAR_INK), fill)).toBeGreaterThanOrEqual(AA_NORMAL);
-    });
-
-    /**
-     * `#0a3f4e` stays a literal beside these tokens on the month-step buttons, which reads at a
-     * glance like a half-migrated pair and is not one: it is the calendar's ACCENT — the same value
-     * as every `CALENDAR_TINTS.ring` and the capacity bar's fill — so it is a different family with
-     * its own surfaces, not the base branch of this ramp. Asserted so the omission is a decision.
-     */
-    it('leaves the accent family literal, since it is a different family and not this ramp', () => {
-      const source = read('venue/availability-calendar.html');
-
-      expect(source, 'the month-step buttons still paint the accent').toContain('text-[#0a3f4e]');
-      expect(CALENDAR_TINTS.every((tint) => tint.ring === '#0a3f4e')).toBe(true);
-      expect(CALENDAR_BAR.fill).toBe('#0a3f4e');
-    });
-
-    /**
-     * The slice's one deliberate repaint, asserted as a comparison rather than a threshold: a
-     * threshold would have been true of the losing choice too and would not say why 0.4 was picked.
-     */
-    it('merges the two disabled alphas at the higher-contrast of them', () => {
-      const surface = surfaceOver(CALENDAR_GLASS, PORCELAIN_STOPS[0]);
-      const outgoing = { color: CALENDAR_INK_DISABLED.color, alpha: 0.35 };
-
-      expect(inkRatio(CALENDAR_INK_DISABLED, surface)).toBeGreaterThan(inkRatio(outgoing, surface));
-    });
-  });
-
   describe('the banner family', () => {
     it.each(BANNER_FILLS.map((fill) => [rgbToHex(fill), fill] as const))(
       'both inks clear AA on the %s banner fill',
@@ -368,7 +235,7 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
   });
 
   describe('the stylesheet contract', () => {
-    const ALL = { ...CALENDAR_FAMILY, ...BANNER_FAMILY, ...CONSOLE_FAMILY };
+    const ALL = { ...BANNER_FAMILY, ...CONSOLE_FAMILY };
 
     it('declares each token exactly once, so no theme block can override it', () => {
       for (const name of Object.keys(ALL)) {
@@ -413,7 +280,6 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
 
   describe('the sites', () => {
     const SITES = [
-      'venue/availability-calendar.html',
       'booking/booking-view.ts',
       'operator/operator-console.html',
       'operator/operator-actions.ts',
@@ -433,7 +299,7 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
      */
     it.each(SITES)('%s paints its family', (path) => {
       expect(read(path), `${path} paints a re-cut family`).toMatch(
-        /-riv-(calendar|banner|console-card-border|console-btn-border)-?/,
+        /-riv-(banner|console-card-border|console-btn-border)-?/,
       );
     });
   });

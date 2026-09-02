@@ -111,6 +111,7 @@
   --color-riv-pop-border: var(--riv-pop-border);
   --color-riv-pop-ink: var(--riv-pop-ink);
   --color-riv-pop-ink-soft: var(--riv-pop-ink-soft);
+  --color-riv-pop-ink-disabled: var(--riv-pop-ink-disabled);
   --color-riv-pop-accent: var(--riv-pop-accent);
   --color-riv-pop-hover: var(--riv-pop-hover);
   --color-riv-pop-divider: var(--riv-pop-divider);
@@ -157,12 +158,14 @@
   --color-riv-photo-chrome: var(--riv-photo-chrome);
   --color-riv-photo-chrome-edge: var(--riv-photo-chrome-edge);
   --color-riv-mode-chip-glass: var(--riv-mode-chip-glass);
-  --color-riv-calendar-glass: var(--riv-calendar-glass);
-  --color-riv-calendar-ink: var(--riv-calendar-ink);
-  --color-riv-calendar-ink-soft: var(--riv-calendar-ink-soft);
-  --color-riv-calendar-ink-faint: var(--riv-calendar-ink-faint);
-  --color-riv-calendar-ink-disabled: var(--riv-calendar-ink-disabled);
-  --color-riv-calendar-hover: var(--riv-calendar-hover);
+  --color-riv-calendar-free-fill: var(--riv-calendar-free-fill);
+  --color-riv-calendar-low-fill: var(--riv-calendar-low-fill);
+  --color-riv-calendar-full-fill: var(--riv-calendar-full-fill);
+  --color-riv-calendar-unknown-fill: var(--riv-calendar-unknown-fill);
+  --color-riv-calendar-accent: var(--riv-calendar-accent);
+  --color-riv-calendar-selected-ring: var(--riv-calendar-selected-ring);
+  --color-riv-calendar-bar-fill: var(--riv-calendar-bar-fill);
+  --color-riv-calendar-bar-track: var(--riv-calendar-bar-track);
   --color-riv-banner-body-ink: var(--riv-banner-body-ink);
   --color-riv-banner-strong-ink: var(--riv-banner-strong-ink);
   --color-riv-console-card-border: var(--riv-console-card-border);
@@ -659,18 +662,41 @@
   --riv-step-active-ink: #0a5f74;
   --riv-step-idle-fill: #2c7789;
 
-  /** The near-opaque popover surface (theme picker, account menu, mobile sheet — app.ts POP)
-      and the segmented-control fills (shared/segmented-control.ts). Light values here; the
-      dark theme swaps the whole family so the shell chrome follows the theme. */
+  /** The near-opaque popover surface (theme picker, account menu, mobile sheet — app.ts POP;
+      the availability calendar's <dialog>, venue/availability-calendar.html) and the
+      segmented-control fills (shared/segmented-control.ts). Light values here; the dark theme
+      swaps the whole family so every popover follows the theme. -ink-disabled is the calendar's
+      aria-disabled month-step and past-day ink: it clears no contrast bar and need not (WCAG
+      1.4.3 exempts inactive components), and is pinned to the 2–3:1 band in each theme by
+      venue/availability-calendar.contrast.spec.ts. */
   --riv-pop-surface: rgba(255, 255, 255, 0.92);
   --riv-pop-border: rgba(255, 255, 255, 0.7);
   --riv-pop-ink: #0a2a33;
   --riv-pop-ink-soft: rgba(12, 42, 51, 0.7);
+  --riv-pop-ink-disabled: rgba(12, 42, 51, 0.4);
   --riv-pop-accent: #0a6e85;
   --riv-pop-hover: rgba(12, 42, 51, 0.06);
   --riv-pop-divider: rgba(12, 42, 51, 0.1);
   --riv-pop-shadow: 0 22px 54px rgba(6, 30, 40, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.85);
   --riv-pill-fill: #ffffff;
+
+  /** The availability calendar's day-cell palette (venue/day-availability.ts; the capacity bar
+      and the month-step glyphs in venue/availability-calendar.html). Every value is OPAQUE and
+      themed: the popover it sits in follows the theme, and an opaque fill keeps each contrast
+      proof a plain pair with the popover ink rather than one per background stop — so the dark
+      block declares a second opaque set, never a translucent one. The accent paints the glyphs
+      and the cell focus ring; the chosen day's ring is its own colour so a focused chosen cell
+      does not wear one colour twice. The bar's two boundaries (fill on track, track on each
+      tint) are held to WCAG 1.4.11's 3:1 in both palettes. Mirror: testing/calendar-tints.ts.
+      Proof: venue/availability-calendar.contrast.spec.ts. */
+  --riv-calendar-free-fill: #dff0e4;
+  --riv-calendar-low-fill: #fdeecc;
+  --riv-calendar-full-fill: #fae9e9;
+  --riv-calendar-unknown-fill: #ffffff;
+  --riv-calendar-accent: #0a3f4e;
+  --riv-calendar-selected-ring: #085a6e;
+  --riv-calendar-bar-fill: #0a3f4e;
+  --riv-calendar-bar-track: #6f8a91;
 
   /** Translucent white washes over glass (segmented option cards, dialog close chip, the
       dialog Back button, the dashed code inset) + the near-opaque dialog panel itself. The
@@ -778,20 +804,6 @@
       where the value is copied (shared/photo-slideshow.contrast.spec.ts imports it from there,
       and is the one spec left doing so). */
   --riv-mode-chip-glass: rgba(255, 255, 255, 0.85);
-
-  /** The availability calendar's popover surface and the dark-ink ramp it pins. Theme-invariant:
-      the <dialog> fill is fixed on a page that themes, so the pinning runs fill -> ink and a dark
-      override would be light-on-light. --riv-calendar-ink also paints the opaque day tints, so
-      testing/calendar-tints.ts reads it from the mirror rather than restating it. -ink-disabled
-      clears no contrast bar and need not: every site wearing it is aria-disabled, which WCAG 1.4.3
-      exempts. Rationale: docs/design/colour-literal-token-audit.md (class T-3).
-      Proof: shared/fixed-ink-tokens.contrast.spec.ts. */
-  --riv-calendar-glass: rgba(255, 255, 255, 0.97);
-  --riv-calendar-ink: #0a2a33;
-  --riv-calendar-ink-soft: rgba(12, 42, 51, 0.78);
-  --riv-calendar-ink-faint: rgba(12, 42, 51, 0.72);
-  --riv-calendar-ink-disabled: rgba(12, 42, 51, 0.4);
-  --riv-calendar-hover: rgba(12, 42, 51, 0.07);
 
   /** booking-view's status-banner prose. Theme-invariant: all six banner fills are fixed, so a
       themed ink over them drifts. The per-banner eyebrow inks are a separate per-state palette and
@@ -923,11 +935,21 @@
   --riv-pop-border: rgba(255, 255, 255, 0.16);
   --riv-pop-ink: #f2f7fa;
   --riv-pop-ink-soft: rgba(242, 247, 250, 0.75);
+  --riv-pop-ink-disabled: rgba(242, 247, 250, 0.32);
   --riv-pop-accent: #7cd7e8;
   --riv-pop-hover: rgba(255, 255, 255, 0.08);
   --riv-pop-divider: rgba(255, 255, 255, 0.14);
   --riv-pop-shadow: 0 22px 54px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   --riv-pill-fill: #101a2e;
+  /* The calendar's dark day-cell palette: still opaque, so each proof stays one pair. */
+  --riv-calendar-free-fill: #1f3f30;
+  --riv-calendar-low-fill: #4a3a16;
+  --riv-calendar-full-fill: #4d2429;
+  --riv-calendar-unknown-fill: #1c2740;
+  --riv-calendar-accent: #9adde8;
+  --riv-calendar-selected-ring: #7cd7e8;
+  --riv-calendar-bar-fill: #e6f4f8;
+  --riv-calendar-bar-track: #758a9a;
   --riv-wash-fill: rgba(255, 255, 255, 0.08);
   --riv-wash-border: rgba(255, 255, 255, 0.28);
   --riv-wash-hover: rgba(255, 255, 255, 0.16);

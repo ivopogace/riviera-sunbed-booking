@@ -295,13 +295,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan — doc committed; next: implement (phase 0)`
+**Stage pointer:** `implement (phase 0 committed; next: phase 1)`
 
-**Next action:** Phase 0 step 1 — extend the mirrors and write the red guards.
+**Next action:** Phase 1 step 1 — flip `e2e/fixed-ink-token-recut.e2e.ts`'s calendar tests to
+per-theme values and open the draft PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the tokens, the migrated markup, the unit guards | | |
+| 0 — the tokens, the migrated markup, the unit guards | ✅ | the commit carrying this row |
 | 1 — the real-render proof under both themes | | |
 | 2 — the ledger verdict and the overlay-families fact | | |
 
@@ -330,6 +331,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
   ink-disabled, hover; light + dark), the six calendar chrome mirrors removed
 - `frontend/src/testing/calendar-tints.ts` — the per-palette mirror (`CALENDAR_PALETTE`,
   `DARK_CALENDAR_PALETTE`, `CALENDAR_PALETTES`), each entry naming its token
+- `frontend/src/testing/stylesheet-tokens.ts` — `themeBlock(theme)`, so a guard can assert a
+  declaration sits in the `dark` block and not the `riviera` one
 - `frontend/src/app/venue/availability-calendar.contrast.spec.ts` — the per-palette proofs,
   the stylesheet contract, the chrome proofs over each theme's stops
 - `frontend/src/app/venue/day-availability.spec.ts` — the tint mirror as token utilities
@@ -431,6 +434,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-02 | phase 0 | **Every overlay surface in `frontend/src/app`, by the mechanism that makes one** — a `<dialog>`, a `role="dialog"`/`role="menu"` box, an `aria-modal`, or one of the two overlay-family fills — rather than by resembling the calendar | `grep -rn -E '<dialog\|role="dialog"\|role="menu"\|bg-riv-pop-surface\|bg-riv-dialog-glass\|aria-modal' frontend/src/app --include=*.html --include=*.ts \| grep -v spec.ts` | 6 surfaces in 6 files | **Two themed families, one pinned surface that this slice un-pins, and two overlays outside the families for stated reasons.** `app.ts` (the theme picker, account menu and mobile sheet) paints `--riv-pop-surface`; `booking/booking-dialog.ts` and `booking/find-booking.ts` paint `--riv-dialog-glass`; `venue/availability-calendar.html` painted the pinned `--riv-calendar-glass` and now paints `--riv-pop-surface` (this slice). `operator/payout-statement.ts` is `bg-white` under the console's porcelain-pinned host (`operator-console.ts` `data-riv-theme='porcelain'`; `app.ts` pins the operator shell the same way), so its dark branch is unreachable — the console's standing ground, not a fourth family. `shared/photo-lightbox.ts` is a fixed `rgba(4,18,24,0.86)` scrim over a photo, photo-proof by design like `--riv-photo-chrome`. Nothing else to migrate; the fact goes into the ledger (phase 2) so the next sweep starts from it |
 
 ---
 

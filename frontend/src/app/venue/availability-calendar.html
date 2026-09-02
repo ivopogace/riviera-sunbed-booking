@@ -5,7 +5,7 @@
 <dialog
   open
   tabindex="-1"
-  class="static m-0 w-full max-w-[352px] animate-[riv-pop_0.2s_ease] rounded-[22px] border border-[rgba(255,255,255,0.7)] bg-riv-calendar-glass p-4 text-riv-calendar-ink shadow-[0_24px_58px_rgba(6,30,40,0.42),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none"
+  class="static m-0 w-full max-w-[352px] animate-[riv-pop_0.2s_ease] rounded-[22px] border border-riv-pop-border bg-riv-pop-surface p-4 text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none"
   aria-modal="true"
   aria-label="Choose a booking date"
   data-testid="availability-calendar"
@@ -17,7 +17,7 @@
     <button
       appTouchTarget
       type="button"
-      class="flex cursor-pointer items-center justify-center rounded-[12px] text-[19px] leading-none text-[#0a3f4e] hover:bg-riv-calendar-hover aria-disabled:cursor-default aria-disabled:text-riv-calendar-ink-disabled aria-disabled:hover:bg-transparent"
+      class="flex cursor-pointer items-center justify-center rounded-[12px] text-[19px] leading-none text-riv-calendar-accent hover:bg-riv-pop-hover aria-disabled:cursor-default aria-disabled:text-riv-pop-ink-disabled aria-disabled:hover:bg-transparent"
       data-testid="calendar-prev"
       aria-label="Previous month"
       [attr.aria-disabled]="atEarliestMonth() ? 'true' : null"
@@ -37,7 +37,7 @@
     <button
       appTouchTarget
       type="button"
-      class="flex cursor-pointer items-center justify-center rounded-[12px] text-[19px] leading-none text-[#0a3f4e] hover:bg-riv-calendar-hover"
+      class="flex cursor-pointer items-center justify-center rounded-[12px] text-[19px] leading-none text-riv-calendar-accent hover:bg-riv-pop-hover"
       data-testid="calendar-next"
       aria-label="Next month"
       (click)="stepMonth(1)"
@@ -55,7 +55,7 @@
       <tr role="row">
         @for (weekday of weekdays; track weekday.short) {
           <th
-            class="pb-1 text-[11px] font-bold tracking-[0.06em] text-riv-calendar-ink-faint uppercase"
+            class="pb-1 text-[11px] font-bold tracking-[0.06em] text-riv-pop-ink-soft uppercase"
             role="columnheader"
             scope="col"
           >
@@ -78,7 +78,7 @@
                 <button
                   appTouchTarget
                   type="button"
-                  class="flex w-full cursor-pointer flex-col items-center justify-center gap-[3px] rounded-[10px] border border-transparent px-0 py-1 text-[14px] font-semibold text-riv-calendar-ink focus-visible:outline-[3px] focus-visible:outline-offset-[-1px] aria-disabled:cursor-default aria-disabled:text-riv-calendar-ink-disabled"
+                  class="flex w-full cursor-pointer flex-col items-center justify-center gap-[3px] rounded-[10px] border border-transparent px-0 py-1 text-[14px] font-semibold text-riv-pop-ink focus-visible:outline-[3px] focus-visible:outline-offset-[-1px] aria-disabled:cursor-default aria-disabled:text-riv-pop-ink-disabled"
                   [class]="cell.tint"
                   [attr.data-date]="cell.iso"
                   [attr.data-state]="cell.state"
@@ -90,12 +90,12 @@
                 >
                   {{ cell.dayOfMonth }}
                   <span
-                    class="block h-[3px] w-[22px] overflow-hidden rounded-full bg-[#6f8a91]"
+                    class="block h-[3px] w-[22px] overflow-hidden rounded-full bg-riv-calendar-bar-track"
                     [class.invisible]="!cell.showsBar"
                     aria-hidden="true"
                   >
                     <span
-                      class="block h-full rounded-full bg-[#0a3f4e]"
+                      class="block h-full rounded-full bg-riv-calendar-bar-fill"
                       data-testid="day-bar"
                       [style.width]="cell.barPercent"
                     ></span>
@@ -111,14 +111,14 @@
 
   @if (countsFailed()) {
     <p
-      class="mt-2 text-[11.5px] leading-[1.4] text-riv-calendar-ink-soft"
+      class="mt-2 text-[11.5px] leading-[1.4] text-riv-pop-ink-soft"
       data-testid="calendar-counts-failed"
       role="alert"
     >
       How busy each day is could not be loaded — you can still pick any day.
     </p>
   } @else {
-    <p class="mt-2 text-[11.5px] leading-[1.4] text-riv-calendar-ink-soft">
+    <p class="mt-2 text-[11.5px] leading-[1.4] text-riv-pop-ink-soft">
       The bar under each day is how many sets were free when this was read — a picture of the day,
       not a hold. A set is yours only once you book it.
     </p>

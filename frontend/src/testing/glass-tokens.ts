@@ -126,6 +126,22 @@ export const DARK_POP_ACCENT: Rgb = hexToRgb('7cd7e8');
  *  other two are `SOLID_FILL_BRAND` (a fill) and `CONSOLE_ACCENT_INK` (the console's ink). */
 export const POP_ACCENT: Rgb = hexToRgb('0a6e85');
 
+/** The rest of the `--riv-pop-*` family — the near-opaque popover surface and the inks it carries
+ *  (the theme picker, the account menu, the mobile sheet, the availability calendar's `<dialog>`).
+ *  Light values here; the DARK_POP_* mirrors below are the dark block's. `-ink-disabled` clears
+ *  no contrast bar and need not: every site wearing it is aria-disabled, which WCAG 1.4.3 exempts
+ *  (text, so NOT non-text-contrast.md rule 2, which is about a control's chrome). */
+export const POP_SURFACE: Glass = { color: WHITE, alpha: 0.92 };
+export const POP_INK: Rgb = INK_DARK;
+export const POP_INK_SOFT: Glass = { color: CARD_INK, alpha: 0.7 };
+export const POP_INK_DISABLED: Glass = { color: CARD_INK, alpha: 0.4 };
+export const POP_HOVER: Glass = { color: CARD_INK, alpha: 0.06 };
+export const DARK_POP_SURFACE: Glass = { color: hexToRgb('101a2e'), alpha: 0.96 };
+export const DARK_POP_INK: Rgb = DARK_CARD_INK;
+export const DARK_POP_INK_SOFT: Glass = { color: DARK_CARD_INK, alpha: 0.75 };
+export const DARK_POP_INK_DISABLED: Glass = { color: DARK_CARD_INK, alpha: 0.32 };
+export const DARK_POP_HOVER: Glass = { color: WHITE, alpha: 0.08 };
+
 /** `--riv-console-accent-ink` (#848) — the operator console's accent ink: prices, projected
  *  takings, owed/net payout figures, the commission chip and the per-tab "Saved" notices.
  *  Its own token despite sharing a value with `SOLID_FILL_BRAND` (a fill under fixed white ink)
@@ -442,20 +458,6 @@ export const CLASS_O_TINTS: readonly { readonly token: string; readonly value: s
   /** The beach-map premium cell's boundary, over `--riv-premium-grad`. */
   { token: '--riv-premium-edge', value: '#b47814' },
 ];
-
-/** `--riv-calendar-*`: the calendar popover's fixed surface and the ink ramp it pins. The primary
- *  ink serves two surfaces — this glass and the opaque CALENDAR_TINTS fills — so calendar-tints.ts
- *  reads it from here. Rationale: docs/design/colour-literal-token-audit.md (class T-3). */
-export const CALENDAR_GLASS: Glass = { color: WHITE, alpha: 0.97 };
-export const CALENDAR_INK: Rgb = INK_DARK;
-export const CALENDAR_INK_SOFT: Glass = { color: CARD_INK, alpha: 0.78 };
-export const CALENDAR_INK_FAINT: Glass = { color: CARD_INK, alpha: 0.72 };
-/** Clears no contrast bar and need not: every site wearing it is aria-disabled, which WCAG 1.4.3
- *  exempts. NOT non-text-contrast.md rule 2 — that rule is about a control's chrome, this is text. */
-export const CALENDAR_INK_DISABLED: Glass = { color: CARD_INK, alpha: 0.4 };
-/** The month-step buttons' hover wash. Not an /opacity modifier, so the alpha ladder does not
- *  reach it. */
-export const CALENDAR_HOVER: Glass = { color: CARD_INK, alpha: 0.07 };
 
 /** `--riv-banner-*-ink`: booking-view's status-banner prose, pinned by six fixed banner fills. The
  *  per-banner eyebrow inks are a separate per-state palette and are not this family.

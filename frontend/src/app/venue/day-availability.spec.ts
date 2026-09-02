@@ -6,7 +6,7 @@ import {
   dayAvailabilityState,
   freeFraction,
 } from './day-availability';
-import { CALENDAR_SELECTED, CALENDAR_TINTS } from '../../testing/calendar-tints';
+import { CALENDAR_PALETTE, CALENDAR_TOKENS, fillUtility } from '../../testing/calendar-tints';
 import { DailyAvailability } from '../shared/venue-views';
 
 /**
@@ -127,17 +127,17 @@ describe('the day vocabulary', () => {
 describe('the tint mirror', () => {
   it('renders exactly the fills testing/calendar-tints.ts proves', () => {
     const rendered = DAY_AVAILABILITY_STATES.map((state) => DAY_TINT_CLASS[state]);
-    const mirrored = CALENDAR_TINTS.map(
-      ({ fill, ring }) =>
-        `${fill === '#ffffff' ? 'bg-white' : `bg-[${fill}]`} focus-visible:outline-[${ring}]`,
-    );
+    const ring = `focus-visible:outline-${CALENDAR_TOKENS.accent.slice('--'.length)}`;
+    const mirrored = CALENDAR_PALETTE.tints.map(({ token }) => `${fillUtility(token)} ${ring}`);
 
     expect(new Set(rendered)).toEqual(new Set(mirrored));
   });
 
   it('marks the chosen day with the ring the mirror proves, over whatever tint it wears', () => {
     // A ring, not a fill: an inverted fill takes the tint and the bar off the chosen day.
-    expect(DAY_SELECTED_CLASS).toContain(`shadow-[inset_0_0_0_2px_${CALENDAR_SELECTED.ring}]`);
+    expect(DAY_SELECTED_CLASS).toContain(
+      `shadow-[inset_0_0_0_2px_var(${CALENDAR_TOKENS.selectedRing})]`,
+    );
     expect(DAY_SELECTED_CLASS).not.toContain('bg-');
   });
 });
