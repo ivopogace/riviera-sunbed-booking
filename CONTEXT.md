@@ -189,9 +189,10 @@ model in `docs/architecture/domain-model.md`.
   `customer_account` rows that hold their data.
 - **Erasure** — honouring a data subject's right to be forgotten (#101). Because bookings are
   retained tax records (the **statutory-retention exception**, GDPR Art 17(3)(b)), erasure does not
-  delete rows — it **pseudonymizes in place** the `customer` + `customer_account` PII and deletes the
-  transient SSO identities + recovery tokens, leaving the booking / payment / payout records intact.
-  Self-service (a signed-in customer's own account) or admin-actioned by email (ADR-0010).
+  delete rows — it **pseudonymizes in place** the `customer` + `customer_account` PII, deletes the
+  transient SSO identities + recovery tokens, and leaves a **review tombstone** on every review of the
+  subject's bookings, leaving the booking / payment / payout records intact. Self-service (a signed-in
+  customer's own account) or admin-actioned by email (ADR-0010).
 - **Tombstone** — an erased row kept for referential integrity but stripped of PII: `email` becomes a
   unique non-routable placeholder (`erased+<id>@erased.invalid`), name/phone become `ERASED`, the
   credential hash is nulled, and `erased_at` is stamped. A tombstoned account can no longer sign in.
@@ -207,8 +208,9 @@ model in `docs/architecture/domain-model.md`.
   **legal** determination rather than an engineering one. The cutoff is *today in `Europe/Tirane`* minus
   the window (invariant #6).
 - **Retention sweep** — the scheduled job that tombstones guest contacts with no remaining retention
-  basis (#101 Slice 2). Proactive where **erasure** is reactive, but it writes the same **tombstone**.
-  It touches guest contacts only, never accounts, and never the retained financial records.
+  basis (#101 Slice 2). Proactive where **erasure** is reactive, but it writes the same **tombstone**
+  — on the contact and, since #815, on the contact's reviews. It touches guest contacts only, never
+  accounts, and never the retained financial records.
 
 ## Reviews
 
@@ -241,6 +243,12 @@ model in `docs/architecture/domain-model.md`.
 - **Hidden review** — a review under a takedown, as its author sees it on their booking page: still
   readable, marked as removed from public view, and frozen — it can no longer be changed or removed
   by its author, whatever the review window says, until it is un-hidden.
+- **Review tombstone** — what a data subject's **erasure** (or the **retention sweep**) leaves of
+  their review: the display name blanked and the comment deleted, the star kept. A review is attached
+  to a booking, not a person, so the star identifies nobody and keeps counting in the **aggregate
+  rating**; without a comment the review leaves the public list under the star-only rule. Not a
+  **review takedown**: nothing is hidden, and the author (still holding the booking code) may write
+  again inside the review window.
 - **Aggregate rating** — a venue's public score: the **mean of its visible reviews**, carried in
   **tenths** (4.5 stars is 45 — integer arithmetic, never floating point, the money discipline
   applied to the rating) alongside the count it is over. A venue with no reviews reads 0/0 and is

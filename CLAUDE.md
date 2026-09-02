@@ -95,9 +95,9 @@ per-module contracts and settled rules.
 | `booking` | bookings, booking codes, the full lifecycle (incl. guest withdraw, staff check-in, the no-show sweep), request accept/decline + expiry sweep, cancellation-policy enforcement, driving the post-commit cancellation refund via `payment.api.RefundPort` | `Booking` |
 | `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `Payment` |
 | `payout` | the venue payout ledger (bookings − commission), manual BKT batch reporting; accrual/reversal is order-independent and idempotent | `PayoutLedgerEntry`, `PayoutBatch` |
-| `customer` | tourist identity: guest-checkout contact, the customer account (register/sign-in, SSO linkage, email verification, password recovery/set), GDPR erasure (ADR-0010) + the retention sweep, and the canonical email form (`customer.vocabulary.Emails`) | `Customer`, `CustomerAccount` |
+| `customer` | tourist identity: guest-checkout contact, the customer account (register/sign-in, SSO linkage, email verification, password recovery/set), GDPR erasure (ADR-0010) + the retention sweep (both reaching the subject's review PII through `customer.spi.ReviewErasure`, implemented by `booking`), and the canonical email form (`customer.vocabulary.Emails`) | `Customer`, `CustomerAccount` |
 | `operator` | operator accounts, the operator↔venue ownership mapping (invariant #13), the admin-driven lifecycle (`PENDING`→`ACTIVE`⇄`SUSPENDED`), the `is_admin` flag, the tourist-visibility answer (a venue is visible iff its owner is `ACTIVE`, fail-closed for unowned; `venue` fences its catalogue reads, `booking` its reserve paths) | `Operator` |
-| `review` | the review record (stars, comment, display name — one per booking), the eligibility + 60-day review-window policy, the author's own submit/edit/delete lifecycle inside that window, the aggregate rating math (integer tenths, half-up), the public page of *listed* (visible, commented) reviews (`ListedReviews`, keyset-paged newest first; carried by `venue`'s public endpoint behind its visibility fence), the platform admin's reversible **takedown** (hide/un-hide, audited at the edge; a hidden review leaves the list and the aggregate and is frozen for its author). A **leaf** module: eligibility arrives through `review.spi.CompletedStays` (implemented by `booking`) and the recomputed aggregate leaves as `ReviewsChanged` — ADR-0015 | `Review` |
+| `review` | the review record (stars, comment, display name — one per booking), the eligibility + 60-day review-window policy, the author's own submit/edit/delete lifecycle inside that window, the aggregate rating math (integer tenths, half-up), the public page of *listed* (visible, commented) reviews (`ListedReviews`, keyset-paged newest first; carried by `venue`'s public endpoint behind its visibility fence), the platform admin's reversible **takedown** (hide/un-hide, audited at the edge; a hidden review leaves the list and the aggregate and is frozen for its author), and the erasure **tombstone** (`ReviewTombstones`: display name and comment gone, the star kept counting). A **leaf** module: eligibility arrives through `review.spi.CompletedStays` (implemented by `booking`), the erasure reach through `booking` too, and the recomputed aggregate leaves as `ReviewsChanged` — ADR-0015 | `Review` |
 | `notification` | transactional mail: both ADR-0011 delivery vehicles (Event Publication Registry for ids-only payloads, bounded in-memory dispatcher for bearer-credential ones) on their own bounded executors, the hashed email-suppression list (ADR-0012), the delivery log + admin resend/re-drive | (none — owns mail state, no aggregate yet) |
 
 Plus one **non-context** module: **`shared`**, an OPEN Shared Kernel of edge/technical
@@ -108,7 +108,10 @@ Admission rests on **ownership, never reuse**; the bar and per-type grounds are
 
 Cross-module collaboration is **events for state changes, `api/` ports for queries**
 (invariant #11). The availability write happens synchronously at claim time via
-`availability`'s `AvailabilityClaim` port — `availability` has no event listener. Eight
+`availability`'s `AvailabilityClaim` port — `availability` has no event listener — and so does
+the erasure reach into reviews (`customer.spi.ReviewErasure` → `booking` →
+`review.api.ReviewTombstones`, inside the erasure transaction: a partial erasure must never
+commit, ADR-0010). Eight
 published events: `PaymentConfirmed` and `PaymentCanceled` drive `booking`'s state
 machine (confirm; cancel and release the claim); `BookingConfirmed` and `BookingCancelled`
 fan out to `payout` and `notification` (and `booking`'s own `BookingCancelled` listener

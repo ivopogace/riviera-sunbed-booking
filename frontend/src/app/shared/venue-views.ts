@@ -171,7 +171,8 @@ export type PhotoSlotKey = 'cover' | 'sunbeds' | 'bar';
 /**
  * One listed review on the venue page (`GET /api/venues/{id}/reviews`). `stayedIn` is an ISO
  * year-month (`2026-07`) and never a day; `displayName` is `null` only for a row written before
- * display names were required, which the section attributes to "A guest".
+ * display names were required, which the section attributes to "A guest" (an erased review is
+ * nameless too, but carries no comment, so it is never listed).
  */
 export interface VenueReviewEntry {
   readonly id: number;
