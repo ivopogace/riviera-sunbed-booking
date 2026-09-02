@@ -26,7 +26,7 @@ else ask for the range.
 |---|---|---|
 | `CLAUDE.md` (+ `frontend/.claude/CLAUDE.md`) | module table + shipped/planned notes, invariant wording, the skills list, provisional decisions; frontend idioms/styling posture in the nested file | a module ships/graduates, an auth/payment mechanism changes, a new skill lands, a frontend idiom is re-decided |
 | `CONTEXT.md` | glossary terms, canonical value sets (statuses, pools), flow descriptions | a new domain term, a renamed status, a changed flow |
-| `RESPONSIBILITIES.md` | each module's Job / Not-My-Job lists, shipped-state notes | behavior moves between modules, an edge concern changes shape |
+| `RESPONSIBILITIES.md` | each module's Job / Not-My-Job lists, shipped-state notes, the invariants' long form, the platform-edge rules | behavior moves between modules, an edge concern changes shape |
 | `docs/adr/*` | decision + consequences paragraphs | a decision gets re-decided (needs an amendment note, never silent contradiction) |
 | `docs/plans/*` | the in-flight slice's execution-status table | only the CURRENT slice's plan exists; a merged slice's plan is deleted at epic close-out (*Plan-doc retirement*, below), never audited as history |
 | `docs/design/*.dc.html` | copy/behavior a design record depicts that shipped code has since changed | a slice ships copy/behavior that diverges from an artboard — per `docs/design/README.md`, add a one-line `<!-- as-built diverges — see #NNN -->` pointer next to the diverged line; never rewrite the artboard's copy in place |

@@ -2,9 +2,10 @@
 
 The Job / Not-My-Job boundaries for each module in the `ai.riviera.platform`
 modular monolith. This is the plain-English companion to `CLAUDE.md`: `CLAUDE.md`
-holds the invariants and the module table; this file says, for each module, what
-it owns and — more usefully — what it must **refuse to own**. When a boundary is
-ambiguous in a plan or review, this is the tie-breaker.
+holds the module table and the invariants in one sentence each; this file holds the
+invariants' long form, the settled platform-edge rules, and — for each module — what it
+owns and, more usefully, what it must **refuse to own**. When a boundary is ambiguous
+in a plan or review, this is the tie-breaker.
 
 Modules: `venue`, `availability`, `booking`, `payment`, `payout`, `customer`,
 `operator`, `notification` (#382), and `review` (#811). Cross-module collaboration is
@@ -1176,6 +1177,86 @@ republication; each lever module keeps its own scope, window value and log noun)
   root *depends on* modules while `shared` is *depended on by* them; putting both in one
   package is what closed `booking → root → booking`. (The mailers, once the root's
   biggest tenant, moved on to the `notification` module in #382.)
+
+## Platform edge (settled)
+
+The cross-module edge rules, restated here in one place because no single module owns them
+(the per-module consequences sit in §`customer` and §`operator`): server-side sessions (Spring
+Session JDBC) with **two principal types**; all login/session machinery lives at the edge,
+never in modules; customer-account identity is separate from the guest row — no FK, no
+back-linking of past guest bookings, ever; auth endpoints are non-enumerating + constant-time
+on their own rate-limit buckets; mocked externals (SSO IdPs, mailer) are profile-guarded out
+of prod; session revocation is edge-orchestrated and synchronous, bracketing the state change.
+
+## Invariants, long form
+
+`CLAUDE.md` states each cross-cutting invariant in one sentence; this is the long form, with
+the mechanism and the edge cases. The numbering is `CLAUDE.md`'s and never changes.
+
+1. **No JPA/Hibernate — JDBC only.** `spring-boot-starter-data-jpa` never on the classpath;
+   no `@Entity`/`EntityManager`. Spring Data JDBC aggregates and/or `JdbcTemplate` with
+   explicit SQL.
+2. **Availability is the single source of truth, per `(set, date)`.** Every channel — online
+   booking and staff tap-to-mark — writes the same `availability(set_id, booking_date)` row;
+   a set is held by at most one party per date. Enforced in the database (unique constraint)
+   AND in the reservation transaction (`SELECT … FOR UPDATE` or an atomic `INSERT … ON
+   CONFLICT DO NOTHING` claim). Never double-sell a set. The write happens synchronously at
+   claim time via `availability`'s `AvailabilityClaim` port — `availability` has no event
+   listener.
+3. **Online and walk-in pools are separate.** Each set carries a pool flag; an online booking
+   can only target an online-pool set.
+4. **Sales close is venue-controlled, on the day itself.** A date D's online sales window
+   runs until the venue's `sales_close` wall-clock time on D — a per-venue setting fixed at
+   one of three values (`00:01` opts the venue out of same-day sales, `16:00` the default, or
+   `23:59`), `Europe/Tirane`. A pending request's response deadline is capped at that same
+   close (`min(created + expiry-window, D at sales close)`). Cancellation keeps its own,
+   separate evening-before boundary (default 18:00 `Europe/Tirane`, configurable). The pay
+   path fences on **the pay deadline having passed**: an accepted `AWAITING_PAYMENT`
+   booking's deadline is `min(accepted_at + pay-window, end of service day D)` (never past
+   D's end, 00:00 `Europe/Tirane` of D+1), a never-accepted one's is D's end with the sweep's
+   TTL as the earlier backstop; the abandoned sweep expires a booking once its deadline has
+   passed, and the code-gated view issues no payment credentials past it. The confirm path is
+   deliberately NOT fenced — a payment in flight at the deadline still confirms; read
+   §`booking` before treating a late confirm as a bug.
+5. **Money is integer minor units, never floating point.** `long`/`int` cents with an
+   explicit ISO currency code; exact-integer commission/payout arithmetic; rounding rules
+   written down at any division. v1 collection currency is **EUR**.
+6. **Time: store UTC `Instant`, reason in `Europe/Tirane`.** A "booking date" is a
+   `LocalDate` in `Europe/Tirane`. Never rely on the JVM default timezone.
+7. **Booking codes are unguessable bearer credentials.** ≥ 8 random base32 chars, never
+   sequential, treated like a secret in logs.
+8. **Stripe webhooks are the source of truth for payment state — not the client.** Never
+   confirm a booking from a client-side redirect; reconcile from signature-verified
+   webhooks; idempotency keys on charge/refund creation; collection-only, no Stripe Connect
+   (`riviera-stripe-payments`).
+9. **The payout ledger is auditable and idempotent.** A booking contributes to a venue's
+   payout exactly once; refunds reverse it. Payout = Σ(booking amounts) − commission (rate
+   stored per venue, effective-dated, forward-only). Payouts settle manually via BKT; the
+   ledger is the record. Accrual/reversal is order-independent and idempotent.
+10. **Cancellation/refund policy is enforced server-side.** Free cancellation until the #4
+    cutoff → full refund; after → non-refundable (or partial); the window closes entirely at
+    service-day open (00:00 `Europe/Tirane`) — a guest cancel is then refused, not refunded
+    (ADR-0005 as amended). The weather exception is a manual admin-triggered full refund,
+    deliberately outside that fence. Refund decisions are computed on the server.
+11. **Spring Modulith boundaries are hexagonal and id-based.** The ADR-0007 graduated shape:
+    a full module is `{api?, spi?, vocabulary?, events?, application, domain, adapter/in,
+    adapter/out}`; a thin module is `{api, vocabulary?, adapter/out}`. No `application/in|out`
+    split, no `infrastructure/*`. Published surface split by kind: `api/` ports only,
+    `vocabulary/` typed ids/values/outcomes, `events/` domain-event records; a cross-module
+    *driven* port lives in `spi/`, granted only to its implementing module. Cross-module
+    access is via another module's `api/` port or a domain event — never its
+    `application.*`/`adapter.*`/`domain.*`. Event payloads carry technical ids, not business
+    fields. Machine-locked by `PackageShapeArchitectureTests` +
+    `PublishedSurfacePlacementArchitectureTests`; details: ADR-0007 + `riviera-modulith`.
+12. **Schema changes go through Flyway.** Versioned forward migrations only; no hand-run
+    DDL. Every constraint enforcing an invariant (especially #2) is created and tested by a
+    migration.
+13. **Venue-scoped operations verify the actor owns the venue.** Object-level, not
+    role-level (OWASP API #1 BOLA): the `OPERATOR` role is necessary, never sufficient.
+    Every `/api/venues/{venueId}/**` operation verifies the authenticated operator owns the
+    path `venueId` and rejects a mismatch with `403` — in the **application service**, so no
+    driving adapter can bypass it; ownership is consulted via `operator`'s `api/` port.
+    Platform-wide `/api/admin/**` surfaces are role-gated and exempt. Reviewed as RV-BE-9.
 
 ## Machine-checked vs review-checked
 
