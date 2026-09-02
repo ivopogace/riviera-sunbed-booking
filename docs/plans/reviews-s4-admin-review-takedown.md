@@ -363,6 +363,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 |---|---|---|---|
 | F-1 | review (prior-PR carry-over walker) | `admin-console-tabs.spec.ts` was not extended for the new tab — no `admin/reviews` route in its router config, no `href` pin, no "marks Reviews as current" case, which every prior tab addition (#511, #507, #460) added | fixed — all three added |
 | F-2 | review (prior-PR carry-over walker) | `app.spec.ts`'s `ADMIN_TAB_CHILD_PATHS` enumeration lacked `reviews`, so the structural guard never checked the new route's `adminTab` data | fixed — `'reviews'` added |
+| F-4 | CI (frontend job, head `0922fbd`) | `admin-privacy.e2e.ts` pins the strip's last three labels as `Photos, Privacy, Audit` — the Reviews tab now sits between | fixed — `Reviews, Privacy, Audit`, slot 8 |
 | F-3 | review (git-history walker) | `q1-admin-console-tab-ia.md`'s summary sentence ("filtering the eight … five shipped tabs") contradicted the table it summarizes once the Reviews row landed | fixed — the paragraph is dated to decision time with a note naming the later row |
 
 ---
@@ -424,6 +425,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/e2e/admin-reviews.e2e.ts` — new mocked journey
 - `frontend/e2e/support/admin-console.mocks.ts` — the reviews read
 - `frontend/e2e/touch-targets-admin.e2e.ts` — the Reviews row + confirm state
+- `frontend/e2e/admin-privacy.e2e.ts` — the strip's last three labels (F-4)
 - `RESPONSIBILITIES.md` — §review (moderation, the predicate landed, the author's fence, the admin surface), §venue (no change — states the listener now excludes hidden by re-read)
 - `CONTEXT.md` — **Review takedown**, **Hidden review**
 - `CLAUDE.md` — the `review` row names moderation
@@ -593,6 +595,7 @@ booking-detail DTO test, `review-panel.spec.ts`
 | 2026-09-02 | phase 2 (the `HIDDEN` verdict) | every site that branches on `ReviewState`, `ReviewPanel` or `AmendOutcome` (Java: exhaustive switches, found by the compiler) and every TS site narrowing `reviewPanel.kind` | `grep -rln "case ReviewPanel\.\|case AmendOutcome\.\|case NO_SUCH_STAY" platform/src/main`; `grep -rn "kind === '" frontend/src/app --include=*.ts` | Java: `ReviewLifecycleService`, `ReviewEligibilityService`, `ReviewController`, `BookingDetailView`; TS: `review-panel.ts` (`seedFor`, `own`, `deadline`), `booking-view.ts`'s refusal map | every Java arm added (the compiler refused the build until each was); in TS `own` gained `HIDDEN` (the spec caught the 0-star render), `seedFor`/`deadline` correctly exclude it, the refusal map gained `REVIEW_HIDDEN` |
 | 2026-09-02 | phase 3 (a new port every web slice must find) | every `@WebMvcTest` slice that boots the full controller set through `WebSliceStubs` | `grep -rln "WebSliceStubs" platform/src/test` | 4 run in the phase (`ReviewControllerTest`, `VenueReviewsControllerTest`, `AdminSurfaceRoleGateTest`, `EndpointRoleGateCoverageTest`) of the slices found | all boot green with the inert `ReviewModeration` stub; CI runs the rest |
 | 2026-09-02 | phase 4 (a new admin route every console sweep mounts) | every e2e helper that mocks the whole admin console on mount, and every spec that walks the console's routes | `grep -rln "mockWholeAdminConsole\|/api/admin/venues" frontend/e2e` | `support/admin-console.mocks.ts`, `touch-targets-admin.e2e.ts`, `admin-console-tabs.e2e.ts` (uses the lifecycle mock only — no admin reads), `admin-venue-photos.e2e.ts` (its own venue mock) | the console mock gained the reviews read; the touch sweep gained the Reviews row and its confirm state; the others need nothing |
+| 2026-09-02 | CI red on `0922fbd` (F-4) | every spec that enumerates the console's tab labels or a tab's slot number | `grep -rn "'Privacy', 'Audit'\|'Photos', 'Privacy'\|slot [0-9]" frontend/e2e frontend/src --include=*.ts` | 1: `admin-privacy.e2e.ts` (the last-three-labels pin and its "slot 7" title) | updated to `Reviews, Privacy, Audit` / slot 8; the phase-4 audit had swept mocks and route walks, not label enumerations — this row is the missing mechanism |
 
 ---
 
