@@ -254,7 +254,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Create `frontend/src/app/shared/focus-ring-baseline.spec.ts` · Modify
 `frontend/src/testing/stylesheet-tokens.ts` · Modify `frontend/src/tailwind.css`
 
-- [ ] **Step 1: Write the failing test** — the spec below (AC-1, AC-2, AC-3, AC-8); AC-8's
+- [x] **Step 1: Write the failing test** — the spec below (AC-1, AC-2, AC-3, AC-8); AC-8's
       sweep is expected red until Phase 2 and is marked so in the phase table.
 
 ```ts
@@ -310,10 +310,10 @@ describe('the focus-ring baseline (#890)', () => {
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** — `cd frontend && npx vitest run src/app/shared/focus-ring-baseline.spec.ts`
+- [x] **Step 2: Run it, verify it fails** — `cd frontend && npx vitest run src/app/shared/focus-ring-baseline.spec.ts`
       → FAIL: `baseLayerBlock` does not exist / no `@layer base` in the stylesheet.
 
-- [ ] **Step 3: Minimal implementation** — `baseLayerBlock()` in `testing/stylesheet-tokens.ts`
+- [x] **Step 3: Minimal implementation** — `baseLayerBlock()` in `testing/stylesheet-tokens.ts`
       (brace-counted `@layer base {` slice, throwing if absent), and in `tailwind.css`, after the
       theme blocks and before the un-layered `html, body`:
 
@@ -333,17 +333,17 @@ describe('the focus-ring baseline (#890)', () => {
 }
 ```
 
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS (3/3).
+- [x] **Step 4: Run it, verify it passes** — same command → PASS (3/3).
       End-of-phase regression: `npx vitest run src/app/shared src/testing` (the `shared/` guards that
       read `tailwind.css` as text, so a structural change to the stylesheet is caught here).
 
-- [ ] **Step 5: Generalization-audit pass** — Population "buttons whose ring is clipped by an
+- [x] **Step 5: Generalization-audit pass** — Population "buttons whose ring is clipped by an
       `overflow-hidden` ancestor" → enumerate `grep -rn "overflow-hidden" frontend/src/app --include=*.ts --include=*.html`
       and, for each hit, whether a `<button>` without an inset ring sits inside → record.
 
-- [ ] **Step 6: Commit** — `git commit -m "Paint the 3px focus ring on every button from one @layer base rule (#890)"`
+- [x] **Step 6: Commit** — `git commit -m "Paint the 3px focus ring on every button from one @layer base rule (#890)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -352,7 +352,7 @@ describe('the focus-ring baseline (#890)', () => {
 **Files:** Modify `frontend/src/app/shared/photo-gallery-grid.ts` · Modify
 `frontend/src/app/shared/photo-gallery-grid.spec.ts` · Create `frontend/e2e/focus-ring-baseline.e2e.ts`
 
-- [ ] **Step 1: Write the failing tests** — in `photo-gallery-grid.spec.ts`:
+- [x] **Step 1: Write the failing tests** — in `photo-gallery-grid.spec.ts`:
 
 ```ts
   it('paints its focus ring inside the clipped tile, in white over the photo', () => {
@@ -386,20 +386,20 @@ test('a button with no focus utility paints the baseline ring (#890)', async ({ 
 plus the lightbox-close (`outline-color` white) and `gallery-photo-0` (`outline-offset` `-3px`,
 white) tests on `/venues/1`.
 
-- [ ] **Step 2: Run, verify red** — `npx vitest run src/app/shared/photo-gallery-grid.spec.ts` → FAIL
+- [x] **Step 2: Run, verify red** — `npx vitest run src/app/shared/photo-gallery-grid.spec.ts` → FAIL
       (class missing); `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts e2e/focus-ring-baseline.e2e.ts`
       → the tile test FAILS on offset (the baseline paints `2px`).
 
-- [ ] **Step 3: Minimal implementation** — append `focus-visible:-outline-offset-[3px] focus-visible:outline-white`
+- [x] **Step 3: Minimal implementation** — append `focus-visible:-outline-offset-[3px] focus-visible:outline-white`
       to each of the three tile `class` strings in `photo-gallery-grid.ts`.
 
-- [ ] **Step 4: Run, verify green** — both commands → PASS.
+- [x] **Step 4: Run, verify green** — both commands → PASS.
 
-- [ ] **Step 5: Generalization-audit pass** — the Phase 0 population's decision applied here.
+- [x] **Step 5: Generalization-audit pass** — the Phase 0 population's decision applied here.
 
-- [ ] **Step 6: Commit** — `git commit -m "Paint the gallery tiles' focus ring inset and prove the baseline renders (#890)"`
+- [x] **Step 6: Commit** — `git commit -m "Paint the gallery tiles' focus ring inset and prove the baseline renders (#890)"`
 
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -408,16 +408,16 @@ white) tests on `/venues/1`.
 **Files:** Modify `docs/design/non-text-contrast.md` · Modify `docs/design/colour-literal-token-audit.md`
 · Modify `.claude/skills/riviera-tailwind/SKILL.md` · Modify `frontend/.claude/CLAUDE.md`
 
-- [ ] **Step 1:** add the AC-8 sweep test to `focus-ring-baseline.spec.ts` — red while the doc
+- [x] **Step 1:** add the AC-8 sweep test to `focus-ring-baseline.spec.ts` — red while the doc
       still says "today an unstyled one".
-- [ ] **Step 2:** settle the note; add the ledger row for `focus-visible:outline-[#0a3f4e]` ×4;
+- [x] **Step 2:** settle the note; add the ledger row for `focus-visible:outline-[#0a3f4e]` ×4;
       add the skill rule (the baseline lives in `@layer base`; a control never writes
       `outline-none`/`outline-hidden`; fixed-dark hosts override the colour with
       `focus-visible:outline-white`, clipped hosts the offset) and the red flag; the CLAUDE.md
       a11y bullet.
-- [ ] **Step 3:** `npx vitest run src/app/shared/focus-ring-baseline.spec.ts` → PASS; `npm run lint`, `npm run format:check`.
-- [ ] **Step 4: Commit** — `git commit -m "Record the focus-ring baseline in the design docs and skills (#890)"`
-- [ ] **Step 5:** `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
+- [x] **Step 3:** `npx vitest run src/app/shared/focus-ring-baseline.spec.ts` → PASS; `npm run lint`, `npm run format:check`.
+- [x] **Step 4: Commit** — `git commit -m "Record the focus-ring baseline in the design docs and skills (#890)"`
+- [x] **Step 5:** `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
 
 ---
 
