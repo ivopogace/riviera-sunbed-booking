@@ -39,7 +39,7 @@ no target column, so the review id must ride in the path) · `riviera-plan-doc` 
 template — forced the author-view decision D-1 and the gate-order decision D-4 to be written
 down before phase 0) · `tdd` (each phase is one seam: the migration + predicate, the
 moderation port, the gate, the REST edge, the admin tab) · `riviera-review-overlay` (review
-gate — due at ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD`, 6 findings, all patched: `AdminAuditLog`'s "five modules", `AdminSurfaceRoleGateTest`'s anchor count (F-5), the tab spec's "at most eight", two e2e headers' "seven tabs", and the admin-console artboard's tab order, which gained the README's as-built pointer) ·
+gate — due at ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD`, 6 findings, all patched: `AdminAuditLog`'s "five modules", `AdminSurfaceRoleGateTest`'s anchor count (F-5), the tab spec's "at most eight", two e2e headers' "seven tabs", and the admin-console artboard's tab order, which gained the README's as-built pointer; re-ran after F-8's picker extraction — 0 findings) ·
 `postgres` (nullable `TIMESTAMPTZ` over a boolean so the admin list can say "hidden since";
 no index for a low-selectivity predicate already inside an index seek) · `riviera-modulith`
 (the port stays internal in `application/` — nothing outside `review` calls it — and the
@@ -375,7 +375,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-5 | review (comment-compliance walker) | `AdminSurfaceRoleGateTest`'s anchor Javadoc counted five entries across five owners and promised "a new admin endpoint needs no edit here" — this PR added a sixth anchor for the `review` module | fixed — six across six, and the sentence now says a module's *first* admin surface adds one |
 | F-6 | review (overlay RV-FE-9 spirit, Minor) | a failed un-hide moved focus onto the notice although the pressed Un-hide button survives — only the hide leg destroys its control | fixed — the un-hide failure keeps focus where it is and lets the `role=status` region announce; `admin-reviews.spec.ts` pins it |
 | F-7 | `riviera-docs-freshness` over `origin/main...HEAD` | six present-tense counts in files the diff never touched — `AdminAuditLog` Javadoc ("span five modules"), `admin-console-tabs.spec.ts` ("at most eight tabs"), `admin-privacy.e2e.ts` + `admin-console-stats.e2e.ts` ("seven tabs"), and the admin-console artboard's stated order (no Reviews) | fixed — counts updated; the artboard gets the `as-built diverges — see #814` pointer, never a rewrite |
-| F-7 | Sonar (`new_duplicated_blocks` 1, 22 lines, `admin-reviews.ts` ↔ `admin-venue-photos.ts`) | the venue-picker scaffolding both moderation tabs carried — the list and selection signals, the once-per-session load effect, the in-flight generation counter | fixed — extracted as `admin/moderation-venue-picker.ts` (`moderationVenuePicker()`, the `focusMover()` factory shape); both tabs compose it and their specs stay green; the picker has its own spec |
+| F-8 | Sonar (`new_duplicated_blocks` 1, 22 lines, `admin-reviews.ts` ↔ `admin-venue-photos.ts`) | the venue-picker scaffolding both moderation tabs carried — the list and selection signals, the once-per-session load effect, the in-flight generation counter | fixed — extracted as `admin/moderation-venue-picker.ts` (`moderationVenuePicker()`, the `focusMover()` factory shape); both tabs compose it and their specs stay green; the picker has its own spec |
 | F-3 | review (git-history walker) | `q1-admin-console-tab-ia.md`'s summary sentence ("filtering the eight … five shipped tabs") contradicted the table it summarizes once the Reviews row landed | fixed — the paragraph is dated to decision time with a note naming the later row |
 
 ---
@@ -422,7 +422,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/test/java/ai/riviera/platform/AdminSurfaceRoleGateTest.java` — the list read joins the cross-module anchors
 - `platform/src/test/java/ai/riviera/platform/ReviewFixtures.java` — `hiddenReview(...)` / `hide(reviewId)` seeder
 - `frontend/src/app/admin/admin-venues.service.ts` + `admin-venues.service.spec.ts` — new (promoted `venues()`)
-- `frontend/src/app/admin/moderation-venue-picker.ts` + `moderation-venue-picker.spec.ts` — new: the venue-picker half both moderation tabs compose (F-7)
+- `frontend/src/app/admin/moderation-venue-picker.ts` + `moderation-venue-picker.spec.ts` — new: the venue-picker half both moderation tabs compose (F-8)
 - `frontend/src/app/admin/admin-venue-photos.service.ts` + `admin-venue-photos.service.spec.ts` + `admin-venue-photos.ts` + `admin-venue-photos.spec.ts` + `admin-venue-photos.a11y.spec.ts` — use the promoted service; the service spec now pins `slots()` and the takedown header
 - `frontend/src/app/admin/admin-moment.ts` — `formatMoment`, shared by the Audit and Reviews tabs
 - `frontend/src/app/admin/admin-audit.ts` — uses the shared helper
