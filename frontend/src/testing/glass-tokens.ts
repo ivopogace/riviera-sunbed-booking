@@ -442,3 +442,34 @@ export const CLASS_O_TINTS: readonly { readonly token: string; readonly value: s
   /** The beach-map premium cell's boundary, over `--riv-premium-grad`. */
   { token: '--riv-premium-edge', value: '#b47814' },
 ];
+
+/** `--riv-calendar-*`: the calendar popover's fixed surface and the ink ramp it pins. The primary
+ *  ink serves two surfaces — this glass and the opaque CALENDAR_TINTS fills — so calendar-tints.ts
+ *  reads it from here. Rationale: docs/design/colour-literal-token-audit.md (class T-3). */
+export const CALENDAR_GLASS: Glass = { color: WHITE, alpha: 0.97 };
+export const CALENDAR_INK: Rgb = INK_DARK;
+export const CALENDAR_INK_SOFT: Glass = { color: CARD_INK, alpha: 0.78 };
+export const CALENDAR_INK_FAINT: Glass = { color: CARD_INK, alpha: 0.72 };
+/** Clears no contrast bar and need not: every site wearing it is aria-disabled, which WCAG 1.4.3
+ *  exempts. NOT non-text-contrast.md rule 2 — that rule is about a control's chrome, this is text. */
+export const CALENDAR_INK_DISABLED: Glass = { color: CARD_INK, alpha: 0.4 };
+/** The month-step buttons' hover wash. Not an /opacity modifier, so the alpha ladder does not
+ *  reach it. */
+export const CALENDAR_HOVER: Glass = { color: CARD_INK, alpha: 0.07 };
+
+/** `--riv-banner-*-ink`: booking-view's status-banner prose, pinned by six fixed banner fills. The
+ *  per-banner eyebrow inks are a separate per-state palette and are not this family.
+ *  Rationale: docs/design/colour-literal-token-audit.md (class F). */
+export const BANNER_BODY_INK: Rgb = hexToRgb('334a52');
+export const BANNER_STRONG_INK: Rgb = INK_DARK;
+/** The six fixed banner fills the pair is pinned by, in `CLS.banner*` order. */
+export const BANNER_FILLS: readonly Rgb[] = ['ddf4f8', 'fdf5e6', 'faefec', 'f0f2f3', 'f0eef6'].map(
+  hexToRgb,
+);
+
+/** `--riv-console-{card,btn}-border`: the console's two white-surface hairlines. Their own tokens
+ *  rather than the same-valued --riv-pop-divider / --riv-chip-border, which carry different roles
+ *  and theme overrides; two of them because a surface boundary and a control's affordance boundary
+ *  are different forms. Rationale: docs/design/colour-literal-token-audit.md (class R). */
+export const CONSOLE_CARD_BORDER: Glass = { color: CARD_INK, alpha: 0.1 };
+export const CONSOLE_BTN_BORDER: Glass = { color: CARD_INK, alpha: 0.14 };

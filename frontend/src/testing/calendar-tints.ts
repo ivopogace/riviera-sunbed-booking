@@ -15,6 +15,9 @@
  * proof a plain pair that holds on both themes by construction.
  */
 
+import { rgbToHex } from './contrast';
+import { CALENDAR_INK } from './glass-tokens';
+
 /**
  * A calendar recipe: the ink, the opaque fill it sits on, and the focus ring drawn over that fill.
  * The ring travels WITH the fill rather than being one shared colour, because the chosen day's
@@ -30,12 +33,20 @@ export interface CalendarTint {
   readonly ring: string;
 }
 
-/** `venue/day-availability.ts` — the per-day availability tints, in `DAY_AVAILABILITY_STATES` order. */
+/**
+ * `venue/day-availability.ts` — the per-day availability tints, in `DAY_AVAILABILITY_STATES` order.
+ *
+ * <p>The ink is `--riv-calendar-ink` (#849), read from `glass-tokens.ts` rather than restated:
+ * the same token paints the popover's own chrome, so a retune that reached one surface and not
+ * the other is exactly what a second copy of the literal would have hidden.
+ */
+const INK = rgbToHex(CALENDAR_INK);
+
 export const CALENDAR_TINTS: readonly CalendarTint[] = [
-  { name: 'free (plenty free)', ink: '#0a2a33', fill: '#dff0e4', ring: '#0a3f4e' },
-  { name: 'low (few left)', ink: '#0a2a33', fill: '#fdeecc', ring: '#0a3f4e' },
-  { name: 'full (fully booked)', ink: '#0a2a33', fill: '#fae9e9', ring: '#0a3f4e' },
-  { name: 'unknown (counts unavailable)', ink: '#0a2a33', fill: '#ffffff', ring: '#0a3f4e' },
+  { name: 'free (plenty free)', ink: INK, fill: '#dff0e4', ring: '#0a3f4e' },
+  { name: 'low (few left)', ink: INK, fill: '#fdeecc', ring: '#0a3f4e' },
+  { name: 'full (fully booked)', ink: INK, fill: '#fae9e9', ring: '#0a3f4e' },
+  { name: 'unknown (counts unavailable)', ink: INK, fill: '#ffffff', ring: '#0a3f4e' },
 ];
 
 /**

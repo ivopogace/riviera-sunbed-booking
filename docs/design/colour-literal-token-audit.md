@@ -9,7 +9,7 @@ teal ink + tint family, PR #838), **#855** (the operator console's error ink, PR
 outline-button skin's theme-invariant family, PR #859), **#854** (the nine solid button/badge
 fills under fixed white ink, PR #860), **#861** (merging that family's two brand teals onto one,
 PR #862), **#848** (the operator console's accent ink, PR #863), **#864** (the console's negative
-ink, PR #866), **#858** (the three fixed-fill state skins, PR #867), **#869** (`outcome-card`'s two tone glyphs onto the medallion skin, PR #871), **#870** (the beach-map zoom toggle's fixed-pair-over-a-themed-host, PR #873), **#868** (the amber notice banner's theme-invariant pair, PR #874), **#853** (the CTA hairline's own border token, PR #875), **#852** (all of class **O** — the `/opacity`-modifier positions — settled on rule B and closed, PR #878), **#879** (class **O**'s values: the multiple-of-five alpha ladder, one `--riv-walkin-hatch`, and the three amber families merged into `--riv-warn-{edge,fill,ink}`, PR #880), **#881** (the console confirm buttons' `#9a6410` onto a fourth `--riv-solid-fill-*` member, `-warn`, PR #883), **#882** (the three inline suns onto one `--riv-sun-grad`, and the card sun's compositing defect with them).
+ink, PR #866), **#858** (the three fixed-fill state skins, PR #867), **#869** (`outcome-card`'s two tone glyphs onto the medallion skin, PR #871), **#870** (the beach-map zoom toggle's fixed-pair-over-a-themed-host, PR #873), **#868** (the amber notice banner's theme-invariant pair, PR #874), **#853** (the CTA hairline's own border token, PR #875), **#852** (all of class **O** — the `/opacity`-modifier positions — settled on rule B and closed, PR #878), **#879** (class **O**'s values: the multiple-of-five alpha ladder, one `--riv-walkin-hatch`, and the three amber families merged into `--riv-warn-{edge,fill,ink}`, PR #880), **#881** (the console confirm buttons' `#9a6410` onto a fourth `--riv-solid-fill-*` member, `-warn`, PR #883), **#882** (the three inline suns onto one `--riv-sun-grad`, and the card sun's compositing defect with them, PR #885), **#849** (class **T-3** re-cut: its population is class F and class R, and the class-T family is empty — PR #886).
 
 > **This file is not a design record.** `docs/design/README.md` governs the `.dc.html`
 > artboards — approved-look snapshots that are deliberately *never* rewritten to track the
@@ -70,9 +70,59 @@ actually generated, and nothing more.
 |---|---:|---|---|---|
 | `text-[#a3160e]` in `operator/` (9 files) | 32 | `--riv-error-ink` | **migrate** — hosts are porcelain-pinned, where the token resolves `#a3160e` | **done — #855, PR #856** |
 | `#0a6e85` **inks** in `operator/` | 12 | `--riv-console-accent-ink` (**new**) | **migrated onto its own token, not the coincidental one.** Value-correct, role wrong: `--riv-pop-accent` is the *popover* accent, and `--riv-solid-fill-brand` is a fill. **Option A over B**, on mechanical grounds: `@theme inline` makes a utility resolve `var(--riv-*)` at the point of use, so widening `--riv-pop-accent` would route the console's ink through the variable the popover family's theme blocks override — popover retuning would move payout figures. Angular's emulated encapsulation does not scope custom properties, so naming is the only separator. Declared **once**: every consumer is porcelain-pinned, so a dark branch is unreachable by construction, and no render can tell a themed token from an unthemed one inside a pinned subtree | **done — #848, PR #863.** n corrected 16 → 12: four were `bg-` fills, a different role, and left with #854 |
-| `#0a2a33` (`text-`) | 5 | `--riv-ink` / `--riv-card-ink` / `--riv-pop-ink` | **migrate** — but three tokens share the value, so each site must be assigned to the one whose *surface* it sits on | open → #849 |
-| `rgba(12,42,51,·)` inks/borders (`.66`, `.78`, `.14`, `.1`) | 9 | `--riv-ink-faint`, `--riv-card-ink-soft`, `--riv-chip-border`, `--riv-pop-divider` | **migrate** — same one-value-many-tokens caveat | open → #849 |
+| ~~`#0a2a33` (`text-`)~~ + ~~`rgba(12,42,51,·)` inks/borders~~ | ~~14~~ | ~~`--riv-ink` / `--riv-card-ink` / `--riv-pop-ink`, `--riv-ink-faint`, `--riv-card-ink-soft`, `--riv-chip-border`, `--riv-pop-divider`~~ | **Retired — the class-T reading was wrong, and #849 is where it was tested rather than assumed.** Both rows moved to classes F and R below; the note under this table is the finding | **done — #849, PR #886** |
 | `bg-[#9a6410]` — the console's close-sales and weather-refund confirm buttons (`daily-view-tab.html`, `payouts-tab.html`) | 2 | `--riv-solid-fill-warn` (**new**, joins the `--riv-solid-fill-*` family, #854) | **migrate** — left literal by #879's own non-goals (that slice merged the amber tint/fill/ink family only, not this button fill); closed once `shared/confirm-panel` gained a `warn` tone for both surfaces to adopt | **done — #881, PR #883** |
+
+> **T-3's finding, and it is the one this file exists to make possible (#849).** The ticket asked
+> which of `--riv-ink`, `--riv-card-ink` and `--riv-pop-ink` each of fourteen sites wanted, since
+> all three carry `#0a2a33`. Both halves of that question were wrong.
+>
+> **The population was 8, not 14.** #870 (PR #873) had already consumed six of them with the
+> beach-map zoom toggle — including *every* `rgba(12,42,51,0.66)` position in the tree, so that
+> sub-family is gone rather than migrated. A ledger row is a snapshot of a moving tree; re-running
+> the enumeration is step 0 of any slice cut from this file, not a formality.
+>
+> **And none of the 8 was class T.** Class T's definition requires "a surface where the token's
+> per-theme resolution is correct". Every surviving site fails exactly that clause: four sit on the
+> availability calendar's own `rgba(255,255,255,0.97)` `<dialog>` fill or on its four **opaque** day
+> tints, one on `booking-view`'s six fixed banner fills, and the three operator borders coincide
+> with tokens whose *role* is different. The three candidates agree in porcelain and diverge to
+> `#ffffff` / `#f2f7fa` in dark — which is precisely why the ticket read them as interchangeable,
+> and why following it would have shipped the light-on-light drift class F exists to prevent, on a
+> branch no porcelain screenshot could show. `--riv-card-ink`'s dark value on the neutral banner
+> measures **under 1.5:1**: not merely sub-AA, near-invisible.
+>
+> **The generalizable lesson, since this is now the second time the file has recorded it** (#835's
+> `#0a4f5e` was the first): *a value equalling a token is not evidence of anything until the
+> surface is named.* Class T's own row order encodes that — value, then role, then surface — and
+> T-3 is the case where a slice would have got the first two right and shipped a bug anyway. The
+> refusal is now a **test**, not a claim: `shared/fixed-ink-tokens.contrast.spec.ts` measures both
+> candidates on every one of these surfaces and asserts they fail, and it also asserts the three
+> candidate tokens end the slice byte-identical — without that, "we chose our own tokens" and "we
+> quietly widened `--riv-card-ink`" look the same in a diff.
+>
+> **Two scope movements, and they were forced by two different rules — not one.** The calendar's
+> two disabled inks and its hover wash came in because #852's third boundary check forbids leaving a
+> named utility beside a raw literal of its own family in one class expression:
+> `text-riv-calendar-ink … aria-disabled:text-[rgba(12,42,51,0.4)]` is exactly that artifact. The
+> weekday-header `0.72` is **not** that case and should not be filed under it — its `<th>` carries no
+> other member of the family, so nothing in its expression triggers the check. What forced it is the
+> spec: `availability-calendar.contrast.spec.ts` already modelled `.72` and `.78` as one `CHROME_INKS`
+> set, and splitting a set across a token and a literal breaks the shape the spec reads it through.
+> And `booking-view`'s `#334a52` body ink came in with the strong ink it shares a class string with
+> (maintainer, 2026-09-02). The per-banner **eyebrow** inks did *not*: six values across
+> six states is class S's per-state palette, they live in their own constants, and a test now asserts
+> they stay literal so the omission reads as a decision.
+>
+> **One deliberate repaint, stated rather than buried.** The calendar's two disabled inks were
+> `0.35` (nav arrow) and `0.4` (day cell), 0.05 apart for no recorded reason — the drift #879's
+> ladder exists to collapse. They merge at `0.4`, the higher-contrast of the two, so the one site
+> that moves moves the safe way. Neither cleared 3:1 before and the merged token does not either;
+> it is not required to, because every site wearing it is `aria-disabled` and WCAG 2.2 SC 1.4.3
+> exempts inactive components outright. That ground is the criterion's own **incidental** clause and
+> deliberately **not** `non-text-contrast.md` rule 2 — that rule is about a *control's chrome* being
+> decorative, this is text, and that file warns against blurring the two. The number was never
+> asserted before this slice; it is now pinned in both directions.
 
 ### Class F — fixed-fill pair: an ink over a surface that does not theme
 
@@ -88,6 +138,8 @@ These families must move **as a pair**, onto tokens declared **once** with no da
 | Amber **notice banner**: `bg-[#fcf0d9]` + `text-[#8a5410]` (`withheld-email-notice:29`, `privacy-policy.html`, `terms-of-service.html`) | 6 | **the same pair as the medallion's waiting state, on a different FORM** — a rectangular block with *accessible text*, so unlike the medallion it genuinely owes AA (5.54:1 today). Surfaced by #858's out-of-family sweep, which had to name these sites to prove it did not over-reach onto them. Wants its own theme-invariant pair; do **not** reuse `--riv-medallion-waiting-*`, whose whole population is decorative | **done — #868, PR #874** (`--riv-notice-banner-*`), then **merged into `--riv-warn-{edge,fill,ink}` — #879, PR #880**: the same amber advisory treatment as class O's two confirm-panel families, so all three collapsed. Still NOT `--riv-medallion-waiting-*`, which keeps `#fcf0d9`/`#8a5410` — that remains a different FORM, and merging on the value would be the class-R confusion this file exists to name |
 | `shared/outcome-card.ts`'s two tone glyphs | 2 | **the medallion FORM again — and the intake grill inverted the question.** Answer: converge. See the note below the table; n corrected 4 → 2 (the border and inset shadow counted here are class R's #853, not this family's) | **done — #869, PR #871** |
 | Beach-map **zoom toggle**: `bg-[rgba(14,122,137,0.12)]`/`bg-white/70` + `border-[#0e7a89]`/`border-[rgba(12,42,51,0.14)]` + `text-[#0a2a33]`/`text-[rgba(12,42,51,0.66)]` (`shared/beach-map-canvas.html:20,35`) | 2 | **not this table's usual shape — a fixed PAIR (ink and fill both pinned) over a host that themes, not a themed ink over a fixed fill.** Found by #869's own generalization sweep enumerating the mechanism rather than the medallion form (see the note below the table). The wash it sits on already carries a per-theme pair for its rail/chip siblings (`--riv-map-rail-*`, `--riv-map-chip-*`), so the fix follows that precedent rather than the theme-invariant one: **new per-theme token pairs**, `--riv-map-zoom-{selected,idle}-{fill,border,ink}`, declared once per theme like the wash itself. Measured (worst wash stop): selected ink 11.18→1.16:1 dark before, 14.53:1 light / 5.14:1 dark after; idle ink 4.88→3.77:1 dark before, 8.45:1 light / 6.69:1 dark after; both borders newly proven at 3:1 (WCAG 1.4.11), not carried across as an accepted miss | **done — #870, PR #873** |
+| **Availability-calendar ink ramp**: `#0a2a33` ×2, `rgba(12,42,51,·)` at `.78` ×2, `.72`, `.4`, `.35`, `.07` ×2, over its own `rgba(255,255,255,0.97)` `<dialog>` fill (`availability-calendar.html`) | 10 | **new theme-invariant family**, `--riv-calendar-{glass,ink,ink-soft,ink-faint,ink-disabled,hover}`. Arrived here from class T — see the note above the table. The fill is tokenised too, because a family whose anchor stays a literal is a claim nobody can guard; `--riv-calendar-ink` serves **two** surfaces (the glass and the four opaque day tints), so `testing/calendar-tints.ts` reads it from the one mirror rather than restating it (#835's R-5) | **done — #849, PR #886.** n corrected 5 → 10; the extra five are the take-the-whole-expression positions the note explains |
+| **booking-view banner prose**: `text-[#334a52]` + `[&_strong]:text-[#0a2a33]` (`booking-view.ts:89`) and `confirmQOnBanner` (`:99`), over six fixed banner fills | 3 | **new theme-invariant pair**, `--riv-banner-{body,strong}-ink`. The sharpest case for T-3's refusal: `--riv-card-ink`'s dark `#f2f7fa` on the neutral banner's `#f0f2f3` is under 1.5:1. The per-banner **eyebrow** inks stay out — class S's per-state palette, and asserted as staying out | **done — #849, PR #886.** n corrected 1 → 3: `#334a52` was uncounted (it shares the strong ink's class string) and appears at `:99` too |
 | Solid outline-button skin: `#f4f6f7` fill, `#e7ebec` hover, `rgba(255,255,255,0.7)` border, `#a3372a` danger ink (+ the `rgba(200,90,60,0.5)` danger border) | 13 | **new theme-invariant tokens**, one family. Its teal ink already moved to `--riv-solid-btn-ink` in #835. The themed alternatives measure 1.69:1 (`--riv-danger-ink`) and 1.52:1 (`--riv-accent-ink`) over the fixed fill | **done — #851, PR #859.** n corrected 9 → 13: the danger border was uncounted, and the `rgba(255,255,255,0.7)` border sits on all three buttons (on the `btnOutline` variant, not the shared `BTN_OUTLINE` base) |
 
 
@@ -344,8 +396,24 @@ does not. Each needs its own token, not the coincidental one.
 | Solid fills under fixed white ink: `bg-[#0a6e85]` ×4, `bg-[#0a5f74]` ×3, `bg-[#a3160e]` ×2 | 9 | `--riv-pop-accent`, `--riv-cta-grad` (end stop), `--riv-error-ink` | Three coincidences, one form. An **ink** token and a **popover accent** used as fills, and a gradient stop that is not a fill token — and all three *theme*, while the white ink over them cannot | **done — #854, PR #860** (`--riv-solid-fill-*`), then **merged to one teal — #861, PR #862**: `-action` and `-brand` had no role between them, so the family is `#0a6e85` + `#a3160e` and the three `#0a5f74` fills were repainted. **`#0a5f74`'s full split, settled by #858:** 3 fills (this row) + 4 inks, of which three are now `--riv-medallion-positive-ink`, `--riv-amenity-water-ink` and `--riv-step-active-ink`, and the fourth is `booking-dialog:79`'s gradient stop, which duplicates `--riv-cta-grad` and is that token's question |
 | The white **inset-highlight** ramp inside composite shadows (`shadow-[…inset_0_1px_0_rgba(255,255,255,α)]`) | 48 | `--riv-inset-fill` (the α = 0.4 member only) | Split out of the row above by **#853**, which deliberately left it. Same coincidence, third role: an inner highlight LINE, not a border and not a fill — and it is one member of an eight-alpha ramp (0.25 / 0.4 / 0.5 / 0.6 / 0.7 / 0.8 / 0.85 / 0.9), so tokenising the one that happens to match would leave a named var beside seven literals in the same idiom. Not in this file's population command either (it requires `#`/`rgba(` immediately after `[`). Wants a **ramp** named by depth, which is a palette pass, not a migration | open |
 | White **0.6** borders (`outcome-card`, `request-confirmation`, `booking-pay`, `booking-confirmation` ×2) | 5 | `--riv-card-border` (light value) | Recorded by **#853**, whose neighbour it is; `testing/glass-tokens.ts` pointed these at that issue, which was never their family. Role matches this time — a border pointed at a border token — so the question is the **surface**, and it splits: four sit on fixed medallion/badge fills (a themed border would drift, the #853 answer) and one is the confirmation `<dl>`'s edge on the now-themed inset fill (where `--riv-card-border` may be exactly right) | open |
-| `#8a5410` warn ink, `#8a3a2a`, `#0a5e7a`, `#334a52`, … | ~20 | — | No token at all; these are genuine new-token candidates once their role is named | open |
+| **The operator console's two white-surface hairlines**: `rgba(12,42,51,0.1)` ×2 (`operator-console.html:4,62` — the sign-in card and the active tab pill) and `rgba(12,42,51,0.14)` (`operator-actions.ts:54` — the sign-out button) | 3 | `--riv-pop-divider`, `--riv-chip-border` | **Migrated onto their own tokens, `--riv-console-{card,btn}-border`, not the coincidental ones** — the #848/#864 fork a third time, arriving here from class T. `--riv-pop-divider`'s entire population is ONE rule inside the account popover (`app.html:296`); `--riv-chip-border` is the tourist shell chip's edge over the themed `--riv-chip-bg` (`app.html:161,219`, `home.html:5`). Neither was a *rendering* bug — the console pins porcelain, so both resolved correctly — and that is exactly why the objection has to be stated mechanically: `@theme inline` resolves `var(--riv-*)` at the point of use, so retuning the popover or the tourist chip would have moved console chrome belonging to neither. **Two tokens rather than one, and the 0.04 between them is not the reason — FORM is:** `-card-border` bounds a surface, `-btn-border` is a control's own affordance boundary, the distinction `--riv-wash-hover-border` already draws. Merging would have meant repainting one for a similarity that is only a value. Declared once each (every consumer is under a porcelain-pinned host, so a dark branch is unreachable), and a guard asserts the two coincidental tokens stay themed and separate — collapsing back onto them is what this re-cut refused | **done — #849, PR #886** |
+| `#8a5410` warn ink, `#8a3a2a`, `#0a5e7a`, ~~`#334a52`~~, … | ~20 | — | No token at all; these are genuine new-token candidates once their role is named. **`#334a52` left this row with #849** — it shares `bannerBody`'s class string with the strong ink, so it moved as a pair rather than waiting for its own slice | open |
 | Plain `text-[#a3372a]` refund-red inks in `operator/` (`payouts-tab.ts` + `.html`, `daily-view-tab.html`) | 3 | `--riv-solid-btn-danger-ink` | **Migrated onto its own token, `--riv-console-negative-ink`, not the coincidental one.** That token is the outline **button**'s ink, pinned to the button's own non-theming fill (#851); these three are console inks on card glass — different role, different surface, so the same fork #848 settled, whose mechanical answer is the precedent rather than a re-derivation. **Family:** a `--riv-console-*-ink` pair with the accent ink — same host, surface and theme-invariance ground — but in **naming only**: separate declarations (each declared once, which is the whole guard) and separate guard specs, because the two distinctness arguments share nothing (`#0a6e85` has three roles; this one is separated from a button ink and from #852's tints of its own value). **Name:** `negative`, not `danger` — `danger` is that button token's own word and `--riv-danger-*`/`--riv-error-ink` are the tourist alert families, so `danger` would leave the two confusable roles one hyphen apart; `negative` names what the three sites share, a negative outcome, and reads as one axis beside the accent pole at `payouts-tab.ts:135`. The chip tint (5.05:1) is the lowest pair and was measured, not assumed. Found by #848's generalization sweep, which enumerated the plain ink form by mechanism; the `/opacity` tints (#852) and the button ink (#851) already had rows, the ink form had none. **Corrected by #858:** `failure-panel` and `booking-pay` left the `OUT_OF_FAMILY` guard for `--riv-medallion-negative-ink` — their `#a3372a` is a decorative medallion ink, a fourth role — so `payouts-tab.html`'s `/opacity` tints are the array's last entry. **Resolved by #852:** those tints turned out to belong to this very token — same element, same meaning — so they were migrated ONTO it rather than to one of their own, and the fourth role never materialised as a fifth token. The guard's last entry stays, rewritten to the token form rather than deleted: it records a paint #851 must not have taken, not the notation that paint wears | **done — #864, PR #866** |
+
+> **Two things #849's own generalization sweep found and deliberately did not take**, recorded so
+> the next sweep does not read their absence as an oversight:
+>
+> - **`operator-actions.ts:54`'s `bg-[#eef1f2]` hover fill**, sitting in the same class string as the
+>   sign-out button's new border token. Not a violation of #852's beside-a-literal check (different
+>   value, different role), and not in #849's population, which is the `#0a2a33` / `rgba(12,42,51,·)`
+>   values. It is a genuine "no token at all" candidate with no row anywhere — it has one now.
+> - **Whether the calendar popover should adopt `--riv-pop-surface`/`--riv-pop-ink` instead of being
+>   pinned light forever.** The app already has a popover treatment that themes correctly
+>   (`rgba(255,255,255,0.92)` → `rgba(16,26,46,0.96)` with light inks), and the calendar's `<dialog>`
+>   is arguably the same thing. Found by enumerating near-opaque white fills rather than by reading
+>   the family rows. Not folded in because it is a **repaint** — it would turn the calendar dark in
+>   the dark theme — and #849 is a migration whose entire claim is that no pixel moves. It wants a
+>   design decision and its own slice.
 
 ### Class S — per-state palettes and one-offs: exempt for now
 
@@ -441,8 +509,13 @@ carried no row.)
 Each family becomes its own issue and its own PR, largest inconsistency first. The pattern
 #829 and #835 established, and the proof each slice owes:
 
+0. **Re-run the enumeration before trusting the row's `n`.** A row is a snapshot of a moving
+   tree, and a sibling slice may have consumed part of it: #849 opened on a 14-site row whose
+   real population was 8, because #870 had taken six — a whole sub-family — since it was
+   written. Costs one command; #849 is what it saves.
 1. **Name the painted-on surface for every site** before choosing a token. This is the step
-   that splits a family; skipping it is how #835's `#0a4f5e` would have gone wrong.
+   that splits a family; skipping it is how #835's `#0a4f5e` would have gone wrong — and how
+   #849 would have shipped white ink on white glass while satisfying its own ticket.
 2. **Move any spec constant pinning the literal into `src/testing/glass-tokens.ts` first**,
    so the contrast specs read the token rather than restating it (#835's R-5).
 3. **A unit contrast spec** proving the value clears its WCAG floor on every surface it

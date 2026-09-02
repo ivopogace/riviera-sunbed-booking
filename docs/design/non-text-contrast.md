@@ -102,6 +102,15 @@ number-bearing surface, not two.
 | `--riv-medallion-negative-border` (**rule 2a** — `aria-hidden` glyph, its outcome card's heading carries the meaning) | `app/shared/fixed-fill-token-skins.contrast.spec.ts` |
 | `--riv-amenity-tag-border`, `--riv-amenity-water-border` | `app/shared/fixed-fill-token-skins.contrast.spec.ts` (`amenities.contrast.spec.ts` is the same family's ink/fill text pairs, not these borders) |
 | `--riv-warn-edge/50` on `daily-view-tab`'s close-sales trigger — the button's own label carries the identity | `app/operator/daily-view-tab.contrast.spec.ts` |
+| `--riv-console-btn-border` (the console's sign-out button) and `--riv-console-card-border` on the **active tab pill** — each control's own label carries the identity | `app/shared/fixed-ink-tokens.contrast.spec.ts` |
+
+`--riv-console-card-border`'s **other** consumer is not a control at all: it is the edge of the
+console's "Venue not found" card, a `<div>`. It is listed above only for the tab pill; the card's
+edge is outside 1.4.11 rather than exempt under rule 2 — the criterion reaches visual information
+*required to identify* components and states, and nothing about that card is identified by its
+hairline. Named here rather than left to be re-derived, because a family whose two consumers sit on
+different grounds is exactly where a later sweep files the whole thing under the wrong one. Both
+values are measured in the same spec either way (#849).
 
 `booking-dialog`'s `#31798a` close button is the sharpest case and is covered here rather than
 by rule 1: on its own teal header gradient the fill reaches 1.12–1.46:1 and the hairline

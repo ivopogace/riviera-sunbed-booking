@@ -157,6 +157,16 @@
   --color-riv-photo-chrome: var(--riv-photo-chrome);
   --color-riv-photo-chrome-edge: var(--riv-photo-chrome-edge);
   --color-riv-mode-chip-glass: var(--riv-mode-chip-glass);
+  --color-riv-calendar-glass: var(--riv-calendar-glass);
+  --color-riv-calendar-ink: var(--riv-calendar-ink);
+  --color-riv-calendar-ink-soft: var(--riv-calendar-ink-soft);
+  --color-riv-calendar-ink-faint: var(--riv-calendar-ink-faint);
+  --color-riv-calendar-ink-disabled: var(--riv-calendar-ink-disabled);
+  --color-riv-calendar-hover: var(--riv-calendar-hover);
+  --color-riv-banner-body-ink: var(--riv-banner-body-ink);
+  --color-riv-banner-strong-ink: var(--riv-banner-strong-ink);
+  --color-riv-console-card-border: var(--riv-console-card-border);
+  --color-riv-console-btn-border: var(--riv-console-btn-border);
 
   --shadow-riv-pop: var(--riv-pop-shadow);
   --text-shadow-riv-hero: var(--riv-hero-shadow);
@@ -767,6 +777,38 @@
       where the value is copied (shared/photo-slideshow.contrast.spec.ts imports it from there,
       and is the one spec left doing so). */
   --riv-mode-chip-glass: rgba(255, 255, 255, 0.85);
+
+  /** The availability calendar's popover surface and the dark-ink ramp it pins. Theme-invariant:
+      the <dialog> fill is fixed on a page that themes, so the pinning runs fill -> ink and a dark
+      override would be light-on-light. --riv-calendar-ink also paints the opaque day tints, so
+      testing/calendar-tints.ts reads it from the mirror rather than restating it. -ink-disabled
+      clears no contrast bar and need not: every site wearing it is aria-disabled, which WCAG 1.4.3
+      exempts. Rationale: docs/design/colour-literal-token-audit.md (class T-3).
+      Proof: shared/fixed-ink-tokens.contrast.spec.ts. */
+  --riv-calendar-glass: rgba(255, 255, 255, 0.97);
+  --riv-calendar-ink: #0a2a33;
+  --riv-calendar-ink-soft: rgba(12, 42, 51, 0.78);
+  --riv-calendar-ink-faint: rgba(12, 42, 51, 0.72);
+  --riv-calendar-ink-disabled: rgba(12, 42, 51, 0.4);
+  --riv-calendar-hover: rgba(12, 42, 51, 0.07);
+
+  /** booking-view's status-banner prose. Theme-invariant: all six banner fills are fixed, so a
+      themed ink over them drifts. The per-banner eyebrow inks are a separate per-state palette and
+      stay literal. Rationale: docs/design/colour-literal-token-audit.md (class F).
+      Proof: shared/fixed-ink-tokens.contrast.spec.ts. */
+  --riv-banner-body-ink: #334a52;
+  --riv-banner-strong-ink: #0a2a33;
+
+  /** The operator console's two white-surface hairlines. Their own tokens, not the same-valued
+      --riv-pop-divider / --riv-chip-border, whose roles and theme overrides are different; two of
+      them because a surface boundary and a control's affordance boundary are different forms.
+      Declared once — every consumer sits under a porcelain-pinned host. Non-text chrome at
+      1.21:1 / 1.32:1 over their white fills, decorative under docs/design/non-text-contrast.md
+      rule 2; the "Venue not found" card's edge is outside 1.4.11 rather than exempt under it.
+      Rationale: docs/design/colour-literal-token-audit.md (class R).
+      Proof: shared/fixed-ink-tokens.contrast.spec.ts. */
+  --riv-console-card-border: rgba(12, 42, 51, 0.1);
+  --riv-console-btn-border: rgba(12, 42, 51, 0.14);
 }
 
 [data-riv-theme='riviera'] {
