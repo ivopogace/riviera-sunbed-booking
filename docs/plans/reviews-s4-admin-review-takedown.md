@@ -92,15 +92,16 @@ reused; copy differs from the photo takedown because hide is reversible) · `pla
   review, when the admin list is read, then all three appear newest first, each with its
   `hiddenAt` (`null` for visible), ten per page with a cursor to the next. *Seam:*
   `ReviewModeration#pageFor` · *Pinned by:* `ReviewModerationFlowIT.adminListShowsEveryReviewMarked`
-- [ ] **AC-7:** Given an ADMIN session, when `GET /api/admin/venues/{venueId}/reviews`,
+- [x] **AC-7:** Given an ADMIN session, when `GET /api/admin/venues/{venueId}/reviews`,
   `POST /api/admin/reviews/{id}/hide` and `POST /api/admin/reviews/{id}/unhide` are called,
   then they answer `200` / `204` / `204`; a plain OPERATOR gets `403` and an anonymous caller
   `401` on each; an unknown review id is `404 NO_SUCH_REVIEW` (`application/problem+json`).
   *Seam:* the three routes · *Pinned by:* `AdminReviewTakedownIT.adminHidesAndUnhides`,
   `AdminReviewTakedownIT.takedownIsAdminOnly`, `AdminReviewTakedownIT.unknownReviewIs404`,
-  plus `AdminSurfaceRoleGateTest` (auto-discovers the routes) and
-  `EndpointRoleGateCoverageTest` (the three rows)
-- [ ] **AC-8:** Given an ADMIN session, when a hide is posted with an `X-Audit-Reason`
+  plus `AdminSurfaceRoleGateTest` (auto-discovers the routes; the list read is one of its
+  cross-module anchors) — `EndpointRoleGateCoverageTest` needs no row: it declares only the
+  role-free endpoints, and a gated one is what it checks by default
+- [x] **AC-8:** Given an ADMIN session, when a hide is posted with an `X-Audit-Reason`
   header and an un-hide without, then `admin_audit_record` gains one row each — actor, `POST`,
   the exact path (`/api/admin/reviews/{id}/hide` / `…/unhide`), status `204`, the sanitized
   reason (`null` when absent). *Seam:* the routes + the audit table · *Pinned by:*
@@ -161,16 +162,16 @@ Reviews tab shares it.
 | R-1 | Flyway V48 collision with in-flight work | low | high | Checked 2026-09-02: V47 highest on `main`, **zero** open PRs. If one appears, this branch renumbers (merges second); re-check at the merge-from-main | agent | open |
 | R-2 | A hidden review re-enters circulation through the author's **delete + resubmit** (delete frees the slot, a fresh submit claims a new visible row) | high without D-1 | high | D-1: a hidden review is frozen for its author — `ReviewGate` answers `HIDDEN` before the window, the lifecycle maps it to `AmendOutcome.Hidden` for edit *and* delete, submit to `AlreadyReviewed`; `ReviewLifecycleServiceTest.aHiddenReviewCannotBeEditedOrRemoved` | agent | **closed (phase 2)** — the pin is green: edit, delete and resubmit all refused with the row untouched |
 | R-3 | The predicate lands in one `WHERE` but not the other (list hides, aggregate still counts) | med | high | Both `WHERE`s in one commit (phase 0), each with its own pin (AC-1, AC-2); `JdbcReviews` Javadoc rewritten to state the predicate lives in exactly those two statements | agent | **closed (phase 0)** — both pins green, the audit above enumerates the seven statements |
-| R-4 | A missing `SecurityConfig` matcher lets `anyRequest().authenticated()` admit a plain OPERATOR to the new routes | low | high | Three explicit `hasRole(ADMIN)` matchers; `AdminSurfaceRoleGateTest` discovers every `/api/admin/**` mapping and probes OPERATOR + CUSTOMER — a missed matcher fails the build; `AdminReviewTakedownIT.takedownIsAdminOnly` proves it over the real chain | agent | open |
-| R-5 | `WebSliceStubs` lacks the new `ReviewModeration` port → every `@WebMvcTest` slice fails to boot | high | low | Phase 3 adds the inert stub with the controller; `EndpointRoleGateCoverageTest.DECLARED_REACHABLE` gains the three routes | agent | open |
+| R-4 | A missing `SecurityConfig` matcher lets `anyRequest().authenticated()` admit a plain OPERATOR to the new routes | low | high | Three explicit `hasRole(ADMIN)` matchers; `AdminSurfaceRoleGateTest` discovers every `/api/admin/**` mapping and probes OPERATOR + CUSTOMER — a missed matcher fails the build; `AdminReviewTakedownIT.takedownIsAdminOnly` proves it over the real chain | agent | **closed (phase 3)** — both pins green; the plain operator is `403` on all three routes |
+| R-5 | `WebSliceStubs` lacks the new `ReviewModeration` port → every `@WebMvcTest` slice fails to boot | high | low | Phase 3 adds the inert stub with the controller (the coverage test's `DECLARED_REACHABLE` lists only role-free routes, so it needs no row) | agent | **closed (phase 3)** — four web slices boot green with the stub |
 | R-6 | Hide/un-hide redelivered or double-clicked → duplicate `ReviewsChanged` or drift | med | low | The write is `UPDATE … WHERE id = :id AND hidden_at IS NULL RETURNING venue_id` (mirror for un-hide): rows-affected is the outcome, a no-op publishes nothing, and the listener's recompute is a full re-read either way | agent | **closed (phase 1)** — `ReviewModerationServiceTest` pins one event per flip, `ReviewModerationFlowIT` the conditional update for real |
 | R-7 | The aggregate is eventually consistent (ADR-0015): the admin's next read may precede the recompute | med | low | Same posture as submit; the admin tab does not render the score. The e2e is mocked, so no timing; `VenueRatingRecomputeIT` awaits the row | agent | open |
-| R-8 | Error-contract drift on the new 4xx paths (§6b) | low | med | `404 NO_SUCH_REVIEW` and `409 REVIEW_HIDDEN` through `ApiProblem` from exhaustive switches; the review-side `409` keeps `instance` pinned to `/api/bookings` (invariant #7); `ErrorContractArchitectureTests` stays green | agent | open |
+| R-8 | Error-contract drift on the new 4xx paths (§6b) | low | med | `404 NO_SUCH_REVIEW` and `409 REVIEW_HIDDEN` through `ApiProblem` from exhaustive switches; the review-side `409` keeps `instance` pinned to `/api/bookings` (invariant #7); `ErrorContractArchitectureTests` stays green | agent | **closed (phase 3)** — `unknownReviewIs404` reads problem+json with the code, `aHiddenReviewIsAConflict` pins the instance, the architecture test is green |
 | R-9 | Adding `ReviewPanel.Hidden` breaks the exhaustive switches in `booking`'s `BookingDetailView` and the frontend `@switch` silently (a missing `kind`) | high | low | The Java switch is exhaustive → compile error → `"HIDDEN"` added with its own test; the TS union gains the member so the template's `@switch` is type-checked; `review-panel.spec.ts` pins the case | agent | **closed (phase 2)** — `ViewBookingServiceTest.everyPanel` carries `Hidden`; the TS spec caught the one non-exhaustive site (`own`) |
 | R-10 | `Reviews.findFor` changes shape → the `FakeReviews` in the service tests stop compiling | high | low | Same phase (2): every implementor found by `grep -rn "implements Reviews"` updated in the commit (`WebSliceStubs` holds no `Reviews` stub — phase 1's audit) | agent | **closed (phase 2)** — all five implementors moved to `Optional<StoredReview>`; `existsFor` retired |
 | R-11 | The touch-target sweep and `admin-console-tabs.e2e.ts` hit an unmocked `/api/admin/venues/*/reviews` | med | low | `support/admin-console.mocks.ts` gains the read; `touch-targets-admin.e2e.ts` gains the Reviews row (list + confirm states) | agent | open |
 | R-12 | The Reviews tab lands out of slot in `ADMIN_CONSOLE_TAB_ORDER` and fails the subsequence pin | low | low | Inserted after Photos (moderation surfaces adjacent), the IA contract updated in `q1-admin-console-tab-ia.md`'s order | agent | open |
-| R-13 | A hidden review's `display_name`/`comment` still reach the admin (by design) but must never reach the public list — the admin read must not be reachable without ADMIN | low | high | The admin list is served only by the `/api/admin/**` route (R-4); the public read keeps its predicate (R-3) | agent | open |
+| R-13 | A hidden review's `display_name`/`comment` still reach the admin (by design) but must never reach the public list — the admin read must not be reachable without ADMIN | low | high | The admin list is served only by the `/api/admin/**` route (R-4); the public read keeps its predicate (R-3) | agent | **closed (phase 3)** — R-3 and R-4 both closed |
 
 ## Open questions / Assumptions
 
@@ -332,17 +333,17 @@ Venue picker `<select data-testid="admin-reviews-venue">`, the photos tab's mark
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)` — draft PR #898 open as the CI vehicle
+**Stage pointer:** `implement (phase 4)` — draft PR #898 open as the CI vehicle
 
-**Next action:** phase 3 — the admin REST edge, red first on `AdminReviewTakedownIT`.
+**Next action:** phase 4 — the admin Reviews tab, red first on `admin-reviews.spec.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — V48 `hidden_at` + the visibility predicate | ✅ | `Hide reviews from the aggregate and the public list by a nullable hidden_at (#814)` |
 | 1 — `ReviewModeration`: hide / un-hide / admin list, `ReviewsChanged` | ✅ | `Hide and un-hide a review through the review module's moderation port (#814)` |
 | 2 — the author's fence: `HIDDEN` in the gate, the panel, the amend outcome, the booking page | ✅ | `Freeze a hidden review for its author and show it as removed from public view (#814)` |
-| 3 — the admin REST edge: controller, matchers, stubs, audit pin | ⏳ | |
-| 4 — the admin Reviews tab, the mocked journey, docs, close-out prep | | |
+| 3 — the admin REST edge: controller, matchers, stubs, audit pin | ✅ | `Serve the admin review list and the hide/un-hide takedown under /api/admin (#814)` |
+| 4 — the admin Reviews tab, the mocked journey, docs, close-out prep | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -392,8 +393,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/test/java/ai/riviera/platform/ReviewControllerTest.java` — `aHiddenReviewIsAConflict`
 - `platform/src/test/java/ai/riviera/platform/booking/application/view/ViewBookingServiceTest.java` — `everyPanel` carries `Hidden`
 - `platform/src/test/java/ai/riviera/platform/AdminReviewTakedownIT.java` — new
-- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — `ReviewModeration` stub; the `Reviews`-shaped stubs if any
-- `platform/src/test/java/ai/riviera/platform/EndpointRoleGateCoverageTest.java` — three rows
+- `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — `ReviewModeration` stub
+- `platform/src/test/java/ai/riviera/platform/AdminSurfaceRoleGateTest.java` — the list read joins the cross-module anchors
 - `platform/src/test/java/ai/riviera/platform/ReviewFixtures.java` — `hiddenReview(...)` / `hide(reviewId)` seeder
 - `frontend/src/app/admin/admin-venues.service.ts` + `admin-venues.service.spec.ts` — new (promoted `venues()`)
 - `frontend/src/app/admin/admin-venue-photos.service.ts` + `admin-venue-photos.service.spec.ts` + `admin-venue-photos.ts` + `admin-venue-photos.spec.ts` — use the promoted service
@@ -576,6 +577,7 @@ booking-detail DTO test, `review-panel.spec.ts`
 | 2026-09-02 | phase 0 (the predicate) | every production SQL statement that touches the `review` table | `grep -rn "FROM review\b\|UPDATE review\b\|INTO review\b\|DELETE FROM review\b" platform/src/main` | 7, all in `JdbcReviews`: claim, update, delete, `findFor`, `totalsFor`, `existsFor`, `newestListedBefore` | predicate on the two **public** reads (`totalsFor`, `newestListedBefore`) only; the author's read-back (`findFor`, `existsFor`) and the writes address the row by `booking_id` and must keep seeing a hidden row — phase 2 relies on that |
 | 2026-09-02 | phase 1 (the widened `Reviews` port) | every implementor of `Reviews` | `grep -rln "implements Reviews\b" platform/src` | 5: JdbcReviews.java, ListedReviewsServiceTest.java, ReviewEligibilityServiceTest.java, ReviewLifecycleServiceTest.java, ReviewModerationServiceTest.java | all five carry the four new methods in the same commit (the fakes throw `UnsupportedOperationException` where moderation is out of their use case) |
 | 2026-09-02 | phase 2 (the `HIDDEN` verdict) | every site that branches on `ReviewState`, `ReviewPanel` or `AmendOutcome` (Java: exhaustive switches, found by the compiler) and every TS site narrowing `reviewPanel.kind` | `grep -rln "case ReviewPanel\.\|case AmendOutcome\.\|case NO_SUCH_STAY" platform/src/main`; `grep -rn "kind === '" frontend/src/app --include=*.ts` | Java: `ReviewLifecycleService`, `ReviewEligibilityService`, `ReviewController`, `BookingDetailView`; TS: `review-panel.ts` (`seedFor`, `own`, `deadline`), `booking-view.ts`'s refusal map | every Java arm added (the compiler refused the build until each was); in TS `own` gained `HIDDEN` (the spec caught the 0-star render), `seedFor`/`deadline` correctly exclude it, the refusal map gained `REVIEW_HIDDEN` |
+| 2026-09-02 | phase 3 (a new port every web slice must find) | every `@WebMvcTest` slice that boots the full controller set through `WebSliceStubs` | `grep -rln "WebSliceStubs" platform/src/test` | 4 run in the phase (`ReviewControllerTest`, `VenueReviewsControllerTest`, `AdminSurfaceRoleGateTest`, `EndpointRoleGateCoverageTest`) of the slices found | all boot green with the inert `ReviewModeration` stub; CI runs the rest |
 
 ---
 

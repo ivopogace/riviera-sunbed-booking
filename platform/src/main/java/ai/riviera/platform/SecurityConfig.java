@@ -201,6 +201,15 @@ class SecurityConfig {
 	private static final String ADMIN_VENUE_COMMISSIONS_PATH = "/api/admin/venues";
 	private static final String ADMIN_VENUE_COMMISSION_ITEM_PATH = "/api/admin/venues/*/commission";
 	/**
+	 * Platform-admin review moderation: the per-venue list that makes a takedown operable (it must
+	 * reach venues the public list hides), and the two takedown verbs by review id. The list ends at
+	 * a literal {@code /reviews} segment, so it cannot shadow the photo or commission patterns; the
+	 * verbs sit under {@code /api/admin/reviews}, a namespace of their own.
+	 */
+	private static final String ADMIN_VENUE_REVIEWS_PATH = "/api/admin/venues/*/reviews";
+	private static final String ADMIN_REVIEW_HIDE_PATH = "/api/admin/reviews/*/hide";
+	private static final String ADMIN_REVIEW_UNHIDE_PATH = "/api/admin/reviews/*/unhide";
+	/**
 	 * The platform-admin audit-trail read (required by ADR-0013) — the latest recorded mutating
 	 * {@code /api/admin/**} actions, newest first. The <em>writes</em> it reads are recorded by
 	 * {@link AdminAuditFilter}, registered after the authorization filter so only actions past the gate
@@ -343,6 +352,9 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.DELETE, ADMIN_VENUE_PHOTO_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, ADMIN_VENUE_COMMISSIONS_PATH).hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.PUT, ADMIN_VENUE_COMMISSION_ITEM_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.GET, ADMIN_VENUE_REVIEWS_PATH).hasRole(ADMIN_ROLE)
+						.requestMatchers(HttpMethod.POST, ADMIN_REVIEW_HIDE_PATH, ADMIN_REVIEW_UNHIDE_PATH)
+								.hasRole(ADMIN_ROLE)
 						.requestMatchers(HttpMethod.GET, ADMIN_AUDIT_PATH).hasRole(ADMIN_ROLE)
 						// The public tourist read. Everything order-sensitive above precedes it.
 						.requestMatchers(HttpMethod.GET, "/api/venues/**").permitAll()

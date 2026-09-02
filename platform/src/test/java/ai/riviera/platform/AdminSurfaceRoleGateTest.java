@@ -92,6 +92,7 @@ class AdminSurfaceRoleGateTest {
 	private static final Set<String> CROSS_MODULE_ANCHORS = Set.of(
 			"GET /api/admin/audit",
 			"GET /api/admin/venues/{venueId}/photos",
+			"GET /api/admin/venues/{venueId}/reviews",
 			"GET /api/admin/mail-outbox",
 			"GET /api/admin/payout-batches",
 			"GET /api/admin/refund-outbox");
