@@ -11,7 +11,7 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  * Two guards here exist to keep decisions decided, in the shape the tab strip's own e2e established:
  *
  *  - **The fold budget.** The strip's whole risk is that it pushes the console home's actual work
- *    below the fold. The shared operator chrome already spends 165px and the seven-tab strip
+ *    below the fold. The shared operator chrome already spends 165px and the eight-tab strip
  *    another 137px, so the room left is small and shrinks with every tab. Asserting that the first
  *    content heading stays above a 740px fold fails CI on a fifth tile or a taller tile, instead of
  *    letting the page quietly become a masthead.
@@ -78,7 +78,7 @@ async function openConsole(page: Page, venues: unknown = VENUES): Promise<void> 
 }
 
 /**
- * The measured budget, at HEAD: chrome 0–133, `h1` 173–209, seven-tab strip 221–365, stat strip
+ * The measured budget, at HEAD: chrome 0–133, `h1` 173–209, eight-tab strip 221–365, stat strip
  * 385–626, first content heading 658–**685**. Fifty-five pixels of headroom, which is exactly why
  * this is a test and not a note in a plan doc. The 44px touch-target floor (#605) moved every band:
  * the pills and the chrome's links grew, and the padding they made redundant was removed to pay

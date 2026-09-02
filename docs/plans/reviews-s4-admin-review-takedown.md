@@ -39,8 +39,7 @@ no target column, so the review id must ride in the path) · `riviera-plan-doc` 
 template — forced the author-view decision D-1 and the gate-order decision D-4 to be written
 down before phase 0) · `tdd` (each phase is one seam: the migration + predicate, the
 moderation port, the gate, the REST edge, the admin tab) · `riviera-review-overlay` (review
-gate — due at ready-for-review) · `riviera-docs-freshness` (due at close-out — this slice
-changes what RESPONSIBILITIES §review, CONTEXT.md and the CLAUDE.md module row *state*) ·
+gate — due at ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD`, 6 findings, all patched: `AdminAuditLog`'s "five modules", `AdminSurfaceRoleGateTest`'s anchor count (F-5), the tab spec's "at most eight", two e2e headers' "seven tabs", and the admin-console artboard's tab order, which gained the README's as-built pointer) ·
 `postgres` (nullable `TIMESTAMPTZ` over a boolean so the admin list can say "hidden since";
 no index for a low-selectivity predicate already inside an index seek) · `riviera-modulith`
 (the port stays internal in `application/` — nothing outside `review` calls it — and the
@@ -159,7 +158,7 @@ Reviews tab shares it.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Flyway V48 collision with in-flight work | low | high | Checked 2026-09-02: V47 highest on `main`, **zero** open PRs. If one appears, this branch renumbers (merges second); re-check at the merge-from-main | agent | open |
+| R-1 | Flyway V48 collision with in-flight work | low | high | Checked 2026-09-02: V47 highest on `main`, **zero** open PRs. If one appears, this branch renumbers (merges second); re-check at the merge-from-main | agent | **closed (PR stage)** — `main` had not moved at ready-for-review (`git rev-list --count HEAD..origin/main` = 0); V48 still free |
 | R-2 | A hidden review re-enters circulation through the author's **delete + resubmit** (delete frees the slot, a fresh submit claims a new visible row) | high without D-1 | high | D-1: a hidden review is frozen for its author — `ReviewGate` answers `HIDDEN` before the window, the lifecycle maps it to `AmendOutcome.Hidden` for edit *and* delete, submit to `AlreadyReviewed`; `ReviewLifecycleServiceTest.aHiddenReviewCannotBeEditedOrRemoved` | agent | **closed (phase 2)** — the pin is green: edit, delete and resubmit all refused with the row untouched |
 | R-3 | The predicate lands in one `WHERE` but not the other (list hides, aggregate still counts) | med | high | Both `WHERE`s in one commit (phase 0), each with its own pin (AC-1, AC-2); `JdbcReviews` Javadoc rewritten to state the predicate lives in exactly those two statements | agent | **closed (phase 0)** — both pins green, the audit above enumerates the seven statements |
 | R-4 | A missing `SecurityConfig` matcher lets `anyRequest().authenticated()` admit a plain OPERATOR to the new routes | low | high | Three explicit `hasRole(ADMIN)` matchers; `AdminSurfaceRoleGateTest` discovers every `/api/admin/**` mapping and probes OPERATOR + CUSTOMER — a missed matcher fails the build; `AdminReviewTakedownIT.takedownIsAdminOnly` proves it over the real chain | agent | **closed (phase 3)** — both pins green; the plain operator is `403` on all three routes |
@@ -341,10 +340,9 @@ Venue picker `<select data-testid="admin-reviews-venue">`, the photos tab's mark
 
 ## Execution status
 
-**Stage pointer:** `sonar gate` (PR #898 ready for review; review gate run, findings fixed)
+**Stage pointer:** `merged via PR #898` (close-out written before the merge, per §3 step 4)
 
-**Next action:** post the review comment, then pull the Sonar list on head `ccc8347` once CI is
-green; then the merge close-out (`references/pr-gates.md` §3).
+**Next action:** none — the merge close-out (`references/pr-gates.md` §3): issue #814 closed by the PR, epic #810's sub-issue ticked, subscription ended.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -376,6 +374,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-4 | CI (frontend job, head `0922fbd`) | `admin-privacy.e2e.ts` pins the strip's last three labels as `Photos, Privacy, Audit` — the Reviews tab now sits between | fixed — `Reviews, Privacy, Audit`, slot 8 |
 | F-5 | review (comment-compliance walker) | `AdminSurfaceRoleGateTest`'s anchor Javadoc counted five entries across five owners and promised "a new admin endpoint needs no edit here" — this PR added a sixth anchor for the `review` module | fixed — six across six, and the sentence now says a module's *first* admin surface adds one |
 | F-6 | review (overlay RV-FE-9 spirit, Minor) | a failed un-hide moved focus onto the notice although the pressed Un-hide button survives — only the hide leg destroys its control | fixed — the un-hide failure keeps focus where it is and lets the `role=status` region announce; `admin-reviews.spec.ts` pins it |
+| F-7 | `riviera-docs-freshness` over `origin/main...HEAD` | six present-tense counts in files the diff never touched — `AdminAuditLog` Javadoc ("span five modules"), `admin-console-tabs.spec.ts` ("at most eight tabs"), `admin-privacy.e2e.ts` + `admin-console-stats.e2e.ts` ("seven tabs"), and the admin-console artboard's stated order (no Reviews) | fixed — counts updated; the artboard gets the `as-built diverges — see #814` pointer, never a rewrite |
 | F-3 | review (git-history walker) | `q1-admin-console-tab-ia.md`'s summary sentence ("filtering the eight … five shipped tabs") contradicted the table it summarizes once the Reviews row landed | fixed — the paragraph is dated to decision time with a note naming the later row |
 
 ---
@@ -438,6 +437,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/e2e/support/admin-console.mocks.ts` — the reviews read
 - `frontend/e2e/touch-targets-admin.e2e.ts` — the Reviews row + confirm state
 - `frontend/e2e/admin-privacy.e2e.ts` — the strip's last three labels (F-4)
+- `frontend/e2e/admin-console-stats.e2e.ts` — the tab count in its measured-budget header (F-7)
+- `platform/src/main/java/ai/riviera/platform/AdminAuditLog.java` — the module count in its Javadoc (F-7)
 - `RESPONSIBILITIES.md` — §review (moderation, the predicate landed, the author's fence, the admin surface), §venue (no change — states the listener now excludes hidden by re-read)
 - `CONTEXT.md` — **Review takedown**, **Hidden review**
 - `CLAUDE.md` — the `review` row names moderation
@@ -613,34 +614,33 @@ booking-detail DTO test, `review-panel.spec.ts`
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `gradle test --tests "*ReviewModerationFlowIT*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-2:** same class → PASS.
-- [ ] **AC-3 / AC-4:** `gradle test --tests "*ReviewModerationServiceTest*" --tests "*ReviewModerationFlowIT*"` → PASS.
-- [ ] **AC-5:** `gradle test --tests "*VenueRatingRecomputeIT*"` → PASS.
-- [x] **AC-6:** `gradle test --tests "*ReviewModerationFlowIT*"` → PASS.
-- [ ] **AC-7 / AC-8:** `gradle test --tests "*AdminReviewTakedownIT*" --tests "*AdminSurfaceRoleGateTest*" --tests "*EndpointRoleGateCoverageTest*"` → PASS.
-- [x] **AC-9:** `gradle test --tests "*ReviewGateTest*" --tests "*ReviewLifecycleServiceTest*" --tests "*ReviewEligibilityServiceTest*" --tests "*ReviewControllerTest*"` → PASS.
-- [x] **AC-10:** `npm test -- review-panel` → PASS.
-- [ ] **AC-11 / AC-12:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts admin-reviews touch-targets-admin` + `npm run test:a11y` → PASS.
+- [x] **AC-1 / AC-2:** `gradle test --tests "*ReviewModerationFlowIT*"` → PASS (2, skipped 0 at phase 0; 4 at phase 1). Verified at phases 0–1.
+- [x] **AC-3 / AC-4:** `gradle test --tests "*ReviewModerationServiceTest*" --tests "*ReviewModerationFlowIT*"` → PASS (4 + 4, skipped 0). Verified at phase 1.
+- [x] **AC-5:** `gradle test --tests "*VenueRatingRecomputeIT*"` → PASS (6, skipped 0). Verified at phase 0.
+- [x] **AC-6:** `gradle test --tests "*ReviewModerationFlowIT*"` → PASS (`adminListShowsEveryReviewMarked`). Verified at phase 1.
+- [x] **AC-7 / AC-8:** `gradle test --tests "*AdminReviewTakedownIT*" --tests "*AdminSurfaceRoleGateTest*" --tests "*EndpointRoleGateCoverageTest*"` → PASS (5 + 3 + 1, skipped 0). Verified at phase 3.
+- [x] **AC-9:** `gradle test --tests "*ReviewGateTest*" --tests "*ReviewLifecycleServiceTest*" --tests "*ReviewEligibilityServiceTest*" --tests "*ReviewControllerTest*" --tests "*ViewBookingServiceTest*"` → PASS (8 + 20 + 7 + 21 + 37). Verified at phase 2.
+- [x] **AC-10:** `ng test --include=src/app/booking/review-panel.spec.ts` → PASS (27). Verified at phase 2.
+- [x] **AC-11 / AC-12:** `playwright test -c playwright.a11y.config.ts admin-reviews admin-venue-photos admin-console-tabs touch-targets-admin admin-audit review-lifecycle venue-reviews admin-privacy` → PASS (39 + 8) and `npm test` → PASS (2423 across 216 files). Verified at phase 4 and the review-fix round; CI's full mocked suite (405) on the phase-4 head after F-4.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
