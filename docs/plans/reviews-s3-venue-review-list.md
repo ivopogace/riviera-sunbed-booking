@@ -155,13 +155,13 @@ panel's existing spec.)
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Flyway V47 collision with in-flight work | low | high | Checked 2026-09-02: V46 highest on `main`, **zero** open PRs. If one appears, this branch renumbers (merges second) | agent | open |
+| R-1 | Flyway V47 collision with in-flight work | low | high | Checked 2026-09-02: V46 highest on `main`, **zero** open PRs. If one appears, this branch renumbers (merges second) | agent | **closed (phase 4)** — re-checked at the merge-from-main: V47 still free |
 | R-2 | The list is served for a venue tourists cannot see (suspended / unowned owner), leaking a catalogue read the map read hides | med | med | The fence lives in `venue`'s application service `ListVenueReviewsService` (not the controller), consulting `operator.api.VenueVisibility` exactly as `JdbcVenueCatalog.findVenueMap` does; empty → `404`. `ListVenueReviewsServiceTest` + `VenueReviewsControllerTest.anInvisibleVenueIs404` | agent | **closed (phase 2)** — both pins green; the port is never called for a hidden venue |
 | R-3 | The exact stay day leaks (privacy: the issue mandates month/year only) | low | med | Reduced to `YearMonth` in `JdbcReviews`'s row mapper — no published type carries a `LocalDate`; wire field `stayedIn: "YYYY-MM"`; `VenueReviewsControllerTest.servesTheStayAsYearMonthOnly` asserts the shape | agent | **closed (phases 1–2)** — `ListedReview.stayedIn` is a `YearMonth`, the wire carries `2026-07` and no `stayDate` field |
 | R-4 | V47 backfill: a production `review` row with no matching booking date | very low | high | `booking_id` is a `NOT NULL` FK, so the `UPDATE … FROM booking` join covers every row; `SET NOT NULL` afterwards fails the migration loudly rather than shipping a null. `ReviewMigrationIT.requiresAStayDate` pins the constraint | agent | **closed (phase 0)** — V47 backfills then locks; the constraint test is green |
 | R-5 | Widening `CompletedStay` (the `spi` vocabulary) breaks `booking`'s adapter and the two service-test fakes | high | low | Same phase (0): `JdbcCompletedStays` selects `booking_date`; both fakes rebuilt; `Reviews.claim` deepens to `claim(CompletedStay, ReviewSubmission, Instant)` so no caller threads a seventh parameter | agent | **closed (phase 0)** — every constructor/implementor found by the audit below was updated in the same commit; 70 review + recompute tests green |
 | R-6 | `venue-map.spec.ts` / `venue-map.a11y.spec.ts` fail on `httpMock.verify()` because the embedded child now issues a `/reviews` request | high | low | Drain it: `httpMock.match((r) => r.url.endsWith('/reviews'))` before `verify()` in both `afterEach`s; the child's own specs cover its states | agent | **closed (phase 3)** — three `afterEach` sites drain it; 165 tests green across the touched specs |
-| R-7 | Legacy mocked e2e specs that render `/venues/1` without a `/reviews` mock now show the section's failure state; the touch-target sweep never sees the "Show more" button | med | low | The failure state is quiet (one line + the shared retry button, itself `[appTouchTarget]`); `touch-targets-tourist.e2e.ts`'s venue-detail case gains a two-page mock so the sweep measures the control | agent | open |
+| R-7 | Legacy mocked e2e specs that render `/venues/1` without a `/reviews` mock now show the section's failure state; the touch-target sweep never sees the "Show more" button | med | low | The failure state is quiet (one line + the shared retry button, itself `[appTouchTarget]`); `touch-targets-tourist.e2e.ts`'s venue-detail case gains a two-page mock so the sweep measures the control | agent | **closed (phase 4)** — the sweep measures "Show more reviews"; every legacy venue-page spec (booking-flow, same-day, review-a-stay, loading-announcements) stays green with the failure line rendered |
 | R-8 | "Show more" removes itself after the last page → focus stranded on `<body>` (WCAG 2.4.3, RV-FE-9) | high | med | `focusMover()` to the first newly-appended entry whenever the control leaves; pinned in `venue-reviews.spec.ts` and the e2e | agent | **closed (phase 3)** — the last-page and retry cases both move focus onto the first new `<li>` (`document.activeElement` pinned); the e2e re-proves it in phase 4 |
 | R-9 | Dropping `review_venue_id_idx` slows the aggregate recompute | low | low | The replacement `(venue_id, id)` composite serves `WHERE venue_id = ?` through its prefix; the old index becomes a duplicate prefix (`postgres` index-optimization) | agent | **closed (phase 0)** — `review_venue_listing_idx (venue_id, id)` replaces it in V47; `VenueRatingRecomputeIT` green |
 | R-10 | Error-contract drift on the new 4xx paths (§6b) | low | med | `InvalidApiRequestException` for a non-positive cursor; the binder's own `400` for a malformed one (the calendar read's `rejectsAMalformedDate` precedent); `404` via `ResponseEntity.notFound()`; `ErrorContractArchitectureTests` stays green | agent | **closed (phase 2)** — `rejectsANonPositiveCursor` reads `INVALID_REQUEST`, `rejectsAMalformedCursor` is a `400`, the architecture test is green |
@@ -181,25 +181,23 @@ panel's existing spec.)
 - **Decision D-3 — maintainer, 2026-09-02:** page size **10**, fixed server-side as the
   port's contract (the `MyBookings` cap precedent), not a client knob.
 
+### Resolved during the build
+
+- **Assumption A-1 — held** (phase 1): newest-first is ordered by review **id** (assigned at
+  claim, monotone with insertion); `ReviewListingFlowIT.pagesNewestFirstPastTheFirstPage` pins
+  the order and the single-integer cursor.
+- **Assumption A-2 — recorded** (phase 4): "visible reviews only" is vacuously true in this
+  slice; `JdbcReviews`'s Javadoc and RESPONSIBILITIES §review name `newestListedBefore` and
+  `totalsFor` as the two `WHERE`s the moderation slice's predicate lands in.
+- **Assumption A-3 — held** (phase 3): `displayName` stays nullable on the wire; the section
+  renders "A guest" for a null (`venue-reviews.spec.ts`).
+- **Assumption A-4 — held** (phase 3): heading "Guest reviews", empty state "No written reviews
+  yet — ratings so far came without a comment.", failure "Reviews couldn’t be loaded." with the
+  shared retry button.
+
 ### Open
 
-- **Assumption A-1:** newest-first is ordered by review **id** (assigned at claim, monotone
-  with insertion) rather than `created_at`; the two agree except under concurrent claims
-  within the same clock tick, and a single-key cursor is what keeps the wire shape one
-  integer. — *Owner:* agent · *Resolves by:* phase 1 (`ReviewListingFlowIT` pins the order).
-- **Assumption A-2:** "visible reviews only" (issue AC 6) is **vacuously true** in this
-  slice: no moderation column exists. The `ListedReviews` Javadoc and the SQL name the
-  predicate's future home (the one `WHERE` in `JdbcReviews.newestListedBefore`, beside
-  `totalsFor`) so the moderation slice adds it in one place. — *Owner:* agent ·
-  *Resolves by:* close-out (recorded in RESPONSIBILITIES §review).
-- **Assumption A-3:** a row carrying a comment always carries a display name (the slice-2
-  edge contract); the wire keeps `displayName` nullable and the client renders "A guest"
-  for a null, so an out-of-contract row cannot break the section. — *Owner:* agent ·
-  *Resolves by:* phase 3.
-- **Assumption A-4:** the section's copy — heading "Guest reviews", empty state "No written
-  reviews yet — ratings so far came without a comment.", failure "Reviews couldn't be
-  loaded." — is the agent's call (display wording is the client's, §6b). — *Owner:* agent ·
-  *Resolves by:* phase 3.
+*(None — every assumption above is resolved.)*
 
 ## Availability & concurrency (invariant #2)
 
@@ -360,9 +358,9 @@ the entries are star rows, not a score.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `PR — merging origin/main, then ready for review`
 
-**Next action:** phase 4 — the mocked e2e journey `frontend/e2e/venue-reviews.e2e.ts`, the touch-target sweep's reviews mock, the substrate docs. Draft PR: #897.
+**Next action:** merge `origin/main` with full phase discipline, mark PR #897 ready for review, run the Review gate (`references/pr-gates.md` §1).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -370,7 +368,7 @@ the entries are star rows, not a score.
 | 1 — `review.api.ListedReviews` + the keyset read | ✅ | `Publish a cursor page of a venue's listed reviews from the review module (#813)` |
 | 2 — `venue`: fence, endpoint, DTO, edge rows | ✅ | `Serve a venue's listed reviews publicly behind the tourist-visibility fence (#813)` |
 | 3 — frontend: `app-venue-reviews` on the venue page | ✅ | `Render a venue's guest reviews below the beach map with a Show-more cursor (#813)` |
-| 4 — mocked e2e, touch-target coverage, docs, close-out prep | | |
+| 4 — mocked e2e, touch-target coverage, docs, close-out prep | ✅ | `Cover the venue review list end to end and record it in the substrate docs (#813)` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -751,14 +749,14 @@ Modify `shared/rating.ts` + spec, `shared/venue-views.ts`, `booking/review-panel
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `gradle test --tests "*ReviewListingFlowIT*" --tests "*ListedReviewsServiceTest*"` → PASS.
-- [ ] **AC-2:** `gradle test --tests "*ReviewListingFlowIT*"` → PASS.
-- [ ] **AC-3:** `gradle test --tests "*ReviewListingFlowIT*" --tests "*VenueReviewsControllerTest*"` → PASS.
-- [ ] **AC-4:** `npm test -- venue-reviews` + the mocked e2e → PASS.
-- [ ] **AC-5:** `gradle test --tests "*ListVenueReviewsServiceTest*" --tests "*VenueReviewsControllerTest*"` → PASS.
-- [ ] **AC-6:** `gradle test --tests "*ReviewSubmitFlowIT*" --tests "*ReviewMigrationIT*"` → PASS.
-- [ ] **AC-7:** `gradle test --tests "*VenueReviewsControllerTest*"` → PASS.
-- [ ] **AC-8:** `npm test`, `npm run test:a11y`, the mocked e2e → PASS.
+- [x] **AC-1:** `gradle test --tests "*ReviewListingFlowIT*" --tests "*ListedReviewsServiceTest*"` → PASS (4 + 6, skipped 0). Verified at phase 1.
+- [x] **AC-2:** `gradle test --tests "*ReviewListingFlowIT*"` → PASS (`starOnlyReviewsCountButAreNotListed`). Verified at phase 1.
+- [x] **AC-3:** `gradle test --tests "*ReviewListingFlowIT*" --tests "*VenueReviewsControllerTest*"` → PASS. Verified at phase 2.
+- [x] **AC-4:** `ng test --include=src/app/venue/venue-reviews.spec.ts` + `playwright test -c playwright.a11y.config.ts venue-reviews` → PASS. Verified at phases 3–4.
+- [x] **AC-5:** `gradle test --tests "*ListVenueReviewsServiceTest*" --tests "*VenueReviewsControllerTest*"` → PASS (2 + 7). Verified at phase 2.
+- [x] **AC-6:** `gradle test --tests "*ReviewSubmitFlowIT*" --tests "*ReviewMigrationIT*"` → PASS (7 + 6, skipped 0). Verified at phase 0.
+- [x] **AC-7:** `gradle test --tests "*VenueReviewsControllerTest*"` → PASS (`rejectsANonPositiveCursor`, `rejectsAMalformedCursor`). Verified at phase 2.
+- [x] **AC-8:** `npm run test:a11y` (771 tests) + the touched unit specs (165) + `playwright test -c playwright.a11y.config.ts venue-reviews touch-targets-tourist loading-announcements booking-flow same-day-booking review-a-stay` (33 passed) → PASS. Verified at phase 4.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 

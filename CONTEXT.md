@@ -228,6 +228,12 @@ model in `docs/architecture/domain-model.md`.
 - **Frozen review** — a review whose window has closed: still readable by its author, no longer
   changeable or removable. Distinct from a **closed window with no review**, where there is nothing
   to show and nothing left to write; the two say opposite things on screen.
+- **Listed review** — a visible review that carries a comment, as it appears on the venue page:
+  its stars, its display name, its **stay month** and its words. A star-only review is never
+  listed — it counts in the aggregate and shows nowhere else — so a venue can carry a score and an
+  empty list at once. The list reads newest first, ten at a time.
+- **Stay month** — the month and year of the stay a review is about, the only precision the public
+  ever sees: a month places a stay in a season, a day would place a guest at the venue.
 - **Aggregate rating** — a venue's public score: the **mean of its visible reviews**, carried in
   **tenths** (4.5 stars is 45 — integer arithmetic, never floating point, the money discipline
   applied to the rating) alongside the count it is over. A venue with no reviews reads 0/0 and is
