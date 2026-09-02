@@ -105,6 +105,7 @@ import ai.riviera.platform.venue.application.EditBeachMap;
 import ai.riviera.platform.venue.application.EditVenueProfile;
 import ai.riviera.platform.venue.application.LayoutCommand;
 import ai.riviera.platform.venue.application.ListOwnedVenues;
+import ai.riviera.platform.venue.application.ListVenueReviews;
 import ai.riviera.platform.venue.application.OnboardVenue;
 import ai.riviera.platform.venue.application.VenueCreationProperties;
 import ai.riviera.platform.venue.application.PhotoProcessingResult;
@@ -851,6 +852,12 @@ class WebSliceStubs {
 	/** The venue admin-profile read the web slices register with {@code VenueAdminController}. */
 	@Bean
 	ViewVenueProfile viewVenueProfile() {
+		return (_, _) -> Optional.empty();
+	}
+
+	/** The public review list behind {@code GET /api/venues/{id}/reviews} — inert: no venue is visible. */
+	@Bean
+	ListVenueReviews listVenueReviews() {
 		return (_, _) -> Optional.empty();
 	}
 

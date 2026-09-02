@@ -14,16 +14,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.review.vocabulary.ReviewCursor;
 import ai.riviera.platform.shared.InvalidApiRequestException;
 import ai.riviera.platform.venue.api.VenueCatalog;
+import ai.riviera.platform.venue.application.ListVenueReviews;
 import ai.riviera.platform.venue.vocabulary.VenueFilter;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.VenueMapView;
 import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
 
 /**
- * Public tourist read endpoints for venues (invariant #11 — depends only on the {@code venue.api}
- * port). Two of them are the originals: the discovery <strong>list</strong>
+ * Public tourist read endpoints for venues (invariant #11 — depends only on this module's ports).
+ * Two of them are the originals: the discovery <strong>list</strong>
  * ({@code GET /api/venues?beach=&region=&date=}) and a single venue + its beach
  * <strong>map</strong> ({@code GET /api/venues/{id}}, date-aware — 200 with the map, or 404 for an
  * unknown id).
@@ -32,6 +34,10 @@ import ai.riviera.platform.venue.vocabulary.VenueSummaryView;
  * availability question for a <em>window</em> of days at once, so a date picker can show which days
  * are worth choosing. Its path deliberately does not reuse the {@code /availability} segment, which
  * is the operator-only per-set state read.
+ *
+ * <p>A fourth, {@code GET /api/venues/{id}/reviews?cursor=}, pages through the venue's listed
+ * reviews newest first; the cursor is the id of the last review the caller saw, and a page answers
+ * the next one to pass back, or none.
  *
  * <p>The optional {@code date} query param selects the day whose availability the map reflects.
  * When omitted it defaults to <strong>today in {@code Europe/Tirane}</strong> (invariant #6) — the
@@ -53,10 +59,12 @@ class VenueReadController {
 	private static final int MAX_WINDOW_DAYS = 62;
 
 	private final VenueCatalog catalog;
+	private final ListVenueReviews reviews;
 	private final Clock clock;
 
-	VenueReadController(VenueCatalog catalog, Clock clock) {
+	VenueReadController(VenueCatalog catalog, ListVenueReviews reviews, Clock clock) {
 		this.catalog = catalog;
+		this.reviews = reviews;
 		this.clock = clock;
 	}
 
@@ -110,6 +118,24 @@ class VenueReadController {
 		}
 		return catalog.availabilityBetween(new VenueId(venueId), start, end)
 				.map(days -> ResponseEntity.ok(days.stream().map(DailyAvailabilityView::of).toList()))
+				.orElseGet(() -> ResponseEntity.notFound().build());
+	}
+
+	/**
+	 * One page of the venue's listed reviews, newest first. {@code cursor} is the {@code nextCursor}
+	 * a previous page answered; omitted, the page starts at the newest review. A cursor that cannot
+	 * name a review is rejected {@code 400} before the list is asked; a venue tourists cannot see is a
+	 * {@code 404}, exactly as the map read answers.
+	 */
+	@GetMapping("/{venueId}/reviews")
+	ResponseEntity<VenueReviewsResponse> reviews(@PathVariable long venueId,
+			@RequestParam(required = false) Long cursor) {
+		if (cursor != null && cursor <= 0) {
+			throw new InvalidApiRequestException("reviews: 'cursor' must be a positive review id");
+		}
+		ReviewCursor from = cursor == null ? ReviewCursor.FIRST_PAGE : new ReviewCursor(cursor);
+		return reviews.pageFor(new VenueId(venueId), from)
+				.map(page -> ResponseEntity.ok(VenueReviewsResponse.from(page)))
 				.orElseGet(() -> ResponseEntity.notFound().build());
 	}
 
