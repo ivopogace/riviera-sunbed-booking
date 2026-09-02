@@ -69,6 +69,8 @@ export class App {
    */
   protected readonly signOutNotice = inject(SignOutNotice);
   private readonly router = inject(Router);
+  /** The navigation already in flight when the open overlay was raised; 0 when the router was idle. */
+  private overlayNavId = 0;
 
   protected readonly menuOpen = signal(false);
   protected readonly themeOpen = signal(false);
@@ -141,16 +143,43 @@ export class App {
     return operatorChrome ? 'operator' : 'tourist';
   });
 
+  /**
+   * Wires the close-on-navigation rule: a navigation the user set off carries them away from the
+   * page they opened an overlay on — a found booking code navigates to `/booking/:code`, so the find
+   * modal must not linger over the detail view — and closes all four.
+   *
+   * <p>The ONE navigation that does not is the one already running when the overlay was opened.
+   * The header is interactive before the first route's lazily loaded chunk has activated
+   * (`provideRouter`'s default `enabledNonBlocking` initial navigation), so the `NavigationEnd`
+   * closing that window is not something the user did and must not shut a menu they just opened.
+   * That reasoning is about a navigation being ALREADY UNDER WAY, not about it being the first or
+   * about where it lands: a guest who opens the theme picker while a nav link they clicked is still
+   * loading keeps it open onto the destination too, deliberately.
+   * Identity is the navigation id, not the url: a url comparison would also swallow a navigation
+   * the guest DID start from inside the overlay onto the page they deep-linked to, which supersedes
+   * the pending one under a new id and leaves {@link FindBooking} waiting on a close that never comes.
+   *
+   * <p>The close performs no focus restore: the destination page takes focus, and restoring is only
+   * for an on-page dismiss.
+   *
+   * <p><strong>Precondition of the skip:</strong> a skipped navigation must not destroy the open
+   * overlay's markup. The three popovers render inside `app.html`'s
+   * `@if (shellChrome() === 'tourist')`, so a destination on operator or admin chrome would tear
+   * them out while their signals stayed true, stranding focus on `document.body`. No tourist-header
+   * link targets such a route today. Adding the first one means closing the popovers on the chrome
+   * switch, not relying on this rule.
+   */
   constructor() {
-    // Any successful navigation closes the shell overlays — in particular, a found booking code
-    // navigates to /booking/:code, so the find modal must not linger over the detail view. No focus
-    // restore here: the destination page takes focus (restore is only for an on-page dismiss).
+    // The navigation an overlay was opened during is not the user leaving the page.
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
         takeUntilDestroyed(),
       )
-      .subscribe(() => {
+      .subscribe((event) => {
+        if (event.id === this.overlayNavId) {
+          return;
+        }
         // Both overlays hold focus in markup this navigation destroys (find modal, account menu).
         const overlayHeldFocus = this.findOpen() || this.accountOpen();
         this.findOpen.set(false);
@@ -164,9 +193,22 @@ export class App {
       });
   }
 
+  /**
+   * Record the navigation already under way, if any, as a header control changes an overlay's
+   * state; `0` when the router is idle, an id no navigation carries (they start at 1).
+   *
+   * <p>The three toggles call this on the lowering half too, which is inert: navigation ids are
+   * monotonic per `Router`, so a value recorded while nothing is open can never equal a LATER
+   * `NavigationEnd`'s id, and the close it would skip is a no-op anyway.
+   */
+  private notePendingNavigation(): void {
+    this.overlayNavId = this.router.currentNavigation()?.id ?? 0;
+  }
+
   /** Open the find-a-booking modal, closing any open nav popover and recording the focus-return
    *  target (the desktop trigger, or the hamburger when opened from the collapsing mobile menu). */
   protected openFind(fromMobile: boolean): void {
+    this.notePendingNavigation();
     this.findReturn = (fromMobile ? this.menuButton() : this.findButton())?.nativeElement ?? null;
     this.menuOpen.set(false);
     this.themeOpen.set(false);
@@ -181,12 +223,14 @@ export class App {
   }
 
   protected toggleMenu(): void {
+    this.notePendingNavigation();
     this.themeOpen.set(false);
     this.accountOpen.set(false);
     this.menuOpen.update((open) => !open);
   }
 
   protected toggleThemePicker(): void {
+    this.notePendingNavigation();
     this.menuOpen.set(false);
     this.accountOpen.set(false);
     this.themeOpen.update((open) => !open);
@@ -194,6 +238,7 @@ export class App {
 
   /** Toggle the signed-in account menu; only one header popover is open at a time. */
   protected toggleAccountMenu(): void {
+    this.notePendingNavigation();
     this.menuOpen.set(false);
     this.themeOpen.set(false);
     this.accountOpen.update((open) => !open);
