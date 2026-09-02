@@ -168,9 +168,9 @@ construction, which AC-5's `toHaveCSS` assertions are what prove.
 | R-3 | Carrying `.72/.4/.35/.07` and the `0.97` fill beyond the ticket's listed forms grows the diff past what #849 describes | med | low | bounded to **one component's dark-ink ramp**, justified per position in the table above, recorded in the ledger as an `n corrected` note the way every sibling row does | claude | open |
 | R-4 | `0.35 → 0.4` is a real repaint, and a repaint hidden inside a migration is how a slice loses trust | med | med | stated in the plan, asserted as a strict comparison in the guard spec, and named in the ledger row | claude | open |
 | R-5 | Ten new tokens is a large single-declaration surface; one added dark override later silently reverses a theme-invariance claim | med | high | AC-3's `declarationsOf(...)` length-1 assertion per token, plus the base-block assertion — the `stylesheet-tokens.ts` guard pattern | claude | open |
-| R-6 | A token declared without its `@theme inline` row generates no utility: the class stays in the markup and the paint silently does not change, invisible to every unit spec | med | high | AC-5's mocked e2e `toHaveCSS` in a real render, both themes — the only seam that can see it | claude | open |
+| R-6 | A token declared without its `@theme inline` row generates no utility: the class stays in the markup and the paint silently does not change, invisible to every unit spec | med | high | AC-5's mocked e2e `toHaveCSS` in a real render, both themes — the only seam that can see it | claude | closed — phase 3, 8 tests green |
 | R-7 | In-flight collision on the shared files (`tailwind.css`, `testing/glass-tokens.ts`) | low | med | checked at intake: **zero open PRs** on the repo, `main` at `15c82d0`. No Flyway version to claim (frontend-only) | claude | closed — verified at intake |
-| R-8 | The e2e's dark-theme leg for the operator families is unreachable through a real render (the console pins porcelain) | high | low | the #870 precedent: prove the declaration resolves at the **document root** under a forced dark theme, and prove the real porcelain render separately | claude | open |
+| R-8 | The e2e's dark-theme leg for the operator families is unreachable through a real render (the console pins porcelain) | high | low | the #870 precedent: prove the declaration resolves at the **document root** under a forced dark theme, and prove the real porcelain render separately | claude | closed — phase 3 |
 
 ## Open questions / Assumptions
 
@@ -228,17 +228,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** Phase 3 — write `e2e/fixed-ink-token-recut.e2e.ts`: the ten tokens at the
-document root under porcelain and dark, plus the reachable consumers' computed styles.
+**Next action:** Phase 4 — rewrite the ledger's T-3 rows to the re-cut, fix the #882 row's
+missing PR number, then run `riviera-docs-freshness` and open the PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the calendar's fixed-glass ink ramp | ✅ | |
 | 1 — the booking-view banner body pair | ✅ | |
 | 2 — the two porcelain-pinned console borders | ✅ | |
-| 3 — the cross-theme real-render proof (mocked e2e) | | |
+| 3 — the cross-theme real-render proof (mocked e2e) | ✅ | |
 | 4 — ledger re-cut + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
