@@ -346,6 +346,30 @@ describe('AuthPage', () => {
       expect(navigate).toHaveBeenCalledWith('/operator/15/payouts');
     });
 
+    it('never flashes the landed card while the operator venue read is in flight', async () => {
+      await render({ audience: 'operator' });
+      operator.signIn.mockImplementation(() => {
+        operator.signedIn.set(true);
+        return Promise.resolve('signed-in');
+      });
+      let settle!: (result: OwnedVenuesResult) => void;
+      owned.load = () => new Promise<OwnedVenuesResult>((resolve) => (settle = resolve));
+      type('auth-identifier', 'sereno');
+      type('auth-password', 'password123');
+      await submit();
+
+      // Signed in, landing route not yet known: the busy form stays, the landed card never appears.
+      expect(el('auth-signed-in')).toBeNull();
+      expect(el('auth-form')).not.toBeNull();
+      expect(el('auth-submit').getAttribute('aria-disabled')).toBe('true');
+      expect(navigate).not.toHaveBeenCalled();
+
+      settle({ status: 'loaded', venues: [{ id: 12, name: 'A', beach: 'X' }] });
+      // whenStable tracks no plain promise; a macrotask lets the settled read reach the navigation.
+      await new Promise<void>((resolve) => setTimeout(resolve));
+      expect(navigate).toHaveBeenCalledWith('/operator/12');
+    });
+
     it('sends the operator to the picker when the venue read fails', async () => {
       // A failed read must not be mistaken for "owns nothing" and forwarded to onboarding.
       await render({ audience: 'operator' });

@@ -313,7 +313,11 @@ export class AuthPage {
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | undefined>(undefined);
   private readonly submittedForApproval = signal(false);
-  /** True from the moment a successful sign-in starts navigating away, so the card never flashes. */
+  /**
+   * True from the moment a sign-in succeeds — before the landing route is even known — so the landed
+   * card never flashes while the operator's venue read or the navigation is in flight. The busy form
+   * stays on screen instead: replacing it would destroy the focused submit button (WCAG 2.4.3).
+   */
   private readonly handingOff = signal(false);
 
   protected readonly model = signal({ identifier: '', contactEmail: '', password: '' });
@@ -483,7 +487,7 @@ export class AuthPage {
       this.error.set(signInFailureMessage(result));
       return;
     }
-    await this.land(await this.operatorLandingRoute());
+    await this.land(this.operatorLandingRoute());
   }
 
   /** Where the operator goes next; an unreadable venue list falls back to the picker, not onboarding. */
@@ -521,7 +525,7 @@ export class AuthPage {
     const signIn = await this.operatorAuth.signIn(identifier, password);
     this.model.set({ identifier: '', contactEmail: '', password: '' });
     if (signIn === 'signed-in') {
-      await this.land(await this.operatorLandingRoute());
+      await this.land(this.operatorLandingRoute());
       return;
     }
     if (signIn === 'invalid-credentials' || signIn === 'rate-limited') {
@@ -532,9 +536,10 @@ export class AuthPage {
     this.submittedForApproval.set(true);
   }
 
-  private async land(url: string): Promise<void> {
+  /** Hand off to the destination; the flag goes up before a still-resolving route is awaited. */
+  private async land(url: string | Promise<string>): Promise<void> {
     this.handingOff.set(true);
-    await this.router.navigateByUrl(url);
+    await this.router.navigateByUrl(await url);
   }
 
   private refocusAfterRender(): void {
