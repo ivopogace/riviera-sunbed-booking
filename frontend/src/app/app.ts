@@ -1,4 +1,3 @@
-import { Location } from '@angular/common';
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { LegalFooter } from './shared/legal-footer';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
@@ -70,9 +69,8 @@ export class App {
    */
   protected readonly signOutNotice = inject(SignOutNotice);
   private readonly router = inject(Router);
-  private readonly location = inject(Location);
-  /** The URL the shell is showing, seeded from the document so a deep-linked first load counts. */
-  private shownUrl = this.router.serializeUrl(this.router.parseUrl(this.location.path(true)));
+  /** The navigation already in flight when the open overlay was raised; 0 when the router was idle. */
+  private overlayNavId = 0;
 
   protected readonly menuOpen = signal(false);
   protected readonly themeOpen = signal(false);
@@ -146,32 +144,32 @@ export class App {
   });
 
   /**
-   * Wires the close-on-navigation rule: a navigation that CHANGES the url carries the user off the
+   * Wires the close-on-navigation rule: a navigation the user set off carries them away from the
    * page they opened an overlay on — a found booking code navigates to `/booking/:code`, so the find
    * modal must not linger over the detail view — and closes all four.
    *
-   * <p>A navigation that lands on the url already shown does not: the header is interactive before
-   * the first route's lazily loaded chunk has activated (`provideRouter`'s default
-   * `enabledNonBlocking` initial navigation), and the `NavigationEnd` closing that window is not
-   * something the user did — it must not shut a menu they just opened. The shown url is tracked
-   * here rather than read back from the browser, whose url the router has already moved by the time
-   * the event arrives (`urlUpdateStrategy: 'deferred'`).
+   * <p>The ONE navigation that does not is the one already running when the overlay was opened.
+   * The header is interactive before the first route's lazily loaded chunk has activated
+   * (`provideRouter`'s default `enabledNonBlocking` initial navigation), so the `NavigationEnd`
+   * closing that window is not something the user did and must not shut a menu they just opened.
+   * Identity is the navigation id, not the url: a url comparison would also swallow a navigation
+   * the guest DID start from inside the overlay onto the page they deep-linked to, which supersedes
+   * the pending one under a new id and leaves {@link FindBooking} waiting on a close that never comes.
    *
    * <p>The close performs no focus restore: the destination page takes focus, and restoring is only
    * for an on-page dismiss.
    */
   constructor() {
-    // Only a navigation that changes the URL closes the shell overlays.
+    // The navigation an overlay was opened during is not the user leaving the page.
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
         takeUntilDestroyed(),
       )
       .subscribe((event) => {
-        if (event.urlAfterRedirects === this.shownUrl) {
+        if (event.id === this.overlayNavId) {
           return;
         }
-        this.shownUrl = event.urlAfterRedirects;
         // Both overlays hold focus in markup this navigation destroys (find modal, account menu).
         const overlayHeldFocus = this.findOpen() || this.accountOpen();
         this.findOpen.set(false);
@@ -185,9 +183,16 @@ export class App {
       });
   }
 
+  /** Remember which navigation, if any, is mid-flight as an overlay goes up — its completion is the
+   *  page the guest is already on finishing its render, not a departure from it. */
+  private markOverlayRaised(): void {
+    this.overlayNavId = this.router.getCurrentNavigation()?.id ?? 0;
+  }
+
   /** Open the find-a-booking modal, closing any open nav popover and recording the focus-return
    *  target (the desktop trigger, or the hamburger when opened from the collapsing mobile menu). */
   protected openFind(fromMobile: boolean): void {
+    this.markOverlayRaised();
     this.findReturn = (fromMobile ? this.menuButton() : this.findButton())?.nativeElement ?? null;
     this.menuOpen.set(false);
     this.themeOpen.set(false);
@@ -202,12 +207,14 @@ export class App {
   }
 
   protected toggleMenu(): void {
+    this.markOverlayRaised();
     this.themeOpen.set(false);
     this.accountOpen.set(false);
     this.menuOpen.update((open) => !open);
   }
 
   protected toggleThemePicker(): void {
+    this.markOverlayRaised();
     this.menuOpen.set(false);
     this.accountOpen.set(false);
     this.themeOpen.update((open) => !open);
@@ -215,6 +222,7 @@ export class App {
 
   /** Toggle the signed-in account menu; only one header popover is open at a time. */
   protected toggleAccountMenu(): void {
+    this.markOverlayRaised();
     this.menuOpen.set(false);
     this.themeOpen.set(false);
     this.accountOpen.update((open) => !open);

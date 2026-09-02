@@ -4,11 +4,13 @@ import { expect, Page } from '@playwright/test';
  * Helpers for the shell's header overlays — the find-a-booking modal, the theme picker, the
  * mobile menu, and the signed-in account disclosure.
  *
- * <p>Each opener first waits for the routed page to be in the outlet, because a spec that clicks a
- * header trigger is asserting about the page under it: `page.goto` resolves on `load`, which a
- * lazily loaded route's chunk may outlive. The shell no longer closes overlays on the initial
- * navigation (#892), so this is the spec's own precondition rather than a workaround; it also
- * covers the redirects that stay in scope of the close rule, such as the post-sign-in one.
+ * <p>Each opener first waits for the routed page to be in the outlet: `page.goto` resolves on
+ * `load`, which a lazily loaded route's chunk may outlive, so without the wait a trigger is clicked
+ * on a header floating over an empty outlet. The shell no longer closes an overlay when the
+ * navigation it was opened during completes (#892), but a first load redirected by a guard resumes
+ * under a fresh navigation id and does still close one — so the wait is what makes an opener
+ * deterministic, not a workaround for a bug. A redirect the spec itself sets off, such as the one
+ * after sign-in, is the spec's own to await: this helper only waits for SOME routed page.
  */
 
 /** Resolves once the current route's component is rendered in the shell's outlet. */

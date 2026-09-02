@@ -44,13 +44,18 @@ const surfaceRoutes = [
   { path: 'operator-chrome', component: BlankPage, data: { operatorChrome: true } },
   // The operator chrome's sign-out navigates here; a resolvable target keeps that await clean.
   { path: 'account/sign-in', component: BlankPage },
-  // The URL a fresh shell reports as shown, so a spec can replay the initial navigation's shape.
-  { path: '', component: BlankPage },
+  // The landing route, its chunk arriving only when a spec says so — the interactive-header window.
+  { path: '', pathMatch: 'full' as const, loadComponent: () => lazyChunk },
 ];
+
+/** Resolves the `lazy` route's chunk, ending the navigation a spec left in flight. */
+let landLazyChunk!: () => void;
+let lazyChunk: Promise<typeof BlankPage>;
 
 describe('App (Liquid Glass shell, issue #134)', () => {
   beforeEach(async () => {
     document.documentElement.removeAttribute('data-riv-theme');
+    lazyChunk = new Promise((resolve) => (landLazyChunk = () => resolve(BlankPage)));
     customerAuth.restoring.set(false);
     customerAuth.signedIn.set(false);
     customerAuth.email.set(undefined);
@@ -327,22 +332,42 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(document.activeElement).toBe(el.querySelector('main'));
   });
 
-  it('keeps an overlay open when the initial navigation lands on the URL the shell already shows (#892)', async () => {
+  it('keeps an overlay open when the navigation it was opened during completes (#892)', async () => {
     const { fixture, el } = shell();
     const router = TestBed.inject(Router);
 
+    // The header goes interactive with the first route's chunk still in flight.
+    const pending = router.navigate(['/']);
     el.querySelector<HTMLButtonElement>('[data-testid="find-open"]')!.click();
     fixture.detectChanges();
-    await fixture.whenStable();
     const focused = document.activeElement;
     expect(el.querySelector('app-find-booking')).not.toBeNull();
 
-    // The initial lazy-load navigation's shape: it ends on the URL the shell already shows.
-    await router.navigate(['/']);
+    landLazyChunk();
+    await pending;
     fixture.detectChanges();
 
     expect(el.querySelector('app-find-booking')).not.toBeNull();
     expect(document.activeElement).toBe(focused);
+  });
+
+  it('closes an overlay when a navigation raised from inside it supersedes the pending one (#892)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+
+    const pending = router.navigate(['/']);
+    el.querySelector<HTMLButtonElement>('[data-testid="find-open"]')!.click();
+    fixture.detectChanges();
+    expect(el.querySelector('app-find-booking')).not.toBeNull();
+
+    // find-booking's move on a found code: it supersedes the pending nav onto the very same url.
+    const resubmitted = router.navigate(['/']);
+    landLazyChunk();
+    await Promise.all([pending, resubmitted]);
+    fixture.detectChanges();
+
+    expect(el.querySelector('app-find-booking')).toBeNull();
+    expect(document.activeElement).toBe(el.querySelector('main'));
   });
 
   it('moves focus to main when a navigation closes the account menu (a11y, #351)', async () => {

@@ -10,15 +10,16 @@
 that actually changes the URL, so the initial lazy-load navigation no longer shuts a header
 overlay the user opened while the first route's chunk was still in flight.
 
-**Architecture:** The shell remembers the URL it is currently showing — seeded at construction
-from the document's own URL, normalised through the router's serializer — and skips the close
-when a `NavigationEnd`'s `urlAfterRedirects` equals it. Seeding from the document URL (rather
-than from `router.url`, which is `/` until the first navigation completes) makes the rule hold
-for a deep-linked first load too, not only for `/`. Rejected alternatives: `event.id === 1`
-(a redirecting initial navigation cancels and re-issues with a new id) and
-`router.navigated` / `lastSuccessfulNavigation()` (both are already flipped for the current
-navigation when subscribers see the event — verified in `@angular/router` 22.0.7, see Resolved
-question Q-1).
+**Architecture:** When an overlay goes up, the shell records the id of the navigation then in
+flight (`router.getCurrentNavigation()?.id`, `0` when the router is idle); the `NavigationEnd`
+subscription skips the close for exactly that navigation. The discriminator is navigation
+IDENTITY, not the URL: "the navigation that was already running when you opened this" is the
+thing the user did not do, whatever URL it lands on. Rejected alternatives: comparing
+`urlAfterRedirects` against a tracked shown-URL (shipped first, then withdrawn at the review
+gate — finding F-1: it also swallows a navigation the guest DID start from inside an overlay
+onto the URL they deep-linked to, hanging the find modal); `event.id === 1` (a guard redirect
+re-issues under a new id — Q-3); and `router.navigated` / `lastSuccessfulNavigation()` (both
+already flipped for the current navigation when subscribers see the event — Q-1).
 
 **Persistence:** N/A — frontend-only, no schema and no backend code in scope (invariant #1 untouched).
 
@@ -47,13 +48,19 @@ for `bugfix/shell-overlay-initial-navigation`.
 
 ## Acceptance criteria (testable)
 
-- [x] **AC-1:** Given a freshly constructed shell with the find-a-booking modal open and no
-  navigation yet having moved it off the URL it loaded at, when the router completes a
-  navigation whose `urlAfterRedirects` equals that URL (the initial lazy-load navigation's
-  shape), then the modal is still rendered and `document.activeElement` is the element that
-  held focus before the navigation. *Seam:* the `app-root` shell observed through `Router`
-  navigation + rendered DOM · *Pinned by:* `app.spec.ts` › `keeps an overlay open when the
-  initial navigation lands on the URL the shell already shows (#892)`
+- [x] **AC-1:** Given the find-a-booking modal was opened while a navigation to a still-loading
+  lazy route was in flight, when that navigation's chunk lands and it completes, then the modal
+  is still rendered and `document.activeElement` is the element that held focus before it.
+  *Seam:* the `app-root` shell observed through `Router` navigation + rendered DOM ·
+  *Pinned by:* `app.spec.ts` › `keeps an overlay open when the navigation it was opened during
+  completes (#892)` — proven red against `main`'s unguarded subscription
+- [x] **AC-7:** Given the find-a-booking modal was opened in that same window, when a navigation
+  raised from inside it supersedes the pending one and lands on the very same URL (what
+  `find-booking` does for a code the guest is already deep-linked to), then the modal closes and
+  focus moves to `main` — `find-booking.ts:191` relies on the shell for this and has no
+  self-close on `navigated === true`. *Seam:* as AC-1 · *Pinned by:* `app.spec.ts` › `closes an
+  overlay when a navigation raised from inside it supersedes the pending one (#892)` — proven
+  red against the withdrawn URL-equality guard
 - [x] **AC-2:** Given the find-a-booking modal is open, when the router navigates to a
   different URL, then the modal is removed and focus moves to `main` (WCAG 2.4.3) —
   unchanged behaviour. *Seam:* same as AC-1 · *Pinned by:* `app.spec.ts` › `closes the Find a
@@ -79,10 +86,9 @@ for `bugfix/shell-overlay-initial-navigation`.
 ## Non-goals
 
 - Changing what the close does (which overlays, the focus hand-off to `main`) — only *when* it fires.
-- Covering a **redirecting** first load (`/account/register` → `/account/sign-in?mode=register`):
-  the seed is the pre-redirect URL, so that navigation still closes overlays. Issue #892
-  explicitly scopes the redirect shape out; it is user-reachable only in the retired-link
-  compat routes.
+- Covering a first load redirected by a **guard**: that resumes under a fresh navigation id
+  (Q-3), so it still closes overlays. A **config** `redirectTo` keeps its id and IS covered.
+  Issue #892 scopes the redirect shape out explicitly.
 - Removing or weakening `awaitRoutedPage` in the e2e suite (AC-5 keeps it).
 - Any change to `provideRouter`'s initial-navigation feature (`enabledNonBlocking` stays —
   blocking initial navigation would trade this bug for a blank first paint).
@@ -96,19 +102,29 @@ N/A — no surface is retired or replaced; one guard is added to an existing sub
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The seed and `urlAfterRedirects` are serialised differently (`Location.path(true)` returns `''` at construction, not `'/'`), so the guard never matches and the bug is not fixed | high | high | Seed through `router.serializeUrl(router.parseUrl(...))` so both sides are `DefaultUrlSerializer` output; AC-1 fails if they disagree | claude | closed — `Location.path(true)` really does return `''`; the serializer round-trip makes it `/`, AC-1 green in `a340272`+ |
+| R-1 | The URL seed and `urlAfterRedirects` are serialised differently, so the guard never matches | high | high | — | claude | **obsolete** — the URL seed was withdrawn with F-1; the id rule compares two `number`s and has no serialisation surface |
 | R-2 | The guard swallows a close it should perform (a real navigation to the same URL) | low | med | The router emits `NavigationSkipped`, not `NavigationEnd`, for a same-URL re-navigation — already relied on and pinned by the existing `#351` "activated on the page it points at" spec, which closes the popover from the link handler instead | claude | closed — that spec is green unchanged |
-| R-3 | Seeding from the document URL makes the two existing close-on-navigation specs flaky through jsdom URL carry-over between specs | med | high | Probed: Angular's TestBed platform location does not move `window.location` on `router.navigate`, so the seed is `''`→`/` in every spec; AC-2/AC-3 run unchanged as the regression proof | claude | closed — both green, bodies untouched |
-| R-4 | `inject(Location)` in the shell drags a new dependency into a component that had none | low | low | `Location` is `@angular/common`'s router-facing service already provided by `provideRouter`; no new provider, no new import in `app.config.ts` | claude | closed — no provider change needed |
+| R-3 | The guard swallows a close the user asked for, stranding an overlay | med | high | Realised as F-1 at the review gate, on the URL rule; the id rule cannot, because a navigation the user raises from inside an overlay always carries an id other than the one recorded when it opened. AC-7 pins it | claude | closed — AC-7 green, red against the old guard |
+| R-4 | The four overlay-open paths each have to record the in-flight navigation, and a new overlay could forget to | low | med | One private `markOverlayRaised()` called from all four handlers, so the rule has a single home; a forgotten call fails open (the overlay closes on navigation, today's behaviour) rather than stranding an overlay | claude | closed — no new dependency; `Location` is no longer injected at all |
 | R-5 | The e2e suite's `awaitRoutedPage` masks a regression of this fix (the app-side bug could come back unnoticed) | med | med | AC-1 is the unit-level pin and does not depend on the e2e timing; the e2e wait stays for its own reasons (AC-5) | claude | closed — AC-1 pins the app side without the e2e timing |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the shell is the right owner of "which URL am I showing" — no `core/` service
-  is warranted for one component's field. — *Owner:* claude · *Resolves by:* review gate.
+- *(none open)*
 
 ### Resolved
 
+- **Q-4 (resolved at the review gate):** is the shell the right owner of the bookkeeping — or does
+  it belong in `core/`? **The shell.** `riviera-frontend`'s taxonomy puts cross-feature stateful
+  singletons in `core/`; `overlayNavId` is written and read only inside the shell's own overlay
+  handlers and its `NavigationEnd` subscriber, so it is component-local. Confirmed by the review
+  gate's CLAUDE.md pass.
+- **Q-3 (resolved at the review gate):** does a redirect break a navigation-id rule? **Only a
+  guard redirect.** Probed against `@angular/router` 22.0.7: a config `redirectTo`
+  (`/redir` → `/glass`) stays one navigation (`start#1 /redir` → `end#1 /glass`), while a guard
+  returning a `UrlTree` cancels and re-issues (`start#1 /guarded` → `start#2 /glass` →
+  `end#2 /glass`). So the id rule covers config-redirecting first loads and, deliberately, not
+  guard-redirected ones (Non-goals).
 - **Q-1 (resolved at plan time):** can `router.navigated` or `lastSuccessfulNavigation()`
   identify the initial navigation from inside the `NavigationEnd` subscriber? **No.**
   `@angular/router` 22.0.7 `_router-chunk.mjs:3916-3917` sets
@@ -144,7 +160,7 @@ N/A — no payment in scope.
 
 | # | Surface | Existing/new | Type | State/reactivity | Forms |
 |---|---|---|---|---|---|
-| FE-1 | `frontend/src/app/app.ts` | existing | standalone shell component | Signals; one private non-signal field (`shownUrl`) written from the `NavigationEnd` subscription — it is subscription-local bookkeeping, never rendered, so a signal would add reactivity nothing reads | none |
+| FE-1 | `frontend/src/app/app.ts` | existing | standalone shell component | Signals; one private non-signal field (`overlayNavId`) written by the overlay-open handlers and read by the `NavigationEnd` subscriber — bookkeeping nothing renders, so a signal would add reactivity no template reads | none |
 | FE-2 | `frontend/src/app/app.spec.ts` | existing | Vitest spec | — | — |
 | FE-3 | `frontend/e2e/support/shell.ts` | existing | Playwright helper | — | — |
 
@@ -157,15 +173,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft opened, awaiting CI before the review gate`
+**Stage pointer:** `review gate — F-1 fixed, re-entering CI before the Sonar gate`
 
-**Next action:** check the draft PR's CI run, then mark it ready for review and run the review
-gate per `riviera-sdlc` `references/pr-gates.md` §1.
+**Next action:** confirm CI green on the F-1 fix push, then pull the SonarCloud new-issue +
+duplication list for PR #894 per `riviera-sdlc` `references/pr-gates.md` §2.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Keep overlays open on a same-URL navigation | ✅ | `e5f26bd` |
-| 1 — Re-point the e2e helper's header comment | ✅ | (this commit) |
+| 0 — Keep overlays open on the navigation they were opened during | ✅ | `e5f26bd`, F-1 fix in (this commit) |
+| 1 — Re-point the e2e helper's header comment | ✅ | `c42a25e`, corrected in (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -174,16 +190,18 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate (`/code-review` high — two independent agents reproduced it) | The URL-equality guard swallows a close the guest asked for. Deep-linked to `/booking/ABC` with the chunk in flight, they open Find a booking and submit `ABC`: `router.navigate` is not same-URL-ignored (nothing has completed for `currentUrlTree` to match), so it supersedes, resolves `navigated === true`, and ends on `/booking/ABC` — equal to the seed. The shell skips the close, and `find-booking.ts:191` has no self-close on that branch, so the modal freezes on "Opening…" with the focus trap holding focus in a dead dialog (the WCAG 2.4.3 hand-off #148 established) | fixed — guard re-cut on navigation identity; pinned by AC-7, proven red against the withdrawn rule |
+| F-2 | review gate | Three claims in the rewritten `e2e/support/shell.ts` header were wrong: `awaitRoutedPage` does not cover the post-sign-in redirect (`customer-password.e2e.ts:57-58` awaits that itself), "no longer closes overlays on the initial navigation" is over-broad for guard-redirected first loads, and "asserting about the page under it" is not what the theme-picker callers assert | fixed — header restated against Q-3's probe |
+| F-3 | review-fix guard run | Two of the new spec comments were multi-line inline comments (RV-STYLE-1) | fixed — both cut to one line; `check-inline-comments.mjs` clean |
 
 ---
 
 ## File structure
 
 - `docs/plans/shell-overlay-initial-navigation.md` — this plan.
-- `frontend/src/app/app.ts` — the shell: seed the shown URL, guard the close-on-navigation subscription.
-- `frontend/src/app/app.spec.ts` — the AC-1 keep-open spec, plus a `''` test route so a spec can
-  navigate to `/` as the first navigation.
+- `frontend/src/app/app.ts` — the shell: record the in-flight navigation as an overlay is raised, guard the close-on-navigation subscription on it.
+- `frontend/src/app/app.spec.ts` — the AC-1 keep-open and AC-7 supersede specs, plus a `''` test
+  route whose chunk a spec lands on demand (the interactive-header window).
 - `frontend/e2e/support/shell.ts` — header comment re-pointed at the test's own precondition (AC-5).
 
 ---
@@ -281,6 +299,7 @@ and in the subscription:
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-02 | review fix F-1 | Everything that depends on the shell's `NavigationEnd` close firing (the contract F-1 broke), rather than everything that subscribes to it | `grep -rn "shell closes\|shell won't close\|closes the modal\|NavigationEnd" frontend/src --include=*.ts` | `find-booking.ts:186,191` + its spec at `find-booking.spec.ts:286` — the only dependant | None needed. The id rule restores the `navigated === true` contract `find-booking.ts:191` states, so no dependant changes; recorded because the URL rule would have required editing that file |
 | 2026-09-02 | phase 0 (#892 fix) | Every frontend subscriber to the router's `NavigationEnd` — the mechanism that also fires for the initial navigation and can therefore act on something the user did not do | `grep -rn "NavigationEnd\|router.events\|lastSuccessfulNavigation" frontend/src --include=*.ts \| grep -v ".spec.ts"` | 6 subscriptions: `app.ts` (routeChrome + the overlay close), `admin-console.ts` (×2), `admin-console-tabs.ts`, `operator-chrome.ts`, `operator-console.ts` | Fixed 1. The other five are pure derivations of the current route (active tab, current url, chrome flags) that the initial navigation *should* update; only the overlay close tears down transient UI the user opened, so the population of the defect is one |
 
 ---
