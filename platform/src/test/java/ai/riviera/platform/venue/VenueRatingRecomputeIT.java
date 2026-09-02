@@ -3,6 +3,7 @@ package ai.riviera.platform.venue;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -172,10 +173,11 @@ class VenueRatingRecomputeIT {
 	private String review(long venueId, int stars) {
 		String code = fixtures.completedBooking(venueId, Instant.now().minusSeconds(3600));
 		jdbc.sql("""
-				INSERT INTO review (booking_id, venue_id, stars, created_at)
-				VALUES (:booking, :venue, :stars, :createdAt)
+				INSERT INTO review (booking_id, venue_id, stay_date, stars, created_at)
+				VALUES (:booking, :venue, :stayDate, :stars, :createdAt)
 				""")
 				.param("booking", fixtures.bookingIdOf(code)).param("venue", venueId)
+				.param("stayDate", LocalDate.of(2026, 7, 1))
 				.param("stars", stars).param("createdAt", Timestamp.from(Instant.now()))
 				.update();
 		return code;

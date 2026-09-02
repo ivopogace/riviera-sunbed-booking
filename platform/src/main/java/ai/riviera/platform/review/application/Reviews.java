@@ -1,9 +1,12 @@
 package ai.riviera.platform.review.application;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import ai.riviera.platform.review.vocabulary.BookingRef;
+import ai.riviera.platform.review.vocabulary.CompletedStay;
+import ai.riviera.platform.review.vocabulary.ListedReview;
 import ai.riviera.platform.review.vocabulary.OwnReview;
 import ai.riviera.platform.review.vocabulary.VenueRef;
 
@@ -15,23 +18,23 @@ import ai.riviera.platform.review.vocabulary.VenueRef;
 public interface Reviews {
 
 	/**
-	 * Claim this booking's one review slot and record the verdict against it. Named for the
+	 * Claim this stay's one review slot and record the verdict against it. Named for the
 	 * availability primitive it mirrors, not for the write: the row's creation <em>is</em> the claim.
+	 * The row keeps the stay's venue and service date from {@code stay}, so the public listing can
+	 * name the month without asking {@code booking}.
 	 *
-	 * @param comment     the guest's words, or {@code null} for a star-only review
-	 * @param displayName the name the review is attributed to, or {@code null} when none was given
+	 * @param submission the verdict; a {@code null} comment means a star-only review
 	 * @return {@code true} if this call recorded the review, {@code false} if the booking already had
 	 *         one — the claim is atomic, so a lost race is an ordinary {@code false}, not an exception
 	 */
-	boolean claim(BookingRef booking, VenueRef venue, int stars, String comment, String displayName,
-			Instant at);
+	boolean claim(CompletedStay stay, ReviewSubmission submission, Instant at);
 
 	/**
 	 * Overwrite this booking's review in place, stamping {@code at} as its edit time.
 	 *
 	 * @return {@code false} when no row answered to the booking — a delete won the race
 	 */
-	boolean update(BookingRef booking, int stars, String comment, String displayName, Instant at);
+	boolean update(BookingRef booking, ReviewSubmission submission, Instant at);
 
 	/**
 	 * Remove this booking's review, freeing nothing: the slot stays claimable only in the sense that
@@ -49,4 +52,11 @@ public interface Reviews {
 
 	/** Whether this booking's one review slot is already taken. */
 	boolean existsFor(BookingRef booking);
+
+	/**
+	 * Up to {@code limit} of {@code venue}'s listed reviews — the ones carrying a comment — with an
+	 * id below {@code beforeId}, newest first. The store answers rows; how many make a page and
+	 * whether another follows is the service's arithmetic.
+	 */
+	List<ListedReview> newestListedBefore(VenueRef venue, long beforeId, int limit);
 }

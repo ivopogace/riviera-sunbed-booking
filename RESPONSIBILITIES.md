@@ -86,7 +86,9 @@ standing rules:
 - **The tourist catalogue reads are visibility-fenced** (#693): all three `VenueCatalog`
   reads (list + map + availability calendar) consult `operator.api.VenueVisibility` inside the
   adapter, so a venue whose owning operator is not `ACTIVE` is absent from the list and 404 on
-  the map and the calendar — indistinguishable from nonexistent. `SetBookingFacts` is deliberately **unfenced**: its
+  the map and the calendar — indistinguishable from nonexistent; the public review list (#813)
+  applies the same fence in its own application service, `ListVenueReviewsService`, before
+  asking `review`. `SetBookingFacts` is deliberately **unfenced**: its
   consumers include sold-booking paths (cancel, view, mails, staff marks) that must keep
   answering for a hidden venue's sets; the reserve path applies the fence itself in
   `booking`. The anonymous content-hash photo read stays unfenced (accepted, #693 intake).
@@ -218,6 +220,13 @@ standing rules:
   operator-gate the tourist read. The counts are a snapshot, never a hold: the claim still
   decides (invariant #2), and the read answers past days too, because it reports availability,
   not bookability.
+- **The public review list** (`GET /api/venues/{venueId}/reviews?cursor=`, #813; public,
+  keyset-paged newest first): I carry it, `review` decides it — the same split as the aggregate.
+  My service fences on tourist visibility (above) and then passes the page
+  `review.api.ListedReviews` answers straight through; which reviews are listed, their order and
+  the page size are `review`'s contract, and the stay reaches the wire as a year-month because
+  `review` never hands me the day. The endpoint lives here rather than in `review` because the
+  fence is my catalogue rule and `review` is a leaf that cannot consult `operator` (ADR-0015).
 - **The signed-in operator's own-venues read model** (`GET /api/venues/mine`, S9 #277): I
   ask `operator::api` for the ownership set and join the names, because naming venues is
   my job and `operator → venue` would cycle.
@@ -240,8 +249,9 @@ standing rules:
   mapping and answers the question; since #277 I *render* that answer as named summaries, but the
   set itself is always its call)
 - Deciding what a venue's rating *is* — who may review, for how long, and what the mean rounds
-  to → **`review`** (#811). I hold the resulting numbers and nothing else: no review row, no
-  window, no rounding rule
+  to → **`review`** (#811); likewise which reviews are *listed* on my page, in what order and how
+  many at a time (#813). I hold the resulting numbers and pass the page through: no review row, no
+  window, no rounding rule, no list predicate
 
 ---
 
@@ -990,12 +1000,24 @@ and until when, and the arithmetic that turns a venue's reviews into a score. Th
   short-circuiting to `0/0` — the invariant-#5 money discipline borrowed for the rating. No
   `double` anywhere in the math, and the mean is taken in the domain rather than in SQL so a
   test can reach it.
-- **My two `api` ports are split by consumer role** (#94): `VenueRatingSummary` answers `venue`'s
-  question about its own aggregate, `ReviewEligibility` answers `booking`'s about one stay — with
-  the sealed `ReviewPanel`, whose variants carry exactly their own data and split a *frozen* review
-  from a window nobody ever wrote in. The whole lifecycle (submit, edit, delete) stays one
+- **My three `api` ports are split by consumer role** (#94): `VenueRatingSummary` answers `venue`'s
+  question about its own aggregate, `ListedReviews` answers `venue`'s other question — the page of
+  *listed* reviews for its public page — and `ReviewEligibility` answers `booking`'s about one stay
+  — with the sealed `ReviewPanel`, whose variants carry exactly their own data and split a *frozen*
+  review from a window nobody ever wrote in. The whole lifecycle (submit, edit, delete) stays one
   **internal** `application` port, `ReviewLifecycle`, whose only caller is my own REST adapter (the
   `booking.ViewBooking` precedent), so neither consumer can reach the write surface.
+- **A listed review is a visible review that carries a comment**, and the list is a keyset page
+  (#813): newest first by review id (assigned at claim, so insertion order), ten per page — the
+  port's contract, not the caller's knob — with `ReviewCursor` naming "older than this review" and
+  `ReviewCursor.FIRST_PAGE` naming no bound. A star-only review counts in the aggregate and never
+  appears as an empty row, so an empty page under a nonzero aggregate is ordinary. The stay is
+  recorded on the row as `stay_date` (the booking's service date, carried in through
+  `CompletedStay` at claim time — a stay fact, not identity) and leaves the store as a `YearMonth`:
+  no published type carries the day, because a month places a stay in a season and a day would
+  place a guest at the venue. **Visibility is not yet a column**: moderation is a later slice, and
+  the predicate lands in exactly two `WHERE`s — `newestListedBefore` and `totalsFor` — named as such
+  in `JdbcReviews`. Who may *see* the list at all is the caller's fence, never mine (I am a leaf).
 - **The booking code is the whole authorization** (invariant #7). All three verbs on
   `/api/bookings/{code}/review` — `POST`, `PUT`, `DELETE` — are `permitAll` and share one per-code
   rate-limit budget with the view / cancel / withdraw legs: they are all guesses at the same
@@ -1015,12 +1037,15 @@ and until when, and the arithmetic that turns a venue's reviews into a score. Th
   customer to a name, and the form's prefill suggestion is `booking`'s to derive
 - Login, sessions, CSRF, rate-limit wiring → the platform **edge** (RV-BE-11)
 
-**Shipped** (#811 slice 1, #812 slice 2 of epic #810): the module, V45 (`review` table + the
-demo-seed supersede) and V46 (comment, display name, `updated_at`), the code-gated submit / edit /
+**Shipped** (#811 slice 1, #812 slice 2, #813 slice 3 of epic #810): the module, V45 (`review`
+table + the demo-seed supersede), V46 (comment, display name, `updated_at`) and V47 (`stay_date`,
+backfilled from the booking, and the `(venue_id, id)` listing index), the code-gated submit / edit /
 delete endpoints, `ReviewGate` as the one statement of the fence order, the sealed `ReviewPanel` on
 `booking`'s read model (which retired the `reviewable` flag and `ReviewState` from the published
-surface), and `venue`'s first `adapter/in` listener. The venue-page review list, moderation and the
-**erasure hook for the review PII this slice introduced** are later slices of #810.
+surface), `venue`'s first `adapter/in` listener, and the public list read (`ListedReviews`, carried
+by `venue` on `GET /api/venues/{venueId}/reviews`). Moderation — and with it the visibility
+predicate the list read is written to receive — and the **erasure hook for the review PII slice 2
+introduced** (#820) are later slices of #810.
 
 ## `shared` (not a bounded context)
 

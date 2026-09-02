@@ -71,8 +71,7 @@ class ReviewLifecycleService implements ReviewLifecycle {
 		if (!Stars.isValid(submission.stars())) {
 			throw new IllegalArgumentException(Stars.SCALE_DESCRIPTION);
 		}
-		return amend(bookingCode, (stay, at) -> reviews.update(stay.booking(), submission.stars(),
-				submission.comment(), submission.displayName(), at));
+		return amend(bookingCode, (stay, at) -> reviews.update(stay.booking(), submission, at));
 	}
 
 	@Override
@@ -107,8 +106,7 @@ class ReviewLifecycleService implements ReviewLifecycle {
 	}
 
 	private SubmitOutcome claim(CompletedStay stay, ReviewSubmission submission, Instant now) {
-		if (!reviews.claim(stay.booking(), stay.venue(), submission.stars(), submission.comment(),
-				submission.displayName(), now)) {
+		if (!reviews.claim(stay, submission, now)) {
 			return new SubmitOutcome.AlreadyReviewed();
 		}
 		events.publishEvent(new ReviewsChanged(stay.venue()));

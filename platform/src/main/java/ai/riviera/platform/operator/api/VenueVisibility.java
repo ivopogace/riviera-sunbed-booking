@@ -14,7 +14,8 @@ import ai.riviera.platform.operator.vocabulary.VenueRef;
  * reinstatement shows it again.
  *
  * <p>Consumers fence <em>discovery and new bookings</em> only: {@code venue} filters its tourist
- * catalogue reads, {@code booking} refuses a reserve attempt. Sold-booking paths (code-gated view,
+ * reads (the discovery list, the beach map, the availability calendar and the public review list),
+ * {@code booking} refuses a reserve attempt. Sold-booking paths (code-gated view,
  * cancel, check-in, mails) deliberately never consult this port — a booking made while the venue
  * was visible keeps working. Rationale: RESPONSIBILITIES.md §operator.
  */

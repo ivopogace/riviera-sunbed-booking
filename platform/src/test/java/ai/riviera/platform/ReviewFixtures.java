@@ -66,6 +66,25 @@ public final class ReviewFixtures {
 		return booking(venueId, "COMPLETED", completedAt);
 	}
 
+	/**
+	 * A stored review of the stay behind {@code code}, written the way the claim writes it — venue and
+	 * stay date taken from the booking row. {@code comment} may be {@code null} for a star-only row.
+	 *
+	 * @return the review's id, the value the public listing's cursor is made of
+	 */
+	public long review(String code, int stars, String comment, String displayName) {
+		return jdbc.sql("""
+				INSERT INTO review (booking_id, venue_id, stay_date, stars, comment, display_name,
+				                    created_at)
+				SELECT id, venue_id, booking_date, :stars, :comment, :displayName, :createdAt
+				FROM booking WHERE code = :code
+				RETURNING id
+				""")
+				.param("code", code).param("stars", stars).param("comment", comment)
+				.param("displayName", displayName).param("createdAt", Timestamp.from(Instant.now()))
+				.query(Long.class).single();
+	}
+
 	public long bookingIdOf(String code) {
 		return jdbc.sql("SELECT id FROM booking WHERE code = :code")
 				.param("code", code).query(Long.class).single();

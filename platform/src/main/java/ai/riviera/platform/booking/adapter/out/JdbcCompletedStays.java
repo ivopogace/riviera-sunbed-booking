@@ -1,5 +1,6 @@
 package ai.riviera.platform.booking.adapter.out;
 
+import java.time.LocalDate;
 import java.util.Optional;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -41,13 +42,14 @@ class JdbcCompletedStays implements CompletedStays {
 	@Override
 	public Optional<CompletedStay> byCode(String bookingCode) {
 		return jdbc.sql("""
-				SELECT id, venue_id, completed_at FROM booking
+				SELECT id, venue_id, booking_date, completed_at FROM booking
 				WHERE code = :code AND status = :completed AND completed_at IS NOT NULL
 				""")
 				.param(CODE, bookingCode)
 				.param("completed", COMPLETED)
 				.query((rs, rowNum) -> new CompletedStay(new BookingRef(rs.getLong("id")),
 						new VenueRef(rs.getLong("venue_id")),
+						rs.getObject("booking_date", LocalDate.class),
 						rs.getTimestamp("completed_at").toInstant()))
 				.optional();
 	}

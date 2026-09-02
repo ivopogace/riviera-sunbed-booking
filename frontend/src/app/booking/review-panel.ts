@@ -10,6 +10,7 @@ import { FieldGlass } from '../shared/field-glass';
 import { focusMover } from '../shared/focus-after-render';
 import { StarRating } from '../shared/star-rating';
 import { TouchTarget } from '../shared/touch-target';
+import { starGlyphs, starsOutOfFive } from '../shared/rating';
 import {
   OwnReviewView,
   REVIEW_COMMENT_MAX,
@@ -80,11 +81,6 @@ function seedFor(panel: ReviewPanelState): ReviewFormModel {
     comment: '',
     displayName: panel.kind === 'ELIGIBLE' ? (panel.nameSuggestion ?? '') : '',
   };
-}
-
-/** `★★★★☆` for 4 — the read-only echo of a stored rating, beside its numeric accessible name. */
-function starsLabel(stars: number): string {
-  return '★'.repeat(stars) + '☆'.repeat(5 - stars);
 }
 
 /**
@@ -358,12 +354,9 @@ export class ReviewPanel {
     return panel.kind === 'ALREADY_REVIEWED' || panel.kind === 'FROZEN' ? panel.review : undefined;
   });
 
-  protected readonly ownStars = computed(() => starsLabel(this.own()?.stars ?? 0));
+  protected readonly ownStars = computed(() => starGlyphs(this.own()?.stars ?? 0));
 
-  protected readonly ownStarsLabel = computed(() => {
-    const stars = this.own()?.stars ?? 0;
-    return `${stars} out of 5 stars`;
-  });
+  protected readonly ownStarsLabel = computed(() => starsOutOfFive(this.own()?.stars ?? 0));
 
   protected readonly deadline = computed(() => {
     const panel = this.panel();

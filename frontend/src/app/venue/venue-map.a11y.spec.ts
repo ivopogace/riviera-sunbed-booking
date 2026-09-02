@@ -100,7 +100,11 @@ describe('VenueMap accessibility (axe)', () => {
     httpMock = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => httpMock.verify());
+  afterEach(() => {
+    // The review section is its own component with its own request; its states are its own spec's.
+    httpMock.match((req) => req.url.endsWith('/reviews'));
+    httpMock.verify();
+  });
 
   function expectVenueRequest() {
     // The map appends a `?date=` param; match on the path, ignoring the query.

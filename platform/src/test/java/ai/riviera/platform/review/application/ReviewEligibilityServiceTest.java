@@ -3,8 +3,10 @@ package ai.riviera.platform.review.application;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -15,6 +17,7 @@ import ai.riviera.platform.review.domain.ReviewWindow;
 import ai.riviera.platform.review.spi.CompletedStays;
 import ai.riviera.platform.review.vocabulary.BookingRef;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
+import ai.riviera.platform.review.vocabulary.ListedReview;
 import ai.riviera.platform.review.vocabulary.OwnReview;
 import ai.riviera.platform.review.vocabulary.ReviewPanel;
 import ai.riviera.platform.review.vocabulary.VenueRef;
@@ -34,6 +37,7 @@ class ReviewEligibilityServiceTest {
 	private static final String CODE = "RVWCODE123";
 	private static final BookingRef BOOKING = new BookingRef(7);
 	private static final VenueRef VENUE = new VenueRef(3);
+	private static final LocalDate STAYED_ON = LocalDate.of(2026, 7, 1);
 	private static final Instant YESTERDAY = NOW.minus(Duration.ofDays(1));
 	private static final Instant LONG_AGO = NOW.minus(Duration.ofDays(61));
 	private static final OwnReview OWN = new OwnReview(4, "Great sunbeds", "Ana");
@@ -93,7 +97,7 @@ class ReviewEligibilityServiceTest {
 		private final java.util.Set<String> known = new java.util.HashSet<>();
 
 		void completed(String code, Instant completedAt) {
-			completed.put(code, new CompletedStay(BOOKING, VENUE, completedAt));
+			completed.put(code, new CompletedStay(BOOKING, VENUE, STAYED_ON, completedAt));
 			known.add(code);
 		}
 
@@ -117,14 +121,12 @@ class ReviewEligibilityServiceTest {
 		private final Map<BookingRef, OwnReview> stored = new HashMap<>();
 
 		@Override
-		public boolean claim(BookingRef booking, VenueRef venue, int stars, String comment,
-				String displayName, Instant at) {
+		public boolean claim(CompletedStay stay, ReviewSubmission submission, Instant at) {
 			throw new UnsupportedOperationException("the eligibility read never writes");
 		}
 
 		@Override
-		public boolean update(BookingRef booking, int stars, String comment, String displayName,
-				Instant at) {
+		public boolean update(BookingRef booking, ReviewSubmission submission, Instant at) {
 			throw new UnsupportedOperationException("the eligibility read never writes");
 		}
 
@@ -146,6 +148,11 @@ class ReviewEligibilityServiceTest {
 		@Override
 		public boolean existsFor(BookingRef booking) {
 			return stored.containsKey(booking);
+		}
+
+		@Override
+		public List<ListedReview> newestListedBefore(VenueRef venue, long beforeId, int limit) {
+			throw new UnsupportedOperationException("the eligibility read never lists");
 		}
 	}
 }

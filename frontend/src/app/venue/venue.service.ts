@@ -4,7 +4,12 @@ import { Observable, map } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { apiPhotoUrl, resolveCoverPhoto } from '../shared/photo-url';
-import { DailyAvailability, VenueMapView, VenueSummary } from '../shared/venue-views';
+import {
+  DailyAvailability,
+  VenueMapView,
+  VenueReviewsPage,
+  VenueSummary,
+} from '../shared/venue-views';
 
 /** Optional discovery filters; an omitted dimension is no constraint (mirrors the backend). */
 export interface VenueListFilter {
@@ -14,9 +19,10 @@ export interface VenueListFilter {
 
 /**
  * Reads the public venue catalogue: the discovery list (`GET /api/venues`), a
- * single venue + beach map (`GET /api/venues/{id}`), and that venue's per-day availability over a
- * window (`GET /api/venues/{id}/availability-calendar`). Single responsibility: typed access to
- * the read API; no state of its own.
+ * single venue + beach map (`GET /api/venues/{id}`), that venue's per-day availability over a
+ * window (`GET /api/venues/{id}/availability-calendar`), and its listed reviews a page at a time
+ * (`GET /api/venues/{id}/reviews`). Single responsibility: typed access to the read API; no state
+ * of its own.
  */
 @Service()
 export class VenueService {
@@ -80,6 +86,21 @@ export class VenueService {
     return this.http.get<DailyAvailability[]>(
       `${environment.apiBaseUrl}/api/venues/${venueId}/availability-calendar`,
       { params: new HttpParams().set('from', from).set('to', to) },
+    );
+  }
+
+  /**
+   * One page of the venue's listed reviews, newest first: the first page when `cursor` is omitted,
+   * else the page after the `nextCursor` a previous page answered. The page size is the server's.
+   * A venue tourists cannot see answers `404`, like the map read; errors are left for the caller.
+   */
+  reviews(venueId: number, cursor?: number): Observable<VenueReviewsPage> {
+    const params = cursor === undefined ? new HttpParams() : new HttpParams().set('cursor', cursor);
+    return this.http.get<VenueReviewsPage>(
+      `${environment.apiBaseUrl}/api/venues/${venueId}/reviews`,
+      {
+        params,
+      },
     );
   }
 }

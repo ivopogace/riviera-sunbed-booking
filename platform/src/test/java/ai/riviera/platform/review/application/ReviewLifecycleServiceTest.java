@@ -3,6 +3,7 @@ package ai.riviera.platform.review.application;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,6 +22,7 @@ import ai.riviera.platform.review.spi.CompletedStays;
 import ai.riviera.platform.review.vocabulary.AmendOutcome;
 import ai.riviera.platform.review.vocabulary.BookingRef;
 import ai.riviera.platform.review.vocabulary.CompletedStay;
+import ai.riviera.platform.review.vocabulary.ListedReview;
 import ai.riviera.platform.review.vocabulary.OwnReview;
 import ai.riviera.platform.review.vocabulary.SubmitOutcome;
 import ai.riviera.platform.review.vocabulary.VenueRef;
@@ -44,6 +46,7 @@ class ReviewLifecycleServiceTest {
 	private static final String CODE = "RVWCODE123";
 	private static final BookingRef BOOKING = new BookingRef(7);
 	private static final VenueRef VENUE = new VenueRef(3);
+	private static final LocalDate STAYED_ON = LocalDate.of(2026, 7, 1);
 	private static final ReviewSubmission COMMENTED =
 			new ReviewSubmission(4, "Great sunbeds", "Ana");
 
@@ -244,7 +247,7 @@ class ReviewLifecycleServiceTest {
 		private final Set<String> known = new HashSet<>();
 
 		void completed(String code, BookingRef booking, VenueRef venue, Instant completedAt) {
-			completed.put(code, new CompletedStay(booking, venue, completedAt));
+			completed.put(code, new CompletedStay(booking, venue, STAYED_ON, completedAt));
 			known.add(code);
 		}
 
@@ -270,20 +273,18 @@ class ReviewLifecycleServiceTest {
 		private final List<Recorded> writes = new ArrayList<>();
 
 		@Override
-		public boolean claim(BookingRef booking, VenueRef venue, int stars, String comment,
-				String displayName, Instant at) {
-			OwnReview review = new OwnReview(stars, comment, displayName);
-			if (stored.putIfAbsent(booking, review) != null) {
+		public boolean claim(CompletedStay stay, ReviewSubmission submission, Instant at) {
+			OwnReview review = asStored(submission);
+			if (stored.putIfAbsent(stay.booking(), review) != null) {
 				return false;
 			}
-			writes.add(new Recorded(booking, venue, review, at));
+			writes.add(new Recorded(stay.booking(), stay.venue(), review, at));
 			return true;
 		}
 
 		@Override
-		public boolean update(BookingRef booking, int stars, String comment, String displayName,
-				Instant at) {
-			OwnReview review = new OwnReview(stars, comment, displayName);
+		public boolean update(BookingRef booking, ReviewSubmission submission, Instant at) {
+			OwnReview review = asStored(submission);
 			if (stored.replace(booking, review) == null) {
 				return false;
 			}
@@ -309,6 +310,15 @@ class ReviewLifecycleServiceTest {
 		@Override
 		public boolean existsFor(BookingRef booking) {
 			return stored.containsKey(booking);
+		}
+
+		@Override
+		public List<ListedReview> newestListedBefore(VenueRef venue, long beforeId, int limit) {
+			throw new UnsupportedOperationException("the lifecycle never lists");
+		}
+
+		private static OwnReview asStored(ReviewSubmission submission) {
+			return new OwnReview(submission.stars(), submission.comment(), submission.displayName());
 		}
 	}
 

@@ -66,6 +66,15 @@ async function mockTourist(page: Page): Promise<void> {
   );
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE }));
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: [VENUE] }));
+  // One listed review with a page behind it, so the sweep measures the "Show more" control.
+  await page.route(/\/api\/venues\/1\/reviews(\?.*)?$/, (route) =>
+    route.fulfill({
+      json: {
+        reviews: [{ id: 41, stars: 4, displayName: 'Ana', stayedIn: '2026-07', comment: 'Great.' }],
+        nextCursor: 41,
+      },
+    }),
+  );
   await page.route(/\/api\/venues\/1\/photos\/[0-9a-f]+$/, (route) =>
     route.fulfill({
       // A 1×1 PNG so the slideshow <img>s genuinely load under the sweep.

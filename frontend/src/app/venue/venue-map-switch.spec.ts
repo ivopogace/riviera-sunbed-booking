@@ -31,7 +31,11 @@ describe('Tourist beach map — in-place venue switch over the real routes (#499
     harness = await RouterTestingHarness.create();
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    // The review section is its own component with its own request; its states are its own spec's.
+    http.match((req) => req.url.endsWith('/reviews'));
+    http.verify();
+  });
 
   function flushVenue(id: number, name: string): void {
     http

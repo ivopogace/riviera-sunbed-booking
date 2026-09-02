@@ -79,6 +79,10 @@ documented "publishes no event" stance, and the slice still uses an event where 
   stays review-checked via the RESPONSIBILITIES §`venue` line and RV-BE-11.
 - **The aggregate is eventually consistent by design.** A submit returns before its venue row moves.
   Every surface reads the stored columns, so a guest can see their own rating land a moment later.
-- **The two `api` ports are split by consumer role** (`VenueRatingSummary` for `venue`,
+- **The `api` ports are split by consumer role** (`VenueRatingSummary` for `venue`,
   `ReviewEligibility` for `booking`), so neither consumer sees the submit surface — that stays an
-  internal `application` port whose only caller is review's own REST adapter.
+  internal `application` port whose only caller is review's own REST adapter. *Amended by #813:* a
+  third port, `ListedReviews`, answers `venue`'s other question — the public page of commented
+  reviews — and the leaf posture is what put that endpoint in `venue`: the tourist-visibility fence
+  is `operator`'s rule consumed by `venue`, and `review` cannot consult `operator` without ceasing to
+  be a leaf.
