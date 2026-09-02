@@ -44,9 +44,10 @@ the shape had to be decided, and was, by the maintainer: cursor + "Show more", p
 PR #819) · `riviera-plan-doc` (this template — forced the Module-ownership table that
 settled the controller's home, and the privacy risk row for the stay day) · `tdd` (each
 phase red-green on the named test class) · `riviera-review-overlay` (review gate — runs at
-ready-for-review) · `riviera-docs-freshness` (N/A at plan time — due at close-out over this
-slice's merge range; §review's Shipped ¶, §venue's tourist-read list, the CLAUDE.md review
-row and CONTEXT.md are known stale-on-merge) · `riviera-modulith` (the fence forced the
+ready-for-review) · `riviera-docs-freshness` (**ran** over `origin/main...HEAD` at the pre-merge smoke, 1
+finding — ADR-0015's consequences said "the two `api` ports"; amended in place with the #813 note.
+The counting sweep's other hits were true or historical; §review, §venue, the CLAUDE.md review row
+and CONTEXT.md were updated in phase 4) · `riviera-modulith` (the fence forced the
 placement: `review` is `allowedDependencies = { "shared" }` and `operator` is `{}`, so the
 endpoint is `venue`'s — zero new edges; `ListedReviews` is a third consumer-role port per
 the #94 split; `ReviewCursor`/`ReviewRef`/`ListedReview`/`ReviewPage` go to `vocabulary/`)
@@ -440,6 +441,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `RESPONSIBILITIES.md` — §review (the list read, `stay_date`, A-2), §venue (carries + fences the list)
 - `CONTEXT.md` — **Listed review**, **Stay month**
 - `CLAUDE.md` — the `review` row names the public list read
+- `docs/adr/ADR-0015-review-leaf-module.md` — consequences amended: a third `api` port, and why the endpoint lives in `venue`
 
 ---
 
