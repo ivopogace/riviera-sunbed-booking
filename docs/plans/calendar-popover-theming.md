@@ -45,8 +45,12 @@ flight, and put the verdict to the maintainer rather than deciding it) · `rivie
 deltas are enumerated instead of hidden under "adopt") · `tdd` (each palette's guard is
 written red against the un-migrated markup and the not-yet-declared tokens before the
 tokens exist) · `riviera-review-overlay` (review gate — runs at ready-for-review) ·
-`riviera-docs-freshness` (N/A at plan time — runs at close-out over the PR range; the
-substrate this slice changes is the ledger and the design note's popover claim) ·
+`riviera-docs-freshness` (**ran** over `origin/main...HEAD` at close-out: the rename grep for
+the six retired tokens and the five retired mirrors hits only the calendar spec's own
+`RETIRED_TOKENS` guard and the ledger's historical #849 row — patched with a "superseded by
+#888" pointer; the counting sweep for "four families" / "three overlays" finds no stale count
+outside files this diff already rewrote; no skill, ADR or substrate doc cites the calendar's
+styling; the design note's popover claim is now true of the shipped app — **1 finding, patched**) ·
 `grilling` (the intake interview: one round, one decision, the three options and the
 render-first option offered with a recommendation) · `riviera-tailwind` (tokens do the
 switching and components never name a theme; a token painted over a fixed fill pins, so
@@ -239,16 +243,21 @@ decision and not a side effect.
 
 ## Open questions / Assumptions
 
-- **Assumption:** the dark tint hues (a green, an amber, a red, and a near-surface slate)
-  are the right dark counterparts of the light set's meaning — chosen by the same semantic
-  the light tints carry, at the darkness the proofs need. *Owner:* maintainer · *Resolves by:*
-  the PR's review, where the rendered dark calendar is the thing to look at; a hue change is
-  a value edit in two files (`tailwind.css` + the mirror) and re-runs the same proofs.
-- **Assumption:** the light-theme chrome deltas in the parity ledger are acceptable under
-  "adopt fully" — the calendar becomes a popover-family consumer in every theme, not only in
-  `dark`. *Owner:* maintainer · *Resolves by:* the PR's review.
+None open.
 
 ### Resolved
+
+- **Assumption:** the dark tint hues (a green, an amber, a red, and a near-surface slate)
+  are the right dark counterparts of the light set's meaning — chosen by the same semantic
+  the light tints carry, at the darkness the proofs need. **Resolved as far as the loop can
+  resolve it:** every pair is proved (AC-4), the rendered dark and porcelain dialogs were
+  delivered to the maintainer's session as screenshots, and the five-agent review raised no
+  palette finding. The look itself is accepted by the maintainer's merge of PR #896; a hue
+  change is a value edit in two files (`tailwind.css` + the mirror) re-running the same proofs.
+- **Assumption:** the light-theme chrome deltas in the parity ledger are acceptable under
+  "adopt fully" — the calendar becomes a popover-family consumer in every theme, not only in
+  `dark`. **Resolved the same way:** enumerated with the ratio each still clears (R-6), the
+  ledger's T-3 note names the three deltas, and the merge of PR #896 accepts them.
 
 - **Decision (intake gate, `AskUserQuestion`, 2026-09-02):** adopt fully, recommended and
   chosen over "stay pinned light", "adopt chrome only, keep the pale tints", and "render both
@@ -303,23 +312,26 @@ Pulled from the API, not read off the badge (`pr-gates.md` §2). First analysis,
 `06adf5f`: `new_lines` 245, `new_bugs` 0, `new_vulnerabilities` 0, `new_code_smells` 0,
 `new_security_hotspots` 0, `new_coverage` 91.3%, issue list empty (`total: 0`) — and the gate
 **ERROR** on `new_duplicated_lines_density` 20.4% / `new_duplicated_blocks` 2, both in
-`testing/calendar-tints.ts` (F-8). The re-analysis after the fix round is recorded below when
-it lands.
+`testing/calendar-tints.ts` (F-8). Re-analysis on head `adee33b`: `new_lines` 221, issues
+`total: 0`, `new_duplicated_blocks` **0**, `new_duplicated_lines_density` **0.0%**,
+`new_coverage` **92.0%**, hotspots 0, every quality-gate condition `OK`, and the `SonarCloud
+Code Analysis` check-run concluded `success`. Nothing to clear.
 
 ## Execution status
 
-**Stage pointer:** `review gate + sonar gate — fix round pushed; awaiting the re-analysis`
+**Stage pointer:** `merge close-out — gates all green; awaiting the maintainer's merge decision`
 
-**Next action:** Once CI re-runs on the fix commit, re-pull the Sonar measures and issue list
-(`pr-gates.md` §2) and confirm `new_duplicated_blocks` is 0; then the PR waits on the
-maintainer's review of the rendered dark palette.
+**Next action:** None outstanding in the repo. Merging PR #896 deploys `main` to Render
+(`deploy.yml`), so the merge — and the look of the dark palette it ships — is the maintainer's
+call; close-out steps 1–3 and 6 (issue closed, deferred findings, subscription) follow the merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the tokens, the migrated markup, the unit guards | ✅ | `432fb15` |
 | 1 — the real-render proof under both themes | ✅ | `c58b782` |
 | 2 — the ledger verdict and the overlay-families fact | ✅ | `69e7c68` |
-| review-gate + Sonar-gate fix round (F-1..F-8) | ✅ | the commit carrying this row |
+| review-gate + Sonar-gate fix round (F-1..F-8) | ✅ | `adee33b` |
+| close-out (this plan's final state) | ✅ | the PR's last commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -465,7 +477,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 ## Acceptance-criteria verification (final)
 
 - [x] **AC-1..AC-5, AC-7:** Run `cd frontend && npx ng test --watch=false --include="src/app/venue/*.spec.ts" --include="src/app/shared/fixed-ink-tokens.contrast.spec.ts" --include="src/app/app.contrast.spec.ts"` → 284 + 43 passed. Verified at commit `432fb15`.
-- [x] **AC-6:** Run `cd frontend && PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts e2e/fixed-ink-token-recut.e2e.ts e2e/availability-calendar.e2e.ts` → 19 passed, and verified failing with the dark `--riv-calendar-free-fill` declaration removed. Verified at commit `c58b782`.
+- [x] **AC-6:** Run `cd frontend && PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts e2e/fixed-ink-token-recut.e2e.ts e2e/availability-calendar.e2e.ts` → 19 passed, and verified failing with the dark `--riv-calendar-free-fill` declaration removed. Verified at commit `c58b782`; re-verified with the border and shadow assertions at `adee33b` (10 passed on the file).
 - [x] **AC-8:** Verified by diff inspection (no test — stated as such in the AC), commit `69e7c68`.
 
 ## Self-review checklist (before merge / PR)
@@ -484,8 +496,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #) — the risk rows are closed; the two assumptions resolve on the maintainer's review of the rendered dark palette (PR #896).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #) — the two assumptions are under *Resolved* with what resolves them.
+- [x] **Close-out written in THIS PR** — this is that commit; the slice merges via **PR #896**.
+- [x] **The review gate ran in full** — rung 1 of the ladder (`Skill("code-review:code-review")`) with `riviera-review-overlay` layered on: a five-agent fan-out at HIGH effort, all five reported, six findings scored, F-1..F-6 fixed in-branch (F-7 self-caught from the history pass), the one at the posting threshold commented on the PR.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
