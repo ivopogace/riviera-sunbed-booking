@@ -263,13 +263,22 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
      * exempt, `non-text-contrast.md`'s second condition.
      */
     it.each([
-      ['the card border', CONSOLE_CARD_BORDER],
-      ['the button border', CONSOLE_BTN_BORDER],
-    ] as const)('%s is measured against the white fill it bounds', (_name, border) => {
-      const ratio = inkRatio(border, WHITE);
+      ['the card border', CONSOLE_CARD_BORDER, 1.21],
+      ['the button border', CONSOLE_BTN_BORDER, 1.32],
+    ] as const)('%s is measured against the white fill it bounds', (_name, border, expected) => {
+      expect(inkRatio(border, WHITE)).toBeCloseTo(expected, 2);
+    });
 
-      expect(ratio).toBeGreaterThan(1);
-      expect(ratio).toBeLessThan(AA_LARGE);
+    /**
+     * Both are far under 3:1, which is the whole reason they owe a recorded ground rather than an
+     * assumption. The tab pill and the sign-out button are controls whose own labels carry the
+     * identity — `non-text-contrast.md` rule 2. The card border's other consumer, the "Venue not
+     * found" card, is a `<div>`: outside 1.4.11 rather than exempt under it, since nothing about
+     * that card is identified by its hairline.
+     */
+    it('records that neither hairline reaches the 1.4.11 bar, so the exemption is load-bearing', () => {
+      expect(inkRatio(CONSOLE_CARD_BORDER, WHITE)).toBeLessThan(AA_LARGE);
+      expect(inkRatio(CONSOLE_BTN_BORDER, WHITE)).toBeLessThan(AA_LARGE);
     });
 
     /**

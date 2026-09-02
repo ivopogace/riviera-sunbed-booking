@@ -836,8 +836,12 @@
       Declared once each: every consumer is a child of a porcelain-pinned host —
       operator-console's own data-riv-theme binding, and app.ts's subtree pin on every
       operatorChrome route — so a dark branch is unreachable and a dark value would be an
-      unverifiable claim. Non-text chrome (WCAG 1.4.11) over the white fills they bound, measured
-      rather than assumed exempt in shared/fixed-ink-tokens.contrast.spec.ts. */
+      unverifiable claim. Non-text chrome (WCAG 1.4.11) at 1.21:1 / 1.32:1 over the white fills they
+      bound - decorative under docs/design/non-text-contrast.md rule 2 (each control's own label
+      carries the identity), measured rather than assumed exempt. The card border's OTHER consumer,
+      the "Venue not found" card's edge, is outside 1.4.11 rather than exempt under rule 2 - it is
+      a <div>, and nothing about that card is identified by its hairline. Proof:
+      shared/fixed-ink-tokens.contrast.spec.ts. */
   --riv-console-card-border: rgba(12, 42, 51, 0.1);
   --riv-console-btn-border: rgba(12, 42, 51, 0.14);
 }

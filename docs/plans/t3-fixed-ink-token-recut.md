@@ -54,40 +54,40 @@ the **computed style in a real render** (a token declared without its `@theme in
 generates no utility at all, and the class stays in the markup while the paint silently does
 not change).
 
-- [ ] **AC-1:** Given each migrated family's fixed surface, when the ticket's candidate token is
+- [x] **AC-1:** Given each migrated family's fixed surface, when the ticket's candidate token is
       resolved at its **dark** value (`--riv-card-ink` → `#f2f7fa`, `--riv-ink` → `#ffffff`) and
       composited on that surface, then the ratio is **below AA** — so the candidates are refused
       on measurement, not on assertion. *Seam:* the `testing/glass-tokens.ts` mirror of
       `tailwind.css`. *Pinned by:*
       `fixed-ink-tokens.contrast.spec.ts` › `the ticket's candidate tokens would fail on every
       one of these surfaces`
-- [ ] **AC-2:** Given each migrated ink, when composited on the surface it actually sits on —
+- [x] **AC-2:** Given each migrated ink, when composited on the surface it actually sits on —
       the calendar's `rgba(255,255,255,0.97)` glass over **all three** themes' worst-case
       gradient stops, each opaque `CALENDAR_TINTS` fill, and each of the six fixed banner fills
       — then it clears AA (4.5:1 for body text; 3:1 for the disabled inks and the hairline
       borders under WCAG 1.4.11). *Seam:* the same mirror. *Pinned by:*
       `availability-calendar.contrast.spec.ts` (extended) + `booking-view.contrast.spec.ts`
       (extended) + `fixed-ink-tokens.contrast.spec.ts`
-- [ ] **AC-3:** Given the ten new tokens, when `src/tailwind.css` is read as text, then each is
+- [x] **AC-3:** Given the ten new tokens, when `src/tailwind.css` is read as text, then each is
       declared **exactly once**, that declaration is inside the base block
       (`:root, [data-riv-theme='porcelain']`), and each carries an `@theme inline` row mapping
       `--color-riv-*` to `var(--riv-*)`. *Seam:* `testing/stylesheet-tokens.ts`
       (`declarationsOf`, `baseBlock`). *Pinned by:* `fixed-ink-tokens.contrast.spec.ts` › `declares
       each token exactly once, so no theme block can override it`
-- [ ] **AC-4:** Given the migrated sites, when each source file is swept, then **no** bare
+- [x] **AC-4:** Given the migrated sites, when each source file is swept, then **no** bare
       `#0a2a33` / `rgba(12,42,51,·)` literal in the migrated forms survives outside `*.spec.ts`,
       **and** each site positively matches its family's utility — the absence half alone passes
       vacuously on a mistyped path (#852's emptied-guard lesson). *Seam:* the source files, read
       as text. *Pinned by:* `fixed-ink-tokens.contrast.spec.ts` › `leaves no site painting a
       migrated literal` + `paints its family at every one of its sites`
-- [ ] **AC-5:** Given a real Chromium render, when the document theme is forced **porcelain** and
+- [x] **AC-5:** Given a real Chromium render, when the document theme is forced **porcelain** and
       then **dark**, then every one of the ten tokens resolves to its declared value at the
       document root, its utility generates, and the reachable consumers — the calendar popover on
       the venue map, the booking-view banner, the operator console's card and sign-out button —
       report the expected `color` / `border-color` via `toHaveCSS`. *Seam:* the mocked routes
       `/venues/:id`, `/booking/:code`, `/operator/:venueId`. *Pinned by:*
       `e2e/fixed-ink-token-recut.e2e.ts`
-- [ ] **AC-6:** Given `docs/design/colour-literal-token-audit.md`, when the T-3 rows are read,
+- [x] **AC-6:** Given `docs/design/colour-literal-token-audit.md`, when the T-3 rows are read,
       then they record `done` with this PR **and** the re-classification: the class-T family is
       empty, the surviving sites are filed under classes F and R with their surfaces named, and
       the `rgba(12,42,51,0.66)` family is recorded as consumed by #870. *Seam:* the ledger file.
@@ -165,23 +165,24 @@ construction, which AC-5's `toHaveCSS` assertions are what prove.
 |---|---|---|---|---|---|---|
 | R-1 | The day-cell ink is mirrored in `testing/calendar-tints.ts` as a literal; tokenising the markup alone leaves the spec restating a value it no longer reads — #835's R-5, silent staleness | high | med | `CALENDAR_TINTS[].ink` reads the `glass-tokens.ts` mirror; `calendar-tints.ts`'s own doc comment already calls itself the one mirror | claude | closed — phase 0 |
 | R-2 | The existing `availability-calendar.contrast.spec.ts` hard-codes `POPOVER_GLASS` and `CHROME_INKS` — the same restatement, one file over | high | med | both read the mirror; the spec keeps its three-theme composite, only its source of values changes | claude | closed — phase 0 |
-| R-3 | Carrying `.72/.4/.35/.07` and the `0.97` fill beyond the ticket's listed forms grows the diff past what #849 describes | med | low | bounded to **one component's dark-ink ramp**, justified per position in the table above, recorded in the ledger as an `n corrected` note the way every sibling row does | claude | open |
-| R-4 | `0.35 → 0.4` is a real repaint, and a repaint hidden inside a migration is how a slice loses trust | med | med | stated in the plan, asserted as a strict comparison in the guard spec, and named in the ledger row | claude | open |
-| R-5 | Ten new tokens is a large single-declaration surface; one added dark override later silently reverses a theme-invariance claim | med | high | AC-3's `declarationsOf(...)` length-1 assertion per token, plus the base-block assertion — the `stylesheet-tokens.ts` guard pattern | claude | open |
+| R-3 | Carrying `.72/.4/.35/.07` and the `0.97` fill beyond the ticket's listed forms grows the diff past what #849 describes | med | low | bounded to **one component's dark-ink ramp**, justified per position in the table above, recorded in the ledger as an `n corrected` note the way every sibling row does | claude | closed — ledger row reads `n corrected 5 → 10` |
+| R-4 | `0.35 → 0.4` is a real repaint, and a repaint hidden inside a migration is how a slice loses trust | med | med | stated in the plan, asserted as a strict comparison in the guard spec, and named in the ledger row | claude | closed — phase 0 |
+| R-5 | Ten new tokens is a large single-declaration surface; one added dark override later silently reverses a theme-invariance claim | med | high | AC-3's `declarationsOf(...)` length-1 assertion per token, plus the base-block assertion — the `stylesheet-tokens.ts` guard pattern | claude | closed — 10/10 asserted |
 | R-6 | A token declared without its `@theme inline` row generates no utility: the class stays in the markup and the paint silently does not change, invisible to every unit spec | med | high | AC-5's mocked e2e `toHaveCSS` in a real render, both themes — the only seam that can see it | claude | closed — phase 3, 8 tests green |
 | R-7 | In-flight collision on the shared files (`tailwind.css`, `testing/glass-tokens.ts`) | low | med | checked at intake: **zero open PRs** on the repo, `main` at `15c82d0`. No Flyway version to claim (frontend-only) | claude | closed — verified at intake |
 | R-8 | The e2e's dark-theme leg for the operator families is unreachable through a real render (the console pins porcelain) | high | low | the #870 precedent: prove the declaration resolves at the **document root** under a forced dark theme, and prove the real porcelain render separately | claude | closed — phase 3 |
 
 ## Open questions / Assumptions
 
-- **Assumption:** `OperatorActions` is porcelain-pinned at **both** of its hosts, so
-  `--riv-console-btn-border`'s dark branch is unreachable by construction. Verified at intake:
-  `operator-console.ts:72` pins its own host, and `app.ts:50` pins the subtree for every
-  `shellChrome() === 'operator'` route, which is what renders `operator-chrome.ts`. — *Owner:*
-  claude · *Resolves by:* phase 2 (the guard spec asserts the single declaration either way)
+*(empty — every entry resolved below.)*
 
 ### Resolved
 
+- **Assumption:** `OperatorActions` is porcelain-pinned at **both** of its hosts, so
+  `--riv-console-btn-border`'s dark branch is unreachable by construction. — **Confirmed**:
+  `operator-console.ts:72` pins its own host and `app.ts:50` pins the subtree for every
+  `shellChrome() === 'operator'` route, which is what renders `operator-chrome.ts`. The e2e proves
+  the document-root resolution under a forced dark theme regardless (phase 3).
 - **Open question:** does #849's class-T framing survive contact with the code? — **No.** The
   population is 8, not 14 (#870/PR #873 consumed six, including the whole `0.66` family), and
   none of the 8 can take one of the three candidates. Re-cut approved by the maintainer,
@@ -228,10 +229,10 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `PR — draft opened, awaiting CI; review + Sonar gates next`
 
-**Next action:** Phase 4 — rewrite the ledger's T-3 rows to the re-cut, fix the #882 row's
-missing PR number, then run `riviera-docs-freshness` and open the PR.
+**Next action:** Check this push's CI run, then run the Review gate per
+`riviera-sdlc` `references/pr-gates.md` §1, then the Sonar gate's issue list.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -239,7 +240,7 @@ missing PR number, then run `riviera-docs-freshness` and open the PR.
 | 1 — the booking-view banner body pair | ✅ | |
 | 2 — the two porcelain-pinned console borders | ✅ | |
 | 3 — the cross-theme real-render proof (mocked e2e) | ✅ | |
-| 4 — ledger re-cut + close-out | | |
+| 4 — ledger re-cut + close-out | ✅ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -256,6 +257,10 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `docs/plans/t3-fixed-ink-token-recut.md` — this plan
 - `docs/design/colour-literal-token-audit.md` — the T-3 rows rewritten to the re-cut; the #882
   row given the PR number (#885) its siblings all carry
+- `docs/design/non-text-contrast.md` — the two console hairlines registered in rule 2's family
+  table, with the "Venue not found" card's edge distinguished as outside 1.4.11 rather than exempt
+  under it. Found by the `riviera-docs-freshness` pass: the slice NAMED two sub-3:1 chrome families
+  that previously had no entry anywhere, and that file is the maintained home for exactly those
 - `frontend/src/tailwind.css` — the ten new tokens in the base block + their `@theme inline` rows
 - `frontend/src/testing/glass-tokens.ts` — the test-side mirror of the four new families
 - `frontend/src/testing/calendar-tints.ts` — `CALENDAR_TINTS[].ink` reads the mirror
@@ -278,17 +283,17 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 `frontend/src/testing/calendar-tints.ts`, `frontend/src/app/venue/availability-calendar.html`,
 `frontend/src/app/venue/availability-calendar.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — the refusal proof and the single-declaration guard,
+- [x] **Step 1: Write the failing test** — the refusal proof and the single-declaration guard,
       before the tokens exist.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- --run fixed-ink-tokens` → FAIL
+- [x] **Step 2: Run it, verify it fails** — `npm test -- --run fixed-ink-tokens` → FAIL
       (`--riv-calendar-ink declarations` receives `[]`).
-- [ ] **Step 3: Minimal implementation** — declare the six calendar tokens in the base block with
+- [x] **Step 3: Minimal implementation** — declare the six calendar tokens in the base block with
       the reason at the declaration, map them in `@theme inline`, migrate the markup, point the
       mirrors at them.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- --run fixed-ink-tokens availability-calendar`
-- [ ] **Step 5: Generalization-audit pass** — sweep by mechanism, not resemblance.
-- [ ] **Step 6: Commit** — `git commit -m "T-3: tokenise the calendar's fixed-glass ink ramp (#849)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — `npm test -- --run fixed-ink-tokens availability-calendar`
+- [x] **Step 5: Generalization-audit pass** — sweep by mechanism, not resemblance.
+- [x] **Step 6: Commit** — `git commit -m "T-3: tokenise the calendar's fixed-glass ink ramp (#849)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — the booking-view banner body pair
 
@@ -339,30 +344,30 @@ The only seam that can see R-6 and a wrong cascade. Both themes; the operator fa
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `npm test -- --run fixed-ink-tokens` → the refusal assertions pass.
-- [ ] **AC-2:** Run `npm test -- --run fixed-ink-tokens availability-calendar booking-view` → AA per surface, per theme.
-- [ ] **AC-3:** Run `npm test -- --run fixed-ink-tokens` → single declaration, base block, `@theme inline`.
-- [ ] **AC-4:** Run `npm test -- --run fixed-ink-tokens` → the absence sweep and the positive list.
-- [ ] **AC-5:** Run `npm run test:e2e:a11y -- fixed-ink-token-recut` → both themes green.
-- [ ] **AC-6:** The ledger's T-3 rows read `done — #849, PR #NN` with the re-classification.
+- [x] **AC-1:** Run `npm test -- --run fixed-ink-tokens` → the refusal assertions pass.
+- [x] **AC-2:** Run `npm test -- --run fixed-ink-tokens availability-calendar booking-view` → AA per surface, per theme.
+- [x] **AC-3:** Run `npm test -- --run fixed-ink-tokens` → single declaration, base block, `@theme inline`.
+- [x] **AC-4:** Run `npm test -- --run fixed-ink-tokens` → the absence sweep and the positive list.
+- [x] **AC-5:** Run `npm run test:e2e:a11y -- fixed-ink-token-recut` → both themes green.
+- [x] **AC-6:** The ledger's T-3 rows read `done — #849, PR #NN` with the re-classification.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (justified N/A — no availability code path).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking logic.
-- [ ] **Modulith** section filled (N/A — frontend-only).
-- [ ] **Payment/payout** section filled (N/A).
-- [ ] Refund policy enforced server-side (invariant #10) — N/A.
-- [ ] Timezone correct (invariant #6) — N/A.
-- [ ] Booking codes unguessable (invariant #7) — N/A.
-- [ ] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (justified N/A — no availability code path).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, no booking logic.
+- [x] **Modulith** section filled (N/A — frontend-only).
+- [x] **Payment/payout** section filled (N/A).
+- [x] Refund policy enforced server-side (invariant #10) — N/A.
+- [x] Timezone correct (invariant #6) — N/A.
+- [x] Booking codes unguessable (invariant #7) — N/A.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
 - [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
 
