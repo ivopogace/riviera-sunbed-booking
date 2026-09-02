@@ -92,13 +92,11 @@ else ask for the range.
 
 ## Plan-doc retirement (every close-out)
 
-A plan doc is working state, not a record: it carries the slice from plan to merge and then
-stops earning the tokens every later search spends on it. A merged plan cannot be deleted
-in its own PR (the plan doc is the state store a review or merge session reads until the
-merge), so the trigger is **the next close-out of any kind** — the merge close-out of any
-later slice, or an epic close-out: whoever runs a close-out deletes every plan in
-`docs/plans/` whose PR has already merged, in the code PR they are closing out. Epics are
-not required; the folder holds only the slices in flight at any moment.
+A plan doc is working state: it carries the slice from plan to merge, and afterwards it
+only costs every later search tokens. It cannot be deleted in its own PR (a review or merge
+session reads it until the merge), so the trigger is **the next close-out of any kind** —
+any later slice's merge close-out or an epic close-out. Whoever runs a close-out deletes
+every plan in `docs/plans/` whose PR has already merged, in the code PR being closed out:
 
 1. `git rm` the plan doc and any `docs/plans/<slug>/` asset directory.
 2. Repoint every citation to the issue or PR: grep the slug across the tree outside
