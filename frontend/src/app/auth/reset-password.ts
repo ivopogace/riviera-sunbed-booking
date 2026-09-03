@@ -2,9 +2,16 @@ import { afterNextRender, Component, ElementRef, inject, signal } from '@angular
 import { FormField, form } from '@angular/forms/signals';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { CustomerAuth, MIN_PASSWORD_LENGTH, PASSWORD_LENGTH_MESSAGE } from '../core/customer-auth';
+import { CustomerAuth } from '../core/customer-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import {
+  PASSWORD_BLOCKED_MESSAGE,
+  PASSWORD_LENGTH_MESSAGE,
+  PASSWORD_POLICY_HINT,
+  passwordPolicyMessage,
+  passwordPolicyViolation,
+} from '../shared/password-policy';
 
 import { TouchTarget } from '../shared/touch-target';
 
@@ -82,7 +89,7 @@ const CLS = {
                 aria-describedby="reset-hint"
               />
             </label>
-            <p id="reset-hint" [class]="cls.hint">8–72 characters.</p>
+            <p id="reset-hint" [class]="cls.hint" data-testid="reset-hint">{{ policyHint }}</p>
 
             <label [class]="cls.field">
               <span [class]="cls.label">Confirm new password</span>
@@ -121,6 +128,7 @@ export class ResetPassword {
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly cls = CLS;
+  protected readonly policyHint = PASSWORD_POLICY_HINT;
   /** The reset token from the emailed link, read once (a page instance is one link). */
   protected readonly token = this.route.snapshot.queryParamMap.get('token') ?? '';
   protected readonly submitting = signal(false);
@@ -142,8 +150,10 @@ export class ResetPassword {
       return;
     }
     const { newPassword, confirm } = this.model();
-    if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      this.error.set(PASSWORD_LENGTH_MESSAGE);
+    // The account behind the token is unknown here; the server applies its name, the client the rest.
+    const violation = passwordPolicyViolation(newPassword);
+    if (violation) {
+      this.error.set(passwordPolicyMessage(violation));
       return;
     }
     if (newPassword !== confirm) {
@@ -163,6 +173,9 @@ export class ResetPassword {
         break;
       case 'invalid-password':
         this.error.set(PASSWORD_LENGTH_MESSAGE);
+        break;
+      case 'blocked-password':
+        this.error.set(PASSWORD_BLOCKED_MESSAGE);
         break;
       case 'rate-limited':
         this.error.set('Too many attempts. Please wait a minute and try again.');

@@ -4,6 +4,11 @@ import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import {
+  PASSWORD_BLOCKED_MESSAGE,
+  PASSWORD_BLOCKED_TERM_CODE,
+  PASSWORD_LENGTH_MESSAGE,
+} from '../shared/password-policy';
+import {
   AUTH_API,
   AuthPrincipal,
   SessionAuth,
@@ -16,13 +21,6 @@ import { SsoProviderId, SsoRedirect } from './sso-redirect';
 const ME_API = `${environment.apiBaseUrl}/api/me`;
 
 /**
- * The customer password policy surfaced client-side (the server is authoritative, bcrypt-capped). One
- * source so the constant + the friendly message can't desync across the auth screens.
- */
-export const MIN_PASSWORD_LENGTH = 8;
-export const PASSWORD_LENGTH_MESSAGE = 'Choose a password of 8–72 characters.';
-
-/**
  * Shown when a current password is required but none was supplied — the case the backend names
  * `MISSING_CURRENT_PASSWORD`. Distinct from "incorrect", which is what both change-password
  * endpoints used to say (or imply) for an empty field; one constant so the tourist and operator pages
@@ -32,9 +30,12 @@ export const CURRENT_PASSWORD_REQUIRED_MESSAGE = 'Enter your current password.';
 
 /** How a "forgot password" request ended (always neutral to the user — non-enumeration, D-8). */
 export type ForgotPasswordResult = 'sent' | 'rate-limited' | 'error';
-/** How a reset-token redemption ended. */
+/**
+ * How a reset-token redemption ended. `invalid-password` is the length rule, `blocked-password` the
+ * blocklist — told apart by the problem `code` so the page can name the rule that failed.
+ */
 export type ResetPasswordResult =
-  'reset' | 'invalid-token' | 'invalid-password' | 'rate-limited' | 'error';
+  'reset' | 'invalid-token' | 'invalid-password' | 'blocked-password' | 'rate-limited' | 'error';
 /** How an email-verification token redemption ended. */
 export type VerifyEmailResult = 'verified' | 'invalid-token' | 'rate-limited' | 'error';
 /**
@@ -42,7 +43,13 @@ export type VerifyEmailResult = 'verified' | 'invalid-token' | 'rate-limited' | 
  * by the problem `code` alone — collapsing them shows "incorrect" for a field the account left blank.
  */
 export type SetPasswordResult =
-  'set' | 'missing-current' | 'invalid-current' | 'invalid-password' | 'rate-limited' | 'error';
+  | 'set'
+  | 'missing-current'
+  | 'invalid-current'
+  | 'invalid-password'
+  | 'blocked-password'
+  | 'rate-limited'
+  | 'error';
 /** How a self-service right-to-erasure ended. */
 export type EraseAccountResult = 'erased' | 'error';
 /** The verification-resend response body: whether the do-not-email list withheld the message. */
@@ -57,6 +64,13 @@ function problemCode(error: unknown): string | undefined {
     : undefined;
 }
 
+/** A 400 from a password-accepting endpoint: the blocklist has its own code, everything else is the length rule. */
+function passwordPolicyResult(error: unknown): 'invalid-password' | 'blocked-password' {
+  return problemCode(error) === PASSWORD_BLOCKED_TERM_CODE
+    ? 'blocked-password'
+    : 'invalid-password';
+}
+
 /** How a customer sign-in attempt ended (the shared {@link SignInResult}; aliased for the surfaces). */
 export type CustomerSignInResult = SignInResult;
 
@@ -66,7 +80,7 @@ export type CustomerSignInResult = SignInResult;
  * learn the truth from `/me`); the rest are input/transport failures.
  */
 export type CustomerRegisterResult =
-  'registered' | 'exists' | 'invalid-password' | 'rate-limited' | 'error';
+  'registered' | 'exists' | 'invalid-password' | 'blocked-password' | 'rate-limited' | 'error';
 
 /**
  * Session-aware customer auth state on the shared {@link SessionAuth} base — the
@@ -131,7 +145,7 @@ export class CustomerAuth extends SessionAuth {
         return 'rate-limited';
       }
       if (error instanceof HttpErrorResponse && error.status === 400) {
-        return 'invalid-password';
+        return passwordPolicyResult(error);
       }
       return 'error';
     }
@@ -166,7 +180,7 @@ export class CustomerAuth extends SessionAuth {
       if (error instanceof HttpErrorResponse && error.status === 400) {
         return problemCode(error) === 'INVALID_OR_EXPIRED_TOKEN'
           ? 'invalid-token'
-          : 'invalid-password';
+          : passwordPolicyResult(error);
       }
       return 'error';
     }
@@ -210,7 +224,7 @@ export class CustomerAuth extends SessionAuth {
           case 'INVALID_CURRENT_PASSWORD':
             return 'invalid-current';
           default:
-            return 'invalid-password';
+            return passwordPolicyResult(error);
         }
       }
       // A 429 needs its own branch: the generic retry advice would invite the exact retry being rejected.
@@ -287,6 +301,8 @@ export function customerRegisterMessage(result: CustomerRegisterResult): string 
       return 'That email may already have an account. Try signing in instead.';
     case 'invalid-password':
       return PASSWORD_LENGTH_MESSAGE;
+    case 'blocked-password':
+      return PASSWORD_BLOCKED_MESSAGE;
     case 'rate-limited':
       return 'Too many attempts. Please wait a minute and try again.';
     case 'error':

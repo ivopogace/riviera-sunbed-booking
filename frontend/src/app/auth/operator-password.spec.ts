@@ -112,11 +112,21 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
     const auth = authStub('changed');
     const fixture = await render(auth);
 
-    setModel(fixture, 'current-pass1', 'short');
+    setModel(fixture, 'current-pass1', 'elevenchars');
     await submit(fixture);
 
     expect(auth.changePassword).not.toHaveBeenCalled();
-    expect(text(fixture, 'oppw-error')).toBeDefined();
+    expect(text(fixture, 'oppw-error')).toContain('12–72 characters');
+  });
+
+  it('says the password rule up front and names the blocklist when the server rejects for it', async () => {
+    const fixture = await render(authStub('blocked-password'));
+    expect(text(fixture, 'oppw-new-hint')).toContain('At least 12 characters');
+
+    setModel(fixture, 'current-pass1', 'rotated-pass2');
+    await submit(fixture);
+
+    expect(text(fixture, 'oppw-error')).toContain('name you sign in with');
   });
 
   // The guard still spends no request; the server names the case too (it no longer needs to).
@@ -129,7 +139,7 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
 
     expect(auth.changePassword).not.toHaveBeenCalled();
     expect(text(fixture, 'oppw-error')).toContain('current password');
-    expect(text(fixture, 'oppw-error')).not.toContain('8–72');
+    expect(text(fixture, 'oppw-error')).not.toContain('12–72');
   });
 
   // Review finding: an early return skipped the clear, so a stale success notice sat beside a fresh error.
@@ -147,7 +157,7 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
   });
 
   // The server caps bcrypt's 72-BYTE input; counting characters let an accented passphrase through to a
-  // rejection whose message ("8–72 characters") contradicted what the operator could see on screen.
+  // rejection whose message ("12–72 characters") contradicted what the operator could see on screen.
   it('rejects a new password over 72 UTF-8 bytes even when it is under 72 characters', async () => {
     const auth = authStub('changed');
     const fixture = await render(auth);
@@ -157,7 +167,7 @@ describe('OperatorPassword (self-service credential rotation, #326)', () => {
 
     expect(auth.changePassword).not.toHaveBeenCalled();
     expect(text(fixture, 'oppw-error')).toContain('too long');
-    expect(text(fixture, 'oppw-error')).not.toContain('8–72 characters');
+    expect(text(fixture, 'oppw-error')).not.toContain('12–72 characters');
   });
 
   // A dead session must flow back into SessionAuth; every other operator surface calls sessionLost().
