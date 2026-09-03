@@ -256,11 +256,25 @@ class OperatorAccountControllerTest {
 		verify(sessionRevoker, never()).revokeAllExcept(anyString(), any());
 	}
 
+	@Test
+	void rejectsANewPasswordContainingTheUsernameWithItsOwnCode() throws Exception {
+		givenStoredCredential(OPERATOR_USERNAME, CURRENT_PASSWORD);
+
+		mvc.perform(isolated(post(CHANGE_PASSWORD)).with(user(OPERATOR_USERNAME).roles("OPERATOR"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(body(CURRENT_PASSWORD, "my-Adriatica-2026")))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("PASSWORD_CONTAINS_BLOCKED_TERM"));
+
+		verify(provisioning, never()).setPassword(anyString(), anyString());
+		verify(sessionRevoker, never()).revokeAllExcept(anyString(), any());
+	}
+
 	/**
 	 * An omitted current password is its own fault, not a new-password policy violation. Until this
 	 * slice the record's compact constructor threw {@link IllegalArgumentException} for it and the global
 	 * advice funnelled that into the same {@code INVALID_REQUEST} {@link #rejectsWeakNewPassword} produces —
-	 * so a caller whose new password was perfectly good was told to choose one of 8–72 characters. Both
+	 * so a caller whose new password was perfectly good was told to choose one of 12–72 characters. Both
 	 * shapes are covered: the field absent from the body, and present but empty.
 	 */
 	@Test

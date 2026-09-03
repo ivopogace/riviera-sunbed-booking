@@ -82,8 +82,9 @@ class OperatorAccountController {
 	 * Change the signed-in operator's own password, evicting every <em>other</em> session the old credential
 	 * authorized and retiring the calling session's id. An omitted current password is
 	 * {@code 400 MISSING_CURRENT_PASSWORD} and a supplied-but-wrong one {@code 400 INVALID_CURRENT_PASSWORD}
-	 * (#345 — one code for both told a caller its fine new password was the wrong length); a weak new
-	 * password is {@code 400 INVALID_REQUEST}; the env-managed bootstrap admin is
+	 * (#345 — one code for both told a caller its fine new password was the wrong length); a new
+	 * password outside the length rule is {@code 400 INVALID_REQUEST} and one containing the username or
+	 * the service name {@code 400 PASSWORD_CONTAINS_BLOCKED_TERM}; the env-managed bootstrap admin is
 	 * {@code 409 BOOTSTRAP_CREDENTIAL_MANAGED}; a non-{@code ACTIVE} account is {@code 409 ACCOUNT_NOT_ACTIVE}.
 	 *
 	 * <p><strong>The missing-current check outranks the policy check</strong>, matching the order the page
@@ -123,11 +124,11 @@ class OperatorAccountController {
 					"This account's password is managed by the deployment environment and cannot be "
 							+ "changed here.");
 		}
-		if (!CustomerPasswords.isSupplied(request.currentPassword())) {
+		if (!PasswordPolicy.isSupplied(request.currentPassword())) {
 			return ApiProblem.response(HttpStatus.BAD_REQUEST, "MISSING_CURRENT_PASSWORD",
 					"The request carries no current password.");
 		}
-		CustomerPasswords.validate(request.newPassword());
+		PasswordPolicy.validate(request.newPassword(), username);
 		Optional<OperatorCredential> existing = accounts.findByUsername(username);
 		if (existing.isEmpty() || !currentPasswordMatches(request, existing.get())) {
 			return ApiProblem.response(HttpStatus.BAD_REQUEST, "INVALID_CURRENT_PASSWORD",

@@ -3,7 +3,11 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
-import { OperatorAuth, operatorPasswordChangeMessage } from './operator-auth';
+import {
+  OperatorAuth,
+  operatorPasswordChangeMessage,
+  operatorRegisterMessage,
+} from './operator-auth';
 import { OwnedVenues } from './owned-venues';
 
 const AUTH_API = `${environment.apiBaseUrl}/api/auth`;
@@ -199,6 +203,21 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
 
       expect(await result).toBe('invalid-password');
     });
+
+    it('maps a 400 PASSWORD_CONTAINS_BLOCKED_TERM to blocked-password', async () => {
+      const auth = serviceWithRestore('signed-out');
+
+      const result = auth.register('alice', 'alice-at-the-beach', 'alice@venue.example');
+      httpMock
+        .expectOne(`${AUTH_API}/operator/register`)
+        .flush(
+          { code: 'PASSWORD_CONTAINS_BLOCKED_TERM' },
+          { status: 400, statusText: 'Bad Request' },
+        );
+
+      expect(await result).toBe('blocked-password');
+      expect(operatorRegisterMessage('blocked-password')).toContain('name you sign in with');
+    });
   });
 
   describe('changePassword (self-service credential rotation, #326)', () => {
@@ -258,6 +277,22 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
         .flush({ code: 'INVALID_REQUEST' }, { status: 400, statusText: 'Bad Request' });
 
       expect(await result).toBe('invalid-password');
+    });
+
+    it('maps 400 PASSWORD_CONTAINS_BLOCKED_TERM to blocked-password', async () => {
+      const auth = serviceWithRestore({ username: 'adriatica' });
+      await Promise.resolve();
+
+      const result = auth.changePassword('current-pass1', 'my-adriatica-2026');
+      httpMock
+        .expectOne(`${AUTH_API}/operator/password`)
+        .flush(
+          { code: 'PASSWORD_CONTAINS_BLOCKED_TERM' },
+          { status: 400, statusText: 'Bad Request' },
+        );
+
+      expect(await result).toBe('blocked-password');
+      expect(operatorPasswordChangeMessage('blocked-password')).toContain('name you sign in with');
     });
 
     it('maps 409 BOOTSTRAP_CREDENTIAL_MANAGED to bootstrap-managed', async () => {

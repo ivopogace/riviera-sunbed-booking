@@ -3,17 +3,17 @@ import { FormField, form } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 
 import {
-  MAX_OPERATOR_PASSWORD_BYTES,
-  MIN_OPERATOR_PASSWORD_LENGTH,
   OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE,
-  OPERATOR_PASSWORD_LENGTH_MESSAGE,
-  OPERATOR_PASSWORD_TOO_LONG_MESSAGE,
   OperatorAuth,
-  operatorPasswordByteLength,
   operatorPasswordChangeMessage,
 } from '../core/operator-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import {
+  PASSWORD_POLICY_HINT,
+  passwordPolicyMessage,
+  passwordPolicyViolation,
+} from '../shared/password-policy';
 
 import { TouchTarget } from '../shared/touch-target';
 
@@ -91,8 +91,8 @@ const CLS = {
               aria-describedby="oppw-new-hint"
             />
           </label>
-          <p id="oppw-new-hint" [class]="cls.hint">
-            8–72 characters. Changing it signs you out on every other device.
+          <p id="oppw-new-hint" [class]="cls.hint" data-testid="oppw-new-hint">
+            {{ policyHint }} Changing it signs you out on every other device.
           </p>
 
           @if (error()) {
@@ -133,6 +133,8 @@ export class OperatorPassword {
   private readonly injector = inject(Injector);
 
   protected readonly cls = CLS;
+
+  protected readonly policyHint = PASSWORD_POLICY_HINT;
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | undefined>(undefined);
   protected readonly notice = signal<string | undefined>(undefined);
@@ -161,14 +163,9 @@ export class OperatorPassword {
       this.fail(OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE);
       return;
     }
-    if (newPassword.length < MIN_OPERATOR_PASSWORD_LENGTH) {
-      this.fail(OPERATOR_PASSWORD_LENGTH_MESSAGE);
-      return;
-    }
-    // Bytes, not characters — the server's cap is bcrypt's 72-byte input limit, so an accented or
-    // emoji-bearing passphrase can be well under 72 characters and still be rejected.
-    if (operatorPasswordByteLength(newPassword) > MAX_OPERATOR_PASSWORD_BYTES) {
-      this.fail(OPERATOR_PASSWORD_TOO_LONG_MESSAGE);
+    const violation = passwordPolicyViolation(newPassword, this.auth.username() ?? '');
+    if (violation) {
+      this.fail(passwordPolicyMessage(violation));
       return;
     }
     this.submitting.set(true);

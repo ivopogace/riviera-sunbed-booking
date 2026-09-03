@@ -35,12 +35,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "riviera.operator.password=admin-pw")
+@SpringBootTest(properties = "riviera.operator.password=admin-test-pw1")
 @AutoConfigureMockMvc
 class OperatorApprovalIT {
 
 	private static final String ADMIN = "operator";
-	private static final String ADMIN_PW = "admin-pw";
+	private static final String ADMIN_PW = "admin-test-pw1";
 	private static final String PENDING_PW = "pending-op-pw-123";
 
 	@Autowired
@@ -108,7 +108,7 @@ class OperatorApprovalIT {
 
 	@Test
 	void approveNonPendingConflictsAndUnknownIsNotFound() throws Exception {
-		OperatorId active = provisioning.provision("appr-carol", encoder.encode("pw"));
+		OperatorId active = provisioning.provision("appr-carol", encoder.encode("carol-store-pw1"));
 		Cookie admin = adminSession();
 
 		// An already-ACTIVE operator is not awaiting approval → 409 NOT_PENDING.
@@ -126,8 +126,8 @@ class OperatorApprovalIT {
 	void plainOperatorIsForbiddenFromAdminSurface() throws Exception {
 		// A plain ACTIVE operator (is_admin FALSE) has ROLE_OPERATOR but not ROLE_ADMIN → 403 on the
 		// role-gated admin surface (authenticated, wrong role) — AC-5.
-		provisioning.provision("appr-dave", encoder.encode("dave-pw"));
-		Cookie plain = SessionLoginSupport.operatorSession(mvc, "appr-dave", "dave-pw");
+		provisioning.provision("appr-dave", encoder.encode("dave-store-pw-1"));
+		Cookie plain = SessionLoginSupport.operatorSession(mvc, "appr-dave", "dave-store-pw-1");
 
 		mvc.perform(get("/api/admin/operators").cookie(plain))
 				.andExpect(status().isForbidden());

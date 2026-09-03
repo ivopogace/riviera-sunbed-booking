@@ -2,7 +2,12 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { computed, inject, Service } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { CURRENT_PASSWORD_REQUIRED_MESSAGE, PASSWORD_LENGTH_MESSAGE } from './customer-auth';
+import {
+  PASSWORD_BLOCKED_MESSAGE,
+  PASSWORD_BLOCKED_TERM_CODE,
+  PASSWORD_LENGTH_MESSAGE,
+} from '../shared/password-policy';
+import { CURRENT_PASSWORD_REQUIRED_MESSAGE } from './customer-auth';
 import { OwnedVenues } from './owned-venues';
 import {
   AUTH_API,
@@ -22,7 +27,8 @@ export type { SignInResult } from './session-auth';
  * taken (non-enumeration, D-8): the backend answers an identical 202 and establishes NO session. The
  * rest are input/transport failures.
  */
-export type OperatorRegisterResult = 'submitted' | 'invalid-password' | 'rate-limited' | 'error';
+export type OperatorRegisterResult =
+  'submitted' | 'invalid-password' | 'blocked-password' | 'rate-limited' | 'error';
 
 /**
  * How a self-service password change ended. The three `400`s are distinguished by the problem
@@ -35,18 +41,12 @@ export type OperatorPasswordChangeResult =
   | 'missing-current'
   | 'invalid-current'
   | 'invalid-password'
+  | 'blocked-password'
   | 'bootstrap-managed'
   | 'not-active'
   | 'rate-limited'
   | 'session-lost'
   | 'error';
-
-// The FE password policy is ONE rule for both principal types — the backend enforces both via the same
-// CustomerPasswords.validate — so source the customer constants rather than redeclare them (a byte-for-byte
-// copy would silently desync). The length is re-exported directly (used only by the register component);
-// the message is aliased into a local const because operatorRegisterMessage below references it.
-export { MIN_PASSWORD_LENGTH as MIN_OPERATOR_PASSWORD_LENGTH } from './customer-auth';
-export const OPERATOR_PASSWORD_LENGTH_MESSAGE = PASSWORD_LENGTH_MESSAGE;
 
 /**
  * Shown when the current-password field is left empty — from the client-side guard, and also from the
@@ -56,21 +56,6 @@ export const OPERATOR_PASSWORD_LENGTH_MESSAGE = PASSWORD_LENGTH_MESSAGE;
  * length message above: one wording for both principal types, no byte-for-byte copy to desync.
  */
 export const OPERATOR_CURRENT_PASSWORD_REQUIRED_MESSAGE = CURRENT_PASSWORD_REQUIRED_MESSAGE;
-
-/**
- * The server caps the password at bcrypt's 72-**byte** input limit, not 72 characters. The two agree
- * only for ASCII: a 40-character Albanian passphrase using ç/ë, or anything with emoji, can exceed 72
- * bytes while looking well short of the limit — so a character-counting client sends it, the server
- * rejects it, and the operator reads "8–72 characters" about a password they can see is 40 long.
- */
-export const MAX_OPERATOR_PASSWORD_BYTES = 72;
-export const OPERATOR_PASSWORD_TOO_LONG_MESSAGE =
-  'That password is too long. Accented letters and emoji each take several of the 72 available characters, so try a shorter one.';
-
-/** Byte length under UTF-8, which is what the server's 72-byte bcrypt cap actually measures. */
-export function operatorPasswordByteLength(password: string): number {
-  return new TextEncoder().encode(password).length;
-}
 
 /**
  * The operator-facing message for a FAILED sign-in — one source so every surface that signs an
@@ -171,7 +156,9 @@ export class OperatorAuth extends SessionAuth {
         return 'rate-limited';
       }
       if (error instanceof HttpErrorResponse && error.status === 400) {
-        return 'invalid-password';
+        return (error.error as { code?: string } | null)?.code === PASSWORD_BLOCKED_TERM_CODE
+          ? 'blocked-password'
+          : 'invalid-password';
       }
       return 'error';
     }
@@ -216,6 +203,8 @@ function passwordChangeFailure(error: unknown): OperatorPasswordChangeResult {
       return 'invalid-current';
     case 'INVALID_REQUEST':
       return 'invalid-password';
+    case PASSWORD_BLOCKED_TERM_CODE:
+      return 'blocked-password';
     case 'BOOTSTRAP_CREDENTIAL_MANAGED':
       return 'bootstrap-managed';
     case 'ACCOUNT_NOT_ACTIVE':
@@ -238,7 +227,9 @@ export function operatorPasswordChangeMessage(result: OperatorPasswordChangeResu
     case 'invalid-current':
       return 'That current password is incorrect.';
     case 'invalid-password':
-      return OPERATOR_PASSWORD_LENGTH_MESSAGE;
+      return PASSWORD_LENGTH_MESSAGE;
+    case 'blocked-password':
+      return PASSWORD_BLOCKED_MESSAGE;
     case 'bootstrap-managed':
       return "This account's password is managed by the deployment environment and can't be changed here.";
     case 'not-active':
@@ -254,14 +245,17 @@ export function operatorPasswordChangeMessage(result: OperatorPasswordChangeResu
 
 /**
  * The operator-facing message for a FAILED registration (a success shows the "pending approval" notice,
- * not a message). Wording stays generic (D-8). `invalid-password` echoes the length policy.
+ * not a message). Wording stays generic (D-8). `invalid-password` echoes the length rule,
+ * `blocked-password` the blocklist.
  */
 export function operatorRegisterMessage(result: OperatorRegisterResult): string | undefined {
   switch (result) {
     case 'submitted':
       return undefined;
     case 'invalid-password':
-      return OPERATOR_PASSWORD_LENGTH_MESSAGE;
+      return PASSWORD_LENGTH_MESSAGE;
+    case 'blocked-password':
+      return PASSWORD_BLOCKED_MESSAGE;
     case 'rate-limited':
       return 'Too many attempts. Please wait a minute and try again.';
     case 'error':

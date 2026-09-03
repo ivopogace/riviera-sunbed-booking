@@ -68,7 +68,7 @@ describe('ResetPassword', () => {
     const auth = authStub('reset');
     const fixture = await render(auth, 'tok');
 
-    setModel(fixture, 'password123', 'different1');
+    setModel(fixture, 'passphrase-123', 'different1');
     submit(fixture);
     await fixture.whenStable();
 
@@ -80,20 +80,45 @@ describe('ResetPassword', () => {
     const auth = authStub('reset');
     const fixture = await render(auth, 'tok');
 
-    setModel(fixture, 'password123', 'password123');
+    setModel(fixture, 'passphrase-123', 'passphrase-123');
     submit(fixture);
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(auth.resetPassword).toHaveBeenCalledWith('tok', 'password123');
+    expect(auth.resetPassword).toHaveBeenCalledWith('tok', 'passphrase-123');
     expect(text(fixture, 'reset-done')).toContain('updated');
+  });
+
+  it('says the password rule up front and rejects a short password before calling the service', async () => {
+    const auth = authStub('reset');
+    const fixture = await render(auth, 'tok');
+    expect(text(fixture, 'reset-hint')).toContain('At least 12 characters');
+
+    setModel(fixture, 'elevenchars', 'elevenchars');
+    submit(fixture);
+    await fixture.whenStable();
+
+    expect(auth.resetPassword).not.toHaveBeenCalled();
+    expect(text(fixture, 'reset-error')).toContain('12–72 characters');
+  });
+
+  it('names the blocklist when the server rejects the password for it', async () => {
+    const auth = authStub('blocked-password');
+    const fixture = await render(auth, 'tok');
+
+    setModel(fixture, 'passphrase-123', 'passphrase-123');
+    submit(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(text(fixture, 'reset-error')).toContain('name you sign in with');
   });
 
   it('maps an invalid token to the expired-link message', async () => {
     const auth = authStub('invalid-token');
     const fixture = await render(auth, 'tok');
 
-    setModel(fixture, 'password123', 'password123');
+    setModel(fixture, 'passphrase-123', 'passphrase-123');
     submit(fixture);
     await fixture.whenStable();
     fixture.detectChanges();

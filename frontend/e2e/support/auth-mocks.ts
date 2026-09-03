@@ -17,6 +17,28 @@ function problem(status: number, title: string, code: string) {
 }
 
 /**
+ * The server's password policy (D-8) as the mocked endpoints answer it: 12 characters to 72 bytes →
+ * `INVALID_REQUEST`; the service name or the account's own name in the password →
+ * `PASSWORD_CONTAINS_BLOCKED_TERM`, its own code. Undefined when the password passes.
+ */
+function passwordPolicyProblem(
+  newPassword: string,
+  accountName: string,
+): ReturnType<typeof problem> | undefined {
+  if (newPassword.length < 12 || new TextEncoder().encode(newPassword).length > 72) {
+    return problem(400, 'Bad Request', 'INVALID_REQUEST');
+  }
+  const lower = newPassword.toLowerCase();
+  if (
+    lower.includes('riviera') ||
+    (accountName.length >= 3 && lower.includes(accountName.toLowerCase()))
+  ) {
+    return problem(400, 'Bad Request', 'PASSWORD_CONTAINS_BLOCKED_TERM');
+  }
+  return undefined;
+}
+
+/**
  * Stateful mock of the session-auth API for the CI-safe suite: a tiny in-memory
  * "session" that `/api/auth/me` reflects — so a reload realistically RESTORES a signed-in state,
  * because routes persist across navigations within one Playwright page. Login succeeds
@@ -77,11 +99,12 @@ export async function mockAuthApi(
       return route.fulfill(problem(400, 'Bad Request', 'MISSING_CURRENT_PASSWORD'));
     }
     // Policy BEFORE the credential check, and bytes not characters — both mirror the controller, which
-    // calls CustomerPasswords.validate ahead of findByUsername and caps at bcrypt's 72-byte input limit.
+    // calls PasswordPolicy.validate ahead of findByUsername and caps at bcrypt's 72-byte input limit.
     // Reversing either lets the mocked suite stay green through a real reordering.
     const newPassword = body.newPassword ?? '';
-    if (newPassword.length < 8 || new TextEncoder().encode(newPassword).length > 72) {
-      return route.fulfill(problem(400, 'Bad Request', 'INVALID_REQUEST'));
+    const policyProblem = passwordPolicyProblem(newPassword, username);
+    if (policyProblem) {
+      return route.fulfill(policyProblem);
     }
     if (body.currentPassword !== password) {
       return route.fulfill(problem(400, 'Bad Request', 'INVALID_CURRENT_PASSWORD'));
@@ -495,8 +518,9 @@ export async function mockCustomerRecoveryApi(
       currentPassword?: string | null;
     };
     const newPassword = body.newPassword ?? '';
-    if (newPassword.length < 8 || new TextEncoder().encode(newPassword).length > 72) {
-      return route.fulfill(problem(400, 'Bad Request', 'INVALID_REQUEST'));
+    const policyProblem = passwordPolicyProblem(newPassword, email.split('@')[0]);
+    if (policyProblem) {
+      return route.fulfill(policyProblem);
     }
     // Nested as the controller nests it: a stored password is what makes either answer reachable.
     if (password !== undefined) {

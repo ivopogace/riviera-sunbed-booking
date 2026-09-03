@@ -18,7 +18,7 @@ import { mockCustomerRecoveryApi } from './support/auth-mocks';
 
 const VALID_TOKEN = 'valid-verify-token';
 const EMAIL = 'ana@example.com';
-const PASSWORD = 'password123';
+const PASSWORD = 'passphrase-123';
 
 test('following the verification link verifies the email', async ({ page }) => {
   await mockCustomerRecoveryApi(page, {

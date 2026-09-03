@@ -326,7 +326,7 @@ class RateLimitFilterTest {
 		return mvc.perform(post("/api/auth/customer/register").with(fromIp(ip)).with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-						{"email": "new@example.com", "password": "password123"}"""));
+						{"email": "new@example.com", "password": "passphrase-123"}"""));
 	}
 
 	@Test

@@ -18,7 +18,9 @@ import ai.riviera.platform.operator.vocabulary.OperatorCredential;
  * {@link PasswordEncoder} (all crypto stays at the edge) and stored on the seeded bootstrap operator
  * via {@link OperatorProvisioning#setPassword}. Setting the variable to a new value and restarting is
  * therefore the credential-<em>rotation</em> path for that account. When it is blank, the operator
- * write API is locked (no login) — logged at WARN, never with the value (invariant #7).
+ * write API is locked (no login) — logged at WARN, never with the value (invariant #7). A value outside
+ * {@link PasswordPolicy}'s length rule is refused the same way: not stamped, one WARN without the value,
+ * never a boot failure — the highest-privilege account is held to the floor every chosen password meets.
  *
  * <p>This is deliberately an edge {@link ApplicationRunner}, not domain logic: it runs only in the full
  * application context (a {@code @WebMvcTest} slice does not component-scan it) and only touches the
@@ -54,6 +56,12 @@ class OperatorCredentialInitializer implements ApplicationRunner {
 		if (password == null || password.isBlank()) {
 			log.warn("No RIVIERA_OPERATOR_PASSWORD set — the bootstrap operator '{}' has no login; the "
 					+ "operator write API is locked until you configure one.", username);
+			return;
+		}
+		if (!PasswordPolicy.hasPermittedLength(password)) {
+			log.warn("RIVIERA_OPERATOR_PASSWORD is outside the {}-character to {}-byte password rule and is "
+					+ "ignored like an empty value — the bootstrap operator '{}' receives no credential from it.",
+					PasswordPolicy.MIN_LENGTH, PasswordPolicy.MAX_BYTES, username);
 			return;
 		}
 		boolean rotated = isGenuineRotation(username, password);

@@ -8,8 +8,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * {@code username} defaults to {@code operator} and names the seeded bootstrap platform-admin operator;
  * {@code password} is supplied per environment via {@code RIVIERA_OPERATOR_PASSWORD} (<strong>never
  * committed</strong>) and is used by {@link OperatorCredentialInitializer} at startup to provision/rotate
- * <em>that one account's</em> credential. When blank, the bootstrap operator has no login and the write
- * API is locked until a credential is configured. Additional operators are provisioned via the
+ * <em>that one account's</em> credential. When blank — or outside {@link PasswordPolicy}'s length rule —
+ * the bootstrap operator has no login and the write API is locked until a credential is configured. Additional operators are provisioned via the
  * {@code operator} module's provisioning port, not this property.
  */
 @ConfigurationProperties("riviera.operator")

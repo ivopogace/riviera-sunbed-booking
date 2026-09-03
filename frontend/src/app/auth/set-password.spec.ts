@@ -146,6 +146,32 @@ describe('SetPassword', () => {
     expect(text(fixture, 'setpw-notice')).toContain('saved');
   });
 
+  it('says the password rule up front and names the blocklist when the server rejects for it', async () => {
+    const auth = authStub({ setPassword: 'blocked-password' });
+    const fixture = await render(auth);
+    expect(text(fixture, 'setpw-new-hint')).toContain('At least 12 characters');
+
+    setModel(fixture, 'brandnewpass2', 'currentpass1');
+    submit(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(text(fixture, 'setpw-error')).toContain('name you sign in with');
+  });
+
+  it('blocks a password containing the email name client-side, without a request', async () => {
+    const auth = authStub({ setPassword: 'set' });
+    const fixture = await render(auth);
+
+    setModel(fixture, 'ana-is-the-best-1', 'currentpass1');
+    submit(fixture);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(auth.setPassword).not.toHaveBeenCalled();
+    expect(text(fixture, 'setpw-error')).toContain('name you sign in with');
+  });
+
   it('shows the current-password error when it is wrong', async () => {
     const auth = authStub({ setPassword: 'invalid-current' });
     const fixture = await render(auth);

@@ -136,10 +136,26 @@ class AccountRecoveryControllerTest {
 		verify(sessionRevoker, never()).revokeAll(anyString());
 	}
 
+	/**
+	 * The blocklist needs the account's name, so it reads the token — without consuming it — and still
+	 * revokes nothing and writes nothing.
+	 */
+	@Test
+	void aBlockedPasswordNamesTheAccountButRevokesNothing() throws Exception {
+		givenARedeemableToken();
+
+		mvc.perform(reset(RAW_TOKEN, "Alice-2026-pw!!"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("PASSWORD_CONTAINS_BLOCKED_TERM"));
+
+		verify(sessionRevoker, never()).revokeAll(anyString());
+		verify(recovery, never()).resetPassword(anyString(), anyString());
+	}
+
 	/** The password policy still runs first: a weak password revokes nothing and reads no token. */
 	@Test
 	void aWeakPasswordIsRejectedBeforeAnyRevoke() throws Exception {
-		mvc.perform(reset(RAW_TOKEN, "short"))
+		mvc.perform(reset(RAW_TOKEN, "elevenchars"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 

@@ -18,8 +18,6 @@ import {
   CustomerAuth,
   customerRegisterMessage,
   customerSignInMessage,
-  MIN_PASSWORD_LENGTH,
-  PASSWORD_LENGTH_MESSAGE,
 } from '../core/customer-auth';
 import { OperatorAuth, operatorRegisterMessage, signInFailureMessage } from '../core/operator-auth';
 import { OwnedVenues } from '../core/owned-venues';
@@ -28,6 +26,12 @@ import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { FieldGlass } from '../shared/field-glass';
 import { OutcomeCard } from '../shared/outcome-card';
+import {
+  emailLocalPart,
+  PASSWORD_POLICY_HINT,
+  passwordPolicyMessage,
+  passwordPolicyViolation,
+} from '../shared/password-policy';
 import { SegmentedControl, SegmentedOption } from '../shared/segmented-control';
 import { SsoButtons } from './sso-buttons';
 
@@ -222,8 +226,12 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-c
               </label>
 
               @if (mode() === 'register') {
-                <p id="auth-hint" class="m-0 text-[12px] text-riv-card-ink-faint">
-                  8–72 characters.
+                <p
+                  id="auth-hint"
+                  class="m-0 text-[12px] text-riv-card-ink-faint"
+                  data-testid="auth-hint"
+                >
+                  {{ policyHint }}
                 </p>
               }
 
@@ -312,6 +320,7 @@ export class AuthPage {
 
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | undefined>(undefined);
+  protected readonly policyHint = PASSWORD_POLICY_HINT;
   private readonly submittedForApproval = signal(false);
   /**
    * True from the moment a sign-in succeeds — before the landing route is even known — so the landed
@@ -445,9 +454,13 @@ export class AuthPage {
       this.error.set(this.emptyFieldsMessage());
       return;
     }
-    if (this.mode() === 'register' && password.length < MIN_PASSWORD_LENGTH) {
-      this.error.set(PASSWORD_LENGTH_MESSAGE);
-      return;
+    if (this.mode() === 'register') {
+      const accountName = this.audience() === 'tourist' ? emailLocalPart(identifier) : identifier;
+      const violation = passwordPolicyViolation(password, accountName);
+      if (violation) {
+        this.error.set(passwordPolicyMessage(violation));
+        return;
+      }
     }
 
     this.submitting.set(true);

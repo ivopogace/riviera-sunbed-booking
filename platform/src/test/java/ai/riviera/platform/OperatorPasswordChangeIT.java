@@ -214,6 +214,28 @@ class OperatorPasswordChangeIT {
 		return ids.iterator().next();
 	}
 
+	/**
+	 * The three {@code 400}s stay distinct: a wrong current password, a new one outside the length
+	 * rule, and a new one containing the operator's own username each carry their own code, so a
+	 * caller is never told its fine new password is wrong — or its wrong current one is weak.
+	 */
+	@Test
+	void aBlockedNewPasswordIsNamedDistinctlyFromAWrongCurrentOne() throws Exception {
+		Cookie session = SessionLoginSupport.operatorSession(mvc, TARGET, OLD_PASSWORD);
+
+		mvc.perform(changePassword(session, "not-the-current-one", NEW_PASSWORD))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_CURRENT_PASSWORD"));
+		mvc.perform(changePassword(session, OLD_PASSWORD, "elevenchars"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		mvc.perform(changePassword(session, OLD_PASSWORD, "my-" + TARGET.toUpperCase() + "-1"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("PASSWORD_CONTAINS_BLOCKED_TERM"));
+
+		login(TARGET, OLD_PASSWORD).andExpect(status().isOk()); // nothing rotated by any of the three
+	}
+
 	/** A rejected attempt must be inert: nothing rotated, nothing revoked (AC-2, against real storage). */
 	@Test
 	void aWrongCurrentPasswordRotatesNothingAndRevokesNothing() throws Exception {

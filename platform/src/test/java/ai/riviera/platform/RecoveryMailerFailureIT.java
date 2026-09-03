@@ -70,6 +70,6 @@ class RecoveryMailerFailureIT {
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-						{"email": "%s", "password": "password123"}""".formatted(email)));
+						{"email": "%s", "password": "passphrase-123"}""".formatted(email)));
 	}
 }

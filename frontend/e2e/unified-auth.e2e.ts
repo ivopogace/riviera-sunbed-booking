@@ -23,7 +23,7 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 const AUTH_URL = /\/account\/sign-in/;
 
 test('the audience toggle is a keyboard-operable radiogroup', async ({ page }) => {
-  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'password123' });
+  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
   await page.goto('/account/sign-in');
 
   const options = page.getByRole('radio');
@@ -45,7 +45,7 @@ test('the audience toggle is a keyboard-operable radiogroup', async ({ page }) =
 test('a tourist signs in from the unified card; a wrong password is generic (D-8)', async ({
   page,
 }) => {
-  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'password123' });
+  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
   const auth = new CustomerAuthPage(page);
 
   await page.goto('/account/sign-in');
@@ -55,19 +55,19 @@ test('a tourist signs in from the unified card; a wrong password is generic (D-8
   await expect(auth.error).toContainText('Sign-in failed');
   await expect(page).toHaveURL(AUTH_URL); // no navigation on failure
 
-  await auth.signIn('ana@example.com', 'password123');
+  await auth.signIn('ana@example.com', 'passphrase-123');
   await auth.expectSignedInAs('ana@example.com');
   await expect(page).toHaveURL(/\/$/); // tourists land on Discover
 });
 
 test('a tourist registers from the same card and is signed in', async ({ page }) => {
-  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'password123' });
+  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
   const auth = new CustomerAuthPage(page);
 
   await page.goto('/account/sign-in?mode=register');
   await expectNoSeriousAxeViolations(page, 'unified auth card — tourist register');
 
-  await auth.register('ana@example.com', 'password123');
+  await auth.register('ana@example.com', 'passphrase-123');
 
   await auth.expectSignedInAs('ana@example.com');
   await expect(page).toHaveURL(/\/$/);
@@ -76,7 +76,7 @@ test('a tourist registers from the same card and is signed in', async ({ page })
 test('the header Register / Sign-in links switch the card mode via soft nav (#300)', async ({
   page,
 }) => {
-  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'password123' });
+  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
 
   await page.goto('/account/sign-in');
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
@@ -169,7 +169,7 @@ test('an operator registration auto-signs-in and lands under the pending notice'
 
   await page.getByLabel('Username', { exact: true }).fill('sereno');
   await page.getByLabel('Contact email', { exact: true }).fill('ops@sereno.al');
-  await page.getByLabel('Password', { exact: true }).fill('password123');
+  await page.getByLabel('Password', { exact: true }).fill('passphrase-123');
   await page.getByRole('button', { name: /^(Request account|Submitting)/ }).click();
 
   // The 202 is session-less; the card then signs in with the same credentials and lands us home.
@@ -179,7 +179,7 @@ test('an operator registration auto-signs-in and lands under the pending notice'
 });
 
 test('the retired auth routes still land somewhere live', async ({ page }) => {
-  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'password123' });
+  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
   await mockOwnedVenues(page, []);
 
   await page.goto('/account/register');

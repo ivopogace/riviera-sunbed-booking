@@ -114,10 +114,10 @@ describe('AuthPage', () => {
     it('signs a tourist in through CustomerAuth only', async () => {
       await render();
       type('auth-identifier', 'ana@example.com');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
 
-      expect(customer.signIn).toHaveBeenCalledWith('ana@example.com', 'password123');
+      expect(customer.signIn).toHaveBeenCalledWith('ana@example.com', 'passphrase-123');
       expect(operator.signIn).not.toHaveBeenCalled();
     });
 
@@ -125,10 +125,10 @@ describe('AuthPage', () => {
       await render();
       await chooseAudience('audience-operator');
       type('auth-identifier', 'sereno');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
 
-      expect(operator.signIn).toHaveBeenCalledWith('sereno', 'password123');
+      expect(operator.signIn).toHaveBeenCalledWith('sereno', 'passphrase-123');
       expect(customer.signIn).not.toHaveBeenCalled();
     });
 
@@ -195,7 +195,7 @@ describe('AuthPage', () => {
       let release!: (value: string) => void;
       customer.signIn.mockReturnValue(new Promise<string>((resolve) => (release = resolve)));
       type('auth-identifier', 'ana@example.com');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
 
       el<HTMLFormElement>('auth-form').dispatchEvent(new Event('submit'));
       el<HTMLFormElement>('auth-form').dispatchEvent(new Event('submit'));
@@ -210,10 +210,10 @@ describe('AuthPage', () => {
     it('registers and lands on home', async () => {
       await render({ mode: 'register' });
       type('auth-identifier', 'ana@example.com');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
 
-      expect(customer.register).toHaveBeenCalledWith('ana@example.com', 'password123');
+      expect(customer.register).toHaveBeenCalledWith('ana@example.com', 'passphrase-123');
       expect(navigate).toHaveBeenCalledWith('/');
     });
 
@@ -221,21 +221,48 @@ describe('AuthPage', () => {
       await render({ mode: 'register' });
       customer.register.mockResolvedValue('exists');
       type('auth-identifier', 'ana@example.com');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
 
       expect(el('auth-error').textContent).toContain('may already have an account');
       expect(navigate).not.toHaveBeenCalled();
     });
 
+    it('says the password rule up front, before any submit', async () => {
+      await render({ mode: 'register' });
+
+      expect(el('auth-hint').textContent).toContain('At least 12 characters');
+    });
+
     it('enforces the shared password minimum client-side', async () => {
       await render({ mode: 'register' });
       type('auth-identifier', 'ana@example.com');
-      type('auth-password', 'short');
+      type('auth-password', 'elevenchars');
       await submit();
 
       expect(customer.register).not.toHaveBeenCalled();
-      expect(el('auth-error').textContent).toContain('8–72 characters');
+      expect(el('auth-error').textContent).toContain('12–72 characters');
+    });
+
+    it('blocks a password containing the email name client-side, naming the rule', async () => {
+      await render({ mode: 'register' });
+      type('auth-identifier', 'ana.kola@example.com');
+      type('auth-password', 'Ana.Kola-summer-26');
+      await submit();
+
+      expect(customer.register).not.toHaveBeenCalled();
+      expect(el('auth-error').textContent).toContain('name you sign in with');
+    });
+
+    it('names the blocklist when the server rejects the password for it', async () => {
+      await render({ mode: 'register' });
+      customer.register.mockResolvedValue('blocked-password');
+      type('auth-identifier', 'ana@example.com');
+      type('auth-password', 'passphrase-123');
+      await submit();
+
+      expect(el('auth-error').textContent).toContain('name you sign in with');
+      expect(navigate).not.toHaveBeenCalled();
     });
   });
 
@@ -244,15 +271,15 @@ describe('AuthPage', () => {
       await render({ audience: 'operator', mode: 'register' });
       type('auth-identifier', 'sereno');
       type('auth-contact-email', 'ops@sereno.al');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
     }
 
     it('signs in with the just-entered credentials and lands in the console', async () => {
       await registerOperator();
 
-      expect(operator.register).toHaveBeenCalledWith('sereno', 'password123', 'ops@sereno.al');
-      expect(operator.signIn).toHaveBeenCalledWith('sereno', 'password123');
+      expect(operator.register).toHaveBeenCalledWith('sereno', 'passphrase-123', 'ops@sereno.al');
+      expect(operator.signIn).toHaveBeenCalledWith('sereno', 'passphrase-123');
       expect(navigate).toHaveBeenCalledWith('/operator/12');
     });
 
@@ -261,7 +288,7 @@ describe('AuthPage', () => {
       operator.signIn.mockResolvedValue('invalid-credentials');
       type('auth-identifier', 'sereno');
       type('auth-contact-email', 'ops@sereno.al');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
 
       expect(el('auth-error').textContent).toContain('Sign-in failed');
@@ -274,7 +301,7 @@ describe('AuthPage', () => {
       operator.signIn.mockResolvedValue('rate-limited');
       type('auth-identifier', 'sereno');
       type('auth-contact-email', 'ops@sereno.al');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
 
       expect(el('auth-error').textContent).toContain('wait a minute');
@@ -286,7 +313,7 @@ describe('AuthPage', () => {
       operator.signIn.mockResolvedValue('error');
       type('auth-identifier', 'sereno');
       type('auth-contact-email', 'ops@sereno.al');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
 
       expect(navigate).not.toHaveBeenCalled();
@@ -300,7 +327,7 @@ describe('AuthPage', () => {
       operator.signIn.mockResolvedValue('error');
       type('auth-identifier', 'sereno');
       type('auth-contact-email', 'ops@sereno.al');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
 
       el('auth-pending-back').click();
@@ -315,7 +342,7 @@ describe('AuthPage', () => {
     it('sends a single-venue operator straight into that console', async () => {
       await render({ audience: 'operator' });
       type('auth-identifier', 'sereno');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
 
       expect(navigate).toHaveBeenCalledWith('/operator/12');
@@ -331,7 +358,7 @@ describe('AuthPage', () => {
         ],
       };
       type('auth-identifier', 'sereno');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
 
       expect(navigate).toHaveBeenCalledWith('/operator');
@@ -340,7 +367,7 @@ describe('AuthPage', () => {
     it('honors a returnUrl over the venue-count rule', async () => {
       await render({ audience: 'operator', returnUrl: '/operator/15/payouts' });
       type('auth-identifier', 'sereno');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
 
       expect(navigate).toHaveBeenCalledWith('/operator/15/payouts');
@@ -355,7 +382,7 @@ describe('AuthPage', () => {
       let settle!: (result: OwnedVenuesResult) => void;
       owned.load = () => new Promise<OwnedVenuesResult>((resolve) => (settle = resolve));
       type('auth-identifier', 'sereno');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
 
       // Signed in, landing route not yet known: the busy form stays, the landed card never appears.
@@ -375,7 +402,7 @@ describe('AuthPage', () => {
       await render({ audience: 'operator' });
       owned.result = { status: 'error' };
       type('auth-identifier', 'sereno');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
 
       expect(navigate).toHaveBeenCalledWith('/operator');
@@ -384,7 +411,7 @@ describe('AuthPage', () => {
     it('honors a returnUrl for a tourist too', async () => {
       await render({ returnUrl: '/my-bookings' });
       type('auth-identifier', 'ana@example.com');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
 
       expect(navigate).toHaveBeenCalledWith('/my-bookings');
@@ -393,7 +420,7 @@ describe('AuthPage', () => {
     it('refuses an off-origin returnUrl', async () => {
       await render({ returnUrl: 'https://evil.example' });
       type('auth-identifier', 'ana@example.com');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
 
       expect(navigate).toHaveBeenCalledWith('/');
@@ -456,7 +483,7 @@ describe('AuthPage', () => {
       await render();
       await navigateQueryParams({ returnUrl: '/my-bookings' });
       type('auth-identifier', 'ana@example.com');
-      type('auth-password', 'password123');
+      type('auth-password', 'passphrase-123');
       await submit();
 
       expect(navigate).toHaveBeenCalledWith('/my-bookings');

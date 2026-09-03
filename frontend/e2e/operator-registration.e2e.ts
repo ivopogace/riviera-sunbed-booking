@@ -15,7 +15,11 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  */
 
 const ADMIN = { username: 'operator', password: 'admin-pw' };
-const NEW_OP = { username: 'newop', password: 'newop-pw-123', contactEmail: 'newop@venue.example' };
+const NEW_OP = {
+  username: 'newop',
+  password: 'fresh-venue-pw-1',
+  contactEmail: 'newop@venue.example',
+};
 
 async function register(
   page: import('@playwright/test').Page,

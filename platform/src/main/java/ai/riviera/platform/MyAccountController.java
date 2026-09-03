@@ -67,7 +67,8 @@ class MyAccountController {
 	 * first password with no current-password check; accounts that already have one must supply the
 	 * matching current password — omitted is {@code 400 MISSING_CURRENT_PASSWORD}, supplied-but-wrong is
 	 * {@code 400 INVALID_CURRENT_PASSWORD} (distinct codes: one for both would tell a caller a password it
-	 * never sent was incorrect). A weak new password is {@code 400 INVALID_REQUEST}.
+	 * never sent was incorrect). A new password outside the length rule is {@code 400 INVALID_REQUEST}; one
+	 * containing the email's local part or the service name is {@code 400 PASSWORD_CONTAINS_BLOCKED_TERM}.
 	 *
 	 * <p><strong>A doubly-invalid request resolves the opposite way to the operator twin</strong>, which
 	 * answers the omission first. That divergence is forced rather than chosen: whether a current password is
@@ -82,11 +83,11 @@ class MyAccountController {
 	@PostMapping(SET_PASSWORD_PATH)
 	ResponseEntity<?> setPassword(@RequestBody SetPasswordRequest request, Authentication authentication) {
 		CustomerAccountId accountId = currentCustomer.require(authentication);
-		CustomerPasswords.validate(request.newPassword());
+		PasswordPolicy.validate(request.newPassword(), PasswordPolicy.emailLocalPart(authentication.getName()));
 		// Empty means no local password (null-hash SSO-only rows are filtered), so neither answer below applies.
 		Optional<CustomerAccountCredential> existing = accounts.findByEmail(authentication.getName());
 		if (existing.isPresent()) {
-			if (!CustomerPasswords.isSupplied(request.currentPassword())) {
+			if (!PasswordPolicy.isSupplied(request.currentPassword())) {
 				return ApiProblem.response(HttpStatus.BAD_REQUEST, "MISSING_CURRENT_PASSWORD",
 						"The request carries no current password.");
 			}

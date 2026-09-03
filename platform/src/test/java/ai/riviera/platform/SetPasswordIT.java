@@ -76,6 +76,18 @@ class SetPasswordIT {
 	}
 
 	@Test
+	void rejectsAPasswordContainingTheEmailName() throws Exception {
+		String email = "setpw-it-dana@example.com";
+		register(email, "originalpass1");
+
+		setPassword(email, """
+				{"newPassword": "SetPw-It-DANA-26", "currentPassword": "originalpass1"}""")
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("PASSWORD_CONTAINS_BLOCKED_TERM"));
+		login(email, "originalpass1").andExpect(status().isOk()); // unchanged
+	}
+
+	@Test
 	void existingPasswordAccountRequiresTheCorrectCurrentPassword() throws Exception {
 		String email = "setpw-it-pw@example.com";
 		register(email, "originalpass1");
@@ -123,7 +135,7 @@ class SetPasswordIT {
 	 * {@code OperatorAccountControllerTest.anOmittedCurrentPasswordOutranksTheNewPasswordPolicy} pins the
 	 * omission as the winner. The asymmetry is <strong>forced, not an oversight</strong>: whether a current
 	 * password is required at all depends on whether this account has one, so the presence check cannot be
-	 * hoisted above {@code CustomerPasswords.validate} without moving the credential read ahead of the policy
+	 * hoisted above {@code PasswordPolicy.validate} without moving the credential read ahead of the policy
 	 * check — the ordering an earlier review pinned against. Each endpoint therefore keeps the precedence it
 	 * already had. Pinned so the divergence stays a decision rather than something a later edit flips unseen.
 	 */

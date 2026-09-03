@@ -40,12 +40,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfDockerAvailable
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest(properties = "riviera.operator.password=admin-pw")
+@SpringBootTest(properties = "riviera.operator.password=admin-test-pw1")
 @AutoConfigureMockMvc
 class AdminAuditTrailIT {
 
 	private static final String ADMIN = "operator";
-	private static final String ADMIN_PW = "admin-pw";
+	private static final String ADMIN_PW = "admin-test-pw1";
 	private static final String ERASURE_PATH = "/api/admin/erasure";
 	private static final String ERASURE_BODY = """
 			{"email":"audit-ghost@example.com"}""";

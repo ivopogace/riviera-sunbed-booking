@@ -2,16 +2,19 @@ import { afterNextRender, Component, ElementRef, inject, signal } from '@angular
 import { FormField, form } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 
-import {
-  CURRENT_PASSWORD_REQUIRED_MESSAGE,
-  CustomerAuth,
-  MIN_PASSWORD_LENGTH,
-  PASSWORD_LENGTH_MESSAGE,
-} from '../core/customer-auth';
+import { CURRENT_PASSWORD_REQUIRED_MESSAGE, CustomerAuth } from '../core/customer-auth';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
 import { LoadAnnouncer } from '../shared/load-announcer';
 import { focusMover } from '../shared/focus-after-render';
+import {
+  emailLocalPart,
+  PASSWORD_BLOCKED_MESSAGE,
+  PASSWORD_LENGTH_MESSAGE,
+  PASSWORD_POLICY_HINT,
+  passwordPolicyMessage,
+  passwordPolicyViolation,
+} from '../shared/password-policy';
 
 import { TouchTarget } from '../shared/touch-target';
 
@@ -157,7 +160,9 @@ const RESEND_NOTICES = {
                 aria-describedby="setpw-new-hint"
               />
             </label>
-            <p id="setpw-new-hint" [class]="cls.hint">8–72 characters.</p>
+            <p id="setpw-new-hint" [class]="cls.hint" data-testid="setpw-new-hint">
+              {{ policyHint }}
+            </p>
 
             @if (error(); as msg) {
               <p [class]="cls.error" role="alert" data-testid="setpw-error">{{ msg }}</p>
@@ -234,6 +239,8 @@ export class SetPassword {
   private readonly focusAfterRender = focusMover();
 
   protected readonly cls = CLS;
+
+  protected readonly policyHint = PASSWORD_POLICY_HINT;
   protected readonly submitting = signal(false);
   protected readonly resending = signal(false);
   protected readonly error = signal<string | undefined>(undefined);
@@ -260,8 +267,9 @@ export class SetPassword {
       return;
     }
     const { newPassword, currentPassword } = this.model();
-    if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      this.error.set(PASSWORD_LENGTH_MESSAGE);
+    const violation = passwordPolicyViolation(newPassword, emailLocalPart(this.auth.email() ?? ''));
+    if (violation) {
+      this.error.set(passwordPolicyMessage(violation));
       return;
     }
     this.submitting.set(true);
@@ -285,6 +293,9 @@ export class SetPassword {
         break;
       case 'invalid-password':
         this.error.set(PASSWORD_LENGTH_MESSAGE);
+        break;
+      case 'blocked-password':
+        this.error.set(PASSWORD_BLOCKED_MESSAGE);
         break;
       case 'rate-limited':
         this.error.set('Too many attempts. Please wait a minute and try again.');

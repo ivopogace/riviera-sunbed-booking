@@ -38,9 +38,9 @@ class CustomerRoleSeparationIT {
 
 	private static final String SESSION_COOKIE = "SESSION";
 	private static final String CUSTOMER_EMAIL = "sep-cust@example.com";
-	private static final String CUSTOMER_PASSWORD = "password123";
+	private static final String CUSTOMER_PASSWORD = "passphrase-123";
 	private static final String OPERATOR_USERNAME = "sep-op";
-	private static final String OPERATOR_PASSWORD = "op-password";
+	private static final String OPERATOR_PASSWORD = "op-passphrase-1";
 
 	@Autowired
 	MockMvc mvc;

@@ -40,6 +40,8 @@ class CustomerRegisterIT {
 
 	private static final String SESSION_COOKIE = "SESSION";
 	private static final String REGISTER_PATH = "/api/auth/customer/register";
+	private static final String LOGIN_PATH = "/api/auth/customer/login";
+	private static final String BLOCKED_TERM_CODE = "PASSWORD_CONTAINS_BLOCKED_TERM";
 
 	@Autowired
 	MockMvc mvc;
@@ -53,7 +55,7 @@ class CustomerRegisterIT {
 
 	@Test
 	void freshEmailRegistersAndSignsIn() throws Exception {
-		MvcResult result = register("reg-it-alice@example.com", "password123")
+		MvcResult result = register("reg-it-alice@example.com", "passphrase-123")
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.username").value("reg-it-alice@example.com"))
 				.andExpect(jsonPath("$.principalType").value("CUSTOMER"))
@@ -71,7 +73,7 @@ class CustomerRegisterIT {
 
 	@Test
 	void duplicateEmailResponseIsIdenticalButSessionless() throws Exception {
-		String freshBody = register("reg-it-bob@example.com", "password123")
+		String freshBody = register("reg-it-bob@example.com", "passphrase-123")
 				.andExpect(status().isCreated())
 				.andExpect(cookie().exists(SESSION_COOKIE))
 				.andReturn().getResponse().getContentAsString();
@@ -90,13 +92,60 @@ class CustomerRegisterIT {
 
 	@Test
 	void rejectsPasswordOutsidePolicy() throws Exception {
-		register("reg-it-carol@example.com", "short") // 5 chars < the 8 minimum
+		register("reg-it-carol@example.com", "elevenchars") // 11 chars < the 12 minimum
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+				.andExpect(cookie().doesNotExist(SESSION_COOKIE));
+		register("reg-it-carol@example.com", "a".repeat(73)) // 73 bytes > bcrypt's 72-byte cap
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 
+		assertNoAccount("reg-it-carol@example.com");
+	}
+
+	@Test
+	void rejectsAPasswordContainingTheEmailName() throws Exception {
+		register("reg-it-dana@example.com", "Reg-It-DANA-2026!!")
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value(BLOCKED_TERM_CODE))
+				.andExpect(cookie().doesNotExist(SESSION_COOKIE));
+
+		assertNoAccount("reg-it-dana@example.com");
+	}
+
+	@Test
+	void rejectsAPasswordContainingTheServiceName() throws Exception {
+		register("reg-it-erin@example.com", "Riviera-summer-26")
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value(BLOCKED_TERM_CODE));
+
+		assertNoAccount("reg-it-erin@example.com");
+	}
+
+	@Test
+	void acceptsATwelveCharacterPasswordWithSurroundingSpacesVerbatim() throws Exception {
+		String spaced = " spaced-pw1 ";
+		assertEquals(12, spaced.length());
+		register("reg-it-finn@example.com", spaced)
+				.andExpect(status().isCreated())
+				.andExpect(cookie().exists(SESSION_COOKIE));
+
+		login("reg-it-finn@example.com", spaced).andExpect(status().isOk());
+		login("reg-it-finn@example.com", spaced.trim()).andExpect(status().isUnauthorized());
+	}
+
+	private void assertNoAccount(String email) {
 		Integer rows = jdbc.sql("SELECT count(*) FROM customer_account WHERE email = :e")
-				.param("e", "reg-it-carol@example.com").query(Integer.class).single();
+				.param("e", email).query(Integer.class).single();
 		assertEquals(0, rows, "a policy-rejected registration must write nothing");
+	}
+
+	private ResultActions login(String email, String password) throws Exception {
+		return mvc.perform(post(LOGIN_PATH).with(csrf())
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"email": "%s", "password": "%s"}""".formatted(email, password)));
 	}
 
 	private ResultActions register(String email, String password) throws Exception {

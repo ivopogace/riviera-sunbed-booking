@@ -185,6 +185,19 @@ describe('CustomerAuth', () => {
     expect(await result).toBe('invalid-password');
   });
 
+  // The blocklist has its own code so the page can say which rule failed, not just "wrong length".
+  it('maps a 400 PASSWORD_CONTAINS_BLOCKED_TERM register to blocked-password', async () => {
+    const auth = await create('signed-out');
+    const result = auth.register('new@example.com', 'new-riviera-2026');
+    http
+      .expectOne(`${AUTH_API}/customer/register`)
+      .flush(
+        { code: 'PASSWORD_CONTAINS_BLOCKED_TERM' },
+        { status: 400, statusText: 'Bad Request' },
+      );
+    expect(await result).toBe('blocked-password');
+  });
+
   it('starts SSO with a full-page navigation to the provider authorize endpoint', async () => {
     const auth = await create('signed-out');
 
@@ -253,6 +266,15 @@ describe('CustomerAuth', () => {
       .flush({ code: 'INVALID_REQUEST' }, { status: 400, statusText: 'Bad Request' });
     expect(await weak).toBe('invalid-password');
 
+    const blocked = auth.resetPassword('tok', 'new-riviera-2026');
+    http
+      .expectOne(`${AUTH_API}/customer/reset-password`)
+      .flush(
+        { code: 'PASSWORD_CONTAINS_BLOCKED_TERM' },
+        { status: 400, statusText: 'Bad Request' },
+      );
+    expect(await blocked).toBe('blocked-password');
+
     const limited = auth.resetPassword('tok', 'password123');
     http
       .expectOne(`${AUTH_API}/customer/reset-password`)
@@ -304,6 +326,15 @@ describe('CustomerAuth', () => {
       .expectOne(`${ME_API}/password`)
       .flush({ code: 'INVALID_REQUEST' }, { status: 400, statusText: 'Bad Request' });
     expect(await weak).toBe('invalid-password');
+
+    const blocked = auth.setPassword('new-riviera-2026');
+    http
+      .expectOne(`${ME_API}/password`)
+      .flush(
+        { code: 'PASSWORD_CONTAINS_BLOCKED_TERM' },
+        { status: 400, statusText: 'Bad Request' },
+      );
+    expect(await blocked).toBe('blocked-password');
   });
 
   // Without its own arm the default would call this invalid-password and show the length message.

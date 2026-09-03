@@ -28,6 +28,10 @@ variable as before #115; no new secret**:
   next boot.
 - **Leave it blank** → the admin has no login and cannot approve registrations (logged at WARN,
   without the value) until a credential is configured.
+- **Set it shorter than 12 characters or longer than 72 bytes** → refused exactly like a blank value:
+  not stamped, one WARN that never prints the value, never a boot failure. The bootstrap credential is
+  held to the same floor as every chosen password (D-8); on a database that already carries a stamped
+  hash the previous credential stays in force, on a fresh one the admin has no login.
 
 Keep `riviera.operator.username` = `operator` (matches the V16 seed). Overriding it without also
 seeding a matching `operator` row leaves the login with nowhere to land, and the admin/venue-scoped
@@ -72,7 +76,9 @@ compromised had to find a platform admin.
   rule below. Its own code since #345: sharing `INVALID_REQUEST` with a policy violation told a caller
   whose new password was fine to pick a different length. The customer twin `POST /api/me/password`
   answers the same code, where the omission previously read as `INVALID_CURRENT_PASSWORD`.
-- **New password policy** is the shared one (8–72 bytes) → `400 INVALID_REQUEST` otherwise.
+- **New password policy** is the shared one (D-8): 12 characters to 72 bytes → `400 INVALID_REQUEST`
+  otherwise; a new password containing the operator's own username or the word `riviera` (any case)
+  → `400 PASSWORD_CONTAINS_BLOCKED_TERM`, its own code so the page can name the rule that failed.
 - **Other sessions die, and yours is re-issued under a new id.** On success the edge deletes every
   *other* `SPRING_SESSION` row for that principal (`PrincipalSessionRevoker`, #128), then rotates
   the calling session's id (#344). You stay signed in — Spring Session writes the replacement

@@ -26,7 +26,7 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  */
 
 const OLD_PASSWORD = 'old-operator-pw';
-const NEW_PASSWORD = 'brand-new-operator-pw';
+const NEW_PASSWORD = 'brand-new-console-pw';
 
 test('operator changes its own password from the console, and the new credential replaces the old', async ({
   page,
