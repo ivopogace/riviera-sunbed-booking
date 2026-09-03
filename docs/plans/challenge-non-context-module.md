@@ -47,60 +47,60 @@ adapter, a hypothetical seam, so it is neither `api` nor `spi`).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the production classpath, when the Modulith structure is verified, then
+- [x] **AC-1:** Given the production classpath, when the Modulith structure is verified, then
   `ai.riviera.platform.challenge` is a closed `@ApplicationModule` with `allowedDependencies = {}`
   and no exemption is added anywhere. *Seam:* `ApplicationModules.of(PlatformApplication.class)` ·
   *Pinned by:* `ModularityTests.verifiesModularStructure`
-- [ ] **AC-2:** Given the production classpath, when the package-shape and published-surface rules
+- [x] **AC-2:** Given the production classpath, when the package-shape and published-surface rules
   run, then the module's packages are in the allowed set and `api` holds only a plain interface while
   `vocabulary` holds only the enum. *Seam:* the module's package tree ·
   *Pinned by:* `PackageShapeArchitectureTests.moduleTopLevelPackagesAreInTheAllowedSet`,
   `PublishedSurfacePlacementArchitectureTests`
-- [ ] **AC-3:** Given a composition-root class that reaches `challenge`, when the root-discipline rule
+- [x] **AC-3:** Given a composition-root class that reaches `challenge`, when the root-discipline rule
   runs, then only `challenge::api` and `challenge::vocabulary` are permitted. *Seam:* `GRANTED_SURFACES`
   in `CompositionRootDisciplineTests` · *Pinned by:* `CompositionRootDisciplineTests.rootTouchesOnlyGrantedModuleSurfaces`
-- [ ] **AC-4:** Given a class inside a module that depends on a type sitting directly in the base
+- [x] **AC-4:** Given a class inside a module that depends on a type sitting directly in the base
   package, when the new module→root rule runs, then it is reported; and a module class that reaches
   no root type is not. *Seam:* the parameterized collector over `ai.riviera.modulefixture` ·
   *Pinned by:* `CompositionRootDisciplineTests.moduleReachingTheRootIsRejected` +
   `.moduleAvoidingTheRootIsAccepted` + `.noModuleReachesTheRoot`
-- [ ] **AC-5:** Given a production class outside `challenge` whose bytecode carries the whole word
+- [x] **AC-5:** Given a production class outside `challenge` whose bytecode carries the whole word
   `challenge_registry`, when the sole-writer scan runs, then it is reported; the module's own adapter
   is not. *Seam:* the parameterized collector over `ai.riviera.responsibilityfixture` ·
   *Pinned by:* `ResponsibilitiesArchitectureTests.challengeRegistryTableIsTouchedOnlyInsideTheChallengeModule`,
   `.theChallengeModuleItselfWritesTheTable`, `.outsideChallengeRegistryWriterFixtureIsRejected`
-- [ ] **AC-6:** Given `challenge_registry` under an `ACCESS EXCLUSIVE` lock, when the sweep's entry
+- [x] **AC-6:** Given `challenge_registry` under an `ACCESS EXCLUSIVE` lock, when the sweep's entry
   statement runs, then it is cut off by its own finite `queryTimeout` rather than by the lock being
   released. *Seam:* `challenge.application.ChallengeRegistry#deleteExpiredBefore` ·
   *Pinned by:* `ScheduledQueryTimeoutIT.everyScheduledEntryQueryIsBounded`
-- [ ] **AC-7:** Given the ALTCHA implementation over an in-memory registry, when a payload is
+- [x] **AC-7:** Given the ALTCHA implementation over an in-memory registry, when a payload is
   verified, then a right one is `VERIFIED` and claimed, its second submission is `REPLAYED`, a forged
   or tampered signature and a wrong answer are `INVALID`, and a past `expiresAt` is `EXPIRED`; and a
   freshly issued challenge carries the configured algorithm, cost and clock-derived expiry, distinct
   per call. *Seam:* `challenge.api.ProofOfWorkChallenges` ·
   *Pinned by:* `AltchaProofOfWorkChallengesTest`
-- [ ] **AC-8:** Given the fenced `POST /api/auth/customer/register`, when the port answers each of the
+- [x] **AC-8:** Given the fenced `POST /api/auth/customer/register`, when the port answers each of the
   four verdicts, then the filter maps them to `CHALLENGE_REQUIRED` / `CHALLENGE_INVALID` /
   `CHALLENGE_EXPIRED` exactly as before and lets `VERIFIED` through; an unfenced route ignores the
   header. *Seam:* the HTTP route through `ChallengeVerificationFilter` ·
   *Pinned by:* `ChallengeVerificationFilterTest`
-- [ ] **AC-9:** Given real Postgres, when a challenge minted by `GET /api/auth/challenge` is solved
+- [x] **AC-9:** Given real Postgres, when a challenge minted by `GET /api/auth/challenge` is solved
   and posted to register, then the account is created; a missing, tampered, expired or replayed
   solution is refused with its code and writes nothing, two concurrent submissions of one solution
   admit exactly one, and a refused submission still spends the register budget.
   *Seam:* the HTTP routes end to end · *Pinned by:* `CustomerRegisterChallengeIT`
-- [ ] **AC-10:** Given `riviera.altcha.enabled=false`, when the fenced route is posted to without a
+- [x] **AC-10:** Given `riviera.altcha.enabled=false`, when the fenced route is posted to without a
   header and the challenge endpoint is fetched, then the write is admitted and the endpoint answers
   `204`. *Seam:* the HTTP routes · *Pinned by:* `AltchaDisabledTest`
-- [ ] **AC-11:** Given the shipped `application.properties`, when `riviera.altcha.*` is bound, then the
+- [x] **AC-11:** Given the shipped `application.properties`, when `riviera.altcha.*` is bound, then the
   values, the env-supplied secret and every tuning bound are exactly what they are today.
   *Seam:* `challenge.application.AltchaProperties` · *Pinned by:* `AltchaPropertiesBindingTest`
-- [ ] **AC-12:** Given the production classpath, when the scheduled-work and endpoint-gate rules run,
+- [x] **AC-12:** Given the production classpath, when the scheduled-work and endpoint-gate rules run,
   then `ChallengeRegistrySweep#sweep` and `GET /api/auth/challenge` are still found with those exact
   names and both files are unchanged in the diff. *Seam:* the `@Scheduled` scan / the MVC handler
   mapping · *Pinned by:* `ScheduledWorkArchitectureTest.everyScheduledJobHasAThreadOfItsOwn`,
   `EndpointRoleGateCoverageTest`
-- [ ] **AC-13:** Given the merged diff, when the substrate docs are read, then `RESPONSIBILITIES.md`
+- [x] **AC-13:** Given the merged diff, when the substrate docs are read, then `RESPONSIBILITIES.md`
   (§ *Platform edge*, new § `challenge`, § `shared`), `CLAUDE.md`, `docs/architecture/domain-model.md`,
   `riviera-modulith` (SKILL + `references/boundaries.md`) and ADR-0017's *Status* line all describe two
   non-context modules and the fence/mechanism split, and no counting-sweep site still says "nine
@@ -150,7 +150,7 @@ adapter, a hypothetical seam, so it is neither `api` nor `spi`).
 | R-5 | `@WebMvcTest` no longer binds `AltchaProperties` once `SecurityConfig` stops enabling it, so a slice silently loses its kill switch | med | med | the slice no longer needs the properties at all — it fakes the port; the switch is driven by `@Value` on the stub (ledger row 2) | claude | **closed** — `AltchaDisabledTest` green, unchanged |
 | R-6 | The scheduled-work and endpoint-gate nets pass for the wrong reason after the move | low | high | both key on simple names / paths the move keeps (verified: `KNOWN_SCHEDULED_JOBS` holds `"ChallengeRegistrySweep#sweep"`, `DECLARED_REACHABLE` holds `"GET /api/auth/challenge"`); AC-12 requires both files to be **unchanged** in the diff | claude | **closed** — both files unchanged in the diff, both green |
 | R-7 | A green `ScheduledQueryTimeoutIT` entry proves nothing (it is green on arrival — the bound already exists) | med | med | falsify by hand: temporarily drop the bounded client in `JdbcChallengeRegistry`, watch the new assertion fail, restore; record the falsification in the phase | claude | **closed** — falsified in phase 2 of this phase's steps |
-| R-8 | Sonar counts the moved code as new code and reports it uncovered or duplicated | med | med | the tests move with their subject, so coverage moves too; the moved bodies are byte-identical to `main`, and the one genuinely new block (the stub port) is exercised by three slices | claude | open — pending the Sonar gate |
+| R-8 | Sonar counts the moved code as new code and reports it uncovered or duplicated | med | med | the tests move with their subject, so coverage moves too; the moved bodies are byte-identical to `main`, and the one genuinely new block (the stub port) is exercised by three slices | claude | **closed** — 0 new issues, 0 duplicated blocks, 91.67% new-code coverage |
 | R-9 | Flyway version collision with in-flight work | none | — | no migration in this slice; and there are zero open PRs on the repo at plan time | claude | closed — N/A |
 
 ## Open questions / Assumptions
@@ -246,10 +246,11 @@ N/A — no contract change. `GET /api/auth/challenge`, `X-Altcha-Payload`, `CHAL
 
 ## Execution status
 
-**Stage pointer:** `review gate run — 4 findings fixed, awaiting CI + the Sonar gate`
+**Stage pointer:** `all three gates green on ac7aa4a — merge close-out written; the merge itself is
+the maintainer's call`
 
-**Next action:** Confirm CI green on the fix-round head, then pull the SonarCloud new-issue +
-duplication list for PR #916 and clear every entry.
+**Next action:** Merge PR #916, then close-out steps 1–3 and 6 (verify #913 closed, tick epic #903's
+checklist with the PR number, propagate nothing deferred, confirm the PR subscription ended).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -484,7 +485,7 @@ fix, and TDD's red step is replaced by an explicit falsification (R-7). Say so i
 - [x] **Step 4: ADR-0017's *Status* line now reads "implemented by PR #916 (#913)".**
 - [x] **Step 5: Verify the file-structure guard** — `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
 - [x] **Step 6: Commit** — `git commit -m "Reconcile the substrate docs with the challenge module; retire the spine plan (#913)"`
-- [ ] **Step 7: Finalize Execution status** in the PR's own last commit, citing `merged via PR #NN`.
+- [x] **Step 7: Finalized Execution status** in this commit, the PR's own last, citing PR #916.
 
 **`riviera-docs-freshness` findings over `origin/main..HEAD` — 3, all patched**
 
@@ -518,27 +519,34 @@ narrative about a past commit; `docs/deploy/production-hardening.md`'s `RIVIERA_
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-5, AC-12:** `./gradlew test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*CompositionRootDisciplineTests*" --tests "*ResponsibilitiesArchitectureTests*" --tests "*ScheduledWorkArchitectureTest*" --tests "*EndpointRoleGateCoverageTest*"` → PASS.
-- [ ] **AC-6, AC-9, AC-11:** `./gradlew test --tests "*ScheduledQueryTimeoutIT*" --tests "*CustomerRegisterChallengeIT*" --tests "*AltchaPropertiesBindingTest*"` → PASS (Docker required).
-- [ ] **AC-7, AC-8, AC-10:** `./gradlew test --tests "*AltchaProofOfWorkChallengesTest*" --tests "*ChallengeVerificationFilterTest*" --tests "*ChallengeEndpointTest*" --tests "*AltchaDisabledTest*"` → PASS.
-- [ ] **AC-13:** `riviera-docs-freshness` over the PR range → no remaining staleness; `git diff origin/main -- frontend docs/deploy platform/src/main/resources/db` → empty.
+All verified on `ac7aa4a` — locally against Docker-backed Postgres and again by the PR's own green CI
+run, which is what proves the full-suite-only cases (F-1 was exactly one of those).
+
+- [x] **AC-1..AC-5, AC-12:** `./gradlew test --tests "*ModularityTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*CompositionRootDisciplineTests*" --tests "*ResponsibilitiesArchitectureTests*" --tests "*ScheduledWorkArchitectureTest*" --tests "*EndpointRoleGateCoverageTest*"` → PASS.
+- [x] **AC-6, AC-9, AC-11:** `./gradlew test --tests "*ScheduledQueryTimeoutIT*" --tests "*CustomerRegisterChallengeIT*" --tests "*AltchaPropertiesBindingTest*"` → PASS (Docker required).
+- [x] **AC-7, AC-8, AC-10:** `./gradlew test --tests "*AltchaProofOfWorkChallengesTest*" --tests "*ChallengeVerificationFilterTest*" --tests "*ChallengeEndpointTest*" --tests "*AltchaDisabledTest*"` → PASS.
+- [x] **AC-13:** `riviera-docs-freshness` over `origin/main..HEAD` → 3 findings, all patched, none
+  remaining; `git diff origin/main...HEAD -- frontend docs/deploy platform/src/main/resources` → empty,
+  so `V49__challenge_registry.sql` is byte-identical and no migration was added. ADR-0017's *Status*
+  points at PR #916. `ScheduledWorkArchitectureTest` and `EndpointRoleGateCoverageTest` are absent from
+  the diff entirely, which is AC-12's "unchanged and green" in its strongest form.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section justified N/A; no availability write path touched (invariant #2).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event change (invariant #11).
-- [ ] **Payment/payout** N/A justified (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched: the sweep still reasons in UTC `Instant` (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] **No Flyway migration** — schema unchanged, so invariant #12 is satisfied by `V49` staying byte-for-byte.
-- [ ] **Frontend** untouched — `git diff origin/main -- frontend` is empty.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section justified N/A; no availability write path touched (invariant #2).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; no event change (invariant #11).
+- [x] **Payment/payout** N/A justified (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched: the sweep still reasons in UTC `Instant` (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] **No Flyway migration** — schema unchanged, so invariant #12 is satisfied by `V49` staying byte-for-byte.
+- [x] **Frontend** untouched — `git diff origin/main -- frontend` is empty.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
