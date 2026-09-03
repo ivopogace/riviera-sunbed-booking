@@ -277,6 +277,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/RecoveryMailerFailureIT.java` — fixture
 - `platform/src/test/java/ai/riviera/platform/RecoveryTokenNeverPersistedIT.java` — fixture
 - `platform/src/test/java/ai/riviera/platform/SessionPersistenceIT.java` — fixture check (`pw-persist`)
+- `platform/src/test/java/ai/riviera/platform/RateLimitFilterTest.java` — its register fixture expects `201`, so it moves to 12+ (F-3)
 
 **Frontend**
 - `frontend/src/app/shared/password-policy.ts` — the policy mirror + messages + client check
