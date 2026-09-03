@@ -29,6 +29,7 @@ import org.springframework.security.web.authentication.logout.LogoutSuccessHandl
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.session.web.http.CookieSerializer;
 import org.springframework.session.web.http.DefaultCookieSerializer;
@@ -51,7 +52,7 @@ import ai.riviera.platform.operator.api.OperatorAccounts;
 @Configuration
 @EnableWebSecurity
 @EnableConfigurationProperties({RivieraOperatorProperties.class, RateLimitProperties.class,
-		RecoveryProperties.class})
+		RecoveryProperties.class, AltchaProperties.class})
 class SecurityConfig {
 
 	/** The single role that gates the operator write surface. */
@@ -238,6 +239,11 @@ class SecurityConfig {
 	private static final String CUSTOMER_LOGIN_PATH = "/api/auth/customer/login";
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
 	/**
+	 * The proof-of-work challenge the widget fetches before a fenced write: anonymous by definition
+	 * (the solution, not a session, is what the fence checks), on its own rate-limit budget.
+	 */
+	private static final String CHALLENGE_PATH = ChallengeController.PATH;
+	/**
 	 * The signed-in tourist's own surface — my-bookings, set-password + verification-resend,
 	 * self-service erasure. {@code CUSTOMER}-only, and deliberately <strong>method-agnostic</strong>:
 	 * {@code /api/me/**} is by definition the session customer's own resources, so every verb belongs to
@@ -284,7 +290,8 @@ class SecurityConfig {
 	@Bean
 	@Order(1)
 	SecurityFilterChain apiSecurityFilterChain(HttpSecurity http, RateLimitProperties rateLimitProperties,
-			Clock clock, ObjectMapper objectMapper, AdminAuditLog adminAuditLog) {
+			Clock clock, ObjectMapper objectMapper, AdminAuditLog adminAuditLog,
+			ProofOfWorkChallenges challenges) {
 		// One instance, so the chain and the logout success handler stay in lockstep.
 		CookieCsrfTokenRepository csrfTokenRepository = csrfCookieRepository();
 		http
@@ -292,6 +299,8 @@ class SecurityConfig {
 				.cors(Customizer.withDefaults())
 				// After CORS (preflight first), before authorization: the 200/404 code oracle needs throttling.
 				.addFilterAfter(new RateLimitFilter(rateLimitProperties, clock, objectMapper), CorsFilter.class)
+				// After the rate limiter and the CSRF check, so a 429 wins and the registry claim comes last.
+				.addFilterAfter(new ChallengeVerificationFilter(challenges), CsrfFilter.class)
 				// After AuthorizationFilter, so only actions past the gate leave an audit row.
 				.addFilterAfter(new AdminAuditFilter(adminAuditLog, ADMIN_AUDIT_NAMESPACE), AuthorizationFilter.class)
 				.csrf(csrf -> csrf
@@ -308,6 +317,7 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, OPERATOR_REGISTER_PATH).permitAll()
 						// Register auto-signs-in on success; both ride the login rate-limit budget.
 						.requestMatchers(HttpMethod.POST, CUSTOMER_LOGIN_PATH, CUSTOMER_REGISTER_PATH).permitAll()
+						.requestMatchers(HttpMethod.GET, CHALLENGE_PATH).permitAll()
 						// The emailed token is the credential (invariant #7); rate-limited per-IP.
 						.requestMatchers(HttpMethod.POST, FORGOT_PASSWORD_PATH, RESET_PASSWORD_PATH,
 								VERIFY_EMAIL_PATH).permitAll()
@@ -518,5 +528,15 @@ class SecurityConfig {
 	@Bean
 	UserDetailsService operatorDetailsService(OperatorAccounts accounts) {
 		return new OperatorUserDetailsService(accounts);
+	}
+
+	/**
+	 * One issuer/verifier for the challenge endpoint and the verification filter; the registry adapter
+	 * is the only Postgres-backed collaborator, which is what the web slices substitute.
+	 */
+	@Bean
+	ProofOfWorkChallenges proofOfWorkChallenges(AltchaProperties altchaProperties, Clock clock,
+			ChallengeRegistry challengeRegistry) {
+		return new ProofOfWorkChallenges(altchaProperties, clock, challengeRegistry);
 	}
 }

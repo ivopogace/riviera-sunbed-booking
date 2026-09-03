@@ -150,6 +150,7 @@ class CustomerRegisterIT {
 
 	private ResultActions register(String email, String password) throws Exception {
 		return mvc.perform(post(REGISTER_PATH).with(csrf())
+				.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""

@@ -138,6 +138,66 @@ export async function mockOwnedVenues(
   await page.route(/\/api\/venues\/mine$/, (route) => route.fulfill({ json: venues }));
 }
 
+/** The header a fenced write carries its solved proof-of-work challenge in (`shared/challenge.ts`). */
+export const CHALLENGE_HEADER = 'x-altcha-payload';
+
+/** The three ways the edge refuses a fenced write for its challenge (`SecurityProblemResponses`). */
+export type ChallengeCode = 'CHALLENGE_REQUIRED' | 'CHALLENGE_INVALID' | 'CHALLENGE_EXPIRED';
+
+/** Handles into the mocked proof-of-work fence, for the specs that drive its failure paths. */
+export interface ChallengeMock {
+  /** How many challenges the page fetched so far — a refetch after a refusal shows up here. */
+  fetches(): number;
+  /** Make the next register answer this challenge code instead of registering. */
+  refuseNextRegisterWith(code: ChallengeCode): void;
+  /** The `solution.counter` of the last payload the register route accepted, or undefined. */
+  lastSolvedCounter(): number | undefined;
+}
+
+/**
+ * The widget's payload, decoded: the base64 JSON of `{ challenge, solution }` it sends after a real
+ * solve in the browser. The mock's cost is tiny, so Chromium solves in milliseconds, but a solve it
+ * is — a spec that reaches the register route with a counter proves the widget ran end to end.
+ */
+function solvedCounter(payload: string | undefined): number | undefined {
+  if (!payload) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(Buffer.from(payload, 'base64').toString('utf8')) as {
+      solution?: { counter?: number };
+    };
+    return typeof parsed.solution?.counter === 'number' ? parsed.solution.counter : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * A v2 challenge as the platform issues one, unsigned — the widget never checks the signature (the
+ * edge does), and a `cost` of 10 keeps the browser's solve instant.
+ */
+function challengeJson(): Record<string, unknown> {
+  const hex = (bytes: number) =>
+    Array.from({ length: bytes }, () =>
+      Math.floor(Math.random() * 256)
+        .toString(16)
+        .padStart(2, '0'),
+    ).join('');
+  return {
+    parameters: {
+      algorithm: 'PBKDF2/SHA-256',
+      cost: 10,
+      expiresAt: Math.floor(Date.now() / 1000) + 600,
+      keyLength: 32,
+      keyPrefix: '00',
+      nonce: hex(16),
+      salt: hex(16),
+    },
+    signature: 'mocked-signature',
+  };
+}
+
 /**
  * Stateful mock of the CUSTOMER session-auth API for the CI-safe suite. Mirrors
  * {@link mockAuthApi} but for the customer principal type + the register endpoint's D-8 semantics:
@@ -145,6 +205,11 @@ export async function mockOwnedVenues(
  * FRESH email establishes the session — so the FE learns "registered vs exists" from the subsequent
  * `/me`, exactly as against the real backend. Login succeeds only for `validPassword` (generic 401
  * otherwise); logout flips the state back and answers 204 like the real LogoutFilter.
+ *
+ * <p>The proof-of-work fence is mocked too, on by default: `GET /api/auth/challenge` issues a
+ * low-cost challenge the widget really solves, and register refuses a request without the solution
+ * header with `CHALLENGE_REQUIRED` — so every register journey in the suite proves the widget ran.
+ * `challenge: 'off'` answers `204` (the kill switch) and register admits a header-less request.
  */
 export async function mockCustomerAuthApi(
   page: Page,
@@ -152,11 +217,23 @@ export async function mockCustomerAuthApi(
     readonly email: string;
     readonly validPassword: string;
     readonly takenEmails?: readonly string[];
+    readonly challenge?: 'on' | 'off';
   },
-): Promise<void> {
+): Promise<ChallengeMock> {
   const email = options.email;
   const taken = new Set((options.takenEmails ?? []).map((e) => e.trim().toLowerCase()));
+  const fenced = options.challenge !== 'off';
   let signedIn = false;
+  let fetches = 0;
+  let refuseWith: ChallengeCode | undefined;
+  let lastCounter: number | undefined;
+
+  await page.route(/\/api\/auth\/challenge$/, (route) => {
+    fetches += 1;
+    return fenced
+      ? route.fulfill({ json: challengeJson(), headers: { 'cache-control': 'no-store' } })
+      : route.fulfill({ status: 204 });
+  });
 
   await page.route(/\/api\/auth\/me$/, (route) =>
     signedIn
@@ -165,6 +242,16 @@ export async function mockCustomerAuthApi(
   );
 
   await page.route(/\/api\/auth\/customer\/register$/, (route) => {
+    // The fence runs before the controller: a refusal writes nothing and signs nobody in.
+    if (fenced) {
+      const counter = solvedCounter(route.request().headers()[CHALLENGE_HEADER]);
+      const code = refuseWith ?? (counter === undefined ? 'CHALLENGE_REQUIRED' : undefined);
+      refuseWith = undefined;
+      if (code) {
+        return route.fulfill(problem(400, 'Bad Request', code));
+      }
+      lastCounter = counter;
+    }
     const body = route.request().postDataJSON() as { email?: string; password?: string };
     const entered = (body.email ?? '').trim().toLowerCase();
     // Non-enumerating (D-8): identical 201 body either way; a FRESH email additionally signs in.
@@ -194,6 +281,14 @@ export async function mockCustomerAuthApi(
     signedIn = false;
     return route.fulfill({ status: 204 });
   });
+
+  return {
+    fetches: () => fetches,
+    refuseNextRegisterWith: (code) => {
+      refuseWith = code;
+    },
+    lastSolvedCounter: () => lastCounter,
+  };
 }
 
 /**

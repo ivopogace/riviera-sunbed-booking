@@ -53,6 +53,11 @@ dependencies {
 	implementation 'net.coobird:thumbnailator:0.4.21'
 	implementation 'com.twelvemonkeys.imageio:imageio-jpeg:3.14.0'
 	implementation 'com.twelvemonkeys.imageio:imageio-webp:3.14.0'
+	// Proof-of-work challenge (ADR-0016): the official ALTCHA v2 library issues and verifies the
+	// challenges the bundled widget solves; self-hosted, no ALTCHA service is ever called. Its pom
+	// declares org.json as `provided`, so the runtime classpath has to carry it explicitly.
+	implementation 'org.altcha:altcha:2.0.3'
+	implementation 'org.json:json:20260814'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
 	// Prometheus scrape registry (#100 D4 observability). Runtime-only: Micrometer auto-detects it and

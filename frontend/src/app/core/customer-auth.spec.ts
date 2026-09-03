@@ -185,6 +185,32 @@ describe('CustomerAuth', () => {
     expect(await result).toBe('invalid-password');
   });
 
+  it('sends the solved challenge as the fence’s header, and no header without one', async () => {
+    const auth = await create('signed-out');
+    void auth.register('new@example.com', 'password123', 'solved-payload');
+    const fenced = http.expectOne(`${AUTH_API}/customer/register`);
+    expect(fenced.request.headers.get('X-Altcha-Payload')).toBe('solved-payload');
+    fenced.flush({ code: 'INVALID_REQUEST' }, { status: 400, statusText: 'Bad Request' });
+
+    void auth.register('new@example.com', 'password123');
+    const open = http.expectOne(`${AUTH_API}/customer/register`);
+    expect(open.request.headers.has('X-Altcha-Payload')).toBe(false);
+    open.flush({ code: 'INVALID_REQUEST' }, { status: 400, statusText: 'Bad Request' });
+  });
+
+  it.each([
+    ['CHALLENGE_REQUIRED', 'challenge-required'],
+    ['CHALLENGE_INVALID', 'challenge-invalid'],
+    ['CHALLENGE_EXPIRED', 'challenge-expired'],
+  ])('maps a 400 %s register to %s with no /me follow-up', async (code, expected) => {
+    const auth = await create('signed-out');
+    const result = auth.register('new@example.com', 'password123', 'some-payload');
+    http
+      .expectOne(`${AUTH_API}/customer/register`)
+      .flush({ code }, { status: 400, statusText: 'Bad Request' });
+    expect(await result).toBe(expected);
+  });
+
   // The blocklist has its own code so the page can say which rule failed, not just "wrong length".
   it('maps a 400 PASSWORD_CONTAINS_BLOCKED_TERM register to blocked-password', async () => {
     const auth = await create('signed-out');

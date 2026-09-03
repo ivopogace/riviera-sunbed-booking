@@ -857,6 +857,29 @@ applies where a password is *chosen*, never at sign-in. The bootstrap credential
 and is logged at WARN without the value, the same outcome as an empty one. Modules receive an
 already-encoded hash and never see the rule.
 
+**Proof-of-work challenge (ADR-0016)** — the public writes that cost money or inventory are fenced by a
+self-hosted ALTCHA v2 challenge, entirely at the edge: `ChallengeController` (`GET /api/auth/challenge`,
+`permitAll`, its own per-IP rate-limit budget, `no-store`, no session — the only cookie on it is the SPA's platform-wide `XSRF-TOKEN` bootstrap) issues a challenge signed with the
+`RIVIERA_ALTCHA_HMAC_SECRET` secret and expiring `riviera.altcha.expiry` (10 minutes) after the injected
+clock; `ChallengeVerificationFilter`, registered after `RateLimitFilter` and `CsrfFilter`, requires the
+widget's solution in the `X-Altcha-Payload` header on each fenced `POST` (customer register today;
+operator register, forgot-password and booking create in their own slices) and refuses with `400` and a
+stable code — `CHALLENGE_REQUIRED` (absent), `CHALLENGE_INVALID` (unparseable, forged, wrong answer),
+`CHALLENGE_EXPIRED` (past expiry, or already accepted once). Deliberately `400`, never `403`: the rate
+limiter refunds a `403` on the budgets that guard authenticated work, and a refused solution must still
+have cost its token. `ProofOfWorkChallenges` wraps the official `org.altcha:altcha` library (the expiry
+check is the library's, by the server clock; the client clock never enters); a verified solution is
+accepted only if `INSERT … ON CONFLICT DO NOTHING` claims its nonce in `challenge_registry` (V49) — the
+one place the edge departs from the rate limiter's in-memory precedent, because a restart or a second
+instance must not reopen a replay window. `ChallengeRegistrySweep` deletes rows whose expiry lies more
+than `riviera.altcha.clock-skew` in the past, which is where instance clock skew is absorbed.
+`riviera.altcha.enabled=false` is the kill switch: the fenced routes admit header-less requests and the
+endpoint answers `204`, which the SPA reads to hide the widget. `riviera.altcha.cost` (5000) is a
+measured default — Chromium under mobile emulation in the slice's prototype, scaled by per-core
+throughput to an estimated 1–2 s on a mid-range phone; a real-device check is the pre-launch item. What
+it is not: no ALTCHA hosted service is ever called, no module knows the challenge exists, and login is
+not fenced (the per-identity throttle covers it).
+
 ## Invariants, long form
 
 `CLAUDE.md` states each cross-cutting invariant in one sentence; this is the long form, with

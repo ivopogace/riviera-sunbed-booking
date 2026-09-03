@@ -10,6 +10,7 @@ import jakarta.servlet.http.Cookie;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -29,6 +30,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public final class SessionLoginSupport {
 
 	private static final String SESSION_COOKIE = "SESSION";
+	/** The header a fenced write carries its solved proof-of-work challenge in. */
+	public static final String CHALLENGE_HEADER = "X-Altcha-Payload";
+	private static final String CHALLENGE_PATH = "/api/auth/challenge";
 	private static final AtomicInteger CLIENT_COUNTER = new AtomicInteger();
 
 	private SessionLoginSupport() {
@@ -43,6 +47,17 @@ public final class SessionLoginSupport {
 	public static String uniqueClientIp() {
 		int n = CLIENT_COUNTER.incrementAndGet();
 		return "198.18.%d.%d".formatted((n >> 8) & 0xFF, n & 0xFF);
+	}
+
+	/**
+	 * A solved proof-of-work challenge for a fenced write (the customer register), minted by the real
+	 * endpoint and brute-forced with the library — the integration tests have no bypass, they solve.
+	 */
+	public static String solvedChallenge(MockMvc mvc) throws Exception {
+		MvcResult challenge = mvc.perform(get(CHALLENGE_PATH).header("X-Forwarded-For", uniqueClientIp()))
+				.andExpect(status().isOk())
+				.andReturn();
+		return ChallengeSolving.solve(challenge.getResponse().getContentAsString());
 	}
 
 	/**

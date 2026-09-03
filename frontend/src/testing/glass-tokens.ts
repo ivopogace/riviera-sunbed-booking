@@ -40,6 +40,9 @@ export const DARK_ERROR_INK: Rgb = hexToRgb('ffa9a1');
 export const ERROR_INK: Rgb = hexToRgb('a3160e');
 /** `--riv-accent-ink` on the light themes (the dark theme's is DARK_ACCENT_INK above). */
 export const ACCENT_INK: Rgb = hexToRgb('085a6e');
+/** `--riv-on-accent-ink` — the ink painted on an accent fill, per ink family (light: white). */
+export const ON_ACCENT_INK: Rgb = WHITE;
+export const DARK_ON_ACCENT_INK: Rgb = hexToRgb('0a2a33');
 
 /** Dark `--riv-field-fill` / `--riv-field-border` (light themes: the FIELD_*_ALPHA constants). */
 export const DARK_FIELD_FILL: Glass = { color: hexToRgb('020a16'), alpha: 0.45 };

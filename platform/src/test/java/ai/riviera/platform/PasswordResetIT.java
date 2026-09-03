@@ -131,8 +131,12 @@ class PasswordResetIT {
 	}
 
 	private org.springframework.test.web.servlet.MvcResult register(String email, String password) throws Exception {
-		return authPost("/api/auth/customer/register", """
-				{"email": "%s", "password": "%s"}""".formatted(email, password))
+		return mvc.perform(post("/api/auth/customer/register").with(csrf())
+				.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"email": "%s", "password": "%s"}""".formatted(email, password)))
 				.andExpect(status().isCreated())
 				.andReturn();
 	}

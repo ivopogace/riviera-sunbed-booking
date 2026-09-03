@@ -21,9 +21,12 @@ import {
 } from '../core/customer-auth';
 import { OperatorAuth, operatorRegisterMessage, signInFailureMessage } from '../core/operator-auth';
 import { OwnedVenues } from '../core/owned-venues';
+import { ProofOfWork } from '../core/proof-of-work';
 import { landingRouteFor, safeReturnUrl, touristLandingRoute } from '../shared/auth-landing';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { isChallengeRejection } from '../shared/challenge';
+import { ChallengeWidget } from '../shared/challenge-widget';
 import { FieldGlass } from '../shared/field-glass';
 import { OutcomeCard } from '../shared/outcome-card';
 import {
@@ -91,6 +94,7 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-c
     SsoButtons,
     BusyAction,
     TouchTarget,
+    ChallengeWidget,
   ],
   template: `
     <section class="mx-auto w-full max-w-[430px] px-6 pt-3.5 pb-14" aria-labelledby="auth-title">
@@ -235,6 +239,14 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-c
                 </p>
               }
 
+              @if (showChallenge()) {
+                <app-challenge-widget
+                  #challenge
+                  [enabled]="proofOfWork.enabled()"
+                  [(payload)]="challengePayload"
+                />
+              }
+
               @if (error(); as msg) {
                 <p
                   class="m-0 text-[13px] font-semibold text-riv-error-ink"
@@ -294,6 +306,7 @@ export class AuthPage {
   private readonly customerAuth = inject(CustomerAuth);
   private readonly operatorAuth = inject(OperatorAuth);
   private readonly ownedVenues = inject(OwnedVenues);
+  protected readonly proofOfWork = inject(ProofOfWork);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
   private readonly route = inject(ActivatedRoute);
@@ -304,6 +317,7 @@ export class AuthPage {
   protected readonly labelClass = LABEL_CLASS;
 
   private readonly firstField = viewChild<ElementRef<HTMLInputElement>>('firstField');
+  private readonly challenge = viewChild<ChallengeWidget>('challenge');
 
   // Read params live — a query-param-only soft nav reuses this component, so a snapshot goes stale.
   private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
@@ -320,6 +334,8 @@ export class AuthPage {
 
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | undefined>(undefined);
+  /** The widget's verified proof-of-work solution for the tourist register, while it has one. */
+  protected readonly challengePayload = signal<string | undefined>(undefined);
   protected readonly policyHint = PASSWORD_POLICY_HINT;
   private readonly submittedForApproval = signal(false);
   /**
@@ -366,6 +382,10 @@ export class AuthPage {
   );
   protected readonly showContactEmail = computed(
     () => this.audience() === 'operator' && this.mode() === 'register',
+  );
+  /** Only the tourist register is fenced in this slice; the operator side follows in its own. */
+  protected readonly showChallenge = computed(
+    () => this.audience() === 'tourist' && this.mode() === 'register',
   );
   protected readonly submitLabel = computed(() => {
     if (this.mode() === 'signin') {
@@ -415,6 +435,8 @@ export class AuthPage {
       previousMode = mode;
       previousAudience = audience;
       this.error.set(undefined);
+      // A remounted widget starts unverified, never from the previous card's solution.
+      this.challengePayload.set(undefined);
     });
     afterNextRender({ write: () => this.focusFirstField() });
   }
@@ -520,11 +542,15 @@ export class AuthPage {
     contactEmail: string,
   ): Promise<void> {
     if (this.audience() === 'tourist') {
-      const result = await this.customerAuth.register(identifier, password);
+      const challenge = await this.challenge()?.solved();
+      const result = await this.customerAuth.register(identifier, password, challenge);
       if (result === 'registered') {
         await this.land(touristLandingRoute(this.returnUrl()));
-      } else {
-        this.error.set(customerRegisterMessage(result));
+        return;
+      }
+      this.error.set(customerRegisterMessage(result));
+      if (isChallengeRejection(result)) {
+        this.challenge()?.refresh();
       }
       return;
     }

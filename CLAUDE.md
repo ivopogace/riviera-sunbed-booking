@@ -109,7 +109,9 @@ events: `PaymentConfirmed`/`PaymentCanceled` → `booking`; `BookingConfirmed`/
 **Platform edge** (settled; `RESPONSIBILITIES.md` § *Platform edge*): server-side sessions
 with two principal types; login machinery at the edge, never in modules; customer account
 and guest row never linked; auth endpoints non-enumerating and constant-time; mocks
-profile-guarded out of prod; revocation edge-orchestrated and synchronous.
+profile-guarded out of prod; revocation edge-orchestrated and synchronous; the public writes that
+cost money or inventory fenced by a self-hosted proof-of-work challenge verified at the edge
+against a Postgres single-use registry (ADR-0016).
 
 ## Cross-cutting invariants
 

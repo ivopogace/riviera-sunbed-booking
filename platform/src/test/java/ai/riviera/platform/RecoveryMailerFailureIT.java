@@ -67,6 +67,7 @@ class RecoveryMailerFailureIT {
 
 	private ResultActions register(String email) throws Exception {
 		return mvc.perform(post("/api/auth/customer/register").with(csrf())
+				.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""

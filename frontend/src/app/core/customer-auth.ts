@@ -4,6 +4,13 @@ import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import {
+  ChallengeRejection,
+  challengeHeaders,
+  challengeRejection,
+  challengeRejectionMessage,
+  isChallengeRejection,
+} from '../shared/challenge';
+import {
   PASSWORD_BLOCKED_MESSAGE,
   PASSWORD_BLOCKED_TERM_CODE,
   PASSWORD_LENGTH_MESSAGE,
@@ -80,7 +87,13 @@ export type CustomerSignInResult = SignInResult;
  * learn the truth from `/me`); the rest are input/transport failures.
  */
 export type CustomerRegisterResult =
-  'registered' | 'exists' | 'invalid-password' | 'blocked-password' | 'rate-limited' | 'error';
+  | 'registered'
+  | 'exists'
+  | 'invalid-password'
+  | 'blocked-password'
+  | ChallengeRejection
+  | 'rate-limited'
+  | 'error';
 
 /**
  * Session-aware customer auth state on the shared {@link SessionAuth} base — the
@@ -133,19 +146,31 @@ export class CustomerAuth extends SessionAuth {
    * signed-in boolean: `registered` iff `/me` now reports a signed-in principal whose email differs
    * from before. The boolean alone misclassified a signed-in user registering a genuinely new,
    * different account as `exists`.
+   *
+   * <p>`challenge` is the widget's solved proof-of-work payload, sent as the fence's header when
+   * present; the edge's three challenge codes come back as their own results so the page can restart
+   * the widget before the retry.
    */
-  async register(email: string, password: string): Promise<CustomerRegisterResult> {
+  async register(
+    email: string,
+    password: string,
+    challenge?: string,
+  ): Promise<CustomerRegisterResult> {
     const previousEmail = this.email();
     try {
       await firstValueFrom(
-        this.http.post<AuthPrincipal>(`${AUTH_API}/customer/register`, { email, password }),
+        this.http.post<AuthPrincipal>(
+          `${AUTH_API}/customer/register`,
+          { email, password },
+          { headers: challengeHeaders(challenge) },
+        ),
       );
     } catch (error) {
       if (error instanceof HttpErrorResponse && error.status === 429) {
         return 'rate-limited';
       }
       if (error instanceof HttpErrorResponse && error.status === 400) {
-        return passwordPolicyResult(error);
+        return challengeRejection(problemCode(error)) ?? passwordPolicyResult(error);
       }
       return 'error';
     }
@@ -294,6 +319,9 @@ export function customerSignInMessage(result: CustomerSignInResult): string | un
  * reveals the email exists is the accepted session-cookie trade-off (D-8), gated by rate limiting.
  */
 export function customerRegisterMessage(result: CustomerRegisterResult): string | undefined {
+  if (isChallengeRejection(result)) {
+    return challengeRejectionMessage(result);
+  }
   switch (result) {
     case 'registered':
       return undefined;
