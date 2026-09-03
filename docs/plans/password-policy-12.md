@@ -226,6 +226,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | CI (Repo hygiene, head `a8c8ada`) | `OperatorRejectionRevocationIT` touched but not listed in File structure | fixed in the phase-4 commit (`da5edb4`) |
+| F-2 | CI (Frontend, head `da5edb4`) | `auth-page.a11y.spec.ts` still registered with an 11-character password, so the client-side floor blocked the submitted card; the new hint test queried a `data-testid` the hint did not carry | fixed — fixture moved to 12+, `data-testid="auth-hint"` added; full `npm test` green (2446) |
 
 ---
 

@@ -103,7 +103,7 @@ describe('AuthPage a11y (#277)', () => {
     for (const [testId, value] of [
       ['auth-identifier', 'sereno'],
       ['auth-contact-email', 'ops@sereno.al'],
-      ['auth-password', 'password123'],
+      ['auth-password', 'passphrase-123'],
     ]) {
       const input = host.querySelector<HTMLInputElement>(`[data-testid="${testId}"]`)!;
       input.value = value;

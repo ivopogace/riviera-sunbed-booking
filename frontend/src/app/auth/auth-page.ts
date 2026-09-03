@@ -226,7 +226,11 @@ const LABEL_CLASS = 'text-[11px] font-bold tracking-[0.1em] uppercase text-riv-c
               </label>
 
               @if (mode() === 'register') {
-                <p id="auth-hint" class="m-0 text-[12px] text-riv-card-ink-faint">
+                <p
+                  id="auth-hint"
+                  class="m-0 text-[12px] text-riv-card-ink-faint"
+                  data-testid="auth-hint"
+                >
                   {{ policyHint }}
                 </p>
               }
