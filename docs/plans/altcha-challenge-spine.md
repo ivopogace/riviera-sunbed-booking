@@ -438,7 +438,21 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-15:** filled at close-out with the command and the commit.
+Backend runs are `gradle --no-daemon --console=plain test --tests "*<Class>*"` from `platform/` (JDK 25
+toolchain, the sandbox's `dockerd` for the ITs — every IT ran with `skipped="0"`); frontend runs are from
+`frontend/`.
+
+- [x] **AC-1, AC-2:** `*ChallengeEndpointTest*` → 3 passed. Verified at `316c64b`.
+- [x] **AC-3..AC-6:** `*CustomerRegisterChallengeIT*` → 7 passed (real Postgres; the concurrent replay admits exactly one; the eleventh header-less register is `429`). Verified at `f1b6eab`.
+- [x] **AC-5 (constraint):** `*ChallengeRegistryMigrationIT*` → 2 passed. Verified at `d00b703`.
+- [x] **AC-7:** `*ChallengeRegistrySweepIT*` → 2 passed. Verified at `d00b703`.
+- [x] **AC-8:** `*AltchaDisabledTest*` → 2 passed; `*AltchaPropertiesBindingTest*` → 8 passed. Verified at `f1b6eab` / `d00b703`.
+- [x] **AC-9:** `*ChallengeVerificationFilterTest*` → 9 passed. Verified at `f1b6eab`.
+- [x] **AC-10:** `*ModularityTests* *JdbcOnlyArchitectureTests* *PackageShapeArchitectureTests* *CompositionRootDisciplineTests* *ScheduledWorkArchitectureTest* *EndpointRoleGateCoverageTest*` → all green. Verified at `f1b6eab`.
+- [x] **AC-11:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → 413 passed (incl. `customer-auth-challenge.e2e.ts` ×5). Verified at `d1c680f`.
+- [x] **AC-12:** local stack (`scripts/e2e-local-stack.sh` with `gradle bootRun`), `npx playwright test e2e/real-backend/register.e2e.ts` → 1 passed, 13 s. Verified at `d1c680f`.
+- [x] **AC-13, AC-14:** `npx ng test --watch=false` → 2505 passed (the wrapper's unit, a11y and contrast specs, `auth-page.*.spec.ts`, `customer-auth.spec.ts`, `proof-of-work.spec.ts`). Verified at `6a505b5` / `d1c680f`.
+- [x] **AC-15:** `RESPONSIBILITIES.md` § *Platform edge*, `production-hardening.md`, the D-8 status line, `git rm docs/plans/password-policy-12.md` — in `d1c680f` / `316c64b`.
 
 ## Self-review checklist (before merge / PR)
 
