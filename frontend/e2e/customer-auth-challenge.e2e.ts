@@ -100,3 +100,32 @@ test('the operator register shows no widget in this slice', async ({ page }) => 
   await expect(page.getByLabel('Username', { exact: true })).toBeVisible();
   await expect(auth.challengeWidget).toHaveCount(0);
 });
+
+test('the checkbox is 24 px and carries its touch-floor exemption', async ({ page }) => {
+  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
+  const auth = new CustomerAuthPage(page);
+
+  await page.goto('/account/sign-in?mode=register');
+  await expect(auth.challengeWidget.getByRole('checkbox')).toBeVisible();
+
+  // Measured, not read off the class list: the sweep skips it, so nothing else pins the size.
+  const box = await page.evaluate(() => {
+    const input = document.querySelector('.altcha-checkbox input');
+    const wrap = document.querySelector('.altcha-checkbox');
+    if (!input || !wrap) return null;
+    const r = input.getBoundingClientRect();
+    return {
+      size: { width: Math.round(r.width), height: Math.round(r.height) },
+      exempt: wrap.getAttribute('data-touch-exempt'),
+    };
+  });
+
+  expect(box, 'the ALTCHA checkbox internals still exist').not.toBeNull();
+  expect(box!.size, 'the deliberate 24 px, WCAG 2.5.8 AA with no headroom').toEqual({
+    width: 24,
+    height: 24,
+  });
+  expect(box!.exempt, 'the sweep skips it only because the reason is written down').toContain(
+    'maintainer decision',
+  );
+});

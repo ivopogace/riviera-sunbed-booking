@@ -69,6 +69,13 @@ describe('ChallengeWidget', () => {
     expect(widget.getAttribute('auto')).toBe('onfocus');
   });
 
+  it('marks the 24 px checkbox exempt from the touch floor, with the reason', async () => {
+    const widget = await enable();
+    expect(widget.querySelector('.altcha-checkbox')?.getAttribute('data-touch-exempt')).toContain(
+      'maintainer decision',
+    );
+  });
+
   it('keeps the attribution and marks its link as sentence-inline for the touch sweep', async () => {
     const widget = await enable();
     expect(widget.querySelector('.altcha-footer')?.textContent).toContain('Protected by');

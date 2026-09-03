@@ -31,7 +31,10 @@ export class FakeAltchaElement extends HTMLElement {
 
   connectedCallback(): void {
     this.innerHTML =
-      '<div class="altcha"><a class="altcha-logo" aria-hidden="true" tabindex="-1"></a><div class="altcha-footer"><p>Protected by <a href="https://altcha.org/">ALTCHA</a></p></div></div>';
+      '<div class="altcha"><div class="altcha-checkbox-wrap"><div class="altcha-checkbox">' +
+      '<input type="checkbox" aria-label="I am not a robot" /></div></div>' +
+      '<a class="altcha-logo" aria-hidden="true" tabindex="-1"></a>' +
+      '<div class="altcha-footer"><p>Protected by <a href="https://altcha.org/">ALTCHA</a></p></div></div>';
     this.dispatchEvent(new CustomEvent('load'));
   }
 

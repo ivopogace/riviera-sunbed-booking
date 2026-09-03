@@ -74,8 +74,12 @@ function loadWidget(): Promise<unknown> {
  *
  * <p>`CUSTOM_ELEMENTS_SCHEMA` is the one deviation from the house rules: `<altcha-widget>` is a
  * third-party element, not a component. The widget's `--altcha-*` variables are mapped from the
- * `--riv-*` tokens on the host, so it themes with the card it sits in; the checkbox is sized to the
- * 44 px touch floor and the attribution link is the sentence-inline exemption.
+ * `--riv-*` tokens on the host, so it themes with the card it sits in, and the attribution link is
+ * the sentence-inline exemption.
+ *
+ * <p>The checkbox is 24 px and carries a {@code data-touch-exempt} reason: it is held to WCAG
+ * 2.5.8's AA minimum rather than the 44 px floor, which is `riviera-tailwind` rule 4's fourth
+ * exemption class. The mocked e2e pins that size, because the sweep skips an exempt control.
  */
 @Component({
   selector: 'app-challenge-widget',
@@ -86,8 +90,8 @@ function loadWidget(): Promise<unknown> {
       '--altcha-color-base: var(--riv-field-fill); --altcha-color-base-content: var(--riv-card-ink);' +
       ' --altcha-border-color: var(--riv-field-border); --altcha-border-radius: 14px;' +
       ' --altcha-color-neutral: var(--riv-field-border); --altcha-color-neutral-content: var(--riv-card-ink);' +
-      ' --altcha-checkbox-border-color: var(--riv-field-border); --altcha-checkbox-size: 44px;' +
-      ' --altcha-checkbox-border-radius: 10px; --altcha-checkbox-outline-color: var(--riv-accent-ink);' +
+      ' --altcha-checkbox-border-color: var(--riv-field-border); --altcha-checkbox-size: 24px;' +
+      ' --altcha-checkbox-border-radius: 5px; --altcha-checkbox-outline-color: var(--riv-accent-ink);' +
       ' --altcha-color-primary: var(--riv-accent-ink); --altcha-color-primary-content: var(--riv-on-accent-ink);' +
       ' --altcha-color-success: var(--riv-accent-ink); --altcha-color-success-content: var(--riv-on-accent-ink);' +
       ' --altcha-color-error: var(--riv-form-error-fill); --altcha-color-error-content: var(--riv-form-error-ink);' +
@@ -166,13 +170,19 @@ export class ChallengeWidget {
   /**
    * The widget only watches for focus changes from the moment it mounts; a form that was
    * autofocused before the bundle arrived would otherwise wait for the next Tab. So a form already
-   * holding focus starts the solve here, and the two links inside the widget get their exemptions.
+   * holding focus starts the solve here, and the widget's three exempt boxes get their reasons.
    */
   protected onLoad(): void {
     const element = this.element();
     if (!element) {
       return;
     }
+    element
+      .querySelector('.altcha-checkbox')
+      ?.setAttribute(
+        'data-touch-exempt',
+        '24 px by maintainer decision (#920): WCAG 2.5.8 AA, not the house 2.5.5 floor',
+      );
     element
       .querySelector('.altcha-footer')
       ?.setAttribute('data-touch-exempt', 'attribution link inside a sentence (WCAG 2.5.5)');
