@@ -51,7 +51,7 @@ import ai.riviera.platform.operator.api.OperatorAccounts;
 @Configuration
 @EnableWebSecurity
 @EnableConfigurationProperties({RivieraOperatorProperties.class, RateLimitProperties.class,
-		RecoveryProperties.class})
+		RecoveryProperties.class, AltchaProperties.class})
 class SecurityConfig {
 
 	/** The single role that gates the operator write surface. */

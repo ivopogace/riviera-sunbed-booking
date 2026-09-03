@@ -285,14 +285,14 @@ component).
 
 ## Execution status
 
-**Stage pointer:** `plan — doc committed; implement (phase 1) next`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** open the draft PR, then phase 1 (properties + V49 + registry + sweep), test-first.
+**Next action:** phase 2 — endpoint, verifier filter, rate-limit budget, ITs (red first); draft PR #911 is the CI vehicle.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — prototype + plan doc + draft PR | ⏳ | |
-| 1 — properties, V49 registry, JDBC claim, sweep | | |
+| 0 — prototype + plan doc + draft PR | ✅ | `47944af`, PR #911 |
+| 1 — properties, V49 registry, JDBC claim, sweep | ✅ | phase-1 commit (SHA in the phase-2 status update) |
 | 2 — challenge endpoint, verifier filter, rate-limit budget, ITs | | |
 | 3 — frontend: vocabulary, probe service, widget wrapper, auth page, unit + a11y + contrast specs | | |
 | 4 — mocked Playwright spec, real-backend journey | | |
@@ -342,7 +342,6 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/test/java/ai/riviera/platform/EndpointRoleGateCoverageTest.java` — `GET /api/auth/challenge` declared reachable
 - `platform/src/test/java/ai/riviera/platform/ScheduledWorkArchitectureTest.java` — sixth known job
 - `platform/src/test/java/ai/riviera/platform/RateLimitPropertiesBindingTest.java` — record arity, count wording
-- `platform/src/test/java/ai/riviera/platform/RateLimitFilterTest.java` — the challenge dimension
 - `frontend/package.json`, `frontend/package-lock.json` — `altcha` pinned exact
 - `frontend/src/app/shared/challenge.ts`, `frontend/src/app/shared/challenge.spec.ts`
 - `frontend/src/app/shared/challenge-widget.ts`, `.spec.ts`, `.a11y.spec.ts`, `.contrast.spec.ts`
@@ -365,18 +364,18 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 ## Phase 0 — prototype + plan doc + draft PR
 
 - [x] Prototype run; numbers and verdict recorded above.
-- [ ] Commit this doc — `Plan the proof-of-work challenge spine (#905)`; open the draft PR.
+- [x] Commit this doc — `Plan the proof-of-work challenge spine (#905)`; draft PR #911 opened.
 
 ## Phase 1 — properties, V49 registry, JDBC claim, sweep
 
-- [ ] Red: `AltchaPropertiesBindingTest` (shipped defaults; cost/expiry/skew bounds fail the context).
-- [ ] Red: `ChallengeRegistryMigrationIT` (PK rejects a second row; `ON CONFLICT DO NOTHING` answers 0).
-- [ ] Red: `ChallengeRegistrySweepIT` (expired row gone, live row kept; the claim port answers true once).
-- [ ] Green: `AltchaProperties`, `V49__challenge_registry.sql`, `ChallengeRegistry`,
+- [x] Red: `AltchaPropertiesBindingTest` (shipped defaults; cost/expiry/skew bounds fail the context).
+- [x] Red: `ChallengeRegistryMigrationIT` (PK rejects a second row; `ON CONFLICT DO NOTHING` answers 0).
+- [x] Red: `ChallengeRegistrySweepIT` (expired row gone, live row kept; the claim port answers true once).
+- [x] Green: `AltchaProperties`, `V49__challenge_registry.sql`, `ChallengeRegistry`,
   `JdbcChallengeRegistry` (bounded sweep client, `riviera.scheduled.query-timeout-seconds`),
   `ChallengeRegistrySweep`; `ScheduledWorkArchitectureTest` set + `pool.size=6`.
-- [ ] Scoped runs: the three classes + `ScheduledWorkArchitectureTest` + the structural net.
-- [ ] Commit — `Add the single-use challenge registry, its sweep and the riviera.altcha properties (#905)`
+- [x] Scoped runs: the three classes + `ScheduledWorkArchitectureTest` + the structural net.
+- [x] Commit — `Add the single-use challenge registry, its sweep and the riviera.altcha properties (#905)`
 
 ## Phase 2 — challenge endpoint, verifier filter, rate-limit budget, ITs
 
