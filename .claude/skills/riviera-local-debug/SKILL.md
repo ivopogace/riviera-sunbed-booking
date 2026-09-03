@@ -77,6 +77,27 @@ cumulative traffic does to it before pushing, and design the tests to isolate (u
 keying dimension per test, initial-delay for background jobs, per-test state reset). The
 answer is verified only by the push's CI run — check it before building the next phase on top.
 
+### The other way scoped runs mislead: blast radius
+
+The class above is about *state*; this one is about *wiring*, and it needs no full suite to
+bite — only a test you did not think to name. Moving a bean changes which contexts can still be
+built, and that set is not the set of tests whose subject you touched.
+
+- **A bean the root edge depends on moved into a module.** `@ApplicationModuleTest` bootstraps
+  its own module plus the **root package's** beans — but a module's beans only when that module
+  is bootstrapped. Moving the proof-of-work port out of the root left `SecurityConfig`'s filter
+  chain asking for a bean `payout` isolation does not supply, so `PayoutModuleTest` failed with
+  `NoSuchBeanDefinitionException` while every challenge test and every web slice stayed green
+  (`WebSliceStubs` supplies the port). Fix: the moved port joins that test's `@MockitoBean`
+  list, exactly as the `shared` kernel's two principal accessors already do — that file's own
+  comments explain the pattern, one module earlier.
+
+**The rule:** when a change moves a bean between the root package and a module, or gives the root
+edge a new module dependency, run the module tests before pushing. `grep -rl
+'@ApplicationModuleTest' platform/src/test/java` is the entire population and it is small; a
+`@WebMvcTest` is only safe because `WebSliceStubs` supplies the port, so a new root-edge
+dependency means a new stub bean there too.
+
 ### Local machine (contributor laptop)
 
 `./gradlew` works normally. Same scoped-test discipline; `./gradlew test` for the full suite is fine.

@@ -10,8 +10,9 @@ description: >-
 # Riviera Spring Modulith (hexagonal, JDBC-only)
 
 Base package `ai.riviera.platform`; nine bounded-context modules — **venue, availability,
-booking, payment, payout, customer, operator, notification, review** — plus the
-non-context module **`shared`** (an OPEN Shared Kernel). Spring Boot 4, Spring Modulith
+booking, payment, payout, customer, operator, notification, review** — plus two non-context
+modules: **`shared`** (an OPEN Shared Kernel) and **`challenge`** (closed, full template,
+ADR-0017). Spring Boot 4, Spring Modulith
 2.1, Java 25, Gradle, Spring Data JDBC / `JdbcClient` only — no JPA.
 
 **The root package is the composition root, and nothing may depend on it.**
@@ -53,11 +54,13 @@ on the other side.
 
 **Assignment rule: a module is THIN iff it has no application service** — its `api/` port
 is implemented directly by a JDBC adapter. Otherwise it is FULL. Today all nine
-bounded-context modules are full; the thin template is the documented shape for a future
-serviceless module. Small LOC does not make a module thin (`availability` is small but
+bounded-context modules are full, and so is the non-context `challenge`. The thin template
+is the documented shape for a future serviceless module. Small LOC does not make a module thin (`availability` is small but
 full); having no service does.
 
-**`shared` fits neither template:** `@ApplicationModule(type = OPEN)`, a handful of flat
+**`challenge` uses the full template** minus `domain/` — it owns table-backed state, not an
+aggregate — with `allowedDependencies = {}`: a mechanism that knew a domain type would be a
+bounded context in disguise. **`shared` fits neither template:** `@ApplicationModule(type = OPEN)`, a handful of flat
 classes at the module root, no published surface (OPEN means consumers reference its types
 directly), no `application`/`domain`/`adapter`. `PackageShapeArchitectureTests` skips
 types at a module root. Don't copy the shape for a context, and don't grow `shared` into one.
@@ -192,6 +195,10 @@ controller. Platform-wide admin (`/api/admin/**`) stays role-gated. The module's
       non-cyclic dependency was added.
 - [ ] A moved/renamed published event ships a Flyway `event_type` rewrite for the Event
       Publication Registry (see `V18__event_publication_event_type_moves.sql`).
+- [ ] A bean moved between the root package and a module → the `@ApplicationModuleTest`s
+      still build their contexts. They are supplied the root package's beans, but a module's
+      only when that module is bootstrapped, so the moved port joins their `@MockitoBean` list
+      (`riviera-local-debug` § *blast radius*).
 - [ ] `ModularityTests.verifiesModularStructure()` passes.
 
 ## References

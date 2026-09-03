@@ -11,10 +11,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.session.FindByIndexNameSessionRepository;
@@ -43,6 +47,8 @@ import ai.riviera.platform.booking.application.view.ListDailyBookings;
 import ai.riviera.platform.booking.application.view.MyBookings;
 import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.challenge.api.ProofOfWorkChallenges;
+import ai.riviera.platform.challenge.vocabulary.ChallengeVerdict;
 import ai.riviera.platform.customer.api.AccountErasure;
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
@@ -266,30 +272,53 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * The proof-of-work registry the web slices verify against: the same claim-once contract as the
-	 * Postgres adapter, held in a map, so {@code ChallengeVerificationFilterTest} can prove a replay
-	 * loses without a database.
+	 * The proof-of-work port the web slices run the fence against. The {@code challenge} module owns
+	 * ALTCHA and proves its four verdicts in its own unit test; what the slices need is a port whose
+	 * answer they can choose, so a payload here NAMES its verdict — and a verified one is claimed
+	 * once, so {@code ChallengeVerificationFilterTest} still proves a replay loses. The kill switch
+	 * reads the module's own property, because the fence's off-state is an edge behaviour
+	 * ({@code AltchaDisabledTest}) and the module's properties are not bound in a web slice.
 	 */
 	@Bean
-	ChallengeRegistry challengeRegistry() {
-		return new InMemoryChallengeRegistry();
+	ProofOfWorkChallenges proofOfWorkChallenges(
+			@Value("${riviera.altcha.enabled:true}") boolean challengeEnabled) {
+		return new StubProofOfWorkChallenges(challengeEnabled);
 	}
 
-	static final class InMemoryChallengeRegistry implements ChallengeRegistry {
+	/** The payloads the slices submit; anything else is {@link ChallengeVerdict#INVALID}. */
+	static final class StubProofOfWorkChallenges implements ProofOfWorkChallenges {
 
-		private final java.util.concurrent.ConcurrentMap<String, Instant> claimed =
-				new java.util.concurrent.ConcurrentHashMap<>();
+		static final String SOLVED = "stub-solved";
+		static final String EXPIRED = "stub-expired";
 
-		@Override
-		public boolean claim(String challengeId, Instant expiresAt) {
-			return claimed.putIfAbsent(challengeId, expiresAt) == null;
+		private final boolean enabled;
+		private final AtomicLong issued = new AtomicLong();
+		private final Set<String> claimed = ConcurrentHashMap.newKeySet();
+
+		StubProofOfWorkChallenges(boolean enabled) {
+			this.enabled = enabled;
 		}
 
 		@Override
-		public int deleteExpiredBefore(Instant cutoff) {
-			int before = claimed.size();
-			claimed.values().removeIf(expiresAt -> expiresAt.isBefore(cutoff));
-			return before - claimed.size();
+		public boolean enabled() {
+			return enabled;
+		}
+
+		@Override
+		public String issue() {
+			return "{\"parameters\":{\"nonce\":\"stub-" + issued.incrementAndGet()
+					+ "\"},\"signature\":\"stub-signature\"}";
+		}
+
+		@Override
+		public ChallengeVerdict verify(String payload) {
+			if (EXPIRED.equals(payload)) {
+				return ChallengeVerdict.EXPIRED;
+			}
+			if (!SOLVED.equals(payload)) {
+				return ChallengeVerdict.INVALID;
+			}
+			return claimed.add(payload) ? ChallengeVerdict.VERIFIED : ChallengeVerdict.REPLAYED;
 		}
 	}
 

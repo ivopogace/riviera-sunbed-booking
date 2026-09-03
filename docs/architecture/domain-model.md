@@ -17,7 +17,7 @@
 
 ## 1. Bounded context map
 
-The nine Spring-Modulith modules and how they collaborate. **Solid arrows = domain
+The nine bounded-context Spring-Modulith modules and how they collaborate (the two non-context modules, `shared` and `challenge`, collaborate with nobody and are not drawn). **Solid arrows = domain
 events** (state changes). **Dotted arrows = `api/` port queries** (reads). Modules
 never import each other's internals — only `api/` ports or events (invariant #11).
 

@@ -41,9 +41,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * <p>Root-level platform config ({@code PlatformApplication}, {@code SecurityConfig},
  * {@code WebCorsConfig}, {@code TimeConfig}, …) sits directly under {@code ai.riviera.platform} and is
  * <strong>not</strong> a module — it is excluded from the package-shape assertions. What the root may
- * <em>reach</em> is {@link CompositionRootDisciplineTests}' job. The non-context {@code shared} kernel
- * matches neither template deliberately — flat classes at the module root, no published surface — and
- * passes here because types sitting at a module root are skipped.
+ * <em>reach</em> is {@link CompositionRootDisciplineTests}' job. Of the two non-context modules,
+ * {@code challenge} uses the full template (minus {@code domain}) and is checked like any other,
+ * while the {@code shared} kernel matches neither template deliberately — flat classes at the module
+ * root, no published surface — and passes here because types sitting at a module root are skipped.
  */
 class PackageShapeArchitectureTests {
 

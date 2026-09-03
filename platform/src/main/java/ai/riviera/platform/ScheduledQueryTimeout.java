@@ -27,8 +27,9 @@ import org.springframework.stereotype.Component;
  * {@code application.properties}, not per-adapter settings — and it loses nothing, because a
  * throw here fails the boot for every consumer of that number regardless of which bean was built first.
  *
- * <p>Consequence worth knowing: the three module adapters still read the raw property via
- * {@code @Value} (they cannot depend on the root — nothing may). They receive a value this bean has
+ * <p>Consequence worth knowing: the module adapters still read the raw property via
+ * {@code @Value} (they cannot depend on the root — nothing may, and
+ * {@code CompositionRootDisciplineTests} now fails the build if one tries). They receive a value this bean has
  * vetted, and a context that somehow excluded this bean would fall back to the committed default
  * rather than an operator's typo.
  */

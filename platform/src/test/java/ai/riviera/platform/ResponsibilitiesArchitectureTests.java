@@ -56,6 +56,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *       §venue's "I store the rating aggregate; {@code review} computes it": {@code review}
  *       announces via {@code ReviewsChanged} and answers via its aggregate port; only {@code venue}
  *       names its columns. Same whole-word constant-pool scan as rule 1.</li>
+ *   <li><strong>Sole-writer, challenge registry:</strong> no class outside the {@code challenge}
+ *       module touches {@code challenge_registry} — the mechanical form of §{@code challenge}'s
+ *       "only writer of {@code challenge_registry}". A claim written anywhere else is a second
+ *       opinion on whether a solved challenge has been spent, which is the one thing the table
+ *       exists to settle. Same whole-word constant-pool scan as rule 1; the bare token is safe
+ *       here because the module's package name is {@code challenge}, not {@code challenge_registry}.</li>
  * </ol>
  *
  * <p><strong>Necessary, not sufficient.</strong> These rules encode only the <em>structural</em>
@@ -105,6 +111,12 @@ class ResponsibilitiesArchitectureTests {
 
 	/** The venue-owned aggregate columns no other module may reference (#811). */
 	private static final List<String> RATING_COLUMNS = List.of("rating_tenths", "reviews_count");
+
+	/** The single-use registry table owned by {@code challenge} (ADR-0016, ADR-0017). */
+	private static final String CHALLENGE_REGISTRY_TABLE = "challenge_registry";
+
+	/** The one module that may reference {@link #CHALLENGE_REGISTRY_TABLE}. */
+	private static final String CHALLENGE_MODULE = "challenge";
 
 	private static final String EVENTS_SURFACE = "events";
 	private static final String VOCABULARY_SURFACE = "vocabulary";
@@ -318,6 +330,44 @@ class ResponsibilitiesArchitectureTests {
 						+ violations);
 	}
 
+	// ---- rule 6: challenge is the sole toucher of its single-use registry -------------------
+
+	@Test
+	void challengeRegistryTableIsTouchedOnlyInsideTheChallengeModule() {
+		List<String> violations = challengeRegistryViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
+		assertNoViolations(
+				"RESPONSIBILITIES.md fitness-function violations (challenge sole-writer, ADR-0017)",
+				violations);
+	}
+
+	/** Guards against a vacuously-green scan: the module's own adapter DOES carry the table's SQL. */
+	@Test
+	void theChallengeModuleItselfWritesTheTable() {
+		boolean challengeReferencesTable = false;
+		for (JavaClass type : PRODUCTION_CLASSES) {
+			if (CHALLENGE_MODULE.equals(moduleOf(type, PRODUCTION_BASE))
+					&& referencesChallengeRegistryTable(type)) {
+				challengeReferencesTable = true;
+				break;
+			}
+		}
+		assertTrue(challengeReferencesTable,
+				"expected at least one challenge class to reference '" + CHALLENGE_REGISTRY_TABLE
+						+ "' — otherwise the sole-writer scan proves nothing");
+	}
+
+	/** The negative proof (red run): an outside writer is rejected — and the fixture module's
+	 * own writer is NOT (the exclusion path works). */
+	@Test
+	void outsideChallengeRegistryWriterFixtureIsRejected() {
+		List<String> violations = challengeRegistryViolations(FIXTURE_CLASSES, FIXTURE_BASE);
+		assertTrue(violations.stream().anyMatch(v -> v.contains("RogueChallengeRegistryWriter")),
+				"Expected the challenge sole-writer scan to reject the fixture outside writer, but got: "
+						+ violations);
+		assertFalse(violations.stream().anyMatch(v -> v.contains("FixtureJdbcChallengeRegistry")),
+				"The fixture challenge module's own SQL must not be flagged, but got: " + violations);
+	}
+
 	// ---- violation collectors (parameterized so fixtures prove the red case) ---------------
 
 	private static List<String> availabilityTableViolations(JavaClasses classes, String base) {
@@ -339,6 +389,28 @@ class ResponsibilitiesArchitectureTests {
 	private static boolean referencesAvailabilityTable(JavaClass type) {
 		return compiledBytecodeOf(type)
 				.map(bytecode -> containsWholeWord(bytecode, AVAILABILITY_TABLE))
+				.orElse(false);
+	}
+
+	private static List<String> challengeRegistryViolations(JavaClasses classes, String base) {
+		List<String> violations = new ArrayList<>();
+		for (JavaClass type : classes) {
+			if (CHALLENGE_MODULE.equals(moduleOf(type, base))) {
+				continue;
+			}
+			if (referencesChallengeRegistryTable(type)) {
+				violations.add(type.getName() + " references the '" + CHALLENGE_REGISTRY_TABLE
+						+ "' table — the challenge module is its only writer AND reader "
+						+ "(ADR-0017 / RESPONSIBILITIES.md §challenge); the platform edge asks the "
+						+ "module through challenge::api, never at the table");
+			}
+		}
+		return violations;
+	}
+
+	private static boolean referencesChallengeRegistryTable(JavaClass type) {
+		return compiledBytecodeOf(type)
+				.map(bytecode -> containsWholeWord(bytecode, CHALLENGE_REGISTRY_TABLE))
 				.orElse(false);
 	}
 

@@ -1,10 +1,12 @@
-package ai.riviera.platform;
+package ai.riviera.platform.challenge.adapter.in;
 
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import ai.riviera.platform.challenge.api.ProofOfWorkChallenges;
 
 /**
  * The public proof-of-work challenge endpoint the widget fetches from. Anonymous by definition and

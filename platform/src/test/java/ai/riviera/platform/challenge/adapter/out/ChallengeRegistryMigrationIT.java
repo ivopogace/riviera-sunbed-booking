@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.challenge.adapter.out;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -11,6 +11,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
+
+import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;

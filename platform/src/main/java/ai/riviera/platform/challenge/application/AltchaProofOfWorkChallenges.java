@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.challenge.application;
 
 import java.security.SecureRandom;
 import java.time.Clock;
@@ -9,23 +9,27 @@ import org.altcha.altcha.v2.Altcha;
 import org.json.JSONException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import ai.riviera.platform.challenge.api.ProofOfWorkChallenges;
+import ai.riviera.platform.challenge.vocabulary.ChallengeVerdict;
 
 /**
- * Issues and verifies the platform's ALTCHA v2 proof-of-work challenges (ADR-0016) with the
- * official library: a challenge is a signed parameter block the widget brute-forces in the
- * browser; a solution is accepted when its signature is ours, its answer is right, it has not
- * expired, and the {@link ChallengeRegistry} claim for its nonce wins — so each solution counts
- * exactly once, across restarts and instances. No ALTCHA service is ever called.
+ * {@link ProofOfWorkChallenges} on the official ALTCHA v2 library: a challenge is a signed parameter
+ * block the widget brute-forces in the browser; a solution is accepted when its signature is ours,
+ * its answer is right, it has not expired, and the {@link ChallengeRegistry} claim for its nonce
+ * wins — so each solution counts exactly once, across restarts and instances.
  *
  * <p>Expiry is minted from the injected {@link Clock} and checked by the library against the wall
  * clock — both the server's, so the client's clock never enters. The signing secret is
  * {@code riviera.altcha.hmac-secret}; blank means a random key for this process alone, which is
  * fine for a single dev instance and is logged at WARN. Rationale: {@code RESPONSIBILITIES.md}
- * § <em>Platform edge</em>.
+ * § {@code challenge}.
  */
-final class ProofOfWorkChallenges {
+@Service
+class AltchaProofOfWorkChallenges implements ProofOfWorkChallenges {
 
-	private static final Logger log = LoggerFactory.getLogger(ProofOfWorkChallenges.class);
+	private static final Logger log = LoggerFactory.getLogger(AltchaProofOfWorkChallenges.class);
 
 	/** The one algorithm the platform issues; a payload naming another is invalid before any crypto runs. */
 	static final String ALGORITHM = "PBKDF2/SHA-256";
@@ -38,7 +42,7 @@ final class ProofOfWorkChallenges {
 	private final String secret;
 	private final Altcha.KeyDerivationFunction kdf = Altcha.kdf(ALGORITHM);
 
-	ProofOfWorkChallenges(AltchaProperties props, Clock clock, ChallengeRegistry registry) {
+	AltchaProofOfWorkChallenges(AltchaProperties props, Clock clock, ChallengeRegistry registry) {
 		this.props = props;
 		this.clock = clock;
 		this.registry = registry;
@@ -57,13 +61,13 @@ final class ProofOfWorkChallenges {
 		return HexFormat.of().formatHex(random);
 	}
 
-	/** {@code false} means the fenced routes admit requests without a solution and no challenge is issued. */
-	boolean enabled() {
+	@Override
+	public boolean enabled() {
 		return props.enabled();
 	}
 
-	/** A fresh signed challenge as the JSON the widget consumes ({@code {parameters, signature}}). */
-	String issue() {
+	@Override
+	public String issue() {
 		long expiresAt = clock.instant().plus(props.expiry()).getEpochSecond();
 		try {
 			return Altcha.createChallenge(new Altcha.CreateChallengeOptions()
@@ -78,11 +82,8 @@ final class ProofOfWorkChallenges {
 		}
 	}
 
-	/**
-	 * Verify the widget's base64 payload and, if it is right, claim its nonce for this submission.
-	 * Never logs the payload.
-	 */
-	ChallengeVerdict verify(String payload) {
+	@Override
+	public ChallengeVerdict verify(String payload) {
 		Altcha.Payload parsed;
 		Altcha.VerifySolutionResult result;
 		try {

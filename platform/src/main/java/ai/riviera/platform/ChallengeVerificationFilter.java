@@ -6,6 +6,8 @@ import java.util.Set;
 import org.springframework.http.HttpMethod;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import ai.riviera.platform.challenge.api.ProofOfWorkChallenges;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

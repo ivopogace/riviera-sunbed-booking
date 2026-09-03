@@ -13,8 +13,8 @@
  *
  * <p><strong>{@code type = OPEN}</strong> deliberately: technical shared code, not a bounded context,
  * so it publishes no {@code api}/{@code vocabulary} surface and consumers reference its types
- * directly. It may depend only on {@code customer} and {@code operator} — the modules that do not
- * depend on it — which is what keeps it acyclic.
+ * directly. It may depend only on {@code customer} and {@code operator} — the two bounded contexts
+ * that do not depend on it — which is what keeps it acyclic.
  *
  * <p><strong>Keep it small.</strong> A shared kernel earns its keep only while it stays tiny and
  * stable; Evans' warning is that changes here ripple through every context. Admission test: <em>no
@@ -27,7 +27,7 @@
 @org.springframework.modulith.ApplicationModule(
 	displayName = "Shared Kernel",
 	type = org.springframework.modulith.ApplicationModule.Type.OPEN,
-	// The two modules that do not depend back; granting more would risk the cycle this one removes.
+	// The two bounded contexts that do not depend back; granting more would risk the cycle this removes.
 	allowedDependencies = { "customer::api", "customer::vocabulary", "operator::api", "operator::vocabulary" }
 )
 package ai.riviera.platform.shared;

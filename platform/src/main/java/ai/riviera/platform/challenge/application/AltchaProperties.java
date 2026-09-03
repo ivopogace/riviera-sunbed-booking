@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.challenge.application;
 
 import java.time.Duration;
 
@@ -8,8 +8,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 /**
  * The proof-of-work challenge's tunables, bound from {@code riviera.altcha.*}; the shipped values
  * and their rationale live in {@code application.properties} and {@code RESPONSIBILITIES.md}
- * § <em>Platform edge</em>. The sweep cadence is consumed only by the {@code @Scheduled} placeholders on
- * {@link ChallengeRegistrySweep}, not here.
+ * § {@code challenge}. The sweep cadence is consumed only by the {@code @Scheduled} placeholders on
+ * {@code adapter.in.ChallengeRegistrySweep}, not here.
  *
  * @param enabled    the kill switch: off, the fenced routes admit requests without a solution and
  *                   the challenge endpoint answers {@code 204} so the SPA hides the widget
@@ -22,7 +22,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *                   a random boot-time key, valid for this process alone
  */
 @ConfigurationProperties("riviera.altcha")
-record AltchaProperties(
+public record AltchaProperties(
 		@DefaultValue("true") boolean enabled,
 		@DefaultValue("5000") int cost,
 		@DefaultValue("PT10M") Duration expiry,
@@ -30,21 +30,21 @@ record AltchaProperties(
 		@DefaultValue("") String hmacSecret) {
 
 	/** Below one iteration the fence costs nothing. */
-	static final int MIN_COST = 1;
+	public static final int MIN_COST = 1;
 	/** Twenty times the shipped default: past it the widget's own 90-second timeout fails honest phones. */
-	static final int MAX_COST = 100_000;
+	public static final int MAX_COST = 100_000;
 	/** Under a minute a slow phone cannot solve before the challenge expires. */
-	static final Duration MIN_EXPIRY = Duration.ofMinutes(1);
+	public static final Duration MIN_EXPIRY = Duration.ofMinutes(1);
 	/** ALTCHA's own guidance caps a challenge's life at an hour. */
-	static final Duration MAX_EXPIRY = Duration.ofHours(1);
+	public static final Duration MAX_EXPIRY = Duration.ofHours(1);
 	/** A registry row need not outlive its challenge by more than a few minutes of instance skew. */
-	static final Duration MAX_CLOCK_SKEW = Duration.ofMinutes(5);
+	public static final Duration MAX_CLOCK_SKEW = Duration.ofMinutes(5);
 
 	/**
 	 * Validated here, not annotated: Boot validates {@code @ConfigurationProperties} only with a
 	 * JSR-303 implementation on the classpath, and there is none by deliberate choice.
 	 */
-	AltchaProperties {
+	public AltchaProperties {
 		if (cost < MIN_COST || cost > MAX_COST) {
 			throw new IllegalArgumentException("riviera.altcha.cost must be between " + MIN_COST + " and "
 					+ MAX_COST + ", but was " + cost + " — below the floor the fence costs nothing, above the "

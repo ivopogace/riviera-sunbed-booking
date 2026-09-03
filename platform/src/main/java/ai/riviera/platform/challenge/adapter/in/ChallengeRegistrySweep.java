@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.challenge.adapter.in;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -7,6 +7,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import ai.riviera.platform.challenge.application.AltchaProperties;
+import ai.riviera.platform.challenge.application.ChallengeRegistry;
 
 /**
  * Periodically deletes used-challenge rows the registry no longer needs: those whose expiry lies

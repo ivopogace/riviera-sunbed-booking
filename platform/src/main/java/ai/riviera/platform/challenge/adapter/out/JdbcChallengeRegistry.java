@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.challenge.adapter.out;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -6,18 +6,21 @@ import java.time.ZoneOffset;
 
 import javax.sql.DataSource;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
+
+import ai.riviera.platform.challenge.application.ChallengeRegistry;
 
 /**
  * {@link ChallengeRegistry} on the {@code challenge_registry} table (V49). The claim is one
  * {@code INSERT … ON CONFLICT DO NOTHING}, so two concurrent submissions of one solution race on the
  * primary key and exactly one inserts (the invariant-#2 idiom). The sweep's delete runs on a
- * {@link JdbcClient} of this adapter's own with the finite query timeout {@link ScheduledQueryTimeout}
- * vets — the bound every scheduled job's entry statement carries, injected as the validated bean the
- * way the root's other adapter does; the claim stays on the shared client so a request-thread write is
- * never cut short.
+ * {@link JdbcClient} of this adapter's own with a finite query timeout — the bound every scheduled
+ * job's entry statement carries, read straight from {@code riviera.scheduled.query-timeout-seconds}
+ * because a module may not depend on the composition root that validates it (the {@code JdbcBookings}
+ * idiom); the claim stays on the shared client so a request-thread write is never cut short.
  */
 @Component
 class JdbcChallengeRegistry implements ChallengeRegistry {
@@ -25,9 +28,10 @@ class JdbcChallengeRegistry implements ChallengeRegistry {
 	private final JdbcClient jdbc;
 	private final JdbcClient sweepJdbc;
 
-	JdbcChallengeRegistry(JdbcClient jdbc, DataSource dataSource, ScheduledQueryTimeout queryTimeout) {
+	JdbcChallengeRegistry(JdbcClient jdbc, DataSource dataSource,
+			@Value("${riviera.scheduled.query-timeout-seconds}") int scheduledQueryTimeoutSeconds) {
 		this.jdbc = jdbc;
-		this.sweepJdbc = boundedClient(dataSource, queryTimeout.seconds());
+		this.sweepJdbc = boundedClient(dataSource, scheduledQueryTimeoutSeconds);
 	}
 
 	private static JdbcClient boundedClient(DataSource dataSource, int queryTimeoutSeconds) {

@@ -97,7 +97,10 @@ per-module contract and the settled rules.
 
 Plus **`shared`**, an OPEN Shared Kernel of edge/technical types (`ApiProblem`,
 `CurrentOperator`, …); admission rests on **ownership, never reuse** (`RESPONSIBILITIES.md`
-§`shared`). Modules depend on `shared`, the root on modules, nothing on the root.
+§`shared`). Modules depend on `shared`, the root on modules, nothing on the root. And
+**`challenge`**, the second non-context module: the proof-of-work challenge mechanism (ADR-0017) —
+closed, full template, `allowedDependencies = {}`, publishes `api.ProofOfWorkChallenges` +
+`vocabulary.ChallengeVerdict`; the fence stays in the root.
 
 **Collaboration:** events for state changes, `api/` ports for queries (invariant #11); the
 availability claim and the erasure reach into reviews are synchronous ports. The eight
@@ -110,8 +113,8 @@ events: `PaymentConfirmed`/`PaymentCanceled` → `booking`; `BookingConfirmed`/
 with two principal types; login machinery at the edge, never in modules; customer account
 and guest row never linked; auth endpoints non-enumerating and constant-time; mocks
 profile-guarded out of prod; revocation edge-orchestrated and synchronous; the public writes that
-cost money or inventory fenced by a self-hosted proof-of-work challenge verified at the edge
-against a Postgres single-use registry (ADR-0016).
+cost money or inventory fenced at the edge, verified by the `challenge` module's self-hosted
+proof-of-work challenge against a Postgres single-use registry (ADR-0016, ADR-0017).
 
 ## Cross-cutting invariants
 

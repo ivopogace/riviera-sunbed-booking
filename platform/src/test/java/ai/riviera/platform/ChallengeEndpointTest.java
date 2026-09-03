@@ -1,7 +1,5 @@
 package ai.riviera.platform;
 
-import java.time.Instant;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -25,11 +23,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The public challenge endpoint's contract: an anonymous GET is answered with a signed v2
- * challenge whose expiry is the injected (fixed) clock plus the configured ten minutes, marked
- * uncacheable and establishing no session (the platform-wide {@code XSRF-TOKEN} bootstrap that
- * {@code CsrfCookieBootstrapIT} pins is the CSRF token, not a session); and it rides its own per-IP
- * rate-limit budget, so exhausting it never blocks a login from the same address.
+ * The public challenge endpoint's contract: an anonymous GET hands back whatever the
+ * {@code challenge} module minted, as JSON, marked uncacheable and establishing no session (the
+ * platform-wide {@code XSRF-TOKEN} bootstrap that {@code CsrfCookieBootstrapIT} pins is the CSRF
+ * token, not a session); every answer is a fresh mint, never a cached one; and it rides its own
+ * per-IP rate-limit budget, so exhausting it never blocks a login from the same address.
+ *
+ * <p>What a real challenge <em>contains</em> — the algorithm, the cost, the clock-derived expiry and
+ * the signature — is the module's own contract ({@code AltchaProofOfWorkChallengesTest}); this slice
+ * runs against the stub port.
+ *
+ * <p><strong>This test is also the lockstep pin for the route's three literals.</strong> The
+ * {@code challenge} module owns the mapping, and the root names the same path independently in
+ * {@code SecurityConfig} ({@code permitAll}) and {@code RateLimitFilter} (the budget), because it may
+ * not reach a module's adapter internals. Nothing links them at compile time — these three cases do:
+ * rename the module's route and the anonymous {@code 200} and the dedicated budget both go red here.
  */
 @WebMvcTest
 @Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})
@@ -42,20 +50,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ChallengeEndpointTest {
 
 	private static final String CHALLENGE_PATH = "/api/auth/challenge";
-	/** {@code WebSliceStubs}' fixed clock, plus the shipped {@code riviera.altcha.expiry} of ten minutes. */
-	private static final long EXPECTED_EXPIRES_AT = Instant.parse("2026-06-30T12:10:00Z").getEpochSecond();
 
 	@Autowired
 	MockMvc mvc;
 
 	@Test
-	void issuesASignedTenMinuteChallenge() throws Exception {
+	void servesTheMintedChallengeUncacheableAndSessionless() throws Exception {
 		challenge("203.0.113.10")
 				.andExpect(status().isOk())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-				.andExpect(jsonPath("$.parameters.algorithm").value("PBKDF2/SHA-256"))
-				.andExpect(jsonPath("$.parameters.cost").value(5000))
-				.andExpect(jsonPath("$.parameters.expiresAt").value(EXPECTED_EXPIRES_AT))
 				.andExpect(jsonPath("$.parameters.nonce").value(not(emptyOrNullString())))
 				.andExpect(jsonPath("$.signature").value(not(emptyOrNullString())))
 				.andExpect(header().string("Cache-Control", containsString("no-store")))

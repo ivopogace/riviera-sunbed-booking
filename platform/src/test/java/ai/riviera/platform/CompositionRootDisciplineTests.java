@@ -23,10 +23,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Locks the root-package discipline: the composition root orchestrates the platform
  * edge (auth, sessions, SSO, recovery flows — RV-BE-11) and composes modules, but it is not a home
- * for cross-module <em>domain</em> orchestration. After the mail machinery moved into the
- * {@code notification} module, the only module surfaces the root still touches are
+ * for cross-module <em>domain</em> orchestration. The only module surfaces the root still touches are
  * {@code customer}/{@code operator} (the two principal types), {@code notification::api} (the send
- * port) and {@code shared} — never the booking spine. A root class importing
+ * port), {@code challenge}'s port and verdict (the abuse mechanism the edge's fence calls) and
+ * {@code shared} — never the booking spine. A root class importing
  * {@code booking}/{@code venue}/{@code payment}/{@code payout}/{@code availability} is the
  * shared-kernel cycle pattern reappearing (an edge listener assembling module facts); such a
  * listener belongs in a module — see {@code notification.adapter.in.BookingConfirmationMailListener},
@@ -43,9 +43,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>The grant is by <em>surface</em>, not merely by module: the root may reach the published
  * {@code api}/{@code vocabulary} of the two principal-type modules, {@code notification}'s
- * {@code api} alone, and the flat {@code shared} kernel — never any module's {@code application},
- * {@code domain} or {@code adapter} internals, and never {@code spi} (an "implement-me" port; the
- * root implements nothing for a module).
+ * {@code api} alone, the {@code challenge} mechanism's {@code api} + {@code vocabulary}, and the flat
+ * {@code shared} kernel — never any module's {@code application}, {@code domain} or {@code adapter}
+ * internals, and never {@code spi} (an "implement-me" port; the root implements nothing for a module).
+ *
+ * <p><strong>The edge runs both ways.</strong> The first rule bounds what the root may reach; the
+ * second bounds what may reach the root — no class inside a module may depend on a type sitting
+ * directly in the base package. Modules depend on {@code shared}, the root depends on modules, and
+ * nothing depends on the root; a package that is both closes cycles by construction, and once did.
+ * Spring Modulith cannot supply this half: {@code allowedDependencies} constrains what a module
+ * reaches in <em>other modules</em>, while code in the base package is assigned to no module at all,
+ * which {@code verify()} permits. A module needing a root type is the signal to move that type to
+ * {@code shared} (or into the module), never to grant an exception here.
  *
  * <p>Sibling to {@link PackageShapeArchitectureTests}: fast, context-free ArchUnit, production
  * classes only. Like {@link PublishedSurfacePlacementArchitectureTests}, the collector is
@@ -55,6 +64,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CompositionRootDisciplineTests {
 
 	private static final String FIXTURE_BASE = "ai.riviera.rootfixture";
+
+	/** The mirror-image fixture tree: module stand-ins, one of which depends on a root stand-in. */
+	private static final String MODULE_FIXTURE_BASE = "ai.riviera.modulefixture";
 
 	/** The surface directly under a module; {@code ""} is a type at the module root (the OPEN kernel's shape). */
 	private static final String MODULE_ROOT_SURFACE = "";
@@ -68,6 +80,7 @@ class CompositionRootDisciplineTests {
 			"customer", Set.of("api", "vocabulary"),
 			"operator", Set.of("api", "vocabulary"),
 			"notification", Set.of("api"),
+			"challenge", Set.of("api", "vocabulary"),
 			"shared", Set.of(MODULE_ROOT_SURFACE));
 
 	@Test
@@ -102,6 +115,38 @@ class CompositionRootDisciplineTests {
 						+ "and its negative proof would pass for the wrong reason: " + violations);
 	}
 
+	@Test
+	void noModuleReachesTheRoot() {
+		RootReach reach = inspectRootReach(ArchitectureTestSupport.PRODUCTION_CLASSES, PRODUCTION_BASE);
+
+		assertTrue(reach.moduleClassesInspected() > 0,
+				"No class inside a module was inspected — the rule would be vacuously green; check "
+						+ "the ClassFileImporter package/import options.");
+		assertNoViolations("Composition-root discipline violations (a module depends on a root type)",
+				reach.violations());
+	}
+
+	@Test
+	void moduleReachingTheRootIsRejected() {
+		List<String> violations = inspectRootReach(
+				ArchitectureTestSupport.fixtureClasses(MODULE_FIXTURE_BASE), MODULE_FIXTURE_BASE).violations();
+
+		assertTrue(violations.stream().anyMatch(v -> v.contains("ModuleReachingRoot")
+						&& v.contains("RootShapedType")),
+				"Expected the module-to-root rule to reject a module class depending on a type in the "
+						+ "base package, but got: " + violations);
+	}
+
+	@Test
+	void moduleAvoidingTheRootIsAccepted() {
+		List<String> violations = inspectRootReach(
+				ArchitectureTestSupport.fixtureClasses(MODULE_FIXTURE_BASE), MODULE_FIXTURE_BASE).violations();
+
+		assertTrue(violations.stream().noneMatch(v -> v.contains("ModuleAvoidingRoot")),
+				"The rule flagged a module class that names no root type — it is over-strict, and its "
+						+ "negative proof would pass for the wrong reason: " + violations);
+	}
+
 	/** What one pass over an imported tree found: the violations, and the surfaces actually reached. */
 	private record Inspection(List<String> violations, Set<String> surfacesTouched) {
 	}
@@ -131,6 +176,33 @@ class CompositionRootDisciplineTests {
 			}
 		}
 		return new Inspection(violations, surfacesTouched);
+	}
+
+	/** What one pass of the module&rarr;root rule found: the violations, and how much it looked at. */
+	private record RootReach(List<String> violations, int moduleClassesInspected) {
+	}
+
+	private static RootReach inspectRootReach(JavaClasses classes, String base) {
+		List<String> violations = new ArrayList<>();
+		int inspected = 0;
+
+		for (JavaClass type : classes) {
+			if (moduleOf(type, base) == null || isPackageInfo(type)) {
+				continue; // a composition-root class, or outside the tree
+			}
+			inspected++;
+			for (Dependency dependency : type.getDirectDependenciesFromSelf()) {
+				JavaClass target = dependency.getTargetClass();
+				if (base.equals(target.getPackageName()) && !isPackageInfo(target)) {
+					violations.add(type.getName() + " depends on " + target.getName()
+							+ " — a class inside a module may not reach a type sitting directly in "
+							+ base + ". Modules depend on shared, the root depends on modules, and "
+							+ "nothing depends on the root; move the type to shared or into the module, "
+							+ "never grant an exception here.");
+				}
+			}
+		}
+		return new RootReach(violations, inspected);
 	}
 
 	/** The grant, rendered for the failure message — so the fix is readable without opening this file. */
