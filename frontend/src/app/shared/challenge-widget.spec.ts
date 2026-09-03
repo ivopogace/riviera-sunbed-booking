@@ -2,31 +2,12 @@ import { Component, signal, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
+import { defineFakeAltchaElement, FakeAltchaElement } from '../../testing/fake-altcha-element';
 import { CHALLENGE_URL } from './challenge';
 import { ChallengeWidget } from './challenge-widget';
 
 // jsdom has no Web Workers; the wrapper is proven against the element contract below, not a solve.
 vi.mock('altcha', () => ({}));
-
-/**
- * A stand-in for the real `<altcha-widget>` element: jsdom has no Web Workers, so the wrapper is
- * proven against the element's contract — the two methods it drives and the events it listens to —
- * rather than against a solve. The real solve runs in the mocked Playwright suite.
- */
-class FakeAltchaElement extends HTMLElement {
-  readonly reset = vi.fn();
-  readonly verify = vi.fn(() => Promise.resolve(null));
-
-  connectedCallback(): void {
-    this.innerHTML =
-      '<div class="altcha"><a class="altcha-logo" aria-hidden="true" tabindex="-1"></a><div class="altcha-footer"><p>Protected by <a href="https://altcha.org/">ALTCHA</a></p></div></div>';
-    this.dispatchEvent(new CustomEvent('load'));
-  }
-
-  changeState(state: string, payload?: string): void {
-    this.dispatchEvent(new CustomEvent('statechange', { detail: { state, payload } }));
-  }
-}
 
 @Component({
   imports: [ChallengeWidget],
@@ -47,14 +28,7 @@ describe('ChallengeWidget', () => {
   let fixture: ComponentFixture<Host>;
   let host: Host;
 
-  beforeAll(() => {
-    const defined = customElements.get('altcha-widget');
-    if (defined === undefined) {
-      customElements.define('altcha-widget', FakeAltchaElement);
-    } else if (defined !== FakeAltchaElement) {
-      throw new Error('the real altcha element leaked into jsdom — the vi.mock above must stay');
-    }
-  });
+  beforeAll(defineFakeAltchaElement);
 
   beforeEach(async () => {
     fixture = TestBed.createComponent(Host);

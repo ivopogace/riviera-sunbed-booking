@@ -306,6 +306,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 |---|---|---|---|
 | F-1 | sonar (phase-2 push) | `java:S2119` — `ProofOfWorkChallenges` built a `SecureRandom` per boot-key fallback | fixed in the phase-4 commit: one static instance |
 | F-2 | phase-4 e2e (the first run) | the widget never solved: the page autofocuses the email field before the lazily loaded bundle mounts, so the widget's own `focusin` listener saw no focus change | fixed: the wrapper starts the solve on `load` when the form already holds focus (`challenge-widget.spec.ts` pins both arms) |
+| F-4 | CI (frontend job, pushes `6a505b5`…`3e75e9b`) | `challenge-widget.spec.ts` failed only in CI: two spec files each defined their own fake `<altcha-widget>`, the worker's shared jsdom kept whichever registered first, and the leak guard fired on the other — green locally by file order | fixed: one shared fake in `frontend/src/testing/fake-altcha-element.ts`, registered once, reporting `verifying` like the real element |
 | F-3 | phase-4 touch sweep | the widget's decorative logo link (`aria-hidden`, `tabindex=-1`) is 22 px | fixed: exempted on `load` like the footer link; the checkbox itself is 44 px via `--altcha-checkbox-size` |
 
 ---
@@ -353,6 +354,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/auth/auth-page.ts`, `frontend/src/app/auth/auth-page.spec.ts`, `frontend/src/app/auth/auth-page.a11y.spec.ts`
 - `frontend/src/tailwind.css` — the one new token, `--riv-on-accent-ink` (ink on an accent fill), base + dark
 - `frontend/src/testing/glass-tokens.ts` — its test-side mirror
+- `frontend/src/testing/fake-altcha-element.ts` — the one jsdom stand-in for `<altcha-widget>`, shared by the page and wrapper specs
 - `frontend/e2e/support/auth-mocks.ts` — the mocked challenge route + header-checking register
 - `frontend/e2e/support/pages/customer-auth.page.ts` — widget locators
 - `frontend/e2e/customer-auth-challenge.e2e.ts` — the mocked spec

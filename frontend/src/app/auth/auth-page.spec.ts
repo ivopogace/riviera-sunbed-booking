@@ -14,21 +14,12 @@ import { CustomerAuth } from '../core/customer-auth';
 import { OperatorAuth } from '../core/operator-auth';
 import { OwnedVenues, OwnedVenuesResult } from '../core/owned-venues';
 import { ProofOfWork } from '../core/proof-of-work';
+import { defineFakeAltchaElement, FakeAltchaElement } from '../../testing/fake-altcha-element';
 import { CHALLENGE_EXPIRED_MESSAGE } from '../shared/challenge';
 import { AuthPage } from './auth-page';
 
 // jsdom has no Web Workers: the widget is the element stand-in below, never the real bundle.
 vi.mock('altcha', () => ({}));
-
-/** The `<altcha-widget>` contract the page drives, as `shared/challenge-widget.spec.ts` fakes it. */
-class FakeAltchaElement extends HTMLElement {
-  readonly reset = vi.fn();
-  readonly verify = vi.fn(() => Promise.resolve(null));
-
-  solve(payload: string): void {
-    this.dispatchEvent(new CustomEvent('statechange', { detail: { state: 'verified', payload } }));
-  }
-}
 
 class FakeProofOfWork {
   readonly enabled = signal<boolean | undefined>(false);
@@ -77,14 +68,7 @@ describe('AuthPage', () => {
     await fixture.whenStable();
   }
 
-  beforeAll(() => {
-    const defined = customElements.get('altcha-widget');
-    if (defined === undefined) {
-      customElements.define('altcha-widget', FakeAltchaElement);
-    } else if (defined !== FakeAltchaElement) {
-      throw new Error('the real altcha element leaked into jsdom — the vi.mock above must stay');
-    }
-  });
+  beforeAll(defineFakeAltchaElement);
 
   async function render(queryParams: Record<string, string> = {}): Promise<void> {
     customer = new FakeCustomerAuth();
@@ -334,8 +318,9 @@ describe('AuthPage', () => {
       );
     });
 
-    it('waits for a solve in flight rather than posting ahead of it', async () => {
+    it('waits for the solve the focused form started rather than posting ahead of it', async () => {
       const widget = await renderFenced();
+      expect(widget.verify).toHaveBeenCalledTimes(1);
       type('auth-identifier', 'ana@example.com');
       type('auth-password', 'passphrase-123');
       const submitted = submit();
@@ -357,10 +342,11 @@ describe('AuthPage', () => {
       await fixture.whenStable();
       type('auth-identifier', 'ana@example.com');
       type('auth-password', 'passphrase-123');
+      const solvesBefore = widget.verify.mock.calls.length;
       await submit();
       expect(el('auth-error').textContent).toContain(CHALLENGE_EXPIRED_MESSAGE);
       expect(widget.reset).toHaveBeenCalledTimes(1);
-      expect(widget.verify).toHaveBeenCalledTimes(1);
+      expect(widget.verify).toHaveBeenCalledTimes(solvesBefore + 1);
       expect(navigate).not.toHaveBeenCalled();
     });
   });
