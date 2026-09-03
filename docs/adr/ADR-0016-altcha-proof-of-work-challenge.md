@@ -55,6 +55,10 @@ not in the locked stack.
    gets no challenge in this epic.
 3. **Placement:** the challenge endpoint, the verifier and the registry are root-package edge
    concerns like `RateLimitFilter` (RV-BE-11). No Modulith module knows the challenge exists.
+   *Amended by ADR-0017 (2026-09-03):* the challenge **fence** — verification filter, fenced route
+   set, problem bodies — stays a root-package edge concern like `RateLimitFilter`; the challenge
+   **mechanism** — endpoint, issuer/verifier, registry, sweep — is the closed non-context module
+   `challenge`. No bounded-context module knows the challenge exists.
 4. **Single-use registry in Postgres.** One Flyway table keyed by the challenge id with an expiry
    column; a solution is accepted only if `INSERT … ON CONFLICT DO NOTHING` claims the row (the
    invariant #2 idiom), and a scheduled sweep deletes expired rows. This is the one place this
