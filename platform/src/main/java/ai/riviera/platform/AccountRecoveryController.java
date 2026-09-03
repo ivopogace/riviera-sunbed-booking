@@ -88,8 +88,10 @@ class AccountRecoveryController {
 
 	/**
 	 * Redeem a reset token and set the new password. Every session for that account is invalidated (AC-3),
-	 * so an attacker's live session cannot outlive the old password. A weak password is
-	 * {@code 400 INVALID_REQUEST}; a bad/expired/used token is {@code 400 INVALID_OR_EXPIRED_TOKEN}.
+	 * so an attacker's live session cannot outlive the old password. A password outside the length rule
+	 * is {@code 400 INVALID_REQUEST}; one containing the account's email local part or the service name is
+	 * {@code 400 PASSWORD_CONTAINS_BLOCKED_TERM} (the account is named from the token without consuming
+	 * it); a bad/expired/used token is {@code 400 INVALID_OR_EXPIRED_TOKEN}.
 	 *
 	 * <p><strong>The revoke brackets the write</strong> (#357). <em>Before</em>, because the two effects are
 	 * not atomic and cannot be — the password write is the {@code customer} module's transaction, the

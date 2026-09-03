@@ -214,7 +214,6 @@ class OperatorPasswordChangeIT {
 		return ids.iterator().next();
 	}
 
-	/** A rejected attempt must be inert: nothing rotated, nothing revoked (AC-2, against real storage). */
 	/**
 	 * The three {@code 400}s stay distinct: a wrong current password, a new one outside the length
 	 * rule, and a new one containing the operator's own username each carry their own code, so a
@@ -237,6 +236,7 @@ class OperatorPasswordChangeIT {
 		login(TARGET, OLD_PASSWORD).andExpect(status().isOk()); // nothing rotated by any of the three
 	}
 
+	/** A rejected attempt must be inert: nothing rotated, nothing revoked (AC-2, against real storage). */
 	@Test
 	void aWrongCurrentPasswordRotatesNothingAndRevokesNothing() throws Exception {
 		Cookie otherDevice = SessionLoginSupport.operatorSession(mvc, TARGET, OLD_PASSWORD);
