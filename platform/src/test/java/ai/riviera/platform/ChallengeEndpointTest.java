@@ -19,6 +19,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,8 +27,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * The public challenge endpoint's contract: an anonymous GET is answered with a signed v2
  * challenge whose expiry is the injected (fixed) clock plus the configured ten minutes, marked
- * uncacheable and setting no cookie; and it rides its own per-IP rate-limit budget, so exhausting
- * it never blocks a login from the same address.
+ * uncacheable and establishing no session (the platform-wide {@code XSRF-TOKEN} bootstrap that
+ * {@code CsrfCookieBootstrapIT} pins is the CSRF token, not a session); and it rides its own per-IP
+ * rate-limit budget, so exhausting it never blocks a login from the same address.
  */
 @WebMvcTest
 @Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})
@@ -57,7 +59,7 @@ class ChallengeEndpointTest {
 				.andExpect(jsonPath("$.parameters.nonce").value(not(emptyOrNullString())))
 				.andExpect(jsonPath("$.signature").value(not(emptyOrNullString())))
 				.andExpect(header().string("Cache-Control", containsString("no-store")))
-				.andExpect(header().doesNotExist("Set-Cookie"));
+				.andExpect(cookie().doesNotExist("SESSION"));
 	}
 
 	@Test

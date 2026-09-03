@@ -34,9 +34,7 @@ verifier would be *refunded* by the recovery budget the next slice fences, that 
 retirement) · `riviera-plan-doc` (this template — forced the seam per AC, the module-ownership
 table for a root-only slice, and the prototype record) · `tdd` (each phase red→green at the named
 seam, one behavior per cycle) · `riviera-review-overlay` (review gate — at ready-for-review) ·
-`riviera-docs-freshness` (**runs** at close-out over `origin/main...HEAD`; counting sweep due —
-this slice makes the *sixth* `@Scheduled` job, the *eleventh* rate-limit dimension map and the
-*fifth* bounded scheduled-query client) · `grilling` (the intake interrogation above) ·
+`riviera-docs-freshness` (**ran** over `origin/main...HEAD` at phase 5 — the counting sweep for the *sixth* `@Scheduled` job, the *eleventh* rate-limit dimension map and the *fifth* bounded scheduled-query client found 3 stale statements, all patched: two "four" phrasings in `ScheduledQueryTimeout`'s Javadoc and `CLAUDE.md`'s Platform-edge summary, which now names the fence; the rename grep for the path helper moved into `RequestPaths` found nothing; `production-hardening.md`'s "two lockless sweeps" heading names the two that break at N>1 and stays true) · `grilling` (the intake interrogation above) ·
 `prototype` (the solve-time harness — Chromium + Pixel-7 emulation; verdict below) · `postgres`
 (`TEXT` primary key on the 32-hex nonce, `TIMESTAMPTZ` expiry, one index for the sweep's range
 delete, no FK) · `riviera-modulith` (root placement; nothing enters a module; the registry is a
@@ -104,7 +102,7 @@ property (no deploy needed — it is configuration; recorded in `production-hard
   `/api/auth/challenge`, then it answers `200 application/json` with a v2 challenge whose
   `parameters.algorithm` is `PBKDF2/SHA-256`, `parameters.cost` is the configured value,
   `parameters.expiresAt` is the injected clock + 10 minutes (epoch seconds), a non-blank
-  `signature`, `Cache-Control: no-store`, and **no** `Set-Cookie`. *Seam:* the HTTP route ·
+  `signature`, `Cache-Control: no-store`, and no session cookie (the SPA's platform-wide `XSRF-TOKEN` bootstrap rides every response, `CsrfCookieBootstrapIT`). *Seam:* the HTTP route ·
   *Pinned by:* `ChallengeEndpointTest.issuesASignedTenMinuteChallenge`
 - [ ] **AC-2 (own bucket):** Given the challenge budget's capacity is 2, when one IP GETs the
   challenge three times, then the third is `429 RATE_LIMITED` while a customer login from the same
@@ -285,9 +283,9 @@ component).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5 — docs, merge main, ready for review)`
+**Stage pointer:** `PR — ready for review; review gate next`
 
-**Next action:** run the real-backend journey on the local stack, `riviera-docs-freshness` over `origin/main...HEAD`, merge `origin/main`, mark PR #911 ready for review.
+**Next action:** run the review gate (`/code-review` + `riviera-review-overlay`, high effort) and clear the Sonar list on PR #911.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -295,8 +293,8 @@ component).
 | 1 — properties, V49 registry, JDBC claim, sweep | ✅ | `d00b703` |
 | 2 — challenge endpoint, verifier filter, rate-limit budget, ITs | ✅ | `f1b6eab` |
 | 3 — frontend: vocabulary, probe service, widget wrapper, auth page, unit + a11y + contrast specs | ✅ | `6a505b5` |
-| 4 — mocked Playwright spec, real-backend journey | ✅ | phase-4 commit (SHA in the phase-5 status update); the full mocked suite passed (413) |
-| 5 — docs (Platform edge, production-hardening, CSP note), retire #904's plan, merge `main`, ready for review | | |
+| 4 — mocked Playwright spec, real-backend journey | ✅ | `d1c680f`; the full mocked suite passed (413); the real-backend journey passed on the sandbox's local stack (host Postgres 16 + `gradle bootRun`, cost 5000, 13 s end to end) |
+| 5 — docs (Platform edge, production-hardening, CSP note), retire #904's plan, merge `main`, ready for review | ✅ | phase-5 commit; `origin/main` had not moved since the branch point (0 commits behind), so there was nothing to merge |
 | 6 — review gate, Sonar gate, close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -417,11 +415,10 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Phase 5 — docs, merge `main`, ready for review
 
-- [ ] `RESPONSIBILITIES.md` § *Platform edge*, `production-hardening.md`, D-8 status line;
+- [x] `RESPONSIBILITIES.md` § *Platform edge*, `production-hardening.md`, D-8 status line;
   `git rm docs/plans/password-policy-12.md`; `riviera-docs-freshness` counting sweep.
-- [ ] Merge `origin/main` (the password-policy slice touched the auth page and register ITs);
-  scoped re-runs; `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [ ] Mark the PR ready for review.
+- [x] Merge `origin/main` — nothing to merge (0 behind); `node scripts/check-plan-file-structure.mjs --diff origin/main` clean.
+- [x] Mark the PR ready for review.
 
 ## Phase 6 — gates
 

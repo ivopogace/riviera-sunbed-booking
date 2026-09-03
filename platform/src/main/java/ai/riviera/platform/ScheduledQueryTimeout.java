@@ -16,15 +16,15 @@ import org.springframework.stereotype.Component;
  * rather than an arbitrary large number: a bound longer than the interval between runs is still
  * holding when the next run is due, so past that it no longer bounds anything operationally.
  *
- * <p><strong>Why one guard and not one per adapter.</strong> The four bounded clients each carried an
+ * <p><strong>Why one guard and not one per adapter.</strong> The bounded clients each carried an
  * identical copy of this check for one commit, and Sonar's duplication gate failed the PR at 36.1% on
  * new code — the four copies of the constants plus the check were a large enough block to clone-match,
  * where the bare three-line {@code boundedClient} helpers had not been. De-duplicating by extracting a
- * shared helper was not available: the four consumers span the composition root, {@code booking} and
+ * shared helper was not available: the consumers span the composition root, {@code booking} and
  * {@code customer}, so their only common home is the {@code shared} kernel, whose admission rule
  * (CLAUDE.md) explicitly excludes "code used in more than one place". Validating a single
  * platform-wide knob at the platform edge is the honest reading anyway — it is one number owned by
- * {@code application.properties}, not four module-local settings — and it loses nothing, because a
+ * {@code application.properties}, not per-adapter settings — and it loses nothing, because a
  * throw here fails the boot for every consumer of that number regardless of which bean was built first.
  *
  * <p>Consequence worth knowing: the three module adapters still read the raw property via

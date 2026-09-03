@@ -859,7 +859,7 @@ already-encoded hash and never see the rule.
 
 **Proof-of-work challenge (ADR-0016)** — the public writes that cost money or inventory are fenced by a
 self-hosted ALTCHA v2 challenge, entirely at the edge: `ChallengeController` (`GET /api/auth/challenge`,
-`permitAll`, its own per-IP rate-limit budget, `no-store`, no cookie) issues a challenge signed with the
+`permitAll`, its own per-IP rate-limit budget, `no-store`, no session — the only cookie on it is the SPA's platform-wide `XSRF-TOKEN` bootstrap) issues a challenge signed with the
 `RIVIERA_ALTCHA_HMAC_SECRET` secret and expiring `riviera.altcha.expiry` (10 minutes) after the injected
 clock; `ChallengeVerificationFilter`, registered after `RateLimitFilter` and `CsrfFilter`, requires the
 widget's solution in the `X-Altcha-Payload` header on each fenced `POST` (customer register today;
