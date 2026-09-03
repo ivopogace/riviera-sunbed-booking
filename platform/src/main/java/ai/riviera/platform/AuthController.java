@@ -174,7 +174,7 @@ class AuthController {
 			@RequestBody OperatorRegistrationRequest registration) {
 		// The shared server-side password policy (D-8 min length / bcrypt-input cap) — the same rule the
 		// customer register enforces; both principal types get one policy.
-		CustomerPasswords.validate(registration.password());
+		PasswordPolicy.validate(registration.password());
 		// Constant-time (D-8): both branches spend exactly ONE bcrypt — the encode() below, evaluated on
 		// every request (fresh or taken). Unlike the customer register there is NO auto-sign-in bcrypt on
 		// the fresh branch, so NO equalizer is added: a taken-branch verify would make an existing username
@@ -206,7 +206,7 @@ class AuthController {
 	@PostMapping("/api/auth/customer/register")
 	ResponseEntity<PrincipalResponse> register(@RequestBody CustomerCredentials registration,
 			HttpServletRequest request, HttpServletResponse response) {
-		CustomerPasswords.validate(registration.password());
+		PasswordPolicy.validate(registration.password());
 		// Normalize at the edge so the response echoes the SAME canonical email that /me + login return
 		// (stored lower-cased/trimmed) — otherwise the displayed email would change after a reload. The
 		// module normalizes again internally (idempotent); the edge only encodes the password, never

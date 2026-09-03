@@ -42,6 +42,9 @@ import ai.riviera.platform.operator.vocabulary.NotVenueOwnerException;
  *       {@code 400 INVALID_REQUEST}. The detail is generic on purpose: an exception message may echo
  *       internals or user input, and validation style is centralized-explicit per the §6b decision
  *       ({@code riviera-java-conventions}).</li>
+ *   <li>{@link BlockedPasswordException} — the password policy's blocklist (the service name or the
+ *       account's own name) → {@code 400 PASSWORD_CONTAINS_BLOCKED_TERM}, distinct from the length
+ *       rule so the client can name the rule that failed.</li>
  *   <li>{@link DuplicateKeyException} — a unique constraint beat a pre-check in a race
  *       (e.g. the V2/V12 layout UNIQUE) → {@code 409 CONFLICT}, not 500: the constraint is the
  *       correctness guarantee (invariant #12). Logged at WARN so the race stays diagnosable.</li>
@@ -90,6 +93,12 @@ public class ApiErrorHandler extends ResponseEntityExceptionHandler {
 	@ExceptionHandler(InvalidApiRequestException.class)
 	ProblemDetail onInvalidRequest(InvalidApiRequestException e) {
 		return ApiProblem.of(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Request validation failed.");
+	}
+
+	@ExceptionHandler(BlockedPasswordException.class)
+	ProblemDetail onBlockedPassword(BlockedPasswordException e) {
+		return ApiProblem.of(HttpStatus.BAD_REQUEST, "PASSWORD_CONTAINS_BLOCKED_TERM",
+				"The password contains a blocked term.");
 	}
 
 	@ExceptionHandler(DuplicateKeyException.class)

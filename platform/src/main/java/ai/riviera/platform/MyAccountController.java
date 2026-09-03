@@ -82,11 +82,11 @@ class MyAccountController {
 	@PostMapping(SET_PASSWORD_PATH)
 	ResponseEntity<?> setPassword(@RequestBody SetPasswordRequest request, Authentication authentication) {
 		CustomerAccountId accountId = currentCustomer.require(authentication);
-		CustomerPasswords.validate(request.newPassword());
+		PasswordPolicy.validate(request.newPassword());
 		// Empty means no local password (null-hash SSO-only rows are filtered), so neither answer below applies.
 		Optional<CustomerAccountCredential> existing = accounts.findByEmail(authentication.getName());
 		if (existing.isPresent()) {
-			if (!CustomerPasswords.isSupplied(request.currentPassword())) {
+			if (!PasswordPolicy.isSupplied(request.currentPassword())) {
 				return ApiProblem.response(HttpStatus.BAD_REQUEST, "MISSING_CURRENT_PASSWORD",
 						"The request carries no current password.");
 			}

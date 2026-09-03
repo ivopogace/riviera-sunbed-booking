@@ -206,14 +206,14 @@ No deviation.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** phase 0 — write `PasswordPolicyTest` red, then the helper.
+**Next action:** phase 1 — per-surface ITs red (register first), then pass the account name from each controller.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — backend policy helper + new problem code | ⏳ | |
-| 1 — the six endpoints wired with context + ITs + IT fixtures | | |
+| 0 — backend policy helper + new problem code | ✅ | phase-0 commit |
+| 1 — the six endpoints wired with context + ITs + IT fixtures | ⏳ | |
 | 2 — bootstrap initializer floor, dev default, backend docs | | |
 | 3 — frontend shared policy, core mappings, five screens + specs | | |
 | 4 — mocked e2e mocks/fixtures, real-backend check, D-8 status line | | |
@@ -350,6 +350,7 @@ Modify `ApiErrorHandler.java`, `ApiErrorHandlerTest.java` · Delete `CustomerPas
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-03 | phase 0 (rename) | every reference to the old helper name, in code, tests, mocks and docs | `grep -rn "CustomerPasswords" platform frontend docs RESPONSIBILITIES.md CONTEXT.md .claude` | 4 controllers + `SetPasswordIT` Javadoc (Java); `operator-auth.ts:45`, `auth-mocks.ts:80` (TS comments) | Java sites renamed in phase 0; the two TS comments are rewritten in phases 3/4 where those files change anyway |
 
 ---
 

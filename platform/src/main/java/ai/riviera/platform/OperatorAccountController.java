@@ -123,11 +123,11 @@ class OperatorAccountController {
 					"This account's password is managed by the deployment environment and cannot be "
 							+ "changed here.");
 		}
-		if (!CustomerPasswords.isSupplied(request.currentPassword())) {
+		if (!PasswordPolicy.isSupplied(request.currentPassword())) {
 			return ApiProblem.response(HttpStatus.BAD_REQUEST, "MISSING_CURRENT_PASSWORD",
 					"The request carries no current password.");
 		}
-		CustomerPasswords.validate(request.newPassword());
+		PasswordPolicy.validate(request.newPassword());
 		Optional<OperatorCredential> existing = accounts.findByUsername(username);
 		if (existing.isEmpty() || !currentPasswordMatches(request, existing.get())) {
 			return ApiProblem.response(HttpStatus.BAD_REQUEST, "INVALID_CURRENT_PASSWORD",

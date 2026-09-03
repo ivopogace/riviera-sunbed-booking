@@ -107,7 +107,7 @@ class AccountRecoveryController {
 	 */
 	@PostMapping(RESET_PASSWORD_PATH)
 	ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
-		CustomerPasswords.validate(request.newPassword());
+		PasswordPolicy.validate(request.newPassword());
 		String newPasswordHash = passwordEncoder.encode(request.newPassword());
 		recovery.emailForResetToken(request.token()).ifPresent(sessionRevoker::revokeAll);
 		return switch (recovery.resetPassword(request.token(), newPasswordHash)) {

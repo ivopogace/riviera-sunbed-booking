@@ -85,6 +85,15 @@ class ApiErrorHandlerTest {
 				.andExpect(jsonPath("$.detail").value("Request validation failed."));
 	}
 
+	@Test
+	void aBlockedPasswordIs400WithItsOwnCode() throws Exception {
+		mvc.perform(get("/throw/blocked-password"))
+				.andExpect(status().isBadRequest())
+				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+				.andExpect(jsonPath("$.code").value("PASSWORD_CONTAINS_BLOCKED_TERM"))
+				.andExpect(jsonPath("$.detail").value("The password contains a blocked term."));
+	}
+
 	/**
 	 * A raw {@code IllegalArgumentException} is a server bug (e.g. a {@code Money} or
 	 * {@code PayoutLedgerEntry} invariant tripping on corrupt stored data), not client input — it must
@@ -188,6 +197,11 @@ class ApiErrorHandlerTest {
 		@GetMapping("/throw/invalid")
 		void invalid() {
 			throw new InvalidApiRequestException("internal message that must not leak");
+		}
+
+		@GetMapping("/throw/blocked-password")
+		void blockedPassword() {
+			throw new BlockedPasswordException();
 		}
 
 		@GetMapping("/throw/deep-bug")
