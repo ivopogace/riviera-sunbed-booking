@@ -281,7 +281,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/core/customer-auth.spec.ts`
 - `frontend/src/app/core/operator-auth.ts` — drops the customer re-export; maps the new code
 - `frontend/src/app/core/operator-auth.spec.ts`
-- `frontend/src/app/auth/auth-page.ts` · `frontend/src/app/auth/auth-page.spec.ts`
+- `frontend/src/app/auth/auth-page.ts` · `frontend/src/app/auth/auth-page.spec.ts` · `frontend/src/app/auth/auth-page.a11y.spec.ts` (register fixture → 12+)
 - `frontend/src/app/auth/reset-password.ts` · `frontend/src/app/auth/reset-password.spec.ts`
 - `frontend/src/app/auth/set-password.ts` · `frontend/src/app/auth/set-password.spec.ts`
 - `frontend/src/app/auth/operator-password.ts` · `frontend/src/app/auth/operator-password.spec.ts`
