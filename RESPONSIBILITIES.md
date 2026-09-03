@@ -845,6 +845,18 @@ back-linking of past guest bookings, ever; auth endpoints are non-enumerating + 
 on their own rate-limit buckets; mocked externals (SSO IdPs, mailer) are profile-guarded out
 of prod; session revocation is edge-orchestrated and synchronous, bracketing the state change.
 
+**Password policy (D-8)** — one edge rule (`PasswordPolicy`, root package) for every surface that
+accepts a new password (register on both sides, reset, set, both self-service changes), enforced
+before any write and inside the timing-equalized register branch: 12 characters to 72 bytes (bcrypt's
+input cap), leading/trailing spaces significant, no composition rules → `400 INVALID_REQUEST`
+otherwise; a password containing the account's email local part (tourist), the operator username, or
+`riviera` — case-insensitively — → `400 PASSWORD_CONTAINS_BLOCKED_TERM`, a distinct code so the client
+can name the rule. An account name under 3 characters is not applied as a blocked term. The floor
+applies where a password is *chosen*, never at sign-in. The bootstrap credential
+(`RIVIERA_OPERATOR_PASSWORD`) is held to the same length rule at boot: a value outside it is not stamped
+and is logged at WARN without the value, the same outcome as an empty one. Modules receive an
+already-encoded hash and never see the rule.
+
 ## Invariants, long form
 
 `CLAUDE.md` states each cross-cutting invariant in one sentence; this is the long form, with
