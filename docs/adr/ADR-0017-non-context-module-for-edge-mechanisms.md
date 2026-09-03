@@ -1,8 +1,9 @@
 # ADR-0017: A port-fronted mechanism no bounded context owns is a closed non-context module; the fence stays at the edge, and the proof-of-work challenge is the first instance
 
 - **Status:** Accepted — implemented by PR #916 (#913), which moved the proof-of-work challenge
-  mechanism into the closed non-context module `challenge`. The admin audit log is the named
-  second instance, #914, unscheduled.
+  mechanism into the closed non-context module `challenge`, and by PR #NN (#914), which moved the
+  admin audit log into the closed non-context module `audit`. Both instances of Decision 1 now
+  exist; no third is named.
 - **Date:** 2026-09-03
 - **Relates to:** ADR-0016 (Decision 3 is amended by this ADR), ADR-0007 (the module templates
   this applies unchanged; Amendment 2 introduced the one non-context module `shared`), invariant
@@ -115,11 +116,20 @@ The sources settle it (research note §1–§3):
 5. **`RateLimitFilter` stays in the root.** It is the fence itself: no port, no table, no job,
    in-memory maps by design (ADR-0016 Decision 4 records the challenge registry as the
    deliberate departure from that precedent). Moving it would be symmetry for its own sake.
-6. **The admin audit log is the named second instance**, #914, unscheduled: `AdminAuditLog` +
-   `JdbcAdminAuditLog` + `admin_audit_record` behind a port `AdminAuditFilter` calls fit
-   Decision 1 exactly. Recorded here so the next extraction cites this ADR instead of
-   re-deriving the shape; its own plan decides whether `AdminAuditController` and
-   `AdminAuditReasons` go with it.
+6. **The admin audit log is the second instance:** `ai.riviera.platform.audit`, display name
+   *Admin audit trail*, `allowedDependencies = {}`. `AdminAuditLog` + `JdbcAdminAuditLog` +
+   `admin_audit_record` behind a port `AdminAuditFilter` calls fit Decision 1 exactly. #914
+   settled the three calls this ADR left to it: the name is `audit` (single word, this ADR's own
+   objection to `proofofwork`, and the word `/api/admin/audit` and `X-Audit-Reason` already use);
+   `AdminAuditController` moved to `adapter/in` per the default above; `AdminAuditReasons` stayed
+   in the root, because an HTTP header and its sanitizer are the fence's request contract, the
+   category Decision 1 assigns to the edge. Two consequences this ADR did not predict: the module
+   takes the **thin** template — its JDBC adapter implements the published port directly, and a
+   service between them would be an empty layer — so it is the first thin module to own a driving
+   adapter; and the root's grant row is `audit → {api}`, not `{api, vocabulary}`, because with the
+   sanitizer left at the edge the root never names the published entry record. `AdminAuditEntry`
+   is published vocabulary rather than a record nested in the port, which the ports surface
+   forbids.
 7. **Sequencing:** PR #911 merges as reviewed and is not amended; the move is its own refactor
    PR (#913) next, and #906/#907 start after it so their fenced-route additions, ITs and the
    `ChallengeSolving` helper are written once against the final placement.
@@ -140,9 +150,11 @@ Mechanically, two nets react — a grant row, and the issuer becoming an interfa
 modules + `shared`" sentences across the substrate become "+ two non-context modules" (the
 `riviera-docs-freshness` counting sweep is the mechanism), and Decision 4's rule is ours to own.
 
-**Stay in the root.** The honest runner-up: nothing in the sources forbids it and it is what the
-admin audit log does today. Rejected because nothing in the nets checks it either — the root has
-no shape rule (Context 1) and the sole-writer rule cannot be written for it (Context 2).
+**Stay in the root.** The honest runner-up: nothing in the sources forbids it, and it was what the
+admin audit log did until #914 applied Decision 6. Rejected because nothing in the nets checks it
+either — the root has no shape rule (Context 1) and the sole-writer rule cannot be written for it
+(Context 2), which #914 demonstrated by writing that rule against the root and watching it name
+`JdbcAdminAuditLog`.
 
 **A tenth bounded context.** Rejected on vocabulary: a bounded context bounds a model (Evans
 p. vi, p. 2) and the CLAUDE.md context table asks for an aggregate root; the challenge owns a
@@ -194,7 +206,7 @@ without knowing the challenge exists; and ADR-0007 is about the templates, of wh
   the "a replay loses" proof moves from the filter test into a module-level unit test against an
   in-memory registry, and `CustomerRegisterChallengeIT` keeps proving the whole path against
   Postgres.
-- **Counting sweep:** "nine bounded-context modules … plus `shared`" in `riviera-modulith`
+- **Counting sweep:** run once per instance — "nine bounded-context modules … plus `shared`" in `riviera-modulith`
   (SKILL.md and `references/boundaries.md`), `ModularityTests`' and
   `PackageShapeArchitectureTests`' Javadoc, `docs/architecture/domain-model.md`, and the
   `CLAUDE.md` module table each gain the second non-context module. ADR-0007 Amendment 2's

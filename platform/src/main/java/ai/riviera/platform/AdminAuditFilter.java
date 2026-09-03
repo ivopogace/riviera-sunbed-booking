@@ -43,7 +43,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * <p><strong>A failed audit insert never fails the admin action</strong> (logged at ERROR instead):
  * write-after cannot un-do the action it records, and the audited actions are themselves writes on
  * the same database, so an audit-lost-while-action-succeeded window needs a mid-request DB failure.
- * Accepted Phase-1 risk, documented in the plan doc's register (R-1).
+ * Rationale: {@code RESPONSIBILITIES.md} §{@code audit}.
  */
 final class AdminAuditFilter extends OncePerRequestFilter {
 

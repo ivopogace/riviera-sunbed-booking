@@ -35,8 +35,9 @@ Module-ownership table that split fence from mechanism) · `tdd` (the sole-write
 first and is **red against the root**, which is ADR-0017 Context 2 restated as a failing test;
 the move is what turns it green) · `riviera-review-overlay` (review gate — due at
 ready-for-review; RV-BE-11/RV-BE-12/RV-BE-3c are the live items) · `riviera-docs-freshness`
-(<**ran** over `<range>`, N findings — **or** `N/A — <reason>`; due at close-out, phase 2,
-pre-seeded with the counting-sweep sites in *Docs counting sweep* below>) · `riviera-modulith`
+(**ran** over `origin/main..HEAD` at phase 2 — 3 findings: two patched (the ADR-0017 runner-up's
+stale present tense; `AdminAuditFilter`'s citation of a long-retired plan doc, whose rationale moved
+into § `audit`), one **flagged** to the maintainer as F-1 below) · `riviera-modulith`
 (the thin-vs-full assignment rule → `audit` is thin; the published-surface kinds → `Entry` cannot
 stay nested in the port; the moved-bean checklist item → `PayoutModuleTest`) ·
 `codebase-design` (rejected an empty application service; kept `append` + `latest` as one port,
@@ -131,11 +132,11 @@ not shape`) · `riviera-local-debug` (before the session's first `./gradlew`).
 | R-1 | `PayoutModuleTest` (the repo's only `@ApplicationModuleTest`) loses the `AdminAuditLog` bean once it belongs to a non-bootstrapped module, failing with `NoSuchBeanDefinitionException` | high | med | Add `@MockitoBean AdminAuditLog` beside the `ProofOfWorkChallenges` one #916 added, with the same comment; `riviera-modulith` checklist item covers exactly this | this slice | closed — mitigated **and falsified**: removing the `@MockitoBean` reproduces `NoSuchBeanDefinitionException`, restoring it is green |
 | R-2 | The 30 `@Import(WebSliceStubs.class)` slices break: the stub's anonymous `AdminAuditLog` cannot be written from the root once the type is in another package unless the interface **and** its entry type are `public` | high | med | Phase 1 makes the port and `AdminAuditEntry` public and adds the import; a representative slice run is the phase's green check | this slice | closed — port + `AdminAuditEntry` are public, `WebSliceStubs` imports them; `AdminSurfaceRoleGateTest` green |
 | R-3 | A nested `Entry` record left inside the `api/` port silently violates RV-BE-3c | med | med | Decided up front: `Entry` → top-level `audit.vocabulary.AdminAuditEntry` (AC-7 pins it; the net inspects nested types, per its own `SealedOutcomeInPorts.Ok` comment) | this slice | closed — `AdminAuditEntry` is top-level in `vocabulary`; the placement net is green |
-| R-4 | `audit` is the **first thin module with an `adapter/in`** — the documented thin template lists `api` + `vocabulary` + `adapter/out` only, so a reviewer may read the controller as off-template | med | low | The net keys on the module-agnostic union set, so it passes; phase 2 adds the clause to `riviera-modulith`'s thin template rather than leaving the tree contradicting the doc | this slice | open |
+| R-4 | `audit` is the **first thin module with an `adapter/in`** — the documented thin template lists `api` + `vocabulary` + `adapter/out` only, so a reviewer may read the controller as off-template | med | low | The net keys on the module-agnostic union set, so it passes; phase 2 adds the clause to `riviera-modulith`'s thin template rather than leaving the tree contradicting the doc | this slice | closed — `riviera-modulith`'s thin template now states that a thin module owning an endpoint puts its controller in `adapter/in` |
 | R-5 | Javadoc inside the moved classes links root types (`{@link AdminAuditFilter}`, `{@link SecurityConfig}`) that are package-private and in another package — broken links, and prose implying a dependency the module→root rule forbids | high | low | Convert those to `{@code ...}` in phase 1; AC-5 covers the bytecode half | this slice | closed — the three root links in the moved Javadoc are `{@code}` now |
-| R-6 | The docs counting sweep misses a site — every "two non-context modules" sentence becomes false | med | med | The site list is pre-enumerated below (*Docs counting sweep*) from a repo-wide inventory, and `riviera-docs-freshness` runs over the branch range at close-out as the independent check | this slice | open |
+| R-6 | The docs counting sweep misses a site — every "two non-context modules" sentence becomes false | med | med | The site list is pre-enumerated below (*Docs counting sweep*) from a repo-wide inventory, and `riviera-docs-freshness` runs over the branch range at close-out as the independent check | this slice | closed — the sweep ran; it found two sites the pre-enumerated list missed (both patched) and one it could not decide (F-1) |
 | R-7 | Flyway version collision with an in-flight PR | n/a | n/a | **No migration in this slice** — no `V<n>` is claimed, so no renumbering can be owed | — | closed (no migration) |
-| R-8 | Sibling close-out debt: `docs/plans/challenge-non-context-module.md` is still present although PR #916 merged; by `riviera-docs-freshness` § *Plan-doc retirement* it dies at the next close-out, which is this slice's | certain | low | Phase 2 deletes it together with this plan doc's own retirement note | this slice | open |
+| R-8 | Sibling close-out debt: `docs/plans/challenge-non-context-module.md` is still present although PR #916 merged; by `riviera-docs-freshness` § *Plan-doc retirement* it dies at the next close-out, which is this slice's | certain | low | Phase 2 deletes it together with this plan doc's own retirement note | this slice | closed — `docs/plans/challenge-non-context-module.md` removed; its one dangling Javadoc citation repointed |
 | R-9 | The sole-writer token `admin_audit_record` false-positives on the module's own package string | low | low | Cannot: the package is `audit`, not `admin_audit_record`; the same reasoning ADR-0017 recorded for `challenge_registry`. AC-3's vacuity guard is the counter-check | this slice | closed (by construction) |
 
 ## Open questions / Assumptions
@@ -316,8 +317,9 @@ same request header. Verified behaviour-by-behaviour in the parity ledger above.
 
 **Deleted — docs (retirement)**
 
-- `docs/plans/challenge-non-context-module.md` — the sibling's overdue retirement (R-8)
-- `docs/plans/admin-audit-non-context-module.md` — this plan, retired at the close-out after its own PR merges
+- `docs/plans/challenge-non-context-module.md` — the sibling's overdue retirement (R-8). This plan
+  doc is **not** deleted here: a plan cannot be retired in its own PR (the review and merge sessions
+  read it), so its retirement falls to the next close-out of any kind
 
 ---
 
@@ -377,34 +379,33 @@ same request header. Verified behaviour-by-behaviour in the parity ledger above.
 
 **Files:** the docs entries in the File-structure section + the two plan-doc deletions
 
-- [ ] **Step 1: Work the *Docs counting sweep* checklist** — every site, including the §`review`
+- [x] **Step 1: Work the *Docs counting sweep* checklist** — every site, including the §`review`
       Not-My-Job split the Module-ownership table forced.
-- [ ] **Step 2: Write § `audit` in `RESPONSIBILITIES.md`** on the § `challenge` template: Job
+- [x] **Step 2: Write § `audit` in `RESPONSIBILITIES.md`** on the § `challenge` template: Job
       (record every mutating admin action past the gate; serve the newest-first read; sole writer
       of `admin_audit_record`), Not-my-job (which requests are audited, the filter and its
       ordering, the `X-Audit-Reason` header and its sanitizer, the ADMIN role gate — all the
       root's fence), and the published-surface line.
-- [ ] **Step 3: Run `riviera-docs-freshness`** over `origin/main..HEAD` and close every finding
+- [x] **Step 3: Run `riviera-docs-freshness`** over `origin/main..HEAD` and close every finding
       it raises (R-6).
-- [ ] **Step 4: Retire both plan docs** — the sibling's (R-8) and this one, at the close-out.
-- [ ] **Step 5: Reconcile the File-structure section** — `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
-- [ ] **Step 6: Commit + finalize the execution status** (stage pointer DONE, `merged via PR #NN`).
+- [x] **Step 4: Retire the sibling's plan doc** — the sibling's (R-8) and this one, at the close-out.
+- [x] **Step 5: Reconcile the File-structure section** — `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
+- [x] **Step 6: Commit + finalize the execution status** (stage pointer DONE, `merged via PR #NN`).
 
 ---
 
 ## Execution status
 
-**Stage pointer:** `implement (phases 0–1 done, all ACs green locally); phase 2 (docs) next`
+**Stage pointer:** `implement complete (phases 0–2); next gate = PR + CI, then Review and Sonar`
 
-**Next action:** Phase 2 — the docs counting sweep, § `audit` in `RESPONSIBILITIES.md`, the
-ADR-0017 status line, and the two plan-doc retirements. Then push, open the draft PR, mark ready
-for review.
+**Next action:** Push the branch, open the draft PR, confirm CI green, then mark ready for review
+and run the `references/pr-gates.md` §1 review ladder.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the sole-writer net, red against the root | ✅ (deliberately red; phase 1 greens it) | (this phase's commit) |
 | 1 — the move (module in, fence stays) | ✅ | (this phase's commit) |
-| 2 — docs, ADR status, plan retirement | | |
+| 2 — docs, ADR status, plan retirement | ✅ | (this phase's commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -412,7 +413,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | docs-freshness (phase 2) | `docs/adr/ADR-0007-package-structure.md` Amendment 2 opens "The two templates describe **bounded contexts**." ADR-0017 Decision 1 gives its templates to non-context modules, so the sentence has been false since #913 (`challenge` takes the full template and is not a bounded context) and this slice adds the thin-template case. **Not patched:** ADR-0017's own Consequences say "ADR-0007 is not reopened", so correcting another ADR's framing sentence is the maintainer's call, not a docs-freshness patch | **flagged** — predates this slice; needs the maintainer's decision (an ADR-0007 Amendment 3, a pointer line, or leave as decision-moment framing) |
 
 ---
 

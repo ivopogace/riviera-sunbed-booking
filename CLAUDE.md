@@ -97,10 +97,12 @@ per-module contract and the settled rules.
 
 Plus **`shared`**, an OPEN Shared Kernel of edge/technical types (`ApiProblem`,
 `CurrentOperator`, …); admission rests on **ownership, never reuse** (`RESPONSIBILITIES.md`
-§`shared`). Modules depend on `shared`, the root on modules, nothing on the root. And
-**`challenge`**, the second non-context module: the proof-of-work challenge mechanism (ADR-0017) —
-closed, full template, `allowedDependencies = {}`, publishes `api.ProofOfWorkChallenges` +
-`vocabulary.ChallengeVerdict`; the fence stays in the root.
+§`shared`). Modules depend on `shared`, the root on modules, nothing on the root. And two closed
+non-context modules, each a mechanism the edge calls through a port while its fence stays in the
+root (ADR-0017), both `allowedDependencies = {}`: **`challenge`**, the proof-of-work challenge
+(full template; publishes `api.ProofOfWorkChallenges` + `vocabulary.ChallengeVerdict`), and
+**`audit`**, the admin audit trail (thin template + a driving adapter; publishes
+`api.AdminAuditLog` + `vocabulary.AdminAuditEntry`, sole writer of `admin_audit_record`).
 
 **Collaboration:** events for state changes, `api/` ports for queries (invariant #11); the
 availability claim and the erasure reach into reviews are synchronous ports. The eight
@@ -114,7 +116,9 @@ with two principal types; login machinery at the edge, never in modules; custome
 and guest row never linked; auth endpoints non-enumerating and constant-time; mocks
 profile-guarded out of prod; revocation edge-orchestrated and synchronous; the public writes that
 cost money or inventory fenced at the edge, verified by the `challenge` module's self-hosted
-proof-of-work challenge against a Postgres single-use registry (ADR-0016, ADR-0017).
+proof-of-work challenge against a Postgres single-use registry (ADR-0016, ADR-0017); every mutating
+`/api/admin/**` action past the gate recorded by the edge's fence through the `audit` module
+(ADR-0013, ADR-0017).
 
 ## Cross-cutting invariants
 

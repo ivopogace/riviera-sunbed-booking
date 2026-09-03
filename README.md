@@ -73,7 +73,8 @@ changes, id-based payloads) and **`api/` ports** (queries):
 `venue` · `availability` · `booking` · `payment` · `payout` · `customer` ·
 `operator` · `review` · `notification`
 
-…plus `shared`, a non-context Shared Kernel of edge/technical types.
+…plus three non-context modules: `shared`, a Shared Kernel of edge/technical types, and the
+closed ADR-0017 mechanisms `challenge` (proof of work) and `audit` (the admin audit trail).
 
 The spine flow: reserving a set **claims it synchronously** through `availability`'s
 `AvailabilityClaim` port (an atomic per-`(set, date)` claim — `availability` has no
