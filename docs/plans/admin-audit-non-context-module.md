@@ -396,16 +396,17 @@ same request header. Verified behaviour-by-behaviour in the parity ledger above.
 
 ## Execution status
 
-**Stage pointer:** `implement complete (phases 0–2); next gate = PR + CI, then Review and Sonar`
+**Stage pointer:** `review gate run (5-agent fan-out + overlay), findings fixed; Sonar green with
+its list verified empty; next = merge close-out`
 
-**Next action:** Push the branch, open the draft PR, confirm CI green, then mark ready for review
-and run the `references/pr-gates.md` §1 review ladder.
+**Next action:** Confirm CI green on the review-fix commit, then merge and run the close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the sole-writer net, red against the root | ✅ (deliberately red; phase 1 greens it) | (this phase's commit) |
 | 1 — the move (module in, fence stays) | ✅ | (this phase's commit) |
 | 2 — docs, ADR status, plan retirement | ✅ | (this phase's commit) |
+| 3 — review-gate fixes (F-2..F-6) | ✅ | (the review-fix commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -413,9 +414,23 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-2 | review gate (agent 5, verified independently) | Both the new `audit/package-info.java` and § `audit` said the audited namespace's controllers "span **six** bounded contexts and the root". It is five (`venue`, `booking`, `payout`, `review`, `notification`) plus the root's two — the figure was inherited from the pre-move Javadoc and restated without checking | fixed — **not** corrected to five: the count is not what a reader acts on and rots on the next admin controller, so the rule it served ("no one bounded context can own the record over the whole namespace") is stated instead |
+| F-3 | review gate (agent 1) | `docs/adr/ADR-0017` Status carried a literal `PR #NN` placeholder | fixed — now `PR #917` |
+| F-4 | review gate (agent 1) | `AdminAuditLog` Javadoc used Markdown backticks around `RESPONSIBILITIES.md`; a `/** */` block renders them literally, and every other site in the tree uses `{@code}` | fixed |
+| F-5 | maintainer, at the review gate | CLAUDE.md — which loads every session — carried published type names, template kind and the sole-writer fact for both non-context modules, all already in `RESPONSIBILITIES.md` §s and the package-infos: duplication that costs tokens every session and adds a second place to go stale | fixed — trimmed to the two names, the rule that picks, and where to look (CLAUDE.md net +1 line, was +4); the `riviera-modulith` thin-template clause lost its restatement for the same reason. Kept deliberately: the `two → three` count repairs (they fix statements this PR made false) and § `audit` (the doc's own job; RV-BE-11 reviews against it) |
+| F-6 | review gate (agent 3) | `WebSliceStubs` new imports sorted after `booking` instead of before | fixed (cosmetic; no linter enforces it) |
 | F-1 | docs-freshness (phase 2) | `docs/adr/ADR-0007-package-structure.md` Amendment 2 opens "The two templates describe **bounded contexts**." ADR-0017 Decision 1 gives its templates to non-context modules, so the sentence has been false since #913 (`challenge` takes the full template and is not a bounded context) and this slice adds the thin-template case. **Not patched:** ADR-0017's own Consequences say "ADR-0007 is not reopened", so correcting another ADR's framing sentence is the maintainer's call, not a docs-freshness patch | **flagged** — predates this slice; needs the maintainer's decision (an ADR-0007 Amendment 3, a pointer line, or leave as decision-moment framing) |
 
 ---
+
+## Sonar note
+
+Pulled from the SonarCloud web API on the pre-fix head, not read off the badge: an analysis
+genuinely exists (`new_lines = 205`, and the `SonarCloud Code Analysis` check-run concluded
+`success`, so the zeros are clean rather than unanalyzed). `new_bugs` 0, `new_vulnerabilities` 0,
+`new_code_smells` 0, security hotspots 0, `new_duplicated_blocks` 0, `new_duplicated_lines_density`
+0.0%, `new_coverage` 100.0% (bar is 80%). Issue list `total: 0`. Nothing to clear. Re-checked after
+the fix push.
 
 ## Generalization-audit log
 
