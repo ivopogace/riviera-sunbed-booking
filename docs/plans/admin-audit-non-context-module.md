@@ -330,18 +330,20 @@ same request header. Verified behaviour-by-behaviour in the parity ledger above.
 
 **Files:** Modify `platform/src/test/java/ai/riviera/platform/ResponsibilitiesArchitectureTests.java` · Create the two `responsibilityfixture` classes
 
-- [ ] **Step 1: Write the failing test** — add `ADMIN_AUDIT_TABLE = "admin_audit_record"` and
+- [x] **Step 1: Write the failing test** — add `ADMIN_AUDIT_TABLE = "admin_audit_record"` and
       `AUDIT_MODULE = "audit"`, a `adminAuditTableViolations(JavaClasses, base)` collector cloned
       from `challengeRegistryViolations`, and the three tests of AC-1/AC-2/AC-3, plus rule 7 in
       the class Javadoc.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*ResponsibilitiesArchitectureTests*"`
-      → FAIL: `adminAuditTableIsTouchedOnlyInsideTheAuditModule` reports
-      `ai.riviera.platform.JdbcAdminAuditLog` (module `<root>`, not `audit`), and
+- [x] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*ResponsibilitiesArchitectureTests*"`
+      → FAIL, 21 tests / 2 failed, exactly the pair predicted:
+      `adminAuditTableIsTouchedOnlyInsideTheAuditModule` reports
+      `ai.riviera.platform.JdbcAdminAuditLog references the 'admin_audit_record' table`, and
       `theAuditModuleItselfWritesTheTable` fails because no `audit` module exists yet.
-- [ ] **Step 3: Minimal implementation** — none in this phase; the fixtures are what make AC-2 pass.
-      Verify AC-2 alone is green (`--tests "*ResponsibilitiesArchitectureTests.adminAuditTableTouchedOutsideTheAuditModuleIsRejected*"`).
-- [ ] **Step 4: Commit the red net** — `git commit -m "Add the admin_audit_record sole-writer net, red against the root (#914)"`
-- [ ] **Step 5: Update plan-doc execution status** in the same commit window.
+- [x] **Step 3: Minimal implementation** — none in this phase; the fixtures are what make AC-2 pass.
+      AC-2 (`adminAuditTableTouchedOutsideTheAuditModuleIsRejected`) was green in the same run —
+      the collector rejects `RogueAdminAuditWriter` and spares `FixtureJdbcAdminAuditLog` (`--tests "*ResponsibilitiesArchitectureTests.adminAuditTableTouchedOutsideTheAuditModuleIsRejected*"`).
+- [x] **Step 4: Commit the red net** — `git commit -m "Add the admin_audit_record sole-writer net, red against the root (#914)"`
+- [x] **Step 5: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — The move (module in, fence stays)
 
@@ -392,14 +394,14 @@ same request header. Verified behaviour-by-behaviour in the parity ledger above.
 
 ## Execution status
 
-**Stage pointer:** `plan — written, awaiting commit; phase 0 not started`
+**Stage pointer:** `implement (phase 0 done, red as designed); phase 1 next`
 
-**Next action:** Commit this plan doc on `claude/session-2t7d1a`, then start phase 0 (write the
-red sole-writer net) — load `riviera-local-debug` before the first `./gradlew`.
+**Next action:** Phase 1 — create the `audit` module and move the four types into it, turning
+phase 0's two red tests green.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the sole-writer net, red against the root | | |
+| 0 — the sole-writer net, red against the root | ✅ (deliberately red; phase 1 greens it) | (this phase's commit) |
 | 1 — the move (module in, fence stays) | | |
 | 2 — docs, ADR status, plan retirement | | |
 
