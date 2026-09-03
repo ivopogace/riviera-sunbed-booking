@@ -297,3 +297,12 @@ model in `docs/architecture/domain-model.md`.
   on reinstatement; bookings already sold keep working either way).
   An admin cannot suspend itself. Distinct from **reinstatement** in *Transactional mail* above,
   which lifts a suppressed email address and has nothing to do with sign-in.
+
+## Abuse hardening (both sides)
+
+- **Proof-of-work challenge** — the cost a browser pays before the platform accepts one of its
+  public writes (register, forgot-password, booking create): the server hands out a short-lived,
+  signed puzzle, the browser solves it locally, and the server accepts each solved challenge
+  **once**. It makes automated abuse expensive; it does not identify anyone and sends nothing
+  to a third party (ADR-0016). Shortened to **challenge** in code and issues.
+  _Avoid_: captcha, human check, bot check (all claim a human/bot verdict the mechanism does not give).

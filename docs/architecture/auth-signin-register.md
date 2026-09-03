@@ -1,8 +1,10 @@
 # Sign-in / registration for customers and operators (form + Google/Apple SSO)
 
-Status: **accepted design, shipped** (epic #108). Decisions below were made at the refine
-stage (2026-07-02) and approved by the maintainer; each is a one-paragraph re-decision if
-reality disagrees. The per-module contracts these decisions settled are in
+Status: **accepted design, shipped** (epic #108), except the D-8 revision — the password
+policy and the proof-of-work challenge — which is **decided but in flight** under epic #903
+(slices #904–#907); the code enforces the earlier 8-character floor and no challenge until
+those merge. Decisions below were made at the refine stage (2026-07-02) and approved by the
+maintainer; each is a one-paragraph re-decision if reality disagrees. The per-module contracts these decisions settled are in
 `RESPONSIBILITIES.md` (§`customer`, §`operator`, § *Platform edge*).
 
 ## What this adds
@@ -147,7 +149,32 @@ Login, register, SSO callback, and reset/verify endpoints go behind the existing
 `RateLimitFilter` pattern. Login failures return a generic "invalid
 credentials" (no account enumeration — registration responses likewise avoid
 confirming whether an email exists). Password storage uses the existing delegating
-encoder (`{bcrypt}`); password minimum length enforced server-side.
+encoder (`{bcrypt}`).
+
+**Password policy** — the target rule, shipping with #904. Chosen ahead of the first live
+deploy, so no existing credential needs a migration path:
+
+- **Minimum 12 characters, maximum 72 bytes** (the bcrypt input cap), for tourists **and**
+  operators. One server-side rule shared by every surface that accepts a new password
+  (register on both sides, reset, set, change); the frontend mirrors the constant. Length is the
+  primary control — no composition rules (uppercase / digit / symbol), per NIST SP 800-63B.
+- **Context blocklist:** a password that contains the account's email local part, the operator
+  username, or `riviera` (case-insensitive) is rejected.
+- **The bootstrap admin credential** (`RIVIERA_OPERATOR_PASSWORD`) is held to the same floor:
+  a shorter value is **not stamped** and is logged at WARN without the value — the same
+  outcome as an empty value (admin login disabled) — never a boot failure.
+- **Not adopted, deliberately:** a breached-password check (Spring Security's
+  `HaveIBeenPwnedRestApiPasswordChecker`; evaluated in
+  `research/2026-09-03-altcha-proof-of-work-and-replay-registry.md` § 5). It would put an
+  external call in the credential path; the epic keeps that path self-contained. Revisit if the
+  per-identity login throttle shows credential-stuffing patterns. Also deferred: a client-side
+  strength meter, re-checking passwords at sign-in, and any lockout policy.
+
+**Proof-of-work challenge** (ADR-0016; shipping with #905–#907): customer register, operator register, forgot-password
+and booking create additionally require a solved, single-use ALTCHA challenge — self-hosted,
+no third party, no cookie — verified at the edge against a Postgres registry. Login keeps the
+per-identity throttle and gets no challenge; an adaptive "challenge once the bucket runs low"
+is the recorded phase-two shape.
 
 ## Slices
 
