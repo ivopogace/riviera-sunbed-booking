@@ -77,12 +77,9 @@ function loadWidget(): Promise<unknown> {
  * `--riv-*` tokens on the host, so it themes with the card it sits in, and the attribution link is
  * the sentence-inline exemption.
  *
- * <p>The checkbox is <strong>24 px, not the house 44 px floor</strong> — a maintainer decision on
- * issue #920. `--altcha-checkbox-size` drives the widget's paint and its hit box from one value, so
- * 44 px bought the target by inflating the graphic to three times the label's cap height. 24 px is
- * exactly WCAG 2.5.8's AA minimum, which the rest of the app conforms to, and no more: the control
- * meets AA with zero headroom and forgoes 2.5.5's AAA 44 px. The associated `<label>` stays a second
- * target for the same action. `riviera-tailwind` rule 4 carries the exemption class this created.
+ * <p>The checkbox is 24 px and carries a {@code data-touch-exempt} reason: it is held to WCAG
+ * 2.5.8's AA minimum rather than the 44 px floor, which is `riviera-tailwind` rule 4's fourth
+ * exemption class. The mocked e2e pins that size, because the sweep skips an exempt control.
  */
 @Component({
   selector: 'app-challenge-widget',

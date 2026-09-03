@@ -221,7 +221,7 @@ way. Checklist: `references/scss-migration.md`.
 | "Same padding, I'll just add the riviera background." | Shared layout on the base rule; theme-conditional *background* only — else content shifts between themes. |
 | "Classes look right, ship it." | Diff computed styles; contrast specs can't see drift. |
 | "I added `min-h-11`, the target's fixed." | Not on a `display: inline` `<a>` — pair it with `inline-flex items-center` and let the sweep measure it. |
-| "This control can't be 44 px, the layout won't allow it." | Then the layout is the bug. `data-touch-exempt` is for inline prose links, third-party iframes and box-less controls. |
+| "This control can't be 44 px, the layout won't allow it." | Then the layout is the bug. Rule 4 lists the exemption classes and "can't" is not one of them; the AA-minimum class is the maintainer's call, not yours. |
 | "`check-touch-target` is green, so the floor holds." | It only proves someone declared something. It never measures a box, and never looks at `<a>`. |
 | "`bg-(--riv-photo-grad)` for the gradient." | That's a color. Use `bg-(image:--riv-photo-grad)`. |
 | "`outline-none`, I'll draw my own focus state." | The baseline ring is the only indicator many buttons have; the guard fails on a control. Override its colour or offset with `focus-visible:` utilities instead. |
