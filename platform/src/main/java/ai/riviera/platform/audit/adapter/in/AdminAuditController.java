@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.audit.adapter.in;
 
 import java.time.Instant;
 import java.util.List;
@@ -8,11 +8,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import ai.riviera.platform.audit.api.AdminAuditLog;
+
 /**
  * The platform-admin read over the audit trail: the latest recorded admin actions, newest
- * first — the surface the admin console's Audit tab renders. Role-gated to {@code ADMIN} in
- * {@link SecurityConfig} (the invariant-#13 {@code /api/admin/**} exemption, like its siblings);
- * itself a {@code GET}, so browsing the trail never writes to it.
+ * first — the surface the admin console's Audit tab renders. Role-gated to {@code ADMIN} in the
+ * edge's {@code SecurityConfig} (the invariant-#13 {@code /api/admin/**} exemption, like its
+ * siblings); itself a {@code GET}, so browsing the trail never writes to it.
  *
  * <p>No paging, search or filters at Phase 1 — a recent-actions view ({@code limit} defaulting to
  * {@value #DEFAULT_LIMIT}, clamped to {@value #MAX_LIMIT}); an investigation needing more queries

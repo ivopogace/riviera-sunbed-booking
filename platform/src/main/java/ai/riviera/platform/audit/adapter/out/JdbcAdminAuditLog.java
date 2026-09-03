@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.audit.adapter.out;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -8,10 +8,13 @@ import java.util.List;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
+import ai.riviera.platform.audit.api.AdminAuditLog;
+import ai.riviera.platform.audit.vocabulary.AdminAuditEntry;
+
 /**
- * {@link AdminAuditLog} on the {@code admin_audit_record} table (V38). Append-only inserts and the
- * newest-first read the console's Audit tab renders; the ordering is served by
- * {@code admin_audit_record_occurred_idx}.
+ * {@link AdminAuditLog} on the {@code admin_audit_record} table (V38), and its only writer and
+ * reader (ADR-0017). Append-only inserts and the newest-first read the console's Audit tab
+ * renders; the ordering is served by {@code admin_audit_record_occurred_idx}.
  */
 @Component
 class JdbcAdminAuditLog implements AdminAuditLog {
@@ -40,7 +43,7 @@ class JdbcAdminAuditLog implements AdminAuditLog {
 	}
 
 	@Override
-	public List<Entry> latest(int limit) {
+	public List<AdminAuditEntry> latest(int limit) {
 		return jdbc.sql("""
 				SELECT id, occurred_at, actor, method, path, status, reason
 				FROM admin_audit_record
@@ -48,7 +51,7 @@ class JdbcAdminAuditLog implements AdminAuditLog {
 				LIMIT :limit
 				""")
 				.param("limit", limit)
-				.query((rs, rowNum) -> new Entry(
+				.query((rs, rowNum) -> new AdminAuditEntry(
 						rs.getLong("id"),
 						rs.getObject("occurred_at", OffsetDateTime.class).toInstant(),
 						rs.getString("actor"),

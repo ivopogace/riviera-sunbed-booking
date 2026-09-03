@@ -12,6 +12,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import ai.riviera.platform.audit.api.AdminAuditLog;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,12 +21,12 @@ import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Records every mutating {@code /api/admin/**} action in the {@link AdminAuditLog} (required
- * by ADR-0013): actor, method, path, outcome status, and the optional sanitized
+ * by ADR-0013) — the fence over the {@code audit} module's mechanism (ADR-0017): actor, method, path, outcome status, and the optional sanitized
  * {@link AdminAuditReasons#HEADER} grounds. Blanket coverage by construction — a new admin surface
  * is audited the day it ships, with no per-controller instrumentation to forget.
  *
  * <p><strong>Positioned after {@code AuthorizationFilter}, inside the API security chain</strong>
- * ({@link SecurityConfig}), so only requests that passed authentication <em>and</em> authorization
+ * ({@code SecurityConfig}), so only requests that passed authentication <em>and</em> authorization
  * reach it: the audit answers "what did an authenticated principal do past the gate", never "who
  * knocked" — anonymous 401s, CSRF 403s and wrong-role 403s are rejected upstream and leave no row.
  * The belt-and-braces principal check below keeps that contract even if the chain order drifts.
@@ -52,7 +54,7 @@ final class AdminAuditFilter extends OncePerRequestFilter {
 
 	private final AdminAuditLog auditLog;
 
-	/** The audited namespace, a path prefix; {@link SecurityConfig} supplies its role-gated one. */
+	/** The audited namespace, a path prefix; {@code SecurityConfig} supplies its role-gated one. */
 	private final String auditedPathPrefix;
 
 	AdminAuditFilter(AdminAuditLog auditLog, String auditedPathPrefix) {

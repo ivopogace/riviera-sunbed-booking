@@ -35,6 +35,7 @@ import org.springframework.session.web.http.CookieSerializer;
 import org.springframework.session.web.http.DefaultCookieSerializer;
 import org.springframework.web.filter.CorsFilter;
 
+import ai.riviera.platform.audit.api.AdminAuditLog;
 import ai.riviera.platform.challenge.api.ProofOfWorkChallenges;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.operator.api.OperatorAccounts;

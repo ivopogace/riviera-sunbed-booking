@@ -47,6 +47,8 @@ import ai.riviera.platform.booking.application.view.ListDailyBookings;
 import ai.riviera.platform.booking.application.view.MyBookings;
 import ai.riviera.platform.booking.application.view.ViewBooking;
 import ai.riviera.platform.booking.vocabulary.BookingId;
+import ai.riviera.platform.audit.api.AdminAuditLog;
+import ai.riviera.platform.audit.vocabulary.AdminAuditEntry;
 import ai.riviera.platform.challenge.api.ProofOfWorkChallenges;
 import ai.riviera.platform.challenge.vocabulary.ChallengeVerdict;
 import ai.riviera.platform.customer.api.AccountErasure;
@@ -969,8 +971,9 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * The audit trail {@code SecurityConfig}'s {@code AdminAuditFilter} + {@code AdminAuditController}
-	 * register with — inert, so the web slices exercise routing and the role gate, never the table.
+	 * The {@code audit} module's port that {@code SecurityConfig}'s {@code AdminAuditFilter} and the
+	 * module's own controller register with — inert, so the web slices exercise routing and the role
+	 * gate, never the table.
 	 */
 	@Bean
 	AdminAuditLog adminAuditLog() {
@@ -980,7 +983,7 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public List<Entry> latest(int limit) {
+			public List<AdminAuditEntry> latest(int limit) {
 				return List.of();
 			}
 		};

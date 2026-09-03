@@ -128,11 +128,11 @@ not shape`) · `riviera-local-debug` (before the session's first `./gradlew`).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | `PayoutModuleTest` (the repo's only `@ApplicationModuleTest`) loses the `AdminAuditLog` bean once it belongs to a non-bootstrapped module, failing with `NoSuchBeanDefinitionException` | high | med | Add `@MockitoBean AdminAuditLog` beside the `ProofOfWorkChallenges` one #916 added, with the same comment; `riviera-modulith` checklist item covers exactly this | this slice | open |
-| R-2 | The 30 `@Import(WebSliceStubs.class)` slices break: the stub's anonymous `AdminAuditLog` cannot be written from the root once the type is in another package unless the interface **and** its entry type are `public` | high | med | Phase 1 makes the port and `AdminAuditEntry` public and adds the import; a representative slice run is the phase's green check | this slice | open |
-| R-3 | A nested `Entry` record left inside the `api/` port silently violates RV-BE-3c | med | med | Decided up front: `Entry` → top-level `audit.vocabulary.AdminAuditEntry` (AC-7 pins it; the net inspects nested types, per its own `SealedOutcomeInPorts.Ok` comment) | this slice | open |
+| R-1 | `PayoutModuleTest` (the repo's only `@ApplicationModuleTest`) loses the `AdminAuditLog` bean once it belongs to a non-bootstrapped module, failing with `NoSuchBeanDefinitionException` | high | med | Add `@MockitoBean AdminAuditLog` beside the `ProofOfWorkChallenges` one #916 added, with the same comment; `riviera-modulith` checklist item covers exactly this | this slice | closed — mitigated **and falsified**: removing the `@MockitoBean` reproduces `NoSuchBeanDefinitionException`, restoring it is green |
+| R-2 | The 30 `@Import(WebSliceStubs.class)` slices break: the stub's anonymous `AdminAuditLog` cannot be written from the root once the type is in another package unless the interface **and** its entry type are `public` | high | med | Phase 1 makes the port and `AdminAuditEntry` public and adds the import; a representative slice run is the phase's green check | this slice | closed — port + `AdminAuditEntry` are public, `WebSliceStubs` imports them; `AdminSurfaceRoleGateTest` green |
+| R-3 | A nested `Entry` record left inside the `api/` port silently violates RV-BE-3c | med | med | Decided up front: `Entry` → top-level `audit.vocabulary.AdminAuditEntry` (AC-7 pins it; the net inspects nested types, per its own `SealedOutcomeInPorts.Ok` comment) | this slice | closed — `AdminAuditEntry` is top-level in `vocabulary`; the placement net is green |
 | R-4 | `audit` is the **first thin module with an `adapter/in`** — the documented thin template lists `api` + `vocabulary` + `adapter/out` only, so a reviewer may read the controller as off-template | med | low | The net keys on the module-agnostic union set, so it passes; phase 2 adds the clause to `riviera-modulith`'s thin template rather than leaving the tree contradicting the doc | this slice | open |
-| R-5 | Javadoc inside the moved classes links root types (`{@link AdminAuditFilter}`, `{@link SecurityConfig}`) that are package-private and in another package — broken links, and prose implying a dependency the module→root rule forbids | high | low | Convert those to `{@code ...}` in phase 1; AC-5 covers the bytecode half | this slice | open |
+| R-5 | Javadoc inside the moved classes links root types (`{@link AdminAuditFilter}`, `{@link SecurityConfig}`) that are package-private and in another package — broken links, and prose implying a dependency the module→root rule forbids | high | low | Convert those to `{@code ...}` in phase 1; AC-5 covers the bytecode half | this slice | closed — the three root links in the moved Javadoc are `{@code}` now |
 | R-6 | The docs counting sweep misses a site — every "two non-context modules" sentence becomes false | med | med | The site list is pre-enumerated below (*Docs counting sweep*) from a repo-wide inventory, and `riviera-docs-freshness` runs over the branch range at close-out as the independent check | this slice | open |
 | R-7 | Flyway version collision with an in-flight PR | n/a | n/a | **No migration in this slice** — no `V<n>` is claimed, so no renumbering can be owed | — | closed (no migration) |
 | R-8 | Sibling close-out debt: `docs/plans/challenge-non-context-module.md` is still present although PR #916 merged; by `riviera-docs-freshness` § *Plan-doc retirement* it dies at the next close-out, which is this slice's | certain | low | Phase 2 deletes it together with this plan doc's own retirement note | this slice | open |
@@ -349,29 +349,29 @@ same request header. Verified behaviour-by-behaviour in the parity ledger above.
 
 **Files:** the Created/Deleted/Modified production and test lists above, minus the docs entries
 
-- [ ] **Step 1: Create the module skeleton** — the three `package-info.java` files, copying
+- [x] **Step 1: Create the module skeleton** — the three `package-info.java` files, copying
       `challenge`'s Javadoc shape: what the module is (a Cohesive Mechanism, ADR-0017), why it is
       closed, and that the fence is not here.
-- [ ] **Step 2: Move the four types** — `AdminAuditLog` → `audit.api` (`public interface`),
+- [x] **Step 2: Move the four types** — `AdminAuditLog` → `audit.api` (`public interface`),
       `Entry` → `audit.vocabulary.AdminAuditEntry` (`public record`), `AdminAuditController` →
       `audit.adapter.in` (package-private), `JdbcAdminAuditLog` → `audit.adapter.out`
       (package-private). Convert every Javadoc `{@link}` naming a root type to `{@code}` (R-5).
-- [ ] **Step 3: Re-point the edge and the tests** — `SecurityConfig` + `AdminAuditFilter` imports;
+- [x] **Step 3: Re-point the edge and the tests** — `SecurityConfig` + `AdminAuditFilter` imports;
       `WebSliceStubs` import + the anonymous stub's `AdminAuditEntry`; `PayoutModuleTest`'s
       `@MockitoBean` (R-1); `AdminAuditTrailIT` import.
-- [ ] **Step 4: Grant the root exactly `audit::api`** — `CompositionRootDisciplineTests`
+- [x] **Step 4: Grant the root exactly `audit::api`** — `CompositionRootDisciplineTests`
       `GRANTED_SURFACES` + the class Javadoc's list, kept in lockstep as its own comment demands.
-- [ ] **Step 5: Run the structural net + the behaviour proofs** —
+- [x] **Step 5: Run the structural net + the behaviour proofs** —
       `./gradlew test --tests "*ModularityTests*" --tests "*ResponsibilitiesArchitectureTests*" --tests "*CompositionRootDisciplineTests*" --tests "*PackageShapeArchitectureTests*" --tests "*PublishedSurfacePlacementArchitectureTests*"`
       → all PASS (phase 0's red is now green: AC-1…AC-7). Then the behaviour set:
       `--tests "*AdminAudit*" --tests "*AdminSurfaceRoleGateTest*" --tests "*PayoutModuleTest*"`
       → PASS (AC-8, AC-9, AC-10, R-1, R-2).
-- [ ] **Step 6: Generalization-audit pass** — population: *every root-package type that is a
+- [x] **Step 6: Generalization-audit pass** — population: *every root-package type that is a
       port-fronted mechanism rather than a fence* (the ADR-0017 Decision 1 test), enumerated with
       a command over the root package's classes, not by resemblance. Record the verdict for each
       candidate in the log below; ADR-0017 Decision 5 already settles `RateLimitFilter`.
-- [ ] **Step 7: Commit** — `git commit -m "Move the admin audit mechanism into the closed non-context module audit (#914)"`
-- [ ] **Step 8: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Commit** — `git commit -m "Move the admin audit mechanism into the closed non-context module audit (#914)"`
+- [x] **Step 8: Update plan-doc execution status** in the same commit window.
 
 ## Phase 2 — Docs, ADR status, plan retirement
 
@@ -394,15 +394,16 @@ same request header. Verified behaviour-by-behaviour in the parity ledger above.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 0 done, red as designed); phase 1 next`
+**Stage pointer:** `implement (phases 0–1 done, all ACs green locally); phase 2 (docs) next`
 
-**Next action:** Phase 1 — create the `audit` module and move the four types into it, turning
-phase 0's two red tests green.
+**Next action:** Phase 2 — the docs counting sweep, § `audit` in `RESPONSIBILITIES.md`, the
+ADR-0017 status line, and the two plan-doc retirements. Then push, open the draft PR, mark ready
+for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the sole-writer net, red against the root | ✅ (deliberately red; phase 1 greens it) | (this phase's commit) |
-| 1 — the move (module in, fence stays) | | |
+| 1 — the move (module in, fence stays) | ✅ | (this phase's commit) |
 | 2 — docs, ADR status, plan retirement | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -419,6 +420,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-03 | phase 1 (the move) | Every remaining root-package type that is a **port-fronted mechanism** rather than a fence — ADR-0017 Decision 1's own test. Enumerated by the four mechanisms that make something one, not by resemblance: carries SQL, is a `@Component`/`@Service` bean, owns a `@Scheduled` job, or is implemented behind a root-declared port | over `platform/src/main/java/ai/riviera/platform/*.java`: `grep -E '(INSERT INTO\|SELECT .* FROM\|UPDATE \|DELETE FROM)'`, `grep -lE '^@(Component\|Service\|Repository)'`, `grep -l '@Scheduled'`, `grep -n '^interface '` | `MoneyPathAlertCheck` + `ObservabilityConfig` (SQL); 13 root beans; `MoneyPathAlertCheck` (job); `SsoProviderClient` (root port) | **No further instance.** `MoneyPathAlertCheck`/`ObservabilityConfig` read `event_publication` — Modulith's registry table, which they do not own — behind no port, so they are self-checks, not mechanisms. The SSO gateways, `CustomerRecovery` and `RecoveryTokens` are login machinery, which § *Platform edge* pins at the edge by a settled rule this slice does not reopen. `RateLimitFilter` is ADR-0017 Decision 5 and `ScheduledQueryTimeout` is named in Decision 4; both stay. |
 
 ---
 
