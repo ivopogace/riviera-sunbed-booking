@@ -5,9 +5,7 @@ Everything here is enforced by `ApplicationModules.verify()` (`ai.riviera.platfo
 ## Declaring a module
 
 Each module declares a display name and an explicit `allowedDependencies` list (true of
-all nine bounded-context modules and of the two non-context ones — `shared` (OPEN Shared
-Kernel) and `challenge` (closed, full template, ADR-0017, whose list is empty); keep it that
-way):
+all nine bounded-context modules and of the two non-context ones; keep it that way):
 
 ```java
 @org.springframework.modulith.ApplicationModule(

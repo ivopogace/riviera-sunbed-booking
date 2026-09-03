@@ -32,7 +32,8 @@ the three #911 proofs that would have been silently lost) · `tdd` (each phase r
 named below; the two green-on-arrival regression nets are falsified by hand, and say so) ·
 `riviera-review-overlay` (review gate — runs at ready-for-review) · `riviera-docs-freshness` (**ran** over
 `origin/main..HEAD`, 3 findings, all patched — the counting sweep caught two stale counts in files
-this slice never otherwise touched) · `riviera-modulith`
+this slice never otherwise touched; a later maintainer audit added F-5, the trap this slice
+discovered but had not written down) · `riviera-modulith`
 (the ADR-0007 full-template layout, `api`-vs-internal-port call, `allowedDependencies = {}`, and the
 "a module may not depend on the root" rule this slice makes mechanical) · `riviera-java-conventions`
 (package-private `@Service`/adapter with only the `api/` port public, `@Value` over a root bean,
@@ -246,8 +247,8 @@ N/A — no contract change. `GET /api/auth/challenge`, `X-Altcha-Payload`, `CHAL
 
 ## Execution status
 
-**Stage pointer:** `all three gates green on ac7aa4a — merge close-out written; the merge itself is
-the maintainer's call`
+**Stage pointer:** `all three gates green; close-out written. F-5 folded in after a maintainer audit
+of the slice's own doc edits; the merge itself is the maintainer's call`
 
 **Next action:** Merge PR #916, then close-out steps 1–3 and 6 (verify #913 closed, tick epic #903's
 checklist with the PR number, propagate nothing deferred, confirm the PR subscription ended).
@@ -270,6 +271,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-2 | review gate (comment-guidance agent) | `ChallengeConfig`'s Javadoc said "the composition root **that used to** enable it" — `riviera-java-conventions` §6d lists "used to…" as forbidden decision-history in Javadoc | fixed — replaced with a `RESPONSIBILITIES.md` § `challenge` pointer |
 | F-3 | review gate (git-history agent) | #911 deliberately wrote `SecurityConfig.CHALLENGE_PATH = ChallengeController.PATH` so the security matcher and the rate-limit budget could not drift from the mapped route. The move breaks that compile-time link — three unlinked literals | fixed by documenting, not by a new test: the guarantee is **not** gone, it changed form. Falsified to be sure — renaming the module's `PATH` to `/api/auth/pow` turns all three `ChallengeEndpointTest` cases red (the anonymous `200` proves `SecurityConfig`'s literal, the `429` proves `RateLimitFilter`'s). A string-equality arch test would be strictly weaker than that, so the fix is to write the pin down at all three sites instead |
 | F-4 | review gate (git-history agent) | The assertion message on the new module→root rule cited `(#382/#386)`, the issues behind the *root-discipline* rule, not this one | fixed — citation dropped rather than mis-attributed |
+| F-5 | post-gate substrate audit (maintainer-requested) | Two problems with the slice's own doc edits. (a) The `@ApplicationModuleTest` trap behind F-1 was never written down — the one mechanical fact this slice *discovered*, as opposed to the census facts it reconciled, and the only one that would change a future session's behaviour. (b) `riviera-modulith` stated `challenge`'s "full template minus `domain/`" twice in adjacent paragraphs, and `boundaries.md` carried a third copy of a parenthetical already in `CLAUDE.md` and `SKILL.md` | fixed — the trap is a new `riviera-local-debug` § *blast radius* (a sibling to the full-suite-only class, since it needs no full suite to bite) plus a `riviera-modulith` checklist item; the duplicate sentence and the third parenthetical are trimmed |
 
 ---
 
@@ -351,8 +353,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `CLAUDE.md` — § *Bounded contexts* (the second non-context module) + the *Platform edge* summary line
 - `docs/architecture/domain-model.md` — the module count
 - `docs/adr/ADR-0017-non-context-module-for-edge-mechanisms.md` — *Status* line gets the merged PR
-- `.claude/skills/riviera-modulith/SKILL.md` — the module census + the FULL/no-`domain` note
+- `.claude/skills/riviera-modulith/SKILL.md` — the module census, the FULL/no-`domain` note, and the blast-radius checklist item
 - `.claude/skills/riviera-modulith/references/boundaries.md` — the module census
+- `.claude/skills/riviera-local-debug/SKILL.md` — the blast-radius failure class the slice discovered (finding F-5)
 - `docs/plans/altcha-challenge-spine.md` — **deleted** (its PR #911 merged; inherited close-out item)
 - `docs/plans/challenge-non-context-module.md` — this plan
 
