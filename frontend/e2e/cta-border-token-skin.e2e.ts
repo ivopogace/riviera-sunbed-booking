@@ -40,7 +40,7 @@ const UTILITIES = ['border-riv-cta-border'];
 
 test.describe('the CTA hairline paints from the token registry', () => {
   test('every registered token is declared and generates its utility', async ({ page }) => {
-    await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'password123' });
+    await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
     await page.goto('/account/sign-in');
 
     const declared = await page.evaluate((names) => {
@@ -69,7 +69,7 @@ test.describe('the CTA hairline paints from the token registry', () => {
   });
 
   test('the sign-in submit button paints the registered hairline', async ({ page }) => {
-    await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'password123' });
+    await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
     await page.goto('/account/sign-in');
 
     await expect(page.getByTestId('auth-submit')).toHaveCSS('border-color', BORDER);
@@ -87,7 +87,7 @@ test.describe('the CTA hairline paints from the token registry', () => {
 
   test('the hairline does not move under a dark document theme', async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('riviera-theme', 'dark'));
-    await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'password123' });
+    await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
     await page.goto('/account/sign-in');
 
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
@@ -96,7 +96,7 @@ test.describe('the CTA hairline paints from the token registry', () => {
   });
 
   test('the button follows the token rather than a literal of the same value', async ({ page }) => {
-    await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'password123' });
+    await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
     await page.goto('/account/sign-in');
 
     await page.evaluate(() =>

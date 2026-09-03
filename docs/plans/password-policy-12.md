@@ -63,16 +63,16 @@ server's policy check).
   `/api/auth/customer/reset-password`, `/api/me/password`, `/api/auth/operator/password`) ·
   *Pinned by:* `PasswordPolicyTest` (bounds + spaces + bytes), `CustomerRegisterIT.rejectsPasswordOutsidePolicy`,
   `CustomerRegisterIT.acceptsATwelveCharacterPasswordWithSurroundingSpacesVerbatim`,
-  `OperatorRegistrationIT.rejectsPasswordOutsidePolicy`, `AccountRecoveryControllerTest.rejectsWeakPassword`,
+  `OperatorRegistrationIT.rejectsPasswordOutsidePolicy`, `AccountRecoveryControllerTest.aWeakPasswordIsRejectedBeforeAnyRevoke`,
   `SetPasswordIT.aWeakNewPasswordOutranksAnOmittedCurrentOne`, `OperatorAccountControllerTest.rejectsWeakNewPassword`
 - [ ] **AC-2 (blocklist, every surface):** Given each surface, when the new password contains the
   account's email local part (tourist), the operator username (operator) or `riviera` in any case,
   then `400 PASSWORD_CONTAINS_BLOCKED_TERM` and nothing is written. *Seam:* the same five routes ·
-  *Pinned by:* `PasswordPolicyTest.rejectsTheAccountNameAndTheServiceNameCaseInsensitively`,
+  *Pinned by:* `PasswordPolicyTest.theAccountNameIsBlockedInAnyCase` + `theServiceNameIsBlockedInAnyCase`,
   `CustomerRegisterIT.rejectsAPasswordContainingTheEmailName`, `OperatorRegistrationIT.rejectsAPasswordContainingTheUsername`,
-  `PasswordResetIT.rejectsAPasswordContainingTheAccountsEmailName`, `SetPasswordIT.rejectsAPasswordContainingTheEmailName`,
+  `PasswordResetIT.rejectsAPasswordContainingTheAccountsEmailNameAndKeepsTheToken`, `SetPasswordIT.rejectsAPasswordContainingTheEmailName`,
   `OperatorPasswordChangeIT.aBlockedNewPasswordIsNamedDistinctlyFromAWrongCurrentOne`,
-  `ApiErrorHandlerTest.mapsABlockedPasswordToItsOwnCode`
+  `ApiErrorHandlerTest.aBlockedPasswordIs400WithItsOwnCode`
 - [ ] **AC-3 (operator #345 semantics kept):** Given the operator change-password endpoint, when the
   current password is wrong → `INVALID_CURRENT_PASSWORD`; when it is right and the new one is 11
   characters → `INVALID_REQUEST`; when it is right and the new one contains the username →
@@ -83,7 +83,7 @@ server's policy check).
 - [ ] **AC-4 (no write, equalization intact):** Given a register with a rejected password, when it
   returns `400`, then no account row exists and no session cookie is set; the D-8 timing test still
   passes. *Seam:* `POST /api/auth/customer/register` + `CustomerAccountDirectory` · *Pinned by:*
-  `CustomerRegisterIT.aRejectedPasswordWritesNothing`, `CustomerRegisterIT.duplicateEmailResponseIsIdenticalButSessionless` (existing)
+  `CustomerRegisterIT.rejectsPasswordOutsidePolicy` (no row, no cookie), `CustomerRegisterIT.duplicateEmailResponseIsIdenticalButSessionless` (existing)
 - [ ] **AC-5 (old floor still signs in):** Given an account provisioned through the store with an
   8-character password, when it signs in, then `200`. *Seam:* `POST /api/auth/customer/login` with the
   `CustomerAccountProvisioning.register(email, hash)` port; operators already pinned by `AuthSessionIT`
@@ -144,8 +144,9 @@ N/A — no surface is retired; the same endpoints and screens gain a stricter ru
   `core/customer-auth.ts` for the policy — *Owner:* maintainer · *Resolves by:* review ← confirm?
 - **Assumption:** the bootstrap initializer applies the length rule only (not the blocklist), as the
   issue and D-8 say "the same floor" — *Owner:* maintainer · *Resolves by:* review ← confirm?
-- **Assumption:** the dev default becomes `local-dev-pw` (12 characters) — *Owner:* agent ·
-  *Resolves by:* phase 2
+### Resolved
+
+- **Assumption:** the dev default becomes `local-dev-pw` (12 characters) — resolved in the phase-2 commit, pinned by `DevProfileBootstrapCredentialTest`.
 
 ## Availability & concurrency (invariant #2)
 
@@ -206,17 +207,17 @@ No deviation.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** phase 1 — per-surface ITs red (register first), then pass the account name from each controller.
+**Next action:** phase 4 — run the touched mocked e2e specs (`customer-auth`, `unified-auth`, `customer-password`, `password-reset`, `operator-password`, `email-verification`) against Chromium, then phase 5.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — backend policy helper + new problem code | ✅ | phase-0 commit |
-| 1 — the six endpoints wired with context + ITs + IT fixtures | ⏳ | |
-| 2 — bootstrap initializer floor, dev default, backend docs | | |
-| 3 — frontend shared policy, core mappings, five screens + specs | | |
-| 4 — mocked e2e mocks/fixtures, real-backend check, D-8 status line | | |
+| 1 — the six endpoints wired with context + ITs + IT fixtures | ✅ | phase-1 commit |
+| 2 — bootstrap initializer floor, dev default, backend docs | ✅ | phase-2 commit |
+| 3 — frontend shared policy, core mappings, five screens + specs | ✅ | phase-3 commit |
+| 4 — mocked e2e mocks/fixtures, real-backend check, D-8 status line | ⏳ | |
 | 5 — merge `origin/main`, ready-for-review, gates | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -263,6 +264,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/OperatorApprovalMailIT.java` — `admin-pw` → 12+
 - `platform/src/test/java/ai/riviera/platform/AdminReviewTakedownIT.java` — `plain-op-pw` → 12+
 - `platform/src/test/java/ai/riviera/platform/OperatorSuspensionRevocationIT.java` — `revoke-pw` → 12+
+- `platform/src/test/java/ai/riviera/platform/OperatorRejectionRevocationIT.java` — its password contained its own username
 - `platform/src/test/java/ai/riviera/platform/CustomerRoleSeparationIT.java` — `password123`, `op-password` → 12+
 - `platform/src/test/java/ai/riviera/platform/EmailVerificationIT.java` — fixture
 - `platform/src/test/java/ai/riviera/platform/LogoutThenLoginCsrfIT.java` — fixture
@@ -350,6 +352,7 @@ Modify `ApiErrorHandler.java`, `ApiErrorHandlerTest.java` · Delete `CustomerPas
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-03 | phase 1 (fixtures) | every test that boots the bootstrap admin, and every test that hits a password-accepting route | `grep -rhoE "riviera\.operator\.password=[^\",} ]+" platform/src/test` (9 distinct values, 3 under 12) · `grep -rlE "auth/(customer\|operator)/register\|reset-password\|/api/me/password\|/api/auth/operator/password" platform/src/test` (19 files) | `admin-pw` ×3; `password123` ×7, `plain-op-pw`, `revoke-pw`, `op-password`, `pw-persist`, `pw`, `dave-pw`; `reject-target-pw-1` (contained its username) | all moved to ≥ 12 characters not containing the account name; store-provisioned sign-in fixtures (`pw-a` in `AuthSessionIT`, `MyBookingsIT`) deliberately kept — they pin that the floor never applies at sign-in |
 | 2026-09-03 | phase 0 (rename) | every reference to the old helper name, in code, tests, mocks and docs | `grep -rn "CustomerPasswords" platform frontend docs RESPONSIBILITIES.md CONTEXT.md .claude` | 4 controllers + `SetPasswordIT` Javadoc (Java); `operator-auth.ts:45`, `auth-mocks.ts:80` (TS comments) | Java sites renamed in phase 0; the two TS comments are rewritten in phases 3/4 where those files change anyway |
 
 ---

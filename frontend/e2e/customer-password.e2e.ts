@@ -114,9 +114,10 @@ test('an SSO-only account sets its first password with no current password', asy
   await expect(page.getByTestId('setpw-verified')).toBeVisible();
 
   // Under the policy minimum: the client-side guard names the rule and spends no request.
-  await page.getByTestId('setpw-new').fill('short');
+  await expect(page.getByText('At least 12 characters')).toBeVisible();
+  await page.getByTestId('setpw-new').fill('elevenchars');
   await page.getByTestId('setpw-submit').click();
-  await expect(page.getByTestId('setpw-error')).toContainText('8–72 characters');
+  await expect(page.getByTestId('setpw-error')).toContainText('12–72 characters');
   await expect(page.getByTestId('setpw-notice')).toBeHidden();
   expect(setPasswordRequests).toBe(0);
   await expectNoSeriousAxeViolations(page, 'password below the policy minimum');

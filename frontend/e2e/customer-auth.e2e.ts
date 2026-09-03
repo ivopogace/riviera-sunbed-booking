@@ -15,7 +15,7 @@ import { CustomerAuthPage } from './support/pages/customer-auth.page';
  */
 
 test('a tourist registers, stays signed in across a reload, and signs out', async ({ page }) => {
-  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'password123' });
+  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
   const auth = new CustomerAuthPage(page);
 
   await page.goto('/');
@@ -27,7 +27,7 @@ test('a tourist registers, stays signed in across a reload, and signs out', asyn
   await expect(page).toHaveURL(/\/account\/sign-in\?mode=register$/);
   await expectNoSeriousAxeViolations(page, 'register page');
 
-  await auth.register('ana@example.com', 'password123');
+  await auth.register('ana@example.com', 'passphrase-123');
 
   // Fresh email → auto-signed-in; the header (having navigated home) reflects it.
   await auth.expectSignedInAs('ana@example.com');
@@ -45,7 +45,7 @@ test('a tourist registers, stays signed in across a reload, and signs out', asyn
 test('a returning tourist signs in; a wrong password is a generic failure (D-8)', async ({
   page,
 }) => {
-  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'password123' });
+  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
   const auth = new CustomerAuthPage(page);
 
   await page.goto('/');
@@ -60,6 +60,6 @@ test('a returning tourist signs in; a wrong password is a generic failure (D-8)'
   await expectNoSeriousAxeViolations(page, 'generic sign-in failure');
 
   // Right password: the session is established and the header flips.
-  await auth.signIn('ana@example.com', 'password123');
+  await auth.signIn('ana@example.com', 'passphrase-123');
   await auth.expectSignedInAs('ana@example.com');
 });

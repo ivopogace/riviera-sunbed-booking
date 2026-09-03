@@ -1,9 +1,8 @@
 # Sign-in / registration for customers and operators (form + Google/Apple SSO)
 
-Status: **accepted design, shipped** (epic #108), except the D-8 revision — the password
-policy and the proof-of-work challenge — which is **decided but in flight** under epic #903
-(slices #904–#907); the code enforces the earlier 8-character floor and no challenge until
-those merge. Decisions below were made at the refine stage (2026-07-02) and approved by the
+Status: **accepted design, shipped** (epic #108), except the D-8 revision's proof-of-work
+challenge, which is **decided but in flight** under epic #903 (slices #905–#907); the revised
+password policy shipped with #904, the challenge is absent until those merge. Decisions below were made at the refine stage (2026-07-02) and approved by the
 maintainer; each is a one-paragraph re-decision if reality disagrees. The per-module contracts these decisions settled are in
 `RESPONSIBILITIES.md` (§`customer`, §`operator`, § *Platform edge*).
 
@@ -151,8 +150,8 @@ credentials" (no account enumeration — registration responses likewise avoid
 confirming whether an email exists). Password storage uses the existing delegating
 encoder (`{bcrypt}`).
 
-**Password policy** — the target rule, shipping with #904. Chosen ahead of the first live
-deploy, so no existing credential needs a migration path:
+**Password policy** — shipped with #904. Chosen ahead of the first live deploy, so no existing
+credential needs a migration path; the rule applies where a password is chosen, never at sign-in:
 
 - **Minimum 12 characters, maximum 72 bytes** (the bcrypt input cap), for tourists **and**
   operators. One server-side rule shared by every surface that accepts a new password
