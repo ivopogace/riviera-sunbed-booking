@@ -100,3 +100,31 @@ test('the operator register shows no widget in this slice', async ({ page }) => 
   await expect(page.getByLabel('Username', { exact: true })).toBeVisible();
   await expect(auth.challengeWidget).toHaveCount(0);
 });
+
+test('the checkbox paints 24 px over a 44 px target', async ({ page }) => {
+  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
+  const auth = new CustomerAuthPage(page);
+
+  await page.goto('/account/sign-in?mode=register');
+  await expect(auth.challengeWidget.getByRole('checkbox')).toBeVisible();
+
+  // Measured, not read off the class list: a renamed ALTCHA internal fails nothing else.
+  const boxes = await page.evaluate(() => {
+    const input = document.querySelector('.altcha-checkbox input');
+    const wrap = document.querySelector('.altcha-checkbox');
+    if (!input || !wrap) return null;
+    const target = input.getBoundingClientRect();
+    const paint = getComputedStyle(wrap, '::before');
+    return {
+      target: { width: Math.round(target.width), height: Math.round(target.height) },
+      paint: { width: paint.width, height: paint.height },
+    };
+  });
+
+  expect(boxes, 'the ALTCHA checkbox internals this rule block styles still exist').not.toBeNull();
+  expect(boxes!.target, 'the touch target stays the 44 px floor').toEqual({
+    width: 44,
+    height: 44,
+  });
+  expect(boxes!.paint, 'the painted square is 24 px').toEqual({ width: '24px', height: '24px' });
+});

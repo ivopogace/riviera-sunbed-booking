@@ -74,8 +74,9 @@ function loadWidget(): Promise<unknown> {
  *
  * <p>`CUSTOM_ELEMENTS_SCHEMA` is the one deviation from the house rules: `<altcha-widget>` is a
  * third-party element, not a component. The widget's `--altcha-*` variables are mapped from the
- * `--riv-*` tokens on the host, so it themes with the card it sits in; the checkbox is sized to the
- * 44 px touch floor and the attribution link is the sentence-inline exemption.
+ * `--riv-*` tokens on the host, so it themes with the card it sits in; the checkbox's box is held at
+ * the 44 px touch floor while `tailwind.css` paints the visible 24 px square over it (the rule block
+ * there carries the why), and the attribution link is the sentence-inline exemption.
  */
 @Component({
   selector: 'app-challenge-widget',

@@ -1058,3 +1058,67 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* ---- proof-of-work checkbox: 24 px paint over a 44 px target ---- */
+
+/** The one place the app styles ALTCHA's internals rather than its `--altcha-*` variables, and it
+    is here rather than in `shared/challenge-widget.ts` because the widget builds its light DOM at
+    runtime: those nodes never carry the `_ngcontent-*` attribute emulated encapsulation stamps, so
+    a component `styles` block cannot reach them.
+
+    `--altcha-checkbox-size` drives the checkbox's paint AND its hit box from one value, so the
+    44 px touch floor (riviera-tailwind rule 4) forced a 44 px *graphic* — three times the label's
+    cap height, and the heaviest mark on the register card. The split below keeps the input at
+    44 x 44, so the target the e2e sweep measures is the real one, and paints the visible 24 px box
+    with a pseudo-element on the wrapper. WCAG 2.5.5 is about the target, not the graphic.
+
+    The focus indicator is ADDED, never suppressed (rule 6): `@layer base` covers `button` only, so
+    this checkbox previously showed the user-agent ring around its invisible 44 px box. It now gets
+    the baseline's own 3 px `--riv-accent-ink`, inset so it hugs the 24 px paint. While ALTCHA is
+    solving it sets `opacity: 0` on the input — its own behaviour, which hides this ring with it.
+
+    Coupled to `.altcha-checkbox`, its `input`, `svg` and `-spinner`: an ALTCHA upgrade that renames
+    them changes the look silently, so `e2e/customer-auth-challenge.e2e.ts` measures both boxes. */
+app-challenge-widget .altcha-checkbox input,
+app-challenge-widget .altcha-checkbox input:checked {
+  background: transparent;
+  border-color: transparent;
+}
+
+app-challenge-widget .altcha-checkbox input:focus-visible {
+  border-radius: 12px;
+  outline: 3px solid var(--riv-accent-ink);
+  outline-offset: -8px;
+}
+
+app-challenge-widget .altcha-checkbox::before {
+  background: var(--riv-field-fill);
+  border: 1px solid var(--riv-field-border);
+  border-radius: 5px;
+  content: '';
+  height: 24px;
+  left: 10px;
+  pointer-events: none;
+  position: absolute;
+  top: 10px;
+  width: 24px;
+}
+
+app-challenge-widget .altcha-checkbox:has(input:checked)::before {
+  background: var(--riv-accent-ink);
+  border-color: var(--riv-accent-ink);
+}
+
+app-challenge-widget .altcha-checkbox svg {
+  height: 12px;
+  left: 16px;
+  top: 16px;
+  width: 12px;
+}
+
+app-challenge-widget .altcha-checkbox-spinner {
+  height: 24px;
+  left: 10px;
+  top: 10px;
+  width: 24px;
+}
