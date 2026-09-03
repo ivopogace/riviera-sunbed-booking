@@ -23,10 +23,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Locks the root-package discipline: the composition root orchestrates the platform
  * edge (auth, sessions, SSO, recovery flows — RV-BE-11) and composes modules, but it is not a home
- * for cross-module <em>domain</em> orchestration. After the mail machinery moved into the
- * {@code notification} module, the only module surfaces the root still touches are
+ * for cross-module <em>domain</em> orchestration. The only module surfaces the root still touches are
  * {@code customer}/{@code operator} (the two principal types), {@code notification::api} (the send
- * port) and {@code shared} — never the booking spine. A root class importing
+ * port), {@code challenge}'s port and verdict (the abuse mechanism the edge's fence calls) and
+ * {@code shared} — never the booking spine. A root class importing
  * {@code booking}/{@code venue}/{@code payment}/{@code payout}/{@code availability} is the
  * shared-kernel cycle pattern reappearing (an edge listener assembling module facts); such a
  * listener belongs in a module — see {@code notification.adapter.in.BookingConfirmationMailListener},

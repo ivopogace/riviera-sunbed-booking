@@ -1,8 +1,8 @@
 # ADR-0017: A port-fronted mechanism no bounded context owns is a closed non-context module; the fence stays at the edge, and the proof-of-work challenge is the first instance
 
-- **Status:** Accepted — implementation is #913 (refactor slice under epic #903; lands after PR
-  #911 merges and before #906/#907 build on it). The admin audit log is the named second
-  instance, #914, unscheduled.
+- **Status:** Accepted — implemented by PR #916 (#913), which moved the proof-of-work challenge
+  mechanism into the closed non-context module `challenge`. The admin audit log is the named
+  second instance, #914, unscheduled.
 - **Date:** 2026-09-03
 - **Relates to:** ADR-0016 (Decision 3 is amended by this ADR), ADR-0007 (the module templates
   this applies unchanged; Amendment 2 introduced the one non-context module `shared`), invariant

@@ -792,7 +792,9 @@ The **Shared Kernel** (Evans, DDD ch. 14): `ApiProblem`, `CurrentOperator`,
 `CurrentCustomer`, `InvalidApiRequestException`, `ObservabilityMetrics`, `ShutdownBudget`,
 `MdcTaskDecorator`, `ResubmissionThrottle` + `ResubmissionOutcome`. An
 `@ApplicationModule(type = OPEN)`: technical shared code, so it publishes no
-`api`/`vocabulary` surface and consumers use its types directly.
+`api`/`vocabulary` surface and consumers use its types directly. The name is used for Evans'
+*discipline* (keep it small, change it only by consultation), not his definition — his kernel is a
+subset of the domain model; this one holds edge types (ADR-0017).
 
 **Job:** hold the handful of edge types that bounded contexts legitimately share, each
 admitted on **ownership, never reuse** — the type lives here because no bounded context
@@ -829,18 +831,36 @@ answer is always ownership.
   is not a home for "code used in more than one place"; a shared kernel earns its keep
   only while it stays tiny and stable, because a change here ripples through every context.
 - **Depending on a module that depends back** → it may reach only `customer::api` and
-  `operator::api`, the two modules that do not depend on it.
+  `operator::api`, the two bounded contexts that do not depend on it.
 - **Being the composition root** → that stays the root package (`PlatformApplication`,
   `SecurityConfig`, the controllers). The root *depends on* modules while `shared` is
   *depended on by* them; putting both in one package is what closed
   `booking → root → booking`.
+
+## `challenge` (not a bounded context)
+
+The **proof-of-work challenge** mechanism (ADR-0016, ADR-0017): a closed non-context module with the
+full template and no dependencies — Evans' *Cohesive Mechanism*, a separate lightweight framework
+behind an intention-revealing interface.
+
+**Job:** issue signed ALTCHA v2 challenges, verify a widget's solution, accept each solution exactly
+once via the `challenge_registry` claim (`INSERT … ON CONFLICT DO NOTHING`), sweep expired rows,
+expose the challenge endpoint.
+
+**Not my job:** deciding which routes are fenced, the filter and its ordering, the problem bodies —
+the root's edge (§ *Platform edge*); rate limiting (`RateLimitFilter`, root).
+
+Only writer of `challenge_registry` (machine-checked). Publishes `api.ProofOfWorkChallenges` and
+`vocabulary.ChallengeVerdict`, nothing else.
 
 ## Platform edge (settled)
 
 The cross-module edge rules, restated here in one place because no single module owns them
 (the per-module consequences sit in §`customer` and §`operator`): server-side sessions (Spring
 Session JDBC) with **two principal types**; all login/session machinery lives at the edge,
-never in modules; customer-account identity is separate from the guest row — no FK, no
+never in modules; abuse machinery splits — the **fence** (filter, route policy, filter-chain problem
+bodies) is the edge's, a **mechanism** the edge calls through a port (a table, a job, a library) is a
+non-context module (ADR-0017); customer-account identity is separate from the guest row — no FK, no
 back-linking of past guest bookings, ever; auth endpoints are non-enumerating + constant-time
 on their own rate-limit buckets; mocked externals (SSO IdPs, mailer) are profile-guarded out
 of prod; session revocation is edge-orchestrated and synchronous, bracketing the state change.
@@ -858,7 +878,8 @@ and is logged at WARN without the value, the same outcome as an empty one. Modul
 already-encoded hash and never see the rule.
 
 **Proof-of-work challenge (ADR-0016)** — the public writes that cost money or inventory are fenced by a
-self-hosted ALTCHA v2 challenge, entirely at the edge: `ChallengeController` (`GET /api/auth/challenge`,
+self-hosted ALTCHA v2 challenge, the **fence** at the edge and the **mechanism** in the non-context
+module `challenge` (ADR-0017): the module's `ChallengeController` (`GET /api/auth/challenge`,
 `permitAll`, its own per-IP rate-limit budget, `no-store`, no session — the only cookie on it is the SPA's platform-wide `XSRF-TOKEN` bootstrap) issues a challenge signed with the
 `RIVIERA_ALTCHA_HMAC_SECRET` secret and expiring `riviera.altcha.expiry` (10 minutes) after the injected
 clock; `ChallengeVerificationFilter`, registered after `RateLimitFilter` and `CsrfFilter`, requires the
@@ -867,18 +888,20 @@ operator register, forgot-password and booking create in their own slices) and r
 stable code — `CHALLENGE_REQUIRED` (absent), `CHALLENGE_INVALID` (unparseable, forged, wrong answer),
 `CHALLENGE_EXPIRED` (past expiry, or already accepted once). Deliberately `400`, never `403`: the rate
 limiter refunds a `403` on the budgets that guard authenticated work, and a refused solution must still
-have cost its token. `ProofOfWorkChallenges` wraps the official `org.altcha:altcha` library (the expiry
-check is the library's, by the server clock; the client clock never enters); a verified solution is
-accepted only if `INSERT … ON CONFLICT DO NOTHING` claims its nonce in `challenge_registry` (V49) — the
-one place the edge departs from the rate limiter's in-memory precedent, because a restart or a second
-instance must not reopen a replay window. `ChallengeRegistrySweep` deletes rows whose expiry lies more
-than `riviera.altcha.clock-skew` in the past, which is where instance clock skew is absorbed.
+have cost its token. The module's `ProofOfWorkChallenges` port wraps the official `org.altcha:altcha`
+library (the expiry check is the library's, by the server clock; the client clock never enters); a
+verified solution is accepted only if `INSERT … ON CONFLICT DO NOTHING` claims its nonce in the
+module's `challenge_registry` (V49) — the one place this departs from the rate limiter's in-memory
+precedent, because a restart or a second instance must not reopen a replay window. The module's
+`ChallengeRegistrySweep` deletes rows whose expiry lies more than `riviera.altcha.clock-skew` in the
+past, which is where instance clock skew is absorbed.
 `riviera.altcha.enabled=false` is the kill switch: the fenced routes admit header-less requests and the
 endpoint answers `204`, which the SPA reads to hide the widget. `riviera.altcha.cost` (5000) is a
 measured default — Chromium under mobile emulation in the slice's prototype, scaled by per-core
 throughput to an estimated 1–2 s on a mid-range phone; a real-device check is the pre-launch item. What
-it is not: no ALTCHA hosted service is ever called, no module knows the challenge exists, and login is
-not fenced (the per-identity throttle covers it).
+it is not: no ALTCHA hosted service is ever called, no bounded-context module knows the challenge
+exists — the root reaches only `challenge::api` and `::vocabulary` — and login is not fenced (the
+per-identity throttle covers it).
 
 ## Invariants, long form
 
@@ -967,6 +990,8 @@ sufficient.
 | Events carry technical ids/values, never foreign aggregates — invariant #11 Need-To-Know | `ResponsibilitiesArchitectureTests` (id-based-events rule) |
 | `review` is the **only writer** (and direct reader) of the `review` table — #811 | `ResponsibilitiesArchitectureTests` (SQL-shaped review-table scan; the bare name would match the module's package string in every consumer) |
 | Only `venue` names `rating_tenths` / `reviews_count` — "I store the aggregate; `review` computes it" (#811) | `ResponsibilitiesArchitectureTests` (rating-columns sole-writer scan) |
+| `challenge` is the **only writer** (and direct reader) of `challenge_registry` — ADR-0017 | `ResponsibilitiesArchitectureTests` (sole-writer bytecode scan) |
+| No class inside a module depends on a type sitting directly in `ai.riviera.platform` — ADR-0017 | `CompositionRootDisciplineTests` (module→root reach rule; Modulith's `allowedDependencies` cannot see it) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
 | No module reaches another's `application`/`domain`/`adapter` internals; `allowedDependencies` deny-lists hold | `ModularityTests` (`ApplicationModules.verify()`) |
 | The ADR-0007 package shape; published-surface kinds (`api`/`spi`/`vocabulary`/`events`); the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |

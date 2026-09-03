@@ -30,8 +30,9 @@ drift between the ticket and today's code, listed under *Resolved*) · `riviera-
 template — forced the module-ownership table and the behaviour-parity ledger, which is what surfaced
 the three #911 proofs that would have been silently lost) · `tdd` (each phase red-green at the seams
 named below; the two green-on-arrival regression nets are falsified by hand, and say so) ·
-`riviera-review-overlay` (review gate — runs at ready-for-review) · `riviera-docs-freshness` (runs
-over the PR range at phase 4, including the "nine modules" counting sweep) · `riviera-modulith`
+`riviera-review-overlay` (review gate — runs at ready-for-review) · `riviera-docs-freshness` (**ran** over
+`origin/main..HEAD`, 3 findings, all patched — the counting sweep caught two stale counts in files
+this slice never otherwise touched) · `riviera-modulith`
 (the ADR-0007 full-template layout, `api`-vs-internal-port call, `allowedDependencies = {}`, and the
 "a module may not depend on the root" rule this slice makes mechanical) · `riviera-java-conventions`
 (package-private `@Service`/adapter with only the `api/` port public, `@Value` over a root bean,
@@ -147,9 +148,9 @@ adapter, a hypothetical seam, so it is neither `api` nor `spi`).
 | R-3 | `challenge_registry`'s whole-word scan false-positives on the module's own package name | low | med | the token is `challenge_registry`, not `challenge`; the scan is the existing whole-word `containsWholeWord` primitive; a fixture module adapter proves the exclusion path | claude | **closed** — fixture-proven both ways in phase 2 |
 | R-4 | The module ends up depending on the root (`ScheduledQueryTimeout`, `Clock`) and `verify()` or the new rule fails | med | high | `JdbcChallengeRegistry` swaps to `@Value("${riviera.scheduled.query-timeout-seconds}")` (the `JdbcBookings` / `JdbcAccountErasure` precedent) in the same phase as the move; `Clock` is `java.time`, not a root type | claude | **closed** — `@Value` swap landed with the move; net green |
 | R-5 | `@WebMvcTest` no longer binds `AltchaProperties` once `SecurityConfig` stops enabling it, so a slice silently loses its kill switch | med | med | the slice no longer needs the properties at all — it fakes the port; the switch is driven by `@Value` on the stub (ledger row 2) | claude | **closed** — `AltchaDisabledTest` green, unchanged |
-| R-6 | The scheduled-work and endpoint-gate nets pass for the wrong reason after the move | low | high | both key on simple names / paths the move keeps (verified: `KNOWN_SCHEDULED_JOBS` holds `"ChallengeRegistrySweep#sweep"`, `DECLARED_REACHABLE` holds `"GET /api/auth/challenge"`); AC-12 requires both files to be **unchanged** in the diff | claude | open |
+| R-6 | The scheduled-work and endpoint-gate nets pass for the wrong reason after the move | low | high | both key on simple names / paths the move keeps (verified: `KNOWN_SCHEDULED_JOBS` holds `"ChallengeRegistrySweep#sweep"`, `DECLARED_REACHABLE` holds `"GET /api/auth/challenge"`); AC-12 requires both files to be **unchanged** in the diff | claude | **closed** — both files unchanged in the diff, both green |
 | R-7 | A green `ScheduledQueryTimeoutIT` entry proves nothing (it is green on arrival — the bound already exists) | med | med | falsify by hand: temporarily drop the bounded client in `JdbcChallengeRegistry`, watch the new assertion fail, restore; record the falsification in the phase | claude | **closed** — falsified in phase 2 of this phase's steps |
-| R-8 | Sonar counts the moved code as new code and reports it uncovered or duplicated | med | med | the tests move with their subject, so coverage moves too; the moved bodies are byte-identical to `main`, and the one genuinely new block (the stub port) is exercised by three slices | claude | open |
+| R-8 | Sonar counts the moved code as new code and reports it uncovered or duplicated | med | med | the tests move with their subject, so coverage moves too; the moved bodies are byte-identical to `main`, and the one genuinely new block (the stub port) is exercised by three slices | claude | open — pending the Sonar gate |
 | R-9 | Flyway version collision with in-flight work | none | — | no migration in this slice; and there are zero open PRs on the repo at plan time | claude | closed — N/A |
 
 ## Open questions / Assumptions
@@ -245,10 +246,10 @@ N/A — no contract change. `GET /api/auth/challenge`, `X-Altcha-Payload`, `CHAL
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 3 done, entering phase 4 (docs)`
+**Stage pointer:** `PR #916 ready for review — review gate next`
 
-**Next action:** Phase 4 — apply the issue's verbatim substrate-doc edits, run
-`riviera-docs-freshness` over `origin/main..HEAD`, retire the spine plan, point ADR-0017 at PR #916.
+**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1 with
+`riviera-review-overlay` layered on, then the Sonar gate once CI has analysed the PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -301,6 +302,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/RateLimitFilter.java` — names the challenge path by its own literal
 - `platform/src/main/java/ai/riviera/platform/ChallengeVerificationFilter.java` — imports the port + verdict from the module
 - `platform/src/main/java/ai/riviera/platform/SecurityProblemResponses.java` — Javadoc only, if a moved test name needs re-pointing
+- `platform/src/main/java/ai/riviera/platform/ScheduledQueryTimeout.java` — Javadoc, docs-freshness finding D-1
+- `platform/src/main/java/ai/riviera/platform/shared/package-info.java` — Javadoc + grant comment, docs-freshness finding D-2
 
 **Created — tests**
 
@@ -465,18 +468,32 @@ fix, and TDD's red step is replaced by an explicit falsification (R-7). Say so i
 `.claude/skills/riviera-modulith/SKILL.md` + `references/boundaries.md` ·
 `docs/plans/altcha-challenge-spine.md` (deleted) · this plan
 
-- [ ] **Step 1: Apply the issue's verbatim doc edits** — § *Platform edge*'s opening sentence and its
+- [x] **Step 1: Apply the issue's verbatim doc edits** — § *Platform edge*'s opening sentence and its
   *Proof-of-work challenge* paragraph, the new § `challenge` after § `shared`, the § `shared` naming
   clause, the `CLAUDE.md` additions, the module-count sites (AC-13).
-- [ ] **Step 2: Run `riviera-docs-freshness` over the PR range** including the counting sweep for
-  "nine modules … plus `shared`"; fix everything it finds, record the range + finding count in
-  *Skills consulted* and Execution status.
-- [ ] **Step 3: Retire `docs/plans/altcha-challenge-spine.md`** (`git rm`) — the inherited #911/#915
-  close-out item; confirm no committed file cites its path.
-- [ ] **Step 4: Point ADR-0017's *Status* line at this slice's PR.**
-- [ ] **Step 5: Verify the file-structure guard** — `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
-- [ ] **Step 6: Commit** — `git commit -m "Reconcile the substrate docs with the challenge module; retire the spine plan (#913)"`
+- [x] **Step 2: Ran `riviera-docs-freshness` over `origin/main..HEAD`** — **3 findings, all
+  patched**, tabled below. The rename grep (2a) found no stale identifier; the counting sweep (2b)
+  found all three; the deploy doc's `RIVIERA_ALTCHA_HMAC_SECRET` / `riviera.altcha.*` /
+  `challenge_registry` rows are unchanged facts and stay untouched, as the ACs require.
+- [x] **Step 3: Retired `docs/plans/altcha-challenge-spine.md`** (`git rm`); a slug grep across the
+  tree found no citation outside this plan's own File-structure list.
+- [x] **Step 4: ADR-0017's *Status* line now reads "implemented by PR #916 (#913)".**
+- [x] **Step 5: Verify the file-structure guard** — `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
+- [x] **Step 6: Commit** — `git commit -m "Reconcile the substrate docs with the challenge module; retire the spine plan (#913)"`
 - [ ] **Step 7: Finalize Execution status** in the PR's own last commit, citing `merged via PR #NN`.
+
+**`riviera-docs-freshness` findings over `origin/main..HEAD` — 3, all patched**
+
+| # | Doc:line | Stated fact | Contradicted by | Action |
+|---|---|---|---|---|
+| D-1 | `ScheduledQueryTimeout.java:30` | "the **three** module adapters still read the raw property via `@Value`" | `JdbcChallengeRegistry` makes four | patched — the count is dropped rather than incremented (it rots again at five), and the sentence now points at the rule that enforces it |
+| D-2 | `shared/package-info.java:16,30` + `RESPONSIBILITIES.md` §`shared` | `customer` + `operator` are "the **two modules** that do not depend on it" | `challenge` depends on nothing either | patched — "the two **bounded contexts** that do not depend on it"; the grant itself is unchanged |
+| D-3 | `CompositionRootDisciplineTests.java:27` | "the only module surfaces the root still touches are `customer`/`operator`, `notification::api` and `shared`" | the root now also touches `challenge::api` + `::vocabulary` | patched — the prose and `GRANTED_SURFACES` are the same rule stated twice, and the class Javadoc says so |
+
+Not findings: `ScheduledQueryTimeout.java:21` ("the four copies of the constants") is historical
+narrative about a past commit; `docs/deploy/production-hardening.md`'s `RIVIERA_ALTCHA_HMAC_SECRET`,
+`riviera.altcha.*` and `challenge_registry` rows describe unchanged configuration; `CONTEXT.md`'s
+*Proof-of-work challenge* entry defines the term, not its placement.
 
 ---
 
