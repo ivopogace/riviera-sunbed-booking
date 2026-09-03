@@ -49,6 +49,21 @@ Pinned by `platform/src/test/java/ai/riviera/platform/ActuatorHardeningIT.java`.
 | `STRIPE_WEBHOOK_SECRET` | env (`stripe.webhook-secret`) | webhook signature verification (invariant #8) | empty |
 | `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | env | Spring datasource auto-config | supplied entirely by the deploy target (Neon over `sslmode=require`) |
 | `RIVIERA_OPERATOR_PASSWORD` | env (`riviera.operator.password`) | the seeded `operator` account's credential — **the platform admin** since #115 (was the owns-all bootstrap; unchanged variable, no new secret) | empty → admin login disabled, cannot approve registrations (logged at WARN, never the value); a value under 12 characters or over 72 bytes is refused the same way — held to the password floor (D-8) |
+| `RIVIERA_ALTCHA_HMAC_SECRET` | env (`riviera.altcha.hmac-secret`) | signs every proof-of-work challenge (ADR-0016); the verifier accepts only solutions to challenges signed with it | empty → a random boot-time key, valid for this process alone (logged at WARN): a restart invalidates challenges in flight and a second instance can verify none of them — set it on every instance before scaling out |
+
+> **The proof-of-work fence is configuration too.** `riviera.altcha.enabled` (default `true`) is the
+> kill switch — off, the fenced writes admit requests without a solution and the SPA hides the widget,
+> no deploy needed. `riviera.altcha.cost` (default `5000` PBKDF2 iterations per attempt, about 256
+> attempts on average) was measured in Chromium under mobile emulation and scaled to an estimated 1–2 s
+> on a mid-range phone; **confirm on a real device before launch** and tune the property (accepted
+> range 1..100000). `riviera.altcha.expiry` (`PT10M`) and `riviera.altcha.clock-skew` (`PT30S`) rarely
+> need touching. The replay registry (`challenge_registry`) is database-backed, so it adds **no** row to
+> the scale-out table below.
+>
+> **Content-Security-Policy note.** No CSP header is set today. If one is ever added, the widget's Web
+> Workers are spawned from Blob URLs, so the policy needs `worker-src blob:` (and `child-src blob:` for
+> older engines) alongside `script-src 'self'`; nothing else about the widget needs an allowance — it
+> loads no third-party script, style, or image.
 
 > **The webhook endpoint's event list is configuration too, and nothing in the app can check it.**
 > The endpoint at Stripe must send `payment_intent.succeeded`, `payment_intent.canceled` and
@@ -170,7 +185,7 @@ Two knobs now hold that open, both in `application.properties`:
 
 | Property | Default | What it buys |
 |---|---|---|
-| `spring.task.scheduling.pool.size` | `4` | A thread per `@Scheduled` job, so a job that is stuck cannot delay a sibling's schedule. Must stay **≥ the number of `@Scheduled` methods** — `ScheduledWorkArchitectureTest` counts them and fails the build otherwise, so a new job either gets a thread or does not merge. |
+| `spring.task.scheduling.pool.size` | `6` | A thread per `@Scheduled` job, so a job that is stuck cannot delay a sibling's schedule. Must stay **≥ the number of `@Scheduled` methods** — `ScheduledWorkArchitectureTest` counts them and fails the build otherwise, so a new job either gets a thread or does not merge. |
 | `riviera.scheduled.query-timeout-seconds` | `10` | A finite bound on each job's **entry** query, so a wedged job eventually ends instead of pinning its thread and its pooled connection. Applied per adapter; the sweeps' per-item **writes** stay unbounded on purpose. |
 
 **Operationally:** a bounded read that aborts fails that run, logs, and is retried on the next tick

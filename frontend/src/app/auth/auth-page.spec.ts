@@ -13,7 +13,17 @@ import { vi } from 'vitest';
 import { CustomerAuth } from '../core/customer-auth';
 import { OperatorAuth } from '../core/operator-auth';
 import { OwnedVenues, OwnedVenuesResult } from '../core/owned-venues';
+import { ProofOfWork } from '../core/proof-of-work';
+import { defineFakeAltchaElement, FakeAltchaElement } from '../../testing/fake-altcha-element';
+import { CHALLENGE_EXPIRED_MESSAGE } from '../shared/challenge';
 import { AuthPage } from './auth-page';
+
+// jsdom has no Web Workers: the widget is the element stand-in below, never the real bundle.
+vi.mock('altcha', () => ({}));
+
+class FakeProofOfWork {
+  readonly enabled = signal<boolean | undefined>(false);
+}
 
 class FakeCustomerAuth {
   readonly signedIn = signal(false);
@@ -47,6 +57,7 @@ describe('AuthPage', () => {
   let customer: FakeCustomerAuth;
   let operator: FakeOperatorAuth;
   let owned: FakeOwnedVenues;
+  let proofOfWork: FakeProofOfWork;
   let navigate: ReturnType<typeof vi.spyOn>;
   // Live query-param source: the component seeds mode/audience/returnUrl from this and reacts to it.
   let queryParams$: BehaviorSubject<ParamMap>;
@@ -57,10 +68,13 @@ describe('AuthPage', () => {
     await fixture.whenStable();
   }
 
+  beforeAll(defineFakeAltchaElement);
+
   async function render(queryParams: Record<string, string> = {}): Promise<void> {
     customer = new FakeCustomerAuth();
     operator = new FakeOperatorAuth();
     owned = new FakeOwnedVenues();
+    proofOfWork = new FakeProofOfWork();
     queryParams$ = new BehaviorSubject<ParamMap>(convertToParamMap(queryParams));
     TestBed.configureTestingModule({
       providers: [
@@ -68,6 +82,7 @@ describe('AuthPage', () => {
         { provide: CustomerAuth, useValue: customer },
         { provide: OperatorAuth, useValue: operator },
         { provide: OwnedVenues, useValue: owned },
+        { provide: ProofOfWork, useValue: proofOfWork },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -213,7 +228,11 @@ describe('AuthPage', () => {
       type('auth-password', 'passphrase-123');
       await submit();
 
-      expect(customer.register).toHaveBeenCalledWith('ana@example.com', 'passphrase-123');
+      expect(customer.register).toHaveBeenCalledWith(
+        'ana@example.com',
+        'passphrase-123',
+        undefined,
+      );
       expect(navigate).toHaveBeenCalledWith('/');
     });
 
@@ -262,6 +281,95 @@ describe('AuthPage', () => {
       await submit();
 
       expect(el('auth-error').textContent).toContain('name you sign in with');
+      expect(navigate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('tourist register behind the proof-of-work fence', () => {
+    async function renderFenced(): Promise<FakeAltchaElement> {
+      await render({ mode: 'register' });
+      proofOfWork.enabled.set(true);
+      await fixture.whenStable();
+      return (fixture.nativeElement as HTMLElement).querySelector<FakeAltchaElement>(
+        'altcha-widget',
+      )!;
+    }
+
+    it('shows the widget only for the tourist register', async () => {
+      const widget = await renderFenced();
+      expect(widget).not.toBeNull();
+      await chooseAudience('audience-operator');
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector<FakeAltchaElement>('altcha-widget'),
+      ).toBeNull();
+    });
+
+    it('sends the widget’s solved challenge with the register', async () => {
+      const widget = await renderFenced();
+      widget.solve('solved-payload');
+      await fixture.whenStable();
+      type('auth-identifier', 'ana@example.com');
+      type('auth-password', 'passphrase-123');
+      await submit();
+      expect(customer.register).toHaveBeenCalledWith(
+        'ana@example.com',
+        'passphrase-123',
+        'solved-payload',
+      );
+    });
+
+    it('waits for the solve the focused form started rather than posting ahead of it', async () => {
+      const widget = await renderFenced();
+      expect(widget.verify).toHaveBeenCalledTimes(1);
+      type('auth-identifier', 'ana@example.com');
+      type('auth-password', 'passphrase-123');
+      const submitted = submit();
+      expect(widget.verify).toHaveBeenCalledTimes(1);
+      expect(customer.register).not.toHaveBeenCalled();
+      widget.solve('late-payload');
+      await submitted;
+      expect(customer.register).toHaveBeenCalledWith(
+        'ana@example.com',
+        'passphrase-123',
+        'late-payload',
+      );
+    });
+
+    it('drops the solved challenge when the card changes mode, so a remounted widget starts fresh', async () => {
+      const widget = await renderFenced();
+      widget.solve('old');
+      await fixture.whenStable();
+
+      el('auth-toggle-mode').click();
+      await fixture.whenStable();
+      el('auth-toggle-mode').click();
+      await fixture.whenStable();
+      const remounted = (fixture.nativeElement as HTMLElement).querySelector<FakeAltchaElement>(
+        'altcha-widget',
+      )!;
+      expect(remounted).not.toBe(widget);
+
+      type('auth-identifier', 'ana@example.com');
+      type('auth-password', 'passphrase-123');
+      const submitted = submit();
+      expect(customer.register).not.toHaveBeenCalled();
+      remounted.solve('fresh');
+      await submitted;
+      expect(customer.register).toHaveBeenCalledWith('ana@example.com', 'passphrase-123', 'fresh');
+    });
+
+    it('says why and restarts the widget when the server refuses the challenge', async () => {
+      const widget = await renderFenced();
+      customer.register.mockResolvedValue('challenge-expired');
+      widget.solve('stale');
+      await fixture.whenStable();
+      type('auth-identifier', 'ana@example.com');
+      type('auth-password', 'passphrase-123');
+      const solvesBefore = widget.verify.mock.calls.length;
+      await submit();
+      expect(el('auth-error').textContent).toContain(CHALLENGE_EXPIRED_MESSAGE);
+      expect(widget.reset).toHaveBeenCalledTimes(1);
+      expect(widget.verify).toHaveBeenCalledTimes(solvesBefore + 1);
       expect(navigate).not.toHaveBeenCalled();
     });
   });

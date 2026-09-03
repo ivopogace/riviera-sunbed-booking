@@ -46,6 +46,7 @@
   --color-riv-card-ink: var(--riv-card-ink);
   --color-riv-card-ink-soft: var(--riv-card-ink-soft);
   --color-riv-card-ink-faint: var(--riv-card-ink-faint);
+  --color-riv-on-accent-ink: var(--riv-on-accent-ink);
   --color-riv-accent-ink: var(--riv-accent-ink);
   --color-riv-field-border: var(--riv-field-border);
   --color-riv-field-fill: var(--riv-field-fill);
@@ -254,6 +255,8 @@
   --riv-card-ink-faint: rgba(12, 42, 51, 0.72);
   /* #085a6e (design: #0a6e85): AA for 16px-bold prices on the riviera card glass */
   --riv-accent-ink: #085a6e;
+  /* ink painted ON an --riv-accent-ink fill (the proof-of-work check glyph); moves with the accent */
+  --riv-on-accent-ink: #ffffff;
   /* dark tint (design: white border): input boundary needs 3:1 (WCAG 1.4.11) */
   --riv-field-border: rgba(12, 42, 51, 0.55);
   --riv-field-fill: rgba(255, 255, 255, 0.55);
@@ -914,6 +917,7 @@
   --riv-card-ink-soft: rgba(242, 247, 250, 0.78);
   --riv-card-ink-faint: rgba(242, 247, 250, 0.72);
   --riv-accent-ink: #7cd7e8;
+  --riv-on-accent-ink: #0a2a33;
   --riv-field-border: rgba(255, 255, 255, 0.5);
   --riv-field-fill: rgba(2, 10, 22, 0.45);
   --riv-field-scheme: dark;

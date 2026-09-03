@@ -40,8 +40,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p><strong>The non-vacuity guard is load-bearing</strong> (the {@code MailListenerExecutorArchitectureTest}
  * idiom): a scan that silently found <em>zero</em> {@code @Scheduled} methods would satisfy
- * "pool size ≥ job count" trivially and pass green forever. Naming today's four means a broken scan
- * fails loudly. Adding a fifth job is therefore a two-line edit here — deliberately: the point is
+ * "pool size ≥ job count" trivially and pass green forever. Naming today's jobs means a broken scan
+ * fails loudly. Adding a job is therefore a two-line edit here — deliberately: the point is
  * that a human decides the pool can carry it.
  *
  * <p><strong>The second rule is the one that protects invariant #2.</strong> The instrument this
@@ -66,11 +66,12 @@ class ScheduledWorkArchitectureTest {
 	private static final String GLOBAL_QUERY_TIMEOUT_PROPERTY = "spring.jdbc.template.query-timeout";
 
 	/**
-	 * Today's scheduled jobs. Extending this set is the deliberate cost of adding a fifth job —
+	 * Today's scheduled jobs. Extending this set is the deliberate cost of adding a job —
 	 * it is the moment someone confirms the pool can carry it.
 	 */
 	private static final Set<String> KNOWN_SCHEDULED_JOBS = Set.of(
 			"AbandonedBookingScheduler#sweep",
+			"ChallengeRegistrySweep#sweep",
 			"GuestContactRetentionScheduler#sweep",
 			"MoneyPathAlertCheck#check",
 			"NoShowSweepScheduler#sweep",

@@ -32,6 +32,9 @@ export class CustomerAuthPage {
   /** SSO buttons — present on both the sign-in and register cards. */
   readonly ssoGoogle: Locator;
   readonly ssoApple: Locator;
+  /** The proof-of-work control on the tourist register card, and its assistive-tech status line. */
+  readonly challengeWidget: Locator;
+  readonly challengeStatus: Locator;
 
   constructor(private readonly page: Page) {
     this.signInLink = page.getByTestId('nav-signin');
@@ -47,6 +50,8 @@ export class CustomerAuthPage {
     this.signInSubmit = page.getByRole('button', { name: /^Sign(ing)? in/ });
     this.ssoGoogle = page.getByTestId('sso-google');
     this.ssoApple = page.getByTestId('sso-apple');
+    this.challengeWidget = page.getByTestId('challenge-widget');
+    this.challengeStatus = page.getByTestId('challenge-status');
   }
 
   async gotoRegister(): Promise<void> {

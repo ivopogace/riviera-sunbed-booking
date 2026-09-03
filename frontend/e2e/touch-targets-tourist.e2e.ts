@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { mockCustomerAuthApi } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
 import { openShellOverlay } from './support/shell';
 import { expectTouchTargets } from './support/touch-targets';
@@ -154,6 +155,14 @@ test.describe('44px touch targets on the tourist surfaces at a phone width', () 
     await expect(page.getByLabel('Email', { exact: true })).toBeVisible();
 
     await expectTouchTargets(page, 'sign-in card');
+  });
+
+  test('the tourist register card with the proof-of-work widget', async ({ page }) => {
+    await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
+    await page.goto('/account/sign-in?mode=register');
+    await expect(page.getByTestId('challenge-widget').getByRole('checkbox')).toBeVisible();
+
+    await expectTouchTargets(page, 'tourist register card');
   });
 
   test('forgot password', async ({ page }) => {

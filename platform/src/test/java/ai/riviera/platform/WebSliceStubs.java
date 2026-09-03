@@ -266,6 +266,34 @@ class WebSliceStubs {
 	}
 
 	/**
+	 * The proof-of-work registry the web slices verify against: the same claim-once contract as the
+	 * Postgres adapter, held in a map, so {@code ChallengeVerificationFilterTest} can prove a replay
+	 * loses without a database.
+	 */
+	@Bean
+	ChallengeRegistry challengeRegistry() {
+		return new InMemoryChallengeRegistry();
+	}
+
+	static final class InMemoryChallengeRegistry implements ChallengeRegistry {
+
+		private final java.util.concurrent.ConcurrentMap<String, Instant> claimed =
+				new java.util.concurrent.ConcurrentHashMap<>();
+
+		@Override
+		public boolean claim(String challengeId, Instant expiresAt) {
+			return claimed.putIfAbsent(challengeId, expiresAt) == null;
+		}
+
+		@Override
+		public int deleteExpiredBefore(Instant cutoff) {
+			int before = claimed.size();
+			claimed.values().removeIf(expiresAt -> expiresAt.isBefore(cutoff));
+			return before - claimed.size();
+		}
+	}
+
+	/**
 	 * [D5] right-to-erasure port that {@code MyErasureController} + {@code AdminErasureController}
 	 * register with. Inert (nothing to erase): the shared web slices never drive a real erasure, so a
 	 * {@code NOT_FOUND} is enough for the context to load. {@code MeErasureControllerTest} /
