@@ -207,9 +207,9 @@ No deviation.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `review gate — PR #910 ready for review`
 
-**Next action:** phase 4 — run the touched mocked e2e specs (`customer-auth`, `unified-auth`, `customer-password`, `password-reset`, `operator-password`, `email-verification`) against Chromium, then phase 5.
+**Next action:** run the SDLC review gate (`/code-review` + `riviera-review-overlay`) on PR #910, then the Sonar gate, then the merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -217,8 +217,8 @@ No deviation.
 | 1 — the six endpoints wired with context + ITs + IT fixtures | ✅ | phase-1 commit |
 | 2 — bootstrap initializer floor, dev default, backend docs | ✅ | phase-2 commit |
 | 3 — frontend shared policy, core mappings, five screens + specs | ✅ | phase-3 commit |
-| 4 — mocked e2e mocks/fixtures, real-backend check, D-8 status line | ⏳ | |
-| 5 — merge `origin/main`, ready-for-review, gates | | |
+| 4 — mocked e2e mocks/fixtures, real-backend check, D-8 status line | ✅ | phase-4 commit + the e2e fixture fix |
+| 5 — merge `origin/main`, ready-for-review, gates | ⏳ | `origin/main` unchanged since branch-off (no merge needed); PR #910 ready |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -286,7 +286,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/auth/set-password.ts` · `frontend/src/app/auth/set-password.spec.ts`
 - `frontend/src/app/auth/operator-password.ts` · `frontend/src/app/auth/operator-password.spec.ts`
 - `frontend/e2e/support/auth-mocks.ts` — the mock server enforces 12–72 + the blocklist code
-- `frontend/e2e/customer-auth.e2e.ts` · `frontend/e2e/unified-auth.e2e.ts` · `frontend/e2e/email-verification.e2e.ts` · `frontend/e2e/cta-border-token-skin.e2e.ts` — register fixtures → 12+
+- `frontend/e2e/customer-auth.e2e.ts` · `frontend/e2e/unified-auth.e2e.ts` · `frontend/e2e/email-verification.e2e.ts` · `frontend/e2e/cta-border-token-skin.e2e.ts` · `frontend/e2e/operator-registration.e2e.ts` · `frontend/e2e/fixed-fill-state-skins.e2e.ts` — register fixtures → 12+, clear of the account name
 - `frontend/e2e/customer-password.e2e.ts` · `frontend/e2e/password-reset.e2e.ts` · `frontend/e2e/operator-password.e2e.ts` — the rule's copy + a blocklist render
 
 **Docs**
@@ -341,7 +341,7 @@ Modify `ApiErrorHandler.java`, `ApiErrorHandlerTest.java` · Delete `CustomerPas
 
 - [ ] Load `playwright-cli`. Mocks enforce 12–72 + the blocklist code; fixtures ≥ 12; a blocklist render in `customer-password.e2e.ts`.
 - [ ] `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts <touched specs>`.
-- [ ] Real-backend: `OPERATOR_PASSWORD = 'e2e-operator-secret'` (19, no blocked term) — no change; recorded.
+- [x] Real-backend: `OPERATOR_PASSWORD = 'e2e-operator-secret'` (19 characters) — no change: it is the bootstrap credential, which the initializer holds to the length rule only, so the `operator` it contains is not a blocked term there.
 - [ ] Commit — `Move the mocked auth e2e to 12-character passwords (#904)`
 
 ## Phase 5 — merge `origin/main`, ready-for-review, gates
@@ -354,6 +354,7 @@ Modify `ApiErrorHandler.java`, `ApiErrorHandlerTest.java` · Delete `CustomerPas
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-03 | phase 4 (e2e fixtures) | every mocked e2e spec that chooses a password (register on either side, set, reset, operator change) whose fixture the client-side check now rejects | `grep -rn "auth-password\|oppw-new\|setpw-new\|reset-password\|password:" frontend/e2e/*.e2e.ts` then judged each literal against its username / email local part | `brand-new-operator-pw` (username `operator`), `newop-pw-123` ×2 (username `newop`), `password123` ×4 files, `short` | moved to 12+ characters clear of the account name; sign-in-only fixtures (`pw`, `good-pw`, `admin-pw`) kept — the mock never policy-checks a login |
 | 2026-09-03 | phase 1 (fixtures) | every test that boots the bootstrap admin, and every test that hits a password-accepting route | `grep -rhoE "riviera\.operator\.password=[^\",} ]+" platform/src/test` (9 distinct values, 3 under 12) · `grep -rlE "auth/(customer\|operator)/register\|reset-password\|/api/me/password\|/api/auth/operator/password" platform/src/test` (19 files) | `admin-pw` ×3; `password123` ×7, `plain-op-pw`, `revoke-pw`, `op-password`, `pw-persist`, `pw`, `dave-pw`; `reject-target-pw-1` (contained its username) | all moved to ≥ 12 characters not containing the account name; store-provisioned sign-in fixtures (`pw-a` in `AuthSessionIT`, `MyBookingsIT`) deliberately kept — they pin that the floor never applies at sign-in |
 | 2026-09-03 | phase 0 (rename) | every reference to the old helper name, in code, tests, mocks and docs | `grep -rn "CustomerPasswords" platform frontend docs RESPONSIBILITIES.md CONTEXT.md .claude` | 4 controllers + `SetPasswordIT` Javadoc (Java); `operator-auth.ts:45`, `auth-mocks.ts:80` (TS comments) | Java sites renamed in phase 0; the two TS comments are rewritten in phases 3/4 where those files change anyway |
 
@@ -361,8 +362,8 @@ Modify `ApiErrorHandler.java`, `ApiErrorHandlerTest.java` · Delete `CustomerPas
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-7:** scoped `gradle test --tests` runs per class + CI full suite. Verified at commit `<sha>`.
-- [ ] **AC-8:** `npm test` + the touched mocked e2e specs. Verified at commit `<sha>`.
+- [x] **AC-1..AC-7:** 25 scoped `gradle test --tests` classes, all `skipped=0 failures=0` locally (`PasswordPolicyTest`, `ApiErrorHandlerTest`, the six surface ITs/unit tests, `CustomerLoginIT`, `OperatorCredentialInitializerTest`, `DevProfileBootstrapCredentialTest`, the fixture ITs) + the structural net; CI full suite on the PR head.
+- [x] **AC-8:** `npm test` (218 files, 2446 tests) + the touched mocked e2e specs (32 + 31 cases across `customer-auth`, `unified-auth`, `customer-password`, `password-reset`, `operator-password`, `email-verification`, `operator-registration`, `cta-border-token-skin`, `fixed-fill-state-skins`) against Chromium. Verified at the phase-4 fixture-fix commit.
 - [ ] **AC-9:** review + docs-freshness at close-out.
 
 ## Self-review checklist (before merge / PR)

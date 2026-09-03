@@ -301,7 +301,7 @@ for (const theme of ['porcelain', 'dark'] as const) {
       await page.goto('/operator/register');
       await page.getByLabel('Username', { exact: true }).fill('newop');
       await page.getByLabel('Contact email', { exact: true }).fill('newop@venue.example');
-      await page.getByLabel('Password', { exact: true }).fill('newop-pw-123');
+      await page.getByLabel('Password', { exact: true }).fill('fresh-venue-pw-1');
       await page.getByRole('button', { name: /^(Request account|Submitting)/ }).click();
 
       const card = page.getByTestId('auth-pending');
