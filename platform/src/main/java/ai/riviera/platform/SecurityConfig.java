@@ -35,6 +35,7 @@ import org.springframework.session.web.http.CookieSerializer;
 import org.springframework.session.web.http.DefaultCookieSerializer;
 import org.springframework.web.filter.CorsFilter;
 
+import ai.riviera.platform.challenge.api.ProofOfWorkChallenges;
 import ai.riviera.platform.customer.api.CustomerAccounts;
 import ai.riviera.platform.operator.api.OperatorAccounts;
 
@@ -52,7 +53,7 @@ import ai.riviera.platform.operator.api.OperatorAccounts;
 @Configuration
 @EnableWebSecurity
 @EnableConfigurationProperties({RivieraOperatorProperties.class, RateLimitProperties.class,
-		RecoveryProperties.class, AltchaProperties.class})
+		RecoveryProperties.class})
 class SecurityConfig {
 
 	/** The single role that gates the operator write surface. */
@@ -242,7 +243,7 @@ class SecurityConfig {
 	 * The proof-of-work challenge the widget fetches before a fenced write: anonymous by definition
 	 * (the solution, not a session, is what the fence checks), on its own rate-limit budget.
 	 */
-	private static final String CHALLENGE_PATH = ChallengeController.PATH;
+	private static final String CHALLENGE_PATH = "/api/auth/challenge";
 	/**
 	 * The signed-in tourist's own surface — my-bookings, set-password + verification-resend,
 	 * self-service erasure. {@code CUSTOMER}-only, and deliberately <strong>method-agnostic</strong>:
@@ -530,13 +531,4 @@ class SecurityConfig {
 		return new OperatorUserDetailsService(accounts);
 	}
 
-	/**
-	 * One issuer/verifier for the challenge endpoint and the verification filter; the registry adapter
-	 * is the only Postgres-backed collaborator, which is what the web slices substitute.
-	 */
-	@Bean
-	ProofOfWorkChallenges proofOfWorkChallenges(AltchaProperties altchaProperties, Clock clock,
-			ChallengeRegistry challengeRegistry) {
-		return new ProofOfWorkChallenges(altchaProperties, clock, challengeRegistry);
-	}
 }

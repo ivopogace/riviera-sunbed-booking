@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.challenge.adapter.in;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -10,6 +10,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
+
+import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.TestcontainersConfiguration;
+import ai.riviera.platform.challenge.application.AltchaProperties;
+import ai.riviera.platform.challenge.application.ChallengeRegistry;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

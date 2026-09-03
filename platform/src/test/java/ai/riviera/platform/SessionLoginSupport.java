@@ -5,6 +5,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import ai.riviera.platform.challenge.ChallengeSolving;
+
 import jakarta.servlet.http.Cookie;
 
 import java.util.concurrent.atomic.AtomicInteger;

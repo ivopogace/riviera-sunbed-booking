@@ -1,4 +1,4 @@
-package ai.riviera.platform;
+package ai.riviera.platform.challenge.application;
 
 import java.time.Duration;
 

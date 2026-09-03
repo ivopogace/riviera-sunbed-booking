@@ -1,14 +1,15 @@
-package ai.riviera.platform;
+package ai.riviera.platform.challenge.application;
 
 import java.time.Instant;
 
 /**
  * The proof-of-work challenge's single-use registry: each solved challenge is accepted exactly once,
- * enforced by the database rather than process memory (ADR-0016). Implemented on
- * {@code challenge_registry} by {@link JdbcChallengeRegistry}; the web slices substitute an
- * in-memory fake.
+ * enforced by the database rather than process memory (ADR-0016). The module's own outbound port:
+ * only {@code adapter.out.JdbcChallengeRegistry} implements it, on {@code challenge_registry}, so it
+ * is deliberately unpublished — neither {@code api} (nobody outside calls it) nor {@code spi} (no
+ * other module implements it). Public only because its adapter and its sweep sit in sibling packages.
  */
-interface ChallengeRegistry {
+public interface ChallengeRegistry {
 
 	/**
 	 * Claim {@code challengeId} for this one submission. {@code true} only if this call inserted the

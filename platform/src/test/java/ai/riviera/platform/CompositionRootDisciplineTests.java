@@ -43,9 +43,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>The grant is by <em>surface</em>, not merely by module: the root may reach the published
  * {@code api}/{@code vocabulary} of the two principal-type modules, {@code notification}'s
- * {@code api} alone, and the flat {@code shared} kernel — never any module's {@code application},
- * {@code domain} or {@code adapter} internals, and never {@code spi} (an "implement-me" port; the
- * root implements nothing for a module).
+ * {@code api} alone, the {@code challenge} mechanism's {@code api} + {@code vocabulary}, and the flat
+ * {@code shared} kernel — never any module's {@code application}, {@code domain} or {@code adapter}
+ * internals, and never {@code spi} (an "implement-me" port; the root implements nothing for a module).
  *
  * <p><strong>The edge runs both ways.</strong> The first rule bounds what the root may reach; the
  * second bounds what may reach the root — no class inside a module may depend on a type sitting
@@ -80,6 +80,7 @@ class CompositionRootDisciplineTests {
 			"customer", Set.of("api", "vocabulary"),
 			"operator", Set.of("api", "vocabulary"),
 			"notification", Set.of("api"),
+			"challenge", Set.of("api", "vocabulary"),
 			"shared", Set.of(MODULE_ROOT_SURFACE));
 
 	@Test
