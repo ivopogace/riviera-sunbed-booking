@@ -32,6 +32,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>What a real challenge <em>contains</em> — the algorithm, the cost, the clock-derived expiry and
  * the signature — is the module's own contract ({@code AltchaProofOfWorkChallengesTest}); this slice
  * runs against the stub port.
+ *
+ * <p><strong>This test is also the lockstep pin for the route's three literals.</strong> The
+ * {@code challenge} module owns the mapping, and the root names the same path independently in
+ * {@code SecurityConfig} ({@code permitAll}) and {@code RateLimitFilter} (the budget), because it may
+ * not reach a module's adapter internals. Nothing links them at compile time — these three cases do:
+ * rename the module's route and the anonymous {@code 200} and the dedicated budget both go red here.
  */
 @WebMvcTest
 @Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})

@@ -127,7 +127,11 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final String SSO_AUTHORIZE_TEMPLATE = "/api/auth/sso/{provider}/authorize";
 	private static final String SSO_CALLBACK_TEMPLATE = "/api/auth/sso/{provider}/callback";
 
-	/** The proof-of-work challenge GET, on its own budget so a challenge flood never starves a login. */
+	/**
+	 * The proof-of-work challenge GET, on its own budget so a challenge flood never starves a login.
+	 * The {@code challenge} module owns the route; {@code ChallengeEndpointTest} keeps this literal in
+	 * lockstep with it.
+	 */
 	private static final String CHALLENGE_PATH = "/api/auth/challenge";
 
 	/**

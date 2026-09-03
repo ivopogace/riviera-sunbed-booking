@@ -246,10 +246,10 @@ N/A — no contract change. `GET /api/auth/challenge`, `X-Altcha-Payload`, `CHAL
 
 ## Execution status
 
-**Stage pointer:** `PR #916 ready for review — review gate next`
+**Stage pointer:** `review gate run — 4 findings fixed, awaiting CI + the Sonar gate`
 
-**Next action:** Run the review gate per `riviera-sdlc` `references/pr-gates.md` §1 with
-`riviera-review-overlay` layered on, then the Sonar gate once CI has analysed the PR.
+**Next action:** Confirm CI green on the fix-round head, then pull the SonarCloud new-issue +
+duplication list for PR #916 and clear every entry.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -265,7 +265,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| | | *(none yet)* | |
+| F-1 | CI (Backend, `175ac3f`) | `PayoutModuleTest` failed with `NoSuchBeanDefinitionException`. `@ApplicationModuleTest` bootstraps its module plus the **root package's** beans; `SecurityConfig`'s filter chain now needs `ProofOfWorkChallenges`, which lives in a module that payout-isolation does not bootstrap — the identical isolation story the file already documents for the two `shared` principal accessors | fixed — `@MockitoBean ProofOfWorkChallenges` added; `PayoutModuleTest` 2/2 green locally |
+| F-2 | review gate (comment-guidance agent) | `ChallengeConfig`'s Javadoc said "the composition root **that used to** enable it" — `riviera-java-conventions` §6d lists "used to…" as forbidden decision-history in Javadoc | fixed — replaced with a `RESPONSIBILITIES.md` § `challenge` pointer |
+| F-3 | review gate (git-history agent) | #911 deliberately wrote `SecurityConfig.CHALLENGE_PATH = ChallengeController.PATH` so the security matcher and the rate-limit budget could not drift from the mapped route. The move breaks that compile-time link — three unlinked literals | fixed by documenting, not by a new test: the guarantee is **not** gone, it changed form. Falsified to be sure — renaming the module's `PATH` to `/api/auth/pow` turns all three `ChallengeEndpointTest` cases red (the anonymous `200` proves `SecurityConfig`'s literal, the `429` proves `RateLimitFilter`'s). A string-equality arch test would be strictly weaker than that, so the fix is to write the pin down at all three sites instead |
+| F-4 | review gate (git-history agent) | The assertion message on the new module→root rule cited `(#382/#386)`, the issues behind the *root-discipline* rule, not this one | fixed — citation dropped rather than mis-attributed |
 
 ---
 
@@ -304,6 +307,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/main/java/ai/riviera/platform/SecurityProblemResponses.java` — Javadoc only, if a moved test name needs re-pointing
 - `platform/src/main/java/ai/riviera/platform/ScheduledQueryTimeout.java` — Javadoc, docs-freshness finding D-1
 - `platform/src/main/java/ai/riviera/platform/shared/package-info.java` — Javadoc + grant comment, docs-freshness finding D-2
+- `platform/src/test/java/ai/riviera/platform/payout/PayoutModuleTest.java` — mocks the module port for isolation (finding F-1)
 
 **Created — tests**
 
@@ -508,6 +512,7 @@ narrative about a past commit; `docs/deploy/production-hardening.md`'s `RIVIERA_
 | 2026-09-03 | phase 1 — the move | every production class outside the new module whose source still names the challenge (the mechanism, not PKCE's `SsoAuthorizationChallenge`) | `grep -rln -iE 'challenge\|altcha' --include=*.java . --exclude-dir=challenge --exclude-dir=<each module>` over `platform/src/main/java/ai/riviera/platform` | 13 files: the six SSO classes (PKCE's unrelated "challenge" — untouched), and `SecurityConfig`, `RateLimitFilter`, `RateLimitProperties`, `SecurityProblemResponses`, `ChallengeVerificationFilter` | exactly the intended fence set, plus `RateLimitProperties` which holds the budget `RateLimitFilter` spends — the same edge responsibility, one file further out. A second sweep for module-owned identifiers (`ProofOfWorkChallenges\|ChallengeVerdict\|ChallengeRegistry\|AltchaProperties\|ChallengeController`) outside the module returns only the granted `challenge.api` port in `SecurityConfig` and `ChallengeVerificationFilter` |
 | 2026-09-03 | phase 2 — a fifth sole-writer rule | every table or column set `RESPONSIBILITIES.md` claims a sole writer for, and whether each claim is machine-checked | `grep -n -iE 'only writer\|sole.writer' RESPONSIBILITIES.md` | four claims, all already checked (`set_availability`, the `review` table, `rating_tenths`/`reviews_count`) plus the new `challenge_registry` | nothing left unguarded — the sweep's real finding is that the *evidence table* at `RESPONSIBILITIES.md` line ~965 lists one row per machine-checked claim, so `challenge_registry` needs a row there; folded into phase 4 |
 | 2026-09-03 | phase 3 — a scheduled entry statement was never bound-checked | every `@Scheduled` method in production and whether its entry statement appears in `everyScheduledEntryQueryIsBounded` | `grep -rl '@Scheduled' platform/src/main/java --include=*.java` then the entry method of each | 6 jobs: `AbandonedBookingScheduler#sweep`, `RequestSweepScheduler#sweep`, `GuestContactRetentionScheduler#sweep`, `NoShowSweepScheduler#sweep`, `MoneyPathAlertCheck#check`, `ChallengeRegistrySweep#sweep` | the challenge sweep was the only one absent from the assertion list (its bound existed, the regression net did not); the alert check has its own case above it. Six jobs, six covered — the gap the sweep found is closed, and `ScheduledWorkArchitectureTest`'s `KNOWN_SCHEDULED_JOBS` already listed all six |
+| 2026-09-03 | phase 5 — F-1, a root-edge bean moved into a module | every test that bootstraps a PARTIAL Spring context including the root edge, where a root bean's move out of the root package can break wiring | `grep -rlE '@ApplicationModuleTest\|@WebMvcTest' platform/src/test/java` then, for each, whether it imports `WebSliceStubs` | 34 files; 31 are `@WebMvcTest`s served by `WebSliceStubs` (which now supplies the stub port), and of the three that do not import it, `ReviewSubmitFlowIT` and `OperatorPasswordChangeIT` are full `@SpringBootTest` contexts that bootstrap the module for real | `PayoutModuleTest` was the population's only member needing a fix, and it is the repo's only `@ApplicationModuleTest`. Fixed and re-run green |
 
 ---
 

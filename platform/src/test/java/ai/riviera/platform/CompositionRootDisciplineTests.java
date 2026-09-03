@@ -197,8 +197,8 @@ class CompositionRootDisciplineTests {
 					violations.add(type.getName() + " depends on " + target.getName()
 							+ " — a class inside a module may not reach a type sitting directly in "
 							+ base + ". Modules depend on shared, the root depends on modules, and "
-							+ "nothing depends on the root; move the type to shared or into the module "
-							+ "(#382/#386), never grant an exception here.");
+							+ "nothing depends on the root; move the type to shared or into the module, "
+							+ "never grant an exception here.");
 				}
 			}
 		}

@@ -18,6 +18,7 @@ import ai.riviera.platform.booking.api.DailyTakings;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+import ai.riviera.platform.challenge.api.ProofOfWorkChallenges;
 import ai.riviera.platform.customer.api.AccountErasure;
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
 import ai.riviera.platform.customer.api.CustomerAccountProvisioning;
@@ -133,6 +134,10 @@ class PayoutModuleTest {
 	// AccountErasure (right-to-erasure) — same isolation story, so it is mocked here too.
 	@MockitoBean
 	AccountErasure accountErasure;
+
+	// The root edge's fence calls challenge::api, a module bean — same isolation story as the two above.
+	@MockitoBean
+	ProofOfWorkChallenges challenges;
 
 	// Root-edge CustomerRecovery needs notification::api's MailSender — same isolation story.
 	@MockitoBean

@@ -7,8 +7,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import ai.riviera.platform.challenge.application.AltchaProperties;
 
 /**
- * Binds {@link AltchaProperties}, keeping the configuration type at the module's own edge rather
- * than at the composition root that used to enable it (the {@code CustomerRetentionConfig} pattern).
+ * Binds {@link AltchaProperties} at the module's own edge (the {@code CustomerRetentionConfig}
+ * pattern). Rationale: {@code RESPONSIBILITIES.md} § {@code challenge}.
  *
  * <p>{@code @EnableScheduling} is declared here so the module's sweep is self-sufficient rather than
  * relying on another module's config being loaded; the annotation is idempotent across configurations.

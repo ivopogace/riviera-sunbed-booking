@@ -241,7 +241,9 @@ class SecurityConfig {
 	private static final String CUSTOMER_REGISTER_PATH = "/api/auth/customer/register";
 	/**
 	 * The proof-of-work challenge the widget fetches before a fenced write: anonymous by definition
-	 * (the solution, not a session, is what the fence checks), on its own rate-limit budget.
+	 * (the solution, not a session, is what the fence checks), on its own rate-limit budget. The route
+	 * belongs to the {@code challenge} module, so the root names it by its own literal like every other
+	 * module-owned endpoint; {@code ChallengeEndpointTest} is what keeps the two in lockstep.
 	 */
 	private static final String CHALLENGE_PATH = "/api/auth/challenge";
 	/**
