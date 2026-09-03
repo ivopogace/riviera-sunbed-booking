@@ -165,7 +165,7 @@ deploy, so no existing credential needs a migration path:
   outcome as an empty value (admin login disabled) — never a boot failure.
 - **Not adopted, deliberately:** a breached-password check (Spring Security's
   `HaveIBeenPwnedRestApiPasswordChecker`; evaluated in
-  `research/2026-09-03-altcha-proof-of-work-and-replay-registry.md` § 5). It would put an
+  `docs/research/2026-09-03-altcha-proof-of-work-and-replay-registry.md` § 5). It would put an
   external call in the credential path; the epic keeps that path self-contained. Revisit if the
   per-identity login throttle shows credential-stuffing patterns. Also deferred: a client-side
   strength meter, re-checking passwords at sign-in, and any lockout policy.

@@ -8,7 +8,7 @@
   posture: no third-country processor where an EU-only or self-hosted option exists), invariant
   #12 (the registry table is a Flyway migration), RV-BE-11 (login and abuse machinery live at the
   platform edge, never in a module). Evidence:
-  `docs/architecture/research/2026-09-03-altcha-proof-of-work-and-replay-registry.md`.
+  `docs/research/2026-09-03-altcha-proof-of-work-and-replay-registry.md`.
 
 ## Context
 
