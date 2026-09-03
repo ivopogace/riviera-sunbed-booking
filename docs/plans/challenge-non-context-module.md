@@ -148,7 +148,7 @@ adapter, a hypothetical seam, so it is neither `api` nor `spi`).
 | R-4 | The module ends up depending on the root (`ScheduledQueryTimeout`, `Clock`) and `verify()` or the new rule fails | med | high | `JdbcChallengeRegistry` swaps to `@Value("${riviera.scheduled.query-timeout-seconds}")` (the `JdbcBookings` / `JdbcAccountErasure` precedent) in the same phase as the move; `Clock` is `java.time`, not a root type | claude | **closed** — `@Value` swap landed with the move; net green |
 | R-5 | `@WebMvcTest` no longer binds `AltchaProperties` once `SecurityConfig` stops enabling it, so a slice silently loses its kill switch | med | med | the slice no longer needs the properties at all — it fakes the port; the switch is driven by `@Value` on the stub (ledger row 2) | claude | **closed** — `AltchaDisabledTest` green, unchanged |
 | R-6 | The scheduled-work and endpoint-gate nets pass for the wrong reason after the move | low | high | both key on simple names / paths the move keeps (verified: `KNOWN_SCHEDULED_JOBS` holds `"ChallengeRegistrySweep#sweep"`, `DECLARED_REACHABLE` holds `"GET /api/auth/challenge"`); AC-12 requires both files to be **unchanged** in the diff | claude | open |
-| R-7 | A green `ScheduledQueryTimeoutIT` entry proves nothing (it is green on arrival — the bound already exists) | med | med | falsify by hand: temporarily drop the bounded client in `JdbcChallengeRegistry`, watch the new assertion fail, restore; record the falsification in the phase | claude | open |
+| R-7 | A green `ScheduledQueryTimeoutIT` entry proves nothing (it is green on arrival — the bound already exists) | med | med | falsify by hand: temporarily drop the bounded client in `JdbcChallengeRegistry`, watch the new assertion fail, restore; record the falsification in the phase | claude | **closed** — falsified in phase 2 of this phase's steps |
 | R-8 | Sonar counts the moved code as new code and reports it uncovered or duplicated | med | med | the tests move with their subject, so coverage moves too; the moved bodies are byte-identical to `main`, and the one genuinely new block (the stub port) is exercised by three slices | claude | open |
 | R-9 | Flyway version collision with in-flight work | none | — | no migration in this slice; and there are zero open PRs on the repo at plan time | claude | closed — N/A |
 
@@ -245,17 +245,17 @@ N/A — no contract change. `GET /api/auth/challenge`, `X-Altcha-Payload`, `CHAL
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 2 done, entering phase 3`
+**Stage pointer:** `implement — phase 3 done, entering phase 4 (docs)`
 
-**Next action:** Phase 3 — add the challenge sweep's `DELETE` to
-`ScheduledQueryTimeoutIT.everyScheduledEntryQueryIsBounded` and falsify it by unbinding the client.
+**Next action:** Phase 4 — apply the issue's verbatim substrate-doc edits, run
+`riviera-docs-freshness` over `origin/main..HEAD`, retire the spine plan, point ADR-0017 at PR #916.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the module→root fitness function | ✅ | (this phase's commit) |
 | 1 — the move (module in, fence stays, tests relocated) | ✅ | (this phase's commit) |
 | 2 — `challenge_registry` sole-writer rule | ✅ | (this phase's commit) |
-| 3 — the sweep's `DELETE` joins the bounded-entry list | | |
+| 3 — the sweep's `DELETE` joins the bounded-entry list | ✅ | (this phase's commit) |
 | 4 — docs, ADR-0017 status, plan retirement | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -444,17 +444,17 @@ files · the relocated + rewritten tests · `CompositionRootDisciplineTests` (gr
 This entry is **green on arrival** — the bound already exists — so it is a regression net, not a bug
 fix, and TDD's red step is replaced by an explicit falsification (R-7). Say so in the commit body.
 
-- [ ] **Step 1: Add the assertion** — autowire `challenge.application.ChallengeRegistry`, add
+- [x] **Step 1: Add the assertion** — autowire `challenge.application.ChallengeRegistry`, add
   `assertBounded("the challenge sweep's expired-row DELETE", readWhileLocked("challenge_registry",
   () -> registry.deleteExpiredBefore(now)))` to `everyScheduledEntryQueryIsBounded` (AC-6).
-- [ ] **Step 2: Falsify it** — temporarily point `deleteExpiredBefore` at the shared client in
-  `JdbcChallengeRegistry`, run `./gradlew test --tests "*ScheduledQueryTimeoutIT*"` → FAIL ("still
-  blocked after PT15S"), then restore. Record the observed failure message here.
-- [ ] **Step 3: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 4: Generalization-audit pass** — population: every `@Scheduled` job's entry statement.
-  Enumerate against `KNOWN_SCHEDULED_JOBS` and record below.
-- [ ] **Step 5: Commit** — `git commit -m "Bound-check the challenge sweep's DELETE in ScheduledQueryTimeoutIT (#913)"`
-- [ ] **Step 6: Update plan-doc execution status** in the same commit window.
+- [x] **Step 2: Falsify it** — pointing `deleteExpiredBefore` at the shared client makes
+  `everyScheduledEntryQueryIsBounded()` fail with `the read on challenge_registry was still blocked
+  after PT15S — it is unbounded, so a wedged query would pin this scheduled job's thread and
+  connection indefinitely (#395)`; restored → 2 tests, none skipped, PASS.
+- [x] **Step 3: Run it, verify it passes** — same command → PASS.
+- [x] **Step 4: Generalization-audit pass** — recorded below.
+- [x] **Step 5: Commit** — `git commit -m "Bound-check the challenge sweep's DELETE in ScheduledQueryTimeoutIT (#913)"`
+- [x] **Step 6: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -490,6 +490,7 @@ fix, and TDD's red step is replaced by an explicit falsification (R-7). Say so i
 | 2026-09-03 | phase 0 — a new module/root direction rule | every fitness function that classifies a type as root-vs-module via the shared package arithmetic | `grep -rln 'moduleOf(' platform/src/test/java/ai/riviera/platform/` | `CompositionRootDisciplineTests`, `ResponsibilitiesArchitectureTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `ArchitectureTestSupport` | the new rule goes in `CompositionRootDisciplineTests` (the only one about the root↔module *edge*); the other three classify placement, not direction, and need nothing. No new arithmetic — `moduleOf`/`isPackageInfo` reused, so `ArchitectureTestSupport` is untouched |
 | 2026-09-03 | phase 1 — the move | every production class outside the new module whose source still names the challenge (the mechanism, not PKCE's `SsoAuthorizationChallenge`) | `grep -rln -iE 'challenge\|altcha' --include=*.java . --exclude-dir=challenge --exclude-dir=<each module>` over `platform/src/main/java/ai/riviera/platform` | 13 files: the six SSO classes (PKCE's unrelated "challenge" — untouched), and `SecurityConfig`, `RateLimitFilter`, `RateLimitProperties`, `SecurityProblemResponses`, `ChallengeVerificationFilter` | exactly the intended fence set, plus `RateLimitProperties` which holds the budget `RateLimitFilter` spends — the same edge responsibility, one file further out. A second sweep for module-owned identifiers (`ProofOfWorkChallenges\|ChallengeVerdict\|ChallengeRegistry\|AltchaProperties\|ChallengeController`) outside the module returns only the granted `challenge.api` port in `SecurityConfig` and `ChallengeVerificationFilter` |
 | 2026-09-03 | phase 2 — a fifth sole-writer rule | every table or column set `RESPONSIBILITIES.md` claims a sole writer for, and whether each claim is machine-checked | `grep -n -iE 'only writer\|sole.writer' RESPONSIBILITIES.md` | four claims, all already checked (`set_availability`, the `review` table, `rating_tenths`/`reviews_count`) plus the new `challenge_registry` | nothing left unguarded — the sweep's real finding is that the *evidence table* at `RESPONSIBILITIES.md` line ~965 lists one row per machine-checked claim, so `challenge_registry` needs a row there; folded into phase 4 |
+| 2026-09-03 | phase 3 — a scheduled entry statement was never bound-checked | every `@Scheduled` method in production and whether its entry statement appears in `everyScheduledEntryQueryIsBounded` | `grep -rl '@Scheduled' platform/src/main/java --include=*.java` then the entry method of each | 6 jobs: `AbandonedBookingScheduler#sweep`, `RequestSweepScheduler#sweep`, `GuestContactRetentionScheduler#sweep`, `NoShowSweepScheduler#sweep`, `MoneyPathAlertCheck#check`, `ChallengeRegistrySweep#sweep` | the challenge sweep was the only one absent from the assertion list (its bound existed, the regression net did not); the alert check has its own case above it. Six jobs, six covered — the gap the sweep found is closed, and `ScheduledWorkArchitectureTest`'s `KNOWN_SCHEDULED_JOBS` already listed all six |
 
 ---
 

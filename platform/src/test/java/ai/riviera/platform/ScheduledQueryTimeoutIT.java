@@ -26,6 +26,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataAccessException;
 
 import ai.riviera.platform.booking.application.Bookings;
+import ai.riviera.platform.challenge.application.ChallengeRegistry;
 import ai.riviera.platform.customer.application.AccountErasureStore;
 import ai.riviera.platform.customer.spi.GuestBookingHistory;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
@@ -64,7 +65,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * the second. The no-show sweep has no candidate read at all: its entry statement <em>is</em> its
  * write, a single guarded bulk {@code UPDATE}, and it is bounded on the same client for the same
  * reason. What the rule tracks is each job's first statement, whatever its shape — walk each job's call
- * graph down to its first database round-trip.
+ * graph down to its first database round-trip. The challenge sweep is a third shape again: it takes
+ * no candidate read and its entry statement is an unguarded {@code DELETE} of already-expired rows,
+ * bounded on the same client for the same reason.
  *
  * <p><strong>The lower bound is the non-vacuity guard.</strong> Asserting only "finished within 15 s"
  * would also pass if the read never touched the locked table at all — a test that proves nothing
@@ -105,6 +108,9 @@ class ScheduledQueryTimeoutIT {
 
 	@Autowired
 	AccountErasureStore erasure;
+
+	@Autowired
+	ChallengeRegistry challengeRegistry;
 
 	@Autowired
 	GuestBookingHistory guestBookingHistory;
@@ -150,6 +156,8 @@ class ScheduledQueryTimeoutIT {
 								SOME_CUTOFF)));
 		assertBounded("the no-show sweep's guarded batch UPDATE",
 				readWhileLocked("booking", () -> bookings.markPastConfirmedAsNoShow(BEFORE_ANY_BOOKING, 1)));
+		assertBounded("the challenge sweep's expired-row DELETE",
+				readWhileLocked("challenge_registry", () -> challengeRegistry.deleteExpiredBefore(now)));
 	}
 
 	private static void assertBounded(String what, Outcome outcome) {
