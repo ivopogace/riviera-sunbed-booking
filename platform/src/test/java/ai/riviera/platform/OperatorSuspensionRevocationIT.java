@@ -49,7 +49,7 @@ class OperatorSuspensionRevocationIT {
 	private static final String BOOTSTRAP_ADMIN = "operator";
 	private static final String BOOTSTRAP_PASSWORD = "bootstrap-pw";
 	private static final String TARGET = "revoke-target";
-	private static final String TARGET_PASSWORD = "revoke-pw";
+	private static final String TARGET_PASSWORD = "revoke-pw-12345";
 	private static final String ME_PATH = "/api/auth/me";
 
 	@Autowired

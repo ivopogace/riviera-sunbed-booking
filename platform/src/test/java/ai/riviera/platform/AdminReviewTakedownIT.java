@@ -49,7 +49,7 @@ class AdminReviewTakedownIT {
 	private static final String ADMIN = "operator";
 	private static final String ADMIN_PW = "review-admin-pw";
 	private static final String PLAIN_OPERATOR = "review-takedown-plain-op";
-	private static final String PLAIN_OPERATOR_PW = "plain-op-pw";
+	private static final String PLAIN_OPERATOR_PW = "plain-op-pw-123";
 	private static final String LIST_PATH = "/api/admin/venues/{v}/reviews";
 	private static final String HIDE_PATH = "/api/admin/reviews/{id}/hide";
 	private static final String UNHIDE_PATH = "/api/admin/reviews/{id}/unhide";

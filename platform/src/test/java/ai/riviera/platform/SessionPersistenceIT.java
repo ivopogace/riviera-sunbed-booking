@@ -54,7 +54,7 @@ class SessionPersistenceIT {
 		jdbc.sql("DELETE FROM operator_venue WHERE operator_id IN "
 				+ "(SELECT id FROM operator WHERE username = 'op-persist')").update();
 		jdbc.sql("DELETE FROM operator WHERE username = 'op-persist'").update();
-		provisioning.provision("op-persist", encoder.encode("pw-persist"));
+		provisioning.provision("op-persist", encoder.encode("pw-persist-123"));
 	}
 
 	@Test
@@ -63,7 +63,7 @@ class SessionPersistenceIT {
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-						{"username": "op-persist", "password": "pw-persist"}"""))
+						{"username": "op-persist", "password": "pw-persist-123"}"""))
 				.andExpect(status().isOk())
 				.andReturn();
 		Cookie session = result.getResponse().getCookie("SESSION");

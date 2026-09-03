@@ -76,6 +76,18 @@ class SetPasswordIT {
 	}
 
 	@Test
+	void rejectsAPasswordContainingTheEmailName() throws Exception {
+		String email = "setpw-it-dana@example.com";
+		register(email, "originalpass1");
+
+		setPassword(email, """
+				{"newPassword": "SetPw-It-DANA-26", "currentPassword": "originalpass1"}""")
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("PASSWORD_CONTAINS_BLOCKED_TERM"));
+		login(email, "originalpass1").andExpect(status().isOk()); // unchanged
+	}
+
+	@Test
 	void existingPasswordAccountRequiresTheCorrectCurrentPassword() throws Exception {
 		String email = "setpw-it-pw@example.com";
 		register(email, "originalpass1");

@@ -93,7 +93,7 @@ class RecoveryTokenNeverPersistedIT {
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
-						{"email": "%s", "password": "password123"}""".formatted(EMAIL)))
+						{"email": "%s", "password": "passphrase-123"}""".formatted(EMAIL)))
 				.andExpect(status().isCreated());
 	}
 

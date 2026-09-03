@@ -23,6 +23,7 @@ import jakarta.servlet.http.Cookie;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -66,7 +67,7 @@ class PasswordResetIT {
 	@Test
 	void resetInvalidatesSessionsAndRotatesPassword() throws Exception {
 		String email = "reset-it-alice@example.com";
-		Cookie oldSession = register(email, "password123").getResponse().getCookie(SESSION_COOKIE);
+		Cookie oldSession = register(email, "passphrase-123").getResponse().getCookie(SESSION_COOKIE);
 		mvc.perform(get("/api/auth/me").cookie(oldSession)).andExpect(status().isOk());
 
 		forgot(email).andExpect(status().isNoContent());
@@ -75,13 +76,33 @@ class PasswordResetIT {
 
 		mvc.perform(get("/api/auth/me").cookie(oldSession))
 				.andExpect(status().isUnauthorized()); // the pre-reset session was revoked (AC-3)
-		login(email, "password123").andExpect(status().isUnauthorized());   // old password is dead
+		login(email, "passphrase-123").andExpect(status().isUnauthorized());   // old password is dead
 		login(email, "newpassword456").andExpect(status().isOk());           // new password works
+	}
+
+	/**
+	 * The blocklist knows the account behind the token without consuming it, so a rejected password
+	 * leaves the emailed link usable for the retry.
+	 */
+	@Test
+	void rejectsAPasswordContainingTheAccountsEmailNameAndKeepsTheToken() throws Exception {
+		String email = "reset-it-dana@example.com";
+		register(email, "passphrase-123");
+		forgot(email).andExpect(status().isNoContent());
+		String token = tokenFrom(mailer.lastTo(email).orElseThrow().link());
+
+		reset(token, "Reset-It-Dana-2026")
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("PASSWORD_CONTAINS_BLOCKED_TERM"));
+		login(email, "passphrase-123").andExpect(status().isOk()); // nothing rotated
+
+		reset(token, "newpassword456").andExpect(status().isNoContent()); // the token survived
+		login(email, "newpassword456").andExpect(status().isOk());
 	}
 
 	@Test
 	void forgotPasswordResponseIsIdenticalRegardlessOfAccountState() throws Exception {
-		register("reset-it-known@example.com", "password123");
+		register("reset-it-known@example.com", "passphrase-123");
 		sso.resolveOrCreate(SsoProvider.GOOGLE, "reset-it-sso-sub-1", "reset-it-ssoacct@example.com");
 
 		String known = forgot("reset-it-known@example.com")

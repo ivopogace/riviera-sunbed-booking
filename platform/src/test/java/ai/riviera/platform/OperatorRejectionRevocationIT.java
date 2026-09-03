@@ -35,7 +35,7 @@ class OperatorRejectionRevocationIT {
 	private static final String BOOTSTRAP_ADMIN = "operator";
 	private static final String BOOTSTRAP_PASSWORD = "bootstrap-pw";
 	private static final String USERNAME = "reject-target";
-	private static final String PASSWORD = "reject-target-pw-1";
+	private static final String PASSWORD = "rejection-pw-12345";
 	private static final String ME_PATH = "/api/auth/me";
 
 	@Autowired

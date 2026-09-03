@@ -132,6 +132,18 @@ class MyAccountControllerTest {
 	}
 
 	@Test
+	void aNewPasswordContainingTheEmailNameIsRejectedBeforeAnyRevoke() throws Exception {
+		givenAccountWithPassword();
+
+		mvc.perform(changePassword(CURRENT_PASSWORD, "the-TOURIST-pw-2026"))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("PASSWORD_CONTAINS_BLOCKED_TERM"));
+
+		verify(sessionRevoker, never()).revokeAllExcept(anyString(), any());
+		verify(recovery, never()).setPassword(any(), anyString());
+	}
+
+	@Test
 	void aRejectedChangeLeavesTheSessionIdUntouched() throws Exception {
 		givenAccountWithPassword();
 		MockHttpSession thisSession = new MockHttpSession();

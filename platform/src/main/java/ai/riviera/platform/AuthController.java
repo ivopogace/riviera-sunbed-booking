@@ -167,22 +167,23 @@ class AuthController {
 	 * authenticate until a platform admin approves it (design D-5). Both a fresh username and an
 	 * already-taken one return the SAME {@code 202} body and NEVER a session (non-enumeration, D-8); only
 	 * the fresh branch writes the PENDING row. Password policy is enforced BEFORE any write; a violation
-	 * is {@code 400 INVALID_REQUEST}.
+	 * is {@code 400 INVALID_REQUEST} (length) or {@code 400 PASSWORD_CONTAINS_BLOCKED_TERM} (the username
+	 * or the service name in the password).
 	 */
 	@PostMapping("/api/auth/operator/register")
 	ResponseEntity<OperatorRegistrationResponse> operatorRegister(
 			@RequestBody OperatorRegistrationRequest registration) {
-		// The shared server-side password policy (D-8 min length / bcrypt-input cap) — the same rule the
-		// customer register enforces; both principal types get one policy.
-		PasswordPolicy.validate(registration.password());
+		// The shared server-side password policy (D-8) — the same rule the customer register enforces.
+		String username = registration.username().trim();
+		PasswordPolicy.validate(registration.password(), username);
 		// Constant-time (D-8): both branches spend exactly ONE bcrypt — the encode() below, evaluated on
 		// every request (fresh or taken). Unlike the customer register there is NO auto-sign-in bcrypt on
 		// the fresh branch, so NO equalizer is added: a taken-branch verify would make an existing username
 		// measurably SLOWER (a reverse enumeration oracle). The write is a bcrypt-free
 		// INSERT … ON CONFLICT DO NOTHING either way, so only a fresh username creates the PENDING row; the
 		// outcome distinction never surfaces (the response is byte-identical) so it is deliberately unused.
-		operatorRegistration.register(registration.username().trim(),
-				passwordEncoder.encode(registration.password()), registration.contactEmail().trim());
+		operatorRegistration.register(username, passwordEncoder.encode(registration.password()),
+				registration.contactEmail().trim());
 		// No session either branch — a PENDING operator cannot sign in until approved. Byte-identical body.
 		return ResponseEntity.status(HttpStatus.ACCEPTED).body(new OperatorRegistrationResponse("PENDING"));
 	}
@@ -201,17 +202,18 @@ class AuthController {
 	 * auto-signed-in (a session is established, AC-3). An already-registered email → the response is
 	 * <strong>byte-identical</strong> but NO session is established (non-enumeration, design D-8; the
 	 * only residual signal is the presence of the {@code SESSION} cookie — an accepted trade-off).
-	 * Password policy is enforced BEFORE any write; a violation is {@code 400 INVALID_REQUEST}.
+	 * Password policy is enforced BEFORE any write; a violation is {@code 400 INVALID_REQUEST} (length) or
+	 * {@code 400 PASSWORD_CONTAINS_BLOCKED_TERM} (the email's local part or the service name in the password).
 	 */
 	@PostMapping("/api/auth/customer/register")
 	ResponseEntity<PrincipalResponse> register(@RequestBody CustomerCredentials registration,
 			HttpServletRequest request, HttpServletResponse response) {
-		PasswordPolicy.validate(registration.password());
 		// Normalize at the edge so the response echoes the SAME canonical email that /me + login return
 		// (stored lower-cased/trimmed) — otherwise the displayed email would change after a reload. The
 		// module normalizes again internally (idempotent); the edge only encodes the password, never
 		// touching a Spring Security type inside the module (RV-BE-11).
 		String email = Emails.normalize(registration.email());
+		PasswordPolicy.validate(registration.password(), PasswordPolicy.emailLocalPart(email));
 		RegistrationOutcome outcome =
 				customerAccounts.register(email, passwordEncoder.encode(registration.password()));
 		if (outcome instanceof RegistrationOutcome.Registered(

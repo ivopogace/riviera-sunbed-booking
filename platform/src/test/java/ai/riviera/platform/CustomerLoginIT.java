@@ -43,7 +43,7 @@ class CustomerLoginIT {
 	private static final String SESSION_COOKIE = "SESSION";
 	private static final String LOGIN_PATH = "/api/auth/customer/login";
 	private static final String EMAIL = "login-it-alice@example.com";
-	private static final String PASSWORD = "password123";
+	private static final String PASSWORD = "passphrase-123";
 
 	@Autowired
 	MockMvc mvc;
@@ -75,6 +75,18 @@ class CustomerLoginIT {
 				.andExpect(jsonPath("$.username").value(EMAIL))
 				.andExpect(jsonPath("$.principalType").value("CUSTOMER"))
 				.andExpect(jsonPath("$.operatorStatus").isEmpty());
+	}
+
+	/** The 12-character floor applies where a password is chosen, never where one is used. */
+	@Test
+	void anAccountStoredUnderTheOldFloorStillSignsIn() throws Exception {
+		String legacyPassword = "eightchr";
+		assertEquals(8, legacyPassword.length());
+		provisioning.register("login-it-legacy@example.com", encoder.encode(legacyPassword));
+
+		login("login-it-legacy@example.com", legacyPassword)
+				.andExpect(status().isOk())
+				.andExpect(cookie().exists(SESSION_COOKIE));
 	}
 
 	@Test

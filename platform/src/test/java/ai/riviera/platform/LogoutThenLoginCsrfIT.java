@@ -61,7 +61,7 @@ class LogoutThenLoginCsrfIT {
 	private static final String LOGOUT = "/api/auth/logout";
 	private static final String XSRF_COOKIE = "XSRF-TOKEN";
 	private static final String CUSTOMER_EMAIL = "logout-login-it@example.com";
-	private static final String CUSTOMER_PASSWORD = "password123";
+	private static final String CUSTOMER_PASSWORD = "passphrase-123";
 
 	@Autowired
 	MockMvc mvc;

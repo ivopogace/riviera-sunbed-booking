@@ -1,6 +1,8 @@
 package ai.riviera.platform;
 
 import ai.riviera.platform.shared.ApiProblem;
+
+import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -108,8 +110,10 @@ class AccountRecoveryController {
 	@PostMapping(RESET_PASSWORD_PATH)
 	ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
 		PasswordPolicy.validate(request.newPassword());
+		Optional<String> accountEmail = recovery.emailForResetToken(request.token());
+		accountEmail.ifPresent(e -> PasswordPolicy.validate(request.newPassword(), PasswordPolicy.emailLocalPart(e)));
 		String newPasswordHash = passwordEncoder.encode(request.newPassword());
-		recovery.emailForResetToken(request.token()).ifPresent(sessionRevoker::revokeAll);
+		accountEmail.ifPresent(sessionRevoker::revokeAll);
 		return switch (recovery.resetPassword(request.token(), newPasswordHash)) {
 			case ResetPasswordOutcome.Reset(var accountId, var email) -> {
 				sessionRevoker.revokeAll(email);

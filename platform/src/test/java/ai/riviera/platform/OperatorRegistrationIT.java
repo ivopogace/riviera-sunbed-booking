@@ -87,12 +87,38 @@ class OperatorRegistrationIT {
 
 	@Test
 	void rejectsPasswordOutsidePolicy() throws Exception {
-		register("reg-op-carol", "short", "carol@venue.example") // 5 chars < the 8 minimum
+		register("reg-op-carol", "elevenchars", "carol@venue.example") // 11 chars < the 12 minimum
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+		register("reg-op-carol", "a".repeat(73), "carol@venue.example") // 73 bytes > bcrypt's cap
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
 
+		assertNoOperator("reg-op-carol");
+	}
+
+	@Test
+	void rejectsAPasswordContainingTheUsername() throws Exception {
+		register("reg-op-dana", "Reg-Op-DANA-2026!!", "dana@venue.example")
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("PASSWORD_CONTAINS_BLOCKED_TERM"))
+				.andExpect(cookie().doesNotExist(SESSION_COOKIE));
+
+		assertNoOperator("reg-op-dana");
+	}
+
+	@Test
+	void rejectsAPasswordContainingTheServiceName() throws Exception {
+		register("reg-op-erin", "Riviera-summer-26", "erin@venue.example")
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("PASSWORD_CONTAINS_BLOCKED_TERM"));
+
+		assertNoOperator("reg-op-erin");
+	}
+
+	private void assertNoOperator(String username) {
 		Integer rows = jdbc.sql("SELECT count(*) FROM operator WHERE username = :u")
-				.param("u", "reg-op-carol").query(Integer.class).single();
+				.param("u", username).query(Integer.class).single();
 		assertEquals(0, rows, "a policy-rejected registration must write nothing");
 	}
 
