@@ -28,6 +28,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import ai.riviera.platform.availability.application.MarkOutcome;
 import ai.riviera.platform.availability.application.ReleaseOutcome;
 import ai.riviera.platform.availability.application.StaffAvailability;
+import ai.riviera.platform.audit.api.AdminAuditLog;
+import ai.riviera.platform.audit.vocabulary.AdminAuditEntry;
 import ai.riviera.platform.booking.application.cancel.CancelBooking;
 import ai.riviera.platform.booking.application.cancel.CancelOutcome;
 import ai.riviera.platform.booking.application.refund.RefundForWeather;
@@ -969,8 +971,9 @@ class WebSliceStubs {
 	}
 
 	/**
-	 * The audit trail {@code SecurityConfig}'s {@code AdminAuditFilter} + {@code AdminAuditController}
-	 * register with — inert, so the web slices exercise routing and the role gate, never the table.
+	 * The {@code audit} module's port that {@code SecurityConfig}'s {@code AdminAuditFilter} and the
+	 * module's own controller register with — inert, so the web slices exercise routing and the role
+	 * gate, never the table.
 	 */
 	@Bean
 	AdminAuditLog adminAuditLog() {
@@ -980,7 +983,7 @@ class WebSliceStubs {
 			}
 
 			@Override
-			public List<Entry> latest(int limit) {
+			public List<AdminAuditEntry> latest(int limit) {
 				return List.of();
 			}
 		};

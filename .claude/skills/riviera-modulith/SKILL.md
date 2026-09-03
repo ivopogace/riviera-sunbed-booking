@@ -10,9 +10,9 @@ description: >-
 # Riviera Spring Modulith (hexagonal, JDBC-only)
 
 Base package `ai.riviera.platform`; nine bounded-context modules — **venue, availability,
-booking, payment, payout, customer, operator, notification, review** — plus two non-context
-modules: **`shared`** (an OPEN Shared Kernel) and **`challenge`** (closed, full template,
-ADR-0017). Spring Boot 4, Spring Modulith
+booking, payment, payout, customer, operator, notification, review** — plus three non-context
+modules: **`shared`** (an OPEN Shared Kernel) and the closed ADR-0017 pair **`challenge`** (full
+template) and **`audit`** (thin template + a driving adapter). Spring Boot 4, Spring Modulith
 2.1, Java 25, Gradle, Spring Data JDBC / `JdbcClient` only — no JPA.
 
 **The root package is the composition root, and nothing may depend on it.**
@@ -54,13 +54,14 @@ on the other side.
 
 **Assignment rule: a module is THIN iff it has no application service** — its `api/` port
 is implemented directly by a JDBC adapter. Otherwise it is FULL. Today all nine
-bounded-context modules are full, and so is the non-context `challenge`. The thin template
-is the documented shape for a future serviceless module. Small LOC does not make a module thin (`availability` is small but
-full); having no service does.
+bounded-context modules are full, and so is the non-context `challenge`; the non-context `audit`
+is the one thin module — its JDBC adapter implements the published port directly. Small LOC does
+not make a module thin (`availability` is small but full); having no service does.
 
 **`challenge` uses the full template** minus `domain/` — it owns table-backed state, not an
 aggregate — with `allowedDependencies = {}`: a mechanism that knew a domain type would be a
-bounded context in disguise. **`shared` fits neither template:** `@ApplicationModule(type = OPEN)`, a handful of flat
+bounded context in disguise. **A thin module may still own an `adapter/in`** (`audit` does): the
+tree below shows the common serviceless case, not a ban. **`shared` fits neither template:** `@ApplicationModule(type = OPEN)`, a handful of flat
 classes at the module root, no published surface (OPEN means consumers reference its types
 directly), no `application`/`domain`/`adapter`. `PackageShapeArchitectureTests` skips
 types at a module root. Don't copy the shape for a context, and don't grow `shared` into one.

@@ -62,6 +62,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *       opinion on whether a solved challenge has been spent, which is the one thing the table
  *       exists to settle. Same whole-word constant-pool scan as rule 1; the bare token is safe
  *       here because the module's package name is {@code challenge}, not {@code challenge_registry}.</li>
+ *   <li><strong>Sole-writer, admin audit trail:</strong> no class outside the {@code audit} module
+ *       touches {@code admin_audit_record} — the mechanical form of §{@code audit}'s "only writer
+ *       of {@code admin_audit_record}". A row appended anywhere else is an unattributable claim
+ *       about what an admin did, which is the one thing the table exists to settle; the edge's
+ *       fence records through {@code audit::api}, never at the table. Same whole-word constant-pool
+ *       scan as rule 1, and the bare token is safe for the same reason as rule 6 — the module's
+ *       package name is {@code audit}.</li>
  * </ol>
  *
  * <p><strong>Necessary, not sufficient.</strong> These rules encode only the <em>structural</em>
@@ -117,6 +124,12 @@ class ResponsibilitiesArchitectureTests {
 
 	/** The one module that may reference {@link #CHALLENGE_REGISTRY_TABLE}. */
 	private static final String CHALLENGE_MODULE = "challenge";
+
+	/** The append-only admin audit trail owned by {@code audit} (ADR-0013, ADR-0017). */
+	private static final String ADMIN_AUDIT_TABLE = "admin_audit_record";
+
+	/** The one module that may reference {@link #ADMIN_AUDIT_TABLE}. */
+	private static final String AUDIT_MODULE = "audit";
 
 	private static final String EVENTS_SURFACE = "events";
 	private static final String VOCABULARY_SURFACE = "vocabulary";
@@ -368,6 +381,43 @@ class ResponsibilitiesArchitectureTests {
 				"The fixture challenge module's own SQL must not be flagged, but got: " + violations);
 	}
 
+	// ---- rule 7: audit is the sole toucher of the admin audit trail ------------------------
+
+	@Test
+	void adminAuditTableIsTouchedOnlyInsideTheAuditModule() {
+		List<String> violations = adminAuditTableViolations(PRODUCTION_CLASSES, PRODUCTION_BASE);
+		assertNoViolations(
+				"RESPONSIBILITIES.md fitness-function violations (audit sole-writer, ADR-0017)",
+				violations);
+	}
+
+	/** Guards against a vacuously-green scan: the module's own adapter DOES carry the table's SQL. */
+	@Test
+	void theAuditModuleItselfWritesTheTable() {
+		boolean auditReferencesTable = false;
+		for (JavaClass type : PRODUCTION_CLASSES) {
+			if (AUDIT_MODULE.equals(moduleOf(type, PRODUCTION_BASE)) && referencesAdminAuditTable(type)) {
+				auditReferencesTable = true;
+				break;
+			}
+		}
+		assertTrue(auditReferencesTable,
+				"expected at least one audit class to reference '" + ADMIN_AUDIT_TABLE
+						+ "' — otherwise the sole-writer scan proves nothing");
+	}
+
+	/** The negative proof (red run): an outside writer is rejected — and the fixture module's
+	 * own writer is NOT (the exclusion path works). */
+	@Test
+	void adminAuditTableTouchedOutsideTheAuditModuleIsRejected() {
+		List<String> violations = adminAuditTableViolations(FIXTURE_CLASSES, FIXTURE_BASE);
+		assertTrue(violations.stream().anyMatch(v -> v.contains("RogueAdminAuditWriter")),
+				"Expected the audit sole-writer scan to reject the fixture outside writer, but got: "
+						+ violations);
+		assertFalse(violations.stream().anyMatch(v -> v.contains("FixtureJdbcAdminAuditLog")),
+				"The fixture audit module's own SQL must not be flagged, but got: " + violations);
+	}
+
 	// ---- violation collectors (parameterized so fixtures prove the red case) ---------------
 
 	private static List<String> availabilityTableViolations(JavaClasses classes, String base) {
@@ -411,6 +461,28 @@ class ResponsibilitiesArchitectureTests {
 	private static boolean referencesChallengeRegistryTable(JavaClass type) {
 		return compiledBytecodeOf(type)
 				.map(bytecode -> containsWholeWord(bytecode, CHALLENGE_REGISTRY_TABLE))
+				.orElse(false);
+	}
+
+	private static List<String> adminAuditTableViolations(JavaClasses classes, String base) {
+		List<String> violations = new ArrayList<>();
+		for (JavaClass type : classes) {
+			if (AUDIT_MODULE.equals(moduleOf(type, base))) {
+				continue;
+			}
+			if (referencesAdminAuditTable(type)) {
+				violations.add(type.getName() + " references the '" + ADMIN_AUDIT_TABLE
+						+ "' table — the audit module is its only writer AND reader "
+						+ "(ADR-0017 / RESPONSIBILITIES.md §audit); the platform edge's fence records "
+						+ "through audit::api, never at the table");
+			}
+		}
+		return violations;
+	}
+
+	private static boolean referencesAdminAuditTable(JavaClass type) {
+		return compiledBytecodeOf(type)
+				.map(bytecode -> containsWholeWord(bytecode, ADMIN_AUDIT_TABLE))
 				.orElse(false);
 	}
 

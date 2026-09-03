@@ -779,8 +779,8 @@ The standing rules:
 - The guest's identity → **`customer`**. A review is attached to a *booking*, not a
   person; the display name is a label the author chose, handed to me on the write; the
   form's prefill suggestion is `booking`'s to derive
-- Login, sessions, CSRF, rate-limit wiring, the ADMIN role gate and the admin audit record
-  → the platform **edge**
+- Login, sessions, CSRF, rate-limit wiring and the ADMIN role gate → the platform **edge**;
+  the admin audit *record* of a takedown → the **`audit`** module, which the edge's fence calls
 - Deciding *whether* a review deserves a takedown → the **platform admin** (publish-first,
   report-and-remove; I offer no queue and no reporting)
 - Deciding *that* a data subject's reviews are erased, or which bookings are theirs →
@@ -853,14 +853,41 @@ the root's edge (§ *Platform edge*); rate limiting (`RateLimitFilter`, root).
 Only writer of `challenge_registry` (machine-checked). Publishes `api.ProofOfWorkChallenges` and
 `vocabulary.ChallengeVerdict`, nothing else.
 
+## `audit` (not a bounded context)
+
+The **admin audit trail** (ADR-0013, ADR-0017): a closed non-context module with the thin template
+plus a driving adapter, and no dependencies — Evans' *Cohesive Mechanism*, a separate lightweight
+framework behind an intention-revealing interface. The audited namespace's controllers are spread
+across bounded contexts and the root, so no one context can own the record over the whole namespace.
+
+**Job:** append one row per mutating `/api/admin/**` action that reached past the security gate —
+actor (a username snapshot, deliberately no FK), method, path, outcome status, UTC instant, and the
+grounds the caller hands me; serve the newest-first read the console's Audit tab renders. Append-only:
+no updates, no deletes.
+
+**Not my job:** which requests are audited and when in the chain, the `X-Audit-Reason` header and its
+sanitizer, the ADMIN role gate — all the root's fence (§ *Platform edge*); deciding *whether* an admin
+action was justified, and retention (a named #507 Phase-1 non-goal — I keep rows indefinitely).
+
+Only writer (and reader) of `admin_audit_record` (machine-checked). Publishes `api.AdminAuditLog` and
+`vocabulary.AdminAuditEntry`, nothing else; the root reaches `api` alone, because the fence appends
+primitives.
+
+**A lost row never fails the action it records** (logged at ERROR instead) — the accepted Phase-1
+risk behind the fence's broad `catch`: the append happens *after* the action, so it cannot un-do
+what it failed to record, and since the audited actions are themselves writes on this database, an
+audit-lost-while-action-succeeded window needs a mid-request DB failure.
+
 ## Platform edge (settled)
 
 The cross-module edge rules, restated here in one place because no single module owns them
 (the per-module consequences sit in §`customer` and §`operator`): server-side sessions (Spring
 Session JDBC) with **two principal types**; all login/session machinery lives at the edge,
-never in modules; abuse machinery splits — the **fence** (filter, route policy, filter-chain problem
-bodies) is the edge's, a **mechanism** the edge calls through a port (a table, a job, a library) is a
-non-context module (ADR-0017); customer-account identity is separate from the guest row — no FK, no
+never in modules; abuse and accountability machinery split the same way — the **fence** (filter,
+route policy, filter-chain problem bodies) is the edge's, a **mechanism** the edge calls through a
+port (a table, a job, a library) is a non-context module (ADR-0017), which is why
+`ChallengeVerificationFilter` and `AdminAuditFilter` stay here while `challenge` and `audit` own
+what they call; customer-account identity is separate from the guest row — no FK, no
 back-linking of past guest bookings, ever; auth endpoints are non-enumerating + constant-time
 on their own rate-limit buckets; mocked externals (SSO IdPs, mailer) are profile-guarded out
 of prod; session revocation is edge-orchestrated and synchronous, bracketing the state change.
@@ -991,6 +1018,7 @@ sufficient.
 | `review` is the **only writer** (and direct reader) of the `review` table — #811 | `ResponsibilitiesArchitectureTests` (SQL-shaped review-table scan; the bare name would match the module's package string in every consumer) |
 | Only `venue` names `rating_tenths` / `reviews_count` — "I store the aggregate; `review` computes it" (#811) | `ResponsibilitiesArchitectureTests` (rating-columns sole-writer scan) |
 | `challenge` is the **only writer** (and direct reader) of `challenge_registry` — ADR-0017 | `ResponsibilitiesArchitectureTests` (sole-writer bytecode scan) |
+| `audit` is the **only writer** (and direct reader) of `admin_audit_record` — ADR-0017 | `ResponsibilitiesArchitectureTests` (sole-writer bytecode scan) |
 | No class inside a module depends on a type sitting directly in `ai.riviera.platform` — ADR-0017 | `CompositionRootDisciplineTests` (module→root reach rule; Modulith's `allowedDependencies` cannot see it) |
 | `payment` uses no Stripe **Connect** API (collect-only, ADR-0002) | `NoStripeConnectArchitectureTest` |
 | No module reaches another's `application`/`domain`/`adapter` internals; `allowedDependencies` deny-lists hold | `ModularityTests` (`ApplicationModules.verify()`) |

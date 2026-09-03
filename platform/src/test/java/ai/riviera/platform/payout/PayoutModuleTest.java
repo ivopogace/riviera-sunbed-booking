@@ -18,6 +18,7 @@ import ai.riviera.platform.booking.api.DailyTakings;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
+import ai.riviera.platform.audit.api.AdminAuditLog;
 import ai.riviera.platform.challenge.api.ProofOfWorkChallenges;
 import ai.riviera.platform.customer.api.AccountErasure;
 import ai.riviera.platform.customer.api.CustomerAccountDirectory;
@@ -138,6 +139,10 @@ class PayoutModuleTest {
 	// The root edge's fence calls challenge::api, a module bean — same isolation story as the two above.
 	@MockitoBean
 	ProofOfWorkChallenges challenges;
+
+	// And its admin-audit fence calls audit::api, likewise a module bean this test does not bootstrap.
+	@MockitoBean
+	AdminAuditLog adminAuditLog;
 
 	// Root-edge CustomerRecovery needs notification::api's MailSender — same isolation story.
 	@MockitoBean
