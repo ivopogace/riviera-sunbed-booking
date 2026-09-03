@@ -285,16 +285,16 @@ component).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3 — frontend)`
+**Stage pointer:** `implement (phase 4 — Playwright)`
 
-**Next action:** check PR #911's CI run for the phase-2 push, then phase 3 (frontend) — load `riviera-tailwind` + `angular-developer`, red first.
+**Next action:** phase 4 — the mocked challenge route + `customer-auth-challenge.e2e.ts`, then the real-backend journey; the phase-2 push's Sonar gate reported findings — clear them in the phase-3/4 pushes.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — prototype + plan doc + draft PR | ✅ | `47944af`, PR #911 |
 | 1 — properties, V49 registry, JDBC claim, sweep | ✅ | `d00b703` |
-| 2 — challenge endpoint, verifier filter, rate-limit budget, ITs | ✅ | phase-2 commit (SHA in the phase-3 status update) |
-| 3 — frontend: vocabulary, probe service, widget wrapper, auth page, unit + a11y + contrast specs | | |
+| 2 — challenge endpoint, verifier filter, rate-limit budget, ITs | ✅ | `f1b6eab` |
+| 3 — frontend: vocabulary, probe service, widget wrapper, auth page, unit + a11y + contrast specs | ✅ | phase-3 commit (SHA in the phase-4 status update) |
 | 4 — mocked Playwright spec, real-backend journey | | |
 | 5 — docs (Platform edge, production-hardening, CSP note), retire #904's plan, merge `main`, ready for review | | |
 | 6 — review gate, Sonar gate, close-out | | |
@@ -350,7 +350,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/core/proof-of-work.ts`, `frontend/src/app/core/proof-of-work.spec.ts`
 - `frontend/src/app/core/customer-auth.ts`, `frontend/src/app/core/customer-auth.spec.ts`
 - `frontend/src/app/auth/auth-page.ts`, `frontend/src/app/auth/auth-page.spec.ts`, `frontend/src/app/auth/auth-page.a11y.spec.ts`
-- `frontend/src/tailwind.css` — only if a token is needed that no existing one covers
+- `frontend/src/tailwind.css` — the one new token, `--riv-on-accent-ink` (ink on an accent fill), base + dark
+- `frontend/src/testing/glass-tokens.ts` — its test-side mirror
 - `frontend/e2e/support/auth-mocks.ts` — the mocked challenge route + header-checking register
 - `frontend/e2e/support/pages/customer-auth.page.ts` — widget locators
 - `frontend/e2e/customer-auth-challenge.e2e.ts` — the mocked spec
@@ -394,13 +395,13 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Phase 3 — frontend
 
-- [ ] Load `riviera-tailwind`, `angular-developer` (+ angular-cli MCP), announce.
-- [ ] Red: `challenge.spec.ts`, `proof-of-work.spec.ts`, `customer-auth.spec.ts` (header + codes),
+- [x] Load `riviera-tailwind`, `angular-developer` (+ angular-cli MCP — `list_projects` + `get_best_practices`; `search_documentation` is broken in this sandbox, the skill's `http-client.md` reference stood in), announce.
+- [x] Red: `challenge.spec.ts`, `proof-of-work.spec.ts`, `customer-auth.spec.ts` (header + codes),
   `challenge-widget.spec.ts` (renders only when enabled; state → status text; `refresh()`),
   `challenge-widget.a11y.spec.ts`, `challenge-widget.contrast.spec.ts`, `auth-page.spec.ts` (passes
   the payload; refreshes on a challenge rejection), `auth-page.a11y.spec.ts`.
-- [ ] Green: `altcha@3.2.2` pinned; FE-1..FE-5; `npm run lint`, `format:check`, `test`, `build`.
-- [ ] Commit — `Show the ALTCHA control on customer register and carry the solution header (#905)`
+- [x] Green: `altcha@3.2.2` pinned; FE-1..FE-5; `npm run lint`, `format:check`, `test` (2505 passed), `build` (the widget is its own 32 kB lazy chunk; the initial bundle is unchanged).
+- [x] Commit — `Show the ALTCHA control on customer register and carry the solution header (#905)`
 
 ## Phase 4 — Playwright
 

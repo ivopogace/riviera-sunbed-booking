@@ -8,6 +8,7 @@ import { expectNoAxeViolations } from '../../testing/axe';
 import { CustomerAuth } from '../core/customer-auth';
 import { OperatorAuth } from '../core/operator-auth';
 import { OwnedVenues, OwnedVenuesResult } from '../core/owned-venues';
+import { ProofOfWork } from '../core/proof-of-work';
 import { AuthPage } from './auth-page';
 
 const stubAuth = () => ({
@@ -36,6 +37,7 @@ describe('AuthPage a11y (#277)', () => {
         provideRouter([]),
         { provide: CustomerAuth, useValue: stubAuth() },
         { provide: OperatorAuth, useValue: stubAuth() },
+        { provide: ProofOfWork, useValue: { enabled: signal(false) } },
         {
           provide: OwnedVenues,
           useValue: {
