@@ -1,7 +1,7 @@
 # ADR-0017: A port-fronted mechanism no bounded context owns is a closed non-context module; the fence stays at the edge, and the proof-of-work challenge is the first instance
 
 - **Status:** Accepted — implemented by PR #916 (#913), which moved the proof-of-work challenge
-  mechanism into the closed non-context module `challenge`, and by PR #NN (#914), which moved the
+  mechanism into the closed non-context module `challenge`, and by PR #917 (#914), which moved the
   admin audit log into the closed non-context module `audit`. Both instances of Decision 1 now
   exist; no third is named.
 - **Date:** 2026-09-03

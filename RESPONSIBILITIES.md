@@ -857,8 +857,8 @@ Only writer of `challenge_registry` (machine-checked). Publishes `api.ProofOfWor
 
 The **admin audit trail** (ADR-0013, ADR-0017): a closed non-context module with the thin template
 plus a driving adapter, and no dependencies — Evans' *Cohesive Mechanism*, a separate lightweight
-framework behind an intention-revealing interface. The audited namespace's controllers span six
-bounded contexts and the root, so no context can own the record over the whole namespace.
+framework behind an intention-revealing interface. The audited namespace's controllers are spread
+across bounded contexts and the root, so no one context can own the record over the whole namespace.
 
 **Job:** append one row per mutating `/api/admin/**` action that reached past the security gate —
 actor (a username snapshot, deliberately no FK), method, path, outcome status, UTC instant, and the

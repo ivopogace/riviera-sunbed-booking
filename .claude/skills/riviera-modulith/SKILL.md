@@ -60,9 +60,8 @@ not make a module thin (`availability` is small but full); having no service doe
 
 **`challenge` uses the full template** minus `domain/` — it owns table-backed state, not an
 aggregate — with `allowedDependencies = {}`: a mechanism that knew a domain type would be a
-bounded context in disguise. **`audit` is thin and still owns an `adapter/in`** — the thin
-template's tree below shows the common serviceless case, not a ban: a thin module that owns an
-endpoint puts its controller there like any other driving adapter. **`shared` fits neither template:** `@ApplicationModule(type = OPEN)`, a handful of flat
+bounded context in disguise. **A thin module may still own an `adapter/in`** (`audit` does): the
+tree below shows the common serviceless case, not a ban. **`shared` fits neither template:** `@ApplicationModule(type = OPEN)`, a handful of flat
 classes at the module root, no published surface (OPEN means consumers reference its types
 directly), no `application`/`domain`/`adapter`. `PackageShapeArchitectureTests` skips
 types at a module root. Don't copy the shape for a context, and don't grow `shared` into one.

@@ -13,7 +13,7 @@ import ai.riviera.platform.audit.vocabulary.AdminAuditEntry;
  * <p>The whole conversation the platform edge has with this module: its fence records an action
  * here, and the module's own read serves the console's Audit tab. {@code reason} is stored as
  * given — the caller neutralizes client-supplied text before it arrives
- * (`RESPONSIBILITIES.md` § <em>Platform edge</em>).
+ * ({@code RESPONSIBILITIES.md} § <em>Platform edge</em>).
  */
 public interface AdminAuditLog {
 
