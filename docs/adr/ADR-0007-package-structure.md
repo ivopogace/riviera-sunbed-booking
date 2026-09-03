@@ -170,6 +170,10 @@ Proven against fixtures in `ai.riviera.placementfixture`.
 
 The two templates describe **bounded contexts**. `shared` is not one, and needs naming here so the
 canonical shape rule does not contradict the codebase.
+*Extended by ADR-0017 (2026-09-03):* the two templates now describe **non-context modules** too — a
+closed non-context module takes them unchanged (`challenge` full, `audit` thin). What stays unique
+to `shared` is its shape, which matches neither template — not the fact that it is not a bounded
+context.
 
 **Context.** The root package `ai.riviera.platform` was doing two jobs with opposite dependency
 directions: the composition root (`PlatformApplication`, `SecurityConfig`, the platform's own
