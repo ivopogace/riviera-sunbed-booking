@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  * other key's spent tokens and the limiter throttles nobody, having booted
  * cleanly with only a {@code DEBUG} line as evidence. A small-but-positive cap degrades the same way,
  * just less completely, which is why the floor is not {@code 1}. The ceiling closes the hole from the
- * other end: the cap is the only thing bounding ten independent dimension maps.
+ * other end: the cap is the only thing bounding eleven independent dimension maps.
  *
  * <p><strong>Why a compact constructor and not {@code @Validated} + {@code @Min}.</strong> There is
  * no JSR-303 implementation on the runtime classpath — the project declined
@@ -153,7 +153,7 @@ class RateLimitPropertiesBindingTest {
 		runner.withPropertyValues("riviera.ratelimit.max-tracked-keys=1000000")
 				.run(context -> assertThat(context)
 						.as("the shipped value with one extra digit restores the unbounded growth the cap "
-								+ "exists to prevent, across ten dimension maps")
+								+ "exists to prevent, across eleven dimension maps")
 						.hasFailed()
 						.getFailure()
 						.rootCause()
@@ -179,7 +179,7 @@ class RateLimitPropertiesBindingTest {
 	/** Constructs the record around the one knob under test, so the bound is asserted rather than the binder. */
 	private static int keyCap(int maxTrackedKeys) {
 		RateLimitProperties.Limit limit = new RateLimitProperties.Limit(60, Duration.ofMinutes(1));
-		return new RateLimitProperties(true, limit, limit, limit, limit, maxTrackedKeys, List.of(), "")
+		return new RateLimitProperties(true, limit, limit, limit, limit, limit, maxTrackedKeys, List.of(), "")
 				.maxTrackedKeys();
 	}
 }

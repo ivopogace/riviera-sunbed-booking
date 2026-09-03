@@ -68,6 +68,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 		"riviera.ratelimit.username.capacity=2",
 		"riviera.ratelimit.username.refill-period=PT1H",
 		"riviera.ratelimit.max-tracked-keys=100000",
+		// Off, so a header-less register reaches the controller: this class pins budgets, not the fence.
+		"riviera.altcha.enabled=false",
 })
 class RateLimitFilterTest {
 
@@ -460,7 +462,7 @@ class RateLimitFilterTest {
 	/**
 	 * Matrix parameters are the same class of bypass, but the rate limiter is not what stops them:
 	 * {@code StrictHttpFirewall} rejects a {@code ;} outright, before any filter of ours runs — which is
-	 * why {@code pathWithinApplication} deliberately does not strip them. Pinned as a tripwire: relax the
+	 * why {@code RequestPaths} deliberately does not strip them. Pinned as a tripwire: relax the
 	 * firewall and this test fails, rather than the hole opening silently.
 	 */
 	@Test
@@ -479,8 +481,8 @@ class RateLimitFilterTest {
 	 */
 	@Test
 	void aMalformedEscapeKeepsTheRawPathInsteadOfThrowing() {
-		assertEquals("/api/auth/operator/password", RateLimitFilter.decodePath("/api/auth/operator/passwor%64"));
-		assertEquals("/api/auth/operator/passwor%zz", RateLimitFilter.decodePath("/api/auth/operator/passwor%zz"));
+		assertEquals("/api/auth/operator/password", RequestPaths.decode("/api/auth/operator/passwor%64"));
+		assertEquals("/api/auth/operator/passwor%zz", RequestPaths.decode("/api/auth/operator/passwor%zz"));
 	}
 
 	@Test

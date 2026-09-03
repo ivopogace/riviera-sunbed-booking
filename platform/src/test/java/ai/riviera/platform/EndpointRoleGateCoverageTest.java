@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -71,6 +72,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
  */
 @WebMvcTest
 @Import({SecurityConfig.class, WebCorsConfig.class, WebSliceStubs.class})
+// The proof-of-work fence would refuse the probe before authorization; off here, tested on its own.
+@TestPropertySource(properties = "riviera.altcha.enabled=false")
 class EndpointRoleGateCoverageTest {
 
 	/**
@@ -84,6 +87,8 @@ class EndpointRoleGateCoverageTest {
 			"POST /api/auth/operator/register",
 			"POST /api/auth/customer/login",
 			"POST /api/auth/customer/register",
+			// permitAll — the proof-of-work challenge the widget fetches before a fenced write (ADR-0016).
+			"GET /api/auth/challenge",
 			// permitAll — the emailed token is the bearer credential (invariant #7).
 			"POST /api/auth/customer/forgot-password",
 			"POST /api/auth/customer/reset-password",

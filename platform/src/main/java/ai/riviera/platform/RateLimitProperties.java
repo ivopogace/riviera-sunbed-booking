@@ -27,6 +27,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *                       guessing one account from many source addresses is throttled even when IP
  *                       attribution is imperfect. Only <em>failed</em> logins net-consume it, so a
  *                       legitimate sign-in is never throttled by its own success
+ * @param challenge      per-client-IP bucket for the proof-of-work challenge GET — its own dimension, so
+ *                       a challenge flood never starves a login or a register and vice versa
  * @param maxTrackedKeys soft cap on tracked keys per dimension; full (idle) buckets are pruned when
  *                       hit. Bounded on both ends at bind time — see {@link #MIN_TRACKED_KEY_CAP} /
  *                       {@link #MAX_TRACKED_KEY_CAP}, which exist because a degenerate value disabled
@@ -49,6 +51,7 @@ record RateLimitProperties(
 		@DefaultValue Limit perCode,
 		@DefaultValue Limit login,
 		@DefaultValue Limit username,
+		@DefaultValue Limit challenge,
 		@DefaultValue("100000") int maxTrackedKeys,
 		@DefaultValue List<String> trustedProxies,
 		@DefaultValue("") String clientIpHeader) {
@@ -64,7 +67,7 @@ record RateLimitProperties(
 	static final int MIN_TRACKED_KEY_CAP = 1_000;
 
 	/**
-	 * 5× the shipped 100 000. {@link RateLimitFilter} holds <strong>ten</strong> dimension maps, each
+	 * 5× the shipped 100 000. {@link RateLimitFilter} holds <strong>eleven</strong> dimension maps, each
 	 * capped independently, so this ceiling still admits ≈5 000 000 live buckets — hundreds of megabytes
 	 * on the single instance (ADR-0004), i.e. the point at which the cap that exists to bound memory is
 	 * itself the outage. It also catches the likeliest typo: the shipped value with one extra digit.
@@ -84,7 +87,7 @@ record RateLimitProperties(
 							+ "; the map-bounding check is size() >= cap, so a non-positive cap fires on "
 							+ "every new key and clears every other key's spent tokens — the limiter boots "
 							+ "clean and throttles nobody — while an oversized one restores the unbounded "
-							+ "growth the cap exists to prevent, across ten dimension maps");
+							+ "growth the cap exists to prevent, across eleven dimension maps");
 		}
 	}
 

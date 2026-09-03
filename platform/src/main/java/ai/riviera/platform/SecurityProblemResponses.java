@@ -15,7 +15,8 @@ import jakarta.servlet.http.HttpServletResponse;
  * chain</em> — before MVC dispatch, where {@link ApiErrorHandler}/{@link ApiProblem} can never
  * run (the same constraint and pattern as {@code RateLimitFilter}'s {@code RATE_LIMITED} body).
  * Used by {@link SecurityConfig}'s authentication entry point (session missing/expired →
- * {@code 401 UNAUTHENTICATED}). Kept in lockstep with the contract by {@code AuthSessionIT}.
+ * {@code 401 UNAUTHENTICATED}) and by {@link ChallengeVerificationFilter}'s three refusals. Kept in
+ * lockstep with the contract by {@code AuthSessionIT} and {@code ChallengeVerificationFilterTest}.
  *
  * <p>{@code instance} is pinned to {@code about:blank} just like {@link ApiProblem} builds it —
  * these literals must never echo the request URI (invariant #7 posture).
@@ -37,6 +38,21 @@ final class SecurityProblemResponses {
 			"detail":"Access denied.","code":"ACCESS_DENIED",\
 			"instance":"about:blank"}""";
 
+	private static final String CHALLENGE_REQUIRED_BODY = """
+			{"type":"about:blank","title":"Bad Request","status":400,\
+			"detail":"A solved proof-of-work challenge is required.","code":"CHALLENGE_REQUIRED",\
+			"instance":"about:blank"}""";
+
+	private static final String CHALLENGE_INVALID_BODY = """
+			{"type":"about:blank","title":"Bad Request","status":400,\
+			"detail":"The proof-of-work solution is not valid.","code":"CHALLENGE_INVALID",\
+			"instance":"about:blank"}""";
+
+	private static final String CHALLENGE_EXPIRED_BODY = """
+			{"type":"about:blank","title":"Bad Request","status":400,\
+			"detail":"The proof-of-work challenge has expired or was already used.","code":"CHALLENGE_EXPIRED",\
+			"instance":"about:blank"}""";
+
 	private SecurityProblemResponses() {
 	}
 
@@ -55,6 +71,21 @@ final class SecurityProblemResponses {
 			throws IOException {
 		String body = exception instanceof CsrfException ? INVALID_CSRF_BODY : ACCESS_DENIED_BODY;
 		write(response, HttpStatus.FORBIDDEN, body);
+	}
+
+	/** A fenced write arrived without a solved challenge in its header. */
+	static void writeChallengeRequired(HttpServletResponse response) throws IOException {
+		write(response, HttpStatus.BAD_REQUEST, CHALLENGE_REQUIRED_BODY);
+	}
+
+	/** The solution is unparseable, forged, or wrong. */
+	static void writeChallengeInvalid(HttpServletResponse response) throws IOException {
+		write(response, HttpStatus.BAD_REQUEST, CHALLENGE_INVALID_BODY);
+	}
+
+	/** The challenge is past its expiry, or this solution was already accepted once — fetch a fresh one. */
+	static void writeChallengeExpired(HttpServletResponse response) throws IOException {
+		write(response, HttpStatus.BAD_REQUEST, CHALLENGE_EXPIRED_BODY);
 	}
 
 	private static void write(HttpServletResponse response, HttpStatus status, String body)

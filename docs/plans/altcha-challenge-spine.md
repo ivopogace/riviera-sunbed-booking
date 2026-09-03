@@ -285,15 +285,15 @@ component).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3 — frontend)`
 
-**Next action:** phase 2 — endpoint, verifier filter, rate-limit budget, ITs (red first); draft PR #911 is the CI vehicle.
+**Next action:** check PR #911's CI run for the phase-2 push, then phase 3 (frontend) — load `riviera-tailwind` + `angular-developer`, red first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — prototype + plan doc + draft PR | ✅ | `47944af`, PR #911 |
-| 1 — properties, V49 registry, JDBC claim, sweep | ✅ | phase-1 commit (SHA in the phase-2 status update) |
-| 2 — challenge endpoint, verifier filter, rate-limit budget, ITs | | |
+| 1 — properties, V49 registry, JDBC claim, sweep | ✅ | `d00b703` |
+| 2 — challenge endpoint, verifier filter, rate-limit budget, ITs | ✅ | phase-2 commit (SHA in the phase-3 status update) |
 | 3 — frontend: vocabulary, probe service, widget wrapper, auth page, unit + a11y + contrast specs | | |
 | 4 — mocked Playwright spec, real-backend journey | | |
 | 5 — docs (Platform edge, production-hardening, CSP note), retire #904's plan, merge `main`, ready for review | | |
@@ -337,11 +337,13 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `platform/src/test/java/ai/riviera/platform/AltchaDisabledTest.java`
 - `platform/src/test/java/ai/riviera/platform/CustomerRegisterChallengeIT.java`
 - `platform/src/test/java/ai/riviera/platform/ChallengeSolving.java` — test helper: solve a challenge with the library, mint expired/forged ones
-- `platform/src/test/java/ai/riviera/platform/CustomerRegisterIT.java` — registers carry a solved challenge
+- `platform/src/test/java/ai/riviera/platform/CustomerRegisterIT.java`, `EmailVerificationIT.java`, `PasswordResetIT.java`, `RecoveryMailerFailureIT.java`, `RecoveryTokenNeverPersistedIT.java`, `SetPasswordIT.java` — every register carries a solved challenge
+- `platform/src/test/java/ai/riviera/platform/SessionLoginSupport.java` — `solvedChallenge(mvc)` + the header name
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — the in-memory `ChallengeRegistry`
 - `platform/src/test/java/ai/riviera/platform/EndpointRoleGateCoverageTest.java` — `GET /api/auth/challenge` declared reachable
 - `platform/src/test/java/ai/riviera/platform/ScheduledWorkArchitectureTest.java` — sixth known job
 - `platform/src/test/java/ai/riviera/platform/RateLimitPropertiesBindingTest.java` — record arity, count wording
+- `platform/src/test/java/ai/riviera/platform/RateLimitFilterTest.java` — fence off (it pins budgets), `RequestPaths.decode` references
 - `frontend/package.json`, `frontend/package-lock.json` — `altcha` pinned exact
 - `frontend/src/app/shared/challenge.ts`, `frontend/src/app/shared/challenge.spec.ts`
 - `frontend/src/app/shared/challenge-widget.ts`, `.spec.ts`, `.a11y.spec.ts`, `.contrast.spec.ts`
@@ -379,16 +381,16 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Phase 2 — challenge endpoint, verifier filter, rate-limit budget, ITs
 
-- [ ] Red: `ChallengeEndpointTest` (AC-1, AC-2), `ChallengeVerificationFilterTest` (AC-9),
+- [x] Red: `ChallengeEndpointTest` (AC-1, AC-2), `ChallengeVerificationFilterTest` (AC-9),
   `AltchaDisabledTest` (AC-8), `RateLimitFilterTest` (challenge dimension), then
   `CustomerRegisterChallengeIT` (AC-3..AC-6) and `CustomerRegisterIT` carrying a solution.
-- [ ] Green: `build.gradle` deps, `ProofOfWorkChallenges`, `ChallengeVerdict`, `ChallengeController`,
+- [x] Green: `build.gradle` deps, `ProofOfWorkChallenges`, `ChallengeVerdict`, `ChallengeController`,
   `ChallengeVerificationFilter` (after `CsrfFilter`), `SecurityProblemResponses` bodies,
   `RequestPaths`, `RateLimitFilter`/`RateLimitProperties` challenge budget, `SecurityConfig`
   wiring, `WebSliceStubs` in-memory registry, `EndpointRoleGateCoverageTest` entry, `ChallengeSolving`.
-- [ ] Scoped runs: each class one at a time; the structural net; `EndpointRoleGateCoverageTest`.
-- [ ] Generalization audit: every fixture that POSTs the customer register (`grep -rln "customer/register" platform/src/test frontend/e2e`) carries a solution or a mocked route.
-- [ ] Commit — `Issue and verify ALTCHA challenges at the edge; fence the customer register (#905)`
+- [x] Scoped runs: each class one at a time; the structural net; `EndpointRoleGateCoverageTest`.
+- [x] Generalization audit: every fixture that POSTs the customer register (`grep -rln "customer/register" platform/src/test frontend/e2e`) carries a solution or a mocked route.
+- [x] Commit — `Issue and verify ALTCHA challenges at the edge; fence the customer register (#905)`
 
 ## Phase 3 — frontend
 
@@ -427,6 +429,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-03 | phase 2 — the fence refuses a header-less register | every test that POSTs the customer register or probes it | `grep -rln "customer/register" platform/src/test frontend/e2e frontend/src` | 6 ITs (`CustomerRegisterIT`, `EmailVerificationIT`, `PasswordResetIT`, `RecoveryMailerFailureIT`, `RecoveryTokenNeverPersistedIT`, `SetPasswordIT`), `RateLimitFilterTest`, `EndpointRoleGateCoverageTest`, the FE service + spec, the e2e mocks | ITs carry `SessionLoginSupport.solvedChallenge(mvc)`; the two guards switch the fence off (they pin budgets / gates, not the fence); the FE sites are phase 3–4 |
 
 ---
 

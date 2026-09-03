@@ -28,7 +28,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.util.UriUtils;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -46,7 +45,8 @@ import jakarta.servlet.http.HttpServletResponse;
  * Per-IP, per-code and per-identity rate limiting for the platform's unauthenticated and
  * credential-bearing endpoints: the public booking-code endpoints (view / cancel / withdraw /
  * review submit-edit-delete / create / terms),
- * the two logins, registration, password change, account recovery and the SSO redirect GETs. The
+ * the two logins, registration, password change, account recovery, the SSO redirect GETs and the
+ * proof-of-work challenge GET. The
  * booking-code endpoints are {@code permitAll} because the code is the bearer credential (invariant
  * #7), so their {@code 200}/{@code 404} answer is a brute-force oracle; the rest are credential- or
  * mail-sending oracles (D-8).
@@ -126,6 +126,9 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private static final String SSO_AUTHORIZE_TEMPLATE = "/api/auth/sso/{provider}/authorize";
 	private static final String SSO_CALLBACK_TEMPLATE = "/api/auth/sso/{provider}/callback";
 
+	/** The proof-of-work challenge GET, on its own budget so a challenge flood never starves a login. */
+	private static final String CHALLENGE_PATH = ChallengeController.PATH;
+
 	/**
 	 * Upper bound on a login body buffered to read the identity: a real one is ~60 bytes, so this is vast
 	 * headroom while keeping the in-filter buffer bounded. A larger (or unknown-length) body is not
@@ -175,6 +178,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	private final Map<String, TokenBucket> customerPasswordBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> ssoBuckets = new ConcurrentHashMap<>();
 	private final Map<String, TokenBucket> recoveryBuckets = new ConcurrentHashMap<>();
+	private final Map<String, TokenBucket> challengeBuckets = new ConcurrentHashMap<>();
 
 	/** Both logins share this one, keyed by a scoped hash so their identity spaces never collide. */
 	private final Map<String, TokenBucket> usernameBuckets = new ConcurrentHashMap<>();
@@ -253,16 +257,17 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	 * {@code CsrfFilter} rejects it with no database read, no bcrypt and no mail sent — the guarded work
 	 * is never reached, which is the same reason the refund is correct at all.
 	 */
-	private record AuthBudget(Map<String, TokenBucket> buckets, boolean refundedWhenAccessDenied) {
+	private record AuthBudget(Map<String, TokenBucket> buckets, RateLimitProperties.Limit limit,
+			boolean refundedWhenAccessDenied) {
 
 		/** An anonymous surface: every request spends, because request volume IS what is being limited. */
-		static AuthBudget spendsEveryRequest(Map<String, TokenBucket> buckets) {
-			return new AuthBudget(buckets, false);
+		static AuthBudget spendsEveryRequest(Map<String, TokenBucket> buckets, RateLimitProperties.Limit limit) {
+			return new AuthBudget(buckets, limit, false);
 		}
 
 		/** A budget guarding authenticated work: a request denied before reaching it must cost nothing. */
-		static AuthBudget guardsAuthenticatedWork(Map<String, TokenBucket> buckets) {
-			return new AuthBudget(buckets, true);
+		static AuthBudget guardsAuthenticatedWork(Map<String, TokenBucket> buckets, RateLimitProperties.Limit limit) {
+			return new AuthBudget(buckets, limit, true);
 		}
 	}
 
@@ -284,7 +289,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
 		Instant now = clock.instant();
 		String ip = clientIps.resolve(request);
-		TokenBucket ipBucket = bucketFor(budget.buckets(), ip, props.login(), now);
+		TokenBucket ipBucket = bucketFor(budget.buckets(), ip, budget.limit(), now);
 		if (!ipBucket.tryAcquire(now)) {
 			reject(response, ipBucket.retryAfterSeconds(now), ip, "login");
 			return;
@@ -319,14 +324,20 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	 */
 	private Optional<AuthBudget> authBudgetFor(HttpServletRequest request) {
 		String method = request.getMethod();
-		String path = pathWithinApplication(request);
+		String path = RequestPaths.withinApplication(request);
 		if (HttpMethod.POST.matches(method)) {
 			return authPostBudgetFor(path);
 		}
+		if (!HttpMethod.GET.matches(method)) {
+			return Optional.empty();
+		}
+		if (CHALLENGE_PATH.equals(path)) {
+			return Optional.of(AuthBudget.spendsEveryRequest(challengeBuckets, props.challenge()));
+		}
 		// A cheap prefix pre-check keeps the two matcher calls off every hot public venue/booking GET.
-		if (HttpMethod.GET.matches(method) && path.startsWith(SSO_PATH_PREFIX)
+		if (path.startsWith(SSO_PATH_PREFIX)
 				&& (paths.match(SSO_AUTHORIZE_TEMPLATE, path) || paths.match(SSO_CALLBACK_TEMPLATE, path))) {
-			return Optional.of(AuthBudget.spendsEveryRequest(ssoBuckets));
+			return Optional.of(AuthBudget.spendsEveryRequest(ssoBuckets, props.login()));
 		}
 		return Optional.empty();
 	}
@@ -338,23 +349,24 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	 * choice per budget is {@link AuthBudget}'s.
 	 */
 	private Optional<AuthBudget> authPostBudgetFor(String path) {
+		RateLimitProperties.Limit limit = props.login();
 		if (LOGIN_PATH.equals(path)) {
-			return Optional.of(AuthBudget.spendsEveryRequest(loginBuckets));
+			return Optional.of(AuthBudget.spendsEveryRequest(loginBuckets, limit));
 		}
 		if (OPERATOR_REGISTER_PATH.equals(path)) {
-			return Optional.of(AuthBudget.spendsEveryRequest(operatorRegisterBuckets));
+			return Optional.of(AuthBudget.spendsEveryRequest(operatorRegisterBuckets, limit));
 		}
 		if (OPERATOR_PASSWORD_PATH.equals(path)) {
-			return Optional.of(AuthBudget.guardsAuthenticatedWork(operatorPasswordBuckets));
+			return Optional.of(AuthBudget.guardsAuthenticatedWork(operatorPasswordBuckets, limit));
 		}
 		if (CUSTOMER_PASSWORD_PATH.equals(path)) {
-			return Optional.of(AuthBudget.guardsAuthenticatedWork(customerPasswordBuckets));
+			return Optional.of(AuthBudget.guardsAuthenticatedWork(customerPasswordBuckets, limit));
 		}
 		if (CUSTOMER_LOGIN_PATH.equals(path) || CUSTOMER_REGISTER_PATH.equals(path)) {
-			return Optional.of(AuthBudget.spendsEveryRequest(customerAuthBuckets));
+			return Optional.of(AuthBudget.spendsEveryRequest(customerAuthBuckets, limit));
 		}
 		if (RECOVERY_PATHS.contains(path)) {
-			return Optional.of(AuthBudget.guardsAuthenticatedWork(recoveryBuckets));
+			return Optional.of(AuthBudget.guardsAuthenticatedWork(recoveryBuckets, limit));
 		}
 		return Optional.empty();
 	}
@@ -369,7 +381,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		if (HttpMethod.OPTIONS.matches(method)) {
 			return null; // CORS preflight — never counted
 		}
-		String path = pathWithinApplication(request);
+		String path = RequestPaths.withinApplication(request);
 		if (HttpMethod.GET.matches(method) && paths.match(VIEW_TEMPLATE, path)) {
 			// The terms segment is no code — a shared "code" bucket would 429 site-wide. Per-IP only.
 			return new Target(TERMS_PATH.equals(path)
@@ -392,38 +404,6 @@ final class RateLimitFilter extends OncePerRequestFilter {
 			}
 		}
 		return null;
-	}
-
-	/**
-	 * The request path every budget here is keyed on — decoded and stripped of matrix parameters, so it is
-	 * the <strong>same</strong> path Spring Security's matchers and {@code @PostMapping} route on.
-	 *
-	 * <p>Never the raw {@code getRequestURI()}: the servlet spec leaves that percent-encoded, so
-	 * {@code …/passwor%64} matched no constant, spent no token, and still reached the controller — an
-	 * unthrottled brute-force oracle against the credential this filter exists to protect.
-	 *
-	 * <p>Matrix parameters ({@code …/password;a=b}) are the sibling bypass and are deliberately <em>not</em>
-	 * handled: {@code StrictHttpFirewall} rejects a {@code ;} before any filter of ours runs, so a strip
-	 * would be unreachable code. {@code RateLimitFilterTest} pins that dependency as a tripwire, so
-	 * relaxing the firewall fails a test rather than silently opening the hole.
-	 */
-	private static String pathWithinApplication(HttpServletRequest request) {
-		String uri = request.getRequestURI();
-		String context = request.getContextPath();
-		String withinApp = (context != null && !context.isEmpty() && uri.startsWith(context))
-				? uri.substring(context.length())
-				: uri;
-		return decodePath(withinApp);
-	}
-
-	/** A malformed escape keeps the raw form: it matches no budget, and the filter chain still rejects it. */
-	static String decodePath(String path) {
-		try {
-			return UriUtils.decode(path, StandardCharsets.UTF_8);
-		}
-		catch (IllegalArgumentException malformedEscape) {
-			return path;
-		}
 	}
 
 	/**
@@ -490,7 +470,7 @@ final class RateLimitFilter extends OncePerRequestFilter {
 		if (!HttpMethod.POST.matches(request.getMethod())) {
 			return null;
 		}
-		String path = pathWithinApplication(request);
+		String path = RequestPaths.withinApplication(request);
 		for (LoginEndpoint endpoint : LoginEndpoint.values()) {
 			if (endpoint.path.equals(path)) {
 				return endpoint;

@@ -280,6 +280,7 @@ class SetPasswordIT {
 	/** Returns the result so a caller can take the auto-sign-in session (S2) instead of logging in again. */
 	private ResultActions register(String email, String password) throws Exception {
 		return mvc.perform(post("/api/auth/customer/register").with(csrf())
+				.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""
