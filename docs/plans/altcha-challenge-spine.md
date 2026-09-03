@@ -98,72 +98,72 @@ property (no deploy needed — it is configuration; recorded in `production-hard
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1 (issue):** Given `riviera.altcha.enabled=true`, when an anonymous client GETs
+- [x] **AC-1 (issue):** Given `riviera.altcha.enabled=true`, when an anonymous client GETs
   `/api/auth/challenge`, then it answers `200 application/json` with a v2 challenge whose
   `parameters.algorithm` is `PBKDF2/SHA-256`, `parameters.cost` is the configured value,
   `parameters.expiresAt` is the injected clock + 10 minutes (epoch seconds), a non-blank
   `signature`, `Cache-Control: no-store`, and no session cookie (the SPA's platform-wide `XSRF-TOKEN` bootstrap rides every response, `CsrfCookieBootstrapIT`). *Seam:* the HTTP route ·
   *Pinned by:* `ChallengeEndpointTest.issuesASignedTenMinuteChallenge`
-- [ ] **AC-2 (own bucket):** Given the challenge budget's capacity is 2, when one IP GETs the
+- [x] **AC-2 (own bucket):** Given the challenge budget's capacity is 2, when one IP GETs the
   challenge three times, then the third is `429 RATE_LIMITED` while a customer login from the same
   IP is still admitted (the login budget is a different dimension). *Seam:* the HTTP route ·
   *Pinned by:* `ChallengeEndpointTest.challengeBudgetIsItsOwnDimension`
-- [ ] **AC-3 (happy path):** Given a challenge minted by the endpoint and solved in the test with
+- [x] **AC-3 (happy path):** Given a challenge minted by the endpoint and solved in the test with
   the Java library, when the customer register POST carries it in `X-Altcha-Payload`, then the
   answer is `201` with a `SESSION` cookie and the account row exists. *Seam:* the HTTP route (real
   Postgres) · *Pinned by:* `CustomerRegisterChallengeIT.registersWithASolvedChallenge`
-- [ ] **AC-4 (rejections, no write):** Given a register POST without the header / with a tampered
+- [x] **AC-4 (rejections, no write):** Given a register POST without the header / with a tampered
   signature / with a challenge whose `expiresAt` has passed / with a solution already accepted once,
   when it is submitted, then the answer is `400` with `CHALLENGE_REQUIRED` / `CHALLENGE_INVALID` /
   `CHALLENGE_EXPIRED` / `CHALLENGE_EXPIRED` respectively, no session cookie, and no
   `customer_account` row. *Seam:* the HTTP route · *Pinned by:* `CustomerRegisterChallengeIT.rejectsAMissingHeader`,
   `.rejectsATamperedSignature`, `.rejectsAnExpiredChallenge`, `.rejectsAReplayedSolution`
-- [ ] **AC-5 (the claim is the database):** Given one solved challenge, when two threads submit it
+- [x] **AC-5 (the claim is the database):** Given one solved challenge, when two threads submit it
   concurrently, then exactly one register is `201` and the other `400 CHALLENGE_EXPIRED`.
   *Seam:* the HTTP route (real Postgres) · *Pinned by:* `CustomerRegisterChallengeIT.concurrentReplayAdmitsExactlyOne`;
   and the V49 constraint itself: *Pinned by:* `ChallengeRegistryMigrationIT.primaryKeyRejectsASecondRow`,
   `.onConflictDoNothingLosesQuietly` (invariant #12)
-- [ ] **AC-6 (rate limit first, never refunded):** Given the shipped register budget (10/min per
+- [x] **AC-6 (rate limit first, never refunded):** Given the shipped register budget (10/min per
   IP), when one IP sends eleven header-less registers, then the first ten are
   `400 CHALLENGE_REQUIRED` and the eleventh `429 RATE_LIMITED`. *Seam:* the HTTP route ·
   *Pinned by:* `CustomerRegisterChallengeIT.aChallengeFailureStillSpendsTheRegisterBudget`
-- [ ] **AC-7 (sweep):** Given a registry row whose expiry is an hour past and one ten minutes
+- [x] **AC-7 (sweep):** Given a registry row whose expiry is an hour past and one ten minutes
   ahead, when the sweep runs, then only the expired row is gone. *Seam:* `ChallengeRegistry` +
   the sweep bean · *Pinned by:* `ChallengeRegistrySweepIT.deletesExpiredRowsAndKeepsLiveOnes`
-- [ ] **AC-8 (kill switch + binding):** Given `riviera.altcha.enabled=false`, when a register
+- [x] **AC-8 (kill switch + binding):** Given `riviera.altcha.enabled=false`, when a register
   POST carries no header, then the filter admits it (no `CHALLENGE_*` code) and the challenge
   endpoint answers `204`. Given the shipped `application.properties`, the properties bind to
   `enabled=true`, `cost=5000`, `expiry=PT10M`, `clock-skew=PT30S`, blank secret; a cost or expiry
   outside its bounds fails the context. *Seam:* the HTTP route / the property binder ·
   *Pinned by:* `AltchaDisabledTest.registerAdmitsWithoutAHeader`, `.challengeEndpointAnswersNoContent`,
   `AltchaPropertiesBindingTest.*`
-- [ ] **AC-9 (verifier contract, cheap net):** Given the web slice with a known test secret, when
+- [x] **AC-9 (verifier contract, cheap net):** Given the web slice with a known test secret, when
   the fenced route receives no header / garbage / a forged signature / a real solution / the same
   solution twice / an expired challenge, then the codes are as in AC-4 and a non-fenced route
   (customer login) is untouched. *Seam:* the HTTP route (`@WebMvcTest`, in-memory registry) ·
   *Pinned by:* `ChallengeVerificationFilterTest.*`
-- [ ] **AC-10 (structure):** `ModularityTests`, `JdbcOnlyArchitectureTests`,
+- [x] **AC-10 (structure):** `ModularityTests`, `JdbcOnlyArchitectureTests`,
   `PackageShapeArchitectureTests`, `ScheduledWorkArchitectureTest` (six known jobs, pool ≥ 6),
   `EndpointRoleGateCoverageTest` (the challenge GET declared reachable) stay green.
-- [ ] **AC-11 (mocked Playwright):** On `/account/sign-in?mode=register` (tourist) the widget
+- [x] **AC-11 (mocked Playwright):** On `/account/sign-in?mode=register` (tourist) the widget
   appears with its attribution, solves a mocked low-cost challenge, the register POST carries
   `x-altcha-payload`, each of the three rejection codes renders its message and a fresh challenge
   is fetched, and a `204` from the challenge route hides the widget while register still works.
   *Seam:* the SPA against `page.route` mocks · *Pinned by:* `e2e/customer-auth-challenge.e2e.ts`
-- [ ] **AC-12 (real backend):** One journey registers a customer by solving a real challenge in
+- [x] **AC-12 (real backend):** One journey registers a customer by solving a real challenge in
   Chromium against the real verifier. *Seam:* the SPA against the running backend ·
   *Pinned by:* `e2e/real-backend/register.e2e.ts`
-- [ ] **AC-13 (a11y):** axe passes on the wrapper and on the tourist register card with the widget
+- [x] **AC-13 (a11y):** axe passes on the wrapper and on the tourist register card with the widget
   enabled; contrast holds for the widget's mapped tokens in all three themes; each widget state is
   announced through a `role="status"` region. *Seam:* the rendered component ·
   *Pinned by:* `challenge-widget.a11y.spec.ts`, `challenge-widget.contrast.spec.ts`,
   `challenge-widget.spec.ts.announcesEachState`, `auth-page.a11y.spec.ts`
-- [ ] **AC-14 (client mapping):** `CustomerAuth.register` sends the header only when a payload is
+- [x] **AC-14 (client mapping):** `CustomerAuth.register` sends the header only when a payload is
   given and maps the three codes to `challenge-required` / `challenge-invalid` /
   `challenge-expired`; `ProofOfWork.enabled` is `true` on `200`, `false` on `204`, `true` on a
   transport error. *Seam:* `HttpTestingController` · *Pinned by:* `customer-auth.spec.ts`,
   `proof-of-work.spec.ts`, `challenge.spec.ts`
-- [ ] **AC-15 (docs):** `RESPONSIBILITIES.md` § *Platform edge*, `production-hardening.md`
+- [x] **AC-15 (docs):** `RESPONSIBILITIES.md` § *Platform edge*, `production-hardening.md`
   (secret + properties + the CSP `worker-src blob:` note), and this doc's prototype record ship in
   the PR; `docs/plans/password-policy-12.md` is retired.
 
@@ -186,18 +186,18 @@ N/A — new behavior, replaces nothing. The register endpoint keeps every existi
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A solved challenge is accepted twice (restart, second instance, concurrent submits) | med | high | `challenge_registry(challenge_id PK)` + `INSERT … ON CONFLICT DO NOTHING`, accepted only if the insert wins (invariant #2 idiom); AC-5 IT + migration IT | agent | open |
-| R-2 | The verifier's status interacts with the rate limiter's refund: a `403` is refunded on `guardsAuthenticatedWork` budgets (the recovery budget #906 fences) | high | med | Every challenge failure is `400`; the filter runs after `RateLimitFilter` so a `429` wins; AC-6 pins the register budget is spent | agent | open |
-| R-3 | Full-suite-only failures (`riviera-local-debug`): a new `@Scheduled` job, a new bucket map, DB state across tests | med | med | Sweep `initial-delay PT1M`; pool size 6 + `ScheduledWorkArchitectureTest`; ITs use `SessionLoginSupport.uniqueClientIp()`; registry keys are random nonces so tests never collide | agent | open |
-| R-4 | Clock: the library's expiry check reads `System.currentTimeMillis()`; the issuer uses the injected `Clock`; web slices run a fixed 2026-06-30 clock | high | med | The endpoint slice asserts the fixed-clock `expiresAt`; the verifier slice mints its own real-time challenges with the test secret; ITs run `systemUTC`; the skew allowance applies to registry retention (row outlives expiry by `clock-skew`), which is where instance skew bites | agent | open |
-| R-5 | No `RIVIERA_ALTCHA_HMAC_SECRET` in prod → random boot key → a restart invalidates in-flight challenges, a second instance verifies nothing | med | med | WARN at boot naming the variable; `production-hardening.md` env row | agent | open |
-| R-6 | `org.json` is `provided` in the library's pom — missing at runtime is a `NoClassDefFoundError` on the first challenge | high | high | Pinned `implementation 'org.json:json'`; the ITs exercise the path | agent | open |
-| R-7 | The widget's 22 px checkbox fails the 44 px touch-target floor | high | low | `--altcha-checkbox-size` set from the wrapper host; measured by the tourist touch-target sweep in register mode | agent | open |
-| R-8 | `import 'altcha'` in Vitest/jsdom (custom element, Workers, `isSecureContext`) | med | low | Specs mock the module (`vi.mock('altcha')`) if the element breaks jsdom; the real widget is proven in Playwright | agent | open |
-| R-9 | The bundled widget (~34 kB gz, Blob-URL workers) lands in the initial chunk or trips the `anyComponentStyle` budget | low | med | Imported only by the lazy auth route's wrapper; `npm run build` in phase 3 | agent | open |
-| R-10 | Error contract: three new codes emitted from a filter, i.e. before `ApiErrorHandler` | high | low | Hand-mirrored bodies in `SecurityProblemResponses` (the existing pattern), pinned by the ITs | agent | open |
-| R-11 | Custom request header on a cross-origin dev POST triggers a CORS preflight | low | low | `WebCorsConfig` allows `*` headers; prod is same-origin | agent | open |
-| R-12 | Widget in `EXPIRED` state does not re-solve on focus (`auto=onfocus` fires only from `UNVERIFIED`) | high | med | The wrapper listens to `expired` and `reset()`s + `verify()`s; e2e pins the refetch | agent | open |
+| R-1 | A solved challenge is accepted twice (restart, second instance, concurrent submits) | med | high | `challenge_registry(challenge_id PK)` + `INSERT … ON CONFLICT DO NOTHING`, accepted only if the insert wins (invariant #2 idiom); AC-5 IT + migration IT | agent | closed — `ChallengeRegistryMigrationIT` + `CustomerRegisterChallengeIT.concurrentReplayAdmitsExactlyOne` pin the claim |
+| R-2 | The verifier's status interacts with the rate limiter's refund: a `403` is refunded on `guardsAuthenticatedWork` budgets (the recovery budget #906 fences) | high | med | Every challenge failure is `400`; the filter runs after `RateLimitFilter` so a `429` wins; AC-6 pins the register budget is spent | agent | closed — all three codes answer `400`; `aChallengeFailureStillSpendsTheRegisterBudget` pins the spent bucket and the `429` precedence |
+| R-3 | Full-suite-only failures (`riviera-local-debug`): a new `@Scheduled` job, a new bucket map, DB state across tests | med | med | Sweep `initial-delay PT1M`; pool size 6 + `ScheduledWorkArchitectureTest`; ITs use `SessionLoginSupport.uniqueClientIp()`; registry keys are random nonces so tests never collide | agent | closed — full suite green in CI on every complete run (F-4 was a jsdom-sharing failure, not a backend one) |
+| R-4 | Clock: the library's expiry check reads `System.currentTimeMillis()`; the issuer uses the injected `Clock`; web slices run a fixed 2026-06-30 clock | high | med | The endpoint slice asserts the fixed-clock `expiresAt`; the verifier slice mints its own real-time challenges with the test secret; ITs run `systemUTC`; the skew allowance applies to registry retention (row outlives expiry by `clock-skew`), which is where instance skew bites | agent | closed — the endpoint slice asserts the fixed-clock `expiresAt`; the verifier slice and ITs mint real-time challenges |
+| R-5 | No `RIVIERA_ALTCHA_HMAC_SECRET` in prod → random boot key → a restart invalidates in-flight challenges, a second instance verifies nothing | med | med | WARN at boot naming the variable; `production-hardening.md` env row | agent | closed — WARN at boot + the `production-hardening.md` env row; multi-instance keying stays out of scope (epic #903) |
+| R-6 | `org.json` is `provided` in the library's pom — missing at runtime is a `NoClassDefFoundError` on the first challenge | high | high | Pinned `implementation 'org.json:json'`; the ITs exercise the path | agent | closed — `org.json` pinned as `implementation`; every register IT exercises the parse path |
+| R-7 | The widget's 22 px checkbox fails the 44 px touch-target floor | high | low | `--altcha-checkbox-size` set from the wrapper host; measured by the tourist touch-target sweep in register mode | agent | closed — 44 px via `--altcha-checkbox-size`; the tourist touch sweep measures the register card (F-3 exempted the decorative logo link) |
+| R-8 | `import 'altcha'` in Vitest/jsdom (custom element, Workers, `isSecureContext`) | med | low | Specs mock the module (`vi.mock('altcha')`) if the element breaks jsdom; the real widget is proven in Playwright | agent | closed — every fence-on spec mocks the module and drives the shared fake in `src/testing/fake-altcha-element.ts` (F-4) |
+| R-9 | The bundled widget (~34 kB gz, Blob-URL workers) lands in the initial chunk or trips the `anyComponentStyle` budget | low | med | Imported only by the lazy auth route's wrapper; `npm run build` in phase 3 | agent | closed — the widget is its own lazy 32 kB chunk; `npm run build` passed within budgets |
+| R-10 | Error contract: three new codes emitted from a filter, i.e. before `ApiErrorHandler` | high | low | Hand-mirrored bodies in `SecurityProblemResponses` (the existing pattern), pinned by the ITs | agent | closed — `SecurityProblemResponses` carries the three bodies; `CustomerRegisterChallengeIT` pins each |
+| R-11 | Custom request header on a cross-origin dev POST triggers a CORS preflight | low | low | `WebCorsConfig` allows `*` headers; prod is same-origin | agent | closed — no preflight change needed; the mocked and real-backend suites run the POST with the header |
+| R-12 | Widget in `EXPIRED` state does not re-solve on focus (`auto=onfocus` fires only from `UNVERIFIED`) | high | med | The wrapper listens to `expired` and `reset()`s + `verify()`s; e2e pins the refetch | agent | closed — the wrapper's `expired` handler `reset()`s + `verify()`s; `customer-auth-challenge.e2e.ts` pins the refetch on `CHALLENGE_EXPIRED` |
 
 ## Open questions / Assumptions
 
@@ -283,9 +283,9 @@ component).
 
 ## Execution status
 
-**Stage pointer:** `PR — ready for review; review gate next`
+**Stage pointer:** `Merge — close-out written; merged via PR #911`
 
-**Next action:** run the review gate (`/code-review` + `riviera-review-overlay`, high effort) and clear the Sonar list on PR #911.
+**Next action:** none in the repo — the post-merge items are GitHub edits (epic #903 close-out comment, subscription closed).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -295,7 +295,7 @@ component).
 | 3 — frontend: vocabulary, probe service, widget wrapper, auth page, unit + a11y + contrast specs | ✅ | `6a505b5` |
 | 4 — mocked Playwright spec, real-backend journey | ✅ | `d1c680f`; the full mocked suite passed (413); the real-backend journey passed on the sandbox's local stack (host Postgres 16 + `gradle bootRun`, cost 5000, 13 s end to end) |
 | 5 — docs (Platform edge, production-hardening, CSP note), retire #904's plan, merge `main`, ready for review | ✅ | phase-5 commit; `origin/main` had not moved since the branch point (0 commits behind), so there was nothing to merge |
-| 6 — review gate, Sonar gate, close-out | | |
+| 6 — review gate, Sonar gate, close-out | ✅ | `5cc01d5` (review fixes F-5..F-10) + the close-out commit. Review gate: `/code-review` at high effort (five agents) with `riviera-review-overlay` — nothing scored ≥ 80, every finding fixed or decided in the register. Sonar gate: the one reported issue (F-1, `S2119`) fixed at `d1c680f`; the final analysis and green CI are on PR #911. Merged via PR #911 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -432,7 +432,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Phase 6 — gates
 
-- [ ] `/code-review` (high effort: authorization edge) + `riviera-review-overlay`; Sonar list cleared; findings register updated; close-out.
+- [x] `/code-review` (high effort: authorization edge) + `riviera-review-overlay`; Sonar list cleared; findings register updated; close-out.
 
 ---
 
@@ -464,22 +464,22 @@ toolchain, the sandbox's `dockerd` for the ITs — every IT ran with `skipped="0
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
