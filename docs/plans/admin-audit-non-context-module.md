@@ -53,43 +53,43 @@ not shape`) · `riviera-local-debug` (before the session's first `./gradlew`).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the production bytecode, when the sole-writer scan looks for the whole-word
+- [x] **AC-1:** Given the production bytecode, when the sole-writer scan looks for the whole-word
       token `admin_audit_record`, then every class carrying it is inside module `audit`. *Seam:*
       the module boundary as seen by the ArchUnit production import · *Pinned by:*
       `ResponsibilitiesArchitectureTests.adminAuditTableIsTouchedOnlyInsideTheAuditModule`
-- [ ] **AC-2:** Given a fixture class outside the module carrying that SQL, when the same collector
+- [x] **AC-2:** Given a fixture class outside the module carrying that SQL, when the same collector
       runs over the fixture tree, then it is reported as a violation. *Seam:* the parameterized
       violation collector · *Pinned by:*
       `ResponsibilitiesArchitectureTests.adminAuditTableTouchedOutsideTheAuditModuleIsRejected`
-- [ ] **AC-3:** Given the production import, when the scan runs, then at least one `audit` class
+- [x] **AC-3:** Given the production import, when the scan runs, then at least one `audit` class
       does carry the token — the rule is not vacuously green. *Seam:* same · *Pinned by:*
       `ResponsibilitiesArchitectureTests.theAuditModuleItselfWritesTheTable`
-- [ ] **AC-4:** Given the composition root, when its dependencies are inspected, then the only
+- [x] **AC-4:** Given the composition root, when its dependencies are inspected, then the only
       `audit` surface it reaches is `audit::api` — never `vocabulary`, `application` or `adapter`.
       *Seam:* `CompositionRootDisciplineTests.GRANTED_SURFACES` · *Pinned by:*
       `CompositionRootDisciplineTests.rootTouchesOnlyGrantedModuleSurfaces`
-- [ ] **AC-5:** Given the `audit` module's classes, when the module→root rule runs, then none
+- [x] **AC-5:** Given the `audit` module's classes, when the module→root rule runs, then none
       depends on a type sitting directly in `ai.riviera.platform`. *Seam:* the same test's second
       rule · *Pinned by:* `CompositionRootDisciplineTests.noModuleReachesTheRoot`
-- [ ] **AC-6:** Given `allowedDependencies = {}`, when Spring Modulith verifies the structure, then
+- [x] **AC-6:** Given `allowedDependencies = {}`, when Spring Modulith verifies the structure, then
       `audit` depends on no other module and no module depends on it. *Seam:*
       `ApplicationModules.of(PlatformApplication.class).verify()` · *Pinned by:*
       `ModularityTests.verifiesModularStructure`
-- [ ] **AC-7:** Given the module's published surface, when the placement rules run, then `api/`
+- [x] **AC-7:** Given the module's published surface, when the placement rules run, then `api/`
       holds only the plain interface `AdminAuditLog` and the entry record sits in `vocabulary/`.
       *Seam:* the `@NamedInterface` packages · *Pinned by:*
       `PublishedSurfacePlacementArchitectureTests.portsSurfacesHoldOnlyNonSealedInterfaces` and
       `.vocabularySurfacesHoldNoPorts`
-- [ ] **AC-8:** Given an authenticated platform admin, when a mutating `/api/admin/**` call carrying
+- [x] **AC-8:** Given an authenticated platform admin, when a mutating `/api/admin/**` call carrying
       `X-Audit-Reason` completes past the gate, then exactly one row is appended with the actor,
       method, path, real outcome status and the sanitized reason — unchanged from before the move.
       *Seam:* the `/api/admin/**` request path through `AdminAuditFilter` → the `AdminAuditLog`
       port · *Pinned by:* `AdminAuditTrailIT` (existing, unmodified assertions)
-- [ ] **AC-9:** Given recorded actions, when `GET /api/admin/audit` is called by an ADMIN, then the
+- [x] **AC-9:** Given recorded actions, when `GET /api/admin/audit` is called by an ADMIN, then the
       latest entries come back newest-first and the route stays ADMIN-gated from its new home.
       *Seam:* the HTTP route `/api/admin/audit` · *Pinned by:* `AdminAuditTrailIT` +
       `AdminSurfaceRoleGateTest`
-- [ ] **AC-10:** Given the web slices, when any `@Import(WebSliceStubs.class)` test runs, then the
+- [x] **AC-10:** Given the web slices, when any `@Import(WebSliceStubs.class)` test runs, then the
       inert `AdminAuditLog` stub still satisfies the filter chain and the controller. *Seam:* the
       `WebSliceStubs` bean · *Pinned by:* `AdminSurfaceRoleGateTest` (a representative slice)
 
@@ -141,11 +141,13 @@ not shape`) · `riviera-local-debug` (before the session's first `./gradlew`).
 
 ## Open questions / Assumptions
 
-- **Assumption:** No open PR touches `SecurityConfig`, `WebSliceStubs`, `PayoutModuleTest` or the
-  four ArchUnit nets this slice edits. — *Owner:* this slice · *Resolves by:* re-checked at the
-  merge-from-main before ready-for-review.
+_None open._
 
 ### Resolved
+
+- **Assumption (held):** no open PR touched `SecurityConfig`, `WebSliceStubs`, `PayoutModuleTest`
+  or the four ArchUnit nets. Confirmed at ready-for-review: the branch was 0 commits behind
+  `origin/main` and the PR reported `mergeable_state: clean`.
 
 - **Q-1 — the module name.** `audit` (`ai.riviera.platform.audit`, display name *Admin audit
   trail*). Single word, the `challenge` precedent — ADR-0017 rejected `proofofwork` partly as the
@@ -390,16 +392,16 @@ same request header. Verified behaviour-by-behaviour in the parity ledger above.
       it raises (R-6).
 - [x] **Step 4: Retire the sibling's plan doc** — the sibling's (R-8) and this one, at the close-out.
 - [x] **Step 5: Reconcile the File-structure section** — `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
-- [x] **Step 6: Commit + finalize the execution status** (stage pointer DONE, `merged via PR #NN`).
+- [x] **Step 6: Commit + finalize the execution status** (stage pointer DONE, `merged via PR #917`).
 
 ---
 
 ## Execution status
 
-**Stage pointer:** `review gate run (5-agent fan-out + overlay), findings fixed; Sonar green with
-its list verified empty; next = merge close-out`
+**Stage pointer:** `DONE — merged via PR #917`
 
-**Next action:** Confirm CI green on the review-fix commit, then merge and run the close-out.
+**Next action:** None. Post-merge items are GitHub-side only (verify #914 closed, subscription
+ended). This plan doc is retired at the next close-out of any kind.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -407,6 +409,7 @@ its list verified empty; next = merge close-out`
 | 1 — the move (module in, fence stays) | ✅ | (this phase's commit) |
 | 2 — docs, ADR status, plan retirement | ✅ | (this phase's commit) |
 | 3 — review-gate fixes (F-2..F-6) | ✅ | (the review-fix commit) |
+| 4 — close-out (gates ticked, plan finalized) | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -419,7 +422,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-4 | review gate (agent 1) | `AdminAuditLog` Javadoc used Markdown backticks around `RESPONSIBILITIES.md`; a `/** */` block renders them literally, and every other site in the tree uses `{@code}` | fixed |
 | F-5 | maintainer, at the review gate | CLAUDE.md — which loads every session — carried published type names, template kind and the sole-writer fact for both non-context modules, all already in `RESPONSIBILITIES.md` §s and the package-infos: duplication that costs tokens every session and adds a second place to go stale | fixed — trimmed to the two names, the rule that picks, and where to look (CLAUDE.md net +1 line, was +4); the `riviera-modulith` thin-template clause lost its restatement for the same reason. Kept deliberately: the `two → three` count repairs (they fix statements this PR made false) and § `audit` (the doc's own job; RV-BE-11 reviews against it) |
 | F-6 | review gate (agent 3) | `WebSliceStubs` new imports sorted after `booking` instead of before | fixed (cosmetic; no linter enforces it) |
-| F-1 | docs-freshness (phase 2) | `docs/adr/ADR-0007-package-structure.md` Amendment 2 opens "The two templates describe **bounded contexts**." ADR-0017 Decision 1 gives its templates to non-context modules, so the sentence has been false since #913 (`challenge` takes the full template and is not a bounded context) and this slice adds the thin-template case. **Not patched:** ADR-0017's own Consequences say "ADR-0007 is not reopened", so correcting another ADR's framing sentence is the maintainer's call, not a docs-freshness patch | **flagged** — predates this slice; needs the maintainer's decision (an ADR-0007 Amendment 3, a pointer line, or leave as decision-moment framing) |
+| F-1 | docs-freshness (phase 2) | `docs/adr/ADR-0007-package-structure.md` Amendment 2 opens "The two templates describe **bounded contexts**." ADR-0017 Decision 1 gives its templates to non-context modules, so the sentence has been false since #913 (`challenge` takes the full template and is not a bounded context) and this slice adds the thin-template case. **Not patched:** ADR-0017's own Consequences say "ADR-0007 is not reopened", so correcting another ADR's framing sentence is the maintainer's call, not a docs-freshness patch | **deferred → issue #918**, at the maintainer's direction: the contradiction predates this slice (live since #913) and correcting another ADR's framing is a decision, not a docs-freshness patch |
 
 ---
 
@@ -442,29 +445,36 @@ the fix push.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-3:** `./gradlew test --tests "*ResponsibilitiesArchitectureTests*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4, AC-5:** `./gradlew test --tests "*CompositionRootDisciplineTests*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-6:** `./gradlew test --tests "*ModularityTests*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-7:** `./gradlew test --tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-8, AC-9:** `./gradlew test --tests "*AdminAuditTrailIT*" --tests "*AdminSurfaceRoleGateTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-10:** `./gradlew test --tests "*AdminSurfaceRoleGateTest*" --tests "*PayoutModuleTest*"` → PASS. Verified at commit `<sha>`.
+All verified locally on the phase-1 head and re-verified after the review-fix round, and again by
+CI's full suite on every push (`ci.yml`, Backend build + test).
+
+- [x] **AC-1..AC-3:** `gradle test --tests "*ResponsibilitiesArchitectureTests*"` → PASS. AC-1 and
+      AC-3 were RED at phase 0 against the root writer, which is what makes them meaningful.
+- [x] **AC-4, AC-5:** `--tests "*CompositionRootDisciplineTests*"` → PASS.
+- [x] **AC-6:** `--tests "*ModularityTests*"` → PASS.
+- [x] **AC-7:** `--tests "*PublishedSurfacePlacementArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` → PASS.
+- [x] **AC-8, AC-9:** `--tests "*AdminAuditTrailIT*" --tests "*AdminReviewTakedownIT*"` → PASS against
+      real Postgres (Testcontainers), assertions unmodified — the parity proof.
+- [x] **AC-10:** `--tests "*AdminSurfaceRoleGateTest*" --tests "*PayoutModuleTest*"` → PASS;
+      `PayoutModuleTest` falsified by removing the `@MockitoBean` (reproduced
+      `NoSuchBeanDefinitionException`) before restoring it.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (N/A justified); no availability code path touched (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — untouched.
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; `allowedDependencies = {}` verified (invariant #11).
-- [ ] **Payment/payout** section filled (N/A justified) (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone correct: `occurred_at` still a UTC instant off the injected `Clock` (invariant #6).
-- [ ] Booking codes untouched (invariant #7).
-- [ ] No Flyway migration needed and none added; V38 byte-identical (invariant #12).
-- [ ] **Frontend** untouched; no contract change.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (Q-1..Q-3 resolved).
-- [ ] **Close-out written in THIS PR** — this doc's final state committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — the `references/pr-gates.md` §1 ladder *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (N/A justified); no availability code path touched (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — untouched.
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; `allowedDependencies = {}` verified (invariant #11).
+- [x] **Payment/payout** section filled (N/A justified) (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone correct: `occurred_at` still a UTC instant off the injected `Clock` (invariant #6).
+- [x] Booking codes untouched (invariant #7).
+- [x] No Flyway migration needed and none added; V38 byte-identical (invariant #12).
+- [x] **Frontend** untouched; no contract change.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (Q-1..Q-3 resolved).
+- [x] **Close-out written in THIS PR** — this doc's final state committed here, citing `merged via PR #917`.
+- [x] **The review gate ran in full** — the `references/pr-gates.md` §1 ladder *plus* `riviera-review-overlay`.
