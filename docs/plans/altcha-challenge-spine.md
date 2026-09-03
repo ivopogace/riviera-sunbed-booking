@@ -295,7 +295,7 @@ component).
 | 3 — frontend: vocabulary, probe service, widget wrapper, auth page, unit + a11y + contrast specs | ✅ | `6a505b5` |
 | 4 — mocked Playwright spec, real-backend journey | ✅ | `d1c680f`; the full mocked suite passed (413); the real-backend journey passed on the sandbox's local stack (host Postgres 16 + `gradle bootRun`, cost 5000, 13 s end to end) |
 | 5 — docs (Platform edge, production-hardening, CSP note), retire #904's plan, merge `main`, ready for review | ✅ | phase-5 commit; `origin/main` had not moved since the branch point (0 commits behind), so there was nothing to merge |
-| 6 — review gate, Sonar gate, close-out | ✅ | `5cc01d5` (review fixes F-5..F-10) + the close-out commit. Review gate: `/code-review` at high effort (five agents) with `riviera-review-overlay` — nothing scored ≥ 80, every finding fixed or decided in the register. Sonar gate: the one reported issue (F-1, `S2119`) fixed at `d1c680f`; the final analysis and green CI are on PR #911. Merged via PR #911 |
+| 6 — review gate, Sonar gate, close-out | ✅ | `5cc01d5` (review fixes F-5..F-10), `e81c3ff` (F-11) + the close-out commits. Review gate: `/code-review` at high effort (five agents) with `riviera-review-overlay` — nothing scored ≥ 80, every finding fixed or decided in the register. Sonar gate on the `e81c3ff` analysis: quality gate passed, 0 new issues, 0 duplicated blocks, 92.1 % new-code coverage. CI green on `e81c3ff` (backend, frontend, hygiene, CodeQL, Sonar scan). Merged via PR #911 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
