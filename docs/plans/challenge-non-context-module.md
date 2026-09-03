@@ -144,7 +144,7 @@ adapter, a hypothetical seam, so it is neither `api` nor `spi`).
 |---|---|---|---|---|---|---|
 | R-1 | The move silently drops a #911 proof (a fake port answers a constant where the real one was exercised) | high | high | the behaviour-parity ledger above, row by row; the stub port is deliberately stateful (fresh body per call, single-use claim) so the three at-risk proofs survive at the web slice | claude | **closed** — the three at-risk proofs survive; counts in phase 1 step 4 |
 | R-2 | The new module→root rule goes red on *existing* module code, turning a net into a refactor | med | high | pre-checked before planning: zero `import ai.riviera.platform.<RootType>` and zero fully-qualified root references across all ten module trees; the rule is proven against `ai.riviera.modulefixture`, never against production | claude | **closed** — phase 0 green over production |
-| R-3 | `challenge_registry`'s whole-word scan false-positives on the module's own package name | low | med | the token is `challenge_registry`, not `challenge`; the scan is the existing whole-word `containsWholeWord` primitive; a fixture module adapter proves the exclusion path | claude | open |
+| R-3 | `challenge_registry`'s whole-word scan false-positives on the module's own package name | low | med | the token is `challenge_registry`, not `challenge`; the scan is the existing whole-word `containsWholeWord` primitive; a fixture module adapter proves the exclusion path | claude | **closed** — fixture-proven both ways in phase 2 |
 | R-4 | The module ends up depending on the root (`ScheduledQueryTimeout`, `Clock`) and `verify()` or the new rule fails | med | high | `JdbcChallengeRegistry` swaps to `@Value("${riviera.scheduled.query-timeout-seconds}")` (the `JdbcBookings` / `JdbcAccountErasure` precedent) in the same phase as the move; `Clock` is `java.time`, not a root type | claude | **closed** — `@Value` swap landed with the move; net green |
 | R-5 | `@WebMvcTest` no longer binds `AltchaProperties` once `SecurityConfig` stops enabling it, so a slice silently loses its kill switch | med | med | the slice no longer needs the properties at all — it fakes the port; the switch is driven by `@Value` on the stub (ledger row 2) | claude | **closed** — `AltchaDisabledTest` green, unchanged |
 | R-6 | The scheduled-work and endpoint-gate nets pass for the wrong reason after the move | low | high | both key on simple names / paths the move keeps (verified: `KNOWN_SCHEDULED_JOBS` holds `"ChallengeRegistrySweep#sweep"`, `DECLARED_REACHABLE` holds `"GET /api/auth/challenge"`); AC-12 requires both files to be **unchanged** in the diff | claude | open |
@@ -245,16 +245,16 @@ N/A — no contract change. `GET /api/auth/challenge`, `X-Altcha-Payload`, `CHAL
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1 done, entering phase 2`
+**Stage pointer:** `implement — phase 2 done, entering phase 3`
 
-**Next action:** Phase 2 — write the `challenge_registry` sole-writer rule in
-`ResponsibilitiesArchitectureTests` with its two `responsibilityfixture` classes, red first.
+**Next action:** Phase 3 — add the challenge sweep's `DELETE` to
+`ScheduledQueryTimeoutIT.everyScheduledEntryQueryIsBounded` and falsify it by unbinding the client.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the module→root fitness function | ✅ | (this phase's commit) |
 | 1 — the move (module in, fence stays, tests relocated) | ✅ | (this phase's commit) |
-| 2 — `challenge_registry` sole-writer rule | | |
+| 2 — `challenge_registry` sole-writer rule | ✅ | (this phase's commit) |
 | 3 — the sweep's `DELETE` joins the bounded-entry list | | |
 | 4 — docs, ADR-0017 status, plan retirement | | |
 
@@ -420,19 +420,20 @@ files · the relocated + rewritten tests · `CompositionRootDisciplineTests` (gr
 
 **Files:** Modify `ResponsibilitiesArchitectureTests` · Create the two `responsibilityfixture` classes
 
-- [ ] **Step 1: Write the failing tests** — `challengeRegistryTableIsTouchedOnlyInsideTheChallengeModule`,
+- [x] **Step 1: Write the failing tests** — `challengeRegistryTableIsTouchedOnlyInsideTheChallengeModule`,
   the non-vacuity guard `theChallengeModuleItselfWritesTheTable`, and the fixture proof
   `outsideChallengeRegistryWriterFixtureIsRejected` (rejects `RogueChallengeRegistryWriter`, does not
   flag `FixtureJdbcChallengeRegistry`) — AC-5.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*ResponsibilitiesArchitectureTests*"` → FAIL.
-- [ ] **Step 3: Minimal implementation** — a `challengeRegistryViolations(JavaClasses, base)` collector
+- [x] **Step 2: Falsify it** — pointing `CHALLENGE_REGISTRY_TABLE` at a token nothing carries fails
+  both `outsideChallengeRegistryWriterFixtureIsRejected()` and `theChallengeModuleItselfWritesTheTable()`
+  (18 tests, 2 failed); restored → 18 tests, PASS.
+- [x] **Step 3: Minimal implementation** — a `challengeRegistryViolations(JavaClasses, base)` collector
   keyed on the existing whole-word `containsWholeWord` bytecode scan, module `challenge`, token
   `challenge_registry`; extend the class Javadoc's numbered rule list.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: every table `RESPONSIBILITIES.md` names a
-  sole writer for. Record below.
-- [ ] **Step 6: Commit** — `git commit -m "Pin challenge as the sole writer of challenge_registry (#913)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS (18 tests, none skipped).
+- [x] **Step 5: Generalization-audit pass** — recorded below.
+- [x] **Step 6: Commit** — `git commit -m "Pin challenge as the sole writer of challenge_registry (#913)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -488,6 +489,7 @@ fix, and TDD's red step is replaced by an explicit falsification (R-7). Say so i
 |---|---|---|---|---|---|
 | 2026-09-03 | phase 0 — a new module/root direction rule | every fitness function that classifies a type as root-vs-module via the shared package arithmetic | `grep -rln 'moduleOf(' platform/src/test/java/ai/riviera/platform/` | `CompositionRootDisciplineTests`, `ResponsibilitiesArchitectureTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `ArchitectureTestSupport` | the new rule goes in `CompositionRootDisciplineTests` (the only one about the root↔module *edge*); the other three classify placement, not direction, and need nothing. No new arithmetic — `moduleOf`/`isPackageInfo` reused, so `ArchitectureTestSupport` is untouched |
 | 2026-09-03 | phase 1 — the move | every production class outside the new module whose source still names the challenge (the mechanism, not PKCE's `SsoAuthorizationChallenge`) | `grep -rln -iE 'challenge\|altcha' --include=*.java . --exclude-dir=challenge --exclude-dir=<each module>` over `platform/src/main/java/ai/riviera/platform` | 13 files: the six SSO classes (PKCE's unrelated "challenge" — untouched), and `SecurityConfig`, `RateLimitFilter`, `RateLimitProperties`, `SecurityProblemResponses`, `ChallengeVerificationFilter` | exactly the intended fence set, plus `RateLimitProperties` which holds the budget `RateLimitFilter` spends — the same edge responsibility, one file further out. A second sweep for module-owned identifiers (`ProofOfWorkChallenges\|ChallengeVerdict\|ChallengeRegistry\|AltchaProperties\|ChallengeController`) outside the module returns only the granted `challenge.api` port in `SecurityConfig` and `ChallengeVerificationFilter` |
+| 2026-09-03 | phase 2 — a fifth sole-writer rule | every table or column set `RESPONSIBILITIES.md` claims a sole writer for, and whether each claim is machine-checked | `grep -n -iE 'only writer\|sole.writer' RESPONSIBILITIES.md` | four claims, all already checked (`set_availability`, the `review` table, `rating_tenths`/`reviews_count`) plus the new `challenge_registry` | nothing left unguarded — the sweep's real finding is that the *evidence table* at `RESPONSIBILITIES.md` line ~965 lists one row per machine-checked claim, so `challenge_registry` needs a row there; folded into phase 4 |
 
 ---
 
