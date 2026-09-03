@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-09-03
-- **Relates to:** the abuse-hardening epic (#TBD — filled in when the epic issue opens),
+- **Relates to:** the abuse-hardening epic #903,
   `docs/architecture/auth-signin-register.md` § D-8 (the rate-limit layer this sits on top of),
   ADR-0004 (hosting; the instance-count caveat this deliberately avoids), ADR-0011 (the DSGVO
   posture: no third-country processor where an EU-only or self-hosted option exists), invariant
