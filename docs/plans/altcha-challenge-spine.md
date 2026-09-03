@@ -314,6 +314,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-3 | phase-4 touch sweep | the widget's decorative logo link (`aria-hidden`, `tabindex=-1`) is 22 px | fixed: exempted on `load` like the footer link; the checkbox itself is 44 px via `--altcha-checkbox-size` |
 | F-9 | review (agent #3, scored 50) | `RateLimitProperties.MAX_TRACKED_KEY_CAP`'s Javadoc still multiplied the cap by the ten maps of before ("≈5 000 000") after the challenge dimension made eleven | fixed: ≈5 500 000 |
 | F-10 | review (agent #3, scored 40) | three untouched CI e2e specs (`customer-auth`, `unified-auth`, `cta-border-token-skin`) now register through the fenced mock default, so each depends on the real widget solving | no change: deliberate — `mockCustomerAuthApi`'s TSDoc states that every register journey in the suite proves the widget ran; the specs pass and the dependency is the point |
+| F-11 | CI (frontend job, push `5cc01d5`) | the F-4 guard fired again — `auth-page.spec.ts` and `challenge-widget.spec.ts` landed in one worker: the Angular test builder bundles each spec with its **own copy** of `src/testing/fake-altcha-element.ts` (no shared chunks in the test build), so the registered class was the first spec's copy and the identity check `defined !== FakeAltchaElement` threw; green locally only while the two files fell to different workers | fixed: the fake carries a `Symbol.for` mark and the guard accepts any marked class, rejecting only a foreign (real-bundle) definition; reproduced deterministically with `maxWorkers: 1` before, green after |
 
 ---
 
