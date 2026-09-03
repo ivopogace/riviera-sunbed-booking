@@ -49,7 +49,8 @@ import jakarta.servlet.http.HttpServletResponse;
  * proof-of-work challenge GET. The
  * booking-code endpoints are {@code permitAll} because the code is the bearer credential (invariant
  * #7), so their {@code 200}/{@code 404} answer is a brute-force oracle; the rest are credential- or
- * mail-sending oracles (D-8).
+ * mail-sending oracles (D-8) — except the challenge GET, whose budget only caps the cost of minting
+ * challenges for a solver flood.
  *
  * <p><strong>Every surface gets its OWN bucket map, never a shared one.</strong> The recurring defect
  * this shape prevents is one surface's flood exhausting another's budget — a registration burst locking

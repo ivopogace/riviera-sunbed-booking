@@ -435,6 +435,8 @@ export class AuthPage {
       previousMode = mode;
       previousAudience = audience;
       this.error.set(undefined);
+      // A remounted widget starts unverified, never from the previous card's solution.
+      this.challengePayload.set(undefined);
     });
     afterNextRender({ write: () => this.focusFirstField() });
   }

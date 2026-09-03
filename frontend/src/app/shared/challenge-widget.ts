@@ -29,10 +29,10 @@ const STATUS: Readonly<Record<WidgetState, string>> = {
   idle: '',
   unverified: '',
   code: '',
-  verifying: 'Checking that you’re not a robot…',
-  verified: 'Robot check passed.',
-  expired: 'The robot check expired — starting a new one.',
-  error: 'The robot check failed. Tick the box to try again.',
+  verifying: 'Running the security check…',
+  verified: 'Security check passed.',
+  expired: 'The security check expired — starting a new one.',
+  error: 'The security check failed. Tick the box to try again.',
 };
 
 interface StateChangeDetail {

@@ -43,11 +43,11 @@ export function challengeHeaders(payload: string | undefined): Record<string, st
 }
 
 export const CHALLENGE_REQUIRED_MESSAGE =
-  'The robot check hasn’t finished yet. Give it a moment and try again.';
+  'The security check hasn’t finished yet. Give it a moment and try again.';
 export const CHALLENGE_INVALID_MESSAGE =
-  'The robot check didn’t verify, so it has been restarted. Please try again.';
+  'The security check didn’t verify, so it has been restarted. Please try again.';
 export const CHALLENGE_EXPIRED_MESSAGE =
-  'The robot check expired, so it has been restarted. Please try again.';
+  'The security check expired, so it has been restarted. Please try again.';
 
 /** The one wording per rejection, so no page phrases the same server answer differently. */
 export function challengeRejectionMessage(rejection: ChallengeRejection): string {

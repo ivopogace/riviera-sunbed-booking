@@ -335,6 +335,29 @@ describe('AuthPage', () => {
       );
     });
 
+    it('drops the solved challenge when the card changes mode, so a remounted widget starts fresh', async () => {
+      const widget = await renderFenced();
+      widget.solve('old');
+      await fixture.whenStable();
+
+      el('auth-toggle-mode').click();
+      await fixture.whenStable();
+      el('auth-toggle-mode').click();
+      await fixture.whenStable();
+      const remounted = (fixture.nativeElement as HTMLElement).querySelector<FakeAltchaElement>(
+        'altcha-widget',
+      )!;
+      expect(remounted).not.toBe(widget);
+
+      type('auth-identifier', 'ana@example.com');
+      type('auth-password', 'passphrase-123');
+      const submitted = submit();
+      expect(customer.register).not.toHaveBeenCalled();
+      remounted.solve('fresh');
+      await submitted;
+      expect(customer.register).toHaveBeenCalledWith('ana@example.com', 'passphrase-123', 'fresh');
+    });
+
     it('says why and restarts the widget when the server refuses the challenge', async () => {
       const widget = await renderFenced();
       customer.register.mockResolvedValue('challenge-expired');

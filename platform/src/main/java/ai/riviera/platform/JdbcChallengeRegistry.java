@@ -6,7 +6,6 @@ import java.time.ZoneOffset;
 
 import javax.sql.DataSource;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
@@ -15,9 +14,10 @@ import org.springframework.stereotype.Component;
  * {@link ChallengeRegistry} on the {@code challenge_registry} table (V49). The claim is one
  * {@code INSERT … ON CONFLICT DO NOTHING}, so two concurrent submissions of one solution race on the
  * primary key and exactly one inserts (the invariant-#2 idiom). The sweep's delete runs on a
- * {@link JdbcClient} of this adapter's own with a finite query timeout
- * ({@code riviera.scheduled.query-timeout-seconds}), the bound every scheduled job's entry statement
- * carries; the claim stays on the shared client so a request-thread write is never cut short.
+ * {@link JdbcClient} of this adapter's own with the finite query timeout {@link ScheduledQueryTimeout}
+ * vets — the bound every scheduled job's entry statement carries, injected as the validated bean the
+ * way the root's other adapter does; the claim stays on the shared client so a request-thread write is
+ * never cut short.
  */
 @Component
 class JdbcChallengeRegistry implements ChallengeRegistry {
@@ -25,10 +25,9 @@ class JdbcChallengeRegistry implements ChallengeRegistry {
 	private final JdbcClient jdbc;
 	private final JdbcClient sweepJdbc;
 
-	JdbcChallengeRegistry(JdbcClient jdbc, DataSource dataSource,
-			@Value("${riviera.scheduled.query-timeout-seconds}") int scheduledQueryTimeoutSeconds) {
+	JdbcChallengeRegistry(JdbcClient jdbc, DataSource dataSource, ScheduledQueryTimeout queryTimeout) {
 		this.jdbc = jdbc;
-		this.sweepJdbc = boundedClient(dataSource, scheduledQueryTimeoutSeconds);
+		this.sweepJdbc = boundedClient(dataSource, queryTimeout.seconds());
 	}
 
 	private static JdbcClient boundedClient(DataSource dataSource, int queryTimeoutSeconds) {

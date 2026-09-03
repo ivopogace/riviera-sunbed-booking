@@ -17,7 +17,7 @@ test('a tourist registers by solving a real proof-of-work challenge', async ({ p
   await expect(auth.challengeWidget).toBeVisible();
 
   await auth.email.focus();
-  await expect(auth.challengeStatus).toHaveText(/Robot check passed/, { timeout: 30_000 });
+  await expect(auth.challengeStatus).toHaveText(/Security check passed/, { timeout: 30_000 });
 
   await auth.register(email, 'passphrase-123');
   await auth.expectSignedInAs(email);

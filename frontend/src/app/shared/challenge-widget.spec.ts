@@ -103,12 +103,12 @@ describe('ChallengeWidget', () => {
 
     widget.changeState('verifying');
     await fixture.whenStable();
-    expect(status()).toBe('Checking that you’re not a robot…');
+    expect(status()).toBe('Running the security check…');
     expect(host.payload()).toBeUndefined();
 
     widget.changeState('verified', 'solved-payload');
     await fixture.whenStable();
-    expect(status()).toBe('Robot check passed.');
+    expect(status()).toBe('Security check passed.');
     expect(host.payload()).toBe('solved-payload');
 
     widget.changeState('error');

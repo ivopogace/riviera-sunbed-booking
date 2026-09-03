@@ -68,7 +68,7 @@ record RateLimitProperties(
 
 	/**
 	 * 5× the shipped 100 000. {@link RateLimitFilter} holds <strong>eleven</strong> dimension maps, each
-	 * capped independently, so this ceiling still admits ≈5 000 000 live buckets — hundreds of megabytes
+	 * capped independently, so this ceiling still admits ≈5 500 000 live buckets — hundreds of megabytes
 	 * on the single instance (ADR-0004), i.e. the point at which the cap that exists to bound memory is
 	 * itself the outage. It also catches the likeliest typo: the shipped value with one extra digit.
 	 */

@@ -37,7 +37,7 @@ test('the widget solves on focus and the register carries the solution', async (
 
   // Focusing the form is what starts the solve; the status line announces both ends of it.
   await auth.email.focus();
-  await expect(auth.challengeStatus).toHaveText(/Robot check passed/, { timeout: 15_000 });
+  await expect(auth.challengeStatus).toHaveText(/Security check passed/, { timeout: 15_000 });
   await expect(auth.challengeWidget.getByRole('checkbox')).toBeChecked();
   await expectNoSeriousAxeViolations(page, 'tourist register card with the solved widget');
 
@@ -58,7 +58,7 @@ for (const code of Object.keys(MESSAGES) as ChallengeCode[]) {
 
     await page.goto('/account/sign-in?mode=register');
     await auth.email.focus();
-    await expect(auth.challengeStatus).toHaveText(/Robot check passed/, { timeout: 15_000 });
+    await expect(auth.challengeStatus).toHaveText(/Security check passed/, { timeout: 15_000 });
     const fetchesBeforeSubmit = fence.fetches();
 
     fence.refuseNextRegisterWith(code);
@@ -68,7 +68,7 @@ for (const code of Object.keys(MESSAGES) as ChallengeCode[]) {
     await expectNoSeriousAxeViolations(page, `register refused with ${code}`);
 
     // The refusal restarted the widget: a fresh challenge, solved again, and the retry goes through.
-    await expect(auth.challengeStatus).toHaveText(/Robot check passed/, { timeout: 15_000 });
+    await expect(auth.challengeStatus).toHaveText(/Security check passed/, { timeout: 15_000 });
     expect(fence.fetches()).toBeGreaterThan(fetchesBeforeSubmit);
     await auth.registerSubmit.click();
     await auth.expectSignedInAs('ana@example.com');
