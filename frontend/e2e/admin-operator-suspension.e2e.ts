@@ -24,7 +24,7 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  */
 
 const ADMIN = { username: 'operator', password: 'admin-pw' };
-const OP = { username: 'zoe', password: 'zoe-pw-12345', contactEmail: 'zoe@venue.example' };
+const OP = { username: 'zoe', password: 'venue-key-12345', contactEmail: 'zoe@venue.example' };
 
 /** Register (auto-signed-in while PENDING) + approve, leaving the admin signed in on /admin. */
 async function seedApprovedOperator(page: import('@playwright/test').Page): Promise<void> {

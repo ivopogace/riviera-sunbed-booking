@@ -231,6 +231,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-4 | review (code-review agent 5, score 100) | `AccountRecoveryController.resetPassword` Javadoc listed only the length and token codes, omitting `PASSWORD_CONTAINS_BLOCKED_TERM` | fixed — Javadoc names all three outcomes |
 | F-5 | review (agent 5, score 75) | `BlockedPasswordException` Javadoc said "carries no message" while the constructor passes one | fixed — "names the rule, never the matched term" |
 | F-6 | review (agent 1) | the new `OperatorPasswordChangeIT` test was inserted between an existing one-line Javadoc and its method | fixed — Javadoc moved back onto `aWrongCurrentPasswordRotatesNothingAndRevokesNothing` |
+| F-7 | CI (Frontend, head `cc8dcb2`) | `admin-operator-suspension.e2e.ts` registered `zoe` with `zoe-pw-12345`, which the client-side blocklist now stops before the pending banner can render | fixed — `venue-key-12345`; spec green locally (4) |
 | F-2 | CI (Frontend, head `da5edb4`) | `auth-page.a11y.spec.ts` still registered with an 11-character password, so the client-side floor blocked the submitted card; the new hint test queried a `data-testid` the hint did not carry | fixed — fixture moved to 12+, `data-testid="auth-hint"` added; full `npm test` green (2446) |
 
 ---
@@ -293,6 +294,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/support/auth-mocks.ts` — the mock server enforces 12–72 + the blocklist code
 - `frontend/e2e/customer-auth.e2e.ts` · `frontend/e2e/unified-auth.e2e.ts` · `frontend/e2e/email-verification.e2e.ts` · `frontend/e2e/cta-border-token-skin.e2e.ts` · `frontend/e2e/operator-registration.e2e.ts` · `frontend/e2e/fixed-fill-state-skins.e2e.ts` — register fixtures → 12+, clear of the account name
 - `frontend/e2e/customer-password.e2e.ts` · `frontend/e2e/password-reset.e2e.ts` · `frontend/e2e/operator-password.e2e.ts` — the rule's copy + a blocklist render
+- `frontend/e2e/admin-operator-suspension.e2e.ts` — its registered operator's password contained its username (F-7)
 
 **Docs**
 - `docs/plans/password-policy-12.md` — this plan
@@ -359,6 +361,7 @@ Modify `ApiErrorHandler.java`, `ApiErrorHandlerTest.java` · Delete `CustomerPas
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-03 | F-7 (CI) | every mocked spec that submits the operator register form — the phase-4 sweep keyed on `password:` literals and missed a fixture whose only fault was its own username | `grep -ln "Request account" frontend/e2e/*.e2e.ts` → 4 files, each username/password pair judged | `admin-operator-suspension` (`zoe`/`zoe-pw-12345`); `operator-registration`, `fixed-fill-state-skins`, `unified-auth` already clear | fixed the one pair |
 | 2026-09-03 | F-3 (CI) | every test that POSTs a password-accepting route through MVC, including `@WebMvcTest` slices — the phase-1 sweep judged `RateLimitFilterTest` a filter-only test, wrongly | `grep -rlE "auth/(customer\|operator)/register\|reset-password\|/api/me/password\|/api/auth/operator/password" platform/src/test` re-walked file by file | `RateLimitFilterTest:329` (`password123`, expects `201`); its `irrelevant1/2` change-password bodies expect `401`/`429` from the filter and never reach the policy | fixed the one register fixture; the rest left as they are |
 | 2026-09-03 | phase 4 (e2e fixtures) | every mocked e2e spec that chooses a password (register on either side, set, reset, operator change) whose fixture the client-side check now rejects | `grep -rn "auth-password\|oppw-new\|setpw-new\|reset-password\|password:" frontend/e2e/*.e2e.ts` then judged each literal against its username / email local part | `brand-new-operator-pw` (username `operator`), `newop-pw-123` ×2 (username `newop`), `password123` ×4 files, `short` | moved to 12+ characters clear of the account name; sign-in-only fixtures (`pw`, `good-pw`, `admin-pw`) kept — the mock never policy-checks a login |
 | 2026-09-03 | phase 1 (fixtures) | every test that boots the bootstrap admin, and every test that hits a password-accepting route | `grep -rhoE "riviera\.operator\.password=[^\",} ]+" platform/src/test` (9 distinct values, 3 under 12) · `grep -rlE "auth/(customer\|operator)/register\|reset-password\|/api/me/password\|/api/auth/operator/password" platform/src/test` (19 files) | `admin-pw` ×3; `password123` ×7, `plain-op-pw`, `revoke-pw`, `op-password`, `pw-persist`, `pw`, `dave-pw`; `reject-target-pw-1` (contained its username) | all moved to ≥ 12 characters not containing the account name; store-provisioned sign-in fixtures (`pw-a` in `AuthSessionIT`, `MyBookingsIT`) deliberately kept — they pin that the floor never applies at sign-in |
