@@ -362,6 +362,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `RESPONSIBILITIES.md` — § *Platform edge*: the challenge
 - `docs/deploy/production-hardening.md` — env row, properties, the CSP `worker-src` note
 - `docs/architecture/auth-signin-register.md` — the D-8 status line (#905 shipped, #906/#907 in flight)
+- `CLAUDE.md` — the Platform-edge summary names the fence (docs-freshness)
+- `platform/src/main/java/ai/riviera/platform/ScheduledQueryTimeout.java` — two count phrasings dropped (docs-freshness)
 
 ---
 
