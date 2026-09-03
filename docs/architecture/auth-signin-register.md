@@ -1,8 +1,10 @@
 # Sign-in / registration for customers and operators (form + Google/Apple SSO)
 
-Status: **accepted design, shipped** (epic #108). Decisions below were made at the refine
-stage (2026-07-02) and approved by the maintainer; each is a one-paragraph re-decision if
-reality disagrees. The per-module contracts these decisions settled are in
+Status: **accepted design, shipped** (epic #108), except the D-8 revision — the password
+policy and the proof-of-work challenge — which is **decided but in flight** under epic #903
+(slices #904–#907); the code enforces the earlier 8-character floor and no challenge until
+those merge. Decisions below were made at the refine stage (2026-07-02) and approved by the
+maintainer; each is a one-paragraph re-decision if reality disagrees. The per-module contracts these decisions settled are in
 `RESPONSIBILITIES.md` (§`customer`, §`operator`, § *Platform edge*).
 
 ## What this adds
@@ -149,8 +151,8 @@ credentials" (no account enumeration — registration responses likewise avoid
 confirming whether an email exists). Password storage uses the existing delegating
 encoder (`{bcrypt}`).
 
-**Password policy** (revised 2026-09-03 by the abuse-hardening epic, ahead of the first live
-deploy, so no existing credential needs a migration path):
+**Password policy** — the target rule, shipping with #904. Chosen ahead of the first live
+deploy, so no existing credential needs a migration path:
 
 - **Minimum 12 characters, maximum 72 bytes** (the bcrypt input cap), for tourists **and**
   operators. One server-side rule shared by every surface that accepts a new password
@@ -168,7 +170,7 @@ deploy, so no existing credential needs a migration path):
   per-identity login throttle shows credential-stuffing patterns. Also deferred: a client-side
   strength meter, re-checking passwords at sign-in, and any lockout policy.
 
-**Proof-of-work challenge** (ADR-0016): customer register, operator register, forgot-password
+**Proof-of-work challenge** (ADR-0016; shipping with #905–#907): customer register, operator register, forgot-password
 and booking create additionally require a solved, single-use ALTCHA challenge — self-hosted,
 no third party, no cookie — verified at the edge against a Postgres registry. Login keeps the
 per-identity throttle and gets no challenge; an adaptive "challenge once the bucket runs low"
