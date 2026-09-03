@@ -143,7 +143,7 @@ adapter, a hypothetical seam, so it is neither `api` nor `spi`).
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | The move silently drops a #911 proof (a fake port answers a constant where the real one was exercised) | high | high | the behaviour-parity ledger above, row by row; the stub port is deliberately stateful (fresh body per call, single-use claim) so the three at-risk proofs survive at the web slice | claude | open |
-| R-2 | The new module→root rule goes red on *existing* module code, turning a net into a refactor | med | high | pre-checked before planning: zero `import ai.riviera.platform.<RootType>` and zero fully-qualified root references across all ten module trees; the rule is proven against `ai.riviera.modulefixture`, never against production | claude | open |
+| R-2 | The new module→root rule goes red on *existing* module code, turning a net into a refactor | med | high | pre-checked before planning: zero `import ai.riviera.platform.<RootType>` and zero fully-qualified root references across all ten module trees; the rule is proven against `ai.riviera.modulefixture`, never against production | claude | **closed** — phase 0 green over production |
 | R-3 | `challenge_registry`'s whole-word scan false-positives on the module's own package name | low | med | the token is `challenge_registry`, not `challenge`; the scan is the existing whole-word `containsWholeWord` primitive; a fixture module adapter proves the exclusion path | claude | open |
 | R-4 | The module ends up depending on the root (`ScheduledQueryTimeout`, `Clock`) and `verify()` or the new rule fails | med | high | `JdbcChallengeRegistry` swaps to `@Value("${riviera.scheduled.query-timeout-seconds}")` (the `JdbcBookings` / `JdbcAccountErasure` precedent) in the same phase as the move; `Clock` is `java.time`, not a root type | claude | open |
 | R-5 | `@WebMvcTest` no longer binds `AltchaProperties` once `SecurityConfig` stops enabling it, so a slice silently loses its kill switch | med | med | the slice no longer needs the properties at all — it fakes the port; the switch is driven by `@Value` on the stub (ledger row 2) | claude | open |
@@ -245,14 +245,14 @@ N/A — no contract change. `GET /api/auth/challenge`, `X-Altcha-Payload`, `CHAL
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** Phase 0 — write `CompositionRootDisciplineTests.moduleReachingTheRootIsRejected`
-against a new `ai.riviera.modulefixture` tree and watch it fail before implementing the rule.
+**Next action:** Phase 1 — write `AltchaProofOfWorkChallengesTest` against the not-yet-existing
+`ai.riviera.platform.challenge.application` package, watch it fail, then perform the move.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the module→root fitness function | | |
+| 0 — the module→root fitness function | ✅ | (this phase's commit) |
 | 1 — the move (module in, fence stays, tests relocated) | | |
 | 2 — `challenge_registry` sole-writer rule | | |
 | 3 — the sweep's `DELETE` joins the bounded-entry list | | |
@@ -358,22 +358,23 @@ Spring Modulith cannot supply this rule: `allowedDependencies = {}` constrains w
 *in other modules*, and code sitting directly in the base package is "not assigned to any module",
 which `verify()` permits. It ships first so the move in phase 1 lands on a live net.
 
-- [ ] **Step 1: Write the failing tests** — `moduleReachingTheRootIsRejected` (expects a violation
+- [x] **Step 1: Write the failing tests** — `moduleReachingTheRootIsRejected` (expects a violation
   naming `ModuleReachingRoot` and `RootShapedType`), `moduleAvoidingTheRootIsAccepted` (expects none
   naming `ModuleAvoidingRoot`), and `noModuleReachesTheRoot` over production classes, plus the
   fixture tree under `ai.riviera.modulefixture`.
-- [ ] **Step 2: Run it, verify it fails** — `./gradlew test --tests "*CompositionRootDisciplineTests*"`
-  → FAIL (no such method / no collector).
-- [ ] **Step 3: Minimal implementation** — a second parameterized collector in the same class: for
+- [x] **Step 2: Falsify it** — the rule is added to an already-clean population (R-2), so the honest
+  red step is a falsification rather than a compile error: with the collector's package test pointed
+  at a package nothing lives in, `gradle test --tests "*CompositionRootDisciplineTests*"` → FAIL,
+  `moduleReachingTheRootIsRejected()`; restored → 6 tests, PASS.
+- [x] **Step 3: Minimal implementation** — a second parameterized collector in the same class: for
   each type **inside** a module (`moduleOf(type, base) != null`, not `package-info`), report any
   direct dependency whose target sits **directly** in `base` (`segmentsBelow(...).length == 0` and
   the package equals `base`). Reuse `ArchitectureTestSupport`'s arithmetic and `assertNoViolations`.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS, including green over production
-  (R-2 pre-check says it will be).
-- [ ] **Step 5: Generalization-audit pass** — population: every fitness function that reasons about
-  the root↔module direction. Enumerate, judge, record below.
-- [ ] **Step 6: Commit** — `git commit -m "Pin that no module depends on a root type (#913)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS (6 tests), green over production
+  with `moduleClassesInspected() > 0` proving the scan is not vacuous.
+- [x] **Step 5: Generalization-audit pass** — recorded below.
+- [x] **Step 6: Commit** — `git commit -m "Pin that no module depends on a root type (#913)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -482,6 +483,7 @@ fix, and TDD's red step is replaced by an explicit falsification (R-7). Say so i
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-03 | phase 0 — a new module/root direction rule | every fitness function that classifies a type as root-vs-module via the shared package arithmetic | `grep -rln 'moduleOf(' platform/src/test/java/ai/riviera/platform/` | `CompositionRootDisciplineTests`, `ResponsibilitiesArchitectureTests`, `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `ArchitectureTestSupport` | the new rule goes in `CompositionRootDisciplineTests` (the only one about the root↔module *edge*); the other three classify placement, not direction, and need nothing. No new arithmetic — `moduleOf`/`isPackageInfo` reused, so `ArchitectureTestSupport` is untouched |
 
 ---
 
