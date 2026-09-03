@@ -30,6 +30,7 @@ final class ProofOfWorkChallenges {
 	/** The one algorithm the platform issues; a payload naming another is invalid before any crypto runs. */
 	static final String ALGORITHM = "PBKDF2/SHA-256";
 	private static final int RANDOM_SECRET_BYTES = 32;
+	private static final SecureRandom RANDOM = new SecureRandom();
 
 	private final AltchaProperties props;
 	private final Clock clock;
@@ -49,7 +50,7 @@ final class ProofOfWorkChallenges {
 			return configured;
 		}
 		byte[] random = new byte[RANDOM_SECRET_BYTES];
-		new SecureRandom().nextBytes(random);
+		RANDOM.nextBytes(random);
 		log.warn("RIVIERA_ALTCHA_HMAC_SECRET is not set — signing challenges with a random boot-time key: "
 				+ "a restart invalidates challenges in flight and a second instance can verify none of them. "
 				+ "Set the variable on every instance.");

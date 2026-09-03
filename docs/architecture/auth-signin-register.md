@@ -1,8 +1,9 @@
 # Sign-in / registration for customers and operators (form + Google/Apple SSO)
 
 Status: **accepted design, shipped** (epic #108), except the D-8 revision's proof-of-work
-challenge, which is **decided but in flight** under epic #903 (slices #905–#907); the revised
-password policy shipped with #904, the challenge is absent until those merge. Decisions below were made at the refine stage (2026-07-02) and approved by the
+challenge, which is **decided and shipping** under epic #903: the revised password policy shipped
+with #904, the challenge spine and the customer-register fence with #905; the operator-register and
+forgot-password fences (#906) and the booking-create fence (#907) are in flight. Decisions below were made at the refine stage (2026-07-02) and approved by the
 maintainer; each is a one-paragraph re-decision if reality disagrees. The per-module contracts these decisions settled are in
 `RESPONSIBILITIES.md` (§`customer`, §`operator`, § *Platform edge*).
 
@@ -169,11 +170,12 @@ credential needs a migration path; the rule applies where a password is chosen, 
   per-identity login throttle shows credential-stuffing patterns. Also deferred: a client-side
   strength meter, re-checking passwords at sign-in, and any lockout policy.
 
-**Proof-of-work challenge** (ADR-0016; shipping with #905–#907): customer register, operator register, forgot-password
+**Proof-of-work challenge** (ADR-0016; the spine and the customer-register fence shipped with #905,
+the other three forms follow in #906–#907): customer register, operator register, forgot-password
 and booking create additionally require a solved, single-use ALTCHA challenge — self-hosted,
-no third party, no cookie — verified at the edge against a Postgres registry. Login keeps the
-per-identity throttle and gets no challenge; an adaptive "challenge once the bucket runs low"
-is the recorded phase-two shape.
+no third party, no cookie — verified at the edge against a Postgres registry (the mechanics:
+`RESPONSIBILITIES.md` § *Platform edge*). Login keeps the per-identity throttle and gets no challenge;
+an adaptive "challenge once the bucket runs low" is the recorded phase-two shape.
 
 ## Slices
 

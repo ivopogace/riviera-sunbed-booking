@@ -285,17 +285,17 @@ component).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4 — Playwright)`
+**Stage pointer:** `implement (phase 5 — docs, merge main, ready for review)`
 
-**Next action:** phase 4 — the mocked challenge route + `customer-auth-challenge.e2e.ts`, then the real-backend journey; the phase-2 push's Sonar gate reported findings — clear them in the phase-3/4 pushes.
+**Next action:** run the real-backend journey on the local stack, `riviera-docs-freshness` over `origin/main...HEAD`, merge `origin/main`, mark PR #911 ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — prototype + plan doc + draft PR | ✅ | `47944af`, PR #911 |
 | 1 — properties, V49 registry, JDBC claim, sweep | ✅ | `d00b703` |
 | 2 — challenge endpoint, verifier filter, rate-limit budget, ITs | ✅ | `f1b6eab` |
-| 3 — frontend: vocabulary, probe service, widget wrapper, auth page, unit + a11y + contrast specs | ✅ | phase-3 commit (SHA in the phase-4 status update) |
-| 4 — mocked Playwright spec, real-backend journey | | |
+| 3 — frontend: vocabulary, probe service, widget wrapper, auth page, unit + a11y + contrast specs | ✅ | `6a505b5` |
+| 4 — mocked Playwright spec, real-backend journey | ✅ | phase-4 commit (SHA in the phase-5 status update); the full mocked suite passed (413) |
 | 5 — docs (Platform edge, production-hardening, CSP note), retire #904's plan, merge `main`, ready for review | | |
 | 6 — review gate, Sonar gate, close-out | | |
 
@@ -306,6 +306,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | sonar (phase-2 push) | `java:S2119` — `ProofOfWorkChallenges` built a `SecureRandom` per boot-key fallback | fixed in the phase-4 commit: one static instance |
+| F-2 | phase-4 e2e (the first run) | the widget never solved: the page autofocuses the email field before the lazily loaded bundle mounts, so the widget's own `focusin` listener saw no focus change | fixed: the wrapper starts the solve on `load` when the form already holds focus (`challenge-widget.spec.ts` pins both arms) |
+| F-3 | phase-4 touch sweep | the widget's decorative logo link (`aria-hidden`, `tabindex=-1`) is 22 px | fixed: exempted on `load` like the footer link; the checkbox itself is 44 px via `--altcha-checkbox-size` |
 
 ---
 
@@ -405,12 +408,12 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Phase 4 — Playwright
 
-- [ ] Load `playwright-cli`, announce. Mocked: `auth-mocks.ts` challenge route (cost 10, real solve),
+- [x] Load `playwright-cli`, announce. Mocked: `auth-mocks.ts` challenge route (cost 10, real solve),
   `customer-auth-challenge.e2e.ts` (AC-11), `customer-auth.e2e.ts` + `touch-targets-tourist.e2e.ts`
   updated; run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` scoped.
-- [ ] Real backend: `real-backend/register.e2e.ts` (AC-12) via `scripts/e2e-local-stack.sh` if the
+- [x] Real backend: `real-backend/register.e2e.ts` (AC-12) written; run via `scripts/e2e-local-stack.sh` if the
   container can bring the stack up; otherwise say so in the PR.
-- [ ] Commit — `Cover the challenge in the mocked and real-backend Playwright suites (#905)`
+- [x] Commit — `Cover the challenge in the mocked and real-backend Playwright suites (#905)`
 
 ## Phase 5 — docs, merge `main`, ready for review
 

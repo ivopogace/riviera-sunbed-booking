@@ -163,11 +163,29 @@ export class ChallengeWidget {
     return new Promise((resolve) => this.waiting.push(resolve));
   }
 
+  /**
+   * The widget only watches for focus changes from the moment it mounts; a form that was
+   * autofocused before the bundle arrived would otherwise wait for the next Tab. So a form already
+   * holding focus starts the solve here, and the two links inside the widget get their exemptions.
+   */
   protected onLoad(): void {
-    // Inside the widget, not ours to restyle: the footer link is a sentence-inline attribution.
-    this.element()
-      ?.querySelector('.altcha-footer')
+    const element = this.element();
+    if (!element) {
+      return;
+    }
+    element
+      .querySelector('.altcha-footer')
       ?.setAttribute('data-touch-exempt', 'attribution link inside a sentence (WCAG 2.5.5)');
+    element
+      .querySelector('.altcha-logo')
+      ?.setAttribute(
+        'data-touch-exempt',
+        'decorative logo (aria-hidden, tabindex -1); the footer link is the target',
+      );
+    const form = element.closest('form');
+    if (form?.contains(document.activeElement) && this.state() !== 'verifying') {
+      void element.verify();
+    }
   }
 
   protected onStateChange(event: Event): void {

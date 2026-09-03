@@ -19,7 +19,7 @@ class FakeAltchaElement extends HTMLElement {
 
   connectedCallback(): void {
     this.innerHTML =
-      '<div class="altcha"><div class="altcha-footer"><p>Protected by <a href="https://altcha.org/">ALTCHA</a></p></div></div>';
+      '<div class="altcha"><a class="altcha-logo" aria-hidden="true" tabindex="-1"></a><div class="altcha-footer"><p>Protected by <a href="https://altcha.org/">ALTCHA</a></p></div></div>';
     this.dispatchEvent(new CustomEvent('load'));
   }
 
@@ -30,7 +30,12 @@ class FakeAltchaElement extends HTMLElement {
 
 @Component({
   imports: [ChallengeWidget],
-  template: `<app-challenge-widget [enabled]="enabled()" [(payload)]="payload" />`,
+  template: `
+    <form>
+      <input data-testid="field" />
+      <app-challenge-widget [enabled]="enabled()" [(payload)]="payload" />
+    </form>
+  `,
 })
 class Host {
   readonly enabled = signal<boolean | undefined>(undefined);
@@ -96,6 +101,27 @@ describe('ChallengeWidget', () => {
     expect(widget.querySelector('.altcha-footer')?.getAttribute('data-touch-exempt')).toContain(
       'WCAG 2.5.5',
     );
+    expect(widget.querySelector('.altcha-logo')?.getAttribute('data-touch-exempt')).toContain(
+      'decorative',
+    );
+  });
+
+  it('starts the solve itself when the form already holds focus at mount', async () => {
+    document.body.appendChild(fixture.nativeElement as HTMLElement);
+    try {
+      (fixture.nativeElement as HTMLElement)
+        .querySelector<HTMLInputElement>('[data-testid="field"]')!
+        .focus();
+      const widget = await enable();
+      expect(widget.verify).toHaveBeenCalledTimes(1);
+    } finally {
+      (fixture.nativeElement as HTMLElement).remove();
+    }
+  });
+
+  it('leaves an unfocused form to the widget’s own focus listener', async () => {
+    const widget = await enable();
+    expect(widget.verify).not.toHaveBeenCalled();
   });
 
   it('announces each state and hands the verified payload to the host', async () => {
