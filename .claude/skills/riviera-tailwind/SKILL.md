@@ -64,12 +64,12 @@ states the decisions and traps the code can't show you.
      `--altcha-checkbox-size` drives the widget's paint and hit box from one value, so 44 px
      bought the target by inflating the graphic). Anything else that "can't" meet the floor
      is a layout to fix.
-   - **The fourth class is a decision, never a workaround.** It is the maintainer's to make,
-     per control, recorded in the `data-touch-exempt` reason and the component's TSDoc; it
-     costs 2.5.5 conformance on that control and leaves 2.5.8 met with zero headroom, so an
-     e2e assertion pins the chosen size (the sweep skips an exempt control, so nothing else
-     would). "The design looks better small" is not this class — reach for it only after the
-     paint/target split is ruled out, which is what makes it rare.
+   - **The fourth class is the maintainer's call, never self-granted.** Record the reason on
+     the control and pin the chosen size in an e2e — the sweep skips an exempt control, so
+     nothing else would. Rule it out first by splitting paint from target: hold the control's
+     own box at the floor and paint a smaller one over it (a pseudo-element on the wrapper,
+     where the control is light DOM), which costs conformance nothing. "The design looks
+     better small" is not this class.
    - The guard `scripts/check-touch-target.mjs` (`PostToolUse` hook + CI; by hand `--files
      <path…>` or `--all`) gates the *declaration* only (TT-1/TT-2) — a green guard is not a
      measured box, and `<a>` is out of its scope. Slices: #605 (the floor), #648 (the guard).
