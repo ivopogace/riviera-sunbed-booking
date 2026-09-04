@@ -10,8 +10,8 @@ Read these three, in order:
 
 1. [`README.md`](README.md) — the pitch, the stack, the current state.
 2. [`docs/architecture/domain-model.md`](docs/architecture/domain-model.md) — the
-   bounded contexts, aggregates, and flows as diagrams. This is the fastest way to
-   load the mental model.
+   modules, the tables and Java types they own, the flows and the state machines, as
+   diagrams. This is the fastest way to load the mental model.
 3. [`CLAUDE.md`](CLAUDE.md) — the conventions and the **13 invariants**. These are
    the canonical rules; everything below is the human-friendly summary.
 
