@@ -275,6 +275,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | D-1 | docs-freshness (`origin/main...HEAD`) | `RateLimitFilter`'s `RECOVERY_PATHS` Javadoc stated "the only denial reachable before the controller is a CSRF `403`" — the fence's `400` is now also reachable there, and is deliberately outside the refund | patched in phase 0 |
+| F-2 | CI (Repo hygiene, `d52a9e9`) | `check-plan-file-structure` red: the F-1 fix touched two paths the plan's File-structure section did not list | fixed — both listed; the lesson is that a fix-round push re-runs the guard, so it belongs in the same commit window as the fix |
 | F-1 | CI (CodeQL, `94abaa8`) | High-severity "Insecure randomness": `Math.random()` in the new real-backend spec's unique-id helper, on a value the backend reads back as identity | fixed — one `uniqueSuffix()` on `crypto.randomUUID()` in the real-backend support module, used by both specs that mint identity values |
 | D-2 | docs-freshness (`origin/main...HEAD`) | `RESPONSIBILITIES.md` § *Platform edge* said the fenced set is "customer register today; operator register, forgot-password and booking create in their own slices" — two of those three shipped here | patched in phase 3 (AC-11) |
 
@@ -332,6 +333,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/fixed-fill-state-skins.e2e.ts` — same.
 - `frontend/e2e/password-reset.e2e.ts` — same.
 - `frontend/e2e/real-backend/auth-challenge.e2e.ts` — new (AC-9).
+- `frontend/e2e/real-backend/support/operator.ts` — `uniqueSuffix()` on `crypto.randomUUID()`, the
+  one place the real-backend suite mints identifiers (review finding F-1).
+- `frontend/e2e/real-backend/register.e2e.ts` — mints its email through that helper (F-1).
 
 ---
 
