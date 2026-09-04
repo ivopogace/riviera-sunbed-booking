@@ -60,7 +60,7 @@ literally (it names the offending class and the broken rule) and fix the structu
   the JDK and any module's `vocabulary/`/`domain/`, and nothing else. A Java **mirror** of a DB
   *bound or vocabulary* is legitimate where a set invariant is not — `Stars` ↔
   `review_stars_check`, `SalesClose` ↔ `venue_sales_close_check` — provided its Javadoc names
-  the twin and calls the duplication deliberate; only a rule constraining the relationship
+  the twin and treats the duplication as intended; only a rule constraining the relationship
   *between* rows is beyond Java's reach (ADR-0018 §3).
 
 ## Module layout — two templates by weight (ADR-0007)

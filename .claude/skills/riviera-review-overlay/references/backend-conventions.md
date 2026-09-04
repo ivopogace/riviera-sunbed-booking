@@ -273,7 +273,7 @@ Default **Major** (Minor for a cosmetic mis-slice inside a module). Authority: A
 
 ### RV-BE-19. Rule-layer placement (ADR-0018)
 
-*Check whenever the diff adds or changes a policy, a calculation, or a lifecycle statement.*
+*Check whenever the diff adds or changes a choice, a calculation, or a lifecycle statement.*
 ADR-0018 §1 makes those three the rule layer's contents; §2 puts a pure rule in `domain/` and
 a rule needing a `Clock`, a port or bound configuration in `application/`, as a named,
 separately unit-tested holder. Placement authority is `riviera-modulith`.
@@ -283,7 +283,7 @@ Stripe SDK, an `adapter/` or any port from a `domain/` class; if green, don't re
 eye. Note precisely what it leaves uncovered: `java.time.Clock` is JDK, so the rule **passes**
 a clock-backed statement sitting in `domain/`. Spend eyes on the semantic half:
 
-- **A policy or calculation inlined in a service with two or more callers.** The tell is a
+- **A choice or calculation inlined in a service with two or more callers.** The tell is a
   condition or an arithmetic expression in a method body that a second call site has to keep
   in step by hand. Two callers that must agree is what earns a named holder; **one caller does
   not** — a single-caller inline rule is correct placement (ADR-0018 §1) and flagging it is a
@@ -296,10 +296,12 @@ a clock-backed statement sitting in `domain/`. Spend eyes on the semantic half:
   write is allowed, where a unique/exclusion constraint is the enforcement (§3): it holds only
   for rows this application writes, and only while every writer remembers to call it. A Java
   mirror of a DB *bound or vocabulary* is **not** this — `Stars` ↔ `review_stars_check` and
-  `SalesClose` ↔ `venue_sales_close_check` are deliberate and say so in Javadoc.
+  `SalesClose` ↔ `venue_sales_close_check` name their twin in Javadoc and treat the
+  duplication as intended.
 
 **Default severity:** **Major**; **Blocker** when a Java set invariant stands in for a
-constraint enforcing invariant #2, #7 or #9 (then it is also RV-BE-1 or RV-BE-17); Minor for a
+constraint enforcing invariant #2, #7 or #9 (then it is also RV-BE-1, RV-BE-14 or RV-BE-8
+respectively — and RV-BE-17 when the constraint is missing from SQL altogether); Minor for a
 rule in the wrong one of `domain/`/`application/` with no correctness effect. Authority:
 ADR-0018 + `riviera-modulith`.
 

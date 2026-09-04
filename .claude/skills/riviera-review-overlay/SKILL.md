@@ -95,7 +95,7 @@ cross-module service calls, multi-line comments) live in `riviera-java-conventio
   highest-stakes items are addressed whenever their domain is touched.
 - RV-BE-11 checked whenever the diff adds or moves behavior (plan's Module-ownership table
   reconciled against where the code landed); RV-BE-12 whenever it adds or moves packages;
-  RV-BE-19 whenever it adds or changes a policy, calculation or lifecycle statement.
+  RV-BE-19 whenever it adds or changes a choice, calculation or lifecycle statement.
 
 ## Hand-offs
 
