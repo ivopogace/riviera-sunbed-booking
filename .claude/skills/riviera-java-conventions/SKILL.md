@@ -23,7 +23,8 @@ them by number where they bite.
 - **`@Table`/`@Id` are package-sensitive:** `jakarta.persistence` = JPA = forbidden;
   `org.springframework.data.relational.core.mapping.@Table` /
   `org.springframework.data.annotation.@Id` = Spring Data JDBC = permitted, but only on a
-  genuine aggregate root (§1a). `JdbcOnlyArchitectureTests` probes the packages.
+  genuine aggregate root (§1a) — and there is none in the tree today, so an annotated type
+  would be the first. `JdbcOnlyArchitectureTests` probes the packages.
 - **No Lombok.** No `@Data`/`@Getter`/`@Builder`/`@RequiredArgsConstructor`. Records give
   immutability + accessors + equals/hashCode; for the rare mutable holder, write the
   constructor by hand.

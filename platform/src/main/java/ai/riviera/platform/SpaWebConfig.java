@@ -25,7 +25,7 @@ import org.springframework.web.servlet.resource.PathResourceResolver;
  * only maps request paths to static resources.
  *
  * <p>An app-wide web concern, so it lives in the root package next to {@link SecurityConfig}
- * and {@link WebCorsConfig} — not inside a bounded-context module (invariant #11).
+ * and {@link WebCorsConfig} — not inside a domain module (invariant #11).
  */
 @Component
 class SpaWebConfig implements WebMvcConfigurer {

@@ -1,7 +1,7 @@
 /**
- * Customer bounded context — tourist identity: the guest-checkout contact AND the
+ * The customer module — tourist identity: the guest-checkout contact AND the
  * customer <em>account</em> (email + opaque credential hash) that backs register / sign-in.
- * Aggregate roots: {@code Customer} (guest contact) and {@code CustomerAccount} (account identity),
+ * Two tables, {@code customer} (guest contact) and {@code customer_account} (account identity),
  * kept deliberately separate — an account carries no foreign key to the guest row, so registration
  * never auto-claims a guest email's past bookings (design D-6).
  *

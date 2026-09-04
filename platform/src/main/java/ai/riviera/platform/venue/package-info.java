@@ -1,12 +1,13 @@
 /**
- * Venue bounded context — venue profiles, the beach map / layout, set positions,
+ * The venue module — venue profiles, the beach map / layout, set positions,
  * online-vs-walk-in pool assignment, pricing, and booking mode (Instant / Request).
- * Aggregate roots: {@code Venue}, {@code BeachMap}.
+ * The state is the {@code venue} and {@code set_position} tables: a venue's beach map is its set
+ * rows, and the commission rate is effective-dated in {@code venue_commission_rate}.
  *
  * <p>Full-module layout (ADR-0007): it owns an application service
  * ({@code VenueAdminService}), so it takes the full template — {@code api} + {@code spi}
- * + {@code vocabulary} + {@code application} + {@code adapter.in} + {@code adapter.out} (no {@code domain}
- * today). It is the one module that owns <strong>cross-module dependency inversions</strong>:
+ * + {@code vocabulary} + {@code application} + {@code adapter.in} + {@code adapter.out} + a one-type
+ * {@code domain} ({@code SalesClose}). It is the one module that owns <strong>cross-module dependency inversions</strong>:
  * the driven ports declared in {@code venue.spi} (inventory: that package's Javadoc) are
  * implemented by {@code availability} and {@code booking} — each of which lists
  * {@code venue::spi} — so venue's reads and write guards can consult live availability,

@@ -1,9 +1,10 @@
 /**
- * Review bounded context — the tourist's verdict on a delivered stay: the review record (stars,
+ * The review module — the tourist's verdict on a delivered stay: the review record (stars,
  * comment and display name; one per booking), the eligibility and 60-day window policy, the
  * author's own submit/edit/delete lifecycle inside it, the aggregate rating math, and the public
  * page of listed (commented, visible) reviews a venue shows, and the tombstone a data subject's
- * erasure leaves on a review (name and comment gone, the star kept). Aggregate root: {@code Review}.
+ * erasure leaves on a review (name and comment gone, the star kept). The state is the
+ * {@code review} table; the rules are {@code domain/}'s pure types, {@code ReviewGate} first.
  *
  * <p><strong>Leaf module, deny-by-default:</strong> {@code allowedDependencies = { "shared" }},
  * the {@code operator}/{@code customer} posture — everything points <em>into</em> this module.

@@ -160,7 +160,7 @@ entirely: never connect, enable, add, or deny the `idea` server yourself — it 
 - `docs/adr/` — locked decisions; `domain-modeling` offers a new ADR only when a choice is
   hard-to-reverse **and** surprising **and** a real trade-off.
 - `docs/agents/` — issue-tracker, triage-label, and domain-doc config.
-- `docs/architecture/domain-model.md` — aggregates, flows, state machines.
+- `docs/architecture/domain-model.md` — tables and types per module, flows, state machines.
 
 ## When NOT to use
 

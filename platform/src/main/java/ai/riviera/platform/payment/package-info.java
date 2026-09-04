@@ -1,7 +1,8 @@
 /**
- * Payment bounded context — Stripe collection, PaymentIntents, refunds and
+ * The payment module — Stripe collection, PaymentIntents, refunds and
  * signature-verified webhook handling (invariant #8: webhooks are the source of
- * truth, collect-only, no Stripe Connect). Aggregate root: {@code Payment}.
+ * truth, collect-only, no Stripe Connect). The state is the {@code payment} table — at most one
+ * refund per row, as two columns rather than a refund table.
  *
  * <p>Hexagonal layout (invariant #11, ADR-0007 full template, issue-#95 split surfaces):
  * {@code api} (the published inbound ports), {@code vocabulary} ({@code Money}, {@code BookingRef},

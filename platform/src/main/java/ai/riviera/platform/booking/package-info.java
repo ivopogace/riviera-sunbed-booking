@@ -1,7 +1,8 @@
 /**
- * Booking bounded context — bookings, booking codes, lifecycle
+ * The booking module — bookings, booking codes, lifecycle
  * (confirmed / cancelled / completed / no-show) and cancellation-policy enforcement.
- * Aggregate root: {@code Booking}.
+ * The state is the {@code booking} table; the lifecycle is its guarded {@code UPDATE}s, stated
+ * once as a table in {@code domain.BookingTransition}.
  *
  * <p>Hexagonal layout (invariant #11, ADR-0007 full template, sliced by use-case):
  * {@code api} (the {@code DailyTakings} query port) + {@code events} + {@code vocabulary}

@@ -1,7 +1,8 @@
 /**
- * Payout bounded context — the venue payout ledger (booking amounts − commission)
+ * The payout module — the venue payout ledger (booking amounts − commission)
  * and manual BKT batch reporting (invariant #9: a booking contributes exactly once;
- * refunds reverse it). Aggregate roots: {@code PayoutLedgerEntry}, {@code PayoutBatch}.
+ * refunds reverse it). {@code PayoutLedgerEntry} and {@code PayoutBatch} are immutable value
+ * records with static factories over the two ledger tables — not mutable roots.
  *
  * <p>Hexagonal layout (invariant #11, ADR-0007 full template): {@code application},
  * {@code domain}, {@code adapter.in/out}. Publishes nothing — no {@code api}/{@code spi} of its own;

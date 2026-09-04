@@ -6,9 +6,9 @@
  * claim, sweeps expired rows, and serves the challenge endpoint.
  *
  * <p><strong>Closed and dependency-free:</strong> {@code allowedDependencies = {}} — not even the
- * {@code shared} kernel. A mechanism that knew a domain type would be a bounded context wearing this
+ * {@code shared} kernel. A mechanism that knew a domain type would be a domain module wearing this
  * module's clothes. The whole surface a caller sees is {@link ai.riviera.platform.challenge.api.ProofOfWorkChallenges}
- * and {@link ai.riviera.platform.challenge.vocabulary.ChallengeVerdict}; no bounded-context module
+ * and {@link ai.riviera.platform.challenge.vocabulary.ChallengeVerdict}; no domain module
  * knows the challenge exists, and the composition root reaches only those two named interfaces.
  *
  * <p><strong>The fence is not here.</strong> Which routes require a solution, the filter and its
