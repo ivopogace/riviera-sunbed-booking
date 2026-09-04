@@ -10,13 +10,11 @@ import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 
 /**
- * Shared edge validators for the venue's command records — {@link NewVenueCommand} (onboard, U7)
- * and {@link VenueProfileCommand} (edit) for the profile fields, {@link SetCommand} and
- * {@link RowPriceCommand} for the beach map — so records stating the same bound enforce it from
- * one place, never as a duplicated validation block. Package-private, static-only; each
- * method throws {@link IllegalArgumentException} on a bad value, which the edge maps to
- * {@code 400 INVALID_REQUEST} (riviera-java-conventions §6b). The DB CHECK constraints (V2) remain
- * the race-safe backstop, not the only guard.
+ * Shared edge validators for the venue module's command and configuration records, so records
+ * stating the same bound enforce it from one place rather than as duplicated validation blocks.
+ * Package-private, static-only; each method throws {@link IllegalArgumentException} on a bad
+ * value, which the edge maps to {@code 400 INVALID_REQUEST} (riviera-java-conventions §6b). The
+ * DB CHECK constraints (V2) remain the race-safe backstop, not the only guard.
  */
 final class VenueFieldValidation {
 

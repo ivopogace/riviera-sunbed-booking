@@ -29,7 +29,7 @@ sites, and that the three open PRs #940/#943/#944 are docs-only with no overlap)
 rather than waved off as N/A on a "small refactor") · `tdd` (characterization test first:
 the missing `SetCommandTest` case is written and seen **green** against the inline throw,
 then the refactor happens under it — a behavior-preserving refactor has no honest red) ·
-`riviera-review-overlay` (review gate — at ready-for-review) · `riviera-docs-freshness`
+`riviera-review-overlay` (review gate — ran at ready-for-review on PR #948 alongside `/code-review` at **high** effort, money in scope; contributed the RV-PROC/RV-STYLE items that caught F-1) · `riviera-docs-freshness`
 (N/A — no substrate doc states the shape of this validator; `RESPONSIBILITIES.md` §`venue`
 and ADR-0018 describe the rule layer, not this method list) · `riviera-java-conventions`
 (§6a name-the-literal and §6d Javadoc-as-contract: the new method's Javadoc names its DB
@@ -174,14 +174,15 @@ N/A — no contract change. The exception type and message are preserved byte-fo
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 complete; next is PR (draft) + CI gate`
+**Stage pointer:** `review gate — ran high on PR #948, findings F-1/F-2 fixed, F-3 deferred; next is CI + Sonar gate`
 
-**Next action:** Push the branch, open the draft PR (CI fires on `pull_request` only), then
-mark ready for review to make the Review + Sonar gates due.
+**Next action:** Confirm CI green on the review-fix push, then pull the SonarCloud new-issue
+list for PR #948 and clear every entry before merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Pin the bound for both callers, then state it once | ✅ | `ee9e7d8c` |
+| 1 — Review-gate fixes (F-1, F-2) | ✅ | `acad1d95` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -189,7 +190,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate (code-review high + overlay, reviewer #5) | **Major.** The `VenueFieldValidation` class Javadoc this PR rewrote enumerates its callers, and the rewrite was still incomplete: 7 records call the class (`SetCommand`, `RowPriceCommand`, `RowNameCommand`, `NewVenueCommand`, `VenueProfileCommand`, `CommissionRateCommand`, `VenueCreationProperties`), the sentence named 4. Verified independently with `grep -rln "VenueFieldValidation\." --include=*.java platform/src/main`. | fixed-in-`acad1d95` — the enumeration is **removed**, not extended: a caller roster in a shared validator's Javadoc had already gone stale once before this PR touched it, and §6d asks for the contract, not provenance. |
+| F-2 | review gate (reviewer #1) | **Minor.** The rewritten class Javadoc ran 7 lines against §6d's ~6-line type budget. | fixed-in-`acad1d95` — same edit; the block is back to 5 content lines. |
+| F-3 | review gate (reviewer #5) | **Minor, pre-existing, out of scope.** `SetCommand.java:12` cites "invariant #12" for 1-based grid coordinates, but invariant #12 is *"Schema changes go through Flyway"* — it conflates the invariant with **migration** V12, which does add those CHECKs. Verified against `CLAUDE.md:161`. On a line this PR does not modify. | deferred → follow-up issue (below); fixing it here would widen a slice #932 scoped shut, and it is a substrate-citation error worth its own diff |
 
 ---
 
