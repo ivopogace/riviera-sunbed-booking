@@ -181,7 +181,7 @@ mark ready for review to make the Review + Sonar gates due.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Pin the bound for both callers, then state it once | ✅ | `<phase-0-sha>` |
+| 0 — Pin the bound for both callers, then state it once | ✅ | `ee9e7d8c` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -276,9 +276,9 @@ In `SetCommand` and `RowPriceCommand`, the three-line block becomes:
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1 / AC-2:** `gradle --no-daemon --console=plain test --tests "*SetCommandTest*"` → PASS (7 tests, 0 failures). Verified at commit `<phase-0-sha>`.
-- [x] **AC-3:** `gradle --no-daemon --console=plain test --tests "*RowPriceCommandTest*"` → PASS (5 tests), and `RowPriceCommandTest.java` is absent from the diff. Verified at commit `<phase-0-sha>`.
-- [x] **AC-4:** `grep -rn "priceMinor < 0" platform/src/main` → no matches. Verified at commit `<phase-0-sha>`.
+- [x] **AC-1 / AC-2:** `gradle --no-daemon --console=plain test --tests "*SetCommandTest*"` → PASS (7 tests, 0 failures). Verified at commit `ee9e7d8c`.
+- [x] **AC-3:** `gradle --no-daemon --console=plain test --tests "*RowPriceCommandTest*"` → PASS (5 tests), and `RowPriceCommandTest.java` is absent from the diff. Verified at commit `ee9e7d8c`.
+- [x] **AC-4:** `grep -rn "priceMinor < 0" platform/src/main` → no matches. Verified at commit `ee9e7d8c`.
 
 ## Self-review checklist (before merge / PR)
 
