@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.Set;
 
 import javax.sql.DataSource;
 
@@ -30,6 +31,7 @@ import ai.riviera.platform.booking.application.reserve.ConfirmedBooking;
 import ai.riviera.platform.booking.application.reserve.NewBooking;
 import ai.riviera.platform.booking.application.refund.RefundableBooking;
 import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.booking.domain.BookingTransition;
 import ai.riviera.platform.customer.vocabulary.CustomerAccountId;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -404,15 +406,15 @@ class JdbcBookings implements Bookings {
 	public Optional<CancelledBooking> cancelConfirmed(long bookingId, Instant cancelledAt,
 			long refundMinor) {
 		return cancelReturningFacts(bookingId, cancelledAt, refundMinor, RefundReason.POLICY,
-				List.of(BookingStatus.CONFIRMED));
+				BookingTransition.CANCEL_BY_GUEST.admittedFrom());
 	}
 
 	@Override
 	public Optional<CancelledBooking> cancelForWeather(long bookingId, Instant cancelledAt,
 			long refundMinor) {
-		// Admits NO_SHOW beside CONFIRMED: the sweep gets to a washed-out day before the operator does.
+		// Admits NO_SHOW too: the sweep gets to a washed-out day before the operator does.
 		return cancelReturningFacts(bookingId, cancelledAt, refundMinor, RefundReason.WEATHER,
-				List.of(BookingStatus.CONFIRMED, BookingStatus.NO_SHOW));
+				BookingTransition.WEATHER_REFUND.admittedFrom());
 	}
 
 	/**
@@ -422,9 +424,13 @@ class JdbcBookings implements Bookings {
 	 * reason (POLICY/WEATHER) is the audit of why it happened (invariant #10). Shared so the two
 	 * entry points cannot drift in the columns they stamp or the facts they return; only the admitted
 	 * statuses and the reason differ, which is exactly what the guest/admin split is about.
+	 *
+	 * <p>{@code admitted} is bound from the caller's row in {@link BookingTransition}, so the
+	 * guest/admin difference over {@code NO_SHOW} is stated once rather than as two list literals a
+	 * line apart. The statement itself is unchanged: still one {@code WHERE status = ANY (:admitted)}.
 	 */
 	private Optional<CancelledBooking> cancelReturningFacts(long bookingId, Instant cancelledAt,
-			long refundMinor, RefundReason reason, List<BookingStatus> admitted) {
+			long refundMinor, RefundReason reason, Set<BookingStatus> admitted) {
 		return jdbc.sql("""
 				UPDATE booking
 				SET status = :cancelled, cancelled_at = :at, refund_minor = :refund, cancel_reason = :reason

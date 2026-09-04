@@ -18,10 +18,12 @@ import java.util.Set;
  * {@code NO_SHOW}. A plain successor map would flatten that difference away, and it is the one the
  * guest path must never lose.
  *
- * <p>This states the lifecycle; it does not enforce it. The guarded {@code UPDATE … WHERE status =
- * …} statements stay the enforcing statement, and no SQL is generated from here —
- * {@code JdbcBookingTransitionTableIT} binds the two by driving every transition against every
- * status, as {@code BookingMigrationIT.everyEnumStatusAccepted} binds {@link BookingStatus} to
+ * <p>This states the lifecycle; the guarded {@code UPDATE … WHERE status = …} statements enforce it,
+ * and no SQL is generated from here. The two cancellation rows go further than stating: the shared
+ * cancel statement binds its admitted statuses from {@link #CANCEL_BY_GUEST} and
+ * {@link #WEATHER_REFUND}, so that one asymmetry cannot drift at all. Every other row is held to its
+ * statement by {@code JdbcBookingTransitionTableIT}, which drives each transition against each
+ * status, as {@code BookingMigrationIT.everyEnumStatusAccepted} holds {@link BookingStatus} to
  * {@code booking_status_check}.
  */
 public enum BookingTransition {

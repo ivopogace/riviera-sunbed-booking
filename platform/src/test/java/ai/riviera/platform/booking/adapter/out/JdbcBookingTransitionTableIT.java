@@ -26,7 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * driven against a booking in every one of the nine statuses, and must write exactly where the table
  * says it may. Nothing here derives SQL from the table — the two are written independently and this
  * is where they are made to agree, the way {@code BookingMigrationIT.everyEnumStatusAccepted} binds
- * {@link BookingStatus} to {@code booking_status_check}.
+ * {@link BookingStatus} to {@code booking_status_check}. For the two cancellation rows, whose
+ * admitted statuses the adapter binds from the table, that leaves this proving the statement honours
+ * the parameter — the drift those two could have had is gone rather than caught.
  *
  * <p>Fixtures are dated far enough back that the no-show sweep's date bound reaches this class's rows
  * and nothing else's, and are deleted after each transition. Testcontainers; skipped where Docker is
