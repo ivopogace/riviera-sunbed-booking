@@ -34,6 +34,15 @@ enforced by `@NamedInterface` + `allowedDependencies` + `ModularityTests` +
 set-claim stays **synchronous, in-transaction** (invariant #2); the driving/driven distinction must
 stay visible; the shape must be ArchUnit-enforceable by package name.
 
+*Vocabulary corrected by ADR-0018 (2026-09-04):* what this ADR called a bounded context is a
+**module**. The platform is **one** bounded context with twelve modules — none of the four language
+tells fires across any module pair, and the duplicated id records are identity conversions that keep
+the Modulith graph acyclic, not translations
+(`docs/research/2026-09-04-bounded-context-and-doc-drift-audit.md` §B). The wording below is
+corrected in place; the decision is untouched. ADR-0018 also states what "light tactical" means for
+this tree — `domain/` holds choices, calculations and lifecycles, and the aggregate-root labels in
+`CLAUDE.md` and `docs/architecture/domain-model.md` are dropped rather than built out.
+
 ---
 
 ## Decision
@@ -71,8 +80,8 @@ template — a visible, reviewable refactor, which is a feature, not a cost.
 otherwise **full**. Every surface is optional per kind — do not force an empty `api/` onto a
 module that only consumes. **Which modules are thin and which are full is not recorded here**:
 the maintained census is `.claude/skills/riviera-modulith/SKILL.md`, and the current tree is in
-`CLAUDE.md`. (`customer`, the only thin module at decision time, has since graduated; today every
-bounded context is full.)
+`CLAUDE.md`. (`customer`, the only thin module at decision time, has since graduated; today all nine
+domain modules are full, and the tree's one thin module is the non-context `audit` — ADR-0017.)
 
 ### Sub-decision 1 — adapter layer by **direction** (`adapter/in` / `adapter/out`), not technology
 Direction is the hexagonal boundary and the thing ArchUnit enforces cheaply. Technology-spelling
@@ -168,12 +177,13 @@ Proven against fixtures in `ai.riviera.placementfixture`.
 
 ## Amendment 2 — a third, non-context template: the OPEN shared kernel (issue #371, 2026-07-27)
 
-The two templates describe **bounded contexts**. `shared` is not one, and needs naming here so the
-canonical shape rule does not contradict the codebase.
+The two templates describe **the closed modules** — every module that owns a domain concept.
+`shared` is not one of those, and needs naming here so the canonical shape rule does not contradict
+the codebase.
 *Extended by ADR-0017 (2026-09-03), pointer added by issue #918:* the two templates now describe
 **non-context modules** too — a closed non-context module takes them unchanged (`challenge` full,
 `audit` thin). What stays unique to `shared` is its shape, which matches neither template — not the
-fact that it is not a bounded context. ADR-0017 added no template and left this amendment's
+fact that it owns no domain concept. ADR-0017 added no template and left this amendment's
 decision standing, which is why this is a pointer and not an Amendment 3.
 
 **Context.** The root package `ai.riviera.platform` was doing two jobs with opposite dependency
@@ -198,5 +208,28 @@ sitting at a module root — an intentional allowance.
 **Admission test:** no business logic, no module-owned state, and no dependency on a module that
 depends back. `shared` may reach only `customer::api` and `operator::api`.
 
-**Do not copy this shape for a bounded context.** A new context is still thin-or-full per the
+**Do not copy this shape for any other module.** A new module is still thin-or-full per the
 mechanical rule; OPEN is reserved for technical shared code, and `shared` is the only instance.
+
+## Note — why three id records are copied and `SetId` is not (2026-09-04)
+
+Answering `docs/research/2026-09-04-bounded-context-and-doc-drift-audit.md` §H-3, which asked why
+`operator.vocabulary.VenueRef`, `review.vocabulary.VenueRef` and `review.vocabulary.BookingRef`
+exist while `venue.vocabulary.SetId` crosses four modules with one spelling. **The duplicated
+records mark exactly the bidirectional edges**, and nothing else:
+
+- `venue` grants nothing to `availability`, `booking` or `notification` and depends on none of them,
+  so the edge is one-way and they import `SetId` directly
+  (`availability/package-info.java:18`, `booking/package-info.java:26`,
+  `notification/package-info.java:39–40`).
+- `venue` **does** depend on `operator` and `review` — `operator::api` for `assertOwns` (invariant
+  #13) and `review::events` for the `ReviewsChanged` rating recompute
+  (`venue/package-info.java:22`). Each of those two therefore cannot name `venue`'s types without
+  closing a Modulith cycle, so each publishes its own `VenueRef`
+  (`operator/package-info.java:16–20`; `operator/vocabulary/VenueRef.java:7–14`).
+- `booking` depends on `review::spi`/`review::api` (`booking/package-info.java:26`) while `review`
+  implements nothing outbound (`allowedDependencies = { "shared" }`,
+  `review/package-info.java:30`), so `review` publishes its own `BookingRef` for the same reason.
+
+The asymmetry is a rule, not grant history: a module copies an id **iff** the module that owns the
+id already depends on it. No code change follows — recorded so the question is not re-derived.
