@@ -98,8 +98,8 @@ public class BookingCutoff {
 	 *
 	 * <p><strong>Static, and that is the contract:</strong> it is a pure projection of the caller's
 	 * own instant onto the Tirane civil day, so a sweep bounds every arm of one run against one
-	 * reading. An instance method here would read as clock-backed like its neighbour and silently is
-	 * not.
+	 * reading. An instance method here would read as clock-backed like the two-argument
+	 * {@code isBookable} and {@code cancellationWindow} overloads, and silently is not.
 	 */
 	public static LocalDate lastEndedServiceDay(java.time.Instant now) {
 		return LocalDate.ofInstant(now, TIRANE).minusDays(1);
