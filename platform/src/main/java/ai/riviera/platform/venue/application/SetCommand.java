@@ -9,7 +9,7 @@ import java.util.Set;
  * CHECK constraints enforce in the database, so a malformed set is rejected at the boundary:
  * {@code tier}/{@code pool} are the exact tokens the DB stores (a set is in exactly one
  * pool — invariant #3), {@code priceMinor} is integer minor units + an ISO-4217 currency
- * (invariant #5), and grid coordinates / position number are 1-based (invariant #12).
+ * (invariant #5), and grid coordinates / position number are 1-based (the V12 CHECKs).
  */
 public record SetCommand(String rowLabel, int positionNo, String tier, String pool,
 		long priceMinor, String priceCurrency, int gridX, int gridY) {
