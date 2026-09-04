@@ -103,10 +103,8 @@ class ViewBookingService implements ViewBooking {
 				&& refundStatus.progressOf(new ai.riviera.platform.payment.vocabulary.BookingRef(b.id()))
 						== ai.riviera.platform.payment.vocabulary.RefundProgress.OUTSTANDING;
 		boolean awaitingPayment = b.status() == BookingStatus.AWAITING_PAYMENT;
-		// Sweep-arm parity by construction: day end inclusive, the promised raw-window instant payable.
-		boolean payWindowClosed = awaitingPayment && (cutoff.serviceDayHasEnded(b.bookingDate())
-				|| (b.acceptedAt() != null
-						&& b.acceptedAt().isBefore(windows.acceptedBefore(clock.instant()))));
+		boolean payWindowClosed = awaitingPayment && windows.payWindowClosed(b.acceptedAt(),
+				cutoff.serviceDayEndsAt(b.bookingDate()), clock.instant());
 		ai.riviera.platform.payment.vocabulary.PaymentCredentials payment =
 				awaitingPayment && !payWindowClosed
 						? checkout.pendingCredentials(
