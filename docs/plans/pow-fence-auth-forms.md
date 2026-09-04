@@ -54,59 +54,59 @@ session).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the fence is armed, when `POST /api/auth/operator/register` carries a
+- [x] **AC-1:** Given the fence is armed, when `POST /api/auth/operator/register` carries a
   library-minted solved challenge, then the registration is accepted (`202`) and the pending
   operator row exists; when the header is missing / forged / expired / already claimed, then the
   response is `400` with `CHALLENGE_REQUIRED` / `CHALLENGE_INVALID` / `CHALLENGE_EXPIRED` /
   `CHALLENGE_EXPIRED` respectively and **no operator row is written**.
   *Seam:* `POST /api/auth/operator/register` (the fenced HTTP route) · *Pinned by:*
   `OperatorRegisterChallengeIT.{registersWithASolvedChallenge,rejectsAMissingHeader,rejectsATamperedSignature,rejectsAnExpiredChallenge,rejectsAReplayedSolution}`
-- [ ] **AC-2:** Given the fence is armed, when `POST /api/auth/customer/forgot-password` carries a
+- [x] **AC-2:** Given the fence is armed, when `POST /api/auth/customer/forgot-password` carries a
   solved challenge, then it answers the uniform `204` and mails the link for an account that exists;
   when the challenge is missing / forged / expired / replayed, then it answers `400` with the
   matching code and **sends no mail**.
   *Seam:* `POST /api/auth/customer/forgot-password` (the fenced HTTP route) · *Pinned by:*
   `ForgotPasswordChallengeIT.{sendsTheLinkWithASolvedChallenge,rejectsAMissingHeader,rejectsATamperedSignature,rejectsAnExpiredChallenge,rejectsAReplayedSolution}`
-- [ ] **AC-3:** Given a registered email, an unregistered email and an SSO-only email, when each
+- [x] **AC-3:** Given a registered email, an unregistered email and an SSO-only email, when each
   posts forgot-password with a **failed** challenge, then all three answers are byte-identical
   (status, body and headers) and the mock outbox is empty for all three.
   *Seam:* `POST /api/auth/customer/forgot-password` · *Pinned by:*
   `PasswordResetIT.forgotPasswordChallengeFailureIsIdenticalRegardlessOfAccountState`
-- [ ] **AC-4:** Given a per-IP budget of N on each route, when N challenge-refused requests are sent
+- [x] **AC-4:** Given a per-IP budget of N on each route, when N challenge-refused requests are sent
   from one IP, then the next request from that IP is `429 RATE_LIMITED` — a `400` challenge refusal
   is never refunded (the limiter refunds only `401`/`403`).
   *Seam:* the two fenced HTTP routes behind `RateLimitFilter` · *Pinned by:*
   `OperatorRegisterChallengeIT.aChallengeFailureStillSpendsTheOperatorRegisterBudget` and
   `ForgotPasswordChallengeIT.aChallengeFailureStillSpendsTheRecoveryBudget`
-- [ ] **AC-5:** Given each verdict the `challenge` module's port can return, when it is returned for
+- [x] **AC-5:** Given each verdict the `challenge` module's port can return, when it is returned for
   either newly fenced route, then the filter answers the same `400` + code contract as customer
   register, and an unfenced sibling route (`/api/auth/customer/reset-password`) still ignores the
   header entirely.
   *Seam:* `ChallengeVerificationFilter` observed through the three routes' HTTP contract ·
   *Pinned by:* `ChallengeVerificationFilterTest.{eachFencedRouteRefusesAMissingHeader,eachFencedRouteRefusesAnInvalidVerdict,eachFencedRouteRefusesAnExpiredVerdict,anUnfencedRecoveryRouteIgnoresTheHeader}`
-- [ ] **AC-6:** Given the operator register card, when the audience is `operator` and the mode is
+- [x] **AC-6:** Given the operator register card, when the audience is `operator` and the mode is
   `register`, then the widget is mounted, its solved payload is sent as `X-Altcha-Payload`, and each
   of the three rejection codes renders the shared message from `shared/challenge.ts` and restarts
   the widget; when the platform answers `204` from the challenge route, the widget is absent and the
   register still submits.
   *Seam:* `auth/auth-page.ts` rendered component + `core/operator-auth.ts#register` ·
   *Pinned by:* `auth-page.spec.ts` (`operator register` describe) + `operator-auth.spec.ts`
-- [ ] **AC-7:** Given the forgot-password page, when the fence is armed, then the widget is mounted
+- [x] **AC-7:** Given the forgot-password page, when the fence is armed, then the widget is mounted
   and the request carries the solved payload; a rejection renders the shared message and refreshes
   the widget; with the fence off the widget is absent and the request still submits.
   *Seam:* `auth/forgot-password.ts` rendered component + `core/customer-auth.ts#forgotPassword` ·
   *Pinned by:* `forgot-password.spec.ts` + `customer-auth.spec.ts`
-- [ ] **AC-8:** Given the CI-safe mocked suite, when the operator-registration and password-reset
+- [x] **AC-8:** Given the CI-safe mocked suite, when the operator-registration and password-reset
   journeys run in Chromium, then the widget really solves the mocked challenge, the POST carries the
   header, each of the three refusals renders its message and fetches a fresh challenge so the retry
   succeeds without a reload, and the kill switch hides the widget on both pages.
   *Seam:* the two routes' Playwright journeys · *Pinned by:*
   `frontend/e2e/operator-register-challenge.e2e.ts` and `frontend/e2e/forgot-password-challenge.e2e.ts`
-- [ ] **AC-9:** Given a real backend, when an operator self-registers and when a tourist requests a
+- [x] **AC-9:** Given a real backend, when an operator self-registers and when a tourist requests a
   password reset, then each solves a **real** challenge in the browser and the backend accepts it.
   *Seam:* the two journeys against the running API · *Pinned by:*
   `frontend/e2e/real-backend/auth-challenge.e2e.ts`
-- [ ] **AC-10:** Given all three themes, when axe and the composited-contrast maths run on the
+- [x] **AC-10:** Given all three themes, when axe and the composited-contrast maths run on the
   operator register card and the forgot-password page (widget mounted), then there are no serious
   violations and every text pair meets AA.
   *Seam:* the rendered components under `src/testing/contrast.ts` · *Pinned by:*
@@ -116,7 +116,7 @@ session).
   already per-theme over the worst-case gradient stops. **No `forgot-password.contrast.spec.ts`**:
   the card is the same glass stack with the same `--riv-*` pairs, so a third file would be a
   duplicated block proving nothing new (recorded here rather than silently narrowed).
-- [ ] **AC-11:** Given `RESPONSIBILITIES.md` § *Platform edge*, when a reader looks for the fenced
+- [x] **AC-11:** Given `RESPONSIBILITIES.md` § *Platform edge*, when a reader looks for the fenced
   set, then all three fenced auth routes are named there (and the "in their own slices" list no
   longer claims these two are pending). *Seam:* the doc itself · *Pinned by:* review (RV-PROC) +
   `riviera-docs-freshness` at close-out.
@@ -256,11 +256,21 @@ no new token, no `@apply`).
 
 ## Execution status
 
-**Stage pointer:** `sonar gate`
+**Stage pointer:** `DONE — merged via PR #922`
 
-**Next action:** once CI settles on the current head, pull SonarCloud's reported new-issue +
-duplication list from the API (`references/pr-gates.md` §2 — the gate conclusion is not the check)
-and clear every entry, then merge close-out.
+**Next action:** none. All gates cleared; the merge close-out checklist
+(`references/pr-gates.md` §3) runs against this state.
+
+**Sonar gate — ran on PR #922, clear.** Pulled from the API, not read off the gate badge:
+`api/issues/search` returns `total: 0` with an empty `issues` array, and that zero is trustworthy
+because `api/measures/component` is populated — `new_lines: 98`, so the PR really was analyzed —
+and the `SonarCloud Code Analysis` check-run concluded `success`. New-code coverage **91.07 %**
+(bar: ≥ 80 %), `new_duplicated_blocks: 0`, `new_duplicated_lines_density: 0.0 %`, and
+`new_bugs`/`new_vulnerabilities`/`new_code_smells` all 0, with 0 security hotspots. Nothing to
+clear, so no fix round re-entered the loop from this gate.
+
+**CI — green on `f3a4e27`:** Backend (build + test), Frontend (lint + test + build), Repo hygiene
+(diff-scoped), CodeQL (both analyses), SonarCloud scan + Code Analysis. Merge state `clean`.
 
 **Review gate — ran in full on PR #922.** `Skill("code-review:code-review")` (rung 1 of the
 invocation ladder) at **high** effort, with `riviera-review-overlay` layered on: five parallel
@@ -275,10 +285,11 @@ bucket maps. The two findings in the register below came from CI, not the review
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Backend: fence the two routes + repair the existing ITs | ✅ | (this commit) |
-| 1 — Frontend: services, both pages, unit + a11y/contrast specs | ✅ | (this commit) |
-| 2 — e2e: mocked fence handles + both suites | ✅ | (this commit) |
-| 3 — Docs + close-out | ✅ | (this commit) |
+| 0 — Backend: fence the two routes + repair the existing ITs | ✅ | `e69e3e4` |
+| 1 — Frontend: services, both pages, unit + a11y/contrast specs | ✅ | `31e158a` |
+| 2 — e2e: mocked fence handles + both suites | ✅ | `6cf6149` |
+| 3 — Docs + close-out | ✅ | `94abaa8`, `f3a4e27` |
+| Fix round — CI findings F-1, F-2 | ✅ | `d52a9e9`, `4164faa` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -357,22 +368,22 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 Test `ChallengeVerificationFilterTest.java`, new `OperatorRegisterChallengeIT`,
 `ForgotPasswordChallengeIT`, extended `PasswordResetIT` · Repair the enumerated ITs.
 
-- [ ] **Step 1: Write the failing tests** — parameterize `ChallengeVerificationFilterTest` over the
+- [x] **Step 1: Write the failing tests** — parameterize `ChallengeVerificationFilterTest` over the
   fenced set (AC-5); add `OperatorRegisterChallengeIT` and `ForgotPasswordChallengeIT` modelled on
   `CustomerRegisterChallengeIT` (AC-1, AC-2, AC-4); add
   `PasswordResetIT.forgotPasswordChallengeFailureIsIdenticalRegardlessOfAccountState` (AC-3).
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
   `./gradlew test --tests "*ChallengeVerificationFilterTest*" --tests "*OperatorRegisterChallengeIT*" --tests "*ForgotPasswordChallengeIT*"`
   → FAIL (the routes are not fenced: `202`/`204` where a `400` code is expected).
-- [ ] **Step 3: Minimal implementation** — add the two paths to `FENCED_POSTS` as named constants
+- [x] **Step 3: Minimal implementation** — add the two paths to `FENCED_POSTS` as named constants
   and update the constant's Javadoc.
-- [ ] **Step 4: Run them, verify they pass**, then broaden to the root package:
+- [x] **Step 4: Run them, verify they pass**, then broaden to the root package:
   `./gradlew test --tests "ai.riviera.platform.*"`.
-- [ ] **Step 5: Generalization-audit pass** — population = *every test that POSTs to a route in
+- [x] **Step 5: Generalization-audit pass** — population = *every test that POSTs to a route in
   `FENCED_POSTS`*; enumerate with
   `grep -rln "operator/register\|forgot-password" platform/src/test --include=*.java`; fix each.
-- [ ] **Step 6: Commit** — `git commit -m "Fence operator register and forgot-password with the proof-of-work challenge (#906)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Fence operator register and forgot-password with the proof-of-work challenge (#906)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -381,19 +392,19 @@ Test `ChallengeVerificationFilterTest.java`, new `OperatorRegisterChallengeIT`,
 **Files:** Modify `core/operator-auth.ts`, `core/customer-auth.ts`, `auth/auth-page.ts`,
 `auth/forgot-password.ts` · Test their specs + the four a11y/contrast specs.
 
-- [ ] **Step 1: Write the failing specs** — `operator-auth.spec.ts` (header sent, the three codes
+- [x] **Step 1: Write the failing specs** — `operator-auth.spec.ts` (header sent, the three codes
   map to rejections), `customer-auth.spec.ts` (same for forgot-password), `auth-page.spec.ts`
   (widget on the operator register card, payload passed, refusal refreshes), `forgot-password.spec.ts`
   (widget mounted, payload sent, refusal message + refresh, fence off = no widget).
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- --run auth`.
-- [ ] **Step 3: Minimal implementation** — the optional `challenge` argument on both service
+- [x] **Step 2: Run them, verify they fail** — `npm test -- --run auth`.
+- [x] **Step 3: Minimal implementation** — the optional `challenge` argument on both service
   methods, `challengeHeaders`/`challengeRejection` at both call sites, `showChallenge` widened, the
   widget mounted on forgot-password.
-- [ ] **Step 4: Run them, verify they pass**, then `npm run test:a11y` for AC-10.
-- [ ] **Step 5: Generalization-audit pass** — population = *every FE call site of a fenced write*;
+- [x] **Step 4: Run them, verify they pass**, then `npm run test:a11y` for AC-10.
+- [x] **Step 5: Generalization-audit pass** — population = *every FE call site of a fenced write*;
   enumerate with `grep -rn "AUTH_API}/\(customer\|operator\)" frontend/src/app/core`.
-- [ ] **Step 6: Commit** — `git commit -m "Mount the proof-of-work widget on operator register and forgot-password (#906)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Mount the proof-of-work widget on operator register and forgot-password (#906)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -403,15 +414,15 @@ Test `ChallengeVerificationFilterTest.java`, new `OperatorRegisterChallengeIT`,
 `e2e/customer-auth-challenge.e2e.ts` · Create `e2e/operator-register-challenge.e2e.ts`,
 `e2e/forgot-password-challenge.e2e.ts`, `e2e/real-backend/auth-challenge.e2e.ts`.
 
-- [ ] **Step 1: Write the failing specs** (AC-8, AC-9).
-- [ ] **Step 2: Run them, verify they fail** — `npm run test:e2e:a11y -- operator-register-challenge forgot-password-challenge`.
-- [ ] **Step 3: Minimal implementation** — the fence in both mocks (default on), the retired
+- [x] **Step 1: Write the failing specs** (AC-8, AC-9).
+- [x] **Step 2: Run them, verify they fail** — `npm run test:e2e:a11y -- operator-register-challenge forgot-password-challenge`.
+- [x] **Step 3: Minimal implementation** — the fence in both mocks (default on), the retired
   assertion inverted.
-- [ ] **Step 4: Run the whole mocked suite** — `npm run test:e2e:a11y` (R-8's audit).
-- [ ] **Step 5: Generalization-audit pass** — population = *every mocked spec that posts to a fenced
+- [x] **Step 4: Run the whole mocked suite** — `npm run test:e2e:a11y` (R-8's audit).
+- [x] **Step 5: Generalization-audit pass** — population = *every mocked spec that posts to a fenced
   route*; enumerate with `grep -rln "operator/register\|forgot-password\|customer/register" frontend/e2e`.
-- [ ] **Step 6: Commit** — `git commit -m "Prove the fence on both new auth forms in the mocked and real-backend suites (#906)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Prove the fence on both new auth forms in the mocked and real-backend suites (#906)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -419,12 +430,12 @@ Test `ChallengeVerificationFilterTest.java`, new `OperatorRegisterChallengeIT`,
 
 **Files:** Modify `RESPONSIBILITIES.md` · Finalize this plan doc.
 
-- [ ] **Step 1:** `RESPONSIBILITIES.md` § *Platform edge* names all three fenced auth routes and
+- [x] **Step 1:** `RESPONSIBILITIES.md` § *Platform edge* names all three fenced auth routes and
   leaves booking create as the pending one (AC-11).
-- [ ] **Step 2:** run `riviera-docs-freshness` over `origin/main..HEAD`; record findings.
-- [ ] **Step 3:** `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
-- [ ] **Step 4:** finalize Execution status, ACs and the self-review checklist.
-- [ ] **Step 5: Commit** — `git commit -m "Name the three fenced auth routes in RESPONSIBILITIES (#906)"`
+- [x] **Step 2:** run `riviera-docs-freshness` over `origin/main..HEAD`; record findings.
+- [x] **Step 3:** `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
+- [x] **Step 4:** finalize Execution status, ACs and the self-review checklist.
+- [x] **Step 5: Commit** — `git commit -m "Name the three fenced auth routes in RESPONSIBILITIES (#906)"`
 
 ---
 
@@ -441,16 +452,16 @@ Test `ChallengeVerificationFilterTest.java`, new `OperatorRegisterChallengeIT`,
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `./gradlew test --tests "*OperatorRegisterChallengeIT*"` → PASS.
-- [ ] **AC-2:** `./gradlew test --tests "*ForgotPasswordChallengeIT*"` → PASS.
-- [ ] **AC-3:** `./gradlew test --tests "*PasswordResetIT*"` → PASS.
-- [ ] **AC-4:** covered by the two challenge ITs' budget tests → PASS.
-- [ ] **AC-5:** `./gradlew test --tests "*ChallengeVerificationFilterTest*"` → PASS.
-- [ ] **AC-6/AC-7:** `npm test` → PASS.
-- [ ] **AC-8:** `npm run test:e2e:a11y` → PASS.
-- [ ] **AC-9:** `npm run test:e2e` (local, real backend) → PASS or recorded as not runnable here.
-- [ ] **AC-10:** `npm run test:a11y` → PASS.
-- [ ] **AC-11:** review + docs-freshness.
+- [x] **AC-1:** `./gradlew test --tests "*OperatorRegisterChallengeIT*"` → PASS.
+- [x] **AC-2:** `./gradlew test --tests "*ForgotPasswordChallengeIT*"` → PASS.
+- [x] **AC-3:** `./gradlew test --tests "*PasswordResetIT*"` → PASS.
+- [x] **AC-4:** covered by the two challenge ITs' budget tests → PASS.
+- [x] **AC-5:** `./gradlew test --tests "*ChallengeVerificationFilterTest*"` → PASS.
+- [x] **AC-6/AC-7:** `npm test` → PASS (2532 tests).
+- [x] **AC-8:** `npm run test:e2e:a11y` → PASS.
+- [x] **AC-9:** `npm run test:e2e` (local, real backend) → PASS or recorded as not runnable here.
+- [x] **AC-10:** `npm run test:a11y` → PASS.
+- [x] **AC-11:** review + docs-freshness.
 
 ## Self-review checklist (before merge / PR)
 
@@ -470,5 +481,7 @@ Test `ChallengeVerificationFilterTest.java`, new `OperatorRegisterChallengeIT`,
 - [x] **Frontend** standards met; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR** citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** per `riviera-sdlc` `references/pr-gates.md` §1 + the overlay.
+- [x] **Close-out written in THIS PR** — this final state is committed here, citing
+      `merged via PR #922`.
+- [x] **The review gate ran in full** per `riviera-sdlc` `references/pr-gates.md` §1 + the overlay —
+      five reviewers at high effort, zero findings.
