@@ -52,8 +52,8 @@ public final class SessionLoginSupport {
 	}
 
 	/**
-	 * A solved proof-of-work challenge for a fenced write — the customer register, the operator
-	 * register or forgot-password — minted by the real endpoint and brute-forced with the library:
+	 * A solved proof-of-work challenge for any fenced write — the three auth writes or booking
+	 * create — minted by the real endpoint and brute-forced with the library:
 	 * the integration tests have no bypass, they solve. Each call mints and solves a fresh one,
 	 * because the registry accepts a solution exactly once.
 	 */
