@@ -110,8 +110,12 @@ session).
   operator register card and the forgot-password page (widget mounted), then there are no serious
   violations and every text pair meets AA.
   *Seam:* the rendered components under `src/testing/contrast.ts` · *Pinned by:*
-  `auth-page.a11y.spec.ts`, `auth-page.contrast.spec.ts`, `forgot-password.a11y.spec.ts`,
-  `forgot-password.contrast.spec.ts`
+  `auth-page.a11y.spec.ts` (a fenced case per register audience), `forgot-password.a11y.spec.ts`
+  (new, four states), plus the existing contrast maths: `auth-page.contrast.spec.ts` for the card
+  tokens both pages share and `shared/challenge-widget.contrast.spec.ts` for the widget's own, each
+  already per-theme over the worst-case gradient stops. **No `forgot-password.contrast.spec.ts`**:
+  the card is the same glass stack with the same `--riv-*` pairs, so a third file would be a
+  duplicated block proving nothing new (recorded here rather than silently narrowed).
 - [ ] **AC-11:** Given `RESPONSIBILITIES.md` § *Platform edge*, when a reader looks for the fenced
   set, then all three fenced auth routes are named there (and the "in their own slices" list no
   longer claims these two are pending). *Seam:* the doc itself · *Pinned by:* review (RV-PROC) +
@@ -248,15 +252,15 @@ no new token, no `@apply`).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1 — frontend)`
+**Stage pointer:** `implement (phase 2 — e2e)`
 
-**Next action:** open the draft PR (CI fires on `pull_request` only), then wire the widget into
-`auth/auth-page.ts`'s operator register card and `auth/forgot-password.ts`, test-first.
+**Next action:** extend `e2e/support/auth-mocks.ts` with the fence on the operator-lifecycle and
+recovery mocks, then write the two mocked journeys and the real-backend spec.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Backend: fence the two routes + repair the existing ITs | ✅ | (this commit) |
-| 1 — Frontend: services, both pages, unit + a11y/contrast specs | | |
+| 1 — Frontend: services, both pages, unit + a11y/contrast specs | ✅ | (this commit) |
 | 2 — e2e: mocked fence handles + both suites | | |
 | 3 — Docs + close-out | | |
 
@@ -304,10 +308,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/core/customer-auth.ts|.spec.ts` — `forgotPassword(…, challenge?)` + rejections.
 - `frontend/src/app/auth/auth-page.ts|.spec.ts` — widget on the operator register card.
 - `frontend/src/app/auth/auth-page.a11y.spec.ts` — operator register card with the widget.
-- `frontend/src/app/auth/auth-page.contrast.spec.ts` — same, three themes.
+- `frontend/src/app/auth/auth-page.contrast.spec.ts` — unchanged; already covers the shared card
+  tokens in all three themes (see AC-10's note).
 - `frontend/src/app/auth/forgot-password.ts|.spec.ts` — widget mounted + solved payload.
 - `frontend/src/app/auth/forgot-password.a11y.spec.ts` — new.
-- `frontend/src/app/auth/forgot-password.contrast.spec.ts` — new.
 - `frontend/e2e/support/auth-mocks.ts` — the fence in `mockOperatorLifecycleApi` +
   `mockCustomerRecoveryApi`, exposing the shared `ChallengeMock` handle.
 - `frontend/e2e/support/pages/operator-sign-in.page.ts` — widget locators.

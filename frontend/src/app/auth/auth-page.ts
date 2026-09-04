@@ -334,7 +334,7 @@ export class AuthPage {
 
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | undefined>(undefined);
-  /** The widget's verified proof-of-work solution for the tourist register, while it has one. */
+  /** The widget's verified proof-of-work solution for whichever register card is showing. */
   protected readonly challengePayload = signal<string | undefined>(undefined);
   protected readonly policyHint = PASSWORD_POLICY_HINT;
   private readonly submittedForApproval = signal(false);
@@ -383,10 +383,8 @@ export class AuthPage {
   protected readonly showContactEmail = computed(
     () => this.audience() === 'operator' && this.mode() === 'register',
   );
-  /** Only the tourist register is fenced in this slice; the operator side follows in its own. */
-  protected readonly showChallenge = computed(
-    () => this.audience() === 'tourist' && this.mode() === 'register',
-  );
+  /** Both registers are fenced (ADR-0016); neither sign-in is — the identity throttle covers those. */
+  protected readonly showChallenge = computed(() => this.mode() === 'register');
   protected readonly submitLabel = computed(() => {
     if (this.mode() === 'signin') {
       return this.submitting() ? 'Signing in…' : 'Sign in';
@@ -555,9 +553,13 @@ export class AuthPage {
       return;
     }
     // The 202 itself is session-less (D-8); a PENDING account signs in immediately (#694).
-    const result = await this.operatorAuth.register(identifier, password, contactEmail);
+    const challenge = await this.challenge()?.solved();
+    const result = await this.operatorAuth.register(identifier, password, contactEmail, challenge);
     if (result !== 'submitted') {
       this.error.set(operatorRegisterMessage(result));
+      if (isChallengeRejection(result)) {
+        this.challenge()?.refresh();
+      }
       return;
     }
     // Auto-sign-in: fresh registration lands in the console; a duplicate fails like any sign-in (D-8).

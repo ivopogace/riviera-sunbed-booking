@@ -1,10 +1,13 @@
-import { afterNextRender, Component, ElementRef, inject, signal } from '@angular/core';
+import { afterNextRender, Component, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { FormField, form } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 
 import { CustomerAuth } from '../core/customer-auth';
+import { ProofOfWork } from '../core/proof-of-work';
 import { BusyAction } from '../shared/busy-action';
 import { CardGlass } from '../shared/card-glass';
+import { challengeRejectionMessage, isChallengeRejection } from '../shared/challenge';
+import { ChallengeWidget } from '../shared/challenge-widget';
 
 import { TouchTarget } from '../shared/touch-target';
 
@@ -30,10 +33,14 @@ const CLS = {
  * backend to send a reset link. The confirmation is deliberately uniform — it never reveals whether the
  * email has an account (non-enumeration) — so a successful request always shows the same "if an account
  * exists…" message. Signal Forms drives the one field; the server is the authority.
+ *
+ * <p>The request is fenced by the proof-of-work challenge (ADR-0016), so the card hosts the shared
+ * widget and waits for its solution before posting. A refusal names the reason and restarts the
+ * widget; the fence sits ahead of the controller, so it reveals nothing about the email either.
  */
 @Component({
   selector: 'app-forgot-password',
-  imports: [FormField, RouterLink, CardGlass, BusyAction, TouchTarget],
+  imports: [FormField, RouterLink, CardGlass, BusyAction, ChallengeWidget, TouchTarget],
   template: `
     <section
       class="flex min-h-[60vh] items-center justify-center px-5 py-8"
@@ -77,6 +84,13 @@ const CLS = {
               />
             </label>
 
+            <app-challenge-widget
+              #challenge
+              class="mb-1 block"
+              [enabled]="proofOfWork.enabled()"
+              [(payload)]="challengePayload"
+            />
+
             @if (error(); as msg) {
               <p [class]="cls.error" role="alert" data-testid="forgot-error">{{ msg }}</p>
             }
@@ -110,11 +124,16 @@ const CLS = {
 export class ForgotPassword {
   private readonly auth = inject(CustomerAuth);
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  protected readonly proofOfWork = inject(ProofOfWork);
+
+  private readonly challenge = viewChild<ChallengeWidget>('challenge');
 
   protected readonly cls = CLS;
   protected readonly submitting = signal(false);
   protected readonly sent = signal(false);
   protected readonly error = signal<string | undefined>(undefined);
+  /** The widget's verified proof-of-work solution, while it has one. */
+  protected readonly challengePayload = signal<string | undefined>(undefined);
 
   protected readonly model = signal({ email: '' });
   protected readonly forgotForm = form(this.model);
@@ -137,10 +156,14 @@ export class ForgotPassword {
     }
     this.submitting.set(true);
     this.error.set(undefined);
-    const result = await this.auth.forgotPassword(email);
+    const challenge = await this.challenge()?.solved();
+    const result = await this.auth.forgotPassword(email, challenge);
     this.submitting.set(false);
     if (result === 'sent') {
       this.sent.set(true);
+    } else if (isChallengeRejection(result)) {
+      this.error.set(challengeRejectionMessage(result));
+      this.challenge()?.refresh();
     } else if (result === 'rate-limited') {
       this.error.set('Too many attempts. Please wait a minute and try again.');
     } else {

@@ -1,15 +1,19 @@
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 
 import { expectNoAxeViolations } from '../../testing/axe';
+import { defineFakeAltchaElement } from '../../testing/fake-altcha-element';
 import { CustomerAuth } from '../core/customer-auth';
 import { OperatorAuth } from '../core/operator-auth';
 import { OwnedVenues, OwnedVenuesResult } from '../core/owned-venues';
 import { ProofOfWork } from '../core/proof-of-work';
 import { AuthPage } from './auth-page';
+
+// jsdom has no Web Workers: the widget is the element stand-in, never the real bundle.
+vi.mock('altcha', () => ({}));
 
 const stubAuth = () => ({
   signedIn: signal(false),
@@ -29,6 +33,9 @@ const stubAuth = () => ({
  */
 describe('AuthPage a11y (#277)', () => {
   let fixture: ComponentFixture<AuthPage>;
+  let fenceEnabled: WritableSignal<boolean>;
+
+  beforeAll(defineFakeAltchaElement);
 
   async function render(queryParams: Record<string, string> = {}): Promise<HTMLElement> {
     TestBed.resetTestingModule();
@@ -37,7 +44,7 @@ describe('AuthPage a11y (#277)', () => {
         provideRouter([]),
         { provide: CustomerAuth, useValue: stubAuth() },
         { provide: OperatorAuth, useValue: stubAuth() },
-        { provide: ProofOfWork, useValue: { enabled: signal(false) } },
+        { provide: ProofOfWork, useValue: { enabled: (fenceEnabled = signal(false)) } },
         {
           provide: OwnedVenues,
           useValue: {
@@ -74,6 +81,18 @@ describe('AuthPage a11y (#277)', () => {
   it('has no serious violations in operator register', async () => {
     await expectNoAxeViolations(await render({ audience: 'operator', mode: 'register' }));
   });
+
+  it.each(['tourist', 'operator'])(
+    'has no serious violations in the fenced %s register',
+    async (audience) => {
+      const host = await render({ audience, mode: 'register' });
+      fenceEnabled.set(true);
+      await fixture.whenStable();
+
+      expect(host.querySelector('altcha-widget'), 'the fence is actually mounted').not.toBeNull();
+      await expectNoAxeViolations(host);
+    },
+  );
 
   it('exposes the audience toggle as a named radiogroup in both modes', async () => {
     const modes: Record<string, string>[] = [{}, { mode: 'register' }];

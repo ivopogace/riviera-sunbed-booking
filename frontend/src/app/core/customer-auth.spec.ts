@@ -271,6 +271,47 @@ describe('CustomerAuth', () => {
     expect(await errored).toBe('error');
   });
 
+  it('forgot-password sends the solved challenge as the fence’s header, and none without one', async () => {
+    const auth = await create('signed-out');
+
+    void auth.forgotPassword('ana@example.com', 'solved-payload');
+    const fenced = http.expectOne(`${AUTH_API}/customer/forgot-password`);
+    expect(fenced.request.headers.get('X-Altcha-Payload')).toBe('solved-payload');
+    fenced.flush(null, { status: 204, statusText: 'No Content' });
+
+    void auth.forgotPassword('ana@example.com');
+    const open = http.expectOne(`${AUTH_API}/customer/forgot-password`);
+    expect(open.request.headers.has('X-Altcha-Payload')).toBe(false);
+    open.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it.each([
+    ['CHALLENGE_REQUIRED', 'challenge-required'],
+    ['CHALLENGE_INVALID', 'challenge-invalid'],
+    ['CHALLENGE_EXPIRED', 'challenge-expired'],
+  ])('forgot-password maps a 400 %s to %s, not the generic error', async (code, expected) => {
+    const auth = await create('signed-out');
+
+    const result = auth.forgotPassword('ana@example.com', 'stale');
+    http
+      .expectOne(`${AUTH_API}/customer/forgot-password`)
+      .flush({ code }, { status: 400, statusText: 'Bad Request' });
+
+    expect(await result).toBe(expected);
+  });
+
+  // Every other failure still collapses to the one generic answer — the fence adds no new oracle (D-8).
+  it('forgot-password maps a 400 without a challenge code to error', async () => {
+    const auth = await create('signed-out');
+
+    const result = auth.forgotPassword('ana@example.com', 'whatever');
+    http
+      .expectOne(`${AUTH_API}/customer/forgot-password`)
+      .flush({ code: 'INVALID_REQUEST' }, { status: 400, statusText: 'Bad Request' });
+
+    expect(await result).toBe('error');
+  });
+
   it('reset-password maps 204 → reset, and 400 by code → invalid-token vs invalid-password', async () => {
     const auth = await create('signed-out');
 
