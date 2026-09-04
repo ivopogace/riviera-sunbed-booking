@@ -175,8 +175,9 @@ pattern it does not. Building nine mutable roots would mean re-homing rules that
 notes find correctly placed, and re-litigating a state machine that Postgres enforces today with
 guarded `UPDATE`s.
 
-The two classes that do exist are **immutable value records with static factories, not mutable
-roots with identity and lifecycle**, and the docs should describe them that way:
+The two classes that do exist are **immutable value records, not mutable roots with identity and
+lifecycle** — the entry carries static factories, the batch is constructed directly — and the docs
+should describe them that way:
 
 - `PayoutLedgerEntry` — `record PayoutLedgerEntry(VenueId, long bookingId, EntryType, long
   grossMinor, long commissionMinor, long netMinor, String currency, RefundReason)`

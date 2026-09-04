@@ -479,8 +479,9 @@ classDiagram
 ```
 
 > These two records are the only ones the docs ever called aggregate roots that actually exist —
-> and they are **immutable value records with static factories** (`accrual`, `reversalOf`), not
-> mutable roots with identity and a lifecycle (ADR-0018 §6). The entry carries no id type, no
+> and they are **immutable value records**, not mutable roots with identity and a lifecycle
+> (ADR-0018 §6): the entry carries the `accrual`/`reversalOf` factories, while the batch is built
+> straight through its canonical constructor. The entry carries no id type, no
 > `Money`, and one field the old diagram omitted: `reason`, which is what makes a `REVERSAL`
 > auditable under invariant #9. `bookingId` is a bare `long` while `venueId` is typed.
 >
