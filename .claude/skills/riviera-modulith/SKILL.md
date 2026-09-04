@@ -212,8 +212,8 @@ controller. Platform-wide admin (`/api/admin/**`) stays role-gated. The module's
 
 - `references/boundaries.md` — `@ApplicationModule`/grant mechanics, the least-privilege
   matrix, the `api`-vs-`spi` treatment + the `venue ↔ availability` worked example.
-- `references/persistence-jdbc.md` — before `adapter/out`/repository/aggregate/migration
-  work; the `JdbcClient` default + the Spring Data JDBC aggregate rules.
+- `references/persistence-jdbc.md` — before `adapter/out`/repository/migration work; the
+  `JdbcClient` + explicit-SQL pattern and the JPA anti-patterns to refuse.
 - `references/events.md` — before adding a cross-module event: sync vs async listeners,
   the Event Publication Registry, the event-move Flyway rewrite.
 - `references/testing.md` — `@ApplicationModuleTest`, the `Scenario` DSL,
