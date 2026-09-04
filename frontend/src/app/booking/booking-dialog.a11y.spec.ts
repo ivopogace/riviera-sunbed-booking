@@ -29,9 +29,9 @@ const SET: SetView = {
  * Structural axe audit of the Liquid Glass booking dialog: the modal exposes a
  * dialog role, an accessible name (venue + set, via `aria-labelledby`), a labelled step form, and a
  * close control — on BOTH steps (Details and Review). The proof-of-work fence is switched ON for
- * the audit, because the widget is mounted in the form on both steps and is the newest thing in
- * the modal's tab order. Contrast is checked separately in booking-dialog.contrast.spec.ts (axe
- * can't measure it under jsdom).
+ * the audit, because the Review step hosts the widget and it is the newest thing in that step's
+ * tab order; Details hosts none, so its audit is the pre-fence shape. Contrast is checked
+ * separately in booking-dialog.contrast.spec.ts (axe can't measure it under jsdom).
  */
 describe('BookingDialog accessibility (axe)', () => {
   let fixture: ComponentFixture<BookingDialog>;

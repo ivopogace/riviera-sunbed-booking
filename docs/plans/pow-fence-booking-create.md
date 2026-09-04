@@ -274,10 +274,10 @@ the widget, whose skin is already token-driven.
 
 ## Execution status
 
-**Stage pointer:** `CI gate — draft PR #923 open, first run in flight`
+**Stage pointer:** `review gate — findings being fixed`
 
-**Next action:** watch PR #923's first CI run; drive it green, then mark ready for review and
-run the Review gate and the Sonar gate per `riviera-sdlc` `references/pr-gates.md`.
+**Next action:** finish the review gate's remaining agents, then the close-out commit (F-1:
+tick the AC / phase-step / self-review boxes, cite `merged via PR #923`) and merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -292,7 +292,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate (CLAUDE.md agent) | The plan doc's phase table read ✅ while its AC, phase-step and self-review checkboxes were all still unticked — the doc misstated its own completion state | fixed in the close-out commit |
+| F-2 | review gate (comment-compliance agent) | `booking-dialog.a11y.spec.ts`'s class TSDoc still claimed the widget is "mounted in the form on both steps" — true before the Q-2 decision moved it to Review, false after, and contradicted by the spec's own test bodies | fixed-in-`04a3b5c` |
+| — | sonar gate | 0 new issues, 0 hotspots, 0 duplicated blocks, 97.37% new-code coverage (`new_lines` = 90, so a real analysis ran) | clear |
 
 ---
 
@@ -317,7 +319,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/booking/booking-dialog.ts` — hosts the widget, awaits `solved()`, restarts on a
   rejection
 - `frontend/src/app/booking/booking-dialog.spec.ts` — AC-8 / AC-9 / AC-10
-- `frontend/src/app/booking/booking-dialog.a11y.spec.ts` — axe with the widget mounted
+- `frontend/src/app/booking/booking-dialog.a11y.spec.ts` — axe with the widget mounted on Review
 - `frontend/src/app/booking/booking-dialog.contrast.spec.ts` — the widget's ink pairs on the dialog
   glass, three themes
 - `frontend/src/app/venue/venue-map.spec.ts` and `frontend/src/app/venue/venue-map.a11y.spec.ts`
