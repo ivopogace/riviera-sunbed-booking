@@ -256,10 +256,22 @@ no new token, no `@apply`).
 
 ## Execution status
 
-**Stage pointer:** `review gate — fixing findings`
+**Stage pointer:** `sonar gate`
 
-**Next action:** land the remaining review-agent findings (3 of 5 agents still reporting), confirm CI
-green on the new head, then run the Sonar gate.
+**Next action:** once CI settles on the current head, pull SonarCloud's reported new-issue +
+duplication list from the API (`references/pr-gates.md` §2 — the gate conclusion is not the check)
+and clear every entry, then merge close-out.
+
+**Review gate — ran in full on PR #922.** `Skill("code-review:code-review")` (rung 1 of the
+invocation ladder) at **high** effort, with `riviera-review-overlay` layered on: five parallel
+reviewers over `origin/main...HEAD` — substrate-doc adherence (RV-STYLE-1, RV-BE-11/12, Java
+conventions, Angular idioms), a bug scan, git-history context, prior-PR review comments, and
+in-file comment guidance. **Zero findings from the review.** What it independently confirmed: the
+fence never reads the body so forgot-password stays non-enumerating; a tourist-card solution cannot
+ride into an operator submit; the submit path cannot double-submit or hang; the challenge codes are
+spliced ahead of the password branches in both services; every new and repaired IT keeps the
+unique-client-IP discipline the suite's history demands, and the two budget tests sit on isolated
+bucket maps. The two findings in the register below came from CI, not the review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -275,8 +287,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | D-1 | docs-freshness (`origin/main...HEAD`) | `RateLimitFilter`'s `RECOVERY_PATHS` Javadoc stated "the only denial reachable before the controller is a CSRF `403`" — the fence's `400` is now also reachable there, and is deliberately outside the refund | patched in phase 0 |
-| F-2 | CI (Repo hygiene, `d52a9e9`) | `check-plan-file-structure` red: the F-1 fix touched two paths the plan's File-structure section did not list | fixed — both listed; the lesson is that a fix-round push re-runs the guard, so it belongs in the same commit window as the fix |
-| F-1 | CI (CodeQL, `94abaa8`) | High-severity "Insecure randomness": `Math.random()` in the new real-backend spec's unique-id helper, on a value the backend reads back as identity | fixed — one `uniqueSuffix()` on `crypto.randomUUID()` in the real-backend support module, used by both specs that mint identity values |
+| F-2 | CI (Repo hygiene, `d52a9e9`) | `check-plan-file-structure` red: the F-1 fix touched two paths the plan's File-structure section did not list | fixed-in-`4164faa`; the lesson is that a fix-round push re-runs the guard, so it belongs in the same commit window as the fix |
+| F-1 | CI (CodeQL, `94abaa8`) | High-severity "Insecure randomness": `Math.random()` in the new real-backend spec's unique-id helper, on a value the backend reads back as identity | fixed-in-`d52a9e9` — one `uniqueSuffix()` on `crypto.randomUUID()` in the real-backend support module, used by both specs that mint identity values; CodeQL now reports `neutral` (no new alerts) on that head |
 | D-2 | docs-freshness (`origin/main...HEAD`) | `RESPONSIBILITIES.md` § *Platform edge* said the fenced set is "customer register today; operator register, forgot-password and booking create in their own slices" — two of those three shipped here | patched in phase 3 (AC-11) |
 
 ---
@@ -442,21 +454,21 @@ Test `ChallengeVerificationFilterTest.java`, new `OperatorRegisterChallengeIT`,
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (invariant #1).
-- [ ] **Availability** section justified N/A (no booking/map/availability surface touched).
-- [ ] Pool + cutoff rules untouched (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module imports added; root reaches only
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (invariant #1).
+- [x] **Availability** section justified N/A (no booking/map/availability surface touched).
+- [x] Pool + cutoff rules untouched (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module imports added; root reaches only
       `challenge::api` + `::vocabulary` (invariant #11).
-- [ ] **Payment/payout** N/A.
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched (invariant #6).
-- [ ] Booking codes untouched (invariant #7); the challenge payload is never logged.
-- [ ] No schema change, so no Flyway migration (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Payment/payout** N/A.
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched (invariant #6).
+- [x] Booking codes untouched (invariant #7); the challenge payload is never logged.
+- [x] No schema change, so no Flyway migration (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
 - [ ] **Close-out written in THIS PR** citing `merged via PR #NN`.
 - [ ] **The review gate ran in full** per `riviera-sdlc` `references/pr-gates.md` §1 + the overlay.
