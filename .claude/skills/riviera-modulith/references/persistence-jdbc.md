@@ -1,11 +1,12 @@
-# Persistence — `JdbcClient` + SQL first; Spring Data JDBC aggregate only when it earns it
+# Persistence — `JdbcClient` + explicit SQL, and where it sits in the hexagon
 
-JPA/Hibernate is forbidden (invariant #1). The default persistence is `JdbcClient` +
-explicit text-block SQL, not Spring Data JDBC aggregates. Language-level detail:
-`riviera-java-conventions` §1; SQL/schema/index craft: `postgres`. This file covers where
-persistence sits in the hexagon and is the canonical home of the Spring Data JDBC aggregate rules.
+JPA/Hibernate is forbidden (invariant #1). Persistence is `JdbcClient` + explicit text-block
+SQL — the tree's one uniform choice, with no `CrudRepository`, `@Table` or `@Id` anywhere in
+it. Language-level detail: `riviera-java-conventions` §1, and its §1a for the Spring Data JDBC
+aggregate question the tree has never answered yes; SQL/schema/index craft: `postgres`. This
+file covers where persistence sits in the hexagon.
 
-## Default: `JdbcClient` + explicit SQL (what every existing adapter does)
+## The pattern: `JdbcClient` + explicit SQL (what every existing adapter does)
 
 A driven adapter in `adapter/out`, package-private, implementing an `api/` port (thin
 module) or an internal `application/` port directly with named-parameter SQL in a text
@@ -49,58 +50,19 @@ class JdbcBookings implements Bookings {                 // implements an intern
   transaction; `ON CONFLICT` makes a collision a normal empty result.
 - **Schema is Flyway only** (invariant #12) — no `ddl-auto`, no generated schema.
 
-## Exception: a Spring Data JDBC aggregate (only when a row cluster is ONE consistency unit)
-
-Reach for an aggregate only when a root and its children are loaded, mutated, and saved
-together as a unit (e.g. a future `Booking` that owns line-items). Then follow Spring Data
-**JDBC** (not JPA) mapping, inside the module, behind a port:
-
-```java
-// domain/model — Spring Data RELATIONAL annotations only (NOT jakarta.persistence)
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.MappedCollection;
-import org.springframework.data.relational.core.mapping.Table;
-
-@Table("booking")
-class Booking {
-    @Id private Long id;
-    private Long setId;                                   // reference to ANOTHER aggregate by id
-    @MappedCollection(idColumn = "booking_id", keyColumn = "position")
-    private List<BookingLine> lines = new ArrayList<>();  // OWNED children, saved with the root
-}
-```
-
-- **The aggregate is the consistency + transaction boundary.** One `ListCrudRepository` /
-  custom `o.s.data.repository.Repository` per aggregate root only — never a repository for
-  an entity inside an aggregate. Save the root; it persists its children. Queries are SQL
-  via `@Query` (not JPQL).
-- **Cross-aggregate references are by id, never by object** (`Long setId` /
-  `AggregateReference`). A `Booking` holds a `SetId`/`CustomerId`, not a `Set`/`Customer` —
-  the same rule invariant #11 puts on event payloads, and why `SetId` lives in `venue.vocabulary`.
-- **No cascade between aggregates.** A cross-aggregate effect is a second explicit `save`
-  or a domain event, never a persistence cascade.
-- **Inside an aggregate, references go root → child only, unidirectional.** No child→root
-  back-reference; the child row carries the root's FK in the DB.
-- **Model M:N join tables explicitly** as their own type. Spring Data JDBC has no hidden join table.
-- **`save` is explicit.** No dirty-checking / autoflush: a load-then-mutate with no `save`
-  persists nothing.
-- **Mind the imports:** `org.springframework.data.annotation.@Id` and
-  `org.springframework.data.relational.core.mapping.@Table`/`@Column`/`@MappedCollection`
-  — never the `jakarta.persistence` annotations of the same simple name.
-
 ## JPA anti-patterns to REFUSE (convert and say why)
 
 | JPA (refuse) | Use instead |
 |---|---|
-| `@jakarta.persistence.Entity` / that pkg's `@Table` | `JdbcClient` + SQL (default), or `o.s.data.relational...@Table` on a real aggregate |
-| `extends JpaRepository<...>` | default to no repository (`JdbcClient`); else `ListCrudRepository` (Spring Data JDBC) |
-| `@OneToMany`/`@ManyToOne`/`@ManyToMany` | `@MappedCollection` for owned children; typed-id reference across aggregates |
-| lazy loading / `FetchType` / persistence context / dirty checking | explicit `JdbcClient` query, or explicit `repository.save(root)` |
+| `@jakarta.persistence.Entity` / that pkg's `@Table` | `JdbcClient` + explicit SQL in a package-private `adapter/out` class |
+| `extends JpaRepository<...>` | no repository interface at all — `JdbcClient` behind the module's own port |
+| `@OneToMany`/`@ManyToOne`/`@ManyToMany` | a typed-id column and a second query; a join is written in the SQL |
+| lazy loading / `FetchType` / persistence context / dirty checking | an explicit `JdbcClient` query, and an explicit `INSERT`/`UPDATE` |
 | `spring-boot-starter-data-jpa` | `spring-boot-starter-data-jdbc` (already on the classpath) |
 | MapStruct entity↔DTO mappers | hand-map at the adapter edge; keep `domain` free of DTOs |
 | bidirectional associations across modules | publish a domain event; reference by id |
 
-Because references across aggregates are ids and there is no lazy loading, a
-`booking`-module write physically cannot drag a `venue` aggregate into its graph. When
-`booking` needs venue data it calls `venue.api.VenueCatalog` with the id
+Because a row is reached only by a query this module wrote — no association to traverse, no
+lazy load to trigger — a `booking`-module write physically cannot drag `venue` rows into its
+object graph. When `booking` needs venue data it calls `venue.api.VenueCatalog` with the id
 (`setBookingInfo(SetId)`). The boundary is real at the persistence layer.

@@ -33,11 +33,14 @@ them by number where they bite.
 
 ### 1a. If a Spring Data JDBC aggregate earns it
 
-Reach for an aggregate only when a cluster of rows is genuinely one consistency unit
-(loaded, mutated, and saved together); the default stays `JdbcClient` + explicit SQL. The
-aggregate rules (one repository per root, id-only cross-aggregate references, no cascade
-between aggregates, root→child-only navigation, explicit M:N join types, explicit `save`,
-the jakarta-imports footgun) live in `riviera-modulith/references/persistence-jdbc.md`.
+Reach for an aggregate only when a cluster of rows is genuinely one consistency unit —
+loaded, mutated and saved together, by one writer, under an invariant spanning them. Nothing
+in the tree is that, so an annotated type would be the first and owes a stated reason, not a
+preference. Two constraints if one ever earns it: the mapping is
+`org.springframework.data.relational`, never `jakarta.persistence` (the `@Table`/`@Id` simple
+names collide), and it may **not** live in `domain/` — ADR-0018 §4 holds that package
+framework-free and `DomainPurityArchitectureTests` rejects any `org.springframework` import
+there.
 
 ### 2. Data shapes: records for DTOs, value objects, and ids
 
@@ -210,6 +213,6 @@ Money is integer minor units + ISO currency; time is UTC `Instant`, with booking
   map, `ErrorContractArchitectureTests`, and the validation decision behind §6b.
 - `references/inline-comment-guard.md` — the §6c guard's scope, exemptions, and the
   deliberate false negative.
-- `riviera-modulith/references/persistence-jdbc.md` — the aggregate rules behind §1a and
-  the `JdbcClient` adapter pattern behind §1.
+- `riviera-modulith/references/persistence-jdbc.md` — the `JdbcClient` adapter pattern
+  behind §1, and where persistence sits in the hexagon.
 - `riviera-modulith/references/testing.md` — the Modulith/Testcontainers harness behind §9.

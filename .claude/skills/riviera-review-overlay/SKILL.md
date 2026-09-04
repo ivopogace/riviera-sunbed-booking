@@ -18,9 +18,9 @@ When loaded, announce: *"riviera-review-overlay loaded. Adding project-specific 
 
 ## Reference files, loaded by the diff's scope
 
-- **Backend diff** → `references/backend-conventions.md` (RV-BE-1..18: JDBC-only, Modulith
+- **Backend diff** → `references/backend-conventions.md` (RV-BE-1..19: JDBC-only, Modulith
   boundaries, availability/concurrency, money/timezone, auth, error contract, responsibility
-  placement, package shape, Flyway, session lifecycle). If the diff changes any wire shape
+  placement, package shape, rule-layer placement, Flyway, session lifecycle). If the diff changes any wire shape
   (an endpoint, a DTO, an error body) — even with no frontend file touched — also load
   `references/fe-be-contract.md`.
 - **Frontend diff** → `references/frontend-conventions.md` (Angular standards, Tailwind,
@@ -94,7 +94,8 @@ cross-module service calls, multi-line comments) live in `riviera-java-conventio
 - Done when every item in the scope-loaded reference files is checked and the three
   highest-stakes items are addressed whenever their domain is touched.
 - RV-BE-11 checked whenever the diff adds or moves behavior (plan's Module-ownership table
-  reconciled against where the code landed); RV-BE-12 whenever it adds or moves packages.
+  reconciled against where the code landed); RV-BE-12 whenever it adds or moves packages;
+  RV-BE-19 whenever it adds or changes a choice, calculation or lifecycle statement.
 
 ## Hand-offs
 

@@ -43,12 +43,25 @@ literally (it names the offending class and the broken rule) and fix the structu
   enforced by `ModularityTests`.
 - **The package shape is machine-locked** — `PackageShapeArchitectureTests` (the package
   sets) + `PublishedSurfacePlacementArchitectureTests` (kind-per-surface).
+- **Is it a rule, and does it move?** (ADR-0018 §1) It is a rule when it is a **choice** (a
+  window, tier, bound, rate, rounding direction — decidable otherwise without anything else
+  breaking), a **calculation** (deriving money or a rating), or a **lifecycle** (what may
+  follow what); anything else is procedure and stays in the service. **A rule with exactly one
+  caller also stays where it is used** — two or more callers that must agree is what earns the
+  extraction. Naming is not free: a name reading more general than the rule is worse than an
+  inline condition, which is why `BookingStatus.canStillBeHonoured()` is "deliberately narrow
+  and narrowly named" and its Javadoc says a general-sounding predicate would be a trap
+  (`booking/domain/BookingStatus.java:36–41`).
 - **`domain/` is framework-free** (ADR-0018): a rule that is pure goes there; a rule needing a
   `Clock`, a port or bound configuration goes in `application/` as a named, separately
   unit-tested holder (`BookingCutoff`, `CancellationPolicy`, `RequestWindows`). Both are the
   rule layer — the split is packaging, not status — and a set invariant belongs in a DB
   constraint instead. Enforced by `DomainPurityArchitectureTests`: a `domain/` class may name
-  the JDK and any module's `vocabulary/`/`domain/`, and nothing else.
+  the JDK and any module's `vocabulary/`/`domain/`, and nothing else. A Java **mirror** of a DB
+  *bound or vocabulary* is legitimate where a set invariant is not — `Stars` ↔
+  `review_stars_check`, `SalesClose` ↔ `venue_sales_close_check` — provided its Javadoc names
+  the twin and treats the duplication as intended; only a rule constraining the relationship
+  *between* rows is beyond Java's reach (ADR-0018 §3).
 
 ## Module layout — two templates by weight (ADR-0007)
 
@@ -212,8 +225,8 @@ controller. Platform-wide admin (`/api/admin/**`) stays role-gated. The module's
 
 - `references/boundaries.md` — `@ApplicationModule`/grant mechanics, the least-privilege
   matrix, the `api`-vs-`spi` treatment + the `venue ↔ availability` worked example.
-- `references/persistence-jdbc.md` — before `adapter/out`/repository/aggregate/migration
-  work; the `JdbcClient` default + the Spring Data JDBC aggregate rules.
+- `references/persistence-jdbc.md` — before `adapter/out`/repository/migration work; the
+  `JdbcClient` + explicit-SQL pattern and the JPA anti-patterns to refuse.
 - `references/events.md` — before adding a cross-module event: sync vs async listeners,
   the Event Publication Registry, the event-move Flyway rewrite.
 - `references/testing.md` — `@ApplicationModuleTest`, the `Scenario` DSL,
