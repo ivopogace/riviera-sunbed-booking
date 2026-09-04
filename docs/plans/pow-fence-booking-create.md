@@ -293,7 +293,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | review gate (CLAUDE.md agent) | The plan doc's phase table read ✅ while its AC, phase-step and self-review checkboxes were all still unticked — the doc misstated its own completion state | fixed in the close-out commit |
-| F-2 | review gate (comment-compliance agent) | `booking-dialog.a11y.spec.ts`'s class TSDoc still claimed the widget is "mounted in the form on both steps" — true before the Q-2 decision moved it to Review, false after, and contradicted by the spec's own test bodies | fixed-in-`04a3b5c` |
+| F-2 | review gate (comment-compliance agent) | `booking-dialog.a11y.spec.ts`'s class TSDoc still claimed the widget is "mounted in the form on both steps" — true before the Q-2 decision moved it to Review, false after, and contradicted by the spec's own test bodies | fixed-in-`7e923b4` |
+| F-3 | review gate (bug-scan agent) | The Back→Forward path destroys and rebuilds the widget — a shape no fenced auth form has, since only this dialog puts the widget inside a step branch. Traced as correct (the remount's forced re-verify discards the stale payload before it can be submitted) but untested | test added, `booking-dialog.spec.ts` › "survives a Back to Details and forward again" |
 | — | sonar gate | 0 new issues, 0 hotspots, 0 duplicated blocks, 97.37% new-code coverage (`new_lines` = 90, so a real analysis ran) | clear |
 
 ---

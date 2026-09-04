@@ -497,6 +497,36 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
       expect(widget.verify).toHaveBeenCalled();
     });
 
+    /**
+     * The widget lives inside the Review branch, so stepping Back destroys it and stepping forward
+     * builds a new one — a shape none of the fenced auth forms has. What must survive that is the
+     * ability to submit: the create still carries a solved payload, whichever instance produced it.
+     */
+    it('survives a Back to Details and forward again, still submitting a solved challenge', async () => {
+      await reviewWithSolvedChallenge('first-solution');
+
+      host().querySelector<HTMLElement>('[data-testid="dialog-back"]')!.click();
+      await fixture.whenStable();
+      expect(probe().step()).toBe(1);
+      expect(host().querySelector('altcha-widget')).toBeNull();
+
+      submitForm();
+      await fixture.whenStable();
+      expect(probe().step()).toBe(2);
+
+      const widget = host().querySelector<FakeAltchaElement>('altcha-widget')!;
+      widget.changeState('verified', 'second-solution');
+      await fixture.whenStable();
+
+      submitForm();
+      await fixture.whenStable();
+
+      const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings`);
+      expect(req.request.headers.get(CHALLENGE_HEADER)).toBe('second-solution');
+      req.flush(CONFIRMATION);
+      await fixture.whenStable();
+    });
+
     it('the kill switch hides the widget and the create carries no header', async () => {
       expect(proofOfWork.enabled()).toBe(false);
       await goToReview();
