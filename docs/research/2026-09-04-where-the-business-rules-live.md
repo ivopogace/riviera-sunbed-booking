@@ -14,13 +14,17 @@ all 26 branch-carrying files of `booking/application/`, the guarded `UPDATE`s in
 `operator`. No code was run for this note; the first note's structural-test verification still
 stands and nothing here depends on it.
 
-**Scope note — the brief was truncated.** The request ended mid-sentence at "STEP 5 — Duplication
-check / For every RULE from". §5 below reads that title as written: for every RULE found in §2–§3,
-whether the same rule is also stated somewhere else. If a different check was intended, §5 is the
-section to redo.
+**Scope note.** First drafted against a brief truncated at "STEP 5 — Duplication check"; the full
+brief arrived afterwards and confirmed §E's reading. §E and §F were then extended to what the
+complete brief asks for — the homeless rules **ranked by duplication evidence**, and a **per-module**
+verdict rather than a single one. Section letters follow that brief's A–G.
 
 **TL;DR**
 
+- **Mixed, but heavily weighted to legitimately thin — and the answer differs per module (§F).**
+  Nine of twelve modules are thin for reasons the code states and the tests corroborate. `booking`
+  is the only module where the answer is genuinely mixed, and the only one large enough for the
+  question to bite.
 - **Placement, not flattening — with five named exceptions.** The line between `domain/` and
   `application/` in this codebase is drawn by **whether a rule needs an injected collaborator**, not
   by whether it is a rule. Pure rules go to `domain/`; rules needing a `Clock` or a port become a
@@ -44,11 +48,15 @@ section to redo.
   a choice rather than a consequence, and it names its own DB counterpart. Most STEP-2 rules fail
   clause 2 — they have exactly one caller — which is why they never moved.
 - **One duplication is load-bearing and only held by a comment:** `ViewBookingService`'s
-  `payWindowClosed` re-derives in Java what the abandoned sweep states in SQL.
+  `payWindowClosed` re-derives in Java what the abandoned sweep states in SQL. It ranks first in §E;
+  the break in that ranking falls between ranks 3 and 4, below which every rule is single-caller.
+- **`review` shows the benchmark working.** Its services *call* `ReviewGate.stateOf` from two places
+  rather than re-deriving it — the direct internal contrast with `booking`'s "who may cancel",
+  stated four times across three layers with no shared function.
 
 ---
 
-## 1. The domain layer as it stands
+## A. Domain layer inventory
 
 18 files across 5 modules; 7 modules have none.
 
@@ -88,7 +96,7 @@ The five rule-holding `@Component`s and records in `application/` that are *not*
 
 ---
 
-## 2. Every branch in `booking/application/`
+## B. `booking/application/` branch classification
 
 72 files, 3,524 lines. A mechanical scan for `if` / `else` / `switch` / `case` / loops / `Optional`
 combinators finds **26 files carrying any branch**; the other 46 are records, sealed outcome
@@ -157,13 +165,13 @@ Nineteen sites. "Home?" asks whether a named rule-holder already states it.
 
 | # | Rule | Site | Home? |
 |---|---|---|---|
-| R1 | Only an ONLINE-pool set may be booked online (#3) | `ReserveSetService:92` — `if (!ONLINE_POOL.equals(set.pool()))` | **Partial** — restated in `JdbcAvailabilityClaim:54`; see §5 |
+| R1 | Only an ONLINE-pool set may be booked online (#3) | `ReserveSetService:92` — `if (!ONLINE_POOL.equals(set.pool()))` | **Partial** — restated in `JdbcAvailabilityClaim:54`; see §E |
 | R2 | A date sells until the venue's sales close on the day (#4) | `ReserveSetService:97` — `if (!cutoff.isBookable(set.salesClose(), …, now))` | ✅ `BookingCutoff` |
 | R3 | A hidden venue's set books like one that does not exist | `ReserveSetService:89` — `if (!visibility.isVisible(…))` | ✅ `operator.api.VenueVisibility` |
 | R4 | A REQUEST-mode venue's booking starts as a pending request, not a payment | `ReserveSetService:113` — `if (set.bookingMode() == BookingMode.REQUEST)` | ❌ inline |
 | R5 | The accept deadline is capped at the venue's sales close | `ReserveSetService:114` — `min(now.plus(expiryWindow), cutoff.salesCloseAt(…))` | **Partial** — `RequestWindows` holds the pay-window cap, not this one |
 | R6 | A delivered or no-show booking is past cancelling | `CancelBookingService:77–79` — `if (status == NO_SHOW \|\| status == COMPLETED) return WindowClosed` | ❌ inline |
-| R7 | Only a CONFIRMED booking is cancellable by the guest | `CancelBookingService:80–82` — `if (status != CONFIRMED) return NotCancellable` | **Duplicated** — see §5 |
+| R7 | Only a CONFIRMED booking is cancellable by the guest | `CancelBookingService:80–82` — `if (status != CONFIRMED) return NotCancellable` | **Duplicated** — see §E |
 | R8 | Cancellation is refused once the service day opens (#10) | `CancelBookingService:85–87` — `if (!quote.cancellationOpen())` | ✅ `CancellationPolicy` / `BookingCutoff` |
 | R9 | Which refund tier a cancellation reports | `CancelBookingService:109, 119` — `tierFor(window, refundMinor)` switch | ❌ inline (the *amount* is `RefundPolicy`; the *label* is not) |
 | R10 | The venue's late share applies only inside the LATE window | `CancellationPolicy:51–53, 93` — `window == LATE ? bps : 0` | ✅ own class (two sites, one class) |
@@ -174,7 +182,7 @@ Nineteen sites. "Home?" asks whether a named rule-holder already states it.
 | R15 | A booking is withdrawable iff PENDING_REQUEST | `ViewBookingService:95` | ❌ inline |
 | R16 | Mail status may be disclosed only post-payment | `ViewBookingService:85–89` — `status == CONFIRMED && collection.provenBeforeConfirmation()` | ❌ inline |
 | R17 | A refund is outstanding iff cancelled, non-zero, and the gateway has not settled | `ViewBookingService:101–105` | ❌ inline |
-| R18 | The pay window is closed iff the service day ended or the raw window ran out | `ViewBookingService:107–110` | **Duplicated** with the sweep's SQL — see §5 |
+| R18 | The pay window is closed iff the service day ended or the raw window ran out | `ViewBookingService:107–110` | **Duplicated** with the sweep's SQL — see §E |
 | R19 | A set may not be staff-marked for a past date | `StaffAvailabilityService:75–77` — `if (date.isBefore(LocalDate.ofInstant(clock.instant(), TIRANE)))` | ❌ inline (module has no `domain/`) |
 
 Plus two rules that sit **outside** `application/` entirely and belong in this tally:
@@ -188,7 +196,7 @@ Plus two rules that sit **outside** `application/` entirely and belong in this t
 
 ---
 
-## 3. The three modules with no `domain/`
+## C. The no-domain modules: correct absence vs displaced rules
 
 ### `availability` — absence is correct
 
@@ -237,7 +245,7 @@ resolution, and tourist visibility." That is a stated placement decision, not a 
 
 ---
 
-## 4. The benchmark: what makes a rule extractable *here*
+## D. What makes a rule extractable here, derived from `review/`
 
 `review/domain/` is the richest domain layer in the codebase and its seven types are unusually
 explicit about why they exist. Four clauses recur, and every one of the seven satisfies all four.
@@ -277,7 +285,7 @@ so and calls the duplication deliberate:
  * application, so the duplication there is deliberate, not drift.
 ```
 
-### Applying the test to §2's rules
+### Applying the test to §B's rules
 
 | Rule | (a) pure | (b) 2+ callers | (c) a choice | (d) names its DB twin | Verdict |
 |---|---|---|---|---|---|
@@ -329,13 +337,17 @@ unit-tested apart from their service. These can, and are:
 two-line predicate, exercised through their callers.)
 
 **Verdict: placement, not flattening**, with five named exceptions — R1, R7/R14/R20, R13,
-R18 and the missing transition table (§5, D5).
+R18 and the missing transition table (§E, D5).
 
 ---
 
-## 5. Duplication check
+## E. Rules with no home in `domain/`, ranked by duplication evidence
 
-*Reading the truncated brief's §5 as: for every RULE in §2–§3, is the same rule stated elsewhere?*
+The brief's §5, now received in full: for every RULE in §B–§C, is the same rule stated in more than
+one place — two services, a service and a controller, a service and a SQL predicate, or a service
+and the frontend? Duplicated rules have the strongest case for a home.
+
+### The duplications
 
 Five duplications, in descending order of risk.
 
@@ -429,9 +441,66 @@ duplication deliberate.
 `CancellationWindow` to choose copy, and no TypeScript applies a bps figure to an amount — invariant
 #10 holds across the stack.
 
+### The ranking
+
+The thirteen rules from §B with no named home, ordered by how much duplication evidence argues for
+one. Rank is the strength of the case, not a recommendation — this note proposes nothing.
+
+| Rank | Rule | Statements of it | Pinned? | Case |
+|---|---|---|---|---|
+| 1 | **R18** pay window closed | **3** — `RequestWindows.payDeadline/acceptedBefore`; the sweep's SQL (`JdbcBookings:580–583`); `ViewBookingService:107–110` | SQL↔record only (`RequestWindowsTest`) | **Strongest.** Three statements, two pinned, the third held by a comment. The only unpinned duplication in the codebase whose drift is user-visible. |
+| 2 | **R7 / R14 / R20** who may cancel | **4** — `CancelBookingService:80–82`; `ViewBookingService:93`; `JdbcBookings:407` (`List.of(CONFIRMED)`); `JdbcBookings:411–415` (weather admits `NO_SHOW`) | No | **Strong.** Spans three layers plus an admin variant. The enforcing statement is the adapter's; the other three are advisory, so drift 409s rather than mis-writes. |
+| 3 | **R1** ONLINE-pool check | **2**, in **two modules** — `ReserveSetService:92`; `JdbcAvailabilityClaim:54`, each with its own `private static final String ONLINE_POOL = "ONLINE"` | No | **Strong.** The only duplicated rule that crosses a module boundary, on an untyped `String` token, in a codebase that publishes a typed record to avoid a bare `long`. |
+| 4 | **R5** accept-deadline cap | **1 + a doc** — computed at `ReserveSetService:114`; `RequestWindows` holds the *pay*-window cap and describes the accept cap without holding it | No | Medium. Not duplicated code, but a rule-holder that documents a sibling rule it does not own. |
+| 5 | **R9** refund tier | **1**, derived a second time from a value that has a home — `CancelBookingService:119` switches on the same `CancellationWindow` that `RefundPolicy:35–39` already switches on | No | Medium. The *amount* has a home; the *label* is a second switch over the same three-valued input. |
+| 6 | **R6** delivered/no-show past cancelling | **1**, with a **deliberately rejected** near-duplicate — `CancelBookingService:77–79` tests `{COMPLETED, NO_SHOW}`, a strict subset of `BookingStatus.canStillBeHonoured()`'s false-set | n/a | Low, and instructive. The codebase anticipated the merge and refused it: *"a general-sounding predicate would be a trap"* (`BookingStatus:38–41`). Evidence **against** extraction. |
+| 7 | **R4** REQUEST-mode entry leg | 1 | n/a | Low — single caller, and the branch *is* the fork in the use case. |
+| 8 | **R13** check-in classification | 1 | n/a | Low — single caller; classifies a guarded-`UPDATE` miss. |
+| 9 | **R15** withdrawable | 1 | n/a | Low — one line, one caller. `ViewBookingService:94–95` notes it is deliberately not a reuse of `cancellable`. |
+| 10 | **R16** mail-status disclosure | 1 | n/a | Low — single caller, five lines of Javadoc defending its narrowness. |
+| 11 | **R17** refund outstanding | 1 | n/a | Low — single caller. |
+| 12 | **R19** staff-mark past date | 1 | n/a | Low — single caller. Parallel to R2 (sales close) but a *different* rule: staff may mark today after online sales close. |
+| 13 | **R21** stranded-booking release | 1 | n/a | Low — single caller, reasoned at length in the sweep's Javadoc. |
+
+**The break is between ranks 3 and 4.** Ranks 1–3 are duplications with no shared function; ranks
+4–13 are single-caller rules that fail the benchmark's clause (b) and, by this codebase's own
+standard, belong where they are. Rank 6 is the one case where the code contains an explicit refusal
+to unify, with the reason written down.
+
 ---
 
-## 6. Open questions
+## F. Verdict, per module
+
+**Coverage caveat.** The brief scoped the branch classification to `booking/application/`, and §B is
+exhaustive there. For the other modules the verdict below rests on a branch census of each
+`application/` package plus reading the rule-holders it named — firm for `availability`, `customer`,
+`operator` and `review`, which are small; **provisional for `venue`**, whose
+`VenueAdminService` (314 lines, 28 branches) was read only around its layout guards and was not
+classified branch-by-branch.
+
+| Module | Verdict | Evidence |
+|---|---|---|
+| `booking` | **Mixed** — legitimately thin in the main, displaced in five named places | Rules needing a `Clock` or a port are extracted into `BookingCutoff`, `CancellationPolicy`, `RequestWindows`, each separately unit-tested; the state machine is genuinely in SQL. Displaced: `ViewBookingService.toDetail`'s six inline predicates, `CheckInService.classify`, `JdbcBookings`' admitted-status lists, R18's third statement, and no single artefact stating the transition table. |
+| `availability` | **Legitimately thin** — absence is correct | The core rule is `set_availability_uniq` plus one `INSERT … ON CONFLICT DO NOTHING`. A `domain/` class could only restate the constraint less reliably. One displaced one-liner (R19). |
+| `customer` | **Legitimately thin** — absence is correct | Retention is a `Period` in `RetentionWindow` plus a SQL predicate reached through `GuestBookingHistory`; the canonical e-mail form is `vocabulary/Emails`. Nothing displaced. |
+| `operator` | **Legitimately thin** — absence is correct | `assertOwns` is four lines over a row; the lifecycle is guarded `UPDATE … WHERE status = :expected` (`JdbcOperators:207, 246`). `OperatorStatus`'s Javadoc states the placement decision: *"each status predicate lives with its owner."* |
+| `review` | **Legitimately thin — and the benchmark** | Seven `domain/` types, and the services **call** them rather than re-deriving: `ReviewGate.stateOf` is invoked from both `ReviewLifecycleService:121` and `ReviewEligibilityService:46`; `Stars.isValid` from `ReviewLifecycleService:55, 72`. This is the direct contrast with `booking`'s R7/R14/R20. |
+| `venue` | **Legitimately thin** (provisional) | One `domain/` file, but `VenueFieldValidation` (103 lines, static-only, package-private) is a named shared rule-holder in `application/` used by both command records *"so the two enforce the same invariants from one place — no duplicated validation block"*, and it names its DB counterparts. The layout guards (`hasLiveHold`, `isLivelyClaimed`, `isLivelyClaimedOrEverBooked`) are named private predicates with rationale, not inline conditions. |
+| `payment` | **Legitimately thin** | `RefundService` carries 2 branches in 76 lines; `PaymentStatus` mirrors the CHECK and `RefundLifecycle` holds the one predicate that is a choice. The rest is Stripe protocol, which is not domain rule. |
+| `payout` | **Legitimately thin — the strongest domain layer after `review`** | 6 files, 202 lines, holding the commission formula once (`CommissionSplit`) for two callers, and the proportional-reversal arithmetic in `PayoutLedgerEntry`. `PayoutReportService` carries 4 branches in 112 lines. |
+| `notification` | **Legitimately thin** — no domain rule to hold | Its subject is transport, suppression and retry. The one policy value, `MailResubmissionWindow`, is a named record in `application/` — the same pattern as `RefundResubmissionWindow`. |
+| `shared` · `challenge` · `audit` | **n/a** | Non-context modules by ADR-0017; owning no domain concept is their defining property. |
+
+**Overall: mixed, but heavily weighted to legitimately thin.** Nine of the twelve modules are thin
+for reasons the code states and the tests corroborate. `booking` is the one module where the answer
+is genuinely mixed, and it is also the only module large enough for the question to bite — 141 files
+and nine states against `review`'s 50 and six. The displacement is not spread thin across it: it is
+concentrated in one method (`ViewBookingService.toDetail`) and one absent artefact (a statement of
+the transition table).
+
+---
+
+## G. Open questions the code cannot answer
 
 1. **Is D1's third statement intentional?** The comment reads "Sweep-arm parity by construction",
    which asserts the property rather than enforcing it. Whether a shared predicate was considered and
