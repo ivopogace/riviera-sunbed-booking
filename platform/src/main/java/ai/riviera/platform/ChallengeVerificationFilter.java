@@ -23,7 +23,8 @@ import jakarta.servlet.http.HttpServletResponse;
  *
  * <p>Running ahead of the controller is also what keeps forgot-password non-enumerating: the fence
  * never sees the email, so a refusal is identical for a registered and an unregistered one and no
- * mail decision has been made.
+ * mail decision has been made. On booking create it is what keeps invariant #2 untouched: a refused
+ * create returns here, so no availability claim, booking or PaymentIntent is ever attempted.
  *
  * <p>Every refusal is a {@code 400} with a stable code, hand-mirrored in
  * {@link SecurityProblemResponses} because this runs before MVC dispatch. Deliberately not a
@@ -34,11 +35,12 @@ final class ChallengeVerificationFilter extends OncePerRequestFilter {
 
 	static final String HEADER = "X-Altcha-Payload";
 
-	/** The fenced {@code POST} routes; the remaining public writes join here in their own slices. */
+	/** The fenced {@code POST} routes — the three auth writes and booking create, for every caller. */
 	private static final Set<String> FENCED_POSTS = Set.of(
 			"/api/auth/customer/register",
 			"/api/auth/operator/register",
-			"/api/auth/customer/forgot-password");
+			"/api/auth/customer/forgot-password",
+			"/api/bookings");
 
 	private final ProofOfWorkChallenges challenges;
 

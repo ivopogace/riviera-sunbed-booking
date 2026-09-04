@@ -268,14 +268,14 @@ the widget, whose skin is already token-driven.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** Phase 0 step 1 — add `/api/bookings` to `ChallengeVerificationFilterTest`'s
-`fencedRoutes()` and write `BookingCreateChallengeIT`, run them red.
+**Next action:** Phase 1 step 1 — write the failing dialog specs (AC-8/9/10) with a
+`FakeProofOfWork`, then teach `BookingService.createBooking` to send the fence header.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Fence booking create at the edge (backend) | | |
+| 0 — Fence booking create at the edge (backend) | ✅ | (this commit) |
 | 1 — The widget on checkout and the header on create (frontend) | | |
 | 2 — Playwright: the two journeys, the dedicated spec, the real solve | | |
 | 3 — Privacy-policy security measures + `RESPONSIBILITIES.md` | | |
@@ -300,6 +300,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   header-less create
 - `platform/src/test/java/ai/riviera/platform/BookingCreateChallengeIT.java` — the whole path over
   real Postgres, both principals
+- `platform/src/test/java/ai/riviera/platform/CsrfProtectionIT.java` and
+  `platform/src/test/java/ai/riviera/platform/{booking/BookingControllerIT,booking/BookingViewIT,booking/CreateBookingStripeProfileIT,booking/RequestAcceptPayIT,booking/RequestToBookFlowIT,booking/SameDayRequestLifecycleIT,notification/BookingCancellationMailIT,notification/BookingConfirmationMailIT}.java`
+  — the mechanical sweep: every existing test that posts to the newly fenced route now solves a real
+  challenge instead of bypassing one (the #922 precedent). `RateLimitFilterTest` needs nothing — it
+  already runs with `riviera.altcha.enabled=false` so its budgets are measured without the fence
 - `frontend/src/app/booking/booking.service.ts` — `createBooking` sends the fence header;
   `bookingErrorOf` maps the three challenge codes
 - `frontend/src/app/booking/booking.service.spec.ts` — the header and the widened mapper
@@ -429,6 +434,7 @@ spec that opens the booking dialog (R-3)
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-04 | Phase 0 — adding a route to the fenced set | Every test that issues an HTTP `POST` to `/api/bookings` (the newly fenced route), i.e. every caller that was passing the fence by not existing yet. Enumerated by literal path, then swept for constant-named and non-MockMvc callers so resemblance could not decide it | `grep -rn 'post("/api/bookings")' platform/src/test/java` (27 sites / 12 files), then `grep -rhoE 'post\([A-Za-z_][A-Za-z0-9_.]*\)' platform/src/test/java \| sort \| uniq -c` and `grep -rln "WebTestClient\|TestRestTemplate" platform/src/test/java` (no further callers) | 27 sites, 12 files | 23 sites in 8 IT classes get a real solved challenge (the #922 precedent — solve, never bypass); `CsrfProtectionIT` gets one so its 404-vs-403 assertion still reaches the domain; `AltchaDisabledTest` + `BookingCreateChallengeIT` are the fence's own tests; `RateLimitFilterTest` needs **no** change — it already sets `riviera.altcha.enabled=false`, deliberately measuring the budgets without the fence (an edit there was written and reverted once its own failure showed the fence was off) |
 
 ---
 

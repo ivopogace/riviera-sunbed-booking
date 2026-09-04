@@ -97,7 +97,9 @@ class SameDayRequestLifecycleIT {
 				 "contact": {"email": "sameday@e.com", "fullName": "Same Day Guest", "phone": "+355600"}}
 				""".formatted(setId, today);
 
-		String response = mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		String response = mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body))
 				.andExpect(status().isAccepted())
 				.andExpect(jsonPath("$.status").value("PENDING_REQUEST"))

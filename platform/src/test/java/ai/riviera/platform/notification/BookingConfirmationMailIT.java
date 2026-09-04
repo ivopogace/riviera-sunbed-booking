@@ -22,6 +22,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.jayway.jsonpath.JsonPath;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.booking.events.BookingConfirmed;
 import ai.riviera.platform.booking.vocabulary.BookingId;
@@ -166,7 +167,9 @@ class BookingConfirmationMailIT {
 		// other create-booking ITs offset by hand for the same reason (+7, +11 days).
 		LocalDate date = LocalDate.now().plusYears(1).plusDays(23);
 
-		String response = mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		String response = mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"setId": %d, "bookingDate": "%s",
 								 "contact": {"email": "%s", "fullName": "Holiday Guest", "phone": "+355699"}}

@@ -13,6 +13,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
 
@@ -93,7 +94,9 @@ class RequestToBookFlowIT {
 
 	@Test
 	void requestModeCreatesPendingRequestWithoutPaymentCredentials() throws Exception {
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(requestSet, bookable())))
 				.andExpect(status().isAccepted())
 				.andExpect(jsonPath("$.status").value("PENDING_REQUEST"))
@@ -109,11 +112,15 @@ class RequestToBookFlowIT {
 	@Test
 	void pendingHoldBlocksOnlineChannel() throws Exception {
 		LocalDate date = bookable().plusDays(1);
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(requestSet, date)))
 				.andExpect(status().isAccepted());
 
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(requestSet, date)))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.code").value("SET_TAKEN"));
@@ -122,7 +129,9 @@ class RequestToBookFlowIT {
 	@Test
 	void pendingHoldBlocksStaffMarkOnTheSameRow() throws Exception {
 		LocalDate date = bookable().plusDays(2);
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(requestSet, date)))
 				.andExpect(status().isAccepted());
 

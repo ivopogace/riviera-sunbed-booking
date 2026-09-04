@@ -13,6 +13,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -45,6 +46,19 @@ class AltchaDisabledTest {
 				.content("""
 						{"username":"off-operator","password":"passphrase-123","contactEmail":"off@venue.example"}"""))
 				.andExpect(status().isAccepted());
+	}
+
+	@Test
+	void bookingCreateAdmitsWithoutAHeader() throws Exception {
+		// The slice's CreateBooking stub rejects every set, so the 404 IS "the controller ran".
+		mvc.perform(post("/api/bookings").with(csrf())
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"setId":1,"bookingDate":"2026-12-01",
+						 "contact":{"email":"off@example.com","fullName":"Off Guest","phone":"+355699"}}"""))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("NO_SUCH_SET"));
 	}
 
 	@Test

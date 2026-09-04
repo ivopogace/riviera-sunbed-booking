@@ -107,6 +107,7 @@ class CsrfProtectionIT {
 		// broke). Field names match CreateBookingRequest (bookingDate/contact) so the request gets
 		// past body validation to the domain, not stopped at a 400.
 		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"setId": 999999, "bookingDate": "2036-08-01",

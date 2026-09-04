@@ -21,6 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.TestcontainersConfiguration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -83,7 +84,9 @@ class CreateBookingStripeProfileIT {
 	void createReturns202AwaitingPaymentWithClientSecret() throws Exception {
 		LocalDate date = LocalDate.now().plusYears(1).plusDays(7);
 
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(onlineSet(), date)))
 				.andExpect(status().isAccepted())
 				.andExpect(jsonPath("$.status").value("AWAITING_PAYMENT"))
