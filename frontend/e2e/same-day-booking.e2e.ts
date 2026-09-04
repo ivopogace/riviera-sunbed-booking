@@ -1,13 +1,19 @@
 import { expect, test } from '@playwright/test';
 
+import { ChallengeFence, mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
-import { completeDialog, settle } from './support/booking-dialog';
+import { completeDialog, mockFencedBookingCreate, settle } from './support/booking-dialog';
 
 /**
  * Real-render a11y audit of the same-day booking journey: the homepage's date picker now
  * offers today, and an Instant Book venue can be booked for today up to its sales close. Fixed
  * before that close (`page.clock.setFixedTime`, per `availability-calendar.e2e.ts`) so the
  * scenario is deterministic. The API is mocked via `page.route`, so the test is self-contained.
+ *
+ * <p>Create is proof-of-work fenced (ADR-0016), so the fence is on here too: the widget rides the
+ * Review step of the same-day journey and its solution reaches the create. A same-day booking is
+ * exactly the inventory a script would race for, which is why this journey carries the fence
+ * rather than switching it off.
  */
 
 const TODAY = '2026-08-30';
@@ -96,7 +102,10 @@ const CLOSED_TERMS = {
   lateCancelRefundBps: 0,
 };
 
+let fence: ChallengeFence;
+
 test.beforeEach(async ({ page }) => {
+  fence = await mockChallengeFence(page, 'on');
   await page.clock.setFixedTime(BEFORE_CLOSE);
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE_MAP }));
   await page.route(/\/api\/venues(\?.*)?$/, (route) => route.fulfill({ json: VENUES }));
@@ -110,7 +119,9 @@ test('today journey: homepage → map → dialog → pay → confirmed', async (
   await page.addInitScript(() => {
     (window as unknown as { __RIVIERA_FAKE_STRIPE__?: boolean }).__RIVIERA_FAKE_STRIPE__ = true;
   });
-  await page.route('**/api/bookings', (route) => route.fulfill({ status: 202, json: AWAITING }));
+  await mockFencedBookingCreate(page, fence, (route) =>
+    route.fulfill({ status: 202, json: AWAITING }),
+  );
   let polls = 0;
   await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>
     route.fulfill({
@@ -275,7 +286,7 @@ test("deep link to a closed venue's map shows the closed state, and tomorrow rec
 });
 
 test('a today-dated BOOKING_CLOSED refusal is recoverable', async ({ page }) => {
-  await page.route('**/api/bookings', (route) =>
+  await mockFencedBookingCreate(page, fence, (route) =>
     route.fulfill({
       status: 422,
       contentType: 'application/problem+json',

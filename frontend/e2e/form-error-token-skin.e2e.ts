@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { mockChallengeFence } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
 
 /**
@@ -61,6 +62,8 @@ const VENUE = {
  * and all three wear the identical pair, so one rendered banner proves the skin.
  */
 async function openErrorBanner(page: Page): Promise<void> {
+  // Fence off: the widget is not this file's subject (`booking-challenge.e2e.ts` drives it).
+  await mockChallengeFence(page, 'off');
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE }));
   await page.route('**/api/bookings', (route) =>
     route.fulfill({

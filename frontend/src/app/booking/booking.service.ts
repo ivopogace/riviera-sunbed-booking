@@ -5,6 +5,7 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { DeviceLocalBookings } from '../core/device-local-bookings';
 import { problemCodeOf } from '../shared/api-error';
+import { ChallengeRejection, challengeHeaders, challengeRejection } from '../shared/challenge';
 import {
   AwaitingPayment,
   BookingConfirmation,
@@ -82,15 +83,21 @@ export class BookingService {
     });
   }
 
+  /**
+   * Reserve one set. `challenge` is the widget's solved proof-of-work payload, sent as the fence's
+   * header when present (ADR-0016); the edge's three challenge codes come back through
+   * {@link bookingErrorOf} as their own rejections so the checkout can restart the widget.
+   */
   createBooking(
     request: CreateBookingRequest,
     termsAtCheckout?: CancellationTerms,
+    challenge?: string,
   ): Observable<CreateBookingResult> {
     return this.http
       .post<BookingConfirmation | AwaitingPayment | RequestedBooking>(
         `${environment.apiBaseUrl}/api/bookings`,
         request,
-        { observe: 'response' },
+        { observe: 'response', headers: challengeHeaders(challenge) },
       )
       .pipe(
         map((response): CreateBookingResult => {
@@ -226,10 +233,19 @@ type LastHandoff =
   | { kind: 'awaiting'; awaiting: PaymentHandoff }
   | { kind: 'requested'; requested: RequestedBooking };
 
-/** Map an HTTP failure (RFC-7807 body) to a stable, displayable booking error code. */
-export function bookingErrorOf(error: unknown): BookingErrorCode {
+/**
+ * Map an HTTP failure (RFC-7807 body) to a stable, displayable booking error code — or, when the
+ * proof-of-work fence refused the create, to that rejection. The fence's three codes share the
+ * `400` that `INVALID_REQUEST` uses, so only the `code` tells them apart, and a caller that
+ * conflated them would answer a spent challenge with "check the form".
+ */
+export function bookingErrorOf(error: unknown): BookingErrorCode | ChallengeRejection {
   if (error instanceof HttpErrorResponse) {
     const code = problemCodeOf(error);
+    const rejection = challengeRejection(code);
+    if (rejection) {
+      return rejection;
+    }
     switch (code) {
       case 'SET_TAKEN':
       case 'SET_NOT_BOOKABLE_ONLINE':

@@ -910,9 +910,9 @@ module `challenge` (ADR-0017): the module's `ChallengeController` (`GET /api/aut
 `permitAll`, its own per-IP rate-limit budget, `no-store`, no session — the only cookie on it is the SPA's platform-wide `XSRF-TOKEN` bootstrap) issues a challenge signed with the
 `RIVIERA_ALTCHA_HMAC_SECRET` secret and expiring `riviera.altcha.expiry` (10 minutes) after the injected
 clock; `ChallengeVerificationFilter`, registered after `RateLimitFilter` and `CsrfFilter`, requires the
-widget's solution in the `X-Altcha-Payload` header on each fenced `POST` — the three auth routes
-`/api/auth/customer/register`, `/api/auth/operator/register` and
-`/api/auth/customer/forgot-password`; booking create joins in its own slice — and refuses with `400` and a
+widget's solution in the `X-Altcha-Payload` header on each fenced `POST` — the four routes
+`/api/auth/customer/register`, `/api/auth/operator/register`, `/api/auth/customer/forgot-password`
+and `/api/bookings` — and refuses with `400` and a
 stable code — `CHALLENGE_REQUIRED` (absent), `CHALLENGE_INVALID` (unparseable, forged, wrong answer),
 `CHALLENGE_EXPIRED` (past expiry, or already accepted once). Deliberately `400`, never `403`: the rate
 limiter refunds a `403` on the budgets that guard authenticated work, and a refused solution must still
@@ -934,7 +934,15 @@ is already a bearer credential). Fencing forgot-password does not weaken its non
 (D-8): the filter runs ahead of the controller, so a refusal is decided before the account lookup and
 is byte-identical whichever account state the address is in, with no mail sent either way. That `400`
 is also outside the recovery budget's access-denied refund, so a refused submission still costs its
-rate-limit token.
+rate-limit token. Booking create is fenced for **every** caller, guest or signed-in customer — the
+verifier has no auth-state branch, because a script holding a venue's online pool for the pay window
+costs the same either way; running ahead of the controller is also what keeps invariant #2 untouched
+there, since a refusal returns from the filter and no availability claim, booking row or
+PaymentIntent is ever attempted. The SPA hosts the widget on the checkout's **Review** step rather
+than its Details step: on Details it took the dialog past its above-the-fold budget at a 700 px
+laptop viewport, and on Review the solve still starts a step early, because advancing focuses the
+primary button inside the widget's form and the widget starts solving when its form already holds
+focus.
 
 ## Invariants, long form
 

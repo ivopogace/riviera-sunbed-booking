@@ -16,6 +16,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
+import ai.riviera.platform.SessionLoginSupport;
 import ai.riviera.platform.OwnershipFixtures;
 import ai.riviera.platform.TestcontainersConfiguration;
 
@@ -63,7 +64,9 @@ class BookingViewIT {
 				{"setId": %d, "bookingDate": "%s",
 				 "contact": {"email": "view@e.com", "fullName": "View Guest", "phone": "+355699"}}
 				""".formatted(setId, date);
-		String response = mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		String response = mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body))
 				.andExpect(status().isCreated())
 				.andReturn().getResponse().getContentAsString();

@@ -122,6 +122,22 @@ describe('BookingService', () => {
     expect(service.lastAwaitingPayment()).toBeUndefined();
   });
 
+  it('sends the solved proof-of-work payload as the fence header when it has one', () => {
+    service.createBooking(REQUEST, undefined, 'solved-base64-payload').subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings`);
+    expect(req.request.headers.get('X-Altcha-Payload')).toBe('solved-base64-payload');
+    req.flush(CONFIRMATION, { status: 201, statusText: 'Created' });
+  });
+
+  it('sends no fence header when the challenge is off and nothing was solved', () => {
+    service.createBooking(REQUEST).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings`);
+    expect(req.request.headers.has('X-Altcha-Payload')).toBe(false);
+    req.flush(CONFIRMATION, { status: 201, statusText: 'Created' });
+  });
+
   it('exposes an awaiting-payment result for a 202 and stores the handoff (stripe profile)', () => {
     let received: CreateBookingResult | undefined;
     service.createBooking(REQUEST).subscribe((r) => (received = r));
@@ -363,5 +379,12 @@ describe('bookingErrorOf', () => {
   it('falls back to UNKNOWN for unrecognised / non-HTTP errors', () => {
     expect(bookingErrorOf(httpError(500))).toBe('UNKNOWN');
     expect(bookingErrorOf(new Error('boom'))).toBe('UNKNOWN');
+  });
+
+  // The fence's three refusals share INVALID_REQUEST's 400: only the code tells them apart.
+  it('maps the fence refusals to their own rejections, not to UNKNOWN', () => {
+    expect(bookingErrorOf(httpError(400, 'CHALLENGE_REQUIRED'))).toBe('challenge-required');
+    expect(bookingErrorOf(httpError(400, 'CHALLENGE_INVALID'))).toBe('challenge-invalid');
+    expect(bookingErrorOf(httpError(400, 'CHALLENGE_EXPIRED'))).toBe('challenge-expired');
   });
 });

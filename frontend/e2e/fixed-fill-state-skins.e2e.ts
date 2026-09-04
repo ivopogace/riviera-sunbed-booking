@@ -229,6 +229,8 @@ for (const theme of ['porcelain', 'dark'] as const) {
     });
 
     test('the confirmation medallion paints the registered positive state', async ({ page }) => {
+      // Fence off: the widget is not this file's subject (`booking-challenge.e2e.ts` drives it).
+      await mockChallengeFence(page, 'off');
       await mockVenue(page);
       await page.goto('/venues/1');
       await page
@@ -245,6 +247,8 @@ for (const theme of ['porcelain', 'dark'] as const) {
 
     test('the request medallion paints the registered waiting state', async ({ page }) => {
       // Without this leg the waiting pair is declared and mapped, but never proven to reach a render.
+      // Fence off: the widget is not this file's subject (`booking-challenge.e2e.ts` drives it).
+      await mockChallengeFence(page, 'off');
       await page.route(/\/api\/venues\/1(\?.*)?$/, (route) =>
         route.fulfill({ json: REQUEST_VENUE }),
       );

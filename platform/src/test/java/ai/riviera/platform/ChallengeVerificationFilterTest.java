@@ -41,11 +41,12 @@ class ChallengeVerificationFilterTest {
 	private static final String REGISTER_PATH = "/api/auth/customer/register";
 	private static final String OPERATOR_REGISTER_PATH = "/api/auth/operator/register";
 	private static final String FORGOT_PASSWORD_PATH = "/api/auth/customer/forgot-password";
+	private static final String BOOKING_CREATE_PATH = "/api/bookings";
 	private static final String HEADER = "X-Altcha-Payload";
 
 	/** A well-formed body per fenced route, so only the challenge decides the answer. */
 	static List<String> fencedRoutes() {
-		return List.of(REGISTER_PATH, OPERATOR_REGISTER_PATH, FORGOT_PASSWORD_PATH);
+		return List.of(REGISTER_PATH, OPERATOR_REGISTER_PATH, FORGOT_PASSWORD_PATH, BOOKING_CREATE_PATH);
 	}
 
 	@Autowired
@@ -135,6 +136,9 @@ class ChallengeVerificationFilterTest {
 					{"username":"slice-operator","password":"passphrase-123","contactEmail":"slice@example.com"}""";
 			case FORGOT_PASSWORD_PATH -> """
 					{"email":"slice@example.com"}""";
+			case BOOKING_CREATE_PATH -> """
+					{"setId":1,"bookingDate":"2026-12-01",
+					 "contact":{"email":"slice@example.com","fullName":"Slice Guest","phone":"+355699"}}""";
 			default -> """
 					{"email":"slice@example.com","password":"passphrase-123"}""";
 		};

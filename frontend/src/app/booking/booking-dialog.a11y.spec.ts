@@ -1,10 +1,17 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 
 import { expectNoAxeViolations } from '../../testing/axe';
+import { defineFakeAltchaElement } from '../../testing/fake-altcha-element';
+import { ProofOfWork } from '../core/proof-of-work';
 import { SetView } from '../shared/venue-views';
 import { BookingDialog } from './booking-dialog';
+
+// jsdom has no Web Workers: the widget is the element stand-in, never the real bundle.
+vi.mock('altcha', () => ({}));
 
 const SET: SetView = {
   id: 2,
@@ -21,16 +28,24 @@ const SET: SetView = {
 /**
  * Structural axe audit of the Liquid Glass booking dialog: the modal exposes a
  * dialog role, an accessible name (venue + set, via `aria-labelledby`), a labelled step form, and a
- * close control — on BOTH steps (Details and Review). Contrast is checked separately in
- * booking-dialog.contrast.spec.ts (axe can't measure it under jsdom).
+ * close control — on BOTH steps (Details and Review). The proof-of-work fence is switched ON for
+ * the audit, because the Review step hosts the widget and it is the newest thing in that step's
+ * tab order; Details hosts none, so its audit is the pre-fence shape. Contrast is checked
+ * separately in booking-dialog.contrast.spec.ts (axe can't measure it under jsdom).
  */
 describe('BookingDialog accessibility (axe)', () => {
   let fixture: ComponentFixture<BookingDialog>;
 
+  beforeAll(defineFakeAltchaElement);
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [BookingDialog],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ProofOfWork, useValue: { enabled: signal<boolean | undefined>(true) } },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(BookingDialog);

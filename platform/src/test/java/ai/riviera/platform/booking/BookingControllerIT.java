@@ -136,7 +136,9 @@ class BookingControllerIT {
 
 	@Test
 	void createsConfirmedBooking() throws Exception {
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(onlineSet(), bookable())))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.status").value("CONFIRMED"))
@@ -149,10 +151,14 @@ class BookingControllerIT {
 	void takenSetReturns409() throws Exception {
 		long set = onlineSet();
 		LocalDate date = bookable().plusDays(2);
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 				.content(body(set, date))).andExpect(status().isCreated());
 
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(set, date)))
 				.andExpect(status().isConflict())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -162,7 +168,9 @@ class BookingControllerIT {
 
 	@Test
 	void walkInPoolReturns422() throws Exception {
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(walkInSet(), bookable().plusDays(3))))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -172,7 +180,9 @@ class BookingControllerIT {
 	@Test
 	void afterCutoffReturns422() throws Exception {
 		// Yesterday — the evening-before cutoff has long passed (invariant #4).
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(onlineSet(), LocalDate.now().minusDays(1))))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -182,7 +192,9 @@ class BookingControllerIT {
 	@Test
 	void sameDayBookingSucceedsBeforeClose() throws Exception {
 		// AC-4: a venue selling until 23:59 is still open for today (the retired fence would refuse this).
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(onlineSetAtSalesClose("23:59"), today())))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.status").value("CONFIRMED"));
@@ -191,7 +203,9 @@ class BookingControllerIT {
 	@Test
 	void sameDayAfterCloseReturns422() throws Exception {
 		// AC-4: the 00:01 opt-out sells nothing today — reproduces the old no-same-day behavior.
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(onlineSetAtSalesClose("00:01"), today())))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -210,7 +224,9 @@ class BookingControllerIT {
 						.content(closeSalesBody("00:01")))
 				.andExpect(status().isNoContent());
 
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(set, today())))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -229,7 +245,9 @@ class BookingControllerIT {
 						.content(closeSalesBody("23:59")))
 				.andExpect(status().isNoContent());
 
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(set, today())))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.status").value("CONFIRMED"));
@@ -237,7 +255,9 @@ class BookingControllerIT {
 
 	@Test
 	void unknownSetReturns404() throws Exception {
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(999_999L, bookable())))
 				.andExpect(status().isNotFound())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -246,7 +266,9 @@ class BookingControllerIT {
 
 	@Test
 	void malformedBodyReturns400() throws Exception {
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"setId\": null}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -254,7 +276,9 @@ class BookingControllerIT {
 	}
 
 	private String createAndGetCode(long setId, LocalDate date) throws Exception {
-		String response = mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		String response = mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(setId, date)))
 				.andExpect(status().isCreated())
 				.andReturn().getResponse().getContentAsString();
@@ -310,7 +334,9 @@ class BookingControllerIT {
 	@Test
 	void endpointIsPublic() throws Exception {
 		// No auth header → not 401. Guest checkout is permitted (and CSRF is exempt for it).
-		mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body(onlineSet(), bookable().plusDays(4))))
 				.andExpect(status().isCreated());
 	}

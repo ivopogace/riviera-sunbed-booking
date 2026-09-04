@@ -99,7 +99,9 @@ class RequestAcceptPayIT {
 				{"setId": %d, "bookingDate": "%s",
 				 "contact": {"email": "%s", "fullName": "Req Guest", "phone": "+355600"}}
 				""".formatted(setId, date, email);
-		String response = mvc.perform(post("/api/bookings").contentType(MediaType.APPLICATION_JSON)
+		String response = mvc.perform(post("/api/bookings")
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+						.contentType(MediaType.APPLICATION_JSON)
 						.content(body))
 				.andExpect(status().isAccepted())
 				.andExpect(jsonPath("$.status").value("PENDING_REQUEST"))

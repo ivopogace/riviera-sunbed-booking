@@ -8,15 +8,23 @@ import {
   OnInit,
   output,
   signal,
+  viewChild,
 } from '@angular/core';
 import { LegalConsent } from './legal-consent';
 import { email, FormField, form, required, submit } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
 
+import { ProofOfWork } from '../core/proof-of-work';
 import { todayBookingDate } from '../shared/booking-date';
 import { formatBookingDate } from '../shared/booking-date-label';
 import { FieldErrorFor } from '../shared/field-error-for';
 import { FieldGlass } from '../shared/field-glass';
+import {
+  ChallengeRejection,
+  challengeRejectionMessage,
+  isChallengeRejection,
+} from '../shared/challenge';
+import { ChallengeWidget } from '../shared/challenge-widget';
 import { trapFocusWithin } from '../shared/focus-trap';
 import { formatMoney } from '../shared/money';
 import { touristTierLabel } from '../shared/set-label';
@@ -45,6 +53,14 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
  * booking is NOT confirmed until the verified webhook, invariant #8), a `202 PENDING_REQUEST` emits
  * {@link requested}. Accessible modal: `role="dialog"` + `aria-modal`, a focus trap, ESC / backdrop
  * / close-button dismiss, and focus returns to the triggering tile (handled by the parent).
+ *
+ * <p>The create is fenced by the proof-of-work challenge (ADR-0016), so the Review step hosts the
+ * shared widget and the submit waits for its solution. The solve does not wait for the pay button:
+ * entering Review moves focus to the primary button, inside the same form the widget binds its
+ * on-focus solve to, so the work overlaps the tourist reading the summary and terms. A refusal
+ * names the reason and restarts the widget — a spent solution can never be retried — and reserves
+ * nothing: the fence runs ahead of the controller, so availability is untouched (invariant #2).
+ * Rationale for Review over Details: RESPONSIBILITIES.md § Platform edge.
  */
 @Component({
   selector: 'app-booking-dialog',
@@ -52,6 +68,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
     LegalConsent,
     FormField,
     BusyAction,
+    ChallengeWidget,
     FieldErrorFor,
     FieldGlass,
     TouchTarget,
@@ -306,6 +323,13 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               lead="By continuing"
               class="fine mt-2.5 mb-1 text-[12.5px] leading-[1.45] text-riv-card-ink-soft"
             ></p>
+
+            <app-challenge-widget
+              #challenge
+              class="mt-2.5 mb-1 block"
+              [enabled]="proofOfWork.enabled()"
+              [(payload)]="challengePayload"
+            />
           }
         </div>
 
@@ -374,6 +398,11 @@ export class BookingDialog implements OnInit {
 
   private readonly bookings = inject(BookingService);
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  protected readonly proofOfWork = inject(ProofOfWork);
+
+  private readonly challenge = viewChild<ChallengeWidget>('challenge');
+  /** The widget's verified proof-of-work solution, while it has one. */
+  protected readonly challengePayload = signal<string | undefined>(undefined);
 
   /**
    * This booking's server-quoted cancellation terms (#795). While loading or failed the template
@@ -389,7 +418,7 @@ export class BookingDialog implements OnInit {
   /** Field errors are announced only after the first Continue (design; invariant-free UX). */
   protected readonly submitAttempted = signal(false);
   protected readonly submitting = signal(false);
-  private readonly errorCode = signal<BookingErrorCode | undefined>(undefined);
+  private readonly errorCode = signal<BookingErrorCode | ChallengeRejection | undefined>(undefined);
 
   protected readonly isRequest = computed(() => this.mode() === 'REQUEST');
   protected readonly tierLabel = computed(() => touristTierLabel(this.set().tier));
@@ -482,6 +511,8 @@ export class BookingDialog implements OnInit {
       const m = this.model();
       this.submitting.set(true);
       try {
+        // Awaited, not read: a fast tourist can reach Review before the on-focus solve lands.
+        const challenge = await this.challenge()?.solved();
         const result = await firstValueFrom(
           this.bookings.createBooking(
             {
@@ -490,6 +521,7 @@ export class BookingDialog implements OnInit {
               contact: { email: m.email, fullName: m.fullName, phone: m.phone },
             },
             this.terms.hasValue() ? this.terms.value() : undefined,
+            challenge,
           ),
         );
         if (result.kind === 'requested') {
@@ -500,7 +532,11 @@ export class BookingDialog implements OnInit {
           this.booked.emit(result.confirmation);
         }
       } catch (error) {
-        this.errorCode.set(bookingErrorOf(error));
+        const outcome = bookingErrorOf(error);
+        this.errorCode.set(outcome);
+        if (isChallengeRejection(outcome)) {
+          this.challenge()?.refresh();
+        }
       } finally {
         this.submitting.set(false);
       }
@@ -508,7 +544,11 @@ export class BookingDialog implements OnInit {
   }
 
   protected errorMessage(): string | undefined {
-    switch (this.errorCode()) {
+    const code = this.errorCode();
+    if (isChallengeRejection(code)) {
+      return challengeRejectionMessage(code);
+    }
+    switch (code) {
       case 'SET_TAKEN':
         return 'Sorry — someone just booked this set. Please pick another.';
       case 'SET_NOT_BOOKABLE_ONLINE':
