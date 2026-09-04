@@ -17,9 +17,7 @@ public record RowPriceCommand(String rowLabel, long priceMinor, String priceCurr
 	public RowPriceCommand {
 		rowLabel = VenueFieldValidation.strip(rowLabel);
 		VenueFieldValidation.requireText(rowLabel, "rowLabel");
-		if (priceMinor < 0) {
-			throw new IllegalArgumentException("priceMinor must be >= 0");
-		}
+		VenueFieldValidation.requireNonNegativeMinor(priceMinor, "priceMinor");
 		VenueFieldValidation.requireIsoCurrency(priceCurrency, "priceCurrency");
 	}
 }

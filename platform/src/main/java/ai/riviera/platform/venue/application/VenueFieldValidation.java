@@ -10,12 +10,11 @@ import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 
 /**
- * Shared edge validators for the venue-profile fields, used by both {@link NewVenueCommand} (onboard,
- * U7) and {@link VenueProfileCommand} (edit) so the two command records enforce the same
- * invariants from one place — no duplicated validation block. Package-private, static-only; each
- * method throws {@link IllegalArgumentException} on a bad value, which the edge maps to
- * {@code 400 INVALID_REQUEST} (riviera-java-conventions §6b). The DB CHECK constraints (V2) remain
- * the race-safe backstop, not the only guard.
+ * Shared edge validators for the venue module's command and configuration records, so records
+ * stating the same bound enforce it from one place rather than as duplicated validation blocks.
+ * Package-private, static-only; each method throws {@link IllegalArgumentException} on a bad
+ * value, which the edge maps to {@code 400 INVALID_REQUEST} (riviera-java-conventions §6b). The
+ * DB CHECK constraints (V2) remain the race-safe backstop, not the only guard.
  */
 final class VenueFieldValidation {
 
@@ -79,6 +78,17 @@ final class VenueFieldValidation {
 	static void requireCommissionBps(int commissionBps) {
 		if (commissionBps < 0 || commissionBps > MAX_BPS) {
 			throw new IllegalArgumentException("commissionBps must be between 0 and " + MAX_BPS);
+		}
+	}
+
+	/**
+	 * Non-negative money bound on a minor-units amount (invariant #5) — zero is legal (a free row),
+	 * so the bound is {@code >= 0}, mirroring the V2 {@code set_position_price_check} CHECK that
+	 * stays the race-safe backstop.
+	 */
+	static void requireNonNegativeMinor(long amountMinor, String field) {
+		if (amountMinor < 0) {
+			throw new IllegalArgumentException(field + " must be >= 0");
 		}
 	}
 
