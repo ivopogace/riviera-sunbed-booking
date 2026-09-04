@@ -141,8 +141,10 @@ the 18 files resolves to `java.*` or another module's `vocabulary`/`domain` — 
 except human review. It should be a fitness function beside
 `PackageShapeArchitectureTests` and `ResponsibilitiesArchitectureTests`: no class under any
 module's `domain/` package imports Spring, JDBC or `java.sql`, the Stripe SDK, any `adapter/`
-package, or any port/repository interface. This ADR states the principle; the test lands in its
-own change.
+package, or any port/repository interface. It may name the JDK and other modules' `vocabulary/`
+and `domain/` types — purity here means no framework and no outside layer, never module isolation.
+`DomainPurityArchitectureTests` is that rule; it passed against all 18 files unchanged, and its
+negative cases are proven against `ai.riviera.domainpurityfixture`.
 
 ### 5. The twelve are **modules**; the platform is one bounded context
 
@@ -236,7 +238,8 @@ fitness function can hold, rather than 18 files that happen to comply.
   with an accepted ADR until the doc batch lands.
 - `PayoutBatch.java:8` calls itself an aggregate root in Javadoc. Recorded here; a one-line
   correction when that file is next touched.
-- The `domain/` purity rule is a principle until its test exists.
+- The `domain/` purity rule now holds `domain/` to the JDK and published ids, values and rules, so
+  a rule that genuinely needs a `Clock` or a port has one place to go: `application/`, per §2.
 
 **ADR-0017's category is unaffected.** It classifies `challenge` and `audit` as *non-context
 modules* on the ground that each "owns no aggregate a tourist or operator would name"
