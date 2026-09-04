@@ -14,8 +14,12 @@ import { CardGlass } from '../../shared/card-glass';
  *
  * <p>What it states is grounded in shipped behavior, not aspiration: the guest-contact fields
  * the booking dialog collects, the self-service erasure + statutory-retention split (ADR-0010),
- * the automated retention sweep, and the single strictly-necessary session
- * cookie. Styled Tailwind-only on the shared card glass (contrast: `legal-pages.contrast.spec.ts`).
+ * the automated retention sweep, the single strictly-necessary session cookie, and the
+ * security-measures section — the self-hosted proof-of-work challenge on the public writes
+ * (ADR-0016) and the length-plus-blocklist password rule. That section's three "nots" (no cookie,
+ * no fingerprinting, nothing to a third party) are the properties the challenge was chosen for, so
+ * they are asserted, not decorative. Styled Tailwind-only on the shared card glass (contrast:
+ * `legal-pages.contrast.spec.ts`).
  */
 @Component({
   selector: 'app-privacy-policy',

@@ -274,17 +274,17 @@ the widget, whose skin is already token-driven.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 2 done, entering phase 3`
+**Stage pointer:** `implement — all phases done; PR + gates next`
 
-**Next action:** Phase 3 step 1 — the failing `privacy-policy.spec.ts` case for the
-security-measures section, then the section itself and the `RESPONSIBILITIES.md` sentence.
+**Next action:** open the draft PR so CI runs (it fires on `pull_request` only), then the
+Review gate and the Sonar gate per `riviera-sdlc` `references/pr-gates.md`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Fence booking create at the edge (backend) | ✅ | (this commit) |
 | 1 — The widget on checkout and the header on create (frontend) | ✅ | (this commit) |
 | 2 — Playwright: the two journeys, the dedicated spec, the real solve | ✅ | (this commit) |
-| 3 — Privacy-policy security measures + `RESPONSIBILITIES.md` | | |
+| 3 — Privacy-policy security measures + `RESPONSIBILITIES.md` | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -334,6 +334,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/{availability-calendar,booking-back-hover-border,find-a-booking,fixed-fill-state-skins,form-error-token-skin,my-bookings,request-to-book,suppressed-confirmation,touch-targets-tourist,venue-map-pan}.e2e.ts`
   — the fence is routed off (or on) so an unrouted probe cannot hang the journey (R-3)
 - `RESPONSIBILITIES.md` — § *Platform edge* names booking create among the fenced routes
+- `docs/architecture/auth-signin-register.md` — the D-8 status line and challenge paragraph
+  move to past tense now that #907 is the last of the four fences
+- `docs/plans/pow-fence-auth-forms.md` — **deleted**: its PR (#922) merged, and this is the
+  next close-out (`riviera-docs-freshness` § *Plan-doc retirement*)
 - `docs/plans/pow-fence-booking-create.md` — this plan
 
 ---
@@ -441,6 +445,7 @@ spec that opens the booking dialog (R-3)
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-04 | Phase 3 — the fenced route set gains a fourth member | Every substrate doc or source file that **enumerates** the fenced routes or counts them ("the three auth routes"), because a count is the shape of claim that silently goes stale — `riviera-docs-freshness`'s counting sweep | `grep -rn "three auth routes\|three fenced routes" --include=*.md --include=*.ts --include=*.java .` (0 left after the RESPONSIBILITIES.md edit) plus `grep -rln "forgot-password" --include=*.md --include=*.java --include=*.ts .` for the enumerations that do not use a count | 3 docs carried a claim | `RESPONSIBILITIES.md` § *Platform edge*: "the three auth routes … booking create joins in its own slice" → the four routes, plus the every-caller and invariant-#2 properties and the Review-step placement. `docs/architecture/auth-signin-register.md`: the D-8 status line said #906–#907 were "in flight" and the challenge paragraph said "the other three forms follow" — both now past tense. `docs/adr/ADR-0016` already named the final set (a decision record written ahead) and needed no edit; `CLAUDE.md` describes the fence without listing routes. Also retired `docs/plans/pow-fence-auth-forms.md`, whose PR #922 merged — this is the next close-out after it |
 | 2026-09-04 | Phase 2 — the checkout gains a widget that fetches a challenge | Every mocked e2e spec that reaches the booking dialog's **Review** step, because that is where the widget mounts and an unrouted `/api/auth/challenge` makes `ProofOfWork` read the fence as ON (a transport failure is deliberately read as on) and renders a widget stuck in its error state. Enumerated by the action that reaches Review, not by file name | `grep -rln "completeDialog\|Continue to payment\|Send request" frontend/e2e --include=*.e2e.ts \| grep -v real-backend` | 10 specs | 3 carry the fence ON because it is their subject (`booking-flow`, `same-day-booking`, the new `booking-challenge`); the other 7 route it OFF explicitly, so none of them audits or measures a broken widget — the `RateLimitFilterTest` precedent of keeping a test's own subject clean. `touch-targets-tourist` keeps its own fence-ON register-card sweep, which re-routes after the file-level OFF |
 | 2026-09-04 | Phase 1 — a component starts injecting `ProofOfWork` | Every unit spec that renders a component injecting `ProofOfWork`, because the service's `httpResource` probe fires an unanswered request that parks `whenStable` and trips `httpMock.verify()` — the mechanism is the injection, not the component's name | `grep -rl "inject(ProofOfWork)" frontend/src/app --include=*.ts` (3 components), then `grep -rlE 'createComponent\((BookingDialog\|AuthPage\|ForgotPassword\|VenueMap)\)' frontend/src --include=*.spec.ts` | 8 specs | The 4 auth specs already carry a `FakeProofOfWork` (shipped with #922); the 4 new members — `booking-dialog.spec.ts`, `booking-dialog.a11y.spec.ts`, `venue-map.spec.ts`, `venue-map.a11y.spec.ts` — get one. The two venue-map specs fake the fence **off** (they test the map, not the fence); the dialog a11y spec fakes it **on**, so axe audits the widget that is actually in the modal's tab order |
 | 2026-09-04 | Phase 0 — adding a route to the fenced set | Every test that issues an HTTP `POST` to `/api/bookings` (the newly fenced route), i.e. every caller that was passing the fence by not existing yet. Enumerated by literal path, then swept for constant-named and non-MockMvc callers so resemblance could not decide it | `grep -rn 'post("/api/bookings")' platform/src/test/java` (27 sites / 12 files), then `grep -rhoE 'post\([A-Za-z_][A-Za-z0-9_.]*\)' platform/src/test/java \| sort \| uniq -c` and `grep -rln "WebTestClient\|TestRestTemplate" platform/src/test/java` (no further callers) | 27 sites, 12 files | 23 sites in 8 IT classes get a real solved challenge (the #922 precedent — solve, never bypass); `CsrfProtectionIT` gets one so its 404-vs-403 assertion still reaches the domain; `AltchaDisabledTest` + `BookingCreateChallengeIT` are the fence's own tests; `RateLimitFilterTest` needs **no** change — it already sets `riviera.altcha.enabled=false`, deliberately measuring the budgets without the fence (an edit there was written and reverted once its own failure showed the fence was off) |

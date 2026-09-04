@@ -62,6 +62,8 @@ test.describe('legal documents', () => {
     await page.goto('/legal/privacy');
     await expect(page.getByRole('heading', { name: 'Privacy Policy' })).toBeVisible();
     await expect(page.getByTestId('legal-draft-banner')).toContainText('Draft');
+    await expect(page.getByTestId('privacy-security')).toContainText('proof-of-work');
+    await expect(page.getByTestId('privacy-security')).toContainText('Legal review pending');
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'dark');
     await settle(page);
     await expectNoSeriousAxeViolations(page, 'privacy page (dark)');

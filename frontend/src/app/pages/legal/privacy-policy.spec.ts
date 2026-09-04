@@ -40,6 +40,24 @@ describe('PrivacyPolicy (draft legal page)', () => {
     expect(rights?.textContent?.toLowerCase()).toContain('retention');
   });
 
+  it('states the security measures, marked for legal review', () => {
+    const text = host().querySelector('[data-testid="privacy-security"]')?.textContent ?? '';
+    expect(text).toBeTruthy();
+
+    // The three properties the challenge is chosen for; without them this reads as a CAPTCHA.
+    expect(text).toContain('proof-of-work');
+    expect(text.toLowerCase()).toContain('no cookie');
+    expect(text.toLowerCase()).toContain('fingerprint');
+    expect(text.toLowerCase()).toContain('third party');
+
+    // The password rule is a length floor plus a blocklist, and nothing more.
+    expect(text.toLowerCase()).toContain('length');
+    expect(text.toLowerCase()).toContain('blocklist');
+
+    // Unreviewed like the rest of the page, and it says so where a reader will see it.
+    expect(text.toLowerCase()).toContain('legal review pending');
+  });
+
   it('keeps the controller as a bracketed placeholder, never a real-sounding entity', () => {
     const controller = host().querySelector('[data-testid="privacy-controller"]');
     expect(controller?.textContent).toContain('[');
