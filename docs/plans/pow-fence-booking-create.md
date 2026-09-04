@@ -274,10 +274,10 @@ the widget, whose skin is already token-driven.
 
 ## Execution status
 
-**Stage pointer:** `implement — all phases done; PR + gates next`
+**Stage pointer:** `CI gate — draft PR #923 open, first run in flight`
 
-**Next action:** open the draft PR so CI runs (it fires on `pull_request` only), then the
-Review gate and the Sonar gate per `riviera-sdlc` `references/pr-gates.md`.
+**Next action:** watch PR #923's first CI run; drive it green, then mark ready for review and
+run the Review gate and the Sonar gate per `riviera-sdlc` `references/pr-gates.md`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
