@@ -40,7 +40,8 @@ are slow on the vfs storage driver):
 # the structural net (fast, context-free — run after any backend structure change)
 gradle --no-daemon --console=plain test \
   --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" \
-  --tests "*PackageShapeArchitectureTests*"
+  --tests "*PackageShapeArchitectureTests*" --tests "*DomainPurityArchitectureTests*" \
+  --tests "*PublishedSurfacePlacementArchitectureTests*"
 
 # plus the unit/slice tests your change touched
 gradle --no-daemon --console=plain test --tests "*<ClassName>*"

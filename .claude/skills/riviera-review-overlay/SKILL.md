@@ -30,8 +30,8 @@ When loaded, announce: *"riviera-review-overlay loaded. Adding project-specific 
   control).
 - **Fullstack diff** → both, plus `references/fe-be-contract.md`.
 - **Substrate diff, or a change to a structural test** → no reference file; RV-PROC-2 below
-  is the item, and its own opening paragraph is the trigger — the one statement of it, so this
-  bullet does not restate the paths. "Only style items applied" is the failure mode it prevents.
+  is the item; its opening paragraph states the trigger, and nothing else in this file restates
+  the paths. "Only style items applied" is the failure mode it prevents.
 
 ## Highest-stakes items (call them out every time)
 
@@ -111,16 +111,11 @@ it lives (`docs/research/`, `docs/architecture/research/`).
 
 A **command** is a worked example too, and the one a session is likeliest to run verbatim, so it
 gets the same treatment against a net of its own. The unit is the pair — the command, and the
-prose claiming what it covers — and touching **either** side puts the check due: a diff that
-widens a map without widening the grep beneath it is the commoner half. Run the command, and
-match what it actually reaches against every coverage claim in the document, including claims on
-lines the diff never touched. That symmetry is the whole point. A map
-and the grep meant to sweep it are edited at different times by different diffs, so they drift
-apart silently, and neither one alone reads as wrong: the commit that drafted
-`riviera-docs-freshness` wrote its substrate map and its step-2a grep together, and the grep
-could not reach the `README.md` and `CONTRIBUTING.md` the map beside it named. Later commits
-widened the map again without widening the grep. It ran clean throughout. **Major** — a
-procedure that cannot reach its own stated scope reports zero findings, which reads as good news.
+prose claiming what it covers — and touching **either** side puts the check due; widening a map
+without widening the grep beneath it is the commoner half. Run the command, and match what it
+actually reaches against every coverage claim in the document, including claims on lines the diff
+never touched. **Major** — a procedure that cannot reach its own stated scope reports zero
+findings, which reads as good news.
 
 **c. `riviera-docs-freshness` step 2a over what the diff removed or renamed.** A deletion
 that leaves a pointer dangling elsewhere in the substrate is found here, at review time,
@@ -157,8 +152,8 @@ cross-module service calls, multi-line comments) live in `riviera-java-conventio
 - RV-BE-11 checked whenever the diff adds or moves behavior (plan's Module-ownership table
   reconciled against where the code landed); RV-BE-12 whenever it adds or moves packages;
   RV-BE-19 whenever it adds or changes a choice, calculation or lifecycle statement.
-- RV-PROC-2 checked whenever the diff touches the substrate or adds a structural test —
-  including a docs-only diff, where it is usually the only non-style item that applies.
+- RV-PROC-2 checked whenever its own trigger fires — including on a docs-only diff, where it is
+  usually the only non-style item that applies.
 
 ## Hand-offs
 
