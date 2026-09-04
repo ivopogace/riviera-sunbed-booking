@@ -7,8 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * Enforces invariant #1 (CLAUDE.md): <em>"No JPA/Hibernate — JDBC only."</em> The
  * {@code spring-boot-starter-data-jpa} dependency must never reach the classpath;
- * persistence is Spring Data JDBC aggregates and/or {@code JdbcTemplate} /
- * {@code JdbcClient} with explicit SQL.
+ * persistence is hand-written {@code JdbcTemplate} / {@code JdbcClient} SQL. What the
+ * Spring Data JDBC starter's presence on the classpath does and does not license is
+ * invariant #1's to say, not this test's.
  *
  * <p>This is a fast, context-free guard (a sibling to {@link ModularityTests} — no Spring
  * context, no database, runs anywhere) that fails the build the moment a JPA or Hibernate
@@ -53,6 +54,6 @@ class JdbcOnlyArchitectureTests {
 				() -> Class.forName(fqcn, false, LOADER),
 				() -> "Invariant #1 violated: '" + fqcn + "' is on the classpath. "
 						+ "spring-boot-starter-data-jpa / Hibernate must never be a dependency — use "
-						+ "Spring Data JDBC and/or JdbcTemplate with explicit SQL (CLAUDE.md #1).");
+						+ "JdbcTemplate / JdbcClient with explicit SQL (CLAUDE.md #1).");
 	}
 }
