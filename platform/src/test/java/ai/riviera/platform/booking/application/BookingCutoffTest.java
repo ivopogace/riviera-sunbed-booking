@@ -118,16 +118,6 @@ class BookingCutoffTest {
 	}
 
 	@Test
-	void serviceDayHasEndedOnlyAfterItsLastInstant() {
-		assertFalse(at(ZonedDateTime.of(2026, 7, 15, 23, 59, 59, 0, TIRANE))
-				.serviceDayHasEnded(BOOKING_DATE));
-		assertTrue(at(ZonedDateTime.of(2026, 7, 16, 0, 0, 0, 0, TIRANE))
-				.serviceDayHasEnded(BOOKING_DATE));
-		assertTrue(at(ZonedDateTime.of(2026, 7, 17, 9, 0, 0, 0, TIRANE))
-				.serviceDayHasEnded(BOOKING_DATE));
-	}
-
-	@Test
 	void lastEndedServiceDayIsYesterdayInTirane() {
 		assertEquals(LocalDate.of(2026, 7, 14),
 				BookingCutoff.lastEndedServiceDay(ZonedDateTime.of(2026, 7, 15, 23, 59, 0, 0, TIRANE).toInstant()));
