@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import {
   HttpTestingController,
@@ -22,6 +23,7 @@ import { formatBookingDate } from '../shared/booking-date-label';
 import { addDays, defaultBookingDate, formatCivilDate } from '../shared/booking-date';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueMap } from './venue-map';
+import { ProofOfWork } from '../core/proof-of-work';
 
 /** A 24-set fixture mirroring the Miramar seed: 4 rows × 6, 6 taken (18 free), front row premium.
  *  Rows 2+3 share a price (€35) so the per-zone price rendering (#672) is observable. */
@@ -109,6 +111,15 @@ function requestMode(): VenueMapView {
   return { ...miramar(), bookingMode: 'REQUEST' };
 }
 
+/**
+ * The map renders the booking dialog, which now injects {@link ProofOfWork} — a live probe of the
+ * challenge endpoint. Faked off here so no unanswered request parks `whenStable`, and so these
+ * specs keep testing the map rather than the fence (`booking-dialog.spec.ts` owns that).
+ */
+class FakeProofOfWork {
+  readonly enabled = signal<boolean | undefined>(false);
+}
+
 describe('VenueMap', () => {
   let fixture: ComponentFixture<VenueMap>;
   let httpMock: HttpTestingController;
@@ -123,6 +134,7 @@ describe('VenueMap', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        { provide: ProofOfWork, useValue: new FakeProofOfWork() },
         provideRouter([]),
         {
           provide: ActivatedRoute,
@@ -1508,6 +1520,7 @@ describe('VenueMap — date carried from the discovery page (#294)', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        { provide: ProofOfWork, useValue: new FakeProofOfWork() },
         provideRouter([]),
         {
           provide: ActivatedRoute,

@@ -67,6 +67,9 @@ const DARK_BACK_HOVER_BORDER: Glass = { color: hexToRgb(DARK_BACK_INK.slice(1)),
 // by the header AND the primary CTA. Theme-independent (the header teal does not vary by theme).
 const TEAL_STOPS = ['#0c7288', '#0a5f74'];
 
+// The ALTCHA attribution footer's own opacity — the same value challenge-widget.contrast.spec.ts pins.
+const CHALLENGE_FOOTER_OPACITY = 0.7;
+
 interface Theme {
   readonly name: string;
   readonly stops: readonly Rgb[];
@@ -200,6 +203,32 @@ describe.each(THEMES)(
         expect(contrastRatio(rgbToHex(border), rgbToHex(hoverFill))).toBeGreaterThanOrEqual(
           AA_LARGE,
         );
+      }
+    });
+
+    /**
+     * The proof-of-work widget maps `--altcha-color-base` to `--riv-field-fill`, so its base is one
+     * layer deeper than the auth cards' — the field fill over the DIALOG glass, not the card glass.
+     * `challenge-widget.contrast.spec.ts` proves the same inks on the card; this is the modal's stack.
+     */
+    it('challenge-widget label ink and its 0.7-opacity footer meet AA on the widget base over the panel', () => {
+      for (const stop of theme.stops) {
+        const panel = surfaceOver(theme.panel, stop);
+        const base = composite(theme.fieldFill.color, theme.fieldFill.alpha, panel);
+        expect(contrastRatio(rgbToHex(theme.ink), rgbToHex(base))).toBeGreaterThanOrEqual(
+          AA_NORMAL,
+        );
+        const footer = composite(theme.ink, CHALLENGE_FOOTER_OPACITY, base);
+        expect(contrastRatio(rgbToHex(footer), rgbToHex(base))).toBeGreaterThanOrEqual(AA_NORMAL);
+      }
+    });
+
+    it('challenge-widget checkbox border marks its boundary at 3:1 against the widget base (WCAG 1.4.11)', () => {
+      for (const stop of theme.stops) {
+        const panel = surfaceOver(theme.panel, stop);
+        const base = composite(theme.fieldFill.color, theme.fieldFill.alpha, panel);
+        const border = composite(theme.fieldBorder.color, theme.fieldBorder.alpha, base);
+        expect(contrastRatio(rgbToHex(border), rgbToHex(base))).toBeGreaterThanOrEqual(AA_LARGE);
       }
     });
   },

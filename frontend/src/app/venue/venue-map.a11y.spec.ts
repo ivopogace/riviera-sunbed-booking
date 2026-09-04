@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -9,6 +10,7 @@ import { expectNoAxeViolations } from '../../testing/axe';
 import { calendarDays } from '../../testing/calendar-days';
 import { SetView, VenueMapView } from '../shared/venue-views';
 import { VenueMap } from './venue-map';
+import { ProofOfWork } from '../core/proof-of-work';
 
 /**
  * Automated axe-core structural audit of the beach map. Guards the
@@ -72,6 +74,15 @@ function fixture(): VenueMapView {
   };
 }
 
+/**
+ * The map renders the booking dialog, which now injects {@link ProofOfWork} — a live probe of the
+ * challenge endpoint. Faked off here so no unanswered request parks `whenStable`, and so these
+ * specs keep testing the map rather than the fence (`booking-dialog.spec.ts` owns that).
+ */
+class FakeProofOfWork {
+  readonly enabled = signal<boolean | undefined>(false);
+}
+
 describe('VenueMap accessibility (axe)', () => {
   let fixtureRef: ComponentFixture<VenueMap>;
   let httpMock: HttpTestingController;
@@ -82,6 +93,7 @@ describe('VenueMap accessibility (axe)', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        { provide: ProofOfWork, useValue: new FakeProofOfWork() },
         {
           provide: ActivatedRoute,
           useValue: {

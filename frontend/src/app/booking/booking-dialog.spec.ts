@@ -1,9 +1,12 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
+import { ProofOfWork } from '../core/proof-of-work';
+import { defineFakeAltchaElement, FakeAltchaElement } from '../../testing/fake-altcha-element';
 import { todayBookingDate } from '../shared/booking-date';
 import { SetView } from '../shared/venue-views';
 import {
@@ -66,6 +69,16 @@ const REQUESTED: RequestedBooking = {
   requestExpiresAt: '2026-11-30T16:00:00Z',
 };
 
+// jsdom has no Web Workers: the widget is the element stand-in, never the real bundle.
+vi.mock('altcha', () => ({}));
+
+/** The platform's fence answer, driven per test — the real service would probe over HTTP. */
+class FakeProofOfWork {
+  readonly enabled = signal<boolean | undefined>(false);
+}
+
+const CHALLENGE_HEADER = 'X-Altcha-Payload';
+
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -82,11 +95,19 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
   let fixture: ComponentFixture<BookingDialog>;
   let dialog: BookingDialog;
   let httpMock: HttpTestingController;
+  let proofOfWork: FakeProofOfWork;
+
+  beforeAll(defineFakeAltchaElement);
 
   beforeEach(async () => {
+    proofOfWork = new FakeProofOfWork();
     await TestBed.configureTestingModule({
       imports: [BookingDialog],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ProofOfWork, useValue: proofOfWork },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(BookingDialog);
@@ -407,6 +428,76 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
     const alert = host().querySelector('[data-testid="dialog-error"]');
     expect(alert?.getAttribute('role')).toBe('alert');
     expect(alert?.textContent).toContain('just booked this set');
+  });
+
+  describe('the proof-of-work fence on create (ADR-0016)', () => {
+    /** Turn the fence on and settle the widget's solve, as a real verify would. */
+    async function solve(payload = 'solved-base64-payload'): Promise<FakeAltchaElement> {
+      proofOfWork.enabled.set(true);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const widget = host().querySelector<FakeAltchaElement>('altcha-widget')!;
+      widget.changeState('verified', payload);
+      await fixture.whenStable();
+      return widget;
+    }
+
+    it('sends the solved challenge as the fence header on create', async () => {
+      await solve();
+      await goToReview();
+
+      submitForm();
+      await fixture.whenStable();
+
+      const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings`);
+      expect(req.request.headers.get(CHALLENGE_HEADER)).toBe('solved-base64-payload');
+      req.flush(CONFIRMATION);
+      await fixture.whenStable();
+    });
+
+    it.each([
+      ['CHALLENGE_REQUIRED', 'hasn’t finished yet'],
+      ['CHALLENGE_INVALID', 'didn’t verify'],
+      ['CHALLENGE_EXPIRED', 'expired'],
+    ])('a %s rejection names the reason and restarts the widget', async (code, wording) => {
+      const widget = await solve();
+      await goToReview();
+      let emitted = false;
+      dialog.booked.subscribe(() => (emitted = true));
+
+      submitForm();
+      await fixture.whenStable();
+      httpMock
+        .expectOne(`${environment.apiBaseUrl}/api/bookings`)
+        .flush({ status: 400, code }, { status: 400, statusText: 'Bad Request' });
+      await fixture.whenStable();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // A refused create is never a booking, and the tourist stays on Review to retry.
+      expect(emitted).toBe(false);
+      expect(probe().step()).toBe(2);
+      const alert = host().querySelector('[data-testid="dialog-error"]');
+      expect(alert?.getAttribute('role')).toBe('alert');
+      expect(alert?.textContent).toContain(wording);
+      // The stale solution is spent, so the retry cannot reuse it: the widget was restarted.
+      expect(widget.reset).toHaveBeenCalled();
+      expect(widget.verify).toHaveBeenCalled();
+    });
+
+    it('the kill switch hides the widget and the create carries no header', async () => {
+      expect(proofOfWork.enabled()).toBe(false);
+      await goToReview();
+      expect(host().querySelector('altcha-widget')).toBeNull();
+
+      submitForm();
+      await fixture.whenStable();
+
+      const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/bookings`);
+      expect(req.request.headers.has(CHALLENGE_HEADER)).toBe(false);
+      req.flush(CONFIRMATION);
+      await fixture.whenStable();
+    });
   });
 
   it('REQUEST venue: Review shows "Send request" + no-charge copy and emits requested on 202 PENDING', async () => {

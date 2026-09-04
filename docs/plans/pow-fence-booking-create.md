@@ -268,15 +268,15 @@ the widget, whose skin is already token-driven.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `implement — phase 1 done, entering phase 2`
 
-**Next action:** Phase 1 step 1 — write the failing dialog specs (AC-8/9/10) with a
-`FakeProofOfWork`, then teach `BookingService.createBooking` to send the fence header.
+**Next action:** Phase 2 step 1 — write `frontend/e2e/booking-challenge.e2e.ts` and route the
+fence through every mocked spec that opens the booking dialog (R-3).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Fence booking create at the edge (backend) | ✅ | (this commit) |
-| 1 — The widget on checkout and the header on create (frontend) | | |
+| 1 — The widget on checkout and the header on create (frontend) | ✅ | (this commit) |
 | 2 — Playwright: the two journeys, the dedicated spec, the real solve | | |
 | 3 — Privacy-policy security measures + `RESPONSIBILITIES.md` | | |
 
@@ -314,7 +314,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/booking/booking-dialog.a11y.spec.ts` — axe with the widget mounted
 - `frontend/src/app/booking/booking-dialog.contrast.spec.ts` — the widget's ink pairs on the dialog
   glass, three themes
-- `frontend/src/app/venue/venue-map.spec.ts|.a11y.spec.ts` — the `FakeProofOfWork` provider (R-2)
+- `frontend/src/app/venue/venue-map.spec.ts` and `frontend/src/app/venue/venue-map.a11y.spec.ts`
+  — the `FakeProofOfWork` provider (R-2)
 - `frontend/src/app/pages/legal/privacy-policy.html|.ts` — the security-measures section
 - `frontend/src/app/pages/legal/privacy-policy.spec.ts` — AC-14
 - `frontend/e2e/booking-challenge.e2e.ts` — the dedicated mocked fence spec
@@ -434,6 +435,7 @@ spec that opens the booking dialog (R-3)
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-04 | Phase 1 — a component starts injecting `ProofOfWork` | Every unit spec that renders a component injecting `ProofOfWork`, because the service's `httpResource` probe fires an unanswered request that parks `whenStable` and trips `httpMock.verify()` — the mechanism is the injection, not the component's name | `grep -rl "inject(ProofOfWork)" frontend/src/app --include=*.ts` (3 components), then `grep -rlE 'createComponent\((BookingDialog\|AuthPage\|ForgotPassword\|VenueMap)\)' frontend/src --include=*.spec.ts` | 8 specs | The 4 auth specs already carry a `FakeProofOfWork` (shipped with #922); the 4 new members — `booking-dialog.spec.ts`, `booking-dialog.a11y.spec.ts`, `venue-map.spec.ts`, `venue-map.a11y.spec.ts` — get one. The two venue-map specs fake the fence **off** (they test the map, not the fence); the dialog a11y spec fakes it **on**, so axe audits the widget that is actually in the modal's tab order |
 | 2026-09-04 | Phase 0 — adding a route to the fenced set | Every test that issues an HTTP `POST` to `/api/bookings` (the newly fenced route), i.e. every caller that was passing the fence by not existing yet. Enumerated by literal path, then swept for constant-named and non-MockMvc callers so resemblance could not decide it | `grep -rn 'post("/api/bookings")' platform/src/test/java` (27 sites / 12 files), then `grep -rhoE 'post\([A-Za-z_][A-Za-z0-9_.]*\)' platform/src/test/java \| sort \| uniq -c` and `grep -rln "WebTestClient\|TestRestTemplate" platform/src/test/java` (no further callers) | 27 sites, 12 files | 23 sites in 8 IT classes get a real solved challenge (the #922 precedent — solve, never bypass); `CsrfProtectionIT` gets one so its 404-vs-403 assertion still reaches the domain; `AltchaDisabledTest` + `BookingCreateChallengeIT` are the fence's own tests; `RateLimitFilterTest` needs **no** change — it already sets `riviera.altcha.enabled=false`, deliberately measuring the budgets without the fence (an edit there was written and reverted once its own failure showed the fence was off) |
 
 ---
