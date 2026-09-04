@@ -29,9 +29,9 @@ When loaded, announce: *"riviera-review-overlay loaded. Adding project-specific 
   destroy, RV-FE-10 live regions outlive their content, RV-FE-11 field errors name their
   control).
 - **Fullstack diff** → both, plus `references/fe-be-contract.md`.
-- **Substrate diff** (`.claude/skills/**`, the `CLAUDE.md` files, `CONTEXT.md`,
-  `RESPONSIBILITIES.md`, `docs/adr/**`, `docs/agents/**`) → no reference file; RV-PROC-2
-  below is the item. "Only style items applied" is the failure mode it exists to prevent.
+- **Substrate diff, or a change to a structural test** → no reference file; RV-PROC-2 below
+  is the item, and its own opening paragraph is the trigger — the one statement of it, so this
+  bullet does not restate the paths. "Only style items applied" is the failure mode it prevents.
 
 ## Highest-stakes items (call them out every time)
 
@@ -104,9 +104,23 @@ grep -rnE 'import (org\.springframework|java\.sql|javax\.sql|com\.stripe)' \
   .claude/skills CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents
 ```
 
-`docs/research/*` hits are records of what was true when written, not instructions — skip them.
+A research note is a record of what was true when written, not an instruction — skip it wherever
+it lives (`docs/research/`, `docs/architecture/research/`).
 
 **Major** — an example the net rejects reddens the next session's build, docs-only diff or not.
+
+A **command** is a worked example too, and the one a session is likeliest to run verbatim, so it
+gets the same treatment against a net of its own. The unit is the pair — the command, and the
+prose claiming what it covers — and touching **either** side puts the check due: a diff that
+widens a map without widening the grep beneath it is the commoner half. Run the command, and
+match what it actually reaches against every coverage claim in the document, including claims on
+lines the diff never touched. That symmetry is the whole point. A map
+and the grep meant to sweep it are edited at different times by different diffs, so they drift
+apart silently, and neither one alone reads as wrong: the commit that drafted
+`riviera-docs-freshness` wrote its substrate map and its step-2a grep together, and the grep
+could not reach the `README.md` and `CONTRIBUTING.md` the map beside it named. Later commits
+widened the map again without widening the grep. It ran clean throughout. **Major** — a
+procedure that cannot reach its own stated scope reports zero findings, which reads as good news.
 
 **c. `riviera-docs-freshness` step 2a over what the diff removed or renamed.** A deletion
 that leaves a pointer dangling elsewhere in the substrate is found here, at review time,
