@@ -910,8 +910,9 @@ module `challenge` (ADR-0017): the module's `ChallengeController` (`GET /api/aut
 `permitAll`, its own per-IP rate-limit budget, `no-store`, no session — the only cookie on it is the SPA's platform-wide `XSRF-TOKEN` bootstrap) issues a challenge signed with the
 `RIVIERA_ALTCHA_HMAC_SECRET` secret and expiring `riviera.altcha.expiry` (10 minutes) after the injected
 clock; `ChallengeVerificationFilter`, registered after `RateLimitFilter` and `CsrfFilter`, requires the
-widget's solution in the `X-Altcha-Payload` header on each fenced `POST` (customer register today;
-operator register, forgot-password and booking create in their own slices) and refuses with `400` and a
+widget's solution in the `X-Altcha-Payload` header on each fenced `POST` — the three auth routes
+`/api/auth/customer/register`, `/api/auth/operator/register` and
+`/api/auth/customer/forgot-password`; booking create joins in its own slice — and refuses with `400` and a
 stable code — `CHALLENGE_REQUIRED` (absent), `CHALLENGE_INVALID` (unparseable, forged, wrong answer),
 `CHALLENGE_EXPIRED` (past expiry, or already accepted once). Deliberately `400`, never `403`: the rate
 limiter refunds a `403` on the budgets that guard authenticated work, and a refused solution must still
@@ -928,7 +929,12 @@ measured default — Chromium under mobile emulation in the slice's prototype, s
 throughput to an estimated 1–2 s on a mid-range phone; a real-device check is the pre-launch item. What
 it is not: no ALTCHA hosted service is ever called, no bounded-context module knows the challenge
 exists — the root reaches only `challenge::api` and `::vocabulary` — and login is not fenced (the
-per-identity throttle covers it).
+per-identity throttle covers it), nor are the token-redemption routes (a reset or verification token
+is already a bearer credential). Fencing forgot-password does not weaken its non-enumerating answer
+(D-8): the filter runs ahead of the controller, so a refusal is decided before the account lookup and
+is byte-identical whichever account state the address is in, with no mail sent either way. That `400`
+is also outside the recovery budget's access-denied refund, so a refused submission still costs its
+rate-limit token.
 
 ## Invariants, long form
 

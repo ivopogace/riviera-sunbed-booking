@@ -34,7 +34,7 @@ and the stale `RateLimitFilter` refund comment) · `riviera-plan-doc` (this temp
 behavior-parity ledger for the retired "no widget in this slice" assertions and the AC seam names) ·
 `tdd` (each phase red-green at the HTTP route / Angular component seam) · `riviera-review-overlay`
 (review gate — runs at ready-for-review) · `riviera-docs-freshness` (**ran** over
-`origin/main..HEAD` at close-out, findings recorded in the Findings register) · `riviera-modulith`
+`origin/main...HEAD`, 2 findings, both patched — see the Findings register) · `riviera-modulith`
 (confirmed the change is root-only: no module, port, event or `allowedDependencies` change — the
 fenced-route decision is explicitly `challenge`'s Not-My-Job) · `riviera-java-conventions`
 (§6a named constants for the two route literals, §6c one-line comments, §6d Javadoc-as-contract on
@@ -153,27 +153,31 @@ session).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Fencing forgot-password turns it into an enumeration oracle (a challenge failure answering differently for a known vs unknown email) | low | high | The fence is a filter ahead of the controller — it cannot see the email; AC-3 pins byte-identical answers **and** an empty outbox across registered / unregistered / SSO-only | agent | open |
-| R-2 | Six existing backend ITs and several `@WebMvcTest` slices post to the newly fenced routes without a header and start failing | **high** | med | Enumerated up front (`grep -rln` over `platform/src/test`); each is fixed in phase 0 with `SessionLoginSupport.solvedChallenge(mvc)`; the phase's regression run is the whole `ai.riviera.platform` root package, not just the new ITs | agent | open |
-| R-3 | Solving a real challenge in every touched IT slows the suite (shipped `cost` = 5000) | med | low | The challenge ITs pin `riviera.altcha.cost=10` in their own contexts; the shared-context ITs already pay this on customer register (precedent: `CustomerRegisterIT`), and each adds at most one solve per request | agent | open |
-| R-4 | A challenge refusal gets refunded by the rate limiter, so a flood of header-less posts is free | low | med | `RateLimitFilter` refunds only on `401`/`403` (`accessWasDenied`); the fence answers `400` deliberately. AC-4 pins the budget draining on both routes | agent | open |
-| R-5 | The operator register's **auto-sign-in follow-up** (`runRegister` → `signIn`) is mistakenly fenced too, so a fresh registration cannot land | med | med | Login is not in `FENCED_POSTS` and stays out; the mocked e2e drives register→auto-sign-in→console end to end | agent | open |
-| R-6 | The widget survives an audience/mode switch holding a stale solution, so an operator register posts a payload minted for the tourist card | low | med | `auth-page.ts`'s existing audience/mode effect already clears `challengePayload`; a unit spec pins that the operator card starts unverified | agent | open |
+| R-1 | Fencing forgot-password turns it into an enumeration oracle (a challenge failure answering differently for a known vs unknown email) | low | high | The fence is a filter ahead of the controller — it cannot see the email; AC-3 pins byte-identical answers **and** an empty outbox across registered / unregistered / SSO-only | agent | closed — `e69e3e4` (`PasswordResetIT`; the per-request `X-Correlation-Id` is the one excluded header, a fresh UUID carrying nothing about the account) |
+| R-2 | Six existing backend ITs and several `@WebMvcTest` slices post to the newly fenced routes without a header and start failing | **high** | med | Enumerated up front (`grep -rln` over `platform/src/test`); each is fixed in phase 0 with `SessionLoginSupport.solvedChallenge(mvc)`; the phase's regression run is the whole `ai.riviera.platform` root package, not just the new ITs | agent | closed — `e69e3e4`; it was **eight** ITs, not six, and the two web slices needed nothing (both pin the kill switch) |
+| R-3 | Solving a real challenge in every touched IT slows the suite (shipped `cost` = 5000) | med | low | The challenge ITs pin `riviera.altcha.cost=10` in their own contexts; the shared-context ITs already pay this on customer register (precedent: `CustomerRegisterIT`), and each adds at most one solve per request | agent | closed — `e69e3e4`; the repaired ITs ran in 43–50 s per batch locally, in line with their pre-slice cost |
+| R-4 | A challenge refusal gets refunded by the rate limiter, so a flood of header-less posts is free | low | med | `RateLimitFilter` refunds only on `401`/`403` (`accessWasDenied`); the fence answers `400` deliberately. AC-4 pins the budget draining on both routes | agent | closed — `e69e3e4` (both budget tests), with the limiter's own note corrected (finding D-1) |
+| R-5 | The operator register's **auto-sign-in follow-up** (`runRegister` → `signIn`) is mistakenly fenced too, so a fresh registration cannot land | med | med | Login is not in `FENCED_POSTS` and stays out; the mocked e2e drives register→auto-sign-in→console end to end | agent | closed — `6cf6149`; `operator-register-challenge.e2e.ts` also asserts sign-in shows no widget at all |
+| R-6 | The widget survives an audience/mode switch holding a stale solution, so an operator register posts a payload minted for the tourist card | low | med | `auth-page.ts`'s existing audience/mode effect already clears `challengePayload`; a unit spec pins that the operator card starts unverified | agent | closed — `31e158a` (`auth-page.spec.ts` "never carries the tourist card's solution across the audience switch") |
 | R-7 | Flyway version collision with an in-flight PR | n/a | n/a | **No migration in this slice**; `V<n>` unclaimed. Checked: no open PRs on the repo at plan time | agent | closed — no schema change |
-| R-8 | `mockCustomerRecoveryApi` / `mockOperatorLifecycleApi` gain a fence by default and silently break unrelated e2e specs that never solve | med | med | Both mocks default the fence **on** (matching the shipped server) and are audited spec by spec in phase 2; the widget solves automatically on form focus, so a journey that focuses the form needs no change | agent | open |
+| R-8 | `mockCustomerRecoveryApi` / `mockOperatorLifecycleApi` gain a fence by default and silently break unrelated e2e specs that never solve | med | med | Both mocks default the fence **on** (matching the shipped server) and are audited spec by spec in phase 2; the widget solves automatically on form focus, so a journey that focuses the form needs no change | agent | closed — `6cf6149`; the whole 424-test mocked suite is green. One spec did need a change: `fixed-fill-state-skins.e2e.ts` hand-rolls its own routes and mocked no challenge route at all, so it now installs the fence explicitly off |
 
 ## Open questions / Assumptions
 
+None open.
+
+### Resolved
+
 - **Assumption:** the two blockers are on `main` — #905's spine (PR #911) and #913's module move
-  (PR #916), plus the follow-ups #917/#919/#921. *Owner:* agent · *Resolves by:* phase 0 —
-  **verified at plan time** from `git log origin/main`.
+  (PR #916), plus the follow-ups #917/#919/#921. **Verified at plan time** from `git log origin/main`.
 - **Assumption:** "each route's own rate-limit bucket" (issue AC-3) means the bucket the route
-  already draws on — `operatorRegisterBuckets` for operator register and the shared `recoveryBuckets`
-  map for forgot-password (which the three public recovery POSTs share by design). This slice does
-  **not** split the recovery bucket. *Owner:* agent · *Resolves by:* phase 0.
-- **Assumption:** the mocked e2e fence stays **on by default** in the two extended mocks, mirroring
-  `mockCustomerAuthApi`, so every journey through those pages proves the widget ran.
-  *Owner:* agent · *Resolves by:* phase 2.
+  already draws on. **Confirmed in phase 0** (`e69e3e4`): `RateLimitFilter.authPostBudgetFor` gives
+  operator register its own `operatorRegisterBuckets` and forgot-password the `recoveryBuckets` map
+  the three public recovery POSTs share by design. This slice does not split the recovery bucket, and
+  each route's budget test drains the bucket it actually rides.
+- **Assumption:** the mocked e2e fence stays **on by default** in the two extended mocks.
+  **Held in phase 2** (`6cf6149`) — one shared `mockChallengeFence` arms all three, `challenge: 'off'`
+  is the per-spec kill switch, and the full 424-test suite is green.
 
 ## Availability & concurrency (invariant #2)
 
@@ -252,17 +256,17 @@ no new token, no `@apply`).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3 — docs) → PR ready for review`
+**Stage pointer:** `PR — marking #922 ready for review`
 
-**Next action:** name the three fenced auth routes in `RESPONSIBILITIES.md` § *Platform edge*, run
-`riviera-docs-freshness`, then mark PR #922 ready and run the review + Sonar gates.
+**Next action:** mark PR #922 ready for review, then run the Review gate
+(`riviera-sdlc` `references/pr-gates.md` §1) and the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Backend: fence the two routes + repair the existing ITs | ✅ | (this commit) |
 | 1 — Frontend: services, both pages, unit + a11y/contrast specs | ✅ | (this commit) |
 | 2 — e2e: mocked fence handles + both suites | ✅ | (this commit) |
-| 3 — Docs + close-out | | |
+| 3 — Docs + close-out | ✅ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -270,7 +274,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| D-1 | docs-freshness (`origin/main...HEAD`) | `RateLimitFilter`'s `RECOVERY_PATHS` Javadoc stated "the only denial reachable before the controller is a CSRF `403`" — the fence's `400` is now also reachable there, and is deliberately outside the refund | patched in phase 0 |
+| D-2 | docs-freshness (`origin/main...HEAD`) | `RESPONSIBILITIES.md` § *Platform edge* said the fenced set is "customer register today; operator register, forgot-password and booking create in their own slices" — two of those three shipped here | patched in phase 3 (AC-11) |
 
 ---
 
@@ -410,6 +415,7 @@ Test `ChallengeVerificationFilterTest.java`, new `OperatorRegisterChallengeIT`,
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-04 | phase 3 — the fenced set grew from one route to three | every substrate-doc sentence that counts or enumerates fenced routes, plus the renamed `refuseNextRegisterWith` | `grep -rniE '\b(the\|one\|only\|a) fenced (route\|post\|write)\b\|\bfenced routes?\b\|\bthe fence\b' CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents docs/runbooks docs/design .claude/skills platform/src/main frontend/src` + `grep -rn 'refuseNextRegisterWith\|customer register today' <substrate>` | 30 hits, 1 stale | only `RESPONSIBILITIES.md`'s enumeration named a count (D-2, patched); every other "the fence" sentence is subject-generic and stays true, and ADR-0017's "two slices are about to widen the fenced route set" is Context-section narrative, which the skill's scope discipline keeps as history |
 | 2026-09-04 | phase 2 — the fence reached two more mocked routes | every mocked e2e spec that POSTs to a fenced route (whether through a shared mock or its own `page.route`) | `grep -rln "operator/register\|forgot-password\|customer/register" frontend/e2e` | 10 files | the three stateful mocks now share one `mockChallengeFence` (so no spec can meet a fence that behaves unlike its siblings'); `fixed-fill-state-skins.e2e.ts` hand-rolls its own routes and had no challenge route at all, so it now installs the fence explicitly **off**; the rest go through a shared mock and needed nothing |
 | 2026-09-04 | phase 0 — the fenced set grew | every backend test that POSTs to a route in `FENCED_POSTS` | `grep -rn "operator/register\|forgot-password" platform/src/test --include=*.java` | 16 hits over 12 files | 8 ITs now send `SessionLoginSupport.solvedChallenge(mvc)`; `RateLimitFilterTest` + `EndpointRoleGateCoverageTest` need nothing (both pin `riviera.altcha.enabled=false`); `MyAccountControllerTest` was a comment hit only; `AltchaDisabledTest` gained a kill-switch case per new route |
 
