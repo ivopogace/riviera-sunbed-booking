@@ -155,7 +155,7 @@ export interface ChallengeMock {
 }
 
 /** A {@link ChallengeMock} plus the screen each fenced route runs before its own handler. */
-interface ChallengeFence extends ChallengeMock {
+export interface ChallengeFence extends ChallengeMock {
   /** The problem to answer with, or undefined when the request may reach the mocked controller. */
   screen(route: Route): ReturnType<typeof problem> | undefined;
 }
@@ -167,8 +167,9 @@ interface ChallengeFence extends ChallengeMock {
  * `CHALLENGE_REQUIRED`, and recording the counter of one that carries it. `off` answers `204` (the
  * kill switch), which is what tells the SPA to hide the widget, and screens nothing.
  *
- * <p>One implementation, three fenced routes (customer register, operator register,
- * forgot-password), so a spec cannot meet a fence that behaves differently from its siblings'.
+ * <p>One implementation, four fenced routes (customer register, operator register,
+ * forgot-password and booking create), so a spec cannot meet a fence that behaves differently from
+ * its siblings'.
  */
 export async function mockChallengeFence(
   page: Page,

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { mockCustomerAuthApi } from './support/auth-mocks';
+import { mockCustomerAuthApi, mockChallengeFence } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
 import { openShellOverlay } from './support/shell';
 import { expectTouchTargets } from './support/touch-targets';
@@ -112,6 +112,8 @@ async function mockTourist(page: Page): Promise<void> {
 test.describe('44px touch targets on the tourist surfaces at a phone width', () => {
   test.beforeEach(async ({ page }) => {
     await mockTourist(page);
+    // The register card's widget is swept on its own below; the dialog's is not this file's.
+    await mockChallengeFence(page, 'off');
     await page.setViewportSize({ width: 390, height: 780 });
   });
 

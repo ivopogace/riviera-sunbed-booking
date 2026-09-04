@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { openShellOverlay } from './support/shell';
 import { completeDialog, settle } from './support/booking-dialog';
@@ -91,6 +92,8 @@ const CANCELLED_DETAIL = {
 test('a booking made here appears in My bookings, and a cancellation reflects there (a11y both themes)', async ({
   page,
 }) => {
+  // Fence off: the widget is not this file's subject (`booking-challenge.e2e.ts` drives it).
+  await mockChallengeFence(page, 'off');
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE }));
   await page.route('**/api/bookings', (route) =>
     route.fulfill({ status: 201, json: CONFIRMATION }),

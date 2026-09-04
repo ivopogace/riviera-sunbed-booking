@@ -1,13 +1,19 @@
 import { expect, test } from '@playwright/test';
 
+import { ChallengeFence, mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
-import { completeDialog, settle } from './support/booking-dialog';
+import { completeDialog, mockFencedBookingCreate, settle } from './support/booking-dialog';
 
 /**
  * Real-render a11y audit of the Instant-Book flow: beach map →
  * keyboard-select a free online set → 2-step booking dialog (Details → Review, focus trapped) →
  * confirmation. Runs axe at each step in a real browser — catching keyboard, focus-management and
  * true colour-contrast issues jsdom can't. The API is mocked, so the test is self-contained.
+ *
+ * <p>The fence is ON for the whole file: create is proof-of-work fenced (ADR-0016), so the widget
+ * is part of this journey's real shape — Chromium solves the mocked low-cost challenge in its Web
+ * Workers and the create carries the solution. The fence's own failure paths are
+ * `booking-challenge.e2e.ts`'s.
  */
 
 const VENUE = {
@@ -120,10 +126,13 @@ function cancelledDetail(over: {
   };
 }
 
+let fence: ChallengeFence;
+
 test.beforeEach(async ({ page }) => {
+  fence = await mockChallengeFence(page, 'on');
   // Match with or without the `?date=` query the map appends.
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE }));
-  await page.route('**/api/bookings', (route) =>
+  await mockFencedBookingCreate(page, fence, (route) =>
     route.fulfill({ status: 201, json: CONFIRMATION }),
   );
 });
@@ -145,6 +154,10 @@ test('booking flow is accessible end-to-end', async ({ page }) => {
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('input').first()).toBeFocused();
+
+  // The widget is hosted on the step that submits, so Details carries none.
+  await expect(page.getByTestId('challenge-widget')).toHaveCount(0);
+
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'booking dialog (Details)');
 
@@ -165,11 +178,22 @@ test('booking flow is accessible end-to-end', async ({ page }) => {
   await dialog.getByLabel('Phone').fill('+355699000');
   await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(dialog.getByTestId('dialog-primary')).toHaveText('Continue to payment');
-  await expectNoSeriousAxeViolations(page, 'booking dialog (Review)');
+
+  // Entering Review focuses the primary button inside the widget's form, starting the solve.
+  await expect(page.getByTestId('challenge-widget')).toBeVisible();
+  await expect(page.getByTestId('challenge-status')).toHaveText(/Security check passed/, {
+    timeout: 15_000,
+  });
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'booking dialog (Review, with the solved widget)');
   await dialog.getByRole('button', { name: 'Continue to payment' }).click();
 
   // Lands on the confirmation with the booking code — and its scannable QR twin (#583).
   await expect(page).toHaveURL(/\/booking\/confirmation/);
+
+  // The create carried a solution the widget really computed in Chromium's Web Workers.
+  expect(fence.lastSolvedCounter()).toEqual(expect.any(Number));
   await expect(page.getByTestId('booking-code')).toContainText('ABCD234567');
   const qr = page.getByTestId('booking-qr');
   await expect(qr).toBeVisible();
@@ -195,6 +219,8 @@ test('booking dialog stays laptop-friendly at a ~700px viewport (#188, guards th
   await expect(dialog).toBeVisible();
   // Step 1 (Details) is the tallest step and the one the compaction was measured on.
   await expect(page.getByTestId('step-1')).toHaveAttribute('aria-current', 'step');
+  // Details is the guarded step and hosts no widget — the ~72 px one costs land on Review (#907).
+  await expect(page.getByTestId('challenge-widget')).toHaveCount(0);
   await settle(page);
 
   // Panel is NOT clamped to its `max-height: calc(100vh - 40px)` — step-1 renders at its natural height.
@@ -213,7 +239,7 @@ test('booking dialog stays laptop-friendly at a ~700px viewport (#188, guards th
 test('a taken-set rejection surfaces an accessible error in the dialog', async ({ page }) => {
   // Overrides the beforeEach 201 route: the API rejects on the RFC-7807 contract —
   // application/problem+json whose stable identity is the `code` extension.
-  await page.route('**/api/bookings', (route) =>
+  await mockFencedBookingCreate(page, fence, (route) =>
     route.fulfill({
       status: 409,
       contentType: 'application/problem+json',
@@ -247,7 +273,9 @@ test('stripe-profile payment flow is accessible end-to-end (Stripe mocked)', asy
     (window as unknown as { __RIVIERA_FAKE_STRIPE__?: boolean }).__RIVIERA_FAKE_STRIPE__ = true;
   });
   // POST /api/bookings now returns 202 AWAITING_PAYMENT (overrides the beforeEach 201 route).
-  await page.route('**/api/bookings', (route) => route.fulfill({ status: 202, json: AWAITING }));
+  await mockFencedBookingCreate(page, fence, (route) =>
+    route.fulfill({ status: 202, json: AWAITING }),
+  );
   // The status poll: AWAITING_PAYMENT first, then CONFIRMED once the (mocked) webhook lands.
   let polls = 0;
   await page.route(/\/api\/bookings\/WXYZ345678(\?.*)?$/, (route) =>

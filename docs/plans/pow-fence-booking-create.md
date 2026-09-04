@@ -144,7 +144,7 @@ fence adds refusals ahead of it and adds no branch inside it.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The widget mounts only on the Review step, so the ~1–2 s solve starts after the tourist reaches pay and stalls the submit | high | med | Mount the widget **once, inside the dialog's single `<form>`, outside both step branches** — ALTCHA's `auto="onfocus"` binds to the closest form, so focusing a Details field starts the solve while the tourist is still typing; `solved()` awaits it at submit as a backstop | agent | open |
+| R-1 | Where the widget mounts trades the solve's head start against the dialog's above-the-fold budget | high | med | **Resolved by the maintainer**: Review step. Mounting on Details was measured to push the panel from 638 px to 714 px at the 700 px viewport, clamping it and breaking the #188/#186 above-the-fold guard. On Review the solve still starts a step early — advancing focuses the primary button inside the widget's form, and the wrapper's `onLoad` starts a solve when the form already holds focus — so it overlaps reading the summary and terms; `solved()` awaits it at submit as a backstop | maintainer | closed — see the Resolved note below |
 | R-2 | Unit specs that render `BookingDialog` / `VenueMap` acquire a live `httpResource` probe of `/api/auth/challenge`, so `httpMock.verify()` fails on an unexpected request | high | med | Provide a `FakeProofOfWork` in those four specs (the `auth-page.spec.ts` precedent) — no HTTP at all — and `vi.mock('altcha')` + `defineFakeAltchaElement` wherever the fence is switched on | agent | open |
 | R-3 | Every mocked e2e that opens the booking dialog now renders a widget whose challenge fetch is unrouted, so the probe errors, reads the fence as **on**, and the journey hangs on an unsolvable widget | high | high | Route the challenge endpoint in every affected spec: `mockChallengeFence(page, 'on')` where the fence is the subject, `'off'` where it is noise. Enumerate the population by mechanism (specs that open the dialog), not by resemblance — see the Generalization-audit log | agent | open |
 | R-4 | A challenge refusal returns `400`, which the dialog's existing `bookingErrorOf` maps to `UNKNOWN` — the tourist gets "Something went wrong" and retries into a second refusal forever | med | high | Widen `bookingErrorOf` to `BookingErrorCode \| ChallengeRejection` via `challengeRejection(problemCodeOf(error)) ?? …` (the `customer-auth.ts` shape), and have the dialog call `refresh()` on any challenge rejection so the retry has a fresh solution | agent | open |
@@ -156,13 +156,19 @@ fence adds refusals ahead of it and adds no branch inside it.
 
 ## Open questions / Assumptions
 
-- **Assumption:** The widget mounted in the dialog's shared form region (visible on both steps,
-  sitting above the actions row) satisfies the issue's "the checkout step that submits the booking
-  hosts the shared wrapper" **and** its "solving starts when the tourist focuses the contact form".
-  A Review-step-only mount cannot satisfy the second clause. — *Owner:* agent · *Resolves by:* phase 1
-  (revisit only if the maintainer prefers a hidden pre-mount).
-
 ### Resolved
+
+- **Q-2 (settled by the maintainer at phase 2):** the shared-form mount that would satisfy the
+  issue's "solving starts when the tourist focuses the contact form" literally was measured to break
+  a shipped guard — with the widget on Details the panel's natural height goes 638 px → 714 px at the
+  700 px laptop viewport the #188/#186 guard uses, so it clamps to 660 px and the Details step no
+  longer fits above the fold. Put to the maintainer with those numbers; **outcome: host the widget on
+  the Review step**, which is also the issue's own first clause ("the checkout step that submits the
+  booking hosts the shared wrapper"). The solve still starts a step before the tap: advancing to
+  Review moves focus to the primary button inside the widget's form, and the widget wrapper's
+  `onLoad` handler starts a solve when the form already holds focus — so the work overlaps reading
+  the summary, total, terms and consent. `booking-flow.e2e.ts` pins that Details carries no widget
+  and Review's solve completes before the pay tap.
 
 - **Q-1 (drift, resolved at plan time):** The issue's AC says the privacy paragraph must appear in
   "both language variants the page carries". The page carries **one** — it is English-only:
@@ -268,16 +274,16 @@ the widget, whose skin is already token-driven.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 1 done, entering phase 2`
+**Stage pointer:** `implement — phase 2 done, entering phase 3`
 
-**Next action:** Phase 2 step 1 — write `frontend/e2e/booking-challenge.e2e.ts` and route the
-fence through every mocked spec that opens the booking dialog (R-3).
+**Next action:** Phase 3 step 1 — the failing `privacy-policy.spec.ts` case for the
+security-measures section, then the section itself and the `RESPONSIBILITIES.md` sentence.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Fence booking create at the edge (backend) | ✅ | (this commit) |
 | 1 — The widget on checkout and the header on create (frontend) | ✅ | (this commit) |
-| 2 — Playwright: the two journeys, the dedicated spec, the real solve | | |
+| 2 — Playwright: the two journeys, the dedicated spec, the real solve | ✅ | (this commit) |
 | 3 — Privacy-policy security measures + `RESPONSIBILITIES.md` | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -435,6 +441,7 @@ spec that opens the booking dialog (R-3)
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-04 | Phase 2 — the checkout gains a widget that fetches a challenge | Every mocked e2e spec that reaches the booking dialog's **Review** step, because that is where the widget mounts and an unrouted `/api/auth/challenge` makes `ProofOfWork` read the fence as ON (a transport failure is deliberately read as on) and renders a widget stuck in its error state. Enumerated by the action that reaches Review, not by file name | `grep -rln "completeDialog\|Continue to payment\|Send request" frontend/e2e --include=*.e2e.ts \| grep -v real-backend` | 10 specs | 3 carry the fence ON because it is their subject (`booking-flow`, `same-day-booking`, the new `booking-challenge`); the other 7 route it OFF explicitly, so none of them audits or measures a broken widget — the `RateLimitFilterTest` precedent of keeping a test's own subject clean. `touch-targets-tourist` keeps its own fence-ON register-card sweep, which re-routes after the file-level OFF |
 | 2026-09-04 | Phase 1 — a component starts injecting `ProofOfWork` | Every unit spec that renders a component injecting `ProofOfWork`, because the service's `httpResource` probe fires an unanswered request that parks `whenStable` and trips `httpMock.verify()` — the mechanism is the injection, not the component's name | `grep -rl "inject(ProofOfWork)" frontend/src/app --include=*.ts` (3 components), then `grep -rlE 'createComponent\((BookingDialog\|AuthPage\|ForgotPassword\|VenueMap)\)' frontend/src --include=*.spec.ts` | 8 specs | The 4 auth specs already carry a `FakeProofOfWork` (shipped with #922); the 4 new members — `booking-dialog.spec.ts`, `booking-dialog.a11y.spec.ts`, `venue-map.spec.ts`, `venue-map.a11y.spec.ts` — get one. The two venue-map specs fake the fence **off** (they test the map, not the fence); the dialog a11y spec fakes it **on**, so axe audits the widget that is actually in the modal's tab order |
 | 2026-09-04 | Phase 0 — adding a route to the fenced set | Every test that issues an HTTP `POST` to `/api/bookings` (the newly fenced route), i.e. every caller that was passing the fence by not existing yet. Enumerated by literal path, then swept for constant-named and non-MockMvc callers so resemblance could not decide it | `grep -rn 'post("/api/bookings")' platform/src/test/java` (27 sites / 12 files), then `grep -rhoE 'post\([A-Za-z_][A-Za-z0-9_.]*\)' platform/src/test/java \| sort \| uniq -c` and `grep -rln "WebTestClient\|TestRestTemplate" platform/src/test/java` (no further callers) | 27 sites, 12 files | 23 sites in 8 IT classes get a real solved challenge (the #922 precedent — solve, never bypass); `CsrfProtectionIT` gets one so its 404-vs-403 assertion still reaches the domain; `AltchaDisabledTest` + `BookingCreateChallengeIT` are the fence's own tests; `RateLimitFilterTest` needs **no** change — it already sets `riviera.altcha.enabled=false`, deliberately measuring the budgets without the fence (an edit there was written and reverted once its own failure showed the fence was off) |
 

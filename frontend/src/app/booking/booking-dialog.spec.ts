@@ -431,20 +431,33 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
   });
 
   describe('the proof-of-work fence on create (ADR-0016)', () => {
-    /** Turn the fence on and settle the widget's solve, as a real verify would. */
-    async function solve(payload = 'solved-base64-payload'): Promise<FakeAltchaElement> {
+    /**
+     * Advance to Review — where the widget is hosted — and settle its solve, as a real verify would.
+     * The order matters: on Details there is no widget to drive.
+     */
+    async function reviewWithSolvedChallenge(
+      payload = 'solved-base64-payload',
+    ): Promise<FakeAltchaElement> {
       proofOfWork.enabled.set(true);
-      fixture.detectChanges();
-      await fixture.whenStable();
+      await goToReview();
       const widget = host().querySelector<FakeAltchaElement>('altcha-widget')!;
       widget.changeState('verified', payload);
       await fixture.whenStable();
       return widget;
     }
 
-    it('sends the solved challenge as the fence header on create', async () => {
-      await solve();
+    it('the widget is hosted on the step that submits, not on Details', async () => {
+      proofOfWork.enabled.set(true);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(host().querySelector('altcha-widget')).toBeNull();
+
       await goToReview();
+      expect(host().querySelector('altcha-widget')).not.toBeNull();
+    });
+
+    it('sends the solved challenge as the fence header on create', async () => {
+      await reviewWithSolvedChallenge();
 
       submitForm();
       await fixture.whenStable();
@@ -460,8 +473,7 @@ describe('BookingDialog (2-step Liquid Glass modal)', () => {
       ['CHALLENGE_INVALID', 'didn’t verify'],
       ['CHALLENGE_EXPIRED', 'expired'],
     ])('a %s rejection names the reason and restarts the widget', async (code, wording) => {
-      const widget = await solve();
-      await goToReview();
+      const widget = await reviewWithSolvedChallenge();
       let emitted = false;
       dialog.booked.subscribe(() => (emitted = true));
 

@@ -54,12 +54,13 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
  * {@link requested}. Accessible modal: `role="dialog"` + `aria-modal`, a focus trap, ESC / backdrop
  * / close-button dismiss, and focus returns to the triggering tile (handled by the parent).
  *
- * <p>The create is fenced by the proof-of-work challenge (ADR-0016), so the panel hosts the shared
- * widget and waits for its solution before posting. It is mounted once for both steps rather than
- * on Review alone: the widget solves when the surrounding form is focused, so hosting it here means
- * the ~1–2 s of work happens while the tourist fills in their details. A refusal names the reason
- * and restarts the widget — a spent solution can never be retried — and reserves nothing: the fence
- * runs ahead of the controller, so availability is untouched (invariant #2).
+ * <p>The create is fenced by the proof-of-work challenge (ADR-0016), so the Review step hosts the
+ * shared widget and the submit waits for its solution. The solve does not wait for the pay button:
+ * entering Review moves focus to the primary button, inside the same form the widget binds its
+ * on-focus solve to, so the work overlaps the tourist reading the summary and terms. A refusal
+ * names the reason and restarts the widget — a spent solution can never be retried — and reserves
+ * nothing: the fence runs ahead of the controller, so availability is untouched (invariant #2).
+ * Rationale for Review over Details: RESPONSIBILITIES.md § Platform edge.
  */
 @Component({
   selector: 'app-booking-dialog',
@@ -322,17 +323,15 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
               lead="By continuing"
               class="fine mt-2.5 mb-1 text-[12.5px] leading-[1.45] text-riv-card-ink-soft"
             ></p>
+
+            <app-challenge-widget
+              #challenge
+              class="mt-2.5 mb-1 block"
+              [enabled]="proofOfWork.enabled()"
+              [(payload)]="challengePayload"
+            />
           }
         </div>
-
-        <!-- Mounted once, outside both steps: the widget solves on focus of the closest form, so
-             the work happens while the tourist fills in Details and is done before they pay. -->
-        <app-challenge-widget
-          #challenge
-          class="mx-6 mb-1 block"
-          [enabled]="proofOfWork.enabled()"
-          [(payload)]="challengePayload"
-        />
 
         @if (errorMessage(); as msg) {
           <p

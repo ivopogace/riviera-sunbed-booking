@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { completeDialog, settle } from './support/booking-dialog';
 
@@ -96,6 +97,8 @@ const AWAITING_DETAIL = {
 };
 
 test.beforeEach(async ({ page }) => {
+  // Fence off: the widget is not this file's subject (`booking-challenge.e2e.ts` drives it).
+  await mockChallengeFence(page, 'off');
   await page.route(/\/api\/venues\/1(\?.*)?$/, (route) => route.fulfill({ json: VENUE }));
 });
 
