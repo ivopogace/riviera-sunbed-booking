@@ -30,8 +30,8 @@ When loaded, announce: *"riviera-review-overlay loaded. Adding project-specific 
   control).
 - **Fullstack diff** → both, plus `references/fe-be-contract.md`.
 - **Substrate diff, or a change to a structural test** → no reference file; RV-PROC-2 below
-  is the item; its opening paragraph states the trigger, and nothing else in this file restates
-  the paths. "Only style items applied" is the failure mode it prevents.
+  is the item, and its opening paragraph states the trigger. "Only style items applied" is the
+  failure mode it prevents.
 
 ## Highest-stakes items (call them out every time)
 
@@ -88,7 +88,8 @@ moved line silently falsifies them. Open every path, line range, class and metho
 changed line, plus every citation of anything this diff renamed, moved or deleted.
 **Major** when the diff's own rename broke the pointer, **Minor** for one it merely sat beside.
 
-**b. Every worked example still passes the structural net.** An example is code a session
+**b. Every worked example still holds — code against the structural net, a command against
+its own coverage claims.** An example is code a session
 will copy, so it is held to the same rules as code — `ModularityTests`,
 `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`,
 `JdbcOnlyArchitectureTests`, `DomainPurityArchitectureTests`. Walk it both ways, and the
@@ -98,10 +99,10 @@ breaks is by definition not in the diff. Locate them, then sweep for the new rul
 forbidden set, read out of the test rather than remembered:
 
 ```bash
-grep -rln '^```java' .claude/skills docs CLAUDE.md CONTEXT.md RESPONSIBILITIES.md
+grep -rln '^```java' .claude/skills docs CLAUDE.md frontend/.claude/CLAUDE.md CONTEXT.md RESPONSIBILITIES.md
 # e.g. DomainPurityArchitectureTests' Forbidden list, over the same substrate:
 grep -rnE 'import (org\.springframework|java\.sql|javax\.sql|com\.stripe)' \
-  .claude/skills CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents
+  .claude/skills CLAUDE.md frontend/.claude/CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents
 ```
 
 A research note is a record of what was true when written, not an instruction — skip it wherever

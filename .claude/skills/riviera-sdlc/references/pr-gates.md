@@ -65,7 +65,7 @@ done until this gate has run and its findings are resolved or explicitly deferre
 
    **Pick the review effort by risk class:**
    - **Medium** for a pure move/retype/no-behavior-change slice whose structural net
-     (`ModularityTests` + the ArchUnit rules + the module's own tests) is green.
+     (CLAUDE.md §Commands) and the module's own tests are green.
    - **High (no exceptions)** for any slice touching availability, the booking lifecycle,
      money (payment/payout/refund), or authorization (invariants #2, #8, #9, #13).
    - When unsure, go high. Effort changes the fan-out, never whether the overlay items are walked.
