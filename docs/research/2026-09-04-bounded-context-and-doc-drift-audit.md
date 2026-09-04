@@ -15,6 +15,16 @@ behaviour (the abandoned sweep, the webhook path, the erasure transaction) was *
 executed** — the ITs that cover it need Docker and were not run. Every structural claim below cites
 a file and line; where the code is ambiguous the note says so rather than guessing.
 
+**Amendment — 2026-09-04** (branch `claude/bounded-context-remediation-9nk2v5`, found while writing
+ADR-0018). As published, the TL;DR and the §G-1 heading said *eleven of thirteen* documented
+aggregate roots have no class. That disagreed with §G-1's own table, which enumerates **nine**
+names with no class and two that exist. The accurate figure is **nine of eleven**: `CLAUDE.md`'s
+column named eleven roots, `domain-model.md` §1 drew ten of them (no `CustomerAccount`), and the
+union is eleven distinct names — of which `PayoutLedgerEntry` and `PayoutBatch` exist. Both
+headline figures are corrected below; the table, the evidence and every other finding are
+untouched. The count was the only thing wrong, and the finding it supports is unaffected: the
+vocabulary is unbacked either way. ADR-0018 §6 is the decision that resolved it.
+
 **TL;DR**
 
 - **This is one bounded context with twelve modules.** None of the four language tells fires across
@@ -43,7 +53,7 @@ a file and line; where the code is ambiguous the note says so rather than guessi
 - **The predicted availability leak is refuted**, but the release port's signature is a latent
   hazard — see §G-2.
 - **Fourteen drift items**, concentrated in `docs/architecture/domain-model.md` §3. The largest:
-  eleven of the thirteen documented "aggregate roots" have no class.
+  nine of the eleven documented "aggregate roots" have no class (corrected — see the amendment).
 - **Three of the brief's own premises do not reproduce** at this commit — §0.
 
 ---
@@ -430,7 +440,7 @@ redundant.
 
 Fourteen items, ordered by consequence.
 
-### G-1 · Eleven of thirteen "aggregate roots" have no class
+### G-1 · Nine of eleven "aggregate roots" have no class *(figure corrected — see the amendment)*
 
 `CLAUDE.md:96–115` names an "Aggregate root(s)" column for every module, and
 `domain-model.md:24–76` draws each as `«aggregate root»`. Against the code:
