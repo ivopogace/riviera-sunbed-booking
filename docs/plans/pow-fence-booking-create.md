@@ -48,74 +48,74 @@ token-driven; the dialog adds only spacing utilities — no new token, no `@appl
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the fence is on and a guest posts a booking for a free online set carrying a
+- [x] **AC-1:** Given the fence is on and a guest posts a booking for a free online set carrying a
   solution minted by the real endpoint and solved with the library, when the create runs, then the
   booking row exists and the response is the normal create outcome. *Seam:* `POST /api/bookings` at
   the HTTP edge (the fence is an edge concern; `booking`'s ports are untouched) · *Pinned by:*
   `BookingCreateChallengeIT.createsAGuestBookingWithASolvedChallenge`
-- [ ] **AC-2:** Given the same, but the caller holds a CUSTOMER session, when the create runs, then
+- [x] **AC-2:** Given the same, but the caller holds a CUSTOMER session, when the create runs, then
   it is accepted identically — the verifier has no auth-state branch. *Seam:* `POST /api/bookings`
   with a `SESSION` cookie · *Pinned by:*
   `BookingCreateChallengeIT.createsASignedInCustomerBookingWithASolvedChallenge`
-- [ ] **AC-3:** Given the fence is on, when a create arrives with no / a forged / an expired / an
+- [x] **AC-3:** Given the fence is on, when a create arrives with no / a forged / an expired / an
   already-claimed solution, then it is refused `400` with `CHALLENGE_REQUIRED`, `CHALLENGE_INVALID`,
   `CHALLENGE_EXPIRED`, `CHALLENGE_EXPIRED` respectively, and the `availability`, `booking` and
   `payment` tables are unchanged. *Seam:* `POST /api/bookings` + direct row counts on the three
   tables · *Pinned by:* `BookingCreateChallengeIT.rejectsAMissingHeader`, `.rejectsAForgedSignature`,
   `.rejectsAnExpiredChallenge`, `.rejectsAReplayedSolution`,
   `.aRefusalClaimsNoAvailabilityAndWritesNoBookingOrPayment`
-- [ ] **AC-4:** Given the shipped `riviera.ratelimit.per-ip` create budget, when a single client
+- [x] **AC-4:** Given the shipped `riviera.ratelimit.per-ip` create budget, when a single client
   spends it entirely on challenge-refused creates, then the next create is `429 RATE_LIMITED` — the
   refusal drew from the bucket. *Seam:* `POST /api/bookings` from one fixed `X-Forwarded-For` ·
   *Pinned by:* `BookingCreateChallengeIT.aChallengeFailureStillSpendsThePerIpCreateBudget`
-- [ ] **AC-5:** Given `riviera.altcha.enabled=false`, when a create arrives with no header, then it
+- [x] **AC-5:** Given `riviera.altcha.enabled=false`, when a create arrives with no header, then it
   reaches the controller unchanged. *Seam:* `POST /api/bookings` in the web slice · *Pinned by:*
   `AltchaDisabledTest.bookingCreateAdmitsWithoutAHeader`
-- [ ] **AC-6:** Given each fenced route including `/api/bookings`, when the port answers
+- [x] **AC-6:** Given each fenced route including `/api/bookings`, when the port answers
   missing / INVALID / EXPIRED, then the filter writes the matching `400` problem body with no
   `SESSION` cookie. *Seam:* the filter over each fenced route in the `@WebMvcTest` slice ·
   *Pinned by:* `ChallengeVerificationFilterTest` (its `fencedRoutes()` source gains `/api/bookings`)
-- [ ] **AC-7:** Given the diff, when the structural net runs, then `booking` imports nothing new and
+- [x] **AC-7:** Given the diff, when the structural net runs, then `booking` imports nothing new and
   the root reaches `challenge` only through `api`/`vocabulary`. *Seam:*
   `ApplicationModules.of(PlatformApplication.class).verify()` · *Pinned by:* `ModularityTests`,
   `JdbcOnlyArchitectureTests`, `PackageShapeArchitectureTests`
-- [ ] **AC-8:** Given the fence is on and the widget has verified, when the tourist submits the
+- [x] **AC-8:** Given the fence is on and the widget has verified, when the tourist submits the
   Review step, then the create request carries the solution in `X-Altcha-Payload`. *Seam:* the
   `POST /api/bookings` request observed through `HttpTestingController` · *Pinned by:*
   `booking-dialog.spec.ts` › "sends the solved challenge as the fence header on create"
-- [ ] **AC-9:** Given the fence is on, when the create is refused with a challenge code, then the
+- [x] **AC-9:** Given the fence is on, when the create is refused with a challenge code, then the
   dialog renders that rejection's one shared message and asks the widget for a fresh solve, and no
   booking hand-off is emitted. *Seam:* the dialog's rendered error region + the widget wrapper's
   `refresh()` · *Pinned by:* `booking-dialog.spec.ts` › "a challenge rejection names the reason and
   restarts the widget"
-- [ ] **AC-10:** Given `ProofOfWork.enabled()` is `false`, when the dialog renders and submits, then
+- [x] **AC-10:** Given `ProofOfWork.enabled()` is `false`, when the dialog renders and submits, then
   no widget is in the DOM and the create carries no fence header. *Seam:* the dialog's DOM +
   the `POST /api/bookings` request headers · *Pinned by:* `booking-dialog.spec.ts` › "the kill
   switch hides the widget and the create carries no header"
-- [ ] **AC-11:** Given the mocked API, when the Instant-Book and same-day journeys run in Chromium,
+- [x] **AC-11:** Given the mocked API, when the Instant-Book and same-day journeys run in Chromium,
   then the widget is visible on checkout, really solves against the mocked challenge route, and the
   create carries a decoded solution counter; and a refusal renders its message with a fresh
   challenge, while the kill switch hides the widget and booking still completes. *Seam:* the
   rendered `/venues/1` checkout route + the mocked `POST /api/bookings` request headers ·
   *Pinned by:* `frontend/e2e/booking-flow.e2e.ts`, `frontend/e2e/same-day-booking.e2e.ts`,
   `frontend/e2e/booking-challenge.e2e.ts`
-- [ ] **AC-12:** Given a real backend, when a guest books a free online set, then the widget solves a
+- [x] **AC-12:** Given a real backend, when a guest books a free online set, then the widget solves a
   real challenge, the edge verifies and claims its nonce, and the booking is created. *Seam:* the
   running SPA against `POST /api/bookings` · *Pinned by:*
   `frontend/e2e/real-backend/booking-challenge.e2e.ts`
-- [ ] **AC-13:** Given the checkout step with the widget mounted, when the a11y and contrast specs
+- [x] **AC-13:** Given the checkout step with the widget mounted, when the a11y and contrast specs
   run, then axe reports no serious violations and every widget ink pair clears AA on the dialog
   glass in all three themes. *Seam:* the rendered dialog (jsdom axe) + the composited dialog-glass
   surface maths · *Pinned by:* `booking-dialog.a11y.spec.ts`, `booking-dialog.contrast.spec.ts`,
   and the axe runs inside `booking-flow.e2e.ts` / `booking-challenge.e2e.ts`
-- [ ] **AC-14:** Given `/legal/privacy`, when it renders, then it shows a security-measures section
+- [x] **AC-14:** Given `/legal/privacy`, when it renders, then it shows a security-measures section
   stating the self-hosted proof-of-work challenge sets no cookie, does no fingerprinting and sends
   nothing to a third party, and that passwords are checked against length and a blocklist only —
   carrying a visible draft / legal-review-pending marker — and its contrast holds. *Seam:* the
   rendered `/legal/privacy` route · *Pinned by:* `privacy-policy.spec.ts` ›
   "states the security measures, marked for legal review", `legal-pages.contrast.spec.ts`,
   `frontend/e2e/legal-pages.e2e.ts`
-- [ ] **AC-15:** Given `RESPONSIBILITIES.md` § *Platform edge*, when the fenced-route list is read,
+- [x] **AC-15:** Given `RESPONSIBILITIES.md` § *Platform edge*, when the fenced-route list is read,
   then it names booking create alongside the three auth routes and no longer says booking create
   "joins in its own slice". *Seam:* the document itself · *Pinned by:* review (RV-PROC) — prose has
   no test; `riviera-docs-freshness` at close-out re-checks the count wording.
@@ -145,13 +145,13 @@ fence adds refusals ahead of it and adds no branch inside it.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Where the widget mounts trades the solve's head start against the dialog's above-the-fold budget | high | med | **Resolved by the maintainer**: Review step. Mounting on Details was measured to push the panel from 638 px to 714 px at the 700 px viewport, clamping it and breaking the #188/#186 above-the-fold guard. On Review the solve still starts a step early — advancing focuses the primary button inside the widget's form, and the wrapper's `onLoad` starts a solve when the form already holds focus — so it overlaps reading the summary and terms; `solved()` awaits it at submit as a backstop | maintainer | closed — see the Resolved note below |
-| R-2 | Unit specs that render `BookingDialog` / `VenueMap` acquire a live `httpResource` probe of `/api/auth/challenge`, so `httpMock.verify()` fails on an unexpected request | high | med | Provide a `FakeProofOfWork` in those four specs (the `auth-page.spec.ts` precedent) — no HTTP at all — and `vi.mock('altcha')` + `defineFakeAltchaElement` wherever the fence is switched on | agent | open |
-| R-3 | Every mocked e2e that opens the booking dialog now renders a widget whose challenge fetch is unrouted, so the probe errors, reads the fence as **on**, and the journey hangs on an unsolvable widget | high | high | Route the challenge endpoint in every affected spec: `mockChallengeFence(page, 'on')` where the fence is the subject, `'off'` where it is noise. Enumerate the population by mechanism (specs that open the dialog), not by resemblance — see the Generalization-audit log | agent | open |
-| R-4 | A challenge refusal returns `400`, which the dialog's existing `bookingErrorOf` maps to `UNKNOWN` — the tourist gets "Something went wrong" and retries into a second refusal forever | med | high | Widen `bookingErrorOf` to `BookingErrorCode \| ChallengeRejection` via `challengeRejection(problemCodeOf(error)) ?? …` (the `customer-auth.ts` shape), and have the dialog call `refresh()` on any challenge rejection so the retry has a fresh solution | agent | open |
-| R-5 | Full-suite-only failure: `BookingCreateChallengeIT` shares the per-IP create bucket with every other MockMvc booking test in the cached context and 429s mid-run | med | high | Every request uses `SessionLoginSupport.uniqueClientIp()` except AC-4's, which pins one address deliberately and owns it for the whole test (`riviera-local-debug` § *full-suite-only failure class*) | agent | open |
-| R-6 | The IT's own `riviera.altcha.cost` override forks the Spring context; a wrong property set makes it either slow (shipped cost 5000) or silently unfenced | low | med | Mirror `OperatorRegisterChallengeIT` exactly: `cost=10` + a known `hmac-secret` in `@TestPropertySource`, so the expired-challenge case can be minted locally | agent | open |
-| R-7 | Error contract drift: the refusal body is written by `SecurityProblemResponses`, not `ApiProblem`, because the filter runs before MVC dispatch | low | low | No new response shape — the three codes and their bodies already ship; `ChallengeVerificationFilterTest` asserts the body per route including the new one (`riviera-java-conventions` §6b) | agent | open |
-| R-8 | Availability regression by accident — the fence sits on the one route that claims a set | low | high | The filter returns before `chain.doFilter`, so `AvailabilityClaim` is never reached on a refusal; AC-3 asserts zero rows in `availability` for the target `(set, date)`. Invariant #2's own pin, `ConcurrentReservationIT`, is untouched and must stay green | agent | open |
+| R-2 | Unit specs that render `BookingDialog` / `VenueMap` acquire a live `httpResource` probe of `/api/auth/challenge`, so `httpMock.verify()` fails on an unexpected request | high | med | Provide a `FakeProofOfWork` in those four specs (the `auth-page.spec.ts` precedent) — no HTTP at all — and `vi.mock('altcha')` + `defineFakeAltchaElement` wherever the fence is switched on | agent | closed — `FakeProofOfWork` in the 4 affected specs; the phase-1 audit row enumerated the population by injection, not by name |
+| R-3 | Every mocked e2e that opens the booking dialog now renders a widget whose challenge fetch is unrouted, so the probe errors, reads the fence as **on**, and the journey hangs on an unsolvable widget | high | high | Route the challenge endpoint in every affected spec: `mockChallengeFence(page, 'on')` where the fence is the subject, `'off'` where it is noise. Enumerate the population by mechanism (specs that open the dialog), not by resemblance — see the Generalization-audit log | agent | closed — 10 specs routed; the review gate caught one file the first pass judged by resemblance (F-4), now fixed |
+| R-4 | A challenge refusal returns `400`, which the dialog's existing `bookingErrorOf` maps to `UNKNOWN` — the tourist gets "Something went wrong" and retries into a second refusal forever | med | high | Widen `bookingErrorOf` to `BookingErrorCode \| ChallengeRejection` via `challengeRejection(problemCodeOf(error)) ?? …` (the `customer-auth.ts` shape), and have the dialog call `refresh()` on any challenge rejection so the retry has a fresh solution | agent | closed — all three codes pinned in `booking-dialog.spec.ts` and `booking.service.spec.ts` |
+| R-5 | Full-suite-only failure: `BookingCreateChallengeIT` shares the per-IP create bucket with every other MockMvc booking test in the cached context and 429s mid-run | med | high | Every request uses `SessionLoginSupport.uniqueClientIp()` except AC-4's, which pins one address deliberately and owns it for the whole test (`riviera-local-debug` § *full-suite-only failure class*) | agent | closed — the IT's own `@TestPropertySource` gives it a private context, so its budget-draining test shares no bucket map; confirmed at the review gate |
+| R-6 | The IT's own `riviera.altcha.cost` override forks the Spring context; a wrong property set makes it either slow (shipped cost 5000) or silently unfenced | low | med | Mirror `OperatorRegisterChallengeIT` exactly: `cost=10` + a known `hmac-secret` in `@TestPropertySource`, so the expired-challenge case can be minted locally | agent | closed — `cost=10` + a known secret, mirroring `OperatorRegisterChallengeIT` |
+| R-7 | Error contract drift: the refusal body is written by `SecurityProblemResponses`, not `ApiProblem`, because the filter runs before MVC dispatch | low | low | No new response shape — the three codes and their bodies already ship; `ChallengeVerificationFilterTest` asserts the body per route including the new one (`riviera-java-conventions` §6b) | agent | closed — no new response shape; the three codes are asserted per route in `ChallengeVerificationFilterTest` |
+| R-8 | Availability regression by accident — the fence sits on the one route that claims a set | low | high | The filter returns before `chain.doFilter`, so `AvailabilityClaim` is never reached on a refusal; AC-3 asserts zero rows in `availability` for the target `(set, date)`. Invariant #2's own pin, `ConcurrentReservationIT`, is untouched and must stay green | agent | closed — `aRefusalClaimsNoAvailabilityAndWritesNoBookingOrPayment` counts zero rows in all three tables; `ConcurrentReservationIT` untouched and green |
 | R-9 | Flyway version collision | none | — | No migration in this slice; `V49` is the highest on `main` and no PR is open | agent | closed — no schema change |
 
 ## Open questions / Assumptions
@@ -274,19 +274,29 @@ the widget, whose skin is already token-driven.
 
 ## Execution status
 
-**Stage pointer:** `review gate — findings being fixed`
+**Stage pointer:** `merge close-out — merged via PR #923`
 
-**Next action:** finish the review gate's remaining agents, then the close-out commit (F-1:
-tick the AC / phase-step / self-review boxes, cite `merged via PR #923`) and merge.
+**Next action:** none — the slice is done. Merged via PR #923; issue #907 closed by it, and the
+epic #903 checklist ticked with that PR number.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Fence booking create at the edge (backend) | ✅ | (this commit) |
-| 1 — The widget on checkout and the header on create (frontend) | ✅ | (this commit) |
-| 2 — Playwright: the two journeys, the dedicated spec, the real solve | ✅ | (this commit) |
-| 3 — Privacy-policy security measures + `RESPONSIBILITIES.md` | ✅ | (this commit) |
+| 0 — Fence booking create at the edge (backend) | ✅ | 22daf13 |
+| 1 — The widget on checkout and the header on create (frontend) | ✅ | f338fb9 |
+| 2 — Playwright: the two journeys, the dedicated spec, the real solve | ✅ | 4b6d53f |
+| 3 — Privacy-policy security measures + `RESPONSIBILITIES.md` | ✅ | 9e44cd1 |
+| 4 — Review-gate fixes (F-2, F-3, F-4) | ✅ | 7e923b4, 834a93b, 9e7ce2a |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Gate outcomes.** *CI:* green on every head (backend build+test, frontend lint/test/build + the
+mocked Playwright suite, diff-scoped hygiene, CodeQL both languages). *Review gate:* ran in full at
+high effort via `code-review:code-review` rung 1 with `riviera-review-overlay` layered on — six banks
+walked; three findings (F-2, F-3, F-4), all fixed on this branch, recorded in the PR's review
+comment. The three Blocker-class overlay items (RV-BE-1 availability, RV-CT-3/RV-BE-7 payment,
+RV-BE-9 BOLA) were checked explicitly and are clean. *Sonar gate:* read from the API, not the badge —
+0 issues, 0 hotspots, 0 duplicated blocks, 97.37% new-code coverage, with `new_lines` = 90 confirming
+a real analysis rather than an unanalyzed zero.
 
 **Findings register**
 
@@ -352,23 +362,23 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 Modify `ChallengeVerificationFilterTest.java`, `AltchaDisabledTest.java` · Create
 `BookingCreateChallengeIT.java`
 
-- [ ] **Step 1: Write the failing tests** — `/api/bookings` into `fencedRoutes()` + `bodyFor`, the
+- [x] **Step 1: Write the failing tests** — `/api/bookings` into `fencedRoutes()` + `bodyFor`, the
   kill-switch case, and `BookingCreateChallengeIT` (guest + customer accept; missing / forged /
   expired / replayed refuse; the three tables stay untouched; the per-IP budget still drains).
   Modelled on `OperatorRegisterChallengeIT` — `cost=10`, a known `hmac-secret`, real solves.
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
   `gradle --no-daemon --console=plain test --tests "*ChallengeVerificationFilterTest*"` → FAIL
   (a solved create reaches the controller instead of being fenced: the missing-header case returns
   the controller's answer, not `CHALLENGE_REQUIRED`).
-- [ ] **Step 3: Minimal implementation** — add `"/api/bookings"` to `FENCED_POSTS` and retire the
+- [x] **Step 3: Minimal implementation** — add `"/api/bookings"` to `FENCED_POSTS` and retire the
   "the remaining public writes join here in their own slices" clause from its one-line comment.
-- [ ] **Step 4: Run them, verify they pass** —
+- [x] **Step 4: Run them, verify they pass** —
   `gradle --no-daemon --console=plain test --tests "*ChallengeVerificationFilterTest*" --tests "*AltchaDisabledTest*"`
   then `--tests "*BookingCreateChallengeIT*"` (one IT class at a time), then the structural net.
-- [ ] **Step 5: Generalization-audit pass** — population: every place that enumerates the fenced
+- [x] **Step 5: Generalization-audit pass** — population: every place that enumerates the fenced
   route set. Record the enumerating command in the log below.
-- [ ] **Step 6: Commit** — `git commit -m "Fence booking create with the proof-of-work challenge (#907)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Fence booking create with the proof-of-work challenge (#907)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -378,22 +388,22 @@ Modify `ChallengeVerificationFilterTest.java`, `AltchaDisabledTest.java` · Crea
 `booking-dialog.a11y.spec.ts`, `booking-dialog.contrast.spec.ts`, `venue-map.spec.ts`,
 `venue-map.a11y.spec.ts`
 
-- [ ] **Step 1: Write the failing tests** — AC-8/9/10 in `booking-dialog.spec.ts` (with
+- [x] **Step 1: Write the failing tests** — AC-8/9/10 in `booking-dialog.spec.ts` (with
   `FakeProofOfWork`, `vi.mock('altcha')` and `defineFakeAltchaElement`), the header + widened mapper
   in `booking.service.spec.ts`, the widget's ink pairs on the dialog glass in the contrast spec.
-- [ ] **Step 2: Run them, verify they fail** — `npm test -- booking-dialog booking.service` → FAIL
+- [x] **Step 2: Run them, verify they fail** — `npm test -- booking-dialog booking.service` → FAIL
   (no widget in the DOM; the create request carries no `X-Altcha-Payload`).
-- [ ] **Step 3: Minimal implementation** — `createBooking(request, terms?, challenge?)` with
+- [x] **Step 3: Minimal implementation** — `createBooking(request, terms?, challenge?)` with
   `challengeHeaders`; `bookingErrorOf` → `challengeRejection(problemCodeOf(error)) ?? …`; the dialog
   injects `ProofOfWork`, mounts `<app-challenge-widget>` once inside the form (R-1), awaits
   `solved()` before the create, and on `isChallengeRejection` shows the shared message and calls
   `refresh()`.
-- [ ] **Step 4: Run them, verify they pass** — `npm test`, then `npm run lint` and
+- [x] **Step 4: Run them, verify they pass** — `npm test`, then `npm run lint` and
   `npm run format:check`.
-- [ ] **Step 5: Generalization-audit pass** — population: every unit spec that renders a component
+- [x] **Step 5: Generalization-audit pass** — population: every unit spec that renders a component
   which now injects `ProofOfWork` (R-2). Enumerate by mechanism, not by name.
-- [ ] **Step 6: Commit** — `git commit -m "Host the proof-of-work widget on booking checkout (#907)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Host the proof-of-work widget on booking checkout (#907)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -404,19 +414,19 @@ Modify `ChallengeVerificationFilterTest.java`, `AltchaDisabledTest.java` · Crea
 `same-day-booking.e2e.ts`, `support/auth-mocks.ts`, `support/booking-dialog.ts`, and every mocked
 spec that opens the booking dialog (R-3)
 
-- [ ] **Step 1: Write the failing specs** — the widget visible on checkout, a real Chromium solve,
+- [x] **Step 1: Write the failing specs** — the widget visible on checkout, a real Chromium solve,
   the decoded counter on the create, each refusal's message + fresh challenge, the kill switch.
-- [ ] **Step 2: Run them, verify they fail** —
+- [x] **Step 2: Run them, verify they fail** —
   `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- booking-challenge` → FAIL.
-- [ ] **Step 3: Minimal implementation** — wire `mockChallengeFence` through the affected specs and
+- [x] **Step 3: Minimal implementation** — wire `mockChallengeFence` through the affected specs and
   the two journeys; teach `completeDialog` to await the widget when the fence is on.
-- [ ] **Step 4: Run them, verify they pass** — the full mocked suite
+- [x] **Step 4: Run them, verify they pass** — the full mocked suite
   (`PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`), since R-3's population
   spans it. The real-backend spec is local-only and never runs in CI.
-- [ ] **Step 5: Generalization-audit pass** — population: every mocked spec that opens the booking
+- [x] **Step 5: Generalization-audit pass** — population: every mocked spec that opens the booking
   dialog. Record the enumerating command.
-- [ ] **Step 6: Commit** — `git commit -m "Cover the fenced booking checkout end to end (#907)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Cover the fenced booking checkout end to end (#907)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -426,19 +436,19 @@ spec that opens the booking dialog (R-3)
 `legal-pages.contrast.spec.ts` (if a new ink pair appears), `frontend/e2e/legal-pages.e2e.ts`,
 `RESPONSIBILITIES.md`
 
-- [ ] **Step 1: Write the failing test** — `privacy-policy.spec.ts` asserts the section exists,
+- [x] **Step 1: Write the failing test** — `privacy-policy.spec.ts` asserts the section exists,
   names the three "nots" (no cookie, no fingerprinting, no third party) and the password rule, and
   carries a visible legal-review marker.
-- [ ] **Step 2: Run it, verify it fails** — `npm test -- privacy-policy` → FAIL.
-- [ ] **Step 3: Minimal implementation** — the section in `privacy-policy.html` (same card-glass
+- [x] **Step 2: Run it, verify it fails** — `npm test -- privacy-policy` → FAIL.
+- [x] **Step 3: Minimal implementation** — the section in `privacy-policy.html` (same card-glass
   section shape as its siblings), a line in the component Javadoc, and the `RESPONSIBILITIES.md`
   fenced-route sentence.
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- privacy-policy legal-pages`, then
+- [x] **Step 4: Run it, verify it passes** — `npm test -- privacy-policy legal-pages`, then
   `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- legal-pages`.
-- [ ] **Step 5: Generalization-audit pass** — population: every substrate doc that enumerates the
+- [x] **Step 5: Generalization-audit pass** — population: every substrate doc that enumerates the
   fenced routes (`riviera-docs-freshness`'s counting sweep for "the three auth routes").
-- [ ] **Step 6: Commit** — `git commit -m "Disclose the proof-of-work challenge on the draft privacy policy (#907)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Disclose the proof-of-work challenge on the draft privacy policy (#907)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -458,33 +468,33 @@ spec that opens the booking dialog (R-3)
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-4:** `gradle --no-daemon --console=plain test --tests "*BookingCreateChallengeIT*"` → PASS.
-- [ ] **AC-5, AC-6:** `gradle --no-daemon --console=plain test --tests "*AltchaDisabledTest*" --tests "*ChallengeVerificationFilterTest*"` → PASS.
-- [ ] **AC-7:** `gradle --no-daemon --console=plain test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` → PASS.
-- [ ] **AC-8..AC-10, AC-13 (jsdom), AC-14:** `npm test` → PASS.
-- [ ] **AC-11, AC-13 (browser):** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → PASS.
-- [ ] **AC-12:** `npm run test:e2e -- booking-challenge` against a running stack → PASS (local-only).
-- [ ] **AC-15:** the fenced-route sentence in `RESPONSIBILITIES.md` names booking create.
+- [x] **AC-1..AC-4:** `gradle --no-daemon --console=plain test --tests "*BookingCreateChallengeIT*"` → PASS.
+- [x] **AC-5, AC-6:** `gradle --no-daemon --console=plain test --tests "*AltchaDisabledTest*" --tests "*ChallengeVerificationFilterTest*"` → PASS.
+- [x] **AC-7:** `gradle --no-daemon --console=plain test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" --tests "*PackageShapeArchitectureTests*"` → PASS.
+- [x] **AC-8..AC-10, AC-13 (jsdom), AC-14:** `npm test` → PASS.
+- [x] **AC-11, AC-13 (browser):** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → PASS.
+- [x] **AC-12:** `npm run test:e2e -- booking-challenge` against a running stack → PASS (local-only).
+- [x] **AC-15:** the fenced-route sentence in `RESPONSIBILITIES.md` names booking create.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled; the refusal path is proven to claim nothing (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4) — unchanged, and shown to be unchanged.
-- [ ] **Modulith** section filled; `booking` imports nothing new; the root reaches `challenge` only
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled; the refusal path is proven to claim nothing (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4) — unchanged, and shown to be unchanged.
+- [x] **Modulith** section filled; `booking` imports nothing new; the root reaches `challenge` only
       through `api`/`vocabulary` (invariant #11).
-- [ ] **Payment/payout** N/A justified; no PaymentIntent on a refused create (invariants #5, #8, #9).
-- [ ] Refund policy untouched (invariant #10).
-- [ ] Timezone untouched: no new time arithmetic (invariant #6).
-- [ ] Booking codes still absent from logs and problem bodies (invariant #7).
-- [ ] No Flyway migration needed; none added (invariant #12).
-- [ ] **Frontend** standards met; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
+- [x] **Payment/payout** N/A justified; no PaymentIntent on a refused create (invariants #5, #8, #9).
+- [x] Refund policy untouched (invariant #10).
+- [x] Timezone untouched: no new time arithmetic (invariant #6).
+- [x] Booking codes still absent from logs and problem bodies (invariant #7).
+- [x] No Flyway migration needed; none added (invariant #12).
+- [x] **Frontend** standards met; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing
       `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc
       `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
