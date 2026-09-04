@@ -92,20 +92,14 @@ public class BookingCutoff {
 		return serviceDayOpensAt(bookingDate.plusDays(1));
 	}
 
-	/** Whether service day {@code bookingDate} is over ({@code Europe/Tirane}). */
-	public boolean serviceDayHasEnded(LocalDate bookingDate) {
-		return !clock.instant().isBefore(serviceDayEndsAt(bookingDate));
-	}
-
 	/**
-	 * The most recent service day already ended at {@code now} — the set-based form of
-	 * {@link #serviceDayHasEnded}, for a sweep that selects rows by {@code booking_date} rather than
-	 * asking per booking.
+	 * The most recent service day already ended at {@code now}, for a sweep that selects rows by
+	 * {@code booking_date} rather than asking per booking.
 	 *
 	 * <p><strong>Static, and that is the contract:</strong> it is a pure projection of the caller's
 	 * own instant onto the Tirane civil day, so a sweep bounds every arm of one run against one
-	 * reading. An instance method here would read as clock-backed like its neighbour and silently is
-	 * not.
+	 * reading. An instance method here would read as clock-backed like the two-argument
+	 * {@code isBookable} and {@code cancellationWindow} overloads, and silently is not.
 	 */
 	public static LocalDate lastEndedServiceDay(java.time.Instant now) {
 		return LocalDate.ofInstant(now, TIRANE).minusDays(1);
