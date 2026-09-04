@@ -38,7 +38,8 @@ self-provision there and the full test task can OOM the sandbox.
 ./gradlew build                        # compile + full test suite + JaCoCo
 ./gradlew test --tests "*ClassName*"   # one test class
 ./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" \
-  --tests "*PackageShapeArchitectureTests*" --tests "*DomainPurityArchitectureTests*"
+  --tests "*PackageShapeArchitectureTests*" --tests "*DomainPurityArchitectureTests*" \
+  --tests "*PublishedSurfacePlacementArchitectureTests*"
                                        # the structural net — run after any backend structure change
 ./gradlew bootRun                      # run the API on :8080
 ```

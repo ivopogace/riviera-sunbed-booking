@@ -44,10 +44,19 @@ else ask for the range.
 2. **Grep the substrate — twice: once for what got renamed, once for what got counted.**
 
    **2a — the rename/removal grep.** For every renamed/removed identifier or superseded
-   mechanism, grep the substrate-doc set for the OLD name/wording
-   (`grep -rn "<old>" CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents docs/design .claude/skills`).
+   mechanism, grep the substrate-doc set for the OLD name/wording — every file the map
+   above names, which is wider than the set one thinks of first:
+
+   ```bash
+   grep -rn "<old>" CLAUDE.md frontend/.claude/CLAUDE.md CONTEXT.md RESPONSIBILITIES.md \
+     README.md CONTRIBUTING.md docs/adr docs/agents docs/design docs/deploy docs/runbooks \
+     .claude/skills
+   ```
+
    A hit in a historical record (an old plan doc, a PR body, an ADR's history section) is
-   fine; a hit in a stated present-tense fact is a finding.
+   fine; a hit in a stated present-tense fact is a finding. `platform/src` is deliberately
+   absent — source prose is step 2b's sweep — and so is `docs/plans`, which is history by
+   construction.
 
    **2b — the counting sweep.** Trigger: this slice made the **Nth** instance of something
    that previously had N−1 — a listener, a metric/counter, an event, a module, a profile, a
