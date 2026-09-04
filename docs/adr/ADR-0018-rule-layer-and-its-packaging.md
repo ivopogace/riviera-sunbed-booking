@@ -99,8 +99,9 @@ its service; all nine are.
 `BookingCutoff` is where the codebase already defends this line in prose. Its one static method
 carries a paragraph explaining why it is static while its neighbours are clock-backed: "**Static,
 and that is the contract:** it is a pure projection of the caller's own instant onto the Tirane
-civil day … An instance method here would read as clock-backed like its neighbour and silently is
-not" (`booking/application/BookingCutoff.java:105–108`). That paragraph is this decision applied
+civil day … An instance method here would read as clock-backed like the two-argument
+`isBookable` and `cancellationWindow` overloads, and silently is not"
+(`booking/application/BookingCutoff.java:99–102`). That paragraph is this decision applied
 one method at a time.
 
 **Consequently `BookingCutoff`, `CancellationPolicy`, `RequestWindows`, `RetentionWindow` and
@@ -209,7 +210,7 @@ A label that cannot go stale because it was never true is worse than no label.
 
 **Move the five `Clock`/port-needing holders into `domain/`, passing time as a parameter
 (rejected).** It would make `domain/` the whole rule layer and simplify §2 to one sentence. But
-`BookingCutoff`'s own Javadoc already rules on this trade-off for its one static method (`:105–108`)
+`BookingCutoff`'s own Javadoc already rules on this trade-off for its one static method (`:99–102`)
 and the answer cuts the other way: a rule that reads clock-backed and silently is not is the worse
 failure. `CancellationPolicy` resolves set facts and venue rates through two `venue::api` ports; it
 is an application service by any reading.
