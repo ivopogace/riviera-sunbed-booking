@@ -29,9 +29,7 @@ public record SetCommand(String rowLabel, int positionNo, String tier, String po
 		if (!POOLS.contains(pool)) {
 			throw new IllegalArgumentException("pool must be one of " + POOLS);
 		}
-		if (priceMinor < 0) {
-			throw new IllegalArgumentException("priceMinor must be >= 0");
-		}
+		VenueFieldValidation.requireNonNegativeMinor(priceMinor, "priceMinor");
 		VenueFieldValidation.requireIsoCurrency(priceCurrency, "priceCurrency");
 		if (gridX < 1 || gridY < 1) {
 			throw new IllegalArgumentException("gridX and gridY must be >= 1");

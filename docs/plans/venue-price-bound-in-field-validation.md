@@ -45,21 +45,21 @@ for `feature/venue-price-bound-in-field-validation`; restarted from `origin/main
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a set placement with a negative `priceMinor`, when the command is
+- [x] **AC-1:** Given a set placement with a negative `priceMinor`, when the command is
   constructed, then it is rejected at the application boundary with
   `IllegalArgumentException` (→ `400 INVALID_REQUEST`, §6b) and no set reaches persistence.
   *Seam:* `venue.application.SetCommand`'s canonical constructor — the validated-intent
   boundary `EditBeachMap#addSet`/`#editSet` consume · *Pinned by:*
   `SetCommandTest.rejectsANegativePrice`
-- [ ] **AC-2:** Given a set placement priced at zero minor units, when the command is
+- [x] **AC-2:** Given a set placement priced at zero minor units, when the command is
   constructed, then it is accepted — the bound is `>= 0`, not `> 0`, matching the V2 CHECK.
   *Seam:* as AC-1 · *Pinned by:* `SetCommandTest.acceptsAZeroPrice`
-- [ ] **AC-3:** Given a row reprice with a negative `priceMinor`, when the command is
+- [x] **AC-3:** Given a row reprice with a negative `priceMinor`, when the command is
   constructed, then it is still rejected — the refactor preserves the existing behavior and
   message. *Seam:* `venue.application.RowPriceCommand`'s canonical constructor, the boundary
   `Venues#repriceRow` consumes · *Pinned by:* `RowPriceCommandTest.rejectsNegativePrice`
   (existing, must stay green unmodified)
-- [ ] **AC-4:** Given the `venue/application/` package, when searched for an inline
+- [x] **AC-4:** Given the `venue/application/` package, when searched for an inline
   `priceMinor < 0` throw, then none remains — the bound is stated once, in
   `VenueFieldValidation`. *Seam:* the package source itself · *Verified by:* the grep in
   *Acceptance-criteria verification*, not a test (a "no such code" claim is not a unit test).
@@ -91,17 +91,21 @@ so the ledger applies and is short.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The refactor silently changes the exception message, altering a `400` body clients may key on | low | med | Message composed as `field + " must be >= 0"` with both callers passing `"priceMinor"` — byte-identical; parity ledger row 1 + both tests assert the throw | claude | open |
-| R-2 | Validation *order* shifts, so a request bad in two fields reports a different field first | low | low | The call replaces the block in place, not hoisted to the top of the constructor; parity ledger row 4 | claude | open |
-| R-3 | A third caller of the money bound exists and is missed, leaving the rule stated twice anyway | low | med | `grep -rn "priceMinor < 0"` over `platform/src` at plan time returned exactly the two known sites; re-run in AC-4 | claude | open |
-| R-4 | Money bound weakened to `<= 0` (rejecting free rows) while touching it — invariant #5 says non-negative, not positive | low | high | AC-2 pins zero as accepted on `SetCommand`; `RowPriceCommandTest.acceptsZeroPrice` already pins it on the sibling | claude | open |
-| R-5 | Merge conflict with an in-flight PR over `venue/application/` | low | low | Intake gate checked #940/#943/#944 — all docs/Javadoc, no overlap; no Flyway version claimed by this slice | claude | open |
+| R-1 | The refactor silently changes the exception message, altering a `400` body clients may key on | low | med | Message composed as `field + " must be >= 0"` with both callers passing `"priceMinor"` — byte-identical; parity ledger row 1 + both tests assert the throw | claude | closed — message identical in the diff |
+| R-2 | Validation *order* shifts, so a request bad in two fields reports a different field first | low | low | The call replaces the block in place, not hoisted to the top of the constructor; parity ledger row 4 | claude | closed — diff shows an in-place substitution |
+| R-3 | A third caller of the money bound exists and is missed, leaving the rule stated twice anyway | low | med | `grep -rn "priceMinor < 0"` over `platform/src` at plan time returned exactly the two known sites; re-run in AC-4 | claude | closed — AC-4 grep clean; generalization audit widened the sweep to every `*Minor` bound |
+| R-4 | Money bound weakened to `<= 0` (rejecting free rows) while touching it — invariant #5 says non-negative, not positive | low | high | AC-2 pins zero as accepted on `SetCommand`; `RowPriceCommandTest.acceptsZeroPrice` already pins it on the sibling | claude | closed — both zero cases green |
+| R-5 | Merge conflict with an in-flight PR over `venue/application/` | low | low | Intake gate checked #940/#943/#944 — all docs/Javadoc, no overlap; no Flyway version claimed by this slice | claude | open — re-check at merge |
 
 ## Open questions / Assumptions
 
+None outstanding.
+
+### Resolved
+
 - **Assumption:** `SetCommandTest`'s new cases belong in that class rather than a new one —
-  the class is already the pin for `SetCommand`'s constructor bounds. — *Owner:* claude ·
-  *Resolves by:* phase 0 (settled by the file itself; no product decision involved)
+  confirmed in phase 0: the class already pins `SetCommand`'s constructor bounds, and its type
+  Javadoc was widened from "the row-label bound" to "the edge bounds" to match.
 
 ## Availability & concurrency (invariant #2)
 
@@ -170,14 +174,14 @@ N/A — no contract change. The exception type and message are preserved byte-fo
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 complete; next is PR (draft) + CI gate`
 
-**Next action:** Phase 0 step 1 — add the two `SetCommandTest` cases and run them green
-against the *existing* inline throw (characterization), before touching any production code.
+**Next action:** Push the branch, open the draft PR (CI fires on `pull_request` only), then
+mark ready for review to make the Review + Sonar gates due.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Pin the bound for both callers, then state it once | ⏳ | |
+| 0 — Pin the bound for both callers, then state it once | ✅ | `<phase-0-sha>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -204,7 +208,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 **Files:** Modify `VenueFieldValidation.java` · `SetCommand.java:32-34` ·
 `RowPriceCommand.java:20-22` · Test `SetCommandTest.java`
 
-- [ ] **Step 1: Write the characterization test** — the coverage gap the issue is really about
+- [x] **Step 1: Write the characterization test** — the coverage gap the issue is really about
 
 ```java
 	@Test
@@ -220,7 +224,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 	}
 ```
 
-- [ ] **Step 2: Run it, verify it PASSES against the inline throw** —
+- [x] **Step 2: Run it, verify it PASSES against the inline throw** —
   `gradle --no-daemon --console=plain test --tests "*SetCommandTest*"` → PASS.
   This is deliberate and is the one honest deviation from red-green: the behavior already
   exists and is correct, it is merely **unverified**. Red would require breaking the guard
@@ -228,7 +232,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
   mean the issue's premise (the rule is stated, just untested) was wrong, and the slice would
   stop and re-plan.
 
-- [ ] **Step 3: State the bound once, and call it from both records**
+- [x] **Step 3: State the bound once, and call it from both records**
 
 ```java
 	/**
@@ -249,16 +253,16 @@ In `SetCommand` and `RowPriceCommand`, the three-line block becomes:
 		VenueFieldValidation.requireNonNegativeMinor(priceMinor, "priceMinor");
 ```
 
-- [ ] **Step 4: Run both command tests, verify they still pass** —
+- [x] **Step 4: Run both command tests, verify they still pass** —
   `gradle --no-daemon --console=plain test --tests "*SetCommandTest*" --tests "*RowPriceCommandTest*"`
   → PASS, then the touched package: `--tests "ai.riviera.platform.venue.*"`.
 
-- [ ] **Step 5: Generalization-audit pass** — the mechanism is "a money bound stated inline in
+- [x] **Step 5: Generalization-audit pass** — the mechanism is "a money bound stated inline in
   a `venue/application/` command record"; enumerate and record below.
 
-- [ ] **Step 6: Commit** — `git commit -m "Fold the non-negative price bound into VenueFieldValidation (#932)"`
+- [x] **Step 6: Commit** — `git commit -m "Fold the non-negative price bound into VenueFieldValidation (#932)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -266,14 +270,15 @@ In `SetCommand` and `RowPriceCommand`, the three-line block becomes:
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-04 | phase 0 — extracting the shared money bound | A minor-units money bound asserted **inline** rather than through a named validator, anywhere in the backend. Enumerated by mechanism (a comparison of a `*Minor` value against `0`), not by resemblance to the two known sites. | `grep -rnE '[A-Za-z]*[Mm]inor\s*(<\|<=\|>\|>=)\s*0' --include=*.java platform/src/main` and `grep -rn 'must be >= 0' --include=*.java platform/src/main` | 5 hits → the 2 in scope, plus `payment/vocabulary/Money.java:11`, `payout/domain/PayoutLedgerEntry.java:24`, `booking/application/cancel/CancelBookingService.java:122` | Fixed the 2 in scope. The other 3 stay: `CancelBookingService` is a refund-**tier** decision, not a bound (not a population member on inspection); `Money` and `PayoutLedgerEntry` are single-site canonical-constructor guards, which ADR-0018 §1 leaves where they are used — and sharing one validator across `venue`/`payment`/`payout` would breach invariant #11. Adopting `payment.vocabulary.Money` for venue's `priceMinor` is a cross-module coupling change #929's classification pass did not ask for; deliberately not opened here. |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 / AC-2:** `gradle --no-daemon --console=plain test --tests "*SetCommandTest*"` → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** `gradle --no-daemon --console=plain test --tests "*RowPriceCommandTest*"` → PASS, file unmodified in the diff. Verified at commit `<sha>`.
-- [ ] **AC-4:** `grep -rn "priceMinor < 0" platform/src/main` → no matches. Verified at commit `<sha>`.
+- [x] **AC-1 / AC-2:** `gradle --no-daemon --console=plain test --tests "*SetCommandTest*"` → PASS (7 tests, 0 failures). Verified at commit `<phase-0-sha>`.
+- [x] **AC-3:** `gradle --no-daemon --console=plain test --tests "*RowPriceCommandTest*"` → PASS (5 tests), and `RowPriceCommandTest.java` is absent from the diff. Verified at commit `<phase-0-sha>`.
+- [x] **AC-4:** `grep -rn "priceMinor < 0" platform/src/main` → no matches. Verified at commit `<phase-0-sha>`.
 
 ## Self-review checklist (before merge / PR)
 

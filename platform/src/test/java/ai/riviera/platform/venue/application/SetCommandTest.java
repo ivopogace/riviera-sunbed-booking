@@ -6,10 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * Pins {@link SetCommand}'s row-label bound: the operator's own words are limited to
+ * Pins {@link SetCommand}'s edge bounds: the row label is limited to
  * {@link VenueFieldValidation#MAX_ROW_LABEL_LENGTH} code points — matching Postgres
- * {@code char_length}, so the V43 CHECK stays the backstop — and a violation is rejected at the
- * application boundary (→ {@code 400 INVALID_REQUEST}, §6b).
+ * {@code char_length}, so the V43 CHECK stays the backstop — and the price is non-negative minor
+ * units (invariant #5), mirroring the V2 {@code set_position_price_check} CHECK. A violation of
+ * either is rejected at the application boundary (→ {@code 400 INVALID_REQUEST}, §6b).
  */
 class SetCommandTest {
 
@@ -42,6 +43,18 @@ class SetCommandTest {
 		String astral = "🌴".repeat(VenueFieldValidation.MAX_ROW_LABEL_LENGTH);
 
 		assertEquals(astral, withRowLabel(astral).rowLabel());
+	}
+
+	@Test
+	void acceptsAZeroPrice() {
+		// Zero is a legitimate price (a free row); the CHECK constraint is price_minor >= 0.
+		assertEquals(0, new SetCommand("A", 1, "PREMIUM", "ONLINE", 0, "EUR", 1, 1).priceMinor());
+	}
+
+	@Test
+	void rejectsANegativePrice() {
+		assertThrows(IllegalArgumentException.class,
+				() -> new SetCommand("A", 1, "PREMIUM", "ONLINE", -1, "EUR", 1, 1));
 	}
 
 	@Test
