@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { mockChallengeFence } from './support/auth-mocks';
 import { completeDialog } from './support/booking-dialog';
 
 /**
@@ -293,6 +294,8 @@ for (const theme of ['porcelain', 'dark'] as const) {
           json: { title: 'Unauthorized', status: 401, code: 'UNAUTHENTICATED' },
         }),
       );
+      // The fence is off here, so this spec stays about the fill state, not the widget.
+      await mockChallengeFence(page, 'off');
       await page.route(/\/api\/auth\/operator\/register$/, (route) =>
         route.fulfill({ status: 202, json: { status: 'PENDING' } }),
       );

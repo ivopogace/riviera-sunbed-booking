@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { Page, Route } from '@playwright/test';
 
 /** RFC-7807 body matching the backend contract — mocks must flush realistic shapes. */
 function problem(status: number, title: string, code: string) {
@@ -148,10 +148,64 @@ export type ChallengeCode = 'CHALLENGE_REQUIRED' | 'CHALLENGE_INVALID' | 'CHALLE
 export interface ChallengeMock {
   /** How many challenges the page fetched so far — a refetch after a refusal shows up here. */
   fetches(): number;
-  /** Make the next register answer this challenge code instead of registering. */
-  refuseNextRegisterWith(code: ChallengeCode): void;
-  /** The `solution.counter` of the last payload the register route accepted, or undefined. */
+  /** Make the next fenced write answer this challenge code instead of doing the work. */
+  refuseNextWith(code: ChallengeCode): void;
+  /** The `solution.counter` of the last payload a fenced route accepted, or undefined. */
   lastSolvedCounter(): number | undefined;
+}
+
+/** A {@link ChallengeMock} plus the screen each fenced route runs before its own handler. */
+interface ChallengeFence extends ChallengeMock {
+  /** The problem to answer with, or undefined when the request may reach the mocked controller. */
+  screen(route: Route): ReturnType<typeof problem> | undefined;
+}
+
+/**
+ * Mock the platform's proof-of-work fence (ADR-0016) on one page: `GET /api/auth/challenge`
+ * issues a low-cost challenge the widget really solves in Chromium, and {@link ChallengeFence.screen}
+ * is what each fenced route calls first — refusing a request without a solution with
+ * `CHALLENGE_REQUIRED`, and recording the counter of one that carries it. `off` answers `204` (the
+ * kill switch), which is what tells the SPA to hide the widget, and screens nothing.
+ *
+ * <p>One implementation, three fenced routes (customer register, operator register,
+ * forgot-password), so a spec cannot meet a fence that behaves differently from its siblings'.
+ */
+export async function mockChallengeFence(
+  page: Page,
+  mode: 'on' | 'off' = 'on',
+): Promise<ChallengeFence> {
+  const fenced = mode === 'on';
+  let fetches = 0;
+  let refuseWith: ChallengeCode | undefined;
+  let lastCounter: number | undefined;
+
+  await page.route(/\/api\/auth\/challenge$/, (route) => {
+    fetches += 1;
+    return fenced
+      ? route.fulfill({ json: challengeJson(), headers: { 'cache-control': 'no-store' } })
+      : route.fulfill({ status: 204 });
+  });
+
+  return {
+    fetches: () => fetches,
+    refuseNextWith: (code) => {
+      refuseWith = code;
+    },
+    lastSolvedCounter: () => lastCounter,
+    screen: (route) => {
+      if (!fenced) {
+        return undefined;
+      }
+      const counter = solvedCounter(route.request().headers()[CHALLENGE_HEADER]);
+      const code = refuseWith ?? (counter === undefined ? 'CHALLENGE_REQUIRED' : undefined);
+      refuseWith = undefined;
+      if (code) {
+        return problem(400, 'Bad Request', code);
+      }
+      lastCounter = counter;
+      return undefined;
+    },
+  };
 }
 
 /**
@@ -222,18 +276,8 @@ export async function mockCustomerAuthApi(
 ): Promise<ChallengeMock> {
   const email = options.email;
   const taken = new Set((options.takenEmails ?? []).map((e) => e.trim().toLowerCase()));
-  const fenced = options.challenge !== 'off';
+  const fence = await mockChallengeFence(page, options.challenge ?? 'on');
   let signedIn = false;
-  let fetches = 0;
-  let refuseWith: ChallengeCode | undefined;
-  let lastCounter: number | undefined;
-
-  await page.route(/\/api\/auth\/challenge$/, (route) => {
-    fetches += 1;
-    return fenced
-      ? route.fulfill({ json: challengeJson(), headers: { 'cache-control': 'no-store' } })
-      : route.fulfill({ status: 204 });
-  });
 
   await page.route(/\/api\/auth\/me$/, (route) =>
     signedIn
@@ -243,14 +287,9 @@ export async function mockCustomerAuthApi(
 
   await page.route(/\/api\/auth\/customer\/register$/, (route) => {
     // The fence runs before the controller: a refusal writes nothing and signs nobody in.
-    if (fenced) {
-      const counter = solvedCounter(route.request().headers()[CHALLENGE_HEADER]);
-      const code = refuseWith ?? (counter === undefined ? 'CHALLENGE_REQUIRED' : undefined);
-      refuseWith = undefined;
-      if (code) {
-        return route.fulfill(problem(400, 'Bad Request', code));
-      }
-      lastCounter = counter;
+    const refusal = fence.screen(route);
+    if (refusal) {
+      return route.fulfill(refusal);
     }
     const body = route.request().postDataJSON() as { email?: string; password?: string };
     const entered = (body.email ?? '').trim().toLowerCase();
@@ -282,13 +321,7 @@ export async function mockCustomerAuthApi(
     return route.fulfill({ status: 204 });
   });
 
-  return {
-    fetches: () => fetches,
-    refuseNextRegisterWith: (code) => {
-      refuseWith = code;
-    },
-    lastSolvedCounter: () => lastCounter,
-  };
+  return fence;
 }
 
 /**
@@ -296,9 +329,10 @@ export async function mockCustomerAuthApi(
  * for the CI-safe suite. One in-memory model backs the whole flow so a single Playwright page
  * can drive it end to end:
  *
- * - `POST /api/auth/operator/register` always answers a byte-identical `202 {status:'PENDING'}`
- *   (non-enumeration, D-8); only a fresh username adds a PENDING row (carrying its password + contact
- *   email). No session is established by the 202 itself — the FE follows up with a normal sign-in.
+ * - `POST /api/auth/operator/register` is fenced by the proof-of-work challenge (ADR-0016) and then
+ *   always answers a byte-identical `202 {status:'PENDING'}` (non-enumeration, D-8); only a fresh
+ *   username adds a PENDING row (carrying its password + contact email). No session is established
+ *   by the 202 itself — the FE follows up with a normal sign-in, which is NOT fenced.
  * - `POST /api/auth/operator/login` accepts the fixed ADMIN account (→ `admin:true`), any PENDING
  *   registration's own password (#694), and any APPROVED operator's own password; everything else
  *   is the generic 401. `/api/auth/me` reflects the session incl. the `admin` flag and the
@@ -311,9 +345,13 @@ export async function mockCustomerAuthApi(
  */
 export async function mockOperatorLifecycleApi(
   page: Page,
-  options: { readonly admin: { readonly username: string; readonly password: string } },
-): Promise<void> {
+  options: {
+    readonly admin: { readonly username: string; readonly password: string };
+    readonly challenge?: 'on' | 'off';
+  },
+): Promise<ChallengeMock> {
   const admin = options.admin;
+  const fence = await mockChallengeFence(page, options.challenge ?? 'on');
   interface PendingOp {
     id: number;
     username: string;
@@ -370,6 +408,11 @@ export async function mockOperatorLifecycleApi(
   );
 
   await page.route(/\/api\/auth\/operator\/register$/, (route) => {
+    // The fence runs before the controller: a refusal registers nobody.
+    const refusal = fence.screen(route);
+    if (refusal) {
+      return route.fulfill(refusal);
+    }
     const body = route.request().postDataJSON() as {
       username?: string;
       password?: string;
@@ -500,6 +543,8 @@ export async function mockOperatorLifecycleApi(
     session = undefined;
     return route.fulfill({ status: 204 });
   });
+
+  return fence;
 }
 
 /**
@@ -549,6 +594,10 @@ export async function mockCustomerSsoApi(
  * set needs no current password. That endpoint's branch order mirrors the server — `RateLimitFilter`
  * spends the per-IP budget before the controller runs, and the controller validates the password policy
  * before it reads the stored credential — so a real reordering cannot leave this suite green.
+ *
+ * <p>Forgot-password is fenced by the proof-of-work challenge (ADR-0016), on by default here as on
+ * the server, so every reset journey in the suite proves the widget ran; the token-redemption routes
+ * are not fenced (the token is already a bearer credential).
  */
 export async function mockCustomerRecoveryApi(
   page: Page,
@@ -570,9 +619,12 @@ export async function mockCustomerRecoveryApi(
     readonly passwordChangeBudget?: number;
     /** Whether the do-not-email list withholds the verification resend. Defaults to deliverable. */
     readonly verificationMailWithheld?: boolean;
+    /** The proof-of-work fence on forgot-password; `off` is the platform's kill switch. */
+    readonly challenge?: 'on' | 'off';
   },
-): Promise<void> {
+): Promise<ChallengeMock> {
   const { email, validToken } = options;
+  const fence = await mockChallengeFence(page, options.challenge ?? 'on');
   let password = options.initialPassword;
   let signedIn = options.signedIn ?? false;
   let emailVerified = options.emailVerified ?? false;
@@ -631,9 +683,11 @@ export async function mockCustomerRecoveryApi(
     return route.fulfill({ status: 204 });
   });
 
-  await page.route(/\/api\/auth\/customer\/forgot-password$/, (route) =>
-    route.fulfill({ status: 204 }),
-  );
+  await page.route(/\/api\/auth\/customer\/forgot-password$/, (route) => {
+    // The fence runs before the controller: a refusal is decided without looking at the email.
+    const refusal = fence.screen(route);
+    return route.fulfill(refusal ?? { status: 204 });
+  });
 
   await page.route(/\/api\/auth\/customer\/reset-password$/, (route) => {
     const body = route.request().postDataJSON() as { token?: string; newPassword?: string };
@@ -663,4 +717,6 @@ export async function mockCustomerRecoveryApi(
     signedIn = false;
     return route.fulfill({ status: 204 });
   });
+
+  return fence;
 }

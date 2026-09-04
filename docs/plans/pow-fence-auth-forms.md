@@ -252,16 +252,16 @@ no new token, no `@apply`).
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2 — e2e)`
+**Stage pointer:** `implement (phase 3 — docs) → PR ready for review`
 
-**Next action:** extend `e2e/support/auth-mocks.ts` with the fence on the operator-lifecycle and
-recovery mocks, then write the two mocked journeys and the real-backend spec.
+**Next action:** name the three fenced auth routes in `RESPONSIBILITIES.md` § *Platform edge*, run
+`riviera-docs-freshness`, then mark PR #922 ready and run the review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Backend: fence the two routes + repair the existing ITs | ✅ | (this commit) |
 | 1 — Frontend: services, both pages, unit + a11y/contrast specs | ✅ | (this commit) |
-| 2 — e2e: mocked fence handles + both suites | | |
+| 2 — e2e: mocked fence handles + both suites | ✅ | (this commit) |
 | 3 — Docs + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -314,7 +314,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/auth/forgot-password.a11y.spec.ts` — new.
 - `frontend/e2e/support/auth-mocks.ts` — the fence in `mockOperatorLifecycleApi` +
   `mockCustomerRecoveryApi`, exposing the shared `ChallengeMock` handle.
-- `frontend/e2e/support/pages/operator-sign-in.page.ts` — widget locators.
+- `frontend/e2e/support/pages/operator-sign-in.page.ts` — widget locators + the register gesture.
+- `frontend/e2e/fixed-fill-state-skins.e2e.ts` — its hand-rolled operator-register routes turn the
+  fence off, so the spec stays about the fill state.
 - `frontend/e2e/operator-register-challenge.e2e.ts` — new (AC-8).
 - `frontend/e2e/forgot-password-challenge.e2e.ts` — new (AC-8).
 - `frontend/e2e/customer-auth-challenge.e2e.ts` — the "no widget in this slice" assertion retired.
@@ -408,6 +410,7 @@ Test `ChallengeVerificationFilterTest.java`, new `OperatorRegisterChallengeIT`,
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-04 | phase 2 — the fence reached two more mocked routes | every mocked e2e spec that POSTs to a fenced route (whether through a shared mock or its own `page.route`) | `grep -rln "operator/register\|forgot-password\|customer/register" frontend/e2e` | 10 files | the three stateful mocks now share one `mockChallengeFence` (so no spec can meet a fence that behaves unlike its siblings'); `fixed-fill-state-skins.e2e.ts` hand-rolls its own routes and had no challenge route at all, so it now installs the fence explicitly **off**; the rest go through a shared mock and needed nothing |
 | 2026-09-04 | phase 0 — the fenced set grew | every backend test that POSTs to a route in `FENCED_POSTS` | `grep -rn "operator/register\|forgot-password" platform/src/test --include=*.java` | 16 hits over 12 files | 8 ITs now send `SessionLoginSupport.solvedChallenge(mvc)`; `RateLimitFilterTest` + `EndpointRoleGateCoverageTest` need nothing (both pin `riviera.altcha.enabled=false`); `MyAccountControllerTest` was a comment hit only; `AltchaDisabledTest` gained a kill-switch case per new route |
 
 ---
