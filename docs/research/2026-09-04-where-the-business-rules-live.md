@@ -420,6 +420,16 @@ authoritative one and the first is a fast path — a defensible arrangement — 
 untyped `String` duplicated across a module boundary, where the same codebase publishes a typed
 record to avoid passing a bare `long` (first note, §H-5).
 
+*Correction, 2026-09-04 (#929's `venue/application/` pass).* **The token is declared in three
+modules, not two.** The third is in the module that owns the concept:
+`venue/application/SetCommand:18` — `private static final Set<String> POOLS = Set.of("ONLINE",
+"WALK_IN")` — and `venue/api/SetBookingFacts:24` hands the token to `booking` as a bare `String`
+with the two legal values written out in prose. The sharpest form of the finding is now internal to
+`venue`: its sibling field went the other way, `VenueFieldValidation:23–26` deriving the
+booking-mode tokens from the typed `venue/vocabulary/BookingMode` enum *"so the validator, the enum,
+and the CHECK stay in one source of truth"*, while `pool` has no type at all. The rest of the entry
+stands; only the count and the ownership reading change.
+
 ### D5 · The booking transition table is stated twice, in neither Java nor one place
 
 `booking_status_check` (V5/V19/V37) enumerates the nine legal *states*; the eleven `WHERE status =`
@@ -441,6 +451,16 @@ duplication deliberate.
 `frontend/src/app/booking/cancellation-terms-note.ts:32–38` switches on the server-supplied
 `CancellationWindow` to choose copy, and no TypeScript applies a bps figure to an amount — invariant
 #10 holds across the stack.
+
+*Extended, 2026-09-04 (#929).* The frontend sweep has a second answer, in `venue`: the layout maxima
+are stated in Java (`LayoutCommand.MAX_SETS = 26 * 40`) and again in TypeScript
+(`frontend/src/app/operator/beach-cell.ts:9–10`, `MAX_ROWS = 26` / `MAX_COLS = 40`), and the
+row-label bound a third time as `layout-editor.html:159`'s `maxlength="40"`. The frontend states the
+relationship correctly — *"the layout maxima the server enforces, published once so no grid clamps
+differently"* — and nothing pins either figure against the backend's; the shapes even differ, the
+server's bound being the product. Unlike D1 this is a bound restated rather than a rule re-derived,
+and the server stays the enforcing side, so it ranks below D4. No rule *calculation* crosses into
+TypeScript anywhere: that half of the sweep is unchanged.
 
 ### The ranking
 
@@ -472,12 +492,17 @@ to unify, with the reason written down.
 
 ## F. Verdict, per module
 
-**Coverage caveat.** The brief scoped the branch classification to `booking/application/`, and §B is
-exhaustive there. For the other modules the verdict below rests on a branch census of each
-`application/` package plus reading the rule-holders it named — firm for `availability`, `customer`,
-`operator` and `review`, which are small; **provisional for `venue`**, whose
-`VenueAdminService` (314 lines, 28 branches) was read only around its layout guards and was not
-classified branch-by-branch.
+**Coverage caveat — lifted for `venue`, 2026-09-04.** The brief scoped the branch classification to
+`booking/application/`, and §B is exhaustive there. For the other modules the verdict below rests on
+a branch census of each `application/` package plus reading the rule-holders it named — firm for
+`availability`, `customer`, `operator` and `review`, which are small. `venue` was **provisional**,
+its `VenueAdminService` (314 lines, 28 branches) read only around its layout guards. It has since
+been classified branch-by-branch — all 14 branch-carrying files of `venue/application/`, against
+`e115733` — in `2026-09-04-venue-application-branch-classification.md` (issue #929). **The verdict
+stands and is now firm**; the `venue` row below is updated with the fuller evidence. Two figures
+elsewhere in this note change as a result, both noted in place: §E/D4's pool-token count (two
+statements → **three**), and §E's "not duplicated (checked and clear)" sweep of the frontend, which
+now has a second answer (the layout maxima).
 
 | Module | Verdict | Evidence |
 |---|---|---|
@@ -486,7 +511,7 @@ classified branch-by-branch.
 | `customer` | **Legitimately thin** — absence is correct | Retention is a `Period` in `RetentionWindow` plus a SQL predicate reached through `GuestBookingHistory`; the canonical e-mail form is `vocabulary/Emails`. Nothing displaced. |
 | `operator` | **Legitimately thin** — absence is correct | `assertOwns` is four lines over a row; the lifecycle is guarded `UPDATE … WHERE status = :expected` (`JdbcOperators:207, 246`). `OperatorStatus`'s Javadoc states the placement decision: *"each status predicate lives with its owner."* |
 | `review` | **Legitimately thin — and the benchmark** | Seven `domain/` types, and the services **call** them rather than re-deriving: `ReviewGate.stateOf` is invoked from both `ReviewLifecycleService:121` and `ReviewEligibilityService:46`; `Stars.isValid` from `ReviewLifecycleService:55, 72`. This is the direct contrast with `booking`'s R7/R14/R20. |
-| `venue` | **Legitimately thin** (provisional) | One `domain/` file, but `VenueFieldValidation` (103 lines, static-only, package-private) is a named shared rule-holder in `application/` used by both command records *"so the two enforce the same invariants from one place — no duplicated validation block"*, and it names its DB counterparts. The layout guards (`hasLiveHold`, `isLivelyClaimed`, `isLivelyClaimedOrEverBooked`) are named private predicates with rationale, not inline conditions. |
+| `venue` | **Legitimately thin** (firm — classified branch-by-branch, #929) | One `domain/` file, but **six** named rule-holders in `application/`: `VenueFieldValidation` (used by both command records *"so the two enforce the same invariants from one place — no duplicated validation block"*, naming its DB counterparts), `LayoutCommand`, `SetPlacement`, `PhotoProcessor`, `VenueCreationProperties`, and the layout guards (`hasLiveHold`, `isLivelyClaimed`, `isLivelyClaimedOrEverBooked`) as named private predicates with rationale. **13 of 21 rules have a named home** against `booking`'s 8 of 21; `VenueAdminService`'s 28 branches are mostly concurrency control (the `set_version` token, lock-before-probe) reacting to statements, not rule. Exactly one homeless rule passes all four §D clauses — `priceMinor >= 0`, stated at `SetCommand:32` and `RowPriceCommand:20`, one of the two untested. One near-miss passes three of four (a row label names one row, `VenueAdminService:240` ↔ `LayoutCommand.splitsRowLabel`, kinship named, no DB twin possible). The other six fail clause (b). |
 | `payment` | **Legitimately thin** | `RefundService` carries 2 branches in 76 lines; `PaymentStatus` mirrors the CHECK and `RefundLifecycle` holds the one predicate that is a choice. The rest is Stripe protocol, which is not domain rule. |
 | `payout` | **Legitimately thin — the strongest domain layer after `review`** | 6 files, 202 lines, holding the commission formula once (`CommissionSplit`) for two callers, and the proportional-reversal arithmetic in `PayoutLedgerEntry`. `PayoutReportService` carries 4 branches in 112 lines. |
 | `notification` | **Legitimately thin** — no domain rule to hold | Its subject is transport, suppression and retry. The one policy value, `MailResubmissionWindow`, is a named record in `application/` — the same pattern as `RefundResubmissionWindow`. |
