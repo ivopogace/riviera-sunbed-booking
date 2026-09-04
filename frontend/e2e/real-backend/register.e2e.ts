@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { CustomerAuthPage } from '../support/pages/customer-auth.page';
+import { uniqueSuffix } from './support/operator';
 
 /**
  * The one end-to-end proof of widget-against-verifier: a tourist registers on the real backend by
@@ -11,7 +12,7 @@ import { CustomerAuthPage } from '../support/pages/customer-auth.page';
  */
 test('a tourist registers by solving a real proof-of-work challenge', async ({ page }) => {
   const auth = new CustomerAuthPage(page);
-  const email = `e2e-register-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
+  const email = `e2e-register-${uniqueSuffix()}@example.com`;
 
   await page.goto('/account/sign-in?mode=register');
   await expect(auth.challengeWidget).toBeVisible();

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { OperatorSignInPage } from '../support/pages/operator-sign-in.page';
+import { uniqueSuffix } from './support/operator';
 
 /**
  * Widget-against-verifier on the two auth forms fenced after customer register: an operator
@@ -14,7 +15,7 @@ import { OperatorSignInPage } from '../support/pages/operator-sign-in.page';
  */
 
 function unique(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  return `${prefix}-${uniqueSuffix()}`;
 }
 
 test('an operator self-registers by solving a real proof-of-work challenge', async ({ page }) => {

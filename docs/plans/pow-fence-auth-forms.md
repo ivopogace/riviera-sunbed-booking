@@ -256,10 +256,10 @@ no new token, no `@apply`).
 
 ## Execution status
 
-**Stage pointer:** `PR — marking #922 ready for review`
+**Stage pointer:** `review gate — fixing findings`
 
-**Next action:** mark PR #922 ready for review, then run the Review gate
-(`riviera-sdlc` `references/pr-gates.md` §1) and the Sonar gate.
+**Next action:** land the remaining review-agent findings (3 of 5 agents still reporting), confirm CI
+green on the new head, then run the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -275,6 +275,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | D-1 | docs-freshness (`origin/main...HEAD`) | `RateLimitFilter`'s `RECOVERY_PATHS` Javadoc stated "the only denial reachable before the controller is a CSRF `403`" — the fence's `400` is now also reachable there, and is deliberately outside the refund | patched in phase 0 |
+| F-1 | CI (CodeQL, `94abaa8`) | High-severity "Insecure randomness": `Math.random()` in the new real-backend spec's unique-id helper, on a value the backend reads back as identity | fixed — one `uniqueSuffix()` on `crypto.randomUUID()` in the real-backend support module, used by both specs that mint identity values |
 | D-2 | docs-freshness (`origin/main...HEAD`) | `RESPONSIBILITIES.md` § *Platform edge* said the fenced set is "customer register today; operator register, forgot-password and booking create in their own slices" — two of those three shipped here | patched in phase 3 (AC-11) |
 
 ---
@@ -415,6 +416,7 @@ Test `ChallengeVerificationFilterTest.java`, new `OperatorRegisterChallengeIT`,
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-04 | review gate — finding F-1 (`Math.random()` where the value is read back as identity) | every `Math.random()` call in the e2e suites | `grep -rn "Math.random()" frontend/e2e` | 4 sites | the 3 real-backend sites (two specs + `venueName`) now share one `crypto.randomUUID()`-based `uniqueSuffix()`; `auth-mocks.ts`'s hex generator is left alone — it mints a *mocked challenge's* nonce and salt, which are fake server-side values, not identity a backend reads back |
 | 2026-09-04 | phase 3 — the fenced set grew from one route to three | every substrate-doc sentence that counts or enumerates fenced routes, plus the renamed `refuseNextRegisterWith` | `grep -rniE '\b(the\|one\|only\|a) fenced (route\|post\|write)\b\|\bfenced routes?\b\|\bthe fence\b' CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents docs/runbooks docs/design .claude/skills platform/src/main frontend/src` + `grep -rn 'refuseNextRegisterWith\|customer register today' <substrate>` | 30 hits, 1 stale | only `RESPONSIBILITIES.md`'s enumeration named a count (D-2, patched); every other "the fence" sentence is subject-generic and stays true, and ADR-0017's "two slices are about to widen the fenced route set" is Context-section narrative, which the skill's scope discipline keeps as history |
 | 2026-09-04 | phase 2 — the fence reached two more mocked routes | every mocked e2e spec that POSTs to a fenced route (whether through a shared mock or its own `page.route`) | `grep -rln "operator/register\|forgot-password\|customer/register" frontend/e2e` | 10 files | the three stateful mocks now share one `mockChallengeFence` (so no spec can meet a fence that behaves unlike its siblings'); `fixed-fill-state-skins.e2e.ts` hand-rolls its own routes and had no challenge route at all, so it now installs the fence explicitly **off**; the rest go through a shared mock and needed nothing |
 | 2026-09-04 | phase 0 — the fenced set grew | every backend test that POSTs to a route in `FENCED_POSTS` | `grep -rn "operator/register\|forgot-password" platform/src/test --include=*.java` | 16 hits over 12 files | 8 ITs now send `SessionLoginSupport.solvedChallenge(mvc)`; `RateLimitFilterTest` + `EndpointRoleGateCoverageTest` need nothing (both pin `riviera.altcha.enabled=false`); `MyAccountControllerTest` was a comment hit only; `AltchaDisabledTest` gained a kill-switch case per new route |
