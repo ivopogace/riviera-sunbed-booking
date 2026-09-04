@@ -21,6 +21,11 @@ export class OperatorSignInPage {
   readonly error: Locator;
   readonly signedInCard: Locator;
   readonly signOutButton: Locator;
+  /** The register tab's fields, and the proof-of-work control the fenced registration hosts. */
+  readonly contactEmail: Locator;
+  readonly registerSubmit: Locator;
+  readonly challengeWidget: Locator;
+  readonly challengeStatus: Locator;
 
   constructor(private readonly page: Page) {
     this.card = page.getByTestId('auth-form');
@@ -30,6 +35,23 @@ export class OperatorSignInPage {
     this.error = page.getByRole('alert');
     this.signedInCard = page.getByText(/^Signed in as/);
     this.signOutButton = page.getByRole('button', { name: 'Sign out' });
+    this.contactEmail = page.getByLabel('Contact email', { exact: true });
+    this.registerSubmit = page.getByRole('button', { name: /^(Request account|Submitting)/ });
+    this.challengeWidget = page.getByTestId('challenge-widget');
+    this.challengeStatus = page.getByTestId('challenge-status');
+  }
+
+  /** Go straight to the operator tab's register card, where the fence lives. */
+  async gotoRegister(): Promise<void> {
+    await this.page.goto('/account/sign-in?audience=operator&mode=register');
+  }
+
+  /** Fill the register card and submit; the caller awaits the outcome through its expectations. */
+  async register(username: string, password: string, contactEmail: string): Promise<void> {
+    await this.username.fill(username);
+    await this.contactEmail.fill(contactEmail);
+    await this.password.fill(password);
+    await this.registerSubmit.click();
   }
 
   /** Go straight to the auth page with the operator tab preselected (no guard round-trip needed). */

@@ -52,8 +52,10 @@ public final class SessionLoginSupport {
 	}
 
 	/**
-	 * A solved proof-of-work challenge for a fenced write (the customer register), minted by the real
-	 * endpoint and brute-forced with the library — the integration tests have no bypass, they solve.
+	 * A solved proof-of-work challenge for a fenced write — the customer register, the operator
+	 * register or forgot-password — minted by the real endpoint and brute-forced with the library:
+	 * the integration tests have no bypass, they solve. Each call mints and solves a fresh one,
+	 * because the registry accepts a solution exactly once.
 	 */
 	public static String solvedChallenge(MockMvc mvc) throws Exception {
 		MvcResult challenge = mvc.perform(get(CHALLENGE_PATH).header("X-Forwarded-For", uniqueClientIp()))

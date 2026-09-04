@@ -75,6 +75,7 @@ class OperatorRejectionRevocationIT {
 	/** Register (session-less 202) then sign in while PENDING — the phase-1 contract. */
 	private Cookie registerAndSignIn() throws Exception {
 		mvc.perform(post("/api/auth/operator/register").with(csrf())
+						.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
 						.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""

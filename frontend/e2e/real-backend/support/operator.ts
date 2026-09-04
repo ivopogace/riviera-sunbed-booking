@@ -13,9 +13,19 @@ import { OperatorSignInPage } from '../../support/pages/operator-sign-in.page';
 export const OPERATOR_USERNAME = 'operator';
 export const OPERATOR_PASSWORD = 'e2e-operator-secret';
 
+/**
+ * A collision-free suffix for the identifiers a real-backend run creates — venue names, operator
+ * usernames, emails. `crypto.randomUUID()` rather than `Math.random()`: these values are read back
+ * as identity by the backend, which is exactly the context CodeQL's insecure-randomness rule covers,
+ * and the timestamp alone repeats within a parallel run.
+ */
+export function uniqueSuffix(): string {
+  return `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+}
+
 /** A unique-enough venue name per test, so a re-run never reads back a stale neighbour's venue. */
 export function venueName(label: string): string {
-  return `E2E ${label} ${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+  return `E2E ${label} ${uniqueSuffix()}`;
 }
 
 /**

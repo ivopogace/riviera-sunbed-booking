@@ -103,6 +103,10 @@ describe('AuthPage', () => {
       : '';
   }
 
+  function altchaElement(): FakeAltchaElement | null {
+    return (fixture.nativeElement as HTMLElement).querySelector<FakeAltchaElement>('altcha-widget');
+  }
+
   function el<T extends HTMLElement>(testId: string): T {
     return (fixture.nativeElement as HTMLElement).querySelector<T>(`[data-testid="${testId}"]`)!;
   }
@@ -290,18 +294,18 @@ describe('AuthPage', () => {
       await render({ mode: 'register' });
       proofOfWork.enabled.set(true);
       await fixture.whenStable();
-      return (fixture.nativeElement as HTMLElement).querySelector<FakeAltchaElement>(
-        'altcha-widget',
-      )!;
+      return altchaElement()!;
     }
 
-    it('shows the widget only for the tourist register', async () => {
+    it('shows the widget on both register audiences, and on neither sign-in', async () => {
       const widget = await renderFenced();
       expect(widget).not.toBeNull();
       await chooseAudience('audience-operator');
-      expect(
-        (fixture.nativeElement as HTMLElement).querySelector<FakeAltchaElement>('altcha-widget'),
-      ).toBeNull();
+      expect(altchaElement()).not.toBeNull();
+
+      el('auth-toggle-mode').click();
+      await fixture.whenStable();
+      expect(altchaElement(), 'sign-in is not fenced — the identity throttle covers it').toBeNull();
     });
 
     it('sends the widget’s solved challenge with the register', async () => {
@@ -374,6 +378,92 @@ describe('AuthPage', () => {
     });
   });
 
+  describe('operator register behind the proof-of-work fence', () => {
+    async function renderFencedOperator(): Promise<FakeAltchaElement> {
+      await render({ audience: 'operator', mode: 'register' });
+      proofOfWork.enabled.set(true);
+      await fixture.whenStable();
+      return altchaElement()!;
+    }
+
+    function fillOperatorForm(): void {
+      type('auth-identifier', 'sereno');
+      type('auth-contact-email', 'ops@sereno.al');
+      type('auth-password', 'passphrase-123');
+    }
+
+    it('sends the widget’s solved challenge with the registration', async () => {
+      const widget = await renderFencedOperator();
+      widget.solve('solved-payload');
+      await fixture.whenStable();
+      fillOperatorForm();
+      await submit();
+
+      expect(operator.register).toHaveBeenCalledWith(
+        'sereno',
+        'passphrase-123',
+        'ops@sereno.al',
+        'solved-payload',
+      );
+    });
+
+    it('waits for the solve rather than posting ahead of it', async () => {
+      const widget = await renderFencedOperator();
+      fillOperatorForm();
+      const submitted = submit();
+      expect(operator.register).not.toHaveBeenCalled();
+
+      widget.solve('late-payload');
+      await submitted;
+      expect(operator.register).toHaveBeenCalledWith(
+        'sereno',
+        'passphrase-123',
+        'ops@sereno.al',
+        'late-payload',
+      );
+    });
+
+    it('says why and restarts the widget when the server refuses the challenge', async () => {
+      const widget = await renderFencedOperator();
+      operator.register.mockResolvedValue('challenge-expired');
+      widget.solve('stale');
+      await fixture.whenStable();
+      fillOperatorForm();
+      const solvesBefore = widget.verify.mock.calls.length;
+      await submit();
+
+      expect(el('auth-error').textContent).toContain(CHALLENGE_EXPIRED_MESSAGE);
+      expect(widget.reset).toHaveBeenCalledTimes(1);
+      expect(widget.verify).toHaveBeenCalledTimes(solvesBefore + 1);
+      expect(operator.signIn).not.toHaveBeenCalled();
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('never carries the tourist card’s solution across the audience switch', async () => {
+      await render({ mode: 'register' });
+      proofOfWork.enabled.set(true);
+      await fixture.whenStable();
+      const widget = altchaElement()!;
+      widget.solve('tourist-solution');
+      await fixture.whenStable();
+
+      await chooseAudience('audience-operator');
+      const remounted = altchaElement()!;
+      fillOperatorForm();
+      const submitted = submit();
+      expect(operator.register).not.toHaveBeenCalled();
+
+      remounted.solve('operator-solution');
+      await submitted;
+      expect(operator.register).toHaveBeenCalledWith(
+        'sereno',
+        'passphrase-123',
+        'ops@sereno.al',
+        'operator-solution',
+      );
+    });
+  });
+
   describe('operator register auto-signs-in (#694)', () => {
     async function registerOperator(): Promise<void> {
       await render({ audience: 'operator', mode: 'register' });
@@ -386,7 +476,12 @@ describe('AuthPage', () => {
     it('signs in with the just-entered credentials and lands in the console', async () => {
       await registerOperator();
 
-      expect(operator.register).toHaveBeenCalledWith('sereno', 'passphrase-123', 'ops@sereno.al');
+      expect(operator.register).toHaveBeenCalledWith(
+        'sereno',
+        'passphrase-123',
+        'ops@sereno.al',
+        undefined,
+      );
       expect(operator.signIn).toHaveBeenCalledWith('sereno', 'passphrase-123');
       expect(navigate).toHaveBeenCalledWith('/operator/12');
     });

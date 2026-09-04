@@ -66,6 +66,7 @@ class OperatorApprovalIT {
 	/** Self-register a PENDING operator via the public endpoint and return its id. */
 	private long registerPending(String username) throws Exception {
 		mvc.perform(post("/api/auth/operator/register").with(csrf())
+				.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""

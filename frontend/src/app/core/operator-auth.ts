@@ -3,6 +3,13 @@ import { computed, inject, Service } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import {
+  ChallengeRejection,
+  challengeHeaders,
+  challengeRejection,
+  challengeRejectionMessage,
+  isChallengeRejection,
+} from '../shared/challenge';
+import {
   PASSWORD_BLOCKED_MESSAGE,
   PASSWORD_BLOCKED_TERM_CODE,
   PASSWORD_LENGTH_MESSAGE,
@@ -28,7 +35,12 @@ export type { SignInResult } from './session-auth';
  * rest are input/transport failures.
  */
 export type OperatorRegisterResult =
-  'submitted' | 'invalid-password' | 'blocked-password' | 'rate-limited' | 'error';
+  | 'submitted'
+  | 'invalid-password'
+  | 'blocked-password'
+  | ChallengeRejection
+  | 'rate-limited'
+  | 'error';
 
 /**
  * How a self-service password change ended. The three `400`s are distinguished by the problem
@@ -140,15 +152,24 @@ export class OperatorAuth extends SessionAuth {
    * D-8) — so this establishes no principal and always resolves to `submitted` on a 2xx. The
    * register surface follows up with a normal {@link signIn} using the same credentials: a PENDING
    * account authenticates (#694), and a duplicate username surfaces as a plain failed sign-in.
+   *
+   * <p>`challenge` is the widget's solved proof-of-work payload, sent as the fence's header when
+   * present; the edge's three challenge codes come back as their own results so the page can restart
+   * the widget before the retry.
    */
   async register(
     username: string,
     password: string,
     contactEmail: string,
+    challenge?: string,
   ): Promise<OperatorRegisterResult> {
     try {
       await firstValueFrom(
-        this.http.post<void>(`${AUTH_API}/operator/register`, { username, password, contactEmail }),
+        this.http.post<void>(
+          `${AUTH_API}/operator/register`,
+          { username, password, contactEmail },
+          { headers: challengeHeaders(challenge) },
+        ),
       );
       return 'submitted';
     } catch (error) {
@@ -156,9 +177,11 @@ export class OperatorAuth extends SessionAuth {
         return 'rate-limited';
       }
       if (error instanceof HttpErrorResponse && error.status === 400) {
-        return (error.error as { code?: string } | null)?.code === PASSWORD_BLOCKED_TERM_CODE
-          ? 'blocked-password'
-          : 'invalid-password';
+        const code = (error.error as { code?: string } | null)?.code;
+        return (
+          challengeRejection(code) ??
+          (code === PASSWORD_BLOCKED_TERM_CODE ? 'blocked-password' : 'invalid-password')
+        );
       }
       return 'error';
     }
@@ -249,6 +272,9 @@ export function operatorPasswordChangeMessage(result: OperatorPasswordChangeResu
  * `blocked-password` the blocklist.
  */
 export function operatorRegisterMessage(result: OperatorRegisterResult): string | undefined {
+  if (isChallengeRejection(result)) {
+    return challengeRejectionMessage(result);
+  }
   switch (result) {
     case 'submitted':
       return undefined;

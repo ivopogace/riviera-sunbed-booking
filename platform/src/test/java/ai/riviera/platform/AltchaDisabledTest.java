@@ -16,7 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The kill switch: with {@code riviera.altcha.enabled=false} the fenced route admits a request
+ * The kill switch: with {@code riviera.altcha.enabled=false} every fenced route admits a request
  * without a solution and the challenge endpoint answers {@code 204}, which is what tells the SPA
  * to hide the widget.
  */
@@ -35,6 +35,26 @@ class AltchaDisabledTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"email\":\"off@example.com\",\"password\":\"passphrase-123\"}"))
 				.andExpect(status().isCreated());
+	}
+
+	@Test
+	void operatorRegisterAdmitsWithoutAHeader() throws Exception {
+		mvc.perform(post("/api/auth/operator/register").with(csrf())
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"username":"off-operator","password":"passphrase-123","contactEmail":"off@venue.example"}"""))
+				.andExpect(status().isAccepted());
+	}
+
+	@Test
+	void forgotPasswordAdmitsWithoutAHeader() throws Exception {
+		mvc.perform(post("/api/auth/customer/forgot-password").with(csrf())
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"email":"off@example.com"}"""))
+				.andExpect(status().isNoContent());
 	}
 
 	@Test

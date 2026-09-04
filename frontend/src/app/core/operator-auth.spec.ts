@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../environments/environment';
+import { challengeRejectionMessage } from '../shared/challenge';
 import {
   OperatorAuth,
   operatorPasswordChangeMessage,
@@ -217,6 +218,38 @@ describe('OperatorAuth (session-aware, issue #109)', () => {
 
       expect(await result).toBe('blocked-password');
       expect(operatorRegisterMessage('blocked-password')).toContain('name you sign in with');
+    });
+
+    it('sends the solved challenge as the fence’s header, and no header without one', () => {
+      const auth = serviceWithRestore('signed-out');
+
+      void auth.register('alice', 'password123', 'alice@venue.example', 'solved-payload');
+      const fenced = httpMock.expectOne(`${AUTH_API}/operator/register`);
+      expect(fenced.request.headers.get('X-Altcha-Payload')).toBe('solved-payload');
+      fenced.flush({ status: 'PENDING' }, { status: 202, statusText: 'Accepted' });
+
+      void auth.register('alice', 'password123', 'alice@venue.example');
+      const open = httpMock.expectOne(`${AUTH_API}/operator/register`);
+      expect(open.request.headers.has('X-Altcha-Payload')).toBe(false);
+      open.flush({ status: 'PENDING' }, { status: 202, statusText: 'Accepted' });
+    });
+
+    it.each([
+      ['CHALLENGE_REQUIRED', 'challenge-required'],
+      ['CHALLENGE_INVALID', 'challenge-invalid'],
+      ['CHALLENGE_EXPIRED', 'challenge-expired'],
+    ])('maps a 400 %s to %s rather than a password verdict', async (code, expected) => {
+      const auth = serviceWithRestore('signed-out');
+
+      const result = auth.register('alice', 'password123', 'alice@venue.example', 'stale');
+      httpMock
+        .expectOne(`${AUTH_API}/operator/register`)
+        .flush({ code }, { status: 400, statusText: 'Bad Request' });
+
+      expect(await result).toBe(expected);
+      expect(operatorRegisterMessage(expected as never)).toBe(
+        challengeRejectionMessage(expected as never),
+      );
     });
   });
 

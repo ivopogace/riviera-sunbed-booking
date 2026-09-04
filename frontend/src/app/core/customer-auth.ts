@@ -36,7 +36,7 @@ const ME_API = `${environment.apiBaseUrl}/api/me`;
 export const CURRENT_PASSWORD_REQUIRED_MESSAGE = 'Enter your current password.';
 
 /** How a "forgot password" request ended (always neutral to the user — non-enumeration, D-8). */
-export type ForgotPasswordResult = 'sent' | 'rate-limited' | 'error';
+export type ForgotPasswordResult = 'sent' | ChallengeRejection | 'rate-limited' | 'error';
 /**
  * How a reset-token redemption ended. `invalid-password` is the length rule, `blocked-password` the
  * blocklist — told apart by the problem `code` so the page can name the rule that failed.
@@ -181,13 +181,29 @@ export class CustomerAuth extends SessionAuth {
   /**
    * Request a password-reset link. The response is deliberately uniform (non-enumeration,
    * D-8), so a success here means "if that email has an account, a link was sent" — never that it exists.
+   *
+   * <p>`challenge` is the widget's solved proof-of-work payload, sent as the fence's header when
+   * present. The fence runs before the controller, so its three codes say nothing about the email;
+   * every other failure still collapses to the one generic answer.
    */
-  async forgotPassword(email: string): Promise<ForgotPasswordResult> {
+  async forgotPassword(email: string, challenge?: string): Promise<ForgotPasswordResult> {
     try {
-      await firstValueFrom(this.http.post<void>(`${AUTH_API}/customer/forgot-password`, { email }));
+      await firstValueFrom(
+        this.http.post<void>(
+          `${AUTH_API}/customer/forgot-password`,
+          { email },
+          { headers: challengeHeaders(challenge) },
+        ),
+      );
       return 'sent';
     } catch (error) {
-      return error instanceof HttpErrorResponse && error.status === 429 ? 'rate-limited' : 'error';
+      if (error instanceof HttpErrorResponse && error.status === 429) {
+        return 'rate-limited';
+      }
+      if (error instanceof HttpErrorResponse && error.status === 400) {
+        return challengeRejection(problemCode(error)) ?? 'error';
+      }
+      return 'error';
     }
   }
 

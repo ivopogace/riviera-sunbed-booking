@@ -11,7 +11,8 @@ import { CustomerAuthPage } from './support/pages/customer-auth.page';
  * starts solving when the form is focused, the register POST carries the solved payload, each of
  * the edge's three refusals renders its message and fetches a fresh challenge so the retry succeeds
  * without a reload, and the kill switch (`204` from the challenge route) hides the widget while
- * register keeps working. The real verifier is `e2e/real-backend/register.e2e.ts`'s job.
+ * register keeps working. The real verifier is `e2e/real-backend/register.e2e.ts`'s job; the other
+ * two fenced auth forms have their own specs alongside this one.
  */
 
 const MESSAGES: Readonly<Record<ChallengeCode, RegExp>> = {
@@ -61,7 +62,7 @@ for (const code of Object.keys(MESSAGES) as ChallengeCode[]) {
     await expect(auth.challengeStatus).toHaveText(/Security check passed/, { timeout: 15_000 });
     const fetchesBeforeSubmit = fence.fetches();
 
-    fence.refuseNextRegisterWith(code);
+    fence.refuseNextWith(code);
     await auth.register('ana@example.com', 'passphrase-123');
     await expect(auth.error).toHaveText(MESSAGES[code]);
     await expect(page).toHaveURL(/mode=register/);
@@ -90,15 +91,6 @@ test('the kill switch hides the widget and register still works', async ({ page 
 
   await auth.register('ana@example.com', 'passphrase-123');
   await auth.expectSignedInAs('ana@example.com');
-});
-
-test('the operator register shows no widget in this slice', async ({ page }) => {
-  await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
-  const auth = new CustomerAuthPage(page);
-
-  await page.goto('/account/sign-in?audience=operator&mode=register');
-  await expect(page.getByLabel('Username', { exact: true })).toBeVisible();
-  await expect(auth.challengeWidget).toHaveCount(0);
 });
 
 test('the checkbox is 24 px and carries its touch-floor exemption', async ({ page }) => {

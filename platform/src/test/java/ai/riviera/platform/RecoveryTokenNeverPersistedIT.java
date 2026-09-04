@@ -100,6 +100,7 @@ class RecoveryTokenNeverPersistedIT {
 
 	private void forgotPassword() throws Exception {
 		mvc.perform(post("/api/auth/customer/forgot-password").with(csrf())
+				.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
 				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""

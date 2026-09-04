@@ -114,9 +114,10 @@ final class RateLimitFilter extends OncePerRequestFilter {
 	/**
 	 * The account-recovery POSTs. Three are {@code permitAll}; {@code /api/me/verify-email/request} is
 	 * {@code hasRole(CUSTOMER)}, and sharing one map is why the whole budget
-	 * {@linkplain AuthBudget#guardsAuthenticatedWork refunds}: for the three public paths the only denial
-	 * reachable before the controller is a CSRF {@code 403}, which sends no mail and redeems no token, so
-	 * refunding it gives nothing away.
+	 * {@linkplain AuthBudget#guardsAuthenticatedWork refunds}: the only <em>refunded</em> denial reachable
+	 * before the controller on the three public paths is a CSRF {@code 403}, which sends no mail and
+	 * redeems no token, so refunding it gives nothing away. The proof-of-work fence on forgot-password
+	 * answers {@code 400}, which is outside the refund and so still costs its token.
 	 */
 	private static final Set<String> RECOVERY_PATHS = Set.of(
 			"/api/auth/customer/forgot-password", "/api/auth/customer/reset-password",
