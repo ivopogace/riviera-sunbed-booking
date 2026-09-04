@@ -125,9 +125,9 @@ Resolved entries move under a `### Resolved` sub-heading with the outcome + SHA.
 
 **Modules touched**
 
-| # | Module | Existing/new | Aggregate root | Why this module owns it |
+| # | Module | Existing/new | Tables it writes | Why this module owns it |
 |---|---|---|---|---|
-| M-1 | <e.g. `booking`> | existing | `Booking` | <…> |
+| M-1 | <e.g. `booking`> | existing | `booking` | <…> |
 
 **Cross-module named interfaces (`api/` ports)**
 
