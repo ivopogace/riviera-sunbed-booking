@@ -29,6 +29,9 @@ When loaded, announce: *"riviera-review-overlay loaded. Adding project-specific 
   destroy, RV-FE-10 live regions outlive their content, RV-FE-11 field errors name their
   control).
 - **Fullstack diff** → both, plus `references/fe-be-contract.md`.
+- **Substrate diff** (`.claude/skills/**`, the `CLAUDE.md` files, `CONTEXT.md`,
+  `RESPONSIBILITIES.md`, `docs/adr/**`, `docs/agents/**`) → no reference file; RV-PROC-2
+  below is the item. "Only style items applied" is the failure mode it exists to prevent.
 
 ## Highest-stakes items (call them out every time)
 
@@ -70,6 +73,50 @@ the `riviera-sdlc` Skill-routing table. A touched area with no matching skill li
 such line) is a **Major** finding — load the missing skill, re-vet that section, update the
 line. Re-walk on every re-review, including review-fix commits.
 
+## RV-PROC-2 — substrate changes are verified against the tree, not read as prose
+
+Fires whenever the diff touches what every future session reads as instructions:
+`.claude/skills/**` (`SKILL.md` **and** `references/`), `CLAUDE.md`,
+`frontend/.claude/CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, `docs/adr/**`,
+`docs/agents/**` — or adds/tightens a structural test (`*ArchitectureTests`,
+`ModularityTests`), which falsifies substrate examples from the other direction. Such a diff
+otherwise draws only RV-STYLE-1/2, and those read the prose, never whether it is still true.
+
+**a. Every citation still resolves.** Skills cite the tree by name and line
+(`BookingStatus.java`, `JdbcAvailabilityClaim`, `V4__availability.sql:32`); a rename or a
+moved line silently falsifies them. Open every path, line range, class and method named on a
+changed line, plus every citation of anything this diff renamed, moved or deleted.
+**Major** when the diff's own rename broke the pointer, **Minor** for one it merely sat beside.
+
+**b. Every worked example still passes the structural net.** An example is code a session
+will copy, so it is held to the same rules as code — `ModularityTests`,
+`PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`,
+`JdbcOnlyArchitectureTests`, `DomainPurityArchitectureTests`. Walk it both ways, and the
+second way is the one that bites: when the diff adds or tightens a rule, re-walk **every**
+example in the substrate, **including files the diff never opened** — the example that
+breaks is by definition not in the diff. Locate them, then sweep for the new rule's own
+forbidden set, read out of the test rather than remembered:
+
+```bash
+grep -rln '^```java' .claude/skills docs CLAUDE.md CONTEXT.md RESPONSIBILITIES.md
+# e.g. DomainPurityArchitectureTests' Forbidden list, over the same substrate:
+grep -rnE 'import (org\.springframework|java\.sql|javax\.sql|com\.stripe)' \
+  .claude/skills CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents
+```
+
+`docs/research/*` hits are records of what was true when written, not instructions — skip them.
+
+**Major** — an example the net rejects reddens the next session's build, docs-only diff or not.
+
+**c. `riviera-docs-freshness` step 2a over what the diff removed or renamed.** A deletion
+that leaves a pointer dangling elsewhere in the substrate is found here, at review time,
+instead of surviving to the next close-out. Hand the removed wording to the skill's
+rename/removal grep; a hit in a present-tense stated fact is **Major**, one in historical
+narrative (an ADR's Context paragraph, a research note) is fine. When the diff lands or
+re-decides an ADR, add the skill's step 3 over the docs that stated the old position — a
+promise the decision has just retired matches no identifier. Re-walk all three checks on
+every re-review, including review-fix commits.
+
 ## Verification commands
 
 The command set is CLAUDE.md §Commands. Modulith verification is a test, not a Gradle task
@@ -96,11 +143,14 @@ cross-module service calls, multi-line comments) live in `riviera-java-conventio
 - RV-BE-11 checked whenever the diff adds or moves behavior (plan's Module-ownership table
   reconciled against where the code landed); RV-BE-12 whenever it adds or moves packages;
   RV-BE-19 whenever it adds or changes a choice, calculation or lifecycle statement.
+- RV-PROC-2 checked whenever the diff touches the substrate or adds a structural test —
+  including a docs-only diff, where it is usually the only non-style item that applies.
 
 ## Hand-offs
 
 The overlay recommends, it does not execute: payment/payout details →
 `riviera-stripe-payments`; plan-doc gaps (missing AC, stale execution status) →
-`riviera-plan-doc`; module-boundary questions → `codebase-design`; Java idiom violations →
+`riviera-plan-doc`; substrate drift a review turned up (RV-PROC-2) → `riviera-docs-freshness`;
+module-boundary questions → `codebase-design`; Java idiom violations →
 `riviera-java-conventions`. `triage` manages the issue lifecycle around the review (PRs
 are not a triage surface — `docs/agents/issue-tracker.md`).

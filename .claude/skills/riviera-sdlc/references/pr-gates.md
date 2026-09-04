@@ -12,7 +12,7 @@ done until this gate has run and its findings are resolved or explicitly deferre
 1. **Trigger.** Due the moment the PR is marked ready for review. Do not wait to be asked.
 2. **Run the review — right-sized, never skipped.** Start `/code-review` over the PR diff
    (`origin/main...HEAD`) via the invocation ladder below, and load
-   `riviera-review-overlay` so the project bank items (RV-BE-*/RV-FE-*/RV-CT-*, RV-PROC-1)
+   `riviera-review-overlay` so the project bank items (RV-BE-*/RV-FE-*/RV-CT-*, RV-PROC-*)
    are walked on top of the generic banks. Announce: *"Running the SDLC review gate
    (riviera-review-overlay + code-review) on PR #NN."*
 
@@ -72,7 +72,7 @@ done until this gate has run and its findings are resolved or explicitly deferre
 3. **Resolve — back through the loop.** A finding fix re-enters at Implement. Also:
    - Update the plan's *Skills consulted* line with any new area a fix pulled in.
    - Re-review = re-run `/code-review` on the new diff, or at minimum re-walk the overlay
-     bank items + RV-PROC-1 for the area the fix touched.
+     bank items + the RV-PROC items for the area the fix touched.
    - Out-of-scope findings → a follow-up issue with a one-line rationale.
    - Record the outcome (findings + fixes + skills loaded) in the plan doc's review note or the PR.
 4. **Only then merge.** CI green **and** the review gate has run **and** findings are
