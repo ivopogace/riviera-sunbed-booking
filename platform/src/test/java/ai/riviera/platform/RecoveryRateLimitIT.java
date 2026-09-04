@@ -49,6 +49,7 @@ class RecoveryRateLimitIT {
 
 	private org.springframework.test.web.servlet.ResultActions forgot(String ip) throws Exception {
 		return mvc.perform(post(FORGOT_PATH).with(csrf())
+				.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
 				.header("X-Forwarded-For", ip)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("""

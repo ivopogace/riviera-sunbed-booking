@@ -248,14 +248,14 @@ no new token, no `@apply`).
 
 ## Execution status
 
-**Stage pointer:** `plan — committing the plan doc`
+**Stage pointer:** `implement (phase 1 — frontend)`
 
-**Next action:** commit this plan doc on `claude/sdlc-906-62bsyj`, then start phase 0 (backend
-fence) test-first.
+**Next action:** open the draft PR (CI fires on `pull_request` only), then wire the widget into
+`auth/auth-page.ts`'s operator register card and `auth/forgot-password.ts`, test-first.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Backend: fence the two routes + repair the existing ITs | | |
+| 0 — Backend: fence the two routes + repair the existing ITs | ✅ | (this commit) |
 | 1 — Frontend: services, both pages, unit + a11y/contrast specs | | |
 | 2 — e2e: mocked fence handles + both suites | | |
 | 3 — Docs + close-out | | |
@@ -404,6 +404,7 @@ Test `ChallengeVerificationFilterTest.java`, new `OperatorRegisterChallengeIT`,
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-04 | phase 0 — the fenced set grew | every backend test that POSTs to a route in `FENCED_POSTS` | `grep -rn "operator/register\|forgot-password" platform/src/test --include=*.java` | 16 hits over 12 files | 8 ITs now send `SessionLoginSupport.solvedChallenge(mvc)`; `RateLimitFilterTest` + `EndpointRoleGateCoverageTest` need nothing (both pin `riviera.altcha.enabled=false`); `MyAccountControllerTest` was a comment hit only; `AltchaDisabledTest` gained a kill-switch case per new route |
 
 ---
 

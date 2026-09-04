@@ -21,6 +21,10 @@ import jakarta.servlet.http.HttpServletResponse;
  * when both would fail, a refused solution still spent its rate-limit token, and the registry claim
  * — the one write — is the last thing before the controller.
  *
+ * <p>Running ahead of the controller is also what keeps forgot-password non-enumerating: the fence
+ * never sees the email, so a refusal is identical for a registered and an unregistered one and no
+ * mail decision has been made.
+ *
  * <p>Every refusal is a {@code 400} with a stable code, hand-mirrored in
  * {@link SecurityProblemResponses} because this runs before MVC dispatch. Deliberately not a
  * {@code 403}: the rate limiter refunds a {@code 403} on the budgets that guard authenticated work.
@@ -30,8 +34,11 @@ final class ChallengeVerificationFilter extends OncePerRequestFilter {
 
 	static final String HEADER = "X-Altcha-Payload";
 
-	/** The fenced {@code POST} routes; the other public writes join here in their own slices. */
-	private static final Set<String> FENCED_POSTS = Set.of("/api/auth/customer/register");
+	/** The fenced {@code POST} routes; the remaining public writes join here in their own slices. */
+	private static final Set<String> FENCED_POSTS = Set.of(
+			"/api/auth/customer/register",
+			"/api/auth/operator/register",
+			"/api/auth/customer/forgot-password");
 
 	private final ProofOfWorkChallenges challenges;
 

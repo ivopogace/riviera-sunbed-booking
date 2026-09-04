@@ -1,6 +1,8 @@
 package ai.riviera.platform;
 
 import java.net.URI;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -49,6 +52,7 @@ class PasswordResetIT {
 	private static final String FORGOT_PATH = "/api/auth/customer/forgot-password";
 	private static final String RESET_PATH = "/api/auth/customer/reset-password";
 	private static final String SESSION_COOKIE = "SESSION";
+	private static final String CORRELATION_ID_HEADER = "X-Correlation-Id";
 
 	@Autowired
 	MockMvc mvc;
@@ -117,6 +121,46 @@ class PasswordResetIT {
 		assertIdentical(known, ssoOnly);
 	}
 
+	/**
+	 * The fence must not become the enumeration oracle the uniform {@code 204} exists to avoid: a
+	 * refused challenge is decided before the account is looked up, so the answer is byte-identical
+	 * for a registered, an unregistered and an SSO-only email — and nothing is mailed for any of them.
+	 */
+	@Test
+	void forgotPasswordChallengeFailureIsIdenticalRegardlessOfAccountState() throws Exception {
+		register("reset-it-chal-known@example.com", "passphrase-123");
+		sso.resolveOrCreate(SsoProvider.GOOGLE, "reset-it-sso-sub-3", "reset-it-chal-sso@example.com");
+		mailer.clear();
+
+		MockHttpServletResponse known = refusedForgot("reset-it-chal-known@example.com");
+		MockHttpServletResponse unknown = refusedForgot("reset-it-chal-nobody@example.com");
+		MockHttpServletResponse ssoOnly = refusedForgot("reset-it-chal-sso@example.com");
+
+		assertIdentical(describe(known), describe(unknown));
+		assertIdentical(describe(known), describe(ssoOnly));
+		org.junit.jupiter.api.Assertions.assertEquals(List.of(), mailer.sent(),
+				"a refused challenge mails nothing, whichever email asked");
+	}
+
+	/**
+	 * Status, body and every response header except the per-request correlation id, which is a fresh
+	 * UUID on every request and so carries nothing about the account.
+	 */
+	private static String describe(MockHttpServletResponse response) throws Exception {
+		String headers = response.getHeaderNames().stream().sorted()
+				.filter(name -> !CORRELATION_ID_HEADER.equalsIgnoreCase(name))
+				.map(name -> name + "=" + response.getHeaders(name))
+				.collect(Collectors.joining(";"));
+		return response.getStatus() + "|" + response.getContentAsString() + "|" + headers;
+	}
+
+	private MockHttpServletResponse refusedForgot(String email) throws Exception {
+		return forgotWithoutSolvingTheChallenge(email)
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("CHALLENGE_REQUIRED"))
+				.andReturn().getResponse();
+	}
+
 	@Test
 	void ssoOnlyAccountCanSetItsFirstPasswordViaReset() throws Exception {
 		String email = "reset-it-sso@example.com";
@@ -153,7 +197,17 @@ class PasswordResetIT {
 				{"email": "%s", "password": "%s"}""".formatted(email, password));
 	}
 
+	/** Forgot-password is fenced (ADR-0016), so every request here solves a real challenge. */
 	private ResultActions forgot(String email) throws Exception {
+		return mvc.perform(post(FORGOT_PATH).with(csrf())
+				.header(SessionLoginSupport.CHALLENGE_HEADER, SessionLoginSupport.solvedChallenge(mvc))
+				.header("X-Forwarded-For", SessionLoginSupport.uniqueClientIp())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+						{"email": "%s"}""".formatted(email)));
+	}
+
+	private ResultActions forgotWithoutSolvingTheChallenge(String email) throws Exception {
 		return authPost(FORGOT_PATH, """
 				{"email": "%s"}""".formatted(email));
 	}
