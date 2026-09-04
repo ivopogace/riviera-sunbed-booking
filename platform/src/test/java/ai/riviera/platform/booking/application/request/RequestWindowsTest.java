@@ -20,6 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The day-end cap is the second, disjoint bound — the sweep binds it as its own predicate on
  * {@code booking_date}, so the identity below is stated against an uncapped deadline and the cap
  * gets its own cases.
+ *
+ * <p>{@link RequestWindows#payWindowClosed} reads the same two bounds from the other side, for the
+ * code-gated view: the cases below pin each arm at its exact edge — accepted strict, day end
+ * inclusive — because that asymmetry is what the sweep's SQL spells as {@code <} and {@code <=},
+ * and an instant booking is closed by neither.
  */
 class RequestWindowsTest {
 
@@ -74,5 +79,46 @@ class RequestWindowsTest {
 
 		assertEquals(serviceDayEndsAt, WINDOWS.payDeadline(ACCEPTED_AT, serviceDayEndsAt),
 				"an exact tie is the same instant either way — the boundary must not shift by a tick");
+	}
+
+	@Test
+	void payWindowIsOpenAtTheMailedDeadlineItself() {
+		Instant deadline = WINDOWS.payDeadline(ACCEPTED_AT, DISTANT_DAY_END);
+
+		assertFalse(WINDOWS.payWindowClosed(ACCEPTED_AT, DISTANT_DAY_END, deadline),
+				"the promised instant is payable — the view may not hide a button the sweep still honours");
+	}
+
+	@Test
+	void payWindowClosesOneTickAfterTheMailedDeadline() {
+		Instant deadline = WINDOWS.payDeadline(ACCEPTED_AT, DISTANT_DAY_END);
+
+		assertTrue(WINDOWS.payWindowClosed(ACCEPTED_AT, DISTANT_DAY_END, deadline.plusMillis(1)),
+				"the accepted arm is strict, exactly like the sweep's accepted_at < :acceptedBefore");
+	}
+
+	@Test
+	void payWindowClosesAtTheServiceDayEndInstant() {
+		assertFalse(WINDOWS.payWindowClosed(null, DISTANT_DAY_END, DISTANT_DAY_END.minusMillis(1)),
+				"the day is not over until its last instant has passed");
+		assertTrue(WINDOWS.payWindowClosed(null, DISTANT_DAY_END, DISTANT_DAY_END),
+				"the day-end arm is inclusive, like the sweep's booking_date <= :serviceDayEndedOnOrBefore");
+	}
+
+	@Test
+	void theDayEndClosesAnAcceptedBookingWhoseRawWindowStillHasTimeLeft() {
+		// Accepted an hour before midnight: the 12h window would outrun the day the cap ends.
+		Instant acceptedAt = DISTANT_DAY_END.minus(Duration.ofHours(1));
+
+		assertTrue(WINDOWS.payWindowClosed(acceptedAt, DISTANT_DAY_END, DISTANT_DAY_END),
+				"the cap binds the accepted arm too — the deadline is the earlier of the two");
+	}
+
+	@Test
+	void theRawWindowNeverClosesAnInstantBooking() {
+		Instant longPastTheWindow = ACCEPTED_AT.plus(PAY_WINDOW).plus(Duration.ofDays(1));
+
+		assertFalse(WINDOWS.payWindowClosed(null, DISTANT_DAY_END, longPastTheWindow),
+				"an instant booking has no accept clock: only its day's end and the sweep's TTL reach it");
 	}
 }

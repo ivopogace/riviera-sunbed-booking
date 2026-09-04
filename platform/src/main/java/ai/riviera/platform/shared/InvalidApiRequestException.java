@@ -21,7 +21,7 @@ import java.util.function.Supplier;
  * wire (it may quote user input or internals; §6b).
  *
  * <p>Lives in the Shared Kernel on the same ownership ground as {@link ApiProblem}: the edge
- * contract's vocabulary is owned by no bounded context — module adapters throw it, and the one
+ * contract's vocabulary is owned by no module — module adapters throw it, and the one
  * advice consuming it sits at the composition root, which nothing may depend on.
  */
 public final class InvalidApiRequestException extends RuntimeException {

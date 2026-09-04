@@ -38,7 +38,8 @@ self-provision there and the full test task can OOM the sandbox.
 ./gradlew build                        # compile + full test suite + JaCoCo
 ./gradlew test --tests "*ClassName*"   # one test class
 ./gradlew test --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" \
-  --tests "*PackageShapeArchitectureTests*"   # the structural net — run after any backend structure change
+  --tests "*PackageShapeArchitectureTests*" --tests "*DomainPurityArchitectureTests*"
+                                       # the structural net — run after any backend structure change
 ./gradlew bootRun                      # run the API on :8080
 ```
 
@@ -77,23 +78,25 @@ Line endings are pinned LF by the root `.gitattributes`.
   only), `research/` (findings behind decisions), `agents/` (issue-tracker conventions +
   runbooks), `deploy/` + `runbooks/`, `superpowers/specs/` (product design).
 
-## Bounded contexts (Spring Modulith modules)
+## The nine domain modules (Spring Modulith)
 
 Each module lives at `ai.riviera.platform.<module>` with the hexagonal layout of invariant
 #11. **Read the module's § in `RESPONSIBILITIES.md` before changing it** — it holds the
-per-module contract and the settled rules.
+per-module contract and the settled rules. The platform is **one bounded context** with twelve
+modules, and it has no aggregate-root classes: `domain/` holds the rules, the state is in the
+tables, and the lifecycles are guarded SQL (ADR-0018).
 
-| Module | Owns | Aggregate root(s) |
+| Module | Owns | Tables it owns (sole writer) |
 |---|---|---|
-| `venue` | venue profile, beach map (sets, pools, positions), pricing, booking mode, sales-close setting, photos + moderation (ADR-0008/0013), commission-rate schedule | `Venue`, `BeachMap` |
-| `availability` | the per-`(set, date)` source-of-truth state; the only writer of that table | `SetAvailability` |
-| `booking` | bookings and codes, the whole lifecycle and its sweeps, request accept/decline, cancellation policy, driving refunds via `payment.api.RefundPort` | `Booking` |
-| `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `Payment` |
-| `payout` | the venue payout ledger and manual BKT batches | `PayoutLedgerEntry`, `PayoutBatch` |
-| `customer` | tourist identity: guest contact, the customer account (sign-in, SSO, verification, password), GDPR erasure (ADR-0010) + retention sweep, the canonical email form | `Customer`, `CustomerAccount` |
-| `operator` | operator accounts, operator↔venue ownership (invariant #13), the admin-driven lifecycle and `is_admin`, the tourist-visibility answer | `Operator` |
-| `review` | reviews (one per booking), eligibility + window, the aggregate rating, the listed page, admin takedown, erasure tombstone; a **leaf** module (ADR-0015) | `Review` |
-| `notification` | transactional mail: the two ADR-0011 vehicles, the hashed suppression list (ADR-0012), delivery log + admin resend | (none) |
+| `venue` | venue profile, beach map (sets, pools, positions), pricing, booking mode, sales-close setting, photos + moderation (ADR-0008/0013), commission-rate schedule | `venue`, `set_position`, `venue_amenity`, `venue_photo(_variant)`, `venue_commission_rate` |
+| `availability` | the per-`(set, date)` source-of-truth state; the only writer of that table | `set_availability` |
+| `booking` | bookings and codes, the whole lifecycle and its sweeps, request accept/decline, cancellation policy, driving refunds via `payment.api.RefundPort` | `booking` |
+| `payment` | Stripe collection, PaymentIntents, refunds, webhook handling | `payment`, `stripe_webhook_event` |
+| `payout` | the venue payout ledger and manual BKT batches | `payout_ledger_entry`, `payout_batch` |
+| `customer` | tourist identity: guest contact, the customer account (sign-in, SSO, verification, password), GDPR erasure (ADR-0010) + retention sweep, the canonical email form | `customer`, `customer_account`, `customer_sso_identity`, `customer_account_token` |
+| `operator` | operator accounts, operator↔venue ownership (invariant #13), the admin-driven lifecycle and `is_admin`, the tourist-visibility answer | `operator`, `operator_venue` |
+| `review` | reviews (one per booking), eligibility + window, the aggregate rating, the listed page, admin takedown, erasure tombstone; a **leaf** module (ADR-0015) | `review` |
+| `notification` | transactional mail: the two ADR-0011 vehicles, the hashed suppression list (ADR-0012), delivery log + admin resend | `email_suppression`, `booking_confirmation_mail_attempt` |
 
 Plus **`shared`**, an OPEN Shared Kernel of edge/technical types (`ApiProblem`,
 `CurrentOperator`, …); admission rests on **ownership, never reuse** (`RESPONSIBILITIES.md`
@@ -124,8 +127,11 @@ numbering is stable; **never renumber**. Mechanisms and edge cases: `RESPONSIBIL
 § *Invariants, long form*.
 
 1. **No JPA/Hibernate — JDBC only.** `spring-boot-starter-data-jpa` never on the
-   classpath; no `@Entity`/`EntityManager`. Spring Data JDBC aggregates and/or
-   `JdbcTemplate` with explicit SQL.
+   classpath; no `@Entity`/`EntityManager`. Every driven adapter is hand-written `JdbcClient`
+   SQL — there is not one `CrudRepository`, `@Table` or `@Id` in the tree. The Spring Data JDBC
+   starter is on the classpath and its aggregate mapping stays available, but reaching for it is
+   a departure from the tree's one uniform choice, not a coin flip (`riviera-java-conventions`
+   §1a says when it would earn its keep).
 2. **Availability is the single source of truth, per `(set, date)`.** One
    `availability(set_id, booking_date)` row per set and date, enforced by a unique constraint
    AND in the reservation transaction (`FOR UPDATE` or `INSERT … ON CONFLICT DO NOTHING`).
@@ -147,8 +153,10 @@ numbering is stable; **never renumber**. Mechanisms and edge cases: `RESPONSIBIL
     non-refundable; the window closes at service-day open (ADR-0005). The weather refund is a
     manual admin action outside that fence.
 11. **Spring Modulith boundaries are hexagonal and id-based** (ADR-0007): cross-module access
-    only via another module's `api/` port or a domain event; event payloads carry ids, not
-    business fields. Machine-locked; the package shape is in `riviera-modulith`.
+    only via another module's `api/` port or a domain event; event payloads carry technical ids
+    and values, never a foreign aggregate — `BookingConfirmed` deliberately carries
+    `amountMinor`, which is what lets `payout` accrue without calling back. Machine-locked; the
+    package shape is in `riviera-modulith`.
 12. **Schema changes go through Flyway.** Versioned forward migrations only; every
     invariant-enforcing constraint is created and tested by one.
 13. **Venue-scoped operations verify the actor owns the venue** (object-level, BOLA): in the

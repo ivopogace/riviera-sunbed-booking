@@ -14,8 +14,8 @@ import java.time.Instant;
  * {@code refundedAmount} is {@code null} unless the booking is already cancelled.
  * {@code emailWithheld} is {@code true} only for a {@code CONFIRMED} booking whose
  * confirmation mail was suppressed — never before payment, so this code-gated view cannot be used as
- * a suppression oracle (D-8). {@code payWindowClosed} says the service day has opened, so
- * {@code payment} is {@code null} and no payment may still be taken (invariant #4).
+ * a suppression oracle (D-8). {@code payWindowClosed} says the booking's pay deadline has passed,
+ * so {@code payment} is {@code null} and no payment may still be taken (invariant #4).
  * {@code cancelReason} names which cancellation a cancelled booking went through
  * ({@code POLICY}/{@code WEATHER}/{@code CONFLICT}), and is {@code null} both for a live booking and
  * for one cancelled without ever being charged. {@code refundOutstanding} is {@code true} only while

@@ -1,8 +1,9 @@
 # Where the business rules live: is the thin domain layer placement or flattening?
 
 **Status / provenance.** Findings only, no decision. Follow-up to
-`2026-09-04-bounded-context-and-doc-drift-audit.md` §G-1, which established that eleven of the
-thirteen documented "aggregate roots" have no class and that this is a service-and-SQL architecture.
+`2026-09-04-bounded-context-and-doc-drift-audit.md` §G-1, which established that nine of the
+eleven documented "aggregate roots" have no class (that note's own headline said eleven of
+thirteen; see its 2026-09-04 amendment) and that this is a service-and-SQL architecture.
 This note answers the narrower question that left open:
 
 > Is the domain layer thin because the logic legitimately lives elsewhere, or because business

@@ -1,5 +1,5 @@
 /**
- * Notification bounded context — transactional-mail delivery. It owns the mail transports (real SMTP
+ * The notification module — transactional-mail delivery. It owns the mail transports (real SMTP
  * vs the recording mock, profile-swapped), the two delivery vehicles — the Event Publication Registry
  * listener for ids-only payloads and the bounded in-memory dispatcher for bearer-credential ones
  * (ADR-0011 decision 5) — and two tables of its own. The <strong>email-suppression list</strong>

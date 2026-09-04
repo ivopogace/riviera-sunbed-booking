@@ -1,5 +1,5 @@
 /**
- * Operator bounded context (invariant #13) — operator accounts and the operator↔venue
+ * The operator module (invariant #13) — operator accounts and the operator↔venue
  * ownership mapping. Its two questions for the rest of the system: <em>"does this operator
  * own this venue?"</em>, so every venue-scoped application service can enforce object-level
  * authorization (BOLA, OWASP API #1) and reject a mismatch with {@code 403}; and

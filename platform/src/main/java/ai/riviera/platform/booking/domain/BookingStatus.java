@@ -14,7 +14,8 @@ package ai.riviera.platform.booking.domain;
  * {@link #COMPLETED} is written by the staff check-in — the guarded scan-to-complete transition on
  * the service date — and {@link #NO_SHOW} by the scheduled sweep, for a booking whose service day
  * passed with no check-in. Both are terminal for the guest: neither is cancellable or
- * check-in-able. Only the admin weather refund reaches a {@link #NO_SHOW}, deliberately.
+ * check-in-able. Only the admin weather refund reaches a {@link #NO_SHOW}, deliberately
+ * ({@link BookingTransition#WEATHER_REFUND}, which holds that rule).
  *
  * <p>{@link #WITHDRAWN} is deliberately NOT {@link #CANCELLED}: no money was ever collected (a
  * pending request has no PaymentIntent on record — payment-request-on-accept), so

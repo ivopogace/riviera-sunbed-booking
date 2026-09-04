@@ -6,7 +6,7 @@ import java.net.URI;
  * Internal transport port for sending transactional email (S8, epic #108, design D-6; grown with the
  * booking-confirmation kind in #371; moved into the {@code notification} module in #382). Epic
  * #367's locked seam decision: <strong>this port is THE transport seam</strong> — it grows message
- * kinds and keeps exactly two implementations, and no bounded context outside {@code notification}
+ * kinds and keeps exactly two implementations, and no module outside {@code notification}
  * ever touches mail (RV-BE-11). Exactly one implementation is active per profile (mirroring
  * {@code StubPaymentGateway} vs {@code StripePaymentGateway}, and {@code MockSsoGateway} vs
  * {@code RealSsoGateway}): the recording {@code MockMailer} under the default profile, the real SMTP

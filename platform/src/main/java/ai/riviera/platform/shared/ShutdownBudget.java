@@ -20,7 +20,7 @@ import java.util.Collection;
  * class meets all three — it is constants and two pure sums. But the package Javadoc is equally clear
  * that it "is not a home for code used in more than one place", so reuse is not the argument. The
  * argument is <strong>ownership</strong>: the SIGTERM grace is a property of the deployment platform,
- * and no bounded context owns it. {@code notification}'s Job is transactional-mail delivery and
+ * and no module owns it. {@code notification}'s Job is transactional-mail delivery and
  * {@code booking}'s is bookings; neither's remit covers "how long the process has to close", which is
  * exactly why the previous arrangement had {@code notification} stating a number that silently bound
  * {@code booking}. That is the same reasoning that admitted {@link ObservabilityMetrics}' metric

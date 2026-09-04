@@ -7,9 +7,9 @@
  * no updates, no deletes.
  *
  * <p><strong>Closed and dependency-free:</strong> {@code allowedDependencies = {}} — not even the
- * {@code shared} kernel. The audited namespace's controllers are spread across bounded contexts
+ * {@code shared} kernel. The audited namespace's controllers are spread across modules
  * and the root, so no one context can own the record over the whole namespace; a mechanism that
- * knew a domain type would be a bounded context wearing this module's clothes. The whole surface a caller sees is
+ * knew a domain type would be a domain module wearing this module's clothes. The whole surface a caller sees is
  * {@link ai.riviera.platform.audit.api.AdminAuditLog}, and the composition root reaches only that.
  *
  * <p><strong>The fence is not here.</strong> Which requests are audited, the filter and its

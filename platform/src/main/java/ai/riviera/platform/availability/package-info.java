@@ -1,9 +1,10 @@
 /**
- * Availability bounded context — the per-{@code (set, date)} source of truth
+ * The availability module — the per-{@code (set, date)} source of truth
  * (free / booked-online / staff-marked). The <strong>only</strong> writer of that
  * table; enforces invariant #2 (a set is held by at most one party per date) via a
  * unique constraint plus a row-lock / {@code INSERT ... ON CONFLICT} claim.
- * Aggregate root: {@code SetAvailability}.
+ * No {@code domain} package, deliberately: a Java class asserting that rule would be a weaker
+ * restatement of the constraint (ADR-0018).
  *
  * <p>Full-module layout (ADR-0007): it owns an application service (the synchronous
  * claim port with real concurrency semantics), so it takes the full template —

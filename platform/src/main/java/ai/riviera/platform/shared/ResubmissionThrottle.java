@@ -15,7 +15,7 @@ import java.util.function.IntSupplier;
  * <p><strong>Kernel admission (#454) — ownership, not reuse.</strong> What this guard throttles is a
  * sweep of the platform's one Event Publication Registry, and what it races is the registry's
  * <em>boot republication</em> ({@code republish-outstanding-events-on-restart=true}, fired once at
- * context refresh from the composition root's configuration). Neither is any bounded context's to
+ * context refresh from the composition root's configuration). Neither is any module's to
  * own — and once a second module hosted a lever (#454), no module-owned home was available to it
  * without one lever's module depending on the other's internals. The same shape as
  * {@link MdcTaskDecorator}: the mechanism's other half lives at the root that modules must not

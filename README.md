@@ -22,7 +22,7 @@ platform takes a commission per booking and pays venues out manually.
 | If you want to… | Read |
 |---|---|
 | Understand the product & business | [`docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md`](docs/superpowers/specs/2026-06-25-riviera-sunbed-booking-design.md) |
-| See the architecture at a glance | [`docs/architecture/domain-model.md`](docs/architecture/domain-model.md) — bounded contexts, aggregates, flows, state machines (rendered diagrams) |
+| See the architecture at a glance | [`docs/architecture/domain-model.md`](docs/architecture/domain-model.md) — the modules, the tables and types they own, flows, state machines (rendered diagrams) |
 | Know the rules you can't break | [`CLAUDE.md`](CLAUDE.md) — conventions + the 13 invariants (canonical) |
 | Look up a domain term | [`CONTEXT.md`](CONTEXT.md) — the glossary; per-module contracts are [`RESPONSIBILITIES.md`](RESPONSIBILITIES.md) |
 | Know why something is the way it is | [`docs/adr/`](docs/adr/) — the architecture decision records |
@@ -67,7 +67,7 @@ than the default gate: **0 new issues, 0 duplicated blocks, ≥80% new-code cove
 
 ## The system in one picture
 
-Nine Spring-Modulith bounded contexts collaborate via **domain events** (state
+Nine Spring-Modulith domain modules collaborate via **domain events** (state
 changes, id-based payloads) and **`api/` ports** (queries):
 
 `venue` · `availability` · `booking` · `payment` · `payout` · `customer` ·

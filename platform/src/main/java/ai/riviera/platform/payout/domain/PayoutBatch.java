@@ -5,7 +5,7 @@ import ai.riviera.platform.venue.vocabulary.VenueId;
 /**
  * A weekly BKT payout batch (U9, issue #12) — what the platform owes one venue for one settlement
  * {@link PeriodKey}, the unit the founder pays manually via BKT (invariant #9; no Stripe Connect,
- * ADR-0002). Aggregate root: one row per {@code (venue, period)}.
+ * ADR-0002). One row per {@code (venue, period)}.
  *
  * <p>{@code totalNetMinor} is the <strong>signed</strong> net owed for the period —
  * {@code Σ(ACCRUAL.net) − Σ(REVERSAL.net)} in integer minor units (invariant #5) — which may be

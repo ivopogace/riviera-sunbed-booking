@@ -9,7 +9,7 @@ description: >-
 
 # Riviera Spring Modulith (hexagonal, JDBC-only)
 
-Base package `ai.riviera.platform`; nine bounded-context modules — **venue, availability,
+Base package `ai.riviera.platform`; nine domain modules — **venue, availability,
 booking, payment, payout, customer, operator, notification, review** — plus three non-context
 modules: **`shared`** (an OPEN Shared Kernel) and the closed ADR-0017 pair **`challenge`** (full
 template) and **`audit`** (thin template + a driving adapter). Spring Boot 4, Spring Modulith
@@ -43,6 +43,12 @@ literally (it names the offending class and the broken rule) and fix the structu
   enforced by `ModularityTests`.
 - **The package shape is machine-locked** — `PackageShapeArchitectureTests` (the package
   sets) + `PublishedSurfacePlacementArchitectureTests` (kind-per-surface).
+- **`domain/` is framework-free** (ADR-0018): a rule that is pure goes there; a rule needing a
+  `Clock`, a port or bound configuration goes in `application/` as a named, separately
+  unit-tested holder (`BookingCutoff`, `CancellationPolicy`, `RequestWindows`). Both are the
+  rule layer — the split is packaging, not status — and a set invariant belongs in a DB
+  constraint instead. Enforced by `DomainPurityArchitectureTests`: a `domain/` class may name
+  the JDK and any module's `vocabulary/`/`domain/`, and nothing else.
 
 ## Module layout — two templates by weight (ADR-0007)
 
@@ -54,13 +60,13 @@ on the other side.
 
 **Assignment rule: a module is THIN iff it has no application service** — its `api/` port
 is implemented directly by a JDBC adapter. Otherwise it is FULL. Today all nine
-bounded-context modules are full, and so is the non-context `challenge`; the non-context `audit`
+domain modules are full, and so is the non-context `challenge`; the non-context `audit`
 is the one thin module — its JDBC adapter implements the published port directly. Small LOC does
 not make a module thin (`availability` is small but full); having no service does.
 
 **`challenge` uses the full template** minus `domain/` — it owns table-backed state, not an
 aggregate — with `allowedDependencies = {}`: a mechanism that knew a domain type would be a
-bounded context in disguise. **A thin module may still own an `adapter/in`** (`audit` does): the
+domain module in disguise. **A thin module may still own an `adapter/in`** (`audit` does): the
 tree below shows the common serviceless case, not a ban. **`shared` fits neither template:** `@ApplicationModule(type = OPEN)`, a handful of flat
 classes at the module root, no published surface (OPEN means consumers reference its types
 directly), no `application`/`domain`/`adapter`. `PackageShapeArchitectureTests` skips
@@ -93,7 +99,7 @@ ai.riviera.platform.<module>/
 ├── application/               # services (package-private @Service/@Transactional) + their driving/driven
 │   │                          #   PORT interfaces, TOGETHER — no in/out sub-split (direction lives in adapter/)
 │   └── <use-case>/            # OPTIONAL sub-grouping by use-case — booking ONLY
-├── domain/                    # INTERNAL: enums, value objects, aggregates, policies (framework-light)
+├── domain/                    # INTERNAL: enums, value objects, policies, calculations (framework-FREE, ADR-0018)
 └── adapter/
     ├── in/                    # driving adapters: @RestController, @ApplicationModuleListener (+ request/response DTOs)
     └── out/                   # driven adapters: JdbcClient repos / port impls (package-private)

@@ -39,13 +39,29 @@ public record RequestWindows(Duration expiryWindow, Duration payWindow) {
 	}
 
 	/**
-	 * The cutoff the abandoned sweep's accepted arm — and the code-gated view's — binds: a booking
-	 * whose {@code accepted_at} is strictly before this has run out its <em>raw</em> pay window.
-	 * Strictly — so at the uncapped {@link #payDeadline} itself the booking is not yet expirable,
-	 * and the mail never promises a moment already past. The other arm both share expires a booking
-	 * whose service day has ended, inclusive at the day-end instant ({@code serviceDayHasEnded}).
+	 * The cutoff the abandoned sweep's accepted arm binds — and {@link #payWindowClosed} applies for
+	 * the code-gated view: a booking whose {@code accepted_at} is strictly before this has run out
+	 * its <em>raw</em> pay window. Strictly — so at the uncapped {@link #payDeadline} itself the
+	 * booking is not yet expirable, and the mail never promises a moment already past. The other arm
+	 * both share expires a booking whose service day has ended, inclusive at the day-end instant.
 	 */
 	public Instant acceptedBefore(Instant now) {
 		return now.minus(payWindow);
+	}
+
+	/**
+	 * Whether an {@code AWAITING_PAYMENT} booking can no longer be paid at {@code now}: its service
+	 * day has ended — inclusive at {@code serviceDayEndsAt} — or an accepted request has outrun its
+	 * raw pay window, strictly, so the instant {@link #payDeadline} promises is still payable. The
+	 * two arms are the ones the abandoned sweep binds in SQL
+	 * ({@code Bookings#findExpirableAwaitingPayment}); its third, the instant-book TTL, is the
+	 * sweep's alone and closes no window here — an instant booking stays payable until the sweep
+	 * cancels its intent.
+	 *
+	 * @param acceptedAt when the venue accepted the request, {@code null} for an instant booking
+	 */
+	public boolean payWindowClosed(Instant acceptedAt, Instant serviceDayEndsAt, Instant now) {
+		return !now.isBefore(serviceDayEndsAt)
+				|| (acceptedAt != null && acceptedAt.isBefore(acceptedBefore(now)));
 	}
 }

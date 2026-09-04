@@ -221,7 +221,14 @@ exist. `venue` composes; I answer state.
   (invariant #2). Arrivals and daily takings count `COMPLETED` **and `NO_SHOW`** beside
   `CONFIRMED`. The guest-cancel guard is `CONFIRMED`-only; the admin **weather refund**
   admits `NO_SHOW` on its own `cancelForWeather` transition, because the storm is known
-  afterwards — the two share no port method.
+  afterwards — the two share no port method, and each takes its admitted statuses from its own
+  row in `BookingTransition`, so that asymmetry cannot be tidied away.
+- **The lifecycle is stated once and enforced in SQL.** `domain/BookingTransition` is the
+  transition table — which statuses each of the eleven transitions may act on, what it writes,
+  and `successorsOf(status)` for "what may follow this?". It generates no SQL: the guarded
+  `UPDATE … WHERE status = … RETURNING` statements in `JdbcBookings` stay the enforcing
+  statement, and `JdbcBookingTransitionTableIT` drives every transition against every status to
+  hold the two together. Read the table before adding a transition or widening a guard.
 - **`BookingCutoff` is the module-wide day-boundary authority** (`application/` root):
   `salesCloseAt` (the venue's setting per date — gates creation and caps a pending
   request's response deadline at `min(created + expiry-window, D at sales close)`;
@@ -796,8 +803,8 @@ The **Shared Kernel** (Evans, DDD ch. 14): `ApiProblem`, `CurrentOperator`,
 *discipline* (keep it small, change it only by consultation), not his definition — his kernel is a
 subset of the domain model; this one holds edge types (ADR-0017).
 
-**Job:** hold the handful of edge types that bounded contexts legitimately share, each
-admitted on **ownership, never reuse** — the type lives here because no bounded context
+**Job:** hold the handful of edge types the domain modules legitimately share, each
+admitted on **ownership, never reuse** — the type lives here because no module
 can own it, not because several use it:
 
 - the RFC-7807 error-contract factory (`ApiProblem`) and the **typed edge-validation
@@ -827,11 +834,11 @@ Nothing else. Three modules wanting a type is the trigger for asking the questio
 answer is always ownership.
 
 **Not my job:**
-- **Any business logic or module-owned state** → the owning bounded context. This package
+- **Any business logic or module-owned state** → the module that owns it. This package
   is not a home for "code used in more than one place"; a shared kernel earns its keep
-  only while it stays tiny and stable, because a change here ripples through every context.
+  only while it stays tiny and stable, because a change here ripples through every module.
 - **Depending on a module that depends back** → it may reach only `customer::api` and
-  `operator::api`, the two bounded contexts that do not depend on it.
+  `operator::api`, the two modules that do not depend on it.
 - **Being the composition root** → that stays the root package (`PlatformApplication`,
   `SecurityConfig`, the controllers). The root *depends on* modules while `shared` is
   *depended on by* them; putting both in one package is what closed
@@ -858,7 +865,7 @@ Only writer of `challenge_registry` (machine-checked). Publishes `api.ProofOfWor
 The **admin audit trail** (ADR-0013, ADR-0017): a closed non-context module with the thin template
 plus a driving adapter, and no dependencies — Evans' *Cohesive Mechanism*, a separate lightweight
 framework behind an intention-revealing interface. The audited namespace's controllers are spread
-across bounded contexts and the root, so no one context can own the record over the whole namespace.
+across modules and the root, so no one module can own the record over the whole namespace.
 
 **Job:** append one row per mutating `/api/admin/**` action that reached past the security gate —
 actor (a username snapshot, deliberately no FK), method, path, outcome status, UTC instant, and the
@@ -927,7 +934,7 @@ past, which is where instance clock skew is absorbed.
 endpoint answers `204`, which the SPA reads to hide the widget. `riviera.altcha.cost` (5000) is a
 measured default — Chromium under mobile emulation in the slice's prototype, scaled by per-core
 throughput to an estimated 1–2 s on a mid-range phone; a real-device check is the pre-launch item. What
-it is not: no ALTCHA hosted service is ever called, no bounded-context module knows the challenge
+it is not: no ALTCHA hosted service is ever called, no domain module knows the challenge
 exists — the root reaches only `challenge::api` and `::vocabulary` — and login is not fenced (the
 per-identity throttle covers it), nor are the token-redemption routes (a reset or verification token
 is already a bearer credential). Fencing forgot-password does not weaken its non-enumerating answer
@@ -950,8 +957,12 @@ focus.
 the mechanism and the edge cases. The numbering is `CLAUDE.md`'s and never changes.
 
 1. **No JPA/Hibernate — JDBC only.** `spring-boot-starter-data-jpa` never on the classpath;
-   no `@Entity`/`EntityManager`. Spring Data JDBC aggregates and/or `JdbcTemplate` with
-   explicit SQL.
+   no `@Entity`/`EntityManager`. Every driven adapter is hand-written `JdbcClient` SQL: the
+   tree holds no `CrudRepository`, no `@Table`, no `@Id`, and no `org.springframework.data.*`
+   import in `src/main/java`. The Spring Data JDBC starter is on the classpath and aggregate
+   mapping remains available for a cluster of rows that is genuinely one consistency unit
+   (`riviera-java-conventions` §1a), but nothing has earned it yet — reaching for it departs
+   from the tree's one uniform choice and is a review conversation, not a preference.
 2. **Availability is the single source of truth, per `(set, date)`.** Every channel — online
    booking and staff tap-to-mark — writes the same `availability(set_id, booking_date)` row;
    a set is held by at most one party per date. Enforced in the database (unique constraint)
@@ -1038,6 +1049,8 @@ sufficient.
 | No module reaches another's `application`/`domain`/`adapter` internals; `allowedDependencies` deny-lists hold | `ModularityTests` (`ApplicationModules.verify()`) |
 | The ADR-0007 package shape; published-surface kinds (`api`/`spi`/`vocabulary`/`events`); the `VenueCatalog` role split | `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`, `VenueApiRoleSplitTests` |
 | No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` |
+| A `domain/` class names only the JDK and published ids, values and rules — no Spring, JDBC, Stripe, adapter or port (ADR-0018 §4) | `DomainPurityArchitectureTests` (fixture-proven negatives) |
+| The booking transition table and the guarded `UPDATE`s admit the same statuses (ADR-0018 §1) | `JdbcBookingTransitionTableIT` (every transition against every status) |
 | No login machinery inside `operator` (RV-BE-11) | `OperatorAuthPlacementTests` |
 | No login machinery inside `customer` (RV-BE-11) | `CustomerAuthPlacementTests` |
 | Mail listeners name their own bounded executors, never Boot's shared `applicationTaskExecutor` (#383) | `MailListenerExecutorArchitectureTest` |

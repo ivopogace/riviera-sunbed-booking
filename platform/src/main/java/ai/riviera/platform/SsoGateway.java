@@ -8,7 +8,7 @@ import ai.riviera.platform.customer.vocabulary.SsoProvider;
  * Platform-edge port for the OIDC Authorization Code + PKCE dance with an external identity provider
  * (design D-3/D-4). This is <strong>authentication machinery</strong>, so it lives at the
  * application edge (the root package) alongside {@code SecurityConfig}/{@code AuthController}, never
- * inside a bounded-context module (RV-BE-11) — the {@code customer} module only owns the resulting
+ * inside a domain module (RV-BE-11) — the {@code customer} module only owns the resulting
  * account identity ({@code SsoAccountProvisioning}).
  *
  * <p>Two moves, both completed server-side so tokens never reach browser JS:
