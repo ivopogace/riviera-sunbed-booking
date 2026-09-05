@@ -66,7 +66,7 @@ for `bugfix/review-gate-range-pinning` per `riviera-sdlc` § *Remote / cloud ses
       *Seam:* the guard CLI spawned in a throwaway repo via `guard-cli-harness.mjs` ·
       *Pinned by:* `check-review-range.test.mjs` `reproduces #939: a stale origin/main is
       caught by the count check`
-- [ ] **AC-4:** Given a session about to make a history claim in a cloud sandbox, when it
+- [x] **AC-4:** Given a session about to make a history claim in a cloud sandbox, when it
       reads `riviera-local-debug`, then it finds that cloud clones start shallow, the named
       set of commands whose output that corrupts, and the `git fetch --unshallow` remedy.
       *Seam:* `riviera-local-debug/SKILL.md` § *Git in a cloud session* · *Pinned by:*
@@ -102,23 +102,27 @@ endpoint, or flow is retired.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | (closed in phase 1 — the gate resolves by merge-base against the fetched tip; `base.sha` is demoted to `--base-sha`) Pinning the range to the PR's `base.sha` (as issue #942 AC-1 literally suggests) breaks every PR that followed `riviera-sdlc`'s documented merge-from-main step: GitHub diffs against the base branch's current tip, so `base.sha` yields a **larger** range and the new AC-2 check would abort spuriously — turning the fix into a worse false alarm than the bug | high | high | Use `merge-base(freshly-fetched origin/<base.ref>, HEAD)`, which is what GitHub computes and what `ci.yml`'s base-fetch step already does for the same reason (PR #618). `base.sha` is used only as a reachability sanity check | this slice | phase 1 |
-| R-2 | `git merge-base` on a shallow clone silently returns the wrong answer, and `git-diff.mjs:168`'s `mergeBase()` swallows the failure with `catch { return base; }` — a fail-**open** that hands back the stale base | high | high | The guard refuses (exit 2) when `git rev-parse --is-shallow-repository` is true, before it resolves anything; `mergeBase()`'s fail-open gets a Javadoc note naming the condition | this slice | phase 0 (guard half; note lands in phase 2) — verified live: the guard exits 2 on this session's own clone |
-| R-3 | The count comparison false-alarms on binary files (`--numstat` emits `-` for both columns) or on a >300-file PR | low | med | Binaries are excluded from the line totals on both sides and counted only as files; `changed_files` stays exact above 300 even though the *listed* files are capped. Both stated in the guard header and covered by a case | this slice | open |
+| R-2 | `git merge-base` on a shallow clone silently returns the wrong answer, and `git-diff.mjs:168`'s `mergeBase()` swallows the failure with `catch { return base; }` — a fail-**open** that hands back the stale base | high | high | The guard refuses (exit 2) when `git rev-parse --is-shallow-repository` is true, before it resolves anything; `mergeBase()`'s fail-open gets a Javadoc note naming the condition | this slice | phase 0 + phase 2 — verified live: the guard exited 2 on this session's own clone until `git fetch --unshallow` |
+| R-3 | The count comparison false-alarms on binary files (`--numstat` emits `-` for both columns) or on a >300-file PR | low | med | Binaries are excluded from the line totals on both sides and counted only as files; `changed_files` stays exact above 300 even though the *listed* files are capped. Both stated in the guard header and covered by a case | this slice | phase 0 — `parseNumstat` case pins it |
 | R-4 | The guard becomes a box the gate ticks without running, reproducing the very failure #942 describes | med | med | The gate's announcement must carry the resolved SHA **and** the matched counts, so a transcript with a bare announcement is visibly non-compliant | this slice | phase 1 — the announcement template names both, and says a bare one means the step did not run |
 
 ## Open questions / Assumptions
+
+None open.
+
+### Resolved
 
 - **Assumption:** an executable verifier is in scope, not just prose. Issue #942 phrases its
   scope as documentation edits, but AC-2 ("refuses to dispatch") and AC-3 ("makes the gate
   abort") are not properties prose can have, and the repo's seven `check-*.mjs` guards — each
   with a `.test.mjs` sibling, each headed by the silent-false-clean it exists to prevent — are
-  the house shape for exactly this. Stated in the PR body so it is reviewable. — *Owner:* this
-  slice · *Resolves by:* review gate
+  the house shape for exactly this. Stated in the PR body so it is reviewable. — **Resolved:** taken, phase 0; the guard's
+  suite reproduces #939 literally, which prose could not.
 - **Assumption:** AC-4's "the two commands" is a miscount in the issue, whose own Scope §3
   names three (`git log`, `git blame`, `git show`). The caveat will name the actual set rather
   than assert a count — writing "the two commands" into a skill would itself be the stale
-  counting-fact `riviera-docs-freshness` step 2b exists to catch. — *Owner:* this slice ·
-  *Resolves by:* phase 2
+  counting-fact `riviera-docs-freshness` step 2b exists to catch. — **Resolved:** phase 2 names the set as a
+  five-row table (`log`, `blame`, `show`, `merge-base`, `describe`), no count asserted.
 
 ## Availability & concurrency (invariant #2)
 
@@ -153,16 +157,16 @@ N/A — no contract change. No endpoint, DTO, or client type is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement — phases 0-1 done, entering phase 2`
+**Stage pointer:** `implement — all phases done; opening the draft PR, then the CI gate`
 
-**Next action:** Add § *Git in a cloud session* to `riviera-local-debug`, point the
-docs-freshness range input at the resolve rule, and note `mergeBase()`'s fail-open.
+**Next action:** Push, open the draft PR (CI vehicle), then mark ready for review and run
+the Review + Sonar gates.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the scope-check guard + its suite (AC-2, AC-3) | ✅ | phase-0 commit |
 | 1 — `pr-gates.md` §1 steps 2 and 3 (AC-1, scope item 4) | ✅ | phase-1 commit |
-| 2 — the shallow caveat + the two range citations (AC-4) | ⏳ | |
+| 2 — the shallow caveat + the two range citations (AC-4) | ✅ | phase-2 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -171,7 +175,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | local guard (RV-STYLE-1) | Three multi-line inline comments in the new guard and its suite | fixed in phase 2 — one line each, prose already in the doc comments |
 
 ---
 
@@ -216,10 +220,10 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Modify `.claude/skills/riviera-local-debug/SKILL.md` · Modify
 `.claude/skills/riviera-docs-freshness/SKILL.md` · Modify `scripts/git-diff.mjs`
 
-- [ ] **Step 1:** Add § *Git in a cloud session* naming the corrupted commands and the remedy.
-- [ ] **Step 2:** Point the docs-freshness range input at the resolve rule.
-- [ ] **Step 3:** Note `mergeBase()`'s fail-open.
-- [ ] **Step 4: Commit** — `git commit -m "Declare the shallow clone where history work reads it (#942)"`
+- [x] **Step 1:** Add § *Git in a cloud session* naming the corrupted commands and the remedy.
+- [x] **Step 2:** Point the docs-freshness range input at the resolve rule.
+- [x] **Step 3:** Note `mergeBase()`'s fail-open.
+- [x] **Step 4: Commit** — `git commit -m "Declare the shallow clone where history work reads it (#942)"`
 
 ---
 

@@ -3,11 +3,44 @@ name: riviera-local-debug
 description: >-
   How to build and test riviera-sunbed-booking locally, especially in a Claude Code cloud
   session (the Gradle wrapper cannot self-provision, the full test task OOMs,
-  Testcontainers need the hook's dockerd). Load BEFORE the session's first ./gradlew,
-  gradle, or npm invocation, or when a local build/test fails.
+  Testcontainers need the hook's dockerd, the clone is shallow). Load BEFORE the session's
+  first ./gradlew, gradle, or npm invocation, when a local build/test fails, or BEFORE any
+  git history claim (git log / blame / show / merge-base) in a cloud session.
 ---
 
 # Riviera local debug — build & test recipes
+
+## Git in a cloud session — the clone is shallow, and it is never refetched
+
+Two properties of a cloud session's repository, both silent, both of which have already
+produced a confidently wrong answer (issue #942):
+
+**It is shallow.** `git rev-parse --is-shallow-repository` returns `true`. Git answers from
+the truncated graph rather than erroring, so these are all unreliable until you deepen it:
+
+| Command | What it does wrong on a shallow clone |
+|---|---|
+| `git log` (esp. `-S`, `--follow`, `<range>`) | history stops at the graft; "the commit that introduced this" is whatever is nearest the boundary |
+| `git blame` | every line older than the graft is attributed to the boundary commit |
+| `git show <sha> -- <path>` | on the boundary commit a *modified* file renders as a whole-file addition |
+| `git merge-base` | resolves against the truncated graph; `git-diff.mjs`'s `mergeBase()` fails **open**, returning the stale base |
+| `git describe`, `git tag --merged` | tags below the graft were never fetched |
+
+The remedy is one command, and it is a precondition, not a cleanup:
+
+```bash
+[ "$(git rev-parse --is-shallow-repository)" = true ] && git fetch --unshallow
+```
+
+**A history claim made without it is not evidence.** Re-run the trace after deepening before
+you report a cause, name an introducing commit, or write one into an issue or PR.
+
+**Remote-tracking refs are frozen too.** The clone is made once at container start and never
+refetched, so `origin/main` is whatever `main` was then — it does not follow the branch.
+Anything diffed against it silently widens as `main` moves. Fetch the branch you intend to
+diff (`git fetch --no-tags origin <ref>`) rather than trusting the ref; for the review gate
+specifically that is not optional, and the scope check that enforces it is `riviera-sdlc`
+`references/pr-gates.md` §1 step 2.
 
 ## Backend (Spring Boot, `platform/`)
 

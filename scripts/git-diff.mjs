@@ -164,6 +164,14 @@ export function untrackedPaths() {
  * which is the side the guards read their file content from. With `…...HEAD` the two drift apart the
  * moment anything is uncommitted — including a guard's own `--fix` — and line numbers from one are
  * then applied to the other (PR #618).
+ *
+ * **The `catch` fails open, and callers must know when that matters.** `merge-base` exits non-zero
+ * on a shallow clone whose true base is below the graft, and this returns `base` unchanged — a
+ * *wider* range, silently, which for a guard is a false clean rather than a false alarm. In CI that
+ * cannot happen (`fetch-depth: 0` plus an explicit base fetch). It is the cloud sandbox this is
+ * wrong in, where the clone starts shallow and `origin/main` is never refetched, so anything
+ * resolving a **review** range calls `git rev-parse --is-shallow-repository` first rather than
+ * relying on this — see `scripts/check-review-range.mjs` and issue #942.
  */
 export function mergeBase(base) {
   try {

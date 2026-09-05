@@ -127,9 +127,7 @@ function main(argv) {
   }
   const reported = Object.fromEntries(DIMENSIONS.map((key) => [key, Number(options[key])]));
 
-  // Before anything is resolved: on a shallow clone `merge-base` can answer from a truncated graph,
-  // and it fails open — `git-diff.mjs`'s mergeBase() would hand back the stale base rather than
-  // throw. Cloud sessions start shallow, so this is the common case, not the exotic one.
+  // Cloud sessions start shallow, and merge-base then answers from the truncated graph, failing open.
   if (git(['rev-parse', '--is-shallow-repository']).trim() === 'true') {
     process.stderr.write(
       'This clone is shallow — the merge base, and every history command, may be wrong.\n' +
@@ -157,8 +155,7 @@ function main(argv) {
     return 2;
   }
 
-  // Not `base.sha`, and not a bare `origin/<ref>...HEAD` typed from memory: the merge base against
-  // the branch's CURRENT tip is what GitHub diffs, so it is what the counts below can be compared to.
+  // The merge base against the branch's CURRENT tip is what GitHub diffs; see the header on base.sha.
   const base = git(['merge-base', `origin/${baseRef}`, 'HEAD']).trim();
   const local = parseNumstat(
     git(['diff', '--numstat', '--no-color', '--no-ext-diff', '--no-relative', `${base}...HEAD`]),

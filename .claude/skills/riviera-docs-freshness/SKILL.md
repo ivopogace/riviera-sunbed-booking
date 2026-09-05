@@ -20,6 +20,13 @@ A git range — `origin/main...HEAD` (a slice's own diff, pre-merge), `<last-aud
 or an epic's merge span. When unspecified, default to `origin/main...HEAD` if on a branch,
 else ask for the range.
 
+**Resolve that range before sweeping it, don't just name it.** `origin/main` is a local ref
+a cloud session never refetches, and a shallow clone answers history questions from a
+truncated graph — a sweep over a silently widened range reports another slice's files as
+this one's. Fetch the base branch (and `git fetch --unshallow` if the clone is shallow)
+first; the full procedure, and the scope check that enforces it, are `riviera-sdlc`
+`references/pr-gates.md` §1 step 2 (issue #942).
+
 ## The substrate-doc map (what can go stale)
 
 | Doc | Stated facts that rot | Typical invalidators |

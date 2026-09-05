@@ -102,8 +102,7 @@ test('reproduces #939: a stale origin/main is caught by the count check', () => 
     assert.equal(stale.status, 1, 'ten local files against three on the PR must abort');
     assert.match(stale.stderr, /files: local 10, PR 3/);
 
-    // What the missing fetch would have done. The same invocation must now pass — the gate
-    // self-corrects rather than needing the range restated by hand.
+    // What the missing fetch would have done: the same invocation must now pass, unaided.
     setRemoteTrackingRef(repo, realBase);
     assert.equal(repo.run(GUARD, scopeArgs(3, 3, 0)).status, 0);
   });
