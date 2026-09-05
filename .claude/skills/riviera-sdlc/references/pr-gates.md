@@ -147,6 +147,20 @@ and duplications below its fail thresholds. Pull the actual list and fix every e
    it and no analysis is uploaded — `skipped` means *unanalyzed*, not *clean*. `WebFetch`
    caches responses for 15 minutes — cache-bust on every re-read.
 
+   **The third false zero: a diff outside `sonar.sources`.** An analysis that ran and
+   concluded `success` still read nothing of a PR whose changed files all lie outside
+   `sonar.sources` in `sonar-project.properties` (today: `platform/src/main/java`,
+   `frontend/src`, `scripts`) — a plan doc, a skill, a workflow, the properties file itself.
+   Its green proves nothing about the diff: the issue list is empty because no line was
+   analysed, and the tell is the measures — `new_lines` absent, and the bot comment reporting
+   0.0% coverage and 0.0% duplication on new code. Distinguish it from clean by checking the
+   changed paths against `sonar.sources` before reading the zero, and record in the plan's
+   Sonar note that the gate did not apply (which paths, and why), never that it passed. A PR
+   that mixes analysed and unanalysed paths is judged on the analysed ones only — say which.
+   That the properties file states what each source root covers (the `scripts/` entry names
+   the `.mjs` guards as analysed and covered, the suites as excluded, the `.sh` files as
+   unread) is what makes this check answerable from the file rather than from memory.
+
    Triage every entry — bug, vulnerability, code smell, security hotspot, duplicated block,
    coverage shortfall — even under a green gate.
 3. **Resolve — back through the loop.** By finding type:

@@ -96,7 +96,7 @@ N/A — new behaviour, replaces no surface.
 | R-4 | The `sonar` job's extra Node setup + test run lengthens the critical path | low | low | measured locally at 17 s for the suites; setup-node from `.nvmrc` is cached by the action; the job's 15-minute cap holds | session | open — confirm on the PR's run |
 | R-5 | A guard-suite failure now reds the `sonar` job too | low | low | it reds the hygiene job on the same push already; the second red carries the same message | session | closed by design |
 | R-6 | The lcov's `SF:` paths do not match Sonar's file keys | low | high | Node writes them repo-root-relative (`SF:scripts/git-diff.mjs`), the form the scanner wants when run from the root; no normalisation step, unlike the frontend's | session | closed — measured |
-| R-7 | New prose in `pr-gates.md` trips the skill-prose gate (an issue number in an added skill line) | med | low | `node scripts/check-inline-comments.mjs --diff origin/main` before each push; the new paragraph names no issue | session | open |
+| R-7 | New prose in `pr-gates.md` trips the skill-prose gate (an issue number in an added skill line) | med | low | `node scripts/check-inline-comments.mjs --diff origin/main` before each push; the new paragraph names no issue | session | closed — exit 0 at the phase-1 commit |
 
 ## Open questions / Assumptions
 
@@ -136,15 +136,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** CI gate (draft PR open) → Sonar first-analysis triage (phase 2)
 
-**Next action:** edit `pr-gates.md` §2, run the prose guard, commit, push, open the draft PR.
+**Next action:** read the draft PR's CI run and pull the Sonar list + measures for the PR; record
+them in the Findings register; fix or resolve each entry.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `sonar-project.properties` + `ci.yml`: analyse `scripts/`, produce and read its lcov | ✅ | phase-0 commit |
-| 1 — `pr-gates.md` §2 names the outside-`sonar.sources` class | ⏳ | |
-| 2 — first-analysis triage: fix or resolve what Sonar reports on `scripts/`; close-out | | |
+| 0 — `sonar-project.properties` + `ci.yml`: analyse `scripts/`, produce and read its lcov | ✅ | 2cd3be35 |
+| 1 — `pr-gates.md` §2 names the outside-`sonar.sources` class | ✅ | phase-1 commit |
+| 2 — first-analysis triage: fix or resolve what Sonar reports on `scripts/`; close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -205,12 +206,12 @@ diff <(ls scripts/*.mjs | grep -v '\.test\.mjs$' | sort) \
 
 **Files:** Modify `.claude/skills/riviera-sdlc/references/pr-gates.md`
 
-- [ ] **Step 1: The failing test** — §2's false-zero paragraph, read against the issue's AC-4:
+- [x] **Step 1: The failing test** — §2's false-zero paragraph, read against the issue's AC-4:
       it names "not analysed yet" and "red build skipped the scan" as the two ways a zero lies,
       and not the third — a diff outside `sonar.sources`.
-- [ ] **Step 3: Minimal implementation** — one paragraph naming the class and what to record.
-- [ ] **Step 4: Verify** — `node scripts/check-inline-comments.mjs --diff origin/main` exits 0.
-- [ ] **Step 6: Commit** — `git commit -m "Name the outside-sonar.sources class in the Sonar gate (#954)"`
+- [x] **Step 3: Minimal implementation** — one paragraph naming the class and what to record.
+- [x] **Step 4: Verify** — `node scripts/check-inline-comments.mjs --diff origin/main` exits 0.
+- [x] **Step 6: Commit** — `git commit -m "Name the outside-sonar.sources class in the Sonar gate (#954)"`
 
 ## Phase 2 — First-analysis triage and close-out
 
