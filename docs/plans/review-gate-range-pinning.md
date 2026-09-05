@@ -55,12 +55,12 @@ for `bugfix/review-gate-range-pinning` per `riviera-sdlc` § *Remote / cloud ses
       appears in the gate's announcement string. *Seam:* `pr-gates.md` §1 step 2's
       resolve-then-announce procedure · *Pinned by:* `check-review-range.test.mjs`
       `resolves the base from the fetched base branch, not from a stale ref`
-- [ ] **AC-2:** Given a local range whose file count or line totals differ from the PR's
+- [x] **AC-2:** Given a local range whose file count or line totals differ from the PR's
       reported `changed_files`/`additions`/`deletions`, when the scope check runs, then it
       exits non-zero naming both sides and the gate does not dispatch. *Seam:*
       `scripts/check-review-range.mjs` CLI exit code · *Pinned by:*
       `check-review-range.test.mjs` `a file-count mismatch exits 1 and names both sides`
-- [ ] **AC-3:** Given the #939 conditions reproduced literally — `origin/main` set one commit
+- [x] **AC-3:** Given the #939 conditions reproduced literally — `origin/main` set one commit
       behind the PR's real base, so the three-dot range yields ten files where the PR reports
       three — when the scope check runs, then it exits 1 rather than reporting clean.
       *Seam:* the guard CLI spawned in a throwaway repo via `guard-cli-harness.mjs` ·
@@ -102,7 +102,7 @@ endpoint, or flow is retired.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Pinning the range to the PR's `base.sha` (as issue #942 AC-1 literally suggests) breaks every PR that followed `riviera-sdlc`'s documented merge-from-main step: GitHub diffs against the base branch's current tip, so `base.sha` yields a **larger** range and the new AC-2 check would abort spuriously — turning the fix into a worse false alarm than the bug | high | high | Use `merge-base(freshly-fetched origin/<base.ref>, HEAD)`, which is what GitHub computes and what `ci.yml`'s base-fetch step already does for the same reason (PR #618). `base.sha` is used only as a reachability sanity check | this slice | open |
-| R-2 | `git merge-base` on a shallow clone silently returns the wrong answer, and `git-diff.mjs:168`'s `mergeBase()` swallows the failure with `catch { return base; }` — a fail-**open** that hands back the stale base | high | high | The guard refuses (exit 2) when `git rev-parse --is-shallow-repository` is true, before it resolves anything; `mergeBase()`'s fail-open gets a Javadoc note naming the condition | this slice | open |
+| R-2 | `git merge-base` on a shallow clone silently returns the wrong answer, and `git-diff.mjs:168`'s `mergeBase()` swallows the failure with `catch { return base; }` — a fail-**open** that hands back the stale base | high | high | The guard refuses (exit 2) when `git rev-parse --is-shallow-repository` is true, before it resolves anything; `mergeBase()`'s fail-open gets a Javadoc note naming the condition | this slice | phase 0 (guard half; note lands in phase 2) — verified live: the guard exits 2 on this session's own clone |
 | R-3 | The count comparison false-alarms on binary files (`--numstat` emits `-` for both columns) or on a >300-file PR | low | med | Binaries are excluded from the line totals on both sides and counted only as files; `changed_files` stays exact above 300 even though the *listed* files are capped. Both stated in the guard header and covered by a case | this slice | open |
 | R-4 | The guard becomes a box the gate ticks without running, reproducing the very failure #942 describes | med | med | The gate's announcement must carry the resolved SHA **and** the matched counts, so a transcript with a bare announcement is visibly non-compliant | this slice | open |
 
@@ -153,15 +153,15 @@ N/A — no contract change. No endpoint, DTO, or client type is touched.
 
 ## Execution status
 
-**Stage pointer:** `plan — committed, entering implement (phase 0)`
+**Stage pointer:** `implement — phase 0 done, entering phase 1`
 
-**Next action:** Write `scripts/check-review-range.test.mjs`' first failing case (the
-file-count mismatch) and run it red before any implementation exists.
+**Next action:** Rewrite `pr-gates.md` §1 step 2 as resolve-then-verify, and make step 3's
+re-review re-resolve rather than reuse the range.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the scope-check guard + its suite (AC-2, AC-3) | | |
-| 1 — `pr-gates.md` §1 steps 2 and 3 (AC-1, scope item 4) | | |
+| 0 — the scope-check guard + its suite (AC-2, AC-3) | ✅ | phase-0 commit |
+| 1 — `pr-gates.md` §1 steps 2 and 3 (AC-1, scope item 4) | ⏳ | |
 | 2 — the shallow caveat + the two range citations (AC-4) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -191,16 +191,16 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Create `scripts/check-review-range.mjs` · Create `scripts/check-review-range.test.mjs`
 
-- [ ] **Step 1: Write the failing test** — the mismatch case and the #939 reproduction, driven
+- [x] **Step 1: Write the failing test** — the mismatch case and the #939 reproduction, driven
       through `guard-cli-harness.mjs` so the git front-end is genuinely cold.
-- [ ] **Step 2: Run it, verify it fails** — `node --test scripts/check-review-range.test.mjs`
-      → FAIL, module not found.
-- [ ] **Step 3: Minimal implementation** — shallow refusal, base resolution, numstat totals,
+- [x] **Step 2: Run it, verify it fails** — `node --test scripts/check-review-range.test.mjs`
+      → FAIL, `ERR_MODULE_NOT_FOUND`.
+- [x] **Step 3: Minimal implementation** — shallow refusal, base resolution, numstat totals,
       comparison, exit codes 0/1/2.
-- [ ] **Step 4: Run it, verify it passes** — `node --test scripts/check-review-range.test.mjs` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population below.
-- [ ] **Step 6: Commit** — `git commit -m "Add the review-gate range scope check (#942)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 4: Run it, verify it passes** — 9/9 pass; the whole `scripts/*.test.mjs` family is 232/232.
+- [x] **Step 5: Generalization-audit pass** — population below.
+- [x] **Step 6: Commit** — `git commit -m "Add the review-gate range scope check (#942)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — The gate resolves and announces its range
 
