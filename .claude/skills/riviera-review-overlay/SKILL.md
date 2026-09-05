@@ -87,8 +87,12 @@ line. Re-walk on every re-review, including review-fix commits.
 Fires whenever the diff touches what every future session reads as instructions:
 `.claude/skills/**` (`SKILL.md` **and** `references/`), `CLAUDE.md`,
 `frontend/.claude/CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, `docs/adr/**`,
-`docs/agents/**` — or adds/tightens a structural test (`*ArchitectureTests`,
-`ModularityTests`), which falsifies substrate examples from the other direction. Such a diff
+`docs/agents/**` — or adds/tightens a fitness function, which falsifies substrate examples
+from the other direction. A fitness function is recognised from the diff, never looked up in a
+list: a test that fails the build on a rule over production code the diff need not touch — an
+ArchUnit rule, Modulith's `verify()`, a classpath probe, an endpoint census.
+`RESPONSIBILITIES.md` § *Machine-checked vs review-checked* lists the ones that enforce a clause
+of that file, and the tree holds more. Such a diff
 otherwise draws only RV-STYLE-1/2, and those read the prose, never whether it is still true.
 
 **a. Every citation still resolves.** Skills cite the tree by name and line
@@ -99,16 +103,20 @@ changed line, plus every citation of anything this diff renamed, moved or delete
 
 **b. Every worked example still holds — code against the structural net, a command against
 its own coverage claims.** An example is code a session
-will copy, so it is held to the same rules as code — `ModularityTests`,
-`PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`,
-`JdbcOnlyArchitectureTests`, `DomainPurityArchitectureTests`. Walk it both ways. First, every
+will copy, so it is held to the same rules as code — the structural net, whose membership rule
+and members are `CLAUDE.md` §Commands. The net is the right set because an example is
+target-free code: it shows a shape, in a module that is often hypothetical, and the net's members
+are exactly the rules that reject a shape wherever it sits. Walk it both ways. First, every
 example on a changed line, against the net as it stands. Second, the way that bites: when the
-diff adds or tightens one of those five tests, re-walk **every** example in the substrate,
+diff adds or tightens a member of the net, re-walk **every** example in the substrate,
 **including files the diff never opened** — the example that breaks is by definition not in
-the diff. Only a structural test puts that re-walk due; a diff that adds a rule of any other
-kind (a review item, a skill's prose rule, a guard script) gets the first walk alone. Locate
-the examples, then sweep for the tightened test's own forbidden set, read out of the test
-rather than remembered. Both commands run over the path set the trigger names and no wider:
+the diff. A fitness function outside the net names its target (`ErrorContractArchitectureTests`
+the exception-handler annotations, `ResponsibilitiesArchitectureTests` a table or a module, an
+`*AuthPlacementTests` one module), so tightening one puts a narrower walk due: grep the substrate
+for the names read out of the test and walk those hits alone — an example that never names the
+target cannot break. A diff that adds a rule of any other kind (a review item, a skill's prose
+rule, a guard script) gets the first walk alone. Locate the examples, then sweep for the
+tightened test's own forbidden set, read out of the test rather than remembered. Both commands run over the path set the trigger names and no wider:
 a research note (`docs/research/`, `docs/architecture/research/`) records what was true when
 written, not an instruction a session copies, and nothing else under `docs/` is substrate.
 
