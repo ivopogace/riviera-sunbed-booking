@@ -117,11 +117,11 @@ N/A — replaces nothing; on a miss every job runs the exact steps it runs today
 - **Assumption:** `actions/cache/restore` reports `cache-hit == 'true'` only on an exact primary-key
   match (no `restore-keys` are given, so any hit is exact). — *Owner:* agent · *Resolves by:* phase 1
   (the run's restore-step log).
-- **Assumption:** `hashFiles()` accepts `!`-negated patterns (it is built on `@actions/glob`). Not
-  load-bearing: the single early `key` step already fixes the hash before any build output exists.
-  — *Owner:* agent · *Resolves by:* phase 0 (the key step's log prints a non-empty hash).
 
 ### Resolved
+
+- **`hashFiles()` accepts `!`-negated patterns** — phase 0's key steps produced non-empty 64-hex
+  hashes and the frontend save logged its full key (`c4e1f73`, run 33968192431).
 
 - **AC-1's "well under two minutes with all seven contexts"** cannot hold as written: `CodeQL`
   posts three of the seven and takes 2–4 min. Maintainer chose to measure the `CI` workflow and
@@ -162,14 +162,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** implement (phase 1 — the docs-only push; this commit IS the measurement)
 
-**Next action:** edit `ci.yml`, the two skill docs; run the guards; commit; push; open the draft PR.
+**Next action:** read the run this push triggers: both restore steps must report a hit, the setup/build/test steps `skipped`, both uploads green, `SonarCloud scan` and `SonarCloud Code Analysis` green; record its URL and wall time under AC-1/AC-2, then phase 2.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `ci.yml` cache-by-tree-hash + AC-4 comment + AC-5 docs; draft PR (the miss run) | ⏳ | |
-| 1 — docs-only push: measure AC-1 / AC-2 (the hit run) | | |
+| 0 — `ci.yml` cache-by-tree-hash + AC-4 comment + AC-5 docs; draft PR (the miss run) | ✅ | `c4e1f73` — PR #959; run [33968192431](https://github.com/ivopogace/riviera-sunbed-booking/actions/runs/33968192431): 11 min 00 s, all 8 checks green; both restore steps missed (no cache existed), full build ran, both save steps ran after green (frontend log: `Cache saved with key: v1-frontend-sonar-1211f14d…`); Sonar quality gate passed |
+| 1 — docs-only push: measure AC-1 / AC-2 (the hit run) | ⏳ | this commit |
 | 2 — temporary `platform/` + `frontend/` edit (miss), then its revert (hit): AC-3 | | |
 | 3 — merge `main`, ready for review, review gate, Sonar gate, close-out in the last code-touching commit | | |
 
