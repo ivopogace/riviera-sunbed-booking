@@ -27,11 +27,49 @@ permissions:
 # job with lint and Vitest already green). The values below are ~4-6x the observed green durations:
 # loose enough that a slow runner or a cold cache never trips them, tight enough that a hang becomes
 # a fast, legible red. Raise a value if a job's real work grows into it; do not remove one.
+#
+# The two build jobs restore their Sonar inputs from a cache before they build, and skip the build on
+# an exact hit, so a push that changes nothing under `platform/` or `frontend/` (a plan-doc close-out,
+# a skill edit) costs a runner start-up per job instead of the full ~10 minutes (#955, measured on
+# PR #953 whose last three pushes were docs-only). What this deliberately is NOT:
+#
+# - NOT `paths-ignore` on the workflow, nor `paths` on a job. The `Riviera Rule Set` requires seven
+#   status-check contexts BY NAME (CONTRIBUTING.md lists them). A workflow a path filter skips never
+#   posts them — they sit at "Expected — Waiting for status to be reported" and the PR is permanently
+#   unmergeable: the `405 … N of N required status checks are expected` failure of #413/#420 through a
+#   new door.
+# - NOT a job-level `if:` on the build jobs. A skipped job does post a check run, but whether the
+#   ruleset counts `skipped` as passing is a bet on GitHub's semantics, and the place it would be
+#   lost is a PR that then cannot merge. Not taken (#955).
+# - NOT a git-diff path filter deciding "docs-only". That is a list to keep right by hand, and it is
+#   already wrong on day one: a Vitest spec reads `docs/design/non-text-contrast.md`.
+#
+# What it IS: every job runs on every push, exactly as before, and inside `backend` and `frontend`
+# the expensive steps are conditional on an `actions/cache` restore keyed on the HASH of everything
+# that job's build reads (`platform/**`; `frontend/**` + `.nvmrc` + that design doc). An exact hit
+# means this identical tree already built green in a run this PR can see, so the job re-uploads the
+# restored JaCoCo XML + classes (or lcov) and the `sonar` job below runs as it does today. A miss
+# is today's full build, followed by a save. The hash IS the change detector, and it errs toward
+# building: `main` moving under the PR, a file touched and then reverted, a `.nvmrc` bump — each is
+# answered by content, never by a path list. Restore runs on `pull_request` only: a push to `main`
+# always builds (the CD gate and the Sonar main-branch analysis read a fresh build) and its save
+# seeds the cache every later PR reads (a PR run may restore its base branch's caches; `main` cannot
+# read a PR's). The key is computed ONCE, right after checkout, into a step output — an expression
+# evaluated at save time would hash `platform/build/**` too and never match the restore. Bump the
+# `v1-` prefix if the artifact layout changes.
+#
+# What this cannot shorten: the `CodeQL` workflow's two `Analyze (…)` jobs and the `CodeQL` check
+# are required contexts that exist only when SARIF is uploaded for the SHA, so they run in full on
+# every push (observed 2-4 min) and bound the whole check suite. Inside this workflow the floor is
+# the Sonar scan (~1 min) plus runner start-ups — four jobs, two of them on the critical path (a build
+# job, then `sonar`). Observed on this change's own cache-hit pushes: 1 min 17 s, 2 min 00 s and 2 min 27 s
+# wall time, the spread being runner queueing; each build job's own work on a hit was 7-10 s.
 jobs:
   backend:
     name: Backend (build + test)
     runs-on: ubuntu-latest
-    # Observed green: ~3.5 min (Gradle build + full test suite incl. Testcontainers ITs).
+    # Observed green: ~3.5-5.5 min (Gradle build + full test suite incl. Testcontainers ITs); a cache
+    # hit is under a minute (checkout, restore, upload).
     timeout-minutes: 30
     defaults:
       run:
@@ -40,19 +78,52 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Compute the build-input hash (the cache key)
+        id: key
+        # Once, before anything is built, so `platform/build/**` cannot leak into it (the negation is
+        # belt-and-braces for a reused workspace). Restore and save below MUST both read this output —
+        # the header comment says why. `hashFiles` resolves from the repo root, not `working-directory`.
+        run: echo "key=v1-backend-sonar-${{ hashFiles('platform/**', '!platform/build/**') }}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Sonar inputs of an identical, already-green tree (pull requests only)
+        id: restore
+        if: github.event_name == 'pull_request'
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            platform/build/reports/jacoco/test/jacocoTestReport.xml
+            platform/build/classes/java/main
+          key: ${{ steps.key.outputs.key }}
+
       - name: Set up JDK 25
+        if: steps.restore.outputs.cache-hit != 'true'
         uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '25'
 
       - name: Set up Gradle (cached)
+        if: steps.restore.outputs.cache-hit != 'true'
         uses: gradle/actions/setup-gradle@v6
 
       - name: Build and test
+        if: steps.restore.outputs.cache-hit != 'true'
         run: ./gradlew build jacocoTestReport --no-daemon
 
+      - name: Save the Sonar inputs for the next push of this tree
+        # Reached only through a green build: a red step above ends the job before this one, so a hit
+        # can only ever restore what once passed.
+        if: steps.restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            platform/build/reports/jacoco/test/jacocoTestReport.xml
+            platform/build/classes/java/main
+          key: ${{ steps.key.outputs.key }}
+
       - name: Upload backend coverage + classes (for Sonar)
+        # Unconditional, and `if-no-files-found: error` is now load-bearing twice over: an empty
+        # restore fails THIS job legibly instead of handing the Sonar job nothing to scan.
         uses: actions/upload-artifact@v7
         with:
           name: backend-sonar
@@ -72,9 +143,9 @@ jobs:
     # sequencing that lands the pair without an unmergeable window).
     name: Frontend (lint + test + build)
     runs-on: ubuntu-latest
-    # Observed green: ~9 min (npm ci + lint + Vitest + Playwright install + prod build are ~2.5 min
-    # together; the a11y e2e step is ~7 min on 2 workers, down from ~8.7 min on one — 4 workers
-    # measured the same, the runner's vCPUs saturate at two Chromiums).
+    # Observed green: ~9-10 min (npm ci + lint + Vitest + Playwright install + prod build are ~2.5 min
+    # together; the a11y e2e step is ~7-7.5 min on 2 workers, down from ~8.7 min on one — 4 workers
+    # measured the same, the runner's vCPUs saturate at two Chromiums). A cache hit is under a minute.
     timeout-minutes: 20
     defaults:
       run:
@@ -83,7 +154,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Compute the build-input hash (the cache key)
+        id: key
+        # Everything this job's steps read, enumerated by mechanism (which files does a spec, a
+        # config or an action input reach outside `frontend/`?): `setup-node` reads the root `.nvmrc`;
+        # `focus-ring-baseline.spec.ts` reads `docs/design/non-text-contrast.md`; the real-backend
+        # Playwright config reaches `../platform` but does not run here. Add to this list whenever a
+        # spec or config starts reading outside the folder — a hit against a stale hash is a wrong
+        # green. The negations keep build outputs out of the hash on a reused workspace.
+        run: echo "key=v1-frontend-sonar-${{ hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**') }}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Sonar inputs of an identical, already-green tree (pull requests only)
+        id: restore
+        if: github.event_name == 'pull_request'
+        uses: actions/cache/restore@v6
+        with:
+          path: frontend/coverage/frontend/lcov.info
+          key: ${{ steps.key.outputs.key }}
+
       - name: Set up Node (from .nvmrc)
+        if: steps.restore.outputs.cache-hit != 'true'
         uses: actions/setup-node@v7
         with:
           # .nvmrc lives at the REPO ROOT. `uses:` steps resolve paths from the repo
@@ -95,9 +185,11 @@ jobs:
 
       - name: Install dependencies
         id: install
+        if: steps.restore.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Lint (hard gate)
+        if: steps.restore.outputs.cache-hit != 'true'
         run: npm run lint
 
       - name: Format (Prettier, hard gate)
@@ -114,14 +206,17 @@ jobs:
         # them over two round trips — but NOT when `npm ci` failed, where the check would crash on
         # a missing Prettier and report a second, misleading red (`!cancelled()` excludes
         # cancellation, not failure). No diff base needed, so it also runs on `main` pushes as a
-        # cheap post-merge invariant.
+        # cheap post-merge invariant. On a cache hit the install step is `skipped`, which is not
+        # `success`, so this gate skips with the rest — the identical tree already passed it.
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npx prettier --check src e2e
 
       - name: Test (Vitest, once, with coverage)
+        if: steps.restore.outputs.cache-hit != 'true'
         run: npm run test:coverage
 
       - name: Install Playwright Chromium (for the a11y e2e)
+        if: steps.restore.outputs.cache-hit != 'true'
         # Its own cap, well under the job's: this step is two network fetches (the browser from
         # Playwright's CDN, apt deps from Ubuntu's mirrors) and is the one that hung in #430. A step
         # timeout names the culprit in the failed step rather than killing the job at some later
@@ -133,12 +228,23 @@ jobs:
         # The API-mocked a11y suite — no backend needed. The real-backend U7 editor suite
         # (`npm run test:e2e`) boots Spring Boot + Postgres and is intentionally NOT run here
         # (this job has no JDK/Docker); see frontend/playwright.config.ts.
+        if: steps.restore.outputs.cache-hit != 'true'
         run: npm run test:e2e:a11y
 
       - name: Build (production)
+        if: steps.restore.outputs.cache-hit != 'true'
         run: npm run build
 
+      - name: Save the Sonar inputs for the next push of this tree
+        # Reached only through a green run of every gate above, so a hit restores only what passed.
+        if: steps.restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: frontend/coverage/frontend/lcov.info
+          key: ${{ steps.key.outputs.key }}
+
       - name: Upload frontend coverage (for Sonar)
+        # Unconditional; `if-no-files-found: error` turns an empty restore into a red here, not in Sonar.
         uses: actions/upload-artifact@v7
         with:
           name: frontend-sonar
@@ -291,6 +397,13 @@ jobs:
     # Observed green: ~1 min (artifact downloads + the scanner). Its own cap matters as much as the
     # build jobs': this is the job the merge gate reads, so a hang here is indistinguishable from
     # "analysis pending" and blocks the Sonar gate silently.
+    #
+    # Runs in full on every push, cache hit or not, and that is not an oversight. The required context
+    # is `SonarCloud Code Analysis` — posted by the SonarCloud app for a SHA only when an analysis is
+    # uploaded for it — so a push with "nothing new to analyse" still has to analyse, or the PR waits
+    # forever on a check that never arrives. On a hit the inputs it consumes are the build jobs'
+    # RESTORED artifacts: the JaCoCo XML, classes and lcov of the identical tree, which yield the same
+    # coverage the tree produced when it was built (#955).
     timeout-minutes: 15
     # One combined scan for the single SonarCloud project. SONAR_TOKEN is configured,
     # so the scan runs and reports the quality gate on every PR. The `SONAR_TOKEN != ''`

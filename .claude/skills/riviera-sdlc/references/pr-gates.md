@@ -177,15 +177,25 @@ and duplications below its fail thresholds. Pull the actual list and fix every e
    the PR number on the ticked line.
 3. **Propagate deferred review/Sonar findings.** Anything deferred or
    rejected-with-rationale that names a follow-up home gets written onto that issue now.
-4. **Plan doc final state — written BEFORE the merge, in the PR's own last commit.**
-   Execution-status table ✅, Open Questions empty or deferred with issue numbers, every
-   risk-register row closed with its outcome, AC pin-names matching the tests that shipped.
-   Tick the PR body's Gates checkboxes as each gate actually passes. **Reference the PR
-   number, never the merge SHA** — a squash SHA cannot exist before the merge, and a
-   post-merge commit on `main` is not available to cloud agents, so it degrades into a
-   docs-only PR + CI cycle. After this step there is no post-merge repo commit; the only
-   post-merge items are GitHub edits (steps 2 and 3). If you find yourself opening a
-   docs-only PR to finish a close-out, step 4 was skipped. In the same last commit,
+4. **Plan doc final state — written BEFORE the merge, in the PR's last code-touching
+   commit, never in a commit of its own.** Execution-status table ✅, Open Questions empty
+   or deferred with issue numbers, every risk-register row closed with its outcome, AC
+   pin-names matching the tests that shipped. Tick the PR body's Gates checkboxes as each
+   gate actually passes. **Reference the PR number, never the merge SHA** — a squash SHA
+   cannot exist before the merge, and a post-merge commit on `main` is not available to
+   cloud agents, so it degrades into a docs-only PR + CI cycle. After this step there is
+   no post-merge repo commit; the only post-merge items are GitHub edits (steps 2 and 3).
+   If you find yourself opening a docs-only PR to finish a close-out, step 4 was skipped.
+
+   **Why the last code-touching commit and not a commit after it:** CI bills per push, not
+   per commit, and every push to a PR runs the whole check suite — a plan-doc-only push
+   after the last code fix is a full cycle that can only ever come back green (`ci.yml`'s
+   build jobs skip their build and test steps on a tree already built green — the jobs still
+   run and report — but the `CodeQL` and Sonar analyses cannot skip, so the push still costs
+   minutes and a merge waits on it). Write the close-out into the commit
+   that carries the last code change; when a later review or Sonar finding forces another
+   code commit, rewrite the close-out in that one. Amending does not help — the cost is the
+   push, however many commits it carries. In that same commit,
    `git rm` every plan in `docs/plans/` whose PR has already merged and repoint its
    citations — docs to the issue or PR, doc comments to `RESPONSIBILITIES.md` or an ADR, §6d
    (`riviera-docs-freshness` § *Plan-doc retirement*); no

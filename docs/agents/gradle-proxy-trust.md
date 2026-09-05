@@ -66,5 +66,6 @@ The backend Testcontainers ITs are `@EnabledIfDockerAvailable`: in a cloud sessi
 `dockerd` **is normally provided by the SessionStart hook** (see
 `docker-testcontainers.md`), so targeted ITs *can* run; without a daemon they skip
 cleanly. Either way, keep local runs **scoped** (the bare `test` task can OOM the
-sandbox — see `riviera-local-debug`); CI runs the full IT suite. `compile*` + the
+sandbox — see `riviera-local-debug`); CI runs the full IT suite on every tree it has not
+already built green. `compile*` + the
 structural test classes are the minimum meaningful local check.
