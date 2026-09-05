@@ -212,9 +212,17 @@ const ACCEPTED_FORMS =
   'Pass `<remote>/<branch>` (fetched before use, e.g. `origin/main`) or a commit SHA (pinned, and ' +
   'the form to use with no network).';
 
-/** Every configured remote, so a `<prefix>/<rest>` base can be told from a branch holding a slash. */
+/**
+ * Every configured remote, so a `<prefix>/<rest>` base can be told from a branch holding a slash.
+ *
+ * Trimmed per line: a stray `\r` would leave `origin\r` failing to equal `origin`, and the base
+ * would be refused as unrecognised on Windows alone. Fail-closed, but wrong.
+ */
 function remotes() {
-  return git(['remote']).split('\n').filter(Boolean);
+  return git(['remote'])
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
 /** Resolves a ref to a commit SHA, or null when it does not exist. */
@@ -304,12 +312,12 @@ export function resolveBase(ref) {
 
   try {
     return { base: git(['merge-base', tip, 'HEAD']).trim() };
-  } catch {
+  } catch (cause) {
     return {
       error:
-        `${ref} shares no ancestor with HEAD, so there is no range between them. Widening to ` +
-        `${ref} itself — which is what this used to do — reports every file in both histories as ` +
-        'this branch\'s (PR #951 finding F-9).',
+        `No merge base between ${ref} and HEAD. If they share no ancestor there is no range ` +
+        `between them, and widening to ${ref} itself — which is what this used to do — reports ` +
+        `every file in both histories as this branch's (PR #951 finding F-9).\n${cause}`,
     };
   }
 }
