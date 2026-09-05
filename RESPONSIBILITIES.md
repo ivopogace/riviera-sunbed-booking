@@ -229,7 +229,12 @@ exist. `venue` composes; I answer state.
   `CONFIRMED`. The guest-cancel guard is `CONFIRMED`-only; the admin **weather refund**
   admits `NO_SHOW` on its own `cancelForWeather` transition, because the storm is known
   afterwards — the two share no port method, and each takes its admitted statuses from its own
-  row in `BookingTransition`, so that asymmetry cannot be tidied away.
+  row in `BookingTransition`, so that asymmetry cannot be tidied away. The guest guard's two
+  advisory readers — the code-gated view's `cancellable` and the cancel service's
+  `NotCancellable` refusal — read the same `CANCEL_BY_GUEST` row rather than restating it
+  (`ViewBookingServiceTest` and `CancelBookingServiceTest` hold each answer, status by status, to
+  the literal `BookingTransitionTest` holds the row to); the `{NO_SHOW, COMPLETED} →
+  WindowClosed` split ahead of the refusal chooses the copy for a spent day, not who may cancel.
 - **The lifecycle is stated once and enforced in SQL.** `domain/BookingTransition` is the
   transition table — which statuses each of the eleven transitions may act on, what it writes,
   and `successorsOf(status)` for "what may follow this?". It generates no SQL: the guarded
@@ -1059,6 +1064,7 @@ sufficient. Which of them form the *structural net* — the subset run after any
 | No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` |
 | A `domain/` class names only the JDK and published ids, values and rules — no Spring, JDBC, Stripe, adapter or port (ADR-0018 §4) | `DomainPurityArchitectureTests` (fixture-proven negatives) |
 | The booking transition table and the guarded `UPDATE`s admit the same statuses (ADR-0018 §1) | `JdbcBookingTransitionTableIT` (every transition against every status) |
+| The booking view's `cancellable` and the guest cancel's refusal answer as `CANCEL_BY_GUEST` does, status by status (ADR-0018 §1) | `ViewBookingServiceTest.onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen`, `CancelBookingServiceTest` (every status against the literal `BookingTransitionTest` holds the row to) |
 | No login machinery inside `operator` (RV-BE-11) | `OperatorAuthPlacementTests` |
 | No login machinery inside `customer` (RV-BE-11) | `CustomerAuthPlacementTests` |
 | Mail listeners name their own bounded executors, never Boot's shared `applicationTaskExecutor` (#383) | `MailListenerExecutorArchitectureTest` |
