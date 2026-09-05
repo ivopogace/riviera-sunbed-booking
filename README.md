@@ -120,5 +120,6 @@ Dhërmi. Full breakdown in the design spec, §10.
 
 Proprietary — **copyright © 2026 Ivo Pogace, all rights reserved**. See
 [`LICENSE`](LICENSE). The repository is readable for evaluation and review; it
-grants no right to use, copy, modify, or deploy the code. Third-party dependencies
-keep their own licenses.
+grants no right to use, copy, modify, or deploy the code. Anything contributed to
+the repository is assigned to the owner on submission (`LICENSE` §5); contributors
+retain no rights in it. Third-party dependencies keep their own licenses.

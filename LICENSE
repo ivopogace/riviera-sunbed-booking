@@ -44,15 +44,68 @@ Copyright (c) 2026 Ivo Pogace. All rights reserved.
    reviewing contributions to it. Any other use requires written permission.
 
 
-5. Contributions
+5. Contributions — the Owner takes ownership
 
-   Contributions are accepted only from people authorized by the Owner. By
-   submitting a contribution (a pull request, patch, issue attachment, or any
-   other means), you grant the Owner a perpetual, worldwide, irrevocable,
-   royalty-free, sublicensable license to use, reproduce, modify, distribute,
-   and otherwise exploit that contribution as part of the Software, and you
-   confirm you have the right to grant it. Contributions carry no expectation
-   of a license back to the contributor beyond the terms above.
+   "Contribution" means any work of authorship — code, tests, configuration,
+   migrations, scripts, documentation, designs, assets, review suggestions,
+   issue attachments, or anything else — that you submit to this repository or
+   to the Owner for inclusion in the Software, by any means (pull request,
+   patch, commit, issue, comment, message, or otherwise).
+
+   Contributions are accepted only from people authorized by the Owner.
+
+   a. Assignment. By submitting a Contribution you irrevocably assign and
+      transfer to the Owner, at the moment of submission and without further
+      consideration, all right, title, and interest in and to the
+      Contribution, including every copyright, database right, design right,
+      patent right, trade secret, and other intellectual-property right in it,
+      worldwide, for the full term of those rights and every renewal and
+      extension, together with the rights to register, enforce, license, and
+      transfer them and to sue for past infringement. The Contribution becomes
+      part of the Software and is owned solely by the Owner.
+
+   b. Where assignment is not possible. To the extent any right in a
+      Contribution cannot be assigned under applicable law (for example an
+      author's right that is inalienable in some jurisdictions), you grant the
+      Owner, in place of the assignment, an exclusive, perpetual, worldwide,
+      irrevocable, royalty-free, fully paid-up, transferable, and freely
+      sublicensable license to exercise that right in every way and in every
+      medium now known or later devised, without restriction, and you agree
+      not to exercise that right yourself or through anyone else against the
+      Owner, its successors, or its licensees.
+
+   c. Moral rights. To the fullest extent permitted by law, you waive, and
+      agree never to assert against the Owner, its successors, or its
+      licensees, any moral rights or similar rights in the Contribution
+      (including rights of attribution, integrity, withdrawal, and first
+      publication), and you consent to the Owner using, modifying, combining,
+      and publishing the Contribution with or without attribution.
+
+   d. Nothing is retained. You keep no right, title, or interest in any
+      Contribution. In particular you have no right to use, copy, modify,
+      distribute, or reuse the Contribution — including the code you wrote —
+      outside this repository, beyond the read-only permission in section 4
+      that applies to the Software as a whole. No license back, credit,
+      compensation, or other consideration is owed for a Contribution unless
+      the Owner agrees to it in a separate writing signed by the Owner.
+
+   e. Your warranties. For each Contribution you represent and warrant that:
+      it is your own original work; you have the full right and authority to
+      assign it as above, and no employer, client, school, or other party has
+      any claim to it; it contains no third-party material except material
+      you clearly identify in the submission together with its license, and
+      that license permits inclusion in closed-source, proprietary software;
+      and it does not, to your knowledge, infringe or misappropriate any
+      third-party right. Third-party material so identified is not assigned
+      by you and remains governed by section 6.
+
+   f. Further assurance. You will sign any document and take any further step
+      the Owner reasonably requests to record, perfect, or enforce the
+      assignment and licenses in this section, and you appoint the Owner as
+      your attorney-in-fact to do so on your behalf if you do not.
+
+   g. Submission is acceptance. Submitting a Contribution is your acceptance
+      of this section 5. If you do not agree to it, do not submit.
 
 
 6. Third-party components
