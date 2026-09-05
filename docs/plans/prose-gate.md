@@ -128,6 +128,13 @@ The guard's existing surface is extended, not replaced. Every existing behaviour
 
 ### Resolved
 
+- **Decision:** judging a touched doc comment whole flags lines the diff never wrote — the one
+  place this slice deliberately departs from the guard's founding stance (a false positive
+  switches a gate off, a false negative goes to review). Owner's ask on #956: touching an old
+  Javadoc/TSDoc means re-reading it against the test. Bounded by touch (an untouched block is
+  never read) and by rule (only provenance gates there; history advises), so the cost of an
+  unrelated one-line edit to an old block is one cleanup of that block, once.
+
 - **Assumption:** the `PostToolUse` hook's `additionalContext` carries the test sentence at
   authoring time → confirmed: it fired on the guard's own doc comment during Phase 0 and the
   wording was fixed before commit (035011a6 pins the message).
@@ -162,16 +169,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** PR — ready for review; review gate due
+**Stage pointer:** review gate — findings fixed, re-review of the fix diff due; then Sonar gate
 
-**Next action:** mark PR #957 ready for review; run the review gate per `riviera-sdlc` `references/pr-gates.md` §1 with `riviera-review-overlay` (RV-PROC-2 on the substrate edits); then the Sonar gate.
+**Next action:** re-resolve the range and re-walk the overlay items over the fix diff; then read the Sonar new-issue list (note #954: Sonar does not analyse `scripts/`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — provenance in a touched doc block, judged whole | ✅ | e4dd8950 |
 | 1 — skill markdown: added lines, fences and spans exempt, scope | ✅ | 0dc04164 |
 | 2 — history advisory + `settle()` exit codes + hook/CLI rows | ✅ | 035011a6 |
-| 3 — the rule folded into §6c/§6d, RV-STYLE-1, the reference, the citing docs; clean the touched headers | ✅ | (this commit; sha in the next) |
+| 3 — the rule folded into §6c/§6d, RV-STYLE-1, the reference, the citing docs; clean the touched headers | ✅ | 823dfdbf |
+| 3a — review-gate fix round (F-1…F-6) | ✅ | (this commit; sha in the next) |
 | 4 — close-out: docs-freshness, plan final | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -180,6 +188,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (#2, #3, #4) | code after a block comment's closing marker on the same line was scanned as comment text | fixed — `endColumn` on block regions; pinned by "never reads the code after a block comment closes on the same line" |
+| F-2 | review (#2, #3, #4) | a bare pure-digit `#123` in a source comment gated as provenance (a colour); the markdown path stripped spans, the comment path did not | fixed — a bare `#NNN` counts only in a citing position (after `(`, `/`, a comma, or a citing word); pinned by "a bare issue number counts only in a citing position" |
+| F-3 | review (#5) | four documents said provenance gates only skill lines and touched doc comments; the guard also gates an added inline comment | fixed — §6c, RV-STYLE-1, `CONTRIBUTING.md`, the `ci.yml` step comment |
+| F-4 | review (#6, RV-PROC-2a) | the guard reference's `SecurityConfig` count (25) had drifted (29) | fixed — no count |
+| F-5 | review (#3) | the whole-block rule was not recorded as a decided departure from the guard's false-positive stance | fixed — Resolved decision above |
+| F-6 | review (#1) | the new `ci.yml` step comment cited `#956` | fixed — dropped; YAML stays out of the guard's scope |
 
 ---
 

@@ -222,10 +222,10 @@ jobs:
         run: node --test "scripts/*.test.mjs"
 
       - name: Check the diff's comments and skill prose (RV-STYLE-1, hard gate)
-        # Three rules in one guard: a multi-line inline comment the diff added and a provenance
-        # tell (an issue/PR number) in an added skill line or a touched doc comment fail the step;
-        # history phrasing is printed as advisory. The step NAME is free to change — only the job
-        # name above is a required context (#956).
+        # Three rules in one guard: a multi-line inline comment the diff added, and a provenance
+        # tell (an issue/PR number) in an added comment, a touched doc comment or an added skill
+        # line, fail the step; history phrasing is printed as advisory. The step NAME is free to
+        # change — only the job name above is a required context.
         run: node scripts/check-inline-comments.mjs --diff origin/${{ github.event.pull_request.base.ref }}
 
       - name: Check each plan doc lists what the diff changed (#533, hard gate)

@@ -52,8 +52,9 @@ would act differently (`riviera-java-conventions` §6c holds the drop and keep l
 - A multi-line inline comment the diff wrote (`//`, `#`, `/* … */`, `<!-- … -->` inside a
   body, template, or between statements) — **Minor**. Doc comments are exempt from the
   one-line rule only.
-- Provenance (an issue or PR number) in an added skill line or anywhere in a doc comment the
-  diff touched — **Minor**; the fix is drop or relocate (§6d), never "it was already there".
+- Provenance (an issue or PR number) in an added skill line, an added inline comment, or
+  anywhere in a doc comment the diff touched — **Minor**; the fix is drop or relocate (§6d),
+  never "it was already there".
 - Prose that narrates the diff, restates the code, or records history the reader never saw —
   **Minor**, and the half the guard cannot see: judge it by the test.
 

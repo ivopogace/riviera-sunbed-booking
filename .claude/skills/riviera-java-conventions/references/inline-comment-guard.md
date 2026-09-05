@@ -6,8 +6,11 @@ scope. The authoring rule it enforces is SKILL.md §6c. Every scope gap below is
 Three rules, one guard:
 
 - **`multiline`** (gates) — an inline comment the diff added spans more than one line.
-- **`provenance`** (gates) — an issue-shaped number (`#NNN`, `issue N`, `PR N`) in an added
-  skill line, in an added inline-comment line, or anywhere in a doc comment the diff touched.
+- **`provenance`** (gates) — an issue or PR number in an added skill line, an added inline
+  comment, or anywhere in a doc comment the diff touched. `issue N` and `PR N` always count; a
+  bare `#NNN` counts only in a citing position — after `(`, `/`, a comma, or a citing word
+  (`issue`, `PR`, `epic`, `since`, `until`, `before`, `after`, `by`, `in`, `the`, …). `: #123`
+  or `is #123` reads as a colour and is left to review: a false negative, by design.
 - **`history`** (advises) — `no longer`, `previously`, `used to be`, `this change` and the
   like. Printed, never failing: a port that "releases a `previously` claimed set" is stating
   its contract.
@@ -21,8 +24,8 @@ Scope:
   file has no diff against `HEAD`, and every line in it is the author's.
 - **A touched doc comment is judged whole** — every line of a `/** … */` block with at least
   one added line, including the lines the diff never wrote. That is the rule, not a gap:
-  editing an old Javadoc means re-reading it. Only the comment's own text is read; the code
-  before a trailing comment never is.
+  editing an old Javadoc means re-reading it. Only the comment's own text is read; code on the
+  same line before the opener or after the closer never is.
 - **Skill markdown:** `.claude/skills/<skill>/SKILL.md` and its `references/*.md` — added
   lines only, outside fenced code and with code spans removed. Not the triage skill's
   `OUT-OF-SCOPE.md` (a ledger of issue numbers by design), and not `CLAUDE.md`, `docs/` or
@@ -39,5 +42,5 @@ Scope:
   appending a second line to a comment that was already there reads as a one-line addition
   and passes. The alternative — grouping every adjacent comment line and asking whether any
   was added — flags a whole pre-existing block because you parked one compliant one-liner
-  beneath it (`SecurityConfig` alone carries 25 such blocks). That false positive is how a
+  beneath it (`SecurityConfig` alone carries dozens). That false positive is how a
   gate gets switched off; the false negative leaves the case to review (RV-STYLE-1).

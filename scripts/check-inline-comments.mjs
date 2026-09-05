@@ -64,11 +64,18 @@ export function syntaxFor(path) {
 /**
  * Text that is written for the author's session rather than the next reader's. `provenance` is
  * an issue or PR number — `git blame`'s job, and what `riviera-java-conventions` §6d forbids in a
- * doc comment outright; it gates. `history` narrates a change the reader never saw and is
- * contract language often enough (a port that releases a set claimed earlier) that it only advises.
+ * doc comment outright; it gates. A bare `#NNN` counts only in a citing position (after `(`, `/`,
+ * a comma, or a citing word), because `: #123` is how a colour reads and a false positive is how
+ * a gate gets switched off. `history` narrates a change the reader never saw and is contract
+ * language often enough (a port that releases a set claimed earlier) that it only advises.
  */
+const CITING = '(?:issues?|PRs?|epics?|since|until|before|after|per|see|and|or|of|by|at|in|the)';
+
 const TELLS = {
-  provenance: /(?<![\w#&])#[1-9]\d{2,3}(?!\w)|\b(?:issues?|PRs?|pull requests?)\s+#?\d{2,4}\b/i,
+  provenance: new RegExp(
+    `(?:[(/,]\\s*|\\b${CITING}\\s+)#[1-9]\\d{2,3}(?!\\w)|\\b(?:issues?|PRs?|pull requests?)\\s+#?\\d{2,4}\\b`,
+    'i',
+  ),
   history:
     /\bused to (?:be|have|do|need|run|take|hold|read|say|mean)\b|\bno longer\b|\bpreviously\b|\bformerly\b|\boriginally\b|\bhistorically\b|\bthis (?:change|slice|PR)\b|\bthe alternative would\b|\bwas left out\b/i,
 };
@@ -133,7 +140,9 @@ function tellViolations(path, lines, added, region) {
 
   const violations = [];
   for (const i of judged) {
-    const text = i === region.startLine ? lines[i].slice(region.column) : lines[i];
+    const from = i === region.startLine ? region.column : 0;
+    const to = i === region.endLine && region.endColumn !== undefined ? region.endColumn : undefined;
+    const text = lines[i].slice(from, to);
     for (const [rule, pattern] of Object.entries(TELLS)) {
       if (pattern.test(text)) {
         violations.push({ path, line: i + 1, endLine: i + 1, text: lines[i].trim(), rule });
@@ -232,6 +241,7 @@ function scan(lines, syntax) {
         const at = line.indexOf(terminator, c);
         if (at === -1) break;
         open.endLine = i;
+        open.endColumn = at + terminator.length;
         regions.push(open);
         c = at + terminator.length;
         open = null;

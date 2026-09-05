@@ -361,7 +361,7 @@ test('flags a provenance tell in an added skill line, not inside a fence or a co
 });
 
 test('markdown outside SKILL.md and references/ is out of scope', () => {
-  const lines = ['- #134: "Dark theme option"'];
+  const lines = ['- issue #134: "Dark theme option"'];
   const added = new Set([1]);
 
   assert.deepEqual(findViolations({ path: '.claude/skills/triage/OUT-OF-SCOPE.md', lines, added }), []);
@@ -389,4 +389,26 @@ test('reports history phrasing under its own rule, so the CLI can advise rather 
     violations.map(({ line, rule }) => ({ line, rule })),
     [{ line: 2, rule: 'history' }],
   );
+});
+
+test('never reads the code after a block comment closes on the same line', () => {
+  const violations = findViolations({
+    path: JAVA,
+    lines: ['  /* note */ String s = "issue 342 filed";', '/** opens', ' * closes */ String t = "see PR #521";'],
+    added: new Set([1, 2, 3]),
+  });
+
+  assert.deepEqual(violations, []);
+});
+
+test('a bare issue number counts only in a citing position, so a colour is left to review', () => {
+  const at = (path, line) =>
+    findViolations({ path, lines: [line], added: new Set([1]) }).map((v) => v.rule);
+
+  assert.deepEqual(at(SCSS, '// border color: #123 for emphasis'), []);
+  assert.deepEqual(at(JAVA, '/** Falls back to #123 opacity when unset. */'), []);
+  assert.deepEqual(at(JAVA, '// the admin gate (#348), same as the photo paths'), ['provenance']);
+  assert.deepEqual(at(JAVA, '// the #413/#420 failure, paid for once'), ['provenance']);
+  assert.deepEqual(at(JAVA, '/** Rate write, epic #348. */'), ['provenance']);
+  assert.deepEqual(at('frontend/src/app/x.ts', '// issue 529 names it as the first proof case'), ['provenance']);
 });
