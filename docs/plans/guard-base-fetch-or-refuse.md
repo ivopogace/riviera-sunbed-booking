@@ -172,15 +172,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — lift phase 0's six cases into a per-guard table over all five guards,
-each row carrying its own fixture shape (AC-2's "a case per guard").
+**Next action:** Phase 2 — verify the six documented invocations site by site, state the
+precondition where it is owned, and retire `docs/plans/review-gate-range-pinning.md`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `resolveBase()`, and all five guards wired | ✅ | |
-| 1 — the per-guard matrix | ⏳ | |
+| 1 — the per-guard matrix | ✅ | |
 | 2 — docs, usage strings, and close-out | | |
 
 **Phase 0 scope note.** The plan split the wiring across phases 0 and 1, which would have left

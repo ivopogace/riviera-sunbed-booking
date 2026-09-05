@@ -1480,28 +1480,94 @@ test('check-review-range: a contributor status config cannot silence the dirty-t
  * commits the branch never touched. `check-comment-only.mjs` is the sharpest case: neither a CI
  * gate nor a registered hook, so a by-hand run is its only invocation.
  *
- * These cases spawn the guard against a repository whose `origin/main` is deliberately behind, and
- * assert on what it does about it. `publish()` gives the repository a real `origin` on the
- * filesystem, which is what lets a case distinguish "fetched and corrected itself" from "read a ref
- * someone pointed by hand" — the two are indistinguishable from the tracking ref alone.
+ * **A case per guard, not one for the family.** The defect is in the shared resolver, but what
+ * proves it fixed is each guard's own report, and the five reach the base through argv shapes and
+ * fixture shapes that have nothing in common — a positional base here, `--diff` there; a file list
+ * for one rule, a modified file's code for another. A single case over `check-inline-comments`
+ * would leave the other four wired on faith. Hence the table: one row per guard, carrying the
+ * fixture its rule needs, and six loops over it.
+ *
+ * `publish()` gives the repository a real `origin` on the filesystem, which is what lets a case
+ * distinguish "fetched and corrected itself" from "read a ref someone pointed by hand" — the two
+ * are indistinguishable from the tracking ref alone.
  */
 
+const BUSY_HTML = 'frontend/src/app/venue/theirs.html';
+const THEIRS_TS = 'frontend/src/app/venue/theirs.ts';
+
 /**
- * `main` gains a file carrying a violation *after* this branch forked, so a range resolved from a
- * stale `origin/main` reports that file and a correctly-resolved one does not.
+ * One row per base-resolving guard.
+ *
+ * `theirs` is what `main` gains **after** this branch forks — a violation of that guard's own rule,
+ * so a range resolved from a stale base reports it and a correctly-resolved one does not. `mine` is
+ * this branch's own change, always clean. `outside` matches a path only a widened range can name;
+ * `check-comment-only` has none, because its rule is about a modified file's code rather than a
+ * file list, and there the exit status is what discriminates.
+ */
+const BASE_GUARDS = [
+  {
+    script: INLINE,
+    argv: (ref) => ['--diff', ref],
+    seed: (repo) => repo.write(TS, lines('const base = 0;')),
+    theirs: (repo) => repo.write(THEIRS_TS, lines('const theirs = 0;', ...TWO_LINE)),
+    mine: (repo) => repo.write(TS, lines('const base = 0;', 'const mine = 1; // one line, so allowed')),
+    outside: /theirs\.ts/,
+  },
+  {
+    script: FOCUS,
+    argv: (ref) => ['--diff', ref],
+    seed: (repo) => repo.write(HTML, lines('<p>Pricing</p>')),
+    theirs: (repo) => repo.write(BUSY_HTML, lines(BUSY_BUTTON)),
+    mine: (repo) =>
+      repo.write(HTML, lines('<p>Pricing</p>', '<button (click)="save()" [appBusy]="saving()">Save</button>')),
+    outside: /theirs\.html/,
+  },
+  {
+    script: TOUCH,
+    argv: (ref) => ['--diff', ref],
+    seed: (repo) => repo.write(HTML, lines('<p>Pricing</p>')),
+    theirs: (repo) => repo.write(BUSY_HTML, lines(BARE_BUTTON)),
+    mine: (repo) =>
+      repo.write(HTML, lines('<p>Pricing</p>', '<button type="button" appTouchTarget (click)="onSave()">Save</button>')),
+    outside: /theirs\.html/,
+  },
+  {
+    script: PLAN,
+    argv: (ref) => ['--diff', ref],
+    seed: (repo) => repo.write('README.md', lines('# Riviera')),
+    theirs: (repo) => repo.write(THEIRS_TS, lines('const theirs = 0;')),
+    mine: (repo) => {
+      repo.write(TS, lines('const base = 0;'));
+      repo.write(PLAN_DOC, planDoc(TS));
+    },
+    outside: /theirs\.ts/,
+  },
+  {
+    script: COMMENT_ONLY,
+    argv: (ref) => [ref],
+    seed: (repo) => repo.write(TS, lines('// the rate', 'const rate = 1;')),
+    theirs: (repo) => repo.write(TS, lines('// the rate', 'const rate = 999;')),
+    mine: (repo) => repo.write(TS, lines('// the commission rate', 'const rate = 999;')),
+    outside: null,
+  },
+];
+
+/**
+ * Builds the #939 shape for one guard: `main` gains a violation after this branch forks, so the
+ * two candidate bases give visibly different answers.
  *
  * @returns {{ staleBase: string, realBase: string }} the fork points before and after the violation
  */
-function movedBase(repo) {
-  repo.write(TS, lines('const base = 0;'));
+function movedBase(repo, guard) {
+  guard.seed(repo);
   const staleBase = repo.commit('seed');
 
-  repo.write('frontend/src/app/venue/theirs.ts', lines('const theirs = 0;', ...TWO_LINE));
+  guard.theirs(repo);
   const realBase = repo.commit('someone else, merged meanwhile');
 
   repo.git(['checkout', '--quiet', '-b', 'feature']);
-  repo.write(TS, lines('const base = 0;', 'const mine = 1; // one line, so allowed'));
-  repo.commit('my compliant change');
+  guard.mine(repo);
+  repo.commit('my own, compliant change');
 
   return { staleBase, realBase };
 }
@@ -1515,64 +1581,71 @@ function trackStale(repo, sha) {
  * The whole point of the slice: the guard fetches the base branch itself, so a tracking ref left
  * behind by a container-start clone corrects itself rather than widening the range.
  *
- * <p>Mutation: drop the fetch from `resolveBase()`. The range then starts at `staleBase`, picks up
- * `theirs.ts`, and this exits 1 reporting another branch's comment as this branch's.
+ * <p>Mutation: drop the fetch from `resolveBase()`. Every row's range then starts at `staleBase`,
+ * picks up the file `main` gained, and the guard reports another branch's violation as this one's.
  */
-test('check-inline-comments --diff fetches a stale base and reports only this branch', () => {
-  withRepo((repo) => {
-    const { staleBase, realBase } = movedBase(repo);
-    repo.publish('main', realBase);
-    trackStale(repo, staleBase);
+test('every base-resolving guard fetches a stale base and reports only this branch', () => {
+  for (const guard of BASE_GUARDS) {
+    withRepo((repo) => {
+      const { staleBase, realBase } = movedBase(repo, guard);
+      repo.publish('main', realBase);
+      trackStale(repo, staleBase);
 
-    const result = repo.run(INLINE, ['--diff', 'origin/main']);
+      const result = repo.run(guard.script, guard.argv('origin/main'));
 
-    assert.equal(result.status, 0, result.stderr);
-    assert.doesNotMatch(result.stderr, /theirs\.ts/);
-    assert.equal(repo.git(['rev-parse', 'origin/main']).trim(), realBase, 'the guard must fetch');
-  });
+      assert.equal(result.status, 0, `${guard.script}: ${result.stderr}`);
+      if (guard.outside) assert.doesNotMatch(result.stderr, guard.outside, guard.script);
+      assert.equal(repo.git(['rev-parse', 'origin/main']).trim(), realBase, `${guard.script} must fetch`);
+    });
+  }
 });
 
 /**
  * Fail-open is what #952 exists to remove: a guard that cannot fetch cannot know its base, and
  * "cannot know" must read as 2 (did not run), never as 0 (clean) or as a report.
  *
- * <p>Mutation: return the stale ref instead of an error when the fetch throws. This then exits 1
- * on `theirs.ts` — a report about a file outside the branch's diff, which is AC-2's exact wording.
+ * <p>Mutation: return the stale ref instead of an error when the fetch throws. Each row then
+ * reports on a file outside the branch's diff — AC-2's exact wording.
  */
-test('check-inline-comments --diff refuses a base it could not fetch', () => {
-  withRepo((repo) => {
-    const { staleBase } = movedBase(repo);
-    repo.breakOrigin();
-    trackStale(repo, staleBase);
+test('every base-resolving guard refuses a base it could not fetch', () => {
+  for (const guard of BASE_GUARDS) {
+    withRepo((repo) => {
+      const { staleBase } = movedBase(repo, guard);
+      repo.breakOrigin();
+      trackStale(repo, staleBase);
 
-    const result = repo.run(INLINE, ['--diff', 'origin/main']);
+      const result = repo.run(guard.script, guard.argv('origin/main'));
 
-    assert.equal(result.status, 2, result.stderr);
-    assert.match(result.stderr, /origin\/main/);
-    assert.doesNotMatch(result.stderr, /theirs\.ts/);
-  });
+      assert.equal(result.status, 2, `${guard.script}: ${result.stderr}`);
+      assert.match(result.stderr, /origin\/main/, guard.script);
+      if (guard.outside) assert.doesNotMatch(result.stderr, guard.outside, guard.script);
+    });
+  }
 });
 
 /**
  * A fetch does not fix a shallow clone: `merge-base` still answers from the truncated graph, and it
- * answers *wrongly and silently* rather than throwing, which is why the warning `mergeBase()` used
- * to print never covered this. `check-review-range.mjs` already refuses here; so must the guards.
+ * answers *wrongly and silently* rather than throwing, which is why the warning the old
+ * `mergeBase()` printed never covered this. `check-review-range.mjs` already refuses here; so must
+ * the guards.
  *
- * <p>Mutation: move the shallow test below the fetch, or make it a warning. This then exits 0 or 1
+ * <p>Mutation: move the shallow test below the fetch, or make it a warning. Each row then reports
  * on a base git cannot be trusted to have resolved.
  */
-test('check-inline-comments --diff refuses a shallow clone before it resolves anything', () => {
-  withRepo((repo) => {
-    const { realBase } = movedBase(repo);
-    repo.publish('main', realBase);
-    repo.write('.git/shallow', `${realBase}\n`);
+test('every base-resolving guard refuses a shallow clone before it resolves anything', () => {
+  for (const guard of BASE_GUARDS) {
+    withRepo((repo) => {
+      const { realBase } = movedBase(repo, guard);
+      repo.publish('main', realBase);
+      repo.write('.git/shallow', `${realBase}\n`);
 
-    const result = repo.run(INLINE, ['--diff', 'origin/main']);
+      const result = repo.run(guard.script, guard.argv('origin/main'));
 
-    assert.equal(result.status, 2, result.stderr);
-    assert.match(result.stderr, /shallow/i);
-    assert.match(result.stderr, /--unshallow/);
-  });
+      assert.equal(result.status, 2, `${guard.script}: ${result.stderr}`);
+      assert.match(result.stderr, /shallow/i, guard.script);
+      assert.match(result.stderr, /--unshallow/, guard.script);
+    });
+  }
 });
 
 /**
@@ -1580,56 +1653,63 @@ test('check-inline-comments --diff refuses a shallow clone before it resolves an
  * whatever the clone captured, and nothing advances it. Accepting it would leave AC-1's hole open
  * under a different spelling, so it is refused with the two forms that can be trusted.
  *
- * <p>Mutation: fall through to `rev-parse` for any ref that resolves. This then exits 0 having
- * diffed a ref no one fetched.
+ * <p>Mutation: fall through to `rev-parse` for any ref that resolves. Each row then exits 0 or 1
+ * having diffed a ref no one fetched.
  */
-test('check-inline-comments --diff refuses a local branch, naming both accepted forms', () => {
-  withRepo((repo) => {
-    movedBase(repo);
+test('a local branch is refused as the snapshot it is, naming both accepted forms', () => {
+  for (const guard of BASE_GUARDS) {
+    withRepo((repo) => {
+      movedBase(repo, guard);
 
-    const result = repo.run(INLINE, ['--diff', 'main']);
+      const result = repo.run(guard.script, guard.argv('main'));
 
-    assert.equal(result.status, 2, result.stderr);
-    assert.match(result.stderr, /<remote>\/<branch>/);
-    assert.match(result.stderr, /SHA/);
-  });
+      assert.equal(result.status, 2, `${guard.script}: ${result.stderr}`);
+      assert.match(result.stderr, /<remote>\/<branch>/, guard.script);
+      assert.match(result.stderr, /SHA/, guard.script);
+    });
+  }
 });
 
 /**
  * The offline form, and the reason the refusal above is not a lock-out: a SHA names one commit and
  * cannot go stale, so it needs no remote at all.
  *
- * <p>Mutation: require a remote-tracking ref unconditionally. This then exits 2 and the guards
- * become unusable without network.
+ * <p>Mutation: require a remote-tracking ref unconditionally. Every row then exits 2 and the guards
+ * become unusable without network — including in this suite, which is why so many cases pass one.
  */
-test('check-inline-comments --diff accepts a SHA base with no remote configured at all', () => {
-  withRepo((repo) => {
-    const { realBase } = movedBase(repo);
+test('a SHA base resolves with no remote configured at all', () => {
+  for (const guard of BASE_GUARDS) {
+    withRepo((repo) => {
+      const { realBase } = movedBase(repo, guard);
 
-    const result = repo.run(INLINE, ['--diff', realBase]);
+      const result = repo.run(guard.script, guard.argv(realBase));
 
-    assert.equal(result.status, 0, result.stderr);
-  });
+      assert.equal(result.status, 0, `${guard.script}: ${result.stderr}`);
+    });
+  }
 });
 
 /**
- * PR #951's finding F-9, closed. `mergeBase()` caught a throwing `merge-base` and returned the base
- * unchanged — so two histories with no common ancestor yielded a range spanning all of both.
+ * PR #951's finding F-9, closed. The old `mergeBase()` caught a throwing `merge-base` and returned
+ * the base unchanged — so two histories with no common ancestor yielded a range spanning all of
+ * both, every file in it reading as this branch's addition.
  *
- * <p>Mutation: restore the `catch` that returns `base`. The range then starts at an unrelated root,
- * `theirs.ts` arrives as an addition, and this exits 1.
+ * <p>Mutation: restore the `catch` that returns `base`. Each row then reports over an unrelated
+ * history instead of refusing.
  */
-test('check-inline-comments --diff refuses unrelated histories rather than widening to the tip', () => {
-  withRepo((repo) => {
-    movedBase(repo);
-    repo.git(['checkout', '--quiet', '--orphan', 'unrelated']);
-    repo.write('unrelated.txt', 'no shared ancestor\n');
-    const alien = repo.commit('an unrelated root commit');
-    repo.git(['checkout', '--quiet', 'feature']);
+test('unrelated histories are refused, not silently widened to the base tip', () => {
+  for (const guard of BASE_GUARDS) {
+    withRepo((repo) => {
+      movedBase(repo, guard);
+      repo.git(['checkout', '--quiet', '--orphan', 'unrelated']);
+      repo.write('unrelated.txt', 'no shared ancestor\n');
+      const alien = repo.commit('an unrelated root commit');
+      repo.git(['checkout', '--quiet', 'feature']);
 
-    const result = repo.run(INLINE, ['--diff', alien]);
+      const result = repo.run(guard.script, guard.argv(alien));
 
-    assert.equal(result.status, 2, result.stderr);
-    assert.match(result.stderr, /ancestor/i);
-  });
+      assert.equal(result.status, 2, `${guard.script}: ${result.stderr}`);
+      assert.match(result.stderr, /ancestor/i, guard.script);
+    });
+  }
 });
