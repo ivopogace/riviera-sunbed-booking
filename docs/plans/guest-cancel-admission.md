@@ -35,9 +35,12 @@ Dependabot PRs open, no Flyway number in play; `CancelBookingService` has no uni
 `riviera-plan-doc` (this template — forced the statement of *how* agreement is pinned, since
 reading the table is by-construction and a test cannot observe it directly) · `tdd` (each phase
 opens with an assertion-red status-exhaustive test at the port) · `riviera-review-overlay` (review
-gate — due at ready-for-review) · `riviera-docs-freshness` (due at close-out: `RESPONSIBILITIES.md`
-§booking's "each takes its admitted statuses from its own row" sentence widens to the two services;
-the research note's D2 gains a dated resolution line) · `riviera-modulith` (ADR-0018 §1: a lifecycle
+gate — **ran** on PR #974 over `2fa572a2..b0b4bc8d` via `code-review:code-review` at high effort — five
+reviewers plus the overlay walk (RV-BE-1/3/11/19, RV-STYLE-1, RV-PROC-1/2 all ✅); two findings,
+register below) · `riviera-docs-freshness` (**ran** over `2fa572a2..b0b4bc8d`, 0 substrate
+findings — every citation on the changed `RESPONSIBILITIES.md` lines resolves, the counting sweep's
+"two cancellation rows" stays true; `typed-pool.md` and `sonar-scripts-gate.md` retired, both with
+zero citations outside `docs/plans/`) · `riviera-modulith` (ADR-0018 §1: a lifecycle
 rule with three callers earns the shared statement, which already exists in `domain/`; both services
 are inside `booking`, so no published surface or grant changes) · `riviera-java-conventions` (§6c/§6d
 on every touched Javadoc — the `CancelBookingService` block carries a garbled sentence that goes with
@@ -180,14 +183,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft open, merging latest main, then ready-for-review`
+**Stage pointer:** `DONE — review gate run, Sonar gate green, awaiting merge (merged via PR #974)`
 
-**Next action:** merge latest `origin/main`, mark the PR ready for review, run the review gate (`references/pr-gates.md` §1).
+**Next action:** merge PR #974, then the close-out's GitHub-side steps (the issue closes via the PR; no epic; nothing deferred).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the view reads `CANCEL_BY_GUEST` | ✅ | c37f3b64 |
-| 1 — the cancel service reads `CANCEL_BY_GUEST`; docs | ✅ | the phase-1 commit (SHA below at close-out) |
+| 1 — the cancel service reads `CANCEL_BY_GUEST`; docs | ✅ | b0b4bc8d |
+| review fix round — F-1, F-2; plan retirement; close-out | ✅ | e6191210 + the PR's last commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -195,15 +199,20 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (git-history reviewer) | the plan's grill outcome repeated the issue's commit SHAs `31427ae` / `170da8a` as present on `main`; neither exists on any ref — both changes landed in `e115733c` (PR #930) | fixed in `e6191210` — the Resolved entry now records the pre-squash citation |
+| F-2 | review (prior-PR reviewer; PR #930's note on `BookingTransition`'s over-budget Javadoc) | the slice grew that class Javadoc by one more clause naming the two service readers; scored 50 (below the posting bar) | applied anyway in the close-out commit — the clause is dropped and `BookingTransition.java` leaves the diff; `RESPONSIBILITIES.md` §booking is the durable home of the fact (§6d) |
+| S-1 | sonar | PR #974 analysis on `b0b4bc8d`: 15 new lines, 0 issues, 0 duplicated blocks, 0.0% duplication, 100% new-code coverage; `SonarCloud Code Analysis` check concluded success | clean |
+| D-1 | docs-freshness | the research note's §B/§D/§E tables still show the 2026-09-04 inline statements and counts | not rewritten — the note records what was true when written (`riviera-docs-freshness` scope discipline; the dated D2 addendum is the convention D4's correction set) |
 
 ---
 
 ## File structure
 
 - `docs/plans/guest-cancel-admission.md` — this plan
+- `docs/plans/typed-pool.md` — retired (PR #973 merged; no citation outside `docs/plans/`)
+- `docs/plans/sonar-scripts-gate.md` — retired (PR #963 merged; no citation outside `docs/plans/`)
 - `platform/src/main/java/ai/riviera/platform/booking/application/view/ViewBookingService.java` — `cancellable` reads `CANCEL_BY_GUEST.admits`
 - `platform/src/main/java/ai/riviera/platform/booking/application/cancel/CancelBookingService.java` — the `NotCancellable` fence reads `CANCEL_BY_GUEST.admits`; Javadoc re-read whole
-- `platform/src/main/java/ai/riviera/platform/booking/domain/BookingTransition.java` — Javadoc names the two service readers beside the adapter binding
 - `platform/src/test/java/ai/riviera/platform/booking/application/view/ViewBookingServiceTest.java` — AC-1
 - `platform/src/test/java/ai/riviera/platform/booking/application/cancel/CancelBookingServiceTest.java` — AC-2, AC-3, AC-4 (new)
 - `RESPONSIBILITIES.md` — §booking: the two services read the same row the adapter binds
@@ -248,7 +257,7 @@ void onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen(BookingStatus status
 ## Phase 1 — the cancel service reads `CANCEL_BY_GUEST`; docs
 
 **Files:** Create `CancelBookingServiceTest.java` · Modify `CancelBookingService.java`,
-`BookingTransition.java`, `RESPONSIBILITIES.md`, the research note
+`RESPONSIBILITIES.md`, the research note
 
 - [x] **Step 1: Write the failing tests** — the three ACs above in a Mockito unit test mirroring
   `ViewBookingServiceTest`'s shape: `Bookings`, `CancellationPolicy`, `AvailabilityClaim`,
@@ -263,11 +272,10 @@ void onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen(BookingStatus status
 - [x] **Step 4: Run it, verify it passes** — `--tests "*CancelBookingServiceTest*" --tests
   "*ViewBookingServiceTest*" --tests "*BookingTransitionTest*"`, then `--tests "*CancelBookingIT*"`
   (Docker present), then the structural net.
-- [x] **Step 5: Docs** — `RESPONSIBILITIES.md` §booking; the research note's D2; `BookingTransition`
-  Javadoc; `node scripts/check-inline-comments.mjs --diff origin/main`;
+- [x] **Step 5: Docs** — `RESPONSIBILITIES.md` §booking; the research note's D2; `node scripts/check-inline-comments.mjs --diff origin/main`;
   `node scripts/check-plan-file-structure.mjs --diff origin/main`.
 - [x] **Step 6: Commit** — `Read the guest-cancel admission from BookingTransition in the cancel service (#926)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -282,25 +290,25 @@ void onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen(BookingStatus status
 ## Acceptance-criteria verification (final)
 
 - [x] **AC-1:** Run `gradle test --tests "*ViewBookingServiceTest*"` → 46 tests, 0 failures. Verified at commit `c37f3b64`.
-- [x] **AC-2, AC-3, AC-4:** Run `gradle test --tests "*CancelBookingServiceTest*"` → 9 tests, 0 failures; `--tests "*CancelBookingIT*"` → 7 tests, 0 skipped. Verified locally at the phase-1 tree (SHA recorded at close-out).
-- [x] **AC-5:** Run `gradle test --tests "*BookingTransitionTest*"` + the structural net → 6 + 23 tests, 0 failures. Verified locally at the phase-1 tree (SHA recorded at close-out).
+- [x] **AC-2, AC-3, AC-4:** Run `gradle test --tests "*CancelBookingServiceTest*"` → 9 tests, 0 failures; `--tests "*CancelBookingIT*"` → 7 tests, 0 skipped (Docker). Verified at commit `b0b4bc8d`; CI backend job green on the same commit.
+- [x] **AC-5:** Run `gradle test --tests "*BookingTransitionTest*"` + the structural net → 6 + 23 tests, 0 failures. Verified at commit `b0b4bc8d`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
