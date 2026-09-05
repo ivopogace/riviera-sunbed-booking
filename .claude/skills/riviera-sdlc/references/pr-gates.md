@@ -159,7 +159,8 @@ and duplications below its fail thresholds. Pull the actual list and fix every e
    that mixes analysed and unanalysed paths is judged on the analysed ones only — say which.
    That the properties file states what each source root covers (the `scripts/` entry names
    the `.mjs` guards as analysed and covered, the suites as excluded, the `.sh` files as
-   unread) is what makes this check answerable from the file rather than from memory.
+   analysed without a coverage measure) is what makes this check answerable from the file
+   rather than from memory.
 
    Triage every entry — bug, vulnerability, code smell, security hotspot, duplicated block,
    coverage shortfall — even under a green gate.

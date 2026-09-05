@@ -31,8 +31,10 @@ confirmed `.mjs` is in the project's effective `sonar.javascript.file.suffixes`)
 made before `ci.yml` was touched, which is what surfaced the skipped-`needs` trap) · `tdd` (the
 red is the measurement: no `SF:` record for any guard before, one per non-test `.mjs` after;
 the PR's own Sonar analysis is the green) · `riviera-review-overlay` (review gate — at ready for
-review) · `riviera-docs-freshness` (**ran** as the grep in the Generalization-audit log — the
-only substrate line that states what Sonar reads is `pr-gates.md` §2, and this slice edits it) ·
+review) · `riviera-docs-freshness` (**ran** over `828f0f09..HEAD` — rename grep: the only substrate line
+that states what Sonar reads is `pr-gates.md` §2, edited by this slice; counting sweep over
+"two/both/three" near Sonar, lcov, coverage and source vocabulary: every hit is another subject;
+one finding, the properties file's own "(backend + frontend)" header, patched) ·
 `riviera-local-debug` (unshallowed the clone before the guards' `--diff` runs; the
 `node --test` coverage measurement below was its first invocation) · `grilling` (the four
 decisions the issue leaves to the slice, answered under *Open questions / Assumptions*).
@@ -44,34 +46,40 @@ decisions the issue leaves to the slice, answered under *Open questions / Assump
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given `sonar-project.properties`, when a reader looks for whether `scripts/` is
+- [x] **AC-1:** Given `sonar-project.properties`, when a reader looks for whether `scripts/` is
       analysed, then the file states it (the `.mjs` guards and their shared modules are analysed and
-      covered; the guard suites are excluded like the Vitest specs; the `.sh` files have no
-      analyser in the plan) beside the `sonar.sources` line — no diff against the repo map needed.
-      *Seam:* the properties file · *Pinned by:* reading the file at the close-out commit.
-- [ ] **AC-2:** Given the scan runs with `scripts` in `sonar.sources`, when this PR's measures are
-      pulled from `api/measures/component`, then `new_lines` has a value and
-      `ncloc_language_distribution` on the PR includes `js` — §2's false-zero check can tell
-      "clean" from "unanalysed". *Seam:* the SonarCloud web API for this PR · *Pinned by:* the
-      pulled JSON recorded in the PR body.
-- [ ] **AC-3:** Given the `sonar` job produces `scripts/coverage/lcov.info` from the guard suites,
+      covered; the guard suites are excluded like the Vitest specs; the `.sh` files are analysed as
+      shell with no coverage measure) beside the `sonar.sources` line — no diff against the repo map
+      needed. *Seam:* the properties file · *Pinned by:* reading the file at the close-out commit.
+- [x] **AC-2:** Given the scan runs with `scripts` in `sonar.sources`, when the PR's analysis is
+      read, then the eleven `.mjs` files are indexed and analysed as JavaScript and the false-zero
+      check has something to read. *Seam:* the `sonar` job's scanner log and the SonarCloud web API
+      for this PR · *Pinned by:* the log ("Quality profile for js", "Analyzing 11 file(s)", the
+      coverage sensor naming `scripts/coverage/lcov.info`) and the project measures on the PR:
+      `lines_to_cover` 18,388 against `main`'s 14,517 (+3,871; the lcov holds 3,873). `new_lines`
+      is absent on this PR because its diff changes no line under `sonar.sources` — the very class
+      §2 now names — so the `new_lines` half is observed on the first scripts-touching PR, by the
+      §2 check that reads it.
+- [x] **AC-3:** Given the `sonar` job produces `scripts/coverage/lcov.info` from the guard suites,
       when the same command runs locally, then the lcov carries one `SF:` record per non-test
-      `scripts/*.mjs` (11 of 11, spawned CLIs included) at repo-root-relative paths, and on the PR
-      `new_coverage` has a value when a scripts line is new. *Seam:* the lcov file the scanner
-      reads · *Pinned by:* the `SF:` count check in Phase 0 step 4, and the PR's `new_coverage`.
-- [ ] **AC-4:** Given `riviera-sdlc` `references/pr-gates.md` §2, when the false-zero paragraph
+      `scripts/*.mjs` (11 of 11, spawned CLIs included) at repo-root-relative paths, and the scan
+      reads it. *Seam:* the lcov file the scanner reads · *Pinned by:* the `SF:` count check in
+      Phase 0 step 4 (11/11), and the PR's `uncovered_lines` 945 against `main`'s 810 (+135; the
+      lcov's 137).
+- [x] **AC-4:** Given `riviera-sdlc` `references/pr-gates.md` §2, when the false-zero paragraph
       is read, then it names the class "diff outside `sonar.sources`" explicitly, says the green
       proves nothing there, and says what to record in the plan's Sonar note. *Seam:* the
       reference's text · *Pinned by:* reading §2 against the issue's AC-4.
-- [ ] **AC-5:** Given the first analysis of the pre-existing `scripts/` tree, when the PR's issue
+- [x] **AC-5:** Given the first analysis of the pre-existing `scripts/` tree, when the PR's issue
       list is pulled, then every entry is code-fixed or resolved with a written rationale before
       merge (`pr-gates.md` §2 step 3). *Seam:* `api/issues/search` for this PR · *Pinned by:* the
-      Findings register.
+      Findings register (S-1: total 0, hotspots 0, with all eleven files fully analysed).
 
 ## Non-goals
 
-- Analysing the `.sh` files under `scripts/` — SonarCloud's plan carries no shell analyser; the
-  properties file says so rather than implying they are read.
+- Doing anything about the `.sh` files under `scripts/` beyond stating what happens to them. The
+  first analysis showed the plan does carry a shell analyser (the IaC one; a "Sonar way" shell
+  profile), so they are read, without a coverage measure; the properties file says exactly that.
 - Moving the guard tests out of `Repo hygiene (diff-scoped)`. That job stays the gate on the
   suites (its no-`node_modules` constraint holds there); the `sonar` job's run only produces the
   lcov.
@@ -90,28 +98,33 @@ N/A — new behaviour, replaces no surface.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The first analysis reports pre-existing `scripts/` issues on this PR as new (the target branch never analysed them) | med | med | pull the list at the Sonar gate; each entry is code-fixed (re-entering at Implement) or resolved with a rationale; AC-5 | session | open |
-| R-2 | Duplicated-block detection across the eleven guard suites trips the 0-duplication bar | low | med | the suites are excluded from analysis (`**/*.test.mjs`); the guards themselves share `git-diff.mjs` by import, not by copy | session | open |
+| R-1 | The first analysis reports pre-existing `scripts/` issues on this PR as new (the target branch never analysed them) | med | med | pull the list at the Sonar gate; each entry is code-fixed (re-entering at Implement) or resolved with a rationale; AC-5 | session | closed — 0 issues, 0 hotspots, 0 duplicated blocks on the PR with all eleven files analysed in full (cache miss, `FILE_CHANGED [11/201]`); `main`'s first post-merge analysis is the whole-tree read, noted for the close-out |
+| R-2 | Duplicated-block detection across the eleven guard suites trips the 0-duplication bar | low | med | the suites are excluded from analysis (`**/*.test.mjs`); the guards themselves share `git-diff.mjs` by import, not by copy | session | closed — `new_duplicated_blocks` 0 |
 | R-3 | `needs:` on the hygiene job skips the scan on `main` pushes | — | high | the lcov is produced in the `sonar` job itself (see Architecture); the hygiene job is untouched | session | closed by design |
-| R-4 | The `sonar` job's extra Node setup + test run lengthens the critical path | low | low | measured locally at 17 s for the suites; setup-node from `.nvmrc` is cached by the action; the job's 15-minute cap holds | session | open — confirm on the PR's run |
+| R-4 | The `sonar` job's extra Node setup + test run lengthens the critical path | low | low | measured locally at 17 s for the suites; setup-node from `.nvmrc` is cached by the action; the job's 15-minute cap holds | session | closed — the job ran 1 min 32 s wall on the PR (suites 13.5 s, scanner 1 min 0 s) |
+| R-8 | A stated fact about what the analyser does is wrong until the first analysis has been read | med | low | read the scanner log at the Sonar gate before finalising the properties comment | session | closed — it was (F-1), fixed from the log |
 | R-5 | A guard-suite failure now reds the `sonar` job too | low | low | it reds the hygiene job on the same push already; the second red carries the same message | session | closed by design |
 | R-6 | The lcov's `SF:` paths do not match Sonar's file keys | low | high | Node writes them repo-root-relative (`SF:scripts/git-diff.mjs`), the form the scanner wants when run from the root; no normalisation step, unlike the frontend's | session | closed — measured |
 | R-7 | New prose in `pr-gates.md` trips the skill-prose gate (an issue number in an added skill line) | med | low | `node scripts/check-inline-comments.mjs --diff origin/main` before each push; the new paragraph names no issue | session | closed — exit 0 at the phase-1 commit |
 
 ## Open questions / Assumptions
 
+None open.
+
+### Resolved
+
 - **Assumption (issue decision 1):** `scripts/` joins `sonar.sources`. The issue calls the "no"
   outcome defensible; this slice takes "yes" because the cost it names (what the existing tree
   reports) is measurable on this PR and the benefit is the one the issue argues for: the tree whose
-  defects are silent-by-construction gets read. — *Owner:* maintainer (overrule at review) ·
-  *Resolves by:* the review gate.
+  defects are silent-by-construction gets read. — measured at the Sonar gate: the cost was zero
+  entries (S-1). The maintainer overrules at review if the deliberate-exclusion outcome is
+  preferred; the properties file then records that instead. 2cd3be35.
 - **Assumption (issue decision 2):** the suites are excluded via `sonar.exclusions`, the
-  `**/*.spec.ts` precedent, not declared as `sonar.tests`. — *Owner:* session · *Resolves by:*
-  phase 0.
+  `**/*.spec.ts` precedent, not declared as `sonar.tests`. — 2cd3be35.
 - **Assumption (issue decision 3):** real coverage from `node --test`, not a waiver. Measured:
   96.46% lines / 89.43% branches over the eleven non-test `.mjs` files, spawned CLIs included
-  (Node's runner passes `NODE_V8_COVERAGE` to the child processes the harness spawns). — *Owner:*
-  session · *Resolves by:* phase 0.
+  (Node's runner passes `NODE_V8_COVERAGE` to the child processes the harness spawns); the scan read
+  it (AC-3). — 2cd3be35.
 - **Assumption (issue decision 4):** the answer is not "no" — see decision 1.
 
 ## Availability & concurrency (invariant #2)
@@ -136,16 +149,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** CI gate (draft PR open) → Sonar first-analysis triage (phase 2)
+**Stage pointer:** DONE — merged via PR #963
 
-**Next action:** read the draft PR's CI run and pull the Sonar list + measures for the PR; record
-them in the Findings register; fix or resolve each entry.
+**Next action:** none in the repo; the post-merge items are GitHub edits only (the PR closes #954;
+pull `main`'s first post-merge issue list for `scripts/` once — the PR analysis judged all eleven
+files, so it is expected empty, and any entry becomes a follow-up issue).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `sonar-project.properties` + `ci.yml`: analyse `scripts/`, produce and read its lcov | ✅ | 2cd3be35 |
-| 1 — `pr-gates.md` §2 names the outside-`sonar.sources` class | ✅ | phase-1 commit |
-| 2 — first-analysis triage: fix or resolve what Sonar reports on `scripts/`; close-out | ⏳ | |
+| 1 — `pr-gates.md` §2 names the outside-`sonar.sources` class | ✅ | f647bcd6 |
+| 2 — first-analysis triage: fix or resolve what Sonar reports on `scripts/`; close-out | ✅ | the close-out commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -153,6 +167,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| S-1 | sonar (PR analysis of f647bcd6) | quality gate passed; `api/issues/search` total 0; hotspots 0; `new_bugs`/`new_vulnerabilities`/`new_code_smells`/`new_violations` 0; `new_duplicated_blocks` 0; `new_lines` and `new_coverage` absent — this PR's own diff lies outside `sonar.sources` (the §2 class), so the gate applied to no line of it; what it did prove is AC-2/AC-3's evidence: the eleven `.mjs` files analysed in full and their lcov read (`lines_to_cover` +3,871 vs `main`, `uncovered_lines` +135, project coverage 92.7% → 93.2%) | clear — recorded as §2 now asks |
+| F-1 | CI (the scanner log) | the properties comment and the §2 paragraph said the `.sh` files are not analysed ("no shell analyser"); the log shows `Sensor IaC Shell Sensor: 5/5 source files have been analyzed` under a "Sonar way" shell profile | fixed in the close-out commit: both say "analysed as shell, no coverage measure"; the `lines_to_cover` delta shows they add no lines to cover |
+| F-2 | docs-freshness (this diff) | `sonar-project.properties` line 1 still said "(backend + frontend)" | patched in the close-out commit |
 
 ---
 
@@ -215,9 +232,9 @@ diff <(ls scripts/*.mjs | grep -v '\.test\.mjs$' | sort) \
 
 ## Phase 2 — First-analysis triage and close-out
 
-- [ ] Pull the PR's issue list and measures; record them in the Findings register; fix or
-      resolve each entry through the loop; retire the two merged plan docs; finalize this doc in
-      the last code-touching commit.
+- [x] Pull the PR's issue list and measures; record them in the Findings register; fix or
+      resolve each entry through the loop (S-1 clear; F-1 and F-2 fixed); retire the two merged
+      plan docs; finalize this doc in the last code-touching commit.
 
 ---
 
@@ -225,6 +242,7 @@ diff <(ls scripts/*.mjs | grep -v '\.test\.mjs$' | sort) \
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-05 | phase 2 (F-1) | substrate statements about which languages the scan reads (the properties file, §2) | `grep -rn "shell analyser\|not analysed\|unread" sonar-project.properties .claude/skills/riviera-sdlc` | 2 (the two this slice wrote) | both corrected from the scanner log |
 | 2026-09-05 | phase 0 | jobs whose `needs:` names a producer that is itself conditional on the event (the skipped-`needs` trap) | `grep -n "^  [a-z-]*:$\|^    needs:\|^    if:" .github/workflows/ci.yml` | 1 consumer (`sonar`, needs `backend` + `frontend`, both unconditional); 1 conditional job (`repo-hygiene`), needed by nothing | the lcov is produced inside `sonar`; `repo-hygiene` stays unneeded |
 | 2026-09-05 | plan | substrate lines stating what Sonar reads (`sonar.sources`, the properties file, coverage exclusions) | `grep -rn "sonar.sources\|sonar-project.properties\|coverage.exclusions" --include=*.md --include=*.yml --include=*.mjs --include=*.json .` (plans excluded) | 0 outside the properties file; the false-zero check in `pr-gates.md` §2 by intent | §2 edited in phase 1; nothing else to repoint |
 
@@ -232,18 +250,18 @@ diff <(ls scripts/*.mjs | grep -v '\.test\.mjs$' | sort) \
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** read `sonar-project.properties` at the close-out commit.
-- [ ] **AC-2:** `api/measures/component?...&pullRequest=<N>&metricKeys=new_lines,ncloc_language_distribution` → `new_lines` present, `js` in the distribution; JSON in the PR body.
-- [ ] **AC-3:** Phase 0 step 4 locally; `new_coverage` on the PR.
-- [ ] **AC-4:** read §2.
-- [ ] **AC-5:** `api/issues/search?...&pullRequest=<N>&resolved=false` → every entry in the Findings register with a status.
+- [x] **AC-1:** read `sonar-project.properties` at the close-out commit.
+- [x] **AC-2:** the `sonar` job log on PR #963 and `api/measures/component?...&pullRequest=963&metricKeys=lines_to_cover,uncovered_lines,coverage` against the same call for `main`; the JSON is in the PR body. `new_lines` deliberately not claimed on this PR (see AC-2).
+- [x] **AC-3:** Phase 0 step 4 locally (11/11 at 2cd3be35, re-run before the close-out commit); the CI log's coverage table matches it line for line.
+- [x] **AC-4:** read §2.
+- [x] **AC-5:** `api/issues/search?...&pullRequest=963&resolved=false` → total 0; S-1.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying check.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Invariants #1–#13: N/A, CI configuration and docs only.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying check.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Invariants #1–#13: N/A, CI configuration and docs only.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR, in its last code-touching commit**, citing `merged via PR #963`.
+- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`; outcome recorded on PR #963 once it has run (ticked in the commit that carries its fixes, or here if it comes back clean).
