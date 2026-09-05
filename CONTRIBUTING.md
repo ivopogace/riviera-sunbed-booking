@@ -227,6 +227,12 @@ no right to reuse the code you wrote elsewhere, no credit or payment unless the 
 agrees to it in a separate signed writing. Opening a pull request is your acceptance
 of those terms; if you don't agree, don't contribute.
 
+The signed form of those terms is the [`CLA.md`](CLA.md) Contributor Assignment
+Agreement. The owner will send you a written authorization (it is what lets you clone
+and modify the code at all) and ask you to accept the CLA before you start; the
+onboarding steps are in
+[`docs/runbooks/contributor-onboarding.md`](docs/runbooks/contributor-onboarding.md).
+
 Before you contribute, make sure you can give that assignment: if an employer, client,
 or school could claim rights in your work, get their written release first. If you're
 adding a dependency or any third-party code, check its license allows use in a
