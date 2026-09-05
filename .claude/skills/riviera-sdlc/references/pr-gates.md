@@ -10,11 +10,49 @@ Opening a PR, green CI, and a clear Sonar gate — none of them is the review. A
 done until this gate has run and its findings are resolved or explicitly deferred.
 
 1. **Trigger.** Due the moment the PR is marked ready for review. Do not wait to be asked.
-2. **Run the review — right-sized, never skipped.** Start `/code-review` over the PR diff
-   (`origin/main...HEAD`) via the invocation ladder below, and load
-   `riviera-review-overlay` so the project bank items (RV-BE-*/RV-FE-*/RV-CT-*, RV-PROC-*)
-   are walked on top of the generic banks. Announce: *"Running the SDLC review gate
-   (riviera-review-overlay + code-review) on PR #NN."*
+2. **Run the review — right-sized, never skipped.**
+
+   **First, resolve the range — never name it from memory.** The scope is *not*
+   `origin/main...HEAD`. That is a **local** remote-tracking pointer, and a cloud session
+   clones once at container start and never refetches it. Both of its failure modes are
+   silent: a stale ref widens the range, and a wider diff looks exactly like a larger PR, so
+   the reviewers come back clean and the PR carries a ticked review box. On PR #939 a stale
+   `origin/main` turned a three-file PR into a ten-file range and five dispatched agents had
+   to be killed and re-run.
+
+   Read the PR's own `base.ref`, `changed_files`, `additions` and `deletions` (`gh api
+   repos/O/R/pulls/N`, or the GitHub MCP `pull_request_read`), then:
+
+   ```bash
+   # Cloud clones start SHALLOW, and merge-base will answer from the truncated graph.
+   [ "$(git rev-parse --is-shallow-repository)" = true ] && git fetch --unshallow
+
+   git fetch --no-tags origin "$BASE_REF"        # the base branch's CURRENT tip
+   node scripts/check-review-range.mjs --base-ref "$BASE_REF" \
+     --files <changed_files> --additions <additions> --deletions <deletions>
+   ```
+
+   **Not the PR's `base.sha`** — that is the base branch's tip when the PR was *opened*, and
+   the PR row in `SKILL.md` tells a slice to merge latest `main` in before ready-for-review;
+   after that merge GitHub diffs against the newer tip and `base.sha` does not. `ci.yml`'s
+   base-fetch step carries the same correction, learned on PR #618. Pass it as `--base-sha`
+   to prove the clone contains the PR's history; it is not the range.
+
+   The guard prints the resolved base and exits 0 only when the local scope matches the PR's.
+   **A non-zero exit aborts the gate — do not dispatch.** Exit 1 is a scope disagreement
+   (almost always a stale base: re-fetch, re-run); exit 2 is a failed precondition (shallow
+   clone, unfetched base ref, missing counts). Reviewing anyway reviews someone else's
+   merged lines as if they were this PR's.
+
+   **Then run it.** Start `/code-review` over the resolved range via the invocation ladder
+   below, and load `riviera-review-overlay` so the project bank items
+   (RV-BE-*/RV-FE-*/RV-CT-*, RV-PROC-*) are walked on top of the generic banks. Pin every
+   dispatched agent to the resolved base SHA, not to a ref name — a ref re-reads, a SHA does
+   not. Announce, with the resolved values filled in: *"Running the SDLC review gate
+   (riviera-review-overlay + code-review) on PR #NN over `<base-sha>...HEAD` — base
+   `<base.ref>` @ `<tip-sha>`, N files / +A / -D, matched against the PR."* Announcing the
+   range is what makes a wrong scope visible in the transcript instead of only in the
+   findings; a bare announcement with no SHA is a gate that has not run this step.
 
    **The overlay alone is NOT the review.** It contributes additional bank items to an
    active review; walking them by hand without starting `/code-review` (or the rung-3
@@ -72,7 +110,10 @@ done until this gate has run and its findings are resolved or explicitly deferre
 3. **Resolve — back through the loop.** A finding fix re-enters at Implement. Also:
    - Update the plan's *Skills consulted* line with any new area a fix pulled in.
    - Re-review = re-run `/code-review` on the new diff, or at minimum re-walk the overlay
-     bank items + the RV-PROC items for the area the fix touched.
+     bank items + the RV-PROC items for the area the fix touched. **Re-resolve the range
+     first (step 2), every round** — the fix push moved `HEAD`, and `main` may have moved
+     under it meanwhile. A range is never carried over from the previous round; that reuse
+     is the same exposure step 2 exists to close.
    - Out-of-scope findings → a follow-up issue with a one-line rationale.
    - Record the outcome (findings + fixes + skills loaded) in the plan doc's review note or the PR.
 4. **Only then merge.** CI green **and** the review gate has run **and** findings are

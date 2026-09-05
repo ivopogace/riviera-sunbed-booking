@@ -49,7 +49,7 @@ for `bugfix/review-gate-range-pinning` per `riviera-sdlc` § *Remote / cloud ses
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a PR whose base branch tip has moved since the local clone was made,
+- [x] **AC-1:** Given a PR whose base branch tip has moved since the local clone was made,
       when the review gate resolves its range, then the range is
       `merge-base(freshly-fetched origin/<base.ref>, HEAD)...HEAD` and the resolved base SHA
       appears in the gate's announcement string. *Seam:* `pr-gates.md` §1 step 2's
@@ -101,10 +101,10 @@ endpoint, or flow is retired.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Pinning the range to the PR's `base.sha` (as issue #942 AC-1 literally suggests) breaks every PR that followed `riviera-sdlc`'s documented merge-from-main step: GitHub diffs against the base branch's current tip, so `base.sha` yields a **larger** range and the new AC-2 check would abort spuriously — turning the fix into a worse false alarm than the bug | high | high | Use `merge-base(freshly-fetched origin/<base.ref>, HEAD)`, which is what GitHub computes and what `ci.yml`'s base-fetch step already does for the same reason (PR #618). `base.sha` is used only as a reachability sanity check | this slice | open |
+| R-1 | (closed in phase 1 — the gate resolves by merge-base against the fetched tip; `base.sha` is demoted to `--base-sha`) Pinning the range to the PR's `base.sha` (as issue #942 AC-1 literally suggests) breaks every PR that followed `riviera-sdlc`'s documented merge-from-main step: GitHub diffs against the base branch's current tip, so `base.sha` yields a **larger** range and the new AC-2 check would abort spuriously — turning the fix into a worse false alarm than the bug | high | high | Use `merge-base(freshly-fetched origin/<base.ref>, HEAD)`, which is what GitHub computes and what `ci.yml`'s base-fetch step already does for the same reason (PR #618). `base.sha` is used only as a reachability sanity check | this slice | phase 1 |
 | R-2 | `git merge-base` on a shallow clone silently returns the wrong answer, and `git-diff.mjs:168`'s `mergeBase()` swallows the failure with `catch { return base; }` — a fail-**open** that hands back the stale base | high | high | The guard refuses (exit 2) when `git rev-parse --is-shallow-repository` is true, before it resolves anything; `mergeBase()`'s fail-open gets a Javadoc note naming the condition | this slice | phase 0 (guard half; note lands in phase 2) — verified live: the guard exits 2 on this session's own clone |
 | R-3 | The count comparison false-alarms on binary files (`--numstat` emits `-` for both columns) or on a >300-file PR | low | med | Binaries are excluded from the line totals on both sides and counted only as files; `changed_files` stays exact above 300 even though the *listed* files are capped. Both stated in the guard header and covered by a case | this slice | open |
-| R-4 | The guard becomes a box the gate ticks without running, reproducing the very failure #942 describes | med | med | The gate's announcement must carry the resolved SHA **and** the matched counts, so a transcript with a bare announcement is visibly non-compliant | this slice | open |
+| R-4 | The guard becomes a box the gate ticks without running, reproducing the very failure #942 describes | med | med | The gate's announcement must carry the resolved SHA **and** the matched counts, so a transcript with a bare announcement is visibly non-compliant | this slice | phase 1 — the announcement template names both, and says a bare one means the step did not run |
 
 ## Open questions / Assumptions
 
@@ -153,16 +153,16 @@ N/A — no contract change. No endpoint, DTO, or client type is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement — phase 0 done, entering phase 1`
+**Stage pointer:** `implement — phases 0-1 done, entering phase 2`
 
-**Next action:** Rewrite `pr-gates.md` §1 step 2 as resolve-then-verify, and make step 3's
-re-review re-resolve rather than reuse the range.
+**Next action:** Add § *Git in a cloud session* to `riviera-local-debug`, point the
+docs-freshness range input at the resolve rule, and note `mergeBase()`'s fail-open.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the scope-check guard + its suite (AC-2, AC-3) | ✅ | phase-0 commit |
-| 1 — `pr-gates.md` §1 steps 2 and 3 (AC-1, scope item 4) | ⏳ | |
-| 2 — the shallow caveat + the two range citations (AC-4) | | |
+| 1 — `pr-gates.md` §1 steps 2 and 3 (AC-1, scope item 4) | ✅ | phase-1 commit |
+| 2 — the shallow caveat + the two range citations (AC-4) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -206,10 +206,10 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 **Files:** Modify `.claude/skills/riviera-sdlc/references/pr-gates.md` §1 steps 2, 3
 
-- [ ] **Step 1:** Replace the inline `origin/main...HEAD` with the resolve-then-verify block.
-- [ ] **Step 2:** Extend the announcement to carry the resolved base SHA and the matched counts.
-- [ ] **Step 3:** Make step 3's re-review re-resolve rather than reuse the range.
-- [ ] **Step 4: Commit** — `git commit -m "Pin the review gate's range to the PR's fetched base (#942)"`
+- [x] **Step 1:** Replace the inline `origin/main...HEAD` with the resolve-then-verify block.
+- [x] **Step 2:** Extend the announcement to carry the resolved base SHA and the matched counts.
+- [x] **Step 3:** Make step 3's re-review re-resolve rather than reuse the range.
+- [x] **Step 4: Commit** — `git commit -m "Pin the review gate's range to the PR's fetched base (#942)"`
 
 ## Phase 2 — The shallow-clone caveat
 
