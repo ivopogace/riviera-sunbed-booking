@@ -128,6 +128,12 @@ for `bugfix/guard-base-fetch-or-refuse` per `riviera-sdlc` § *Remote / cloud se
 
 ## Open questions / Assumptions
 
+- **Open question:** should `scripts/` join `sonar.sources`? The Sonar gate is structurally blind
+  to every scripts-only PR, this one included, and the guards are the machinery the merge gates
+  themselves run on. Out of scope here — adding it would light up the pre-existing tree and is a
+  decision about gate coverage, not about #952. — *Owner:* maintainer · *Resolves by:* a follow-up
+  issue filed at this slice's close-out.
+
 ### Resolved
 
 - **Open question:** fetch-or-refuse in the shared resolver, or guards take an already-resolved base
@@ -173,10 +179,23 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR — awaiting green CI, then ready-for-review`
+**Stage pointer:** `review gate — running`
 
-**Next action:** When the Backend and Frontend jobs settle green, mark PR #953 ready for review and
-run the review gate per `riviera-sdlc` `references/pr-gates.md` §1.
+**Next action:** Triage the five review agents' findings, fix what survives verification through the
+Implement re-entry, then the merge close-out.
+
+**CI:** all 8 checks green on `2a3d20b` — Backend, Frontend, Repo hygiene (diff-scoped), CodeQL
+(both analyses), SonarCloud scan, SonarCloud Code Analysis.
+
+**Sonar gate — green, and vacuous for this slice; recorded rather than ticked.** The list was
+pulled, not the conclusion: 0 unresolved issues, 0 hotspots, `new_bugs`/`new_vulnerabilities`/
+`new_code_smells`/`new_violations` all 0, quality gate `OK` on all four conditions. But
+`sonar-project.properties` sets `sonar.sources=platform/src/main/java,frontend/src`, so `scripts/`
+— which is the entire code half of this diff — is outside the analysed scope, and the absent
+`new_lines`/`new_coverage` measures confirm it: nothing of this change was analysed. The zero is
+therefore true and uninformative. This is a pre-existing gap in gate coverage, not one this slice
+introduces (it applies to PR #951 and every scripts-only PR before it), so it is a follow-up rather
+than a widening of this PR — see Open questions.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
