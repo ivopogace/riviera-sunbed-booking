@@ -1713,3 +1713,35 @@ test('unrelated histories are refused, not silently widened to the base tip', ()
     });
   }
 });
+
+/**
+ * `git()` is `execFileSync`, which throws on a non-zero exit, and an escaping throw exits Node
+ * with 1 — the code these guards' contract assigns to **violations found**, whose printed remedy
+ * is to go and fix the code. A precondition that could not even be established has to read as 2,
+ * the same as every other refusal `resolveBase` returns.
+ *
+ * <p>This is PR #951's finding F-6, which `check-review-range.mjs` already guards against — its
+ * `main` wraps `verify()` for exactly this reason — and which the five guards inherited unfixed
+ * when they were pointed at the shared resolver.
+ *
+ * <p>A bad `.git/config` is the portable way to make git refuse: *every* invocation then exits
+ * 128, including the two calls that were unguarded — the shallow probe and the remote lookup —
+ * and the `rev-parse --show-toplevel` behind `repoRoot()`, which runs before either.
+ *
+ * <p>Mutation: remove the try/catch around `resolveBase`'s body. Each row then exits 1 with a
+ * stack trace on stderr instead of a sentence naming what failed.
+ */
+test('a git call that fails is reported as a precondition, not as a violation', () => {
+  for (const guard of BASE_GUARDS) {
+    withRepo((repo) => {
+      const { realBase } = movedBase(repo, guard);
+      repo.publish('main', realBase);
+      repo.write('.git/config', 'this is not a valid config file\n');
+
+      const result = repo.run(guard.script, guard.argv('origin/main'));
+
+      assert.equal(result.status, 2, `${guard.script}: ${result.stderr}`);
+      assert.doesNotMatch(result.stderr, /^\s+at .*\.mjs:\d+/m, `${guard.script} printed a stack`);
+    });
+  }
+});

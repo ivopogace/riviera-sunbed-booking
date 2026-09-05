@@ -268,10 +268,25 @@ function namesACommitSha(ref) {
  * `mergeBase()` did — hands the guard a range spanning two unrelated histories, and every file in
  * it reads as this branch's addition.
  *
+ * <p>**It never throws.** `git()` is `execFileSync`, so any git call can exit non-zero, and an
+ * escaping throw would exit Node with 1 — the code every one of these guards assigns to *violations
+ * found*, sending the reader to fix code over a repository that could not be read at all. So the
+ * whole body is wrapped and a failed call comes back as an `error` like any other refusal: PR
+ * #951's finding F-6, which `check-review-range.mjs` guards against the same way.
+ *
  * @param {string} ref the base as the caller spelled it
  * @returns {{ base: string } | { error: string }} the merge-base commit, or why there is none to trust
  */
 export function resolveBase(ref) {
+  try {
+    return resolveOrRefuse(ref);
+  } catch (cause) {
+    return { error: `A git call failed, so the base was never established:\n${cause}` };
+  }
+}
+
+/** `resolveBase`'s body. Separate only so that one `try` covers every git call it makes. */
+function resolveOrRefuse(ref) {
   if (git(['rev-parse', '--is-shallow-repository']).trim() === 'true') {
     return {
       error:
