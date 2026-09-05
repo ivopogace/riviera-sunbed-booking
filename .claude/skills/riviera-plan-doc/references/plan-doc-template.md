@@ -200,10 +200,12 @@ signal APIs, `NgOptimizedImage` for new images. Document any deviation.
 > the SAME commit window as the change it records (the same commit or the immediately
 > following one) at every phase boundary and SDLC stage transition.
 >
-> **Finalize BEFORE the merge, in the PR's own last commit** — stage pointer DONE, phase
-> rows ✅ with commits, Open Questions empty, risk rows closed, AC pin-names matching the
-> shipped tests. Record **`merged via PR #NN`, never a merge SHA** (`riviera-sdlc`
-> `references/pr-gates.md` §3 step 4).
+> **Finalize BEFORE the merge, in the PR's last code-touching commit — never in a commit
+> of its own** (CI bills per push, and a docs-only last push is a full cycle that can only
+> come back green; a later code fix rewrites the close-out in that commit) — stage pointer
+> DONE, phase rows ✅ with commits, Open Questions empty, risk rows closed, AC pin-names
+> matching the shipped tests. Record **`merged via PR #NN`, never a merge SHA**
+> (`riviera-sdlc` `references/pr-gates.md` §3 step 4).
 
 **Stage pointer:** <current `riviera-sdlc` stage, e.g. `implement (phase 2)` /
 `review gate — fixing findings` / `sonar gate` / `merge close-out step 3`>
@@ -320,7 +322,7 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
 - [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
