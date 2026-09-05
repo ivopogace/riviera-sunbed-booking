@@ -46,8 +46,16 @@ const SYNTAX = {
   '.html': { line: null, block: false, html: true },
 };
 
+/**
+ * The markdown every session reads as instructions: a skill's `SKILL.md` and its `references/`.
+ * Not the rest of `.claude/skills/` — the triage skill's out-of-scope ledger is a list of issue
+ * numbers by design — and not `docs/`, whose prose cites issues and PRs on purpose.
+ */
+const SKILL_MARKDOWN = /^\.claude\/skills\/[^/]+\/(?:SKILL\.md|references\/.+\.md)$/;
+
 /** Returns the comment syntax for a path, or null when the file is out of scope. */
 export function syntaxFor(path) {
+  if (SKILL_MARKDOWN.test(path)) return { markdown: true };
   const dot = path.lastIndexOf('.');
   return dot === -1 ? null : (SYNTAX[path.slice(dot).toLowerCase()] ?? null);
 }
@@ -77,6 +85,7 @@ export const GATING = new Set(['multiline', 'provenance']);
 export function findViolations({ path, lines, added }) {
   const syntax = syntaxFor(path);
   if (!syntax) return [];
+  if (syntax.markdown) return markdownViolations(path, lines, added);
 
   const regions = scan(lines, syntax);
   const violations = [];
@@ -133,6 +142,30 @@ function tellViolations(path, lines, added, region) {
 
 function range(from, to) {
   return Array.from({ length: to - from + 1 }, (_, k) => from + k);
+}
+
+/**
+ * The tell violations in skill markdown: the lines the diff added, outside fenced code and with
+ * code spans removed, so a command's `#NN` placeholder or a colour token is never read as prose.
+ */
+function markdownViolations(path, lines, added) {
+  const violations = [];
+  let fenced = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*(?:```|~~~)/.test(lines[i])) {
+      fenced = !fenced;
+      continue;
+    }
+    if (fenced || !added.has(i + 1)) continue;
+    const prose = lines[i].replace(/`[^`]*`/g, '');
+    for (const [rule, pattern] of Object.entries(TELLS)) {
+      if (pattern.test(prose)) {
+        violations.push({ path, line: i + 1, endLine: i + 1, text: lines[i].trim(), rule });
+      }
+    }
+  }
+  return violations;
 }
 
 /**

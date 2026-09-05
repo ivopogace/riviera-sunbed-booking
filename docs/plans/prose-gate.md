@@ -161,15 +161,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** write the failing detector test for AC-1 in `check-inline-comments.test.mjs`.
+**Next action:** Phase 2 — the history advisory tier, `settle()` exit codes, the hook and CLI rows (AC-5, AC-6).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — provenance in a touched doc block, judged whole | ⏳ | |
-| 1 — skill markdown: added lines, fences and spans exempt, scope | | |
-| 2 — history advisory + `settle()` exit codes + hook/CLI rows | | |
+| 0 — provenance in a touched doc block, judged whole | ✅ | e4dd8950 |
+| 1 — skill markdown: added lines, fences and spans exempt, scope | ✅ | (this commit; sha in the next) |
+| 2 — history advisory + `settle()` exit codes + hook/CLI rows | ⏳ | |
 | 3 — the rule folded into §6c/§6d, RV-STYLE-1, the reference, the citing docs; clean the touched headers | | |
 | 4 — close-out: docs-freshness, plan final | | |
 
