@@ -29,8 +29,9 @@ template — forced the Non-goals boundary against re-opening the review gate, a
 Generalization-audit row that enumerates the population by mechanism) · `tdd` (each refusal is
 written as a spawned-CLI case in `guard-cli.test.mjs` before the resolver learns to make it pass) ·
 `riviera-review-overlay` (review gate — runs at ready-for-review; RV-PROC-1 checks this line) ·
-`riviera-docs-freshness` (**ran** over `558bafb..HEAD` at close-out — findings recorded in the
-Execution status) · `riviera-local-debug` (the session's first `node --test`, and the
+`riviera-docs-freshness` (**ran** over `558bafb..HEAD` — 1 finding, F-1 below; the counting sweep
+verified all seven "N of the M" facts, including `CLAUDE.md`'s "five of the seven guards", and
+every one holds) · `riviera-local-debug` (the session's first `node --test`, and the
 `git fetch --unshallow` precondition this slice turns from advice into an enforced refusal).
 
 No `postgres`, `riviera-modulith`, `riviera-java-conventions`, `riviera-frontend`,
@@ -172,16 +173,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `PR — awaiting green CI, then ready-for-review`
 
-**Next action:** Phase 2 — verify the six documented invocations site by site, state the
-precondition where it is owned, and retire `docs/plans/review-gate-range-pinning.md`.
+**Next action:** When the Backend and Frontend jobs settle green, mark PR #953 ready for review and
+run the review gate per `riviera-sdlc` `references/pr-gates.md` §1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `resolveBase()`, and all five guards wired | ✅ | |
 | 1 — the per-guard matrix | ✅ | |
-| 2 — docs, usage strings, and close-out | | |
+| 2 — docs, usage strings, and close-out | ✅ | |
 
 **Phase 0 scope note.** The plan split the wiring across phases 0 and 1, which would have left
 phase 0's commit red: the four unwired guards import `mergeBase`, and deleting it breaks them at
@@ -195,7 +196,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | docs-freshness (close-out sweep) | `guard-cli.test.mjs:1019` still said "the drift `mergeBase` exists to prevent" — the only surviving **present-tense** reference to a function this slice deleted. Its siblings all say "the old `mergeBase()`" / "used to" and are correct | fixed — reads `resolveBase` |
+| F-2 | self-review (before the gate) | `remotes()` split on `\n` without trimming: a stray CR would leave `origin\r` unequal to `origin`, refusing a Windows contributor's base as naming no configured remote — fail-closed, but wrong and unexplainable from the message | fixed-in-`1bc7b64` |
+| F-3 | self-review (before the gate) | The `merge-base` catch asserted "shares no ancestor" as the cause, but git exits non-zero there for other reasons too; a broken repository would have been reported as unrelated histories | fixed-in-`1bc7b64` — states it as the likely reading and carries git's own error |
 
 ---
 
@@ -317,7 +320,13 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
       A **seventh** site the issue did not enumerate: `check-comment-only.mjs`'s own usage line,
       which is the only documentation of the one guard with no CI or hook invocation. Updated.
       The shallow precondition is stated once, in `riviera-local-debug` — which already owns the
-      cloud-session preconditions — rather than repeated at six call sites.
+      cloud-session preconditions — rather than repeated at six call sites. The docs-freshness sweep
+      raised the two procedural sites (`riviera-plan-doc/SKILL.md:86`, `plan-doc-template.md:236`)
+      as a judgment call, since every cloud slice runs that one at self-review; left as they are
+      deliberately, because the refusal names `git fetch --unshallow` at the point of failure and is
+      self-correcting, and duplicating a session precondition at six call sites is what the
+      cite-the-owner rule exists to avoid. Also left as it is: `ci.yml`'s explicit base-fetch step,
+      now redundant but not false — `git-diff.mjs` cites it as the source of the `--no-tags` pin.
 
 ## Self-review checklist (before merge / PR)
 

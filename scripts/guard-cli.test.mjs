@@ -1017,7 +1017,7 @@ test('check-comment-only resolves paths from the repo root, not the caller cwd',
  * The guard mixed three reference points: the file list from `merge-base(base,HEAD)...HEAD`, the
  * *before* side from the literal `base` **tip** via `git show`, and the *after* side from the working
  * tree. So once `base` moved, it compared this branch's working tree against commits the branch was
- * never based on, and blamed another branch's code on this one — the drift `mergeBase` exists to
+ * never based on, and blamed another branch's code on this one — the drift `resolveBase` exists to
  * prevent, and which the three sibling guards had already collapsed onto one commit (#618).
  *
  * <p>Mutation: take the file list from `${base}...HEAD` and the before side from `show(base, …)`
