@@ -179,9 +179,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — 4 of 5 agents reported; F-4 fixed and re-entered`
+**Stage pointer:** `review gate — complete, all 5 agents reported; awaiting CI on the F-5 fix`
 
-**Next action:** Await agent 3 (git-history context), then the merge close-out.
+**Next action:** When CI settles green, run the merge close-out (`riviera-sdlc`
+`references/pr-gates.md` §3).
+
+**Review gate result.** All five agents reported. Agents 1 (CLAUDE.md adherence), 2 (shallow bug
+scan) and 5 (code-comment guidance): no issues. Agent 4 found F-4, agent 3 found F-5; both fixed
+test-first and mutation-proved. Agent 3 reviewed the pre-F-4 tree and independently reached the
+same unguarded-`git()` observation, which is corroboration rather than a second finding.
 
 **Review-gate re-entry (F-4).** Per the `riviera-sdlc` re-entry rule the fix went back through
 Implement: routing gate re-run (the fix touches `scripts/*.mjs` only — `tdd` for the test-first
@@ -220,6 +226,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 |---|---|---|---|
 | F-1 | docs-freshness (close-out sweep) | `guard-cli.test.mjs:1019` still said "the drift `mergeBase` exists to prevent" — the only surviving **present-tense** reference to a function this slice deleted. Its siblings all say "the old `mergeBase()`" / "used to" and are correct | fixed — reads `resolveBase` |
 | F-2 | self-review (before the gate) | `remotes()` split on `\n` without trimming: a stray CR would leave `origin\r` unequal to `origin`, refusing a Windows contributor's base as naming no configured remote — fail-closed, but wrong and unexplainable from the message | fixed-in-`1bc7b64` |
+| F-5 | review gate (agent 3 — git-history context) | `publish()` and `breakOrigin()` each wired `origin` with `git remote add`, which fails once the remote exists — so a case composing them in either order died inside the harness, and the failure would read as the guard's. Dormant (no case combines them today), but a trap in a fixture whose whole purpose is front-end fidelity | fixed — both go through one `pointOrigin` that adds or `set-url`s; pinned by `the harness can point origin at a real repository and at nowhere, in either order`, mutation-proved |
 | F-4 | review gate (agent 4 — prior-PR comments) | `resolveBase()` could throw: `git(['rev-parse', '--is-shallow-repository'])` and `remotes()`' `git(['remote'])` were unguarded, as was the `rev-parse --show-toplevel` behind `repoRoot()` that precedes both. An escaping throw exits Node with **1** — the code these guards assign to *violations found* — with a stack trace, instead of the controlled 2. Exactly PR #951's finding F-6, which `check-review-range.mjs` guards against and the five inherited unfixed | fixed — the whole body is wrapped; pinned by `a git call that fails is reported as a precondition, not as a violation`, mutation-proved across all five rows |
 | F-3 | self-review (before the gate) | The `merge-base` catch asserted "shares no ancestor" as the cause, but git exits non-zero there for other reasons too; a broken repository would have been reported as unrelated histories | fixed-in-`1bc7b64` — states it as the likely reading and carries git's own error |
 

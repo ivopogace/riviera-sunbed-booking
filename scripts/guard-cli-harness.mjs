@@ -73,7 +73,20 @@ export function createRepo() {
   /** git resolves symlinks in the temp path on some platforms, so ask it where the root really is. */
   const root = raw(['rev-parse', '--show-toplevel'], dir).trim();
 
-  let origin = null;
+  let originDir = null;
+  let remoteExists = false;
+
+  /**
+   * Points `origin` at `url`, whether or not the remote is already wired.
+   *
+   * `remote add` fails once `origin` exists, so both helpers below go through this rather than
+   * each running their own `add`: a case that composes them — publish then break, or break then
+   * publish — would otherwise die inside the harness, and the failure would read as the guard's.
+   */
+  const pointOrigin = (url) => {
+    raw(['remote', remoteExists ? 'set-url' : 'add', 'origin', url], root);
+    remoteExists = true;
+  };
 
   /**
    * Creates the bare repository on first use and wires it as `origin`.
@@ -83,12 +96,12 @@ export function createRepo() {
    * paths — a fixture that changes what a guard reports is not a fixture.
    */
   const ensureOrigin = () => {
-    if (origin === null) {
-      origin = mkdtempSync(join(tmpdir(), 'riviera-guard-origin-'));
-      raw(['init', '--bare', '--quiet', origin], dir);
-      raw(['remote', 'add', 'origin', origin], root);
+    if (originDir === null) {
+      originDir = mkdtempSync(join(tmpdir(), 'riviera-guard-origin-'));
+      raw(['init', '--bare', '--quiet', originDir], dir);
     }
-    return origin;
+    pointOrigin(originDir);
+    return originDir;
   };
 
   return {
@@ -110,8 +123,13 @@ export function createRepo() {
       raw(['push', '--quiet', '--force', 'origin', `${sha}:refs/heads/${branch}`], root);
     },
 
-    /** Wires `origin` to a path that holds no repository, so a fetch fails rather than hangs. */
-    breakOrigin: () => raw(['remote', 'add', 'origin', join(dir, 'no-such-origin.git')], root),
+    /**
+     * Repoints `origin` at a path holding no repository, so a fetch fails rather than hangs.
+     *
+     * Reversible: a later `publish()` points it back at the real one, so a case can model a remote
+     * that goes away and comes back without building two repositories.
+     */
+    breakOrigin: () => pointOrigin(join(dir, 'no-such-origin.git')),
 
     /** Sets a repository-local config value — the contributor-config regressions' input. */
     config: (key, value) => raw(['config', key, value], root),
@@ -154,7 +172,7 @@ export function createRepo() {
 
     dispose: () => {
       rmSync(dir, { recursive: true, force: true });
-      if (origin !== null) rmSync(origin, { recursive: true, force: true });
+      if (originDir !== null) rmSync(originDir, { recursive: true, force: true });
     },
   };
 }

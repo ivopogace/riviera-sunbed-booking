@@ -1745,3 +1745,32 @@ test('a git call that fails is reported as a precondition, not as a violation', 
     });
   }
 });
+
+/**
+ * The harness's own trap, found by this slice's review.
+ *
+ * `publish()` and `breakOrigin()` each wired `origin` with `git remote add`, which fails once the
+ * remote exists — so a case combining them in either order died on the harness rather than on the
+ * guard, and the failure would read as the guard's. No case combines them today; that is what makes
+ * it a trap rather than a bug, and a fixture nobody can compose is worth less than one they can.
+ *
+ * <p>Mutation: restore either helper to a bare `remote add`. One of the two orders below then
+ * throws `remote origin already exists` out of the harness.
+ */
+test('the harness can point origin at a real repository and at nowhere, in either order', () => {
+  withRepo((repo) => {
+    const { staleBase, realBase } = movedBase(repo, BASE_GUARDS[0]);
+
+    repo.publish('main', realBase);
+    repo.breakOrigin();
+    trackStale(repo, staleBase);
+    assert.equal(repo.run(INLINE, ['--diff', 'origin/main']).status, 2, 'broken after published');
+
+    repo.publish('main', realBase);
+    trackStale(repo, staleBase);
+    const healed = repo.run(INLINE, ['--diff', 'origin/main']);
+
+    assert.equal(healed.status, 0, `published after broken: ${healed.stderr}`);
+    assert.equal(repo.git(['rev-parse', 'origin/main']).trim(), realBase);
+  });
+});
