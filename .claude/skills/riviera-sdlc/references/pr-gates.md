@@ -12,53 +12,42 @@ done until this gate has run and its findings are resolved or explicitly deferre
 1. **Trigger.** Due the moment the PR is marked ready for review. Do not wait to be asked.
 2. **Run the review — right-sized, never skipped.**
 
-   **First, resolve the range — never name it from memory.** The scope is *not*
-   `origin/main...HEAD`. That is a **local** remote-tracking pointer, and a cloud session
-   clones once at container start and never refetches it. Both of its failure modes are
-   silent: a stale ref widens the range, and a wider diff looks exactly like a larger PR, so
-   the reviewers come back clean and the PR carries a ticked review box. On PR #939 a stale
-   `origin/main` turned a three-file PR into a ten-file range and five dispatched agents had
-   to be killed and re-run.
-
-   Read the PR's own `base.ref`, `base.sha`, `head.sha`, `changed_files`, `additions` and
-   `deletions` (`gh api repos/O/R/pulls/N`, or the GitHub MCP `pull_request_read`), then:
+   **First, resolve the range — never name it from memory.** `origin/main` is a *local* ref a
+   cloud session never refetches, so a stale one silently widens the range and the reviewers come
+   back clean: that is how #939's gate reviewed ten files as a three-file PR. Read `base.ref`,
+   `base.sha`, `head.sha`, `changed_files`, `additions` and `deletions` off the PR (`gh api
+   repos/O/R/pulls/N`, or the GitHub MCP `pull_request_read`), then:
 
    ```bash
-   # Cloud clones start SHALLOW, and merge-base will answer from the truncated graph.
-   if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch --unshallow; fi
+   BASE_REF=<base.ref>            # from the PR — never assume `main`
 
+   # Cloud clones start SHALLOW; merge-base would answer from the truncated graph.
+   if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch --unshallow; fi
    git fetch --no-tags origin "$BASE_REF"        # the base branch's CURRENT tip
+
    node scripts/check-review-range.mjs --base-ref "$BASE_REF" \
      --base-sha <base.sha> --head-sha <head.sha> \
      --files <changed_files> --additions <additions> --deletions <deletions>
    ```
 
-   Pass all of them: the counts prove the range's **size**, `--head-sha` proves it is the PR's
-   **content** (a branch one commit behind the pushed head can agree on all three counts), and
-   `--base-sha` proves the clone actually contains the PR's history. A flag left out of the block is
-   a check that never runs.
+   Pass all of them: the counts prove the range's size, `--head-sha` that it is the PR's content,
+   `--base-sha` that the clone holds the PR's history. A flag left out is a check that never runs.
 
-   **Not the PR's `base.sha`** — that is the base branch's tip when the PR was *opened*, and
-   the PR row in `SKILL.md` tells a slice to merge latest `main` in before ready-for-review;
-   after that merge GitHub diffs against the newer tip and `base.sha` does not. `ci.yml`'s
-   base-fetch step carries the same correction, learned on PR #618. Pass it as `--base-sha`
-   to prove the clone contains the PR's history; it is not the range.
+   **Not `base.sha` as the range.** It is the base branch's tip when the PR was *opened*, and
+   `SKILL.md`'s PR row has slices merge latest `main` in before ready-for-review — after which
+   GitHub diffs against the newer tip. Pinning to it aborts on correctly-prepared PRs. (`ci.yml`'s
+   base-fetch step carries the same correction, PR #618.)
 
-   The guard prints the resolved base and exits 0 only when the local scope matches the PR's.
-   **A non-zero exit aborts the gate — do not dispatch.** Exit 1 is a scope disagreement
-   (almost always a stale base: re-fetch, re-run); exit 2 is a failed precondition (shallow
-   clone, unfetched base ref, missing counts). Reviewing anyway reviews someone else's
-   merged lines as if they were this PR's.
+   **Exit 0 or do not dispatch.** 1 = the scope disagrees (usually a stale base: re-fetch, re-run);
+   2 = a precondition failed.
 
-   **Then run it.** Start `/code-review` over the resolved range via the invocation ladder
-   below, and load `riviera-review-overlay` so the project bank items
-   (RV-BE-*/RV-FE-*/RV-CT-*, RV-PROC-*) are walked on top of the generic banks. Pin every
-   dispatched agent to the resolved base SHA, not to a ref name — a ref re-reads, a SHA does
-   not. Announce, with the resolved values filled in: *"Running the SDLC review gate
-   (riviera-review-overlay + code-review) on PR #NN over `<base-sha>...HEAD` — base
-   `<base.ref>` @ `<tip-sha>`, N files / +A / -D, matched against the PR."* Announcing the
-   range is what makes a wrong scope visible in the transcript instead of only in the
-   findings; a bare announcement with no SHA is a gate that has not run this step.
+   **Then run it.** Start `/code-review` over the resolved range via the invocation ladder below,
+   and load `riviera-review-overlay` so the project bank items (RV-BE-*/RV-FE-*/RV-CT-*, RV-PROC-*)
+   are walked on top of the generic banks. Pin every dispatched agent to the resolved base SHA, not
+   a ref name — a ref re-reads, a SHA does not. Announce with the resolved values filled in:
+   *"Running the SDLC review gate (riviera-review-overlay + code-review) on PR #NN over
+   `<base-sha>...HEAD` — base `<base.ref>` @ `<tip-sha>`, N files / +A / -D, matched against the
+   PR."* An announcement with no SHA in it means this step did not run.
 
    **The overlay alone is NOT the review.** It contributes additional bank items to an
    active review; walking them by hand without starting `/code-review` (or the rung-3

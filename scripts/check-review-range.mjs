@@ -2,52 +2,37 @@
  * Proves the SDLC review gate is about to review **this PR's diff** and not something wider
  * (issue #942).
  *
- * The gate used to name its range inline as `origin/main...HEAD`, with nothing anywhere telling it
- * to fetch first. A Claude Code cloud session clones once at container start and never refetches, so
- * both of that ref's failure modes are live, and both fired during the review of PR #939: a stale
- * `origin/main` turned a three-file PR into a ten-file range, five review agents were dispatched
- * against it, and none of them reported anything amiss — a larger diff looks exactly like a larger
- * PR. A gate that reviews the wrong diff and reports "no issues found" is worse than no gate,
- * because the PR then carries a ticked review box.
- *
- * So this guard does not trust a local ref to be current. It re-derives the base the way GitHub
- * does — `merge-base` against the base branch's **current tip** — and then refuses to agree that the
- * range is right until the file and line counts match what the PR itself reports. That comparison is
- * the whole point: staleness is not observable from inside a clone, but its *consequence* is.
- *
- * Deriving the base from the base branch's tip, rather than from the PR's `base.sha`, is the same
- * correction `ci.yml`'s base-fetch step already carries (PR #618). `base.sha` is the base branch's
- * tip *when the PR was opened*; `riviera-sdlc` tells a slice to merge latest `main` in before
- * ready-for-review, and after that merge GitHub diffs against the newer tip while `base.sha` does
- * not — so pinning to it would make this very check abort on correctly-prepared PRs. Passed as
- * `--base-sha` it is used for what it is good for: proving the clone actually contains the PR's
- * recorded base.
+ * The gate used to name its range as `origin/main...HEAD` with nothing telling it to fetch first,
+ * and a cloud session's clone is made once and never refetched. Staleness is not observable from
+ * inside a clone — but its consequence is, so this re-derives the base the way GitHub does and then
+ * refuses to agree the range is right until it matches what the PR reports.
  *
  * Usage:
- *   node scripts/check-review-range.mjs --base-ref <ref> --head-sha <sha>
+ *   node scripts/check-review-range.mjs --base-ref <ref> --head-sha <sha> --base-sha <sha>
  *                                       --files <n> --additions <n> --deletions <n>
- *                                       [--base-sha <sha>]
  *
- * `--head-sha` is required, not optional: matching counts prove the range is the PR's **size**, and
- * only the head SHA proves it is the PR's **content**. A local branch one commit behind the pushed
- * head can agree on all three dimensions, and the gate would then announce "matched against the PR"
- * over a diff the PR does not contain.
+ * Exit codes: 0 verified · 1 the scope disagrees with the PR · 2 a precondition failed (shallow
+ * clone, unknown base ref, HEAD is not the PR head, missing/malformed counts, an empty range, a
+ * failed git call). **In every non-zero case the gate must not dispatch.**
  *
- * The counts come from the PR itself (`changed_files`, `additions`, `deletions` — `gh api
- * repos/O/R/pulls/N`, or the GitHub MCP `pull_request_read`). They are arguments rather than
- * something this guard fetches: `scripts/*.test.mjs` runs in `Repo hygiene (diff-scoped)`, which has
- * no install step and no token, so a guard that reached the network could not be tested there.
+ * Four decisions worth keeping, each of which a plausible edit would undo:
  *
- * Exit codes: 0 the range is verified · 1 the scope disagrees with the PR · 2 a precondition failed
- * (shallow clone, unknown base ref, missing/malformed counts, an empty range, or a git call that
- * failed) — in every non-zero case the gate must NOT dispatch.
+ * <p>**The base is `merge-base` against the base branch's tip, never the PR's `base.sha`.** That
+ * sha is the tip when the PR was *opened*, and `riviera-sdlc` has slices merge latest `main` in
+ * before ready-for-review, so pinning to it would abort on correctly-prepared PRs. `ci.yml`'s
+ * base-fetch step carries the same correction (PR #618). `--base-sha` instead proves the clone
+ * holds the PR's history.
  *
- * Counts are validated as digit strings rather than coerced, and an empty range is refused on both
- * sides, because `Number('')` is `0`: a substitution that silently produced nothing — `--files
- * "$(gh api … --jq .changed_files)"` when the call errors, or an unreplaced placeholder — would
- * otherwise compare `0/0/0` against a HEAD still sitting on the base and print "verified". That is
- * this guard's own version of the false clean it exists to prevent, so it is the one input class
- * checked before anything else.
+ * <p>**`--head-sha` is required.** Counts prove the range's size; only the head proves its content.
+ * A branch one commit behind the pushed head can agree on all three dimensions.
+ *
+ * <p>**Counts are validated as digit strings, and an empty range is refused.** `Number('')` is `0`,
+ * so an argument that failed to substitute would compare `0/0/0` against a HEAD still on the base
+ * and print "verified" — this guard's own version of the false clean it exists to prevent.
+ *
+ * <p>**The counts are arguments, not fetched.** `scripts/*.test.mjs` runs in `Repo hygiene
+ * (diff-scoped)`, which has no install step and no token, so a guard that reached the network could
+ * not be tested there.
  */
 
 import { pathToFileURL } from 'node:url';

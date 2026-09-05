@@ -12,8 +12,7 @@ description: >-
 
 ## Git in a cloud session — the clone is shallow, and it is never refetched
 
-Two properties of a cloud session's repository, both silent, both of which have already
-produced a confidently wrong answer (issue #942):
+Two properties of a cloud session's repository, both silent (issue #942):
 
 **It is shallow.** `git rev-parse --is-shallow-repository` returns `true`. Git answers from
 the truncated graph rather than erroring, so these are all unreliable until you deepen it:

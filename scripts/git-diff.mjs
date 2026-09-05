@@ -190,19 +190,10 @@ export function untrackedPaths() {
  * moment anything is uncommitted — including a guard's own `--fix` — and line numbers from one are
  * then applied to the other (PR #618).
  *
- * **The `catch` fails open, so it warns.** `merge-base` exits non-zero on a shallow clone whose
- * true base is below the graft, and this then returns `base` unchanged. The fallback diff is
- * `base` against the working tree, so commits `base` holds and HEAD does not arrive as
- * *deletions*: `check-plan-file-structure`, which keys on the changed-file set, reports them as
- * unlisted — a false **alarm**; the added-line guards see no added lines from a deletion and are
- * unaffected. Neither direction is a false clean, which is why this stayed a silent fallback for
- * three guards — but a gate that cannot pass is a gate that gets switched off, so the condition is
- * now said out loud here rather than re-earned at each of the five call sites that default to
- * `origin/main` (issue #942).
- *
- * <p>A **review** range is the case this cannot serve at all: there the widening is invisible
- * rather than noisy, so `scripts/check-review-range.mjs` tests `--is-shallow-repository` itself and
- * refuses, instead of calling this.
+ * **The `catch` fails open, so it warns.** On a shallow clone `merge-base` exits non-zero and this
+ * returns `base` unchanged, which widens the range — noisily for the guards (extra files arrive as
+ * deletions), invisibly for a review range. So a review range must test `--is-shallow-repository`
+ * itself and refuse rather than call this: `scripts/check-review-range.mjs` (issue #942).
  */
 export function mergeBase(base) {
   try {

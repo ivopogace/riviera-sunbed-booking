@@ -20,15 +20,13 @@ A git range — a slice's own diff pre-merge, `<last-audit-sha>..main`, or an ep
 span. When unspecified, default to the slice's own diff if on a branch, else ask for the
 range.
 
-**Resolve the range; never name it as a bare `origin/main...HEAD`.** That is a local ref a
-cloud session never refetches, and a shallow clone answers history questions from a truncated
-graph — a sweep over a silently widened range reports another slice's files as this one's.
-Two things apply to **every** range shape above: `git fetch --unshallow` if the clone is
-shallow, and `git fetch --no-tags origin <base-ref>` before any `origin/<ref>` is used;
-then take the merge base. Only the slice's-own-diff shape can go further and verify itself
-against a PR's reported counts — that is `riviera-sdlc` `references/pr-gates.md` §1 step 2,
-and `scripts/check-review-range.mjs` needs a PR to check against, so it does not apply at
-epic close-out or to a `<sha>..main` audit (issue #942).
+**Resolve the range; never name it as a bare `origin/main...HEAD`** — that is a local ref a cloud
+session never refetches, so the sweep silently widens and reports another slice's files as this
+one's. For **every** shape above: `git fetch --unshallow` if the clone is shallow, then `git fetch
+--no-tags origin <base-ref>`, then take the merge base. Only the slice's-own-diff shape can go
+further and verify itself against a PR's reported counts (`riviera-sdlc` `references/pr-gates.md`
+§1 step 2) — `check-review-range.mjs` needs a PR to check against, so that half does not apply at
+epic close-out or to a `<sha>..main` audit.
 
 ## The substrate-doc map (what can go stale)
 

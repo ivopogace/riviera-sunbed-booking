@@ -194,6 +194,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-12 | review gate | The docs-freshness pointer promised a scope check that cannot run for two of its three range shapes | fixed — *Inputs* says what applies to every shape and what is PR-only |
 | F-13 | review gate | `CLAUDE.md`'s "most also run as a local `PostToolUse` hook" — three of seven | fixed |
 | F-14 | review gate | The documented `[ … ] && git fetch --unshallow` exits 1 on a healthy clone, aborting the block under `set -e` | fixed — written as an `if` |
+| F-15 | user | Substrate edits were carrying narrative that does not change what a session does — "is this helpful for the LLM?" Applying it cut the `mergeBase()` note 14 lines → 4, `pr-gates` §1 step 2 by 11, and the guard header by 15; it also surfaced a real bug, the documented block using `$BASE_REF` without ever setting it | fixed — kept only what a session acts on or an edit would undo |
 
 ---
 
