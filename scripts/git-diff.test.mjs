@@ -5,12 +5,14 @@ import {
   changedPaths,
   diffArgs,
   nameOnlyArgs,
+  numstatArgs,
   parseAddedLines,
+  statusArgs,
   untrackedArgs,
 } from './git-diff.mjs';
 
 test('the diff invocations carry the flags that keep paths recognisable', () => {
-  for (const args of [diffArgs('BASE'), nameOnlyArgs('BASE')]) {
+  for (const args of [diffArgs('BASE'), nameOnlyArgs('BASE'), numstatArgs('BASE')]) {
     assert.ok(args.includes('--no-relative'), `${args[1]} must pin --no-relative`);
     assert.ok(args.includes('--no-color'));
     assert.ok(args.includes('--no-ext-diff'));
@@ -18,6 +20,19 @@ test('the diff invocations carry the flags that keep paths recognisable', () => 
   }
   assert.ok(nameOnlyArgs('BASE').includes('-z'));
   assert.ok(diffArgs('BASE').includes('--unified=0'));
+  assert.ok(numstatArgs('BASE').includes('--numstat'));
+  // Without it a contributor's diff.renames=false splits one rename into an add plus a delete.
+  assert.ok(numstatArgs('BASE').includes('--find-renames'), 'must pin --find-renames');
+});
+
+/**
+ * `status.showUntrackedFiles=no` silences untracked paths outright, and a bare porcelain listing
+ * collapses an untracked directory to one entry — both under-report what a range cannot certify.
+ */
+test('the status listing pins the flag that decides what it can report', () => {
+  assert.ok(statusArgs().includes('--untracked-files=all'), 'must pin --untracked-files=all');
+  assert.equal(statusArgs()[0], 'status');
+  assert.ok(statusArgs().includes('--porcelain'));
 });
 
 /**

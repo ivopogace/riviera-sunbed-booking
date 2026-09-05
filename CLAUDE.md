@@ -59,11 +59,11 @@ npm run build
 ```
 
 **CI/CD** (`.github/workflows/`): `ci.yml` runs the backend build/test, the frontend
-lint/format/test/build + mocked e2e, the diff-scoped hygiene guards `scripts/check-*.mjs`
-(most also run as a local `PostToolUse` hook; `check-comment-only.mjs` is a by-hand verifier,
-not a CI gate), and a SonarCloud scan per PR. The Sonar
-merge bar is **0 new issues, 0 duplicated blocks, ≥80% new-code coverage** — review the
-issue list, not just the pass/fail. `codeql.yml` scans; `deploy.yml` deploys the single
+lint/format/test/build + mocked e2e, five of the seven `scripts/check-*.mjs`
+hygiene guards (three of those also run as a local `PostToolUse` hook; `check-comment-only.mjs`
+and `check-review-range.mjs` are by-hand verifiers, not CI gates), and a SonarCloud scan per PR.
+The Sonar merge bar is **0 new issues, 0 duplicated blocks, ≥80% new-code coverage** —
+review the issue list, not just the pass/fail. `codeql.yml` scans; `deploy.yml` deploys the single
 backend image (which serves the SPA) to Render from `main` (ADR-0004; `docs/deploy/`).
 Line endings are pinned LF by the root `.gitattributes`.
 
@@ -196,4 +196,6 @@ a class doesn't exist.
 after its PR merges (`riviera-docs-freshness` § *Plan-doc retirement*); docs cite the issue or PR and
 doc comments point at `RESPONSIBILITIES.md` or an ADR, never a plan path. Don't read old plans for rationale — it is on the issue, the PR,
 the ADRs, and the Javadoc/TSDoc. A retired plan is recoverable by slug:
-`git log --all --diff-filter=D -- 'docs/plans/<slug>.md'`.
+`git log --all --diff-filter=D -- 'docs/plans/<slug>.md'` — which answers with **silence** on a
+shallow clone rather than an error, so `git fetch --unshallow` first (`riviera-local-debug`
+§ *Git in a cloud session*).

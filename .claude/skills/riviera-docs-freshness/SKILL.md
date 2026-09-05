@@ -16,9 +16,17 @@ every future plan and review.
 
 ## Inputs
 
-A git range — `origin/main...HEAD` (a slice's own diff, pre-merge), `<last-audit-sha>..main`,
-or an epic's merge span. When unspecified, default to `origin/main...HEAD` if on a branch,
-else ask for the range.
+A git range — a slice's own diff pre-merge, `<last-audit-sha>..main`, or an epic's merge
+span. When unspecified, default to the slice's own diff if on a branch, else ask for the
+range.
+
+**Resolve the range; never name it as a bare `origin/main...HEAD`** — that is a local ref a cloud
+session never refetches, so the sweep silently widens and reports another slice's files as this
+one's. For **every** shape above: `git fetch --unshallow` if the clone is shallow, then `git fetch
+--no-tags origin <base-ref>`, then take the merge base. Only the slice's-own-diff shape can go
+further and verify itself against a PR's reported counts (`riviera-sdlc` `references/pr-gates.md`
+§1 step 2) — `check-review-range.mjs` needs a PR to check against, so that half does not apply at
+epic close-out or to a `<sha>..main` audit.
 
 ## The substrate-doc map (what can go stale)
 
@@ -118,14 +126,16 @@ every plan in `docs/plans/` whose PR has already merged, in the code PR being cl
    `RESPONSIBILITIES.md` section or ADR that owns it, with a pointer from the Javadoc it
    constrains (§6d: the contract, not the history), or to the issue — in the same commit.
 4. Note the sweep in the close-out comment. The file stays recoverable by slug:
-   `git log --all --diff-filter=D -- 'docs/plans/<slug>.md'`.
+   `git log --all --diff-filter=D -- 'docs/plans/<slug>.md'` — silent, not an error, on a shallow
+   clone, so `git fetch --unshallow` first (`riviera-local-debug` § *Git in a cloud session*).
 
 ## When to run
 
 - **Merge close-out step 5** (`riviera-sdlc`) — over the merged PR's range, when the slice
   changed something a substrate doc states.
 - **Epic close-out** — over the epic's full merge span.
-- **Pre-merge smoke** — over `origin/main...HEAD` when a slice knowingly renames/moves
-  things (the cheapest moment to catch the skill/table references).
+- **Pre-merge smoke** — over the slice's own diff, resolved per *Inputs* above rather than
+  named as a bare `origin/main...HEAD`, when a slice knowingly renames/moves things (the
+  cheapest moment to catch the skill/table references).
 
 `domain-modeling` owns changing `CONTEXT.md`/ADRs; this skill only detects the drift.

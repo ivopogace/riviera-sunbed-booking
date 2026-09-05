@@ -10,11 +10,48 @@ Opening a PR, green CI, and a clear Sonar gate — none of them is the review. A
 done until this gate has run and its findings are resolved or explicitly deferred.
 
 1. **Trigger.** Due the moment the PR is marked ready for review. Do not wait to be asked.
-2. **Run the review — right-sized, never skipped.** Start `/code-review` over the PR diff
-   (`origin/main...HEAD`) via the invocation ladder below, and load
-   `riviera-review-overlay` so the project bank items (RV-BE-*/RV-FE-*/RV-CT-*, RV-PROC-*)
-   are walked on top of the generic banks. Announce: *"Running the SDLC review gate
-   (riviera-review-overlay + code-review) on PR #NN."*
+2. **Run the review — right-sized, never skipped.**
+
+   **First, resolve the range — never name it from memory.** `origin/main` is a *local* ref a
+   cloud session never refetches, so a stale one silently widens the range and the reviewers come
+   back clean: that is how #939's gate reviewed ten files as a three-file PR. Read `base.ref`,
+   `base.sha`, `head.sha`, `changed_files`, `additions` and `deletions` off the PR (`gh api
+   repos/O/R/pulls/N`, or the GitHub MCP `pull_request_read`), then:
+
+   ```bash
+   BASE_REF=<base.ref>            # from the PR — never assume `main`
+
+   # Cloud clones start SHALLOW; merge-base would answer from the truncated graph.
+   if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch --unshallow; fi
+   git fetch --no-tags origin "$BASE_REF"        # the base branch's CURRENT tip
+
+   node scripts/check-review-range.mjs --base-ref "$BASE_REF" \
+     --base-sha <base.sha> --head-sha <head.sha> \
+     --files <changed_files> --additions <additions> --deletions <deletions>
+   ```
+
+   Pass all of them: the counts prove the range's size, `--head-sha` that it is the PR's content,
+   `--base-sha` that the clone holds the PR's history. A flag left out is a check that never runs.
+
+   **Not `base.sha` as the range.** It is the base branch's tip when the PR was *opened*, and
+   `SKILL.md`'s PR row has slices merge latest `main` in before ready-for-review — after which
+   GitHub diffs against the newer tip. Pinning to it aborts on correctly-prepared PRs. (`ci.yml`'s
+   base-fetch step carries the same correction, PR #618.)
+
+   **Exit 0 or do not dispatch.** 1 = the scope disagrees (usually a stale base: re-fetch, re-run);
+   2 = a precondition failed. A `WARNING` on an otherwise-passing run means the working tree holds
+   uncommitted or untracked paths: the range is commit-to-commit but the reviewers read the tree,
+   so commit or stash them before dispatching.
+
+   **Then run it.** Start `/code-review` over the resolved range via the invocation ladder below,
+   and load `riviera-review-overlay` so the project bank items (RV-BE-*/RV-FE-*/RV-CT-*, RV-PROC-*)
+   are walked on top of the generic banks. Pin every dispatched agent to **both** literal SHAs
+   (`<base-sha>..<head-sha>`), never `...HEAD`: an agent outlives the turn that spawned it, so a
+   fix pushed mid-review moves `HEAD` under it and it reports on a diff that no longer exists.
+   Announce with the resolved values filled in:
+   *"Running the SDLC review gate (riviera-review-overlay + code-review) on PR #NN over
+   `<base-sha>..<head-sha>` — base `<base.ref>` @ `<tip-sha>`, N files / +A / -D, matched against
+   the PR."* An announcement with no SHA in it means this step did not run.
 
    **The overlay alone is NOT the review.** It contributes additional bank items to an
    active review; walking them by hand without starting `/code-review` (or the rung-3
@@ -72,7 +109,10 @@ done until this gate has run and its findings are resolved or explicitly deferre
 3. **Resolve — back through the loop.** A finding fix re-enters at Implement. Also:
    - Update the plan's *Skills consulted* line with any new area a fix pulled in.
    - Re-review = re-run `/code-review` on the new diff, or at minimum re-walk the overlay
-     bank items + the RV-PROC items for the area the fix touched.
+     bank items + the RV-PROC items for the area the fix touched. **Re-resolve the range
+     first (step 2), every round** — the fix push moved `HEAD`, and `main` may have moved
+     under it meanwhile. A range is never carried over from the previous round; that reuse
+     is the same exposure step 2 exists to close.
    - Out-of-scope findings → a follow-up issue with a one-line rationale.
    - Record the outcome (findings + fixes + skills loaded) in the plan doc's review note or the PR.
 4. **Only then merge.** CI green **and** the review gate has run **and** findings are
@@ -155,8 +195,9 @@ and duplications below its fail thresholds. Pull the actual list and fix every e
    skill states (a module's status, the package shape, a canonical value set, an ownership
    rule, a filename a skill cites). Split it:
    - **Staleness patches** (a renamed/removed file a skill cites, an epic's "in progress"
-     line, a changed mechanism phrase): run the skill's pre-merge smoke over
-     `origin/main...HEAD` and fold the patches into the code PR itself.
+     line, a changed mechanism phrase): run the skill's pre-merge smoke over the range
+     **resolved as in §1 step 2** — not a bare `origin/main...HEAD`, which is the same
+     unfetched ref here as it is there — and fold the patches into the code PR itself.
    - **Did this slice make the Nth of something?** A new listener, counter, event, module,
      profile, transport, or sweep falsifies every doc that says "the two …" — none of those
      files is in the diff, so run the skill's counting sweep (procedure step 2b).

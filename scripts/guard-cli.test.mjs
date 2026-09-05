@@ -21,6 +21,7 @@ const FOCUS = 'check-focus-posture.mjs';
 const COMMENT_ONLY = 'check-comment-only.mjs';
 const TOUCH = 'check-touch-target.mjs';
 const CLOUD_PIN = 'check-cloud-node-pin.mjs';
+const RANGE = 'check-review-range.mjs';
 
 const TS = 'frontend/src/app/venue/pricing-tab.ts';
 const HTML = 'frontend/src/app/venue/pricing-tab.html';
@@ -1127,5 +1128,335 @@ test('check-cloud-node-pin exits 2 with usage when given an argument', () => {
 
     assert.equal(result.status, 2);
     assert.match(result.stderr, /no arguments/);
+  });
+});
+
+/**
+ * The #939 shape: `main` gains a seven-file commit, the PR branches off that tip and adds three
+ * files of its own under `src/`. `origin/main` is left wherever a case points it, which is the one
+ * variable — a fetch is the only thing that moves that ref, so not fetching is what these cases
+ * reproduce.
+ */
+function threeFilePullRequest(repo) {
+  repo.write('seed.txt', 'seed\n');
+  const staleBase = repo.commit('seed (#931)');
+
+  for (let i = 1; i <= 7; i++) repo.write(`merged-${i}.txt`, `merged ${i}\n`);
+  const realBase = repo.commit('a seven-file slice (#934)');
+
+  repo.git(['checkout', '--quiet', '-b', 'feature']);
+  for (let i = 1; i <= 3; i++) repo.write(`src/under-review-${i}.txt`, `under review ${i}\n`);
+  repo.commit('the three files actually under review (#939)');
+
+  return { staleBase, realBase };
+}
+
+/** Points `refs/remotes/origin/main` at `sha` — all a fetch does to the ref the gate reads. */
+function trackBase(repo, sha) {
+  repo.git(['update-ref', 'refs/remotes/origin/main', sha]);
+}
+
+const scope = (repo, baseSha, files, additions, deletions) => [
+  '--base-ref', 'main',
+  '--base-sha', baseSha,
+  '--head-sha', repo.git(['rev-parse', 'HEAD']).trim(),
+  '--files', String(files),
+  '--additions', String(additions),
+  '--deletions', String(deletions),
+];
+
+/** Print the ref name instead of the resolved SHA and this fails: the SHA is what AC-1 asks for. */
+test('check-review-range resolves the base from the fetched branch and prints the SHA', () => {
+  withRepo((repo) => {
+    const { realBase } = threeFilePullRequest(repo);
+    trackBase(repo, realBase);
+
+    const result = repo.run(RANGE, scope(repo, realBase, 3, 3, 0));
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, new RegExp(realBase));
+  });
+});
+
+/** Drop either side of the `compare` filter and this passes with the wrong scope. */
+test('check-review-range exits 1 on a count mismatch and names both sides', () => {
+  withRepo((repo) => {
+    const { realBase } = threeFilePullRequest(repo);
+    trackBase(repo, realBase);
+
+    const result = repo.run(RANGE, scope(repo, realBase, 2, 3, 0));
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /files: local 3, PR 2/);
+  });
+});
+
+/**
+ * PR #939 itself: `origin/main` one commit behind the PR's real base, so the range picks up all
+ * seven of #934's files on top of the three under review. Resolve from `origin/main` without the
+ * fetch — the pre-#942 behaviour — and this reports clean over ten files.
+ */
+test('check-review-range reproduces #939: a stale origin/main is caught, then self-corrects', () => {
+  withRepo((repo) => {
+    const { staleBase, realBase } = threeFilePullRequest(repo);
+    trackBase(repo, staleBase);
+
+    const stale = repo.run(RANGE, scope(repo, realBase, 3, 3, 0));
+
+    assert.equal(stale.status, 1, 'ten local files against three on the PR must abort');
+    assert.match(stale.stderr, /files: local 10, PR 3/);
+
+    trackBase(repo, realBase);
+    assert.equal(repo.run(RANGE, scope(repo, realBase, 3, 3, 0)).status, 0);
+  });
+});
+
+/** Move the shallow check below the resolution and this passes: the counts here would agree. */
+test('check-review-range refuses a shallow clone before resolving, naming the remedy', () => {
+  withRepo((repo) => {
+    const { realBase } = threeFilePullRequest(repo);
+    trackBase(repo, realBase);
+    repo.write('.git/shallow', `${realBase}\n`);
+
+    const result = repo.run(RANGE, scope(repo, realBase, 3, 3, 0));
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /shallow/i);
+    assert.match(result.stderr, /--unshallow/);
+  });
+});
+
+/** Fall back to HEAD, or to `main`, and this reports a range instead of refusing to guess. */
+test('check-review-range refuses an unfetched base ref rather than finding something diffable', () => {
+  withRepo((repo) => {
+    const { realBase } = threeFilePullRequest(repo);
+
+    const result = repo.run(RANGE, scope(repo, realBase, 3, 3, 0));
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /origin\/main/);
+  });
+});
+
+/** Default the counts to anything and this verifies a range nothing checked. */
+test('check-review-range refuses when the PR counts are absent', () => {
+  withRepo((repo) => {
+    const { realBase } = threeFilePullRequest(repo);
+    trackBase(repo, realBase);
+
+    const result = repo.run(RANGE, [
+      '--base-ref', 'main', '--base-sha', realBase,
+      '--head-sha', repo.git(['rev-parse', 'HEAD']).trim(),
+    ]);
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /--files/);
+  });
+});
+
+/**
+ * The guard's own false clean. `Number('')` is `0`, so an unsubstituted `--files "$(…)"` against a
+ * HEAD still on the base agrees on every dimension. Coerce with `Number()` instead of testing the
+ * digit string and this prints "0 files … matches PR" and exits 0 — a ticked review box over an
+ * empty range, which is the outcome #942 exists to make impossible.
+ */
+test('check-review-range refuses empty counts rather than agreeing with an empty range', () => {
+  withRepo((repo) => {
+    repo.write('seed.txt', 'seed\n');
+    const base = repo.commit('seed');
+    trackBase(repo, base);
+
+    const result = repo.run(RANGE, ['--base-ref', 'main', '--base-sha', base, '--head-sha', repo.git(['rev-parse', 'HEAD']).trim(), '--files', '', '--additions', '', '--deletions', '']);
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /Not a count/);
+    assert.doesNotMatch(result.stdout, /verified/);
+  });
+});
+
+/** Drop the zero-file refusal and a HEAD still on the base verifies against a PR reporting 0. */
+test('check-review-range refuses a range with no files even when the counts agree', () => {
+  withRepo((repo) => {
+    repo.write('seed.txt', 'seed\n');
+    const base = repo.commit('seed');
+    trackBase(repo, base);
+
+    const result = repo.run(RANGE, scope(repo, base, 0, 0, 0));
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /Empty range/);
+  });
+});
+
+/**
+ * `git()` throws on a non-zero exit, and an escaping throw exits Node with 1 — the code this
+ * guard's contract assigns to "the scope disagrees", whose printed remedy is to re-fetch the base.
+ * Remove the try/catch in `main` and this fails with 1 and a stack trace.
+ */
+test('check-review-range reports a failed git call as a precondition, not a scope mismatch', () => {
+  withRepo((repo) => {
+    const { realBase } = threeFilePullRequest(repo);
+    repo.git(['checkout', '--quiet', '--orphan', 'unrelated']);
+    repo.git(['rm', '-rq', '--cached', '.']);
+    repo.write('orphan.txt', 'orphan\n');
+    const unrelated = repo.commit('an unrelated history');
+    repo.git(['checkout', '--quiet', 'feature']);
+    trackBase(repo, unrelated);
+
+    const result = repo.run(RANGE, scope(repo, realBase, 3, 3, 0));
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /git call failed/);
+  });
+});
+
+/** Keep `slice(2)` alone and this reports `--base-ref` missing, contradicting what was typed. */
+test('check-review-range rejects --flag=value with the form it should have used', () => {
+  withRepo((repo) => {
+    const { realBase } = threeFilePullRequest(repo);
+    trackBase(repo, realBase);
+
+    const result = repo.run(RANGE, ['--base-ref=main', '--files=3', '--additions=3', '--deletions=0']);
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /--base-ref <value>/);
+  });
+});
+
+/**
+ * The contributor-config class `PIN` exists for, one setting further out: `diff.renames=false`
+ * splits one renamed file into an add plus a delete, while GitHub always reports the rename as a
+ * single file. Drop `--find-renames` from `numstatArgs` and this aborts over git config.
+ */
+test('check-review-range: a contributor diff.renames cannot make it abort over a rename', () => {
+  withRepo((repo) => {
+    repo.write('before.txt', 'content\n');
+    const base = repo.commit('seed');
+    trackBase(repo, base);
+    repo.config('diff.renames', 'false');
+
+    repo.git(['checkout', '--quiet', '-b', 'feature']);
+    repo.git(['mv', 'before.txt', 'after.txt']);
+    repo.commit('rename it');
+
+    const result = repo.run(RANGE, scope(repo, base, 1, 0, 0));
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+});
+
+/** Run from a subdirectory: drop `git-diff.mjs`'s repo-root pinning and the range resolves wrong. */
+test('check-review-range resolves its range from the repo root, not the cwd', () => {
+  withRepo((repo) => {
+    const { realBase } = threeFilePullRequest(repo);
+    trackBase(repo, realBase);
+
+    const result = repo.run(RANGE, scope(repo, realBase, 3, 3, 0), { cwd: 'src' });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /3 files/);
+  });
+});
+
+/**
+ * Counts prove the range's size, not its content: a branch one commit behind the pushed head can
+ * agree on all three dimensions. Drop the head check and this verifies a diff the PR does not have.
+ */
+test('check-review-range refuses when HEAD is not the PR head', () => {
+  withRepo((repo) => {
+    const { realBase } = threeFilePullRequest(repo);
+    trackBase(repo, realBase);
+    const args = scope(repo, realBase, 3, 3, 0);
+    repo.write('src/under-review-1.txt', 'edited after the PR head\n');
+    repo.commit('a commit the PR does not point at');
+
+    const result = repo.run(RANGE, args);
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /HEAD is .*but the PR's head is/s);
+  });
+});
+
+/**
+ * The range is commit-to-commit; the dispatched reviewers read file content from the working tree.
+ * Drop the `status --porcelain` read and a dirty tree is reviewed as if the range had certified it.
+ */
+test('check-review-range warns when the working tree holds what the range cannot certify', () => {
+  withRepo((repo) => {
+    const { realBase } = threeFilePullRequest(repo);
+    trackBase(repo, realBase);
+    repo.write('src/under-review-1.txt', 'edited but never committed\n');
+    repo.write('src/brand-new.txt', 'untracked\n');
+
+    const result = repo.run(RANGE, scope(repo, realBase, 3, 3, 0));
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /WARNING: 2 uncommitted\/untracked path/);
+  });
+});
+
+/**
+ * The counts got strict digit-string validation in the same round; this got none, so a truncated
+ * or mis-substituted value still printed "matches the PR's head.sha" — the guard's proof of
+ * content. Relax the length floor and the one-character case below passes.
+ */
+test('check-review-range refuses a head-sha too short to prove anything', () => {
+  withRepo((repo) => {
+    const { realBase } = threeFilePullRequest(repo);
+    trackBase(repo, realBase);
+    const args = scope(repo, realBase, 3, 3, 0);
+    args[args.indexOf('--head-sha') + 1] = repo.git(['rev-parse', 'HEAD']).trim().slice(0, 1);
+
+    const result = repo.run(RANGE, args);
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /at least 7 hex/);
+  });
+});
+
+/** A SHA is case-insensitive. Compare the raw strings and a correct uppercase value aborts. */
+test('check-review-range accepts a correct head-sha in uppercase', () => {
+  withRepo((repo) => {
+    const { realBase } = threeFilePullRequest(repo);
+    trackBase(repo, realBase);
+    const args = scope(repo, realBase, 3, 3, 0);
+    const i = args.indexOf('--head-sha') + 1;
+    args[i] = args[i].toUpperCase();
+
+    assert.equal(repo.run(RANGE, args).status, 0);
+  });
+});
+
+/** Make --base-sha optional again and this passes, with nothing saying the check was skipped. */
+test('check-review-range refuses when base-sha is absent', () => {
+  withRepo((repo) => {
+    const { realBase } = threeFilePullRequest(repo);
+    trackBase(repo, realBase);
+    const args = scope(repo, realBase, 3, 3, 0);
+    args.splice(args.indexOf('--base-sha'), 2);
+
+    const result = repo.run(RANGE, args);
+
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /--base-sha/);
+  });
+});
+
+/**
+ * `status.showUntrackedFiles=no` silences untracked paths, and a bare porcelain listing collapses
+ * an untracked directory to one entry. Drop `--untracked-files=all` from `statusArgs` and this
+ * reports no warning at all under that config, over five files the range never certified.
+ */
+test('check-review-range: a contributor status config cannot silence the dirty-tree warning', () => {
+  withRepo((repo) => {
+    const { realBase } = threeFilePullRequest(repo);
+    trackBase(repo, realBase);
+    repo.config('status.showUntrackedFiles', 'no');
+    for (let i = 1; i <= 5; i++) repo.write(`newdir/extra-${i}.txt`, `extra ${i}\n`);
+
+    const result = repo.run(RANGE, scope(repo, realBase, 3, 3, 0));
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /WARNING: 5 uncommitted\/untracked path/);
   });
 });

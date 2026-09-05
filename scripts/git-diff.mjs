@@ -69,6 +69,31 @@ export function nameOnlyArgs(...rest) {
 }
 
 /**
+ * The numstat form: per-file added/deleted line counts, for a caller totalling a range's size.
+ *
+ * A builder rather than the flags spelled inline at the call site, for the reason `untrackedArgs`
+ * gives below — the flag-pinning case in `git-diff.test.mjs` reaches builders, and only builders,
+ * so a set spelled in a guard is one no unit case can see a future edit remove.
+ *
+ * <p>`--find-renames` is the fourth setting of the class `PIN` exists for, and it is a flag rather
+ * than a `-c` pair only because it belongs to this invocation alone: a contributor's
+ * `diff.renames=false` splits one renamed file into an add plus a delete, so a caller comparing
+ * this output against GitHub's counts — which always detect the rename — aborts over a difference
+ * in git config rather than in the range.
+ */
+export function numstatArgs(...rest) {
+  return [
+    'diff',
+    '--numstat',
+    '--find-renames',
+    '--no-color',
+    '--no-ext-diff',
+    '--no-relative',
+    ...rest,
+  ];
+}
+
+/**
  * Maps a unified diff to the 1-based line numbers each file gains. Files the diff deletes are
  * absent from the result: they have no new content to check.
  *
@@ -121,6 +146,19 @@ export function changedPaths(raw) {
 }
 
 /**
+ * The porcelain status invocation, for a caller asking whether the working tree holds anything a
+ * commit-to-commit range never saw.
+ *
+ * `--untracked-files=all` is the pin, and it covers two under-reports of the same thing:
+ * `status.showUntrackedFiles=no` is a contributor setting that silences untracked paths entirely,
+ * and by default an untracked *directory* collapses to one entry however many files it holds. Both
+ * hide exactly the content a range cannot certify but a reader will read (issue #942).
+ */
+export function statusArgs(...rest) {
+  return ['status', '--porcelain', '--untracked-files=all', ...rest];
+}
+
+/**
  * Every file the working tree holds that git has never been told about.
  *
  * A diff cannot report one: `git diff` compares an index or a commit against the tree, and an
@@ -164,11 +202,23 @@ export function untrackedPaths() {
  * which is the side the guards read their file content from. With `…...HEAD` the two drift apart the
  * moment anything is uncommitted — including a guard's own `--fix` — and line numbers from one are
  * then applied to the other (PR #618).
+ *
+ * **The `catch` fails open, so it warns.** On a shallow clone `merge-base` exits non-zero and this
+ * returns `base` unchanged, which widens the range — noisily for the guards (extra files arrive as
+ * deletions), invisibly for a review range. So a review range must test `--is-shallow-repository`
+ * itself and refuse rather than call this: `scripts/check-review-range.mjs` (issue #942).
  */
 export function mergeBase(base) {
   try {
     return git(['merge-base', base, 'HEAD']).trim();
   } catch {
+    if (git(['rev-parse', '--is-shallow-repository']).trim() === 'true') {
+      process.stderr.write(
+        `Cannot resolve a merge base with ${base} in a shallow clone, so the range falls back to ` +
+          `${base} itself and may report paths this branch never touched. ` +
+          'Run `git fetch --unshallow` and re-run (issue #942).\n',
+      );
+    }
     return base;
   }
 }
