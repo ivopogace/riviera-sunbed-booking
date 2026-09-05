@@ -212,10 +212,23 @@ invariants honest.
 - "Is this allowed?" → `CLAUDE.md` invariants; if still unsure, ask before building
   — a wrong call on availability or payments is expensive to unwind.
 
-## 8. Licensing
+## 8. Licensing and ownership of contributions
 
 This repo is **proprietary** — see [`LICENSE`](LICENSE). Contributions are accepted
-only from people authorized by the owner, and by opening a pull request you grant the
-owner the rights set out in section 5 of that file. If you're adding a dependency,
-check its license is compatible with shipping it in a closed-source product, and say
-which license it carries in the PR.
+only from people authorized by the owner.
+
+**Everything you contribute belongs to the owner, not to you.** Under section 5 of the
+`LICENSE`, submitting anything to this repo — a pull request, a commit, a patch, a
+review suggestion, an issue attachment, a doc, a design — assigns all rights in it to
+the owner at the moment you submit it. Where a right cannot be assigned under your
+local law, you grant the owner an exclusive, irrevocable license instead, and you
+waive any moral rights as far as the law allows. You keep nothing: no license back,
+no right to reuse the code you wrote elsewhere, no credit or payment unless the owner
+agrees to it in a separate signed writing. Opening a pull request is your acceptance
+of those terms; if you don't agree, don't contribute.
+
+Before you contribute, make sure you can give that assignment: if an employer, client,
+or school could claim rights in your work, get their written release first. If you're
+adding a dependency or any third-party code, check its license allows use in a
+closed-source product, and name the license in the PR — third-party material is the
+one thing you don't (and can't) assign.

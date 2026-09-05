@@ -60,6 +60,11 @@ Closes #<!-- issue --> · Plan: `docs/plans/<slug>.md`
   (`postgres` for migrations, `codebase-design` for module seams, `angular-developer` +
   angular-cli MCP for FE, `riviera-stripe-payments` for money).
 
+## Contribution terms
+
+- [ ] I accept `LICENSE` §5: everything in this PR is assigned to the owner on submission,
+  I retain no rights in it, and any third-party material is identified with its license.
+
 ## Scope notes
 
 <!-- Anything intentionally deferred / out of scope, with where it lands. -->
