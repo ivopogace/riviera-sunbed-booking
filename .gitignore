@@ -12,6 +12,8 @@ Thumbs.db
 /platform/.gradle/
 /frontend/dist/
 node_modules/
+# The guard suites' coverage report, written by the `sonar` job (and by the same command run locally)
+/scripts/coverage/
 
 # Playwright MCP server scratch output (snapshots, traces) — written to wherever it is spawned
 .playwright-mcp/

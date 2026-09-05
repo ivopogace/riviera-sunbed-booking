@@ -435,7 +435,35 @@ jobs:
         if: ${{ env.SONAR_TOKEN != '' }}
         run: sed -i 's#^SF:src/#SF:frontend/src/#' frontend/coverage/frontend/lcov.info
 
-      - name: SonarCloud scan (backend + frontend, single project)
+      - name: Set up Node (from .nvmrc)
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Run the guard suites with coverage (the scripts/ lcov for Sonar)
+        # `scripts/` is in `sonar.sources` (sonar-project.properties says what that covers), so the
+        # scan needs a coverage report for it or every touched guard line reads as 0% covered. The
+        # suites run HERE, a second time on a pull request, rather than once in the hygiene job with
+        # an artifact hand-off: that job is `pull_request`-only, and a `needs:` on a skipped job
+        # would skip this one on every push to `main` — the main-branch analysis would then carry no
+        # scripts coverage at all. ~17 s measured; the hygiene job stays the gate on the suites.
+        #
+        # Node's runner hands `NODE_V8_COVERAGE` to the CLIs the harness spawns, so the guards'
+        # front-ends are covered too, not only the detector modules the suites import. The lcov
+        # reporter writes repo-root-relative SF paths, which is why there is no sed step like the
+        # frontend's above. The `spec` reporter keeps failures legible in the log. The reporter does
+        # not create its destination's directory — hence the mkdir.
+        if: ${{ env.SONAR_TOKEN != '' }}
+        run: >-
+          mkdir -p scripts/coverage &&
+          node --test --experimental-test-coverage
+          --test-coverage-include='scripts/**' --test-coverage-exclude='scripts/*.test.mjs'
+          --test-reporter=lcov --test-reporter-destination=scripts/coverage/lcov.info
+          --test-reporter=spec --test-reporter-destination=stdout
+          "scripts/*.test.mjs"
+
+      - name: SonarCloud scan (backend + frontend + scripts, single project)
         if: ${{ env.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarqube-scan-action@v8
         env:
