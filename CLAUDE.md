@@ -196,4 +196,6 @@ a class doesn't exist.
 after its PR merges (`riviera-docs-freshness` § *Plan-doc retirement*); docs cite the issue or PR and
 doc comments point at `RESPONSIBILITIES.md` or an ADR, never a plan path. Don't read old plans for rationale — it is on the issue, the PR,
 the ADRs, and the Javadoc/TSDoc. A retired plan is recoverable by slug:
-`git log --all --diff-filter=D -- 'docs/plans/<slug>.md'`.
+`git log --all --diff-filter=D -- 'docs/plans/<slug>.md'` — which answers with **silence** on a
+shallow clone rather than an error, so `git fetch --unshallow` first (`riviera-local-debug`
+§ *Git in a cloud session*).

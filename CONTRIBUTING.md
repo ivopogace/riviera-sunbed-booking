@@ -120,7 +120,7 @@ job in `ci.yml` without the matching ruleset edit makes every PR unmergeable (#4
 
 **CI runs guards you can't guess from the framework docs.** Alongside the backend
 and frontend jobs, a `Repo hygiene (diff-scoped)` job hard-gates your diff with
-[`scripts/check-*.mjs`](scripts/): no multi-line inline comments (RV-STYLE-1), each
+five of the [`scripts/check-*.mjs`](scripts/) guards: no multi-line inline comments (RV-STYLE-1), each
 plan doc lists the files its diff changed (#533), no stranded focus postures (#621),
 touch targets declared (#648), and the cloud setup script's Node pin still matching
 [`.nvmrc`](.nvmrc) (#659). Run any of them locally the way CI does —

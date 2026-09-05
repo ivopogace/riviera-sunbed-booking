@@ -126,7 +126,8 @@ every plan in `docs/plans/` whose PR has already merged, in the code PR being cl
    `RESPONSIBILITIES.md` section or ADR that owns it, with a pointer from the Javadoc it
    constrains (§6d: the contract, not the history), or to the issue — in the same commit.
 4. Note the sweep in the close-out comment. The file stays recoverable by slug:
-   `git log --all --diff-filter=D -- 'docs/plans/<slug>.md'`.
+   `git log --all --diff-filter=D -- 'docs/plans/<slug>.md'` — silent, not an error, on a shallow
+   clone, so `git fetch --unshallow` first (`riviera-local-debug` § *Git in a cloud session*).
 
 ## When to run
 

@@ -22,7 +22,7 @@ the truncated graph rather than erroring, so these are all unreliable until you 
 | `git log` (esp. `-S`, `--follow`, `<range>`) | history stops at the graft; "the commit that introduced this" is whatever is nearest the boundary |
 | `git blame` | every line older than the graft is attributed to the boundary commit |
 | `git show <sha> -- <path>` | on the boundary commit a *modified* file renders as a whole-file addition |
-| `git merge-base` | resolves against the truncated graph; `git-diff.mjs`'s `mergeBase()` fails **open**, returning the stale base |
+| `git merge-base` | two cases: it answers from the truncated graph — a **wrong base, no error, no warning** — or it fails, and `git-diff.mjs`'s `mergeBase()` then catches and returns the stale base. It warns only in that second case |
 | `git describe`, `git tag --merged` | tags below the graft were never fetched |
 
 The remedy is one command, and it is a precondition, not a cleanup:

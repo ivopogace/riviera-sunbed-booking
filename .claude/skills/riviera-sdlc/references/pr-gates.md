@@ -50,8 +50,8 @@ done until this gate has run and its findings are resolved or explicitly deferre
    fix pushed mid-review moves `HEAD` under it and it reports on a diff that no longer exists.
    Announce with the resolved values filled in:
    *"Running the SDLC review gate (riviera-review-overlay + code-review) on PR #NN over
-   `<base-sha>...HEAD` — base `<base.ref>` @ `<tip-sha>`, N files / +A / -D, matched against the
-   PR."* An announcement with no SHA in it means this step did not run.
+   `<base-sha>..<head-sha>` — base `<base.ref>` @ `<tip-sha>`, N files / +A / -D, matched against
+   the PR."* An announcement with no SHA in it means this step did not run.
 
    **The overlay alone is NOT the review.** It contributes additional bank items to an
    active review; walking them by hand without starting `/code-review` (or the rung-3
