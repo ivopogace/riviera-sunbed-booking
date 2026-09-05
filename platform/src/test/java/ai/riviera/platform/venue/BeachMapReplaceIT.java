@@ -18,6 +18,7 @@ import ai.riviera.platform.venue.application.EditBeachMap;
 import ai.riviera.platform.venue.application.LayoutCommand;
 import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.application.SetCommand;
+import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -430,7 +431,7 @@ class BeachMapReplaceIT {
 		Callable<ReplaceLayoutOutcome> replace = () -> {
 			gate.await();
 			return editBeachMap.replaceLayout(owner, new VenueId(venue), loadedSetVersion, new LayoutCommand(
-					List.of(new SetCommand("A", 1, "STANDARD", "ONLINE", 2000, "EUR", 1, 1))));
+					List.of(new SetCommand("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 1))));
 		};
 
 		try (ExecutorService pool = Executors.newFixedThreadPool(2)) {

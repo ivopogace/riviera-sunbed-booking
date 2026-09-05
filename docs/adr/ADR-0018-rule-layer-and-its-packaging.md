@@ -124,15 +124,18 @@ this application writes, and only when every writer remembers to call it. That i
 `availability` has no `domain/` package and should not have one — its subject is one table with one
 constraint (`2026-09-04-where-the-business-rules-live.md` §C).
 
-This does **not** forbid a Java statement that mirrors a DB *bound or vocabulary*. Four such
+This does **not** forbid a Java statement that mirrors a DB *bound or vocabulary*. Five such
 mirrors exist, each naming its twin in Javadoc and calling the duplication deliberate: `Stars` ↔
 `review_stars_check` ("the only one of the two that also holds for a row written by anything but
 this application, so the duplication there is deliberate, not drift",
 `review/domain/Stars.java:8–10`), `ReviewText` ↔ `review_comment_length_check`, `SalesClose` ↔
 `venue_sales_close_check` (`venue/domain/SalesClose.java:10–12`), `BookingStatus` ↔
-`booking_status_check` (pinned by `BookingMigrationIT.everyEnumStatusAccepted`). The distinction is
-that a bound constrains one row's field and a set invariant constrains the relationship *between*
-rows; only the second is beyond Java's reach.
+`booking_status_check` (pinned by `BookingMigrationIT.everyEnumStatusAccepted`), `Pool` ↔
+`set_position_pool_check` (`venue/vocabulary/Pool.java` — the one mirror that is published rather
+than `domain/`-internal, because the token crosses into `booking` and `availability`, which compare
+against it for invariant #3; `PoolTokenArchitectureTest` keeps it the only Java statement). The
+distinction is that a bound constrains one row's field and a set invariant constrains the
+relationship *between* rows; only the second is beyond Java's reach.
 
 ### 4. `domain/` is framework-free, and that is checkable
 

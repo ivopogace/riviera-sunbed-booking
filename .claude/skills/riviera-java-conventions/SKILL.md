@@ -99,8 +99,8 @@ seam); don't invent an extra application-service layer just to have one (`codeba
 ### 6a. Name your literals — no magic numbers/strings
 
 Replace meaning-carrying literals with a `private static final` constant or an `enum`
-(`ONLINE_POOL` in `JdbcAvailabilityClaim`, the `BOOKED_ONLINE` / `WALK_IN` state tokens,
-the commission/price factors). Status/pool/state tokens that the DB `CHECK` constraints
+(the published `venue.vocabulary.Pool` behind `set_position_pool_check`, the `BOOKED_ONLINE` /
+`STAFF_MARKED` state tokens, the commission/price factors). Status/pool/state tokens that the DB `CHECK` constraints
 also list are the highest-value case — keep the Java constant and the SQL token in lockstep.
 
 ### 6b. Request validation & error contract
@@ -207,7 +207,7 @@ Money is integer minor units + ISO currency; time is UTC `Instant`, with booking
 | "Return `null` when not found." | Return `Optional<T>` from query ports. |
 | "Throw an exception when the set is taken." | Return a typed `ClaimOutcome`; a lost race is expected flow. |
 | "Wrap it in `catch (Exception)` to be safe." | Catch the specific type; a bare catch masks NPEs/programming bugs. |
-| "`price * 0.1` / hard-code `'ONLINE'`." | Name it: a constant or enum (`ONLINE_POOL`). |
+| "`price * 0.1` / hard-code `'ONLINE'`." | Name it: a constant or enum (`venue.vocabulary.Pool`). |
 | "`.collect(Collectors.toList())`." | `.toList()`; method refs over trivial lambdas. |
 | "`if (x instanceof T) { T t = (T) x; … }`." | Bind in the pattern: `if (x instanceof T t)`. |
 | "This needs a four-line comment to explain properly." | One line or none (§6c). If it won't fit, change the code — or move the contract to the Javadoc. |

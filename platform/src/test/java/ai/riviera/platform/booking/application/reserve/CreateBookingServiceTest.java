@@ -63,11 +63,11 @@ class CreateBookingServiceTest {
 	private final RecordingConfirm confirmer = new RecordingConfirm();
 	private final RecordingRelease release = new RecordingRelease();
 
-	private SetBookingInfo set(String pool) {
+	private SetBookingInfo set(Pool pool) {
 		return set(pool, BookingMode.INSTANT);
 	}
 
-	private SetBookingInfo set(String pool, BookingMode mode) {
+	private SetBookingInfo set(Pool pool, BookingMode mode) {
 		return new SetBookingInfo(SET, new VenueId(1), "Miramar", "Front row", 2, pool,
 				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0), mode);
 	}
@@ -116,7 +116,7 @@ class CreateBookingServiceTest {
 
 	@Test
 	void confirmsWhenClaimWinsAndPaymentSucceeds() {
-		CreateBookingService service = service(set("ONLINE"),
+		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Succeeded("ok"),
 				() -> "CODE123456");
@@ -136,7 +136,7 @@ class CreateBookingServiceTest {
 		// The instant-confirm response is built before the after-commit mail listener runs, so
 		// the flag can only come from asking whether the mail WOULD be withheld — never from the send.
 		confirmationMail.withheld = true;
-		CreateBookingService service = service(set("ONLINE"),
+		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Succeeded("ok"),
 				() -> "CODE123456");
@@ -150,7 +150,7 @@ class CreateBookingServiceTest {
 
 	@Test
 	void reportsADeliverableConfirmationMailAsNotWithheld() {
-		CreateBookingService service = service(set("ONLINE"),
+		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Succeeded("ok"),
 				() -> "CODE123456");
@@ -167,7 +167,7 @@ class CreateBookingServiceTest {
 		// post-payment and the flag would be a free suppression oracle for any address.
 		collection.proven = false;
 		confirmationMail.withheld = true;
-		CreateBookingService service = service(set("ONLINE"),
+		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Succeeded("ok"),
 				() -> "CODE123456");
@@ -184,7 +184,7 @@ class CreateBookingServiceTest {
 		// The 202 hands the code out BEFORE the card is collected, so asking here would leak
 		// suppression status for any address a checkout can be started with (D-8).
 		confirmationMail.withheld = true;
-		CreateBookingService service = service(set("ONLINE"),
+		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Pending("cs_test", "pi_test"),
 				() -> "CODE123456");
@@ -200,7 +200,7 @@ class CreateBookingServiceTest {
 	@Test
 	void neverAsksAboutTheConfirmationMailForAPendingRequest() {
 		confirmationMail.withheld = true;
-		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
+		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Succeeded("ok"),
 				() -> "CODE123456");
@@ -229,7 +229,7 @@ class CreateBookingServiceTest {
 				return java.util.OptionalLong.of(1234L);
 			}
 		};
-		SetBookingFacts catalog = new FakeCatalog(set("ONLINE"));
+		SetBookingFacts catalog = new FakeCatalog(set(Pool.ONLINE));
 		CustomerDirectory customers = _ -> new CustomerId(1);
 		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
 				visibility(true), customers, collidingOnce, codes::removeFirst,
@@ -248,7 +248,7 @@ class CreateBookingServiceTest {
 	void pendingLeavesAwaitingPaymentWithClientSecret() {
 		// Real-Stripe path: the gateway returns Pending, so the booking is created but NOT
 		// confirmed synchronously — confirmation comes via the verified webhook (invariant #8).
-		CreateBookingService service = service(set("ONLINE"),
+		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Pending("cs_secret_xyz", "pi_42"),
 				() -> "CODE999999");
@@ -274,7 +274,7 @@ class CreateBookingServiceTest {
 			insertedAtPayTime[0] = bookings.inserted.size();
 			return new PaymentOutcome.Pending("cs_secret_xyz", "pi_42");
 		};
-		CreateBookingService service = service(set("ONLINE"), claiming(ClaimOutcome.CLAIMED),
+		CreateBookingService service = service(set(Pool.ONLINE), claiming(ClaimOutcome.CLAIMED),
 				capturingCheckout, () -> "CODE12345A");
 
 		BookingOutcome outcome = service.create(command());
@@ -303,7 +303,7 @@ class CreateBookingServiceTest {
 				return false;
 			}
 		};
-		SetBookingFacts catalog = new FakeCatalog(set("ONLINE"));
+		SetBookingFacts catalog = new FakeCatalog(set(Pool.ONLINE));
 		CustomerDirectory customers = contact -> new CustomerId(7);
 		ReserveSetService reservation = new ReserveSetService(catalog, claiming(ClaimOutcome.CLAIMED),
 				visibility(true), customers, bookings, () -> "CODE12345C",
@@ -327,7 +327,7 @@ class CreateBookingServiceTest {
 			throw new AssertionError("a pending request must not initiate payment");
 		};
 		CreateBookingService service = service(
-				set("ONLINE", ai.riviera.platform.venue.vocabulary.BookingMode.REQUEST),
+				set(Pool.ONLINE, ai.riviera.platform.venue.vocabulary.BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED), neverPay, () -> "REQCODE001");
 
 		BookingOutcome outcome = service.create(command());
@@ -349,7 +349,7 @@ class CreateBookingServiceTest {
 	void requestDeadlineUncappedTwoDaysOut() {
 		// The accept deadline caps at D's sales close, far enough off two days out to stay uncapped.
 		CreateBookingService service = service(
-				set("ONLINE", BookingMode.REQUEST),
+				set(Pool.ONLINE, BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE002");
 
@@ -363,7 +363,7 @@ class CreateBookingServiceTest {
 
 	@Test
 	void rejectsTakenSetWithoutPersisting() {
-		CreateBookingService service = service(set("ONLINE"),
+		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.ALREADY_TAKEN),
 				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 
@@ -376,7 +376,7 @@ class CreateBookingServiceTest {
 		// AC-3: the booking + claim are already committed when PI creation fails (the gateway returns
 		// Failed). The Failed branch must compensate — release the claim (the ReleaseAbandonedBooking
 		// guarded cancel + free) — and surface the failure, never leaving an orphaned AWAITING_PAYMENT.
-		CreateBookingService service = service(set("ONLINE"),
+		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Failed("stripe_error"), () -> "CODEX12345");
 
@@ -394,7 +394,7 @@ class CreateBookingServiceTest {
 		CheckoutPort throwingCheckout = (_, _) -> {
 			throw new org.springframework.dao.DataAccessResourceFailureException("register blew up after intent");
 		};
-		CreateBookingService service = service(set("ONLINE"),
+		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED), throwingCheckout, () -> "CODETHROW01");
 
 		assertThrows(org.springframework.dao.DataAccessResourceFailureException.class,
@@ -436,7 +436,7 @@ class CreateBookingServiceTest {
 
 	@Test
 	void instantReserveRefusedForHiddenVenue() {
-		CreateBookingService service = service(set("ONLINE"), neverClaiming(),
+		CreateBookingService service = service(set(Pool.ONLINE), neverClaiming(),
 				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X", false);
 
 		assertSame(BookingOutcome.Rejected.NO_SUCH_SET, service.create(command()));
@@ -445,7 +445,7 @@ class CreateBookingServiceTest {
 
 	@Test
 	void requestReserveRefusedForHiddenVenue() {
-		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST), neverClaiming(),
+		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST), neverClaiming(),
 				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X", false);
 
 		assertSame(BookingOutcome.Rejected.NO_SUCH_SET, service.create(command()));
@@ -454,7 +454,7 @@ class CreateBookingServiceTest {
 
 	@Test
 	void rejectsWalkInPool() {
-		CreateBookingService service = service(set("WALK_IN"),
+		CreateBookingService service = service(set(Pool.WALK_IN),
 				claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 		assertSame(BookingOutcome.Rejected.NOT_ONLINE_POOL, service.create(command()));
@@ -471,7 +471,7 @@ class CreateBookingServiceTest {
 	@Test
 	void rejectsAfterCutoff() {
 		// now (2026-11-01) is fine for DATE; use a past date to trip the cutoff.
-		CreateBookingService service = service(set("ONLINE"),
+		CreateBookingService service = service(set(Pool.ONLINE),
 				claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X");
 		BookingOutcome outcome = service.create(
@@ -483,7 +483,7 @@ class CreateBookingServiceTest {
 	void sameDayInstantReserveBeforeClose() {
 		// AC-4: "now" is 10:00 Tirane; a 16:00 sales close still allows booking TODAY (#791).
 		Clock beforeClose = Clock.fixed(Instant.parse("2026-11-01T09:00:00Z"), ZoneId.of("UTC"));
-		CreateBookingService service = service(set("ONLINE"), claiming(ClaimOutcome.CLAIMED),
+		CreateBookingService service = service(set(Pool.ONLINE), claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "CODE234567", true, beforeClose);
 
 		BookingOutcome outcome = service.create(
@@ -496,7 +496,7 @@ class CreateBookingServiceTest {
 	void sameDayInstantRejectedAtClose() {
 		// AC-4: exactly at the venue's 16:00 sales close (15:00Z = 16:00 CET), the same date is closed.
 		Clock atClose = Clock.fixed(Instant.parse("2026-11-01T15:00:00Z"), ZoneId.of("UTC"));
-		CreateBookingService service = service(set("ONLINE"), claiming(ClaimOutcome.CLAIMED),
+		CreateBookingService service = service(set(Pool.ONLINE), claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> "X", true, atClose);
 
 		BookingOutcome outcome = service.create(
@@ -509,7 +509,7 @@ class CreateBookingServiceTest {
 	void sameDayRequestSucceedsBeforeSalesClose() {
 		// AC-5 (#792): the temporary gate is gone — today is requestable until the venue's close.
 		Clock beforeClose = Clock.fixed(Instant.parse("2026-11-01T09:00:00Z"), ZoneId.of("UTC"));
-		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
+		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE004", true, beforeClose);
 
@@ -542,7 +542,7 @@ class CreateBookingServiceTest {
 				return Instant.parse("2026-11-01T09:00:00Z");
 			}
 		};
-		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
+		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE005", true, counting);
 
@@ -558,7 +558,7 @@ class CreateBookingServiceTest {
 	void requestDeadlineCappedAtSalesClose() {
 		// AC-1 (#792): a near-term request's response deadline caps at D's own sales close.
 		Clock eveningBefore = Clock.fixed(Instant.parse("2026-11-01T19:00:00Z"), ZoneId.of("UTC"));
-		CreateBookingService service = service(set("ONLINE", BookingMode.REQUEST),
+		CreateBookingService service = service(set(Pool.ONLINE, BookingMode.REQUEST),
 				claiming(ClaimOutcome.CLAIMED),
 				(_, _) -> new PaymentOutcome.Succeeded("unused"), () -> "REQCODE003", true, eveningBefore);
 
@@ -579,7 +579,7 @@ class CreateBookingServiceTest {
 		logger.addAppender(appender);
 		try {
 			String code = "SECRETCODE";
-			CreateBookingService service = service(set("ONLINE"),
+			CreateBookingService service = service(set(Pool.ONLINE),
 					claiming(ClaimOutcome.CLAIMED),
 					(_, _) -> new PaymentOutcome.Succeeded("ok"), () -> code);
 			service.create(command());
@@ -764,7 +764,7 @@ class CreateBookingServiceTest {
 	/** SetBookingFacts fake returning a configured set (or empty for "no such set"). */
 	private record FakeCatalog(SetBookingInfo info) implements SetBookingFacts {
 		@Override
-		public Optional<String> poolForClaim(SetId setId) {
+		public Optional<Pool> poolForClaim(SetId setId) {
 			return Optional.ofNullable(info).map(SetBookingInfo::pool);
 		}
 

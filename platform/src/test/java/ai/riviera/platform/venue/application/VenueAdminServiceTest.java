@@ -27,6 +27,7 @@ import ai.riviera.platform.venue.spi.SetAvailabilityLookup;
 import ai.riviera.platform.venue.domain.SalesClose;
 import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
+import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.AddSetOutcome;
@@ -57,7 +58,7 @@ class VenueAdminServiceTest {
 	private static final OperatorId OWNER = new OperatorId(100);
 	private static final OperatorId STRANGER = new OperatorId(200);
 	private static final SetCommand SET_CMD =
-			new SetCommand("Row A", 1, "PREMIUM", "ONLINE", 4500, "EUR", 2, 1);
+			new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 4500, "EUR", 2, 1);
 
 	/** Ordered across BOTH fakes, so a test can pin that the row lock precedes the claim probe. */
 	private final List<String> callLog = new ArrayList<>();
@@ -86,7 +87,7 @@ class VenueAdminServiceTest {
 		for (int y = 1; y <= rows; y++) {
 			for (int x = 1; x <= cols; x++) {
 				String tier = y == 1 ? "PREMIUM" : "STANDARD";
-				cells.add(new SetCommand(String.valueOf((char) ('A' + y - 1)), x, tier, "ONLINE",
+				cells.add(new SetCommand(String.valueOf((char) ('A' + y - 1)), x, tier, Pool.ONLINE,
 						2000, "EUR", x, y));
 			}
 		}
@@ -184,10 +185,10 @@ class VenueAdminServiceTest {
 	void editSetIsRefusedWhenAClaimedSetWouldBeRepositioned() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
 		availability.holdOn.put(SET, TODAY_IN_TIRANE); // the inclusive edge: a hold dated today still blocks
 
-		SetCommand repooled = new SetCommand("Row A", 1, "PREMIUM", "WALK_IN", 4500, "EUR", 2, 1);
+		SetCommand repooled = new SetCommand("Row A", 1, "PREMIUM", Pool.WALK_IN, 4500, "EUR", 2, 1);
 		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, repooled);
 
 		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
@@ -198,10 +199,10 @@ class VenueAdminServiceTest {
 	void editSetIsRefusedWhenABookedSetWouldBeMovedToAnotherCell() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
 		bookings.setHasLiveBookings = true;
 
-		SetCommand moved = new SetCommand("Row B", 4, "PREMIUM", "ONLINE", 4500, "EUR", 9, 3);
+		SetCommand moved = new SetCommand("Row B", 4, "PREMIUM", Pool.ONLINE, 4500, "EUR", 9, 3);
 		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, moved);
 
 		assertEquals(SetRejection.SET_IN_USE, ((ChangeOutcome.Rejected) outcome).reason());
@@ -212,12 +213,12 @@ class VenueAdminServiceTest {
 	void editSetAppliesAPriceOnlyChangeToAClaimedSet() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
 		availability.holdOn.put(SET, TODAY_IN_TIRANE); // live, yet inert: a price-only edit never probes
 		bookings.setHasLiveBookings = true;
 
 		// Same pool, same row, same position, same cell — only tier and price move.
-		SetCommand repriced = new SetCommand("Row A", 1, "STANDARD", "ONLINE", 9900, "EUR", 2, 1);
+		SetCommand repriced = new SetCommand("Row A", 1, "STANDARD", Pool.ONLINE, 9900, "EUR", 2, 1);
 		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, repriced);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
@@ -229,9 +230,9 @@ class VenueAdminServiceTest {
 	void editSetAppliesEveryChangeToAnUnclaimedSet() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
 
-		SetCommand moved = new SetCommand("Row C", 7, "STANDARD", "WALK_IN", 100, "EUR", 5, 5);
+		SetCommand moved = new SetCommand("Row C", 7, "STANDARD", Pool.WALK_IN, 100, "EUR", 5, 5);
 		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, moved);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome);
@@ -242,12 +243,12 @@ class VenueAdminServiceTest {
 	void editSetIsAllowedWhenTheOnlyBookingIsTerminalAndTheOnlyHoldIsPast() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
 		// History only: the set is un-deletable (setHasBookings/claimed) but strands nobody.
 		availability.holdOn.put(SET, TODAY_IN_TIRANE.minusDays(400)); // last season, nothing still owed
 		bookings.setHasBookings = true;
 
-		SetCommand moved = new SetCommand("Row B", 4, "PREMIUM", "WALK_IN", 4500, "EUR", 9, 3);
+		SetCommand moved = new SetCommand("Row B", 4, "PREMIUM", Pool.WALK_IN, 4500, "EUR", 9, 3);
 		ChangeOutcome outcome = service.editSet(OWNER, VENUE, SET, moved);
 
 		assertSame(ChangeOutcome.Applied.APPLIED, outcome,
@@ -259,9 +260,9 @@ class VenueAdminServiceTest {
 	void editSetAsksAboutFutureHoldsOnlyForTheSetBeingEdited() {
 		venues.venues.add(VENUE.value());
 		venues.sets.put(SET.value(), VENUE.value());
-		venues.storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+		venues.storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
 
-		service.editSet(OWNER, VENUE, SET, new SetCommand("Row Z", 9, "PREMIUM", "ONLINE", 4500, "EUR", 9, 9));
+		service.editSet(OWNER, VENUE, SET, new SetCommand("Row Z", 9, "PREMIUM", Pool.ONLINE, 4500, "EUR", 9, 9));
 
 		assertEquals(List.of(SET), availability.anyClaimsFromAskedAbout,
 				"the edit guard must ask about this set alone, never the whole venue");
@@ -288,14 +289,14 @@ class VenueAdminServiceTest {
 
 	@Test
 	void everyPlacementFieldOnItsOwnDisturbsAClaimedSet() {
-		SetPlacement stored = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+		SetPlacement stored = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
 
-		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", "WALK_IN", 1, "EUR", 2, 1)), "pool");
-		assertTrue(stored.disturbedBy(new SetCommand("Row B", 1, "PREMIUM", "ONLINE", 1, "EUR", 2, 1)), "rowLabel");
-		assertTrue(stored.disturbedBy(new SetCommand("Row A", 7, "PREMIUM", "ONLINE", 1, "EUR", 2, 1)), "positionNo");
-		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", "ONLINE", 1, "EUR", 8, 1)), "gridX");
-		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", "ONLINE", 1, "EUR", 2, 8)), "gridY");
-		assertFalse(stored.disturbedBy(new SetCommand("Row A", 1, "STANDARD", "ONLINE", 9999, "EUR", 2, 1)),
+		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", Pool.WALK_IN, 1, "EUR", 2, 1)), "pool");
+		assertTrue(stored.disturbedBy(new SetCommand("Row B", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 1)), "rowLabel");
+		assertTrue(stored.disturbedBy(new SetCommand("Row A", 7, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 1)), "positionNo");
+		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 8, 1)), "gridX");
+		assertTrue(stored.disturbedBy(new SetCommand("Row A", 1, "PREMIUM", Pool.ONLINE, 1, "EUR", 2, 8)), "gridY");
+		assertFalse(stored.disturbedBy(new SetCommand("Row A", 1, "STANDARD", Pool.ONLINE, 9999, "EUR", 2, 1)),
 				"tier and price never disturb a claim — the charge was snapshotted at reserve time");
 	}
 
@@ -576,8 +577,8 @@ class VenueAdminServiceTest {
 	void rejectsDuplicateCellWithinTheBatch() {
 		venues.venues.add(VENUE.value());
 		LayoutCommand clashing = new LayoutCommand(List.of(
-				new SetCommand("A", 1, "PREMIUM", "ONLINE", 2000, "EUR", 1, 1),
-				new SetCommand("B", 2, "STANDARD", "ONLINE", 2000, "EUR", 1, 1))); // same grid cell
+				new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1),
+				new SetCommand("B", 2, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 1))); // same grid cell
 
 		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, clashing);
 
@@ -590,9 +591,9 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		// The #728 reproducer: gap-cell numbering keeps every (rowLabel, positionNo) pair unique.
 		LayoutCommand split = new LayoutCommand(List.of(
-				new SetCommand("A", 2, "PREMIUM", "ONLINE", 2000, "EUR", 2, 1),
-				new SetCommand("A", 3, "PREMIUM", "ONLINE", 2000, "EUR", 3, 1),
-				new SetCommand("A", 1, "STANDARD", "ONLINE", 2000, "EUR", 1, 2)));
+				new SetCommand("A", 2, "PREMIUM", Pool.ONLINE, 2000, "EUR", 2, 1),
+				new SetCommand("A", 3, "PREMIUM", Pool.ONLINE, 2000, "EUR", 3, 1),
+				new SetCommand("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 2)));
 
 		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, split);
 
@@ -606,8 +607,8 @@ class VenueAdminServiceTest {
 	void duplicatePositionOutranksTheSplitLabel() {
 		venues.venues.add(VENUE.value());
 		LayoutCommand doubleFault = new LayoutCommand(List.of(
-				new SetCommand("A", 1, "PREMIUM", "ONLINE", 2000, "EUR", 1, 1),
-				new SetCommand("A", 1, "STANDARD", "ONLINE", 2000, "EUR", 1, 2)));
+				new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 2000, "EUR", 1, 1),
+				new SetCommand("A", 1, "STANDARD", Pool.ONLINE, 2000, "EUR", 1, 2)));
 
 		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, doubleFault);
 
@@ -619,8 +620,8 @@ class VenueAdminServiceTest {
 		venues.venues.add(VENUE.value());
 		// Gap-cell numbering on a single grid row — same label repeated is the normal shape, never a split.
 		LayoutCommand gapped = new LayoutCommand(List.of(
-				new SetCommand("A", 2, "PREMIUM", "ONLINE", 2000, "EUR", 2, 1),
-				new SetCommand("A", 3, "PREMIUM", "ONLINE", 2000, "EUR", 3, 1)));
+				new SetCommand("A", 2, "PREMIUM", Pool.ONLINE, 2000, "EUR", 2, 1),
+				new SetCommand("A", 3, "PREMIUM", Pool.ONLINE, 2000, "EUR", 3, 1)));
 
 		ReplaceLayoutOutcome outcome = service.replaceLayout(OWNER, VENUE, 0L, gapped);
 
@@ -994,7 +995,7 @@ class VenueAdminServiceTest {
 
 		int lockedSets;
 		// The placement the locked row reports; the per-set guard compares the command against it.
-		SetPlacement storedPlacement = new SetPlacement("ONLINE", "Row A", 1, 2, 1);
+		SetPlacement storedPlacement = new SetPlacement(Pool.ONLINE, "Row A", 1, 2, 1);
 
 		@Override
 		public Optional<SetPlacement> lockSet(VenueId venueId, SetId setId) {
