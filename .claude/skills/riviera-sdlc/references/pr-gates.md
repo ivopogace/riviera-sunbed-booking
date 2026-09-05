@@ -45,8 +45,10 @@ done until this gate has run and its findings are resolved or explicitly deferre
 
    **Then run it.** Start `/code-review` over the resolved range via the invocation ladder below,
    and load `riviera-review-overlay` so the project bank items (RV-BE-*/RV-FE-*/RV-CT-*, RV-PROC-*)
-   are walked on top of the generic banks. Pin every dispatched agent to the resolved base SHA, not
-   a ref name — a ref re-reads, a SHA does not. Announce with the resolved values filled in:
+   are walked on top of the generic banks. Pin every dispatched agent to **both** literal SHAs
+   (`<base-sha>..<head-sha>`), never `...HEAD`: an agent outlives the turn that spawned it, so a
+   fix pushed mid-review moves `HEAD` under it and it reports on a diff that no longer exists.
+   Announce with the resolved values filled in:
    *"Running the SDLC review gate (riviera-review-overlay + code-review) on PR #NN over
    `<base-sha>...HEAD` — base `<base.ref>` @ `<tip-sha>`, N files / +A / -D, matched against the
    PR."* An announcement with no SHA in it means this step did not run.
