@@ -62,7 +62,8 @@ permissions:
 # are required contexts that exist only when SARIF is uploaded for the SHA, so they run in full on
 # every push (observed 2-4 min) and bound the whole check suite. Inside this workflow the floor is
 # the Sonar scan (~1 min) plus runner start-ups — four jobs, two of them on the critical path (a build
-# job, then `sonar`).
+# job, then `sonar`). Observed on this change's own cache-hit pushes: 1 min 17 s, 2 min 00 s and 2 min 27 s
+# wall time, the spread being runner queueing; each build job's own work on a hit was 7-10 s.
 jobs:
   backend:
     name: Backend (build + test)

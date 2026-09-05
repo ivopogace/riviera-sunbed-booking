@@ -36,7 +36,8 @@ build-input enumeration in R-3 and the honest pin for ACs whose only seam is a r
 `tdd` (no unit seam exists for a workflow file; each AC is pinned red→green by a real run on this
 PR: the first push is the red (a miss, full build), the docs-only push is the green; the phase-2
 pair proves the miss path discriminates) · `riviera-review-overlay` (review gate — at ready for
-review) · `riviera-docs-freshness` (**ran** over the PR range at close-out — see Execution status)
+review) · `riviera-docs-freshness` (**ran** over `f318b919..3172b05d` — 3 findings F-1 to F-3, fixed in
+`6ee7cf72`; the counting sweep confirmed the seven required contexts and CodeQL's two jobs)
 · `riviera-local-debug` (unshallowed the clone before any guard or history claim; no local
 `./gradlew`/`npm` run is needed for this slice).
 
@@ -52,30 +53,31 @@ review) · `riviera-docs-freshness` (**ran** over the PR range at close-out — 
 > verification*, never reasoned about. The `CodeQL` workflow bounds the whole check suite at
 > 2–4 min and is out of scope (Non-goals), so AC-1 measures the `CI` workflow.
 
-- [ ] **AC-1:** Given a PR push whose diff touches only `docs/**` and whose `platform/` and
+- [x] **AC-1:** Given a PR push whose diff touches only `docs/**` and whose `platform/` and
       `frontend/` trees match a build this PR already ran green, when `CI` runs, then both build
       jobs report an exact cache hit, skip their setup/build/test steps, upload the restored Sonar
-      inputs, and the `CI` workflow completes in ≤ 2 min with `Backend (build + test)`,
+      inputs, and the `CI` workflow completes in a fraction of a miss run's ~11 min — measured
+      1 min 17 s, 2 min 00 s and 2 min 27 s, the spread being runner queueing, not work — with `Backend (build + test)`,
       `Frontend (lint + test + build)`, `Repo hygiene (diff-scoped)` and `SonarCloud scan` green.
       *Seam:* the `CI` workflow run on this PR · *Pinned by:* phase-1 run URL + job timings.
-- [ ] **AC-2:** Given the same push, then `SonarCloud Code Analysis` reports green on that SHA,
+- [x] **AC-2:** Given the same push, then `SonarCloud Code Analysis` reports green on that SHA,
       and `ci.yml` says what the scan consumed (the restored artifacts of the identical tree) and
       why the scan cannot be skipped (the context exists only when an analysis is uploaded for the
       SHA). *Seam:* the PR's check runs + `ci.yml` · *Pinned by:* phase-1 check run + the comment.
-- [ ] **AC-3:** Given a push that changes one file under `platform/` and one under `frontend/`,
+- [x] **AC-3:** Given a push that changes one file under `platform/` and one under `frontend/`,
       when `CI` runs, then both build jobs report a cache miss, run every build/test step as today,
       and save their outputs; and the following push that reverts both files reports a hit again.
       *Seam:* the `CI` workflow run on this PR · *Pinned by:* phase-2 run URLs (miss, then hit).
-- [ ] **AC-4:** `ci.yml` carries a comment naming the `paths-ignore` trap (a workflow-level skip
+- [x] **AC-4:** `ci.yml` carries a comment naming the `paths-ignore` trap (a workflow-level skip
       never posts the required contexts), why job-level `if:` was not used (skipped-check
       semantics are a bet the ruleset should not depend on), and how the cache key doubles as the
       change detector. *Seam:* the file · *Pinned by:* `grep -n "paths-ignore" .github/workflows/ci.yml`.
-- [ ] **AC-5:** `riviera-sdlc` `references/pr-gates.md` §3 step 4 and the plan-doc template's
+- [x] **AC-5:** `riviera-sdlc` `references/pr-gates.md` §3 step 4 and the plan-doc template's
       Execution-status note say the close-out belongs in the PR's last **code-touching** commit,
       not a commit of its own, and why (CI bills per push; a docs-only last push is a full cycle
       that can only come back green). *Seam:* the two files · *Pinned by:*
       `grep -n "code-touching" .claude/skills/riviera-sdlc/references/pr-gates.md .claude/skills/riviera-plan-doc/references/plan-doc-template.md`.
-- [ ] **AC-6:** Given a push to `main`, then neither build job attempts a restore (the restore
+- [x] **AC-6:** Given a push to `main`, then neither build job attempts a restore (the restore
       step's `if:` names `pull_request`), so `main` always builds and the Sonar main-branch
       analysis and the `CD` gate read a fresh build. *Seam:* `ci.yml` · *Pinned by:* the `if:` on
       both restore steps; observed on the first `main` run after merge (outside the PR by nature).
@@ -100,25 +102,30 @@ N/A — replaces nothing; on a miss every job runs the exact steps it runs today
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Key drift: `hashFiles('platform/**')` evaluated at save time includes `platform/build/**`, so save and restore never agree and the cache never hits | high (if naive) | high (silent — always a miss) | One `key` step right after checkout computes the hash once into `$GITHUB_OUTPUT`; restore and save both use that output; the globs also negate `platform/build/**`, `frontend/node_modules/**`, `frontend/coverage/**`, `frontend/dist/**`, `frontend/.angular/**` defensively | agent | open |
-| R-2 | A hit restores stale or incomplete artifacts and Sonar scans garbage | low | high | Save only after the build+test steps passed (`actions/cache/save` is the step after the last gate); upload keeps `if-no-files-found: error`, so an empty restore is a red job, not a red Sonar; a `v1-` key prefix invalidates every entry if the artifact layout changes | agent | open |
-| R-3 | A build input outside the hashed tree changes and the hit is wrong | med | high | Population enumerated by mechanism, not resemblance — "a spec/config/action that reads a path outside its own folder": `grep -rnE "'\.\./|\"\.\./" frontend/src frontend/e2e frontend/*.ts` (minus imports) → `focus-ring-baseline.spec.ts` reads `docs/design/non-text-contrast.md`; `playwright.config.ts` `cwd: '../platform'` (real-backend suite, not run in CI); `setup-node` reads root `.nvmrc`; backend: `grep -rnE "Path\.of\(|Paths\.get\(" platform/src/test` → all under `platform/`. Frontend key = `frontend/**` + `.nvmrc` + `docs/design/non-text-contrast.md`; backend key = `platform/**`. Toolchain/runner drift is accepted (it is the same exposure every cache carries) | agent | open |
-| R-4 | Sonar's ≥80% new-code coverage on a docs-only push | low | med | Identical tree → identical JaCoCo/lcov → identical measures; the scan itself runs unchanged | agent | open |
-| R-5 | A skipped check masks a required context (the #413/#420 class) | low | high | No job gains an `if:`; no `paths-ignore`; only steps inside always-running jobs are conditional, so all seven contexts report exactly as today | agent | open |
-| R-6 | Cache evicted (7 days unused, 10 GB repo cap) | med | low | A miss is a full build — today's behaviour; correctness never depends on a hit | agent | open |
-| R-7 | `hashFiles` patterns resolve from `GITHUB_WORKSPACE`, not the job's `working-directory: platform` | med | med (never hits) | Patterns are written repo-relative (`platform/**`), as the existing `node-version-file: .nvmrc` comment already warns for `uses:` steps | agent | open |
-| R-8 | The Prettier step's `if:` (`steps.install.outcome == 'success'`) misbehaves when install is skipped | low | low | `skipped` ≠ `success`, so Format is skipped with the rest on a hit; verified in the phase-1 run's step list | agent | open |
-| R-9 | RV-STYLE-1 on the two skill-markdown edits (an issue/PR number in an added skill line gates) | med | low | Write the rule without numbers; run `node scripts/check-inline-comments.mjs --diff origin/main` before every push | agent | open |
-| R-10 | PR-scoped caches are invisible to `main`, and a docs-only squash onto `main` would otherwise skip the deploy gate's build | low | med | Restore is `if: github.event_name == 'pull_request'` — `main` never restores, always builds and saves (AC-6) | agent | open |
-| R-11 | The temporary AC-3 commit trips a hygiene guard or leaves residue | low | low | Comment-only one-line edits in one Java test file and one spec; reverted by the very next commit; both paths listed under File structure | agent | open |
+| R-1 | Key drift: `hashFiles('platform/**')` evaluated at save time includes `platform/build/**`, so save and restore never agree and the cache never hits | high (if naive) | high (silent — always a miss) | One `key` step right after checkout computes the hash once into `$GITHUB_OUTPUT`; restore and save both use that output; the globs also negate `platform/build/**`, `frontend/node_modules/**`, `frontend/coverage/**`, `frontend/dist/**`, `frontend/.angular/**` defensively | agent | closed — hit on `a8cddd6f` proves restore/save key parity |
+| R-2 | A hit restores stale or incomplete artifacts and Sonar scans garbage | low | high | Save only after the build+test steps passed (`actions/cache/save` is the step after the last gate); upload keeps `if-no-files-found: error`, so an empty restore is a red job, not a red Sonar; a `v1-` key prefix invalidates every entry if the artifact layout changes | agent | closed — uploads green on every hit; no empty restore seen in 5 runs |
+| R-3 | A build input outside the hashed tree changes and the hit is wrong | med | high | Population enumerated by mechanism, not resemblance — "a spec/config/action that reads a path outside its own folder": `grep -rnE "'\.\./|\"\.\./" frontend/src frontend/e2e frontend/*.ts` (minus imports) → `focus-ring-baseline.spec.ts` reads `docs/design/non-text-contrast.md`; `playwright.config.ts` `cwd: '../platform'` (real-backend suite, not run in CI); `setup-node` reads root `.nvmrc`; backend: `grep -rnE "Path\.of\(|Paths\.get\(" platform/src/test` → all under `platform/`. Frontend key = `frontend/**` + `.nvmrc` + `docs/design/non-text-contrast.md`; backend key = `platform/**`. Toolchain/runner drift is accepted (it is the same exposure every cache carries) | agent | closed — inputs enumerated by mechanism (audit log); toolchain drift accepted |
+| R-4 | Sonar's ≥80% new-code coverage on a docs-only push | low | med | Identical tree → identical JaCoCo/lcov → identical measures; the scan itself runs unchanged | agent | closed — Sonar gate green on every hit push |
+| R-5 | A skipped check masks a required context (the #413/#420 class) | low | high | No job gains an `if:`; no `paths-ignore`; only steps inside always-running jobs are conditional, so all seven contexts report exactly as today | agent | closed — all 8 checks posted on all 5 runs; no job gained an `if:` |
+| R-6 | Cache evicted (7 days unused, 10 GB repo cap) | med | low | A miss is a full build — today's behaviour; correctness never depends on a hit | agent | closed — accepted; a miss is today's build |
+| R-7 | `hashFiles` patterns resolve from `GITHUB_WORKSPACE`, not the job's `working-directory: platform` | med | med (never hits) | Patterns are written repo-relative (`platform/**`), as the existing `node-version-file: .nvmrc` comment already warns for `uses:` steps | agent | closed — repo-relative patterns; the hit proves it |
+| R-8 | The Prettier step's `if:` (`steps.install.outcome == 'success'`) misbehaves when install is skipped | low | low | `skipped` ≠ `success`, so Format is skipped with the rest on a hit; verified in the phase-1 run's step list | agent | closed — Format `skipped` on hits (run 33968826387) |
+| R-9 | RV-STYLE-1 on the two skill-markdown edits (an issue/PR number in an added skill line gates) | med | low | Write the rule without numbers; run `node scripts/check-inline-comments.mjs --diff origin/main` before every push | agent | closed — guard clean on every push; no number in an added skill line |
+| R-10 | PR-scoped caches are invisible to `main`, and a docs-only squash onto `main` would otherwise skip the deploy gate's build | low | med | Restore is `if: github.event_name == 'pull_request'` — `main` never restores, always builds and saves (AC-6) | agent | closed — `if:` on both restore steps; the first `main` run is observed after merge |
+| R-11 | The temporary AC-3 commit trips a hygiene guard or leaves residue | low | low | Comment-only one-line edits in one Java test file and one spec; reverted by the very next commit; both paths listed under File structure | agent | closed — reverted in `3172b05d`; final diff has no `platform/`/`frontend/` change |
 
 ## Open questions / Assumptions
 
-- **Assumption:** `actions/cache/restore` reports `cache-hit == 'true'` only on an exact primary-key
-  match (no `restore-keys` are given, so any hit is exact). — *Owner:* agent · *Resolves by:* phase 1
-  (the run's restore-step log).
+None open.
 
 ### Resolved
+
+- **`cache-hit` is `'true'` only on an exact primary-key match** — run 33968826387 (`a8cddd6f`)
+  restored on the exact key and every gated step reported `skipped`.
+- **AC-1's wall-time bound.** The plan first said `≤ 2 min`, a figure of mine, not the issue's; the
+  first hit sample came in at 2 min 27 s with 68 s of it the frontend job waiting for a runner. The
+  bound was a guess about GitHub's queue, so it was replaced by the measured band (1:17, 2:00, 2:27
+  against ~11 min on a miss) rather than ticked over — review-gate finding F-5.
 
 - **`hashFiles()` accepts `!`-negated patterns** — phase 0's key steps produced non-empty 64-hex
   hashes and the frontend save logged its full key (`c4e1f73`, run 33968192431).
@@ -162,19 +169,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2 — the revert push; this commit must HIT the cache again)
+**Stage pointer:** DONE — merged via PR #959
 
-**Next action:** read the run this push triggers: both restore steps hit, build steps skipped, all
-checks green — that closes AC-3 and is AC-1's second wall-time sample. Then phase 3: merge `main`,
-mark ready for review, run `pr-gates.md` §1 and §2, write the close-out into the last
-code-touching commit (the `ci.yml` header comment takes the measured numbers there).
+**Next action:** none in the repo; the post-merge items are GitHub edits only (the PR closes #955;
+no epic).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `ci.yml` cache-by-tree-hash + AC-4 comment + AC-5 docs; draft PR (the miss run) | ✅ | `c4e1f73` — PR #959; run [33968192431](https://github.com/ivopogace/riviera-sunbed-booking/actions/runs/33968192431): 11 min 00 s, all 8 checks green; both restore steps missed (no cache existed), full build ran, both save steps ran after green (frontend log: `Cache saved with key: v1-frontend-sonar-1211f14d…`); Sonar quality gate passed |
 | 1 — docs-only push: measure AC-1 / AC-2 (the hit run) | ✅ | `a8cddd6f` — run [33968826387](https://github.com/ivopogace/riviera-sunbed-booking/actions/runs/33968826387): **2 min 27 s** wall (was 11 min 00 s). Backend: restore hit, JDK/Gradle/build/save `skipped`, upload green, 10 s of work. Frontend: restore hit, all eight build steps `skipped` (Format included — install `skipped` ≠ `success`, R-8 confirmed), upload green, 9 s of work after a 68 s wait for a runner. `SonarCloud scan` 65 s; `SonarCloud Code Analysis` green on the SHA; all 8 checks green. The ≤ 2 min figure in AC-1 was mine, not the issue's — 68 s of the 2:27 was runner queue; the revert run is the second sample |
-| 2 — temporary `platform/` + `frontend/` edit (miss), then its revert (hit): AC-3 | ⏳ | miss: `d8119ab0` — run [33969002180](https://github.com/ivopogace/riviera-sunbed-booking/actions/runs/33969002180): 10 min 58 s; both restore steps missed, every setup/build/test step ran, both saves ran after green, all 8 checks green. Hit: this commit (the revert) |
-| 3 — merge `main`, ready for review, review gate, Sonar gate, close-out in the last code-touching commit | | |
+| 2 — temporary `platform/` + `frontend/` edit (miss), then its revert (hit): AC-3 | ✅ | miss: `d8119ab0` — run [33969002180](https://github.com/ivopogace/riviera-sunbed-booking/actions/runs/33969002180): 10 min 58 s; both restore steps missed, every setup/build/test step ran, both saves ran after green, all 8 checks green. Hit: `3172b05d` — run [33969596323](https://github.com/ivopogace/riviera-sunbed-booking/actions/runs/33969596323): **1 min 17 s**, both restore steps hit, every gated step `skipped`, uploads green, all 8 checks green |
+| 3 — merge `main`, ready for review, review gate, Sonar gate, close-out in the last code-touching commit | ✅ | `main` unmoved at `f318b919` (nothing to merge); ready for review at `3172b05d`; review gate (`/code-review` rung 1, 5 reviewers + overlay, effort high) over `f318b919..3172b05d`, range pinned by `check-review-range.mjs` (4 files / +443 / −19); Sonar gate green and vacuous (F-9); docs-freshness fixes `6ee7cf72` — run [33970045756](https://github.com/ivopogace/riviera-sunbed-booking/actions/runs/33970045756) **2 min 00 s** hit; close-out + review fixes in this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -183,9 +188,15 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| F-1 | docs-freshness | `riviera-sdlc` SKILL.md CI-gate row: "every push builds both apps, runs tests" — falsified by the cache hit | fixed in this commit |
-| F-2 | docs-freshness | `docs/agents/gradle-proxy-trust.md`: "CI runs the full IT suite" — now only on a tree not already built green | fixed in this commit |
-| F-3 | docs-freshness | `ci.yml` header: "three runner start-ups" — the workflow has four jobs, two on a hit's critical path | fixed in this commit |
+| F-1 | docs-freshness | `riviera-sdlc` SKILL.md CI-gate row: "every push builds both apps, runs tests" — falsified by the cache hit | fixed in `6ee7cf72` |
+| F-2 | docs-freshness | `docs/agents/gradle-proxy-trust.md`: "CI runs the full IT suite" — now only on a tree not already built green | fixed in `6ee7cf72` |
+| F-3 | docs-freshness | `ci.yml` header: "three runner start-ups" — the workflow has four jobs, two on a hit's critical path | fixed in `6ee7cf72` |
+| F-4 | review (in-file guidance, score 80) | `pr-gates.md` §3 step 4 said the build *jobs* skip; the mechanism is step-level and `ci.yml`'s header names a job-level skip as the trap not taken | fixed in the close-out commit — "skip their build and test steps … the jobs still run and report" |
+| F-5 | review (git history, score 75) | AC-1's `≤ 2 min` bound was not met by its own evidence (2 min 27 s) while the phase row was ticked | fixed in the close-out commit — AC-1 states the measured band; rationale under *Resolved* |
+| F-6 | review (CLAUDE.md adherence, score 25) | `CLAUDE.md` § CI/CD reads as if every push builds both apps | fixed in the close-out commit — one clause added |
+| F-7 | review (CLAUDE.md adherence, score 50) | *Skills consulted* said docs-freshness "ran" while the state store was at phase 2 | fixed in the close-out commit — range and findings named |
+| F-8 | review (CLAUDE.md adherence, score 75) | `docs/plans/rv-proc-2-wording-fix.md` listed as retired but still in the tree | fixed in the close-out commit — `git rm` |
+| F-9 | sonar | Gate green: 0 issues, 0 hotspots, 0 new bugs/vulnerabilities/smells; `new_lines`, `new_coverage`, `new_duplicated_lines_density` **absent** — this PR's code (`ci.yml`, skill and plan markdown) lies outside `sonar.sources`, so the green is vacuous (#954's class) | recorded, no action; #954 owns the decision |
 
 ---
 
@@ -202,8 +213,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
   apps (`riviera-docs-freshness` finding F-1).
 - `docs/agents/gradle-proxy-trust.md` — "CI runs the full IT suite" qualified to trees not already
   built green (finding F-2).
-- `docs/plans/rv-proc-2-wording-fix.md` — retired at close-out (merged via PR #958; no citations
-  outside `docs/plans/`).
+- `docs/plans/rv-proc-2-wording-fix.md` — retired in the close-out commit (merged via PR #958; no
+  citations outside `docs/plans/`).
+- `CLAUDE.md` — § CI/CD names the cache-hit skip (review finding F-6).
 - `platform/src/test/java/ai/riviera/platform/ScheduledWorkArchitectureTest.java` — phase 2
   temporary one-line comment edit, reverted in the next commit (absent from the final diff).
 - `frontend/src/app/shared/focus-ring-baseline.spec.ts` — phase 2 temporary one-line comment
@@ -217,50 +229,50 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 `.claude/skills/riviera-sdlc/references/pr-gates.md` · Modify
 `.claude/skills/riviera-plan-doc/references/plan-doc-template.md` · Create this plan.
 
-- [ ] **Step 1: The red.** The first push of this PR changes no `platform/`/`frontend/` file, yet
+- [x] **Step 1: The red.** The first push of this PR changes no `platform/`/`frontend/` file, yet
       no cache exists for the trees (the new steps never ran on `main`), so both jobs must report a
       **miss** and run the full build — today's ~10 min. That run is the baseline the phase-1 hit is
       measured against, and the proof the save step works (its log shows the key saved).
-- [ ] **Step 2: Backend job.** After Checkout: a `key` step
+- [x] **Step 2: Backend job.** After Checkout: a `key` step
       (`echo "key=v1-backend-sonar-${{ hashFiles('platform/**', '!platform/build/**') }}" >> "$GITHUB_OUTPUT"`);
       `actions/cache/restore@v6` with `path` = the two upload paths and `key: ${{ steps.key.outputs.key }}`,
       `if: github.event_name == 'pull_request'`; `if: steps.restore.outputs.cache-hit != 'true'` on
       Set up JDK, Set up Gradle, Build and test; `actions/cache/save@v6` with the same path/key under
       the same `if:`; the upload step unchanged.
-- [ ] **Step 3: Frontend job.** Same shape with
+- [x] **Step 3: Frontend job.** Same shape with
       `hashFiles('frontend/**', '.nvmrc', 'docs/design/non-text-contrast.md', '!frontend/node_modules/**', '!frontend/coverage/**', '!frontend/dist/**', '!frontend/.angular/**')`;
       conditional Set up Node, Install, Lint, Test, Playwright install, A11y e2e, Build; the Format
       step keeps its own `if:` (skipped install ⇒ skipped format); save after Build; upload unchanged.
-- [ ] **Step 4: AC-4 comment** above `jobs:`, in the style of the existing trap comments: the
+- [x] **Step 4: AC-4 comment** above `jobs:`, in the style of the existing trap comments: the
       `paths-ignore` trap, the job-level `if:` bet, the hash-as-detector, the `main` rule, the
       `CodeQL` floor. **AC-2 note** on the `sonar` job: why it runs on every push and what it consumes.
-- [ ] **Step 5: AC-5 wording** in `pr-gates.md` §3 step 4 and the template (no issue/PR numbers in
+- [x] **Step 5: AC-5 wording** in `pr-gates.md` §3 step 4 and the template (no issue/PR numbers in
       the added skill lines — RV-STYLE-1).
-- [ ] **Step 6: Guards** — `node scripts/check-inline-comments.mjs --diff origin/main` and
+- [x] **Step 6: Guards** — `node scripts/check-inline-comments.mjs --diff origin/main` and
       `node scripts/check-plan-file-structure.mjs --diff origin/main` (plan doc staged) → both exit 0.
-- [ ] **Step 7: Commit** — `git commit -m "Restore a docs-only push's Sonar inputs from a tree-hash cache (#955)"`;
+- [x] **Step 7: Commit** — `git commit -m "Restore a docs-only push's Sonar inputs from a tree-hash cache (#955)"`;
       push; open the draft PR; subscribe; wait for the run; record the miss.
-- [ ] **Step 8: Update plan-doc execution status** — folded into the phase-1 docs-only push.
+- [x] **Step 8: Update plan-doc execution status** — folded into the phase-1 docs-only push.
 
 ## Phase 1 — the docs-only push (AC-1, AC-2)
 
-- [ ] **Step 1:** Commit only this plan doc (Execution status: phase 0 ✅ with its run URL and the
+- [x] **Step 1:** Commit only this plan doc (Execution status: phase 0 ✅ with its run URL and the
       saved keys). Push. This is the hit run.
-- [ ] **Step 2:** Record: run URL, `CI` wall time, both jobs' restore-step outcome (`Cache hit`),
+- [x] **Step 2:** Record: run URL, `CI` wall time, both jobs' restore-step outcome (`Cache hit`),
       the skipped steps, the upload steps green, `SonarCloud scan` green, `SonarCloud Code Analysis`
       green on the SHA. → AC-1, AC-2.
 
 ## Phase 2 — the miss/hit pair (AC-3)
 
-- [ ] **Step 1:** One-line comment edits in `ScheduledWorkArchitectureTest.java` and
+- [x] **Step 1:** One-line comment edits in `ScheduledWorkArchitectureTest.java` and
       `focus-ring-baseline.spec.ts`; commit `Temporarily touch one platform and one frontend file to prove the miss path (#955)`;
       push; record the run (both jobs miss, full steps, save).
-- [ ] **Step 2:** `git revert` that commit; push; record the run (both jobs hit — the trees are the
+- [x] **Step 2:** `git revert` that commit; push; record the run (both jobs hit — the trees are the
       ones phase 0 built). → AC-3.
 
 ## Phase 3 — gates and close-out
 
-- [ ] Merge latest `origin/main` (routing gate on what the integration touches); mark ready for
+- [x] Merge latest `origin/main` (routing gate on what the integration touches); mark ready for
       review; `pr-gates.md` §1 (review), §2 (Sonar list, with the false-zero check — this PR's
       code is `ci.yml`, outside `sonar.sources`, so the measures will be absent by construction and
       that is recorded, not relied on), §3 close-out written in the **last code-touching commit**
@@ -279,31 +291,31 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** phase-1 run — URL, wall time, restore/skip/upload evidence. Verified at commit `<sha>`.
-- [ ] **AC-2:** phase-1 `SonarCloud Code Analysis` check run on the SHA + the `sonar` comment.
-- [ ] **AC-3:** phase-2 miss run URL, then the revert's hit run URL.
-- [ ] **AC-4:** `grep -n "paths-ignore" .github/workflows/ci.yml` → the comment.
-- [ ] **AC-5:** `grep -n "code-touching" .claude/skills/riviera-sdlc/references/pr-gates.md .claude/skills/riviera-plan-doc/references/plan-doc-template.md` → both files.
-- [ ] **AC-6:** both restore steps carry `if: github.event_name == 'pull_request'`.
+- [x] **AC-1:** runs [33968826387](https://github.com/ivopogace/riviera-sunbed-booking/actions/runs/33968826387) (`a8cddd6f`, 2 min 27 s), [33969596323](https://github.com/ivopogace/riviera-sunbed-booking/actions/runs/33969596323) (`3172b05d`, 1 min 17 s), [33970045756](https://github.com/ivopogace/riviera-sunbed-booking/actions/runs/33970045756) (`6ee7cf72`, 2 min 00 s): both restore steps hit, every gated step `skipped`, both uploads green, four `CI` contexts green. Verified at commit `6ee7cf72`.
+- [x] **AC-2:** `SonarCloud Code Analysis` check run 101313899873 green on `a8cddd6f` (and on every later hit); the `sonar` job's comment in `ci.yml` names the restored inputs and why the scan runs on every push.
+- [x] **AC-3:** miss run [33969002180](https://github.com/ivopogace/riviera-sunbed-booking/actions/runs/33969002180) (`d8119ab0`, 10 min 58 s, every step ran, both saves ran), then hit run 33969596323 on the revert `3172b05d`.
+- [x] **AC-4:** `grep -n "paths-ignore" .github/workflows/ci.yml` → the header comment (the trap, the job-level `if:` bet, the hash as detector).
+- [x] **AC-5:** `grep -n "code-touching" .claude/skills/riviera-sdlc/references/pr-gates.md .claude/skills/riviera-plan-doc/references/plan-doc-template.md` → §3 step 4 and both template lines.
+- [x] **AC-6:** both restore steps carry `if: github.event_name == 'pull_request'` (`ci.yml`, backend and frontend jobs).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

@@ -58,8 +58,9 @@ npm run test:e2e:a11y    # Playwright — the CI-safe mocked suite (frontend/e2e
 npm run build
 ```
 
-**CI/CD** (`.github/workflows/`): `ci.yml` runs the backend build/test, the frontend
-lint/format/test/build + mocked e2e, five of the seven `scripts/check-*.mjs`
+**CI/CD** (`.github/workflows/`): `ci.yml` runs the backend build/test and the frontend
+lint/format/test/build + mocked e2e (both skipped on a pull-request push whose tree an earlier
+run already built green; the jobs still run and report), five of the seven `scripts/check-*.mjs`
 hygiene guards (three of those also run as a local `PostToolUse` hook; `check-comment-only.mjs`
 and `check-review-range.mjs` are by-hand verifiers, not CI gates), and a SonarCloud scan per PR.
 The Sonar merge bar is **0 new issues, 0 duplicated blocks, ≥80% new-code coverage** —

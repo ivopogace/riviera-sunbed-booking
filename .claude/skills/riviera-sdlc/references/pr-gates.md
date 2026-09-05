@@ -190,8 +190,9 @@ and duplications below its fail thresholds. Pull the actual list and fix every e
    **Why the last code-touching commit and not a commit after it:** CI bills per push, not
    per commit, and every push to a PR runs the whole check suite — a plan-doc-only push
    after the last code fix is a full cycle that can only ever come back green (`ci.yml`'s
-   build jobs skip on an unchanged tree, but the `CodeQL` and Sonar analyses cannot, so the
-   push still costs minutes and a merge waits on it). Write the close-out into the commit
+   build jobs skip their build and test steps on a tree already built green — the jobs still
+   run and report — but the `CodeQL` and Sonar analyses cannot skip, so the push still costs
+   minutes and a merge waits on it). Write the close-out into the commit
    that carries the last code change; when a later review or Sonar finding forces another
    code commit, rewrite the close-out in that one. Amending does not help — the cost is the
    push, however many commits it carries. In that same commit,
