@@ -143,10 +143,9 @@ This agreement, together with the `LICENSE`, is the entire agreement between you
 the Owner about your Contributions and replaces any earlier understanding. It may be
 changed only in a writing signed by the Owner. If any part is unenforceable, the rest
 stays in force and that part is read as narrowly as needed to make it enforceable. The
-Owner may assign this agreement; you may not. It is governed by the laws of
-`[GOVERNING LAW — e.g. Germany]`, and the courts of `[VENUE]` have exclusive
-jurisdiction, without prejudice to any mandatory consumer or author protection that
-applies to you.
+Owner may assign this agreement; you may not. It is governed by the laws of the
+Republic of Albania, and the courts of Tirana, Albania have exclusive jurisdiction,
+without prejudice to any mandatory consumer or author protection that applies to you.
 
 
 ## 13. How to accept
