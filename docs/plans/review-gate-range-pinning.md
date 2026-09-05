@@ -32,7 +32,8 @@ guards from being silently swept into this diff) · `tdd` (the guard is built re
 through `guard-cli-harness.mjs`, which spawns the CLI in a throwaway `git init` repo — the
 only layer where a false clean has ever actually lived) · `riviera-review-overlay` (review
 gate — runs at ready-for-review; RV-PROC items apply since this slice edits the SDLC skills
-themselves) · `riviera-docs-freshness` (**will run** over `origin/main...HEAD` at close-out —
+themselves) · `riviera-docs-freshness` (**ran** over the resolved range at the review gate — 1 finding, the
+CLAUDE.md by-hand-verifier count, patched into this PR; also ran at close-out —
 this slice changes what three `riviera-*` skills state about their own ranges, which is
 squarely in its substrate-doc map).
 
@@ -176,6 +177,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 |---|---|---|---|
 | F-1 | local guard (RV-STYLE-1) | Three multi-line inline comments in the new guard and its suite | fixed in phase 2 — one line each, prose already in the doc comments |
 | F-2 | review gate (RV-PROC-2c, self) | The fix stopped at §1. Close-out step 5's pre-merge smoke and `riviera-docs-freshness`' *When to run* bullet still named a bare `origin/main...HEAD` — the same unfetched ref, one section further down | fixed — both now resolve per §1 step 2 |
+| F-3 | docs-freshness counting sweep | `CLAUDE.md` named `check-comment-only.mjs` as *the* by-hand verifier; this slice makes it two. The file is not in the diff, which is exactly why the counting sweep exists | fixed — both named |
 
 ---
 
@@ -188,6 +190,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `.claude/skills/riviera-local-debug/SKILL.md` — new § *Git in a cloud session*: shallow clones, what they corrupt, the remedy
 - `.claude/skills/riviera-docs-freshness/SKILL.md` — its `origin/main...HEAD` input points at the resolve rule instead of restating it
 - `scripts/git-diff.mjs` — `mergeBase()`'s fail-open `catch` gains the note naming the shallow condition
+- `CLAUDE.md` — the CI/CD paragraph named one by-hand verifier; this slice makes it two (`riviera-docs-freshness` counting sweep)
 
 ---
 
