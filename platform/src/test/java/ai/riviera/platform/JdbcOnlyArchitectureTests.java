@@ -11,9 +11,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * stays on the classpath, and what reaching for its aggregate mapping would mean is
  * invariant #1's text to state, not this test's.
  *
- * <p>A fast, context-free guard (a sibling to {@link ModularityTests} — no Spring context,
- * no database, runs anywhere) that fails the build the moment a JPA or Hibernate type
- * becomes resolvable. It probes the marker types each vector would drag in: the JPA API
+ * <p>This is a fast, context-free guard (a sibling to {@link ModularityTests} — no Spring
+ * context, no database, runs anywhere) that fails the build the moment a JPA or Hibernate
+ * type becomes resolvable. It probes the marker types each vector would drag in: the JPA API
  * ({@code jakarta.persistence.*} — {@code @Entity}, {@code EntityManager}), the Hibernate
  * provider ({@code org.hibernate.*}), and Spring Boot's JPA auto-configuration (pulled in
  * by the JPA starter). Classes are loaded with initialization disabled so the probe has no
@@ -48,7 +48,7 @@ class JdbcOnlyArchitectureTests {
 		assertThrows(ClassNotFoundException.class,
 				() -> Class.forName(fqcn, false, LOADER),
 				() -> "Invariant #1 violated: '" + fqcn + "' is on the classpath. "
-						+ "spring-boot-starter-data-jpa / Hibernate must never be a dependency — write "
+						+ "spring-boot-starter-data-jpa / Hibernate must never be a dependency — use "
 						+ "hand-written JdbcClient SQL (CLAUDE.md #1).");
 	}
 }
