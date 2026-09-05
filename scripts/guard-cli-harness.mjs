@@ -73,11 +73,45 @@ export function createRepo() {
   /** git resolves symlinks in the temp path on some platforms, so ask it where the root really is. */
   const root = raw(['rev-parse', '--show-toplevel'], dir).trim();
 
+  let origin = null;
+
+  /**
+   * Creates the bare repository on first use and wires it as `origin`.
+   *
+   * **Outside the working tree, deliberately.** A bare repository under `root` would be an
+   * untracked directory inside the repository under test, and the plan-doc guard judges untracked
+   * paths — a fixture that changes what a guard reports is not a fixture.
+   */
+  const ensureOrigin = () => {
+    if (origin === null) {
+      origin = mkdtempSync(join(tmpdir(), 'riviera-guard-origin-'));
+      raw(['init', '--bare', '--quiet', origin], dir);
+      raw(['remote', 'add', 'origin', origin], root);
+    }
+    return origin;
+  };
+
   return {
     root,
 
     /** Runs git at the repository root and returns stdout, throwing on a non-zero exit. */
     git: (args) => raw(args, root),
+
+    /**
+     * Points `origin`'s `branch` at `sha`, in a real repository this one can fetch from.
+     *
+     * A filesystem path, not a URL: `git fetch` over one needs no network and no credentials, so a
+     * case can prove a guard *fetched* — which no amount of `update-ref` can show, because pointing
+     * the tracking ref by hand is exactly what a fetch is being asked to correct. Push updates the
+     * tracking ref too, so a case wanting a **stale** one sets it after publishing, never before.
+     */
+    publish: (branch, sha) => {
+      ensureOrigin();
+      raw(['push', '--quiet', '--force', 'origin', `${sha}:refs/heads/${branch}`], root);
+    },
+
+    /** Wires `origin` to a path that holds no repository, so a fetch fails rather than hangs. */
+    breakOrigin: () => raw(['remote', 'add', 'origin', join(dir, 'no-such-origin.git')], root),
 
     /** Sets a repository-local config value — the contributor-config regressions' input. */
     config: (key, value) => raw(['config', key, value], root),
@@ -118,7 +152,10 @@ export function createRepo() {
       return { status: result.status, stdout: result.stdout, stderr: result.stderr };
     },
 
-    dispose: () => rmSync(dir, { recursive: true, force: true }),
+    dispose: () => {
+      rmSync(dir, { recursive: true, force: true });
+      if (origin !== null) rmSync(origin, { recursive: true, force: true });
+    },
   };
 }
 

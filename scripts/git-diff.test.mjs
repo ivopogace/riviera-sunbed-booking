@@ -5,6 +5,7 @@ import {
   changedPaths,
   diffArgs,
   nameOnlyArgs,
+  fetchArgs,
   numstatArgs,
   parseAddedLines,
   statusArgs,
@@ -136,4 +137,20 @@ test('changedPaths splits git -z output and drops the trailing empty field', () 
   assert.deepEqual(changedPaths('a.ts\0docs/plans/p.md\0'), ['a.ts', 'docs/plans/p.md']);
   assert.deepEqual(changedPaths(''), []);
   assert.deepEqual(changedPaths('src/logo-\u{1F600}.png\0'), ['src/logo-\u{1F600}.png']);
+});
+
+/**
+ * The fetch a guard's base resolution runs before it trusts a tracking ref (issue #952).
+ *
+ * `--no-tags` is the pin, and it is the same one `ci.yml`'s explicit base-fetch step carries: a
+ * range needs one branch's tip, and dragging down every tag is work no guard asked for. Pinned
+ * here for the reason this suite exists at all — a flag set spelled at a call site is one no case
+ * can see a future edit remove.
+ */
+test('the fetch invocation pins the flags that keep it cheap and scoped', () => {
+  const args = fetchArgs('origin', 'main');
+
+  assert.equal(args[0], 'fetch');
+  assert.ok(args.includes('--no-tags'), 'must pin --no-tags');
+  assert.deepEqual(args.slice(-2), ['origin', 'main'], 'the remote and branch come last');
 });

@@ -20,7 +20,7 @@ import {
   changedPaths,
   diffArgs,
   git,
-  mergeBase,
+  resolveBase,
   parseAddedLines,
   readText,
   repoRoot,
@@ -324,7 +324,12 @@ function main(argv) {
   }
 
   if (mode === '--diff') {
-    const violations = check([mergeBase(argv[1] ?? 'origin/main')]);
+    const { base, error } = resolveBase(argv[1] ?? 'origin/main');
+    if (error) {
+      process.stderr.write(`${error}\n`);
+      return 2;
+    }
+    const violations = check([base]);
     if (violations.length === 0) return 0;
     process.stderr.write(`Multi-line inline comments added by this diff:\n${report(violations)}\n${ADVICE}\n`);
     return 1;

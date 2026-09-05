@@ -235,7 +235,13 @@ test('check-inline-comments --diff judges the working tree, not the last commit'
   });
 });
 
-/** `mergeBase` is what keeps a moved base from handing this diff everyone else's merged lines. */
+/**
+ * The merge base is what keeps a moved base from handing this diff everyone else's merged lines.
+ *
+ * The base moves on the **remote**, which is where it moves in life — `main` gains a commit while
+ * this branch is open. Since #952 that is also the only spelling a guard accepts, and the case is
+ * the stronger for it: pointing a local branch by hand never modelled the fetch that has to happen.
+ */
 test('check-inline-comments --diff reports only what this branch added, not what the base gained', () => {
   withRepo((repo) => {
     repo.write(TS, lines('const base = 0;'));
@@ -246,14 +252,15 @@ test('check-inline-comments --diff reports only what this branch added, not what
 
     repo.git(['checkout', '--quiet', 'main']);
     repo.write('frontend/src/app/venue/theirs.ts', lines('const theirs = 0;', ...TWO_LINE));
-    repo.commit('someone else, merged meanwhile');
+    const moved = repo.commit('someone else, merged meanwhile');
     repo.git(['checkout', '--quiet', 'feature']);
+    repo.publish('main', moved);
 
-    const result = repo.run(INLINE, ['--diff', 'main']);
+    const result = repo.run(INLINE, ['--diff', 'origin/main']);
 
     assert.equal(result.status, 0, result.stderr);
     assert.doesNotMatch(result.stderr, /theirs\.ts/);
-    assert.notEqual(forked, repo.git(['rev-parse', 'main']).trim());
+    assert.notEqual(forked, moved);
   });
 });
 
@@ -1026,10 +1033,11 @@ test('check-comment-only judges against the merge base, not a base that has move
 
     repo.git(['checkout', '--quiet', 'main']);
     repo.write(TS, lines('// the rate', 'const rate = 999;'));
-    repo.commit('someone else changes code, merged meanwhile');
+    const moved = repo.commit('someone else changes code, merged meanwhile');
     repo.git(['checkout', '--quiet', 'feature']);
+    repo.publish('main', moved);
 
-    const result = repo.run(COMMENT_ONLY, ['main']);
+    const result = repo.run(COMMENT_ONLY, ['origin/main']);
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /verified code-identical/);
@@ -1458,5 +1466,170 @@ test('check-review-range: a contributor status config cannot silence the dirty-t
 
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /WARNING: 5 uncommitted\/untracked path/);
+  });
+});
+
+/**
+ * Base resolution — issue #952.
+ *
+ * The five base-resolving guards used to default to a **local** `origin/main` and diff against
+ * whatever it happened to hold. In CI that cannot bite: the hygiene job checks out at
+ * `fetch-depth: 0` and fetches the base branch before any guard runs. Locally it is the whole
+ * exposure — a cloud session's clone is made once at container start and never refetched, so
+ * `origin/main` is frozen at that moment and every range resolved from it silently widens onto
+ * commits the branch never touched. `check-comment-only.mjs` is the sharpest case: neither a CI
+ * gate nor a registered hook, so a by-hand run is its only invocation.
+ *
+ * These cases spawn the guard against a repository whose `origin/main` is deliberately behind, and
+ * assert on what it does about it. `publish()` gives the repository a real `origin` on the
+ * filesystem, which is what lets a case distinguish "fetched and corrected itself" from "read a ref
+ * someone pointed by hand" — the two are indistinguishable from the tracking ref alone.
+ */
+
+/**
+ * `main` gains a file carrying a violation *after* this branch forked, so a range resolved from a
+ * stale `origin/main` reports that file and a correctly-resolved one does not.
+ *
+ * @returns {{ staleBase: string, realBase: string }} the fork points before and after the violation
+ */
+function movedBase(repo) {
+  repo.write(TS, lines('const base = 0;'));
+  const staleBase = repo.commit('seed');
+
+  repo.write('frontend/src/app/venue/theirs.ts', lines('const theirs = 0;', ...TWO_LINE));
+  const realBase = repo.commit('someone else, merged meanwhile');
+
+  repo.git(['checkout', '--quiet', '-b', 'feature']);
+  repo.write(TS, lines('const base = 0;', 'const mine = 1; // one line, so allowed'));
+  repo.commit('my compliant change');
+
+  return { staleBase, realBase };
+}
+
+/** Points `refs/remotes/origin/main` at `sha` by hand — the stale ref a fetch has to correct. */
+function trackStale(repo, sha) {
+  repo.git(['update-ref', 'refs/remotes/origin/main', sha]);
+}
+
+/**
+ * The whole point of the slice: the guard fetches the base branch itself, so a tracking ref left
+ * behind by a container-start clone corrects itself rather than widening the range.
+ *
+ * <p>Mutation: drop the fetch from `resolveBase()`. The range then starts at `staleBase`, picks up
+ * `theirs.ts`, and this exits 1 reporting another branch's comment as this branch's.
+ */
+test('check-inline-comments --diff fetches a stale base and reports only this branch', () => {
+  withRepo((repo) => {
+    const { staleBase, realBase } = movedBase(repo);
+    repo.publish('main', realBase);
+    trackStale(repo, staleBase);
+
+    const result = repo.run(INLINE, ['--diff', 'origin/main']);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stderr, /theirs\.ts/);
+    assert.equal(repo.git(['rev-parse', 'origin/main']).trim(), realBase, 'the guard must fetch');
+  });
+});
+
+/**
+ * Fail-open is what #952 exists to remove: a guard that cannot fetch cannot know its base, and
+ * "cannot know" must read as 2 (did not run), never as 0 (clean) or as a report.
+ *
+ * <p>Mutation: return the stale ref instead of an error when the fetch throws. This then exits 1
+ * on `theirs.ts` — a report about a file outside the branch's diff, which is AC-2's exact wording.
+ */
+test('check-inline-comments --diff refuses a base it could not fetch', () => {
+  withRepo((repo) => {
+    const { staleBase } = movedBase(repo);
+    repo.breakOrigin();
+    trackStale(repo, staleBase);
+
+    const result = repo.run(INLINE, ['--diff', 'origin/main']);
+
+    assert.equal(result.status, 2, result.stderr);
+    assert.match(result.stderr, /origin\/main/);
+    assert.doesNotMatch(result.stderr, /theirs\.ts/);
+  });
+});
+
+/**
+ * A fetch does not fix a shallow clone: `merge-base` still answers from the truncated graph, and it
+ * answers *wrongly and silently* rather than throwing, which is why the warning `mergeBase()` used
+ * to print never covered this. `check-review-range.mjs` already refuses here; so must the guards.
+ *
+ * <p>Mutation: move the shallow test below the fetch, or make it a warning. This then exits 0 or 1
+ * on a base git cannot be trusted to have resolved.
+ */
+test('check-inline-comments --diff refuses a shallow clone before it resolves anything', () => {
+  withRepo((repo) => {
+    const { realBase } = movedBase(repo);
+    repo.publish('main', realBase);
+    repo.write('.git/shallow', `${realBase}\n`);
+
+    const result = repo.run(INLINE, ['--diff', 'origin/main']);
+
+    assert.equal(result.status, 2, result.stderr);
+    assert.match(result.stderr, /shallow/i);
+    assert.match(result.stderr, /--unshallow/);
+  });
+});
+
+/**
+ * A bare local branch is a snapshot exactly as `origin/main` is — in a cloud session `main` is
+ * whatever the clone captured, and nothing advances it. Accepting it would leave AC-1's hole open
+ * under a different spelling, so it is refused with the two forms that can be trusted.
+ *
+ * <p>Mutation: fall through to `rev-parse` for any ref that resolves. This then exits 0 having
+ * diffed a ref no one fetched.
+ */
+test('check-inline-comments --diff refuses a local branch, naming both accepted forms', () => {
+  withRepo((repo) => {
+    movedBase(repo);
+
+    const result = repo.run(INLINE, ['--diff', 'main']);
+
+    assert.equal(result.status, 2, result.stderr);
+    assert.match(result.stderr, /<remote>\/<branch>/);
+    assert.match(result.stderr, /SHA/);
+  });
+});
+
+/**
+ * The offline form, and the reason the refusal above is not a lock-out: a SHA names one commit and
+ * cannot go stale, so it needs no remote at all.
+ *
+ * <p>Mutation: require a remote-tracking ref unconditionally. This then exits 2 and the guards
+ * become unusable without network.
+ */
+test('check-inline-comments --diff accepts a SHA base with no remote configured at all', () => {
+  withRepo((repo) => {
+    const { realBase } = movedBase(repo);
+
+    const result = repo.run(INLINE, ['--diff', realBase]);
+
+    assert.equal(result.status, 0, result.stderr);
+  });
+});
+
+/**
+ * PR #951's finding F-9, closed. `mergeBase()` caught a throwing `merge-base` and returned the base
+ * unchanged — so two histories with no common ancestor yielded a range spanning all of both.
+ *
+ * <p>Mutation: restore the `catch` that returns `base`. The range then starts at an unrelated root,
+ * `theirs.ts` arrives as an addition, and this exits 1.
+ */
+test('check-inline-comments --diff refuses unrelated histories rather than widening to the tip', () => {
+  withRepo((repo) => {
+    movedBase(repo);
+    repo.git(['checkout', '--quiet', '--orphan', 'unrelated']);
+    repo.write('unrelated.txt', 'no shared ancestor\n');
+    const alien = repo.commit('an unrelated root commit');
+    repo.git(['checkout', '--quiet', 'feature']);
+
+    const result = repo.run(INLINE, ['--diff', alien]);
+
+    assert.equal(result.status, 2, result.stderr);
+    assert.match(result.stderr, /ancestor/i);
   });
 });

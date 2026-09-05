@@ -196,30 +196,121 @@ export function untrackedPaths() {
 }
 
 /**
- * The merge base with `base`, or `base` itself when there is none.
+ * The fetch invocation `resolveBase` corrects a stale tracking ref with.
  *
- * Diffing a *commit* rather than a `a...b` range is what puts the **working tree** on the new side,
- * which is the side the guards read their file content from. With `…...HEAD` the two drift apart the
- * moment anything is uncommitted — including a guard's own `--fix` — and line numbers from one are
- * then applied to the other (PR #618).
- *
- * **The `catch` fails open, so it warns.** On a shallow clone `merge-base` exits non-zero and this
- * returns `base` unchanged, which widens the range — noisily for the guards (extra files arrive as
- * deletions), invisibly for a review range. So a review range must test `--is-shallow-repository`
- * itself and refuse rather than call this: `scripts/check-review-range.mjs` (issue #942).
+ * `--no-tags` is the pin, and it is the same one `ci.yml`'s explicit base-fetch step carries: a
+ * guard needs one branch's tip, and pulling every tag on a large remote is work no check asks for.
+ * A builder rather than flags spelled inline for the reason `untrackedArgs` gives — the
+ * flag-pinning case in `git-diff.test.mjs` reaches builders, and only builders.
  */
-export function mergeBase(base) {
+export function fetchArgs(remote, branch) {
+  return ['fetch', '--no-tags', '--quiet', remote, branch];
+}
+
+/** The two base spellings a range can be trusted to have been resolved from. */
+const ACCEPTED_FORMS =
+  'Pass `<remote>/<branch>` (fetched before use, e.g. `origin/main`) or a commit SHA (pinned, and ' +
+  'the form to use with no network).';
+
+/** Every configured remote, so a `<prefix>/<rest>` base can be told from a branch holding a slash. */
+function remotes() {
+  return git(['remote']).split('\n').filter(Boolean);
+}
+
+/** Resolves a ref to a commit SHA, or null when it does not exist. */
+function resolveCommit(ref) {
   try {
-    return git(['merge-base', base, 'HEAD']).trim();
+    return git(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]).trim();
   } catch {
-    if (git(['rev-parse', '--is-shallow-repository']).trim() === 'true') {
-      process.stderr.write(
-        `Cannot resolve a merge base with ${base} in a shallow clone, so the range falls back to ` +
-          `${base} itself and may report paths this branch never touched. ` +
-          'Run `git fetch --unshallow` and re-run (issue #942).\n',
-      );
+    return null;
+  }
+}
+
+/**
+ * Whether `ref` names a commit **by its hash** — hex-shaped, and resolving to a commit it prefixes.
+ *
+ * Both halves are load-bearing. Shape alone would accept a branch someone named `deadbeef`; the
+ * prefix test alone would accept any ref at all, since every ref resolves to some SHA.
+ */
+function namesACommitSha(ref) {
+  if (!/^[0-9a-f]{7,40}$/.test(ref.toLowerCase())) return false;
+  const resolved = resolveCommit(ref);
+  return resolved !== null && resolved.startsWith(ref.toLowerCase());
+}
+
+/**
+ * The merge base to diff a guard's range from — **fetched, or refused** (issue #952).
+ *
+ * Staleness is not observable from inside a clone, so this does not try to detect it: it removes
+ * the condition instead. A `<remote>/<branch>` base is fetched from that remote on every run, which
+ * makes the tracking ref current by construction; anything that cannot be made current is refused.
+ * The caller writes the error and exits 2 — "could not establish the range" has to read as *did not
+ * run*, never as clean, because a guard's silence is what authorises not looking.
+ *
+ * <p>**Shallow is refused first, and a fetch does not fix it.** `merge-base` on a truncated graph
+ * either throws or — worse — answers from what it has, a wrong base with no error and no warning.
+ * That silent case is why this replaced a `mergeBase()` whose warning only ever fired on the throw
+ * (PR #951 finding F-9), and why the fetch below cannot substitute for it.
+ *
+ * <p>**A bare local branch is refused too.** `main` in a session-old clone is a snapshot exactly as
+ * `origin/main` is, and nothing advances it; accepting it would leave the same hole under a
+ * different spelling. A SHA is the escape hatch, and the offline form.
+ *
+ * <p>**No common ancestor is refused rather than widened.** Falling back to the base tip — what
+ * `mergeBase()` did — hands the guard a range spanning two unrelated histories, and every file in
+ * it reads as this branch's addition.
+ *
+ * @param {string} ref the base as the caller spelled it
+ * @returns {{ base: string } | { error: string }} the merge-base commit, or why there is none to trust
+ */
+export function resolveBase(ref) {
+  if (git(['rev-parse', '--is-shallow-repository']).trim() === 'true') {
+    return {
+      error:
+        'This clone is shallow, so `git merge-base` answers from the truncated graph — a wrong ' +
+        'base, with no error and no warning, and a fetch does not repair it.\n' +
+        'Run `git fetch --unshallow` and re-run (issue #952).',
+    };
+  }
+
+  const slash = ref.indexOf('/');
+  const remote = slash === -1 ? null : ref.slice(0, slash);
+
+  if (remote !== null && remotes().includes(remote)) {
+    try {
+      git(fetchArgs(remote, ref.slice(slash + 1)));
+    } catch (cause) {
+      return {
+        error:
+          `Could not fetch ${ref.slice(slash + 1)} from ${remote}, so ${ref} still holds whatever ` +
+          'it did when this clone was made — and a range resolved from it silently widens onto ' +
+          `commits this branch never touched (issue #952).\n${ACCEPTED_FORMS}\n${cause}`,
+      };
     }
-    return base;
+  } else if (!namesACommitSha(ref)) {
+    return {
+      error:
+        `${ref} is not a base a range can be trusted to have been resolved from: it names no ` +
+        'configured remote, and it is not a commit SHA. A local branch is a snapshot of the ' +
+        'moment this clone was made, exactly as a tracking ref is.\n' +
+        ACCEPTED_FORMS,
+    };
+  }
+
+  const tip = resolveCommit(ref);
+  if (tip === null) {
+    return { error: `${ref} does not resolve to a commit here.\n${ACCEPTED_FORMS}` };
+  }
+
+  try {
+    return { base: git(['merge-base', tip, 'HEAD']).trim() };
+  } catch {
+    return {
+      error:
+        `${ref} shares no ancestor with HEAD, so there is no range between them. Widening to ` +
+        `${ref} itself — which is what this used to do — reports every file in both histories as ` +
+        'this branch\'s (PR #951 finding F-9).',
+    };
   }
 }
 

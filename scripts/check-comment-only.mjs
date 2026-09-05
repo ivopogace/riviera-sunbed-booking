@@ -18,7 +18,7 @@
 
 import { pathToFileURL } from 'node:url';
 
-import { changedPaths, git, mergeBase, nameOnlyArgs, readText } from './git-diff.mjs';
+import { changedPaths, git, nameOnlyArgs, readText, resolveBase } from './git-diff.mjs';
 
 /** Extensions whose comment syntax `strip` understands. Anything else is skipped, not assumed safe. */
 const SUPPORTED = new Set(['.java', '.ts', '.tsx', '.js', '.mjs', '.cjs', '.scss', '.css']);
@@ -247,8 +247,13 @@ export function check(from) {
 }
 
 function main(argv) {
-  const base = argv[0] ?? 'origin/main';
-  const { codeChanged, skipped, unreadable, verified } = check(mergeBase(base));
+  const ref = argv[0] ?? 'origin/main';
+  const { base, error } = resolveBase(ref);
+  if (error) {
+    process.stderr.write(`${error}\n`);
+    return 2;
+  }
+  const { codeChanged, skipped, unreadable, verified } = check(base);
 
   if (codeChanged.length > 0) {
     process.stderr.write(
@@ -267,7 +272,9 @@ function main(argv) {
     );
     return 1;
   }
-  process.stdout.write(`Comment-only: ${verified} file(s) verified code-identical against ${base}.\n`);
+  process.stdout.write(
+    `Comment-only: ${verified} file(s) verified code-identical against ${ref} (merge-base ${base}).\n`,
+  );
   if (skipped.length > 0) {
     process.stdout.write(`Skipped ${skipped.length} file(s) with unsupported comment syntax.\n`);
   }

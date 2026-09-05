@@ -172,16 +172,21 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `plan — written, awaiting phase 0`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** Phase 0 — write the four refusal cases in `guard-cli.test.mjs` against
-`check-inline-comments.mjs`, watch them fail, then add `resolveBase()` to `scripts/git-diff.mjs`.
+**Next action:** Phase 1 — lift phase 0's six cases into a per-guard table over all five guards,
+each row carrying its own fixture shape (AC-2's "a case per guard").
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `resolveBase()` and the first guard | | |
-| 1 — the remaining four guards, and the per-guard matrix | | |
+| 0 — `resolveBase()`, and all five guards wired | ✅ | |
+| 1 — the per-guard matrix | ⏳ | |
 | 2 — docs, usage strings, and close-out | | |
+
+**Phase 0 scope note.** The plan split the wiring across phases 0 and 1, which would have left
+phase 0's commit red: the four unwired guards import `mergeBase`, and deleting it breaks them at
+import time. Wiring all five is therefore one atomic step, and phase 1 is now the per-guard test
+matrix alone.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -288,6 +293,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-05 | phase 0 (#952) | Every script that resolves a diff range from a **ref** rather than a pinned SHA — the mechanism is a `merge-base` call, not a resemblance to a guard | `grep -rln "merge-base\|resolveBase" scripts/*.mjs \| grep -v test` | 7: the five guards, `check-review-range.mjs`, and `git-diff.mjs` itself | All five guards routed through `resolveBase()`; `check-review-range.mjs` already refuses on its own (#942) and stays as it is — Non-goal #1; `git-diff.mjs` is the chokepoint the fix lives in. `check-cloud-node-pin.mjs` is correctly absent: it resolves no range |
 
 ---
 

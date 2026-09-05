@@ -34,7 +34,7 @@ import {
   changedPaths,
   diffArgs,
   git,
-  mergeBase,
+  resolveBase,
   parseAddedLines,
   readText,
   repoRoot,
@@ -1091,7 +1091,12 @@ function main(argv) {
   }
 
   if (mode === '--diff') {
-    const violations = check([mergeBase(argv[1] ?? 'origin/main')]);
+    const { base, error } = resolveBase(argv[1] ?? 'origin/main');
+    if (error) {
+      process.stderr.write(`${error}\n`);
+      return 2;
+    }
+    const violations = check([base]);
     return settle(violations, 'Focus posture written by this diff');
   }
 
