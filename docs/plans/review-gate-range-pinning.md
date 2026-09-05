@@ -71,8 +71,8 @@ for `bugfix/review-gate-range-pinning` per `riviera-sdlc` § *Remote / cloud ses
       reads `riviera-local-debug`, then it finds that cloud clones start shallow, the named
       set of commands whose output that corrupts, and the `git fetch --unshallow` remedy.
       *Seam:* `riviera-local-debug/SKILL.md` § *Git in a cloud session* · *Pinned by:*
-      `check-review-range.test.mjs` `the shallow precondition names the unshallow remedy`
-      (the guard's own refusal message is the executable half; the prose is verified by
+      `guard-cli.test.mjs` `check-review-range refuses a shallow clone before resolving,
+      naming the remedy` (the guard's refusal is the executable half; the prose is verified by
       inspection at AC-verification below)
 
 ## Non-goals
@@ -85,8 +85,8 @@ for `bugfix/review-gate-range-pinning` per `riviera-sdlc` § *Remote / cloud ses
   SKILL + frontend-conventions, `CONTRIBUTING.md`). All five route through `mergeBase()`, so
   this slice makes the shared function *say* the condition out loud rather than leave it to
   be re-earned five times — but changing five guards' defaults is five behaviour changes in a
-  diff whose subject is the review gate. Recorded in the Generalization-audit log and routed
-  to a follow-up issue.
+  diff whose subject is the review gate. Recorded in the Generalization-audit log and
+  routed to **#952**.
 - **Not** wiring the new guard into CI as a required check. It needs a PR's reported counts,
   which are not available to a diff-scoped job, and it governs a *review activity* rather
   than diff content. It is a by-hand verifier, exactly as `check-comment-only.mjs` is
@@ -108,7 +108,7 @@ endpoint, or flow is retired.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | (closed in phase 1 — the gate resolves by merge-base against the fetched tip; `base.sha` is demoted to `--base-sha`) Pinning the range to the PR's `base.sha` (as issue #942 AC-1 literally suggests) breaks every PR that followed `riviera-sdlc`'s documented merge-from-main step: GitHub diffs against the base branch's current tip, so `base.sha` yields a **larger** range and the new AC-2 check would abort spuriously — turning the fix into a worse false alarm than the bug | high | high | Use `merge-base(freshly-fetched origin/<base.ref>, HEAD)`, which is what GitHub computes and what `ci.yml`'s base-fetch step already does for the same reason (PR #618). `base.sha` is used only as a reachability sanity check | this slice | phase 1 |
-| R-2 | `git merge-base` on a shallow clone silently returns the wrong answer, and `git-diff.mjs:168`'s `mergeBase()` swallows the failure with `catch { return base; }` — a fail-**open** that hands back the stale base | high | high | The guard refuses (exit 2) when `git rev-parse --is-shallow-repository` is true, before it resolves anything; `mergeBase()`'s fail-open gets a Javadoc note naming the condition | this slice | phase 0 + phase 2 — verified live: the guard exited 2 on this session's own clone until `git fetch --unshallow` |
+| R-2 | `git merge-base` on a shallow clone silently returns the wrong answer, and `git-diff.mjs`'s `mergeBase()` swallows the failure with `catch { return base; }` — a fail-**open** that hands back the stale base | high | high | The guard refuses (exit 2) when `git rev-parse --is-shallow-repository` is true, before it resolves anything; `mergeBase()`'s fail-open gets a Javadoc note naming the condition | this slice | phase 0 + phase 2 — verified live: the guard exited 2 on this session's own clone until `git fetch --unshallow` |
 | R-3 | The count comparison false-alarms on binary files (`--numstat` emits `-` for both columns) or on a >300-file PR | low | med | Binaries are excluded from the line totals on both sides and counted only as files; `changed_files` stays exact above 300 even though the *listed* files are capped. Both stated in the guard header and covered by a case | this slice | phase 0 — `parseNumstat` case pins it |
 | R-4 | The guard becomes a box the gate ticks without running, reproducing the very failure #942 describes | med | med | The gate's announcement must carry the resolved SHA **and** the matched counts, so a transcript with a bare announcement is visibly non-compliant | this slice | phase 1 — the announcement template names both, and says a bare one means the step did not run |
 
@@ -194,6 +194,11 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-12 | review gate | The docs-freshness pointer promised a scope check that cannot run for two of its three range shapes | fixed — *Inputs* says what applies to every shape and what is PR-only |
 | F-13 | review gate | `CLAUDE.md`'s "most also run as a local `PostToolUse` hook" — three of seven | fixed |
 | F-14 | review gate | The documented `[ … ] && git fetch --unshallow` exits 1 on a healthy clone, aborting the block under `set -e` | fixed — written as an `if` |
+| F-16 | re-review | AC-4's *Pinned by*, and the AC-1/2/3 verification commands, named a suite that no longer holds those cases — broken by this slice's own F-8 move; AC-1's command also omitted `--head-sha`, which F-5 made mandatory | fixed — all four re-pointed and re-run |
+| F-17 | re-review | `--head-sha` accepted a 1-character value and was case-sensitive, so a truncated or uppercase SHA could satisfy the guard's stated proof of content; `--base-sha` was documented as required but optional in code | fixed — both validated as ≥7 lowercase hex and required |
+| F-18 | re-review | `git status --porcelain` was the one fix-round git call not routed through a builder: `status.showUntrackedFiles=no` silenced the dirty-tree warning entirely, and an untracked directory counted as one path | fixed — `statusArgs()` pins `--untracked-files=all`, asserted in the flag-pinning case |
+| F-20 | re-review | Both the plan and the PR said the deferral was "routed to a follow-up issue" with no issue filed — and the plan doc is deleted at close-out, so the deferral would have vanished with it | fixed — filed as #952 |
+| F-19 | re-review | The plan overstated the `mergeBase()` mitigation: the warning fires only when `merge-base` throws, not when a shallow clone answers wrongly from the truncated graph | fixed — claim corrected |
 | F-15 | user | Substrate edits were carrying narrative that does not change what a session does — "is this helpful for the LLM?" Applying it cut the `mergeBase()` note 14 lines → 4, `pr-gates` §1 step 2 by 11, and the guard header by 15; it also surfaced a real bug, the documented block using `$BASE_REF` without ever setting it | fixed — kept only what a session acts on or an edit would undo |
 
 ---
@@ -209,7 +214,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `.claude/skills/riviera-local-debug/SKILL.md` — new § *Git in a cloud session*: shallow clones, what they corrupt, the remedy
 - `.claude/skills/riviera-docs-freshness/SKILL.md` — its `origin/main...HEAD` input points at the resolve rule instead of restating it
 - `scripts/git-diff.mjs` — `mergeBase()`'s fail-open `catch` gains the note naming the shallow condition
-- `CLAUDE.md` — the CI/CD paragraph named one by-hand verifier; this slice makes it two (`riviera-docs-freshness` counting sweep)
+- `CLAUDE.md` — the CI/CD paragraph named one by-hand verifier; this slice makes it two, and only five of the seven guards are CI-gated (`riviera-docs-freshness` counting sweep)
+- `README.md` — same sentence, un-carved: it said CI runs `scripts/check-*.mjs`, which is now two-sevenths false
 
 ---
 
@@ -223,7 +229,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
       → FAIL, `ERR_MODULE_NOT_FOUND`.
 - [x] **Step 3: Minimal implementation** — shallow refusal, base resolution, numstat totals,
       comparison, exit codes 0/1/2.
-- [x] **Step 4: Run it, verify it passes** — 9/9 pass; the whole `scripts/*.test.mjs` family is 232/232.
+- [x] **Step 4: Run it, verify it passes** — green; after the review round's F-8 move the guard's cases live in `guard-cli.test.mjs` and the family is 245/245.
 - [x] **Step 5: Generalization-audit pass** — population below.
 - [x] **Step 6: Commit** — `git commit -m "Add the review-gate range scope check (#942)"`
 - [x] **Step 7: Update plan-doc execution status** in the same commit window.
@@ -256,20 +262,26 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-09-05 | phase 0 (#942) | Every tool that resolves a diff/review range from a **local** `origin/main` ref without fetching it first | `grep -rn "origin/main" .claude/skills scripts .github/workflows CONTRIBUTING.md` | 4 gate-side prose sites (`pr-gates.md` ×2, `riviera-docs-freshness` ×2); 5 guard defaults (`check-comment-only:250`, `check-inline-comments:327`, `check-plan-file-structure:365`, `check-focus-posture:1094`, `check-touch-target:481`); 6 documented by-hand invocations; 1 shared chokepoint (`git-diff.mjs` `mergeBase()`) | Fixed the 4 gate-side sites (this slice's subject) and the chokepoint — `mergeBase()` now warns on the shallow condition, which reaches all 5 guard defaults at runtime since every one calls it. The 5 defaults and 6 invocations → follow-up issue |
+| 2026-09-05 | phase 0 (#942) | Every tool that resolves a diff/review range from a **local** `origin/main` ref without fetching it first | `grep -rn "origin/main" .claude/skills scripts .github/workflows CONTRIBUTING.md` | 4 gate-side prose sites (`pr-gates.md` ×2, `riviera-docs-freshness` ×2); 5 guard defaults (`check-comment-only:250`, `check-inline-comments:327`, `check-plan-file-structure:365`, `check-focus-posture:1094`, `check-touch-target:481`); 6 documented by-hand invocations; 1 shared chokepoint (`git-diff.mjs` `mergeBase()`) | Fixed the 4 gate-side sites (this slice's subject) and the chokepoint — `mergeBase()` now warns on the shallow condition — but only when `merge-base` actually throws; a shallow clone that answers from the truncated graph returns a wrong base silently, and nothing catches that, which is why a review range refuses instead of calling it. The 5 defaults and 6 invocations → **#952** |
 | 2026-09-05 | review round (#942) | Sentences that **count** guards or suites — the class PR #618's F-5 and this slice's own F-3 both landed in | `grep -rn "check-\*\.mjs\|by-hand verifier\|spawns each guard" CLAUDE.md CONTRIBUTING.md .github/workflows .claude/skills scripts` | `CLAUDE.md:63` (two claims: the by-hand verifier, and "most also run as a hook" — 3 of 7); `ci.yml:219` ("one that spawns each guard's CLI"); `guard-cli.test.mjs:2` | `CLAUDE.md` corrected on both clauses. `ci.yml:219` and `guard-cli.test.mjs:2` needed no edit once the CLI cases moved into `guard-cli.test.mjs` — the structure was made to match the sentence rather than the sentence patched, which is what #619 established |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Inspect `pr-gates.md` §1 step 2 → announcement template contains the resolved
-      SHA. Run `node scripts/check-review-range.mjs --base-ref main --files N --additions A
-      --deletions D` on this PR → prints the resolved base.
-- [ ] **AC-2:** `node --test scripts/check-review-range.test.mjs` → the mismatch case passes.
-- [ ] **AC-3:** Same suite → the #939 reproduction case passes.
-- [ ] **AC-4:** `grep -n "unshallow" .claude/skills/riviera-local-debug/SKILL.md` → the caveat
-      and the named command set are present.
+Read the PR's `base.ref`, `base.sha`, `head.sha` and counts first; every flag is required.
+
+- [x] **AC-1:** `node scripts/check-review-range.mjs --base-ref main --base-sha <base.sha>
+      --head-sha <head.sha> --files <n> --additions <a> --deletions <d>` → prints the resolved
+      base SHA; and `pr-gates.md` §1 step 2's announcement template carries it. Verified on this
+      PR at each push.
+- [x] **AC-2:** `node --test scripts/guard-cli.test.mjs` → `check-review-range exits 1 on a
+      count mismatch and names both sides` passes.
+- [x] **AC-3:** Same suite → `check-review-range reproduces #939: a stale origin/main is
+      caught, then self-corrects` passes.
+- [x] **AC-4:** `grep -n "unshallow" .claude/skills/riviera-local-debug/SKILL.md` → the caveat
+      and the command table are present; the executable half is `check-review-range refuses a
+      shallow clone before resolving, naming the remedy` in `guard-cli.test.mjs`.
 
 ## Self-review checklist (before merge / PR)
 

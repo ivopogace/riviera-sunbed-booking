@@ -39,7 +39,9 @@ done until this gate has run and its findings are resolved or explicitly deferre
    base-fetch step carries the same correction, PR #618.)
 
    **Exit 0 or do not dispatch.** 1 = the scope disagrees (usually a stale base: re-fetch, re-run);
-   2 = a precondition failed.
+   2 = a precondition failed. A `WARNING` on an otherwise-passing run means the working tree holds
+   uncommitted or untracked paths: the range is commit-to-commit but the reviewers read the tree,
+   so commit or stash them before dispatching.
 
    **Then run it.** Start `/code-review` over the resolved range via the invocation ladder below,
    and load `riviera-review-overlay` so the project bank items (RV-BE-*/RV-FE-*/RV-CT-*, RV-PROC-*)

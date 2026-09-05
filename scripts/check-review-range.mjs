@@ -11,6 +11,8 @@
  *   node scripts/check-review-range.mjs --base-ref <ref> --head-sha <sha> --base-sha <sha>
  *                                       --files <n> --additions <n> --deletions <n>
  *
+ * Every flag is required: a check whose input is optional is a check that silently does not run.
+ *
  * Exit codes: 0 verified · 1 the scope disagrees with the PR · 2 a precondition failed (shallow
  * clone, unknown base ref, HEAD is not the PR head, missing/malformed counts, an empty range, a
  * failed git call). **In every non-zero case the gate must not dispatch.**
@@ -37,7 +39,7 @@
 
 import { pathToFileURL } from 'node:url';
 
-import { git, numstatArgs } from './git-diff.mjs';
+import { git, numstatArgs, statusArgs } from './git-diff.mjs';
 
 /** The dimensions compared, in the order a mismatch report reads best. */
 const DIMENSIONS = ['files', 'additions', 'deletions'];
@@ -115,13 +117,30 @@ function verify(options) {
     return { code: 2, error: "--base-ref is required (the PR's base.ref — do not assume `main`)." };
   }
 
-  const headSha = options['head-sha'];
-  if (!headSha) {
+  // A SHA is hex and case-insensitive; a truncated or garbled one must not satisfy a proof.
+  const sha = (name) => {
+    const raw = (options[name] ?? '').trim().toLowerCase();
+    return /^[0-9a-f]{7,40}$/.test(raw) ? raw : null;
+  };
+
+  const headSha = sha('head-sha');
+  if (headSha === null) {
     return {
       code: 2,
       error:
-        "--head-sha is required (the PR's head.sha). Counts prove the range's size; only this " +
-        'proves it is the same content.',
+        `--head-sha must be at least 7 hex characters (the PR's head.sha); got ` +
+        `'${options['head-sha'] ?? ''}'. Counts prove the range's size; only this proves it is ` +
+        'the same content.',
+    };
+  }
+
+  const baseSha = sha('base-sha');
+  if (baseSha === null) {
+    return {
+      code: 2,
+      error:
+        `--base-sha must be at least 7 hex characters (the PR's base.sha); got ` +
+        `'${options['base-sha'] ?? ''}'. It is what proves this clone holds the PR's history.`,
     };
   }
 
@@ -169,8 +188,7 @@ function verify(options) {
     };
   }
 
-  const baseSha = options['base-sha'];
-  if (baseSha !== undefined && resolve(baseSha) === null) {
+  if (resolve(baseSha) === null) {
     return {
       code: 2,
       error:
@@ -180,7 +198,7 @@ function verify(options) {
   }
 
   const head = git(['rev-parse', 'HEAD']).trim();
-  if (!head.startsWith(headSha) && !headSha.startsWith(head)) {
+  if (!head.startsWith(headSha)) {
     return {
       code: 2,
       error:
@@ -220,7 +238,7 @@ function verify(options) {
 
   const binary = local.binary > 0 ? `, ${local.binary} binary` : '';
   // Reviewers read file CONTENT from the working tree, which a commit-to-commit range never saw.
-  const dirty = git(['status', '--porcelain']).trim();
+  const dirty = git(statusArgs()).trim();
   const warning = dirty
     ? `\n  WARNING: ${dirty.split('\n').length} uncommitted/untracked path(s). The range is ` +
       'commit-to-commit, but the review reads the working tree — commit or stash them first.'
@@ -230,7 +248,7 @@ function verify(options) {
     out:
       `Review range verified: ${base}...HEAD\n` +
       `  base: origin/${baseRef} @ ${tip}, merge-base ${base}\n` +
-      `  head: ${head} (matches the PR's head.sha)\n` +
+      `  head: ${head} (matches the PR's head.sha; base.sha ${baseSha} is present)\n` +
       `  scope: ${local.files} files, +${local.additions} -${local.deletions}${binary} — matches PR` +
       warning,
   };

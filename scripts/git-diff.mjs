@@ -146,6 +146,19 @@ export function changedPaths(raw) {
 }
 
 /**
+ * The porcelain status invocation, for a caller asking whether the working tree holds anything a
+ * commit-to-commit range never saw.
+ *
+ * `--untracked-files=all` is the pin, and it covers two under-reports of the same thing:
+ * `status.showUntrackedFiles=no` is a contributor setting that silences untracked paths entirely,
+ * and by default an untracked *directory* collapses to one entry however many files it holds. Both
+ * hide exactly the content a range cannot certify but a reader will read (issue #942).
+ */
+export function statusArgs(...rest) {
+  return ['status', '--porcelain', '--untracked-files=all', ...rest];
+}
+
+/**
  * Every file the working tree holds that git has never been told about.
  *
  * A diff cannot report one: `git diff` compares an index or a commit against the tree, and an
