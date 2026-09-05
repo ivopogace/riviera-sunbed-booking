@@ -62,8 +62,9 @@ Closes #<!-- issue --> · Plan: `docs/plans/<slug>.md`
 
 ## Contribution terms
 
-- [ ] I accept `LICENSE` §5: everything in this PR is assigned to the owner on submission,
-  I retain no rights in it, and any third-party material is identified with its license.
+- [ ] I accept `LICENSE` §5 and `CLA.md`: everything in this PR is assigned to the owner on
+  submission, I retain no rights in it, and any third-party material is identified with its
+  license. <!-- First PR? Post the acceptance comment from CLA.md §13 on this PR. -->
 
 ## Scope notes
 
