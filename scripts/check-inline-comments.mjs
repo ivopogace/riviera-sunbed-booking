@@ -370,13 +370,44 @@ export function checkPaths(paths) {
   return violations.sort((a, b) => a.path.localeCompare(b.path) || a.line - b.line);
 }
 
-const ADVICE =
-  'RV-STYLE-1: an inline comment is one line, or it is not written. Shorten it, delete it, or ' +
-  'move the prose to a doc comment (Javadoc/TSDoc), which is exempt. See ' +
-  'riviera-java-conventions §6c.';
+const TEST = 'Keep a line of prose only if a fresh session reading it would act differently.';
+
+const ADVICE = {
+  multiline:
+    'RV-STYLE-1: an inline comment is one line, or it is not written. Shorten it, delete it, or ' +
+    'move the contract to a doc comment (Javadoc/TSDoc). See riviera-java-conventions §6c.',
+  provenance:
+    `RV-STYLE-1: ${TEST} An issue or PR number is provenance — git blame's job — so drop it; ` +
+    'relocate load-bearing rationale to RESPONSIBILITIES.md or an ADR and leave a one-line ' +
+    'pointer. A touched doc comment is judged whole. See riviera-java-conventions §6c.',
+  history:
+    `RV-STYLE-1 (advisory): ${TEST} "no longer", "previously", "used to be" narrate a change ` +
+    'the reader never saw: state the contract as it stands, or drop the line. See ' +
+    'riviera-java-conventions §6c.',
+};
 
 function report(violations) {
-  return violations.map((v) => `  ${v.path}:${v.line}-${v.endLine}  ${v.text}`).join('\n');
+  return violations.map((v) => `  ${v.path}:${v.line}-${v.endLine}  ${v.rule}  ${v.text}`).join('\n');
+}
+
+function advise(violations) {
+  return [...new Set(violations.map((v) => v.rule))].map((rule) => ADVICE[rule]).join('\n');
+}
+
+/**
+ * Prints the findings and answers the exit code: 1 when any gating rule fired, else 0. An
+ * advisory finding still reaches stdout — a rule nobody sees is a rule nobody follows — but it
+ * never fails the run.
+ */
+export function settle(violations, headline, out = process.stdout, err = process.stderr) {
+  const gating = violations.filter((v) => GATING.has(v.rule));
+  const advisory = violations.filter((v) => !GATING.has(v.rule));
+  if (advisory.length > 0) {
+    out.write(`${headline} — advisory, not gating:\n${report(advisory)}\n${advise(advisory)}\n`);
+  }
+  if (gating.length === 0) return 0;
+  err.write(`${headline}:\n${report(gating)}\n${advise(gating)}\n`);
+  return 1;
 }
 
 /** git runs from the repository root, so a pathspec has to be expressed from there too. */
@@ -397,7 +428,7 @@ function main(argv) {
       JSON.stringify({
         hookSpecificOutput: {
           hookEventName: 'PostToolUse',
-          additionalContext: `Multi-line inline comment written by this edit:\n${report(violations)}\n${ADVICE}`,
+          additionalContext: `Comment or skill prose written by this edit:\n${report(violations)}\n${advise(violations)}`,
         },
       }),
     );
@@ -405,10 +436,7 @@ function main(argv) {
   }
 
   if (mode === '--files') {
-    const violations = checkPaths(argv.slice(1).map(toRepoRelative));
-    if (violations.length === 0) return 0;
-    process.stderr.write(`Multi-line inline comments:\n${report(violations)}\n${ADVICE}\n`);
-    return 1;
+    return settle(checkPaths(argv.slice(1).map(toRepoRelative)), 'Comments and skill prose');
   }
 
   if (mode === '--diff') {
@@ -417,10 +445,7 @@ function main(argv) {
       process.stderr.write(`${error}\n`);
       return 2;
     }
-    const violations = check([base]);
-    if (violations.length === 0) return 0;
-    process.stderr.write(`Multi-line inline comments added by this diff:\n${report(violations)}\n${ADVICE}\n`);
-    return 1;
+    return settle(check([base]), 'Comments and skill prose this diff touched');
   }
 
   process.stderr.write('usage: check-inline-comments.mjs (--diff <base> | --files <path…> | --hook)\n');

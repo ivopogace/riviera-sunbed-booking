@@ -339,6 +339,64 @@ test('check-inline-comments --hook answers a PostToolUse payload with advisory J
   });
 });
 
+/** A TSDoc block whose third line cites a PR — the tell sits on a line the diff will not touch. */
+const TSDOC_WITH_PROVENANCE = [
+  '/**',
+  ' * Splices the rate write response back into the list this component holds.',
+  ' * The PUT answers the same object shape as a list element (PR #521).',
+  ' */',
+  'export function apply() {}',
+];
+
+test('check-inline-comments --diff gates on provenance in a touched doc comment', () => {
+  withRepo((repo) => {
+    repo.write(TS, lines(...TSDOC_WITH_PROVENANCE));
+    const before = repo.commit('base');
+    const touched = [...TSDOC_WITH_PROVENANCE];
+    touched[1] = ' * Splices the rate write response back into the list.';
+    repo.write(TS, lines(...touched));
+    repo.commit('reword one line of the doc comment');
+
+    const result = repo.run(INLINE, ['--diff', before]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /pricing-tab\.ts:3-3 {2}provenance/);
+    assert.match(result.stderr, /fresh session/);
+    assert.equal(result.stdout, '');
+  });
+});
+
+test('check-inline-comments --diff only advises on a history phrase', () => {
+  withRepo((repo) => {
+    repo.write(TS, lines('const base = 0;'));
+    const before = repo.commit('base');
+    repo.write(TS, lines('const base = 0;', '/** The list this component holds; it no longer re-reads. */', 'export const x = 1;'));
+    repo.commit('add a narrating doc comment');
+
+    const result = repo.run(INLINE, ['--diff', before]);
+
+    assert.equal(result.status, 0);
+    assert.equal(result.stderr, '');
+    assert.match(result.stdout, /advisory/);
+    assert.match(result.stdout, /pricing-tab\.ts:2-2 {2}history/);
+  });
+});
+
+test('check-inline-comments --hook reports a provenance tell with the keep/drop test', () => {
+  withRepo((repo) => {
+    repo.write('README.md', lines('# Riviera'));
+    repo.commit('base');
+    repo.write(TS, lines(...TSDOC_WITH_PROVENANCE));
+
+    const result = repo.run(INLINE, ['--hook'], { stdin: hookPayload(TS) });
+
+    assert.equal(result.status, 0);
+    const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+    assert.match(context, /pricing-tab\.ts:3-3 {2}provenance/);
+    assert.match(context, /fresh session/);
+  });
+});
+
 test('check-inline-comments --hook stays silent about a file it does not check', () => {
   withRepo((repo) => {
     repo.write('docs/plans/whatever.md', lines('<!-- two', '     lines -->'));

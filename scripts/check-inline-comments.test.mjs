@@ -335,3 +335,58 @@ test('never reads an untouched doc comment', () => {
 
   assert.deepEqual(violations, []);
 });
+
+test('flags a provenance tell in an added skill line, not inside a fence or a code span', () => {
+  const lines = [
+    '# Riviera local debug',
+    '',
+    'The guards fetch their base themselves since #952, so `--diff origin/main` is correct as typed.',
+    '',
+    '```css',
+    'background: #333;',
+    '```',
+    '',
+    'A colour token is written as `#333` in a span.',
+  ];
+  const violations = findViolations({
+    path: '.claude/skills/riviera-local-debug/SKILL.md',
+    lines,
+    added: new Set(lines.map((_, i) => i + 1)),
+  });
+
+  assert.deepEqual(
+    violations.map(({ line, rule }) => ({ line, rule })),
+    [{ line: 3, rule: 'provenance' }],
+  );
+});
+
+test('markdown outside SKILL.md and references/ is out of scope', () => {
+  const lines = ['- #134: "Dark theme option"'];
+  const added = new Set([1]);
+
+  assert.deepEqual(findViolations({ path: '.claude/skills/triage/OUT-OF-SCOPE.md', lines, added }), []);
+  assert.deepEqual(findViolations({ path: 'docs/adr/0001-record-architecture-decisions.md', lines, added }), []);
+  assert.notDeepEqual(
+    findViolations({ path: '.claude/skills/riviera-modulith/references/events.md', lines, added }),
+    [],
+  );
+});
+
+test('reports history phrasing under its own rule, so the CLI can advise rather than gate', () => {
+  const lines = [
+    '/**',
+    ' * Resolves the base by fetching it. It no longer trusts a session-old tracking ref.',
+    ' */',
+    'export function resolveBase(ref) {}',
+  ];
+  const violations = findViolations({
+    path: 'scripts/git-diff.mjs',
+    lines,
+    added: new Set([2]),
+  });
+
+  assert.deepEqual(
+    violations.map(({ line, rule }) => ({ line, rule })),
+    [{ line: 2, rule: 'history' }],
+  );
+});
