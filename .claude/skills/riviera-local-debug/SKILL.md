@@ -79,7 +79,7 @@ Run the smallest set that proves the change; never the bare `test` task in a clo
 are slow on the vfs storage driver):
 
 ```bash
-# the structural net (fast, context-free — run after any backend structure change)
+# the structural net — run after any backend structure change; membership rule + members: CLAUDE.md §Commands
 gradle --no-daemon --console=plain test \
   --tests "*ModularityTests*" --tests "*JdbcOnlyArchitectureTests*" \
   --tests "*PackageShapeArchitectureTests*" --tests "*DomainPurityArchitectureTests*" \

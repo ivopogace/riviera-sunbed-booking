@@ -1030,7 +1030,8 @@ the mechanism and the edge cases. The numbering is `CLAUDE.md`'s and never chang
 The boundaries above split into a **structural** half the build enforces as fitness
 functions, and a **semantic** half no import rule can see. **A green architecture-test
 run must never be read as "boundaries fully enforced"** — the tests are necessary, not
-sufficient.
+sufficient. Which of them form the *structural net* — the subset run after any structure change
+— is decided by the membership rule beside the command in `CLAUDE.md` § *Commands*, not here.
 
 **Machine-checked** (fails the build; all under
 `platform/src/test/java/ai/riviera/platform/`):
