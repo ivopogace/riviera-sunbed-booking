@@ -27,6 +27,7 @@ import ai.riviera.platform.payment.vocabulary.RefundProgress;
 import ai.riviera.platform.review.vocabulary.OwnReview;
 import ai.riviera.platform.review.vocabulary.ReviewPanel;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
+import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -540,7 +541,7 @@ class ViewBookingServiceTest {
 	}
 
 	private static SetBookingInfo setInfo() {
-		return new SetBookingInfo(SET, VENUE, "Miramar", "Front row", 2, "ONLINE",
+		return new SetBookingInfo(SET, VENUE, "Miramar", "Front row", 2, Pool.ONLINE,
 				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
 				BookingMode.INSTANT);
 	}

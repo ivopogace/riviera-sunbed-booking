@@ -198,15 +198,15 @@ request DTO still accepts the same strings.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** phase 1 — red at `CreateBookingServiceTest` (fake `poolForClaim` returns `Optional<Pool>`), then retype the published surfaces.
+**Next action:** phase 2 — red at `PoolTokenArchitectureTest.flagsAStrayPoolLiteral` against the fixture, then the `StringEntry` scan; then the docs edits.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `Pool` published; `SetCommand` typed, V16's pool half deleted; edge conversion | ✅ | 56578d80 |
-| 1 — published surfaces carry `Pool`; both consumers compare against it; the two constants deleted | ⏳ | |
-| 2 — `PoolTokenArchitectureTest` + fixture; docs freshness | | |
+| 1 — published surfaces carry `Pool`; both consumers compare against it; the two constants deleted | ✅ | 3b084c83 |
+| 2 — `PoolTokenArchitectureTest` + fixture; docs freshness | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

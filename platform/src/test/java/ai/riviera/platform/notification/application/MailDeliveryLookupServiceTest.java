@@ -15,6 +15,7 @@ import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
+import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -148,7 +149,7 @@ class MailDeliveryLookupServiceTest {
 
 	private void givenTheVenueIsNamed(String venueName) {
 		when(sets.setBookingInfo(SET)).thenReturn(Optional.of(
-				new SetBookingInfo(SET, new VenueId(3L), venueName, "A", 3, "ONLINE",
+				new SetBookingInfo(SET, new VenueId(3L), venueName, "A", 3, Pool.ONLINE,
 						new MoneyView(4500, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
 						BookingMode.INSTANT)));
 	}

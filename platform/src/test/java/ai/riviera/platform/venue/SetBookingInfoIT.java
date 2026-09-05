@@ -15,6 +15,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
+import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.api.VenueRates;
@@ -60,7 +61,7 @@ class SetBookingInfoIT {
 
 		assertTrue(info.isPresent(), "a seeded online set must resolve booking info");
 		SetBookingInfo i = info.get();
-		assertEquals("ONLINE", i.pool());
+		assertEquals(Pool.ONLINE, i.pool());
 		assertEquals("EUR", i.price().currency());
 		assertEquals(4500L, i.price().minorUnits(), "front-row premium price is €45.00 minor units");
 		assertEquals(LocalTime.of(18, 0), i.bookingCutoff(), "Miramar cutoff is 18:00 Europe/Tirane");

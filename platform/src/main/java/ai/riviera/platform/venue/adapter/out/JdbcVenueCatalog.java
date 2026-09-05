@@ -26,6 +26,7 @@ import ai.riviera.platform.operator.api.VenueVisibility;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.application.PhotoServingUrls;
 import ai.riviera.platform.venue.vocabulary.Amenity;
+import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.AvailabilitySummary;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
@@ -136,7 +137,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 				.param("id", id.value())
 				.query((rs, rowNum) -> new SetRow(
 						rs.getLong("id"), rs.getString("row_label"), rs.getInt("position_no"),
-						rs.getString("tier"), rs.getString("pool"),
+						rs.getString("tier"), Pool.valueOf(rs.getString("pool")),
 						new MoneyView(rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)),
 						rs.getInt("grid_x"), rs.getInt("grid_y")))
 				.list();
@@ -388,12 +389,13 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	}
 
 	@Override
-	public Optional<String> poolForClaim(SetId setId) {
+	public Optional<Pool> poolForClaim(SetId setId) {
 		// FOR KEY SHARE: the lock the claim's own INSERT needs anyway, taken early (invariant #3).
 		return jdbc.sql("SELECT pool FROM set_position WHERE id = :id FOR KEY SHARE")
 				.param("id", setId.value())
 				.query(String.class)
-				.optional();
+				.optional()
+				.map(Pool::valueOf);
 	}
 
 	/** The set-facts row shared by the single-id and batch reads — one SQL shape, one mapper. */
@@ -430,7 +432,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 		return new SetBookingInfo(
 				new SetId(rs.getLong("set_id")), new VenueId(rs.getLong(COL_VENUE_ID)),
 				rs.getString("venue_name"), rs.getString("row_label"),
-				rs.getInt("position_no"), rs.getString("pool"),
+				rs.getInt("position_no"), Pool.valueOf(rs.getString("pool")),
 				new MoneyView(rs.getLong(COL_PRICE_MINOR), rs.getString(COL_PRICE_CURRENCY)),
 				rs.getObject("booking_cutoff", java.time.LocalTime.class),
 				rs.getObject(COL_SALES_CLOSE, java.time.LocalTime.class),
@@ -443,7 +445,7 @@ class JdbcVenueCatalog implements VenueCatalog, SetBookingFacts, VenueRates {
 	}
 
 	/** The static set-position layout, before availability is overlaid for the chosen date. */
-	private record SetRow(long id, String rowLabel, int positionNo, String tier, String pool,
+	private record SetRow(long id, String rowLabel, int positionNo, String tier, Pool pool,
 			MoneyView price, int gridX, int gridY) {
 	}
 

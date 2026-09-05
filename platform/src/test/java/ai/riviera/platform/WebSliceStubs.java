@@ -132,6 +132,7 @@ import ai.riviera.platform.venue.application.VenuePhotos;
 import ai.riviera.platform.venue.application.ViewDailyAvailability;
 import ai.riviera.platform.venue.application.ViewVenueProfile;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
+import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
@@ -740,7 +741,7 @@ class WebSliceStubs {
 	SetBookingFacts setBookingFacts() {
 		return new SetBookingFacts() {
 			@Override
-			public Optional<String> poolForClaim(SetId setId) {
+			public Optional<Pool> poolForClaim(SetId setId) {
 				return Optional.empty();
 			}
 
