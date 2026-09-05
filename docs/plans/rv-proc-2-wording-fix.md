@@ -96,14 +96,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** PR — draft open, CI pending
+**Stage pointer:** DONE — merged via PR #958
 
-**Next action:** mark ready for review once CI is green; run the review gate per
-`riviera-sdlc` `references/pr-gates.md` §1.
+**Next action:** none; this plan is deleted at the next close-out after PR #958 merges.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — reword checks b and c, replay #939 | ✅ | first commit on the branch |
+| 0 — reword checks b and c, replay #939 | ✅ | 959f625c |
+| 1 — review-gate fixes, close-out | ✅ | 63298397, the close-out commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -111,6 +111,16 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (100) | plan doc cited PR #956 for the retired plan; the PR is #957 | fixed-in-63298397 |
+| F-2 | review (100) | stage pointer said "draft open" after the PR was ready for review | fixed in the close-out commit |
+| F-3 | review (75) | AC-4 named no seam | fixed-in-63298397 |
+| F-4 | review (75) | "one of those five tests" vs the trigger's `*ArchitectureTests` glob (two more classes match) | deferred → issue #945 (net membership) |
+| F-5 | review (50) | Non-goals "command clause of check b" read as the two-command block | fixed-in-63298397 |
+| F-6 | review (50) | check a has a Minor tier, check c has none | rejected — different subjects: a broken pointer vs a retired name; out of #941's scope |
+| F-7 | review (25) | ACs name no test class | rejected — prose deliverable, the replay is the test |
+| F-8 | review (0) | check c's "falsified" test exceeds step 2a's literal sentence | rejected — it is AC-2 of #941; a retired name makes the two agree |
+| F-9 | review (0) | "a research note" can never be a step-2a hit | pre-existing, untouched |
+| S-1 | sonar | quality gate passed, 0 issues, no new-lines measure (prose only) | clear |
 
 ---
 
@@ -148,7 +158,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1..AC-4:** the replay transcript in the PR body, run at the first commit.
+- [x] **AC-1..AC-4:** the replay transcript in the PR body, run at 959f625c.
 
 ## Self-review checklist (before merge / PR)
 
@@ -157,5 +167,5 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] Invariants #1–#13: N/A, docs-only.
 - [x] Execution status at HEAD matches reality.
 - [x] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR** — final state committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] **Close-out written in THIS PR** — final state committed here, citing `merged via PR #958`.
+- [x] **The review gate ran in full** — rung 1 (`code-review:code-review`, five reviewers + scorer) *plus* `riviera-review-overlay`; outcome in a comment on PR #958.
