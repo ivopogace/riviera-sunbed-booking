@@ -55,23 +55,23 @@ names the cancellation window; vocabulary unchanged, no ADR — reversible and u
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a booking in any of the nine statuses whose cancellation window is open, when
+- [x] **AC-1:** Given a booking in any of the nine statuses whose cancellation window is open, when
   it is viewed by code, then `cancellable` is `true` for `CONFIRMED` and `false` for every other
   status. *Seam:* `booking.application.view.ViewBooking#byCode` · *Pinned by:*
   `ViewBookingServiceTest.onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen`
-- [ ] **AC-2:** Given a `NO_SHOW` or `COMPLETED` booking, when the guest cancels, then the outcome is
+- [x] **AC-2:** Given a `NO_SHOW` or `COMPLETED` booking, when the guest cancels, then the outcome is
   `WindowClosed`, no refund is quoted, nothing transitions, no set is released and no event is
   published. *Seam:* `booking.application.cancel.CancelBooking#cancel` · *Pinned by:*
   `CancelBookingServiceTest.aSpentDayAnswersWindowClosedWhicheverTerminalStatusItCarries`
-- [ ] **AC-3:** Given a booking in any status other than `CONFIRMED`, `NO_SHOW` or `COMPLETED`, when
+- [x] **AC-3:** Given a booking in any status other than `CONFIRMED`, `NO_SHOW` or `COMPLETED`, when
   the guest cancels, then the outcome is `NotCancellable` carrying that status, nothing transitions
   and nothing is published. *Seam:* `CancelBooking#cancel` · *Pinned by:*
   `CancelBookingServiceTest.everyOtherStatusIsNotCancellable`
-- [ ] **AC-4:** Given a `CONFIRMED` booking inside its cancellation window, when the guest cancels,
+- [x] **AC-4:** Given a `CONFIRMED` booking inside its cancellation window, when the guest cancels,
   then the outcome is `Cancelled`, the set is released and `BookingCancelled` is published with the
   quoted refund. *Seam:* `CancelBooking#cancel` · *Pinned by:*
   `CancelBookingServiceTest.aConfirmedBookingInsideTheWindowIsCancelled`
-- [ ] **AC-5:** Given the change, when `BookingTransitionTest` and the structural net run, then they
+- [x] **AC-5:** Given the change, when `BookingTransitionTest` and the structural net run, then they
   are green — the `CANCEL_BY_GUEST` row still admits exactly `{CONFIRMED}` and no package shape
   moved. *Seam:* `BookingTransition.CANCEL_BY_GUEST.admittedFrom()` and `ApplicationModules.verify()`
   · *Pinned by:* `BookingTransitionTest.onlyTheWeatherRefundActsOnANoShow`, `ModularityTests`
@@ -105,11 +105,11 @@ The inline `== CONFIRMED` statements are replaced by a table read; their observa
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The refactor widens the guest cancel (e.g. `NO_SHOW` slips through to the quote) because the message split and the admission check are reordered | low | high | the split stays first; AC-2 pins that no quote, transition, release or event happens for either status; `CancelBookingIT.noShowAnswersWindowClosedLikeAnUnsweptSpentDay` end to end | agent | open |
-| R-2 | The two new status-exhaustive tests are tautological — expected values computed from the table the code reads | med | med | the expected side is the literal `CONFIRMED` (`@EnumSource` `names`/`mode`), never `CANCEL_BY_GUEST.admits`; the table itself is held to the same literal by `BookingTransitionTest` | agent | open |
+| R-1 | The refactor widens the guest cancel (e.g. `NO_SHOW` slips through to the quote) because the message split and the admission check are reordered | low | high | the split stays first; AC-2 pins that no quote, transition, release or event happens for either status; `CancelBookingIT.noShowAnswersWindowClosedLikeAnUnsweptSpentDay` end to end | agent | closed — `CancelBookingServiceTest.aSpentDayAnswersWindowClosedWhicheverTerminalStatusItCarries` verifies no quote, transition, release or event for either status; `CancelBookingIT` (7 tests, 0 skipped, Docker) green |
+| R-2 | The two new status-exhaustive tests are tautological — expected values computed from the table the code reads | med | med | the expected side is the literal `CONFIRMED` (`@EnumSource` `names`/`mode`), never `CANCEL_BY_GUEST.admits`; the table itself is held to the same literal by `BookingTransitionTest` | agent | closed — both tests use `@EnumSource` `names`/`mode` literals; neither imports `BookingTransition` |
 | R-3 | `ViewBookingServiceTest`'s fixture cannot build every status (`CANCELLED` consults `RefundStatusLookup`, `AWAITING_PAYMENT` the credentials port, `COMPLETED` the review panel) | med | low | `givenBooking` leaves `refundMinor` null and `acceptedAt` null, so neither lazy read fires; Mockito answers an empty `Optional` and a null panel, which `nameSuggestionFor` tolerates — verified by the red run | agent | closed — all nine statuses ran green in phase 0 (46 tests, 0 failures) |
-| R-4 | Module boundary (#11): a `domain/` import from `application/` is fine, but the new test must not import another module's `application.*` | low | med | the new test mocks `availability.api.AvailabilityClaim` and `Bookings` (same module); the structural net after phase 1 | agent | open |
-| R-5 | Touched Javadoc trips `check-inline-comments.mjs` (the `CancelBookingService` block is re-read whole under §6c) | med | low | `node scripts/check-inline-comments.mjs --diff origin/main` before each push | agent | open |
+| R-4 | Module boundary (#11): a `domain/` import from `application/` is fine, but the new test must not import another module's `application.*` | low | med | the new test mocks `availability.api.AvailabilityClaim` and `Bookings` (same module); the structural net after phase 1 | agent | closed — the net's 23 tests green locally after phase 1 |
+| R-5 | Touched Javadoc trips `check-inline-comments.mjs` (the `CancelBookingService` block is re-read whole under §6c) | med | low | `node scripts/check-inline-comments.mjs --diff origin/main` before each push | agent | closed — guard exit 0 on both phases; the `issue #11` provenance tell in the touched `CancelBookingService` block was dropped |
 
 ## Open questions / Assumptions
 
@@ -178,14 +178,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `PR — draft open, merging latest main, then ready-for-review`
 
-**Next action:** phase 1 step 1 — the red `CancelBookingServiceTest`.
+**Next action:** merge latest `origin/main`, mark the PR ready for review, run the review gate (`references/pr-gates.md` §1).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the view reads `CANCEL_BY_GUEST` | ✅ | phase-0 commit (SHA recorded in phase 1) |
-| 1 — the cancel service reads `CANCEL_BY_GUEST`; docs | ⏳ | |
+| 0 — the view reads `CANCEL_BY_GUEST` | ✅ | c37f3b64 |
+| 1 — the cancel service reads `CANCEL_BY_GUEST`; docs | ✅ | the phase-1 commit (SHA below at close-out) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -248,23 +248,23 @@ void onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen(BookingStatus status
 **Files:** Create `CancelBookingServiceTest.java` · Modify `CancelBookingService.java`,
 `BookingTransition.java`, `RESPONSIBILITIES.md`, the research note
 
-- [ ] **Step 1: Write the failing tests** — the three ACs above in a Mockito unit test mirroring
+- [x] **Step 1: Write the failing tests** — the three ACs above in a Mockito unit test mirroring
   `ViewBookingServiceTest`'s shape: `Bookings`, `CancellationPolicy`, `AvailabilityClaim`,
   `ApplicationEventPublisher` mocked; a fixed `Clock`.
-- [ ] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests
+- [x] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests
   "*CancelBookingServiceTest*"` → compile-red until the class exists, then green against the current
   statements (same pinning red as phase 0).
-- [ ] **Step 3: Minimal implementation** — `if (!BookingTransition.CANCEL_BY_GUEST.admits(booking.status()))
+- [x] **Step 3: Minimal implementation** — `if (!BookingTransition.CANCEL_BY_GUEST.admits(booking.status()))
   return new CancelOutcome.NotCancellable(booking.status());` behind the unchanged spent-day split;
   Javadoc block re-read whole (§6c), the garbled "nothing writes COMPLETED, so a A booking" sentence
   rewritten as contract.
-- [ ] **Step 4: Run it, verify it passes** — `--tests "*CancelBookingServiceTest*" --tests
+- [x] **Step 4: Run it, verify it passes** — `--tests "*CancelBookingServiceTest*" --tests
   "*ViewBookingServiceTest*" --tests "*BookingTransitionTest*"`, then `--tests "*CancelBookingIT*"`
   (Docker present), then the structural net.
-- [ ] **Step 5: Docs** — `RESPONSIBILITIES.md` §booking; the research note's D2; `BookingTransition`
+- [x] **Step 5: Docs** — `RESPONSIBILITIES.md` §booking; the research note's D2; `BookingTransition`
   Javadoc; `node scripts/check-inline-comments.mjs --diff origin/main`;
   `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [ ] **Step 6: Commit** — `Read the guest-cancel admission from BookingTransition in the cancel service (#926)`
+- [x] **Step 6: Commit** — `Read the guest-cancel admission from BookingTransition in the cancel service (#926)`
 - [ ] **Step 7: Update plan-doc execution status.**
 
 ---
@@ -279,9 +279,9 @@ void onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen(BookingStatus status
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `gradle test --tests "*ViewBookingServiceTest*"` → 0 failures. Verified at commit `<sha>`.
-- [ ] **AC-2, AC-3, AC-4:** Run `gradle test --tests "*CancelBookingServiceTest*"` → 0 failures. Verified at commit `<sha>`.
-- [ ] **AC-5:** Run `gradle test --tests "*BookingTransitionTest*"` + the structural net → 0 failures. Verified at commit `<sha>`.
+- [x] **AC-1:** Run `gradle test --tests "*ViewBookingServiceTest*"` → 46 tests, 0 failures. Verified at commit `c37f3b64`.
+- [x] **AC-2, AC-3, AC-4:** Run `gradle test --tests "*CancelBookingServiceTest*"` → 9 tests, 0 failures; `--tests "*CancelBookingIT*"` → 7 tests, 0 skipped. Verified locally at the phase-1 tree (SHA recorded at close-out).
+- [x] **AC-5:** Run `gradle test --tests "*BookingTransitionTest*"` + the structural net → 6 + 23 tests, 0 failures. Verified locally at the phase-1 tree (SHA recorded at close-out).
 
 ## Self-review checklist (before merge / PR)
 

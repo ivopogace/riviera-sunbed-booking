@@ -21,7 +21,9 @@ import java.util.Set;
  * <p>This states the lifecycle; the guarded {@code UPDATE … WHERE status = …} statements enforce it,
  * and no SQL is generated from here. The two cancellation rows go further than stating: the shared
  * cancel statement binds its admitted statuses from {@link #CANCEL_BY_GUEST} and
- * {@link #WEATHER_REFUND}, so that one asymmetry cannot drift at all. Every other row is held to its
+ * {@link #WEATHER_REFUND}, so that one asymmetry cannot drift at all, and the booking view's
+ * {@code cancellable} and the guest cancel's refusal read {@link #CANCEL_BY_GUEST} rather than
+ * restating it. Every other row is held to its
  * statement by {@code JdbcBookingTransitionTableIT}, which drives each transition against each
  * status, as {@code BookingMigrationIT.everyEnumStatusAccepted} holds {@link BookingStatus} to
  * {@code booking_status_check}.
