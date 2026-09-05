@@ -43,19 +43,27 @@ When loaded, announce: *"riviera-review-overlay loaded. Adding project-specific 
   surface verifies the operator owns the path `venueId` in the application service
   (`assertOwns`, pinned by `CrossVenueDenialIT`). Default **Blocker**.
 
-## RV-STYLE-1 — inline comments are one-liners, or they are not written
+## RV-STYLE-1 — comments and skill prose earn their place
 
-An inline comment (`//`, `#`, `/* … */`, `<!-- … -->` inside a body, template, or between
-statements) must fit on one line; otherwise cut it or make the code say it. A multi-line
-inline comment the diff wrote is a **Minor** finding. Doc comments (Javadoc/TSDoc on a type,
-port, method, or field) are exempt. Don't reflow untouched comments.
+One test for every line of prose the diff adds or touches — in a `riviera-*` skill or its
+`references/`, a Javadoc/TSDoc, an inline comment: keep it only if a fresh session reading it
+would act differently (`riviera-java-conventions` §6c holds the drop and keep lists). Findings:
+
+- A multi-line inline comment the diff wrote (`//`, `#`, `/* … */`, `<!-- … -->` inside a
+  body, template, or between statements) — **Minor**. Doc comments are exempt from the
+  one-line rule only.
+- Provenance (an issue or PR number) in an added skill line or anywhere in a doc comment the
+  diff touched — **Minor**; the fix is drop or relocate (§6d), never "it was already there".
+- Prose that narrates the diff, restates the code, or records history the reader never saw —
+  **Minor**, and the half the guard cannot see: judge it by the test.
 
 Run the guard rather than walking it by hand: `node scripts/check-inline-comments.mjs
 --diff origin/main` (also a `PostToolUse` hook and a CI job). It is diff-scoped; a clean run
-discharges the mechanical half. What it does not cover: `#` files (shell, YAML,
-`.properties`) and SQL `--` — judge by eye and lean toward leaving them alone — and a
-one-line comment that shouldn't exist at all (the rule's other half is "default to zero
-inline comments in a method").
+discharges the mechanical half, and its advisory lines on history phrasing are worth reading.
+What it does not cover: `#` files (shell, YAML, `.properties`) and SQL `--` — judge by eye
+and lean toward leaving them alone — and a one-line comment that shouldn't exist at all
+(the rule's other half is "default to zero inline comments in a method"). Don't reflow
+untouched comments.
 
 ## RV-STYLE-2 — formatting is `prettier --check`'s job, not the reviewer's
 

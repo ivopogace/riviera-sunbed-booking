@@ -51,28 +51,28 @@ The guard's two seams are its exported detector `findViolations({ path, lines, a
 `--hook` — spawned against a throwaway repository (pinned in `scripts/guard-cli.test.mjs`).
 Doc ACs are verified by reading the merged text against the tree (RV-PROC-2).
 
-- [ ] **AC-1:** Given a Java file whose Javadoc block (lines 2–7) carries `(#348)` on line 5,
+- [x] **AC-1:** Given a Java file whose Javadoc block (lines 2–7) carries `(#348)` on line 5,
       when the diff added only line 3 of that block, then one gating `provenance` violation is
       reported at line 5 — the block is judged whole. *Seam:* `findViolations` ·
       *Pinned by:* `check-inline-comments.test.mjs` "judges a touched Javadoc block whole".
-- [ ] **AC-2:** Given the same file where the diff added a line *outside* that block, when
+- [x] **AC-2:** Given the same file where the diff added a line *outside* that block, when
       judged, then nothing is reported — an untouched doc comment is never read. *Seam:*
       `findViolations` · *Pinned by:* "never reads an untouched doc comment" (AC-3 on the issue).
-- [ ] **AC-3:** Given `.claude/skills/riviera-x/SKILL.md` where the diff added a prose line
+- [x] **AC-3:** Given `.claude/skills/riviera-x/SKILL.md` where the diff added a prose line
       containing `since #952` and a fenced-code line containing `#333`, when judged, then exactly
       the prose line is a gating `provenance` violation. *Seam:* `findViolations` · *Pinned by:*
       "flags a provenance tell in an added skill line, not inside a fence".
-- [ ] **AC-4:** Given `.claude/skills/triage/OUT-OF-SCOPE.md` or `docs/adr/0001.md` with an added
+- [x] **AC-4:** Given `.claude/skills/triage/OUT-OF-SCOPE.md` or `docs/adr/0001.md` with an added
       `#134` line, when judged, then nothing is reported — markdown scope is `SKILL.md` and
       `references/*.md` only. *Seam:* `findViolations` · *Pinned by:* "markdown outside
       SKILL.md and references/ is out of scope".
-- [ ] **AC-5:** Given a TSDoc block the diff added containing `no longer` and no provenance,
+- [x] **AC-5:** Given a TSDoc block the diff added containing `no longer` and no provenance,
       when run as `--diff`, then the guard exits 0 and prints the line as advisory on stdout;
       given it contains `(#521)`, then it exits 1 with the line on stderr and the keep/drop
       sentence. *Seam:* CLI `--diff` · *Pinned by:* `guard-cli.test.mjs` "check-inline-comments
       --diff gates on provenance in a touched doc comment" and "… only advises on a history
       phrase".
-- [ ] **AC-6:** Given a `PostToolUse` payload for a `.ts` file whose touched TSDoc carries
+- [x] **AC-6:** Given a `PostToolUse` payload for a `.ts` file whose touched TSDoc carries
       `PR #618`, when run as `--hook`, then the JSON `additionalContext` names the line and the
       test sentence. *Seam:* CLI `--hook` · *Pinned by:* `guard-cli.test.mjs`
       "check-inline-comments --hook reports a provenance tell with the keep/drop test".
@@ -117,19 +117,20 @@ The guard's existing surface is extended, not replaced. Every existing behaviour
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | False positive on an issue-shaped `#NNN` that is not provenance (a hex colour `#333`, a heading, an anchor) | med | high — a gate with false positives gets switched off (#529) | markdown: skip fenced code and backtick spans; all files: require `#\d{3,4}` not preceded by a word char, `#` or `&`, and not followed by a word char; pinned by AC-3 | agent | open |
-| R-2 | History phrases are contract language in some doc comments ("previously claimed") | high | med | advisory only, never gating; pinned by AC-5 | agent | open |
-| R-3 | A prettier reflow or rename touches an old doc comment and the gate demands its cleanup | med | low — that is the intended rule | stated in §6c and the guard reference: a touched block is re-read; relocate rationale per §6d | agent | open |
-| R-4 | This slice's own diff trips the gate (the guard's header Javadoc cites five issues) | certain | none — it is the AC-6 demo | clean the touched blocks in Phase 3; record it in the PR description | agent | open |
-| R-5 | Hook noise: an edit to a large file with an old provenance-laden Javadoc anywhere near the edit | low | med | only blocks with an added line are read; `--files`/`--hook` stay diff-scoped against `HEAD` for tracked files | agent | open |
+| R-1 | False positive on an issue-shaped `#NNN` that is not provenance (a hex colour `#333`, a heading, an anchor) | med | high — a gate with false positives gets switched off (#529) | markdown: skip fenced code and backtick spans; all files: require `#\d{3,4}` not preceded by a word char, `#` or `&`, and not followed by a word char; pinned by AC-3 | agent | closed — pinned by AC-3 (e4dd8950, 0dc04164) |
+| R-2 | History phrases are contract language in some doc comments ("previously claimed") | high | med | advisory only, never gating; pinned by AC-5 | agent | closed — 035011a6 |
+| R-3 | A prettier reflow or rename touches an old doc comment and the gate demands its cleanup | med | low — that is the intended rule | stated in §6c and the guard reference: a touched block is re-read; relocate rationale per §6d | agent | closed — §6c and the guard reference state it (Phase 3) |
+| R-4 | This slice's own diff trips the gate (the guard's header Javadoc cites five issues) | certain | none — it is the AC-6 demo | clean the touched blocks in Phase 3; record it in the PR description | agent | closed — the header was rewritten in Phase 3; the gate exits 0 on the branch |
+| R-5 | Hook noise: an edit to a large file with an old provenance-laden Javadoc anywhere near the edit | low | med | only blocks with an added line are read; `--files`/`--hook` stay diff-scoped against `HEAD` for tracked files | agent | closed — `tellViolations` reads only touched regions (e4dd8950) |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the `PostToolUse` hook's `additionalContext` is the right vehicle for the
-  test sentence at authoring time (the three existing hooks use it) — *Owner:* agent ·
-  *Resolves by:* Phase 2.
 
 ### Resolved
+
+- **Assumption:** the `PostToolUse` hook's `additionalContext` carries the test sentence at
+  authoring time → confirmed: it fired on the guard's own doc comment during Phase 0 and the
+  wording was fixed before commit (035011a6 pins the message).
 
 - **Open question (issue):** advisory or blocking? → **blocking for provenance, advisory for
   history phrasing**, owner decision recorded on #956.
@@ -161,17 +162,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** PR — ready for review; review gate due
 
-**Next action:** Phase 3 — fold the rule into §6c/§6d, RV-STYLE-1, the guard reference and the citing docs; clean the guard's own touched doc comments until `--diff origin/main` exits 0.
+**Next action:** mark PR #957 ready for review; run the review gate per `riviera-sdlc` `references/pr-gates.md` §1 with `riviera-review-overlay` (RV-PROC-2 on the substrate edits); then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — provenance in a touched doc block, judged whole | ✅ | e4dd8950 |
 | 1 — skill markdown: added lines, fences and spans exempt, scope | ✅ | 0dc04164 |
-| 2 — history advisory + `settle()` exit codes + hook/CLI rows | ✅ | (this commit; sha in the next) |
-| 3 — the rule folded into §6c/§6d, RV-STYLE-1, the reference, the citing docs; clean the touched headers | ⏳ | |
-| 4 — close-out: docs-freshness, plan final | | |
+| 2 — history advisory + `settle()` exit codes + hook/CLI rows | ✅ | 035011a6 |
+| 3 — the rule folded into §6c/§6d, RV-STYLE-1, the reference, the citing docs; clean the touched headers | ✅ | (this commit; sha in the next) |
+| 4 — close-out: docs-freshness, plan final | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

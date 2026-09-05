@@ -1,15 +1,16 @@
 /**
- * Diff-scoped guard for RV-STYLE-1: an inline comment is one line, or it is not written
- * (`riviera-java-conventions` §6c, `frontend/.claude/CLAUDE.md`, review-bank item RV-STYLE-1).
+ * Diff-scoped guard for RV-STYLE-1 (`riviera-java-conventions` §6c): an inline comment is one
+ * line or it is not written, and a comment or a skill line is kept only if a fresh session
+ * reading it would act differently — an issue or PR number never is.
  *
- * Reasons about lines a diff **added**, for anything git already tracks. The existing tree carries
- * many pre-existing multi-line inline comments that read as established convention in their own
- * files; a repo-wide gate would go red on day one and get switched off (issue #529). A file git has
- * never seen is judged whole instead — see `checkPaths` (#619).
+ * Reasons about lines a diff **added**, for anything git already tracks: the existing tree
+ * carries many multi-line inline comments and issue-numbered doc comments that a repo-wide gate
+ * would go red on and get switched off. Two things are judged whole instead — a doc comment with
+ * any added line, and a file git has never seen (see `checkPaths`).
  *
- * Exempt by design: doc comments (`/** … *\/`, TSDoc — the rule's own carve-out), a block
- * comment standing before any code as the file's header, and `#`/SQL-`--` comment syntaxes
- * (see the plan doc's Non-goals; #522/F-6 settled SQL).
+ * Exempt from the one-line rule: doc comments, a block comment standing before any code as the
+ * file's header, and `#`/SQL-`--` comment syntaxes. The scope's deliberate gaps are listed in
+ * `riviera-java-conventions` `references/inline-comment-guard.md`.
  */
 
 import { readFileSync } from 'node:fs';
@@ -76,11 +77,13 @@ const TELLS = {
 export const GATING = new Set(['multiline', 'provenance']);
 
 /**
- * Finds every multi-line inline comment the diff wrote.
+ * Every finding in one file: the multi-line inline comments the diff wrote, and the tells in
+ * what it added or, for a doc comment, touched.
  *
  * @param {{ path: string, lines: string[], added: Set<number> }} input the file's new content,
  *   plus the 1-based line numbers the diff added
- * @returns {{ path: string, line: number, endLine: number, text: string }[]} one entry per block
+ * @returns {{ path: string, line: number, endLine: number, text: string, rule: string }[]}
+ *   one entry per multi-line block, one per tell per line, sorted by line
  */
 export function findViolations({ path, lines, added }) {
   const syntax = syntaxFor(path);

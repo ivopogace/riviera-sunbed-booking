@@ -114,25 +114,38 @@ leak internals into `detail` (no booking code — invariant #7 — no exception 
 `detail` states the condition, not the remedy (user-facing wording is the client's, keyed on
 `code`). Mechanics, the status map, and the no-`@Valid` decision: `references/error-contract.md`.
 
-### 6c. Comments: one line, or none (authoring side of RV-STYLE-1)
+### 6c. Comments and prose: keep it only if a fresh session would act on it (RV-STYLE-1)
 
-- An inline comment must fit on one line. If it needs two, the comment is doing work the
-  code should do: name the constant, extract the method, sharpen the signature — then delete it.
-- Default to zero inline comments in a method. Reach for one only when the *why* is
-  unavailable from the code: a race, an ordering constraint, a spec/invariant reference, a
-  deliberate deviation. "What the next line does" is never worth a line.
-- Javadoc is exempt from the one-line rule, not from §6d.
+One test for every line of prose a diff adds or touches — in a `riviera-*` skill or its
+`references/`, a Javadoc/TSDoc, an inline comment: **keep it only if a fresh session reading
+it would act differently. Otherwise drop it.** The next reader has no "before" to compare
+against, so text written for the author's own session costs context and changes nothing.
 
-A guard enforces it at authoring time: `scripts/check-inline-comments.mjs` runs from a
-`PostToolUse` hook on every `Write`/`Edit` and again in CI over the PR diff. By hand:
-`node scripts/check-inline-comments.mjs --files <path…>` or `--diff origin/main`. Its scope
-is deliberately bounded — `references/inline-comment-guard.md` before "fixing" any gap. The
-guard is a floor: it cannot see a one-line comment that says nothing.
+- **Drop:** provenance (`#NNN`, `PR N`, `since #`); history (`used to`, `no longer`,
+  `previously`, `before this change`, `the alternative would have been`); narration of the
+  diff (`this change`, `now`); restating the code; motivation and praise of the mechanism.
+- **Keep:** the contract, the invariant reference (`invariant #2`), the trap and its remedy,
+  the command, an exemption and its one-line why. Load-bearing rationale relocates to
+  `RESPONSIBILITIES.md` or an ADR with a one-line pointer (§6d).
+- **An inline comment is one line, or none.** If it needs two, the comment is doing work the
+  code should do: name the constant, extract the method, sharpen the signature — then delete
+  it. Default to zero per method; reach for one only when the *why* is unavailable from the
+  code (a race, an ordering constraint, an invariant reference, a deliberate deviation).
+- **A touched doc comment is re-read whole.** Editing one line of an old Javadoc puts the
+  whole block under the test — clean it, or leave it untouched.
+
+The guard: `scripts/check-inline-comments.mjs` runs from a `PostToolUse` hook on every
+`Write`/`Edit` and again in CI over the PR diff. It fails on a multi-line inline comment the
+diff added and on a provenance tell in an added skill line or anywhere in a touched doc
+comment; it advises on history phrasing, which is contract language often enough to leave to
+review. By hand: `node scripts/check-inline-comments.mjs --files <path…>` or
+`--diff origin/main`. Its scope is deliberately bounded — `references/inline-comment-guard.md`
+before "fixing" any gap. The guard is a floor: it cannot see a line that says nothing.
 
 ### 6d. Javadoc: the contract, not the changelog
 
 Javadoc answers what a caller must know — what this is, what it guarantees, what would
-surprise someone using it. Not how it came to be.
+surprise someone using it. Not how it came to be; §6c's test decides line by line.
 
 - **No issue numbers.** Provenance is `git blame`'s job and the tracker's.
 - **No decision history.** "It began…", "widened by…", "used to…", "the alternative would
@@ -145,8 +158,9 @@ surprise someone using it. Not how it came to be.
 - **Invariant references stay** (`invariant #2`, `invariant #11`).
 
 Budget as a smell test: roughly 6 lines on a type, 3 on a member. Over budget → ask whether
-the excess is contract (keep) or archaeology (relocate). Nothing machine-enforces this; it
-is a review item. The frontend twin lives in `frontend/.claude/CLAUDE.md`.
+the excess is contract (keep) or archaeology (relocate). The §6c guard enforces the
+issue-number line on a touched block; the rest is a review item. The frontend twin lives in
+`frontend/.claude/CLAUDE.md`.
 
 ### 7. Money & time (invariants #5, #6)
 
@@ -211,7 +225,7 @@ Money is integer minor units + ISO currency; time is UTC `Instant`, with booking
 
 - `references/error-contract.md` — `ApiProblem`/`ApiErrorHandler` mechanics, the status
   map, `ErrorContractArchitectureTests`, and the validation decision behind §6b.
-- `references/inline-comment-guard.md` — the §6c guard's scope, exemptions, and the
+- `references/inline-comment-guard.md` — the §6c guard's three rules, scope, exemptions, and the
   deliberate false negative.
 - `riviera-modulith/references/persistence-jdbc.md` — the `JdbcClient` adapter pattern
   behind §1, and where persistence sits in the hexagon.
