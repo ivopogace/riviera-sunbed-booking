@@ -101,21 +101,23 @@ changed line, plus every citation of anything this diff renamed, moved or delete
 its own coverage claims.** An example is code a session
 will copy, so it is held to the same rules as code — `ModularityTests`,
 `PackageShapeArchitectureTests`, `PublishedSurfacePlacementArchitectureTests`,
-`JdbcOnlyArchitectureTests`, `DomainPurityArchitectureTests`. Walk it both ways, and the
-second way is the one that bites: when the diff adds or tightens a rule, re-walk **every**
-example in the substrate, **including files the diff never opened** — the example that
-breaks is by definition not in the diff. Locate them, then sweep for the new rule's own
-forbidden set, read out of the test rather than remembered:
+`JdbcOnlyArchitectureTests`, `DomainPurityArchitectureTests`. Walk it both ways. First, every
+example on a changed line, against the net as it stands. Second, the way that bites: when the
+diff adds or tightens one of those five tests, re-walk **every** example in the substrate,
+**including files the diff never opened** — the example that breaks is by definition not in
+the diff. Only a structural test puts that re-walk due; a diff that adds a rule of any other
+kind (a review item, a skill's prose rule, a guard script) gets the first walk alone. Locate
+the examples, then sweep for the tightened test's own forbidden set, read out of the test
+rather than remembered. Both commands run over the path set the trigger names and no wider:
+a research note (`docs/research/`, `docs/architecture/research/`) records what was true when
+written, not an instruction a session copies, and nothing else under `docs/` is substrate.
 
 ```bash
-grep -rln '^```java' .claude/skills docs CLAUDE.md frontend/.claude/CLAUDE.md CONTEXT.md RESPONSIBILITIES.md
-# e.g. DomainPurityArchitectureTests' Forbidden list, over the same substrate:
-grep -rnE 'import (org\.springframework|java\.sql|javax\.sql|com\.stripe)' \
-  .claude/skills CLAUDE.md frontend/.claude/CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents
+SUBSTRATE='.claude/skills CLAUDE.md frontend/.claude/CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents'
+grep -rln '^```java' $SUBSTRATE
+# e.g. DomainPurityArchitectureTests' Forbidden list:
+grep -rnE 'import (org\.springframework|java\.sql|javax\.sql|com\.stripe)' $SUBSTRATE
 ```
-
-A research note is a record of what was true when written, not an instruction — skip it wherever
-it lives (`docs/research/`, `docs/architecture/research/`).
 
 **Major** — an example the net rejects reddens the next session's build, docs-only diff or not.
 
@@ -129,12 +131,20 @@ findings, which reads as good news.
 
 **c. `riviera-docs-freshness` step 2a over what the diff removed or renamed.** A deletion
 that leaves a pointer dangling elsewhere in the substrate is found here, at review time,
-instead of surviving to the next close-out. Hand the removed wording to the skill's
-rename/removal grep; a hit in a present-tense stated fact is **Major**, one in historical
-narrative (an ADR's Context paragraph, a research note) is fine. When the diff lands or
-re-decides an ADR, add the skill's step 3 over the docs that stated the old position — a
-promise the decision has just retired matches no identifier. Re-walk all three checks on
-every re-review, including review-fix commits.
+instead of surviving to the next close-out. Removed or renamed wording is a name the diff's
+`-` lines carry and the tree after the diff does not answer to — a class, file, test,
+command, setting, label or item name, or a stated count — whether the diff deleted it or put
+a new name in its place. Wording the diff generalized, reworded, or set a sibling beside (the old
+item stays, a new one joins it) retired nothing: there is nothing to hand to the grep, and
+this check is N/A. Hand each retired name to the skill's rename/removal grep, then judge
+every hit against the tree, not the grep: a hit is a finding only when the diff falsified it
+— the line states, as present fact, a name, path, count or mechanism the tree does not
+bear out — and that is **Major**. A hit the diff left true (the sentence still describes the
+tree as it now stands) is not a finding, and neither is one in historical narrative (an
+ADR's Context paragraph, a research note). When the diff lands or re-decides an ADR, add the
+skill's step 3 over the docs that stated the old position — a promise the decision has just
+retired matches no identifier. Re-walk all three checks on every re-review, including
+review-fix commits.
 
 ## Verification commands
 
