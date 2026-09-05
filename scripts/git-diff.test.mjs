@@ -5,12 +5,13 @@ import {
   changedPaths,
   diffArgs,
   nameOnlyArgs,
+  numstatArgs,
   parseAddedLines,
   untrackedArgs,
 } from './git-diff.mjs';
 
 test('the diff invocations carry the flags that keep paths recognisable', () => {
-  for (const args of [diffArgs('BASE'), nameOnlyArgs('BASE')]) {
+  for (const args of [diffArgs('BASE'), nameOnlyArgs('BASE'), numstatArgs('BASE')]) {
     assert.ok(args.includes('--no-relative'), `${args[1]} must pin --no-relative`);
     assert.ok(args.includes('--no-color'));
     assert.ok(args.includes('--no-ext-diff'));
@@ -18,6 +19,7 @@ test('the diff invocations carry the flags that keep paths recognisable', () => 
   }
   assert.ok(nameOnlyArgs('BASE').includes('-z'));
   assert.ok(diffArgs('BASE').includes('--unified=0'));
+  assert.ok(numstatArgs('BASE').includes('--numstat'));
 });
 
 /**

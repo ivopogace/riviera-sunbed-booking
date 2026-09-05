@@ -54,19 +54,19 @@ for `bugfix/review-gate-range-pinning` per `riviera-sdlc` § *Remote / cloud ses
       when the review gate resolves its range, then the range is
       `merge-base(freshly-fetched origin/<base.ref>, HEAD)...HEAD` and the resolved base SHA
       appears in the gate's announcement string. *Seam:* `pr-gates.md` §1 step 2's
-      resolve-then-announce procedure · *Pinned by:* `check-review-range.test.mjs`
-      `resolves the base from the fetched base branch, not from a stale ref`
+      resolve-then-announce procedure · *Pinned by:* `guard-cli.test.mjs`
+      `check-review-range resolves the base from the fetched branch and prints the SHA`
 - [x] **AC-2:** Given a local range whose file count or line totals differ from the PR's
       reported `changed_files`/`additions`/`deletions`, when the scope check runs, then it
       exits non-zero naming both sides and the gate does not dispatch. *Seam:*
       `scripts/check-review-range.mjs` CLI exit code · *Pinned by:*
-      `check-review-range.test.mjs` `a file-count mismatch exits 1 and names both sides`
+      `guard-cli.test.mjs` `check-review-range exits 1 on a count mismatch and names both sides`
 - [x] **AC-3:** Given the #939 conditions reproduced literally — `origin/main` set one commit
       behind the PR's real base, so the three-dot range yields ten files where the PR reports
       three — when the scope check runs, then it exits 1 rather than reporting clean.
       *Seam:* the guard CLI spawned in a throwaway repo via `guard-cli-harness.mjs` ·
-      *Pinned by:* `check-review-range.test.mjs` `reproduces #939: a stale origin/main is
-      caught by the count check`
+      *Pinned by:* `guard-cli.test.mjs` `check-review-range reproduces #939: a stale
+      origin/main is caught, then self-corrects`
 - [x] **AC-4:** Given a session about to make a history claim in a cloud sandbox, when it
       reads `riviera-local-debug`, then it finds that cloud clones start shallow, the named
       set of commands whose output that corrupts, and the `git fetch --unshallow` remedy.
@@ -77,11 +77,16 @@ for `bugfix/review-gate-range-pinning` per `riviera-sdlc` § *Remote / cloud ses
 
 ## Non-goals
 
-- **Not** rewriting the six existing `check-*.mjs` guards that default their base to a local
-  `origin/main`. They run in CI behind `fetch-depth: 0` + an explicit base fetch, so their
-  exposure is the *local* hook path only — a different blast radius, and sweeping them here
-  would put seven behaviour changes in a diff whose subject is the review gate. Recorded in
-  the Generalization-audit log and routed to a follow-up issue.
+- **Not** rewriting the **five** existing guards that default their base to a local
+  `origin/main` (`check-comment-only`, `check-inline-comments`, `check-plan-file-structure`,
+  `check-focus-posture`, `check-touch-target`; the sixth, `check-cloud-node-pin`, takes no
+  base), nor the six documented by-hand invocations that name the bare ref
+  (`riviera-plan-doc` SKILL + template, `riviera-java-conventions`, `riviera-review-overlay`
+  SKILL + frontend-conventions, `CONTRIBUTING.md`). All five route through `mergeBase()`, so
+  this slice makes the shared function *say* the condition out loud rather than leave it to
+  be re-earned five times — but changing five guards' defaults is five behaviour changes in a
+  diff whose subject is the review gate. Recorded in the Generalization-audit log and routed
+  to a follow-up issue.
 - **Not** wiring the new guard into CI as a required check. It needs a PR's reported counts,
   which are not available to a diff-scoped job, and it governs a *review activity* rather
   than diff content. It is a by-hand verifier, exactly as `check-comment-only.mjs` is
@@ -178,6 +183,17 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | F-1 | local guard (RV-STYLE-1) | Three multi-line inline comments in the new guard and its suite | fixed in phase 2 — one line each, prose already in the doc comments |
 | F-2 | review gate (RV-PROC-2c, self) | The fix stopped at §1. Close-out step 5's pre-merge smoke and `riviera-docs-freshness`' *When to run* bullet still named a bare `origin/main...HEAD` — the same unfetched ref, one section further down | fixed — both now resolve per §1 step 2 |
 | F-3 | docs-freshness counting sweep | `CLAUDE.md` named `check-comment-only.mjs` as *the* by-hand verifier; this slice makes it two. The file is not in the diff, which is exactly why the counting sweep exists | fixed — both named |
+| F-4 | review gate | **False clean in the guard itself:** `Number('')` is `0`, so unsubstituted count arguments against a HEAD still on the base agreed on every dimension and printed "verified" | fixed — counts validated as digit strings, and an empty range refused on both sides |
+| F-5 | review gate | The guard verified the base but never the head, while the announcement claimed "matched against the PR" — matching counts on a different head SHA passed | fixed — `--head-sha` is required and checked against local HEAD |
+| F-6 | review gate | A throwing `git()` escaped `main` and exited 1, the code reserved for a scope mismatch, sending the operator to the wrong remedy | fixed — `verify()` wrapped; git failures exit 2 |
+| F-7 | review gate | `--numstat` flags were spelled inline, escaping `git-diff.test.mjs`' flag-pinning case; and `diff.renames=false` split a rename into two files, a permanent false alarm | fixed — `numstatArgs()` builder with `--find-renames`, asserted in the pinning case |
+| F-8 | review gate | The spawned-CLI cases sat in the sibling suite, against the split `guard-cli.test.mjs`' header states, with no mutation proofs and no from-a-subdirectory case | fixed — moved, each with its mutation proof, plus cwd, rename, head-mismatch and dirty-tree cases |
+| F-9 | review gate | My `mergeBase()` note stated the failure direction backwards ("a false clean rather than a false alarm"); the fallback's extra commits arrive as deletions, so it is a false **alarm** | fixed — note rewritten, and the function now warns on the shallow condition |
+| F-10 | review gate | The generalization-audit population was under-enumerated (missed `check-touch-target`) and its counts disagreed with Non-goals and with the tree | fixed — re-enumerated by mechanism; the deferral rationale corrected |
+| F-11 | review gate | `--base-sha` was absent from the documented command block, so the containment check was dead on the only path anyone copies | fixed — the block passes `--base-sha` and `--head-sha` |
+| F-12 | review gate | The docs-freshness pointer promised a scope check that cannot run for two of its three range shapes | fixed — *Inputs* says what applies to every shape and what is PR-only |
+| F-13 | review gate | `CLAUDE.md`'s "most also run as a local `PostToolUse` hook" — three of seven | fixed |
+| F-14 | review gate | The documented `[ … ] && git fetch --unshallow` exits 1 on a healthy clone, aborting the block under `set -e` | fixed — written as an `if` |
 
 ---
 
@@ -185,7 +201,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 - `docs/plans/review-gate-range-pinning.md` — this plan; deleted at the next close-out after the PR merges
 - `scripts/check-review-range.mjs` — the verifier: refuses on a shallow clone, resolves the base by merge-base against the fetched base branch, compares local counts to the PR's
-- `scripts/check-review-range.test.mjs` — detector cases plus the spawned-CLI cases, including the literal #939 reproduction
+- `scripts/check-review-range.test.mjs` — the pure detector cases only; the CLI lives in the spawned suite, per the split `guard-cli.test.mjs`'s header states
+- `scripts/guard-cli.test.mjs` — the guard's spawned-CLI cases, each with its mutation proof
+- `scripts/git-diff.test.mjs` — the flag-pinning case reaches `numstatArgs`
 - `.claude/skills/riviera-sdlc/references/pr-gates.md` — §1 step 2 gains resolve-then-verify and the SHA-bearing announcement; step 3 re-resolves on re-review
 - `.claude/skills/riviera-local-debug/SKILL.md` — new § *Git in a cloud session*: shallow clones, what they corrupt, the remedy
 - `.claude/skills/riviera-docs-freshness/SKILL.md` — its `origin/main...HEAD` input points at the resolve rule instead of restating it
@@ -237,7 +255,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-09-05 | phase 0 (#942) | Every tool that resolves a diff/review range from a **local** `origin/main` ref without fetching it first | `grep -rn "origin/main" .claude/skills scripts .github/workflows` | 9: `pr-gates.md` ×2, `riviera-docs-freshness` ×2, `check-comment-only.mjs` (default base), `check-inline-comments.mjs`, `check-plan-file-structure.mjs`, `check-focus-posture.mjs`, `git-diff.mjs` `mergeBase()` | Fix the 4 gate-side sites (this slice's subject) + the `mergeBase()` fail-open note. The 4 guard defaults are CI-safe (`fetch-depth: 0` + an explicit base fetch in `ci.yml`) and locally hook-driven → follow-up issue, per Non-goals |
+| 2026-09-05 | phase 0 (#942) | Every tool that resolves a diff/review range from a **local** `origin/main` ref without fetching it first | `grep -rn "origin/main" .claude/skills scripts .github/workflows CONTRIBUTING.md` | 4 gate-side prose sites (`pr-gates.md` ×2, `riviera-docs-freshness` ×2); 5 guard defaults (`check-comment-only:250`, `check-inline-comments:327`, `check-plan-file-structure:365`, `check-focus-posture:1094`, `check-touch-target:481`); 6 documented by-hand invocations; 1 shared chokepoint (`git-diff.mjs` `mergeBase()`) | Fixed the 4 gate-side sites (this slice's subject) and the chokepoint — `mergeBase()` now warns on the shallow condition, which reaches all 5 guard defaults at runtime since every one calls it. The 5 defaults and 6 invocations → follow-up issue |
+| 2026-09-05 | review round (#942) | Sentences that **count** guards or suites — the class PR #618's F-5 and this slice's own F-3 both landed in | `grep -rn "check-\*\.mjs\|by-hand verifier\|spawns each guard" CLAUDE.md CONTRIBUTING.md .github/workflows .claude/skills scripts` | `CLAUDE.md:63` (two claims: the by-hand verifier, and "most also run as a hook" — 3 of 7); `ci.yml:219` ("one that spawns each guard's CLI"); `guard-cli.test.mjs:2` | `CLAUDE.md` corrected on both clauses. `ci.yml:219` and `guard-cli.test.mjs:2` needed no edit once the CLI cases moved into `guard-cli.test.mjs` — the structure was made to match the sentence rather than the sentence patched, which is what #619 established |
 
 ---
 

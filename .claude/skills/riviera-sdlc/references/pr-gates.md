@@ -20,17 +20,23 @@ done until this gate has run and its findings are resolved or explicitly deferre
    `origin/main` turned a three-file PR into a ten-file range and five dispatched agents had
    to be killed and re-run.
 
-   Read the PR's own `base.ref`, `changed_files`, `additions` and `deletions` (`gh api
-   repos/O/R/pulls/N`, or the GitHub MCP `pull_request_read`), then:
+   Read the PR's own `base.ref`, `base.sha`, `head.sha`, `changed_files`, `additions` and
+   `deletions` (`gh api repos/O/R/pulls/N`, or the GitHub MCP `pull_request_read`), then:
 
    ```bash
    # Cloud clones start SHALLOW, and merge-base will answer from the truncated graph.
-   [ "$(git rev-parse --is-shallow-repository)" = true ] && git fetch --unshallow
+   if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch --unshallow; fi
 
    git fetch --no-tags origin "$BASE_REF"        # the base branch's CURRENT tip
    node scripts/check-review-range.mjs --base-ref "$BASE_REF" \
+     --base-sha <base.sha> --head-sha <head.sha> \
      --files <changed_files> --additions <additions> --deletions <deletions>
    ```
+
+   Pass all of them: the counts prove the range's **size**, `--head-sha` proves it is the PR's
+   **content** (a branch one commit behind the pushed head can agree on all three counts), and
+   `--base-sha` proves the clone actually contains the PR's history. A flag left out of the block is
+   a check that never runs.
 
    **Not the PR's `base.sha`** — that is the base branch's tip when the PR was *opened*, and
    the PR row in `SKILL.md` tells a slice to merge latest `main` in before ready-for-review;
@@ -198,7 +204,7 @@ and duplications below its fail thresholds. Pull the actual list and fix every e
    - **Staleness patches** (a renamed/removed file a skill cites, an epic's "in progress"
      line, a changed mechanism phrase): run the skill's pre-merge smoke over the range
      **resolved as in §1 step 2** — not a bare `origin/main...HEAD`, which is the same
-     unfetched ref there as it is there — and fold the patches into the code PR itself.
+     unfetched ref here as it is there — and fold the patches into the code PR itself.
    - **Did this slice make the Nth of something?** A new listener, counter, event, module,
      profile, transport, or sweep falsifies every doc that says "the two …" — none of those
      files is in the diff, so run the skill's counting sweep (procedure step 2b).

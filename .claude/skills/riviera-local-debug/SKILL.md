@@ -29,7 +29,7 @@ the truncated graph rather than erroring, so these are all unreliable until you 
 The remedy is one command, and it is a precondition, not a cleanup:
 
 ```bash
-[ "$(git rev-parse --is-shallow-repository)" = true ] && git fetch --unshallow
+if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch --unshallow; fi
 ```
 
 **A history claim made without it is not evidence.** Re-run the trace after deepening before

@@ -69,6 +69,31 @@ export function nameOnlyArgs(...rest) {
 }
 
 /**
+ * The numstat form: per-file added/deleted line counts, for a caller totalling a range's size.
+ *
+ * A builder rather than the flags spelled inline at the call site, for the reason `untrackedArgs`
+ * gives below — the flag-pinning case in `git-diff.test.mjs` reaches builders, and only builders,
+ * so a set spelled in a guard is one no unit case can see a future edit remove.
+ *
+ * <p>`--find-renames` is the fourth setting of the class `PIN` exists for, and it is a flag rather
+ * than a `-c` pair only because it belongs to this invocation alone: a contributor's
+ * `diff.renames=false` splits one renamed file into an add plus a delete, so a caller comparing
+ * this output against GitHub's counts — which always detect the rename — aborts over a difference
+ * in git config rather than in the range.
+ */
+export function numstatArgs(...rest) {
+  return [
+    'diff',
+    '--numstat',
+    '--find-renames',
+    '--no-color',
+    '--no-ext-diff',
+    '--no-relative',
+    ...rest,
+  ];
+}
+
+/**
  * Maps a unified diff to the 1-based line numbers each file gains. Files the diff deletes are
  * absent from the result: they have no new content to check.
  *
@@ -165,18 +190,31 @@ export function untrackedPaths() {
  * moment anything is uncommitted — including a guard's own `--fix` — and line numbers from one are
  * then applied to the other (PR #618).
  *
- * **The `catch` fails open, and callers must know when that matters.** `merge-base` exits non-zero
- * on a shallow clone whose true base is below the graft, and this returns `base` unchanged — a
- * *wider* range, silently, which for a guard is a false clean rather than a false alarm. In CI that
- * cannot happen (`fetch-depth: 0` plus an explicit base fetch). It is the cloud sandbox this is
- * wrong in, where the clone starts shallow and `origin/main` is never refetched, so anything
- * resolving a **review** range calls `git rev-parse --is-shallow-repository` first rather than
- * relying on this — see `scripts/check-review-range.mjs` and issue #942.
+ * **The `catch` fails open, so it warns.** `merge-base` exits non-zero on a shallow clone whose
+ * true base is below the graft, and this then returns `base` unchanged. The fallback diff is
+ * `base` against the working tree, so commits `base` holds and HEAD does not arrive as
+ * *deletions*: `check-plan-file-structure`, which keys on the changed-file set, reports them as
+ * unlisted — a false **alarm**; the added-line guards see no added lines from a deletion and are
+ * unaffected. Neither direction is a false clean, which is why this stayed a silent fallback for
+ * three guards — but a gate that cannot pass is a gate that gets switched off, so the condition is
+ * now said out loud here rather than re-earned at each of the five call sites that default to
+ * `origin/main` (issue #942).
+ *
+ * <p>A **review** range is the case this cannot serve at all: there the widening is invisible
+ * rather than noisy, so `scripts/check-review-range.mjs` tests `--is-shallow-repository` itself and
+ * refuses, instead of calling this.
  */
 export function mergeBase(base) {
   try {
     return git(['merge-base', base, 'HEAD']).trim();
   } catch {
+    if (git(['rev-parse', '--is-shallow-repository']).trim() === 'true') {
+      process.stderr.write(
+        `Cannot resolve a merge base with ${base} in a shallow clone, so the range falls back to ` +
+          `${base} itself and may report paths this branch never touched. ` +
+          'Run `git fetch --unshallow` and re-run (issue #942).\n',
+      );
+    }
     return base;
   }
 }

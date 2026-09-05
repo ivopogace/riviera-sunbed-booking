@@ -60,7 +60,7 @@ npm run build
 
 **CI/CD** (`.github/workflows/`): `ci.yml` runs the backend build/test, the frontend
 lint/format/test/build + mocked e2e, the diff-scoped hygiene guards `scripts/check-*.mjs`
-(most also run as a local `PostToolUse` hook; `check-comment-only.mjs` and
+(three of the seven also run as a local `PostToolUse` hook; `check-comment-only.mjs` and
 `check-review-range.mjs` are by-hand verifiers, not CI gates), and a SonarCloud scan per PR.
 The Sonar merge bar is **0 new issues, 0 duplicated blocks, ≥80% new-code coverage** —
 review the issue list, not just the pass/fail. `codeql.yml` scans; `deploy.yml` deploys the single
