@@ -33,9 +33,9 @@ under `.claude/skills/`, which scoped the markdown half to `SKILL.md` + `referen
 `riviera-plan-doc` (this template — forced the seam per AC and the whole-block rule to be
 stated before code) · `tdd` (each detector rule red→green at `findViolations`, then the CLI
 front-end at the `guard-cli` harness) · `riviera-review-overlay` (review gate — at ready for
-review; RV-PROC-2 for the substrate edits) · `riviera-docs-freshness` (runs at close-out over
-`origin/main..HEAD`; the slice changes what §6c/§6d, RV-STYLE-1, the guard reference, the
-frontend `CLAUDE.md`, `CONTRIBUTING.md` and `ci.yml` *state*) · `riviera-local-debug`
+review; RV-PROC-2 for the substrate edits) · `riviera-docs-freshness` (**ran** over
+`234b503c..14a3304e`, zero findings; retired `docs/plans/guard-base-fetch-or-refuse.md`, merged via
+PR #953, no citations outside `docs/plans/`) · `riviera-local-debug`
 (unshallowed the clone before the first `--diff`; `node --test scripts/<file>.test.mjs` is the
 scoped run, no `node_modules`).
 
@@ -76,11 +76,11 @@ Doc ACs are verified by reading the merged text against the tree (RV-PROC-2).
       `PR #618`, when run as `--hook`, then the JSON `additionalContext` names the line and the
       test sentence. *Seam:* CLI `--hook` · *Pinned by:* `guard-cli.test.mjs`
       "check-inline-comments --hook reports a provenance tell with the keep/drop test".
-- [ ] **AC-7:** Given `main` as it stands, when `--diff origin/main` runs on this branch, then
+- [x] **AC-7:** Given `main` as it stands, when `--diff origin/main` runs on this branch, then
       the only reports are lines this branch touched — verified by the PR's own green hygiene
       job, and by the file header of the guard itself, which this slice must clean because it
       touches it (the issue's AC-6 demo).
-- [ ] **AC-8:** `riviera-java-conventions` §6c states the test, the drop list, the keep list, and
+- [x] **AC-8:** `riviera-java-conventions` §6c states the test, the drop list, the keep list, and
       the three surfaces; §6d keeps the Javadoc-specific budget and relocation rule and cites
       §6c. `frontend/.claude/CLAUDE.md`, `riviera-review-overlay` RV-STYLE-1, `CONTRIBUTING.md`
       and the guard reference cite §6c rather than restate it. *Seam:* the text · *Pinned by:*
@@ -169,9 +169,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** review gate — findings fixed, re-review of the fix diff due; then Sonar gate
+**Stage pointer:** `DONE — merged via PR #957`
 
-**Next action:** re-resolve the range and re-walk the overlay items over the fix diff; then read the Sonar new-issue list (note #954: Sonar does not analyse `scripts/`).
+**Next action:** none — close-out written here; this plan is deleted at the next close-out after PR #957 merges (`riviera-docs-freshness` § *Plan-doc retirement*).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -179,8 +179,8 @@ N/A — no contract change.
 | 1 — skill markdown: added lines, fences and spans exempt, scope | ✅ | 0dc04164 |
 | 2 — history advisory + `settle()` exit codes + hook/CLI rows | ✅ | 035011a6 |
 | 3 — the rule folded into §6c/§6d, RV-STYLE-1, the reference, the citing docs; clean the touched headers | ✅ | 823dfdbf |
-| 3a — review-gate fix round (F-1…F-6) | ✅ | (this commit; sha in the next) |
-| 4 — close-out: docs-freshness, plan final | ⏳ | |
+| 3a — review-gate fix round (F-1…F-6) | ✅ | 14a3304e |
+| 4 — close-out: docs-freshness, plan final, retire the merged plan from PR #953 | ✅ | (this commit — the PR's last) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -194,6 +194,15 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-4 | review (#6, RV-PROC-2a) | the guard reference's `SecurityConfig` count (25) had drifted (29) | fixed — no count |
 | F-5 | review (#3) | the whole-block rule was not recorded as a decided departure from the guard's false-positive stance | fixed — Resolved decision above |
 | F-6 | review (#1) | the new `ci.yml` step comment cited `#956` | fixed — dropped; YAML stays out of the guard's scope |
+
+**Review note.** Gate run per `pr-gates.md` §1 rung 1 (the code-review plugin: six agents incl. the
+overlay's RV-PROC walk) over `234b503c..823dfdbf`, range verified by `check-review-range.mjs`;
+outcome posted on PR #957. Fix round re-reviewed over `823dfdbf..14a3304e`.
+
+**Sonar note.** Analysis present for PR #957: 0 new issues, 0 bugs, 0 smells, 0 vulnerabilities,
+no duplication or new-lines measure reported — the PR touches only `scripts/`, `.claude/`, `.github/`
+and prose, none of which Sonar analyses (#954), so the green gate is vacuous here and the
+guard suites are the coverage.
 
 ---
 
@@ -218,73 +227,73 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `scripts/check-inline-comments.mjs` · Test `scripts/check-inline-comments.test.mjs`
 
-- [ ] **Step 1: Write the failing tests** (AC-1, AC-2): a Javadoc block lines 2–7 with `(#348)`
+- [x] **Step 1: Write the failing tests** (AC-1, AC-2): a Javadoc block lines 2–7 with `(#348)`
       on line 5; `added: new Set([3])` → one violation `{ rule: 'provenance', line: 5 }`;
       `added: new Set([8])` → `[]`.
-- [ ] **Step 2: Run it, verify it fails** — `node --test scripts/check-inline-comments.test.mjs` → FAIL (no `rule`, no violation).
-- [ ] **Step 3: Minimal implementation** — `TELLS.provenance` regex; in `findViolations`, for
+- [x] **Step 2: Run it, verify it fails** — `node --test scripts/check-inline-comments.test.mjs` → FAIL (no `rule`, no violation).
+- [x] **Step 3: Minimal implementation** — `TELLS.provenance` regex; in `findViolations`, for
       each `isDoc` region with any line in `added`, test every line; tag existing multiline
       violations `rule: 'multiline'`.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS; the 15 existing cases still pass.
-- [ ] **Step 5: Generalization-audit pass** — population: "every guard that classifies a comment
+- [x] **Step 4: Run it, verify it passes** — same command → PASS; the 15 existing cases still pass.
+- [x] **Step 5: Generalization-audit pass** — population: "every guard that classifies a comment
       region" → `grep -l "isDoc" scripts/*.mjs` → only this guard; skip.
-- [ ] **Step 6: Commit** — `git commit -m "Judge a touched doc comment whole for provenance tells (#956)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Judge a touched doc comment whole for provenance tells (#956)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 1 — Skill markdown: added lines, fences and spans exempt, scope
 
 **Files:** Modify `scripts/check-inline-comments.mjs` · Test `scripts/check-inline-comments.test.mjs`
 
-- [ ] **Step 1: Write the failing tests** (AC-3, AC-4).
-- [ ] **Step 2: Verify they fail** — `syntaxFor` returns null for `.md`.
-- [ ] **Step 3: Minimal implementation** — `syntaxFor` answers `{ markdown: true }` for
+- [x] **Step 1: Write the failing tests** (AC-3, AC-4).
+- [x] **Step 2: Verify they fail** — `syntaxFor` returns null for `.md`.
+- [x] **Step 3: Minimal implementation** — `syntaxFor` answers `{ markdown: true }` for
       `.claude/skills/<skill>/SKILL.md` and `.claude/skills/<skill>/references/**/*.md`; a
       markdown scan tracks fence state and strips backtick spans before testing an added line.
-- [ ] **Step 4: Verify pass.**
-- [ ] **Step 5: Generalization-audit** — population: "every place that decides a path's scope
+- [x] **Step 4: Verify pass.**
+- [x] **Step 5: Generalization-audit** — population: "every place that decides a path's scope
       for this guard" → `grep -n "syntaxFor" scripts/check-inline-comments.mjs` → the hook,
       `--files`, `check`; all route through the one function; no further sites.
-- [ ] **Step 6: Commit** — `git commit -m "Gate provenance in added riviera skill lines (#956)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Gate provenance in added riviera skill lines (#956)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 2 — History advisory + `settle()` exit codes + hook/CLI rows
 
 **Files:** Modify `scripts/check-inline-comments.mjs` · Test `scripts/guard-cli.test.mjs`, `scripts/check-inline-comments.test.mjs`
 
-- [ ] **Step 1: Write the failing tests** (AC-5, AC-6): CLI rows in the harness; a detector case
+- [x] **Step 1: Write the failing tests** (AC-5, AC-6): CLI rows in the harness; a detector case
       for `rule: 'history'` on `no longer`.
-- [ ] **Step 2: Verify they fail.**
-- [ ] **Step 3: Minimal implementation** — `TELLS.history`; `GATING = new Set(['multiline',
+- [x] **Step 2: Verify they fail.**
+- [x] **Step 3: Minimal implementation** — `TELLS.history`; `GATING = new Set(['multiline',
       'provenance'])`; `settle(violations, headline)` after the focus guard's; `ADVICE` keyed by
       rule with the keep/drop sentence; `--hook` lists all rules.
-- [ ] **Step 4: Verify pass** — `node --test "scripts/*.test.mjs"`.
-- [ ] **Step 5: Generalization-audit** — population: "every guard with an advisory tier" →
+- [x] **Step 4: Verify pass** — `node --test "scripts/*.test.mjs"`.
+- [x] **Step 5: Generalization-audit** — population: "every guard with an advisory tier" →
       `grep -l "advisory" scripts/check-*.mjs` → focus posture and now this one; the shape is
       copied, not shared — a shared helper is a refactor for review, not this loop.
-- [ ] **Step 6: Commit** — `git commit -m "Advise on history phrasing; one settle() for the comment guard (#956)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `git commit -m "Advise on history phrasing; one settle() for the comment guard (#956)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 3 — The rule, folded
 
 **Files:** Modify the eight prose/config files listed under File structure.
 
-- [ ] §6c rewritten: the test, drop list, keep list, three surfaces, the one-line floor, the guard
+- [x] §6c rewritten: the test, drop list, keep list, three surfaces, the one-line floor, the guard
       and its modes; §6d keeps budget + relocation, cites §6c for the test.
-- [ ] `inline-comment-guard.md`: the two new rules' scope and exemptions, the advisory tier, the
+- [x] `inline-comment-guard.md`: the two new rules' scope and exemptions, the advisory tier, the
       touched-block rule.
-- [ ] RV-STYLE-1 widened; RV-PROC-2 untouched.
-- [ ] `frontend/.claude/CLAUDE.md`, `CONTRIBUTING.md`, `settings.json` `statusMessage`,
+- [x] RV-STYLE-1 widened; RV-PROC-2 untouched.
+- [x] `frontend/.claude/CLAUDE.md`, `CONTRIBUTING.md`, `settings.json` `statusMessage`,
       `ci.yml` step name + job comment.
-- [ ] The guard's own touched doc comments cleaned (R-4); `node scripts/check-inline-comments.mjs
+- [x] The guard's own touched doc comments cleaned (R-4); `node scripts/check-inline-comments.mjs
       --diff origin/main` → exit 0 on this branch.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` → exit 0.
-- [ ] **Commit** — `git commit -m "Fold the comment rules into one prose gate: keep it only if a fresh session would act on it (#956)"`
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` → exit 0.
+- [x] **Commit** — `git commit -m "Fold the comment rules into one prose gate: keep it only if a fresh session would act on it (#956)"`
 
 ## Phase 4 — Close-out
 
-- [ ] Draft PR → ready for review; review gate (`/code-review` + overlay); Sonar list.
-- [ ] `riviera-docs-freshness` over `origin/main..HEAD`.
-- [ ] Plan final state in the last code-touching commit (`merged via PR #NN`).
+- [x] Draft PR → ready for review; review gate (`/code-review` + overlay); Sonar list.
+- [x] `riviera-docs-freshness` over `origin/main..HEAD`.
+- [x] Plan final state in the last code-touching commit (`merged via PR #NN`).
 
 ---
 
@@ -292,31 +301,35 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-05 | Phase 0 | every guard that classifies a comment region | `grep -l isDoc scripts/*.mjs` | this guard only | skip |
+| 2026-09-05 | Phase 1 | every site deciding a path's scope for this guard | `grep -n syntaxFor scripts/check-inline-comments.mjs` | hook, `--files`, `check` — all via the one function | none needed |
+| 2026-09-05 | Phase 2 | every guard with an advisory tier | `grep -l advisory scripts/check-*.mjs` | focus posture, this guard | shape copied, not shared (a helper is review-stage refactoring) |
+| 2026-09-05 | F-1 fix | every reader of a comment region's text | `grep -n "region.column\|endColumn" scripts/check-inline-comments.mjs` | `tellViolations` only | fixed there |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1…AC-6:** `node --test "scripts/*.test.mjs"` → all pass. Verified at commit `<sha>`.
-- [ ] **AC-7:** the PR's `Repo hygiene (diff-scoped)` job green on the final head.
-- [ ] **AC-8:** RV-PROC-2 at review; `riviera-docs-freshness` at close-out.
+- [x] **AC-1…AC-6:** `node --test "scripts/*.test.mjs"` → 264 pass, 0 fail. Verified at commit `14a3304e`.
+- [x] **AC-7:** `Repo hygiene (diff-scoped)` green on 823dfdbf (first ready head) and on the final head per the PR's checks; `--diff origin/main` exits 0 locally at `14a3304e`.
+- [x] **AC-8:** RV-PROC-2 walked at review (one Minor, F-4, fixed); `riviera-docs-freshness` ran over `234b503c..14a3304e` — zero findings.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — the plan doc's final state is committed here, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone.
