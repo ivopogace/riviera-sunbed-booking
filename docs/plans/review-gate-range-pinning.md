@@ -111,6 +111,7 @@ endpoint, or flow is retired.
 | R-2 | `git merge-base` on a shallow clone silently returns the wrong answer, and `git-diff.mjs`'s `mergeBase()` swallows the failure with `catch { return base; }` — a fail-**open** that hands back the stale base | high | high | The guard refuses (exit 2) when `git rev-parse --is-shallow-repository` is true, before it resolves anything; `mergeBase()`'s fail-open gets a Javadoc note naming the condition | this slice | phase 0 + phase 2 — verified live: the guard exited 2 on this session's own clone until `git fetch --unshallow` |
 | R-3 | The count comparison false-alarms on binary files (`--numstat` emits `-` for both columns) or on a >300-file PR | low | med | Binaries are excluded from the line totals on both sides and counted only as files; `changed_files` stays exact above 300 even though the *listed* files are capped. Both stated in the guard header and covered by a case | this slice | phase 0 — `parseNumstat` case pins it |
 | R-4 | The guard becomes a box the gate ticks without running, reproducing the very failure #942 describes | med | med | The gate's announcement must carry the resolved SHA **and** the matched counts, so a transcript with a bare announcement is visibly non-compliant | this slice | phase 1 — the announcement template names both, and says a bare one means the step did not run |
+| R-5 | (surfaced by the review round, not foreseen) The guard's own inputs admit a false clean: `Number('')` is 0, so unsubstituted counts agree with an empty range | — | high | Counts validated as digit strings; empty range refused on both sides; `--head-sha`/`--base-sha` required and validated as ≥7 lowercase hex | this slice | F-4/F-5/F-17, pinned by four cases in `guard-cli.test.mjs` |
 
 ## Open questions / Assumptions
 
@@ -163,15 +164,16 @@ N/A — no contract change. No endpoint, DTO, or client type is touched.
 
 ## Execution status
 
-**Stage pointer:** `review gate — overlay walked, /code-review fan-out dispatched`
+**Stage pointer:** `merge close-out — all gates green; awaiting the merge decision`
 
-**Next action:** Collect the five review agents' findings, then the Sonar gate.
+**Next action:** Merge (the close-out below is written; steps 2-3 are GitHub-only edits after).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — the scope-check guard + its suite (AC-2, AC-3) | ✅ | phase-0 commit |
 | 1 — `pr-gates.md` §1 steps 2 and 3 (AC-1, scope item 4) | ✅ | phase-1 commit |
 | 2 — the shallow caveat + the two range citations (AC-4) | ✅ | phase-2 commit |
+| 3 — review-round fixes (F-1…F-20, two rounds) | ✅ | the four fix commits |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -283,23 +285,41 @@ Read the PR's `base.ref`, `base.sha`, `head.sha` and counts first; every flag is
       and the command table are present; the executable half is `check-review-range refuses a
       shallow clone before resolving, naming the remedy` in `guard-cli.test.mjs`.
 
+## Gate results
+
+- **CI:** all 8 checks green on `f75ac37` (Backend, Frontend, Repo hygiene, CodeQL ×2 + rollup,
+  SonarCloud scan, SonarCloud Code Analysis).
+- **Review gate:** `/code-review` at high effort with `riviera-review-overlay`, five agents pinned
+  to the literal base SHA, plus a two-agent re-review of the fix round. **20 findings, all fixed**
+  — register above.
+- **Sonar:** quality gate passed; `api/issues/search` `total: 0`, measures non-empty, the
+  `SonarCloud Code Analysis` check-run concluded `success`, so the zero is a real analysis and not
+  an unanalyzed PR. **Caveat, stated rather than glossed:** `sonar-project.properties` sets
+  `sonar.sources=platform/src/main/java,frontend/src`, so `scripts/` is outside the analysed scope
+  — this diff has no new *analysable* lines, and "0.0% coverage on new code" therefore passes
+  vacuously rather than by meeting the ≥80% bar. The new code is covered by
+  `node --test "scripts/*.test.mjs"` (245/245, the guard's CLI cases mutation-proved), which is the
+  suite CI actually gates on for this directory.
+
+**Merged via PR #951.**
+
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced (N/A — no Java in the diff).
-- [ ] **Availability** section justified N/A (no runtime code).
-- [ ] Pool + cutoff rules honored (N/A).
-- [ ] **Modulith** section justified N/A; no cross-module imports (no Java in the diff).
-- [ ] **Payment/payout** N/A.
-- [ ] Refund policy (N/A).
-- [ ] Timezone (N/A).
-- [ ] Booking codes (N/A).
-- [ ] Flyway migration (N/A — no schema change).
-- [ ] **Frontend** standards (N/A — nothing under `frontend/`).
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR** — final state committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in `references/pr-gates.md` §1
-      *plus* `riviera-review-overlay`, not the overlay alone.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced (N/A — no Java in the diff).
+- [x] **Availability** section justified N/A (no runtime code).
+- [x] Pool + cutoff rules honored (N/A).
+- [x] **Modulith** section justified N/A; no cross-module imports (no Java in the diff).
+- [x] **Payment/payout** N/A.
+- [x] Refund policy (N/A).
+- [x] Timezone (N/A).
+- [x] Booking codes (N/A).
+- [x] Flyway migration (N/A — no schema change).
+- [x] **Frontend** standards (N/A — nothing under `frontend/`).
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR** — final state committed here, citing `merged via PR #NN`.
+- [x] **The review gate ran in full** — rung 1 (`Skill("code-review:code-review")`) at high effort,
+      *plus* `riviera-review-overlay`; not the overlay alone.
