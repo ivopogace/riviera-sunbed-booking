@@ -1,15 +1,16 @@
 /**
- * Diff-scoped guard for RV-STYLE-1: an inline comment is one line, or it is not written
- * (`riviera-java-conventions` §6c, `frontend/.claude/CLAUDE.md`, review-bank item RV-STYLE-1).
+ * Diff-scoped guard for RV-STYLE-1 (`riviera-java-conventions` §6c): an inline comment is one
+ * line or it is not written, and a comment or a skill line is kept only if a fresh session
+ * reading it would act differently — an issue or PR number never is.
  *
- * Reasons about lines a diff **added**, for anything git already tracks. The existing tree carries
- * many pre-existing multi-line inline comments that read as established convention in their own
- * files; a repo-wide gate would go red on day one and get switched off (issue #529). A file git has
- * never seen is judged whole instead — see `checkPaths` (#619).
+ * Reasons about lines a diff **added**, for anything git already tracks: the existing tree
+ * carries many multi-line inline comments and issue-numbered doc comments that a repo-wide gate
+ * would go red on and get switched off. Two things are judged whole instead — a doc comment with
+ * any added line, and a file git has never seen (see `checkPaths`).
  *
- * Exempt by design: doc comments (`/** … *\/`, TSDoc — the rule's own carve-out), a block
- * comment standing before any code as the file's header, and `#`/SQL-`--` comment syntaxes
- * (see the plan doc's Non-goals; #522/F-6 settled SQL).
+ * Exempt from the one-line rule: doc comments, a block comment standing before any code as the
+ * file's header, and `#`/SQL-`--` comment syntaxes. The scope's deliberate gaps are listed in
+ * `riviera-java-conventions` `references/inline-comment-guard.md`.
  */
 
 import { readFileSync } from 'node:fs';
@@ -46,27 +47,62 @@ const SYNTAX = {
   '.html': { line: null, block: false, html: true },
 };
 
+/**
+ * The markdown every session reads as instructions: a skill's `SKILL.md` and its `references/`.
+ * Not the rest of `.claude/skills/` — the triage skill's out-of-scope ledger is a list of issue
+ * numbers by design — and not `docs/`, whose prose cites issues and PRs on purpose.
+ */
+const SKILL_MARKDOWN = /^\.claude\/skills\/[^/]+\/(?:SKILL\.md|references\/.+\.md)$/;
+
 /** Returns the comment syntax for a path, or null when the file is out of scope. */
 export function syntaxFor(path) {
+  if (SKILL_MARKDOWN.test(path)) return { markdown: true };
   const dot = path.lastIndexOf('.');
   return dot === -1 ? null : (SYNTAX[path.slice(dot).toLowerCase()] ?? null);
 }
 
 /**
- * Finds every multi-line inline comment the diff wrote.
+ * Text that is written for the author's session rather than the next reader's. `provenance` is
+ * an issue or PR number — `git blame`'s job, and what `riviera-java-conventions` §6d forbids in a
+ * doc comment outright; it gates. A bare `#NNN` counts only in a citing position (after `(`, a
+ * comma, a `NNN/`, or a citing word), because `: #123` is how a colour reads, `the #404 error`
+ * is prose, and a false positive is how a gate gets switched off. `history` narrates a change the
+ * reader never saw and is contract language often enough (a port that releases a set claimed
+ * earlier) that it only advises.
+ */
+const CITING = '(?:issues?|PRs?|epics?|since|until|before|after|see|by|at|in|from|fix(?:es|ed)?|closes)';
+
+const TELLS = {
+  provenance: new RegExp(
+    `(?:[(,]\\s*|\\d/\\s*|\\b${CITING}\\s+)#[1-9]\\d{2,3}(?!\\w)|\\b(?:issues?|PRs?|pull requests?)\\s+#?\\d{2,4}\\b`,
+    'i',
+  ),
+  history:
+    /\bused to (?:be|have|do|need|run|take|hold|read|say|mean)\b|\bno longer\b|\bpreviously\b|\bformerly\b|\boriginally\b|\bhistorically\b|\bthis (?:change|slice|PR)\b|\bthe alternative would\b|\bwas left out\b/i,
+};
+
+/** Every violation carries a `rule`; these fail a run, the rest are printed and let through. */
+export const GATING = new Set(['multiline', 'provenance']);
+
+/**
+ * Every finding in one file: the multi-line inline comments the diff wrote, and the tells in
+ * what it added or, for a doc comment, touched.
  *
  * @param {{ path: string, lines: string[], added: Set<number> }} input the file's new content,
  *   plus the 1-based line numbers the diff added
- * @returns {{ path: string, line: number, endLine: number, text: string }[]} one entry per block
+ * @returns {{ path: string, line: number, endLine: number, text: string, rule: string }[]}
+ *   one entry per multi-line block, one per tell per line, sorted by line
  */
 export function findViolations({ path, lines, added }) {
   const syntax = syntaxFor(path);
   if (!syntax) return [];
+  if (syntax.markdown) return markdownViolations(path, lines, added);
 
   const regions = scan(lines, syntax);
   const violations = [];
 
   for (const region of regions) {
+    violations.push(...tellViolations(path, lines, added, region));
     if (region.kind === 'line') continue;
     if (region.endLine === region.startLine) continue;
     if (region.isDoc || region.isFileHeader) continue;
@@ -76,11 +112,74 @@ export function findViolations({ path, lines, added }) {
   for (const run of addedLineRuns(regions, added)) {
     violations.push(violationAt(path, lines, run.startLine, run.endLine));
   }
-  return violations.sort((a, b) => a.line - b.line);
+  return violations.sort((a, b) => a.line - b.line || a.rule.localeCompare(b.rule));
 }
 
 function violationAt(path, lines, startLine, endLine) {
-  return { path, line: startLine + 1, endLine: endLine + 1, text: lines[startLine].trim() };
+  return {
+    path,
+    line: startLine + 1,
+    endLine: endLine + 1,
+    text: lines[startLine].trim(),
+    rule: 'multiline',
+  };
+}
+
+/**
+ * The tell violations in one comment region. A doc comment with any added line is judged
+ * **whole** — every line of it, written by this diff or not — because touching a doc comment
+ * means re-reading it against the rule; any other comment is judged on its added lines only.
+ * Only the comment's own text is read: the code before a trailing comment never counts.
+ */
+function tellViolations(path, lines, added, region) {
+  const touched = [];
+  for (let i = region.startLine; i <= region.endLine; i++) {
+    if (added.has(i + 1)) touched.push(i);
+  }
+  if (touched.length === 0) return [];
+  const judged = region.isDoc ? range(region.startLine, region.endLine) : touched;
+
+  const violations = [];
+  for (const i of judged) {
+    const from = i === region.startLine ? region.column : 0;
+    const to = i === region.endLine && region.endColumn !== undefined ? region.endColumn : undefined;
+    // The opener is not prose: a `//` must never read as the slash of a `NNN/#NNN` citation.
+    const text = lines[i].slice(from, to).replace(/^(?:\/\/+|\/\*+|<!--)/, '');
+    for (const [rule, pattern] of Object.entries(TELLS)) {
+      if (pattern.test(text)) {
+        violations.push({ path, line: i + 1, endLine: i + 1, text: lines[i].trim(), rule });
+      }
+    }
+  }
+  return violations;
+}
+
+function range(from, to) {
+  return Array.from({ length: to - from + 1 }, (_, k) => from + k);
+}
+
+/**
+ * The tell violations in skill markdown: the lines the diff added, outside fenced code and with
+ * code spans removed, so a command's `#NN` placeholder or a colour token is never read as prose.
+ */
+function markdownViolations(path, lines, added) {
+  const violations = [];
+  let fenced = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*(?:```|~~~)/.test(lines[i])) {
+      fenced = !fenced;
+      continue;
+    }
+    if (fenced || !added.has(i + 1)) continue;
+    const prose = lines[i].replace(/`[^`]*`/g, '');
+    for (const [rule, pattern] of Object.entries(TELLS)) {
+      if (pattern.test(prose)) {
+        violations.push({ path, line: i + 1, endLine: i + 1, text: lines[i].trim(), rule });
+      }
+    }
+  }
+  return violations;
 }
 
 /**
@@ -144,6 +243,7 @@ function scan(lines, syntax) {
         const at = line.indexOf(terminator, c);
         if (at === -1) break;
         open.endLine = i;
+        open.endColumn = at + terminator.length;
         regions.push(open);
         c = at + terminator.length;
         open = null;
@@ -181,18 +281,21 @@ function scan(lines, syntax) {
           kind: 'line',
           startLine: i,
           endLine: i,
+          column: c,
           wholeLine: line.slice(0, c).trim() === '',
         });
         break;
       }
       if (syntax.block && line.startsWith('/*', c)) {
         const isDoc = line.startsWith('/**', c) && !line.startsWith('/**/', c);
-        open = { kind: 'block', startLine: i, isDoc, isFileHeader: !(seenCode || lineHasCode) };
+        const isFileHeader = !(seenCode || lineHasCode);
+        open = { kind: 'block', startLine: i, column: c, isDoc, isFileHeader };
         c += 2;
         continue;
       }
       if (syntax.html && line.startsWith('<!--', c)) {
-        open = { kind: 'html', startLine: i, isDoc: false, isFileHeader: !(seenCode || lineHasCode) };
+        const isFileHeader = !(seenCode || lineHasCode);
+        open = { kind: 'html', startLine: i, column: c, isDoc: false, isFileHeader };
         c += 4;
         continue;
       }
@@ -282,13 +385,44 @@ export function checkPaths(paths) {
   return violations.sort((a, b) => a.path.localeCompare(b.path) || a.line - b.line);
 }
 
-const ADVICE =
-  'RV-STYLE-1: an inline comment is one line, or it is not written. Shorten it, delete it, or ' +
-  'move the prose to a doc comment (Javadoc/TSDoc), which is exempt. See ' +
-  'riviera-java-conventions §6c.';
+const TEST = 'Keep a line of prose only if a fresh session reading it would act differently.';
+
+const ADVICE = {
+  multiline:
+    'RV-STYLE-1: an inline comment is one line, or it is not written. Shorten it, delete it, or ' +
+    'move the contract to a doc comment (Javadoc/TSDoc). See riviera-java-conventions §6c.',
+  provenance:
+    `RV-STYLE-1: ${TEST} An issue or PR number is provenance — git blame's job — so drop it; ` +
+    'relocate load-bearing rationale to RESPONSIBILITIES.md or an ADR and leave a one-line ' +
+    'pointer. A touched doc comment is judged whole. See riviera-java-conventions §6c.',
+  history:
+    `RV-STYLE-1 (advisory): ${TEST} "no longer", "previously", "used to be" narrate a change ` +
+    'the reader never saw: state the contract as it stands, or drop the line. See ' +
+    'riviera-java-conventions §6c.',
+};
 
 function report(violations) {
-  return violations.map((v) => `  ${v.path}:${v.line}-${v.endLine}  ${v.text}`).join('\n');
+  return violations.map((v) => `  ${v.path}:${v.line}-${v.endLine}  ${v.rule}  ${v.text}`).join('\n');
+}
+
+function advise(violations) {
+  return [...new Set(violations.map((v) => v.rule))].map((rule) => ADVICE[rule]).join('\n');
+}
+
+/**
+ * Prints the findings and answers the exit code: 1 when any gating rule fired, else 0. An
+ * advisory finding still reaches stdout — a rule nobody sees is a rule nobody follows — but it
+ * never fails the run.
+ */
+export function settle(violations, headline, out = process.stdout, err = process.stderr) {
+  const gating = violations.filter((v) => GATING.has(v.rule));
+  const advisory = violations.filter((v) => !GATING.has(v.rule));
+  if (advisory.length > 0) {
+    out.write(`${headline} — advisory, not gating:\n${report(advisory)}\n${advise(advisory)}\n`);
+  }
+  if (gating.length === 0) return 0;
+  err.write(`${headline}:\n${report(gating)}\n${advise(gating)}\n`);
+  return 1;
 }
 
 /** git runs from the repository root, so a pathspec has to be expressed from there too. */
@@ -309,7 +443,7 @@ function main(argv) {
       JSON.stringify({
         hookSpecificOutput: {
           hookEventName: 'PostToolUse',
-          additionalContext: `Multi-line inline comment written by this edit:\n${report(violations)}\n${ADVICE}`,
+          additionalContext: `Comment or skill prose written by this edit:\n${report(violations)}\n${advise(violations)}`,
         },
       }),
     );
@@ -317,10 +451,7 @@ function main(argv) {
   }
 
   if (mode === '--files') {
-    const violations = checkPaths(argv.slice(1).map(toRepoRelative));
-    if (violations.length === 0) return 0;
-    process.stderr.write(`Multi-line inline comments:\n${report(violations)}\n${ADVICE}\n`);
-    return 1;
+    return settle(checkPaths(argv.slice(1).map(toRepoRelative)), 'Comments and skill prose');
   }
 
   if (mode === '--diff') {
@@ -329,10 +460,7 @@ function main(argv) {
       process.stderr.write(`${error}\n`);
       return 2;
     }
-    const violations = check([base]);
-    if (violations.length === 0) return 0;
-    process.stderr.write(`Multi-line inline comments added by this diff:\n${report(violations)}\n${ADVICE}\n`);
-    return 1;
+    return settle(check([base]), 'Comments and skill prose this diff touched');
   }
 
   process.stderr.write('usage: check-inline-comments.mjs (--diff <base> | --files <path…> | --hook)\n');

@@ -73,9 +73,11 @@ the same slice; deferral only by asking the maintainer, recorded as a follow-up 
 
 ## Comments
 
-**Inline comments are one line, or they are not written**; default to zero per function.
-TSDoc states the contract, not the changelog (no issue numbers, no decision history) —
-`riviera-java-conventions` §6c–6d. RV-STYLE-1, enforced by `scripts/check-inline-comments.mjs`.
+One test for an inline comment, a TSDoc, or a skill line: keep it only if a fresh session
+reading it would act differently — `riviera-java-conventions` §6c holds the drop and keep
+lists, the one-line rule for inline comments (default to zero per function), and the
+touched-doc-comment rule. TSDoc states the contract, not the changelog (§6d). RV-STYLE-1,
+enforced by `scripts/check-inline-comments.mjs`.
 
 ## Unit tests
 

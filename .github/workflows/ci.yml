@@ -156,7 +156,7 @@ jobs:
     # change, which is a repository setting and not expressible in a diff — #539 records the
     # swap sequencing that lands the pair without an unmergeable window.
     name: Repo hygiene (diff-scoped)
-    # Four diff-scoped repo-hygiene guards, not one: RV-STYLE-1 inline comments (#529), the plan
+    # Four diff-scoped repo-hygiene guards, not one: RV-STYLE-1 comments and skill prose (#529, #956), the plan
     # doc's File-structure section (#533), the two stranded-focus postures (#621), and the
     # touch-target declaration (#648). They share
     # this job because they share a shape — judge what a DIFF wrote, not the standing tree (the
@@ -221,7 +221,11 @@ jobs:
         # detectors cannot see. Both obey the no-node_modules constraint above.
         run: node --test "scripts/*.test.mjs"
 
-      - name: Check the diff for multi-line inline comments (RV-STYLE-1, hard gate)
+      - name: Check the diff's comments and skill prose (RV-STYLE-1, hard gate)
+        # Three rules in one guard: a multi-line inline comment the diff added, and a provenance
+        # tell (an issue/PR number) in an added comment, a touched doc comment or an added skill
+        # line, fail the step; history phrasing is printed as advisory. The step NAME is free to
+        # change — only the job name above is a required context.
         run: node scripts/check-inline-comments.mjs --diff origin/${{ github.event.pull_request.base.ref }}
 
       - name: Check each plan doc lists what the diff changed (#533, hard gate)
