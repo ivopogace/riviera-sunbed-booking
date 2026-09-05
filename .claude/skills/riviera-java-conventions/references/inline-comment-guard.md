@@ -9,8 +9,8 @@ Three rules, one guard:
 - **`provenance`** (gates) — an issue or PR number in an added skill line, an added inline
   comment, or anywhere in a doc comment the diff touched. `issue N` and `PR N` always count; a
   bare `#NNN` counts only in a citing position — after `(`, a comma, a `NNN/`, or a citing
-  word (`issue`, `PR`, `epic`, `since`, `until`, `before`, `after`, `by`, `at`, `in`, `from`,
-  `fixed`, `closes`, `see`). `: #123` reads as a colour and `the #404 error` as prose; both are
+  word: `issue`, `PR`, `epic`, `since`, `until`, `before`, `after`, `by`, `at`, `in`, `from`,
+  `fix`/`fixes`/`fixed`, `closes`, `see` — the whole list, read out of `CITING` in the guard. `: #123` reads as a colour and `the #404 error` as prose; both are
   left to review — a false negative, by design.
 - **`history`** (advises) — `no longer`, `previously`, `used to be`, `this change` and the
   like. Printed, never failing: a port that "releases a `previously` claimed set" is stating

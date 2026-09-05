@@ -180,8 +180,8 @@ N/A — no contract change.
 | 2 — history advisory + `settle()` exit codes + hook/CLI rows | ✅ | 035011a6 |
 | 3 — the rule folded into §6c/§6d, RV-STYLE-1, the reference, the citing docs; clean the touched headers | ✅ | 823dfdbf |
 | 3a — review-gate fix round (F-1…F-6) | ✅ | 14a3304e |
-| 3b — re-review fix round (F-7, F-8) | ✅ | (this commit — the PR's last) |
-| 4 — close-out: docs-freshness, plan final, retire the merged plan from PR #953 | ✅ | d0712c3a, rewritten in this commit |
+| 3b — re-review fix rounds (F-7, F-8; then F-9) | ✅ | 52e42198; then this commit — the PR's last |
+| 4 — close-out: docs-freshness, plan final, retire the merged plan from PR #953 | ✅ | d0712c3a, rewritten in each later commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -196,6 +196,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-5 | review (#3) | the whole-block rule was not recorded as a decided departure from the guard's false-positive stance | fixed — Resolved decision above |
 | F-6 | review (#1) | the new `ci.yml` step comment cited `#956` | fixed — dropped; YAML stays out of the guard's scope |
 | F-7 | re-review of 14a3304e | a `//` opener's second slash satisfied the citing-slash form, so `// #123 …` gated | fixed — the opener is stripped before matching and the slash form needs a digit before it (`NNN/#NNN`); pinned by "a comment opener is not a citing slash" |
+| F-9 | re-review of 52e42198 (RV-PROC-2a) | the reference's citing-word list omitted `per` and `cf`, live in the code | fixed — both dropped from the code (unobserved in the tree's citations); the doc now carries the whole list |
 | F-8 | re-review of 14a3304e | `the`, `of`, `and`, `or` as citing words turned `the #404 error` into provenance | fixed — generic words left the citing list (`by`, `at`, `in`, `from`, `fixed`, `closes`, `see`, … stay); same test |
 
 **Review note.** Gate run per `pr-gates.md` §1 rung 1 (the code-review plugin: six agents incl. the

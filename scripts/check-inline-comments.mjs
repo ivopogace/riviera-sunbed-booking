@@ -70,7 +70,7 @@ export function syntaxFor(path) {
  * reader never saw and is contract language often enough (a port that releases a set claimed
  * earlier) that it only advises.
  */
-const CITING = '(?:issues?|PRs?|epics?|since|until|before|after|per|see|cf|by|at|in|from|fix(?:es|ed)?|closes)';
+const CITING = '(?:issues?|PRs?|epics?|since|until|before|after|see|by|at|in|from|fix(?:es|ed)?|closes)';
 
 const TELLS = {
   provenance: new RegExp(
