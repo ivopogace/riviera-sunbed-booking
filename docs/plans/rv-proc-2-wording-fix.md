@@ -21,12 +21,12 @@ not answer to, and makes "the diff falsified it" the finding test.
 **Source of intent:** GitHub issue #941.
 
 **Skills consulted:** `riviera-sdlc` (routing + the issue-intake grill gate — the issue's three
-defects re-verified against `main` after #956; the AC-3 choice settled by data, not by
+defects re-verified against `main` after PR #957; the AC-3 choice settled by data, not by
 preference) · `riviera-plan-doc` (this template — kept short by the owner's instruction) ·
 `tdd` (the test is a replay: #939's squash `c0b7e61f` walked against the corrected text, transcript
 in the PR body) · `riviera-review-overlay` (review gate — at ready for review; RV-PROC-2 over its
 own edit) · `riviera-docs-freshness` (**ran** as check c over this diff — the diff retires no
-name; retired `docs/plans/prose-gate.md`, merged via PR #956, no citations outside `docs/plans/`)
+name; retired `docs/plans/prose-gate.md`, merged via PR #957, no citations outside `docs/plans/`)
 · `riviera-local-debug` (unshallowed the clone and fetched `main` before the replay and the
 `--diff` guard runs).
 
@@ -45,15 +45,18 @@ stands in for `bugfix/rv-proc-2-wording-fix`)
       falsified it; and the check says what counts as removed or renamed wording.
       *Seam:* the item's text · *Pinned by:* replay of #939 — `RV-PROC-1` → `RV-PROC-*` retires
       nothing (N/A); no retired name has a falsified hit.
-- [x] **AC-3:** The two check-b commands sweep the same paths (`$SUBSTRATE`), and the prose
-      says why `docs/` beyond `adr`/`agents` is out. *Seam:* the command block · *Pinned by:*
-      both commands run on `main`: 4 files located, 0 forbidden imports.
-- [x] **AC-4:** Replaying #939 against the corrected item yields zero findings from checks b
-      and c. *Pinned by:* the transcript in the PR body.
+- [x] **AC-3:** Given the two check-b commands, when both are run from the repo root, then they
+      sweep the same paths (`$SUBSTRATE`) and the prose says why `docs/` beyond `adr`/`agents`
+      is out. *Seam:* the command block · *Pinned by:* both commands run on `main`: 4 files
+      located, 0 forbidden imports.
+- [x] **AC-4:** Given #939's squash, when it is replayed against the corrected item, then checks
+      b and c yield zero findings. *Seam:* the item's text, walked as a reviewer would ·
+      *Pinned by:* the transcript in the PR body.
 
 ## Non-goals
 
-- Any change to RV-PROC-2's trigger, check a, or the command clause of check b.
+- Any change to RV-PROC-2's trigger, check a, or check b's paragraph on commands ("A **command**
+  is a worked example too…"). The two-command block under check b is in scope (AC-3).
 - The membership rule behind the five structural tests (#945).
 
 ## Behavior-parity ledger (retirement / replacement slices only)
@@ -65,7 +68,7 @@ N/A — new wording, replaces no surface.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Narrowing check b's locate command to the trigger set hides a Java example outside it | low | med | measured: every fence under `docs/` outside `adr`/`agents` is in `docs/research/` or `docs/architecture/research/` | session | closed — the prose states the reason |
-| R-2 | New skill lines trip the prose gate (#956) | med | low | `node scripts/check-inline-comments.mjs --diff origin/main` before each push | session | closed — exit 0, advisories reworded |
+| R-2 | New skill lines trip the prose gate (PR #957) | med | low | `node scripts/check-inline-comments.mjs --diff origin/main` before each push | session | closed — exit 0, advisories reworded |
 
 ## Open questions / Assumptions
 
@@ -114,7 +117,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 ## File structure
 
 - `.claude/skills/riviera-review-overlay/SKILL.md` — RV-PROC-2 checks b and c
-- `docs/plans/prose-gate.md` — retired (its PR merged)
+- `docs/plans/prose-gate.md` — retired (merged via PR #957)
 - `docs/plans/rv-proc-2-wording-fix.md` — this plan
 
 ---
