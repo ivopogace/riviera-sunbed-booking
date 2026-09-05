@@ -84,8 +84,8 @@ transaction). Payment then drives the rest: `PaymentConfirmed →` `booking` con
 `→ BookingConfirmed →` `payout` accrues a ledger entry **and** `notification` mails
 the code. On `BookingCancelled →` `payout` reverses the entry, `notification` mails
 the cancellation, and `booking`'s own listener drives the refund per policy; the set
-is released through the same claim port. The full picture — aggregates, sequence
-flows, and state machines — is in
+is released through the same claim port. The full picture — the module map, the
+tables and types each module owns, sequence flows, and state machines — is in
 [`docs/architecture/domain-model.md`](docs/architecture/domain-model.md).
 
 ## The non-negotiables (short version)
