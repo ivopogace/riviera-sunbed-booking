@@ -61,7 +61,8 @@ permissions:
 # What this cannot shorten: the `CodeQL` workflow's two `Analyze (…)` jobs and the `CodeQL` check
 # are required contexts that exist only when SARIF is uploaded for the SHA, so they run in full on
 # every push (observed 2-4 min) and bound the whole check suite. Inside this workflow the floor is
-# the Sonar scan (~1 min) plus three runner start-ups.
+# the Sonar scan (~1 min) plus runner start-ups — four jobs, two of them on the critical path (a build
+# job, then `sonar`).
 jobs:
   backend:
     name: Backend (build + test)

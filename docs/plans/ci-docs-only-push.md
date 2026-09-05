@@ -183,6 +183,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | docs-freshness | `riviera-sdlc` SKILL.md CI-gate row: "every push builds both apps, runs tests" — falsified by the cache hit | fixed in this commit |
+| F-2 | docs-freshness | `docs/agents/gradle-proxy-trust.md`: "CI runs the full IT suite" — now only on a tree not already built green | fixed in this commit |
+| F-3 | docs-freshness | `ci.yml` header: "three runner start-ups" — the workflow has four jobs, two on a hit's critical path | fixed in this commit |
 
 ---
 
@@ -195,6 +198,10 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `.claude/skills/riviera-plan-doc/references/plan-doc-template.md` — the Execution-status note
   and the self-review line say the same.
 - `docs/plans/ci-docs-only-push.md` — this plan.
+- `.claude/skills/riviera-sdlc/SKILL.md` — the CI-gate row no longer claims every push builds both
+  apps (`riviera-docs-freshness` finding F-1).
+- `docs/agents/gradle-proxy-trust.md` — "CI runs the full IT suite" qualified to trees not already
+  built green (finding F-2).
 - `docs/plans/rv-proc-2-wording-fix.md` — retired at close-out (merged via PR #958; no citations
   outside `docs/plans/`).
 - `platform/src/test/java/ai/riviera/platform/ScheduledWorkArchitectureTest.java` — phase 2
