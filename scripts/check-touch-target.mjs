@@ -24,7 +24,7 @@ import {
   changedPaths,
   diffArgs,
   git,
-  mergeBase,
+  resolveBase,
   parseAddedLines,
   readText,
   repoRoot,
@@ -477,10 +477,12 @@ function main(argv) {
   }
 
   if (mode === '--diff') {
-    return settle(
-      check([mergeBase(argv[1] ?? 'origin/main')]),
-      'Touch-target declarations written by this diff',
-    );
+    const { base, error } = resolveBase(argv[1] ?? 'origin/main');
+    if (error) {
+      process.stderr.write(`${error}\n`);
+      return 2;
+    }
+    return settle(check([base]), 'Touch-target declarations written by this diff');
   }
 
   if (mode === '--all') {

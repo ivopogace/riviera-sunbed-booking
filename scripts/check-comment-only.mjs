@@ -7,6 +7,12 @@
  *
  * Usage: `node scripts/check-comment-only.mjs [<base>]`  (default base `origin/main`)
  *
+ * The base is `<remote>/<branch>`, which `resolveBase` fetches before using, or a commit SHA, which
+ * cannot go stale — a bare local branch is refused (issue #952). That matters more here than
+ * anywhere else in the family: this guard is neither a CI gate nor a registered hook, so a by-hand
+ * run against a session-old `origin/main` was the only way it was ever invoked, and widening its
+ * range is how another branch's code change gets certified as this one's comment-only refactor.
+ *
  * **Every git call and every read goes through `git-diff.mjs`, from the repository root.** This guard
  * was left out of PR #618's sweep and kept the front-end the other three shed: run from a
  * subdirectory, every read threw, the `catch` around each one `continue`d, and the printed count —
@@ -18,7 +24,7 @@
 
 import { pathToFileURL } from 'node:url';
 
-import { changedPaths, git, mergeBase, nameOnlyArgs, readText } from './git-diff.mjs';
+import { changedPaths, git, nameOnlyArgs, readText, resolveBase } from './git-diff.mjs';
 
 /** Extensions whose comment syntax `strip` understands. Anything else is skipped, not assumed safe. */
 const SUPPORTED = new Set(['.java', '.ts', '.tsx', '.js', '.mjs', '.cjs', '.scss', '.css']);
@@ -247,8 +253,13 @@ export function check(from) {
 }
 
 function main(argv) {
-  const base = argv[0] ?? 'origin/main';
-  const { codeChanged, skipped, unreadable, verified } = check(mergeBase(base));
+  const ref = argv[0] ?? 'origin/main';
+  const { base, error } = resolveBase(ref);
+  if (error) {
+    process.stderr.write(`${error}\n`);
+    return 2;
+  }
+  const { codeChanged, skipped, unreadable, verified } = check(base);
 
   if (codeChanged.length > 0) {
     process.stderr.write(
@@ -267,7 +278,9 @@ function main(argv) {
     );
     return 1;
   }
-  process.stdout.write(`Comment-only: ${verified} file(s) verified code-identical against ${base}.\n`);
+  process.stdout.write(
+    `Comment-only: ${verified} file(s) verified code-identical against ${ref} (merge-base ${base}).\n`,
+  );
   if (skipped.length > 0) {
     process.stdout.write(`Skipped ${skipped.length} file(s) with unsupported comment syntax.\n`);
   }

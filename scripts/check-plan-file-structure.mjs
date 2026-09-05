@@ -16,7 +16,7 @@ import { pathToFileURL } from 'node:url';
 import {
   changedPaths,
   git,
-  mergeBase,
+  resolveBase,
   nameOnlyArgs,
   readText,
   untrackedPaths,
@@ -362,7 +362,12 @@ function main(argv) {
     process.stderr.write('usage: check-plan-file-structure.mjs --diff [<base>]\n');
     return 2;
   }
-  const omissions = check(mergeBase(argv[1] ?? 'origin/main'));
+  const { base, error } = resolveBase(argv[1] ?? 'origin/main');
+  if (error) {
+    process.stderr.write(`${error}\n`);
+    return 2;
+  }
+  const omissions = check(base);
   if (omissions.length === 0) return 0;
   process.stderr.write(`${report(omissions)}\n`);
   return 1;
