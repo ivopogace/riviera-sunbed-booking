@@ -4,8 +4,8 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 
-import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.Pool;
+import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
 /**

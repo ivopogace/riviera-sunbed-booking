@@ -3,8 +3,8 @@ package ai.riviera.platform.venue.adapter.in;
 import java.util.Arrays;
 
 import ai.riviera.platform.venue.vocabulary.MoneyView;
-import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.application.SetCommand;
+import ai.riviera.platform.venue.vocabulary.Pool;
 
 /**
  * The request body for placing/editing one set position ({@code POST}/{@code PATCH}

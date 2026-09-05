@@ -27,8 +27,8 @@ import ai.riviera.platform.venue.application.RowNameCommand;
 import ai.riviera.platform.venue.application.RowPriceCommand;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
-import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.vocabulary.Pool;
+import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

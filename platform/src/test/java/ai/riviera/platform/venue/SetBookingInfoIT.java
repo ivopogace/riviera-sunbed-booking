@@ -14,8 +14,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import ai.riviera.platform.EnabledIfDockerAvailable;
 import ai.riviera.platform.TestcontainersConfiguration;
-import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.Pool;
+import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 import ai.riviera.platform.venue.api.VenueRates;

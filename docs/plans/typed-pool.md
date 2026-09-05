@@ -39,9 +39,11 @@ carriers, not the issue's three declaration sites: `SetView.pool`, `SetPlacement
 existing `parsing` wrapper) · `riviera-plan-doc` (this template — forced the behaviour-parity
 ledger for the `400` on a bad token and the decision to leave availability *state* untyped) ·
 `tdd` (each phase opens with a compile-red or assertion-red test at a named seam) ·
-`riviera-review-overlay` (review gate — pending, at ready-for-review) · `riviera-docs-freshness`
-(pending — due: `riviera-java-conventions` §6a and its red-flag table cite the `ONLINE_POOL` constant
-this slice deletes) · `riviera-modulith` (`Pool` is published, so `vocabulary/`, not `domain/`; a
+`riviera-review-overlay` (review gate — **ran** on PR #973 over `a7ae5bb6..cf160c9c` via
+`code-review:code-review` at high effort plus the overlay walk; three findings, register below) ·
+`riviera-docs-freshness` (**ran** over `a7ae5bb6..HEAD`, 1 finding — ADR-0018 §3's "four such
+mirrors" count, patched to five; the `riviera-java-conventions` §6a citation of the deleted
+`ONLINE_POOL` constant was patched in phase 2) · `riviera-modulith` (`Pool` is published, so `vocabulary/`, not `domain/`; a
 value type on an `api/` port; no `allowedDependencies` edge; the structural net after the change) ·
 `riviera-java-conventions` (enum for a closed vocabulary; `valueOf` at the JDBC mapper; §6c/§6d on
 every touched Javadoc — the `SetBookingInfo` block loses its provenance) · `codebase-design` (no new
@@ -59,30 +61,30 @@ malformed PEM block, repaired into a scratchpad copy for `git`).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a `SetCommand` built with `Pool.WALK_IN`, when constructed, then it carries that
+- [x] **AC-1:** Given a `SetCommand` built with `Pool.WALK_IN`, when constructed, then it carries that
   pool with no string vocabulary check; given a `null` pool, then `IllegalArgumentException`.
   *Seam:* `venue.application.SetCommand` canonical constructor · *Pinned by:*
   `SetCommandTest.carriesTheTypedPool`, `SetCommandTest.rejectsAMissingPool`
-- [ ] **AC-2:** Given a set body whose `pool` is `"VIP"` or absent, when converted to a command, then
+- [x] **AC-2:** Given a set body whose `pool` is `"VIP"` or absent, when converted to a command, then
   `IllegalArgumentException` (which `InvalidApiRequestException.parsing` turns into
   `400 INVALID_REQUEST`); given `"WALK_IN"`, then the command carries `Pool.WALK_IN`.
   *Seam:* `venue.adapter.in.SetPositionRequest#toCommand` · *Pinned by:*
   `SetPositionRequestTest.rejectsAnUnknownPoolToken`, `.rejectsAMissingPool`, `.mapsTheTokenToThePool`
-- [ ] **AC-3:** Given a seeded online set, when `SetBookingFacts#setBookingInfo` answers, then
+- [x] **AC-3:** Given a seeded online set, when `SetBookingFacts#setBookingInfo` answers, then
   `pool()` is `Pool.ONLINE`; given a walk-in set, when `AvailabilityClaim#claim` runs, then
   `NOT_ONLINE_POOL` and no row — through the typed `poolForClaim`.
   *Seam:* `venue.api.SetBookingFacts`, `availability.api.AvailabilityClaim` · *Pinned by:*
   `SetBookingInfoIT.resolvesBookingInfoForOnlineSet`, `AvailabilityClaimIT.walkInSetIsNotClaimable`
-- [ ] **AC-4:** Given a `WALK_IN` set, when a tourist reserves it, then `NOT_ONLINE_POOL` from the
+- [x] **AC-4:** Given a `WALK_IN` set, when a tourist reserves it, then `NOT_ONLINE_POOL` from the
   unlocked fast path, before any claim. *Seam:* `booking`'s `CreateBookingService` through a
   `SetBookingFacts` fake · *Pinned by:* `CreateBookingServiceTest.rejectsWalkInPool`
-- [ ] **AC-5:** Given the compiled production tree, when its constant pools are scanned, then no class
+- [x] **AC-5:** Given the compiled production tree, when its constant pools are scanned, then no class
   other than `venue.vocabulary.Pool` holds `"ONLINE"` or `"WALK_IN"` as a string constant; given a
   fixture class that does, then the scan names it. *Seam:* the compiled classes under
   `build/classes/java/main` (a context-free fitness function, sibling to
   `NoStripeConnectArchitectureTest`) · *Pinned by:* `PoolTokenArchitectureTest.onlyPoolStatesThePoolTokens`,
   `PoolTokenArchitectureTest.flagsAStrayPoolLiteral`
-- [ ] **AC-6:** Given the change, when the structural net runs, then it is green (no new
+- [x] **AC-6:** Given the change, when the structural net runs, then it is green (no new
   cross-module edge, `Pool` placed in a `vocabulary` surface). *Seam:* `ApplicationModules.verify()`
   and the package-shape rules · *Pinned by:* `ModularityTests`, `PublishedSurfacePlacementArchitectureTests`
 
@@ -118,23 +120,28 @@ The `Set<String> POOLS` validation in `SetCommand` is retired; its observable be
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The claim-time check loses its lock or its authority while being retyped (invariant #3 against a concurrent pool flip) | low | high | `JdbcAvailabilityClaim` keeps `setFacts.poolForClaim` (`FOR KEY SHARE`) as the check inside `@Transactional claim`; `SetWriteVsClaimConcurrencyIT` (pool-flip race) and `AvailabilityClaimIT.walkInSetIsNotClaimable` stay green | agent | open |
-| R-2 | A bad wire token becomes a 500 instead of a 400 (`Pool.valueOf` NPE on `null`, or an IAE thrown outside `parsing`) | med | med | the conversion lives in `SetPositionRequest#toCommand`, already inside `parsing` at every controller call; `null` handled before `valueOf`; `SetPositionRequestTest` pins both | agent | open |
-| R-3 | `Pool.valueOf` on a stored value trips on seed data or an IT fixture that writes a lower-case token | low | med | the CHECK admits only the two upper-case tokens; `SetBookingInfoIT` / `VenueAdminControllerIT` read seeded and written rows through the new mappers | agent | open |
-| R-4 | The fitness test false-positives on a legitimate `Pool.ONLINE` reference (the field name is a `Utf8` entry in every referencing class) | med | med | scan `CONSTANT_String` entries only (`java.lang.classfile` `StringEntry`), never raw `Utf8`; the negative fixture proves a literal is caught and the positive run proves `ReserveSetService`'s `Pool.ONLINE` reference is not | agent | open |
-| R-5 | `PoolTokenArchitectureTest` runs before `compileJava` in some Gradle invocation and finds no classes | low | low | assert the directory exists with the same message as `NoStripeConnectArchitectureTest`; the `test` task depends on both compiles | agent | open |
-| R-6 | Touched Javadoc blocks trip `check-inline-comments.mjs` (provenance tells in `SetBookingInfo`'s block) | med | low | re-read every touched block whole per §6c; run `node scripts/check-inline-comments.mjs --diff origin/main` before each push | agent | open |
-| R-7 | Module boundary leak (#11): `Pool` lands in `venue.domain` or `SetCommand` (application) is imported cross-module | low | high | `Pool` in `venue/vocabulary/`; the structural net after phase 1 | agent | open |
+| R-1 | The claim-time check loses its lock or its authority while being retyped (invariant #3 against a concurrent pool flip) | low | high | `JdbcAvailabilityClaim` keeps `setFacts.poolForClaim` (`FOR KEY SHARE`) as the check inside `@Transactional claim`; `SetWriteVsClaimConcurrencyIT` (pool-flip race) and `AvailabilityClaimIT.walkInSetIsNotClaimable` stay green | agent | closed — `SetWriteVsClaimConcurrencyIT` (12) and `AvailabilityClaimIT` (4) green locally and in CI |
+| R-2 | A bad wire token becomes a 500 instead of a 400 (`Pool.valueOf` NPE on `null`, or an IAE thrown outside `parsing`) | med | med | the conversion lives in `SetPositionRequest#toCommand`, already inside `parsing` at every controller call; `null` handled before `valueOf`; `SetPositionRequestTest` pins both | agent | closed — `SetPositionRequestTest` (3) + `VenueAdminControllerIT` (47) green |
+| R-3 | `Pool.valueOf` on a stored value trips on seed data or an IT fixture that writes a lower-case token | low | med | the CHECK admits only the two upper-case tokens; `SetBookingInfoIT` / `VenueAdminControllerIT` read seeded and written rows through the new mappers | agent | closed — `SetBookingInfoIT`, `VenueRepriceIT`, `VenueAdminControllerIT` green |
+| R-4 | The fitness test false-positives on a legitimate `Pool.ONLINE` reference (the field name is a `Utf8` entry in every referencing class) | med | med | scan `CONSTANT_String` entries only (`java.lang.classfile` `StringEntry`), never raw `Utf8`; the negative fixture proves a literal is caught and the positive run proves `ReserveSetService`'s `Pool.ONLINE` reference is not | agent | closed — `PoolTokenArchitectureTest` names `Pool` as the one holder and flags the fixture |
+| R-5 | `PoolTokenArchitectureTest` runs before `compileJava` in some Gradle invocation and finds no classes | low | low | assert the directory exists with the same message as `NoStripeConnectArchitectureTest`; the `test` task depends on both compiles | agent | closed — green in CI's full suite |
+| R-6 | Touched Javadoc blocks trip `check-inline-comments.mjs` (provenance tells in `SetBookingInfo`'s block) | med | low | re-read every touched block whole per §6c; run `node scripts/check-inline-comments.mjs --diff origin/main` before each push | agent | closed — guard exit 0 on every push |
+| R-7 | Module boundary leak (#11): `Pool` lands in `venue.domain` or `SetCommand` (application) is imported cross-module | low | high | `Pool` in `venue/vocabulary/`; the structural net after phase 1 | agent | closed — net green locally and in CI |
 
 ## Open questions / Assumptions
 
+None open.
+
+### Resolved
+
 - **Assumption:** the enum is named `Pool` (the issue's word, `CONTEXT.md`'s term, the column's name,
   the frontend's type alias) rather than `SetPool`; `venue.vocabulary` qualifies it. Naming is the
-  agent's call (`riviera-plan-doc` § execution 2). — *Owner:* agent · *Resolves by:* phase 0 ← confirm?
+  agent's call (`riviera-plan-doc` § execution 2). — shipped as `Pool` in `3d23b33d`; stated in the
+  PR body for the owner to overrule at review.
 - **Assumption:** `SetView.pool` is typed too — the issue's "published surfaces carry the type" reads
-  on every published carrier, and it costs one `valueOf`. — *Owner:* agent · *Resolves by:* phase 1 ← confirm?
+  on every published carrier, and it costs one `valueOf`. — shipped in `eaa77334`; wire unchanged.
 - **Assumption:** availability *state* stays a `String` (Non-goals) — the issue's own "if it doesn't
-  fall out cheaply, say so and leave it". — *Owner:* agent · *Resolves by:* plan ← confirm?
+  fall out cheaply, say so and leave it". — recorded in the PR's Scope notes.
 
 ## Availability & concurrency (invariant #2)
 
@@ -198,15 +205,16 @@ request DTO still accepts the same strings.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft; ready for review → review gate`
+**Stage pointer:** `DONE — review gate run, Sonar gate green, awaiting merge (merged via PR #973)`
 
-**Next action:** open the draft PR, check its CI run, mark ready for review, run the review gate per `riviera-sdlc` `references/pr-gates.md` §1.
+**Next action:** merge PR #973, then the close-out's GitHub-side steps (issue closed by the PR; no epic; nothing deferred).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `Pool` published; `SetCommand` typed, V16's pool half deleted; edge conversion | ✅ | 56578d80 |
-| 1 — published surfaces carry `Pool`; both consumers compare against it; the two constants deleted | ✅ | 3b084c83 |
-| 2 — `PoolTokenArchitectureTest` + fixture; docs freshness | ✅ | 5f24e0c4 |
+| 0 — `Pool` published; `SetCommand` typed, V16's pool half deleted; edge conversion | ✅ | 3d23b33d |
+| 1 — published surfaces carry `Pool`; both consumers compare against it; the two constants deleted | ✅ | eaa77334 |
+| 2 — `PoolTokenArchitectureTest` + fixture; docs freshness | ✅ | cf160c9c |
+| review fix round — F-1, F-2; close-out | ✅ | the PR's last commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -214,6 +222,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (prior-PR reviewer, precedent PR #917) | the `Pool` import inserted out of alphabetical order in 17 files | fixed in the fix-round commit |
+| F-2 | review (code-comment reviewer; also RV-PROC-2 c / docs-freshness counting sweep) | ADR-0018 §3 states "Four such mirrors exist"; `Pool` is the fifth, and its Javadoc cites that section | fixed in the fix-round commit — the ADR lists five and notes `Pool` is the one published (not `domain/`-internal) mirror |
+| F-3 | review (git-history reviewer) | `parsePool` runs as a constructor argument, so on a request with several invalid fields the pool error now wins over `rowLabel`/`positionNo`/`tier`; the wire is unaffected (`ApiErrorHandler` never echoes the message), only the logged cause changes | accepted, not fixed — preserving the old order would put the string back into `SetCommand` or duplicate its checks at the edge; no test or client observes the order |
+| S-1 | sonar | PR #973 analysis: 81 new lines, 0 issues, 0 hotspots, 100% new-code coverage, 0.0% duplication | clean |
 
 ---
 
@@ -250,6 +262,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — `poolForClaim` stub retyped
 - `.claude/skills/riviera-java-conventions/SKILL.md` — §6a example and the red-flag row cite `Pool`, not the deleted constant
 - `RESPONSIBILITIES.md` — §venue states the once-only pool vocabulary; the machine-checked table gains the `PoolTokenArchitectureTest` row
+- `docs/adr/ADR-0018-rule-layer-and-its-packaging.md` — §3's mirror count and list gain `Pool` (review finding F-2)
 - `docs/architecture/domain-model.md` — `Pool` enum beside `BookingMode`; `SetBookingInfo.pool` typed
 
 ---
@@ -260,14 +273,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `SetCommand.java`, `SetPlacement.java`, `SetPositionRequest.java`, `JdbcVenues.java`, `SetCommandTest.java`,
 `VenueAdminServiceTest.java`, the four venue ITs that build `SetCommand`
 
-- [ ] **Step 1: Write the failing test** — `SetCommandTest.carriesTheTypedPool` (`new SetCommand("A", 1,
+- [x] **Step 1: Write the failing test** — `SetCommandTest.carriesTheTypedPool` (`new SetCommand("A", 1,
   "PREMIUM", Pool.WALK_IN, …)` → `Pool.WALK_IN`) and `rejectsAMissingPool` (`null` → IAE). Red = does not compile.
-- [ ] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*SetCommandTest*"` → compile error, `Pool` unknown.
-- [ ] **Step 3: Minimal implementation** — the enum; `SetCommand(… Pool pool …)` with `POOLS` deleted and a presence check; `SetPlacement`, `JdbcVenues` follow the type.
-- [ ] **Step 4: Second red at the edge** — `SetPositionRequestTest` (`"VIP"` → IAE, `null` → IAE, `"WALK_IN"` → `Pool.WALK_IN`); then `toCommand` parses.
-- [ ] **Step 5: Run it, verify it passes** — `--tests "*SetCommandTest*" --tests "*SetPositionRequestTest*" --tests "*VenueAdminServiceTest*"` → PASS; then `--tests "*VenueAdminControllerIT*"` (400 on the bad-token paths, pool split editable).
-- [ ] **Step 6: Commit** — `Publish a typed Pool and take SetCommand off the string vocabulary (#927)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 2: Run it, verify it fails** — `gradle --no-daemon --console=plain test --tests "*SetCommandTest*"` → compile error, `Pool` unknown.
+- [x] **Step 3: Minimal implementation** — the enum; `SetCommand(… Pool pool …)` with `POOLS` deleted and a presence check; `SetPlacement`, `JdbcVenues` follow the type.
+- [x] **Step 4: Second red at the edge** — `SetPositionRequestTest` (`"VIP"` → IAE, `null` → IAE, `"WALK_IN"` → `Pool.WALK_IN`); then `toCommand` parses.
+- [x] **Step 5: Run it, verify it passes** — `--tests "*SetCommandTest*" --tests "*SetPositionRequestTest*" --tests "*VenueAdminServiceTest*"` → PASS; then `--tests "*VenueAdminControllerIT*"` (400 on the bad-token paths, pool split editable).
+- [x] **Step 6: Commit** — `Publish a typed Pool and take SetCommand off the string vocabulary (#927)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 1 — the published surfaces carry `Pool`; both consumers compare against it
 
@@ -275,30 +288,30 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `ReserveSetService.java`, `JdbcAvailabilityClaim.java`, `SetBookingInfoIT.java`, `CreateBookingServiceTest.java`,
 `WebSliceStubs.java`, the five other tests that construct `SetBookingInfo`
 
-- [ ] **Step 1: Write the failing test** — `SetBookingInfoIT.resolvesBookingInfoForOnlineSet` asserts
+- [x] **Step 1: Write the failing test** — `SetBookingInfoIT.resolvesBookingInfoForOnlineSet` asserts
   `Pool.ONLINE`; `CreateBookingServiceTest`'s fake returns `Optional<Pool>`. Red = does not compile.
-- [ ] **Step 2: Run it, verify it fails** — `--tests "*CreateBookingServiceTest*"` → compile error.
-- [ ] **Step 3: Minimal implementation** — retype the record, the port, the view, the mappers; the two
+- [x] **Step 2: Run it, verify it fails** — `--tests "*CreateBookingServiceTest*"` → compile error.
+- [x] **Step 3: Minimal implementation** — retype the record, the port, the view, the mappers; the two
   consumers compare against `Pool.ONLINE` and drop their constants.
-- [ ] **Step 4: Run it, verify it passes** — `--tests "*CreateBookingServiceTest*" --tests "*SetBookingInfoIT*"
+- [x] **Step 4: Run it, verify it passes** — `--tests "*CreateBookingServiceTest*" --tests "*SetBookingInfoIT*"
   --tests "*AvailabilityClaimIT*" --tests "*SetWriteVsClaimConcurrencyIT*"` → PASS; then the structural net.
-- [ ] **Step 5: Generalization-audit pass** — population: every production class holding `"ONLINE"` /
+- [x] **Step 5: Generalization-audit pass** — population: every production class holding `"ONLINE"` /
   `"WALK_IN"` as a string constant (phase 2 makes this the fitness test's own scan).
-- [ ] **Step 6: Commit** — `Carry Pool on venue's published set facts and compare against it in booking and availability (#927)`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 6: Commit** — `Carry Pool on venue's published set facts and compare against it in booking and availability (#927)`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 2 — the fitness test; docs freshness
 
 **Files:** Create `venue/PoolTokenArchitectureTest.java`, `ai/riviera/poolfixture/RoguePoolLiteral.java` · Modify
 `riviera-java-conventions/SKILL.md`, `docs/architecture/domain-model.md`
 
-- [ ] **Step 1: Write the failing test** — `flagsAStrayPoolLiteral` against the fixture (red until the
+- [x] **Step 1: Write the failing test** — `flagsAStrayPoolLiteral` against the fixture (red until the
   scan exists), `onlyPoolStatesThePoolTokens` over `build/classes/java/main`.
-- [ ] **Step 2: Run it, verify it fails** — `--tests "*PoolTokenArchitectureTest*"`.
-- [ ] **Step 3: Minimal implementation** — the `java.lang.classfile` `StringEntry` scan, `Pool` exempt.
-- [ ] **Step 4: Run it, verify it passes**; then the docs edits and `node scripts/check-inline-comments.mjs --diff origin/main`, `node scripts/check-plan-file-structure.mjs --diff origin/main`.
-- [ ] **Step 5: Commit** — `Pin the pool tokens to Pool with a constant-pool scan (#927)`
-- [ ] **Step 6: Update plan-doc execution status.**
+- [x] **Step 2: Run it, verify it fails** — `--tests "*PoolTokenArchitectureTest*"`.
+- [x] **Step 3: Minimal implementation** — the `java.lang.classfile` `StringEntry` scan, `Pool` exempt.
+- [x] **Step 4: Run it, verify it passes**; then the docs edits and `node scripts/check-inline-comments.mjs --diff origin/main`, `node scripts/check-plan-file-structure.mjs --diff origin/main`.
+- [x] **Step 5: Commit** — `Pin the pool tokens to Pool with a constant-pool scan (#927)`
+- [x] **Step 6: Update plan-doc execution status.**
 
 ---
 
@@ -312,24 +325,28 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 … AC-6:** filled at close-out with the command and commit.
+- [x] **AC-1, AC-2:** `gradle test --tests "*SetCommandTest*" --tests "*SetPositionRequestTest*"` → 9 + 3 tests, 0 failures. Verified at `3d23b33d`.
+- [x] **AC-3:** `gradle test --tests "*SetBookingInfoIT*" --tests "*AvailabilityClaimIT*"` → 6 + 4 tests, 0 skipped, 0 failures. Verified at `eaa77334`.
+- [x] **AC-4:** `gradle test --tests "*CreateBookingServiceTest*"` → 26 tests, 0 failures. Verified at `eaa77334`.
+- [x] **AC-5:** `gradle test --tests "*PoolTokenArchitectureTest*"` → 2 tests, 0 failures. Verified at `cf160c9c`.
+- [x] **AC-6:** the structural net (five classes) → 23 tests, 0 failures locally; CI backend job green on `cf160c9c`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.

@@ -18,10 +18,10 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 import ai.riviera.platform.venue.vocabulary.Amenity;
-import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
+import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.CommissionRateStore;
