@@ -131,6 +131,13 @@ over time. The standing rules:
     **locking** read (`FOR KEY SHARE`, the weakest lock that conflicts with the edit's
     `FOR UPDATE`). It must run in a transaction, never a read-only one; the unlocked
     `setBookingInfo` serves list and mail reads.
+- **The pool vocabulary is stated once.** `venue.vocabulary.Pool` is the one Java statement of
+  the `set_position_pool_check` tokens (ADR-0018 §3); every published set fact (`SetBookingInfo`,
+  `SetView`, `SetBookingFacts#poolForClaim`) carries it, and no production class — this module
+  included — holds an `"ONLINE"` / `"WALK_IN"` literal of its own, so both invariant #3 checks
+  (`booking`'s unlocked fast path, `availability`'s locked claim-time check) compare against the
+  published type. The wire keeps the tokens (the enum serialises by name) and the edge parses
+  them once, in `SetPositionRequest`.
 - **The commission rate over time, not just its current value.** `venue_commission_rate`
   is the effective-dated schedule behind `VenueRates#commissionBpsOn` — the rate that
   applied to bookings served on date D, for reporting reads — while `commissionBps` is
@@ -1058,6 +1065,7 @@ sufficient. Which of them form the *structural net* — the subset run after any
 | `booking` listeners reaching `payment::api` run on the bounded refund pool, not the shared one (#404) | `RefundListenerExecutorArchitectureTest` |
 | Every self-configured worker pool carries the shared MDC decorator (#455) | `WorkerContextArchitectureTest` |
 | The draining pools' shutdown claims sum within the platform's SIGTERM grace (#456) | `ShutdownDrainArchitectureTest` |
+| The pool tokens are stated once, in `venue.vocabulary.Pool` — no other production class holds an `"ONLINE"` / `"WALK_IN"` literal (invariant #3's operand is the published type) | `PoolTokenArchitectureTest` (`CONSTANT_String` scan, so a `Pool.ONLINE` reference passes; fixture-proven negative) |
 
 Each rule is proven able to fail on every build, against deliberately-violating fixtures
 (`ai.riviera.responsibilityfixture`, `ai.riviera.placementfixture`) — never by breaking

@@ -198,15 +198,15 @@ request DTO still accepts the same strings.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `PR — draft; ready for review → review gate`
 
-**Next action:** phase 2 — red at `PoolTokenArchitectureTest.flagsAStrayPoolLiteral` against the fixture, then the `StringEntry` scan; then the docs edits.
+**Next action:** open the draft PR, check its CI run, mark ready for review, run the review gate per `riviera-sdlc` `references/pr-gates.md` §1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `Pool` published; `SetCommand` typed, V16's pool half deleted; edge conversion | ✅ | 56578d80 |
 | 1 — published surfaces carry `Pool`; both consumers compare against it; the two constants deleted | ✅ | 3b084c83 |
-| 2 — `PoolTokenArchitectureTest` + fixture; docs freshness | ⏳ | |
+| 2 — `PoolTokenArchitectureTest` + fixture; docs freshness | ✅ | 5f24e0c4 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -249,6 +249,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `platform/src/test/java/ai/riviera/platform/notification/application/MailDeliveryLookupServiceTest.java` — `SetBookingInfo` construction typed
 - `platform/src/test/java/ai/riviera/platform/WebSliceStubs.java` — `poolForClaim` stub retyped
 - `.claude/skills/riviera-java-conventions/SKILL.md` — §6a example and the red-flag row cite `Pool`, not the deleted constant
+- `RESPONSIBILITIES.md` — §venue states the once-only pool vocabulary; the machine-checked table gains the `PoolTokenArchitectureTest` row
 - `docs/architecture/domain-model.md` — `Pool` enum beside `BookingMode`; `SetBookingInfo.pool` typed
 
 ---
