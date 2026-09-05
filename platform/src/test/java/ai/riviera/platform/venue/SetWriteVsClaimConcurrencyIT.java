@@ -28,6 +28,7 @@ import ai.riviera.platform.venue.application.EditBeachMap;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
 import ai.riviera.platform.venue.vocabulary.SetId;
+import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -150,7 +151,7 @@ class SetWriteVsClaimConcurrencyIT {
 				() -> {
 					start(gate, ordering, Ordering.WRITE_FIRST);
 					return editBeachMap.editSet(owner, venue, new SetId(setId),
-							new SetCommand("A", 1, "PREMIUM", "WALK_IN", 3500, "EUR", 1, 1));
+							new SetCommand("A", 1, "PREMIUM", Pool.WALK_IN, 3500, "EUR", 1, 1));
 				},
 				gate);
 		ClaimOutcome claimed = outcomes.claim();

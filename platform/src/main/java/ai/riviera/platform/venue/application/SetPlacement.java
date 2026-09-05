@@ -1,11 +1,13 @@
 package ai.riviera.platform.venue.application;
 
+import ai.riviera.platform.venue.vocabulary.Pool;
+
 /**
  * Where a stored set sits and which pool it draws from — the layout facts a claim depends on.
  * Returned by {@link Venues#lockSet} as the locked row's current state, so a per-set edit can be
  * judged against what is actually stored rather than against the caller's assumptions.
  */
-public record SetPlacement(String pool, String rowLabel, int positionNo, int gridX, int gridY) {
+public record SetPlacement(Pool pool, String rowLabel, int positionNo, int gridX, int gridY) {
 
 	/**
 	 * Whether applying {@code command} would move this set or change which pool it draws from —
@@ -15,7 +17,7 @@ public record SetPlacement(String pool, String rowLabel, int positionNo, int gri
 	 * reserve time, which is why {@code repriceRow} is allowed on a claimed venue too.
 	 */
 	public boolean disturbedBy(SetCommand command) {
-		return !pool.equals(command.pool())
+		return pool != command.pool()
 				|| !rowLabel.equals(command.rowLabel())
 				|| positionNo != command.positionNo()
 				|| gridX != command.gridX()

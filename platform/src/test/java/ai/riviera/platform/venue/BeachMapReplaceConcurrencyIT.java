@@ -25,6 +25,7 @@ import ai.riviera.platform.venue.application.ReplaceLayoutOutcome;
 import ai.riviera.platform.venue.application.ReplaceRejection;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.vocabulary.VenueId;
+import ai.riviera.platform.venue.vocabulary.Pool;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -104,7 +105,7 @@ class BeachMapReplaceConcurrencyIT {
 
 	/** A single-cell layout at the given price — distinct per writer so the winner is identifiable. */
 	private static LayoutCommand layout(long priceMinor) {
-		return new LayoutCommand(List.of(new SetCommand("A", 1, "PREMIUM", "ONLINE", priceMinor, "EUR", 1, 1)));
+		return new LayoutCommand(List.of(new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, priceMinor, "EUR", 1, 1)));
 	}
 
 	private long insertVenue() {

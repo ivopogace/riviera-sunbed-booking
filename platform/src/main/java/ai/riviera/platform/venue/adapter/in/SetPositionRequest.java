@@ -1,14 +1,18 @@
 package ai.riviera.platform.venue.adapter.in;
 
+import java.util.Arrays;
+
 import ai.riviera.platform.venue.vocabulary.MoneyView;
+import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.application.SetCommand;
 
 /**
  * The request body for placing/editing one set position ({@code POST}/{@code PATCH}
  * {@code /api/venues/{id}/sets...}, U7). Reuses the published {@link MoneyView} shape for price so
  * the write contract matches the U1 read contract exactly — integer minor units + ISO currency
- * (invariant #5), no float. {@link #toCommand()} checks presence and delegates range/token
- * validation to {@link SetCommand}; bad input → {@link IllegalArgumentException} → {@code 400}.
+ * (invariant #5), no float. {@link #toCommand()} checks presence, parses the pool token into
+ * {@link Pool}, and delegates range/tier-token validation to {@link SetCommand}; bad input →
+ * {@link IllegalArgumentException} → {@code 400}.
  *
  * <p><strong>The full set body is required on edit too</strong> — {@code PATCH} here replaces the
  * whole set position (the editor always re-sends every field), so a partial body is rejected
@@ -28,7 +32,19 @@ record SetPositionRequest(String rowLabel, Integer positionNo, String tier, Stri
 		if (gridX == null || gridY == null) {
 			throw new IllegalArgumentException("gridX and gridY are required");
 		}
-		return new SetCommand(rowLabel, positionNo, tier, pool,
+		return new SetCommand(rowLabel, positionNo, tier, parsePool(pool),
 				price.minorUnits(), price.currency(), gridX, gridY);
+	}
+
+	private static Pool parsePool(String raw) {
+		if (raw == null) {
+			throw new IllegalArgumentException("pool is required");
+		}
+		try {
+			return Pool.valueOf(raw);
+		}
+		catch (IllegalArgumentException unknown) {
+			throw new IllegalArgumentException("pool must be one of " + Arrays.toString(Pool.values()));
+		}
 	}
 }
