@@ -157,10 +157,9 @@ N/A — no contract change. No endpoint, DTO, or client type is touched.
 
 ## Execution status
 
-**Stage pointer:** `implement — all phases done; opening the draft PR, then the CI gate`
+**Stage pointer:** `review gate — overlay walked, /code-review fan-out dispatched`
 
-**Next action:** Push, open the draft PR (CI vehicle), then mark ready for review and run
-the Review + Sonar gates.
+**Next action:** Collect the five review agents' findings, then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -176,6 +175,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | local guard (RV-STYLE-1) | Three multi-line inline comments in the new guard and its suite | fixed in phase 2 — one line each, prose already in the doc comments |
+| F-2 | review gate (RV-PROC-2c, self) | The fix stopped at §1. Close-out step 5's pre-merge smoke and `riviera-docs-freshness`' *When to run* bullet still named a bare `origin/main...HEAD` — the same unfetched ref, one section further down | fixed — both now resolve per §1 step 2 |
 
 ---
 

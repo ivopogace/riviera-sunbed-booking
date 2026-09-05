@@ -196,8 +196,9 @@ and duplications below its fail thresholds. Pull the actual list and fix every e
    skill states (a module's status, the package shape, a canonical value set, an ownership
    rule, a filename a skill cites). Split it:
    - **Staleness patches** (a renamed/removed file a skill cites, an epic's "in progress"
-     line, a changed mechanism phrase): run the skill's pre-merge smoke over
-     `origin/main...HEAD` and fold the patches into the code PR itself.
+     line, a changed mechanism phrase): run the skill's pre-merge smoke over the range
+     **resolved as in §1 step 2** — not a bare `origin/main...HEAD`, which is the same
+     unfetched ref there as it is there — and fold the patches into the code PR itself.
    - **Did this slice make the Nth of something?** A new listener, counter, event, module,
      profile, transport, or sweep falsifies every doc that says "the two …" — none of those
      files is in the diff, so run the skill's counting sweep (procedure step 2b).

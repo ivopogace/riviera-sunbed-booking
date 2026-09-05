@@ -132,7 +132,8 @@ every plan in `docs/plans/` whose PR has already merged, in the code PR being cl
 - **Merge close-out step 5** (`riviera-sdlc`) — over the merged PR's range, when the slice
   changed something a substrate doc states.
 - **Epic close-out** — over the epic's full merge span.
-- **Pre-merge smoke** — over `origin/main...HEAD` when a slice knowingly renames/moves
-  things (the cheapest moment to catch the skill/table references).
+- **Pre-merge smoke** — over the slice's own diff, resolved per *Inputs* above rather than
+  named as a bare `origin/main...HEAD`, when a slice knowingly renames/moves things (the
+  cheapest moment to catch the skill/table references).
 
 `domain-modeling` owns changing `CONTEXT.md`/ADRs; this skill only detects the drift.
