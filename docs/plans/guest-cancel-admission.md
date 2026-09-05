@@ -117,10 +117,12 @@ None open.
 
 ### Resolved
 
-- **Grill outcome (drift check):** none. The issue's three line references resolve to the current
-  code; commit `170da8a` (adapter binding) and `31427ae` (table) are on `main`; no open PR touches
-  `booking/application/cancel`, `booking/application/view` or `BookingTransition`. — settled at plan
-  time.
+- **Grill outcome (drift check):** one item. The issue's three line references resolve to the current
+  code and no open PR touches `booking/application/cancel`, `booking/application/view` or
+  `BookingTransition`; but the two commits the issue cites (`31427ae` for the table, `170da8a` for
+  the adapter binding) are pre-squash branch commits that exist on no ref — both landed together in
+  `e115733c` (PR #930). Recorded here; the issue's "what has already changed" holds as stated. —
+  settled at plan time; the SHA correction surfaced by the review gate's history reviewer (F-1).
 - **Assumption:** the cancel service's `NotCancellable` check reads `!CANCEL_BY_GUEST.admits(status)`
   rather than `status != CONFIRMED` even though today they are the same set — that is the point of
   the slice. — settled at plan time.
