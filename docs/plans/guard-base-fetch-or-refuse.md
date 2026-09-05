@@ -128,12 +128,6 @@ for `bugfix/guard-base-fetch-or-refuse` per `riviera-sdlc` § *Remote / cloud se
 
 ## Open questions / Assumptions
 
-- **Open question:** should `scripts/` join `sonar.sources`? The Sonar gate is structurally blind
-  to every scripts-only PR, this one included, and the guards are the machinery the merge gates
-  themselves run on. Out of scope here — adding it would light up the pre-existing tree and is a
-  decision about gate coverage, not about #952. — *Owner:* maintainer · *Resolves by:* a follow-up
-  issue filed at this slice's close-out.
-
 ### Resolved
 
 - **Open question:** fetch-or-refuse in the shared resolver, or guards take an already-resolved base
@@ -146,6 +140,12 @@ for `bugfix/guard-base-fetch-or-refuse` per `riviera-sdlc` § *Remote / cloud se
   session):* **refuse**, the same as `check-review-range.mjs`. A fetch does not fix a shallow clone:
   `merge-base` can still answer wrong from the truncated graph, which is exactly the silent case the
   issue's *Why this is not already covered* section names.
+- **Open question:** should `scripts/` join `sonar.sources`? The Sonar gate is structurally blind
+  to every scripts-only PR, this one included, and the guards are the machinery the merge gates
+  themselves run on. — *Resolved:* out of scope here (widening `sonar.sources` is a decision about
+  gate coverage, not about #952, and it would light up the pre-existing tree in a change that fixes
+  something unrelated). Filed as **#954** at the maintainer's direction, with the pulled measures
+  and the four decisions a slice there has to make.
 - **Assumption → verified:** the `PostToolUse` hooks are not exposed. `.claude/settings.json` runs
   all three with `--hook`, which reads one file path from the payload and never resolves a base.
   The issue's framing ("the `PostToolUse` hooks and every by-hand run") is drift; recorded here and
@@ -204,7 +204,7 @@ pulled, not the conclusion: 0 unresolved issues, 0 hotspots, `new_bugs`/`new_vul
 `new_lines`/`new_coverage` measures confirm it: nothing of this change was analysed. The zero is
 therefore true and uninformative. This is a pre-existing gap in gate coverage, not one this slice
 introduces (it applies to PR #951 and every scripts-only PR before it), so it is a follow-up rather
-than a widening of this PR — see Open questions.
+than a widening of this PR: filed as **#954**.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
