@@ -61,8 +61,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ScheduledWorkArchitectureTest {
 
-	// Temporary marker: proves the CI cache-miss path; the next commit removes it.
-
 	private static final Path MAIN_RESOURCES = Path.of("src/main/resources");
 	private static final String POOL_SIZE_PROPERTY = "spring.task.scheduling.pool.size";
 	private static final String GLOBAL_QUERY_TIMEOUT_PROPERTY = "spring.jdbc.template.query-timeout";

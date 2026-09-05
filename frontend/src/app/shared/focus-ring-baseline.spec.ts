@@ -28,8 +28,6 @@ const DESIGN_DOC = join(process.cwd(), '../docs/design/non-text-contrast.md');
 /** This file, the one source allowed to spell the suppression tokens — it is the sweep. */
 const SELF = 'shared/focus-ring-baseline.spec.ts';
 
-// Temporary marker: proves the CI cache-miss path; the next commit removes it.
-
 /** The natively focusable tags a suppression is never acceptable on; a heading is not one. */
 const CONTROL_TAGS = new Set(['button', 'a', 'input', 'select', 'textarea', 'summary']);
 

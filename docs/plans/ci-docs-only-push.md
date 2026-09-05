@@ -162,15 +162,18 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1 — the docs-only push; this commit IS the measurement)
+**Stage pointer:** implement (phase 2 — the revert push; this commit must HIT the cache again)
 
-**Next action:** read the run this push triggers: both restore steps must report a hit, the setup/build/test steps `skipped`, both uploads green, `SonarCloud scan` and `SonarCloud Code Analysis` green; record its URL and wall time under AC-1/AC-2, then phase 2.
+**Next action:** read the run this push triggers: both restore steps hit, build steps skipped, all
+checks green — that closes AC-3 and is AC-1's second wall-time sample. Then phase 3: merge `main`,
+mark ready for review, run `pr-gates.md` §1 and §2, write the close-out into the last
+code-touching commit (the `ci.yml` header comment takes the measured numbers there).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `ci.yml` cache-by-tree-hash + AC-4 comment + AC-5 docs; draft PR (the miss run) | ✅ | `c4e1f73` — PR #959; run [33968192431](https://github.com/ivopogace/riviera-sunbed-booking/actions/runs/33968192431): 11 min 00 s, all 8 checks green; both restore steps missed (no cache existed), full build ran, both save steps ran after green (frontend log: `Cache saved with key: v1-frontend-sonar-1211f14d…`); Sonar quality gate passed |
-| 1 — docs-only push: measure AC-1 / AC-2 (the hit run) | ⏳ | this commit |
-| 2 — temporary `platform/` + `frontend/` edit (miss), then its revert (hit): AC-3 | | |
+| 1 — docs-only push: measure AC-1 / AC-2 (the hit run) | ✅ | `a8cddd6f` — run [33968826387](https://github.com/ivopogace/riviera-sunbed-booking/actions/runs/33968826387): **2 min 27 s** wall (was 11 min 00 s). Backend: restore hit, JDK/Gradle/build/save `skipped`, upload green, 10 s of work. Frontend: restore hit, all eight build steps `skipped` (Format included — install `skipped` ≠ `success`, R-8 confirmed), upload green, 9 s of work after a 68 s wait for a runner. `SonarCloud scan` 65 s; `SonarCloud Code Analysis` green on the SHA; all 8 checks green. The ≤ 2 min figure in AC-1 was mine, not the issue's — 68 s of the 2:27 was runner queue; the revert run is the second sample |
+| 2 — temporary `platform/` + `frontend/` edit (miss), then its revert (hit): AC-3 | ⏳ | miss: `d8119ab0` — run [33969002180](https://github.com/ivopogace/riviera-sunbed-booking/actions/runs/33969002180): 10 min 58 s; both restore steps missed, every setup/build/test step ran, both saves ran after green, all 8 checks green. Hit: this commit (the revert) |
 | 3 — merge `main`, ready for review, review gate, Sonar gate, close-out in the last code-touching commit | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
