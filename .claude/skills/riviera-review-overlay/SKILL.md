@@ -87,9 +87,12 @@ line. Re-walk on every re-review, including review-fix commits.
 Fires whenever the diff touches what every future session reads as instructions:
 `.claude/skills/**` (`SKILL.md` **and** `references/`), `CLAUDE.md`,
 `frontend/.claude/CLAUDE.md`, `CONTEXT.md`, `RESPONSIBILITIES.md`, `docs/adr/**`,
-`docs/agents/**` — or adds/tightens a fitness function (the roster: `RESPONSIBILITIES.md`
-§ *Machine-checked vs review-checked*), which falsifies substrate examples from the other
-direction. Such a diff
+`docs/agents/**` — or adds/tightens a fitness function, which falsifies substrate examples
+from the other direction. A fitness function is recognised from the diff, never looked up in a
+list: a test that fails the build on a rule over production code the diff need not touch — an
+ArchUnit rule, Modulith's `verify()`, a classpath probe, an endpoint census.
+`RESPONSIBILITIES.md` § *Machine-checked vs review-checked* lists the ones that enforce a clause
+of that file, and the tree holds more. Such a diff
 otherwise draws only RV-STYLE-1/2, and those read the prose, never whether it is still true.
 
 **a. Every citation still resolves.** Skills cite the tree by name and line

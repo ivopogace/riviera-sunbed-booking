@@ -40,21 +40,21 @@ for AC-3).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the substrate, when every mention of "the structural net" is grepped, then
+- [x] **AC-1:** Given the substrate, when every mention of "the structural net" is grepped, then
       exactly one states membership (the rule in `CLAUDE.md` §Commands) and every other points at
       it. *Seam:* `grep -rni 'structural net'` over the substrate · *Pinned by:* the grep, run at
       the close-out commit.
-- [ ] **AC-2:** Given the rule, when it is applied to every structural test in the tree, then the
+- [x] **AC-2:** Given the rule, when it is applied to every structural test in the tree, then the
       five command members satisfy it and each of the other classes fails one clause (names a
       target, boots a context, or asserts nothing). *Seam:* the test classes' code · *Pinned by:*
       the table in the PR body.
-- [ ] **AC-3:** Given `CLAUDE.md` and `riviera-local-debug`, when their `--tests` sets are diffed,
+- [x] **AC-3:** Given `CLAUDE.md` and `riviera-local-debug`, when their `--tests` sets are diffed,
       then they are identical, and the command runs green once. *Seam:* the two command blocks ·
       *Pinned by:* the run recorded in the PR body.
-- [ ] **AC-4:** Given RV-PROC-2, when its trigger and check b are read, then check b uses the same
+- [x] **AC-4:** Given RV-PROC-2, when its trigger and check b are read, then check b uses the same
       rule (by pointer) and says what a tightened non-member puts due instead. *Seam:* the item's
       text · *Pinned by:* reading the item against the deferral comment on #945.
-- [ ] **AC-5:** Given `docs/agents/gradle-proxy-trust.md` and ADR-0017, when the diff is read,
+- [x] **AC-5:** Given `docs/agents/gradle-proxy-trust.md` and ADR-0017, when the diff is read,
       then neither is touched and the rule's paragraph records why. *Seam:* the diff ·
       *Pinned by:* `git diff --stat origin/main` lists neither.
 
@@ -105,14 +105,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 0) — draft PR to open
+**Stage pointer:** DONE — merged via PR #962
 
-**Next action:** open the draft PR, then mark ready for review and run the review gate.
+**Next action:** none; this plan is deleted at the next close-out after PR #962 merges.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — state the rule, point the mentions at it, run the net | ⏳ | |
-| 1 — review-gate fixes, close-out | | |
+| 0 — state the rule, point the mentions at it, run the net | ✅ | 44eff409 |
+| 1 — review-gate fixes, close-out | ✅ | the close-out commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -120,6 +120,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (75) | `CLAUDE.md` called the `RESPONSIBILITIES.md` table "the full roster" and RV-PROC-2's trigger keyed on it, but the table omits `ErrorContractArchitectureTests`, `ScheduledWorkArchitectureTest`, `PaymentGatewayContractCoverageArchitectureTest`, `EndpointRoleGateCoverageTest` — the trigger lost coverage the old glob had | fixed in the close-out commit: the table is "the ones that enforce a clause of that file", and the trigger recognises a fitness function by mechanism, never by list |
+| F-2 | review (75) | the rule's "names no class" has no carve-out for `ModularityTests`' `PlatformApplication.class`, a base-package anchor | fixed in the close-out commit: a member names no *target*; an anchor is not one |
+| S-1 | sonar | quality gate passed, 0 new issues, 0 duplication; no new-lines or coverage measure (prose only) | clear |
 
 ---
 
@@ -147,8 +150,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **Step 5: Generalization-audit pass** — population: substrate lines that restate the net's
       membership; enumerated by `grep -rni 'structural net'` plus the five class names over the
       substrate set; the two commands and check b were the restatements → all point at the rule.
-- [ ] **Step 6: Commit**
-- [ ] **Step 7: Update plan-doc execution status**
+- [x] **Step 6: Commit**
+- [x] **Step 7: Update plan-doc execution status**
 
 ## Generalization-audit log
 
@@ -160,14 +163,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..AC-5:** recorded in the PR body at the close-out commit.
+- [x] **AC-1..AC-5:** recorded in the PR body; AC-3's run at 44eff409 (5 suites, 23 tests, 0 failures), the command unchanged since.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying check.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Every AC has an implementing task and a verifying check.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
 - [x] Invariants #1–#13: N/A, docs-only.
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows; Open Questions empty.
-- [ ] **Close-out written in THIS PR** — final state committed here, citing `merged via PR #NN`.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows; Open Questions empty.
+- [x] **Close-out written in THIS PR** — final state committed here, citing `merged via PR #962`.
+- [x] **The review gate ran in full** — rung 1 (`code-review:code-review`, five reviewers + scorers) *plus* `riviera-review-overlay`, over `6dcbe114..44eff409`; outcome in a comment on PR #962.
