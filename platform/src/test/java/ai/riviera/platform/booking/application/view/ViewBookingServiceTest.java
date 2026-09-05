@@ -8,6 +8,8 @@ import java.time.ZoneId;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.BookingCutoff;
@@ -211,6 +213,21 @@ class ViewBookingServiceTest {
 
 		assertThat(detail.withdrawable()).isFalse();
 		assertThat(detail.cancellable()).isTrue();
+	}
+
+	/**
+	 * The admission half of {@code cancellable} is the guest-cancel row of the lifecycle table, and
+	 * the expected side here is the literal the table is itself held to, so the view cannot drift from
+	 * the guarded write without one of the two tests failing.
+	 */
+	@ParameterizedTest
+	@EnumSource(BookingStatus.class)
+	void onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen(BookingStatus status) {
+		givenBooking(status);
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.cancellable()).isEqualTo(status == BookingStatus.CONFIRMED);
 	}
 
 	@Test
