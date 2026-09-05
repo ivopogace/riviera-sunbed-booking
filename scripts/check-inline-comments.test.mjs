@@ -5,6 +5,9 @@ import { findViolations } from './check-inline-comments.mjs';
 
 const JAVA = 'platform/src/main/java/ai/riviera/platform/SecurityConfig.java';
 
+/** The one-line rule's own findings; the fixtures below also carry issue numbers, a separate rule. */
+const multiline = (violations) => violations.filter((v) => v.rule === 'multiline');
+
 /**
  * The block PR #521 shortened to one line and PR #522 re-broke days later, verbatim from
  * commit 7d89c0b (fixed in d4b034d). Issue #529 names it as the guard's first proof case.
@@ -25,7 +28,7 @@ test('flags the SecurityConfig two-line matcher block (#522)', () => {
     added: new Set([4, 5, 6]),
   });
 
-  assert.equal(violations.length, 1);
+  assert.equal(multiline(violations).length, 1);
   assert.equal(violations[0].path, JAVA);
   assert.equal(violations[0].line, 4);
   assert.equal(violations[0].endLine, 5);
@@ -46,9 +49,9 @@ test('flags a two-line block comment in SCSS', () => {
     added: new Set([2, 3, 4]),
   });
 
-  assert.equal(violations.length, 1);
-  assert.equal(violations[0].line, 2);
-  assert.equal(violations[0].endLine, 3);
+  assert.equal(multiline(violations).length, 1);
+  assert.equal(multiline(violations)[0].line, 2);
+  assert.equal(multiline(violations)[0].endLine, 3);
 });
 
 test('exempts Javadoc and TSDoc doc comments', () => {
@@ -67,7 +70,7 @@ test('exempts Javadoc and TSDoc doc comments', () => {
     ],
     added: new Set([2, 3, 4, 5, 6, 7, 8]),
   });
-  assert.deepEqual(javadoc, []);
+  assert.deepEqual(multiline(javadoc), []);
 
   const tsdoc = findViolations({
     path: 'frontend/src/app/operator/commissions-tab.ts',
@@ -100,7 +103,7 @@ test('exempts a block comment standing before any code as the file header', () =
     added: new Set([1, 2, 3, 4, 5, 6, 7]),
   });
 
-  assert.deepEqual(violations, []);
+  assert.deepEqual(multiline(violations), []);
 });
 
 test('passes one-line comments', () => {
@@ -113,7 +116,7 @@ test('passes one-line comments', () => {
     '\t\t\t\t\t\t.requestMatchers(HttpMethod.GET, ADMIN_AUDIT_PATH).hasRole(ADMIN_ROLE)',
     '\t\t\t\t\t\tint bps = 250; // basis points, not percent',
   ];
-  assert.deepEqual(findViolations({ path: JAVA, lines: java, added: allAdded(java) }), []);
+  assert.deepEqual(multiline(findViolations({ path: JAVA, lines: java, added: allAdded(java) })), []);
 
   const scss = ['  /* 0.66 (design: 0.5): AA on the porcelain header glass. */', '  --riv-ink: #0c2a33;'];
   assert.deepEqual(findViolations({ path: SCSS, lines: scss, added: allAdded(scss) }), []);
@@ -296,4 +299,39 @@ test('an empty template literal at end of line is still closed', () => {
 
   assert.equal(violations.length, 1);
   assert.equal(violations[0].line, 2);
+});
+
+/** A Javadoc block whose last prose line cites an issue number; lines 2–6 are the block. */
+const JAVADOC_WITH_PROVENANCE = [
+  'class CommissionRates {',
+  '\t/**',
+  '\t * The platform-admin commission surface: the venues-with-commission list and the',
+  '\t * rate write. Same ADMIN gate as the photo moderation paths, and for the same reason: an',
+  '\t * admin does not own a rate, so object-level authorization has nothing to check (#348).',
+  '\t */',
+  '\tprivate static final String ADMIN_VENUE_COMMISSIONS_PATH = "/api/admin/venues";',
+  '}',
+];
+
+test('judges a touched Javadoc block whole: a provenance tell on a line the diff never wrote', () => {
+  const violations = findViolations({
+    path: JAVA,
+    lines: JAVADOC_WITH_PROVENANCE,
+    added: new Set([3]),
+  });
+
+  assert.deepEqual(
+    violations.map(({ line, endLine, rule }) => ({ line, endLine, rule })),
+    [{ line: 5, endLine: 5, rule: 'provenance' }],
+  );
+});
+
+test('never reads an untouched doc comment', () => {
+  const violations = findViolations({
+    path: JAVA,
+    lines: JAVADOC_WITH_PROVENANCE,
+    added: new Set([7]),
+  });
+
+  assert.deepEqual(violations, []);
 });

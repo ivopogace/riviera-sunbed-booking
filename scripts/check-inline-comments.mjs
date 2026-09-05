@@ -53,6 +53,21 @@ export function syntaxFor(path) {
 }
 
 /**
+ * Text that is written for the author's session rather than the next reader's. `provenance` is
+ * an issue or PR number — `git blame`'s job, and what `riviera-java-conventions` §6d forbids in a
+ * doc comment outright; it gates. `history` narrates a change the reader never saw and is
+ * contract language often enough (a port that releases a set claimed earlier) that it only advises.
+ */
+const TELLS = {
+  provenance: /(?<![\w#&])#[1-9]\d{2,3}(?!\w)|\b(?:issues?|PRs?|pull requests?)\s+#?\d{2,4}\b/i,
+  history:
+    /\bused to (?:be|have|do|need|run|take|hold|read|say|mean)\b|\bno longer\b|\bpreviously\b|\bformerly\b|\boriginally\b|\bhistorically\b|\bthis (?:change|slice|PR)\b|\bthe alternative would\b|\bwas left out\b/i,
+};
+
+/** Every violation carries a `rule`; these fail a run, the rest are printed and let through. */
+export const GATING = new Set(['multiline', 'provenance']);
+
+/**
  * Finds every multi-line inline comment the diff wrote.
  *
  * @param {{ path: string, lines: string[], added: Set<number> }} input the file's new content,
@@ -67,6 +82,7 @@ export function findViolations({ path, lines, added }) {
   const violations = [];
 
   for (const region of regions) {
+    violations.push(...tellViolations(path, lines, added, region));
     if (region.kind === 'line') continue;
     if (region.endLine === region.startLine) continue;
     if (region.isDoc || region.isFileHeader) continue;
@@ -76,11 +92,47 @@ export function findViolations({ path, lines, added }) {
   for (const run of addedLineRuns(regions, added)) {
     violations.push(violationAt(path, lines, run.startLine, run.endLine));
   }
-  return violations.sort((a, b) => a.line - b.line);
+  return violations.sort((a, b) => a.line - b.line || a.rule.localeCompare(b.rule));
 }
 
 function violationAt(path, lines, startLine, endLine) {
-  return { path, line: startLine + 1, endLine: endLine + 1, text: lines[startLine].trim() };
+  return {
+    path,
+    line: startLine + 1,
+    endLine: endLine + 1,
+    text: lines[startLine].trim(),
+    rule: 'multiline',
+  };
+}
+
+/**
+ * The tell violations in one comment region. A doc comment with any added line is judged
+ * **whole** — every line of it, written by this diff or not — because touching a doc comment
+ * means re-reading it against the rule; any other comment is judged on its added lines only.
+ * Only the comment's own text is read: the code before a trailing comment never counts.
+ */
+function tellViolations(path, lines, added, region) {
+  const touched = [];
+  for (let i = region.startLine; i <= region.endLine; i++) {
+    if (added.has(i + 1)) touched.push(i);
+  }
+  if (touched.length === 0) return [];
+  const judged = region.isDoc ? range(region.startLine, region.endLine) : touched;
+
+  const violations = [];
+  for (const i of judged) {
+    const text = i === region.startLine ? lines[i].slice(region.column) : lines[i];
+    for (const [rule, pattern] of Object.entries(TELLS)) {
+      if (pattern.test(text)) {
+        violations.push({ path, line: i + 1, endLine: i + 1, text: lines[i].trim(), rule });
+      }
+    }
+  }
+  return violations;
+}
+
+function range(from, to) {
+  return Array.from({ length: to - from + 1 }, (_, k) => from + k);
 }
 
 /**
@@ -181,18 +233,21 @@ function scan(lines, syntax) {
           kind: 'line',
           startLine: i,
           endLine: i,
+          column: c,
           wholeLine: line.slice(0, c).trim() === '',
         });
         break;
       }
       if (syntax.block && line.startsWith('/*', c)) {
         const isDoc = line.startsWith('/**', c) && !line.startsWith('/**/', c);
-        open = { kind: 'block', startLine: i, isDoc, isFileHeader: !(seenCode || lineHasCode) };
+        const isFileHeader = !(seenCode || lineHasCode);
+        open = { kind: 'block', startLine: i, column: c, isDoc, isFileHeader };
         c += 2;
         continue;
       }
       if (syntax.html && line.startsWith('<!--', c)) {
-        open = { kind: 'html', startLine: i, isDoc: false, isFileHeader: !(seenCode || lineHasCode) };
+        const isFileHeader = !(seenCode || lineHasCode);
+        open = { kind: 'html', startLine: i, column: c, isDoc: false, isFileHeader };
         c += 4;
         continue;
       }
