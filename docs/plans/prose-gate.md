@@ -180,7 +180,8 @@ N/A — no contract change.
 | 2 — history advisory + `settle()` exit codes + hook/CLI rows | ✅ | 035011a6 |
 | 3 — the rule folded into §6c/§6d, RV-STYLE-1, the reference, the citing docs; clean the touched headers | ✅ | 823dfdbf |
 | 3a — review-gate fix round (F-1…F-6) | ✅ | 14a3304e |
-| 4 — close-out: docs-freshness, plan final, retire the merged plan from PR #953 | ✅ | (this commit — the PR's last) |
+| 3b — re-review fix round (F-7, F-8) | ✅ | (this commit — the PR's last) |
+| 4 — close-out: docs-freshness, plan final, retire the merged plan from PR #953 | ✅ | d0712c3a, rewritten in this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -194,10 +195,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-4 | review (#6, RV-PROC-2a) | the guard reference's `SecurityConfig` count (25) had drifted (29) | fixed — no count |
 | F-5 | review (#3) | the whole-block rule was not recorded as a decided departure from the guard's false-positive stance | fixed — Resolved decision above |
 | F-6 | review (#1) | the new `ci.yml` step comment cited `#956` | fixed — dropped; YAML stays out of the guard's scope |
+| F-7 | re-review of 14a3304e | a `//` opener's second slash satisfied the citing-slash form, so `// #123 …` gated | fixed — the opener is stripped before matching and the slash form needs a digit before it (`NNN/#NNN`); pinned by "a comment opener is not a citing slash" |
+| F-8 | re-review of 14a3304e | `the`, `of`, `and`, `or` as citing words turned `the #404 error` into provenance | fixed — generic words left the citing list (`by`, `at`, `in`, `from`, `fixed`, `closes`, `see`, … stay); same test |
 
 **Review note.** Gate run per `pr-gates.md` §1 rung 1 (the code-review plugin: six agents incl. the
 overlay's RV-PROC walk) over `234b503c..823dfdbf`, range verified by `check-review-range.mjs`;
-outcome posted on PR #957. Fix round re-reviewed over `823dfdbf..14a3304e`.
+outcome posted on PR #957. Fix round re-reviewed over `823dfdbf..14a3304e` (two regex holes, F-7/F-8, fixed and re-probed in the PR's last commit).
 
 **Sonar note.** Analysis present for PR #957: 0 new issues, 0 bugs, 0 smells, 0 vulnerabilities,
 no duplication or new-lines measure reported — the PR touches only `scripts/`, `.claude/`, `.github/`
@@ -310,7 +313,7 @@ guard suites are the coverage.
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1…AC-6:** `node --test "scripts/*.test.mjs"` → 264 pass, 0 fail. Verified at commit `14a3304e`.
+- [x] **AC-1…AC-6:** `node --test "scripts/*.test.mjs"` → 265 pass, 0 fail. Verified at this commit, the PR's last.
 - [x] **AC-7:** `Repo hygiene (diff-scoped)` green on 823dfdbf (first ready head) and on the final head per the PR's checks; `--diff origin/main` exits 0 locally at `14a3304e`.
 - [x] **AC-8:** RV-PROC-2 walked at review (one Minor, F-4, fixed); `riviera-docs-freshness` ran over `234b503c..14a3304e` — zero findings.
 

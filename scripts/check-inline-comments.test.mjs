@@ -412,3 +412,15 @@ test('a bare issue number counts only in a citing position, so a colour is left 
   assert.deepEqual(at(JAVA, '/** Rate write, epic #348. */'), ['provenance']);
   assert.deepEqual(at('frontend/src/app/x.ts', '// issue 529 names it as the first proof case'), ['provenance']);
 });
+
+test('a comment opener is not a citing slash, and a generic word is not a citing word', () => {
+  const at = (line) =>
+    findViolations({ path: JAVA, lines: [line], added: new Set([1]) }).map((v) => v.rule);
+
+  assert.deepEqual(at('// #123 is the emphasis colour'), []);
+  assert.deepEqual(at('// returns the #404 error and the #500 fallback'), []);
+  assert.deepEqual(at('/** Mirrors the #401 vs #403 split. */'), []);
+  assert.deepEqual(at('// fixed by #618, see #619'), ['provenance']);
+  assert.deepEqual(at('// the #413/#420 failure, paid for once'), ['provenance']);
+  assert.deepEqual(at('// closed in #952 with a shared resolver'), ['provenance']);
+});

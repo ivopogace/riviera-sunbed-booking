@@ -64,16 +64,17 @@ export function syntaxFor(path) {
 /**
  * Text that is written for the author's session rather than the next reader's. `provenance` is
  * an issue or PR number — `git blame`'s job, and what `riviera-java-conventions` §6d forbids in a
- * doc comment outright; it gates. A bare `#NNN` counts only in a citing position (after `(`, `/`,
- * a comma, or a citing word), because `: #123` is how a colour reads and a false positive is how
- * a gate gets switched off. `history` narrates a change the reader never saw and is contract
- * language often enough (a port that releases a set claimed earlier) that it only advises.
+ * doc comment outright; it gates. A bare `#NNN` counts only in a citing position (after `(`, a
+ * comma, a `NNN/`, or a citing word), because `: #123` is how a colour reads, `the #404 error`
+ * is prose, and a false positive is how a gate gets switched off. `history` narrates a change the
+ * reader never saw and is contract language often enough (a port that releases a set claimed
+ * earlier) that it only advises.
  */
-const CITING = '(?:issues?|PRs?|epics?|since|until|before|after|per|see|and|or|of|by|at|in|the)';
+const CITING = '(?:issues?|PRs?|epics?|since|until|before|after|per|see|cf|by|at|in|from|fix(?:es|ed)?|closes)';
 
 const TELLS = {
   provenance: new RegExp(
-    `(?:[(/,]\\s*|\\b${CITING}\\s+)#[1-9]\\d{2,3}(?!\\w)|\\b(?:issues?|PRs?|pull requests?)\\s+#?\\d{2,4}\\b`,
+    `(?:[(,]\\s*|\\d/\\s*|\\b${CITING}\\s+)#[1-9]\\d{2,3}(?!\\w)|\\b(?:issues?|PRs?|pull requests?)\\s+#?\\d{2,4}\\b`,
     'i',
   ),
   history:
@@ -142,7 +143,8 @@ function tellViolations(path, lines, added, region) {
   for (const i of judged) {
     const from = i === region.startLine ? region.column : 0;
     const to = i === region.endLine && region.endColumn !== undefined ? region.endColumn : undefined;
-    const text = lines[i].slice(from, to);
+    // The opener is not prose: a `//` must never read as the slash of a `NNN/#NNN` citation.
+    const text = lines[i].slice(from, to).replace(/^(?:\/\/+|\/\*+|<!--)/, '');
     for (const [rule, pattern] of Object.entries(TELLS)) {
       if (pattern.test(text)) {
         violations.push({ path, line: i + 1, endLine: i + 1, text: lines[i].trim(), rule });

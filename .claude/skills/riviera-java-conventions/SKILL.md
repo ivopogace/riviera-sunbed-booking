@@ -137,10 +137,11 @@ against, so text written for the author's own session costs context and changes 
 The guard: `scripts/check-inline-comments.mjs` runs from a `PostToolUse` hook on every
 `Write`/`Edit` and again in CI over the PR diff. It fails on a multi-line inline comment the
 diff added and on a provenance tell in an added skill line, an added inline comment, or
-anywhere in a touched doc comment; it advises on history phrasing, which is contract language often enough to leave to
-review. By hand: `node scripts/check-inline-comments.mjs --files <path…>` or
-`--diff origin/main`. Its scope is deliberately bounded — `references/inline-comment-guard.md`
-before "fixing" any gap. The guard is a floor: it cannot see a line that says nothing.
+anywhere in a touched doc comment; it advises on history phrasing, which is contract language
+often enough to leave to review. By hand: `node scripts/check-inline-comments.mjs --files
+<path…>` or `--diff origin/main`. Its scope is deliberately bounded —
+`references/inline-comment-guard.md` before "fixing" any gap. The guard is a floor: it cannot
+see a line that says nothing.
 
 ### 6d. Javadoc: the contract, not the changelog
 
