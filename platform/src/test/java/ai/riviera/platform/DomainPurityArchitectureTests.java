@@ -48,9 +48,9 @@ class DomainPurityArchitectureTests {
 	private static final Set<String> ALLOWED_TARGET_SURFACES = Set.of(DOMAIN_SURFACE, "vocabulary");
 
 	/**
-	 * The JDK allowance, which passes {@code java.time}. Review item RV-BE-19
-	 * ({@code riviera-review-overlay/references/backend-conventions.md}) relies on exactly that, so
-	 * a tightening here or in {@link #FORBIDDEN} must update the item too.
+	 * The JDK allowance, which passes {@code java.time.Clock}. Review item RV-BE-19
+	 * ({@code riviera-review-overlay} {@code references/backend-conventions.md}) relies on exactly
+	 * that, so a tightening here or in {@link #FORBIDDEN} must update the item too.
 	 */
 	private static final String JDK_ROOT = "java";
 
