@@ -22,7 +22,7 @@ the truncated graph rather than erroring, so these are all unreliable until you 
 | `git log` (esp. `-S`, `--follow`, `<range>`) | history stops at the graft; "the commit that introduced this" is whatever is nearest the boundary |
 | `git blame` | every line older than the graft is attributed to the boundary commit |
 | `git show <sha> -- <path>` | on the boundary commit a *modified* file renders as a whole-file addition |
-| `git merge-base` | two cases: it answers from the truncated graph — a **wrong base, no error, no warning** — or it fails, and `git-diff.mjs`'s `mergeBase()` then catches and returns the stale base. It warns only in that second case |
+| `git merge-base` | it answers from the truncated graph — a **wrong base, no error, no warning** — or it fails outright. Neither is safe, which is why `git-diff.mjs`'s `resolveBase()` refuses on a shallow clone rather than resolving at all (#952) |
 | `git describe`, `git tag --merged` | tags below the graft were never fetched |
 
 The remedy is one command, and it is a precondition, not a cleanup:
@@ -34,12 +34,22 @@ if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch --unsha
 **A history claim made without it is not evidence.** Re-run the trace after deepening before
 you report a cause, name an introducing commit, or write one into an issue or PR.
 
+**The `scripts/check-*.mjs` guards enforce this rather than warn about it.** Every one that
+resolves a diff range exits 2 on a shallow clone, naming the command above — so in a fresh
+session the unshallow comes before the first `--diff` run, not after a confusing report (#952).
+
 **Remote-tracking refs are frozen too.** The clone is made once at container start and never
 refetched, so `origin/main` is whatever `main` was then — it does not follow the branch.
 Anything diffed against it silently widens as `main` moves. Fetch the branch you intend to
 diff (`git fetch --no-tags origin <ref>`) rather than trusting the ref; for the review gate
 specifically that is not optional, and the scope check that enforces it is `riviera-sdlc`
 `references/pr-gates.md` §1 step 2.
+
+The `check-*.mjs` guards no longer need that fetch spelled ahead of them: since #952 each one
+fetches its `<remote>/<branch>` base itself and refuses when it cannot, so a documented
+`--diff origin/main` is correct as typed. The two forms they accept are that one and a commit
+SHA — a bare `main` is refused, because a local branch in a session-old clone is a snapshot
+exactly as a tracking ref is. Reach for the SHA form when there is no network.
 
 ## Backend (Spring Boot, `platform/`)
 

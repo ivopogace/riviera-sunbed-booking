@@ -204,8 +204,8 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `scripts/git-diff.mjs` — gains `fetchArgs()` and `resolveBase()`; loses `mergeBase()` and its
   fail-open `catch`
 - `scripts/git-diff.test.mjs` — the flag-pinning case for `fetchArgs()`
-- `scripts/check-comment-only.mjs` — positional base routed through `resolveBase()`; usage line
-  states the base contract
+- `scripts/check-comment-only.mjs` — positional base routed through `resolveBase()`; header states
+  the base contract, and why this guard needs it most
 - `scripts/check-inline-comments.mjs` — `--diff` base routed through `resolveBase()`
 - `scripts/check-plan-file-structure.mjs` — same
 - `scripts/check-focus-posture.mjs` — same
@@ -214,7 +214,6 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
   the filesystem, so a case can prove a fetch corrects a stale ref
 - `scripts/guard-cli.test.mjs` — the per-guard refusal/fetch matrix; the two cases that passed a
   bare `main` reworked onto a moved remote
-- `CLAUDE.md` — the guards' description, where it states what they resolve their base from
 - `CONTRIBUTING.md` — the local-run instruction gains the base contract
 - `.claude/skills/riviera-local-debug/SKILL.md` — the shallow-clone consequence table gains the
   guards, which now refuse rather than mislead
@@ -299,9 +298,26 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 to AC-8:** Run `node --test "scripts/*.test.mjs"` → all pass, including the five
-      per-guard loops. Verified at commit `<sha>`.
-- [ ] **AC-9:** Each of the six sites re-read and its verdict recorded below. Verified at commit `<sha>`.
+- [x] **AC-1 to AC-8:** `node --test "scripts/*.test.mjs"` → 252 pass, 0 fail, including the six
+      per-guard loops. Each loop was also observed *discriminating*: with the fetch removed from
+      `resolveBase()`, all five rows exit 1 and the four with a distinct path name the file `main`
+      gained after the branch forked. Verified at commit `91df1a1`.
+- [x] **AC-9:** All six sites re-read. Every one names `--diff origin/main`, which
+      `resolveBase()` now fetches — so all six are **correct as written**, with no edit needed:
+
+      | Site | Command | Verdict |
+      |---|---|---|
+      | `riviera-plan-doc/SKILL.md:86` | `check-plan-file-structure.mjs --diff origin/main` | correct as written |
+      | `riviera-plan-doc/references/plan-doc-template.md:236` | same | correct as written |
+      | `riviera-java-conventions/SKILL.md:128` | `check-inline-comments.mjs --diff origin/main` | correct as written |
+      | `riviera-review-overlay/SKILL.md:54` | same | correct as written |
+      | `riviera-review-overlay/references/frontend-conventions.md:205` | `check-focus-posture.mjs --diff origin/main` | correct as written |
+      | `CONTRIBUTING.md:127` | `check-inline-comments.mjs --diff origin/main` | correct as written; gains the base contract, since it is the contributor-facing one |
+
+      A **seventh** site the issue did not enumerate: `check-comment-only.mjs`'s own usage line,
+      which is the only documentation of the one guard with no CI or hook invocation. Updated.
+      The shallow precondition is stated once, in `riviera-local-debug` — which already owns the
+      cloud-session preconditions — rather than repeated at six call sites.
 
 ## Self-review checklist (before merge / PR)
 

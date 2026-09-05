@@ -126,6 +126,10 @@ touch targets declared (#648), and the cloud setup script's Node pin still match
 [`.nvmrc`](.nvmrc) (#659). Run any of them locally the way CI does —
 `node scripts/check-inline-comments.mjs --diff origin/main` — and note the first
 four only judge *your diff*, so they stay quiet until you've committed something.
+A guard fetches that base before it uses it and refuses when it cannot, so the
+command above is correct as typed even in a clone whose `origin/main` has gone
+stale; it takes either `<remote>/<branch>` or a commit SHA (the offline form),
+and refuses a shallow clone outright — run `git fetch --unshallow` first.
 
 ## 4. Branching & commits
 
