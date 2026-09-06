@@ -133,7 +133,7 @@ Sonar gate per `riviera-sdlc` `references/pr-gates.md` §2.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Generic lazy-route walker test + doc note | ✅ | `4425da9` (plan doc), `a94f2dcc` (test + doc note), `b641c13b` (verification), `<review-fix-sha>` (F-1) |
+| 0 — Generic lazy-route walker test + doc note | ✅ | `4425da9` (plan doc), `a94f2dcc` (test + doc note), `b641c13b` (verification), `d7739cd1` (F-1 fix) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
