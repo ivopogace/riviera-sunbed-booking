@@ -89,8 +89,8 @@ N/A — new test coverage, replaces nothing.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The walker's `await loadComponent()` calls trigger a real dynamic import of every lazy module at test time — a latent bug in any component's module-level code would now throw during this one test | low | low (surfaces immediately in CI, which is a good outcome) | run `npx ng test --include='**/app.routes.spec.ts'` scoped first before the full suite | this session | open — closes when Phase 0 lands green |
-| R-2 | Recursion misses a nesting level (e.g. a future third-level child tree) and silently under-covers | low | med | assert `toHaveLength(32)` on the resolved-names array so a miscount fails loudly, not silently | this session | open — closes with Phase 0 |
+| R-1 | The walker's `await loadComponent()` calls trigger a real dynamic import of every lazy module at test time — a latent bug in any component's module-level code would now throw during this one test | low | low (surfaces immediately in CI, which is a good outcome) | ran `npx ng test --include='**/app.routes.spec.ts'` scoped first before the full suite — no throw, all 32 resolved | this session | closed — `a94f2dcc` |
+| R-2 | Recursion misses a nesting level (e.g. a future third-level child tree) and silently under-covers | low | med | asserted `toHaveLength(32)` on the resolved-names array, confirmed passing | this session | closed — `a94f2dcc` |
 | R-3 | The `riviera-frontend` doc note goes stale if a future route uses a pattern the walker doesn't visit (e.g. `component:` instead of `loadComponent`) | low | low | doc note states the walker only benefits `loadComponent` targets; not machine-enforced, flagged as a documentation limitation | this session | open — accepted, no code guard planned |
 
 ## Open questions / Assumptions
@@ -132,7 +132,7 @@ N/A — no API shape change.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Generic lazy-route walker test + doc note | ✅ | `4425da9` (plan doc), `<phase-0-sha>` |
+| 0 — Generic lazy-route walker test + doc note | ✅ | `4425da9` (plan doc), `a94f2dcc` (test + doc note) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -254,12 +254,14 @@ the generic walker rather than a per-route spec; no subset skipped. Appended to 
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `npx ng test --include='**/app.routes.spec.ts'` → PASS, 32 names
-  resolved. Verified at commit `<sha>`.
-- [ ] **AC-2:** Run `npm run test:coverage` → grep `frontend/coverage/frontend/lcov.info` for
-  the 20 target files → no `,0` import-line entries remain. Verified at commit `<sha>`.
-- [ ] **AC-3:** Review confirms the `riviera-frontend` `## Routing` doc note lands in the
-  same PR. Verified at commit `<sha>`.
+- [x] **AC-1:** Ran `npx ng test --include='**/app.routes.spec.ts'` → PASS, 6/6 tests,
+  32 names resolved. Verified at commit `a94f2dcc`.
+- [x] **AC-2:** Ran `npm run test:coverage` (225 files / 2564 tests passed) → grepped
+  `frontend/coverage/frontend/lcov.info` for all 20 target files plus 2 extra for margin →
+  every import-line `DA` entry is non-zero, none remain `,0`. Verified at commit `a94f2dcc`.
+- [x] **AC-3:** `riviera-frontend`'s `## Routing` section carries the doc note, landed in the
+  same commit as the fix. Verified at commit `a94f2dcc`; full review confirmation still
+  pending at the PR Review gate.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
