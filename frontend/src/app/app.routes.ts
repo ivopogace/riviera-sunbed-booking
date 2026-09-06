@@ -5,8 +5,10 @@ import type { AdminTabRouteData } from './admin/admin-console';
 import { operatorSessionGuard } from './core/operator-session.guard';
 
 /**
- * The operator-console tab child routes. Every tab has graduated to its real component
- * (beach-map through venue — no placeholders remain); `data.tab` identifies the section.
+ * The operator-console tab child routes — one per section, each deep-linkable. The active tab
+ * comes from the router itself: the pills mark themselves with `routerLinkActive`, and
+ * {@link OperatorConsole} reads `firstChild.routeConfig.path` to scroll the active one into
+ * view, so no route here carries a section key of its own.
  * A child reads `:venueId` from the PARENT route (child routes don't inherit it under the
  * router's default `emptyOnly` strategy).
  */
@@ -16,42 +18,36 @@ const consoleTabRoutes: Routes = [
     path: 'beach-map',
     loadComponent: () => import('./operator/layout-editor').then((m) => m.LayoutEditor),
     title: 'Beach map — Operator console',
-    data: { tab: 'beach-map' },
   },
   {
     // The per-row pricing tab.
     path: 'pricing',
     loadComponent: () => import('./operator/pricing-tab').then((m) => m.PricingTab),
     title: 'Pricing — Operator console',
-    data: { tab: 'pricing' },
   },
   {
     // The daily view (availability grid + date + arrivals).
     path: 'daily',
     loadComponent: () => import('./operator/daily-view-tab').then((m) => m.DailyViewTab),
     title: 'Daily view — Operator console',
-    data: { tab: 'daily' },
   },
   {
     // The Request-to-Book queue (accept/decline/expired-race).
     path: 'requests',
     loadComponent: () => import('./operator/requests-tab').then((m) => m.RequestsTab),
     title: 'Requests — Operator console',
-    data: { tab: 'requests' },
   },
   {
     // The payout ledger + statement + weather refund.
     path: 'payouts',
     loadComponent: () => import('./operator/payouts-tab').then((m) => m.PayoutsTab),
     title: 'Payouts — Operator console',
-    data: { tab: 'payouts' },
   },
   {
     // The Venue & commodities tab — details form + amenity toggle-chips + photo placeholders.
     path: 'venue',
     loadComponent: () => import('./operator/venue-tab').then((m) => m.VenueTab),
     title: 'Venue & commodities — Operator console',
-    data: { tab: 'venue' },
   },
 ];
 
