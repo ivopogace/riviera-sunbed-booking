@@ -1,10 +1,13 @@
-import { signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { vi } from 'vitest';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { OperatorChrome } from './operator-chrome';
+
+@Component({ template: '' })
+class BlankPage {}
 
 /**
  * The shared operator/admin header the shell renders on `data.operatorChrome` routes. These specs
@@ -28,7 +31,10 @@ describe('OperatorChrome', () => {
     operatorAuth.signOut.mockClear();
     await TestBed.configureTestingModule({
       imports: [OperatorChrome],
-      providers: [provideRouter([]), { provide: OperatorAuth, useValue: operatorAuth }],
+      providers: [
+        provideRouter([{ path: 'operator/onboarding', component: BlankPage }]),
+        { provide: OperatorAuth, useValue: operatorAuth },
+      ],
     }).compileComponents();
   });
 
@@ -76,6 +82,19 @@ describe('OperatorChrome', () => {
     ).toBe('/account/sign-in?audience=operator&returnUrl=%2F');
     expect(el.querySelector('[data-testid="opc-signout"]')).toBeNull();
     expect(el.querySelector('[data-testid="opc-signed-in-as"]')).toBeNull();
+  });
+
+  it('follows a navigation: returnUrl is the page the operator is on (#982)', async () => {
+    operatorAuth.signedIn.set(false);
+    operatorAuth.username.set(undefined);
+    const { fixture, el } = render();
+
+    await TestBed.inject(Router).navigateByUrl('/operator/onboarding');
+    fixture.detectChanges();
+
+    expect(
+      el.querySelector<HTMLAnchorElement>('[data-testid="opc-signin"]')?.getAttribute('href'),
+    ).toBe('/account/sign-in?audience=operator&returnUrl=%2Foperator%2Fonboarding');
   });
 
   it('renders no session controls while the startup restore is still settling', () => {
