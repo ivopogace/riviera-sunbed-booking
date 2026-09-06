@@ -150,7 +150,7 @@ sweep, unsubscribe PR activity.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Generic lazy-route walker test + doc note | ✅ | `4425da9` (plan doc), `a94f2dcc` (test + doc note), `b641c13b` (verification), `d7739cd1` (F-1 fix), `9b1cdc1d`/`e0ec4ab5` (status updates), `<close-out-sha>` (this close-out) — merged via PR #1000 |
+| 0 — Generic lazy-route walker test + doc note | ✅ | `4425da9` (plan doc), `a94f2dcc` (test + doc note), `b641c13b` (verification), `d7739cd1` (F-1 fix), `9b1cdc1d`/`e0ec4ab5` (status updates), close-out in this same commit — merged via PR #1000 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
