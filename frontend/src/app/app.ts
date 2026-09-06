@@ -8,6 +8,7 @@ import {
   RouterLink,
   RouterLinkActive,
   RouterOutlet,
+  isActive,
 } from '@angular/router';
 import { filter, map } from 'rxjs';
 
@@ -159,25 +160,24 @@ export class App {
     { initialValue: { legacySurface: true, chromeless: false, operatorChrome: false } },
   );
 
+  /** Whether the auth card is the current page, by path alone — the same test `routerLinkActive`
+   *  runs for the plain-path links, as a signal. */
+  private readonly authPageActive = isActive('/account/sign-in', this.router, EXACT_PATH);
+
   /**
    * Which of the Sign in / Register pair is the current page, or neither. Both links target
    * `/account/sign-in` and differ only in `mode=register`, which `routerLinkActive` cannot key on
    * without also lighting Sign in under `?mode=register` (a subset match) or unlighting it under a
-   * `returnUrl` (an exact one) — so the pair reads the query param itself.
+   * `returnUrl` (an exact one) — so the pair reads the query param itself, off the same settled
+   * navigation {@link authPageActive} is computed from.
    */
-  protected readonly authLinkCurrent = toSignal(
-    this.router.events.pipe(
-      filter((event) => event instanceof NavigationEnd),
-      map((): 'signin' | 'register' | null => {
-        if (!this.router.isActive('/account/sign-in', EXACT_PATH)) {
-          return null;
-        }
-        const mode = this.router.routerState.snapshot.root.queryParamMap.get('mode');
-        return mode === 'register' ? 'register' : 'signin';
-      }),
-    ),
-    { initialValue: null },
-  );
+  protected readonly authLinkCurrent = computed((): 'signin' | 'register' | null => {
+    if (!this.authPageActive()) {
+      return null;
+    }
+    const mode = this.router.lastSuccessfulNavigation()?.finalUrl?.queryParamMap.get('mode');
+    return mode === 'register' ? 'register' : 'signin';
+  });
 
   /** True while the current route still renders pre-redesign styling (default true pre-navigation). */
   protected readonly legacySurface = computed(() => this.routeChrome().legacySurface);
