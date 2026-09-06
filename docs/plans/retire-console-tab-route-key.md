@@ -27,15 +27,18 @@ AC-2 names the wrong pin file; see D-1 under Open questions) · `riviera-plan-do
 template — forced the behavior-parity ledger, which is what proved the removal is total) ·
 `tdd` (no red step: the slice removes dead configuration and adds no behavior, so the
 discipline is *pin-first* — the existing `#710` e2e case already pins both observable
-behaviors and must stay green across the removal) · `riviera-review-overlay` (review gate —
-runs at ready-for-review) · `riviera-docs-freshness` (**ran** over
+behaviors and must stay green across the removal) · `riviera-review-overlay` (review gate — ran at
+ready-for-review on `7c01678..0c93e4b8`, layered on `/code-review` rung 1; findings F-1..F-4) · `riviera-docs-freshness` (**ran** over
 `7c01678..HEAD` — rename grep, counting sweep and reverse map-walk; **0 findings**) · `riviera-frontend`
 (routing lives in the one `app.routes.ts` array; confirmed no folder/taxonomy move is in
 play) · `angular-developer` + angular-cli MCP `search_documentation` (v22: `Route.data` is
 **arbitrary user-defined static data** — the router consumes no key implicitly, so removing
 `data.tab` cannot change framework behavior; `RouterLinkActive` is what sets `aria-current`)
 · `riviera-tailwind` (not loaded for authoring — nothing is styled; the Tailwind-doc check
-below was verification only) · `riviera-local-debug` (unshallowed the clone before any
+below was verification only) · `playwright-cli` (the routing gate's e2e row fires on a
+*route* change: loaded at the review gate, having run the suite first — recorded as F-1 below;
+its verdict is that no new spec is warranted, the behavior being unchanged and already pinned
+by the `#710` case) · `riviera-local-debug` (unshallowed the clone before any
 history claim; `PW_CHROMIUM_EXECUTABLE` for the mocked e2e run).
 
 **Branch:** `claude/sdlc-995-yq1gqu` — the cloud session's designated remote branch stands
@@ -92,16 +95,17 @@ in for `feature/retire-console-tab-route-key` (`riviera-sdlc` § Remote/cloud ad
 
 | Old-surface behavior | Verdict | How the new surface does it, or why it's gone |
 |---|---|---|
-| Read by a component via `route.data['tab']` / `route.snapshot.data['tab']` | **dropped — never existed** | Zero readers in the tree: `grep -rn "\.data\[" frontend/src --include="*.ts"` returns only `adminTab`, `operatorConsole`, `operatorChrome`. |
+| Read by a component via `route.data['tab']` / `route.snapshot.data['tab']` | **dropped — orphaned at O8, not never-used** | It had exactly one reader: `ConsolePlaceholder` read `route.snapshot.data['tab']` to pick per-tab placeholder copy (introduced with the key in `0141bfef`, O1/#170). Each tab's graduation carried the key forward unchanged, and `e4d62f69` (O8/#177) deleted the placeholder outright — the last reader. Inert ever since; today `grep -rn "\.data\[" frontend/src --include="*.ts"` returns only `adminTab`, `operatorConsole`, `operatorChrome`. This slice finishes a cleanup O8 left behind. |
 | Read by the router itself (an implicitly-consumed key) | **dropped — impossible** | Angular v22 docs: `Route.data` is *arbitrary* static data the developer defines; the router consumes no key implicitly. `title` is a sibling `Route` property, not a `data` key, and is untouched. |
 | Read by a guard / resolver / `CanMatch` | **dropped — never existed** | The only guard on these routes is `operatorSessionGuard` (`core/operator-session.guard.ts`), applied on the parent `/operator/:venueId`; it reads session state, not route data. |
-| Read by a spec or e2e assertion | **dropped — never existed** | `grep -rn "'tab'" frontend/src/app/app.spec.ts frontend/src/app/operator/*.spec.ts` returns nothing; no e2e references it. Nothing to retire alongside, unlike #992's `legacySurface` enumeration cases. |
+| Read by a spec or e2e assertion | **dropped — retired with its reader at O8** | `console-placeholder.spec.ts` did mock `snapshot: { data: { tab } }`, and `e4d62f69` deleted it together with the component. Nothing asserts the key **today** — `grep -rn "'tab'" frontend/src/app/app.spec.ts frontend/src/app/operator/*.spec.ts` returns nothing, and no e2e references it — so unlike #992's `legacySurface` enumeration cases there is nothing left for *this* slice to retire alongside the key. |
 | Used to style the active pill (a `data-*` Tailwind variant) | **dropped — never existed** | Route `data` never reaches the DOM. The active pill is styled by `aria-[current=page]:…` arbitrary ARIA variants (Tailwind v4's documented `aria-[attribute=value]:` syntax), fed by `RouterLinkActive`'s `ariaCurrentWhenActive="page"`. `grep -rn "data-tab" frontend/src` returns nothing. |
 | Identifies the active section for the scroll-into-view effect | **preserved — by a different mechanism, already in place** | `OperatorConsole.currentTabPath` reads `this.route.snapshot.firstChild?.routeConfig?.path` on every `NavigationEnd`. Unchanged by this slice; pinned by AC-2. |
 
-**Conclusion:** the removal is total — every row is either vacant or already served by the
-router. This is what justifies "no behavior change" as a verified claim rather than an
-aspiration.
+**Conclusion:** the removal is total — every row is either vacant *today* or already served by
+the router. This is what justifies "no behavior change" as a verified claim rather than an
+aspiration. Note the sharpened history (review finding F-4): the key was not decoration from
+the start, it was orphaned by O8's placeholder deletion and carried for six tabs ever since.
 
 ## Risk register
 
@@ -200,7 +204,19 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none raised | — |
+| F-1 | review — RV-PROC-1 (self, at the gate) | The Skill-routing table's e2e row fires on a *route* change; the mocked suite was run without `playwright-cli` loaded first, and the *Skills consulted* line omitted it. | fixed — skill loaded and re-vetted (no new spec due), line corrected |
+| F-2 | review — `/code-review` agent #2 | Plan doc's AC-verification section carried two unfilled `` `<sha>` `` placeholders and left AC-3/AC-4 unticked, while the self-review checklist ticked "No placeholders / TODO / TBD anywhere in the doc" — a scripted edit had silently failed. | fixed |
+| F-4 | review — `/code-review` agent #3 (git history) | The behavior-parity ledger claimed the component and spec readers "never existed". False: `ConsolePlaceholder` read `route.snapshot.data['tab']` from `0141bfef` (O1) and its spec mocked it, until `e4d62f69` (O8) deleted both. Verified directly against those commits. | fixed — both rows restated; the accurate history ("orphaned at O8") is the stronger justification |
+| F-3 | review — follow-on from F-2 | AC-3's recorded command was `npx vitest run …`, which cannot work here (Vitest runs through the Angular builder; the bare form dies with no JIT compiler). A worked command that fails is worse than none. | fixed — replaced with the `npx ng test --watch=false --include=…` form actually run |
+
+**Sonar note.** Gate green on PR #996 and the reported list confirmed empty, not merely a
+passing conclusion: `api/issues/search` → `total: 0`, and `api/measures/component` →
+`new_lines: 4`, `new_bugs`/`new_vulnerabilities`/`new_code_smells`/`new_duplicated_blocks` all
+`0`, `new_duplicated_lines_density 0.0`. The `new_lines` value is what rules out the false
+zero: the analysis did read the diff. The PR mixes analysed and unanalysed paths —
+`frontend/src/app/app.routes.ts` is inside `sonar.sources`, the two `docs/plans/` files are
+not — so the gate is judged on the route file alone. `new_coverage` is absent because all four
+new lines are doc-comment lines; there is no new executable code for a coverage bar to apply to.
 
 ---
 
@@ -289,10 +305,11 @@ const consoleTabRoutes: Routes = [
 - [x] **AC-1:** Run `grep -rn "data\.tab\|data\['tab'\]" frontend/src frontend/e2e; grep -n "data:" frontend/src/app/app.routes.ts`
   → no `tab` hits; the remaining `data:` keys are `adminTab` (×8) and `operatorChrome`/`operatorConsole`. Verified at commit `9f0b4ede`.
 - [x] **AC-2:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts operator-console admin-console-tabs`
-  → PASS. Verified at commit `<sha>`.
-- [ ] **AC-3:** Run `npx vitest run src/app/operator/operator-console.spec.ts src/app/app.spec.ts`
-  → PASS. Verified at commit `<sha>`.
-- [ ] **AC-4:** Run `node scripts/check-inline-comments.mjs --diff origin/main` → clean, and
+  → **8 passed**, identical to the pre-change baseline. Verified at commit `9f0b4ede`.
+- [x] **AC-3:** Run `npx ng test --watch=false --include="src/app/operator/operator-console.spec.ts" --include="src/app/app.spec.ts"`
+  → **52 passed** (2 files). Verified at commit `9f0b4ede`. (Vitest runs through the Angular
+  builder here — a bare `npx vitest run` has no JIT compiler wired and dies before the first test.)
+- [x] **AC-4:** Run `node scripts/check-inline-comments.mjs --diff origin/main` → clean, and
   the paragraph is read at review. Verified at commit `9f0b4ede`; `npm run lint` and
   `npm run format:check` also clean.
 
@@ -319,6 +336,6 @@ If any AC isn't verified by a passing test, write the test or admit it's not don
 - [x] **Close-out written in THIS PR, in its last code-touching commit** — this commit carries
   the plan doc's final state citing `merged via PR #996` and PR #994's plan-doc retirement;
   no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
