@@ -531,3 +531,23 @@ test('a doc-comment line that opens with an issue number is provenance', () => {
     [{ line: 4, rule: 'provenance' }],
   );
 });
+
+test('an interpolation inside an inline template is code, not markup', () => {
+  const component = (...rows) => [
+    '@Component({',
+    '  template: `',
+    ...rows,
+    '  `,',
+    '})',
+    'export class Probe {}',
+  ];
+  const at = (lines) =>
+    findViolations({ path: 'frontend/src/app/probe.ts', lines, added: new Set(lines.map((_, i) => i + 1)) })
+      .map(({ line, rule }) => ({ line, rule }));
+
+  assert.deepEqual(at(component('    <p>${label("<!-- see #923 -->")}</p>')), []);
+  assert.deepEqual(
+    at(component('    <p>${cond ? `a` : `b`}</p>', '    <!-- the live region must outlive its branch (#741) -->')),
+    [{ line: 4, rule: 'provenance' }],
+  );
+});

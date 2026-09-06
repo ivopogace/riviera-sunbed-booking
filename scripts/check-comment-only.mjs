@@ -31,11 +31,14 @@ const SUPPORTED = new Set(['.java', '.ts', '.tsx', '.js', '.mjs', '.cjs', '.scss
 
 /**
  * The code before a backtick that makes its template literal an Angular inline template, where an
- * `<!-- … -->` is a comment. In any other template literal it is string content: a spec's HTML
- * fixture is code, and reporting a change to it as comment-only is the false clean this tool must
- * never give.
+ * `<!-- … -->` is a comment — in a TypeScript file only. In any other template literal it is string
+ * content: a spec's HTML fixture is code, and reporting a change to it as comment-only is the false
+ * clean this tool must never give.
  */
-const TEMPLATE_KEY = /template\s*:\s*$/;
+const TEMPLATE_KEY = /\btemplate\s*:\s*$/;
+
+/** The extensions whose `template:` literal is an Angular inline template. */
+const INLINE_TEMPLATE_EXTENSIONS = new Set(['.ts', '.tsx']);
 
 /** Characters after which a `/` opens a regex literal rather than dividing. */
 const REGEX_PRECEDERS = new Set(
@@ -108,7 +111,8 @@ function readUnquotedUrl(src, i) {
 /**
  * Removes comments while honouring string, template, char, Java text-block, JS regex-literal and CSS
  * unquoted-`url()` state, so a `//` inside a URL or a `/*` inside a string or character class is kept as
- * the code it is — and an `<!-- … -->` inside an Angular inline template is removed as the comment it is.
+ * the code it is — and an `<!-- … -->` inside an Angular inline template is removed as the comment it is,
+ * while a `${…}` interpolation inside that template stays the code it is.
  *
  * <p>Known limitation: the final normalization collapses whitespace on every line, including inside a
  * Java text block, whose compiled value depends on its minimum common indentation. A re-indent of a text
@@ -116,13 +120,17 @@ function readUnquotedUrl(src, i) {
  * if this tool is ever pointed at a formatting change, that case needs handling first.
  *
  * @param {string} src file contents
+ * @param {string} [extension] the file's extension, e.g. `.ts`; decides whether a `template:` literal
+ *   is an inline template
  * @returns {string} code-only lines, trimmed and whitespace-collapsed, blanks dropped
  */
-export function strip(src) {
+export function strip(src, extension = '') {
   let out = '';
   let i = 0;
   let state = 'code';
   let quote = '';
+  let interpolation = 0;
+  const inlineTemplates = INLINE_TEMPLATE_EXTENSIONS.has(extension);
 
   while (i < src.length) {
     const two = src.slice(i, i + 2);
@@ -138,7 +146,7 @@ export function strip(src) {
         state = 'block';
         i += 2;
       } else if (src[i] === '"' || src[i] === "'" || src[i] === '`') {
-        state = src[i] === '`' && TEMPLATE_KEY.test(out) ? 'template' : 'str';
+        state = src[i] === '`' && inlineTemplates && TEMPLATE_KEY.test(out) ? 'template' : 'str';
         quote = src[i];
         out += src[i];
         i++;
@@ -171,6 +179,19 @@ export function strip(src) {
         state = 'code';
         out += '"""';
         i += 3;
+        continue;
+      }
+      if (state === 'template' && interpolation > 0) {
+        if (src[i] === '{') interpolation++;
+        else if (src[i] === '}') interpolation--;
+        out += src[i];
+        i++;
+        continue;
+      }
+      if (state === 'template' && src.startsWith('${', i)) {
+        interpolation = 1;
+        out += '${';
+        i += 2;
         continue;
       }
       if (state === 'template' && src.startsWith('<!--', i)) {
@@ -260,7 +281,7 @@ export function check(from) {
       continue;
     }
     verified++;
-    if (strip(before) !== strip(after)) codeChanged.push(path);
+    if (strip(before, extensionOf(path)) !== strip(after, extensionOf(path))) codeChanged.push(path);
   }
   return { codeChanged, skipped, unreadable, verified };
 }

@@ -59,13 +59,12 @@ row fires: the diff holds no SQL, no Java, and nothing under `frontend/`.
   `template:` literal, when `check-comment-only.mjs` runs, then it exits 0 reporting the file
   verified code-identical; a change to any other template literal's content (a spec's HTML fixture)
   is still reported as a code change. *Seam:* `strip(src)` (the exported normaliser) and the CLI ·
-  *Pinned by:* `check-comment-only.test.mjs` "an HTML comment inside an inline Angular template is a comment" + "an HTML comment inside any other template literal is code" + `guard-cli.test.mjs` "check-comment-only passes when only an HTML comment left an inline template"
+  *Pinned by:* `check-comment-only.test.mjs` "an HTML comment inside an inline Angular template is a comment" + "an HTML comment inside any other template literal is code" + "a `template:` key outside TypeScript keeps its HTML comment as string content" + `guard-cli.test.mjs` "check-comment-only passes when only an HTML comment left an inline template"
 
 ## Non-goals
 
 - Scanning template literals that do not follow `template:` (a spec's HTML fixture, a SQL string).
 - Recognising `#NNN` mid-sentence after `.`/`;`: the issue asks for the sentence-opening form only.
-- `${…}` interpolation inside a template literal — the scanner's existing simplification stays.
 - Reflowing or re-judging the ~30 pre-existing sentence-opening `#NNN` comments: the guard is
   diff-scoped, so they stay unreported until a diff touches them.
 - The other guards (`check-focus-posture`, `check-touch-target`) — neither reads comments.
@@ -122,7 +121,7 @@ N/A — no contract change.
 
 **Stage pointer:** review gate — reviewers dispatched over `3df086e0..f23991ec`; Sonar list cleared
 
-**Next action:** score the reviewers' findings, fix through the loop, re-review the fix range, post the review comment.
+**Next action:** score the reviewers' findings, re-review the fix range `4d82c071..HEAD`, post the review comment, close out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -140,6 +139,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-1 | sonar | `javascript:S7780` ×2 — the `OPENING` and `provenance` regex sources escape `\` in ordinary strings | fixed-in-`04d141df` (`String.raw`) |
 | F-2 | overlay RV-PROC-2c | the harness mutation note named `line[c - 1] !== '\``, a condition this diff removed; the detector test's narrative named `skipString` as the template scanner | fixed-in-`04d141df` |
 | F-3 | CI (Repo hygiene on `04d141df`) | touching those two doc comments judged them whole and surfaced their pre-existing issue numbers | fixed-in-`f1c6eb6a` |
+| F-4 | review (reviewers 3, 5) | `strip` applied the inline-template rule to every supported extension, so a `template:` key in a `.js`/`.mjs` file got a false comment-only verdict | fixed: `strip(src, extension)`, `.ts`/`.tsx` only |
+| F-5 | review (reviewers 2, 3, 5) | `TEMPLATE_KEY` lacked the `\b` of its sibling, so `xtemplate:` opened an inline template | fixed: `\btemplate` |
+| F-6 | review (reviewer 2) | `${…}` inside an inline template read as markup: a nested backtick desynced the scan and a `<!--` in an interpolated string was a comment | fixed: brace-depth tracking in both scanners; the `${…}` non-goal retired |
+| F-7 | review (reviewer 3) | the flipped `// #123 is the emphasis colour` assertion undoes a pinned decision | not a change: the issue's AC-3 asks for it, the tree holds no such colour, and the `TELLS` doc, the reference doc and the suite state the accepted cost |
 
 ---
 
@@ -211,6 +214,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-06 | phase 0 | every script that tracks template-literal state | `git grep -n "inTemplate\\|'\`'" scripts/*.mjs` | `check-inline-comments.mjs`, `check-comment-only.mjs` | both in this plan (phases 0 and 2); `check-focus-posture` and `check-touch-target` already carve `template:` literals out with their own `TEMPLATE_KEY` and read HTML, not comments — three private copies of the opener test, a sharing refactor left to review |
+| 2026-09-06 | review fix (F-4..F-6) | every scanner that reads a `template:` literal | `git grep -n 'template\\s\*:' scripts/*.mjs` | `check-inline-comments.mjs`, `check-comment-only.mjs`, `check-focus-posture.mjs`, `check-touch-target.mjs` | the two in this plan gain extension scoping, `\b` and `${…}` depth; the other two already count `${…}` depth and never see a non-`.ts` file |
 | 2026-09-06 | phase 1 | every consumer of `TELLS` | `grep -n TELLS scripts/check-inline-comments.mjs` | `tellViolations`, `markdownViolations` | both get the opening anchor through the shared regex; no separate change |
 
 ---

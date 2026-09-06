@@ -230,6 +230,7 @@ function scan(lines, syntax) {
   let inTextBlock = false;
   let inTemplate = false;
   let inlineTemplate = false;
+  let interpolation = 0;
   let seenCode = false;
 
   for (let i = 0; i < lines.length; i++) {
@@ -250,9 +251,10 @@ function scan(lines, syntax) {
         continue;
       }
       if (inTemplate) {
-        const { end, closed, comment } = skipTemplate(line, c, inlineTemplate);
+        const { end, closed, comment, depth } = skipTemplate(line, c, inlineTemplate, interpolation);
         lineHasCode = true;
         c = end;
+        interpolation = depth;
         if (closed) inTemplate = false;
         if (comment) {
           open = { kind: 'html', startLine: i, column: c, isDoc: false, isFileHeader: false };
@@ -282,6 +284,7 @@ function scan(lines, syntax) {
       if (ch === '`') {
         inTemplate = true;
         inlineTemplate = Boolean(syntax.inlineTemplate) && INLINE_TEMPLATE_OPENER.test(line.slice(0, c));
+        interpolation = 0;
         lineHasCode = true;
         c++;
         continue;
@@ -335,21 +338,34 @@ const INLINE_TEMPLATE_OPENER = /\btemplate\s*:\s*$/;
  * Scans a template literal's body from `start`, honouring backslash escapes, and stops at the first
  * of: its closing backtick (`closed`), the `<!--` of an HTML comment when the literal is an inline
  * template (`comment`, with `end` on the marker), or the end of the line — an unclosed template
- * carries to the next line. Answering with flags rather than an index is what keeps an opener
- * standing last on its line from reading as a close.
+ * carries to the next line. A `${…}` interpolation is code, not template text: its braces are
+ * counted (`depth`, carried across lines) and nothing inside it can open a comment or close the
+ * literal. Answering with flags rather than an index is what keeps an opener standing last on its
+ * line from reading as a close.
  */
-function skipTemplate(line, start, inlineTemplate) {
+function skipTemplate(line, start, inlineTemplate, depth) {
   let c = start;
   while (c < line.length) {
     if (line[c] === '\\') {
       c += 2;
       continue;
     }
-    if (line[c] === '`') return { end: c + 1, closed: true, comment: false };
-    if (inlineTemplate && line.startsWith('<!--', c)) return { end: c, closed: false, comment: true };
+    if (depth > 0) {
+      if (line[c] === '{') depth++;
+      else if (line[c] === '}') depth--;
+      c++;
+      continue;
+    }
+    if (line.startsWith('${', c)) {
+      depth = 1;
+      c += 2;
+      continue;
+    }
+    if (line[c] === '`') return { end: c + 1, closed: true, comment: false, depth };
+    if (inlineTemplate && line.startsWith('<!--', c)) return { end: c, closed: false, comment: true, depth };
     c++;
   }
-  return { end: line.length, closed: false, comment: false };
+  return { end: line.length, closed: false, comment: false, depth };
 }
 
 /**

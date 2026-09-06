@@ -37,9 +37,10 @@ Scope:
 - **Four languages, by comment syntax:** `.java`, `.ts`/`.tsx`/`.js`/`.mjs`/`.cjs`,
   `.scss`/`.css`, `.html`. In a `.ts`/`.tsx` file the template literal after `template:` is an
   Angular inline template, and an `<!-- … -->` inside it is judged exactly as one in an `.html`
-  file; any other template literal (a spec's HTML fixture, a SQL string) is opaque string
-  content. `check-comment-only.mjs` draws the same line, so removing a template comment is
-  comment-only and changing a fixture is not. **Not** `#` files (shell, YAML, `.properties`) — every one of
+  file, while a `${…}` interpolation inside it is code; any other template literal (a spec's HTML
+  fixture, a SQL string, a `template:` key in a `.js` file) is opaque string content.
+  `check-comment-only.mjs` draws the same line, so removing a template comment is comment-only
+  and changing a fixture is not. **Not** `#` files (shell, YAML, `.properties`) — every one of
   those in this repo carries multi-line `#` header prose by convention — and **not** SQL
   `--` (declined by review precedent, `V9__payout_ledger.sql`).
 - **Two exemptions from the one-line rule beyond doc comments:** a block comment standing
