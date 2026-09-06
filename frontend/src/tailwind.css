@@ -43,6 +43,7 @@
 
   --color-riv-card-glass: var(--riv-card-glass);
   --color-riv-card-border: var(--riv-card-border);
+  --color-riv-card-hover-border: var(--riv-card-hover-border);
   --color-riv-card-ink: var(--riv-card-ink);
   --color-riv-card-ink-soft: var(--riv-card-ink-soft);
   --color-riv-card-ink-faint: var(--riv-card-ink-faint);
@@ -174,6 +175,7 @@
   --color-riv-console-btn-hover: var(--riv-console-btn-hover);
 
   --shadow-riv-pop: var(--riv-pop-shadow);
+  --shadow-riv-card-hover: var(--riv-card-hover-shadow);
   --text-shadow-riv-hero: var(--riv-hero-shadow);
 }
 
@@ -249,6 +251,9 @@
       design's airier alpha — see home.contrast.spec.ts. */
   --riv-card-glass: rgba(255, 255, 255, 0.55);
   --riv-card-border: rgba(255, 255, 255, 0.6);
+  /* Near-opaque white avoids a muddy dark halo on this light page. */
+  --riv-card-hover-border: rgba(255, 255, 255, 0.9);
+  --riv-card-hover-shadow: 0 18px 40px rgba(7, 42, 58, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.9);
   --riv-card-ink: #0a2a33;
   /* 0.78 / 0.72 (tourist design: 0.7 / 0.55): AA over the composited card glass (home.contrast.spec.ts) */
   --riv-card-ink-soft: rgba(12, 42, 51, 0.78);
@@ -876,6 +881,10 @@
   /** 0.78 (design: 0.55): the darkest riviera stop needs the extra opacity for the dark
       card inks to reach AA — see home.contrast.spec.ts. */
   --riv-card-glass: rgba(255, 255, 255, 0.78);
+  /* This page is medium-bright teal, so a dark drop shadow disappears — glow instead. */
+  --riv-card-hover-border: rgba(255, 255, 255, 0.95);
+  --riv-card-hover-shadow:
+    0 20px 46px rgba(4, 26, 36, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 [data-riv-theme='dark'] {
@@ -913,6 +922,9 @@
       resolve the gradient), so the card must stay dark even on that fiction (the S7924 posture). */
   --riv-card-glass: rgba(16, 26, 46, 0.86);
   --riv-card-border: rgba(255, 255, 255, 0.16);
+  /* A softer rim than porcelain/riviera's near-opaque white — full white read as a harsh ring here. */
+  --riv-card-hover-border: rgba(255, 255, 255, 0.4);
+  --riv-card-hover-shadow: 0 20px 46px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.14);
   --riv-card-ink: #f2f7fa;
   --riv-card-ink-soft: rgba(242, 247, 250, 0.78);
   --riv-card-ink-faint: rgba(242, 247, 250, 0.72);
