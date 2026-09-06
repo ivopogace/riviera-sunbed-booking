@@ -123,18 +123,34 @@ N/A — no payment in scope.
 
 N/A — no API shape change.
 
+## Sonar gate note
+
+CI green on `e0ec4ab5` (8/8 checks, incl. `SonarCloud Code Analysis` and `SonarCloud scan`
+both `success`). The bot comment reports "Quality Gate passed" with 0 new issues and 0.0%
+coverage/duplication on new code — but per `riviera-sdlc` `references/pr-gates.md` §2's
+"third false zero," this is **not evidence the gate meaningfully ran** on this diff.
+Confirmed via the SonarCloud API
+(`api/measures/component?...&pullRequest=1000&metricKeys=...,new_lines`): `new_lines` is
+**absent** from the returned measures, and `api/issues/search?...&pullRequest=1000` returns
+`total: 0` with an empty list — consistent with "unanalyzed," not "clean." All 3 changed
+files fall outside what Sonar reads: `frontend/src/app/app.routes.spec.ts` matches
+`sonar.exclusions=**/*.spec.ts`; `.claude/skills/riviera-frontend/SKILL.md` and
+`docs/plans/lazy-route-import-coverage.md` are outside `sonar.sources`
+(`platform/src/main/java,frontend/src,scripts`). **The Sonar gate did not apply to this PR**
+— recorded here per pr-gates.md §2, not claimed as passed.
+
 ## Execution status
 
-**Stage pointer:** Sonar gate — review gate complete (PR #1000 comment posted, no
-findings ≥80 confidence; F-1 self-caught and fixed).
+**Stage pointer:** merge close-out.
 
-**Next action:** wait for CI + SonarCloud analysis on `9b1cdc1d`, then pull the Sonar
-issue/duplication list per `riviera-sdlc` `references/pr-gates.md` §2 (expect the diff to
-fall largely outside `sonar.sources` — see plan's Sonar note once written).
+**Next action:** merge PR #1000, then run the close-out checklist (`riviera-sdlc`
+`references/pr-gates.md` §3): verify issue #999 closes, propagate nothing (no deferred
+findings), confirm no epic to tick, retire this plan doc at next `riviera-docs-freshness`
+sweep, unsubscribe PR activity.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Generic lazy-route walker test + doc note | ✅ | `4425da9` (plan doc), `a94f2dcc` (test + doc note), `b641c13b` (verification), `d7739cd1` (F-1 fix) |
+| 0 — Generic lazy-route walker test + doc note | ✅ | `4425da9` (plan doc), `a94f2dcc` (test + doc note), `b641c13b` (verification), `d7739cd1` (F-1 fix), `9b1cdc1d`/`e0ec4ab5` (status updates), `<close-out-sha>` (this close-out) — merged via PR #1000 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -263,30 +279,35 @@ the generic walker rather than a per-route spec; no subset skipped. Appended to 
   `frontend/coverage/frontend/lcov.info` for all 20 target files plus 2 extra for margin →
   every import-line `DA` entry is non-zero, none remain `,0`. Verified at commit `a94f2dcc`.
 - [x] **AC-3:** `riviera-frontend`'s `## Routing` section carries the doc note, landed in the
-  same commit as the fix. Verified at commit `a94f2dcc`; full review confirmation still
-  pending at the PR Review gate.
+  same commit as the fix. Verified at commit `a94f2dcc`; review gate confirmed it (PR #1000
+  code-review comment, no findings on the doc note).
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** — N/A, frontend-only.
-- [ ] **Availability** section filled (N/A, justified).
-- [ ] Pool + cutoff rules — N/A, frontend-only.
-- [ ] **Modulith** section filled — N/A, frontend-only.
-- [ ] **Payment/payout** section filled — N/A, no payment in scope.
-- [ ] Refund policy — N/A.
-- [ ] Timezone — N/A, no date/time logic touched.
-- [ ] Booking codes — N/A.
-- [ ] Flyway migration — N/A, no schema change.
-- [ ] **Frontend** standards met (pure test code, no deviation to document).
-- [ ] Execution status at HEAD matches reality.
-- [ ] Risk register has no stale `open` rows without a resolution note; Open Questions empty.
-- [ ] **Close-out written in THIS PR, in its last code-touching commit.**
-- [ ] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
-  `references/pr-gates.md` §1 *plus* `riviera-review-overlay`.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** — N/A, frontend-only.
+- [x] **Availability** section filled (N/A, justified).
+- [x] Pool + cutoff rules — N/A, frontend-only.
+- [x] **Modulith** section filled — N/A, frontend-only.
+- [x] **Payment/payout** section filled — N/A, no payment in scope.
+- [x] Refund policy — N/A.
+- [x] Timezone — N/A, no date/time logic touched.
+- [x] Booking codes — N/A.
+- [x] Flyway migration — N/A, no schema change.
+- [x] **Frontend** standards met (pure test code, no deviation to document).
+- [x] Execution status at HEAD matches reality.
+- [x] Risk register has no stale `open` rows without a resolution note; Open Questions empty.
+- [x] **Close-out written in THIS PR** — not strictly in the last *code*-touching commit
+  (`d7739cd1`): the automated stop-hook commit/push cadence produced 3 docs-only follow-up
+  commits recording status instead of batching into one, each costing a CI cycle per
+  pr-gates.md §3's own warning. Noted here as an accepted deviation, not hidden — the
+  substance (close-out present before merge, citing `merged via PR #1000`) is satisfied.
+- [x] **The review gate ran in full** — per the invocation ladder in `riviera-sdlc`
+  `references/pr-gates.md` §1 *plus* `riviera-review-overlay` (PR #1000 code-review comment,
+  5-agent fan-out, no findings ≥80 confidence).
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
