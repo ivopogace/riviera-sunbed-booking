@@ -154,7 +154,6 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
         </ol>
       </header>
 
-      <!-- A column, not a block: this form passes the panel's height cap down to the scroll body. -->
       <form
         class="flex min-h-0 flex-1 flex-col"
         (submit)="onPrimary(); $event.preventDefault()"

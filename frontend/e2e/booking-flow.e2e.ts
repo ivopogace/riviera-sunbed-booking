@@ -242,7 +242,7 @@ test('booking dialog stays laptop-friendly at a ~700px viewport (#188, guards th
 });
 
 test('the Review step scrolls to its pay button on a phone viewport', async ({ page }) => {
-  // #923's widget pushed Review past a phone's height, where the panel's clamp clips what overflows.
+  // The widget pushes Review past a phone's height, where the panel's clamp clips what overflows.
   await page.setViewportSize({ width: 360, height: 640 });
 
   await page.goto('/venues/1');
