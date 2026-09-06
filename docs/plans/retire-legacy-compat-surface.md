@@ -50,37 +50,38 @@ in for `feature/retire-legacy-compat-surface` (`riviera-sdlc` § Remote/cloud ad
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the shell rendered before any navigation has completed (the first
+- [x] **AC-1:** Given the shell rendered before any navigation has completed (the first
   route's chunk still in flight), when `<main>` renders, then its class list is exactly
   `flex-1` — no `riv-legacy-surface`, no opaque background or slate ink — and the tourist
   header is shown. *Seam:* the rendered `app-root` DOM (`main` class list + `.riv-header`),
   the same seam the existing chrome cases observe through · *Pinned by:*
   `app.spec.ts` › `renders <main> bare under the tourist chrome before the first navigation completes (#992)`
-- [ ] **AC-2:** Given a real browser cold-loading `/` with the route chunk withheld, when
+- [x] **AC-2:** Given a real browser cold-loading `/` with the route chunk withheld, when
   the shell paints, then `<main>` has a transparent background — the themed gradient shows
   through, no opaque panel. *Seam:* the served page in Chromium (`main`'s computed
   `background-color`) · *Pinned by:* `theme-shell.e2e.ts` ›
   `no compat panel paints over the themed background before the route chunk lands (#992)`
-- [ ] **AC-3:** Given a navigation to a glass, operator-console or operator-chrome route,
+- [x] **AC-3:** Given a navigation to a glass, operator-console or operator-chrome route,
   when the shell computes its chrome, then header/footer switching and the porcelain
   subtree pin are unchanged and `<main>` stays bare in all three. *Seam:* the rendered
   `app-root` DOM · *Pinned by:* the existing `app.spec.ts` cases
   `suppresses the tourist header/footer chrome on operator-console routes (#170, AC-7)` and
   `renders the shared operator chrome instead of the tourist header on operator-chrome routes`,
   minus their retired `riv-legacy-surface` assertions.
-- [ ] **AC-4:** Given the route table, when the chrome-flag specs run, then every
+- [x] **AC-4:** Given the route table, when the chrome-flag specs run, then every
   operator/admin route's `operatorConsole` / `operatorChrome` placement is still pinned and
   no assertion mentions `legacySurface`. *Seam:* the exported `routes` array (`app.routes.ts`)
   · *Pinned by:* `app.spec.ts` › `app.routes chrome flags (issue #134)` — the renamed
   describe, keeping `flags every non-console operator/admin surface with the shared operator chrome`,
   `admin's tab children inherit the shell's operator chrome rather than carrying their own`,
   the retired-daily redirect case and the console-route case.
-- [ ] **AC-5:** Given the whole tree, when
-  `grep -rn "legacySurface\|riv-legacy-surface\|RESTYLED_PATHS" frontend/src frontend/e2e docs .claude`
+- [x] **AC-5:** Given the whole tree, when
+  `grep -rn "legacySurface\|riv-legacy-surface\|RESTYLED_PATHS" frontend/src frontend/e2e .claude docs --exclude-dir=plans`
   runs, then it returns nothing outside the frozen historical fixture in
   `scripts/check-plan-file-structure.test.mjs` (see Non-goals), and `RouteChrome` is
-  `{ chromeless, operatorChrome }`. *Seam:* the repository tree · *Pinned by:* the grep in
-  the AC-verification section (a mechanism's absence has no runtime seam).
+  `{ chromeless, operatorChrome }`. `docs/plans/` is excluded because it is working state that
+  describes the retirement and is itself deleted at close-out. *Seam:* the repository tree ·
+  *Pinned by:* the grep in the AC-verification section (a mechanism's absence has no runtime seam).
 - [ ] **AC-6:** Given the frontend gates, when `npm run lint`, `npm run format:check`,
   `npm test` and the mocked e2e `theme-shell`, `current-page-marker`, `find-a-booking`
   suites run, then all pass, and the hygiene guards
@@ -122,19 +123,27 @@ in for `feature/retire-legacy-compat-surface` (`riviera-sdlc` § Remote/cloud ad
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | Removing the `[class]` binding also removes `<main>`'s focus contract by accident, silently breaking the overlay-close and sign-out focus rules | low | high | `#mainEl` + `tabindex="-1"` are asserted by the existing #351/#892/operator-sign-out specs; run `app.spec.ts` whole, not just the new case | agent | closed — phase 0: all 41 `app.spec.ts` cases green, focus specs included |
-| R-2 | Retiring the enumeration specs removes the only check that some operator/admin route placement is right | med | med | The two kept placement cases (`operatorChrome`, admin tab children) are the ones that carry that value; only the `legacySurface` assertions inside them are dropped. AC-4 names them explicitly | agent | open |
-| R-3 | The AC-2 e2e cannot deterministically hold the browser in the pre-navigation window, and lands flaky (RV-FE-E2E fails a timing-fragile spec) | med | med | OQ-1: choose the handle by experiment against the real dev server before writing the spec; if no deterministic handle exists, pin the durable half (settled cold load, `<main>` transparent) and say so here | agent | open |
+| R-2 | Retiring the enumeration specs removes the only check that some operator/admin route placement is right | med | med | The two kept placement cases (`operatorChrome`, admin tab children) are the ones that carry that value; only the `legacySurface` assertions inside them are dropped. AC-4 names them explicitly | agent | closed — phase 1: the four kept cases pass unchanged |
+| R-3 | The AC-2 e2e cannot deterministically hold the browser in the pre-navigation window, and lands flaky (RV-FE-E2E fails a timing-fragile spec) | med | med | OQ-1: choose the handle by experiment against the real dev server before writing the spec; if no deterministic handle exists, pin the durable half (settled cold load, `<main>` transparent) and say so here | agent | closed — OQ-1 found a deterministic handle: exactly one chunk is withheld and the spec asserts the route never activated, so it cannot pass vacuously, and it uses no sleeps |
 | R-4 | The plan-file-structure guard fails on the deleted `docs/plans/shell-route-chrome-signals.md` | low | low | The deletion is listed in File structure below; run the guard before pushing | agent | open |
 
 ## Open questions / Assumptions
 
-- **OQ-1:** What is the deterministic Playwright handle for the pre-navigation window under
-  `ng serve` — is the home route's lazy chunk identifiable by request URL without also
-  blocking shell/vendor chunks? — *Owner:* agent · *Resolves by:* phase 1, by observing a
-  real cold load's requests (`page.on('request')`) before authoring AC-2's spec.
 - **Assumption:** No open PR touches `frontend/src/app/app.*` — checked at intake, the five
   open PRs are Dependabot version bumps. A merge-from-main before ready-for-review
   re-verifies. — *Owner:* agent · *Resolves by:* the pre-review merge.
+
+### Resolved
+
+- **OQ-1** (phase 1): *not* by URL. `ng serve` emits every lazy chunk as a hash-named
+  `chunk-XXXXXXXX.js`, and `main.js` statically depends on several of them — aborting all
+  `chunk-*.js` never paints the shell at all (the header times out), and delaying them all is a
+  race, not a window. The handle is **content**: the route handler `route.fetch()`es each chunk
+  and withholds only the one whose body contains `filter-beach` (the Beaches page's filter
+  test id), fulfilling the rest. Measured: exactly **1** chunk withheld, header visible in
+  ~424 ms, the route still unactivated 1.5 s later — a window held open with no timing
+  dependency. The spec also asserts `filter-beach` has count 0, so if the marker ever stops
+  matching the test fails loudly instead of passing vacuously.
 
 ## Availability & concurrency (invariant #2)
 
@@ -171,16 +180,16 @@ N/A — no contract change; no HTTP call is added, removed or reshaped.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2 — close-out sweep)`
 
-**Next action:** resolve OQ-1 by observing a real cold load's requests under `npm start`, then
-write AC-2's e2e in `theme-shell.e2e.ts`.
+**Next action:** merge latest `origin/main`, run phase 2 (retire PR #990's plan doc +
+docs-freshness), then mark PR #994 ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Retire the mechanism (`app.ts`, `app.html`) behind a red pre-navigation pin | ✅ | phase-0 commit |
-| 1 — Retire the flag's specs + docs; add the real-browser pin | ⏳ | |
-| 2 — Close-out sweep (retire PR #990's plan doc, docs-freshness) | | |
+| 1 — Retire the flag's specs + docs; add the real-browser pin | ✅ | phase-1 commit |
+| 2 — Close-out sweep (retire PR #990's plan doc, docs-freshness) | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -327,12 +336,12 @@ it('renders <main> bare under the tourist chrome before the first navigation com
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `npm test -- app.spec.ts` → the pre-navigation case passes. Verified at `<sha>`.
-- [ ] **AC-2:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- theme-shell` → PASS. Verified at `<sha>`.
-- [ ] **AC-3:** `npm test -- app.spec.ts` → the three chrome cases pass. Verified at `<sha>`.
-- [ ] **AC-4:** `npm test -- app.spec.ts` → the renamed describe's four cases pass. Verified at `<sha>`.
-- [ ] **AC-5:** `grep -rn "legacySurface\|riv-legacy-surface\|RESTYLED_PATHS" frontend/src frontend/e2e docs .claude` → no matches. Verified at `<sha>`.
-- [ ] **AC-6:** CI green on the PR's final push. Verified at `<sha>`.
+- [x] **AC-1:** `npm test -- --include="src/app/app.spec.ts"` → the pre-navigation case passes (red first: `expected 'flex-1 bg-[#f8fafc] riv-legacy-surface text-[#0f172a]' to be 'flex-1'`). Verified at phase 0.
+- [x] **AC-2:** `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts theme-shell` → 13 passed; against the pre-change `app.html`/`app.ts` the same spec failed with `rgb(248, 250, 252)`. Verified at phase 1.
+- [x] **AC-3:** `npm test` → 2554 passed across 225 files, the chrome cases included. Verified at phase 1.
+- [x] **AC-4:** `npm test` → the renamed `app.routes chrome flags` describe's four cases pass. Verified at phase 1.
+- [x] **AC-5:** `grep -rn "legacySurface\|riv-legacy-surface\|RESTYLED_PATHS" frontend/src frontend/e2e .claude docs --exclude-dir=plans` → no matches. Verified at phase 1.
+- [ ] **AC-6:** locally green — `npm run lint`, `npm run format:check`, `npm test`, the `theme-shell` / `current-page-marker` / `find-a-booking` mocked e2e suites, and the five hygiene guards. CI green on the PR's final push pending.
 
 ## Self-review checklist (before merge / PR)
 

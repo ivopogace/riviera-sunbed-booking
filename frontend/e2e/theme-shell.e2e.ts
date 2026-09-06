@@ -5,9 +5,9 @@ import { expectNoSeriousAxeViolations } from './support/axe';
 
 /**
  * Real-render e2e for the Liquid Glass shell: theme switching + persistence,
- * the mobile hamburger menu, and the reduced-motion guard — with axe
- * sweeps in both themes (the real-browser half of the contrast audit). The discovery API is
- * mocked (`page.route`), so the spec is CI-safe like its siblings.
+ * the mobile hamburger menu, the reduced-motion guard, and what the shell paints before the
+ * first route lands — with axe sweeps in both themes (the real-browser half of the contrast
+ * audit). The discovery API is mocked (`page.route`), so the spec is CI-safe like its siblings.
  */
 
 const VENUES = [
@@ -112,6 +112,31 @@ test.describe('pre-paint theme seeding (#675)', () => {
 
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
     await expect(page.locator('app-root')).toBeEmpty();
+  });
+});
+
+test.describe('pre-navigation shell paint (#992)', () => {
+  test('<main> adds no surface of its own before the route chunk lands (AC-2)', async ({
+    page,
+  }) => {
+    // Withhold the one lazy chunk carrying the Beaches page, matched on content: its name is hashed.
+    await page.route(/chunk-[A-Z0-9]+\.js/i, async (route) => {
+      const response = await route.fetch();
+      const body = await response.text();
+      if (body.includes('filter-beach')) {
+        return;
+      }
+      await route.fulfill({ response, body });
+    });
+
+    await page.goto('/', { waitUntil: 'commit' });
+    await expect(page.locator('.riv-header')).toBeVisible();
+
+    // Proves the withholding held: this is the pre-navigation window, not a settled page.
+    await expect(page.getByTestId('filter-beach')).toHaveCount(0);
+    // jsdom cannot show a paint — the retired compat panel filled <main> with an opaque #f8fafc here.
+    await expect(page.locator('main')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(page.locator('.riv-bg')).toBeAttached();
   });
 });
 
