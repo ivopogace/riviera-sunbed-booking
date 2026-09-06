@@ -21,6 +21,7 @@ import ai.riviera.platform.venue.vocabulary.Amenity;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.ContentHash;
 import ai.riviera.platform.venue.vocabulary.PhotoSlot;
+import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 import ai.riviera.platform.venue.application.CommissionRateStore;
@@ -221,7 +222,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 				""")
 				.param(P_SET_ID, setId.value())
 				.param(P_VENUE, venueId.value())
-				.query((rs, rowNum) -> new SetPlacement(rs.getString("pool"), rs.getString("row_label"),
+				.query((rs, rowNum) -> new SetPlacement(Pool.valueOf(rs.getString("pool")), rs.getString("row_label"),
 						rs.getInt("position_no"), rs.getInt("grid_x"), rs.getInt("grid_y")))
 				.optional();
 	}
@@ -510,7 +511,7 @@ class JdbcVenues implements Venues, CommissionRateStore, VenueRatings {
 	private static Map<String, Object> setParams(SetCommand c) {
 		return Map.of(
 				P_ROW_LABEL, c.rowLabel(), "positionNo", c.positionNo(), "tier", c.tier(),
-				"pool", c.pool(), "priceMinor", c.priceMinor(), "priceCurrency", c.priceCurrency(),
+				"pool", c.pool().name(), "priceMinor", c.priceMinor(), "priceCurrency", c.priceCurrency(),
 				"gridX", c.gridX(), "gridY", c.gridY());
 	}
 

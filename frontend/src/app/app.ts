@@ -1,7 +1,15 @@
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { LegalFooter } from './shared/legal-footer';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import {
+  IsActiveMatchOptions,
+  NavigationEnd,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+  isActive,
+} from '@angular/router';
 import { filter, map } from 'rxjs';
 
 import { FindBooking } from './booking/find-booking';
@@ -15,10 +23,13 @@ import { TouchTarget } from './shared/touch-target';
  *  `--riv-pop-*` family: light in porcelain/riviera, slate in the dark theme. */
 const POP =
   'absolute z-40 animate-[riv-pop_0.2s_ease] rounded-[18px] border border-riv-pop-border bg-riv-pop-surface text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none';
-const POP_ITEM =
-  'block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-riv-pop-ink [transition:background_0.12s_ease] hover:bg-riv-pop-hover';
-const MOBILE_ITEM =
-  'block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-riv-pop-ink hover:bg-riv-pop-hover';
+/** The current page's row takes the hover fill plus the popover accent ink, on the desktop popover
+ *  and the sheet alike: it has to read on touch, where `hover:` never fires (Tailwind v4 compiles
+ *  it under `@media (hover: hover)`). */
+const CURRENT_POP_ROW =
+  'aria-[current=page]:bg-riv-pop-hover aria-[current=page]:text-riv-pop-accent';
+const POP_ITEM = `block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-riv-pop-ink [transition:background_0.12s_ease] hover:bg-riv-pop-hover ${CURRENT_POP_ROW}`;
+const MOBILE_ITEM = `block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-riv-pop-ink hover:bg-riv-pop-hover ${CURRENT_POP_ROW}`;
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
@@ -30,8 +41,19 @@ const CLS = {
   popBtn: `${POP_ITEM} cursor-pointer text-left`,
   mobileItem: MOBILE_ITEM,
   mobileBtn: `${MOBILE_ITEM} cursor-pointer`,
-  navLink: 'cursor-pointer hover:text-riv-ink',
+  // The current page carries full ink and an underline in that ink (an accent token would vanish on riviera's dark header glass): hover alone is invisible on a tablet.
+  navLink:
+    'cursor-pointer hover:text-riv-ink aria-[current=page]:font-semibold aria-[current=page]:text-riv-ink aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:decoration-current aria-[current=page]:underline-offset-[7px]',
 } as const;
+
+/** `routerLinkActive` matching for the header's plain-path links: the path alone, so Beaches (`/`)
+ *  does not stay lit on every page and a `returnUrl` does not unlight Your account. */
+const EXACT_PATH: IsActiveMatchOptions = {
+  paths: 'exact',
+  queryParams: 'ignored',
+  fragment: 'ignored',
+  matrixParams: 'ignored',
+};
 
 /**
  * The Liquid Glass app shell: themed gradient background, sticky glass header with
@@ -42,7 +64,15 @@ const CLS = {
  */
 @Component({
   selector: 'app-root',
-  imports: [LegalFooter, RouterOutlet, RouterLink, FindBooking, OperatorChrome, TouchTarget],
+  imports: [
+    LegalFooter,
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    FindBooking,
+    OperatorChrome,
+    TouchTarget,
+  ],
   templateUrl: './app.html',
   host: {
     '(document:keydown.escape)': 'closeMenus()',
@@ -52,6 +82,7 @@ const CLS = {
 })
 export class App {
   protected readonly cls = CLS;
+  protected readonly exactPath = EXACT_PATH;
 
   protected readonly themes = inject(ThemeService);
   /** Customer session state for the header: sign-in/register links ↔ signed-in + sign-out. */
@@ -129,6 +160,25 @@ export class App {
     ),
     { initialValue: { legacySurface: true, chromeless: false, operatorChrome: false } },
   );
+
+  /** Whether the auth card is the current page, by path alone — the same test `routerLinkActive`
+   *  runs for the plain-path links, as a signal. */
+  private readonly authPageActive = isActive('/account/sign-in', this.router, EXACT_PATH);
+
+  /**
+   * Which of the Sign in / Register pair is the current page, or neither. Both links target
+   * `/account/sign-in` and differ only in `mode=register`, which `routerLinkActive` cannot key on
+   * without also lighting Sign in under `?mode=register` (a subset match) or unlighting it under a
+   * `returnUrl` (an exact one) — so the pair reads the query param itself, off the same settled
+   * navigation {@link authPageActive} is computed from.
+   */
+  protected readonly authLinkCurrent = computed((): 'signin' | 'register' | null => {
+    if (!this.authPageActive()) {
+      return null;
+    }
+    const mode = this.router.lastSuccessfulNavigation()?.finalUrl?.queryParamMap.get('mode');
+    return mode === 'register' ? 'register' : 'signin';
+  });
 
   /** True while the current route still renders pre-redesign styling (default true pre-navigation). */
   protected readonly legacySurface = computed(() => this.routeChrome().legacySurface);

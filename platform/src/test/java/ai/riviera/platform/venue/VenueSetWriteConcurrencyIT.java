@@ -27,6 +27,7 @@ import ai.riviera.platform.venue.application.RowNameCommand;
 import ai.riviera.platform.venue.application.RowPriceCommand;
 import ai.riviera.platform.venue.application.SetCommand;
 import ai.riviera.platform.venue.application.SetRejection;
+import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.VenueId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -65,7 +66,7 @@ class VenueSetWriteConcurrencyIT {
 		Callable<ReplaceLayoutOutcome> replace = () -> {
 			gate.await();
 			return editBeachMap.replaceLayout(owner, venue, 0L, new LayoutCommand(
-					List.of(new SetCommand("A", 1, "PREMIUM", "ONLINE", 9100 + rep, "EUR", 1, 1))));
+					List.of(new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 9100 + rep, "EUR", 1, 1))));
 		};
 		Callable<ChangeOutcome> reprice = () -> {
 			gate.await();
@@ -105,7 +106,7 @@ class VenueSetWriteConcurrencyIT {
 		Callable<ReplaceLayoutOutcome> replace = () -> {
 			gate.await();
 			return editBeachMap.replaceLayout(owner, venue, 0L, new LayoutCommand(
-					List.of(new SetCommand("A", 1, "PREMIUM", "ONLINE", 9100 + rep, "EUR", 1, 1))));
+					List.of(new SetCommand("A", 1, "PREMIUM", Pool.ONLINE, 9100 + rep, "EUR", 1, 1))));
 		};
 		Callable<ChangeOutcome> rename = () -> {
 			gate.await();

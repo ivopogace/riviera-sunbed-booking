@@ -259,14 +259,14 @@ test('keeps a Java text block open across an escaped triple quote', () => {
 
 /**
  * A backtick that OPENS a template literal as the last character of its line was read as one that
- * closed it: `skipString` starts past the backtick, runs off the end and returns `line.length`, and
- * the character before that index is the opening backtick itself. The scanner's template state then
+ * closed it: the scan started past the backtick, ran off the end and returned `line.length`, and the
+ * character before that index was the opening backtick itself. The scanner's template state then
  * inverted for the rest of the file — the literal's body read as code and the code after it read as
- * a literal, hiding every comment there.
+ * a literal, hiding every comment there. `skipTemplate` answers with a `closed` flag for this reason.
  *
  * <p>Not a corner: `template: \`` on its own line is how 44 components under `frontend/src/app` are
  * written, so this is a false clean over a large part of the tree the guard gates. Found by the
- * CLI harness in issue #619.
+ * CLI harness on its first day.
  */
 test('a template literal opened at end of line does not invert the scanner (#619)', () => {
   const lines = [
@@ -417,10 +417,157 @@ test('a comment opener is not a citing slash, and a generic word is not a citing
   const at = (line) =>
     findViolations({ path: JAVA, lines: [line], added: new Set([1]) }).map((v) => v.rule);
 
-  assert.deepEqual(at('// #123 is the emphasis colour'), []);
+  assert.deepEqual(at('// the #123 emphasis colour'), []);
   assert.deepEqual(at('// returns the #404 error and the #500 fallback'), []);
   assert.deepEqual(at('/** Mirrors the #401 vs #403 split. */'), []);
   assert.deepEqual(at('// fixed by #618, see #619'), ['provenance']);
   assert.deepEqual(at('// the #413/#420 failure, paid for once'), ['provenance']);
   assert.deepEqual(at('// closed in #952 with a shared resolver'), ['provenance']);
+});
+
+/** The issue's own probe: an inline Angular template whose HTML comment breaks both gating rules. */
+const INLINE_TEMPLATE = [
+  '@Component({',
+  "  selector: 'app-probe',",
+  '  template: `',
+  '    <!-- A deliberately multi-line HTML comment inside an Angular inline template',
+  '         that also carries provenance (#923) to see whether the guard scans it. -->',
+  '    <p>hi</p>',
+  '  `,',
+  '})',
+  'export class Probe {}',
+];
+
+test('flags a multi-line HTML comment inside an inline Angular template', () => {
+  const violations = findViolations({
+    path: 'frontend/src/app/probe.ts',
+    lines: INLINE_TEMPLATE,
+    added: new Set(INLINE_TEMPLATE.map((_, i) => i + 1)),
+  });
+
+  assert.deepEqual(
+    multiline(violations).map(({ line, endLine }) => ({ line, endLine })),
+    [{ line: 4, endLine: 5 }],
+  );
+});
+
+test("reports provenance inside an inline Angular template's HTML comment", () => {
+  const violations = findViolations({
+    path: 'frontend/src/app/probe.ts',
+    lines: INLINE_TEMPLATE,
+    added: new Set([5]),
+  });
+
+  assert.deepEqual(
+    violations.map(({ line, rule }) => ({ line, rule })),
+    [{ line: 5, rule: 'provenance' }],
+  );
+});
+
+test('a template literal that is not an inline template keeps its HTML comment as string content', () => {
+  const lines = [
+    'const fixture = `',
+    '  <!-- a two-line HTML comment in a spec fixture',
+    '       is test data, not a comment -->',
+    '`;',
+  ];
+
+  const violations = findViolations({
+    path: 'frontend/src/app/probe.spec.ts',
+    lines,
+    added: new Set([1, 2, 3, 4]),
+  });
+
+  assert.deepEqual(violations, []);
+});
+
+test('the code after an inline template closes is still scanned', () => {
+  const lines = [
+    ...INLINE_TEMPLATE.slice(0, 8),
+    'export class Probe {',
+    '  rate = 1; /* the commission, in basis points —',
+    '     set per venue */',
+    '}',
+  ];
+
+  const violations = findViolations({ path: 'frontend/src/app/probe.ts', lines, added: new Set([10, 11]) });
+
+  assert.deepEqual(
+    violations.map(({ line, endLine, rule }) => ({ line, endLine, rule })),
+    [{ line: 10, endLine: 11, rule: 'multiline' }],
+  );
+});
+
+test('a bare issue number opening the comment is a citing position', () => {
+  const at = (path, line) =>
+    findViolations({ path, lines: [line], added: new Set([1]) }).map((v) => v.rule);
+
+  assert.deepEqual(at(JAVA, "// #923's widget pushed Review past a phone's height."), ['provenance']);
+  assert.deepEqual(at(SCSS, '// #123 is the emphasis colour'), ['provenance'], 'a colour opening a comment is the accepted cost');
+  assert.deepEqual(at(JAVA, '/** #795 AC-8: a same-day booking reports its CLOSED birth window. */'), ['provenance']);
+  assert.deepEqual(at('frontend/src/app/x.ts', '  <!-- #741: the announcer must outlive the branch it describes. -->'), []);
+  assert.deepEqual(at('frontend/src/app/x.html', '  <!-- #741: the announcer must outlive the branch it describes. -->'), ['provenance']);
+  assert.deepEqual(at(JAVA, '// returns the #404 error and the #500 fallback'), []);
+  assert.deepEqual(at(SCSS, '// border color: #123 for emphasis'), []);
+  assert.deepEqual(at(JAVA, '// #12 is two digits, not an issue'), []);
+  assert.deepEqual(at(JAVA, '// #12345 is five digits, not an issue'), []);
+});
+
+test('a doc-comment line that opens with an issue number is provenance', () => {
+  const lines = [
+    'class Sweep {',
+    '\t/**',
+    '\t * Sweeps the abandoned bookings.',
+    '\t * #373 handed the sweep the whole record, so its cutoff and the mailed deadline share one source.',
+    '\t */',
+    '\tvoid sweep() {}',
+    '}',
+  ];
+
+  const violations = findViolations({ path: JAVA, lines, added: new Set([3]) });
+
+  assert.deepEqual(
+    violations.map(({ line, rule }) => ({ line, rule })),
+    [{ line: 4, rule: 'provenance' }],
+  );
+});
+
+test('an interpolation inside an inline template is code, not markup', () => {
+  const component = (...rows) => [
+    '@Component({',
+    '  template: `',
+    ...rows,
+    '  `,',
+    '})',
+    'export class Probe {}',
+  ];
+  const at = (lines) =>
+    findViolations({ path: 'frontend/src/app/probe.ts', lines, added: new Set(lines.map((_, i) => i + 1)) })
+      .map(({ line, rule }) => ({ line, rule }));
+
+  assert.deepEqual(at(component('    <p>${label("<!-- see #923 -->")}</p>')), []);
+  assert.deepEqual(
+    at(component('    <p>${cond ? `a` : `b`}</p>', '    <!-- the live region must outlive its branch (#741) -->')),
+    [{ line: 4, rule: 'provenance' }],
+  );
+});
+
+test('an inline template whose backtick opens on the line after `template:` is still one', () => {
+  const lines = [
+    '@Component({',
+    '  template:',
+    '    `',
+    '    <!-- A two-line HTML comment,',
+    '         carrying provenance (#923). -->',
+    '    <p>hi</p>',
+    '  `,',
+    '})',
+  ];
+
+  const violations = findViolations({ path: 'frontend/src/app/probe.ts', lines, added: new Set([4, 5]) });
+
+  assert.deepEqual(
+    violations.map(({ line, endLine, rule }) => ({ line, endLine, rule })),
+    [{ line: 4, endLine: 5, rule: 'multiline' }, { line: 5, endLine: 5, rule: 'provenance' }],
+  );
 });

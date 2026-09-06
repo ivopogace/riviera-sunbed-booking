@@ -95,3 +95,64 @@ test('a real change on an unquoted url() line is NOT reported as comment-only', 
 
   assert.notEqual(strip(before), strip(after));
 });
+
+const inlineTemplate = (...rows) =>
+  ['@Component({', '  template: `', ...rows, '    <p>hi</p>', '  `,', '})', 'export class Probe {}'].join('\n');
+
+test('an HTML comment inside an inline Angular template is a comment', () => {
+  const before = inlineTemplate('    <!-- Above the @if on purpose: a live region must outlive its branch. -->');
+  const twoLine = inlineTemplate('    <!-- Above the @if on purpose:', '         a live region must outlive its branch. -->');
+
+  assert.equal(strip(before, '.ts'), strip(inlineTemplate(), '.ts'));
+  assert.equal(strip(twoLine, '.ts'), strip(inlineTemplate(), '.ts'));
+});
+
+test('a changed element inside an inline Angular template is still a code change', () => {
+  assert.notEqual(strip(inlineTemplate('    <p>one</p>'), '.ts'), strip(inlineTemplate('    <p>two</p>'), '.ts'));
+});
+
+test('an HTML comment inside any other template literal is code', () => {
+  const fixture = (comment) => ['const fixture = `', `  ${comment}`, '  <p>hi</p>', '`;'].join('\n');
+
+  assert.notEqual(strip(fixture('<!-- a -->'), '.ts'), strip(fixture('<!-- b -->'), '.ts'));
+  assert.notEqual(strip(fixture('<!-- a -->'), '.ts'), strip(fixture(''), '.ts'));
+});
+
+/**
+ * A comment ends the line the way the code after it sees it: `template:` at column zero after a
+ * `//` line is still the key, not the tail of the word the comment interrupted.
+ */
+test('a comment before `template:` does not fuse it with the code before the comment', () => {
+  const body = ['  <!-- gone -->', '  <p>hi</p>', '`;'];
+  const afterLine = ['x = b// c', 'template: `', ...body].join('\n');
+  const afterBlock = ['x = b/* c', '*/template: `', ...body].join('\n');
+  const bare = ['x = b', 'template: `', '  <p>hi</p>', '`;'].join('\n');
+
+  assert.equal(strip(afterLine, '.ts'), strip(bare, '.ts'));
+  assert.equal(strip(afterBlock, '.ts'), strip(bare, '.ts'));
+});
+
+test('a `template:` key outside TypeScript keeps its HTML comment as string content', () => {
+  const config = (comment) => ['const config = {', '  template: `', `    ${comment}`, '    <p>hi</p>', '  `,', '};'].join('\n');
+
+  assert.notEqual(strip(config('<!-- a -->'), '.mjs'), strip(config('<!-- b -->'), '.mjs'));
+  assert.notEqual(strip(config('<!-- a -->'), '.js'), strip(config(''), '.js'));
+  assert.notEqual(strip(config('<!-- a -->')), strip(config('')));
+});
+
+test('a key that merely ends in `template` does not open an inline template', () => {
+  const fixture = (comment) => ['const fixture = {', `  xtemplate: \`${comment}\`,`, '};'].join('\n');
+
+  assert.notEqual(strip(fixture('<!-- a -->'), '.ts'), strip(fixture('<!-- b -->'), '.ts'));
+});
+
+test('an interpolation inside an inline template is code, even when it carries `<!--`', () => {
+  assert.notEqual(
+    strip(inlineTemplate('    <p>${label("<!-- old -->")}</p>'), '.ts'),
+    strip(inlineTemplate('    <p>${label("<!-- new -->")}</p>'), '.ts'),
+  );
+  assert.equal(
+    strip(inlineTemplate('    <p>${cond ? `a` : `b`}</p>', '    <!-- gone -->'), '.ts'),
+    strip(inlineTemplate('    <p>${cond ? `a` : `b`}</p>'), '.ts'),
+  );
+});

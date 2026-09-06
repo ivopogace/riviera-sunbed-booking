@@ -131,6 +131,13 @@ over time. The standing rules:
     **locking** read (`FOR KEY SHARE`, the weakest lock that conflicts with the edit's
     `FOR UPDATE`). It must run in a transaction, never a read-only one; the unlocked
     `setBookingInfo` serves list and mail reads.
+- **The pool vocabulary is stated once.** `venue.vocabulary.Pool` is the one Java statement of
+  the `set_position_pool_check` tokens (ADR-0018 §3); every published set fact (`SetBookingInfo`,
+  `SetView`, `SetBookingFacts#poolForClaim`) carries it, and no production class — this module
+  included — holds an `"ONLINE"` / `"WALK_IN"` literal of its own, so both invariant #3 checks
+  (`booking`'s unlocked fast path, `availability`'s locked claim-time check) compare against the
+  published type. The wire keeps the tokens (the enum serialises by name) and the edge parses
+  them once, in `SetPositionRequest`.
 - **The commission rate over time, not just its current value.** `venue_commission_rate`
   is the effective-dated schedule behind `VenueRates#commissionBpsOn` — the rate that
   applied to bookings served on date D, for reporting reads — while `commissionBps` is
@@ -222,7 +229,12 @@ exist. `venue` composes; I answer state.
   `CONFIRMED`. The guest-cancel guard is `CONFIRMED`-only; the admin **weather refund**
   admits `NO_SHOW` on its own `cancelForWeather` transition, because the storm is known
   afterwards — the two share no port method, and each takes its admitted statuses from its own
-  row in `BookingTransition`, so that asymmetry cannot be tidied away.
+  row in `BookingTransition`, so that asymmetry cannot be tidied away. The guest guard's two
+  advisory readers — the code-gated view's `cancellable` and the cancel service's
+  `NotCancellable` refusal — read the same `CANCEL_BY_GUEST` row rather than restating it
+  (`ViewBookingServiceTest` and `CancelBookingServiceTest` hold each answer, status by status, to
+  the literal `BookingTransitionTest` holds the row to); the `{NO_SHOW, COMPLETED} →
+  WindowClosed` split ahead of the refusal chooses the copy for a spent day, not who may cancel.
 - **The lifecycle is stated once and enforced in SQL.** `domain/BookingTransition` is the
   transition table — which statuses each of the eleven transitions may act on, what it writes,
   and `successorsOf(status)` for "what may follow this?". It generates no SQL: the guarded
@@ -1052,12 +1064,14 @@ sufficient. Which of them form the *structural net* — the subset run after any
 | No JPA/Hibernate on the classpath — invariant #1 | `JdbcOnlyArchitectureTests` |
 | A `domain/` class names only the JDK and published ids, values and rules — no Spring, JDBC, Stripe, adapter or port (ADR-0018 §4) | `DomainPurityArchitectureTests` (fixture-proven negatives) |
 | The booking transition table and the guarded `UPDATE`s admit the same statuses (ADR-0018 §1) | `JdbcBookingTransitionTableIT` (every transition against every status) |
+| The booking view's `cancellable` and the guest cancel's refusal answer as `CANCEL_BY_GUEST` does, status by status (ADR-0018 §1) | `ViewBookingServiceTest.onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen`, `CancelBookingServiceTest` (every status against the literal `BookingTransitionTest` holds the row to) |
 | No login machinery inside `operator` (RV-BE-11) | `OperatorAuthPlacementTests` |
 | No login machinery inside `customer` (RV-BE-11) | `CustomerAuthPlacementTests` |
 | Mail listeners name their own bounded executors, never Boot's shared `applicationTaskExecutor` (#383) | `MailListenerExecutorArchitectureTest` |
 | `booking` listeners reaching `payment::api` run on the bounded refund pool, not the shared one (#404) | `RefundListenerExecutorArchitectureTest` |
 | Every self-configured worker pool carries the shared MDC decorator (#455) | `WorkerContextArchitectureTest` |
 | The draining pools' shutdown claims sum within the platform's SIGTERM grace (#456) | `ShutdownDrainArchitectureTest` |
+| The pool tokens are stated once, in `venue.vocabulary.Pool` — no other production class holds an `"ONLINE"` / `"WALK_IN"` literal (invariant #3's operand is the published type) | `PoolTokenArchitectureTest` (`CONSTANT_String` scan, so a `Pool.ONLINE` reference passes; fixture-proven negative) |
 
 Each rule is proven able to fail on every build, against deliberately-violating fixtures
 (`ai.riviera.responsibilityfixture`, `ai.riviera.placementfixture`) — never by breaking
