@@ -351,8 +351,7 @@ function skipTemplate(line, start, inlineTemplate, depth) {
       continue;
     }
     if (depth > 0) {
-      if (line[c] === '{') depth++;
-      else if (line[c] === '}') depth--;
+      depth += braceDelta(line[c]);
       c++;
       continue;
     }
@@ -366,6 +365,12 @@ function skipTemplate(line, start, inlineTemplate, depth) {
     c++;
   }
   return { end: line.length, closed: false, comment: false, depth };
+}
+
+function braceDelta(ch) {
+  if (ch === '{') return 1;
+  if (ch === '}') return -1;
+  return 0;
 }
 
 /**
