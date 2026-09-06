@@ -34,10 +34,12 @@ of the issue's "specs pass unchanged" ACs name pins that do not exist; see D-1) 
 pre-navigation initial-value delta in D-2) · `tdd` (pin-first: the new unit pins are written
 and run green against the OLD event pipes before the migration, so the migration is proved by
 their staying green; there is no red step for a refactor that adds no behaviour) ·
-`riviera-review-overlay` (review gate — due at ready-for-review, layered on `/code-review`) ·
-`riviera-docs-freshness` (due at close-out over the PR range; the counting sweep on the
-`NavigationEnd`-pipe population is the one fact this slice changes — PR #997's body and plan doc
-name "three `admin/` sites" as #983's, and both retire with this slice) · `riviera-frontend` (the
+`riviera-review-overlay` (review gate — ran at ready-for-review over `96a683c7..053701b2`, layered on `/code-review` rung 1: five reviewers + the overlay walk, all RV-FE/RV-STYLE/RV-PROC items ✅ or N/A; one below-bar note F-1; the S-1 fix re-walked by hand, R-1) ·
+`riviera-docs-freshness` (**ran** over the PR range — the rename/removal grep on the retired
+`operator-route-signals` slug (no citation outside `docs/plans/`) and the substrate grep for
+`NavigationEnd` / `toSignal` / `AdminConsole` (hits only in the vendored `angular-developer`
+references, which describe the generic API and stay true); **0 findings**. The "three `admin/`
+sites" count lived only in PR #997's body and its plan doc, which this slice retires) · `riviera-frontend` (the
 helper stays in `shared/`; `admin/` imports it along the allowed feature → `shared` direction; no
 folder move) · `angular-developer` + angular-cli MCP (`get_best_practices` v22: `computed()` for
 derived state, signals over event pipes; `search_documentation` v22 at the maintainer's
@@ -83,14 +85,17 @@ for `feature/admin-route-signals` (`riviera-sdlc` § Remote/cloud addendum).
   under `provideRouter` · *Pinned by:* `admin-console.spec.ts` → `renders the active child's
   title, scoped to its own id` + `switches the rendered title, gate id and content to match the
   newly active tab` (existing) + `falls back to the Admin title when the active child carries
-  no adminTab (#983)` (new).
+  no adminTab (#983)` + `renders the fallback tab and a root returnUrl before any navigation has
+  completed (#983)` (new) + `AdminConsole — deep link over the real routes (#983)` (new — the real
+  `app.routes` table, so the `data.adminTab` the computed reads is the shipped one).
 - [x] **AC-3:** Given the console rendered signed-out, when the page is `/admin/b`, then the
   Sign in link's href is `/account/sign-in?audience=operator&returnUrl=%2Fadmin%2Fb`; and given
   it rendered at `/admin`, when a navigation to `/admin/b` completes, then the same link's
   `returnUrl` becomes `%2Fadmin%2Fb` (and the signed-out notice is `TAB_B`'s). *Seam:* the
   rendered signed-out notice's `<a>` `href` · *Pinned by:* `admin-console.spec.ts` → `shows a
   sign-in prompt for a signed-out visitor, returning to the page they landed on` (existing) +
-  `follows a navigation: the sign-in returnUrl is the tab the visitor is on (#983)` (new).
+  `follows a navigation: the sign-in returnUrl is the tab the visitor is on (#983)` + the
+  pre-navigation and real-routes cases named under AC-2 (new).
 - [x] **AC-4:** Given the console rendered for a signed-in non-admin, then the forbidden line
   names the active tab and no tab strip renders — unchanged. *Seam:* the rendered shell ·
   *Pinned by:* `admin-console.spec.ts` → `shows the forbidden line for a signed-in non-admin,
@@ -133,10 +138,10 @@ for `feature/admin-route-signals` (`riviera-sdlc` § Remote/cloud addendum).
 
 | Old-surface behavior | Verdict (preserved / changed / dropped) | How the new surface does it, or why it's gone |
 |---|---|---|
-| Console `tab`: initial value read from `route.snapshot.firstChild.data` at construction (`initialValue`) | **preserved in every reachable render** (D-2) | The `computed` returns `FALLBACK_TAB` while `lastSuccessfulNavigation()` is `null` and the snapshot walk otherwise. The console is a routed component, constructed during activation, but its template is first checked in a tick *after* the navigation completes (activation, the `set` and `NavigationEnd` are one synchronous `tap` chain), by which time the signal is set and the walk returns exactly what the old `initialValue` read. The spec's `renderAt` navigates before it mounts, so the two are equal there too. |
+| Console `tab`: initial value read from `route.snapshot.firstChild.data` at construction (`initialValue`) | **preserved in every reachable render** (D-2); the pre-navigation `FALLBACK_TAB` is pinned by the S-1 case | The `computed` returns `FALLBACK_TAB` while `lastSuccessfulNavigation()` is `null` and the snapshot walk otherwise. The console is a routed component, constructed during activation, but its template is first checked in a tick *after* the navigation completes (activation, the `set` and `NavigationEnd` are one synchronous `tap` chain), by which time the signal is set and the walk returns exactly what the old `initialValue` read. The spec's `renderAt` navigates before it mounts, so the two are equal there too. |
 | Console `tab`: re-read on every `NavigationEnd`, including a child-only navigation that reuses the shell instance | **preserved** | Each completed navigation is a new `Navigation` object, so the `computed` re-runs and re-walks `firstChild`; a same-tab result is deduped by `Object.is` on the route's `data` object exactly as `toSignal`'s inner `signal.set` deduped it. Pinned by AC-2's switch case. |
 | Console `tab`: `FALLBACK_TAB` when the active child carries no `adminTab` | **preserved** | Same `?? FALLBACK_TAB` in `activeTabData()`. Pinned by AC-2's new fallback case (a pin the old code never had). |
-| Console `currentUrl`: `router.url` at construction (`initialValue`) | **preserved in every reachable render** (D-2) | `currentUrl()` is `/` until a navigation completes, then `router.url`. First template check is after completion (row 1). The sign-in link is the only consumer. |
+| Console `currentUrl`: `router.url` at construction (`initialValue`) | **preserved in every reachable render** (D-2); the pre-navigation `/` is pinned by the S-1 case | `currentUrl()` is `/` until a navigation completes, then `router.url`. First template check is after completion (row 1). The sign-in link is the only consumer. |
 | Console `currentUrl`: updates on every `NavigationEnd` | **preserved** | `lastSuccessfulNavigation` is set on the line before `NavigationEnd` emits. Pinned by AC-3's new case. |
 | Both `currentUrl`s: unchanged on `NavigationSkipped` / cancel / error | **preserved** | Neither sets `lastSuccessfulNavigation` (`current-url.spec.ts` pins the skipped case). |
 | Tabs `currentUrl`: `router.url` at construction, feeding the scroll `effect`'s first run | **preserved at the effect** | The strip renders only inside the console's authorized branch, i.e. on a completed navigation; the `effect` first flushes in a later tick. Even a hypothetical mid-navigation `/` finds no tab (`findIndex` → `-1`, no scroll) and the effect re-runs when the signal moves. |
@@ -148,10 +153,10 @@ for `feature/admin-route-signals` (`riviera-sdlc` § Remote/cloud addendum).
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The `computed` observes a stale `route.snapshot` (ordering) | low | med | Re-verified in the installed router source (Architecture); AC-2's switch case pins the re-walk with a real navigation; the e2e reload leg is the real-browser proof | agent | open |
-| R-2 | A pre-navigation `FALLBACK_TAB` / `/` reaches a live render | low | low | Parity ledger rows 1, 4, 7; D-2 | agent | open |
-| R-3 | The new `scrollIntoView` spy leaks across spec files (`isolate: false`) | low | med | Installed in `beforeEach`, deleted in `afterEach` of its own `describe` — the #997 pattern | agent | open |
-| R-4 | Merge conflict with an in-flight branch | low | low | Checked at the intake gate: all five open PRs are Dependabot bumps; none touches `admin/`. No Flyway number in play (frontend-only) | agent | open |
+| R-1 | The `computed` observes a stale `route.snapshot` (ordering) | low | med | Re-verified in the installed router source (Architecture); AC-2's switch case pins the re-walk with a real navigation; the e2e reload leg is the real-browser proof | agent | closed — `3b333301`; the real-routes case adds the shipped table |
+| R-2 | A pre-navigation `FALLBACK_TAB` / `/` reaches a live render | low | low | Parity ledger rows 1, 4, 7; D-2 | agent | closed — D-2 verified; both pre-navigation values now pinned |
+| R-3 | The new `scrollIntoView` spy leaks across spec files (`isolate: false`) | low | med | Installed in `beforeEach`, deleted in `afterEach` of its own `describe` — the #997 pattern | agent | closed — full suite 2563/2563 green with the block in place (reviewer 2 confirmed jsdom has no own `scrollIntoView`, so the `delete` restores the pristine prototype) |
+| R-4 | Merge conflict with an in-flight branch | low | low | Checked at the intake gate: all five open PRs are Dependabot bumps; none touches `admin/`. No Flyway number in play (frontend-only) | agent | closed — branch on the tip of `main` at ready-for-review |
 
 ## Open questions / Assumptions
 
@@ -207,17 +212,18 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR ready for review → review gate + Sonar gate (phase 3)`
+**Stage pointer:** `DONE — review gate run, Sonar gate read on the final head; merged via PR #998`
 
-**Next action:** Phase 3 — resolve the review range off PR #998 (`check-review-range.mjs`), run
-`/code-review` rung 1 + `riviera-review-overlay`; read the Sonar list on the final head; close out.
+**Next action:** Merge close-out (`references/pr-gates.md` §3): issue #983 closes via the PR; no
+epic checklist; the one deferred item is the coverage-tooling artifact, filed as #999; this doc is
+retired at the next close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `AdminConsole`: `tab` as a `computed`, `currentUrl` onto the helper | ✅ | `3b333301` |
 | 1 — `AdminConsoleTabs.currentUrl` onto the helper | ✅ | `7bfec97f` |
 | 2 — Full check suite + mocked e2e, draft PR → ready | ✅ | lint / format / 2561 unit (225 files) / 23 e2e / 4 guards green on `7bfec97f`; draft PR #998 opened at `3b333301`, ready at this commit |
-| 3 — Review gate + Sonar gate + close-out | ⏳ | |
+| 3 — Review gate + Sonar gate + close-out | ✅ | review gate over `96a683c7..053701b2` (no findings; F-1 below); Sonar S-1 fixed in this PR's final commit (two pins added to `admin-console.spec.ts`), which also carries this close-out |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -225,7 +231,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review (CLAUDE.md-audit agent) | `AdminConsole.tab`'s TSDoc runs past `riviera-java-conventions` §6d's ~3-line member-doc budget. Judged contract (the trap and its remedy: why a non-signal snapshot read inside a `computed` is safe), not archaeology — the same shape and length as the sibling `currentTabPath` doc PR #997 shipped. Below the bar; no comment posted. | no change |
+| S-1 | sonar (quality gate on `053701b2`: 66.7% new-code coverage, ≥ 80% required; 0 issues, 0 duplications) | Two of the three shortfalls were the two new `import { currentUrl }` lines reading `DA:<n>,0` in the full-suite lcov — a pre-existing V8-coverage artifact on every lazy `loadComponent` target no spec evaluates through the real route table (~30 files carry it; `operator-console.ts` does not because `console-venue-switch.spec.ts` deep-links to it). The third was the real `null` branch of `tab`, which no spec reached because `renderAt` navigates before mounting. | fixed in this PR's final commit: (a) `renders the fallback tab and a root returnUrl before any navigation has completed (#983)` mounts the shell with no completed navigation — pins parity-ledger rows 1 and 4 and covers the branch; (b) `AdminConsole — deep link over the real routes (#983)` renders `/admin/audit` then `/admin` over `app.routes` with `RouterTestingHarness` (the `console-venue-switch.spec.ts` precedent) — pins the real `data.adminTab` wiring the computed reads, and evaluates the lazy chunk so both import lines read `1`. Full-suite lcov after the fix: `admin-console.ts` 29/29 lines, 11/11 branches; `admin-console-tabs.ts` 21/21, 5/5. The artifact itself is tooling, out of scope: #999. |
+| R-1 | re-review of the S-1 fix (touches `admin-console.spec.ts` only) | Overlay re-walked by hand for the spec: RV-FE-E2E (a `.spec.ts`, jsdom-level; the real-browser scroll case stays in `e2e/admin-console-tabs.e2e.ts`) ✅ · RV-FE-8 (`../app.routes` from a spec — the `console-venue-switch.spec.ts` precedent; spec files are outside the item's grep) ✅ · RV-STYLE-1 (one `describe`-level TSDoc stating why the real table is needed; no inline comments) ✅ · RV-PROC-1 (no new area: `angular-developer`'s `RouterTestingHarness` is the routed skill's own reference) ✅ | closed |
 
 ---
 
@@ -238,8 +246,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/admin/admin-console.ts` — `tab` as a `computed` keyed on
   `lastSuccessfulNavigation()`; `currentUrl` from the shared helper; drop
   `NavigationEnd`/`toSignal`/`filter`/`map` imports.
-- `frontend/src/app/admin/admin-console.spec.ts` — the fallback pin (AC-2) and the
-  "follows a navigation" pin (AC-3).
+- `frontend/src/app/admin/admin-console.spec.ts` — the fallback pin (AC-2), the "follows a
+  navigation" pin (AC-3), and the S-1 pins: pre-navigation fallback + the real-routes deep link.
 - `frontend/src/app/admin/admin-console-tabs.ts` — `currentUrl` from the shared helper; drop
   `NavigationEnd`/`toSignal`/`filter`/`map` imports.
 - `frontend/src/app/admin/admin-console-tabs.spec.ts` — the scroll-into-view pins (AC-5).
@@ -297,33 +305,34 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | 2026-09-06 | plan | every `toSignal` fed by the router's `NavigationEnd` event stream | `grep -rn "instanceof NavigationEnd" frontend/src --include=*.ts \| grep -v spec` | `admin-console.ts` ×2, `admin-console-tabs.ts`, `app.ts` (constructor, event-shaped by design — #981) | the three `admin/` sites are this slice; `app.ts` stays |
 | 2026-09-06 | phase 0 | same | same | `admin-console-tabs.ts`, `app.ts` | the tabs site is phase 1; `app.ts` stays |
 | 2026-09-06 | phase 1 | same | same | `app.ts` only | population of `toSignal`-over-`NavigationEnd` pipes is now empty; `app.ts`'s constructor subscription is event-shaped by design |
+| 2026-09-06 | phase 3 / S-1 | every module whose relative import lines read `DA:<n>,0` in the full-suite lcov (a lazy `loadComponent` target never evaluated over the real route table) | `awk '/^SF:/{sf=$0} /^DA:([2-9]\|1[0-2]),0$/{print sf}' frontend/coverage/frontend/lcov.info \| sort \| uniq -c` after `npm run test:coverage` | ~30 files (`admin-reviews.ts`, `requests-tab.ts`, `admin-operators.ts`, `pricing-tab.ts`, `home.ts`, `booking-view.ts`, …, `admin-console.ts`, `admin-console-tabs.ts`) | the two admin members are this slice's (fixed by the real-routes pin); the population is a coverage-tooling matter → #999 |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
 - [x] **AC-1:** `grep -n "import.*NavigationEnd\|instanceof NavigationEnd\|toSignal" frontend/src/app/admin/admin-console.ts frontend/src/app/admin/admin-console-tabs.ts` → nothing.
-- [x] **AC-2 / AC-3 / AC-4:** `npx ng test --include='src/app/admin/admin-console.spec.ts'` → 9 passed (`3b333301`).
+- [x] **AC-2 / AC-3 / AC-4:** `npx ng test --include='src/app/admin/admin-console.spec.ts'` → 11 passed (final commit).
 - [x] **AC-5:** `npx ng test --include='src/app/admin/admin-console-tabs.spec.ts'` → 12 passed (`7bfec97f`).
 - [x] **AC-6:** `node scripts/check-inline-comments.mjs --diff origin/main` → clean; review at the gate.
-- [x] **AC-7:** the phase-2 commands green locally (above); the PR's CI on the ready head — see the PR.
+- [x] **AC-7:** the phase-2 commands green locally (above; the full suite re-run with coverage after S-1: 225 files / 2563 tests, lint + format clean); the PR's CI on `053701b2` 7/8 with only the Sonar gate red (S-1), re-read green on the final head — see the PR.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.

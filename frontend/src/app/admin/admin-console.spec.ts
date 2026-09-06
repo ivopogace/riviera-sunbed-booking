@@ -1,7 +1,9 @@
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router, RouterOutlet } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 
+import { routes } from '../app.routes';
 import { OperatorAuth } from '../core/operator-auth';
 import { AdminConsole, AdminTabRouteData } from './admin-console';
 
@@ -94,6 +96,24 @@ describe('AdminConsole', () => {
     ).toBe('tab-a-title');
   });
 
+  it('renders the fallback tab and a root returnUrl before any navigation has completed (#983)', async () => {
+    await TestBed.configureTestingModule({
+      imports: [AdminConsole],
+      providers: [
+        provideRouter([]),
+        { provide: OperatorAuth, useValue: authStub({ signedIn: false }) },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(AdminConsole);
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('#admin-console-title')?.textContent).toBe('Admin');
+    expect(
+      host.querySelector('[data-testid="admin-console-signed-out"] a')?.getAttribute('href'),
+    ).toBe('/account/sign-in?audience=operator&returnUrl=%2F');
+  });
+
   it('falls back to the Admin title when the active child carries no adminTab (#983)', async () => {
     const fixture = await renderAt('/admin/bare', authStub());
 
@@ -172,6 +192,38 @@ describe('AdminConsole', () => {
     expect(byTestId(fixture, 'tab-b-forbidden')).not.toBeNull();
     expect((fixture.nativeElement as HTMLElement).querySelector('#tab-b-title')?.textContent).toBe(
       'Tab B',
+    );
+  });
+});
+
+/**
+ * The shell over the REAL route table: `/admin/*` lazy-loads {@link AdminConsole} and each tab child
+ * carries the `data.adminTab` the shell renders from. The stubbed table above proves the shell's
+ * logic; only this proves the wiring it reads — a signed-out visitor is the cheapest way to render
+ * the tab's copy without mounting the tab's page.
+ */
+describe('AdminConsole — deep link over the real routes (#983)', () => {
+  it("renders the deep-linked tab's copy and returnUrl, then the next tab's", async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter(routes),
+        { provide: OperatorAuth, useValue: authStub({ signedIn: false }) },
+      ],
+    });
+    const harness = await RouterTestingHarness.create('/admin/audit');
+    const host = harness.routeNativeElement!;
+
+    expect(host.querySelector('#admin-audit-title')?.textContent).toBe('Audit');
+    expect(
+      host.querySelector('[data-testid="admin-audit-signed-out"] a')?.getAttribute('href'),
+    ).toBe('/account/sign-in?audience=operator&returnUrl=%2Fadmin%2Faudit');
+
+    await harness.navigateByUrl('/admin');
+
+    expect(host.querySelector('#admin-audit-title')).toBeNull();
+    expect(host.querySelector('#admin-ops-title')?.textContent).toBe('Operators');
+    expect(host.querySelector('[data-testid="admin-ops-signed-out"] a')?.getAttribute('href')).toBe(
+      '/account/sign-in?audience=operator&returnUrl=%2Fadmin',
     );
   });
 });
