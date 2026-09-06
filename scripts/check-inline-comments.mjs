@@ -232,6 +232,8 @@ function scan(lines, syntax) {
   let inlineTemplate = false;
   let interpolation = 0;
   let seenCode = false;
+  // The code just before a backtick, across lines: what decides whether it opens an inline template.
+  let codeTail = '';
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -248,6 +250,7 @@ function scan(lines, syntax) {
         regions.push(open);
         c = at + terminator.length;
         open = null;
+        codeTail = '';
         continue;
       }
       if (inTemplate) {
@@ -283,7 +286,7 @@ function scan(lines, syntax) {
       const ch = line[c];
       if (ch === '`') {
         inTemplate = true;
-        inlineTemplate = Boolean(syntax.inlineTemplate) && INLINE_TEMPLATE_OPENER.test(line.slice(0, c));
+        inlineTemplate = Boolean(syntax.inlineTemplate) && INLINE_TEMPLATE_OPENER.test(codeTail);
         interpolation = 0;
         lineHasCode = true;
         c++;
@@ -292,6 +295,7 @@ function scan(lines, syntax) {
       if (ch === '"' || ch === "'") {
         c = skipString(line, c + 1, ch);
         lineHasCode = true;
+        codeTail = '';
         continue;
       }
       if (syntax.line && line.startsWith(syntax.line, c)) {
@@ -302,6 +306,7 @@ function scan(lines, syntax) {
           column: c,
           wholeLine: line.slice(0, c).trim() === '',
         });
+        codeTail = '';
         break;
       }
       if (syntax.block && line.startsWith('/*', c)) {
@@ -318,9 +323,11 @@ function scan(lines, syntax) {
         continue;
       }
       if (ch.trim() !== '') lineHasCode = true;
+      codeTail = `${codeTail}${ch}`.slice(-80);
       c++;
     }
     if (lineHasCode) seenCode = true;
+    codeTail = `${codeTail}\n`.slice(-80);
   }
 
   // An unterminated block runs to the end of the file; report it against the last line.

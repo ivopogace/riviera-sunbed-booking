@@ -551,3 +551,23 @@ test('an interpolation inside an inline template is code, not markup', () => {
     [{ line: 4, rule: 'provenance' }],
   );
 });
+
+test('an inline template whose backtick opens on the line after `template:` is still one', () => {
+  const lines = [
+    '@Component({',
+    '  template:',
+    '    `',
+    '    <!-- A two-line HTML comment,',
+    '         carrying provenance (#923). -->',
+    '    <p>hi</p>',
+    '  `,',
+    '})',
+  ];
+
+  const violations = findViolations({ path: 'frontend/src/app/probe.ts', lines, added: new Set([4, 5]) });
+
+  assert.deepEqual(
+    violations.map(({ line, endLine, rule }) => ({ line, endLine, rule })),
+    [{ line: 4, endLine: 5, rule: 'multiline' }, { line: 5, endLine: 5, rule: 'provenance' }],
+  );
+});

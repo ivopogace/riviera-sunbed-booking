@@ -143,6 +143,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-5 | review (reviewers 2, 3, 5) | `TEMPLATE_KEY` lacked the `\b` of its sibling, so `xtemplate:` opened an inline template | fixed: `\btemplate` |
 | F-6 | review (reviewer 2) | `${…}` inside an inline template read as markup: a nested backtick desynced the scan and a `<!--` in an interpolated string was a comment | fixed: brace-depth tracking in both scanners; the `${…}` non-goal retired |
 | F-8 | sonar (on `7af2e726`) | `javascript:S3776` — `strip` at cognitive complexity 75 and `skipTemplate` at 16 against the 15 allowed | fixed: `strip` split into per-state handlers (`stripCode`, `openQuoted`, `stripQuoted`, `copyInterpolation`, `skipHtmlComment`, the two comment states) behind the same signature; `braceDelta` in both scanners |
+| F-9 | review (reviewer 1) | `check-inline-comments` decided the inline template from the backtick's own line, `strip` from the whole file, so `template:` with its backtick on the next line slipped the hook | fixed: `scan` keeps the code tail across lines and tests the opener on it |
 | F-7 | review (reviewer 3) | the flipped `// #123 is the emphasis colour` assertion undoes a pinned decision | not a change: the issue's AC-3 asks for it, the tree holds no such colour, and the `TELLS` doc, the reference doc and the suite state the accepted cost |
 
 ---
