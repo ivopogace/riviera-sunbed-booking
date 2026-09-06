@@ -1,4 +1,9 @@
-<div class="relative flex min-h-screen flex-col" [class.max-sm:pb-[68px]]="headerVariant() === 'c'">
+<div
+  class="relative flex min-h-screen flex-col"
+  [class.max-sm:pb-[68px]]="headerVariant() === 'c'"
+  [class.max-md:pb-[68px]]="headerVariant() === 'g'"
+  [class.md:pl-[88px]]="headerVariant() === 'g'"
+>
   <!-- Above the chrome conditional so it also shows on /operator/**, the shared-tablet case. -->
   @if (signOutNotice.visible()) {
     <div
@@ -61,6 +66,15 @@
       }
       @case ('d') {
         <app-header-variant-d (findRequested)="openFind(false)" (signOutRequested)="signOut()" />
+      }
+      @case ('e') {
+        <app-header-variant-e (findRequested)="openFind(false)" (signOutRequested)="signOut()" />
+      }
+      @case ('f') {
+        <app-header-variant-f (findRequested)="openFind(false)" (signOutRequested)="signOut()" />
+      }
+      @case ('g') {
+        <app-header-variant-g (findRequested)="openFind(false)" (signOutRequested)="signOut()" />
       }
     }
   }

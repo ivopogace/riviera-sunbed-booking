@@ -20,6 +20,9 @@ import { OperatorChrome } from './operator/operator-chrome';
 import { HeaderVariantB } from './prototype-header/header-variant-b';
 import { HeaderVariantC } from './prototype-header/header-variant-c';
 import { HeaderVariantD } from './prototype-header/header-variant-d';
+import { HeaderVariantE } from './prototype-header/header-variant-e';
+import { HeaderVariantF } from './prototype-header/header-variant-f';
+import { HeaderVariantG } from './prototype-header/header-variant-g';
 import { PrototypeHeaderVariant } from './prototype-header/prototype-header-variant';
 import { PrototypeSwitcher } from './prototype-header/prototype-switcher';
 import { TouchTarget } from './shared/touch-target';
@@ -91,6 +94,9 @@ const PRE_NAVIGATION_CHROME: RouteChrome = {
     HeaderVariantB,
     HeaderVariantC,
     HeaderVariantD,
+    HeaderVariantE,
+    HeaderVariantF,
+    HeaderVariantG,
     PrototypeSwitcher,
   ],
   templateUrl: './app.html',
