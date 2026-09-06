@@ -166,8 +166,9 @@
                   testId="card-photo"
                 />
                 @if (card.photos.length === 0) {
+                  <!-- Opaque disc + translucent glow, matching the venue-map empty state's sun. -->
                   <span
-                    class="photo-sun absolute top-[42%] left-1/2 size-[52px] rounded-[50%] bg-(image:--riv-sun-grad) [transform:translate(-50%,-50%)]"
+                    class="photo-sun absolute top-[42%] left-1/2 size-[52px] rounded-[50%] bg-(image:--riv-sun-grad) shadow-[0_0_30px_10px_rgba(255,199,105,0.4)] [transform:translate(-50%,-50%)]"
                   ></span>
                 }
                 <span class="photo-scrim absolute inset-0 bg-(image:--riv-photo-scrim)"></span>
