@@ -125,11 +125,12 @@ N/A — no API shape change.
 
 ## Execution status
 
-**Stage pointer:** review gate — PR #1000 ready for review, `/code-review` +
-`riviera-review-overlay` in progress.
+**Stage pointer:** Sonar gate — review gate complete (PR #1000 comment posted, no
+findings ≥80 confidence; F-1 self-caught and fixed).
 
-**Next action:** finish the dispatched review agents, resolve any findings, then work the
-Sonar gate per `riviera-sdlc` `references/pr-gates.md` §2.
+**Next action:** wait for CI + SonarCloud analysis on `9b1cdc1d`, then pull the Sonar
+issue/duplication list per `riviera-sdlc` `references/pr-gates.md` §2 (expect the diff to
+fall largely outside `sonar.sources` — see plan's Sonar note once written).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
