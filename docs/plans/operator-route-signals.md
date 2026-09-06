@@ -39,11 +39,14 @@ their staying green; there is no red step for a refactor that adds no behaviour)
 feature → `shared` direction; no folder move) · `angular-developer` + angular-cli MCP
 (`get_best_practices`/`search_documentation` v22: `isActive()` and `Router.lastSuccessfulNavigation()`
 are the documented signal reads of route state — "Check if a URL is active" on
-angular.dev/guide/routing/read-route-state; `isActive` not used here because neither surface
-needs a path *test*, both need a value) · `riviera-tailwind` (loaded for the maintainer's
+angular.dev/guide/routing/read-route-state; angular.dev/api/router/Router documents
+`lastSuccessfulNavigation` as `Signal<Navigation | null>` and angular.dev/api/router/Navigation
+guarantees `finalUrl` is set after `RoutesRecognized`; `isActive` not used here because neither
+surface needs a path *test*, both need a value) · `riviera-tailwind` (loaded for the maintainer's
 Tailwind-doc check: the slice styles nothing — the two touched templates are untouched, and the
-tab row's `overflow-x-auto scroll-px-6 scroll-smooth … scrollbar-none` classes the effect
-relies on are v4 first-party utilities already in place) · `playwright-cli` (the mocked
+tab row's `scroll-px-6` / `scroll-smooth` / `scrollbar-none` classes the effect relies on are
+verified against tailwindcss.com/docs `scroll-padding`, `scroll-behavior`, `scrollbar-width` as
+first-party v4 utilities) · `playwright-cli` (the mocked
 `operator-chrome`, `operator-console`, `unified-auth` suites re-run; no new spec — the `#710`
 case already pins scroll-into-view on click and on reload in a real browser) ·
 `riviera-local-debug` (unshallowed the clone; `ng test --include` for scoped runs;
@@ -56,13 +59,13 @@ in for `feature/operator-route-signals` (`riviera-sdlc` § Remote/cloud addendum
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the shipped sources, when `OperatorChrome` and `OperatorConsole` are read,
+- [x] **AC-1:** Given the shipped sources, when `OperatorChrome` and `OperatorConsole` are read,
   then neither imports `NavigationEnd` or `toSignal`, and
   `grep -n "import.*NavigationEnd\|instanceof NavigationEnd\|toSignal" frontend/src/app/operator/operator-chrome.ts frontend/src/app/operator/operator-console.ts`
   returns nothing (the console's TSDoc still *names* the event, as the shell's does, to state
   the ordering guarantee). *Seam:* the two component source files · *Pinned by:* the grep in
   **AC verification** below (an absence, per the #995 precedent — not test-pinned).
-- [ ] **AC-2:** Given the operator chrome rendered signed-out, when the page is `/` (no
+- [x] **AC-2:** Given the operator chrome rendered signed-out, when the page is `/` (no
   navigation yet), then the Sign in link's href is
   `/account/sign-in?audience=operator&returnUrl=%2F`; and when a navigation to
   `/operator/onboarding` completes, then the same link's `returnUrl` becomes
@@ -70,7 +73,7 @@ in for `feature/operator-route-signals` (`riviera-sdlc` § Remote/cloud addendum
   `href` · *Pinned by:* `operator-chrome.spec.ts` → `offers the operator sign-in (not session
   controls) when signed out` (existing) + `follows a navigation: returnUrl is the page the
   operator is on (#982)` (new).
-- [ ] **AC-3:** Given the console mounted on a completed navigation whose active child route is
+- [x] **AC-3:** Given the console mounted on a completed navigation whose active child route is
   `daily`, when the pills render, then the `Daily view` anchor's `scrollIntoView` is called
   (the on-load path); and when the active child becomes `venue` and a navigation completes,
   then the `Venue & commodities` anchor's `scrollIntoView` is called (the tab-switch path).
@@ -78,12 +81,12 @@ in for `feature/operator-route-signals` (`riviera-sdlc` § Remote/cloud addendum
   implement it; the spec installs a spy on `HTMLElement.prototype` and restores it) ·
   *Pinned by:* `operator-console.spec.ts` → `OperatorConsole — active tab scroll-into-view
   (#710, #982)` (new, two cases).
-- [ ] **AC-4:** Given the console at `/operator/1/daily`, when only `:venueId` changes in place
+- [x] **AC-4:** Given the console at `/operator/1/daily`, when only `:venueId` changes in place
   (the router reuses the instance), then the header and badge reload and the six tab links
   repoint at the new venue — unchanged. *Seam:* the rendered console shell · *Pinned by:*
   `operator-console.spec.ts` → `OperatorConsole — in-place venue param change (#180)`, passing
   unchanged.
-- [ ] **AC-5:** Given a fresh reader of each migrated signal, when they read its TSDoc, then it
+- [x] **AC-5:** Given a fresh reader of each migrated signal, when they read its TSDoc, then it
   names the source signal (`Router.lastSuccessfulNavigation()`, via `currentUrl()` for the
   chrome) and, for the console, states the ordering guarantee. *Seam:* the TSDoc on
   `OperatorChrome.currentUrl` and `OperatorConsole.currentTabPath` · *Pinned by:* review
@@ -121,20 +124,24 @@ in for `feature/operator-route-signals` (`riviera-sdlc` § Remote/cloud addendum
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The `computed` observes a stale `route.snapshot` (ordering) | low | med | Verified in the installed router source (Architecture); the `#710` e2e reload leg is the real-browser proof; AC-3 pins the tab-switch path with a real navigation in the unit spec | agent | open |
-| R-2 | The chrome's pre-navigation value (`/`) differs from `router.url` somewhere the chrome is live | low | low | Parity ledger row 1: the shell gates the chrome on `lastSuccessfulNavigation` being set; D-2 records the reasoning | agent | open |
-| R-3 | The new `scrollIntoView` spy leaks across spec files (`isolate: false`) | low | med | The spy is installed in `beforeEach` and restored in `afterEach` of its own `describe` | agent | open |
+| R-1 | The `computed` observes a stale `route.snapshot` (ordering) | low | med | Verified in the installed router source (Architecture); the `#710` e2e reload leg is the real-browser proof; AC-3 pins the tab-switch path with a real navigation in the unit spec | agent | closed — `26b32f7d`, e2e 19/19 |
+| R-2 | The chrome's pre-navigation value (`/`) differs from `router.url` somewhere the chrome is live | low | low | Parity ledger row 1: the shell gates the chrome on `lastSuccessfulNavigation` being set; D-2 records the reasoning | agent | closed — D-2 verified |
+| R-3 | The new `scrollIntoView` spy leaks across spec files (`isolate: false`) | low | med | The spy is installed in `beforeEach` and restored in `afterEach` of its own `describe` | agent | closed — full suite 2557/2557 green with the block in place |
 | R-4 | Merge conflict with an in-flight branch | low | low | Checked at the intake gate: all five open PRs are Dependabot bumps; none touches `operator/`. No Flyway number in play (frontend-only) | agent | closed |
 
 ## Open questions / Assumptions
 
-- **D-1 (drift, reconciled):** the issue's AC "specs pass unchanged … follows a navigation" and
+None open.
+
+### Resolved
+
+- **D-1 (drift, reconciled — `b78a79c0`, `26b32f7d`):** the issue's AC "specs pass unchanged … follows a navigation" and
   "… the active tab scrolls into view on load and on tab switch" name pins that do not exist:
   `operator-chrome.spec.ts` pins only the un-navigated `/` case, and no unit spec asserts
   `scrollIntoView` (jsdom lacks it; the code optional-calls it). Only the mocked e2e `#710`
   case pins the scroll. *Resolution:* add the pins (AC-2's new case, AC-3) pin-first, so
   "pass unchanged" becomes a verified claim. — *Owner:* agent · *Resolves by:* phases 0–1.
-- **D-2 (assumption, verified):** `currentUrl()`'s pre-navigation `/` never reaches a live
+- **D-2 (assumption, verified at plan time):** `currentUrl()`'s pre-navigation `/` never reaches a live
   chrome, because the shell renders operator chrome only once `lastSuccessfulNavigation()` is
   non-null (`app.ts` `routeChrome`). *Verified* by reading `app.ts:163–165`. — *Owner:*
   agent · *Resolves by:* plan.
@@ -171,16 +178,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `review gate — PR #997 ready for review`
 
-**Next action:** Phase 2 — full check suite + the three mocked e2e suites, then open the draft
-PR and mark it ready.
+**Next action:** Run the review gate (`references/pr-gates.md` §1) over the PR's resolved
+range; then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `OperatorChrome` onto `currentUrl()` | ✅ | `b78a79c0` |
-| 1 — `OperatorConsole.currentTabPath` as a `computed` | ✅ | phase-1 commit (see git log, #982) |
-| 2 — Full check suite + mocked e2e, draft PR → ready | ⏳ | |
+| 1 — `OperatorConsole.currentTabPath` as a `computed` | ✅ | `26b32f7d` |
+| 2 — Full check suite + mocked e2e, draft PR → ready | ✅ | lint / format / 2557 unit / 19 e2e / 4 guards green on `26b32f7d`; draft PR #997 |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -194,6 +201,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 ## File structure
 
 - `docs/plans/operator-route-signals.md` — this plan.
+- `docs/plans/retire-console-tab-route-key.md` — **retired** (PR #996's plan, merged at `bb57e915`; `riviera-docs-freshness` § *Plan-doc retirement*, the sweep #996 itself ran for PR #994's doc). No citation outside `docs/plans/` refers to the slug.
 - `frontend/src/app/operator/operator-chrome.ts` — `currentUrl` from the shared helper; drop `NavigationEnd`/`toSignal`/rxjs imports.
 - `frontend/src/app/operator/operator-chrome.spec.ts` — the "follows a navigation" pin (AC-2).
 - `frontend/src/app/operator/operator-console.ts` — `currentTabPath` as a `computed` keyed on `lastSuccessfulNavigation()`; drop `NavigationEnd`/`toSignal`/`filter`/`map` imports.
@@ -235,10 +243,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 2 — Full check suite, mocked e2e, PR
 
-- [ ] `npm run lint` · `npm run format:check` · `npm test` → green.
-- [ ] `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/operator-chrome.e2e.ts e2e/operator-console.e2e.ts e2e/unified-auth.e2e.ts` → green.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
-- [ ] Draft PR at the first commit; ready for review after phase 2 (`references/pr-gates.md`).
+- [x] `npm run lint` · `npm run format:check` · `npm test` → green (225 files, 2557 tests).
+- [x] `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/operator-chrome.e2e.ts e2e/operator-console.e2e.ts e2e/unified-auth.e2e.ts` → 19 passed.
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean (and `check-inline-comments`, `check-touch-target`, `check-focus-posture`).
+- [x] Draft PR #997; ready for review after phase 2 (`references/pr-gates.md`).
 
 ---
 
@@ -252,11 +260,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `grep -n "import.*NavigationEnd\|instanceof NavigationEnd\|toSignal" frontend/src/app/operator/operator-chrome.ts frontend/src/app/operator/operator-console.ts` → nothing.
-- [ ] **AC-2:** `npx ng test --include='src/app/operator/operator-chrome.spec.ts'` → PASS.
-- [ ] **AC-3 / AC-4:** `npx ng test --include='src/app/operator/operator-console.spec.ts'` → PASS.
-- [ ] **AC-5:** review + `node scripts/check-inline-comments.mjs --diff origin/main` → clean.
-- [ ] **AC-6:** the phase-2 commands + the PR's CI run → green.
+- [x] **AC-1:** `grep -n "import.*NavigationEnd\|instanceof NavigationEnd\|toSignal" frontend/src/app/operator/operator-chrome.ts frontend/src/app/operator/operator-console.ts` → nothing.
+- [x] **AC-2:** `npx ng test --include='src/app/operator/operator-chrome.spec.ts'` → 6 passed (`b78a79c0`).
+- [x] **AC-3 / AC-4:** `npx ng test --include='src/app/operator/operator-console.spec.ts'` → 16 passed (`26b32f7d`).
+- [x] **AC-5:** `node scripts/check-inline-comments.mjs --diff origin/main` → clean; review at the gate.
+- [x] **AC-6:** the phase-2 commands green locally (above); the PR's CI run: see Execution status.
 
 ## Self-review checklist (before merge / PR)
 
