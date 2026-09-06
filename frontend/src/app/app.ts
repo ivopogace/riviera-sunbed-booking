@@ -1,6 +1,6 @@
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { LegalFooter } from './shared/legal-footer';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   IsActiveMatchOptions,
   NavigationEnd,
@@ -10,7 +10,7 @@ import {
   RouterOutlet,
   isActive,
 } from '@angular/router';
-import { filter, map } from 'rxjs';
+import { filter } from 'rxjs';
 
 import { FindBooking } from './booking/find-booking';
 import { CustomerAuth } from './core/customer-auth';
@@ -53,6 +53,20 @@ const EXACT_PATH: IsActiveMatchOptions = {
   queryParams: 'ignored',
   fragment: 'ignored',
   matrixParams: 'ignored',
+};
+
+/** The active route's chrome flags — see {@link App.routeChrome}. */
+interface RouteChrome {
+  legacySurface: boolean;
+  chromeless: boolean;
+  operatorChrome: boolean;
+}
+
+/** The chrome before the first navigation completes: legacy compat on, tourist chrome shown. */
+const PRE_NAVIGATION_CHROME: RouteChrome = {
+  legacySurface: true,
+  chromeless: false,
+  operatorChrome: false,
 };
 
 /**
@@ -133,33 +147,37 @@ export class App {
   );
 
   /**
-   * The active route's chrome flags, computed once per navigation from a SINGLE root→leaf walk:
-   * `legacySurface` (the leaf still renders pre-redesign styling → opaque compat panel),
-   * `chromeless` (the operator console, `/operator/:venueId`, owns a full-bleed porcelain
+   * The active route's chrome flags, computed once per successful navigation from a SINGLE
+   * root→leaf walk: `legacySurface` (the leaf still renders pre-redesign styling → opaque compat
+   * panel), `chromeless` (the operator console, `/operator/:venueId`, owns a full-bleed porcelain
    * shell → all shell chrome is suppressed) and `operatorChrome` (every OTHER operator/admin
    * surface → the shared porcelain operator header/footer replace the tourist ones, so an admin is
    * never shown the customer session's "Sign in / Register" while signed in). The console flag sits
    * on a PARENT route and is not inherited into a child snapshot, so both flags are OR-ed across
-   * the whole chain; `legacySurface` is a leaf-only flag. Defaults (pre-navigation): legacy compat
-   * on, tourist chrome shown.
+   * the whole chain; `legacySurface` is a leaf-only flag. {@link PRE_NAVIGATION_CHROME} until the
+   * first navigation completes.
+   *
+   * <p>Keyed on `Router.lastSuccessfulNavigation()`; the `routerState` snapshot it walks is not a
+   * signal, and reading it here is safe because the router assigns `routerState` before it
+   * activates the routes (on `BeforeActivateRoutes`) and sets `lastSuccessfulNavigation` on the
+   * line before it emits `NavigationEnd`, so this computed observes the same settled state a
+   * `NavigationEnd` subscriber does. A skipped, cancelled or failed navigation sets neither, and
+   * leaves the chrome where it was.
    */
-  private readonly routeChrome = toSignal(
-    this.router.events.pipe(
-      filter((event) => event instanceof NavigationEnd),
-      map(() => {
-        let route = this.router.routerState.snapshot.root;
-        let chromeless = route.data['operatorConsole'] === true;
-        let operatorChrome = route.data['operatorChrome'] === true;
-        while (route.firstChild) {
-          route = route.firstChild;
-          chromeless ||= route.data['operatorConsole'] === true;
-          operatorChrome ||= route.data['operatorChrome'] === true;
-        }
-        return { legacySurface: route.data['legacySurface'] === true, chromeless, operatorChrome };
-      }),
-    ),
-    { initialValue: { legacySurface: true, chromeless: false, operatorChrome: false } },
-  );
+  private readonly routeChrome = computed((): RouteChrome => {
+    if (this.router.lastSuccessfulNavigation() === null) {
+      return PRE_NAVIGATION_CHROME;
+    }
+    let route = this.router.routerState.snapshot.root;
+    let chromeless = route.data['operatorConsole'] === true;
+    let operatorChrome = route.data['operatorChrome'] === true;
+    while (route.firstChild) {
+      route = route.firstChild;
+      chromeless ||= route.data['operatorConsole'] === true;
+      operatorChrome ||= route.data['operatorChrome'] === true;
+    }
+    return { legacySurface: route.data['legacySurface'] === true, chromeless, operatorChrome };
+  });
 
   /** Whether the auth card is the current page, by path alone — the same test `routerLinkActive`
    *  runs for the plain-path links, as a signal. */
@@ -208,6 +226,10 @@ export class App {
    * Identity is the navigation id, not the url: a url comparison would also swallow a navigation
    * the guest DID start from inside the overlay onto the page they deep-linked to, which supersedes
    * the pending one under a new id and leaves {@link FindBooking} waiting on a close that never comes.
+   * That id is why this rule reads the event stream while the shell's other route state
+   * ({@link routeChrome}, {@link authLinkCurrent}) is computed from router signals: the skip
+   * compares the id of EACH `NavigationEnd` against the one recorded at open, a per-event fact
+   * that no router signal exposes.
    *
    * <p>The close performs no focus restore: the destination page takes focus, and restoring is only
    * for an on-page dismiss.
