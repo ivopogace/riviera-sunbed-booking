@@ -29,6 +29,14 @@ import { changedPaths, git, nameOnlyArgs, readText, resolveBase } from './git-di
 /** Extensions whose comment syntax `strip` understands. Anything else is skipped, not assumed safe. */
 const SUPPORTED = new Set(['.java', '.ts', '.tsx', '.js', '.mjs', '.cjs', '.scss', '.css']);
 
+/**
+ * The code before a backtick that makes its template literal an Angular inline template, where an
+ * `<!-- … -->` is a comment. In any other template literal it is string content: a spec's HTML
+ * fixture is code, and reporting a change to it as comment-only is the false clean this tool must
+ * never give.
+ */
+const TEMPLATE_KEY = /template\s*:\s*$/;
+
 /** Characters after which a `/` opens a regex literal rather than dividing. */
 const REGEX_PRECEDERS = new Set(
   ['(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '}', ';', '+', '-', '*', '%', '~', '^', '<', '>'],
@@ -100,7 +108,7 @@ function readUnquotedUrl(src, i) {
 /**
  * Removes comments while honouring string, template, char, Java text-block, JS regex-literal and CSS
  * unquoted-`url()` state, so a `//` inside a URL or a `/*` inside a string or character class is kept as
- * the code it is.
+ * the code it is — and an `<!-- … -->` inside an Angular inline template is removed as the comment it is.
  *
  * <p>Known limitation: the final normalization collapses whitespace on every line, including inside a
  * Java text block, whose compiled value depends on its minimum common indentation. A re-indent of a text
@@ -130,7 +138,7 @@ export function strip(src) {
         state = 'block';
         i += 2;
       } else if (src[i] === '"' || src[i] === "'" || src[i] === '`') {
-        state = 'str';
+        state = src[i] === '`' && TEMPLATE_KEY.test(out) ? 'template' : 'str';
         quote = src[i];
         out += src[i];
         i++;
@@ -153,7 +161,7 @@ export function strip(src) {
       }
       continue;
     }
-    if (state === 'text' || state === 'str') {
+    if (state === 'text' || state === 'str' || state === 'template') {
       if (src[i] === '\\') {
         out += src.slice(i, i + 2);
         i += 2;
@@ -165,7 +173,12 @@ export function strip(src) {
         i += 3;
         continue;
       }
-      if (state === 'str' && src[i] === quote) state = 'code';
+      if (state === 'template' && src.startsWith('<!--', i)) {
+        const end = src.indexOf('-->', i + 4);
+        i = end === -1 ? src.length : end + 3;
+        continue;
+      }
+      if (state !== 'text' && src[i] === quote) state = 'code';
       out += src[i];
       i++;
       continue;

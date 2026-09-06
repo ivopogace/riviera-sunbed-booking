@@ -95,3 +95,25 @@ test('a real change on an unquoted url() line is NOT reported as comment-only', 
 
   assert.notEqual(strip(before), strip(after));
 });
+
+const inlineTemplate = (...rows) =>
+  ['@Component({', '  template: `', ...rows, '    <p>hi</p>', '  `,', '})', 'export class Probe {}'].join('\n');
+
+test('an HTML comment inside an inline Angular template is a comment', () => {
+  const before = inlineTemplate('    <!-- Above the @if on purpose: a live region must outlive its branch. -->');
+  const twoLine = inlineTemplate('    <!-- Above the @if on purpose:', '         a live region must outlive its branch. -->');
+
+  assert.equal(strip(before), strip(inlineTemplate()));
+  assert.equal(strip(twoLine), strip(inlineTemplate()));
+});
+
+test('a changed element inside an inline Angular template is still a code change', () => {
+  assert.notEqual(strip(inlineTemplate('    <p>one</p>')), strip(inlineTemplate('    <p>two</p>')));
+});
+
+test('an HTML comment inside any other template literal is code', () => {
+  const fixture = (comment) => ['const fixture = `', `  ${comment}`, '  <p>hi</p>', '`;'].join('\n');
+
+  assert.notEqual(strip(fixture('<!-- a -->')), strip(fixture('<!-- b -->')));
+  assert.notEqual(strip(fixture('<!-- a -->')), strip(fixture('')));
+});

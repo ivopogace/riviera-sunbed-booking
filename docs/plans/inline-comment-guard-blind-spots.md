@@ -115,16 +115,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 2)
+**Stage pointer:** implement (phase 3)
 
-**Next action:** write the red `strip` tests for AC-4 in `check-comment-only.test.mjs`.
+**Next action:** update `inline-comment-guard.md`, run the plan-structure guard, open the draft PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — inline template as an HTML region (AC-1, AC-2) | ✅ | e77f25e5 |
-| 1 — sentence-opening `#NNN` (AC-3) | ✅ | phase-1 commit |
-| 2 — `strip` drops the inline template's HTML comments (AC-4) | ⏳ | |
-| 3 — reference doc + close-out | | |
+| 1 — sentence-opening `#NNN` (AC-3) | ✅ | 9cb1c789 |
+| 2 — `strip` drops the inline template's HTML comments (AC-4) | ✅ | phase-2 commit |
+| 3 — reference doc + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 

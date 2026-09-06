@@ -1151,6 +1151,28 @@ test('check-comment-only inspects a code change that is only in the working tree
   });
 });
 
+/**
+ * `strip` read a `template:` literal as opaque string content, so removing one `<!-- -->` line from
+ * an inline Angular template left the stripped sides different and the by-hand verifier answered
+ * "Not comment-only" on a diff whose every change was a comment.
+ *
+ * <p>Mutation: make `TEMPLATE_KEY` never match. This case then exits 1.
+ */
+test('check-comment-only passes when only an HTML comment left an inline template', () => {
+  withRepo((repo) => {
+    const component = (...rows) =>
+      lines('@Component({', '  template: `', ...rows, '    <p>Pricing</p>', '  `,', '})', 'export class PricingTab {}');
+    repo.write(TS, component('    <!-- Above the @if on purpose: a live region must outlive its branch. -->'));
+    const before = repo.commit('base');
+    repo.write(TS, component());
+
+    const result = repo.run(COMMENT_ONLY, [before]);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Comment-only: 1 file\(s\) verified code-identical/);
+  });
+});
+
 const CLOUD_DOC = 'docs/agents/cloud-environment.md';
 
 /** Writes the two files the pin guard compares, plus a `frontend/` for the subdirectory case. */
