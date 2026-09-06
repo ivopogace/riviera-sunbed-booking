@@ -40,9 +40,23 @@ their staying green; there is no red step for a refactor that adds no behaviour)
 name "three `admin/` sites" as #983's, and both retire with this slice) · `riviera-frontend` (the
 helper stays in `shared/`; `admin/` imports it along the allowed feature → `shared` direction; no
 folder move) · `angular-developer` + angular-cli MCP (`get_best_practices` v22: `computed()` for
-derived state, signals over event pipes; `Router.lastSuccessfulNavigation()` is the documented
-`Signal<Navigation | null>`; `isActive()` not used because neither surface needs a path *test* —
-the pills' highlight is already `routerLinkActive`) · `playwright-cli` (the mocked
+derived state, signals over event pipes; `search_documentation` v22 at the maintainer's
+mid-session request — angular.dev/api/router/Router documents `lastSuccessfulNavigation` as
+`Signal<Navigation | null>`, "the most recent navigation to succeed and `null` if there has not
+been a successful navigation yet", which is exactly the `null` branch `tab` guards;
+angular.dev/api/router/Navigation guarantees `finalUrl` is set after `RoutesRecognized`;
+angular.dev/guide/signals states `computed` is lazily evaluated and memoized, which is what the
+parity ledger's "first read is the first template check / effect run" rests on;
+angular.dev/guide/routing/read-route-state documents `isActive()` as the signal for a path *test*
+— not used because neither surface needs one, the pills' highlight is already `routerLinkActive`)
+· `riviera-tailwind` (loaded for the maintainer's Tailwind-doc check: the slice styles nothing —
+neither template is touched — and the tab row's classes the scroll effect relies on are verified
+against tailwindcss.com/docs as first-party v4 utilities: `overflow-x-auto` (`overflow`),
+`scroll-px-1` → `scroll-padding-inline` (`scroll-padding`), `scrollbar-none` →
+`scrollbar-width: none` (`scrollbar-width`), the `aria-[current=page]:` arbitrary variant
+(`hover-focus-and-other-states` § ARIA states) and the `[mask-image:…]` /
+`[-webkit-mask-image:…]` arbitrary properties with `_` for spaces (`adding-custom-styles`
+§ Arbitrary properties)) · `playwright-cli` (the mocked
 `admin-console-tabs`, `admin-console-stats`, `touch-targets-admin` suites re-run; no new spec —
 `admin-console-tabs.e2e.ts`'s "on click and on reload" case already pins the scroll in a real
 browser) · `riviera-local-debug` (unshallowed the clone; `ng test --include` for scoped runs;
@@ -90,12 +104,12 @@ for `feature/admin-route-signals` (`riviera-sdlc` § Remote/cloud addendum).
   not implement it; the spec installs a `vi.fn()` on `HTMLElement.prototype` and removes it
   after) · *Pinned by:* `admin-console-tabs.spec.ts` → `does not light Operators while Email is
   open` (existing) + `AdminConsoleTabs — active tab scroll-into-view (#983)` (new, two cases).
-- [ ] **AC-6:** Given a fresh reader of each migrated signal, when they read its TSDoc, then it
+- [x] **AC-6:** Given a fresh reader of each migrated signal, when they read its TSDoc, then it
   names the source signal (`Router.lastSuccessfulNavigation()`, via `currentUrl()` for the two
   URL reads) and, for `tab`, states the ordering guarantee. *Seam:* the TSDoc on
   `AdminConsole.tab`, `AdminConsole.currentUrl`, `AdminConsoleTabs.currentUrl` · *Pinned by:*
   review (RV-STYLE-1) + `node scripts/check-inline-comments.mjs`.
-- [ ] **AC-7:** Given the branch, when `npm run lint`, `npm run format:check`, `npm test` and the
+- [x] **AC-7:** Given the branch, when `npm run lint`, `npm run format:check`, `npm test` and the
   mocked e2e `admin-console-tabs`, `admin-console-stats`, `touch-targets-admin` suites run, then
   all are green. *Seam:* the CI command set · *Pinned by:* the AC-verification commands + the
   PR's CI run.
@@ -193,16 +207,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `PR ready for review → review gate + Sonar gate (phase 3)`
 
-**Next action:** Phase 2 — full check suite + the three mocked e2e suites + guards; draft PR → ready.
+**Next action:** Phase 3 — resolve the review range off PR #998 (`check-review-range.mjs`), run
+`/code-review` rung 1 + `riviera-review-overlay`; read the Sonar list on the final head; close out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `AdminConsole`: `tab` as a `computed`, `currentUrl` onto the helper | ✅ | `3b333301` |
-| 1 — `AdminConsoleTabs.currentUrl` onto the helper | ✅ | phase-1 commit (this one) |
-| 2 — Full check suite + mocked e2e, draft PR → ready | ⏳ | |
-| 3 — Review gate + Sonar gate + close-out | | |
+| 1 — `AdminConsoleTabs.currentUrl` onto the helper | ✅ | `7bfec97f` |
+| 2 — Full check suite + mocked e2e, draft PR → ready | ✅ | lint / format / 2561 unit (225 files) / 23 e2e / 4 guards green on `7bfec97f`; draft PR #998 opened at `3b333301`, ready at this commit |
+| 3 — Review gate + Sonar gate + close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -268,10 +283,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 2 — Full check suite, mocked e2e, PR
 
-- [ ] `npm run lint` · `npm run format:check` · `npm test` → green.
-- [ ] `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/admin-console-tabs.e2e.ts e2e/admin-console-stats.e2e.ts e2e/touch-targets-admin.e2e.ts` → green.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean (and `check-inline-comments`, `check-touch-target`, `check-focus-posture`).
-- [ ] Draft PR as soon as the phase-0 commit exists; ready for review after phase 2 (`references/pr-gates.md`).
+- [x] `npm run lint` · `npm run format:check` · `npm test` → green (225 files, 2561 tests).
+- [x] `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/admin-console-tabs.e2e.ts e2e/admin-console-stats.e2e.ts e2e/touch-targets-admin.e2e.ts` → 23 passed.
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean (and `check-inline-comments`, `check-touch-target`, `check-focus-posture`).
+- [x] Draft PR #998 opened at the phase-0 commit; ready for review after phase 2 (`references/pr-gates.md`).
 
 ---
 
@@ -287,11 +302,11 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `grep -n "import.*NavigationEnd\|instanceof NavigationEnd\|toSignal" frontend/src/app/admin/admin-console.ts frontend/src/app/admin/admin-console-tabs.ts` → nothing.
-- [ ] **AC-2 / AC-3 / AC-4:** `npx ng test --include='src/app/admin/admin-console.spec.ts'` → all passed.
-- [ ] **AC-5:** `npx ng test --include='src/app/admin/admin-console-tabs.spec.ts'` → all passed.
-- [ ] **AC-6:** `node scripts/check-inline-comments.mjs --diff origin/main` → clean; review at the gate.
-- [ ] **AC-7:** the phase-2 commands green locally; the PR's CI green.
+- [x] **AC-1:** `grep -n "import.*NavigationEnd\|instanceof NavigationEnd\|toSignal" frontend/src/app/admin/admin-console.ts frontend/src/app/admin/admin-console-tabs.ts` → nothing.
+- [x] **AC-2 / AC-3 / AC-4:** `npx ng test --include='src/app/admin/admin-console.spec.ts'` → 9 passed (`3b333301`).
+- [x] **AC-5:** `npx ng test --include='src/app/admin/admin-console-tabs.spec.ts'` → 12 passed (`7bfec97f`).
+- [x] **AC-6:** `node scripts/check-inline-comments.mjs --diff origin/main` → clean; review at the gate.
+- [x] **AC-7:** the phase-2 commands green locally (above); the PR's CI on the ready head — see the PR.
 
 ## Self-review checklist (before merge / PR)
 
