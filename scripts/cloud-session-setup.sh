@@ -59,7 +59,8 @@ if ! { [ -x "$JDK_DIR/bin/java" ] && "$JDK_DIR/bin/java" -version 2>&1 | grep -q
   # GitHub release assets are allowlisted (github.com / *.githubusercontent.com);
   # api.adoptium.net is NOT, so a direct Adoptium-API download 403s. Resolve the
   # latest linux-x64 asset via api.github.com (allowlisted) and pull the tarball.
-  asset=$(curl -fsSL "https://api.github.com/repos/adoptium/temurin25-binaries/releases/latest" \
+  asset=$(curl -fsSL --proto '=https' --proto-redir '=https' \
+    "https://api.github.com/repos/adoptium/temurin25-binaries/releases/latest" \
     | grep -oE 'https://[^"]+OpenJDK25U-jdk_x64_linux_hotspot_[0-9._]+\.tar\.gz' | head -1)
   if [ -n "$asset" ]; then
     tmp=$(mktemp)
@@ -85,7 +86,8 @@ fi
 if ! { [ -x "$JDK_DIR/bin/java" ] && "$JDK_DIR/bin/java" -version 2>&1 | grep -q 'version "25'; }; then
   echo "cloud-session-setup: GitHub/Temurin JDK path unavailable; falling back to Amazon Corretto 25 (corretto.aws) ..." >&2
   tmp=$(mktemp)
-  if curl -fsSL --retry 3 -o "$tmp" "https://corretto.aws/downloads/latest/amazon-corretto-25-x64-linux-jdk.tar.gz"; then
+  if curl -fsSL --proto '=https' --proto-redir '=https' --retry 3 \
+      -o "$tmp" "https://corretto.aws/downloads/latest/amazon-corretto-25-x64-linux-jdk.tar.gz"; then
     rm -rf "$JDK_DIR" && mkdir -p "$JDK_DIR"
     tar -xzf "$tmp" -C "$JDK_DIR" --strip-components=1
     echo "cloud-session-setup: $("$JDK_DIR/bin/java" -version 2>&1 | grep -i version | head -1) installed (Corretto fallback)." >&2
@@ -164,7 +166,7 @@ GH_VERSION=2.76.1
 if ! command -v gh >/dev/null 2>&1; then
   echo "cloud-session-setup: installing GitHub CLI v$GH_VERSION ..." >&2
   tmp=$(mktemp -d)
-  if curl -fsSL --retry 2 \
+  if curl -fsSL --proto '=https' --proto-redir '=https' --retry 2 \
       "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz" \
       | tar -xz -C "$tmp" --strip-components=1 \
       && mkdir -p "$HOME/.local/bin" \
