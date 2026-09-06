@@ -39,7 +39,10 @@ export PATH="$HOME/.local/bin:$PATH"
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 # Every download below goes through this: HTTPS for the initial request and for any redirect.
-curl_https() { curl --proto '=https' --proto-redir '=https' "$@"; }
+curl_https() {
+  curl --proto '=https' --proto-redir '=https' "$@"
+  return $?
+}
 
 # ── 1. Frontend deps (idempotent: skip when node_modules already present) ──
 FRONTEND_DIR="$PROJECT_DIR/frontend"
