@@ -67,16 +67,19 @@ export function syntaxFor(path) {
  * Text that is written for the author's session rather than the next reader's. `provenance` is
  * an issue or PR number — `git blame`'s job, and what `riviera-java-conventions` §6d forbids in a
  * doc comment outright; it gates. A bare `#NNN` counts only in a citing position (after `(`, a
- * comma, a `NNN/`, or a citing word), because `: #123` is how a colour reads, `the #404 error`
- * is prose, and a false positive is how a gate gets switched off. `history` narrates a change the
- * reader never saw and is contract language often enough (a port that releases a set claimed
- * earlier) that it only advises.
+ * comma, a `NNN/`, a citing word, or opening the comment's own text), because `: #123` is how a
+ * colour reads, `the #404 error` is prose, and a false positive is how a gate gets switched off.
+ * `history` narrates a change the reader never saw and is contract language often enough (a port
+ * that releases a set claimed earlier) that it only advises.
  */
 const CITING = '(?:issues?|PRs?|epics?|since|until|before|after|see|by|at|in|from|fix(?:es|ed)?|closes)';
 
+/** A comment's own opening: after its marker, a doc comment's leading `*`, and whitespace. */
+const OPENING = '^\\s*(?:\\*\\s*)?';
+
 const TELLS = {
   provenance: new RegExp(
-    `(?:[(,]\\s*|\\d/\\s*|\\b${CITING}\\s+)#[1-9]\\d{2,3}(?!\\w)|\\b(?:issues?|PRs?|pull requests?)\\s+#?\\d{2,4}\\b`,
+    `(?:${OPENING}|[(,]\\s*|\\d/\\s*|\\b${CITING}\\s+)#[1-9]\\d{2,3}(?!\\w)|\\b(?:issues?|PRs?|pull requests?)\\s+#?\\d{2,4}\\b`,
     'i',
   ),
   history:

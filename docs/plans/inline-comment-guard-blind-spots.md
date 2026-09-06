@@ -115,15 +115,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2)
 
-**Next action:** write the red test for AC-3 (`// #923's widget …`) in `check-inline-comments.test.mjs`.
+**Next action:** write the red `strip` tests for AC-4 in `check-comment-only.test.mjs`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — inline template as an HTML region (AC-1, AC-2) | ✅ | phase-0 commit |
-| 1 — sentence-opening `#NNN` (AC-3) | ⏳ | |
-| 2 — `strip` drops the inline template's HTML comments (AC-4) | | |
+| 0 — inline template as an HTML region (AC-1, AC-2) | ✅ | e77f25e5 |
+| 1 — sentence-opening `#NNN` (AC-3) | ✅ | phase-1 commit |
+| 2 — `strip` drops the inline template's HTML comments (AC-4) | ⏳ | |
 | 3 — reference doc + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -202,7 +202,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
-| 2026-09-06 | phase 0 | every script that tracks template-literal state | `git grep -n "inTemplate\\|'\`'" scripts/*.mjs` | `check-inline-comments.mjs`, `check-comment-only.mjs` | both in this plan (phases 0 and 2); the focus/touch-target guards parse `.html` only |
+| 2026-09-06 | phase 0 | every script that tracks template-literal state | `git grep -n "inTemplate\\|'\`'" scripts/*.mjs` | `check-inline-comments.mjs`, `check-comment-only.mjs` | both in this plan (phases 0 and 2); `check-focus-posture` and `check-touch-target` already carve `template:` literals out with their own `TEMPLATE_KEY` and read HTML, not comments — three private copies of the opener test, a sharing refactor left to review |
+| 2026-09-06 | phase 1 | every consumer of `TELLS` | `grep -n TELLS scripts/check-inline-comments.mjs` | `tellViolations`, `markdownViolations` | both get the opening anchor through the shared regex; no separate change |
 
 ---
 

@@ -417,7 +417,7 @@ test('a comment opener is not a citing slash, and a generic word is not a citing
   const at = (line) =>
     findViolations({ path: JAVA, lines: [line], added: new Set([1]) }).map((v) => v.rule);
 
-  assert.deepEqual(at('// #123 is the emphasis colour'), []);
+  assert.deepEqual(at('// the #123 emphasis colour'), []);
   assert.deepEqual(at('// returns the #404 error and the #500 fallback'), []);
   assert.deepEqual(at('/** Mirrors the #401 vs #403 split. */'), []);
   assert.deepEqual(at('// fixed by #618, see #619'), ['provenance']);
@@ -495,5 +495,39 @@ test('the code after an inline template closes is still scanned', () => {
   assert.deepEqual(
     violations.map(({ line, endLine, rule }) => ({ line, endLine, rule })),
     [{ line: 10, endLine: 11, rule: 'multiline' }],
+  );
+});
+
+test('a bare issue number opening the comment is a citing position', () => {
+  const at = (path, line) =>
+    findViolations({ path, lines: [line], added: new Set([1]) }).map((v) => v.rule);
+
+  assert.deepEqual(at(JAVA, "// #923's widget pushed Review past a phone's height."), ['provenance']);
+  assert.deepEqual(at(SCSS, '// #123 is the emphasis colour'), ['provenance'], 'a colour opening a comment is the accepted cost');
+  assert.deepEqual(at(JAVA, '/** #795 AC-8: a same-day booking reports its CLOSED birth window. */'), ['provenance']);
+  assert.deepEqual(at('frontend/src/app/x.ts', '  <!-- #741: the announcer must outlive the branch it describes. -->'), []);
+  assert.deepEqual(at('frontend/src/app/x.html', '  <!-- #741: the announcer must outlive the branch it describes. -->'), ['provenance']);
+  assert.deepEqual(at(JAVA, '// returns the #404 error and the #500 fallback'), []);
+  assert.deepEqual(at(SCSS, '// border color: #123 for emphasis'), []);
+  assert.deepEqual(at(JAVA, '// #12 is two digits, not an issue'), []);
+  assert.deepEqual(at(JAVA, '// #12345 is five digits, not an issue'), []);
+});
+
+test('a doc-comment line that opens with an issue number is provenance', () => {
+  const lines = [
+    'class Sweep {',
+    '\t/**',
+    '\t * Sweeps the abandoned bookings.',
+    '\t * #373 handed the sweep the whole record, so its cutoff and the mailed deadline share one source.',
+    '\t */',
+    '\tvoid sweep() {}',
+    '}',
+  ];
+
+  const violations = findViolations({ path: JAVA, lines, added: new Set([3]) });
+
+  assert.deepEqual(
+    violations.map(({ line, rule }) => ({ line, rule })),
+    [{ line: 4, rule: 'provenance' }],
   );
 });
