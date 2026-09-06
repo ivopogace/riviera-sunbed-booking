@@ -179,9 +179,4 @@ describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
       );
     }
   });
-
-  it('legacy compat surface keeps the slate ink the pre-redesign pages assume', () => {
-    // .riv-legacy-surface pins the exact background (#f8fafc) the per-page contrast specs use.
-    expect(contrastRatio('#0f172a', '#f8fafc')).toBeGreaterThanOrEqual(AA_NORMAL);
-  });
 });

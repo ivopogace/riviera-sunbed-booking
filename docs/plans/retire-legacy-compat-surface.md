@@ -121,7 +121,7 @@ in for `feature/retire-legacy-compat-surface` (`riviera-sdlc` § Remote/cloud ad
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Removing the `[class]` binding also removes `<main>`'s focus contract by accident, silently breaking the overlay-close and sign-out focus rules | low | high | `#mainEl` + `tabindex="-1"` are asserted by the existing #351/#892/operator-sign-out specs; run `app.spec.ts` whole, not just the new case | agent | open |
+| R-1 | Removing the `[class]` binding also removes `<main>`'s focus contract by accident, silently breaking the overlay-close and sign-out focus rules | low | high | `#mainEl` + `tabindex="-1"` are asserted by the existing #351/#892/operator-sign-out specs; run `app.spec.ts` whole, not just the new case | agent | closed — phase 0: all 41 `app.spec.ts` cases green, focus specs included |
 | R-2 | Retiring the enumeration specs removes the only check that some operator/admin route placement is right | med | med | The two kept placement cases (`operatorChrome`, admin tab children) are the ones that carry that value; only the `legacySurface` assertions inside them are dropped. AC-4 names them explicitly | agent | open |
 | R-3 | The AC-2 e2e cannot deterministically hold the browser in the pre-navigation window, and lands flaky (RV-FE-E2E fails a timing-fragile spec) | med | med | OQ-1: choose the handle by experiment against the real dev server before writing the spec; if no deterministic handle exists, pin the durable half (settled cold load, `<main>` transparent) and say so here | agent | open |
 | R-4 | The plan-file-structure guard fails on the deleted `docs/plans/shell-route-chrome-signals.md` | low | low | The deletion is listed in File structure below; run the guard before pushing | agent | open |
@@ -171,15 +171,15 @@ N/A — no contract change; no HTTP call is added, removed or reshaped.
 
 ## Execution status
 
-**Stage pointer:** `plan — committing the plan doc`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** commit the plan doc, open the draft PR (CI vehicle), then start phase 0 by
-writing the failing pre-navigation spec.
+**Next action:** resolve OQ-1 by observing a real cold load's requests under `npm start`, then
+write AC-2's e2e in `theme-shell.e2e.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Retire the mechanism (`app.ts`, `app.html`) behind a red pre-navigation pin | | |
-| 1 — Retire the flag's specs + docs; add the real-browser pin | | |
+| 0 — Retire the mechanism (`app.ts`, `app.html`) behind a red pre-navigation pin | ✅ | phase-0 commit |
+| 1 — Retire the flag's specs + docs; add the real-browser pin | ⏳ | |
 | 2 — Close-out sweep (retire PR #990's plan doc, docs-freshness) | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -321,6 +321,7 @@ it('renders <main> bare under the tourist chrome before the first navigation com
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-06 | phase 0 | Route-data keys the app sets in `app.routes.ts` and reads via `route.data['…']` to drive chrome or layout — the mechanism `legacySurface` belonged to | `grep -rn "\.data\[" frontend/src --include="*.ts"` + `grep -oEn "data: \{[^}]*" frontend/src/app/app.routes.ts` | 4 keys. `operatorConsole` + `operatorChrome` (read by `app.ts`'s walk) and `adminTab` (read by `admin-console.ts`) are live. `tab`, set on all six operator-console tab routes, has **no reader** — `operator-console.ts` derives the active tab from `routeConfig?.path`, and only an `app.routes.ts` doc line still claims `data.tab` identifies the section | `legacySurface` retired here. `tab` is the same defect class (a dormant route-data key) but a different mechanism instance, unrelated to the compat surface: folding it in would widen the slice, so it is left for a follow-up and named in the PR |
 
 ---
 

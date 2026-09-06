@@ -57,14 +57,12 @@ const EXACT_PATH: IsActiveMatchOptions = {
 
 /** The active route's chrome flags — see {@link App.routeChrome}. */
 interface RouteChrome {
-  legacySurface: boolean;
   chromeless: boolean;
   operatorChrome: boolean;
 }
 
-/** The chrome before the first navigation completes: legacy compat on, tourist chrome shown. */
+/** The chrome before the first navigation completes: the tourist header and footer. */
 const PRE_NAVIGATION_CHROME: RouteChrome = {
-  legacySurface: true,
   chromeless: false,
   operatorChrome: false,
 };
@@ -72,9 +70,8 @@ const PRE_NAVIGATION_CHROME: RouteChrome = {
 /**
  * The Liquid Glass app shell: themed gradient background, sticky glass header with
  * responsive nav (inline on desktop, hamburger menu below 640px — CSS decides, both live here),
- * and the theme switcher. Routes not yet restyled to glass carry `data.legacySurface`, which
- * wraps <main> in an opaque light panel so their pre-redesign styling stays legible;
- * a route's restyle removes its flag.
+ * and the theme switcher. Every route paints straight onto that background: `<main>` carries no
+ * surface of its own.
  */
 @Component({
   selector: 'app-root',
@@ -148,14 +145,13 @@ export class App {
 
   /**
    * The active route's chrome flags, computed once per successful navigation from a SINGLE
-   * root→leaf walk: `legacySurface` (the leaf still renders pre-redesign styling → opaque compat
-   * panel), `chromeless` (the operator console, `/operator/:venueId`, owns a full-bleed porcelain
-   * shell → all shell chrome is suppressed) and `operatorChrome` (every OTHER operator/admin
-   * surface → the shared porcelain operator header/footer replace the tourist ones, so an admin is
-   * never shown the customer session's "Sign in / Register" while signed in). The console flag sits
-   * on a PARENT route and is not inherited into a child snapshot, so both flags are OR-ed across
-   * the whole chain; `legacySurface` is a leaf-only flag. {@link PRE_NAVIGATION_CHROME} until the
-   * first navigation completes.
+   * root→leaf walk: `chromeless` (the operator console, `/operator/:venueId`, owns a full-bleed
+   * porcelain shell → all shell chrome is suppressed) and `operatorChrome` (every OTHER
+   * operator/admin surface → the shared porcelain operator header/footer replace the tourist ones,
+   * so an admin is never shown the customer session's "Sign in / Register" while signed in). The
+   * console flag sits on a PARENT route and is not inherited into a child snapshot, so both flags
+   * are OR-ed across the whole chain. {@link PRE_NAVIGATION_CHROME} until the first navigation
+   * completes.
    *
    * <p>Keyed on `Router.lastSuccessfulNavigation()`; the `routerState` snapshot it walks is not a
    * signal, and reading it here is safe because the router assigns `routerState` before it
@@ -176,7 +172,7 @@ export class App {
       chromeless ||= route.data['operatorConsole'] === true;
       operatorChrome ||= route.data['operatorChrome'] === true;
     }
-    return { legacySurface: route.data['legacySurface'] === true, chromeless, operatorChrome };
+    return { chromeless, operatorChrome };
   });
 
   /** Whether the auth card is the current page, by path alone — the same test `routerLinkActive`
@@ -197,9 +193,6 @@ export class App {
     const mode = this.router.lastSuccessfulNavigation()?.finalUrl?.queryParamMap.get('mode');
     return mode === 'register' ? 'register' : 'signin';
   });
-
-  /** True while the current route still renders pre-redesign styling (default true pre-navigation). */
-  protected readonly legacySurface = computed(() => this.routeChrome().legacySurface);
 
   /** Which chrome the shell renders: the tourist header/footer (default), the shared operator
    *  header/footer, or none at all (the console brings its own). */

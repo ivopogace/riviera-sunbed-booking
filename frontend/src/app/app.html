@@ -370,12 +370,7 @@
 
   <!-- tabindex=-1: closing the find modal on navigation lands keyboard/AT focus here, not document.body. -->
   <!-- Deliberately unpositioned: a stacking context here would trap page-level fixed modals below the sticky header. -->
-  <main
-    #mainEl
-    tabindex="-1"
-    class="flex-1"
-    [class]="legacySurface() ? 'riv-legacy-surface bg-[#f8fafc] text-[#0f172a]' : ''"
-  >
+  <main #mainEl tabindex="-1" class="flex-1">
     <router-outlet />
   </main>
 

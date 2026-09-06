@@ -35,11 +35,10 @@ const operatorAuth = {
   signOut: vi.fn(() => Promise.resolve()),
 };
 
-/** Test routes exercising the compat-surface + chromeless + operator-chrome mechanisms without
+/** Test routes exercising the chromeless + operator-chrome mechanisms without
  *  loading real (HTTP-bound) pages. Rebuilt per test: Angular caches a resolved `loadComponent`
  *  on the `Route` object itself, so a shared array would let one spec's chunk satisfy the next. */
 const surfaceRoutes = () => [
-  { path: 'legacy', component: BlankPage, data: { legacySurface: true } },
   { path: 'glass', component: BlankPage },
   { path: 'my-bookings', component: BlankPage },
   { path: 'account/password', component: BlankPage },
@@ -560,17 +559,12 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(el.querySelector('[data-testid="mobile-menu"]')).toBeNull();
   });
 
-  it('wraps legacy-flagged routes in the opaque compat surface, glass routes not (AC-6)', async () => {
-    const { fixture, el } = shell();
-    const router = TestBed.inject(Router);
+  it('renders <main> bare under the tourist chrome before the first navigation completes (#992)', () => {
+    // No navigation has landed: the initial-chunk window the retired compat default painted through.
+    const { el } = shell();
 
-    await router.navigate(['/legacy']);
-    fixture.detectChanges();
-    expect(el.querySelector('main')?.classList.contains('riv-legacy-surface')).toBe(true);
-
-    await router.navigate(['/glass']);
-    fixture.detectChanges();
-    expect(el.querySelector('main')?.classList.contains('riv-legacy-surface')).toBe(false);
+    expect(el.querySelector('main')?.className).toBe('flex-1');
+    expect(el.querySelector('.riv-header')).not.toBeNull();
   });
 
   it('carries the legal links in the shared footer, opening in a new tab (#101 Slice 3)', () => {
@@ -600,8 +594,6 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     // The operator console owns full-bleed porcelain chrome — the tourist header/nav/footer are hidden.
     expect(el.querySelector('.riv-header')).toBeNull();
     expect(el.querySelector('.riv-footer')).toBeNull();
-    // Chromeless, not legacy: the compat surface is not applied on operator routes either.
-    expect(el.querySelector('main')?.classList.contains('riv-legacy-surface')).toBe(false);
   });
 
   it('renders the shared operator chrome instead of the tourist header on operator-chrome routes', async () => {
