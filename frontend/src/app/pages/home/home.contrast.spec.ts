@@ -205,12 +205,8 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
   });
 
   it('accent ink (result count, from-price) meets AA on the card glass', () => {
+    // Also discharges the filter-control focus ring's weaker 3:1 (WCAG 1.4.11): same pair, card glass below `.hero`, never the scrim.
     expectAaOverStops(theme.accent, 1, theme.cardGlass, theme.stops);
-  });
-
-  it('filter-control focus ring (accent ink) meets 3:1 (WCAG 1.4.11) on its actual backdrop', () => {
-    // The filter bar sits below `.hero` as a plain sibling, so its backdrop is the card glass, not the scrim.
-    expectAaOverStops(theme.accent, 1, theme.cardGlass, theme.stops, AA_LARGE);
   });
 
   it('select/date text meets AA on the field fill over the card glass', () => {
