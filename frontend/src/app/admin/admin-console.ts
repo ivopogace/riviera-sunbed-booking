@@ -1,9 +1,8 @@
-import { Component, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
-import { filter, map } from 'rxjs';
+import { Component, computed, inject } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink, RouterOutlet } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { currentUrl } from '../shared/current-url';
 import { AdminConsoleTabs } from './admin-console-tabs';
 import { AdminForbidden } from './admin-forbidden';
 
@@ -92,21 +91,22 @@ export class AdminConsole {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  protected readonly tab = toSignal(
-    this.router.events.pipe(
-      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-      map(() => this.activeTabData()),
-    ),
-    { initialValue: this.activeTabData() },
+  /**
+   * The active child's `data.adminTab`, or {@link FALLBACK_TAB}. Keyed on
+   * `Router.lastSuccessfulNavigation()`: the `route.snapshot` it walks is not a signal, and
+   * reading it here is safe because the router assigns the new router state (on
+   * `BeforeActivateRoutes`) before it activates the routes and sets `lastSuccessfulNavigation` on
+   * the line before it emits `NavigationEnd`, so each completed navigation (a tab switch that
+   * reuses this shell included) re-reads the same settled snapshot a `NavigationEnd` subscriber
+   * would. The fallback until the first navigation has completed.
+   */
+  protected readonly tab = computed(() =>
+    this.router.lastSuccessfulNavigation() === null ? FALLBACK_TAB : this.activeTabData(),
   );
 
-  protected readonly currentUrl = toSignal(
-    this.router.events.pipe(
-      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-      map(() => this.router.url),
-    ),
-    { initialValue: this.router.url },
-  );
+  /** The page the visitor is on, from `Router.lastSuccessfulNavigation()` via the shared
+   *  helper — it moves with each completed navigation and equals `router.url` once one has. */
+  protected readonly currentUrl = currentUrl(this.router);
 
   private activeTabData(): AdminTabRouteData {
     return (

@@ -62,6 +62,7 @@ async function renderAt(url: string, auth: OperatorAuth): Promise<ComponentFixtu
           children: [
             { path: '', data: { adminTab: TAB_A }, component: StubTabA },
             { path: 'b', data: { adminTab: TAB_B }, component: StubTabB },
+            { path: 'bare', component: StubTabA },
           ],
         },
       ]),
@@ -93,6 +94,14 @@ describe('AdminConsole', () => {
     ).toBe('tab-a-title');
   });
 
+  it('falls back to the Admin title when the active child carries no adminTab (#983)', async () => {
+    const fixture = await renderAt('/admin/bare', authStub());
+
+    const h1 = (fixture.nativeElement as HTMLElement).querySelector('#admin-console-title');
+    expect(h1?.textContent).toBe('Admin');
+    expect(byTestId(fixture, 'stub-a-content')).not.toBeNull();
+  });
+
   it("shows the loading state while the session restores, keyed to the active tab's test id", async () => {
     const fixture = await renderAt('/admin', authStub({ restoring: true }));
 
@@ -111,6 +120,23 @@ describe('AdminConsole', () => {
       '/account/sign-in?audience=operator&returnUrl=%2Fadmin%2Fb',
     );
     expect(byTestId(fixture, 'stub-b-content')).toBeNull();
+  });
+
+  it('follows a navigation: the sign-in returnUrl is the tab the visitor is on (#983)', async () => {
+    const fixture = await renderAt('/admin', authStub({ signedIn: false }));
+    expect(byTestId(fixture, 'tab-a-signed-out')?.querySelector('a')?.getAttribute('href')).toBe(
+      '/account/sign-in?audience=operator&returnUrl=%2Fadmin',
+    );
+
+    await TestBed.inject(Router).navigateByUrl('/admin/b');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(byTestId(fixture, 'tab-a-signed-out')).toBeNull();
+    expect(byTestId(fixture, 'tab-b-signed-out')?.querySelector('a')?.getAttribute('href')).toBe(
+      '/account/sign-in?audience=operator&returnUrl=%2Fadmin%2Fb',
+    );
   });
 
   it('shows the forbidden line for a signed-in non-admin, naming the active tab', async () => {
