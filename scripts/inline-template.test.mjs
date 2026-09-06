@@ -1,7 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { CodeTail, INLINE_TEMPLATE_EXTENSIONS, interpolationStep } from './inline-template.mjs';
+import {
+  CodeTail,
+  INLINE_TEMPLATE_EXTENSIONS,
+  interpolationStep,
+  typescriptRegions,
+} from './inline-template.mjs';
 
 /** A tail fed one string at a time, the way a scanner feeds it as it walks code. */
 function fed(...pieces) {
@@ -116,4 +121,73 @@ test('a brace inside a string inside the interpolation counts', () => {
   assert.deepEqual(walk('${ x("{}") }'), { depth: 0, closes: [12] });
   // An unclosed interpolation carries its depth to the next line.
   assert.equal(walk('${ x(').depth, 1);
+});
+
+/** The interpolation is code, so the template mask holds its width in blanks. */
+function blank(text) {
+  return ' '.repeat(text.length);
+}
+
+/**
+ * The masks keep every line's length, so a finding in either reads off the original file's
+ * coordinates. The template mask holds an inline template's text and nothing else; the code mask
+ * holds what a call-site search may read — never a comment, a string, or a template literal.
+ */
+test('typescriptRegions masks a component down to its inline template and its code', () => {
+  const lines = [
+    '/** A doc comment quoting `<button [disabled]="busy()">` is not markup. */',
+    '@Component({',
+    "  selector: 'app-thing', // a comment naming focus()",
+    '  template: `',
+    '    <button [disabled]="busy()">${label}</button>',
+    '  `,',
+    '})',
+    'export class Thing {',
+    "  readonly hint = '<button>not markup</button>';",
+    '  readonly label = `it\'s <b>bold</b>`;',
+    '  go() { this.el.focus(); }',
+    '}',
+  ];
+
+  const { template, code } = typescriptRegions(lines);
+
+  assert.deepEqual(template.map((line) => line.length), lines.map((line) => line.length));
+  assert.deepEqual(code.map((line) => line.length), lines.map((line) => line.length));
+  assert.equal(template[4].trim(), `<button [disabled]="busy()">${blank('${label}')}</button>`);
+  assert.deepEqual(template.map((line) => line.trim()).filter(Boolean), [template[4].trim()]);
+  assert.equal(code[0].trim(), '');
+  assert.equal(code[2].trim(), 'selector:            ,');
+  assert.equal(code[4].trim(), '');
+  assert.equal(code[8].trim(), `readonly hint = ${blank("'<button>not markup</button>'")};`);
+  assert.equal(code[9].trim(), `readonly label = ${blank("`it's <b>bold</b>`")};`);
+  assert.equal(code[10].trim(), 'go() { this.el.focus(); }');
+});
+
+test('typescriptRegions reads only a `template:` literal as an inline template', () => {
+  const lines = ['const fixtures = {', '  xtemplate: `', '    <button>Go</button>', '  `,', '};'];
+
+  const { template } = typescriptRegions(lines);
+
+  assert.deepEqual(template.map((line) => line.trim()), ['', '', '', '', '']);
+});
+
+test('typescriptRegions carries a block comment and a template across lines', () => {
+  const lines = [
+    '/* template: `<p>not a template</p>`',
+    '   still comment */ const a = 1;',
+    '@Component({ template: `',
+    '  <p>${cond ? `<b>`: `<i>`}</p>',
+    '  <p>${ "}" }</p>`, selector: "x" })',
+    'class A {}',
+  ];
+
+  const { template, code } = typescriptRegions(lines);
+
+  assert.equal(template[0].trim(), '');
+  assert.equal(code[1].trim(), 'const a = 1;');
+  assert.equal(template[3].trim(), `<p>${blank('${cond ? `<b>`: `<i>`}')}</p>`);
+  // The shared simplification: the quoted brace ends the interpolation, and the rest is text.
+  assert.equal(template[4].trim(), `<p>${blank('${ "}')}" }</p>`);
+  assert.equal(code[4].trim(), ', selector:     })');
+  assert.equal(code[5].trim(), 'class A {}');
 });

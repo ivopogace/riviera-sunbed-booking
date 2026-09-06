@@ -29,7 +29,7 @@ import {
   readText,
   repoRoot,
 } from './git-diff.mjs';
-import { CodeTail, interpolationStep } from './inline-template.mjs';
+import { typescriptRegions } from './inline-template.mjs';
 
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
@@ -105,7 +105,7 @@ export function findViolations({ path, lines, added }) {
  * `<button appTouchTarget>` to document the convention — would read as markup.
  */
 function templateRegion(path, lines) {
-  return path.endsWith('.html') ? maskHtmlComments(lines) : maskTypescript(lines);
+  return path.endsWith('.html') ? maskHtmlComments(lines) : typescriptRegions(lines).template;
 }
 
 function maskHtmlComments(lines) {
@@ -132,101 +132,11 @@ function maskHtmlComments(lines) {
   return out.map((chars) => chars.join(''));
 }
 
-/** Keeps the contents of `template:` literals and blanks every other character. */
-function maskTypescript(lines) {
-  const template = lines.map((line) => ' '.repeat(line.length).split(''));
-  const source = lines.map((line) => line.split(''));
-  let state = 'code';
-  let depth = 0;
-  const tail = new CodeTail();
-
-  for (let i = 0; i < source.length; i++) {
-    for (let c = 0; c < source[i].length; c++) {
-      const ch = source[i][c];
-
-      if (state === 'block') {
-        if (startsWith(source[i], '*/', c)) {
-          state = 'code';
-          c++;
-        }
-        continue;
-      }
-      // Above the backtick handler below, or the closing backtick re-opens the string instead.
-      if (state === 'string') {
-        if (ch === '\\') c++;
-        else if (ch === '`') state = 'code';
-        continue;
-      }
-      if (state === 'template') {
-        if (ch === '\\') {
-          c++;
-          continue;
-        }
-        const step = interpolationStep(lines[i], c, depth);
-        if (step !== null) {
-          ({ depth } = step);
-          c = step.next - 1;
-        } else if (ch === '`') {
-          state = 'code';
-        } else {
-          template[i][c] = ch;
-        }
-        continue;
-      }
-      if (startsWith(source[i], '//', c)) break;
-      if (startsWith(source[i], '/*', c)) {
-        const end = indexOfFrom(source[i], '*/', c + 2);
-        if (end === -1) {
-          state = 'block';
-          break;
-        }
-        c = end + 1;
-        tail.reset();
-        continue;
-      }
-      if (ch === '"' || ch === "'") {
-        c = skipString(source[i], c) - 1;
-        tail.reset();
-        continue;
-      }
-      if (ch === '`') {
-        if (tail.opensInlineTemplate()) {
-          state = 'template';
-          depth = 0;
-        } else {
-          state = 'string';
-        }
-        continue;
-      }
-      tail.push(ch);
-    }
-    if (state === 'code') tail.push('\n');
-  }
-  return template.map((chars) => chars.join(''));
-}
-
-/** Scans from the opening quote at `c` to just past its match, honouring backslash escapes. */
-function skipString(chars, c) {
-  const quote = chars[c];
-  for (let i = c + 1; i < chars.length; i++) {
-    if (chars[i] === '\\') i++;
-    else if (chars[i] === quote) return i + 1;
-  }
-  return chars.length;
-}
-
 function startsWith(chars, token, at) {
   for (let i = 0; i < token.length; i++) {
     if (chars[at + i] !== token[i]) return false;
   }
   return true;
-}
-
-function indexOfFrom(chars, token, from) {
-  for (let i = from; i <= chars.length - token.length; i++) {
-    if (startsWith(chars, token, i)) return i;
-  }
-  return -1;
 }
 
 function blank(chars, at, length) {

@@ -39,7 +39,7 @@ import {
   readText,
   repoRoot,
 } from './git-diff.mjs';
-import { CodeTail, interpolationStep } from './inline-template.mjs';
+import { typescriptRegions } from './inline-template.mjs';
 
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
@@ -247,99 +247,6 @@ function maskHtmlComments(lines) {
     }
   }
   return out.map((chars) => chars.join(''));
-}
-
-/**
- * Splits a `.ts` file into its two masks in one pass, keeping line and column geometry so a
- * violation still reports its real position.
- *
- * - `template` — the contents of `template:` literals, and nothing else. This is what keeps the
- *   `[disabled]` that `shared/busy-action.ts` quotes in its own TSDoc — documenting the very form
- *   BUSY-1 bans — from reading as markup.
- * - `code` — executable source with comments, strings and template literals removed, so a helper
- *   named in a comment cannot pass for a call site.
- */
-function typescriptRegions(lines) {
-  const template = lines.map((line) => ' '.repeat(line.length).split(''));
-  const code = lines.map((line) => ' '.repeat(line.length).split(''));
-  const source = lines.map((line) => line.split(''));
-  let state = 'code';
-  let depth = 0;
-  const tail = new CodeTail();
-
-  for (let i = 0; i < source.length; i++) {
-    for (let c = 0; c < source[i].length; c++) {
-      const ch = source[i][c];
-
-      if (state === 'block') {
-        if (startsWith(source[i], '*/', c)) {
-          state = 'code';
-          c++;
-        }
-        continue;
-      }
-      // Above the backtick handler below, or the closing backtick re-opens the string instead.
-      if (state === 'string') {
-        if (ch === '\\') c++;
-        else if (ch === '`') state = 'code';
-        continue;
-      }
-      if (state === 'template') {
-        if (ch === '\\') {
-          c++;
-          continue;
-        }
-        const step = interpolationStep(lines[i], c, depth);
-        if (step !== null) {
-          ({ depth } = step);
-          c = step.next - 1;
-        } else if (ch === '`') {
-          state = 'code';
-        } else {
-          template[i][c] = ch;
-        }
-        continue;
-      }
-      if (startsWith(source[i], '//', c)) break;
-      if (startsWith(source[i], '/*', c)) {
-        const end = indexOfFrom(source[i], '*/', c + 2);
-        if (end === -1) {
-          state = 'block';
-          break;
-        }
-        c = end + 1;
-        tail.reset();
-        continue;
-      }
-      if (ch === '"' || ch === "'") {
-        c = skipString(source[i], c) - 1;
-        tail.reset();
-        continue;
-      }
-      if (ch === '`') {
-        if (tail.opensInlineTemplate()) {
-          state = 'template';
-          depth = 0;
-        } else {
-          state = 'string';
-        }
-        continue;
-      }
-      code[i][c] = ch;
-      tail.push(ch);
-    }
-    if (state === 'code') tail.push('\n');
-  }
-  return {
-    template: template.map((chars) => chars.join('')),
-    code: code.map((chars) => chars.join('')),
-  };
-}
-
-/** Scans from the opening quote at `c` to just past its match, honouring backslash escapes. */
-function skipString(chars, c) {
-  const end = stringEnd(chars, c);
-  return end === -1 ? chars.length : end + 1;
 }
 
 /** The closing quote's index on the same line, or -1 when the quote at `c` has no mate there. */
@@ -846,13 +753,6 @@ function startsWith(chars, token, at) {
     if (chars[at + i] !== token[i]) return false;
   }
   return true;
-}
-
-function indexOfFrom(chars, token, from) {
-  for (let i = from; i <= chars.length - token.length; i++) {
-    if (startsWith(chars, token, i)) return i;
-  }
-  return -1;
 }
 
 function blank(chars, at, length) {
