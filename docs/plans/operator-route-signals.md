@@ -32,9 +32,9 @@ two of the issue's "specs pass unchanged" ACs name pins that do not exist; see D
 pre-navigation initial-value delta in D-2) · `tdd` (pin-first: the new unit pins are written
 and run green against the OLD event pipe before the migration, so the migration is proved by
 their staying green; there is no red step for a refactor that adds no behaviour) ·
-`riviera-review-overlay` (review gate — at ready-for-review) · `riviera-docs-freshness`
-(**pending** — runs at close-out; the intake grep found no substrate doc naming
-`NavigationEnd`, `currentTabPath` or the chrome's `currentUrl` outside `docs/plans/`) ·
+`riviera-review-overlay` (review gate — ran at ready-for-review over `bb57e915..97743d37`, layered on `/code-review` rung 1: five reviewers + the overlay walk, all RV-FE/RV-STYLE/RV-PROC items ✅ or N/A; one candidate finding F-1) · `riviera-docs-freshness`
+(**ran** over `bb57e915..97743d37` — rename/removal grep, the counting sweep on the
+`NavigationEnd`-pipe population, and the reverse map-walk; **0 findings**) ·
 `riviera-frontend` (the helper stays in `shared/`; `operator/` imports it along the allowed
 feature → `shared` direction; no folder move) · `angular-developer` + angular-cli MCP
 (`get_best_practices`/`search_documentation` v22: `isActive()` and `Router.lastSuccessfulNavigation()`
@@ -91,7 +91,7 @@ in for `feature/operator-route-signals` (`riviera-sdlc` § Remote/cloud addendum
   chrome) and, for the console, states the ordering guarantee. *Seam:* the TSDoc on
   `OperatorChrome.currentUrl` and `OperatorConsole.currentTabPath` · *Pinned by:* review
   (RV-STYLE-1) + `node scripts/check-inline-comments.mjs`.
-- [ ] **AC-6:** Given the branch, when `npm run lint`, `npm run format:check`, `npm test` and the
+- [x] **AC-6:** Given the branch, when `npm run lint`, `npm run format:check`, `npm test` and the
   mocked e2e `operator-chrome`, `operator-console`, `unified-auth` suites run, then all are
   green. *Seam:* the CI command set · *Pinned by:* the AC-verification commands + the PR's CI run.
 
@@ -178,16 +178,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `review gate — PR #997 ready for review`
+**Stage pointer:** `DONE — review gate run, Sonar gate read on the final head; merged via PR #997`
 
-**Next action:** Run the review gate (`references/pr-gates.md` §1) over the PR's resolved
-range; then the Sonar gate.
+**Next action:** Merge close-out (`references/pr-gates.md` §3): issue #982 closes via the PR; no
+epic checklist; nothing deferred; this doc is retired at the next close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `OperatorChrome` onto `currentUrl()` | ✅ | `b78a79c0` |
 | 1 — `OperatorConsole.currentTabPath` as a `computed` | ✅ | `26b32f7d` |
-| 2 — Full check suite + mocked e2e, draft PR → ready | ✅ | lint / format / 2557 unit / 19 e2e / 4 guards green on `26b32f7d`; draft PR #997 |
+| 2 — Full check suite + mocked e2e, draft PR → ready | ✅ | lint / format / 2557 unit / 19 e2e / 4 guards green on `26b32f7d`; PR #997 ready at `97743d37`, CI 7/7 green |
+| 3 — Review gate + Sonar gate + close-out | ✅ | review gate over `bb57e915..97743d37` (F-1 below); close-out in the PR's last code-touching commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -195,6 +196,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (prior-PR-comments agent, PR #990 precedent `2d8e10b1`) | `currentTabPath`'s TSDoc states the ordering without naming the step (`BeforeActivateRoutes`) the sibling `routeChrome` doc names. Scored 50 — below the 80 bar, no review comment posted. | fixed anyway in the close-out commit (a one-token consistency change, inside the diff's own lines) |
 
 ---
 
@@ -264,24 +266,24 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **AC-2:** `npx ng test --include='src/app/operator/operator-chrome.spec.ts'` → 6 passed (`b78a79c0`).
 - [x] **AC-3 / AC-4:** `npx ng test --include='src/app/operator/operator-console.spec.ts'` → 16 passed (`26b32f7d`).
 - [x] **AC-5:** `node scripts/check-inline-comments.mjs --diff origin/main` → clean; review at the gate.
-- [x] **AC-6:** the phase-2 commands green locally (above); the PR's CI run: see Execution status.
+- [x] **AC-6:** the phase-2 commands green locally (above); PR #997's CI on `97743d37` 7/7 green (backend, frontend, hygiene, CodeQL ×3, Sonar scan).
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.

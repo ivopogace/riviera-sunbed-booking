@@ -113,10 +113,11 @@ export class OperatorConsole {
    * The active child route's path — the tab-nav counterpart of `routerLinkActive`, read here to
    * drive the scroll-into-view rather than a CSS class. Keyed on
    * `Router.lastSuccessfulNavigation()`: the `route.snapshot` it walks is not a signal, and
-   * reading it here is safe because the router assigns the new router state before it activates
-   * the routes and sets `lastSuccessfulNavigation` on the line before it emits `NavigationEnd`,
-   * so each completed navigation (a venue-only one included) re-reads the same settled snapshot a
-   * `NavigationEnd` subscriber would. `undefined` until the first navigation has completed.
+   * reading it here is safe because the router assigns the new router state (on
+   * `BeforeActivateRoutes`) before it activates the routes and sets `lastSuccessfulNavigation` on
+   * the line before it emits `NavigationEnd`, so each completed navigation (a venue-only one
+   * included) re-reads the same settled snapshot a `NavigationEnd` subscriber would. `undefined`
+   * until the first navigation has completed.
    */
   private readonly currentTabPath = computed(() =>
     this.router.lastSuccessfulNavigation() === null
