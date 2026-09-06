@@ -1,9 +1,8 @@
 import { Component, computed, DOCUMENT, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterLink } from '@angular/router';
-import { filter, map } from 'rxjs';
+import { Router, RouterLink } from '@angular/router';
 
 import { OperatorActions } from './operator-actions';
+import { currentUrl } from '../shared/current-url';
 import { TouchTarget } from '../shared/touch-target';
 import { OperatorAuth } from '../core/operator-auth';
 
@@ -65,13 +64,9 @@ export class OperatorChrome {
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
 
-  private readonly currentUrl = toSignal(
-    this.router.events.pipe(
-      filter((event) => event instanceof NavigationEnd),
-      map(() => this.router.url),
-    ),
-    { initialValue: this.router.url },
-  );
+  /** The page the operator is on, from `Router.lastSuccessfulNavigation()` via the shared
+   *  helper — it moves with each completed navigation and equals `router.url` once one has. */
+  private readonly currentUrl = currentUrl(this.router);
 
   /** Sign-in carries the page as `returnUrl` — it outranks the venue-count landing rule. */
   protected readonly signInParams = computed(() => ({
