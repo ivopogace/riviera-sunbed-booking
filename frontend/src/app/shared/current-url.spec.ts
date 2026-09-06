@@ -9,8 +9,9 @@ class BlankPage {}
 
 /**
  * The shared "current URL as a signal" helper: the serialised `finalUrl` of the last successful
- * navigation, so a component reads the settled URL without its own `NavigationEnd` pipe. Only a
- * navigation that completes moves it — a skipped same-URL navigation does not.
+ * navigation (`/` before any has completed), so a component reads the settled URL without its own
+ * `NavigationEnd` pipe. Only a navigation that completes moves it — a skipped same-URL navigation
+ * does not.
  */
 describe('currentUrl', () => {
   beforeEach(() => {

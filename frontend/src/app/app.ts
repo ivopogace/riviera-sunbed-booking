@@ -158,10 +158,11 @@ export class App {
    * first navigation completes.
    *
    * <p>Keyed on `Router.lastSuccessfulNavigation()`; the `routerState` snapshot it walks is not a
-   * signal, and reading it here is safe because the router assigns `routerState` during activation
-   * and sets `lastSuccessfulNavigation` on the line before it emits `NavigationEnd`, so this
-   * computed observes the same settled state a `NavigationEnd` subscriber does. A skipped,
-   * cancelled or failed navigation sets neither, and leaves the chrome where it was.
+   * signal, and reading it here is safe because the router assigns `routerState` before it
+   * activates the routes (on `BeforeActivateRoutes`) and sets `lastSuccessfulNavigation` on the
+   * line before it emits `NavigationEnd`, so this computed observes the same settled state a
+   * `NavigationEnd` subscriber does. A skipped, cancelled or failed navigation sets neither, and
+   * leaves the chrome where it was.
    */
   private readonly routeChrome = computed((): RouteChrome => {
     if (this.router.lastSuccessfulNavigation() === null) {
@@ -225,10 +226,10 @@ export class App {
    * Identity is the navigation id, not the url: a url comparison would also swallow a navigation
    * the guest DID start from inside the overlay onto the page they deep-linked to, which supersedes
    * the pending one under a new id and leaves {@link FindBooking} waiting on a close that never comes.
-   * That id is why this rule stays on the event stream while the shell's other route state
+   * That id is why this rule reads the event stream while the shell's other route state
    * ({@link routeChrome}, {@link authLinkCurrent}) is computed from router signals: the skip
-   * compares the id of EACH `NavigationEnd` against the one recorded at open — a per-event fact,
-   * not derived state — so it is not a migration left unfinished.
+   * compares the id of EACH `NavigationEnd` against the one recorded at open, a per-event fact
+   * that no router signal exposes.
    *
    * <p>The close performs no focus restore: the destination page takes focus, and restoring is only
    * for an on-page dismiss.
