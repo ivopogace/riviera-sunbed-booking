@@ -55,7 +55,7 @@ for `feature/admin-route-signals` (`riviera-sdlc` § Remote/cloud addendum).
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the shipped sources, when `AdminConsole` and `AdminConsoleTabs` are read,
+- [x] **AC-1:** Given the shipped sources, when `AdminConsole` and `AdminConsoleTabs` are read,
   then neither imports `NavigationEnd` or `toSignal`, and
   `grep -n "import.*NavigationEnd\|instanceof NavigationEnd\|toSignal" frontend/src/app/admin/admin-console.ts frontend/src/app/admin/admin-console-tabs.ts`
   returns nothing (the console's TSDoc still *names* the event, as the shell's does, to state
@@ -82,7 +82,7 @@ for `feature/admin-route-signals` (`riviera-sdlc` § Remote/cloud addendum).
   *Pinned by:* `admin-console.spec.ts` → `shows the forbidden line for a signed-in non-admin,
   naming the active tab` + `never renders the tab strip until the gate passes …`, passing
   unchanged.
-- [ ] **AC-5:** Given the tab strip rendered at `/admin/email`, when the pills render, then only
+- [x] **AC-5:** Given the tab strip rendered at `/admin/email`, when the pills render, then only
   the Email pill carries `aria-current="page"` (Operators does not — exact match); and the
   `Email` anchor's `scrollIntoView` is called (the on-load path); and when a navigation to
   `/admin/audit` completes, then the `Audit` anchor's `scrollIntoView` is called (the tab-switch
@@ -193,16 +193,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 step 1 — write the `admin-console-tabs.spec.ts` scroll pins and run them
-green against the old pipe.
+**Next action:** Phase 2 — full check suite + the three mocked e2e suites + guards; draft PR → ready.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `AdminConsole`: `tab` as a `computed`, `currentUrl` onto the helper | ✅ | phase-0 commit (this one) |
-| 1 — `AdminConsoleTabs.currentUrl` onto the helper | ⏳ | |
-| 2 — Full check suite + mocked e2e, draft PR → ready | | |
+| 0 — `AdminConsole`: `tab` as a `computed`, `currentUrl` onto the helper | ✅ | `3b333301` |
+| 1 — `AdminConsoleTabs.currentUrl` onto the helper | ✅ | phase-1 commit (this one) |
+| 2 — Full check suite + mocked e2e, draft PR → ready | ⏳ | |
 | 3 — Review gate + Sonar gate + close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -255,17 +254,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/app/admin/admin-console-tabs.ts` · Test `frontend/src/app/admin/admin-console-tabs.spec.ts`
 
-- [ ] **Step 1: Write the pins** — a new `describe` with a `vi.fn()` on
+- [x] **Step 1: Write the pins** — a new `describe` with a `vi.fn()` on
   `HTMLElement.prototype.scrollIntoView` (installed in `beforeEach`, deleted in `afterEach`);
   case 1 renders at `/admin/email`, asserts the spy's contexts' labels are `['Email']`; case 2
   then navigates to `/admin/audit`, asserts `['Email', 'Audit']`.
-- [ ] **Step 2: Run against the old pipe, verify it passes** —
+- [x] **Step 2: Run against the old pipe, verify it passes** —
   `npx ng test --include='src/app/admin/admin-console-tabs.spec.ts'` → PASS.
-- [ ] **Step 3: Migrate** — `private readonly currentUrl = currentUrl(this.router);` with TSDoc naming the source signal; remove `NavigationEnd`, `toSignal`, `filter`, `map` imports; the `effect` stays as is.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS; `grep -n "NavigationEnd\|toSignal"` on the file → nothing.
-- [ ] **Step 5: Generalization-audit pass** — same population as phase 0; expect zero non-`app.ts` members left.
-- [ ] **Step 6: Commit** — `git commit -m "Derive the admin tab strip's current URL from the shared router signal (#983)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit.
+- [x] **Step 3: Migrate** — `private readonly currentUrl = currentUrl(this.router);` with TSDoc naming the source signal; remove `NavigationEnd`, `toSignal`, `filter`, `map` imports; the `effect` stays as is.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS; `grep -n "NavigationEnd\|toSignal"` on the file → nothing.
+- [x] **Step 5: Generalization-audit pass** — same population as phase 0; expect zero non-`app.ts` members left.
+- [x] **Step 6: Commit** — `git commit -m "Derive the admin tab strip's current URL from the shared router signal (#983)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit.
 
 ## Phase 2 — Full check suite, mocked e2e, PR
 
@@ -282,6 +281,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|---|---|
 | 2026-09-06 | plan | every `toSignal` fed by the router's `NavigationEnd` event stream | `grep -rn "instanceof NavigationEnd" frontend/src --include=*.ts \| grep -v spec` | `admin-console.ts` ×2, `admin-console-tabs.ts`, `app.ts` (constructor, event-shaped by design — #981) | the three `admin/` sites are this slice; `app.ts` stays |
 | 2026-09-06 | phase 0 | same | same | `admin-console-tabs.ts`, `app.ts` | the tabs site is phase 1; `app.ts` stays |
+| 2026-09-06 | phase 1 | same | same | `app.ts` only | population of `toSignal`-over-`NavigationEnd` pipes is now empty; `app.ts`'s constructor subscription is event-shaped by design |
 
 ---
 
