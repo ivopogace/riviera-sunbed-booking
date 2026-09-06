@@ -39,6 +39,7 @@ import {
   readText,
   repoRoot,
 } from './git-diff.mjs';
+import { CodeTail, interpolationStep } from './inline-template.mjs';
 
 /** Angular templates only; a spec's fixtures are allowed to build the non-compliant forms. */
 const IN_SCOPE = /^frontend\/src\/app\/.*(?<!\.spec)\.(ts|html)$/;
@@ -248,8 +249,6 @@ function maskHtmlComments(lines) {
   return out.map((chars) => chars.join(''));
 }
 
-const TEMPLATE_KEY = /template\s*:\s*$/;
-
 /**
  * Splits a `.ts` file into its two masks in one pass, keeping line and column geometry so a
  * violation still reports its real position.
@@ -266,7 +265,7 @@ function typescriptRegions(lines) {
   const source = lines.map((line) => line.split(''));
   let state = 'code';
   let depth = 0;
-  let pending = '';
+  const tail = new CodeTail();
 
   for (let i = 0; i < source.length; i++) {
     for (let c = 0; c < source[i].length; c++) {
@@ -288,15 +287,14 @@ function typescriptRegions(lines) {
       if (state === 'template') {
         if (ch === '\\') {
           c++;
-        } else if (depth > 0) {
-          if (ch === '{') depth++;
-          else if (ch === '}') depth--;
-        } else if (startsWith(source[i], '${', c)) {
-          depth = 1;
-          c++;
+          continue;
+        }
+        const step = interpolationStep(lines[i], c, depth);
+        if (step !== null) {
+          ({ depth } = step);
+          c = step.next - 1;
         } else if (ch === '`') {
           state = 'code';
-          pending = '';
         } else {
           template[i][c] = ch;
         }
@@ -310,28 +308,27 @@ function typescriptRegions(lines) {
           break;
         }
         c = end + 1;
-        pending = '';
+        tail.reset();
         continue;
       }
       if (ch === '"' || ch === "'") {
         c = skipString(source[i], c) - 1;
-        pending = '';
+        tail.reset();
         continue;
       }
       if (ch === '`') {
-        if (TEMPLATE_KEY.test(pending)) {
+        if (tail.opensInlineTemplate()) {
           state = 'template';
           depth = 0;
         } else {
           state = 'string';
         }
-        pending = '';
         continue;
       }
       code[i][c] = ch;
-      pending = /[\s\w:]/.test(ch) ? `${pending}${ch}`.slice(-40) : '';
+      tail.push(ch);
     }
-    if (state === 'code') pending = `${pending}\n`.slice(-40);
+    if (state === 'code') tail.push('\n');
   }
   return {
     template: template.map((chars) => chars.join('')),
