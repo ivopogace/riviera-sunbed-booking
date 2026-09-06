@@ -1,4 +1,4 @@
-<div class="relative flex min-h-screen flex-col">
+<div class="relative flex min-h-screen flex-col" [class.max-sm:pb-[68px]]="headerVariant() === 'c'">
   <!-- Above the chrome conditional so it also shows on /operator/**, the shared-tablet case. -->
   @if (signOutNotice.visible()) {
     <div
@@ -50,7 +50,22 @@
     <app-operator-chrome />
   }
 
-  @if (shellChrome() === 'tourist') {
+  @if (shellChrome() === 'tourist' && headerVariant() !== 'current') {
+    <!-- PROTOTYPE — the candidate headers; the shipped one stays below as the baseline. -->
+    @switch (headerVariant()) {
+      @case ('b') {
+        <app-header-variant-b (findRequested)="openFind(false)" (signOutRequested)="signOut()" />
+      }
+      @case ('c') {
+        <app-header-variant-c (findRequested)="openFind(false)" (signOutRequested)="signOut()" />
+      }
+      @case ('d') {
+        <app-header-variant-d (findRequested)="openFind(false)" (signOutRequested)="signOut()" />
+      }
+    }
+  }
+
+  @if (shellChrome() === 'tourist' && headerVariant() === 'current') {
     <!-- The glass lives on a pseudo-element: backdrop-filter on the header itself would make it the containing block for fixed descendants (Filter Effects L2). -->
     <header
       class="riv-header sticky top-0 z-20 border-b border-riv-header-border shadow-[0_8px_30px_rgba(6,38,52,0.14)] before:absolute before:inset-0 before:z-[-1] before:bg-riv-header-glass before:backdrop-blur-[22px] before:backdrop-saturate-[1.7] before:content-['']"
@@ -384,6 +399,10 @@
         class="riv-footer-inner mx-auto max-w-[1080px] px-6 py-4 text-[13px] text-riv-ink-soft"
       ></div>
     </footer>
+  }
+
+  @if (shellChrome() === 'tourist') {
+    <app-prototype-switcher />
   }
 
   <!-- Find-a-booking glass modal: a shell-level, nav-triggered overlay. -->

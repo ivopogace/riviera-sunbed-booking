@@ -17,6 +17,11 @@ import { CustomerAuth } from './core/customer-auth';
 import { SignOutNotice } from './core/sign-out-notice';
 import { ThemeId, ThemeService } from './core/theme';
 import { OperatorChrome } from './operator/operator-chrome';
+import { HeaderVariantB } from './prototype-header/header-variant-b';
+import { HeaderVariantC } from './prototype-header/header-variant-c';
+import { HeaderVariantD } from './prototype-header/header-variant-d';
+import { PrototypeHeaderVariant } from './prototype-header/prototype-header-variant';
+import { PrototypeSwitcher } from './prototype-header/prototype-switcher';
 import { TouchTarget } from './shared/touch-target';
 
 /** The near-opaque popover surface (account menu, theme picker, mobile sheet) — themed via the
@@ -83,6 +88,10 @@ const PRE_NAVIGATION_CHROME: RouteChrome = {
     FindBooking,
     OperatorChrome,
     TouchTarget,
+    HeaderVariantB,
+    HeaderVariantC,
+    HeaderVariantD,
+    PrototypeSwitcher,
   ],
   templateUrl: './app.html',
   host: {
@@ -96,6 +105,8 @@ export class App {
   protected readonly exactPath = EXACT_PATH;
 
   protected readonly themes = inject(ThemeService);
+  /** PROTOTYPE — which tourist header renders; `current` is the shipped one. See prototype-header/. */
+  protected readonly headerVariant = inject(PrototypeHeaderVariant).variant;
   /** Customer session state for the header: sign-in/register links ↔ signed-in + sign-out. */
   protected readonly customerAuth = inject(CustomerAuth);
   /**
