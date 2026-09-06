@@ -30,8 +30,9 @@ sentence-opening `#NNN` comments in the tree is an issue number, none a colour; 
 `template:`-prefix trigger to be stated as the seam rather than "any backtick string") · `tdd` (each AC
 pinned red at `findViolations` / `strip` / the CLI harness before the scanner changed) ·
 `riviera-review-overlay` (review gate — at ready-for-review) · `riviera-docs-freshness`
-(ran over `origin/main..HEAD` at close-out: `inline-comment-guard.md` states the citing positions
-and the four-language scope, both updated in phase 3; no other substrate doc states the guard's scope)
+(**ran** over `3df086e0..96e43eb1`, 0 findings: no substrate doc names `skipString`, `strip`'s signature or the
+opener test; `inline-comment-guard.md` states the citing positions and the scope, both updated in this PR;
+the counting sweep over guard vocabulary hit nothing the diff changed)
 · `riviera-local-debug` (unshallowed the clone before the guards' first `--diff`; `node --test
 "scripts/*.test.mjs"` is the scoped run — no Gradle, no npm install needed).
 No `postgres`, `riviera-modulith`, `riviera-java-conventions`, `riviera-frontend` or `playwright-cli`
@@ -77,21 +78,24 @@ N/A — new detection, replaces nothing.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | AC-3's looser anchor flags a colour / CSS id / Tailwind arbitrary value | low | med (a false positive is how a gate gets switched off) | anchor on the comment's own opening only (`//`, `/*`, `<!--`, a doc-comment `*`), keep the `[1-9]\d{2,3}(?!\w)` shape; the existing colour fixtures stay in the suite as the bar | session | open |
-| R-2 | `check-comment-only` certifies a changed HTML fixture in a `.spec.ts` as comment-only | low | high (false clean in the tool that authorises not reading a diff) | only a literal that follows `template:` is an HTML region; a negative test pins any other template literal as code | session | open |
-| R-3 | An unterminated `<!--` inside a template swallows the rest of the file | very low | low (a broken Angular template fails the build first) | the terminator wins, exactly as an unterminated `/*` does today; no special case | session | open |
-| R-4 | The one flipped assertion (`// #123 is the emphasis colour`) is a decision the owner disagrees with | low | low | called out in the PR description with the population evidence; trivially reversible | session | open |
+| R-1 | AC-3's looser anchor flags a colour / CSS id / Tailwind arbitrary value | low | med (a false positive is how a gate gets switched off) | anchor on the comment's own opening only (`//`, `/*`, `<!--`, a doc-comment `*`), keep the `[1-9]\d{2,3}(?!\w)` shape; the existing colour fixtures stay in the suite as the bar | session | closed — the `OPENING` anchor, `[1-9]\d{2,3}(?!\w)` kept, colour fixtures pinned (`9cb1c789`) |
+| R-2 | `check-comment-only` certifies a changed HTML fixture in a `.spec.ts` as comment-only | low | high (false clean in the tool that authorises not reading a diff) | only a literal that follows `template:` is an HTML region; a negative test pins any other template literal as code | session | closed — `template:` prefix, `.ts`/`.tsx` only, negative tests for a fixture, a `.js` key and `xtemplate:` (`7af2e726`) |
+| R-3 | An unterminated `<!--` inside a template swallows the rest of the file | very low | low (a broken Angular template fails the build first) | the terminator wins, exactly as an unterminated `/*` does today; no special case | session | closed — terminator wins, no special case (`e77f25e5`) |
+| R-4 | The one flipped assertion (`// #123 is the emphasis colour`) is a decision the owner disagrees with | low | low | called out in the PR description with the population evidence; trivially reversible | session | closed — in the PR's Scope notes with the population evidence |
 
 ## Open questions / Assumptions
 
-- **Assumption:** the owner accepts that `// #123 is the emphasis colour` now reads as provenance —
-  the issue's AC-3 asks for exactly that form and the tree holds no colour written that way.
-  *Owner:* ivopogace · *Resolves by:* PR review.
-- **Assumption:** the issue's literal probe text, `carries provenance #923`, is a non-citing position
-  (`provenance` is not a citing word, exactly as `the #404 error` is prose), so on that probe only
-  `multiline` fires; `(#923)`, `see #923` or a comment opening with `#923` fires `provenance`. AC-2 is
-  read as "the template's comment is scanned by the provenance rule", not as a new citing word.
-  *Owner:* ivopogace · *Resolves by:* PR review.
+None open.
+
+### Resolved
+
+- `// #123 is the emphasis colour` reads as provenance: decided on the issue's AC-3 and the population
+  evidence (every sentence-opening `#NNN` in the tree is an issue number); stated in the PR's Scope
+  notes, the `TELLS` doc, the reference doc and the suite (`9cb1c789`). The owner overrules at review.
+- The issue's literal probe, `carries provenance #923`, is a non-citing position, so only `multiline`
+  fires on it; `(#923)`, `see #923` or an opening `#923` fires `provenance`. AC-2 is read as "the
+  template's comment is scanned by the provenance rule", not as a new citing word; stated in the PR's
+  Scope notes (`f23991ec`).
 
 ## Availability & concurrency (invariant #2)
 
@@ -119,16 +123,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** review gate — reviewers dispatched over `3df086e0..f23991ec`; Sonar list cleared
+**Stage pointer:** DONE — delivered via PR #978; the merge close-out (`pr-gates.md` §3) runs after the merge
 
-**Next action:** score the reviewers' findings, re-review the fix range `4d82c071..HEAD`, post the review comment, close out.
+**Next action:** after the merge, verify #977 closed and retire this plan at the next close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — inline template as an HTML region (AC-1, AC-2) | ✅ | e77f25e5 |
 | 1 — sentence-opening `#NNN` (AC-3) | ✅ | 9cb1c789 |
 | 2 — `strip` drops the inline template's HTML comments (AC-4) | ✅ | 7bb5bade |
-| 3 — reference doc + close-out | ✅ | dc15c3bc |
+| 3 — reference doc + close-out | ✅ | f23991ec |
+| review fix round | ✅ | 04d141df, f1c6eb6a, 7af2e726, a8f83d0a, 96e43eb1, the close-out commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -144,6 +149,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-6 | review (reviewer 2) | `${…}` inside an inline template read as markup: a nested backtick desynced the scan and a `<!--` in an interpolated string was a comment | fixed: brace-depth tracking in both scanners; the `${…}` non-goal retired |
 | F-8 | sonar (on `7af2e726`) | `javascript:S3776` — `strip` at cognitive complexity 75 and `skipTemplate` at 16 against the 15 allowed | fixed: `strip` split into per-state handlers (`stripCode`, `openQuoted`, `stripQuoted`, `copyInterpolation`, `skipHtmlComment`, the two comment states) behind the same signature; `braceDelta` in both scanners |
 | F-9 | review (reviewer 1) | `check-inline-comments` decided the inline template from the backtick's own line, `strip` from the whole file, so `template:` with its backtick on the next line slipped the hook | fixed: `scan` keeps the code tail across lines and tests the opener on it |
+| F-10 | re-review of `7af2e726` | an unbalanced brace inside a string inside `${…}` ends the interpolation early in both scanners | accepted limitation, the same one `check-focus-posture` and `check-touch-target` carry; written into both scanners' doc comments |
 | F-7 | review (reviewer 3) | the flipped `// #123 is the emphasis colour` assertion undoes a pinned decision | not a change: the issue's AC-3 asks for it, the tree holds no such colour, and the `TELLS` doc, the reference doc and the suite state the accepted cost |
 
 ---
@@ -207,7 +213,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - [x] Add the comment-opening citing position and the inline-template scope row; run `node scripts/check-inline-comments.mjs --files` on the doc.
 - [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
-- [ ] Finalize Execution status in the last code-touching commit.
+- [x] Finalize Execution status in the last code-touching commit.
 
 ---
 
@@ -226,26 +232,26 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **AC-1:** Ran `node scripts/check-inline-comments.mjs --files <probe>.ts` on the issue's probe → `zz-probe.ts:4-5  multiline`. Verified at commit `7bb5bade`.
 - [x] **AC-2:** Same probe with `(#923)` → `provenance` on line 5 (`check-inline-comments.test.mjs`, and the `--files` harness case). Verified at commit `e77f25e5`.
 - [x] **AC-3:** `node --test scripts/check-inline-comments.test.mjs` → 29 pass, the opening-anchor cases included. Verified at commit `9cb1c789`.
-- [x] **AC-4:** `node --test "scripts/*.test.mjs"` → 276 pass, the `strip` cases and the comment-only harness case included. Verified at commit `7bb5bade`.
+- [x] **AC-4:** `node --test "scripts/*.test.mjs"` → 281 pass at the close-out head, the `strip` cases (positive, negative fixture, `.js` key, `xtemplate:`, `${…}`) and the comment-only harness case included. Verified at commit `96e43eb1`.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

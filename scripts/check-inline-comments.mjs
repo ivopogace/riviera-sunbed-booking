@@ -347,8 +347,10 @@ const INLINE_TEMPLATE_OPENER = /\btemplate\s*:\s*$/;
  * template (`comment`, with `end` on the marker), or the end of the line — an unclosed template
  * carries to the next line. A `${…}` interpolation is code, not template text: its braces are
  * counted (`depth`, carried across lines) and nothing inside it can open a comment or close the
- * literal. Answering with flags rather than an index is what keeps an opener standing last on its
- * line from reading as a close.
+ * literal. Known limitation, shared with the focus and touch-target guards: a brace inside a string
+ * inside the interpolation counts too, so an unbalanced one ends the interpolation early. Answering
+ * with flags rather than an index is what keeps an opener standing last on its line from reading as
+ * a close.
  */
 function skipTemplate(line, start, inlineTemplate, depth) {
   let c = start;

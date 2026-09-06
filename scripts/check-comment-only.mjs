@@ -117,7 +117,9 @@ function readUnquotedUrl(src, i) {
  * <p>Known limitation: the final normalization collapses whitespace on every line, including inside a
  * Java text block, whose compiled value depends on its minimum common indentation. A re-indent of a text
  * block would therefore compare equal. Out of scope for a comment-only sweep, which never re-indents;
- * if this tool is ever pointed at a formatting change, that case needs handling first.
+ * if this tool is ever pointed at a formatting change, that case needs handling first. Second known
+ * limitation, shared with `check-inline-comments.mjs`: inside an inline template's `${…}` a brace
+ * inside a string counts, so an unbalanced one ends the interpolation early.
  *
  * @param {string} src file contents
  * @param {string} [extension] the file's extension, e.g. `.ts`; decides whether a `template:` literal
