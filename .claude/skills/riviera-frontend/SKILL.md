@@ -95,6 +95,14 @@ Colocate everything the feature owns, flat (no `components/`/`services/` subfold
   example: `core/operator-session.guard.ts` — restore-aware (awaits
   `SessionAuth.whenReady()` before deciding), applied on `/operator` (incl. its create
   state), `/operator/:venueId` and `/account/operator-password`.
+- **A lazy target's import lines only count as covered once its module actually loads** —
+  Vitest's v8 coverage provider registers a `loadComponent` target's chunk boundary as soon
+  as any spec imports `app.routes.ts`, but its import lines stay at 0 hits until something
+  resolves the dynamic `import()` (real navigation, or a direct `loadComponent()` call).
+  `app.routes.spec.ts`'s `app.routes — every lazy route target resolves its module` test
+  walks the whole real table (including `consoleTabRoutes`/`adminTabRoutes`) and resolves
+  every target, so a new lazy route gets this for free — no per-component deep-link spec
+  needed for coverage alone.
 
 ## `app.config.ts` (the composition root)
 

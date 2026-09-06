@@ -71,3 +71,33 @@ describe('app.routes — retired auth surfaces', () => {
     expect(scoped.url).toBe('/operator/12/daily');
   });
 });
+
+describe('app.routes — every lazy route target resolves its module (#999)', () => {
+  /**
+   * SonarCloud/V8 coverage only counts a lazy target's import lines as covered once its
+   * dynamic import() actually resolves — a spec that merely imports `routes` (five do)
+   * registers the chunk boundary with every line at 0 hits. This walk resolves every
+   * loadComponent target in the real table, including the two nested tab-route trees, so a
+   * new lazy route gets this for free with no per-component deep-link spec.
+   */
+  async function loadedComponentNames(routeList: Routes): Promise<string[]> {
+    const names: string[] = [];
+    for (const route of routeList) {
+      if (route.loadComponent) {
+        const load = route.loadComponent as () => Promise<{ name: string }>;
+        const component = await load();
+        names.push(component.name);
+      }
+      if (route.children) {
+        names.push(...(await loadedComponentNames(route.children)));
+      }
+    }
+    return names;
+  }
+
+  it('resolves all 32 loadComponent targets, including the nested tab-route trees', async () => {
+    const names = await loadedComponentNames(routes);
+    expect(names).toHaveLength(32);
+    expect(names.every((name) => name.length > 0)).toBe(true);
+  });
+});

@@ -125,14 +125,14 @@ N/A — no API shape change.
 
 ## Execution status
 
-**Stage pointer:** plan (doc drafted, not yet committed)
+**Stage pointer:** implement (Phase 0 done) — next: open draft PR, then Review + Sonar gates.
 
-**Next action:** run the Skill-routing gate confirmation, commit this plan doc + branch
-state, then start Phase 0 test-first.
+**Next action:** open the PR (draft), let CI run, then work the Review gate per
+`riviera-sdlc` `references/pr-gates.md` §1.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Generic lazy-route walker test + doc note | ⏳ | |
+| 0 — Generic lazy-route walker test + doc note | ✅ | `4425da9` (plan doc), `<phase-0-sha>` |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
