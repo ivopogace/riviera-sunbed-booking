@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
+import { Mock } from 'vitest';
 
 import { ADMIN_CONSOLE_TAB_ORDER, AdminConsoleTabs } from './admin-console-tabs';
 
@@ -144,5 +145,37 @@ describe('AdminConsoleTabs', () => {
 
     const nav: HTMLElement = (fixture.nativeElement as HTMLElement).querySelector('nav')!;
     expect(nav.getAttribute('aria-label')).toBe('Admin console sections');
+  });
+});
+
+describe('AdminConsoleTabs — active tab scroll-into-view (#983)', () => {
+  let scrollIntoView: Mock<(options?: ScrollIntoViewOptions) => void>;
+
+  beforeEach(() => {
+    scrollIntoView = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+  });
+
+  afterEach(() => {
+    delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+  });
+
+  function scrolledLabels(): string[] {
+    return scrollIntoView.mock.contexts.map((el) => (el as HTMLElement).textContent.trim());
+  }
+
+  it('scrolls the active tab into view on load', async () => {
+    await renderAt('/admin/email');
+
+    expect(scrolledLabels()).toEqual(['Email']);
+  });
+
+  it('scrolls the newly active tab into view on a tab switch', async () => {
+    const fixture = await renderAt('/admin/email');
+
+    await TestBed.inject(Router).navigateByUrl('/admin/audit');
+    await fixture.whenStable();
+
+    expect(scrolledLabels()).toEqual(['Email', 'Audit']);
   });
 });

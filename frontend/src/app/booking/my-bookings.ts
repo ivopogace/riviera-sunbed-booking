@@ -196,8 +196,12 @@ const CLS = {
   rowPlaceholder: `${ROW} justify-between`,
   rowMain: 'flex min-w-0 flex-1 flex-col gap-[3px]',
   meta: 'text-[13px] text-riv-card-ink-soft',
+  skeletonTitle: `${SKELETON} h-[14px] w-2/5`,
   skeletonLine: `${SKELETON} h-[12px] w-3/5`,
-  skeletonLineShort: `${SKELETON} mt-2 h-[10px] w-[35%]`,
+  skeletonLineShort: `${SKELETON} h-[12px] w-2/5`,
+  skeletonLineTiny: `${SKELETON} mt-[2px] h-[11px] w-1/4`,
+  skeletonChip: `${SKELETON} h-[22px] w-16 rounded-full`,
+  skeletonAmount: `${SKELETON} h-[16px] w-11`,
   emptyCard: EMPTY_CARD,
   emptyLead: 'mb-5 text-[14.5px] leading-[1.5] text-riv-card-ink-soft',
   cta: CTA,
@@ -245,8 +249,14 @@ const CLS = {
         <div aria-hidden="true" data-testid="my-bookings-loading">
           <div [class]="cls.rowPlaceholder" appCardGlass>
             <span [class]="cls.rowMain">
+              <span appSkeletonBlock [class]="cls.skeletonTitle"></span>
               <span appSkeletonBlock [class]="cls.skeletonLine"></span>
               <span appSkeletonBlock [class]="cls.skeletonLineShort"></span>
+              <span appSkeletonBlock [class]="cls.skeletonLineTiny"></span>
+            </span>
+            <span class="flex shrink-0 flex-col items-end gap-1.5">
+              <span appSkeletonBlock [class]="cls.skeletonChip"></span>
+              <span appSkeletonBlock [class]="cls.skeletonAmount"></span>
             </span>
           </div>
         </div>
@@ -366,8 +376,14 @@ const CLS = {
                     data-testid="booking-row-loading"
                   >
                     <span [class]="cls.rowMain">
+                      <span appSkeletonBlock [class]="cls.skeletonTitle"></span>
                       <span appSkeletonBlock [class]="cls.skeletonLine"></span>
                       <span appSkeletonBlock [class]="cls.skeletonLineShort"></span>
+                      <span appSkeletonBlock [class]="cls.skeletonLineTiny"></span>
+                    </span>
+                    <span class="flex shrink-0 flex-col items-end gap-1.5">
+                      <span appSkeletonBlock [class]="cls.skeletonChip"></span>
+                      <span appSkeletonBlock [class]="cls.skeletonAmount"></span>
                     </span>
                   </div>
                 }

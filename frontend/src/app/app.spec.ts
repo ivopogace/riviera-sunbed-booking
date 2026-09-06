@@ -35,11 +35,10 @@ const operatorAuth = {
   signOut: vi.fn(() => Promise.resolve()),
 };
 
-/** Test routes exercising the compat-surface + chromeless + operator-chrome mechanisms without
+/** Test routes exercising the chromeless + operator-chrome mechanisms without
  *  loading real (HTTP-bound) pages. Rebuilt per test: Angular caches a resolved `loadComponent`
  *  on the `Route` object itself, so a shared array would let one spec's chunk satisfy the next. */
 const surfaceRoutes = () => [
-  { path: 'legacy', component: BlankPage, data: { legacySurface: true } },
   { path: 'glass', component: BlankPage },
   { path: 'my-bookings', component: BlankPage },
   { path: 'account/password', component: BlankPage },
@@ -560,17 +559,12 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(el.querySelector('[data-testid="mobile-menu"]')).toBeNull();
   });
 
-  it('wraps legacy-flagged routes in the opaque compat surface, glass routes not (AC-6)', async () => {
-    const { fixture, el } = shell();
-    const router = TestBed.inject(Router);
+  it('renders <main> bare under the tourist chrome before the first navigation completes (#992)', () => {
+    // No navigation has landed: the root route's chunk stays unresolved until `landLazyChunk`.
+    const { el } = shell();
 
-    await router.navigate(['/legacy']);
-    fixture.detectChanges();
-    expect(el.querySelector('main')?.classList.contains('riv-legacy-surface')).toBe(true);
-
-    await router.navigate(['/glass']);
-    fixture.detectChanges();
-    expect(el.querySelector('main')?.classList.contains('riv-legacy-surface')).toBe(false);
+    expect(el.querySelector('main')?.className).toBe('flex-1');
+    expect(el.querySelector('.riv-header')).not.toBeNull();
   });
 
   it('carries the legal links in the shared footer, opening in a new tab (#101 Slice 3)', () => {
@@ -600,8 +594,6 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     // The operator console owns full-bleed porcelain chrome — the tourist header/nav/footer are hidden.
     expect(el.querySelector('.riv-header')).toBeNull();
     expect(el.querySelector('.riv-footer')).toBeNull();
-    // Chromeless, not legacy: the compat surface is not applied on operator routes either.
-    expect(el.querySelector('main')?.classList.contains('riv-legacy-surface')).toBe(false);
   });
 
   it('renders the shared operator chrome instead of the tourist header on operator-chrome routes', async () => {
@@ -640,34 +632,13 @@ describe('App (Liquid Glass shell, issue #134)', () => {
   });
 });
 
-describe('app.routes legacy-surface flags (issue #134)', () => {
-  // Restyled routes render on the bare themed background; each restyle moves its route here.
-  const RESTYLED_PATHS = [
-    '',
-    'my-bookings',
-    // account/register + operator/register are redirect-only, so they left this list.
-    'account/sign-in',
-    // The account-recovery pages (forgot / reset / verify) + the account page — new glass routes.
-    'account/forgot',
-    'account/reset',
-    'account/verify',
-    'account/password',
-    'venues/:id',
-    'booking/confirmation',
-    'booking/pay',
-    'booking/requested',
-    'booking/:code',
-    // The legal pages — new glass routes, born un-legacied.
-    'legal/privacy',
-    'legal/terms',
-  ];
-
+describe('app.routes chrome flags (issue #134)', () => {
   /**
-   * Operator/admin surfaces — a THIRD category outside the tourist legacy/restyled binary. The
-   * console owns its whole porcelain shell (`operatorConsole`); every other operator/admin
-   * page carries `operatorChrome`, so the shell swaps in the shared operator header/footer — the
-   * fix for those pages wearing the tourist chrome ("Sign in / Register" while signed in as an
-   * operator) or none at all (the operator password page, the '/operator' picker).
+   * The operator/admin surfaces. The console owns its whole porcelain shell
+   * (`operatorConsole`); every other operator/admin page carries `operatorChrome`, so the shell
+   * swaps in the shared operator header/footer — the fix for those pages wearing the tourist
+   * chrome ("Sign in / Register" while signed in as an operator) or none at all (the operator
+   * password page, the '/operator' picker).
    */
   const OPERATOR_SURFACE_PATHS = [
     'operator/:venueId',
@@ -690,28 +661,12 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
     'audit',
   ];
 
-  it('marks every not-yet-restyled tourist route with the compat surface (flipped per slice)', () => {
-    for (const route of routes) {
-      // Redirect-only routes (no rendered surface) carry no legacySurface flag — skip them.
-      if (OPERATOR_SURFACE_PATHS.includes(route.path ?? '') || route.redirectTo !== undefined) {
-        continue;
-      }
-      const expected = !RESTYLED_PATHS.includes(route.path ?? '');
-      expect(
-        route.data?.['legacySurface'] === true,
-        `route '${route.path}' legacySurface flag`,
-      ).toBe(expected);
-    }
-  });
-
   it('flags every non-console operator/admin surface with the shared operator chrome', () => {
     for (const path of OPERATOR_SURFACE_PATHS.filter((p) => p !== 'operator/:venueId')) {
       const route = routes.find((r) => r.path === path);
       expect(route?.data?.['operatorChrome'], `route '${path}' operatorChrome flag`).toBe(true);
       // The two flags are mutually exclusive — the console alone stays fully chromeless.
       expect(route?.data?.['operatorConsole'], `route '${path}' console flag`).toBeUndefined();
-      // Operator surfaces left the tourist binary but must never re-acquire the compat surface.
-      expect(route?.data?.['legacySurface'], `route '${path}' legacy flag`).toBeUndefined();
     }
   });
 
@@ -728,27 +683,18 @@ describe('app.routes legacy-surface flags (issue #134)', () => {
         child?.data?.['operatorConsole'],
         `admin child '${path}' console flag`,
       ).toBeUndefined();
-      expect(child?.data?.['legacySurface'], `admin child '${path}' legacy flag`).toBeUndefined();
     }
-  });
-
-  it('has no legacy compat-surface routes left (O8 #177 retired the last one)', () => {
-    // /venue-admin is a bare redirect to the operator home's create state — the operator surface is all glass.
-    const legacy = routes.filter((r) => r.data?.['legacySurface'] === true);
-    expect(legacy.map((r) => r.path)).toEqual([]);
   });
 
   it('forwards the retired daily URL to the console Daily-view tab, preserving the venue id (O6 #176)', () => {
     // A bookmarked /venue-admin/daily/:venueId must not 404 to a blank page — it redirects to the tab.
     const redirect = routes.find((r) => r.path === 'venue-admin/daily/:venueId');
     expect(redirect?.redirectTo).toBe('operator/:venueId/daily');
-    expect(redirect?.data?.['legacySurface']).toBeUndefined();
   });
 
   it('adds the chromeless operator console route with its six tab children (#170)', () => {
     const console = routes.find((r) => r.path === 'operator/:venueId');
     expect(console?.data?.['operatorConsole']).toBe(true);
-    expect(console?.data?.['legacySurface']).toBeUndefined();
 
     const children = console?.children ?? [];
     const childPaths = children.map((c) => c.path);
