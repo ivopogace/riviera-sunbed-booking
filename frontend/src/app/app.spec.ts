@@ -560,7 +560,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
   });
 
   it('renders <main> bare under the tourist chrome before the first navigation completes (#992)', () => {
-    // No navigation has landed: the initial-chunk window the retired compat default painted through.
+    // No navigation has landed: the root route's chunk stays unresolved until `landLazyChunk`.
     const { el } = shell();
 
     expect(el.querySelector('main')?.className).toBe('flex-1');

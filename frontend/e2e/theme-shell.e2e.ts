@@ -119,11 +119,13 @@ test.describe('pre-navigation shell paint (#992)', () => {
   test('<main> adds no surface of its own before the route chunk lands (AC-2)', async ({
     page,
   }) => {
+    let withheld = 0;
     // Withhold the one lazy chunk carrying the Beaches page, matched on content: its name is hashed.
     await page.route(/chunk-[A-Z0-9]+\.js/i, async (route) => {
       const response = await route.fetch();
       const body = await response.text();
       if (body.includes('filter-beach')) {
+        withheld++;
         return;
       }
       await route.fulfill({ response, body });
@@ -132,9 +134,10 @@ test.describe('pre-navigation shell paint (#992)', () => {
     await page.goto('/', { waitUntil: 'commit' });
     await expect(page.locator('.riv-header')).toBeVisible();
 
-    // Proves the withholding held: this is the pre-navigation window, not a settled page.
+    // Exactly one chunk withheld: the window below is held open, not merely unpainted yet.
+    await expect.poll(() => withheld).toBe(1);
     await expect(page.getByTestId('filter-beach')).toHaveCount(0);
-    // jsdom cannot show a paint — the retired compat panel filled <main> with an opaque #f8fafc here.
+    // jsdom cannot show a paint, so the shell's own background is only assertable here.
     await expect(page.locator('main')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await expect(page.locator('.riv-bg')).toBeAttached();
   });

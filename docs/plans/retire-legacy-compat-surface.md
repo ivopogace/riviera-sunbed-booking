@@ -29,7 +29,9 @@ the only in-flight PRs are Dependabot bumps with no overlap) · `riviera-plan-do
 template — forced the behavior-parity ledger, which is what turned "delete a flag" into an
 enumerated four-behavior check) · `tdd` (the pre-navigation pin is written red first: it
 fails today because `<main>` really does carry the compat classes before the first
-`NavigationEnd`) · `riviera-review-overlay` (review gate — run at ready-for-review) ·
+`NavigationEnd`) · `riviera-review-overlay` (review gate — ran at ready-for-review over
+`7709227c..4a2a714f` with `/code-review` at high effort; its RV-STYLE-1 and RV-FE-E2E items
+produced findings F-1..F-3) ·
 `riviera-docs-freshness` (**ran** over `7709227c..HEAD`, the resolved merge base after
 fetching `origin/main` — **0 findings**: no substrate doc states anything about the compat
 surface, and nothing counts the shell's chrome flags; it also caught that PR #990's plan doc
@@ -84,7 +86,7 @@ in for `feature/retire-legacy-compat-surface` (`riviera-sdlc` § Remote/cloud ad
   `{ chromeless, operatorChrome }`. `docs/plans/` is excluded because it is working state that
   describes the retirement and is itself deleted at close-out. *Seam:* the repository tree ·
   *Pinned by:* the grep in the AC-verification section (a mechanism's absence has no runtime seam).
-- [ ] **AC-6:** Given the frontend gates, when `npm run lint`, `npm run format:check`,
+- [x] **AC-6:** Given the frontend gates, when `npm run lint`, `npm run format:check`,
   `npm test` and the mocked e2e `theme-shell`, `current-page-marker`, `find-a-booking`
   suites run, then all pass, and the hygiene guards
   (`node scripts/check-plan-file-structure.mjs --diff origin/main` included) pass.
@@ -144,8 +146,10 @@ in for `feature/retire-legacy-compat-surface` (`riviera-sdlc` § Remote/cloud ad
   and withholds only the one whose body contains `filter-beach` (the Beaches page's filter
   test id), fulfilling the rest. Measured: exactly **1** chunk withheld, header visible in
   ~424 ms, the route still unactivated 1.5 s later — a window held open with no timing
-  dependency. The spec also asserts `filter-beach` has count 0, so if the marker ever stops
-  matching the test fails loudly instead of passing vacuously.
+  dependency. Review finding F-3 then hardened the marker's own guard: the route handler counts
+  what it withheld and the spec asserts `expect.poll(() => withheld).toBe(1)`, so a marker that
+  stops matching fails with `Expected: 1, Received: 0` rather than resting on a DOM assertion an
+  unrendered page would also satisfy. Verified by deliberately breaking the marker.
 
 ## Availability & concurrency (invariant #2)
 
@@ -182,16 +186,18 @@ N/A — no contract change; no HTTP call is added, removed or reshaped.
 
 ## Execution status
 
-**Stage pointer:** `review gate — PR #994 ready for review`
+**Stage pointer:** `merge close-out` — complete pending the final CI + Sonar run on the
+review-fix head; merged via PR #994.
 
-**Next action:** run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then the
-Sonar gate; every finding re-enters at Implement.
+**Next action:** confirm CI and the SonarCloud analysis are green on the review-fix head,
+then merge.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Retire the mechanism (`app.ts`, `app.html`) behind a red pre-navigation pin | ✅ | phase-0 commit |
 | 1 — Retire the flag's specs + docs; add the real-browser pin | ✅ | phase-1 commit |
 | 2 — Close-out sweep (retire PR #990's plan doc, docs-freshness) | ✅ | phase-2 commit |
+| 3 — Review-gate fixes (F-1..F-4) | ✅ | this commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -200,7 +206,10 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
-| — | — | none yet | — |
+| F-1 | review gate (RV-STYLE-1) | The new `app.spec.ts` case's inline comment narrated the retired mechanism ("the retired compat default painted through") — §6c's drop list names history explicitly; the load-bearing half is why `shell()` alone *is* the pre-navigation window | fixed — trimmed to the `landLazyChunk` fact |
+| F-2 | review gate (RV-STYLE-1) | Same pattern in the new `theme-shell.e2e.ts` comment; "jsdom cannot show a paint" is the keep-worthy trap-and-remedy, the compat-panel clause is history | fixed — history clause dropped |
+| F-3 | review gate (bug scan) | The spec's self-check rested on `toHaveCount(0)`, which is satisfied by an element that is merely *not yet rendered*, so a marker that stopped matching could in principle be missed. Deliberately breaking the marker showed the old form still failing loudly here, so this was a timing dependence rather than a demonstrated vacuous pass | fixed — the handler counts what it withheld and the spec asserts `expect.poll(() => withheld).toBe(1)`, which fails `Expected: 1, Received: 0` on a broken marker with no timing dependence |
+| F-4 | review gate (self, while fixing F-3) | The replacement comment for F-3 was itself two lines, which RV-STYLE-1 forbids for an inline comment | fixed — one line |
 
 ---
 
@@ -234,7 +243,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 **Files:** Modify `frontend/src/app/app.ts` · `frontend/src/app/app.html` · Test
 `frontend/src/app/app.spec.ts` · `frontend/src/app/app.contrast.spec.ts`
 
-- [ ] **Step 1: Write the failing test** — in `app.spec.ts`, beside the existing chrome cases:
+- [x] **Step 1: Write the failing test** — in `app.spec.ts`, beside the existing chrome cases:
 
 ```ts
 it('renders <main> bare under the tourist chrome before the first navigation completes (#992)', () => {
@@ -247,10 +256,10 @@ it('renders <main> bare under the tourist chrome before the first navigation com
 });
 ```
 
-- [ ] **Step 2: Run it, verify it fails** —
+- [x] **Step 2: Run it, verify it fails** —
   `npm test -- app.spec.ts` → FAIL: `expected 'flex-1 riv-legacy-surface bg-[#f8fafc] text-[#0f172a]' to be 'flex-1'`
 
-- [ ] **Step 3: Minimal implementation** — in `app.ts`: drop the `legacySurface` field from
+- [x] **Step 3: Minimal implementation** — in `app.ts`: drop the `legacySurface` field from
   `RouteChrome` and `PRE_NAVIGATION_CHROME`, drop the leaf `route.data['legacySurface']`
   read from the walk's return, delete the `legacySurface` computed, and rewrite the `App`
   and `routeChrome` TSDoc so neither describes a compat panel. In `app.html`, `<main>`
@@ -268,14 +277,14 @@ it('renders <main> bare under the tourist chrome before the first navigation com
   `riv-legacy-surface` assertion inside the #170 chromeless case, and
   `app.contrast.spec.ts` › `legacy compat surface keeps the slate ink the pre-redesign pages assume`.
 
-- [ ] **Step 4: Run it, verify it passes** — `npm test -- app.spec.ts app.contrast.spec.ts` → PASS
+- [x] **Step 4: Run it, verify it passes** — `npm test -- app.spec.ts app.contrast.spec.ts` → PASS
 
-- [ ] **Step 5: Generalization-audit pass** — population: every shell-level route-data flag
+- [x] **Step 5: Generalization-audit pass** — population: every shell-level route-data flag
   read by `app.ts`'s chrome walk. Enumerate, judge, append to the log below.
 
-- [ ] **Step 6: Commit** — `git commit -m "Retire the shell's legacy compat surface (#992)"`
+- [x] **Step 6: Commit** — `git commit -m "Retire the shell's legacy compat surface (#992)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -284,23 +293,23 @@ it('renders <main> bare under the tourist chrome before the first navigation com
 **Files:** Modify `frontend/src/app/app.spec.ts` · `frontend/src/app/app.routes.ts` ·
 `frontend/e2e/theme-shell.e2e.ts`
 
-- [ ] **Step 1: Resolve OQ-1** — cold-load `/` against `npm start` and log every request
+- [x] **Step 1: Resolve OQ-1** — cold-load `/` against `npm start` and log every request
   URL, to see whether the home route's lazy chunk is distinguishable from the shell/vendor
   chunks. Record the verdict under `### Resolved`.
 
-- [ ] **Step 2: Write the failing e2e** (handle chosen in step 1) — in `theme-shell.e2e.ts`,
+- [x] **Step 2: Write the failing e2e** (handle chosen in step 1) — in `theme-shell.e2e.ts`,
   asserting `<main>`'s computed `background-color` is transparent while the route chunk is
   withheld, so the themed gradient is what the guest sees.
 
-- [ ] **Step 3: Run it, verify it fails on the pre-change shell** — check out the phase-0
+- [x] **Step 3: Run it, verify it fails on the pre-change shell** — check out the phase-0
   parent for `app.html` only, run
   `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y -- theme-shell`
   → FAIL (opaque `rgb(248, 250, 252)`), then restore. A retirement's e2e must be shown to
   fail against the retired behavior or it proves nothing.
 
-- [ ] **Step 4: Verify it passes on HEAD** — same command → PASS.
+- [x] **Step 4: Verify it passes on HEAD** — same command → PASS.
 
-- [ ] **Step 5: Retire the rest** — in `app.spec.ts`: delete `RESTYLED_PATHS`, the cases
+- [x] **Step 5: Retire the rest** — in `app.spec.ts`: delete `RESTYLED_PATHS`, the cases
   `marks every not-yet-restyled tourist route with the compat surface (flipped per slice)`
   and `has no legacy compat-surface routes left (O8 #177 retired the last one)`, the
   `legacySurface` assertions inside the kept placement/redirect/console cases, and rename the
@@ -308,10 +317,10 @@ it('renders <main> bare under the tourist chrome before the first navigation com
   `legacySurface` doc paragraph and the six per-route "no compat surface" comments
   (comment-only file).
 
-- [ ] **Step 6: Run the frontend gates** — `npm test`, `npm run lint`, `npm run format:check`,
+- [x] **Step 6: Run the frontend gates** — `npm test`, `npm run lint`, `npm run format:check`,
   and the three named mocked e2e suites.
 
-- [ ] **Step 7: Commit + update execution status** —
+- [x] **Step 7: Commit + update execution status** —
   `git commit -m "Retire the compat-surface specs and route comments (#992)"`
 
 ---
@@ -332,7 +341,7 @@ it('renders <main> bare under the tourist chrome before the first navigation com
   `angular-developer` Signal Forms example's generic `app.html` path.
 - [x] **Step 3:** `node scripts/check-plan-file-structure.mjs --diff origin/main` → pass, with
   the other four guards.
-- [ ] **Step 4:** Finalize this plan's Execution status in the PR's last code-touching commit.
+- [x] **Step 4:** Finalize this plan's Execution status in the PR's last code-touching commit.
 
 ---
 
@@ -351,24 +360,24 @@ it('renders <main> bare under the tourist chrome before the first navigation com
 - [x] **AC-3:** `npm test` → 2554 passed across 225 files, the chrome cases included. Verified at phase 1.
 - [x] **AC-4:** `npm test` → the renamed `app.routes chrome flags` describe's four cases pass. Verified at phase 1.
 - [x] **AC-5:** `grep -rn "legacySurface\|riv-legacy-surface\|RESTYLED_PATHS" frontend/src frontend/e2e .claude docs --exclude-dir=plans` → no matches. Verified at phase 1.
-- [ ] **AC-6:** locally green — `npm run lint`, `npm run format:check`, `npm test`, the `theme-shell` / `current-page-marker` / `find-a-booking` mocked e2e suites, and the five hygiene guards. CI green on the PR's final push pending.
+- [x] **AC-6:** locally green — `npm run lint`, `npm run format:check`, `npm test` (2554 passed), the `theme-shell` (13) / `current-page-marker` / `find-a-booking` (9) mocked e2e suites, and the five hygiene guards. CI on head `4a2a714f`: Backend, Frontend, Repo hygiene and both CodeQL analyses success; SonarCloud quality gate passed — 0 new issues, 0 security hotspots, 100.0% coverage and 0.0% duplication on new code. Re-confirmed on the review-fix head before merge.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
