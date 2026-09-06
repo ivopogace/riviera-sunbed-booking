@@ -95,6 +95,22 @@ test('in a component, judges the template literal and nothing else', () => {
   assert.equal(violations[0].line, 8);
 });
 
+/**
+ * The opener is word-bounded, the decision `inline-template.mjs` holds for all four guards: a key
+ * that merely ends in `template` is a string, and its `<button>` is a fixture, not markup.
+ */
+test('a key that merely ends in `template` does not open an inline template', () => {
+  const lines = [
+    'const fixtures = {',
+    '  xtemplate: `',
+    '    <button type="button" (click)="erase()">Erase</button>',
+    '  `,',
+    '};',
+  ];
+
+  assert.deepEqual(scan(TS, lines), []);
+});
+
 test('does not judge a control inside an HTML comment', () => {
   const lines = [
     '<!-- <button type="button">Removed while we rethink the flow</button> -->',

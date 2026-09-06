@@ -25,20 +25,10 @@
 import { pathToFileURL } from 'node:url';
 
 import { changedPaths, git, nameOnlyArgs, readText, resolveBase } from './git-diff.mjs';
+import { CodeTail, INLINE_TEMPLATE_EXTENSIONS, interpolationStep } from './inline-template.mjs';
 
 /** Extensions whose comment syntax `strip` understands. Anything else is skipped, not assumed safe. */
 const SUPPORTED = new Set(['.java', '.ts', '.tsx', '.js', '.mjs', '.cjs', '.scss', '.css']);
-
-/**
- * The code before a backtick that makes its template literal an Angular inline template, where an
- * `<!-- … -->` is a comment — in a TypeScript file only. In any other template literal it is string
- * content: a spec's HTML fixture is code, and reporting a change to it as comment-only is the false
- * clean this tool must never give.
- */
-const TEMPLATE_KEY = /\btemplate\s*:\s*$/;
-
-/** The extensions whose `template:` literal is an Angular inline template. */
-const INLINE_TEMPLATE_EXTENSIONS = new Set(['.ts', '.tsx']);
 
 /** Characters after which a `/` opens a regex literal rather than dividing. */
 const REGEX_PRECEDERS = new Set(
@@ -112,14 +102,16 @@ function readUnquotedUrl(src, i) {
  * Removes comments while honouring string, template, char, Java text-block, JS regex-literal and CSS
  * unquoted-`url()` state, so a `//` inside a URL or a `/*` inside a string or character class is kept as
  * the code it is — and an `<!-- … -->` inside an Angular inline template is removed as the comment it is,
- * while a `${…}` interpolation inside that template stays the code it is.
+ * while a `${…}` interpolation inside that template stays the code it is. Which literal is an inline
+ * template, and how an interpolation is stepped, is `inline-template.mjs`'s decision: in a TypeScript
+ * file only, because in any other template literal an `<!-- … -->` is string content — a spec's HTML
+ * fixture is code, and reporting a change to it as comment-only is the false clean this tool must never
+ * give.
  *
  * <p>Known limitation: the final normalization collapses whitespace on every line, including inside a
  * Java text block, whose compiled value depends on its minimum common indentation. A re-indent of a text
  * block would therefore compare equal. Out of scope for a comment-only sweep, which never re-indents;
- * if this tool is ever pointed at a formatting change, that case needs handling first. Second known
- * limitation, shared with `check-inline-comments.mjs`: inside an inline template's `${…}` a brace
- * inside a string counts, so an unbalanced one ends the interpolation early.
+ * if this tool is ever pointed at a formatting change, that case needs handling first.
  *
  * @param {string} src file contents
  * @param {string} [extension] the file's extension, e.g. `.ts`; decides whether a `template:` literal
@@ -135,6 +127,7 @@ export function strip(src, extension = '') {
     quote: '',
     interpolation: 0,
     inlineTemplates: INLINE_TEMPLATE_EXTENSIONS.has(extension),
+    tail: new CodeTail(),
   };
 
   while (scan.i < src.length) {
@@ -158,6 +151,7 @@ function stripCode(scan) {
   if (src.startsWith('"""', i)) {
     scan.state = 'text';
     scan.out += '"""';
+    scan.tail.reset();
     scan.i += 3;
     return;
   }
@@ -175,13 +169,15 @@ function stripCode(scan) {
   const regexEnd = src[i] === '/' && opensRegex(scan.out) ? readRegex(src, i) : -1;
   const end = Math.max(urlEnd, regexEnd, i + 1);
   scan.out += src.slice(i, end);
+  scan.tail.push(src.slice(i, end));
   scan.i = end;
 }
 
 /** Opens a string, or the inline template that a `template:` backtick in a TypeScript file is. */
 function openQuoted(scan) {
   const ch = scan.src[scan.i];
-  const inlineTemplate = ch === '`' && scan.inlineTemplates && TEMPLATE_KEY.test(scan.out);
+  const inlineTemplate = ch === '`' ? scan.tail.opensInlineTemplate() && scan.inlineTemplates : false;
+  if (ch !== '`') scan.tail.reset();
   scan.state = inlineTemplate ? 'template' : 'str';
   scan.quote = ch;
   scan.out += ch;
@@ -208,26 +204,15 @@ function stripQuoted(scan) {
   scan.i++;
 }
 
-/** Copies one character of an open `${…}`, or opens one; false when the scan is in template text. */
+/** Copies one step of an open `${…}`, or opens one; false when the scan is in template text. */
 function copyInterpolation(scan) {
   const { src, i } = scan;
-  if (scan.interpolation > 0) {
-    scan.interpolation += braceDelta(src[i]);
-    scan.out += src[i];
-    scan.i++;
-    return true;
-  }
-  if (!src.startsWith('${', i)) return false;
-  scan.interpolation = 1;
-  scan.out += '${';
-  scan.i += 2;
+  const step = interpolationStep(src, i, scan.interpolation);
+  if (step === null) return false;
+  scan.interpolation = step.depth;
+  scan.out += src.slice(i, step.next);
+  scan.i = step.next;
   return true;
-}
-
-function braceDelta(ch) {
-  if (ch === '{') return 1;
-  if (ch === '}') return -1;
-  return 0;
 }
 
 /** Drops an `<!-- … -->` where the scan stands; false when none opens there. */
@@ -239,10 +224,12 @@ function skipHtmlComment(scan) {
   return true;
 }
 
+/** A comment drops out of both `out` and the tail; the line end that closes it stays in both. */
 function stripLineComment(scan) {
   if (scan.src[scan.i] === '\n') {
     scan.state = 'code';
     scan.out += '\n';
+    scan.tail.push('\n');
   }
   scan.i++;
 }
@@ -254,7 +241,10 @@ function stripBlockComment(scan) {
     scan.i += 2;
     return;
   }
-  if (src[i] === '\n') scan.out += '\n';
+  if (src[i] === '\n') {
+    scan.out += '\n';
+    scan.tail.push('\n');
+  }
   scan.i++;
 }
 

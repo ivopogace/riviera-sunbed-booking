@@ -337,6 +337,22 @@ test('skips a backtick string that is not a template', () => {
   assert.equal(violations[0].line, 3);
 });
 
+/**
+ * The opener is word-bounded, the decision `inline-template.mjs` holds for all four guards: a key
+ * that merely ends in `template` is a string, and its `[disabled]` is a fixture, not markup.
+ */
+test('a key that merely ends in `template` does not open an inline template', () => {
+  const lines = [
+    'const fixtures = {',
+    '  xtemplate: `',
+    '    <button [disabled]="saving()">Save</button>',
+    '  `,',
+    '};',
+  ];
+
+  assert.deepEqual(scan(TS, lines), []);
+});
+
 test('ignores bindings outside an inline template', () => {
   const doc = [
     '/**',

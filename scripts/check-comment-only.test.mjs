@@ -118,6 +118,20 @@ test('an HTML comment inside any other template literal is code', () => {
   assert.notEqual(strip(fixture('<!-- a -->'), '.ts'), strip(fixture(''), '.ts'));
 });
 
+/**
+ * A comment ends the line the way the code after it sees it: `template:` at column zero after a
+ * `//` line is still the key, not the tail of the word the comment interrupted.
+ */
+test('a comment before `template:` does not fuse it with the code before the comment', () => {
+  const body = ['  <!-- gone -->', '  <p>hi</p>', '`;'];
+  const afterLine = ['x = b// c', 'template: `', ...body].join('\n');
+  const afterBlock = ['x = b/* c', '*/template: `', ...body].join('\n');
+  const bare = ['x = b', 'template: `', '  <p>hi</p>', '`;'].join('\n');
+
+  assert.equal(strip(afterLine, '.ts'), strip(bare, '.ts'));
+  assert.equal(strip(afterBlock, '.ts'), strip(bare, '.ts'));
+});
+
 test('a `template:` key outside TypeScript keeps its HTML comment as string content', () => {
   const config = (comment) => ['const config = {', '  template: `', `    ${comment}`, '    <p>hi</p>', '  `,', '};'].join('\n');
 

@@ -224,7 +224,7 @@ test('check-inline-comments: an inline Angular template does not hide a later co
  * inline template carries — where this repo writes most of its template comments — were never
  * judged at all: a two-line one with an issue number in it went through `--files` clean.
  *
- * <p>Mutation: make `INLINE_TEMPLATE_OPENER` never match. This case then exits 0.
+ * <p>Mutation: make `inline-template.mjs`'s `OPENER` never match. This case then exits 0.
  */
 test('check-inline-comments --files judges an HTML comment inside an inline template', () => {
   withRepo((repo) => {
@@ -1156,7 +1156,7 @@ test('check-comment-only inspects a code change that is only in the working tree
  * an inline Angular template left the stripped sides different and the by-hand verifier answered
  * "Not comment-only" on a diff whose every change was a comment.
  *
- * <p>Mutation: make `TEMPLATE_KEY` never match. This case then exits 1.
+ * <p>Mutation: make `inline-template.mjs`'s `OPENER` never match. This case then exits 1.
  */
 test('check-comment-only passes when only an HTML comment left an inline template', () => {
   withRepo((repo) => {
