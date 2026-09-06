@@ -208,6 +208,11 @@ describe.each(THEMES)('Discover glass contrast — $name theme (WCAG AA, issue #
     expectAaOverStops(theme.accent, 1, theme.cardGlass, theme.stops);
   });
 
+  it('filter-control focus ring (accent ink) meets 3:1 (WCAG 1.4.11) on its actual backdrop', () => {
+    // The filter bar sits below `.hero` as a plain sibling, so its backdrop is the card glass, not the scrim.
+    expectAaOverStops(theme.accent, 1, theme.cardGlass, theme.stops, AA_LARGE);
+  });
+
   it('select/date text meets AA on the field fill over the card glass', () => {
     for (const stop of theme.stops) {
       const card = surfaceOver(theme.cardGlass, stop);
