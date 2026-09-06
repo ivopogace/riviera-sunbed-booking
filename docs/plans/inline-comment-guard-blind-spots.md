@@ -88,6 +88,11 @@ N/A — new detection, replaces nothing.
 - **Assumption:** the owner accepts that `// #123 is the emphasis colour` now reads as provenance —
   the issue's AC-3 asks for exactly that form and the tree holds no colour written that way.
   *Owner:* ivopogace · *Resolves by:* PR review.
+- **Assumption:** the issue's literal probe text, `carries provenance #923`, is a non-citing position
+  (`provenance` is not a citing word, exactly as `the #404 error` is prose), so on that probe only
+  `multiline` fires; `(#923)`, `see #923` or a comment opening with `#923` fires `provenance`. AC-2 is
+  read as "the template's comment is scanned by the provenance rule", not as a new citing word.
+  *Owner:* ivopogace · *Resolves by:* PR review.
 
 ## Availability & concurrency (invariant #2)
 
@@ -115,16 +120,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 3)
+**Stage pointer:** PR — draft open, merging latest `main`, then ready-for-review → review gate
 
-**Next action:** update `inline-comment-guard.md`, run the plan-structure guard, open the draft PR.
+**Next action:** run `references/pr-gates.md` §1 (check-review-range, then `/code-review` + `riviera-review-overlay`).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — inline template as an HTML region (AC-1, AC-2) | ✅ | e77f25e5 |
 | 1 — sentence-opening `#NNN` (AC-3) | ✅ | 9cb1c789 |
-| 2 — `strip` drops the inline template's HTML comments (AC-4) | ✅ | phase-2 commit |
-| 3 — reference doc + close-out | ⏳ | |
+| 2 — `strip` drops the inline template's HTML comments (AC-4) | ✅ | 7bb5bade |
+| 3 — reference doc + close-out | ✅ | dc15c3bc |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -192,8 +197,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `.claude/skills/riviera-java-conventions/references/inline-comment-guard.md`
 
-- [ ] Add the comment-opening citing position and the inline-template scope row; run `node scripts/check-inline-comments.mjs --files` on the doc.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
+- [x] Add the comment-opening citing position and the inline-template scope row; run `node scripts/check-inline-comments.mjs --files` on the doc.
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` → clean.
 - [ ] Finalize Execution status in the last code-touching commit.
 
 ---
@@ -209,10 +214,10 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `node scripts/check-inline-comments.mjs --files <probe>.ts` on the issue's probe → one `multiline` finding. Verified at commit `<sha>`.
-- [ ] **AC-2:** Same run → one `provenance` finding on the comment's second line. Verified at commit `<sha>`.
-- [ ] **AC-3:** `node --test scripts/check-inline-comments.test.mjs` → PASS including the new opening-anchor case. Verified at commit `<sha>`.
-- [ ] **AC-4:** `node --test scripts/guard-cli.test.mjs` → the comment-only inline-template case passes. Verified at commit `<sha>`.
+- [x] **AC-1:** Ran `node scripts/check-inline-comments.mjs --files <probe>.ts` on the issue's probe → `zz-probe.ts:4-5  multiline`. Verified at commit `7bb5bade`.
+- [x] **AC-2:** Same probe with `(#923)` → `provenance` on line 5 (`check-inline-comments.test.mjs`, and the `--files` harness case). Verified at commit `e77f25e5`.
+- [x] **AC-3:** `node --test scripts/check-inline-comments.test.mjs` → 30 pass, the opening-anchor cases included. Verified at commit `9cb1c789`.
+- [x] **AC-4:** `node --test "scripts/*.test.mjs"` → 276 pass, the `strip` cases and the comment-only harness case included. Verified at commit `7bb5bade`.
 
 ## Self-review checklist (before merge / PR)
 

@@ -8,10 +8,13 @@ Three rules, one guard:
 - **`multiline`** (gates) — an inline comment the diff added spans more than one line.
 - **`provenance`** (gates) — an issue or PR number in an added skill line, an added inline
   comment, or anywhere in a doc comment the diff touched. `issue N` and `PR N` always count; a
-  bare `#NNN` counts only in a citing position — after `(`, a comma, a `NNN/`, or a citing
+  bare `#NNN` counts only in a citing position — after `(`, a comma, a `NNN/`, a citing
   word: `issue`, `PR`, `epic`, `since`, `until`, `before`, `after`, `by`, `at`, `in`, `from`,
-  `fix`/`fixes`/`fixed`, `closes`, `see` — the whole list, read out of `CITING` in the guard. `: #123` reads as a colour and `the #404 error` as prose; both are
-  left to review — a false negative, by design.
+  `fix`/`fixes`/`fixed`, `closes`, `see` — the whole list, read out of `CITING` in the guard —
+  or opening the comment's own text (`// #923's widget pushed Review past a phone's height`).
+  `: #123` reads as a colour and `the #404 error` as prose; both are left to review — a false
+  negative, by design. A colour written as a sentence's subject (`// #123 is the emphasis
+  colour`) is the one accepted false positive: rewrite it as `the #123 colour`.
 - **`history`** (advises) — `no longer`, `previously`, `used to be`, `this change` and the
   like. Printed, never failing: a port that "releases a `previously` claimed set" is stating
   its contract.
@@ -32,7 +35,11 @@ Scope:
   `OUT-OF-SCOPE.md` (a ledger of issue numbers by design), and not `CLAUDE.md`, `docs/` or
   the ADRs — those are RV-PROC-2's.
 - **Four languages, by comment syntax:** `.java`, `.ts`/`.tsx`/`.js`/`.mjs`/`.cjs`,
-  `.scss`/`.css`, `.html`. **Not** `#` files (shell, YAML, `.properties`) — every one of
+  `.scss`/`.css`, `.html`. In a `.ts`/`.tsx` file the template literal after `template:` is an
+  Angular inline template, and an `<!-- … -->` inside it is judged exactly as one in an `.html`
+  file; any other template literal (a spec's HTML fixture, a SQL string) is opaque string
+  content. `check-comment-only.mjs` draws the same line, so removing a template comment is
+  comment-only and changing a fixture is not. **Not** `#` files (shell, YAML, `.properties`) — every one of
   those in this repo carries multi-line `#` header prose by convention — and **not** SQL
   `--` (declined by review precedent, `V9__payout_ledger.sql`).
 - **Two exemptions from the one-line rule beyond doc comments:** a block comment standing
