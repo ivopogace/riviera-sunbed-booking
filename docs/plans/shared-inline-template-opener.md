@@ -59,13 +59,13 @@ no Java, and nothing under `frontend/`.
   `scripts/inline-template.mjs` `interpolationStep(text, at, depth)` · *Pinned by:*
   `inline-template.test.mjs` "an interpolation is code counted by brace depth" + "a brace inside a
   string inside the interpolation counts"
-- [ ] **AC-3:** Given the four guards, when their sources are searched, then none holds a private
+- [x] **AC-3:** Given the four guards, when their sources are searched, then none holds a private
   opener regex or brace counter (`git grep -n 'template\\s\*:' scripts/check-*.mjs` → 0 hits;
   `git grep -n "=== '{'" scripts/check-*.mjs` → only the non-template counters focus-posture keeps
   for class bodies), and the four suites plus `guard-cli.test.mjs` are green unchanged. *Seam:* each
   guard's exported detector (`findViolations`, `strip`, `scan`) and CLI · *Pinned by:* the existing
   `check-*.test.mjs` suites + `guard-cli.test.mjs`
-- [ ] **AC-4:** Given a `.ts` file where a backtick follows `xtemplate:` and its literal holds a
+- [x] **AC-4:** Given a `.ts` file where a backtick follows `xtemplate:` and its literal holds a
   `[disabled]="busy()"` button (focus) or a bare `<button>` (touch-target), when judged, then no
   finding fires — the two guards adopt the word-bounded opener the other two already have. *Seam:*
   `check-focus-posture.mjs` `scan` and `check-touch-target.mjs` `findViolations` · *Pinned by:*
@@ -97,8 +97,8 @@ no Java, and nothing under `frontend/`.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | A guard's tail is fed differently from before (a character it used to reset on, or vice versa) and an inline template is silently read as a string — a false clean | low | med | each guard swapped alone with its suite and `guard-cli.test.mjs` as the bar; the parity ledger enumerates every difference | session | open |
-| R-2 | `check-comment-only` tested the opener on its whole stripped output; a tail fed from `stripCode`'s emitted slices misses a path (the `"""` text-block opener, a regex or `url()` slice) | low | med | every `out +=` in code state also feeds the tail; the suite's `template:`/`xtemplate:`/`.js` cases stay the bar | session | open |
+| R-1 | A guard's tail is fed differently from before (a character it used to reset on, or vice versa) and an inline template is silently read as a string — a false clean | low | med | each guard swapped alone with its suite and `guard-cli.test.mjs` as the bar; the parity ledger enumerates every difference | session | closed — four suites + the CLI harness green after each swap (`372933af`, `7e7e11be`, `0039b44d`) |
+| R-2 | `check-comment-only` tested the opener on its whole stripped output; a tail fed from `stripCode`'s emitted slices misses a path (the `"""` text-block opener, a regex or `url()` slice) | low | med | every `out +=` in code state also feeds the tail; the suite's `template:`/`xtemplate:`/`.js` cases stay the bar | session | closed — the token slice feeds the tail, a text block resets it, a string resets it; suite green (`7e7e11be`) |
 | R-3 | Sonar duplication between `inline-template.mjs` and a guard, or new-code coverage < 80% | low | low | the helper is small and fully exercised by its own suite; the guards only lose lines | session | open |
 
 ## Open questions / Assumptions
@@ -134,18 +134,18 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** PR — draft open, CI gate on the phase 4 push
 
-**Next action:** swap `check-inline-comments.mjs`'s `INLINE_TEMPLATE_OPENER`/`codeTail`/`braceDelta` for the helper; its suite + `guard-cli.test.mjs` as the bar.
+**Next action:** once CI is green, mark the PR ready for review and run the review gate (`pr-gates.md` §1); findings re-enter at Implement.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — the helper and its suite (AC-1, AC-2) | ✅ | phase-0 commit |
+| 0 — the helper and its suite (AC-1, AC-2) | ✅ | f07f7059 |
 
-| 1 — `check-inline-comments` imports it | ⏳ | |
-| 2 — `check-comment-only` imports it | | |
-| 3 — `check-focus-posture` and `check-touch-target` import it (AC-4) | | |
-| 4 — AC-3 sweep + close-out | | |
+| 1 — `check-inline-comments` imports it | ✅ | 372933af |
+| 2 — `check-comment-only` imports it | ✅ | 7e7e11be |
+| 3 — `check-focus-posture` and `check-touch-target` import it (AC-4) | ✅ | 0039b44d |
+| 4 — AC-3 sweep + close-out | ⏳ | the sweep ran clean (290 tests, no private copy left); close-out pending the gates |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -187,16 +187,17 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify each guard · Test its own suite + `guard-cli.test.mjs`
 
-- [ ] **Step 1 (phase 3 only): Write the failing AC-4 test** in the focus and touch-target suites.
-- [ ] **Step 2: Swap** the private opener and brace counter for the helper; delete the private copies.
-- [ ] **Step 3: Run** `node --test scripts/<guard>.test.mjs scripts/guard-cli.test.mjs` → PASS.
-- [ ] **Step 4: Commit** — `git commit -m "Read the inline-template opener from inline-template.mjs in <guard> (#979)"`
+- [x] **Step 1 (phase 3 only): Write the failing AC-4 test** in the focus and touch-target suites — both red on the unbounded opener.
+- [x] **Step 2: Swap** the private opener and brace counter for the helper; delete the private copies.
+- [x] **Step 3: Run** `node --test scripts/<guard>.test.mjs scripts/guard-cli.test.mjs` → PASS (121 / 111 / 162).
+- [x] **Step 4: Commit** — `git commit -m "Read the inline-template opener from inline-template.mjs in <guard> (#979)"`
 
 ## Phase 4 — AC-3 sweep + close-out
 
-- [ ] `git grep -n 'template\\s\*:' scripts/check-*.mjs` → 0 hits; `node --test "scripts/*.test.mjs"` → PASS.
-- [ ] `node scripts/check-plan-file-structure.mjs --diff origin/main` → PASS; the RV-STYLE-1 guards over the diff → clean.
-- [ ] Retire `docs/plans/inline-comment-guard-blind-spots.md`; close-out in the last code-touching commit.
+- [x] `git grep -n 'template\\s\*:' scripts/check-*.mjs` → 0 hits; `node --test "scripts/*.test.mjs"` → PASS (290).
+- [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` → PASS; the RV-STYLE-1 guards over the diff → clean.
+- [x] Retire `docs/plans/inline-comment-guard-blind-spots.md` (PR #978 merged; it cited only itself).
+- [ ] Close-out in the last code-touching commit.
 
 ---
 
@@ -210,9 +211,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1/AC-2:** `node --test scripts/inline-template.test.mjs` → PASS.
-- [ ] **AC-3:** `git grep -n 'template\\s\*:' scripts/check-*.mjs` → nothing; `node --test "scripts/*.test.mjs"` → PASS.
-- [ ] **AC-4:** `node --test scripts/check-focus-posture.test.mjs scripts/check-touch-target.test.mjs` → PASS.
+- [x] **AC-1/AC-2:** `node --test scripts/inline-template.test.mjs` → PASS (7). Verified at `f07f7059`.
+- [x] **AC-3:** `git grep -n 'template\\s\*:' scripts/check-*.mjs` → nothing; `node --test "scripts/*.test.mjs"` → PASS (290). Verified at `0039b44d`.
+- [x] **AC-4:** `node --test scripts/check-focus-posture.test.mjs scripts/check-touch-target.test.mjs` → PASS, red first at `0039b44d^`. Verified at `0039b44d`.
 
 ## Self-review checklist (before merge / PR)
 
