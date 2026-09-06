@@ -26,6 +26,7 @@ import {
   readText,
   repoRoot,
 } from './git-diff.mjs';
+import { CodeTail, INLINE_TEMPLATE_EXTENSIONS, interpolationStep } from './inline-template.mjs';
 
 /**
  * Per-extension comment syntax. An extension absent from this map is not checked at all.
@@ -34,13 +35,14 @@ import {
  * - `block` — supports `/* … *\/`, and therefore `/** … *\/` doc comments.
  * - `html` — supports `<!-- … -->`.
  * - `textBlock` — Java `"""` text blocks, whose contents must not be scanned for markers.
- * - `inlineTemplate` — a template literal after `template:` is an Angular inline template, and an
- *   `<!-- … -->` inside it is a comment; any other template literal stays opaque string content.
+ * - `inlineTemplate` — set from `inline-template.mjs`, not here: a template literal after
+ *   `template:` is an Angular inline template, and an `<!-- … -->` inside it is a comment; any other
+ *   template literal stays opaque string content.
  */
 const SYNTAX = {
   '.java': { line: '//', block: true, textBlock: true },
-  '.ts': { line: '//', block: true, inlineTemplate: true },
-  '.tsx': { line: '//', block: true, inlineTemplate: true },
+  '.ts': { line: '//', block: true },
+  '.tsx': { line: '//', block: true },
   '.js': { line: '//', block: true },
   '.mjs': { line: '//', block: true },
   '.cjs': { line: '//', block: true },
@@ -60,7 +62,10 @@ const SKILL_MARKDOWN = /^\.claude\/skills\/[^/]+\/(?:SKILL\.md|references\/.+\.m
 export function syntaxFor(path) {
   if (SKILL_MARKDOWN.test(path)) return { markdown: true };
   const dot = path.lastIndexOf('.');
-  return dot === -1 ? null : (SYNTAX[path.slice(dot).toLowerCase()] ?? null);
+  if (dot === -1) return null;
+  const extension = path.slice(dot).toLowerCase();
+  const syntax = SYNTAX[extension];
+  return syntax ? { ...syntax, inlineTemplate: INLINE_TEMPLATE_EXTENSIONS.has(extension) } : null;
 }
 
 /**
@@ -233,7 +238,7 @@ function scan(lines, syntax) {
   let interpolation = 0;
   let seenCode = false;
   // The code just before a backtick, across lines: what decides whether it opens an inline template.
-  let codeTail = '';
+  const codeTail = new CodeTail();
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -250,7 +255,7 @@ function scan(lines, syntax) {
         regions.push(open);
         c = at + terminator.length;
         open = null;
-        codeTail = '';
+        codeTail.reset();
         continue;
       }
       if (inTemplate) {
@@ -286,7 +291,7 @@ function scan(lines, syntax) {
       const ch = line[c];
       if (ch === '`') {
         inTemplate = true;
-        inlineTemplate = Boolean(syntax.inlineTemplate) && INLINE_TEMPLATE_OPENER.test(codeTail);
+        inlineTemplate = codeTail.opensInlineTemplate() && syntax.inlineTemplate;
         interpolation = 0;
         lineHasCode = true;
         c++;
@@ -295,7 +300,7 @@ function scan(lines, syntax) {
       if (ch === '"' || ch === "'") {
         c = skipString(line, c + 1, ch);
         lineHasCode = true;
-        codeTail = '';
+        codeTail.reset();
         continue;
       }
       if (syntax.line && line.startsWith(syntax.line, c)) {
@@ -306,7 +311,7 @@ function scan(lines, syntax) {
           column: c,
           wholeLine: line.slice(0, c).trim() === '',
         });
-        codeTail = '';
+        codeTail.reset();
         break;
       }
       if (syntax.block && line.startsWith('/*', c)) {
@@ -323,11 +328,11 @@ function scan(lines, syntax) {
         continue;
       }
       if (ch.trim() !== '') lineHasCode = true;
-      codeTail = `${codeTail}${ch}`.slice(-80);
+      codeTail.push(ch);
       c++;
     }
     if (lineHasCode) seenCode = true;
-    codeTail = `${codeTail}\n`.slice(-80);
+    codeTail.push('\n');
   }
 
   // An unterminated block runs to the end of the file; report it against the last line.
@@ -338,19 +343,14 @@ function scan(lines, syntax) {
   return regions;
 }
 
-/** The code before a backtick that makes its template literal an Angular inline template. */
-const INLINE_TEMPLATE_OPENER = /\btemplate\s*:\s*$/;
-
 /**
  * Scans a template literal's body from `start`, honouring backslash escapes, and stops at the first
  * of: its closing backtick (`closed`), the `<!--` of an HTML comment when the literal is an inline
  * template (`comment`, with `end` on the marker), or the end of the line — an unclosed template
- * carries to the next line. A `${…}` interpolation is code, not template text: its braces are
- * counted (`depth`, carried across lines) and nothing inside it can open a comment or close the
- * literal. Known limitation, shared with the focus and touch-target guards: a brace inside a string
- * inside the interpolation counts too, so an unbalanced one ends the interpolation early. Answering
- * with flags rather than an index is what keeps an opener standing last on its line from reading as
- * a close.
+ * carries to the next line. A `${…}` interpolation is code, not template text: `inline-template.mjs`
+ * counts its braces (`depth`, carried across lines) and nothing inside it can open a comment or close
+ * the literal. Answering with flags rather than an index is what keeps an opener standing last on its
+ * line from reading as a close.
  */
 function skipTemplate(line, start, inlineTemplate, depth) {
   let c = start;
@@ -359,14 +359,10 @@ function skipTemplate(line, start, inlineTemplate, depth) {
       c += 2;
       continue;
     }
-    if (depth > 0) {
-      depth += braceDelta(line[c]);
-      c++;
-      continue;
-    }
-    if (line.startsWith('${', c)) {
-      depth = 1;
-      c += 2;
+    const step = interpolationStep(line, c, depth);
+    if (step !== null) {
+      ({ depth } = step);
+      c = step.next;
       continue;
     }
     if (line[c] === '`') return { end: c + 1, closed: true, comment: false, depth };
@@ -374,12 +370,6 @@ function skipTemplate(line, start, inlineTemplate, depth) {
     c++;
   }
   return { end: line.length, closed: false, comment: false, depth };
-}
-
-function braceDelta(ch) {
-  if (ch === '{') return 1;
-  if (ch === '}') return -1;
-  return 0;
 }
 
 /**
