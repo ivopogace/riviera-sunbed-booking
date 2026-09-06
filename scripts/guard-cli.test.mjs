@@ -186,7 +186,7 @@ test('check-inline-comments: an added "++ " line does not re-target the lines af
 });
 
 /**
- * The defect this harness found on its first day (#619). A component whose inline template opens on
+ * The defect this harness found on its first day. A component whose inline template opens on
  * a trailing backtick — 44 files under `frontend/src/app` — inverted the scanner's template state,
  * so everything after the template read as string content and no comment in it was ever reported.
  *

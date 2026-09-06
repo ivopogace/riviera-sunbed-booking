@@ -266,7 +266,7 @@ test('keeps a Java text block open across an escaped triple quote', () => {
  *
  * <p>Not a corner: `template: \`` on its own line is how 44 components under `frontend/src/app` are
  * written, so this is a false clean over a large part of the tree the guard gates. Found by the
- * CLI harness in issue #619.
+ * CLI harness on its first day.
  */
 test('a template literal opened at end of line does not invert the scanner (#619)', () => {
   const lines = [
