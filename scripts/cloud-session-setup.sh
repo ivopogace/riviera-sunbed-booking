@@ -38,12 +38,11 @@ set -u
 export PATH="$HOME/.local/bin:$PATH"
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+# Every curl download below: HTTPS for the initial request and for any redirect.
+CURL_HTTPS_ONLY=(--proto '=https' --proto-redir '=https')
 
 # ── 1. Frontend deps (idempotent: skip when node_modules already present) ──
 FRONTEND_DIR="$PROJECT_DIR/frontend"
-# Every download below pins both the initial request and any redirect to HTTPS
-# (curl --proto / --proto-redir), so a redirect can never downgrade to plain HTTP.
-CURL_HTTPS_ONLY=(--proto '=https' --proto-redir '=https')
 if [ ! -d "$FRONTEND_DIR/node_modules" ] && [ -f "$FRONTEND_DIR/package-lock.json" ]; then
   echo "cloud-session-setup: installing frontend deps (npm ci) in $FRONTEND_DIR ..." >&2
   npm --prefix "$FRONTEND_DIR" ci \
