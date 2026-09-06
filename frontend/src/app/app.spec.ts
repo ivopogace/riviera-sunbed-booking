@@ -41,6 +41,7 @@ const operatorAuth = {
 const surfaceRoutes = () => [
   { path: 'legacy', component: BlankPage, data: { legacySurface: true } },
   { path: 'glass', component: BlankPage },
+  { path: 'my-bookings', component: BlankPage },
   { path: 'operator', component: BlankPage, data: { operatorConsole: true } },
   { path: 'operator-chrome', component: BlankPage, data: { operatorChrome: true } },
   // The operator chrome's sign-out navigates here; a resolvable target keeps that await clean.
@@ -123,6 +124,66 @@ describe('App (Liquid Glass shell, issue #134)', () => {
       .querySelector('[data-testid="mobile-menu"]')
       ?.querySelector<HTMLAnchorElement>('a[href="/my-bookings"]');
     expect(mobileLink?.textContent).toContain('My bookings');
+  });
+
+  /** The current-page marker on a nav link: `aria-current="page"`, what `routerLinkActive` sets. */
+  function current(el: HTMLElement, scope: string, link: string): boolean {
+    return el.querySelector(scope)?.querySelector(link)?.getAttribute('aria-current') === 'page';
+  }
+
+  it('marks the current page in the desktop nav and the mobile menu (touch has no hover)', async () => {
+    const { fixture, el } = shell();
+    await TestBed.inject(Router).navigate(['/my-bookings']);
+    fixture.detectChanges();
+
+    expect(current(el, '.riv-nav-desktop', 'a[href="/my-bookings"]')).toBe(true);
+    expect(current(el, '.riv-nav-desktop', 'a[href="/"]')).toBe(false);
+
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+    fixture.detectChanges();
+    // A link created after the navigation resolves its active state a microtask later.
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(current(el, '[data-testid="mobile-menu"]', 'a[href="/my-bookings"]')).toBe(true);
+    expect(current(el, '[data-testid="mobile-menu"]', 'a[href="/"]')).toBe(false);
+  });
+
+  it('marks Beaches current at the root only, and nothing on a page the nav does not list', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+    landLazyChunk();
+    await router.navigate(['/']);
+    fixture.detectChanges();
+    expect(current(el, '.riv-nav-desktop', 'a[href="/"]')).toBe(true);
+
+    await router.navigate(['/glass']);
+    fixture.detectChanges();
+    expect(el.querySelector('.riv-nav-desktop')?.querySelector('[aria-current]')).toBeNull();
+  });
+
+  it('never marks Sign in and Register current together: the mode query param decides', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+
+    await router.navigate(['/account/sign-in'], { queryParams: { mode: 'register' } });
+    fixture.detectChanges();
+    expect(current(el, '.riv-nav-desktop', '[data-testid="nav-register"]')).toBe(true);
+    expect(current(el, '.riv-nav-desktop', '[data-testid="nav-signin"]')).toBe(false);
+
+    // A returnUrl is no reason to lose the marker: the pair keys on `mode` alone.
+    await router.navigate(['/account/sign-in'], { queryParams: { returnUrl: '/my-bookings' } });
+    fixture.detectChanges();
+    expect(current(el, '.riv-nav-desktop', '[data-testid="nav-signin"]')).toBe(true);
+    expect(current(el, '.riv-nav-desktop', '[data-testid="nav-register"]')).toBe(false);
+
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+    fixture.detectChanges();
+    expect(current(el, '[data-testid="mobile-menu"]', '[data-testid="nav-signin-mobile"]')).toBe(
+      true,
+    );
+    expect(current(el, '[data-testid="mobile-menu"]', '[data-testid="nav-register-mobile"]')).toBe(
+      false,
+    );
   });
 
   it('shows Sign in and Register links in the header when signed out (S2 #111)', () => {
