@@ -8,10 +8,10 @@ import { readStorage, writeStorage } from '../shared/safe-storage';
 /**
  * PROTOTYPE — throwaway. Four variants of the tourist header on every tourist route, switchable via
  * `?variant=` and the floating bottom bar (`prototype-switcher.ts`): `current` is the shipped header
- * as the baseline; `b` to `g` are the candidates. Nothing in `prototype-header/` ships: the
+ * as the baseline; `b` to `h` are the candidates. Nothing in `prototype-header/` ships: the
  * winning variant is rebuilt test-first into `app.html`, and this folder goes with the spike branch.
  */
-export type HeaderVariantKey = 'current' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g';
+export type HeaderVariantKey = 'current' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h';
 
 export interface HeaderVariantOption {
   readonly key: HeaderVariantKey;
@@ -26,6 +26,7 @@ export const HEADER_VARIANTS: readonly HeaderVariantOption[] = [
   { key: 'e', name: 'Floating capsule — no bar, glass island' },
   { key: 'f', name: 'Search-first — the header is the search' },
   { key: 'g', name: 'Side rail — vertical nav, no top bar' },
+  { key: 'h', name: 'Two destinations — bottom tabs, find in the account menu' },
 ];
 
 const STORAGE_KEY = 'riviera-prototype-header-variant';

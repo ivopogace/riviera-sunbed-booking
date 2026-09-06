@@ -23,11 +23,13 @@ const ARROW =
       <div
         class="fixed bottom-4 left-1/2 z-70 flex -translate-x-1/2 items-center gap-1 rounded-full bg-[#111827] py-1 pr-1 pl-4 font-mono text-[12px] text-white shadow-[0_12px_32px_rgba(0,0,0,0.45)] ring-1 ring-white/20"
         [class]="
-          variants.variant() === 'c'
-            ? 'max-sm:bottom-[76px]'
-            : variants.variant() === 'g'
-              ? 'max-md:bottom-[76px]'
-              : ''
+          variants.variant() === 'h'
+            ? 'max-sm:top-[68px] max-sm:bottom-auto'
+            : variants.variant() === 'c'
+              ? 'max-sm:bottom-[76px]'
+              : variants.variant() === 'g'
+                ? 'max-md:bottom-[76px]'
+                : ''
         "
         data-testid="prototype-switcher"
         data-touch-exempt="prototype tooling, not a product control"

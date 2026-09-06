@@ -1,6 +1,6 @@
 <div
   class="relative flex min-h-screen flex-col"
-  [class.max-sm:pb-[68px]]="headerVariant() === 'c'"
+  [class.max-sm:pb-[68px]]="headerVariant() === 'c' || headerVariant() === 'h'"
   [class.max-md:pb-[68px]]="headerVariant() === 'g'"
   [class.md:pl-[88px]]="headerVariant() === 'g'"
 >
@@ -75,6 +75,9 @@
       }
       @case ('g') {
         <app-header-variant-g (findRequested)="openFind(false)" (signOutRequested)="signOut()" />
+      }
+      @case ('h') {
+        <app-header-variant-h (findRequested)="openFind(false)" (signOutRequested)="signOut()" />
       }
     }
   }

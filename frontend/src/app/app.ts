@@ -23,6 +23,7 @@ import { HeaderVariantD } from './prototype-header/header-variant-d';
 import { HeaderVariantE } from './prototype-header/header-variant-e';
 import { HeaderVariantF } from './prototype-header/header-variant-f';
 import { HeaderVariantG } from './prototype-header/header-variant-g';
+import { HeaderVariantH } from './prototype-header/header-variant-h';
 import { PrototypeHeaderVariant } from './prototype-header/prototype-header-variant';
 import { PrototypeSwitcher } from './prototype-header/prototype-switcher';
 import { TouchTarget } from './shared/touch-target';
@@ -97,6 +98,7 @@ const PRE_NAVIGATION_CHROME: RouteChrome = {
     HeaderVariantE,
     HeaderVariantF,
     HeaderVariantG,
+    HeaderVariantH,
     PrototypeSwitcher,
   ],
   templateUrl: './app.html',
