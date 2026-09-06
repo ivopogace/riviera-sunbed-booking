@@ -23,12 +23,13 @@ import { TouchTarget } from './shared/touch-target';
  *  `--riv-pop-*` family: light in porcelain/riviera, slate in the dark theme. */
 const POP =
   'absolute z-40 animate-[riv-pop_0.2s_ease] rounded-[18px] border border-riv-pop-border bg-riv-pop-surface text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none';
-const POP_ITEM =
-  'block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-riv-pop-ink [transition:background_0.12s_ease] hover:bg-riv-pop-hover';
-/** The sheet row; the current page takes the hover fill plus the popover accent ink so it reads
- *  on a phone, where `hover:` never fires (Tailwind v4 compiles it under `@media (hover: hover)`). */
-const MOBILE_ITEM =
-  'block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-riv-pop-ink hover:bg-riv-pop-hover aria-[current=page]:bg-riv-pop-hover aria-[current=page]:text-riv-pop-accent';
+/** The current page's row takes the hover fill plus the popover accent ink, on the desktop popover
+ *  and the sheet alike: it has to read on touch, where `hover:` never fires (Tailwind v4 compiles
+ *  it under `@media (hover: hover)`). */
+const CURRENT_POP_ROW =
+  'aria-[current=page]:bg-riv-pop-hover aria-[current=page]:text-riv-pop-accent';
+const POP_ITEM = `block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-riv-pop-ink [transition:background_0.12s_ease] hover:bg-riv-pop-hover ${CURRENT_POP_ROW}`;
+const MOBILE_ITEM = `block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-riv-pop-ink hover:bg-riv-pop-hover ${CURRENT_POP_ROW}`;
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
@@ -40,9 +41,9 @@ const CLS = {
   popBtn: `${POP_ITEM} cursor-pointer text-left`,
   mobileItem: MOBILE_ITEM,
   mobileBtn: `${MOBILE_ITEM} cursor-pointer`,
-  // The current page carries full ink and an accent underline: hover alone is invisible on a tablet.
+  // The current page carries full ink and an underline in that ink (an accent token would vanish on riviera's dark header glass): hover alone is invisible on a tablet.
   navLink:
-    'cursor-pointer hover:text-riv-ink aria-[current=page]:font-semibold aria-[current=page]:text-riv-ink aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:decoration-riv-accent-ink aria-[current=page]:underline-offset-[7px]',
+    'cursor-pointer hover:text-riv-ink aria-[current=page]:font-semibold aria-[current=page]:text-riv-ink aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:decoration-current aria-[current=page]:underline-offset-[7px]',
 } as const;
 
 /** `routerLinkActive` matching for the header's plain-path links: the path alone, so Beaches (`/`)

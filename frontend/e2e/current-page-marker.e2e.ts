@@ -61,10 +61,23 @@ test.describe('tablet: the inline nav', () => {
 
     await expect(current).toHaveCSS('color', 'rgb(10, 42, 51)');
     await expect(current).toHaveCSS('text-decoration-line', 'underline');
-    await expect(current).toHaveCSS('text-decoration-color', 'rgb(8, 90, 110)');
+    // The underline takes the link's own ink: an accent token would vanish on riviera's dark glass.
+    await expect(current).toHaveCSS('text-decoration-color', 'rgb(10, 42, 51)');
     await expect(current).toHaveCSS('font-weight', '600');
     await expect(other).toHaveCSS('color', 'rgba(12, 42, 51, 0.7)');
     await expect(other).toHaveCSS('text-decoration-line', 'none');
+  });
+
+  test('marks Your account current inside the signed-in account menu', async ({ page }) => {
+    await page.route(/\/api\/auth\/me$/, (route) =>
+      route.fulfill({ json: { username: 'ana@example.com', principalType: 'CUSTOMER' } }),
+    );
+    await page.goto('/account/password');
+    await openShellOverlay(page, 'nav-user');
+    const link = page.getByTestId('nav-account-link');
+    await expect(link).toHaveAttribute('aria-current', 'page');
+    await expect(link).toHaveCSS('color', 'rgb(10, 110, 133)');
+    await expect(link).toHaveCSS('background-color', 'rgba(12, 42, 51, 0.06)');
   });
 
   test('Beaches is current at the root only', async ({ page }) => {

@@ -17,7 +17,9 @@ Sign in / Register pair shares one URL and differs only by `mode=register`, whic
 `routerLinkActive` cannot key on (subset matching lights both, exact matching unlights Sign in
 under a `returnUrl`), so the pair is a `computed()` over Angular 22's `isActive()` signal and
 `Router.lastSuccessfulNavigation()`. The marker paints through the `aria-[current=page]` compound
-selector — the operator-console and admin-tabs precedent — with tokens only.
+selector — the operator-console and admin-tabs precedent — with tokens only; the inline underline
+is drawn in the link's own ink (`decoration-current`), since `--riv-accent-ink` has no riviera
+override and would sit at ~1.6:1 on that theme's dark header glass.
 
 **Persistence:** JDBC only (invariant #1). No tables or migrations — the slice is the Angular app
 shell and its specs.
@@ -32,7 +34,8 @@ each — an RV-PROC-1 miss, recorded here rather than papered over; the re-check
 · `riviera-plan-doc` (this template — forced every AC onto a named seam and the two
 generalization sweeps below) · `tdd` (three shell specs red first — 3 failed / 36 passed — then
 green; the e2e proof run against the pre-fix shell fails 4 of 4) · `riviera-review-overlay`
-(review gate — at ready-for-review) · `riviera-docs-freshness` (`N/A — no substrate doc states
+(review gate — ran at ready-for-review over the verified range; F-1 and F-2 came out of it and were
+fixed test-first, then the fix re-walked RV-FE-7 and RV-FE-E2E) · `riviera-docs-freshness` (`N/A — no substrate doc states
 the tourist header's nav cues or the shell's route-state mechanism`; re-checked at close-out)
 · `riviera-frontend` (the shell stays in `app.ts`/`app.html`; the proof lands in the mocked
 CI-safe e2e suite, not `real-backend/`) · `riviera-tailwind` (tokens only, no theme named in the
@@ -63,8 +66,11 @@ touch emulation.
 
 - [x] **AC-1:** Given the shell at `/my-bookings`, when the header renders (and the hamburger
   sheet is opened), then the desktop and mobile My bookings links carry `aria-current="page"`
-  and the Beaches links do not. *Seam:* the shell's header DOM under `provideRouter` ·
-  *Pinned by:* `app.spec.ts` › `marks the current page in the desktop nav and the mobile menu (touch has no hover)`
+  and the Beaches links do not; given a signed-in tourist at `/account/password`, the Your
+  account link is current in the account popover and in the sheet. *Seam:* the shell's header
+  DOM under `provideRouter` · *Pinned by:* `app.spec.ts` ›
+  `marks the current page in the desktop nav and the mobile menu (touch has no hover)` and
+  `marks Your account current in the account menu and the mobile sheet on the account page`
 - [x] **AC-2:** Given the shell at `/`, then Beaches is current; given a page the nav does not
   list, then no nav anchor carries `aria-current`. *Seam:* as AC-1 · *Pinned by:*
   `app.spec.ts` › `marks Beaches current at the root only, and nothing on a page the nav does not list`
@@ -79,8 +85,9 @@ touch emulation.
 - [x] **AC-5:** Given a 390 px phone and an 820 px tablet with touch, then
   `matchMedia('(hover: hover)').matches` is false, the current link carries the marker, and its
   computed colour / underline / weight / fill differ from the inactive link's — and all four
-  checks fail on the pre-fix shell. *Seam:* the served app in Chromium (`page.route`-mocked
-  API) · *Pinned by:* `e2e/current-page-marker.e2e.ts` (4 tests)
+  checks fail on the pre-fix shell; and the signed-in account popover's current row renders the
+  accent ink on the hover fill. *Seam:* the served app in Chromium (`page.route`-mocked
+  API) · *Pinned by:* `e2e/current-page-marker.e2e.ts` (5 tests)
 
 ## Non-goals
 
@@ -106,7 +113,7 @@ click handler; the marker is additive.
 | R-2 | Sign in lights under `?mode=register` (subset) or unlights under a `returnUrl` (exact) | high | med | the pair is a `computed()` keyed on `mode`; AC-3 | agent | closed — db53178 |
 | R-3 | `RouterLinkActive` sets `aria-current` in a `queueMicrotask`, so a link created after the navigation (the sheet) is unmarked on the first `detectChanges` | high | low | the spec awaits `whenStable()` after opening the sheet; the e2e uses auto-retrying `expect` | agent | closed — 6f64010 |
 | R-4 | Popover accent ink over the hover fill could miss AA in the dark theme | low | high | AC-4 contrast pair over every stop, both themes | agent | closed — 6f64010 |
-| R-5 | `decoration-riv-accent-ink` might not be generated from the `@theme inline` colour token | low | med | the e2e asserts the computed `text-decoration-color` is the porcelain accent `rgb(8, 90, 110)`; Tailwind's `text-decoration-color` doc confirms `--color-*` generates `decoration-*` | agent | closed — 6f64010 |
+| R-5 | The accent underline token is themed for dark only: on riviera it stays `#085a6e` over dark navy header glass (~1.6:1), so the marker's underline vanishes there | high | med | review finding F-2: the underline takes the link's own ink (`decoration-current`), which the existing ink-on-header-glass pairs already prove AA in all three themes; the e2e pins `text-decoration-color` = the porcelain ink | agent | closed — review-fix commit |
 | R-6 | The signal form reads `mode` from a source that could lag the path test (`isActive()`) | low | med | both read `lastSuccessfulNavigation().finalUrl`; the router sets that signal on the line before it emits `NavigationEnd`, after `routerState` is assigned (verified in `@angular/router` 22.1.4) | agent | closed — db53178 |
 | R-7 | Skill-routing gate ran partially before the first edit (RV-PROC-1) | — | low | recorded in *Skills consulted*; the late-loaded skills were used to re-check the shipped code and changed nothing | agent | closed — this plan |
 
@@ -154,18 +161,18 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft open, CI gate`
+**Stage pointer:** `DONE — merged via PR #985`
 
-**Next action:** watch the draft's CI run; on green, merge latest `origin/main`, mark ready for
-review, and run the review gate per `riviera-sdlc` `references/pr-gates.md` §1.
+**Next action:** none — the close-out is written here; at the next close-out this plan is
+retired (`riviera-docs-freshness` § *Plan-doc retirement*).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Unit specs red → green (AC-1..3), contrast pair (AC-4), the fix | ✅ | 6f64010 |
 | 1 — Browser proof on emulated phone + tablet (AC-5), negative run on the pre-fix shell | ✅ | 6f64010 |
 | 2 — Auth pair on router signals (maintainer preference) | ✅ | db53178 |
-| 3 — Plan doc, issue #984, draft PR | ✅ | this commit |
-| 4 — Review gate, Sonar gate, close-out | | |
+| 3 — Plan doc, issue #984, draft PR | ✅ | 963a0c0 |
+| 4 — Review gate (F-1, F-2 fixed), Sonar gate, close-out | ✅ | review-fix commit (the last code-touching commit of PR #985) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -173,6 +180,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (in-code-comment pass; scored 75) | The desktop account popover's Your account link received `aria-current` but its `POP_ITEM` skin had no current-page styling, unlike the sheet row; no spec pinned the account links | fixed — `CURRENT_POP_ROW` shared by both skins; unit spec + tablet e2e pin it |
+| F-2 | review (in-code-comment pass; scored 55, verified by hand) | `decoration-riv-accent-ink` on the header: the token has no riviera override, ~1.6:1 on that theme's header glass | fixed — `decoration-current`; e2e pins the ink as the underline colour |
+| S-1 | sonar | Quality gate passed on the API: 0 open issues, 99 new lines, 100 % new-code coverage, 0 duplicated blocks; the SonarCloud Code Analysis check concluded success | clear |
 
 ---
 
@@ -247,10 +257,10 @@ and the auth pair's marker from the `mode` query param; the `aria-[current=page]
 
 ## Phase 4 — Review gate, Sonar gate, close-out
 
-- [ ] Merge latest `origin/main`; mark ready for review.
-- [ ] Review gate per `references/pr-gates.md` §1 (range resolved off the PR, `/code-review` + overlay).
-- [ ] Sonar gate per §2 (list pulled from the API, not the gate colour).
-- [ ] Close-out per §3, written in the last code-touching commit.
+- [x] `origin/main` unchanged since the branch point (no merge-in needed); marked ready for review.
+- [x] Review gate per `references/pr-gates.md` §1: range `53c732c7..963a0c01` verified by `check-review-range.mjs` against the PR (6 files, +549/−9); `code-review:code-review` rung 1 with the overlay's RV-FE-1/7/E2E/8/9, RV-STYLE-1/2, RV-PROC-1 walked; five reviewers, two findings (F-1, F-2), both fixed test-first; re-review of the fix commit re-walked RV-FE-7 (tokens only, the pairing already proven) and RV-FE-E2E (the new spec in the mocked suite).
+- [x] Sonar gate per §2: S-1 above, read from `api/issues/search` and `api/measures/component`.
+- [x] Close-out per §3, written in this, the last code-touching commit; `merged via PR #985`.
 
 ---
 
@@ -259,15 +269,16 @@ and the auth pair's marker from the `mode` query param; the `aria-[current=page]
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-06 | 6f64010 / phase 0 | Navigation links in a shared chrome whose only cue is a `hover:` utility (compiled under `(hover: hover)`) | `grep -rn "routerLink" frontend/src/app/app.html frontend/src/app/operator/operator-chrome.ts frontend/src/app/admin/admin-console.ts frontend/src/app/operator/operator-console.html frontend/src/app/admin/admin-console-tabs.ts` | tourist header (7 links, no marker); operator-console tabs and admin tabs (`routerLinkActive` + `aria-current` already); operator chrome and admin console (a brand link and a Sign in link only) | fix the tourist header; the rest need nothing |
+| 2026-09-06 | review fix / phase 4 | A `--riv-accent-ink` consumer painted on a surface that is dark in riviera (the token has no riviera override) | `grep -rl "riv-accent-ink" frontend/src/app` (120 hits in 4 source files + specs), then the files that also paint a riviera-dark surface: `grep -l "riv-header-glass\|riv-hero\|riv-blob\|riv-bg\b"` over them — `home.html`, `venue-map.html`, `operator-password.ts` | the header nav underline (this diff); `home.html`'s result count and from-prices sit on card glass (proven by `home.contrast.spec.ts` › `accent ink … meets AA on the card glass`); `venue-map.html`'s free count sits on panel glass; the operator page is porcelain-pinned; `home.html`'s three hero filter controls draw a `focus-visible` ring in accent ink, 2 px offset onto the riviera scrim — unproven, pre-existing | fix the header underline (`decoration-current`); the hero focus ring → #986 |
 | 2026-09-06 | db53178 / phase 2 | Route state derived from a `toSignal` over `NavigationEnd` events where a router signal now exists | `grep -rl NavigationEnd frontend/src/app --include=*.ts \| grep -v spec` | `app.ts` (routeChrome + the overlay-id skip), `operator-chrome.ts`, `operator-console.ts`, `admin-console.ts`, `admin-console-tabs.ts`, `find-booking.ts` (a comment only) | auth pair migrated here; the rest deferred → #981 (shell + shared helper), #982 (operator), #983 (admin); the overlay-id skip stays event-driven by design |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1..3:** Run `cd frontend && npx ng test --watch=false --include="src/app/app.spec.ts"` → 39 passed. Verified at db53178.
+- [x] **AC-1..3:** Run `cd frontend && npx ng test --watch=false --include="src/app/app.spec.ts"` → 40 passed. Verified at the review-fix commit.
 - [x] **AC-4:** Run `cd frontend && npx ng test --watch=false --include="src/app/app.contrast.spec.ts"` → passed. Verified at 6f64010.
-- [x] **AC-5:** Run `cd frontend && PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/current-page-marker.e2e.ts` → 4 passed (4 failed with `app.ts`/`app.html` stashed). Verified at db53178.
+- [x] **AC-5:** Run `cd frontend && PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts e2e/current-page-marker.e2e.ts` → 5 passed (4 of the original 4 failed with `app.ts`/`app.html` stashed; the two review-fix checks failed before the fix). Verified at the review-fix commit.
 
 ## Self-review checklist (before merge / PR)
 
@@ -286,5 +297,5 @@ and the auth pair's marker from the `mode` query param; the `aria-[current=page]
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register.
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — due at phase 4.
-- [ ] **The review gate ran in full** — due at ready-for-review.
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — this commit, citing `merged via PR #985`.
+- [x] **The review gate ran in full** — rung 1 (`code-review:code-review`) plus `riviera-review-overlay`, range verified off the PR; findings F-1 and F-2 fixed in the loop.

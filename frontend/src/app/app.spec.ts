@@ -42,6 +42,7 @@ const surfaceRoutes = () => [
   { path: 'legacy', component: BlankPage, data: { legacySurface: true } },
   { path: 'glass', component: BlankPage },
   { path: 'my-bookings', component: BlankPage },
+  { path: 'account/password', component: BlankPage },
   { path: 'operator', component: BlankPage, data: { operatorConsole: true } },
   { path: 'operator-chrome', component: BlankPage, data: { operatorChrome: true } },
   // The operator chrome's sign-out navigates here; a resolvable target keeps that await clean.
@@ -159,6 +160,30 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     await router.navigate(['/glass']);
     fixture.detectChanges();
     expect(el.querySelector('.riv-nav-desktop')?.querySelector('[aria-current]')).toBeNull();
+  });
+
+  it('marks Your account current in the account menu and the mobile sheet on the account page', async () => {
+    customerAuth.signedIn.set(true);
+    customerAuth.email.set('ana@example.com');
+    const { fixture, el } = shell();
+    await TestBed.inject(Router).navigate(['/account/password']);
+    fixture.detectChanges();
+
+    el.querySelector<HTMLButtonElement>('[data-testid="nav-user"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(
+      current(el, '[data-testid="nav-account-menu"]', '[data-testid="nav-account-link"]'),
+    ).toBe(true);
+
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(
+      current(el, '[data-testid="mobile-menu"]', '[data-testid="nav-account-link-mobile"]'),
+    ).toBe(true);
   });
 
   it('never marks Sign in and Register current together: the mode query param decides', async () => {
