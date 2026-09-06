@@ -186,12 +186,12 @@ test('check-inline-comments: an added "++ " line does not re-target the lines af
 });
 
 /**
- * The defect this harness found on its first day (#619). A component whose inline template opens on
+ * The defect this harness found on its first day. A component whose inline template opens on
  * a trailing backtick — 44 files under `frontend/src/app` — inverted the scanner's template state,
  * so everything after the template read as string content and no comment in it was ever reported.
  *
- * <p>Mutation: restore `line[c - 1] !== '`'` as the sole open condition in `scan`. This case then
- * exits 0, which is what the whole tree's gate looked like before.
+ * <p>Mutation: have `scan` clear `inTemplate` whenever `skipTemplate` reaches the end of a line, as
+ * a close. This case then exits 0, which is what the whole tree's gate looked like before.
  */
 test('check-inline-comments: an inline Angular template does not hide a later comment', () => {
   withRepo((repo) => {
@@ -216,6 +216,34 @@ test('check-inline-comments: an inline Angular template does not hide a later co
 
     assert.equal(result.status, 1);
     assert.match(result.stderr, /pricing-tab\.ts:8-9/);
+  });
+});
+
+/**
+ * The scanner read a `template:` literal as opaque string content, so the HTML comments an Angular
+ * inline template carries — where this repo writes most of its template comments — were never
+ * judged at all: a two-line one with an issue number in it went through `--files` clean.
+ *
+ * <p>Mutation: make `INLINE_TEMPLATE_OPENER` never match. This case then exits 0.
+ */
+test('check-inline-comments --files judges an HTML comment inside an inline template', () => {
+  withRepo((repo) => {
+    repo.write(TS, lines(
+      '@Component({',
+      '  template: `',
+      '    <!-- A two-line HTML comment inside an inline template,',
+      '         carrying provenance (#923) as well. -->',
+      '    <p>Pricing</p>',
+      '  `,',
+      '})',
+      'export class PricingTab {}',
+    ));
+
+    const result = repo.run(INLINE, ['--files', TS]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /pricing-tab\.ts:3-4  multiline/);
+    assert.match(result.stderr, /pricing-tab\.ts:4-4  provenance/);
   });
 });
 
@@ -1120,6 +1148,28 @@ test('check-comment-only inspects a code change that is only in the working tree
 
     assert.equal(result.status, 1, result.stdout);
     assert.match(result.stderr, /Not comment-only/);
+  });
+});
+
+/**
+ * `strip` read a `template:` literal as opaque string content, so removing one `<!-- -->` line from
+ * an inline Angular template left the stripped sides different and the by-hand verifier answered
+ * "Not comment-only" on a diff whose every change was a comment.
+ *
+ * <p>Mutation: make `TEMPLATE_KEY` never match. This case then exits 1.
+ */
+test('check-comment-only passes when only an HTML comment left an inline template', () => {
+  withRepo((repo) => {
+    const component = (...rows) =>
+      lines('@Component({', '  template: `', ...rows, '    <p>Pricing</p>', '  `,', '})', 'export class PricingTab {}');
+    repo.write(TS, component('    <!-- Above the @if on purpose: a live region must outlive its branch. -->'));
+    const before = repo.commit('base');
+    repo.write(TS, component());
+
+    const result = repo.run(COMMENT_ONLY, [before]);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Comment-only: 1 file\(s\) verified code-identical/);
   });
 });
 

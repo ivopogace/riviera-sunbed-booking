@@ -29,6 +29,17 @@ import { changedPaths, git, nameOnlyArgs, readText, resolveBase } from './git-di
 /** Extensions whose comment syntax `strip` understands. Anything else is skipped, not assumed safe. */
 const SUPPORTED = new Set(['.java', '.ts', '.tsx', '.js', '.mjs', '.cjs', '.scss', '.css']);
 
+/**
+ * The code before a backtick that makes its template literal an Angular inline template, where an
+ * `<!-- … -->` is a comment — in a TypeScript file only. In any other template literal it is string
+ * content: a spec's HTML fixture is code, and reporting a change to it as comment-only is the false
+ * clean this tool must never give.
+ */
+const TEMPLATE_KEY = /\btemplate\s*:\s*$/;
+
+/** The extensions whose `template:` literal is an Angular inline template. */
+const INLINE_TEMPLATE_EXTENSIONS = new Set(['.ts', '.tsx']);
+
 /** Characters after which a `/` opens a regex literal rather than dividing. */
 const REGEX_PRECEDERS = new Set(
   ['(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '}', ';', '+', '-', '*', '%', '~', '^', '<', '>'],
@@ -100,98 +111,151 @@ function readUnquotedUrl(src, i) {
 /**
  * Removes comments while honouring string, template, char, Java text-block, JS regex-literal and CSS
  * unquoted-`url()` state, so a `//` inside a URL or a `/*` inside a string or character class is kept as
- * the code it is.
+ * the code it is — and an `<!-- … -->` inside an Angular inline template is removed as the comment it is,
+ * while a `${…}` interpolation inside that template stays the code it is.
  *
  * <p>Known limitation: the final normalization collapses whitespace on every line, including inside a
  * Java text block, whose compiled value depends on its minimum common indentation. A re-indent of a text
  * block would therefore compare equal. Out of scope for a comment-only sweep, which never re-indents;
- * if this tool is ever pointed at a formatting change, that case needs handling first.
+ * if this tool is ever pointed at a formatting change, that case needs handling first. Second known
+ * limitation, shared with `check-inline-comments.mjs`: inside an inline template's `${…}` a brace
+ * inside a string counts, so an unbalanced one ends the interpolation early.
  *
  * @param {string} src file contents
+ * @param {string} [extension] the file's extension, e.g. `.ts`; decides whether a `template:` literal
+ *   is an inline template
  * @returns {string} code-only lines, trimmed and whitespace-collapsed, blanks dropped
  */
-export function strip(src) {
-  let out = '';
-  let i = 0;
-  let state = 'code';
-  let quote = '';
+export function strip(src, extension = '') {
+  const scan = {
+    src,
+    out: '',
+    i: 0,
+    state: 'code',
+    quote: '',
+    interpolation: 0,
+    inlineTemplates: INLINE_TEMPLATE_EXTENSIONS.has(extension),
+  };
 
-  while (i < src.length) {
-    const two = src.slice(i, i + 2);
-    if (state === 'code') {
-      if (src.startsWith('"""', i)) {
-        state = 'text';
-        out += '"""';
-        i += 3;
-      } else if (two === '//') {
-        state = 'line';
-        i += 2;
-      } else if (two === '/*') {
-        state = 'block';
-        i += 2;
-      } else if (src[i] === '"' || src[i] === "'" || src[i] === '`') {
-        state = 'str';
-        quote = src[i];
-        out += src[i];
-        i++;
-      } else {
-        // An unquoted url() and a regex literal both hide `/` sequences the comment checks would eat.
-        const urlEnd = src[i] === 'u' || src[i] === 'U' ? readUnquotedUrl(src, i) : -1;
-        if (urlEnd !== -1) {
-          out += src.slice(i, urlEnd);
-          i = urlEnd;
-          continue;
-        }
-        const regexEnd = src[i] === '/' && opensRegex(out) ? readRegex(src, i) : -1;
-        if (regexEnd !== -1) {
-          out += src.slice(i, regexEnd);
-          i = regexEnd;
-          continue;
-        }
-        out += src[i];
-        i++;
-      }
-      continue;
-    }
-    if (state === 'text' || state === 'str') {
-      if (src[i] === '\\') {
-        out += src.slice(i, i + 2);
-        i += 2;
-        continue;
-      }
-      if (state === 'text' && src.startsWith('"""', i)) {
-        state = 'code';
-        out += '"""';
-        i += 3;
-        continue;
-      }
-      if (state === 'str' && src[i] === quote) state = 'code';
-      out += src[i];
-      i++;
-      continue;
-    }
-    if (state === 'line') {
-      if (src[i] === '\n') {
-        state = 'code';
-        out += '\n';
-      }
-      i++;
-      continue;
-    }
-    if (two === '*/') {
-      state = 'code';
-      i += 2;
-      continue;
-    }
-    if (src[i] === '\n') out += '\n';
-    i++;
+  while (scan.i < src.length) {
+    if (scan.state === 'code') stripCode(scan);
+    else if (scan.state === 'line') stripLineComment(scan);
+    else if (scan.state === 'block') stripBlockComment(scan);
+    else stripQuoted(scan);
   }
 
-  return out
+  return scan.out
     .split('\n')
     .map((line) => line.trim().replace(/\s+/g, ' '))
     .filter((line) => line !== '')
     .join('\n');
+}
+
+/** One step in code: a comment or a quote opens, or one code token is copied through. */
+function stripCode(scan) {
+  const { src, i } = scan;
+  const two = src.slice(i, i + 2);
+  if (src.startsWith('"""', i)) {
+    scan.state = 'text';
+    scan.out += '"""';
+    scan.i += 3;
+    return;
+  }
+  if (two === '//' || two === '/*') {
+    scan.state = two === '//' ? 'line' : 'block';
+    scan.i += 2;
+    return;
+  }
+  if (src[i] === '"' || src[i] === "'" || src[i] === '`') {
+    openQuoted(scan);
+    return;
+  }
+  // An unquoted url() and a regex literal both hide `/` sequences the comment checks would eat.
+  const urlEnd = src[i] === 'u' || src[i] === 'U' ? readUnquotedUrl(src, i) : -1;
+  const regexEnd = src[i] === '/' && opensRegex(scan.out) ? readRegex(src, i) : -1;
+  const end = Math.max(urlEnd, regexEnd, i + 1);
+  scan.out += src.slice(i, end);
+  scan.i = end;
+}
+
+/** Opens a string, or the inline template that a `template:` backtick in a TypeScript file is. */
+function openQuoted(scan) {
+  const ch = scan.src[scan.i];
+  const inlineTemplate = ch === '`' && scan.inlineTemplates && TEMPLATE_KEY.test(scan.out);
+  scan.state = inlineTemplate ? 'template' : 'str';
+  scan.quote = ch;
+  scan.out += ch;
+  scan.i++;
+}
+
+/** One step inside a string, a Java text block, or an inline template: copied through, comments aside. */
+function stripQuoted(scan) {
+  const { src, i, state } = scan;
+  if (src[i] === '\\') {
+    scan.out += src.slice(i, i + 2);
+    scan.i += 2;
+    return;
+  }
+  if (state === 'text' && src.startsWith('"""', i)) {
+    scan.state = 'code';
+    scan.out += '"""';
+    scan.i += 3;
+    return;
+  }
+  if (state === 'template' && (copyInterpolation(scan) || skipHtmlComment(scan))) return;
+  if (state !== 'text' && src[i] === scan.quote) scan.state = 'code';
+  scan.out += src[i];
+  scan.i++;
+}
+
+/** Copies one character of an open `${…}`, or opens one; false when the scan is in template text. */
+function copyInterpolation(scan) {
+  const { src, i } = scan;
+  if (scan.interpolation > 0) {
+    scan.interpolation += braceDelta(src[i]);
+    scan.out += src[i];
+    scan.i++;
+    return true;
+  }
+  if (!src.startsWith('${', i)) return false;
+  scan.interpolation = 1;
+  scan.out += '${';
+  scan.i += 2;
+  return true;
+}
+
+function braceDelta(ch) {
+  if (ch === '{') return 1;
+  if (ch === '}') return -1;
+  return 0;
+}
+
+/** Drops an `<!-- … -->` where the scan stands; false when none opens there. */
+function skipHtmlComment(scan) {
+  const { src, i } = scan;
+  if (!src.startsWith('<!--', i)) return false;
+  const end = src.indexOf('-->', i + 4);
+  scan.i = end === -1 ? src.length : end + 3;
+  return true;
+}
+
+function stripLineComment(scan) {
+  if (scan.src[scan.i] === '\n') {
+    scan.state = 'code';
+    scan.out += '\n';
+  }
+  scan.i++;
+}
+
+function stripBlockComment(scan) {
+  const { src, i } = scan;
+  if (src.startsWith('*/', i)) {
+    scan.state = 'code';
+    scan.i += 2;
+    return;
+  }
+  if (src[i] === '\n') scan.out += '\n';
+  scan.i++;
 }
 
 /** The base side of a file, or null when that revision does not hold it. */
@@ -247,7 +311,7 @@ export function check(from) {
       continue;
     }
     verified++;
-    if (strip(before) !== strip(after)) codeChanged.push(path);
+    if (strip(before, extensionOf(path)) !== strip(after, extensionOf(path))) codeChanged.push(path);
   }
   return { codeChanged, skipped, unreadable, verified };
 }
