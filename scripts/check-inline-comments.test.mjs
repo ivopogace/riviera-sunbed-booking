@@ -424,3 +424,76 @@ test('a comment opener is not a citing slash, and a generic word is not a citing
   assert.deepEqual(at('// the #413/#420 failure, paid for once'), ['provenance']);
   assert.deepEqual(at('// closed in #952 with a shared resolver'), ['provenance']);
 });
+
+/** The issue's own probe: an inline Angular template whose HTML comment breaks both gating rules. */
+const INLINE_TEMPLATE = [
+  '@Component({',
+  "  selector: 'app-probe',",
+  '  template: `',
+  '    <!-- A deliberately multi-line HTML comment inside an Angular inline template',
+  '         that also carries provenance (#923) to see whether the guard scans it. -->',
+  '    <p>hi</p>',
+  '  `,',
+  '})',
+  'export class Probe {}',
+];
+
+test('flags a multi-line HTML comment inside an inline Angular template', () => {
+  const violations = findViolations({
+    path: 'frontend/src/app/probe.ts',
+    lines: INLINE_TEMPLATE,
+    added: new Set(INLINE_TEMPLATE.map((_, i) => i + 1)),
+  });
+
+  assert.deepEqual(
+    multiline(violations).map(({ line, endLine }) => ({ line, endLine })),
+    [{ line: 4, endLine: 5 }],
+  );
+});
+
+test("reports provenance inside an inline Angular template's HTML comment", () => {
+  const violations = findViolations({
+    path: 'frontend/src/app/probe.ts',
+    lines: INLINE_TEMPLATE,
+    added: new Set([5]),
+  });
+
+  assert.deepEqual(
+    violations.map(({ line, rule }) => ({ line, rule })),
+    [{ line: 5, rule: 'provenance' }],
+  );
+});
+
+test('a template literal that is not an inline template keeps its HTML comment as string content', () => {
+  const lines = [
+    'const fixture = `',
+    '  <!-- a two-line HTML comment in a spec fixture',
+    '       is test data, not a comment -->',
+    '`;',
+  ];
+
+  const violations = findViolations({
+    path: 'frontend/src/app/probe.spec.ts',
+    lines,
+    added: new Set([1, 2, 3, 4]),
+  });
+
+  assert.deepEqual(violations, []);
+});
+
+test('the code after an inline template closes is still scanned', () => {
+  const lines = [
+    ...INLINE_TEMPLATE.slice(0, 8),
+    'export class Probe {',
+    '  rate = 1; /* the commission, in basis points —',
+    '     set per venue */',
+    '}',
+  ];
+
+  const violations = findViolations({ path: 'frontend/src/app/probe.ts', lines, added: new Set([10, 11]) });
+
+  assert.deepEqual(
+    violations.map(({ line, endLine, rule }) => ({ line, endLine, rule })),
+    [{ line: 10, endLine: 11, rule: 'multiline' }],
+  );
+});

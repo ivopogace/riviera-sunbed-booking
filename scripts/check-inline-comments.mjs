@@ -34,11 +34,13 @@ import {
  * - `block` — supports `/* … *\/`, and therefore `/** … *\/` doc comments.
  * - `html` — supports `<!-- … -->`.
  * - `textBlock` — Java `"""` text blocks, whose contents must not be scanned for markers.
+ * - `inlineTemplate` — a template literal after `template:` is an Angular inline template, and an
+ *   `<!-- … -->` inside it is a comment; any other template literal stays opaque string content.
  */
 const SYNTAX = {
   '.java': { line: '//', block: true, textBlock: true },
-  '.ts': { line: '//', block: true },
-  '.tsx': { line: '//', block: true },
+  '.ts': { line: '//', block: true, inlineTemplate: true },
+  '.tsx': { line: '//', block: true, inlineTemplate: true },
   '.js': { line: '//', block: true },
   '.mjs': { line: '//', block: true },
   '.cjs': { line: '//', block: true },
@@ -224,6 +226,7 @@ function scan(lines, syntax) {
   let open = null;
   let inTextBlock = false;
   let inTemplate = false;
+  let inlineTemplate = false;
   let seenCode = false;
 
   for (let i = 0; i < lines.length; i++) {
@@ -232,12 +235,6 @@ function scan(lines, syntax) {
     let lineHasCode = false;
 
     while (c < line.length) {
-      if (inTemplate) {
-        c = skipString(line, c, '`');
-        if (c <= line.length && line[c - 1] === '`') inTemplate = false;
-        lineHasCode = true;
-        continue;
-      }
       if (open) {
         const terminator = open.kind === 'html' ? '-->' : '*/';
         const at = line.indexOf(terminator, c);
@@ -247,6 +244,17 @@ function scan(lines, syntax) {
         regions.push(open);
         c = at + terminator.length;
         open = null;
+        continue;
+      }
+      if (inTemplate) {
+        const { end, closed, comment } = skipTemplate(line, c, inlineTemplate);
+        lineHasCode = true;
+        c = end;
+        if (closed) inTemplate = false;
+        if (comment) {
+          open = { kind: 'html', startLine: i, column: c, isDoc: false, isFileHeader: false };
+          c += 4;
+        }
         continue;
       }
       if (inTextBlock) {
@@ -268,11 +276,15 @@ function scan(lines, syntax) {
         continue;
       }
       const ch = line[c];
-      if (ch === '"' || ch === "'" || ch === '`') {
-        const body = c + 1;
-        c = skipString(line, body, ch);
-        // An unclosed template carries to the next line; `c === body` is the opener standing last.
-        if (ch === '`' && (c === body || line[c - 1] !== '`')) inTemplate = true;
+      if (ch === '`') {
+        inTemplate = true;
+        inlineTemplate = Boolean(syntax.inlineTemplate) && INLINE_TEMPLATE_OPENER.test(line.slice(0, c));
+        lineHasCode = true;
+        c++;
+        continue;
+      }
+      if (ch === '"' || ch === "'") {
+        c = skipString(line, c + 1, ch);
         lineHasCode = true;
         continue;
       }
@@ -313,12 +325,33 @@ function scan(lines, syntax) {
   return regions;
 }
 
+/** The code before a backtick that makes its template literal an Angular inline template. */
+const INLINE_TEMPLATE_OPENER = /\btemplate\s*:\s*$/;
+
 /**
- * Scans from `start` to just past the closing `quote`, honouring backslash escapes. When the quote
- * never closes on this line the end of the line is returned, so the caller can tell the two apart
- * by checking whether the character before the returned index is the quote — **and whether the
- * scan moved at all**: an opener standing last on its line returns `start` itself, where the
- * character before is that opener, which read as a close and inverted the caller's state (#619).
+ * Scans a template literal's body from `start`, honouring backslash escapes, and stops at the first
+ * of: its closing backtick (`closed`), the `<!--` of an HTML comment when the literal is an inline
+ * template (`comment`, with `end` on the marker), or the end of the line — an unclosed template
+ * carries to the next line. Answering with flags rather than an index is what keeps an opener
+ * standing last on its line from reading as a close.
+ */
+function skipTemplate(line, start, inlineTemplate) {
+  let c = start;
+  while (c < line.length) {
+    if (line[c] === '\\') {
+      c += 2;
+      continue;
+    }
+    if (line[c] === '`') return { end: c + 1, closed: true, comment: false };
+    if (inlineTemplate && line.startsWith('<!--', c)) return { end: c, closed: false, comment: true };
+    c++;
+  }
+  return { end: line.length, closed: false, comment: false };
+}
+
+/**
+ * Scans from `start` to just past the closing `quote`, honouring backslash escapes; a quote that
+ * never closes on this line returns the end of the line, and a `"` or `'` string never spans lines.
  */
 function skipString(line, start, quote) {
   let c = start;

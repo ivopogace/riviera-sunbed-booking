@@ -115,14 +115,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** plan → implement (phase 0)
+**Stage pointer:** implement (phase 1)
 
-**Next action:** write the red test for AC-1 in `check-inline-comments.test.mjs`.
+**Next action:** write the red test for AC-3 (`// #923's widget …`) in `check-inline-comments.test.mjs`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — inline template as an HTML region (AC-1, AC-2) | ⏳ | |
-| 1 — sentence-opening `#NNN` (AC-3) | | |
+| 0 — inline template as an HTML region (AC-1, AC-2) | ✅ | phase-0 commit |
+| 1 — sentence-opening `#NNN` (AC-3) | ⏳ | |
 | 2 — `strip` drops the inline template's HTML comments (AC-4) | | |
 | 3 — reference doc + close-out | | |
 
@@ -202,6 +202,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-06 | phase 0 | every script that tracks template-literal state | `git grep -n "inTemplate\\|'\`'" scripts/*.mjs` | `check-inline-comments.mjs`, `check-comment-only.mjs` | both in this plan (phases 0 and 2); the focus/touch-target guards parse `.html` only |
 
 ---
 

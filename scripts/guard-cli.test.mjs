@@ -220,6 +220,34 @@ test('check-inline-comments: an inline Angular template does not hide a later co
 });
 
 /**
+ * The scanner read a `template:` literal as opaque string content, so the HTML comments an Angular
+ * inline template carries — where this repo writes most of its template comments — were never
+ * judged at all: a two-line one with an issue number in it went through `--files` clean.
+ *
+ * <p>Mutation: make `INLINE_TEMPLATE_OPENER` never match. This case then exits 0.
+ */
+test('check-inline-comments --files judges an HTML comment inside an inline template', () => {
+  withRepo((repo) => {
+    repo.write(TS, lines(
+      '@Component({',
+      '  template: `',
+      '    <!-- A two-line HTML comment inside an inline template,',
+      '         carrying provenance (#923) as well. -->',
+      '    <p>Pricing</p>',
+      '  `,',
+      '})',
+      'export class PricingTab {}',
+    ));
+
+    const result = repo.run(INLINE, ['--files', TS]);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /pricing-tab\.ts:3-4  multiline/);
+    assert.match(result.stderr, /pricing-tab\.ts:4-4  provenance/);
+  });
+});
+
+/**
  * The diff base is a **commit**, not a `base...HEAD` range, so the new side is the working tree —
  * which is the side the guards read their file content from. With a range the two drift apart the
  * moment anything is uncommitted, and line numbers from one get applied to the other.
