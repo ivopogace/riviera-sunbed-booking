@@ -164,15 +164,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** implement (phase 1)
+**Stage pointer:** implement (phase 2 — gates)
 
-**Next action:** phase 1 — replace the shell's `routeChrome` `toSignal` pipe with the `computed()`; the shell specs (40) are the pin.
+**Next action:** phase 2 — full unit suite, the three mocked e2e suites, hygiene guards, retire the two merged plan docs; then draft → ready for review.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — shared `currentUrl` helper + spec | ✅ | phase-0 commit |
-| 1 — shell `routeChrome` as a `computed()`, TSDoc, constructor comment | ⏳ | |
-| 2 — lint / format / unit / mocked e2e, plan-doc retirement of the two merged plans | | |
+| 0 — shared `currentUrl` helper + spec | ✅ | e8dc881e |
+| 1 — shell `routeChrome` as a `computed()`, TSDoc, constructor comment | ✅ | phase-1 commit |
+| 2 — lint / format / unit / mocked e2e, plan-doc retirement of the two merged plans | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -223,16 +223,16 @@ export function currentUrl(router: Router): Signal<string> {
 
 **Files:** Modify `frontend/src/app/app.ts` (`routeChrome`, its TSDoc, the constructor TSDoc)
 
-- [ ] **Step 1: The existing shell specs are the pin** — run
+- [x] **Step 1: The existing shell specs are the pin** — run
   `npx ng test --watch=false --include="src/app/app.spec.ts"` green before the change (baseline).
-- [ ] **Step 2: Replace the `toSignal` pipe** with a `computed()` guarded on
+- [x] **Step 2: Replace the `toSignal` pipe** with a `computed()` guarded on
   `lastSuccessfulNavigation() === null` → the old default, else the same snapshot walk; drop the
   `toSignal`, `filter`, `map` imports the shell no longer uses (`takeUntilDestroyed`, `filter`
   stay for the constructor).
-- [ ] **Step 3: TSDoc** — `routeChrome` states the ordering guarantee; the constructor TSDoc
+- [x] **Step 3: TSDoc** — `routeChrome` states the ordering guarantee; the constructor TSDoc
   states that the subscription stays event-driven because it needs the navigation id.
-- [ ] **Step 4: Run the shell specs** — same command → PASS, unchanged spec file.
-- [ ] **Step 5: Commit** — `git commit -m "Derive the shell's route chrome from router signals (#981)"`
+- [x] **Step 4: Run the shell specs** — same command → 40 passed, `app.spec.ts` untouched.
+- [x] **Step 5: Commit** — `git commit -m "Derive the shell's route chrome from router signals (#981)"`
 
 ## Phase 2 — gates and close-out
 
