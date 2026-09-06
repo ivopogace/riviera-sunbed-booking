@@ -33,7 +33,7 @@ const SHEET_ROW =
 @Component({
   selector: 'app-header-variant-e',
   imports: [RouterLink, RouterLinkActive, TouchTarget],
-  host: { '(document:keydown.escape)': 'close()' },
+  host: { class: 'contents', '(document:keydown.escape)': 'close()' },
   template: `
     <div class="sticky top-2.5 z-20 px-3 sm:top-3.5 sm:px-6">
       <div

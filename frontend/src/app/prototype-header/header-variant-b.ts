@@ -34,7 +34,7 @@ const ROUND_CHIP =
 @Component({
   selector: 'app-header-variant-b',
   imports: [RouterLink, RouterLinkActive, TouchTarget],
-  host: { '(document:keydown.escape)': 'close()' },
+  host: { class: 'contents', '(document:keydown.escape)': 'close()' },
   template: `
     <header [class]="cls.header">
       <div

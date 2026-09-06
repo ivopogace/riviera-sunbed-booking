@@ -32,7 +32,7 @@ const BOTTOM_TAB =
 @Component({
   selector: 'app-header-variant-c',
   imports: [RouterLink, RouterLinkActive, TouchTarget],
-  host: { '(document:keydown.escape)': 'close()' },
+  host: { class: 'contents', '(document:keydown.escape)': 'close()' },
   template: `
     <header [class]="cls.header">
       <div

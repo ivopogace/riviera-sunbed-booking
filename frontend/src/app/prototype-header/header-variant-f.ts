@@ -29,7 +29,7 @@ const ICON_BTN =
 @Component({
   selector: 'app-header-variant-f',
   imports: [RouterLink, RouterLinkActive, TouchTarget],
-  host: { '(document:keydown.escape)': 'close()' },
+  host: { class: 'contents', '(document:keydown.escape)': 'close()' },
   template: `
     <header [class]="cls.header">
       <div

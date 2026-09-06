@@ -35,6 +35,7 @@ const EXPAND_AT = 8;
   selector: 'app-header-variant-d',
   imports: [RouterLink, RouterLinkActive, TouchTarget],
   host: {
+    class: 'contents',
     '(document:keydown.escape)': 'close()',
     '(window:scroll)': 'onScroll()',
   },

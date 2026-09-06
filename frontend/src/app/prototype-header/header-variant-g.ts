@@ -34,7 +34,7 @@ const BOTTOM_TAB =
 @Component({
   selector: 'app-header-variant-g',
   imports: [NgTemplateOutlet, RouterLink, RouterLinkActive, TouchTarget],
-  host: { '(document:keydown.escape)': 'close()' },
+  host: { class: 'contents', '(document:keydown.escape)': 'close()' },
   template: `
     <aside
       class="fixed inset-y-0 left-0 z-20 hidden w-[88px] flex-col items-center border-r border-riv-header-border bg-riv-header-glass px-2.5 py-4 backdrop-blur-[22px] backdrop-saturate-[1.7] md:flex"
