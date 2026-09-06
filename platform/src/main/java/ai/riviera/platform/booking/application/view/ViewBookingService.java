@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import ai.riviera.platform.booking.application.cancel.CancellationPolicy.RefundQuote;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.booking.domain.BookingTransition;
 import ai.riviera.platform.customer.api.CustomerLookup;
 import ai.riviera.platform.customer.vocabulary.GuestContact;
 import ai.riviera.platform.review.vocabulary.ReviewPanel;
@@ -90,7 +91,7 @@ class ViewBookingService implements ViewBooking {
 		ReviewPanel panel = reviewEligibility.panelFor(b.code());
 		RefundQuote quote = cancellationPolicy.quote(b);
 		SetBookingInfo set = quote.set();
-		boolean cancellable = b.status() == BookingStatus.CONFIRMED && quote.cancellationOpen();
+		boolean cancellable = BookingTransition.CANCEL_BY_GUEST.admits(b.status()) && quote.cancellationOpen();
 		// Its own predicate, not a reuse of cancellable's: see BookingDetail.
 		boolean withdrawable = b.status() == BookingStatus.PENDING_REQUEST;
 		boolean emailWithheld = mayDiscloseMailStatus(b) && confirmationMail.isWithheld(b.customerId());

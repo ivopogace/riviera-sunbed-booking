@@ -61,6 +61,12 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
  * names the reason and restarts the widget — a spent solution can never be retried — and reserves
  * nothing: the fence runs ahead of the controller, so availability is untouched (invariant #2).
  * Rationale for Review over Details: RESPONSIBILITIES.md § Platform edge.
+ *
+ * <p>The panel caps its height and hides its overflow, so `.dialog-body` scrolling is what keeps the
+ * actions row reachable once Review outgrows a phone. That only holds while every element between
+ * the two — the `<form>` included — is itself a shrinkable flex column: a plain block sizes to its
+ * content, the body never becomes a scroll port, and the pay button is clipped away with no way to
+ * reach it. `booking-flow.e2e.ts` measures both halves at a phone viewport.
  */
 @Component({
   selector: 'app-booking-dialog',
@@ -83,7 +89,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
   },
   template: `
     <div
-      class="booking-panel flex max-h-[calc(100vh-40px)] w-full max-w-[430px] flex-col overflow-hidden rounded-[30px] border border-riv-card-border bg-riv-dialog-glass text-riv-card-ink shadow-[0_40px_90px_rgba(6,30,40,0.5),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-[34px] backdrop-saturate-[1.8] [animation:riv-pop_0.26s_cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:[animation:none]"
+      class="booking-panel flex max-h-[calc(100dvh-40px)] w-full max-w-[430px] flex-col overflow-hidden rounded-[30px] border border-riv-card-border bg-riv-dialog-glass text-riv-card-ink shadow-[0_40px_90px_rgba(6,30,40,0.5),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-[34px] backdrop-saturate-[1.8] [animation:riv-pop_0.26s_cubic-bezier(0.2,0.7,0.2,1)] motion-reduce:[animation:none]"
       role="dialog"
       aria-modal="true"
       [attr.aria-labelledby]="'booking-dialog-venue booking-dialog-title'"
@@ -148,7 +154,11 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
         </ol>
       </header>
 
-      <form (submit)="onPrimary(); $event.preventDefault()" novalidate>
+      <form
+        class="flex min-h-0 flex-1 flex-col"
+        (submit)="onPrimary(); $event.preventDefault()"
+        novalidate
+      >
         <div class="dialog-body min-h-0 flex-1 overflow-y-auto px-6 pt-[15px] pb-2">
           @if (step() === 1) {
             <div
@@ -335,7 +345,7 @@ const SET_INCLUDES = '2 loungers + umbrella · full day';
 
         @if (errorMessage(); as msg) {
           <p
-            class="form-error mx-6 rounded-xl bg-riv-form-error-fill px-[13px] py-2.5 text-[13px] font-semibold text-riv-form-error-ink"
+            class="form-error mx-6 shrink-0 rounded-xl bg-riv-form-error-fill px-[13px] py-2.5 text-[13px] font-semibold text-riv-form-error-ink"
             role="alert"
             data-testid="dialog-error"
           >

@@ -1,24 +1,23 @@
 import {
   Component,
   ElementRef,
+  computed,
   effect,
   inject,
   signal,
   untracked,
   viewChildren,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { OperatorActions } from './operator-actions';
 import { LegalFooter } from '../shared/legal-footer';
 import {
   ActivatedRoute,
-  NavigationEnd,
   Router,
   RouterLink,
   RouterLinkActive,
   RouterOutlet,
 } from '@angular/router';
-import { Observable, filter, map } from 'rxjs';
+import { Observable } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { todayBookingDate } from '../shared/booking-date';
@@ -110,14 +109,20 @@ export class OperatorConsole {
   /** The pill anchors, in tab order — used to scroll the active one into the scrolling row's
    *  viewport so it's visible without the operator having to scroll manually. */
   private readonly tabLinks = viewChildren<ElementRef<HTMLAnchorElement>>('tabLink');
-  /** The active child route's path, reactive to navigation — the tab-nav counterpart of
-   *  `routerLinkActive`, read here to drive the scroll-into-view rather than a CSS class. */
-  private readonly currentTabPath = toSignal(
-    this.router.events.pipe(
-      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
-      map(() => this.route.snapshot.firstChild?.routeConfig?.path),
-    ),
-    { initialValue: this.route.snapshot.firstChild?.routeConfig?.path },
+  /**
+   * The active child route's path — the tab-nav counterpart of `routerLinkActive`, read here to
+   * drive the scroll-into-view rather than a CSS class. Keyed on
+   * `Router.lastSuccessfulNavigation()`: the `route.snapshot` it walks is not a signal, and
+   * reading it here is safe because the router assigns the new router state (on
+   * `BeforeActivateRoutes`) before it activates the routes and sets `lastSuccessfulNavigation` on
+   * the line before it emits `NavigationEnd`, so each completed navigation (a venue-only one
+   * included) re-reads the same settled snapshot a `NavigationEnd` subscriber would. `undefined`
+   * until the first navigation has completed.
+   */
+  private readonly currentTabPath = computed(() =>
+    this.router.lastSuccessfulNavigation() === null
+      ? undefined
+      : this.route.snapshot.firstChild?.routeConfig?.path,
   );
 
   constructor() {

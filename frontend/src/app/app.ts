@@ -1,8 +1,16 @@
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { LegalFooter } from './shared/legal-footer';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
-import { filter, map } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  IsActiveMatchOptions,
+  NavigationEnd,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+  isActive,
+} from '@angular/router';
+import { filter } from 'rxjs';
 
 import { FindBooking } from './booking/find-booking';
 import { CustomerAuth } from './core/customer-auth';
@@ -15,10 +23,13 @@ import { TouchTarget } from './shared/touch-target';
  *  `--riv-pop-*` family: light in porcelain/riviera, slate in the dark theme. */
 const POP =
   'absolute z-40 animate-[riv-pop_0.2s_ease] rounded-[18px] border border-riv-pop-border bg-riv-pop-surface text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none';
-const POP_ITEM =
-  'block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-riv-pop-ink [transition:background_0.12s_ease] hover:bg-riv-pop-hover';
-const MOBILE_ITEM =
-  'block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-riv-pop-ink hover:bg-riv-pop-hover';
+/** The current page's row takes the hover fill plus the popover accent ink, on the desktop popover
+ *  and the sheet alike: it has to read on touch, where `hover:` never fires (Tailwind v4 compiles
+ *  it under `@media (hover: hover)`). */
+const CURRENT_POP_ROW =
+  'aria-[current=page]:bg-riv-pop-hover aria-[current=page]:text-riv-pop-accent';
+const POP_ITEM = `block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-riv-pop-ink [transition:background_0.12s_ease] hover:bg-riv-pop-hover ${CURRENT_POP_ROW}`;
+const MOBILE_ITEM = `block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-riv-pop-ink hover:bg-riv-pop-hover ${CURRENT_POP_ROW}`;
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
@@ -30,19 +41,49 @@ const CLS = {
   popBtn: `${POP_ITEM} cursor-pointer text-left`,
   mobileItem: MOBILE_ITEM,
   mobileBtn: `${MOBILE_ITEM} cursor-pointer`,
-  navLink: 'cursor-pointer hover:text-riv-ink',
+  // The current page carries full ink and an underline in that ink (an accent token would vanish on riviera's dark header glass): hover alone is invisible on a tablet.
+  navLink:
+    'cursor-pointer hover:text-riv-ink aria-[current=page]:font-semibold aria-[current=page]:text-riv-ink aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:decoration-current aria-[current=page]:underline-offset-[7px]',
 } as const;
+
+/** `routerLinkActive` matching for the header's plain-path links: the path alone, so Beaches (`/`)
+ *  does not stay lit on every page and a `returnUrl` does not unlight Your account. */
+const EXACT_PATH: IsActiveMatchOptions = {
+  paths: 'exact',
+  queryParams: 'ignored',
+  fragment: 'ignored',
+  matrixParams: 'ignored',
+};
+
+/** The active route's chrome flags — see {@link App.routeChrome}. */
+interface RouteChrome {
+  chromeless: boolean;
+  operatorChrome: boolean;
+}
+
+/** The chrome before the first navigation completes: the tourist header and footer. */
+const PRE_NAVIGATION_CHROME: RouteChrome = {
+  chromeless: false,
+  operatorChrome: false,
+};
 
 /**
  * The Liquid Glass app shell: themed gradient background, sticky glass header with
  * responsive nav (inline on desktop, hamburger menu below 640px — CSS decides, both live here),
- * and the theme switcher. Routes not yet restyled to glass carry `data.legacySurface`, which
- * wraps <main> in an opaque light panel so their pre-redesign styling stays legible;
- * a route's restyle removes its flag.
+ * and the theme switcher. Every route paints straight onto that background: `<main>` carries no
+ * surface of its own.
  */
 @Component({
   selector: 'app-root',
-  imports: [LegalFooter, RouterOutlet, RouterLink, FindBooking, OperatorChrome, TouchTarget],
+  imports: [
+    LegalFooter,
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    FindBooking,
+    OperatorChrome,
+    TouchTarget,
+  ],
   templateUrl: './app.html',
   host: {
     '(document:keydown.escape)': 'closeMenus()',
@@ -52,6 +93,7 @@ const CLS = {
 })
 export class App {
   protected readonly cls = CLS;
+  protected readonly exactPath = EXACT_PATH;
 
   protected readonly themes = inject(ThemeService);
   /** Customer session state for the header: sign-in/register links ↔ signed-in + sign-out. */
@@ -102,36 +144,55 @@ export class App {
   );
 
   /**
-   * The active route's chrome flags, computed once per navigation from a SINGLE root→leaf walk:
-   * `legacySurface` (the leaf still renders pre-redesign styling → opaque compat panel),
-   * `chromeless` (the operator console, `/operator/:venueId`, owns a full-bleed porcelain
-   * shell → all shell chrome is suppressed) and `operatorChrome` (every OTHER operator/admin
-   * surface → the shared porcelain operator header/footer replace the tourist ones, so an admin is
-   * never shown the customer session's "Sign in / Register" while signed in). The console flag sits
-   * on a PARENT route and is not inherited into a child snapshot, so both flags are OR-ed across
-   * the whole chain; `legacySurface` is a leaf-only flag. Defaults (pre-navigation): legacy compat
-   * on, tourist chrome shown.
+   * The active route's chrome flags, computed once per successful navigation from a SINGLE
+   * root→leaf walk: `chromeless` (the operator console, `/operator/:venueId`, owns a full-bleed
+   * porcelain shell → all shell chrome is suppressed) and `operatorChrome` (every OTHER
+   * operator/admin surface → the shared porcelain operator header/footer replace the tourist ones,
+   * so an admin is never shown the customer session's "Sign in / Register" while signed in). The
+   * console flag sits on a PARENT route and is not inherited into a child snapshot, so both flags
+   * are OR-ed across the whole chain. {@link PRE_NAVIGATION_CHROME} until the first navigation
+   * completes.
+   *
+   * <p>Keyed on `Router.lastSuccessfulNavigation()`; the `routerState` snapshot it walks is not a
+   * signal, and reading it here is safe because the router assigns `routerState` before it
+   * activates the routes (on `BeforeActivateRoutes`) and sets `lastSuccessfulNavigation` on the
+   * line before it emits `NavigationEnd`, so this computed observes the same settled state a
+   * `NavigationEnd` subscriber does. A skipped, cancelled or failed navigation sets neither, and
+   * leaves the chrome where it was.
    */
-  private readonly routeChrome = toSignal(
-    this.router.events.pipe(
-      filter((event) => event instanceof NavigationEnd),
-      map(() => {
-        let route = this.router.routerState.snapshot.root;
-        let chromeless = route.data['operatorConsole'] === true;
-        let operatorChrome = route.data['operatorChrome'] === true;
-        while (route.firstChild) {
-          route = route.firstChild;
-          chromeless ||= route.data['operatorConsole'] === true;
-          operatorChrome ||= route.data['operatorChrome'] === true;
-        }
-        return { legacySurface: route.data['legacySurface'] === true, chromeless, operatorChrome };
-      }),
-    ),
-    { initialValue: { legacySurface: true, chromeless: false, operatorChrome: false } },
-  );
+  private readonly routeChrome = computed((): RouteChrome => {
+    if (this.router.lastSuccessfulNavigation() === null) {
+      return PRE_NAVIGATION_CHROME;
+    }
+    let route = this.router.routerState.snapshot.root;
+    let chromeless = route.data['operatorConsole'] === true;
+    let operatorChrome = route.data['operatorChrome'] === true;
+    while (route.firstChild) {
+      route = route.firstChild;
+      chromeless ||= route.data['operatorConsole'] === true;
+      operatorChrome ||= route.data['operatorChrome'] === true;
+    }
+    return { chromeless, operatorChrome };
+  });
 
-  /** True while the current route still renders pre-redesign styling (default true pre-navigation). */
-  protected readonly legacySurface = computed(() => this.routeChrome().legacySurface);
+  /** Whether the auth card is the current page, by path alone — the same test `routerLinkActive`
+   *  runs for the plain-path links, as a signal. */
+  private readonly authPageActive = isActive('/account/sign-in', this.router, EXACT_PATH);
+
+  /**
+   * Which of the Sign in / Register pair is the current page, or neither. Both links target
+   * `/account/sign-in` and differ only in `mode=register`, which `routerLinkActive` cannot key on
+   * without also lighting Sign in under `?mode=register` (a subset match) or unlighting it under a
+   * `returnUrl` (an exact one) — so the pair reads the query param itself, off the same settled
+   * navigation {@link authPageActive} is computed from.
+   */
+  protected readonly authLinkCurrent = computed((): 'signin' | 'register' | null => {
+    if (!this.authPageActive()) {
+      return null;
+    }
+    const mode = this.router.lastSuccessfulNavigation()?.finalUrl?.queryParamMap.get('mode');
+    return mode === 'register' ? 'register' : 'signin';
+  });
 
   /** Which chrome the shell renders: the tourist header/footer (default), the shared operator
    *  header/footer, or none at all (the console brings its own). */
@@ -158,6 +219,10 @@ export class App {
    * Identity is the navigation id, not the url: a url comparison would also swallow a navigation
    * the guest DID start from inside the overlay onto the page they deep-linked to, which supersedes
    * the pending one under a new id and leaves {@link FindBooking} waiting on a close that never comes.
+   * That id is why this rule reads the event stream while the shell's other route state
+   * ({@link routeChrome}, {@link authLinkCurrent}) is computed from router signals: the skip
+   * compares the id of EACH `NavigationEnd` against the one recorded at open, a per-event fact
+   * that no router signal exposes.
    *
    * <p>The close performs no focus restore: the destination page takes focus, and restoring is only
    * for an on-page dismiss.

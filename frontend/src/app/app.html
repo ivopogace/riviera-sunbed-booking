@@ -79,8 +79,22 @@
           class="riv-nav-desktop hidden items-center gap-[22px] text-[13.5px] text-riv-ink-soft sm:flex"
           aria-label="Primary"
         >
-          <a routerLink="/" [class]="cls.navLink">Beaches</a>
-          <a routerLink="/my-bookings" [class]="cls.navLink">My bookings</a>
+          <a
+            routerLink="/"
+            routerLinkActive
+            ariaCurrentWhenActive="page"
+            [routerLinkActiveOptions]="exactPath"
+            [class]="cls.navLink"
+            >Beaches</a
+          >
+          <a
+            routerLink="/my-bookings"
+            routerLinkActive
+            ariaCurrentWhenActive="page"
+            [routerLinkActiveOptions]="exactPath"
+            [class]="cls.navLink"
+            >My bookings</a
+          >
           <button
             appTouchTarget
             #findButton
@@ -122,6 +136,9 @@
                     <!-- Closes itself: a same-URL activation emits NavigationSkipped, not NavigationEnd. -->
                     <a
                       routerLink="/account/password"
+                      routerLinkActive
+                      ariaCurrentWhenActive="page"
+                      [routerLinkActiveOptions]="exactPath"
                       [class]="cls.popItem"
                       data-testid="nav-account-link"
                       (click)="closeMenus()"
@@ -140,13 +157,18 @@
                 }
               </div>
             } @else {
-              <a routerLink="/account/sign-in" [class]="cls.navLink" data-testid="nav-signin"
+              <a
+                routerLink="/account/sign-in"
+                [class]="cls.navLink"
+                [attr.aria-current]="authLinkCurrent() === 'signin' ? 'page' : null"
+                data-testid="nav-signin"
                 >Sign in</a
               >
               <a
                 routerLink="/account/sign-in"
                 [queryParams]="{ mode: 'register' }"
                 [class]="cls.navLink"
+                [attr.aria-current]="authLinkCurrent() === 'register' ? 'page' : null"
                 data-testid="nav-register"
                 >Register</a
               >
@@ -236,8 +258,22 @@
             aria-hidden="true"
           ></div>
           <nav [class]="cls.mobileMenu" aria-label="Menu" data-testid="mobile-menu">
-            <a routerLink="/" [class]="cls.mobileItem" (click)="closeMenus()">Beaches</a>
-            <a routerLink="/my-bookings" [class]="cls.mobileItem" (click)="closeMenus()"
+            <a
+              routerLink="/"
+              routerLinkActive
+              ariaCurrentWhenActive="page"
+              [routerLinkActiveOptions]="exactPath"
+              [class]="cls.mobileItem"
+              (click)="closeMenus()"
+              >Beaches</a
+            >
+            <a
+              routerLink="/my-bookings"
+              routerLinkActive
+              ariaCurrentWhenActive="page"
+              [routerLinkActiveOptions]="exactPath"
+              [class]="cls.mobileItem"
+              (click)="closeMenus()"
               >My bookings</a
             >
             <button
@@ -261,6 +297,9 @@
                 >
                 <a
                   routerLink="/account/password"
+                  routerLinkActive
+                  ariaCurrentWhenActive="page"
+                  [routerLinkActiveOptions]="exactPath"
                   [class]="cls.mobileItem"
                   data-testid="nav-account-link-mobile"
                   (click)="closeMenus()"
@@ -279,6 +318,7 @@
                 <a
                   routerLink="/account/sign-in"
                   [class]="cls.mobileItem"
+                  [attr.aria-current]="authLinkCurrent() === 'signin' ? 'page' : null"
                   data-testid="nav-signin-mobile"
                   (click)="closeMenus()"
                   >Sign in</a
@@ -287,6 +327,7 @@
                   routerLink="/account/sign-in"
                   [queryParams]="{ mode: 'register' }"
                   [class]="cls.mobileItem"
+                  [attr.aria-current]="authLinkCurrent() === 'register' ? 'page' : null"
                   data-testid="nav-register-mobile"
                   (click)="closeMenus()"
                   >Register</a
@@ -329,12 +370,7 @@
 
   <!-- tabindex=-1: closing the find modal on navigation lands keyboard/AT focus here, not document.body. -->
   <!-- Deliberately unpositioned: a stacking context here would trap page-level fixed modals below the sticky header. -->
-  <main
-    #mainEl
-    tabindex="-1"
-    class="flex-1"
-    [class]="legacySurface() ? 'riv-legacy-surface bg-[#f8fafc] text-[#0f172a]' : ''"
-  >
+  <main #mainEl tabindex="-1" class="flex-1">
     <router-outlet />
   </main>
 

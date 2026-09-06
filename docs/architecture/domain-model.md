@@ -223,10 +223,16 @@ classDiagram
     class SetBookingInfo {
         <<record>>
         SetId, VenueId, venueName
-        rowLabel, positionNo, pool
+        rowLabel, positionNo
+        Pool pool
         MoneyView price
         bookingCutoff, salesClose
         BookingMode
+    }
+    class Pool {
+        <<enum>>
+        ONLINE
+        WALK_IN
     }
     class BookingMode {
         <<enum>>
@@ -238,6 +244,7 @@ classDiagram
     venue "1" *-- "many" venue_photo
     venue_photo "1" *-- "many" venue_photo_variant
     venue ..> SalesClose : sales_close
+    set_position ..> Pool : pool
     set_position ..> SetBookingInfo : the published projection
 ```
 

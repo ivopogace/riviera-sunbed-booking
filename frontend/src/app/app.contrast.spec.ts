@@ -3,12 +3,14 @@ import {
   DARK_CHIP,
   DARK_HEADER_GLASS,
   DARK_POP_ACCENT,
+  DARK_POP_HOVER,
   DARK_POP_INK,
   DARK_POP_INK_SOFT,
   DARK_POP_SURFACE,
   DARK_STOPS,
   INK_DARK,
   POP_ACCENT,
+  POP_HOVER,
   POP_INK_SOFT,
   POP_SURFACE,
   PORCELAIN_CHIP,
@@ -163,8 +165,18 @@ describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
     }
   });
 
-  it('legacy compat surface keeps the slate ink the pre-redesign pages assume', () => {
-    // .riv-legacy-surface pins the exact background (#f8fafc) the per-page contrast specs use.
-    expect(contrastRatio('#0f172a', '#f8fafc')).toBeGreaterThanOrEqual(AA_NORMAL);
+  it("the mobile menu's current-page row (pop-accent on the hover fill) meets AA in every theme", () => {
+    const lightPopover = composite(POP_SURFACE.color, POP_SURFACE.alpha, hexToRgb('0a4f6e'));
+    const lightRow = composite(POP_HOVER.color, POP_HOVER.alpha, lightPopover);
+    expect(contrastRatio(rgbToHex(POP_ACCENT), rgbToHex(lightRow))).toBeGreaterThanOrEqual(
+      AA_NORMAL,
+    );
+    for (const stop of DARK_STOPS) {
+      const popover = composite(DARK_POP_SURFACE.color, DARK_POP_SURFACE.alpha, stop);
+      const row = composite(DARK_POP_HOVER.color, DARK_POP_HOVER.alpha, popover);
+      expect(contrastRatio(rgbToHex(DARK_POP_ACCENT), rgbToHex(row))).toBeGreaterThanOrEqual(
+        AA_NORMAL,
+      );
+    }
   });
 });

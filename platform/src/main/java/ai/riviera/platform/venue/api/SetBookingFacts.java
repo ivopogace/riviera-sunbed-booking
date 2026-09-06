@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 
+import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 
@@ -21,10 +22,10 @@ import ai.riviera.platform.venue.vocabulary.SetId;
 public interface SetBookingFacts {
 
 	/**
-	 * The pool token ({@code "ONLINE"} or {@code "WALK_IN"}) of the given set, or empty if no set
-	 * has that id, read <strong>under a row lock held for the caller's transaction</strong>. Used
-	 * by the {@code availability} module to enforce invariant #3 (an online booking can only
-	 * target an {@code ONLINE}-pool set) before claiming, without reaching into venue's tables.
+	 * The {@link Pool} of the given set, or empty if no set has that id, read <strong>under a row
+	 * lock held for the caller's transaction</strong>. Used by the {@code availability} module to
+	 * enforce invariant #3 (an online booking can only target a {@link Pool#ONLINE} set) before
+	 * claiming, without reaching into venue's tables.
 	 *
 	 * <p>The lock is the weakest one that conflicts with the {@code FOR UPDATE} a per-set layout
 	 * edit takes — the same lock this caller's own {@code INSERT} needs for its FK check, only
@@ -34,7 +35,7 @@ public interface SetBookingFacts {
 	 * <strong>not</strong> be called from a read-only one — hence the name, which is a claim-path
 	 * contract, not a general pool lookup.
 	 */
-	Optional<String> poolForClaim(SetId setId);
+	Optional<Pool> poolForClaim(SetId setId);
 
 	/**
 	 * The booking-relevant facts about a set (pool, price, owning venue, sales close,

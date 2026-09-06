@@ -9,7 +9,7 @@ import {
   Router,
 } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
-import { vi } from 'vitest';
+import { Mock, vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
 import { OperatorAuth } from '../core/operator-auth';
@@ -365,6 +365,73 @@ describe('OperatorConsole — in-place venue param change (#180)', () => {
     expect(host().querySelector('[data-testid="oc-venue-title"]')?.textContent).toContain(
       'Second Venue',
     );
+  });
+});
+
+/**
+ * The active tab pill is scrolled into the tab row's viewport on load and on every tab switch.
+ * jsdom implements no `scrollIntoView` (the component optional-calls it), so one is installed
+ * on the prototype for this block and removed after; the mock's `contexts` are the anchors
+ * scrolled. The route stub's `snapshot.firstChild` stands in for the active child route.
+ */
+describe('OperatorConsole — active tab scroll-into-view (#710, #982)', () => {
+  let fixture: ComponentFixture<OperatorConsole>;
+  let httpMock: HttpTestingController;
+  let router: Router;
+  let scrollIntoView: Mock<(options?: ScrollIntoViewOptions) => void>;
+  const firstChild = { routeConfig: { path: 'daily' } };
+
+  beforeEach(async () => {
+    document.documentElement.removeAttribute('data-riv-theme');
+    firstChild.routeConfig.path = 'daily';
+    scrollIntoView = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    const params$ = new BehaviorSubject(convertToParamMap({ venueId: String(VENUE) }));
+    TestBed.configureTestingModule({
+      imports: [OperatorConsole],
+      providers: baseProviders({
+        snapshot: { paramMap: params$.value, firstChild },
+        paramMap: params$,
+      } as never),
+    });
+    TestBed.inject(OperatorAuth);
+    httpMock = TestBed.inject(HttpTestingController);
+    httpMock
+      .expectOne(`${BASE}/api/auth/me`)
+      .flush({ username: 'operator', principalType: 'OPERATOR' });
+    await Promise.resolve();
+    await Promise.resolve();
+    router = TestBed.inject(Router);
+
+    // Constructed mid-navigation, as the router-outlet does; the effect runs after it completes.
+    fixture = TestBed.createComponent(OperatorConsole);
+    await router.navigateByUrl('/');
+    await fixture.whenStable();
+    flushVenue(httpMock, 'Miramar Beach Club');
+    flushRequests(httpMock, 0);
+    flushStrip(httpMock);
+    await fixture.whenStable();
+  });
+
+  afterEach(() => {
+    httpMock.verify();
+    delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+  });
+
+  function scrolledLabels(): string[] {
+    return scrollIntoView.mock.contexts.map((el) => (el as HTMLElement).textContent.trim());
+  }
+
+  it('scrolls the active tab into view on load', () => {
+    expect(scrolledLabels()).toEqual(['Daily view']);
+  });
+
+  it('scrolls the newly active tab into view on a tab switch', async () => {
+    firstChild.routeConfig.path = 'venue';
+    await router.navigateByUrl('/?tab=venue');
+    await fixture.whenStable();
+
+    expect(scrolledLabels()).toEqual(['Daily view', 'Venue & commodities']);
   });
 });
 

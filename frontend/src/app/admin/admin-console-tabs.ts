@@ -1,8 +1,7 @@
 import { Component, ElementRef, effect, inject, input, viewChildren } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
-import { filter, map } from 'rxjs';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
+import { currentUrl } from '../shared/current-url';
 import { TouchTarget } from '../shared/touch-target';
 
 /**
@@ -105,13 +104,10 @@ export class AdminConsoleTabs {
   /** The pill anchors, in tab order — used to scroll the active one into the scrolling row's
    *  viewport so it's visible without the admin having to scroll manually. */
   private readonly tabLinks = viewChildren<ElementRef<HTMLAnchorElement>>('tabLink');
-  private readonly currentUrl = toSignal(
-    this.router.events.pipe(
-      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-      map(() => this.router.url),
-    ),
-    { initialValue: this.router.url },
-  );
+  /** The page the admin is on, from `Router.lastSuccessfulNavigation()` via the shared helper —
+   *  it moves with each completed navigation and equals `router.url` once one has. Drives only
+   *  the scroll below; the pill's highlight is `routerLinkActive`'s. */
+  private readonly currentUrl = currentUrl(this.router);
 
   constructor() {
     // Scroll the active tab into view on load/switch — the row scrolls instead of wrapping.
