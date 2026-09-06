@@ -2,7 +2,12 @@ import { expect, test } from '@playwright/test';
 
 import { ChallengeFence, mockChallengeFence } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
-import { completeDialog, mockFencedBookingCreate, settle } from './support/booking-dialog';
+import {
+  completeDialog,
+  fillDetailsAndContinue,
+  mockFencedBookingCreate,
+  settle,
+} from './support/booking-dialog';
 
 /**
  * Real-render a11y audit of the Instant-Book flow: beach map →
@@ -223,7 +228,7 @@ test('booking dialog stays laptop-friendly at a ~700px viewport (#188, guards th
   await expect(page.getByTestId('challenge-widget')).toHaveCount(0);
   await settle(page);
 
-  // Panel is NOT clamped to its `max-height: calc(100vh - 40px)` — step-1 renders at its natural height.
+  // Panel is NOT clamped to its `max-height: calc(100dvh - 40px)` — step-1 renders at its natural height.
   const panel = await dialog.boundingBox();
   expect(panel, 'panel box').not.toBeNull();
   expect(panel!.height).toBeLessThan(VIEWPORT_HEIGHT - 40);
@@ -234,6 +239,54 @@ test('booking dialog stays laptop-friendly at a ~700px viewport (#188, guards th
     return body.scrollHeight - body.clientHeight;
   });
   expect(bodyOverflow).toBeLessThanOrEqual(1);
+});
+
+test('the Review step scrolls to its pay button on a phone viewport', async ({ page }) => {
+  // #923's widget pushed Review past a phone's height, where the panel's clamp clips what overflows.
+  await page.setViewportSize({ width: 360, height: 640 });
+
+  await page.goto('/venues/1');
+  await page
+    .getByRole('button', { name: /Select to book/ })
+    .first()
+    .click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await fillDetailsAndContinue(dialog);
+  await expect(page.getByTestId('challenge-widget')).toBeVisible();
+  await settle(page);
+
+  // The precondition, read the same either way: clipped away when broken, scrolled away when fixed.
+  const panel = (await dialog.boundingBox())!;
+  const widgetBottom = (await page.getByTestId('challenge-widget').boundingBox())!;
+  expect(
+    widgetBottom.y + widgetBottom.height,
+    'the widget makes Review overflow the clamped panel',
+  ).toBeGreaterThan(panel.y + panel.height);
+
+  // The actions row is pinned inside the panel, so the pay button sits on-screen unscrolled.
+  const pay = (await dialog.getByTestId('dialog-primary').boundingBox())!;
+  expect(pay.y + pay.height, 'the pay button is inside the panel').toBeLessThanOrEqual(
+    panel.y + panel.height + 1,
+  );
+  await expect(dialog.getByTestId('dialog-primary')).toBeInViewport({ ratio: 1 });
+
+  // And it was only scrolled away: `.dialog-body` is a real scroll port, so the widget comes back.
+  const overflow = await page.evaluate(() => {
+    const body = document.querySelector<HTMLElement>('.dialog-body')!;
+    return body.scrollHeight - body.clientHeight;
+  });
+  expect(overflow, '.dialog-body scrolls the surplus').toBeGreaterThan(0);
+  await page.getByTestId('challenge-widget').scrollIntoViewIfNeeded();
+  await expect(page.getByTestId('challenge-widget')).toBeInViewport({ ratio: 1 });
+  await expect(dialog.getByTestId('dialog-primary')).toBeInViewport({ ratio: 1 });
+
+  // It is the button, not just its box: the tourist can actually pay from here.
+  await expect(page.getByTestId('challenge-status')).toHaveText(/Security check passed/, {
+    timeout: 15_000,
+  });
+  await dialog.getByRole('button', { name: 'Continue to payment' }).click();
+  await expect(page).toHaveURL(/\/booking\/confirmation/);
 });
 
 test('a taken-set rejection surfaces an accessible error in the dialog', async ({ page }) => {
