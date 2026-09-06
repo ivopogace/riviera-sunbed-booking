@@ -120,9 +120,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** PR — draft open, merging latest `main`, then ready-for-review → review gate
+**Stage pointer:** review gate — reviewers dispatched over `3df086e0..f23991ec`; Sonar list cleared
 
-**Next action:** run `references/pr-gates.md` §1 (check-review-range, then `/code-review` + `riviera-review-overlay`).
+**Next action:** score the reviewers' findings, fix through the loop, re-review the fix range, post the review comment.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -137,6 +137,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | sonar | `javascript:S7780` ×2 — the `OPENING` and `provenance` regex sources escape `\` in ordinary strings | fixed-in-`04d141df` (`String.raw`) |
+| F-2 | overlay RV-PROC-2c | the harness mutation note named `line[c - 1] !== '\``, a condition this diff removed; the detector test's narrative named `skipString` as the template scanner | fixed-in-`04d141df` |
+| F-3 | CI (Repo hygiene on `04d141df`) | touching those two doc comments judged them whole and surfaced their pre-existing issue numbers | fixed-in-`f1c6eb6a` |
 
 ---
 
