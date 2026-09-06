@@ -349,7 +349,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
     const host = fixture.nativeElement as HTMLElement;
 
     const lines = host.querySelectorAll('[data-testid="booking-row-loading"] .skeleton');
-    expect(lines).toHaveLength(2);
+    expect(lines).toHaveLength(6);
     for (const line of lines) {
       expect(line.classList.contains('animate-pulse')).toBe(true);
       expect(line.classList.contains('motion-reduce:animate-none')).toBe(true);
@@ -369,7 +369,7 @@ describe('MyBookings (device-local list, issue #139)', () => {
     // Decoration now: it used to be the live region, born holding its text (#741).
     expect(loading.getAttribute('aria-live')).toBeNull();
     expect(loading.getAttribute('aria-hidden')).toBe('true');
-    expect(loading.querySelectorAll('.skeleton')).toHaveLength(2);
+    expect(loading.querySelectorAll('.skeleton')).toHaveLength(6);
     await expectNoAxeViolations(host);
   });
 
