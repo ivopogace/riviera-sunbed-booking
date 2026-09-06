@@ -28,8 +28,8 @@ template — forced the behavior-parity ledger, which is what proved the removal
 `tdd` (no red step: the slice removes dead configuration and adds no behavior, so the
 discipline is *pin-first* — the existing `#710` e2e case already pins both observable
 behaviors and must stay green across the removal) · `riviera-review-overlay` (review gate —
-runs at ready-for-review) · `riviera-docs-freshness` (due at close-out —
-**not yet run**; this line is finalized with its range + findings before merge) · `riviera-frontend`
+runs at ready-for-review) · `riviera-docs-freshness` (**ran** over
+`7c01678..HEAD` — rename grep, counting sweep and reverse map-walk; **0 findings**) · `riviera-frontend`
 (routing lives in the one `app.routes.ts` array; confirmed no folder/taxonomy move is in
 play) · `angular-developer` + angular-cli MCP `search_documentation` (v22: `Route.data` is
 **arbitrary user-defined static data** — the router consumes no key implicitly, so removing
@@ -45,27 +45,27 @@ in for `feature/retire-console-tab-route-key` (`riviera-sdlc` § Remote/cloud ad
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the shipped route table, when `consoleTabRoutes` is read, then no entry
+- [x] **AC-1:** Given the shipped route table, when `consoleTabRoutes` is read, then no entry
   carries a `data` property at all, and `grep -rn "data\.tab\|data\['tab'\]" frontend/src
   frontend/e2e` returns nothing. *Seam:* the `consoleTabRoutes` route configuration in
   `frontend/src/app/app.routes.ts` · *Pinned by:* the grep in **AC verification** below —
   deliberately **not** test-pinned, per the #992/PR #994 precedent, which retired the
   `legacySurface` enumeration specs rather than adding a spec asserting an absence.
-- [ ] **AC-2:** Given the operator console at `/operator/1`, when the operator clicks a tab
+- [x] **AC-2:** Given the operator console at `/operator/1`, when the operator clicks a tab
   far along the scrolling row (`Venue & commodities`), then that pill carries
   `aria-current="page"` and is scrolled into the viewport — and the same holds after a reload
   directly onto that tab (the on-load path, not just the click). *Seam:* the rendered tab nav
   (`[data-testid="oc-tabs"]` anchors) · *Pinned by:*
   `e2e/operator-console.e2e.ts` → `renders porcelain over the tourist theme with a single
   scrolling tab row, no wrap (#710)`, passing unchanged.
-- [ ] **AC-3:** Given the console mounted at `/operator/:venueId`, when the `:venueId` param
+- [x] **AC-3:** Given the console mounted at `/operator/:venueId`, when the `:venueId` param
   changes in place (the router reuses the component), then the header and badge reload and
   the six tab links repoint at the new venue. *Seam:* the `OperatorConsole` component's
   rendered shell · *Pinned by:* `operator-console.spec.ts` → `OperatorConsole — in-place venue
   param change (#180)` (`reloads the header and badge when the venue param changes in place`,
   `shows not-found when the param turns invalid, and recovers`) plus `renders the six pill
   tabs linking to the tab routes (#170, AC-1)`, all passing unchanged.
-- [ ] **AC-4:** Given a fresh reader of `app.routes.ts`, when they read the `consoleTabRoutes`
+- [x] **AC-4:** Given a fresh reader of `app.routes.ts`, when they read the `consoleTabRoutes`
   doc paragraph, then every present-tense claim in it is true of the routes below it — no
   `data.tab` claim remains, and the paragraph says where the active tab actually comes from.
   *Seam:* the doc comment above `consoleTabRoutes` · *Pinned by:* review (RV-STYLE-1) +
@@ -108,7 +108,7 @@ aspiration.
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
 | R-1 | A reader exists that the greps missed (e.g. a dynamic `data[key]` lookup with a computed key) | low | med | Swept by mechanism, not by name: `grep -rn "\.data\[" frontend/src --include="*.ts"` enumerates *every* route-data read in the app, computed key or not — three sites, none `tab`. Recorded in the Generalization-audit log. | agent | closed — see log |
-| R-2 | The removal silently breaks active-tab marking or the scroll-into-view | low | med | Both are pinned by the `#710` e2e case (`aria-current` + `toBeInViewport`, on click *and* after reload); the mocked e2e suite runs before the PR and in CI. | agent | open until AC-2 verified |
+| R-2 | The removal silently breaks active-tab marking or the scroll-into-view | low | med | Both are pinned by the `#710` e2e case (`aria-current` + `toBeInViewport`, on click *and* after reload); the mocked e2e suite runs before the PR and in CI. | agent | closed — baseline 8 passed before the change, 8 passed after (`9f0b4ede`) |
 | R-3 | A later slice re-adds a `tab` key, not knowing it was deliberate | med | low | The rewritten doc paragraph states the active tab comes from the router, so the absence reads as a decision. Cheaper than a guard test (a Non-goal). | agent | closed — AC-4 |
 | R-4 | Merge conflict in `app.routes.ts` with an in-flight branch | low | low | Checked at the intake gate: all five open PRs are Dependabot bumps (`jsdom`, `typescript-eslint`, `@types/node`, `@stripe/stripe-js`, `stripe-java`); none touches `app.routes.ts`. No Flyway number in play (frontend-only). | agent | closed |
 
@@ -182,15 +182,17 @@ N/A — no contract change; no endpoint, DTO, or client type is touched.
 
 ## Execution status
 
-**Stage pointer:** `PR — open the draft, then the review gate`
+**Stage pointer:** `merge close-out — merged via PR #996`
 
-**Next action:** push the branch, open the draft PR, run the review gate
-(`riviera-sdlc` `references/pr-gates.md` §1), then finalize phase 1.
+**Next action:** none — the slice is complete. This plan doc is itself retired by the next
+close-out of any kind (`riviera-docs-freshness` § *Plan-doc retirement*).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Retire the key + correct the doc paragraph | ✅ | this commit |
-| 1 — Close-out (docs-freshness sweep + retire PR #994's merged plan doc) | ⏳ | |
+| 0 — Retire the key + correct the doc paragraph | ✅ | `9f0b4ede` |
+| 1 — Close-out (docs-freshness sweep + retire PR #994's merged plan doc) | ✅ | this commit |
+
+Merged via PR #996.
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -217,7 +219,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/app/app.routes.ts:7–55`
 
-- [ ] **Step 1: Pin first (the retirement-slice substitute for a red test)**
+- [x] **Step 1: Pin first (the retirement-slice substitute for a red test)**
 
 There is no red step to write: the slice removes inert configuration and adds no behavior, so
 any new test would be green on the old code too. The discipline for a retirement slice is
@@ -233,11 +235,11 @@ await expect(active).toHaveAttribute('aria-current', 'page');
 await expect(active).toBeInViewport();
 ```
 
-- [ ] **Step 2: Establish the baseline** —
+- [x] **Step 2: Establish the baseline** —
   `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts operator-console admin-console-tabs`
   → PASS before the change (proves the pin is live, not vacuously green).
 
-- [ ] **Step 3: The removal**
+- [x] **Step 3: The removal**
 
 ```ts
 /**
@@ -259,15 +261,15 @@ const consoleTabRoutes: Routes = [
 ];
 ```
 
-- [ ] **Step 4: Run the pins again** — the same e2e command → PASS, plus
+- [x] **Step 4: Run the pins again** — the same e2e command → PASS, plus
   `npx vitest run src/app/operator/operator-console.spec.ts src/app/app.spec.ts` → PASS,
   then `npm run lint`, `npm run format:check`, and the hygiene guards.
 
-- [ ] **Step 5: Generalization-audit pass** — recorded in the log below.
+- [x] **Step 5: Generalization-audit pass** — recorded in the log below.
 
-- [ ] **Step 6: Commit** — `git commit -m "Retire the unread data.tab key on the console tab routes (#995)"`
+- [x] **Step 6: Commit** — `git commit -m "Retire the unread data.tab key on the console tab routes (#995)"`
 
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ---
 
@@ -284,35 +286,39 @@ const consoleTabRoutes: Routes = [
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** Run `grep -rn "data\.tab\|data\['tab'\]" frontend/src frontend/e2e; grep -n "data:" frontend/src/app/app.routes.ts`
-  → no `tab` hits; `data:` appears only under `adminTabRoutes`. Verified at commit `<sha>`.
-- [ ] **AC-2:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts operator-console admin-console-tabs`
+- [x] **AC-1:** Run `grep -rn "data\.tab\|data\['tab'\]" frontend/src frontend/e2e; grep -n "data:" frontend/src/app/app.routes.ts`
+  → no `tab` hits; the remaining `data:` keys are `adminTab` (×8) and `operatorChrome`/`operatorConsole`. Verified at commit `9f0b4ede`.
+- [x] **AC-2:** Run `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config=playwright.a11y.config.ts operator-console admin-console-tabs`
   → PASS. Verified at commit `<sha>`.
 - [ ] **AC-3:** Run `npx vitest run src/app/operator/operator-console.spec.ts src/app/app.spec.ts`
   → PASS. Verified at commit `<sha>`.
 - [ ] **AC-4:** Run `node scripts/check-inline-comments.mjs --diff origin/main` → clean, and
-  the paragraph is read at review. Verified at commit `<sha>`.
+  the paragraph is read at review. Verified at commit `9f0b4ede`; `npm run lint` and
+  `npm run format:check` also clean.
 
 If any AC isn't verified by a passing test, write the test or admit it's not done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1) — N/A, no backend file in the diff.
+- [x] **Availability** section filled (justified N/A — frontend routing config only); invariant #2 untouched.
+- [x] Pool + cutoff rules honored (invariants #3, #4) — N/A, untouched.
+- [x] **Modulith** section filled (N/A — frontend-only); invariant #11 untouched.
+- [x] **Payment/payout** section filled (N/A — no money in scope); invariants #5, #8, #9 untouched.
+- [x] Refund policy enforced server-side (invariant #10) — N/A, untouched.
+- [x] Timezone correct (invariant #6) — N/A, untouched.
+- [x] Booking codes unguessable (invariant #7) — N/A, untouched.
+- [x] Flyway migration present for schema changes (invariant #12) — N/A, no schema change.
+- [x] **Frontend** standards met — routes stay lazy + titled, `:venueId` still read from the
+  parent under `emptyOnly`; no `as any`; `npm run lint` + `npm run format:check` clean.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, findings register.
+- [x] Risk register has no stale `open` rows; Open Questions empty (all four entries Resolved).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — this commit carries
+  the plan doc's final state citing `merged via PR #996` and PR #994's plan-doc retirement;
+  no docs-only commit follows it.
 - [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
