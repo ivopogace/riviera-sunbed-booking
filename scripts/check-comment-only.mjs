@@ -224,10 +224,12 @@ function skipHtmlComment(scan) {
   return true;
 }
 
+/** A comment drops out of both `out` and the tail; the line end that closes it stays in both. */
 function stripLineComment(scan) {
   if (scan.src[scan.i] === '\n') {
     scan.state = 'code';
     scan.out += '\n';
+    scan.tail.push('\n');
   }
   scan.i++;
 }
@@ -239,7 +241,10 @@ function stripBlockComment(scan) {
     scan.i += 2;
     return;
   }
-  if (src[i] === '\n') scan.out += '\n';
+  if (src[i] === '\n') {
+    scan.out += '\n';
+    scan.tail.push('\n');
+  }
   scan.i++;
 }
 

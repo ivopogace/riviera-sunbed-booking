@@ -110,6 +110,7 @@ no Java, and nothing under `frontend/`.
 | `${…}` counted by brace depth, carried across lines, escapes handled by the scanner first | preserved | `interpolationStep` is called after the scanner's own escape branch |
 | the twin maskers' `for` loops over char arrays (focus: template + code masks; touch: template mask only) | preserved → one `while`-driven per-state stepper in `typescriptRegions` | the same transitions per state (block, string, template, code), pinned by both guards' suites and the three shared cases; touch-target reads `.template` and ignores `.code` |
 | a single-line `/* … */` resets the tail, a block that runs on to the next line does not | preserved | `openBlockComment` resets only on the closed form, as both maskers did |
+| `check-comment-only` tested the opener on its whole stripped output, line ends of comments included | preserved | the tail is fed every code token and every line end a comment stripper emits (F-5) |
 
 ## Risk register
 
@@ -170,7 +171,8 @@ N/A — no contract change.
 | 2 — `check-comment-only` imports it | ✅ | 7e7e11be |
 | 3 — `check-focus-posture` and `check-touch-target` import it (AC-4) | ✅ | 0039b44d |
 | 4 — AC-3 sweep + close-out | ✅ | 0d6409a7 |
-| review + Sonar fix round (F-1..F-4) | ✅ | the review-fix commit |
+| review + Sonar fix round (F-1..F-4) | ✅ | 688a6353 |
+| review fix round 2 (F-5) | ✅ | the F-5 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -182,6 +184,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | F-2 | sonar | new duplicated lines 12.5% against 3% — every touched line in the maskers sat in the pre-existing twin-masker block | fixed: `typescriptRegions` shared; both guards' private maskers, `indexOfFrom` and `skipString` go |
 | F-3 | review (reviewer 5) | two mutation notes in `guard-cli.test.mjs` named `INLINE_TEMPLATE_OPENER` / `TEMPLATE_KEY`, both retired | fixed: they name `inline-template.mjs`'s `OPENER` |
 | F-4 | review (reviewer 1) | the module header narrated the copies' history rather than the contract | fixed: the header states the two surfaces and who takes which |
+| F-5 | review (reviewer 2, differential fuzz of old vs new `strip`) | `check-comment-only`'s comment strippers put a line end into `out` but not into the tail, so `template:` at column zero after a `//` line fused with the word before the comment and the `\b` failed | fixed: both strippers push the `\n` they emit; pinned by "a comment before `template:` does not fuse it with the code before the comment" |
 
 ---
 
@@ -190,7 +193,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `scripts/inline-template.mjs` — `CodeTail` + `interpolationStep` (the decision) and `typescriptRegions` (the walk the markup guards share)
 - `scripts/inline-template.test.mjs` — AC-1, AC-2, AC-5 pins
 - `scripts/check-inline-comments.mjs` — `scan`/`skipTemplate` use the helper; `INLINE_TEMPLATE_OPENER` and `braceDelta` go
-- `scripts/check-comment-only.mjs` — `openQuoted`/`copyInterpolation` use the helper; `TEMPLATE_KEY`, `INLINE_TEMPLATE_EXTENSIONS` and `braceDelta` go
+- `scripts/check-comment-only.mjs` — `openQuoted`/`copyInterpolation` use the helper; the comment strippers feed the tail their line end; `TEMPLATE_KEY`, `INLINE_TEMPLATE_EXTENSIONS` and `braceDelta` go
+- `scripts/check-comment-only.test.mjs` — the F-5 pin
 - `scripts/check-focus-posture.mjs` — imports `typescriptRegions`; its private masker, `TEMPLATE_KEY`, `pending`, `skipString` and `indexOfFrom` go
 - `scripts/check-focus-posture.test.mjs` — AC-4 pin
 - `scripts/check-touch-target.mjs` — imports `typescriptRegions`; `maskTypescript`, `TEMPLATE_KEY`, `pending`, `skipString` and `indexOfFrom` go
@@ -228,7 +232,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] `git grep -n 'template\\s\*:' scripts/check-*.mjs` → 0 hits; `node --test "scripts/*.test.mjs"` → PASS (290).
 - [x] `node scripts/check-plan-file-structure.mjs --diff origin/main` → PASS; the RV-STYLE-1 guards over the diff → clean.
 - [x] Retire `docs/plans/inline-comment-guard-blind-spots.md` (PR #978 merged; it cited only itself).
-- [x] Close-out in the last code-touching commit (the review-fix commit).
+- [x] Close-out in the last code-touching commit (the F-5 commit).
 
 ---
 
@@ -246,7 +250,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - [x] **AC-1/AC-2:** `node --test scripts/inline-template.test.mjs` → PASS (7). Verified at `f07f7059`.
 - [x] **AC-3:** `git grep -n 'template\\s\*:' scripts/check-*.mjs` → nothing; `node --test "scripts/*.test.mjs"` → PASS (290). Verified at `0039b44d`.
 - [x] **AC-4:** `node --test scripts/check-focus-posture.test.mjs scripts/check-touch-target.test.mjs` → PASS, red first at `0039b44d^`. Verified at `0039b44d`.
-- [x] **AC-5:** `node --test scripts/inline-template.test.mjs` → PASS (10); `node --test "scripts/*.test.mjs"` → PASS (293). Verified at the review-fix commit.
+- [x] **AC-5:** `node --test scripts/inline-template.test.mjs` → PASS (10); `node --test "scripts/*.test.mjs"` → PASS (294). Verified at `688a6353` and the F-5 commit.
 
 ## Self-review checklist (before merge / PR)
 
