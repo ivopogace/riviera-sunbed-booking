@@ -305,6 +305,14 @@ export class App {
     this.findOpen.set(true);
   }
 
+  /** PROTOTYPE — variant H names its own focus-return target: the row that opened the modal sits in
+   *  a popover that closes, so the persistent trigger (Menu tab / account button) is what returns. */
+  protected openFindFrom(trigger: HTMLElement): void {
+    this.notePendingNavigation();
+    this.findReturn = trigger;
+    this.findOpen.set(true);
+  }
+
   /** Dismiss (ESC / backdrop / close button) — hide the modal and restore focus to its trigger. */
   protected dismissFind(): void {
     this.findOpen.set(false);
