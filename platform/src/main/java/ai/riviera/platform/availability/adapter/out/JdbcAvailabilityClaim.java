@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import ai.riviera.platform.availability.api.AvailabilityClaim;
 import ai.riviera.platform.availability.vocabulary.ClaimOutcome;
+import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 
@@ -34,8 +35,6 @@ import ai.riviera.platform.venue.api.SetBookingFacts;
 @Repository
 class JdbcAvailabilityClaim implements AvailabilityClaim {
 
-	private static final String ONLINE_POOL = "ONLINE";
-
 	private final JdbcClient jdbc;
 	private final SetBookingFacts setFacts;
 
@@ -47,11 +46,11 @@ class JdbcAvailabilityClaim implements AvailabilityClaim {
 	@Override
 	@Transactional
 	public ClaimOutcome claim(SetId setId, LocalDate bookingDate) {
-		Optional<String> pool = setFacts.poolForClaim(setId);
+		Optional<Pool> pool = setFacts.poolForClaim(setId);
 		if (pool.isEmpty()) {
 			return ClaimOutcome.NO_SUCH_SET;
 		}
-		if (!ONLINE_POOL.equals(pool.get())) {
+		if (pool.get() != Pool.ONLINE) {
 			return ClaimOutcome.NOT_ONLINE_POOL;
 		}
 

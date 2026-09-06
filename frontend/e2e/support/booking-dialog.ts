@@ -18,12 +18,17 @@ export async function settle(page: Page): Promise<void> {
   );
 }
 
-/** Fill the Details step and advance through Review to submit (the v3 2-step booking dialog). */
-export async function completeDialog(dialog: Locator, reviewCta: string): Promise<void> {
+/** Fill the Details step and advance to Review, the step that hosts the widget and submits. */
+export async function fillDetailsAndContinue(dialog: Locator): Promise<void> {
   await dialog.getByLabel('Full name').fill('Holiday Guest');
   await dialog.getByLabel('Email').fill('guest@example.com');
   await dialog.getByLabel('Phone').fill('+355699000');
-  await dialog.getByRole('button', { name: 'Continue', exact: true }).click(); // Details → Review
+  await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+}
+
+/** Fill the Details step and advance through Review to submit (the v3 2-step booking dialog). */
+export async function completeDialog(dialog: Locator, reviewCta: string): Promise<void> {
+  await fillDetailsAndContinue(dialog);
   await dialog.getByRole('button', { name: reviewCta }).click();
 }
 

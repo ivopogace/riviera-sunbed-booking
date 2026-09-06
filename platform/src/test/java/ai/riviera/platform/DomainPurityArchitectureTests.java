@@ -47,9 +47,17 @@ class DomainPurityArchitectureTests {
 	/** The surfaces a domain type may name: published ids and values, and other pure rules. */
 	private static final Set<String> ALLOWED_TARGET_SURFACES = Set.of(DOMAIN_SURFACE, "vocabulary");
 
+	/**
+	 * The JDK allowance, which passes {@code java.time.Clock}. Review item RV-BE-19
+	 * ({@code riviera-review-overlay} {@code references/backend-conventions.md}) relies on exactly
+	 * that, so a tightening here or in {@link #FORBIDDEN} must update the item too.
+	 */
 	private static final String JDK_ROOT = "java";
 
-	/** Checked before the JDK allowance, so {@code java.sql} is rejected rather than let through. */
+	/**
+	 * Checked before the {@link #JDK_ROOT JDK allowance}, so {@code java.sql} is rejected rather
+	 * than let through.
+	 */
 	private static final List<Forbidden> FORBIDDEN = List.of(
 			new Forbidden("org.springframework", "Spring (org.springframework.jdbc included)"),
 			new Forbidden("java.sql", "the JDBC API"),

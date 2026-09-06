@@ -21,6 +21,7 @@ import ai.riviera.platform.customer.vocabulary.CustomerId;
 import ai.riviera.platform.operator.api.VenueVisibility;
 import ai.riviera.platform.operator.vocabulary.VenueRef;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
+import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.api.SetBookingFacts;
 
@@ -45,7 +46,6 @@ import ai.riviera.platform.venue.api.SetBookingFacts;
 @Service
 class ReserveSetService {
 
-	private static final String ONLINE_POOL = "ONLINE";
 	private static final int MAX_CODE_ATTEMPTS = 5;
 
 	private final SetBookingFacts setFacts;
@@ -89,7 +89,7 @@ class ReserveSetService {
 		if (!visibility.isVisible(new VenueRef(set.venueId().value()))) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NO_SUCH_SET);
 		}
-		if (!ONLINE_POOL.equals(set.pool())) {
+		if (set.pool() != Pool.ONLINE) {
 			return new ReserveOutcome.Rejected(BookingOutcome.Rejected.NOT_ONLINE_POOL);
 		}
 		// One reading of the clock, so the fence and the request deadline classify the same instant.

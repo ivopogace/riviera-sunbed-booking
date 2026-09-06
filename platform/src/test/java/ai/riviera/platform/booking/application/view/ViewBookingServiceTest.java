@@ -8,6 +8,8 @@ import java.time.ZoneId;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.application.BookingCutoff;
@@ -28,6 +30,7 @@ import ai.riviera.platform.review.vocabulary.OwnReview;
 import ai.riviera.platform.review.vocabulary.ReviewPanel;
 import ai.riviera.platform.venue.vocabulary.BookingMode;
 import ai.riviera.platform.venue.vocabulary.MoneyView;
+import ai.riviera.platform.venue.vocabulary.Pool;
 import ai.riviera.platform.venue.vocabulary.SetBookingInfo;
 import ai.riviera.platform.venue.vocabulary.SetId;
 import ai.riviera.platform.venue.vocabulary.VenueId;
@@ -210,6 +213,21 @@ class ViewBookingServiceTest {
 
 		assertThat(detail.withdrawable()).isFalse();
 		assertThat(detail.cancellable()).isTrue();
+	}
+
+	/**
+	 * The admission half of {@code cancellable} is the guest-cancel row of the lifecycle table, and
+	 * the expected side here is the literal the table is itself held to, so the view cannot drift from
+	 * the guarded write without one of the two tests failing.
+	 */
+	@ParameterizedTest
+	@EnumSource(BookingStatus.class)
+	void onlyAConfirmedBookingIsCancellableWhileTheWindowIsOpen(BookingStatus status) {
+		givenBooking(status);
+
+		BookingDetail detail = service.byCode(CODE).orElseThrow();
+
+		assertThat(detail.cancellable()).isEqualTo(status == BookingStatus.CONFIRMED);
 	}
 
 	@Test
@@ -540,7 +558,7 @@ class ViewBookingServiceTest {
 	}
 
 	private static SetBookingInfo setInfo() {
-		return new SetBookingInfo(SET, VENUE, "Miramar", "Front row", 2, "ONLINE",
+		return new SetBookingInfo(SET, VENUE, "Miramar", "Front row", 2, Pool.ONLINE,
 				new MoneyView(4500L, "EUR"), LocalTime.of(18, 0), LocalTime.of(16, 0),
 				BookingMode.INSTANT);
 	}

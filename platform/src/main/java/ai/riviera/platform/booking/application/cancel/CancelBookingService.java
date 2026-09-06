@@ -17,20 +17,22 @@ import ai.riviera.platform.booking.application.cancel.CancellationPolicy.RefundQ
 import ai.riviera.platform.booking.application.view.BookingRecord;
 import ai.riviera.platform.booking.application.Bookings;
 import ai.riviera.platform.booking.domain.BookingStatus;
+import ai.riviera.platform.booking.domain.BookingTransition;
 import ai.riviera.platform.booking.vocabulary.CancellationWindow;
 
 /**
- * The cancel-a-booking use case (U6, issue #11). In one transaction it loads the booking by code,
+ * The cancel-a-booking use case (U6). In one transaction it loads the booking by code,
  * computes the refund <strong>server-side</strong> via the shared {@link CancellationPolicy}
  * (invariant #10), transitions {@code CONFIRMED → CANCELLED} (guarded), frees the {@code (set, date)}
  * via {@link AvailabilityClaim#release} (invariant #2), and publishes {@link BookingCancelled}.
  *
- * <p>Status alone does not authorize the cancellation: nothing writes {@code COMPLETED}, so a
- * A booking whose service day is over answers {@link CancelOutcome.WindowClosed} whichever terminal
- * status it carries — still {@code CONFIRMED}, swept to {@code NO_SHOW}, or checked in to
- * {@code COMPLETED}. All three mean the same thing to the guest, and only that outcome renders the
- * accurate "its date has already begun" copy; {@code NotCancellable} renders a generic
- * please-try-again the guest can never satisfy.
+ * <p>Which statuses the guest may cancel from is read from
+ * {@link BookingTransition#CANCEL_BY_GUEST}, the row the guarded write binds, so the fence here and
+ * the {@code UPDATE} cannot disagree. Ahead of that fence, a booking whose service day is over
+ * answers {@link CancelOutcome.WindowClosed} whichever terminal status it carries — still
+ * {@code CONFIRMED}, swept to {@code NO_SHOW}, or checked in to {@code COMPLETED}: all three mean the
+ * same thing to the guest, and only that outcome renders the accurate "its date has already begun"
+ * copy, where {@code NotCancellable} renders a generic please-try-again the guest can never satisfy.
  *
  * <p>A {@code CONFIRMED} booking would otherwise stay cancellable — and late-cancel-refundable — long
  * after the guest consumed the stay. The quote's {@link CancellationPolicy.RefundQuote#cancellationOpen}
@@ -77,7 +79,7 @@ class CancelBookingService implements CancelBooking {
 		if (booking.status() == BookingStatus.NO_SHOW || booking.status() == BookingStatus.COMPLETED) {
 			return new CancelOutcome.WindowClosed();
 		}
-		if (booking.status() != BookingStatus.CONFIRMED) {
+		if (!BookingTransition.CANCEL_BY_GUEST.admits(booking.status())) {
 			return new CancelOutcome.NotCancellable(booking.status());
 		}
 

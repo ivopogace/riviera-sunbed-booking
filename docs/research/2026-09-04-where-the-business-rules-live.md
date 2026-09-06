@@ -391,6 +391,14 @@ Three agreeing statements with no shared function. The adapter's is the enforcin
 are advisory, so a drift shows as a button that 409s rather than as a wrong write. Lower risk than
 D1, but the same shape.
 
+*Resolved, 2026-09-05 (#926).* All three now read `BookingTransition.CANCEL_BY_GUEST`: the adapter
+binds its `:admitted` parameter from the row, and the view's `cancellable` and the cancel service's
+`NotCancellable` fence call `admits(status)` on it. `ViewBookingServiceTest` and
+`CancelBookingServiceTest` hold each service's answer, status by status, to the literal
+`BookingTransitionTest` holds the row to, so the three cannot disagree without a test failing. The
+service's `{NO_SHOW, COMPLETED} → WindowClosed` split stays a literal ahead of the fence: it chooses
+the copy for a spent day, not who may cancel.
+
 ### D3 · The weather-refund status rule is documented in one place and implemented in another
 
 `BookingStatus`'s Javadoc states it:
