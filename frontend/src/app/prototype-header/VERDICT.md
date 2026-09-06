@@ -36,9 +36,34 @@ confirmation mail already deep-links to `<base>/booking/<code>`
 (`notification/application/BookingLinks.java`): the modal is a lost-the-email recovery path, not
 the normal way in.
 
+## Corrections from the second page pass
+
+Three faults in H as first drawn, each the same objection that had eliminated another candidate,
+fixed on the branch and re-shot:
+
+1. **The tab bar never had a selected tab** on the beach map, the booking view or the pay page:
+   it matched exact paths, like the desktop links. It now lights by section — Beaches for `/` and
+   `/venues/**`, My bookings for `/my-bookings` and `/booking/**`, Account for `/account/**` when
+   signed in. The desktop links keep exact matching.
+2. **The signed-out trigger said `Sign in` and opened a menu** on both form factors. Desktop now
+   has a plain `Sign in` link (current-marked on the sign-in page, like the shipped header) and a
+   separate round menu button holding `Create an account` and `Find a booking`. The phone's third
+   tab is `Menu` when signed out and `Account` (avatar) when signed in; the sheet leads with the
+   real `Sign in` row.
+3. **The tab bar stayed up under `Pay €45`**, the very objection that had removed F. It is hidden on
+   `/booking/pay`, and the shell drops its bottom padding there. The prototype keys this on the URL;
+   the rebuild should carry it as route data, the way the operator console goes chromeless.
+
+Also fixed for every candidate: the variant hosts were inline elements, so no prototype header had
+ever actually stuck on scroll. The hosts are now `display: contents`.
+
 ## What H does not settle
 
-- Whether the account tab or `Find a booking` deserves the third phone tab, if the recovery path
-  turns out to be commoner than the deep link implies.
-- The desktop signed-out affordance: H shows a bordered `Sign in` chip that opens the menu.
-  A plain link tested no worse, and no candidate tested a two-control split.
+- Whether `Find a booking` deserves the third phone tab instead of a sheet row, if the recovery
+  path turns out to be commoner than the deep link implies (for a guest without the mail it is
+  now tab, row, code).
+- The phone top bar still pins 57px carrying only the brand and the theme swatch; with the tab
+  bar holding the nav, it could scroll away or hide on scroll (118px of sticky chrome today, 61px
+  without it).
+- The translucent tab bar over dense content (the availability strip on the map): near-opaque like
+  the popover surface, or page padding.

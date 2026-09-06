@@ -1,5 +1,5 @@
 import { Component, computed, inject, output, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
 import { CustomerAuth } from '../core/customer-auth';
 import { ThemeId, ThemeService } from '../core/theme';
@@ -31,8 +31,25 @@ const BOTTOM_ICON =
 const SWATCH_BTN =
   'grid size-11 shrink-0 cursor-pointer place-items-center rounded-full before:size-[22px] before:rounded-full before:bg-(image:--riv-swatch) before:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55),0_1px_3px_rgba(6,30,40,0.35)] before:[transition:scale_0.12s_ease] before:content-[""] hover:before:scale-[1.12] motion-reduce:before:transition-none motion-reduce:hover:before:scale-100';
 
+const MENU_BTN =
+  'inline-flex size-11 cursor-pointer items-center justify-center rounded-full border border-riv-chip-border bg-riv-chip-bg text-riv-ink backdrop-blur-[10px] [transition:filter_0.15s_ease] hover:brightness-[0.96] motion-reduce:transition-none';
+
 const ACCOUNT_CHIP =
   'inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-riv-chip-border bg-riv-chip-bg px-3 text-[13.5px] font-semibold text-riv-ink backdrop-blur-[10px] [transition:filter_0.15s_ease] hover:brightness-[0.96] motion-reduce:transition-none';
+
+/** Which bottom tab a URL belongs to: the tab bar lights by section, not by exact path. */
+type Section = 'beaches' | 'bookings' | 'account' | null;
+
+function sectionOf(path: string): Section {
+  const first = path.split('?')[0].split('/')[1] ?? '';
+  if (first === '' || first === 'venues') {
+    return 'beaches';
+  }
+  if (first === 'my-bookings' || first === 'booking') {
+    return 'bookings';
+  }
+  return first === 'account' ? 'account' : null;
+}
 
 /**
  * PROTOTYPE variant H — "Two destinations". The hybrid the grilling answers describe and no
@@ -120,11 +137,19 @@ const ACCOUNT_CHIP =
             }
           </div>
 
+          @if (!customerAuth.restoring() && !customerAuth.signedIn()) {
+            <a
+              routerLink="/account/sign-in"
+              class="hidden min-h-11 items-center px-2 text-[13.5px] font-semibold text-riv-ink-soft hover:text-riv-ink aria-[current=page]:text-riv-ink aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:underline-offset-[7px] sm:inline-flex"
+              [attr.aria-current]="section() === 'account' ? 'page' : null"
+              >Sign in</a
+            >
+          }
           <div class="relative hidden items-center sm:flex">
             <button
               appTouchTarget
               type="button"
-              [class]="cls.accountChip"
+              [class]="customerAuth.signedIn() ? cls.accountChip : cls.menuBtn"
               [attr.aria-label]="accountLabel()"
               [attr.aria-expanded]="open() === 'account'"
               (click)="toggle('account')"
@@ -134,10 +159,22 @@ const ACCOUNT_CHIP =
                   initial()
                 }}</span>
                 <span class="max-w-[130px] truncate">{{ handle() }}</span>
+                <span class="text-[9px] opacity-85" aria-hidden="true">&#9662;</span>
               } @else {
-                <span>Sign in</span>
+                <svg
+                  class="size-[20px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  aria-hidden="true"
+                >
+                  <path d="M4 7h16" />
+                  <path d="M4 12h16" />
+                  <path d="M4 17h16" />
+                </svg>
               }
-              <span class="text-[9px] opacity-85" aria-hidden="true">&#9662;</span>
             </button>
 
             @if (open() === 'account') {
@@ -168,12 +205,6 @@ const ACCOUNT_CHIP =
                       >Your account</a
                     >
                   } @else {
-                    <a
-                      routerLink="/account/sign-in"
-                      [class]="cls.popItem + ' text-riv-pop-accent'"
-                      (click)="close()"
-                      >Sign in</a
-                    >
                     <a
                       routerLink="/account/sign-in"
                       [queryParams]="{ mode: 'register' }"
@@ -208,73 +239,17 @@ const ACCOUNT_CHIP =
       </div>
     </header>
 
-    <nav
-      class="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 border-t border-riv-header-border bg-riv-header-glass pb-[env(safe-area-inset-bottom)] backdrop-blur-[22px] backdrop-saturate-[1.7] sm:hidden"
-      aria-label="Primary (phone)"
-    >
-      <a
-        routerLink="/"
-        routerLinkActive
-        ariaCurrentWhenActive="page"
-        [routerLinkActiveOptions]="exactPath"
-        [class]="cls.bottomTab"
+    @if (!checkout()) {
+      <nav
+        class="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 border-t border-riv-header-border bg-riv-header-glass pb-[env(safe-area-inset-bottom)] backdrop-blur-[22px] backdrop-saturate-[1.7] sm:hidden"
+        aria-label="Primary (phone)"
       >
-        <span [class]="cls.bottomIcon">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9Z" />
-            <path d="M12 3v9" />
-            <path d="M12 12v6a2.5 2.5 0 0 0 5 0" />
-          </svg>
-        </span>
-        Beaches
-      </a>
-      <a
-        routerLink="/my-bookings"
-        routerLinkActive
-        ariaCurrentWhenActive="page"
-        [routerLinkActiveOptions]="exactPath"
-        [class]="cls.bottomTab"
-      >
-        <span [class]="cls.bottomIcon">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path
-              d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-6Z"
-            />
-            <path d="M14 5v14" />
-          </svg>
-        </span>
-        My bookings
-      </a>
-      <button
-        appTouchTarget
-        type="button"
-        [class]="cls.bottomTab"
-        [attr.aria-label]="accountLabel()"
-        [attr.aria-expanded]="open() === 'menu'"
-        (click)="toggle('menu')"
-      >
-        <span [class]="cls.bottomIcon">
-          @if (customerAuth.signedIn()) {
-            <span [class]="cls.avatar + ' size-[21px] text-[11px]'" aria-hidden="true">{{
-              initial()
-            }}</span>
-          } @else {
+        <a
+          routerLink="/"
+          [attr.aria-current]="section() === 'beaches' ? 'page' : null"
+          [class]="cls.bottomTab"
+        >
+          <span [class]="cls.bottomIcon">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -284,14 +259,69 @@ const ACCOUNT_CHIP =
               stroke-linejoin="round"
               aria-hidden="true"
             >
-              <circle cx="12" cy="8" r="4" />
-              <path d="M4 21a8 8 0 0 1 16 0" />
+              <path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9Z" />
+              <path d="M12 3v9" />
+              <path d="M12 12v6a2.5 2.5 0 0 0 5 0" />
             </svg>
-          }
-        </span>
-        {{ customerAuth.signedIn() ? 'Account' : 'Sign in' }}
-      </button>
-    </nav>
+          </span>
+          Beaches
+        </a>
+        <a
+          routerLink="/my-bookings"
+          [attr.aria-current]="section() === 'bookings' ? 'page' : null"
+          [class]="cls.bottomTab"
+        >
+          <span [class]="cls.bottomIcon">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path
+                d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-6Z"
+              />
+              <path d="M14 5v14" />
+            </svg>
+          </span>
+          My bookings
+        </a>
+        <button
+          appTouchTarget
+          type="button"
+          [class]="cls.bottomTab"
+          [attr.aria-current]="section() === 'account' && customerAuth.signedIn() ? 'page' : null"
+          [attr.aria-label]="accountLabel()"
+          [attr.aria-expanded]="open() === 'menu'"
+          (click)="toggle('menu')"
+        >
+          <span [class]="cls.bottomIcon">
+            @if (customerAuth.signedIn()) {
+              <span [class]="cls.avatar + ' size-[21px] text-[11px]'" aria-hidden="true">{{
+                initial()
+              }}</span>
+            } @else {
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                aria-hidden="true"
+              >
+                <path d="M4 7h16" />
+                <path d="M4 12h16" />
+                <path d="M4 17h16" />
+              </svg>
+            }
+          </span>
+          {{ customerAuth.signedIn() ? 'Account' : 'Menu' }}
+        </button>
+      </nav>
+    }
 
     @if (open() === 'menu') {
       <div [class]="cls.backdrop" (click)="close()" aria-hidden="true"></div>
@@ -324,6 +354,7 @@ const ACCOUNT_CHIP =
             <a
               routerLink="/account/sign-in"
               [class]="cls.sheetItem + ' text-riv-pop-accent'"
+              [attr.aria-current]="section() === 'account' ? 'page' : null"
               (click)="close()"
               >Sign in</a
             >
@@ -364,8 +395,17 @@ export class HeaderVariantH {
 
   protected readonly themes = inject(ThemeService);
   protected readonly customerAuth = inject(CustomerAuth);
+  private readonly router = inject(Router);
   protected readonly exactPath = EXACT_PATH;
   protected readonly open = signal<OpenSurface>('none');
+
+  /** The settled URL's section, read off the last successful navigation (the App's own idiom). */
+  private readonly settledUrl = computed(() =>
+    this.router.lastSuccessfulNavigation() === null ? '/' : this.router.url,
+  );
+  protected readonly section = computed(() => sectionOf(this.settledUrl()));
+  /** Checkout hides the tab bar: a thumb-reach exit under the Pay button is the F objection. */
+  protected readonly checkout = computed(() => this.settledUrl().startsWith('/booking/pay'));
 
   protected readonly cls = {
     header: GLASS_HEADER,
@@ -374,6 +414,7 @@ export class HeaderVariantH {
     bottomIcon: BOTTOM_ICON,
     swatchBtn: SWATCH_BTN,
     accountChip: ACCOUNT_CHIP,
+    menuBtn: MENU_BTN,
     backdrop: BACKDROP,
     accountPop: `top-[calc(100%+8px)] right-0 w-[248px] p-[7px] ${POP}`,
     themePop: `top-[calc(100%+8px)] right-0 w-[212px] p-[7px] ${POP}`,
@@ -391,7 +432,7 @@ export class HeaderVariantH {
     () => this.themes.options.find((o) => o.id === this.themes.theme()) ?? this.themes.options[0],
   );
   protected readonly accountLabel = computed(() =>
-    this.customerAuth.signedIn() ? `Account: ${this.customerAuth.email()}` : 'Sign in and account',
+    this.customerAuth.signedIn() ? `Account: ${this.customerAuth.email()}` : 'Menu',
   );
 
   protected toggle(surface: OpenSurface): void {

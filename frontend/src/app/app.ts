@@ -115,6 +115,11 @@ export class App {
   protected readonly themes = inject(ThemeService);
   /** PROTOTYPE — which tourist header renders; `current` is the shipped one. See prototype-header/. */
   protected readonly headerVariant = inject(PrototypeHeaderVariant).variant;
+  /** PROTOTYPE — variant H hides its phone tab bar on the pay page; the shell drops the padding too. */
+  protected readonly checkoutPage = computed(
+    () =>
+      this.router.lastSuccessfulNavigation() !== null && this.router.url.startsWith('/booking/pay'),
+  );
   /** Customer session state for the header: sign-in/register links ↔ signed-in + sign-out. */
   protected readonly customerAuth = inject(CustomerAuth);
   /**

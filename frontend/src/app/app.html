@@ -1,6 +1,6 @@
 <div
   class="relative flex min-h-screen flex-col"
-  [class.max-sm:pb-[68px]]="headerVariant() === 'c' || headerVariant() === 'h'"
+  [class.max-sm:pb-[68px]]="headerVariant() === 'c' || (headerVariant() === 'h' && !checkoutPage())"
   [class.max-md:pb-[68px]]="headerVariant() === 'g'"
   [class.md:pl-[88px]]="headerVariant() === 'g'"
 >
