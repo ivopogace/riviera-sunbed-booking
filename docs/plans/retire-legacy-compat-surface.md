@@ -30,8 +30,10 @@ template — forced the behavior-parity ledger, which is what turned "delete a f
 enumerated four-behavior check) · `tdd` (the pre-navigation pin is written red first: it
 fails today because `<main>` really does carry the compat classes before the first
 `NavigationEnd`) · `riviera-review-overlay` (review gate — run at ready-for-review) ·
-`riviera-docs-freshness` (**ran** over `origin/main..HEAD` at close-out — findings recorded
-in the close-out) · `riviera-frontend` (shell/theming ownership: `<main>`'s chrome is the
+`riviera-docs-freshness` (**ran** over `7709227c..HEAD`, the resolved merge base after
+fetching `origin/main` — **0 findings**: no substrate doc states anything about the compat
+surface, and nothing counts the shell's chrome flags; it also caught that PR #990's plan doc
+was due for retirement in this PR) · `riviera-frontend` (shell/theming ownership: `<main>`'s chrome is the
 shell's call, and the two-suite e2e split put the new browser-level pin in the CI-run
 mocked suite) · `riviera-tailwind` (the removed binding carried the last `#f8fafc` /
 `#0f172a` palette literals in `app.html` — deleting them is a token-purity win, and rule 2
@@ -180,16 +182,16 @@ N/A — no contract change; no HTTP call is added, removed or reshaped.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2 — close-out sweep)`
+**Stage pointer:** `review gate — PR #994 ready for review`
 
-**Next action:** merge latest `origin/main`, run phase 2 (retire PR #990's plan doc +
-docs-freshness), then mark PR #994 ready for review.
+**Next action:** run the review gate per `riviera-sdlc` `references/pr-gates.md` §1, then the
+Sonar gate; every finding re-enters at Implement.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — Retire the mechanism (`app.ts`, `app.html`) behind a red pre-navigation pin | ✅ | phase-0 commit |
 | 1 — Retire the flag's specs + docs; add the real-browser pin | ✅ | phase-1 commit |
-| 2 — Close-out sweep (retire PR #990's plan doc, docs-freshness) | ⏳ | |
+| 2 — Close-out sweep (retire PR #990's plan doc, docs-freshness) | ✅ | phase-2 commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -221,6 +223,9 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 - `frontend/src/app/app.contrast.spec.ts` — the compat-panel ink case goes
 - `frontend/e2e/theme-shell.e2e.ts` — AC-2's real-browser pin, beside the existing
   pre-paint-seeding block
+- `frontend/src/app/pages/home/home.html` — not this slice's change: it arrives with the
+  merge of `origin/main` (#993's sunray glow) and is listed because the guard judges the
+  whole diff range
 
 ---
 
@@ -316,12 +321,17 @@ it('renders <main> bare under the tourist chrome before the first navigation com
 **Files:** Delete `docs/plans/shell-route-chrome-signals.md` · Modify
 `docs/plans/retire-legacy-compat-surface.md`
 
-- [ ] **Step 1:** `git rm docs/plans/shell-route-chrome-signals.md` — PR #990 is merged, so
-  the next close-out of any kind retires it; grep confirmed no citation of the slug outside
-  `docs/plans/`, and its deferred residual is this very issue.
-- [ ] **Step 2:** Run `riviera-docs-freshness` over `origin/main..HEAD` — the rename/removal
-  grep for `legacySurface` / `riv-legacy-surface` / `compat surface` across the substrate set.
-- [ ] **Step 3:** Run `node scripts/check-plan-file-structure.mjs --diff origin/main`.
+- [x] **Step 1:** `git rm docs/plans/shell-route-chrome-signals.md` — PR #990 is merged, so
+  the next close-out of any kind retires it. No citation of the slug exists outside
+  `docs/plans/`; its non-goals name follow-ups #982/#983, which are already issues, and its
+  deferred residual is this very issue, so nothing needed migrating first.
+- [x] **Step 2:** `riviera-docs-freshness` over `7709227c..HEAD` — **0 findings**. The 2a
+  rename grep over the whole substrate set returns nothing for `legacySurface` /
+  `riv-legacy-surface` / `RESTYLED_PATHS` / `compat surface`; the 2b counting sweep's hits all
+  count other subjects and stay true; the step-3 reverse walk found only the vendored
+  `angular-developer` Signal Forms example's generic `app.html` path.
+- [x] **Step 3:** `node scripts/check-plan-file-structure.mjs --diff origin/main` → pass, with
+  the other four guards.
 - [ ] **Step 4:** Finalize this plan's Execution status in the PR's last code-touching commit.
 
 ---
