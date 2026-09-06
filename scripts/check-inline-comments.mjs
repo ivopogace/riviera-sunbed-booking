@@ -75,11 +75,11 @@ export function syntaxFor(path) {
 const CITING = '(?:issues?|PRs?|epics?|since|until|before|after|see|by|at|in|from|fix(?:es|ed)?|closes)';
 
 /** A comment's own opening: after its marker, a doc comment's leading `*`, and whitespace. */
-const OPENING = '^\\s*(?:\\*\\s*)?';
+const OPENING = String.raw`^\s*(?:\*\s*)?`;
 
 const TELLS = {
   provenance: new RegExp(
-    `(?:${OPENING}|[(,]\\s*|\\d/\\s*|\\b${CITING}\\s+)#[1-9]\\d{2,3}(?!\\w)|\\b(?:issues?|PRs?|pull requests?)\\s+#?\\d{2,4}\\b`,
+    String.raw`(?:${OPENING}|[(,]\s*|\d/\s*|\b${CITING}\s+)#[1-9]\d{2,3}(?!\w)|\b(?:issues?|PRs?|pull requests?)\s+#?\d{2,4}\b`,
     'i',
   ),
   history:

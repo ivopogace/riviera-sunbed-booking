@@ -190,8 +190,8 @@ test('check-inline-comments: an added "++ " line does not re-target the lines af
  * a trailing backtick — 44 files under `frontend/src/app` — inverted the scanner's template state,
  * so everything after the template read as string content and no comment in it was ever reported.
  *
- * <p>Mutation: restore `line[c - 1] !== '`'` as the sole open condition in `scan`. This case then
- * exits 0, which is what the whole tree's gate looked like before.
+ * <p>Mutation: have `scan` clear `inTemplate` whenever `skipTemplate` reaches the end of a line, as
+ * a close. This case then exits 0, which is what the whole tree's gate looked like before.
  */
 test('check-inline-comments: an inline Angular template does not hide a later comment', () => {
   withRepo((repo) => {

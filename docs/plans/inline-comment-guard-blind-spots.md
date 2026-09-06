@@ -216,7 +216,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 - [x] **AC-1:** Ran `node scripts/check-inline-comments.mjs --files <probe>.ts` on the issue's probe → `zz-probe.ts:4-5  multiline`. Verified at commit `7bb5bade`.
 - [x] **AC-2:** Same probe with `(#923)` → `provenance` on line 5 (`check-inline-comments.test.mjs`, and the `--files` harness case). Verified at commit `e77f25e5`.
-- [x] **AC-3:** `node --test scripts/check-inline-comments.test.mjs` → 30 pass, the opening-anchor cases included. Verified at commit `9cb1c789`.
+- [x] **AC-3:** `node --test scripts/check-inline-comments.test.mjs` → 29 pass, the opening-anchor cases included. Verified at commit `9cb1c789`.
 - [x] **AC-4:** `node --test "scripts/*.test.mjs"` → 276 pass, the `strip` cases and the comment-only harness case included. Verified at commit `7bb5bade`.
 
 ## Self-review checklist (before merge / PR)

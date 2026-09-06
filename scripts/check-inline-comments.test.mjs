@@ -259,10 +259,10 @@ test('keeps a Java text block open across an escaped triple quote', () => {
 
 /**
  * A backtick that OPENS a template literal as the last character of its line was read as one that
- * closed it: `skipString` starts past the backtick, runs off the end and returns `line.length`, and
- * the character before that index is the opening backtick itself. The scanner's template state then
+ * closed it: the scan started past the backtick, ran off the end and returned `line.length`, and the
+ * character before that index was the opening backtick itself. The scanner's template state then
  * inverted for the rest of the file — the literal's body read as code and the code after it read as
- * a literal, hiding every comment there.
+ * a literal, hiding every comment there. `skipTemplate` answers with a `closed` flag for this reason.
  *
  * <p>Not a corner: `template: \`` on its own line is how 44 components under `frontend/src/app` are
  * written, so this is a false clean over a large part of the tree the guard gates. Found by the
