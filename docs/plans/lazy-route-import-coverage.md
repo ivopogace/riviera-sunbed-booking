@@ -52,8 +52,8 @@ validating a project-level test convention as the right layer for the fix).
   target modules resolve to a defined component class (proving each one is genuinely
   evaluated, not merely discovered by the bundler). *Seam:* `app.routes.ts`'s exported
   `routes` array — the real route table, not a stub. *Pinned by:*
-  `app.routes.spec.ts` › `app.routes — every lazy route target resolves its module (#999)` ›
-  `resolves all 32 loadComponent targets, including the nested tab-route trees`.
+  `app.routes.spec.ts` › `app.routes — every lazy route target resolves its module` ›
+  `resolves all 32 loadComponent targets, including the nested tab-route trees (#999)`.
 - [ ] **AC-2:** Given AC-1's test is added and `npm run test:coverage` runs the full suite,
   when `frontend/coverage/frontend/lcov.info` is inspected for the import lines of the 20
   previously-`DA:<n>,0` lazy targets (admin tabs `commissions`/`email`/`refunds`/`photos`/
@@ -125,14 +125,15 @@ N/A — no API shape change.
 
 ## Execution status
 
-**Stage pointer:** implement (Phase 0 done) — next: open draft PR, then Review + Sonar gates.
+**Stage pointer:** review gate — PR #1000 ready for review, `/code-review` +
+`riviera-review-overlay` in progress.
 
-**Next action:** open the PR (draft), let CI run, then work the Review gate per
-`riviera-sdlc` `references/pr-gates.md` §1.
+**Next action:** finish the dispatched review agents, resolve any findings, then work the
+Sonar gate per `riviera-sdlc` `references/pr-gates.md` §2.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — Generic lazy-route walker test + doc note | ✅ | `4425da9` (plan doc), `a94f2dcc` (test + doc note) |
+| 0 — Generic lazy-route walker test + doc note | ✅ | `4425da9` (plan doc), `a94f2dcc` (test + doc note), `b641c13b` (verification), `<review-fix-sha>` (F-1) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -141,6 +142,7 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (self-caught, RV-PROC-2a citation check, before agent dispatch) | The new `describe` block carried `(#999)` while the file's convention puts issue numbers on `it`, not `describe` — and the `riviera-frontend` doc note cited the test name without that suffix, an exact-match citation mismatch. | fixed — moved `(#999)` to the `it` name, doc note now cites the `describe` name exactly |
 
 ---
 
@@ -172,13 +174,13 @@ re-enters at Implement per the `riviera-sdlc` re-entry rule.
 
 ```ts
 // frontend/src/app/app.routes.spec.ts — appended
-describe('app.routes — every lazy route target resolves its module (#999)', () => {
+describe('app.routes — every lazy route target resolves its module', () => {
   /**
    * SonarCloud/V8 coverage only counts a lazy target's import lines as covered once its
    * dynamic import() actually resolves — a spec that merely imports `routes` (five do)
    * registers the chunk boundary with every line at 0 hits. This walk resolves every
    * loadComponent target in the real table, including the two nested tab-route trees, so a
-   * new lazy route gets this for free with no per-component deep-link spec (issue #999).
+   * new lazy route gets this for free with no per-component deep-link spec.
    */
   async function loadedComponentNames(routeList: Routes): Promise<string[]> {
     const names: string[] = [];
@@ -195,7 +197,7 @@ describe('app.routes — every lazy route target resolves its module (#999)', ()
     return names;
   }
 
-  it('resolves all 32 loadComponent targets, including the nested tab-route trees', async () => {
+  it('resolves all 32 loadComponent targets, including the nested tab-route trees (#999)', async () => {
     const names = await loadedComponentNames(routes);
     expect(names).toHaveLength(32);
     expect(names.every((name) => name.length > 0)).toBe(true);
@@ -216,7 +218,7 @@ describe('app.routes — every lazy route target resolves its module (#999)', ()
   Vitest's v8 coverage provider registers a `loadComponent` target's chunk boundary as soon
   as any spec imports `app.routes.ts`, but its import lines stay at 0 hits until something
   resolves the dynamic `import()` (real navigation, or a direct `loadComponent()` call).
-  `app.routes.spec.ts`'s `app.routes — every lazy route target resolves its module (#999)`
+  `app.routes.spec.ts`'s `app.routes — every lazy route target resolves its module`
   test walks the whole real table (including `consoleTabRoutes`/`adminTabRoutes`) and
   resolves every target, so a new lazy route gets this for free — no per-component
   deep-link spec needed for coverage alone.

@@ -72,7 +72,7 @@ describe('app.routes — retired auth surfaces', () => {
   });
 });
 
-describe('app.routes — every lazy route target resolves its module (#999)', () => {
+describe('app.routes — every lazy route target resolves its module', () => {
   /**
    * SonarCloud/V8 coverage only counts a lazy target's import lines as covered once its
    * dynamic import() actually resolves — a spec that merely imports `routes` (five do)
@@ -95,7 +95,7 @@ describe('app.routes — every lazy route target resolves its module (#999)', ()
     return names;
   }
 
-  it('resolves all 32 loadComponent targets, including the nested tab-route trees', async () => {
+  it('resolves all 32 loadComponent targets, including the nested tab-route trees (#999)', async () => {
     const names = await loadedComponentNames(routes);
     expect(names).toHaveLength(32);
     expect(names.every((name) => name.length > 0)).toBe(true);
