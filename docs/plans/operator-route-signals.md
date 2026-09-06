@@ -57,8 +57,10 @@ in for `feature/operator-route-signals` (`riviera-sdlc` § Remote/cloud addendum
 ## Acceptance criteria (testable)
 
 - [ ] **AC-1:** Given the shipped sources, when `OperatorChrome` and `OperatorConsole` are read,
-  then neither imports `NavigationEnd` or `toSignal`, and `grep -n "NavigationEnd" frontend/src/app/operator/operator-chrome.ts frontend/src/app/operator/operator-console.ts`
-  returns nothing. *Seam:* the two component source files · *Pinned by:* the grep in
+  then neither imports `NavigationEnd` or `toSignal`, and
+  `grep -n "import.*NavigationEnd\|instanceof NavigationEnd\|toSignal" frontend/src/app/operator/operator-chrome.ts frontend/src/app/operator/operator-console.ts`
+  returns nothing (the console's TSDoc still *names* the event, as the shell's does, to state
+  the ordering guarantee). *Seam:* the two component source files · *Pinned by:* the grep in
   **AC verification** below (an absence, per the #995 precedent — not test-pinned).
 - [ ] **AC-2:** Given the operator chrome rendered signed-out, when the page is `/` (no
   navigation yet), then the Sign in link's href is
@@ -169,16 +171,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** Phase 1 — write the console's scroll-into-view pins, run them green against the
-old pipe, migrate `currentTabPath`, re-run.
+**Next action:** Phase 2 — full check suite + the three mocked e2e suites, then open the draft
+PR and mark it ready.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `OperatorChrome` onto `currentUrl()` | ✅ | phase-0 commit (see git log, #982) |
-| 1 — `OperatorConsole.currentTabPath` as a `computed` | ⏳ | |
-| 2 — Full check suite + mocked e2e, draft PR → ready | | |
+| 0 — `OperatorChrome` onto `currentUrl()` | ✅ | `b78a79c0` |
+| 1 — `OperatorConsole.currentTabPath` as a `computed` | ✅ | phase-1 commit (see git log, #982) |
+| 2 — Full check suite + mocked e2e, draft PR → ready | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -217,19 +219,19 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `frontend/src/app/operator/operator-console.ts` · Test `frontend/src/app/operator/operator-console.spec.ts`
 
-- [ ] **Step 1: Write the pins** — a new `describe` with a `scrollIntoView` spy on
+- [x] **Step 1: Write the pins** — a new `describe` with a `scrollIntoView` spy on
   `HTMLElement.prototype` (restored in `afterEach`); the route stub gains a settable
   `snapshot.firstChild.routeConfig.path`; case 1 completes a navigation, mounts with
   `firstChild` = `daily`, asserts the spy fired on the `Daily view` anchor; case 2 then sets
   `firstChild` = `venue`, completes another navigation, asserts the spy fired on the
   `Venue & commodities` anchor.
-- [ ] **Step 2: Run against the old pipe, verify it passes** —
+- [x] **Step 2: Run against the old pipe, verify it passes** —
   `npx ng test --include='src/app/operator/operator-console.spec.ts'` → PASS.
-- [ ] **Step 3: Migrate** — `computed(() => this.router.lastSuccessfulNavigation() === null ? undefined : this.route.snapshot.firstChild?.routeConfig?.path)` with TSDoc stating the source signal and the ordering guarantee; remove `NavigationEnd`, `toSignal`, `filter`, `map` imports.
-- [ ] **Step 4: Run it, verify it passes** — same command → PASS; `grep -n NavigationEnd` → nothing.
-- [ ] **Step 5: Generalization-audit pass** — same population as phase 0; no new members.
-- [ ] **Step 6: Commit** — `git commit -m "Derive the operator console's active tab from the router's navigation signal (#982)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit.
+- [x] **Step 3: Migrate** — `computed(() => this.router.lastSuccessfulNavigation() === null ? undefined : this.route.snapshot.firstChild?.routeConfig?.path)` with TSDoc stating the source signal and the ordering guarantee; remove `NavigationEnd`, `toSignal`, `filter`, `map` imports.
+- [x] **Step 4: Run it, verify it passes** — same command → PASS; `grep -n "import.*NavigationEnd"` → nothing.
+- [x] **Step 5: Generalization-audit pass** — same population as phase 0; no new members.
+- [x] **Step 6: Commit** — `git commit -m "Derive the operator console's active tab from the router's navigation signal (#982)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit.
 
 ## Phase 2 — Full check suite, mocked e2e, PR
 
@@ -250,7 +252,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1:** `grep -n "NavigationEnd\|toSignal" frontend/src/app/operator/operator-chrome.ts frontend/src/app/operator/operator-console.ts` → nothing.
+- [ ] **AC-1:** `grep -n "import.*NavigationEnd\|instanceof NavigationEnd\|toSignal" frontend/src/app/operator/operator-chrome.ts frontend/src/app/operator/operator-console.ts` → nothing.
 - [ ] **AC-2:** `npx ng test --include='src/app/operator/operator-chrome.spec.ts'` → PASS.
 - [ ] **AC-3 / AC-4:** `npx ng test --include='src/app/operator/operator-console.spec.ts'` → PASS.
 - [ ] **AC-5:** review + `node scripts/check-inline-comments.mjs --diff origin/main` → clean.
