@@ -45,18 +45,18 @@ row fires: the diff holds no SQL, no Java, and nothing under `frontend/`.
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a `.ts` component whose `template:` literal carries a two-line `<!-- … -->`
+- [x] **AC-1:** Given a `.ts` component whose `template:` literal carries a two-line `<!-- … -->`
   the diff added, when the guard judges it, then one `multiline` finding spans those two lines.
   *Seam:* `findViolations({ path, lines, added })` (the exported detector) and the `--files` CLI ·
   *Pinned by:* `check-inline-comments.test.mjs` "flags a multi-line HTML comment inside an inline Angular template" + `guard-cli.test.mjs` "check-inline-comments --files judges an HTML comment inside an inline template"
-- [ ] **AC-2:** Given such a template whose HTML comment cites `(#923)` on an added line, when judged,
+- [x] **AC-2:** Given such a template whose HTML comment cites `(#923)` on an added line, when judged,
   then a `provenance` finding names that line. *Seam:* `findViolations` · *Pinned by:*
   `check-inline-comments.test.mjs` "reports provenance inside an inline Angular template's HTML comment"
-- [ ] **AC-3:** Given an added `//` comment whose text opens with `#NNN` (3–4 digits, e.g.
+- [x] **AC-3:** Given an added `//` comment whose text opens with `#NNN` (3–4 digits, e.g.
   `// #923's widget pushed Review past a phone's height.`), when judged, then a `provenance` finding
   fires; `// the #404 error`, `: #123`, and every other existing fixture keep their verdict.
   *Seam:* `findViolations` · *Pinned by:* `check-inline-comments.test.mjs` "a bare issue number opening the comment is a citing position"
-- [ ] **AC-4:** Given a diff whose only change to a `.ts` file removes one `<!-- … -->` line from its
+- [x] **AC-4:** Given a diff whose only change to a `.ts` file removes one `<!-- … -->` line from its
   `template:` literal, when `check-comment-only.mjs` runs, then it exits 0 reporting the file
   verified code-identical; a change to any other template literal's content (a spec's HTML fixture)
   is still reported as a code change. *Seam:* `strip(src)` (the exported normaliser) and the CLI ·
@@ -170,42 +170,42 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `scripts/check-inline-comments.mjs:scan` · Test `scripts/check-inline-comments.test.mjs`, `scripts/guard-cli.test.mjs`
 
-- [ ] **Step 1: Write the failing tests** — the issue's probe component as the fixture, asserting one
+- [x] **Step 1: Write the failing tests** — the issue's probe component as the fixture, asserting one
   `multiline` finding over the comment's two lines and one `provenance` finding on its second line.
-- [ ] **Step 2: Run it, verify it fails** — `node --test scripts/check-inline-comments.test.mjs` → FAIL (no findings).
-- [ ] **Step 3: Minimal implementation** — when a backtick opens right after `template\s*:\s*`, the
+- [x] **Step 2: Run it, verify it fails** — `node --test scripts/check-inline-comments.test.mjs` → FAIL (no findings).
+- [x] **Step 3: Minimal implementation** — when a backtick opens right after `template\s*:\s*`, the
   scanner enters the template in an `inlineTemplate` state; there `<!--` opens an `html` region and
   `-->` closes it, after which the template continues.
-- [ ] **Step 4: Run it, verify it passes** — `node --test "scripts/*.test.mjs"` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: every script that walks template-literal
+- [x] **Step 4: Run it, verify it passes** — `node --test "scripts/*.test.mjs"` → PASS.
+- [x] **Step 5: Generalization-audit pass** — population: every script that walks template-literal
   state (`git grep -n "inTemplate\|quote === '\`'\|'\`'" scripts/*.mjs`) → the two guards this plan
   names; the focus/touch-target guards parse HTML with their own front-end and never see a `.ts`.
-- [ ] **Step 6: Commit** — `git commit -m "Scan an Angular inline template's HTML comments in check-inline-comments (#977)"`
-- [ ] **Step 7: Update plan-doc execution status** in the same commit window.
+- [x] **Step 6: Commit** — `git commit -m "Scan an Angular inline template's HTML comments in check-inline-comments (#977)"`
+- [x] **Step 7: Update plan-doc execution status** in the same commit window.
 
 ## Phase 1 — Sentence-opening `#NNN` (AC-3)
 
 **Files:** Modify `scripts/check-inline-comments.mjs:TELLS` · Test `scripts/check-inline-comments.test.mjs`
 
-- [ ] **Step 1: Write the failing test** — `// #923's widget pushed Review past a phone's height.` → `['provenance']`; ` * #795 AC-8: …` inside a touched Javadoc → provenance; `// the #404 error` stays clean.
-- [ ] **Step 2: Run it, verify it fails** — `node --test scripts/check-inline-comments.test.mjs` → FAIL.
-- [ ] **Step 3: Minimal implementation** — a third alternative in `provenance`: `^\s*(?:\*\s*)?#[1-9]\d{2,3}(?!\w)`, applied to the text after the opener strip.
-- [ ] **Step 4: Run it, verify it passes** — `node --test "scripts/*.test.mjs"` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: every consumer of `TELLS` (`grep -n "TELLS" scripts/check-inline-comments.mjs`) → `tellViolations` and `markdownViolations`; the markdown path gets the same anchor for free and a skill line opening with `#NNN` is provenance there too.
-- [ ] **Step 6: Commit** — `git commit -m "Read a comment that opens with #NNN as provenance (#977)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 1: Write the failing test** — `// #923's widget pushed Review past a phone's height.` → `['provenance']`; ` * #795 AC-8: …` inside a touched Javadoc → provenance; `// the #404 error` stays clean.
+- [x] **Step 2: Run it, verify it fails** — `node --test scripts/check-inline-comments.test.mjs` → FAIL.
+- [x] **Step 3: Minimal implementation** — a third alternative in `provenance`: `^\s*(?:\*\s*)?#[1-9]\d{2,3}(?!\w)`, applied to the text after the opener strip.
+- [x] **Step 4: Run it, verify it passes** — `node --test "scripts/*.test.mjs"` → PASS.
+- [x] **Step 5: Generalization-audit pass** — population: every consumer of `TELLS` (`grep -n "TELLS" scripts/check-inline-comments.mjs`) → `tellViolations` and `markdownViolations`; the markdown path gets the same anchor for free and a skill line opening with `#NNN` is provenance there too.
+- [x] **Step 6: Commit** — `git commit -m "Read a comment that opens with #NNN as provenance (#977)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 2 — `strip` drops the inline template's HTML comments (AC-4)
 
 **Files:** Modify `scripts/check-comment-only.mjs:strip` · Test `scripts/check-comment-only.test.mjs`, `scripts/guard-cli.test.mjs`
 
-- [ ] **Step 1: Write the failing tests** — positive (the template with and without its `<!-- -->` line strip equal) and negative (`const html = \`<!-- a -->\`` vs `\`<!-- b -->\`` strip unequal); the CLI case commits the component, deletes the comment line, expects exit 0.
-- [ ] **Step 2: Run it, verify it fails** — `node --test scripts/check-comment-only.test.mjs` → FAIL.
-- [ ] **Step 3: Minimal implementation** — on entering a backtick string whose emitted prefix ends in `template\s*:\s*`, a `template` state that skips `<!-- … -->` and otherwise behaves as `str`.
-- [ ] **Step 4: Run it, verify it passes** — `node --test "scripts/*.test.mjs"` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — same population as phase 0; both members now handled.
-- [ ] **Step 6: Commit** — `git commit -m "Treat an inline template's HTML comment as a comment in check-comment-only (#977)"`
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 1: Write the failing tests** — positive (the template with and without its `<!-- -->` line strip equal) and negative (`const html = \`<!-- a -->\`` vs `\`<!-- b -->\`` strip unequal); the CLI case commits the component, deletes the comment line, expects exit 0.
+- [x] **Step 2: Run it, verify it fails** — `node --test scripts/check-comment-only.test.mjs` → FAIL.
+- [x] **Step 3: Minimal implementation** — on entering a backtick string whose emitted prefix ends in `template\s*:\s*`, a `template` state that skips `<!-- … -->` and otherwise behaves as `str`.
+- [x] **Step 4: Run it, verify it passes** — `node --test "scripts/*.test.mjs"` → PASS.
+- [x] **Step 5: Generalization-audit pass** — same population as phase 0; both members now handled.
+- [x] **Step 6: Commit** — `git commit -m "Treat an inline template's HTML comment as a comment in check-comment-only (#977)"`
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 3 — Reference doc + close-out
 
