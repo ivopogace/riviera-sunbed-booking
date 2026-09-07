@@ -82,7 +82,7 @@
     </div>
   } @else if (loadErrorMsg(); as msg) {
     <p
-      class="mx-auto mt-6 max-w-md rounded-[16px] border border-riv-alert-tint/30 bg-white/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
+      class="mx-auto mt-6 max-w-md rounded-[16px] border border-riv-alert-tint/30 bg-riv-console-inset/70 px-5 py-4 text-center text-[13px] font-semibold text-riv-error-ink"
       role="alert"
       data-testid="payouts-load-error"
     >
@@ -122,7 +122,7 @@
 
     @if (notice(); as msg) {
       <output
-        class="mt-3 block rounded-[12px] border border-riv-card-border bg-white/70 px-3.5 py-2.5 text-[13.5px] font-semibold text-riv-card-ink"
+        class="mt-3 block rounded-[12px] border border-riv-card-border bg-riv-console-inset/70 px-3.5 py-2.5 text-[13.5px] font-semibold text-riv-card-ink"
         aria-live="polite"
         tabindex="-1"
         data-testid="payouts-notice"
@@ -141,7 +141,7 @@
           <input
             type="date"
             appTouchTarget
-            class="rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
+            class="rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
             data-testid="weather-date"
             [value]="selectedDate()"
             (change)="onDateChange($event)"
@@ -151,7 +151,7 @@
           <button
             type="button"
             appTouchTarget
-            class="rounded-[12px] border border-riv-card-border bg-white/60 px-4 py-[9px] text-[13.5px] font-semibold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-white motion-reduce:transition-none"
+            class="rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-4 py-[9px] text-[13.5px] font-semibold text-riv-card-ink [transition:background_0.15s_ease] hover:bg-riv-console-inset motion-reduce:transition-none"
             data-testid="weather-trigger"
             (click)="onWeatherRefund()"
           >
@@ -179,7 +179,7 @@
 
     @if (isEmpty()) {
       <div
-        class="mt-3.5 rounded-[24px] border border-riv-card-border bg-white/50 px-[26px] py-[52px] text-center"
+        class="mt-3.5 rounded-[24px] border border-riv-card-border bg-riv-console-inset/50 px-[26px] py-[52px] text-center"
         data-testid="payouts-empty"
       >
         <h2 class="text-[18px] font-bold text-riv-card-ink">Nothing owed yet</h2>
@@ -257,11 +257,12 @@
             </tfoot>
           </table>
         </section>
+        <!-- Inside the ledger card: on the page this footnote would sit on the background axe cannot composite. -->
+        <p class="mx-1 mt-3 text-[12px] leading-[1.45] text-riv-card-ink-faint">
+          Refund reversals are shown as negative lines. Payouts are settled manually via bank
+          transfer at the end of each period.
+        </p>
       </section>
-      <p class="mx-1 mt-2 text-[12px] leading-[1.45] text-riv-card-ink-faint">
-        Refund reversals are shown as negative lines. Payouts are settled manually via bank transfer
-        at the end of each period.
-      </p>
     }
 
     @if (statementOpen()) {

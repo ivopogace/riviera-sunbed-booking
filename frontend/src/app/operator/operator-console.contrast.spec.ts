@@ -1,10 +1,11 @@
 import { AA_NORMAL, composite, contrastRatio, rgbToHex } from '../../testing/contrast';
 import { INK_DARK } from '../../testing/glass-tokens';
+import { CONSOLE_THEMES } from '../../testing/console-themes';
 
 /**
- * WCAG-AA contrast guard for the venue console's page. The console is ALWAYS porcelain (the app
- * shell pins `data-riv-theme="porcelain"` on every console route), so every pair is proven over
- * the porcelain surfaces; the section row, the rail and the badge are the console shell's
+ * WCAG-AA contrast guard for the venue console's page. The console wears the operator's console
+ * theme (the app shell pins it on every console route), porcelain by default and dark by choice:
+ * the porcelain row proves the default, the themed block at the foot proves both; the section row, the rail and the badge are the console shell's
  * (`console-shell.contrast.spec.ts`), the account chip's pairs are in
  * `operator-account-chip.contrast.spec.ts`, the venue switcher's popover in
  * `operator-venue-switch.contrast.spec.ts`. The venue-not-found card uses an OPAQUE SOLID fill
@@ -25,3 +26,17 @@ describe('OperatorConsole porcelain contrast (WCAG AA, #170)', () => {
     expect(contrastRatio(rgbToHex(inkSoft), WHITE)).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });
+
+/** Both console themes off one table (`testing/console-themes.ts`): the "Venue not found" card is
+ *  the opaque inset — white in porcelain, the slate in dark — under the document ink the pin
+ *  re-resolves. The porcelain row above stays as the parity proof. */
+describe.each(CONSOLE_THEMES)(
+  'OperatorConsole contrast in the $name console (WCAG AA, #1010)',
+  (theme) => {
+    it('the not-found card ink meets AA on the opaque inset', () => {
+      expect(contrastRatio(rgbToHex(theme.ink), rgbToHex(theme.inset))).toBeGreaterThanOrEqual(
+        AA_NORMAL,
+      );
+    });
+  },
+);

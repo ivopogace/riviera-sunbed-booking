@@ -47,10 +47,10 @@
                   (mouseenter)="onCellMouseEnter(cell.gridX, cell.gridY, $event)"
                   (click)="onCell(cell.gridX, cell.gridY, cell.setId)"
                   data-testid="set-cell"
-                  class="h-full min-w-0 flex items-center justify-center scroll-mb-[35vh] rounded-[8px] border text-[12.5px] font-bold text-[#0c2a33] [transition:scale_0.1s_ease,box-shadow_0.12s_ease,translate_0.12s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:hover:translate-y-0 lg:scroll-mb-0"
+                  class="h-full min-w-0 flex items-center justify-center scroll-mb-[35vh] rounded-[8px] border text-[12.5px] font-bold [transition:scale_0.1s_ease,box-shadow_0.12s_ease,translate_0.12s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100 motion-reduce:hover:translate-y-0 lg:scroll-mb-0"
                   [class]="
                     cell.selected
-                      ? 'selected -translate-y-1 ring-2 ring-offset-2 ring-[#0a5f74] shadow-[0_6px_14px_rgba(10,95,116,0.4)]'
+                      ? 'selected -translate-y-1 ring-2 ring-offset-2 ring-riv-accent-ink shadow-[0_6px_14px_rgba(10,95,116,0.4)]'
                       : ''
                   "
                 >
@@ -71,7 +71,7 @@
             (click)="addRow()"
             [disabled]="!canAddRow()"
             data-testid="set-add-row"
-            class="flex-1 rounded-[13px] border border-riv-card-border bg-white/45 px-4 py-2.5 text-[13px] font-semibold text-riv-card-ink disabled:opacity-50 sm:flex-none"
+            class="flex-1 rounded-[13px] border border-riv-card-border bg-riv-console-inset/45 px-4 py-2.5 text-[13px] font-semibold text-riv-card-ink disabled:opacity-50 sm:flex-none"
           >
             + Add a row
           </button>
@@ -81,7 +81,7 @@
             (click)="addCol()"
             [disabled]="!canAddCol()"
             data-testid="set-add-col"
-            class="flex-1 rounded-[13px] border border-riv-card-border bg-white/45 px-4 py-2.5 text-[13px] font-semibold text-riv-card-ink disabled:opacity-50 sm:flex-none"
+            class="flex-1 rounded-[13px] border border-riv-card-border bg-riv-console-inset/45 px-4 py-2.5 text-[13px] font-semibold text-riv-card-ink disabled:opacity-50 sm:flex-none"
           >
             + Add a position
           </button>
@@ -112,7 +112,7 @@
       <!-- Docks right of the canvas on desktop; on a phone it's a bottom sheet instead (#715). -->
       @if (hasSelection() || sweepIds()) {
         <div
-          class="fixed inset-0 z-20 bg-riv-console-tint/45 lg:hidden"
+          class="fixed inset-0 z-20 bg-riv-console-scrim/45 lg:hidden"
           data-testid="sheet-backdrop"
           (click)="dismissSheet()"
           (keydown.escape)="dismissSheet()"
@@ -180,7 +180,7 @@
                   [class]="
                     batchDraft().tier === tier.key
                       ? 'border-[1.5px] border-riv-select-edge bg-riv-select-tint/20'
-                      : 'border border-riv-card-border bg-white/45'
+                      : 'border border-riv-card-border bg-riv-console-inset/45'
                   "
                 >
                   {{ tier.label }}
@@ -208,7 +208,7 @@
                   [class]="
                     batchDraft().pool === pool.key
                       ? 'border-[1.5px] border-riv-select-edge bg-riv-select-tint/20'
-                      : 'border border-riv-card-border bg-white/45'
+                      : 'border border-riv-card-border bg-riv-console-inset/45'
                   "
                 >
                   {{ pool.label }}
@@ -231,7 +231,7 @@
               (input)="onBatchPriceInput($any($event.target).value)"
               [appBusy]="batchBusy()"
               data-testid="batch-price"
-              class="w-full rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
+              class="w-full rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
             />
           </label>
 
@@ -327,7 +327,7 @@
                   [class]="
                     draft().tier === tier.key
                       ? 'border-[1.5px] border-riv-select-edge bg-riv-select-tint/20'
-                      : 'border border-riv-card-border bg-white/45'
+                      : 'border border-riv-card-border bg-riv-console-inset/45'
                   "
                 >
                   {{ tier.label }}
@@ -355,7 +355,7 @@
                   [class]="
                     draft().pool === pool.key
                       ? 'border-[1.5px] border-riv-select-edge bg-riv-select-tint/20'
-                      : 'border border-riv-card-border bg-white/45'
+                      : 'border border-riv-card-border bg-riv-console-inset/45'
                   "
                 >
                   {{ pool.label }}
@@ -376,7 +376,7 @@
               step="0.5"
               [formField]="draftForm.priceEur"
               data-testid="set-price"
-              class="w-full rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
+              class="w-full rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
             />
           </label>
           <p class="mt-1 text-[11px] leading-[1.4] text-riv-card-ink-soft">
@@ -415,7 +415,7 @@
                 [disabled]="dirty()"
                 [appBusy]="busy()"
                 data-testid="set-move"
-                class="rounded-[14px] border border-riv-card-border bg-white/45 px-4 py-2.5 text-[13.5px] font-semibold text-riv-card-ink disabled:opacity-50 aria-disabled:opacity-50"
+                class="rounded-[14px] border border-riv-card-border bg-riv-console-inset/45 px-4 py-2.5 text-[13.5px] font-semibold text-riv-card-ink disabled:opacity-50 aria-disabled:opacity-50"
               >
                 Move
               </button>

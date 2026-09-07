@@ -36,12 +36,12 @@
               [class]="
                 tool.active
                   ? 'border-[1.5px] border-riv-select-edge bg-riv-select-tint/20'
-                  : 'border border-riv-card-border bg-white/45'
+                  : 'border border-riv-card-border bg-riv-console-inset/45'
               "
             >
               @if (tool.key === 'select') {
                 <span
-                  class="h-[18px] w-[18px] flex-shrink-0 rounded-[6px] ring-2 ring-offset-1 ring-[#0a5f74]"
+                  class="h-[18px] w-[18px] flex-shrink-0 rounded-[6px] ring-2 ring-offset-1 ring-riv-accent-ink"
                   aria-hidden="true"
                 ></span>
               } @else {
@@ -83,7 +83,7 @@
               [value]="genRows()"
               (input)="setRows($any($event.target).value)"
               data-testid="layout-gen-rows"
-              class="w-full rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
+              class="w-full rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
             />
           </label>
           <label class="flex flex-1 flex-col gap-1.5">
@@ -99,7 +99,7 @@
               [value]="genCols()"
               (input)="setCols($any($event.target).value)"
               data-testid="layout-gen-cols"
-              class="w-full rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
+              class="w-full rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[15px] text-riv-card-ink"
             />
           </label>
         </div>
@@ -109,7 +109,7 @@
           (click)="onGenerate()"
           [appBusy]="reading()"
           data-testid="layout-generate"
-          class="mt-3 w-full rounded-[14px] border border-white/40 bg-(image:--riv-cta-grad) px-3 py-[11px] text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] [transition:filter_0.12s_ease] aria-disabled:opacity-50 hover:brightness-105"
+          class="mt-3 w-full rounded-[14px] border border-riv-cta-border bg-(image:--riv-cta-grad) px-3 py-[11px] text-[14px] font-bold text-white shadow-[0_8px_22px_rgba(11,120,150,0.35)] [transition:filter_0.12s_ease] aria-disabled:opacity-50 hover:brightness-105"
         >
           @if (reading()) {
             Loading the current layout…
@@ -161,7 +161,7 @@
                     (input)="onRowNameInput(y, $any($event.target).value)"
                     [attr.aria-label]="'Row ' + rowCode(y) + ' name'"
                     data-testid="layout-row-name"
-                    class="w-full min-w-0 rounded-[12px] border border-riv-card-border bg-white/60 px-[11px] py-[9px] text-[14px] text-riv-card-ink"
+                    class="w-full min-w-0 rounded-[12px] border border-riv-card-border bg-riv-console-inset/60 px-[11px] py-[9px] text-[14px] text-riv-card-ink"
                     #rowNameControl
                   />
                 </label>
@@ -173,7 +173,7 @@
                     (click)="onRenameRow(y)"
                     [attr.aria-label]="'Save the name for row ' + stored"
                     data-testid="layout-row-name-save"
-                    class="shrink-0 rounded-[12px] border border-riv-card-border px-[13px] py-[9px] text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-60 hover:bg-white/50 [transition:background_0.15s_ease]"
+                    class="shrink-0 rounded-[12px] border border-riv-card-border px-[13px] py-[9px] text-[13px] font-semibold text-riv-card-ink aria-disabled:opacity-60 hover:bg-riv-console-inset/50 [transition:background_0.15s_ease]"
                   >
                     {{ renamingRow() === y ? 'Saving…' : 'Save name' }}
                   </button>
@@ -301,7 +301,7 @@
                   [attr.data-grid-row]="ri"
                   [attr.data-grid-col]="ci"
                   data-testid="layout-cell"
-                  class="h-full min-w-0 flex items-center justify-center touch-none rounded-[6px] border text-[12.5px] font-bold text-[#0c2a33] [transition:scale_0.1s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100"
+                  class="h-full min-w-0 flex items-center justify-center touch-none rounded-[6px] border text-[12.5px] font-bold [transition:scale_0.1s_ease] hover:scale-[1.04] motion-reduce:transition-none motion-reduce:hover:scale-100"
                 >
                   @if (cell.state !== 'gap') {
                     <span aria-hidden="true">{{ ci + 1 }}</span>
@@ -350,7 +350,7 @@
                 [disabled]="!isDirty()"
                 [appBusy]="saving()"
                 data-testid="layout-discard"
-                class="rounded-[14px] border border-riv-card-border bg-white/45 px-4 py-2.5 text-[13.5px] font-semibold text-riv-card-ink disabled:opacity-50 aria-disabled:opacity-50"
+                class="rounded-[14px] border border-riv-card-border bg-riv-console-inset/45 px-4 py-2.5 text-[13.5px] font-semibold text-riv-card-ink disabled:opacity-50 aria-disabled:opacity-50"
               >
                 Discard
               </button>

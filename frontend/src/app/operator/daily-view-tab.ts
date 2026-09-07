@@ -117,8 +117,8 @@ interface CheckInNotice {
  * write is sent, then the map + bookings + states are re-read so server truth replaces the guess (the
  * server release deletes only a `STAFF_MARKED` row, so a mis-tap on an online-held tile is
  * a safe no-op). Reads `:venueId` from the parent route via {@link parentVenueId} (child routes don't
- * inherit it), the same as {@link import('./pricing-tab').PricingTab}. Always
- * porcelain (inherited from the console shell); glass via {@link CardGlass}; the shared sea-facing
+ * inherit it), the same as {@link import('./pricing-tab').PricingTab}. Wears the
+ * console theme (porcelain or dark, pinned on the app shell's host); glass via {@link CardGlass}; the shared sea-facing
  * chrome via {@link BeachMapCanvas}. Tile state is conveyed by an accessible name, not colour alone
  * (WCAG AA); codes are bearer credentials (invariant #7), shown for arrival verification, never logged.
  *
@@ -612,7 +612,7 @@ export class DailyViewTab {
       case 'BOOKED_ONLINE':
         return 'border-riv-console-tint/15 bg-(image:--riv-walkin-hatch) text-riv-card-ink';
       default:
-        return 'border-riv-console-tint/15 bg-white/85 text-riv-card-ink';
+        return 'border-riv-console-tint/15 bg-riv-console-inset/85 text-riv-card-ink';
     }
   }
 

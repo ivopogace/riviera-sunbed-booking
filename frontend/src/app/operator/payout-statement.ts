@@ -28,7 +28,7 @@ import { LedgerRow } from './operator-console.model';
   },
   template: `
     <div
-      class="w-full max-w-[600px] overflow-hidden rounded-[24px] bg-white shadow-[0_40px_90px_rgba(6,30,40,0.5)]"
+      class="w-full max-w-[600px] overflow-hidden rounded-[24px] bg-riv-console-inset shadow-[0_40px_90px_rgba(6,30,40,0.5)]"
       role="dialog"
       aria-modal="true"
       aria-label="Payout statement"

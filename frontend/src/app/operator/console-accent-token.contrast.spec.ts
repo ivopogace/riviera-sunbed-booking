@@ -4,11 +4,15 @@ import { join } from 'node:path';
 import { AA_NORMAL, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   CONSOLE_ACCENT_INK,
+  DARK_CARD_GLASS,
+  DARK_CONSOLE_ACCENT_INK,
   DARK_POP_ACCENT,
+  DARK_STOPS,
   PORCELAIN_STOPS,
   SOLID_FILL_BRAND,
+  expectAaOverStops,
 } from '../../testing/glass-tokens';
-import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
+import { baseBlock, declarationsOf, themeBlock } from '../../testing/stylesheet-tokens';
 
 /**
  * Guard for `--riv-console-accent-ink` (class T of the colour-literal audit) — the operator
@@ -20,13 +24,13 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * copy would restate six passing assertions. What this file owns is the part none of them can
  * see — that the token is a token, and stays the one it claims to be.
  *
- * <p>Which is three separate claims. First, the ink is THEME-INVARIANT by decision rather than by
- * omission: every consumer is a child of `operator-console`, whose routes the app shell pins porcelain, so a dark
- * branch would be unreachable by construction — and jsdom maths cannot see a dark override added
- * later, since every ratio in the tree would still pass. So the declaration tests read
- * `src/tailwind.css` as text (the `core/theme-boot.spec.ts` drift-guard pattern, as
- * `booking/form-error-tokens.contrast.spec.ts` applies it) and assert the declaration is single
- * and sits in the base block. Second, that its value is what this mirror says. Third — the reason
+ * <p>Which is three separate claims. First, the ink is THEMED, and themed in exactly two blocks:
+ * the console has its own dark theme since the console gained its dark theme, so the token declares a porcelain value in the
+ * base block and a dark value in the `dark` block and nowhere else — a `riviera` declaration would
+ * be a third theme the console never wears. jsdom maths cannot see a stray declaration, since every
+ * ratio in the tree would still pass, so the declaration tests read `src/tailwind.css` as text (the
+ * `core/theme-boot.spec.ts` drift-guard pattern, as `booking/form-error-tokens.contrast.spec.ts`
+ * applies it). Second, that both values are what this mirror says. Third — the reason
  * the token exists at all — that it stays DISTINGUISHABLE from the two registered tokens carrying
  * the same value in different roles: `--riv-solid-fill-brand` (a fill under fixed white ink,
  * the solid-fill re-cuts) and `--riv-pop-accent` (the popover accent, which themes to `#7cd7e8`). Same value,
@@ -82,16 +86,21 @@ describe('Console accent-ink token (theme invariance + role distinctness, #848)'
     }
   });
 
-  it('declares the token exactly once, so no theme block can override it', () => {
-    expect(declarationsOf(TOKEN), `${TOKEN} declarations`).toHaveLength(1);
+  it('clears AA over the dark card glass on every dark stop (#1010)', () => {
+    expectAaOverStops(DARK_CONSOLE_ACCENT_INK, 1, DARK_CARD_GLASS, DARK_STOPS);
   });
 
-  it('declares the token in the base block, which the console pin resolves', () => {
+  it('declares the token in the base block and in the dark block, nowhere else (#1010)', () => {
+    expect(declarationsOf(TOKEN), `${TOKEN} declarations`).toHaveLength(2);
     expect(baseBlock(), `${TOKEN} in the base block`).toContain(`${TOKEN}:`);
+    expect(themeBlock('dark'), `${TOKEN} in the dark block`).toContain(`${TOKEN}:`);
   });
 
-  it('declares the value this test mirror carries', () => {
-    expect(declarationsOf(TOKEN)[0], TOKEN).toBe(rgbToHex(CONSOLE_ACCENT_INK));
+  it('declares the values this test mirror carries, porcelain then dark', () => {
+    expect(declarationsOf(TOKEN), TOKEN).toEqual([
+      rgbToHex(CONSOLE_ACCENT_INK),
+      rgbToHex(DARK_CONSOLE_ACCENT_INK),
+    ]);
   });
 
   it('maps the token in `@theme inline`, without which the utility never generates', () => {
@@ -103,11 +112,12 @@ describe('Console accent-ink token (theme invariance + role distinctness, #848)'
   });
 
   /**
-   * Option B — widening `--riv-pop-accent` — would have handed the console this ink in the dark
-   * theme. It lands well under AA on the porcelain stops the console actually renders, so the
-   * coincidence was never a shared role. Kept in the tree so the reason survives the decision.
+   * Option B — widening `--riv-pop-accent` — would have handed the console the popover's dark
+   * value under every document theme, porcelain console included. It lands well under AA on the
+   * porcelain stops, so the coincidence was never a shared role; that the console's own dark value
+   * now equals it is the same coincidence one theme over, and still two declarations.
    */
-  it('stays its own token: the popover accent it coincides with themes away, and this must not', () => {
+  it('stays its own token: the popover accent it coincides with would fail on the porcelain console', () => {
     for (const stop of PORCELAIN_STOPS) {
       expect(
         contrastRatio(rgbToHex(DARK_POP_ACCENT), rgbToHex(stop)),

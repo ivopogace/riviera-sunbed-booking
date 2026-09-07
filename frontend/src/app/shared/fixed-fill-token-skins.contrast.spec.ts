@@ -173,12 +173,10 @@ const OUT_OF_FAMILY: readonly { readonly path: string; readonly literal: string 
    *  over-reach a value-led sweep of the retired `pending` tint would make. A fourth stood in
    *  `pages/home/home.html` until that paint was removed outright: a row goes only when its paint
    *  is gone from the tree, never when the paint survives under another notation. */
-  { path: 'operator/pending-approval-banner.ts', literal: 'rgba(240,170,46,0.14)' },
   { path: 'booking/booking-dialog.ts', literal: 'rgba(240,170,46,0.12)' },
   { path: 'app.html', literal: 'rgba(240,170,46,0.5)' },
-  { path: 'operator/set-editor.html', literal: '#0a5f74' },
-  { path: 'operator/layout-editor.html', literal: '#0a5f74' },
 ];
+// The pending-approval banner and the two editors' selection rings left this list with the dark console: value moves, proven where each element lives.
 
 const APP_ROOT = join(process.cwd(), 'src/app');
 

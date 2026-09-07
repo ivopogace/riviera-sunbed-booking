@@ -2,6 +2,12 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import {
+  ERROR_INK,
+  consoleThemeOf,
+  expectConsoleTheme,
+  expectInsetFill,
+} from './support/console-theme';
 
 /**
  * CI-safe mocked e2e for the Requests tab. Drives sign-in → the console shell →
@@ -195,6 +201,27 @@ test('lists the queue, accepts (badge decrements), and declines to empty — no 
   await expect(page.getByTestId('oc-requests-badge')).toHaveCount(0); // 0 → the badge disappears
   await expect(page.getByTestId('requests-notice')).toContainText('declined');
   await expectNoSeriousAxeViolations(page, 'all caught up');
+});
+
+test('paints the console theme: the Accept / Decline pair under porcelain and dark console (#1010, + axe)', async ({
+  page,
+}, testInfo) => {
+  const theme = consoleThemeOf(testInfo);
+  await mockRequests(page);
+  await signInAndOpenRequests(page);
+  await expectConsoleTheme(page, theme);
+
+  // Accept is white on the solid brand fill in both themes; Decline is the error ink on the inset.
+  const accept = page.getByRole('button', { name: /Accept.*from Ana Guest/ });
+  const decline = page.getByRole('button', { name: /Decline.*from Ana Guest/ });
+  await expect(accept).toHaveCSS('color', 'rgb(255, 255, 255)');
+  await expect(accept).toHaveCSS('background-color', 'rgb(10, 110, 133)');
+  await expectInsetFill(page, decline, 50, theme);
+  await expect(decline).toHaveCSS('color', ERROR_INK[theme]);
+  await expect(page.getByTestId('urgency-chip')).toHaveCSS('color', ERROR_INK[theme]);
+
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, `requests queue in the ${theme} console`);
 });
 
 test("the phone rail's Requests slot carries the badge and it decrements on accept (#1012)", async ({

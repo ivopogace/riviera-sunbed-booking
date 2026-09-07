@@ -13,16 +13,23 @@ import {
   expectAaOverStops,
   surfaceOver,
 } from '../../testing/glass-tokens';
+import {
+  CONSOLE_THEMES,
+  cardOver,
+  expectAaOnSurfaces,
+  insetOver,
+  tintOver,
+} from '../../testing/console-themes';
 
 /**
- * WCAG-AA contrast guard for the Requests tab. The tab is always porcelain (console host);
+ * WCAG-AA contrast guard for the Requests tab. The tab wears the operator's console theme (porcelain by default; the themed block at the foot proves both);
  * cards use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text pairs: the heading, guest name,
  * set-label + confirm/dismiss/keep-it copy use `--riv-card-ink`; the intro/meta/empty sub-copy use
  * `--riv-card-ink-soft` (0.78); "Respond by" uses `--riv-card-ink-faint` (0.72); the price value uses
- * the console accent ink `--riv-console-accent-ink` (#848); the urgency chip + decline text +
+ * the console accent ink `--riv-console-accent-ink`; the urgency chip + decline text +
  * expired-race + load-error use the alert red `--riv-error-ink` (also the urgency-chip text over its
- * own `--riv-alert-tint`@0.10 tint, tokenised at #852). The primary buttons put white on
- * `--riv-solid-fill-brand` (accept) / `--riv-solid-fill-danger` (confirm-decline), tokenised at #854.
+ * own `--riv-alert-tint`@0.10 tint). The primary buttons put white on
+ * `--riv-solid-fill-brand` (accept) / `--riv-solid-fill-danger` (confirm-decline).
  *
  * <p>The design mock's lighter teal→teal gradient (`#2bb8d4`) and raw ambers fail AA on their light
  * stops, so this tab deliberately uses the console's proven `--riv-console-accent-ink` /
@@ -87,3 +94,44 @@ describe('RequestsTab porcelain contrast (WCAG AA, #176)', () => {
     expect(contrastRatio('#ffffff', rgbToHex(SOLID_FILL_DANGER))).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 });
+
+/** Both console themes off one table (`testing/console-themes.ts`); the porcelain rows above stay
+ *  as the parity proof. The Accept / confirm-decline pair is white on the solid fills, fixed in
+ *  both themes and proven above once. */
+describe.each(CONSOLE_THEMES)(
+  'RequestsTab contrast in the $name console (WCAG AA, #1010)',
+  (theme) => {
+    it('card ink, soft ink and the "Respond by" faint ink meet AA on the card glass', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.ink, CARD_INK_SOFT_ALPHA, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.ink, CARD_INK_FAINT_ALPHA, (stop) => cardOver(theme, stop));
+    });
+
+    it('the price (--riv-console-accent-ink) meets AA on the card glass', () => {
+      expectAaOnSurfaces(theme, theme.accentInk, 1, (stop) => cardOver(theme, stop));
+    });
+
+    it('the alert red (--riv-error-ink) meets AA on the card glass and over its urgency chip tint', () => {
+      expectAaOnSurfaces(theme, theme.errorInk, 1, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.errorInk, 1, (stop) =>
+        tintOver(theme, theme.alertTint, 0.1, stop),
+      );
+    });
+
+    it('the Decline button (--riv-error-ink on the inset/50) and its cancel twin (card ink on the inset/60) meet AA', () => {
+      expectAaOnSurfaces(theme, theme.errorInk, 1, (stop) => insetOver(theme, 0.5, stop));
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, 0.6, stop));
+    });
+
+    it('the load-error notice (--riv-error-ink on the inset/70) and the queue rows (card ink on the inset/70) meet AA', () => {
+      expectAaOnSurfaces(theme, theme.errorInk, 1, (stop) => insetOver(theme, 0.7, stop));
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, 0.7, stop));
+    });
+
+    it('the accepted medallion (--riv-positive-tint ink over its own /10 tint) meets AA', () => {
+      expectAaOnSurfaces(theme, theme.positiveTint, 1, (stop) =>
+        tintOver(theme, theme.positiveTint, 0.1, stop),
+      );
+    });
+  },
+);

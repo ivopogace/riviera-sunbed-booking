@@ -15,6 +15,7 @@ import { FindBooking } from './booking/find-booking';
 import { ConsoleSection, ConsoleShell } from './console-shell';
 import { CustomerAuth } from './core/customer-auth';
 import { SignOutNotice } from './core/sign-out-notice';
+import { ConsoleTheme } from './core/console-theme';
 import { ThemeId, ThemeService } from './core/theme';
 import { focusMover } from './shared/focus-after-render';
 import { idParam } from './shared/parent-venue-id';
@@ -39,7 +40,7 @@ const MOBILE_ITEM = `block w-full rounded-[14px] px-3.5 py-[13px] text-left text
  *  (60px tabs + the top border) and pads itself by the home-indicator inset, so the page pads by
  *  both — otherwise the last 61px of every page sit under the bar. Two literals, not a
  *  concatenation: Tailwind generates only classes it can read in the source. `text-riv-ink`
- *  re-resolves the ink under the console routes' porcelain pin — `body` resolves it once under
+ *  re-resolves the ink under the console routes' theme pin — `body` resolves it once under
  *  the document theme, so an inheriting element would keep a dark theme's white ink there. */
 const SHELL = 'relative flex min-h-screen flex-col text-riv-ink';
 const SHELL_WITH_TAB_BAR = `${SHELL} max-sm:pb-[calc(61px+env(safe-area-inset-bottom))]`;
@@ -151,8 +152,8 @@ function consoleOf(data: unknown): ConsoleSection | null {
   templateUrl: './app.html',
   host: {
     '(document:keydown.escape)': 'closeMenus()',
-    // Pins the subtree porcelain on every console route, whatever tourist theme is selected.
-    '[attr.data-riv-theme]': "porcelain() ? 'porcelain' : null",
+    // Pins the subtree to the operator's console theme on every console route, whatever tourist theme is selected.
+    '[attr.data-riv-theme]': "shellChrome() === 'console' ? consoleTheme.theme() : null",
   },
 })
 export class App {
@@ -160,6 +161,8 @@ export class App {
   protected readonly exactPath = EXACT_PATH;
 
   protected readonly themes = inject(ThemeService);
+  /** The console's own porcelain-or-dark choice, pinned on this host under the console shell. */
+  protected readonly consoleTheme = inject(ConsoleTheme);
   /** Customer session state for the header: sign-in/register links ↔ signed-in + sign-out. */
   protected readonly customerAuth = inject(CustomerAuth);
   /**
@@ -258,9 +261,6 @@ export class App {
   protected readonly consoleSection = computed(() => this.routeChrome().console ?? 'plain');
   /** The venue the console shell is on, off the route chain. */
   protected readonly consoleVenueId = computed(() => this.routeChrome().venueId);
-  /** Whether the subtree is pinned porcelain: every route under the console shell. */
-  protected readonly porcelain = computed(() => this.shellChrome() === 'console');
-
   /** The bottom tab the active route belongs to, `null` outside every section (legal pages) and
    *  before the first navigation. The Account tab reads it together with the signed-in state. */
   protected readonly tabSection = computed(() => this.routeChrome().section);

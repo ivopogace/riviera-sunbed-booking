@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { CLASS_O_TINTS } from '../../testing/glass-tokens';
-import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
+import { baseBlock, declarationsOf, themeBlock } from '../../testing/stylesheet-tokens';
 
 /**
  * Guard for the **class-O tint tokens** — the base colours behind every colour position that
@@ -17,15 +17,16 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * becomes a token**. One token per base colour; the alpha stays where the comment explaining it is.
  *
  * <p>What this file owns is the part no per-surface AA spec can see — that each base colour is a
- * token, is declared ONCE, and stays theme-invariant. For most of the registry the ground for that
- * is reachability: the consumer sits inside `operator-console` (whose routes the app shell pins porcelain) or on a
- * fixed-white panel, so a dark branch is unreachable by construction. **`--riv-warn-*` is the
- * exception**: merging the ambers pulled `pages/legal/` and `booking/withheld-email-notice.ts`
- * into that family, and those are tourist surfaces that really do render under a dark document
- * theme. Its invariance rests on the stronger, fixed-fill ground instead — a fixed fill pins every ink on
- * it — argued at the declaration and in `shared/warn-token-skin.contrast.spec.ts`, and proved
- * against a real forced-dark render by `e2e/warn-token-skin.e2e.ts`. Either way jsdom maths could
- * not see an override added later: every ratio in the tree would still pass. So the declaration tests read `src/tailwind.css` as text (the
+ * token, and is declared in exactly the blocks its mirror row says. Since the console gained its dark theme
+ * the console's own tints are THEMED: a porcelain value in the base block and a dark value in the
+ * `dark` block, nowhere else — the ground that once kept them single ("the consumer sits under the
+ * porcelain pin, so a dark branch is unreachable") ended when the pin became a choice.
+ * **`--riv-warn-*` stays single**: merging the ambers pulled `pages/legal/` and
+ * `booking/withheld-email-notice.ts` into that family, tourist surfaces that render under a dark
+ * document theme, and its invariance rests on the stronger, fixed-fill ground — a fixed fill pins
+ * every ink on it — argued at the declaration and in `shared/warn-token-skin.contrast.spec.ts`,
+ * and proved against a real forced-dark render by `e2e/warn-token-skin.e2e.ts`. Either way jsdom
+ * maths could not see a stray declaration: every ratio in the tree would still pass. So the declaration tests read `src/tailwind.css` as text (the
  * `core/theme-boot.spec.ts` drift-guard pattern, via `testing/stylesheet-tokens.ts`), the sweep
  * reads the component sources, and the cross-theme proof against a real render — where the cascade
  * rather than a regex decides — is `e2e/class-o-tint-tokens.e2e.ts`.
@@ -245,17 +246,19 @@ describe('Class-O tint tokens (rule B: the modifier stays, the literal becomes a
     expect(rebuilt, 'sources rebuilding the hatch inline').toEqual([]);
   });
 
-  describe.each(CLASS_O_TINTS)('$token', ({ token, value }) => {
-    it('is declared exactly once, so no theme block can override it', () => {
-      expect(declarationsOf(token), `${token} declarations`).toHaveLength(1);
-    });
-
-    it('is declared in the base block, which the console pin resolves', () => {
+  describe.each(CLASS_O_TINTS)('$token', ({ token, value, dark }) => {
+    it('is declared in the base block, which every console theme resolves from', () => {
       expect(baseBlock(), `${token} in the base block`).toContain(`${token}:`);
     });
 
-    it('declares the value this test mirror carries', () => {
-      expect(declarationsOf(token)[0], token).toBe(value);
+    /** A themed row declares in the dark block too; a fixed-fill row stays single. */
+    it('is declared exactly where its mirror row says: the base block, plus the dark block when themed', () => {
+      if (dark === undefined) {
+        expect(declarationsOf(token), `${token} declarations`).toEqual([value]);
+      } else {
+        expect(declarationsOf(token), `${token} declarations`).toEqual([value, dark]);
+        expect(themeBlock('dark'), `${token} in the dark block`).toContain(`${token}:`);
+      }
     });
 
     it('is mapped in `@theme inline`, without which the utility never generates', () => {

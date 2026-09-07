@@ -64,13 +64,13 @@ import { TouchTarget } from '../shared/touch-target';
             autocapitalize="off"
             spellcheck="false"
             aria-describedby="admin-delivery-intro"
-            class="w-[280px] max-w-full rounded-[10px] border border-white/70 bg-white/85 px-3 py-2 text-[14px] text-riv-accent-ink [transition:border-color_0.15s_ease] focus-visible:border-riv-accent-ink"
+            class="w-[280px] max-w-full rounded-[10px] border border-riv-card-border bg-riv-console-inset/85 px-3 py-2 text-[14px] text-riv-accent-ink [transition:border-color_0.15s_ease] focus-visible:border-riv-accent-ink"
           />
         </label>
         <button
           appTouchTarget
           type="submit"
-          class="inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-riv-accent-ink shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+          class="inline-flex items-center rounded-full border border-riv-card-border bg-riv-console-inset/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-riv-accent-ink shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-riv-console-inset aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
           [appBusy]="searching()"
           data-testid="admin-delivery-lookup"
         >
@@ -98,7 +98,7 @@ import { TouchTarget } from '../shared/touch-target';
         <ul class="mt-4 flex flex-col gap-3" data-testid="admin-delivery-results">
           @for (booking of bookings(); track booking.bookingId) {
             <li
-              class="rounded-[12px] border border-white/70 bg-white/55 p-4"
+              class="rounded-[12px] border border-riv-card-border bg-riv-console-inset/55 p-4"
               data-testid="admin-delivery-booking"
             >
               <p class="text-[15px] font-semibold text-riv-card-ink">
@@ -130,7 +130,7 @@ import { TouchTarget } from '../shared/touch-target';
               <button
                 appTouchTarget
                 type="button"
-                class="mt-3 inline-flex items-center rounded-full border border-white/95 bg-white/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-riv-accent-ink shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-white aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+                class="mt-3 inline-flex items-center rounded-full border border-riv-card-border bg-riv-console-inset/85 px-[18px] py-[9px] text-[13.5px] font-semibold text-riv-accent-ink shadow-[0_6px_18px_rgba(7,42,58,0.25),inset_0_1px_0_#fff] [transition:background_0.15s_ease] hover:bg-riv-console-inset aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
                 [appBusy]="resending() !== undefined"
                 (click)="onResend(booking.bookingId)"
                 [attr.data-testid]="'admin-delivery-resend-' + booking.bookingId"

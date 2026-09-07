@@ -118,7 +118,7 @@ const DARK_TILE_SURFACES: readonly TileSurface[] = [
   { fg: '#9adde8', fill: WHITE, alpha: 0.12, usage: 'zone price chip' },
 ];
 
-/** The two map ink families: daylight (porcelain, riviera, every porcelain-pinned operator
+/** The two map ink families: daylight (porcelain, riviera, the porcelain
  *  surface) and night (the dark theme). Wash stops + tile values + the walk-in/ghost pieces. */
 interface MapFamily {
   readonly name: string;

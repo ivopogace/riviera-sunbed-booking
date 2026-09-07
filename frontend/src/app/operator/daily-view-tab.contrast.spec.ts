@@ -18,16 +18,22 @@ import {
   WARN_FILL,
   WARN_INK,
 } from '../../testing/glass-tokens';
+import {
+  CONSOLE_THEMES,
+  cardOver,
+  expectAaOnSurfaces,
+  insetOver,
+} from '../../testing/console-themes';
 
 /**
- * WCAG-AA contrast guard for the Daily view tab. The tab is always porcelain (console
- * host); its date + arrivals panels use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text
+ * WCAG-AA contrast guard for the Daily view tab. The tab wears the operator's console theme
+ * (porcelain by default; the themed block at the foot proves both); its date + arrivals panels use `appCardGlass` (`--riv-card-glass` = white @ 0.55). Text
  * pairs: the headings, date labels, arrivals labels and the availability strong counts use
  * `--riv-card-ink`; the helper/availability text uses `--riv-card-ink-soft` (0.78); the "Date"
  * mini-label uses `--riv-card-ink-faint` (0.72); the write-failure notice + load-error use `--riv-error-ink`.
  * The arrival-code chip ink (`--riv-card-ink`) sits over `--riv-chip-bg` over the card glass.
- * Since #672 slice 2 the grid sits on the shared canvas's sea→sand wash (rail-chip inks proven in
- * `venue-map.contrast.spec.ts`); since #686 every tile's visible text is its *position number*.
+ * The grid sits on the shared canvas's sea→sand wash (rail-chip inks proven in
+ * `venue-map.contrast.spec.ts`); every tile's visible text is its *position number*.
  * The FREE tile's number is proven AA composited over the wash's worst-case stops; the locked
  * tile's number is proven over its striped fill's worst case, the darker stripe (the `●` beside it
  * stays `aria-hidden` decorative — state is carried by sr-only text); the filled STAFF_MARKED
@@ -38,12 +44,12 @@ import {
  * mirror the template + `tailwind.css`; a token edit there must re-pass here.
  */
 
-// The FREE tile fill (`bg-white/85`, daily-view-tab.ts tileClass).
+// The FREE tile fill (`bg-riv-console-inset/85`, daily-view-tab.ts tileClass).
 const FREE_TILE_FILL = { color: WHITE, alpha: 0.85 };
 /** The locked tile's worst-case fill: `--riv-walkin-hatch`'s darker band, a `CARD_INK` tint. 0.30
  *  since #879 gave the hatch one declaration (this tile painted 0.28 of its own before). */
 const LOCKED_STRIPE_FILL = { color: CARD_INK, alpha: 0.3 };
-// The close-sales trigger button: --riv-warn-edge/50 hairline on its own `bg-white/60` fill.
+// The close-sales trigger button: --riv-warn-edge/50 hairline on its own `bg-riv-console-inset/60` fill.
 const TRIGGER_EDGE_ALPHA = 0.5;
 const TRIGGER_FILL_ALPHA = 0.6;
 // --riv-cta-grad stops (the AA-safe darkened teal shared with every CTA); the empty-state link sits on these.
@@ -154,3 +160,57 @@ describe('DailyViewTab porcelain contrast (WCAG AA, #175)', () => {
     }
   });
 });
+
+/**
+ * Both console themes off one table (`testing/console-themes.ts`): the pairs the dark console had
+ * to gain — the date field and the arrival-code field on the inset, the sales-close trigger's label
+ * on the inset, the free and locked tile numerals on the night sand — beside the card inks, so a
+ * retuned token fails here in whichever theme it breaks. The porcelain rows above stay as the
+ * parity proof; these prove the same positions in dark.
+ */
+describe.each(CONSOLE_THEMES)(
+  'DailyViewTab contrast in the $name console (WCAG AA, #1010)',
+  (theme) => {
+    it('card ink, soft ink and the faint mini-label meet AA on the card glass', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.ink, CARD_INK_SOFT_ALPHA, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.ink, CARD_INK_FAINT_ALPHA, (stop) => cardOver(theme, stop));
+    });
+
+    it('the date field and the arrival-code field (--riv-card-ink on the inset/60) meet AA', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, 0.6, stop));
+    });
+
+    it('the sales-close trigger label (--riv-card-ink on the inset/60) meets AA', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, TRIGGER_FILL_ALPHA, stop));
+    });
+
+    it('the FREE tile numeral (--riv-card-ink on the inset/85) meets AA over every wash stop', () => {
+      for (const stop of theme.washStops) {
+        const tile = composite(theme.inset, FREE_TILE_FILL.alpha, stop);
+        expect(
+          contrastRatio(rgbToHex(theme.ink), rgbToHex(tile)),
+          `${theme.name}: free tile over ${rgbToHex(stop)}`,
+        ).toBeGreaterThanOrEqual(AA_NORMAL);
+      }
+    });
+
+    it('the locked tile numeral meets AA over the hatch’s dense band (--riv-console-tint at 30%) on every wash stop', () => {
+      for (const stop of theme.washStops) {
+        const band = composite(theme.tint, LOCKED_STRIPE_FILL.alpha, stop);
+        expect(
+          contrastRatio(rgbToHex(theme.ink), rgbToHex(band)),
+          `${theme.name}: locked tile over ${rgbToHex(stop)}`,
+        ).toBeGreaterThanOrEqual(AA_NORMAL);
+      }
+    });
+
+    it('the write-failure notice (--riv-error-ink on the inset/70) meets AA', () => {
+      expectAaOnSurfaces(theme, theme.errorInk, 1, (stop) => insetOver(theme, 0.7, stop));
+    });
+
+    it('the legend key and the free tile share one inset, so the legend reads as the map does', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, 0.85, stop));
+    });
+  },
+);

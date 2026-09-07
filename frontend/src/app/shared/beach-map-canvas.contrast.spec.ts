@@ -25,11 +25,11 @@ import {
 
 /**
  * WCAG-AA contrast guard for the shared beach-map canvas's own chrome — currently just the
- * Fit/100% zoom toggle (#713), the ONE piece of `beach-map-canvas.html` not already proven by
+ * Fit/100% zoom toggle, the ONE piece of `beach-map-canvas.html` not already proven by
  * `venue/venue-map.contrast.spec.ts` (that file proves every token `venue-map.html` sets itself;
  * this canvas-level control is the shared component's own).
  *
- * Issue #870: both toggle states used to pin a fixed hex ink over a fixed rgba fill, composited
+ * Both toggle states used to pin a fixed hex ink over a fixed rgba fill, composited
  * onto the sea→sand wash — which themes (`--riv-map-sea/mid/sand` has a night counterpart). The
  * dark wash dropped the selected label to ~1.2:1 and the idle one to ~3.8:1, both under AA 4.5:1,
  * on a control that carries accessible text ("Fit", "100%"). Fixed: `--riv-map-zoom-{selected,
@@ -38,7 +38,7 @@ import {
  * would otherwise pin a themed ink wrong, not a fixed fill.
  *
  * Per-family shape borrowed from `venue-map.contrast.spec.ts`'s `MAP_FAMILIES`: daylight
- * (riviera, porcelain, every porcelain-pinned operator surface) and night (the dark theme).
+ * (riviera, porcelain, the porcelain console) and night (the dark theme).
  */
 
 interface ZoomState {

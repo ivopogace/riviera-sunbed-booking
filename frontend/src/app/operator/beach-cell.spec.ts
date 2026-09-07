@@ -25,9 +25,9 @@ import { SetView } from '../shared/venue-views';
  * (`shared/class-o-tint-tokens.contrast.spec.ts`, `e2e/class-o-tint-tokens.e2e.ts`).
  */
 const PRE_MOVE_CELL_CLASS: Record<CellState, string> = {
-  premium: 'border-riv-premium-edge/40 bg-(image:--riv-premium-grad)',
-  standard: 'border-riv-console-tint/15 bg-white/85',
-  walkin: 'border-riv-console-tint/15 bg-(image:--riv-walkin-hatch)',
+  premium: 'border-riv-premium-edge/40 bg-(image:--riv-premium-grad) text-riv-premium-ink',
+  standard: 'border-riv-console-tint/15 bg-riv-console-inset/85 text-riv-card-ink',
+  walkin: 'border-riv-console-tint/15 bg-(image:--riv-walkin-hatch) text-riv-card-ink',
   gap: 'border-dashed border-riv-console-tint/55 bg-transparent',
 };
 

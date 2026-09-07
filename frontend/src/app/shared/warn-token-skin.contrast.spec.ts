@@ -10,8 +10,9 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * every amber advisory surface in the tree: `shared/confirm-panel`'s `alertdialog` (used by
  * `set-editor`/`layout-editor` from the start, and by the operator console's
  * Daily-view close-sales and Payouts weather-refund confirms too, which used to hand-roll their
- * own copy of this same skin), the Daily-view trigger button that opens the first of those, the two
- * legal pages' standing draft banner, and `booking/withheld-email-notice`.
+ * own copy of this same skin), the Daily-view trigger button that opens the first of those, the
+ * console's two standing banners (pending approval, stale write) as a tint on the card glass, the
+ * two legal pages' standing draft banner, and `booking/withheld-email-notice`.
  *
  * <p><strong>Three token families collapsed into this one, and one deliberately did not.</strong>
  * `--riv-warn-edge`/`--riv-warn-tint` (class O) painted the console's two confirm panels;
@@ -68,6 +69,8 @@ const RETIRED = [
 const SITES = [
   'shared/confirm-panel.ts',
   'operator/daily-view-tab.html',
+  'operator/pending-approval-banner.ts',
+  'operator/stale-write-banner.ts',
   'booking/withheld-email-notice.ts',
   'pages/legal/privacy-policy.html',
   'pages/legal/terms-of-service.html',

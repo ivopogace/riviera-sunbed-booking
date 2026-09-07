@@ -157,10 +157,15 @@ section owns how a component styles across themes. In order of preference:
    - a token painted over a surface that itself does not theme (`--riv-solid-btn-ink` on
      the outline-button fill, fixed at `#f4f6f7`) would drift light-on-light if it switched;
    - a tint family that painted one literal in every theme before it was tokenised
-     (`--riv-accent-*`) gains a silent restyle the day someone adds a dark override;
-   - a token whose whole population sits in a theme-pinned subtree
-     (`--riv-console-accent-ink`, under the app shell's porcelain pin on the console routes) has an unreachable
-     dark branch, so a dark value is an unverifiable claim.
+     (`--riv-accent-*`) gains a silent restyle the day someone adds a dark override.
+   The console is not a pinned-porcelain subtree: it has its own two-way theme (porcelain |
+   dark, `core/console-theme.ts`), so a console-only token (`--riv-console-*`, `--riv-select-*`, `--riv-alert-tint`, …) declares in
+   the base block AND the `dark` block and nowhere else — never `riviera`, which the console
+   never wears — and its guard holds it to exactly those two. A console position wanting a
+   treatment in one console theme only takes a treatment-off token, as the hero scrim does
+   (`--riv-console-avatar-ring`: `transparent` in porcelain, a white ring in dark). Named
+   `white`/`black` utilities (`bg-white/60`) are literals too, and the console paints none:
+   its inset fills are `bg-riv-console-inset/α` (`operator/console-literal-sweep.spec.ts`).
    The unit is the whole skin, not one position: a fixed fill pins every ink and border on
    it (the form-error banners' `--riv-form-error-fill`/`-ink` move as a pair; the
    `--riv-solid-btn-*` set), and the pinning runs in whichever direction the fixed position

@@ -110,7 +110,9 @@ under rule 2 — the criterion reaches visual information *required to identify*
 states, and nothing about that card is identified by its hairline. Named here rather than left to be
 re-derived, because a family whose consumers sit on different grounds is exactly where a later sweep
 files the whole thing under the wrong one. Both values are measured in the same spec either way
-(#849).
+(#849). The pending-approval notice's `--riv-warn-edge/55` hairline is the same case — the edge of a
+`role="status"` `<div>` whose text carries the notice — measured per console theme in
+`app/operator/pending-approval-banner.contrast.spec.ts` (#1010).
 
 **`--riv-console-btn-hover` was the first entry here that was not a boundary at all** — the
 sign-out button's hover fill, a *state* rather than an edge, which 1.4.11 reaches on its face. It

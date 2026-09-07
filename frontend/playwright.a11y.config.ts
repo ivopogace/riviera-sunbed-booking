@@ -25,11 +25,32 @@ import { defineConfig, devices } from '@playwright/test';
  *
  * Projects: every spec runs once on `chromium` at its own viewport, except the two touch-target
  * sweeps, which set no viewport of their own and run under `phone` (390×780) and `fold` (344×882,
- * the Galaxy Z Fold 5 cover screen — the narrowest width the console's phone rail is proven at).
+ * the Galaxy Z Fold 5 cover screen — the narrowest width the console's phone rail is proven at),
+ * and the three console tabs' themed-paint cases, which run a second time under `console-dark`.
  */
 
 /** The two sweeps that run per phone width rather than once. */
 const PHONE_SWEEPS = ['**/touch-targets.e2e.ts', '**/touch-targets-admin.e2e.ts'];
+
+/** The three console tabs whose themed-paint cases (titled `… dark console`) run once per console
+ *  theme: under `chromium` with the porcelain default, and again under `console-dark`, whose
+ *  storage state seeds the console's own key so the same test expects the dark values. */
+const CONSOLE_THEME_FILES = [
+  '**/operator-daily.e2e.ts',
+  '**/operator-requests.e2e.ts',
+  '**/layout-editor.e2e.ts',
+];
+
+/** The console's storage key, as `core/console-theme.ts` reads it. */
+const DARK_CONSOLE_STORAGE = {
+  cookies: [],
+  origins: [
+    {
+      origin: 'http://localhost:4200',
+      localStorage: [{ name: 'riviera-console-theme', value: 'dark' }],
+    },
+  ],
+};
 
 // The real-backend U7 suite has its own config/servers — never run it under the mocked, backend-less one.
 const REAL_BACKEND = '**/real-backend/**';
@@ -68,6 +89,12 @@ export default defineConfig({
       name: 'fold',
       use: { ...chromium, viewport: { width: 344, height: 882 } },
       testMatch: PHONE_SWEEPS,
+    },
+    {
+      name: 'console-dark',
+      use: { ...chromium, storageState: DARK_CONSOLE_STORAGE },
+      testMatch: CONSOLE_THEME_FILES,
+      grep: /dark console/,
     },
   ],
   webServer: {

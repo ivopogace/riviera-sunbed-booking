@@ -11,6 +11,13 @@ import {
   WASH_STOPS,
   expectAaOverStops,
 } from '../../testing/glass-tokens';
+import {
+  CONSOLE_THEMES,
+  cardOver,
+  expectAaOnSurfaces,
+  insetOver,
+  tintOver,
+} from '../../testing/console-themes';
 
 /**
  * WCAG-AA contrast guard for the per-set beach-map editor. Same porcelain pin and
@@ -111,3 +118,66 @@ describe('SetEditor porcelain contrast (WCAG AA, #600)', () => {
     expectAaOverStops(INK_DARK, 1, { color: [43, 184, 212], alpha: 0.12 }, PORCELAIN_STOPS);
   });
 });
+
+/** Both console themes off one table (`testing/console-themes.ts`); the porcelain rows above stay
+ *  as the parity proof. */
+describe.each(CONSOLE_THEMES)(
+  'SetEditor contrast in the $name console (WCAG AA, #1010)',
+  (theme) => {
+    it('panel heading, legends and helper text meet AA on the card glass', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.ink, CARD_INK_SOFT_ALPHA, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.ink, CARD_INK_FAINT_ALPHA, (stop) => cardOver(theme, stop));
+    });
+
+    it('a tier / pool button’s label meets AA idle (card ink on the inset/45) and selected (card ink on --riv-select-tint/20)', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, 0.45, stop));
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) =>
+        tintOver(theme, theme.selectTint, 0.2, stop),
+      );
+    });
+
+    it('the price field (card ink on the inset/60) meets AA', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, 0.6, stop));
+    });
+
+    it('the Remove button (--riv-error-ink beside its --riv-alert-tint/40 edge) meets AA on the card glass', () => {
+      expectAaOnSurfaces(theme, theme.errorInk, 1, (stop) => cardOver(theme, stop));
+    });
+
+    it('the armed-move banner keeps card ink over its --riv-select-tint/10 surface', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) =>
+        tintOver(theme, theme.selectTint, 0.1, stop),
+      );
+    });
+
+    it('the selection ring (--riv-accent-ink) marks the picked cell at 3:1 over every wash stop and tile fill', () => {
+      const ring = rgbToHex(theme.accentRing);
+      for (const stop of theme.washStops) {
+        const wash = rgbToHex(stop);
+        expect(
+          contrastRatio(ring, wash),
+          `${theme.name}: over wash ${wash}`,
+        ).toBeGreaterThanOrEqual(AA_LARGE);
+        const standard = rgbToHex(composite(theme.inset, STANDARD_FILL_ALPHA, stop));
+        expect(
+          contrastRatio(ring, standard),
+          `${theme.name}: over standard on ${wash}`,
+        ).toBeGreaterThanOrEqual(AA_LARGE);
+        for (const band of WALKIN_BAND_ALPHAS) {
+          const walkin = rgbToHex(composite(theme.tint, band, stop));
+          expect(
+            contrastRatio(ring, walkin),
+            `${theme.name}: over walk-in (band ${band}) on ${wash}`,
+          ).toBeGreaterThanOrEqual(AA_LARGE);
+        }
+      }
+      for (const stop of theme.premiumStops) {
+        expect(
+          contrastRatio(ring, rgbToHex(stop)),
+          `${theme.name}: over premium ${rgbToHex(stop)}`,
+        ).toBeGreaterThanOrEqual(AA_LARGE);
+      }
+    });
+  },
+);

@@ -49,7 +49,7 @@ import { TouchTarget } from './touch-target';
       [value]="reason()"
       [placeholder]="reasonPlaceholder()"
       (input)="onTyped($event)"
-      class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-white/70 px-3 py-2 text-[14px] text-riv-card-ink"
+      class="mt-1 w-full rounded-[10px] border border-riv-field-border bg-riv-console-inset/70 px-3 py-2 text-[14px] text-riv-card-ink"
     />
     <div class="mt-2 flex flex-wrap items-center gap-2">
       <button

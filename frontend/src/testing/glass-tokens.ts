@@ -158,28 +158,57 @@ export const DARK_POP_INK_SOFT: Glass = { color: DARK_CARD_INK, alpha: 0.75 };
 export const DARK_POP_INK_DISABLED: Glass = { color: DARK_CARD_INK, alpha: 0.32 };
 export const DARK_POP_HOVER: Glass = { color: WHITE, alpha: 0.08 };
 
-/** `--riv-console-accent-ink` (#848) — the operator console's accent ink: prices, projected
+/** `--riv-console-accent-ink` — the operator console's accent ink: prices, projected
  *  takings, owed/net payout figures, the commission chip and the per-tab "Saved" notices.
  *  Its own token despite sharing a value with `SOLID_FILL_BRAND` (a fill under fixed white ink)
  *  and `--riv-pop-accent` (the popover accent, which themes to DARK_POP_ACCENT above) — same
- *  value, three roles. Theme-invariant: every consumer is a child of the porcelain-pinned
- *  `operator-console`, so a dark branch would be unreachable. Full reasoning sits at the
- *  declaration in `tailwind.css`. Guarded by `operator/console-accent-token.contrast.spec.ts`. */
+ *  value, three roles. Themed since the console gained its dark theme: the dark value is a light
+ *  teal one step lighter than the tourist accent's (`#7cd7e8` reads 4.2:1 on the chip tint under
+ *  axe's white-page fiction). Full reasoning sits at the declaration in `tailwind.css`. Guarded by
+ *  `operator/console-accent-token.contrast.spec.ts`. */
 export const CONSOLE_ACCENT_INK: Rgb = hexToRgb('0a6e85');
+export const DARK_CONSOLE_ACCENT_INK: Rgb = hexToRgb('a3e3f0');
 
-/** `--riv-console-negative-ink` (#864) — the operator console's negative ink: the reversal net
+/** `--riv-console-negative-ink` — the operator console's negative ink: the reversal net
  *  and its reason chip on the Payouts tab, the failed-check-in notice on the Daily view. The
  *  `negative` pole of the `--riv-console-*-ink` pair; the two share a host, a surface and a
  *  theme-invariance ground, but not a declaration and not a guard.
  *  Its own token despite equalling `SOLID_BTN_DANGER_INK` — that one is the outline BUTTON's ink
- *  on the button's own fixed fill (#851). The reason chip's own `/opacity` tints were the third
- *  role and have since (#852) been migrated onto THIS token, which is where they belonged: same
- *  element, same meaning. Same value, three roles, and the themed reds are no answer
- *  either: DARK_ERROR_INK over the console's card glass measures 1.84:1. Theme-invariant: every
- *  consumer is a child of the porcelain-pinned `operator-console`, so a dark branch would be
- *  unreachable. Full reasoning sits at the declaration in `tailwind.css`. Guarded by
+ *  on the button's own fixed fill. The reason chip's own `/opacity` tints were the third
+ *  role and have since been migrated onto THIS token, which is where they belonged: same
+ *  element, same meaning. Same value, three roles, and the themed reds are no answer for the
+ *  porcelain value: DARK_ERROR_INK over the porcelain card glass measures 1.84:1. Themed since
+ *  the dark console: the dark value IS that salmon, over the dark card where it clears AA.
+ *  Full reasoning sits at the declaration in `tailwind.css`. Guarded by
  *  `operator/console-negative-token.contrast.spec.ts`. */
 export const CONSOLE_NEGATIVE_INK: Rgb = hexToRgb('a3372a');
+export const DARK_CONSOLE_NEGATIVE_INK: Rgb = hexToRgb('ffa9a1');
+
+/** `--riv-console-inset` (class O) — the base colour behind every `bg-…/α` inset the
+ *  console paints on its card glass: fields, outline buttons, sub-panels, tool chips, the standard
+ *  tile, the legend key. White in porcelain (the retired `bg-white/α` literals, byte-identical);
+ *  the tourist dark field fill's slate in dark, so an inset sits BELOW its dark card as the
+ *  tourist dark fields do and a hover at a higher alpha deepens rather than lightens. */
+export const CONSOLE_INSET: Rgb = WHITE;
+export const DARK_CONSOLE_INSET: Rgb = hexToRgb('020a16');
+
+/** `--riv-console-avatar-ring` — the ring the dark console draws round the account chip's avatar
+ *  disc, the chip's 3:1 boundary on the dark header glass where the solid brand fill alone reads
+ *  2.6:1. Porcelain draws none (`transparent`), so it has no mirror row. */
+export const DARK_CONSOLE_AVATAR_RING: Glass = { color: WHITE, alpha: 0.55 };
+
+/** `--riv-premium-ink` — the numeral over the beach-map premium cell's gold gradient, per theme:
+ *  dark on the day gold, a light gold on the dusk gold. Its own token because the card ink cannot
+ *  serve both (white on the day gold would fail), and themed because the gradient is. */
+export const PREMIUM_INK: Rgb = hexToRgb('0a2a33');
+export const DARK_PREMIUM_INK: Rgb = hexToRgb('f2d48c');
+/** `--riv-premium-grad` stops per theme — the day gold and the dusk gold, the latter deep enough
+ *  that the light selection ring still marks a picked premium cell at 3:1. */
+export const PREMIUM_GRAD_STOPS: readonly Rgb[] = ['ffe3a3', 'f4c05a'].map(hexToRgb);
+export const DARK_PREMIUM_GRAD_STOPS: readonly Rgb[] = ['6b5324', '4a3916'].map(hexToRgb);
+/** `--riv-sea-grad` — the beach map's "Facing the sea" banner, a fixed teal under fixed white
+ *  ink in every theme (the fixed-fill rule again); one image token so the two frames cannot drift. */
+export const SEA_GRAD_STOPS: readonly Rgb[] = ['0e7a89', '0c6675'].map(hexToRgb);
 
 /** `--riv-form-error-fill` / `--riv-form-error-ink` — the three tourist error banners' skin (#850).
  *  Theme-invariant as a PAIR: the fill is a solid composite that does not theme, so the themed
@@ -429,35 +458,50 @@ export const DARK_CARD_BORDER: Glass = { color: WHITE, alpha: 0.16 };
  *  mirror carries one value per base colour and no alpha: the alpha is per-site, and stays beside
  *  the comment explaining it (`beach-cell`'s `/55`-not-`/35` aisle boundary is the worked example).
  *
- *  Every one is THEME-INVARIANT by decision rather than omission — each consumer is either a child
- *  of `operator-console`, whose routes the app shell pins porcelain, or sits on a fixed-white panel — so the
- *  single-declaration guard is the whole protection. Guarded by
- *  `shared/class-o-tint-tokens.contrast.spec.ts`; proven against a real render, in a forced dark
- *  document, by `e2e/class-o-tint-tokens.e2e.ts`. Per-surface AA/1.4.11 ratios stay with their
- *  elements — tokenising moves no pixel, so none of them change.
+ *  A row with a `dark` value is THEMED: the console has its own dark theme, so every
+ *  base colour whose only ground for staying single was "its consumers sit under the porcelain
+ *  pin" carries a dark value, declared in the `dark` block and nowhere else. A row without one is
+ *  theme-invariant on the stronger, fixed-fill ground (`--riv-warn-*`: the fill is fixed, so a
+ *  themed ink over it would drift), and the single-declaration guard is its whole protection.
+ *  Guarded by `shared/class-o-tint-tokens.contrast.spec.ts`; proven against a real render, in a
+ *  forced dark document, by `e2e/class-o-tint-tokens.e2e.ts`. Per-surface AA/1.4.11 ratios stay
+ *  with their elements — tokenising moves no porcelain pixel, and the dark pairs are proven where
+ *  each element's contrast spec composites the dark theme.
  *
  *  NOT a palette: several of these values coincide with a registered token of a DIFFERENT role
  *  (`#0e8aa8` is `--riv-accent-strong`, `#a3160e` is `--riv-solid-fill-danger`), and the audit's
  *  class R exists for exactly that. Role before value — see each declaration in `tailwind.css`. */
-export const CLASS_O_TINTS: readonly { readonly token: string; readonly value: string }[] = [
-  /** The console's neutral tint base — hairlines, inset fills, one sheet backdrop. The rgba base of
-   *  `--riv-ink-soft`/`--riv-ink-faint` (CARD_INK above), and deliberately NOT `--riv-ink`, which
-   *  is `#0a2a33` and themes to white. */
-  { token: '--riv-console-tint', value: '#0c2a33' },
-  /** The payout-statement modal backdrop. */
-  { token: '--riv-console-scrim', value: '#061e28' },
+export interface ClassOTint {
+  readonly token: string;
+  /** The base-block (porcelain) value. */
+  readonly value: string;
+  /** The `dark` block's value; absent for a token that is theme-invariant by the fixed-fill rule. */
+  readonly dark?: string;
+}
+
+export const CLASS_O_TINTS: readonly ClassOTint[] = [
+  /** The console's neutral tint base — hairlines, inset fills and the walk-in hatch. The rgba base
+   *  of `--riv-ink-soft`/`--riv-ink-faint` (CARD_INK above), and deliberately NOT `--riv-ink`,
+   *  which is `#0a2a33` — a different role, however alike the values. White in dark, as the
+   *  tourist dark theme's own hairline family is. */
+  { token: '--riv-console-tint', value: '#0c2a33', dark: '#ffffff' },
+  /** The console's inset base (CONSOLE_INSET / DARK_CONSOLE_INSET above). */
+  { token: '--riv-console-inset', value: '#ffffff', dark: '#020a16' },
+  /** The backdrop behind the console's modals — the payout statement and the set-editor's phone
+   *  sheet. */
+  { token: '--riv-console-scrim', value: '#061e28', dark: '#020a16' },
   /** The console's selection chrome — the set-editor's selected tier and armed-move panel, the
    *  layout editor's active tool. Its own pair, NOT `--riv-accent-fill`/`--riv-accent-strong`,
    *  whose values these are: that family is the TOURIST accent tint (info panel, selected chip,
    *  pay spinner track), this one is operator-console selection state. The same fork #848, #858
    *  and #864 each resolved the same way — role before value. */
-  { token: '--riv-select-tint', value: '#2bb8d4' },
-  { token: '--riv-select-edge', value: '#0e8aa8' },
+  { token: '--riv-select-tint', value: '#2bb8d4', dark: '#7cd7e8' },
+  { token: '--riv-select-edge', value: '#0e8aa8', dark: '#9adde8' },
   /** The request/urgency chrome's tint base — the Requests tab's urgency chip and decline edge,
    *  the Daily view's and Payouts tab's alert borders, the set-editor's destructive panel. Its own
    *  token: `--riv-solid-fill-danger` carries this value as a SOLID fill under fixed white ink,
    *  and `--riv-error-ink` carries it as an ink that themes to `#ffa9a1`. Neither is a tint. */
-  { token: '--riv-alert-tint', value: '#a3160e' },
+  { token: '--riv-alert-tint', value: '#a3160e', dark: '#ff8a7a' },
   /** The merged amber WARN family (#879): one skin for every amber advisory surface — the two
    *  hand-rolled console confirm panels and the trigger button that opens one, `shared/confirm-panel`,
    *  the two legal pages' draft banner and `booking/withheld-email-notice`. Absorbed the class-O
@@ -470,9 +514,9 @@ export const CLASS_O_TINTS: readonly { readonly token: string; readonly value: s
   { token: '--riv-warn-ink', value: '#7a4a08' },
   /** The Requests tab's accepted medallion — border, fill AND ink off one base colour, taken as
    *  one expression because that is what the element is. */
-  { token: '--riv-positive-tint', value: '#0e6e46' },
-  /** The beach-map premium cell's boundary, over `--riv-premium-grad`. */
-  { token: '--riv-premium-edge', value: '#b47814' },
+  { token: '--riv-positive-tint', value: '#0e6e46', dark: '#7fd8ac' },
+  /** The beach-map premium cell's boundary, over `--riv-premium-grad` (the night gold in dark). */
+  { token: '--riv-premium-edge', value: '#b47814', dark: '#c8ab62' },
 ];
 
 /** `--riv-banner-*-ink`: booking-view's status-banner prose, pinned by six fixed banner fills. The
@@ -485,8 +529,10 @@ export const BANNER_FILLS: readonly Rgb[] = ['ddf4f8', 'fdf5e6', 'faefec', 'f0f2
   hexToRgb,
 );
 
-/** `--riv-console-card-border`: the console's white-surface hairline (the "Venue not found" card's
- *  edge). Its own token rather than the same-valued --riv-pop-divider / --riv-chip-border, which
- *  carry different roles and theme overrides. Rationale: docs/design/colour-literal-token-audit.md
+/** `--riv-console-card-border`: the console's opaque-surface hairline (the "Venue not found"
+ *  card's edge). Its own token rather than the same-valued --riv-pop-divider / --riv-chip-border,
+ *  which carry different roles and theme overrides; themed since the console gained its dark theme, bounding the dark inset
+ *  with the dark card border's white-at-0.16. Rationale: docs/design/colour-literal-token-audit.md
  *  (class R). */
 export const CONSOLE_CARD_BORDER: Glass = { color: CARD_INK, alpha: 0.1 };
+export const DARK_CONSOLE_CARD_BORDER: Glass = { color: WHITE, alpha: 0.16 };

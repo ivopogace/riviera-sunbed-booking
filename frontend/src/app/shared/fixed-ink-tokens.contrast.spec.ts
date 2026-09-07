@@ -15,10 +15,12 @@ import {
   BANNER_STRONG_INK,
   CONSOLE_CARD_BORDER,
   DARK_CARD_INK,
+  DARK_CONSOLE_CARD_BORDER,
+  DARK_CONSOLE_INSET,
   Glass,
   WHITE,
 } from '../../testing/glass-tokens';
-import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
+import { baseBlock, declarationsOf, themeBlock } from '../../testing/stylesheet-tokens';
 
 /**
  * Guard for the fixed-fill and role-mismatch ink families, and for the refusal that defines them:
@@ -44,10 +46,12 @@ const BANNER_FAMILY = {
   '--riv-banner-strong-ink': rgbToHex(BANNER_STRONG_INK),
 } as const;
 
-/** The console's white-surface hairline. Its siblings — the sign-out button's border and hover
- *  fill — retired with that button when the account chip folded sign-out into a popover row. */
+/** The console's opaque-surface hairline, themed since the console gained its dark theme: porcelain in the
+ *  base block, the dark card border's white-at-0.16 in the dark block. Its siblings — the sign-out
+ *  button's border and hover fill — retired with that button when the account chip folded sign-out
+ *  into a popover row. */
 const CONSOLE_FAMILY = {
-  '--riv-console-card-border': cssValue(CONSOLE_CARD_BORDER),
+  '--riv-console-card-border': [cssValue(CONSOLE_CARD_BORDER), cssValue(DARK_CONSOLE_CARD_BORDER)],
 } as const;
 
 /** The literals every migrated site must have stopped painting. */
@@ -106,6 +110,13 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
       expect(inkRatio(CONSOLE_CARD_BORDER, WHITE)).toBeCloseTo(1.21, 2);
     });
 
+    /** The dark console bounds the same card with the dark inset under it: a hairline of
+     *  the same weight, measured on its own fill so the exemption below is recorded for both. */
+    it('the dark card border is measured against the dark inset it bounds', () => {
+      expect(inkRatio(DARK_CONSOLE_CARD_BORDER, DARK_CONSOLE_INSET)).toBeCloseTo(1.51, 2);
+      expect(inkRatio(DARK_CONSOLE_CARD_BORDER, DARK_CONSOLE_INSET)).toBeLessThan(AA_LARGE);
+    });
+
     /**
      * Far under 3:1, which is the whole reason it owes a recorded ground rather than an assumption.
      * Its one consumer, the "Venue not found" card, is a `<div>`: outside 1.4.11 rather than exempt
@@ -136,13 +147,20 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
   describe('the stylesheet contract', () => {
     const ALL = { ...BANNER_FAMILY, ...CONSOLE_FAMILY };
 
-    it('declares each token exactly once, so no theme block can override it', () => {
-      for (const name of Object.keys(ALL)) {
+    it('declares each banner token exactly once, so no theme block can override it', () => {
+      for (const name of Object.keys(BANNER_FAMILY)) {
         expect(declarationsOf(name), `${name} declarations`).toHaveLength(1);
       }
     });
 
-    it('declares the family in the base block, where it resolves for all three themes', () => {
+    it('declares the console border in the base block and in the dark block, nowhere else (#1010)', () => {
+      for (const name of Object.keys(CONSOLE_FAMILY)) {
+        expect(declarationsOf(name), `${name} declarations`).toHaveLength(2);
+        expect(themeBlock('dark'), `${name} in the dark block`).toContain(`${name}:`);
+      }
+    });
+
+    it('declares both families in the base block, where the porcelain value resolves', () => {
       const base = baseBlock();
 
       for (const name of Object.keys(ALL)) {
@@ -151,8 +169,11 @@ describe('The T-3 re-cut — fixed-fill and role-mismatch ink families (#849)', 
     });
 
     it('declares the values this test mirror carries', () => {
-      for (const [name, value] of Object.entries(ALL)) {
+      for (const [name, value] of Object.entries(BANNER_FAMILY)) {
         expect(declarationsOf(name)[0], name).toBe(value);
+      }
+      for (const [name, values] of Object.entries(CONSOLE_FAMILY)) {
+        expect(declarationsOf(name), name).toEqual(values);
       }
     });
 

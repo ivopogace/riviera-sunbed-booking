@@ -82,6 +82,8 @@
   --color-riv-console-negative-ink: var(--riv-console-negative-ink);
   --color-riv-console-tint: var(--riv-console-tint);
   --color-riv-console-scrim: var(--riv-console-scrim);
+  --color-riv-console-inset: var(--riv-console-inset);
+  --color-riv-console-avatar-ring: var(--riv-console-avatar-ring);
   --color-riv-select-tint: var(--riv-select-tint);
   --color-riv-select-edge: var(--riv-select-edge);
   --color-riv-alert-tint: var(--riv-alert-tint);
@@ -90,6 +92,7 @@
   --color-riv-warn-ink: var(--riv-warn-ink);
   --color-riv-positive-tint: var(--riv-positive-tint);
   --color-riv-premium-edge: var(--riv-premium-edge);
+  --color-riv-premium-ink: var(--riv-premium-ink);
 
   --color-riv-medallion-positive-fill: var(--riv-medallion-positive-fill);
   --color-riv-medallion-positive-ink: var(--riv-medallion-positive-ink);
@@ -397,21 +400,20 @@
       Same value, three roles: `@theme inline` resolves a utility at the point of use, so reusing
       either would route this ink through a variable another family's theme blocks override.
 
-      Declared ONCE, with no dark counterpart: all twelve sites are children of `operator-console`,
-      whose routes the app shell pins porcelain, so a dark branch is unreachable and a dark value
-      would be an unverifiable claim. (The operator error ink could reuse the THEMED
-      --riv-error-ink because that token also paints tourist surfaces, where its dark branch IS
-      reachable.)
-      Proof: operator/console-accent-token.contrast.spec.ts (the single-declaration guard, the only
-      thing able to see a dark override) + the six operator *.contrast.spec.ts AA proofs +
-      console-accent-ink.e2e.ts.
+      Themed in exactly two blocks: this porcelain value and a dark one, since the console
+      pin became the operator's own porcelain-or-dark choice. The dark value is a light teal one
+      step lighter than the tourist accent's, AA over the dark card AND over the chip tint on it; a
+      `riviera` declaration would be a third theme the console never wears, and the guard fails on
+      one.
+      Proof: operator/console-accent-token.contrast.spec.ts (the two-declaration guard, the only
+      thing able to see a stray override) + the operator *.contrast.spec.ts AA proofs in both
+      console themes + console-accent-ink.e2e.ts.
       Rationale: docs/design/colour-literal-token-audit.md § class R. */
   --riv-console-accent-ink: #0a6e85;
 
   /** The operator console's NEGATIVE ink — the reversal net and its reason chip on the Payouts
-      tab, the failed-check-in notice on the Daily view. Three positions, all on card glass, all
-      children of the porcelain-pinned console. The `negative` pole of the --riv-console-*-ink
-      pair whose accent pole sits above.
+      tab, the failed-check-in notice on the Daily view. Three positions, all on the console's
+      card glass. The `negative` pole of the --riv-console-*-ink pair whose accent pole sits above.
 
       Its own token, NOT a reuse, although --riv-solid-btn-danger-ink carries this exact value and
       is itself theme-invariant, so the substitution would resolve correctly and look free. It is
@@ -421,14 +423,15 @@
       scopes no custom property that would keep the two apart. Named `negative`, not `danger`,
       for the same reason: `danger` is that button token's own word, and --riv-danger-*
       /--riv-error-ink are the tourist alert families — one hyphen apart is not a distinction.
-      The themed reds are not the answer either: #ffa9a1 over this card glass measures 1.84:1.
+      The themed reds are not the answer for the porcelain value either: #ffa9a1 over the porcelain
+      card glass measures 1.84:1.
 
-      Declared ONCE, with no dark counterpart: all three sites are children of `operator-console`,
-      whose routes the app shell pins porcelain, so a dark branch is unreachable and a dark value would be an
-      unverifiable claim.
-      Proof: operator/console-negative-token.contrast.spec.ts (the single-declaration guard, the
-      only thing able to see a dark override) + payouts-tab.contrast.spec.ts's AA proofs for the
-      chip tint, the lowest pair at 5.05:1 + console-negative-ink.e2e.ts.
+      Themed in exactly two blocks: this porcelain value and, in the dark block, that very
+      salmon — over the dark card it clears AA, and the console has had its own dark theme since
+      the pin became a choice.
+      Proof: operator/console-negative-token.contrast.spec.ts (the two-declaration guard, the only
+      thing able to see a stray override) + payouts-tab.contrast.spec.ts's AA proofs for the chip
+      tint in both console themes + console-negative-ink.e2e.ts.
       Rationale: docs/design/colour-literal-token-audit.md § class R. */
   --riv-console-negative-ink: #a3372a;
 
@@ -438,9 +441,10 @@
       no alpha is baked in. Adding a `/opacity` position of a NEW colour means adding a token here,
       not a literal — a standing test fails on any literal of that form.
 
-      All THEME-INVARIANT, each declared once: every consumer is either a child of
-      `operator-console`, whose routes the app shell pins porcelain, or sits on a fixed-white panel, so a dark
-      branch is unreachable and a dark value would be an unverifiable claim.
+      The console's own tints are THEMED: a porcelain value here and a dark value in the
+      dark block, nowhere else, since the console pin became the operator's porcelain-or-dark
+      choice. The --riv-warn-* family below stays declared once on the fixed-fill ground its own
+      comment states.
 
       WARNING before using one on a surface where an opaque fallback would be harmful: for a
       var()-valued colour Tailwind emits a fallback declaration outside its
@@ -455,12 +459,27 @@
       § Class O.
 
       --riv-console-tint is the console's neutral tint base: hairlines, inset fills and the
-      set-editor's mobile sheet backdrop. It is the rgba base of --riv-ink-soft/--riv-ink-faint,
-      and NOT --riv-ink, which is #0a2a33 and themes to white — a themed hairline would vanish on
-      payout-statement's fixed-white panel. */
+      walk-in hatch. It is the rgba base of --riv-ink-soft/--riv-ink-faint, and NOT --riv-ink,
+      which is #0a2a33 in porcelain: the same value in a different role, and the dark console
+      keeps them apart (white hairlines over dark insets, as the tourist dark family paints). */
   --riv-console-tint: #0c2a33;
-  /** The payout-statement modal backdrop. Its own colour, not --riv-console-tint's: the console's
-      two backdrops are two different values, which rule B preserves rather than merges. */
+  /** The console's INSET base: the colour behind every `bg-…/α` fill the console paints
+      on its card glass — fields, outline buttons, sub-panels, tool chips, the standard tile, the
+      legend key — and the two opaque surfaces (the "Venue not found" card, the payout statement).
+      Rule B: the alpha stays at the call site. White here, so porcelain paints what its
+      `bg-white/α` predecessors painted; the tourist dark field fill's slate in dark, so an
+      inset sits BELOW its dark card and a hover at a higher alpha deepens rather than lightens. */
+  --riv-console-inset: #ffffff;
+  /** The account chip's avatar disc is the chip's non-text boundary, held to 3:1 on the header
+      glass (WCAG 1.4.11). The solid brand fill clears that on the porcelain glass by itself and
+      reads 2.6:1 on the dark one, so the dark console draws a ring round the disc and porcelain
+      draws none — a treatment-off value here, as --riv-hero-scrim holds `none` off the riviera
+      hero. The tourist chrome shares the disc recipe but not this ring: its disc is decorative.
+      Proof: operator/operator-account-chip.contrast.spec.ts. */
+  --riv-console-avatar-ring: transparent;
+  /** The backdrop behind the console's modals — the payout statement and the set-editor's phone
+      sheet. Its own colour, not --riv-console-tint's: a scrim darkens whichever theme it covers,
+      a tint follows the ink. */
   --riv-console-scrim: #061e28;
 
   /** The console's SELECTION chrome (class O, #852): the set-editor's selected tier button and
@@ -480,14 +499,15 @@
   --riv-select-tint: #2bb8d4;
   --riv-select-edge: #0e8aa8;
 
-  /** The console's ALERT tint (class O, #852): the Requests tab's urgency chip and decline edge,
+  /** The console's ALERT tint (class O): the Requests tab's urgency chip and decline edge,
       the Daily view's and Payouts tab's alert borders, the set-editor's destructive panel.
 
       Its own token, though this value is already declared twice under other roles, because neither
-      is a tint: --riv-solid-fill-danger is a SOLID fill carrying fixed white ink (#854/#861), and
+      is a tint: --riv-solid-fill-danger is a SOLID fill carrying fixed white ink, and
       --riv-error-ink is an INK that themes -- it resolves #ffa9a1 in the dark theme, which as a
-      hairline on the console's porcelain-pinned card glass would be a pale pink line where a red
-      one is meant. Same fork, same answer, as the two --riv-console-*-ink tokens. */
+      hairline on the porcelain console's card glass would be a pale pink line where a red one is
+      meant; the dark console's own value is the danger family's salmon, in the dark block. Same
+      fork, same answer, as the two --riv-console-*-ink tokens. */
   --riv-alert-tint: #a3160e;
 
   /** The AMBER WARN family (#879) -- one skin for every amber advisory surface in the tree:
@@ -543,6 +563,14 @@
       is the resulting --riv-walkin-hatch.) */
   --riv-premium-edge: #b47814;
   --riv-premium-grad: linear-gradient(180deg, #ffe3a3, #f4c05a);
+  /** The numeral over the premium gradient — its own token because the card ink cannot serve
+      both themes here: the day gold wants a dark numeral, and the dark console's dusk gold (the
+      dark block, deep enough that the light selection ring still marks a picked premium cell at
+      3:1) wants a light one. */
+  --riv-premium-ink: #0a2a33;
+  /** The beach map's "Facing the sea" banner (shared/beach-grid-frame): a fixed teal under fixed
+      white ink in every theme, one image token so no frame rebuilds it Declared once. */
+  --riv-sea-grad: linear-gradient(180deg, #0e7a89, #0c6675);
 
   /** The beach-map WALK-IN cell's hatch (#879). An image token for the same reason
       --riv-premium-grad is one -- one declaration is the only thing that keeps a mirror mirroring
@@ -734,8 +762,8 @@
 
   /** The beach-map daylight palette (shared/beach-map-canvas + venue/map-tile): the sea→sand
       wash, the rail/price chips, and the per-state tile vocabulary. Daylight in the light themes
-      and on every porcelain-pinned operator surface; the dark theme swaps in the night values in
-      its block. AA proofs: venue-map.contrast.spec.ts, per ink family. */
+      and on the porcelain console; the dark theme — the tourist's and the console's own alike —
+      swaps in the night values in its block. AA proofs: venue-map.contrast.spec.ts, per ink family. */
   --riv-map-sea: #cfeef6;
   --riv-map-mid: #e7f5f1;
   --riv-map-sand: #f6eedb;
@@ -825,9 +853,9 @@
   --riv-banner-body-ink: #334a52;
   --riv-banner-strong-ink: #0a2a33;
 
-  /** The operator console's white-surface hairline: the edge of the "Venue not found" card. Its
+  /** The operator console's opaque-surface hairline: the edge of the "Venue not found" card. Its
       own token, not the same-valued --riv-pop-divider / --riv-chip-border, whose roles and theme
-      overrides are different. Declared once — every consumer sits under the app shell's porcelain pin.
+      overrides are different. Themed in two blocks: this and the dark card border's white.
       Non-text chrome at 1.21:1 over its white fill; the card's edge is outside 1.4.11 rather than
       exempt under it (docs/design/non-text-contrast.md). Its sibling --riv-console-btn-border and
       the hover fill --riv-console-btn-hover retired with the sign-out pill they bounded, when the
@@ -1001,6 +1029,31 @@
   --riv-tile-taken-ink: #a7b5b0;
   --riv-tile-hover: rgba(255, 255, 255, 0.14);
   --riv-tile-focus: #8fd6e2;
+
+  /** The DARK CONSOLE: the operator's own porcelain-or-dark choice, pinned by the app
+      shell on every console route (core/console-theme.ts), never the document attribute. Every
+      token whose only ground for staying single was "its consumers sit under the porcelain pin"
+      declares its dark value here and nowhere else; the fixed-fill families (--riv-warn-*,
+      --riv-solid-*, --riv-sea-grad) stay declared once above. Each pair is
+      AA-proven in both console themes by the console *.contrast.spec.ts files off
+      testing/console-themes.ts, and the guards named at each base declaration hold the pair to
+      exactly two blocks. */
+  /* A step lighter than the tourist accent's #7cd7e8: the console also paints this on the chip tint, where axe's white-page fiction wants the margin. */
+  --riv-console-accent-ink: #a3e3f0;
+  --riv-console-negative-ink: #ffa9a1;
+  --riv-console-tint: #ffffff;
+  --riv-console-inset: #020a16;
+  --riv-console-scrim: #020a16;
+  --riv-console-card-border: rgba(255, 255, 255, 0.16);
+  --riv-console-avatar-ring: rgba(255, 255, 255, 0.55);
+  --riv-select-tint: #7cd7e8;
+  --riv-select-edge: #9adde8;
+  --riv-alert-tint: #ff8a7a;
+  --riv-positive-tint: #7fd8ac;
+  --riv-premium-edge: #c8ab62;
+  /* Dusk gold, not the day gold darkened a shade: a bright tile under a light ring reads 1.1:1. */
+  --riv-premium-grad: linear-gradient(180deg, #6b5324, #4a3916);
+  --riv-premium-ink: #f2d48c;
 }
 
 /** The focus-indicator baseline. Preflight resets no outline, so a button without a

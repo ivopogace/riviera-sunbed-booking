@@ -11,16 +11,27 @@ import {
   SOLID_FILL_BRAND,
   WASH_STOPS,
   expectAaOverStops,
+  DARK_PREMIUM_INK,
+  PREMIUM_INK,
+  SEA_GRAD_STOPS,
 } from '../../testing/glass-tokens';
+import {
+  CONSOLE_THEMES,
+  cardOver,
+  expectAaOnSurfaces,
+  insetOver,
+  tintOver,
+} from '../../testing/console-themes';
+import { declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
- * WCAG-AA contrast guard for the layout editor. The editor is always porcelain (console
- * host), its control panels use `appCardGlass` (`--riv-card-glass` = white @ 0.55), and its
+ * WCAG-AA contrast guard for the layout editor. The editor wears the operator's console theme
+ * (porcelain by default; the themed block at the foot proves both), its control panels use `appCardGlass` (`--riv-card-glass` = white @ 0.55), and its
  * primary buttons reuse the project's AA-safe `--riv-cta-grad` teal (NOT the design's brighter
- * `#2bb8d4/#0e8aa8`, which fails AA with white). Since #672 slice 2 the grid sits on the shared
+ * `#2bb8d4/#0e8aa8`, which fails AA with white). The grid sits on the shared
  * canvas's sea→sand wash, whose rail-chip inks are proven in `venue-map.contrast.spec.ts`. The
  * gap cell's identity is its dashed border alone, so that boundary is proven 3:1 (1.4.11)
- * composited over the wash's worst-case (sand) stop. Since #709 every non-gap cell also carries
+ * composited over the wash's worst-case (sand) stop. Every non-gap cell also carries
  * its position number — proven 4.5:1 (normal text) against each tile kind's own worst fill,
  * `beach-cell.ts`'s `CELL_CLASS`. Values mirror the template + `beach-cell.ts` + `tailwind.css`;
  * an edit there must re-pass here.
@@ -129,3 +140,94 @@ describe('LayoutEditor porcelain contrast (WCAG AA, #172)', () => {
     expect(rgbToHex(composite(INK_DARK, 1, [255, 255, 255]))).toBe(rgbToHex(INK_DARK));
   });
 });
+
+/**
+ * Both console themes off one table (`testing/console-themes.ts`): the tool rail idle and armed,
+ * the three tile numerals on the night sand (the premium one on its own themed ink over the gold),
+ * the gap boundary and the selection ring at 3:1, the fields on the inset. The porcelain rows
+ * above stay as the parity proof.
+ */
+describe.each(CONSOLE_THEMES)(
+  'LayoutEditor contrast in the $name console (WCAG AA, #1010)',
+  (theme) => {
+    it('panel headings, helper text and labels meet AA on the card glass', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.ink, CARD_INK_SOFT_ALPHA, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.ink, CARD_INK_FAINT_ALPHA, (stop) => cardOver(theme, stop));
+    });
+
+    it('a tool chip’s label meets AA idle (card ink on the inset/45) and armed (card ink on --riv-select-tint/20)', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, 0.45, stop));
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) =>
+        tintOver(theme, theme.selectTint, 0.2, stop),
+      );
+    });
+
+    it('the rows / positions fields and the row-name field (card ink on the inset/60) meet AA', () => {
+      expectAaOnSurfaces(theme, theme.ink, 1, (stop) => insetOver(theme, 0.6, stop));
+    });
+
+    it('the tile numeral meets AA on every cell kind’s own worst fill', () => {
+      for (const stop of theme.premiumStops) {
+        expect(
+          contrastRatio(rgbToHex(theme.premiumInk), rgbToHex(stop)),
+          `${theme.name}: premium fill ${rgbToHex(stop)}`,
+        ).toBeGreaterThanOrEqual(AA_NORMAL);
+      }
+      for (const stop of theme.washStops) {
+        const wash = rgbToHex(stop);
+        const standard = composite(theme.inset, STANDARD_FILL_ALPHA, stop);
+        expect(
+          contrastRatio(rgbToHex(theme.ink), rgbToHex(standard)),
+          `${theme.name}: standard over ${wash}`,
+        ).toBeGreaterThanOrEqual(AA_NORMAL);
+        for (const band of WALKIN_BAND_ALPHAS) {
+          const walkin = composite(theme.tint, band, stop);
+          expect(
+            contrastRatio(rgbToHex(theme.ink), rgbToHex(walkin)),
+            `${theme.name}: walk-in (band ${band}) over ${wash}`,
+          ).toBeGreaterThanOrEqual(AA_NORMAL);
+        }
+      }
+    });
+
+    it('the gap cell’s dashed boundary (--riv-console-tint/55) marks the aisle at 3:1 over every wash stop', () => {
+      for (const stop of theme.washStops) {
+        const edge = composite(theme.tint, GAP_BORDER_ALPHA, stop);
+        expect(
+          contrastRatio(rgbToHex(edge), rgbToHex(stop)),
+          `${theme.name}: aisle over ${rgbToHex(stop)}`,
+        ).toBeGreaterThanOrEqual(AA_LARGE);
+      }
+    });
+
+    it('the Select swatch ring (--riv-accent-ink) marks the tool at 3:1 over the chip’s inset', () => {
+      expectAaOnSurfaces(
+        theme,
+        theme.accentRing,
+        1,
+        (stop) => insetOver(theme, 0.45, stop),
+        AA_LARGE,
+      );
+    });
+
+    it('the premium numeral and the gold it sits on are one themed pair: two declarations each', () => {
+      expect(declarationsOf('--riv-premium-ink')).toEqual([
+        rgbToHex(PREMIUM_INK),
+        rgbToHex(DARK_PREMIUM_INK),
+      ]);
+      expect(declarationsOf('--riv-premium-grad')).toHaveLength(2);
+    });
+
+    it('the "Facing the sea" banner (white on --riv-sea-grad) meets AA on both stops in every theme', () => {
+      for (const stop of SEA_GRAD_STOPS) {
+        expect(contrastRatio('#ffffff', rgbToHex(stop))).toBeGreaterThanOrEqual(AA_NORMAL);
+      }
+    });
+
+    it('the save error and the saved notice meet AA on the card glass', () => {
+      expectAaOnSurfaces(theme, theme.errorInk, 1, (stop) => cardOver(theme, stop));
+      expectAaOnSurfaces(theme, theme.accentInk, 1, (stop) => cardOver(theme, stop));
+    });
+  },
+);

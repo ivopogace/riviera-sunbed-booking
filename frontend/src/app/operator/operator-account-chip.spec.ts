@@ -2,6 +2,7 @@ import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 
+import { ConsoleTheme } from '../core/console-theme';
 import { OperatorAuth } from '../core/operator-auth';
 import { OperatorAccountChip } from './operator-account-chip';
 
@@ -76,8 +77,11 @@ describe('OperatorAccountChip', () => {
     fixture.detectChanges();
   }
 
+  /** Row labels, without the pressed theme row's decorative (`aria-hidden`) tick. */
   function rows(): string[] {
-    return [...menu()!.querySelectorAll('a, button')].map((row) => row.textContent.trim());
+    return [...menu()!.querySelectorAll('a, button')].map((row) =>
+      row.textContent.replace('\u2713', '').trim(),
+    );
   }
 
   it('renders one button named for the account, closed, with nothing of the popover in the bar', () => {
@@ -89,14 +93,14 @@ describe('OperatorAccountChip', () => {
     expect(el.querySelectorAll('a, button')).toHaveLength(1);
   });
 
-  it('opens the popover: identity block, Change password, Sign out — no Create a venue, no Admin console for a non-admin (#1009)', () => {
+  it('opens the popover: identity block, Change password, the two Console theme rows, Sign out — no Create a venue, no Admin console for a non-admin (#1009, #1010)', () => {
     open();
 
     expect(chip().getAttribute('aria-expanded')).toBe('true');
     expect(menu()!.querySelector('[data-testid="oc-account-identity"]')?.textContent).toContain(
       'Signed in as maria@example.com',
     );
-    expect(rows()).toEqual(['Change password', 'Sign out']);
+    expect(rows()).toEqual(['Change password', 'Porcelain', 'Dark', 'Sign out']);
     // Venue actions live under the venue switcher, not in the account chip.
     expect(el.querySelector('[data-testid="oc-create-venue"]')).toBeNull();
     expect(el.textContent).not.toContain('Create a venue');
@@ -112,7 +116,7 @@ describe('OperatorAccountChip', () => {
     operatorAuth.isAdmin.set(true);
     open();
 
-    expect(rows()).toEqual(['Change password', 'Sign out']);
+    expect(rows()).toEqual(['Change password', 'Porcelain', 'Dark', 'Sign out']);
     expect(el.querySelector('[data-testid="oc-admin-link"]')).toBeNull();
     expect(el.querySelector('a[href="/admin"]')).toBeNull();
   });
@@ -126,10 +130,41 @@ describe('OperatorAccountChip', () => {
       'account-backdrop',
       'account-identity',
       'change-password',
+      'theme-porcelain',
+      'theme-dark',
       'signout',
     ]) {
       expect(el.querySelector(`[data-testid="oc-${suffix}"]`), suffix).not.toBeNull();
     }
+  });
+
+  it('the Console theme rows: aria-pressed marks the choice, a press selects, closes and hands focus back (#1010)', () => {
+    // The rows must leave the document's attribute wherever the shared jsdom has it: it is the tourist's.
+    const documentTheme = document.documentElement.getAttribute('data-riv-theme');
+    open();
+    const porcelain = el.querySelector<HTMLButtonElement>('[data-testid="oc-theme-porcelain"]')!;
+    const dark = el.querySelector<HTMLButtonElement>('[data-testid="oc-theme-dark"]')!;
+    expect(menu()!.textContent).toContain('Console theme');
+    expect(porcelain.getAttribute('aria-pressed')).toBe('true');
+    expect(dark.getAttribute('aria-pressed')).toBe('false');
+    expect(porcelain.getAttribute('type')).toBe('button');
+
+    dark.click();
+    fixture.detectChanges();
+
+    expect(TestBed.inject(ConsoleTheme).theme()).toBe('dark');
+    expect(menu()).toBeNull();
+    expect(chip().getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(chip());
+
+    open();
+    expect(el.querySelector('[data-testid="oc-theme-dark"]')!.getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    expect(
+      el.querySelector('[data-testid="oc-theme-porcelain"]')!.getAttribute('aria-pressed'),
+    ).toBe('false');
+    expect(document.documentElement.getAttribute('data-riv-theme')).toBe(documentTheme);
   });
 
   it('closes on Escape and returns focus to the chip', () => {

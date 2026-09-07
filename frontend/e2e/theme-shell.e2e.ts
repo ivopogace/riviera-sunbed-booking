@@ -3,9 +3,15 @@ import { expect, test } from '@playwright/test';
 import { mockWholeAdminConsole } from './support/admin-console.mocks';
 import { mockOwnedVenues } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { settle } from './support/booking-dialog';
 import { mockWholeConsole } from './support/operator-console.mocks';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
-import { openAccountMenu as openMenu, openShellOverlay } from './support/shell';
+import {
+  awaitRoutedPage,
+  openAccountMenu as openMenu,
+  openOperatorAccountMenu,
+  openShellOverlay,
+} from './support/shell';
 
 /**
  * Real-render e2e for the Liquid Glass shell: theme switching + persistence,
@@ -351,10 +357,10 @@ test.describe('reduced motion', () => {
 });
 
 /**
- * The console shell under a tourist theme: every operator and admin route renders porcelain on
- * the app shell's host whatever the document theme, the document attribute is left alone, and the
- * header, rail, page and footer composite to the same colours as the porcelain run — the pin has
- * no seam.
+ * The console shell under a tourist theme: every operator and admin route renders the operator's
+ * own console theme on the app shell's host whatever the document theme, the document attribute
+ * is left alone, and the header, rail, page and footer composite to the same colours under every
+ * tourist theme — the pin has no seam, and `riviera` never reaches the console.
  */
 test.describe('console routes under a tourist theme', () => {
   const ROUTES = [
@@ -384,7 +390,7 @@ test.describe('console routes under a tourist theme', () => {
     });
   }
 
-  test('every console route renders porcelain under a dark and a riviera tourist theme, with no seam', async ({
+  test('every console route renders its own console theme under a dark and a riviera tourist theme, with no seam', async ({
     page,
   }) => {
     await mockWholeConsole(page);
@@ -397,18 +403,135 @@ test.describe('console routes under a tourist theme', () => {
     await new OperatorSignInPage(page).signIn('operator', 'admin-pw');
 
     for (const { path, marker } of ROUTES) {
-      const runs: Record<string, Record<string, string>> = {};
-      for (const theme of ['porcelain', 'dark', 'riviera']) {
-        await page.evaluate((id) => localStorage.setItem('riviera-theme', id), theme);
-        await page.goto(path);
-        await expect(page.getByTestId(marker).first()).toBeVisible();
-        await expect(page.locator('html')).toHaveAttribute('data-riv-theme', theme);
-        await expect(page.locator('app-root')).toHaveAttribute('data-riv-theme', 'porcelain');
-        runs[theme] = await paint(page);
+      const consoleRuns: Record<string, Record<string, string>> = {};
+      for (const consoleTheme of ['porcelain', 'dark']) {
+        await page.evaluate(
+          (id) => localStorage.setItem('riviera-console-theme', id),
+          consoleTheme,
+        );
+        const runs: Record<string, Record<string, string>> = {};
+        for (const theme of ['porcelain', 'dark', 'riviera']) {
+          await page.evaluate((id) => localStorage.setItem('riviera-theme', id), theme);
+          await page.goto(path);
+          await expect(page.getByTestId(marker).first()).toBeVisible();
+          await expect(page.locator('html')).toHaveAttribute('data-riv-theme', theme);
+          await expect(page.locator('app-root')).toHaveAttribute('data-riv-theme', consoleTheme);
+          runs[theme] = await paint(page);
+        }
+        expect(runs['dark'], `${path}, ${consoleTheme} console under dark`).toEqual(
+          runs['porcelain'],
+        );
+        expect(runs['riviera'], `${path}, ${consoleTheme} console under riviera`).toEqual(
+          runs['porcelain'],
+        );
+        consoleRuns[consoleTheme] = runs['porcelain'];
       }
-      expect(runs['dark'], `${path} under dark`).toEqual(runs['porcelain']);
-      expect(runs['riviera'], `${path} under riviera`).toEqual(runs['porcelain']);
+      // The two console themes are two paints — the pin, not the document, decides.
+      expect(consoleRuns['dark']['header'], `${path}: the dark console's header`).not.toBe(
+        consoleRuns['porcelain']['header'],
+      );
     }
-    await page.evaluate(() => localStorage.removeItem('riviera-theme'));
+    await page.evaluate(() => {
+      localStorage.removeItem('riviera-theme');
+      localStorage.removeItem('riviera-console-theme');
+    });
+  });
+
+  /** Every console route under the dark console: the sweep the Daily view's page-level legend fell
+   *  to (light ink on the page, which axe composites as white), run over every tab and page so a
+   *  surface-less text anywhere in the console is found here rather than by an operator. */
+  test('every console route is axe clean in the dark console (#1010)', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('riviera-console-theme', 'dark'));
+    await mockWholeConsole(page);
+    await mockWholeAdminConsole(page);
+    await mockOwnedVenues(page, [
+      { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' },
+      { id: 2, name: 'Sunset Lido', beach: 'Dhërmi' },
+    ]);
+    await new OperatorSignInPage(page).goto('/operator/1/daily');
+    await new OperatorSignInPage(page).signIn('operator', 'admin-pw');
+
+    const paths = [
+      '/operator/1/daily',
+      '/operator/1/requests',
+      '/operator/1/beach-map',
+      '/operator/1/pricing',
+      '/operator/1/venue',
+      '/operator/1/payouts',
+      '/admin',
+      '/admin/email',
+      '/admin/refunds',
+      '/admin/photos',
+      '/admin/reviews',
+      '/admin/commissions',
+      '/admin/privacy',
+      '/admin/audit',
+      '/operator',
+      '/account/operator-password',
+    ];
+    for (const path of paths) {
+      await page.goto(path);
+      await awaitRoutedPage(page);
+      await page.waitForLoadState('networkidle');
+      await expect(page.locator('app-root')).toHaveAttribute('data-riv-theme', 'dark');
+      await settle(page);
+      await expectNoSeriousAxeViolations(page, `${path} in the dark console`);
+    }
+    await page.evaluate(() => localStorage.removeItem('riviera-console-theme'));
+  });
+
+  test("the account chip's Dark row flips the console host only, survives a reload, and Porcelain flips it back (#1010)", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => localStorage.setItem('riviera-theme', 'riviera'));
+    await mockWholeConsole(page);
+    await mockOwnedVenues(page, [{ id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' }]);
+    await new OperatorSignInPage(page).goto('/operator/1/daily');
+    await new OperatorSignInPage(page).signIn('operator', 'admin-pw');
+    await expect(page.getByTestId('daily-view-tab')).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
+    await expect(page.locator('app-root')).toHaveAttribute('data-riv-theme', 'porcelain');
+    const porcelain = await paint(page);
+
+    await openOperatorAccountMenu(page);
+    const group = page.getByRole('group', { name: 'Console theme' });
+    await expect(group.getByRole('button', { name: 'Porcelain' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(group.getByRole('button', { name: 'Dark' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    await group.getByRole('button', { name: 'Dark' }).click();
+
+    // The row closes the popover and hands focus back; the host flips, the document does not.
+    await expect(page.getByTestId('oc-account')).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByTestId('oc-account')).toBeFocused();
+    await expect(page.locator('app-root')).toHaveAttribute('data-riv-theme', 'dark');
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
+    const dark = await paint(page);
+    expect(dark['header']).not.toBe(porcelain['header']);
+    expect(dark['page']).not.toBe(porcelain['page']);
+    await expectNoSeriousAxeViolations(page, 'the daily view in the dark console under riviera');
+
+    // The choice is on the device: a reload boots dark, and the row reads pressed.
+    await page.reload();
+    await expect(page.getByTestId('daily-view-tab')).toBeVisible();
+    await expect(page.locator('app-root')).toHaveAttribute('data-riv-theme', 'dark');
+    await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
+    await openOperatorAccountMenu(page);
+    await expect(group.getByRole('button', { name: 'Dark' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await group.getByRole('button', { name: 'Porcelain' }).click();
+    await expect(page.locator('app-root')).toHaveAttribute('data-riv-theme', 'porcelain');
+    expect(await paint(page)).toEqual(porcelain);
+
+    await page.evaluate(() => {
+      localStorage.removeItem('riviera-theme');
+      localStorage.removeItem('riviera-console-theme');
+    });
   });
 });

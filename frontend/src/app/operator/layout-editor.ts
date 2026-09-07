@@ -82,7 +82,7 @@ const TOOL_LABEL: Record<CellState, string> = {
  *  against the cell's 30%/12% until #879 gave both one `--riv-walkin-hatch` declaration. */
 const SWATCH_CLASS: Record<CellState, string> = {
   premium: 'bg-(image:--riv-premium-grad)',
-  standard: 'bg-white/85',
+  standard: 'bg-riv-console-inset/85',
   walkin: 'bg-(image:--riv-walkin-hatch)',
   gap: 'bg-transparent',
 };
@@ -108,8 +108,8 @@ const SWATCH_CLASS: Record<CellState, string> = {
  *
  * <p>Reads `:venueId` from the parent route (child routes don't inherit it). Cells are
  * real, individually-labelled `<button>`s so the grid is fully keyboard + AT operable (Enter/Space
- * paints with the active brush); drag-paint is the mouse affordance on top. Always porcelain
- * (inherited from the console shell); glass via {@link CardGlass}; money via {@link formatMoney}
+ * paints with the active brush); drag-paint is the mouse affordance on top. Wears the console
+ * theme (porcelain or dark, pinned on the app shell's host); glass via {@link CardGlass}; money via {@link formatMoney}
  * (invariant #5 — the default prices are integer minor-unit EUR constants, editable later in the
  * Pricing tab).
  */
