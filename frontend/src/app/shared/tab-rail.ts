@@ -49,7 +49,7 @@ export const TAB_RAIL_MARKER =
   "relative after:absolute after:inset-x-0 after:h-[3px] after:rounded-full after:bg-current after:opacity-0 after:content-[''] aria-[current=page]:text-riv-ink aria-[current=page]:after:opacity-100";
 
 /** The live Requests count on a rail tab, a phone slot or a palette row: the one solid-fill element
- *  the chrome carries, so it outranks every tab. `oc-badge` is the inert marker the e2e reads. */
+ *  among the tabs, so it outranks every one of them. `oc-badge` is the inert marker the e2e reads. */
 export const TAB_RAIL_BADGE =
   'oc-badge inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-riv-solid-fill-brand px-1.5 text-[11.5px] font-bold leading-none text-white';
 

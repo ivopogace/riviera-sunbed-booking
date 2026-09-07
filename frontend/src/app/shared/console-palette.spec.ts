@@ -324,6 +324,36 @@ describe('ConsolePalette', () => {
     expect(document.activeElement).toBe(byId('opener'));
   });
 
+  it('a row that is the current page closes the dialog without a navigation, and a later navigation steals no focus', async () => {
+    await openByButton();
+    rows()[0].click();
+    await settle();
+    expect(router.url).toBe('/admin/email');
+    expect(dialog()).toBeNull();
+    expect(document.activeElement).toBe(byId('opener'));
+
+    // The skipped same-URL navigation left nothing pending: an unrelated navigation moves no focus.
+    byId('page-link')!.focus();
+    await router.navigateByUrl('/admin');
+    await settle();
+    expect(document.activeElement).toBe(byId('page-link'));
+  });
+
+  it('the empty-state status region pre-exists its text, so the change is announced', async () => {
+    await openByButton();
+    const status = byId('oc-palette-empty')!;
+    expect(status.getAttribute('role')).toBe('status');
+    expect(status.textContent.trim()).toBe('');
+
+    await type('zzz');
+    expect(byId('oc-palette-empty')).toBe(status);
+    expect(status.textContent.trim()).toBe('Nothing matches.');
+
+    await type('aud');
+    expect(byId('oc-palette-empty')).toBe(status);
+    expect(status.textContent.trim()).toBe('');
+  });
+
   it('traps Tab inside the dialog: from the last row back to the field, Shift+Tab from the field to the last row', async () => {
     await openByButton();
     const last = rows().at(-1)!;

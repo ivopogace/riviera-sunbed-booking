@@ -40,7 +40,7 @@ case and the shell spec gain the hidden-below-`sm` pin here; that #1012's plan d
 `docs/plans/` and retires at this close-out; that the venue-console e2e's owned list has no venue
 matching `aurora`, so the palette case mocks its own) · `riviera-plan-doc` (this template — forced a
 seam per AC and the reversible-decision register below) · `tdd` (each phase red first at the named
-seam, scoped Vitest runs) · `riviera-review-overlay` (review gate — due at ready-for-review) ·
+seam, scoped Vitest runs) · `riviera-review-overlay` (review gate — **ran** on PR #1019 over `3fec8acd..9b011f99`, 23 files / +1812 / −535 matched against the PR by `check-review-range.mjs`; `code-review:code-review` at high effort, five reviewers plus confidence scoring, with the FE bank, RV-STYLE-1, RV-PROC-1 and RV-PROC-2 walked: six findings, three scored ≥ 80 and posted, all six fixed as F-1…F-6 in the register; the fix re-entered at Implement with `angular-developer` (the router's `NavigationSkipped` for a same-URL navigation, beside `NavigationCancel`/`NavigationError`), `tdd` (both fixes red first in the palette spec) and `riviera-frontend`) ·
 `riviera-docs-freshness` (**ran** over `3fec8acd..HEAD` (the merge base with a freshly fetched
 `origin/main`) in phase 5, 4 findings, all patched: `riviera-tailwind` § *Icons* said
 "seventeen-glyph" — eighteen with the search glyph; `riviera-frontend`'s routing bullet listed what
@@ -94,7 +94,7 @@ stands in for `feature/console-nav-palette`, per the `riviera-sdlc` cloud addend
   (unit), the routed SPA (e2e) · *Pinned by:* `console-shell.spec.ts` ›
   `the search button opens the palette onto its field; ⌘K and Ctrl-K toggle it (#1013)`;
   `app.spec.ts` › `⌘K opens the palette on a console route and nothing on a tourist one (#1013)`;
-  `console-shell.e2e.ts` › `the search glyph and ⌘K open the Go to dialog … (#1013)`.
+  `console-shell.e2e.ts` › `the search glyph and ⌘K open the Go to dialog: focus legs, the field on the 3px ring, every control at the floor, axe clean, inside the viewport (#1013)`.
 - [x] **AC-2:** Given `/operator/1/daily` as an admin owning two venues, when the palette opens,
   then its rows are, in order: the six venue sections (Daily view `aria-current="page"`), the owned
   venues (each to `/operator/<id>/daily`, the current venue marked), `Admin console` (→ `/admin`),
@@ -110,13 +110,14 @@ stands in for `feature/console-nav-palette`, per the `riviera-sdlc` cloud addend
   `/operator/2/daily`. *Seam:* the palette component through its DOM over a test router (unit); the
   routed SPA (e2e) · *Pinned by:* `console-palette.spec.ts` ›
   `typing filters by label, hint and group; the first hit is highlighted and Enter opens it`;
-  `admin-console-tabs.e2e.ts` › `⌘K: typing aud leaves Audit, Enter opens it and closes the dialog (#1013)`;
+  `admin-console-tabs.e2e.ts` › `⌘K: typing aud leaves Audit, Enter opens it and closes the dialog; Nothing matches. holds the dialog (#1013)`;
   `operator-console.e2e.ts` › `Ctrl-K: typing a venue name leaves its row, Enter opens that venue on the current tab (#1013)`.
 - [x] **AC-4:** Given the palette open, when a query with no hit is typed, then `Nothing matches.`
   renders (a `role="status"`), no row is rendered, and Enter does nothing (the dialog stays open, the
   URL unchanged); an empty query highlights nothing and Enter does nothing. *Seam:* the palette
   component's DOM · *Pinned by:* `console-palette.spec.ts` ›
-  `Nothing matches. for a query with no hit, and Enter does nothing then or on an empty query`.
+  `Nothing matches. for a query with no hit, and Enter does nothing then or on an empty query`,
+  `the empty-state status region pre-exists its text, so the change is announced` (review F-2).
 - [x] **AC-5:** Given the palette opened by the search button, when Escape or the backdrop closes
   it, then `document.activeElement` is the button; opened by the chord while another element held
   focus, focus returns to that element; a row activation closes and returns focus the same way; a
@@ -124,7 +125,8 @@ stands in for `feature/console-nav-palette`, per the `riviera-sdlc` cloud addend
   the opener, or on `<main>` when the opener is gone. *Seam:* the palette component's DOM (unit),
   the shell's button (unit), the routed SPA (e2e) · *Pinned by:* `console-palette.spec.ts` ›
   `Escape, the backdrop and a row hand focus back to the opener; the chord's opener is the element focused when it fired`,
-  `a navigation that ends with the dialog open closes it; focus lands on the opener, or on main when it is gone`;
+  `a navigation that ends with the dialog open closes it; focus lands on the opener, or on main when it is gone`,
+  `a row that is the current page closes the dialog without a navigation, and a later navigation steals no focus` (review F-1);
   `console-shell.spec.ts` › AC-1's case (the button as opener); the AC-1 e2e.
 - [x] **AC-6:** Given three pending requests, when the palette opens on the venue console, then the
   Requests row carries the badge `3` (none at zero); given a signed-out visitor on `/admin/audit`,
@@ -140,7 +142,7 @@ stands in for `feature/console-nav-palette`, per the `riviera-sdlc` cloud addend
   no serious violation, and the tree carries no `outline-none` on a control. *Seam:* the routed SPA
   (e2e), the stylesheet sweep (unit), the jsdom axe audit · *Pinned by:* `console-shell.e2e.ts` ›
   the AC-1 case (sweep + ring + axe with the dialog open); `focus-ring-baseline.spec.ts` (unchanged,
-  sweeps the new file); `console-shell.a11y.spec.ts` › `is axe clean with the palette open on both consoles`;
+  sweeps the new file); `console-shell.a11y.spec.ts` › `is axe clean with the palette open on both consoles (#1013)`;
   `console-palette.contrast.spec.ts` (the field inks over the field fill on the popover surface, the
   group tag, the hit row).
 - [x] **AC-8:** Given 390px, when the section row renders, then the search button is hidden
@@ -252,9 +254,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR #1019 — draft open, CI gate`
+**Stage pointer:** `merge close-out written — merges via PR #1019`
 
-**Next action:** read the draft PR's CI run; when green, merge the latest `origin/main` in if it moved, mark ready for review, and run the review gate (`references/pr-gates.md` §1) with the range resolved off the PR.
+**Next action:** CI and the Sonar analysis on the review-fix head, the Sonar list re-read (not the gate colour), then merge PR #1019 and the GitHub-side close-out: verify #1013 closed, the epic #1006 comment, unsubscribe.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -263,8 +265,8 @@ N/A — no contract change.
 | 2 — `shared/console-palette.ts`: the dialog, chords, filter, highlight, Enter, trap, focus legs, close on navigation; its spec, a11y and contrast specs | ✅ | 067298e8 |
 | 3 — the shell: the search button, the gate, `paletteRows`, the mount; shell spec, a11y spec, `app.spec.ts` | ✅ | a28fdc0b |
 | 4 — e2e: `console-shell.e2e.ts`, `operator-console.e2e.ts`, `admin-console-tabs.e2e.ts`, `support/shell.ts` | ✅ | a8e492c6 |
-| 5 — contract: `npm run lint` + `format:check` green; 235 files / 2759 unit specs green; the whole mocked e2e 512/512 across `chromium`, `phone` and `fold` (7.8 min); the four CI hygiene guards green over `origin/main` (the inline-comment guard first flagged three issue numbers in comments — dropped); a production build green; docs-freshness run (4 findings, patched); #1012's plan retired; branch pushed | ✅ | a14f2c2f |
-| 6 — PR #1019 opened as a draft; CI, the review gate, the Sonar gate, the merge close-out | ⏳ | |
+| 5 — contract: `npm run lint` + `format:check` green; 235 files / 2759 unit specs green; the whole mocked e2e 512/512 across `chromium`, `phone` and `fold` (7.8 min); the four CI hygiene guards green over `origin/main` (the inline-comment guard first flagged three issue numbers in comments — dropped); a production build green; docs-freshness run (4 findings, patched); #1012's plan retired; branch pushed | ✅ | e2a11b79 · 9b011f99 (the PR number) |
+| 6 — PR #1019 opened as a draft; CI 8/8 green on `9b011f99`; marked ready; the Sonar gate read on that head (0 issues, 0 duplicated blocks, 0 smells, 100% coverage on 435 new lines, the analysis check `success`); the review gate run (F-1…F-6, all fixed in the review-fix commit, which carries this close-out); CI and the Sonar analysis re-read on that head before the merge — **merges via PR #1019** | ✅ | the review-fix commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -272,6 +274,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review gate (`code-review:code-review` high + `riviera-review-overlay` over `3fec8acd..9b011f99`; the shallow-bug and the git-history reviewers, scored 100) | A palette row for the current page is a same-URL navigation the router *skips* (`NavigationSkipped`, never `NavigationEnd`), so `leftFor` stayed `true` and the next unrelated navigation moved focus to the old opener (WCAG 2.4.3). The skip fires inside `RouterLink`'s own click handler, before the template's `(click)`, so listening for the skip alone did not clear it either | fixed — `activate(row)` sets the flag only when the row's serialized URL differs from `router.url` (the router's own same-URL rule); a skipped, cancelled or failed navigation clears it; pinned by the palette spec's same-URL case |
+| F-2 | review gate (the CLAUDE.md/overlay reviewer, RV-FE-10; scored 100) | The `Nothing matches.` `role="status"` region was created together with its text inside the `@else` branch, so the change was never announced | fixed — the region is in the dialog from the start (`sr-only` while rows show) and only its text changes; the spec asserts element identity across the transition |
+| F-3 | review gate (the prior-PR-comments reviewer; 75, below the 80 posting bar — the #1014/#1017 pattern) | Three plan-doc *Pinned by* citations truncated the shipped test titles | fixed — quoted verbatim |
+| F-4 | review gate (the code-comment reviewer; 75) | The shell's class doc said the palette mounts "under the same gate as the rails"; it also renders on a plain page, which has no rail | fixed — the doc names the gate |
+| F-5 | review gate (the code-comment reviewer; 100) | `MoreGlyph`'s doc still called it "the only glyph that names no destination" beside the new `SearchGlyph` | fixed |
+| F-6 | review gate (the code-comment reviewer; 75) | `TAB_RAIL_BADGE`'s doc called the badge "the one solid-fill element the chrome carries"; the chip's avatar shares the fill | fixed — "among the tabs" |
 
 ---
 
@@ -376,6 +384,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | 2026-09-07 | phase 2 | every modal that traps focus — the mechanism the palette joins | `grep -rln "trapFocusWithin" frontend/src/app --include=*.ts \| grep -v spec` | `photo-lightbox.ts`, `payout-statement.ts`, `booking-dialog.ts`, `find-booking.ts`, `availability-calendar.ts`, the palette | the palette takes the same trap and `aria-modal`; `focus-trap.ts`'s doc names "four modals" — refreshed at close-out |
 | 2026-09-07 | phase 3 | every reader of the section row's ids that a control added to the right cluster could shift — the mechanism is a locator on `oc-account` / `oc-signin` / `oc-section-admin` | `grep -rln "oc-account\b\|oc-signin\|oc-section-admin" frontend/e2e frontend/src --include=*.ts` | 13 files (7 e2e, 6 specs/sources) | all locate by test id or role, none by position; `expectPhoneRailFits`'s brand/venue/chip order holds below `sm` where the button is hidden — nothing to rewrite |
 | 2026-09-07 | phase 5 | every substrate line counting the glyphs or the trapped modals, or listing what the shell wears — the counting sweep | `grep -rniE 'seventeen\|\b17 (glyph\|component)\|\bfour modals\b\|three (disclosures\|modals)' frontend/src .claude/skills CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents docs/design` + `grep -rn "More sheet)" .claude/skills docs/design` | `riviera-tailwind` (seventeen), `focus-trap.ts` (four modals), `riviera-frontend` (the routing bullet), the two artboards; `colour-literal-token-audit.md:331`'s "seventeen sites" is another subject and stays | four patched, one left true |
+| 2026-09-07 | review fix F-1 | every overlay that defers a focus move to a router event — the mechanism the stale flag needs | `grep -rln "NavigationEnd" frontend/src/app --include=*.ts \| grep -v spec` | `app.ts`, `operator-account-chip.ts`, `operator-venue-switch.ts`, `find-booking.ts`, `admin-console.ts`, `current-url.ts`, `console-shell.ts`, the palette | the others guard on a live `open` signal a row activation already cleared, or focus synchronously — no carried flag; the palette alone carried one, now keyed on the router's same-URL rule |
+| 2026-09-07 | review fix F-2 | every live region the diff wrote — `aria-live` / `role="status"` / `<output>` | `git diff 3fec8acd..HEAD \| grep -n 'aria-live\|role="status"\|<output>'` | one: the palette's empty state | moved out of the branch; the a11y spec's empty-state case still runs over it |
 | 2026-09-07 | phase 3 | every e2e that presses Escape on a console route, which now also reaches the palette's document listener | `grep -ln "press('Escape')" frontend/e2e/*.e2e.ts \| xargs grep -ln "oc-header\|oc-account"` | `admin-console-tabs`, `console-shell`, `operator-console`, `operator-password`, `operator-set-editing`, `theme-shell` | each closes its own disclosure; the palette's Escape is a no-op while closed (pinned in its spec) — nothing to rewrite |
 
 ---
@@ -386,22 +396,22 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Self-review checklist (before merge / PR)
 
-- [ ] Every AC has an implementing task and a verifying test.
-- [ ] No placeholders / TODO / TBD anywhere in the doc.
-- [ ] Type & method-signature consistency across phases.
-- [ ] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
-- [ ] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
-- [ ] Pool + cutoff rules honored (invariants #3, #4).
-- [ ] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
-- [ ] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
-- [ ] Refund policy enforced server-side (invariant #10).
-- [ ] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
-- [ ] Booking codes unguessable (invariant #7).
-- [ ] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
-- [ ] **Frontend** standards met or deviation documented; no `as any` on the contract.
-- [ ] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
-- [ ] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it.
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked.
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merges via PR #1019`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — rung 1, `code-review:code-review` at high effort over `3fec8acd..9b011f99` (five reviewers + confidence scoring), plus `riviera-review-overlay`'s FE bank, RV-STYLE-1 and RV-PROC-1/2; the posted comment is on PR #1019.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.

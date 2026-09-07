@@ -12,7 +12,14 @@ import {
   Type,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import {
+  NavigationCancel,
+  NavigationEnd,
+  NavigationError,
+  NavigationSkipped,
+  Router,
+  RouterLink,
+} from '@angular/router';
 import { filter } from 'rxjs';
 
 import { focusMover } from './focus-after-render';
@@ -60,8 +67,9 @@ const CLS = {
  * ({@link PaletteRow}: this console's sections with their hints and the Requests count, the owned
  * venues, the other console, `Change password`), and this component owns only the dialog. Typing
  * filters the rows by label, hint and group (case-insensitive substring); the first hit is
- * highlighted and Enter opens it; a query with no hit reads `Nothing matches.` and Enter does
- * nothing, as it does before anything is typed. Escape, the backdrop, a row and a second chord close
+ * highlighted and Enter opens it; a query with no hit reads `Nothing matches.` — a status region
+ * that is in the dialog from the start and only changes its text, so the change is announced — and
+ * Enter does nothing, as it does before anything is typed. Escape, the backdrop, a row and a second chord close
  * it. The chords are document listeners of the palette's own, so they exist only while the host
  * renders it — a signed-out visitor on an admin URL has neither the dialog nor the listener.
  *
@@ -69,7 +77,10 @@ const CLS = {
  * to the **opener** — the element the host passed to {@link toggle} (its search glyph), or the
  * element that held focus when the chord fired — and, when a navigation the palette drove has
  * unmounted that opener, to the app shell's `<main>`. A navigation that ends with the dialog open
- * (Back, Forward) closes it the same way. Tab is trapped inside the dialog (`focus-trap.ts`), so
+ * (Back, Forward) closes it the same way. A row for the page the operator is on is a same-URL
+ * navigation the router skips rather than ends, so it leaves no re-landing pending, and a
+ * navigation the router skips, cancels or fails clears one — nothing is left to move focus on a
+ * later, unrelated navigation. Tab is trapped inside the dialog (`focus-trap.ts`), so
  * the rows are reachable by keyboard without arrow-key roving.
  *
  * <p>Rendered by the host as a sibling of its header: the header's `backdrop-filter` would
@@ -115,6 +126,13 @@ const CLS = {
           (input)="query.set(search.value)"
           (keydown.enter)="go()"
         />
+        <p
+          [class]="hits().length > 0 ? 'sr-only' : cls.empty"
+          role="status"
+          data-testid="oc-palette-empty"
+        >
+          {{ hits().length > 0 ? '' : 'Nothing matches.' }}
+        </p>
         @if (hits().length > 0) {
           <ul [class]="cls.list" role="list">
             @for (row of hits(); track row.key; let first = $first) {
@@ -126,7 +144,7 @@ const CLS = {
                   [attr.aria-current]="row.current ? 'page' : null"
                   [attr.data-hit]="first && hit() ? '' : null"
                   data-testid="oc-palette-row"
-                  (click)="activate()"
+                  (click)="activate(row)"
                 >
                   <ng-container *ngComponentOutlet="row.glyph" />
                   <span class="flex min-w-0 flex-1 flex-col leading-tight">
@@ -141,8 +159,6 @@ const CLS = {
               </li>
             }
           </ul>
-        } @else {
-          <p [class]="cls.empty" role="status" data-testid="oc-palette-empty">Nothing matches.</p>
         }
       </div>
     }
@@ -160,7 +176,8 @@ export class ConsolePalette {
   private readonly openState = signal(false);
   /** What opened the dialog: focus returns here on close. */
   private opener: HTMLElement | null = null;
-  /** A row or Enter drove a navigation: once it ends, focus is re-landed (the opener may be gone). */
+  /** A row or Enter drove a navigation: once it ends, focus is re-landed (the opener may be gone);
+   *  a navigation the router skips, cancels or fails clears it. */
   private leftFor = false;
 
   /** Whether the dialog is up — the host's trigger binds `aria-expanded` to it. */
@@ -182,10 +199,22 @@ export class ConsolePalette {
   constructor() {
     this.router.events
       .pipe(
-        filter((event) => event instanceof NavigationEnd),
+        filter(
+          (event) =>
+            event instanceof NavigationEnd ||
+            event instanceof NavigationSkipped ||
+            event instanceof NavigationCancel ||
+            event instanceof NavigationError,
+        ),
         takeUntilDestroyed(),
       )
-      .subscribe(() => this.onNavigationEnd());
+      .subscribe((event) => {
+        if (event instanceof NavigationEnd) {
+          this.onNavigationEnd();
+        } else {
+          this.leftFor = false;
+        }
+      });
   }
 
   /** Open onto the field, remembering `opener` (or the element focused now) for the close; or close. */
@@ -213,9 +242,12 @@ export class ConsolePalette {
     }
   }
 
-  /** A row was chosen: close, hand focus back, and re-land it once the navigation has ended. */
-  protected activate(): void {
-    this.leftFor = true;
+  /** A row was chosen: close, hand focus back, and — when the row leads somewhere else — re-land
+   *  it once the navigation has ended. A row for the page the operator is on is the router's
+   *  same-URL case, skipped rather than ended, so nothing is left pending. */
+  protected activate(row: PaletteRow): void {
+    this.leftFor =
+      this.router.serializeUrl(this.router.createUrlTree([...row.link])) !== this.router.url;
     this.close();
   }
 
@@ -225,7 +257,7 @@ export class ConsolePalette {
       return;
     }
     const first = this.hits()[0];
-    this.activate();
+    this.activate(first);
     void this.router.navigate([...first.link]);
   }
 

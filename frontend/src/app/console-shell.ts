@@ -203,7 +203,8 @@ const CLS = {
  * the ⌘K palette (`shared/console-palette.ts`), the accelerator over everything the row and rail
  * offer: this console's sections, the owned venues on the open tab, the other console, the account
  * page. The shell computes those rows ({@link ConsoleShell#paletteRows}) and mounts the palette once,
- * under the same gate as the rails, as a sibling of the header — never inside it, whose
+ * for any signed-in operator and, on admin routes, only past the admin gate — so a plain page has
+ * it with no rail — as a sibling of the header, never inside it, whose
  * `backdrop-filter` would pin the `fixed` dialog to the row. Under the row sits the active section's rail: the venue console's six tabs with the
  * live Requests badge, or the admin console's tabs (`admin-console-tabs.ts`) — the latter only past
  * the admin gate (restored, signed in, admin), so a signed-out visitor on an admin URL is never

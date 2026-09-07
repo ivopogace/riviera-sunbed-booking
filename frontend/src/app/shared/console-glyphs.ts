@@ -376,7 +376,7 @@ export class AdminGlyph {}
 })
 export class VenuesGlyph {}
 
-/** More: three dots — the only glyph that names no destination. */
+/** More: three dots — with Search, one of the two glyphs that name no destination. */
 @Component({
   selector: 'app-more-glyph',
   host: HOST,
