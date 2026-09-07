@@ -211,14 +211,14 @@ N/A — no contract change (`GET /api/venues/mine` → `OwnedVenue[]`, unchanged
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** phase 1 — red `operator-venue-switch.spec.ts` against the missing component.
+**Next action:** phase 2 — flush `/api/venues/mine` in the console specs and red the two-venue header state.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `Create a venue` leaves the account chip | ✅ | phase-0 commit |
-| 1 — `OperatorVenueSwitch` + its unit and contrast specs | | |
+| 0 — `Create a venue` leaves the account chip | ✅ | 4887e86e |
+| 1 — `OperatorVenueSwitch` + its unit and contrast specs | ✅ | phase-1 commit |
 | 2 — the console mounts it; host, a11y, contrast and harness specs | | |
 | 3 — mocked e2e: the two-venue case, the touch-target sweep, the chip row lists | | |
 | 4 — merge `origin/main`, ready for review, review + Sonar gates, close-out | | |
@@ -383,6 +383,7 @@ export class OperatorVenueSwitch {
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-07 | phase 0 | every reference to the chip's create row (test id or label) | `grep -rn "create-venue\|Create a venue" frontend/src frontend/e2e` | the chip + its spec, the console and chrome specs, two e2e row lists; the landing's `operator-home-add-venue` and the `?create=1` deep links are the landing's own | all five call sites updated; the landing untouched |
+| 2026-09-07 | phase 1 | header disclosures (a button with `aria-expanded` opening a popover) | `grep -rln "aria-expanded" frontend/src/app --include=*.ts --include=*.html` | `app.html` (tourist ×3), `operator-account-chip.ts`, the new switcher | no extraction at two operator copies (Non-goals); the palette is the third and the point to extract |
 
 ---
 
