@@ -54,10 +54,15 @@ comment, 6/7) and its plan doc retires here; zero open PRs, no Flyway number in 
 population-by-mechanism audit rows) · `tdd` (each phase red first at the named seam: the
 two-declaration guards, the dark contrast rows, the sweep, the service spec, the chip spec) ·
 `riviera-review-overlay` (review gate — pending, due at ready-for-review) · `riviera-docs-freshness`
-(pending — due at close-out over the PR's range: `riviera-tailwind` § *Styling across the themes*'
-third theme-invariant case names `--riv-console-accent-ink` as the example of a pinned-subtree
-token, which this slice ends; the ledger's rows; the class-O and console-token spec headers that say
-"declared once") · `grilling` (the intake questions answered from the code; the maintainer was not
+(**ran** over `43efec1d..HEAD` (the merge base with a freshly fetched `origin/main`) in phase 7: the
+rename grep over the substrate found the pin's old wording in two skills and the ledger, all patched
+— `riviera-tailwind` § *Styling across the themes*' third theme-invariant case (the pinned-subtree
+ground) retold as the two-block rule with the treatment-off ring, `riviera-frontend`'s theming
+bullet reads the console choice, the ledger's console rows, its overlay table and a new class N;
+the two console artboards carry a `#1010` as-built pointer beside Sign out; the counting sweep
+("three themes", "two console themes") found only true sentences — the tourist registry is still
+three and the console two. Plan-doc retirement: #1013's `console-nav-palette.md` deleted, no
+citation outside `docs/plans/`) · `grilling` (the intake questions answered from the code; the maintainer was not
 present, so every product call is recorded under *Open questions* as reversible) ·
 `riviera-local-debug` (the clone unshallowed; the proxy CA bundle carried two corrupt PEM blocks,
 so git reads a repaired copy via `http.sslCAInfo` in the local config; scoped
@@ -71,8 +76,23 @@ tokens only and no `:host-context`; the third theme-invariant exemption ends for
 class-O rule B for `--riv-console-inset`; rule 4 `appTouchTarget` on the two rows; rule 6 no
 `outline-none`; the fixed-fill rule keeps `text-white` on the solid fills and pins the premium
 numeral's ink over the gold) · `angular-developer` + angular-cli MCP (`get_best_practices` v22:
-`@Service`, `inject()`, signals, `input()`; `search_documentation` at implement time for the host
-attribute binding and the `@Service` decorator) · `playwright-cli` (a per-project `storageState`
+`@Service`, `inject()`, signals, `input()`; `search_documentation` v22 — the *binding* guide:
+an `attr.` binding calls `setAttribute` and a `null` value `removeAttribute`, which is what the
+app shell's host `[attr.data-riv-theme]` relies on off the console routes, and ARIA attributes bind
+as strings, so `[attr.aria-pressed]` off a boolean renders `"true"`/`"false"`; the `Component`
+reference: `host` maps class properties to host attribute bindings, the pin's home; the NG0204
+reference and the DI tutorial: `@Service()` is the v22 root-singleton decorator `console-theme.ts`
+wears) · Tailwind v4 docs (at the maintainer's ask, after phase 6: the *theme* page — `@theme
+inline` emits the utility with the referenced variable's value, `.bg-riv-console-inset` reading
+`var(--riv-console-inset)`, which is exactly what lets the dark block and the console pin re-resolve
+it per scope; the *colors* page — a `--color-*` theme variable serves every colour utility (`bg-`,
+`text-`, `ring-`, `border-`) and takes the `/α` opacity modifier; the *background-image* page —
+`bg-(image:--riv-sea-grad)` compiles to `background-image: var(--riv-sea-grad)`; the *box-shadow*
+page — `ring-1` sets `--tw-ring-shadow` and composes with a `shadow-[…]` utility into one
+`box-shadow`, so the avatar's inset highlight and the dark ring coexist, and `ring-<color>` takes a
+theme colour, which is `ring-riv-console-avatar-ring` and `ring-riv-accent-ink`; the opacity
+modifier's `color-mix()` compile is not on the page and is proven instead by the class-O guard's
+in-browser probe and the production stylesheet, phase 7) · `playwright-cli` (a per-project `storageState`
 seeding the console key for the `console-dark` project; `toHaveCSS` against a probe paint for
 `color-mix()` results, the `class-o-tint-tokens.e2e.ts` pattern; role/test-id locators; axe after
 `getAnimations().finished`).
@@ -300,7 +320,7 @@ N/A — no contract change.
 
 **Stage pointer:** `implement (phase 7 — contract)`
 
-**Next action:** phase 7 — lint, format, the whole unit suite, the whole mocked e2e, the guards, docs-freshness, the draft PR.
+**Next action:** phase 7 — the whole mocked e2e (running), a production build, docs-freshness's counting sweep, then mark PR #1020 ready and run the review gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -310,8 +330,8 @@ N/A — no contract change.
 | 3 — the chrome in both themes: `console-shell`, chip, switcher and palette contrast specs; the dark avatar ring | ✅ | 33030da8 |
 | 4 — `core/console-theme.ts` + the pin (`app.ts`, `app.spec.ts`) | ✅ | a802d25b |
 | 5 — the chip's `Console theme` rows (spec, a11y, contrast) | ✅ | 99367ebe |
-| 6 — e2e: the `console-dark` project, the three tabs' cases, `theme-shell.e2e.ts`'s console cases; the class-O e2e reads the shared probe | ✅ | (this commit) |
-| 7 — contract: lint, format, unit, the mocked e2e, the guards, the ledger, docs-freshness, #1013's plan retired; PR, CI, review gate, Sonar gate, close-out | | |
+| 6 — e2e: the `console-dark` project, the three tabs' cases, `theme-shell.e2e.ts`'s console cases; the class-O e2e reads the shared probe | ✅ | 64faf7f8 · e8c96326 (F-1…F-6, the route sweep) |
+| 7 — contract: lint, format, unit, the mocked e2e, the guards, the ledger, docs-freshness, #1013's plan retired; PR #1020 (draft), CI, review gate, Sonar gate, close-out | ⏳ | e8c96326 (docs, ledger, #1013's plan retired) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
