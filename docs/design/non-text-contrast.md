@@ -125,6 +125,30 @@ rule in `tailwind.css`, so the indicator is never the user-agent default (guard:
 `app/shared/focus-ring-baseline.spec.ts`; render: `e2e/focus-ring-baseline.e2e.ts`, which reads
 the ring off the chip).
 
+**The general shape, worth keeping when the next state-coloured token arrives:** a hover, active
+or selected fill is judged on the same three conditions as a border. What changes is only which
+adjacency you measure — a state fill has two (the state it replaces, and the surface it sits on),
+and both belong in the assertion.
+
+`booking-dialog`'s `#31798a` close button is the sharpest case and is covered here rather than
+by rule 1: on its own teal header gradient the fill reaches 1.12–1.46:1 and the hairline
+2.33–3.03:1, so only the darker header stop clears 3:1 by adjacency. Its identity rests on the
+white `×` glyph at 4.96:1 — condition 1, met.
+
+The close-sales trigger is the family that shows how one gets **found** rather than introduced.
+#879's alpha ladder moved `--riv-warn-edge` from `#d9861a` to `#e0a03a`, taking that hairline from
+1.65:1 to 1.48:1 on its own `white/60` fill — but it was sub-3:1 at *both* values and carried no
+entry here at all. The slice did not create the exemption; it made one visible that had never been
+written down. Worth remembering when a palette change looks like it is "introducing" a 1.4.11
+problem: check what the outgoing value measured first.
+
+**What this rule is not.** It is not a blanket exemption for chrome that happens to be pale,
+and adding a family to the table above needs the same three conditions demonstrated, in an
+assertion, in the same PR. A boundary that is genuinely the *only* thing identifying a control
+— `--riv-danger-action-border` on the erasure panel's Erase button, `--riv-wash-hover-border`
+on the dialog Back button's hover state — is held to 3:1 and tuned per theme to get there.
+Those two are the standing precedents for the other answer.
+
 ## Rule 3 — Forced-colors mode is the fallback, and its precondition is guarded
 
 Every family under rule 2 paints a real CSS `border`, and nothing in `frontend/src` opts out of

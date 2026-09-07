@@ -110,15 +110,6 @@ test.describe('44px touch targets at a phone width', () => {
   });
 
   // Phase 2 gives both beach-map grids a 44px tile floor that scrolls in-frame, and un-skips these.
-  test('operator console — daily view, account menu open (#1008)', async ({ page }) => {
-    await openConsoleTab(page, 'daily');
-    await expect(page.getByTestId('daily-view-tab')).toBeVisible();
-    await openOperatorAccountMenu(page, 'oc');
-    await expect(page.getByTestId('oc-signout')).toBeVisible();
-
-    await expectTouchTargets(page, 'operator console with the account popover open');
-  });
-
   test('operator console — daily view', async ({ page }) => {
     await openConsoleTab(page, 'daily');
     await expect(page.getByTestId('daily-tile').first()).toBeVisible();
@@ -126,6 +117,15 @@ test.describe('44px touch targets at a phone width', () => {
     await expectNoClippedCells(page, 'daily-grid');
 
     await expectTouchTargets(page, 'operator daily view');
+  });
+
+  test('operator console — daily view, account menu open (#1008)', async ({ page }) => {
+    await openConsoleTab(page, 'daily');
+    await expect(page.getByTestId('daily-view-tab')).toBeVisible();
+    await openOperatorAccountMenu(page, 'oc');
+    await expect(page.getByTestId('oc-signout')).toBeVisible();
+
+    await expectTouchTargets(page, 'operator console with the account popover open');
   });
 
   test('operator console — beach map, per-set mode', async ({ page }) => {

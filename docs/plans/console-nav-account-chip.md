@@ -242,9 +242,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft open, awaiting CI; then ready-for-review → review gate`
+**Stage pointer:** `review gate — round 1 in progress (3 of 5 reviewers reported; 2 fixes committed)`
 
-**Next action:** check the phase-3 push's CI run; merge latest `origin/main`, mark the PR ready for review and run the review gate (`references/pr-gates.md` §1).
+**Next action:** fold in the last two reviewers' findings, score and post the review comment, confirm CI + Sonar on the fix push, then the close-out (`references/pr-gates.md` §3).
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -259,6 +259,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | review (git history reviewer) | the `non-text-contrast.md` rewrite of the retired hover-token paragraph cut to the next heading and removed four unrelated precedent paragraphs (the general shape, the dialog close button, the close-sales trigger, "What this rule is not") | fixed — the four paragraphs restored verbatim after the retirement note |
+| F-2 | review (shallow bug scan) | the new open-popover sweep in `touch-targets.e2e.ts` landed between the phase-2 comment and the daily-view test it describes | fixed — moved after the daily-view test |
+| — | review (prior-PR comments reviewer) | no carry-over finding: plan citations verbatim, token rationale single-homed, locators by test id / role | n/a |
 
 ---
 
