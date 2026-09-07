@@ -15,6 +15,7 @@ import { Mock, vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
 import { OperatorAuth } from '../core/operator-auth';
+import { OwnedVenue } from '../core/owned-venues';
 import { todayBookingDate } from '../shared/booking-date';
 import { VenueMapView } from '../shared/venue-views';
 import { ConsoleVenueMap } from './console-venue-map';
@@ -23,6 +24,10 @@ import { PendingRequestsStore } from './pending-requests-store';
 
 const BASE = environment.apiBaseUrl;
 const VENUE = 1;
+const ONE_VENUE: readonly OwnedVenue[] = [
+  { id: VENUE, name: 'Miramar Beach Club', beach: 'Ksamil' },
+];
+const TWO_VENUES: readonly OwnedVenue[] = [...ONE_VENUE, { id: 2, name: 'Sereno', beach: 'Jal' }];
 
 @Component({ template: '' })
 class Blank {}
@@ -75,6 +80,14 @@ function flushRequests(httpMock: HttpTestingController, pending: number, venue =
       (r) => r.url === `${BASE}/api/venues/${venue}/booking-requests` && r.method === 'GET',
     )
     .flush(Array.from({ length: pending }, (_, i) => ({ bookingId: i + 1 })));
+}
+
+/** The owned-venues read the header's venue switcher fires once a session exists — the
+ *  session-scoped list, so a deep-linked console can offer the other venues. */
+function flushOwned(httpMock: HttpTestingController, venues: readonly OwnedVenue[]): void {
+  httpMock
+    .expectOne((r) => r.url === `${BASE}/api/venues/mine` && r.method === 'GET')
+    .flush(venues);
 }
 
 /**
@@ -130,13 +143,19 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
     return fixture.nativeElement as HTMLElement;
   }
 
-  async function createSignedIn(name = 'Miramar Beach Club', pending = 0): Promise<void> {
+  async function createSignedIn(
+    name = 'Miramar Beach Club',
+    pending = 0,
+    venues: readonly OwnedVenue[] = ONE_VENUE,
+  ): Promise<void> {
     fixture = TestBed.createComponent(OperatorConsole);
     await fixture.whenStable(); // the signedIn effect fires the venue-title + badge-count loads
     flushVenue(httpMock, name);
     flushRequests(httpMock, pending);
     flushStrip(httpMock); // the stats strip mounts in the shell and fires its two reads
+    flushOwned(httpMock, venues); // the venue switcher mounts in the header and reads the owned list
     await fixture.whenStable();
+    fixture.detectChanges();
   }
 
   /** Opens the account chip and lets `routerLinkActive` mark the rows (a microtask after mount). */
@@ -168,6 +187,42 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
     expect(header.querySelector('[data-testid="oc-signout"]')).not.toBeNull();
     // The console shell carries its own footer — the shell chrome (and its footer) is suppressed here.
     expect(host().querySelector('[data-testid="oc-footer"]')).not.toBeNull();
+  });
+
+  it('shows the venue name as the switcher for two owned venues (#1009)', async () => {
+    await createSignedIn('Miramar Beach Club', 0, TWO_VENUES);
+    const header = host().querySelector('[data-testid="oc-header"]')!;
+    const name = header.querySelector<HTMLButtonElement>('button[data-testid="oc-venue-title"]')!;
+    expect(name).not.toBeNull();
+    expect(name.textContent).toContain('Miramar Beach Club');
+    expect(name.getAttribute('aria-haspopup')).toBe('true');
+    expect(name.getAttribute('aria-expanded')).toBe('false');
+    // Two controls in the bar now: the venue name and the account chip.
+    expect(header.querySelectorAll('a, button')).toHaveLength(2);
+
+    name.click();
+    fixture.detectChanges();
+    const menu = header.querySelector('[data-testid="oc-venue-menu"]')!;
+    expect(menu.textContent).toContain('Your venues');
+    const rows = [...menu.querySelectorAll<HTMLAnchorElement>('a')];
+    expect(rows.map((row) => row.getAttribute('href'))).toEqual([
+      '/operator/1/beach-map',
+      '/operator/2/beach-map',
+      '/operator?create=1',
+    ]);
+    expect(rows[0].getAttribute('aria-current')).toBe('page');
+    expect(rows[1].getAttribute('aria-current')).toBeNull();
+    expect(rows[1].textContent).toContain('Sereno');
+    expect(rows[1].textContent).toContain('Jal');
+  });
+
+  it('renders the venue name as plain text for one owned venue (#1009)', async () => {
+    await createSignedIn('Miramar Beach Club', 0, ONE_VENUE);
+    const title = host().querySelector<HTMLElement>('[data-testid="oc-venue-title"]')!;
+    expect(title.tagName).toBe('SPAN');
+    expect(title.textContent).toContain('Miramar Beach Club');
+    expect(host().querySelector('[aria-haspopup]')).toBeNull();
+    expect(host().querySelector('[data-testid="oc-venue-menu"]')).toBeNull();
   });
 
   it('carries no inline sign-in card — the guard owns the gate (#277)', async () => {
@@ -305,13 +360,19 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
     expect(host().querySelector('[data-testid="oc-requests-badge"]')?.textContent).toContain('4');
   });
 
-  it('offers no Create a venue in the account chip — venue actions moved under the venue name (#1009)', async () => {
-    await createSignedIn();
+  it('moves Create a venue out of the account chip and under the venue name (#1009)', async () => {
+    await createSignedIn('Miramar Beach Club', 0, TWO_VENUES);
     await openChip();
     expect(host().querySelector('[data-testid="oc-create-venue"]')).toBeNull();
     expect(host().querySelector('[data-testid="oc-account-menu"]')?.textContent).not.toContain(
       'Create a venue',
     );
+
+    host().querySelector<HTMLButtonElement>('button[data-testid="oc-venue-title"]')!.click();
+    fixture.detectChanges();
+    const add = host().querySelector<HTMLAnchorElement>('[data-testid="oc-venue-add"]');
+    expect(add?.textContent?.trim()).toBe('Add another venue');
+    expect(add?.getAttribute('href')).toBe('/operator?create=1');
   });
 
   it('keeps the shell working when the badge fetch fails — no badge (#170, R-4)', async () => {
@@ -324,6 +385,7 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
       )
       .flush({}, { status: 500, statusText: 'Server Error' });
     flushStrip(httpMock); // the strip still mounts and fires its reads even when the badge read fails
+    flushOwned(httpMock, ONE_VENUE);
     await fixture.whenStable();
 
     expect(host().querySelector('[data-testid="oc-header"]')).not.toBeNull();
@@ -357,6 +419,7 @@ describe('OperatorConsole — restored session (reload survival, #170 AC-3)', ()
     flushVenue(httpMock, 'Miramar Beach Club');
     flushRequests(httpMock, 0);
     flushStrip(httpMock); // the stats strip mounts with the restored session too
+    flushOwned(httpMock, ONE_VENUE);
     await fixture.whenStable();
 
     const host = fixture.nativeElement as HTMLElement;
@@ -390,6 +453,7 @@ describe('OperatorConsole — in-place venue param change (#180)', () => {
     flushVenue(httpMock, 'First Venue');
     flushRequests(httpMock, 3);
     flushStrip(httpMock);
+    flushOwned(httpMock, TWO_VENUES);
     await fixture.whenStable();
   });
 
@@ -493,6 +557,7 @@ describe('OperatorConsole — active tab scroll-into-view (#710, #982)', () => {
     flushVenue(httpMock, 'Miramar Beach Club');
     flushRequests(httpMock, 0);
     flushStrip(httpMock);
+    flushOwned(httpMock, ONE_VENUE);
     await harness.fixture.whenStable();
   });
 

@@ -78,7 +78,7 @@ describe('OperatorChrome', () => {
     expect(el.querySelector('[data-testid="opc-account-identity"]')?.textContent).toContain(
       'Signed in as maria',
     );
-    // Create a venue moved under the venue switcher (#1009); the thin chrome offers no venue row.
+    // Create a venue moved under the venue switcher; the thin chrome offers no venue row.
     expect(el.querySelector('[data-testid="opc-create-venue"]')).toBeNull();
     expect(el.textContent).not.toContain('Create a venue');
     expect(

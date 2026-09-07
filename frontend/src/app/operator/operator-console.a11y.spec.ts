@@ -12,7 +12,7 @@ import { OperatorConsole } from './operator-console';
 
 /**
  * Automated axe-core audit of the operator console shell: the signed-in porcelain shell
- * (header with the account chip + tab rail + Requests badge). Sign-in lives behind `operatorSessionGuard`, not in this
+ * (header with the venue switcher and the account chip + tab rail + Requests badge). Sign-in lives behind `operatorSessionGuard`, not in this
  * shell. Colour contrast is proven deterministically in `operator-console.contrast.spec.ts` — axe
  * cannot measure contrast under jsdom.
  */
@@ -70,7 +70,7 @@ describe('OperatorConsole accessibility (axe, #170)', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  async function createSignedIn(pending: number): Promise<void> {
+  async function createSignedIn(pending: number, venues = 1): Promise<void> {
     fixture = TestBed.createComponent(OperatorConsole);
     await fixture.whenStable();
     httpMock
@@ -96,7 +96,18 @@ describe('OperatorConsole accessibility (axe, #170)', () => {
     httpMock
       .expectOne((r) => r.url === `${BASE}/api/venues/${VENUE}/availability` && r.method === 'GET')
       .flush([]);
+    // The venue switcher in the header reads the owned list.
+    httpMock
+      .expectOne((r) => r.url === `${BASE}/api/venues/mine` && r.method === 'GET')
+      .flush(
+        Array.from({ length: venues }, (_, i) => ({
+          id: i + 1,
+          name: i === 0 ? 'Miramar Beach Club' : `Venue ${i + 1}`,
+          beach: 'Ksamil',
+        })),
+      );
     await fixture.whenStable();
+    fixture.detectChanges();
   }
 
   it('has no violations on the signed-in shell (header + tabs)', async () => {
@@ -106,6 +117,14 @@ describe('OperatorConsole accessibility (axe, #170)', () => {
 
   it('has no violations with a Requests badge showing', async () => {
     await createSignedIn(3);
+    await expectNoAxeViolations(host());
+  });
+
+  it('has no violations with the venue switcher open for two owned venues (#1009)', async () => {
+    await createSignedIn(0, 2);
+    host().querySelector<HTMLButtonElement>('button[data-testid="oc-venue-title"]')!.click();
+    fixture.detectChanges();
+    expect(host().querySelector('[data-testid="oc-venue-menu"]')).not.toBeNull();
     await expectNoAxeViolations(host());
   });
 });

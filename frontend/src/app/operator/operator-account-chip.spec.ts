@@ -96,7 +96,7 @@ describe('OperatorAccountChip', () => {
       'Signed in as maria@example.com',
     );
     expect(rows()).toEqual(['Change password', 'Sign out']);
-    // Venue actions live under the venue switcher (#1009), not in the account chip.
+    // Venue actions live under the venue switcher, not in the account chip.
     expect(el.querySelector('[data-testid="oc-create-venue"]')).toBeNull();
     expect(el.textContent).not.toContain('Create a venue');
     expect(

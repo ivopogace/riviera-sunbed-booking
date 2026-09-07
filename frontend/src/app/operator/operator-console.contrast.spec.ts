@@ -11,7 +11,8 @@ import {
  * WCAG-AA contrast guard for the operator console. The console is ALWAYS porcelain
  * (its host scopes `data-riv-theme="porcelain"`), so every pair is proven over the porcelain
  * background stops / header glass; the account chip's pairs are in
- * `operator-account-chip.contrast.spec.ts`. Interactive chrome (venue-not-found card, Requests
+ * `operator-account-chip.contrast.spec.ts`, the venue switcher's popover in
+ * `operator-venue-switch.contrast.spec.ts`. Interactive chrome (venue-not-found card, Requests
  * badge) uses OPAQUE SOLID fills instead of translucent ones — the `css:S7924`
  * treatment — so both the WCAG maths and the static analyzer compute contrast without gradient
  * compositing. These values mirror the Tailwind utilities in `operator-console.html`, the host
@@ -32,8 +33,8 @@ describe('OperatorConsole porcelain contrast (WCAG AA, #170)', () => {
     expectAaOverStops(INK_DARK, 0.7, PORCELAIN_HEADER_GLASS, PORCELAIN_STOPS);
   });
 
-  it('header venue title (ink-faint 0.66, small uppercase) meets AA on the header glass', () => {
-    expectAaOverStops(INK_DARK, 0.66, PORCELAIN_HEADER_GLASS, PORCELAIN_STOPS);
+  it('header venue name (title weight, full ink) meets AA on the header glass (#1009)', () => {
+    expectAaOverStops(INK_DARK, 1, PORCELAIN_HEADER_GLASS, PORCELAIN_STOPS);
   });
 
   it('not-found card ink meets AA on the opaque white surface', () => {

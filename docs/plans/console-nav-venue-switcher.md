@@ -141,13 +141,13 @@ The slice replaces the header's venue caption and moves one chip row.
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Every console spec now leaves `GET /api/venues/mine` outstanding and `httpMock.verify()` goes red across the folder (`operator-console.spec.ts`, `.a11y.spec.ts`, `console-venue-switch.spec.ts`) | high | low | a `flushOwned()` helper in each spec's mount path, run the three files before committing phase 2 | agent | open |
+| R-1 | Every console spec now leaves `GET /api/venues/mine` outstanding and `httpMock.verify()` goes red across the folder (`operator-console.spec.ts`, `.a11y.spec.ts`, `console-venue-switch.spec.ts`) | high | low | a `flushOwned()` helper in each spec's mount path, run the three files before committing phase 2 | agent | closed — phase 2, the whole `operator/` folder green (671 specs) |
 | R-2 | The longer name pushes the phone header onto two rows or the page wider than the viewport (390px / 344px) | med | med | brand `shrink-0`, `Operator` hidden below `sm`, the name `min-w-0 truncate`, row `flex-nowrap`; the popover anchored to the header row with `max-w-[calc(100%-3rem)]`; e2e asserts no page overflow with the popover open at 344px | agent | open |
-| R-3 | Two disclosures in one header each own a document-level Escape and click listener | low | low | each no-ops while closed (the chip's `dismiss()` pattern); unit case: opening the switcher does not touch the chip | agent | open |
+| R-3 | Two disclosures in one header each own a document-level Escape and click listener | low | low | each no-ops while closed (the chip's `dismiss()` pattern); `operator-venue-switch.spec.ts` › `ignores Escape while closed` | agent | closed — phase 1 |
 | R-4 | A venue switch leaves venue 1's data on screen (invariant #13) | low | high | the console's epoch guard already discards superseded reads; the e2e pins title, strip tile, badge and tile count for venue 2 and asserts venue 1's tile count is gone | agent | open |
 | R-5 | The other console e2e specs never mock `/api/venues/mine`; the switcher's read errors and the bar shows the plain name | high | none | best-effort by design; no existing assertion reads the switcher; the console e2e's `mockConsole` mocks it (default one venue) | agent | open |
 | R-6 | `aria-haspopup="true"` announces a menu while the popover is a list of links | low | low | the issue's AC names the attribute; the chip omits it — flagged for the maintainer below (`← confirm?`) | maintainer | open |
-| R-7 | Focus returns to the name button after a row activation, but a switch re-renders the button when the name input changes | low | med | the button element is stable (`@if` on the venue count, not the name); unit case asserts `document.activeElement` after activation and the harness case asserts it after the real navigation | agent | open |
+| R-7 | Focus returns to the name button after a row activation, but a switch re-renders the button when the name input changes | low | med | the button element is stable (`@if` on the venue count, not the name); unit case asserts `document.activeElement` after activation and the harness case asserts it after the real navigation | agent | closed — phase 2, `console-venue-switch.spec.ts` asserts focus on the same button after the real navigation |
 
 ## Open questions / Assumptions
 
@@ -211,15 +211,15 @@ N/A — no contract change (`GET /api/venues/mine` → `OwnedVenue[]`, unchanged
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** phase 2 — flush `/api/venues/mine` in the console specs and red the two-venue header state.
+**Next action:** phase 3 — the two-venue case in `operator-console.e2e.ts` and the touch sweep with the popover open.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — `Create a venue` leaves the account chip | ✅ | 4887e86e |
-| 1 — `OperatorVenueSwitch` + its unit and contrast specs | ✅ | phase-1 commit |
-| 2 — the console mounts it; host, a11y, contrast and harness specs | | |
+| 1 — `OperatorVenueSwitch` + its unit and contrast specs | ✅ | ce3b259e |
+| 2 — the console mounts it; host, a11y, contrast and harness specs | ✅ | phase-2 commit |
 | 3 — mocked e2e: the two-venue case, the touch-target sweep, the chip row lists | | |
 | 4 — merge `origin/main`, ready for review, review + Sonar gates, close-out | | |
 
@@ -384,6 +384,7 @@ export class OperatorVenueSwitch {
 |---|---|---|---|---|---|
 | 2026-09-07 | phase 0 | every reference to the chip's create row (test id or label) | `grep -rn "create-venue\|Create a venue" frontend/src frontend/e2e` | the chip + its spec, the console and chrome specs, two e2e row lists; the landing's `operator-home-add-venue` and the `?create=1` deep links are the landing's own | all five call sites updated; the landing untouched |
 | 2026-09-07 | phase 1 | header disclosures (a button with `aria-expanded` opening a popover) | `grep -rln "aria-expanded" frontend/src/app --include=*.ts --include=*.html` | `app.html` (tourist ×3), `operator-account-chip.ts`, the new switcher | no extraction at two operator copies (Non-goals); the palette is the third and the point to extract |
+| 2026-09-07 | phase 2 | specs that mount the console and `httpMock.verify()` (each now needs the owned-venues flush) | `grep -rln "OperatorConsole" frontend/src/app --include=*.spec.ts` | `operator-console.spec.ts`, `operator-console.a11y.spec.ts`, `console-venue-switch.spec.ts` (`app.spec.ts` / `app.routes.spec.ts` only resolve the lazy target) | all three flush `/api/venues/mine` |
 
 ---
 

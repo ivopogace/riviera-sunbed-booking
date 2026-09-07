@@ -1,5 +1,6 @@
-import { Component, ElementRef, effect, inject, signal, untracked } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { OperatorAccountChip } from './operator-account-chip';
+import { OperatorVenueSwitch } from './operator-venue-switch';
 import { LegalFooter } from '../shared/legal-footer';
 import {
   ActivatedRoute,
@@ -12,6 +13,7 @@ import { Observable } from 'rxjs';
 
 import { OperatorAuth } from '../core/operator-auth';
 import { todayBookingDate } from '../shared/booking-date';
+import { currentUrl } from '../shared/current-url';
 import { venueIdParam } from '../shared/parent-venue-id';
 import { VenueMapView } from '../shared/venue-views';
 import { TAB_RAIL_MATCH, TabRail, TabRailDivider, TabRailTab } from '../shared/tab-rail';
@@ -33,9 +35,9 @@ interface ConsoleTab {
 
 /**
  * Operator console shell. The porcelain-light glass chrome that
- * wraps the operator surface at `/operator/:venueId`: a sticky header (Operator wordmark, venue
- * title, the account chip) and the tab rail (`shared/tab-rail.ts`) with a live Requests
- * badge, hosting each tab as a child route. The app shell (`app.ts`) suppresses all of its own chrome for
+ * wraps the operator surface at `/operator/:venueId`: a sticky header (Operator wordmark, the venue
+ * name — the venue switcher, `operator-venue-switch.ts` — and the account chip) and the tab rail
+ * (`shared/tab-rail.ts`) with a live Requests badge, hosting each tab as a child route. The app shell (`app.ts`) suppresses all of its own chrome for
  * `/operator/:venueId` (`data.operatorConsole`), so this component owns the full viewport — every
  * other operator surface wears the shared operator chrome instead (`data.operatorChrome`).
  *
@@ -52,6 +54,7 @@ interface ConsoleTab {
   selector: 'app-operator-console',
   imports: [
     OperatorAccountChip,
+    OperatorVenueSwitch,
     LegalFooter,
     RouterOutlet,
     RouterLink,
@@ -81,6 +84,12 @@ export class OperatorConsole {
   /** The venue this console manages — reactive to in-place `:venueId` changes: the router
    *  reuses this instance when only the param differs, so a snapshot read would pin the old venue. */
   protected readonly venueId = venueIdParam(this.route);
+  private readonly url = currentUrl(this.router);
+  /** The open section's path, for the venue switcher to keep across a switch; the console's index
+   *  redirect (`beach-map`) before any child has settled. */
+  protected readonly section = computed(
+    () => /^\/operator\/\d+\/([^/?#;]+)/.exec(this.url())?.[1] ?? 'beach-map',
+  );
 
   /** The six console sections, Today first and grouped — what a running venue opens every day,
    *  then set-up, then money (the console-nav spike's grill, answer 7); only Requests carries the
