@@ -252,7 +252,7 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `PR — draft open, CI gate`
+**Stage pointer:** `PR #1019 — draft open, CI gate`
 
 **Next action:** read the draft PR's CI run; when green, merge the latest `origin/main` in if it moved, mark ready for review, and run the review gate (`references/pr-gates.md` §1) with the range resolved off the PR.
 
@@ -264,7 +264,7 @@ N/A — no contract change.
 | 3 — the shell: the search button, the gate, `paletteRows`, the mount; shell spec, a11y spec, `app.spec.ts` | ✅ | a28fdc0b |
 | 4 — e2e: `console-shell.e2e.ts`, `operator-console.e2e.ts`, `admin-console-tabs.e2e.ts`, `support/shell.ts` | ✅ | a8e492c6 |
 | 5 — contract: `npm run lint` + `format:check` green; 235 files / 2759 unit specs green; the whole mocked e2e 512/512 across `chromium`, `phone` and `fold` (7.8 min); the four CI hygiene guards green over `origin/main` (the inline-comment guard first flagged three issue numbers in comments — dropped); a production build green; docs-freshness run (4 findings, patched); #1012's plan retired; branch pushed | ✅ | a14f2c2f |
-| 6 — PR, CI, review gate, Sonar gate, merge close-out | | |
+| 6 — PR #1019 opened as a draft; CI, the review gate, the Sonar gate, the merge close-out | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
