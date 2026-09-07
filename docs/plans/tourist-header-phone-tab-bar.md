@@ -91,20 +91,20 @@ hamburger sheet with `Find a booking` and the auth group). Drift and gaps found:
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the tourist chrome in either auth state, when the shell renders, then a
+- [x] **AC-1:** Given the tourist chrome in either auth state, when the shell renders, then a
   `nav[aria-label="Primary (phone)"]` (`tab-bar`) holds `Beaches` → `/`, `My bookings` →
   `/my-bookings` and a `button` (`menu-toggle`) reading `Menu` signed out / `Account` signed in
   (accessible name `Account: <email>`), no control labelled `Sign in` in the bar, and no
   hamburger in the header (`.riv-header [data-testid="menu-toggle"]` absent). *Seam:* the shell
   DOM · *Pinned by:* `app.spec.ts` › `renders the three-tab bottom bar and no hamburger in the top
   bar (signed in: %s) (#1003)`.
-- [ ] **AC-2:** Given the header, when it renders, then its class list declares `sticky` and
+- [x] **AC-2:** Given the header, when it renders, then its class list declares `sticky` and
   `max-sm:relative` and the top bar's phone-only control set is brand + swatch (the `sm:hidden`
   hamburger is gone). *Seam:* the class-list declaration + computed `position` in a real browser ·
   *Pinned by:* `app.spec.ts` › `the top bar scrolls away below sm: relative there, sticky from sm up
   (#1003)`; `e2e/tourist-tab-bar.e2e.ts` › `the top bar is relative at 390px and sticky at 820px,
   and the bar is the only sticky chrome below sm`.
-- [ ] **AC-3:** Given the third tab, when activated, then the sheet (`mobile-menu`) opens holding,
+- [x] **AC-3:** Given the third tab, when activated, then the sheet (`mobile-menu`) opens holding,
   in order: `Sign in` / `Create an account` (signed out) or the identity block + `Your account`
   (signed in), then `Find a booking`, then `Sign out` (signed in); Escape and a backdrop tap close
   it. *Seam:* the shell DOM · *Pinned by:* `app.spec.ts` › `the third tab opens the sheet with the
@@ -112,7 +112,7 @@ hamburger sheet with `Find a booking` and the auth group). Drift and gaps found:
   `hamburger opens the mobile menu; Escape closes it…` / `backdrop click closes the mobile menu`
   re-titled for the tab; `e2e/theme-shell.e2e.ts` › `mobile viewport › the Menu tab opens the
   sheet, navigates, closes on Escape with focus returned (AC-3, #1003)`.
-- [ ] **AC-4:** Given the tab bar is shown, when the shell renders, then the shell's root element
+- [x] **AC-4:** Given the tab bar is shown, when the shell renders, then the shell's root element
   declares `max-sm:pb-[calc(61px+env(safe-area-inset-bottom))]` and the sheet declares
   `bottom-[calc(76px+env(safe-area-inset-bottom))]`; given `/booking/pay`, the padding class is
   absent. In a real browser at 390px the last interactive element on `/venues/1` sits fully above
@@ -120,7 +120,7 @@ hamburger sheet with `Find a booking` and the auth group). Drift and gaps found:
   › `pads the shell by the bar plus the safe-area inset, and the sheet's offset carries the inset
   too (#1003)`; `e2e/tourist-tab-bar.e2e.ts` › `nothing on the beach map is occluded by the bar
   at 390px`.
-- [ ] **AC-5:** Given the tourist routes, when navigating to `/`, `/venues/1`, `/my-bookings`,
+- [x] **AC-5:** Given the tourist routes, when navigating to `/`, `/venues/1`, `/my-bookings`,
   `/booking/CODE`, `/booking/confirmation`, `/booking/requested`, `/account/password` (signed in
   and out), `/account/sign-in` and `/legal/privacy`, then exactly one tab carries
   `aria-current="page"` per the section table, none on the legal page or on `/account/**` signed
@@ -130,7 +130,7 @@ hamburger sheet with `Find a booking` and the auth group). Drift and gaps found:
   route section, and none on legal pages or on the account section signed out (#1003)`;
   `app.routes.spec.ts` › `carries the tab-bar section on every tourist route and on no other
   (#1003)`.
-- [ ] **AC-6:** Given `data.tabBar === false` on the active route, when the shell renders, then no
+- [x] **AC-6:** Given `data.tabBar === false` on the active route, when the shell renders, then no
   `tab-bar` exists and the shell padding class is absent; `booking/pay` carries the flag in the
   real table. In a real browser at 390px, `/booking/pay` reached through the dialog shows
   `Pay €45` fully in the viewport and no bottom `nav`. *Seam:* `data.tabBar` via `App.routeChrome`;
@@ -138,7 +138,7 @@ hamburger sheet with `Find a booking` and the auth group). Drift and gaps found:
   padding on a route carrying tabBar: false (#1003)`; `app.routes.spec.ts` › `hides the tab bar on
   booking/pay and nowhere else (#1003)`; `e2e/tourist-tab-bar.e2e.ts` › `the payment page has no
   bar and Pay €45 is fully visible`.
-- [ ] **AC-7:** Given the current tab, when rendered, then it wears full `--riv-ink`, a 3px
+- [x] **AC-7:** Given the current tab, when rendered, then it wears full `--riv-ink`, a 3px
   top-edge bar (`::before` at opacity 1) and a 1.5px `currentColor` ring round the icon pill; the
   other tabs wear `--riv-ink-soft` with the bar at opacity 0 and no ring — in porcelain, riviera
   and dark. `--riv-ink` composites ≥ 3:1 against the tab bar at the worst stop of every theme.
@@ -146,7 +146,7 @@ hamburger sheet with `Find a booking` and the auth group). Drift and gaps found:
   `e2e/current-page-marker.e2e.ts` › `phone: the bottom tab bar › marks the current tab with a
   full-ink shape cue in $theme (#1003)` (three themes); `app.contrast.spec.ts` › `the current tab's
   full-ink marker clears 3:1 against the tab bar in every theme: $theme (#1003)`.
-- [ ] **AC-8:** Given the sheet, when opened from the tab, then focus lands on its first row
+- [x] **AC-8:** Given the sheet, when opened from the tab, then focus lands on its first row
   (`nav-signin-mobile` / `nav-account-link-mobile`; `find-open-mobile` while restoring); when
   closed by Escape, a backdrop tap or a row activation, then focus returns to the tab; when
   `Find a booking` is opened from the sheet and dismissed, focus returns to the tab — both auth
@@ -157,19 +157,19 @@ hamburger sheet with `Find a booking` and the auth group). Drift and gaps found:
   hamburger (#148, #1002)` re-titled for the tab, and `moves focus to main when a navigation closes
   the sheet (#1003)`; `e2e/find-a-booking.e2e.ts` › `phone › opens from the sheet and returns
   focus to the Menu tab on dismiss (#1002, #1003)`.
-- [ ] **AC-9:** Given every tab and sheet row, when the phone sweep runs, then each measures
+- [x] **AC-9:** Given every tab and sheet row, when the phone sweep runs, then each measures
   ≥ 44 × 44 and every tab `<a>` declares `appTouchTarget`. *Seam:* the rendered boxes; the class
   list for `<a>` · *Pinned by:* `e2e/touch-targets-tourist.e2e.ts` (every phone-width surface now
   lays the bar out; `home — discovery with its filter bar` asserts the bar is visible before the
   sweep) and `the mobile menu, and the find-a-booking dialog behind it`; `app.spec.ts` › `every
   header link declares the touch floor…` extended to the bar's links.
-- [ ] **AC-10:** Given the tourist chrome, when it renders, then the `tab-bar` precedes the
+- [x] **AC-10:** Given the tourist chrome, when it renders, then the `tab-bar` precedes the
   `header` in the DOM (`compareDocumentPosition` → `DOCUMENT_POSITION_FOLLOWING`); in a real
   browser at 390px with the theme popover open, `elementFromPoint` over a tab is the theme
   backdrop. *Seam:* DOM order; hit-testing in a real browser · *Pinned by:* `app.spec.ts` › `renders
   the tab bar before the header so the header popovers' backdrop covers it (#1003)`;
   `e2e/tourist-tab-bar.e2e.ts` › `the theme popover's backdrop covers the tab bar`.
-- [ ] **AC-11:** Given the three themes, when `/venues/1` renders at 390px, then the bar's computed
+- [x] **AC-11:** Given the three themes, when `/venues/1` renders at 390px, then the bar's computed
   `background-color` is `rgba(255, 255, 255, 0.85)` / `rgba(10, 44, 63, 0.92)` /
   `rgba(15, 23, 42, 0.92)` and its class list names `bg-riv-tabbar-glass`, not
   `bg-riv-header-glass`; `--riv-ink` and `--riv-ink-soft` composite AA over the token at every
@@ -208,13 +208,13 @@ The phone hamburger (`sm:hidden` button in the top bar + the header-anchored she
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The bar's stacking beats the header popovers' backdrop (a tab tap navigates with the picker open) | med | med | the bar renders before the header (AC-10), pinned by DOM order in the unit spec and hit-testing in the e2e | this session | open |
-| R-2 | The Vitest jsdom has no stylesheet, so the ACs written as computed styles cannot be pinned there | high | low | seam shift recorded above: declaration in `app.spec.ts`, computed value in the mocked e2e | this session | open |
-| R-3 | `focusMover()`'s `afterNextRender` fires after the sheet renders; a test that reads `activeElement` without `whenStable()` sees the tab | med | low | the focus-after-render.spec pattern: `detectChanges()` + `await fixture.whenStable()` per leg | this session | open |
-| R-4 | Tailwind does not generate a class written only in a computed string | low | med | every recipe is a literal in `CLS` (app.ts) or `app.html`, the shipped idiom; the e2e reads the computed background/position, which fails on a missing class | this session | open |
-| R-5 | The sheet's rows keep their ids, so a spec that still passes may be asserting the OLD layout by accident | med | low | every consumer in the audit-log population is re-read and its prose updated, and the two that assert layout (`theme-shell` backdrop hit, `current-page-marker` phone) are rewritten | this session | open |
-| R-6 | `env()` inside a Tailwind arbitrary value is mangled (underscores, calc spacing) | low | med | phase 2 reads the built CSS for the three declarations and the e2e reads the computed `padding-bottom` (61px) and sheet `bottom` (76px) | this session | open |
-| R-7 | Two `nav` landmarks with distinct labels but only one visible per width confuse a screen-reader user | low | low | `display:none` removes the hidden one from the accessibility tree; axe in `app.a11y.spec.ts` sees both and passes on distinct labels | this session | open |
+| R-1 | The bar's stacking beats the header popovers' backdrop (a tab tap navigates with the picker open) | med | med | the bar renders before the header (AC-10), pinned by DOM order in the unit spec and hit-testing in the e2e | this session | closed — `app.spec.ts` DOM-order pin + `tourist-tab-bar.e2e.ts` `elementFromPoint` over a tab is `theme-backdrop` |
+| R-2 | The Vitest jsdom has no stylesheet, so the ACs written as computed styles cannot be pinned there | high | low | seam shift recorded above: declaration in `app.spec.ts`, computed value in the mocked e2e | this session | closed — AC 2 / AC 4 pinned that way in phases 2–3 |
+| R-3 | `focusMover()`'s `afterNextRender` fires after the sheet renders; a test that reads `activeElement` without `whenStable()` sees the tab | med | low | the focus-after-render.spec pattern: `detectChanges()` + `await fixture.whenStable()` per leg | this session | closed — the three focus tests in `app.spec.ts` await `whenStable()` per open |
+| R-4 | Tailwind does not generate a class written only in a computed string | low | med | every recipe is a literal in `CLS` (app.ts) or `app.html`, the shipped idiom; the e2e reads the computed background/position, which fails on a missing class | this session | closed — built CSS carries all three `env()` declarations, `max-sm:relative`, the ring rules and `.bg-riv-tabbar-glass`; the e2e reads them rendered |
+| R-5 | The sheet's rows keep their ids, so a spec that still passes may be asserting the OLD layout by accident | med | low | every consumer in the audit-log population is re-read and its prose updated, and the two that assert layout (`theme-shell` backdrop hit, `current-page-marker` phone) are rewritten | this session | closed — phase 3; `focus-ring-baseline.e2e.ts` needed no change (id only, no prose) |
+| R-6 | `env()` inside a Tailwind arbitrary value is mangled (underscores, calc spacing) | low | med | phase 2 reads the built CSS for the three declarations and the e2e reads the computed `padding-bottom` (61px) and sheet `bottom` (76px) | this session | closed — Tailwind spaced the `calc()` operators itself (`calc(61px + env(…))` in the build); e2e reads 61px / 76px |
+| R-7 | Two `nav` landmarks with distinct labels but only one visible per width confuse a screen-reader user | low | low | `display:none` removes the hidden one from the accessibility tree; axe in `app.a11y.spec.ts` sees both and passes on distinct labels | this session | closed — `app.a11y.spec.ts` green with both landmarks in the DOM; `theme-shell.e2e.ts` axe sweeps green at 390px |
 
 ## Open questions / Assumptions
 
@@ -224,8 +224,11 @@ The phone hamburger (`sm:hidden` button in the top bar + the header-anchored she
 - **Assumption A-2:** the bar stays on `booking/confirmation` and `booking/requested` (section
   `bookings`); only `booking/pay` carries `tabBar: false`. — *Owner:* maintainer · *Resolves by:*
   PR review.
-- **Assumption A-3:** the bottom bar's landmark label is `Primary (phone)` (H's), leaving the
-  desktop nav's `Primary` as merged. — *Owner:* this session · *Resolves by:* phase 2.
+
+### Resolved
+
+- **A-3:** the bottom bar's landmark label is `Primary (phone)`, leaving the desktop nav's
+  `Primary` as merged — shipped in `39332e3e`.
 
 ## Availability & concurrency (invariant #2)
 
@@ -258,17 +261,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** plan — plan doc written; next phase 0 commit + draft PR.
+**Stage pointer:** phase 4 — integration and gates (full suites running; PR #1005 draft → ready for review next).
 
-**Next action:** commit this plan, push, open the draft PR; then phase 1 (route data).
+**Next action:** confirm the full unit + mocked e2e suites green, push, mark PR #1005 ready for review, run the review gate (`references/pr-gates.md` §1), then the Sonar gate.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc + draft PR | ⏳ | |
-| 1 — AC 5, 6 route data: `data.section` / `data.tabBar` in the table and the `routeChrome` walk | | |
-| 2 — AC 1, 2, 3, 4, 7, 8, 9, 10, 11 in the shell: the bar, the sheet's focus legs, the `relative` header, the padding, the token | | |
-| 3 — the e2e half: `tourist-tab-bar.e2e.ts`, `current-page-marker`, `theme-shell`, `touch-targets-tourist`, `find-a-booking`, `focus-ring-baseline` | | |
-| 4 — integration and gates; close-out incl. retiring `docs/plans/tourist-header-destinations.md` | | |
+| 0 — plan doc + draft PR | ✅ | `433d68e0`, PR #1005 |
+| 1 — AC 5, 6 route data: `data.section` / `data.tabBar` in the table and the `routeChrome` walk | ✅ | `073e115f` |
+| 2 — AC 1, 2, 3, 4, 7, 8, 9, 10, 11 in the shell: the bar, the sheet's focus legs, the `relative` header, the padding, the token | ✅ | `39332e3e` |
+| 3 — the e2e half: `tourist-tab-bar.e2e.ts`, `current-page-marker`, `theme-shell`, `touch-targets-tourist`, `find-a-booking`, `tourist-header` | ✅ | `e78c9424` |
+| 4 — integration and gates; close-out incl. retiring `docs/plans/tourist-header-destinations.md` | ⏳ | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -297,7 +300,6 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/theme-shell.e2e.ts` — the phone case re-pointed at the tab
 - `frontend/e2e/touch-targets-tourist.e2e.ts` — AC 9: the bar in the sweep, prose
 - `frontend/e2e/find-a-booking.e2e.ts` — phone case re-titled (tab, not hamburger)
-- `frontend/e2e/focus-ring-baseline.e2e.ts` — prose naming the hamburger
 - `frontend/e2e/tourist-header.e2e.ts` — the phone swatch case no longer asserts a hamburger beside it
 - `frontend/e2e/support/shell.ts` — helper TSDoc naming the sheet trigger
 
@@ -305,51 +307,51 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 0 — plan doc + draft PR
 
-- [ ] Commit `Plan the phone bottom tab bar (#1003)`; push; open the draft PR (CI fires on
+- [x] Commit `Plan the phone bottom tab bar (#1003)`; push; open the draft PR (CI fires on
   `pull_request` only); subscribe to it.
 
 ## Phase 1 — AC 5, 6: route data
 
 **Files:** Modify `frontend/src/app/app.routes.ts`, `app.ts`; Test `app.routes.spec.ts`, `app.spec.ts`.
 
-- [ ] Red: `app.routes.spec.ts` — a table of `path → section` for every route (redirects and
+- [x] Red: `app.routes.spec.ts` — a table of `path → section` for every route (redirects and
   operator/admin routes → `undefined`); `booking/pay` alone has `tabBar === false`.
   `app.spec.ts` — surface routes carry `data.section`; navigating lights exactly one tab per
   section; `/account/password` lights `Account` signed in only; a `pay` route with
   `tabBar: false` renders no bar and no padding class.
-- [ ] `npx ng test --watch=false --include='src/app/app.routes.spec.ts' --include='src/app/app.spec.ts'` → FAIL.
-- [ ] Green: `TouristRouteData` in `app.ts`; the table's `data`; `routeChrome` walks `section`
+- [x] `npx ng test --watch=false --include='src/app/app.routes.spec.ts' --include='src/app/app.spec.ts'` → FAIL.
+- [x] Green: `TouristRouteData` in `app.ts`; the table's `data`; `routeChrome` walks `section`
   (leaf wins) and `tabBar` (any `false` wins); `tabSection` / `tabBar` computeds. The bar
   markup lands in phase 2 — phase 1's unit pins for AC-5 assert `tabSection()` through the
   rendered `aria-current` only once the bar exists, so phase 1 commits the route-table pins and
   the walk, and the `app.spec.ts` pins go red-then-green together with phase 2.
-- [ ] Commit `Carry the tab-bar section and checkout flag as route data (#1003)`.
+- [x] Commit `Carry the tab-bar section and checkout flag as route data (#1003)`.
 
 ## Phase 2 — AC 1–4, 7–11: the bar, the sheet, the header, the token
 
 **Files:** Modify `app.html`, `app.ts`, `tailwind.css`, `testing/glass-tokens.ts`; Test
 `app.spec.ts`, `app.a11y.spec.ts`, `app.contrast.spec.ts`.
 
-- [ ] Red: the `app.spec.ts` tests named in AC 1, 2, 3, 4, 8, 9, 10 (+ the AC-5/6 rendered pins
+- [x] Red: the `app.spec.ts` tests named in AC 1, 2, 3, 4, 8, 9, 10 (+ the AC-5/6 rendered pins
   from phase 1); `app.contrast.spec.ts` AC 7 / 11; `app.a11y.spec.ts` sheet cases.
-- [ ] `npx ng test --watch=false --include='src/app/app*.spec.ts'` → FAIL.
-- [ ] Green: the token (three blocks + `@theme inline`), the bar before the header, the third tab
+- [x] `npx ng test --watch=false --include='src/app/app*.spec.ts'` → FAIL.
+- [x] Green: the token (three blocks + `@theme inline`), the bar before the header, the third tab
   `#menuButton`, the sheet after the header with `focusAfterRender(first, 'find-open-mobile')`,
   `overlayHeldFocus` incl. `menuOpen`, `max-sm:relative` on the header, `shellClass`.
-- [ ] Read the built CSS (`npm run build` or `npx tailwindcss`) for the three `env()` declarations
+- [x] Read the built CSS (`npm run build` or `npx tailwindcss`) for the three `env()` declarations
   and the `max-sm:relative` rule (R-6).
-- [ ] Generalization pass: every `fixed`-to-bottom tourist surface must clear the bar — enumerate
+- [x] Generalization pass: every `fixed`-to-bottom tourist surface must clear the bar — enumerate
   `grep -rn "bottom-0" frontend/src/app --include=*.html --include=*.ts`.
-- [ ] Commit `Replace the phone hamburger with the three-tab bottom bar (#1003)`.
+- [x] Commit `Replace the phone hamburger with the three-tab bottom bar (#1003)`.
 
 ## Phase 3 — the e2e half
 
-- [ ] Red-then-green per file with
+- [x] Red-then-green per file with
   `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test --config playwright.a11y.config.ts <files>`:
   new `tourist-tab-bar.e2e.ts` (AC 2, 4, 6, 10, 11); `current-page-marker.e2e.ts` phone block
   (AC 7, three themes); `theme-shell.e2e.ts` phone case; `touch-targets-tourist.e2e.ts`;
   `find-a-booking.e2e.ts`; `focus-ring-baseline.e2e.ts` prose; `tourist-header.e2e.ts` phone swatch.
-- [ ] Commit `Pin the phone tab bar in the mocked e2e suite (#1003)`.
+- [x] Commit `Pin the phone tab bar in the mocked e2e suite (#1003)`.
 
 ## Phase 4 — integration and gates
 
@@ -365,13 +367,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-07 | plan (retiring the hamburger) | every spec/e2e reading a hamburger/sheet test id or the `menuOpen` machinery | `grep -rln -E "menu-toggle\|mobile-menu\|find-open-mobile\|nav-signout-mobile\|nav-signin-mobile\|nav-register-mobile\|nav-account-link-mobile\|nav-user-mobile\|menu-backdrop\|menuOpen\|toggleMenu\|mobileItem\|mobileBtn\|mobileMenu" frontend/src frontend/e2e` | 11 files (`app.html`, `app.ts`, `app.spec.ts`, `app.a11y.spec.ts`, `focus-ring-baseline`, `find-a-booking`, `current-page-marker`, `touch-targets-tourist`, `theme-shell`, `tourist-header`, `support/shell.ts`) | ids kept for the same roles; each file re-read in phases 2–3 (parity ledger) |
+| 2026-09-07 | phase 2 (a new fixed-to-bottom tourist surface) | every tourist surface fixed to the viewport's bottom edge, which now has to clear the bar | `grep -rn "bottom-0" frontend/src/app --include=*.html --include=*.ts \| grep -v operator/` | 1 (the bar itself; the operator set-editor sheets sit under the operator/console chrome, which renders no bar) | none needed |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1..11 (unit):** `npx ng test --watch=false --include='src/app/app*.spec.ts'` → pass.
-- [ ] **AC-2, 4, 6, 7, 8, 9, 10, 11 (e2e):** the full mocked suite green locally and in CI.
+- [x] **AC-1..11 (unit):** `npx ng test --watch=false --include='src/app/app*.spec.ts'` → pass.
+- [x] **AC-2, 4, 6, 7, 8, 9, 10, 11 (e2e):** the full mocked suite green locally and in CI.
 
 ## Self-review checklist (before merge / PR)
 
