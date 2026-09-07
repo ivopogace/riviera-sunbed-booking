@@ -4,10 +4,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 
+import { of } from 'rxjs';
+
 import { App } from './app';
 import { routes } from './app.routes';
 import { CustomerAuth } from './core/customer-auth';
 import { OperatorAuth } from './core/operator-auth';
+import { OwnedVenue, OwnedVenues, OwnedVenuesResult } from './core/owned-venues';
+import { ConsoleVenueMap } from './operator/console-venue-map';
 import { SessionAuth } from './core/session-auth';
 import { SignOutNotice } from './core/sign-out-notice';
 import { ThemeService } from './core/theme';
@@ -27,13 +31,26 @@ const customerAuth = {
   signOut: vi.fn(() => Promise.resolve()),
 };
 
-/** An OperatorAuth fake for the shared operator chrome (same rationale as the CustomerAuth fake). */
+/** An OperatorAuth fake for the console shell (same rationale as the CustomerAuth fake). */
 const operatorAuth = {
   restoring: signal(false),
   signedIn: signal(true),
   isAdmin: signal(false),
   username: signal<string | undefined>('maria'),
   signOut: vi.fn(() => Promise.resolve()),
+};
+
+/** The console shell's two reads, faked so no request leaves: the owned list and the venue snapshot. */
+const ONE_VENUE: readonly OwnedVenue[] = [{ id: 7, name: 'Miramar Beach Club', beach: 'Ksamil' }];
+const ownedVenues = {
+  venues: signal<readonly OwnedVenue[] | undefined>(ONE_VENUE),
+  load: vi.fn((): Promise<OwnedVenuesResult> =>
+    Promise.resolve({ status: 'loaded', venues: ONE_VENUE }),
+  ),
+};
+const consoleVenueMap = {
+  load: vi.fn(() => of({ id: 7, name: 'Miramar Beach Club', sets: [] })),
+  reset: vi.fn(),
 };
 
 /** Test routes exercising the chromeless + operator-chrome mechanisms without
@@ -52,7 +69,7 @@ const surfaceRoutes = () => [
     data: { section: 'bookings', tabBar: false },
   },
   { path: 'account/password', component: BlankPage, data: { section: 'account' } },
-  { path: 'operator', component: BlankPage, data: { operatorConsole: true } },
+  { path: 'operator/:venueId/daily', component: BlankPage, data: { console: 'venue' } },
   { path: 'operator-chrome', component: BlankPage, data: { operatorChrome: true } },
   // The operator chrome's sign-out navigates here; a resolvable target keeps that await clean.
   { path: 'account/sign-in', component: BlankPage },
@@ -78,6 +95,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     customerAuth.signedIn.set(false);
     customerAuth.email.set(undefined);
     customerAuth.signOut.mockClear();
+    operatorAuth.signOut.mockClear();
     await TestBed.configureTestingModule({
       imports: [App],
       // The find modal's BookingService injects HttpClient (no request fires); the fake stops the /me call.
@@ -86,6 +104,8 @@ describe('App (Liquid Glass shell, issue #134)', () => {
         provideHttpClient(),
         { provide: CustomerAuth, useValue: customerAuth },
         { provide: OperatorAuth, useValue: operatorAuth },
+        { provide: OwnedVenues, useValue: ownedVenues },
+        { provide: ConsoleVenueMap, useValue: consoleVenueMap },
       ],
     }).compileComponents();
   });
@@ -1046,20 +1066,67 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     }
   });
 
-  it('suppresses the tourist header/footer chrome on operator-console routes (#170, AC-7)', async () => {
+  it('renders the console shell instead of the tourist header on the venue console route (#1011)', async () => {
     const { fixture, el } = shell();
     const router = TestBed.inject(Router);
 
     await router.navigate(['/glass']);
     fixture.detectChanges();
     expect(el.querySelector('.riv-header')).not.toBeNull();
-    expect(el.querySelector('.riv-footer')).not.toBeNull();
+    expect(el.querySelector('app-console-shell')).toBeNull();
 
-    await router.navigate(['/operator']);
+    await router.navigate(['/operator/7/daily']);
     fixture.detectChanges();
-    // The operator console owns full-bleed porcelain chrome — the tourist header/nav/footer are hidden.
+    // The section row replaces the tourist header; the shared footer and background stay, the blobs go.
     expect(el.querySelector('.riv-header')).toBeNull();
-    expect(el.querySelector('.riv-footer')).toBeNull();
+    expect(el.querySelector('app-operator-chrome')).toBeNull();
+    expect(el.querySelector('[data-testid="oc-header"]')).not.toBeNull();
+    expect(el.querySelector('.riv-footer')).not.toBeNull();
+    expect(el.querySelector('.riv-bg')).not.toBeNull();
+    expect(el.querySelector('.riv-blob')).toBeNull();
+    // The section and the venue id come off the route chain: the venue slot is current and the rail is venue 7's.
+    expect(el.querySelector('[data-testid="oc-section-venue"]')?.getAttribute('aria-current')).toBe(
+      'page',
+    );
+    expect(el.querySelector('[data-testid="oc-tabs"] a[href="/operator/7/daily"]')).not.toBeNull();
+    // <main> stays the one landmark: the console page renders no header, rail or main of its own.
+    expect(el.querySelectorAll('main')).toHaveLength(1);
+  });
+
+  it('pins the shell porcelain on every console route and never on a tourist one (#1011)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+    TestBed.inject(ThemeService).select('dark');
+
+    await router.navigate(['/glass']);
+    fixture.detectChanges();
+    expect(el.getAttribute('data-riv-theme')).toBeNull();
+
+    await router.navigate(['/operator/7/daily']);
+    fixture.detectChanges();
+    expect(el.getAttribute('data-riv-theme')).toBe('porcelain');
+    // The document-level theme is the tourist's choice and stays untouched.
+    expect(document.documentElement.getAttribute('data-riv-theme')).toBe('dark');
+
+    await router.navigate(['/glass']);
+    fixture.detectChanges();
+    expect(el.getAttribute('data-riv-theme')).toBeNull();
+  });
+
+  it('console-shell Sign out parks focus on main before the control unmounts (WCAG 2.4.3)', async () => {
+    const { fixture, el } = shell();
+    await TestBed.inject(Router).navigate(['/operator/7/daily']);
+    fixture.detectChanges();
+    el.querySelector<HTMLButtonElement>('[data-testid="oc-account"]')!.click();
+    fixture.detectChanges();
+    const signOut = el.querySelector<HTMLButtonElement>('[data-testid="oc-signout"]')!;
+    signOut.focus();
+
+    signOut.click();
+    fixture.detectChanges();
+
+    expect(operatorAuth.signOut).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(el.querySelector('main'));
   });
 
   it('renders the shared operator chrome instead of the tourist header on operator-chrome routes', async () => {
@@ -1160,9 +1227,10 @@ describe('app.routes chrome flags (issue #134)', () => {
     expect(redirect?.redirectTo).toBe('operator/:venueId/daily');
   });
 
-  it('adds the chromeless operator console route with its six tab children (#170)', () => {
+  it('adds the venue console route, in the console shell, with its six tab children (#170, #1011)', () => {
     const console = routes.find((r) => r.path === 'operator/:venueId');
-    expect(console?.data?.['operatorConsole']).toBe(true);
+    expect(console?.data?.['console']).toBe('venue');
+    expect(console?.data?.['operatorConsole']).toBeUndefined();
 
     const children = console?.children ?? [];
     const childPaths = children.map((c) => c.path);

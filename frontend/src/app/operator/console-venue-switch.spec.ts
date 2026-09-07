@@ -1,33 +1,52 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideRouter, Router } from '@angular/router';
-import { RouterTestingHarness } from '@angular/router/testing';
+import { vi } from 'vitest';
 
 import { environment } from '../../environments/environment';
-import { OperatorAuth } from '../core/operator-auth';
+import { App } from '../app';
 import { routes } from '../app.routes';
+import { CustomerAuth } from '../core/customer-auth';
+import { OperatorAuth } from '../core/operator-auth';
 import { LayoutEditor } from './layout-editor';
 import { OperatorConsole } from './operator-console';
 
 const BASE = environment.apiBaseUrl;
 
+/** The app shell injects CustomerAuth, whose real restore would be a second `/me`; a fake keeps
+ *  the one operator restore the guard awaits. */
+const customerAuth = {
+  restoring: signal(false),
+  signedIn: signal(false),
+  email: signal<string | undefined>(undefined),
+  signOut: vi.fn(() => Promise.resolve()),
+};
+
 /**
- * The in-place venue-switch integration proof, on the REAL route config: `/operator/1/beach-map` →
- * `/operator/2/beach-map` REUSES the console shell and the tab component (same route config, only
- * the param differs — the router never re-constructs), and the reactive `venueId` signals still
- * re-load everything for venue 2. This is the exact navigation an in-app venue switcher would
- * perform; unit specs push params through a mocked route, so only this harness spec would catch a
- * regression in how the real router delivers an in-place param change.
+ * The in-place venue-switch integration proof, on the REAL route config under the REAL app shell:
+ * `/operator/1/beach-map` → `/operator/2/beach-map` REUSES the console page and the tab component
+ * (same route config, only the param differs — the router never re-constructs), and the reactive
+ * `venueId` signals still re-load everything for venue 2 — the console shell's row and rail
+ * included, which the app shell mounts off the route chain. This is the exact navigation the
+ * venue switcher performs; unit specs push params through a mocked route, so only this spec would
+ * catch a regression in how the real router delivers an in-place param change.
  */
 describe('Operator console — in-place venue switch over the real routes (#180)', () => {
-  let harness: RouterTestingHarness;
+  let fixture: ComponentFixture<App>;
   let http: HttpTestingController;
+  let router: Router;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter(routes)],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter(routes),
+        { provide: CustomerAuth, useValue: customerAuth },
+      ],
     });
     http = TestBed.inject(HttpTestingController);
     // The operatorSessionGuard awaits the session restore — answer /me with a principal up front.
@@ -35,8 +54,18 @@ describe('Operator console — in-place venue switch over the real routes (#180)
     http
       .expectOne(`${BASE}/api/auth/me`)
       .flush({ username: 'operator', principalType: 'OPERATOR' });
-    harness = await RouterTestingHarness.create();
+    router = TestBed.inject(Router);
+    fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
   });
+
+  /** Navigates and settles, as the retired router harness did. */
+  async function navigate(url: string): Promise<void> {
+    await router.navigateByUrl(url);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
 
   afterEach(() => http.verify());
 
@@ -54,7 +83,7 @@ describe('Operator console — in-place venue switch over the real routes (#180)
 
   /** Flush every read the shell + strip + layout tab fire for a venue (order-independent). */
   function flushVenueReads(id: number, name: string, pending = 1): void {
-    // Two venue-map GETs: the shell's shared-snapshot read + the layout editor's direct read.
+    // Two venue-map GETs: the shared snapshot (the shell's name + the strip) + the layout editor's direct read.
     http
       .match((r) => r.method === 'GET' && r.url === `${BASE}/api/venues/${id}`)
       .forEach((req) =>
@@ -96,47 +125,43 @@ describe('Operator console — in-place venue switch over the real routes (#180)
   }
 
   function shell(): OperatorConsole {
-    return harness.fixture.debugElement.query(By.directive(OperatorConsole))
+    return fixture.debugElement.query(By.directive(OperatorConsole))
       .componentInstance as OperatorConsole;
   }
 
   function tab(): LayoutEditor {
-    return harness.fixture.debugElement.query(By.directive(LayoutEditor))
-      .componentInstance as LayoutEditor;
+    return fixture.debugElement.query(By.directive(LayoutEditor)).componentInstance as LayoutEditor;
+  }
+
+  function root(): HTMLElement {
+    return fixture.nativeElement as HTMLElement;
   }
 
   function text(testid: string): string {
-    return (
-      (harness.fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testid}"]`)
-        ?.textContent ?? ''
-    );
+    return root().querySelector(`[data-testid="${testid}"]`)?.textContent ?? '';
   }
 
-  it('reuses the shell + tab instances yet re-loads everything for the new venue', async () => {
-    await harness.navigateByUrl('/operator/1/beach-map');
-    await harness.fixture.whenStable();
+  it('reuses the page + tab instances yet re-loads everything for the new venue', async () => {
+    await navigate('/operator/1/beach-map');
     flushVenueReads(1, 'First Venue');
     flushOwned();
-    harness.fixture.detectChanges();
+    fixture.detectChanges();
 
     expect(text('oc-venue-title')).toContain('First Venue');
     const firstShell = shell();
     const firstTab = tab();
 
-    await harness.navigateByUrl('/operator/2/beach-map');
-    await harness.fixture.whenStable();
+    await navigate('/operator/2/beach-map');
     flushVenueReads(2, 'Second Venue');
-    harness.fixture.detectChanges();
+    fixture.detectChanges();
 
     // The router REUSED both instances (no re-construction)…
     expect(shell()).toBe(firstShell);
     expect(tab()).toBe(firstTab);
-    // …and the reactive param still re-loaded the header, badge and tab links for venue 2.
+    // …and the reactive param still re-loaded the row, badge and tab links for venue 2.
     expect(text('oc-venue-title')).toContain('Second Venue');
     expect(text('oc-requests-badge')).toContain('1');
-    const nav = (harness.fixture.nativeElement as HTMLElement).querySelector(
-      '[data-testid="oc-tabs"]',
-    )!;
+    const nav = root().querySelector('[data-testid="oc-tabs"]')!;
     expect(nav.querySelector('a[href="/operator/2/pricing"]')).not.toBeNull();
     expect(nav.querySelector('a[href="/operator/1/pricing"]')).toBeNull();
   });
@@ -147,42 +172,41 @@ describe('Operator console — in-place venue switch over the real routes (#180)
    * router kept the console, so the button survives), and every venue-scoped surface re-reads
    * for venue 2 — the invariant #13 pin at the unit seam.
    */
-  it('switches venue from the header popover, keeping the tab and reusing the shell (#1009)', async () => {
-    await harness.navigateByUrl('/operator/1/beach-map');
-    await harness.fixture.whenStable();
+  it('switches venue from the section row, keeping the tab and reusing the page (#1009)', async () => {
+    await navigate('/operator/1/beach-map');
     flushVenueReads(1, 'First Venue');
     flushOwned();
-    await harness.fixture.whenStable(); // the owned list lands a microtask after its flush
-    harness.fixture.detectChanges();
+    await fixture.whenStable(); // the owned list lands a microtask after its flush
+    fixture.detectChanges();
     const firstShell = shell();
-    const root = harness.fixture.nativeElement as HTMLElement;
 
-    const name = root.querySelector<HTMLButtonElement>('button[data-testid="oc-venue-title"]')!;
+    const name = root().querySelector<HTMLButtonElement>('button[data-testid="oc-venue-title"]')!;
     expect(name.textContent).toContain('First Venue');
     name.click();
-    harness.fixture.detectChanges();
-    const row = root.querySelector<HTMLAnchorElement>(
+    fixture.detectChanges();
+    const row = root().querySelector<HTMLAnchorElement>(
       '[data-testid="oc-venue-menu"] a[href="/operator/2/beach-map"]',
     )!;
     expect(row).not.toBeNull();
     row.focus();
 
     row.click();
-    await harness.fixture.whenStable();
+    await fixture.whenStable();
+    fixture.detectChanges();
     flushVenueReads(2, 'Second Venue', 2);
-    harness.fixture.detectChanges();
+    fixture.detectChanges();
 
-    expect(TestBed.inject(Router).url).toBe('/operator/2/beach-map');
+    expect(router.url).toBe('/operator/2/beach-map');
     expect(shell()).toBe(firstShell);
-    expect(root.querySelector('[data-testid="oc-venue-menu"]')).toBeNull();
+    expect(root().querySelector('[data-testid="oc-venue-menu"]')).toBeNull();
     expect(name.getAttribute('aria-expanded')).toBe('false');
     expect(document.activeElement).toBe(name);
     expect(text('oc-venue-title')).toContain('Second Venue');
     expect(text('oc-requests-badge')).toContain('2');
     // The popover now marks venue 2 current and still keeps the section.
     name.click();
-    harness.fixture.detectChanges();
-    const current = root.querySelector('[data-testid="oc-venue-menu"] [aria-current="page"]')!;
+    fixture.detectChanges();
+    const current = root().querySelector('[data-testid="oc-venue-menu"] [aria-current="page"]')!;
     expect(current.getAttribute('href')).toBe('/operator/2/beach-map');
   });
 });

@@ -46,9 +46,10 @@ const NAME = 'min-w-0 max-w-full truncate text-[17px] font-bold tracking-[-0.01e
  * activation return focus to the name button; a navigation that ends elsewhere, or a click outside
  * the header, closes without moving it. The popover is `fixed`, which anchors it to the shell's
  * header row rather than to the name: the header's `backdrop-filter` makes it the containing block
- * for fixed descendants (the fact the chip's backdrop relies on too), so `top-full left-6` puts the
- * popover under the row, left-aligned with the row's `px-6` — at 344px a name-anchored 264px popover
- * overhangs the viewport, and the section slot between them is `relative` for its underline marker.
+ * for fixed descendants (the fact the chip's backdrop relies on too), so `top-full` puts the popover
+ * under the header and `left` finds the centred row's content edge — at 344px a name-anchored 264px
+ * popover overhangs the viewport, and the section slot between them is `relative` for its underline
+ * marker.
  */
 @Component({
   selector: 'app-operator-venue-switch',
@@ -149,7 +150,8 @@ export class OperatorVenueSwitch {
     plain: `px-1 ${NAME}`,
     link: `inline-flex items-center rounded-lg px-1 no-underline hover:underline ${NAME}`,
     backdrop: POP_BACKDROP,
-    pop: `fixed top-full left-6 mt-1 w-[264px] max-w-[calc(100%-3rem)] p-[7px] ${POP_SKIN}`,
+    // left: the shell row's content edge — its centred 1120px box's left plus the row's px-6 (560 − 24), the px-6 alone once the header is narrower.
+    pop: `fixed top-full left-[max(1.5rem,50%_-_536px)] mt-1 w-[264px] max-w-[calc(100%-3rem)] p-[7px] ${POP_SKIN}`,
     item: POP_ITEM,
   } as const;
 

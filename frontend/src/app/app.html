@@ -28,7 +28,7 @@
     </div>
   }
 
-  <!-- Three chrome modes: tourist (default), shared operator (data.operatorChrome), none (console). -->
+  <!-- Chrome modes: tourist (default), the console shell (data.console), the retiring shared operator header (data.operatorChrome), none. -->
   <!-- Negative z keeps the layer behind unpositioned page content, so <main> needs no stacking context (modals must beat the sticky header). -->
   @if (shellChrome() !== 'none') {
     <div
@@ -44,6 +44,10 @@
         ></span>
       }
     </div>
+  }
+
+  @if (shellChrome() === 'console') {
+    <app-console-shell [section]="consoleSection()" [venueId]="consoleVenueId()" />
   }
 
   @if (shellChrome() === 'operator') {

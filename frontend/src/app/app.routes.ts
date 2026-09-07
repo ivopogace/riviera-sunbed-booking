@@ -3,6 +3,7 @@ import { Router, Routes } from '@angular/router';
 
 import type { AdminTabRouteData } from './admin/admin-console';
 import type { TouristRouteData } from './app';
+import type { ConsoleRouteData } from './console-shell';
 import { operatorSessionGuard } from './core/operator-session.guard';
 
 /**
@@ -305,11 +306,11 @@ export const routes: Routes = [
     children: adminTabRoutes,
   },
   {
-    // Chromeless operator console: the shell suppresses its own chrome via `data.operatorConsole`; tabs are children.
+    // The venue console: the app shell wears the console shell for it; tabs are children.
     path: 'operator/:venueId',
     loadComponent: () => import('./operator/operator-console').then((m) => m.OperatorConsole),
     title: 'Operator console — Riviera',
-    data: { operatorConsole: true },
+    data: { console: 'venue' } satisfies ConsoleRouteData,
     canActivate: [operatorSessionGuard],
     children: [{ path: '', pathMatch: 'full', redirectTo: 'beach-map' }, ...consoleTabRoutes],
   },

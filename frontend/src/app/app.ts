@@ -12,11 +12,13 @@ import {
 import { filter } from 'rxjs';
 
 import { FindBooking } from './booking/find-booking';
+import { ConsoleSection, ConsoleShell } from './console-shell';
 import { CustomerAuth } from './core/customer-auth';
 import { SignOutNotice } from './core/sign-out-notice';
 import { ThemeId, ThemeService } from './core/theme';
 import { OperatorChrome } from './operator/operator-chrome';
 import { focusMover } from './shared/focus-after-render';
+import { idParam } from './shared/parent-venue-id';
 import {
   AVATAR,
   CHIP,
@@ -101,6 +103,10 @@ export interface TouristRouteData {
 interface RouteChrome {
   chromeless: boolean;
   operatorChrome: boolean;
+  /** The leaf-most `data.console` on the chain, or `null` on a route outside the console shell. */
+  console: ConsoleSection | null;
+  /** The leaf-most `:venueId` on the chain that is a positive integer, for the console shell. */
+  venueId: number | undefined;
   /** The leaf-most `data.section` on the chain, or `null` on a route outside every section. */
   section: TouristSection | null;
   /** `false` when any route on the chain carries `data.tabBar: false`. */
@@ -112,6 +118,8 @@ interface RouteChrome {
 const PRE_NAVIGATION_CHROME: RouteChrome = {
   chromeless: false,
   operatorChrome: false,
+  console: null,
+  venueId: undefined,
   section: null,
   tabBar: true,
 };
@@ -119,6 +127,11 @@ const PRE_NAVIGATION_CHROME: RouteChrome = {
 /** Narrows an untyped `data.section` to a {@link TouristSection}; anything else is no section. */
 function sectionOf(data: unknown): TouristSection | null {
   return data === 'beaches' || data === 'bookings' || data === 'account' ? data : null;
+}
+
+/** Narrows an untyped `data.console` to a {@link ConsoleSection}; anything else is no console. */
+function consoleOf(data: unknown): ConsoleSection | null {
+  return data === 'venue' || data === 'admin' || data === 'plain' ? data : null;
 }
 
 /**
@@ -135,14 +148,15 @@ function sectionOf(data: unknown): TouristSection | null {
     RouterLink,
     RouterLinkActive,
     FindBooking,
+    ConsoleShell,
     OperatorChrome,
     TouchTarget,
   ],
   templateUrl: './app.html',
   host: {
     '(document:keydown.escape)': 'closeMenus()',
-    // Pins the subtree porcelain on operator-chrome routes, whatever tourist theme is selected.
-    '[attr.data-riv-theme]': "shellChrome() === 'operator' ? 'porcelain' : null",
+    // Pins the subtree porcelain on every console route, whatever tourist theme is selected.
+    '[attr.data-riv-theme]': "porcelain() ? 'porcelain' : null",
   },
 })
 export class App {
@@ -232,17 +246,32 @@ export class App {
     let route = this.router.routerState.snapshot.root;
     let chromeless = route.data['operatorConsole'] === true;
     let operatorChrome = route.data['operatorChrome'] === true;
+    let console = consoleOf(route.data['console']);
+    let venueId = idParam(route.paramMap, 'venueId');
     let section = sectionOf(route.data['section']);
     let tabBar = route.data['tabBar'] !== false;
     while (route.firstChild) {
       route = route.firstChild;
       chromeless ||= route.data['operatorConsole'] === true;
       operatorChrome ||= route.data['operatorChrome'] === true;
+      console = consoleOf(route.data['console']) ?? console;
+      venueId = idParam(route.paramMap, 'venueId') ?? venueId;
       section = sectionOf(route.data['section']) ?? section;
       tabBar &&= route.data['tabBar'] !== false;
     }
-    return { chromeless, operatorChrome, section, tabBar };
+    return { chromeless, operatorChrome, console, venueId, section, tabBar };
   });
+
+  /** The console section the active route belongs to, `plain` when it carries none — read only
+   *  while {@link shellChrome} is `console`. */
+  protected readonly consoleSection = computed(() => this.routeChrome().console ?? 'plain');
+  /** The venue the console shell is on, off the route chain. */
+  protected readonly consoleVenueId = computed(() => this.routeChrome().venueId);
+  /** Whether the subtree is pinned porcelain: every route under the console shell or the
+   *  (retiring) operator chrome. */
+  protected readonly porcelain = computed(
+    () => this.shellChrome() === 'console' || this.shellChrome() === 'operator',
+  );
 
   /** The bottom tab the active route belongs to, `null` outside every section (legal pages) and
    *  before the first navigation. The Account tab reads it together with the signed-in state. */
@@ -284,12 +313,15 @@ export class App {
   /** The shell root's classes: the tab bar's clearance only while the bar renders (AC 4 / AC 6). */
   protected readonly shellClass = computed(() => (this.tabBar() ? SHELL_WITH_TAB_BAR : SHELL));
 
-  /** Which chrome the shell renders: the tourist header/footer (default), the shared operator
-   *  header/footer, or none at all (the console brings its own). */
-  protected readonly shellChrome = computed(() => {
-    const { chromeless, operatorChrome } = this.routeChrome();
+  /** Which chrome the shell renders: the tourist header/footer (default), the console shell
+   *  (`data.console`), the retiring shared operator header, or none at all. */
+  protected readonly shellChrome = computed((): 'none' | 'console' | 'operator' | 'tourist' => {
+    const { chromeless, operatorChrome, console } = this.routeChrome();
     if (chromeless) {
       return 'none';
+    }
+    if (console !== null) {
+      return 'console';
     }
     return operatorChrome ? 'operator' : 'tourist';
   });
