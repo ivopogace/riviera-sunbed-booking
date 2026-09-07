@@ -4,13 +4,17 @@ import { join } from 'node:path';
 import { AA_NORMAL, contrastRatio, rgbToHex } from '../../testing/contrast';
 import {
   CONSOLE_NEGATIVE_INK,
+  DARK_CARD_GLASS,
+  DARK_CONSOLE_NEGATIVE_INK,
   DARK_ERROR_INK,
+  DARK_STOPS,
   PORCELAIN_CARD_GLASS,
   PORCELAIN_STOPS,
   SOLID_BTN_DANGER_INK,
+  expectAaOverStops,
   surfaceOver,
 } from '../../testing/glass-tokens';
-import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
+import { baseBlock, declarationsOf, themeBlock } from '../../testing/stylesheet-tokens';
 
 /**
  * Guard for `--riv-console-negative-ink` (class R of the colour-literal audit) — the
@@ -27,12 +31,12 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * so there the value coincidence was a role match after all.
  *
  * <p>What this file owns is the part no per-tab AA spec can see — that the token is a token, and
- * stays the one it claims to be. The ink is THEME-INVARIANT by decision rather than by omission:
- * every consumer is a child of `operator-console`, whose routes the app shell pins porcelain, so a dark branch
- * would be unreachable by construction — and jsdom maths cannot see a dark override added later,
+ * stays the one it claims to be. The ink is THEMED in exactly two blocks since the dark console
+ *: a porcelain value in the base block, a dark value in the `dark` block, nothing in
+ * `riviera` (a theme the console never wears) — and jsdom maths cannot see a stray declaration,
  * since every ratio in the tree would still pass. So the declaration tests read `src/tailwind.css`
- * as text (the `core/theme-boot.spec.ts` drift-guard pattern) and assert the declaration is single
- * and sits in the base block. The chip tint's own AA proof — the LOWEST-contrast pair of the three
+ * as text (the `core/theme-boot.spec.ts` drift-guard pattern) and assert exactly those two
+ * declarations. The chip tint's own AA proof — the LOWEST-contrast pair of the three
  * sites, and lower than any raw stop below — stays where the element is, in
  * `payouts-tab.contrast.spec.ts`. The cross-theme proof against a real render, where the cascade
  * rather than a regex decides, is `e2e/console-negative-ink.e2e.ts`.
@@ -98,16 +102,21 @@ describe('Console negative-ink token (theme invariance + role distinctness, #864
     }
   });
 
-  it('declares the token exactly once, so no theme block can override it', () => {
-    expect(declarationsOf(TOKEN), `${TOKEN} declarations`).toHaveLength(1);
+  it('clears AA over the dark card glass on every dark stop (#1010)', () => {
+    expectAaOverStops(DARK_CONSOLE_NEGATIVE_INK, 1, DARK_CARD_GLASS, DARK_STOPS);
   });
 
-  it('declares the token in the base block, which the console pin resolves', () => {
+  it('declares the token in the base block and in the dark block, nowhere else (#1010)', () => {
+    expect(declarationsOf(TOKEN), `${TOKEN} declarations`).toHaveLength(2);
     expect(baseBlock(), `${TOKEN} in the base block`).toContain(`${TOKEN}:`);
+    expect(themeBlock('dark'), `${TOKEN} in the dark block`).toContain(`${TOKEN}:`);
   });
 
-  it('declares the value this test mirror carries', () => {
-    expect(declarationsOf(TOKEN)[0], TOKEN).toBe(rgbToHex(CONSOLE_NEGATIVE_INK));
+  it('declares the values this test mirror carries, porcelain then dark', () => {
+    expect(declarationsOf(TOKEN), TOKEN).toEqual([
+      rgbToHex(CONSOLE_NEGATIVE_INK),
+      rgbToHex(DARK_CONSOLE_NEGATIVE_INK),
+    ]);
   });
 
   it('maps the token in `@theme inline`, without which the utility never generates', () => {
@@ -126,11 +135,12 @@ describe('Console negative-ink token (theme invariance + role distinctness, #864
   });
 
   /**
-   * The other tempting reuse — one of the THEMED reds — would hand the console `#ffa9a1` in the
-   * dark theme. It lands far under AA on the card glass the console actually renders, so the two
-   * roles were never shared. Kept in the tree so the reason survives the decision.
+   * The other tempting reuse — one of the THEMED reds — would hand the porcelain console `#ffa9a1`
+   * under a dark document theme. It lands far under AA on the porcelain card glass, so the two
+   * roles were never shared; the dark console takes that salmon in its own block, over its own
+   * dark card, where the row above proves it. Kept in the tree so the reason survives the decision.
    */
-  it('stays theme-invariant: the themed reds would not clear AA on the console’s own surface', () => {
+  it('keeps its own porcelain value: the themed red’s dark value fails on the porcelain card', () => {
     for (const stop of PORCELAIN_STOPS) {
       expect(
         contrastRatio(rgbToHex(DARK_ERROR_INK), cardSurface(stop)),

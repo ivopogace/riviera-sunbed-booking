@@ -288,14 +288,14 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 1)`
+**Stage pointer:** `implement (phase 2)`
 
-**Next action:** phase 1 — flip the four token guards to the two-declaration contract (red), then the dark block.
+**Next action:** phase 2 — `testing/console-themes.ts`, the literal sweep spec and the six tabs' dark contrast rows (red), then the class strings.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — plan doc | ✅ | |
-| 1 — tokens: the dark block, `--riv-console-inset` / `--riv-premium-ink` / `--riv-sea-grad`, the mirrors, the four guards flipped | | |
+| 0 — plan doc | ✅ | 69818edb |
+| 1 — tokens: the dark block, `--riv-console-inset` / `--riv-premium-ink` / `--riv-sea-grad`, the mirrors, the four guards flipped | ✅ | (this commit) |
 | 2 — the venue console restyle: literals → tokens across the six tabs, `beach-cell`, `set-editor`, the banners, the statement; `testing/console-themes.ts`; contrast specs in both themes; the literal sweep spec | | |
 | 3 — the admin console + shell restyle: the admin components, `console-shell`, chip, switch, palette contrast in both themes | | |
 | 4 — `core/console-theme.ts` + the pin (`app.ts`, `app.spec.ts`) | | |
@@ -359,13 +359,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 `console-negative-token.contrast.spec.ts`, `frontend/src/app/shared/class-o-tint-tokens.contrast.spec.ts`,
 `fixed-ink-tokens.contrast.spec.ts`.
 
-- [ ] **Step 1: Write the failing tests** — each guard: `declares the token in the base block and once in the dark block, nowhere else`; `the dark value is the mirror's`; the dark AA row over `DARK_CARD_GLASS` × `DARK_STOPS`; `CLASS_O_TINTS` gains `dark` per row and the `--riv-console-inset` row.
-- [ ] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include 'src/app/operator/console-*-token.contrast.spec.ts' --include 'src/app/shared/class-o-tint-tokens.contrast.spec.ts' --include 'src/app/shared/fixed-ink-tokens.contrast.spec.ts'` → FAIL (no dark declaration).
-- [ ] **Step 3: Minimal implementation** — the dark block; the three new tokens; the `@theme inline` rows; the declaration comments retold (the "declared once, unreachable" ground ends).
-- [ ] **Step 4: Run it, verify it passes.**
-- [ ] **Step 5: Generalization-audit pass** — population: every token whose declaration comment rests on the porcelain pin → `grep -n "pins porcelain\|porcelain pin\|porcelain-pinned" frontend/src/tailwind.css`.
-- [ ] **Step 6: Commit** — `Give every console token a dark value and flip the guards to two declarations (#1010)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 1: Write the failing tests** — each guard: `declares the token in the base block and in the dark block, nowhere else`; `declares the values this test mirror carries, porcelain then dark`; the dark AA row over `DARK_CARD_GLASS` × `DARK_STOPS`; `CLASS_O_TINTS` gains `dark` per row and the `--riv-console-inset` row; the dark card border measured on the dark inset.
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include 'src/app/operator/console-accent-token.contrast.spec.ts' --include 'src/app/operator/console-negative-token.contrast.spec.ts' --include 'src/app/shared/class-o-tint-tokens.contrast.spec.ts' --include 'src/app/shared/fixed-ink-tokens.contrast.spec.ts'` → 17 FAIL (`expected [ '#0a6e85' ] to have a length of 2`, `--riv-console-inset in the base block`, …).
+- [x] **Step 3: Minimal implementation** — the dark block's twelve declarations; `--riv-console-inset`, `--riv-premium-ink`, `--riv-sea-grad`; the two `@theme inline` rows; the declaration comments retold (the "declared once, unreachable" ground ends).
+- [x] **Step 4: Run it, verify it passes** — the four guards + `warn-token-skin`, `solid-fill-tokens`, `theme-boot` → 130/130 PASS (one measured ratio corrected on the way: the dark border on the dark inset reads 1.51, not the guessed 1.6).
+- [x] **Step 5: Generalization-audit pass** — the log's phase-1 row.
+- [x] **Step 6: Commit** — `Give every console token a dark value and flip the guards to two declarations (#1010)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 2 — the venue console restyle
 
@@ -435,6 +435,7 @@ create `testing/console-themes.ts`, `operator/console-literal-sweep.spec.ts`; th
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-07 | phase 1 | every stylesheet comment whose ground is the porcelain pin — the claim the dark console falsifies | `grep -n "pins porcelain\|porcelain pin\|porcelain-pinned\|Declared ONCE" frontend/src/tailwind.css` | 11 lines: the two console inks, the class-O header, the alert tint, the map palette (retold); the fixed-fill families, the subtree-host mechanism notes and `--riv-accent-*` (true as written) | five retold, six left true |
 | 2026-09-07 | intake | every colour position the console paints that has no dark branch — the grey-slab mechanism: a light literal or a base-only token under the pin | `grep -rnoE '\b(bg\|border\|text\|from\|to\|via\|ring\|outline\|shadow\|divide)-(white\|black)(/[0-9]+)?' frontend/src/app/{operator,admin,shared} frontend/src/app/console-shell.ts` + the ledger's population command + the once-declared token list from `tailwind.css` | ~90 `bg-white/NN`, 6 `border-white/NN`, 3 opaque `bg-white`, 1 `bg-black/80`; 4 hex inks/rings, 2 amber banners, 1 gradient; 12 base-only tokens under the pin | the plan's phases 1–3; the residue recorded in AC-2 |
 
 ---
