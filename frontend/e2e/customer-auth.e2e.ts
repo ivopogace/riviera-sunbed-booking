@@ -19,10 +19,9 @@ test('a tourist registers, stays signed in across a reload, and signs out', asyn
   const auth = new CustomerAuthPage(page);
 
   await page.goto('/');
-  await auth.expectSignedOut(); // header offers Sign in / Register
+  await auth.expectSignedOut(); // header offers Sign in
 
-  // Register a fresh account from the header.
-  // The header's Register link deep-links into the unified card's register mode.
+  // Register a fresh account from the header menu, which deep-links into the card's register mode.
   await auth.gotoRegister();
   await expect(page).toHaveURL(/\/account\/sign-in\?mode=register$/);
   await expectNoSeriousAxeViolations(page, 'register page');
@@ -37,7 +36,7 @@ test('a tourist registers, stays signed in across a reload, and signs out', asyn
   await auth.expectSignedInAs('ana@example.com');
   await expectNoSeriousAxeViolations(page, 'signed-in header after reload');
 
-  // Sign out: the server session dies and the header returns to Sign in / Register.
+  // Sign out: the server session dies and the header returns to Sign in.
   await auth.signOut();
   await auth.expectSignedOut();
 });

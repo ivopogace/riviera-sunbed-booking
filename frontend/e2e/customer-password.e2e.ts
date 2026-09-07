@@ -56,7 +56,7 @@ test('a signed-in tourist changes their password, and the new credential replace
   await signIn(page, OLD_PASSWORD);
   // Let the post-sign-in redirect land first: its NavigationEnd closes any menu opened before it.
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByTestId('nav-user')).toContainText(EMAIL);
+  await expect(page.getByTestId('nav-user')).toHaveAccessibleName(`Account: ${EMAIL}`);
 
   await gotoAccount(page);
   await expect(page.getByTestId('setpw-email')).toContainText(EMAIL);
@@ -81,7 +81,7 @@ test('a signed-in tourist changes their password, and the new credential replace
   await expectNoSeriousAxeViolations(page, 'password saved');
 
   // The session doing the change SURVIVES — the server revokes every OTHER session, not this one.
-  await expect(page.getByTestId('nav-user')).toContainText(EMAIL);
+  await expect(page.getByTestId('nav-user')).toHaveAccessibleName(`Account: ${EMAIL}`);
 
   // And the rotation was real: after signing out, only the new password gets back in.
   await signOut(page);
@@ -91,7 +91,7 @@ test('a signed-in tourist changes their password, and the new credential replace
   await expect(page.getByTestId('auth-error')).toBeVisible();
 
   await signIn(page, NEW_PASSWORD);
-  await expect(page.getByTestId('nav-user')).toContainText(EMAIL);
+  await expect(page.getByTestId('nav-user')).toHaveAccessibleName(`Account: ${EMAIL}`);
 });
 
 test('an SSO-only account sets its first password with no current password', async ({ page }) => {
@@ -133,7 +133,7 @@ test('an SSO-only account sets its first password with no current password', asy
   await expect(page.getByTestId('nav-signin')).toBeVisible();
 
   await signIn(page, NEW_PASSWORD);
-  await expect(page.getByTestId('nav-user')).toContainText(EMAIL);
+  await expect(page.getByTestId('nav-user')).toHaveAccessibleName(`Account: ${EMAIL}`);
 });
 
 test('a blank current password is reported as missing, not incorrect', async ({ page }) => {
@@ -156,7 +156,7 @@ test('a blank current password is reported as missing, not incorrect', async ({ 
   // And nothing rotated: the original password still signs in.
   await signOut(page);
   await signIn(page, OLD_PASSWORD);
-  await expect(page.getByTestId('nav-user')).toContainText(EMAIL);
+  await expect(page.getByTestId('nav-user')).toHaveAccessibleName(`Account: ${EMAIL}`);
 });
 
 test('an exhausted change-password budget renders the rate-limit message', async ({ page }) => {
@@ -186,5 +186,5 @@ test('an exhausted change-password budget renders the rate-limit message', async
   // And nothing rotated: the original password still signs in.
   await signOut(page);
   await signIn(page, OLD_PASSWORD);
-  await expect(page.getByTestId('nav-user')).toContainText(EMAIL);
+  await expect(page.getByTestId('nav-user')).toHaveAccessibleName(`Account: ${EMAIL}`);
 });

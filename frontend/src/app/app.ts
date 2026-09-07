@@ -31,10 +31,14 @@ const CURRENT_POP_ROW =
 const POP_ITEM = `block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-riv-pop-ink [transition:background_0.12s_ease] hover:bg-riv-pop-hover ${CURRENT_POP_ROW}`;
 const MOBILE_ITEM = `block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-riv-pop-ink hover:bg-riv-pop-hover ${CURRENT_POP_ROW}`;
 
+/** The chip glass the desktop menu button and the account chip share, inner highlight included. */
+const CHIP =
+  'cursor-pointer rounded-full border border-riv-chip-border bg-riv-chip-bg shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-[10px] [transition:filter_0.15s_ease] hover:brightness-[0.96] motion-reduce:transition-none';
+
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
   backdrop: 'fixed inset-0 z-30 bg-[rgba(6,30,40,0.2)]',
-  accountPop: `riv-account-pop top-[calc(100%+10px)] right-0 w-[186px] p-[7px] ${POP}`,
+  accountPop: `riv-account-pop top-[calc(100%+10px)] right-0 w-[236px] p-[7px] ${POP}`,
   themePop: `riv-theme-pop top-[calc(100%+10px)] right-0 w-[214px] p-[7px] ${POP}`,
   mobileMenu: `top-[calc(100%+8px)] right-3 left-3 p-2 ${POP}`,
   popItem: POP_ITEM,
@@ -42,9 +46,29 @@ const CLS = {
   mobileItem: MOBILE_ITEM,
   mobileBtn: `${MOBILE_ITEM} cursor-pointer`,
   // The current page carries full ink and an underline in that ink (an accent token would vanish on riviera's dark header glass): hover alone is invisible on a tablet.
+  // inline-flex: appTouchTarget's min-height is a no-op on an inline <a>.
   navLink:
-    'cursor-pointer hover:text-riv-ink aria-[current=page]:font-semibold aria-[current=page]:text-riv-ink aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:decoration-current aria-[current=page]:underline-offset-[7px]',
+    'inline-flex cursor-pointer items-center hover:text-riv-ink aria-[current=page]:font-semibold aria-[current=page]:text-riv-ink aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:decoration-current aria-[current=page]:underline-offset-[7px]',
+  accountChip: `inline-flex items-center gap-2 py-1 pr-3 pl-1.5 font-semibold text-riv-ink ${CHIP}`,
+  menuBtn: `inline-flex h-11 w-11 flex-col items-center justify-center gap-[4.5px] ${CHIP}`,
+  menuBar: 'block h-0.5 w-[17px] rounded-[2px] bg-riv-ink',
+  // The 1.5px ink-soft ring is the swatch's WCAG 1.4.11 boundary (5.4 / 5.5 / 11.6:1 on the three bars): the swatch alone reaches 1.0:1 against the bar (its white end on porcelain), and a white inset ring vanishes there too.
+  swatchBtn:
+    'grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-full before:h-[22px] before:w-[22px] before:rounded-full before:bg-(image:--riv-swatch) before:shadow-[0_1px_3px_rgba(6,30,40,0.35)] before:ring-[1.5px] before:ring-riv-ink-soft before:[transition:scale_0.12s_ease] hover:before:scale-[1.12] motion-reduce:before:transition-none motion-reduce:hover:before:scale-100',
+  // The solid-fill family, not the CTA gradient: nothing in the bar may outweigh the page's primary button.
+  avatar:
+    'inline-flex shrink-0 items-center justify-center rounded-full bg-riv-solid-fill-brand font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]',
 } as const;
+
+/** The part of the address before the `@`: the chip's visible label. */
+function handleOf(email: string): string {
+  return email.split('@')[0];
+}
+
+/** The avatar's initial. */
+function initialOf(email: string): string {
+  return email.charAt(0).toUpperCase();
+}
 
 /** `routerLinkActive` matching for the header's plain-path links: the path alone, so Beaches (`/`)
  *  does not stay lit on every page and a `returnUrl` does not unlight Your account. */
@@ -117,7 +141,8 @@ export class App {
   protected readonly menuOpen = signal(false);
   protected readonly themeOpen = signal(false);
   /**
-   * The signed-in account menu — the tourist's entry point to `/account/password`.
+   * The header popover: the account menu signed in (the tourist's entry point to
+   * `/account/password`), the menu of Create an account + Find a booking signed out.
    *
    * <p><strong>A disclosure, deliberately not an ARIA `menu`.</strong> `role="menu"`/`menuitem`
    * would oblige roving `tabindex` + arrow-key navigation to be correct; the theme options were
@@ -130,11 +155,12 @@ export class App {
 
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
   private readonly themeButton = viewChild<ElementRef<HTMLButtonElement>>('themeButton');
+  /** The account popover's trigger: the account chip signed in, the round menu button signed out. */
   private readonly accountButton = viewChild<ElementRef<HTMLButtonElement>>('accountButton');
-  private readonly findButton = viewChild<ElementRef<HTMLButtonElement>>('findButton');
+  private readonly menuTrigger = viewChild<ElementRef<HTMLButtonElement>>('menuTrigger');
   private readonly mainRef = viewChild<ElementRef<HTMLElement>>('mainEl');
-  /** The control to hand focus back to when the find modal is dismissed (desktop trigger or, when
-   *  opened from the mobile menu, the persistent hamburger button — the mobile item collapses). */
+  /** The control to hand focus back to when the find modal is dismissed: the persistent trigger of
+   *  the popover or sheet whose row opened it, named by that row — the row itself is gone by then. */
   private findReturn: HTMLElement | null = null;
 
   protected readonly activeTheme = computed(
@@ -142,6 +168,11 @@ export class App {
       this.themes.options.find((option) => option.id === this.themes.theme()) ??
       this.themes.options[0],
   );
+  /** The signed-in address; read only by the account chip and the sheet's identity block, which
+   *  render signed in, when the principal name is defined. */
+  private readonly address = computed(() => this.customerAuth.email() ?? '');
+  protected readonly handle = computed(() => handleOf(this.address()));
+  protected readonly initial = computed(() => initialOf(this.address()));
 
   /**
    * The active route's chrome flags, computed once per successful navigation from a SINGLE
@@ -270,11 +301,11 @@ export class App {
     this.overlayNavId = this.router.currentNavigation()?.id ?? 0;
   }
 
-  /** Open the find-a-booking modal, closing any open nav popover and recording the focus-return
-   *  target (the desktop trigger, or the hamburger when opened from the collapsing mobile menu). */
-  protected openFind(fromMobile: boolean): void {
+  /** Open the find-a-booking modal, closing the popover or sheet it was opened from and recording
+   *  `trigger` — that surface's persistent control — as the focus-return target. */
+  protected openFind(trigger: HTMLElement): void {
     this.notePendingNavigation();
-    this.findReturn = (fromMobile ? this.menuButton() : this.findButton())?.nativeElement ?? null;
+    this.findReturn = trigger;
     this.menuOpen.set(false);
     this.themeOpen.set(false);
     this.accountOpen.set(false);
@@ -301,7 +332,7 @@ export class App {
     this.themeOpen.update((open) => !open);
   }
 
-  /** Toggle the signed-in account menu; only one header popover is open at a time. */
+  /** Toggle the account/menu popover; only one header popover is open at a time. */
   protected toggleAccountMenu(): void {
     this.notePendingNavigation();
     this.menuOpen.set(false);
@@ -345,7 +376,7 @@ export class App {
     }
     if (this.accountOpen()) {
       this.accountOpen.set(false);
-      this.accountButton()?.nativeElement.focus();
+      (this.accountButton() ?? this.menuTrigger())?.nativeElement.focus();
     }
   }
 }

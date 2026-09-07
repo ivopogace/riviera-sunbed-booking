@@ -1,22 +1,24 @@
 import { expect, Locator, Page } from '@playwright/test';
 
-import { openAccountMenu } from '../shell';
+import { openAccountMenu, openHeaderMenu } from '../shell';
 
 /**
  * Page Object for the customer auth flow — the tourist-side twin of
  * {@link OperatorSignInPage}. Unlike the operator sign-in card, this spans the shell header
- * (Sign in / Register links ↔ "Signed in as …" + Sign out) and the two full-page forms
+ * (the Sign in link + menu button ↔ the account chip) and the two full-page forms
  * (`/account/register`, `/account/sign-in`). Header controls are keyed by their `data-testid`
  * (the desktop nav is the only one in the DOM at the Desktop-Chrome viewport); the form fields use
  * accessible-name locators (one Email/Password per page), so a11y regressions surface here too.
  *
- * <p>The signed-in controls sit behind an account disclosure, so `signOut()` and
- * `gotoAccount()` open it first — callers are unaffected.
+ * <p>Create an account, Your account and Sign out sit behind the header's disclosure, so
+ * `gotoRegister()`, `gotoAccount()` and `signOut()` open it first — callers are unaffected.
  */
 export class CustomerAuthPage {
   /** Header (shell) controls. */
   readonly signInLink: Locator;
+  /** "Create an account" inside the signed-out menu. */
   readonly registerLink: Locator;
+  /** The account chip; its accessible name carries the full address. */
   readonly signedInAs: Locator;
   readonly signOutButton: Locator;
   /** "Your account" inside the account menu. */
@@ -55,6 +57,7 @@ export class CustomerAuthPage {
   }
 
   async gotoRegister(): Promise<void> {
+    await openHeaderMenu(this.page);
     await this.registerLink.click();
   }
 
@@ -106,6 +109,6 @@ export class CustomerAuthPage {
   }
 
   async expectSignedInAs(email: string): Promise<void> {
-    await expect(this.signedInAs).toContainText(email);
+    await expect(this.signedInAs).toHaveAccessibleName(`Account: ${email}`);
   }
 }

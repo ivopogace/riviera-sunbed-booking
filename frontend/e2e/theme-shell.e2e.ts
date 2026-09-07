@@ -184,7 +184,8 @@ test.describe('mobile viewport', () => {
 
     const toggle = page.getByTestId('menu-toggle');
     await expect(toggle).toBeVisible();
-    await expect(page.getByTestId('theme-toggle')).toBeHidden(); // desktop nav collapsed
+    await expect(page.locator('.riv-nav-desktop')).toBeHidden(); // desktop nav collapsed
+    await expect(page.getByTestId('nav-menu')).toBeHidden();
 
     await openShellOverlay(page, 'menu-toggle');
     await expect(page.getByTestId('mobile-menu')).toBeVisible();
@@ -203,9 +204,13 @@ test.describe('mobile viewport', () => {
 
     await openShellOverlay(page, 'menu-toggle');
     await expectNoSeriousAxeViolations(page, 'mobile menu open');
-    await page.getByRole('button', { name: 'Porcelain' }).click();
+
+    // The swatch stays in the bar at phone width; picking a theme closes the open sheet too.
+    await page.getByTestId('theme-toggle').press('Enter');
+    await expect(page.getByTestId('mobile-menu')).toBeHidden();
+    await page.getByTestId('theme-option-porcelain').click();
     await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
-    await expect(page.getByTestId('mobile-menu')).toBeHidden(); // selection closes the menu
+    await expect(page.getByTestId('theme-option-porcelain')).toBeHidden(); // selection closes the picker
   });
 });
 

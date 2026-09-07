@@ -10,6 +10,7 @@ import {
 } from './support/auth-mocks';
 import { CustomerAuthPage } from './support/pages/customer-auth.page';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
+import { openHeaderMenu } from './support/shell';
 
 /**
  * The unified auth card — all four flows on one surface, plus the operator landing
@@ -73,7 +74,7 @@ test('a tourist registers from the same card and is signed in', async ({ page })
   await expect(page).toHaveURL(/\/$/);
 });
 
-test('the header Register / Sign-in links switch the card mode via soft nav (#300)', async ({
+test('the header Create an account / Sign-in links switch the card mode via soft nav (#300)', async ({
   page,
 }) => {
   await mockCustomerAuthApi(page, { email: 'ana@example.com', validPassword: 'passphrase-123' });
@@ -82,6 +83,7 @@ test('the header Register / Sign-in links switch the card mode via soft nav (#30
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
 
   // A query-param-only soft nav (NOT a fresh page load): the reused component must still switch.
+  await openHeaderMenu(page);
   await page.getByTestId('nav-register').click();
   await expect(page).toHaveURL(/\/account\/sign-in\?mode=register$/);
   await expect(page.getByRole('heading', { name: 'Create your account' })).toBeVisible();

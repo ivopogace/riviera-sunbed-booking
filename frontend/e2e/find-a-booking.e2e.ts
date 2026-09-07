@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
 
 import { expectNoSeriousAxeViolations } from './support/axe';
-import { openShellOverlay } from './support/shell';
+import { openFindBooking, openShellOverlay } from './support/shell';
 import { settle } from './support/booking-dialog';
 
 /**
  * Real-render e2e for the "Find a booking" flow: a guest opens the glass modal from
- * the nav, types their booking code, and is taken to the existing booking detail view — and an unknown
+ * the header menu, types their booking code, and is taken to the existing booking detail view — and an unknown
  * code shows an inline error WITHOUT navigating. The booking API is mocked (`page.route`), so the
  * suite is CI-safe like its siblings. Axe runs on the open modal in both themes.
  */
@@ -68,8 +68,8 @@ test('finds a booking by code and opens its detail view (+ axe, riviera)', async
   await page.getByTestId('theme-option-riviera').click();
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'riviera');
 
-  // Open the modal from the desktop nav; the code input takes focus.
-  await openShellOverlay(page, 'find-open');
+  // Open the modal from the header menu; the code input takes focus.
+  await openFindBooking(page);
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   await expect(page.getByTestId('find-code')).toBeFocused();
@@ -103,7 +103,7 @@ test('a CLOSED-born booking shows the last-minute state and no cancel section (#
   );
 
   await page.goto('/');
-  await openShellOverlay(page, 'find-open');
+  await openFindBooking(page);
   await page.getByTestId('find-code').fill(CODE);
   await page.getByTestId('find-submit').click();
 
@@ -123,7 +123,7 @@ test('audits the open find modal in the porcelain theme', async ({ page }) => {
   await page.getByTestId('theme-option-porcelain').click();
   await expect(page.locator('html')).toHaveAttribute('data-riv-theme', 'porcelain');
 
-  await openShellOverlay(page, 'find-open');
+  await openFindBooking(page);
   await expect(page.getByRole('dialog')).toBeVisible();
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'find modal (porcelain)');
@@ -140,7 +140,7 @@ test('shows an inline error for an unknown code and does not navigate (+ axe)', 
   );
 
   await page.goto('/');
-  await openShellOverlay(page, 'find-open');
+  await openFindBooking(page);
   await page.getByTestId('find-code').fill('ZZZZ999999');
   await page.getByTestId('find-submit').click();
 
@@ -150,4 +150,51 @@ test('shows an inline error for an unknown code and does not navigate (+ axe)', 
   await expect(page.getByRole('dialog')).toBeVisible();
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'find modal error (dark)');
+});
+
+/**
+ * The modal is a menu row on both breakpoints, so the control that opened it is gone by the time
+ * it closes: focus has to come back to the popover's (or sheet's) persistent trigger.
+ */
+test('opens from the header menu in both auth states and returns focus to the trigger on dismiss (#1002)', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const menuButton = await openFindBooking(page);
+  await expect(menuButton).toHaveAttribute('data-testid', 'nav-menu');
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(menuButton).toBeFocused();
+
+  await page.route(/\/api\/auth\/me$/, (route) =>
+    route.fulfill({
+      json: { username: 'ana@example.com', principalType: 'CUSTOMER', emailVerified: true },
+    }),
+  );
+  await page.goto('/');
+  const chip = await openFindBooking(page);
+  await expect(chip).toHaveAttribute('data-testid', 'nav-user');
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(chip).toBeFocused();
+});
+
+test.describe('phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('opens from the hamburger sheet and returns focus to the hamburger on dismiss (#1002)', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await openShellOverlay(page, 'menu-toggle');
+    await page.getByTestId('find-open-mobile').click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByTestId('mobile-menu')).toBeHidden();
+
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByTestId('menu-toggle')).toBeFocused();
+  });
 });
