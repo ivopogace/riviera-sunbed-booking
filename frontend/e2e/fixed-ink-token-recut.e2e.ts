@@ -28,11 +28,12 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
 const VENUE_ID = 4;
 const CODE = 'RIV7K2QX';
 
-/** The authored value of every theme-invariant token the re-cut registered, as `getPropertyValue` returns it. */
+/** The authored value of every theme-invariant token the re-cut registered, as `getPropertyValue`
+ *  returns it. The console card border left this list when the console gained its own dark theme:
+ *  it is themed now, and sits in {@link THEMED_TOKENS}. */
 const REGISTRY = {
   '--riv-banner-body-ink': '#334a52',
   '--riv-banner-strong-ink': '#0a2a33',
-  '--riv-console-card-border': 'rgba(12, 42, 51, 0.1)',
 } as const;
 
 /**
@@ -41,6 +42,7 @@ const REGISTRY = {
  */
 const THEMED_TOKENS = {
   porcelain: {
+    '--riv-console-card-border': 'rgba(12, 42, 51, 0.1)',
     '--riv-calendar-free-fill': '#dff0e4',
     '--riv-calendar-low-fill': '#fdeecc',
     '--riv-calendar-full-fill': '#fae9e9',
@@ -52,6 +54,7 @@ const THEMED_TOKENS = {
     '--riv-pop-ink-disabled': 'rgba(12, 42, 51, 0.4)',
   },
   dark: {
+    '--riv-console-card-border': 'rgba(255, 255, 255, 0.16)',
     '--riv-calendar-free-fill': '#1f3f30',
     '--riv-calendar-low-fill': '#4a3a16',
     '--riv-calendar-full-fill': '#4d2429',
