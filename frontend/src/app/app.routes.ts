@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { Router, Routes } from '@angular/router';
 
 import type { AdminTabRouteData } from './admin/admin-console';
+import type { TouristRouteData } from './app';
 import { operatorSessionGuard } from './core/operator-session.guard';
 
 /**
@@ -195,18 +196,21 @@ export const routes: Routes = [
     path: '',
     loadComponent: () => import('./pages/home/home').then((m) => m.Home),
     title: 'Riviera — Sunbed Booking',
+    data: { section: 'beaches' } satisfies TouristRouteData,
   },
   {
     // Device-local guest bookings list.
     path: 'my-bookings',
     loadComponent: () => import('./booking/my-bookings').then((m) => m.MyBookings),
     title: 'My bookings — Riviera',
+    data: { section: 'bookings' } satisfies TouristRouteData,
   },
   {
     // The ONE auth card; ?audience=/?mode=/?returnUrl= preselect its state.
     path: 'account/sign-in',
     loadComponent: () => import('./auth/auth-page').then((m) => m.AuthPage),
     title: 'Sign in — Riviera',
+    data: { section: 'account' } satisfies TouristRouteData,
   },
   {
     // Retired page → the card in register mode; kept one release for existing links.
@@ -219,24 +223,28 @@ export const routes: Routes = [
     path: 'account/forgot',
     loadComponent: () => import('./auth/forgot-password').then((m) => m.ForgotPassword),
     title: 'Reset your password — Riviera',
+    data: { section: 'account' } satisfies TouristRouteData,
   },
   {
     // Reset landing (emailed link carries ?token=…) — set a new password.
     path: 'account/reset',
     loadComponent: () => import('./auth/reset-password').then((m) => m.ResetPassword),
     title: 'Set a new password — Riviera',
+    data: { section: 'account' } satisfies TouristRouteData,
   },
   {
     // Email-verification landing (emailed link carries ?token=…) — POST-verify on load.
     path: 'account/verify',
     loadComponent: () => import('./auth/verify-email').then((m) => m.VerifyEmail),
     title: 'Verify your email — Riviera',
+    data: { section: 'account' } satisfies TouristRouteData,
   },
   {
     // Signed-in account page: set/change password + verification resend.
     path: 'account/password',
     loadComponent: () => import('./auth/set-password').then((m) => m.SetPassword),
     title: 'Your account — Riviera',
+    data: { section: 'account' } satisfies TouristRouteData,
   },
   {
     // Operator credential rotation — a separate page from the customer account page above.
@@ -309,17 +317,20 @@ export const routes: Routes = [
     path: 'venues/:id',
     loadComponent: () => import('./venue/venue-map').then((m) => m.VenueMap),
     title: 'Beach map — Riviera',
+    data: { section: 'beaches' } satisfies TouristRouteData,
   },
   {
     path: 'booking/confirmation',
     loadComponent: () =>
       import('./booking/booking-confirmation').then((m) => m.BookingConfirmation),
     title: 'Booking confirmed — Riviera',
+    data: { section: 'bookings' } satisfies TouristRouteData,
   },
   {
     path: 'booking/pay',
     loadComponent: () => import('./booking/booking-pay').then((m) => m.BookingPay),
     title: 'Complete payment — Riviera',
+    data: { section: 'bookings', tabBar: false } satisfies TouristRouteData,
   },
   {
     // Static segment — must stay above 'booking/:code'.
@@ -327,10 +338,12 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./booking/request-confirmation').then((m) => m.RequestConfirmation),
     title: 'Request sent — Riviera',
+    data: { section: 'bookings' } satisfies TouristRouteData,
   },
   {
     path: 'booking/:code',
     loadComponent: () => import('./booking/booking-view').then((m) => m.BookingView),
     title: 'Your booking — Riviera',
+    data: { section: 'bookings' } satisfies TouristRouteData,
   },
 ];

@@ -79,17 +79,45 @@ const EXACT_PATH: IsActiveMatchOptions = {
   matrixParams: 'ignored',
 };
 
+/** The phone tab bar's three sections: the bar lights the tab whose section the active route
+ *  carries, not the tab whose path it matches (`/venues/3` is a Beaches page, `/booking/CODE` a
+ *  bookings page). `account` lights only while signed in. */
+export type TouristSection = 'beaches' | 'bookings' | 'account';
+
+/**
+ * The route data a tourist route may carry for the shell's phone chrome (`app.routes.ts`):
+ * `section` places the route under a bottom tab; `tabBar: false` hides the bar altogether — the
+ * payment page, where a thumb-reach exit under `Pay €45` was the objection that removed the
+ * search-first header candidate. Read off the same root→leaf walk as the operator flags.
+ */
+export interface TouristRouteData {
+  section?: TouristSection;
+  tabBar?: false;
+}
+
 /** The active route's chrome flags — see {@link App.routeChrome}. */
 interface RouteChrome {
   chromeless: boolean;
   operatorChrome: boolean;
+  /** The leaf-most `data.section` on the chain, or `null` on a route outside every section. */
+  section: TouristSection | null;
+  /** `false` when any route on the chain carries `data.tabBar: false`. */
+  tabBar: boolean;
 }
 
-/** The chrome before the first navigation completes: the tourist header and footer. */
+/** The chrome before the first navigation completes: the tourist header, footer and tab bar,
+ *  with no tab lit. */
 const PRE_NAVIGATION_CHROME: RouteChrome = {
   chromeless: false,
   operatorChrome: false,
+  section: null,
+  tabBar: true,
 };
+
+/** Narrows an untyped `data.section` to a {@link TouristSection}; anything else is no section. */
+function sectionOf(data: unknown): TouristSection | null {
+  return data === 'beaches' || data === 'bookings' || data === 'account' ? data : null;
+}
 
 /**
  * The Liquid Glass app shell: themed gradient background, sticky glass header with
@@ -198,13 +226,26 @@ export class App {
     let route = this.router.routerState.snapshot.root;
     let chromeless = route.data['operatorConsole'] === true;
     let operatorChrome = route.data['operatorChrome'] === true;
+    let section = sectionOf(route.data['section']);
+    let tabBar = route.data['tabBar'] !== false;
     while (route.firstChild) {
       route = route.firstChild;
       chromeless ||= route.data['operatorConsole'] === true;
       operatorChrome ||= route.data['operatorChrome'] === true;
+      section = sectionOf(route.data['section']) ?? section;
+      tabBar &&= route.data['tabBar'] !== false;
     }
-    return { chromeless, operatorChrome };
+    return { chromeless, operatorChrome, section, tabBar };
   });
+
+  /** The bottom tab the active route belongs to, `null` outside every section (legal pages) and
+   *  before the first navigation. The Account tab reads it together with the signed-in state. */
+  protected readonly tabSection = computed(() => this.routeChrome().section);
+
+  /** Whether the phone tab bar renders: the tourist chrome, on a route not flagged `tabBar: false`. */
+  protected readonly tabBar = computed(
+    () => this.shellChrome() === 'tourist' && this.routeChrome().tabBar,
+  );
 
   /** Whether the auth card is the current page, by path alone — the same test `routerLinkActive`
    *  runs for the plain-path links, as a signal. */
