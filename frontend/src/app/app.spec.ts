@@ -327,6 +327,27 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(link?.getAttribute('role')).toBeNull();
   });
 
+  it('closes the signed-out menu on Escape and on the backdrop, handing focus back to the Menu button (#1002)', () => {
+    const { fixture, el } = shell();
+    const trigger = el.querySelector<HTMLButtonElement>('[data-testid="nav-menu"]')!;
+
+    trigger.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).not.toBeNull();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(trigger);
+
+    trigger.click();
+    fixture.detectChanges();
+    el.querySelector<HTMLElement>('[data-testid="account-backdrop"]')!.click();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
   it('closes the account menu when the theme picker opens, and vice versa (#351)', () => {
     customerAuth.signedIn.set(true);
     customerAuth.email.set('ana@example.com');

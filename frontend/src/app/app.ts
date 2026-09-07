@@ -61,14 +61,13 @@ const CLS = {
 } as const;
 
 /** The part of the address before the `@`: the chip's visible label. */
-function handleOf(email: string | undefined): string {
-  return email?.split('@')[0] ?? '';
+function handleOf(email: string): string {
+  return email.split('@')[0];
 }
 
-/** The avatar's initial, `?` for an address that is somehow empty. */
-function initialOf(email: string | undefined): string {
-  const first = email?.trim().charAt(0) ?? '';
-  return (first === '' ? '?' : first).toUpperCase();
+/** The avatar's initial. */
+function initialOf(email: string): string {
+  return email.charAt(0).toUpperCase();
 }
 
 /** `routerLinkActive` matching for the header's plain-path links: the path alone, so Beaches (`/`)
@@ -168,8 +167,11 @@ export class App {
       this.themes.options.find((option) => option.id === this.themes.theme()) ??
       this.themes.options[0],
   );
-  protected readonly handle = computed(() => handleOf(this.customerAuth.email()));
-  protected readonly initial = computed(() => initialOf(this.customerAuth.email()));
+  /** The signed-in address; read only by the account chip and the sheet's identity block, which
+   *  render signed in, when the principal name is defined. */
+  private readonly address = computed(() => this.customerAuth.email() ?? '');
+  protected readonly handle = computed(() => handleOf(this.address()));
+  protected readonly initial = computed(() => initialOf(this.address()));
 
   /**
    * The active route's chrome flags, computed once per successful navigation from a SINGLE

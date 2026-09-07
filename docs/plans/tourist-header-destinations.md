@@ -72,12 +72,12 @@ ACs:
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given the tourist chrome, when the shell renders, then
+- [x] **AC-1:** Given the tourist chrome, when the shell renders, then
   `nav[aria-label="Primary"]` contains exactly two links, `Beaches` → `/` and `My bookings` →
   `/my-bookings`, and no `Find a booking` control anywhere in the primary nav. *Seam:* the
   rendered shell (`App` host DOM) · *Pinned by:* `app.spec.ts` › `renders exactly two primary
   destinations, Beaches and My bookings (#1002)`.
-- [ ] **AC-2:** Given either auth state at either breakpoint, when `Find a booking` is activated
+- [x] **AC-2:** Given either auth state at either breakpoint, when `Find a booking` is activated
   from the header popover (account menu signed in, menu button signed out) or the hamburger
   sheet, then `app-find-booking` opens, the popover/sheet closes, and dismissing the modal
   returns focus to that popover's persistent trigger. *Seam:* the shell DOM +
@@ -85,7 +85,7 @@ ACs:
   returns focus to the chip on dismiss (#1002)`, `… from the signed-out menu returns focus to
   the menu button …`, `… from the mobile menu returns focus to the hamburger …`;
   `e2e/find-a-booking.e2e.ts` opening via the menu signed out and signed in.
-- [ ] **AC-3:** Given the bar, when the theme control renders, then it is a button with no
+- [x] **AC-3:** Given the bar, when the theme control renders, then it is a button with no
   visible text whose accessible name is `Color theme: <active theme>`, opening the unchanged
   three-option popover; its swatch carries a 1.5px `--riv-ink-soft` ring that composites to
   ≥ 3:1 against the header glass at the worst stop of every theme. *Seam:* the shell DOM for the
@@ -93,7 +93,7 @@ ACs:
   control is a swatch-only button named for the active theme (#1002)`, `app.a11y.spec.ts`
   (open picker, both auth states), `app.contrast.spec.ts` › `the swatch ring (ink-soft) clears
   3:1 against the header glass in every theme (#1002)`.
-- [ ] **AC-4:** Given signed out, when the shell renders, then the bar holds a `Sign in` link
+- [x] **AC-4:** Given signed out, when the shell renders, then the bar holds a `Sign in` link
   (`href="/account/sign-in"`, `aria-current="page"` on the sign-in route via `authLinkCurrent`)
   and a separate button named `Menu` whose popover holds `Create an account`
   (`/account/sign-in?mode=register`) and `Find a booking`; given signed in, the bar holds one
@@ -103,22 +103,22 @@ ACs:
   `app.spec.ts` › `signed out: a Sign in link plus a Menu button (#1002)`, `signed in: one
   account chip opening the account menu (#1002)`, `never marks Sign in and Create an account
   current together`.
-- [ ] **AC-5:** Given `/venues/1` (or any page the nav does not list), when the desktop nav
+- [x] **AC-5:** Given `/venues/1` (or any page the nav does not list), when the desktop nav
   renders, then no link carries `aria-current`; `Beaches` is current at `/` only. *Seam:*
   `routerLinkActive` with `EXACT_PATH` · *Pinned by:* `app.spec.ts` › `marks Beaches current at
   the root only, and nothing on a page the nav does not list` (existing, extended to a
   `/venues/1` route).
-- [ ] **AC-6:** Given the riviera theme on a touch tablet, when `/my-bookings` renders, then the
+- [x] **AC-6:** Given the riviera theme on a touch tablet, when `/my-bookings` renders, then the
   current link is full ink (`rgb(255, 255, 255)`) with an underline in that same ink — never the
   accent ink. *Seam:* computed styles in a real browser · *Pinned by:*
   `e2e/current-page-marker.e2e.ts` › `marks the current page inline with full ink and an
   underline in the riviera theme (#1002)`.
-- [ ] **AC-7:** Given `/booking/pay` reached through the dialog, in both auth states, when the
+- [x] **AC-7:** Given `/booking/pay` reached through the dialog, in both auth states, when the
   header renders, then no header descendant's class list names `--riv-cta-grad` and no
   descendant's computed `background-image` equals the pay button's. *Seam:* computed styles ·
   *Pinned by:* `e2e/tourist-header.e2e.ts` › `no header control wears the CTA gradient on the
   pay page (#1002)`.
-- [ ] **AC-8:** Given every header control, links included, when the phone sweep runs, then each
+- [x] **AC-8:** Given every header control, links included, when the phone sweep runs, then each
   declares `appTouchTarget` and measures ≥ 44 × 44. *Seam:* the rendered boxes · *Pinned by:*
   `e2e/touch-targets-tourist.e2e.ts` (existing sweep, the menu case re-pointed) +
   `app.spec.ts` › `every header link declares the touch floor (#1002)` (class-list declaration
@@ -154,11 +154,11 @@ ACs:
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | An e2e that drove the retired controls (`find-open` in the nav, `nav-register` in the bar, `nav-user` text) goes red | high | med | each re-pointed in the same phase as the retirement; the mocked suite runs locally before push | this session | open |
-| R-2 | The `<a>` links stay `display: inline`, so `appTouchTarget` is a silent no-op and the sweep fails | med | med | every bar link gets `inline-flex items-center`; the phone sweep (`touch-targets-tourist.e2e.ts`) is the proof | this session | open |
-| R-3 | Two controls named `Menu` in the DOM (hamburger `sm:hidden`, desktop button `hidden sm:flex`) confuse a role locator | low | low | e2e locators key on test ids; `getByRole` skips CSS-hidden elements | this session | open |
-| R-4 | The swatch ring reads under 3:1 on some stop (the swatch alone is 1.0–2.8:1) | low | high | `app.contrast.spec.ts` composites ink-soft over the header glass over every stop | this session | open |
-| R-5 | Popover branches each declare a trigger ref; a ref used out of scope compiles to `undefined` and `openFind` records `null` | low | med | `app.spec.ts` asserts `document.activeElement` after dismiss in all three openers | this session | open |
+| R-1 | An e2e that drove the retired controls (`find-open` in the nav, `nav-register` in the bar, `nav-user` text) goes red | high | med | each re-pointed in the same phase as the retirement; the mocked suite runs locally before push | this session | closed — every retired control re-pointed; full mocked suite 443/444 locally (the one failure an admin mail-delivery timing flake outside the diff, green alone), CI frontend job green on `fc4581c1` |
+| R-2 | The `<a>` links stay `display: inline`, so `appTouchTarget` is a silent no-op and the sweep fails | med | med | every bar link gets `inline-flex items-center`; the phone sweep (`touch-targets-tourist.e2e.ts`) is the proof | this session | closed — sweep green locally and in CI |
+| R-3 | Two controls named `Menu` in the DOM (hamburger `sm:hidden`, desktop button `hidden sm:flex`) confuse a role locator | low | low | e2e locators key on test ids; `getByRole` skips CSS-hidden elements | this session | closed — no spec uses a `Menu` role locator; axe passes with both in the DOM |
+| R-4 | The swatch ring reads under 3:1 on some stop (the swatch alone is 1.0–2.8:1) | low | high | `app.contrast.spec.ts` composites ink-soft over the header glass over every stop | this session | closed — spec green in all three themes; rendered ring pinned in `tourist-header.e2e.ts` |
+| R-5 | Popover branches each declare a trigger ref; a ref used out of scope compiles to `undefined` and `openFind` records `null` | low | med | `app.spec.ts` asserts `document.activeElement` after dismiss in all three openers | this session | closed — the three focus-return tests and the e2e legs are green |
 
 ## Open questions / Assumptions
 
@@ -197,18 +197,29 @@ N/A — no payment in scope.
 
 N/A — no contract change.
 
+## Sonar gate note
+
+First analysis on `fc4581c1`: 0 issues, 0 duplicated blocks, new-code coverage **76.5%** → gate
+ERROR on the 80% bar. The gap was branch coverage on `app.ts`, not lines (9/9 covered): the
+`undefined` branches of the two address helpers (dead — a signed-in principal always has an
+address) and the signed-out leg of `closeMenus` (`menuTrigger`), which no unit test walked.
+Fix: the helpers take a `string` from one `address` computed, and `app.spec.ts` pins the
+signed-out popover's Escape and backdrop close with focus return. Local lcov after the fix:
+one uncovered new branch (the address fallback), 12/13 → ≈ 92%. Re-checked on the fix push —
+see Execution status.
+
 ## Execution status
 
-**Stage pointer:** implement (phase 4) → CI gate.
+**Stage pointer:** review gate (running) + sonar gate (fix pushed, awaiting re-analysis) — PR #1004.
 
-**Next action:** full unit + mocked e2e suites locally, push, open the draft PR, check its CI run.
+**Next action:** score the review findings, fix what clears the bar, confirm Sonar ≥ 80% on the new head, then the merge close-out.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | `0439930e` |
 | 1 + 2 — AC 1, 2, 4, 5: two destinations, Sign in + Menu, account chip, Find a booking from the menus (one commit: the template cannot be rebuilt in halves, so both phases' red tests preceded one green) | ✅ | `c7c914b6` |
 | 3 — AC 3, 6, 7, 8: swatch + ring, riviera marker, no CTA skin, touch floor | ✅ | (this commit) |
-| 4 — merge `main`, gates | ⏳ | |
+| 4 — gates (`main` unchanged, nothing to merge); Sonar coverage fix | ⏳ | (this commit) |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
