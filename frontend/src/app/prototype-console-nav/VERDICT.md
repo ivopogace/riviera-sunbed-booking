@@ -11,7 +11,16 @@ hairline, grouped by thin dividers. Two departures in it are the maintainer's to
 mine (the grill below): dropping the admin pills the design canvas drew, and merging the two
 chromes.
 
-Nothing on this branch merges. It is the primary source behind the rebuild.
+Nothing on this branch merges. It is the primary source behind the rebuild: epic
+[#1006](https://github.com/ivopogace/riviera-sunbed-booking/issues/1006) and its seven slices
+[#1007](https://github.com/ivopogace/riviera-sunbed-booking/issues/1007) (rail),
+[#1008](https://github.com/ivopogace/riviera-sunbed-booking/issues/1008) (account chip),
+[#1009](https://github.com/ivopogace/riviera-sunbed-booking/issues/1009) (venue switcher),
+[#1011](https://github.com/ivopogace/riviera-sunbed-booking/issues/1011) (one shell),
+[#1012](https://github.com/ivopogace/riviera-sunbed-booking/issues/1012) (phone rail),
+[#1013](https://github.com/ivopogace/riviera-sunbed-booking/issues/1013) (palette),
+[#1010](https://github.com/ivopogace/riviera-sunbed-booking/issues/1010) (dark console theme).
+G was approved by the maintainer on 2026-09-07.
 
 ## How the candidates were judged
 
@@ -168,11 +177,11 @@ and at 1280px the admin pill strip already scrolls.
 - Whether E's palette earns a ⌘K slot on D's account chip later — a keyboard accelerator for the
   nine-destination admin, never the primary nav.
 
-## Rebuild — the slices for the Issue stage (`to-issues`)
+## Rebuild — the slices, as opened
 
 The spike is the `prototype` half of riviera-sdlc's Plan row. Refine is done (the sixteen answers
-above); the maintainer decides on G's screenshots, then `to-issues` cuts these tracer bullets,
-each demoable alone:
+above), G was approved on its screenshots, and `to-issues` cut these tracer bullets under epic
+#1006 — the issue numbers in the header of this file, in dependency order 1 · 2 → 3 · 7 → 4 → 5 · 6:
 
 1. **The rail primitive** — `shared/` gets the underlined-tab-on-a-hairline element (a component
    or variant directive per `riviera-tailwind` rule 1, never `@apply`), with `aria-current` as the
