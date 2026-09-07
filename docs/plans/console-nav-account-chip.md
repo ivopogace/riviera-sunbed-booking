@@ -263,7 +263,9 @@ scored 75 by the verification pass — under the procedure's 80 bar, so no revie
 and all four fixed in the two review-fix commits. **Sonar gate:** quality gate passed on the head,
 318 new lines analysed, 0 new issues, 0 duplicated blocks, 98.2% new-code coverage (the API lists,
 not the badge). **Merge:** merges via PR #1015 (recorded here ahead of the merge, per §3 step 4); the
-five ← confirm? assumptions above are the maintainer's to settle at that merge.
+five ← confirm? assumptions above were settled by the maintainer's "merge when ready". The four
+merged plan docs are retired in a docs-only push after the last code commit — the retirement was
+missed in that commit and is due at this close-out, so the CI cycle is spent knowingly.
 
 **Findings register**
 
@@ -280,6 +282,7 @@ five ← confirm? assumptions above are the maintainer's to settle at that merge
 ## File structure
 
 - `docs/plans/console-nav-account-chip.md` — this plan.
+- `docs/plans/admin-route-signals.md`, `docs/plans/console-nav-tab-rail.md`, `docs/plans/lazy-route-import-coverage.md`, `docs/plans/tourist-header-phone-tab-bar.md` — retired: their PRs (#998, #1000, #1005, #1014) merged, and this is the next close-out (`riviera-docs-freshness` § Plan-doc retirement); no doc or comment cited their paths.
 - `frontend/src/app/shared/popover-skin.ts` — the hoisted recipes: `POP_SKIN`, `POP_BACKDROP`, `POP_ITEM`, `POP_BUTTON`, `CHIP`, `AVATAR`, `EXACT_PATH`.
 - `frontend/src/app/app.ts` — imports the hoisted recipes; private copies removed.
 - `frontend/src/app/operator/operator-account-chip.ts` — the chip + popover component.
