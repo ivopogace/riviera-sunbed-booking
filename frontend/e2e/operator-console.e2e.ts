@@ -284,7 +284,6 @@ test('the account chip opens a popover on the console — axe clean, one header 
   await openOperatorAccountMenu(page, 'oc');
   await expect(page.getByTestId('oc-account-identity')).toContainText('Signed in as operator');
   await expect(page.getByTestId('oc-account-menu').getByRole('link')).toHaveText([
-    'Create a venue',
     'Change password',
   ]);
   await settle(page);

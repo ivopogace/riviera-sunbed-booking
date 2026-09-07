@@ -211,13 +211,13 @@ N/A — no contract change (`GET /api/venues/mine` → `OwnedVenue[]`, unchanged
 
 ## Execution status
 
-**Stage pointer:** `plan committed → implement (phase 0)`
+**Stage pointer:** `implement (phase 1)`
 
-**Next action:** phase 0 — red the chip spec on the row set without `Create a venue`.
+**Next action:** phase 1 — red `operator-venue-switch.spec.ts` against the missing component.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
-| 0 — `Create a venue` leaves the account chip | | |
+| 0 — `Create a venue` leaves the account chip | ✅ | phase-0 commit |
 | 1 — `OperatorVenueSwitch` + its unit and contrast specs | | |
 | 2 — the console mounts it; host, a11y, contrast and harness specs | | |
 | 3 — mocked e2e: the two-venue case, the touch-target sweep, the chip row lists | | |
@@ -382,6 +382,7 @@ export class OperatorVenueSwitch {
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-07 | phase 0 | every reference to the chip's create row (test id or label) | `grep -rn "create-venue\|Create a venue" frontend/src frontend/e2e` | the chip + its spec, the console and chrome specs, two e2e row lists; the landing's `operator-home-add-venue` and the `?create=1` deep links are the landing's own | all five call sites updated; the landing untouched |
 
 ---
 

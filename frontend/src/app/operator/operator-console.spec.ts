@@ -305,11 +305,13 @@ describe('OperatorConsole — signed-in shell (#170, guard-gated since #277)', (
     expect(host().querySelector('[data-testid="oc-requests-badge"]')?.textContent).toContain('4');
   });
 
-  it('exposes a reachable create-venue link to the operator-home create state (#278)', async () => {
+  it('offers no Create a venue in the account chip — venue actions moved under the venue name (#1009)', async () => {
     await createSignedIn();
     await openChip();
-    const link = host().querySelector<HTMLAnchorElement>('[data-testid="oc-create-venue"]');
-    expect(link?.getAttribute('href')).toBe('/operator?create=1');
+    expect(host().querySelector('[data-testid="oc-create-venue"]')).toBeNull();
+    expect(host().querySelector('[data-testid="oc-account-menu"]')?.textContent).not.toContain(
+      'Create a venue',
+    );
   });
 
   it('keeps the shell working when the badge fetch fails — no badge (#170, R-4)', async () => {

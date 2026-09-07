@@ -88,17 +88,17 @@ describe('OperatorAccountChip', () => {
     expect(el.querySelectorAll('a, button')).toHaveLength(1);
   });
 
-  it('opens the popover: identity block, Create a venue, Change password, Sign out — no Admin console for a non-admin', () => {
+  it('opens the popover: identity block, Change password, Sign out — no Create a venue, no Admin console for a non-admin (#1009)', () => {
     open();
 
     expect(chip().getAttribute('aria-expanded')).toBe('true');
     expect(menu()!.querySelector('[data-testid="oc-account-identity"]')?.textContent).toContain(
       'Signed in as maria@example.com',
     );
-    expect(rows()).toEqual(['Create a venue', 'Change password', 'Sign out']);
-    expect(
-      el.querySelector<HTMLAnchorElement>('[data-testid="oc-create-venue"]')?.getAttribute('href'),
-    ).toBe('/operator?create=1');
+    expect(rows()).toEqual(['Change password', 'Sign out']);
+    // Venue actions live under the venue switcher (#1009), not in the account chip.
+    expect(el.querySelector('[data-testid="oc-create-venue"]')).toBeNull();
+    expect(el.textContent).not.toContain('Create a venue');
     expect(
       el
         .querySelector<HTMLAnchorElement>('[data-testid="oc-change-password"]')
@@ -107,11 +107,11 @@ describe('OperatorAccountChip', () => {
     expect(el.querySelector('[data-testid="oc-admin-link"]')).toBeNull();
   });
 
-  it('adds the Admin console row for a platform-admin principal, between Create a venue and Change password', () => {
+  it('adds the Admin console row for a platform-admin principal, ahead of Change password', () => {
     operatorAuth.isAdmin.set(true);
     open();
 
-    expect(rows()).toEqual(['Create a venue', 'Admin console', 'Change password', 'Sign out']);
+    expect(rows()).toEqual(['Admin console', 'Change password', 'Sign out']);
     expect(
       el.querySelector<HTMLAnchorElement>('[data-testid="oc-admin-link"]')?.getAttribute('href'),
     ).toBe('/admin');
@@ -125,7 +125,6 @@ describe('OperatorAccountChip', () => {
       'account-menu',
       'account-backdrop',
       'account-identity',
-      'create-venue',
       'change-password',
       'signout',
     ]) {
@@ -239,7 +238,7 @@ describe('OperatorAccountChip', () => {
     expect(current.map((row) => row.textContent.trim())).toEqual(['Admin console']);
   });
 
-  it('marks no row current on the operator landing — Create a venue is an action, not a place', async () => {
+  it('marks no row current on the operator landing', async () => {
     await TestBed.inject(Router).navigateByUrl('/operator');
     await openSettled();
 
