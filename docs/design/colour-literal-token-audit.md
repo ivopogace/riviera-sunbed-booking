@@ -407,7 +407,9 @@ does not. Each needs its own token, not the coincidental one.
 >   sign-out button's new border token. Not a violation of #852's beside-a-literal check (different
 >   value, different role), and not in #849's population, which is the `#0a2a33` / `rgba(12,42,51,·)`
 >   values. It is a genuine "no token at all" candidate with no row anywhere — it has one now.
->   **done — #887, PR #889** (`--riv-console-btn-hover`), and the verdict is a *refusal* rather than
+>   **done — #887, PR #889** (`--riv-console-btn-hover`); **retired with #1008**, when the account chip
+>   folded the sign-out button into a popover row on the `--riv-pop-*` family and both
+>   `--riv-console-btn-*` tokens lost their only consumer. The verdict is a *refusal* rather than
 >   a placement: the ticket asked whether this skin is `--riv-solid-btn-{fill,hover}` in different
 >   markup, and it is not. Adopting that pair repaints, because its resting fill is `#f4f6f7` where
 >   this button's is `#ffffff` — two positions moved to migrate one, and #849's whole claim is that

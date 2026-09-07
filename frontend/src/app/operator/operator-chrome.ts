@@ -1,7 +1,7 @@
 import { Component, computed, DOCUMENT, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
-import { OperatorActions } from './operator-actions';
+import { OperatorAccountChip } from './operator-account-chip';
 import { currentUrl } from '../shared/current-url';
 import { TouchTarget } from '../shared/touch-target';
 import { OperatorAuth } from '../core/operator-auth';
@@ -15,14 +15,15 @@ import { OperatorAuth } from '../core/operator-auth';
  * TOURIST chrome (whose auth state is the customer session, so an admin was shown "Sign in /
  * Register" while signed in) or no chrome at all.
  *
- * <p>Mirrors the console header's links so operator navigation never dead-ends: brand back to
- * `/operator` (which resolves the venue), onboarding, Admin (admins only), password change,
- * sign-out. The `/admin` pages are reachable signed-out (they self-gate on the server's role
- * check), so a signed-out visitor gets the operator sign-in link instead of session controls.
+ * <p>Mirrors the console header so operator navigation never dead-ends: brand back to `/operator`
+ * (which resolves the venue) and the account chip (`operator-account-chip.ts`: onboarding, Admin
+ * console for admins, password change, sign-out). The `/admin` pages are reachable signed-out (they
+ * self-gate on the server's role check), so a signed-out visitor gets the operator sign-in link
+ * instead of the chip.
  */
 @Component({
   selector: 'app-operator-chrome',
-  imports: [OperatorActions, RouterLink, TouchTarget],
+  imports: [OperatorAccountChip, RouterLink, TouchTarget],
   // contents: else this wrapper (exactly header-height tall) is the sticky header's containing block, leaving it no room to stick.
   host: { class: 'contents' },
   template: `
@@ -42,7 +43,7 @@ import { OperatorAuth } from '../core/operator-auth';
         @if (!operator.restoring()) {
           <nav class="flex flex-wrap items-center gap-x-3.5" aria-label="Operator">
             @if (operator.signedIn()) {
-              <app-operator-actions testIdPrefix="opc" (signOut)="onSignOut()" />
+              <app-operator-account-chip testIdPrefix="opc" (signOut)="onSignOut()" />
             } @else {
               <a
                 appTouchTarget

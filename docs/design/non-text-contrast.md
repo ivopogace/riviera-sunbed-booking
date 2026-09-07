@@ -102,8 +102,7 @@ number-bearing surface, not two.
 | `--riv-medallion-negative-border` (**rule 2a** — `aria-hidden` glyph, its outcome card's heading carries the meaning) | `app/shared/fixed-fill-token-skins.contrast.spec.ts` |
 | `--riv-amenity-tag-border`, `--riv-amenity-water-border` | `app/shared/fixed-fill-token-skins.contrast.spec.ts` (`amenities.contrast.spec.ts` is the same family's ink/fill text pairs, not these borders) |
 | `--riv-warn-edge/50` on `daily-view-tab`'s close-sales trigger — the button's own label carries the identity | `app/operator/daily-view-tab.contrast.spec.ts` |
-| `--riv-console-btn-border` (the console's sign-out button) — the control's own label carries the identity. `--riv-console-card-border` is measured beside it but no longer bounds a control: the active tab pill it once edged became the tab rail's underline (#1007), and the rail's marker and hairline are held to 3:1 in `app/shared/tab-rail.contrast.spec.ts` | `app/shared/fixed-ink-tokens.contrast.spec.ts` |
-| `--riv-console-btn-hover` (that same button's hover fill) — a **state**, not a boundary; read below before citing this row | `app/shared/fixed-ink-tokens.contrast.spec.ts` |
+| `--riv-solid-fill-brand` as the operator account chip's avatar disc — the chip's non-text anchor on the header glass, measured at ≥ 3:1 over every porcelain stop; the chip's `--riv-chip-border` hairline is the tourist header's token and decoration under rule 2 (the label carries the identity) | `app/operator/operator-account-chip.contrast.spec.ts` |
 
 `--riv-console-card-border`'s one remaining consumer is not a control at all: it is the edge of the
 console's "Venue not found" card, a `<div>`. The card's edge is outside 1.4.11 rather than exempt
@@ -113,35 +112,18 @@ re-derived, because a family whose consumers sit on different grounds is exactly
 files the whole thing under the wrong one. Both values are measured in the same spec either way
 (#849).
 
-**`--riv-console-btn-hover` is the first entry here that is not a boundary at all**, and it is
-listed rather than left out because the criterion does not let it be. 1.4.11 reaches visual
-information required to identify components *and states*, so a hover fill is in scope on its
-face — and both boundaries it forms are far under 3:1: against the resting white it replaces,
-and against the porcelain header glass it sits on. Rule 2's three conditions are still what
-answer it, and all three hold — the button's own "Sign out" label clears AA on the hovered fill,
-the numbers are measured in the spec above rather than waved off, and the control paints a real
-`border`, which is what brings rule 3 to it.
-
-Two things narrow the residual risk, and neither is offered as the argument. The first is
-mechanical rather than a claim about pointer semantics: Tailwind v4 compiles `hover:` to
-`@media (hover: hover) { .hover\:bg-…:hover }`, so where the device reports no hover capability the
-rule that paints this state never enters the cascade. It cannot be what identifies the control to a
-keyboard or touch user, because for them it is not there. Asserted rather than asserted-here —
-`frontend/e2e/fixed-ink-token-recut.e2e.ts` › "compiles the state it paints behind a
-hover-capability query, which its 1.4.11 ground rests on (#887)" reads the condition off the
-compiled stylesheet. (Beware the near-miss: a bare, ungated `.bg-riv-console-btn-hover` rule exists
-beside it, because Tailwind's extractor reads the undecorated candidate out of the same class
-string. It wears nothing and paints no state; a sweep that matched it would prove the opposite of
-what it looked like.) The button's focus indicator is a separate question, settled by
-[#890](https://github.com/ivopogace/riviera-sunbed-booking/issues/890): every `<button>` paints the
-project's 3px `--riv-accent-ink` ring from the `@layer base` rule in `tailwind.css`, this one
-included, so the indicator is no longer the user-agent default (guard:
-`app/shared/focus-ring-baseline.spec.ts`; render: `e2e/focus-ring-baseline.e2e.ts`). And the separation is
-not an outlier this project has never accepted: it is at least that of `--riv-solid-btn-fill` →
-`--riv-solid-btn-hover`, the settled family two rows up. That comparison is asserted, not
-asserted-here — `app/shared/fixed-ink-tokens.contrast.spec.ts` › "separates from its resting fill
-at least as well as the settled solid-btn family does" reads both sides out of `tailwind.css`, so
-retuning either family moves the claim instead of stranding a stale number in this file.
+**`--riv-console-btn-hover` was the first entry here that was not a boundary at all** — the
+sign-out button's hover fill, a *state* rather than an edge, which 1.4.11 reaches on its face. It
+and `--riv-console-btn-border` retired with that button when the account chip folded sign-out
+into a popover row painted from the `--riv-pop-*` family; the row's ground is the popover's, above.
+What the entry established stays true of any future state token: it is listed rather than left
+out, rule 2's three conditions are what answer it, and its numbers are measured in a spec rather
+than waved off. The focus indicator is a separate question, settled by
+[#890](https://github.com/ivopogace/riviera-sunbed-booking/issues/890): every `<button>` — the
+account chip included — paints the project's 3px `--riv-accent-ink` ring from the `@layer base`
+rule in `tailwind.css`, so the indicator is never the user-agent default (guard:
+`app/shared/focus-ring-baseline.spec.ts`; render: `e2e/focus-ring-baseline.e2e.ts`, which reads
+the ring off the chip).
 
 **The general shape, worth keeping when the next state-coloured token arrives:** a hover, active
 or selected fill is judged on the same three conditions as a border. What changes is only which

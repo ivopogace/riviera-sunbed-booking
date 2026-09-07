@@ -12,7 +12,7 @@ import { OperatorConsole } from './operator-console';
 
 /**
  * Automated axe-core audit of the operator console shell: the signed-in porcelain shell
- * (header + pill tabs + Requests badge). Sign-in lives behind `operatorSessionGuard`, not in this
+ * (header with the account chip + tab rail + Requests badge). Sign-in lives behind `operatorSessionGuard`, not in this
  * shell. Colour contrast is proven deterministically in `operator-console.contrast.spec.ts` — axe
  * cannot measure contrast under jsdom.
  */

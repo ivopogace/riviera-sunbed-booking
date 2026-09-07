@@ -50,3 +50,14 @@ export async function openFindBooking(page: Page): Promise<Locator> {
   await page.getByTestId('find-open').click();
   return trigger;
 }
+
+/**
+ * Opens an operator header's account chip (`oc-*` on the venue console, `opc-*` on the thin
+ * chrome) and proves it stayed open — the rows (`<prefix>-signout`, `<prefix>-change-password`, …)
+ * exist only while it is.
+ */
+export async function openOperatorAccountMenu(page: Page, prefix: 'oc' | 'opc'): Promise<void> {
+  const chip = page.getByTestId(`${prefix}-account`);
+  await chip.click();
+  await expect(chip).toHaveAttribute('aria-expanded', 'true');
+}

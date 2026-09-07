@@ -11,21 +11,18 @@ import { mockWholeConsole, signInAsOperator } from './support/operator-console.m
  * reads `tailwind.css` as text, can see.
  *
  * <p>The banner is asserted under BOTH themes against the same expected value: that the value does
- * not move is the test. The two console families sit under a porcelain-pinned host, so their dark
- * branch is proven at the document root instead.
+ * not move is the test. The console family sits under a porcelain-pinned host, so its dark branch
+ * is proven at the document root instead.
  *
  * <p>The calendar is asserted under both themes against each theme's OWN value — the inverse claim
- * on the same box. It was the fourth fixed family here until #888 made it a `--riv-pop-*` consumer
+ * on the same box. It was the fourth fixed family here until it became a `--riv-pop-*` consumer
  * with a themed, still-opaque day-cell palette; it stays in this file because this is the file that
  * already renders it under both document themes.
  *
- * <p>The console button's hover fill (#887) joined the border family here rather than in a file of
- * its own, because the family's render proof is where the family lives. It is also the sharpest
- * case for this file's whole reason to exist: a hover fill has no bare class selector at all, so
- * the hovered box is the ONLY place its `@theme inline` row can be observed.
+ * <p>The console family is one hairline now: the sign-out button's border and hover fill retired
+ * with that button when the account chip folded sign-out into a popover row.
  *
- * <p>Rationale: `docs/design/colour-literal-token-audit.md` (class T-3, class R for #887, and the
- * calendar verdict for #888).
+ * <p>Rationale: `docs/design/colour-literal-token-audit.md` (class T-3 and the calendar verdict).
  */
 
 const VENUE_ID = 4;
@@ -36,8 +33,6 @@ const REGISTRY = {
   '--riv-banner-body-ink': '#334a52',
   '--riv-banner-strong-ink': '#0a2a33',
   '--riv-console-card-border': 'rgba(12, 42, 51, 0.1)',
-  '--riv-console-btn-border': 'rgba(12, 42, 51, 0.14)',
-  '--riv-console-btn-hover': '#eef1f2',
 } as const;
 
 /**
@@ -104,18 +99,17 @@ function rgb(hex: string): string {
  * rule that actually paints them is a compound selector this sweep cannot match. (A bare `.class`
  * may exist beside it — Tailwind's extractor reads the undecorated candidate out of the same class
  * string — but it wears nothing and paints no state, so matching it would prove nothing.) —
- * `--riv-console-btn-hover` as `.hover\:bg-…:hover`, `--riv-pop-ink-disabled` as
- * `.aria-disabled\:text-…[aria-disabled="true"]`, `--riv-calendar-accent`'s ring half as
- * `.focus-visible\:outline-…:focus-visible`, `--riv-calendar-selected-ring` through a `var()`
- * inside an arbitrary shadow, and `--riv-banner-strong-ink` as `.\[\&_strong\]\:text-… strong`.
- * Each is instead proven on the rendered box further down — the hovered sign-out button, the past
- * day cell, the chosen day's ring, and the banner's `<strong>` — which is the stronger proof
- * anyway, since it exercises the variant as well as the `@theme inline` row.
+ * `--riv-pop-ink-disabled` as `.aria-disabled\:text-…[aria-disabled="true"]`,
+ * `--riv-calendar-accent`'s ring half as `.focus-visible\:outline-…:focus-visible`,
+ * `--riv-calendar-selected-ring` through a `var()` inside an arbitrary shadow, and
+ * `--riv-banner-strong-ink` as `.\[\&_strong\]\:text-… strong`. Each is instead proven on the
+ * rendered box further down — the past day cell, the chosen day's ring, and the banner's
+ * `<strong>` — which is the stronger proof anyway, since it exercises the variant as well as the
+ * `@theme inline` row.
  */
 const UTILITIES = [
   'text-riv-banner-body-ink',
   'border-riv-console-card-border',
-  'border-riv-console-btn-border',
   'bg-riv-calendar-free-fill',
   'bg-riv-calendar-bar-fill',
   'bg-riv-calendar-bar-track',
@@ -125,7 +119,6 @@ const UTILITIES = [
 /** The computed forms of the authored values above, as Chromium reports them. */
 const INK = 'rgb(10, 42, 51)';
 const BANNER_BODY = 'rgb(51, 74, 82)';
-const CONSOLE_BTN_HOVER = 'rgb(238, 241, 242)';
 
 const THEMES = ['porcelain', 'dark'] as const;
 
@@ -329,66 +322,11 @@ for (const theme of THEMES) {
   });
 }
 
-/**
- * The pointer-only reach of this state, made mechanical rather than asserted. `non-text-contrast.md`
- * rests part of the hover fill's 1.4.11 exemption on hover being unavailable to keyboard and touch
- * users, and in Tailwind v4 that is not a claim about pointer semantics but a compiled fact: the
- * variant emits `@media (hover: hover) { .hover\:bg-…:hover }`, so where the device reports no
- * hover capability the rule that paints this state never enters the cascade at all. The stylesheet
- * is the only place that is observable — the hovered box below runs in a desktop Chromium, which
- * reports `hover: hover` and therefore exercises the other branch.
- *
- * <p>Scoped to the `:hover` rule deliberately. A BARE `.bg-riv-console-btn-hover` rule also exists
- * and is not gated: Tailwind's extractor reads `bg-riv-console-btn-hover` out of the class string as
- * a candidate in its own right, so the utility is generated alongside the variant one. Nothing wears
- * it, and it paints no state — asserting over every rule mentioning the token would fail on that
- * artifact and prove nothing.
- */
-test('compiles the state it paints behind a hover-capability query, which its 1.4.11 ground rests on (#887)', async ({
-  page,
-}) => {
-  await page.goto('/');
-
-  const conditions = await page.evaluate(() => {
-    const found: string[] = [];
-    const walk = (rules: CSSRuleList, condition: string): void => {
-      for (const rule of rules) {
-        if (
-          rule instanceof CSSStyleRule &&
-          rule.selectorText.endsWith('bg-riv-console-btn-hover:hover')
-        ) {
-          found.push(condition);
-        }
-        const nested = (rule as CSSGroupingRule).cssRules;
-        if (nested) walk(nested, rule instanceof CSSMediaRule ? rule.conditionText : condition);
-      }
-    };
-    for (const sheet of document.styleSheets) walk(sheet.cssRules, '');
-    return found;
-  });
-
-  expect(conditions.length, 'the hover-variant rule is generated at all').toBe(1);
-  expect(conditions[0].replaceAll(' ', '')).toContain('hover:hover');
-});
-
-test("the console paints both hairlines, and the button's hover fill, from their own tokens (#849, #887)", async ({
-  page,
-}) => {
+test('the console paints its card hairline from its own token (#849)', async ({ page }) => {
   await mockWholeConsole(page);
-  await page.goto('/operator/1/beach-map');
-  await signInAsOperator(page);
-
-  const signOut = page.getByTestId('oc-signout');
-  await expect(signOut).toBeVisible();
-  await expect(signOut).toHaveCSS('border-color', 'rgba(12, 42, 51, 0.14)');
-
-  // The resting fill is the named colour the skin deliberately kept; only the hover state is a token.
-  await expect(signOut).toHaveCSS('background-color', 'rgb(255, 255, 255)');
-  await signOut.hover();
-  await expect(signOut).toHaveCSS('background-color', CONSOLE_BTN_HOVER);
-
-  // The card border's one consumer since the tabs moved to the shared rail: the "Venue not found" card.
+  // The card border's one consumer since the rail and the account chip: the "Venue not found" card.
   await page.goto('/operator/not-a-venue');
+  await signInAsOperator(page);
   const card = page.getByTestId('oc-invalid-venue-card');
   await expect(card).toBeVisible();
   await expect(card).toHaveCSS('border-color', 'rgba(12, 42, 51, 0.1)');

@@ -485,15 +485,8 @@ export const BANNER_FILLS: readonly Rgb[] = ['ddf4f8', 'fdf5e6', 'faefec', 'f0f2
   hexToRgb,
 );
 
-/** `--riv-console-{card,btn}-border`: the console's two white-surface hairlines. Their own tokens
- *  rather than the same-valued --riv-pop-divider / --riv-chip-border, which carry different roles
- *  and theme overrides; two of them because a surface boundary and a control's affordance boundary
- *  are different forms. Rationale: docs/design/colour-literal-token-audit.md (class R). */
+/** `--riv-console-card-border`: the console's white-surface hairline (the "Venue not found" card's
+ *  edge). Its own token rather than the same-valued --riv-pop-divider / --riv-chip-border, which
+ *  carry different roles and theme overrides. Rationale: docs/design/colour-literal-token-audit.md
+ *  (class R). */
 export const CONSOLE_CARD_BORDER: Glass = { color: CARD_INK, alpha: 0.1 };
-export const CONSOLE_BTN_BORDER: Glass = { color: CARD_INK, alpha: 0.14 };
-
-/** `--riv-console-btn-hover`: the sign-out button's hover fill, the third member of the skin above
- *  and NOT --riv-solid-btn-hover — that pair paints a different resting fill, so adopting it would
- *  repaint this button rather than migrate it.
- *  Rationale: docs/design/colour-literal-token-audit.md (class R). */
-export const CONSOLE_BTN_HOVER: Rgb = hexToRgb('eef1f2');

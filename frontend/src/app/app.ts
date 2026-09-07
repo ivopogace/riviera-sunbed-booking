@@ -2,7 +2,6 @@ import { Component, ElementRef, computed, inject, signal, viewChild } from '@ang
 import { LegalFooter } from './shared/legal-footer';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
-  IsActiveMatchOptions,
   NavigationEnd,
   Router,
   RouterLink,
@@ -18,25 +17,22 @@ import { SignOutNotice } from './core/sign-out-notice';
 import { ThemeId, ThemeService } from './core/theme';
 import { OperatorChrome } from './operator/operator-chrome';
 import { focusMover } from './shared/focus-after-render';
+import {
+  AVATAR,
+  CHIP,
+  CURRENT_POP_ROW,
+  EXACT_PATH,
+  POP_BACKDROP,
+  POP_BUTTON,
+  POP_ITEM,
+  POP_SKIN,
+  handleOf,
+  initialOf,
+} from './shared/popover-skin';
 import { TouchTarget } from './shared/touch-target';
 
-/** The near-opaque popover surface (account menu, theme picker, the phone sheet) — themed via the
- *  `--riv-pop-*` family: light in porcelain/riviera, slate in the dark theme. Position-free: the
- *  header popovers are `absolute` under their trigger, the sheet `fixed` above the tab bar. */
-const POP_SKIN =
-  'z-40 animate-[riv-pop_0.2s_ease] rounded-[18px] border border-riv-pop-border bg-riv-pop-surface text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none';
 const POP = `absolute ${POP_SKIN}`;
-/** The current page's row takes the hover fill plus the popover accent ink, on the desktop popover
- *  and the sheet alike: it has to read on touch, where `hover:` never fires (Tailwind v4 compiles
- *  it under `@media (hover: hover)`). */
-const CURRENT_POP_ROW =
-  'aria-[current=page]:bg-riv-pop-hover aria-[current=page]:text-riv-pop-accent';
-const POP_ITEM = `block w-full rounded-xl px-2.5 py-[9px] text-[14px] font-semibold text-riv-pop-ink [transition:background_0.12s_ease] hover:bg-riv-pop-hover ${CURRENT_POP_ROW}`;
 const MOBILE_ITEM = `block w-full rounded-[14px] px-3.5 py-[13px] text-left text-[15.5px] font-semibold text-riv-pop-ink hover:bg-riv-pop-hover ${CURRENT_POP_ROW}`;
-
-/** The chip glass the desktop menu button and the account chip share, inner highlight included. */
-const CHIP =
-  'cursor-pointer rounded-full border border-riv-chip-border bg-riv-chip-bg shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-[10px] [transition:filter_0.15s_ease] hover:brightness-[0.96] motion-reduce:transition-none';
 
 /** The shell's root box, with and without the phone tab bar's clearance: the bar is 61px tall
  *  (60px tabs + the top border) and pads itself by the home-indicator inset, so the page pads by
@@ -57,7 +53,7 @@ const TAB =
 
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
-  backdrop: 'fixed inset-0 z-30 bg-[rgba(6,30,40,0.2)]',
+  backdrop: POP_BACKDROP,
   accountPop: `riv-account-pop top-[calc(100%+10px)] right-0 w-[236px] p-[7px] ${POP}`,
   themePop: `riv-theme-pop top-[calc(100%+10px)] right-0 w-[214px] p-[7px] ${POP}`,
   // Above the bar, clearing the same inset the bar pads by; a 34px home indicator otherwise puts the last row under the bar.
@@ -69,7 +65,7 @@ const CLS = {
   tabIcon:
     'grid h-7 w-12 place-items-center rounded-full group-aria-[current=page]:ring-[1.5px] group-aria-[current=page]:ring-current [&_svg]:size-[21px]',
   popItem: POP_ITEM,
-  popBtn: `${POP_ITEM} cursor-pointer text-left`,
+  popBtn: POP_BUTTON,
   mobileItem: MOBILE_ITEM,
   mobileBtn: `${MOBILE_ITEM} cursor-pointer`,
   // The current page carries full ink and an underline in that ink (an accent token would vanish on riviera's dark header glass): hover alone is invisible on a tablet.
@@ -82,29 +78,8 @@ const CLS = {
   // The 1.5px ink-soft ring is the swatch's WCAG 1.4.11 boundary (5.4 / 5.5 / 11.6:1 on the three bars): the swatch alone reaches 1.0:1 against the bar (its white end on porcelain), and a white inset ring vanishes there too.
   swatchBtn:
     'grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-full before:h-[22px] before:w-[22px] before:rounded-full before:bg-(image:--riv-swatch) before:shadow-[0_1px_3px_rgba(6,30,40,0.35)] before:ring-[1.5px] before:ring-riv-ink-soft before:[transition:scale_0.12s_ease] hover:before:scale-[1.12] motion-reduce:before:transition-none motion-reduce:hover:before:scale-100',
-  // The solid-fill family, not the CTA gradient: nothing in the bar may outweigh the page's primary button.
-  avatar:
-    'inline-flex shrink-0 items-center justify-center rounded-full bg-riv-solid-fill-brand font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]',
+  avatar: AVATAR,
 } as const;
-
-/** The part of the address before the `@`: the chip's visible label. */
-function handleOf(email: string): string {
-  return email.split('@')[0];
-}
-
-/** The avatar's initial. */
-function initialOf(email: string): string {
-  return email.charAt(0).toUpperCase();
-}
-
-/** `routerLinkActive` matching for the header's plain-path links: the path alone, so Beaches (`/`)
- *  does not stay lit on every page and a `returnUrl` does not unlight Your account. */
-const EXACT_PATH: IsActiveMatchOptions = {
-  paths: 'exact',
-  queryParams: 'ignored',
-  fragment: 'ignored',
-  matrixParams: 'ignored',
-};
 
 /** The phone tab bar's three sections: the bar lights the tab whose section the active route
  *  carries, not the tab whose path it matches (`/venues/3` is a Beaches page, `/booking/CODE` a
