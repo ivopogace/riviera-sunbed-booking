@@ -2,8 +2,8 @@ import { Component, Type } from '@angular/core';
 
 /**
  * The console's glyph set — one component per venue and admin destination, plus More, `Your
- * venues` and `Admin console` — drawn for the phone rail (`console-shell.ts`) and its More sheet,
- * on the `clock-icon.ts` contract (`riviera-tailwind` ICON-1..6): inline SVG in `currentColor`, so
+ * venues`, `Admin console` and Search — drawn for the phone rail (`console-shell.ts`), its More
+ * sheet, the ⌘K palette (`console-palette.ts`) and the palette's trigger, on the `clock-icon.ts` contract (`riviera-tailwind` ICON-1..6): inline SVG in `currentColor`, so
  * the slot's ink cascades in; sized by presentation attributes, which any call-site class outranks
  * (`[&_svg]:size-[21px]` on the slot); a `display: contents` host, so the svg is what the slot's
  * flex column lays out; `aria-hidden` at the host and the svg, because the slot's label carries the
@@ -376,7 +376,7 @@ export class AdminGlyph {}
 })
 export class VenuesGlyph {}
 
-/** More: three dots — the only glyph that names no destination. */
+/** More: three dots — with Search, one of the two glyphs that name no destination. */
 @Component({
   selector: 'app-more-glyph',
   host: HOST,
@@ -399,6 +399,28 @@ export class VenuesGlyph {}
 })
 export class MoreGlyph {}
 
+/** Search: a lens — the palette's trigger in the section row, the other glyph that names no destination. */
+@Component({
+  selector: 'app-search-glyph',
+  host: HOST,
+  template: `<svg
+    class="shrink-0"
+    aria-hidden="true"
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.9"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </svg>`,
+})
+export class SearchGlyph {}
+
 /** The whole set, for the spec's sweep. */
 export const CONSOLE_GLYPHS: readonly Type<unknown>[] = [
   DailyGlyph,
@@ -418,4 +440,5 @@ export const CONSOLE_GLYPHS: readonly Type<unknown>[] = [
   AdminGlyph,
   VenuesGlyph,
   MoreGlyph,
+  SearchGlyph,
 ];

@@ -313,6 +313,40 @@ test('below sm the phone rail replaces the tab rail: four slots on one row, More
   );
 });
 
+test('Ctrl-K: typing a venue name leaves its row, Enter opens that venue on the current tab (#1013)', async ({
+  page,
+}) => {
+  await mockConsole(page, 2);
+  await mockSecondVenue(page);
+  await mockOwnedVenues(page, [...OWNED_ONE, { id: 2, name: 'Aurora Bay', beach: 'Dhërmi' }]);
+  await page.goto('/operator/1/daily');
+  await signIn(page);
+  await expect(page.getByTestId('daily-view-tab')).toBeVisible();
+
+  await page.keyboard.press('Control+k');
+  const dialog = page.getByRole('dialog', { name: 'Go to' });
+  await expect(dialog).toBeVisible();
+  const field = page.getByTestId('oc-palette-search');
+  await expect(field).toBeFocused();
+  // The Requests row carries the live count; the venue rows keep the open tab.
+  await expect(dialog.getByRole('link', { name: /^Requests/ })).toContainText('2');
+  await expect(dialog.getByRole('link', { name: /Aurora Bay/ })).toHaveAttribute(
+    'href',
+    '/operator/2/daily',
+  );
+
+  await field.fill('aurora');
+  const rows = dialog.getByRole('link');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('Aurora Bay');
+  await expect(rows.first()).toContainText('Open Dhërmi');
+  await expect(rows.first()).toHaveAttribute('data-hit', '');
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/operator\/2\/daily/);
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId('daily-view-tab')).toBeVisible();
+});
+
 test('the account chip opens a popover on the console — axe clean, one header row on a phone (#1008)', async ({
   page,
 }) => {

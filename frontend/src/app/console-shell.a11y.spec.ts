@@ -102,6 +102,15 @@ describe('ConsoleShell a11y', () => {
     }
   });
 
+  it('is axe clean with the palette open on both consoles (#1013)', async () => {
+    for (const section of ['venue', 'admin'] as const) {
+      const el = await render(section);
+      await open(el, 'oc-search');
+      expect(el.querySelector('[role="dialog"][aria-label="Go to"]')).not.toBeNull();
+      await expectNoAxeViolations(el);
+    }
+  });
+
   it('has no violations on a plain operator page', async () => {
     await expectNoAxeViolations(await render('plain'));
   });

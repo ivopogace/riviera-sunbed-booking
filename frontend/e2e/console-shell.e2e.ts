@@ -5,14 +5,15 @@ import { mockOperatorLifecycleApi, mockOwnedVenues } from './support/auth-mocks'
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 import { mockWholeConsole } from './support/operator-console.mocks';
-import { openOperatorAccountMenu } from './support/shell';
+import { openOperatorAccountMenu, openPalette } from './support/shell';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
 import { expectTouchTargets } from './support/touch-targets';
 
 /**
  * Real-render coverage of the console shell every operator and admin route wears: the section
- * row (brand, the venue switcher as the venue-console section, `Admin` for admins, the account
- * chip or `Sign in`) over the active section's rail, the shell footer, the porcelain pin on the
+ * row (brand, the venue switcher as the venue-console section, `Admin` for admins, the ⌘K search
+ * glyph from `sm` up, the account chip or `Sign in`) over the active section's rail, the ⌘K palette
+ * the glyph and the chord open, the shell footer, the porcelain pin on the
  * app shell — never the TOURIST header, whose auth state is the customer session and so read
  * "Sign in / Register" to a signed-in admin. APIs are mocked, so the suite is CI-safe. The venue
  * console's own cases are `operator-console.e2e.ts`'s.
@@ -203,6 +204,10 @@ test('a signed-out visitor on /admin/audit sees the section row with Sign in and
   await expect(page.getByTestId('oc-section-admin')).toHaveCount(0);
   await expect(page.getByTestId('oc-venue-title')).toHaveCount(0);
   await expect(page.getByTestId('oc-account')).toHaveCount(0);
+  // Nor the palette: no search glyph, and the chord opens nothing.
+  await expect(page.getByTestId('oc-search')).toHaveCount(0);
+  await page.keyboard.press('Meta+k');
+  await expect(page.getByRole('dialog', { name: 'Go to' })).toHaveCount(0);
 
   await expectNoSeriousAxeViolations(page, 'signed-out admin page under the console shell');
 });
@@ -224,6 +229,7 @@ test('the account chip opens a popover on /admin — axe clean, one header row o
   expect(chipBox.y).toBeLessThan(brand.y + brand.height);
   expect(chipBox.y + chipBox.height).toBeGreaterThan(brand.y);
   await expect(page.getByTestId('oc-section-admin')).toBeHidden();
+  await expect(page.getByTestId('oc-search')).toBeHidden();
   // A second row would add at least the chip's 44px floor; one row stays under 80.
   const header = (await page.getByTestId('oc-header').boundingBox())!;
   expect(header.height).toBeLessThanOrEqual(80);
@@ -238,4 +244,93 @@ test('the account chip opens a popover on /admin — axe clean, one header row o
   await page.getByTestId('oc-account-backdrop').click();
   await expect(page.getByTestId('oc-account-menu')).toHaveCount(0);
   await expect(chip).toBeFocused();
+
+  // The glyph has left the row, but the chord still opens the palette, inside the viewport.
+  await page.keyboard.press('Control+k');
+  const dialog = page.getByRole('dialog', { name: 'Go to' });
+  await expect(dialog).toBeVisible();
+  await expect(page.getByTestId('oc-palette-search')).toBeFocused();
+  const dialogBox = (await dialog.boundingBox())!;
+  expect(dialogBox.x).toBeGreaterThanOrEqual(0);
+  expect(dialogBox.x + dialogBox.width).toBeLessThanOrEqual(390);
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'admin tab with the palette open on a phone');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(chip).toBeFocused();
+});
+
+test('the search glyph and ⌘K open the Go to dialog: focus legs, the field on the 3px ring, every control at the floor, axe clean, inside the viewport (#1013)', async ({
+  page,
+}) => {
+  await mockWholeConsole(page);
+  await mockWholeAdminConsole(page);
+  await mockOwnedVenues(page, TWO_VENUES);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await new OperatorSignInPage(page).goto('/operator/1/daily');
+  await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
+  await expect(page.getByTestId('daily-view-tab')).toBeVisible();
+
+  const search = page.getByTestId('oc-search');
+  await expect(search).toBeVisible();
+  await expect(search).toHaveAccessibleName('Jump to a section or venue (⌘K)');
+  await expect(search).toHaveAttribute('aria-expanded', 'false');
+  const header = (await page.getByTestId('oc-header').boundingBox())!;
+  const searchBox = (await search.boundingBox())!;
+  expect(searchBox.y).toBeGreaterThanOrEqual(header.y);
+  expect(searchBox.y + searchBox.height).toBeLessThanOrEqual(header.y + header.height);
+
+  // The glyph: the dialog under the row, inside the viewport, its field focused on the 3px ring.
+  const dialog = await openPalette(page);
+  const field = page.getByTestId('oc-palette-search');
+  await expect(field).toBeFocused();
+  await expect(field).toHaveCSS('outline-style', 'solid');
+  await expect(field).toHaveCSS('outline-width', '3px');
+  const dialogBox = (await dialog.boundingBox())!;
+  expect(dialogBox.y).toBeGreaterThanOrEqual(header.y + header.height);
+  expect(dialogBox.x).toBeGreaterThanOrEqual(0);
+  expect(dialogBox.x + dialogBox.width).toBeLessThanOrEqual(1280);
+  // The rows: six sections (Daily view current), two venues on the open tab, Admin console, Change password.
+  const rows = dialog.getByRole('link');
+  await expect(rows).toHaveCount(10);
+  await expect(rows.first()).toHaveAttribute('aria-current', 'page');
+  await expect(rows.first()).toHaveAttribute('href', '/operator/1/daily');
+  await expect(rows.nth(7)).toHaveAttribute('href', '/operator/2/daily');
+  await expect(rows.nth(8)).toHaveAttribute('href', '/admin');
+  await expect(rows.last()).toHaveAttribute('href', '/account/operator-password');
+  await expectTouchTargets(page, 'the palette open at 1280px');
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'operator console with the palette open');
+
+  // Escape hands focus back to the glyph.
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(search).toHaveAttribute('aria-expanded', 'false');
+  await expect(search).toBeFocused();
+
+  // The chord: focus returns to the element that held it when the chord fired.
+  await page.getByTestId('oc-brand').focus();
+  await page.keyboard.press('Control+k');
+  await expect(dialog).toBeVisible();
+  await expect(field).toBeFocused();
+  await page.getByTestId('oc-palette-backdrop').click({ position: { x: 10, y: 850 } });
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId('oc-brand')).toBeFocused();
+  await page.keyboard.press('Meta+k');
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Meta+k');
+  await expect(dialog).toBeHidden();
+
+  // On the admin console: the eight tabs, the venues on the beach map, no Admin console row.
+  await page.goto('/admin');
+  await expect(page.getByTestId('admin-op-row').first()).toBeVisible();
+  await openPalette(page);
+  await expect(rows).toHaveCount(11);
+  await expect(rows.first()).toHaveAttribute('href', '/admin');
+  await expect(rows.first()).toHaveAttribute('aria-current', 'page');
+  await expect(rows.nth(8)).toHaveAttribute('href', '/operator/1/beach-map');
+  await expect(dialog.getByRole('link', { name: /Admin console/ })).toHaveCount(0);
+  await expectTouchTargets(page, 'the admin palette open at 1280px');
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'admin console with the palette open');
 });

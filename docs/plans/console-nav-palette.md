@@ -1,0 +1,417 @@
+# Console nav 6/7 — the ⌘K palette Implementation Plan
+
+> **For agentic workers:** implement this plan with `tdd` at the plan's named seams
+> (`/implement` is the human's entry command; the model's route is `riviera-sdlc`'s
+> Implement row). Steps use checkbox (`- [ ]`) syntax for tracking. The Availability &
+> concurrency, Spring-Modulith, and Payment & payout sections are spec sections, not
+> documentation. Invariant numbers refer to `CLAUDE.md`.
+
+**Goal:** On every console route a signed-in operator (past the admin gate on `/admin/*`) can press
+⌘K / Ctrl-K, or from `sm` up click the search glyph in the section row, to open a `Go to` dialog
+listing this console's sections (the current one marked, Requests with its live count), the owned
+venues (each to the current tab on that venue), the other console and `Change password`; typing
+filters by label, hint and group, Enter opens the first hit, Escape and the backdrop close, and focus
+returns to whatever opened it — all rows at the 44px floor, the field on the 3px ring, axe clean.
+
+**Architecture:** The shell (`console-shell.ts`) keeps knowing what is reachable — it already holds
+both destination tables and the cross-console rows — and derives one `PaletteRow[]` per context
+(`paletteRows`), a `computed` off the section, the URL, the owned list and the badge store. A new
+`shared/console-palette.ts` component owns the dialog mechanics and nothing else: the chords as
+document host listeners, the query, the filter, the first-hit highlight, Enter, the focus trap, the
+backdrop, Escape, the opener bookkeeping, close-on-navigation. The shell mounts it once, past the
+gate, as a sibling of the header (the #1011 R-5 lesson: a `fixed` box inside the filtered header
+pins to the header), and its search button hands itself to `toggle()` as the opener. The rows reuse
+the More sheet's recipe and the badge the rails share, hoisted so the three surfaces cannot drift.
+
+**Persistence:** JDBC only (invariant #1). No backend change; nothing new on the wire.
+
+**Source of intent:** GitHub issue #1013 (parent epic #1006; the spike's `proto-palette.ts` on
+`claude/operator-admin-nav-prototype-727vnz` is the behaviour reference, not code to copy;
+`sheet-palette-open.png` under the spike's `frontend/prototype-shots/console/`, G row, is the
+decided rendering — the glyph plus a `⌘K` keycap right of the row before the chip, the dialog
+centred under the row with the field on top and glyph · label-over-hint · group-tag rows).
+
+**Skills consulted:** `riviera-sdlc` (routing + the issue-intake grill gate — surfaced that the
+glyph set has no search glyph (17 components, `More` the only non-destination one), so the set grows
+and two count facts move (`console-glyphs.spec.ts`, `riviera-tailwind` § *Icons* "seventeen-glyph");
+that the field must not take the spike's `outline-none` (`focus-ring-baseline.spec.ts` names any
+`input` doing so); that `#1012`'s AC-5 left the ⌘K half vacuous, so `console-shell.e2e.ts`'s 390px
+case and the shell spec gain the hidden-below-`sm` pin here; that #1012's plan doc is still in
+`docs/plans/` and retires at this close-out; that the venue-console e2e's owned list has no venue
+matching `aurora`, so the palette case mocks its own) · `riviera-plan-doc` (this template — forced a
+seam per AC and the reversible-decision register below) · `tdd` (each phase red first at the named
+seam, scoped Vitest runs) · `riviera-review-overlay` (review gate — **ran** on PR #1019 over `3fec8acd..9b011f99`, 23 files / +1812 / −535 matched against the PR by `check-review-range.mjs`; `code-review:code-review` at high effort, five reviewers plus confidence scoring, with the FE bank, RV-STYLE-1, RV-PROC-1 and RV-PROC-2 walked: six findings, three scored ≥ 80 and posted, all six fixed as F-1…F-6 in the register; the fix re-entered at Implement with `angular-developer` (the router's `NavigationSkipped` for a same-URL navigation, beside `NavigationCancel`/`NavigationError`), `tdd` (both fixes red first in the palette spec) and `riviera-frontend`) ·
+`riviera-docs-freshness` (**ran** over `3fec8acd..HEAD` (the merge base with a freshly fetched
+`origin/main`) in phase 5, 4 findings, all patched: `riviera-tailwind` § *Icons* said
+"seventeen-glyph" — eighteen with the search glyph; `riviera-frontend`'s routing bullet listed what
+the shell wears without the palette; `focus-trap.ts`'s TSDoc counted "four modals" — it already
+served five, six with the palette; the two console artboards gain a #1013 as-built pointer. The
+rename grep found no citation of the hoisted recipes' old homes; the counting sweep
+(seventeen/17, four modals, three disclosures) found the two above and nothing else. Plan-doc
+retirement: #1012's `console-nav-phone-rail.md` deleted, no citation outside `docs/plans/`) · `grilling` (the intake questions answered from the code; the maintainer was not present,
+so every product call is recorded under *Open questions* as reversible) · `riviera-local-debug`
+(unshallowed the clone; scoped `npx vitest run <files>`; `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium`
+for the mocked e2e) · `riviera-frontend` (the palette takes rows as an input and reads only the
+router, so it is a presentational primitive → `shared/`; the shell, the one root-level component that
+may read `operator/` and `admin/`, computes the rows; the e2e is the mocked suite) ·
+`riviera-tailwind` (ICON-1..6 for the search glyph; rule 1: the row and hint recipes hoisted into
+`popover-skin.ts`, the badge into `tab-rail.ts`, never `@apply`; rule 4: `appTouchTarget` on the
+button, the field and every row; rule 6: the field keeps the 3px ring via `focus-visible:outline-*`,
+never `outline-none`; tokens only — the dialog on the `--riv-pop-*` family, the field on
+`--riv-field-*`) · `angular-developer` + angular-cli MCP (`get_best_practices` v22; angular.dev's
+event-listener guide confirms `host` takes `document:` global targets and the `meta`/`control` key
+modifiers — `(document:keydown.meta.k)` / `(document:keydown.control.k)`; `afterNextRender` with
+`{ injector }` for the focus legs, `viewChild` for the palette and the field, `computed` for the rows,
+`NgComponentOutlet` for the glyph) · `playwright-cli` (`page.keyboard.press('Meta+k')` /
+`'Control+k'` for the chords; `getByRole('dialog', { name: 'Go to' })`; the touch sweep with the
+dialog open) · Tailwind v4 docs + the production build's stylesheet (at the maintainer's ask, after
+phase 4 — no finding: the docs' *hover, focus and other states* page lists the bare-attribute
+`data-*` form ("specify the attribute name" to check presence) and the arbitrary `aria-[…]` form; the
+built sheet has `.data-\[hit\]:bg-riv-pop-hover[data-hit]` and
+`.aria-\[current=page\]:bg-riv-pop-hover[aria-current=page]`; `placeholder:` compiles to
+`::placeholder`, `focus-visible:` to `:focus-visible` with `outline-width:3px` and `outline-offset:1px`,
+`max-sm:` to `@media (width < 40rem)` as the docs' table states; the *translate* page says the
+utilities set the `translate` property — the built `.-translate-x-1/2` does, so it composes with the
+popover keyframe's `transform`; the *width* page documents `w-[<value>]` and the built rule reads
+`width:min(560px,calc(100vw - 24px))` with the operator spaced) · angular.dev via the angular-cli
+MCP (after phase 4 — the *event listeners* guide: `host` takes the `document:` global target and
+the `alt`/`control`/`meta`/`shift` key modifiers, and `preventDefault()` is the documented way to
+replace the browser's own handling, which is what the chord handler does; `afterNextRender`'s
+`{ injector }` option for the navigation leg outside an injection context, as #1012 verified).
+
+**Branch:** `claude/command-palette-nav-1013-dg0g4q` (the session's designated remote branch
+stands in for `feature/console-nav-palette`, per the `riviera-sdlc` cloud addendum).
+
+---
+
+## Acceptance criteria (testable)
+
+- [x] **AC-1:** Given a signed-in operator on a console route at 1280px, when the section row
+  renders, then it carries a button named `Jump to a section or venue (⌘K)` with `aria-expanded`
+  (`false`), `max-sm:hidden`; pressing it, ⌘K or Ctrl-K opens `dialog[aria-label="Go to"]`
+  (`aria-modal`) with the search field focused and the button `aria-expanded="true"`; a second chord
+  closes it. *Seam:* the shell's DOM through its inputs (unit), the app shell over the real routes
+  (unit), the routed SPA (e2e) · *Pinned by:* `console-shell.spec.ts` ›
+  `the search button opens the palette onto its field; ⌘K and Ctrl-K toggle it (#1013)`;
+  `app.spec.ts` › `⌘K opens the palette on a console route and nothing on a tourist one (#1013)`;
+  `console-shell.e2e.ts` › `the search glyph and ⌘K open the Go to dialog: focus legs, the field on the 3px ring, every control at the floor, axe clean, inside the viewport (#1013)`.
+- [x] **AC-2:** Given `/operator/1/daily` as an admin owning two venues, when the palette opens,
+  then its rows are, in order: the six venue sections (Daily view `aria-current="page"`), the owned
+  venues (each to `/operator/<id>/daily`, the current venue marked), `Admin console` (→ `/admin`),
+  `Change password` (→ `/account/operator-password`); a non-admin gets no `Admin console`; on
+  `/admin` the eight admin tabs (Operators current), the owned venues (each to
+  `/operator/<id>/beach-map`), `Change password`, and no `Admin console`; on `/operator` (plain)
+  the venues, `Admin console`, `Change password`. *Seam:* the shell's palette through its host DOM
+  · *Pinned by:* `console-shell.spec.ts` ›
+  `the rows per context: sections with the current marked, venues on the current tab, the other console, Change password (#1013)`.
+- [x] **AC-3:** Given the palette open, when `aud` is typed on `/admin`, then only `Audit` remains,
+  highlighted, and Enter navigates to `/admin/audit` and closes the dialog; when `aurora` is typed
+  on `/operator/1/daily` with an owned venue `Aurora Bay`, only that row remains and Enter opens
+  `/operator/2/daily`. *Seam:* the palette component through its DOM over a test router (unit); the
+  routed SPA (e2e) · *Pinned by:* `console-palette.spec.ts` ›
+  `typing filters by label, hint and group; the first hit is highlighted and Enter opens it`;
+  `admin-console-tabs.e2e.ts` › `⌘K: typing aud leaves Audit, Enter opens it and closes the dialog; Nothing matches. holds the dialog (#1013)`;
+  `operator-console.e2e.ts` › `Ctrl-K: typing a venue name leaves its row, Enter opens that venue on the current tab (#1013)`.
+- [x] **AC-4:** Given the palette open, when a query with no hit is typed, then `Nothing matches.`
+  renders (a `role="status"`), no row is rendered, and Enter does nothing (the dialog stays open, the
+  URL unchanged); an empty query highlights nothing and Enter does nothing. *Seam:* the palette
+  component's DOM · *Pinned by:* `console-palette.spec.ts` ›
+  `Nothing matches. for a query with no hit, and Enter does nothing then or on an empty query`,
+  `the empty-state status region pre-exists its text, so the change is announced` (review F-2).
+- [x] **AC-5:** Given the palette opened by the search button, when Escape or the backdrop closes
+  it, then `document.activeElement` is the button; opened by the chord while another element held
+  focus, focus returns to that element; a row activation closes and returns focus the same way; a
+  navigation that ends with the dialog open (Back) closes it and, if focus was inside, lands focus on
+  the opener, or on `<main>` when the opener is gone. *Seam:* the palette component's DOM (unit),
+  the shell's button (unit), the routed SPA (e2e) · *Pinned by:* `console-palette.spec.ts` ›
+  `Escape, the backdrop and a row hand focus back to the opener; the chord's opener is the element focused when it fired`,
+  `a navigation that ends with the dialog open closes it; focus lands on the opener, or on main when it is gone`,
+  `a row that is the current page closes the dialog without a navigation, and a later navigation steals no focus` (review F-1);
+  `console-shell.spec.ts` › AC-1's case (the button as opener); the AC-1 e2e.
+- [x] **AC-6:** Given three pending requests, when the palette opens on the venue console, then the
+  Requests row carries the badge `3` (none at zero); given a signed-out visitor on `/admin/audit`,
+  when the row renders and ⌘K is pressed, then there is no search button and no dialog; the same
+  while the session restores. *Seam:* the shell's DOM through the stores (unit), the routed SPA
+  (e2e) · *Pinned by:* `console-shell.spec.ts` ›
+  `the Requests row carries the live badge (#1013)`,
+  `signed out on an admin URL: no search button and ⌘K opens nothing (#1013)`;
+  `console-shell.e2e.ts` › the signed-out case (amended).
+- [x] **AC-7:** Given the dialog open at 1280px on `/operator/1/daily` and `/admin`, when the
+  touch sweep, the ring probe and axe run, then every visible control (the field, every row) measures
+  ≥ 44 × 44px, the field paints `outline-style: solid` / `outline-width: 3px` on focus, axe reports
+  no serious violation, and the tree carries no `outline-none` on a control. *Seam:* the routed SPA
+  (e2e), the stylesheet sweep (unit), the jsdom axe audit · *Pinned by:* `console-shell.e2e.ts` ›
+  the AC-1 case (sweep + ring + axe with the dialog open); `focus-ring-baseline.spec.ts` (unchanged,
+  sweeps the new file); `console-shell.a11y.spec.ts` › `is axe clean with the palette open on both consoles (#1013)`;
+  `console-palette.contrast.spec.ts` (the field inks over the field fill on the popover surface, the
+  group tag, the hit row).
+- [x] **AC-8:** Given 390px, when the section row renders, then the search button is hidden
+  (`max-sm:hidden`) and the row's brand, venue slot and chip still share one row; ⌘K still opens the
+  dialog inside the viewport. *Seam:* the routed SPA · *Pinned by:* `console-shell.e2e.ts` ›
+  `the account chip opens a popover on /admin — axe clean, one header row on a phone (#1008)` (amended:
+  `oc-search` hidden, ⌘K opens the dialog inside 390px).
+
+## Non-goals
+
+- Arrow-key roving through the rows (Tab reaches them; the first hit is the Enter target).
+- The dark console theme (#1010); any change to the tourist chrome or the backend.
+- A `Ctrl K` keycap on non-Mac platforms — the decided rendering shows `⌘K`, the accessible name
+  names it, and both chords work everywhere.
+- Fuzzy matching, ranking or recents — a case-insensitive substring over label + hint + group.
+- Moving the chip's / switcher's / sheet's disclosure mechanics into a shared directive.
+
+## Behavior-parity ledger (retirement / replacement slices only)
+
+N/A — new behavior, replaces nothing. (The `Admin` section link, the rails and the More sheet keep
+every route they offer; the palette is an accelerator over them.)
+
+## Risk register
+
+| # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
+|---|---|---|---|---|---|---|
+| R-1 | The `fixed` dialog rendered inside the section row's `backdrop-filter` header pins to the header, not the viewport (the #1011 R-5 lesson) | high | high | the palette mounts as a sibling of the header, where the More sheet already lives; the e2e asserts the dialog's box lies inside the viewport at 1280px and 390px | agent | closed — phase 4: `console-shell.e2e.ts` pins the box under the header inside 1280px and inside 390px; the shell spec pins the dialog outside the header |
+| R-2 | `outline-none` on the field (the spike's shape) fails `focus-ring-baseline.spec.ts` and drops the only indicator | certain if copied | med | `focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink`, the find-booking field's shape; the e2e reads `outline-width` | agent | closed — phase 4: `outline-style: solid` / `3px` read on the focused field; the baseline sweep green |
+| R-3 | A browser-level Ctrl-K (address-bar search) or ⌘K swallows the chord before the page | low | med | `preventDefault()` on the handled keydown; the e2e presses both chords headless where nothing competes; documented as the palette's own | agent | closed — phase 4: both chords open the dialog in Chromium; the palette spec pins `defaultPrevented` |
+| R-4 | Two rails, the sheet and the palette all render the badge — a copied recipe drifts | med | low | one `TAB_RAIL_BADGE` in `tab-rail.ts`; the sheet row / hint recipes hoisted to `popover-skin.ts` and consumed by the shell and the palette | agent | closed — phase 1 (the audit log's row) |
+| R-5 | The chord's opener unmounts on the navigation Enter drives (a focused page control), so focus lands on `<body>` | med | med | `landFocus()`: the opener when still connected, else the app shell's `<main>`; pinned in the palette spec | agent | closed — phase 2: the palette spec's navigation case |
+| R-6 | The palette's document Escape listener and the shell's, chip's and switcher's all fire on one press | certain | low | each is a no-op while its surface is closed (the established shape); the shell spec opens the palette alone and asserts the other disclosures stay untouched | agent | closed — phase 2/3: the palette spec pins Escape-while-closed steals nothing; the shell's Escape cases (chip, switcher, sheet) stay green with the palette mounted |
+| R-7 | The search button joins the row from `sm` up and pushes the chip onto a second row at 640px | low | med | the button is a 44px square, the row is `justify-between` with the switcher `min-w-0 truncate`; `console-shell.e2e.ts` keeps the one-row proof at 390px and the touch sweep at 1280px; measured at 640px in phase 4 | agent | closed — phase 4: `admin-console-tabs.e2e.ts` pins the header ≤ 80px at 640px with the glyph visible |
+| R-8 | `check-touch-target.mjs` TT-1 on the new `<button>` and `<input>` | low | low | `appTouchTarget` on both; the hook runs on save | agent | closed — phases 2–3: the guard green on both files; the sweep measures the field and every row at 1280px |
+| R-9 | `type="search"`'s Preflight `outline-offset: -2px` competes with the ring offset | low | low | a utility beats Preflight; the e2e reads the ring; if it does not, `type="text"` with `role="searchbox"` | agent | closed — phase 4: the ring reads 3px solid on the `type="search"` field |
+
+## Open questions / Assumptions
+
+None open. The reversible calls below were decided by the agent (the maintainer was not present at
+the intake gate) and are each recorded so the maintainer can reverse them on the PR:
+
+### Resolved
+
+- **Decided:** the palette also renders on the `plain` section (`/operator`, the password page):
+  the issue says "anywhere on a console route", and there it lists the venues, `Admin console` and
+  `Change password` with no section rows. Gate: signed in, not restoring, and on admin also
+  `isAdmin` — the same gate as the admin rail.
+- **Decided:** Enter acts only on a highlighted row, and only a non-empty query highlights one: ⌘K
+  then Enter with nothing typed does nothing (the spike opened the first row — the current tab —
+  which reads as a misfire).
+- **Decided:** the dialog is `aria-modal="true"` with the shared focus trap (`focus-trap.ts`), like
+  the app's four other modals; Tab reaches the rows and wraps to the field.
+- **Decided:** the current venue's row is marked `aria-current="page"` on the venue console (it
+  links to the page the operator is on), `Change password` on its page; two rows may therefore be
+  current at once, each truthfully.
+- **Decided:** venue rows on the admin console and the plain section link to `beach-map`, as the
+  issue states (the switcher's rows off the console take the index redirect; the palette names the
+  landing tab so its row reads the same as on the console).
+- **Decided:** placement — `shared/console-palette.ts` (rows in, router only) and the rows computed in
+  `console-shell.ts`; the search button is the shell's, in the row's right cluster before the chip,
+  `max-sm:hidden`, with an `aria-hidden` `⌘K` keycap.
+- **Decided:** the `Admin console` hint is the sheet's copy (`Operators, outboxes, moderation, records`);
+  the venue hint is the spike's decided `Open <beach>`; `Change password`'s `Your operator account`.
+- **Decided:** on close after a row activation or Enter, focus goes to the opener at once and, once
+  the navigation ends, to the opener again or to `<main>` if it unmounted (R-5).
+- **Fact:** zero open PRs at intake; no Flyway version in play; no other branch touches the shell,
+  the e2e or the skills.
+- **Fact:** #1012 closed via PR #1018 (merged); the epic's sub-issues read 5/7 complete; the
+  close-out comment is on #1006. Its plan doc `console-nav-phone-rail.md` retires in this PR.
+- **Fact:** module ownership is not in play — frontend only.
+
+## Availability & concurrency (invariant #2)
+
+N/A — does not affect availability: navigation chrome only; no booking, no `set_availability` write path.
+
+## Spring Modulith — modules, interfaces, events
+
+N/A — frontend-only. No new read: the venues come from `OwnedVenues` (already loaded by the
+switcher), the badge from `PendingRequestsStore`.
+
+### Module ownership (§4a)
+
+| Capability (what the slice adds/changes) | Owner module | Justification |
+|---|---|---|
+| What the palette lists per context (rows) | frontend app root (`console-shell.ts`) | the shell already reads both destination tables and the stores; only the root may import `operator/` and `admin/` |
+| The dialog: chords, filter, highlight, Enter, trap, focus legs | `shared/console-palette.ts` | rows in, router only — a presentational primitive with UI state, like `shared/photo-lightbox.ts` |
+| The search glyph | `shared/console-glyphs.ts` | the console's glyph set |
+| The row / hint / badge recipes | `shared/popover-skin.ts`, `shared/tab-rail.ts` | one recipe per reused element (`riviera-tailwind` rule 1) |
+
+## Payment & payout (invariants #5, #8, #9, #10)
+
+N/A — no payment in scope.
+
+## Angular — frontend surfaces touched
+
+| # | Surface | Existing/new | Type | State/reactivity | Forms |
+|---|---|---|---|---|---|
+| FE-1 | `shared/console-palette.ts` | new | standalone component | `input.required` `rows`; `signal` `open`, `query`; `computed` `hits`; `viewChild` field; `focusMover()`; document host listeners (escape, meta.k, control.k); `NavigationEnd` → close | none (a single search field bound by `(input)`) |
+| FE-2 | `console-shell.ts` | existing | root-level component | `computed` `paletteRows`; `viewChild(ConsolePalette)`; the search button | none |
+| FE-3 | `shared/console-glyphs.ts` | existing | glyph set | `SearchGlyph` | none |
+| FE-4 | `shared/popover-skin.ts`, `shared/tab-rail.ts` | existing | recipes | `POP_NAV_ROW`, `POP_NAV_HINT`, `TAB_RAIL_BADGE` | none |
+
+**Standards:** standalone components, `inject()`, `@if`/`@for`, `input()` signal APIs.
+`NgComponentOutlet` is the one structural directive (no native control-flow equivalent).
+
+## FE↔BE contract
+
+N/A — no contract change.
+
+## Execution status
+
+**Stage pointer:** `merge close-out written — merges via PR #1019`
+
+**Next action:** CI and the Sonar analysis on the review-fix head, the Sonar list re-read (not the gate colour), then merge PR #1019 and the GitHub-side close-out: verify #1013 closed, the epic #1006 comment, unsubscribe.
+
+| Phase | Status | Commits |
+|-------|--------|---------|
+| 0 — plan doc | ✅ | 9b6713d7 |
+| 1 — the search glyph; the row, hint and badge recipes hoisted and consumed by the shell | ✅ | 6fda2f03 |
+| 2 — `shared/console-palette.ts`: the dialog, chords, filter, highlight, Enter, trap, focus legs, close on navigation; its spec, a11y and contrast specs | ✅ | 067298e8 |
+| 3 — the shell: the search button, the gate, `paletteRows`, the mount; shell spec, a11y spec, `app.spec.ts` | ✅ | a28fdc0b |
+| 4 — e2e: `console-shell.e2e.ts`, `operator-console.e2e.ts`, `admin-console-tabs.e2e.ts`, `support/shell.ts` | ✅ | a8e492c6 |
+| 5 — contract: `npm run lint` + `format:check` green; 235 files / 2759 unit specs green; the whole mocked e2e 512/512 across `chromium`, `phone` and `fold` (7.8 min); the four CI hygiene guards green over `origin/main` (the inline-comment guard first flagged three issue numbers in comments — dropped); a production build green; docs-freshness run (4 findings, patched); #1012's plan retired; branch pushed | ✅ | e2a11b79 · 9b011f99 (the PR number) |
+| 6 — PR #1019 opened as a draft; CI 8/8 green on `9b011f99`; marked ready; the Sonar gate read on that head (0 issues, 0 duplicated blocks, 0 smells, 100% coverage on 435 new lines, the analysis check `success`); the review gate run (F-1…F-6, all fixed in the review-fix commit, which carries this close-out); CI and the Sonar analysis re-read on that head before the merge — **merges via PR #1019** | ✅ | the review-fix commit |
+
+Legend: blank = not started, ⏳ = in progress, ✅ = done.
+
+**Findings register**
+
+| # | Source (review / sonar / CI) | Finding | Status |
+|---|---|---|---|
+| F-1 | review gate (`code-review:code-review` high + `riviera-review-overlay` over `3fec8acd..9b011f99`; the shallow-bug and the git-history reviewers, scored 100) | A palette row for the current page is a same-URL navigation the router *skips* (`NavigationSkipped`, never `NavigationEnd`), so `leftFor` stayed `true` and the next unrelated navigation moved focus to the old opener (WCAG 2.4.3). The skip fires inside `RouterLink`'s own click handler, before the template's `(click)`, so listening for the skip alone did not clear it either | fixed — `activate(row)` sets the flag only when the row's serialized URL differs from `router.url` (the router's own same-URL rule); a skipped, cancelled or failed navigation clears it; pinned by the palette spec's same-URL case |
+| F-2 | review gate (the CLAUDE.md/overlay reviewer, RV-FE-10; scored 100) | The `Nothing matches.` `role="status"` region was created together with its text inside the `@else` branch, so the change was never announced | fixed — the region is in the dialog from the start (`sr-only` while rows show) and only its text changes; the spec asserts element identity across the transition |
+| F-3 | review gate (the prior-PR-comments reviewer; 75, below the 80 posting bar — the #1014/#1017 pattern) | Three plan-doc *Pinned by* citations truncated the shipped test titles | fixed — quoted verbatim |
+| F-4 | review gate (the code-comment reviewer; 75) | The shell's class doc said the palette mounts "under the same gate as the rails"; it also renders on a plain page, which has no rail | fixed — the doc names the gate |
+| F-5 | review gate (the code-comment reviewer; 100) | `MoreGlyph`'s doc still called it "the only glyph that names no destination" beside the new `SearchGlyph` | fixed |
+| F-6 | review gate (the code-comment reviewer; 75) | `TAB_RAIL_BADGE`'s doc called the badge "the one solid-fill element the chrome carries"; the chip's avatar shares the fill | fixed — "among the tabs" |
+
+---
+
+## File structure
+
+- `docs/plans/console-nav-palette.md` — this plan.
+- `docs/plans/console-nav-phone-rail.md` — #1012's plan doc, retired at this close-out (deleted).
+- `.claude/skills/riviera-tailwind/SKILL.md` — § *Icons*: the glyph count (docs-freshness).
+- `.claude/skills/riviera-frontend/SKILL.md` — the routing bullet: the shell wears the palette too (docs-freshness).
+- `docs/design/riviera-operator-console-v2.dc.html` · `docs/design/riviera-admin-console.dc.html` — the #1013 as-built pointers (docs-freshness).
+- `frontend/src/app/shared/console-palette.ts` — the palette component and `PaletteRow`.
+- `frontend/src/app/shared/console-palette.spec.ts` — filter, highlight, Enter, empty state, chords, focus legs, navigation close.
+- `frontend/src/app/shared/console-palette.a11y.spec.ts` — the dialog open, axe.
+- `frontend/src/app/shared/console-palette.contrast.spec.ts` — the field inks, the group tag, the hit row.
+- `frontend/src/app/shared/console-glyphs.ts` — `SearchGlyph`.
+- `frontend/src/app/shared/console-glyphs.spec.ts` — the set gains the search glyph.
+- `frontend/src/app/shared/popover-skin.ts` — `POP_NAV_ROW`, `POP_NAV_HINT`; the consumer list names the palette.
+- `frontend/src/app/shared/focus-trap.ts` — TSDoc: the modal list (docs-freshness).
+- `frontend/src/app/shared/tab-rail.ts` — `TAB_RAIL_BADGE`.
+- `frontend/src/app/console-shell.ts` — the search button, `paletteRows`, the mount; the hoisted recipes consumed.
+- `frontend/src/app/console-shell.spec.ts` — AC-1, AC-2, AC-6.
+- `frontend/src/app/console-shell.a11y.spec.ts` — the palette open on both consoles.
+- `frontend/src/app/app.spec.ts` — ⌘K on a console route vs a tourist route.
+- `frontend/e2e/console-shell.e2e.ts` — AC-1, AC-5, AC-6, AC-7, AC-8.
+- `frontend/e2e/operator-console.e2e.ts` — AC-3 (venue).
+- `frontend/e2e/admin-console-tabs.e2e.ts` — AC-3 (Audit).
+- `frontend/e2e/support/shell.ts` — `openPalette(page)`.
+
+---
+
+## Phase 1 — the search glyph and the hoisted recipes
+
+**Files:** Modify `frontend/src/app/shared/console-glyphs.ts`, `console-glyphs.spec.ts`,
+`popover-skin.ts`, `tab-rail.ts`, `console-shell.ts`.
+
+- [x] **Step 1: Write the failing test** — `console-glyphs.spec.ts`: the set's selector list gains
+  `app-search-glyph`; `draws Search as a lens — one circle and a handle`.
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include src/app/shared/console-glyphs.spec.ts` → FAIL (TS2305: no exported member `SearchGlyph`). A bare `npx vitest run` has no config here (`describe is not defined`); the builder command is the one.
+- [x] **Step 3: Minimal implementation** — `SearchGlyph`; `POP_NAV_ROW` / `POP_NAV_HINT` in
+  `popover-skin.ts` and `TAB_RAIL_BADGE` in `tab-rail.ts`, the shell's `CLS.sheetRow`, `hint`,
+  `badge` reading them (same strings, so no shell spec moves).
+- [x] **Step 4: Run it, verify it passes** — the glyph spec + the shell's three specs + `tab-rail.spec.ts` → 116/116 PASS.
+- [x] **Step 5: Generalization-audit pass** — population: every copy of the badge or sheet-row
+  recipe → `grep -rn "min-w-5 items-center justify-center rounded-full\|rounded-\[14px\] px-3.5 py-\[11px\]" frontend/src/app`.
+- [x] **Step 6: Commit** — `Add the search glyph and hoist the popover row and badge recipes (#1013)`.
+- [x] **Step 7: Update plan-doc execution status.**
+
+## Phase 2 — the palette component
+
+**Files:** Create `frontend/src/app/shared/console-palette.ts`, `.spec.ts`, `.a11y.spec.ts`,
+`.contrast.spec.ts`.
+
+- [x] **Step 1: Write the failing tests** — AC-3, AC-4, AC-5 cases over a host with a test router
+  and a fixed `rows` input; the a11y case; the contrast cases.
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include src/app/shared/console-palette.spec.ts …` → FAIL (TS2307: cannot find module).
+- [x] **Step 3: Minimal implementation** — the component.
+- [x] **Step 4: Run it, verify it passes** — the three palette specs + `focus-ring-baseline.spec.ts` → 19/19 PASS (the baseline sweep first flagged the suppression tokens *spelled* in a comment and a redundant assertion — both dropped; the sweep is the guard).
+- [x] **Step 5: Generalization-audit pass** — population: every modal that traps focus → `grep -rln "trapFocusWithin" frontend/src/app` — same trap, same `aria-modal`.
+- [x] **Step 6: Commit** — `Add the Go to palette: chords, filter, Enter, focus legs (#1013)`.
+- [x] **Step 7: Update plan-doc execution status.**
+
+## Phase 3 — the shell
+
+**Files:** Modify `console-shell.ts`, `console-shell.spec.ts`, `console-shell.a11y.spec.ts`, `app.spec.ts`.
+
+- [x] **Step 1: Write the failing tests** — AC-1, AC-2, AC-6 in the shell spec; the a11y case; the `app.spec.ts` case.
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include src/app/console-shell.spec.ts …` → 6 FAIL / 89 pass.
+- [x] **Step 3: Minimal implementation** — the button, `paletteGate`, `paletteRows`, the mount.
+- [x] **Step 4: Run it, verify it passes** — the shell's four specs + `app.spec.ts` + `src/app/operator/` + the palette's → 695/695 PASS (one spec expectation corrected on the way: a navigation closes the dialog by design, so the rows are re-read after reopening).
+- [x] **Step 5: Generalization-audit pass** — population: every reader of the row's ids that a new control could shift → `grep -rln "oc-account\b\|oc-signin\|oc-section-admin" frontend/e2e frontend/src --include=*.ts`.
+- [x] **Step 6: Commit** — `Mount the palette in the console shell behind the search glyph (#1013)`.
+- [x] **Step 7: Update plan-doc execution status.**
+
+## Phase 4 — e2e
+
+**Files:** Modify `console-shell.e2e.ts`, `operator-console.e2e.ts`, `admin-console-tabs.e2e.ts`, `support/shell.ts`.
+
+- [x] **Step 1: Write the failing tests** — the cases per AC.
+- [x] **Step 2: Run it, verify it fails** — the e2e run after phase 3, so these cases prove the shipped behaviour rather than fail first (the red half of each AC is its unit spec in phases 2–3); `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts console-shell operator-console admin-console-tabs` → 24/24 on the first run.
+- [x] **Step 3: Minimal implementation** — nothing: the sweep, the ring probe and axe passed with the dialog open at 1280px and 390px; the row stays one row at 640px with the glyph in (R-7, measured ≤ 80px).
+- [x] **Step 4: Run it, verify it passes** — the three files under `chromium` (24 + the admin file's 8 on the re-run); the two touch sweeps under `phone` and `fold` run whole in phase 5.
+- [x] **Step 5: Generalization-audit pass** — done at phase 3 (the Escape population; the log's row).
+- [x] **Step 6: Commit** — `Prove the palette in the mocked e2e: chords, filter, Enter, focus, the floor (#1013)`.
+- [x] **Step 7: Update plan-doc execution status.**
+
+## Phase 5 — contract
+
+- [x] **Step 1–4:** `npm run lint`, `npm run format:check`, `npm test`, the whole mocked e2e;
+  `node scripts/check-plan-file-structure.mjs --diff origin/main`; `riviera-docs-freshness` over the
+  PR's range; #1012's plan deleted; the Tailwind and Angular doc checks recorded under *Skills consulted*.
+- [x] **Step 5: Generalization-audit pass** — the counting sweep (the log's phase-5 row).
+- [x] **Step 6: Commit** — `Retire #1012's plan and refresh the docs for the palette (#1013)`; push.
+- [x] **Step 7: Update plan-doc execution status.**
+
+---
+
+## Generalization-audit log
+
+| Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
+|---|---|---|---|---|---|
+| 2026-09-07 | phase 1 | every copy of the badge or the sheet-row recipe outside its new home — the drift mechanism the hoist removes | `grep -rn "min-w-5 items-center justify-center rounded-full\|rounded-\[14px\] px-3.5 py-\[11px\]" frontend/src/app` | none outside `popover-skin.ts` / `tab-rail.ts` (the shell now reads both) | nothing else to hoist |
+| 2026-09-07 | phase 2 | every modal that traps focus — the mechanism the palette joins | `grep -rln "trapFocusWithin" frontend/src/app --include=*.ts \| grep -v spec` | `photo-lightbox.ts`, `payout-statement.ts`, `booking-dialog.ts`, `find-booking.ts`, `availability-calendar.ts`, the palette | the palette takes the same trap and `aria-modal`; `focus-trap.ts`'s doc names "four modals" — refreshed at close-out |
+| 2026-09-07 | phase 3 | every reader of the section row's ids that a control added to the right cluster could shift — the mechanism is a locator on `oc-account` / `oc-signin` / `oc-section-admin` | `grep -rln "oc-account\b\|oc-signin\|oc-section-admin" frontend/e2e frontend/src --include=*.ts` | 13 files (7 e2e, 6 specs/sources) | all locate by test id or role, none by position; `expectPhoneRailFits`'s brand/venue/chip order holds below `sm` where the button is hidden — nothing to rewrite |
+| 2026-09-07 | phase 5 | every substrate line counting the glyphs or the trapped modals, or listing what the shell wears — the counting sweep | `grep -rniE 'seventeen\|\b17 (glyph\|component)\|\bfour modals\b\|three (disclosures\|modals)' frontend/src .claude/skills CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents docs/design` + `grep -rn "More sheet)" .claude/skills docs/design` | `riviera-tailwind` (seventeen), `focus-trap.ts` (four modals), `riviera-frontend` (the routing bullet), the two artboards; `colour-literal-token-audit.md:331`'s "seventeen sites" is another subject and stays | four patched, one left true |
+| 2026-09-07 | review fix F-1 | every overlay that defers a focus move to a router event — the mechanism the stale flag needs | `grep -rln "NavigationEnd" frontend/src/app --include=*.ts \| grep -v spec` | `app.ts`, `operator-account-chip.ts`, `operator-venue-switch.ts`, `find-booking.ts`, `admin-console.ts`, `current-url.ts`, `console-shell.ts`, the palette | the others guard on a live `open` signal a row activation already cleared, or focus synchronously — no carried flag; the palette alone carried one, now keyed on the router's same-URL rule |
+| 2026-09-07 | review fix F-2 | every live region the diff wrote — `aria-live` / `role="status"` / `<output>` | `git diff 3fec8acd..HEAD \| grep -n 'aria-live\|role="status"\|<output>'` | one: the palette's empty state | moved out of the branch; the a11y spec's empty-state case still runs over it |
+| 2026-09-07 | phase 3 | every e2e that presses Escape on a console route, which now also reaches the palette's document listener | `grep -ln "press('Escape')" frontend/e2e/*.e2e.ts \| xargs grep -ln "oc-header\|oc-account"` | `admin-console-tabs`, `console-shell`, `operator-console`, `operator-password`, `operator-set-editing`, `theme-shell` | each closes its own disclosure; the palette's Escape is a no-op while closed (pinned in its spec) — nothing to rewrite |
+
+---
+
+## Acceptance-criteria verification (final)
+
+- [x] **AC-1 … AC-8:** `npx ng test --watch=false` → 235 files, 2759 specs PASS; `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → 512/512 PASS across the three projects, the pinning cases named per AC among them. Verified at the phase-5 head; CI re-runs the whole set on the PR.
+
+## Self-review checklist (before merge / PR)
+
+- [x] Every AC has an implementing task and a verifying test.
+- [x] No placeholders / TODO / TBD anywhere in the doc.
+- [x] Type & method-signature consistency across phases.
+- [x] **No JPA** introduced; no `spring-boot-starter-data-jpa`; no `@Entity` (invariant #1).
+- [x] **Availability** section filled (or justified N/A); concurrency test present (invariant #2).
+- [x] Pool + cutoff rules honored (invariants #3, #4).
+- [x] **Modulith** section filled; no cross-module `application.*`/`adapter.*` imports; event payloads id-based (invariant #11).
+- [x] **Payment/payout** section filled (or N/A); webhooks are source of truth; idempotent; money in minor units; payout exactly-once (invariants #5, #8, #9).
+- [x] Refund policy enforced server-side (invariant #10).
+- [x] Timezone correct: UTC stored, `Europe/Tirane` for cutoff/date (invariant #6).
+- [x] Booking codes unguessable (invariant #7).
+- [x] Flyway migration present for schema changes; invariant-enforcing constraints tested (invariant #12).
+- [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
+- [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
+- [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merges via PR #1019`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — rung 1, `code-review:code-review` at high effort over `3fec8acd..9b011f99` (five reviewers + confidence scoring), plus `riviera-review-overlay`'s FE bank, RV-STYLE-1 and RV-PROC-1/2; the posted comment is on PR #1019.
+
+If any box is unchecked, the feature is not done. Record the gap in Open Questions.
