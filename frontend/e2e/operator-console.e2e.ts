@@ -353,6 +353,8 @@ test('only the section row is sticky; below sm it slides away on scroll-down and
   await expect(page.getByTestId('daily-view-tab')).toBeVisible();
 
   await expect(header).toHaveCSS('position', 'sticky');
+  // The slide animates the `translate` property the utility sets — a transition on `transform` would never fire.
+  await expect(header).toHaveCSS('transition-property', 'translate');
   await expect(page.getByTestId('oc-tabs')).toHaveCSS('position', 'static');
   await expect(page.getByTestId('oc-stats')).toHaveCSS('position', 'static');
 

@@ -65,7 +65,7 @@ and `.oc-main` stay as inert markers; rule 4: `appTouchTarget` on every row cont
 tokens only) · `angular-developer` (loaded at plan — `input()`/`computed()`/`effect()` +
 `untracked` for the name read, `host` listeners for `window:scroll`, `RouterLinkActive` +
 `ariaCurrentWhenActive` on the rail; verified at phase 1 via the angular-cli MCP) ·
-`playwright-cli` (loaded at phase 2 — the scroll-hide case at 390px, the four-route sweeps).
+`playwright-cli` (loaded at phase 2 — the scroll-hide case at 390px, the four-route sweeps) · Tailwind v4 docs + the production build's stylesheet (after phase 5 — `translate-*` sets `translate`, hence F-3; `left-[max(1.5rem,50%_-_536px)]`, `after:-bottom-px`, `aria-[current=page]:after:*` and `min-h-[46px]` compile as written; `@tailwindcss/oxide`'s scanner extracts `max-sm:-translate-y-full` from the `[class.…]` binding itself) · angular.dev via the angular-cli MCP (after phase 5 — `host` global targets `window:`/`document:`, `DOCUMENT` from `@angular/core`, `ActivatedRouteSnapshot.paramMap`/`data`/`firstChild`, `untracked` inside `effect`).
 
 **Branch:** `claude/console-nav-unification-1011-puns5i` (the session's designated remote branch
 stands in for `feature/console-nav-one-shell`, per the `riviera-sdlc` cloud addendum; as with
@@ -301,6 +301,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | red e2e (`theme-shell.e2e.ts`, phase 4) | Under a dark tourist theme, `main` on a console route inherited `body`'s already-resolved white ink: the retired console host carried `text-riv-ink` to re-resolve it under the pin, and the shell had not | fixed — `text-riv-ink` on the app shell's root box, every pinned route re-resolves; the four-route theme case pins header, rail, page, background and footer paints equal to the porcelain run |
+| F-3 | docs check (Tailwind v4 docs + the built stylesheet, after phase 5) | The section row's slide transitioned `transform`, but v4's `-translate-y-full` sets the `translate` property, so below `sm` the row snapped instead of sliding (the e2e measured only the end positions) | fixed — `[transition:translate_0.2s_ease]`; the e2e pins `transition-property: translate` |
 | F-2 | red e2e (`console-shell.e2e.ts` sweeps, phase 4) | The landing picker's `Add another venue` link measured 145×20 — an inline `<a>` no sweep had visited | fixed — `appTouchTarget` + `inline-flex items-center` (`riviera-tailwind` rule 4) |
 
 ---

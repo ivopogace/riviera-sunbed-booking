@@ -67,9 +67,9 @@ const SLOT = `flex items-center after:-bottom-px ${TAB_RAIL_MARKER}`;
 
 /** Template skins, hoisted so each recipe exists once (the `app.ts` `cls` idiom). */
 const CLS = {
-  // The transition is the scroll-hide below sm; sticky at every width, the transform only below sm.
+  // The transition is the scroll-hide below sm; sticky at every width, the translate only below sm (v4's translate utilities set `translate`, not `transform`).
   header:
-    'oc-header sticky top-0 z-20 border-b border-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7] [transition:transform_0.2s_ease] motion-reduce:transition-none',
+    'oc-header sticky top-0 z-20 border-b border-riv-header-border bg-riv-header-glass backdrop-blur-[22px] backdrop-saturate-[1.7] [transition:translate_0.2s_ease] motion-reduce:transition-none',
   // relative: the chip's popover anchors to it; min-h keeps the 44px controls' row at the spike's ~46px.
   row: 'oc-header-inner relative mx-auto flex min-h-[46px] max-w-[1120px] items-stretch justify-between gap-3 px-6 sm:gap-5',
   brand:
@@ -108,7 +108,7 @@ const CLS = {
  * is pending or failed.
  *
  * <p><strong>Below `sm` the row slides away on scroll-down past 64px and returns on scroll-up</strong>
- * — a phone keeps its viewport for the page; the transform is the whole mechanism, so `motion-reduce:`
+ * — a phone keeps its viewport for the page; the `translate` is the whole mechanism, so `motion-reduce:`
  * removes the transition and the row simply appears. The signal only changes at a direction flip,
  * so a scroll frame with no change re-renders nothing.
  *
