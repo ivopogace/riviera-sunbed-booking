@@ -98,8 +98,12 @@ describe('ConsoleShell', () => {
         provideRouter([
           { path: 'operator', component: BlankPage },
           { path: 'operator/:venueId/daily', component: BlankPage },
+          { path: 'operator/:venueId/requests', component: BlankPage },
           { path: 'operator/:venueId/beach-map', component: BlankPage },
+          { path: 'operator/:venueId/pricing', component: BlankPage },
+          { path: 'operator/:venueId/payouts', component: BlankPage },
           { path: 'admin', component: BlankPage },
+          { path: 'admin/photos', component: BlankPage },
           { path: 'admin/audit', component: BlankPage },
           { path: 'account/sign-in', component: BlankPage },
           { path: 'account/operator-password', component: BlankPage },
@@ -129,6 +133,19 @@ describe('ConsoleShell', () => {
 
   function railLinks(label: string): HTMLAnchorElement[] {
     return [...el.querySelectorAll<HTMLAnchorElement>(`nav[aria-label="${label}"] a`)];
+  }
+
+  function phoneRail(): HTMLElement | null {
+    return el.querySelector<HTMLElement>('nav[aria-label$="(phone)"]');
+  }
+
+  function more(): HTMLButtonElement {
+    return byId('oc-more') as HTMLButtonElement;
+  }
+
+  async function goTo(url: string): Promise<void> {
+    await TestBed.inject(Router).navigateByUrl(url);
+    fixture.detectChanges();
   }
 
   async function setSection(section: ConsoleSection, venueId?: number): Promise<void> {
@@ -261,8 +278,237 @@ describe('ConsoleShell', () => {
     operatorAuth.restoring.set(true);
     fixture.detectChanges();
     expect(el.querySelector('nav[aria-label="Admin console sections"]')).toBeNull();
+    expect(phoneRail()).toBeNull();
     expect(byId('oc-account')).toBeNull();
     expect(byId('oc-signin')).toBeNull();
+  });
+
+  describe('the phone rail (#1012)', () => {
+    /** The slots' visible labels, in order: three links, then the More button. */
+    function slots(): string[] {
+      return [...phoneRail()!.children].map((slot) => slot.textContent.trim());
+    }
+
+    function glyphIn(slot: Element): string {
+      return slot.querySelector('svg')!.parentElement!.tagName.toLowerCase();
+    }
+
+    it('phone rail: three primaries with glyph and label plus More, on both consoles', async () => {
+      expect(phoneRail()!.getAttribute('aria-label')).toBe('Operator console sections (phone)');
+      expect(phoneRail()!.dataset['testid']).toBe('oc-phone-rail');
+      expect(slots()).toEqual(['Daily', 'Requests', 'Beach map', 'More']);
+      const links = [...phoneRail()!.querySelectorAll('a')];
+      expect(links.map((a) => a.getAttribute('href'))).toEqual([
+        '/operator/1/daily',
+        '/operator/1/requests',
+        '/operator/1/beach-map',
+      ]);
+      expect([...phoneRail()!.children].map(glyphIn)).toEqual([
+        'app-daily-glyph',
+        'app-requests-glyph',
+        'app-beach-map-glyph',
+        'app-more-glyph',
+      ]);
+      expect(more().tagName).toBe('BUTTON');
+      expect(more().getAttribute('aria-expanded')).toBe('false');
+      // CSS decides which rail shows: the text rail hides below sm, the phone rail from sm up.
+      expect(phoneRail()!.classList).toContain('sm:hidden');
+      expect(byId('oc-tabs')!.parentElement!.classList).toContain('max-sm:hidden');
+
+      await setSection('admin');
+      expect(phoneRail()!.getAttribute('aria-label')).toBe('Admin console sections (phone)');
+      expect(slots()).toEqual(['Operators', 'Email', 'Refunds', 'More']);
+      expect([...phoneRail()!.querySelectorAll('a')].map((a) => a.getAttribute('href'))).toEqual([
+        '/admin',
+        '/admin/email',
+        '/admin/refunds',
+      ]);
+      expect(el.querySelector('app-admin-console-tabs')!.parentElement!.classList).toContain(
+        'max-sm:hidden',
+      );
+
+      await setSection('plain');
+      expect(phoneRail()).toBeNull();
+      await setSection('venue', undefined);
+      expect(phoneRail()).toBeNull();
+    });
+
+    it("the More slot carries the current secondary's glyph, label and aria-current, else More", async () => {
+      await goTo('/operator/1/daily');
+      expect(more().textContent.trim()).toBe('More');
+      expect(more().getAttribute('aria-current')).toBeNull();
+      expect(glyphIn(more())).toBe('app-more-glyph');
+      expect(
+        phoneRail()!.querySelector('a[href="/operator/1/daily"]')!.getAttribute('aria-current'),
+      ).toBe('page');
+
+      await goTo('/operator/1/payouts');
+      expect(more().textContent.trim()).toBe('Payouts');
+      expect(more().getAttribute('aria-current')).toBe('page');
+      expect(glyphIn(more())).toBe('app-payouts-glyph');
+      expect(phoneRail()!.querySelectorAll('a[aria-current="page"]')).toHaveLength(0);
+
+      await setSection('admin');
+      await goTo('/admin/audit');
+      expect(more().textContent.trim()).toBe('Audit');
+      expect(more().getAttribute('aria-current')).toBe('page');
+      expect(glyphIn(more())).toBe('app-audit-glyph');
+
+      await goTo('/admin');
+      expect(more().textContent.trim()).toBe('More');
+      expect(more().getAttribute('aria-current')).toBeNull();
+      expect(phoneRail()!.querySelector('a[href="/admin"]')!.getAttribute('aria-current')).toBe(
+        'page',
+      );
+    });
+
+    it('the Requests phone slot carries the live badge, and none at zero', () => {
+      expect(byId('oc-phone-requests-badge')).toBeNull();
+
+      TestBed.inject(PendingRequestsStore).seed(3);
+      fixture.detectChanges();
+      const badge = byId('oc-phone-requests-badge')!;
+      expect(badge.textContent.trim()).toBe('3');
+      expect(badge.closest('a')!.getAttribute('href')).toBe('/operator/1/requests');
+    });
+
+    it('the Admin section link leaves the row below sm (#1012)', () => {
+      expect(byId('oc-section-admin')!.classList).toContain('max-sm:hidden');
+    });
+
+    describe('the More sheet', () => {
+      function sheet(): HTMLElement | null {
+        return byId('oc-more-sheet');
+      }
+
+      function rows(): HTMLAnchorElement[] {
+        return [...sheet()!.querySelectorAll('a')];
+      }
+
+      function headings(): string[] {
+        return [...sheet()!.querySelectorAll('p')].map((p) => p.textContent.trim());
+      }
+
+      async function open(): Promise<void> {
+        more().click();
+        fixture.detectChanges();
+        await fixture.whenStable();
+      }
+
+      it('the More sheet lists the secondaries grouped with the current row marked, and the cross-console row per console', async () => {
+        await goTo('/operator/1/payouts');
+        expect(sheet()).toBeNull();
+        await open();
+
+        expect(sheet()!.getAttribute('aria-label')).toBe('More (phone)');
+        expect(more().getAttribute('aria-expanded')).toBe('true');
+        expect(headings()).toEqual(['Set-up', 'Money', 'Platform']);
+        expect(rows().map((a) => a.getAttribute('href'))).toEqual([
+          '/operator/1/pricing',
+          '/operator/1/venue',
+          '/operator/1/payouts',
+          '/admin',
+        ]);
+        expect(
+          rows().map((a) => a.querySelector('svg')!.parentElement!.tagName.toLowerCase()),
+        ).toEqual(['app-pricing-glyph', 'app-venue-glyph', 'app-payouts-glyph', 'app-admin-glyph']);
+        expect(rows()[1].textContent).toContain('Venue & commodities');
+        expect(rows()[1].textContent).toContain('Details, amenities, photos');
+        expect(rows()[3].textContent).toContain('Admin console');
+        expect(rows().map((a) => a.getAttribute('aria-current'))).toEqual([
+          null,
+          null,
+          'page',
+          null,
+        ]);
+        // Nothing in the sheet is a primary: those already have a slot.
+        expect(sheet()!.querySelector('a[href="/operator/1/daily"]')).toBeNull();
+
+        // A non-admin has no other console to cross to.
+        operatorAuth.isAdmin.set(false);
+        fixture.detectChanges();
+        expect(headings()).toEqual(['Set-up', 'Money']);
+        expect(sheet()!.querySelector('a[href="/admin"]')).toBeNull();
+        operatorAuth.isAdmin.set(true);
+
+        await setSection('admin');
+        await goTo('/admin/audit');
+        await open();
+        expect(headings()).toEqual(['Moderation', 'Money', 'Records', 'Operator']);
+        expect(rows().map((a) => a.getAttribute('href'))).toEqual([
+          '/admin/photos',
+          '/admin/reviews',
+          '/admin/commissions',
+          '/admin/privacy',
+          '/admin/audit',
+          '/operator',
+        ]);
+        expect(rows().at(-1)!.textContent).toContain('Your venues');
+        expect(rows()[4].getAttribute('aria-current')).toBe('page');
+        expect(rows()[3].getAttribute('aria-current')).toBeNull();
+      });
+
+      it('opening More focuses the first row; Escape, the backdrop and a row hand focus back to More', async () => {
+        await goTo('/operator/1/daily');
+        await open();
+        expect(document.activeElement).toBe(rows()[0]);
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        fixture.detectChanges();
+        expect(sheet()).toBeNull();
+        expect(more().getAttribute('aria-expanded')).toBe('false');
+        expect(document.activeElement).toBe(more());
+
+        await open();
+        byId('oc-more-backdrop')!.click();
+        fixture.detectChanges();
+        expect(sheet()).toBeNull();
+        expect(document.activeElement).toBe(more());
+
+        await open();
+        rows()[2].click();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(TestBed.inject(Router).url).toBe('/operator/1/payouts');
+        expect(sheet()).toBeNull();
+        expect(document.activeElement).toBe(more());
+        expect(more().textContent.trim()).toBe('Payouts');
+      });
+
+      it('a navigation that ends while a row holds focus closes the sheet and lands focus on More; one that ends with focus elsewhere leaves focus alone', async () => {
+        await goTo('/operator/1/daily');
+        await open();
+        expect(document.activeElement).toBe(rows()[0]);
+
+        // Back / Forward while a row is focused: the row unmounts, so focus goes to the persistent More button.
+        await goTo('/operator/1/pricing');
+        await fixture.whenStable();
+        expect(sheet()).toBeNull();
+        expect(document.activeElement).toBe(more());
+
+        await open();
+        byId('oc-brand')!.focus();
+        await goTo('/operator/1/daily');
+        await fixture.whenStable();
+        expect(sheet()).toBeNull();
+        expect(document.activeElement).toBe(byId('oc-brand'));
+      });
+
+      it('a navigation that leaves the console while a row holds focus lands focus on main', async () => {
+        await goTo('/operator/1/daily');
+        await open();
+        expect(document.activeElement).toBe(rows()[0]);
+
+        fixture.componentInstance.section.set('plain');
+        fixture.componentInstance.venueId.set(undefined);
+        await goTo('/operator');
+        await fixture.whenStable();
+        expect(sheet()).toBeNull();
+        expect(more()).toBeNull();
+        expect(document.activeElement).toBe(el.querySelector('main'));
+      });
+    });
   });
 
   it('admin section, signed out: Sign in with returnUrl, no Admin link, no rail, no admin link anywhere', async () => {
@@ -280,6 +526,7 @@ describe('ConsoleShell', () => {
     expect(byId('oc-venue-title')).toBeNull();
     expect(el.querySelectorAll('a[href^="/admin"]')).toHaveLength(0);
     expect(el.querySelector('nav[aria-label$="console sections"]')).toBeNull();
+    expect(phoneRail()).toBeNull();
     expect(owned.load).not.toHaveBeenCalled();
   });
 

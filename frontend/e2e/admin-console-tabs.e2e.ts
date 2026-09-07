@@ -1,118 +1,212 @@
 import { expect, Page, test } from '@playwright/test';
 
-import { mockOperatorLifecycleApi } from './support/auth-mocks';
+import { ADMIN, mockWholeAdminConsole } from './support/admin-console.mocks';
+import { mockOwnedVenues } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { settle } from './support/booking-dialog';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
+import { expectPhoneRailFits, openMoreSheet } from './support/shell';
 
 /**
- * The admin console tab rail's small-screen shape — a single scrolling row of underlined text
- * tabs on one hairline (`shared/tab-rail.ts`), matching the operator console's own rail rather
- * than wrapping.
- *
- * The strip used to wrap (measured to stay within 3 rows at 360px through 8 tabs, never
- * scrolling), a decision made when its short, even-length labels never produced the ragged rows
- * that pushed the operator console to scroll instead. It was moved to match that mechanism
- * anyway, so the two navs behave the same rather than diverging on which one happened to draw
- * uneven labels — every tab still reachable, via one scrolling row. The row wears no edge mask:
- * the tab cut off at the edge is the overflow cue, and hairline dividers at the group boundaries
- * are what stop nine destinations reading as nine peers.
+ * The admin console's rail in its two shapes. From `sm` up: a single scrolling row of underlined
+ * text tabs on one hairline (`shared/tab-rail.ts`), matching the operator console's own rail
+ * rather than wrapping — every tab still reachable, via one row that wears no edge mask (the tab
+ * cut off at the edge is the overflow cue), hairline dividers at the group boundaries stopping nine
+ * destinations reading as nine peers. Below `sm`: the phone rail — Operators · Email · Refunds
+ * as glyph-over-label slots and a More slot that names the current secondary and carries its
+ * `aria-current`, so the current page is never hidden inside a closed menu; More opens the grouped
+ * sheet with `Your venues` at its foot.
  */
 
-const ADMIN = { username: 'operator', password: 'admin-pw' };
-
-test.use({ viewport: { width: 360, height: 740 } });
-
-/** Sign in as the platform admin and open the console home, where the strip renders. */
-async function openConsole(page: Page): Promise<void> {
-  await mockOperatorLifecycleApi(page, { admin: ADMIN });
+/** Sign in as the platform admin and open the console at `path`. */
+async function openConsole(page: Page, path = '/admin'): Promise<void> {
+  await mockWholeAdminConsole(page);
+  await mockOwnedVenues(page, [{ id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' }]);
   await page.goto('/operator');
   await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
-  await page.goto('/admin');
-  await page.getByTestId('admin-tab-operators').waitFor();
+  await page.goto(path);
+  await expect(page.getByTestId('oc-header')).toBeVisible();
 }
 
-/** The rail's tabs, located the way assistive tech finds them — by landmark role and its name. */
-function railTabs(page: Page) {
-  return page.getByRole('navigation', { name: 'Admin console sections' }).getByRole('link');
-}
+test.describe('from sm up: one scrolling row', () => {
+  test.use({ viewport: { width: 640, height: 900 } });
 
-test('the page never scrolls sideways at 360px — only the tab row does', async ({ page }) => {
-  await openConsole(page);
+  /** The rail's tabs, located the way assistive tech finds them — by landmark role and its name. */
+  function railTabs(page: Page) {
+    return page.getByRole('navigation', { name: 'Admin console sections' }).getByRole('link');
+  }
 
-  const pageOverflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-  expect(pageOverflow).toBeLessThanOrEqual(1);
+  test('the page never scrolls sideways at sm — only the tab row may', async ({ page }) => {
+    await openConsole(page);
+    await page.getByTestId('admin-tab-operators').waitFor();
 
-  await expectNoSeriousAxeViolations(page, 'admin console tab strip at 360px');
+    const pageOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(pageOverflow).toBeLessThanOrEqual(1);
+
+    await expectNoSeriousAxeViolations(page, 'admin console tab strip at 640px');
+  });
+
+  test('every tab shares one row, and the row itself scrolls rather than wraps', async ({
+    page,
+  }) => {
+    await openConsole(page);
+
+    const tabs = railTabs(page);
+    await expect(tabs).toHaveCount(8);
+    const tops = await tabs.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
+    expect(new Set(tops.map((t) => Math.round(t))).size).toBe(1);
+
+    const nav = page.getByRole('navigation', { name: 'Admin console sections' });
+    await expect(nav).toHaveCSS('flex-wrap', 'nowrap');
+    const [scrollWidth, clientWidth] = await nav.evaluate((el) => [el.scrollWidth, el.clientWidth]);
+    expect(scrollWidth).toBeGreaterThan(clientWidth);
+  });
+
+  test('switching to the last tab keeps it in view, on click and on reload', async ({ page }) => {
+    await openConsole(page);
+
+    await railTabs(page).filter({ hasText: 'Audit' }).click();
+    await expect(page).toHaveURL(/\/admin\/audit/);
+    const active = railTabs(page).filter({ hasText: 'Audit' });
+    await expect(active).toHaveAttribute('aria-current', 'page');
+    await expect(active).toBeInViewport();
+
+    // Reload on that tab proves the ON-LOAD path too, not just the click.
+    await page.reload();
+    await page.getByTestId('admin-tab-audit').waitFor();
+    const reloadedActive = railTabs(page).filter({ hasText: 'Audit' });
+    await expect(reloadedActive).toHaveAttribute('aria-current', 'page');
+    await expect(reloadedActive).toBeInViewport();
+  });
+
+  test('the open tab is still the only one marked current at sm', async ({ page }) => {
+    await openConsole(page);
+
+    await expect(page.getByTestId('admin-tab-operators')).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByTestId('admin-tab-audit')).not.toHaveAttribute('aria-current', 'page');
+  });
+
+  test('the rail wears no edge mask and draws a divider at each of the four group boundaries (#1007)', async ({
+    page,
+  }) => {
+    await openConsole(page);
+
+    const nav = page.getByRole('navigation', { name: 'Admin console sections' });
+    await expect(nav).toHaveCSS('mask-image', 'none');
+    await expect(nav).toHaveCSS('overflow-x', 'auto');
+
+    const dividers = nav.locator(':scope > span[aria-hidden="true"]');
+    await expect(dividers).toHaveCount(4);
+    // Operators | Email · Refunds | Photos · Reviews | Commissions | Privacy · Audit
+    const sequence = await nav.evaluate((el) =>
+      [...el.children].map((child) => (child.tagName === 'A' ? child.textContent.trim() : '|')),
+    );
+    expect(sequence).toEqual([
+      'Operators',
+      '|',
+      'Email',
+      'Refunds',
+      '|',
+      'Photos',
+      'Reviews',
+      '|',
+      'Commissions',
+      '|',
+      'Privacy',
+      'Audit',
+    ]);
+  });
 });
 
-test('every tab shares one row, and the row itself overflows horizontally', async ({ page }) => {
-  await openConsole(page);
+test.describe('below sm: the phone rail', () => {
+  test.use({ viewport: { width: 390, height: 780 } });
 
-  const tabs = railTabs(page);
-  await expect(tabs).not.toHaveCount(0);
-  const tops = await tabs.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
-  expect(new Set(tops.map((t) => Math.round(t))).size).toBe(1);
+  function phoneRail(page: Page) {
+    return page.getByRole('navigation', { name: 'Admin console sections (phone)' });
+  }
 
-  const nav = page.getByRole('navigation', { name: 'Admin console sections' });
-  const [scrollWidth, clientWidth] = await nav.evaluate((el) => [el.scrollWidth, el.clientWidth]);
-  expect(scrollWidth).toBeGreaterThan(clientWidth);
-});
+  test('below sm the phone rail replaces the rail: Operators · Email · Refunds · More (#1012)', async ({
+    page,
+  }) => {
+    await openConsole(page);
+    await expect(page.getByTestId('admin-op-row').first()).toBeVisible();
 
-test('switching to an off-screen tab scrolls it into view, on click and on reload', async ({
-  page,
-}) => {
-  await openConsole(page);
+    await expectPhoneRailFits(page, 'Admin console sections (phone)');
+    const rail = phoneRail(page);
+    await expect(rail.getByRole('link')).toHaveText(['Operators', 'Email', 'Refunds']);
+    await expect(rail.getByRole('link', { name: 'Operators' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    await expect(rail.locator('svg')).toHaveCount(4);
+    const more = page.getByTestId('oc-more');
+    await expect(more).toHaveAccessibleName('More');
+    await expect(more).not.toHaveAttribute('aria-current', 'page');
+    await expect(more).toHaveAttribute('aria-expanded', 'false');
+    // The section row: Admin has left it; the More sheet is the phone's route between consoles.
+    await expect(page.getByTestId('oc-section-admin')).toBeHidden();
+    await settle(page);
+    await expectNoSeriousAxeViolations(page, 'admin console with the phone rail');
 
-  await railTabs(page).filter({ hasText: 'Audit' }).click();
-  await expect(page).toHaveURL(/\/admin\/audit/);
-  const active = railTabs(page).filter({ hasText: 'Audit' });
-  await expect(active).toHaveAttribute('aria-current', 'page');
-  await expect(active).toBeInViewport();
+    await page.goto('/admin/audit');
+    await expect(page.getByTestId('admin-audit-card').first()).toBeVisible();
+    await expect(more).toHaveAccessibleName('Audit');
+    await expect(more).toHaveAttribute('aria-current', 'page');
+    await expect(rail.getByRole('link', { name: 'Operators' })).not.toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    await settle(page);
+    await expectNoSeriousAxeViolations(page, 'admin audit with the phone rail');
+  });
 
-  // Reload on that off-screen tab proves the ON-LOAD path too, not just the click.
-  await page.reload();
-  await page.getByTestId('admin-tab-audit').waitFor();
-  const reloadedActive = railTabs(page).filter({ hasText: 'Audit' });
-  await expect(reloadedActive).toHaveAttribute('aria-current', 'page');
-  await expect(reloadedActive).toBeInViewport();
-});
+  test('More opens the grouped sheet with Your venues at its foot; a row navigates and closes it, Escape and the backdrop return focus (#1012)', async ({
+    page,
+  }) => {
+    await openConsole(page, '/admin/audit');
+    await expect(page.getByTestId('admin-audit-card').first()).toBeVisible();
+    const more = page.getByTestId('oc-more');
+    const sheet = page.getByTestId('oc-more-sheet');
 
-test('the open tab is still the only one marked current at 360px', async ({ page }) => {
-  await openConsole(page);
+    await openMoreSheet(page);
+    await expect(sheet.locator('p')).toHaveText(['Moderation', 'Money', 'Records', 'Operator']);
+    const rows = sheet.getByRole('link');
+    expect((await rows.allInnerTexts()).map((text) => text.split('\n')[0])).toEqual([
+      'Photos',
+      'Reviews',
+      'Commissions',
+      'Privacy',
+      'Audit',
+      'Your venues',
+    ]);
+    await expect(rows.filter({ hasText: 'Audit' })).toHaveAttribute('aria-current', 'page');
+    await expect(rows.filter({ hasText: 'Privacy' })).not.toHaveAttribute('aria-current', 'page');
+    await expect(rows.filter({ hasText: 'Your venues' })).toHaveAttribute('href', '/operator');
+    await expect(rows.first()).toBeFocused();
+    await settle(page);
+    await expectNoSeriousAxeViolations(page, 'admin audit with the More sheet open');
 
-  await expect(page.getByTestId('admin-tab-operators')).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByTestId('admin-tab-audit')).not.toHaveAttribute('aria-current', 'page');
-});
+    // Escape closes it and hands focus back to More.
+    await page.keyboard.press('Escape');
+    await expect(sheet).toBeHidden();
+    await expect(more).toHaveAttribute('aria-expanded', 'false');
+    await expect(more).toBeFocused();
 
-test('the rail wears no edge mask and draws a divider at each of the four group boundaries (#1007)', async ({
-  page,
-}) => {
-  await openConsole(page);
+    // The backdrop too.
+    await openMoreSheet(page);
+    await page.getByTestId('oc-more-backdrop').click({ position: { x: 10, y: 10 } });
+    await expect(sheet).toBeHidden();
+    await expect(more).toBeFocused();
 
-  const nav = page.getByRole('navigation', { name: 'Admin console sections' });
-  await expect(nav).toHaveCSS('mask-image', 'none');
-  await expect(nav).toHaveCSS('overflow-x', 'auto');
-
-  const dividers = nav.locator(':scope > span[aria-hidden="true"]');
-  await expect(dividers).toHaveCount(4);
-  // Operators | Email · Refunds | Photos · Reviews | Commissions | Privacy · Audit
-  const sequence = await nav.evaluate((el) =>
-    [...el.children].map((child) => (child.tagName === 'A' ? child.textContent.trim() : '|')),
-  );
-  expect(sequence).toEqual([
-    'Operators',
-    '|',
-    'Email',
-    'Refunds',
-    '|',
-    'Photos',
-    'Reviews',
-    '|',
-    'Commissions',
-    '|',
-    'Privacy',
-    'Audit',
-  ]);
+    // A row navigates, closes the sheet, and the More slot now names the page it opened.
+    await openMoreSheet(page);
+    await rows.filter({ hasText: 'Photos' }).click();
+    await expect(page).toHaveURL(/\/admin\/photos/);
+    await expect(sheet).toBeHidden();
+    await expect(more).toBeFocused();
+    await expect(more).toHaveAccessibleName('Photos');
+    await expect(more).toHaveAttribute('aria-current', 'page');
+  });
 });

@@ -93,6 +93,15 @@ describe('ConsoleShell a11y', () => {
     await expectNoAxeViolations(await render('admin'));
   });
 
+  it('is axe clean with the More sheet open on both consoles', async () => {
+    for (const section of ['venue', 'admin'] as const) {
+      const el = await render(section);
+      await open(el, 'oc-more');
+      expect(el.querySelector('[data-testid="oc-more-sheet"]')).not.toBeNull();
+      await expectNoAxeViolations(el);
+    }
+  });
+
   it('has no violations on a plain operator page', async () => {
     await expectNoAxeViolations(await render('plain'));
   });

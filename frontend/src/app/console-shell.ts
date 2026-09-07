@@ -1,23 +1,44 @@
+import { NgComponentOutlet } from '@angular/common';
 import {
   Component,
   DOCUMENT,
+  ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
   input,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { filter } from 'rxjs';
 
-import { AdminConsoleTabs } from './admin/admin-console-tabs';
+import { ADMIN_CONSOLE_TABS, AdminConsoleTabs } from './admin/admin-console-tabs';
 import { OperatorAuth } from './core/operator-auth';
 import { ConsoleVenueMap } from './operator/console-venue-map';
 import { OperatorAccountChip } from './operator/operator-account-chip';
 import { OperatorVenueSwitch } from './operator/operator-venue-switch';
 import { PendingRequestsStore } from './operator/pending-requests-store';
 import { todayBookingDate } from './shared/booking-date';
+import { ConsoleDestination } from './shared/console-destination';
+import {
+  AdminGlyph,
+  BeachMapGlyph,
+  DailyGlyph,
+  MoreGlyph,
+  PayoutsGlyph,
+  PricingGlyph,
+  RequestsGlyph,
+  VenueGlyph,
+  VenuesGlyph,
+} from './shared/console-glyphs';
 import { currentUrl } from './shared/current-url';
+import { focusMover } from './shared/focus-after-render';
+import { CURRENT_POP_ROW, POP_BACKDROP, POP_SKIN } from './shared/popover-skin';
 import {
   TAB_RAIL_MARKER,
   TAB_RAIL_MATCH,
@@ -41,26 +62,82 @@ export interface ConsoleRouteData {
   readonly console: ConsoleSection;
 }
 
-/** A venue-console tab: its child-route path, its label, whether a group divider precedes it on
- *  the rail, and whether it carries the live Requests badge. */
-interface ConsoleTab {
-  readonly path: string;
-  readonly label: string;
-  readonly dividerBefore?: boolean;
-  readonly badge?: boolean;
-}
-
 /** The six venue-console sections, Today first and grouped — what a running venue opens every
  *  day, then set-up, then money (the console-nav spike's grill, answer 7); only Requests carries
- *  the live badge. */
-const VENUE_TABS: readonly ConsoleTab[] = [
-  { path: 'daily', label: 'Daily view' },
-  { path: 'requests', label: 'Requests', badge: true },
-  { path: 'beach-map', label: 'Beach map', dividerBefore: true },
-  { path: 'pricing', label: 'Pricing' },
-  { path: 'venue', label: 'Venue & commodities' },
-  { path: 'payouts', label: 'Payouts', dividerBefore: true },
+ *  the live badge. The child path under `/operator/:venueId`. */
+const VENUE_TABS: readonly ConsoleDestination[] = [
+  {
+    path: 'daily',
+    label: 'Daily view',
+    short: 'Daily',
+    glyph: DailyGlyph,
+    hint: 'Arrivals, walk-ins, sales close',
+    group: 'Today',
+  },
+  {
+    path: 'requests',
+    label: 'Requests',
+    glyph: RequestsGlyph,
+    hint: 'Accept or decline booking requests',
+    group: 'Today',
+    badge: true,
+  },
+  {
+    path: 'beach-map',
+    label: 'Beach map',
+    glyph: BeachMapGlyph,
+    hint: 'Lay out sets, pools and aisles',
+    group: 'Set-up',
+  },
+  {
+    path: 'pricing',
+    label: 'Pricing',
+    glyph: PricingGlyph,
+    hint: 'Per-row prices',
+    group: 'Set-up',
+  },
+  {
+    path: 'venue',
+    label: 'Venue & commodities',
+    short: 'Venue',
+    glyph: VenueGlyph,
+    hint: 'Details, amenities, photos',
+    group: 'Set-up',
+  },
+  {
+    path: 'payouts',
+    label: 'Payouts',
+    glyph: PayoutsGlyph,
+    hint: 'Ledger and statements',
+    group: 'Money',
+  },
 ];
+
+/** How many destinations the phone rail shows as slots; the rest go under More (grill answer 13:
+ *  three plus More is what fits a 344px cover screen). */
+const PHONE_PRIMARIES = 3;
+
+/** A destination resolved for the active console: its router link and whether it is the page. */
+interface PhoneItem extends ConsoleDestination {
+  readonly link: readonly (string | number)[];
+  readonly current: boolean;
+}
+
+/** A group of secondaries under one heading in the More sheet. */
+interface PhoneGroup {
+  readonly name: string;
+  readonly items: readonly PhoneItem[];
+}
+
+/** What the phone rail renders for the active console. */
+interface PhoneNav {
+  readonly label: string;
+  readonly primaries: readonly PhoneItem[];
+  /** The More sheet's groups: the secondaries by group, then the cross-console row's group. */
+  readonly groups: readonly PhoneGroup[];
+  /** The current destination when it sits under More — the slot then wears its glyph and label. */
+  readonly moreCurrent: PhoneItem | undefined;
+}
 
 /** A section slot on the row: the rail's marker one level up, the bar over the header's border. */
 const SLOT = `flex items-center after:-bottom-px ${TAB_RAIL_MARKER}`;
@@ -75,13 +152,28 @@ const CLS = {
   brand:
     'oc-wordmark inline-flex shrink-0 items-center text-[19px] leading-[1.15] font-bold tracking-[-0.01em] text-riv-ink no-underline',
   venueSlot: `min-w-0 ${SLOT}`,
-  adminSlot: `shrink-0 px-0.5 text-[13.5px] font-semibold text-riv-ink-soft no-underline hover:text-riv-ink ${SLOT}`,
+  // Below sm the phone's route between consoles is the More sheet's row; the spike measured the row overflowing at 390px and 344px with this link in.
+  adminSlot: `shrink-0 px-0.5 text-[13.5px] font-semibold text-riv-ink-soft no-underline hover:text-riv-ink max-sm:hidden ${SLOT}`,
   signIn:
     'inline-flex items-center text-[13px] font-semibold text-riv-ink no-underline hover:underline',
-  railBox: 'mx-auto w-full max-w-[1120px]',
+  railBox: 'mx-auto w-full max-w-[1120px] max-sm:hidden',
   rail: 'oc-tabs px-6 pt-3.5 scroll-px-6',
   badge:
     'oc-badge inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-riv-solid-fill-brand px-1.5 text-[11.5px] font-bold leading-none text-white',
+  // Four equal slots on the header's glass; the marker sits on its bottom border, as on the row.
+  phoneRail:
+    'grid grid-cols-4 border-b border-riv-header-border bg-riv-header-glass px-1 sm:hidden',
+  // A glyph over an 11px label; `flex`, so the 44px floor is live on the links; the marker is the rail's.
+  phoneSlot: `min-h-[58px] cursor-pointer flex-col justify-center gap-1 px-1 text-center text-[11px] leading-tight font-semibold text-riv-ink-soft no-underline after:-bottom-px [&_svg]:size-[21px] ${SLOT}`,
+  phoneBadge: 'absolute top-1.5 right-[calc(50%-26px)]',
+  sheetBackdrop: `${POP_BACKDROP} sm:hidden`,
+  // Above the home indicator; capped to the viewport so nine admin rows still scroll inside the sheet on a short phone.
+  sheet: `fixed inset-x-2.5 bottom-[calc(12px+env(safe-area-inset-bottom))] max-h-[calc(100dvh-24px)] overflow-y-auto p-2.5 sm:hidden ${POP_SKIN}`,
+  groupLabel:
+    'mt-3 mb-1 px-3.5 text-[10.5px] font-bold tracking-[0.16em] text-riv-pop-ink-soft uppercase first:mt-0',
+  // `flex`, so the 44px floor is live on the row; the current row is the popover's own recipe.
+  sheetRow: `flex min-h-11 w-full items-center gap-3 rounded-[14px] px-3.5 py-[11px] text-left text-[15px] font-semibold text-riv-pop-ink no-underline [transition:background_0.12s_ease] hover:bg-riv-pop-hover [&_svg]:size-[18px] [&_svg]:shrink-0 ${CURRENT_POP_ROW}`,
+  hint: 'text-[12px] font-medium text-riv-pop-ink-soft',
 } as const;
 
 /**
@@ -90,14 +182,27 @@ const CLS = {
  * ({@link ConsoleSection}). Its **section row** — the only sticky chrome, about 46px — holds the
  * brand (to `/operator`), the venue switcher (`operator-venue-switch.ts`), which IS the
  * venue-console section and is current-marked on `/operator/:venueId/*`, `Admin` as a section
- * link for admins (current on `/admin/*`), and the account chip (`operator-account-chip.ts`) or,
- * signed out, the operator `Sign in` carrying the page as `returnUrl`. Under the row sits the
- * active section's rail: the venue console's six tabs with the live Requests badge, or the admin
- * console's tabs (`admin-console-tabs.ts`) — the latter only past the admin gate (restored, signed
- * in, admin), so a signed-out visitor on an admin URL is never told which admin surfaces exist.
- * Both rows draw the same marker one level apart (`shared/tab-rail.ts`'s
- * `TAB_RAIL_MARKER`), so section and tab read as one structure. The rail, and the page under it,
- * scroll with the page.
+ * link for admins (current on `/admin/*`; from `sm` up only — below it the More sheet's
+ * `Admin console` row is the phone's route between consoles), and the account chip
+ * (`operator-account-chip.ts`) or, signed out, the operator `Sign in` carrying the page as
+ * `returnUrl`. Under the row sits the active section's rail: the venue console's six tabs with the
+ * live Requests badge, or the admin console's tabs (`admin-console-tabs.ts`) — the latter only past
+ * the admin gate (restored, signed in, admin), so a signed-out visitor on an admin URL is never
+ * told which admin surfaces exist. Both rows draw the same marker one level apart
+ * (`shared/tab-rail.ts`'s `TAB_RAIL_MARKER`), so section and tab read as one structure. The rail,
+ * and the page under it, scroll with the page.
+ *
+ * <p><strong>Below `sm` the text rail gives way to the phone rail</strong> — CSS decides, both are
+ * in the DOM: four equal slots of glyph over label, the first three destinations of the console's
+ * table (Daily · Requests · Beach map, Operators · Email · Refunds) and a **More** button. Whenever
+ * the current page is one of the secondaries, that slot wears the page's glyph, label and
+ * `aria-current="page"` — the current page is never hidden inside a closed menu, which is what
+ * answered the objection to an overflow menu — and otherwise reads `More`. It opens a bottom
+ * sheet of the secondaries grouped as the desktop rail's dividers group them, plus the
+ * cross-console row. The button's accessible name therefore follows the route. Escape, the
+ * backdrop and a chosen row close the sheet onto the More button; a navigation that ends with it
+ * open (Back, Forward) closes it too, and if a row held focus, focus lands on the More button once
+ * the new page has rendered — or on the app shell's `<main>` when the destination has no phone rail.
  *
  * <p>Everything it renders it reads from the router and root singletons, so the routed page
  * publishes nothing: the venue id comes off the route chain (the app shell's walk hands it over),
@@ -124,6 +229,7 @@ const CLS = {
   selector: 'app-console-shell',
   imports: [
     AdminConsoleTabs,
+    NgComponentOutlet,
     OperatorAccountChip,
     OperatorVenueSwitch,
     RouterLink,
@@ -133,7 +239,11 @@ const CLS = {
     TabRailTab,
     TouchTarget,
   ],
-  host: { class: 'contents', '(window:scroll)': 'onScroll()' },
+  host: {
+    class: 'contents',
+    '(window:scroll)': 'onScroll()',
+    '(document:keydown.escape)': 'dismissSheet()',
+  },
   template: `
     <header
       [class]="cls.header"
@@ -190,7 +300,7 @@ const CLS = {
       </div>
     </header>
 
-    @if (section() === 'venue' && venueId() !== undefined) {
+    @if (venueCurrent()) {
       <div [class]="cls.railBox">
         <nav
           appTabRail
@@ -198,8 +308,8 @@ const CLS = {
           data-testid="oc-tabs"
           aria-label="Operator console sections"
         >
-          @for (tab of tabs; track tab.path) {
-            @if (tab.dividerBefore) {
+          @for (tab of tabs; track tab.path; let index = $index) {
+            @if (index > 0 && tab.group !== tabs[index - 1].group) {
               <span appTabRailDivider></span>
             }
             <a
@@ -225,6 +335,77 @@ const CLS = {
         <app-admin-console-tabs label="Admin console sections" />
       </div>
     }
+
+    @if (phoneNav(); as nav) {
+      <nav [class]="cls.phoneRail" [attr.aria-label]="nav.label" data-testid="oc-phone-rail">
+        @for (item of nav.primaries; track item.path) {
+          <a
+            appTouchTarget
+            [routerLink]="item.link"
+            routerLinkActive
+            [routerLinkActiveOptions]="match"
+            ariaCurrentWhenActive="page"
+            [class]="cls.phoneSlot"
+          >
+            <ng-container *ngComponentOutlet="item.glyph" />
+            <span>{{ item.short ?? item.label }}</span>
+            @if (item.badge && requestsCount() > 0) {
+              <span
+                [class]="cls.badge + ' ' + cls.phoneBadge"
+                data-testid="oc-phone-requests-badge"
+                >{{ requestsCount() }}</span
+              >
+            }
+          </a>
+        }
+        <button
+          appTouchTarget
+          #more
+          type="button"
+          [class]="cls.phoneSlot"
+          [attr.aria-current]="nav.moreCurrent ? 'page' : null"
+          [attr.aria-expanded]="sheetOpen()"
+          data-testid="oc-more"
+          (click)="toggleSheet()"
+        >
+          <ng-container *ngComponentOutlet="nav.moreCurrent?.glyph ?? moreGlyph" />
+          <span>{{
+            nav.moreCurrent ? (nav.moreCurrent.short ?? nav.moreCurrent.label) : 'More'
+          }}</span>
+        </button>
+      </nav>
+      @if (sheetOpen()) {
+        <div
+          [class]="cls.sheetBackdrop"
+          data-testid="oc-more-backdrop"
+          (click)="dismissSheet()"
+          aria-hidden="true"
+        ></div>
+        <nav [class]="cls.sheet" aria-label="More (phone)" data-testid="oc-more-sheet">
+          @for (group of nav.groups; track group.name) {
+            <p [class]="cls.groupLabel">{{ group.name }}</p>
+            @for (item of group.items; track item.path) {
+              <a
+                appTouchTarget
+                [routerLink]="item.link"
+                routerLinkActive
+                [routerLinkActiveOptions]="match"
+                ariaCurrentWhenActive="page"
+                [class]="cls.sheetRow"
+                data-testid="oc-more-row"
+                (click)="activateRow()"
+              >
+                <ng-container *ngComponentOutlet="item.glyph" />
+                <span class="flex min-w-0 flex-1 flex-col leading-tight">
+                  <span>{{ item.label }}</span>
+                  <span [class]="cls.hint">{{ item.hint }}</span>
+                </span>
+              </a>
+            }
+          }
+        </nav>
+      }
+    }
   `,
 })
 export class ConsoleShell {
@@ -239,16 +420,22 @@ export class ConsoleShell {
   private readonly venueMap = inject(ConsoleVenueMap);
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
   private readonly url = currentUrl(this.router);
+  private readonly moreButton = viewChild<ElementRef<HTMLButtonElement>>('more');
+  private readonly focusAfterRender = focusMover();
 
   protected readonly cls = CLS;
   protected readonly tabs = VENUE_TABS;
   protected readonly match = TAB_RAIL_MATCH;
+  protected readonly moreGlyph = MoreGlyph;
   protected readonly requestsCount = this.requests.count;
   /** The section row is translated away below `sm`. */
   protected readonly hidden = signal(false);
   /** The venue name from the shared snapshot; `undefined` while it loads or after a failed read. */
   protected readonly venueName = signal<string | undefined>(undefined);
+  /** The More sheet is open. */
+  protected readonly sheetOpen = signal(false);
   private lastY = 0;
   /** Bumped per venue: a late read from a superseded venue compares this and is dropped. */
   private epoch = 0;
@@ -267,11 +454,67 @@ export class ConsoleShell {
       ? (/^\/operator\/\d+\/([^/?#;]+)/.exec(this.url())?.[1] ?? 'beach-map')
       : undefined,
   );
+  /** The URL's path alone — what an admin destination is matched against. */
+  private readonly urlPath = computed(() => this.url().split(/[?#;]/)[0]);
   /** Sign-in carries the page as `returnUrl` — it outranks the venue-count landing rule. */
   protected readonly signInParams = computed(() => ({
     audience: 'operator',
     returnUrl: this.url(),
   }));
+
+  /** The phone rail for the active console, or `undefined` where no rail renders. */
+  protected readonly phoneNav = computed((): PhoneNav | undefined => {
+    if (this.venueCurrent()) {
+      const id = this.venueId();
+      const tab = this.tabPath();
+      return this.phoneNavOf(
+        'Operator console sections (phone)',
+        VENUE_TABS.map((t) => ({
+          ...t,
+          link: ['/operator', id!, t.path],
+          current: t.path === tab,
+        })),
+        this.operator.isAdmin()
+          ? {
+              name: 'Platform',
+              items: [
+                {
+                  path: '/admin',
+                  label: 'Admin console',
+                  glyph: AdminGlyph,
+                  hint: 'Operators, outboxes, moderation, records',
+                  group: 'Platform',
+                  link: ['/admin'],
+                  current: false,
+                },
+              ],
+            }
+          : undefined,
+      );
+    }
+    if (this.section() === 'admin' && this.adminGate()) {
+      const path = this.urlPath();
+      return this.phoneNavOf(
+        'Admin console sections (phone)',
+        ADMIN_CONSOLE_TABS.map((t) => ({ ...t, link: [t.path], current: t.path === path })),
+        {
+          name: 'Operator',
+          items: [
+            {
+              path: '/operator',
+              label: 'Your venues',
+              glyph: VenuesGlyph,
+              hint: 'Back to the venue console',
+              group: 'Operator',
+              link: ['/operator'],
+              current: false,
+            },
+          ],
+        },
+      );
+    }
+    return undefined;
+  });
 
   constructor() {
     // Per session (the async /me restore resolves late) AND per venue.
@@ -280,12 +523,61 @@ export class ConsoleShell {
       const signedIn = this.operator.signedIn();
       untracked(() => this.loadName(signedIn ? id : undefined));
     });
+    this.router.events
+      .pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => this.closeSheetOnNavigation());
   }
 
   protected onScroll(): void {
     const y = window.scrollY;
     this.hidden.set(y > this.lastY && y > 64);
     this.lastY = y;
+  }
+
+  /** Open the sheet onto its first row, or close it back onto the More button. */
+  protected toggleSheet(): void {
+    this.sheetOpen.update((open) => !open);
+    if (this.sheetOpen()) {
+      this.focusAfterRender('oc-more-row', 'oc-more');
+    } else {
+      this.moreButton()?.nativeElement.focus();
+    }
+  }
+
+  /** A navigation ended with the sheet open — Back, Forward, or a row's own link. The sheet closes;
+   *  if one of its rows held focus, focus lands on the More button once the new page has rendered,
+   *  or on the app shell's `<main>` when the destination has no phone rail (WCAG 2.4.3). */
+  private closeSheetOnNavigation(): void {
+    if (!this.sheetOpen()) {
+      return;
+    }
+    const held = this.document.activeElement?.closest('[data-testid="oc-more-sheet"]') !== null;
+    this.sheetOpen.set(false);
+    if (held) {
+      afterNextRender(
+        () =>
+          (
+            this.moreButton()?.nativeElement ?? this.document.querySelector<HTMLElement>('main')
+          )?.focus(),
+        { injector: this.injector },
+      );
+    }
+  }
+
+  /** A row was chosen: close, and hand focus back to the More button the row's unmount would strand it from. */
+  protected activateRow(): void {
+    this.sheetOpen.set(false);
+    this.moreButton()?.nativeElement.focus();
+  }
+
+  /** Escape or the backdrop: the same close, a no-op while closed so it never steals focus. */
+  protected dismissSheet(): void {
+    if (this.sheetOpen()) {
+      this.activateRow();
+    }
   }
 
   /** Sign out, then leave for the operator sign-in — see the class doc. */
@@ -295,6 +587,34 @@ export class ConsoleShell {
     this.venueMap.reset();
     this.requests.reset();
     await this.router.navigate(['/account/sign-in'], { queryParams: { audience: 'operator' } });
+  }
+
+  /** Split a console's destinations into the rail's slots and the sheet's groups, the
+   *  cross-console row's group at the foot. */
+  private phoneNavOf(
+    label: string,
+    items: readonly PhoneItem[],
+    crossConsole: PhoneGroup | undefined,
+  ): PhoneNav {
+    const primaries = items.slice(0, PHONE_PRIMARIES);
+    const groups: PhoneGroup[] = [];
+    for (const item of items.slice(PHONE_PRIMARIES)) {
+      const last = groups.at(-1);
+      if (last?.name === item.group) {
+        groups[groups.length - 1] = { name: last.name, items: [...last.items, item] };
+      } else {
+        groups.push({ name: item.group, items: [item] });
+      }
+    }
+    if (crossConsole) {
+      groups.push(crossConsole);
+    }
+    return {
+      label,
+      primaries,
+      groups,
+      moreCurrent: items.slice(PHONE_PRIMARIES).find((item) => item.current),
+    };
   }
 
   /** Read the venue's name through the shared snapshot, best-effort; the previous name is dropped first. */

@@ -66,7 +66,12 @@ import { LedgerRow } from './operator-console.model';
           </div>
         </div>
 
-        <div class="mt-5 overflow-x-auto rounded-[14px] border border-riv-console-tint/15">
+        <!-- A phone scrolls the statement sideways: a named section is a focusable region, so the keyboard can reach it too (WCAG 2.1.1). -->
+        <section
+          class="mt-5 overflow-x-auto rounded-[14px] border border-riv-console-tint/15"
+          aria-label="Statement"
+          tabindex="0"
+        >
           <table class="w-full border-collapse text-[12.5px]">
             <caption class="sr-only">
               Statement entries
@@ -117,7 +122,7 @@ import { LedgerRow } from './operator-console.model';
               </tr>
             </tbody>
           </table>
-        </div>
+        </section>
 
         <div
           class="mt-4 rounded-[14px] border border-dashed border-riv-console-tint/20 bg-riv-console-tint/5 px-4 py-3.5"

@@ -3,6 +3,7 @@ import { expect, Locator, Page, test } from '@playwright/test';
 import { mockOperatorLifecycleApi } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
+import { openMoreSheet } from './support/shell';
 
 /**
  * Real-render behaviour + a11y audit of the admin console's Privacy tab: an admin
@@ -225,16 +226,19 @@ test('the tab rail marks Privacy in slot 8 and never scrolls sideways at 360px',
   await mockErasure(page);
   await openPrivacyTab(page);
 
-  const privacy = page.getByTestId('admin-tab-privacy');
-  await expect(privacy).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByTestId('admin-tab-photos')).not.toHaveAttribute('aria-current', 'page');
+  // Below sm Privacy is a secondary of the phone rail: the More slot names it and is current.
+  const more = page.getByTestId('oc-more');
+  await expect(more).toHaveAccessibleName('Privacy');
+  await expect(more).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('admin-tab-privacy')).toBeHidden();
 
   // The amended tab order puts Privacy after the money pair and before Audit, the records last.
-  const labels = await page
-    .getByRole('navigation', { name: 'Admin console sections' })
-    .getByRole('link')
-    .allInnerTexts();
-  expect(labels.slice(-3)).toEqual(['Commissions', 'Privacy', 'Audit']);
+  await openMoreSheet(page);
+  const labels = (await page.getByTestId('oc-more-sheet').getByRole('link').allInnerTexts()).map(
+    (text) => text.split('\n')[0],
+  );
+  expect(labels.slice(2, 5)).toEqual(['Commissions', 'Privacy', 'Audit']);
+  await page.keyboard.press('Escape');
 
   const scrollsSideways = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,

@@ -98,8 +98,11 @@ states the decisions and traps the code can't show you.
 ## Icons — inline SVG, shared as a component
 
 There is no icon library and no icon registry (`MatIconRegistry` is Angular Material, not
-in this stack). An icon is an inline `<svg>` you write. The precedent is
-`shared/clock-icon.ts` (rendered in `venue/venue-map.html`) — read it before adding a second.
+in this stack). An icon is an inline `<svg>` you write. Two precedents, one contract:
+`shared/clock-icon.ts` (a single glyph, rendered in `venue/venue-map.html`) and
+`shared/console-glyphs.ts` (the console's set — one component per destination, one file,
+picked from a descriptor by `NgComponentOutlet`, swept by one spec) — read the nearer one
+before adding a glyph.
 
 - **ICON-1. A shared glyph is a `@Component`, not a directive** — a directive only adds
   classes and attributes to an element that already exists; anything supplying markup
@@ -128,7 +131,11 @@ in this stack). An icon is an inline `<svg>` you write. The precedent is
 
 Rejected: the esbuild `import clock from './clock.svg' with { loader: 'text' }` route — it
 needs `innerHTML` (sanitizer friction), loses per-call-site sizing and `class` control, and
-re-applies `aria-hidden` at the host anyway. Revisit only if the app grows a real icon set.
+re-applies `aria-hidden` at the host anyway. The console's seventeen-glyph set stayed on
+inline components for the same reasons; a `name` input on one component was rejected as the
+variant ICON-2 rules out. One trap: a shared `<svg …>` attribute block interpolated into each
+`template` compiles under the Angular compiler but not under angular-eslint's template parser
+(it reads `${…}` as an unescaped brace), so each glyph writes its attributes out.
 
 ## Styling across the themes
 

@@ -3,6 +3,7 @@ import { expect, Page, test } from '@playwright/test';
 import { mockOperatorLifecycleApi } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
+import { openMoreSheet } from './support/shell';
 
 /**
  * Real-render behaviour + a11y audit of the admin console's stat strip, at **360px**
@@ -11,10 +12,10 @@ import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
  * Two guards here exist to keep decisions decided, in the shape the tab strip's own e2e established:
  *
  *  - **The fold budget.** The strip's whole risk is that it pushes the console home's actual work
- *    below the fold. The shared operator chrome already spends 165px and the eight-tab strip
- *    another 137px, so the room left is small and shrinks with every tab. Asserting that the first
- *    content heading stays above a 740px fold fails CI on a fifth tile or a taller tile, instead of
- *    letting the page quietly become a masthead.
+ *    below the fold. At this width the console shell's section row and the four-slot phone rail
+ *    spend the first 106px, so the room left is finite and every tile costs some of it. Asserting
+ *    that the first content heading stays above a 740px fold fails CI on a fifth tile or a taller
+ *    tile, instead of letting the page quietly become a masthead.
  *  - **The strip's scope.** The stats render on the console *home* only, because the console's
  *    tab-order decision declined a layout component and pinned its revisit to a ninth tab. That is
  *    a decision, not an accident, so a later change pasting the strip onto another tab should fail
@@ -78,11 +79,10 @@ async function openConsole(page: Page, venues: unknown = VENUES): Promise<void> 
 }
 
 /**
- * The measured budget, at HEAD: chrome 0–133, `h1` 173–209, eight-tab strip 221–365, stat strip
- * 385–626, first content heading 658–**685**. Fifty-five pixels of headroom, which is exactly why
- * this is a test and not a note in a plan doc. The 44px touch-target floor (#605) moved every band:
- * the pills and the chrome's links grew, and the padding they made redundant was removed to pay
- * for it — a net gain, since the old chrome alone cost 165px.
+ * The measured budget, at HEAD, at 360×740: section row 0–47, phone rail 47–106, `h1` 146–182,
+ * stat strip 202–382, first content heading 414–**441**. Three hundred pixels of headroom since the
+ * console shell replaced the old two-row chrome and the eight-tab strip below `sm` — the test stays
+ * because the fold is still the strip's cost ceiling, not because the margin is tight.
  */
 const FOLD = 740;
 
@@ -147,24 +147,34 @@ test("the console home's first content heading survives the strip at 360px", asy
 test('sits below the tab strip, so the pills never move between tabs', async ({ page }) => {
   await openConsole(page);
 
+  // At 360px the rail is the phone rail; Commissions is reached through its More sheet.
   const tabsBottom = await page.evaluate(() =>
     Math.round(
-      document.querySelector('nav[aria-label="Admin console sections"]')!.getBoundingClientRect()
-        .bottom,
+      document
+        .querySelector('nav[aria-label="Admin console sections (phone)"]')!
+        .getBoundingClientRect().bottom,
     ),
   );
   expect(await topOf(page, '[data-testid="admin-stats"]')).toBeGreaterThanOrEqual(tabsBottom);
 
-  const tabsTopOnHome = await topOf(page, '[data-testid="admin-tab-operators"]');
-  await page.getByTestId('admin-tab-commissions').click();
+  const railTopOnHome = await topOf(page, '[data-testid="oc-phone-rail"]');
+  await openMoreSheet(page);
+  await page
+    .getByTestId('oc-more-sheet')
+    .getByRole('link', { name: /^Commissions/ })
+    .click();
   await expect(page).toHaveURL(/\/admin\/commissions/);
-  expect(await topOf(page, '[data-testid="admin-tab-operators"]')).toBe(tabsTopOnHome);
+  expect(await topOf(page, '[data-testid="oc-phone-rail"]')).toBe(railTopOnHome);
 });
 
 test("the strip is the console home's, not every tab's", async ({ page }) => {
   await openConsole(page);
 
-  await page.getByTestId('admin-tab-commissions').click();
+  await openMoreSheet(page);
+  await page
+    .getByTestId('oc-more-sheet')
+    .getByRole('link', { name: /^Commissions/ })
+    .click();
   await expect(page).toHaveURL(/\/admin\/commissions/);
   await expect(page.getByTestId('admin-commissions-list')).toBeVisible();
   await expect(page.getByTestId('admin-stats')).toHaveCount(0);

@@ -60,3 +60,47 @@ export async function openOperatorAccountMenu(page: Page): Promise<void> {
   await chip.click();
   await expect(chip).toHaveAttribute('aria-expanded', 'true');
 }
+
+/** Opens the console shell's More sheet from the phone rail (below `sm` only) and proves it is up. */
+export async function openMoreSheet(page: Page): Promise<void> {
+  await awaitRoutedPage(page);
+  const more = page.getByTestId('oc-more');
+  await more.click();
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByTestId('oc-more-sheet')).toBeVisible();
+}
+
+/**
+ * The console's phone rail as a viewport must render it: the four slots share one row inside the
+ * viewport, the text rail is not shown, the page never scrolls sideways, and the section row's
+ * brand, its venue slot and the account chip sit side by side without overlapping.
+ */
+export async function expectPhoneRailFits(page: Page, label: string): Promise<void> {
+  const rail = page.getByRole('navigation', { name: label });
+  await expect(rail).toBeVisible();
+  const slots = rail.locator(':scope > *');
+  await expect(slots).toHaveCount(4);
+  const boxes = await slots.evaluateAll((els) =>
+    els.map((el) => {
+      const box = el.getBoundingClientRect();
+      return { top: Math.round(box.top), left: box.left, right: box.right };
+    }),
+  );
+  expect(new Set(boxes.map((box) => box.top)).size).toBe(1);
+  const width = page.viewportSize()!.width;
+  for (const box of boxes) {
+    expect(box.left).toBeGreaterThanOrEqual(0);
+    expect(box.right).toBeLessThanOrEqual(width);
+  }
+  await expect(page.locator('nav[aria-label$="console sections"]')).toBeHidden();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+
+  const [brand, venue, chip] = await Promise.all(
+    ['oc-brand', 'oc-venue-title', 'oc-account'].map((id) => page.getByTestId(id).boundingBox()),
+  );
+  expect(brand!.x + brand!.width).toBeLessThanOrEqual(venue!.x + 1);
+  expect(venue!.x + venue!.width).toBeLessThanOrEqual(chip!.x + 1);
+}

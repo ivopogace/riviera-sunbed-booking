@@ -1,22 +1,24 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { ADMIN, mockWholeAdminConsole } from './support/admin-console.mocks';
+import { expectNoSeriousAxeViolations } from './support/axe';
+import { settle } from './support/booking-dialog';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
-import { openOperatorAccountMenu } from './support/shell';
+import { expectPhoneRailFits, openMoreSheet, openOperatorAccountMenu } from './support/shell';
 import { expectTouchTargets } from './support/touch-targets';
 
 /**
- * The 44 px touch-target floor (#605) over the platform-admin console — the operator console's
+ * The 44 px touch-target floor over the platform-admin console — the operator console's
  * sibling, and the surface whose own `admin-console-tabs` carried a code comment conceding its
  * pills were 40 px and under the figure.
  *
  * <p>Split from `touch-targets.e2e.ts` because the two consoles need different mocks and different
- * sign-in; the sweep helper and the content-marker rule are shared.
+ * sign-in; the sweep helper and the content-marker rule are shared, and so is the viewport rule:
+ * the project sets it (`phone` at 390px, `fold` at 344px), this file never does.
  */
 test.describe('44px touch targets on the admin console at a phone width', () => {
   test.beforeEach(async ({ page }) => {
     await mockWholeAdminConsole(page);
-    await page.setViewportSize({ width: 390, height: 780 });
   });
 
   async function openAdmin(page: Page, path: string, marker: string): Promise<void> {
@@ -25,6 +27,23 @@ test.describe('44px touch targets on the admin console at a phone width', () => 
     await page.goto(path);
     await expect(page.getByTestId(marker).first()).toBeVisible();
   }
+
+  test('admin audit — the phone rail fits one row, every slot at the floor, the More sheet too (#1012)', async ({
+    page,
+  }) => {
+    const width = page.viewportSize()!.width;
+    await openAdmin(page, '/admin/audit', 'admin-audit-card');
+
+    await expectPhoneRailFits(page, 'Admin console sections (phone)');
+    await expectTouchTargets(page, `admin audit with the phone rail at ${width}px`);
+    await settle(page);
+    await expectNoSeriousAxeViolations(page, `admin audit at ${width}px`);
+
+    await openMoreSheet(page);
+    await expectTouchTargets(page, `admin audit with the More sheet open at ${width}px`);
+    await settle(page);
+    await expectNoSeriousAxeViolations(page, `admin audit, More sheet open, at ${width}px`);
+  });
 
   const SURFACES = [
     { path: '/admin', marker: 'admin-op-row', label: 'admin operators' },
@@ -58,7 +77,6 @@ test.describe('44px touch targets on the admin console at a phone width', () => 
 test.describe('44px touch targets on the admin console — gated states', () => {
   test.beforeEach(async ({ page }) => {
     await mockWholeAdminConsole(page);
-    await page.setViewportSize({ width: 390, height: 780 });
   });
 
   async function signIn(page: Page): Promise<void> {

@@ -186,10 +186,16 @@ test.describe('the class-O tint tokens paint from the token registry', () => {
       from: 14,
       to: 15,
     });
-    await expectLadderMove(page, statement.locator('div:has(> table)'), 'border-top-color', tint, {
-      from: 12,
-      to: 15,
-    });
+    await expectLadderMove(
+      page,
+      statement.locator('section:has(> table)'),
+      'border-top-color',
+      tint,
+      {
+        from: 12,
+        to: 15,
+      },
+    );
     await expectLadderMove(page, statement.locator('thead tr'), 'background-color', tint, {
       from: 4,
       to: 5,

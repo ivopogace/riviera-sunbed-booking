@@ -197,6 +197,33 @@ test('lists the queue, accepts (badge decrements), and declines to empty — no 
   await expectNoSeriousAxeViolations(page, 'all caught up');
 });
 
+test("the phone rail's Requests slot carries the badge and it decrements on accept (#1012)", async ({
+  page,
+}) => {
+  await mockRequests(page);
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto(`/operator/${VENUE}/requests`);
+  await page.getByLabel('Username', { exact: true }).fill('operator');
+  await page.getByLabel('Password', { exact: true }).fill('pw');
+  await page.getByRole('button', { name: /^Sign(ing)? in/ }).click();
+  await expect(page.getByTestId('requests-tab')).toBeVisible();
+
+  // The badge sits on the phone slot's glyph; the text rail and its badge are not shown here.
+  const slot = page
+    .getByRole('navigation', { name: 'Operator console sections (phone)' })
+    .getByRole('link', { name: /^Requests/ });
+  await expect(slot).toHaveAttribute('aria-current', 'page');
+  const badge = page.getByTestId('oc-phone-requests-badge');
+  await expect(badge).toBeVisible();
+  await expect(badge).toHaveText('2');
+  await expect(slot).toContainText('2');
+  await expect(page.getByTestId('oc-requests-badge')).toBeHidden();
+
+  await page.getByRole('button', { name: /Accept.*from Ana Guest/ }).click();
+  await expect(page.getByTestId('request-card')).toHaveCount(1);
+  await expect(badge).toHaveText('1');
+});
+
 test('opens the Requests tab on ONE venue-map read, not two (#486)', async ({ page }) => {
   const { mapReads } = await mockRequests(page);
 

@@ -14,7 +14,7 @@ import { defineConfig, devices } from '@playwright/test';
  * `PLAYWRIGHT_BROWSERS_PATH`; CI runs `npx playwright install chromium` first.
  *
  * Parallelism: every spec mocks its API per page and shares nothing, so files run on 2 parallel
- * workers everywhere. Measured on both 4-vCPU environments the suite runs in (PR #891): the
+ * workers everywhere. Measured on both 4-vCPU environments the suite runs in: the
  * `ubuntu-latest` runner took 8.7 min on 1 worker, 7.0 on 4 and 6.8 on 2; the Claude Code cloud
  * sandbox took 571s on 1, 330–357s on 4 and 314s on 2 — and on 2 the per-test median stayed at
  * 1.3s against 2.8s on 4, so the extra Chromiums only add contention and shrink the timeout
@@ -22,12 +22,30 @@ import { defineConfig, devices } from '@playwright/test';
  * cores does not silently re-create the 4-worker case; `--workers` overrides for a local
  * experiment. Tests within one file stay in order (`fullyParallel: false`): the suite was authored
  * under a single worker, and the intra-file split adds ~2% for a wider timing surface.
+ *
+ * Projects: every spec runs once on `chromium` at its own viewport, except the two touch-target
+ * sweeps, which set no viewport of their own and run under `phone` (390×780) and `fold` (344×882,
+ * the Galaxy Z Fold 5 cover screen — the narrowest width the console's phone rail is proven at).
  */
+
+/** The two sweeps that run per phone width rather than once. */
+const PHONE_SWEEPS = ['**/touch-targets.e2e.ts', '**/touch-targets-admin.e2e.ts'];
+
+// The real-backend U7 suite has its own config/servers — never run it under the mocked, backend-less one.
+const REAL_BACKEND = '**/real-backend/**';
+
+const chromium = {
+  ...devices['Desktop Chrome'],
+  // CI installs the matching browser; a pre-installed Chromium of another revision is named by PW_CHROMIUM_EXECUTABLE.
+  launchOptions: process.env.PW_CHROMIUM_EXECUTABLE
+    ? { executablePath: process.env.PW_CHROMIUM_EXECUTABLE }
+    : {},
+};
+
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.e2e.ts',
-  // The real-backend U7 suite has its own config/servers — never run it under the mocked, backend-less one.
-  testIgnore: '**/real-backend/**',
+  testIgnore: REAL_BACKEND,
   timeout: 60_000,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
@@ -40,17 +58,16 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [
+    { name: 'chromium', use: chromium, testIgnore: [REAL_BACKEND, ...PHONE_SWEEPS] },
     {
-      name: 'chromium',
-      use: {
-        ...devices['Desktop Chrome'],
-        // CI installs the matching browser via `npx playwright install chromium`. For
-        // environments with a pre-installed Chromium of a different revision, point at it
-        // with PW_CHROMIUM_EXECUTABLE instead of re-downloading.
-        launchOptions: process.env.PW_CHROMIUM_EXECUTABLE
-          ? { executablePath: process.env.PW_CHROMIUM_EXECUTABLE }
-          : {},
-      },
+      name: 'phone',
+      use: { ...chromium, viewport: { width: 390, height: 780 } },
+      testMatch: PHONE_SWEEPS,
+    },
+    {
+      name: 'fold',
+      use: { ...chromium, viewport: { width: 344, height: 882 } },
+      testMatch: PHONE_SWEEPS,
     },
   ],
   webServer: {

@@ -3,6 +3,7 @@ import { expect, Page, test } from '@playwright/test';
 import { mockOperatorLifecycleApi } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
+import { openMoreSheet } from './support/shell';
 
 /**
  * Real-render behaviour + a11y audit of the admin console's Commissions tab: an
@@ -140,9 +141,19 @@ test('the new rate survives a re-read — the server really took it', async ({ p
   await page.getByTestId('admin-commission-save-7').click();
   await expect(page.getByTestId('admin-commission-rate-7')).toHaveText('20%');
 
-  // Away and back: the list is read afresh, so 20% is the server's answer and not a local edit.
-  await page.getByTestId('admin-tab-audit').click();
-  await page.getByTestId('admin-tab-commissions').click();
+  // Away and back through the More sheet: the list is read afresh, so 20% is the server's answer.
+  await openMoreSheet(page);
+  await page
+    .getByTestId('oc-more-sheet')
+    .getByRole('link', { name: /^Audit/ })
+    .click();
+  await expect(page).toHaveURL(/\/admin\/audit/);
+  await openMoreSheet(page);
+  await page
+    .getByTestId('oc-more-sheet')
+    .getByRole('link', { name: /^Commissions/ })
+    .click();
+  await expect(page).toHaveURL(/\/admin\/commissions/);
 
   await expect(page.getByTestId('admin-commission-rate-7')).toHaveText('20%');
   await expect(page.getByTestId('admin-commission-bps-7')).toHaveText('2000 bps');
@@ -224,16 +235,24 @@ test('the tab rail marks Commissions in slot 6 and never scrolls sideways at 360
   await mockCommissions(page);
   await openCommissionsTab(page);
 
-  const commissions = page.getByTestId('admin-tab-commissions');
-  await expect(commissions).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByTestId('admin-tab-operators')).not.toHaveAttribute('aria-current', 'page');
+  // Below sm Commissions is a secondary of the phone rail: the More slot names it and is current.
+  const more = page.getByTestId('oc-more');
+  await expect(more).toHaveAccessibleName('Commissions');
+  await expect(more).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('admin-tab-commissions')).toBeHidden();
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Admin console sections (phone)' })
+      .getByRole('link', { name: 'Operators' }),
+  ).not.toHaveAttribute('aria-current', 'page');
 
-  // The amended tab order puts Commissions after the moderation pair; the rail is where that is visible.
-  const labels = await page
-    .getByRole('navigation', { name: 'Admin console sections' })
-    .getByRole('link')
-    .allInnerTexts();
-  expect(labels.slice(3, 6)).toEqual(['Photos', 'Reviews', 'Commissions']);
+  // The amended tab order puts Commissions after the moderation pair; the More sheet is where that is visible.
+  await openMoreSheet(page);
+  const labels = (await page.getByTestId('oc-more-sheet').getByRole('link').allInnerTexts()).map(
+    (text) => text.split('\n')[0],
+  );
+  expect(labels.slice(0, 3)).toEqual(['Photos', 'Reviews', 'Commissions']);
+  await page.keyboard.press('Escape');
 
   const scrollsSideways = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,

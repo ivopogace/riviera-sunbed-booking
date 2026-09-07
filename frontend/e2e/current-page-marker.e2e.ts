@@ -13,9 +13,10 @@ import { awaitRoutedPage, openShellOverlay } from './support/shell';
  * desktop links, from the route's section data on the phone tabs — styled through its compound
  * selector). The discovery API is mocked (`page.route`), so the spec is CI-safe like its siblings.
  *
- * <p>The last block is the two consoles' tab rail (`shared/tab-rail.ts`), which wears the same
- * marker one level down: full ink plus a 3px underline (the tab's `::after`) on the rail's shared
- * hairline — never the accent ink alone, which vanishes on the header glass.
+ * <p>The last two blocks are the two consoles' rails, which wear the same marker one level down:
+ * the text rail (`shared/tab-rail.ts`, from `sm` up) with full ink plus a 3px underline (the tab's
+ * `::after`) on the rail's shared hairline, and the phone rail (below `sm`) with the same ink and
+ * bar on its own bottom border — never the accent ink alone, which vanishes on the header glass.
  */
 
 test.beforeEach(async ({ page }) => {
@@ -179,38 +180,65 @@ test.describe('tablet: the inline nav', () => {
   });
 });
 
+const CONSOLE_INK = 'rgb(10, 42, 51)';
+const CONSOLE_SOFT = 'rgba(12, 42, 51, 0.7)';
+const CONSOLE_HAIRLINE = 'rgba(12, 42, 51, 0.66)';
+
+/** A console tab's `::after` underline as rendered: its opacity and height. */
+function railMarker(tab: ReturnType<Page['getByRole']>) {
+  return tab.evaluate((el) => {
+    const bar = getComputedStyle(el, '::after');
+    return { opacity: bar.opacity, height: bar.height };
+  });
+}
+
+/** The current tab in full ink with the 3px bar, the other in soft ink with the bar at opacity 0. */
+async function expectCurrentAndOther(
+  current: ReturnType<Page['getByRole']>,
+  other: ReturnType<Page['getByRole']>,
+): Promise<void> {
+  await expect(current).toHaveAttribute('aria-current', 'page');
+  await expect(other).not.toHaveAttribute('aria-current', 'page');
+  await expect(current).toHaveCSS('color', CONSOLE_INK);
+  await expect(other).toHaveCSS('color', CONSOLE_SOFT);
+  expect(await railMarker(current)).toEqual({ opacity: '1', height: '3px' });
+  expect(await railMarker(other)).toMatchObject({ opacity: '0' });
+}
+
+async function signInToVenueConsole(page: Page): Promise<void> {
+  await mockWholeConsole(page);
+  await page.goto('/operator/1/daily');
+  await signInAsOperator(page);
+  await expect(page).toHaveURL(/\/operator\/1\/daily/);
+}
+
+async function signInToAdminAudit(page: Page): Promise<void> {
+  await mockWholeAdminConsole(page);
+  await page.goto('/operator');
+  await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
+  await page.goto('/admin/audit');
+  await page.getByTestId('admin-audit-card').first().waitFor();
+}
+
+/**
+ * From `sm` up the console rail is underlined text tabs on one shared hairline; the tablet width
+ * is the smallest one that shows it, and it has no hover either.
+ */
 test.describe('consoles: the tab rail', () => {
-  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
-
-  const INK = 'rgb(10, 42, 51)';
-  const SOFT = 'rgba(12, 42, 51, 0.7)';
-  const HAIRLINE = 'rgba(12, 42, 51, 0.66)';
-
-  /** The tab's `::after` underline as rendered: its opacity and height. */
-  function marker(tab: ReturnType<Page['getByRole']>) {
-    return tab.evaluate((el) => {
-      const bar = getComputedStyle(el, '::after');
-      return { opacity: bar.opacity, height: bar.height };
-    });
-  }
+  test.use({ viewport: { width: 820, height: 1180 }, hasTouch: true, isMobile: true });
 
   async function expectRailMarker(page: Page, railName: string, current: string, other: string) {
     expect(await page.evaluate(() => matchMedia('(hover: hover)').matches)).toBe(false);
     const rail = page.getByRole('navigation', { name: railName });
-    const currentTab = rail.getByRole('link', { name: current });
-    const otherTab = rail.getByRole('link', { name: other });
-
-    await expect(currentTab).toHaveAttribute('aria-current', 'page');
-    await expect(otherTab).not.toHaveAttribute('aria-current', 'page');
-    await expect(currentTab).toHaveCSS('color', INK);
-    await expect(otherTab).toHaveCSS('color', SOFT);
-    expect(await marker(currentTab)).toEqual({ opacity: '1', height: '3px' });
-    expect(await marker(otherTab)).toMatchObject({ opacity: '0' });
+    await expectCurrentAndOther(
+      rail.getByRole('link', { name: current }),
+      rail.getByRole('link', { name: other }),
+    );
     // The underline sits on the rail's shared hairline, painted under the tabs in the faint ink.
     await expect(rail).toHaveCSS(
       'box-shadow',
       new RegExp(
-        `${HAIRLINE.replaceAll('(', '\\(').replaceAll(')', '\\)')} 0px -1px 0px 0px inset`,
+        `${CONSOLE_HAIRLINE.replaceAll('(', '\\(').replaceAll(')', '\\)')} 0px -1px 0px 0px inset`,
       ),
     );
     await expect(rail).toHaveCSS('mask-image', 'none');
@@ -219,10 +247,7 @@ test.describe('consoles: the tab rail', () => {
   test('venue console: marks the current tab with full ink and a 3px underline (#1007)', async ({
     page,
   }) => {
-    await mockWholeConsole(page);
-    await page.goto('/operator/1/daily');
-    await signInAsOperator(page);
-    await expect(page).toHaveURL(/\/operator\/1\/daily/);
+    await signInToVenueConsole(page);
 
     await expectRailMarker(page, 'Operator console sections', 'Daily view', 'Requests');
   });
@@ -230,12 +255,43 @@ test.describe('consoles: the tab rail', () => {
   test('admin console: marks the current tab with full ink and a 3px underline (#1007)', async ({
     page,
   }) => {
-    await mockWholeAdminConsole(page);
-    await page.goto('/operator');
-    await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
-    await page.goto('/admin/audit');
-    await page.getByTestId('admin-tab-audit').waitFor();
+    await signInToAdminAudit(page);
 
     await expectRailMarker(page, 'Admin console sections', 'Audit', 'Privacy');
+  });
+});
+
+/**
+ * Below `sm` the rail is the phone rail — glyph over label — and the same marker: the current
+ * slot in full ink with the 3px bar on the rail's bottom border, whether that slot is a primary's
+ * link or the More button wearing the current secondary.
+ */
+test.describe('consoles: the phone rail', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test('venue console: marks the current slot with full ink and a 3px bar (#1012)', async ({
+    page,
+  }) => {
+    await signInToVenueConsole(page);
+    expect(await page.evaluate(() => matchMedia('(hover: hover)').matches)).toBe(false);
+
+    const rail = page.getByRole('navigation', { name: 'Operator console sections (phone)' });
+    await expectCurrentAndOther(
+      rail.getByRole('link', { name: 'Daily' }),
+      rail.getByRole('link', { name: 'Requests' }),
+    );
+    await expect(rail).toHaveCSS('border-bottom-width', '1px');
+  });
+
+  test('admin console: the More slot wearing Audit takes the marker, Operators does not (#1012)', async ({
+    page,
+  }) => {
+    await signInToAdminAudit(page);
+
+    const rail = page.getByRole('navigation', { name: 'Admin console sections (phone)' });
+    await expectCurrentAndOther(
+      rail.getByRole('button', { name: 'Audit' }),
+      rail.getByRole('link', { name: 'Operators' }),
+    );
   });
 });
