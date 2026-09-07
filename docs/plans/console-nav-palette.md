@@ -233,16 +233,16 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 3)`
+**Stage pointer:** `implement (phase 4)`
 
-**Next action:** phase 3 — the shell's search button, gate, `paletteRows` and mount, red first at `console-shell.spec.ts`.
+**Next action:** phase 4 — the mocked e2e cases in `console-shell.e2e.ts`, `operator-console.e2e.ts`, `admin-console-tabs.e2e.ts`.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 9b6713d7 |
 | 1 — the search glyph; the row, hint and badge recipes hoisted and consumed by the shell | ✅ | 6fda2f03 |
-| 2 — `shared/console-palette.ts`: the dialog, chords, filter, highlight, Enter, trap, focus legs, close on navigation; its spec, a11y and contrast specs | ✅ | (phase-2 commit) |
-| 3 — the shell: the search button, the gate, `paletteRows`, the mount; shell spec, a11y spec, `app.spec.ts` | | |
+| 2 — `shared/console-palette.ts`: the dialog, chords, filter, highlight, Enter, trap, focus legs, close on navigation; its spec, a11y and contrast specs | ✅ | 067298e8 |
+| 3 — the shell: the search button, the gate, `paletteRows`, the mount; shell spec, a11y spec, `app.spec.ts` | ✅ | (phase-3 commit) |
 | 4 — e2e: `console-shell.e2e.ts`, `operator-console.e2e.ts`, `admin-console-tabs.e2e.ts`, `support/shell.ts` | | |
 | 5 — contract: lint, format, unit, the mocked e2e; docs-freshness; #1012's plan retired; file-structure guard; push | | |
 | 6 — PR, CI, review gate, Sonar gate, merge close-out | | |
@@ -317,13 +317,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `console-shell.ts`, `console-shell.spec.ts`, `console-shell.a11y.spec.ts`, `app.spec.ts`.
 
-- [ ] **Step 1: Write the failing tests** — AC-1, AC-2, AC-6 in the shell spec; the a11y case; the `app.spec.ts` case.
-- [ ] **Step 2: Run it, verify it fails** — `npx vitest run src/app/console-shell.spec.ts src/app/app.spec.ts` → FAIL.
-- [ ] **Step 3: Minimal implementation** — the button, `paletteGate`, `paletteRows`, the mount.
-- [ ] **Step 4: Run it, verify it passes** — the shell's four specs + `app.spec.ts` + `src/app/operator/` → PASS.
-- [ ] **Step 5: Generalization-audit pass** — population: every reader of the row's ids that a new control could shift → `grep -rn "oc-account\b\|oc-signin\|oc-section-admin" frontend/e2e frontend/src --include=*.ts -l`.
-- [ ] **Step 6: Commit** — `Mount the palette in the console shell behind the search glyph (#1013)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 1: Write the failing tests** — AC-1, AC-2, AC-6 in the shell spec; the a11y case; the `app.spec.ts` case.
+- [x] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include src/app/console-shell.spec.ts …` → 6 FAIL / 89 pass.
+- [x] **Step 3: Minimal implementation** — the button, `paletteGate`, `paletteRows`, the mount.
+- [x] **Step 4: Run it, verify it passes** — the shell's four specs + `app.spec.ts` + `src/app/operator/` + the palette's → 695/695 PASS (one spec expectation corrected on the way: a navigation closes the dialog by design, so the rows are re-read after reopening).
+- [x] **Step 5: Generalization-audit pass** — population: every reader of the row's ids that a new control could shift → `grep -rln "oc-account\b\|oc-signin\|oc-section-admin" frontend/e2e frontend/src --include=*.ts`.
+- [x] **Step 6: Commit** — `Mount the palette in the console shell behind the search glyph (#1013)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 4 — e2e
 
@@ -355,6 +355,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 |---|---|---|---|---|---|
 | 2026-09-07 | phase 1 | every copy of the badge or the sheet-row recipe outside its new home — the drift mechanism the hoist removes | `grep -rn "min-w-5 items-center justify-center rounded-full\|rounded-\[14px\] px-3.5 py-\[11px\]" frontend/src/app` | none outside `popover-skin.ts` / `tab-rail.ts` (the shell now reads both) | nothing else to hoist |
 | 2026-09-07 | phase 2 | every modal that traps focus — the mechanism the palette joins | `grep -rln "trapFocusWithin" frontend/src/app --include=*.ts \| grep -v spec` | `photo-lightbox.ts`, `payout-statement.ts`, `booking-dialog.ts`, `find-booking.ts`, `availability-calendar.ts`, the palette | the palette takes the same trap and `aria-modal`; `focus-trap.ts`'s doc names "four modals" — refreshed at close-out |
+| 2026-09-07 | phase 3 | every reader of the section row's ids that a control added to the right cluster could shift — the mechanism is a locator on `oc-account` / `oc-signin` / `oc-section-admin` | `grep -rln "oc-account\b\|oc-signin\|oc-section-admin" frontend/e2e frontend/src --include=*.ts` | 13 files (7 e2e, 6 specs/sources) | all locate by test id or role, none by position; `expectPhoneRailFits`'s brand/venue/chip order holds below `sm` where the button is hidden — nothing to rewrite |
+| 2026-09-07 | phase 3 | every e2e that presses Escape on a console route, which now also reaches the palette's document listener | `grep -ln "press('Escape')" frontend/e2e/*.e2e.ts \| xargs grep -ln "oc-header\|oc-account"` | `admin-console-tabs`, `console-shell`, `operator-console`, `operator-password`, `operator-set-editing`, `theme-shell` | each closes its own disclosure; the palette's Escape is a no-op while closed (pinned in its spec) — nothing to rewrite |
 
 ---
 

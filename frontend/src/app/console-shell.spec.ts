@@ -101,6 +101,7 @@ describe('ConsoleShell', () => {
           { path: 'operator/:venueId/requests', component: BlankPage },
           { path: 'operator/:venueId/beach-map', component: BlankPage },
           { path: 'operator/:venueId/pricing', component: BlankPage },
+          { path: 'operator/:venueId/venue', component: BlankPage },
           { path: 'operator/:venueId/payouts', component: BlankPage },
           { path: 'admin', component: BlankPage },
           { path: 'admin/photos', component: BlankPage },
@@ -508,6 +509,213 @@ describe('ConsoleShell', () => {
         expect(more()).toBeNull();
         expect(document.activeElement).toBe(el.querySelector('main'));
       });
+    });
+  });
+
+  describe('the ⌘K palette (#1013)', () => {
+    function search(): HTMLButtonElement | null {
+      return byId('oc-search') as HTMLButtonElement | null;
+    }
+
+    function dialog(): HTMLElement | null {
+      return el.querySelector<HTMLElement>('[role="dialog"][aria-label="Go to"]');
+    }
+
+    function rows(): HTMLAnchorElement[] {
+      return [...el.querySelectorAll<HTMLAnchorElement>('[data-testid="oc-palette-row"]')];
+    }
+
+    function labels(): string[] {
+      return rows().map((row) => row.querySelector('span > span')!.textContent.trim());
+    }
+
+    function currentLabels(): string[] {
+      return rows()
+        .filter((row) => row.getAttribute('aria-current') === 'page')
+        .map((row) => row.querySelector('span > span')!.textContent.trim());
+    }
+
+    function chord(init: KeyboardEventInit): void {
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'k', bubbles: true, cancelable: true, ...init }),
+      );
+    }
+
+    async function settle(): Promise<void> {
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    async function open(): Promise<void> {
+      search()!.click();
+      await settle();
+    }
+
+    it('the search button opens the palette onto its field; ⌘K and Ctrl-K toggle it (#1013)', async () => {
+      expect(search()!.tagName).toBe('BUTTON');
+      expect(search()!.getAttribute('aria-label')).toBe('Jump to a section or venue (⌘K)');
+      expect(search()!.getAttribute('aria-expanded')).toBe('false');
+      expect(search()!.classList).toContain('max-sm:hidden');
+      expect(header().contains(search())).toBe(true);
+      expect(search()!.querySelector('svg')!.parentElement!.tagName.toLowerCase()).toBe(
+        'app-search-glyph',
+      );
+      expect(dialog()).toBeNull();
+
+      await open();
+      expect(dialog()!.getAttribute('aria-modal')).toBe('true');
+      expect(search()!.getAttribute('aria-expanded')).toBe('true');
+      expect(document.activeElement).toBe(byId('oc-palette-search'));
+      // The dialog is a sibling of the header, never inside its filtered box (#1011 R-5).
+      expect(header().contains(dialog())).toBe(false);
+
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await settle();
+      expect(dialog()).toBeNull();
+      expect(search()!.getAttribute('aria-expanded')).toBe('false');
+      expect(document.activeElement).toBe(search());
+
+      chord({ metaKey: true });
+      await settle();
+      expect(dialog()).not.toBeNull();
+      chord({ metaKey: true });
+      await settle();
+      expect(dialog()).toBeNull();
+      chord({ ctrlKey: true });
+      await settle();
+      expect(dialog()).not.toBeNull();
+      expect(search()!.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('the rows per context: sections with the current marked, venues on the current tab, the other console, Change password (#1013)', async () => {
+      await goTo('/operator/1/daily');
+      await open();
+      expect(labels()).toEqual([
+        'Daily view',
+        'Requests',
+        'Beach map',
+        'Pricing',
+        'Venue & commodities',
+        'Payouts',
+        'Miramar Beach Club',
+        'Sereno',
+        'Admin console',
+        'Change password',
+      ]);
+      expect(rows().map((row) => row.getAttribute('href'))).toEqual([
+        '/operator/1/daily',
+        '/operator/1/requests',
+        '/operator/1/beach-map',
+        '/operator/1/pricing',
+        '/operator/1/venue',
+        '/operator/1/payouts',
+        '/operator/1/daily',
+        '/operator/2/daily',
+        '/admin',
+        '/account/operator-password',
+      ]);
+      expect(currentLabels()).toEqual(['Daily view', 'Miramar Beach Club']);
+      expect(rows()[0].textContent).toContain('Arrivals, walk-ins, sales close');
+      expect(rows()[0].textContent).toContain('Today');
+      expect(rows()[7].textContent).toContain('Open Jal');
+      expect(rows()[7].textContent).toContain('Venue');
+      expect(rows()[8].textContent).toContain('Operators, outboxes, moderation, records');
+      expect(rows()[8].textContent).toContain('Platform');
+      expect(rows()[9].textContent).toContain('Your operator account');
+      expect(rows()[9].textContent).toContain('Account');
+      const glyphOf = (row: Element) =>
+        row.querySelector('svg')!.parentElement!.tagName.toLowerCase();
+      expect([rows()[0], rows()[6], rows()[8], rows()[9]].map(glyphOf)).toEqual([
+        'app-daily-glyph',
+        'app-venues-glyph',
+        'app-admin-glyph',
+        'app-privacy-glyph',
+      ]);
+
+      // A non-admin has no other console to cross to.
+      operatorAuth.isAdmin.set(false);
+      await settle();
+      expect(labels()).not.toContain('Admin console');
+      operatorAuth.isAdmin.set(true);
+
+      // The venue rows keep the open tab (a navigation closes the dialog; it is reopened).
+      await goTo('/operator/1/payouts');
+      await open();
+      expect(currentLabels()).toEqual(['Payouts', 'Miramar Beach Club']);
+      expect(rows()[7].getAttribute('href')).toBe('/operator/2/payouts');
+
+      await setSection('admin');
+      await goTo('/admin');
+      await open();
+      expect(labels()).toEqual([
+        'Operators',
+        'Email',
+        'Refunds',
+        'Photos',
+        'Reviews',
+        'Commissions',
+        'Privacy',
+        'Audit',
+        'Miramar Beach Club',
+        'Sereno',
+        'Change password',
+      ]);
+      expect(currentLabels()).toEqual(['Operators']);
+      expect(
+        rows()
+          .slice(8, 10)
+          .map((row) => row.getAttribute('href')),
+      ).toEqual(['/operator/1/beach-map', '/operator/2/beach-map']);
+      expect(rows()[7].getAttribute('href')).toBe('/admin/audit');
+      expect(rows()[7].textContent).toContain('Records');
+
+      await setSection('plain');
+      await goTo('/account/operator-password');
+      await open();
+      expect(labels()).toEqual([
+        'Miramar Beach Club',
+        'Sereno',
+        'Admin console',
+        'Change password',
+      ]);
+      expect(rows()[0].getAttribute('href')).toBe('/operator/1/beach-map');
+      expect(currentLabels()).toEqual(['Change password']);
+    });
+
+    it('the Requests row carries the live badge (#1013)', async () => {
+      await goTo('/operator/1/daily');
+      await open();
+      expect(byId('oc-palette-badge')).toBeNull();
+
+      TestBed.inject(PendingRequestsStore).seed(3);
+      await settle();
+      const badge = byId('oc-palette-badge')!;
+      expect(badge.textContent.trim()).toBe('3');
+      expect(badge.closest('a')!.getAttribute('href')).toBe('/operator/1/requests');
+    });
+
+    it('signed out on an admin URL: no search button and ⌘K opens nothing (#1013)', async () => {
+      operatorAuth.signedIn.set(false);
+      operatorAuth.isAdmin.set(false);
+      await setSection('admin');
+      expect(search()).toBeNull();
+      expect(el.querySelector('app-console-palette')).toBeNull();
+      chord({ metaKey: true });
+      await settle();
+      expect(dialog()).toBeNull();
+
+      // A signed-in non-admin on an admin URL, and an admin while the session restores: the same.
+      operatorAuth.signedIn.set(true);
+      await settle();
+      expect(search()).toBeNull();
+      operatorAuth.isAdmin.set(true);
+      operatorAuth.restoring.set(true);
+      await settle();
+      expect(search()).toBeNull();
+      operatorAuth.restoring.set(false);
+      await settle();
+      expect(search()).not.toBeNull();
     });
   });
 

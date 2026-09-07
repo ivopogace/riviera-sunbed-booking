@@ -1165,6 +1165,45 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(document.activeElement).toBe(el.querySelector('main'));
   });
 
+  it('⌘K opens the palette on a console route and nothing on a tourist one (#1013)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+    const chord = () =>
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true, cancelable: true }),
+      );
+    const dialog = () => el.querySelector('[role="dialog"][aria-label="Go to"]');
+
+    await router.navigate(['/glass']);
+    fixture.detectChanges();
+    chord();
+    fixture.detectChanges();
+    expect(dialog()).toBeNull();
+    expect(el.querySelector('[data-testid="oc-search"]')).toBeNull();
+
+    await router.navigate(['/operator/7/daily']);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="oc-search"]')).not.toBeNull();
+    chord();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(dialog()).not.toBeNull();
+    // The rows are venue 7's: the venue id comes off the same route chain the shell reads.
+    expect(dialog()!.querySelector('a[href="/operator/7/requests"]')).not.toBeNull();
+    expect(
+      dialog()!.querySelector('a[href="/operator/7/daily"]')?.getAttribute('aria-current'),
+    ).toBe('page');
+    expect(document.activeElement).toBe(el.querySelector('[data-testid="oc-palette-search"]'));
+
+    // Leaving the console takes the palette and its chord with it.
+    await router.navigate(['/glass']);
+    fixture.detectChanges();
+    expect(dialog()).toBeNull();
+    chord();
+    fixture.detectChanges();
+    expect(dialog()).toBeNull();
+  });
+
   it('renders the tourist chrome on a route carrying only the retired operatorChrome flag (#1011)', async () => {
     const { fixture, el } = shell();
     await TestBed.inject(Router).navigate(['/retired-flag']);

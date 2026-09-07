@@ -19,6 +19,7 @@ import { filter } from 'rxjs';
 
 import { ADMIN_CONSOLE_TABS, AdminConsoleTabs } from './admin/admin-console-tabs';
 import { OperatorAuth } from './core/operator-auth';
+import { OwnedVenues } from './core/owned-venues';
 import { ConsoleVenueMap } from './operator/console-venue-map';
 import { OperatorAccountChip } from './operator/operator-account-chip';
 import { OperatorVenueSwitch } from './operator/operator-venue-switch';
@@ -32,10 +33,13 @@ import {
   MoreGlyph,
   PayoutsGlyph,
   PricingGlyph,
+  PrivacyGlyph,
   RequestsGlyph,
+  SearchGlyph,
   VenueGlyph,
   VenuesGlyph,
 } from './shared/console-glyphs';
+import { ConsolePalette, PaletteRow } from './shared/console-palette';
 import { currentUrl } from './shared/current-url';
 import { focusMover } from './shared/focus-after-render';
 import { POP_BACKDROP, POP_NAV_HINT, POP_NAV_ROW, POP_SKIN } from './shared/popover-skin';
@@ -118,6 +122,12 @@ const VENUE_TABS: readonly ConsoleDestination[] = [
  *  three plus More is what fits a 344px cover screen). */
 const PHONE_PRIMARIES = 3;
 
+/** The cross-console row's hint, in the More sheet and the palette alike. */
+const ADMIN_CONSOLE_HINT = 'Operators, outboxes, moderation, records';
+
+/** The account page every console route can jump to. */
+const PASSWORD_PATH = '/account/operator-password';
+
 /** A destination resolved for the active console: its router link and whether it is the page. */
 interface PhoneItem extends ConsoleDestination {
   readonly link: readonly (string | number)[];
@@ -157,6 +167,11 @@ const CLS = {
   adminSlot: `shrink-0 px-0.5 text-[13.5px] font-semibold text-riv-ink-soft no-underline hover:text-riv-ink max-sm:hidden ${SLOT}`,
   signIn:
     'inline-flex items-center text-[13px] font-semibold text-riv-ink no-underline hover:underline',
+  // The palette's trigger, from sm up: the lens plus a keycap; below sm the row has no room and a phone no ⌘.
+  search:
+    'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-1.5 text-riv-ink-soft hover:text-riv-ink max-sm:hidden [&_svg]:size-[18px]',
+  keycap:
+    'rounded-md border border-riv-chip-border bg-riv-chip-bg px-1.5 py-0.5 font-[inherit] text-[11px] font-semibold leading-none',
   railBox: 'mx-auto w-full max-w-[1120px] max-sm:hidden',
   rail: 'oc-tabs px-6 pt-3.5 scroll-px-6',
   badge: TAB_RAIL_BADGE,
@@ -184,7 +199,12 @@ const CLS = {
  * link for admins (current on `/admin/*`; from `sm` up only — below it the More sheet's
  * `Admin console` row is the phone's route between consoles), and the account chip
  * (`operator-account-chip.ts`) or, signed out, the operator `Sign in` carrying the page as
- * `returnUrl`. Under the row sits the active section's rail: the venue console's six tabs with the
+ * `returnUrl`, and — from `sm` up, for anyone the palette renders for — the search glyph that opens
+ * the ⌘K palette (`shared/console-palette.ts`), the accelerator over everything the row and rail
+ * offer: this console's sections, the owned venues on the open tab, the other console, the account
+ * page. The shell computes those rows ({@link ConsoleShell#paletteRows}) and mounts the palette once,
+ * under the same gate as the rails, as a sibling of the header — never inside it, whose
+ * `backdrop-filter` would pin the `fixed` dialog to the row. Under the row sits the active section's rail: the venue console's six tabs with the
  * live Requests badge, or the admin console's tabs (`admin-console-tabs.ts`) — the latter only past
  * the admin gate (restored, signed in, admin), so a signed-out visitor on an admin URL is never
  * told which admin surfaces exist. Both rows draw the same marker one level apart
@@ -228,11 +248,13 @@ const CLS = {
   selector: 'app-console-shell',
   imports: [
     AdminConsoleTabs,
+    ConsolePalette,
     NgComponentOutlet,
     OperatorAccountChip,
     OperatorVenueSwitch,
     RouterLink,
     RouterLinkActive,
+    SearchGlyph,
     TabRail,
     TabRailDivider,
     TabRailTab,
@@ -280,7 +302,22 @@ const CLS = {
             }
           </nav>
         </div>
-        <div class="flex shrink-0 items-center">
+        <div class="flex shrink-0 items-center gap-1 sm:gap-2">
+          @if (paletteGate()) {
+            <button
+              appTouchTarget
+              #searchButton
+              type="button"
+              [class]="cls.search"
+              aria-label="Jump to a section or venue (⌘K)"
+              [attr.aria-expanded]="palette()?.open() ?? false"
+              data-testid="oc-search"
+              (click)="palette()?.toggle(searchButton)"
+            >
+              <app-search-glyph />
+              <kbd [class]="cls.keycap" aria-hidden="true">⌘K</kbd>
+            </button>
+          }
           @if (!operator.restoring()) {
             @if (operator.signedIn()) {
               <app-operator-account-chip testIdPrefix="oc" (signOut)="onSignOut()" />
@@ -405,6 +442,10 @@ const CLS = {
         </nav>
       }
     }
+
+    @if (paletteGate()) {
+      <app-console-palette [rows]="paletteRows()" />
+    }
   `,
 })
 export class ConsoleShell {
@@ -416,12 +457,14 @@ export class ConsoleShell {
 
   protected readonly operator = inject(OperatorAuth);
   private readonly requests = inject(PendingRequestsStore);
+  private readonly owned = inject(OwnedVenues);
   private readonly venueMap = inject(ConsoleVenueMap);
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private readonly url = currentUrl(this.router);
   private readonly moreButton = viewChild<ElementRef<HTMLButtonElement>>('more');
+  protected readonly palette = viewChild(ConsolePalette);
   private readonly focusAfterRender = focusMover();
 
   protected readonly cls = CLS;
@@ -481,7 +524,7 @@ export class ConsoleShell {
                   path: '/admin',
                   label: 'Admin console',
                   glyph: AdminGlyph,
-                  hint: 'Operators, outboxes, moderation, records',
+                  hint: ADMIN_CONSOLE_HINT,
                   group: 'Platform',
                   link: ['/admin'],
                   current: false,
@@ -513,6 +556,86 @@ export class ConsoleShell {
       );
     }
     return undefined;
+  });
+
+  /** Whether the palette and its trigger render: signed in, restored, and past the admin gate on admin. */
+  protected readonly paletteGate = computed(
+    () =>
+      !this.operator.restoring() &&
+      this.operator.signedIn() &&
+      (this.section() !== 'admin' || this.operator.isAdmin()),
+  );
+
+  /** Everything the palette can jump to from here, in its listed order: this console's sections
+   *  (the current one marked, Requests with its count), the owned venues on the open tab (the
+   *  console's landing tab off it), the other console for an admin, the account page. */
+  protected readonly paletteRows = computed((): PaletteRow[] => {
+    const keep = this.tabPath() ?? 'beach-map';
+    const rows: PaletteRow[] = [
+      ...this.paletteSections(),
+      ...(this.owned.venues() ?? []).map((venue): PaletteRow => ({
+        key: `v:${venue.id}`,
+        glyph: VenuesGlyph,
+        label: venue.name,
+        hint: `Open ${venue.beach}`,
+        group: 'Venue',
+        link: ['/operator', venue.id, keep],
+        current: this.venueCurrent() && venue.id === this.venueId(),
+      })),
+    ];
+    if (this.section() !== 'admin' && this.operator.isAdmin()) {
+      rows.push({
+        key: 'x:admin',
+        glyph: AdminGlyph,
+        label: 'Admin console',
+        hint: ADMIN_CONSOLE_HINT,
+        group: 'Platform',
+        link: ['/admin'],
+        current: false,
+      });
+    }
+    rows.push({
+      key: 'x:password',
+      glyph: PrivacyGlyph,
+      label: 'Change password',
+      hint: 'Your operator account',
+      group: 'Account',
+      link: [PASSWORD_PATH],
+      current: this.urlPath() === PASSWORD_PATH,
+    });
+    return rows;
+  });
+
+  /** The active console's sections as palette rows; none on a plain page. */
+  private readonly paletteSections = computed((): PaletteRow[] => {
+    const count = this.requestsCount();
+    if (this.venueCurrent()) {
+      const id = this.venueId();
+      const tab = this.tabPath();
+      return VENUE_TABS.map((t) => ({
+        key: `s:${t.path}`,
+        glyph: t.glyph,
+        label: t.label,
+        hint: t.hint,
+        group: t.group,
+        link: ['/operator', id!, t.path],
+        current: t.path === tab,
+        badge: t.badge && count > 0 ? count : undefined,
+      }));
+    }
+    if (this.section() === 'admin' && this.adminGate()) {
+      const path = this.urlPath();
+      return ADMIN_CONSOLE_TABS.map((t) => ({
+        key: `s:${t.path}`,
+        glyph: t.glyph,
+        label: t.label,
+        hint: t.hint,
+        group: t.group,
+        link: [t.path],
+        current: t.path === path,
+      }));
+    }
+    return [];
   });
 
   constructor() {
