@@ -2,6 +2,7 @@ import { Component, computed, inject, input, output, signal } from '@angular/cor
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 import { OperatorAuth } from '../core/operator-auth';
+import { PrototypeConsoleTheme } from './prototype-console-theme';
 import { TouchTarget } from '../shared/touch-target';
 import {
   AVATAR,
@@ -76,14 +77,16 @@ import {
                 >Admin console</a
               >
             }
-            <a
-              appTouchTarget
-              routerLink="/operator"
-              [queryParams]="{ create: '1' }"
-              [class]="popItem"
-              (click)="close()"
-              >Create a venue</a
-            >
+            @if (!minimal()) {
+              <a
+                appTouchTarget
+                routerLink="/operator"
+                [queryParams]="{ create: '1' }"
+                [class]="popItem"
+                (click)="close()"
+                >Create a venue</a
+              >
+            }
             <a
               appTouchTarget
               routerLink="/account/operator-password"
@@ -94,6 +97,35 @@ import {
               (click)="close()"
               >Change password</a
             >
+            @if (themeSwitch()) {
+              <p
+                class="mt-1 border-t border-riv-pop-divider px-2.5 pt-2.5 pb-1 text-[11px] font-bold tracking-[0.14em] text-riv-pop-ink-soft uppercase"
+              >
+                Console theme
+              </p>
+              @for (option of consoleTheme.options; track option.id) {
+                <button
+                  appTouchTarget
+                  type="button"
+                  [class]="popBtn"
+                  [attr.aria-pressed]="option.id === consoleTheme.theme()"
+                  [attr.data-testid]="'proto-theme-' + option.id"
+                  (click)="consoleTheme.select(option.id)"
+                >
+                  <span
+                    class="size-[22px] shrink-0 rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55)]"
+                    [style.background]="option.swatch"
+                    aria-hidden="true"
+                  ></span>
+                  <span class="flex-1">{{ option.name }}</span>
+                  @if (option.id === consoleTheme.theme()) {
+                    <span class="text-[15px] font-bold text-riv-pop-accent" aria-hidden="true"
+                      >&#10003;</span
+                    >
+                  }
+                </button>
+              }
+            }
             <button
               appTouchTarget
               type="button"
@@ -121,9 +153,14 @@ export class ProtoAccountMenu {
   readonly placement = input<'down' | 'up'>('down');
   readonly compact = input(false);
   readonly showAdmin = input(true);
+  /** G: only the account rows — Create a venue lives under the venue switcher. */
+  readonly minimal = input(false);
+  /** G: the porcelain / dark rows. */
+  readonly themeSwitch = input(false);
   readonly signOut = output<void>();
 
   protected readonly operator = inject(OperatorAuth);
+  protected readonly consoleTheme = inject(PrototypeConsoleTheme);
   protected readonly open = signal(false);
   protected readonly exactPath = EXACT_PATH;
   protected readonly avatar = AVATAR;

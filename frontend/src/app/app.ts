@@ -31,6 +31,7 @@ import { ConsoleNavContext } from './prototype-console-nav/console-nav-support';
 import { PrototypeConsoleNav } from './prototype-console-nav/prototype-console-nav';
 import { PrototypeConsoleNavVariant } from './prototype-console-nav/prototype-console-nav-variant';
 import { PrototypeSwitcher } from './prototype-console-nav/prototype-switcher';
+import { PrototypeConsoleTheme } from './prototype-console-nav/prototype-console-theme';
 import { focusMover } from './shared/focus-after-render';
 import { TouchTarget } from './shared/touch-target';
 
@@ -187,7 +188,7 @@ function sectionOf(data: unknown): TouristSection | null {
   host: {
     '(document:keydown.escape)': 'closeMenus()',
     // Pins the subtree porcelain on operator-chrome routes, whatever tourist theme is selected.
-    '[attr.data-riv-theme]': "shellChrome() === 'operator' ? 'porcelain' : null",
+    '[attr.data-riv-theme]': "shellChrome() === 'operator' ? consoleTheme.pinned() : null",
   },
 })
 export class App {
@@ -197,6 +198,8 @@ export class App {
   protected readonly themes = inject(ThemeService);
   /** PROTOTYPE — which console-nav candidate renders on operator/admin routes; `current` is shipped. */
   protected readonly consoleNavVariant = inject(PrototypeConsoleNavVariant).variant;
+  /** PROTOTYPE — the console theme G lets the operator choose; porcelain under every other variant. */
+  protected readonly consoleTheme = inject(PrototypeConsoleTheme);
   private readonly operatorAuth = inject(OperatorAuth);
   private readonly document = inject(DOCUMENT);
   /** PROTOTYPE — the plain operator pages (landing, password) wear the candidate instead of `app-operator-chrome`. */

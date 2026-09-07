@@ -32,6 +32,7 @@ import { PendingRequestsStore } from './pending-requests-store';
 import { ConsoleNavContext } from '../prototype-console-nav/console-nav-support';
 import { PrototypeConsoleNav } from '../prototype-console-nav/prototype-console-nav';
 import { PrototypeConsoleNavVariant } from '../prototype-console-nav/prototype-console-nav-variant';
+import { PrototypeConsoleTheme } from '../prototype-console-nav/prototype-console-theme';
 
 /** A console tab: its child-route path, its label, and whether it carries the live Requests badge. */
 interface ConsoleTab {
@@ -72,7 +73,7 @@ interface ConsoleTab {
   ],
   templateUrl: './operator-console.html',
   host: {
-    'data-riv-theme': 'porcelain',
+    '[attr.data-riv-theme]': 'consoleTheme.pinned()',
     class: 'block min-h-full bg-(image:--riv-bg) text-riv-ink font-riv',
   },
 })
@@ -85,6 +86,8 @@ export class OperatorConsole {
   protected readonly operator = inject(OperatorAuth);
   /** PROTOTYPE — which nav candidate wraps the console; `current` renders the shipped shell. */
   protected readonly navVariant = inject(PrototypeConsoleNavVariant).variant;
+  /** PROTOTYPE — the console theme G lets the operator choose; porcelain under every other variant. */
+  protected readonly consoleTheme = inject(PrototypeConsoleTheme);
 
   /** The venue this console manages — reactive to in-place `:venueId` changes: the router
    *  reuses this instance when only the param differs, so a snapshot read would pin the old venue. */

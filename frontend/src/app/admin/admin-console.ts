@@ -8,6 +8,7 @@ import { AdminForbidden } from './admin-forbidden';
 import { ConsoleNavContext } from '../prototype-console-nav/console-nav-support';
 import { PrototypeConsoleNav } from '../prototype-console-nav/prototype-console-nav';
 import { PrototypeConsoleNavVariant } from '../prototype-console-nav/prototype-console-nav-variant';
+import { PrototypeConsoleTheme } from '../prototype-console-nav/prototype-console-theme';
 
 /**
  * Per-tab copy and test ids the shell renders around whichever child route is active, carried on
@@ -58,7 +59,7 @@ const FALLBACK_TAB: AdminTabRouteData = {
 @Component({
   selector: 'app-admin-console',
   imports: [AdminForbidden, RouterLink, RouterOutlet, AdminConsoleTabs, PrototypeConsoleNav],
-  host: { 'data-riv-theme': 'porcelain' },
+  host: { '[attr.data-riv-theme]': 'consoleTheme.pinned()' },
   template: `
     <!-- PROTOTYPE — the page body as a template so a nav candidate can wrap it; 'current' keeps the shipped section below. -->
     <ng-template #adminBody>
@@ -130,6 +131,8 @@ export class AdminConsole {
   private readonly document = inject(DOCUMENT);
   /** PROTOTYPE — which nav candidate wraps the console; `current` renders the shipped section. */
   protected readonly navVariant = inject(PrototypeConsoleNavVariant).variant;
+  /** PROTOTYPE — the console theme G lets the operator choose; porcelain under every other variant. */
+  protected readonly consoleTheme = inject(PrototypeConsoleTheme);
   /** PROTOTYPE — the strip must never render for a visitor who has not passed the gate. */
   protected readonly navCtx = computed((): ConsoleNavContext => ({
     surface: 'admin',

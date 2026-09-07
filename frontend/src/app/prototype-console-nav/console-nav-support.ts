@@ -33,6 +33,8 @@ export interface NavItem {
   readonly testId?: string;
   /** A one-line hint for the palette and sidebar variants. */
   readonly hint: string;
+  /** The `proto-icon` glyph for the phone rail and the palette. */
+  readonly icon: string;
 }
 
 /**
@@ -43,6 +45,7 @@ export interface NavItem {
 export const OPERATOR_NAV: readonly NavItem[] = [
   {
     path: 'beach-map',
+    icon: 'beach-map',
     label: 'Beach map',
     group: 'Set-up',
     rank: 'primary',
@@ -50,6 +53,7 @@ export const OPERATOR_NAV: readonly NavItem[] = [
   },
   {
     path: 'pricing',
+    icon: 'pricing',
     label: 'Pricing',
     group: 'Set-up',
     rank: 'secondary',
@@ -57,6 +61,7 @@ export const OPERATOR_NAV: readonly NavItem[] = [
   },
   {
     path: 'daily',
+    icon: 'daily',
     label: 'Daily view',
     short: 'Daily',
     group: 'Today',
@@ -65,6 +70,7 @@ export const OPERATOR_NAV: readonly NavItem[] = [
   },
   {
     path: 'requests',
+    icon: 'requests',
     label: 'Requests',
     group: 'Today',
     rank: 'primary',
@@ -73,6 +79,7 @@ export const OPERATOR_NAV: readonly NavItem[] = [
   },
   {
     path: 'payouts',
+    icon: 'payouts',
     label: 'Payouts',
     group: 'Money',
     rank: 'secondary',
@@ -80,6 +87,7 @@ export const OPERATOR_NAV: readonly NavItem[] = [
   },
   {
     path: 'venue',
+    icon: 'venue',
     label: 'Venue & commodities',
     short: 'Venue',
     group: 'Set-up',
@@ -100,6 +108,7 @@ export const OPERATOR_GROUPS = ['Today', 'Set-up', 'Money'] as const;
 export const ADMIN_NAV: readonly NavItem[] = [
   {
     path: '/admin',
+    icon: 'operators',
     label: 'Operators',
     group: 'Accounts',
     rank: 'primary',
@@ -108,6 +117,7 @@ export const ADMIN_NAV: readonly NavItem[] = [
   },
   {
     path: '/admin/commissions',
+    icon: 'commissions',
     label: 'Commissions',
     group: 'Money',
     rank: 'secondary',
@@ -116,6 +126,7 @@ export const ADMIN_NAV: readonly NavItem[] = [
   },
   {
     path: '/admin/email',
+    icon: 'email',
     label: 'Email',
     group: 'Outboxes',
     rank: 'primary',
@@ -124,6 +135,7 @@ export const ADMIN_NAV: readonly NavItem[] = [
   },
   {
     path: '/admin/refunds',
+    icon: 'refunds',
     label: 'Refunds',
     group: 'Outboxes',
     rank: 'primary',
@@ -132,6 +144,7 @@ export const ADMIN_NAV: readonly NavItem[] = [
   },
   {
     path: '/admin/photos',
+    icon: 'photos',
     label: 'Photos',
     group: 'Moderation',
     rank: 'primary',
@@ -140,6 +153,7 @@ export const ADMIN_NAV: readonly NavItem[] = [
   },
   {
     path: '/admin/reviews',
+    icon: 'reviews',
     label: 'Reviews',
     group: 'Moderation',
     rank: 'primary',
@@ -148,6 +162,7 @@ export const ADMIN_NAV: readonly NavItem[] = [
   },
   {
     path: '/admin/privacy',
+    icon: 'privacy',
     label: 'Privacy',
     group: 'Records',
     rank: 'secondary',
@@ -156,6 +171,7 @@ export const ADMIN_NAV: readonly NavItem[] = [
   },
   {
     path: '/admin/audit',
+    icon: 'audit',
     label: 'Audit',
     group: 'Records',
     rank: 'secondary',

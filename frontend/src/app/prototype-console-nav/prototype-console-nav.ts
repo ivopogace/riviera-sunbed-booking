@@ -6,6 +6,7 @@ import { ConsoleNavC } from './console-nav-c';
 import { ConsoleNavD } from './console-nav-d';
 import { ConsoleNavE } from './console-nav-e';
 import { ConsoleNavF } from './console-nav-f';
+import { ConsoleNavG } from './console-nav-g';
 import { PrototypeConsoleNavVariant } from './prototype-console-nav-variant';
 
 /**
@@ -17,7 +18,7 @@ import { PrototypeConsoleNavVariant } from './prototype-console-nav-variant';
  */
 @Component({
   selector: 'app-prototype-console-nav',
-  imports: [ConsoleNavB, ConsoleNavC, ConsoleNavD, ConsoleNavE, ConsoleNavF],
+  imports: [ConsoleNavB, ConsoleNavC, ConsoleNavD, ConsoleNavE, ConsoleNavF, ConsoleNavG],
   host: { class: 'contents' },
   template: `
     @switch (variant()) {
@@ -55,6 +56,14 @@ import { PrototypeConsoleNavVariant } from './prototype-console-nav-variant';
       }
       @case ('f') {
         <app-console-nav-f
+          [ctx]="ctx()"
+          [lead]="lead()"
+          [body]="body()"
+          (signOut)="signOut.emit()"
+        />
+      }
+      @case ('g') {
+        <app-console-nav-g
           [ctx]="ctx()"
           [lead]="lead()"
           [body]="body()"

@@ -18,6 +18,7 @@ import { CardGlass } from '../shared/card-glass';
 import { RetryButton } from '../shared/retry-button';
 import { PendingApprovalBanner } from './pending-approval-banner';
 import { VenueCreateCard } from './venue-create-card';
+import { PrototypeConsoleTheme } from '../prototype-console-nav/prototype-console-theme';
 
 /**
  * `/operator` — where a signed-in operator lands when the destination isn't already known.
@@ -38,7 +39,7 @@ import { VenueCreateCard } from './venue-create-card';
 @Component({
   selector: 'app-operator-home',
   imports: [RouterLink, CardGlass, RetryButton, PendingApprovalBanner, VenueCreateCard],
-  host: { 'data-riv-theme': 'porcelain' },
+  host: { '[attr.data-riv-theme]': 'consoleTheme.pinned()' },
   template: `
     <section
       class="mx-auto flex min-h-[70vh] max-w-[520px] flex-col justify-center px-4 py-10"
@@ -124,6 +125,8 @@ import { VenueCreateCard } from './venue-create-card';
 })
 export class OperatorHome implements OnInit {
   private readonly ownedVenues = inject(OwnedVenues);
+  /** PROTOTYPE — the console theme G lets the operator choose; porcelain under every other variant. */
+  protected readonly consoleTheme = inject(PrototypeConsoleTheme);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly document = inject(DOCUMENT);

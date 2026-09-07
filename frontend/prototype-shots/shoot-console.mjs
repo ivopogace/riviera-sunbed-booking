@@ -90,7 +90,7 @@ const ADMIN_VENUES = [
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const shots = [];
 
-async function newPage({ width, height, signedIn, theme }) {
+async function newPage({ width, height, signedIn, theme, consoleTheme }) {
   const context = await browser.newContext({
     viewport: { width, height },
     deviceScaleFactor: 1,
@@ -98,6 +98,7 @@ async function newPage({ width, height, signedIn, theme }) {
   });
   const page = await context.newPage();
   await page.addInitScript((t) => localStorage.setItem('riviera-theme', t), theme);
+  await page.addInitScript((t) => localStorage.setItem('riviera-console-theme', t), consoleTheme);
   await page.route(/\/api\/.*/, (route) => route.fulfill({ status: 404, body: '' }));
   await page.route(/\/api\/auth\/me$/, (route) =>
     signedIn
@@ -242,6 +243,8 @@ async function goto(page, path, variant) {
 
 const DESK = { width: 1280, height: 900, signedIn: true };
 const PHONE = { width: 390, height: 844, signedIn: true, clip: 844 };
+// Galaxy Z Fold 5 cover screen — the narrowest phone the maintainer named.
+const FOLD = { width: 344, height: 882, signedIn: true, clip: 882, only: ['g'] };
 
 export const VIEWS = {
   daily: { ...DESK, path: '/operator/1/daily', clip: 720 },
@@ -261,7 +264,7 @@ export const VIEWS = {
     ...DESK,
     path: '/admin',
     clip: 720,
-    only: ['e'],
+    only: ['e', 'g'],
     open: '[data-testid="proto-title"]',
   },
   'more-open': {
@@ -281,8 +284,26 @@ export const VIEWS = {
     ...DESK,
     path: '/operator/1/daily',
     clip: 560,
-    only: ['c', 'd', 'f'],
+    only: ['c', 'd', 'f', 'g'],
     open: '[data-testid="proto-venue-switch"]',
+  },
+  'daily-fold': { ...FOLD, path: '/operator/1/daily' },
+  'requests-fold': { ...FOLD, path: '/operator/1/requests' },
+  'admin-fold': { ...FOLD, path: '/admin' },
+  'audit-fold': { ...FOLD, path: '/admin/audit' },
+  'more-open-fold': { ...FOLD, path: '/admin/audit', open: '[data-testid="proto-more"]' },
+  'more-open-phone': {
+    ...PHONE,
+    path: '/operator/1/payouts',
+    only: ['g'],
+    open: '[data-testid="proto-more"]',
+  },
+  'theme-open': {
+    ...DESK,
+    path: '/operator/1/daily',
+    clip: 560,
+    only: ['g'],
+    open: '[data-testid="proto-account"]',
   },
   'account-open': {
     ...DESK,
@@ -293,15 +314,18 @@ export const VIEWS = {
   },
 };
 
-const variants = (process.env.VARIANTS ?? 'current,b,c,d,e,f').split(',');
+const variants = (process.env.VARIANTS ?? 'current,b,c,d,e,f,g').split(',');
 const theme = process.env.THEME ?? 'porcelain';
+// G's own two-way console theme (porcelain | dark); the others ignore it.
+const consoleTheme = process.env.CONSOLE_THEME ?? 'porcelain';
+const suffix = consoleTheme === 'dark' ? '-dark' : '';
 
 for (const variant of variants) {
   for (const [view, spec] of Object.entries(VIEWS)) {
     if (ONLY && ONLY !== view) continue;
     if (spec.only && !spec.only.includes(variant)) continue;
-    const page = await newPage({ ...spec, theme });
-    const name = `${view}-${variant}.png`;
+    const page = await newPage({ ...spec, theme, consoleTheme });
+    const name = `${view}-${variant}${suffix}.png`;
     try {
       await goto(page, spec.path, variant);
       if (spec.open) {

@@ -8,10 +8,10 @@ import { readStorage, writeStorage } from '../shared/safe-storage';
 /**
  * PROTOTYPE — throwaway. Six shapes for the operator/admin console navigation, switchable on every
  * operator and admin route via `?variant=` and the floating bottom bar (`prototype-switcher.ts`):
- * `current` is the shipped chrome as the baseline; `b` to `f` are the candidates. Nothing in
+ * `current` is the shipped chrome as the baseline; `b` to `f` are the candidates, `g` the decided shape after the grill. Nothing in
  * `prototype-console-nav/` ships — the winning shape is rebuilt test-first through `riviera-sdlc`.
  */
-export type ConsoleNavVariantKey = 'current' | 'b' | 'c' | 'd' | 'e' | 'f';
+export type ConsoleNavVariantKey = 'current' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g';
 
 export interface ConsoleNavVariantOption {
   readonly key: ConsoleNavVariantKey;
@@ -25,6 +25,7 @@ export const CONSOLE_NAV_VARIANTS: readonly ConsoleNavVariantOption[] = [
   { key: 'd', name: 'One shell — section bar above a tab rail, two chromes become one' },
   { key: 'e', name: 'Palette — the page title is the nav, ⌘K to jump' },
   { key: 'f', name: 'Ranked rail — primary tabs, the rest under a current-aware More' },
+  { key: 'g', name: 'Decided — D as answered: icons + More below sm, ⌘K, porcelain/dark' },
 ];
 
 const STORAGE_KEY = 'riviera-prototype-console-nav-variant';

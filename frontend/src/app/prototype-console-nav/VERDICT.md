@@ -4,7 +4,7 @@
 recipe is spoken for by the read-only chips (`amenity-chip`, `status-chip`) and the tourist header
 shipped underlined text tabs (variant H, #1002/#1003)?
 
-**Recommendation: variant D, "One shell"** (`console-nav-d.ts`) — one chrome for every operator
+**Recommendation: variant D, "One shell"** (`console-nav-d.ts`; decided and redrawn as **G** — see _The decisions_ below) — one chrome for every operator
 and admin route: a section row (brand · the venue switcher, which _is_ the venue-console section ·
 `Admin` for admins · one account chip) above a tab rail of underlined text tabs on a shared
 hairline, grouped by thin dividers. Two departures in it are the maintainer's to confirm, not
@@ -35,7 +35,67 @@ Colour was held constant; only structure varied. Every candidate obeys the hard 
 chip, and marks current with full ink plus an underline or fill (`--riv-accent-ink` vanishes on
 the header glass, #984).
 
-## What D decides, and what it needs from the maintainer
+## The decisions — the grill, answered
+
+The maintainer narrowed the field to C and D, then answered sixteen questions. The answers are
+the contract for the rebuild; variant **G** (`console-nav-g.ts`) is D redrawn to them so the
+result could be shot before anything is built.
+
+| #   | Question                          | Answer                                                                                                                                                                       |
+| --- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Where does the manager stand?     | Venue console phone-first, laptop second; admin console laptop-first.                                                                                                        |
+| 2   | The beach-map budget              | Fit-to-width at 1280px stays. C's sidebar reaches it only at 1440px (grid frame 652px vs 892px at 1280) — this is what removed C.                                            |
+| 3   | Current inside More               | A More that carries the current child's label and `aria-current` **is** acceptable — #710's objection is met that way.                                                       |
+| 4   | One model or two?                 | One model: D, with C's grouping as dividers.                                                                                                                                 |
+| 5   | One marker across the product     | Yes: full ink plus the 3px underline on the rail's hairline, the tourist header's marker.                                                                                    |
+| 6   | Two chromes become one            | Yes, now. `app-operator-chrome` and the console's own header retire; the landing and password page wear the shell.                                                           |
+| 7   | Venue console order               | Today first, grouped: Daily view · Requests \| Beach map · Pricing · Venue \| Payouts.                                                                                       |
+| 8   | Admin order                       | **Adopt the regrouping** — `ADMIN_CONSOLE_TAB_ORDER` and its spec are amended: Operators \| Email · Refunds \| Photos · Reviews \| Commissions · Payouts \| Privacy · Audit. |
+| 9   | Stats strip / sticky chrome       | Only the section row is sticky; the rail scrolls with the page; the strip sits under the rail.                                                                               |
+| 10  | The phone rail                    | More on **both** consoles below `sm`.                                                                                                                                        |
+| 11  | The venue switcher                | As drawn: the name is the control, the tab is kept across a switch, plain text with one venue, the `/operator` picker stays for a bookmark with no venue.                    |
+| 12  | Create a venue                    | Under the venue switcher only; the chip holds Signed in as · Change password · Sign out.                                                                                     |
+| 13  | Which tabs stay on the phone rail | The recommended three plus More (Daily · Requests · Beach map; Operators · Email · Refunds) **if it fits a Galaxy Z Fold 5 at 344px** — G is shot at 344px to prove it.      |
+| 14  | Theme                             | Two console themes, porcelain and dark, chosen in the console — not the tourist theme, and not the branded `riviera`.                                                        |
+| 15  | Deferred items                    | Nothing deferred: the ⌘K palette, icons on the phone rail, and the section row hiding on scroll are all in scope.                                                            |
+| 16  | Next step                         | Update the verdict and prototype the decided shape; the maintainer decides on the screenshots before any issue is opened.                                                    |
+
+Answer 8 is the one that touches a written contract, and it is now the maintainer's decision on
+record, not the prototype's.
+
+## What G showed
+
+Shot on every view, both console themes, plus the Galaxy Z Fold 5 cover screen (344px). The
+sheets in `prototype-shots/console/` whose name carries `-fold`, `-themes`, `palette-open`,
+`theme-open` and `more-open-*` are G's.
+
+- **344px fits.** Three glyph-over-label tabs plus More sit on one row with room to spare on both
+  consoles (`sheet-daily-fold`, `sheet-audit-fold`). Q13's condition holds, so the recommended
+  ranking stands: Daily · Requests · Beach map and Operators · Email · Refunds.
+- **The More trigger carries the current page.** On `/operator/1/payouts` the fourth slot reads
+  `Payouts` with the payouts glyph and the underline; on `/admin/audit` it reads `Audit`
+  (`sheet-more-open-phone`, `sheet-more-open-fold`). The sheet lists the rest grouped, with the
+  cross-console row (`Admin console` / `Your venues`) at the foot.
+- **The section row does not fit a phone with everything in it.** First draw: brand, venue chip,
+  `Admin`, ⌘K and the avatar collided at 390px and 344px. Fixed by taking `Admin` and ⌘K out of
+  the row below `sm` (Admin moves into the More sheet; the palette is a keyboard accelerator and a
+  phone has no ⌘). The rebuild inherits that rule.
+- **Sticky chrome is one row.** 46px on a phone, sliding away on scroll-down (`max-sm`), against
+  the shipped console's 190px before the stats.
+- **The beach map keeps all twelve columns at 1280px** (`sheet-beach-map`, G row) — the budget
+  Q2 fixed.
+- **Dark is a restyle, not a nav option.** The shell itself is fine in dark: the header, pop and
+  chip tokens all have a dark branch. The console _content_ does not (`sheet-daily-themes`,
+  `sheet-beach-map-themes`, `sheet-requests-phone-themes`): the date field, the sales-close and
+  Decline outline buttons and the layout editor's tool chips paint literal light fills as grey
+  slabs, and the walk-in tiles vanish against the dark sand. So Q14's second theme is a slice of
+  its own — every `--riv-console-*` token and every light literal in the six tabs gets a dark
+  value, with the contrast specs extended — and the switch ships only once that slice lands. The
+  nav rebuild carries the switch's home (the chip) and the pin, not the theme.
+- **The palette earns its slot** as an accelerator: nine admin destinations plus two venues plus
+  the account page in one filtered list (`sheet-palette-open`, G row).
+
+## What D decided before the grill, and what it needed
 
 The grill the brief asked for could not run in this session (no maintainer present), so each
 question carries my proposed answer and what a different answer changes.
@@ -108,10 +168,11 @@ and at 1280px the admin pill strip already scrolls.
 - Whether E's palette earns a ⌘K slot on D's account chip later — a keyboard accelerator for the
   nine-destination admin, never the primary nav.
 
-## Rebuild — the slices for the Issue stage (`to-issues`), once the grill is answered
+## Rebuild — the slices for the Issue stage (`to-issues`)
 
-The spike is the `prototype` half of riviera-sdlc's Plan row; the rebuild enters at Refine with
-the six answers above, then `to-issues`. The natural tracer bullets, each demoable alone:
+The spike is the `prototype` half of riviera-sdlc's Plan row. Refine is done (the sixteen answers
+above); the maintainer decides on G's screenshots, then `to-issues` cuts these tracer bullets,
+each demoable alone:
 
 1. **The rail primitive** — `shared/` gets the underlined-tab-on-a-hairline element (a component
    or variant directive per `riviera-tailwind` rule 1, never `@apply`), with `aria-current` as the
@@ -130,7 +191,19 @@ the six answers above, then `to-issues`. The natural tracer bullets, each demoab
 4. **One shell** — the section row hosting both consoles: `data.operatorConsole` and
    `data.operatorChrome` collapse into one route-data flag naming the section, `AdminConsole`
    keeps its gate but drops its strip into the shell, `app-operator-chrome` retires. The porcelain
-   pin moves to the shell host. This is the slice the maintainer's answer to question 2 gates.
+   pin moves to the shell host; only the section row is sticky, hiding on scroll-down below `sm`.
+   Ships the amended `ADMIN_CONSOLE_TAB_ORDER` (answer 8) and the Today-first operator order
+   (answer 7), with `admin-console-tabs.spec.ts` amended in the same PR.
+5. **The phone rail** — below `sm`, glyph-over-label primaries plus the current-aware More and
+   its sheet (answers 3, 10, 13, 15). The glyphs land as `shared/` icon components per
+   `riviera-tailwind` ICON-1..6. e2e: a 344px project in `touch-targets*.e2e.ts` and the
+   current-tab assertions on `/operator/1/payouts` and `/admin/audit`.
+6. **The palette** — ⌘K / Ctrl-K and the search glyph on the section row from `sm` up; focus
+   returns to the opener; Enter opens the first hit. e2e over the keyboard path.
+7. **The dark console theme** — dark values for every `--riv-console-*` token and every light
+   literal the six tabs paint, the `*.contrast.spec.ts` extended to both themes, then the
+   porcelain / dark rows in the account chip. Gated on the restyle, not on the shell (see _What G
+   showed_).
 
 Skills the rebuild loads at Implement: `riviera-frontend` (which folder each piece lands in — the
 rail and chip are `shared/`, the switcher is `operator/` unless the shell needs it, in which case
