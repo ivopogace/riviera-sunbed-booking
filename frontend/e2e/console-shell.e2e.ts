@@ -204,7 +204,7 @@ test('a signed-out visitor on /admin/audit sees the section row with Sign in and
   await expect(page.getByTestId('oc-section-admin')).toHaveCount(0);
   await expect(page.getByTestId('oc-venue-title')).toHaveCount(0);
   await expect(page.getByTestId('oc-account')).toHaveCount(0);
-  // Nor the palette: no search glyph, and the chord opens nothing (#1013).
+  // Nor the palette: no search glyph, and the chord opens nothing.
   await expect(page.getByTestId('oc-search')).toHaveCount(0);
   await page.keyboard.press('Meta+k');
   await expect(page.getByRole('dialog', { name: 'Go to' })).toHaveCount(0);
@@ -245,7 +245,7 @@ test('the account chip opens a popover on /admin — axe clean, one header row o
   await expect(page.getByTestId('oc-account-menu')).toHaveCount(0);
   await expect(chip).toBeFocused();
 
-  // The glyph has left the row, but the chord still opens the palette, inside the viewport (#1013).
+  // The glyph has left the row, but the chord still opens the palette, inside the viewport.
   await page.keyboard.press('Control+k');
   const dialog = page.getByRole('dialog', { name: 'Go to' });
   await expect(dialog).toBeVisible();

@@ -567,7 +567,7 @@ describe('ConsoleShell', () => {
       expect(dialog()!.getAttribute('aria-modal')).toBe('true');
       expect(search()!.getAttribute('aria-expanded')).toBe('true');
       expect(document.activeElement).toBe(byId('oc-palette-search'));
-      // The dialog is a sibling of the header, never inside its filtered box (#1011 R-5).
+      // The dialog is a sibling of the header, never inside its filtered box (which would pin it).
       expect(header().contains(dialog())).toBe(false);
 
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));

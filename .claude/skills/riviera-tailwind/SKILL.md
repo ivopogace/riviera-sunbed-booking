@@ -131,7 +131,7 @@ before adding a glyph.
 
 Rejected: the esbuild `import clock from './clock.svg' with { loader: 'text' }` route — it
 needs `innerHTML` (sanitizer friction), loses per-call-site sizing and `class` control, and
-re-applies `aria-hidden` at the host anyway. The console's seventeen-glyph set stayed on
+re-applies `aria-hidden` at the host anyway. The console's eighteen-glyph set stayed on
 inline components for the same reasons; a `name` input on one component was rejected as the
 variant ICON-2 rules out. One trap: a shared `<svg …>` attribute block interpolated into each
 `template` compiles under the Angular compiler but not under angular-eslint's template parser

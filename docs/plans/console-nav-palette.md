@@ -41,8 +41,14 @@ case and the shell spec gain the hidden-below-`sm` pin here; that #1012's plan d
 matching `aurora`, so the palette case mocks its own) · `riviera-plan-doc` (this template — forced a
 seam per AC and the reversible-decision register below) · `tdd` (each phase red first at the named
 seam, scoped Vitest runs) · `riviera-review-overlay` (review gate — due at ready-for-review) ·
-`riviera-docs-freshness` (due at close-out over the PR's range; known movers listed under *File
-structure*) · `grilling` (the intake questions answered from the code; the maintainer was not present,
+`riviera-docs-freshness` (**ran** over `3fec8acd..HEAD` (the merge base with a freshly fetched
+`origin/main`) in phase 5, 4 findings, all patched: `riviera-tailwind` § *Icons* said
+"seventeen-glyph" — eighteen with the search glyph; `riviera-frontend`'s routing bullet listed what
+the shell wears without the palette; `focus-trap.ts`'s TSDoc counted "four modals" — it already
+served five, six with the palette; the two console artboards gain a #1013 as-built pointer. The
+rename grep found no citation of the hoisted recipes' old homes; the counting sweep
+(seventeen/17, four modals, three disclosures) found the two above and nothing else. Plan-doc
+retirement: #1012's `console-nav-phone-rail.md` deleted, no citation outside `docs/plans/`) · `grilling` (the intake questions answered from the code; the maintainer was not present,
 so every product call is recorded under *Open questions* as reversible) · `riviera-local-debug`
 (unshallowed the clone; scoped `npx vitest run <files>`; `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium`
 for the mocked e2e) · `riviera-frontend` (the palette takes rows as an input and reads only the
@@ -58,7 +64,20 @@ modifiers — `(document:keydown.meta.k)` / `(document:keydown.control.k)`; `aft
 `{ injector }` for the focus legs, `viewChild` for the palette and the field, `computed` for the rows,
 `NgComponentOutlet` for the glyph) · `playwright-cli` (`page.keyboard.press('Meta+k')` /
 `'Control+k'` for the chords; `getByRole('dialog', { name: 'Go to' })`; the touch sweep with the
-dialog open).
+dialog open) · Tailwind v4 docs + the production build's stylesheet (at the maintainer's ask, after
+phase 4 — no finding: the docs' *hover, focus and other states* page lists the bare-attribute
+`data-*` form ("specify the attribute name" to check presence) and the arbitrary `aria-[…]` form; the
+built sheet has `.data-\[hit\]:bg-riv-pop-hover[data-hit]` and
+`.aria-\[current=page\]:bg-riv-pop-hover[aria-current=page]`; `placeholder:` compiles to
+`::placeholder`, `focus-visible:` to `:focus-visible` with `outline-width:3px` and `outline-offset:1px`,
+`max-sm:` to `@media (width < 40rem)` as the docs' table states; the *translate* page says the
+utilities set the `translate` property — the built `.-translate-x-1/2` does, so it composes with the
+popover keyframe's `transform`; the *width* page documents `w-[<value>]` and the built rule reads
+`width:min(560px,calc(100vw - 24px))` with the operator spaced) · angular.dev via the angular-cli
+MCP (after phase 4 — the *event listeners* guide: `host` takes the `document:` global target and
+the `alt`/`control`/`meta`/`shift` key modifiers, and `preventDefault()` is the documented way to
+replace the browser's own handling, which is what the chord handler does; `afterNextRender`'s
+`{ injector }` option for the navigation leg outside an injection context, as #1012 verified).
 
 **Branch:** `claude/command-palette-nav-1013-dg0g4q` (the session's designated remote branch
 stands in for `feature/console-nav-palette`, per the `riviera-sdlc` cloud addendum).
@@ -67,7 +86,7 @@ stands in for `feature/console-nav-palette`, per the `riviera-sdlc` cloud addend
 
 ## Acceptance criteria (testable)
 
-- [ ] **AC-1:** Given a signed-in operator on a console route at 1280px, when the section row
+- [x] **AC-1:** Given a signed-in operator on a console route at 1280px, when the section row
   renders, then it carries a button named `Jump to a section or venue (⌘K)` with `aria-expanded`
   (`false`), `max-sm:hidden`; pressing it, ⌘K or Ctrl-K opens `dialog[aria-label="Go to"]`
   (`aria-modal`) with the search field focused and the button `aria-expanded="true"`; a second chord
@@ -76,7 +95,7 @@ stands in for `feature/console-nav-palette`, per the `riviera-sdlc` cloud addend
   `the search button opens the palette onto its field; ⌘K and Ctrl-K toggle it (#1013)`;
   `app.spec.ts` › `⌘K opens the palette on a console route and nothing on a tourist one (#1013)`;
   `console-shell.e2e.ts` › `the search glyph and ⌘K open the Go to dialog … (#1013)`.
-- [ ] **AC-2:** Given `/operator/1/daily` as an admin owning two venues, when the palette opens,
+- [x] **AC-2:** Given `/operator/1/daily` as an admin owning two venues, when the palette opens,
   then its rows are, in order: the six venue sections (Daily view `aria-current="page"`), the owned
   venues (each to `/operator/<id>/daily`, the current venue marked), `Admin console` (→ `/admin`),
   `Change password` (→ `/account/operator-password`); a non-admin gets no `Admin console`; on
@@ -85,7 +104,7 @@ stands in for `feature/console-nav-palette`, per the `riviera-sdlc` cloud addend
   the venues, `Admin console`, `Change password`. *Seam:* the shell's palette through its host DOM
   · *Pinned by:* `console-shell.spec.ts` ›
   `the rows per context: sections with the current marked, venues on the current tab, the other console, Change password (#1013)`.
-- [ ] **AC-3:** Given the palette open, when `aud` is typed on `/admin`, then only `Audit` remains,
+- [x] **AC-3:** Given the palette open, when `aud` is typed on `/admin`, then only `Audit` remains,
   highlighted, and Enter navigates to `/admin/audit` and closes the dialog; when `aurora` is typed
   on `/operator/1/daily` with an owned venue `Aurora Bay`, only that row remains and Enter opens
   `/operator/2/daily`. *Seam:* the palette component through its DOM over a test router (unit); the
@@ -93,12 +112,12 @@ stands in for `feature/console-nav-palette`, per the `riviera-sdlc` cloud addend
   `typing filters by label, hint and group; the first hit is highlighted and Enter opens it`;
   `admin-console-tabs.e2e.ts` › `⌘K: typing aud leaves Audit, Enter opens it and closes the dialog (#1013)`;
   `operator-console.e2e.ts` › `Ctrl-K: typing a venue name leaves its row, Enter opens that venue on the current tab (#1013)`.
-- [ ] **AC-4:** Given the palette open, when a query with no hit is typed, then `Nothing matches.`
+- [x] **AC-4:** Given the palette open, when a query with no hit is typed, then `Nothing matches.`
   renders (a `role="status"`), no row is rendered, and Enter does nothing (the dialog stays open, the
   URL unchanged); an empty query highlights nothing and Enter does nothing. *Seam:* the palette
   component's DOM · *Pinned by:* `console-palette.spec.ts` ›
   `Nothing matches. for a query with no hit, and Enter does nothing then or on an empty query`.
-- [ ] **AC-5:** Given the palette opened by the search button, when Escape or the backdrop closes
+- [x] **AC-5:** Given the palette opened by the search button, when Escape or the backdrop closes
   it, then `document.activeElement` is the button; opened by the chord while another element held
   focus, focus returns to that element; a row activation closes and returns focus the same way; a
   navigation that ends with the dialog open (Back) closes it and, if focus was inside, lands focus on
@@ -107,7 +126,7 @@ stands in for `feature/console-nav-palette`, per the `riviera-sdlc` cloud addend
   `Escape, the backdrop and a row hand focus back to the opener; the chord's opener is the element focused when it fired`,
   `a navigation that ends with the dialog open closes it; focus lands on the opener, or on main when it is gone`;
   `console-shell.spec.ts` › AC-1's case (the button as opener); the AC-1 e2e.
-- [ ] **AC-6:** Given three pending requests, when the palette opens on the venue console, then the
+- [x] **AC-6:** Given three pending requests, when the palette opens on the venue console, then the
   Requests row carries the badge `3` (none at zero); given a signed-out visitor on `/admin/audit`,
   when the row renders and ⌘K is pressed, then there is no search button and no dialog; the same
   while the session restores. *Seam:* the shell's DOM through the stores (unit), the routed SPA
@@ -115,7 +134,7 @@ stands in for `feature/console-nav-palette`, per the `riviera-sdlc` cloud addend
   `the Requests row carries the live badge (#1013)`,
   `signed out on an admin URL: no search button and ⌘K opens nothing (#1013)`;
   `console-shell.e2e.ts` › the signed-out case (amended).
-- [ ] **AC-7:** Given the dialog open at 1280px on `/operator/1/daily` and `/admin`, when the
+- [x] **AC-7:** Given the dialog open at 1280px on `/operator/1/daily` and `/admin`, when the
   touch sweep, the ring probe and axe run, then every visible control (the field, every row) measures
   ≥ 44 × 44px, the field paints `outline-style: solid` / `outline-width: 3px` on focus, axe reports
   no serious violation, and the tree carries no `outline-none` on a control. *Seam:* the routed SPA
@@ -124,7 +143,7 @@ stands in for `feature/console-nav-palette`, per the `riviera-sdlc` cloud addend
   sweeps the new file); `console-shell.a11y.spec.ts` › `is axe clean with the palette open on both consoles`;
   `console-palette.contrast.spec.ts` (the field inks over the field fill on the popover surface, the
   group tag, the hit row).
-- [ ] **AC-8:** Given 390px, when the section row renders, then the search button is hidden
+- [x] **AC-8:** Given 390px, when the section row renders, then the search button is hidden
   (`max-sm:hidden`) and the row's brand, venue slot and chip still share one row; ⌘K still opens the
   dialog inside the viewport. *Seam:* the routed SPA · *Pinned by:* `console-shell.e2e.ts` ›
   `the account chip opens a popover on /admin — axe clean, one header row on a phone (#1008)` (amended:
@@ -233,9 +252,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 5)`
+**Stage pointer:** `PR — draft open, CI gate`
 
-**Next action:** phase 5 — lint, format, the whole unit suite and the whole mocked e2e; docs-freshness; #1012's plan retired; the file-structure guard; push.
+**Next action:** read the draft PR's CI run; when green, merge the latest `origin/main` in if it moved, mark ready for review, and run the review gate (`references/pr-gates.md` §1) with the range resolved off the PR.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -243,8 +262,8 @@ N/A — no contract change.
 | 1 — the search glyph; the row, hint and badge recipes hoisted and consumed by the shell | ✅ | 6fda2f03 |
 | 2 — `shared/console-palette.ts`: the dialog, chords, filter, highlight, Enter, trap, focus legs, close on navigation; its spec, a11y and contrast specs | ✅ | 067298e8 |
 | 3 — the shell: the search button, the gate, `paletteRows`, the mount; shell spec, a11y spec, `app.spec.ts` | ✅ | a28fdc0b |
-| 4 — e2e: `console-shell.e2e.ts`, `operator-console.e2e.ts`, `admin-console-tabs.e2e.ts`, `support/shell.ts` | ✅ | (phase-4 commit) |
-| 5 — contract: lint, format, unit, the mocked e2e; docs-freshness; #1012's plan retired; file-structure guard; push | | |
+| 4 — e2e: `console-shell.e2e.ts`, `operator-console.e2e.ts`, `admin-console-tabs.e2e.ts`, `support/shell.ts` | ✅ | a8e492c6 |
+| 5 — contract: `npm run lint` + `format:check` green; 235 files / 2759 unit specs green; the whole mocked e2e 512/512 across `chromium`, `phone` and `fold` (7.8 min); the four CI hygiene guards green over `origin/main` (the inline-comment guard first flagged three issue numbers in comments — dropped); a production build green; docs-freshness run (4 findings, patched); #1012's plan retired; branch pushed | ✅ | a14f2c2f |
 | 6 — PR, CI, review gate, Sonar gate, merge close-out | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -270,6 +289,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/src/app/shared/console-glyphs.ts` — `SearchGlyph`.
 - `frontend/src/app/shared/console-glyphs.spec.ts` — the set gains the search glyph.
 - `frontend/src/app/shared/popover-skin.ts` — `POP_NAV_ROW`, `POP_NAV_HINT`; the consumer list names the palette.
+- `frontend/src/app/shared/focus-trap.ts` — TSDoc: the modal list (docs-freshness).
 - `frontend/src/app/shared/tab-rail.ts` — `TAB_RAIL_BADGE`.
 - `frontend/src/app/console-shell.ts` — the search button, `paletteRows`, the mount; the hoisted recipes consumed.
 - `frontend/src/app/console-shell.spec.ts` — AC-1, AC-2, AC-6.
@@ -339,13 +359,12 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 ## Phase 5 — contract
 
-- [ ] **Step 1–4:** `npm run lint`, `npm run format:check`, `npm test`, the whole mocked e2e;
+- [x] **Step 1–4:** `npm run lint`, `npm run format:check`, `npm test`, the whole mocked e2e;
   `node scripts/check-plan-file-structure.mjs --diff origin/main`; `riviera-docs-freshness` over the
   PR's range; #1012's plan deleted; the Tailwind and Angular doc checks recorded under *Skills consulted*.
-- [ ] **Step 5: Generalization-audit pass** — population: every substrate line counting the glyphs or
-  describing what the shell wears → `grep -rn "seventeen\|17 glyph\|More sheet)" .claude docs --include=*.md --include=*.html`.
-- [ ] **Step 6: Commit** — `Retire #1012's plan and refresh the docs for the palette (#1013)`; push.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 5: Generalization-audit pass** — the counting sweep (the log's phase-5 row).
+- [x] **Step 6: Commit** — `Retire #1012's plan and refresh the docs for the palette (#1013)`; push.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ---
 
@@ -356,13 +375,14 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | 2026-09-07 | phase 1 | every copy of the badge or the sheet-row recipe outside its new home — the drift mechanism the hoist removes | `grep -rn "min-w-5 items-center justify-center rounded-full\|rounded-\[14px\] px-3.5 py-\[11px\]" frontend/src/app` | none outside `popover-skin.ts` / `tab-rail.ts` (the shell now reads both) | nothing else to hoist |
 | 2026-09-07 | phase 2 | every modal that traps focus — the mechanism the palette joins | `grep -rln "trapFocusWithin" frontend/src/app --include=*.ts \| grep -v spec` | `photo-lightbox.ts`, `payout-statement.ts`, `booking-dialog.ts`, `find-booking.ts`, `availability-calendar.ts`, the palette | the palette takes the same trap and `aria-modal`; `focus-trap.ts`'s doc names "four modals" — refreshed at close-out |
 | 2026-09-07 | phase 3 | every reader of the section row's ids that a control added to the right cluster could shift — the mechanism is a locator on `oc-account` / `oc-signin` / `oc-section-admin` | `grep -rln "oc-account\b\|oc-signin\|oc-section-admin" frontend/e2e frontend/src --include=*.ts` | 13 files (7 e2e, 6 specs/sources) | all locate by test id or role, none by position; `expectPhoneRailFits`'s brand/venue/chip order holds below `sm` where the button is hidden — nothing to rewrite |
+| 2026-09-07 | phase 5 | every substrate line counting the glyphs or the trapped modals, or listing what the shell wears — the counting sweep | `grep -rniE 'seventeen\|\b17 (glyph\|component)\|\bfour modals\b\|three (disclosures\|modals)' frontend/src .claude/skills CLAUDE.md CONTEXT.md RESPONSIBILITIES.md docs/adr docs/agents docs/design` + `grep -rn "More sheet)" .claude/skills docs/design` | `riviera-tailwind` (seventeen), `focus-trap.ts` (four modals), `riviera-frontend` (the routing bullet), the two artboards; `colour-literal-token-audit.md:331`'s "seventeen sites" is another subject and stays | four patched, one left true |
 | 2026-09-07 | phase 3 | every e2e that presses Escape on a console route, which now also reaches the palette's document listener | `grep -ln "press('Escape')" frontend/e2e/*.e2e.ts \| xargs grep -ln "oc-header\|oc-account"` | `admin-console-tabs`, `console-shell`, `operator-console`, `operator-password`, `operator-set-editing`, `theme-shell` | each closes its own disclosure; the palette's Escape is a no-op while closed (pinned in its spec) — nothing to rewrite |
 
 ---
 
 ## Acceptance-criteria verification (final)
 
-- [ ] **AC-1 … AC-8:** `npx vitest run` over the touched specs; `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y`.
+- [x] **AC-1 … AC-8:** `npx ng test --watch=false` → 235 files, 2759 specs PASS; `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → 512/512 PASS across the three projects, the pinning cases named per AC among them. Verified at the phase-5 head; CI re-runs the whole set on the PR.
 
 ## Self-review checklist (before merge / PR)
 
