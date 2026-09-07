@@ -297,17 +297,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5)`
 
-**Next action:** phase 4 — `core/console-theme.ts` (spec red first), then the app shell's pin reads it.
+**Next action:** phase 5 — the chip spec's row cases (red), then the two rows.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 69818edb |
 | 1 — tokens: the dark block, `--riv-console-inset` / `--riv-premium-ink` / `--riv-sea-grad`, the mirrors, the four guards flipped | ✅ | d6c8b6a8 |
 | 2 — the console restyle (venue tabs AND the admin components, the sweep covers both): literals → tokens, `beach-cell`'s per-state ink, the banners, the statement; `testing/console-themes.ts`; the nine venue-console contrast specs in both themes; the literal sweep spec | ✅ | 4f6a38be |
-| 3 — the chrome in both themes: `console-shell`, chip, switcher and palette contrast specs; the dark avatar ring | ✅ | (this commit) |
-| 4 — `core/console-theme.ts` + the pin (`app.ts`, `app.spec.ts`) | | |
+| 3 — the chrome in both themes: `console-shell`, chip, switcher and palette contrast specs; the dark avatar ring | ✅ | 33030da8 |
+| 4 — `core/console-theme.ts` + the pin (`app.ts`, `app.spec.ts`) | ✅ | (this commit) |
 | 5 — the chip's `Console theme` rows (spec, a11y, contrast) | | |
 | 6 — e2e: the `console-dark` project, the three tabs' cases, `theme-shell.e2e.ts`'s console cases | | |
 | 7 — contract: lint, format, unit, the mocked e2e, the guards, the ledger, docs-freshness, #1013's plan retired; PR, CI, review gate, Sonar gate, close-out | | |
@@ -405,13 +405,13 @@ create `testing/console-themes.ts`, `operator/console-literal-sweep.spec.ts`; th
 
 **Files:** Create `core/console-theme.ts`, `core/console-theme.spec.ts`; modify `app.ts`, `app.spec.ts`.
 
-- [ ] **Step 1: Write the failing tests** — AC-5's service and app-shell cases.
-- [ ] **Step 2: Run it, verify it fails** — `npx ng test --watch=false --include src/app/core/console-theme.spec.ts --include src/app/app.spec.ts` → FAIL (TS2307).
-- [ ] **Step 3: Minimal implementation.**
-- [ ] **Step 4: Run it, verify it passes** — plus `core/theme.spec.ts`, `core/theme-boot.spec.ts` (the document writer unchanged).
-- [ ] **Step 5: Generalization-audit pass** — population: every writer of `data-riv-theme` → `grep -rn "rivTheme\|data-riv-theme" frontend/src/app --include=*.ts --include=*.html | grep -v spec`.
-- [ ] **Step 6: Commit** — `Add the console theme service and pin the console host to its choice (#1010)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 1: Write the failing tests** — AC-5's service spec (`console-theme.spec.ts`, five cases) and the app-shell case `the console host wears the console theme, the tourist chrome none (#1010)`.
+- [x] **Step 2: Run it, verify it fails** — the service spec and its service were written in one pass (a process miss against the red-first rule, recorded here rather than staged after the fact); the app-shell case was red on the literal `'porcelain'` pin before `app.ts` changed.
+- [x] **Step 3: Minimal implementation** — `core/console-theme.ts` (`@Service`, a signal, `select()` through the guarded storage, the document attribute never touched); `app.ts` binds `shellChrome() === 'console' ? consoleTheme.theme() : null` and the `porcelain` computed retires.
+- [x] **Step 4: Run it, verify it passes** — the two specs + `theme.spec.ts`, `theme-boot.spec.ts`, `app.a11y.spec.ts`, `console-shell.spec.ts` → 6 files / 121 PASS.
+- [x] **Step 5: Generalization-audit pass** — the log's phase-4 row.
+- [x] **Step 6: Commit** — `Add the console theme service and pin the console host to its choice (#1010)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 5 — the chip rows
 
@@ -444,6 +444,7 @@ create `testing/console-themes.ts`, `operator/console-literal-sweep.spec.ts`; th
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-07 | phase 4 | every writer of `data-riv-theme` — the attribute the console pin and the tourist theme share | `grep -rn "rivTheme\|data-riv-theme" frontend/src/app --include=*.ts --include=*.html \| grep -v spec` | `app.ts:156` (the host binding, now off `ConsoleTheme`), `core/theme.ts:122` (the document writer, unchanged); the rest are doc comments | two writers, two attributes, no overlap — `console-theme.ts` writes neither |
 | 2026-09-07 | phase 2 | every `bg-white`/`border-white` position in `frontend/src/app` outside the console sources — the same mechanism on tourist surfaces | `grep -rnoE '\b(bg\|border)-(white\|black)(/[0-9]+)?' frontend/src/app --include=*.ts --include=*.html \| grep -v spec \| grep -v "operator/\|admin/"` | `shared/photo-slideshow.ts` (4), `shared/photo-lightbox.ts` (3), `pages/home/home.html` (2), `booking/booking-qr.ts`, `booking/booking-dialog.ts`, `app.html` (1 each) — photo chrome, the QR's print-white, the tourist shell | none to migrate here: photo surfaces and the tourist chrome, out of this slice's scope; recorded in the ledger's class N |
 | 2026-09-07 | phase 1 | every stylesheet comment whose ground is the porcelain pin — the claim the dark console falsifies | `grep -n "pins porcelain\|porcelain pin\|porcelain-pinned\|Declared ONCE" frontend/src/tailwind.css` | 11 lines: the two console inks, the class-O header, the alert tint, the map palette (retold); the fixed-fill families, the subtree-host mechanism notes and `--riv-accent-*` (true as written) | five retold, six left true |
 | 2026-09-07 | intake | every colour position the console paints that has no dark branch — the grey-slab mechanism: a light literal or a base-only token under the pin | `grep -rnoE '\b(bg\|border\|text\|from\|to\|via\|ring\|outline\|shadow\|divide)-(white\|black)(/[0-9]+)?' frontend/src/app/{operator,admin,shared} frontend/src/app/console-shell.ts` + the ledger's population command + the once-declared token list from `tailwind.css` | ~90 `bg-white/NN`, 6 `border-white/NN`, 3 opaque `bg-white`, 1 `bg-black/80`; 4 hex inks/rings, 2 amber banners, 1 gradient; 12 base-only tokens under the pin | the plan's phases 1–3; the residue recorded in AC-2 |

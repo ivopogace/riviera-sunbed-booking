@@ -14,6 +14,7 @@ import { OwnedVenue, OwnedVenues, OwnedVenuesResult } from './core/owned-venues'
 import { ConsoleVenueMap } from './operator/console-venue-map';
 import { SessionAuth } from './core/session-auth';
 import { SignOutNotice } from './core/sign-out-notice';
+import { ConsoleTheme } from './core/console-theme';
 import { ThemeService } from './core/theme';
 
 @Component({ template: '' })
@@ -1147,6 +1148,32 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     await router.navigate(['/glass']);
     fixture.detectChanges();
     expect(el.getAttribute('data-riv-theme')).toBeNull();
+  });
+
+  it('the console host wears the console theme, the tourist chrome none (#1010)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+    TestBed.inject(ThemeService).select('riviera');
+    TestBed.inject(ConsoleTheme).select('dark');
+
+    await router.navigate(['/operator/7/daily']);
+    fixture.detectChanges();
+    expect(el.getAttribute('data-riv-theme')).toBe('dark');
+    // The document-level theme is the tourist's choice and stays untouched — never the console's.
+    expect(document.documentElement.getAttribute('data-riv-theme')).toBe('riviera');
+
+    await router.navigate(['/admin']);
+    fixture.detectChanges();
+    expect(el.getAttribute('data-riv-theme')).toBe('dark');
+
+    TestBed.inject(ConsoleTheme).select('porcelain');
+    fixture.detectChanges();
+    expect(el.getAttribute('data-riv-theme')).toBe('porcelain');
+
+    await router.navigate(['/glass']);
+    fixture.detectChanges();
+    expect(el.getAttribute('data-riv-theme')).toBeNull();
+    expect(document.documentElement.getAttribute('data-riv-theme')).toBe('riviera');
   });
 
   it('console-shell Sign out parks focus on main before the control unmounts (WCAG 2.4.3)', async () => {
