@@ -92,7 +92,12 @@ page — `ring-1` sets `--tw-ring-shadow` and composes with a `shadow-[…]` uti
 `box-shadow`, so the avatar's inset highlight and the dark ring coexist, and `ring-<color>` takes a
 theme colour, which is `ring-riv-console-avatar-ring` and `ring-riv-accent-ink`; the opacity
 modifier's `color-mix()` compile is not on the page and is proven instead by the class-O guard's
-in-browser probe and the production stylesheet, phase 7) · `playwright-cli` (a per-project `storageState`
+in-browser probe and, in phase 7, the production stylesheet: `npm run build` green, and the built
+sheet carries `.bg-riv-console-inset\/60{background-color:var(--riv-console-inset)}` with its
+`color-mix(in oklab,var(--riv-console-inset) 60%,transparent)` twin under the `@supports` guard,
+`.ring-riv-console-avatar-ring{--tw-ring-color: var(--riv-console-avatar-ring)}`,
+`.bg-\(image\:--riv-sea-grad\){background-image:var(--riv-sea-grad)}` and
+`.text-riv-premium-ink{color:var(--riv-premium-ink)}`) · `playwright-cli` (a per-project `storageState`
 seeding the console key for the `console-dark` project; `toHaveCSS` against a probe paint for
 `color-mix()` results, the `class-o-tint-tokens.e2e.ts` pattern; role/test-id locators; axe after
 `getAnimations().finished`).
@@ -387,6 +392,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/operator-daily.e2e.ts` · `operator-requests.e2e.ts` · `layout-editor.e2e.ts` · `theme-shell.e2e.ts`
 - `frontend/e2e/support/console-theme.ts` — the console theme per project, the `color-mix()` probe (shared with `class-o-tint-tokens.e2e.ts`), the per-theme ink strings, `expectInsetFill`.
 - `frontend/e2e/class-o-tint-tokens.e2e.ts` — imports the shared probe; its forced-dark case reads the console host.
+- `frontend/e2e/fixed-ink-token-recut.e2e.ts` — the console card border moves from its invariant registry to its themed table.
 - `frontend/src/app/shared/fixed-fill-token-skins.contrast.spec.ts` · `solid-fill-tokens.contrast.spec.ts` — the "still painted here" lists lose the rows the restyle moved.
 - `frontend/src/app/shared/beach-map-canvas.contrast.spec.ts` · `frontend/src/app/venue/venue-map.contrast.spec.ts` — headers: "porcelain-pinned operator surface" retold.
 
