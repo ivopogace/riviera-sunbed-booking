@@ -81,18 +81,23 @@ ACs:
   from the header popover (account menu signed in, menu button signed out) or the hamburger
   sheet, then `app-find-booking` opens, the popover/sheet closes, and dismissing the modal
   returns focus to that popover's persistent trigger. *Seam:* the shell DOM +
-  `document.activeElement` · *Pinned by:* `app.spec.ts` › `Find a booking from the account menu
-  returns focus to the chip on dismiss (#1002)`, `… from the signed-out menu returns focus to
-  the menu button …`, `… from the mobile menu returns focus to the hamburger …`;
-  `e2e/find-a-booking.e2e.ts` opening via the menu signed out and signed in.
+  `document.activeElement` · *Pinned by:* `app.spec.ts` › `Find a booking from the signed-out menu opens the
+  modal, closes the popover and returns focus to the menu button (#1002)`, `Find a booking from
+  the account menu returns focus to the chip on dismiss (#1002)`, `Find a booking from the mobile
+  menu (signed in: %s) closes the menu and returns focus to the hamburger (#148, #1002)`;
+  `e2e/find-a-booking.e2e.ts` › `opens from the header menu in both auth states and returns focus
+  to the trigger on dismiss (#1002)` and `phone › opens from the hamburger sheet and returns focus
+  to the hamburger on dismiss (#1002)`.
 - [x] **AC-3:** Given the bar, when the theme control renders, then it is a button with no
   visible text whose accessible name is `Color theme: <active theme>`, opening the unchanged
   three-option popover; its swatch carries a 1.5px `--riv-ink-soft` ring that composites to
   ≥ 3:1 against the header glass at the worst stop of every theme. *Seam:* the shell DOM for the
   name; `testing/contrast.ts` maths for the ring · *Pinned by:* `app.spec.ts` › `the theme
-  control is a swatch-only button named for the active theme (#1002)`, `app.a11y.spec.ts`
-  (open picker, both auth states), `app.contrast.spec.ts` › `the swatch ring (ink-soft) clears
-  3:1 against the header glass in every theme (#1002)`.
+  control is a swatch-only button named for the active theme (#1002)`, `app.a11y.spec.ts` ›
+  `shell with the theme picker open has no violations` and the two popover cases,
+  `app.contrast.spec.ts` › `the swatch ring (ink-soft) clears 3:1 against the header glass in
+  every theme: $theme (#1002)`, `e2e/tourist-header.e2e.ts` › `the theme swatch › carries a 1.5px
+  ink-soft ring in the porcelain theme` / `… in the riviera theme`.
 - [x] **AC-4:** Given signed out, when the shell renders, then the bar holds a `Sign in` link
   (`href="/account/sign-in"`, `aria-current="page"` on the sign-in route via `authLinkCurrent`)
   and a separate button named `Menu` whose popover holds `Create an account`
@@ -100,9 +105,11 @@ ACs:
   control — the avatar + handle chip, accessible name `Account: <email>` — whose popover holds
   the identity block with the full address, `Your account`, `Find a booking`, `Sign out`; the
   text `Signed in as` appears nowhere in the bar. *Seam:* the shell DOM · *Pinned by:*
-  `app.spec.ts` › `signed out: a Sign in link plus a Menu button (#1002)`, `signed in: one
-  account chip opening the account menu (#1002)`, `never marks Sign in and Create an account
-  current together`.
+  `app.spec.ts` › `signed out: a Sign in link plus a Menu button, never a Sign in that opens a
+  menu (#1002)`, `signed in: one account chip opening the account menu, and signs out on click
+  (#1002)`, `never marks Sign in and Create an account current together: the mode query param
+  decides`, `closes the signed-out menu on Escape and on the backdrop, handing focus back to the
+  Menu button (#1002)`.
 - [x] **AC-5:** Given `/venues/1` (or any page the nav does not list), when the desktop nav
   renders, then no link carries `aria-current`; `Beaches` is current at `/` only. *Seam:*
   `routerLinkActive` with `EXACT_PATH` · *Pinned by:* `app.spec.ts` › `marks Beaches current at
@@ -111,18 +118,18 @@ ACs:
 - [x] **AC-6:** Given the riviera theme on a touch tablet, when `/my-bookings` renders, then the
   current link is full ink (`rgb(255, 255, 255)`) with an underline in that same ink — never the
   accent ink. *Seam:* computed styles in a real browser · *Pinned by:*
-  `e2e/current-page-marker.e2e.ts` › `marks the current page inline with full ink and an
-  underline in the riviera theme (#1002)`.
+  `e2e/current-page-marker.e2e.ts` › `tablet: the inline nav › marks the current page inline with
+  full ink and an underline in the riviera theme`.
 - [x] **AC-7:** Given `/booking/pay` reached through the dialog, in both auth states, when the
   header renders, then no header descendant's class list names `--riv-cta-grad` and no
   descendant's computed `background-image` equals the pay button's. *Seam:* computed styles ·
   *Pinned by:* `e2e/tourist-header.e2e.ts` › `no header control wears the CTA gradient on the
-  pay page (#1002)`.
+  pay page › signed out` and `… › signed in — the avatar included`.
 - [x] **AC-8:** Given every header control, links included, when the phone sweep runs, then each
   declares `appTouchTarget` and measures ≥ 44 × 44. *Seam:* the rendered boxes · *Pinned by:*
   `e2e/touch-targets-tourist.e2e.ts` (existing sweep, the menu case re-pointed) +
-  `app.spec.ts` › `every header link declares the touch floor (#1002)` (class-list declaration
-  for `<a>`, which `check-touch-target.mjs` never judges).
+  `app.spec.ts` › `every header link declares the touch floor, popovers and sheet open (signed
+  in: %s) (#1002)` (class-list declaration for `<a>`, which `check-touch-target.mjs` never judges).
 
 ## Non-goals
 

@@ -32,7 +32,7 @@ export async function openAccountMenu(page: Page): Promise<void> {
 
 /** The desktop popover's trigger: the account chip signed in, the round menu button signed out. */
 export function headerMenuTrigger(page: Page): Locator {
-  return page.locator('[data-testid="nav-user"], [data-testid="nav-menu"]');
+  return page.getByTestId('nav-user').or(page.getByTestId('nav-menu'));
 }
 
 /** Opens the desktop header popover (either auth state) and proves it stayed open. */
