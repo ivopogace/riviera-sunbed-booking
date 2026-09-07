@@ -40,6 +40,7 @@
 
   --color-riv-header-glass: var(--riv-header-glass);
   --color-riv-header-border: var(--riv-header-border);
+  --color-riv-tabbar-glass: var(--riv-tabbar-glass);
 
   --color-riv-card-glass: var(--riv-card-glass);
   --color-riv-card-border: var(--riv-card-border);
@@ -214,6 +215,11 @@
 
   --riv-header-glass: rgba(255, 255, 255, 0.6);
   --riv-header-border: rgba(255, 255, 255, 0.7);
+  /** The phone tab bar's surface: the header tint at 0.85, its own token rather than a
+      second coat of --riv-header-glass — at 0.6 the beach map's availability strip and the
+      booking view's back link bled through the bar. Labels AA + the full-ink marker ≥ 3:1:
+      app.contrast.spec.ts. */
+  --riv-tabbar-glass: rgba(255, 255, 255, 0.85);
 
   /** CTA buttons carry white body-size text, so both stops must clear AA (4.5:1). The design's
       brighter #2bb8d4→#0e8aa8 only reaches 2.4–4.0:1 white; darkened for AA (pinned by the
@@ -877,6 +883,7 @@
   /* dark glass (see header note above): #0a2c3f at 72% over the lightest bg stop still ≥ AA vs white ink */
   --riv-header-glass: rgba(10, 44, 63, 0.72);
   --riv-header-border: rgba(255, 255, 255, 0.22);
+  --riv-tabbar-glass: rgba(10, 44, 63, 0.92);
 
   /** 0.78 (design: 0.55): the darkest riviera stop needs the extra opacity for the dark
       card inks to reach AA — see home.contrast.spec.ts. */
@@ -913,6 +920,7 @@
 
   --riv-header-glass: rgba(15, 23, 42, 0.72);
   --riv-header-border: rgba(255, 255, 255, 0.22);
+  --riv-tabbar-glass: rgba(15, 23, 42, 0.92);
 
   /** Fully dark surfaces (maintainer decision, 2026-08-25): unlike riviera, whose cards stay
       white glass, the dark theme inverts the whole card family — dark slate glass, light inks,

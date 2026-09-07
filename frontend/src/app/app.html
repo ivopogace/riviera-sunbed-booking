@@ -1,4 +1,4 @@
-<div class="relative flex min-h-screen flex-col">
+<div [class]="shellClass()">
   <!-- Above the chrome conditional so it also shows on /operator/**, the shared-tablet case. -->
   @if (signOutNotice.visible()) {
     <div
@@ -51,9 +51,101 @@
   }
 
   @if (shellChrome() === 'tourist') {
+    <!-- The phone tab bar, BEFORE the header: an earlier z-20 sibling paints under the header's stacking context, so the theme/account popover backdrops cover it (a later one would let a tab tap navigate under an open popover). Below sm the bar is therefore first in tab order. -->
+    @if (tabBar()) {
+      <nav [class]="cls.tabBar" aria-label="Primary (phone)" data-testid="tab-bar">
+        <a
+          appTouchTarget
+          routerLink="/"
+          [class]="cls.tab"
+          [attr.aria-current]="tabSection() === 'beaches' ? 'page' : null"
+          data-testid="tab-beaches"
+        >
+          <span [class]="cls.tabIcon">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 3a9 9 0 0 1 9 9H3a9 9 0 0 1 9-9Z" />
+              <path d="M12 3v9" />
+              <path d="M12 12v6a2.5 2.5 0 0 0 5 0" />
+            </svg>
+          </span>
+          Beaches
+        </a>
+        <a
+          appTouchTarget
+          routerLink="/my-bookings"
+          [class]="cls.tab"
+          [attr.aria-current]="tabSection() === 'bookings' ? 'page' : null"
+          data-testid="tab-bookings"
+        >
+          <span [class]="cls.tabIcon">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path
+                d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 6v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-6Z"
+              />
+              <path d="M14 5v14" />
+            </svg>
+          </span>
+          My bookings
+        </a>
+        <!-- Opens the sheet — never a `Sign in`: a control so labelled must navigate. Label and glyph wait for the restore so the tab does not flip from Menu to Account. -->
+        <button
+          appTouchTarget
+          #menuButton
+          type="button"
+          [class]="cls.tab"
+          data-testid="menu-toggle"
+          [attr.aria-current]="accountTabCurrent() ? 'page' : null"
+          [attr.aria-label]="menuTabLabel()"
+          [attr.aria-expanded]="menuOpen()"
+          (click)="toggleMenu()"
+        >
+          @if (!customerAuth.restoring()) {
+            <span [class]="cls.tabIcon">
+              @if (customerAuth.signedIn()) {
+                <span [class]="cls.avatar + ' h-[21px] w-[21px] text-[11px]'" aria-hidden="true">{{
+                  initial()
+                }}</span>
+              } @else {
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  aria-hidden="true"
+                >
+                  <path d="M4 7h16" />
+                  <path d="M4 12h16" />
+                  <path d="M4 17h16" />
+                </svg>
+              }
+            </span>
+            {{ customerAuth.signedIn() ? 'Account' : 'Menu' }}
+          }
+        </button>
+      </nav>
+    }
+
     <!-- The glass lives on a pseudo-element: backdrop-filter on the header itself would make it the containing block for fixed descendants (Filter Effects L2). -->
+    <!-- max-sm:relative, not static: below sm the top bar scrolls away (the tab bar is the only sticky chrome), and the glass pseudo-element still needs this box. -->
     <header
-      class="riv-header sticky top-0 z-20 border-b border-riv-header-border shadow-[0_8px_30px_rgba(6,38,52,0.14)] before:absolute before:inset-0 before:z-[-1] before:bg-riv-header-glass before:backdrop-blur-[22px] before:backdrop-saturate-[1.7] before:content-['']"
+      class="riv-header sticky top-0 z-20 max-sm:relative border-b border-riv-header-border shadow-[0_8px_30px_rgba(6,38,52,0.14)] before:absolute before:inset-0 before:z-[-1] before:bg-riv-header-glass before:backdrop-blur-[22px] before:backdrop-saturate-[1.7] before:content-['']"
     >
       <div
         class="relative mx-auto flex w-full max-w-[1080px] items-center gap-4 px-4 py-3.5 sm:px-6"
@@ -295,126 +387,91 @@
               }
             </div>
           }
-
-          <button
-            appTouchTarget
-            #menuButton
-            type="button"
-            class="flex h-11 w-11 cursor-pointer flex-col items-center justify-center gap-[4.5px] rounded-[14px] border border-riv-chip-border bg-riv-chip-bg backdrop-blur-[10px] [transition:filter_0.15s_ease] hover:brightness-[0.96] sm:hidden motion-reduce:transition-none"
-            data-testid="menu-toggle"
-            aria-label="Menu"
-            [attr.aria-expanded]="menuOpen()"
-            (click)="toggleMenu()"
-          >
-            <span [class]="cls.menuBar" aria-hidden="true"></span>
-            <span [class]="cls.menuBar" aria-hidden="true"></span>
-            <span [class]="cls.menuBar" aria-hidden="true"></span>
-          </button>
         </div>
-
-        @if (menuOpen()) {
-          <div
-            [class]="cls.backdrop"
-            data-testid="menu-backdrop"
-            (click)="closeMenus()"
-            (keydown.escape)="closeMenus()"
-            aria-hidden="true"
-          ></div>
-          <nav [class]="cls.mobileMenu" aria-label="Menu" data-testid="mobile-menu">
-            <a
-              appTouchTarget
-              routerLink="/"
-              routerLinkActive
-              ariaCurrentWhenActive="page"
-              [routerLinkActiveOptions]="exactPath"
-              [class]="cls.mobileItem"
-              (click)="closeMenus()"
-              >Beaches</a
-            >
-            <a
-              appTouchTarget
-              routerLink="/my-bookings"
-              routerLinkActive
-              ariaCurrentWhenActive="page"
-              [routerLinkActiveOptions]="exactPath"
-              [class]="cls.mobileItem"
-              (click)="closeMenus()"
-              >My bookings</a
-            >
-
-            <!-- Customer session, the sheet twin of the desktop popover; Find a booking sits in the group and renders through the restore. -->
-            @if (!customerAuth.restoring()) {
-              @if (customerAuth.signedIn()) {
-                <div class="flex items-center gap-3 px-3.5 pt-2 pb-3" data-testid="nav-user-mobile">
-                  <span [class]="cls.avatar + ' h-10 w-10 text-[16px]'" aria-hidden="true">{{
-                    initial()
-                  }}</span>
-                  <span class="min-w-0 leading-tight">
-                    <span class="block truncate text-[15px] font-bold text-riv-pop-ink">{{
-                      handle()
-                    }}</span>
-                    <span class="block truncate text-[13px] text-riv-pop-ink-soft">{{
-                      customerAuth.email()
-                    }}</span>
-                  </span>
-                </div>
-                <a
-                  appTouchTarget
-                  routerLink="/account/password"
-                  routerLinkActive
-                  ariaCurrentWhenActive="page"
-                  [routerLinkActiveOptions]="exactPath"
-                  [class]="cls.mobileItem"
-                  data-testid="nav-account-link-mobile"
-                  (click)="closeMenus()"
-                  >Your account</a
-                >
-              } @else {
-                <a
-                  appTouchTarget
-                  routerLink="/account/sign-in"
-                  [class]="cls.mobileItem"
-                  [attr.aria-current]="authLinkCurrent() === 'signin' ? 'page' : null"
-                  data-testid="nav-signin-mobile"
-                  (click)="closeMenus()"
-                  >Sign in</a
-                >
-                <a
-                  appTouchTarget
-                  routerLink="/account/sign-in"
-                  [queryParams]="{ mode: 'register' }"
-                  [class]="cls.mobileItem"
-                  [attr.aria-current]="authLinkCurrent() === 'register' ? 'page' : null"
-                  data-testid="nav-register-mobile"
-                  (click)="closeMenus()"
-                  >Create an account</a
-                >
-              }
-            }
-            <button
-              appTouchTarget
-              type="button"
-              [class]="cls.mobileBtn"
-              data-testid="find-open-mobile"
-              (click)="openFind(menuButton)"
-            >
-              Find a booking
-            </button>
-            @if (customerAuth.signedIn()) {
-              <button
-                appTouchTarget
-                type="button"
-                [class]="cls.mobileBtn"
-                data-testid="nav-signout-mobile"
-                (click)="signOut()"
-              >
-                Sign out
-              </button>
-            }
-          </nav>
-        }
       </div>
     </header>
+
+    <!-- The sheet the third tab opens: a later sibling of the header, so it and its backdrop beat both the bar and the header. Rows keep their ids from the hamburger sheet; Beaches and My bookings are tabs now. -->
+    @if (menuOpen()) {
+      <div
+        [class]="cls.backdrop"
+        data-testid="menu-backdrop"
+        (click)="closeMenus()"
+        (keydown.escape)="closeMenus()"
+        aria-hidden="true"
+      ></div>
+      <nav [class]="cls.mobileMenu" aria-label="Menu" data-testid="mobile-menu">
+        <!-- Customer session, the sheet twin of the desktop popover; Find a booking sits in the group and renders through the restore. -->
+        @if (!customerAuth.restoring()) {
+          @if (customerAuth.signedIn()) {
+            <div class="flex items-center gap-3 px-3.5 pt-2 pb-3" data-testid="nav-user-mobile">
+              <span [class]="cls.avatar + ' h-10 w-10 text-[16px]'" aria-hidden="true">{{
+                initial()
+              }}</span>
+              <span class="min-w-0 leading-tight">
+                <span class="block truncate text-[15px] font-bold text-riv-pop-ink">{{
+                  handle()
+                }}</span>
+                <span class="block truncate text-[13px] text-riv-pop-ink-soft">{{
+                  customerAuth.email()
+                }}</span>
+              </span>
+            </div>
+            <a
+              appTouchTarget
+              routerLink="/account/password"
+              routerLinkActive
+              ariaCurrentWhenActive="page"
+              [routerLinkActiveOptions]="exactPath"
+              [class]="cls.mobileItem"
+              data-testid="nav-account-link-mobile"
+              (click)="closeMenus()"
+              >Your account</a
+            >
+          } @else {
+            <a
+              appTouchTarget
+              routerLink="/account/sign-in"
+              [class]="cls.mobileItem"
+              [attr.aria-current]="authLinkCurrent() === 'signin' ? 'page' : null"
+              data-testid="nav-signin-mobile"
+              (click)="closeMenus()"
+              >Sign in</a
+            >
+            <a
+              appTouchTarget
+              routerLink="/account/sign-in"
+              [queryParams]="{ mode: 'register' }"
+              [class]="cls.mobileItem"
+              [attr.aria-current]="authLinkCurrent() === 'register' ? 'page' : null"
+              data-testid="nav-register-mobile"
+              (click)="closeMenus()"
+              >Create an account</a
+            >
+          }
+        }
+        <button
+          appTouchTarget
+          type="button"
+          [class]="cls.mobileBtn"
+          data-testid="find-open-mobile"
+          (click)="openFindFromSheet()"
+        >
+          Find a booking
+        </button>
+        @if (customerAuth.signedIn()) {
+          <button
+            appTouchTarget
+            type="button"
+            [class]="cls.mobileBtn"
+            data-testid="nav-signout-mobile"
+            (click)="signOut()"
+          >
+            Sign out
+          </button>
+        }
+      </nav>
+    }
   }
 
   <!-- tabindex=-1: closing the find modal on navigation lands keyboard/AT focus here, not document.body. -->
