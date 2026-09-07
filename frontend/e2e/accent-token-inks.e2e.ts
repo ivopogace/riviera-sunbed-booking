@@ -103,9 +103,10 @@ test.describe('the accent teal family paints from the token registry', () => {
   });
 
   test('the console accent ink resolves to the registered token value', async ({ page }) => {
-    await page.goto('/admin/privacy');
+    await page.goto('/admin/reviews');
+    await page.getByTestId('admin-reviews-venue').selectOption('7');
 
-    await expect(page.getByTestId('admin-tab-privacy')).toHaveCSS('color', ACCENT_INK);
+    await expect(page.getByTestId('admin-review-stars-31')).toHaveCSS('color', ACCENT_INK);
   });
 
   test('the erasure success panel paints its tint, boundary and heading from the accent tokens', async ({

@@ -2,6 +2,7 @@
   <main class="oc-signin mx-auto w-full max-w-[440px] px-6 py-[72px]">
     <div
       class="oc-signin-card flex flex-col gap-3.5 rounded-[22px] border border-riv-console-card-border bg-white px-[26px] py-7 shadow-[0_20px_50px_rgba(7,42,58,0.14)]"
+      data-testid="oc-invalid-venue-card"
     >
       <h1
         class="oc-signin-title text-[24px] font-bold tracking-[-0.02em] text-riv-ink"
@@ -50,21 +51,24 @@
     <app-console-stats-strip [venueId]="venueId()!" [venue]="venue()" />
 
     <nav
-      class="oc-tabs mx-auto flex w-full max-w-[1120px] flex-nowrap items-center gap-2 overflow-x-auto scroll-px-6 scroll-smooth px-6 pt-3.5 pb-1 [mask-image:linear-gradient(to_right,transparent,black_24px,black_calc(100%_-_24px),transparent)] [-webkit-mask-image:linear-gradient(to_right,transparent,black_24px,black_calc(100%_-_24px),transparent)] scrollbar-none"
+      appTabRail
+      class="oc-tabs mx-auto max-w-[1120px] px-6 pt-3.5 scroll-px-6"
       data-testid="oc-tabs"
       aria-label="Operator console sections"
     >
       @for (tab of tabs; track tab.path) {
-        <!-- Active pill: opaque white + dark ink (css:S7924-safe solid fill), via aria-current's compound selector — a competing utility in the routerLinkActive string would resolve by stylesheet order. -->
+        @if (tab.dividerBefore) {
+          <span appTabRailDivider></span>
+        }
         <a
-          #tabLink
+          appTabRailTab
           appTouchTarget
-          class="inline-flex shrink-0 items-center gap-[7px] rounded-full border border-transparent px-[15px] py-2 text-[13.5px] font-semibold text-riv-ink-soft no-underline hover:text-riv-ink aria-[current=page]:border-riv-console-card-border aria-[current=page]:bg-white aria-[current=page]:text-riv-ink aria-[current=page]:shadow-[0_2px_8px_rgba(7,42,58,0.1)]"
           [routerLink]="['/operator', venueId(), tab.path]"
           routerLinkActive
+          [routerLinkActiveOptions]="match"
           ariaCurrentWhenActive="page"
         >
-          <span class="oc-tab-label">{{ tab.label }}</span>
+          {{ tab.label }}
           @if (tab.badge && requestsCount() > 0) {
             <span
               class="oc-badge inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-riv-solid-fill-brand px-1.5 text-[11.5px] font-bold leading-none text-white"

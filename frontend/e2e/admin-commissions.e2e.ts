@@ -217,7 +217,7 @@ test('a failed write leaves focus on Save, not on the body', async ({ page }) =>
   await expect(page.getByTestId('admin-commission-rate-7')).toHaveText('15%');
 });
 
-test('the tab strip marks Commissions in slot 2 and never scrolls sideways at 360px', async ({
+test('the tab rail marks Commissions in slot 6 and never scrolls sideways at 360px', async ({
   page,
 }) => {
   await mockOperatorLifecycleApi(page, { admin: ADMIN });
@@ -228,12 +228,12 @@ test('the tab strip marks Commissions in slot 2 and never scrolls sideways at 36
   await expect(commissions).toHaveAttribute('aria-current', 'page');
   await expect(page.getByTestId('admin-tab-operators')).not.toHaveAttribute('aria-current', 'page');
 
-  // The console's tab-order decision put Commissions immediately after Operators; the strip is where that is visible.
+  // The amended tab order puts Commissions after the moderation pair; the rail is where that is visible.
   const labels = await page
     .getByRole('navigation', { name: 'Admin console sections' })
     .getByRole('link')
     .allInnerTexts();
-  expect(labels.slice(0, 2)).toEqual(['Operators', 'Commissions']);
+  expect(labels.slice(3, 6)).toEqual(['Photos', 'Reviews', 'Commissions']);
 
   const scrollsSideways = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,

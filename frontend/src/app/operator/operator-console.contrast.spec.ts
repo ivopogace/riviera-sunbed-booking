@@ -11,8 +11,8 @@ import {
 /**
  * WCAG-AA contrast guard for the operator console. The console is ALWAYS porcelain
  * (its host scopes `data-riv-theme="porcelain"`), so every pair is proven over the porcelain
- * background stops / header glass. Interactive chrome (venue-not-found card, active tab pill,
- * Requests badge, buttons) uses OPAQUE SOLID fills instead of translucent ones — the `css:S7924`
+ * background stops / header glass. Interactive chrome (venue-not-found card, Requests badge,
+ * buttons) uses OPAQUE SOLID fills instead of translucent ones — the `css:S7924`
  * treatment — so both the WCAG maths and the static analyzer compute contrast without gradient
  * compositing. These values mirror the Tailwind utilities in `operator-console.html`, the host
  * class in `operator-console.ts`, and the porcelain `--riv-*` tokens in `tailwind.css`; a colour
@@ -37,7 +37,7 @@ describe('OperatorConsole porcelain contrast (WCAG AA, #170)', () => {
     expectAaOverStops(INK_DARK, 0.66, PORCELAIN_HEADER_GLASS, PORCELAIN_STOPS);
   });
 
-  it('not-found card / active tab / sign-out ink meet AA on the opaque white surface', () => {
+  it('not-found card / sign-out ink meet AA on the opaque white surface', () => {
     expect(contrastRatio(INK, WHITE)).toBeGreaterThanOrEqual(AA_NORMAL);
     // ink-soft intro on the white card
     const inkSoft = composite(INK_DARK, 0.7, [255, 255, 255]);
@@ -52,7 +52,7 @@ describe('OperatorConsole porcelain contrast (WCAG AA, #170)', () => {
     expect(contrastRatio(INK, SIGNOUT_HOVER_FILL)).toBeGreaterThanOrEqual(AA_NORMAL);
   });
 
-  it('inactive tab label (ink 0.7) meets AA over every porcelain background stop', () => {
+  it('resting tab label (ink 0.7) meets AA over every porcelain background stop', () => {
     for (const stop of PORCELAIN_STOPS) {
       const ink = composite(INK_DARK, 0.7, stop);
       expect(

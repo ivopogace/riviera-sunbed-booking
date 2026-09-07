@@ -21,10 +21,12 @@ async function renderAt(url: string): Promise<ComponentFixture<TabsHost>> {
     providers: [
       provideRouter([
         { path: 'admin', component: Blank },
+        { path: 'admin/commissions', component: Blank },
         { path: 'admin/email', component: Blank },
         { path: 'admin/refunds', component: Blank },
         { path: 'admin/photos', component: Blank },
         { path: 'admin/reviews', component: Blank },
+        { path: 'admin/privacy', component: Blank },
         { path: 'admin/audit', component: Blank },
       ]),
     ],
@@ -41,10 +43,17 @@ function tab(fixture: ComponentFixture<TabsHost>, testId: string): HTMLElement {
   return (fixture.nativeElement as HTMLElement).querySelector(`[data-testid="${testId}"]`)!;
 }
 
-/** The rendered pill labels, in DOM order. */
+/** The rendered tab labels, in DOM order. */
 function labels(fixture: ComponentFixture<TabsHost>): string[] {
   return [...(fixture.nativeElement as HTMLElement).querySelectorAll('nav a')].map((a) =>
     (a as HTMLElement).textContent.trim(),
+  );
+}
+
+/** The rail's children in DOM order: a tab's label, or `|` for a group divider. */
+function railSequence(fixture: ComponentFixture<TabsHost>): string[] {
+  return [...(fixture.nativeElement as HTMLElement).querySelectorAll('nav > *')].map((el) =>
+    el.tagName === 'A' ? (el as HTMLElement).textContent.trim() : '|',
   );
 }
 
@@ -122,8 +131,8 @@ describe('AdminConsoleTabs', () => {
   });
 
   /**
-   * The strip's information architecture is an ORDER rather than a layout: one flat wrapping strip
-   * of at most nine tabs, in the canonical order. Every tab that ships sits in it, so this pins a
+   * The strip's information architecture is an ORDER rather than a layout: one scrolling rail of
+   * at most nine tabs, in the canonical order. Every tab that ships sits in it, so this pins a
    * rule rather than a snapshot — a subset in canonical order passes, which is what lets a new tab
    * join the strip without editing an assertion here.
    */
@@ -131,6 +140,76 @@ describe('AdminConsoleTabs', () => {
     const rendered = labels(await renderAt('/admin'));
 
     expect(rendered).toEqual(canonicalOrderOf(rendered));
+  });
+
+  /**
+   * The amended contract (the console-nav spike's grill, answer 8): grouped by what the admin does —
+   * accounts, the two outbox levers, moderation, money, records — with Payouts still a reserved
+   * slot. Pinned as a literal because the order is a maintainer decision, not something the code
+   * derives.
+   */
+  it('pins the amended canonical order (#1007)', () => {
+    expect([...ADMIN_CONSOLE_TAB_ORDER]).toEqual([
+      'Operators',
+      'Email',
+      'Refunds',
+      'Photos',
+      'Reviews',
+      'Commissions',
+      'Payouts',
+      'Privacy',
+      'Audit',
+    ]);
+  });
+
+  it('draws a divider at each group boundary and nowhere else (#1007)', async () => {
+    const fixture = await renderAt('/admin');
+
+    expect(railSequence(fixture)).toEqual([
+      'Operators',
+      '|',
+      'Email',
+      'Refunds',
+      '|',
+      'Photos',
+      'Reviews',
+      '|',
+      'Commissions',
+      '|',
+      'Privacy',
+      'Audit',
+    ]);
+    for (const divider of (fixture.nativeElement as HTMLElement).querySelectorAll('nav > span')) {
+      expect(divider.getAttribute('aria-hidden')).toBe('true');
+    }
+  });
+
+  /** The pill recipe is the read-only chips'; a routing control wears the rail's underline instead. */
+  it('renders underlined text tabs, no pill recipe (#1007)', async () => {
+    const fixture = await renderAt('/admin');
+    const links = (fixture.nativeElement as HTMLElement).querySelectorAll('nav a');
+
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) {
+      const classes = [...link.classList];
+      expect(classes, link.textContent).toContain('inline-flex');
+      expect(classes, link.textContent).not.toContain('rounded-full');
+      expect(
+        classes.some((c) => /^border(-|$)/.test(c)),
+        link.textContent,
+      ).toBe(false);
+      expect(
+        classes.some((c) => /^px-\[?\d/.test(c) && c !== 'px-0.5'),
+        link.textContent,
+      ).toBe(false);
+    }
+  });
+
+  it('keeps the tab lit under a query string — the match is path-only (#1007)', async () => {
+    const fixture = await renderAt('/admin/email?resend=1');
+
+    expect(tab(fixture, 'admin-tab-email').getAttribute('aria-current')).toBe('page');
+    expect(tab(fixture, 'admin-tab-operators').getAttribute('aria-current')).toBeNull();
   });
 
   /** The guard above is only worth having if it fails on the mistake it exists to catch. */
