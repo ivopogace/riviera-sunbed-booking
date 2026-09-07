@@ -11,7 +11,7 @@ import {
 import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
- * Guard for `--riv-console-accent-ink` (#848, class T of the colour-literal audit) — the operator
+ * Guard for `--riv-console-accent-ink` (class T of the colour-literal audit) — the operator
  * console's accent ink: prices, projected takings, the owed/net payout figures, the commission
  * chip and the per-tab "Saved" notices, twelve positions across eight console files.
  *
@@ -21,7 +21,7 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * see — that the token is a token, and stays the one it claims to be.
  *
  * <p>Which is three separate claims. First, the ink is THEME-INVARIANT by decision rather than by
- * omission: every consumer is a child of `operator-console`, whose host pins porcelain, so a dark
+ * omission: every consumer is a child of `operator-console`, whose routes the app shell pins porcelain, so a dark
  * branch would be unreachable by construction — and jsdom maths cannot see a dark override added
  * later, since every ratio in the tree would still pass. So the declaration tests read
  * `src/tailwind.css` as text (the `core/theme-boot.spec.ts` drift-guard pattern, as
@@ -29,7 +29,7 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * and sits in the base block. Second, that its value is what this mirror says. Third — the reason
  * the token exists at all — that it stays DISTINGUISHABLE from the two registered tokens carrying
  * the same value in different roles: `--riv-solid-fill-brand` (a fill under fixed white ink,
- * #854/#861) and `--riv-pop-accent` (the popover accent, which themes to `#7cd7e8`). Same value,
+ * the solid-fill re-cuts) and `--riv-pop-accent` (the popover accent, which themes to `#7cd7e8`). Same value,
  * three roles. The cross-theme proof against a real render — where the cascade, not a regex,
  * decides — is `e2e/console-accent-ink.e2e.ts`.
  */

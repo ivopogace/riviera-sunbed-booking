@@ -182,7 +182,7 @@ test('signs in, renders the console, switches tabs, and signs out (+ axe)', asyn
   await expect(page.getByTestId('daily-view-tab')).toBeVisible();
 
   // Sign out → the console leaves for the unified auth card (the guard gates on activation).
-  await openOperatorAccountMenu(page, 'oc');
+  await openOperatorAccountMenu(page);
   await page.getByTestId('oc-signout').click();
   await expect(page).toHaveURL(/\/account\/sign-in\?audience=operator$/);
   await expect(page.getByTestId('auth-form')).toBeVisible();
@@ -315,7 +315,7 @@ test('the account chip opens a popover on the console — axe clean, one header 
   await expect(page.getByTestId('oc-header')).not.toContainText('Signed in as');
   await expect(chip).toHaveAccessibleName('Account: operator');
 
-  await openOperatorAccountMenu(page, 'oc');
+  await openOperatorAccountMenu(page);
   await expect(page.getByTestId('oc-account-identity')).toContainText('Signed in as operator');
   await expect(page.getByTestId('oc-account-menu').getByRole('link')).toHaveText([
     'Change password',
@@ -330,7 +330,7 @@ test('the account chip opens a popover on the console — axe clean, one header 
   await expect(chip).toBeFocused();
 
   // A click on the page below the header closes it too — the backdrop covers the header only.
-  await openOperatorAccountMenu(page, 'oc');
+  await openOperatorAccountMenu(page);
   await page.getByTestId('daily-view-tab').click({ position: { x: 8, y: 8 } });
   await expect(page.getByTestId('oc-account-menu')).toHaveCount(0);
   await expect(chip).toHaveAttribute('aria-expanded', 'false');

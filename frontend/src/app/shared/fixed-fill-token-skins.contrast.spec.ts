@@ -28,12 +28,12 @@ import {
 import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
- * Guard for the three FIXED-FILL STATE SKINS (#858, class F-3 of the colour-literal audit) — the
+ * Guard for the three FIXED-FILL STATE SKINS (class F-3 of the colour-literal audit) — the
  * outcome medallion, the amenity chip and the booking dialog's step badge.
  *
  * <p>All three are per-state skins whose fills are fixed literals on hosts that DO theme (none of
- * the nine sites pins porcelain — the only `data-riv-theme` host bindings in the tree are the
- * admin and operator consoles). So the #850 trap applies verbatim: a themed ink over a fill that
+ * the nine sites sits on a pinned route — the one `data-riv-theme` host binding in the tree is the
+ * app shell's, on the operator and admin console routes). So the #850 trap applies verbatim: a themed ink over a fill that
  * stays pale resolves light-on-light in the dark theme. Measured rather than assumed — see the
  * themed-alternative test, which keeps every bound in the tree so the reason survives the decision.
  *

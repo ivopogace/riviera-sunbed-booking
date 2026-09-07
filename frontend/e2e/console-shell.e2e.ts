@@ -67,7 +67,7 @@ test('an admin on /admin gets the section row with Your venues, Admin current an
   await expect(page.getByTestId('oc-venue-menu')).toHaveCount(0);
 
   // The chip: identity, Change password, Sign out — Admin is a section now, not a row.
-  await openOperatorAccountMenu(page, 'oc');
+  await openOperatorAccountMenu(page);
   await expect(page.getByTestId('oc-account-identity')).toContainText(
     `Signed in as ${ADMIN.username}`,
   );
@@ -113,7 +113,7 @@ test('the password page and the landing wear the same shell: neither section cur
   }
   // The landing's picker is the page; the chip's popover opens over it, axe clean.
   await expect(page.getByTestId('operator-home-picker')).toBeVisible();
-  await openOperatorAccountMenu(page, 'oc');
+  await openOperatorAccountMenu(page);
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'operator landing with the account popover open');
 });
@@ -174,7 +174,7 @@ test('Sign out from the chip on /admin ends the session and lands on the operato
   await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
   await expect(page.getByTestId('oc-account')).toBeVisible();
 
-  await openOperatorAccountMenu(page, 'oc');
+  await openOperatorAccountMenu(page);
   await page.getByTestId('oc-signout').click();
 
   await expect(page).toHaveURL(/\/account\/sign-in\?audience=operator/);
@@ -233,7 +233,7 @@ test('the account chip opens a popover on /admin — axe clean, one header row o
   );
   expect(pageOverflow).toBeLessThanOrEqual(1);
 
-  await openOperatorAccountMenu(page, 'oc');
+  await openOperatorAccountMenu(page);
   await settle(page);
   await expectNoSeriousAxeViolations(page, 'admin tab with the account popover open');
   await page.getByTestId('oc-account-backdrop').click();

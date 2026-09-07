@@ -123,7 +123,7 @@ test.describe('44px touch targets at a phone width', () => {
   test('operator console — daily view, account menu open (#1008)', async ({ page }) => {
     await openConsoleTab(page, 'daily');
     await expect(page.getByTestId('daily-view-tab')).toBeVisible();
-    await openOperatorAccountMenu(page, 'oc');
+    await openOperatorAccountMenu(page);
     await expect(page.getByTestId('oc-signout')).toBeVisible();
 
     await expectTouchTargets(page, 'operator console with the account popover open');

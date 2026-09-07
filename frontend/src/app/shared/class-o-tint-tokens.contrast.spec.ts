@@ -5,7 +5,7 @@ import { CLASS_O_TINTS } from '../../testing/glass-tokens';
 import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
 
 /**
- * Guard for the **class-O tint tokens** (#852) — the base colours behind every colour position that
+ * Guard for the **class-O tint tokens** — the base colours behind every colour position that
  * carries Tailwind's `/opacity` modifier.
  *
  * <p>The audit's class O had been held back on a premise that does not survive measurement:
@@ -18,11 +18,11 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  *
  * <p>What this file owns is the part no per-surface AA spec can see — that each base colour is a
  * token, is declared ONCE, and stays theme-invariant. For most of the registry the ground for that
- * is reachability: the consumer sits inside `operator-console` (whose host pins porcelain) or on a
+ * is reachability: the consumer sits inside `operator-console` (whose routes the app shell pins porcelain) or on a
  * fixed-white panel, so a dark branch is unreachable by construction. **`--riv-warn-*` is the
- * exception, since #879**: merging the ambers pulled `pages/legal/` and `booking/withheld-email-notice.ts`
+ * exception**: merging the ambers pulled `pages/legal/` and `booking/withheld-email-notice.ts`
  * into that family, and those are tourist surfaces that really do render under a dark document
- * theme. Its invariance rests on the stronger, #868 ground instead — a fixed fill pins every ink on
+ * theme. Its invariance rests on the stronger, fixed-fill ground instead — a fixed fill pins every ink on
  * it — argued at the declaration and in `shared/warn-token-skin.contrast.spec.ts`, and proved
  * against a real forced-dark render by `e2e/warn-token-skin.e2e.ts`. Either way jsdom maths could
  * not see an override added later: every ratio in the tree would still pass. So the declaration tests read `src/tailwind.css` as text (the
@@ -31,14 +31,14 @@ import { baseBlock, declarationsOf } from '../../testing/stylesheet-tokens';
  * rather than a regex decides — is `e2e/class-o-tint-tokens.e2e.ts`.
  *
  * <p>It lives in `shared/` rather than `operator/` because the population it sweeps is tree-wide.
- * At #852 that was nearly a technicality — all but one of the 44 positions were console chrome, and
- * `shared/confirm-panel.ts` carried the last. #879 made it plainly true: merging the ambers pulled
+ * When the class was tokenised that was nearly a technicality — all but one of the 44 positions were console chrome, and
+ * `shared/confirm-panel.ts` carried the last. The amber merge made it plainly true: merging the ambers pulled
  * `pages/legal/` and `booking/withheld-email-notice.ts` into the same family, so the sweep now has
  * to be able to fail in four areas rather than one. Same home, and the same reason, as
  * `solid-fill-tokens.contrast.spec.ts`.
  *
  * <p>Per-surface AA/1.4.11 proofs are NOT here. They stay with their elements, in the tab and
- * component contrast specs, where the composited surface is known — this slice moves no pixel
+ * component contrast specs, where the composited surface is known — tokenising moves no pixel
  * (29 colour x alpha pairs over 5 host colours, 145/145 byte-identical composites), so those
  * ratios are unchanged by construction and none of them was re-derived.
  */

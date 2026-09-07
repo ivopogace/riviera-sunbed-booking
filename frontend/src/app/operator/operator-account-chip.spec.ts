@@ -117,7 +117,7 @@ describe('OperatorAccountChip', () => {
     expect(el.querySelector('a[href="/admin"]')).toBeNull();
   });
 
-  it('prefixes every test id from the call site, so each header keeps its own', () => {
+  it('prefixes every test id from the call site', () => {
     open();
 
     for (const suffix of [
@@ -129,7 +129,6 @@ describe('OperatorAccountChip', () => {
       'signout',
     ]) {
       expect(el.querySelector(`[data-testid="oc-${suffix}"]`), suffix).not.toBeNull();
-      expect(el.querySelector(`[data-testid="opc-${suffix}"]`), suffix).toBeNull();
     }
   });
 
@@ -244,7 +243,7 @@ describe('OperatorAccountChip', () => {
     expect(menu()!.querySelector('[aria-current="page"]')).toBeNull();
   });
 
-  it('emits sign-out after closing itself, rather than performing it — the two headers tear down differently', () => {
+  it('emits sign-out after closing itself, rather than performing it — the shell owns the teardown', () => {
     open();
 
     el.querySelector<HTMLButtonElement>('[data-testid="oc-signout"]')!.click();

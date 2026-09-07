@@ -47,7 +47,7 @@ test.describe('44px touch targets on the admin console at a phone width', () => 
 
   test('operators — the account menu open (#1008)', async ({ page }) => {
     await openAdmin(page, '/admin', 'admin-op-row');
-    await openOperatorAccountMenu(page, 'oc');
+    await openOperatorAccountMenu(page);
     await expect(page.getByTestId('oc-signout')).toBeVisible();
 
     await expectTouchTargets(page, 'admin operators with the account popover open');

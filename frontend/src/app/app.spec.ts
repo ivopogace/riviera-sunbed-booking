@@ -53,7 +53,7 @@ const consoleVenueMap = {
   reset: vi.fn(),
 };
 
-/** Test routes exercising the chromeless + operator-chrome mechanisms without
+/** Test routes exercising the console-shell and tourist chrome mechanisms without
  *  loading real (HTTP-bound) pages. Rebuilt per test: Angular caches a resolved `loadComponent`
  *  on the `Route` object itself, so a shared array would let one spec's chunk satisfy the next. */
 const surfaceRoutes = () => [
@@ -77,7 +77,7 @@ const surfaceRoutes = () => [
     children: [{ path: 'audit', component: BlankPage }],
   },
   { path: 'operator', component: BlankPage, data: { console: 'plain' } },
-  { path: 'operator-chrome', component: BlankPage, data: { operatorChrome: true } },
+  { path: 'retired-flag', component: BlankPage, data: { operatorChrome: true } },
   // The operator chrome's sign-out navigates here; a resolvable target keeps that await clean.
   { path: 'account/sign-in', component: BlankPage },
   // Chunks arriving only when a spec says so — the window the header is interactive in.
@@ -1165,41 +1165,14 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(document.activeElement).toBe(el.querySelector('main'));
   });
 
-  it('renders the shared operator chrome instead of the tourist header on operator-chrome routes', async () => {
+  it('renders the tourist chrome on a route carrying only the retired operatorChrome flag (#1011)', async () => {
     const { fixture, el } = shell();
-    const router = TestBed.inject(Router);
-
-    await router.navigate(['/operator-chrome']);
+    await TestBed.inject(Router).navigate(['/retired-flag']);
     fixture.detectChanges();
 
-    // The operator header replaces the tourist one; the shell footer stays (porcelain-toned).
-    expect(el.querySelector('.riv-header')).toBeNull();
-    expect(el.querySelector('[data-testid="opc-header"]')).not.toBeNull();
-    expect(el.querySelector('.riv-footer')).not.toBeNull();
-    // The whole subtree is pinned porcelain so page + chrome agree whatever the tourist theme is.
-    expect(el.getAttribute('data-riv-theme')).toBe('porcelain');
-    // The tourist decorative blobs are off; the themed background itself stays.
-    expect(el.querySelector('.riv-bg')).not.toBeNull();
-    expect(el.querySelector('.riv-blob')).toBeNull();
-  });
-
-  it('operator-chrome Sign out parks focus on main before the control unmounts (WCAG 2.4.3)', async () => {
-    const { fixture, el } = shell();
-    const router = TestBed.inject(Router);
-
-    await router.navigate(['/operator-chrome']);
-    fixture.detectChanges();
-    el.querySelector<HTMLButtonElement>('[data-testid="opc-account"]')!.click();
-    fixture.detectChanges();
-    const signOut = el.querySelector<HTMLButtonElement>('[data-testid="opc-signout"]')!;
-    signOut.focus();
-
-    signOut.click();
-    fixture.detectChanges();
-
-    // The recurring stranded-focus class: signOut() unmounts the focused button — focus lands on <main>.
-    expect(operatorAuth.signOut).toHaveBeenCalledTimes(1);
-    expect(document.activeElement).toBe(el.querySelector('main'));
+    expect(el.querySelector('.riv-header')).not.toBeNull();
+    expect(el.querySelector('app-console-shell')).toBeNull();
+    expect(el.getAttribute('data-riv-theme')).toBeNull();
   });
 });
 

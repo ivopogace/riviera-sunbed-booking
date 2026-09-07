@@ -65,7 +65,7 @@ account state + the `operator_venue` mapping.
 A signed-in **non-bootstrap** operator changes its own password at
 `POST /api/auth/operator/password` (`{currentPassword, newPassword}` → `204`), from the SPA page
 `/account/operator-password`, reached via the **Change password** row of the account chip in the
-operator console header.
+console shell's section row.
 Before #326 there was no self-service path at all: an operator that suspected its credential was
 compromised had to find a platform admin.
 
