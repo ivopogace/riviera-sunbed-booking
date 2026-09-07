@@ -3,7 +3,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { Mock } from 'vitest';
 
-import { ADMIN_CONSOLE_TAB_ORDER, AdminConsoleTabs } from './admin-console-tabs';
+import {
+  ADMIN_CONSOLE_GROUP_NAMES,
+  ADMIN_CONSOLE_TAB_GROUPS,
+  ADMIN_CONSOLE_TAB_ORDER,
+  ADMIN_CONSOLE_TABS,
+  AdminConsoleTabs,
+} from './admin-console-tabs';
 
 /** A host that renders the strip under a real router, so `routerLinkActive` resolves for real. */
 @Component({
@@ -217,6 +223,28 @@ describe('AdminConsoleTabs', () => {
     const appendedByShipDate = ['Operators', 'Email', 'Audit', 'Commissions'];
 
     expect(appendedByShipDate).not.toEqual(canonicalOrderOf(appendedByShipDate));
+  });
+
+  /**
+   * The phone rail and its More sheet (`console-shell.ts`) read the same table the rail renders:
+   * every shipped tab names its glyph, a one-line hint and the group it belongs to, and the group
+   * name is the one `ADMIN_CONSOLE_TAB_GROUPS` places it in — so the sheet's headings and the
+   * rail's dividers cannot disagree.
+   */
+  it('describes every shipped tab with a glyph, a hint and its contract group, in canonical order (#1012)', () => {
+    expect(ADMIN_CONSOLE_GROUP_NAMES).toHaveLength(ADMIN_CONSOLE_TAB_GROUPS.length);
+    const labels = ADMIN_CONSOLE_TABS.map((tab) => tab.label);
+    expect(labels).toEqual(canonicalOrderOf(labels));
+    for (const tab of ADMIN_CONSOLE_TABS) {
+      const groupIndex = ADMIN_CONSOLE_TAB_GROUPS.findIndex((group) =>
+        (group as readonly string[]).includes(tab.label),
+      );
+      expect(groupIndex, tab.label).toBeGreaterThanOrEqual(0);
+      expect(tab.group, tab.label).toBe(ADMIN_CONSOLE_GROUP_NAMES[groupIndex]);
+      expect(tab.hint.length, tab.label).toBeGreaterThan(0);
+      expect(typeof tab.glyph, tab.label).toBe('function');
+      expect(tab.path.startsWith('/admin'), tab.label).toBe(true);
+    }
   });
 
   it('is a labelled landmark, so two navs never read alike', async () => {

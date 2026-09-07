@@ -1,6 +1,17 @@
 import { Component, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
+import { ConsoleDestination } from '../shared/console-destination';
+import {
+  AuditGlyph,
+  CommissionsGlyph,
+  EmailGlyph,
+  OperatorsGlyph,
+  PhotosGlyph,
+  PrivacyGlyph,
+  RefundsGlyph,
+  ReviewsGlyph,
+} from '../shared/console-glyphs';
 import { TAB_RAIL_MATCH, TabRail, TabRailDivider, TabRailTab } from '../shared/tab-rail';
 import { TouchTarget } from '../shared/touch-target';
 
@@ -37,19 +48,81 @@ export const ADMIN_CONSOLE_TAB_GROUPS = [
  */
 export const ADMIN_CONSOLE_TAB_ORDER = ADMIN_CONSOLE_TAB_GROUPS.flat();
 
+/** The name of each group in {@link ADMIN_CONSOLE_TAB_GROUPS}, by index — what the phone rail's
+ *  More sheet heads a group with (the epic's story 16). */
+export const ADMIN_CONSOLE_GROUP_NAMES = [
+  'Accounts',
+  'Outboxes',
+  'Moderation',
+  'Money',
+  'Records',
+] as const;
+
+/** The group name a label belongs to, `undefined` for a label outside the contract. */
+function groupNameOf(label: string): string | undefined {
+  const index = ADMIN_CONSOLE_TAB_GROUPS.findIndex((group) =>
+    (group as readonly string[]).includes(label),
+  );
+  return index < 0 ? undefined : ADMIN_CONSOLE_GROUP_NAMES[index];
+}
+
+/** A shipped tab: its route, label, test id, glyph and hint; the group comes from the contract. */
+function shipped(
+  path: string,
+  label: string,
+  testId: string,
+  glyph: ConsoleDestination['glyph'],
+  hint: string,
+): ConsoleDestination {
+  return { path, label, testId, glyph, hint, group: groupNameOf(label) ?? label };
+}
+
+/**
+ * The shipped tabs in {@link ADMIN_CONSOLE_TAB_ORDER}, each with what the phone rail and its More
+ * sheet need beyond the rail's label — the glyph, the one-line hint, the group name — so the two
+ * rails and the sheet read one table. Payouts' slot is still reserved, so it is absent here.
+ */
+export const ADMIN_CONSOLE_TABS: readonly ConsoleDestination[] = [
+  shipped(
+    '/admin',
+    'Operators',
+    'admin-tab-operators',
+    OperatorsGlyph,
+    'Approve, suspend, reinstate',
+  ),
+  shipped('/admin/email', 'Email', 'admin-tab-email', EmailGlyph, 'Undelivered mail, resend'),
+  shipped(
+    '/admin/refunds',
+    'Refunds',
+    'admin-tab-refunds',
+    RefundsGlyph,
+    'Outstanding refunds, re-drive',
+  ),
+  shipped('/admin/photos', 'Photos', 'admin-tab-photos', PhotosGlyph, 'Venue photo takedowns'),
+  shipped(
+    '/admin/reviews',
+    'Reviews',
+    'admin-tab-reviews',
+    ReviewsGlyph,
+    'Hide or restore a review',
+  ),
+  shipped(
+    '/admin/commissions',
+    'Commissions',
+    'admin-tab-commissions',
+    CommissionsGlyph,
+    'Per-venue rate schedule',
+  ),
+  shipped('/admin/privacy', 'Privacy', 'admin-tab-privacy', PrivacyGlyph, 'Data-subject erasure'),
+  shipped('/admin/audit', 'Audit', 'admin-tab-audit', AuditGlyph, 'Every admin action, in order'),
+];
+
 /** One rendered tab and whether a group divider precedes it. */
 interface TabRow {
   readonly path: string;
   readonly label: string;
-  readonly testId: string;
+  readonly testId: string | undefined;
   readonly dividerBefore: boolean;
-}
-
-/** The group index a label belongs to, `-1` for a label outside the contract. */
-function groupOf(label: string): number {
-  return ADMIN_CONSOLE_TAB_GROUPS.findIndex((group) =>
-    (group as readonly string[]).includes(label),
-  );
 }
 
 /**
@@ -63,11 +136,13 @@ function groupOf(label: string): number {
  * tree... follow that shape for further tabbed sub-apps"). Mounted once by the shell and kept alive
  * across tab switches, so its scroll position is never lost or reset.
  *
- * <p><strong>Scrolls, doesn't wrap.</strong> A single scrolling row, matching the operator console's
- * own tab bar so the two navs behave the same; no edge mask — the cut-off tab at the edge is the
- * overflow cue. An overflow menu was rejected because it can strand `aria-current` inside a
- * collapsed menu. The active tab scrolls into view on load and on every switch, which is the rail
- * tab's own mechanism. `e2e/admin-console-tabs.e2e.ts` pins the scrolling-row shape.
+ * <p><strong>Scrolls, doesn't wrap, from `sm` up.</strong> A single scrolling row, matching the
+ * operator console's own rail so the two navs behave the same; no edge mask — the cut-off tab at
+ * the edge is the overflow cue. The active tab scrolls into view on load and on every switch, which
+ * is the rail tab's own mechanism. Below `sm` the shell hides this rail and renders the phone rail
+ * instead — Operators · Email · Refunds and a More slot that carries the current secondary's label
+ * and `aria-current`, so a collapsed menu never strands the current page (the objection that once
+ * ruled an overflow menu out). `e2e/admin-console-tabs.e2e.ts` pins both shapes.
  *
  * <p><strong>Which tabs exist is a backend question.</strong> This rail lists what ships, which is
  * why Photos appears here without appearing on the design canvas at all: the canvas's Privacy tab
@@ -111,17 +186,10 @@ export class AdminConsoleTabs {
   protected readonly match = TAB_RAIL_MATCH;
 
   /** The shipped tabs in canonical order, a divider marked wherever the group changes. */
-  protected readonly rows: readonly TabRow[] = [
-    { path: '/admin', label: 'Operators', testId: 'admin-tab-operators' },
-    { path: '/admin/email', label: 'Email', testId: 'admin-tab-email' },
-    { path: '/admin/refunds', label: 'Refunds', testId: 'admin-tab-refunds' },
-    { path: '/admin/photos', label: 'Photos', testId: 'admin-tab-photos' },
-    { path: '/admin/reviews', label: 'Reviews', testId: 'admin-tab-reviews' },
-    { path: '/admin/commissions', label: 'Commissions', testId: 'admin-tab-commissions' },
-    { path: '/admin/privacy', label: 'Privacy', testId: 'admin-tab-privacy' },
-    { path: '/admin/audit', label: 'Audit', testId: 'admin-tab-audit' },
-  ].map((tab, index, all) => ({
-    ...tab,
-    dividerBefore: index > 0 && groupOf(tab.label) !== groupOf(all[index - 1].label),
+  protected readonly rows: readonly TabRow[] = ADMIN_CONSOLE_TABS.map((tab, index, all) => ({
+    path: tab.path,
+    label: tab.label,
+    testId: tab.testId,
+    dividerBefore: index > 0 && tab.group !== all[index - 1].group,
   }));
 }

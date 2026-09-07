@@ -164,8 +164,8 @@ Below `sm` the text rail retires into the phone rail; from `sm` up nothing chang
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | Both rails in the DOM: `getByTestId('oc-requests-badge')` matches two elements (strict mode) and `nav[aria-label$="console sections"]` / `oc-tabs` readers pick the wrong one | high | med | phone-only elements get their own ids (`oc-phone-rail`, `oc-phone-requests-badge`, `oc-more`, `oc-more-sheet`); the phone nav's label ends in ` (phone)` so the `$="console sections"` readers keep matching the desktop rail only; `grep -rn "oc-requests-badge\|oc-tabs\|console sections" frontend/e2e frontend/src` at phase 4 | agent | open |
-| R-2 | The phone-width e2e that read the desktop rail (six seams, *Skills consulted*) go red as soon as the rail is `max-sm:hidden` — `getByRole` excludes hidden elements | certain | med | rewritten in phase 4 against the phone rail (their intent kept: order, current, no overflow); the desktop-rail shape re-pinned at 640px/820px | agent | open |
+| R-1 | Both rails in the DOM: `getByTestId('oc-requests-badge')` matches two elements (strict mode) and `nav[aria-label$="console sections"]` / `oc-tabs` readers pick the wrong one | high | med | phone-only elements get their own ids (`oc-phone-rail`, `oc-phone-requests-badge`, `oc-more`, `oc-more-sheet`); the phone nav's label ends in ` (phone)` so the `$="console sections"` readers keep matching the desktop rail only; `grep -rn "oc-requests-badge\|oc-tabs\|console sections" frontend/e2e frontend/src` at phase 4 | agent | closed — phase 2: the audit log's population row; every phone-only element has its own id |
+| R-2 | The phone-width e2e that read the desktop rail (eight files after the phase-2 audit — the six named under *Skills consulted* plus `admin-console-stats.e2e.ts` and `operator-daily.e2e.ts`'s helper) go red as soon as the rail is `max-sm:hidden` — `getByRole` excludes hidden elements | certain | med | rewritten in phase 4 against the phone rail (their intent kept: order, current, no overflow); the desktop-rail shape re-pinned at 640px/820px | agent | open |
 | R-3 | At 640px the eight admin tabs may fit without overflowing, so `admin-console-tabs.e2e.ts`'s "overflows horizontally" and "scrolls into view" cases lose their premise | med | low | measure at phase 4; if they fit, the two cases assert one row / no wrap and the on-load `aria-current`, and the overflow proof is recorded as dropped here | agent | open |
 | R-4 | `NgComponentOutlet` re-creates the glyph on every change-detection pass of the sticky header | low | low | the outlet only re-instantiates when the bound type changes; the descriptor tables are constants, `phoneNav` a `computed` | agent | open |
 | R-5 | The sheet's `fixed` box lands inside a filtered containing block and pins to the header instead of the viewport | low | med | the sheet renders in the rail box, a sibling of the header (the #1011 R-5 lesson); the e2e asserts the sheet's box sits above the viewport bottom and inside 344px | agent | open |
@@ -267,15 +267,15 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 2)`
+**Stage pointer:** `implement (phase 3)`
 
-**Next action:** phase 2 — the phone rail's failing cases in `console-shell.spec.ts` and `admin-console-tabs.spec.ts`, then the tables and the rail.
+**Next action:** phase 3 — the More sheet's failing cases in `console-shell.spec.ts` (AC-4) and the a11y case, then the sheet.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | a16ca12f |
-| 1 — the glyph set (`shared/console-glyphs.ts` + spec; a production build to prove the shared template attributes compile) | ✅ | the phase-1 commit |
-| 2 — the phone rail: the destination tables, the four slots, the current-aware More button, the badge, `Admin` `max-sm:hidden`; shell spec, contrast spec, a11y spec | | |
+| 1 — the glyph set (`shared/console-glyphs.ts` + spec; a production build to prove the shared template attributes compile) | ✅ | 03342ac1 |
+| 2 — the phone rail: the destination tables, the four slots, the current-aware More button, the badge, `Admin` `max-sm:hidden`; shell spec, contrast spec (the a11y spec already mounts the rail closed; the open sheet is phase 3's) | ✅ | the phase-2 commit |
 | 3 — the More sheet: groups, rows, cross-console row, the focus legs, close on navigation; shell spec, a11y spec | | |
 | 4 — e2e: the two phone projects; the six stale seams rewritten; the new cases (AC-1…AC-6, AC-8, AC-9); the touched files run | | |
 | 5 — contract: lint, format, `npm test`, the whole mocked e2e; docs-freshness; #1011's plan retired; file-structure guard; push | | |
@@ -312,6 +312,9 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/admin-privacy.e2e.ts` — the order read through the More slot and sheet.
 - `frontend/e2e/console-shell.e2e.ts` — `Admin` hidden at 390px.
 - `frontend/e2e/operator-requests.e2e.ts` — the phone badge case.
+- `frontend/e2e/admin-console-stats.e2e.ts` — the strip-under-the-rail case at 360px reads the phone rail.
+- `frontend/e2e/operator-daily.e2e.ts` — the sign-in helper opens Daily through whichever rail is visible.
+- `frontend/src/app/shared/console-destination.ts` — the destination descriptor both rails and the sheet read.
 - `frontend/e2e/support/shell.ts` — `openMoreSheet(page)`.
 
 ---
@@ -420,6 +423,7 @@ it('the Admin section link leaves the row below sm (#1012)', () => {
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
 | 2026-09-07 | phase 1 | every hand-written inline `<svg>` in an app template that a shared glyph could replace | `grep -rln "<svg" frontend/src/app --include=*.ts --include=*.html \| grep -v spec` | `app.html` (the tourist tab bar's own three glyphs — the tourist chrome is a non-goal), `clock-icon.ts`, `console-glyphs.ts` | none to replace; the console templates hand-write no svg |
+| 2026-09-07 | phase 2 (R-1, R-2) | every e2e or spec that reads the rail's ids or landmark names, now that two rails share the DOM — and, of those, every one that does so at a width below `sm` | `grep -rln "oc-requests-badge\|oc-tabs\|console sections" frontend/e2e frontend/src` then per file `grep -oE "width: [0-9]+"` | 20 e2e files + 4 specs read them; 8 e2e files do so below 640px: `admin-console-tabs` (360), `admin-commissions` (360), `admin-privacy` (360), `admin-console-stats` (360: the strip sits under the rail, a click on `admin-tab-commissions`), `current-page-marker` (390 consoles block), `operator-console` (380 #710 case, 390 static pin), `console-shell` (390 `Admin` box), `operator-daily` (390: the sign-in helper clicks the rail's `Daily view`) | the 12 desktop-width readers keep matching the desktop rail (the phone rail's ids and label differ; `getByRole` excludes the CSS-hidden rail); the 8 phone-width readers are rewritten in phase 4 |
 
 ---
 
