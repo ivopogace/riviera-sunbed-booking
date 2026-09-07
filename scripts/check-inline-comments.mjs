@@ -58,9 +58,16 @@ const SYNTAX = {
  */
 const SKILL_MARKDOWN = /^\.claude\/skills\/[^/]+\/(?:SKILL\.md|references\/.+\.md)$/;
 
+/** A design artboard: `docs/design/README.md` requires an `<!-- as-built diverges — see #NNN -->`
+ *  pointer beside every artboard line a slice diverged from, so the provenance tell is the rule there. */
+function isDesignArtboard(path) {
+  return path.startsWith('docs/design/') && path.endsWith('.dc.html');
+}
+
 /** Returns the comment syntax for a path, or null when the file is out of scope. */
 export function syntaxFor(path) {
   if (SKILL_MARKDOWN.test(path)) return { markdown: true };
+  if (isDesignArtboard(path)) return null;
   const dot = path.lastIndexOf('.');
   if (dot === -1) return null;
   const extension = path.slice(dot).toLowerCase();

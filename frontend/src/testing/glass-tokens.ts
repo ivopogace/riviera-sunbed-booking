@@ -23,6 +23,13 @@ export const RIVIERA_HEADER_GLASS: Glass = { color: hexToRgb('0a2c3f'), alpha: 0
 export const PORCELAIN_HEADER_GLASS: Glass = { color: WHITE, alpha: 0.6 };
 export const DARK_HEADER_GLASS: Glass = { color: hexToRgb('0f172a'), alpha: 0.72 };
 
+/** `--riv-tabbar-glass` per theme — the phone tab bar's own near-opaque surface. The
+ *  header glass's tint at 0.85 / 0.92 rather than the header token itself: at 0.6 / 0.72 the beach
+ *  map's availability strip and the booking view's `← Back home` bled through the bar. */
+export const RIVIERA_TABBAR_GLASS: Glass = { color: hexToRgb('0a2c3f'), alpha: 0.92 };
+export const PORCELAIN_TABBAR_GLASS: Glass = { color: WHITE, alpha: 0.85 };
+export const DARK_TABBAR_GLASS: Glass = { color: hexToRgb('0f172a'), alpha: 0.92 };
+
 /** `--riv-card-glass` per theme; every card spec imports these. The dark theme inverts the whole
  *  card family (dark glass, light inks — the DARK_* mirrors below); riviera/porcelain keep the
  *  white glass with the shared dark-ink constants above. */

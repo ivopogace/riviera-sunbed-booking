@@ -40,6 +40,7 @@
         </span>
       </div>
       <sc-if value="{{ isMobileNav }}" hint-placeholder-val="{{ false }}">
+        <!-- as-built diverges — see #1003: below sm the hamburger and its header-anchored sheet are gone; a fixed three-tab bottom bar (Beaches, My bookings, Menu/Account) carries the primary nav, its third tab opens the sheet above the bar, and the top bar scrolls away; design record left as drawn, docs/design/README.md -->
         <button onClick="{{ onToggleMenu }}" aria-label="Menu" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4.5px;width:42px;height:42px;border-radius:14px;background:{{ chipBg }};border:1px solid {{ chipBorder }};-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);cursor:pointer;padding:0;">
           <span style="display:block;width:17px;height:2px;border-radius:2px;background:{{ ink }};"></span>
           <span style="display:block;width:17px;height:2px;border-radius:2px;background:{{ ink }};"></span>

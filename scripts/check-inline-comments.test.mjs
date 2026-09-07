@@ -372,6 +372,19 @@ test('markdown outside SKILL.md and references/ is out of scope', () => {
   );
 });
 
+test('a design artboard is out of scope, so its as-built pointer may cite the issue; its support scripts are not', () => {
+  const lines = ['<!-- as-built diverges — see #1003: the phone hamburger is a bottom tab bar now -->'];
+  const added = new Set([1]);
+
+  assert.deepEqual(
+    findViolations({ path: 'docs/design/riviera-sunbeds-liquid-glass-v3.dc.html', lines, added }),
+    [],
+  );
+  assert.notDeepEqual(findViolations({ path: 'frontend/src/app/app.html', lines, added }), []);
+  const script = ['// see #1003'];
+  assert.notDeepEqual(findViolations({ path: 'docs/design/support.js', lines: script, added }), []);
+});
+
 test('reports history phrasing under its own rule, so the CLI can advise rather than gate', () => {
   const lines = [
     '/**',

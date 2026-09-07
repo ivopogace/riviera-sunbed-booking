@@ -17,12 +17,15 @@ import { CustomerAuth } from './core/customer-auth';
 import { SignOutNotice } from './core/sign-out-notice';
 import { ThemeId, ThemeService } from './core/theme';
 import { OperatorChrome } from './operator/operator-chrome';
+import { focusMover } from './shared/focus-after-render';
 import { TouchTarget } from './shared/touch-target';
 
-/** The near-opaque popover surface (account menu, theme picker, mobile sheet) — themed via the
- *  `--riv-pop-*` family: light in porcelain/riviera, slate in the dark theme. */
-const POP =
-  'absolute z-40 animate-[riv-pop_0.2s_ease] rounded-[18px] border border-riv-pop-border bg-riv-pop-surface text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none';
+/** The near-opaque popover surface (account menu, theme picker, the phone sheet) — themed via the
+ *  `--riv-pop-*` family: light in porcelain/riviera, slate in the dark theme. Position-free: the
+ *  header popovers are `absolute` under their trigger, the sheet `fixed` above the tab bar. */
+const POP_SKIN =
+  'z-40 animate-[riv-pop_0.2s_ease] rounded-[18px] border border-riv-pop-border bg-riv-pop-surface text-riv-pop-ink shadow-riv-pop backdrop-blur-[28px] backdrop-saturate-[1.8] motion-reduce:animate-none';
+const POP = `absolute ${POP_SKIN}`;
 /** The current page's row takes the hover fill plus the popover accent ink, on the desktop popover
  *  and the sheet alike: it has to read on touch, where `hover:` never fires (Tailwind v4 compiles
  *  it under `@media (hover: hover)`). */
@@ -35,12 +38,36 @@ const MOBILE_ITEM = `block w-full rounded-[14px] px-3.5 py-[13px] text-left text
 const CHIP =
   'cursor-pointer rounded-full border border-riv-chip-border bg-riv-chip-bg shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-[10px] [transition:filter_0.15s_ease] hover:brightness-[0.96] motion-reduce:transition-none';
 
+/** The shell's root box, with and without the phone tab bar's clearance: the bar is 61px tall
+ *  (60px tabs + the top border) and pads itself by the home-indicator inset, so the page pads by
+ *  both — otherwise the last 61px of every page sit under the bar. Two literals, not a
+ *  concatenation: Tailwind generates only classes it can read in the source. */
+const SHELL = 'relative flex min-h-screen flex-col';
+const SHELL_WITH_TAB_BAR = `${SHELL} max-sm:pb-[calc(61px+env(safe-area-inset-bottom))]`;
+
+/**
+ * A bottom tab. The current tab is a SHAPE cue in full ink — a 3px bar at the top edge and a
+ * 1.5px ring round the icon pill — plus the full-ink label: no tint the token set offers clears
+ * WCAG 1.4.11's 3:1 against the bar (the 0.12 accent fill measured 1.10–1.22:1, the 0.18 chip fill
+ * 1.15–1.36:1), and full-vs-soft ink alone reads 1.22–2.54:1. `flex`, so `appTouchTarget`'s floor
+ * is live on the two `<a>`s; `group`, so the pill's ring keys on the tab's `aria-current`.
+ */
+const TAB =
+  "group relative flex h-[60px] cursor-pointer flex-col items-center justify-center gap-[3px] text-[11px] font-semibold text-riv-ink-soft before:absolute before:top-0 before:h-[3px] before:w-9 before:rounded-b-full before:bg-current before:opacity-0 before:content-[''] aria-[current=page]:text-riv-ink aria-[current=page]:before:opacity-100";
+
 /** Template skins, hoisted so each recipe exists once (the booking-view.ts `cls` idiom). */
 const CLS = {
   backdrop: 'fixed inset-0 z-30 bg-[rgba(6,30,40,0.2)]',
   accountPop: `riv-account-pop top-[calc(100%+10px)] right-0 w-[236px] p-[7px] ${POP}`,
   themePop: `riv-theme-pop top-[calc(100%+10px)] right-0 w-[214px] p-[7px] ${POP}`,
-  mobileMenu: `top-[calc(100%+8px)] right-3 left-3 p-2 ${POP}`,
+  // Above the bar, clearing the same inset the bar pads by; a 34px home indicator otherwise puts the last row under the bar.
+  mobileMenu: `fixed inset-x-2.5 bottom-[calc(76px+env(safe-area-inset-bottom))] p-2 ${POP_SKIN}`,
+  // Its own near-opaque token, not a second coat of the header glass: page prose stops bleeding through. z-20 like the header, rendered BEFORE it so the header's popover backdrops cover the bar.
+  tabBar:
+    'riv-tab-bar fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 border-t border-riv-header-border bg-riv-tabbar-glass pb-[env(safe-area-inset-bottom)] backdrop-blur-[22px] backdrop-saturate-[1.7] sm:hidden',
+  tab: TAB,
+  tabIcon:
+    'grid h-7 w-12 place-items-center rounded-full group-aria-[current=page]:ring-[1.5px] group-aria-[current=page]:ring-current [&_svg]:size-[21px]',
   popItem: POP_ITEM,
   popBtn: `${POP_ITEM} cursor-pointer text-left`,
   mobileItem: MOBILE_ITEM,
@@ -79,23 +106,51 @@ const EXACT_PATH: IsActiveMatchOptions = {
   matrixParams: 'ignored',
 };
 
+/** The phone tab bar's three sections: the bar lights the tab whose section the active route
+ *  carries, not the tab whose path it matches (`/venues/3` is a Beaches page, `/booking/CODE` a
+ *  bookings page). `account` lights only while signed in. */
+export type TouristSection = 'beaches' | 'bookings' | 'account';
+
+/**
+ * The route data a tourist route may carry for the shell's phone chrome (`app.routes.ts`):
+ * `section` places the route under a bottom tab; `tabBar: false` hides the bar altogether — the
+ * payment page, where a thumb-reach exit under `Pay €45` was the objection that removed the
+ * search-first header candidate. Read off the same root→leaf walk as the operator flags.
+ */
+export interface TouristRouteData {
+  section?: TouristSection;
+  tabBar?: false;
+}
+
 /** The active route's chrome flags — see {@link App.routeChrome}. */
 interface RouteChrome {
   chromeless: boolean;
   operatorChrome: boolean;
+  /** The leaf-most `data.section` on the chain, or `null` on a route outside every section. */
+  section: TouristSection | null;
+  /** `false` when any route on the chain carries `data.tabBar: false`. */
+  tabBar: boolean;
 }
 
-/** The chrome before the first navigation completes: the tourist header and footer. */
+/** The chrome before the first navigation completes: the tourist header, footer and tab bar,
+ *  with no tab lit. */
 const PRE_NAVIGATION_CHROME: RouteChrome = {
   chromeless: false,
   operatorChrome: false,
+  section: null,
+  tabBar: true,
 };
 
+/** Narrows an untyped `data.section` to a {@link TouristSection}; anything else is no section. */
+function sectionOf(data: unknown): TouristSection | null {
+  return data === 'beaches' || data === 'bookings' || data === 'account' ? data : null;
+}
+
 /**
- * The Liquid Glass app shell: themed gradient background, sticky glass header with
- * responsive nav (inline on desktop, hamburger menu below 640px — CSS decides, both live here),
- * and the theme switcher. Every route paints straight onto that background: `<main>` carries no
- * surface of its own.
+ * The Liquid Glass app shell: themed gradient background, the glass header (sticky from `sm` up,
+ * scrolling away below it), the primary nav — inline in the header on desktop, a fixed three-tab
+ * bottom bar below 640px, CSS decides and both live here — and the theme switcher. Every route
+ * paints straight onto that background: `<main>` carries no surface of its own.
  */
 @Component({
   selector: 'app-root',
@@ -153,7 +208,11 @@ export class App {
   /** The "Find a booking" glass modal — a shell-level, nav-triggered overlay. */
   protected readonly findOpen = signal(false);
 
+  /** The phone sheet's trigger: the bar's third tab (`Menu` signed out, `Account` signed in). */
   private readonly menuButton = viewChild<ElementRef<HTMLButtonElement>>('menuButton');
+  /** Moves focus onto the sheet's first row once it has rendered — the open leg; `closeMenus()`
+   *  hands it back to the tab, and a navigation that tears the sheet down lands `<main>` (WCAG 2.4.3). */
+  private readonly focusAfterRender = focusMover();
   private readonly themeButton = viewChild<ElementRef<HTMLButtonElement>>('themeButton');
   /** The account popover's trigger: the account chip signed in, the round menu button signed out. */
   private readonly accountButton = viewChild<ElementRef<HTMLButtonElement>>('accountButton');
@@ -198,13 +257,26 @@ export class App {
     let route = this.router.routerState.snapshot.root;
     let chromeless = route.data['operatorConsole'] === true;
     let operatorChrome = route.data['operatorChrome'] === true;
+    let section = sectionOf(route.data['section']);
+    let tabBar = route.data['tabBar'] !== false;
     while (route.firstChild) {
       route = route.firstChild;
       chromeless ||= route.data['operatorConsole'] === true;
       operatorChrome ||= route.data['operatorChrome'] === true;
+      section = sectionOf(route.data['section']) ?? section;
+      tabBar &&= route.data['tabBar'] !== false;
     }
-    return { chromeless, operatorChrome };
+    return { chromeless, operatorChrome, section, tabBar };
   });
+
+  /** The bottom tab the active route belongs to, `null` outside every section (legal pages) and
+   *  before the first navigation. The Account tab reads it together with the signed-in state. */
+  protected readonly tabSection = computed(() => this.routeChrome().section);
+
+  /** Whether the phone tab bar renders: the tourist chrome, on a route not flagged `tabBar: false`. */
+  protected readonly tabBar = computed(
+    () => this.shellChrome() === 'tourist' && this.routeChrome().tabBar,
+  );
 
   /** Whether the auth card is the current page, by path alone — the same test `routerLinkActive`
    *  runs for the plain-path links, as a signal. */
@@ -224,6 +296,18 @@ export class App {
     const mode = this.router.lastSuccessfulNavigation()?.finalUrl?.queryParamMap.get('mode');
     return mode === 'register' ? 'register' : 'signin';
   });
+
+  /** The Account tab is current on the account section while signed in; signed out the same
+   *  URLs (the sign-in card, the reset flow) belong to no tab. */
+  protected readonly accountTabCurrent = computed(
+    () => this.tabSection() === 'account' && this.customerAuth.signedIn(),
+  );
+  /** The third tab's accessible name: auth-neutral `Menu` until the restore settles or signed out. */
+  protected readonly menuTabLabel = computed(() =>
+    this.customerAuth.signedIn() ? `Account: ${this.customerAuth.email()}` : 'Menu',
+  );
+  /** The shell root's classes: the tab bar's clearance only while the bar renders (AC 4 / AC 6). */
+  protected readonly shellClass = computed(() => (this.tabBar() ? SHELL_WITH_TAB_BAR : SHELL));
 
   /** Which chrome the shell renders: the tourist header/footer (default), the shared operator
    *  header/footer, or none at all (the console brings its own). */
@@ -259,11 +343,14 @@ export class App {
    * for an on-page dismiss.
    *
    * <p><strong>Precondition of the skip:</strong> a skipped navigation must not destroy the open
-   * overlay's markup. The three popovers render inside `app.html`'s
+   * overlay's markup or its trigger. The popovers render inside `app.html`'s
    * `@if (shellChrome() === 'tourist')`, so a destination on operator or admin chrome would tear
    * them out while their signals stayed true, stranding focus on `document.body`. No tourist-header
    * link targets such a route today. Adding the first one means closing the popovers on the chrome
-   * switch, not relying on this rule.
+   * switch, not relying on this rule. The sheet's trigger renders inside `@if (tabBar())`, and a
+   * destination that hides the bar (a deep link to the pay page, whose chunk was still loading when
+   * the sheet opened) IS reachable — so that case closes the sheet and lands focus on `<main>`
+   * instead of skipping.
    */
   constructor() {
     // The navigation an overlay was opened during is not the user leaving the page.
@@ -274,10 +361,14 @@ export class App {
       )
       .subscribe((event) => {
         if (event.id === this.overlayNavId) {
+          if (this.menuOpen() && !this.tabBar()) {
+            this.menuOpen.set(false);
+            this.mainRef()?.nativeElement.focus();
+          }
           return;
         }
-        // Both overlays hold focus in markup this navigation destroys (find modal, account menu).
-        const overlayHeldFocus = this.findOpen() || this.accountOpen();
+        // These overlays hold focus in markup this navigation destroys (find modal, account menu, sheet).
+        const overlayHeldFocus = this.findOpen() || this.accountOpen() || this.menuOpen();
         this.findOpen.set(false);
         this.menuOpen.set(false);
         this.themeOpen.set(false);
@@ -312,17 +403,34 @@ export class App {
     this.findOpen.set(true);
   }
 
+  /** The sheet's `Find a booking` row: the sheet and the tab bar sit in sibling control-flow
+   *  blocks, so the tab's template reference is out of the row's reach and the class resolves it. */
+  protected openFindFromSheet(): void {
+    const tab = this.menuButton()?.nativeElement;
+    if (tab) {
+      this.openFind(tab);
+    }
+  }
+
   /** Dismiss (ESC / backdrop / close button) — hide the modal and restore focus to its trigger. */
   protected dismissFind(): void {
     this.findOpen.set(false);
     this.findReturn?.focus();
   }
 
+  /** Toggle the phone sheet; opening moves focus onto its first row — the auth row, or `Find a
+   *  booking` while the restore still hides the auth group. */
   protected toggleMenu(): void {
     this.notePendingNavigation();
     this.themeOpen.set(false);
     this.accountOpen.set(false);
     this.menuOpen.update((open) => !open);
+    if (this.menuOpen()) {
+      const authRow = this.customerAuth.signedIn()
+        ? 'nav-account-link-mobile'
+        : 'nav-signin-mobile';
+      this.focusAfterRender(authRow, 'find-open-mobile');
+    }
   }
 
   protected toggleThemePicker(): void {

@@ -41,16 +41,29 @@ const operatorAuth = {
  *  on the `Route` object itself, so a shared array would let one spec's chunk satisfy the next. */
 const surfaceRoutes = () => [
   { path: 'glass', component: BlankPage },
-  { path: 'my-bookings', component: BlankPage },
-  { path: 'venues/:id', component: BlankPage },
-  { path: 'account/password', component: BlankPage },
+  { path: 'my-bookings', component: BlankPage, data: { section: 'bookings' } },
+  { path: 'venues/:id', component: BlankPage, data: { section: 'beaches' } },
+  { path: 'booking/:code', component: BlankPage, data: { section: 'bookings' } },
+  { path: 'pay', component: BlankPage, data: { section: 'bookings', tabBar: false } },
+  // The pay page's real shape: lazily loaded, so a sheet can be opened while its chunk is in flight.
+  {
+    path: 'pay-lazy',
+    loadComponent: () => lazyChunk,
+    data: { section: 'bookings', tabBar: false },
+  },
+  { path: 'account/password', component: BlankPage, data: { section: 'account' } },
   { path: 'operator', component: BlankPage, data: { operatorConsole: true } },
   { path: 'operator-chrome', component: BlankPage, data: { operatorChrome: true } },
   // The operator chrome's sign-out navigates here; a resolvable target keeps that await clean.
   { path: 'account/sign-in', component: BlankPage },
   // Chunks arriving only when a spec says so — the window the header is interactive in.
   { path: 'elsewhere', loadComponent: () => lazyChunk },
-  { path: '', pathMatch: 'full' as const, loadComponent: () => lazyChunk },
+  {
+    path: '',
+    pathMatch: 'full' as const,
+    loadComponent: () => lazyChunk,
+    data: { section: 'beaches' },
+  },
 ];
 
 /** Resolves the `lazy` route's chunk, ending the navigation a spec left in flight. */
@@ -129,20 +142,18 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(nav.textContent).not.toContain('Find a booking');
   });
 
-  it('lists a My bookings nav entry on desktop and in the mobile menu (T6 #139)', () => {
-    const { fixture, el } = shell();
+  it('lists a My bookings nav entry on desktop and in the phone tab bar (T6 #139, #1003)', () => {
+    const { el } = shell();
 
     const desktopLink = el
       .querySelector('.riv-nav-desktop')
       ?.querySelector<HTMLAnchorElement>('a[href="/my-bookings"]');
     expect(desktopLink?.textContent).toContain('My bookings');
 
-    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
-    fixture.detectChanges();
-    const mobileLink = el
-      .querySelector('[data-testid="mobile-menu"]')
+    const tab = el
+      .querySelector('[data-testid="tab-bar"]')
       ?.querySelector<HTMLAnchorElement>('a[href="/my-bookings"]');
-    expect(mobileLink?.textContent).toContain('My bookings');
+    expect(tab?.textContent).toContain('My bookings');
   });
 
   /** The current-page marker on a nav link: `aria-current="page"`, what `routerLinkActive` sets. */
@@ -150,21 +161,15 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     return el.querySelector(scope)?.querySelector(link)?.getAttribute('aria-current') === 'page';
   }
 
-  it('marks the current page in the desktop nav and the mobile menu (touch has no hover)', async () => {
+  it('marks the current page in the desktop nav and the phone tab bar (touch has no hover)', async () => {
     const { fixture, el } = shell();
     await TestBed.inject(Router).navigate(['/my-bookings']);
     fixture.detectChanges();
 
     expect(current(el, '.riv-nav-desktop', 'a[href="/my-bookings"]')).toBe(true);
     expect(current(el, '.riv-nav-desktop', 'a[href="/"]')).toBe(false);
-
-    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
-    fixture.detectChanges();
-    // A link created after the navigation resolves its active state a microtask later.
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(current(el, '[data-testid="mobile-menu"]', 'a[href="/my-bookings"]')).toBe(true);
-    expect(current(el, '[data-testid="mobile-menu"]', 'a[href="/"]')).toBe(false);
+    expect(current(el, '[data-testid="tab-bar"]', 'a[href="/my-bookings"]')).toBe(true);
+    expect(current(el, '[data-testid="tab-bar"]', 'a[href="/"]')).toBe(false);
   });
 
   it('marks Beaches current at the root only, and nothing on a page the nav does not list', async () => {
@@ -405,6 +410,301 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(menu.querySelector('[data-testid="nav-account-menu"]')).toBeNull();
   });
 
+  /** The tab carrying `aria-current="page"`, by test id, or `null` when no tab is lit. */
+  function currentTab(el: HTMLElement): string | null {
+    return (
+      el
+        .querySelector('[data-testid="tab-bar"]')
+        ?.querySelector('[aria-current="page"]')
+        ?.getAttribute('data-testid') ?? null
+    );
+  }
+
+  it.each([false, true])(
+    'renders the three-tab bottom bar and no hamburger in the top bar (signed in: %s) (#1003)',
+    (signedIn) => {
+      customerAuth.signedIn.set(signedIn);
+      customerAuth.email.set(signedIn ? 'ana@example.com' : undefined);
+      const { el } = shell();
+
+      const bar = el.querySelector<HTMLElement>('[data-testid="tab-bar"]')!;
+      expect(bar.tagName).toBe('NAV');
+      expect(bar.getAttribute('aria-label')).toBe('Primary (phone)');
+      const links = [...bar.querySelectorAll<HTMLAnchorElement>('a')].map((a) => [
+        a.textContent?.trim(),
+        a.getAttribute('href'),
+      ]);
+      expect(links).toEqual([
+        ['Beaches', '/'],
+        ['My bookings', '/my-bookings'],
+      ]);
+
+      // The third tab opens the sheet; it is never a `Sign in` (a control so labelled must navigate).
+      const tab = bar.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!;
+      // The label is the tab's own text; the avatar initial inside the pill is aria-hidden.
+      const label = [...tab.childNodes]
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .map((node) => node.textContent)
+        .join('')
+        .trim();
+      expect(label).toBe(signedIn ? 'Account' : 'Menu');
+      expect(tab.getAttribute('aria-label')).toBe(signedIn ? 'Account: ana@example.com' : 'Menu');
+      expect(tab.getAttribute('aria-expanded')).toBe('false');
+      expect(bar.textContent).not.toContain('Sign in');
+      expect(el.querySelector('.riv-header [data-testid="menu-toggle"]')).toBeNull();
+    },
+  );
+
+  it('the third tab hides its label and glyph until the session restore settles (#1003)', () => {
+    customerAuth.restoring.set(true);
+    const { el } = shell();
+
+    const tab = el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!;
+    expect(tab.textContent?.trim()).toBe('');
+    expect(tab.querySelector('svg')).toBeNull();
+    expect(tab.getAttribute('aria-label')).toBe('Menu');
+  });
+
+  it('the top bar scrolls away below sm: relative there, sticky from sm up (#1003)', () => {
+    const { el } = shell();
+    const header = el.querySelector<HTMLElement>('.riv-header')!;
+
+    // jsdom loads no stylesheet: the declaration is pinned here, the computed position in the e2e.
+    expect(header.classList.contains('sticky')).toBe(true);
+    expect(header.classList.contains('max-sm:relative')).toBe(true);
+    // Brand and swatch are the phone top bar's whole control set.
+    expect(header.querySelector('[data-testid="brand-home"]')).not.toBeNull();
+    expect(header.querySelector('[data-testid="theme-toggle"]')).not.toBeNull();
+    expect(header.querySelector('[data-testid="mobile-menu"]')).toBeNull();
+  });
+
+  it.each([false, true])(
+    'the third tab opens the sheet with the auth rows, Find a booking and Sign out in order (signed in: %s) (#1003)',
+    (signedIn) => {
+      customerAuth.signedIn.set(signedIn);
+      customerAuth.email.set(signedIn ? 'ana@example.com' : undefined);
+      const { fixture, el } = shell();
+
+      el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+      fixture.detectChanges();
+
+      const sheet = el.querySelector<HTMLElement>('[data-testid="mobile-menu"]')!;
+      const rows = [...sheet.querySelectorAll('a, button')].map((row) =>
+        row.getAttribute('data-testid'),
+      );
+      expect(rows).toEqual(
+        signedIn
+          ? ['nav-account-link-mobile', 'find-open-mobile', 'nav-signout-mobile']
+          : ['nav-signin-mobile', 'nav-register-mobile', 'find-open-mobile'],
+      );
+      if (signedIn) {
+        expect(sheet.querySelector('[data-testid="nav-user-mobile"]')?.textContent).toContain(
+          'ana@example.com',
+        );
+      }
+      // No tabs in the sheet: Beaches and My bookings are the bar's first two tabs.
+      expect(sheet.querySelector('a[href="/"]')).toBeNull();
+      expect(sheet.querySelector('a[href="/my-bookings"]')).toBeNull();
+    },
+  );
+
+  it("pads the shell by the bar plus the safe-area inset, and the sheet's offset carries the inset too (#1003)", () => {
+    const { fixture, el } = shell();
+    const root = el.firstElementChild!;
+    expect(root.classList.contains('max-sm:pb-[calc(61px+env(safe-area-inset-bottom))]')).toBe(
+      true,
+    );
+    expect(
+      el
+        .querySelector('[data-testid="tab-bar"]')
+        ?.classList.contains('pb-[env(safe-area-inset-bottom)]'),
+    ).toBe(true);
+
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+    fixture.detectChanges();
+    const sheet = el.querySelector<HTMLElement>('[data-testid="mobile-menu"]')!;
+    expect(sheet.classList.contains('fixed')).toBe(true);
+    expect(sheet.classList.contains('bottom-[calc(76px+env(safe-area-inset-bottom))]')).toBe(true);
+  });
+
+  it('lights exactly one tab by route section, and none on legal pages or on the account section signed out (#1003)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+    // Before the first navigation lands, nothing is lit.
+    expect(currentTab(el)).toBeNull();
+
+    landLazyChunk();
+    await router.navigate(['/']);
+    fixture.detectChanges();
+    expect(currentTab(el)).toBe('tab-beaches');
+
+    await router.navigate(['/venues/1']);
+    fixture.detectChanges();
+    expect(currentTab(el)).toBe('tab-beaches');
+
+    await router.navigate(['/my-bookings']);
+    fixture.detectChanges();
+    expect(currentTab(el)).toBe('tab-bookings');
+
+    await router.navigate(['/booking/WXYZ345678']);
+    fixture.detectChanges();
+    expect(currentTab(el)).toBe('tab-bookings');
+
+    // A page outside every section (the legal pages' shape).
+    await router.navigate(['/glass']);
+    fixture.detectChanges();
+    expect(currentTab(el)).toBeNull();
+
+    // The account section lights only while signed in.
+    await router.navigate(['/account/password']);
+    fixture.detectChanges();
+    expect(currentTab(el)).toBeNull();
+    customerAuth.signedIn.set(true);
+    customerAuth.email.set('ana@example.com');
+    fixture.detectChanges();
+    expect(currentTab(el)).toBe('menu-toggle');
+  });
+
+  it('hides the bar and drops the padding on a route carrying tabBar: false (#1003)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+    const padded = () =>
+      el.firstElementChild!.classList.contains(
+        'max-sm:pb-[calc(61px+env(safe-area-inset-bottom))]',
+      );
+
+    await router.navigate(['/pay']);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="tab-bar"]')).toBeNull();
+    expect(padded()).toBe(false);
+    // The header stays: only the bar goes.
+    expect(el.querySelector('.riv-header')).not.toBeNull();
+
+    await router.navigate(['/my-bookings']);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="tab-bar"]')).not.toBeNull();
+    expect(padded()).toBe(true);
+  });
+
+  it.each([false, true])(
+    'the sheet takes focus on open and hands it back to the tab on Escape, backdrop and row activation (signed in: %s) (#1003)',
+    async (signedIn) => {
+      customerAuth.signedIn.set(signedIn);
+      customerAuth.email.set(signedIn ? 'ana@example.com' : undefined);
+      const { fixture, el } = shell();
+      const tab = el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!;
+      const firstRow = signedIn ? 'nav-account-link-mobile' : 'nav-signin-mobile';
+      const open = async () => {
+        tab.click();
+        fixture.detectChanges();
+        await fixture.whenStable();
+        expect(document.activeElement?.getAttribute('data-testid')).toBe(firstRow);
+      };
+
+      await open();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      fixture.detectChanges();
+      expect(el.querySelector('[data-testid="mobile-menu"]')).toBeNull();
+      expect(document.activeElement).toBe(tab);
+
+      await open();
+      el.querySelector<HTMLElement>('[data-testid="menu-backdrop"]')!.click();
+      fixture.detectChanges();
+      expect(el.querySelector('[data-testid="mobile-menu"]')).toBeNull();
+      expect(document.activeElement).toBe(tab);
+
+      await open();
+      el.querySelector<HTMLAnchorElement>(`[data-testid="${firstRow}"]`)!.click();
+      fixture.detectChanges();
+      expect(el.querySelector('[data-testid="mobile-menu"]')).toBeNull();
+      expect(document.activeElement).toBe(tab);
+    },
+  );
+
+  it("while restoring, Find a booking is the sheet's first row and takes focus (#1003)", async () => {
+    customerAuth.restoring.set(true);
+    const { fixture, el } = shell();
+
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(el.querySelector('[data-testid="nav-signin-mobile"]')).toBeNull();
+    expect(document.activeElement?.getAttribute('data-testid')).toBe('find-open-mobile');
+  });
+
+  it('moves focus to main when a navigation closes the sheet (#1003)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.activeElement?.getAttribute('data-testid')).toBe('nav-signin-mobile');
+
+    await router.navigate(['/glass']);
+    fixture.detectChanges();
+
+    // The sheet held focus and this navigation destroyed it: land on main, never body (WCAG 2.4.3).
+    expect(el.querySelector('[data-testid="mobile-menu"]')).toBeNull();
+    expect(document.activeElement).toBe(el.querySelector('main'));
+  });
+
+  it('closes the sheet and lands focus on main when the navigation it was opened during hides the bar (#1003)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+
+    // A deep link to the pay page: the bar is up until the chunk lands, and the sheet opens on it.
+    const pending = router.navigate(['/pay-lazy']);
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+    fixture.detectChanges();
+    // whenStable() waits on the pending navigation too; a macrotask flush runs the render hooks.
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(document.activeElement?.getAttribute('data-testid')).toBe('nav-signin-mobile');
+
+    landLazyChunk();
+    await pending;
+    fixture.detectChanges();
+
+    // The destination took the bar, and with it the sheet's trigger: the sheet closes, focus lands on main.
+    expect(el.querySelector('[data-testid="tab-bar"]')).toBeNull();
+    expect(el.querySelector('[data-testid="mobile-menu"]')).toBeNull();
+    expect(document.activeElement).toBe(el.querySelector('main'));
+  });
+
+  it('keeps the sheet open across the navigation it was opened during when the destination keeps the bar (#892, #1003)', async () => {
+    const { fixture, el } = shell();
+    const router = TestBed.inject(Router);
+
+    const pending = router.navigate(['/elsewhere']);
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+    fixture.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve));
+
+    landLazyChunk();
+    await pending;
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="mobile-menu"]')).not.toBeNull();
+    expect(document.activeElement?.getAttribute('data-testid')).toBe('nav-signin-mobile');
+  });
+
+  it("renders the tab bar before the header so the header popovers' backdrop covers it (#1003)", () => {
+    const { fixture, el } = shell();
+    const bar = el.querySelector('[data-testid="tab-bar"]')!;
+    const header = el.querySelector('.riv-header')!;
+
+    // An earlier z-20 sibling paints under the header's stacking context, backdrop included.
+    expect(bar.compareDocumentPosition(header) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // The sheet, by contrast, must beat both: a later sibling of the header.
+    el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
+    fixture.detectChanges();
+    const sheet = el.querySelector('[data-testid="mobile-menu"]')!;
+    expect(header.compareDocumentPosition(sheet) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(header.contains(sheet)).toBe(false);
+  });
+
   /**
    * A sign-out that never reached the server leaves the HttpOnly SESSION cookie alive, so
    * the next visitor on a shared device would be silently restored. The shell is where that warning
@@ -493,14 +793,14 @@ describe('App (Liquid Glass shell, issue #134)', () => {
   });
 
   it.each([false, true])(
-    'Find a booking from the mobile menu (signed in: %s) closes the menu and returns focus to the hamburger (#148, #1002)',
+    'Find a booking from the sheet (signed in: %s) closes the sheet and returns focus to the Menu tab (#148, #1002, #1003)',
     (signedIn) => {
       customerAuth.signedIn.set(signedIn);
       customerAuth.email.set(signedIn ? 'ana@example.com' : undefined);
       const { fixture, el } = shell();
 
-      const hamburger = el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!;
-      hamburger.click();
+      const menuTab = el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!;
+      menuTab.click();
       fixture.detectChanges();
       const mobileBtn = el.querySelector<HTMLButtonElement>(
         '[data-testid="mobile-menu"] [data-testid="find-open-mobile"]',
@@ -515,7 +815,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
 
       el.querySelector<HTMLButtonElement>('[data-testid="find-close"]')!.click();
       fixture.detectChanges();
-      expect(document.activeElement).toBe(hamburger);
+      expect(document.activeElement).toBe(menuTab);
     },
   );
 
@@ -662,10 +962,14 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(swatch.getAttribute('aria-label')).toBe('Color theme: Dark');
   });
 
-  /** Every `<a>` in the bar, the popovers and the sheet: `check-touch-target.mjs` judges buttons
-   *  only, so a link's declaration is this test's to prove. */
+  /** Every `<a>` in the top bar, the popovers, the tab bar and the sheet: `check-touch-target.mjs`
+   *  judges buttons only, so a link's declaration is this test's to prove. */
   function headerLinksDeclareTheFloor(el: HTMLElement): void {
-    const links = [...el.querySelectorAll<HTMLAnchorElement>('.riv-header a')];
+    const links = [
+      ...el.querySelectorAll<HTMLAnchorElement>(
+        '.riv-header a, [data-testid="tab-bar"] a, [data-testid="mobile-menu"] a',
+      ),
+    ];
     expect(links.length).toBeGreaterThan(0);
     for (const link of links) {
       expect(link.classList.contains('min-h-11'), `${link.textContent?.trim()} min-h`).toBe(true);
@@ -693,7 +997,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     },
   );
 
-  it('hamburger opens the mobile menu; Escape closes it and returns focus to the button (AC-3)', () => {
+  it('the Menu tab opens the sheet; Escape closes it and returns focus to the tab (AC-3, #1003)', () => {
     const { fixture, el } = shell();
     const button = el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!;
 
@@ -710,7 +1014,7 @@ describe('App (Liquid Glass shell, issue #134)', () => {
     expect(document.activeElement).toBe(button);
   });
 
-  it('backdrop click closes the mobile menu (AC-3)', () => {
+  it('backdrop click closes the sheet (AC-3)', () => {
     const { fixture, el } = shell();
     el.querySelector<HTMLButtonElement>('[data-testid="menu-toggle"]')!.click();
     fixture.detectChanges();

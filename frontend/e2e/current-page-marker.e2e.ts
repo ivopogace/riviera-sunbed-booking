@@ -1,14 +1,14 @@
 import { expect, test } from '@playwright/test';
 
-import { openShellOverlay } from './support/shell';
+import { awaitRoutedPage, openShellOverlay } from './support/shell';
 
 /**
  * The tourist header's current-page marker on touch devices. Tailwind v4 compiles `hover:` under
  * `@media (hover: hover)`, so on a phone or tablet the header's hover recipes never paint and the
  * marker is the only cue a tourist gets. Each viewport first proves hover is unreachable there,
- * then measures the rendered marker
- * (`aria-current="page"` from `routerLinkActive`, styled through its compound selector). The
- * discovery API is mocked (`page.route`), so the spec is CI-safe like its siblings.
+ * then measures the rendered marker (`aria-current="page"` — from `routerLinkActive` on the
+ * desktop links, from the route's section data on the phone tabs — styled through its compound
+ * selector). The discovery API is mocked (`page.route`), so the spec is CI-safe like its siblings.
  */
 
 test.beforeEach(async ({ page }) => {
@@ -16,28 +16,86 @@ test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/auth\/me$/, (route) => route.fulfill({ status: 401, json: {} }));
 });
 
-test.describe('phone: the hamburger sheet', () => {
+test.describe('phone: the bottom tab bar', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  test('marks the current page in the sheet without any hover', async ({ page }) => {
-    await page.goto('/my-bookings');
-    expect(await page.evaluate(() => matchMedia('(hover: hover)').matches)).toBe(false);
+  /**
+   * The current tab is a SHAPE cue in full ink — a 3px bar at the top edge (the tab's `::before`)
+   * and a 1.5px `currentColor` ring round the icon pill — plus the full-ink label: no tint the
+   * token set offers clears 1.4.11's 3:1 on the bar. The other tabs wear the soft ink with
+   * the bar at opacity 0 and no ring.
+   */
+  for (const { theme, ink, soft } of [
+    { theme: 'porcelain', ink: 'rgb(10, 42, 51)', soft: 'rgba(12, 42, 51, 0.7)' },
+    { theme: 'riviera', ink: 'rgb(255, 255, 255)', soft: 'rgba(255, 255, 255, 0.86)' },
+    { theme: 'dark', ink: 'rgb(255, 255, 255)', soft: 'rgba(255, 255, 255, 0.86)' },
+  ]) {
+    test(`marks the current tab with a full-ink shape cue in ${theme} (#1003)`, async ({
+      page,
+    }) => {
+      await page.addInitScript((t) => localStorage.setItem('riviera-theme', t), theme);
+      await page.goto('/my-bookings');
+      await expect(page.locator('html')).toHaveAttribute('data-riv-theme', theme);
+      expect(await page.evaluate(() => matchMedia('(hover: hover)').matches)).toBe(false);
 
-    await openShellOverlay(page, 'menu-toggle');
-    const sheet = page.getByTestId('mobile-menu');
-    const current = sheet.getByRole('link', { name: 'My bookings' });
-    const other = sheet.getByRole('link', { name: 'Beaches' });
-    await expect(current).toHaveAttribute('aria-current', 'page');
-    await expect(other).not.toHaveAttribute('aria-current', 'page');
+      const current = page.getByTestId('tab-bookings');
+      const other = page.getByTestId('tab-beaches');
+      await expect(current).toHaveAttribute('aria-current', 'page');
+      await expect(other).not.toHaveAttribute('aria-current', 'page');
 
-    // Porcelain (headless boots light): the accent ink over the hover fill, the rest untouched.
-    await expect(current).toHaveCSS('color', 'rgb(10, 110, 133)');
-    await expect(current).toHaveCSS('background-color', 'rgba(12, 42, 51, 0.06)');
-    await expect(other).toHaveCSS('color', 'rgb(10, 42, 51)');
-    await expect(other).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+      await expect(current).toHaveCSS('color', ink);
+      await expect(other).toHaveCSS('color', soft);
+      const marker = (tab: typeof current) =>
+        tab.evaluate((el) => {
+          const bar = getComputedStyle(el, '::before');
+          return { opacity: bar.opacity, height: bar.height };
+        });
+      expect(await marker(current)).toEqual({ opacity: '1', height: '3px' });
+      expect(await marker(other)).toMatchObject({ opacity: '0' });
+      // The ring sits on the icon pill, in the tab's own ink.
+      await expect(current.locator('span').first()).toHaveCSS(
+        'box-shadow',
+        new RegExp(`${ink.replaceAll('(', '\\(').replaceAll(')', '\\)')} 0px 0px 0px 1.5px`),
+      );
+      await expect(other.locator('span').first()).toHaveCSS('box-shadow', 'none');
+    });
+  }
+
+  test('lights a tab by section, not by exact path: a venue page is Beaches, a booking page My bookings', async ({
+    page,
+  }) => {
+    await page.goto('/venues/1');
+    await awaitRoutedPage(page);
+    await expect(page.getByTestId('tab-beaches')).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByTestId('tab-bookings')).not.toHaveAttribute('aria-current', 'page');
+
+    await page.goto('/booking/ABCD234567');
+    await awaitRoutedPage(page);
+    await expect(page.getByTestId('tab-bookings')).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByTestId('tab-beaches')).not.toHaveAttribute('aria-current', 'page');
+
+    // Outside every section: nothing lit.
+    await page.goto('/legal/privacy');
+    await awaitRoutedPage(page);
+    await expect(page.getByTestId('tab-bar').locator('[aria-current="page"]')).toHaveCount(0);
   });
 
-  test('never marks Sign in and Create an account together', async ({ page }) => {
+  test('lights the Account tab on the account section only while signed in', async ({ page }) => {
+    await page.goto('/account/password');
+    await awaitRoutedPage(page);
+    await expect(page.getByTestId('tab-bar').locator('[aria-current="page"]')).toHaveCount(0);
+
+    await page.route(/\/api\/auth\/me$/, (route) =>
+      route.fulfill({ json: { username: 'ana@example.com', principalType: 'CUSTOMER' } }),
+    );
+    await page.goto('/account/password');
+    await awaitRoutedPage(page);
+    const tab = page.getByTestId('menu-toggle');
+    await expect(tab).toHaveAttribute('aria-current', 'page');
+    await expect(tab).toHaveAccessibleName('Account: ana@example.com');
+  });
+
+  test('never marks Sign in and Create an account together in the sheet', async ({ page }) => {
     await page.goto('/account/sign-in?mode=register');
     await openShellOverlay(page, 'menu-toggle');
     await expect(page.getByTestId('nav-register-mobile')).toHaveAttribute('aria-current', 'page');

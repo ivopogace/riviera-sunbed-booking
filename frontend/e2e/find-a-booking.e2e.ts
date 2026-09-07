@@ -184,7 +184,7 @@ test('opens from the header menu in both auth states and returns focus to the tr
 test.describe('phone', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test('opens from the hamburger sheet and returns focus to the hamburger on dismiss (#1002)', async ({
+  test('opens from the sheet and returns focus to the Menu tab on dismiss (#1002, #1003)', async ({
     page,
   }) => {
     await page.goto('/');

@@ -17,6 +17,7 @@ import {
   DARK_POP_INK_SOFT,
   DARK_POP_SURFACE,
   DARK_STOPS,
+  DARK_TABBAR_GLASS,
   INK_DARK,
   POP_ACCENT,
   POP_HOVER,
@@ -25,9 +26,11 @@ import {
   PORCELAIN_CHIP,
   PORCELAIN_HEADER_GLASS,
   PORCELAIN_STOPS,
+  PORCELAIN_TABBAR_GLASS,
   RIVIERA_CHIP,
   RIVIERA_HEADER_GLASS,
   RIVIERA_STOPS,
+  RIVIERA_TABBAR_GLASS,
   SOLID_FILL_BRAND,
   WHITE,
   expectAaOverStops,
@@ -204,6 +207,60 @@ describe('Liquid Glass shell token contrast (WCAG AA, issue #134)', () => {
         const ringOnBar = composite(ring, alpha, bar);
         expect(
           contrastRatio(rgbToHex(ringOnBar), rgbToHex(bar)),
+          `over stop ${rgbToHex(stop)}`,
+        ).toBeGreaterThanOrEqual(AA_LARGE);
+      }
+    },
+  );
+
+  /**
+   * The phone tab bar paints its own near-opaque token (`--riv-tabbar-glass`), not the header
+   * glass: at the header's 0.6 / 0.72 the beach map's availability strip bled through. Its labels
+   * are 11px body text, so AA; the current tab's marker is a shape cue in full ink — a 3px bar and
+   * a 1.5px ring — because no tint the token set offers clears 1.4.11's 3:1 on the bar.
+   */
+  const TAB_BARS = [
+    {
+      theme: 'porcelain',
+      ink: INK_DARK,
+      soft: CARD_INK,
+      softAlpha: 0.7,
+      glass: PORCELAIN_TABBAR_GLASS,
+      stops: PORCELAIN_STOPS,
+    },
+    {
+      theme: 'riviera',
+      ink: WHITE,
+      soft: WHITE,
+      softAlpha: 0.86,
+      glass: RIVIERA_TABBAR_GLASS,
+      stops: RIVIERA_STOPS,
+    },
+    {
+      theme: 'dark',
+      ink: WHITE,
+      soft: WHITE,
+      softAlpha: 0.86,
+      glass: DARK_TABBAR_GLASS,
+      stops: DARK_STOPS,
+    },
+  ] as const;
+
+  it.each(TAB_BARS)(
+    'tab labels (ink, ink-soft) meet AA on the tab-bar glass over every stop: $theme (#1003)',
+    ({ ink, soft, softAlpha, glass, stops }) => {
+      expectAaOverStops(ink, 1, glass, stops);
+      expectAaOverStops(soft, softAlpha, glass, stops);
+    },
+  );
+
+  it.each(TAB_BARS)(
+    "the current tab's full-ink marker clears 3:1 against the tab bar in every theme: $theme (#1003)",
+    ({ ink, glass, stops }) => {
+      for (const stop of stops) {
+        const bar = surfaceOver(glass, stop);
+        expect(
+          contrastRatio(rgbToHex(ink), rgbToHex(bar)),
           `over stop ${rgbToHex(stop)}`,
         ).toBeGreaterThanOrEqual(AA_LARGE);
       }

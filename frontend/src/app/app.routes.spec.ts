@@ -101,3 +101,40 @@ describe('app.routes — every lazy route target resolves its module', () => {
     expect(names.every((name) => name.length > 0)).toBe(true);
   });
 });
+
+describe('app.routes — the phone tab bar reads its section and checkout flag off route data (#1003)', () => {
+  /** Which bottom tab a tourist route belongs to; `undefined` for a route the bar never lights. */
+  const SECTIONS: Record<string, 'beaches' | 'bookings' | 'account' | undefined> = {
+    '': 'beaches',
+    'venues/:id': 'beaches',
+    'my-bookings': 'bookings',
+    'booking/confirmation': 'bookings',
+    'booking/pay': 'bookings',
+    'booking/requested': 'bookings',
+    'booking/:code': 'bookings',
+    'account/sign-in': 'account',
+    'account/forgot': 'account',
+    'account/reset': 'account',
+    'account/verify': 'account',
+    'account/password': 'account',
+    'legal/privacy': undefined,
+    'legal/terms': undefined,
+    'account/operator-password': undefined,
+    operator: undefined,
+    admin: undefined,
+    'operator/:venueId': undefined,
+  };
+
+  it('carries the tab-bar section on every tourist route and on no other', () => {
+    for (const [path, section] of Object.entries(SECTIONS)) {
+      const route = routes.find((r) => r.path === path && r.redirectTo === undefined);
+      expect(route, `route '${path}'`).toBeDefined();
+      expect(route?.data?.['section'], `route '${path}' section`).toBe(section);
+    }
+  });
+
+  it('hides the tab bar on booking/pay and nowhere else', () => {
+    const chromeless = routes.filter((r) => r.data?.['tabBar'] === false).map((r) => r.path);
+    expect(chromeless).toEqual(['booking/pay']);
+  });
+});

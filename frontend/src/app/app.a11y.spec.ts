@@ -22,7 +22,7 @@ const customerAuth = {
 
 /**
  * Automated axe-core structural audit of the Liquid Glass shell: header,
- * nav, theme picker, the account/menu popover and the mobile menu — in BOTH themes, closed and
+ * nav, theme picker, the account/menu popover, the phone tab bar and its sheet — in BOTH themes, closed and
  * open. Colour contrast is verified deterministically in `app.contrast.spec.ts` (axe can't
  * measure it under jsdom); the real-browser sweep runs in `e2e/theme-shell.e2e.ts`.
  */
@@ -66,7 +66,7 @@ describe('App shell accessibility (axe, issue #134)', () => {
   });
 
   it.each([false, true])(
-    'shell with the mobile menu open has no violations (signed in: %s)',
+    'shell with the tab-bar sheet open has no violations (signed in: %s) (#1003)',
     async (signedIn) => {
       customerAuth.signedIn.set(signedIn);
       customerAuth.email.set(signedIn ? 'ana@example.com' : undefined);
