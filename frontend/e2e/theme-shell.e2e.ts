@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test';
 
-import { openAccountMenu as openMenu, openShellOverlay } from './support/shell';
+import { mockWholeAdminConsole } from './support/admin-console.mocks';
+import { mockOwnedVenues } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
+import { mockWholeConsole } from './support/operator-console.mocks';
+import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
+import { openAccountMenu as openMenu, openShellOverlay } from './support/shell';
 
 /**
  * Real-render e2e for the Liquid Glass shell: theme switching + persistence,
@@ -343,5 +347,68 @@ test.describe('reduced motion', () => {
       .locator('.riv-blob-1')
       .evaluate((el) => getComputedStyle(el).animationName);
     expect(animation).toBe('none');
+  });
+});
+
+/**
+ * The console shell under a tourist theme: every operator and admin route renders porcelain on
+ * the app shell's host whatever the document theme, the document attribute is left alone, and the
+ * header, rail, page and footer composite to the same colours as the porcelain run — the pin has
+ * no seam.
+ */
+test.describe('console routes under a tourist theme', () => {
+  const ROUTES = [
+    { path: '/operator/1/daily', marker: 'daily-view-tab' },
+    { path: '/admin', marker: 'admin-op-row' },
+    { path: '/operator', marker: 'operator-home-picker' },
+    { path: '/account/operator-password', marker: 'oppw-submit' },
+  ];
+
+  /** The composited colours of the chrome and the page, as Chromium paints them. */
+  async function paint(page: import('@playwright/test').Page): Promise<Record<string, string>> {
+    return page.evaluate(() => {
+      const style = (selector: string, property: string) => {
+        const el = document.querySelector(selector);
+        return el ? getComputedStyle(el).getPropertyValue(property) : 'absent';
+      };
+      return {
+        header: style('[data-testid="oc-header"]', 'background-color'),
+        headerBorder: style('[data-testid="oc-header"]', 'border-bottom-color'),
+        brand: style('[data-testid="oc-brand"]', 'color'),
+        admin: style('[data-testid="oc-section-admin"]', 'color'),
+        rail: style('nav[aria-label$="console sections"]', 'box-shadow'),
+        page: style('main', 'color'),
+        bg: style('.riv-bg', 'background-image'),
+        footer: style('.riv-footer', 'background-color'),
+      };
+    });
+  }
+
+  test('every console route renders porcelain under a dark and a riviera tourist theme, with no seam', async ({
+    page,
+  }) => {
+    await mockWholeConsole(page);
+    await mockWholeAdminConsole(page);
+    await mockOwnedVenues(page, [
+      { id: 1, name: 'Miramar Beach Club', beach: 'Ksamil' },
+      { id: 2, name: 'Sunset Lido', beach: 'Dhërmi' },
+    ]);
+    await new OperatorSignInPage(page).goto('/operator/1/daily');
+    await new OperatorSignInPage(page).signIn('operator', 'admin-pw');
+
+    for (const { path, marker } of ROUTES) {
+      const runs: Record<string, Record<string, string>> = {};
+      for (const theme of ['porcelain', 'dark', 'riviera']) {
+        await page.evaluate((id) => localStorage.setItem('riviera-theme', id), theme);
+        await page.goto(path);
+        await expect(page.getByTestId(marker).first()).toBeVisible();
+        await expect(page.locator('html')).toHaveAttribute('data-riv-theme', theme);
+        await expect(page.locator('app-root')).toHaveAttribute('data-riv-theme', 'porcelain');
+        runs[theme] = await paint(page);
+      }
+      expect(runs['dark'], `${path} under dark`).toEqual(runs['porcelain']);
+      expect(runs['riviera'], `${path} under riviera`).toEqual(runs['porcelain']);
+    }
+    await page.evaluate(() => localStorage.removeItem('riviera-theme'));
   });
 });

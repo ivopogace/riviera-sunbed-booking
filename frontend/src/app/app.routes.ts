@@ -254,7 +254,7 @@ export const routes: Routes = [
     title: 'Change your password — Riviera',
     canActivate: [operatorSessionGuard],
     // Operator surface: the shared operator header/footer, never the tourist ones.
-    data: { operatorChrome: true },
+    data: { console: 'plain' } satisfies ConsoleRouteData,
   },
   {
     // Draft privacy policy — checkout agreement + footer link target.
@@ -294,7 +294,7 @@ export const routes: Routes = [
     title: 'Your venues — Riviera',
     canActivate: [operatorSessionGuard],
     // Operator surface: the shared operator header/footer, never the tourist ones.
-    data: { operatorChrome: true },
+    data: { console: 'plain' } satisfies ConsoleRouteData,
   },
   {
     // The AdminConsole shell owns the tab strip + auth gate; tabs are children.

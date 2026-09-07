@@ -43,14 +43,12 @@ test('operator changes its own password from the console, and the new credential
   await openOperatorAccountMenu(page, 'oc');
   await page.getByTestId('oc-change-password').click();
   await expect(page.getByTestId('oppw-username')).toContainText('operator');
-  // On the page itself, the thin chrome's chip marks the row as the current page.
-  await openOperatorAccountMenu(page, 'opc');
-  await expect(page.getByTestId('opc-change-password')).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByTestId('opc-account-menu').locator('[aria-current="page"]')).toHaveCount(
-    1,
-  );
+  // On the page itself, the same shell's chip marks the row as the current page.
+  await openOperatorAccountMenu(page, 'oc');
+  await expect(page.getByTestId('oc-change-password')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('oc-account-menu').locator('[aria-current="page"]')).toHaveCount(1);
   await page.keyboard.press('Escape');
-  await expect(page.getByTestId('opc-account-menu')).toHaveCount(0);
+  await expect(page.getByTestId('oc-account-menu')).toHaveCount(0);
   // Pins the deleted `empty:mb-0` as a no-op, not a restyle (#828) — see this file's header.
   await expect(page.getByTestId('oppw-notice')).toHaveCSS('margin-bottom', '20px');
   await expectNoSeriousAxeViolations(page, 'operator change-password form');

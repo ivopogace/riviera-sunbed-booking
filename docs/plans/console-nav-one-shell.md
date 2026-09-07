@@ -217,6 +217,7 @@ at the intake gate) and are each recorded so the maintainer can reverse them on 
   link to `/operator` otherwise (unknown list included — the landing forwards a one-venue operator
   into the console); signed out it renders nothing, as today.
 - **Decided:** one test-id prefix, `oc`; `opc-*` retires with its component.
+- **Decided:** AC-8's "3px focus ring on every header control" is pinned on the row's two buttons (the switcher and the chip); the brand, `Admin` and `Sign in` are `<a>`s, which the `@layer base` rule (`button:focus-visible`, `riviera-tailwind` rule 6) deliberately leaves on the user-agent ring — as the retired chrome's links were. Widening that rule to links is a product-wide change for the maintainer, not this slice.
 - **Fact:** `RESPONSIBILITIES.md` names neither chrome (`grep -n -i chrome RESPONSIBILITIES.md`
   is empty); AC-9's targets are the four listed under *Skills consulted*.
 - **Fact:** #1009's close-out is complete (issue closed via PR #1016); its plan doc retires in
@@ -269,17 +270,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5)`
 
-**Next action:** phase 4 — `/operator` and the password page carry `console: 'plain'`; `OperatorHome` sheds its pin; the landing/password/sweep cases in `console-shell.e2e.ts`; `theme-shell.e2e.ts` over the four routes.
+**Next action:** phase 5 — delete `operator-chrome.*` and the `operatorChrome` walk; one e2e prefix; the docs; retire #1009's plan; full lint + unit; file-structure guard; docs-freshness; push.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | |
 | 1 — expand: `ConsoleShell` + its specs; the switcher's off-console form; the chip drops `Admin console` (the admin rail's inset moves to phase 3, with the rail) | ✅ | be84ef86 |
 | 2 — migrate the venue console: App reads `data.console`, mounts the shell for `venue`; the console sheds its chrome; the retired `operatorConsole` flag dropped with its last user; e2e (scroll-hide at 390px, the 1280px beach map) | ✅ | 47e9e60f |
-| 3 — migrate the admin routes: the shell renders the admin rail past the gate; `AdminConsole` sheds its strip; e2e (`console-shell.e2e.ts` from `operator-chrome.e2e.ts`, signed-out `/admin/audit`) | ✅ | |
-| 4 — migrate the plain pages: route data on `/operator` and the password page; `OperatorHome` sheds the pin; the theme e2e over the four routes | | |
+| 3 — migrate the admin routes: the shell renders the admin rail past the gate; `AdminConsole` sheds its strip; e2e (`console-shell.e2e.ts` from `operator-chrome.e2e.ts`, signed-out `/admin/audit`) | ✅ | eecead86 |
+| 4 — migrate the plain pages: route data on `/operator` and the password page; `OperatorHome` sheds the pin; the theme e2e over the four routes; the four-route sweeps (44px, ring, axe) at 390px and 1280px | ✅ | |
 | 5 — contract: delete `operator-chrome.*` and the old flags; one e2e prefix; docs + the #1009 plan retired; docs-freshness; file-structure guard; full lint + unit; branch pushed for the maintainer's PR | | |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
@@ -288,6 +289,8 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
+| F-1 | red e2e (`theme-shell.e2e.ts`, phase 4) | Under a dark tourist theme, `main` on a console route inherited `body`'s already-resolved white ink: the retired console host carried `text-riv-ink` to re-resolve it under the pin, and the shell had not | fixed — `text-riv-ink` on the app shell's root box, every pinned route re-resolves; the four-route theme case pins header, rail, page, background and footer paints equal to the porcelain run |
+| F-2 | red e2e (`console-shell.e2e.ts` sweeps, phase 4) | The landing picker's `Add another venue` link measured 145×20 — an inline `<a>` no sweep had visited | fixed — `appTouchTarget` + `inline-flex items-center` (`riviera-tailwind` rule 4) |
 
 ---
 
@@ -455,6 +458,8 @@ e2e `console-shell.e2e.ts` (landing + password cases), `theme-shell.e2e.ts`.
 
 | Date | Trigger (commit/phase) | Population (mechanism + how enumerated) | Search command | Sites found | Action |
 |---|---|---|---|---|---|
+| 2026-09-07 | phase 4 (F-1) | every element under the pin that inherits `color` rather than naming a `text-riv-*` utility — the mechanism is `body { color: var(--riv-ink) }` resolving once at document scope | `grep -n "color: var(--riv" frontend/src/tailwind.css` → one site, `body`; the fix sits on the one root box every route shares | 1 (`app.ts` `SHELL`) | fixed at the root; no per-page `text-riv-ink` needed |
+| 2026-09-07 | phase 4 (F-2) | every `<a>` on the four routes' resting surfaces — enumerated by the sweep itself (`expectTouchTargets` over each route at 390px and 1280px) | the `console-shell.e2e.ts` sweep cases | 1 (`operator-home-add-venue`) | fixed |
 | 2026-09-07 | phase 2 | every e2e/spec that locates the console's header, rail, footer or main | `grep -rln "oc-header\|oc-tabs\|oc-footer\|oc-main" frontend/e2e frontend/src` | 14 e2e files + 3 specs read `oc-header`/`oc-tabs` — both ids survive on the shell, so only the console's own specs changed; `oc-footer` had one reader (the console spec, rewritten) | ids kept; the `motion-reduce:transition-none` finding (it zeroes `transition-property`, not the duration) fixed the AC-3 assertion |
 | 2026-09-07 | phase 1 | every consumer of the chip's `adminLink` id / `Admin console` row | `grep -rn "admin-link\|Admin console" frontend/src frontend/e2e` | `operator-account-chip.spec.ts`, `operator-chrome.spec.ts` (unit, rewritten now); `operator-chrome.e2e.ts` (rewritten in phase 3 with the file) | rewritten |
 

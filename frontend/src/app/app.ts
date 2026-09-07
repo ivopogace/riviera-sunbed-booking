@@ -39,8 +39,10 @@ const MOBILE_ITEM = `block w-full rounded-[14px] px-3.5 py-[13px] text-left text
 /** The shell's root box, with and without the phone tab bar's clearance: the bar is 61px tall
  *  (60px tabs + the top border) and pads itself by the home-indicator inset, so the page pads by
  *  both — otherwise the last 61px of every page sit under the bar. Two literals, not a
- *  concatenation: Tailwind generates only classes it can read in the source. */
-const SHELL = 'relative flex min-h-screen flex-col';
+ *  concatenation: Tailwind generates only classes it can read in the source. `text-riv-ink`
+ *  re-resolves the ink under the console routes' porcelain pin — `body` resolves it once under
+ *  the document theme, so an inheriting element would keep a dark theme's white ink there. */
+const SHELL = 'relative flex min-h-screen flex-col text-riv-ink';
 const SHELL_WITH_TAB_BAR = `${SHELL} max-sm:pb-[calc(61px+env(safe-area-inset-bottom))]`;
 
 /**

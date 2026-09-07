@@ -17,6 +17,7 @@ import { landingRouteFor, safeReturnUrl } from '../shared/auth-landing';
 import { CardGlass } from '../shared/card-glass';
 import { RetryButton } from '../shared/retry-button';
 import { PendingApprovalBanner } from './pending-approval-banner';
+import { TouchTarget } from '../shared/touch-target';
 import { VenueCreateCard } from './venue-create-card';
 
 /**
@@ -33,12 +34,19 @@ import { VenueCreateCard } from './venue-create-card';
  * nothing" would push an established operator into venue creation on a network blip.
  *
  * Behind {@code operatorSessionGuard}, so this component never renders for a signed-out visitor and
- * needs no session state of its own. Porcelain like the rest of the operator surface.
+ * needs no session state of its own. Wears the console shell like the rest of the operator surface
+ * (`data.console` on its route), which pins it porcelain.
  */
 @Component({
   selector: 'app-operator-home',
-  imports: [RouterLink, CardGlass, RetryButton, PendingApprovalBanner, VenueCreateCard],
-  host: { 'data-riv-theme': 'porcelain' },
+  imports: [
+    RouterLink,
+    CardGlass,
+    RetryButton,
+    PendingApprovalBanner,
+    VenueCreateCard,
+    TouchTarget,
+  ],
   template: `
     <section
       class="mx-auto flex min-h-[70vh] max-w-[520px] flex-col justify-center px-4 py-10"
@@ -105,9 +113,10 @@ import { VenueCreateCard } from './venue-create-card';
             }
           </ul>
           <a
+            appTouchTarget
             routerLink="/operator"
             [queryParams]="{ create: '1' }"
-            class="mt-3 inline-block text-[13.5px] font-semibold text-riv-card-ink underline"
+            class="mt-1 inline-flex items-center text-[13.5px] font-semibold text-riv-card-ink underline"
             data-testid="operator-home-add-venue"
             >Add another venue</a
           >

@@ -1,10 +1,13 @@
 import { expect, test } from '@playwright/test';
 
+import { mockWholeAdminConsole } from './support/admin-console.mocks';
 import { mockOperatorLifecycleApi, mockOwnedVenues } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
+import { mockWholeConsole } from './support/operator-console.mocks';
 import { openOperatorAccountMenu } from './support/shell';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
+import { expectTouchTargets } from './support/touch-targets';
 
 /**
  * Real-render coverage of the console shell every operator and admin route wears: the section
@@ -87,19 +90,81 @@ test('an admin on /admin gets the section row with Your venues, Admin current an
   await expectNoSeriousAxeViolations(page, 'admin page under the console shell');
 });
 
-test('the previously chromeless password page now carries the operator header + footer', async ({
+test('the password page and the landing wear the same shell: neither section current, no rail (#1011)', async ({
   page,
 }) => {
   await mockOperatorLifecycleApi(page, { admin: ADMIN });
+  await mockOwnedVenues(page, TWO_VENUES);
   await new OperatorSignInPage(page).goto('/account/operator-password');
   await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
   await expect(page).toHaveURL(/\/account\/operator-password$/);
 
-  await expect(page.getByTestId('opc-header')).toBeVisible();
-  await expect(page.locator('.riv-footer')).toContainText('© Riviera Sunbed Booking');
-
-  await expectNoSeriousAxeViolations(page, 'operator password page under the operator chrome');
+  for (const path of ['/account/operator-password', '/operator']) {
+    await page.goto(path);
+    await expect(page.getByTestId('oc-header')).toBeVisible();
+    await expect(page.getByTestId('oc-venue-title')).toHaveText(/Your venues/);
+    await expect(page.getByTestId('oc-section-venue')).not.toHaveAttribute('aria-current', 'page');
+    await expect(page.getByTestId('oc-section-admin')).not.toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('nav[aria-label$="console sections"]')).toHaveCount(0);
+    await expect(page.locator('.riv-header')).toHaveCount(0);
+    await expect(page.locator('.riv-footer')).toContainText('© Riviera Sunbed Booking');
+    await expect(page.locator('app-root')).toHaveAttribute('data-riv-theme', 'porcelain');
+    await expectNoSeriousAxeViolations(page, `${path} under the console shell`);
+  }
+  // The landing's picker is the page; the chip's popover opens over it, axe clean.
+  await expect(page.getByTestId('operator-home-picker')).toBeVisible();
+  await openOperatorAccountMenu(page, 'oc');
+  await settle(page);
+  await expectNoSeriousAxeViolations(page, 'operator landing with the account popover open');
 });
+
+/**
+ * The shell's controls on the four routes, at a phone width and a laptop width: every visible
+ * control measures the 44px floor, the row's buttons paint the 3px baseline ring, axe is clean.
+ * The venue console is the daily view; the admin console its home; the mocks are the whole
+ * console's plus the admin lifecycle's.
+ */
+for (const viewport of [
+  { width: 390, height: 780 },
+  { width: 1280, height: 900 },
+]) {
+  test(`the shell's controls meet the 44px floor and the 3px ring on the four routes at ${viewport.width}px, axe clean (#1011)`, async ({
+    page,
+  }) => {
+    await mockWholeConsole(page);
+    await mockWholeAdminConsole(page);
+    await mockOwnedVenues(page, TWO_VENUES);
+    await page.setViewportSize(viewport);
+    await new OperatorSignInPage(page).goto('/operator/1/daily');
+    await new OperatorSignInPage(page).signIn(ADMIN.username, ADMIN.password);
+
+    const routes = [
+      { path: '/operator/1/daily', marker: 'daily-view-tab' },
+      { path: '/admin', marker: 'admin-op-row' },
+      { path: '/operator', marker: 'operator-home-picker' },
+      { path: '/account/operator-password', marker: 'oppw-submit' },
+    ];
+    for (const { path, marker } of routes) {
+      await page.goto(path);
+      await expect(page.getByTestId(marker).first()).toBeVisible();
+      await expect(page.getByTestId('oc-header')).toBeVisible();
+      await expectTouchTargets(page, `${path} at ${viewport.width}px`);
+
+      // The row's buttons: the venue switcher and the chip paint the baseline ring on keyboard focus.
+      for (const id of ['oc-venue-title', 'oc-account']) {
+        const control = page.getByTestId(id);
+        await control.focus();
+        await page.keyboard.press('Tab');
+        await page.keyboard.press('Shift+Tab');
+        await expect(control).toBeFocused();
+        await expect(control).toHaveCSS('outline-style', 'solid');
+        await expect(control).toHaveCSS('outline-width', '3px');
+      }
+      await settle(page);
+      await expectNoSeriousAxeViolations(page, `${path} at ${viewport.width}px`);
+    }
+  });
+}
 
 test('Sign out from the chip on /admin ends the session and lands on the operator sign-in (#1011)', async ({
   page,
@@ -142,7 +207,7 @@ test('a signed-out visitor on /admin/audit sees the section row with Sign in and
   await expectNoSeriousAxeViolations(page, 'signed-out admin page under the console shell');
 });
 
-test('the account chip opens a popover on /admin — axe clean, one header row on a phone (#1008, #1011)', async ({
+test('the account chip opens a popover on /admin — axe clean, one header row on a phone (#1008)', async ({
   page,
 }) => {
   await mockOperatorLifecycleApi(page, { admin: ADMIN });
