@@ -5,7 +5,7 @@ import { mockOwnedVenues } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { settle } from './support/booking-dialog';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
-import { expectPhoneRailFits, openMoreSheet } from './support/shell';
+import { expectPhoneRailFits, openMoreSheet, openPalette } from './support/shell';
 
 /**
  * The admin console's rail in its two shapes. From `sm` up: a single scrolling row of underlined
@@ -15,7 +15,7 @@ import { expectPhoneRailFits, openMoreSheet } from './support/shell';
  * destinations reading as nine peers. Below `sm`: the phone rail — Operators · Email · Refunds
  * as glyph-over-label slots and a More slot that names the current secondary and carries its
  * `aria-current`, so the current page is never hidden inside a closed menu; More opens the grouped
- * sheet with `Your venues` at its foot.
+ * sheet with `Your venues` at its foot. From `sm` up the ⌘K palette is the accelerator over the rail.
  */
 
 /** Sign in as the platform admin and open the console at `path`. */
@@ -86,6 +86,51 @@ test.describe('from sm up: one scrolling row', () => {
 
     await expect(page.getByTestId('admin-tab-operators')).toHaveAttribute('aria-current', 'page');
     await expect(page.getByTestId('admin-tab-audit')).not.toHaveAttribute('aria-current', 'page');
+  });
+
+  test('⌘K: typing aud leaves Audit, Enter opens it and closes the dialog; Nothing matches. holds the dialog (#1013)', async ({
+    page,
+  }) => {
+    await openConsole(page);
+    await expect(page.getByTestId('admin-op-row').first()).toBeVisible();
+    // At sm the glyph joins the row without pushing the chip onto a second one (a second row would add the chip's 44px floor).
+    await expect(page.getByTestId('oc-search')).toBeVisible();
+    expect((await page.getByTestId('oc-header').boundingBox())!.height).toBeLessThanOrEqual(80);
+
+    await page.keyboard.press('Meta+k');
+    const dialog = page.getByRole('dialog', { name: 'Go to' });
+    await expect(dialog).toBeVisible();
+    const field = page.getByTestId('oc-palette-search');
+    await expect(field).toBeFocused();
+    await expect(dialog.getByRole('link')).toHaveCount(10);
+
+    // No hit: the status line, and Enter leaves the dialog and the page alone.
+    await field.fill('zzz');
+    await expect(dialog.getByRole('link')).toHaveCount(0);
+    await expect(dialog.getByRole('status')).toHaveText('Nothing matches.');
+    await page.keyboard.press('Enter');
+    await expect(dialog).toBeVisible();
+    await expect(page).toHaveURL(/\/admin$/);
+
+    await field.fill('aud');
+    const rows = dialog.getByRole('link');
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText('Audit');
+    await expect(rows.first()).toContainText('Records');
+    await expect(rows.first()).toHaveAttribute('data-hit', '');
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/admin\/audit$/);
+    await expect(dialog).toBeHidden();
+    await expect(railTabs(page).filter({ hasText: 'Audit' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    // The glyph is in the row from sm up and reopens the dialog on the new page, Audit now current.
+    await openPalette(page);
+    await expect(dialog.getByRole('link', { name: /^Audit/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
   });
 
   test('the rail wears no edge mask and draws a divider at each of the four group boundaries (#1007)', async ({

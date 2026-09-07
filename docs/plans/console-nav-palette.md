@@ -148,15 +148,15 @@ every route they offer; the palette is an accelerator over them.)
 
 | # | Description | Likelihood | Impact | Mitigation | Owner | Resolution |
 |---|---|---|---|---|---|---|
-| R-1 | The `fixed` dialog rendered inside the section row's `backdrop-filter` header pins to the header, not the viewport (the #1011 R-5 lesson) | high | high | the palette mounts as a sibling of the header, where the More sheet already lives; the e2e asserts the dialog's box lies inside the viewport at 1280px and 390px | agent | open |
-| R-2 | `outline-none` on the field (the spike's shape) fails `focus-ring-baseline.spec.ts` and drops the only indicator | certain if copied | med | `focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink`, the find-booking field's shape; the e2e reads `outline-width` | agent | open |
-| R-3 | A browser-level Ctrl-K (address-bar search) or ⌘K swallows the chord before the page | low | med | `preventDefault()` on the handled keydown; the e2e presses both chords headless where nothing competes; documented as the palette's own | agent | open |
-| R-4 | Two rails, the sheet and the palette all render the badge — a copied recipe drifts | med | low | one `TAB_RAIL_BADGE` in `tab-rail.ts`; the sheet row / hint recipes hoisted to `popover-skin.ts` and consumed by the shell and the palette | agent | open |
-| R-5 | The chord's opener unmounts on the navigation Enter drives (a focused page control), so focus lands on `<body>` | med | med | `landFocus()`: the opener when still connected, else the app shell's `<main>`; pinned in the palette spec | agent | open |
-| R-6 | The palette's document Escape listener and the shell's, chip's and switcher's all fire on one press | certain | low | each is a no-op while its surface is closed (the established shape); the shell spec opens the palette alone and asserts the other disclosures stay untouched | agent | open |
-| R-7 | The search button joins the row from `sm` up and pushes the chip onto a second row at 640px | low | med | the button is a 44px square, the row is `justify-between` with the switcher `min-w-0 truncate`; `console-shell.e2e.ts` keeps the one-row proof at 390px and the touch sweep at 1280px; measured at 640px in phase 4 | agent | open |
-| R-8 | `check-touch-target.mjs` TT-1 on the new `<button>` and `<input>` | low | low | `appTouchTarget` on both; the hook runs on save | agent | open |
-| R-9 | `type="search"`'s Preflight `outline-offset: -2px` competes with the ring offset | low | low | a utility beats Preflight; the e2e reads the ring; if it does not, `type="text"` with `role="searchbox"` | agent | open |
+| R-1 | The `fixed` dialog rendered inside the section row's `backdrop-filter` header pins to the header, not the viewport (the #1011 R-5 lesson) | high | high | the palette mounts as a sibling of the header, where the More sheet already lives; the e2e asserts the dialog's box lies inside the viewport at 1280px and 390px | agent | closed — phase 4: `console-shell.e2e.ts` pins the box under the header inside 1280px and inside 390px; the shell spec pins the dialog outside the header |
+| R-2 | `outline-none` on the field (the spike's shape) fails `focus-ring-baseline.spec.ts` and drops the only indicator | certain if copied | med | `focus-visible:outline-[3px] focus-visible:outline-offset-1 focus-visible:outline-riv-accent-ink`, the find-booking field's shape; the e2e reads `outline-width` | agent | closed — phase 4: `outline-style: solid` / `3px` read on the focused field; the baseline sweep green |
+| R-3 | A browser-level Ctrl-K (address-bar search) or ⌘K swallows the chord before the page | low | med | `preventDefault()` on the handled keydown; the e2e presses both chords headless where nothing competes; documented as the palette's own | agent | closed — phase 4: both chords open the dialog in Chromium; the palette spec pins `defaultPrevented` |
+| R-4 | Two rails, the sheet and the palette all render the badge — a copied recipe drifts | med | low | one `TAB_RAIL_BADGE` in `tab-rail.ts`; the sheet row / hint recipes hoisted to `popover-skin.ts` and consumed by the shell and the palette | agent | closed — phase 1 (the audit log's row) |
+| R-5 | The chord's opener unmounts on the navigation Enter drives (a focused page control), so focus lands on `<body>` | med | med | `landFocus()`: the opener when still connected, else the app shell's `<main>`; pinned in the palette spec | agent | closed — phase 2: the palette spec's navigation case |
+| R-6 | The palette's document Escape listener and the shell's, chip's and switcher's all fire on one press | certain | low | each is a no-op while its surface is closed (the established shape); the shell spec opens the palette alone and asserts the other disclosures stay untouched | agent | closed — phase 2/3: the palette spec pins Escape-while-closed steals nothing; the shell's Escape cases (chip, switcher, sheet) stay green with the palette mounted |
+| R-7 | The search button joins the row from `sm` up and pushes the chip onto a second row at 640px | low | med | the button is a 44px square, the row is `justify-between` with the switcher `min-w-0 truncate`; `console-shell.e2e.ts` keeps the one-row proof at 390px and the touch sweep at 1280px; measured at 640px in phase 4 | agent | closed — phase 4: `admin-console-tabs.e2e.ts` pins the header ≤ 80px at 640px with the glyph visible |
+| R-8 | `check-touch-target.mjs` TT-1 on the new `<button>` and `<input>` | low | low | `appTouchTarget` on both; the hook runs on save | agent | closed — phases 2–3: the guard green on both files; the sweep measures the field and every row at 1280px |
+| R-9 | `type="search"`'s Preflight `outline-offset: -2px` competes with the ring offset | low | low | a utility beats Preflight; the e2e reads the ring; if it does not, `type="text"` with `role="searchbox"` | agent | closed — phase 4: the ring reads 3px solid on the `type="search"` field |
 
 ## Open questions / Assumptions
 
@@ -233,17 +233,17 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `implement (phase 4)`
+**Stage pointer:** `implement (phase 5)`
 
-**Next action:** phase 4 — the mocked e2e cases in `console-shell.e2e.ts`, `operator-console.e2e.ts`, `admin-console-tabs.e2e.ts`.
+**Next action:** phase 5 — lint, format, the whole unit suite and the whole mocked e2e; docs-freshness; #1012's plan retired; the file-structure guard; push.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
 | 0 — plan doc | ✅ | 9b6713d7 |
 | 1 — the search glyph; the row, hint and badge recipes hoisted and consumed by the shell | ✅ | 6fda2f03 |
 | 2 — `shared/console-palette.ts`: the dialog, chords, filter, highlight, Enter, trap, focus legs, close on navigation; its spec, a11y and contrast specs | ✅ | 067298e8 |
-| 3 — the shell: the search button, the gate, `paletteRows`, the mount; shell spec, a11y spec, `app.spec.ts` | ✅ | (phase-3 commit) |
-| 4 — e2e: `console-shell.e2e.ts`, `operator-console.e2e.ts`, `admin-console-tabs.e2e.ts`, `support/shell.ts` | | |
+| 3 — the shell: the search button, the gate, `paletteRows`, the mount; shell spec, a11y spec, `app.spec.ts` | ✅ | a28fdc0b |
+| 4 — e2e: `console-shell.e2e.ts`, `operator-console.e2e.ts`, `admin-console-tabs.e2e.ts`, `support/shell.ts` | ✅ | (phase-4 commit) |
 | 5 — contract: lint, format, unit, the mocked e2e; docs-freshness; #1012's plan retired; file-structure guard; push | | |
 | 6 — PR, CI, review gate, Sonar gate, merge close-out | | |
 
@@ -329,13 +329,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
 **Files:** Modify `console-shell.e2e.ts`, `operator-console.e2e.ts`, `admin-console-tabs.e2e.ts`, `support/shell.ts`.
 
-- [ ] **Step 1: Write the failing tests** — the cases per AC.
-- [ ] **Step 2: Run it, verify it fails** — `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts console-shell operator-console admin-console-tabs` → the new cases FAIL before phase 3 is merged into the run; here they prove the shipped behaviour.
-- [ ] **Step 3: Minimal implementation** — any rendered-size or ring fix the sweep finds.
-- [ ] **Step 4: Run it, verify it passes** — the touched files under `chromium`; the two touch sweeps under `phone` and `fold` (unchanged, the button is hidden there).
-- [ ] **Step 5: Generalization-audit pass** — population: every e2e that presses Escape on a console route and could now hit the palette → `grep -ln "press('Escape')" frontend/e2e/*.e2e.ts | xargs grep -ln "oc-header\|oc-account"`.
-- [ ] **Step 6: Commit** — `Prove the palette in the mocked e2e: chords, filter, Enter, focus, the floor (#1013)`.
-- [ ] **Step 7: Update plan-doc execution status.**
+- [x] **Step 1: Write the failing tests** — the cases per AC.
+- [x] **Step 2: Run it, verify it fails** — the e2e run after phase 3, so these cases prove the shipped behaviour rather than fail first (the red half of each AC is its unit spec in phases 2–3); `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npx playwright test -c playwright.a11y.config.ts console-shell operator-console admin-console-tabs` → 24/24 on the first run.
+- [x] **Step 3: Minimal implementation** — nothing: the sweep, the ring probe and axe passed with the dialog open at 1280px and 390px; the row stays one row at 640px with the glyph in (R-7, measured ≤ 80px).
+- [x] **Step 4: Run it, verify it passes** — the three files under `chromium` (24 + the admin file's 8 on the re-run); the two touch sweeps under `phone` and `fold` run whole in phase 5.
+- [x] **Step 5: Generalization-audit pass** — done at phase 3 (the Escape population; the log's row).
+- [x] **Step 6: Commit** — `Prove the palette in the mocked e2e: chords, filter, Enter, focus, the floor (#1013)`.
+- [x] **Step 7: Update plan-doc execution status.**
 
 ## Phase 5 — contract
 

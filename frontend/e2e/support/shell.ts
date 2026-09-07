@@ -2,7 +2,8 @@ import { expect, Locator, Page } from '@playwright/test';
 
 /**
  * Helpers for the shell's overlays — the find-a-booking modal, the theme picker, the phone tab
- * bar's sheet, the signed-in account disclosure, and the console shell's account chip.
+ * bar's sheet, the signed-in account disclosure, and the console shell's account chip, More sheet
+ * and ⌘K palette.
  *
  * <p>Each opener first waits for the routed page to be in the outlet: `page.goto` resolves on
  * `load`, which a lazily loaded route's chunk may outlive, so without the wait a trigger is clicked
@@ -68,6 +69,17 @@ export async function openMoreSheet(page: Page): Promise<void> {
   await more.click();
   await expect(more).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByTestId('oc-more-sheet')).toBeVisible();
+}
+
+/** Opens the console shell's ⌘K palette from its search glyph (from `sm` up) and proves it is up. */
+export async function openPalette(page: Page): Promise<Locator> {
+  await awaitRoutedPage(page);
+  const search = page.getByTestId('oc-search');
+  await search.click();
+  await expect(search).toHaveAttribute('aria-expanded', 'true');
+  const dialog = page.getByRole('dialog', { name: 'Go to' });
+  await expect(dialog).toBeVisible();
+  return dialog;
 }
 
 /**
