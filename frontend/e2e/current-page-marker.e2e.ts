@@ -13,9 +13,10 @@ import { awaitRoutedPage, openShellOverlay } from './support/shell';
  * desktop links, from the route's section data on the phone tabs — styled through its compound
  * selector). The discovery API is mocked (`page.route`), so the spec is CI-safe like its siblings.
  *
- * <p>The last block is the two consoles' tab rail (`shared/tab-rail.ts`), which wears the same
- * marker one level down: full ink plus a 3px underline (the tab's `::after`) on the rail's shared
- * hairline — never the accent ink alone, which vanishes on the header glass.
+ * <p>The last two blocks are the two consoles' rails, which wear the same marker one level down:
+ * the text rail (`shared/tab-rail.ts`, from `sm` up) with full ink plus a 3px underline (the tab's
+ * `::after`) on the rail's shared hairline, and the phone rail (below `sm`) with the same ink and
+ * bar on its own bottom border — never the accent ink alone, which vanishes on the header glass.
  */
 
 test.beforeEach(async ({ page }) => {

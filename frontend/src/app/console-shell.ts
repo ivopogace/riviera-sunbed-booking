@@ -3,6 +3,8 @@ import {
   Component,
   DOCUMENT,
   ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -197,7 +199,10 @@ const CLS = {
  * `aria-current="page"` — the current page is never hidden inside a closed menu, which is what
  * answered the objection to an overflow menu — and otherwise reads `More`. It opens a bottom
  * sheet of the secondaries grouped as the desktop rail's dividers group them, plus the
- * cross-console row. The button's accessible name therefore follows the route.
+ * cross-console row. The button's accessible name therefore follows the route. Escape, the
+ * backdrop and a chosen row close the sheet onto the More button; a navigation that ends with it
+ * open (Back, Forward) closes it too, and if a row held focus, focus lands on the More button once
+ * the new page has rendered — or on the app shell's `<main>` when the destination has no phone rail.
  *
  * <p>Everything it renders it reads from the router and root singletons, so the routed page
  * publishes nothing: the venue id comes off the route chain (the app shell's walk hands it over),
@@ -415,6 +420,7 @@ export class ConsoleShell {
   private readonly venueMap = inject(ConsoleVenueMap);
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
   private readonly url = currentUrl(this.router);
   private readonly moreButton = viewChild<ElementRef<HTMLButtonElement>>('more');
   private readonly focusAfterRender = focusMover();
@@ -522,7 +528,7 @@ export class ConsoleShell {
         filter((event) => event instanceof NavigationEnd),
         takeUntilDestroyed(),
       )
-      .subscribe(() => this.sheetOpen.set(false));
+      .subscribe(() => this.closeSheetOnNavigation());
   }
 
   protected onScroll(): void {
@@ -538,6 +544,26 @@ export class ConsoleShell {
       this.focusAfterRender('oc-more-row', 'oc-more');
     } else {
       this.moreButton()?.nativeElement.focus();
+    }
+  }
+
+  /** A navigation ended with the sheet open — Back, Forward, or a row's own link. The sheet closes;
+   *  if one of its rows held focus, focus lands on the More button once the new page has rendered,
+   *  or on the app shell's `<main>` when the destination has no phone rail (WCAG 2.4.3). */
+  private closeSheetOnNavigation(): void {
+    if (!this.sheetOpen()) {
+      return;
+    }
+    const held = this.document.activeElement?.closest('[data-testid="oc-more-sheet"]') !== null;
+    this.sheetOpen.set(false);
+    if (held) {
+      afterNextRender(
+        () =>
+          (
+            this.moreButton()?.nativeElement ?? this.document.querySelector<HTMLElement>('main')
+          )?.focus(),
+        { injector: this.injector },
+      );
     }
   }
 

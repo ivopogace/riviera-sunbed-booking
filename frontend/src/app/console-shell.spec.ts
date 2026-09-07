@@ -476,15 +476,37 @@ describe('ConsoleShell', () => {
         expect(more().textContent.trim()).toBe('Payouts');
       });
 
-      it('a navigation that ends while the sheet is open closes it without touching focus', async () => {
+      it('a navigation that ends while a row holds focus closes the sheet and lands focus on More; one that ends with focus elsewhere leaves focus alone', async () => {
         await goTo('/operator/1/daily');
         await open();
-        const row = rows()[0];
-        expect(document.activeElement).toBe(row);
+        expect(document.activeElement).toBe(rows()[0]);
 
+        // Back / Forward while a row is focused: the row unmounts, so focus goes to the persistent More button.
         await goTo('/operator/1/pricing');
+        await fixture.whenStable();
         expect(sheet()).toBeNull();
-        expect(document.activeElement).not.toBe(more());
+        expect(document.activeElement).toBe(more());
+
+        await open();
+        byId('oc-brand')!.focus();
+        await goTo('/operator/1/daily');
+        await fixture.whenStable();
+        expect(sheet()).toBeNull();
+        expect(document.activeElement).toBe(byId('oc-brand'));
+      });
+
+      it('a navigation that leaves the console while a row holds focus lands focus on main', async () => {
+        await goTo('/operator/1/daily');
+        await open();
+        expect(document.activeElement).toBe(rows()[0]);
+
+        fixture.componentInstance.section.set('plain');
+        fixture.componentInstance.venueId.set(undefined);
+        await goTo('/operator');
+        await fixture.whenStable();
+        expect(sheet()).toBeNull();
+        expect(more()).toBeNull();
+        expect(document.activeElement).toBe(el.querySelector('main'));
       });
     });
   });

@@ -273,9 +273,7 @@ test('below sm the phone rail replaces the tab rail: four slots on one row, More
 
   // A secondary page: the fourth slot wears its glyph, label and the current mark.
   await page.goto('/operator/1/payouts');
-  await expect(
-    page.getByTestId('statement-open').or(page.getByTestId('payouts-tab')),
-  ).toBeVisible();
+  await expect(page.getByTestId('payouts-tab')).toBeVisible();
   await expect(more).toHaveAccessibleName('Payouts');
   await expect(more).toHaveAttribute('aria-current', 'page');
   await expect(rail.getByRole('link', { name: 'Daily' })).not.toHaveAttribute(

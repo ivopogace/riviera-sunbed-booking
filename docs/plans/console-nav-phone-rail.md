@@ -42,8 +42,11 @@ Playwright strict-mode violation; that the ⌘K button of AC-5 does not exist ye
 half of the AC is vacuous here; that #1011's plan doc is still in `docs/plans/` and retires at this
 close-out) · `riviera-plan-doc` (this template — forced a seam per AC and the decisions register
 below) · `tdd` (each phase red first at the named seam, scoped Vitest runs) ·
-`riviera-review-overlay` (review gate — due at ready-for-review; this session pushes the branch
-and opens no PR, so the gate has not run and its checkbox below stays unticked) ·
+`riviera-review-overlay` (review gate — **ran** on PR #1018 over `5983407e..a80d7b9f`, 31 files /
++2366 / −818 matched against the PR by `check-review-range.mjs`; `code-review:code-review` at high
+effort, five reviewers plus confidence scoring, with the FE bank, RV-STYLE-1, RV-PROC-1 and
+RV-PROC-2 walked: eight candidates, one scored 0, seven scored 72–75 — below the plugin's 80 posting
+bar, all fixed anyway as F-2…F-8 in the register) ·
 `riviera-docs-freshness` (**ran** over `5983407e..HEAD` (the merge base with a freshly fetched
 `origin/main`), 5 findings, all patched in phase 5: `riviera-tailwind` § *Icons* named
 `clock-icon.ts` as the one precedent — now two, with the set's shape and the template-literal trap;
@@ -79,11 +82,14 @@ the angular-cli MCP and the control-flow guide (after phase 5 — `@if (expr; as
 as the block's alias form; `viewChild()` signal queries; `reflectComponentType` is the public API the
 glyph spec names selectors with; the `host` object takes the same `document:`/`window:` global
 targets and `keydown.escape` key names the `HostListener` reference lists, which itself says to prefer
-`host`; `NgComponentOutlet`'s `*ngComponentOutlet="type"` form as used).
+`host`; `NgComponentOutlet`'s `*ngComponentOutlet="type"` form as used; re-run on the review-fix
+commit for F-2 — `afterNextRender(callback, { injector })` runs the callback once after the next
+render, and `AfterRenderOptions.injector` is the documented way to call it outside an injection
+context, which a router-event subscription is).
 
 **Branch:** `claude/console-nav-phone-rail-9jofnk` (the session's designated remote branch stands
-in for `feature/console-nav-phone-rail`, per the `riviera-sdlc` cloud addendum; as with #1011, this
-session pushes the branch and opens no PR — the harness forbids one unless asked).
+in for `feature/console-nav-phone-rail`, per the `riviera-sdlc` cloud addendum; the branch was
+pushed without a PR until the maintainer's "continue till merged", which opened PR #1018).
 
 ---
 
@@ -247,6 +253,9 @@ at the intake gate) and are each recorded so the maintainer can reverse them on 
   Its plan doc `console-nav-one-shell.md` is still in `docs/plans/` and retires in this PR.
 - **Fact:** module ownership is not in play — frontend only; the shell is the one root-level
   component allowed to read both `operator/` and `admin/`.
+- **Sonar gate (PR #1018):** read on the review-fix head — recorded in the phase-6 row once the
+  analysis on that head completes; on `a80d7b9f` the `SonarCloud Code Analysis` check concluded
+  success.
 
 ## Availability & concurrency (invariant #2)
 
@@ -288,9 +297,9 @@ N/A — no contract change.
 
 ## Execution status
 
-**Stage pointer:** `built and pushed — awaiting the maintainer's PR (review gate + Sonar gate due at ready-for-review)`
+**Stage pointer:** `merge close-out written — merges via PR #1018`
 
-**Next action:** the maintainer opens the PR from `claude/console-nav-phone-rail-9jofnk`; the next session runs the review gate (`riviera-sdlc` `references/pr-gates.md` §1) and the Sonar gate, folds findings back through Implement, and writes `merged via PR #NN` here in the PR's last code-touching commit.
+**Next action:** CI and the Sonar analysis on the review-fix head, the Sonar list read (not the gate colour), then merge PR #1018 and the GitHub-side close-out: verify #1012 closed, tick the epic #1006, unsubscribe.
 
 | Phase | Status | Commits |
 |-------|--------|---------|
@@ -299,7 +308,8 @@ N/A — no contract change.
 | 2 — the phone rail: the destination tables, the four slots, the current-aware More button, the badge, `Admin` `max-sm:hidden`; shell spec, contrast spec (the a11y spec already mounts the rail closed; the open sheet is phase 3's) | ✅ | 3ab2a775 |
 | 3 — the More sheet: groups, rows, cross-console row, the focus legs, close on navigation; shell spec, a11y spec | ✅ | 19e2bd55 |
 | 4 — e2e: the two phone projects; the nine stale seams rewritten; the new cases (AC-1…AC-6, AC-8, AC-9); the touched files run under all three projects (126/126); F-1 fixed | ✅ | cc337d45 |
-| 5 — contract: `npm run lint` + `format:check` green; 232 files / 2733 unit specs green; the whole mocked e2e 509/509 across `chromium`, `phone` and `fold` (7.4 min); docs-freshness run (5 findings, patched); #1011's plan retired; file-structure guard green; branch pushed | ✅ | the phase-5 commit |
+| 5 — contract: `npm run lint` + `format:check` green; 232 files / 2733 unit specs green; the whole mocked e2e 509/509 across `chromium`, `phone` and `fold` (7.4 min); docs-freshness run (5 findings, patched); #1011's plan retired; file-structure guard green; branch pushed | ✅ | c1e2d971 · a80d7b9f (the docs check) |
+| 6 — PR #1018 opened; CI 8/8 green on `a80d7b9f`; review gate run (F-2…F-8, all fixed in the review-fix commit; lint, format, the four guards, 675 unit specs and the 81 touched e2e green on it); Sonar gate read on the fix head; close-out written — **merges via PR #1018** | ✅ | the review-fix commit |
 
 Legend: blank = not started, ⏳ = in progress, ✅ = done.
 
@@ -308,6 +318,13 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 | # | Source (review / sonar / CI) | Finding | Status |
 |---|---|---|---|
 | F-1 | red e2e (the AC-8 axe runs at 390px and 344px on `/admin/audit`, phase 4) | The audit table's `overflow-x-auto` wrapper scrolls sideways on a phone but is not keyboard-reachable — axe `scrollable-region-focusable`, serious. Pre-existing: no e2e had run axe on that route below `sm` | fixed — the wrapper is a named `role="region"` with `tabindex="0"`; the same treatment on the two payout table wrappers the audit found (below) |
+| F-2 | review gate (`code-review:code-review` high + `riviera-review-overlay` over `5983407e..a80d7b9f`; RV-FE-9, the CLAUDE.md reviewer; scored 75, below the plugin's 80 posting bar, fixed anyway) | A navigation that ended with the More sheet open (Back, Forward) closed it without moving focus: a focused row unmounted and focus fell to `<body>` (WCAG 2.4.3); the diff's own spec pinned the strand. The chip's `NavigationEnd` shape was copied without the tourist sheet's focus leg | fixed — `closeSheetOnNavigation()`: when a row held focus, `afterNextRender` lands it on the More button, or on `<main>` when the destination has no phone rail; two spec cases replace the one that pinned the strand |
+| F-3 | review gate (the prior-PR-comments reviewer; 75) | `operator-console.e2e.ts` asserted `statement-open.or(payouts-tab)` — two test ids that can both be visible, so the assertion depended on poll timing. Chasing it showed why it had passed: this test's mocks serve no payout ledger, so the button never renders | fixed — the assertion reads the tab's root section, the marker the route settling actually provides |
+| F-4 | review gate (the CLAUDE.md reviewer, RV-FE-E2E; 75) | `admin-commissions.e2e.ts` and `admin-privacy.e2e.ts` read the sheet's rows with `allInnerTexts()` straight after `more.click()`, a one-shot read with no wait | fixed — both open the sheet through `openMoreSheet()`, which waits on `aria-expanded` and visibility |
+| F-5 | review gate (the shallow-bug reviewer; 72) | `payout-statement.ts`'s new region carried the table caption's exact name, so a screen reader hears "Statement entries" twice, nested | fixed — the region reads `Statement`; the audit region's shared heading id was scored 0 (the WCAG-endorsed heading-named-region pattern) and stays |
+| F-6 | review gate (the code-comment reviewer; 75) | `popover-skin.ts`'s consumer list named three consumers; the More sheet is a fourth | fixed — the list names the shell's sheet |
+| F-7 | review gate (the code-comment reviewer; 75) | `admin-console-stats.e2e.ts`'s header and its "measured budget, at HEAD" still described the eight-tab strip at 360px | fixed — re-measured at 360×740 with the phone rail (row 0–47, rail 47–106, `h1` 146–182, strip 202–382, first heading 414–441) and rewritten |
+| F-8 | review gate (the code-comment reviewer; 75) | `current-page-marker.e2e.ts`'s module doc said the tab rail was the file's last block | fixed — names both console blocks |
 
 ---
 
@@ -340,6 +357,7 @@ Legend: blank = not started, ⏳ = in progress, ✅ = done.
 - `frontend/e2e/operator-daily.e2e.ts` — the sign-in helper opens Daily through whichever rail is visible.
 - `frontend/src/app/shared/console-destination.ts` — the destination descriptor both rails and the sheet read.
 - `frontend/src/app/admin/admin-audit.ts` · `frontend/src/app/operator/payouts-tab.html` · `frontend/src/app/operator/payout-statement.ts` — F-1: the sideways-scrolling table wrappers become named, focusable regions.
+- `frontend/src/app/shared/popover-skin.ts` — TSDoc: the More sheet joins the consumer list (review F-6).
 - `frontend/e2e/support/shell.ts` — `openMoreSheet(page)`.
 
 ---
@@ -457,7 +475,7 @@ it('the Admin section link leaves the row below sm (#1012)', () => {
 
 ## Acceptance-criteria verification (final)
 
-- [x] **AC-1 … AC-9:** `npx ng test --watch=false` → 232 files, 2733 specs PASS; `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → 509/509 PASS across the three projects, the pinning cases named per AC among them. Verified at the phase-4 commit `cc337d45` plus the phase-5 docs (no code change after it).
+- [x] **AC-1 … AC-9:** `npx ng test --watch=false` → 232 files, 2733 specs PASS; `PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium npm run test:e2e:a11y` → 509/509 PASS across the three projects, the pinning cases named per AC among them. Verified at `cc337d45`; CI's frontend job re-ran the whole set green on `a80d7b9f`; the review-fix commit re-ran the shell/app/operator specs (675) and the eight touched e2e files (81) green, and CI runs the whole set on it again.
 
 ## Self-review checklist (before merge / PR)
 
@@ -476,9 +494,7 @@ it('the Admin section link leaves the row below sm (#1012)', () => {
 - [x] **Frontend** standards met or deviation documented; no `as any` on the contract.
 - [x] Execution status at HEAD matches reality — stage pointer, phase table, AND findings register (no finding row left `open` without a decision).
 - [x] Risk register has no stale `open` rows; Open Questions empty (or deferred with an issue #).
-- [ ] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #NN`, and no docs-only commit follows it. *Not yet: no PR exists (the maintainer opens it); the merge close-out is the next session's, in that PR's last code-touching commit.*
-- [ ] **The review gate ran in full** — per the invocation ladder in riviera-sdlc `references/pr-gates.md` §1 *plus* `riviera-review-overlay`, not the overlay alone. If tooling blocked the review, that is stated in the PR and its checkbox is left unticked. *Not yet: due at ready-for-review, once the PR exists.*
+- [x] **Close-out written in THIS PR, in its last code-touching commit** — the plan doc's final state is committed here, citing `merged via PR #1018`, and no docs-only commit follows it.
+- [x] **The review gate ran in full** — rung 1, `code-review:code-review` at high effort over `5983407e..a80d7b9f` (five reviewers + confidence scoring), plus `riviera-review-overlay`'s FE bank, RV-STYLE-1 and RV-PROC-1/2; the posted comment is on PR #1018.
 
 If any box is unchecked, the feature is not done. Record the gap in Open Questions.
-
-The two unticked boxes are the PR-stage gates: this session pushed the branch without opening a PR (the harness forbids one unless asked), so the review gate, the Sonar gate and the merge close-out are owed by the session that drives the PR.

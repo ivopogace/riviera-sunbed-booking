@@ -247,7 +247,7 @@ test('the tab rail marks Commissions in slot 6 and never scrolls sideways at 360
   ).not.toHaveAttribute('aria-current', 'page');
 
   // The amended tab order puts Commissions after the moderation pair; the More sheet is where that is visible.
-  await more.click();
+  await openMoreSheet(page);
   const labels = (await page.getByTestId('oc-more-sheet').getByRole('link').allInnerTexts()).map(
     (text) => text.split('\n')[0],
   );

@@ -70,7 +70,7 @@ import { LedgerRow } from './operator-console.model';
         <div
           class="mt-5 overflow-x-auto rounded-[14px] border border-riv-console-tint/15"
           role="region"
-          aria-label="Statement entries"
+          aria-label="Statement"
           tabindex="0"
         >
           <table class="w-full border-collapse text-[12.5px]">

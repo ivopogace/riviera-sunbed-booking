@@ -3,6 +3,7 @@ import { expect, Locator, Page, test } from '@playwright/test';
 import { mockOperatorLifecycleApi } from './support/auth-mocks';
 import { expectNoSeriousAxeViolations } from './support/axe';
 import { OperatorSignInPage } from './support/pages/operator-sign-in.page';
+import { openMoreSheet } from './support/shell';
 
 /**
  * Real-render behaviour + a11y audit of the admin console's Privacy tab: an admin
@@ -232,7 +233,7 @@ test('the tab rail marks Privacy in slot 8 and never scrolls sideways at 360px',
   await expect(page.getByTestId('admin-tab-privacy')).toBeHidden();
 
   // The amended tab order puts Privacy after the money pair and before Audit, the records last.
-  await more.click();
+  await openMoreSheet(page);
   const labels = (await page.getByTestId('oc-more-sheet').getByRole('link').allInnerTexts()).map(
     (text) => text.split('\n')[0],
   );

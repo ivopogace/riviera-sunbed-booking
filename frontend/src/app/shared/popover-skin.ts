@@ -2,10 +2,10 @@ import { IsActiveMatchOptions } from '@angular/router';
 
 /**
  * The header disclosure recipes the tourist shell (`app.ts`), the operator account chip
- * (`operator/operator-account-chip.ts`) and the venue switcher (`operator/operator-venue-switch.ts`)
- * paint from one place, so the popovers cannot drift (`riviera-tailwind`, no visual drift). Class
- * strings, not a directive: each consumer composes them with its own position and width, the `cls`
- * idiom.
+ * (`operator/operator-account-chip.ts`), the venue switcher (`operator/operator-venue-switch.ts`)
+ * and the console shell's More sheet (`console-shell.ts`) paint from one place, so the popovers
+ * cannot drift (`riviera-tailwind`, no visual drift). Class strings, not a directive: each consumer
+ * composes them with its own position and width, the `cls` idiom.
  */
 
 /** The near-opaque popover surface (account menu, theme picker, the phone sheet) — themed via the
